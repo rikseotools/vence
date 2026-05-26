@@ -458,4 +458,95 @@ describe('TTSEngine', () => {
       eng.destroy()
     })
   })
+
+  describe('watchdog retry counter (Fix bucle infinito en chunk muerto)', () => {
+    // Simula que el synth está muerto: ni habla ni tiene cola pending.
+    // El FakeSynth.speak() vuelve a poner speaking=true tras cada retry,
+    // así que hay que llamar a este helper ANTES de cada tick para
+    // emular un browser donde la voz ya no responde.
+    const killSynth = () => {
+      synth.speaking = false
+      synth.pending = false
+    }
+
+    it('FIX RETRY-COUNTER: tras MAX retries del mismo chunk, salta al siguiente', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+      expect(eng._debugState().currentChunkIdx).toBe(0)
+
+      // 1er tick: increment a 1, retry chunk 0
+      killSynth()
+      eng._debugTickWatchdog()
+      expect(eng._debugState().currentChunkIdx).toBe(0)
+      expect(eng._debugState().watchdogRetries).toBe(1)
+
+      // 2o tick: increment a 2, retry chunk 0
+      killSynth()
+      eng._debugTickWatchdog()
+      expect(eng._debugState().currentChunkIdx).toBe(0)
+      expect(eng._debugState().watchdogRetries).toBe(2)
+
+      // 3er tick: increment a 3 > MAX(2) → SKIP, avanza a chunk 1
+      killSynth()
+      eng._debugTickWatchdog()
+      expect(eng._debugState().currentChunkIdx).toBe(1)
+      // Y el contador debe haber reseteado al cambiar de chunk
+      expect(eng._debugState().watchdogRetries).toBe(0)
+
+      eng.destroy()
+    })
+
+    it('FIX RETRY-COUNTER: contador NO se resetea entre retries del mismo chunk', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+
+      killSynth()
+      eng._debugTickWatchdog()
+      expect(eng._debugState().watchdogRetries).toBe(1)
+
+      killSynth()
+      eng._debugTickWatchdog()
+      expect(eng._debugState().watchdogRetries).toBe(2)
+      // El bug previo era: speakChunk reseteaba a 0 → bucle infinito.
+
+      eng.destroy()
+    })
+
+    it('FIX RETRY-COUNTER: onend de un chunk OK propaga el reset al siguiente', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+
+      // Simular un chunk colgado para subir el contador a 1
+      synth.speaking = false
+      synth.pending = false
+      eng._debugTickWatchdog()
+      expect(eng._debugState().watchdogRetries).toBe(1)
+
+      // Restaurar el synth y completar el chunk: onend → speakChunk(1)
+      // con índice distinto → reset del contador.
+      synth.speaking = true
+      synth.completeFirst()
+      expect(eng._debugState().currentChunkIdx).toBe(1)
+      expect(eng._debugState().watchdogRetries).toBe(0)
+
+      eng.destroy()
+    })
+
+    it('FIX RETRY-COUNTER: play() limpio resetea el contador heredado', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+
+      synth.speaking = false
+      synth.pending = false
+      eng._debugTickWatchdog()
+      expect(eng._debugState().watchdogRetries).toBe(1)
+
+      // Usuario para y vuelve a play con texto distinto → arranque limpio.
+      eng.stop()
+      eng.play({ text: 'Otro texto totalmente distinto. Y otra frase.', rate: 1 })
+      expect(eng._debugState().watchdogRetries).toBe(0)
+
+      eng.destroy()
+    })
+  })
 })

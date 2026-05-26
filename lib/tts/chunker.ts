@@ -29,8 +29,15 @@ export function cleanText(raw: string): string {
 
 /**
  * Divide texto en chunks ≤ MAX_CHUNK_LENGTH chars, partiendo por frase.
- * Una frase suelta más larga que MAX se devuelve íntegra (no la rompemos
- * a mitad de palabra — preferimos un chunk grande que un chunk roto).
+ * Si una frase suelta excede MAX, se fuerza la partición — primero por
+ * comas (puntos de pausa naturales en texto jurídico español), y como
+ * último recurso por palabras.
+ *
+ * Por qué la partición forzada: Chrome rechaza síncronamente con
+ * `synthesis-failed` los utterances que superan ~300 chars (visto en
+ * Art. 1 del Reglamento Asamblea Madrid: 474 chars sin terminador
+ * intermedio). Devolver una frase íntegra >MAX deja al engine en bucle
+ * de retry sobre un chunk que jamás se sintetizará.
  *
  * @returns Siempre al menos un elemento. Para texto vacío devuelve [''].
  */
@@ -40,19 +47,70 @@ export function splitIntoChunks(text: string): string[] {
   let current = ''
 
   for (const sentence of sentences) {
-    if (
-      current.length + sentence.length > MAX_CHUNK_LENGTH &&
-      current.length > 0
-    ) {
-      chunks.push(current.trim())
-      current = sentence
-    } else {
-      current += (current ? ' ' : '') + sentence
+    const pieces =
+      sentence.length > MAX_CHUNK_LENGTH ? forceSplitOversize(sentence) : [sentence]
+    for (const piece of pieces) {
+      // El separador suma 1 char al acumular — hay que contarlo o el
+      // chunk final puede salir con MAX+1 (visto en property-based test).
+      const sepLen = current.length > 0 ? 1 : 0
+      if (
+        current.length + sepLen + piece.length > MAX_CHUNK_LENGTH &&
+        current.length > 0
+      ) {
+        chunks.push(current.trim())
+        current = piece
+      } else {
+        current += (current ? ' ' : '') + piece
+      }
     }
   }
   if (current.trim()) chunks.push(current.trim())
 
   return chunks.length > 0 ? chunks : [text]
+}
+
+/**
+ * Trocea una frase oversize en sub-piezas ≤ MAX_CHUNK_LENGTH. Estrategia:
+ *   1. Por comas (con espacio detrás). Cada pieza conserva su coma final.
+ *   2. Si alguna sub-pieza sigue siendo >MAX, fallback a palabras.
+ *   3. Palabra única > MAX (caso patológico: URLs, identificadores) se
+ *      devuelve íntegra — no rompemos a mitad de carácter.
+ */
+function forceSplitOversize(sentence: string): string[] {
+  const commaParts = sentence.split(/(?<=,)\s+/)
+  if (commaParts.length > 1) {
+    const out: string[] = []
+    for (const part of commaParts) {
+      if (part.length <= MAX_CHUNK_LENGTH) {
+        out.push(part)
+      } else {
+        out.push(...splitByWords(part))
+      }
+    }
+    return packBySize(out, ' ')
+  }
+  return splitByWords(sentence)
+}
+
+function splitByWords(text: string): string[] {
+  return packBySize(text.split(/\s+/).filter((w) => w.length > 0), ' ')
+}
+
+function packBySize(parts: string[], joiner: string): string[] {
+  const out: string[] = []
+  let cur = ''
+  for (const p of parts) {
+    if (!p) continue
+    const candidate = cur ? cur + joiner + p : p
+    if (candidate.length > MAX_CHUNK_LENGTH && cur) {
+      out.push(cur)
+      cur = p
+    } else {
+      cur = candidate
+    }
+  }
+  if (cur) out.push(cur)
+  return out
 }
 
 /** Pipeline completo: limpia y divide. */

@@ -90,11 +90,40 @@ describe('splitIntoChunks', () => {
     }
   })
 
-  it('frase única > MAX se devuelve sin partir', () => {
-    const long = 'A'.repeat(300) + '.'
-    const result = splitIntoChunks(long)
-    expect(result.length).toBe(1)
-    expect(result[0]).toBe(long)
+  it('FIX OVERSIZE: frase única > MAX con comas se fuerza split por comas', () => {
+    // Caso real: Art. 1 Reglamento Asamblea Madrid — 474 chars con 7
+    // comas y un único punto al final. Chrome rechaza síncronamente
+    // con 'synthesis-failed' chunks de ese tamaño.
+    const artMadrid =
+      'La Asamblea de Madrid, órgano legislativo y representativo del pueblo de Madrid, ejerce la potestad legislativa de la Comunidad, aprueba y controla los Presupuestos Generales de la misma, impulsa, orienta y controla la acción del Consejo de Gobierno y ejerce cualesquiera otras funciones que le otorguen las leyes, de acuerdo con las competencias que la Constitución Española, el Estatuto de Autonomía y el resto del ordenamiento jurídico atribuyen a la Comunidad de Madrid.'
+    const chunks = splitIntoChunks(artMadrid)
+    expect(chunks.length).toBeGreaterThan(1)
+    for (const c of chunks) {
+      expect(c.length).toBeLessThanOrEqual(MAX_CHUNK_LENGTH)
+    }
+    // Reconstrucción aproximada: no debe perder texto significativo.
+    expect(chunks.join(' ').length).toBeGreaterThanOrEqual(artMadrid.length - chunks.length)
+  })
+
+  it('FIX OVERSIZE: frase única > MAX sin comas se fuerza split por palabras', () => {
+    // Patológico: una frase larga sin comas ni puntos intermedios.
+    const palabra = 'palabra'
+    const long = Array.from({ length: 60 }, () => palabra).join(' ') + '.'
+    expect(long.length).toBeGreaterThan(MAX_CHUNK_LENGTH)
+    const chunks = splitIntoChunks(long)
+    expect(chunks.length).toBeGreaterThan(1)
+    for (const c of chunks) {
+      expect(c.length).toBeLessThanOrEqual(MAX_CHUNK_LENGTH)
+    }
+  })
+
+  it('FIX OVERSIZE: palabra única > MAX se devuelve íntegra (no rompe mid-char)', () => {
+    // Caso patológico extremo: una "palabra" >MAX (URLs, identificadores).
+    // Preferimos un chunk grande que romper a mitad de carácter.
+    const monstruosa = 'A'.repeat(MAX_CHUNK_LENGTH + 50)
+    const chunks = splitIntoChunks(monstruosa)
+    expect(chunks.length).toBe(1)
+    expect(chunks[0]).toBe(monstruosa)
   })
 
   it('texto largo simulando ley completa: chunks múltiples sin pérdida', () => {

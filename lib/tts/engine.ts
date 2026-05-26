@@ -244,6 +244,10 @@ export class TTSEngine {
     // breaker. Si la sesión vuelve a fallar, lastError se reescribirá.
     this.lastError = null
     this.consecutiveChunkErrors = 0
+    // Rearma el contador del watchdog: una sesión anterior pudo dejarlo
+    // a mitad de retry sobre un chunk fallido. Sin esto, el primer
+    // tick podría incrementar sobre estado obsoleto.
+    this.watchdogRetries = 0
 
     const incomingKey = computeContentKey(options)
     const incomingChunks = buildChunks(options)
@@ -580,9 +584,18 @@ export class TTSEngine {
       return
     }
 
+    // El contador del watchdog SOLO se resetea al avanzar a un chunk
+    // distinto. Si el watchdog re-llama a speakChunk con el mismo
+    // índice (retry tras 'dead'/'zombie'), conservamos el contador para
+    // que el safeguard de skip dispare tras MAX_WATCHDOG_RETRIES — sin
+    // esta condición el contador se ponía a 0 en cada retry y
+    // entrábamos en bucle infinito sobre un chunk que Chrome no
+    // sintetiza (típico con chunks oversize y voz móvil muerta).
+    if (index !== this.currentChunkIdx) {
+      this.watchdogRetries = 0
+    }
     this.currentChunkIdx = index
     this.chunkStartTime = Date.now()
-    this.watchdogRetries = 0
 
     const utterance = new SpeechSynthesisUtterance(this.chunks[index].text)
     utterance.lang = 'es-ES'
