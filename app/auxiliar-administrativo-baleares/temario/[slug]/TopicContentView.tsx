@@ -14,6 +14,7 @@ import MarkdownContent from '@/components/MarkdownContent'
 interface TopicContentViewProps {
   content: TopicContent
   oposicion?: string
+  updatedAt: string
 }
 
 // Determinar el bloque segun el numero de tema (Auxiliar Administrativo Baleares)
@@ -26,7 +27,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'auxiliar-administrativo-baleares' }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'auxiliar-administrativo-baleares', updatedAt }: TopicContentViewProps) {
   const { getSlug } = useLawSlugs()
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
@@ -170,7 +171,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Actualizado a{' '}
               <span className="font-semibold text-gray-800 dark:text-gray-200">
-                {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {updatedAt}
               </span>
               .{' '}
               <Link href="/login" className="text-cyan-600 dark:text-cyan-400 hover:underline font-medium">

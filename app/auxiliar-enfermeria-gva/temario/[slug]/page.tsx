@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
+import { formatUpdatedAt } from '@/lib/temario/updatedAt'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 export const revalidate = 3600 // Edge caching SWR (2026-05-17): HTML cacheado 1h en CDN, stale-while-revalidate elimina cold starts visibles
@@ -69,7 +70,7 @@ export default async function TemarioTemaPage({ params }: PageProps) {
       <Suspense fallback={<div className="h-12 bg-gray-50 border-b border-gray-200" />}>
         <InteractiveBreadcrumbs />
       </Suspense>
-      <TopicContentView content={content} oposicion="auxiliar-enfermeria-gva" />
+      <TopicContentView content={content} oposicion="auxiliar-enfermeria-gva" updatedAt={formatUpdatedAt()} />
     </div>
   )
 }
