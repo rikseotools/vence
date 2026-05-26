@@ -260,7 +260,10 @@ resource "aws_lb_listener_certificate" "preview_aws" {
   certificate_arn = data.aws_acm_certificate.preview_aws.arn
 }
 
-# Listener rule: si Host header == preview-aws.vence.es → forward al TG frontend.
+# Listener rule: routea al frontend ECS para todos los hostnames que sirve
+# el frontend (preview-aws + www + apex). E.6 cutover (2026-05-26) amplió
+# de solo preview-aws a los 3 para que CloudFront pueda usar www.vence.es
+# como alias.
 resource "aws_lb_listener_rule" "frontend_preview" {
   listener_arn = data.aws_lb_listener.https.arn
   priority     = 110 # priority bajo = más prioritario; backend usa 100.
@@ -272,7 +275,7 @@ resource "aws_lb_listener_rule" "frontend_preview" {
 
   condition {
     host_header {
-      values = ["preview-aws.vence.es"]
+      values = ["preview-aws.vence.es", "www.vence.es", "vence.es"]
     }
   }
 }
@@ -318,6 +321,16 @@ provider "aws" {
 data "aws_acm_certificate" "cloudfront_preview" {
   provider    = aws.us_east_1
   domain      = "preview-aws.vence.es"
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
+# Cert wildcard *.vence.es + vence.es (E.6 cutover). Cubre preview-aws,
+# www, api, auth, etc. Reemplaza al cert preview-aws en CloudFront cuando
+# añadimos www como alias.
+data "aws_acm_certificate" "cloudfront_wildcard" {
+  provider    = aws.us_east_1
+  domain      = "vence.es"
   statuses    = ["ISSUED"]
   most_recent = true
 }
@@ -371,7 +384,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   comment         = "Vence frontend preview (Fase E.5)"
   price_class     = "PriceClass_100" # USA + EU. Suficiente para España.
 
-  aliases = ["preview-aws.vence.es"]
+  # E.6 cutover (2026-05-26): añadidos www.vence.es y vence.es como
+  # aliases junto al preview-aws original. Misma distribution sirve los
+  # 3 hostnames. Cert wildcard ACM us-east-1 cubre todos.
+  aliases = ["preview-aws.vence.es", "www.vence.es", "vence.es"]
 
   origin {
     domain_name = data.aws_lb.main.dns_name
@@ -434,7 +450,8 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = data.aws_acm_certificate.cloudfront_preview.arn
+    # E.6 cutover: usar cert wildcard que cubre preview-aws, www, apex, etc.
+    acm_certificate_arn      = data.aws_acm_certificate.cloudfront_wildcard.arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }

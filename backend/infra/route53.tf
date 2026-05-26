@@ -75,24 +75,25 @@ resource "aws_route53_record" "apex_txt" {
 # Resend Inbound (incluido en plan free) o AWS SES con rule sets activos.
 
 # ============================================================
-# WWW (www.vence.es)
+# WWW (www.vence.es) — CUTOVER E.6 (2026-05-26)
 #
-# AHORA: 100% Vercel (CNAME al deploy de Vercel — apex de Vercel da
-# 216.150.16.1 + 216.150.1.1 que son IPs estables de Vercel).
+# Cambio de Vercel a CloudFront. Cert wildcard ACM us-east-1 cubre
+# www + apex + preview-aws. CloudFront acepta los 3 como aliases.
+# ALB listener tiene cert wildcard eu-west-2 para SNI handshake con
+# Host=www.vence.es.
 #
-# El weighted canary 10/90 requiere ANTES:
-#   1. ACM cert us-east-1 que cubra www.vence.es
-#   2. CloudFront distribution con alias www.vence.es añadido
-#      (de lo contrario CloudFront devuelve 403 al recibir Host: www.vence.es)
-# Una vez listo, sustituir este record por dos weighted (vercel/aws).
+# TTL=60s para react rápido si hay que rollback (cambiar valor del
+# CNAME de nuevo a vercel-dns-017.com y propagación en ~60s).
+#
+# Pre-cutover snapshot: f1254f308aeab97a.vercel-dns-017.com.
 # ============================================================
 
 resource "aws_route53_record" "www" {
   zone_id = aws_route53_zone.vence.zone_id
   name    = "www.vence.es"
   type    = "CNAME"
-  ttl     = 300
-  records = ["f1254f308aeab97a.vercel-dns-017.com."]
+  ttl     = 60
+  records = ["d25xcm3wrnxoty.cloudfront.net."]
 }
 
 # ============================================================
@@ -139,19 +140,23 @@ resource "aws_route53_record" "acm_preview_validation" {
   records = ["_0846183dac1109541bb8c4b780579982.jkddzztszm.acm-validations.aws."]
 }
 
-# ACM validation www/apex — ELIMINADO 2026-05-26.
+# ACM validation wildcard *.vence.es + vence.es (Bloque 5 Fase E.6 cutover).
 #
-# Intento de weighted DNS canary 10/90 falló por CAA records de Vercel
-# bloqueando ACM (Vercel autoriza solo globalsign/letsencrypt/pki.goog/
-# sectigo, NO amazonaws). Mientras www.vence.es CNAME apunte a Vercel,
-# ACM no puede emitir cert para www. Records de validación retirados.
+# Esquiva el problema CAA de Vercel: el apex vence.es NO tiene CAA records
+# (los CAA viven en el target del CNAME Vercel — pero el apex es A directo).
+# Por tanto ACM puede validar contra el apex sin bloqueo. El wildcard
+# *.vence.es se valida con el MISMO record (AWS reusa cuando el target es
+# el mismo dominio).
 #
-# Plan revisado (cutover binario):
-#   - Preview AWS sigue como canary funcional (preview-aws.vence.es).
-#   - Cuando datos digan GO (canary 24h + tu validación manual), se
-#     cambia el CNAME www directamente Vercel → CloudFront. CAA deja
-#     de aplicar (cambia el target del CNAME) y ACM puede emitir.
-#   - Reversible en <5 min revertiendo CNAME en Route 53.
+# Una vez ISSUED, este cert se asigna a CloudFront para que sirva
+# www.vence.es como alias. Después cambiamos el CNAME www → CloudFront.
+resource "aws_route53_record" "acm_wildcard_validation" {
+  zone_id = aws_route53_zone.vence.zone_id
+  name    = "_6286d57c2b634bfee7cb9dacdaad70e6.vence.es"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["_dedf6b6112300102c7fe133119a2693a.jkddzztszm.acm-validations.aws."]
+}
 
 # ============================================================
 # INFRA INTERNA (self-hosted PgBouncer)
