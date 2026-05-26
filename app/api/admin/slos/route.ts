@@ -157,10 +157,73 @@ async function _GET(request: NextRequest) {
   }
 
   // ============================================================
-  // 2/3. Latencia p50/p95/p99 — observable_events (mock por ahora —
-  //      Vence aún no emite event_type=request_completed con duration_ms
-  //      sistemáticamente, hay que añadir un middleware o usar httpStatus
-  //      como proxy). Por ahora consultamos http_5xx para detectar señal.
+  // 2/3. Latencia p50/p95/p99 — observable_events event_type='request_completed'
+  //      Bloque 5 Fase E.4.5.b: withErrorLogging ahora emite 10% de
+  //      requests 2xx/3xx con duration_ms + host. Agrupamos en JS por host.
+  // ============================================================
+  function percentile(sorted: number[], p: number): number | null {
+    if (sorted.length === 0) return null
+    const idx = Math.ceil((p / 100) * sorted.length) - 1
+    return sorted[Math.max(0, Math.min(idx, sorted.length - 1))]
+  }
+
+  try {
+    const { data: timing } = await supabase
+      .from('observable_events')
+      .select('duration_ms, metadata')
+      .eq('event_type', 'request_completed')
+      .gte('ts', SINCE)
+      .limit(50000)
+
+    const byHost: Record<string, number[]> = {}
+    for (const e of timing ?? []) {
+      const meta =
+        typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata
+      const host = meta?.host || 'unknown'
+      const d = e.duration_ms
+      if (d == null) continue
+      if (!byHost[host]) byHost[host] = []
+      byHost[host].push(d)
+    }
+
+    const latencyByHost: Record<string, { samples: number; p50: number | null; p95: number | null; p99: number | null }> = {}
+
+    // Hosts esperados: preview-aws.vence.es (AWS) y www.vence.es (Vercel)
+    for (const host of ['www.vence.es', 'preview-aws.vence.es']) {
+      const arr = byHost[host] ?? []
+      arr.sort((a, b) => a - b)
+      const p50 = percentile(arr, 50)
+      const p95 = percentile(arr, 95)
+      const p99 = percentile(arr, 99)
+      latencyByHost[host] = { samples: arr.length, p50, p95, p99 }
+
+      const status: Status =
+        p95 == null ? 'unknown' : gradeLatencyP95(p95)
+      indicators.push({
+        label: `Latencia ${host} (24h)`,
+        status,
+        value:
+          p95 == null
+            ? '—'
+            : `p50 ${fmtMs(p50)} · p95 ${fmtMs(p95)} · p99 ${fmtMs(p99)}`,
+        detail: `${arr.length} muestras (sampling 10% de éxitos)`,
+        slo: 'p95 <800ms verde, <1500ms ámbar',
+      })
+    }
+
+    rawData.latencyByHost = latencyByHost
+  } catch (e) {
+    indicators.push({
+      label: 'Latencia p50/p95/p99',
+      status: 'unknown',
+      value: '—',
+      detail: `Error consultando: ${(e as Error).message}`,
+      slo: 'p95 <800ms',
+    })
+  }
+
+  // ============================================================
+  // Resto: errores 4xx / 5xx / hydration / volumen
   // ============================================================
 
   // 4. Errores 4xx (24h)

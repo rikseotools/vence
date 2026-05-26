@@ -8,6 +8,16 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import * as Sentry from '@sentry/nextjs'
 import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
+import { emitFireAndForget } from '@/lib/observability/emit'
+
+/**
+ * Sampling rate para eventos `request_completed` 2xx/3xx (Bloque 5
+ * Fase E.4.5.b). 100% en 4xx/5xx (todos), pero en éxito muestreamos
+ * 10% para mantener volumen razonable mientras conservamos precisión
+ * estadística de los percentiles (con ~5000 samples/24h tienes p99
+ * confidence interval estrecho).
+ */
+const SUCCESS_TIMING_SAMPLE_RATE = 0.1
 
 const DEPLOY_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'local'
 
@@ -121,6 +131,37 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
 
     try {
       const response = await handler(...args)
+
+      // ============================================================
+      // Bloque 5 Fase E.4.5.b — emitir timing a observable_events.
+      // Permite calcular p50/p95/p99 latencia por host (preview-aws vs
+      // www) en el dashboard /admin/slos.
+      //
+      // 2xx/3xx: sampling 10% (alto volumen → mantenemos ~5k samples/24h
+      //   suficiente para p99 sólido sin inflar la tabla).
+      // 4xx/5xx: 100% (todos los errores, ya están abajo en otro bloque,
+      //   incluyen duration_ms; aquí solo emit para los 2xx/3xx).
+      //
+      // metadata.host distingue preview-aws.vence.es de www.vence.es,
+      // crítico para comparativa apples-to-apples del cutover.
+      // ============================================================
+      if (response.status < 400 && Math.random() < SUCCESS_TIMING_SAMPLE_RATE) {
+        const durationMs = Date.now() - startTime
+        const host = request?.headers?.get?.('host') ?? null
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'info',
+          eventType: 'request_completed',
+          endpoint,
+          httpStatus: response.status,
+          durationMs,
+          metadata: {
+            host,
+            method: request?.method ?? 'GET',
+            sampled: 'true', // marca que este evento es sample, no censo
+          },
+        })
+      }
 
       // Logar respuestas 4xx y 5xx
       if (response.status >= 400) {
