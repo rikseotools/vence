@@ -418,10 +418,30 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
 - **E.1** ✅ Dockerfile multi-stage + GHA `frontend-deploy.yml` + ECR `vence-frontend`. Imagen final ~340MB con server.js standalone. Build args server-side (DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY) pasados desde GH Secrets — necesarios porque Vence consulta BD durante prerender SSG. Workflow corriendo 7-8 min en GHA, SUCCESS en sha 0d5ca941.
 - **E.2** ✅ Terraform (`backend/infra/frontend.tf`): task definition + ECS service `vence-frontend` con `desired=0`. 20 secrets desde SSM `/vence-frontend/*` + 14 env vars planas. IAM execution role (lee SSM) + task role (acceso S3 vence-uploads). Security group solo egress. Smoke verificado: task arranca, Next.js 16.2.6 Ready, Supabase client OK con secrets de SSM. Coste $0/mes (sin tasks corriendo).
 - **E.3** ✅ ALB rule en host `preview-aws.vence.es` → target group frontend. `desired=1`. **Smoke prod-like OK 2026-05-25 20:37**: home 332KB/415ms, /oposiciones BD-dependent 200/374KB, página de test SSG 200/226KB. ACM cert ISSUED en 90s (validación DNS). DNS resuelve correctamente. Target healthy. Coste estimado: ~$15/mes (1 task 0.5vCPU/1GB 24/7).
-- **E.4** ⏳ Soak 3-7 días en preview. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar latencias contra Vercel baseline.
+- **E.4** ✅ Nivel 2 validación completa 2026-05-26 (no soak pasivo — herramientas reales):
+  - **E.4.1** Playwright E2E suite (12 tests, 2 projects preview/prod) + workflow GHA.
+  - **E.4.2** k6 load test 5 escenarios (smoke/load 1k VUs/stress 5k/spike/soak 1h) + GHA workflow_dispatch.
+  - **E.4.3** Route 53 hosted zone (10 records replicados desde DonDominio) + 4 nameservers AWS + cambio NS en DonDominio. Registry .es propagado 2026-05-26 ~11:55. Weighted DNS canary 10/90 descartado por CAA records Vercel bloqueando ACM (`vercel-dns-017.com` autoriza solo globalsign/letsencrypt/pki.goog/sectigo, NO amazonaws). Camino alternativo: cutover binario.
+  - **E.4.4** CloudWatch Synthetics canary 5min (vence-preview) — runtime puppeteer 15.1, 4 steps (home, oposición, tema-1, ingest), SNS topic + email alerta, ~$5/mes.
+  - **E.4.5** Dashboard `/admin/slos` con 7 indicadores semáforo + decisión cutover GO/NO-GO + p50/p95/p99 latencias por host vía middleware `withTiming` (sampling 10%).
 - **E.5** ✅ CloudFront LIVE 2026-05-25 20:53. Distribution `E1EH4WF1H7ZGLA` con origin ALB, alias preview-aws.vence.es, cert ACM us-east-1, 4 behaviors (default ISR-aware, /_next/static/* 1y, /_next/image* 24h, /api/* no-cache). Edge Madrid (MAD53). **Resultado smoke: AWS 88ms vs Vercel 218ms (-60% total page) y TTFB AWS 50ms vs Vercel 154ms (-67%).** Coste estimado: $0-1/mes durante preview.
-- **E.6** ⏳ DNS DonDominio `www.vence.es A` → CloudFront. **Cutover real.** Reversible <5 min revertiendo DNS.
-- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel.
+- **E.6** 🎉 **CUTOVER REAL COMPLETO 2026-05-26 13:44 UTC**. `www.vence.es` ahora servido desde AWS CloudFront + ECS Fargate. Cronología:
+  - **13:33** ACM us-east-1 cert wildcard `*.vence.es + vence.es` ISSUED en 30s (apex no tiene CAA, esquiva el problema Vercel).
+  - **13:37** CloudFront distribution actualizada — aliases ampliados a `[preview-aws, www, vence.es]`, cert wildcard asignado.
+  - **13:42** ACM eu-west-2 cert wildcard ISSUED (necesario para SNI ALB con Host=www.vence.es; sin él CloudFront→ALB devolvía 502).
+  - **13:43** ALB listener añade cert wildcard + listener rule frontend ampliada a 3 hosts.
+  - **13:44** CNAME `www.vence.es` cambiado en Route 53: `vercel-dns-017.com` → `d25xcm3wrnxoty.cloudfront.net`. TTL 60s.
+  - **13:46** Propagación 3/3 resolvers globales (1.1.1.1, 8.8.8.8, 9.9.9.9).
+  - **13:47** Smoke 7 páginas + API + observabilidad: 200 OK. 0 errores 5xx.
+
+  **Resultado post-cutover**:
+  - TTFB warm: **41ms** (vs Vercel 128ms, **-68%**)
+  - Total warm: **65ms** (vs Vercel 224ms, **-71%**)
+  - Edge CloudFront MAD53-P2 (Madrid).
+  - 0 errores 5xx.
+
+  **Rollback disponible** <2 min: cambiar el `records` del CNAME `www` en `backend/infra/route53.tf` a `vercel-dns-017.com` y `terraform apply`. TTL 60s propaga el revert.
+- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel — cancelar plan, borrar deploys, limpiar `VERCEL_*` env vars del repo, eliminar workflows GHA exclusivos de Vercel.
 
 ##### Intento previo SST (descartado 2026-05-25, archivado para referencia)
 
