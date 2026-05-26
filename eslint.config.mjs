@@ -59,6 +59,35 @@ const eslintConfig = [
       ],
     },
   },
+  // Anti-patrón: cache singleton in-memory a nivel módulo con `let xxxCache`.
+  // En Next.js cada bundle (RSC, API Route, Middleware, ...) crea SU PROPIA
+  // copia del `let` → leak de memoria por duplicación bajo carga.
+  // Causó el incidente OOM 2026-05-26 14:50-15:10 en `lib/api/laws/queries.ts`.
+  // Fix: usar `createGlobalCache` del helper `lib/cache/globalCache.ts`.
+  //
+  // Severidad WARN porque hay ~7 archivos existentes con el patrón roto que
+  // requieren migración gradual (task #118). NUEVOS caches deben usar el
+  // helper desde el primer commit.
+  {
+    files: ["lib/**/*.{ts,tsx,js,jsx}", "app/**/*.{ts,tsx,js,jsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "Program > VariableDeclaration[kind='let'] > VariableDeclarator[id.name=/Cache$/]",
+          message:
+            "Cache singleton a nivel módulo con `let xxxCache` se duplica por bundle en Next.js (leak de memoria). Usa `createGlobalCache` de lib/cache/globalCache.ts. Ver postmortem #115 + task #118.",
+        },
+        {
+          selector:
+            "Program > VariableDeclaration[kind='let'] > VariableDeclarator[id.name=/CacheTime$/]",
+          message:
+            "Variable de control de cache a nivel módulo se duplica por bundle (leak). Migra el cache asociado a `createGlobalCache` de lib/cache/globalCache.ts.",
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;
