@@ -526,8 +526,35 @@ async function queryRevenue(dates: ReturnType<typeof getMadridDates>) {
 
 // -- Main: ejecutar todo en paralelo --
 
+/**
+ * Helper para medir el tiempo de cada query individual en producción.
+ * Diagnóstico 2026-05-26: el endpoint /api/v2/admin/dashboard devolvía 503
+ * por timeout (`withDbTimeout` aborta a 12s). Local toda la función tarda
+ * ~1.1s — la lentitud aparece SOLO en producción ECS. Necesitamos saber
+ * cuál de las 11 queries es la cuello para optimizarla.
+ *
+ * Logging va a stdout del task ECS (CloudWatch /ecs/vence-frontend).
+ * Grep por `[admin-dashboard-timing]` para ver el desglose.
+ */
+async function _timed<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  const t = Date.now()
+  try {
+    const result = await fn()
+    const ms = Date.now() - t
+    if (ms > 500) {
+      console.log(`[admin-dashboard-timing] ${name}: ${ms}ms`)
+    }
+    return result
+  } catch (err) {
+    const ms = Date.now() - t
+    console.log(`[admin-dashboard-timing] ${name}: ${ms}ms FAILED — ${(err as Error).message?.slice(0, 100)}`)
+    throw err
+  }
+}
+
 export async function getDashboardData(): Promise<DashboardResponse> {
   const dates = getMadridDates()
+  const tTotal = Date.now()
 
   const [
     userStats,
@@ -542,18 +569,20 @@ export async function getDashboardData(): Promise<DashboardResponse> {
     engagement,
     revenue,
   ] = await Promise.all([
-    queryUserStats(dates),
-    queryRegistrationBySource(dates),
-    queryTestStats(dates),
-    queryTodayActivity(dates),
-    queryActiveUsersComparison(dates),
-    queryOnlineUsers(dates),
-    queryEmailStats(dates),
-    queryDauHistory(dates),
-    queryRecentUsers(),
-    queryEngagement(),
-    queryRevenue(dates),
+    _timed('queryUserStats', () => queryUserStats(dates)),
+    _timed('queryRegistrationBySource', () => queryRegistrationBySource(dates)),
+    _timed('queryTestStats', () => queryTestStats(dates)),
+    _timed('queryTodayActivity', () => queryTodayActivity(dates)),
+    _timed('queryActiveUsersComparison', () => queryActiveUsersComparison(dates)),
+    _timed('queryOnlineUsers', () => queryOnlineUsers(dates)),
+    _timed('queryEmailStats', () => queryEmailStats(dates)),
+    _timed('queryDauHistory', () => queryDauHistory(dates)),
+    _timed('queryRecentUsers', () => queryRecentUsers()),
+    _timed('queryEngagement', () => queryEngagement()),
+    _timed('queryRevenue', () => queryRevenue(dates)),
   ])
+
+  console.log(`[admin-dashboard-timing] TOTAL Promise.all: ${Date.now() - tTotal}ms`)
 
   const projections = computeProjections(
     { ...userStats, totalUsers: engagement.totalUsers },

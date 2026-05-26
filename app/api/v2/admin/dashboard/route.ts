@@ -16,10 +16,16 @@ import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 // 2026-05-25: 504 observado (Vercel runtime kill a 300s, default sin
 // maxDuration explícito) que el wrapper withErrorLogging NO pudo
 // capturar — la lambda muere por SIGTERM antes de retornar response.
-// Acotamos: maxDuration 15s + quick-fail BD a 12s → handler retorna
-// 503 capturable en validation_error_logs en vez de 504 invisible.
-export const maxDuration = 15
-const DASHBOARD_QUERY_TIMEOUT_MS = 12000
+// Acotamos: maxDuration + quick-fail BD → handler retorna 503 capturable.
+//
+// 2026-05-26: tras cutover Vence→ECS, el endpoint daba 503 consistente a los
+// 12s. Cause raíz: alguna de las 11 queries paralelas tarda > 12s SOLO en
+// el task ECS bajo carga concurrente (local toda la función tarda 1.1s).
+// Mitigación: subido timeout BD 12s → 20s (margen al pool max:4 + 11 queries
+// concurrentes) y maxDuration → 25s. CloudFront origin_read_timeout es 60s.
+// Paralelo: añadido logging por query en getDashboardData (#117 followup).
+export const maxDuration = 25
+const DASHBOARD_QUERY_TIMEOUT_MS = 20000
 
 async function _GET() {
   try {
