@@ -2564,6 +2564,7 @@ swap del sink en una sola línea de la fábrica.
 |---|---|---|---|
 | **Fase 0** — Sink interface + race fix | 2026-05-26 mañana | 2-3 h | ✅ COMPLETA |
 | **Fase 1** — Migrar writers huérfanos + documentar Issues vs Events | 2026-05-26 tarde | ~2 h | ✅ COMPLETA |
+| **Fase 1.5** — Vercel Log Drain (Gap 14 del manual) | 2026-05-26 | 1.5-2 h | 🔄 EN CURSO |
 | **Fase 2** — Migración AWS (PostgresSink → KinesisSink) | Cuando >30k DAU | 1-2 semanas | ⏸️ pendiente |
 
 #### Fase 0 — Sink interface + race fix ✅ COMPLETA 2026-05-26
@@ -2597,6 +2598,35 @@ Lo que se descartó conscientemente del plan original:
 - **NO Patrón 1 puro** — confundía dos conceptos que la industria separa deliberadamente.
 
 Validación: tsc limpio, 567/567 tests pass en suite observability+writers.
+
+#### Fase 1.5 — Vercel Log Drain (Gap 14 del manual) 🔄 EN CURSO 2026-05-26
+
+Cierre del agujero arquitectural más relevante detectado en esta sesión:
+**504 SIGTERM invisibles** al código de app. Documentado en
+`observability.md` § Gap 14 con caso real (`/api/v2/admin/dashboard 504`
+del 25/05 20:31 UTC, nunca llegó a `validation_error_logs` porque la
+lambda muere antes de retornar response).
+
+**Por qué ahora y no después**: es el ÚNICO blind spot que no podemos
+cerrar con mitigaciones por endpoint (`maxDuration` + `withDbTimeout`).
+Cualquier endpoint nuevo sin esos guards reintroduce el agujero. La
+solución es **fuera del código de app**: que Vercel mismo envíe los logs
+de runtime al ingest endpoint vía HTTPS Log Drain. Coste: 1.5-2h.
+
+Plan:
+1. Extender `/api/observability/ingest` para aceptar el formato Vercel Log Drain (NDJSON) además del shape actual.
+2. Parser que filtre logs relevantes (≥400, runtime errors, timeouts) y los traduzca a `ObservableEvent` con `source:'vercel'`, `eventType:'http_5xx'|'runtime_kill'`.
+3. Auth vía `OBSERVABILITY_INGEST_SECRET` ya existente (mismo header `x-vercel-verify` o secret en query).
+4. Tests con payloads sintéticos del formato Vercel.
+5. Instrucciones para activar el drain en dashboard Vercel (Settings → Log Drains → HTTPS → endpoint + secret).
+6. **Activación manual por el operador** (no puedo configurar Vercel UI desde código).
+
+#### Gaps 13/15 — agujeros menores (documentados, no implementados hoy)
+
+- **Gap 13** (405 framework-level invisible, 2026-05-25 caso bot Google-Read-Aloud): middleware Next.js. ~30 min. Bajo impacto (bots scanner).
+- **Gap 15** (shadow `console.log` no persiste, 2026-05-25 caso `🔍 [shadow] /api/profile sin Bearer`): auditar y migrar a `emit*`. ~1-2h. Importante antes del cutover phase 3→5 del JWT enforcement.
+
+Quedan en Fase 2 del manual (alertas + dashboard).
 
 #### Fase 2 — Migración AWS ⏸️ pendiente (cuando >30k DAU)
 

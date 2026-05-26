@@ -157,10 +157,13 @@ línea en `getSink()` — cero cambios en callers.
 | Smoke E2E flujos críticos | ❌ | Gap 4 pendiente — cron Fargate cada 5min |
 | Tracing distribuido (request → BD) | ❌ | Sentry SDK no instalado en backend NestJS — Gap 12 |
 | SLOs declarados | ❌ | `docs/architecture/slos.yml` no existe — Gap 11 |
+| 405 method-not-allowed framework-level | ❌ | Gap 13 — sin middleware Next.js, las páginas con método inválido responden fuera del wrapper |
+| Vercel runtime kill (504 SIGTERM) | ❌ | Gap 14 — agujero arquitectural: lambda muere antes de poder loguear. Único fix: Vercel Log Drain → ingest |
+| Shadow logs (`console.log` con `🔍`/`[shadow]`) | ❌ | Gap 15 — auth shadow no persiste, sin datos para diseñar cutover phase 3→5 |
 
-**Cobertura real: ~90%.** Cubrimos errores y crons al 100%. Lo que falta para el 100% real son: SLOs formales (Gap 11), tracing distribuido server (Gap 12), smoke E2E sintético (Gap 4), adopción intent tracking en botones críticos.
+**Cobertura real: ~88%** (post-audit 2026-05-26 con 3 gaps nuevos detectados). Cubrimos errores explícitos del código de app al 100%. Lo que falta para el 100% real: Gap 14 (Vercel runtime kill — único agujero arquitectural relevante), Gap 11 (SLOs formales), Gap 12 (tracing distribuido), Gap 4 (smoke E2E), Gaps 13/15 (cosméticos).
 
-**Veredicto**: cubrimos bien los errores server-side explícitos. Resto = blind spots variables, especialmente client-side.
+**Veredicto**: cubrimos bien los errores server-side explícitos. Lo que NO cubrimos son fallos que ocurren **fuera del control del código de app**: runtime kills de Vercel, métodos inválidos a páginas (framework-level), y logs que mueren con la lambda. **Gap 14 es prioridad alta** porque es la categoría que más nos hace «no enterarnos» de fallos reales en producción.
 
 ---
 
@@ -293,6 +296,43 @@ Cada gap viene con un **caso real** que justifica la prioridad. No se mete un ga
 **Lo que falta**: instrumentación OpenTelemetry en frontend + backend, propagación de `traceId` por headers, integración con Jaeger / Tempo / X-Ray. **Solo cuando los otros gaps estén cubiertos** — añadir tracing a un sistema sin alertas es overengineering.
 
 **Esfuerzo**: 1-2 días.
+
+### 🟠 Gap 13 — 405 method-not-allowed framework-level invisible
+
+**Caso real (2026-05-25 20:48 UTC)**: `POST /unsubscribe 405` desde bot scanner `Google-Read-Aloud` (`Mozilla/5.0...Chrome/138... Mobile`). `/unsubscribe` es una página Next.js (`app/unsubscribe/page.tsx`), NO un route handler. Cuando Next.js recibe un método HTTP no soportado para una página, responde 405 directamente desde el framework **antes** de invocar nada — `withErrorLogging` solo envuelve handlers en `app/api/**`, así que jamás se ejecuta. El error no apareció en `validation_error_logs` ni en `observable_events`.
+
+**Lo que tenemos**: nada — el 405 framework-level es totalmente invisible. Si un día un bot empieza a hammer `/login`, `/signup`, etc. con POST inválidos, no lo veríamos. Probabilidad de impacto real: baja (son bots scanner), pero gap real de cobertura.
+
+**Lo que falta**: `middleware.ts` raíz que detecte rutas-página recibiendo métodos no aceptados (cualquier no-GET en páginas estáticas y dinámicas) y emita `observable_events` con `eventType: 'method_not_allowed'`, `source: 'vercel'`, `severity: 'info'` (es bot scanner típicamente, no error real).
+
+**Esfuerzo**: 30 min.
+
+### 🔴 Gap 14 — Vercel runtime kill (504 SIGTERM) invisible al código de app
+
+**Caso real (2026-05-25 20:31 UTC)**: `GET /api/v2/admin/dashboard 504 Vercel Runtime Timeout Error: Task timed out after 300 seconds`. La lambda alcanzó el límite `maxDuration` (300s default sin declarar) y Vercel la mató con SIGTERM. El handler **nunca retornó** — el wrapper `withErrorLogging` jamás vio `response.status`, no logueó nada. **El usuario vio un 504 sin que quedara rastro en nuestra observabilidad**.
+
+Esta es la categoría de fallo más peligrosa porque:
+- No es interceptable desde el código de la app (la lambda muere antes de poder hacer flush).
+- Cubre TODO endpoint sin `maxDuration` corto declarado.
+- Coincide con incidentes de cascada (cuando BD satura, varios endpoints superan el timeout).
+
+**Mitigación parcial aplicada (2026-05-25)**: `app/api/v2/admin/dashboard/route.ts` recibió `maxDuration = 15` + `withDbTimeout(getDashboardData(), 12000)` — el handler ahora retorna 503 capturable a los 12s en vez de morir por SIGTERM a 300s. **Pero esto NO escala**: hay que aplicarlo manualmente endpoint por endpoint y siempre quedan blind spots (deploys nuevos, refactors que olvidan el timeout).
+
+**Lo que falta** (solución arquitectural única): **Vercel Log Drain HTTPS → `/api/observability/ingest`**. Vercel mantiene logs HTTP de cada request en el edge (incluyendo `Runtime Timeout`, `Function Exceeded Memory`, errores de cold start) y puede enviarlos por POST a un endpoint configurable cada vez que se generan. Configuración: dashboard Vercel → Settings → Log Drains → HTTPS endpoint + secret header.
+
+El handler recibe el log Vercel (formato NDJSON), filtra los relevantes (≥400, runtime errors, etc.), los traduce a `ObservableEvent` (`source: 'vercel'`, `eventType: 'http_5xx'|'runtime_kill'`) y los persiste. **Esto captura los 504 SIGTERM y cualquier otro error que el código nunca ve**.
+
+**Esfuerzo**: 1.5-2h (parser + endpoint + tests + config Vercel).
+
+### 🟡 Gap 15 — Shadow logs (console.log) no se persisten en observable_events
+
+**Caso real (2026-05-25 19:52-20:02 UTC)**: múltiples logs `🔍 [shadow] /api/profile GET sin Bearer token { requestedUserId: '...', ua: '...' }` visibles solo en Vercel logs. Es shadow logging de auth phase 3/7 (`app/api/profile/route.ts:decodeJwtPayloadUnsafe`) que detecta callers sin Bearer + posible IDOR antes de activar el enforcement.
+
+El `console.log` muere con la lambda — no llega a `observable_events`, no es queryable, no agregable. Cuando llegue el momento de activar el enforcement (paso 5/7) **no tendremos datos históricos de baseline** para saber cuántos callers se romperían.
+
+**Lo que falta**: auditar `console.log`/`console.warn` con prefijos `🔍`/`🔒`/`[shadow]` en `app/api/**` (~5-10 sitios) y migrarlos a `emitFireAndForget({ source:'vercel', severity:'info', eventType:'auth_shadow_no_bearer'|'auth_shadow_token_invalid'|..., endpoint, userId, metadata })`. Tras 1-2 semanas con datos en BD, podremos correr queries de cohort/UA distribution para diseñar el cutover del shadow → enforced con confianza.
+
+**Esfuerzo**: 1-2h.
 
 ---
 
@@ -936,17 +976,20 @@ Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
 ### Fases
 
 **Fase 1 — Cerrar agujeros críticos (~4-5h, $0/mes)**
-- [ ] **Gap 2**: Endpoint `/api/observability/ingest` (45 min) ← prerequisito de varios
-- [ ] **Gap 3**: Interceptor global NestJS errores ≥500 (30 min)
+- [x] **Gap 2**: Endpoint `/api/observability/ingest` ✅ COMPLETO (2026-05-25)
+- [x] **Gap 3**: Interceptor global NestJS errores ≥500 ✅ COMPLETO (2026-05-25)
 - [ ] **Gap 1**: Client-side observability — `client.ts` + ObservabilityBoundary + EarlyErrorsBridge (1-2h)
 - [ ] **Gap 7**: Verificar Sentry, anotar dashboard URL (15 min)
-- [ ] **Gap 10**: Cron poda 30d (15 min)
+- [x] **Gap 10**: Cron poda 30d ✅ COMPLETO (2026-05-25)
 - [ ] **Migración batch de los 12 crons Fargate restantes** a emitir (~1h con helper común)
+- [ ] **Gap 14**: Vercel Log Drain → ingest (1.5-2h) — ⚠️ **MÁXIMA PRIORIDAD**: único agujero arquitectural para 504 SIGTERM
 
 **Fase 2 — Alertas + dashboard (~3-4h, $0/mes)**
 - [ ] **Gap 8**: Cron rules engine con `NotificationAdapter` (1-2h)
 - [ ] **Gap 9**: Dashboard `/admin/observability` (2-3h)
 - [ ] **Gap 6**: GHA workflows con `if: failure()` → ingest (30 min)
+- [ ] **Gap 13**: middleware Next.js para 405 framework-level (30 min)
+- [ ] **Gap 15**: migrar shadow `console.log` a `emit*` (1-2h)
 
 **Fase 3 — Smoke E2E + más visibilidad (~2-3h, $0/mes hoy)**
 - [ ] **Gap 4**: Cron Fargate smoke E2E cada 5 min (1-2h)
