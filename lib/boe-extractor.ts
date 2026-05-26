@@ -2,6 +2,8 @@
  * Utilidades compartidas para extracción de artículos del BOE
  */
 
+import { compareArticleNumbers } from './utils/articleOrder'
+
 export interface ExtractedArticle {
   article_number: string
   title: string | null
@@ -446,76 +448,12 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     }
   }
 
-  // Ordenar por número de artículo
-  const suffixOrder: Record<string, number> = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6, 'octies': 7, 'nonies': 8, 'decies': 9 }
-  const dispTypeOrder: Record<string, number> = { 'adicional': 1, 'transitoria': 2, 'derogatoria': 3, 'final': 4 }
-  const feminineOrdinals: Record<string, number> = {
-    'unica': 1, 'única': 1,
-    'primera': 1, 'segunda': 2, 'tercera': 3, 'cuarta': 4, 'quinta': 5,
-    'sexta': 6, 'septima': 7, 'séptima': 7, 'octava': 8, 'novena': 9,
-    'decima': 10, 'décima': 10, 'undecima': 11, 'undécima': 11,
-    'duodecima': 12, 'duodécima': 12, 'decimotercera': 13, 'decimocuarta': 14,
-    'decimoquinta': 15, 'decimosexta': 16, 'decimoseptima': 17, 'decimoséptima': 17,
-    'decimoctava': 18, 'decimooctava': 18, 'decimonovena': 19,
-    'vigesima': 20, 'vigésima': 20,
-    'vigesimoprimera': 21, 'vigesimosegunda': 22, 'vigesimotercera': 23
-  }
-  const feminineTens: Record<string, number> = {
-    'vigesima': 20, 'vigésima': 20, 'trigesima': 30, 'trigésima': 30,
-    'cuadragesima': 40, 'cuadragésima': 40
-  }
-
-  const feminineOrdinalToNumber = (text: string): number => {
-    const clean = text.replace(/_/g, ' ').toLowerCase().trim()
-    if (feminineOrdinals[clean]) return feminineOrdinals[clean]
-    const parts = clean.split(' ')
-    if (parts.length === 2 && feminineTens[parts[0]] && feminineOrdinals[parts[1]]) {
-      return feminineTens[parts[0]] + feminineOrdinals[parts[1]]
-    }
-    return 999
-  }
-
-  articles.sort((a, b) => {
-    const isDispA = isDisposicionArticle(a.article_number)
-    const isDispB = isDisposicionArticle(b.article_number)
-
-    if (!isDispA && !isDispB) {
-      const parseArticle = (num: string) => {
-        const normalized = num.replace(/quáter/gi, 'quater')
-        const match = normalized.match(/^(\d+)(?:\s+([a-z]+))?(?:\s+(\d+))?$/i)
-        if (!match) return { base: 0, suffix: 0, subnum: 0 }
-        return {
-          base: parseInt(match[1]) || 0,
-          suffix: suffixOrder[match[2]?.toLowerCase() || ''] || 0,
-          subnum: parseInt(match[3]) || 0
-        }
-      }
-      const parsedA = parseArticle(a.article_number)
-      const parsedB = parseArticle(b.article_number)
-      if (parsedA.base !== parsedB.base) return parsedA.base - parsedB.base
-      if (parsedA.suffix !== parsedB.suffix) return parsedA.suffix - parsedB.suffix
-      return parsedA.subnum - parsedB.subnum
-    }
-
-    if (!isDispA && isDispB) return -1
-    if (isDispA && !isDispB) return 1
-
-    // Ambas disposiciones: ordenar por tipo, luego por ordinal
-    const parseDisp = (num: string) => {
-      const match = num.match(/^(DA|DT|DD|DF)(.+)$/)
-      if (!match) return { type: 0, ordinal: 0 }
-      const typeOrder: Record<string, number> = { 'DA': 1, 'DT': 2, 'DD': 3, 'DF': 4 }
-      const ordNum = parseInt(match[2]) || feminineOrdinalToNumber(match[2])
-      return {
-        type: typeOrder[match[1]] || 0,
-        ordinal: ordNum
-      }
-    }
-    const parsedA = parseDisp(a.article_number)
-    const parsedB = parseDisp(b.article_number)
-    if (parsedA.type !== parsedB.type) return parsedA.type - parsedB.type
-    return parsedA.ordinal - parsedB.ordinal
-  })
+  // Ordenar según el orden lógico BOE. Fuente única de verdad en
+  // lib/utils/articleOrder — soporta todos los formatos vistos en BD
+  // (preámbulo, T1, T1C2, N bis/ter, DA/DT/DD/DF en todas sus variantes,
+  // Anexos, etc.). Antes este archivo tenía un sort duplicado con tablas
+  // de ordinales propias que se desincronizaron con el del temario.
+  articles.sort((a, b) => compareArticleNumbers(a.article_number, b.article_number))
 
   // Deduplicar
   const seen = new Map<string, ExtractedArticle>()

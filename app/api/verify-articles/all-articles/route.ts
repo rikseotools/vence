@@ -5,6 +5,7 @@ import {
 } from '@/lib/api/verify-articles/queries'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { compareArticleNumbers } from '@/lib/utils/articleOrder'
 async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -54,13 +55,6 @@ async function _GET(request: NextRequest) {
       }
     }
 
-    const sortByArticleNumber = (a: { article_number: string }, b: { article_number: string }) => {
-      const numA = parseInt(a.article_number)
-      const numB = parseInt(b.article_number)
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB
-      return String(a.article_number).localeCompare(String(b.article_number))
-    }
-
     const articlesWithQuestions = articleRows
       .filter(a => questionCounts[a.id] > 0)
       .map(a => ({
@@ -70,7 +64,7 @@ async function _GET(request: NextRequest) {
         article_id: a.id,
         has_questions: true,
       }))
-      .sort(sortByArticleNumber)
+      .sort((a, b) => compareArticleNumbers(a.article_number, b.article_number))
 
     const articlesWithoutQuestions = articleRows
       .filter(a => !questionCounts[a.id])
@@ -81,7 +75,7 @@ async function _GET(request: NextRequest) {
         article_id: a.id,
         has_questions: false,
       }))
-      .sort(sortByArticleNumber)
+      .sort((a, b) => compareArticleNumbers(a.article_number, b.article_number))
 
     const articlesWithVerification = articlesWithQuestions.map(article => {
       const stats = verificationStats[article.article_id] || {

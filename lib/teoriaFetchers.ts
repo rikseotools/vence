@@ -7,6 +7,7 @@ import { eq, and, isNotNull, ne, sql as dsql } from 'drizzle-orm'
 import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } from './api/laws/queries'
 import { isDisposicionArticle } from './boe-extractor'
 import { normalizeArticleNumber } from './boeScrapingUtils'
+import { compareArticleNumbers } from '@/lib/utils/articleOrder'
 
 /**
  * Helper: carga el cache de slugs de BD (Drizzle) y devuelve una función sync para resolver slugs.
@@ -31,46 +32,6 @@ function isValidArticleNumber(articleNum: string): boolean {
   // Disposiciones: DA1, DT2, DD, DFunica, etc.
   if (isDisposicionArticle(trimmed)) return true
   return false
-}
-
-/**
- * Ordena artículos: primero numéricos (con bis/ter/quater), luego disposiciones.
- */
-function sortArticleNumbers(a: string, b: string): number {
-  const isDispA = isDisposicionArticle(a)
-  const isDispB = isDisposicionArticle(b)
-
-  if (!isDispA && !isDispB) {
-    const suffixOrder: Record<string, number> = { 'bis': 1, 'ter': 2, 'quater': 3, 'quáter': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6, 'octies': 7, 'novies': 8, 'decies': 9 }
-    const parseArticle = (num: string) => {
-      const normalized = num.replace(/quáter/gi, 'quater')
-      const match = normalized.match(/^(\d+)(?:\s+([a-z]+))?(?:\s+(\d+))?$/i)
-      if (!match) return { base: parseInt(num) || 0, suffix: 0, subnum: 0 }
-      return {
-        base: parseInt(match[1]) || 0,
-        suffix: suffixOrder[match[2]?.toLowerCase() || ''] || 0,
-        subnum: parseInt(match[3]) || 0
-      }
-    }
-    const pA = parseArticle(a), pB = parseArticle(b)
-    if (pA.base !== pB.base) return pA.base - pB.base
-    if (pA.suffix !== pB.suffix) return pA.suffix - pB.suffix
-    return pA.subnum - pB.subnum
-  }
-
-  if (!isDispA && isDispB) return -1
-  if (isDispA && !isDispB) return 1
-
-  // Ambas disposiciones
-  const typeOrder: Record<string, number> = { 'DA': 1, 'DT': 2, 'DD': 3, 'DF': 4 }
-  const parseDisp = (num: string) => {
-    const match = num.match(/^(DA|DT|DD|DF)(\d+|.*)$/i)
-    if (!match) return { type: 0, ordinal: 0 }
-    return { type: typeOrder[match[1].toUpperCase()] || 0, ordinal: parseInt(match[2]) || 0 }
-  }
-  const dA = parseDisp(a), dB = parseDisp(b)
-  if (dA.type !== dB.type) return dA.type - dB.type
-  return dA.ordinal - dB.ordinal
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -336,9 +297,10 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
       return true
     })
 
-    // Ordenar: numéricos primero, disposiciones al final
-    const sortedData = articlesOnly.sort((a, b) =>
-      sortArticleNumbers(a.articleNumber!, b.articleNumber!)
+    // Ordenar según el orden lógico BOE (preámbulo → títulos → numéricos →
+    // DA/DT/DD/DF → anexos). Fuente única de verdad en lib/utils/articleOrder.
+    const sortedData = [...articlesOnly].sort((a, b) =>
+      compareArticleNumbers(a.articleNumber!, b.articleNumber!)
     )
 
     const processedArticles: ProcessedArticle[] = sortedData.map(article => ({

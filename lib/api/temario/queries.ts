@@ -20,6 +20,7 @@ import {
 } from './schemas'
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { sortByArticleNumber } from '@/lib/utils/articleOrder'
 
 // ============================================
 // OBTENER CONTENIDO COMPLETO DE UN TEMA
@@ -232,12 +233,12 @@ async function getTopicContentBaseInternal(
     const lawArticles = articlesByLaw.get(lawId) || []
     if (lawArticles.length === 0) continue
 
-    // Ordenar artículos numéricamente
-    const sortedArticles = [...lawArticles].sort((a, b) => {
-      const numA = parseInt(a.articleNumber) || 9999
-      const numB = parseInt(b.articleNumber) || 9999
-      return numA - numB
-    })
+    // Ordenar artículos según el orden lógico BOE: preámbulo → títulos → numéricos
+    // (con bis/ter) → DA → DT → DD → DF → anexos. Implementado en utilidad
+    // compartida porque `parseInt(articleNumber)` empataba todo lo no numérico a
+    // NaN y dejaba preámbulo/disposiciones en orden indeterminado (caso Nila,
+    // Estatuto CM, 26/05/2026).
+    const sortedArticles = sortByArticleNumber(lawArticles, (a) => a.articleNumber)
 
     lawsWithArticles.push({
       law: {

@@ -3,6 +3,7 @@ import { getSupabaseClient } from './supabase'
 import { mapSlugToShortName as mapLawSlugToShortName } from './lawSlugSync'
 import { applyExamPositionFilter } from './config/exam-positions'
 import { isDisposicionArticle } from './boe-extractor'
+import { compareArticleNumbers } from '@/lib/utils/articleOrder'
 
 type SearchParamsLike = URLSearchParams | Record<string, string | undefined> | null | undefined
 
@@ -347,7 +348,7 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
 
     // DEBUG: Verificar artículos de las preguntas obtenidas
     const articleNumbers = (lawQuestions as SupabaseQuestion[]).map(q => q.articles?.article_number).filter((n): n is string => !!n)
-    const uniqueArticles = [...new Set(articleNumbers)].sort((a, b) => parseInt(a) - parseInt(b))
+    const uniqueArticles = [...new Set(articleNumbers)].sort(compareArticleNumbers)
     console.log('📚 [LAW FETCHER] Artículos en preguntas obtenidas:', {
       count: articleNumbers.length,
       range: articleNumbers.length > 0 ? `${articleNumbers[0]}-${articleNumbers[articleNumbers.length - 1]}` : 'N/A',
