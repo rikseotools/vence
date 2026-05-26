@@ -432,5 +432,5 @@ export async function getPsychometricQuestions(
  * Invalida el cache de categorías psicotécnicas
  */
 export function invalidatePsychometricCategoriesCache(): void {
-  _categoriesCache = null
+  categoriesCache.invalidate()
 }
