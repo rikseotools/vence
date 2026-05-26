@@ -139,7 +139,8 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 | Cache | Upstash Redis REST | **ElastiCache Redis (TCP)** | ❌ Fase E |
 | Frontend Next.js | Vercel | **ECS / OpenNext Lambda + CloudFront** | ❌ Fase E |
 | API routes Next.js | Vercel functions | mover lógica al backend NestJS (parcial — ya hecho en Bloque 3) | 🟡 4/5 endpoints hot path en backend |
-| Postgres BD | Supabase Pro | **RDS Postgres** | ❌ Fase D |
+| Postgres BD | Supabase Pro | **RDS Postgres** + read replica + pg_partman | ❌ Fase D |
+| Hot path projections (CQRS-light) | inexistentes — query O(N) por user | Materializadas por triggers (`user_topic_progress_summary`, `user_topic_recent_answers`) | ❌ Fase D-bis (NUEVA 2026-05-26) |
 | Auth | Supabase Auth | **Auth.js self-hosted / AWS Cognito** | ❌ Fase C |
 | `supabase.from()` queries (PostgREST) | Supabase | endpoints propios + Drizzle | ❌ Fase B (96 archivos) |
 | ISR cache | Vercel Data Cache | CloudFront + S3 + `observable_events` versioned cache | ❌ Fase E |
@@ -253,6 +254,132 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 **Rollback:** PgBouncer apunta de nuevo a Supabase. RDS queda como sandbox.
 
 **Criterio fase cerrada:** 7 días RDS sin incidentes. Supabase BD apagada.
+
+#### Fase D-bis — Hot path projections (CQRS-light) para 100k DAU (1-2 sem, riesgo 🟡)
+
+> **Añadida 2026-05-26** tras detectar vía observabilidad un pico de 5xx a las 09:15 UTC causado por `getUserAnswersWithArticles` (1.8-3.2s para heavy users) saturando pool durante un cron pesado concurrente. Cascada visible en 26 errores 5xx/min sobre 7 endpoints.
+
+**El problema**: la query `getUserAnswersWithArticles` en `lib/api/topic-progress/user-answers.ts` escanea TODOS los `test_questions` de un user (15-30k filas para heavy users) + JOIN `questions` + JOIN `articles`. Tarda 1.8-3.2s incluso con `idx_tq_user_id` óptimo (bench real 26/05). Es O(N) por user.
+
+**Quién la consume**:
+- `/api/v2/topic-progress/theme-stats` → AGREGA por topic en TypeScript (`aggregateStatsByTopic`). No necesita las filas individuales, solo conteos.
+- `topic-data/queries.ts::getUserProgressForTopicV2` → devuelve `detailedAnswers` filtradas por scope al frontend.
+
+**Por qué NO sirve cache Redis L2 a 100k DAU**: cache miss en cold-start de lambda + escaling agresivo → query golpea BD repetidamente → cascada de timeouts. Cache es mitigación, no solución estructural.
+
+**Por qué NO sirve `user_question_history_v2`**: agrega por (user, question) perdiendo `created_at` individual, `time_spent_seconds`, `confidence_level` que los callers necesitan.
+
+**Por qué SÍ es Fase D-bis y no parche aislado**: el proyecto YA usa este patrón con éxito (memoria `project_difficulty_insights_uqhv2`: "4 RPCs migradas, Nila 12s/503→~200ms"). Es CQRS-light estándar de Postgres aplicado a hot path. Y debe estar listo ANTES de la Fase D (migración RDS) para que el schema portable.
+
+**Diseño profesional para 100k DAU**:
+
+```
+WRITE PATH (OLTP — single source of truth)
+  POST /api/v2/answer-and-save
+    └─ INSERT test_questions
+         │
+         │ TRIGGER AFTER INSERT/UPDATE/DELETE (3 TG_OPs obligatorios
+         │   per memoria feedback_triggers_3_tgops)
+         ▼
+  Projections incrementales (atómicas, mismo TX):
+    ├─ user_stats_summary               (existente)
+    ├─ user_question_history_v2         (existente)
+    ├─ user_topic_progress_summary 🆕   (NUEVA — por (user_id, topic_id))
+    └─ user_topic_recent_answers 🆕     (NUEVA — últimas 500 por (user,topic))
+
+READ PATH (read replica + cache stratificado)
+  GET /api/v2/topic-progress/theme-stats
+    └─ SELECT user_topic_progress_summary
+         WHERE user_id = $1
+         → ~5-20ms para CUALQUIER user (índice (user_id, topic_id))
+         L1 in-memory 30s + L2 ElastiCache 5min stale-if-error
+
+  GET /api/v2/topic-progress/topic-data/[topic]
+    └─ SELECT user_topic_recent_answers
+         WHERE user_id = $1 AND topic_id = $2
+         LIMIT 500
+         → ~5-15ms
+```
+
+**Schema propuesto** (a refinar en kickoff de Fase D-bis):
+
+```sql
+-- Projection 1: agregados por (user, topic) — para theme-stats
+CREATE TABLE user_topic_progress_summary (
+  user_id uuid NOT NULL,
+  topic_id uuid NOT NULL,
+  total_answers int NOT NULL DEFAULT 0,
+  correct_answers int NOT NULL DEFAULT 0,
+  total_answers_30d int NOT NULL DEFAULT 0,
+  correct_answers_30d int NOT NULL DEFAULT 0,
+  unique_questions int NOT NULL DEFAULT 0,
+  last_answered_at timestamptz,
+  avg_time_seconds numeric,
+  perf_easy jsonb,    -- {total, correct} pre-agregado por difficulty
+  perf_medium jsonb,
+  perf_hard jsonb,
+  updated_at timestamptz NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, topic_id)
+);
+CREATE INDEX ON user_topic_progress_summary (user_id);  -- para SELECT WHERE user_id=$1
+
+-- Projection 2: últimas N respuestas por (user, topic) — para topic-data detailedAnswers
+CREATE TABLE user_topic_recent_answers (
+  user_id uuid NOT NULL,
+  topic_id uuid NOT NULL,
+  test_question_id uuid NOT NULL,
+  question_id uuid NOT NULL,
+  is_correct boolean NOT NULL,
+  created_at timestamptz NOT NULL,
+  time_spent_seconds int,
+  difficulty text,
+  confidence_level text,
+  article_id uuid,
+  PRIMARY KEY (user_id, topic_id, test_question_id)
+);
+CREATE INDEX ON user_topic_recent_answers (user_id, topic_id, created_at DESC);
+-- Trigger limpia >500 más antiguas por (user,topic) tras cada INSERT
+```
+
+**Pasos de implementación**:
+
+1. **Diseño detallado** del schema + triggers + función `recompute_user_topic_progress_summary(user_id, topic_id)` (1-2 días).
+2. **Migración SQL** + tests source code que verifican los 3 TG_OPs (INSERT/UPDATE/DELETE en `test_questions`).
+3. **Backfill** 1 vez: poblar projections desde test_questions histórico (transacciones por batches de 10k users para no saturar pool).
+4. **Smoke test de paridad**: query antigua vs query nueva devuelven resultados equivalentes para 100 users aleatorios.
+5. **Refactor TS**:
+   - `theme-stats/queries.ts` → SELECT projection (sin `getUserAnswersWithArticles`, sin `aggregateStatsByTopic` en TS).
+   - `topic-data/queries.ts` → SELECT `user_topic_recent_answers` LIMIT 500.
+   - `getUserAnswersWithArticles` deprecada (con `@deprecated` JSDoc) durante soak de 2 semanas, luego eliminada.
+6. **Canary 10% → 50% → 100%** vía feature flag (patrón validado del proyecto).
+7. **Soak 2 semanas** + monitorear `observable_events`.
+8. **Cutover definitivo** + eliminar query vieja.
+
+**Beneficios cuantificados**:
+
+| Métrica | Hoy | Post Fase D-bis |
+|---|---|---|
+| p50 `/api/v2/topic-progress/theme-stats` (heavy user) | ~3000ms | ~20ms |
+| Filas transferidas a app server | 15-30k | ~50 (num topics) |
+| Coste BD durante cascada | satura pool → 503 | irrelevante (es PK lookup) |
+| Escala a 100k DAU | ❌ insostenible | ✅ trivial (índice (user_id, topic_id)) |
+| Lock-in proveedor | ninguno (Postgres puro) | ninguno (sigue Postgres puro) |
+
+**Por qué encaja antes de Fase D (RDS migration)**:
+- Schema agnóstico Postgres → migra a RDS sin cambios.
+- El backfill puede ejecutarse en Supabase actual O en RDS post-migración (idempotente).
+- Pendiente Fase D que añade: read replica (queries hot path → replica) + `pg_partman` particionado mensual de `test_questions` (escalable a 1B+ filas sin perder índices).
+
+**Por qué NO Redis L2 hoy** (alternativa descartada):
+- Mitigación, no solución estructural. A 100k DAU cache cold-start = miss masivo en pico.
+- Cuando llegue Bloque 5 Fase E (frontend ECS) y migración a ElastiCache, el cache L2 se sumará COMO CAPA ADICIONAL sobre la projection — no como sustituto.
+
+**Por qué NO ClickHouse** (alternativa descartada):
+- Overkill a 100k DAU. Postgres + projections + read replica aguanta. Reconsiderar si llegamos a >500k DAU o queries cross-user analytics (leaderboards globales) bloquean OLTP.
+
+**Pre-requisitos para arrancar Fase D-bis**:
+- 2-4h de tráfico real tras el reset de `pg_stat_statements` del 26/05 — para tener baseline limpio de queries lentas REALES (eliminado ruido de 23 días).
+- Confirmar con `EXPLAIN ANALYZE` post-reset que las cifras del bench (1.8-3.2s) se mantienen como problema sistémico, no outlier.
 
 #### Fase E — Frontend Vercel → ECS Fargate (3-4 sem, riesgo 🟠) — 🟡 EN CURSO 2026-05-25
 
@@ -2757,3 +2884,4 @@ broker si AWS un día deja de convencer).
 | 2026-05-26 tarde | Bloque 4 Fase 1 — writers huérfanos + docs Issues vs Events (commit `36573a6b`) | Audit profundo derivado de Fase 0 reveló que mi plan inicial Fase 1 (Patrón 1 "una tabla" eliminando `validation_error_logs`) estaba MAL PLANTEADO. Las dos tablas tienen responsabilidades complementarias que la industria separa deliberadamente: **vle = Issues accionables con workflow humano** (`reviewed_at`, panel `/admin/fraudes` mark-as-reviewed, equivalente a Sentry Issues), **obs_events = Censo agregado** (dashboards/SLOs/alertas, equivalente a Sentry Performance Events). Aplicar Patrón 1 borraría funcionalidad real. **Fase 1 reformulada hace el trabajo necesario**: cerrar blind spots de 2 writers huérfanos que escribían directo a vle sin pasar por `_insertLog` (= sin espejo a obs_events). (1) `lib/api/oposicion-scope/queries.ts::recordNoExamPositionMapping` migrado a `logValidationError()` — el dedupe diario en BD se mantiene, la persistencia delega al helper que garantiza espejo. (2) `lib/chat/utils/openai-error-handler.ts::logOpenAIError` migrado a `await logValidationErrorAwait()` — mantiene rate-limit propio + try/catch defensivo. (3) Tests actualizados: mocks ahora apuntan al helper en lugar del INSERT raw. (4) `observability.md §1bis` NUEVO — explica separación Issues vs Events con tabla comparativa + regla operativa para developers ("usa `logValidationError*` si necesita workflow humano; usa `emit*` si es solo censo"). Lo descartado conscientemente: NO eliminar `validation_error_logs`, NO migrar 20+ lectores, NO Patrón 1 puro. 567/567 tests pass. |
 | 2026-05-26 tarde | Bloque 4 Fase 1.5 — endpoint Vercel Log Drain LIVE (commit `3542b571`) | Cierre del agujero arquitectural más relevante de la sesión: **504 SIGTERM invisibles al código de app** (Gap 14 del manual). Caso real `/api/v2/admin/dashboard 504 Runtime Timeout 300s` del 25/05 20:31 UTC — la lambda muere antes de retornar response, ningún wrapper la captura. Mitigación parcial aplicada con `maxDuration=15` por endpoint **NO escala** (cualquier endpoint nuevo sin guard reintroduce el agujero). Solución arquitectural única: que Vercel envíe los logs HTTP del edge a un endpoint nuestro vía HTTPS Log Drain. **Decisión**: endpoint NUEVO `/api/observability/vercel-log-drain` (no extender el ingest universal) para responsabilidad única + tests aislados. (1) Parser PURO `lib/observability/vercel-log-drain.ts` con `parseVercelLogBody` (acepta NDJSON, JSON array y JSON object único; tolerante a líneas malformadas), `shouldPersist` (filtra ≥400 + level=error/warn — resto es ruido ya cubierto por sampling 10% en `withErrorLogging`), `toObservableEvent` (mapea level→severity, statusCode→eventType incluyendo detección de `runtime_kill` por mensajes característicos). (2) Endpoint POST con auth `x-ingest-secret` (reutiliza `OBSERVABILITY_INGEST_SECRET` existente, cero env vars nuevas), tolerante a fallos parciales. (3) 25 tests parser + 7 tests endpoint. (4) `observability.md §Gap 14` actualizado a "ENDPOINT LIVE" con instrucciones paso-a-paso. **Activación operativa pendiente** (no automatizable desde código): Vercel UI → Settings → Log Drains → HTTPS endpoint + custom header `x-ingest-secret`. 5 min del operador con acceso al dashboard. |
 | 2026-05-26 tarde | Bloque 4 Fase 1.6 — 4 reglas de alerta para event_types nuevos (commit `7b9568a5`) | Audit reveló que el motor `alerts-engine` (`backend/src/alerts/`) YA EXISTE con cron NestJS cada 5 min + 4 reglas iniciales (`5xx_spike`, `cron_overdue`, `deploy_failed`, `cron_failure_burst`) + `EmailNotificationAdapter` vía Resend. Pero NO cubre los `event_type` añadidos en esta sesión — los eventos quedaban silenciosos en `observable_events` sin disparar notificaciones → defeats the purpose de la captura. **4 reglas nuevas añadidas a `backend/src/alerts/alert-rules.ts`**: (1) `RULE_RUNTIME_KILL` (critical, cooldown 10m) — cualquier `runtime_kill` en 5 min (Vercel Log Drain Gap 14) = user vio 504; (2) `RULE_TTS_ERROR_BURST` (warn, cooldown 60m) — sesión con ≥10 `tts_error` en 5 min = circuit breaker eludido (pre-fix había 100-240, post-fix max 5); (3) `RULE_HYDRATION_MISMATCH_SPIKE` (error, cooldown 60m) — (endpoint, deploy_version) con ≥5 `react_hydration_mismatch` en 15 min, cooldown largo porque se silencia hasta el siguiente deploy; (4) `RULE_WORKFLOW_FAILURE_BURST` (error, cooldown 30m) — workflow GHA con ≥2 fallos en 30 min (caso 25/05: 4 fallos frontend-deploy solo vistos por email). 25 tests cubren shouldFire + buildNotification + cooldowns + integridad. Sin código nuevo del motor — `AlertsCron` ejecuta automáticamente las 8 reglas cada 5 min tras deploy del backend Fargate. **Cierre del loop end-to-end**: evento → `observable_events` → cron 5min → `rule.shouldFire` → `EmailNotificationAdapter.send()` via Resend. **Validación en producción 09:15 UTC**: durante un pico de 5xx (queries lentas de stats), `alerts-engine` disparó `5xx_spike` correctamente con `rulesFired: 1`. Mis 4 reglas nuevas aún NO live (deploy backend Fargate pendiente — log muestra `rulesEvaluated: 4` vs los 8 esperados). |
+| 2026-05-26 (post-mediodía) | Pico 5xx 09:15 UTC investigado a fondo + Trampa #1 confirmada + Fase D-bis añadida al roadmap | Tras los fixes Bloque 4 + alertas, sweep de observabilidad detectó pico real de 5xx entre 09:02-09:17 UTC (subió a 26 ev/min en endpoints `/api/profile`, `/api/v2/user-stats`, `/api/exam/pending`, `/api/v2/hot-articles/check`). **El sistema funcionó como se diseñó**: `alerts-engine` disparó `5xx_spike` a las 09:15 (validación end-to-end de Fase 1.6 ✅), `withDbTimeout` cortó queries lentas con 503 + Retry-After, sistema se autorrecuperó a 4 ev/min en minutos. **NO incidente activo**. Investigación profunda siguiendo manual `docs/procedures/revisar-errores-fallos.md` § «Trampa #1»: `pg_stat_statements.stats_reset` era de **2026-05-03 (554h = 23 días)** — las medias estaban infladas por 23 días de incidentes históricos (cascadas, statement_timeouts, deploys problemáticos). Bench REAL con 3 top users mostró: query `getUserAnswersWithArticles` tarda **1.8-3.2s** (no 16s como decía pg_stat_statements). EXPLAIN ANALYZE: 1607ms para user con 15769 test_questions, cuello en `Bitmap Heap Scan` (no índice — es volumen). **`pg_stat_statements_reset()` ejecutado** para baseline limpio. **Decisión arquitectural cerrada**: NO Redis L2 quick-win (mitigación que no escala a 100k DAU — cache cold-start + scaling agresivo = miss masivo). Sí Fase D-bis NUEVA al Bloque 5 — **CQRS-light con projections materializadas + triggers**, patrón que el proyecto ya usa con éxito (memoria `project_difficulty_insights_uqhv2`: Nila 12s/503→200ms). Tabla `user_topic_progress_summary` por (user, topic) + `user_topic_recent_answers` (últimas 500 por user/topic) actualizadas por triggers 3-TG_OPs en `test_questions` (per memoria `feedback_triggers_3_tgops`). Schema agnóstico Postgres → portable a RDS de Fase D. Beneficio esperado: 3000ms→20ms en heavy users, escala trivial a 100k DAU. Documentado completo en sección Bloque 5 Fase D-bis con schema + pasos + por qué descartamos Redis L2 / ClickHouse. |
