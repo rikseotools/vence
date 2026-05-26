@@ -442,6 +442,69 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
 };
 
 /**
+ * Caída brutal de tráfico — proxy de salud del frontend.
+ *
+ * Origen: incidente 2026-05-26 — entre 12:00-13:00 UTC el tráfico
+ * cayó de 1272 req/h a 74 (94% caída) por OOM/crash loop ECS, y entre
+ * 16:00-17:00 cayó de 1250 a 370 (70% caída) por 4 deploys frontend
+ * fallidos consecutivos. Lidia y mbcapitas intentaron pagar durante
+ * esos lapsos y pulsaron "Pagar" sin resultado. NADIE se enteró desde
+ * la observabilidad — Andrea escribió cuando ya había pagado y no se
+ * activó.
+ *
+ * Lógica: comparar tráfico de la hora previa cerrada con la mediana
+ * de las 6 horas anteriores a esa. Si la actual es <40% de la mediana
+ * Y la mediana es razonablemente alta (>100 req/h, evita horas dormidas
+ * de noche con poco tráfico), alertar.
+ *
+ * Excluye localhost (dev). Excluye la hora en curso (incompleta).
+ */
+export const RULE_TRAFFIC_DROP: AlertRule<{
+  currentN: number;
+  baselineMedian: number;
+  dropPct: number;
+}> = {
+  name: 'traffic_drop',
+  severity: 'critical',
+  query: sql`
+    WITH hourly AS (
+      SELECT date_trunc('hour', ts) AS hr, COUNT(*)::int AS n
+      FROM observable_events
+      WHERE event_type = 'request_completed'
+        AND ts >= NOW() - INTERVAL '8 hours'
+        AND ts < date_trunc('hour', NOW())
+        AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
+      GROUP BY 1
+    ),
+    cur AS (
+      SELECT n FROM hourly WHERE hr = date_trunc('hour', NOW() - INTERVAL '1 hour')
+    ),
+    base AS (
+      SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY n)::int AS median
+      FROM hourly
+      WHERE hr < date_trunc('hour', NOW() - INTERVAL '1 hour')
+    )
+    SELECT
+      cur.n AS "currentN",
+      base.median AS "baselineMedian",
+      ROUND(100.0 * (1 - cur.n::numeric / NULLIF(base.median,0)))::int AS "dropPct"
+    FROM cur, base
+    WHERE base.median > 100
+      AND cur.n < base.median * 0.4
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Tráfico HTTP cayó ${r.dropPct}% — frontend probablemente caído`,
+      body: `Última hora: ${r.currentN} req. Mediana 6h previas: ${r.baselineMedian} req. Caída del ${r.dropPct}%.\n\nProbables causas:\n  - OOM / crash loop en frontend ECS (mirar CloudWatch ECS metrics)\n  - Deploy reciente caído (cobertura: regla 'workflow_failure_burst')\n  - Incidente Vercel o Supabase\n  - DNS / red\n\nIncidente origen 2026-05-26: dos caídas brutales (94% y 70%) durante las cuales Lidia, mbcapitas y otros intentaron pagar y los clicks "Pagar" no producían redirect a Stripe.`,
+      metadata: { currentN: r.currentN, baselineMedian: r.baselineMedian, dropPct: r.dropPct },
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -458,4 +521,6 @@ export const ALERT_RULES: AlertRule[] = [
   // Subscription health (2026-05-26 post-incidente Andrea/Lidia)
   RULE_SUBSCRIPTION_DRIFT as AlertRule,
   RULE_WEBHOOK_UNHEALTHY as AlertRule,
+  // Salud del frontend desde server-side metrics (no depende del cliente)
+  RULE_TRAFFIC_DROP as AlertRule,
 ];
