@@ -2786,6 +2786,31 @@ Resend (`email-notification.adapter.ts`).
 
 Quedan en Fase 2 del manual (queda dashboard /admin/observability).
 
+#### Investigación pendiente — `pre_hydration_error #418` en root layout (sospecha)
+
+Detectado 2026-05-26 al investigar fallos de observabilidad item por item. **NO entrar al fix sin reproducir primero el bug** — riesgo alto de chapuza disfrazada (mi propuesta inicial de tocar `TemaTestPage.tsx:475` resultó ser falsa positiva: la línea está post-hidratación y no causa el mismatch).
+
+**Síntoma**:
+- 8 hits `pre_hydration_error` (mensaje `Minified React error #418` = text content mismatch) en 7 días.
+- Distribuidos en 5 endpoints aparentemente no relacionados: `/aux-admin-extremadura/test/tema/17/test-personalizado` (×4), `/aux-admin-extremadura/test/test-aleatorio-examen` (×2), `/aux-admin-extremadura/test`, `/test-recuperado`, `/auth/callback`.
+- **TODOS desde 1 mismo browser**: Windows Chrome 148 → probable 1 user reproduciendo repetidamente, no afecta masa.
+
+**Sospechosos identificados** (componentes en `app/layout.tsx` que se renderizan en TODAS las páginas, ordenados por probabilidad):
+
+| Componente | Sospecha | Razón |
+|---|---|---|
+| `CookieBanner` | Alta | Server: no sabe consent → banner visible. Cliente: lee localStorage → banner oculto. Mismatch clásico de DIV |
+| `GoogleOneTapWrapper` | Media | Estado dependiente de cookies / sesión |
+| `AIChatWidget` | Media | Estado de visibilidad puede diferir entre SSR/CSR |
+| `GoogleAnalytics` | Baja | Solo carga script, no debería renderizar DIV condicional |
+| `FraudTracker` | Baja | Análisis silencioso, no UI |
+
+**Pre-requisito de fix**: reproducir el bug local (`next build && next start` + navegar con DevTools, comparar HTML SSR vs DOM cliente, identificar el `<div>` exacto que difiere). Sin reproducción, cualquier fix es chapuza.
+
+**Prioridad**: BAJA. Volumen 8/7d desde 1 user; no es bug masivo. Si en próximo sweep sube volumen o afecta a más users distintos, escalar prioridad.
+
+**Tiempo estimado fix tras reproducción**: 30 min - 1h según componente culpable.
+
 #### Fase 2 — Migración AWS ⏸️ pendiente (cuando >30k DAU)
 
 Arquitectura objetivo a 100k DAU:
