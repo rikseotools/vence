@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
+import { useOposicion } from '@/contexts/OposicionContext'
+import { ID_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
 // Tipos
 type TestType = 'rapido' | 'avanzado' | 'oficial' | 'aleatorio'
@@ -178,6 +180,14 @@ export default function LawTestPageWrapper({
   const searchParams = useSearchParams()
   const sourceParam = searchParams?.get('source')
 
+  // 🎯 Oposición real del usuario (no hardcodear: el filtro anti-contaminación
+  // de oficiales depende de positionType para no servir oficiales de otra
+  // oposición — ver lib/api/oposicion-scope/queries.ts buildOfficialExamFilter)
+  const { oposicionId } = useOposicion()
+  const userPositionType =
+    (oposicionId && ID_TO_POSITION_TYPE[oposicionId]) ||
+    'auxiliar_administrativo_estado'
+
   // 📚 Leer URL de temario desde sessionStorage si viene de temario
   useEffect(() => {
     if (sourceParam === 'temario' && typeof window !== 'undefined') {
@@ -308,7 +318,7 @@ export default function LawTestPageWrapper({
       // 🚀 Construir request para API v2
       const apiRequest = {
         topicNumber: 0, // Sin filtro de tema (modo ley-only)
-        positionType: 'auxiliar_administrativo_estado' as const,
+        positionType: userPositionType,
         numQuestions: testConfig.numQuestions || 25,
         selectedLaws: [lawShortName],
         selectedArticlesByLaw,

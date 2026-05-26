@@ -609,10 +609,15 @@ async function queryQuestionsForMappingsLightweight(
         isNull(questions.examCaseId),
         eq(laws.id, mapping.lawId!),
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-        // 🏛️ Filtro por exam_position SOLO en only-oficial (mismo comportamiento que legacy)
-        opts.onlyOfficialQuestions && !opts.includeSharedOfficials
-          ? buildOfficialExamFilter(opts.positionType)
-          : sql`true`,
+        // 🏛️ Filtro anti-contaminación de OFICIALES (caso Laura 15/04/2026 +
+        // caso Sergio 26/05/2026). Aplica SIEMPRE excepto si el premium
+        // marcó explícitamente includeSharedOfficials. Antes solo se aplicaba
+        // cuando onlyOfficialQuestions=true → oficiales de otra oposición
+        // vinculadas a leyes estatales compartidas se colaban en cualquier
+        // modo practice (incluido /leyes/[slug]/avanzado).
+        opts.includeSharedOfficials
+          ? sql`true`
+          : buildOfficialExamFilter(opts.positionType),
         opts.onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
         // Difficulty coalesce idéntico al legacy (línea 1004-1007 original)
         opts.difficultyMode && opts.difficultyMode !== 'random'
@@ -974,7 +979,9 @@ export async function getFilteredQuestions(
           eq(questions.isActive, true),
           isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           inArray(laws.id, validLawIds),
-          onlyOfficialQuestions && !includeSharedOfficials ? buildOfficialExamFilter(positionType) : sql`true`,
+          // 🏛️ Filtro anti-contaminación de OFICIALES — ver comentario en
+          // queryQuestionsForMappingsLightweight. Aplica SIEMPRE salvo opt-in.
+          includeSharedOfficials ? sql`true` : buildOfficialExamFilter(positionType),
           onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
         ))
         .orderBy(sql`RANDOM()`)
@@ -1021,12 +1028,19 @@ export async function getFilteredQuestions(
       console.log(`🎯 Modo ley-only: Buscando preguntas de leyes ${selectedLaws.join(', ')}`)
 
       // Post-16/04/2026 (caso M, daluamva): en modo ley-only NO aplicamos
-      // scope-check. El usuario ha entrado a /leyes/[slug] explícitamente
-      // — sabe lo que quiere. Coherente con la promesa de /premium ("estudia
-      // varias oposiciones a la vez"). El filtro anti-contaminación de
-      // preguntas OFICIALES (buildOfficialExamFilter — caso Laura) sigue
-      // aplicándose aguas abajo, por lo que no se cuelan oficiales de otras
-      // oposiciones.
+      // scope-check de leyes. El usuario ha entrado a /leyes/[slug]
+      // explícitamente — sabe lo que quiere. Coherente con la promesa de
+      // /premium ("estudia varias oposiciones a la vez").
+      //
+      // Post-26/05/2026 (caso Sergio, dispute 3135c4f2): el filtro
+      // anti-contaminación de OFICIALES (buildOfficialExamFilter — caso Laura)
+      // ahora se aplica SIEMPRE en queryQuestionsForMappingsLightweight, no
+      // solo en modo only-oficial. Antes los call-sites lo condicionaban a
+      // onlyOfficialQuestions y oficiales de otra oposición vinculadas a
+      // leyes estatales compartidas (CE, L39, L40, TREBEP…) se colaban en
+      // tests practice — Sergio (Estado) recibió una oficial de Andalucía
+      // en /leyes/rdl-5-2015/avanzado. El opt-in sigue siendo el toggle
+      // includeSharedOfficials del premium.
       //
       // El scope-check del modo tema/global (bug Mar — dispute 4e247ddc) se
       // mantiene intacto porque allí el sistema elige la ley, no el usuario.
@@ -1409,8 +1423,9 @@ export async function countFilteredQuestions(
           isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           eq(articles.lawId, mapping.lawId!),
           ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-          // 🏛️ Filtro por exam_position SOLO en modo only-oficial (ver comentario en getFilteredQuestions).
-          onlyOfficialQuestions && !includeSharedOfficials ? buildOfficialExamFilter(positionType) : sql`true`,
+          // 🏛️ Filtro anti-contaminación de OFICIALES — aplica SIEMPRE salvo opt-in.
+          // Ver comentario en queryQuestionsForMappingsLightweight.
+          includeSharedOfficials ? sql`true` : buildOfficialExamFilter(positionType),
           onlyOfficialQuestions
             ? (() => {
                 const validPositions = getValidExamPositions(positionType)

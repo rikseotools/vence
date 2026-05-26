@@ -197,19 +197,15 @@ export async function checkQuestionAvailability(
   // Filtro de preguntas oficiales
   if (request.onlyOfficialQuestions) {
     conditions.push(eq(questions.isOfficialExam, true))
-    // Filtrar por exam_position: solo mostrar oficiales de esta oposición
-    // Si includeSharedOfficials=true, no filtrar (muestra todas)
-    if (!request.includeSharedOfficials) {
-      const { getValidExamPositions } = await import('@/lib/config/exam-positions')
-      const validPositions = getValidExamPositions(positionType)
-      if (validPositions && validPositions.length > 0) {
-        // Filtrar por las posiciones válidas de esta oposición
-        // Si no existen preguntas con estas posiciones, la query devuelve 0 — correcto
-        const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
-        const filter = buildOfficialExamFilter(positionType)
-        if (filter) conditions.push(filter)
-      }
-    }
+  }
+  // 🏛️ Filtro anti-contaminación de OFICIALES (caso Laura + caso Sergio):
+  // aplica SIEMPRE salvo opt-in includeSharedOfficials. buildOfficialExamFilter
+  // ya permite todas las no-oficiales y solo restringe las oficiales por
+  // exam_position. Antes solo se aplicaba con onlyOfficialQuestions=true.
+  if (!request.includeSharedOfficials) {
+    const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
+    const filter = buildOfficialExamFilter(positionType)
+    if (filter) conditions.push(filter)
   }
 
   // UNA SOLA QUERY con GROUP BY
@@ -411,6 +407,14 @@ export async function generateRandomTest(
       // Filtro de preguntas oficiales
       if (request.onlyOfficialQuestions) {
         conditions.push(eq(questions.isOfficialExam, true))
+      }
+      // 🏛️ Filtro anti-contaminación de OFICIALES (caso Laura + caso Sergio):
+      // aplica SIEMPRE salvo opt-in includeSharedOfficials (ver comentario en
+      // checkQuestionAvailability arriba).
+      if (!request.includeSharedOfficials) {
+        const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
+        const officialFilter = buildOfficialExamFilter(positionType)
+        if (officialFilter) conditions.push(officialFilter)
       }
 
       const qs = await db
