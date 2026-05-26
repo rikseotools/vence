@@ -126,4 +126,47 @@ describe('queries.ts — logValidationError es fire-and-forget', () => {
     expect(content).toMatch(/delete sanitized\.token/)
     expect(content).toMatch(/delete sanitized\.password/)
   })
+
+  it('_insertLog espeja a observable_events ANTES del INSERT principal y AWAITA (anti-race)', () => {
+    // Política 2026-05-26: el espejo a observable_events debe ser secuencial
+    // dentro de la misma promesa que el INSERT a validation_error_logs. Si
+    // se vuelve a usar emitFireAndForget dentro de _insertLog reaparece el
+    // race del 47% pérdida — ver docs/runbooks/observability.md.
+    expect(content).toMatch(/await emit\(\{/)
+    expect(content).not.toMatch(/emitFireAndForget\(\{/)
+  })
+})
+
+describe('lib/observability/sink — interfaz ObservableSink', () => {
+  const content = fs.readFileSync(
+    path.join(ROOT, 'lib/observability/sink.ts'),
+    'utf-8'
+  )
+
+  it('exporta interfaz ObservableSink con método emit', () => {
+    expect(content).toMatch(/export interface ObservableSink/)
+    expect(content).toMatch(/emit\(event: ObservableEvent\): Promise<void>/)
+  })
+
+  it('exporta PostgresSink (implementación HOY)', () => {
+    expect(content).toMatch(/class PostgresSink implements ObservableSink/)
+  })
+
+  it('exporta getSink() factory singleton', () => {
+    expect(content).toMatch(/export function getSink\(\): ObservableSink/)
+  })
+
+  it('comenta KinesisSink futuro (preparación AWS)', () => {
+    // No debe estar activado — solo documentado para el día de la migración.
+    expect(content).toMatch(/KinesisSink/)
+    expect(content).toMatch(/class KinesisSink implements ObservableSink/)
+  })
+
+  it('expone normalizeSeverity como helper compartido', () => {
+    expect(content).toMatch(/export function normalizeSeverity/)
+  })
+
+  it('expone _setSinkForTests para inyección en tests', () => {
+    expect(content).toMatch(/export function _setSinkForTests/)
+  })
 })

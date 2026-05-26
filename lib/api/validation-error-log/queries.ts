@@ -9,7 +9,7 @@
 
 import { getTraceDb, getPoolerDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
-import { emitFireAndForget } from '@/lib/observability/emit'
+import { emit } from '@/lib/observability/emit'
 import type { ValidationErrorLogInput } from './schemas'
 
 function getAuditLogDb() {
@@ -110,11 +110,26 @@ async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
   // Sanitizar requestBody: quitar campos sensibles
   const sanitizedBody = input.requestBody ? sanitizeRequestBody(input.requestBody) : {}
 
-  // Bloque 4: emitir a observable_events en PARALELO (no bloquea). Cuando
-  // el dashboard nuevo lea solo de observable_events, podremos deprecar
-  // validation_error_logs en una segunda fase. Por ahora ambos coexisten
-  // para no romper queries existentes (admin/salud-sistema, runbooks, etc).
-  emitFireAndForget({
+  // Espejo a observable_events — AWAITED secuencialmente para garantizar
+  // sincronización con el INSERT a validation_error_logs.
+  //
+  // Antes (hasta 2026-05-26): emitFireAndForget() en paralelo → race con
+  // el lifecycle de la lambda Vercel. Si la lambda terminaba antes de que
+  // ambas promesas completaran, perdíamos eventos solo en una tabla
+  // (medido: 47% pérdida en observable_events vs validation_error_logs).
+  //
+  // Solución: secuenciar dentro de la misma promesa. Cuando la promesa
+  // externa se await (path 5xx vía logValidationErrorAwait), AMBOS INSERTs
+  // están garantizados. En path 4xx fire-and-forget, si la lambda muere
+  // antes ambos se pierden juntos (consistente, no race).
+  //
+  // emit() tiene try/catch interno (ver lib/observability/sink.ts) y nunca
+  // propaga errores — el await aquí jamás romperá el INSERT principal.
+  //
+  // Deuda registrada: eliminar este dual-write completamente (Patrón 1
+  // "una tabla") es proyecto aparte — ver docs/ARCHITECTURE_ROADMAP.md
+  // sección «Bloque 4 — Eliminar dual-write observability».
+  await emit({
     source: 'vercel',
     severity: (input.severity || 'critical') as 'critical' | 'error' | 'warn' | 'info' | 'debug',
     eventType: input.errorType === 'unknown' ? 'http_5xx' : input.errorType,

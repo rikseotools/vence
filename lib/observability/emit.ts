@@ -1,119 +1,55 @@
 // lib/observability/emit.ts
 //
-// Emisor de eventos observables desde el frontend Vercel.
-// Bloque 4 del docs/ARCHITECTURE_ROADMAP.md.
+// Helpers `emit()` y `emitFireAndForget()` — delegan en el sink
+// inyectable (ver `lib/observability/sink.ts`).
 //
-// Escribe DIRECTAMENTE a la tabla `observable_events` vía Drizzle (mismo
-// patrón que `validation_error_logs` actual — no añade latencia ni
-// dependencia HTTP). Cross-runtime coherente: el backend NestJS también
-// escribe directo a la misma tabla.
+// FILOSOFÍA: el código de la app no conoce DÓNDE se escribe el evento.
+// Eso lo decide `getSink()` por env/config. Migración Vercel→AWS = swap
+// del sink en UNA línea, cero cambios en callers.
 //
-// Patrón fire-and-forget: NUNCA bloquea la respuesta del usuario. Si la
-// BD cae, el evento se pierde (aceptable — el path principal siempre va
-// antes). El error se loguea a `console.warn` para detección secundaria.
+// Patrón fire-and-forget: NUNCA bloquea la respuesta del usuario. Si el
+// sink falla, el evento se pierde (aceptable — el path principal va antes).
+// El error se loguea a `console.warn` dentro del sink.
 
-import { getAdminDb } from '@/db/client'
-import { sql } from 'drizzle-orm'
+import { getSink } from './sink'
 
-export type EventSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical'
-
-export type EventSource = 'vercel' | 'fargate' | 'gha' | 'frontend'
+// Re-exportamos los tipos para que callers existentes no se rompan
+// (back-compat: `import { ObservableEvent, EventSeverity } from
+// '@/lib/observability/emit'` sigue funcionando).
+export type {
+  ObservableEvent,
+  ObservableSink,
+  EventSeverity,
+  EventSource,
+} from './sink'
+import type { ObservableEvent } from './sink'
 
 /**
- * Normaliza severity. validation_error_logs usa 'warning' (con -ing),
- * observable_events estandariza en 'warn'. Acepta también variantes
- * obvias para que callers diversos no rompan el CHECK constraint.
- */
-function normalizeSeverity(s: string): EventSeverity {
-  const lower = String(s).toLowerCase()
-  if (lower === 'warning') return 'warn'
-  if (lower === 'fatal' || lower === 'crit') return 'critical'
-  if (lower === 'err') return 'error'
-  if (['debug', 'info', 'warn', 'error', 'critical'].includes(lower)) {
-    return lower as EventSeverity
-  }
-  // Default conservador: si no reconocemos, tratamos como warn para no
-  // perder el evento pero no inflar las críticas.
-  return 'warn'
-}
-
-export interface ObservableEvent {
-  /** Origen del evento. Para Vercel functions = 'vercel'. */
-  source: EventSource
-  /** Severidad. */
-  severity: EventSeverity
-  /** Categoría: 'http_5xx', 'cron_run', 'deploy', 'cache_invalidation', etc. */
-  eventType: string
-  /** Endpoint asociado al evento (si aplica). */
-  endpoint?: string | null
-  /** Usuario asociado (si aplica). */
-  userId?: string | null
-  /** Deploy version (commit SHA del frontend si lo conocemos). */
-  deployVersion?: string | null
-  /** Duración del evento en ms (si aplica — http requests, jobs). */
-  durationMs?: number | null
-  /** HTTP status (si aplica). */
-  httpStatus?: number | null
-  /** Mensaje de error (si aplica). */
-  errorMessage?: string | null
-  /** Metadata libre — campos específicos del eventType. */
-  metadata?: Record<string, unknown> | null
-  /** Timestamp del evento. Default NOW() — sobrescribir solo si se emite en background. */
-  ts?: Date
-}
-
-/**
- * Emite un evento a `observable_events`. Fire-and-forget — no bloquea
- * la respuesta del caller. Si la BD falla, el evento se pierde y se loguea
- * a consola.
+ * Emite un evento — delega en el sink activo (`getSink()`). El sink se
+ * encarga de la persistencia y del error handling interno; esta función
+ * NUNCA propaga errores al caller.
  *
  * Uso típico:
- *   import { emit } from '@/lib/observability/emit'
  *   await emit({ source: 'vercel', severity: 'error', eventType: 'http_5xx',
  *                endpoint: '/api/foo', httpStatus: 503, errorMessage: '...' })
  */
 export async function emit(event: ObservableEvent): Promise<void> {
-  try {
-    const db = getAdminDb()
-    if (!db) {
-      console.warn('[observability/emit] getAdminDb() devolvió null — evento perdido')
-      return
-    }
-
-    const severity = normalizeSeverity(event.severity)
-    await db.execute(sql`
-      INSERT INTO public.observable_events (
-        ts, source, severity, event_type, endpoint, user_id,
-        deploy_version, duration_ms, http_status, error_message, metadata
-      ) VALUES (
-        COALESCE(${event.ts ?? null}, NOW()),
-        ${event.source},
-        ${severity},
-        ${event.eventType},
-        ${event.endpoint ?? null},
-        ${event.userId ?? null}::uuid,
-        ${event.deployVersion ?? null},
-        ${event.durationMs ?? null},
-        ${event.httpStatus ?? null},
-        ${event.errorMessage ?? null},
-        ${event.metadata ? JSON.stringify(event.metadata) : null}::jsonb
-      )
-    `)
-  } catch (err) {
-    // NUNCA propagar — observabilidad NO debe romper requests reales
-    console.warn(
-      '[observability/emit] INSERT falló:',
-      err instanceof Error ? err.message : String(err),
-    )
-  }
+  await getSink().emit(event)
 }
 
 /**
  * Variant fire-and-forget — no espera la promise. Para callers que no
- * quieren `await emit(...)` (ej. dentro de catch blocks que no son async).
+ * pueden o no quieren `await emit(...)`.
+ *
+ * IMPORTANTE: cuando estés dentro de una promise que SÍ se awaita desde
+ * fuera (path 5xx por ejemplo), prefiere `await emit(...)` para garantizar
+ * que el evento persiste antes de que Vercel suspenda la lambda.
+ *
+ * El race del 47% pérdida (2026-05-26) venía de usar esta variante en un
+ * path que internamente sí awaitaba otra operación — el INSERT del emit
+ * quedaba huérfano y a veces no completaba. Si necesitas sincronización
+ * con otra operación await en el mismo flujo, usa `await emit(...)`.
  */
 export function emitFireAndForget(event: ObservableEvent): void {
-  emit(event).catch(() => {
-    /* ya logueado en emit */
-  })
+  void emit(event)
 }

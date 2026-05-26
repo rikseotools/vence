@@ -2515,6 +2515,105 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 
 ---
 
+## Bloque 4 cont. — Eliminar dual-write observability (Patrón 1 → AWS-ready)
+
+Sección añadida 2026-05-26 tras detectar vía observabilidad propia que el
+espejo de eventos de `validation_error_logs` a `observable_events` perdía
+el **47% de eventos 4xx** (medido: 51 vs 27 en ventana 12h del endpoint
+device-limit `/api/v2/answer-and-save`). Causa raíz: race entre 2 INSERTs
+en el lifecycle de la lambda Vercel cuando `_insertLog` invocaba
+`emitFireAndForget` (huérfana) antes del `await db.insert(vle)`.
+
+La decisión 2026-05-23 («diseñar en bloque con cutover NestJS») queda
+**superada** — el bug es activo en producción y la solución correcta no
+requiere esperar al cutover.
+
+### Filosofía
+
+> «AWS-native by default. Agnóstico by contract.»
+
+El código de la app habla con UNA interfaz (`ObservableSink`); la
+implementación concreta se decide en `getSink()`. Migración Vercel→AWS =
+swap del sink en una sola línea de la fábrica.
+
+### Plan multi-fase
+
+| Fase | Cuándo | Esfuerzo | Estado |
+|---|---|---|---|
+| **Fase 0** — Sink interface + race fix | 2026-05-26 (HOY) | 2-3 h | ✅ COMPLETA |
+| **Fase 1** — Eliminar dual-write (Patrón 1 «una tabla») | Sprint dedicado | 2-3 días | ⏸️ pendiente |
+| **Fase 2** — Migración AWS (PostgresSink → KinesisSink) | Cuando >30k DAU | 1-2 semanas | ⏸️ pendiente |
+
+#### Fase 0 — Sink interface + race fix ✅ COMPLETA 2026-05-26
+
+- Interfaz `ObservableSink` con `PostgresSink` impl en `lib/observability/sink.ts`.
+- `KinesisSink` documentado pero NO activado — el día del swap es 1 cambio en `getSink()`.
+- `lib/observability/emit.ts` refactorizado para delegar en el sink (back-compat preservada).
+- `_insertLog` cambia `emitFireAndForget` → `await emit` → race del 47% resuelto: ambos INSERTs en la misma promesa, secuenciales.
+- Tests source (verifican que el patrón fire-and-forget no vuelve) + runtime con `FakeSink` injectable vía `_setSinkForTests()`.
+
+**Garantía conseguida**: en path 5xx (que ya awaita externamente vía `logValidationErrorAwait`), ambos INSERTs completan atómicamente. En path 4xx fire-and-forget, si la lambda muere ambos se pierden juntos pero NUNCA desincronizados — el race deja de existir.
+
+#### Fase 1 — Patrón 1 (una tabla) ⏸️ pendiente
+
+Migrar todos los lectores de `validation_error_logs` a `observable_events`
+para poder eliminar la duplicación entera.
+
+Auditoría 2026-05-26 identificó **20+ lectores** TS/TSX:
+- Admin pages: `/admin/fraudes/page.tsx`, `components/Admin/InfraStatsTab.tsx`.
+- Endpoints admin: `/api/admin/infra-stats`, `/api/admin/system-health`, `/api/v2/admin/dashboard`, `/api/medals`.
+- Hooks: `useAdminNotifications`.
+- Libs: `lib/api/admin-validation-errors/queries.ts`, `lib/api/oposicion-scope/queries.ts`, `lib/api/auth/verifyAuth.ts`, `lib/api/withErrorLogging.ts`, `lib/api/validation-error-log/*`, `lib/chat/utils/openai-error-handler.ts`, `lib/chat/domains/verification/VerificationService.ts`, `lib/logClientError.ts`.
+- Backend: `backend/src/observability/observability.service.ts`.
+- Tests (varios).
+
+Pasos:
+1. Migrar cada lector a queries equivalentes sobre `observable_events` (`WHERE source='vercel'` para isolation).
+2. Backfill 1 vez: copiar histórico vle (últimos 30 días) a obs_events.
+3. Test de arquitectura que prohíba nuevas referencias a `validationErrorLogs` (Drizzle table) fuera del directorio `lib/api/validation-error-log/` (que queda como módulo deprecated hasta el DROP).
+4. Marcar tabla DEPRECATED en código + runbook `docs/runbooks/health-check.md` reescrito para leer `observable_events`.
+5. Soak 2 semanas con `validation_error_logs` aún escribiéndose (canary).
+6. Commit separado: eliminar `_insertLog` que escribe a vle, dejar solo el `emit()` directo.
+7. Commit separado: `DROP TABLE validation_error_logs`.
+
+#### Fase 2 — Migración AWS ⏸️ pendiente (cuando >30k DAU)
+
+Arquitectura objetivo a 100k DAU:
+
+```
+App (Fargate/Lambda)
+  └─ emit() → KinesisSink → PutRecord a Kinesis Data Streams
+                              │
+                              ▼ Firehose fan-out (at-least-once garantizada)
+                              ├─ S3 + Parquet (cold, Athena queries)
+                              ├─ OpenSearch (hot, dashboard sub-segundo)
+                              └─ Lambda → Aurora RDS (subset SQL para JOIN con users)
+```
+
+Swap operativo: cambiar `getSink()` para devolver `KinesisSink` (env var
+`OBS_SINK=kinesis`). **Cero cambios en callers** — todos usan `emit()`.
+Durante transición, opción de `MultiSink` (PostgresSink + KinesisSink en
+paralelo) para A/B durante 1-2 semanas, después drop Postgres.
+
+Lectores:
+- Hot path dashboards → OpenSearch endpoint con queries DSL.
+- Cold path postmortem → Athena sobre S3.
+- Joins con `users`/`tests` → Aurora (subset crítico).
+- CloudWatch Alarms + Synthetics canary leen de CloudWatch Logs/OpenSearch.
+
+Esto cumple con las dos prioridades del proyecto: escala (single point of
+write con buffer Kinesis acomoda 10k events/segundo sin tunear), y agnóstico
+(KinesisSink es 100 líneas; sustituible por OTel collector o cualquier otro
+broker si AWS un día deja de convencer).
+
+### Referencias cruzadas
+
+- Manual operativo: `docs/runbooks/observability.md` §4 («Diseño Sink intercambiable») y §11 («Migración a AWS — qué cambia, qué NO»).
+- Sección original del problema: «Incidente menor + deuda de observabilidad detectada (2026-05-23 ~16:45 CEST)» en este mismo documento.
+- Memorias relacionadas: `feedback_triggers_3_tgops.md` (por qué descartamos trigger SQL como solución).
+
+---
+
 ## Histórico de decisiones
 
 | Fecha | Decisión | Razón |
@@ -2568,3 +2667,4 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 | 2026-05-11 | Fase 0.7 migración masiva: 32/41 endpoints al wrapper verifyAuth en 6 batches | Tras 24h con MODE=on en producción sin issues (15.663 requests, 0 divergencias en shadow previo), procedida la migración del resto de callers con AI leyendo cada archivo individualmente — NO script find/replace. **6 batches**: 1=8 official-exams (commit `c5296a11`), 2=3 sessions (`69877f1e`), 3=7 core (`b9f637d6`), 4=7 admin+email (`89d0d922`), 4.5=ai/create-test reparado (`932c15d0`), 5=6 endpoints app (`c1299a12`). **-414 LOC netas** de código duplicado eliminado. **Lección importante** (commit 932c15d0): en ai/create-test eliminé el helper getSupabase asumiendo que solo se usaba para auth (vi grep parcial). TypeScript cazó el error: se usaba en 10+ queries BD posteriores. Sin TS, habría llegado a producción rota. **Proceso ajustado**: 1) Read del archivo COMPLETO antes de modificar, 2) grep de TODAS las apariciones de la función/var a eliminar, 3) Si se usa fuera del bloque auth → MANTENER declaración, 4) TS check después de CADA archivo individual (no acumulado). **Verificación producción 2h post-migración**: 4248 calls answer-and-save, 0 errores 401 de usuarios reales (los 5 visibles eran mis curls de tests), 13× 503 son blip pooler regional ~45s (no auth-related). Latencia auth 250-1000ms → <5ms confirmada en los 32 endpoints. **Pendientes** (helpers internos, menor impacto): 8 archivos lib + 1 page TSX. |
 | 2026-05-11 | Fase 0.7 COMPLETA server-side: Batch 6 refactor de helpers lib/ (commit `02176128`) | Tras los 32 endpoints directos, auditoría exhaustiva de los 8 helpers lib pendientes reveló que solo 3 eran realmente server-side y migrables; los otros 5 son `'use client'` (sesión browser, no Bearer entrante). **Hallazgo clave**: `lib/api/shared/auth.ts` tenía 27 callers — un wrapper paralelo NO ELIMINABLE pero refactorizable. Auditoría confirmó 0 callers usan `app_metadata`/`user_metadata`/`role` del User devuelto (solo `.id` en 7, nada en 20). Refactor: getAuthenticatedUser/requireAdmin delegan a verifyAuth internamente. API externa intacta → los 27 callers heredan MODE=on automáticamente. **Total server-side**: 32 endpoints directos + 27 vía shared/auth + 4 vía dailyLimit/finance = **63+ endpoints** con latencia auth <5ms. **Cliente pendiente** (no bloqueante): emailTracker, notificationTracker, testFetchers, supabase.ts, page TSX — su `supabase.auth.getUser()` lee sesión local browser, requiere refactor a hook `useAuth()` para portabilidad total a otros providers (Cognito/Clerk/Auth.js). Trabajo paralelo al server, no bloquea AWS migration future. **Coupling tabla actualizada**: Supabase Auth API server-side bajó de 🟡 Medio → 🟢 Bajo. |
 | 2026-05-11 | Cierre de Stale-if-error coverage: medals + random-test/availability | Cierra los 2 últimos pendientes documentados en Fase 1.1 tras analizar los 503s en producción. **medals** (commit `046456f3`): stale-if-error puro en GET (no fresh shortcut — preservar UX de medallas frescas tras POST que añade nuevas) + write-through invalidate tras POST exitoso para que el GET inmediato vea las nuevas medallas. Cache key `medals:{userId}`, stale TTL 24h, 9 tests cubriendo todos los paths. **random-test/availability** (commit `e2ce0dc4`): promovido de cache in-memory `Map<key,value>` por-lambda Vercel Fluid a Redis L2 compartido entre todas las lambdas. Antes cold starts y bursts de scaling generaban repeated misses (cada lambda recalculaba 600ms). Cache key `random_avail:{sha1(body)}` con keys ordenadas + arrays sorted (estable bajo permutación). Fresh window 60s (igual TTL que el Map anterior) + stale TTL 24h. Mejora estimada cache hit rate global de ~30-40% → ~70-85%. El propio código tenía un TODO documentado ("Tras Fase 1 Redis este cache se promueve a L2 compartido entre instancias") — ahora cumplido. **hot-articles/check NO se tocó**: ya tiene degradación graceful propia que es **mejor que stale** para este caso (en timeout devuelve `isHot: false` con 200, no muestra badge — servir un `isHot: true` desactualizado engañaría al user llevándole a un artículo que ya no es hot). Cobertura final stale-if-error: theme-stats, problematic-articles, topics/[numero], weak-articles, filtered-questions (POST+count), oposiciones-compatibles/progress, medals, random-test/availability = **8 endpoints críticos** protegidos contra blip pooler regional. |
+| 2026-05-26 | Bloque 4 cont. — Sink interface + race fix dual-write observability (Fase 0) | Detectado vía observabilidad propia: el espejo a `observable_events` perdía **47% de eventos 4xx** (51 vs 27 en 12h sobre `/api/v2/answer-and-save` device-limit). Race entre 2 INSERTs en lifecycle de lambda Vercel — `_insertLog` invocaba `emitFireAndForget` (huérfana) antes del `await db.insert(vle)`; al morir la lambda completaban inconsistentemente. **Decisión 23/05 ("diseñar en bloque con cutover NestJS") superada** — el bug era activo en producción. **Fix Fase 0**: (1) nueva interfaz `ObservableSink` en `lib/observability/sink.ts` con `PostgresSink` HOY + `KinesisSink` documentado para AWS futuro (1 línea de swap en `getSink()`); (2) `emit.ts` refactorizado para delegar en el sink (back-compat preservada); (3) `_insertLog` cambia `emitFireAndForget` → `await emit` antes del INSERT principal — race eliminado, ambos completan o ambos fallan juntos pero nunca desincronizados; (4) tests source que prohíben volver a meter `emitFireAndForget` dentro de `_insertLog` + tests runtime con `FakeSink` injectable. **Fase 1 (pendiente, sprint dedicado)**: eliminar dual-write completo migrando 20+ lectores de `validation_error_logs` → `observable_events`, después `DROP TABLE`. **Fase 2 (cuando >30k DAU)**: swap `PostgresSink` → `KinesisSink` (Firehose fan-out a S3 Parquet + OpenSearch + Aurora). Cero cambios en callers. Sección dedicada «Bloque 4 cont.» añadida al roadmap antes del histórico. Filosofía «AWS-native by default, agnóstico by contract» del manual `observability.md` §4/§11 ahora respaldada por código. |
