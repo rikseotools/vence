@@ -307,7 +307,7 @@ Cada gap viene con un **caso real** que justifica la prioridad. No se mete un ga
 
 **Esfuerzo**: 30 min.
 
-### 🔴 Gap 14 — Vercel runtime kill (504 SIGTERM) invisible al código de app
+### 🔴 Gap 14 — Vercel runtime kill (504 SIGTERM) invisible al código de app — ✅ ENDPOINT LIVE 2026-05-26
 
 **Caso real (2026-05-25 20:31 UTC)**: `GET /api/v2/admin/dashboard 504 Vercel Runtime Timeout Error: Task timed out after 300 seconds`. La lambda alcanzó el límite `maxDuration` (300s default sin declarar) y Vercel la mató con SIGTERM. El handler **nunca retornó** — el wrapper `withErrorLogging` jamás vio `response.status`, no logueó nada. **El usuario vio un 504 sin que quedara rastro en nuestra observabilidad**.
 
@@ -318,11 +318,34 @@ Esta es la categoría de fallo más peligrosa porque:
 
 **Mitigación parcial aplicada (2026-05-25)**: `app/api/v2/admin/dashboard/route.ts` recibió `maxDuration = 15` + `withDbTimeout(getDashboardData(), 12000)` — el handler ahora retorna 503 capturable a los 12s en vez de morir por SIGTERM a 300s. **Pero esto NO escala**: hay que aplicarlo manualmente endpoint por endpoint y siempre quedan blind spots (deploys nuevos, refactors que olvidan el timeout).
 
-**Lo que falta** (solución arquitectural única): **Vercel Log Drain HTTPS → `/api/observability/ingest`**. Vercel mantiene logs HTTP de cada request en el edge (incluyendo `Runtime Timeout`, `Function Exceeded Memory`, errores de cold start) y puede enviarlos por POST a un endpoint configurable cada vez que se generan. Configuración: dashboard Vercel → Settings → Log Drains → HTTPS endpoint + secret header.
+**Solución arquitectural — código DEPLOYED 2026-05-26**: endpoint dedicado `/api/observability/vercel-log-drain` (ver `app/api/observability/vercel-log-drain/route.ts`) con parser puro en `lib/observability/vercel-log-drain.ts`. Acepta el formato Vercel Log Drain (NDJSON o JSON array), filtra eventos relevantes (≥400 o level=error/warn), traduce a `ObservableEvent` con `eventType: 'runtime_kill' | 'http_5xx' | 'http_4xx' | 'deploy_failed' | 'vercel_log'` y persiste vía `emit()`. Tolerante a líneas malformadas y schema evolution.
 
-El handler recibe el log Vercel (formato NDJSON), filtra los relevantes (≥400, runtime errors, etc.), los traduce a `ObservableEvent` (`source: 'vercel'`, `eventType: 'http_5xx'|'runtime_kill'`) y los persiste. **Esto captura los 504 SIGTERM y cualquier otro error que el código nunca ve**.
+**Activación operativa pendiente** (no automatizable desde código):
 
-**Esfuerzo**: 1.5-2h (parser + endpoint + tests + config Vercel).
+1. Ir a Vercel dashboard → Settings → Log Drains → **Add Log Drain**.
+2. Tipo: **HTTPS**.
+3. URL: `https://www.vence.es/api/observability/vercel-log-drain`.
+4. Custom Headers:
+   - `x-ingest-secret`: valor de `OBSERVABILITY_INGEST_SECRET` (el mismo del endpoint `/ingest`).
+5. Sources: ✅ `lambda`, ✅ `edge`. Omitir `static` y `build` (ruido).
+6. Format: **ndjson** (preferido) o `json`.
+7. Project: solo `vence` (no aplicar a otros proyectos del workspace).
+8. Save → Test → verificar que llega un evento de prueba a `observable_events` con `metadata.drain = true`.
+
+Verificación post-activación:
+```sql
+SELECT created_at, event_type, http_status, endpoint, LEFT(error_message, 80) AS msg
+FROM observable_events
+WHERE source = 'vercel' AND metadata->>'drain' = 'true'
+ORDER BY created_at DESC LIMIT 20;
+```
+
+Si tras 1h no aparecen eventos `metadata.drain=true`, revisar:
+- Vercel UI → Log Drain → Recent Deliveries (Vercel muestra los retries y status codes).
+- Header `x-ingest-secret` coincide con env var.
+- URL pública del endpoint responde a curl POST manual.
+
+**Esfuerzo restante**: 5 min (activación UI por operador con acceso al dashboard Vercel).
 
 ### 🟡 Gap 15 — Shadow logs (console.log) no se persisten en observable_events
 
@@ -982,7 +1005,7 @@ Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
 - [ ] **Gap 7**: Verificar Sentry, anotar dashboard URL (15 min)
 - [x] **Gap 10**: Cron poda 30d ✅ COMPLETO (2026-05-25)
 - [ ] **Migración batch de los 12 crons Fargate restantes** a emitir (~1h con helper común)
-- [ ] **Gap 14**: Vercel Log Drain → ingest (1.5-2h) — ⚠️ **MÁXIMA PRIORIDAD**: único agujero arquitectural para 504 SIGTERM
+- [x] **Gap 14**: Vercel Log Drain ✅ ENDPOINT LIVE (2026-05-26) — pendiente activación operativa en Vercel UI (5 min)
 
 **Fase 2 — Alertas + dashboard (~3-4h, $0/mes)**
 - [ ] **Gap 8**: Cron rules engine con `NotificationAdapter` (1-2h)

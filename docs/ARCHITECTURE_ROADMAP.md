@@ -2564,7 +2564,7 @@ swap del sink en una sola línea de la fábrica.
 |---|---|---|---|
 | **Fase 0** — Sink interface + race fix | 2026-05-26 mañana | 2-3 h | ✅ COMPLETA |
 | **Fase 1** — Migrar writers huérfanos + documentar Issues vs Events | 2026-05-26 tarde | ~2 h | ✅ COMPLETA |
-| **Fase 1.5** — Vercel Log Drain (Gap 14 del manual) | 2026-05-26 | 1.5-2 h | 🔄 EN CURSO |
+| **Fase 1.5** — Vercel Log Drain (Gap 14 del manual) | 2026-05-26 | 1.5-2 h | ✅ ENDPOINT LIVE (activación UI Vercel pendiente, 5 min) |
 | **Fase 2** — Migración AWS (PostgresSink → KinesisSink) | Cuando >30k DAU | 1-2 semanas | ⏸️ pendiente |
 
 #### Fase 0 — Sink interface + race fix ✅ COMPLETA 2026-05-26
@@ -2599,7 +2599,7 @@ Lo que se descartó conscientemente del plan original:
 
 Validación: tsc limpio, 567/567 tests pass en suite observability+writers.
 
-#### Fase 1.5 — Vercel Log Drain (Gap 14 del manual) 🔄 EN CURSO 2026-05-26
+#### Fase 1.5 — Vercel Log Drain (Gap 14 del manual) ✅ ENDPOINT LIVE 2026-05-26
 
 Cierre del agujero arquitectural más relevante detectado en esta sesión:
 **504 SIGTERM invisibles** al código de app. Documentado en
@@ -2607,19 +2607,25 @@ Cierre del agujero arquitectural más relevante detectado en esta sesión:
 del 25/05 20:31 UTC, nunca llegó a `validation_error_logs` porque la
 lambda muere antes de retornar response).
 
-**Por qué ahora y no después**: es el ÚNICO blind spot que no podemos
-cerrar con mitigaciones por endpoint (`maxDuration` + `withDbTimeout`).
-Cualquier endpoint nuevo sin esos guards reintroduce el agujero. La
-solución es **fuera del código de app**: que Vercel mismo envíe los logs
-de runtime al ingest endpoint vía HTTPS Log Drain. Coste: 1.5-2h.
+**Por qué se hizo ahora**: es el ÚNICO blind spot que no podemos cerrar
+con mitigaciones por endpoint (`maxDuration` + `withDbTimeout`). Cualquier
+endpoint nuevo sin esos guards reintroduce el agujero. La solución vive
+**fuera del código de app**: Vercel mismo envía los logs de runtime al
+nuevo endpoint vía HTTPS Log Drain.
 
-Plan:
-1. Extender `/api/observability/ingest` para aceptar el formato Vercel Log Drain (NDJSON) además del shape actual.
-2. Parser que filtre logs relevantes (≥400, runtime errors, timeouts) y los traduzca a `ObservableEvent` con `source:'vercel'`, `eventType:'http_5xx'|'runtime_kill'`.
-3. Auth vía `OBSERVABILITY_INGEST_SECRET` ya existente (mismo header `x-vercel-verify` o secret en query).
-4. Tests con payloads sintéticos del formato Vercel.
-5. Instrucciones para activar el drain en dashboard Vercel (Settings → Log Drains → HTTPS → endpoint + secret).
-6. **Activación manual por el operador** (no puedo configurar Vercel UI desde código).
+**Decisión arquitectural**: endpoint NUEVO `/api/observability/vercel-log-drain`
+en vez de extender `/api/observability/ingest`. Razón: responsabilidad
+única (parser específico de formato Vercel) y permite tests aislados sin
+contaminar la lógica del ingest universal.
+
+Implementación:
+1. ✅ `lib/observability/vercel-log-drain.ts` — parser PURO. `parseVercelLogBody` (acepta NDJSON, JSON array y JSON object único; ignora líneas malformadas). `shouldPersist` (filtra ≥400 + level=error/warn). `toObservableEvent` (mapea level→severity, statusCode→eventType incluyendo detección de `runtime_kill` por mensaje característico).
+2. ✅ `app/api/observability/vercel-log-drain/route.ts` — endpoint POST. Auth vía `x-ingest-secret` (reutiliza `OBSERVABILITY_INGEST_SECRET` ya existente). Itera entries, persiste vía `emit()` (sink swappable). Tolerante a fallos parciales (si una entry falla, el resto del batch sigue).
+3. ✅ 25 tests del parser (`__tests__/lib/observability/vercel-log-drain.test.ts`) + 7 tests del endpoint (`__tests__/api/observability/vercel-log-drain.test.ts`). Cubren caso Gap 14, mix relevantes/ruido, líneas malformadas, fallos parciales.
+4. ✅ Instrucciones operativas en `observability.md` § Gap 14 (Vercel UI → Settings → Log Drains → HTTPS + secret).
+5. ⏸️ **Activación manual pendiente** por el operador con acceso al dashboard Vercel (no automatizable desde código). 5 min.
+
+Verificación post-activación: query SQL en `observability.md` filtra eventos con `metadata->>'drain' = 'true'` — si no aparecen tras 1h con tráfico, revisar Vercel UI → Log Drain → Recent Deliveries.
 
 #### Gaps 13/15 — agujeros menores (documentados, no implementados hoy)
 
