@@ -280,7 +280,7 @@ async function _GET(request: Request) {
     // 5. Notificar admin si hay convocatorias relevantes
     if (nuevasRelevantes.length > 0 && process.env.ADMIN_EMAIL) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_URL}/api/emails/send-admin-notification`, {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'}/api/emails/send-admin-notification`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

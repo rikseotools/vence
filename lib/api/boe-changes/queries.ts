@@ -376,7 +376,7 @@ export async function sendBoeChangeNotification(
   duration: string
 ): Promise<boolean> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
     const adminEmail = process.env.ADMIN_EMAIL || 'manueltrader@gmail.com'
 
     const response = await fetch(`${baseUrl}/api/emails/send-admin-notification`, {

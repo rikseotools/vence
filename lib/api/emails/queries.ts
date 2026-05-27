@@ -198,7 +198,7 @@ export async function generateUnsubscribeToken(
 }
 
 export function getUnsubscribeUrl(token: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.vence.es'
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
   return `${baseUrl}/unsubscribe?token=${token}`
 }
 

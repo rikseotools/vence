@@ -114,7 +114,7 @@ async function _POST(request: Request) {
 }
 
 function generateMedalEmailContent(medal: Medal, userName: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.vence.es'
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 
   let congratsText = ''
   let achievementText = ''

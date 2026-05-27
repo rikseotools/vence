@@ -7,7 +7,7 @@
  * - sitemap-oposiciones.xml: Filtros /oposiciones/
  */
 
-const SITE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es';
 
 export const revalidate = 86400; // Regenerar cada 24 horas
 
