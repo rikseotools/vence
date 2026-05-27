@@ -25,12 +25,18 @@ export type LogRolloutEventInput = {
  * via Drizzle. La tabla no está en `db/schema.ts` (no es prioritaria para
  * tipado), pero el INSERT es 100% portable a cualquier Postgres.
  */
+// Timeout máximo para el INSERT fire-and-forget. Sin esto, una conexión
+// colgada en wait=Client/ClientRead acumula slot zombie (mismo footgun
+// que causó el incidente 27/05/2026 — ver docs/runbooks/observability.md
+// §"⚠️ FOOTGUN"). 5s conservador: INSERT normal <5ms.
+const ROLLOUT_LOG_TIMEOUT_MS = 5_000
+
 export function logRolloutEvent(input: LogRolloutEventInput): void {
   const run = async () => {
     try {
       const db = getAdminDb()
       const lawNames = (input.lawNames ?? []).slice(0, 5)
-      await db.execute(sql`
+      const insertPromise = db.execute(sql`
         INSERT INTO problematic_articles_rollout_logs
           (user_id, position_type, path, articles_count, law_names, duration_ms)
         VALUES
@@ -41,6 +47,15 @@ export function logRolloutEvent(input: LogRolloutEventInput): void {
            ${lawNames}::text[],
            ${input.durationMs ?? null})
       `)
+      await Promise.race([
+        insertPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`[rollout-log] timeout >${ROLLOUT_LOG_TIMEOUT_MS}ms`)),
+            ROLLOUT_LOG_TIMEOUT_MS,
+          ),
+        ),
+      ])
     } catch (e) {
       console.warn('⚠️ [rollout-log] Insert falló:', (e as Error).message)
     }

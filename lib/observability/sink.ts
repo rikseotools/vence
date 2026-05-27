@@ -73,6 +73,15 @@ export interface ObservableSink {
 class PostgresSink implements ObservableSink {
   readonly name = 'postgres'
 
+  // Timeout máximo para el INSERT. Sin esto, una conexión colgada en
+  // wait=Client/ClientRead vía Supavisor acumula slot zombie en el pool
+  // (igual que el incidente 27/05/2026 documentado en
+  // docs/runbooks/observability.md §"⚠️ FOOTGUN" — afectó al backend
+  // Fargate; este sink del frontend ECS tenía el mismo bug latente).
+  // 5s es conservador: INSERT normal <5ms; si tarda >5s mejor perder el
+  // evento que dejar slot zombie.
+  private static readonly EMIT_TIMEOUT_MS = 5_000
+
   async emit(event: ObservableEvent): Promise<void> {
     try {
       const db = getAdminDb()
@@ -81,7 +90,7 @@ class PostgresSink implements ObservableSink {
         return
       }
       const severity = normalizeSeverity(event.severity)
-      await db.execute(sql`
+      const insertPromise = db.execute(sql`
         INSERT INTO public.observable_events (
           ts, source, severity, event_type, endpoint, user_id,
           deploy_version, duration_ms, http_status, error_message, metadata
@@ -99,6 +108,18 @@ class PostgresSink implements ObservableSink {
           ${event.metadata ? JSON.stringify(event.metadata) : null}::jsonb
         )
       `)
+      // Promise.race con timeout manual. Si Drizzle/postgres-js cuelga en
+      // Client/ClientRead, el reject del timeout entra al catch y suelta
+      // el slot del pool. Pérdida del evento = aceptable; slot zombie = NO.
+      await Promise.race([
+        insertPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`[sink/postgres] timeout >${PostgresSink.EMIT_TIMEOUT_MS}ms`)),
+            PostgresSink.EMIT_TIMEOUT_MS,
+          ),
+        ),
+      ])
     } catch (err) {
       console.warn(
         '[sink/postgres] INSERT falló:',
