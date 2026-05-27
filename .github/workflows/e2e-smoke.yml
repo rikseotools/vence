@@ -1,0 +1,142 @@
+name: E2E Smoke (Playwright)
+
+# Sistema canary + simulaciones — Nivel 2 del roadmap.
+# Ver docs/roadmap/canary-y-simulaciones.md
+#
+# Ejecuta el smoke público (e2e/smoke-public.spec.ts) en 2 contextos:
+#   - Cada PR → verifica preview AWS (bloquea merge si rompe).
+#   - Cron cada 6h → verifica producción (regresiones post-deploy).
+#   - workflow_dispatch → manual con elección de entorno.
+#
+# Patrones aplicados (inspirado VicoHR):
+#   - 2 workers paralelos, 2× retries en CI (red flakiness aceptable).
+#   - HTML report como artifact 14 días retention.
+#   - forbidOnly ya está en playwright.config.ts (bloquea .only/.skip).
+#   - Cancel concurrent runs del mismo ref para no saturar CI.
+
+on:
+  pull_request:
+    branches: [main]
+    # Solo correr si tocaron código que pueda afectar UI/API.
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'contexts/**'
+      - 'hooks/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/e2e-smoke.yml'
+  schedule:
+    # Cada 6h verifica producción. Mismo patrón VicoHR canary Playwright.
+    # 4 runs/día × ~3min = 12 min/día = ~360 min/mes (cabe en GHA free).
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Entorno a testear'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - preview
+          - prod
+          - both
+
+# Cancelar runs viejas del mismo ref si llega una nueva push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke público
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Instalar solo chromium (no firefox/webkit) — Nivel 6 los añadirá.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      # Decidir target según trigger:
+      #   - PR → preview AWS (la versión candidata).
+      #   - schedule (cron 6h) → prod (regresiones post-deploy).
+      #   - workflow_dispatch → según input.
+      - name: Compute target
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "target=preview" >> "$GITHUB_OUTPUT"
+            echo "script=test:e2e:preview" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "target=prod" >> "$GITHUB_OUTPUT"
+            echo "script=test:e2e:prod" >> "$GITHUB_OUTPUT"
+          else
+            INPUT="${{ inputs.target }}"
+            if [ "$INPUT" = "both" ]; then
+              echo "target=both" >> "$GITHUB_OUTPUT"
+              echo "script=test:e2e" >> "$GITHUB_OUTPUT"
+            else
+              echo "target=$INPUT" >> "$GITHUB_OUTPUT"
+              echo "script=test:e2e:$INPUT" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Run Playwright (${{ steps.target.outputs.target }})
+        env:
+          CI: 'true'
+        run: npm run ${{ steps.target.outputs.script }}
+
+      # HTML report como artifact — útil para investigar fallos sin
+      # reproducir local. Retención 14 días (free tier permite 90, pero
+      # 14 cubre el ciclo típico de bug → fix → close).
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ steps.target.outputs.target }}-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
+
+      # Si falla en cron contra prod, dejar trail en observable_events
+      # para que aparezca en /admin/salud-sistema y alimente alertas.
+      # NOTE: requiere CRON_SECRET válido + endpoint /api/observability/ingest.
+      - name: Notify failure to observability sink
+        if: failure() && github.event_name == 'schedule'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::CRON_SECRET no configurado — skipping observability notify"
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"events\": [{
+                \"source\": \"gha\",
+                \"severity\": \"error\",
+                \"eventType\": \"e2e_smoke_failed\",
+                \"endpoint\": \"e2e/smoke-public\",
+                \"errorMessage\": \"Smoke test contra prod falló\",
+                \"metadata\": {
+                  \"runId\": \"${{ github.run_id }}\",
+                  \"runUrl\": \"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+                  \"sha\": \"${{ github.sha }}\",
+                  \"target\": \"${{ steps.target.outputs.target }}\"
+                }
+              }]
+            }" \
+            https://www.vence.es/api/observability/ingest || echo "::warning::Notify failed (no blocker)"
