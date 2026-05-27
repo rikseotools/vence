@@ -162,7 +162,7 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 | # | Archivo | Usos | Notas |
 |---|---|---|---|
 | - [ ] | `app/api/stripe/webhook/route.ts` | **31** | 🐘 El más grande. Refactor sustancial. Tocar con cuidado: el webhook ya tuvo incidente 27/05 por otra causa. |
-| - [ ] | `lib/emails/emailService.server.ts` | **16** | Server-only. Concentrado, viable como PR único. |
+| - [~] | `lib/emails/emailService.server.ts` | 16 (13 migrados, 3 deuda) | 🟡 **Mayoría migrado 27/05** (commit pendiente): testServerConnection + checkEmailSystemHealth + sendWelcomeEmailImmediate + getEmailCampaignStats + cleanupExpiredTokens + detectUsersForWeeklyReport + sendWeeklyReportEmail → Drizzle. **3 deuda**: `validateUnsubscribeToken` (depende PGRST116) + `processUnsubscribeByToken` (mocks del test mockean @supabase/supabase-js, no @/db/client → migrarlos rompe 4 tests). Plan: migrar los 3 a la vez con actualización paralela de `__tests__/emails/unsubscribeFlow.test.ts` (mock framework). |
 | - [~] | `app/api/cron/subscription-reconciliation/route.ts` | 9 | 🗑️ **ELIMINAR**, no migrar. Ya replicado en backend Fargate (commit `3b25b152`, cron activo per `observable_events`). Pendiente borrar este endpoint Next.js tras soak Fargate. |
 | - [ ] | `lib/services/adaptiveDifficulty.ts` | 5 (+ 5 `.rpc()`) | ⚠️ Complejo: servicio con 10 métodos + constructor que recibe cliente, mezcla `.from()` + `.rpc()`, bug pre-existente línea 93 (subquery mal usada en `.eq`). Migración requiere refactor de firma. |
 | - [x] | ~~`app/api/admin/infra-stats/route.ts`~~ | ~~3~~ | ✅ **Migrado 27/05** (commit pendiente): 3 queries (`user_sessions count`, `daily_question_usage`, `validation_error_logs` con OR+ILIKE) → Drizzle. Eliminado el `createClient(SERVICE_ROLE)` paralelo a Drizzle que mantenía el archivo. |
@@ -282,7 +282,7 @@ return () => {
 |---|---|---|---|
 | `NEXT_PUBLIC_*` con credenciales en código | 1 (`SUPABASE_SERVICE_ROLE_KEY`) | 0 (limpiado en Fase 1 + ESLint rule) | 0 ✅ |
 | Ocurrencias `createClient(.., service_role)` cliente | 10 | 0 (Fase 1 commit `1e65f76f`) | 0 ✅ |
-| Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **8** (2 migrados tarde 27/05, 8 pendientes) | ≤ 5 (allowlist documentada) |
+| Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **8** (4 archivos completamente migrados tarde 27/05 + 1 parcial + 1 a eliminar; 5 pendientes) | ≤ 5 (allowlist documentada) |
 | Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | pendiente auditar (Fase 4) | 0 |
 | Usos de Supabase Realtime | desconocido | **1** (auditado 27/05: eran 3, 2 migrados a polling esta tarde) | 0 |
 | Tiempo a migrar BD a RDS (estimación) | meses | semanas (cuando se complete F3) | 1 PR + cutover planificado |

@@ -1,6 +1,15 @@
 import 'server-only'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { eq, and, gte, lt, isNotNull, desc, sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
+import {
+  emailLogs,
+  emailEvents,
+  emailPreferences,
+  emailUnsubscribeTokens,
+  userProfiles,
+} from '@/db/schema'
 import {
   getEmailPreferencesV2,
   canSendEmail,
@@ -280,6 +289,16 @@ export async function processUnsubscribeByToken(
       }
     }
 
+    // ⚠️ NO migrado a Drizzle (Fase 3 strangler fig agnosticismo-supabase):
+    // los tests __tests__/emails/unsubscribeFlow.test.ts mockean
+    // @supabase/supabase-js (no Drizzle/Postgres) para simular escenarios
+    // específicos de error (prefsUpdateError, markUsedError). Migrar este
+    // código sin actualizar también los mocks del test rompe la suite (4
+    // tests fallidos en el primer intento).
+    // Para migrar correctamente, en próximo PR:
+    //   1. Cambiar el mock del test a mockear @/db/client (getAdminDb).
+    //   2. Cambiar el shape de mocks para que devuelvan promesas Drizzle-like.
+    //   3. Migrar el código aquí.
     const supabase = getSupabase()
     const { error: prefsError } = await supabase
       .from('email_preferences')
@@ -345,8 +364,9 @@ export async function processUnsubscribeByToken(
 
 export async function testServerConnection() {
   try {
-    const supabase = getSupabase()
-    await supabase.from('user_profiles').select('id').limit(1)
+    // Health check: cualquier SELECT 1 fila a una tabla cualquiera vale.
+    const db = getAdminDb()
+    await db.select({ id: userProfiles.id }).from(userProfiles).limit(1)
     return { success: true as const, message: 'Conexión exitosa' }
   } catch (error) {
     return { success: false as const, error: (error as Error).message }
@@ -453,15 +473,18 @@ export async function detectUsersForEmails(): Promise<EmailQueueItem[]> {
 
 export async function sendWelcomeEmailImmediate(userId: string): Promise<EmailSendResult> {
   try {
-    const supabase = getSupabase()
-    const { data: existingEmail } = await supabase
-      .from('email_logs')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('email_type', 'bienvenida_inmediato')
-      .single()
+    // Comprobar si ya se envió antes (idempotencia). Solo necesitamos ≥1 fila.
+    const db = getAdminDb()
+    const existing = await db
+      .select({ id: emailLogs.id })
+      .from(emailLogs)
+      .where(and(
+        eq(emailLogs.userId, userId),
+        eq(emailLogs.emailType, 'bienvenida_inmediato'),
+      ))
+      .limit(1)
 
-    if (existingEmail) {
+    if (existing.length > 0) {
       return { success: false, reason: 'already_sent', message: 'Email de bienvenida ya enviado' }
     }
 
@@ -568,14 +591,16 @@ export async function runEmailCampaign(): Promise<CampaignResults> {
 
 export async function getEmailCampaignStats(daysBack = 30) {
   try {
-    const supabase = getSupabase()
-    const { data: emailStats, error } = await supabase
-      .from('email_logs')
-      .select('*')
-      .gte('sent_at', new Date(Date.now() - (daysBack * 24 * 60 * 60 * 1000)).toISOString())
-      .order('sent_at', { ascending: false })
-
-    if (error) {
+    const db = getAdminDb()
+    let emailStats: Array<Record<string, unknown>>
+    try {
+      const since = new Date(Date.now() - (daysBack * 24 * 60 * 60 * 1000)).toISOString()
+      emailStats = await db
+        .select()
+        .from(emailLogs)
+        .where(gte(emailLogs.sentAt, since))
+        .orderBy(desc(emailLogs.sentAt)) as Array<Record<string, unknown>>
+    } catch (error) {
       console.error('Error obteniendo estadísticas de email:', error)
       return null
     }
@@ -586,14 +611,15 @@ export async function getEmailCampaignStats(daysBack = 30) {
     let totalClicked = 0
 
     for (const email of emailStats || []) {
-      const type = email.email_type as string
+      // Drizzle devuelve camelCase (emailType, openedAt, clickedAt), no snake_case.
+      const type = email.emailType as string
       if (!statsByType[type]) {
         statsByType[type] = { sent: 0, opened: 0, clicked: 0, openRate: 0, clickRate: 0 }
       }
       statsByType[type].sent++
       totalSent++
-      if (email.opened_at) { statsByType[type].opened++; totalOpened++ }
-      if (email.clicked_at) { statsByType[type].clicked++; totalClicked++ }
+      if (email.openedAt) { statsByType[type].opened++; totalOpened++ }
+      if (email.clickedAt) { statsByType[type].clicked++; totalClicked++ }
     }
 
     for (const type of Object.keys(statsByType)) {
@@ -627,11 +653,14 @@ export async function checkEmailSystemHealth() {
 
     let tablesAccessible = false
     try {
-      const supabase = getSupabase()
-      const { error: e1 } = await supabase.from('user_profiles').select('id').limit(1)
-      const { error: e2 } = await supabase.from('email_preferences').select('id').limit(1)
-      const { error: e3 } = await supabase.from('email_logs').select('id').limit(1)
-      tablesAccessible = !e1 && !e2 && !e3
+      // Health check: SELECT 1 row from cada tabla. Si todas responden → tablas accesibles.
+      const db = getAdminDb()
+      await Promise.all([
+        db.select({ id: userProfiles.id }).from(userProfiles).limit(1),
+        db.select({ id: emailPreferences.id }).from(emailPreferences).limit(1),
+        db.select({ id: emailLogs.id }).from(emailLogs).limit(1),
+      ])
+      tablesAccessible = true
     } catch {
       tablesAccessible = false
     }
@@ -670,19 +699,12 @@ export async function checkEmailSystemHealth() {
 
 export async function cleanupExpiredTokens(): Promise<number> {
   try {
-    const supabase = getSupabase()
-    const { data, error } = await supabase
-      .from('email_unsubscribe_tokens')
-      .delete()
-      .lt('expires_at', new Date().toISOString())
-      .select('count')
-
-    if (error) {
-      console.error('❌ Error limpiando tokens:', error)
-      return 0
-    }
-
-    return data?.length || 0
+    const db = getAdminDb()
+    const deleted = await db
+      .delete(emailUnsubscribeTokens)
+      .where(lt(emailUnsubscribeTokens.expiresAt, new Date().toISOString()))
+      .returning({ id: emailUnsubscribeTokens.id })
+    return deleted.length
   } catch (error) {
     console.error('❌ Error en cleanupExpiredTokens:', error)
     return 0
@@ -695,18 +717,32 @@ export async function cleanupExpiredTokens(): Promise<number> {
 
 export async function detectUsersForWeeklyReport(): Promise<WeeklyReportUser[]> {
   try {
-    const supabase = getSupabase()
+    const db = getAdminDb()
 
-    const { data: activeUsers, error } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, target_oposicion')
-      .eq('is_active_student', true)
-      .not('email', 'is', null)
-
-    if (error) {
+    let activeUsers: Array<{ id: string; email: string; full_name: string | null; target_oposicion: string | null }>
+    try {
+      const rows = await db
+        .select({
+          id: userProfiles.id,
+          email: userProfiles.email,
+          full_name: userProfiles.fullName,
+          target_oposicion: userProfiles.targetOposicion,
+        })
+        .from(userProfiles)
+        .where(and(
+          eq(userProfiles.isActiveStudent, true),
+          isNotNull(userProfiles.email),
+        ))
+      activeUsers = rows as typeof activeUsers
+    } catch (error) {
       console.error('Error obteniendo usuarios activos:', error)
       return []
     }
+
+    // Para el RPC get_user_problematic_articles_weekly (path legacy), mantenemos
+    // un cliente Supabase porque la RPC sigue siendo PostgREST-only. Se sustituye
+    // por el path migrado isInProblematicArticlesRollout cuando aplica.
+    const supabase = getSupabase()
 
     const usersForWeeklyReport: WeeklyReportUser[] = []
 
@@ -715,15 +751,18 @@ export async function detectUsersForWeeklyReport(): Promise<WeeklyReportUser[]> 
         const canSend = await canSendEmailType(user.id, 'resumen_semanal')
         if (!canSend) continue
 
-        const { data: recentEmail } = await supabase
-          .from('email_logs')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('email_type', 'resumen_semanal')
-          .gte('sent_at', new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString())
-          .single()
+        // Check si se envió esta semana — ≥1 fila ya basta.
+        const recent = await db
+          .select({ id: emailLogs.id })
+          .from(emailLogs)
+          .where(and(
+            eq(emailLogs.userId, user.id),
+            eq(emailLogs.emailType, 'resumen_semanal'),
+            gte(emailLogs.sentAt, new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()),
+          ))
+          .limit(1)
 
-        if (recentEmail) continue
+        if (recent.length > 0) continue
 
         // Despliegue gradual. Ver docs/maintenance/despliegue-articulos-problematicos.md
         let problematicArticles: any[] = []
@@ -775,18 +814,20 @@ export async function sendWeeklyReportEmail(
   articlesData: { article_id: string; [key: string]: unknown }[] = []
 ): Promise<EmailSendResult> {
   try {
-    const supabase = getSupabase()
+    const db = getAdminDb()
 
-    // Check if already sent this week
-    const { data: recentEmail } = await supabase
-      .from('email_logs')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('email_type', 'resumen_semanal')
-      .gte('sent_at', new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString())
-      .single()
+    // Check if already sent this week — ≥1 fila basta.
+    const recent = await db
+      .select({ id: emailLogs.id })
+      .from(emailLogs)
+      .where(and(
+        eq(emailLogs.userId, userId),
+        eq(emailLogs.emailType, 'resumen_semanal'),
+        gte(emailLogs.sentAt, new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()),
+      ))
+      .limit(1)
 
-    if (recentEmail) {
+    if (recent.length > 0) {
       return { success: false, reason: 'already_sent', message: 'Resumen semanal ya enviado esta semana' }
     }
 
@@ -800,14 +841,26 @@ export async function sendWeeklyReportEmail(
       }
     }
 
-    const { data: user, error: userError } = await supabase
-      .from('user_profiles')
-      .select('email, full_name, target_oposicion')
-      .eq('id', userId)
-      .single()
-
-    if (userError || !user) {
-      throw new Error(`Usuario ${userId} no encontrado: ${userError?.message}`)
+    // Cargar datos del user (legacy single-fetch — preservamos el throw si no
+    // existe vs error transitorio: ambos hacen throw aquí, así que NO depende
+    // de discriminación PGRST116).
+    type UserRow = { email: string; full_name: string | null; target_oposicion: string | null }
+    let user: UserRow
+    try {
+      const userRows = await db
+        .select({
+          email: userProfiles.email,
+          full_name: userProfiles.fullName,
+          target_oposicion: userProfiles.targetOposicion,
+        })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1)
+      const row = userRows[0]
+      if (!row) throw new Error(`Usuario ${userId} no encontrado`)
+      user = row as UserRow
+    } catch (err) {
+      throw new Error(`Usuario ${userId} no encontrado: ${err instanceof Error ? err.message : String(err)}`)
     }
 
     // resumen_semanal template takes 5 args (the 5th being articlesData)
@@ -846,28 +899,29 @@ export async function sendWeeklyReportEmail(
       throw new Error(`Resend error: ${emailResponse.error.message || emailResponse.error}`)
     }
 
-    // Log to email_logs + email_events
-    const [logResult, eventResult] = await Promise.all([
-      supabase.from('email_logs').insert({
-        user_id: userId,
-        email_type: 'resumen_semanal',
+    // Log to email_logs + email_events (Drizzle INSERTs en paralelo).
+    // Promise.allSettled → un fallo en uno no impide el otro ni rompe el flujo.
+    const [logResult, eventResult] = await Promise.allSettled([
+      db.insert(emailLogs).values({
+        userId,
+        emailType: 'resumen_semanal',
         subject,
         status: 'sent',
       }),
-      supabase.from('email_events').insert({
-        user_id: userId,
-        email_type: 'resumen_semanal',
-        event_type: 'sent',
-        email_address: user.email,
+      db.insert(emailEvents).values({
+        userId,
+        emailType: 'resumen_semanal',
+        eventType: 'sent',
+        emailAddress: user.email,
         subject,
       }),
     ])
 
-    if (logResult.error) {
-      console.error('⚠️ Error registrando email log:', logResult.error)
+    if (logResult.status === 'rejected') {
+      console.error('⚠️ Error registrando email log:', logResult.reason)
     }
-    if (eventResult.error) {
-      console.error('⚠️ Error registrando email event:', eventResult.error)
+    if (eventResult.status === 'rejected') {
+      console.error('⚠️ Error registrando email event:', eventResult.reason)
     }
 
     return {
