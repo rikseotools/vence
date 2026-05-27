@@ -280,6 +280,14 @@ export function isPlatformQuery(message: string): boolean {
     )
   if (greetingOrHelp) return true
 
+  // Mensaje emocional/queja sobre la oposición (cluster F auditoría 27/05/2026).
+  // KB responde con empatía + redirige a herramientas concretas. Antes caía
+  // a fallback genérico sin contención humana.
+  const emotional =
+    /\b(agobiad|estresad|nervios|frustrad|cansad|hart[oa]|desesperad|ansie?dad|abrumad|saturad)/i.test(message) ||
+    /no\s+puedo\s+m[aá]s|me\s+rindo|voy\s+a\s+(abandonar|dejarlo|rendirme)|esto\s+es\s+imposible/i.test(message)
+  if (emotional) return true
+
   // Excluir consultas de progreso personal que deben ir a StatsDomain
   const personalProgressPatterns = [
     /c[oó]mo\s+voy/i,
@@ -317,7 +325,7 @@ export function isPlatformQuery(message: string): boolean {
     /c[oó]mo\s+(funciona|uso|hago)/i,
     /la\s+(app|aplicaci[oó]n|plataforma|p[aá]gina)/i,
     /vence/i,
-    /soporte|contacto/i,
+    /soporte|contacto|contactar/i,
     /hablar\s+(con\s+)?(un\w?\s+)?(agente|persona|humano|alguien)/i,
     /atenci[oó]n\s+al?\s+cliente/i,
     // "ayuda" solo cuando es sobre la plataforma, no cuando es "ayúdame con el artículo 14"
@@ -326,7 +334,8 @@ export function isPlatformQuery(message: string): boolean {
     /necesito\s+(soporte|ayuda\s+t[eé]cnica)/i,
     /funcionalidad|caracter[ií]stica/i,
     // Problemas técnicos / bugs reportados por usuarios
-    /(no\s+se\s+(carga|cargan|abre|abren)|no\s+me\s+(deja|carga|aparece|sale|funciona)|no\s+funciona|no\s+puedo\s+(acceder|entrar))/i,
+    // Acepta órdenes "no se me cargan", "no me se cargan" (cluster F auditoría 27/05/2026)
+    /(no\s+se\s+(me\s+)?(carga|cargan|abre|abren)|no\s+me\s+(se\s+)?(deja|carga|cargan|aparece|sale|funciona)|no\s+funciona|no\s+puedo\s+(acceder|entrar))/i,
     /(error|bug|fallo)\s+(en|al|del|de\s+la)/i,
     /(porqu[eé]|por\s+qu[eé])\s+no\s+(se|me|puedo|funciona)/i,
     /(pantalla\s+en\s+blanco|se\s+queda\s+colgad|se\s+ha\s+colgad)/i,

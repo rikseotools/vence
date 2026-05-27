@@ -283,6 +283,70 @@ export function getPredefinedResponse(
 Pregúntame lo que quieras.`
   }
 
+  // Bug app / tests / temario no cargan. Cluster F auditoría 27/05/2026.
+  // No inventamos "te he abierto un ticket" — derivamos honestamente a Soporte
+  // para que el equipo lo revise con captura.
+  if (
+    (/\bno\b(?:\s+\w{1,4}){0,3}\s+(cargan?|funciona|abre|abren|deja|aparece|sale)\b/i.test(msgLower) &&
+     /(test|tests|temario|p[aá]gina|app|aplicaci[oó]n|plataforma|web|simulacro|examen|perfil)/i.test(msgLower)) ||
+    /(se\s+(queda|ha\s+)?colgad|pantalla\s+en\s+blanco|me\s+da\s+error)/i.test(msgLower)
+  ) {
+    return `Vaya, siento que no te funcione bien 😕
+
+**Antes de nada, intenta esto:**
+
+1. **Recarga la página** (Ctrl+F5 o ⌘+Shift+R) para forzar refresco sin caché.
+2. **Cierra sesión y vuelve a entrar** (avatar → 🚪 Cerrar Sesión).
+3. **Prueba en una ventana de incógnito** para descartar extensiones del navegador o cookies viejas.
+
+**Si después de eso sigue sin funcionar:**
+
+Ábrelo desde **avatar → "💬 Soporte" → "Abrir chat soporte"**. Cuéntale al equipo qué intentabas hacer, en qué punto se rompe, y adjunta una captura si puedes. Lo revisan y te responden por ahí.
+
+📧 Si prefieres email: **soporte@vence.pro** (incluye tu email de registro).`
+  }
+
+  // Petición de contacto humano. Cluster F auditoría 27/05/2026.
+  if (
+    /(contactar?|hablar)\s+(con\s+)?(un[ao]?\s+)?(alguien|persona|humano|agente|soporte|equipo|nadie)|atenci[oó]n\s+al\s+cliente|c[oó]mo\s+(os|les)\s+contact|no\s+puedo\s+contactar/i.test(msgLower)
+  ) {
+    return `Claro 👋 puedes contactar con el equipo de Vence por dos vías:
+
+**💬 Desde la app (más rápido):**
+
+1. Pulsa tu **avatar** (arriba a la derecha).
+2. Pulsa **"💬 Soporte"** → **"Abrir chat soporte"**.
+3. Cuenta tu duda o el problema. El equipo lo ve y te responde por ahí.
+
+**📧 Por email:**
+
+Escribe a **soporte@vence.pro** con tu email de registro y la cuestión. Te responden en horario laboral.
+
+Si la duda es **académica** (sobre una pregunta de test, una ley, un concepto…), pregúntamela aquí directamente y te respondo al momento 🚀.`
+  }
+
+  // Mensaje emocional: agobio, estrés, frustración, ganas de abandonar.
+  // Cluster F auditoría 27/05/2026. Sin meternos a psicólogos: empatía corta +
+  // recordar 1-2 herramientas concretas que pueden bajar la sensación de caos.
+  if (
+    /\b(agobiad|estresad|nervios|frustrad|cansad|hart[oa]|desesperad|ansie?dad|abrumad|saturad)/i.test(msgLower) ||
+    /no\s+puedo\s+m[aá]s|me\s+rindo|voy\s+a\s+(abandonar|dejarlo|rendirme)|esto\s+es\s+imposible/i.test(msgLower)
+  ) {
+    return `Te entiendo, preparar una oposición agota 💛. Bajemos el ritmo un momento:
+
+**Lo primero — respira 3 veces despacio.** Lo que sientes es normal y le pasa a casi todos los opositores en algún momento.
+
+**Si quieres seguir hoy con algo concreto y manejable, te propongo:**
+
+🎯 Un **[Test rápido](/test/rapido)** de 10 preguntas: corto, sin presión, y te recuerda que ya sabes más de lo que crees.
+
+📊 Mírate **"cómo voy esta semana"** — a veces lo que parece estancamiento es solo cansancio acumulado, y los números cuentan otra historia.
+
+⏸️ Y si necesitas un día de descanso, **descansa**. La constancia importa más que la intensidad de un día concreto.
+
+Estoy aquí cuando quieras seguir 💪.`
+  }
+
   // Cuántos usuarios / gente / opositores hay activos/conectados/haciendo test.
   // No compartimos estadísticas de actividad por privacidad. Evitar respuesta
   // promocional ("muchos usuarios usan Vence...") porque el user pide CIFRA
@@ -454,7 +518,9 @@ Tu solicitud se procesa en **24-48 horas**. Recibirás un email de confirmación
   }
 
   // Problema de suscripcion / ya pagué pero no soy premium
-  if (/(ya\s+)?pagu[eé]|he\s+pagado|hice\s+el\s+pago/i.test(msgLower) && /(no\s+(soy|eres|es)\s+premium|no\s+me\s+(deja|aparece|sale)|suscr[ií]b|no\s+tengo\s+premium|pone\s+free|sigue\s+(free|gratis))/i.test(msgLower)) {
+  // Regex ampliado 27/05/2026 para cubrir "acabo de pagar" y "sigue diciendo free"
+  // (cluster F auditoría — antes caían a fallback genérico).
+  if (/(ya\s+)?pagu[eé]|he\s+pagado|hice\s+el\s+pago|acabo\s+de\s+pagar|me\s+han\s+cobrado/i.test(msgLower) && /(no\s+(soy|eres|es)\s+premium|no\s+me\s+(deja|aparece|sale|funciona|carga)|suscr[ií]b|no\s+tengo\s+premium|(pone|aparece|sale|dice|diciendo)\s+(free|gratis)|sigue\s+(free|gratis|\w+\s+(free|gratis)))/i.test(msgLower)) {
     return `**Problema con tu suscripcion**
 
 Si has realizado el pago pero no apareces como Premium, puede deberse a un retraso en la activacion.
