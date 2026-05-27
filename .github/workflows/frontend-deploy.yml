@@ -98,6 +98,7 @@ jobs:
             DATABASE_URL_REPLICA=${{ secrets.DATABASE_URL_REPLICA }}
             SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
             GIT_COMMIT_SHA=${{ github.sha }}
+            NEXT_PUBLIC_GIT_COMMIT_SHA=${{ github.sha }}
 
       # Registra nueva task definition revision con el digest específico
       # del SHA recién pusheado, y actualiza el service para que use esa

@@ -23,10 +23,16 @@ export function ClientObservabilityInstaller() {
 
   useEffect(() => {
     // Instalar una vez. `installed` flag interno previene re-init.
+    // deployVersion: NEXT_PUBLIC_GIT_COMMIT_SHA viene del build-arg pasado por
+    // frontend-deploy.yml (github.sha). Legacy NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
+    // sólo existía en Vercel — tras cutover a ECS (2026-05-26) quedó undefined
+    // → deployVersion=null en TODOS los eventos client. Bug detectado 2026-05-27.
     installClientObservability({
       userId: user?.id ?? null,
       deployVersion:
-        process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? null,
+        process.env.NEXT_PUBLIC_GIT_COMMIT_SHA?.slice(0, 8)
+        ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
+        ?? null,
     })
   }, [user?.id])
 
