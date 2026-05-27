@@ -365,6 +365,103 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
 - **Problema**: `DynamicTest.js` no llamaba a `setQuestionContext()`, así que el chat IA no tenía las opciones A/B/C/D. La IA respondía genéricamente "A: Si esta opción es..." sin saber qué eran. Afectaba al ~4.8% de solicitudes `explicar_respuesta` (36 de 746).
 - **Solución**: Migrado `DynamicTest.js` → `DynamicTest.tsx` con `setQuestionContext` + warning en API si llega `explicar_respuesta` sin contexto.
 
+### 8. SearchDomain no detecta menciones de ley por nombre descriptivo (2026-05-27)
+- **Users múltiples** (caso emblemático: 6b7c401c, 22/05/2026)
+- **Problema**: User preguntó por "Foro de Gobierno Abierto" 3 veces seguidas. BD tiene Orden HFP/134/2018 y RD 371/2026 cuyo `name` contiene literal "Foro de Gobierno Abierto", pero `PatternMatcher.detectMentionedLaws`/`extractSpecificLawMentions` solo usaba abreviaturas (LOPJ, LPAC...) y patrones "Ley N/AAAA". IA respondía "no tengo info del Foro" pese a que la info estaba en BD.
+- **Causa raíz**: el patrón ya aplicado en StatsService (caso #5 — keyword matching del campo `laws.name`) nunca se trasladó al SearchDomain.
+- **Solución**: extraer cache + matchers a `lib/chat/shared/lawsCache.ts` (módulo compartido Stats+Search). Añadir `matchAllLawsByNameKeywords` (topN=3, matched>=2, score>=0.4) que `PatternMatcher` invoca al final de sus detectores. Acompañado de mini-fix downstream en `ArticleSearchService.searchArticles`: cuando hay varias leyes mencionadas, agregar arts de TODAS (antes hacía `return` con la 1ª con resultados). Commit `56638aba`.
+
+### 9. VerificationDomain captura follow-ups sustantivos como "genéricos" (2026-05-27)
+- **User**: 6b7c401c (22/05/2026)
+- **Problema**: User pregunta "el consejo de desarrollo sostenible y el foro de gobierno abierto, comparten misma persona?" estando en un test → `VerificationDomain` lo trata como follow-up genérico de la pregunta del test y reexplica la opción B en vez de atender la duda.
+- **Causa raíz**: `isShortGenericMessage()` regex `otherTopicKeywords` solo cubría conceptos procedimentales (plazos|recurso|procedimiento|competencia|jurisdicción|notificación). Mensajes ≤120 chars sobre órganos colegiados pasaban como follow-up.
+- **Solución**: añadir al regex consejo|foro|comisión|comité|junta|tribunal|secretaría|observatorio|agencia|instituto|presidencia|vicepresidencia. Commit `56638aba`.
+
+### 10. Prompt `verifyAnswer` permitía "justificación parcial inventada" (2026-05-27)
+- **Users múltiples**, caso emblemático en Ley 19/2013 art 18 (22/05/2026)
+- **Problema**: IA confundía "carácter general" (opción D del test) con "publicación general" (art 18.1.a) y rellenaba con explicación parcialmente cierta. Patrón frecuente: explica las opciones incorrectas inventando justificaciones cuando no encuentra el texto literal que las descarta.
+- **Solución**: nueva sección "EXPLICACIÓN DE OPCIONES INCORRECTAS" en `buildVerificationSystemPrompt` (derecho) con 5 reglas: citar fragmento literal del artículo que descarta; señalar diferencias palabra-por-palabra ("obre" vs "no obre", "carácter general" vs "publicación general"); prohibir justificación parcial; admitir "no se corresponde con ningún supuesto del artículo" cuando aplique. Validado end-to-end: el LLM ahora identifica "publicación general vs carácter general", "divulgación vs interposición", "no obre". Commit `56638aba`.
+
+### 11. SearchDomain.canHandle no captura preguntas legales conversacionales (2026-05-27)
+- **Cluster**: 7+ logs/15d caían a `fallback` por preguntas en estilo natural sin mencionar ley ni usar verbos típicos
+- **Ejemplos reales**: "Cuantas salas tiene el tsupremo", "Quienes integran las conferencias sectoriales?", "El permiso por neonato hospitalizado...", "Sobre la regencia, puede ser regente alguien no español?", "Órganos legislativos de la UE?"
+- **Causa raíz**: `searchIndicators` solo cubría patrones literales ("qué dice", "según la ley", "explícame"). Sin sustantivo jurídico + interrogativa → fallback genérico.
+- **Solución**: añadir bloque en `canHandle` que captura si el mensaje contiene un sustantivo jurídico/administrativo (lista cerrada de ~50: tribunal, audiencia, consejo, conferencias, regencia, neonato, permiso, órgano, etc.) AND (empieza con interrogativa OR termina en `?`). Commit `5ce09b44`.
+- **⚠️ Detalle técnico crítico**: usar `(?:^|\W)` en vez de `\b` antes de términos con tilde (Ó, Á, É...) porque `\b` NO funciona ante tildes en regex JS sin flag `u`. Ejemplo: `/\b[oó]rgan/i.test('Órganos legislativos')` → `false`. Con `/(?:^|\W)[oó]rgan/i` → `true`. **Verificar siempre los regex con casos en mayúscula con tilde.**
+
+### 12. SearchDomain no detecta funciones Excel sin keyword explícito (2026-05-27)
+- **Cluster**: ~10 logs/15d caían a `fallback` por preguntas Excel conversacionales
+- **Ejemplos reales**: "que hace DERECHA (B2;1)", "y JERARQUIA.EQV?", "existe la funcion LIMPIAR?", "diferencia entre =SUSTITUIR y =REEMPLAZAR", "y LARGO?"
+- **Causa raíz doble**:
+  1. `isInformaticsQuery` solo detectaba `excel`/`hoja de cálculo` o `=FUNC(` exacto sin espacios.
+  2. `canHandle` no usaba `isInformaticsQuery` (solo `handle`), así que aunque la pregunta fuera Excel, si no había keyword "excel"/"word"/etc. ni searchIndicator legal, caía a fallback antes de llegar a `handle`.
+- **Solución**:
+  - Ampliar `isInformaticsQuery`: lista cerrada de ~50 funciones Excel españolas distintivas + detector de sufijos típicos (.CONJUNTO, .SI, .EQV, .MEDIA, .UNO, .MAS, .MENOS, etc.) + patrón `=FUNC y =FUNC` (mención textual sin paréntesis) + `FUNC(arg)` con espacio opcional. Palabras comunes (SI, NO, Y, O, MAX, MIN, SUMA, HOY, AÑO) requieren `=` o `(` para evitar falsos positivos.
+  - **Short-circuit en `canHandle`**: si `isInformaticsQuery=true`, capturar directamente.
+- Commit `5ce09b44`.
+
+## Aprendizajes transversales (para futuras sesiones)
+
+### Estrategia para auditorías de gran volumen (>50 logs)
+
+No es viable revisar 1-a-1 con LLM real cuando hay cientos de logs. Estrategia que funcionó (auditoría 27/05/2026, 478 logs libres + 932 explicar_respuesta últimos 15d):
+
+1. **Conteos por categoría primero**: `feedback=negative`, `had_discrepancy=true`, `had_error=true`, `suggestion_used IS NULL`. Estas señales fuertes suelen ser subset manejable (<20 logs).
+2. **Clustering por dominio capturador**: cruzar logs con `ai_chat_traces.trace_type='routing'` y agrupar por `output_data.selectedDomain`. El cluster `fallback` (lo que NINGÚN domain capturó) es el más fértil para detectar mejoras estructurales.
+3. **Clustering temático dentro de cada cluster**: leer 80-100 mensajes de un cluster, identificar 3-5 patrones temáticos comunes. Asignar etiquetas (Patrón A, B, C...) y contar frecuencia.
+4. **Priorizar por impacto/esfuerzo**: patrones con muchos casos + fix quirúrgico van primero. Patrones subjetivos (saludos, quejas, tono) van al final.
+5. **Validar muestra del cluster, no todos**: con 10 ejemplos del patrón se identifica el problema. No hace falta probar los 50.
+
+### Workflow de validación de cada fix (3 pasos obligatorios)
+
+Cada fix de chat IA debe pasar por 3 niveles antes de commit:
+
+1. **Regex/lógica offline** (sin LLM, sin red): crear un script tsx que pruebe la nueva regex/función con ~10 positivos y ~15 negativos. Asegurar 0 falsos positivos en negativos antes de seguir.
+2. **Tests Jest** (`npx jest __tests__/chat/`): verificar que no hay regresión. Si pasa de N a N-K, parar.
+3. **End-to-end con LLM real**: importar el domain real (`getSearchDomain()`, `getVerificationDomain()`, etc.), reconstruir el `ChatContext` exacto del log original, llamar a `domain.handle(ctx)` y leer la respuesta del LLM. **Hacer esto al menos en 1 caso por bug**. Para volumen, scripts batch (`scripts/simulate-chat-*.ts`).
+
+⚠️ **No fiarse solo de `canHandle=true`**: que un domain capture el mensaje no garantiza buena respuesta. La búsqueda puede traer 0 arts o arts irrelevantes y el LLM responder mal.
+
+### Trampas técnicas conocidas (regex JS)
+
+- **`\b` no funciona ante tildes** sin flag `u`. Ejemplo: `/\borgan/i` SÍ matchea "organización" pero `/\b[oó]rgan/i` NO matchea "Órganos". Solución: `(?:^|\W)` en vez de `\b`, o flag `u` + cuidado con boundaries Unicode.
+- **`\b` no funciona con `Ñ`** por la misma razón. Si el regex incluye `ñ`, usar el mismo workaround.
+- **Word boundaries en plurales/conjugaciones**: `\bsala\b` NO matchea "salas" (la `s` es word char). Usar `\bsalas?\b` o quitar boundary final.
+- **Lookbehind con tildes**: `(?<![a-z])` no detiene una `á`. Mejor `(?<![a-záéíóúñ])` explícito.
+
+### Cuándo se necesita `await loadLawsCache()`
+
+Si un domain usa `matchAllLawsByNameKeywords` o `matchLawByNameKeywords` (vía `PatternMatcher.detectMentionedLaws` o directamente), el cache debe estar cargado. Idempotente: añadir `await loadLawsCache()` al principio de `handle()`. StatsDomain ya lo hace internamente, SearchDomain también desde 2026-05-27.
+
+### Estructura del `ChatContext` para simulaciones
+
+Para reconstruir un `ChatContext` a partir de un `ai_chat_logs` row:
+
+```typescript
+const ctx: ChatContext = {
+  request: { messages: [{ role: 'user', content: log.message }], isPremium: false },
+  userId: log.user_id || 'sim-user',
+  userDomain: log.user_oposicion || 'auxiliar_administrativo_estado',
+  isPremium: false,
+  // questionContext SOLO si log.question_context_id existe — cargar de questions
+  questionContext: log.question_context_id ? {
+    questionId: log.question_context_id,
+    lawName: log.question_context_law,
+    articleNumber: '...',
+    correctAnswer: 0, // 0-3
+    questionText: '...',
+    options: [/* A,B,C,D */],
+    selectedAnswer: null,
+    explanation: '...',
+  } : undefined,
+  messages: [{ role: 'user', content: log.message }],
+  currentMessage: log.message,
+  startTime: Date.now(),
+}
+```
+
+Scripts de referencia: `scripts/simulate-chat-conv-*.ts`.
+
 ## Resetear estadísticas tras auditoría
 
 Las estadísticas del panel admin (`/admin/ai`) — positivos, negativos, satisfacción, tiempo de respuesta — se calculan **solo sobre logs no revisados** (`reviewed_at IS NULL`). Al marcar todos los logs como revisados tras una auditoría, las stats se resetean automáticamente.

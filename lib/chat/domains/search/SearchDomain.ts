@@ -4,6 +4,7 @@
 import type { ChatDomain, ChatContext, ChatResponse, ArticleSource, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
+import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
 import { logger } from '../../shared/logger'
 import { DOMAIN_PRIORITIES } from '../../core/types'
 import {
@@ -643,15 +644,28 @@ Puedo ayudarte con:
   }
 
   /**
-   * Genera respuesta usando OpenAI con contexto de artículos
+   * Genera respuesta usando OpenAI con contexto de artículos.
+   *
+   * Routing del modelo:
+   * - Pregunta libre legal (sin questionContext): Anthropic Claude Sonnet.
+   *   El A/B (27/05/2026) demostró que Claude responde con citas concretas
+   *   de artículo y conocimiento jurídico fiable mientras GPT-4o se queda
+   *   en "no he encontrado, consulta la X ley". Ej: "puede ser regente
+   *   alguien no español?" — GPT-4o no responde, Claude cita Art 60 CE.
+   * - Pregunta con contexto de test (questionContext): OpenAI GPT-4o.
+   *   Aquí GPT-4o funciona bien y es más rápido/barato. La verificación
+   *   de respuestas y `explicar_respuesta` van por VerificationDomain
+   *   (otro flow), no por aquí.
    */
   private async generateResponse(
     context: ChatContext,
     searchResult: Awaited<ReturnType<typeof searchArticles>>,
     tracer?: AITracerInterface
   ): Promise<{ content: string; tokensUsed?: number; modelProvider?: string; modelId?: string }> {
-    const openai = await getOpenAI()
-    const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
+    const useAnthropic = !context.questionContext
+    const model = useAnthropic
+      ? ANTHROPIC_MODEL
+      : (context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL)
 
     // Detectar si el usuario quiere el texto literal/completo
     const wantsFullContent = wantsLiteralContent(context.currentMessage)
@@ -683,8 +697,12 @@ Puedo ayudarte con:
       fullContent: true,
     })
 
-    // System prompt específico para búsqueda
-    const systemPrompt = this.buildSystemPrompt(context, searchResult, wantsFullContent, hasTestQuestions, foundRequestedArticle)
+    // System prompt específico para búsqueda. Cuando usamos Claude (pregunta
+    // libre), aflojamos la regla "no uses conocimiento general": Claude tiene
+    // conocimiento jurídico fiable que sabe usar sin inventar, y en el A/B
+    // sin esta relajación se queda en "consulta los arts 59-61 CE" en vez de
+    // citar Art 60 CE directamente.
+    const systemPrompt = this.buildSystemPrompt(context, searchResult, wantsFullContent, hasTestQuestions, foundRequestedArticle, useAnthropic)
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
@@ -731,39 +749,73 @@ ${articlesContext}`
     })
 
     try {
-      const completion = await openai.chat.completions.create({
-        model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 1500,
-      })
+      let content: string
+      let totalTokens: number | undefined
+      let promptTokens: number | undefined
+      let completionTokens: number | undefined
+      let finishReason: string | undefined
 
-      const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
-      const totalTokens = completion.usage?.total_tokens
+      if (useAnthropic) {
+        // Pregunta libre legal — Claude Sonnet. Anthropic API requiere `system`
+        // separado del array `messages`. NO incluimos history: para preguntas
+        // libres el contexto relevante ya viene embebido en currentMessage
+        // (follow-ups se expanden en handle() vía followUpResult). Evita además
+        // problemas de alternancia user/assistant si el history está sucio.
+        const anthropic = await getAnthropic()
+        const completion = await anthropic.messages.create({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 1500,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMessageWithContext }],
+        })
+        content = completion.content
+          .filter(b => b.type === 'text')
+          .map(b => (b as { type: 'text'; text: string }).text)
+          .join('\n') || 'No pude generar una respuesta.'
+        promptTokens = completion.usage.input_tokens
+        completionTokens = completion.usage.output_tokens
+        totalTokens = promptTokens + completionTokens
+        finishReason = completion.stop_reason || undefined
+      } else {
+        const openai = await getOpenAI()
+        const completion = await openai.chat.completions.create({
+          model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1500,
+        })
+        content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+        totalTokens = completion.usage?.total_tokens
+        promptTokens = completion.usage?.prompt_tokens
+        completionTokens = completion.usage?.completion_tokens
+        finishReason = completion.choices[0]?.finish_reason
+      }
+
+      const provider = useAnthropic ? 'anthropic' : 'openai'
 
       // Finalizar span LLM - COMPLETO
       llmSpan?.setOutput({
-        // Respuesta completa
         responseContent: content,
-        finishReason: completion.choices[0]?.finish_reason,
-        // Uso de tokens
-        promptTokens: completion.usage?.prompt_tokens,
-        completionTokens: completion.usage?.completion_tokens,
+        finishReason,
+        promptTokens,
+        completionTokens,
         totalTokens,
       })
-      llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
-      llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
+      llmSpan?.addMetadata('tokensIn', promptTokens)
+      llmSpan?.addMetadata('tokensOut', completionTokens)
       llmSpan?.addMetadata('model', model)
+      llmSpan?.addMetadata('provider', provider)
       llmSpan?.addMetadata('responseLength', content.length)
       llmSpan?.end()
 
-      return { content, tokensUsed: totalTokens, modelProvider: 'openai', modelId: model }
+      return { content, tokensUsed: totalTokens, modelProvider: provider, modelId: model }
     } catch (error) {
       llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
       llmSpan?.end()
 
-      logger.error('Error generating response with OpenAI', error, { domain: 'search' })
-      return { content: 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.', modelProvider: 'openai', modelId: model }
+      const provider = useAnthropic ? 'anthropic' : 'openai'
+      logger.error(`Error generating response with ${provider}`, error, { domain: 'search' })
+      return { content: 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.', modelProvider: provider, modelId: model }
     }
   }
 
@@ -775,7 +827,8 @@ ${articlesContext}`
     searchResult: Awaited<ReturnType<typeof searchArticles>>,
     wantsFullContent: boolean = false,
     hasTestQuestions: boolean = false,
-    foundRequestedArticle: boolean = true
+    foundRequestedArticle: boolean = true,
+    useAnthropic: boolean = false
   ): string {
     // Generar enlace al test si hay artículos específicos Y hay preguntas disponibles
     let testSuggestion = ''
@@ -820,6 +873,17 @@ IMPORTANTE: Responde algo como: "No he encontrado el artículo [número] en [ley
 3. **Cita la fuente**: Indica claramente de qué ley y artículo se trata.
 4. **Formato**: Mantén la estructura original del artículo (apartados, números, letras).${testSuggestion}`
       }
+    } else if (useAnthropic) {
+      // Pregunta libre con Claude: aflojamos restricciones de "no uses
+      // conocimiento general". Claude tiene conocimiento jurídico fiable
+      // (cita arts exactos sin inventarse números) y aquí queremos que
+      // responda en vez de redirigir al user a "consulta tal ley".
+      responseGuidelines = `## Directrices:
+1. **Prioriza artículos del contexto**: Si los artículos proporcionados cubren la pregunta, basa tu respuesta en ellos y cita la fuente literal (ej: "Según el Art. 21 de la Ley 39/2015...").
+2. **Si los artículos NO cubren la pregunta concretamente**: usa tu conocimiento del ordenamiento jurídico español. Cita el artículo y la norma exactos donde se regula (ej: "Art. 60 CE", "arts. 62-65 LOPJ", "Art. 14 TUE"). Hazlo SOLO si estás seguro del número y la norma — si dudas, di "creo que se regula en X, conviene verificar". NUNCA inventes un número de artículo.
+3. **Sé directo**: responde la pregunta concreta antes de extenderte. Evita "te recomiendo consultar la X ley" como respuesta principal — eso es lo que el usuario te está pidiendo a ti.
+4. **Formato**: markdown con negritas, listas y emojis discretos. Cita literal con \`>\` cuando uses el texto del artículo.
+5. **Si el usuario discrepa**: compara palabra por palabra el texto del artículo con la opción del usuario, marcando diferencias con negritas.`
     } else {
       responseGuidelines = `## Directrices:
 1. **Prioriza artículos**: Si hay artículos relevantes que cubren la pregunta, basa tu respuesta en ellos y cita la fuente (ej: "Según el Art. 21 de la Ley 39/2015...")
@@ -830,9 +894,13 @@ IMPORTANTE: Responde algo como: "No he encontrado el artículo [número] en [ley
 6. **Si el usuario discrepa**: Cuando el usuario diga que una opción "dice lo mismo" o "es igual" que el artículo, compara palabra por palabra el texto exacto del artículo con la opción, usando negritas para señalar las diferencias concretas. No repitas la respuesta correcta — céntrate en demostrar la diferencia textual.`
     }
 
+    const closingLine = useAnthropic
+      ? 'Tu objetivo es responder preguntas sobre legislación de forma precisa y útil, citando siempre el artículo y la norma concretos.'
+      : 'Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. Es preferible decir que no has encontrado el artículo concreto a inventar información legal incorrecta.'
+
     let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones, desarrollado por Vence. Si te preguntan quién eres o qué modelo usas, responde que eres el asistente de Vence entrenado para oposiciones.
 
-Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. Es preferible decir que no has encontrado el artículo concreto a inventar información legal incorrecta.
+${closingLine}
 
 ${responseGuidelines}
 
