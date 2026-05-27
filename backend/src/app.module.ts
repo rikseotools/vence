@@ -34,6 +34,11 @@ import { EmailModule } from './email/email.module';
 import { MedalsModule } from './medals/medals.module';
 import { TemaResolverModule } from './tema-resolver/tema-resolver.module';
 import { TestAnswersModule } from './test-answers/test-answers.module';
+// Crons Stripe — migrados de GHA workflows (lag de horas bajo carga, ver
+// memory/project_gha_cron_lag_migrate_fargate.md). Scheduler in-app garantiza
+// ejecución puntual.
+import { CheckWebhookHealthModule } from './check-webhook-health/check-webhook-health.module';
+import { SubscriptionReconciliationModule } from './subscription-reconciliation/subscription-reconciliation.module';
 
 @Module({
   imports: [
@@ -71,6 +76,10 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
     ProcessOutboxModule,
     ProcessVerificationQueueModule,
     AvatarRotationModule,
+    // Crons Stripe (migrados de GHA 27/05/2026 post-incidente Rocío/Mercedes
+    // donde GHA lag impidió detectar webhook roto en >5h):
+    CheckWebhookHealthModule, // cada 15min — salud webhook entrante
+    SubscriptionReconciliationModule, // cada 1h — Pass-1 BD + Pass-2 Stripe directo
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,
