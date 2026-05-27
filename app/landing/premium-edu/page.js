@@ -66,7 +66,7 @@ function PremiumEducationalContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_1RjhHBCybKEAFwateoAVKstO',
+          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY,
 
           userId: user.id,
           trialDays: 7,

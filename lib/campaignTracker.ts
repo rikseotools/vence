@@ -104,7 +104,7 @@ export async function forceCampaignCheckout(user: User, supabase: SupabaseClient
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_1RjhHBCybKEAFwateoAVKstO',
+        priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY,
         userId: user.id,
         trialDays: 7,
         mode: 'normal'

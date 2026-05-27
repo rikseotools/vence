@@ -128,9 +128,9 @@ function PremiumPageContent() {
 
       // Determinar el priceId según el plan seleccionado
       const priceIds: PriceIds = {
-        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
-        quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY || 'price_quarterly_placeholder',
-        semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER || 'price_1RjhHBCybKEAFwateoAVKstO'
+        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY!,
+        quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY!,
+        semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER!,
       }
       const priceId = priceIds[selectedPlan]
 
@@ -243,9 +243,9 @@ function PremiumPageContent() {
       }
 
       const priceIds: PriceIds = {
-        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
-        quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY || 'price_quarterly_placeholder',
-        semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER || 'price_1RjhHBCybKEAFwateoAVKstO'
+        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY!,
+        quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY!,
+        semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER!,
       }
       const priceId = priceIds[plan]
 
