@@ -19,13 +19,13 @@ interface SystemHealthResponse {
   success: boolean
   generatedAt: string
   indicators: {
-    errors_5xx_24h: {
+    errors_5xx: {
       status: Status
       count: number | null
       samples: Array<{ endpoint: string; error_type: string; created_at: string }>
       thresholds: { amber: number; red: number }
     }
-    drift_24h: {
+    drift: {
       status: Status
       count: number | null
       samples: Array<{
@@ -144,13 +144,13 @@ export default function SaludSistemaPage() {
             {/* 1) Errores 5xx */}
             <IndicatorCard
               title="Errores 5xx últimas 24h"
-              status={data.indicators.errors_5xx_24h.status}
-              metric={String(data.indicators.errors_5xx_24h.count ?? '—')}
-              hint={`Umbrales: ámbar ≥${data.indicators.errors_5xx_24h.thresholds.amber}, rojo ≥${data.indicators.errors_5xx_24h.thresholds.red}`}
+              status={data.indicators.errors_5xx.status}
+              metric={String(data.indicators.errors_5xx.count ?? '—')}
+              hint={`Umbrales: ámbar ≥${data.indicators.errors_5xx.thresholds.amber}, rojo ≥${data.indicators.errors_5xx.thresholds.red}`}
             >
-              {data.indicators.errors_5xx_24h.samples.length > 0 ? (
+              {data.indicators.errors_5xx.samples.length > 0 ? (
                 <ul className="text-xs space-y-1 mt-2 max-h-48 overflow-y-auto">
-                  {data.indicators.errors_5xx_24h.samples.map((s, i) => (
+                  {data.indicators.errors_5xx.samples.map((s, i) => (
                     <li key={i} className="text-gray-600 dark:text-gray-300">
                       <span className="font-mono">{s.endpoint}</span> · {s.error_type} ·{' '}
                       {new Date(s.created_at).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
@@ -165,13 +165,13 @@ export default function SaludSistemaPage() {
             {/* 2) Drift */}
             <IndicatorCard
               title="Drift contadores 24h (>5%)"
-              status={data.indicators.drift_24h.status}
-              metric={String(data.indicators.drift_24h.count ?? '—')}
-              hint={`Umbrales: ámbar ≥${data.indicators.drift_24h.thresholds.amber}, rojo ≥${data.indicators.drift_24h.thresholds.red}`}
+              status={data.indicators.drift.status}
+              metric={String(data.indicators.drift.count ?? '—')}
+              hint={`Umbrales: ámbar ≥${data.indicators.drift.thresholds.amber}, rojo ≥${data.indicators.drift.thresholds.red}`}
             >
-              {data.indicators.drift_24h.samples.length > 0 ? (
+              {data.indicators.drift.samples.length > 0 ? (
                 <ul className="text-xs space-y-1 mt-2 max-h-48 overflow-y-auto">
-                  {data.indicators.drift_24h.samples.map((s, i) => (
+                  {data.indicators.drift.samples.map((s, i) => (
                     <li key={i} className="text-gray-600 dark:text-gray-300">
                       <span className="font-mono">{s.target_table}.{s.field_name}</span>{' '}
                       · drift {s.drift_pct}% · user {s.user_id.slice(0, 8)}…

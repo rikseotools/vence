@@ -1,9 +1,20 @@
 // app/api/admin/system-health/route.ts
-// Endpoint admin: estado de salud del sistema en 3 indicadores.
+// Endpoint admin: estado de salud del sistema.
 //
-//   1) Errores 5xx últimas 24h (desde validation_error_logs)
+// ─── Indicadores CRÍTICOS (cabecera del panel) ───
+//   1) Errores 5xx (desde validation_error_logs)
 //   2) Drift de contadores materializados (desde stats_drift_log)
 //   3) Latencia INSERT a test_questions (desde v_insert_test_questions_latency)
+//   4) Cron de drift vivo
+//
+// ─── Indicadores SECUNDARIOS derivados de observable_events ───
+//   5) Canary uptime agregado (6 canarios Fargate)
+//   6) Errores 4xx burst
+//   7) React hydration mismatch
+//   8) Latencia request_completed p95
+//   9) Volumen tráfico (sanity check — caída drástica = problema)
+//
+// Soporta `?window=1h|6h|12h|24h|7d`. Default 24h (compat runbook).
 //
 // Esto es lo que mira un humano (o Claude vía el runbook
 // docs/runbooks/health-check.md) cuando quiere saber si hay fuego.
@@ -28,30 +39,46 @@ function isAdmin(email: string | null | undefined): boolean {
 
 // Umbrales — duplicados también en docs/runbooks/health-check.md.
 // Si cambian, actualizar el runbook.
-const ERROR_24H_AMBER = 1
-const ERROR_24H_RED = 5
-const DRIFT_AMBER = 1  // cualquier drift significativo enciende ámbar
-const DRIFT_RED = 5    // 5+ filas con drift_pct>5 enciende rojo
-// Umbrales para INSERT a test_questions, basados en `mean_ms` de
-// pg_stat_statements (más estable que proxy_p95, que es muy sensible al
-// stddev por outliers de contención).
-//
-// Baseline post-DROP de NO-OPs (2026-05-23): mean histórico ≈44ms (incluye
-// RTT cliente→pooler→DB y eventos de contención). El INSERT puro dentro
-// de la BD es ~1.5ms p50 medido en bucle plpgsql. La diferencia es
-// fundamentalmente RTT, no triggers.
-//
-// Ámbar: degradación clara vs baseline actual.
-// Rojo: muy fuera de lo normal — probable contención del pool o trigger
-// nuevo escaneando.
+const ERROR_AMBER = 1
+const ERROR_RED = 5
+const DRIFT_AMBER = 1
+const DRIFT_RED = 5
 const INSERT_MEAN_AMBER_MS = 80
 const INSERT_MEAN_RED_MS = 250
 
+// Indicadores nuevos
+const ERRORS_4XX_AMBER = 50  // 4xx baseline normal (~bots), pico real ≥50
+const ERRORS_4XX_RED = 200
+const HYDRATION_AMBER = 5
+const HYDRATION_RED = 20
+const REQ_LATENCY_P95_AMBER_MS = 800
+const REQ_LATENCY_P95_RED_MS = 1500
+const CANARY_UPTIME_GREEN_PCT = 99
+const CANARY_UPTIME_AMBER_PCT = 95
+// Sanity check tráfico: si hay menos de X requests en la ventana,
+// probablemente sink de observability roto, no caída real de tráfico.
+const TRAFFIC_MIN_AMBER = 10
+const TRAFFIC_MIN_RED = 1
+
 type Status = 'green' | 'amber' | 'red' | 'unknown'
+type WindowKey = '1h' | '6h' | '12h' | '24h' | '7d'
+
+const WINDOW_HOURS: Record<WindowKey, number> = {
+  '1h': 1,
+  '6h': 6,
+  '12h': 12,
+  '24h': 24,
+  '7d': 24 * 7,
+}
+
+function parseWindow(raw: string | null): WindowKey {
+  if (raw && raw in WINDOW_HOURS) return raw as WindowKey
+  return '24h'
+}
 
 function classifyErrors(count: number): Status {
-  if (count >= ERROR_24H_RED) return 'red'
-  if (count >= ERROR_24H_AMBER) return 'amber'
+  if (count >= ERROR_RED) return 'red'
+  if (count >= ERROR_AMBER) return 'amber'
   return 'green'
 }
 function classifyDrift(count: number): Status {
@@ -65,6 +92,39 @@ function classifyInsertLatency(mean_ms: number | null): Status {
   if (mean_ms >= INSERT_MEAN_AMBER_MS) return 'amber'
   return 'green'
 }
+function classify4xx(count: number): Status {
+  if (count >= ERRORS_4XX_RED) return 'red'
+  if (count >= ERRORS_4XX_AMBER) return 'amber'
+  return 'green'
+}
+function classifyHydration(count: number): Status {
+  if (count >= HYDRATION_RED) return 'red'
+  if (count >= HYDRATION_AMBER) return 'amber'
+  return 'green'
+}
+function classifyLatencyP95(ms: number | null): Status {
+  if (ms === null) return 'unknown'
+  if (ms >= REQ_LATENCY_P95_RED_MS) return 'red'
+  if (ms >= REQ_LATENCY_P95_AMBER_MS) return 'amber'
+  return 'green'
+}
+function classifyCanaryUptime(pct: number | null): Status {
+  if (pct === null) return 'unknown'
+  if (pct >= CANARY_UPTIME_GREEN_PCT) return 'green'
+  if (pct >= CANARY_UPTIME_AMBER_PCT) return 'amber'
+  return 'red'
+}
+function classifyTraffic(count: number): Status {
+  if (count <= TRAFFIC_MIN_RED) return 'red'
+  if (count <= TRAFFIC_MIN_AMBER) return 'amber'
+  return 'green'
+}
+
+function percentile(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null
+  const idx = Math.ceil((p / 100) * sorted.length) - 1
+  return sorted[Math.max(0, Math.min(idx, sorted.length - 1))]
+}
 
 async function _GET(request: NextRequest) {
   const auth = await verifyAuth(request, '/api/admin/system-health')
@@ -75,60 +135,110 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  // Service role para leer tablas sensibles (validation_error_logs,
-  // stats_drift_log, v_insert_test_questions_latency).
+  // Parámetros
+  const window = parseWindow(request.nextUrl.searchParams.get('window'))
+  const windowHours = WINDOW_HOURS[window]
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000
+  const since = new Date(sinceMs).toISOString()
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
-  // Tres lecturas en paralelo
-  const [errorsResult, driftResult, latencyResult, lastCronResult] = await Promise.all([
-    // 1) Errores 5xx últimas 24h
+  // ─── 9 lecturas en paralelo ───
+  const [
+    errorsResult,
+    driftResult,
+    latencyResult,
+    lastCronResult,
+    errors4xxResult,
+    hydrationResult,
+    requestLatencyResult,
+    canaryEventsResult,
+    trafficResult,
+  ] = await Promise.all([
+    // 1) Errores 5xx en window
     supabase
       .from('validation_error_logs')
       .select('endpoint, error_type, created_at', { count: 'exact', head: false })
       .eq('severity', 'critical')
-      .gte('created_at', since24h)
+      .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(20),
 
-    // 2) Drift activo (filas con drift_pct > 5 en últimas 24h).
-    // Filtra explícitamente las filas técnicas '__cron_run__' y
-    // '__exception__' por nombre (sin LIKE — los `_` son wildcards
-    // single-char en LIKE y el escape de Postgres con `\_` no funciona
-    // con PostgREST sin ESCAPE clause).
+    // 2) Drift activo en window (drift_pct > 5).
+    // Filtra markers técnicos (__cron_run__, __exception__).
     supabase
       .from('stats_drift_log')
       .select('target_table, field_name, drift_pct, user_id, checked_at, notes', { count: 'exact', head: false })
-      .gte('checked_at', since24h)
+      .gte('checked_at', since)
       .gt('drift_pct', 5)
       .not('target_table', 'in', '("__cron_run__","__exception__")')
       .order('drift_pct', { ascending: false })
       .limit(20),
 
-    // 3) Latencia INSERT — top 1 variante por calls (la más representativa)
+    // 3) Latencia INSERT — histórico pg_stat_statements (NO window-able).
     supabase
       .from('v_insert_test_questions_latency')
       .select('*')
       .order('calls', { ascending: false })
       .limit(3),
 
-    // 4) Última ejecución del cron de drift — usa el marker
-    // '__cron_run__' que la función SQL inserta al final de cada
-    // ejecución, independientemente de si hay drift. Sin esto, un cron
-    // sano sin drift detectado parecería "muerto" al panel.
+    // 4) Última ejecución cron drift — fijo (no window-able).
     supabase
       .from('stats_drift_log')
       .select('checked_at, notes')
       .eq('target_table', '__cron_run__')
       .order('checked_at', { ascending: false })
       .limit(1),
+
+    // 5) Errores 4xx (NO 401/403 que son user-error normal)
+    supabase
+      .from('validation_error_logs')
+      .select('endpoint, http_status', { count: 'exact', head: false })
+      .gte('http_status', 400)
+      .lt('http_status', 500)
+      .not('http_status', 'in', '(401,403)')
+      .gte('created_at', since)
+      .limit(20),
+
+    // 6) Hydration mismatch
+    supabase
+      .from('observable_events')
+      .select('endpoint, created_at, metadata', { count: 'exact', head: false })
+      .eq('event_type', 'react_hydration_mismatch')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(20),
+
+    // 7) Latencia request_completed — sample para calcular p95
+    supabase
+      .from('observable_events')
+      .select('duration_ms, metadata')
+      .eq('event_type', 'request_completed')
+      .not('duration_ms', 'is', null)
+      .gte('created_at', since)
+      .limit(5000),
+
+    // 8) Canary events (todos canary_*_ok + _failed)
+    supabase
+      .from('observable_events')
+      .select('endpoint, event_type')
+      .like('endpoint', 'canary-%')
+      .or('event_type.like.%_ok,event_type.like.%_failed')
+      .gte('created_at', since)
+      .limit(10000),
+
+    // 9) Volumen tráfico (sanity check)
+    supabase
+      .from('observable_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_type', 'request_completed')
+      .gte('created_at', since),
   ])
 
-  // Procesar resultados con tolerancia a fallos parciales
+  // ─── Procesar 1-4 (existentes) ───
   const errorCount = errorsResult.error ? null : (errorsResult.count ?? 0)
   const errorSamples = errorsResult.data ?? []
 
@@ -137,23 +247,91 @@ async function _GET(request: NextRequest) {
 
   const insertVariants = latencyResult.data ?? []
   const topInsert = insertVariants[0] ?? null
-  // mean_ms viene como string por NUMERIC → coerce
   const topInsertMean = topInsert?.mean_ms != null ? Number(topInsert.mean_ms) : null
 
   const lastDriftCheckAt = lastCronResult.data?.[0]?.checked_at ?? null
   const cronStaleHours = lastDriftCheckAt
     ? (Date.now() - new Date(lastDriftCheckAt).getTime()) / 3_600_000
     : null
-  // Si el último check tiene >36h, el cron está caído
   const cronStatus: Status = cronStaleHours == null
     ? 'unknown'
     : cronStaleHours > 36 ? 'red' : cronStaleHours > 26 ? 'amber' : 'green'
 
+  // ─── Procesar 5: errores 4xx ───
+  const errors4xxCount = errors4xxResult.error ? null : (errors4xxResult.count ?? 0)
+  const errors4xxTopEndpoints = (() => {
+    const byEndpoint: Record<string, number> = {}
+    for (const r of errors4xxResult.data ?? []) {
+      const k = (r as { endpoint: string }).endpoint ?? '(unknown)'
+      byEndpoint[k] = (byEndpoint[k] ?? 0) + 1
+    }
+    return Object.entries(byEndpoint)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([endpoint, count]) => ({ endpoint, count }))
+  })()
+
+  // ─── Procesar 6: hydration ───
+  const hydrationCount = hydrationResult.error ? null : (hydrationResult.count ?? 0)
+  const hydrationSamples = (hydrationResult.data ?? []).map(h => ({
+    endpoint: (h as { endpoint: string }).endpoint,
+    created_at: (h as { created_at: string }).created_at,
+  })).slice(0, 5)
+
+  // ─── Procesar 7: latencia p95 ───
+  const durations = (requestLatencyResult.data ?? [])
+    .map(r => Number((r as { duration_ms: number }).duration_ms))
+    .filter(n => Number.isFinite(n) && n > 0)
+    .sort((a, b) => a - b)
+  const p50 = percentile(durations, 50)
+  const p95 = percentile(durations, 95)
+  const p99 = percentile(durations, 99)
+
+  // ─── Procesar 8: canary uptime agregado ───
+  const canaryEvents = canaryEventsResult.data ?? []
+  const canaryOks = canaryEvents.filter(e =>
+    typeof (e as { event_type: string }).event_type === 'string' &&
+    (e as { event_type: string }).event_type.endsWith('_ok'),
+  ).length
+  const canaryFails = canaryEvents.filter(e =>
+    typeof (e as { event_type: string }).event_type === 'string' &&
+    (e as { event_type: string }).event_type.endsWith('_failed'),
+  ).length
+  const canaryDecided = canaryOks + canaryFails
+  const canaryUptimePct = canaryDecided > 0
+    ? (canaryOks / canaryDecided) * 100
+    : null
+
+  // Desglose por canary endpoint
+  const canaryByEndpoint: Record<string, { ok: number; failed: number }> = {}
+  for (const e of canaryEvents) {
+    const ep = (e as { endpoint: string }).endpoint
+    const et = (e as { event_type: string }).event_type
+    if (!canaryByEndpoint[ep]) canaryByEndpoint[ep] = { ok: 0, failed: 0 }
+    if (et.endsWith('_ok')) canaryByEndpoint[ep].ok++
+    if (et.endsWith('_failed')) canaryByEndpoint[ep].failed++
+  }
+  const canaryBreakdown = Object.entries(canaryByEndpoint).map(([endpoint, c]) => {
+    const decided = c.ok + c.failed
+    return {
+      endpoint,
+      ok: c.ok,
+      failed: c.failed,
+      uptimePct: decided > 0 ? (c.ok / decided) * 100 : null,
+    }
+  })
+
+  // ─── Procesar 9: tráfico ───
+  const trafficCount = trafficResult.error ? null : (trafficResult.count ?? 0)
+
   return NextResponse.json({
     success: true,
     generatedAt: new Date().toISOString(),
+    window,
+    windowHours,
     indicators: {
-      errors_5xx_24h: {
+      // ─── CRÍTICOS (cabecera) ───
+      errors_5xx: {
         status: errorCount == null ? 'unknown' : classifyErrors(errorCount),
         count: errorCount,
         samples: errorSamples.map(e => ({
@@ -161,9 +339,9 @@ async function _GET(request: NextRequest) {
           error_type: e.error_type,
           created_at: e.created_at,
         })),
-        thresholds: { amber: ERROR_24H_AMBER, red: ERROR_24H_RED },
+        thresholds: { amber: ERROR_AMBER, red: ERROR_RED },
       },
-      drift_24h: {
+      drift: {
         status: driftCount == null ? 'unknown' : classifyDrift(driftCount),
         count: driftCount,
         samples: driftSamples.map(d => ({
@@ -188,13 +366,52 @@ async function _GET(request: NextRequest) {
           query_snippet: v.query_snippet,
         })),
         thresholds: { amber: INSERT_MEAN_AMBER_MS, red: INSERT_MEAN_RED_MS },
-        note: 'mean_ms histórico de pg_stat_statements (incluye RTT cliente→pooler→DB y eventos de contención). El INSERT puro en BD es ~1.5ms p50.',
+        note: 'mean_ms histórico pg_stat_statements (NO depende de window).',
       },
       drift_cron: {
         status: cronStatus,
         last_run_at: lastDriftCheckAt,
         stale_hours: cronStaleHours != null ? Math.round(cronStaleHours * 10) / 10 : null,
         thresholds: { amber: '>26h sin correr', red: '>36h sin correr' },
+        note: 'Ventana fija — el cron corre cada 24h independiente del window seleccionado.',
+      },
+
+      // ─── SECUNDARIOS (derivados de observable_events) ───
+      canary_uptime: {
+        status: classifyCanaryUptime(canaryUptimePct),
+        uptimePct: canaryUptimePct != null ? Math.round(canaryUptimePct * 100) / 100 : null,
+        oks: canaryOks,
+        failed: canaryFails,
+        breakdown: canaryBreakdown,
+        thresholds: { green: '≥99%', amber: '≥95%' },
+      },
+      errors_4xx: {
+        status: errors4xxCount == null ? 'unknown' : classify4xx(errors4xxCount),
+        count: errors4xxCount,
+        topEndpoints: errors4xxTopEndpoints,
+        thresholds: { amber: ERRORS_4XX_AMBER, red: ERRORS_4XX_RED },
+        note: 'Excluye 401/403 (user-error normal de auth).',
+      },
+      hydration_mismatch: {
+        status: hydrationCount == null ? 'unknown' : classifyHydration(hydrationCount),
+        count: hydrationCount,
+        samples: hydrationSamples,
+        thresholds: { amber: HYDRATION_AMBER, red: HYDRATION_RED },
+      },
+      request_latency: {
+        status: classifyLatencyP95(p95),
+        p50_ms: p50,
+        p95_ms: p95,
+        p99_ms: p99,
+        sampleCount: durations.length,
+        thresholds: { amber: REQ_LATENCY_P95_AMBER_MS, red: REQ_LATENCY_P95_RED_MS },
+        note: 'Sampling 10% de request_completed (server-side withErrorLogging).',
+      },
+      traffic_volume: {
+        status: trafficCount == null ? 'unknown' : classifyTraffic(trafficCount),
+        count: trafficCount,
+        thresholds: { amber: `≤${TRAFFIC_MIN_AMBER} eventos`, red: `≤${TRAFFIC_MIN_RED} eventos` },
+        note: 'Sanity check del sink de observability. Caída drástica vs baseline = sink roto, no caída de tráfico real.',
       },
     },
   })
