@@ -168,7 +168,7 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 | - [x] | ~~`app/api/admin/infra-stats/route.ts`~~ | ~~3~~ | ✅ **Migrado 27/05** (commit pendiente): 3 queries (`user_sessions count`, `daily_question_usage`, `validation_error_logs` con OR+ILIKE) → Drizzle. Eliminado el `createClient(SERVICE_ROLE)` paralelo a Drizzle que mantenía el archivo. |
 | - [ ] | `components/TestLayout.tsx` | 2 | **Cliente sensible** (tests E2E lo cubren — verificar al migrar). |
 | - [ ] | `components/ExamLayout.tsx` | 2 | **Cliente sensible**. Mismo cuidado que TestLayout. |
-| - [ ] | `contexts/AuthContext.tsx` | 1 | **Cliente top-tier** — toca auth, tocarlo con cuidado. |
+| - [ ] | `contexts/AuthContext.tsx` | 1 | ⚠️ **Intento de migración 27/05 revertido**: el `supabase.from('user_profiles').single()` devuelve `error.code='PGRST116'` para "no encontrado" vs otro código para "error HTTP transitorio". `loadUserProfile()` no discrimina ambos (devuelve `null` en ambos casos), lo que provocaría duplicación de perfil si el endpoint falla transitoriamente. Para migrar: o cambiar `loadUserProfile` a discriminated union, o crear endpoint `GET /api/profile/exists?userId=...` con 200/404 explícito. |
 | - [x] | ~~`lib/api/rollout/problematic-articles-logs.ts`~~ | ~~1~~ | ✅ **Migrado 27/05 tarde**: `createClient(SERVICE_ROLE).insert()` fire-and-forget → `getAdminDb()` + raw SQL `db.execute(sql\`INSERT ...\`)`. |
 | - [x] | ~~`app/api/admin/conversions/views/route.ts`~~ | ~~2~~ | ✅ **Migrado 27/05 tarde**: `admin.supabase.from(view)` → `db.select().from(pgView)`. Vistas tipadas en schema. `Promise.allSettled` mantiene patrón "no rompe si una falla". |
 

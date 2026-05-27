@@ -399,7 +399,22 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     try {
       console.log('👤 Verificando perfil existente para:', authUser.email)
 
-      // 🔧 PRIMERO: Verificar si el perfil ya existe en la BD
+      // 🔧 PRIMERO: Verificar si el perfil ya existe en la BD.
+      //
+      // ⚠️ Estratégicamente NO migrado (Fase 3 strangler fig agnosticismo-supabase):
+      // este sitio necesita distinguir entre "perfil no existe" (PGRST116) y
+      // "error HTTP sostenido" (perfil existe pero no se pudo cargar). El
+      // supabase.from().single() devuelve { error.code: 'PGRST116' } en el
+      // primer caso y { error.code: ... } distinto en el segundo. Sin esa
+      // discriminación, un fallo transitorio del endpoint causaría que
+      // ensureUserProfile cree un perfil duplicado (resetea plan_type).
+      //
+      // Para migrar este caso a Drizzle hay que:
+      //   1. Cambiar loadUserProfile() para devolver discriminated union
+      //      ({ type: 'found' | 'not_found' | 'error' }), o
+      //   2. Crear endpoint específico GET /api/profile/exists?userId=...
+      //      que devuelva 200 / 404 con shape mínimo.
+      // Pendiente en próximo PR de Fase 3.
       const { data: existingProfile, error: checkError } = await supabase
         .from('user_profiles')
         .select('id, plan_type, registration_source')
