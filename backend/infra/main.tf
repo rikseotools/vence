@@ -113,6 +113,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           local.admin_alerts_email_ssm_arn,
           local.supabase_jwt_secret_ssm_arn,
           local.sentry_dsn_ssm_arn,
+          local.stripe_secret_key_ssm_arn,
         ]
       },
       {
