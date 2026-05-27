@@ -23,9 +23,21 @@ function getAuditLogDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getTraceDb()
 }
 
-// Deploy version: Vercel inyecta VERCEL_GIT_COMMIT_SHA en build time
-const DEPLOY_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'local'
+// Deploy version: Vercel inyectaba VERCEL_GIT_COMMIT_SHA; en ECS Fargate
+// (cutover 2026-05-26) usamos GIT_COMMIT_SHA (build-arg del Dockerfile).
+// Fallback final 'unknown' para casos imprevistos en producción.
+const DEPLOY_VERSION =
+  process.env.GIT_COMMIT_SHA?.slice(0, 8)
+  || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
+  || (process.env.NODE_ENV === 'production' ? 'unknown' : 'local')
 const VERCEL_REGION = process.env.VERCEL_REGION || null
+
+// Skip persistence solo en dev local. En producción (Vercel o ECS)
+// SIEMPRE escribir, aunque DEPLOY_VERSION sea 'unknown' (mejor un log
+// sin SHA que perder el error). Bug detectado 2026-05-27 (cabo #7):
+// tras cutover a ECS, VERCEL_GIT_COMMIT_SHA es undefined → DEPLOY_VERSION='local'
+// → guard descartaba 100% de 5xx. 643 errores perdidos en 24h.
+const SKIP_PERSISTENCE = process.env.NODE_ENV !== 'production'
 
 /**
  * Clasifica un error en un errorType conocido.
@@ -70,7 +82,7 @@ export function classifyError(error: unknown): 'timeout' | 'network' | 'db_conne
  */
 export function logValidationError(input: ValidationErrorLogInput): void {
   // No loguear errores en desarrollo local — solo ruido
-  if (DEPLOY_VERSION === 'local') return
+  if (SKIP_PERSISTENCE) return
 
   // `after()` mantiene la lambda viva tras response, garantiza que el
   // INSERT y su cleanup de conexión TCP terminen. Fallback a void si no
@@ -104,7 +116,7 @@ export function logValidationError(input: ValidationErrorLogInput): void {
  * error al cliente).
  */
 export async function logValidationErrorAwait(input: ValidationErrorLogInput): Promise<void> {
-  if (DEPLOY_VERSION === 'local') return
+  if (SKIP_PERSISTENCE) return
   try {
     await _insertLog(input)
   } catch (err) {

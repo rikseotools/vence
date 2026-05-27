@@ -64,6 +64,11 @@ ARG DATABASE_URL
 ARG DATABASE_URL_REPLICA
 ARG SUPABASE_SERVICE_ROLE_KEY
 
+# Git commit SHA del build — usado por validation-error-log y withErrorLogging
+# para etiquetar logs con deploy_version. Sin esto, DEPLOY_VERSION cae a
+# 'unknown' (en prod) o 'local' (en dev) → en ECS prod queremos el SHA real.
+ARG GIT_COMMIT_SHA
+
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
@@ -80,6 +85,7 @@ ENV NEXT_PUBLIC_USE_CHAT_V2=${NEXT_PUBLIC_USE_CHAT_V2}
 ENV DATABASE_URL=${DATABASE_URL}
 ENV DATABASE_URL_REPLICA=${DATABASE_URL_REPLICA}
 ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
 
 RUN npm run build
 
@@ -91,6 +97,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Propagar GIT_COMMIT_SHA del build al runtime (multi-stage Docker no
+# hereda ARGs entre stages). Usado por validation-error-log/queries.ts y
+# withErrorLogging.ts para etiquetar logs con deploy_version.
+ARG GIT_COMMIT_SHA
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
 
 # Usuario non-root por buena práctica (ECS Fargate no lo exige pero ayuda).
 RUN addgroup --system --gid 1001 nodejs

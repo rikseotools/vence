@@ -19,7 +19,10 @@ import { emit } from '@/lib/observability/emit'
  */
 const SUCCESS_TIMING_SAMPLE_RATE = 0.1
 
-const DEPLOY_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'local'
+const DEPLOY_VERSION =
+  process.env.GIT_COMMIT_SHA?.slice(0, 8)
+  || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
+  || (process.env.NODE_ENV === 'production' ? 'unknown' : 'local')
 
 /**
  * Enriquece eventos Sentry con tags + user context. Bloque 4 — completa
