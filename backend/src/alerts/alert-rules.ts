@@ -452,10 +452,24 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
  * la observabilidad — Andrea escribió cuando ya había pagado y no se
  * activó.
  *
- * Lógica: comparar tráfico de la hora previa cerrada con la mediana
- * de las 6 horas anteriores a esa. Si la actual es <40% de la mediana
- * Y la mediana es razonablemente alta (>100 req/h, evita horas dormidas
- * de noche con poco tráfico), alertar.
+ * Lógica (revisada 2026-05-27 tras 10 falsos positivos nocturnos):
+ * comparar la hora previa cerrada contra la mediana de la MISMA HORA
+ * DEL DÍA en los últimos 7 días (excluyendo hoy). Esto neutraliza el
+ * patrón diurno — antes la regla comparaba la última hora (madrugada,
+ * ~50 req) contra mediana de 6h anteriores (que incluían inicio de
+ * noche con ~800 req) → 90% falsa caída cada noche entre 01:00 y 08:00
+ * CEST. Spam de 10 emails CRITICAL madrugada del 27/05.
+ *
+ * Threshold de baseline > 30 req: si la app no tiene actividad ni
+ * siquiera en su hora normal, no es un drop accionable (probable
+ * apagado/maintenance ventana, no incidente).
+ *
+ * Warm-up de 7 días: si el slot horario no tiene >=1 muestra histórica
+ * (observable_events empezó 2026-05-26), base.median = NULL y el WHERE
+ * no se cumple → no dispara. Tradeoff aceptado: durante warm-up la
+ * regla queda silente pero sin falsos positivos. Otras reglas
+ * (RULE_HTTP_5XX_SPIKE, RULE_RUNTIME_KILL, monitor post-deploy
+ * manual) cubren detección de incidentes mientras tanto.
  *
  * Excluye localhost (dev). Excluye la hora en curso (incompleta).
  */
@@ -467,29 +481,37 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
   name: 'traffic_drop',
   severity: 'critical',
   query: sql`
-    WITH hourly AS (
+    WITH cur AS (
+      -- Hora previa cerrada (la que ya tenemos completa)
+      SELECT COUNT(*)::int AS n
+      FROM observable_events
+      WHERE event_type = 'request_completed'
+        AND ts >= date_trunc('hour', NOW() - INTERVAL '1 hour')
+        AND ts <  date_trunc('hour', NOW())
+        AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
+    ),
+    same_hour_history AS (
+      -- Misma hora-del-día UTC, últimos 7 días (excluyendo hoy)
       SELECT date_trunc('hour', ts) AS hr, COUNT(*)::int AS n
       FROM observable_events
       WHERE event_type = 'request_completed'
-        AND ts >= NOW() - INTERVAL '8 hours'
-        AND ts < date_trunc('hour', NOW())
+        AND ts >= NOW() - INTERVAL '8 days'
+        AND ts <  date_trunc('hour', NOW() - INTERVAL '1 hour')
+        AND EXTRACT(HOUR FROM ts AT TIME ZONE 'UTC')
+            = EXTRACT(HOUR FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
         AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
       GROUP BY 1
     ),
-    cur AS (
-      SELECT n FROM hourly WHERE hr = date_trunc('hour', NOW() - INTERVAL '1 hour')
-    ),
     base AS (
       SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY n)::int AS median
-      FROM hourly
-      WHERE hr < date_trunc('hour', NOW() - INTERVAL '1 hour')
+      FROM same_hour_history
     )
     SELECT
       cur.n AS "currentN",
       base.median AS "baselineMedian",
       ROUND(100.0 * (1 - cur.n::numeric / NULLIF(base.median,0)))::int AS "dropPct"
     FROM cur, base
-    WHERE base.median > 100
+    WHERE base.median > 30
       AND cur.n < base.median * 0.4
   `,
   shouldFire: (rows) => rows.length > 0,
