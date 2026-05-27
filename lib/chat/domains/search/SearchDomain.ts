@@ -157,6 +157,16 @@ export class SearchDomain implements ChatDomain {
       // Si por algún motivo falla la import, seguir con search normal
     }
 
+    // Short-circuit: si es claramente una consulta de informática/ofimática
+    // (Excel, Word, Windows...), capturar aquí — handle() la enrutará a
+    // handleInformaticsQuery. Antes estas queries caían a fallback porque
+    // searchIndicators no las contemplaba (ej: "que hace DERECHA (B2;1)",
+    // "existe la funcion LIMPIAR?", "y JERARQUIA.EQV?").
+    if (this.isInformaticsQuery(context)) {
+      logger.debug('SearchDomain: Detected informatics query in canHandle', { domain: 'search' })
+      return true
+    }
+
     const msg = context.currentMessage.toLowerCase()
 
     // Patrones que indican búsqueda de información legal
@@ -223,6 +233,28 @@ export class SearchDomain implements ChatDomain {
 
     // Verificar indicadores de búsqueda
     if (searchIndicators.some(regex => regex.test(msg))) return true
+
+    // Preguntas legales conversacionales (sin mencionar ley explícita ni usar
+    // verbos típicos como "qué dice"). Cubre casos reales del cluster fallback:
+    //   "Cuantas salas tiene el tsupremo"
+    //   "qué salas componen el tribunal central de instancia"
+    //   "Quienes integran las conferencias sectoriales"
+    //   "El permiso por neonato hospitalizado..."
+    //   "Sobre la regencia, puede ser regente alguien no español?"
+    //   "Órganos legislativos de la UE?"
+    // Criterio: substantivo jurídico/administrativo claro + (interrogativa al
+    // inicio O termina en ?). Sustantivos como sala/tribunal/conferencias
+    // ya marcan claramente intención legal aunque no haya referencia a ley.
+    // Nota técnica: (?:^|\W) en vez de \b porque \b no funciona ante tildes
+    // en regex JS sin flag u — y Ó/Á/É son frecuentes en términos jurídicos.
+    const legalNouns = /(?:^|\W)(tribunal|audiencia|consejo|comisi[oó]n|comit[eé]|junta|sala|secci[oó]n|c[aá]mara|congreso|senado|cortes|gobierno|ministeri|ministr|secretari|subsecretari|presidenc|vicepresidenc|defensor|fiscal|magistrad|funcionari|administraci[oó]n|comunidad\s+aut[oó]noma|comunidades\s+aut[oó]nomas|parlament|comisi[oó]n\s+europea|consejo\s+europeo|monarc|regent|regencia|nacionalidad|permiso|licencia|maternidad|paternidad|jubilaci[oó]n|excedencia|reglamento|decreto|orden|estatuto|reforma|funci[oó]n\s+p[uú]blica|empleado\s+p[uú]blico|conferenc|[oó]rgan|neonato)/i
+    const conversationalQuestion = /^(cu[aá]nt[oa]s?|qui[eé]n(es)?|d[oó]nde|c[oó]mo|por\s*qu[eé]|qu[eé](\s+\w+){1,3}|cu[aá]l(es)?|sobre|en\s+qu[eé])\b/i
+    if (legalNouns.test(context.currentMessage)) {
+      if (conversationalQuestion.test(context.currentMessage) || context.currentMessage.trim().endsWith('?')) {
+        logger.debug('SearchDomain: Detected conversational legal question', { domain: 'search' })
+        return true
+      }
+    }
 
     // Follow-up de una respuesta previa de search
     // Si la última respuesta fue de este dominio y el mensaje es una pregunta genérica
@@ -457,12 +489,35 @@ export class SearchDomain implements ChatDomain {
       return true
     }
 
+    // Funciones Excel ESPAÑOLAS distintivas (nombres que no se confunden con
+    // palabras comunes). Si el usuario las menciona — con o sin '=' delante, con
+    // o sin '(' detrás — es claramente una consulta de Excel. Catch-all que
+    // captura ejemplos reales del chat: "existe la funcion LIMPIAR?",
+    // "que hace DERECHA (B2;1)", "y LARGO?", "diferencia entre =SUSTITUIR y
+    // =REEMPLAZAR", "JERARQUIA.EQV?" — todos caían a fallback antes.
+    // Palabras comunes como SI/NO/Y/O/MAX/MIN/SUMA/HOY/AÑO se omiten aquí: se
+    // exigen con paréntesis vía el patrón =FUNC( del array inferior.
+    const EXCEL_DISTINCTIVE = [
+      'SUSTITUIR','REEMPLAZAR','IZQUIERDA','DERECHA','EXTRAE','CONCATENAR','CONCAT',
+      'MAYUSC','MINUSC','NOMPROPIO','LARGO','ESPACIOS','LIMPIAR','REPETIR','ENCONTRAR',
+      'HALLAR','CARACTER','CODIGO','XO',
+      'BUSCARV','BUSCARH','INDICE','COINCIDIR','INDIRECTO','DIRECCION','ELEGIR','DESREF',
+      'SUMAR','PROMEDIO','CONTARA','REDONDEAR','ENTERO','RESIDUO','POTENCIA','PRODUCTO',
+      'MEDIANA','MODA','DESVEST','JERARQUIA','PERCENTIL','CUARTIL',
+      'FECHA','DIASEM','DIASLAB','SIFECHA','FECHANUMERO',
+      'ESBLANCO','ESERR','ESERROR','ESNUMERO','ESTEXTO','ESLOGICO','ESNOTEXTO',
+    ].join('|')
+
     // Detectar por patrones en el mensaje
     const informaticsPatterns = [
       // Excel
       /\b(excel|hoja\s+de\s+c[aá]lculo|spreadsheet)\b/i,
       /\b(celda|celdas|rango|fila|columna)\b.*\b[a-z]\d/i,
-      /=[A-Z]+\(/i, // fórmulas tipo =INDICE(, =SUMA(, =BUSCARV(
+      /=\s*[A-ZÑ]+\s*\(/, // fórmulas tipo =INDICE(, =SUMA(, =BUSCARV( (permite espacios)
+      /=[A-ZÑ]+\s+y\s+=[A-ZÑ]+/i, // 'diferencia entre =SUSTITUIR y =REEMPLAZAR'
+      new RegExp(`\\b(?:${EXCEL_DISTINCTIVE})\\b`, 'i'), // funciones Excel distintivas
+      /\b[A-ZÑ]{2,}\.(?:CONJUNTO|SI|EQV|MEDIA|UNO|MAS|MENOS|MAYOR|MENOR|ERROR|ND|BLANCO|ESIMO)\b/i, // sufijos Excel
+      /\b[A-ZÑ]{4,}\s*\([A-Z0-9]/, // FUNC( seguido de arg (espacio opcional)
       /\b(indice|buscarv|buscarh|si\.conjunto|sumar\.si|contar\.si|promedio|concatenar|vlookup|hlookup|index|match)\b/i,
       /\b(tabla\s+din[aá]mica|pivot\s+table|formato\s+condicional|validaci[oó]n\s+de\s+datos)\b/i,
       // Word
