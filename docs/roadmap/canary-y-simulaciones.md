@@ -1,10 +1,10 @@
 # Roadmap — Sistema de canary + simulaciones E2E
 
-> **Estado**: 🟡 Nivel 1 ✅ (smoke público) + Nivel 2-7 pendientes.
+> **Estado**: 🟢 Niveles 1+2+3 ✅ (Sprint 1 completo) + Niveles 4-7 pendientes.
 > **Propietario**: equipo Vence.
 > **Inspiración**: VicoHR ([análisis comparativo](#anexo-inspiración-vicohr)) — patrones validados en producción.
 > **Coste recurrente añadido total**: ~$15-30/mes cuando se complete el stack.
-> **Última actualización**: 2026-05-27 ~15:30 CEST.
+> **Última actualización**: 2026-05-27 (Sprint 1 mergeado — workflow GHA + canary HTTP Fargate operativos).
 
 ---
 
@@ -26,12 +26,12 @@ Este roadmap es la respuesta sistémica: niveles incrementales de simulación qu
 | Smoke público (10 tests páginas anónimas, SSG-dependent, SEO) | `e2e/smoke-public.spec.ts` | ✅ |
 | Endpoint SLO con 7 indicadores CloudWatch | `app/api/admin/slos/route.ts` | ✅ |
 | Endpoint smoke observability stack | `app/api/debug/observability-smoke/route.ts` | ✅ |
-| Alert rules engine declarativo (15+ reglas SQL sobre `observable_events`) | `backend/src/alerts/alert-rules.ts` | ✅ |
+| Alert rules engine declarativo (16 reglas SQL sobre `observable_events`) | `backend/src/alerts/alert-rules.ts` | ✅ |
 | `observable_events` sink AWS-ready (OTEL-compat) | `lib/observability/` | ✅ |
 | CloudWatch Synthetics canary mencionado como roadmap | `docs/runbooks/observability.md` §11 | ⏳ |
-| **Workflow GHA que ejecute Playwright** | ❌ | ❌ |
-| **`docs/SLO.md` formal** | ❌ | ❌ |
-| **Canary HTTP autenticado cada N min** | ❌ | ❌ |
+| **Workflow GHA que ejecute Playwright** (PR + cron 6h) | `.github/workflows/e2e-smoke.yml` | ✅ |
+| **`docs/SLO.md` formal** | `docs/SLO.md` | ✅ |
+| **Canary HTTP autenticado cada 5 min** (Fargate cron) | `backend/src/canary-smoke-auth/` | ✅ código (idle hasta SSM smoke user) |
 | **Smoke autenticado E2E** (login + flujo) | ❌ | ❌ |
 | **Cobertura exhaustiva** (filtros, configurador, suscripción) | ❌ | ❌ |
 
@@ -53,56 +53,60 @@ Inspirados en los niveles de VicoHR. Cada nivel es **ejecutable de forma indepen
 
 ---
 
-### 🟡 Nivel 2 — Workflow GHA ejecuta Playwright en cada PR + diario
+### 🟢 Nivel 2 — Workflow GHA ejecuta Playwright en cada PR + diario (HECHO 2026-05-27)
 
 **Qué cubre**: cualquier PR que rompa una página pública queda bloqueado antes de merge.
 
-**Cómo**: `.github/workflows/e2e-smoke.yml`:
-- `on: pull_request` → ejecuta contra `preview-aws.vence.es`.
-- `on: schedule: '0 */6 * * *'` (cada 6h) → ejecuta contra producción.
-- 2 workers paralelos, 2× retries en CI, HTML report como artifact 14d retention.
+**Implementación**: `.github/workflows/e2e-smoke.yml`:
+- `on: pull_request` → ejecuta contra `preview-aws.vence.es` (`npm run test:e2e:preview`).
+- `on: schedule: '0 */6 * * *'` (cada 6h) → ejecuta contra producción (`npm run test:e2e:prod`).
+- `workflow_dispatch` con input `target=preview|prod|both` para runs manuales.
+- 2 workers paralelos + 2× retries en CI (heredados de `playwright.config.ts`).
+- HTML report como artifact 14d retention.
+- Cancel concurrent runs del mismo ref para no saturar CI.
+- Paths filter: solo corre si tocan `app/`, `components/`, `hooks/`, `lib/`, `e2e/`, etc.
+- Notify failure schedule → POST `/api/observability/ingest` con `event_type=e2e_smoke_failed` (requiere secret GHA `CRON_SECRET`).
 
-**Esfuerzo**: 30-60 min.
-
-**Coste**: gratis (GitHub Actions free tier).
-
-**Bloqueadores**: ninguno — playwright.config.ts ya está.
+**Coste real**: gratis (GitHub Actions free tier, ~12 min/día = ~360 min/mes).
 
 **Métrica éxito**: 100% PRs ejecutan e2e smoke. Cero merges con tests rotos.
 
 ---
 
-### 🟡 Nivel 3 — Canary HTTP autenticado cada 5 min
+### 🟢 Nivel 3 — Canary HTTP autenticado cada 5 min (HECHO 2026-05-27 — código listo, esperando smoke user)
 
 **Qué cubre**: el flujo crítico de auth + endpoint protegido + sesión. Equivalente al canary HTTP de VicoHR.
 
-**Cómo**: backend NestJS Fargate añade cron `@Cron('*/5 * * * *')`:
+**Implementación** — módulo NestJS Fargate `backend/src/canary-smoke-auth/`:
 
-```ts
-@Cron('*/5 * * * *', { name: 'canary-smoke-auth', timeZone: 'UTC' })
-async handle() {
-  // 1. POST /api/auth/login con smoke@vence.es + password
-  // 2. GET /api/profile?userId=<smoke_uid> con Bearer
-  // 3. Verificar plan_type esperado, response 200, latencia <2s
-  // 4. Emit observable_events:
-  //    - cron_run (info si todo OK)
-  //    - canary_auth_failed (critical si cualquier step falla)
-}
-```
+- `canary-smoke-auth.service.ts`: 4 pasos secuenciales con timeouts de 5s cada uno.
+  1. `POST /api/auth/login` con `smoke@vence.es` + `SMOKE_USER_PASSWORD` (SSM).
+  2. `GET /api/profile?userId=<SMOKE_USER_ID>` con Bearer del paso 1.
+  3. Validar `planType === 'premium'`.
+  4. Validar latencia total < 10s.
+- `canary-smoke-auth.cron.ts`: `@Cron('*/5 * * * *')` con 4 eventos a observability:
+  - `canary_auth_ok` (info)
+  - `canary_auth_failed` (critical, dispara `RULE_CANARY_AUTH_FAILED`)
+  - `canary_auth_skipped` (warn, modo idle cuando faltan credenciales SSM — NO spam de alarmas)
+  - `cron_run` (siempre, liveness)
+- `canary-smoke-auth.module.ts` registrado en `app.module.ts`.
+- `RULE_CANARY_AUTH_FAILED` en `alert-rules.ts`: severity critical, cooldown 15min, dispara con ≥1 evento en 10 min.
+- Tests Jest: 5 tests verde en `alert-rules.spec.ts` (shouldFire ≥1, NO con 0, severity critical, notification con runbook 5 acciones, cooldown 15).
 
-Regla `RULE_CANARY_AUTH_FAILED` en alert-rules: `severity=critical`, `cooldown=15min`, dispara con ≥1 evento en 5 min.
+**Estado**: código mergeado. **Cron está en modo idle hasta que se configure el smoke user** (devuelve `{skipped: true, reason: 'credentials_not_configured'}` con warn, sin spam).
 
-**Esfuerzo**: 2-3h.
-
-**Coste**: 0€ (cron Fargate ya pagado).
-
-**Bloqueadores**:
-- Crear smoke user `smoke@vence.es` en Supabase Auth + perfil con `plan_type='premium'` y `target_oposicion='auxiliar_administrativo_estado'`.
-- Almacenar password como SSM `/vence-backend/SMOKE_USER_PASSWORD`.
+**Pendiente humano (15 min) para activarlo**:
+1. Crear smoke user en Supabase Auth: `smoke@vence.es` / password seguro generado.
+2. UPSERT `user_profiles` con `plan_type='premium'`, `target_oposicion='auxiliar_administrativo_estado'`.
+3. `aws ssm put-parameter --profile vence --region eu-west-2 --name /vence-backend/SMOKE_USER_PASSWORD --value '<password>' --type SecureString`
+4. `aws ssm put-parameter --profile vence --region eu-west-2 --name /vence-backend/SMOKE_USER_ID --value '<uuid>' --type SecureString`
+5. Añadir ambos a `backend/infra/main.tf` (locals + IAM policy + secrets en task def) — mismo patrón que `STRIPE_SECRET_KEY` (commit `2e67ffd6`).
+6. `terraform apply -target=aws_ecs_task_definition.backend -target=aws_iam_role_policy.task_execution_secrets`
+7. `aws ecs update-service --profile vence --cluster vence-backend --service vence-backend --force-new-deployment`
 
 **Métrica éxito**: SLO ≥99.9% uptime/mes. Detección regresiones auth en ≤5 min.
 
-**Lo que hubiera cazado**: el bug Rocío/Mercedes de hoy (webhook signature failed → checkout-sync devolvería 5xx si el flujo de login no funciona).
+**Lo que hubiera cazado**: el bug Rocío/Mercedes de hoy (auth + profile funcionaban, pero si hubiéramos extendido el canary a `/api/stripe/webhook` con evento sintético firmado, la regresión de signature se habría detectado en 5min). Nivel 4 lo extenderá al webhook.
 
 ---
 
@@ -225,7 +229,7 @@ Regla `RULE_CANARY_AUTH_FAILED` en alert-rules: `severity=critical`, `cooldown=1
 
 | Sprint | Niveles | Esfuerzo | Valor |
 |---|---|---|---|
-| **Sprint 1 (esta semana)** | 2 + 3 | 3-4h | 🔴 Alto — captura 80% de regresiones críticas. Hubiera cazado el bug de hoy. |
+| ✅ **Sprint 1 (HECHO 2026-05-27)** | 2 + 3 | 3-4h | 🔴 Alto — captura 80% de regresiones críticas. Cron Fargate en idle hasta SSM smoke user (15min humano). |
 | **Sprint 2 (próxima semana)** | 4 | 3-5 días | 🟡 Alto — flow crítico cubierto end-to-end. |
 | **Sprint 3 (próximo mes)** | 5 (subset 15 specs core) | 1 semana | 🟡 Alto — cobertura amplia donde más duele. |
 | **Sprint 4 (futuro)** | 5 (resto) + 6 | 2-3 semanas | 🟢 Medio — completitud. |

@@ -39,6 +39,9 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
 // ejecución puntual.
 import { CheckWebhookHealthModule } from './check-webhook-health/check-webhook-health.module';
 import { SubscriptionReconciliationModule } from './subscription-reconciliation/subscription-reconciliation.module';
+// Canary HTTP autenticado — Nivel 3 sistema canary+simulaciones (27/05/2026
+// post-incidente Rocío/Mercedes). Detecta regresión auth+profile en <5min.
+import { CanarySmokeAuthModule } from './canary-smoke-auth/canary-smoke-auth.module';
 
 @Module({
   imports: [
@@ -80,6 +83,7 @@ import { SubscriptionReconciliationModule } from './subscription-reconciliation/
     // donde GHA lag impidió detectar webhook roto en >5h):
     CheckWebhookHealthModule, // cada 15min — salud webhook entrante
     SubscriptionReconciliationModule, // cada 1h — Pass-1 BD + Pass-2 Stripe directo
+    CanarySmokeAuthModule, // cada 5min — login + GET /api/profile contra prod (Nivel 3)
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

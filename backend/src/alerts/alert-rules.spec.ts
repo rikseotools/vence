@@ -16,6 +16,7 @@ import {
   RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED,
   RULE_STRIPE_WEBHOOK_4XX_BURST,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
+  RULE_CANARY_AUTH_FAILED,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -387,5 +388,52 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
 
   it('severity=error — el daño está mitigado por el auto-fix, pero el bug raíz no', () => {
     expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.severity).toBe('error');
+  });
+});
+
+describe('RULE_CANARY_AUTH_FAILED', () => {
+  it('dispara con ≥1 fallo (cualquier canary auth roto = users afectados ahora)', () => {
+    expect(
+      RULE_CANARY_AUTH_FAILED.shouldFire([
+        { n: 1, lastStep: 'login', lastError: 'HTTP 500', lastStatus: 500 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con n=0 ni filas vacías (canary verde = silencio)', () => {
+    expect(
+      RULE_CANARY_AUTH_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null, lastStatus: null },
+      ]),
+    ).toBe(false);
+    expect(RULE_CANARY_AUTH_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('severity=critical (P1 — flow crítico de auth roto en prod)', () => {
+    expect(RULE_CANARY_AUTH_FAILED.severity).toBe('critical');
+  });
+
+  it('notification incluye step + http_status + error + runbook con 5 acciones', () => {
+    const notif = RULE_CANARY_AUTH_FAILED.buildNotification([
+      {
+        n: 3,
+        lastStep: 'profile',
+        lastError: 'Profile falló: HTTP 401 Unauthorized',
+        lastStatus: 401,
+      },
+    ]);
+    expect(notif.title).toContain('3');
+    expect(notif.title).toContain('Canary');
+    expect(notif.body).toContain('profile');
+    expect(notif.body).toContain('401');
+    expect(notif.body).toContain('Unauthorized');
+    expect(notif.body).toContain('/admin/salud-sistema');
+    expect(notif.body).toContain('rollback');
+    expect(notif.body).toContain('canary-y-simulaciones.md');
+    expect(notif.fingerprint).toBe('canary_auth_failed');
+  });
+
+  it('cooldown 15 min (saber rápido pero sin spam si la regresión persiste)', () => {
+    expect(RULE_CANARY_AUTH_FAILED.cooldownMin).toBe(15);
   });
 });

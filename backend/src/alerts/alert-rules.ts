@@ -802,6 +802,54 @@ export const RULE_STRIPE_WEBHOOK_4XX_BURST: AlertRule<{
 };
 
 /**
+ * Canary auth failed — el cron `canary-smoke-auth` (Fargate cada 5min, Nivel 3
+ * del roadmap canary-y-simulaciones) ejecuta login + GET /api/profile contra
+ * producción. Cualquier fallo es alarma critical inmediata.
+ *
+ * Hubiera cazado el incidente Rocío/Mercedes (2026-05-27) en ≤5 min,
+ * sin depender del feedback humano.
+ *
+ * Cooldown 15 min para evitar spam si la regresión persiste; con 1 sola
+ * ocurrencia ya dispara (sin agregación) porque cada fallo de auth en
+ * producción es P1 por definición.
+ */
+export const RULE_CANARY_AUTH_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_auth_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(http_status ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_auth_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary auth en producción FALLÓ (${r.n} en 10 min) — flow login+profile roto`,
+      body: `El canary HTTP autenticado (cron Fargate cada 5 min) detectó que el flow crítico login → GET /api/profile NO funciona en https://www.vence.es.\n\nESTO ES P1: cualquier usuario nuevo o existente que intente loguearse/ver su perfil ahora mismo está afectado. Mismo patrón que el incidente Rocío/Mercedes (27/05/2026) donde tardamos horas en darnos cuenta por feedback humano.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. Verificar /admin/salud-sistema → SLO-05 (5xx user-facing).\n  2. Ver últimos deploys: Vercel + ECS vence-frontend.\n  3. Reproducir manualmente: curl POST /api/auth/login con smoke@vence.es.\n  4. Si reciente deploy → rollback Vercel (1 click) o ECS (force-new-deployment con task def anterior).\n  5. Logs Fargate del cron canary-smoke-auth para el step exacto.\n\nRoadmap canary: docs/roadmap/canary-y-simulaciones.md §Nivel 3.`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 10,
+      },
+      fingerprint: 'canary_auth_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -829,4 +877,6 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB as AlertRule,
   // Salud del frontend desde server-side metrics (no depende del cliente)
   RULE_TRAFFIC_DROP as AlertRule,
+  // Canary HTTP autenticado (2026-05-27, Nivel 3 sistema canary+simulaciones)
+  RULE_CANARY_AUTH_FAILED as AlertRule,
 ];
