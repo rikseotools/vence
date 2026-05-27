@@ -5,7 +5,6 @@
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import { createClient } from '@supabase/supabase-js'
 
 // Importar tipos desde el archivo centralizado
 import {
@@ -399,18 +398,14 @@ export default function AdminFeedbackPage() {
 
         // Si la conversación está en waiting_admin, marcar como vista (quitar pendiente)
         if (conversation.status === 'waiting_admin') {
-          const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-          )
-
-          await supabaseAdmin
-            .from('feedback_conversations')
-            .update({
+          await fetch('/api/v2/admin/feedback/mark-viewed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: conversation.id,
               status: 'waiting_user',
-              admin_viewed_at: new Date().toISOString()
-            })
-            .eq('id', conversation.id)
+            }),
+          })
 
           // Actualizar estado local inmediatamente
           setConversations(prev => ({
@@ -460,30 +455,22 @@ export default function AdminFeedbackPage() {
 
     setSendingInlineMessage(true)
     try {
-      // Usar service role para crear conversación si no existe (bypass RLS).
-      // El endpoint /api/v2/feedback/respond se encarga de INSERT msg + campana + email.
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
       let conversation = conversations[selectedFeedback.id]
 
       // Si no hay conversación, crear una antes de llamar al endpoint
       if (!conversation) {
-        const { data: newConv, error: convError } = await supabaseAdmin
-          .from('feedback_conversations')
-          .insert({
-            feedback_id: selectedFeedback.id,
-            user_id: selectedFeedback.user_id,
+        const res = await fetch('/api/v2/admin/feedback/create-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            feedbackId: selectedFeedback.id,
+            userId: selectedFeedback.user_id,
             status: 'waiting_admin',
-            last_message_at: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (convError) throw convError
-        conversation = newConv
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || 'Error creando conversación')
+        conversation = json.conversation
 
         setConversations(prev => ({
           ...prev,
@@ -540,23 +527,17 @@ export default function AdminFeedbackPage() {
     setNewConvUser(null)
 
     try {
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
-      const { data: profile, error } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id, email, full_name, nickname, plan_type, target_oposicion')
-        .eq('email', newConvEmail.trim().toLowerCase())
-        .single()
-
-      if (error || !profile) {
+      const res = await fetch('/api/v2/admin/feedback/find-user-by-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newConvEmail.trim().toLowerCase() }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.profile) {
         alert('Usuario no encontrado con ese email')
         return
       }
-
-      setNewConvUser(profile)
+      setNewConvUser(json.profile)
     } catch (error) {
       console.error('Error buscando usuario:', error)
       alert('Error al buscar usuario')
@@ -572,44 +553,21 @@ export default function AdminFeedbackPage() {
     setNewConvCreating(true)
 
     try {
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
-      // 1. Crear feedback inicial (usar resumen del mensaje como identificador)
+      // 1+2 atómicos: INSERT user_feedback + INSERT feedback_conversation
       const messagePreview = newConvMessage.trim().substring(0, 100) + (newConvMessage.length > 100 ? '...' : '')
-      const { data: feedback, error: feedbackError } = await supabaseAdmin
-        .from('user_feedback')
-        .insert({
-          user_id: newConvUser.id,
-          email: newConvUser.email,
-          type: 'other',
-          message: messagePreview,
-          url: 'https://vence.es/',
-          status: 'in_progress',
-          priority: 'high',
-          wants_response: true
-        })
-        .select()
-        .single()
-
-      if (feedbackError) throw feedbackError
-
-      // 2. Crear conversación
-      const { data: conversation, error: convError } = await supabaseAdmin
-        .from('feedback_conversations')
-        .insert({
-          feedback_id: feedback.id,
-          user_id: newConvUser.id,
-          admin_user_id: user.id,
-          status: 'open',
-          last_message_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (convError) throw convError
+      const createRes = await fetch('/api/v2/admin/feedback/create-admin-conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUserId: newConvUser.id,
+          targetEmail: newConvUser.email,
+          messagePreview,
+        }),
+      })
+      const createJson = await createRes.json()
+      if (!createRes.ok) throw new Error(createJson?.error || 'Error creando conversación admin')
+      const feedback = createJson.feedback
+      const conversation = createJson.conversation
 
       // 3. Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
       //    Semántica post-14/04/2026: admin reply = feedback 'resolved'.
@@ -764,53 +722,40 @@ export default function AdminFeedbackPage() {
         return feedbacks
       }
 
-      // Cargar perfiles en lotes CON SERVICE ROLE (bypassa RLS automáticamente)
-      const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-      
-      const { data: profiles, error } = await supabaseServiceRole
-        .from('user_profiles')
-        .select('id, full_name, email, plan_type, registration_date, created_at, target_oposicion, is_active_student, ciudad')
-        .in('id', userIds)
-
-      if (error) {
-        console.warn('⚠️ Error cargando perfiles de usuario:', error)
+      // Cargar perfiles + cancelaciones + sesiones + perfiles huérfanos
+      // via endpoint server-side agnóstico (Drizzle, sin service_role en cliente).
+      const enrichRes = await fetch('/api/v2/admin/feedback/enrich-profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds, orphanEmails }),
+      })
+      const enrich = await enrichRes.json()
+      if (!enrichRes.ok) {
+        console.warn('⚠️ Error cargando perfiles de usuario:', enrich)
         return feedbacks
       }
+      const profiles = enrich.profiles ?? []
+      const cancellationsRaw = (enrich.cancellations ?? []).filter((c: { cancellation_type: string }) =>
+        ['manual_refund', 'self_service'].includes(c.cancellation_type),
+      )
+      const sessions = enrich.sessions ?? []
+      const emailProfilesData = enrich.emailProfiles ?? []
+      const sessionsError = null
 
-      console.log(`✅ Perfiles cargados: ${profiles?.length || 0}/${userIds.length}`)
-      console.log('📝 IDs de perfiles obtenidos:', profiles?.map(p => p.id) || [])
-
-      // Cargar refunds/cancelaciones para marcar usuarios
-      const { data: cancellations } = await supabaseServiceRole
-        .from('cancellation_feedback')
-        .select('user_id, cancellation_type')
-        .in('user_id', userIds)
-        .in('cancellation_type', ['manual_refund', 'self_service'])
+      console.log(`✅ Perfiles cargados: ${profiles.length}/${userIds.length}`)
+      console.log('📝 IDs de perfiles obtenidos:', profiles.map((p: { id: string }) => p.id))
 
       // Crear Map de user_ids con tipo de cancelación (refund tiene prioridad sobre cancelled)
       const userCancellationType = new Map()
-      if (cancellations) {
-        cancellations.forEach(c => {
-          const current = userCancellationType.get(c.user_id)
-          // manual_refund tiene prioridad sobre self_service
-          if (c.cancellation_type === 'manual_refund' || current !== 'refund') {
-            userCancellationType.set(c.user_id, c.cancellation_type === 'manual_refund' ? 'refund' : 'cancelled')
-          }
-        })
-        const refunds = [...userCancellationType.values()].filter(t => t === 'refund').length
-        const cancelled = [...userCancellationType.values()].filter(t => t === 'cancelled').length
-        console.log(`🔴 Usuarios con devolución: ${refunds}, 🟠 Usuarios que cancelaron: ${cancelled}`)
-      }
-
-      // Cargar última sesión de cada usuario para obtener info de dispositivo
-      const { data: sessions, error: sessionsError } = await supabaseServiceRole
-        .from('user_sessions')
-        .select('user_id, browser_name, operating_system, device_model, user_agent, session_start')
-        .in('user_id', userIds)
-        .order('session_start', { ascending: false })
+      cancellationsRaw.forEach((c: { user_id: string; cancellation_type: string }) => {
+        const current = userCancellationType.get(c.user_id)
+        if (c.cancellation_type === 'manual_refund' || current !== 'refund') {
+          userCancellationType.set(c.user_id, c.cancellation_type === 'manual_refund' ? 'refund' : 'cancelled')
+        }
+      })
+      const refunds = [...userCancellationType.values()].filter((t) => t === 'refund').length
+      const cancelled = [...userCancellationType.values()].filter((t) => t === 'cancelled').length
+      console.log(`🔴 Usuarios con devolución: ${refunds}, 🟠 Usuarios que cancelaron: ${cancelled}`)
 
       // Función para parsear user_agent y extraer info útil
       const parseUserAgent = (ua) => {
@@ -891,28 +836,20 @@ export default function AdminFeedbackPage() {
       }
 
       // Buscar perfiles por email para feedbacks sin user_id
+      // (ya cargados en enrich-profiles arriba como emailProfilesData)
       const emailProfilesMap = new Map()
-      if (orphanEmails.length > 0) {
-        const { data: emailProfiles } = await supabaseServiceRole
-          .from('user_profiles')
-          .select('id, full_name, email, plan_type, registration_date, created_at, target_oposicion, is_active_student, ciudad')
-          .in('email', orphanEmails)
-
-        if (emailProfiles) {
-          emailProfiles.forEach(profile => {
-            const lastSession = sessionsMap.get(profile.id)
-            const profileWithDevice = {
-              ...profile,
-              browserName: lastSession?.browser_name,
-              operatingSystem: lastSession?.operating_system,
-              deviceModel: lastSession?.device_model,
-              cancellationType: userCancellationType.get(profile.id) || null
-            }
-            emailProfilesMap.set(profile.email, profileWithDevice)
-            console.log(`📧 Perfil encontrado por email: ${profile.full_name || profile.email} (${profile.plan_type})`)
-          })
+      emailProfilesData.forEach((profile: { id: string; email: string; full_name: string | null; plan_type: string | null }) => {
+        const lastSession = sessionsMap.get(profile.id)
+        const profileWithDevice = {
+          ...profile,
+          browserName: lastSession?.browser_name,
+          operatingSystem: lastSession?.operating_system,
+          deviceModel: lastSession?.device_model,
+          cancellationType: userCancellationType.get(profile.id) || null
         }
-      }
+        emailProfilesMap.set(profile.email, profileWithDevice)
+        console.log(`📧 Perfil encontrado por email: ${profile.full_name || profile.email} (${profile.plan_type})`)
+      })
 
       // Debug: Log de usuarios que no tienen perfil
       const missingProfiles = userIds.filter(id => !profilesMap.has(id))
@@ -1087,27 +1024,15 @@ export default function AdminFeedbackPage() {
 
   const loadConversations = async () => {
     try {
-      // Usar service role para bypass RLS
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
-      const { data, error } = await supabaseAdmin
-        .from('feedback_conversations')
-        .select(`
-          *,
-          feedback:user_feedback(*),
-          feedback_messages(id, is_admin, created_at, message)
-        `)
-        .order('last_message_at', { ascending: false })
-
-      if (error) throw error
+      const res = await fetch('/api/v2/admin/feedback/list')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Error cargando conversaciones')
+      const data = json.conversations as Array<{ feedback_id: string }>
 
       // Convertir a objeto indexado por feedback_id (quedarse con la más reciente por feedback)
-      const conversationsMap = {}
-      data?.forEach(conv => {
-        if (!conversationsMap[conv.feedback_id]) {
+      const conversationsMap: Record<string, unknown> = {}
+      data.forEach(conv => {
+        if (conv.feedback_id && !conversationsMap[conv.feedback_id]) {
           conversationsMap[conv.feedback_id] = conv
         }
       })
@@ -1481,73 +1406,22 @@ export default function AdminFeedbackPage() {
     setUploadingImage(true)
 
     try {
-      // Crear nombre único para el archivo
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `admin-chat-images/${fileName}`
+      console.log('📤 Subiendo archivo via API server-side...')
 
-      console.log('📤 Subiendo archivo a Supabase:', filePath)
-
-      // Usar cliente con service role para garantizar permisos
-      const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
-      // Intentar subir a bucket 'feedback-images' (más específico)
-      const { data, error: uploadError } = await supabaseServiceRole.storage
-        .from('feedback-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true // Permitir sobrescribir si existe
-        })
-
-      if (uploadError) {
-        console.error('❌ Error de Supabase Storage:', uploadError)
-        
-        // Si el bucket no existe, intentar crearlo automáticamente
-        if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
-          console.log('🆕 Intentando crear bucket feedback-images...')
-          
-          const { data: bucketData, error: bucketError } = await supabaseServiceRole.storage
-            .createBucket('feedback-images', { 
-              public: true,
-              allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-            })
-          
-          if (bucketError) {
-            console.error('❌ Error creando bucket:', bucketError)
-            throw new Error(`Error de configuración del storage: ${uploadError.message}`)
-          }
-          
-          console.log('✅ Bucket creado exitosamente')
-          
-          // Intentar subir nuevamente
-          const { data: retryData, error: retryError } = await supabaseServiceRole.storage
-            .from('feedback-images')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: true
-            })
-          
-          if (retryError) {
-            throw new Error(`Error en segunda tentativa: ${retryError.message}`)
-          }
-          
-          console.log('✅ Archivo subido exitosamente (segundo intento)')
-        } else {
-          throw uploadError
-        }
-      } else {
-        console.log('✅ Archivo subido exitosamente')
+      // Upload via endpoint server-side (adapter agnóstico S3/Supabase).
+      const fd = new FormData()
+      fd.append('file', file)
+      const uploadRes = await fetch('/api/v2/admin/feedback/upload-image', {
+        method: 'POST',
+        body: fd,
+      })
+      const uploadJson = await uploadRes.json()
+      if (!uploadRes.ok) {
+        console.error('❌ Error subiendo archivo:', uploadJson)
+        throw new Error(uploadJson?.error || `HTTP ${uploadRes.status}`)
       }
-
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabaseServiceRole.storage
-        .from('feedback-images')
-        .getPublicUrl(filePath)
-
-      console.log('🔗 URL pública generada:', publicUrl)
+      const publicUrl: string = uploadJson.publicUrl
+      console.log('✅ Archivo subido. URL pública:', publicUrl)
 
       // En lugar de añadir a lista separada, insertar directamente en el mensaje
       const imageMarkdown = `\n${publicUrl}\n`
@@ -1612,22 +1486,16 @@ export default function AdminFeedbackPage() {
   // Función para eliminar imagen subida
   const removeImage = async (imageId: string, imagePath: string) => {
     try {
-      console.log('🗑️ Eliminando imagen:', imagePath)
-      
-      // Usar cliente con service role para garantizar permisos
-      const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-      
-      // Eliminar de Supabase Storage
-      const { error } = await supabaseServiceRole.storage
-        .from('feedback-images')
-        .remove([imagePath])
+      console.log('🗑️ Eliminando imagen via API server-side:', imagePath)
 
-      if (error) {
-        console.error('❌ Error eliminando de storage:', error)
-        // No lanzar error, solo loggear
+      const delRes = await fetch('/api/v2/admin/feedback/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagePath }),
+      })
+      if (!delRes.ok) {
+        const delErr = await delRes.json().catch(() => ({}))
+        console.error('❌ Error eliminando de storage:', delErr)
       } else {
         console.log('✅ Imagen eliminada del storage')
       }
@@ -2097,31 +1965,28 @@ export default function AdminFeedbackPage() {
                               onClick={async () => {
                                 if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
                                 try {
-                                  const supabaseAdmin = createClient(
-                                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                                    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-                                  )
-                                  // Cerrar conversación si existe
                                   const conv = conversations[selectedFeedback.id]
                                   if (conv) {
-                                    const closeTime = new Date().toISOString()
-                                    const { error: convError } = await supabaseAdmin
-                                      .from('feedback_conversations')
-                                      .update({ status: 'closed', last_message_at: closeTime, closed_at: closeTime })
-                                      .eq('id', conv.id)
-                                    if (convError) {
-                                      console.error('Error cerrando conversación:', convError)
+                                    const closeRes = await fetch('/api/v2/admin/feedback/close', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        conversationId: conv.id,
+                                        alsoResolveFeedback: true,
+                                        feedbackId: selectedFeedback.id,
+                                      }),
+                                    })
+                                    if (!closeRes.ok) {
+                                      const closeErr = await closeRes.json().catch(() => ({}))
+                                      console.error('Error cerrando conversación:', closeErr)
                                     } else {
                                       console.log('✅ Conversación cerrada:', conv.id)
                                     }
                                   } else {
                                     console.log('⚠️ No se encontró conversación para feedback:', selectedFeedback.id)
+                                    // Resolver feedback aunque no haya conversación — usar endpoint dedicado
+                                    // (futuro). Por ahora, sin conversación no se cierra nada en BD.
                                   }
-                                  // Marcar feedback como resuelto
-                                  await supabaseAdmin
-                                    .from('user_feedback')
-                                    .update({ status: 'resolved', resolved_at: new Date().toISOString() })
-                                    .eq('id', selectedFeedback.id)
                                   console.log('✅ Conversación cerrada')
                                   setSelectedFeedback(null)
                                   setSelectedUser(null) // Volver a la lista de usuarios
@@ -2550,27 +2415,21 @@ export default function AdminFeedbackPage() {
                       onClick={async () => {
                         if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
                         try {
-                          const supabaseAdmin = createClient(
-                            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                            process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-                          )
-                          // Cerrar conversación
-                          const closeTime = new Date().toISOString()
-                          const { error: convError } = await supabaseAdmin
-                            .from('feedback_conversations')
-                            .update({ status: 'closed', last_message_at: closeTime, closed_at: closeTime })
-                            .eq('id', selectedConversation.id)
-                          if (convError) {
-                            console.error('Error cerrando conversación:', convError)
+                          const closeRes = await fetch('/api/v2/admin/feedback/close', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              conversationId: selectedConversation.id,
+                              alsoResolveFeedback: true,
+                              feedbackId: selectedConversation.feedback_id,
+                            }),
+                          })
+                          if (!closeRes.ok) {
+                            const closeErr = await closeRes.json().catch(() => ({}))
+                            console.error('Error cerrando conversación:', closeErr)
                           } else {
                             console.log('✅ Conversación cerrada:', selectedConversation.id)
                           }
-                          // Marcar feedback como resuelto
-                          await supabaseAdmin
-                            .from('user_feedback')
-                            .update({ status: 'resolved', resolved_at: closeTime })
-                            .eq('id', selectedConversation.feedback_id)
-                          console.log('✅ Conversación cerrada')
                           setSelectedConversation(null)
                           setSelectedUser(null) // Volver a la lista de usuarios
                           loadConversations()
