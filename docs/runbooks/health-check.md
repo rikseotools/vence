@@ -224,6 +224,8 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 **INSERT degradado por triggers acumulados (2026-05-23)** — al auditar `test_questions` aparecieron 14 triggers, 2 de ellos NO-OP. Documentado en ADR "triggers SQL vs outbox/worker" en el roadmap. Regla operativa: si añades un trigger a `test_questions`, debe ser `INSERT ... ON CONFLICT DO UPDATE` con `+1 counter`, jamás scan o agregación.
 
+**Cascada 503 por slots pool zombie (2026-05-27, 17:00–19:50 UTC)** — 1995 errores 503 en `/api/v2/answer-and-save` ("Servicio saturado momentáneamente"). Diagnóstico engañoso: `canary-database-pool` daba OK (SELECT 1 trivial encontraba slot), pero queries reales (DailyLimit, Medals, antifraud) timeouteaban. **Causa raíz**: `emitFireAndForget()` del backend Fargate hace `await db.execute(INSERT observable_events)` SIN timeout. Si Supavisor se cuelga en `wait=Client/ClientRead`, la promise nunca resuelve → slot pool zombie → pool postgres-js (max 7-8) se satura → antifraud quick-fail → 503 cascada. **Fingerprint**: `SELECT pid, wait_event_type, wait_event, query FROM pg_stat_activity WHERE application_name='Supavisor' AND state!='idle' AND NOW()-query_start > INTERVAL '30 seconds'` con `wait=Client/ClientRead` + `INSERT INTO observable_events`. **Mitigación**: `pg_terminate_backend(<pid>)` + `force-new-deployment`. **Fix definitivo pendiente**: añadir timeout al emit observability (ver `docs/runbooks/observability.md` §"⚠️ FOOTGUN").
+
 ---
 
 ## 4. Umbrales — fuente de verdad

@@ -1222,6 +1222,44 @@ ORDER BY n DESC;
 - INSERT tarda <5ms en caso normal, pero si BD lenta no queremos bloquear.
 - Pérdida ocasional de evento por timeout: aceptable. La señal es estadística.
 
+### ⚠️ FOOTGUN: fire-and-forget SIN timeout = slots pool zombie
+
+**Incidente real (2026-05-27 17:00–19:50 UTC, 1995 errores 503)**:
+
+`backend/src/observability/observability.service.ts` hace `await this.db.execute(sql\`INSERT INTO observable_events...\`)` SIN timeout. Si Supavisor/Postgres queda esperando en `wait=Client/ClientRead` (TCP roundtrip degradado), el INSERT **nunca completa ni rechaza** → la promise queda pending para siempre → el slot del pool postgres-js (max 7-8 conexiones) queda **zombie indefinido**.
+
+Cuando varios slots se acumulan así:
+1. Pool se llena.
+2. Queries reales (DailyLimit, Medals, antifraud) no encuentran slot.
+3. Antifraud quick-fail (`ANTIFRAUD_TIMEOUT_MS`) → `serviceSaturatedResponse()` → 503.
+4. **Cascada**: cada request real falla en `/api/v2/answer-and-save` con 503.
+5. Diagnóstico engañoso: el canary `SELECT 1` responde OK (slots libres puntuales) pero queries reales fallan masivamente.
+
+**Fingerprint del incidente en `pg_stat_activity`**:
+```sql
+SELECT pid, application_name, state,
+       NOW() - query_start AS duration,
+       wait_event_type, wait_event, LEFT(query, 100) AS q
+FROM pg_stat_activity
+WHERE application_name = 'Supavisor'
+  AND state != 'idle'
+  AND NOW() - query_start > INTERVAL '30 seconds';
+-- 1+ filas con wait=Client/ClientRead y INSERT INTO observable_events → footgun activo.
+```
+
+**Mitigación reversible** (durante incidente):
+1. `SELECT pg_terminate_backend(<pid>)` para liberar slots colgados.
+2. Si reaparecen → `aws ecs update-service --force-new-deployment` para reset completo del pool postgres-js.
+
+**FIX DEFINITIVO PENDIENTE**: añadir timeout al `db.execute()` en `emit()`. Opciones:
+1. `Promise.race([execute, setTimeout(reject, 5000)])` — manual.
+2. `AbortSignal.timeout(5000)` pasado como option a Drizzle execute (verificar soporte).
+3. Configurar `idle_in_transaction_session_timeout` o `statement_timeout` a nivel de sesión postgres-js para el cliente del backend.
+
+Si el timeout salta, el catch existente loguea el warn y suelta el slot. Pérdida del evento = aceptable. Slot zombie = NO aceptable.
+
+**Lección aplicable**: TODA llamada a Drizzle/Postgres en path fire-and-forget DEBE tener timeout. El patrón "catch all" no es suficiente — un await que nunca resuelve nunca llega al catch.
+
 ### Por qué buffer + sendBeacon en client
 
 - Sin buffer: 1 fetch HTTP por evento → cliente se ahoga.
@@ -1236,4 +1274,5 @@ ORDER BY n DESC;
 |-------|--------|
 | 2026-05-25 | Manual creado (MVP funcional: tabla + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`). |
 | 2026-05-25 (tarde) | **Refactor con filosofía "AWS-ready by default, agnóstico by contract"**. Incorporados aprendizajes de VicoHR: frase martillo, 5 principios numerados, matriz cobertura por categorías, gaps con CASO REAL, diseño Sink intercambiable, smoke E2E como cron Fargate (sin lock-in hoy, plan AWS Synthetics futuro), Definition of Done por gap, sección «Migración a AWS — qué cambia, qué NO», coste mensual estimado. |
+| 2026-05-27 (noche) | **Incidente 1995 errores 503 en /api/v2/answer-and-save** (17:00–19:50 UTC). Causa raíz: `emitFireAndForget()` SIN timeout permitió que INSERTs colgados en `wait=Client/ClientRead` vía Supavisor acumularan slots zombie en el pool postgres-js (max 7-8). Pool saturado → antifraud quick-fail → 503 cascada. Mitigación: `pg_terminate_backend()` + `force-new-deployment`. Footgun + fingerprint pg_stat_activity + fix pendiente documentado en §"⚠️ FOOTGUN" arriba. |
 | 2026-05-25 (noche) | **Refactor TTS robusto + taxonomía completa**. Web Speech reescrito con state machine (`lib/tts/stateMachine.ts`), motor encapsulado (`lib/tts/engine.ts`), hook React (`lib/tts/useTTS.ts`). ArticleTTS pasa de 599 líneas a 265 (UI pura). Fixes: (a) bucle al final de ley — NATURAL_END es idempotente vía SM; (b) resume desde la posición guardada tras pause o stop, no desde 0. Taxonomía de 10 eventTypes en §13bis con queries de funnel + SLOs candidatos. 104 tests TTS pasando. |

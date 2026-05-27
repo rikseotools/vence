@@ -74,10 +74,19 @@ export class ObservabilityService {
    *     errorMessage: 'BD timeout', durationMs: 15000,
    *   });
    */
+  // Timeout máximo para el INSERT. Sin esto, una conexión colgada en
+  // wait=Client/ClientRead acumula slot zombie en el pool postgres-js
+  // (max 7-8) → cascada de 503 en endpoints reales. Incidente 27/05/2026
+  // documentado en docs/runbooks/observability.md §"⚠️ FOOTGUN".
+  // 5s es conservador: INSERT normal <5ms; si tarda >5s hay problema upstream
+  // y mejor perder el evento (rechazo via timeout → catch → log warn) que
+  // dejar la conexión zombie indefinidamente.
+  private static readonly EMIT_TIMEOUT_MS = 5_000;
+
   async emit(event: ObservableEvent): Promise<void> {
     try {
       const severity = normalizeSeverity(event.severity);
-      await this.db.execute(sql`
+      const insertPromise = this.db.execute(sql`
         INSERT INTO public.observable_events (
           ts, source, severity, event_type, endpoint, user_id,
           deploy_version, duration_ms, http_status, error_message, metadata
@@ -95,8 +104,26 @@ export class ObservabilityService {
           ${event.metadata ? JSON.stringify(event.metadata) : null}::jsonb
         )
       `);
+
+      // Promise.race con timeout manual. Drizzle execute no acepta AbortSignal
+      // directamente y postgres-js statement_timeout no aborta Client/ClientRead.
+      // El timeout aquí asegura que el await SIEMPRE resuelve o rechaza en <=5s,
+      // por lo que el slot postgres-js se libera y el pool no acumula zombies.
+      // NOTA: el INSERT puede seguir corriendo en BD aunque hagamos timeout aquí —
+      // eso es aceptable (la fila se inserta o no, pérdida de evento OK).
+      await Promise.race([
+        insertPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`emit() timeout >${ObservabilityService.EMIT_TIMEOUT_MS}ms`)),
+            ObservabilityService.EMIT_TIMEOUT_MS,
+          ),
+        ),
+      ]);
     } catch (err) {
-      // NUNCA propagar — observabilidad no debe romper requests reales
+      // NUNCA propagar — observabilidad no debe romper requests reales.
+      // Incluye los timeouts del Promise.race arriba: si la BD no responde
+      // en 5s, perdemos el evento pero NO bloqueamos el pool.
       this.logger.warn(
         `emit() falló: ${err instanceof Error ? err.message : String(err)}`,
       );
