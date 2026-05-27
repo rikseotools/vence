@@ -117,7 +117,12 @@ export const cancelSubscriptionRequestSchema = z.object({
   userId: z.string().uuid(),
   // Feedback opcional — post-15/04/2026 la cancelación va en 1 clic y el
   // feedback se recoge después en la pantalla de éxito (opcional).
-  feedback: cancellationFeedbackSchema.optional()
+  feedback: cancellationFeedbackSchema.optional(),
+  // Idempotency key opcional para protección end-to-end contra retries.
+  // Si el cliente genera un UUID (crypto.randomUUID()) y lo pasa, reintentos
+  // del mismo botón (red flaky) NO duplican llamadas a Stripe. Si no viene,
+  // generamos uno por intento — al menos cubre retries entre server y Stripe.
+  idempotencyKey: z.string().min(8).max(120).optional(),
 })
 
 export type CancelSubscriptionRequest = z.infer<typeof cancelSubscriptionRequestSchema>

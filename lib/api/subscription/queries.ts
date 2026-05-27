@@ -3,6 +3,8 @@ import { getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { stripe } from '@/lib/stripe'
+import { randomUUID } from 'crypto'
+import { emit } from '@/lib/observability/emit'
 import type {
   GetSubscriptionRequest,
   GetSubscriptionResponse,
@@ -338,13 +340,25 @@ function extractCurrentPeriodEnd(subscription: any): Date | null {
 
 /**
  * Void de todas las invoices abiertas (open/draft) de una suscripción.
- * Devuelve el número de invoices voideadas.
+ * Devuelve { voided, failed } — la primera incrementa por éxito, la segunda
+ * por fallo. Best-effort: si una falla, se sigue con las demás.
  *
- * Best-effort: si una falla, se sigue con las demás. Las invoices ya pagadas
- * o ya voideadas no se tocan.
+ * `idempotencyKey` se deriva de la pasada por caller. Cada invoice tiene su
+ * propia subkey (`{base}-void-{invoiceId}`) para que reintentos sobre la
+ * misma invoice sean idempotentes pero invoices distintas tengan keys
+ * distintas (Stripe rechazaría una reutilización con body distinto).
+ *
+ * Cualquier fallo emite `subscription_void_invoice_failed` (severity=error)
+ * para que las alertas lo capten — esto es lo que detectaría un escenario
+ * Mariangeles donde el void no fuera completo.
  */
-async function voidOpenInvoicesForSubscription(subscriptionId: string): Promise<number> {
+async function voidOpenInvoicesForSubscription(
+  subscriptionId: string,
+  idempotencyKeyBase: string,
+  context: { userId: string; stripeCustomerId: string },
+): Promise<{ voided: number; failed: number }> {
   let voided = 0
+  let failed = 0
   try {
     const invoices = await stripe().invoices.list({
       subscription: subscriptionId,
@@ -354,19 +368,56 @@ async function voidOpenInvoicesForSubscription(subscriptionId: string): Promise<
     for (const inv of invoices.data) {
       if (!inv.id) continue
       try {
-        await stripe().invoices.voidInvoice(inv.id)
+        await stripe().invoices.voidInvoice(
+          inv.id,
+          undefined,
+          { idempotencyKey: `${idempotencyKeyBase}-void-${inv.id}` },
+        )
         voided++
       } catch (err) {
+        failed++
+        const message = err instanceof Error ? err.message : String(err)
         console.error(`⚠️ [Cancel] Error voiding invoice ${inv.id}:`, err)
+        await emit({
+          source: 'fargate',
+          severity: 'error',
+          eventType: 'subscription_void_invoice_failed',
+          endpoint: '/api/stripe/cancel',
+          userId: context.userId,
+          errorMessage: message.slice(0, 2000),
+          metadata: {
+            stripeCustomerId: context.stripeCustomerId,
+            subscriptionId,
+            invoiceId: inv.id,
+          },
+        })
       }
     }
   } catch (err) {
+    // Si list() falla, no podemos voidear nada — registramos como failed=1
+    // para que la alerta dispare igual.
+    failed++
+    const message = err instanceof Error ? err.message : String(err)
     console.error('⚠️ [Cancel] Error listando invoices open:', err)
+    await emit({
+      source: 'fargate',
+      severity: 'error',
+      eventType: 'subscription_void_invoice_failed',
+      endpoint: '/api/stripe/cancel',
+      userId: context.userId,
+      errorMessage: message.slice(0, 2000),
+      metadata: {
+        stripeCustomerId: context.stripeCustomerId,
+        subscriptionId,
+        invoiceId: null,
+        phase: 'list_invoices',
+      },
+    })
   }
   // Stripe no permite void de draft directamente — hay que finalizar primero.
   // No lo hacemos: las draft no generan reintentos hasta que se finalizan,
   // así que dejarlas pasa el ciclo natural sin riesgo de cobro.
-  return voided
+  return { voided, failed }
 }
 
 // ============================================
@@ -409,12 +460,26 @@ export async function reactivateSubscription(
       return { success: false, error: 'Tu suscripción ya ha expirado. Puedes contratar un nuevo plan.' }
     }
 
-    // Reactivar en Stripe
-    await stripe().subscriptions.update(subscription.id, {
-      cancel_at_period_end: false,
-    })
+    // Reactivar en Stripe (con idempotency key — protege retries de red).
+    const idempotencyKey = `reactivate-${subscription.id}-${randomUUID()}`
+    await stripe().subscriptions.update(
+      subscription.id,
+      { cancel_at_period_end: false },
+      { idempotencyKey },
+    )
 
     console.log(`✅ [Reactivate] Subscription ${subscription.id} reactivated`)
+    await emit({
+      source: 'fargate',
+      severity: 'info',
+      eventType: 'subscription_reactivated',
+      endpoint: '/api/stripe/reactivate',
+      userId: params.userId,
+      metadata: {
+        stripeCustomerId: profile.stripeCustomerId,
+        subscriptionId: subscription.id,
+      },
+    })
 
     // Registrar en cancellation_feedback como reactivation
     try {
@@ -448,6 +513,14 @@ export async function reactivateSubscription(
 export async function cancelSubscription(
   params: CancelSubscriptionRequest
 ): Promise<CancelSubscriptionResponse> {
+  // Idempotency key: si el caller lo pasa (cliente garantiza idempotencia
+  // end-to-end), lo respetamos; si no, generamos uno por intento. Esto
+  // protege retries de red entre nuestro server y Stripe (cancel doble,
+  // void doble, etc.). Stripe garantiza que reusar la misma key con el
+  // mismo body devuelve la respuesta cacheada en vez de re-ejecutar.
+  const idempotencyKeyBase = params.idempotencyKey ?? `cancel-${params.userId}-${randomUUID()}`
+  const startedAt = Date.now()
+
   try {
     const db = getDb()
 
@@ -464,6 +537,15 @@ export async function cancelSubscription(
       .limit(1)
 
     if (!profile?.stripeCustomerId) {
+      await emit({
+        source: 'fargate',
+        severity: 'warn',
+        eventType: 'subscription_cancel_no_subscription',
+        endpoint: '/api/stripe/cancel',
+        userId: params.userId,
+        durationMs: Date.now() - startedAt,
+        metadata: { reason: 'no_stripe_customer' },
+      })
       return { success: false, error: 'No subscription found' }
     }
 
@@ -485,6 +567,19 @@ export async function cancelSubscription(
       const lastCanceled = all.data.find((s) => s.status === 'canceled')
       if (lastCanceled) {
         const endDate = extractCurrentPeriodEnd(lastCanceled)
+        await emit({
+          source: 'fargate',
+          severity: 'info',
+          eventType: 'subscription_already_canceled',
+          endpoint: '/api/stripe/cancel',
+          userId: params.userId,
+          durationMs: Date.now() - startedAt,
+          metadata: {
+            stripeCustomerId: profile.stripeCustomerId,
+            subscriptionId: lastCanceled.id,
+            originalStatus: 'canceled',
+          },
+        })
         return {
           success: true,
           alreadyCanceled: true,
@@ -492,6 +587,18 @@ export async function cancelSubscription(
           periodEnd: endDate ? endDate.toISOString() : undefined,
         }
       }
+      await emit({
+        source: 'fargate',
+        severity: 'warn',
+        eventType: 'subscription_cancel_no_subscription',
+        endpoint: '/api/stripe/cancel',
+        userId: params.userId,
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          stripeCustomerId: profile.stripeCustomerId,
+          reason: 'no_subscriptions_at_all',
+        },
+      })
       return { success: false, error: 'No active subscription found' }
     }
 
@@ -502,6 +609,7 @@ export async function cancelSubscription(
       : 'immediate'
     const alreadyScheduled = subscription.cancel_at_period_end === true
     let voidedCount = 0
+    let voidedFailed = 0
 
     // 3. Ejecutar la cancelación según estado.
     if (alreadyScheduled) {
@@ -510,13 +618,41 @@ export async function cancelSubscription(
       // El flujo de feedback + emails sigue ejecutándose por si el usuario
       // proporciona feedback ahora; no rompemos la trazabilidad.
       console.log(`✅ [Cancel] Subscription ${subscription.id} ya estaba cancel_at_period_end (idempotent)`)
+      await emit({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'subscription_already_canceled',
+        endpoint: '/api/stripe/cancel',
+        userId: params.userId,
+        metadata: {
+          stripeCustomerId: profile.stripeCustomerId,
+          subscriptionId: subscription.id,
+          originalStatus,
+          variant: 'cancel_at_period_end_already_set',
+        },
+      })
     } else if (cancelMode === 'at_period_end') {
       // 3a. active/trialing → cancelación programada al final del período
-      //     (mantiene acceso pagado).
-      await stripe().subscriptions.update(subscription.id, {
-        cancel_at_period_end: true,
-      })
+      //     (mantiene acceso pagado). Idempotency key por sub.
+      await stripe().subscriptions.update(
+        subscription.id,
+        { cancel_at_period_end: true },
+        { idempotencyKey: `${idempotencyKeyBase}-schedule` },
+      )
       console.log(`✅ [Cancel] Subscription ${subscription.id} (${originalStatus}) marked for cancellation at period end`)
+      await emit({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'subscription_cancelled_at_period_end',
+        endpoint: '/api/stripe/cancel',
+        userId: params.userId,
+        metadata: {
+          stripeCustomerId: profile.stripeCustomerId,
+          subscriptionId: subscription.id,
+          originalStatus,
+          periodEnd: periodEnd.toISOString(),
+        },
+      })
     } else {
       // 3b. past_due/unpaid/incomplete → cancelación INMEDIATA + void de
       //     invoices abiertas. Por qué inmediata: el acceso premium ya no
@@ -525,9 +661,36 @@ export async function cancelSubscription(
       //     qué void invoices: si las dejamos abiertas, Stripe sigue
       //     reintentando charge_automatically en background (caso Mariangeles
       //     21/05/2026, ver project_pending_stripe_cancel_bug.md).
-      await stripe().subscriptions.cancel(subscription.id)
-      voidedCount = await voidOpenInvoicesForSubscription(subscription.id)
-      console.log(`✅ [Cancel] Subscription ${subscription.id} (${originalStatus}) canceled INMEDIATELY + ${voidedCount} invoices voided`)
+      await stripe().subscriptions.cancel(
+        subscription.id,
+        undefined,
+        { idempotencyKey: `${idempotencyKeyBase}-immediate` },
+      )
+      const voidResult = await voidOpenInvoicesForSubscription(
+        subscription.id,
+        idempotencyKeyBase,
+        { userId: params.userId, stripeCustomerId: profile.stripeCustomerId },
+      )
+      voidedCount = voidResult.voided
+      voidedFailed = voidResult.failed
+      console.log(`✅ [Cancel] Subscription ${subscription.id} (${originalStatus}) canceled INMEDIATELY + ${voidedCount} invoices voided (${voidedFailed} failed)`)
+      // Severidad warn: cancelación inmediata indica que un usuario ya estaba
+      // viviendo un fallo de cobro. No es error nuestro, pero conviene verlo
+      // como indicador. Si voidedFailed > 0, severity sube a error.
+      await emit({
+        source: 'fargate',
+        severity: voidedFailed > 0 ? 'error' : 'warn',
+        eventType: 'subscription_force_canceled_past_due',
+        endpoint: '/api/stripe/cancel',
+        userId: params.userId,
+        metadata: {
+          stripeCustomerId: profile.stripeCustomerId,
+          subscriptionId: subscription.id,
+          originalStatus,
+          voidedCount,
+          voidedFailed,
+        },
+      })
     }
 
     // 4. Guardar feedback en la base de datos (usando raw SQL ya que la tabla no está en Drizzle schema)
@@ -600,10 +763,24 @@ export async function cancelSubscription(
 
   } catch (error) {
     console.error('❌ [Subscription] Error cancelando suscripción:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido'
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    // Cualquier excepción no controlada va a observable_events para que la
+    // alerta lo capte (subscription_cancel_error_burst).
+    try {
+      await emit({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'subscription_cancel_error',
+        endpoint: '/api/stripe/cancel',
+        userId: params.userId,
+        durationMs: Date.now() - startedAt,
+        errorMessage: message.slice(0, 2000),
+        metadata: { idempotencyKeyBase },
+      })
+    } catch {
+      // Si emit falla también, no podemos hacer más — el log de console queda.
     }
+    return { success: false, error: message }
   }
 }
 

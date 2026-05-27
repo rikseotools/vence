@@ -1,5 +1,6 @@
 // app/api/profile/route.ts - API endpoint para perfil de usuario
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import {
   safeParseGetProfileRequest,
   safeParseUpdateProfileRequest,
@@ -8,6 +9,7 @@ import {
 } from '@/lib/api/profile'
 import { isAdminEmail } from '@/lib/api/shared/auth'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { reconcileUserPremium } from '@/lib/api/checkout-sync'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
@@ -126,6 +128,33 @@ async function _GET(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(result, { status: 404 })
+    }
+
+    // ─── Sprint B (27/05/2026) — Auto-reconcile silencioso ───
+    // Si el user tiene plan_type='free' (proyección self lo expone), disparamos
+    // reconcileUserPremium en background DESPUÉS de devolver la respuesta.
+    // No bloquea la latencia del GET. Si detecta sub active en Stripe que falta
+    // en BD (caso usuario que pagó desde móvil + entra desde laptop, o caso
+    // Andrea/Rocío/Mercedes con webhook roto), arregla en background — la
+    // siguiente carga del perfil ya ve premium.
+    //
+    // Idempotente: si plan_type ya es premium, el helper sale early sin
+    // tocar Stripe ni BD (zero cost).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileData = (result as any).data
+    if (profileData?.planType === 'free') {
+      const userId = parseResult.data.userId
+      after(async () => {
+        try {
+          const recon = await reconcileUserPremium(userId)
+          if (recon.fixed) {
+            console.log(`✅ [profile/auto-reconcile] Drift detectado y reparado para user ${userId.slice(0, 8)}`)
+          }
+        } catch (err) {
+          // No propagar — el GET ya respondió. El error queda en observable_events.
+          console.error('[profile/auto-reconcile] error:', err)
+        }
+      })
     }
 
     return NextResponse.json(result, {

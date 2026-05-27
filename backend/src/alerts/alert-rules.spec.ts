@@ -10,6 +10,12 @@ import {
   RULE_RUNTIME_KILL,
   RULE_TTS_ERROR_BURST,
   RULE_WORKFLOW_FAILURE_BURST,
+  RULE_SUBSCRIPTION_VOID_FAILED,
+  RULE_SUBSCRIPTION_FORCE_CANCEL_BURST,
+  RULE_SUBSCRIPTION_CANCEL_ERROR_BURST,
+  RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED,
+  RULE_STRIPE_WEBHOOK_4XX_BURST,
+  RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -179,6 +185,100 @@ describe('ALERT_RULES — registro completo', () => {
     expect(names).toContain('workflow_failure_burst');
   });
 
+  it('incluye las 3 reglas nuevas de cancel-flow robusto (27/05/2026)', () => {
+    const names = ALERT_RULES.map((r) => r.name);
+    expect(names).toContain('subscription_void_failed');
+    expect(names).toContain('subscription_force_cancel_burst');
+    expect(names).toContain('subscription_cancel_error_burst');
+  });
+
+  it('incluye las 2 reglas de webhook entrante robusto (27/05/2026)', () => {
+    const names = ALERT_RULES.map((r) => r.name);
+    expect(names).toContain('stripe_webhook_signature_failed');
+    expect(names).toContain('stripe_webhook_4xx_burst');
+  });
+
+  it('incluye regla de Pass-2 reconciliation: drift missing in DB', () => {
+    const names = ALERT_RULES.map((r) => r.name);
+    expect(names).toContain('subscription_drift_missing_in_db');
+  });
+});
+
+describe('RULE_SUBSCRIPTION_VOID_FAILED', () => {
+  it('dispara con cualquier void failed (n>=1)', () => {
+    expect(
+      RULE_SUBSCRIPTION_VOID_FAILED.shouldFire([
+        { n: 1, topUser: 'user-1', lastError: 'Card declined' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0', () => {
+    expect(
+      RULE_SUBSCRIPTION_VOID_FAILED.shouldFire([
+        { n: 0, topUser: null, lastError: null },
+      ]),
+    ).toBe(false);
+  });
+
+  it('notification incluye user + último error + SQL útil', () => {
+    const notif = RULE_SUBSCRIPTION_VOID_FAILED.buildNotification([
+      { n: 2, topUser: 'b6de5d74-aaaa', lastError: 'No such invoice' },
+    ]);
+    expect(notif.title).toContain('2');
+    expect(notif.body).toContain('b6de5d74');
+    expect(notif.body).toContain('No such invoice');
+    expect(notif.body).toContain('SELECT');
+    expect(notif.fingerprint).toBe('void_failed_b6de5d74-aaaa');
+  });
+
+  it('severity=error (cobros activos pendientes = bloqueante)', () => {
+    expect(RULE_SUBSCRIPTION_VOID_FAILED.severity).toBe('error');
+  });
+});
+
+describe('RULE_SUBSCRIPTION_FORCE_CANCEL_BURST', () => {
+  it('dispara con ≥5 en 1h (señal de problema sistémico de cobros)', () => {
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 5 }])).toBe(true);
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 12 }])).toBe(true);
+  });
+
+  it('NO dispara con <5 (tasa normal <2/h, 3-4 es ruido aceptable)', () => {
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 4 }])).toBe(false);
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 0 }])).toBe(false);
+  });
+
+  it('notification incluye SQL para investigar últimas 2h', () => {
+    const notif = RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.buildNotification([{ n: 8 }]);
+    expect(notif.title).toContain('8');
+    expect(notif.body).toContain('SELECT');
+    expect(notif.body).toContain('subscription_force_canceled_past_due');
+  });
+});
+
+describe('RULE_SUBSCRIPTION_CANCEL_ERROR_BURST', () => {
+  it('dispara con ≥3 errores en 15 min', () => {
+    expect(
+      RULE_SUBSCRIPTION_CANCEL_ERROR_BURST.shouldFire([
+        { n: 3, lastMsg: 'Stripe timeout' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con <3 (1-2 errores en 15 min son ruido)', () => {
+    expect(
+      RULE_SUBSCRIPTION_CANCEL_ERROR_BURST.shouldFire([{ n: 2, lastMsg: 'x' }]),
+    ).toBe(false);
+  });
+
+  it('notification incluye último mensaje + SQL', () => {
+    const notif = RULE_SUBSCRIPTION_CANCEL_ERROR_BURST.buildNotification([
+      { n: 5, lastMsg: 'StripeAPIError: 500' },
+    ]);
+    expect(notif.body).toContain('StripeAPIError: 500');
+    expect(notif.body).toContain('status.stripe.com');
+  });
+
   it('toda regla tiene severity válida', () => {
     for (const r of ALERT_RULES) {
       expect(['warn', 'error', 'critical']).toContain(r.severity);
@@ -189,5 +289,103 @@ describe('ALERT_RULES — registro completo', () => {
     for (const r of ALERT_RULES) {
       expect(r.cooldownMin).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED', () => {
+  it('dispara con ≥1 (instant — cualquier firma fallida = pago no procesado)', () => {
+    expect(
+      RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.shouldFire([
+        { n: 1, lastMsg: 'Webhook signature verification failed' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0', () => {
+    expect(
+      RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.shouldFire([{ n: 0, lastMsg: null }]),
+    ).toBe(false);
+  });
+
+  it('severity=critical (es el bug más caro: pagos sin procesar)', () => {
+    expect(RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.severity).toBe('critical');
+  });
+
+  it('notification incluye runbook con 4 pasos exactos (SSM + redeploy + resend)', () => {
+    const notif = RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.buildNotification([
+      { n: 12, lastMsg: 'Webhook signature verification failed' },
+    ]);
+    expect(notif.title).toContain('12');
+    expect(notif.body).toContain('STRIPE_WEBHOOK_SECRET');
+    expect(notif.body).toContain('dashboard.stripe.com');
+    expect(notif.body).toContain('aws ssm put-parameter');
+    expect(notif.body).toContain('aws ecs update-service');
+    expect(notif.body).toContain('reenviar eventos fallidos');
+    expect(notif.fingerprint).toBe('stripe_webhook_signature_failed');
+  });
+
+  it('cooldown 15 min (queremos saber ya pero no spam)', () => {
+    expect(RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.cooldownMin).toBe(15);
+  });
+});
+
+describe('RULE_STRIPE_WEBHOOK_4XX_BURST', () => {
+  it('dispara con ≥5 4xx en 10 min (excluyendo signature_failed)', () => {
+    expect(
+      RULE_STRIPE_WEBHOOK_4XX_BURST.shouldFire([{ n: 5, topError: 'Invalid body' }]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con <5', () => {
+    expect(
+      RULE_STRIPE_WEBHOOK_4XX_BURST.shouldFire([{ n: 4, topError: null }]),
+    ).toBe(false);
+  });
+
+  it('severity=error (complementa la critical de signature)', () => {
+    expect(RULE_STRIPE_WEBHOOK_4XX_BURST.severity).toBe('error');
+  });
+
+  it('notification incluye SQL útil para investigar', () => {
+    const notif = RULE_STRIPE_WEBHOOK_4XX_BURST.buildNotification([
+      { n: 8, topError: 'Unexpected token in body' },
+    ]);
+    expect(notif.title).toContain('8');
+    expect(notif.body).toContain('Unexpected token');
+    expect(notif.body).toContain('SELECT');
+    expect(notif.body).toContain('stripe/webhook');
+  });
+});
+
+describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
+  it('dispara con detected≥1 (cualquier sub Stripe sin BD = pago no procesado)', () => {
+    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 1, fixed: 1 }])).toBe(true);
+    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 3, fixed: 2 }])).toBe(true);
+  });
+
+  it('NO dispara con detected=0 (sin filas tampoco)', () => {
+    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 0, fixed: 0 }])).toBe(false);
+    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([])).toBe(false);
+  });
+
+  it('dispara aunque fixed===detected (la mitigación NO silencia la alerta — el bug raíz sigue)', () => {
+    // Caso típico: Pass-2 detecta 3 subs missing y las arregla todas. Aun
+    // así disparamos porque eso significa que el webhook entrante sigue roto.
+    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 3, fixed: 3 }])).toBe(true);
+  });
+
+  it('notification incluye conteo detected/fixed + runbook hacia el bug raíz', () => {
+    const notif = RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.buildNotification([
+      { detected: 5, fixed: 5 },
+    ]);
+    expect(notif.title).toContain('5');
+    expect(notif.body).toContain('webhook');
+    expect(notif.body).toContain('stripe_webhook_signature_failed');
+    expect(notif.body).toContain('stripe_webhook_4xx_burst');
+    expect(notif.fingerprint).toBe('subscription_drift_missing_in_db');
+  });
+
+  it('severity=error — el daño está mitigado por el auto-fix, pero el bug raíz no', () => {
+    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.severity).toBe('error');
   });
 });

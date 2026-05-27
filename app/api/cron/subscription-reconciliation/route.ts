@@ -5,9 +5,11 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import Stripe from 'stripe'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateProfileCache } from '@/lib/api/profile'
+import { emit } from '@/lib/observability/emit'
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
@@ -25,6 +27,17 @@ interface Inconsistency {
   subscriptionStatus: string
   subscriptionId: string
   currentPeriodEnd: string | null
+  fixed: boolean
+}
+
+// Caso "Stripe tiene sub OK pero BD no tiene fila" — caso Andrea/Rocío/Mercedes.
+// El pass 2 (consultar Stripe directo) crea estas filas si las detecta.
+interface StripeMissingInDb {
+  stripeCustomerId: string
+  stripeSubscriptionId: string
+  userId: string | null
+  email: string | null
+  status: string
   fixed: boolean
 }
 
@@ -49,11 +62,18 @@ async function _GET(request: NextRequest) {
     console.log('🔍 Iniciando reconciliación de suscripciones...')
     console.log('   Modo:', dryRun ? 'DRY RUN (sin cambios)' : 'LIVE (aplicando cambios)')
 
-    // 1. Buscar usuarios con suscripción activa
+    // 1. Buscar usuarios con suscripción que dé acceso premium.
+    //    Estados que mantienen acceso (alineado con cancelSubscription policy):
+    //    - active/trialing: pagada y vigente
+    //    - past_due: pago falló pero Stripe sigue reintentando; usuario conserva
+    //      acceso hasta current_period_end (política Stripe smart retries)
+    //    Antes solo se miraba 'active' → bug Mariangeles: su sub estuvo en
+    //    past_due varios días, el cron no la detectaba y plan_type quedaba
+    //    desincronizado si el webhook fallaba. Ver project_pending_stripe_cancel_bug.md
     const { data: activeSubscriptions, error: subError } = await supabase
       .from('user_subscriptions')
       .select('user_id, status, stripe_subscription_id, current_period_end')
-      .eq('status', 'active')
+      .in('status', ['active', 'trialing', 'past_due'])
 
     if (subError) {
       throw new Error(`Error obteniendo suscripciones: ${subError.message}`)
@@ -143,6 +163,152 @@ async function _GET(request: NextRequest) {
       }
     }
 
+    // ─── PASS 2 ─── Consultar Stripe directo y detectar subs presentes en
+    // Stripe pero AUSENTES en user_subscriptions. Caso real (Andrea/Rocío/
+    // Mercedes 26-27/05/2026): webhook de Stripe se rompió, pagos
+    // procesados en Stripe quedaron desincronizados con BD, usuarios pagaron
+    // y NO se les aplicó premium. El cron pre-pass-2 NO lo detectaba porque
+    // miraba solo BD; sin fila en BD, no había nada que comparar.
+    //
+    // Estrategia: consultar stripe.subscriptions.list({status:'active'}) de
+    // los últimos 30 días (cubre periodo razonable de webhooks perdidos sin
+    // explotar coste API), comparar contra user_subscriptions, crear fila
+    // BD + actualizar plan_type para las que falten.
+    const stripeMissing: StripeMissingInDb[] = []
+    try {
+      const stripeKey = process.env.STRIPE_SECRET_KEY
+      if (!stripeKey) {
+        console.warn('⚠️ STRIPE_SECRET_KEY no configurada — saltando pass 2')
+      } else {
+        const stripe = new Stripe(stripeKey)
+        const since = Math.floor(Date.now() / 1000) - 30 * 24 * 3600 // 30 días
+
+        // Paginar suscripciones active creadas últimos 30 días
+        let starting_after: string | undefined
+        let pagesScanned = 0
+        const MAX_PAGES = 5 // 500 subs como tope; si superas necesitarás ampliar
+        const stripeActives: Stripe.Subscription[] = []
+        for (let i = 0; i < MAX_PAGES; i++) {
+          const opts: Stripe.SubscriptionListParams = {
+            status: 'active',
+            limit: 100,
+            created: { gte: since },
+          }
+          if (starting_after) opts.starting_after = starting_after
+          const result = await stripe.subscriptions.list(opts)
+          stripeActives.push(...result.data)
+          pagesScanned++
+          if (!result.has_more) break
+          starting_after = result.data[result.data.length - 1].id
+        }
+
+        console.log(`📋 Stripe pass-2: ${stripeActives.length} subs active últimos 30d (${pagesScanned} pages)`)
+
+        for (const sub of stripeActives) {
+          // ¿Existe en user_subscriptions BD?
+          const { data: bdSub } = await supabase
+            .from('user_subscriptions')
+            .select('id')
+            .eq('stripe_subscription_id', sub.id)
+            .maybeSingle()
+          if (bdSub) continue // OK, sincronizada
+
+          // Falta en BD. Buscar al usuario por stripe_customer_id.
+          const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('id, email')
+            .eq('stripe_customer_id', customerId)
+            .maybeSingle()
+
+          const entry: StripeMissingInDb = {
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: sub.id,
+            userId: profile?.id ?? null,
+            email: profile?.email ?? null,
+            status: sub.status,
+            fixed: false,
+          }
+
+          if (!profile?.id) {
+            // Customer Stripe sin perfil Vence asociado — caso muy raro,
+            // reportar pero no auto-corregir (no sabemos qué user_id usar).
+            console.warn(`⚠️ Stripe sub ${sub.id} sin user_profiles match para customer ${customerId}`)
+            stripeMissing.push(entry)
+            continue
+          }
+
+          if (!dryRun) {
+            // Crear la fila en BD usando datos reales de Stripe.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const item = (sub as any).items.data[0]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const subAny = sub as any
+            const periodStart = subAny.current_period_start ?? item?.current_period_start ?? sub.created
+            const periodEnd = subAny.current_period_end ?? item?.current_period_end ?? null
+            const interval = item?.price?.recurring?.interval
+            const planType = interval === 'year' ? 'premium_annual' : 'premium_monthly'
+
+            const { error: insertErr } = await supabase.from('user_subscriptions').insert({
+              user_id: profile.id,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: sub.id,
+              status: sub.status,
+              plan_type: planType,
+              trial_start: sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
+              trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+              current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+              current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+            })
+
+            if (insertErr) {
+              console.error(`❌ Pass-2 INSERT user_subscriptions falló para ${profile.email}:`, insertErr.message)
+            } else {
+              // Asegurar plan_type=premium en user_profiles
+              await supabase
+                .from('user_profiles')
+                .update({ plan_type: 'premium', requires_payment: false })
+                .eq('id', profile.id)
+              invalidateProfileCache()
+              console.log(`✅ Pass-2 RECOVERED ${profile.email} — sub ${sub.id} sincronizada en BD + premium activado`)
+              entry.fixed = true
+            }
+          }
+
+          stripeMissing.push(entry)
+        }
+      }
+    } catch (stripeErr) {
+      console.error('⚠️ Pass-2 error:', stripeErr)
+      // No bloqueamos el reporte del Pass-1, solo emitimos el error.
+      await emit({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'subscription_reconciliation_pass2_error',
+        endpoint: '/api/cron/subscription-reconciliation',
+        errorMessage: stripeErr instanceof Error ? stripeErr.message.slice(0, 2000) : String(stripeErr),
+      })
+    }
+
+    // Emit subscription_drift_missing_in_db específico para que la alerta
+    // dispare aunque Pass-1 no encuentre nada (caso Andrea exacto: Pass-1
+    // verde porque user_subscriptions vacío, Pass-2 detecta el drift real).
+    if (stripeMissing.length > 0) {
+      console.log(`📊 Pass-2 detected ${stripeMissing.length} subs en Stripe sin BD`)
+      await emit({
+        source: 'fargate',
+        severity: 'error', // pago no aplicado = error inmediato
+        eventType: 'subscription_drift_missing_in_db',
+        endpoint: '/api/cron/subscription-reconciliation',
+        metadata: {
+          detected: stripeMissing.length,
+          fixed: stripeMissing.filter(m => m.fixed).length,
+          sampleSubs: stripeMissing.slice(0, 5).map(m => m.stripeSubscriptionId),
+          sampleEmails: stripeMissing.slice(0, 5).map(m => m.email).filter(Boolean),
+        },
+      })
+    }
+
     // 5. Enviar reporte si hubo inconsistencias
     if (inconsistencies.length > 0) {
       console.log(`\n📊 Resumen: ${inconsistencies.length} inconsistencia(s) encontrada(s)`)
@@ -154,13 +320,38 @@ async function _GET(request: NextRequest) {
       console.log('✅ No se encontraron inconsistencias')
     }
 
+    // 6. Telemetría a observable_events — alimenta RULE_SUBSCRIPTION_DRIFT.
+    //    Antes solo había email, ahora también queda en obs_events para que
+    //    la alerta declarativa (cooldown 60min) detecte detection>0 sostenido
+    //    como señal de webhook roto. Caso Andrea/Mariangeles/Rocío evitable
+    //    con esto: webhook se rompe → invoice paid pero plan_type stale →
+    //    cron detecta drift → alerta inmediata sin esperar feedback del user.
+    await emit({
+      source: 'fargate',
+      severity: inconsistencies.length > 0 ? 'warn' : 'info',
+      eventType: 'subscription_drift',
+      endpoint: '/api/cron/subscription-reconciliation',
+      metadata: {
+        detected: inconsistencies.length,
+        fixed: inconsistencies.filter(i => i.fixed).length,
+        dryRun,
+        totalActiveSubscriptions: activeSubscriptions?.length || 0,
+        sampleUsers: inconsistencies.slice(0, 5).map(i => i.userId),
+      },
+    })
+
     return NextResponse.json({
       success: true,
       dryRun,
       totalActiveSubscriptions: activeSubscriptions?.length || 0,
       inconsistenciesFound: inconsistencies.length,
       inconsistenciesFixed: inconsistencies.filter(i => i.fixed).length,
-      details: inconsistencies
+      details: inconsistencies,
+      pass2: {
+        stripeMissingInDb: stripeMissing.length,
+        stripeMissingFixed: stripeMissing.filter(m => m.fixed).length,
+        sample: stripeMissing.slice(0, 10),
+      },
     })
 
   } catch (error) {

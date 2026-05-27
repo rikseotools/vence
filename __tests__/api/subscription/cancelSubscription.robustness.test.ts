@@ -74,6 +74,13 @@ jest.mock('@/db/schema', () => ({
 // Resend dynamic import: stub para evitar fallo si RESEND_API_KEY presente
 jest.mock('resend', () => ({ Resend: jest.fn(() => ({ emails: { send: jest.fn() } })) }))
 
+// Mock observability emit — no queremos persistir en BD desde tests.
+const mockEmit = jest.fn()
+jest.mock('@/lib/observability/emit', () => ({
+  emit: (...args: unknown[]) => mockEmit(...args),
+  emitFireAndForget: (...args: unknown[]) => mockEmit(...args),
+}))
+
 // Import bajo test DESPUÉS de los mocks
 import { cancelSubscription } from '@/lib/api/subscription/queries'
 
@@ -99,6 +106,24 @@ beforeEach(() => {
   mockInvoiceVoid.mockResolvedValue({ status: 'void' })
 })
 
+// Helper para verificar que Stripe recibió idempotencyKey.
+function expectIdempotencyKey(mockFn: jest.Mock, callIndex = 0) {
+  const call = mockFn.mock.calls[callIndex]
+  expect(call).toBeDefined()
+  const options = call[call.length - 1]
+  expect(options).toMatchObject({ idempotencyKey: expect.stringMatching(/^cancel-[\w-]+/) })
+}
+
+// Helper para verificar que se emitió un evento de cierto tipo.
+function expectEventEmitted(eventType: string, severity?: string) {
+  const matchingCall = mockEmit.mock.calls.find((args) => {
+    const event = args[0] as { eventType?: string; severity?: string }
+    return event?.eventType === eventType && (severity === undefined || event.severity === severity)
+  })
+  expect(matchingCall).toBeDefined()
+  return matchingCall![0]
+}
+
 describe('cancelSubscription — estado active/trialing (cancel_at_period_end)', () => {
   test('status=active → cancel_at_period_end=true, mode=at_period_end, no void invoices', async () => {
     mockStripeList.mockResolvedValueOnce({ data: [makeSub({ status: 'active' })] })
@@ -110,9 +135,14 @@ describe('cancelSubscription — estado active/trialing (cancel_at_period_end)',
     expect(res.mode).toBe('at_period_end')
     expect(res.voidedInvoices).toBe(0)
     expect(res.alreadyCanceled).toBe(false)
-    expect(mockStripeUpdate).toHaveBeenCalledWith('sub_test123', { cancel_at_period_end: true })
+    expect(mockStripeUpdate).toHaveBeenCalledWith(
+      'sub_test123',
+      { cancel_at_period_end: true },
+      expect.objectContaining({ idempotencyKey: expect.stringContaining('-schedule') }),
+    )
     expect(mockStripeCancel).not.toHaveBeenCalled()
     expect(mockInvoiceVoid).not.toHaveBeenCalled()
+    expectEventEmitted('subscription_cancelled_at_period_end', 'info')
   })
 
   test('status=trialing → cancel_at_period_end=true (mismo trato que active)', async () => {
@@ -123,8 +153,9 @@ describe('cancelSubscription — estado active/trialing (cancel_at_period_end)',
 
     expect(res.success).toBe(true)
     expect(res.mode).toBe('at_period_end')
-    expect(mockStripeUpdate).toHaveBeenCalled()
+    expectIdempotencyKey(mockStripeUpdate)
     expect(mockStripeCancel).not.toHaveBeenCalled()
+    expectEventEmitted('subscription_cancelled_at_period_end')
   })
 })
 
@@ -145,11 +176,27 @@ describe('cancelSubscription — estado past_due/unpaid/incomplete (cancel inmed
     expect(res.success).toBe(true)
     expect(res.mode).toBe('immediate')
     expect(res.voidedInvoices).toBe(2)
-    expect(mockStripeCancel).toHaveBeenCalledWith('sub_test123')
+    expect(mockStripeCancel).toHaveBeenCalledWith(
+      'sub_test123',
+      undefined,
+      expect.objectContaining({ idempotencyKey: expect.stringContaining('-immediate') }),
+    )
     expect(mockStripeUpdate).not.toHaveBeenCalled()
     expect(mockInvoiceVoid).toHaveBeenCalledTimes(2)
-    expect(mockInvoiceVoid).toHaveBeenCalledWith('in_open_1')
-    expect(mockInvoiceVoid).toHaveBeenCalledWith('in_open_2')
+    // Cada invoice tiene su propio idempotencyKey (con el ID de la invoice).
+    expect(mockInvoiceVoid).toHaveBeenCalledWith(
+      'in_open_1',
+      undefined,
+      expect.objectContaining({ idempotencyKey: expect.stringContaining('-void-in_open_1') }),
+    )
+    expect(mockInvoiceVoid).toHaveBeenCalledWith(
+      'in_open_2',
+      undefined,
+      expect.objectContaining({ idempotencyKey: expect.stringContaining('-void-in_open_2') }),
+    )
+    // Telemetría: evento force_canceled_past_due con severidad warn.
+    const evt = expectEventEmitted('subscription_force_canceled_past_due', 'warn')
+    expect(evt.metadata).toMatchObject({ voidedCount: 2, voidedFailed: 0 })
   })
 
   test('status=unpaid → cancel inmediato + void', async () => {
@@ -162,7 +209,8 @@ describe('cancelSubscription — estado past_due/unpaid/incomplete (cancel inmed
     expect(res.success).toBe(true)
     expect(res.mode).toBe('immediate')
     expect(res.voidedInvoices).toBe(1)
-    expect(mockStripeCancel).toHaveBeenCalled()
+    expectIdempotencyKey(mockStripeCancel)
+    expectEventEmitted('subscription_force_canceled_past_due')
   })
 
   test('status=incomplete → cancel inmediato (sin invoices abiertas también funciona)', async () => {
@@ -175,11 +223,11 @@ describe('cancelSubscription — estado past_due/unpaid/incomplete (cancel inmed
     expect(res.success).toBe(true)
     expect(res.mode).toBe('immediate')
     expect(res.voidedInvoices).toBe(0)
-    expect(mockStripeCancel).toHaveBeenCalled()
+    expectIdempotencyKey(mockStripeCancel)
     expect(mockInvoiceVoid).not.toHaveBeenCalled()
   })
 
-  test('past_due con error voideando una invoice no rompe el flujo (best-effort)', async () => {
+  test('past_due con error voideando una invoice → emite subscription_void_invoice_failed (severity error) y subscription_force_canceled_past_due sube a error', async () => {
     mockStripeList.mockResolvedValueOnce({ data: [makeSub({ status: 'past_due' })] })
     mockStripeCancel.mockResolvedValueOnce({ status: 'canceled' })
     mockInvoiceList.mockResolvedValueOnce({
@@ -197,6 +245,12 @@ describe('cancelSubscription — estado past_due/unpaid/incomplete (cancel inmed
     expect(res.success).toBe(true)
     expect(res.mode).toBe('immediate')
     expect(res.voidedInvoices).toBe(1) // solo la que funcionó
+    // Observabilidad ahora detecta el fallo del void.
+    const voidFailEvt = expectEventEmitted('subscription_void_invoice_failed', 'error')
+    expect(voidFailEvt.metadata).toMatchObject({ invoiceId: 'in_fail' })
+    // El evento de fuerza-cancel sube a severity=error porque hubo voids fallidos.
+    const forceCancelEvt = expectEventEmitted('subscription_force_canceled_past_due', 'error')
+    expect(forceCancelEvt.metadata).toMatchObject({ voidedCount: 1, voidedFailed: 1 })
   })
 })
 
@@ -278,7 +332,28 @@ describe('cancelSubscription — prioridad cuando hay varias suscripciones', () 
 
     expect(res.success).toBe(true)
     expect(res.mode).toBe('at_period_end')
-    expect(mockStripeUpdate).toHaveBeenCalledWith('sub_active', { cancel_at_period_end: true })
+    expect(mockStripeUpdate).toHaveBeenCalledWith(
+      'sub_active',
+      { cancel_at_period_end: true },
+      expect.objectContaining({ idempotencyKey: expect.stringContaining('-schedule') }),
+    )
     expect(mockStripeCancel).not.toHaveBeenCalled()
+  })
+})
+
+describe('cancelSubscription — idempotencia end-to-end con key del cliente', () => {
+  test('caller pasa idempotencyKey → se respeta y forma parte de las sub-keys', async () => {
+    mockStripeList.mockResolvedValueOnce({ data: [makeSub({ status: 'active' })] })
+    mockStripeUpdate.mockResolvedValueOnce({})
+
+    await cancelSubscription({
+      userId: USER_ID,
+      idempotencyKey: 'client-provided-key-abc123',
+    })
+
+    // La sub-key '-schedule' debe contener el key del cliente
+    const call = mockStripeUpdate.mock.calls[0]
+    const options = call[call.length - 1]
+    expect(options.idempotencyKey).toBe('client-provided-key-abc123-schedule')
   })
 })

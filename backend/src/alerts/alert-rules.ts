@@ -569,6 +569,239 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
 };
 
 /**
+ * Cancel-flow void invoice failed — cualquier ocurrencia de
+ * `subscription_void_invoice_failed` indica que el path past_due/unpaid
+ * de cancelSubscription NO pudo voidear una invoice abierta. Consecuencia
+ * real: Stripe SIGUE intentando cobrar al usuario en background tras
+ * "cancelar". Caso Mariangeles 21/05/2026: 7 intentos de cancel fallaron,
+ * ella esperó 5 días viendo los emails de payment_failed antes de pedir
+ * borrado de cuenta.
+ *
+ * Disparo INMEDIATO con N≥1 (no acumulamos, cada fallo es un usuario con
+ * cobros activos pendientes).
+ */
+export const RULE_SUBSCRIPTION_VOID_FAILED: AlertRule<{
+  n: number;
+  topUser: string | null;
+  lastError: string | null;
+}> = {
+  name: 'subscription_void_failed',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY user_id) AS "topUser",
+           (ARRAY_AGG(error_message ORDER BY ts DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'subscription_void_invoice_failed'
+      AND ts > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.n} void(s) de invoice fallido(s) en 15 min — usuarios siguen recibiendo cobros`,
+      body: `cancelSubscription en modo immediate intentó voidear invoices abiertas y falló. El usuario afectado tiene cancelaciones contabilizadas pero Stripe seguirá reintentando charge_automatically hasta agotar smart retries (~3 semanas).\n\nUsuario top: ${(r.topUser ?? '?').slice(0, 8)}\nÚltimo error Stripe: ${r.lastError ?? '(n/a)'}\n\nAcciones:\n  1. /admin/salud-sistema → buscar el user_id y verificar estado en Stripe Dashboard.\n  2. Void manual desde dashboard si la invoice sigue abierta.\n  3. SELECT user_id, metadata->>'subscriptionId' AS sub, metadata->>'invoiceId' AS inv\n     FROM observable_events WHERE event_type='subscription_void_invoice_failed'\n     AND ts > NOW() - INTERVAL '1 hour';`,
+      metadata: { count: r.n, topUser: r.topUser, lastError: r.lastError },
+      fingerprint: `void_failed_${r.topUser ?? 'any'}`,
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * Cancel-flow force-cancel burst — > 5 cancelaciones inmediatas
+ * (past_due/unpaid/incomplete) en 1h indica un problema sistémico de
+ * cobros (gateway de pago degradado, tarjetas masivamente caducadas tras
+ * cambio anual, etc.). Si la tasa diaria normal es ~1-2, un burst de 5+
+ * en 1h merece investigación inmediata.
+ */
+export const RULE_SUBSCRIPTION_FORCE_CANCEL_BURST: AlertRule<{ n: number }> = {
+  name: 'subscription_force_cancel_burst',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n
+    FROM observable_events
+    WHERE event_type = 'subscription_force_canceled_past_due'
+      AND ts > NOW() - INTERVAL '1 hour'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 5,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    return {
+      title: `${n} cancelaciones forzadas (past_due/unpaid) en 1h — posible problema de cobros sistémico`,
+      body: `cancelSubscription tuvo que cancelar inmediatamente ${n} subscripciones que ya estaban en past_due/unpaid/incomplete. La tasa normal es <2/h. Posibles causas:\n  - Gateway de pago Stripe degradado (mirar status.stripe.com)\n  - Caducidad masiva de tarjetas (típico inicio de año/mes)\n  - Cambio en políticas anti-fraude del banco\n\nInvestigar:\n  SELECT user_id, metadata->>'originalStatus' AS status, ts\n  FROM observable_events WHERE event_type='subscription_force_canceled_past_due'\n  AND ts > NOW() - INTERVAL '2 hours' ORDER BY ts DESC;`,
+      metadata: { count: n, windowMin: 60 },
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * Cancel endpoint error burst — ≥3 errores no controlados (excepciones)
+ * en /api/stripe/cancel en 15 min. Cualquier excepción que escape del
+ * try/catch principal de cancelSubscription emite este evento. Si pasa
+ * a la vez varias veces, la API de Stripe puede estar caída o nuestro
+ * código tiene un bug que afecta a varios usuarios.
+ */
+export const RULE_SUBSCRIPTION_CANCEL_ERROR_BURST: AlertRule<{
+  n: number;
+  lastMsg: string | null;
+}> = {
+  name: 'subscription_cancel_error_burst',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(error_message ORDER BY ts DESC))[1] AS "lastMsg"
+    FROM observable_events
+    WHERE event_type = 'subscription_cancel_error'
+      AND ts > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.n} errores en /api/stripe/cancel en 15 min`,
+      body: `Excepciones no controladas en cancelSubscription. Probable: API Stripe degradada o regresión del código.\n\nÚltimo mensaje: ${r.lastMsg ?? '(n/a)'}\n\nInvestigar:\n  - status.stripe.com\n  - SELECT user_id, error_message, metadata, ts FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    ORDER BY ts DESC;`,
+      metadata: { count: r.n, lastMsg: r.lastMsg },
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * Subscription drift "missing in DB" — el caso Andrea exacto.
+ *
+ * El cron de reconciliation Pass-2 (post-27/05/2026) consulta Stripe directo
+ * y compara contra user_subscriptions. Si encuentra suscripciones active en
+ * Stripe sin fila en BD, emite este evento con `detected: N`. Eso significa
+ * usuarios que han PAGADO pero NO se ha aplicado premium — probable webhook
+ * roto silenciosamente.
+ *
+ * Disparo: detected > 0. El cron además auto-arregla (INSERT fila + UPDATE
+ * profile.plan_type), por eso la severity es 'error' no 'critical' — el
+ * daño está mitigado, pero el bug raíz (webhook) sigue ahí y hay que
+ * investigarlo igual.
+ *
+ * Caso real: 27/05/2026 — STRIPE_WEBHOOK_SECRET desincronizado tras redeploy.
+ * Rocío + Mercedes pagaron sin que se aplicara premium. Detectado solo por
+ * feedback al chat. Con esta regla + el Pass-2 del cron: detección y auto-fix
+ * en ≤1h sin intervención humana.
+ */
+export const RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB: AlertRule<{
+  detected: number;
+  fixed: number;
+}> = {
+  name: 'subscription_drift_missing_in_db',
+  severity: 'error',
+  query: sql`
+    SELECT
+      COALESCE((metadata->>'detected')::int, 0) AS detected,
+      COALESCE((metadata->>'fixed')::int, 0) AS fixed
+    FROM observable_events
+    WHERE event_type = 'subscription_drift_missing_in_db'
+      AND ts > NOW() - INTERVAL '2 hours'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => (rows[0]?.detected ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.detected} pago(s) procesado(s) en Stripe sin sincronizar a BD (${r.fixed} auto-fix)`,
+      body: `El cron de reconciliation Pass-2 detectó suscripciones active en Stripe que NO estaban en user_subscriptions de BD — significa que el WEBHOOK STRIPE está roto y usuarios pagan sin recibir premium.\n\nLas ${r.fixed} se han auto-corregido (INSERT user_subscriptions + UPDATE profile.plan_type=premium). El daño al usuario está mitigado.\n\nPERO el bug raíz (webhook) sigue: investigar /api/stripe/webhook URGENTE.\n\n  - Comprobar https://dashboard.stripe.com/webhooks → endpoint vence-produccion → ¿% de errores?\n  - Si signature failed: ver regla stripe_webhook_signature_failed (runbook para rotar secret).\n  - Si 4xx no-signature: ver stripe_webhook_4xx_burst.\n\nIncidente origen: 2026-05-27 (Rocío/Mercedes/Andrea).`,
+      metadata: { detected: r.detected, fixed: r.fixed },
+      fingerprint: 'subscription_drift_missing_in_db',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * Stripe webhook signature failed — disparo INMEDIATO (≥1 en 5 min, critical).
+ *
+ * Cada `Webhook signature verification failed` (HTTP 400 de /api/stripe/webhook)
+ * significa que Stripe envía un evento, nuestro endpoint NO puede verificar la
+ * firma, lo rechaza. Causa: STRIPE_WEBHOOK_SECRET incorrecto o desincronizado
+ * con el dashboard de Stripe.
+ *
+ * Origen: incidente 2026-05-27 — tras un redeploy, el secret en SSM no se
+ * actualizó. Stripe rechazó 59 eventos en 4h (incluidas 2 nuevas suscripciones
+ * de Rocío y Mercedes, que pagaron y no se activaron). Detectado solo por
+ * feedback manual al chat de soporte.
+ *
+ * Esta regla mira directamente validation_error_logs (escritura en tiempo
+ * real desde el frontend ECS Fargate) en lugar de depender del cron
+ * check-webhook-health (que llevaba 5h sin ejecutarse en el incidente
+ * original). Detección en ≤5min, sin depender de ningún cron externo.
+ *
+ * Cualquier ocurrencia = pago potencial sin procesar = P1 inmediato.
+ */
+export const RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED: AlertRule<{
+  n: number;
+  lastMsg: string | null;
+}> = {
+  name: 'stripe_webhook_signature_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastMsg"
+    FROM validation_error_logs
+    WHERE endpoint LIKE '%stripe/webhook%'
+      AND error_message ILIKE '%signature verification failed%'
+      AND created_at > NOW() - INTERVAL '5 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 ${r.n} signature fail(s) en /api/stripe/webhook en 5 min — pagos sin procesar`,
+      body: `Stripe está rechazando eventos por firma inválida. Cada evento rechazado puede ser un pago/suscripción que NO se está aplicando en BD.\n\nCAUSA TÍPICA: STRIPE_WEBHOOK_SECRET desincronizado entre SSM y el dashboard de Stripe (tras un redeploy o rotación manual).\n\nACCIONES:\n  1. https://dashboard.stripe.com/webhooks → endpoint vence-produccion → "Reveal signing secret"\n  2. aws ssm put-parameter --profile vence --region eu-west-2 \\\n       --name /vence-frontend/STRIPE_WEBHOOK_SECRET --value 'whsec_...' --type SecureString --overwrite\n  3. aws ecs update-service --profile vence --region eu-west-2 \\\n       --cluster vence-backend --service vence-frontend --force-new-deployment\n  4. Una vez OK, reenviar eventos fallidos desde el dashboard de Stripe.\n\nÚltimo error: ${r.lastMsg ?? '(n/a)'}\n\nIncidente origen: 2026-05-27 — caso Rocío Jodar/Mercedes Martínez.`,
+      metadata: { count: r.n, lastMsg: r.lastMsg, windowMin: 5 },
+      fingerprint: 'stripe_webhook_signature_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
+ * Stripe webhook 4xx burst — ≥5 errores 4xx en 10 min en /api/stripe/webhook.
+ *
+ * Complementa a `stripe_webhook_signature_failed` para detectar OTROS bugs
+ * de validación: body roto, Content-Type inválido, schema cambiado en Stripe,
+ * route handler en bug, etc.
+ *
+ * Excluye explícitamente "signature verification failed" para no duplicar
+ * alertas con la regla específica de arriba (esa es critical instant,
+ * ésta es error con cooldown más alto).
+ */
+export const RULE_STRIPE_WEBHOOK_4XX_BURST: AlertRule<{
+  n: number;
+  topError: string | null;
+}> = {
+  name: 'stripe_webhook_4xx_burst',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "topError"
+    FROM validation_error_logs
+    WHERE endpoint LIKE '%stripe/webhook%'
+      AND http_status >= 400 AND http_status < 500
+      AND error_message NOT ILIKE '%signature verification failed%'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 5,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.n} errores 4xx (no-signature) en /api/stripe/webhook en 10 min`,
+      body: `Burst de 4xx distintos de signature failed. Probable causa: shape de evento Stripe cambiado, validación de body en bug, route handler con regresión.\n\nÚltimo error: ${r.topError ?? '(n/a)'}\n\nInvestigar:\n  SELECT created_at, http_status, error_type, error_message\n  FROM validation_error_logs\n  WHERE endpoint LIKE '%stripe/webhook%' AND created_at > NOW() - INTERVAL '30 minutes'\n  ORDER BY created_at DESC LIMIT 30;`,
+      metadata: { count: r.n, topError: r.topError, windowMin: 10 },
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -586,6 +819,14 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SUBSCRIPTION_DRIFT as AlertRule,
   RULE_WEBHOOK_UNHEALTHY as AlertRule,
   RULE_STRIPE_CHECKOUT_FAILED as AlertRule,
+  // Cancel flow robusto (2026-05-27 post-caso Mariangeles)
+  RULE_SUBSCRIPTION_VOID_FAILED as AlertRule,
+  RULE_SUBSCRIPTION_FORCE_CANCEL_BURST as AlertRule,
+  RULE_SUBSCRIPTION_CANCEL_ERROR_BURST as AlertRule,
+  // Webhook entrante robusto (2026-05-27 post-caso Rocío/Mercedes)
+  RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED as AlertRule,
+  RULE_STRIPE_WEBHOOK_4XX_BURST as AlertRule,
+  RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB as AlertRule,
   // Salud del frontend desde server-side metrics (no depende del cliente)
   RULE_TRAFFIC_DROP as AlertRule,
 ];
