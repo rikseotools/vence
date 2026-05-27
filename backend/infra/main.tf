@@ -25,6 +25,10 @@ locals {
   supabase_jwt_secret_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SUPABASE_JWT_SECRET"
   admin_alerts_email_ssm_arn   = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/ADMIN_ALERTS_EMAIL"
   sentry_dsn_ssm_arn           = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SENTRY_DSN"
+  # STRIPE_SECRET_KEY añadido 27/05/2026 para los crons check-webhook-health
+  # y subscription-reconciliation migrados de GHA a Fargate. Mismo valor que
+  # /vence-frontend/STRIPE_SECRET_KEY (sk_live_*).
+  stripe_secret_key_ssm_arn    = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/STRIPE_SECRET_KEY"
 }
 
 # ============================================================
@@ -201,6 +205,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "SUPABASE_JWT_SECRET", valueFrom = local.supabase_jwt_secret_ssm_arn },
         { name = "ADMIN_ALERTS_EMAIL", valueFrom = local.admin_alerts_email_ssm_arn },
         { name = "SENTRY_DSN", valueFrom = local.sentry_dsn_ssm_arn },
+        { name = "STRIPE_SECRET_KEY", valueFrom = local.stripe_secret_key_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
