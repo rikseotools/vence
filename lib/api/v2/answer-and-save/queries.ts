@@ -51,6 +51,7 @@ import type { OposicionId } from '@/lib/api/tema-resolver/schemas'
 interface QuestionValidation {
   correctOption: number | null
   explanation: string | null
+  articleId: string | null
   articleNumber: string | null
   lawShortName: string | null
   lawName: string | null
@@ -61,11 +62,20 @@ async function getQuestionValidationInternal(
 ): Promise<QuestionValidation | null> {
   const db = getAnswerSaveDb()  // canary pooler
 
-  // 1. Probar tabla questions con JOIN articles+laws (preguntas legislativas)
+  // 1. Probar tabla questions con JOIN articles+laws (preguntas legislativas).
+  //    Incluye articles.id (articleId) — campo crítico para tracking en
+  //    test_questions.article_id. Antes el server NO lo devolvía y el path
+  //    insertTestAnswer confiaba ciegamente en req.questionData.article.id
+  //    enviado por cliente; si el cliente no lo mandaba se guardaba NULL,
+  //    perdiendo el 11.37% de tracking para todos los endpoints downstream
+  //    (oposiciones-compatibles, theme-stats, weak-articles, etc.).
+  //    Fix 2026-05-27: server resuelve articleId desde la BD y sobrescribe
+  //    en validateAndSaveAnswer si el cliente no lo envió.
   const result = await db
     .select({
       correctOption: questions.correctOption,
       explanation: questions.explanation,
+      articleId: articles.id,
       articleNumber: articles.articleNumber,
       lawShortName: laws.shortName,
       lawName: laws.name,
@@ -92,6 +102,7 @@ async function getQuestionValidationInternal(
     return {
       correctOption: psyResult[0].correctOption,
       explanation: psyResult[0].explanation,
+      articleId: null,
       articleNumber: null,
       lawShortName: null,
       lawName: null,
@@ -101,9 +112,11 @@ async function getQuestionValidationInternal(
   return null
 }
 
+// v2 (2026-05-27): añadido articleId al shape — bump key para que las
+// entradas v1 cached (sin articleId) no se entreguen tras el deploy.
 const getQuestionValidationCached = unstable_cache(
   getQuestionValidationInternal,
-  ['question-validation-v1'],
+  ['question-validation-v2'],
   { revalidate: 3600, tags: ['questions'] }, // 1 hora — red de seguridad
 )
 
@@ -147,6 +160,7 @@ export async function validateAndSaveAnswer(
   // ejecutamos el resolver — el path es idéntico al anterior y añade 0ms.
   let correctOption: number | null = null
   let explanation: string | null = null
+  let articleId: string | null = null
   let articleNumber: string | null = null
   let lawShortName: string | null = null
   let lawName: string | null = null
@@ -173,6 +187,7 @@ export async function validateAndSaveAnswer(
   if (validation) {
     correctOption = validation.correctOption
     explanation = validation.explanation
+    articleId = validation.articleId
     articleNumber = validation.articleNumber
     lawShortName = validation.lawShortName
     lawName = validation.lawName
@@ -202,7 +217,17 @@ export async function validateAndSaveAnswer(
   const effectiveTema =
     preResolvedTema !== null && preResolvedTema > 0 ? preResolvedTema : params.tema
 
-  // 2. GUARDAR EN test_questions (reusar insertTestAnswer existente)
+  // 2. GUARDAR EN test_questions (reusar insertTestAnswer existente).
+  //    Enriquecemos article con el id resuelto desde validation si el
+  //    cliente no lo envió — antes esto perdía 11.37% del tracking
+  //    (test_questions.article_id = null) cuando el cliente omitía el id.
+  //    El server ahora rellena el hueco usando questions.primary_article_id
+  //    via JOIN articles. Para psicotécnicas y AI-generated questions el
+  //    articleId sigue siendo null por diseño (no aplica).
+  const enrichedArticle = (articleId && !params.article?.id)
+    ? { ...(params.article || {}), id: articleId }
+    : params.article
+
   const saveRequest: SaveAnswerRequest = {
     sessionId: params.sessionId,
     questionData: {
@@ -211,7 +236,7 @@ export async function validateAndSaveAnswer(
       options: params.options,
       tema: effectiveTema,
       questionType: params.questionType,
-      article: params.article,
+      article: enrichedArticle,
       metadata: params.metadata,
       explanation: params.explanation,
     },
