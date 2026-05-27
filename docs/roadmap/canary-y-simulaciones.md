@@ -141,6 +141,47 @@ Inspirados en los niveles de VicoHR. Cada nivel es **ejecutable de forma indepen
 
 ---
 
+### 🟢 Nivel 3 variante — Canary answer-save (HECHO 2026-05-27)
+
+Cubre el endpoint **MÁS caliente** de la app: `POST /api/v2/answer-and-save`. Cada respuesta de cada user en cada test pasa por aquí. Si se rompe, la app queda inutilizable instantáneamente.
+
+**Implementación** — módulo NestJS Fargate `backend/src/canary-answer-save/`:
+
+- `canary-answer-save.service.ts`: mismo approach agnóstico (JWT firmado local con `SUPABASE_JWT_SECRET`). Construye payload completo con pregunta hardcoded (art 99 CE, easy, estable) + session smoke estable (`00000000-0000-4000-8000-000000000001` creada manualmente en `tests` con `test_type=practice`). POST + valida 200 + `success:true`.
+- Manejo step-aware: `sign_token`/`http`/`validate_response`/`validate_latency` → critical. `questionInvalid` (pregunta retirada del catálogo) → warn, NO critical.
+- Cooldown 15min. Latencia <15s.
+- `RULE_CANARY_ANSWER_SAVE_FAILED` en `alert-rules.ts` con runbook step-aware (401/422/5xx/503).
+
+**Decisión "contamina BD"**: el canary reutiliza siempre el mismo `(sessionId, questionId, questionIndex)`. Primer tick: INSERT `saved_new`. Siguientes 287 ticks/día: `23505 unique constraint` → `already_saved` → 200. Contamina UNA fila en `test_questions`, no 288/día.
+
+**Lo que detecta** (todo lo crítico del endpoint hot):
+- Drizzle transactional save roto / RLS / FK violations / unique constraints.
+- Antifraud cache corrupto / register_device RPC roto.
+- Daily-limit query rota.
+- JwtGuard mal configurado.
+- Schema validation cambiado.
+- 503 load shedding (saturación BD).
+
+---
+
+## Observabilidad cableada
+
+### Dashboard `/admin/canary` (HECHO 2026-05-27)
+
+Vista única con cards por canary mostrando:
+- Status (verde ≥99% / ámbar ≥95% / rojo <95%).
+- Uptime 24h + 7d, latencia p50/p95.
+- Último OK y último fallo con mensaje accionable.
+- Auto-refresh 60s.
+
+Endpoint `/api/admin/canary` agrega `observable_events` en una sola query (filtra por `endpoint IN ('canary-smoke-auth', 'canary-stripe-webhook', 'canary-answer-save')` últimos 7d).
+
+### SLOs en `/api/admin/slos` cableados a observable_events (HECHO 2026-05-27)
+
+Reemplaza el ex-SLO-01 CloudWatch Synthetics (devolvía `unknown` porque el canary CloudWatch nunca se desplegó). Ahora 3 SLOs derivados de los canarios Fargate, con mismas thresholds (≥99.9% verde, ≥99% ámbar) y subiendo a `cutoverReady`.
+
+---
+
 ### 🟡 Nivel 4 — Smoke autenticado E2E (Playwright + login)
 
 **Qué cubre**: flujo crítico end-to-end con browser real.
