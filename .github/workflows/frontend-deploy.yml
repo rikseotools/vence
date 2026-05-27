@@ -21,6 +21,12 @@ on:
       - 'scripts/**'
       - 'data/**'
       - '__tests__/**'
+      # Workflows GHA propios — modificar un YAML de CI/CD no implica
+      # redeploy del frontend. Descubierto 27/05/2026 al pushear el
+      # workflow e2e-smoke.yml: disparó frontend-deploy idle gastando
+      # ~10 min CI por cambio. Si alguien quiere forzar redeploy tras
+      # tocar un workflow, usar workflow_dispatch.
+      - '.github/workflows/**'
       - '*.md'
   workflow_dispatch:
 
