@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'node:crypto';
 
 /**
  * Canary `/api/v2/answer-and-save` — Nivel 3 (3er canary autenticado).
@@ -36,6 +35,12 @@ export class CanaryAnswerSaveService {
     process.env.SMOKE_TARGET_URL ?? 'https://www.vence.es';
   private readonly MAX_DURATION_MS = 15_000; // 15s — answer-save puede ser lento bajo carga
   private readonly TOKEN_TTL_SECONDS = 3600;
+
+  // Session smoke estable (creada manualmente 27/05/2026 en tabla `tests`).
+  // El primer tick INSERT row en test_questions con PK (session_id, question_id,
+  // question_index); los siguientes 287 ticks/día devuelven 23505 (unique
+  // constraint) → `already_saved` → success:true → 200. Contamina UNA fila.
+  private readonly SMOKE_SESSION_ID = '00000000-0000-4000-8000-000000000001';
 
   // Pregunta estable hardcoded: art 99 CE, easy, creada 2024. Si se retira:
   // diagnóstico en logs → actualizar este UUID aquí.
@@ -100,12 +105,14 @@ export class CanaryAnswerSaveService {
     }
 
     // ─── 2. Construir body completo ───
-    const sessionId = randomUUID();
     const body = {
       questionId: this.SMOKE_QUESTION.id,
-      userAnswer: 1, // 1 = B (la correcta — minimiza dependencia de validación)
+      // userAnswer puede ser cualquier valor 0-3. El canary valida que el
+      // endpoint procesa y guarda, NO que el user acierte. Usamos 0 (A) que
+      // es la respuesta correcta para esta pregunta — irrelevante funcionalmente.
+      userAnswer: 0,
       isBlank: false,
-      sessionId,
+      sessionId: this.SMOKE_SESSION_ID,
       questionIndex: 0,
       questionText: this.SMOKE_QUESTION.text,
       options: this.SMOKE_QUESTION.options,
