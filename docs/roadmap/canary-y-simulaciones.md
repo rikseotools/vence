@@ -75,38 +75,40 @@ Inspirados en los niveles de VicoHR. Cada nivel es **ejecutable de forma indepen
 
 ### 🟢 Nivel 3 — Canary HTTP autenticado cada 5 min (HECHO 2026-05-27 — código listo, esperando smoke user)
 
-**Qué cubre**: el flujo crítico de auth + endpoint protegido + sesión. Equivalente al canary HTTP de VicoHR.
+**Qué cubre**: regresiones en `/api/profile` (endpoint protegido más caliente: cada page load logueado pasa por aquí). Cualquier rotura de validación JWT, RLS, Drizzle, timeouts, deploy roto, etc. → alarma critical en ≤5 min.
+
+**Approach AGNÓSTICO (decidido 27/05/2026)**: en vez de hacer login real contra Supabase Auth REST (acoplaría el canary al proveedor cuando estamos en mitad del [agnosticismo Supabase](agnosticismo-supabase.md)), el canary **firma localmente** un JWT smoke con `SUPABASE_JWT_SECRET` (que el backend ya tiene y usa `JwtGuard` para verificar tokens entrantes). Mismo formato que el SDK Supabase (`HS256`, `aud='authenticated'`, `sub=userId`). Cuando migremos a otro proveedor de auth, solo cambia la lógica de firma; el canary sigue intacto.
+
+**Qué NO cubre con este approach**: caída de Supabase Auth como proveedor. Esa cobertura la dará el smoke E2E del Nivel 4 (Playwright + login real). Hoy no la necesitamos: si Supabase Auth cae, lo notamos por su status page y mil sitios más, no es la línea de defensa que añadimos aquí.
 
 **Implementación** — módulo NestJS Fargate `backend/src/canary-smoke-auth/`:
 
-- `canary-smoke-auth.service.ts`: 4 pasos secuenciales con timeouts de 5s cada uno.
-  1. `POST /api/auth/login` con `smoke@vence.es` + `SMOKE_USER_PASSWORD` (SSM).
-  2. `GET /api/profile?userId=<SMOKE_USER_ID>` con Bearer del paso 1.
+- `canary-smoke-auth.service.ts`: 4 pasos secuenciales con timeout 5s en el fetch.
+  1. Firmar JWT smoke con `SUPABASE_JWT_SECRET` (TTL 1h, regenerado en cada `run()`).
+  2. `GET /api/profile?userId=<SMOKE_USER_ID>` con Bearer.
   3. Validar `planType === 'premium'`.
   4. Validar latencia total < 10s.
 - `canary-smoke-auth.cron.ts`: `@Cron('*/5 * * * *')` con 4 eventos a observability:
   - `canary_auth_ok` (info)
   - `canary_auth_failed` (critical, dispara `RULE_CANARY_AUTH_FAILED`)
-  - `canary_auth_skipped` (warn, modo idle cuando faltan credenciales SSM — NO spam de alarmas)
+  - `canary_auth_skipped` (warn, modo idle cuando falta `SMOKE_USER_ID` — NO spam de alarmas)
   - `cron_run` (siempre, liveness)
 - `canary-smoke-auth.module.ts` registrado en `app.module.ts`.
 - `RULE_CANARY_AUTH_FAILED` en `alert-rules.ts`: severity critical, cooldown 15min, dispara con ≥1 evento en 10 min.
-- Tests Jest: 5 tests verde en `alert-rules.spec.ts` (shouldFire ≥1, NO con 0, severity critical, notification con runbook 5 acciones, cooldown 15).
+- Tests Jest: 5 tests verde en `alert-rules.spec.ts`.
 
-**Estado**: código mergeado. **Cron está en modo idle hasta que se configure el smoke user** (devuelve `{skipped: true, reason: 'credentials_not_configured'}` con warn, sin spam).
+**Estado**: código mergeado. **Cron está en modo idle hasta que exista `SMOKE_USER_ID`** (devuelve `{skipped: true, reason: 'credentials_not_configured'}` con warn).
 
-**Pendiente humano (15 min) para activarlo**:
-1. Crear smoke user en Supabase Auth: `smoke@vence.es` / password seguro generado.
-2. UPSERT `user_profiles` con `plan_type='premium'`, `target_oposicion='auxiliar_administrativo_estado'`.
-3. `aws ssm put-parameter --profile vence --region eu-west-2 --name /vence-backend/SMOKE_USER_PASSWORD --value '<password>' --type SecureString`
-4. `aws ssm put-parameter --profile vence --region eu-west-2 --name /vence-backend/SMOKE_USER_ID --value '<uuid>' --type SecureString`
-5. Añadir ambos a `backend/infra/main.tf` (locals + IAM policy + secrets en task def) — mismo patrón que `STRIPE_SECRET_KEY` (commit `2e67ffd6`).
-6. `terraform apply -target=aws_ecs_task_definition.backend -target=aws_iam_role_policy.task_execution_secrets`
-7. `aws ecs update-service --profile vence --cluster vence-backend --service vence-backend --force-new-deployment`
+**Pendiente humano (5 min — 3 cosas, no 7 como decía la primera versión)**:
+1. Crear `smoke@vence.es` en Supabase Auth (vía dashboard o admin API) + UPSERT `user_profiles` con `plan_type='premium'`, `target_oposicion='auxiliar_administrativo_estado'`. **Anotar el UUID** del user creado.
+2. `aws ssm put-parameter --profile vence --region eu-west-2 --name /vence-backend/SMOKE_USER_ID --value '<uuid>' --type String` (NO SecureString — un UUID no es credencial, no hace falta encriptar).
+3. Añadir `SMOKE_USER_ID` a `backend/infra/main.tf` como **environment** (no como secret porque no es SSM SecureString) + `terraform apply` + `aws ecs update-service --force-new-deployment`.
 
-**Métrica éxito**: SLO ≥99.9% uptime/mes. Detección regresiones auth en ≤5 min.
+`SUPABASE_JWT_SECRET` **ya está** en el backend (lo usa `JwtGuard`) — no hay que añadirlo.
 
-**Lo que hubiera cazado**: el bug Rocío/Mercedes de hoy (auth + profile funcionaban, pero si hubiéramos extendido el canary a `/api/stripe/webhook` con evento sintético firmado, la regresión de signature se habría detectado en 5min). Nivel 4 lo extenderá al webhook.
+**Métrica éxito**: SLO ≥99.9% uptime/mes. Detección regresiones `/api/profile` en ≤5 min.
+
+**Lo que hubiera cazado**: regresiones de `/api/profile` (cambio breaking en Drizzle queries, RLS roto, JwtGuard mal configurado, timeouts, etc.). NO el bug Rocío/Mercedes específico (ese requería canary contra `/api/stripe/webhook`). El siguiente paso natural es replicar este patrón para `/api/stripe/webhook` con evento sintético firmado — pendiente Nivel 4 o regla adicional.
 
 ---
 

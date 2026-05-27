@@ -7,7 +7,7 @@ import { CanarySmokeAuthService } from './canary-smoke-auth.service';
  * Disparador del cron `canary-smoke-auth`.
  *
  * Sustituye al hueco que evidenció el incidente Rocío/Mercedes (27/05/2026):
- * el flow login + profile rompió silenciosamente y nadie lo notó hasta que
+ * el flow auth + profile rompió silenciosamente y nadie lo notó hasta que
  * los usuarios reportaron por feedback (~horas después). Este canary corre
  * cada 5 min y dispara alarma critical en <5 min ante cualquier regresión.
  *
