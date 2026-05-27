@@ -17,6 +17,7 @@ import {
   RULE_STRIPE_WEBHOOK_4XX_BURST,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
   RULE_CANARY_AUTH_FAILED,
+  RULE_CANARY_WEBHOOK_FAILED,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -435,5 +436,46 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
 
   it('cooldown 15 min (saber rápido pero sin spam si la regresión persiste)', () => {
     expect(RULE_CANARY_AUTH_FAILED.cooldownMin).toBe(15);
+  });
+});
+
+describe('RULE_CANARY_WEBHOOK_FAILED', () => {
+  it('dispara con ≥1 fallo (cualquier rotura del webhook = pagos en riesgo)', () => {
+    expect(
+      RULE_CANARY_WEBHOOK_FAILED.shouldFire([
+        { n: 1, lastStep: 'http', lastError: 'HTTP 400 signature failed', lastStatus: 400 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0 fallos ni filas vacías', () => {
+    expect(
+      RULE_CANARY_WEBHOOK_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null, lastStatus: null },
+      ]),
+    ).toBe(false);
+    expect(RULE_CANARY_WEBHOOK_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('severity=critical (P1 — pagos potencialmente sin procesar)', () => {
+    expect(RULE_CANARY_WEBHOOK_FAILED.severity).toBe('critical');
+  });
+
+  it('notification cita Rocío/Mercedes + runbook con 5 acciones step-aware', () => {
+    const notif = RULE_CANARY_WEBHOOK_FAILED.buildNotification([
+      { n: 2, lastStep: 'http', lastError: 'HTTP 400 signature verification failed', lastStatus: 400 },
+    ]);
+    expect(notif.title).toContain('2');
+    expect(notif.title).toContain('Stripe webhook');
+    expect(notif.body).toContain('Rocío/Mercedes');
+    expect(notif.body).toContain('400');
+    expect(notif.body).toContain('STRIPE_WEBHOOK_SECRET');
+    expect(notif.body).toContain('rotar');
+    expect(notif.body).toContain('canary-y-simulaciones.md');
+    expect(notif.fingerprint).toBe('canary_stripe_webhook_failed');
+  });
+
+  it('cooldown 15 min', () => {
+    expect(RULE_CANARY_WEBHOOK_FAILED.cooldownMin).toBe(15);
   });
 });

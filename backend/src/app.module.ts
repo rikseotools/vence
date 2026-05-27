@@ -42,6 +42,11 @@ import { SubscriptionReconciliationModule } from './subscription-reconciliation/
 // Canary HTTP autenticado — Nivel 3 sistema canary+simulaciones (27/05/2026
 // post-incidente Rocío/Mercedes). Detecta regresión auth+profile en <5min.
 import { CanarySmokeAuthModule } from './canary-smoke-auth/canary-smoke-auth.module';
+// Canary Stripe webhook sintético — cierra el gap del incidente
+// Rocío/Mercedes (27/05/2026): envía evento firmado al /api/stripe/webhook
+// real cada 5min. Detecta SSM no propagada / handler 404 / signature code
+// roto en <=5min. Ver docs/roadmap/canary-y-simulaciones.md §Nivel 3.
+import { CanaryStripeWebhookModule } from './canary-stripe-webhook/canary-stripe-webhook.module';
 
 @Module({
   imports: [
@@ -84,6 +89,7 @@ import { CanarySmokeAuthModule } from './canary-smoke-auth/canary-smoke-auth.mod
     CheckWebhookHealthModule, // cada 15min — salud webhook entrante
     SubscriptionReconciliationModule, // cada 1h — Pass-1 BD + Pass-2 Stripe directo
     CanarySmokeAuthModule, // cada 5min — login + GET /api/profile contra prod (Nivel 3)
+    CanaryStripeWebhookModule, // cada 5min — evento sintético firmado a /api/stripe/webhook
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

@@ -108,7 +108,36 @@ Inspirados en los niveles de VicoHR. Cada nivel es **ejecutable de forma indepen
 
 **Métrica éxito**: SLO ≥99.9% uptime/mes. Detección regresiones `/api/profile` en ≤5 min.
 
-**Lo que hubiera cazado**: regresiones de `/api/profile` (cambio breaking en Drizzle queries, RLS roto, JwtGuard mal configurado, timeouts, etc.). NO el bug Rocío/Mercedes específico (ese requería canary contra `/api/stripe/webhook`). El siguiente paso natural es replicar este patrón para `/api/stripe/webhook` con evento sintético firmado — pendiente Nivel 4 o regla adicional.
+**Lo que hubiera cazado**: regresiones de `/api/profile` (cambio breaking en Drizzle queries, RLS roto, JwtGuard mal configurado, timeouts, etc.). El gap del bug Rocío/Mercedes específico (webhook signature failed) lo cierra el canary Stripe webhook hermano (siguiente sección).
+
+---
+
+### 🟢 Nivel 3 variante — Canary Stripe webhook sintético (HECHO 2026-05-27)
+
+**Cierra el círculo del incidente Rocío/Mercedes (27/05/2026)**: cada 5 min envía un Event sintético firmado al `/api/stripe/webhook` real y verifica que devuelve 200 `{received:true}`. Si el handler / signature / route están rotos, alarma critical en ≤5 min en vez de tardar horas hasta el primer pago real fallido.
+
+**Implementación** — módulo NestJS Fargate `backend/src/canary-stripe-webhook/`:
+
+- `canary-stripe-webhook.service.ts`:
+  1. Construye Event sintético `{ id: 'evt_canary_<ts>', type: 'canary.synthetic', livemode: false, ... }` — `type` desconocido para Stripe entra al `default:` del handler, se loguea como "Unhandled event type" y devuelve 200 sin side effects.
+  2. Firma con `Stripe.webhooks.generateTestHeaderString({ payload, secret, timestamp })` usando `STRIPE_WEBHOOK_SECRET` — la MISMA key que el handler usa para `constructEvent()`.
+  3. `POST https://www.vence.es/api/stripe/webhook` con header `Stripe-Signature`. Espera 200 `{received:true}`. Timeout 5s.
+- `canary-stripe-webhook.cron.ts`: `@Cron('*/5 * * * *')` con 4 eventos (ok/failed/skipped/cron_run).
+- `RULE_CANARY_WEBHOOK_FAILED` en `alert-rules.ts`: severity critical, cooldown 15min, dispara con ≥1 fallo en 10min. Notification step-aware (runbook distinto según `step=sign/http/validate_*`).
+- 5 tests Jest verde en `alert-rules.spec.ts` (total: 62/62 pasan).
+
+**Cross-namespace SSM**: el `STRIPE_WEBHOOK_SECRET` vive en `/vence-frontend/STRIPE_WEBHOOK_SECRET` (porque el handler real está en la app Next.js). El IAM policy del backend task execution role lee ese ARN cross-namespace para evitar duplicar el secret. Si Manuel rota la key en Stripe Dashboard + SSM frontend, automáticamente afecta al canary también — imposible desincronización accidental.
+
+**Lo que detecta**:
+- SSM no propagada al ECS task (signature 400).
+- Handler `/api/stripe/webhook` 404 (route eliminada del bundle Next.js).
+- `constructEvent()` throw inesperado (regresión código signature).
+- App caída / 5xx / timeout.
+
+**Lo que NO detecta** (cabo conocido, cubierto por regla existente):
+- Secret rotado en Stripe Dashboard sin actualizar SSM → canary y handler siguen sincronizados entre sí pero los dos están "stale" vs Stripe → `RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED` dispara con el primer evento real fallido (lag horas, pero detectado).
+
+**Lo que SÍ hubiera cazado del incidente Rocío/Mercedes**: si tras un redeploy el ECS task no hubiera propagado `STRIPE_WEBHOOK_SECRET` (caso real del incidente), el canary detectaría signature 400 en ≤5 min en vez de tardar horas hasta el primer pago real.
 
 ---
 

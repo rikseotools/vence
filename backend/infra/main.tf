@@ -36,6 +36,13 @@ locals {
   # ECS lee SSM String y SecureString por el mismo API. Ver roadmap:
   # docs/roadmap/canary-y-simulaciones.md §Nivel 3.
   smoke_user_id_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SMOKE_USER_ID"
+  # STRIPE_WEBHOOK_SECRET (cross-namespace 27/05/2026): el secret VIVE en
+  # /vence-frontend/ porque el handler real está en la app Next.js. Para
+  # que el canary canary-stripe-webhook (backend Fargate) pueda firmar
+  # eventos sintéticos con la MISMA key que el handler verifica, leemos
+  # del namespace frontend en lugar de duplicar (que se desincronizaría).
+  # Imposible rotación divergente — los dos servicios apuntan al mismo SSM.
+  stripe_webhook_secret_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/STRIPE_WEBHOOK_SECRET"
 }
 
 # ============================================================
@@ -122,6 +129,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           local.sentry_dsn_ssm_arn,
           local.stripe_secret_key_ssm_arn,
           local.smoke_user_id_ssm_arn,
+          local.stripe_webhook_secret_ssm_arn,
         ]
       },
       {
@@ -216,6 +224,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "SENTRY_DSN", valueFrom = local.sentry_dsn_ssm_arn },
         { name = "STRIPE_SECRET_KEY", valueFrom = local.stripe_secret_key_ssm_arn },
         { name = "SMOKE_USER_ID", valueFrom = local.smoke_user_id_ssm_arn },
+        { name = "STRIPE_WEBHOOK_SECRET", valueFrom = local.stripe_webhook_secret_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {

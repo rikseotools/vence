@@ -850,6 +850,54 @@ export const RULE_CANARY_AUTH_FAILED: AlertRule<{
 };
 
 /**
+ * Canary Stripe webhook failed — el cron `canary-stripe-webhook` (Fargate
+ * cada 5 min, variante Nivel 3) envía evento sintético firmado al endpoint
+ * /api/stripe/webhook real. Cualquier fallo = handler/signature/route roto.
+ *
+ * Cierra el gap del incidente Rocío/Mercedes (2026-05-27): el bug del
+ * webhook tardó horas en detectarse porque solo se rompía con eventos
+ * reales y no había canary sintético. Ahora: ≤5 min.
+ *
+ * Cooldown 15 min. Dispara con ≥1 evento en 10 min — cualquier fallo de
+ * webhook es P1 (pagos sin procesar potencialmente).
+ */
+export const RULE_CANARY_WEBHOOK_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_stripe_webhook_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(http_status ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_stripe_webhook_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary Stripe webhook FALLÓ (${r.n} en 10 min) — pagos potencialmente sin procesar`,
+      body: `El canary sintético detectó que /api/stripe/webhook NO procesa correctamente eventos firmados. Esto es exactamente el patrón del incidente Rocío/Mercedes (27/05/2026): si el webhook está roto, los pagos reales NO se sincronizarán en BD y los usuarios pagarán sin recibir premium.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. Verificar handler vivo: curl https://www.vence.es/api/stripe/webhook → debe devolver 405 (Method Not Allowed para GET).\n  2. Si step='http' status=400: STRIPE_WEBHOOK_SECRET stale en SSM /vence-frontend/ — rotar como en el runbook stripe_webhook_signature_failed.\n  3. Si step='http' status=404: route eliminada del bundle Next.js — investigar últimos deploys del frontend.\n  4. Si step='http' status=5xx: bug en route handler — investigar logs Vercel.\n  5. Si step='sign': bug en el SDK Stripe del backend — verificar versión Stripe SDK.\n\nRoadmap: docs/roadmap/canary-y-simulaciones.md §Nivel 3 (variante webhook).`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 10,
+      },
+      fingerprint: 'canary_stripe_webhook_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -879,4 +927,6 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_TRAFFIC_DROP as AlertRule,
   // Canary HTTP autenticado (2026-05-27, Nivel 3 sistema canary+simulaciones)
   RULE_CANARY_AUTH_FAILED as AlertRule,
+  // Canary Stripe webhook sintético (2026-05-27, cierra gap incidente Rocío/Mercedes)
+  RULE_CANARY_WEBHOOK_FAILED as AlertRule,
 ];
