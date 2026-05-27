@@ -120,6 +120,10 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 - **Backups con drill de restore** real, RTO/RPO declarados.
 - **Registry centralizado de tags cross-runtime** (gatillo: 3+ tags cross-runtime). Hoy solo `test-config` tiene counterpart backend (commit `3980cf87` añadió el mapping `TAG_INVALIDATORS` en `/api/admin/revalidate` + test de regresión en `__tests__/api/admin/revalidateDispatch.test.ts`). Cuando lleguen 3+ tags, refactorizar a una sola fuente de verdad `lib/cache/cross-runtime-registry.ts` que exporte `{tag → {invalidate, backendKey, description}}`. Hoy escala bien con duplicación en 3 sitios (route + lib/cache/<tag>.ts + manual); a 5+ tags empieza a oler. Documentado en `docs/maintenance/cache-revalidation.md` §«Cross-runtime cache».
 
+> **📘 Roadmaps de performance por endpoint (Bloque 4):**
+> - [`docs/roadmap/materialized-stats-aggregates.md`](roadmap/materialized-stats-aggregates.md) — tabla counter `user_theme_stats` + triggers para `theme-stats`, weak-articles, oposiciones-compatibles. Fase 1 PAUSADA por lock contention.
+> - [`docs/roadmap/weak-articles-perf.md`](roadmap/weak-articles-perf.md) — fix incremental de `/api/v2/topic-progress/weak-articles` (50× 5xx/sem, p99=15s). Plan 3 fases: índice cubriente del WHERE → denormalización law_id/article_number → materializar weak_article_summary. Fase 1 en marcha 2026-05-27.
+
 ### Bloque 5 — Salir de Vercel + Supabase (AWS migration completa)
 
 > **🟡 Estado 2026-05-25:** decisión tomada — la intención es salir de Vercel y Supabase y consolidar todo en AWS. La justificación: a la escala que tendremos en 6-12 meses (10k+ DAU), Vercel Pro+ + Supabase Pro+ Upstash escalan peor en coste/control que ECS + RDS + ElastiCache en la cuenta `349744179687` (eu-west-2). El backend NestJS ya está en Fargate (Bloque 1), la mitad del camino está hecha.
