@@ -126,11 +126,19 @@ export type CancelSubscriptionRequest = z.infer<typeof cancelSubscriptionRequest
 // RESPONSE: CANCEL SUBSCRIPTION
 // ============================================
 
+// mode: cómo se cancela en Stripe
+//   - 'at_period_end': cancel_at_period_end=true, acceso hasta currentPeriodEnd
+//   - 'immediate': subscription.cancel() ahora (past_due/unpaid/incomplete)
+// voidedInvoices: nº de invoices open/draft voideadas (solo en modo immediate)
+// alreadyCanceled: la cancelación ya estaba aplicada (idempotente)
 export const cancelSubscriptionResponseSchema = z.object({
   success: z.boolean(),
   periodEnd: z.string().optional(),
   message: z.string().optional(),
-  error: z.string().optional()
+  error: z.string().optional(),
+  mode: z.enum(['at_period_end', 'immediate']).optional(),
+  voidedInvoices: z.number().optional(),
+  alreadyCanceled: z.boolean().optional(),
 })
 
 export type CancelSubscriptionResponse = z.infer<typeof cancelSubscriptionResponseSchema>

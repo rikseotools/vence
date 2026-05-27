@@ -269,6 +269,107 @@ export async function createPortalSession(
 }
 
 // ============================================
+// HELPER: Buscar suscripción cancelable
+// ============================================
+
+/**
+ * Estados de Stripe en los que una suscripción puede ser cancelada.
+ *
+ * - `active`/`trialing`: cancelación al final del período (mantienen acceso pagado)
+ * - `past_due`/`unpaid`/`incomplete`: cancelación inmediata (acceso ya no garantizado;
+ *   además paramos los smart retries de Stripe voideando invoices abiertas)
+ *
+ * Excluye `canceled` (ya no se puede cancelar de nuevo, manejado como idempotente)
+ * y `incomplete_expired` (terminal, requiere nueva suscripción).
+ */
+const CANCELLABLE_STATUSES = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'unpaid',
+  'incomplete',
+])
+
+/**
+ * Estados en los que el usuario aún tiene (o se considera que tiene) acceso premium,
+ * por lo que la cancelación debe respetar el periodo pagado.
+ */
+const KEEP_ACCESS_UNTIL_PERIOD_END = new Set(['active', 'trialing'])
+
+/**
+ * Devuelve la suscripción candidata a cancelar de un customer, o null si no hay.
+ *
+ * La API de Stripe `subscriptions.list({ status })` solo acepta UN estado por
+ * llamada. Para soportar past_due/unpaid/incomplete, listamos con 'all' y
+ * filtramos en código.
+ *
+ * Prioridad: si hay varias (raro), preferimos active/trialing > past_due/unpaid/incomplete.
+ */
+async function findCancellableSubscription(
+  customerId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any | null> {
+  const list = await stripe().subscriptions.list({
+    customer: customerId,
+    status: 'all',
+    limit: 20,
+  })
+  const candidates = list.data.filter((s) => CANCELLABLE_STATUSES.has(s.status))
+  if (candidates.length === 0) return null
+  // Priorizar active/trialing sobre past_due/unpaid/incomplete
+  const preferred = candidates.find((s) => KEEP_ACCESS_UNTIL_PERIOD_END.has(s.status))
+  return preferred ?? candidates[0]
+}
+
+/**
+ * Extrae current_period_end de forma defensiva (SDK v18+ puede no exponerlo
+ * directamente — usa items[0].current_period_end como fallback, igual que
+ * getSubscription y stripe-webhook-handlers).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractCurrentPeriodEnd(subscription: any): Date | null {
+  const ts =
+    subscription.current_period_end ??
+    subscription.items?.data?.[0]?.current_period_end ??
+    subscription.cancel_at ??
+    null
+  return ts ? new Date(ts * 1000) : null
+}
+
+/**
+ * Void de todas las invoices abiertas (open/draft) de una suscripción.
+ * Devuelve el número de invoices voideadas.
+ *
+ * Best-effort: si una falla, se sigue con las demás. Las invoices ya pagadas
+ * o ya voideadas no se tocan.
+ */
+async function voidOpenInvoicesForSubscription(subscriptionId: string): Promise<number> {
+  let voided = 0
+  try {
+    const invoices = await stripe().invoices.list({
+      subscription: subscriptionId,
+      status: 'open',
+      limit: 50,
+    })
+    for (const inv of invoices.data) {
+      if (!inv.id) continue
+      try {
+        await stripe().invoices.voidInvoice(inv.id)
+        voided++
+      } catch (err) {
+        console.error(`⚠️ [Cancel] Error voiding invoice ${inv.id}:`, err)
+      }
+    }
+  } catch (err) {
+    console.error('⚠️ [Cancel] Error listando invoices open:', err)
+  }
+  // Stripe no permite void de draft directamente — hay que finalizar primero.
+  // No lo hacemos: las draft no generan reintentos hasta que se finalizan,
+  // así que dejarlas pasa el ciclo natural sin riesgo de cobro.
+  return voided
+}
+
+// ============================================
 // REACTIVAR SUSCRIPCIÓN
 // ============================================
 
@@ -288,21 +389,24 @@ export async function reactivateSubscription(
       return { success: false, error: 'No se encontró suscripción' }
     }
 
-    const subscriptions = await stripe().subscriptions.list({
+    // Buscar suscripción reactivable (debe estar cancel_at_period_end=true y
+    // todavía en active/trialing — no se puede "reactivar" una past_due/unpaid).
+    const list = await stripe().subscriptions.list({
       customer: profile.stripeCustomerId,
-      status: 'active',
-      limit: 1,
+      status: 'all',
+      limit: 20,
     })
+    const subscription = list.data.find(
+      (s) => KEEP_ACCESS_UNTIL_PERIOD_END.has(s.status) && s.cancel_at_period_end === true,
+    )
 
-    if (subscriptions.data.length === 0) {
+    if (!subscription) {
+      // Discriminar: ¿hay activa sin cancelar (idempotente OK) o no hay ninguna?
+      const anyActive = list.data.find((s) => KEEP_ACCESS_UNTIL_PERIOD_END.has(s.status))
+      if (anyActive) {
+        return { success: true, message: 'La suscripción ya está activa' }
+      }
       return { success: false, error: 'Tu suscripción ya ha expirado. Puedes contratar un nuevo plan.' }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subscription = subscriptions.data[0] as any
-
-    if (!subscription.cancel_at_period_end) {
-      return { success: false, error: 'La suscripción ya está activa' }
     }
 
     // Reactivar en Stripe
@@ -314,6 +418,7 @@ export async function reactivateSubscription(
 
     // Registrar en cancellation_feedback como reactivation
     try {
+      const reactivatePeriodEnd = extractCurrentPeriodEnd(subscription)
       await db.execute(sql`
         INSERT INTO cancellation_feedback (
           user_id, subscription_id, reason, cancellation_type, period_end_at
@@ -322,7 +427,7 @@ export async function reactivateSubscription(
           ${subscription.id},
           ${'reactivated'},
           ${'reactivation'},
-          ${new Date(subscription.current_period_end * 1000).toISOString()}
+          ${reactivatePeriodEnd ? reactivatePeriodEnd.toISOString() : null}
         )
       `)
     } catch (fbErr) {
@@ -362,27 +467,68 @@ export async function cancelSubscription(
       return { success: false, error: 'No subscription found' }
     }
 
-    // 2. Obtener suscripción activa de Stripe
-    const subscriptions = await stripe().subscriptions.list({
-      customer: profile.stripeCustomerId,
-      status: 'active',
-      limit: 1
-    })
+    // 2. Buscar suscripción cancelable (extiende a past_due/unpaid/incomplete,
+    //    no solo 'active' — antes el filtro 'active' provocaba 404 silencioso
+    //    en customers con pago fallido; ver memoria
+    //    project_pending_stripe_cancel_bug.md, caso Mariangeles 21/05/2026,
+    //    7 errores 404 al intentar cancelar).
+    const subscription = await findCancellableSubscription(profile.stripeCustomerId)
 
-    if (subscriptions.data.length === 0) {
+    if (!subscription) {
+      // Idempotencia: si todas las subs están canceled (no hay cancelable),
+      // tratamos como éxito silencioso. El usuario ya consiguió su objetivo.
+      const all = await stripe().subscriptions.list({
+        customer: profile.stripeCustomerId,
+        status: 'all',
+        limit: 5,
+      })
+      const lastCanceled = all.data.find((s) => s.status === 'canceled')
+      if (lastCanceled) {
+        const endDate = extractCurrentPeriodEnd(lastCanceled)
+        return {
+          success: true,
+          alreadyCanceled: true,
+          message: 'La suscripción ya estaba cancelada',
+          periodEnd: endDate ? endDate.toISOString() : undefined,
+        }
+      }
       return { success: false, error: 'No active subscription found' }
     }
 
-    // Type assertion for subscription
-    const subscription = subscriptions.data[0] as unknown as { id: string; current_period_end: number }
-    const periodEnd = new Date(subscription.current_period_end * 1000)
+    const periodEnd = extractCurrentPeriodEnd(subscription) ?? new Date()
+    const originalStatus = subscription.status as string
+    const cancelMode: 'at_period_end' | 'immediate' = KEEP_ACCESS_UNTIL_PERIOD_END.has(originalStatus)
+      ? 'at_period_end'
+      : 'immediate'
+    const alreadyScheduled = subscription.cancel_at_period_end === true
+    let voidedCount = 0
 
-    // 3. Cancelar suscripción al final del período
-    await stripe().subscriptions.update(subscription.id, {
-      cancel_at_period_end: true
-    })
-
-    console.log(`✅ [Cancel] Subscription ${subscription.id} marked for cancellation at period end`)
+    // 3. Ejecutar la cancelación según estado.
+    if (alreadyScheduled) {
+      // Idempotencia: ya estaba cancel_at_period_end=true. No re-llamamos a Stripe
+      // (segunda pulsación del botón, race con webhook, retry de cliente).
+      // El flujo de feedback + emails sigue ejecutándose por si el usuario
+      // proporciona feedback ahora; no rompemos la trazabilidad.
+      console.log(`✅ [Cancel] Subscription ${subscription.id} ya estaba cancel_at_period_end (idempotent)`)
+    } else if (cancelMode === 'at_period_end') {
+      // 3a. active/trialing → cancelación programada al final del período
+      //     (mantiene acceso pagado).
+      await stripe().subscriptions.update(subscription.id, {
+        cancel_at_period_end: true,
+      })
+      console.log(`✅ [Cancel] Subscription ${subscription.id} (${originalStatus}) marked for cancellation at period end`)
+    } else {
+      // 3b. past_due/unpaid/incomplete → cancelación INMEDIATA + void de
+      //     invoices abiertas. Por qué inmediata: el acceso premium ya no
+      //     estaba realmente garantizado (Stripe podría revocarlo al expirar
+      //     smart retries) y el usuario quiere parar los cobros AHORA. Por
+      //     qué void invoices: si las dejamos abiertas, Stripe sigue
+      //     reintentando charge_automatically en background (caso Mariangeles
+      //     21/05/2026, ver project_pending_stripe_cancel_bug.md).
+      await stripe().subscriptions.cancel(subscription.id)
+      voidedCount = await voidOpenInvoicesForSubscription(subscription.id)
+      console.log(`✅ [Cancel] Subscription ${subscription.id} (${originalStatus}) canceled INMEDIATELY + ${voidedCount} invoices voided`)
+    }
 
     // 4. Guardar feedback en la base de datos (usando raw SQL ya que la tabla no está en Drizzle schema)
     // Si no viene feedback (flujo 1-clic post-15/04/2026), se inserta con
@@ -426,12 +572,14 @@ export async function cancelSubscription(
       }
     }
 
-    // 6. Confirmación por email al usuario (fire-and-forget, estándar del sector)
+    // 6. Confirmación por email al usuario (fire-and-forget, estándar del sector).
+    //    En modo 'immediate' avisamos de que el acceso se ha cortado ya.
     try {
       await sendCancellationConfirmationToUser({
         userEmail: profile.email,
         userName: profile.fullName,
-        periodEnd
+        periodEnd,
+        immediate: cancelMode === 'immediate',
       })
     } catch (userEmailError) {
       console.error('Error sending cancellation confirmation to user:', userEmailError)
@@ -440,7 +588,14 @@ export async function cancelSubscription(
     return {
       success: true,
       periodEnd: periodEnd.toISOString(),
-      message: 'Subscription cancelled successfully'
+      message: alreadyScheduled
+        ? 'Subscription already scheduled for cancellation'
+        : cancelMode === 'immediate'
+          ? 'Subscription cancelled immediately and pending invoices voided'
+          : 'Subscription cancelled successfully',
+      mode: cancelMode,
+      voidedInvoices: voidedCount,
+      alreadyCanceled: alreadyScheduled,
     }
 
   } catch (error) {
@@ -587,10 +742,13 @@ async function sendCancellationConfirmationToUser({
   userEmail,
   userName,
   periodEnd,
+  immediate = false,
 }: {
   userEmail: string
   userName: string | null
   periodEnd: Date
+  // Si true: cancelación inmediata (past_due/unpaid). Si false: al final del periodo (active/trialing).
+  immediate?: boolean
 }) {
   if (!process.env.RESEND_API_KEY) return
 
@@ -598,6 +756,19 @@ async function sendCancellationConfirmationToUser({
   const formattedDate = periodEnd.toLocaleDateString('es-ES', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
+
+  // Bloque variable según el modo: al final del periodo vs inmediato.
+  const accessBlockHtml = immediate
+    ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:20px;margin:24px 0;text-align:center;">
+      <p style="font-size:14px;color:#92400e;margin:0 0 4px 0;">✅ Suscripción cancelada</p>
+      <p style="font-size:16px;font-weight:600;color:#92400e;margin:0;">Hemos detenido los intentos de cobro pendientes. No se te realizará ningún cargo adicional.</p>
+    </div>
+    <p style="font-size:15px;line-height:1.55;color:#424248;margin:0 0 24px 0;">Tu cuenta sigue activa en plan Free, puedes seguir usando Vence con las funciones gratuitas.</p>`
+    : `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:24px 0;text-align:center;">
+      <p style="font-size:14px;color:#1d4ed8;margin:0 0 4px 0;">📅 Mantendrás Premium hasta el</p>
+      <p style="font-size:20px;font-weight:700;color:#1d4ed8;margin:0;">${formattedDate}</p>
+    </div>
+    <p style="font-size:15px;line-height:1.55;color:#424248;margin:0 0 24px 0;">A partir de esa fecha pasarás al plan Free.</p>`
 
   const html = `<!DOCTYPE html>
 <html>
@@ -608,12 +779,7 @@ async function sendCancellationConfirmationToUser({
     <p style="font-size:16px;line-height:1.5;margin:0 0 16px 0;">Hola <strong>${firstName}</strong>,</p>
     <p style="font-size:16px;line-height:1.5;margin:0 0 24px 0;">Te confirmamos que hemos <strong>cancelado tu suscripción Premium</strong>.</p>
 
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:24px 0;text-align:center;">
-      <p style="font-size:14px;color:#1d4ed8;margin:0 0 4px 0;">📅 Mantendrás Premium hasta el</p>
-      <p style="font-size:20px;font-weight:700;color:#1d4ed8;margin:0;">${formattedDate}</p>
-    </div>
-
-    <p style="font-size:15px;line-height:1.55;color:#424248;margin:0 0 24px 0;">A partir de esa fecha pasarás al plan Free.</p>
+    ${accessBlockHtml}
 
     <p style="font-size:14px;line-height:1.55;color:#424248;margin:0 0 16px 0;">Si tuviste algún problema o hay algo que podamos mejorar, responde a este email y te leemos. Gracias por usar Vence.</p>
 
@@ -625,13 +791,19 @@ async function sendCancellationConfirmationToUser({
 </body>
 </html>`
 
+  const accessBlockText = immediate
+    ? `✅ Suscripción cancelada. Hemos detenido los intentos de cobro pendientes. No se te realizará ningún cargo adicional.
+
+Tu cuenta sigue activa en plan Free, puedes seguir usando Vence con las funciones gratuitas.`
+    : `📅 Mantendrás Premium hasta el ${formattedDate}
+
+A partir de esa fecha pasarás al plan Free.`
+
   const text = `Hola ${firstName},
 
 Te confirmamos que hemos cancelado tu suscripción Premium.
 
-📅 Mantendrás Premium hasta el ${formattedDate}
-
-A partir de esa fecha pasarás al plan Free.
+${accessBlockText}
 
 Si tuviste algún problema o hay algo que podamos mejorar, responde a este email y te leemos. Gracias por usar Vence.
 
