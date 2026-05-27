@@ -301,11 +301,153 @@ Reemplaza el ex-SLO-01 CloudWatch Synthetics (devolvía `unknown` porque el cana
 
 | Sprint | Niveles | Esfuerzo | Valor |
 |---|---|---|---|
-| ✅ **Sprint 1 (HECHO 2026-05-27)** | 2 + 3 | 3-4h | 🔴 Alto — captura 80% de regresiones críticas. Cron Fargate en idle hasta SSM smoke user (15min humano). |
-| **Sprint 2 (próxima semana)** | 4 | 3-5 días | 🟡 Alto — flow crítico cubierto end-to-end. |
-| **Sprint 3 (próximo mes)** | 5 (subset 15 specs core) | 1 semana | 🟡 Alto — cobertura amplia donde más duele. |
-| **Sprint 4 (futuro)** | 5 (resto) + 6 | 2-3 semanas | 🟢 Medio — completitud. |
-| **Sprint 5 (post-cutover AWS)** | 7 | 1-2 días | 🟢 Bajo — sólo cuando justifique el coste. |
+| ✅ **Sprint 1 (HECHO 2026-05-27)** | 2 + 3 | 3-4h | 🔴 Alto — workflow GHA + canary-smoke-auth Fargate. |
+| ✅ **Sprint 2 (HECHO 2026-05-27)** | 3 variante webhook | 1-2h | 🔴 Alto — canary-stripe-webhook cierra incidente Rocío/Mercedes. |
+| ✅ **Sprint 3 (HECHO 2026-05-27)** | 3 variante answer-save | 1-2h | 🔴 Alto — canary endpoint más caliente. |
+| ✅ **Sprint 4 (HECHO 2026-05-27)** | Observabilidad | 1-2h | 🟡 Alto — dashboard `/admin/canary` + SLOs cableados. |
+| **Sprint 5 (siguiente)** | Más canarios HOT | 2-3h | 🔴 Alto — ver §Próximos canarios sugeridos abajo. |
+| **Sprint 6** | 4 — Playwright autenticado E2E | 3-5 días | 🟡 Alto — flow crítico cubierto end-to-end. |
+| **Sprint 7** | 5 (subset 15 specs core) | 1 semana | 🟡 Alto — cobertura amplia donde más duele. |
+| **Sprint 8** | 5 (resto) + 6 | 2-3 semanas | 🟢 Medio — completitud. |
+| **Sprint 9 (post-cutover AWS)** | 7 | 1-2 días | 🟢 Bajo — sólo cuando justifique el coste. |
+
+---
+
+## Próximos canarios sugeridos (Sprint 5)
+
+Estado tras Sprints 1-4: 3 canarios autenticados (auth, stripe-webhook, answer-save) + dashboard + SLOs. Gaps de cobertura priorizados:
+
+### 🔴 ALTO valor (~1-2h cada uno)
+
+| Canary | Endpoint | Por qué |
+|---|---|---|
+| **canary-checkout-sync** | `POST /api/stripe/checkout-sync` | Cierra el círculo de pagos: activación post-checkout. Si se rompe, users pagan y no obtienen premium hasta cron reconciliation. Complementa canary-stripe-webhook. |
+| **canary-home-public** | `GET /` (sin auth, assertions HTML) | Único canary SIN JWT. Detecta categoría completamente distinta: SSG roto, build broken, hidratación rota, SEO meta tags. Cubre el endpoint de mayor tráfico. |
+| **canary-user-stats** | `GET /api/v2/user-stats?userId=<smoke>` | Segundo endpoint más caliente tras answer-save (dashboard del user). Cubre cache Redis `user_stats:<id>` + agregaciones Drizzle. |
+
+### 🟡 MEDIO valor (~1h cada uno)
+
+| Canary | Detecta |
+|---|---|
+| **canary-database-pool** | Saturación PgBouncer / max_connections agotados (query trivial `SELECT 1`) |
+| **canary-redis-upstash** | Cache compartido caído (Upstash SET/GET/DEL trivial) |
+| **canary-medals** | `GET /api/medals` — Bloque 3 endpoint. Quejas reputación si se rompe |
+
+### 🟢 MEJORAS del actual (~30min cada una)
+
+| Mejora | Valor |
+|---|---|
+| Endpoint `POST /api/admin/canary/run-now` | Disparo on-demand (pre-deploy verify, post-incidente confirm) |
+| Canary "negativo" | JWT inválido → esperar 401. Detecta JwtGuard demasiado permisivo |
+| Multi-step canary | login + profile + user-stats + answer-save en 1 tick. Detecta regresiones de FLOW completo |
+
+---
+
+## Plantilla para añadir un nuevo canary (Fargate cron)
+
+Patrón validado en Sprints 1-3. Cada canary nuevo siguiendo esta plantilla toma **~1h en vez de 3h**.
+
+### Paso a paso
+
+1. **Investigar endpoint** (15 min, read-only):
+   - Localizar handler (`app/api/...` o `backend/src/.../*.controller.ts`).
+   - Leer el Zod schema del request completo (`lib/api/.../schemas.ts`).
+   - Identificar todos los status codes que devuelve y por qué (grep `status:` o `throw`).
+   - Si requiere datos satélites (sessions, customers): mapearlos ANTES de codificar.
+
+2. **Crear datos satélites estables** (10 min):
+   - Si el endpoint requiere FK a otra tabla: crear UNA fila estable con UUID hardcoded.
+   - Usar UUIDs reservados: `00000000-0000-4000-8000-0000000000XX` (versión 4, fácil de identificar).
+   - Anotar en `admin_notes` o equivalente: "Canary smoke data — NO ELIMINAR".
+
+3. **Crear módulo NestJS** (`backend/src/canary-<x>/`) (20 min):
+   - `<x>.service.ts`: clase con método `run(): Promise<CanaryXResult>`. Discriminated union para el resultado: `ok | skipped | <variants> | failed`.
+   - `<x>.cron.ts`: `@Cron('*/5 * * * *')` que llama `service.run()` y emite a `observability` con eventTypes `canary_x_ok` / `_failed` / `_skipped` (+ `cron_run` liveness siempre).
+   - `<x>.module.ts`: registrar service + cron.
+
+4. **Registrar en `app.module.ts`** (1 min):
+   - Import + añadir a `imports`.
+
+5. **Crear alert rule** (`backend/src/alerts/alert-rules.ts`) (10 min):
+   - `RULE_CANARY_X_FAILED` severity `critical`, cooldown 15min, dispara con `≥1` evento en 10min.
+   - Notification step-aware (runbook diferente según `step`).
+   - Añadir a `ALERT_RULES`.
+
+6. **Tests** (`alert-rules.spec.ts`) (5 min): 5 tests: shouldFire 1, no fire 0, severity, notification contiene runbook, cooldown 15.
+
+7. **Si requiere envs/secrets nuevos** (20 min):
+   - SSM put-parameter.
+   - Editar `backend/infra/main.tf` (local + IAM Resources + container secrets).
+   - `terraform apply -target=aws_ecs_task_definition.backend -target=aws_iam_role_policy.task_execution_secrets`.
+   - `aws ecs update-service --task-definition vence-backend:<nueva> --force-new-deployment`.
+
+8. **Añadir a dashboard** (`app/api/admin/canary/route.ts`):
+   - Añadir endpoint al array `CANARY_ENDPOINTS`.
+   - Añadir descripción en `CANARY_DESCRIPTION` de `app/admin/canary/page.tsx`.
+
+9. **Si tiene SLO propio** (`app/api/admin/slos/route.ts`):
+   - Añadir entrada al array `FARGATE_CANARIES`.
+
+10. **Verificar primer tick OK**:
+    - Esperar al próximo múltiplo de 5min UTC.
+    - Query `observable_events` por `endpoint='canary-<x>'` últimos 10min.
+    - Confirmar `event_type='canary_x_ok'` (no `_failed`).
+
+---
+
+## Lecciones aprendidas (mega-sesión 2026-05-27)
+
+Hits y baches reales de implementar 3 canarios + dashboard + SLOs en una sesión. Leer ANTES de añadir el siguiente canary.
+
+### 🪤 Trampas técnicas
+
+1. **`*/` rompe JSDoc**: en un comment block, `cada */5min` cierra prematuramente el comentario. Usar "cada 5min" o "cada `*/5min`" (backticks).
+
+2. **`/api/auth/login` NO existe**: Vence usa SDK Supabase directo desde cliente (`signInWithPassword`). Cualquier canary que intente login REST custom fallará con 404. **Solución agnóstica**: firmar JWT local con `SUPABASE_JWT_SECRET` + HS256 + `aud='authenticated'` + `sub=<user_id>`. Mismo formato que el SDK Supabase emite; cuando migremos a otro proveedor, solo cambia `jwt.sign()`.
+
+3. **404 ambiguo en `/api/v2/answer-and-save`**: el handler mapea `save_failed && correctAnswer===0` a 404 (en lugar de 500), incluso cuando el bug real es FK violation (`sessionId` no existe). Bug latente expuesto por el canary.
+
+4. **Datos satélites obligatorios**: endpoints con FK (answer-save necesita `tests.id`) fallan si generas UUIDs fresh cada tick. Crear UNA fila estable + reutilizar PK → primer tick INSERT, siguientes 287/día devuelven `23505 → already_saved → 200`. **Contamina UNA fila, no 288/día**.
+
+5. **Cross-namespace SSM**: el backend Fargate puede leer secrets de `/vence-frontend/` añadiendo el ARN al IAM Resources. Evita duplicar secrets (`STRIPE_WEBHOOK_SECRET` lo compartimos: handler y canary leen el MISMO SSM → imposible desincronización).
+
+6. **`force-new-deployment` NO cambia task definition**: el workflow GHA hace solo `update-service --force-new-deployment` (rebuild imagen `:latest` + reinicio). Si necesitas que ECS use NUEVA task def, hace falta `update-service --task-definition vence-backend:<rev> --force-new-deployment` explícito tras `terraform apply`.
+
+7. **Drift de Terraform vs `frontend-deploy.yml`**: el workflow actualiza la imagen del frontend fuera de Terraform. `terraform plan` SIEMPRE muestra drift. Un full `terraform apply` revertiría el último deploy del frontend. **Solución**: `terraform apply -target=<recursos específicos>`.
+
+8. **ALB health check grace period**: al añadir un secret nuevo al task def, el cold start del container es ~30s más largo. El primer task puede fallar el health check ALB en el límite → ECS reintenta y la 2ª task arranca OK. **No es bug a perseguir**, es comportamiento ECS esperado en el primer rollout post-cambio de envs.
+
+9. **GHA `paths-ignore` se evalúa con la versión del PROPIO commit**: cuando pusheamos un workflow que añade `.github/workflows/**` a su propio paths-ignore, el fix toma efecto en ese mismo push. No hay "último build idle".
+
+10. **`gh` CLI no está en sandbox de Claude**: usar `curl + jq` contra `https://api.github.com/repos/<owner>/<repo>/actions/runs?branch=main` (API pública para repos públicos, 60 req/hora sin token).
+
+### 🎯 Decisiones arquitectónicas
+
+1. **Approach agnóstico para auth**: JWT firmado local con `SUPABASE_JWT_SECRET` (que el `JwtGuard` ya verifica). Migración de proveedor en el futuro = 1 línea de cambio (`jwt.sign()`), no rewrite del canary.
+
+2. **Modo idle preventivo**: cada canary chequea sus envs al inicio. Si faltan, emite `_skipped` warn (NO `_failed` critical). Permite que el código viva en main mucho antes de aplicar terraform sin spam de alarmas.
+
+3. **Step-aware errors**: discriminated union `{ step: 'sign'|'http'|'validate_*'|... }` con notification que muestra runbook diferenciado. Acción operativa concreta en lugar de "algo falló".
+
+4. **Smoke user marca semántica**: `user_metadata.is_smoke_user: true` + `user_profiles.admin_notes: "Smoke user del canary…"`. Cualquier admin futuro entiende NO eliminar.
+
+5. **UUID reservados para datos satélites**: `00000000-0000-4000-8000-0000000000XX` patrón claro y reconocible.
+
+6. **NO duplicar secrets entre namespaces**: usar cross-namespace IAM antes de duplicar SSM. Una rotación accidental sin sincronizar es bug silencioso peor que cualquier complejidad arquitectónica.
+
+### 📋 Checklist obligatoria pre-merge de un nuevo canary
+
+- [ ] Investigación read-only completa del endpoint (status codes, schema, FK).
+- [ ] Datos satélites creados ANTES de la primera ejecución del canary.
+- [ ] Discriminated union `CanaryResult` cubre TODOS los pasos (`sign`, `http`, `validate_*`).
+- [ ] Service detecta envs faltantes → `_skipped` warn (no critical).
+- [ ] Cron emite 4 eventos: `_ok` / `_failed` / `_skipped` / `cron_run` (liveness).
+- [ ] RULE con cooldown 15min + notification step-aware + 5 tests Jest.
+- [ ] Si añade envs: terraform `-target` + verificar plan SOLO toca lo mío.
+- [ ] Tras deploy: verificar primer tick `_ok` en `observable_events` (no `_failed`).
+- [ ] Dashboard `/admin/canary`: añadir a `CANARY_ENDPOINTS` + `CANARY_DESCRIPTION`.
+- [ ] SLO: añadir a `FARGATE_CANARIES` en `/api/admin/slos`.
+- [ ] Roadmap doc actualizado con sección del nuevo canary.
 
 ---
 
