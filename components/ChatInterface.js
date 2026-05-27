@@ -198,28 +198,54 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
   }
 
   useEffect(() => {
-    if (conversationId) {
-      loadConversation()
-      loadMessages()
-      
-      // Subscription para mensajes en tiempo real
-      const subscription = supabase
-        .channel(`feedback_messages:${conversationId}`)
-        .on('postgres_changes', 
-          { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'feedback_messages',
-            filter: `conversation_id=eq.${conversationId}`
-          }, 
-          (payload) => {
-            setMessages(prev => [...prev, payload.new])
-            scrollToBottom()
-          }
-        )
-        .subscribe()
+    if (!conversationId) return
 
-      return () => subscription.unsubscribe()
+    loadConversation()
+    loadMessages()
+
+    // ─── Polling cada 5s ─────────────────────────────────────────────────
+    // Sustituye al canal Supabase Realtime previo. 5s es latencia aceptable
+    // para chat de soporte (no es chat 1-a-1 high-frequency). Elimina
+    // dependencia de Supabase WebSocket (Fase 5 roadmap agnosticismo).
+    //
+    // loadMessages(silent=true): no toca `loading` (evita spinner cada 5s)
+    // y solo actualiza state si la lista cambió → no dispara re-renders
+    // ni scroll bouncing cuando no hay mensajes nuevos.
+    //
+    // Pausa polling cuando el tab no está visible (zero coste mientras user
+    // está en otra pestaña). Refresh inmediato silent al volver visible.
+    const POLL_INTERVAL_MS = 5_000
+
+    let pollTimer = null
+    const startPolling = () => {
+      if (pollTimer) return
+      pollTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          loadMessages(true)
+        }
+      }, POLL_INTERVAL_MS)
+    }
+    const stopPolling = () => {
+      if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadMessages(true) // refresh inmediato silent al volver al tab
+        startPolling()
+      } else {
+        stopPolling()
+      }
+    }
+
+    startPolling()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [conversationId, supabase])
 
@@ -360,9 +386,12 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
     }
   }
 
-  const loadMessages = async () => {
+  // silent=true → no toca `loading` (evita spinner en polling cada 5s) y
+  // solo actualiza state si la lista difiere por longitud o último id (evita
+  // re-renders forzados + scroll bouncing cuando no hay mensajes nuevos).
+  const loadMessages = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const { data, error } = await supabase
         .from('feedback_messages')
         .select(`
@@ -376,11 +405,23 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
         .order('created_at', { ascending: true })
 
       if (error) throw error
-      setMessages(data || [])
+      const fresh = data || []
+      if (silent) {
+        // En polling, comparar contra state actual antes de setear.
+        setMessages((prev) => {
+          if (prev.length !== fresh.length) return fresh
+          const prevLastId = prev[prev.length - 1]?.id
+          const freshLastId = fresh[fresh.length - 1]?.id
+          if (prevLastId !== freshLastId) return fresh
+          return prev // sin cambios → mantiene referencia, no re-render
+        })
+      } else {
+        setMessages(fresh)
+      }
     } catch (error) {
       console.error('Error cargando mensajes:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 

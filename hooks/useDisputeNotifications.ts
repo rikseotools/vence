@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { z } from 'zod'
-import type { User, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js'
+import type { User, SupabaseClient } from '@supabase/supabase-js'
 
 // ============================================
 // TIPOS E INTERFACES
@@ -108,32 +108,47 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
 
     loadNotifications()
 
-    // 🔄 REAL-TIME: Escuchar cambios en impugnaciones normales
-    const subscription: RealtimeChannel = supabase
-      .channel('dispute-notifications')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'question_disputes',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        console.log('🔔 Impugnación actualizada:', payload)
-        loadNotifications()
-      })
-      // 🧠 REAL-TIME: Escuchar cambios en impugnaciones psicotécnicas
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'psychometric_question_disputes',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        console.log('🔔 Impugnación psicotécnica actualizada:', payload)
-        loadNotifications()
-      })
-      .subscribe()
+    // ─── Polling cada 60s ────────────────────────────────────────────────
+    // Sustituye al canal Supabase Realtime previo (commit 0ac0d0db). Las
+    // resoluciones de impugnaciones son eventos infrecuentes (varias por
+    // día como mucho), 60s es latencia más que aceptable y elimina la
+    // dependencia de Supabase WebSocket (Fase 5 del roadmap agnosticismo).
+    //
+    // Si el tab está inactivo, document.visibilityState pausa el polling
+    // (zero coste mientras el usuario no mira). Al volver visible, refresh
+    // inmediato + reanudar.
+    const POLL_INTERVAL_MS = 60_000
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    function startPolling() {
+      if (pollTimer) return
+      pollTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          loadNotifications()
+        }
+      }, POLL_INTERVAL_MS)
+    }
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+    }
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        loadNotifications() // refresh inmediato al volver al tab
+        startPolling()
+      } else {
+        stopPolling()
+      }
+    }
+
+    startPolling()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      subscription.unsubscribe()
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [user, supabase])
 

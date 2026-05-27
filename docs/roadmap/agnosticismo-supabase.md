@@ -1,9 +1,9 @@
 # Roadmap — Agnosticismo de Supabase
 
-> **Estado**: 🟢 Fase 1 ✅ + Fase 3 prep ✅ + Fase 5 audit ✅ (2026-05-27 tarde).
+> **Estado**: 🟢 Fase 1 ✅ + Fase 3 prep ✅ + Fase 5 audit ✅ + Fase 5 2/3 migrados ✅ (2026-05-27 tarde).
 > **Propietario**: equipo Vence.
 > **Coste recurrente añadido**: 0 € (todas las fases reutilizan infra existente Postgres / Drizzle / SSM / ECS / Lightsail pooler).
-> **Última actualización**: 2026-05-27 ~14:00 CEST.
+> **Última actualización**: 2026-05-27 ~14:35 CEST.
 
 Este roadmap profundiza en el **Bloque 5 — Salir de Vercel + Supabase** del [`docs/ARCHITECTURE_ROADMAP.md`](../ARCHITECTURE_ROADMAP.md). Aquel cubre la migración global; este describe el plan operativo específico para **quitarle a Vence cualquier dependencia propietaria de Supabase**, ordenado por urgencia y riesgo.
 
@@ -188,29 +188,47 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 **Tiempo estimado**: 3-4 semanas.
 
-### Fase 5 — Migrar Supabase Realtime (3 usos identificados)
+### Fase 5 — Migrar Supabase Realtime (2/3 migrados, 1 pendiente)
 
-**Por qué**: WebSocket propietario que no migra trivialmente a otro proveedor Postgres. Hay que migrar a SSE o WebSocket propio.
+**Por qué**: WebSocket propietario que no migra trivialmente a otro proveedor Postgres. Hay que migrar a SSE o polling.
 
-**Auditoría hecha (27/05/2026 tarde)**: 3 usos reales.
+**Estado (27/05/2026 ~14:30 CEST)**:
 
-| # | Archivo | Tabla / Filtro | Acción del listener | Sustituto candidato |
-|---|---|---|---|---|
-| 1 | `app/admin/feedback/page.tsx:340-350` | `feedback_messages` INSERT | `loadConversations()` (refetch lista) | Polling 30s del endpoint existente `/api/v2/admin/feedback/list` |
-| 2 | `components/ChatInterface.js:210-225` | `feedback_messages` INSERT con filter `conversation_id=eq.X` | Push del nuevo mensaje al estado React | SSE endpoint `/api/v2/feedback/conversation/[id]/stream` o polling 5s |
-| 3 | `hooks/useDisputeNotifications.ts:112-133` | `question_disputes` UPDATE + `psychometric_question_disputes` UPDATE con filter user_id | `loadNotifications()` (refetch) | Polling 30s o SSE genérico de notificaciones |
+| # | Archivo | Estado | Acción aplicada |
+|---|---|---|---|
+| 1 | `app/admin/feedback/page.tsx:327-354` | ⏳ **PENDIENTE** | Migrar `supabase.channel('feedback_changes')` a polling 30s del endpoint `/api/v2/admin/feedback/list` (creado en Fase 1 por la sesión que owns el archivo). Patrón idéntico al aplicado en `useDisputeNotifications` (commit pendiente). |
+| 2 | `components/ChatInterface.js:200-249` | ✅ **MIGRADO** | Polling cada 5s con `loadMessages(silent=true)` que evita spinner + scroll bouncing. Visibility pause (zero coste cuando tab inactivo). |
+| 3 | `hooks/useDisputeNotifications.ts:101-145` | ✅ **MIGRADO** | Polling cada 60s. Visibility pause. Refresh inmediato al volver al tab. |
 
-**Estrategia**: el 3 (notificaciones de impugnaciones) tiene baja frecuencia → polling 30-60s es suficiente. El 2 (chat) requiere latencia baja → SSE recomendable. El 1 (admin feedback live) es uso interno admin → polling 15-30s.
+**Patrón aplicado** (replicable para el archivo pendiente):
 
-**Entregables incrementales**:
-1. Endpoint SSE genérico `/api/v2/sse/notifications` (escucha de cambios filtrados por usuario).
-2. Reemplazar usos 2 y 3 con SSE.
-3. Reemplazar uso 1 con polling.
-4. Eliminar imports `RealtimeChannel`, `supabase.channel`, `.subscribe()` post-migración.
+```ts
+const POLL_INTERVAL_MS = 60_000 // ajustar según latencia requerida
 
-**Criterio de éxito**: 0 imports de `RealtimeChannel` / `supabase.channel` en `app/` `lib/` `components/` `hooks/`.
+let pollTimer: ReturnType<typeof setInterval> | null = null
+const startPolling = () => {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') loadXXX(true /* silent */)
+  }, POLL_INTERVAL_MS)
+}
+const stopPolling = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null } }
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') { loadXXX(true); startPolling() }
+  else stopPolling()
+}
 
-**Tiempo estimado revisado**: 3-5 días (era 1-2 semanas, pero el alcance real es menor).
+startPolling()
+document.addEventListener('visibilitychange', handleVisibilityChange)
+return () => {
+  stopPolling()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+}
+```
+
+**Criterio de éxito**: 0 imports de `RealtimeChannel` / `supabase.channel` en `app/` `lib/` `components/` `hooks/`. Actualmente queda 1 uso (`app/admin/feedback/page.tsx`).
+
+**Tiempo restante**: 30-60min para migrar el último archivo (a hacer por la sesión que refactorizó el componente en Fase 1).
 
 ### Fase 6 — Tests de paridad y POC RDS (mes 3+)
 
@@ -264,7 +282,7 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 | Ocurrencias `createClient(.., service_role)` cliente | 10 | 0 (Fase 1 commit `1e65f76f`) | 0 ✅ |
 | Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **10** (real, auditado 27/05) | ≤ 5 (allowlist documentada) |
 | Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | pendiente auditar (Fase 4) | 0 |
-| Usos de Supabase Realtime | desconocido | **3** (auditado 27/05) | 0 |
+| Usos de Supabase Realtime | desconocido | **1** (auditado 27/05: eran 3, 2 migrados a polling esta tarde) | 0 |
 | Tiempo a migrar BD a RDS (estimación) | meses | semanas (cuando se complete F3) | 1 PR + cutover planificado |
 
 ---
