@@ -5,11 +5,12 @@ import {
   fetchArticleFromBOE,
   buildSingleVerificationPrompt,
 } from '@/lib/api/verify-articles/ai-helpers'
+import { getAiApiKey } from '@/lib/api/admin-ai-config'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function verifyWithOpenAI(prompt: string): Promise<Record<string, unknown>> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return { error: 'OpenAI API key no configurada. Añade OPENAI_API_KEY en .env.local' }
+  const apiKey = await getAiApiKey('openai')
+  if (!apiKey) return { error: 'OpenAI API key no configurada en BD (ai_api_config) ni env (OPENAI_API_KEY)' }
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

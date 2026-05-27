@@ -16,3 +16,5 @@ export {
   getConfigByProvider,
   updateVerificationStatus,
 } from './queries'
+
+export { getAiApiKey, type AiProvider } from './getAiApiKey'
