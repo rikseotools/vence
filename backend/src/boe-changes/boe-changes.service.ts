@@ -17,6 +17,17 @@ import {
   type LawUpdateData,
 } from './boe-changes.types';
 
+/**
+ * Parsea fecha DD/MM/YYYY a Date. Devuelve null si formato inválido.
+ */
+export function parseDDMMYYYY(s: string | null | undefined): Date | null {
+  if (!s || typeof s !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return null;
+  const [d, m, y] = s.split('/').map(Number);
+  const date = new Date(y, m - 1, d);
+  if (isNaN(date.getTime())) return null;
+  return date;
+}
+
 /** Procesa la verificación BOE de todas las leyes monitorizables. */
 @Injectable()
 export class BoeChangesService {
@@ -191,8 +202,23 @@ export class BoeChangesService {
       else stats.partial++;
       stats.totalBytes += partial.bytesDownloaded ?? 0;
 
-      const dateChanged =
-        !!law.lastUpdateBoe && partial.lastUpdateBOE !== law.lastUpdateBoe;
+      // Solo marcar 'changed' si la fecha extraída es POSTERIOR a la guardada.
+      // Las fechas anteriores suelen ser falsos positivos del extractor (matched
+      // fecha del cuerpo: vigencia derogada, modificación antigua, etc.).
+      // Incidente 2026-05-27 08:00 UTC: 9 leyes Canarias marcadas changed
+      // simultáneamente por blip BOE → todas eran fechas anteriores reales.
+      const currDate = parseDDMMYYYY(partial.lastUpdateBOE);
+      const bdDate = parseDDMMYYYY(law.lastUpdateBoe);
+      const dateChanged = !!currDate && !!bdDate && currDate.getTime() > bdDate.getTime();
+      const dateRetroceded =
+        !!currDate && !!bdDate && currDate.getTime() < bdDate.getTime();
+
+      if (dateRetroceded) {
+        this.logger.warn(
+          `Fecha BOE ANTERIOR a BD (posible falso positivo): ${law.shortName} | BOE=${partial.lastUpdateBOE} | BD=${law.lastUpdateBoe} — NO se actualiza baseline`,
+        );
+      }
+
       if (dateChanged) {
         stats.changesDetected++;
         changes.push({
@@ -206,9 +232,13 @@ export class BoeChangesService {
         );
       }
 
+      // Preservar baseline: solo actualizar lastUpdateBoe si avanza o es primera vez.
+      // Si la fecha extraída es anterior (falso positivo del extractor), NO la persistimos.
+      const shouldUpdateLastUpdateBoe = !dateRetroceded;
+
       await this.updateLawAfterCheck(law.id, {
         lastChecked: now.toISOString(),
-        lastUpdateBoe: partial.lastUpdateBOE,
+        ...(shouldUpdateLastUpdateBoe ? { lastUpdateBoe: partial.lastUpdateBOE } : {}),
         ...(partial.dateOffset && partial.dateOffset > 0
           ? { dateByteOffset: partial.dateOffset }
           : {}),
@@ -228,8 +258,18 @@ export class BoeChangesService {
     if (full.success && full.lastUpdateBOE) {
       stats.fullDownload++;
 
-      const dateChanged =
-        !!law.lastUpdateBoe && full.lastUpdateBOE !== law.lastUpdateBoe;
+      const currDate = parseDDMMYYYY(full.lastUpdateBOE);
+      const bdDate = parseDDMMYYYY(law.lastUpdateBoe);
+      const dateChanged = !!currDate && !!bdDate && currDate.getTime() > bdDate.getTime();
+      const dateRetroceded =
+        !!currDate && !!bdDate && currDate.getTime() < bdDate.getTime();
+
+      if (dateRetroceded) {
+        this.logger.warn(
+          `Fecha BOE ANTERIOR a BD (posible falso positivo): ${law.shortName} | BOE=${full.lastUpdateBOE} | BD=${law.lastUpdateBoe} — NO se actualiza baseline`,
+        );
+      }
+
       if (dateChanged) {
         stats.changesDetected++;
         changes.push({
@@ -243,9 +283,11 @@ export class BoeChangesService {
         );
       }
 
+      const shouldUpdateLastUpdateBoe = !dateRetroceded;
+
       await this.updateLawAfterCheck(law.id, {
         lastChecked: now.toISOString(),
-        lastUpdateBoe: full.lastUpdateBOE,
+        ...(shouldUpdateLastUpdateBoe ? { lastUpdateBoe: full.lastUpdateBOE } : {}),
         ...(full.dateOffset && full.dateOffset > 0
           ? { dateByteOffset: full.dateOffset }
           : {}),

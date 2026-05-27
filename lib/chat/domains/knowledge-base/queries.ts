@@ -269,6 +269,17 @@ export function detectCategory(message: string): KBCategory | null {
  * Detecta si un mensaje es una consulta sobre la plataforma
  */
 export function isPlatformQuery(message: string): boolean {
+  // Saludos puros y preguntas abiertas de "qué puedes hacer". Antes caían a
+  // fallback genérico (cluster A de la auditoría 27/05/2026, ~10 logs/15d).
+  // KB las maneja con predefined response en getPredefinedResponse.
+  const greetingOrHelp =
+    /^[¡¿]*\s*(hola+|holi+|buenos\s+d[ií]as|buenas(\s+(tardes|noches))?|hey+|saludos|qu[eé]\s+tal|hi+|hello)[\s!\.,¡?¿\]]*$/i.test(message.trim()) ||
+    (
+      message.trim().split(/\s+/).length <= 10 &&
+      /^[¡¿]*\s*(c[oó]mo\s+(me\s+)?(puedes\s+)?(ayud|asist)|qu[eé]\s+(me\s+)?(puedes|sabes\s+hacer|podr[ií]as?)\s+(ayud|hacer|asist|decir|ofrec)|en\s+qu[eé]\s+(me\s+)?puedes\s+ayud|para\s+qu[eé]\s+sirves|qu[eé]\s+haces|qui[eé]n\s+eres)/i.test(message.trim())
+    )
+  if (greetingOrHelp) return true
+
   // Excluir consultas de progreso personal que deben ir a StatsDomain
   const personalProgressPatterns = [
     /c[oó]mo\s+voy/i,

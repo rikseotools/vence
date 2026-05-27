@@ -247,6 +247,42 @@ export function getPredefinedResponse(
   const msgLower = message.toLowerCase()
   const { isPremium = false } = options
 
+  // Saludo puro: "Hola", "Buenos días", "Qué tal", "hey", etc. Antes caían
+  // a fallback genérico (cluster A auditoría 27/05/2026). Respuesta empática
+  // + descubrimiento de capacidades para que el user sepa qué pedirme.
+  if (/^[¡¿]*\s*(hola+|holi+|buenos\s+d[ií]as|buenas(\s+(tardes|noches))?|hey+|saludos|qu[eé]\s+tal|hi+|hello)[\s!\.,¡?¿\]]*$/i.test(message.trim())) {
+    return `¡Hola! 👋 Soy el asistente de Vence. Esto es lo que puedo hacer por ti:
+
+📖 **Dudas de legislación** — pregúntame por cualquier ley, artículo o concepto jurídico (ej: *"qué dice el Art 14 LO 3/2018"*, *"diferencia entre nulidad y anulabilidad"*).
+
+📊 **Tu progreso** — escribe *"cómo voy esta semana"* y te muestro tus aciertos, fallos y comparativa.
+
+🎯 **Explicar respuestas de test** — al responder cualquier pregunta del test, pulsa **"Explícame"** y te detallo por qué es correcta o incorrecta.
+
+🛠️ **La plataforma** — cómo cambiar tu foto, cancelar suscripción, descargar el temario, etc.
+
+¿Por dónde empezamos?`
+  }
+
+  // "Cómo me puedes ayudar / Qué haces / Para qué sirves / Quién eres".
+  // Cluster A: pregunta abierta sobre capacidades del chat.
+  if (
+    message.trim().split(/\s+/).length <= 10 &&
+    /^[¡¿]*\s*(c[oó]mo\s+(me\s+)?(puedes\s+)?(ayud|asist)|qu[eé]\s+(me\s+)?(puedes|sabes\s+hacer|podr[ií]as?)\s+(ayud|hacer|asist|decir|ofrec)|en\s+qu[eé]\s+(me\s+)?puedes\s+ayud|para\s+qu[eé]\s+sirves|qu[eé]\s+haces|qui[eé]n\s+eres)/i.test(message.trim())
+  ) {
+    return `Te ayudo con varias cosas 💪:
+
+📖 **Resuelvo dudas de legislación** — pregúntame sobre cualquier ley, artículo o concepto jurídico. Ej: *"qué dice el Art 21 Ley 39/2015"*, *"cuántas salas tiene el Tribunal Supremo"*, *"qué es la avocación"*.
+
+📊 **Te muestro tu progreso** — escribe *"cómo voy esta semana"*.
+
+🎯 **Explico respuestas del test** — al responder cualquier pregunta del test, pulsa **"Explícame"**.
+
+🛠️ **Dudas sobre la plataforma** — cambiar foto, cancelar suscripción, descargar temario, etc.
+
+Pregúntame lo que quieras.`
+  }
+
   // Cuántos usuarios / gente / opositores hay activos/conectados/haciendo test.
   // No compartimos estadísticas de actividad por privacidad. Evitar respuesta
   // promocional ("muchos usuarios usan Vence...") porque el user pide CIFRA

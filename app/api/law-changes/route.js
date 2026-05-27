@@ -112,6 +112,17 @@ function extractLastUpdateFromBOE(htmlContent) {
   }
 }
 
+/**
+ * Parsea fecha DD/MM/YYYY a Date. Devuelve null si formato inválido.
+ */
+function parseDDMMYYYY(s) {
+  if (!s || typeof s !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return null
+  const [d, m, y] = s.split('/').map(Number)
+  const date = new Date(y, m - 1, d)
+  if (isNaN(date.getTime())) return null
+  return date
+}
+
 async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -200,14 +211,24 @@ async function _GET(request) {
         const currentHash = crypto.createHash('sha256').update(cleanedContent).digest('hex')
         
         // ESTRATEGIA OFICIAL: Usar FECHAS BOE como detección principal (según manual)
-        // Solo usar fecha de "Última actualización publicada el XX/XX/XXXX" del BOE
-        const dateChanged = currentLastUpdate && law.last_update_boe &&
-                           law.last_update_boe !== currentLastUpdate
+        // Solo marcar 'changed' si la fecha extraída es POSTERIOR a la guardada.
+        // Las fechas "anteriores" suelen ser falsos positivos (extractor matched fecha
+        // del cuerpo del documento: vigencia derogada, modificación antigua, etc.).
+        // Incidente 2026-05-27 08:00 UTC: 9 leyes Canarias marcadas changed simultáneamente
+        // por blip transitorio del BOE → todas resultaron ser fechas anteriores.
+        const currDate = parseDDMMYYYY(currentLastUpdate)
+        const bdDate = parseDDMMYYYY(law.last_update_boe)
+        const dateChanged = currDate && bdDate && currDate.getTime() > bdDate.getTime()
+
+        // Warn si extractor devolvió una fecha anterior (probable falso positivo)
+        if (currDate && bdDate && currDate.getTime() < bdDate.getTime()) {
+          console.warn(`⚠️ Fecha extraída ANTERIOR a BD (posible falso positivo): ${law.short_name} | BOE=${currentLastUpdate} | BD=${law.last_update_boe}`)
+        }
 
         // Primera vez sin fecha almacenada = establecer baseline, no cambio
         const isFirstTimeWithDate = currentLastUpdate && !law.last_update_boe
 
-        // CAMBIO REAL = Solo cuando fecha BOE oficial cambia (no primera vez)
+        // CAMBIO REAL = Solo cuando fecha BOE oficial avanza (no primera vez, no retroceso)
         // Hash se mantiene para tracking interno pero NO para detección
         const hasChanged = dateChanged && !isFirstTimeWithDate
         const lastChecked = law.last_checked ? new Date(law.last_checked) : null
