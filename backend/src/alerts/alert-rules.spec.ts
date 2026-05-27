@@ -18,6 +18,7 @@ import {
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
   RULE_CANARY_AUTH_FAILED,
   RULE_CANARY_WEBHOOK_FAILED,
+  RULE_CANARY_ANSWER_SAVE_FAILED,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -477,5 +478,46 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
 
   it('cooldown 15 min', () => {
     expect(RULE_CANARY_WEBHOOK_FAILED.cooldownMin).toBe(15);
+  });
+});
+
+describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
+  it('dispara con ≥1 fallo (cualquier rotura del endpoint más caliente = app inutilizable)', () => {
+    expect(
+      RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
+        { n: 1, lastStep: 'http', lastError: 'HTTP 503 saturated', lastStatus: 503 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0 fallos ni filas vacías', () => {
+    expect(
+      RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null, lastStatus: null },
+      ]),
+    ).toBe(false);
+    expect(RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('severity=critical (P1 — endpoint más caliente de la app)', () => {
+    expect(RULE_CANARY_ANSWER_SAVE_FAILED.severity).toBe('critical');
+  });
+
+  it('notification step-aware con runbook diferenciado por código HTTP', () => {
+    const notif = RULE_CANARY_ANSWER_SAVE_FAILED.buildNotification([
+      { n: 2, lastStep: 'http', lastError: 'HTTP 422 schema validation failed', lastStatus: 422 },
+    ]);
+    expect(notif.title).toContain('2');
+    expect(notif.title).toContain('answer-save');
+    expect(notif.body).toContain('cada respuesta de cada user');
+    expect(notif.body).toContain('422');
+    expect(notif.body).toContain('schemas.ts');
+    expect(notif.body).toContain('JwtGuard');
+    expect(notif.body).toContain('load shedding');
+    expect(notif.fingerprint).toBe('canary_answer_save_failed');
+  });
+
+  it('cooldown 15 min', () => {
+    expect(RULE_CANARY_ANSWER_SAVE_FAILED.cooldownMin).toBe(15);
   });
 });

@@ -898,6 +898,54 @@ export const RULE_CANARY_WEBHOOK_FAILED: AlertRule<{
 };
 
 /**
+ * Canary answer-save failed — el cron `canary-answer-save` ejecuta cada
+ * 5 min POST sintético al endpoint más caliente de la app
+ * (/api/v2/answer-and-save). Cualquier fallo = todos los users afectados
+ * en este momento al responder preguntas.
+ *
+ * No dispara con `canary_answer_save_question_invalid` (warn — pregunta
+ * canary retirada, accionable distinto).
+ *
+ * Cooldown 15 min. Dispara con ≥1 fallo en 10 min — endpoint crítico,
+ * cualquier rotura es P1.
+ */
+export const RULE_CANARY_ANSWER_SAVE_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_answer_save_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(http_status ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_answer_save_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary answer-save FALLÓ (${r.n} en 10 min) — app inutilizable para responder preguntas`,
+      body: `El canary detectó que POST /api/v2/answer-and-save NO procesa correctamente respuestas. Esto es P1: cada respuesta de cada user en cada test pasa por aquí. Si está roto, la app está inutilizable.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES SEGÚN STEP:\n  - sign_token: SUPABASE_JWT_SECRET roto en el backend Fargate (raro).\n  - http 401/403: JwtGuard rechaza el JWT smoke → cambio en JwtVerifier (audience, algorithm).\n  - http 422: schema del request cambió → revisar lib/api/v2/answer-and-save/schemas.ts.\n  - http 5xx: bug en /api/v2/answer-and-save handler — investigar logs Vercel.\n  - http 503: load shedding activo (saturación BD/antifraud) — investigar /admin/salud-sistema.\n  - validate_response: handler devuelve 200 pero sin success=true → bug interno silencioso (PEOR caso).\n  - validate_latency: lentitud >15s — investigar conexiones BD / antifraud cache.\n\nRoadmap: docs/roadmap/canary-y-simulaciones.md §Nivel 3.`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 10,
+      },
+      fingerprint: 'canary_answer_save_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -929,4 +977,6 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CANARY_AUTH_FAILED as AlertRule,
   // Canary Stripe webhook sintético (2026-05-27, cierra gap incidente Rocío/Mercedes)
   RULE_CANARY_WEBHOOK_FAILED as AlertRule,
+  // Canary endpoint más caliente (2026-05-27, POST /api/v2/answer-and-save)
+  RULE_CANARY_ANSWER_SAVE_FAILED as AlertRule,
 ];

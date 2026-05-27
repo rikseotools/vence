@@ -47,6 +47,11 @@ import { CanarySmokeAuthModule } from './canary-smoke-auth/canary-smoke-auth.mod
 // real cada 5min. Detecta SSM no propagada / handler 404 / signature code
 // roto en <=5min. Ver docs/roadmap/canary-y-simulaciones.md §Nivel 3.
 import { CanaryStripeWebhookModule } from './canary-stripe-webhook/canary-stripe-webhook.module';
+// Canary del endpoint MÁS caliente: POST /api/v2/answer-and-save. Cubre
+// Drizzle transactional save, antifraud, daily-limit, RLS. Smoke user
+// (premium) responde 1 pregunta hardcodeada cada 5min — 288 inserts/día
+// son irrelevantes vs miles de users reales.
+import { CanaryAnswerSaveModule } from './canary-answer-save/canary-answer-save.module';
 
 @Module({
   imports: [
@@ -90,6 +95,7 @@ import { CanaryStripeWebhookModule } from './canary-stripe-webhook/canary-stripe
     SubscriptionReconciliationModule, // cada 1h — Pass-1 BD + Pass-2 Stripe directo
     CanarySmokeAuthModule, // cada 5min — login + GET /api/profile contra prod (Nivel 3)
     CanaryStripeWebhookModule, // cada 5min — evento sintético firmado a /api/stripe/webhook
+    CanaryAnswerSaveModule, // cada 5min — POST sintético al endpoint más caliente
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,
