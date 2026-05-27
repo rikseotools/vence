@@ -135,6 +135,8 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 >
 > **📘 Detalle operativo del componente Supabase**: [`docs/roadmap/agnosticismo-supabase.md`](roadmap/agnosticismo-supabase.md) — plan fase por fase para quitarle a Vence cualquier dependencia propietaria de Supabase (REST `supabase.from()`, `service_role` en cliente, Auth, Realtime). Incluye principios arquitectónicos, antipatterns prohibidos, ESLint rules y métricas de éxito medibles. Disparado por incidente 2026-05-27 (10 ocurrencias `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` hardcoded en bundle público).
 
+> **📘 Sistema de canary + simulaciones E2E (post-incidente Rocío/Mercedes 27/05)**: [`docs/roadmap/canary-y-simulaciones.md`](roadmap/canary-y-simulaciones.md) — 7 niveles de madurez incrementales inspirados en VicoHR. Nivel 1 (smoke público) HECHO; pendientes Nivel 2 (workflow GHA Playwright), Nivel 3 (canary HTTP 5min — hubiera cazado el bug del webhook), Nivel 4 (smoke autenticado E2E), Nivel 5 (cobertura exhaustiva: filtros, configurador, suscripción, todos los tipos de test). Cada nivel ejecutable independientemente. SLOs formales en [`docs/SLO.md`](SLO.md) (7 indicadores ya implementados en endpoint `/api/admin/slos`).
+
 #### Estado de dependencias hoy
 
 | Componente | Proveedor actual | Destino | Estado |
