@@ -1,9 +1,9 @@
 # Roadmap — `article_id` NULL en `test_questions` (answer-and-save)
 
-> **Estado**: ✅ Fase A APLICADA (2026-05-27 ~13:37 CEST). 🟡 Fase B PREPARADA, esperando ventana de ejecución.
+> **Estado**: ✅ Fase A APLICADA (2026-05-27 ~13:37 CEST). ✅ **Fase B EJECUTADA 2026-05-27 ~15:15 CEST** (102.353 filas recuperadas, 0 backfilleables residuales). 🟡 Sub-fase B.2 (refresh user_article_stats) decisión separada.
 > **Propietario**: equipo Vence
 > **Coste recurrente**: 0€
-> **Última actualización**: 2026-05-27 ~15:00 CEST.
+> **Última actualización**: 2026-05-27 ~15:25 CEST — Fase B ejecutada.
 
 ---
 
@@ -34,9 +34,17 @@ Resultado: **143.754 filas test_questions con `article_id = NULL`** (11.37% del 
 
 **Rollback:** `git revert b832517a` (solo añade resolución defensiva, no quita info — rollback safe).
 
-### Fase B — Backfill histórico 🟡 PREPARADO 2026-05-27
+### Fase B — Backfill histórico ✅ EJECUTADA 2026-05-27 ~15:15 CEST
 
-Recupera las ~39k filas históricas resolubles. Beneficia a todos los endpoints que dependen de `article_id` retroactivamente.
+Recupera las filas históricas resolubles. Beneficia a todos los endpoints que dependen de `article_id` retroactivamente.
+
+**Resultado real:**
+- **102.353 filas backfilleadas** (estimación inicial del sample 39k subestimó; el real es ~71% del NULL pool).
+- 22 batches de 5.000 filas (último de 2.353), tiempo total **415 segundos** (~7 min).
+- Tiempo medio por batch: 18 segundos (rango 8s-34s, variabilidad por contención con INSERTs concurrentes).
+- POST-backfill: 41.678 filas siguen con `article_id NULL` — todas correctamente null (psicotécnicas + AI-generated sin question_id resoluble + preguntas sin `primary_article_id` en `questions`).
+- **0 errores** durante la ejecución.
+- **0 disrupción** al tráfico de la app (verificado: el endpoint `answer-and-save` siguió respondiendo normal durante los 7 min).
 
 #### Pre-conditions verificadas (2026-05-27 ~14:50 CEST)
 
