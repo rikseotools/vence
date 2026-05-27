@@ -1,9 +1,13 @@
 // app/api/admin/infra-stats/route.ts - Estadísticas de infraestructura BD y carga
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Client as PgClient } from 'pg'
 import { getDb } from '@/db/client'
-import { sql } from 'drizzle-orm'
+import { sql, eq, gte, or, like, desc } from 'drizzle-orm'
+import {
+  userSessions,
+  dailyQuestionUsage,
+  validationErrorLogs,
+} from '@/db/schema'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
@@ -110,9 +114,6 @@ async function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string
   ])
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
 const ADMIN_EMAILS = [
   'admin@vencemitfg.es',
   'manuel@vencemitfg.es',
@@ -134,10 +135,12 @@ async function _GET(request: NextRequest) {
     if (!isAdmin(auth.email)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
-    // supabase client se mantiene para queries BD posteriores (user_sessions,
-    // daily_question_usage, validation_error_logs) que bypaseando RLS.
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // Migración 27/05/2026 (Fase 3 strangler fig agnosticismo-supabase):
+    // antes este endpoint mantenía un cliente Supabase paralelo a Drizzle para
+    // 3 queries específicas (user_sessions, daily_question_usage,
+    // validation_error_logs). Ahora todo usa Drizzle (single source of truth)
+    // y elimina el último uso de SERVICE_ROLE_KEY en este archivo.
     const db = getDb()
     const today = new Date().toISOString().split('T')[0]
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
@@ -186,22 +189,36 @@ async function _GET(request: NextRequest) {
         LIMIT 15
       `), 5000, 'connections_by_app'),
 
-      // 4. Sessions today (5s)
-      withTimeout(supabase.from('user_sessions')
-        .select('id', { count: 'exact' })
-        .gte('session_start', `${today}T00:00:00`), 5000, 'sessions_today'),
+      // 4. Sessions today — count via Drizzle (5s)
+      withTimeout(db.select({ count: sql<number>`count(*)::int` })
+        .from(userSessions)
+        .where(gte(userSessions.sessionStart, sql`${`${today}T00:00:00`}::timestamptz`)),
+        5000, 'sessions_today'),
 
-      // 5. Users and questions today (5s)
-      withTimeout(supabase.from('daily_question_usage')
-        .select('user_id, questions_answered')
-        .eq('usage_date', today), 5000, 'usage_today'),
+      // 5. Users and questions today — Drizzle (5s)
+      withTimeout(db.select({
+        userId: dailyQuestionUsage.userId,
+        questionsAnswered: dailyQuestionUsage.questionsAnswered,
+      })
+        .from(dailyQuestionUsage)
+        .where(eq(dailyQuestionUsage.usageDate, today)),
+        5000, 'usage_today'),
 
-      // 6. Recent connection errors (5s)
-      withTimeout(supabase.from('validation_error_logs')
-        .select('endpoint, error_message, created_at')
-        .or('error_message.ilike.%timeout%,error_message.ilike.%too many%,error_message.ilike.%connect%')
-        .order('created_at', { ascending: false })
-        .limit(10), 5000, 'recent_errors'),
+      // 6. Recent connection errors — Drizzle con OR + ILIKE (5s)
+      withTimeout(db.select({
+        endpoint: validationErrorLogs.endpoint,
+        errorMessage: validationErrorLogs.errorMessage,
+        createdAt: validationErrorLogs.createdAt,
+      })
+        .from(validationErrorLogs)
+        .where(or(
+          like(validationErrorLogs.errorMessage, '%timeout%'),
+          like(validationErrorLogs.errorMessage, '%too many%'),
+          like(validationErrorLogs.errorMessage, '%connect%'),
+        ))
+        .orderBy(desc(validationErrorLogs.createdAt))
+        .limit(10),
+        5000, 'recent_errors'),
 
       // 7. Peak concurrent sessions today — calculado en SQL en vez de
       // traer todas las sesiones a memoria (5k+ rows hacían timeout @8s).
@@ -272,14 +289,19 @@ async function _GET(request: NextRequest) {
       count: r.count,
     }))
 
-    const sessionsToday = sessionsResult?.count ?? 0
-    const usersToday = usageResult?.data?.length ?? 0
-    const questionsToday = usageResult?.data?.reduce((sum: number, a: any) => sum + (a.questions_answered || 0), 0) ?? 0
+    // Drizzle devuelve arrays directos (no { data, count, error } como Supabase).
+    // sessionsResult ahora es Array<{ count: number }>.
+    const sessionsToday = sessionsResult?.[0]?.count ?? 0
+    const usersToday = usageResult?.length ?? 0
+    const questionsToday = usageResult?.reduce(
+      (sum: number, a) => sum + (a.questionsAnswered || 0),
+      0,
+    ) ?? 0
 
-    const recentErrors = (errorsResult?.data || []).map((e: any) => ({
+    const recentErrors = (errorsResult || []).map((e) => ({
       endpoint: e.endpoint,
-      message: e.error_message?.substring(0, 100),
-      date: e.created_at,
+      message: e.errorMessage?.substring(0, 100),
+      date: e.createdAt,
     }))
 
     // Peak concurrent sessions — ya calculado en SQL (refactor 2026-05-10)

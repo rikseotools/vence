@@ -165,7 +165,7 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 | - [ ] | `lib/emails/emailService.server.ts` | **16** | Server-only. Concentrado, viable como PR único. |
 | - [~] | `app/api/cron/subscription-reconciliation/route.ts` | 9 | 🗑️ **ELIMINAR**, no migrar. Ya replicado en backend Fargate (commit `3b25b152`, cron activo per `observable_events`). Pendiente borrar este endpoint Next.js tras soak Fargate. |
 | - [ ] | `lib/services/adaptiveDifficulty.ts` | 5 (+ 5 `.rpc()`) | ⚠️ Complejo: servicio con 10 métodos + constructor que recibe cliente, mezcla `.from()` + `.rpc()`, bug pre-existente línea 93 (subquery mal usada en `.eq`). Migración requiere refactor de firma. |
-| - [ ] | `app/api/admin/infra-stats/route.ts` | 3 | API route admin, server-only. Tamaño medio. |
+| - [x] | ~~`app/api/admin/infra-stats/route.ts`~~ | ~~3~~ | ✅ **Migrado 27/05** (commit pendiente): 3 queries (`user_sessions count`, `daily_question_usage`, `validation_error_logs` con OR+ILIKE) → Drizzle. Eliminado el `createClient(SERVICE_ROLE)` paralelo a Drizzle que mantenía el archivo. |
 | - [ ] | `components/TestLayout.tsx` | 2 | **Cliente sensible** (tests E2E lo cubren — verificar al migrar). |
 | - [ ] | `components/ExamLayout.tsx` | 2 | **Cliente sensible**. Mismo cuidado que TestLayout. |
 | - [ ] | `contexts/AuthContext.tsx` | 1 | **Cliente top-tier** — toca auth, tocarlo con cuidado. |
