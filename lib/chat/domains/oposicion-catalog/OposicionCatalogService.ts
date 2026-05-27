@@ -77,6 +77,40 @@ export function detectOposicionIntent(message: string): boolean {
   // Caso 4: pregunta por grupo funcionarial EBEP — "oposiciones grupo C1", "con C2 a qué optar"
   if (detectGrupoFuncionarial(message)) return true
 
+  // Caso 5: pregunta exploratoria del catálogo SIN role explícito.
+  // Cubre queries del tipo "Se sabe algo sobre las oposiciones de Correos?",
+  // "HAY ALGUNA OPOSICION ABIERTA EN GALICIA?", "quisiera buscar una oposicion
+  // en galicia con ESO" — cluster D de la auditoría 27/05/2026, antes caían
+  // a fallback genérico. Tolera el typo "oposiSion" (S por C) que aparece en
+  // logs reales. processOposicionCatalog se encarga del resto (match vs BD,
+  // registro de solicitud si no la tenemos).
+  if (isExploratoryCatalogQuery(message)) return true
+
+  return false
+}
+
+/**
+ * Pregunta exploratoria sobre el catálogo de oposiciones sin mencionar un
+ * rol concreto. Se exige mención explícita de "oposición/oposiciones" (con
+ * tolerancia al typo "oposisión") + verbo de exploración (buscar, hay alguna,
+ * se sabe…) acompañado de región o info concreta (inscripción, requisitos,
+ * ESO, etc.). Como segundo camino: "oposiciones de X" donde X no sea un rol
+ * canónico (ej: "oposiciones de Correos", "oposiciones de RENFE").
+ */
+function isExploratoryCatalogQuery(message: string): boolean {
+  const hasOpoMention = /oposi[cs]i[oó]n(es)?/i.test(message)
+  if (!hasOpoMention) return false
+
+  const hasExploreVerb = /(buscar|busco|quisiera|me\s+interesa|me\s+gustar[ií]a|hay\s+alguna|hay\s+alg[uú]n|alguna|se\s+sabe\s+(algo|alguna|cosa)|qu[eé]\s+(hay|se\s+sabe)|tendr[ií]a|tienes|tendr[eé]is|conoc[eé]is|sab[eé]is)/i.test(message)
+  const hasRegion = REGION_KEYWORDS.test(message)
+  const hasInfoRequest = /(inscripci[oó]n|abierta|abiertas|requisit|\bnivel\b|\bESO\b|bachiller|\bfp\b|nivel\s+formativo|este\s+a[ñn]o|pr[oó]ximo|pronto)/i.test(message)
+  if (hasExploreVerb && (hasRegion || hasInfoRequest)) return true
+
+  // "oposiciones de X" / "sobre las oposiciones" sin role explícito → exploración.
+  if (/(oposi[cs]i[oó]n(es)?\s+(de|del|para|en)\s+\w+|sobre\s+(las?\s+)?oposi[cs]i)/i.test(message)) {
+    if (!ROLE_KEYWORDS.test(message)) return true
+  }
+
   return false
 }
 
