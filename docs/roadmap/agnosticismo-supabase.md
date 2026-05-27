@@ -155,24 +155,26 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 **Pendiente:**
 - ⏳ Strangler fig sobre los 10 archivos a continuación. Cada PR que toque uno → migrar.
 
-#### Inventario de archivos con `supabase.from()` (10, snapshot 27/05/2026 14:00 CEST)
+#### Inventario de archivos con `supabase.from()` (10 archivos, **~70 usos reales** — actualizado 27/05/2026 15:00 CEST)
+
+> ⚠️ El recuento inicial en este roadmap subestimaba (contaba solo líneas que matcheaban, no usos por línea). Recuento real corregido: 70 usos en 10 archivos. Tras 2 migrados hoy quedan 8 archivos con ~67 usos.
 
 | # | Archivo | Usos | Notas |
 |---|---|---|---|
-| - [ ] | `lib/emails/emailService.server.ts` | 6 | Server-only (`.server.ts`). Mayor concentración. |
-| - [ ] | `app/api/admin/infra-stats/route.ts` | 3 | API route admin |
-| - [ ] | `contexts/AuthContext.tsx` | 2 | **Cliente** — sensible (toca auth) |
-| - [ ] | `components/ExamLayout.tsx` | 2 | **Cliente** |
-| - [ ] | `lib/services/adaptiveDifficulty.ts` | 1 | Compartido client/server, verificar |
-| - [ ] | `lib/api/rollout/problematic-articles-logs.ts` | 1 | Server-only |
-| - [ ] | `components/TestLayout.tsx` | 1 | **Cliente** |
-| - [ ] | `app/api/stripe/webhook/route.ts` | 1 | API route Stripe webhook |
-| - [ ] | `app/api/cron/subscription-reconciliation/route.ts` | 1 | API route cron (en migración a Fargate per memory/project_gha_cron_lag_migrate_fargate) |
-| - [ ] | `app/api/admin/conversions/views/route.ts` | 1 | API route admin |
+| - [ ] | `app/api/stripe/webhook/route.ts` | **31** | 🐘 El más grande. Refactor sustancial. Tocar con cuidado: el webhook ya tuvo incidente 27/05 por otra causa. |
+| - [ ] | `lib/emails/emailService.server.ts` | **16** | Server-only. Concentrado, viable como PR único. |
+| - [~] | `app/api/cron/subscription-reconciliation/route.ts` | 9 | 🗑️ **ELIMINAR**, no migrar. Ya replicado en backend Fargate (commit `3b25b152`, cron activo per `observable_events`). Pendiente borrar este endpoint Next.js tras soak Fargate. |
+| - [ ] | `lib/services/adaptiveDifficulty.ts` | 5 (+ 5 `.rpc()`) | ⚠️ Complejo: servicio con 10 métodos + constructor que recibe cliente, mezcla `.from()` + `.rpc()`, bug pre-existente línea 93 (subquery mal usada en `.eq`). Migración requiere refactor de firma. |
+| - [ ] | `app/api/admin/infra-stats/route.ts` | 3 | API route admin, server-only. Tamaño medio. |
+| - [ ] | `components/TestLayout.tsx` | 2 | **Cliente sensible** (tests E2E lo cubren — verificar al migrar). |
+| - [ ] | `components/ExamLayout.tsx` | 2 | **Cliente sensible**. Mismo cuidado que TestLayout. |
+| - [ ] | `contexts/AuthContext.tsx` | 1 | **Cliente top-tier** — toca auth, tocarlo con cuidado. |
+| - [x] | ~~`lib/api/rollout/problematic-articles-logs.ts`~~ | ~~1~~ | ✅ **Migrado 27/05 tarde**: `createClient(SERVICE_ROLE).insert()` fire-and-forget → `getAdminDb()` + raw SQL `db.execute(sql\`INSERT ...\`)`. |
+| - [x] | ~~`app/api/admin/conversions/views/route.ts`~~ | ~~2~~ | ✅ **Migrado 27/05 tarde**: `admin.supabase.from(view)` → `db.select().from(pgView)`. Vistas tipadas en schema. `Promise.allSettled` mantiene patrón "no rompe si una falla". |
 
 **Criterio de éxito**: 0 archivos en el inventario tras strangler.
 
-**Tiempo estimado**: trabajo continuo, no sprint dedicado. Realista: 6-12 meses.
+**Tiempo estimado revisado**: trabajo continuo. Realista con cifras reales: 6-12 meses si va por strangler fig, **1-2 sprints concentrados** si se ataca de golpe (la mayoría son server-side, riesgo bajo).
 
 ### Fase 4 — Wrapper agnóstico de Auth (mes 1-2)
 
@@ -280,7 +282,7 @@ return () => {
 |---|---|---|---|
 | `NEXT_PUBLIC_*` con credenciales en código | 1 (`SUPABASE_SERVICE_ROLE_KEY`) | 0 (limpiado en Fase 1 + ESLint rule) | 0 ✅ |
 | Ocurrencias `createClient(.., service_role)` cliente | 10 | 0 (Fase 1 commit `1e65f76f`) | 0 ✅ |
-| Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **10** (real, auditado 27/05) | ≤ 5 (allowlist documentada) |
+| Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **8** (2 migrados tarde 27/05, 8 pendientes) | ≤ 5 (allowlist documentada) |
 | Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | pendiente auditar (Fase 4) | 0 |
 | Usos de Supabase Realtime | desconocido | **1** (auditado 27/05: eran 3, 2 migrados a polling esta tarde) | 0 |
 | Tiempo a migrar BD a RDS (estimación) | meses | semanas (cuando se complete F3) | 1 PR + cutover planificado |
