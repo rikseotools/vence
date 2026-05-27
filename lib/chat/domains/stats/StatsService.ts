@@ -10,10 +10,14 @@ import type {
   TemporalFilter,
   StatsQueryType,
 } from './schemas'
-import { mapSlugToShortName as mapLawSlugToShortName } from '@/lib/lawSlugSync'
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
-import { createClient } from '@supabase/supabase-js'
-import { createGlobalCache } from '@/lib/cache/globalCache'
+import {
+  loadLawsCache,
+  resolveSlug as _resolveSlug,
+  matchLawByNameKeywords as _matchLawByNameKeywords,
+} from '../../shared/lawsCache'
+
+export { loadLawsCache }
 
 // ============================================
 // DETECCIÓN DE CONSULTAS
@@ -325,167 +329,9 @@ export function extractLawFromMessage(message: string): string | null {
   return null
 }
 
-// ============================================
-// CACHE DE LEYES DESDE BD (escalable)
-// ============================================
+// Cache de leyes (loadLawsCache + matchLawByNameKeywords + resolveSlug) vive
+// ahora en lib/chat/shared/lawsCache.ts — re-export al inicio de este módulo.
 
-// Cache compuesto cross-bundle via createGlobalCache (#118 cleanup).
-// Antes: 4 `let` separados → cada bundle los duplicaba. Ahora 1 objeto en
-// globalThis. Las funciones síncronas de matching usan `peek()`.
-interface _LawsCacheData {
-  slugMap: Map<string, string>
-  shortNameMap: Map<string, string>
-  nameKeywords: Array<{ shortName: string; keywords: string[] }>
-}
-
-const _lawsCache = createGlobalCache<_LawsCacheData>(
-  'stats-laws-cache-v1',
-  Number.MAX_SAFE_INTEGER, // Forever — invalidar requiere restart del task
-)
-
-// Stop words para filtrar al extraer keywords del nombre de la ley
-const STOP_WORDS = new Set([
-  'de', 'del', 'la', 'el', 'las', 'los', 'por', 'que', 'se', 'en', 'al', 'con',
-  'para', 'y', 'o', 'a', 'un', 'una', 'su', 'sus', 'lo', 'le', 'les',
-  'sobre', 'como', 'cual', 'cuales', 'este', 'esta', 'estos', 'estas',
-  'ley', 'real', 'decreto', 'orden', 'organica', 'legislativo',
-  'texto', 'refundido', 'aprueba', 'regula', 'reguladora', 'establece',
-  'modifica', 'determina', 'dispone', 'materia', 'medidas', 'normas',
-  // Meses (aparecen en muchas leyes por la fecha, pero no son relevantes)
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-])
-
-/**
- * Extrae keywords significativos del nombre descriptivo de una ley.
- * Filtra stop words, números, fechas y tokens cortos.
- */
-function _extractKeywords(name: string): string[] {
-  return name
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
-    .replace(/[()""".,;:\/\-]/g, ' ')
-    .split(/\s+/)
-    .filter(t => t.length >= 3)
-    .filter(t => !/^\d+$/.test(t)) // sin números puros
-    .filter(t => !STOP_WORDS.has(t))
-}
-
-/**
- * Busca una ley por keywords del campo `name` de la BD.
- * Para cada ley, calcula qué fracción de sus keywords aparecen en el mensaje.
- * Devuelve la ley con mayor score si supera el umbral mínimo.
- */
-function _matchLawByNameKeywords(message: string): string | null {
-  const cached = _lawsCache.peek()
-  if (!cached || cached.nameKeywords.length === 0) return null
-  const _dbNameKeywords = cached.nameKeywords
-
-  const msgNorm = message
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[¿?¡!()""".,;:\/\-]/g, ' ')
-  const msgTokens = new Set(msgNorm.split(/\s+/).filter(t => t.length >= 3))
-
-  let bestMatch: string | null = null
-  let bestScore = 0
-  let bestMatchedCount = 0
-
-  for (const { shortName, keywords } of _dbNameKeywords) {
-    if (keywords.length === 0) continue
-    const matched = keywords.filter(kw => msgTokens.has(kw)).length
-    if (matched === 0) continue
-    const score = matched / keywords.length
-    // Preferir mayor score; en empate, preferir más keywords coincidentes
-    if (score > bestScore || (score === bestScore && matched > bestMatchedCount)) {
-      bestScore = score
-      bestMatch = shortName
-      bestMatchedCount = matched
-    }
-  }
-
-  // Umbral mínimo: al menos 1 keyword y score >= 0.25
-  return bestScore >= 0.25 ? bestMatch : null
-}
-
-/**
- * Resuelve un slug/alias a short_name.
- * 1. Cache de BD (slug → short_name)
- * 2. Cache de BD (short_name directo, case-insensitive)
- * 3. lawMappingUtils hardcodeado (fallback)
- */
-function _resolveSlug(slug: string): string | null {
-  const cached = _lawsCache.peek()
-
-  // BD cache: slug → short_name
-  if (cached) {
-    const fromSlug = cached.slugMap.get(slug)
-    if (fromSlug) return fromSlug
-
-    // BD cache: short_name directo (case-insensitive)
-    const fromSn = cached.shortNameMap.get(slug.toLowerCase())
-    if (fromSn) return fromSn
-  }
-
-  // Fallback: lawMappingUtils hardcodeado
-  return mapLawSlugToShortName(slug)
-}
-
-/**
- * Carga slug → short_name de la tabla laws en BD.
- * Se llama lazy desde searchStats. Solo carga una vez (cache forever).
- *
- * Nota: createGlobalCache.getOrLoad NO dedupea llamadas concurrentes —
- * si 2 requests llegan a la vez antes de la primera carga, ambos lanzan
- * la query. Aceptable porque (a) ocurre solo al arrancar el task ECS,
- * (b) la query es rápida (~50 leyes), (c) el cache vive forever después.
- */
-export async function loadLawsCache(): Promise<void> {
-  await _lawsCache.getOrLoad(async () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    const { data, error } = await supabase
-      .from('laws')
-      .select('slug, short_name, name')
-      .eq('is_active', true)
-
-    if (error || !data) {
-      logger.warn('Could not load laws cache from DB', { domain: 'stats', error: error?.message })
-      // Devolvemos cache vacía — getOrLoad la guarda, evita re-querying en bucle
-      return { slugMap: new Map(), shortNameMap: new Map(), nameKeywords: [] }
-    }
-
-    const slugMap = new Map<string, string>()
-    const shortNameMap = new Map<string, string>()
-    const nameKeywords: Array<{ shortName: string; keywords: string[] }> = []
-
-    for (const law of data) {
-      // slug → short_name
-      if (law.slug) {
-        slugMap.set(law.slug, law.short_name)
-      }
-
-      // short_name (lowercase) → short_name (para match directo de abreviaturas)
-      shortNameMap.set(law.short_name.toLowerCase(), law.short_name)
-
-      // Extraer keywords del nombre descriptivo (solo si difiere del short_name)
-      if (law.name && law.name !== law.short_name) {
-        const keywords = _extractKeywords(law.name)
-        if (keywords.length > 0) {
-          nameKeywords.push({ shortName: law.short_name, keywords })
-        }
-      }
-    }
-
-    logger.info(
-      `Laws cache loaded from DB: ${slugMap.size} slugs, ${shortNameMap.size} short_names, ${nameKeywords.length} name keyword sets`,
-      { domain: 'stats' }
-    )
-    return { slugMap, shortNameMap, nameKeywords }
-  })
-}
 
 // ============================================
 // FORMATEO DE RESPUESTAS

@@ -164,12 +164,23 @@ export class StatsDomain implements ChatDomain {
         // Detectar si pregunta específicamente "cómo voy" para comparación semanal
         const isProgressQuery = /c[oó]mo\s*voy/i.test(context.currentMessage)
 
+        // Detectar si pide comparativa con OTROS opositores (no es lo mismo
+        // que "cómo voy" personal). Hoy no tenemos percentiles agregados; lo
+        // mínimo honesto es avisar de la limitación y ofrecer stats personales.
+        const isComparativeQuery = /comparaci[oó]n\s+con\s+(los|otros|opositores|usuarios|gente|el resto|quienes|los que)|vs\s+otros|frente\s+a\s+otros|media\s+(de\s+)?(la\s+)?oposici[oó]n|percentil|ranking|posici[oó]n\s+respecto/i.test(context.currentMessage)
+
         if (isProgressQuery) {
           // Obtener comparación semanal
           const weeklyComparison = await getWeeklyComparison(context.userId)
 
           if (weeklyComparison) {
             responseText = formatWeeklyComparisonResponse(weeklyComparison)
+            if (isComparativeQuery) {
+              responseText =
+                'ℹ️ **De momento no muestro comparativas con otros opositores** (estamos trabajando en ello). ' +
+                'Lo que sí puedo enseñarte es tu propio progreso semana a semana:\n\n' +
+                responseText
+            }
           } else if (statsResult.userStats) {
             // Fallback a stats normales si no hay datos de comparación
             responseText = formatUserStatsResponse(

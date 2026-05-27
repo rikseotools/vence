@@ -247,6 +247,21 @@ export function getPredefinedResponse(
   const msgLower = message.toLowerCase()
   const { isPremium = false } = options
 
+  // Cuántos usuarios / gente / opositores hay activos/conectados/haciendo test.
+  // No compartimos estadísticas de actividad por privacidad. Evitar respuesta
+  // promocional ("muchos usuarios usan Vence...") porque el user pide CIFRA
+  // y se siente ignorado.
+  if (
+    /\b(cu[aá]nt[oa]s?|cuanta|hay\s+mucha?)\s+(usuarios?|gente|opositores?|personas?|estudiantes?|aspirantes?)/i.test(message) &&
+    /(activ|conectad|online|haciendo|hacen|estudiando|estudian|usando|usan|preparando|preparan|viendo|miran|tests?|temarios?|esta\s+oposici[oó]n|mi\s+oposici[oó]n)/i.test(msgLower)
+  ) {
+    return `No compartimos estadísticas de usuarios conectados ni activos por privacidad — es información que no se publica.
+
+Para ver tu propio progreso (que es lo que importa), pregúntame **"cómo voy esta semana"** y te muestro tus aciertos, fallos y comparativa semanal.
+
+¡Tú a lo tuyo! 💪`
+  }
+
   // Mnemotécnicas: no tenemos servicio implementado (ni banco validado, ni
   // generador propio). Evitar invenciones tipo "PACO" inventada al vuelo.
   if (

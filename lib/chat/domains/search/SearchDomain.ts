@@ -18,6 +18,7 @@ import { detectQueryPattern } from './PatternMatcher'
 import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers, getSupabaseForSearch } from './queries'
 import { isPsychometricSubtype } from '../../shared/constants'
 import { detectStatsQueryType } from '../stats/StatsService'
+import { loadLawsCache } from '../../shared/lawsCache'
 import { detectQuestionComplaint, buildComplaintSuggestion } from '../../shared/complaintDetector'
 import { detectUnknownAbbreviations, buildClarificationRequest } from '../../shared/unknownAbbreviationDetector'
 
@@ -252,6 +253,11 @@ export class SearchDomain implements ChatDomain {
       hasExplanation: !!context.questionContext?.explanation,
       lawName: context.questionContext?.lawName,
     })
+
+    // Asegurar cache de leyes cargada antes de detectar menciones por nombre
+    // descriptivo (matchAllLawsByNameKeywords en PatternMatcher). Idempotente
+    // gracias a getOrLoad del singleton compartido con StatsService.
+    await loadLawsCache()
 
     // 0. PRIMERO: Detectar y expandir follow-ups ANTES de detectar leyes
     // Esto es importante porque "y del tribunal constitucional" no debe buscar en LOTC,

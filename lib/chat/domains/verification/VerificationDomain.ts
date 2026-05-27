@@ -286,8 +286,11 @@ export class VerificationDomain implements ChatDomain {
     const mentionsSpecificLaw = /\b(ley\s+\d+|art[ií]culo\s+\d+|CE\b|LOPJ\b|LOTC\b|LEC\b)/i.test(message)
     if (mentionsSpecificLaw) return false
 
-    // Si menciona palabras clave de otro tema, no es seguimiento
-    const otherTopicKeywords = /\b(plazos?|recurso|procedimiento|competencia|jurisdicci[oó]n|notificaci[oó]n)\b/i
+    // Si menciona palabras clave de otro tema, no es seguimiento.
+    // Incluye órganos colegiados además de conceptos procedimentales: un user
+    // que pregunta sobre "Consejo de Desarrollo Sostenible" o "Foro de Gobierno
+    // Abierto" NO está pidiendo que le reexpliquen la respuesta del test.
+    const otherTopicKeywords = /\b(plazos?|recurso|procedimiento|competencia|jurisdicci[oó]n|notificaci[oó]n|consejo|foro|comisi[oó]n|comit[eé]|junta|tribunal|secretar[ií]a|direcci[oó]n\s+general|subdirecci[oó]n|observatorio|agencia|instituto|presidencia|vicepresidencia)\b/i
     if (otherTopicKeywords.test(message)) return false
 
     // Si pide funcionalidades de la app (progreso, estadísticas, etc.), no es verificación

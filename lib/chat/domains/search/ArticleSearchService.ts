@@ -88,22 +88,47 @@ export async function searchArticles(
   if (specificLaws.length > 0) {
     logger.info(`🔎 Detected specific law in text: ${specificLaws.join(', ')}`, { domain: 'search' })
 
-    // Intentar buscar en la ley mencionada
-    for (const lawRef of specificLaws) {
-      const result = await searchByContextLaw(message, lawRef, limit)
+    // Si hay VARIAS leyes mencionadas (ej: "Foro Gob Abierto y Consejo Des Sost"
+    // → RD 371/2026 + Orden HFP/134/2018 + Orden DSA/819/2020), buscar en TODAS
+    // y agregar resultados. Antes el loop hacía `return` con la primera ley con
+    // resultados, dejando fuera el resto — IA respondía solo sobre 1 de las 2
+    // entidades preguntadas.
+    if (specificLaws.length > 1) {
+      const perLawLimit = Math.max(2, Math.ceil(limit / specificLaws.length))
+      const aggregated: ArticleMatch[] = []
+      const lawsWithHits: string[] = []
+      for (const lawRef of specificLaws) {
+        const r = await searchByContextLaw(message, lawRef, perLawLimit)
+        if (r.articles.length > 0) {
+          aggregated.push(...r.articles)
+          lawsWithHits.push(lawRef)
+        }
+      }
+      if (aggregated.length > 0) {
+        logger.info(`🔎 Aggregated ${aggregated.length} articles across ${lawsWithHits.length}/${specificLaws.length} laws: ${lawsWithHits.join(', ')}`, { domain: 'search' })
+        return {
+          articles: aggregated.slice(0, limit),
+          searchMethod: 'direct',
+          mentionedLaws: lawsWithHits,
+          contextLaw: lawsWithHits[0],
+        }
+      }
+    } else {
+      // Una sola ley específica: comportamiento original (más simple y rápido)
+      const result = await searchByContextLaw(message, specificLaws[0], limit)
       if (result.articles.length > 0) {
-        logger.info(`🔎 Found ${result.articles.length} articles in ${lawRef}`, { domain: 'search' })
+        logger.info(`🔎 Found ${result.articles.length} articles in ${specificLaws[0]}`, { domain: 'search' })
         return {
           ...result,
-          contextLaw: lawRef,
-          mentionedLaws: [lawRef],
+          contextLaw: specificLaws[0],
+          mentionedLaws: [specificLaws[0]],
         }
       }
     }
 
-    // Si no encontramos artículos de la ley específica mencionada,
+    // Si no encontramos artículos de NINGUNA ley específica mencionada,
     // devolver vacío para usar GPT (mejor que artículos irrelevantes)
-    logger.info(`🔎 Law "${specificLaws[0]}" mentioned but not found in DB, using GPT fallback`, { domain: 'search' })
+    logger.info(`🔎 Laws "${specificLaws.join(', ')}" mentioned but no articles found in DB, using GPT fallback`, { domain: 'search' })
     return {
       articles: [],
       searchMethod: 'fallback',

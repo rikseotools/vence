@@ -4,6 +4,7 @@
 import type { DetectedPattern, PatternType } from '../../core/types'
 import { logger } from '../../shared/logger'
 import { mapSlugToShortName as mapLawSlugToShortName, findShortNameByAbbreviation } from '@/lib/lawSlugSync'
+import { matchAllLawsByNameKeywords } from '../../shared/lawsCache'
 
 // ============================================
 // DEFINICIÓN DE PATRONES
@@ -305,6 +306,18 @@ export function detectMentionedLaws(message: string): string[] {
     }
   }
 
+  // 3. Keyword matching del campo `name` de la BD (escalable, sin mantenimiento).
+  // Detecta menciones por nombre descriptivo: "foro de gobierno abierto"
+  // → Orden HFP/134/2018 + RD 371/2026; "consejo de desarrollo sostenible"
+  // → Orden DSA/819/2020. Cualquier ley nueva en BD se detecta sin tocar código.
+  // Requiere loadLawsCache() previo; si no, devuelve [].
+  const byName = matchAllLawsByNameKeywords(message)
+  for (const sn of byName) {
+    if (!mentioned.includes(sn)) {
+      mentioned.push(sn)
+    }
+  }
+
   return [...new Set(mentioned)]
 }
 
@@ -399,6 +412,16 @@ export function extractSpecificLawMentions(message: string): string[] {
     const ref = bareMatch[1]
     if (!mentions.some(m => m.includes(ref))) {
       mentions.push(ref)
+    }
+  }
+
+  // Keyword matching del campo `name` de la BD (escalable). Detecta normas
+  // mencionadas por su nombre descriptivo cuando no aparecen como ref numérica
+  // (ej: "foro de gobierno abierto" → Orden HFP/134/2018 + RD 371/2026).
+  const byName = matchAllLawsByNameKeywords(message)
+  for (const sn of byName) {
+    if (!mentions.includes(sn)) {
+      mentions.push(sn)
     }
   }
 
