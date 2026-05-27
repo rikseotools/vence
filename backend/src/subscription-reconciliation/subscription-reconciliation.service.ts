@@ -142,8 +142,8 @@ export class SubscriptionReconciliationService {
         SELECT id FROM user_subscriptions
         WHERE stripe_subscription_id = ${sub.id}
         LIMIT 1
-      `)) as unknown as { rows?: Array<{ id: string }> };
-      const existing = (existingRows.rows ?? [])[0];
+      `)) as unknown as Array<{ id: string }>;
+      const existing = existingRows[0];
       if (existing) continue;
 
       // Falta — buscar user_profiles por stripe_customer_id.
@@ -151,8 +151,8 @@ export class SubscriptionReconciliationService {
         SELECT id, email FROM user_profiles
         WHERE stripe_customer_id = ${customerId}
         LIMIT 1
-      `)) as unknown as { rows?: Array<{ id: string; email: string }> };
-      const profile = (profileRows.rows ?? [])[0];
+      `)) as unknown as Array<{ id: string; email: string }>;
+      const profile = profileRows[0];
 
       const entry: Pass2MissingEntry = {
         stripeCustomerId: customerId,
