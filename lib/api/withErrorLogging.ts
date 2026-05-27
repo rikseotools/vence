@@ -312,6 +312,8 @@ export function withErrorLogging(
       const errorRef = randomUUID()
       const throwUserId = (body?.userId as string) || undefined
       const throwErrorMessage = error instanceof Error ? error.message : String(error)
+      const throwErrorStack = error instanceof Error ? error.stack : undefined
+      const durationMs = Date.now() - startTime
 
       // 5xx por throw: awaitar (ver justificación arriba en bloque 4xx/5xx).
       await logValidationErrorAwait({
@@ -319,14 +321,39 @@ export function withErrorLogging(
         endpoint,
         errorType: classifyError(error),
         errorMessage: throwErrorMessage,
-        errorStack: error instanceof Error ? error.stack : undefined,
+        errorStack: throwErrorStack,
         questionId: (body?.questionId as string) || undefined,
         userId: throwUserId,
         requestBody: body ? sanitizeRequestBody(body) : undefined,
         severity: 'critical',
         httpStatus: 500,
-        durationMs: Date.now() - startTime,
+        durationMs,
         userAgent,
+      })
+
+      // Emit request_completed también en el catch (antes solo se emitía
+      // en el path try → 5xx por throw nunca llegaban a obs_events,
+      // dejando hueco de observabilidad). Incluye stack truncado a 2KB
+      // (suficiente para diagnóstico, no satura tabla).
+      after(async () => {
+        await emit({
+          source: 'vercel',
+          severity: 'error',
+          eventType: 'request_completed',
+          endpoint,
+          httpStatus: 500,
+          durationMs,
+          deployVersion: DEPLOY_VERSION,
+          errorMessage: throwErrorMessage.slice(0, 2000),
+          metadata: {
+            host: request?.headers?.get?.('host') ?? null,
+            method: request?.method ?? 'GET',
+            sampled: 'false',
+            errorRef,
+            errorStack: throwErrorStack?.slice(0, 2000) || null,
+            capturedFromThrow: true,
+          },
+        })
       })
 
       // Sentry ya capturó vía instrumentation.onRequestError, pero el scope

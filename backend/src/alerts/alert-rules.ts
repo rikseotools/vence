@@ -442,6 +442,48 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
 };
 
 /**
+ * Fallos 5xx en endpoints /api/stripe/* — cada error = un cliente que
+ * intentó pagar y no pudo. Threshold bajo (>=3 en 10min) porque el
+ * coste por fallo es directo en ingresos.
+ *
+ * Origen: incidente 2026-05-27 — bug del Dockerfile (ARG NEXT_PUBLIC_STRIPE_PRICE_*
+ * faltante) dejó 'price_quarterly_placeholder' inlinado en el bundle JS
+ * de /premium. Usuario tamalla.240@gmail.com (iPhone) intentó 8 veces
+ * comprar premium quarterly entre 06:10-06:34 CEST y todas fallaron con
+ * resource_missing. Detectado horas después por revisión manual de
+ * observable_events. Si esta regla hubiera existido, alerta a los ~5min
+ * del 3er fallo.
+ */
+export const RULE_STRIPE_CHECKOUT_FAILED: AlertRule<{
+  n: number;
+  topEndpoint: string | null;
+}> = {
+  name: 'stripe_checkout_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    FROM observable_events
+    WHERE source = 'vercel'
+      AND http_status >= 500
+      AND endpoint LIKE '/api/stripe/%'
+      AND ts > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const top = rows[0]?.topEndpoint ?? '/api/stripe/*';
+    return {
+      title: `${n} fallos en checkout Stripe en 10min — clientes perdidos`,
+      body: `Endpoint: ${top}\n\nCada 5xx en /api/stripe/* es un usuario que intentó pagar y no pudo. Investigar en:\n\n  - SELECT ts, endpoint, http_status, error_message, metadata FROM observable_events\n    WHERE endpoint LIKE '/api/stripe/%' AND http_status >= 500\n      AND ts > NOW() - INTERVAL '15 minutes'\n    ORDER BY ts DESC LIMIT 10;\n  - CloudWatch /ecs/vence-frontend filter "Error creando" OR "Stripe"\n  - Stripe Dashboard → Logs → recent failures\n\nIncidente origen 2026-05-27: bug del Dockerfile dejó 'price_quarterly_placeholder' en el bundle. Usuario perdió 8 intentos de checkout antes de rendirse. Sin esta regla, lo detectamos horas después manualmente.`,
+      metadata: { count: n, topEndpoint: top, windowMin: 10 },
+      fingerprint: `stripe_checkout_failed_${top}`,
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Caída brutal de tráfico — proxy de salud del frontend.
  *
  * Origen: incidente 2026-05-26 — entre 12:00-13:00 UTC el tráfico
@@ -543,6 +585,7 @@ export const ALERT_RULES: AlertRule[] = [
   // Subscription health (2026-05-26 post-incidente Andrea/Lidia)
   RULE_SUBSCRIPTION_DRIFT as AlertRule,
   RULE_WEBHOOK_UNHEALTHY as AlertRule,
+  RULE_STRIPE_CHECKOUT_FAILED as AlertRule,
   // Salud del frontend desde server-side metrics (no depende del cliente)
   RULE_TRAFFIC_DROP as AlertRule,
 ];
