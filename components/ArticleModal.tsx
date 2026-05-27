@@ -396,7 +396,6 @@ export default function ArticleModal({
                             user_agent: navigator.userAgent,
                             viewport: `${window.innerWidth}x${window.innerHeight}`,
                             referrer: document.referrer || null,
-                            wants_response: false,
                             status: 'pending',
                             priority: 'high'
                           })

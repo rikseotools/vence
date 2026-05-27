@@ -27,7 +27,6 @@ export const createFeedbackRequestSchema = z.object({
   userAgent: z.string().optional(),
   viewport: z.string().optional(),
   referrer: z.string().nullable().optional(),
-  wantsResponse: z.boolean().default(false),
   status: z.enum(feedbackStatusOptions).default('pending'),
   priority: z.enum(feedbackPriorityOptions).default('medium'),
   questionId: z.string().uuid().nullable().optional(), // ID de pregunta para debugging
@@ -54,7 +53,6 @@ export const feedbackDataSchema = z.object({
   priority: z.enum(feedbackPriorityOptions).nullable().optional(),
   adminResponse: z.string().nullable().optional(),
   adminUserId: z.string().uuid().nullable().optional(),
-  wantsResponse: z.boolean().nullable().optional(),
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
   resolvedAt: z.string().nullable().optional(),

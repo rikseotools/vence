@@ -69,7 +69,6 @@ export interface FeedbackWithDetails {
   priority: string | null
   adminResponse: string | null
   adminUserId: string | null
-  wantsResponse: boolean | null
   createdAt: string | null
   updatedAt: string | null
   resolvedAt: string | null

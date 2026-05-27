@@ -4,9 +4,8 @@
 //
 // RGPD Art. 12.3: el responsable del tratamiento debe informar al
 // interesado del resultado de su solicitud en el plazo de un mes.
-// Para eliminaciones este email es OBLIGATORIO aunque el usuario tenga
-// wants_response=false en su feedback — eso es preferencia de soporte,
-// no aplica a notificaciones legales.
+// Para eliminaciones este email es OBLIGATORIO con independencia de
+// las preferencias de soporte del usuario — es una notificación legal.
 //
 // Usa Resend API directamente (no sendEmailV2) porque el usuario ya no
 // existe en user_profiles en el momento del envío — sendEmailV2 requiere

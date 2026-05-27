@@ -20,7 +20,6 @@ interface FormData {
   type: string
   message: string
   email: string
-  wantsResponse: boolean
   disputeType: string
 }
 
@@ -73,7 +72,6 @@ export default function FeedbackModal({
     type: '',
     message: '',
     email: '',
-    wantsResponse: false,
     disputeType: ''
   })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -161,7 +159,6 @@ export default function FeedbackModal({
         type: '',
         message: '',
         email: user?.email || '',
-        wantsResponse: false,
         disputeType: ''
       })
       setUploadedImages([])
@@ -426,7 +423,6 @@ export default function FeedbackModal({
         userAgent: navigator.userAgent,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         referrer: document.referrer || null,
-        wantsResponse: false,
         status: 'pending',
         priority: 'medium',
         questionId: detectedContext.questionId || questionId || null

@@ -301,7 +301,6 @@ Log chat: ${input.logId || 'n/a'}`
       url: 'chat:oposicion-catalog',
       status: 'pending',
       priority: 'medium',
-      wants_response: false,
     })
     .select('id')
     .single()

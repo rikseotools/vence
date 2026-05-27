@@ -403,7 +403,6 @@ async function _POST(request: NextRequest) {
       url: 'email-inbound',
       status: 'pending',
       priority: 'medium',
-      wantsResponse: true,
       // referrer se reusa para almacenar el Message-ID original del email
       // entrante. Permite hacer email threading correcto al responder
       // (In-Reply-To + References + Subject "Re: ..."). Si no hay header

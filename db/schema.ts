@@ -482,7 +482,6 @@ export const userFeedback = pgTable("user_feedback", {
 	priority: text().default('medium'),
 	adminResponse: text("admin_response"),
 	adminUserId: uuid("admin_user_id"),
-	wantsResponse: boolean("wants_response").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 	resolvedAt: timestamp("resolved_at", { mode: 'string' }),

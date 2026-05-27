@@ -3,7 +3,7 @@
 // Reemplaza 2 INSERTs encadenados con service_role en cliente.
 //
 // Patrón post-14/04/2026 documentado en el componente: feedback se crea con
-// status='in_progress' priority='high' wants_response=true. La conversación
+// status='in_progress' priority='high'. La conversación
 // queda 'open' hasta que se llame al endpoint de respuesta (que cierra a
 // 'resolved'). El INSERT del mensaje + envío de email es responsabilidad
 // del caller via /api/feedback/respond-via-endpoint — este endpoint solo
@@ -53,7 +53,6 @@ async function _POST(request: NextRequest) {
       url: parsed.data.url,
       status: 'in_progress',
       priority: 'high',
-      wantsResponse: true,
     })
     .returning()
 
