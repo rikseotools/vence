@@ -125,6 +125,8 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 > **🟡 Estado 2026-05-25:** decisión tomada — la intención es salir de Vercel y Supabase y consolidar todo en AWS. La justificación: a la escala que tendremos en 6-12 meses (10k+ DAU), Vercel Pro+ + Supabase Pro+ Upstash escalan peor en coste/control que ECS + RDS + ElastiCache en la cuenta `349744179687` (eu-west-2). El backend NestJS ya está en Fargate (Bloque 1), la mitad del camino está hecha.
 >
 > **Tiempo total estimado:** 10-12 semanas. Coste mensual final: ~$80-150/mes (vs ~$50-80 actuales).
+>
+> **📘 Detalle operativo del componente Supabase**: [`docs/roadmap/agnosticismo-supabase.md`](roadmap/agnosticismo-supabase.md) — plan fase por fase para quitarle a Vence cualquier dependencia propietaria de Supabase (REST `supabase.from()`, `service_role` en cliente, Auth, Realtime). Incluye principios arquitectónicos, antipatterns prohibidos, ESLint rules y métricas de éxito medibles. Disparado por incidente 2026-05-27 (10 ocurrencias `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` hardcoded en bundle público).
 
 #### Estado de dependencias hoy
 
