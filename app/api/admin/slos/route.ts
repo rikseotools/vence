@@ -118,42 +118,54 @@ async function _GET(request: NextRequest) {
   const rawData: Record<string, unknown> = {}
 
   // ============================================================
-  // 1. Canary CloudWatch — success rate últimas 24h
+  // 1. Canarios Fargate — uptime últimas 24h por canary
+  //    Lee observable_events.event_type='canary_*_ok' vs '_failed'.
+  //    Reemplaza al ex-SLO-01 CloudWatch Synthetics (nunca desplegado).
   // ============================================================
+  const FARGATE_CANARIES: Array<{ endpoint: string; label: string }> = [
+    { endpoint: 'canary-smoke-auth', label: 'Canary auth (GET /api/profile)' },
+    { endpoint: 'canary-stripe-webhook', label: 'Canary Stripe webhook' },
+    { endpoint: 'canary-answer-save', label: 'Canary answer-save (endpoint hot)' },
+  ]
   try {
-    const cw = new CloudWatchClient({ region: 'eu-west-2' })
-    const cwResp = await cw.send(
-      new GetMetricStatisticsCommand({
-        Namespace: 'CloudWatchSynthetics',
-        MetricName: 'SuccessPercent',
-        Dimensions: [{ Name: 'CanaryName', Value: 'vence-preview' }],
-        StartTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        EndTime: new Date(),
-        Period: 3600,
-        Statistics: ['Average'],
-      }),
-    )
-    const points = cwResp.Datapoints ?? []
-    const avg =
-      points.length > 0
-        ? points.reduce((sum: number, p) => sum + (p.Average ?? 0), 0) / points.length / 100
-        : null
-    rawData.canaryUptime = { points: points.length, avg }
-    indicators.push({
-      label: 'Canary CloudWatch (24h)',
-      status: avg == null ? 'unknown' : gradeUptime(avg),
-      value: avg == null ? '—' : `${(avg * 100).toFixed(2)}%`,
-      detail: `${points.length} períodos de 1h evaluados`,
-      slo: '≥99.9% verde, ≥99% ámbar',
-    })
+    const { data: canaryEvents } = await supabase
+      .from('observable_events')
+      .select('endpoint, event_type, created_at')
+      .in('endpoint', FARGATE_CANARIES.map(c => c.endpoint))
+      .gte('created_at', SINCE)
+      .or('event_type.like.%_ok,event_type.like.%_failed')
+      .limit(20000)
+
+    rawData.canaryEventsCount = canaryEvents?.length ?? 0
+
+    for (const c of FARGATE_CANARIES) {
+      const evs = (canaryEvents ?? []).filter(e => e.endpoint === c.endpoint)
+      const oks = evs.filter(e => e.event_type.endsWith('_ok')).length
+      const failures = evs.filter(e => e.event_type.endsWith('_failed')).length
+      const decided = oks + failures
+      const uptime = decided > 0 ? oks / decided : null
+
+      indicators.push({
+        label: `${c.label} — uptime 24h`,
+        status: uptime == null ? 'unknown' : gradeUptime(uptime),
+        value: uptime == null ? '—' : `${(uptime * 100).toFixed(2)}%`,
+        detail:
+          uptime == null
+            ? 'Sin eventos en 24h — ¿cron parado o modo idle?'
+            : `${oks} OK / ${failures} fail (${decided} ticks decididos)`,
+        slo: '≥99.9% verde, ≥99% ámbar',
+      })
+    }
   } catch (e) {
-    indicators.push({
-      label: 'Canary CloudWatch (24h)',
-      status: 'unknown',
-      value: '—',
-      detail: `Error: ${(e as Error).message}`,
-      slo: '≥99.9% verde, ≥99% ámbar',
-    })
+    for (const c of FARGATE_CANARIES) {
+      indicators.push({
+        label: `${c.label} — uptime 24h`,
+        status: 'unknown',
+        value: '—',
+        detail: `Error lectura observable_events: ${(e as Error).message}`,
+        slo: '≥99.9% verde, ≥99% ámbar',
+      })
+    }
   }
 
   // ============================================================
