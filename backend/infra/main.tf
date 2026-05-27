@@ -29,6 +29,13 @@ locals {
   # y subscription-reconciliation migrados de GHA a Fargate. Mismo valor que
   # /vence-frontend/STRIPE_SECRET_KEY (sk_live_*).
   stripe_secret_key_ssm_arn    = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/STRIPE_SECRET_KEY"
+  # SMOKE_USER_ID añadido 27/05/2026 para el canary HTTP Nivel 3
+  # (backend/src/canary-smoke-auth/). UUID del user smoke@vence.es;
+  # NO es credencial (almacenado como SSM String, no SecureString) pero
+  # por uniformidad con el resto va por el mismo mecanismo secrets+SSM.
+  # ECS lee SSM String y SecureString por el mismo API. Ver roadmap:
+  # docs/roadmap/canary-y-simulaciones.md §Nivel 3.
+  smoke_user_id_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SMOKE_USER_ID"
 }
 
 # ============================================================
@@ -114,6 +121,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           local.supabase_jwt_secret_ssm_arn,
           local.sentry_dsn_ssm_arn,
           local.stripe_secret_key_ssm_arn,
+          local.smoke_user_id_ssm_arn,
         ]
       },
       {
@@ -207,6 +215,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "ADMIN_ALERTS_EMAIL", valueFrom = local.admin_alerts_email_ssm_arn },
         { name = "SENTRY_DSN", valueFrom = local.sentry_dsn_ssm_arn },
         { name = "STRIPE_SECRET_KEY", valueFrom = local.stripe_secret_key_ssm_arn },
+        { name = "SMOKE_USER_ID", valueFrom = local.smoke_user_id_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
