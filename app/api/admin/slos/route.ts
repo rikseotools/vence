@@ -126,6 +126,8 @@ async function _GET(request: NextRequest) {
     { endpoint: 'canary-smoke-auth', label: 'Canary auth (GET /api/profile)' },
     { endpoint: 'canary-stripe-webhook', label: 'Canary Stripe webhook' },
     { endpoint: 'canary-answer-save', label: 'Canary answer-save (endpoint hot)' },
+    { endpoint: 'canary-database-pool', label: 'Canary DB pool (SELECT 1)' },
+    { endpoint: 'canary-redis-upstash', label: 'Canary Redis Upstash (SET/GET)' },
   ]
   try {
     const { data: canaryEvents } = await supabase

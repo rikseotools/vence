@@ -19,6 +19,8 @@ import {
   RULE_CANARY_AUTH_FAILED,
   RULE_CANARY_WEBHOOK_FAILED,
   RULE_CANARY_ANSWER_SAVE_FAILED,
+  RULE_CANARY_DB_POOL_FAILED,
+  RULE_CANARY_REDIS_FAILED,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -519,5 +521,73 @@ describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
 
   it('cooldown 15 min', () => {
     expect(RULE_CANARY_ANSWER_SAVE_FAILED.cooldownMin).toBe(15);
+  });
+});
+
+describe('RULE_CANARY_DB_POOL_FAILED (canary infra)', () => {
+  it('dispara con ≥1 fallo (saturación pool = P0 inmediato)', () => {
+    expect(
+      RULE_CANARY_DB_POOL_FAILED.shouldFire([
+        { n: 1, lastStep: 'timeout', lastError: 'Query timeout >1000ms' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0', () => {
+    expect(RULE_CANARY_DB_POOL_FAILED.shouldFire([{ n: 0, lastStep: null, lastError: null }])).toBe(false);
+    expect(RULE_CANARY_DB_POOL_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('severity=critical', () => {
+    expect(RULE_CANARY_DB_POOL_FAILED.severity).toBe('critical');
+  });
+
+  it('notification incluye runbook PgBouncer + Postgres + Supabase', () => {
+    const notif = RULE_CANARY_DB_POOL_FAILED.buildNotification([
+      { n: 3, lastStep: 'timeout', lastError: 'Query timeout >1000ms' },
+    ]);
+    expect(notif.title).toContain('DB pool');
+    expect(notif.body).toContain('PgBouncer');
+    expect(notif.body).toContain('max_connections');
+    expect(notif.body).toContain('Supabase');
+    expect(notif.fingerprint).toBe('canary_db_pool_failed');
+  });
+
+  it('cooldown 10 min (más corto — P0 operativo)', () => {
+    expect(RULE_CANARY_DB_POOL_FAILED.cooldownMin).toBe(10);
+  });
+});
+
+describe('RULE_CANARY_REDIS_FAILED (canary infra)', () => {
+  it('dispara con ≥1 fallo (caída Upstash = cascada BD inminente)', () => {
+    expect(
+      RULE_CANARY_REDIS_FAILED.shouldFire([
+        { n: 1, lastStep: 'get', lastError: 'Upstash timeout >2000ms' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0', () => {
+    expect(RULE_CANARY_REDIS_FAILED.shouldFire([{ n: 0, lastStep: null, lastError: null }])).toBe(false);
+  });
+
+  it('severity=critical', () => {
+    expect(RULE_CANARY_REDIS_FAILED.severity).toBe('critical');
+  });
+
+  it('notification cita cascada BD + Upstash console + fail-open', () => {
+    const notif = RULE_CANARY_REDIS_FAILED.buildNotification([
+      { n: 2, lastStep: 'validate', lastError: 'GET devolvió X esperado Y' },
+    ]);
+    expect(notif.title).toContain('Redis');
+    expect(notif.body).toContain('Cascada');
+    expect(notif.body).toContain('console.upstash.com');
+    expect(notif.body).toContain('fail-open');
+    expect(notif.body).toContain('CORRUPCIÓN');
+    expect(notif.fingerprint).toBe('canary_redis_failed');
+  });
+
+  it('cooldown 10 min', () => {
+    expect(RULE_CANARY_REDIS_FAILED.cooldownMin).toBe(10);
   });
 });

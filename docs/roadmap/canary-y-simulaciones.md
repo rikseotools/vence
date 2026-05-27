@@ -178,7 +178,99 @@ Endpoint `/api/admin/canary` agrega `observable_events` en una sola query (filtr
 
 ### SLOs en `/api/admin/slos` cableados a observable_events (HECHO 2026-05-27)
 
-Reemplaza el ex-SLO-01 CloudWatch Synthetics (devolvía `unknown` porque el canary CloudWatch nunca se desplegó). Ahora 3 SLOs derivados de los canarios Fargate, con mismas thresholds (≥99.9% verde, ≥99% ámbar) y subiendo a `cutoverReady`.
+Reemplaza el ex-SLO-01 CloudWatch Synthetics (devolvía `unknown` porque el canary CloudWatch nunca se desplegó). Ahora 5 SLOs derivados de los canarios Fargate (3 HTTP + 2 infra), con mismas thresholds (≥99.9% verde, ≥99% ámbar) y subiendo a `cutoverReady`.
+
+---
+
+### 🟢 Sprint 5 — Canarios de INFRA (HECHO 2026-05-27)
+
+Tras revisar `__tests__/integration/` con 40+ tests existentes (`examPositionFilter`, `topicScopeIntegrity`, `questionArticleMismatch`, …), descubierto que 5 de 6 canarios propuestos eran **duplicación de tests CI**. Solo los canarios de **infra externa** pasaron la regla anti-duplicación.
+
+#### `canary-database-pool`
+
+Query trivial `SELECT 1` cada 5min con timeout 1s. Si el pool PgBouncer está saturado o `max_connections` agotado, el query no completa en 1s → emit critical. Detecta saturación EN PRODUCCIÓN bajo carga real — los tests CI corren contra BD limpia sin carga, **imposible cubrir esto en jest**.
+
+`RULE_CANARY_DB_POOL_FAILED` severity critical, cooldown 10min (más corto que canarios HTTP — saturación de BD es P0).
+
+#### `canary-redis-upstash`
+
+`SET/GET/DEL` ephemeral key cada 5min. Detecta caída de Upstash que CI no puede simular (es infra externa). Importante porque cuando Redis cae, el cache compartido (`user_stats`, `exam_pending`, `theme_stats`) deja de servir → cada user request va a BD directa → cascada 5xx.
+
+Usa instancia Redis dedicada (no `CacheService`) porque éste tiene timeouts agresivos 100ms con fail-open silencioso — para el canary queremos saber si REALMENTE responde, no fail-open.
+
+`RULE_CANARY_REDIS_FAILED` severity critical, cooldown 10min. Step-aware: `set`/`get`/`validate` (este último = corrupción, GET devolvió valor distinto del SET).
+
+#### Endpoint admin `POST /api/admin/canary/run-now`
+
+Dispara los 5 canarios en paralelo on-demand (no espera al próximo */5min):
+- **Pre-deploy**: "verifica que TODO está sano antes de mergear".
+- **Post-incidente**: "¿ya está sano tras mi fix?".
+- **Smoke manual**: tras cambiar SSM/Terraform sin redeploy completo.
+
+Backend Fargate: controller `CanaryRunnerController` con `@UseGuards(JwtGuard)` + check email admin. `Promise.allSettled` para que un canary fallando no impida ver los otros.
+
+Next.js: proxy `/api/admin/canary/run-now` que reenvía el Bearer del admin al backend.
+
+Dashboard `/admin/canary`: botón "⚡ Run Now (todos)" con visualización inmediata del resultado por canary (✅/❌/⏭️/⚠️/💥).
+
+---
+
+## 🛑 REGLA DE ORO ANTI-DUPLICACIÓN (lección 2026-05-27)
+
+**Antes de proponer un nuevo canary, verificar 2 cosas:**
+
+### 1. ¿Ya existe cobertura en `__tests__/integration/`?
+
+Comando: `find __tests__/integration -name "*.test.ts" | xargs grep -l "<concepto>"`.
+
+Vence tiene 40+ tests de integración que corren en CI en cada push y bloquean PRs con regresiones. Lista de áreas YA cubiertas (NO crear canarios para esto):
+
+| Categoría | Tests CI que la cubren |
+|---|---|
+| Mismatch artículo citado vs vinculado | `questionArticleMismatch.test.ts` (bug Decreto 24/2022 CyL motivador) |
+| Filtrado preguntas oficiales por oposición | `examPositionFilter.integration.test.ts`, `examPositionQueryIntegration.test.ts` |
+| Scope/topic integrity | `topicScopeIntegrity.test.ts`, `topicContentNoVirtualBranching.test.ts` |
+| Coherencia BD oposiciones | `oposicionesDataConsistency.test.ts`, `oposicionDataCompleteness.test.ts` |
+| Slugs de leyes | `lawSlugIntegrity.test.ts`, `lawSlugFailureModes.test.ts`, `lawSlugRegressions.test.ts` |
+| Contenido artículos | `articleContentIntegrity.test.ts`, `articleContentPlaceholders.test.ts` |
+| Flow respuesta end-to-end | `answerFlowEndToEnd.test.ts`, `correctOptionEndToEnd.test.ts` |
+| Disputes / feedback | `disputesAndFeedback.test.ts`, `psychometricDisputes.test.ts` |
+| Daily limit | `dailyLimitTracking.test.ts` |
+| Configurador tests | `configDbIntegrity.test.ts` |
+| Stripe (cancel / sync) | `stripeCancel.live.test.ts`, `stripeSubscriptionSync.test.ts` |
+
+### 2. ¿El bug que detectaría es de RUNTIME PURO?
+
+Solo entonces el canary aporta. Bugs runtime puros que CI **no puede** cubrir:
+
+- Saturación de infra bajo carga real (pool BD, Redis).
+- Caída de infra externa (Upstash, Stripe API, Supabase Auth).
+- RLS policy aplicada manualmente sin commit.
+- Drift de SSM no propagado al ECS task.
+- Race conditions runtime.
+- Drift Stripe webhook vs SSM.
+- Trigger BD que rompe filtro lifecycle silenciosamente.
+
+### Anti-patrón a evitar
+
+❌ "Hagamos un canary que verifique X" sin grep en `__tests__/integration/` primero.
+
+✅ "¿Hay test CI para X? Si sí → ruido. Si no → ¿es runtime puro? Si sí → canary justificado."
+
+### Coste del antipatrón
+
+Cada canary redundante con CI:
+- Carga inútil de BD/Redis cada 5min (288 ticks/día).
+- Spam de alarmas si el canary tiene bug propio.
+- Falsa sensación de cobertura (lo importante ya lo cubre CI; el canary no añade nada).
+- ECS Fargate cron que mantener / debuggear.
+
+### Aprendizaje de hoy en números
+
+- Canarios propuestos en Sprint 5 inicialmente: 6 (`checkout-sync`, `home-public`, `user-stats`, `test-flow`, `db-pool`, `redis-upstash`, `run-now`).
+- Tras pasar la regla anti-duplicación: **3** (`db-pool`, `redis-upstash`, `run-now`).
+- 50% del scope inicial eliminado por **ya tener cobertura CI**.
+- Tiempo ahorrado: ~5h de codificación de canarios redundantes.
 
 ---
 
@@ -305,7 +397,7 @@ Reemplaza el ex-SLO-01 CloudWatch Synthetics (devolvía `unknown` porque el cana
 | ✅ **Sprint 2 (HECHO 2026-05-27)** | 3 variante webhook | 1-2h | 🔴 Alto — canary-stripe-webhook cierra incidente Rocío/Mercedes. |
 | ✅ **Sprint 3 (HECHO 2026-05-27)** | 3 variante answer-save | 1-2h | 🔴 Alto — canary endpoint más caliente. |
 | ✅ **Sprint 4 (HECHO 2026-05-27)** | Observabilidad | 1-2h | 🟡 Alto — dashboard `/admin/canary` + SLOs cableados. |
-| **Sprint 5 (siguiente)** | Más canarios HOT | 2-3h | 🔴 Alto — ver §Próximos canarios sugeridos abajo. |
+| ✅ **Sprint 5 (HECHO 2026-05-27)** | Canarios INFRA + run-now | 2h | 🟡 Medio — db-pool + redis-upstash + endpoint admin run-now. 50% del scope inicial cortado por regla anti-duplicación CI. |
 | **Sprint 6** | 4 — Playwright autenticado E2E | 3-5 días | 🟡 Alto — flow crítico cubierto end-to-end. |
 | **Sprint 7** | 5 (subset 15 specs core) | 1 semana | 🟡 Alto — cobertura amplia donde más duele. |
 | **Sprint 8** | 5 (resto) + 6 | 2-3 semanas | 🟢 Medio — completitud. |
@@ -437,6 +529,8 @@ Hits y baches reales de implementar 3 canarios + dashboard + SLOs en una sesión
 
 ### 📋 Checklist obligatoria pre-merge de un nuevo canary
 
+- [ ] **REGLA ANTI-DUPLICACIÓN**: grep en `__tests__/integration/` confirma que NO existe test CI que cubra esto. Si sí → ruido, no implementar.
+- [ ] **REGLA RUNTIME PURO**: el bug que detectaría es de runtime (saturación, infra externa, race, drift). Si es lógica de filtro/scope/contenido → CI lo cubre, ruido.
 - [ ] Investigación read-only completa del endpoint (status codes, schema, FK).
 - [ ] Datos satélites creados ANTES de la primera ejecución del canary.
 - [ ] Discriminated union `CanaryResult` cubre TODOS los pasos (`sign`, `http`, `validate_*`).

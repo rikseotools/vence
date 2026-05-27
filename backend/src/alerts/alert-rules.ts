@@ -946,6 +946,79 @@ export const RULE_CANARY_ANSWER_SAVE_FAILED: AlertRule<{
 };
 
 /**
+ * Canary database pool failed — `SELECT 1` con timeout 1s falla.
+ * Significa saturación PgBouncer / max_connections agotados / BD caída.
+ * Imposible cubrir en CI (es runtime puro bajo carga real).
+ *
+ * Cooldown 10min (más corto que los otros canarios — saturación de BD
+ * es P0 y cada minuto extra de spam vale la pena para escalar).
+ */
+export const RULE_CANARY_DB_POOL_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+}> = {
+  name: 'canary_db_pool_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'canary_db_pool_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary DB pool FALLÓ (${r.n} en 10 min) — saturación PgBouncer o BD caída`,
+      body: `SELECT 1 desde el backend Fargate NO completó en <1s. Significa una de:\n  - PgBouncer saturado (pool_size agotado, conexiones colgadas).\n  - max_connections de Postgres alcanzado.\n  - Postgres caído o sin red.\n  - Conexión Fargate→Supabase degradada.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. Verificar /admin/salud-sistema → latencia INSERT.\n  2. Supabase Dashboard → Database → Pool size + active connections.\n  3. Si pool saturado: kill connections idle largas, bajar timeout, escalar PgBouncer.\n  4. Si BD caída: status.supabase.com + escalation a soporte.\n\nNO es bug de código — es bug operativo. App entera afectada.`,
+      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: 10 },
+      fingerprint: 'canary_db_pool_failed',
+    };
+  },
+  cooldownMin: 10,
+};
+
+/**
+ * Canary Redis Upstash failed — SET/GET/DEL ephemeral falla o devuelve
+ * valor incorrecto. Significa caída de Upstash / cuota agotada / network.
+ *
+ * Si Redis cae, el cache compartido (user_stats, exam_pending, theme_stats)
+ * deja de servir → cada user request va a BD → load 10× → 5xx cascada.
+ *
+ * Cooldown 10min — alta urgencia operativa.
+ */
+export const RULE_CANARY_REDIS_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+}> = {
+  name: 'canary_redis_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'canary_redis_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary Redis FALLÓ (${r.n} en 10 min) — Upstash caído, cascada BD inminente`,
+      body: `SET/GET/DEL contra Upstash falló. Si Redis está caído:\n  - Cache compartido (user_stats, exam_pending, theme_stats) deja de servir.\n  - Cada user request va a BD directa → load 10×.\n  - Cascada: BD se satura → canary-db-pool dispara → 5xx generalizado.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. https://console.upstash.com — verificar Redis OK + cuota.\n  2. Si caído: status Upstash + considerar bypass temporal del cache (fail-open ya hay en CacheService TIMEOUT_SYMBOL).\n  3. Si cuota: upgrade plan o purgar keys low-priority.\n  4. NO redeploy precipitado — la app tiene fail-open en cache; solo monitorizar latencia.\n\nstep=validate significa CORRUPCIÓN (SET un valor, GET devolvió otro) → bug raro pero crítico de Upstash.`,
+      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: 10 },
+      fingerprint: 'canary_redis_failed',
+    };
+  },
+  cooldownMin: 10,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -979,4 +1052,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CANARY_WEBHOOK_FAILED as AlertRule,
   // Canary endpoint más caliente (2026-05-27, POST /api/v2/answer-and-save)
   RULE_CANARY_ANSWER_SAVE_FAILED as AlertRule,
+  // Canarios de INFRA externa (Sprint 5, 27/05/2026) — únicos no duplicados con CI
+  RULE_CANARY_DB_POOL_FAILED as AlertRule,
+  RULE_CANARY_REDIS_FAILED as AlertRule,
 ];

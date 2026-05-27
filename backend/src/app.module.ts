@@ -52,6 +52,13 @@ import { CanaryStripeWebhookModule } from './canary-stripe-webhook/canary-stripe
 // (premium) responde 1 pregunta hardcodeada cada 5min — 288 inserts/día
 // son irrelevantes vs miles de users reales.
 import { CanaryAnswerSaveModule } from './canary-answer-save/canary-answer-save.module';
+// Canarios de INFRA externa (Sprint 5, 27/05/2026). Únicos canarios
+// adicionales que pasan la regla anti-duplicación: NO existe test CI
+// que cubra saturación PgBouncer ni caída Upstash en runtime real.
+import { CanaryDatabasePoolModule } from './canary-database-pool/canary-database-pool.module';
+import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-upstash.module';
+// Endpoint admin POST /api/v2/canary/run-now (dispara los 5 canarios on-demand).
+import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
 
 @Module({
   imports: [
@@ -96,6 +103,9 @@ import { CanaryAnswerSaveModule } from './canary-answer-save/canary-answer-save.
     CanarySmokeAuthModule, // cada 5min — login + GET /api/profile contra prod (Nivel 3)
     CanaryStripeWebhookModule, // cada 5min — evento sintético firmado a /api/stripe/webhook
     CanaryAnswerSaveModule, // cada 5min — POST sintético al endpoint más caliente
+    CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)
+    CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
+    CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

@@ -63,6 +63,10 @@ const CANARY_DESCRIPTION: Record<string, string> = {
     'POST /api/stripe/webhook con evento sintético firmado. Cubre SSM stale / handler 404 / signature code roto.',
   'canary-answer-save':
     'POST /api/v2/answer-and-save (endpoint MÁS caliente). Cubre antifraud / daily-limit / Drizzle transactional save.',
+  'canary-database-pool':
+    'SELECT 1 con timeout 1s. Detecta saturación PgBouncer / max_connections agotados / BD caída.',
+  'canary-redis-upstash':
+    'SET/GET/DEL ephemeral key contra Upstash. Detecta caída del cache compartido (cascada BD inminente).',
 }
 
 function fmtPct(v: number | null): string {
@@ -86,11 +90,33 @@ function fmtAge(iso: string | null): string {
   return `hace ${Math.floor(diffH / 24)}d`
 }
 
+interface RunNowResult {
+  name: string
+  status: string
+  durationMs?: number | null
+  step?: string
+  error?: string
+  httpStatus?: number | null
+  reason?: string
+}
+
+interface RunNowResponse {
+  success: boolean
+  totalMs: number
+  ranAt: string
+  ranBy: string
+  summary: { total: number; ok: number; failed: number; skipped: number; other: number }
+  results: RunNowResult[]
+}
+
 export default function CanaryDashboardPage() {
   const [data, setData] = useState<CanaryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastFetchAt, setLastFetchAt] = useState<Date | null>(null)
+  const [runResult, setRunResult] = useState<RunNowResponse | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
 
   const fetchCanaries = useCallback(async () => {
     try {
@@ -117,6 +143,31 @@ export default function CanaryDashboardPage() {
     return () => clearInterval(t)
   }, [fetchCanaries])
 
+  const runNow = useCallback(async () => {
+    setRunning(true)
+    setRunError(null)
+    setRunResult(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/admin/canary/run-now', {
+        method: 'POST',
+        headers,
+      })
+      const body = await res.text()
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`)
+      }
+      const json = JSON.parse(body) as RunNowResponse
+      setRunResult(json)
+      // Refrescar dashboard tras run para reflejar eventos OK/fail nuevos.
+      fetchCanaries()
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRunning(false)
+    }
+  }, [fetchCanaries])
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-baseline justify-between mb-6">
@@ -127,14 +178,54 @@ export default function CanaryDashboardPage() {
             Datos de los últimos 7 días desde <code>observable_events</code>.
           </p>
         </div>
-        <button
-          onClick={fetchCanaries}
-          disabled={loading}
-          className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
-        >
-          {loading ? 'Cargando…' : 'Refrescar ahora'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={runNow}
+            disabled={running}
+            className="px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Dispara los 5 canarios ahora sin esperar al próximo */5min"
+          >
+            {running ? 'Ejecutando 5 canarios…' : '⚡ Run Now (todos)'}
+          </button>
+          <button
+            onClick={fetchCanaries}
+            disabled={loading}
+            className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {loading ? 'Cargando…' : 'Refrescar'}
+          </button>
+        </div>
       </div>
+
+      {runError && (
+        <div className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-900 text-sm">
+          <strong>Run Now falló:</strong> {runError}
+        </div>
+      )}
+
+      {runResult && (
+        <div className={`mb-4 p-3 rounded border ${runResult.success ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'} text-sm`}>
+          <div className="font-semibold mb-1">
+            Run Now {runResult.success ? '✅' : '⚠️'} — {runResult.summary.ok}/{runResult.summary.total} OK ({runResult.totalMs}ms total)
+          </div>
+          <ul className="text-xs space-y-0.5 font-mono">
+            {runResult.results.map(r => (
+              <li key={r.name}>
+                {r.status === 'ok' && <span>✅</span>}
+                {r.status === 'failed' && <span>❌</span>}
+                {r.status === 'skipped' && <span>⏭️</span>}
+                {r.status === 'question_invalid' && <span>⚠️</span>}
+                {r.status === 'exception' && <span>💥</span>}
+                {' '}
+                <strong>{r.name}</strong> — {r.status}
+                {r.durationMs != null && ` (${r.durationMs}ms)`}
+                {r.error && <span className="text-red-700"> — {r.error.slice(0, 100)}</span>}
+                {r.reason && <span className="text-gray-600"> ({r.reason})</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-900 text-sm">

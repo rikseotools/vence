@@ -30,6 +30,8 @@ const CANARY_ENDPOINTS = [
   'canary-smoke-auth',
   'canary-stripe-webhook',
   'canary-answer-save',
+  'canary-database-pool',
+  'canary-redis-upstash',
 ] as const
 
 type Status = 'green' | 'amber' | 'red' | 'unknown'
