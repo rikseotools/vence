@@ -122,7 +122,7 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 > **📘 Roadmaps de performance por endpoint (Bloque 4):**
 > - [`docs/roadmap/materialized-stats-aggregates.md`](roadmap/materialized-stats-aggregates.md) — tabla counter `user_theme_stats` + triggers para `theme-stats`, weak-articles, oposiciones-compatibles. Fase 1 PAUSADA por lock contention.
-> - [`docs/roadmap/weak-articles-perf.md`](roadmap/weak-articles-perf.md) — fix incremental de `/api/v2/topic-progress/weak-articles` (50× 5xx/sem, p99=15s). Plan 3 fases: índice cubriente del WHERE → denormalización law_id/article_number → materializar weak_article_summary. Fase 1 en marcha 2026-05-27.
+> - [`docs/roadmap/weak-articles-perf.md`](roadmap/weak-articles-perf.md) — fix incremental de `/api/v2/topic-progress/weak-articles` (50× 5xx/sem, p99=15s). Plan 3 fases: índice cubriente del WHERE → denormalización law_id/article_number → materializar weak_article_summary. ✅ **Fase 1 APLICADA 2026-05-27** (commit `f23968e6`, idx_uqh_user_weak 2528 kB VALID), pendiente medir 24-48h para decidir si Fase 2 es necesaria.
 
 ### Bloque 5 — Salir de Vercel + Supabase (AWS migration completa)
 

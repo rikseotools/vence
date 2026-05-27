@@ -1,9 +1,9 @@
 # Roadmap — Agnosticismo de Supabase
 
-> **Estado**: 🟡 Fase 1 EN CURSO (2026-05-27) — refactor del primer client-side leak de `service_role` activo.
+> **Estado**: 🟢 Fase 1 ✅ + Fase 3 prep ✅ + Fase 5 audit ✅ (2026-05-27 tarde).
 > **Propietario**: equipo Vence.
 > **Coste recurrente añadido**: 0 € (todas las fases reutilizan infra existente Postgres / Drizzle / SSM / ECS / Lightsail pooler).
-> **Última actualización**: 2026-05-27 ~09:30 CEST.
+> **Última actualización**: 2026-05-27 ~14:00 CEST.
 
 Este roadmap profundiza en el **Bloque 5 — Salir de Vercel + Supabase** del [`docs/ARCHITECTURE_ROADMAP.md`](../ARCHITECTURE_ROADMAP.md). Aquel cubre la migración global; este describe el plan operativo específico para **quitarle a Vence cualquier dependencia propietaria de Supabase**, ordenado por urgencia y riesgo.
 
@@ -51,12 +51,12 @@ Cada uso de `supabase.from()`, `supabase.auth.X()`, `supabase.storage.X()`, `sup
 |---|---|---|---|
 | **Postgres BD** | Supabase Pro 17.4 | 🟢 90 % — Drizzle + `DATABASE_URL` ya estándar | Queda migrar usos REST (sección abajo) |
 | **Pooler conexiones** | PgBouncer propio (Lightsail London) | 🟢 100 % — agnóstico, `pooler.vence.es:6543` | — |
-| **`supabase.from()` REST** | ~96 archivos (Bloque 5 Fase B) | 🔴 Acoplado | Refactor a endpoints + Drizzle |
+| **`supabase.from()` REST** | **10 archivos** (auditado 27/05 tarde, no 96 como decía) | 🟡 Acoplado pero acotado | Strangler fig (Fase 3) |
 | **`createClient(.., service_role)` en cliente** | 10 ocurrencias en `app/admin/feedback/page.tsx` | 🔴🔴 Crítico — fuga activa | **Fase 1 de este roadmap** |
 | **`SUPABASE_SERVICE_ROLE_KEY` server-side** | ~20 endpoints API en server (`app/api/...`) | 🟡 Servible, pero atado al concepto Supabase | Fase 2 — migrar al sistema nuevo de keys |
 | **Auth (login/sessions/JWT)** | Supabase Auth | 🔴 Acoplado | Fase 3 — wrapper agnóstico |
 | **Storage** | S3 nativo (cutover 2026-05-25 ✅) | 🟢 100 % | — |
-| **Realtime** | Verificar uso | ⚠️ Auditar | Fase 5 |
+| **Realtime** | **3 usos** (auditado 27/05): admin/feedback, ChatInterface, useDisputeNotifications | 🟡 Acoplado pero acotado | Fase 5 (trivial-medio) |
 
 ### Dónde NO hay deuda (estado sano)
 
@@ -139,20 +139,40 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 **Tiempo estimado**: 4-6 h en ventana planificada.
 
-### Fase 3 — Refactor masivo de `supabase.from()` → Drizzle (~96 archivos)
+### Fase 3 — Refactor de `supabase.from()` → Drizzle (10 archivos)
 
-**Por qué**: `supabase.from('tabla').select(...)` usa PostgREST de Supabase, API propietaria. **Cualquier migración a RDS / Neon / Aurora rompe todos estos sitios**. Es la deuda más voluminosa.
+**Por qué**: `supabase.from('tabla').select(...)` usa PostgREST de Supabase, API propietaria. **Cualquier migración a RDS / Neon / Aurora rompe estos sitios**. Mucho más acotado de lo previsto.
 
 **Estrategia**: NO refactor masivo en un solo PR. Patrón **strangler fig** — cada PR que toque uno de estos archivos por otra razón **aprovecha** para migrar a Drizzle.
 
-**Entregables incrementales**:
-1. **ESLint rule** (`no-restricted-syntax`) que prohíbe `supabase.from()` en archivos NUEVOS. Los existentes quedan en allowlist temporal.
-2. **Lista pública de los 96 archivos** en este roadmap como TODO list. Cada PR que migre uno tacha del listado.
-3. **Patrón documentado** en `docs/patterns/`: cómo migrar de `supabase.from()` a Drizzle equivalente.
+**Hecho (27/05/2026 tarde):**
+1. ✅ **2 antipattern ESLint rules** añadidas a `eslint.config.mjs`:
+   - `NEXT_PUBLIC_*` con SECRET/KEY/TOKEN/PASSWORD (excepto `SUPABASE_ANON_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_*`).
+   - `createClient(.., SERVICE_ROLE)` en código cliente (excluye `app/api/`, `*.server.ts`, `middleware.ts`).
+2. ✅ **Patrón documentado** en `docs/patterns/migrar-supabase-from-a-drizzle.md`.
+3. ✅ **Inventario completo** abajo (lista checkeable).
 
-**Criterio de éxito**: 0 archivos en la allowlist tras 3-6 meses de strangler.
+**Pendiente:**
+- ⏳ Strangler fig sobre los 10 archivos a continuación. Cada PR que toque uno → migrar.
 
-**Tiempo estimado**: trabajo continuo, no sprint dedicado.
+#### Inventario de archivos con `supabase.from()` (10, snapshot 27/05/2026 14:00 CEST)
+
+| # | Archivo | Usos | Notas |
+|---|---|---|---|
+| - [ ] | `lib/emails/emailService.server.ts` | 6 | Server-only (`.server.ts`). Mayor concentración. |
+| - [ ] | `app/api/admin/infra-stats/route.ts` | 3 | API route admin |
+| - [ ] | `contexts/AuthContext.tsx` | 2 | **Cliente** — sensible (toca auth) |
+| - [ ] | `components/ExamLayout.tsx` | 2 | **Cliente** |
+| - [ ] | `lib/services/adaptiveDifficulty.ts` | 1 | Compartido client/server, verificar |
+| - [ ] | `lib/api/rollout/problematic-articles-logs.ts` | 1 | Server-only |
+| - [ ] | `components/TestLayout.tsx` | 1 | **Cliente** |
+| - [ ] | `app/api/stripe/webhook/route.ts` | 1 | API route Stripe webhook |
+| - [ ] | `app/api/cron/subscription-reconciliation/route.ts` | 1 | API route cron (en migración a Fargate per memory/project_gha_cron_lag_migrate_fargate) |
+| - [ ] | `app/api/admin/conversions/views/route.ts` | 1 | API route admin |
+
+**Criterio de éxito**: 0 archivos en el inventario tras strangler.
+
+**Tiempo estimado**: trabajo continuo, no sprint dedicado. Realista: 6-12 meses.
 
 ### Fase 4 — Wrapper agnóstico de Auth (mes 1-2)
 
@@ -168,16 +188,29 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 **Tiempo estimado**: 3-4 semanas.
 
-### Fase 5 — Auditar y, si aplica, eliminar Supabase Realtime (mes 2-3)
+### Fase 5 — Migrar Supabase Realtime (3 usos identificados)
 
-**Por qué**: si usamos Realtime para algún caso, es WebSocket propietario que no migra trivialmente. Si NO lo usamos, es deuda cognitiva que conviene cerrar.
+**Por qué**: WebSocket propietario que no migra trivialmente a otro proveedor Postgres. Hay que migrar a SSE o WebSocket propio.
 
-**Entregables**:
-1. **Grep `supabase.channel(`, `.subscribe(`, `realtime.on(`**.
-2. **Para cada uso**: documentar caso (notificaciones, chat, presence, etc.).
-3. **Migrar a SSE o WebSocket propio** si crítico, o eliminar si vestigio.
+**Auditoría hecha (27/05/2026 tarde)**: 3 usos reales.
 
-**Tiempo estimado**: 1-2 semanas dependiendo de hallazgos.
+| # | Archivo | Tabla / Filtro | Acción del listener | Sustituto candidato |
+|---|---|---|---|---|
+| 1 | `app/admin/feedback/page.tsx:340-350` | `feedback_messages` INSERT | `loadConversations()` (refetch lista) | Polling 30s del endpoint existente `/api/v2/admin/feedback/list` |
+| 2 | `components/ChatInterface.js:210-225` | `feedback_messages` INSERT con filter `conversation_id=eq.X` | Push del nuevo mensaje al estado React | SSE endpoint `/api/v2/feedback/conversation/[id]/stream` o polling 5s |
+| 3 | `hooks/useDisputeNotifications.ts:112-133` | `question_disputes` UPDATE + `psychometric_question_disputes` UPDATE con filter user_id | `loadNotifications()` (refetch) | Polling 30s o SSE genérico de notificaciones |
+
+**Estrategia**: el 3 (notificaciones de impugnaciones) tiene baja frecuencia → polling 30-60s es suficiente. El 2 (chat) requiere latencia baja → SSE recomendable. El 1 (admin feedback live) es uso interno admin → polling 15-30s.
+
+**Entregables incrementales**:
+1. Endpoint SSE genérico `/api/v2/sse/notifications` (escucha de cambios filtrados por usuario).
+2. Reemplazar usos 2 y 3 con SSE.
+3. Reemplazar uso 1 con polling.
+4. Eliminar imports `RealtimeChannel`, `supabase.channel`, `.subscribe()` post-migración.
+
+**Criterio de éxito**: 0 imports de `RealtimeChannel` / `supabase.channel` en `app/` `lib/` `components/` `hooks/`.
+
+**Tiempo estimado revisado**: 3-5 días (era 1-2 semanas, pero el alcance real es menor).
 
 ### Fase 6 — Tests de paridad y POC RDS (mes 3+)
 
@@ -207,7 +240,7 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 ## Antipatterns prohibidos (ESLint rules)
 
-Implementar en `eslint.config.js` cuando avance Fase 1-3:
+**Implementadas 27/05/2026** en `eslint.config.mjs`. Spec original:
 
 ```js
 'no-restricted-syntax': ['error', {
@@ -225,13 +258,14 @@ Implementar en `eslint.config.js` cuando avance Fase 1-3:
 
 ## Métricas de éxito (objetivos medibles)
 
-| Métrica | Hoy | Objetivo (Fase 6 completa) |
-|---|---|---|
-| `NEXT_PUBLIC_*` con credenciales en código | 1 (`SUPABASE_SERVICE_ROLE_KEY`) | 0 |
-| Ocurrencias `createClient(.., service_role)` cliente | 10 | 0 |
-| Archivos con `supabase.from()` | ~96 | ≤ 5 (allowlist documentada) |
-| Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | 0 |
-| Tiempo a migrar BD a RDS (estimación) | meses | 1 PR + cutover planificado |
+| Métrica | Estado pre-roadmap | Estado 27/05 tarde | Objetivo (Fase 6 completa) |
+|---|---|---|---|
+| `NEXT_PUBLIC_*` con credenciales en código | 1 (`SUPABASE_SERVICE_ROLE_KEY`) | 0 (limpiado en Fase 1 + ESLint rule) | 0 ✅ |
+| Ocurrencias `createClient(.., service_role)` cliente | 10 | 0 (Fase 1 commit `1e65f76f`) | 0 ✅ |
+| Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **10** (real, auditado 27/05) | ≤ 5 (allowlist documentada) |
+| Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | pendiente auditar (Fase 4) | 0 |
+| Usos de Supabase Realtime | desconocido | **3** (auditado 27/05) | 0 |
+| Tiempo a migrar BD a RDS (estimación) | meses | semanas (cuando se complete F3) | 1 PR + cutover planificado |
 
 ---
 

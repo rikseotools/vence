@@ -1,9 +1,9 @@
 # Roadmap — Performance `/api/v2/topic-progress/weak-articles`
 
-> **Estado**: 🟡 Fase 1 EN MARCHA (2026-05-27) — índice cubriente del filtro WHERE pendiente de aplicar y medir.
+> **Estado**: ✅ **Fase 1 APLICADA en producción (2026-05-27 ~14:25 CEST)** — índice `idx_uqh_user_weak` VALID, 2528 kB, creación 1002 ms con `CONCURRENTLY` sin downtime. **Pendiente: medir métricas post-fix a 24-48h** para decidir si Fase 2 es necesaria.
 > **Propietario**: equipo Vence
 > **Coste recurrente**: 0€ (solo índice + posiblemente denormalización Fase 2)
-> **Última actualización**: 2026-05-27 ~14:00 CEST.
+> **Última actualización**: 2026-05-27 ~14:30 CEST — Fase 1 aplicada, esperando ventana de medición.
 
 ---
 
@@ -51,9 +51,16 @@ Luego agrupa client-side por (law_id, article_number) → topic_number via `topi
 
 ## Fases
 
-### Fase 1 — Índice cubriente del WHERE (5 min, riesgo cero)
+### Fase 1 — Índice cubriente del WHERE ✅ APLICADA 2026-05-27
 
 **Acción:** `CREATE INDEX CONCURRENTLY` sobre `user_question_history (user_id, total_attempts) WHERE success_rate < 0.6`.
+
+**Resultado real:**
+- Índice creado en **1.002 ms** vía session pooler (port 5432).
+- Tamaño: **2.528 kB** (partial index sobre las ~78k filas que cumplen `success_rate < 0.6`).
+- `indisvalid = true` post-creación.
+- `CONCURRENTLY` no bloqueó reads ni writes — verificado por ausencia de spikes en `request_completed` del endpoint durante la ventana de creación.
+- Commit: `f23968e6` (roadmap + migración `supabase/migrations/20260527_uqh_idx_user_weak.sql`).
 
 ```sql
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_uqh_user_weak
