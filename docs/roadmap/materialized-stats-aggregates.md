@@ -1,37 +1,212 @@
 # Roadmap — Materialized aggregates para endpoints de estadísticas
 
-> **Estado**: 🟡 Fase 1 PAUSADA (2026-05-26) — tabla + función creadas en prod, triggers bloqueados por lock contention en `test_questions`. Retomar en ventana de bajo tráfico.
+> **Estado**: 🟡 Fase 1 PAUSADA (2026-05-26) — tabla + función creadas en prod, triggers bloqueados por lock contention en `test_questions`. Retomar siguiendo §"PUNTO DE RETOMA" abajo.
 > **Propietario**: equipo Vence
 > **Coste recurrente**: 0€ (todo dentro de Postgres + cron Fargate ya existente)
-> **Última actualización**: 2026-05-26 22:40 CEST — diseño + Fase 1 parcial
+> **Última actualización**: 2026-05-27 13:30 CEST — plan paso-a-paso para retoma sin contexto.
 
 ---
 
-## ⏸ Estado al pausar (2026-05-26 22:40 CEST)
+## 🚀 PUNTO DE RETOMA — leer esto antes de tocar nada (sesión nueva 2026-05-27+)
 
-### Aplicado en producción (Supabase eu-west-2)
+**Contexto en 30 segundos:**
+- `theme-stats` y endpoints similares agregan en runtime sobre tabla `test_questions` (~1.2M filas, 64k+ para users heavy). Latencia 10-12s para esos users → timeout → stale-while-error.
+- Solución estándar industria (validada por `/api/stats v2` ya en Vence): tabla counter + triggers mantenidos write-time. Lectura sub-50ms determinista. NO depende de provider (funciona igual en Supabase, RDS, Neon).
+- **Migrar a AWS NO resuelve esto** — la query agregada sería igualmente lenta. Esta es la solución correcta.
 
-- ✅ `user_theme_stats` (tabla vacía, sin lectores, PK + 1 índice) — migración `supabase/migrations/20260526_user_theme_stats_table.sql`.
-- ✅ `update_user_theme_stats()` función — primera mitad de `supabase/migrations/20260526_user_theme_stats_triggers.sql`.
-- **Impacto en producción ahora mismo**: cero. Tabla vacía, función no se llama, ningún endpoint la lee.
-- **Rollback completo**: `DROP FUNCTION update_user_theme_stats() CASCADE; DROP TABLE user_theme_stats;`
+### Estado AHORA en producción (verificado 2026-05-27 13:30 CEST)
 
-### Pendiente — al retomar
+**Aplicado** (visible en BD `yqbpstxowvgipqspqrgo`):
+- ✅ Tabla `user_theme_stats` (PK `(user_id, position_type, tema_number)`, índice `(user_id, position_type)`, columnas `total, correct, last_study, updated_at`). Vacía.
+- ✅ Función `update_user_theme_stats()` (maneja 3 TG_OPs INSERT/UPDATE/DELETE con UPSERT). Existe pero NO se llama (sin triggers).
 
-1. **Aplicar los 3 triggers** en `test_questions` (INSERT / UPDATE / DELETE).
-   - Bloqueador: `CREATE TRIGGER` necesita `SHARE ROW EXCLUSIVE` lock sobre `test_questions`. En horario con tráfico continuo (cada `answer-and-save` inserta), `lock_timeout=3s` falla en 5 retries. Probado 2026-05-26 22:30 CEST.
-   - Plan: ejecutar el script siguiente en ventana de bajo tráfico (madrugada CEST). Mide tráfico previo con `SELECT count(*) FROM test_questions WHERE created_at >= NOW() - INTERVAL '10 minutes'` — si <5 inserts, intentar con `lock_timeout=10s`.
-   - Sentencias preparadas en `supabase/migrations/20260526_user_theme_stats_triggers.sql` (sección "Triggers (3 TG_OPs)"). Aplicar línea por línea, una transacción por trigger.
-2. **Backfill** desde `test_questions` actual (~1.2M filas, 6k users). Script idempotente `scripts/backfill-user-theme-stats.mjs` (sin escribir todavía).
-3. **Verificación de paridad** post-backfill: 10 users aleatorios, comparar `SELECT * FROM user_theme_stats WHERE user_id=?` con query directa actual. Debe coincidir bit-perfect.
-4. Continuar con **Fase 2** (drift cron) → **Fase 3** (endpoint dual con flag).
+**Pendiente** (orden de ejecución obligatorio):
+1. **Aplicar 3 triggers** sobre `test_questions` — sentencias YA escritas en `supabase/migrations/20260526_user_theme_stats_triggers.sql` (sección final).
+2. **Backfill** ~1.2M filas — script aún sin escribir, ver SQL más abajo.
+3. **Drift cron diario** — usar patrón de `stats_drift_log` ya existente.
+4. **Endpoint dual con feature flag** — refactor de `app/api/v2/topic-progress/theme-stats/route.ts`.
+5. **Cleanup** — quitar query vieja y flag tras 7 días de paridad.
 
-### Lecciones aprendidas
+**Impacto si todo falla AHORA**: cero. Nadie lee de `user_theme_stats`. Rollback total: `DROP FUNCTION update_user_theme_stats() CASCADE; DROP TABLE user_theme_stats;`
 
-- **DDL sobre tablas calientes en Supabase Transaction Pooler es problemático.** El pooler aborta transacciones largas. Para CREATE TRIGGER sobre `test_questions`, intentar:
-  - Conexión directa al puerto 5432 (bypass del Supavisor) — más probable de obtener el lock sin abortar.
-  - Ventana 03:00–06:00 CEST (tráfico mínimo).
-  - O parar transitoriamente el endpoint `answer-and-save` durante 5 s mientras se crean los 3 triggers.
+### Plan exacto paso-a-paso (copiar-pegar)
+
+**Pre-flight check** (1 min):
+```sql
+-- 1. ¿Cuánto tráfico tiene test_questions ahora?
+SELECT count(*)::int AS inserts_5min
+FROM test_questions
+WHERE created_at >= NOW() - INTERVAL '5 minutes';
+-- Si <30: aplicar AHORA con lock_timeout=5s.
+-- Si 30-100: posponer 1h.
+-- Si >100: esperar ventana 03:00-06:00 CEST.
+```
+
+**Paso 1 — Aplicar triggers** (5 min, riesgo controlado con lock_timeout):
+
+```bash
+node -e "
+const pgMod = require('./node_modules/postgres');
+const postgres = pgMod.default || pgMod;
+require('./node_modules/dotenv').config({path:'./.env.local'});
+const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
+
+const triggers = [
+  ['user_theme_stats_insert_trigger',
+   'CREATE TRIGGER user_theme_stats_insert_trigger AFTER INSERT ON test_questions FOR EACH ROW EXECUTE FUNCTION update_user_theme_stats()'],
+  ['user_theme_stats_update_trigger',
+   'CREATE TRIGGER user_theme_stats_update_trigger AFTER UPDATE OF is_correct, tema_number ON test_questions FOR EACH ROW WHEN (OLD.is_correct IS DISTINCT FROM NEW.is_correct OR OLD.tema_number IS DISTINCT FROM NEW.tema_number) EXECUTE FUNCTION update_user_theme_stats()'],
+  ['user_theme_stats_delete_trigger',
+   'CREATE TRIGGER user_theme_stats_delete_trigger AFTER DELETE ON test_questions FOR EACH ROW EXECUTE FUNCTION update_user_theme_stats()'],
+];
+
+(async () => {
+  for (const [name, createStmt] of triggers) {
+    let ok = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        await sql.begin(async (tx) => {
+          await tx.unsafe('SET LOCAL lock_timeout = \"5s\"');
+          await tx.unsafe(\`DROP TRIGGER IF EXISTS \${name} ON test_questions\`);
+          await tx.unsafe(createStmt);
+        });
+        ok = true;
+        console.log('✓ ' + name);
+        break;
+      } catch (e) {
+        console.log('  retry ' + (i+1) + '/5 ' + name + ': ' + e.message.slice(0, 80));
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+    if (!ok) {
+      console.error('✗ ABORT: no se pudo aplicar ' + name + ' — esperar ventana 03-06h CEST');
+      process.exit(1);
+    }
+  }
+  console.log('\\n✓ Los 3 triggers aplicados. Smoke test → backfill.');
+  await sql.end();
+})();
+"
+```
+
+**Paso 2 — Smoke test del trigger** (30 s):
+
+```sql
+-- Pick un user existente con tests y position_type
+WITH sample AS (
+  SELECT t.id AS test_id, t.user_id, t.position_type
+  FROM tests t
+  WHERE t.position_type IS NOT NULL AND t.user_id IS NOT NULL
+  LIMIT 1
+)
+-- Insertar fila de prueba con tema_number=99999 (no colisiona)
+INSERT INTO test_questions (test_id, user_id, question_id, is_correct, tema_number, created_at, was_blank)
+SELECT test_id, user_id, gen_random_uuid(), true, 99999, NOW(), false FROM sample;
+
+-- Verificar que user_theme_stats se actualizó:
+SELECT * FROM user_theme_stats WHERE tema_number = 99999;
+-- → debe haber 1 fila con total=1, correct=1
+
+-- Limpiar:
+DELETE FROM test_questions WHERE tema_number = 99999;
+SELECT * FROM user_theme_stats WHERE tema_number = 99999;
+-- → debe haber 1 fila con total=0, correct=0
+DELETE FROM user_theme_stats WHERE tema_number = 99999;
+```
+
+**Paso 3 — Backfill** (1-5 min, read-only sobre test_questions):
+
+```sql
+-- Backfill idempotente. Lee 1.2M filas, escribe ~30k filas en user_theme_stats.
+-- Usar getPoolerDb o conexión directa para evitar Supavisor timeout.
+INSERT INTO user_theme_stats (user_id, position_type, tema_number, total, correct, last_study, updated_at)
+SELECT
+  t.user_id,
+  t.position_type,
+  tq.tema_number,
+  COUNT(*)::int AS total,
+  SUM(CASE WHEN tq.is_correct THEN 1 ELSE 0 END)::int AS correct,
+  MAX(tq.created_at) AS last_study,
+  NOW() AS updated_at
+FROM tests t
+INNER JOIN test_questions tq ON tq.test_id = t.id
+WHERE t.position_type IS NOT NULL
+  AND t.user_id IS NOT NULL
+  AND tq.tema_number IS NOT NULL
+GROUP BY t.user_id, t.position_type, tq.tema_number
+ON CONFLICT (user_id, position_type, tema_number) DO UPDATE SET
+  total = EXCLUDED.total,
+  correct = EXCLUDED.correct,
+  last_study = EXCLUDED.last_study,
+  updated_at = NOW();
+```
+
+**Paso 4 — Paridad** (smoke test con 10 users random):
+
+```sql
+-- Comparar user_theme_stats con query vieja para 10 users heavy
+WITH heavy_users AS (
+  SELECT user_id FROM tests
+  WHERE position_type IS NOT NULL
+  GROUP BY user_id
+  ORDER BY COUNT(*) DESC
+  LIMIT 10
+),
+materialized AS (
+  SELECT uts.user_id, uts.position_type, uts.tema_number, uts.total, uts.correct
+  FROM user_theme_stats uts
+  WHERE uts.user_id IN (SELECT user_id FROM heavy_users)
+),
+runtime AS (
+  SELECT t.user_id, t.position_type, tq.tema_number,
+         COUNT(*)::int AS total,
+         SUM(CASE WHEN tq.is_correct THEN 1 ELSE 0 END)::int AS correct
+  FROM tests t
+  INNER JOIN test_questions tq ON tq.test_id = t.id
+  WHERE t.user_id IN (SELECT user_id FROM heavy_users)
+    AND t.position_type IS NOT NULL
+    AND tq.tema_number IS NOT NULL
+  GROUP BY t.user_id, t.position_type, tq.tema_number
+)
+SELECT
+  COALESCE(m.user_id, r.user_id) AS user_id,
+  COALESCE(m.position_type, r.position_type) AS position_type,
+  COALESCE(m.tema_number, r.tema_number) AS tema_number,
+  m.total AS mv_total, r.total AS rt_total,
+  m.correct AS mv_correct, r.correct AS rt_correct,
+  CASE WHEN m.total = r.total AND m.correct = r.correct THEN 'OK' ELSE 'DRIFT' END AS verdict
+FROM materialized m
+FULL OUTER JOIN runtime r USING (user_id, position_type, tema_number)
+WHERE m.total IS DISTINCT FROM r.total OR m.correct IS DISTINCT FROM r.correct
+LIMIT 50;
+-- → debe devolver 0 filas. Si hay DRIFT, NO continuar.
+```
+
+**Paso 5 — Endpoint dual con flag** (PR separado, no urgente):
+
+- Edit `app/api/v2/topic-progress/theme-stats/route.ts`.
+- Si `process.env.USE_MATERIALIZED_THEME_STATS === 'true'` → leer de `user_theme_stats` + slice 30d via `test_questions` con índice.
+- Si flag OFF → comportamiento actual.
+- Rollout: tu user → 10% → 50% → 100% con 24h entre cada step.
+
+**Paso 6 — Drift cron** (PR separado):
+
+Copiar patrón de `stats_drift_log` que ya existe. Crear cron `check-user-theme-stats-drift` diario que compare 10 users random y emita `observable_events` severity='error' si drift_pct > 5%.
+
+### Por qué Paso 1 puede fallar y plan B
+
+**`CREATE TRIGGER` necesita `SHARE ROW EXCLUSIVE`** que choca con `INSERT INTO test_questions` (cada `answer-and-save`). Con `lock_timeout=5s` el statement aborta en 5s sin bloquear app — los INSERTs en cola continúan después. Pero si el tráfico es alto, los 5 reintentos pueden todos fallar.
+
+**Plan B**: ventana 03:00-06:00 CEST. Verificar con `SELECT count(*) FROM test_questions WHERE created_at > NOW() - INTERVAL '5 minutes'` que hay <5 inserts. Reintentar con `lock_timeout=10s`.
+
+**Plan C (último recurso)**: conexión directa al puerto 5432 del Postgres (bypass Supavisor). Más probable de obtener lock pero requiere acceso directo (no via pooler). Sólo si A y B fallan.
+
+### Antipatterns a evitar al retomar
+
+- ❌ Aplicar triggers + cambiar endpoint en mismo deploy. **NO**. Verificar 24-48h de paridad sin lectores antes de tocar el endpoint.
+- ❌ Saltar backfill. Sin él, users existentes verían contadores "0" hasta que respondan nuevas preguntas.
+- ❌ Aplicar triggers en horario punta. `lock_timeout` ayuda pero crear ruido de "answer-and-save lento" durante 10-15s.
+- ❌ Tocar `last_study` en DELETE (recalcular requiere SELECT MAX sobre filas restantes). Drift mínimo aceptable.
 
 ---
 
