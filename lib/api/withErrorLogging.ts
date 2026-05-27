@@ -146,6 +146,26 @@ export function withErrorLogging(
     try {
       const response = await handler(...args)
 
+      // Parsear errorMessage + body antes del emit para enriquecer
+      // request_completed con info de error (2026-05-27 cabo gaps observ):
+      // antes el emit era ciego al error específico — para diagnosticar
+      // un 5xx había que ir a CloudWatch logs. Ahora obs_events tiene
+      // errorMessage + errorRef → diagnóstico desde un solo SQL.
+      let errorMessage = ''
+      let responseBody: Record<string, unknown> | null = null
+      if (response.status >= 400) {
+        try {
+          responseBody = await response.clone().json() as Record<string, unknown>
+          errorMessage = (responseBody?.error as string) || (responseBody?.message as string) || `HTTP ${response.status}`
+        } catch {
+          errorMessage = `HTTP ${response.status}`
+        }
+      }
+      // errorRef se genera ANTES del emit para incluirlo en obs_events.
+      // Solo para 5xx (VLE-equivalente). Permite cruzar obs_events ↔ VLE
+      // por mismo ID.
+      const errorRef = response.status >= 500 ? randomUUID() : undefined
+
       // ============================================================
       // Bloque 5 Fase E.4.5.b — emitir timing a observable_events.
       // Permite calcular p50/p95/p99 latencia por host (preview-aws vs
@@ -196,10 +216,13 @@ export function withErrorLogging(
             endpoint,
             httpStatus: response.status,
             durationMs,
+            deployVersion: DEPLOY_VERSION,
+            errorMessage: errorMessage || null,
             metadata: {
               host,
               method: request?.method ?? 'GET',
               sampled: isError ? 'false' : 'true',
+              errorRef: errorRef || null,
             },
           })
         })
@@ -207,12 +230,7 @@ export function withErrorLogging(
 
       // Logar respuestas 4xx y 5xx
       if (response.status >= 400) {
-        let errorMessage = `HTTP ${response.status}`
-        let responseBody: Record<string, unknown> | null = null
-        try {
-          responseBody = await response.clone().json() as Record<string, unknown>
-          errorMessage = (responseBody?.error as string) || (responseBody?.message as string) || errorMessage
-        } catch {}
+        // errorMessage y responseBody ya parseados arriba — no repetir el clone().json()
 
         // Filtrar ruido: no logear 400 con body vacío (bots/crawlers haciendo requests sin parámetros)
         const isEmptyBodyNoise = response.status === 400
@@ -231,9 +249,8 @@ export function withErrorLogging(
           return response
         }
 
-        // Generar errorRef (solo para 5xx — errores críticos que el usuario podría reportar)
-        const errorRef = response.status >= 500 ? randomUUID() : undefined
-
+        // errorRef ya generado arriba (movido para incluirlo en el emit de
+        // request_completed → cross-referenciable con VLE).
         const sanitizedBody = body ? sanitizeRequestBody(body) : undefined
 
         // userId: buscar en request body, luego en response body (device limit lo incluye ahí)
