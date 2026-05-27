@@ -67,6 +67,8 @@ const CANARY_DESCRIPTION: Record<string, string> = {
     'SELECT 1 con timeout 1s. Detecta saturación PgBouncer / max_connections agotados / BD caída.',
   'canary-redis-upstash':
     'SET/GET/DEL ephemeral key contra Upstash. Detecta caída del cache compartido (cascada BD inminente).',
+  'external-heartbeat':
+    'Ping a Healthchecks.io (servicio EXTERNO). Si Fargate cae completo y este ping deja de llegar, Healthchecks.io alarma por email/SMS. Watcher del watcher — última línea de defensa.',
 }
 
 function fmtPct(v: number | null): string {

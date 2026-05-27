@@ -4,6 +4,7 @@ import { CanaryDatabasePoolModule } from '../canary-database-pool/canary-databas
 import { CanaryRedisUpstashModule } from '../canary-redis-upstash/canary-redis-upstash.module';
 import { CanarySmokeAuthModule } from '../canary-smoke-auth/canary-smoke-auth.module';
 import { CanaryStripeWebhookModule } from '../canary-stripe-webhook/canary-stripe-webhook.module';
+import { ExternalHeartbeatModule } from '../external-heartbeat/external-heartbeat.module';
 import { CanaryRunnerController } from './canary-runner.controller';
 
 /**
@@ -17,6 +18,7 @@ import { CanaryRunnerController } from './canary-runner.controller';
     CanaryAnswerSaveModule,
     CanaryDatabasePoolModule,
     CanaryRedisUpstashModule,
+    ExternalHeartbeatModule,
   ],
   controllers: [CanaryRunnerController],
 })

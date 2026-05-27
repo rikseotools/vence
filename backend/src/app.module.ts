@@ -59,6 +59,9 @@ import { CanaryDatabasePoolModule } from './canary-database-pool/canary-database
 import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-upstash.module';
 // Endpoint admin POST /api/v2/canary/run-now (dispara los 5 canarios on-demand).
 import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
+// External heartbeat — watcher del watcher. Único monitoreo que SOBREVIVE
+// a una caída total del Fargate (la alarma viene de Healthchecks.io externo).
+import { ExternalHeartbeatModule } from './external-heartbeat/external-heartbeat.module';
 
 @Module({
   imports: [
@@ -106,6 +109,7 @@ import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
     CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
+    ExternalHeartbeatModule, // cada 5min — ping a Healthchecks.io (watcher del watcher)
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

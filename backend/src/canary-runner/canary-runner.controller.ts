@@ -15,6 +15,7 @@ import { CanaryDatabasePoolService } from '../canary-database-pool/canary-databa
 import { CanaryRedisUpstashService } from '../canary-redis-upstash/canary-redis-upstash.service';
 import { CanarySmokeAuthService } from '../canary-smoke-auth/canary-smoke-auth.service';
 import { CanaryStripeWebhookService } from '../canary-stripe-webhook/canary-stripe-webhook.service';
+import { ExternalHeartbeatService } from '../external-heartbeat/external-heartbeat.service';
 
 const ADMIN_EMAILS = [
   'admin@vencemitfg.es',
@@ -49,6 +50,7 @@ export class CanaryRunnerController {
     private readonly answerSave: CanaryAnswerSaveService,
     private readonly dbPool: CanaryDatabasePoolService,
     private readonly redis: CanaryRedisUpstashService,
+    private readonly heartbeat: ExternalHeartbeatService,
   ) {}
 
   @Post('run-now')
@@ -65,15 +67,16 @@ export class CanaryRunnerController {
     this.logger.log(`Canary run-now disparado por ${user.email}`);
     const startedAt = Date.now();
 
-    // 5 canarios en paralelo. Promise.allSettled para que un fallo de un
+    // 6 canarios en paralelo. Promise.allSettled para que un fallo de un
     // canary NO impida ver los resultados de los otros.
-    const [smokeAuth, stripeWebhook, answerSave, dbPool, redis] =
+    const [smokeAuth, stripeWebhook, answerSave, dbPool, redis, heartbeat] =
       await Promise.allSettled([
         this.smokeAuth.run(),
         this.stripeWebhook.run(),
         this.answerSave.run(),
         this.dbPool.run(),
         this.redis.run(),
+        this.heartbeat.run(),
       ]);
 
     const summarize = (
@@ -120,6 +123,7 @@ export class CanaryRunnerController {
       summarize('canary-answer-save', answerSave),
       summarize('canary-database-pool', dbPool),
       summarize('canary-redis-upstash', redis),
+      summarize('external-heartbeat', heartbeat),
     ];
 
     const failed = results.filter((r) => r.status === 'failed' || r.status === 'exception');

@@ -202,7 +202,7 @@ Usa instancia Redis dedicada (no `CacheService`) porque éste tiene timeouts agr
 
 #### Endpoint admin `POST /api/admin/canary/run-now`
 
-Dispara los 5 canarios en paralelo on-demand (no espera al próximo */5min):
+Dispara los canarios en paralelo on-demand (no espera al próximo */5min):
 - **Pre-deploy**: "verifica que TODO está sano antes de mergear".
 - **Post-incidente**: "¿ya está sano tras mi fix?".
 - **Smoke manual**: tras cambiar SSM/Terraform sin redeploy completo.
@@ -212,6 +212,47 @@ Backend Fargate: controller `CanaryRunnerController` con `@UseGuards(JwtGuard)` 
 Next.js: proxy `/api/admin/canary/run-now` que reenvía el Bearer del admin al backend.
 
 Dashboard `/admin/canary`: botón "⚡ Run Now (todos)" con visualización inmediata del resultado por canary (✅/❌/⏭️/⚠️/💥).
+
+---
+
+### 🟢 Sprint 5 bis — External heartbeat (HECHO 2026-05-27)
+
+**El watcher del watcher**. Cierra el ÚNICO gap del sistema canary actual: ¿qué pasa si Fargate cae completo?
+
+- 5 canarios actuales NO pueden emitir (sus crons están muertos).
+- `RULE_CRON_OVERDUE` no puede dispararse (la engine de alertas también vive en backend Fargate).
+- `observable_events` queda silencioso.
+- Sin línea externa: el apagón sería invisible hasta que algún user reporte.
+
+**Solución**: `external-heartbeat` cron */5min hace `POST` a [Healthchecks.io](https://healthchecks.io) (o BetterUptime / dead-mans-snitch). Si el servicio externo NO recibe ping en su ventana (típicamente 10min + 5min grace), dispara alarma por email/SMS al admin.
+
+**Implementación** — módulo `backend/src/external-heartbeat/`:
+
+- `external-heartbeat.service.ts`: `POST` a `HEARTBEAT_URL` con timeout 5s. Validación HTTPS. Modo idle si env vacía.
+- `external-heartbeat.cron.ts`: `@Cron('*/5 * * * *')` con 4 eventos a observability (ok/failed/skipped/cron_run).
+- **NO tiene RULE local**: la alarma operativa la dispara el externo. Internamente solo registramos warn (diagnóstico, no urgencia).
+- Añadido también al endpoint `run-now` (6 cosas en paralelo ahora).
+- Añadido al dashboard `/admin/canary` como entrada más.
+
+**Setup humano (5 min, una sola vez)**:
+
+1. Crear cuenta gratis en https://healthchecks.io.
+2. Crear check `vence-backend-heartbeat` con `Period=10min` + `Grace=5min`.
+3. Copiar la URL UUID: `https://hc-ping.com/<uuid>`.
+4. `aws ssm put-parameter --profile vence --region eu-west-2 --name /vence-backend/HEARTBEAT_URL --value '<url>' --type String`.
+5. Añadir `HEARTBEAT_URL` a `backend/infra/main.tf` (environment, NO secret — no es credencial).
+6. `terraform apply -target=aws_ecs_task_definition.backend`.
+7. `aws ecs update-service --force-new-deployment`.
+
+Tras esos pasos, el sistema queda con **3 niveles de defensa**:
+
+| Nivel | Detecta | Quién dispara la alarma |
+|---|---|---|
+| 1. RULEs locales | Canarios HTTP/infra fallan | Backend Fargate (alerts-engine) |
+| 2. RULE_CRON_OVERDUE | Cron individual colgado | Backend Fargate (alerts-engine) |
+| 3. External heartbeat | TODO Fargate caído | Healthchecks.io externo |
+
+Sin el Nivel 3 existía punto ciego total. Con el Nivel 3, garantía operativa completa.
 
 ---
 
@@ -398,6 +439,7 @@ Cada canary redundante con CI:
 | ✅ **Sprint 3 (HECHO 2026-05-27)** | 3 variante answer-save | 1-2h | 🔴 Alto — canary endpoint más caliente. |
 | ✅ **Sprint 4 (HECHO 2026-05-27)** | Observabilidad | 1-2h | 🟡 Alto — dashboard `/admin/canary` + SLOs cableados. |
 | ✅ **Sprint 5 (HECHO 2026-05-27)** | Canarios INFRA + run-now | 2h | 🟡 Medio — db-pool + redis-upstash + endpoint admin run-now. 50% del scope inicial cortado por regla anti-duplicación CI. |
+| ✅ **Sprint 5 bis (HECHO 2026-05-27)** | External heartbeat | 30min | 🔴 Alto — watcher del watcher (Healthchecks.io). Cierra el ÚNICO gap del sistema: Fargate caído completo. |
 | **Sprint 6** | 4 — Playwright autenticado E2E | 3-5 días | 🟡 Alto — flow crítico cubierto end-to-end. |
 | **Sprint 7** | 5 (subset 15 specs core) | 1 semana | 🟡 Alto — cobertura amplia donde más duele. |
 | **Sprint 8** | 5 (resto) + 6 | 2-3 semanas | 🟢 Medio — completitud. |

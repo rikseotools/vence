@@ -32,6 +32,7 @@ const CANARY_ENDPOINTS = [
   'canary-answer-save',
   'canary-database-pool',
   'canary-redis-upstash',
+  'external-heartbeat', // ping a Healthchecks.io — watcher del watcher
 ] as const
 
 type Status = 'green' | 'amber' | 'red' | 'unknown'
