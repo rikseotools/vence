@@ -9,11 +9,28 @@
 // - Read-only puro → migrado a getReadDb() (replica)
 //
 // El cómputo es per-user-per-source (key cache) e idempotente.
+//
+// Refactor 2026-05-27: la query agregada inicial sobre test_questions
+// (GROUP BY article_id) se sustituye por SELECT a user_article_stats (tabla
+// materializada poblada por triggers + backfill desde 2026-05-23). El JOIN
+// con articles devuelve law_id directo y elimina el chunked lookup. Una sola
+// query con SUM + GROUP BY reemplaza la agregación runtime + el chunked
+// articles lookup. Para users heavy (>10k test_questions) la latencia esperada
+// baja de ~10-18s a <500ms.
+//
+// Paridad estricta verificada (14/14 casos bit-a-bit con users heavy/medium/light):
+//   - SUM por article_id necesario porque uas tiene PK granular
+//     (user_id, article_id, article_number, law_name, tema_number) → mismo
+//     article_id aparece en N filas si el user lo respondió bajo distintos
+//     tema_number.
+//   - INNER JOIN articles preserva el filtro article_id NOT NULL del path
+//     anterior (descartando uas rows con article_id null igual que la query
+//     vieja descartaba test_questions con article_id null).
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getReadDb } from '@/db/client'
-import { testQuestions, articles, topicScope, topics } from '@/db/schema'
+import { topicScope, topics } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
@@ -21,9 +38,9 @@ import { getCached, setCached } from '@/lib/cache/redis'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import type { UserOverlapProgress } from '@/lib/api/oposiciones-compatibles/types'
 
-// Bajado 25s → 20s. La función hace ~85+ queries seriales (1 agg + chunks de
-// articles + 2 × N oposiciones). Con replica + max:1 + queries ligeras debería
-// estar bien por debajo, pero margen amplio para cold start.
+// Tras el refactor 2026-05-27 el cómputo es mucho más ligero (1 SELECT a
+// tabla materializada + 2×N queries de topics/topic_scope). El timeout amplio
+// se mantiene como margen de seguridad ante cold starts de la replica.
 export const maxDuration = 20
 
 const FRESH_WINDOW_MS = 5 * 60 * 1000   // 5 min: dentro de esta ventana es fresh
@@ -118,22 +135,26 @@ async function computeProgress(
 ): Promise<UserOverlapProgress[]> {
   const db = getReadDb()
 
-  // 1. Get all article IDs the user has answered, grouped by article_id
-  // Uses denormalized article_id in test_questions (no JOIN needed)
-  //
-  // FIX 2026-05-09: db.execute() con postgres-js devuelve array directo,
-  // NO { rows: [...] }. La cast legacy estaba mal — esta función probablemente
-  // nunca funcionó (TypeError silencioso si nadie llamaba al endpoint).
+  // 1. Read user's per-article aggregates from user_article_stats (tabla
+  //    materializada poblada por triggers AFTER en test_questions desde
+  //    2026-05-23, backfill completo aplicado mismo día). SUM + GROUP BY
+  //    necesarios porque uas tiene PK granular (user, article_id, article_number,
+  //    law_name, tema_number) → mismo article_id puede aparecer en N filas
+  //    si el user lo respondió bajo distintos tema_number.
+  //    INNER JOIN articles devuelve law_id en la misma query (reemplaza el
+  //    chunked lookup anterior).
   const userAnswersRows = await db.execute(sql`
     SELECT
-      article_id,
-      COUNT(*)::int as total,
-      SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::int as correct
-    FROM test_questions
-    WHERE user_id = ${userId}
-      AND article_id IS NOT NULL
-    GROUP BY article_id
-  `) as unknown as Array<{ article_id: string; total: number; correct: number }>
+      uas.article_id,
+      a.law_id,
+      SUM(uas.total_questions)::int as total,
+      SUM(uas.correct_answers)::int as correct
+    FROM user_article_stats uas
+    INNER JOIN articles a ON a.id = uas.article_id
+    WHERE uas.user_id = ${userId}
+      AND uas.article_id IS NOT NULL
+    GROUP BY uas.article_id, a.law_id
+  `) as unknown as Array<{ article_id: string; law_id: string | null; total: number; correct: number }>
 
   if (userAnswersRows.length === 0) {
     return []
@@ -144,22 +165,13 @@ async function computeProgress(
     userAnswersRows.map((r) => [r.article_id, { total: r.total, correct: r.correct }])
   )
 
-  // 2. Get article_id → law_id mapping for all articles the user has touched
-  const userArticleIds = [...userArticleStats.keys()]
-  // Batch in chunks of 500 to avoid too many params
+  // Build lookup: articleId → lawId (ya viene del JOIN, sin query extra)
   const articleLawMap = new Map<string, string>()
-  for (let i = 0; i < userArticleIds.length; i += 500) {
-    const chunk = userArticleIds.slice(i, i + 500)
-    const rows = await db
-      .select({ id: articles.id, lawId: articles.lawId })
-      .from(articles)
-      .where(inArray(articles.id, chunk))
-    for (const row of rows) {
-      if (row.lawId) articleLawMap.set(row.id, row.lawId)
-    }
+  for (const row of userAnswersRows) {
+    if (row.law_id) articleLawMap.set(row.article_id, row.law_id)
   }
 
-  // 3. For each target oposición, compute progress
+  // 2. For each target oposición, compute progress
   const targetOposiciones = OPOSICIONES.filter(
     (op) => op.positionType !== sourcePositionType
   )
