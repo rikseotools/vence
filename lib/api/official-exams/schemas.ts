@@ -3,9 +3,15 @@ import { z } from 'zod'
 // Available positions for official exams
 // TODO: Derivar de lib/config/oposiciones.ts cuando todas las oposiciones tengan exámenes oficiales
 export const OposicionType = {
+  ADMINISTRATIVO_ESTADO: 'administrativo-estado',
   AUXILIAR_ADMINISTRATIVO_ESTADO: 'auxiliar-administrativo-estado',
   AUXILIAR_ADMINISTRATIVO_MADRID: 'auxiliar-administrativo-madrid',
   AUXILIAR_ADMINISTRATIVO_CYL: 'auxiliar-administrativo-cyl',
+  AUXILIAR_ADMINISTRATIVO_CANARIAS: 'auxiliar-administrativo-canarias',
+  AUXILIAR_ADMINISTRATIVO_CARM: 'auxiliar-administrativo-carm',
+  AUXILIAR_ADMINISTRATIVO_EXTREMADURA: 'auxiliar-administrativo-extremadura',
+  AUXILIAR_ADMINISTRATIVO_VALENCIA: 'auxiliar-administrativo-valencia',
+  GESTION_ESTADO: 'gestion-estado',
   TRAMITACION_PROCESAL: 'tramitacion-procesal',
   AUXILIO_JUDICIAL: 'auxilio-judicial',
   GUARDIA_CIVIL: 'guardia-civil',
@@ -18,9 +24,15 @@ export type OposicionType = typeof OposicionType[keyof typeof OposicionType]
 export const getOfficialExamQuestionsRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   oposicion: z.enum([
+    OposicionType.ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
     OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CANARIAS,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CARM,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_EXTREMADURA,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_VALENCIA,
+    OposicionType.GESTION_ESTADO,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
     OposicionType.GUARDIA_CIVIL,
