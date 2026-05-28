@@ -224,7 +224,26 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 **INSERT degradado por triggers acumulados (2026-05-23)** — al auditar `test_questions` aparecieron 14 triggers, 2 de ellos NO-OP. Documentado en ADR "triggers SQL vs outbox/worker" en el roadmap. Regla operativa: si añades un trigger a `test_questions`, debe ser `INSERT ... ON CONFLICT DO UPDATE` con `+1 counter`, jamás scan o agregación.
 
-**Cascada 503 por slots pool zombie (2026-05-27, 17:00–19:50 UTC)** — 1995 errores 503 en `/api/v2/answer-and-save` ("Servicio saturado momentáneamente"). Diagnóstico engañoso: `canary-database-pool` daba OK (SELECT 1 trivial encontraba slot), pero queries reales (DailyLimit, Medals, antifraud) timeouteaban. **Causa raíz**: `emitFireAndForget()` del backend Fargate hace `await db.execute(INSERT observable_events)` SIN timeout. Si Supavisor se cuelga en `wait=Client/ClientRead`, la promise nunca resuelve → slot pool zombie → pool postgres-js (max 7-8) se satura → antifraud quick-fail → 503 cascada. **Fingerprint**: `SELECT pid, wait_event_type, wait_event, query FROM pg_stat_activity WHERE application_name='Supavisor' AND state!='idle' AND NOW()-query_start > INTERVAL '30 seconds'` con `wait=Client/ClientRead` + `INSERT INTO observable_events`. **Mitigación**: `pg_terminate_backend(<pid>)` + `force-new-deployment`. **Fix definitivo pendiente**: añadir timeout al emit observability (ver `docs/runbooks/observability.md` §"⚠️ FOOTGUN").
+**Cascada 503 por slots pool zombie (2026-05-27, 17:00–19:50 UTC)** — 1995 errores 503 en `/api/v2/answer-and-save` ("Servicio saturado momentáneamente"). Diagnóstico engañoso: `canary-database-pool` daba OK (SELECT 1 trivial encontraba slot), pero queries reales (DailyLimit, Medals, antifraud) timeouteaban. **Causa raíz**: `emitFireAndForget()` del backend Fargate hace `await db.execute(INSERT observable_events)` SIN timeout. Si Supavisor se cuelga en `wait=Client/ClientRead`, la promise nunca resuelve → slot pool zombie → pool postgres-js (max 7-8) se satura → antifraud quick-fail → 503 cascada. **Fingerprint**: `SELECT pid, wait_event_type, wait_event, query FROM pg_stat_activity WHERE application_name='Supavisor' AND state!='idle' AND NOW()-query_start > INTERVAL '30 seconds'` con `wait=Client/ClientRead` + `INSERT INTO observable_events`. **Mitigación**: `pg_terminate_backend(<pid>)` + `force-new-deployment`. **Fix aplicado** (commits `e1f639f6` + `a2b80393`): timeout 5s en `emit()` de backend + sink frontend + rollout-log. Tras fixes, 5xx bajaron de 357/h a 14/h baseline.
+
+**Antifraud quick-fail intermitente sin zombies — investigación pendiente (2026-05-28, desde 03:27 UTC)** — TRAS aplicar el fix del incidente anterior, reaparecen burst de 503 esporádicos (~8-13/min, ventanas de 1-3 horas). Diagnóstico distinto al anterior:
+- ✅ NO hay slots pool zombie (`pg_stat_activity` limpio, Supavisor con 0 hung >30s).
+- ✅ NO hay autovacuum activo en tablas hot (`pg_stat_progress_vacuum` vacío).
+- ✅ La función SQL `register_device` corre rápido: `mean=1.29ms stddev=3.17 max=99ms calls=6666` en `pg_stat_statements` — NO es problema de BD.
+- ✅ Pool sano: 5+ idle postgres.js + 1 Supavisor active.
+- ⚠️ PERO el backend Fargate reporta consistentemente `Timeout (quick-fail) en antifraud tras 10003ms (límite 10000ms)` desde `AnswerSaveController`.
+- ⚠️ Pattern: cada 8s aprox, request tarda EXACTO ~10000-10100ms antes de fallar. = el timeout del antifraud disparándose limpiamente.
+
+**Hipótesis fuerte**: latencia Fargate↔Supavisor degradada intermitentemente. El `Promise.all([registerAndCheckDevice, getDailyLimitStatus, checkDeviceDailyUsage])` del antifraud espera a la más lenta de las 3 RPCs; con TCP roundtrip alto en horas concretas, suma >10s aunque cada RPC sea rápida en BD. **Alternativa**: cliente postgres-js mantiene una conexión "zombie zombi" — cerrada en BD pero que el cliente cree tener; al usarla espera para siempre hasta timeout.
+
+**Por qué NO se ataca aún**: detección requiere comparar latencia red Fargate↔Supabase vs latencia query pura (separar TCP de ejecución), y posible inspección de eventos VPC/NAT/Supavisor. Es trabajo de 2-4 h con cabeza fresca, no de emergencia (afecta a 8-13 users/h en horas valle 22 UTC-04 UTC). Anotado para retomar.
+
+**Pistas para la próxima sesión**:
+- Comparar `mean_exec_time` de `register_device` en pg_stat_statements vs duración medida server-side desde antifraud.service.ts (ya emitido a observable_events como `request_completed`).
+- `aws cloudwatch get-metric-statistics` para `TargetResponseTime` del ALB durante el spike — si el ALB ya ve latencia alta antes de llegar al app, es network.
+- `SELECT * FROM pg_stat_database` para ver `xact_commit/xact_rollback` rate (puede haber rollbacks ocultos).
+- Considerar añadir `idle_in_transaction_session_timeout` y `statement_timeout` a nivel sesión postgres-js para defense in depth.
+- Subir `ANTIFRAUD_TIMEOUT_MS` de 10s a 15s puede ser band-aid temporal (entender primero la causa).
 
 ---
 
