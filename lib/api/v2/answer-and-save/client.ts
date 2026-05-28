@@ -48,8 +48,14 @@ export async function answerAndSave(
   }
 
   // Fetch con timeout y retry manual (no usar apiFetch porque necesitamos Bearer header)
+  // 28/05/2026: timeoutMs subido de 10000 → 25000. El cliente cortaba a los 10s
+  // antes de que el server (con ANTIFRAUD_TIMEOUT_MS=25000) tuviera oportunidad
+  // de responder. Resultado: 100% de los 503 duraban exactamente 10s = AbortError
+  // del cliente, no error real del servidor. Alineado con server-side timeout.
+  // Causa profunda (lentitud de las 3 RPCs antifraude) pendiente — sprint outbox.
+  // Ver docs/roadmap/incidente-answer-save-503-28-05.md
   const maxAttempts = 2
-  const timeoutMs = 10000
+  const timeoutMs = 25000
   let lastError: unknown
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
