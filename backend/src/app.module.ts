@@ -62,6 +62,12 @@ import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
 // External heartbeat — watcher del watcher. Único monitoreo que SOBREVIVE
 // a una caída total del Fargate (la alarma viene de Healthchecks.io externo).
 import { ExternalHeartbeatModule } from './external-heartbeat/external-heartbeat.module';
+// Outbox processor (Sprint 1 fase 1.2, 28/05/2026) — worker async que
+// procesa eventos generados por trigger `tg_test_questions_emit_outbox`
+// (migración `20260528_test_questions_outbox.sql`). Reemplaza
+// progresivamente los 20 triggers analíticos del path crítico de
+// answer-and-save. Ver docs/roadmap/sprint-outbox-test-questions.md
+import { OutboxProcessorModule } from './outbox-processor/outbox-processor.module';
 
 @Module({
   imports: [
@@ -110,6 +116,9 @@ import { ExternalHeartbeatModule } from './external-heartbeat/external-heartbeat
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
     ExternalHeartbeatModule, // cada 5min — ping a Healthchecks.io (watcher del watcher)
+    // Sprint 1 outbox test_questions (28/05/2026) — Fase 1.2 infra worker
+    // (no-op handlers todavía; Fases 1.3+ añaden lógica con shadow mode).
+    OutboxProcessorModule, // cada 1s — procesa batches de hasta 100 eventos
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,
