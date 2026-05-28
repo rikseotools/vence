@@ -31,7 +31,12 @@ export const maxDuration = 30
 //   shadow → Ambos en paralelo, log diff, sirve remoto (validación pre-flip)
 //   on     → Solo verifyJwtLocal (latencia <5ms, ahorra round-trip)
 // Plan: deploy con default off → activar shadow 24-48h → si 0 diff → flip a on.
-const ANTIFRAUD_TIMEOUT_MS = 10000
+// 28/05/2026: subido de 10000 → 25000. El cap de 10s mataba ~49k req/día
+// (98.2% de los 503 de answer-and-save tenían duration_ms exactamente 10-11s).
+// Las 3 RPCs antifraude paralelas pueden tardar 10-20s bajo carga BD.
+// statement_timeout Postgres (30s) sigue siendo backstop final.
+// Ver docs/roadmap/incidente-answer-save-503-28-05.md
+const ANTIFRAUD_TIMEOUT_MS = 25000
 const VALIDATE_AND_SAVE_TIMEOUT_MS = 15000
 
 async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveResponse | { success: false; error: string }>> {
