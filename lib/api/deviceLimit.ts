@@ -3,6 +3,9 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
+// Fase 1.5 outbox sprint (28/05/2026): cache Redis cross-lambda para
+// 3 RPCs antifraude. Ver docs/roadmap/sprint-outbox-test-questions.md
+import { getOrSet, invalidate as redisInvalidate } from '@/lib/cache/redis'
 
 let _supabaseAdmin: ReturnType<typeof createClient> | null = null
 function getSupabaseAdmin() {
@@ -74,52 +77,64 @@ export async function registerAndCheckDevice(
 ): Promise<DeviceCheckResult> {
   if (!userId || !deviceId) return FAIL_OPEN
 
-  // Check cache: si ya verificamos este user+device hace <60s, reutilizar
+  // L1 cache in-memory por-lambda (mantenemos por compat + edge case Redis caído).
   const cacheKey = `${userId}:${deviceId}`
   const cached = deviceCheckCache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < DEVICE_CHECK_TTL) {
     return cached.result
   }
 
-  try {
-    const deviceLabel = userAgent ? parseDeviceLabel(userAgent) : null
+  // L2 cache Redis cross-lambda (Fase 1.5 outbox sprint 28/05/2026): para tests
+  // de 25q en 5min → 96% hit ratio sobre el mismo user+device. Reduce RPCs a
+  // Supabase de 25/test a ~1/test. Singleflight de redis.ts protege contra
+  // stampede en cache miss. Fallback automático a fetcher si Redis cae.
+  return getOrSet<DeviceCheckResult>(`device_check:${userId}:${deviceId}`, 60, async () => {
+    try {
+      const deviceLabel = userAgent ? parseDeviceLabel(userAgent) : null
 
-    const { data, error } = await getSupabaseAdmin().rpc('register_device', {
-      p_user_id: userId,
-      p_device_id: deviceId,
-      p_device_label: deviceLabel,
-      p_hw_fingerprint: hwFingerprint || null,
-    })
+      const { data, error } = await getSupabaseAdmin().rpc('register_device', {
+        p_user_id: userId,
+        p_device_id: deviceId,
+        p_device_label: deviceLabel,
+        p_hw_fingerprint: hwFingerprint || null,
+      })
 
-    if (error) {
-      // Table might not exist yet — fail open
-      if (error.code === '42P01' || error.code === 'PGRST202') {
+      if (error) {
+        // Table might not exist yet — fail open
+        if (error.code === '42P01' || error.code === 'PGRST202') {
+          return FAIL_OPEN
+        }
+        console.error('❌ [DeviceLimit] RPC error:', error.message)
         return FAIL_OPEN
       }
-      console.error('❌ [DeviceLimit] RPC error:', error.message)
+
+      const result = Array.isArray(data) ? data[0] : data
+      if (!result) return FAIL_OPEN
+
+      const checkResult: DeviceCheckResult = {
+        allowed: result.out_allowed ?? result.allowed,
+        deviceCount: result.out_device_count ?? result.device_count,
+        maxDevices: result.out_max_devices ?? result.max_devices,
+        isNewDevice: result.out_is_new_device ?? result.is_new_device,
+        isPremium: result.out_is_premium ?? result.is_premium,
+        existingDevices: result.out_existing_devices ?? result.existing_devices ?? '',
+      }
+
+      // Guardar también en L1 in-memory (no esperamos al próximo cache miss para tenerlo local).
+      deviceCheckCache.set(cacheKey, { result: checkResult, timestamp: Date.now() })
+
+      return checkResult
+    } catch (err) {
+      console.error('❌ [DeviceLimit] Unexpected error:', err)
       return FAIL_OPEN
     }
+  })
+}
 
-    const result = Array.isArray(data) ? data[0] : data
-    if (!result) return FAIL_OPEN
-
-    const checkResult: DeviceCheckResult = {
-      allowed: result.out_allowed ?? result.allowed,
-      deviceCount: result.out_device_count ?? result.device_count,
-      maxDevices: result.out_max_devices ?? result.max_devices,
-      isNewDevice: result.out_is_new_device ?? result.is_new_device,
-      isPremium: result.out_is_premium ?? result.is_premium,
-      existingDevices: result.out_existing_devices ?? result.existing_devices ?? '',
-    }
-
-    // Guardar en cache
-    deviceCheckCache.set(cacheKey, { result: checkResult, timestamp: Date.now() })
-
-    return checkResult
-  } catch (err) {
-    console.error('❌ [DeviceLimit] Unexpected error:', err)
-    return FAIL_OPEN
-  }
+/** Invalida cache device_check (L1 + L2) tras un cambio relevante (premium upgrade/downgrade). */
+export async function invalidateDeviceCheckCache(userId: string, deviceId: string): Promise<void> {
+  deviceCheckCache.delete(`${userId}:${deviceId}`)
+  await redisInvalidate(`device_check:${userId}:${deviceId}`)
 }
 
 /**

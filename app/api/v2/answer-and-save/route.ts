@@ -127,20 +127,14 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     // All three RPCs are independent — run them concurrently to save ~400ms
     const deviceId = getDeviceIdFromRequest(request)
     const hwFingerprint = getHwFingerprintFromRequest(request)
-    // ⚠️ BYPASS TEMPORAL 28/05/2026 21:10 UTC (incidente answer-save 503):
-    // Las 3 RPCs antifraude paralelas saturan la BD (10-25s cada call) y
-    // disparan el cap del cliente JS (10s) → 100% 503 desde 17:38 UTC.
-    // Suspendidas temporalmente para parar el sangrado mientras se aplica
-    // fix server-side (c2550895) + cliente (cfed5218) y se prepara el sprint
-    // outbox que las hará rápidas.
-    // COSTE: 1 noche sin anti-sharing de dispositivos y sin enforcement del
-    // límite 25q/día para users free. Reactivar mañana cuando outbox listo.
-    // Ver docs/roadmap/incidente-answer-save-503-28-05.md
-    const _antifraudBypassed = true
-    void deviceId; void hwFingerprint; void registerAndCheckDevice; void getDailyLimitStatus; void checkDeviceDailyUsage; void withDbTimeout; void ANTIFRAUD_TIMEOUT_MS
-    const deviceCheck = { allowed: true, deviceCount: 0, maxDevices: 99, existingDevices: '' } as const
-    const dailyLimit = { allowed: true, isPremium: true, questionsToday: 0, dailyLimit: 9999, isGraduated: false } as const
-    const deviceUsage = { allowed: true, deviceTotal: 0 } as const
+    const [deviceCheck, dailyLimit, deviceUsage] = await withDbTimeout(
+      () => Promise.all([
+        registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'), hwFingerprint),
+        getDailyLimitStatus(user.id),
+        checkDeviceDailyUsage(deviceId),
+      ]),
+      ANTIFRAUD_TIMEOUT_MS,
+    )
 
     if (!deviceCheck.allowed) {
       return NextResponse.json(
