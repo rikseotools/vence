@@ -15,6 +15,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { UserArticleStatsHandler } from './handlers/user-article-stats.handler';
 import {
   BatchResult,
   DEFAULT_CONFIG,
@@ -28,7 +29,10 @@ export class OutboxProcessorService {
   private readonly logger = new Logger(OutboxProcessorService.name);
   private readonly config: OutboxProcessorConfig = DEFAULT_CONFIG;
 
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    private readonly userArticleStatsHandler: UserArticleStatsHandler,
+  ) {}
 
   /**
    * Procesa un batch de eventos del outbox.
@@ -93,8 +97,11 @@ export class OutboxProcessorService {
             continue;
           }
 
-          // FASE 1.2: no-op. Solo validamos el payload y marcamos procesado.
-          // En Fase 1.3+ aquí se llama a this.dispatch(parsed.data).
+          // FASE 1.3: dispatch a handlers (shadow mode si SHADOW_HANDLERS_ENABLED=true).
+          // Cada handler es responsable de su propio idempotency check.
+          // Si SHADOW_HANDLERS_ENABLED=false, los handlers son no-op y solo
+          // validamos el payload.
+          await this.dispatch(parsed.data);
           await this.markProcessed(parsed.data.id);
           result.succeeded += 1;
         } catch (e) {
@@ -116,6 +123,31 @@ export class OutboxProcessorService {
 
     result.durationMs = Date.now() - startedAt;
     return result;
+  }
+
+  /**
+   * Dispatch del evento a todos los handlers registrados.
+   *
+   * SHADOW MODE: cada handler internamente comprueba SHADOW_HANDLERS_ENABLED.
+   * Si el flag está OFF, el handler retorna inmediatamente sin tocar BD.
+   *
+   * En Fase 1.4 se añadirán 19 handlers más (user_daily_stats, user_hourly_stats,
+   * etc.) siguiendo el mismo patrón. Cada uno con su tabla shadow propia.
+   */
+  private async dispatch(event: OutboxEvent): Promise<void> {
+    // Todos los handlers se ejecutan en paralelo (cada uno tiene su propia BD txn)
+    await Promise.all([
+      this.userArticleStatsHandler.handle(event),
+      // Fase 1.4: añadir aquí
+      // this.userDailyStatsHandler.handle(event),
+      // this.userHourlyStatsHandler.handle(event),
+      // this.userDifficultyStatsHandler.handle(event),
+      // this.userStatsSummaryHandler.handle(event),
+      // this.userStatsTotalTimeHandler.handle(event),
+      // this.userQuestionHistoryV2Handler.handle(event),
+      // this.lawQuestionDifficultyHandler.handle(event),
+      // this.questionFirstAttemptsHandler.handle(event),
+    ]);
   }
 
   private async markProcessed(eventId: bigint): Promise<void> {
