@@ -69,8 +69,13 @@ export interface OutboxProcessorConfig {
   intervalSeconds: number;
 }
 
+// batchSize=10 (era 100): cada evento dispara 9 handlers en paralelo, cada handler
+// hace 2 queries (SELECT EXISTS + UPSERT). Con batchSize=100 → ~1800 queries/tick,
+// saturó pool BD el 29/05/2026 al activar SHADOW_HANDLERS_ENABLED. Con 10 → 180
+// queries/tick, margen seguro. Si la queue crece, reducir intervalo del cron en
+// vez de subir batchSize. Ver docs/roadmap/sprint-outbox-test-questions.md §1.5.
 export const DEFAULT_CONFIG: OutboxProcessorConfig = {
-  batchSize: 100,
+  batchSize: 10,
   maxRetries: 3,
   intervalSeconds: 1,
 };

@@ -147,25 +147,37 @@ export class OutboxProcessorService {
    * SHADOW MODE: cada handler internamente comprueba SHADOW_HANDLERS_ENABLED.
    * Si el flag está OFF, el handler retorna inmediatamente sin tocar BD.
    *
-   * En Fase 1.4 se añadirán 19 handlers más (user_daily_stats, user_hourly_stats,
-   * etc.) siguiendo el mismo patrón. Cada uno con su tabla shadow propia.
+   * Promise.allSettled (no Promise.all): un handler caído NO arrastra a los
+   * 8 restantes. Cada fallo se logea individualmente. El evento se considera
+   * exitoso si AL MENOS uno tuvo éxito; si TODOS fallan, throw para reintento.
+   * Cambio aplicado tras incidente 29/05/2026 donde Promise.all + batchSize=100
+   * saturó pool BD al activar SHADOW_HANDLERS_ENABLED.
    */
   private async dispatch(event: OutboxEvent): Promise<void> {
-    // Los 9 handlers en paralelo (cada uno con su propia BD txn).
-    // Patrón Promise.all: si uno falla, los demás también se cancelan en
-    // término práctico (el batch falla → retry). En Fase 1.5 mañana podría
-    // hacerse independiente con Promise.allSettled si queremos parcial.
-    await Promise.all([
-      this.userArticleStatsHandler.handle(event),
-      this.userDailyStatsHandler.handle(event),
-      this.userHourlyStatsHandler.handle(event),
-      this.userDifficultyStatsHandler.handle(event),
-      this.userStatsSummaryHandler.handle(event),
-      this.userStatsTotalTimeHandler.handle(event),
-      this.userQuestionHistoryV2Handler.handle(event),
-      this.lawQuestionFirstAttemptsHandler.handle(event),
-      this.questionFirstAttemptsHandler.handle(event),
+    const results = await Promise.allSettled([
+      this.userArticleStatsHandler.handle(event).catch((e) => { throw new Error(`user_article_stats: ${e.message}`); }),
+      this.userDailyStatsHandler.handle(event).catch((e) => { throw new Error(`user_daily_stats: ${e.message}`); }),
+      this.userHourlyStatsHandler.handle(event).catch((e) => { throw new Error(`user_hourly_stats: ${e.message}`); }),
+      this.userDifficultyStatsHandler.handle(event).catch((e) => { throw new Error(`user_difficulty_stats: ${e.message}`); }),
+      this.userStatsSummaryHandler.handle(event).catch((e) => { throw new Error(`user_stats_summary: ${e.message}`); }),
+      this.userStatsTotalTimeHandler.handle(event).catch((e) => { throw new Error(`user_stats_total_time: ${e.message}`); }),
+      this.userQuestionHistoryV2Handler.handle(event).catch((e) => { throw new Error(`user_question_history_v2: ${e.message}`); }),
+      this.lawQuestionFirstAttemptsHandler.handle(event).catch((e) => { throw new Error(`law_question_first_attempts: ${e.message}`); }),
+      this.questionFirstAttemptsHandler.handle(event).catch((e) => { throw new Error(`question_first_attempts: ${e.message}`); }),
     ]);
+
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failures.length > 0) {
+      for (const f of failures) {
+        this.logger.warn(`Handler failed for event ${event.id}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`);
+      }
+      // Si TODOS los handlers fallaron, lanzar para que el evento se reintente.
+      // Si solo algunos, lo damos por bueno (los exitosos ya escribieron a shadow,
+      // los fallidos no — divergencia detectable en la query diff).
+      if (failures.length === results.length) {
+        throw new Error(`All ${results.length} handlers failed for event ${event.id}`);
+      }
+    }
   }
 
   private async markProcessed(eventId: bigint): Promise<void> {
