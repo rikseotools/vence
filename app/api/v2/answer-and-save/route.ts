@@ -37,7 +37,13 @@ export const maxDuration = 30
 // statement_timeout Postgres (30s) sigue siendo backstop final.
 // Ver docs/roadmap/incidente-answer-save-503-28-05.md
 const ANTIFRAUD_TIMEOUT_MS = 25000
-const VALIDATE_AND_SAVE_TIMEOUT_MS = 15000
+// 29/05/2026 05:01 UTC: subido de 15000 → 25000. Bajo carga real, el INSERT
+// a test_questions + 27 triggers en cascada tarda >15s ocasionalmente,
+// disparando withDbTimeout(15s) → 503. Alineado con ANTIFRAUD_TIMEOUT_MS y
+// cliente timeoutMs (ambos 25s) + statement_timeout PG (30s) como backstop.
+// Parche acotado: la solución estructural es cutover Sprint 1 outbox (DROP
+// TRIGGER × 20 → INSERT pasa a <100ms). Ver docs/runbooks/outbox-cutover.md
+const VALIDATE_AND_SAVE_TIMEOUT_MS = 25000
 
 async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveResponse | { success: false; error: string }>> {
   const startTime = Date.now()
