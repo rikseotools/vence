@@ -1,0 +1,23 @@
+-- Drop user_feedback.wants_response (campo decorativo no usado)
+--
+-- Eliminado el 29/05/2026 tras soak 48h sin errores.
+--
+-- Contexto:
+-- - Detectado el 27/05/2026 investigando feedback de Susana: wants_response=false
+--   pero su mensaje claramente pedía respuesta. Auditoría confirmó que ningún
+--   reader hacía branch por el valor — todos los writers lo hardcodeaban.
+-- - Commit d3a64f48 (27/05 ~13:30 CEST) eliminó código que escribe/lee la columna.
+-- - Soak desde 27/05 14:03 CEST hasta 29/05 23:30 CEST: 0 errores wants_response
+--   en validation_error_logs (verificado vía script directo a BD).
+-- - 0 funciones SQL, 0 vistas, 0 referencias en código actual.
+--
+-- Distribución pre-DROP (458 filas):
+-- - true:  29
+-- - false: 429
+-- - null:  0
+--
+-- Aplicación: ALTER ejecutado directamente vía script Node, no via Supabase CLI.
+-- Esta migración existe para registro histórico y para que otros entornos
+-- (si se crearan) la apliquen.
+
+ALTER TABLE public.user_feedback DROP COLUMN IF EXISTS wants_response;
