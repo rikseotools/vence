@@ -15,8 +15,15 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { LawQuestionFirstAttemptsHandler } from './handlers/law-question-first-attempts.handler';
+import { QuestionFirstAttemptsHandler } from './handlers/question-first-attempts.handler';
 import { UserArticleStatsHandler } from './handlers/user-article-stats.handler';
 import { UserDailyStatsHandler } from './handlers/user-daily-stats.handler';
+import { UserDifficultyStatsHandler } from './handlers/user-difficulty-stats.handler';
+import { UserHourlyStatsHandler } from './handlers/user-hourly-stats.handler';
+import { UserQuestionHistoryV2Handler } from './handlers/user-question-history-v2.handler';
+import { UserStatsSummaryHandler } from './handlers/user-stats-summary.handler';
+import { UserStatsTotalTimeHandler } from './handlers/user-stats-total-time.handler';
 import {
   BatchResult,
   DEFAULT_CONFIG,
@@ -34,6 +41,13 @@ export class OutboxProcessorService {
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly userArticleStatsHandler: UserArticleStatsHandler,
     private readonly userDailyStatsHandler: UserDailyStatsHandler,
+    private readonly userHourlyStatsHandler: UserHourlyStatsHandler,
+    private readonly userDifficultyStatsHandler: UserDifficultyStatsHandler,
+    private readonly userStatsSummaryHandler: UserStatsSummaryHandler,
+    private readonly userStatsTotalTimeHandler: UserStatsTotalTimeHandler,
+    private readonly userQuestionHistoryV2Handler: UserQuestionHistoryV2Handler,
+    private readonly lawQuestionFirstAttemptsHandler: LawQuestionFirstAttemptsHandler,
+    private readonly questionFirstAttemptsHandler: QuestionFirstAttemptsHandler,
   ) {}
 
   /**
@@ -137,18 +151,20 @@ export class OutboxProcessorService {
    * etc.) siguiendo el mismo patrón. Cada uno con su tabla shadow propia.
    */
   private async dispatch(event: OutboxEvent): Promise<void> {
-    // Todos los handlers se ejecutan en paralelo (cada uno tiene su propia BD txn)
+    // Los 9 handlers en paralelo (cada uno con su propia BD txn).
+    // Patrón Promise.all: si uno falla, los demás también se cancelan en
+    // término práctico (el batch falla → retry). En Fase 1.5 mañana podría
+    // hacerse independiente con Promise.allSettled si queremos parcial.
     await Promise.all([
       this.userArticleStatsHandler.handle(event),
       this.userDailyStatsHandler.handle(event),
-      // Fase 1.4 — pendientes próxima sesión:
-      // this.userHourlyStatsHandler.handle(event),
-      // this.userDifficultyStatsHandler.handle(event),
-      // this.userStatsSummaryHandler.handle(event),
-      // this.userStatsTotalTimeHandler.handle(event),
-      // this.userQuestionHistoryV2Handler.handle(event),
-      // this.lawQuestionDifficultyHandler.handle(event),
-      // this.questionFirstAttemptsHandler.handle(event),
+      this.userHourlyStatsHandler.handle(event),
+      this.userDifficultyStatsHandler.handle(event),
+      this.userStatsSummaryHandler.handle(event),
+      this.userStatsTotalTimeHandler.handle(event),
+      this.userQuestionHistoryV2Handler.handle(event),
+      this.lawQuestionFirstAttemptsHandler.handle(event),
+      this.questionFirstAttemptsHandler.handle(event),
     ]);
   }
 
