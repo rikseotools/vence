@@ -50,7 +50,7 @@ export class ObservabilityCleanupCron {
         `observability-cleanup completado: ${deletedCount} filas eliminadas en ${Date.now() - startedAt}ms`,
       );
 
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'info',
         eventType: 'cron_run',
@@ -65,7 +65,7 @@ export class ObservabilityCleanupCron {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron observability-cleanup falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'error',
         eventType: 'cron_run',

@@ -41,7 +41,7 @@ export class ProcessVerificationQueueCron {
           `billingError=${result.billingError}, ` +
           `${result.executionTimeMs}ms`,
       );
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'info',
         eventType: 'cron_run',
@@ -68,7 +68,7 @@ export class ProcessVerificationQueueCron {
       this.logger.error(
         `Cron process-verification-queue falló: ${errorMessage}`,
       );
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'error',
         eventType: 'cron_run',

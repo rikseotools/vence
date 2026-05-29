@@ -25,7 +25,7 @@ export class RefreshThemeCacheCron {
     const startedAt = Date.now();
     try {
       const result = await this.service.run();
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'info',
         eventType: 'cron_run',
@@ -44,7 +44,7 @@ export class RefreshThemeCacheCron {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron refresh-theme-cache falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'error',
         eventType: 'cron_run',

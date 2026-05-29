@@ -29,7 +29,7 @@ export class UpdateStreaksCron {
         `Cron update-streaks completado: ${result.updated} actualizados, ` +
           `${result.errors} errores, ${result.resetCount} resets`,
       );
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'info',
         eventType: 'cron_run',
@@ -47,7 +47,7 @@ export class UpdateStreaksCron {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron update-streaks falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'error',
         eventType: 'cron_run',

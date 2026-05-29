@@ -25,7 +25,7 @@ export class BoeChangesCron {
     const startedAt = Date.now();
     try {
       const result = await this.service.runCheck();
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'info',
         eventType: 'cron_run',
@@ -49,7 +49,7 @@ export class BoeChangesCron {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron check-boe-changes falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
+      await this.observability.emit({
         source: 'fargate',
         severity: 'error',
         eventType: 'cron_run',
