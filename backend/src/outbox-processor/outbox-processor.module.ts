@@ -10,22 +10,20 @@
 
 import { Module } from '@nestjs/common';
 import { UserArticleStatsHandler } from './handlers/user-article-stats.handler';
+import { UserDailyStatsHandler } from './handlers/user-daily-stats.handler';
 import { OutboxProcessorCron } from './outbox-processor.cron';
 import { OutboxProcessorService } from './outbox-processor.service';
 
 @Module({
   providers: [
-    // Handlers (Fase 1.3+)
+    // Handlers (Fase 1.3+) — todos gated por SHADOW_HANDLERS_ENABLED env var.
     UserArticleStatsHandler,
-    // Fase 1.4 — añadir:
-    // UserDailyStatsHandler,
-    // UserHourlyStatsHandler,
-    // UserDifficultyStatsHandler,
-    // UserStatsSummaryHandler,
-    // UserStatsTotalTimeHandler,
-    // UserQuestionHistoryV2Handler,
-    // LawQuestionDifficultyHandler,
-    // QuestionFirstAttemptsHandler,
+    UserDailyStatsHandler,
+    // Fase 1.4 — pendientes (próxima sesión):
+    // UserHourlyStatsHandler, UserDifficultyStatsHandler,
+    // UserStatsSummaryHandler, UserStatsTotalTimeHandler,
+    // UserQuestionHistoryV2Handler, LawQuestionDifficultyHandler,
+    // QuestionFirstAttemptsHandler
     OutboxProcessorService,
     OutboxProcessorCron,
   ],

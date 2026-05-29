@@ -16,6 +16,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { UserArticleStatsHandler } from './handlers/user-article-stats.handler';
+import { UserDailyStatsHandler } from './handlers/user-daily-stats.handler';
 import {
   BatchResult,
   DEFAULT_CONFIG,
@@ -32,6 +33,7 @@ export class OutboxProcessorService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly userArticleStatsHandler: UserArticleStatsHandler,
+    private readonly userDailyStatsHandler: UserDailyStatsHandler,
   ) {}
 
   /**
@@ -138,8 +140,8 @@ export class OutboxProcessorService {
     // Todos los handlers se ejecutan en paralelo (cada uno tiene su propia BD txn)
     await Promise.all([
       this.userArticleStatsHandler.handle(event),
-      // Fase 1.4: añadir aquí
-      // this.userDailyStatsHandler.handle(event),
+      this.userDailyStatsHandler.handle(event),
+      // Fase 1.4 — pendientes próxima sesión:
       // this.userHourlyStatsHandler.handle(event),
       // this.userDifficultyStatsHandler.handle(event),
       // this.userStatsSummaryHandler.handle(event),

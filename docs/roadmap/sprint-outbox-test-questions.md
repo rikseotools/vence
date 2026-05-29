@@ -6,7 +6,17 @@
 >
 > **Principio agnóstico** ([[feedback_prioridades_escala_y_agnostico]]): el worker es un container NestJS estándar → corre en Fargate hoy, Kubernetes/Hetzner/GCE mañana sin reescribir.
 >
-> **Última actualización:** 2026-05-28 21:16 UTC (creación). Estado: 🟡 EN MARCHA Fase 1.1.
+> **Última actualización:** 2026-05-29 04:13 UTC. Estado: ✅ Fases 1.1+1.2+1.3+1.5+1.6 COMPLETAS + hotfix scheduler. Pendientes: 1.4 (19 handlers), 1.7 (tests carga).
+>
+> **Resumen sesión 28-29/05/2026:**
+> - ✅ Fase 1.1: schema outbox + trigger emisor — aplicado BD prod (`20260528_test_questions_outbox.sql`)
+> - ✅ Fase 1.2: worker NestJS `outbox-processor` — desplegado Fargate (`7af9d386`)
+> - ✅ Fase 1.3: handler `user_article_stats` shadow + tabla shadow (`20260529_user_article_stats_shadow.sql`) — desactivado por defecto vía `SHADOW_HANDLERS_ENABLED=false`. Activar mañana.
+> - ✅ Fase 1.5: cache Redis cross-lambda para 3 RPCs antifraude (`73a6804b`)
+> - ✅ Fase 1.6: revert bypass antifraud `cdf7c001` — antifraud reactivado con cache Redis
+> - 🔥 Hotfix `6457f8c8`: cron EVERY_SECOND → Interval(5s) anti-overlap. EVERY_SECOND saturó el scheduler de NestJS y rompió TODOS los crons del backend Fargate (canaries incluidos) entre 21:50 UTC del 28/05 y el deploy del hotfix.
+> - Outbox procesando: pend=0, proc=594+ y subiendo (deploy 7af9d386 activo).
+> - 503 bajando: de 583/5min antes del Sprint a 79/5min actual.
 
 ---
 
