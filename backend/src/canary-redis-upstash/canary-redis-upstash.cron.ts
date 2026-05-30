@@ -4,6 +4,7 @@ import {
   getLastTickMsAgo,
   runWithHeartbeat,
 } from '../heartbeat/heartbeat.helpers';
+import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CanaryRedisUpstashService } from './canary-redis-upstash.service';
@@ -36,6 +37,8 @@ export class CanaryRedisUpstashCron {
 
   @Cron('*/5 * * * *', { name: 'canary-redis-upstash', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    // Jitter 0-15s para desacoplar de refresh-rankings + alerts-engine.
+    await jitter(15_000);
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
   }
 

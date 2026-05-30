@@ -4,6 +4,7 @@ import {
   getLastTickMsAgo,
   runWithHeartbeat,
 } from '../heartbeat/heartbeat.helpers';
+import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { ProcessOutboxService } from './process-outbox.service';
@@ -33,6 +34,8 @@ export class ProcessOutboxCron {
 
   @Cron('*/5 * * * *', { name: 'process-outbox', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    // Jitter 0-5s para desacoplar de refresh-rankings + alerts-engine.
+    await jitter(5_000);
     this.logger.log('Cron process-outbox disparado');
     const startedAt = Date.now();
     await runWithHeartbeat(this, 'lastTickAtMs', async () => {

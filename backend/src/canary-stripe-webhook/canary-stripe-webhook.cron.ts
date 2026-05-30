@@ -4,6 +4,7 @@ import {
   getLastTickMsAgo,
   runWithHeartbeat,
 } from '../heartbeat/heartbeat.helpers';
+import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CanaryStripeWebhookService } from './canary-stripe-webhook.service';
@@ -40,6 +41,8 @@ export class CanaryStripeWebhookCron {
 
   @Cron('*/5 * * * *', { name: 'canary-stripe-webhook', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    // Jitter 0-25s para desacoplar de refresh-rankings + alerts-engine.
+    await jitter(25_000);
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
   }
 

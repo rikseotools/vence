@@ -4,6 +4,7 @@ import {
   getLastTickMsAgo,
   runWithHeartbeat,
 } from '../heartbeat/heartbeat.helpers';
+import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CanaryDatabasePoolService } from './canary-database-pool.service';
@@ -35,6 +36,8 @@ export class CanaryDatabasePoolCron {
 
   @Cron('*/5 * * * *', { name: 'canary-database-pool', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    // Jitter 0-20s para desacoplar de refresh-rankings + alerts-engine.
+    await jitter(20_000);
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
   }
 

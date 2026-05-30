@@ -39,7 +39,13 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
       useFactory: (config: ConfigService): PgClient => {
         const url = config.getOrThrow<string>('DATABASE_URL');
         return postgres(url, {
-          max: 10, // worker: concurrencia moderada
+          // Subido 10→25 tras incidente 30/05/2026 ~10:25 UTC:
+          // 6 crons @Cron('*/5 * * * *') tickearon simultáneamente
+          // (refresh-rankings 3.4s + alerts-engine 3.2s + 4 canaries) y
+          // saturaron el pool de 10. Pool 25 + jitter 0-30s en cada cron
+          // (jitter.helper.ts) elimina la colisión y deja margen para
+          // crons daily pesados (detect-oep-llm ~2.5min).
+          max: 25,
           prepare: false, // compat con pooler en transaction mode
           idle_timeout: 20,
           connect_timeout: 10,
@@ -49,6 +55,7 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
           // Postgres mata la query en 30s, postgres-js libera el slot, y el
           // catch del worker se dispara → siguiente tick reintenta.
           // Aplicado a TODAS las connections del pool (default per-session).
+          // NOTA: NO bajarlo a 5s — detect-oep-llm tarda 2.5min legítimamente.
           connection: {
             statement_timeout: 30000, // 30s — query individual
             idle_in_transaction_session_timeout: 60000, // 60s — txn ociosa

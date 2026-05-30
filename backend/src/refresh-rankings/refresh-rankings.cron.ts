@@ -4,6 +4,7 @@ import {
   getLastTickMsAgo,
   runWithHeartbeat,
 } from '../heartbeat/heartbeat.helpers';
+import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { RefreshRankingsService } from './refresh-rankings.service';
@@ -39,6 +40,9 @@ export class RefreshRankingsCron {
 
   @Cron('*/5 * * * *', { name: 'refresh-rankings', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    // Jitter 0-30s: cron pesado (3-5s típico). Evita colisión XX:25:00 UTC
+    // con alerts-engine + 4 canaries que también son @Cron('*/5 * * * *').
+    await jitter(30_000);
     this.logger.log('Cron refresh-rankings disparado');
     const startedAt = Date.now();
     await runWithHeartbeat(this, 'lastTickAtMs', async () => {

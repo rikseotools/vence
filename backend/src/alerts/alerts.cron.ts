@@ -5,6 +5,7 @@ import {
   getLastTickMsAgo,
   runWithHeartbeat,
 } from '../heartbeat/heartbeat.helpers';
+import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { ALERT_RULES, type AlertRule } from './alert-rules';
@@ -55,6 +56,9 @@ export class AlertsCron {
 
   @Cron('*/5 * * * *', { name: 'alerts-engine', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    // Jitter 0-30s: cron pesado (3.2s típico, 24 reglas SQL). Evita colisión
+    // XX:25:00 UTC con refresh-rankings + 4 canaries en el mismo segundo.
+    await jitter(30_000);
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
   }
 
