@@ -533,14 +533,21 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
         AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
     ),
     same_hour_history AS (
-      -- Misma hora-del-día UTC, últimos 7 días (excluyendo hoy)
+      -- Misma hora-del-día UTC + mismo DÍA-DE-SEMANA, últimos 28 días.
+      -- Fix 30/05/2026: la versión anterior comparaba con cualquier día → en
+      -- fin de semana disparaba falsos positivos "tráfico cayó 70%" porque la
+      -- mediana incluía días laborables con más tráfico. Recibimos 11 alertas
+      -- traffic_drop el sábado 30/05 entre 07-11 UTC. Comparar sábado vs
+      -- sábados pasados elimina el ruido del weekend.
       SELECT date_trunc('hour', ts) AS hr, COUNT(*)::int AS n
       FROM observable_events
       WHERE event_type = 'request_completed'
-        AND ts >= NOW() - INTERVAL '8 days'
+        AND ts >= NOW() - INTERVAL '29 days'
         AND ts <  date_trunc('hour', NOW() - INTERVAL '1 hour')
         AND EXTRACT(HOUR FROM ts AT TIME ZONE 'UTC')
             = EXTRACT(HOUR FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
+        AND EXTRACT(DOW FROM ts AT TIME ZONE 'UTC')
+            = EXTRACT(DOW FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
         AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
       GROUP BY 1
     ),
