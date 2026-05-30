@@ -89,7 +89,18 @@ export class HeartbeatRegistry {
     for (const [name, { getLastTickMsAgo, config }] of this.registry) {
       const ago = getLastTickMsAgo();
       const tickRecent = ago !== null && ago <= config.thresholdMs;
-      const inGracePeriod = ago === null && uptime < config.gracePeriodMs;
+      // Grace effective = MAX(gracePeriodMs, thresholdMs):
+      //   - gracePeriodMs cubre el bootstrap inicial (~120s).
+      //   - thresholdMs cubre crons cuyo próximo tick esperado es lejano
+      //     (daily/weekly): si proceso arrancó hace 5min y cron es diario,
+      //     que ago=null sea normal hasta que pase el threshold (~25h).
+      // Sin esto, un task recién arrancado reporta 20+ crons "stale" porque
+      // ninguno daily/weekly ha podido tickear todavía.
+      const effectiveGraceMs = Math.max(
+        config.gracePeriodMs,
+        config.thresholdMs,
+      );
+      const inGracePeriod = ago === null && uptime < effectiveGraceMs;
       const healthy = tickRecent || inGracePeriod;
       if (!healthy) {
         stale.push({
