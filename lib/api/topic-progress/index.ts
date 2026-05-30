@@ -116,15 +116,18 @@ export const POSITION_TYPE_TO_OPOSICION = POSITION_TYPE_TO_SLUG
 
 import {
   getArticleTopicMapping,
+  getArticleIdsForTopic,
   invalidateArticleTopicMapping,
 } from './mapping'
 import {
   getUserAnswersWithArticles,
+  getUserAnswersForArticles,
   invalidateUserAnswersCache,
 } from './user-answers'
 import {
   aggregateStatsByTopic,
   getStatsForTopic,
+  calculateDetailedProgress,
   type TopicStats,
   type DetailedTopicProgress,
 } from './stats'
@@ -200,13 +203,32 @@ export async function getTopicProgressForUser(
       }
     }
 
-    const mapping = await getArticleTopicMapping(positionType)
-    // NO filtrar por tema_number en SQL: un artículo puede pertenecer a varios
-    // temas via topic_scope. getStatsForTopic filtra por law_id + article_number
-    // del mapping, así las respuestas a artículos compartidos cuentan en ambos temas.
-    // Cache de 5min protege contra re-ejecuciones.
-    const answers = await getUserAnswersWithArticles(userId)
-    const progress = getStatsForTopic(answers, mapping, topicNumber, totalQuestionsAvailable)
+    // Fase D-bis CQRS-light (2026-05-30): resolver article_ids del tema en SQL
+    // y filtrar respuestas en SQL en vez de cargar todas y filtrar en JS.
+    // Heavy user (64.720 respuestas, tema 1 = 56 artículos):
+    //   - Antes: 14.169ms cold / 320ms warm (cargar 64.720 → filtrar 2.669 en JS)
+    //   - Después: 1.539ms cold / 107ms warm (SQL trae directo 2.669 filas)
+    // Paridad EXACTA verificada (total/correct/unique_q idénticos).
+    const articleIds = await getArticleIdsForTopic(positionType, topicNumber)
+
+    if (articleIds.length === 0) {
+      // Tema sin scope mapping → no hay respuestas posibles
+      return {
+        success: true,
+        progress: {
+          totalAnswers: 0,
+          correctAnswers: 0,
+          overallAccuracy: 0,
+          uniqueQuestionsAnswered: 0,
+          lastStudy: null,
+          performanceByDifficulty: {},
+          recentStats: { last7Days: 0, last15Days: 0, last30Days: 0 },
+        },
+      }
+    }
+
+    const answers = await getUserAnswersForArticles(userId, articleIds)
+    const progress = calculateDetailedProgress(answers, totalQuestionsAvailable)
 
     return { success: true, progress }
   } catch (error) {

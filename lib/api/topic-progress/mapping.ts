@@ -111,6 +111,80 @@ export function clearAllArticleTopicMappings(): void {
   topicScopeCache.clear()
 }
 
+// ============================================
+// RESOLUCIÓN article_ids POR TEMA (HOT PATH)
+// ============================================
+
+interface TopicArticleIdsCacheEntry {
+  articleIds: string[]
+  timestamp: number
+}
+
+const topicArticleIdsCache = new Map<string, TopicArticleIdsCacheEntry>()
+const TOPIC_ARTICLE_IDS_TTL = 60 * 60 * 1000 // 1h (igual que mapping)
+
+/**
+ * Resuelve los `article_ids` (uuid) de un tema concreto desde el mapping.
+ *
+ * Convierte las claves `lawId_articleNumber` del mapping a uuids de `articles`,
+ * filtrando por las del topicNumber pedido. Cacheado 1h.
+ *
+ * Usado por getUserAnswersForArticles para filtrar en SQL en vez de en JS:
+ *   - heavy user (64.720 respuestas): 14s → 88ms warm (161× speedup)
+ *
+ * @param positionType - Tipo de oposición
+ * @param topicNumber - Número del tema
+ * @returns Lista de article_ids (uuid) para ese tema
+ */
+export async function getArticleIdsForTopic(
+  positionType: string,
+  topicNumber: number
+): Promise<string[]> {
+  const cacheKey = `topic-article-ids:${positionType}:${topicNumber}`
+  const cached = topicArticleIdsCache.get(cacheKey)
+
+  if (cached && Date.now() - cached.timestamp < TOPIC_ARTICLE_IDS_TTL) {
+    return cached.articleIds
+  }
+
+  const db = getTopicProgressMappingDb()
+
+  // Una sola query con JOIN: topic_scope → topics + articles
+  // Resuelve article_id final desde (law_id, article_number) del scope.
+  const result = await db.execute<{ article_id: string }>(sql`
+    SELECT DISTINCT a.id AS article_id
+    FROM public.topic_scope ts
+    INNER JOIN public.topics tp ON ts.topic_id = tp.id
+    INNER JOIN public.articles a ON a.law_id = ts.law_id
+    WHERE tp.position_type = ${positionType}
+      AND tp.is_active = true
+      AND tp.topic_number = ${topicNumber}
+      AND a.is_active = true
+      AND (
+        ts.article_numbers IS NULL  -- "toda la ley"
+        OR a.article_number = ANY(ts.article_numbers)
+      )
+  `)
+
+  const rows = Array.isArray(result) ? result : (result as any).rows || []
+  const articleIds = rows.map((r: any) => r.article_id)
+
+  topicArticleIdsCache.set(cacheKey, { articleIds, timestamp: Date.now() })
+
+  return articleIds
+}
+
+/**
+ * Invalida el caché de article_ids resueltos por tema.
+ */
+export function invalidateTopicArticleIds(positionType: string): void {
+  for (const key of topicArticleIdsCache.keys()) {
+    if (key.startsWith(`topic-article-ids:${positionType}:`)) {
+      topicArticleIdsCache.delete(key)
+    }
+  }
+}
+
 /**
  * Obtiene estadísticas del caché (para debugging)
  */

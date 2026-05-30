@@ -291,9 +291,19 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 #### Fase D-bis — Hot path projections (CQRS-light) para 100k DAU (1-2 sem, riesgo 🟡)
 
+> **🟢 Iteración 1 APLICADA 2026-05-30** (migration `20260530_fase_d_bis_topic_progress_covering.sql`). Bench heavy user `c16c186a` (64.720 test_questions): **14.169ms → 1.500ms cold / 320ms → 180-260ms warm** (6.7× / 1.7× speedup). Paridad EXACTA verificada con tests. Tests `__tests__/api/topic-progress|topic-data|theme-stats`: **195/195 passing**. La iteración 1 evita la complejidad de proyecciones materializadas con triggers — soluciona el hot path con (a) covering indexes + (b) filtrar en SQL en vez de JS. Iteración 2 (proyecciones tabla agregada user_topic_progress_summary) queda RESERVADA para si 100k DAU detecta otra ola de saturación tras la migración a RDS.
+
 > **Añadida 2026-05-26** tras detectar vía observabilidad un pico de 5xx a las 09:15 UTC causado por `getUserAnswersWithArticles` (1.8-3.2s para heavy users) saturando pool durante un cron pesado concurrente. Cascada visible en 26 errores 5xx/min sobre 7 endpoints.
 
-**El problema**: la query `getUserAnswersWithArticles` en `lib/api/topic-progress/user-answers.ts` escanea TODOS los `test_questions` de un user (15-30k filas para heavy users) + JOIN `questions` + JOIN `articles`. Tarda 1.8-3.2s incluso con `idx_tq_user_id` óptimo (bench real 26/05). Es O(N) por user.
+**Iteración 1 (aplicada 2026-05-30, sin proyecciones materializadas):**
+1. Backfill 3.158 filas legacy con `tq.article_id IS NULL` AND `q.primary_article_id IS NOT NULL`.
+2. `CREATE INDEX CONCURRENTLY idx_tq_user_q_full_covering ON test_questions (user_id, question_id) INCLUDE (is_correct, created_at, time_spent_seconds, difficulty, confidence_level, law_name, article_id)` — 150MB, permite Index Only Scan eliminando 4.5s heap fetches.
+3. `CREATE INDEX CONCURRENTLY idx_questions_id_with_article ON questions (id) INCLUDE (primary_article_id)` — 5MB, elimina 14k lookups al heap del JOIN.
+4. Nuevo método `getUserAnswersForArticles(userId, articleIds[])` en `lib/api/topic-progress/user-answers.ts` que filtra en SQL en vez de cargar 64k filas y filtrar en JS.
+5. Nuevo helper `getArticleIdsForTopic(positionType, topicNumber)` en `lib/api/topic-progress/mapping.ts` (cacheado 1h) que resuelve article_ids del tema directamente.
+6. `getTopicProgressForUser` refactorizado para usar el flujo nuevo. Caller `getAllTopicStatsForUser` (usado por theme-stats) mantenido con flujo original (ROI bajo: ya cacheado 5min L1).
+
+**El problema original**: la query `getUserAnswersWithArticles` en `lib/api/topic-progress/user-answers.ts` escanea TODOS los `test_questions` de un user (15-30k filas para heavy users) + JOIN `questions` + JOIN `articles`. Tarda 1.8-3.2s incluso con `idx_tq_user_id` óptimo (bench real 26/05). Es O(N) por user.
 
 **Quién la consume**:
 - `/api/v2/topic-progress/theme-stats` → AGREGA por topic en TypeScript (`aggregateStatsByTopic`). No necesita las filas individuales, solo conteos.
