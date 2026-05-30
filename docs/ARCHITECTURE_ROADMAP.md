@@ -127,7 +127,7 @@ Mover los endpoints hot path (no todos — sólo los que cascadean) al backend N
 > - **Defensa-en-profundidad worker outbox** (statement_timeout BD + heartbeat + ECS liveness probe `/health/crons`)
 >
 > **Pendiente:**
-> - **Gap 9 dashboard `/admin/observability`** (EN CURSO 30/05)
+> - ✅ **Gap 9 dashboard `/admin/observability` LIVE** (commit `a01ef8ff` 30/05) — KPI cards + timeseries por hora + tablas (source+severity, client-side, top errors, slow endpoints con p50/p95/p99). API `/api/admin/observability` con 7 queries paralelas Drizzle.
 > - Gap 12 tracing OpenTelemetry (proyecto serio, no urgente)
 
 Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado por `/api/stats` v2** (que también es 100% agnóstico — sólo tablas + triggers Postgres estándar):
