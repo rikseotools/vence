@@ -28,6 +28,22 @@
 >
 > ➡️ DECISIÓN: desactivar SHADOW_HANDLERS_ENABLED inmediatamente (elimina carga doble), arreglar handlers, re-soak, cutover validado.
 >
+> **Actualización 30/05 09:50 UTC — INVESTIGACIÓN MOSTRÓ que los handlers están BIEN:**
+> Los "39 blockers" eran falsos positivos del script de diff. PostgreSQL trata
+> `NULL = NULL` como UNKNOWN en `LEFT JOIN USING (...)`, pero el UNIQUE INDEX de
+> las tablas usa `NULLS NOT DISTINCT` (NULL=NULL como verdad). Fix del script
+> (`40f06c75`): `LEFT JOIN ON IS NOT DISTINCT FROM`. Resultado: **39 → 2
+> blockers** (race conditions normales en 760+ filas tocadas = 0.26%).
+>
+> **Estado real:** paridad shadow vs real 99.7%. Cutover factible.
+>
+> **Pasos siguientes ejecutados:**
+> 1. ✅ Shadow re-activado (task def v18 SHADOW=true, 30/05 09:40 UTC).
+> 2. ✅ Code change handlers con flag `CUTOVER_DONE` (commit `4fbb1631`, push 30/05 ~09:50 UTC).
+> 3. ⏳ Deploy backend GHA → ECR → ECS rolling (~5min).
+> 4. 🟡 **Cutover SQL atómico** (DROP TRIGGER × 20 + BACKFILL + RENAME): **REQUIERE OK MANUEL**.
+> 5. 🟡 Task def v19 con `CUTOVER_DONE=true` + rolling deploy.
+>
 > **Resumen sesión 28-29/05/2026:**
 > - ✅ Fase 1.1: schema outbox + trigger emisor — aplicado BD prod (`20260528_test_questions_outbox.sql`)
 > - ✅ Fase 1.2: worker NestJS `outbox-processor` — desplegado Fargate (`7af9d386`)
