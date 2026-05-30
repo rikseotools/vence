@@ -29,6 +29,19 @@ export class HealthController {
   /** Umbral por defecto de silencio del worker (30s = 6 ticks × 5s). */
   private static readonly OUTBOX_SILENCE_THRESHOLD_MS = 30_000;
 
+  /**
+   * Grace period inicial del proceso. Durante este tiempo, /health/outbox
+   * devuelve 200 aunque lastTickAtMs sea null — NestJS bootstrap en backend
+   * con ~30+ módulos tarda ~30-60s. Si lo devolviéramos 503, el ECS liveness
+   * probe mataría el container antes de que llegue a estar operativo.
+   *
+   * Tras este grace period, si sigue null → worker no arrancó → 503 legítimo.
+   */
+  private static readonly STARTUP_GRACE_MS = 120_000; // 2 min
+
+  /** Timestamp del arranque del proceso (Date.now() del primer import). */
+  private readonly startedAtMs = Date.now();
+
   constructor(private readonly outboxCron: OutboxProcessorCron) {}
 
   @Get()
@@ -56,7 +69,16 @@ export class HealthController {
   checkOutbox(@Res() res: Response): void {
     const lastTickMsAgo = this.outboxCron.getLastTickMsAgo();
     const thresholdMs = HealthController.OUTBOX_SILENCE_THRESHOLD_MS;
-    const alive = lastTickMsAgo !== null && lastTickMsAgo <= thresholdMs;
+    const processUptimeMs = Date.now() - this.startedAtMs;
+    const inGracePeriod = processUptimeMs < HealthController.STARTUP_GRACE_MS;
+
+    // Estados posibles:
+    //   1. Tick reciente (< threshold) → alive=true
+    //   2. Sin tick aún PERO dentro de grace period → alive=true (starting)
+    //   3. Sin tick PERO pasado grace period → alive=false (worker no arrancó)
+    //   4. Último tick > threshold → alive=false (worker colgado)
+    const tickRecent = lastTickMsAgo !== null && lastTickMsAgo <= thresholdMs;
+    const alive = tickRecent || (lastTickMsAgo === null && inGracePeriod);
 
     const body: OutboxHealthResponse = {
       alive,
