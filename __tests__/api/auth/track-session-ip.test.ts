@@ -251,7 +251,12 @@ describe('Track Session IP - Timeout degradado a 200 no-track', () => {
     expect(res.headers.get('Retry-After')).toBeNull()
   })
 
-  it('errores genuinos (no timeout) siguen devolviendo 500', async () => {
+  it('errores transitorios de BD también degradan a 200 (track-session-ip es fire-and-forget)', async () => {
+    // Cambio 2026-05-30: el endpoint ahora degrada CUALQUIER error de BD
+    // (timeout, "Failed query" del pooler, conexión refused) a 200 no-track,
+    // emitiendo evento `warn` a observable_events con eventType específico
+    // para mantener observabilidad. Antes solo cacheaba timeouts y dejaba
+    // pasar el resto como 500 contaminando métrica 5xx critical.
     jest.doMock('@/lib/db/timeout', () => ({
       DbTimeoutError: class extends Error {},
       isDbTimeoutError: () => false,
@@ -267,6 +272,9 @@ describe('Track Session IP - Timeout degradado a 200 no-track', () => {
     jest.doMock('@/lib/api/withErrorLogging', () => ({
       withErrorLogging: (_path: string, h: Function) => h,
     }))
+    jest.doMock('@/lib/observability/emit', () => ({
+      emit: jest.fn().mockResolvedValue(undefined),
+    }))
 
     const { POST } = require('@/app/api/auth/track-session-ip/route')
 
@@ -277,7 +285,9 @@ describe('Track Session IP - Timeout degradado a 200 no-track', () => {
 
     const res = await POST(req)
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toMatchObject({ success: false, tracked: false, reason: 'db_error' })
   })
 })
 

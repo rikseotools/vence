@@ -8,6 +8,7 @@ import { z } from 'zod/v3'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { emit } from '@/lib/observability/emit'
 
 // Quick-fail timeout (Phase 3). Track-session-ip se llama en cada login;
 // si el pooler parpadea, el lambda quedaría 30s esperando. 10s es
@@ -191,23 +192,39 @@ async function _POST(request: Request) {
       geo: geo ? { city: geo.city, region: geo.region, country: geo.country_code } : null,
     })
   } catch (error) {
-    if (isDbTimeoutError(error)) {
-      // Track-session-ip es analytics de seguridad eventually-consistent:
-      // el cliente trata el call como fire-and-forget no crítico (ver
-      // contexts/AuthContext.tsx:41-59) y la fila se actualiza en el siguiente
-      // login. Devolver 503 era semánticamente incorrecto — no hay nada que el
-      // cliente pueda reintentar útilmente y no afecta al usuario.
-      // Devolvemos 200 { tracked: false } para no contaminar la métrica de
-      // errores 5xx. El timeout sigue capturado en Sentry vía withDbTimeout
-      // con tag quick_fail=db_timeout (lib/db/timeout.ts) → observabilidad
-      // intacta.
+    // Track-session-ip es analytics de seguridad eventually-consistent:
+    // el cliente trata el call como fire-and-forget no crítico (ver
+    // contexts/AuthContext.tsx:41-59) y la fila se actualiza en el siguiente
+    // login. Para CUALQUIER fallo de BD (timeout, conexión transitoria, query
+    // glitch del pooler) devolvemos 200 { tracked: false } — el cliente no
+    // tiene nada útil que hacer con un 500 aquí.
+    //
+    // MANTENEMOS OBSERVABILIDAD: emitimos evento `warn` con eventType
+    // específico (no contamina http_5xx / critical) para que /admin/observability
+    // pueda detectar si el rate sube significativamente sobre baseline (0.82%
+    // medido 30/05/2026) y reabrir como bug real del pooler.
+    const isTimeout = isDbTimeoutError(error)
+    const errMsg = error instanceof Error ? error.message : 'Unknown error'
+
+    if (isTimeout) {
       console.warn('⏱️ [SessionIP] Timeout (quick-fail) — degradado a 200/no-track:', error.timeoutMs, 'ms')
-      return NextResponse.json({ success: false, tracked: false, reason: 'db_unavailable' }, { status: 200 })
+    } else {
+      console.warn('⚠️ [SessionIP] Error de BD transitorio — degradado a 200/no-track:', errMsg.slice(0, 200))
     }
-    console.error('❌ [SessionIP] Error inesperado:', error)
+
+    // Fire-and-forget — no esperamos al emit ni rompemos si falla
+    emit({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: isTimeout ? 'track_session_ip_db_timeout' : 'track_session_ip_db_error',
+      endpoint: '/api/auth/track-session-ip',
+      errorMessage: errMsg.slice(0, 500),
+      metadata: { degraded_to: 200, reason: isTimeout ? 'db_unavailable' : 'db_error' },
+    }).catch(() => {})
+
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { success: false, tracked: false, reason: isTimeout ? 'db_unavailable' : 'db_error' },
+      { status: 200 }
     )
   }
 }
