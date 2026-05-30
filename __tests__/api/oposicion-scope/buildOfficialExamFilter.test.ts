@@ -51,6 +51,13 @@ jest.mock('@/lib/config/exam-positions', () => ({
     if (positionType === 'TEST_MAPPED_OPOSICION') return ['exam-position-mapped']
     return null
   }),
+  // Mock isExamPositionRegistered: solo TEST_MAPPED_OPOSICION está "registrada".
+  // Las TEST_UNMAPPED_* devuelven false → buildOfficialExamFilter dispara
+  // el flujo de recordNoExamPositionMapping (comportamiento previo al fix
+  // de oposiciones sin oficiales).
+  isExamPositionRegistered: jest.fn((positionType: string) =>
+    positionType === 'TEST_MAPPED_OPOSICION'
+  ),
 }))
 
 jest.mock('@/lib/config/oposiciones', () => ({

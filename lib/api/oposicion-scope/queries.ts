@@ -16,7 +16,7 @@ function getOposicionScopeDb() {
 }
 import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs } from '@/db/schema'
 import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'
-import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { getValidExamPositions, isExamPositionRegistered } from '@/lib/config/exam-positions'
 import { ALL_POSITION_TYPES } from '@/lib/config/oposiciones'
 import { logValidationError } from '@/lib/api/validation-error-log'
 
@@ -215,7 +215,14 @@ export function filterSelectedLawsByScope(
 export function buildOfficialExamFilter(positionType: string) {
   const validPositions = getValidExamPositions(positionType)
   if (!validPositions || validPositions.length === 0) {
-    if (ALL_POSITION_TYPES.includes(positionType)) {
+    // Si está REGISTRADA en EXAM_POSITION_MAP (aunque con array vacío),
+    // es caso conocido — silenciar warn. Si NO está registrada, log info
+    // para que el equipo añada la entrada cuando importe oficiales.
+    if (isExamPositionRegistered(positionType)) {
+      // Caso conocido: oposición existe pero sin oficiales todavía.
+      // No-op (sin log) — añadir entradas a EXAM_POSITION_MAP cuando se
+      // importen preguntas oficiales para esta oposición.
+    } else if (ALL_POSITION_TYPES.includes(positionType)) {
       // Oposición conocida pero sin mapeo todavía. Registrar 1 vez al día en
       // validation_error_logs (severity=info) para trazabilidad en admin sin
       // spam de logs. Ver análisis 15/04/2026.

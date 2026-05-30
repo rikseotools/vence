@@ -102,6 +102,16 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'policia nacional',
     'escala basica policia nacional',
   ],
+  // Oposiciones SIN preguntas oficiales registradas todavía (array vacío
+  // silencia el warning 'no_exam_position_mapping' en validation_error_logs).
+  // Detectado 30/05/2026 al revisar validation_error_logs post-cutover.
+  // Cuando se importen preguntas oficiales para alguna, añadir las variantes
+  // de exam_position aquí (igual que el resto de oposiciones).
+  'auxiliar_administrativo_diputacion_zaragoza': [],
+  'tcae_sermas_madrid': [],
+  'administrativo_galicia': [],
+  'auxiliar_administrativo_clm': [],
+  'auxiliar_administrativo_aragon': [],
 }
 
 /**
@@ -151,6 +161,20 @@ export function getValidExamPositions(positionType: string): string[] {
   if (!positionType) return []
   const normalized = positionType.toLowerCase().replace(/-/g, '_')
   return EXAM_POSITION_MAP[normalized] || []
+}
+
+/**
+ * True si el positionType está REGISTRADO en EXAM_POSITION_MAP (aunque con
+ * array vacío). Permite distinguir "oposición sin oficiales aún (caso conocido,
+ * silenciar warn)" de "positionType nuevo no registrado (caso real, warn)".
+ *
+ * Añadido 30/05/2026 tras detectar 5 oposiciones disparando warn no_exam_position_mapping
+ * a diario sin tener oficiales todavía (tcae_sermas_madrid, etc.).
+ */
+export function isExamPositionRegistered(positionType: string): boolean {
+  if (!positionType) return false
+  const normalized = positionType.toLowerCase().replace(/-/g, '_')
+  return normalized in EXAM_POSITION_MAP
 }
 
 /**

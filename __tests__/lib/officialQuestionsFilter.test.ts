@@ -211,9 +211,14 @@ describe('Filtro de preguntas oficiales por oposición', () => {
       expect(result.length).toBe(1)
     })
 
-    it('todas las oposiciones del EXAM_POSITION_MAP tienen mapeo', () => {
+    it('oposiciones registradas en EXAM_POSITION_MAP devuelven un array (puede estar vacío)', () => {
+      // Algunas oposiciones tienen array vacío DELIBERADAMENTE: están registradas
+      // como "caso conocido sin oficiales aún" para silenciar warn
+      // no_exam_position_mapping (ver lib/config/exam-positions.ts).
+      // Cuando se importen oficiales para alguna, basta con poblar el array.
       for (const posType of Object.keys(EXAM_POSITION_MAP)) {
-        expect(getValidExamPositions(posType).length).toBeGreaterThan(0)
+        const result = getValidExamPositions(posType)
+        expect(Array.isArray(result)).toBe(true)
       }
     })
   })
