@@ -398,9 +398,10 @@ export default function AdminFeedbackPage() {
 
         // Si la conversación está en waiting_admin, marcar como vista (quitar pendiente)
         if (conversation.status === 'waiting_admin') {
+          const authHeaders = await getAuthHeaders()
           await fetch('/api/v2/admin/feedback/mark-viewed', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders },
             body: JSON.stringify({
               conversationId: conversation.id,
               status: 'waiting_user',
@@ -459,9 +460,10 @@ export default function AdminFeedbackPage() {
 
       // Si no hay conversación, crear una antes de llamar al endpoint
       if (!conversation) {
+        const authHeaders = await getAuthHeaders()
         const res = await fetch('/api/v2/admin/feedback/create-conversation', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({
             feedbackId: selectedFeedback.id,
             userId: selectedFeedback.user_id,
@@ -527,9 +529,10 @@ export default function AdminFeedbackPage() {
     setNewConvUser(null)
 
     try {
+      const authHeaders = await getAuthHeaders()
       const res = await fetch('/api/v2/admin/feedback/find-user-by-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ email: newConvEmail.trim().toLowerCase() }),
       })
       const json = await res.json()
@@ -555,9 +558,10 @@ export default function AdminFeedbackPage() {
     try {
       // 1+2 atómicos: INSERT user_feedback + INSERT feedback_conversation
       const messagePreview = newConvMessage.trim().substring(0, 100) + (newConvMessage.length > 100 ? '...' : '')
+      const authHeaders = await getAuthHeaders()
       const createRes = await fetch('/api/v2/admin/feedback/create-admin-conversation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           targetUserId: newConvUser.id,
           targetEmail: newConvUser.email,
@@ -724,9 +728,10 @@ export default function AdminFeedbackPage() {
 
       // Cargar perfiles + cancelaciones + sesiones + perfiles huérfanos
       // via endpoint server-side agnóstico (Drizzle, sin service_role en cliente).
+      const authHeaders = await getAuthHeaders()
       const enrichRes = await fetch('/api/v2/admin/feedback/enrich-profiles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ userIds, orphanEmails }),
       })
       const enrich = await enrichRes.json()
@@ -1024,7 +1029,10 @@ export default function AdminFeedbackPage() {
 
   const loadConversations = async () => {
     try {
-      const res = await fetch('/api/v2/admin/feedback/list')
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch('/api/v2/admin/feedback/list', {
+        headers: authHeaders,
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Error cargando conversaciones')
       const data = json.conversations as Array<{ feedback_id: string }>
@@ -1411,8 +1419,10 @@ export default function AdminFeedbackPage() {
       // Upload via endpoint server-side (adapter agnóstico S3/Supabase).
       const fd = new FormData()
       fd.append('file', file)
+      const authHeaders = await getAuthHeaders()
       const uploadRes = await fetch('/api/v2/admin/feedback/upload-image', {
         method: 'POST',
+        headers: authHeaders,
         body: fd,
       })
       const uploadJson = await uploadRes.json()
@@ -1488,9 +1498,10 @@ export default function AdminFeedbackPage() {
     try {
       console.log('🗑️ Eliminando imagen via API server-side:', imagePath)
 
+      const authHeaders = await getAuthHeaders()
       const delRes = await fetch('/api/v2/admin/feedback/delete-image', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ imagePath }),
       })
       if (!delRes.ok) {
@@ -1967,9 +1978,10 @@ export default function AdminFeedbackPage() {
                                 try {
                                   const conv = conversations[selectedFeedback.id]
                                   if (conv) {
+                                    const authHeaders = await getAuthHeaders()
                                     const closeRes = await fetch('/api/v2/admin/feedback/close', {
                                       method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
+                                      headers: { 'Content-Type': 'application/json', ...authHeaders },
                                       body: JSON.stringify({
                                         conversationId: conv.id,
                                         alsoResolveFeedback: true,
@@ -2415,9 +2427,10 @@ export default function AdminFeedbackPage() {
                       onClick={async () => {
                         if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
                         try {
+                          const authHeaders = await getAuthHeaders()
                           const closeRes = await fetch('/api/v2/admin/feedback/close', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json', ...authHeaders },
                             body: JSON.stringify({
                               conversationId: selectedConversation.id,
                               alsoResolveFeedback: true,
