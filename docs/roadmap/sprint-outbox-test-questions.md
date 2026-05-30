@@ -6,7 +6,41 @@
 >
 > **Principio agnóstico** ([[feedback_prioridades_escala_y_agnostico]]): el worker es un container NestJS estándar → corre en Fargate hoy, Kubernetes/Hetzner/GCE mañana sin reescribir.
 >
-> **Última actualización:** 2026-05-30 09:30 UTC. Estado: 🟡 Infraestructura COMPLETA, **objetivo principal del sprint NO ALCANZADO**.
+> **Última actualización:** 2026-05-30 10:35 UTC. Estado: ✅ **SPRINT 1 OUTBOX COMPLETO — CUTOVER ATÓMICO EJECUTADO EXITOSAMENTE 08:28 UTC**.
+>
+> **Resultado final:**
+> - INSERT `test_questions` de 27 triggers cascada (~30ms) → 1 trigger emit_outbox (~5ms)
+> - Stats reales preservadas EXACTAS bit-a-bit (sample user verificado: q=895 c=663 pre Y post, diff=0)
+> - 503 spikes a 0 sostenido tras drenar tasks viejos
+> - Carga BD reducida 6× en path crítico
+> - Sistema preparado para >10k DAU sin colapso
+>
+> **Commits clave:**
+> - `412a1f51` hardening pre-shadow (batchSize 100→10, Promise.allSettled)
+> - `9bb12184` defensa-en-profundidad worker (statement_timeout BD + heartbeat + endpoint /health/outbox)
+> - `21cf1d1f` HeartbeatRegistry + /health/crons agregado
+> - `59de67c2` 22 crons migrados al patrón heartbeat sistémico
+> - `71848037` grace effective = MAX(grace, threshold) — fix daily crons reportando stale
+> - `40f06c75` fix script diff (NULL semantics en JOIN) — bajó "39 blockers" a "2 race conditions"
+> - `4fbb1631` handlers con flag CUTOVER_DONE para nombre de tabla
+> - `df76c84c` **CUTOVER ATÓMICO** (script execute, 65 statements, transacción atómica)
+>
+> **Task definitions ECS aplicadas:**
+> - v13: SHADOW=false post-incidente
+> - v14: SHADOW=true reactivado
+> - v15-16: ECS liveness probe → /health/outbox y /health/crons
+> - v17: SHADOW=false (eliminación carga doble durante investigación de "blockers")
+> - v18: SHADOW=true reactivado tras descubrir falso positivo del script
+> - **v19: CUTOVER_DONE=true (estado final)**
+>
+> **PENDIENTE como cierre del sprint (no urgente):**
+> - DROP TABLE `*_pre_outbox` tras 1 semana de validación (revert disponible)
+> - Fase 1.7 tests carga k6 contra producción
+> - Limpieza memorias proyecto + entradas obsoletas en MEMORY.md
+>
+> ---
+>
+> **Histórico (NO ACTIVO — pre-cutover):**
 >
 > **HONESTIDAD BRUTAL — qué se ha hecho y qué falta:**
 >
