@@ -81,7 +81,15 @@ export class ObservabilityService {
   // 5s es conservador: INSERT normal <5ms; si tarda >5s hay problema upstream
   // y mejor perder el evento (rechazo via timeout → catch → log warn) que
   // dejar la conexión zombie indefinidamente.
-  private static readonly EMIT_TIMEOUT_MS = 5_000;
+  // Subido 5s → 15s tras incidente 30/05: durante picos de carga (crons daily
+  // que hacen queries pesadas, p. ej. UpdateStreaksService a las 03:00 UTC),
+  // el pool BD se queda sin conexiones libres y el INSERT espera más de 5s.
+  // CloudWatch mostraba 15+ warns "emit() timeout >5000ms" en 5 segundos.
+  // Resultado: los crons SÍ corrían pero NO emitían cron_run → falsa alarma
+  // cron_overdue. 15s permite sobrevivir picos sin perder señal.
+  // Trade-off: si BD realmente está muerta, el cron tarda 15s extra por emit.
+  // Aceptable porque sólo afecta a la observabilidad, no a la lógica.
+  private static readonly EMIT_TIMEOUT_MS = 15_000;
 
   async emit(event: ObservableEvent): Promise<void> {
     try {
