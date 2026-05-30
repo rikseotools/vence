@@ -377,6 +377,23 @@ v15...). Si mezclamos terraform + AWS CLI, se genera drift. Decisión:
 SIEMPRE via AWS CLI para cambios operativos rápidos; terraform sólo para
 infra estable (red, IAM, ALB, ECR).
 
+**12. Grace period heartbeat ≠ uniforme — debe escalar con el threshold**
+Primer intento: `gracePeriodMs=120_000` para TODOS los crons. Bug: tras 2 min
+de uptime, los crons daily/weekly que aún NO han tickeado (porque su próximo
+schedule está a 24h) aparecen como stale → liveness probe mata el container.
+Fix: `effectiveGrace = MAX(gracePeriodMs, thresholdMs)`. Lectura semántica:
+"considera vivo mientras `null` Y todavía estamos dentro de la ventana
+esperada del siguiente tick". Daily cron sin tick tras 25h SÍ es legítimo
+stale. Daily cron sin tick tras 2h NO lo es.
+
+**13. Rolling deploys disfrazan estado real al monitor**
+Mi monitor pegaba a `https://api.vence.es/health/crons` durante un rolling
+deploy. Como ALB enruta entre task viejo y nuevo aleatoriamente, los eventos
+del monitor mostraban `crons=2` y `crons=24` alternados. Solo tras
+`services-stable` (un solo task PRIMARY) la métrica refleja el estado real.
+Pattern: esperar `aws ecs wait services-stable` antes de validar el endpoint
+en producción.
+
 ---
 
 ### Fase 1.5ter — Robustez worker outbox (30/05 ~07:30 UTC, post-incidente cuelgue silencioso)
