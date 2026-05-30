@@ -11,10 +11,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 @Injectable()
 export class UserStatsTotalTimeHandler {
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  // Escribe a user_stats_summary (no _total_time — esa tabla no existe).
+  private readonly tableName = tableWithSuffix('user_stats_summary');
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async handle(event: OutboxEvent): Promise<void> {
@@ -35,8 +38,9 @@ export class UserStatsTotalTimeHandler {
 
     // UPDATE only (no upsert — la row la crea user-stats-summary.handler).
     // Si no existe, no hace nada (consistente con SQL original).
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      UPDATE public.user_stats_summary_shadow
+      UPDATE public.${tbl}
       SET total_time_seconds = GREATEST(0, total_time_seconds + ${delta}),
           updated_at = NOW()
       WHERE user_id = ${userId}::uuid

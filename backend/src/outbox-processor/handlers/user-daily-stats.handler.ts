@@ -12,11 +12,13 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent, TestQuestionPayload } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 @Injectable()
 export class UserDailyStatsHandler {
   private readonly logger = new Logger(UserDailyStatsHandler.name);
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  private readonly tableName = tableWithSuffix('user_daily_stats');
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
@@ -37,8 +39,9 @@ export class UserDailyStatsHandler {
     if (!(userExists as unknown as Array<{ exists: boolean }>)[0]?.exists) return;
 
     // Agregación por día en zona horaria Europe/Madrid (igual que SQL original).
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      INSERT INTO public.user_daily_stats_shadow
+      INSERT INTO public.${tbl}
         (user_id, day, total_questions, correct_answers, total_time_seconds)
       VALUES
         (${userId}::uuid,
@@ -47,9 +50,9 @@ export class UserDailyStatsHandler {
          GREATEST(0, ${c_delta}),
          GREATEST(0, ${t_delta}))
       ON CONFLICT (user_id, day) DO UPDATE SET
-        total_questions = GREATEST(0, user_daily_stats_shadow.total_questions + ${q_delta}),
-        correct_answers = GREATEST(0, user_daily_stats_shadow.correct_answers + ${c_delta}),
-        total_time_seconds = GREATEST(0, user_daily_stats_shadow.total_time_seconds + ${t_delta}),
+        total_questions = GREATEST(0, ${tbl}.total_questions + ${q_delta}),
+        correct_answers = GREATEST(0, ${tbl}.correct_answers + ${c_delta}),
+        total_time_seconds = GREATEST(0, ${tbl}.total_time_seconds + ${t_delta}),
         updated_at = NOW()
     `);
   }

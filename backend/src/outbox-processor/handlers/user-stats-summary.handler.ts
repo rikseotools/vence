@@ -11,6 +11,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent, TestQuestionPayload } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 interface UserStatsSummaryPayload extends TestQuestionPayload {
   was_blank?: boolean | null;
@@ -19,6 +20,7 @@ interface UserStatsSummaryPayload extends TestQuestionPayload {
 @Injectable()
 export class UserStatsSummaryHandler {
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  private readonly tableName = tableWithSuffix('user_stats_summary');
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async handle(event: OutboxEvent): Promise<void> {
@@ -43,18 +45,19 @@ export class UserStatsSummaryHandler {
     if (!(userExists as unknown as Array<{ exists: boolean }>)[0]?.exists) return;
 
     // week_start = date_trunc('week', now())::date  (mismo SQL)
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
       WITH wk AS (SELECT date_trunc('week', now())::date AS d)
-      INSERT INTO public.user_stats_summary_shadow
+      INSERT INTO public.${tbl}
         (user_id, total_questions, correct_answers, blank_answers, questions_this_week, week_start)
       SELECT ${userId}::uuid, 1, ${isCorrect ? 1 : 0}, ${wasBlank ? 1 : 0}, 1, wk.d FROM wk
       ON CONFLICT (user_id) DO UPDATE SET
-        total_questions = user_stats_summary_shadow.total_questions + 1,
-        correct_answers = user_stats_summary_shadow.correct_answers + ${isCorrect ? 1 : 0},
-        blank_answers = user_stats_summary_shadow.blank_answers + ${wasBlank ? 1 : 0},
+        total_questions = ${tbl}.total_questions + 1,
+        correct_answers = ${tbl}.correct_answers + ${isCorrect ? 1 : 0},
+        blank_answers = ${tbl}.blank_answers + ${wasBlank ? 1 : 0},
         questions_this_week = CASE
-          WHEN user_stats_summary_shadow.week_start = (SELECT d FROM wk)
-          THEN user_stats_summary_shadow.questions_this_week + 1
+          WHEN ${tbl}.week_start = (SELECT d FROM wk)
+          THEN ${tbl}.questions_this_week + 1
           ELSE 1
         END,
         week_start = (SELECT d FROM wk),
@@ -81,8 +84,9 @@ export class UserStatsSummaryHandler {
 
     if (correctDelta === 0 && blankDelta === 0) return;
 
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      UPDATE public.user_stats_summary_shadow
+      UPDATE public.${tbl}
       SET correct_answers = GREATEST(0, correct_answers + ${correctDelta}),
           blank_answers = GREATEST(0, blank_answers + ${blankDelta}),
           updated_at = NOW()
@@ -99,9 +103,10 @@ export class UserStatsSummaryHandler {
     const wasBlank = oldP.was_blank === true ? 1 : 0;
     const createdAt = oldP.created_at;
 
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
       WITH wk AS (SELECT date_trunc('week', now())::date AS current_week)
-      UPDATE public.user_stats_summary_shadow s
+      UPDATE public.${tbl} s
       SET total_questions = GREATEST(0, s.total_questions - 1),
           correct_answers = GREATEST(0, s.correct_answers - ${isCorrect}),
           blank_answers = GREATEST(0, s.blank_answers - ${wasBlank}),

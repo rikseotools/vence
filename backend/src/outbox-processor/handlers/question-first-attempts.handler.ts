@@ -16,10 +16,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 @Injectable()
 export class QuestionFirstAttemptsHandler {
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  private readonly tableName = tableWithSuffix('question_first_attempts');
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async handle(event: OutboxEvent): Promise<void> {
@@ -33,8 +35,9 @@ export class QuestionFirstAttemptsHandler {
     const userId = p.user_id;
     if (!userId) return;
 
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      INSERT INTO public.question_first_attempts_shadow (
+      INSERT INTO public.${tbl} (
         user_id, question_id, is_correct, time_spent_seconds, confidence_level, created_at
       )
       VALUES (

@@ -5,10 +5,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent, TestQuestionPayload } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 @Injectable()
 export class UserHourlyStatsHandler {
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  private readonly tableName = tableWithSuffix('user_hourly_stats');
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async handle(event: OutboxEvent): Promise<void> {
@@ -26,8 +28,9 @@ export class UserHourlyStatsHandler {
     `);
     if (!(userExists as unknown as Array<{ exists: boolean }>)[0]?.exists) return;
 
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      INSERT INTO public.user_hourly_stats_shadow (user_id, hour, total_questions, correct_answers)
+      INSERT INTO public.${tbl} (user_id, hour, total_questions, correct_answers)
       VALUES (
         ${userId}::uuid,
         EXTRACT(HOUR FROM (${payload.created_at}::timestamptz AT TIME ZONE 'Europe/Madrid'))::smallint,
@@ -35,8 +38,8 @@ export class UserHourlyStatsHandler {
         GREATEST(0, ${c_delta})
       )
       ON CONFLICT (user_id, hour) DO UPDATE SET
-        total_questions = GREATEST(0, user_hourly_stats_shadow.total_questions + ${q_delta}),
-        correct_answers = GREATEST(0, user_hourly_stats_shadow.correct_answers + ${c_delta}),
+        total_questions = GREATEST(0, ${tbl}.total_questions + ${q_delta}),
+        correct_answers = GREATEST(0, ${tbl}.correct_answers + ${c_delta}),
         updated_at = NOW()
     `);
   }

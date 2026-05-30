@@ -10,10 +10,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 @Injectable()
 export class UserQuestionHistoryV2Handler {
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  private readonly tableName = tableWithSuffix('user_question_history_v2');
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async handle(event: OutboxEvent): Promise<void> {
@@ -44,8 +46,9 @@ export class UserQuestionHistoryV2Handler {
 
     const correctDelta = p.is_correct === true ? 1 : 0;
 
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      INSERT INTO public.user_question_history_v2_shadow (
+      INSERT INTO public.${tbl} (
         user_id, question_id,
         total_attempts, correct_attempts,
         success_rate,
@@ -58,11 +61,11 @@ export class UserQuestionHistoryV2Handler {
         ${p.created_at ?? null}::timestamptz, ${p.created_at ?? null}::timestamptz, 'stable'
       )
       ON CONFLICT (user_id, question_id) DO UPDATE SET
-        total_attempts = user_question_history_v2_shadow.total_attempts + 1,
-        correct_attempts = user_question_history_v2_shadow.correct_attempts + ${correctDelta},
+        total_attempts = ${tbl}.total_attempts + 1,
+        correct_attempts = ${tbl}.correct_attempts + ${correctDelta},
         success_rate = ROUND(
-          (user_question_history_v2_shadow.correct_attempts + ${correctDelta})::numeric
-          / (user_question_history_v2_shadow.total_attempts + 1),
+          (${tbl}.correct_attempts + ${correctDelta})::numeric
+          / (${tbl}.total_attempts + 1),
           2
         )::DECIMAL(3,2),
         last_attempt_at = ${p.created_at ?? null}::timestamptz,
@@ -86,8 +89,9 @@ export class UserQuestionHistoryV2Handler {
     if (correctDelta === 0) return;
 
     // NO incrementa total_attempts. Solo ajusta correctos.
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      UPDATE public.user_question_history_v2_shadow
+      UPDATE public.${tbl}
       SET correct_attempts = GREATEST(0, correct_attempts + ${correctDelta}),
           success_rate = ROUND(
             CASE WHEN total_attempts = 0 THEN 0

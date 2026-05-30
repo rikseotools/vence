@@ -21,11 +21,14 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../db/database.module';
 import type { OutboxEvent, TestQuestionPayload } from '../outbox-processor.schema';
+import { tableWithSuffix } from './shadow-suffix';
 
 @Injectable()
 export class UserArticleStatsHandler {
   private readonly logger = new Logger(UserArticleStatsHandler.name);
   private readonly enabled = process.env.SHADOW_HANDLERS_ENABLED === 'true';
+  /** Nombre de tabla: con sufijo _shadow pre-cutover, sin sufijo post-cutover. */
+  private readonly tableName = tableWithSuffix('user_article_stats');
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
@@ -46,9 +49,10 @@ export class UserArticleStatsHandler {
     `);
     if (!(userExists as unknown as Array<{ exists: boolean }>)[0]?.exists) return;
 
-    // Escribir en SHADOW TABLE (no en la tabla real)
+    // Escribir en tabla (con sufijo _shadow pre-cutover, sin sufijo post-cutover)
+    const tbl = sql.raw(this.tableName);
     await this.db.execute(sql`
-      INSERT INTO public.user_article_stats_shadow
+      INSERT INTO public.${tbl}
         (user_id, article_id, article_number, law_name, tema_number, total_questions, correct_answers)
       VALUES
         (${userId}::uuid,
@@ -59,8 +63,8 @@ export class UserArticleStatsHandler {
          GREATEST(0, ${q_delta}),
          GREATEST(0, ${c_delta}))
       ON CONFLICT (user_id, article_id, article_number, law_name, tema_number) DO UPDATE SET
-        total_questions = GREATEST(0, user_article_stats_shadow.total_questions + ${q_delta}),
-        correct_answers = GREATEST(0, user_article_stats_shadow.correct_answers + ${c_delta}),
+        total_questions = GREATEST(0, ${tbl}.total_questions + ${q_delta}),
+        correct_answers = GREATEST(0, ${tbl}.correct_answers + ${c_delta}),
         updated_at = NOW()
     `);
   }
