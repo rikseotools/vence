@@ -111,7 +111,24 @@ Mover los endpoints hot path (no todos — sólo los que cascadean) al backend N
 
 ### Bloque 4 — Materializar pendientes + resiliencia (3-4 sem)
 
-> **🟡 Estado 2026-05-25:** observabilidad capa 1 al 80%. **Hecho**: tabla `observable_events`, ExceptionFilter global backend (Gap 3), cron poda 30d (Gap 10), 14 emisores cron (13 Grupo A + cleanup), espejado `validation_error_logs`, endpoint `/api/observability/ingest` listo (env var Vercel pendiente). **Manual completo**: [`docs/runbooks/observability.md`](runbooks/observability.md) (973 líneas, filosofía AWS-ready + agnóstico). **Pendiente**: client-side observability (Gap 1, consolas usuarios), GHA workflows ingest (Gap 6), alertas activas (Gap 8), dashboard `/admin/observability` (Gap 9), SLOs (Gap 11), tracing OpenTelemetry (Gap 12).
+> **🟢 Estado 2026-05-30 ~09:30 UTC:** observabilidad capa 1 al **95%**.
+>
+> **Hecho:**
+> - Tabla `observable_events` + cron poda 30d (Gap 3, 10)
+> - ExceptionFilter global backend (Gap 3)
+> - 22 emisores cron Fargate con heartbeat sistémico (commits `59de67c2`, `71848037`)
+> - Espejado `validation_error_logs`
+> - Endpoint `/api/observability/ingest` LIVE
+> - Manual completo (`docs/runbooks/observability.md`, 973 líneas)
+> - **Gap 1 client-side observability LIVE** (`lib/observability/client.ts`, 599 eventos/24h capturados: tts, react_hydration_mismatch, intent_unfulfilled)
+> - **Gap 8 alertas activas LIVE** (24 reglas en `backend/src/alerts/alert-rules.ts`)
+> - **Gap 11 SLOs LIVE** (`/api/admin/slos` + `/admin/slos`)
+> - **EMIT_TIMEOUT 5s→15s** (commit `fd9827fb` 30/05): emit timeouts 71k/24h → **0/24h**
+> - **Defensa-en-profundidad worker outbox** (statement_timeout BD + heartbeat + ECS liveness probe `/health/crons`)
+>
+> **Pendiente:**
+> - **Gap 9 dashboard `/admin/observability`** (EN CURSO 30/05)
+> - Gap 12 tracing OpenTelemetry (proyecto serio, no urgente)
 
 Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado por `/api/stats` v2** (que también es 100% agnóstico — sólo tablas + triggers Postgres estándar):
 
