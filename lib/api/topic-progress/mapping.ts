@@ -186,6 +186,52 @@ export function invalidateTopicArticleIds(positionType: string): void {
 }
 
 /**
+ * Resuelve TODOS los article_ids del position_type (todos los temas activos).
+ *
+ * Para getAllTopicStatsForUser (theme-stats) — permite filtrar en SQL en vez
+ * de cargar TODAS las respuestas del user y filtrar 1.275 art_ids en JS.
+ *
+ * Bench heavy user (63k respuestas, 1.275 art_ids aux_admin_estado):
+ *   - Sin filter: 30s cold / 22s warm
+ *   - Con filter: 1.3s cold / 394ms warm  →  23× / 56× speedup
+ *
+ * Cacheado 1h (mismo TTL que el mapping principal).
+ */
+export async function getAllArticleIdsForPositionType(
+  positionType: string
+): Promise<string[]> {
+  const cacheKey = `all-article-ids:${positionType}`
+  const cached = topicArticleIdsCache.get(cacheKey)
+
+  if (cached && Date.now() - cached.timestamp < TOPIC_ARTICLE_IDS_TTL) {
+    return cached.articleIds
+  }
+
+  const db = getTopicProgressMappingDb()
+
+  const result = await db.execute<{ article_id: string }>(sql`
+    SELECT DISTINCT a.id AS article_id
+    FROM public.topic_scope ts
+    INNER JOIN public.topics tp ON ts.topic_id = tp.id
+    INNER JOIN public.articles a ON a.law_id = ts.law_id
+    WHERE tp.position_type = ${positionType}
+      AND tp.is_active = true
+      AND a.is_active = true
+      AND (
+        ts.article_numbers IS NULL
+        OR a.article_number = ANY(ts.article_numbers)
+      )
+  `)
+
+  const rows = Array.isArray(result) ? result : (result as any).rows || []
+  const articleIds = rows.map((r: any) => r.article_id)
+
+  topicArticleIdsCache.set(cacheKey, { articleIds, timestamp: Date.now() })
+
+  return articleIds
+}
+
+/**
  * Obtiene estadísticas del caché (para debugging)
  */
 export function getArticleTopicMappingCacheStats(): {

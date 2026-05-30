@@ -117,6 +117,7 @@ export const POSITION_TYPE_TO_OPOSICION = POSITION_TYPE_TO_SLUG
 import {
   getArticleTopicMapping,
   getArticleIdsForTopic,
+  getAllArticleIdsForPositionType,
   invalidateArticleTopicMapping,
 } from './mapping'
 import {
@@ -161,8 +162,22 @@ export async function getAllTopicStatsForUser(
       }
     }
 
-    const mapping = await getArticleTopicMapping(positionType)
-    const answers = await getUserAnswersWithArticles(userId)
+    // Fase D-bis CQRS-light (2026-05-30): resolver TODOS los article_ids
+    // del position_type y filtrar en SQL. Heavy user (63k respuestas):
+    //   - Antes: 30s cold / 22s warm (cargar 63k filas, filtrar en JS)
+    //   - Después: 1.3s cold / 394ms warm con filter ANY(1275 art_ids)
+    // aggregateStatsByTopic ya descartaba 2k filas no mapeadas → idéntico
+    // resultado al filtrar en SQL.
+    const [mapping, allArticleIds] = await Promise.all([
+      getArticleTopicMapping(positionType),
+      getAllArticleIdsForPositionType(positionType),
+    ])
+
+    if (allArticleIds.length === 0) {
+      return { success: true, stats: {} }
+    }
+
+    const answers = await getUserAnswersForArticles(userId, allArticleIds)
     const stats = aggregateStatsByTopic(answers, mapping)
 
     return { success: true, stats }
