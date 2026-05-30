@@ -174,7 +174,7 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 | Frontend Next.js | Vercel | **ECS / OpenNext Lambda + CloudFront** | ❌ Fase E |
 | API routes Next.js | Vercel functions | mover lógica al backend NestJS (parcial — ya hecho en Bloque 3) | 🟡 4/5 endpoints hot path en backend |
 | Postgres BD | Supabase Pro | **RDS Postgres** + read replica + pg_partman | ❌ Fase D |
-| Hot path projections (CQRS-light) | inexistentes — query O(N) por user | Materializadas por triggers (`user_topic_progress_summary`, `user_topic_recent_answers`) | ❌ Fase D-bis (NUEVA 2026-05-26) |
+| Hot path projections (CQRS-light) | inexistentes — query O(N) por user | Materializadas por triggers (`user_topic_progress_summary`, `user_topic_recent_answers`) | 🟢 **Iter 1 APLICADA 2026-05-30** (covering indexes + SQL filter, 14s→1.5s cold). Iter 2 (triggers + tabla agregada) reservada post-RDS |
 | Auth | Supabase Auth | **Auth.js self-hosted / AWS Cognito** | ❌ Fase C |
 | `supabase.from()` queries (PostgREST) | Supabase | endpoints propios + Drizzle | ❌ Fase B (96 archivos) |
 | ISR cache | Vercel Data Cache | CloudFront + S3 + `observable_events` versioned cache | ❌ Fase E |
