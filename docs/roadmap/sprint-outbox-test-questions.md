@@ -6,7 +6,7 @@
 >
 > **Principio agnóstico** ([[feedback_prioridades_escala_y_agnostico]]): el worker es un container NestJS estándar → corre en Fargate hoy, Kubernetes/Hetzner/GCE mañana sin reescribir.
 >
-> **Última actualización:** 2026-05-30 07:30 UTC. Estado: ✅ Fases 1.1-1.6 + 1.5bis + **1.5ter robustez worker** COMPLETAS. Shadow ACTIVADO 29/05 21:02 UTC. Worker se colgó silenciosamente 29/05 21:54-30/05 05:30 (8h). Fix profesional: statement_timeout BD + heartbeat in-memory + endpoint /health/outbox + ECS liveness probe. Pendiente: re-soak 24h + DROP TRIGGER × 20 + RENAME shadow→real + Fase 1.7 (tests carga k6).
+> **Última actualización:** 2026-05-30 08:30 UTC. Estado: ✅ Fases 1.1-1.6 + 1.5bis + **1.5ter robustez worker** + **1.5quater patrón sistémico heartbeat 22 crons** COMPLETAS. Shadow ACTIVADO 29/05 21:02 UTC. Worker se colgó silenciosamente 29/05 21:54-30/05 05:30 (8h, root cause: connection BD zombi sin statement_timeout). Tras root-cause fix + abstracción HeartbeatRegistry + /health/crons agregado, TODOS los 22 crons backend están monitoreados con auto-recovery sistémico. Pendiente: re-soak 24h + DROP TRIGGER × 20 + RENAME shadow→real + Fase 1.7 (tests carga k6).
 >
 > **Resumen sesión 28-29/05/2026:**
 > - ✅ Fase 1.1: schema outbox + trigger emisor — aplicado BD prod (`20260528_test_questions_outbox.sql`)
@@ -226,6 +226,158 @@ Stack: `lib/cache/redis.ts` ya existe en el proyecto.
 ### Fase 1.6 — Reactivar antifraud (0.5 día)
 
 `git revert cdf7c001`. Las 3 RPCs vuelven a ejecutarse pero ahora con cache Redis (< 50 ms) y sin la cascada de triggers (INSERT < 100 ms). Sin coste de monetización a partir de aquí. Cierra el TODO de mañana ([[project_pending_reactivar_antifraud_answer_save]]).
+
+### Fase 1.5quater — Patrón sistémico heartbeat aplicado a TODOS los 22 crons (30/05 ~08:30 UTC)
+
+**Aprendizaje crítico:** el incidente del worker outbox NO era un caso aislado.
+Los 22 crons del backend comparten el mismo riesgo de cuelgue silencioso. Una
+fix puntual a uno (Fase 1.5ter) deja vulnerables a los demás. Solución:
+generalizar el patrón en una abstracción reusable y aplicarlo a TODOS.
+
+**Diseño:**
+
+```
+HeartbeatRegistry (singleton global)
+  ├── register(name, getLastTickMsAgo, { thresholdMs, gracePeriodMs })
+  ├── getAllSnapshot() → { 'refresh-rankings': 4s, 'check-boe': 2h, ... }
+  ├── getStaleCrons() → filtra por threshold AND fuera del grace period
+  └── isHealthy() → todos los registrados están sanos
+
+helpers (sin clase base abstracta → no interfiere con DI NestJS):
+  ├── runWithHeartbeat(host, tickField, work)
+  │     finally: host[tickField] = Date.now()
+  │     (éxito o error)
+  └── getLastTickMsAgo(host, tickField) → ms desde último tick
+
+HealthController.GET /health/crons (agregado)
+  ├── 200 OK si TODOS los crons healthy
+  └── 503 con lista de stale si AL MENOS UNO silencioso > threshold
+```
+
+**Cron registration pattern (idéntico en los 22):**
+
+```ts
+@Injectable()
+export class XxxCron {
+  public lastTickAtMs: number | null = null;
+
+  constructor(
+    private readonly service: XxxService,
+    private readonly observability: ObservabilityService,
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'xxx',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: <2.2-2.5× interval>, gracePeriodMs: 120_000 },
+    );
+  }
+
+  @Cron(...)
+  async handle() {
+    await runWithHeartbeat(this, 'lastTickAtMs', () => this.runImpl());
+  }
+}
+```
+
+**Threshold por intervalo:**
+- @Interval(5s) → 30s (6× margin) — outbox-processor
+- Cron `*/5min` → 12 min (2.4×)
+- Cron `*/15min` → 35 min (2.3×)
+- Cron horario → 75 min (1.25×)
+- Cron cada 6h → 13 h (2.2×)
+- Daily → 25 h (1× + margen)
+- L-V daily → 4 días (tolera fines de semana)
+- Weekly → 8 días (1× + margen)
+
+Grace period 120s en todos cubre bootstrap NestJS (~30-60s con 30+ módulos).
+
+**Crons migrados (22, commits `21cf1d1f` + `59de67c2`):**
+outbox-processor, refresh-rankings, process-outbox, alerts-engine,
+canary-{answer-save, smoke-auth, stripe-webhook, database-pool,
+redis-upstash}, external-heartbeat, check-webhook-health,
+subscription-reconciliation, refresh-theme-cache, update-streaks,
+archive-interactions, observability-cleanup, detect-timeline-silence,
+check-boe-changes, detect-generic-sources, detect-oep-llm,
+check-seguimiento, process-verification-queue, avatar-rotation,
+detect-regional-oeps.
+
+**Próximo paso (no aplicado todavía):** registrar task definition v16 con
+ECS healthCheck que apunte a `/health/crons` (no `/health/outbox`) →
+auto-recovery sistémico. Coordinación: startPeriod ≥ 180s para tolerar
+bootstrap NestJS bajo carga real.
+
+---
+
+### 🎓 Lecciones aprendidas del incidente 29-30/05
+
+**1. Health endpoints DEBEN respetar grace period del bootstrap**
+NestJS con 30+ módulos tarda ~30-60s en arrancar. Si `/health/outbox`
+devuelve 503 durante ese tiempo, ECS mata el container antes de operativo.
+Loop infinito: arranca → 503 → killed → arranca → 503 → killed. Fix:
+`STARTUP_GRACE_MS = 120_000` — durante este tiempo, lastTickMsAgo=null
+devuelve 200. Tras el grace period, NULL → 503 legítimo.
+
+**2. `statement_timeout` en cliente postgres es ROOT CAUSE fix, no parche**
+Sin statement_timeout, una query que cuelga (network glitch, pooler restart,
+lock contention) bloquea el await indefinidamente. Postgres mata la query
+en 30s, postgres-js libera el slot, catch del worker se dispara, siguiente
+tick reintenta. SIN esto, los parches en código de app (Promise.race,
+watchdog externo) son chapuza esconde-síntoma.
+
+**3. Patrón aceptado en industria: 3 niveles de defensa independientes**
+- **BD level:** statement_timeout=30s, idle_in_transaction_session_timeout=60s
+- **App level:** heartbeat in-memory + observable cron_run cada 60s
+- **Infra level:** ECS liveness probe → mata container si silencio > threshold
+
+Si cualquier nivel falla, el siguiente lo cubre. NO es "defensive programming
+exagerado" — es el patrón estándar de Stripe webhooks workers, AWS SQS
+consumers, etc.
+
+**4. `Promise.all` en handlers paralelos es trampa bajo carga BD**
+9 handlers en `Promise.all` × batchSize=100 = ~1800 queries/tick. Si uno
+cuelga, los demás esperan. Si pool BD se satura, cascade 503 a otros
+endpoints. Fix: `Promise.allSettled` + log por handler + retry granular.
+
+**5. `emitFireAndForget` se pierde silenciosamente**
+Para señales críticas (cron_run que alimenta `cron_overdue` alert), usar
+`await this.emit()`. Para hot paths donde no podemos esperar (answer-save),
+fire-and-forget está OK porque la observabilidad es secundaria al endpoint.
+
+**6. ALB target group ≠ ECS healthCheck — son 2 capas distintas**
+- ALB target group: a quién enrutar tráfico (configurado en terraform main.tf)
+- ECS healthCheck: cuándo matar el container (configurado en task definition)
+Ambos pueden tener paths distintos. Si confundes uno con otro, debugging es
+infierno.
+
+**7. Falso positivo "X crons overdue" = emit a observable_events falla**
+Cron SÍ corre (logs CloudWatch lo prueban) pero la regla `cron_overdue` mira
+`observable_events`. Si emit falla por timeout, alerta dispara aunque el cron
+funcione. Fix: `await this.emit()` en crons (commit `3a87d9c0`).
+
+**8. `@Cron(EVERY_SECOND)` en NestJS satura ScheduleModule si la tarea es lenta**
+Sin no-overlap protection, ticks acumulan. Para tareas con BD ops (>100ms),
+usar `@Interval(5000)` que garantiza no-overlap. Aplicar SIEMPRE para crons
+de alta frecuencia con operaciones I/O.
+
+**9. Rolling deploy + ALB causa 503 transitorios esperables**
+Durante v14 → v15, ALB enruta a ambos tasks. El task nuevo puede responder
+404 mientras NestJS bootstrap. Los errores 503 durante rolling son normales,
+NO escalar manualmente al ver el spike en monitor.
+
+**10. Coordinación handlers + RENAME tablas**
+Tras `RENAME table_shadow → table`, los handlers shadow seguirían escribiendo
+a `table_shadow` que ya no existe → error. Necesario deploy adicional para
+quitar el sufijo `_shadow` de los INSERTs ANTES del RENAME. Ventana de
+pérdida temporal de stats ~5min (mitigada por backfill desde real).
+
+**11. `task definition revisions` son inmutables**
+Cada cambio (env var, healthCheck, image) requiere nueva revision (v13, v14,
+v15...). Si mezclamos terraform + AWS CLI, se genera drift. Decisión:
+SIEMPRE via AWS CLI para cambios operativos rápidos; terraform sólo para
+infra estable (red, IAM, ALB, ECR).
+
+---
 
 ### Fase 1.5ter — Robustez worker outbox (30/05 ~07:30 UTC, post-incidente cuelgue silencioso)
 
