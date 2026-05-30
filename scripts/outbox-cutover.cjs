@@ -94,14 +94,22 @@ const TABLES = [
 async function preflightCheck() {
   console.log('═══ PASO 1: Pre-flight check ═══\n');
 
-  // 1. Worker outbox vivo (último proc < 60s)
+  // 1. Worker outbox vivo. Si queue baja, último proc puede ser hace minutos
+  //    (no hay eventos que procesar). Si queue alta, debe procesar reciente.
   const [w] = await sql`
     SELECT EXTRACT(EPOCH FROM (NOW() - MAX(processed_at)))::int AS proc_ago_s,
            COUNT(*) FILTER (WHERE processed_at IS NULL) AS pending
     FROM public.test_questions_outbox
   `;
   console.log(`  Worker outbox: último proc=${w.proc_ago_s}s ago | pending=${w.pending}`);
-  if (w.proc_ago_s > 60) throw new Error(`❌ Worker outbox parado (${w.proc_ago_s}s ago). Force-restart ECS antes de cutover.`);
+  // Threshold proporcional a queue: si pending=0, puede tardar minutos (idle).
+  // Si pending > 0, debe haber procesado recientemente (sino el worker está colgado).
+  if (Number(w.pending) > 10 && w.proc_ago_s > 60) {
+    throw new Error(`❌ Worker outbox parado con queue activa (${w.proc_ago_s}s ago, ${w.pending} pending). Force-restart ECS antes de cutover.`);
+  }
+  if (w.proc_ago_s > 600) {
+    throw new Error(`❌ Worker outbox totalmente silencioso (${w.proc_ago_s}s ago). Force-restart ECS.`);
+  }
   if (Number(w.pending) > 100) throw new Error(`❌ Outbox queue acumulada (${w.pending}). Esperar drain antes de cutover.`);
 
   // 2. Las 8 tablas _shadow existen
@@ -127,29 +135,32 @@ async function cutover() {
     stmts.push(`ALTER TABLE public.test_questions DISABLE TRIGGER ${t}`);
   }
 
-  // 3. Backfill shadow ← real (sumar counters / preservar first_attempt)
+  // 3. TRUNCATE shadow + COPY desde real (preserva exactamente real, sin doble-conteo).
+  //
+  // POR QUÉ NO sumar real + shadow (versión anterior, buggy):
+  // Durante el soak, los triggers SQL ya procesaron cada evento → escrito a real.
+  // Los handlers shadow procesaron los MISMOS eventos → escritos a shadow.
+  // Por tanto:
+  //   real = histórico_pre_soak + eventos_soak
+  //   shadow = eventos_soak (subset)
+  // Si hiciéramos shadow += real → doble-conteo de eventos_soak.
+  //
+  // POR QUÉ TRUNCATE + COPY funciona:
+  // 1. TRUNCATE shadow: descartamos eventos_soak en shadow.
+  // 2. Copia exacta real → shadow: shadow = histórico_pre_soak + eventos_soak (vía real).
+  // 3. RENAME shadow → real: nueva real conserva TODOS los datos.
+  // 4. Eventos que llegan durante la transacción atómica (triggers DISABLED en paso 2)
+  //    siguen siendo emitidos al outbox → procesados por handlers post-cutover.
+  //
+  // Cero pérdida de datos. Cero doble-conteo.
   for (const t of TABLES) {
     const pkCols = t.pk.join(', ');
-    if (t.kind === 'counter') {
-      const sumExprs = t.sum_cols.map(c =>
-        `${c} = GREATEST(0, COALESCE(public.${t.name}_shadow.${c}, 0) + COALESCE(EXCLUDED.${c}, 0))`
-      ).join(',\n      ');
-      stmts.push(`-- Backfill ${t.name}: shadow_total = shadow_post_soak + real_pre_soak
-INSERT INTO public.${t.name}_shadow
-SELECT * FROM public.${t.name} r
-ON CONFLICT (${pkCols}) DO UPDATE SET
-      ${sumExprs},
-      updated_at = NOW()`);
-    } else {
-      // first_attempt: preservar el existente en shadow (que es el más reciente),
-      // pero traer los filas que solo existen en real.
-      stmts.push(`-- Backfill ${t.name}: only insert filas que solo existen en real
-INSERT INTO public.${t.name}_shadow
-SELECT r.* FROM public.${t.name} r
-LEFT JOIN public.${t.name}_shadow s USING (${pkCols})
-WHERE s.${t.pk[0]} IS NULL
-ON CONFLICT (${pkCols}) DO NOTHING`);
-    }
+    stmts.push(`-- TRUNCATE + COPY ${t.name}: preserva real intacta, sin doble-conteo`);
+    stmts.push(`TRUNCATE public.${t.name}_shadow`);
+    // ON CONFLICT DO NOTHING: si un handler shadow logra insertar entre
+    // TRUNCATE (release de lock) y este INSERT (race), no sobreescribimos
+    // su valor con la copia de real (el handler escribió valores frescos).
+    stmts.push(`INSERT INTO public.${t.name}_shadow SELECT * FROM public.${t.name} ON CONFLICT (${pkCols}) DO NOTHING`);
   }
 
   // 4. RENAME atómico
@@ -157,6 +168,17 @@ ON CONFLICT (${pkCols}) DO NOTHING`);
     stmts.push(`ALTER TABLE public.${t.name} RENAME TO ${t.name}_pre_outbox`);
     stmts.push(`ALTER TABLE public.${t.name}_shadow RENAME TO ${t.name}`);
   }
+
+  // 5. Re-crear triggers post-cutover que estaban en tablas reales (ahora _pre_outbox).
+  //
+  // Identificado en audit pre-cutover: question_first_attempts tiene
+  // apply_first_attempt_to_question_stats_trigger AFTER INSERT que recalcula
+  // questions.global_difficulty. Tras RENAME, el trigger queda en _pre_outbox
+  // (sin escrituras), y la nueva tabla canónica (antiguo shadow) no lo tiene.
+  // Lo recreamos para mantener la cascada questions.global_difficulty.
+  stmts.push(`CREATE TRIGGER apply_first_attempt_to_question_stats_trigger
+AFTER INSERT ON public.question_first_attempts
+FOR EACH ROW EXECUTE FUNCTION apply_first_attempt_to_question_stats()`);
 
   console.log(`📋 ${stmts.length} statements a ejecutar dentro de una sola transacción:\n`);
   stmts.forEach((s, i) => console.log(`  ${String(i+1).padStart(2)}. ${s.slice(0, 100)}${s.length > 100 ? '...' : ''}`));
