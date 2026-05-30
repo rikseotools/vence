@@ -83,9 +83,15 @@ Sin esto, el resto se desordena. "Profesional" empieza por la disciplina, no por
 
 - **Pre-commit hook verde**: arreglar / retirar los 14 tests obsoletos + el bug Cádiz `seo_description`. Eliminar el `--no-verify` sistémico (memoria `project_pre_commit_hook_failures_pendientes`).
 - **CI como gate**: tests verdes obligatorios para merge a `main`.
-- **Limpiar la raíz del repo** (~100 archivos sin trackear con nombres raros tipo `Art.`, `Artículo`, etc).
 - **`.env.example` único** validado por zod (paridad con `backend/src/config/env.ts`).
 - **Branch `staging`** + entorno paralelo en Vercel (preview, sin coste).
+<!--
+  NOTA (30/05/2026): los archivos sin trackear en la raíz del repo (Art., Artículo, etc)
+  NO son basura. Son necesarios para procesos del proyecto. Ver memoria
+  [[feedback_no_borrar_archivos_root_vence]] (26/05). Para excluir de bundles Lambda
+  usar config del bundler (open-next.config, .dockerignore), NUNCA borrar del workspace.
+-->
+
 
 ### Bloque 3 — Etapa 2 del backend (4-6 sem) ← **KEYSTONE**
 
@@ -738,7 +744,9 @@ Sesión maratón de 2 días con avances en bloques 1+2+3 simultáneos. **27+ com
 
 - ✅ Pre-commit corre `test:precommit + test:unit` (sin `--no-verify`). **Por primera vez** el repo puede commitear sin saltar el hook.
 - ✅ CI workflow `test.yml` (unit + integration + lint + typecheck) — integration con `continue-on-error: true` hasta arreglar los 10 fallos conocidos uno a uno.
-- ⏳ Pendiente único: limpiar ~100 archivos basura de la raíz del repo (baja prioridad, mecánico).
+<!-- "Limpiar archivos basura raíz" RETIRADO 30/05/2026 — NO son basura, son
+     necesarios para procesos del proyecto. Memoria [[feedback_no_borrar_archivos_root_vence]] (26/05). -->
+- ✅ Bloque 2 cerrado al 100%.
 
 ### Bloque 1 (Etapa 1 backend) — 🟢 **CERRADO 2026-05-24**
 
@@ -1747,7 +1755,7 @@ Clasificación de cada dependencia: ✅ estándar bien aislado · 🟡 propietar
 | 3 — Tier de datos | Triggers→eventos, read models materializados, réplica. | Pendiente |
 | 4 — HA + IaC | Quitar SPOF, infra como código, backups, runbooks. | Pendiente |
 
-En paralelo, recomendable: **higiene de repo/CI** (pre-commit hook roto → commits con `--no-verify`, tests en rojo en `main`, ~100 archivos basura en la raíz, sin staging). "Profesional" empieza por ahí, no por el cloud.
+En paralelo, recomendable: **higiene de repo/CI** (pre-commit hook roto → commits con `--no-verify`, tests en rojo en `main`, sin staging). "Profesional" empieza por ahí, no por el cloud.
 
 ### Etapa 1 — Crons migrados ✅ (en shadow desde 2026-05-22)
 
