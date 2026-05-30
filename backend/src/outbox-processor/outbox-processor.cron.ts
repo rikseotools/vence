@@ -22,11 +22,32 @@ export class OutboxProcessorCron {
   private readonly logger = new Logger(OutboxProcessorCron.name);
   /** Umbral de lag en segundos por encima del cual emitimos warning. */
   private readonly LAG_WARNING_THRESHOLD_SECONDS = 30;
+  /** Cada cuántos ticks emitimos heartbeat observable (cada 60s con interval 5s). */
+  private readonly HEARTBEAT_EVERY_TICKS = 12;
+
+  /**
+   * Heartbeat in-memory: timestamp del último tick que retornó.
+   * Lo lee el HealthController para exponer last_tick_ms_ago a la liveness
+   * probe de ECS. Si la liveness probe ve >30s sin tick, ECS mata el container
+   * y relanza — auto-recovery sin necesidad de watchdog externo.
+   *
+   * NULL al arrancar (antes del primer tick exitoso) → health endpoint
+   * devuelve 503 hasta que el worker esté operativo.
+   */
+  private lastTickAtMs: number | null = null;
+  /** Counter de ticks para heartbeat observable cada N ticks. */
+  private tickCounter = 0;
 
   constructor(
     private readonly service: OutboxProcessorService,
     private readonly observability: ObservabilityService,
   ) {}
+
+  /** Lectura para HealthController. Devuelve ms desde último tick o null si nunca. */
+  getLastTickMsAgo(): number | null {
+    if (this.lastTickAtMs === null) return null;
+    return Date.now() - this.lastTickAtMs;
+  }
 
   /**
    * Tick cada 5 segundos. CAMBIADO 29/05 04:11 UTC de @Cron(EVERY_SECOND) a
@@ -37,19 +58,32 @@ export class OutboxProcessorCron {
    * el deploy de este fix.
    *
    * @Interval garantiza no-overlap: espera a que el tick anterior termine
-   * antes de lanzar el siguiente. 5s × batch 100 = capacidad 1.200/min,
+   * antes de lanzar el siguiente. 5s × batch 10 = capacidad 120/min,
    * suficiente para >10k DAU activos.
    *
-   * Si la cola crece más rápido que el procesamiento, el batchSize y la
-   * frecuencia se ajustan (config en outbox-processor.schema.ts:DEFAULT_CONFIG).
+   * DESIGN ROBUSTO POST 30/05/2026 (incidente cuelgue worker 21:54 UTC):
+   * Tres niveles de defensa contra cuelgue silencioso:
+   *
+   *   1. statement_timeout=30s en cliente postgres (config DatabaseModule)
+   *      → si query BD cuelga, Postgres la mata y libera el slot.
+   *   2. Heartbeat in-memory en cada tick + endpoint /health/outbox
+   *      → liveness probe ECS lo lee, mata container si >30s sin tick.
+   *   3. Emit observable cron_run cada 12 ticks (60s) AUN si batch vacío
+   *      → dashboard ve "alive but idle" distinto de "muerto".
    */
   @Interval(5000)
   async tick(): Promise<void> {
     const startedAt = Date.now();
+    this.tickCounter += 1;
     try {
       const result = await this.service.processBatch();
 
-      // Si el batch fue NO vacío, lo logueamos.
+      // Marcar heartbeat in-memory PARA EL HEALTH ENDPOINT.
+      // Se hace SIEMPRE (vivo aunque batch vacío) — clave para distinguir
+      // "worker silencioso por falta de trabajo" de "worker colgado".
+      this.lastTickAtMs = Date.now();
+
+      // Log + observable si batch no vacío.
       if (result.size > 0) {
         this.logger.log(
           `Batch ${result.size} eventos: ${result.succeeded} OK, ${result.failed} fail` +
@@ -57,7 +91,6 @@ export class OutboxProcessorCron {
             ` (${result.durationMs}ms)`,
         );
 
-        // Emitir cada batch no vacío como observable_event (para SLO de lag).
         this.observability.emitFireAndForget({
           source: 'fargate',
           severity: result.failed > 0 ? 'warn' : 'info',
@@ -72,12 +105,22 @@ export class OutboxProcessorCron {
             movedToDlq: result.movedToDlq,
           },
         });
+      } else if (this.tickCounter % this.HEARTBEAT_EVERY_TICKS === 0) {
+        // Heartbeat observable cada 60s aunque queue esté vacía.
+        // SLO clave: si han pasado más de 60s sin cron_run de este endpoint
+        // → worker silencioso (cuelgue) → page alert.
+        this.observability.emitFireAndForget({
+          source: 'fargate',
+          severity: 'info',
+          eventType: 'cron_run',
+          endpoint: 'outbox-processor',
+          durationMs: result.durationMs,
+          metadata: { status: 'heartbeat', size: 0 },
+        });
       }
 
-      // Check de lag cada 2 ticks (~10s con interval 5s). Usamos timestamp
-      // por simplicidad — un counter int sería marginalmente más eficiente
-      // pero introduce estado mutable en el servicio.
-      if (Math.floor(startedAt / 1000) % 10 < 5) {
+      // Check de lag cada 2 ticks (~10s con interval 5s).
+      if (this.tickCounter % 2 === 0) {
         const stats = await this.service.getStats();
         if (
           stats.oldestPendingAgeSeconds != null &&
@@ -102,6 +145,9 @@ export class OutboxProcessorCron {
         }
       }
     } catch (error) {
+      // Marcar heartbeat AUN si el batch falló — el worker SIGUE VIVO.
+      // Solo NO se marca si el await del processBatch nunca retorna (cuelgue).
+      this.lastTickAtMs = Date.now();
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron outbox-processor falló: ${errorMessage}`);

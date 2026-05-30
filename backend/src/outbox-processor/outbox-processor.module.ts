@@ -37,6 +37,6 @@ import { OutboxProcessorService } from './outbox-processor.service';
     OutboxProcessorService,
     OutboxProcessorCron,
   ],
-  exports: [OutboxProcessorService],
+  exports: [OutboxProcessorService, OutboxProcessorCron],
 })
 export class OutboxProcessorModule {}

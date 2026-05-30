@@ -43,6 +43,16 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
           prepare: false, // compat con pooler en transaction mode
           idle_timeout: 20,
           connect_timeout: 10,
+          // ROOT CAUSE FIX (incidente worker outbox cuelgue 29/05 21:54 UTC):
+          // sin statement_timeout, una query que cuelga (network glitch, pooler
+          // restart, lock contention raro) bloquea el await indefinidamente.
+          // Postgres mata la query en 30s, postgres-js libera el slot, y el
+          // catch del worker se dispara → siguiente tick reintenta.
+          // Aplicado a TODAS las connections del pool (default per-session).
+          connection: {
+            statement_timeout: 30000, // 30s — query individual
+            idle_in_transaction_session_timeout: 60000, // 60s — txn ociosa
+          },
         });
       },
     },

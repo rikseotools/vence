@@ -6,17 +6,17 @@
 >
 > **Principio agnóstico** ([[feedback_prioridades_escala_y_agnostico]]): el worker es un container NestJS estándar → corre en Fargate hoy, Kubernetes/Hetzner/GCE mañana sin reescribir.
 >
-> **Última actualización:** 2026-05-29 04:13 UTC. Estado: ✅ Fases 1.1+1.2+1.3+1.5+1.6 COMPLETAS + hotfix scheduler. Pendientes: 1.4 (19 handlers), 1.7 (tests carga).
+> **Última actualización:** 2026-05-30 07:30 UTC. Estado: ✅ Fases 1.1-1.6 + 1.5bis + **1.5ter robustez worker** COMPLETAS. Shadow ACTIVADO 29/05 21:02 UTC. Worker se colgó silenciosamente 29/05 21:54-30/05 05:30 (8h). Fix profesional: statement_timeout BD + heartbeat in-memory + endpoint /health/outbox + ECS liveness probe. Pendiente: re-soak 24h + DROP TRIGGER × 20 + RENAME shadow→real + Fase 1.7 (tests carga k6).
 >
 > **Resumen sesión 28-29/05/2026:**
 > - ✅ Fase 1.1: schema outbox + trigger emisor — aplicado BD prod (`20260528_test_questions_outbox.sql`)
 > - ✅ Fase 1.2: worker NestJS `outbox-processor` — desplegado Fargate (`7af9d386`)
-> - ✅ Fase 1.3: handler `user_article_stats` shadow + tabla shadow (`20260529_user_article_stats_shadow.sql`) — desactivado por defecto vía `SHADOW_HANDLERS_ENABLED=false`. Activar mañana.
+> - ✅ Fase 1.3: handler `user_article_stats` shadow + tabla shadow (`20260529_user_article_stats_shadow.sql`) — desactivado por defecto vía `SHADOW_HANDLERS_ENABLED=false`.
 > - ✅ Fase 1.5: cache Redis cross-lambda para 3 RPCs antifraude (`73a6804b`)
 > - ✅ Fase 1.6: revert bypass antifraud `cdf7c001` — antifraud reactivado con cache Redis
 > - 🔥 Hotfix `6457f8c8`: cron EVERY_SECOND → Interval(5s) anti-overlap. EVERY_SECOND saturó el scheduler de NestJS y rompió TODOS los crons del backend Fargate (canaries incluidos) entre 21:50 UTC del 28/05 y el deploy del hotfix.
-> - Outbox procesando: pend=0, proc=594+ y subiendo (deploy 7af9d386 activo).
-> - 503 bajando: de 583/5min antes del Sprint a 79/5min actual.
+> - 🚨 **Incidente 29/05 05:00–17:00 UTC**: activación `SHADOW_HANDLERS_ENABLED=true` durante tráfico alto generó cascade 503 (pico 14.875 errores/hora a las 09:00 UTC, ~133k errores totales en 16h). Causa: `batchSize=100` × 9 handlers en `Promise.all` = ~1800 queries/tick saturando pool BD. Mitigación inmediata: shadow disabled (task def `v13`) + force-restart ECS → 503 cerrado en 7 min.
+> - ✅ **Hardening pre-shadow (`412a1f51`, 29/05 ~21:00 UTC)**: `batchSize 100→10` + `Promise.all → Promise.allSettled` + log estructurado por handler. Cambios INERTES mientras shadow=false. Permitirá reactivar shadow sin saturar pool (180 queries/tick vs 1800 anteriores). Ver §1.5bis.
 
 ---
 
@@ -226,6 +226,100 @@ Stack: `lib/cache/redis.ts` ya existe en el proyecto.
 ### Fase 1.6 — Reactivar antifraud (0.5 día)
 
 `git revert cdf7c001`. Las 3 RPCs vuelven a ejecutarse pero ahora con cache Redis (< 50 ms) y sin la cascada de triggers (INSERT < 100 ms). Sin coste de monetización a partir de aquí. Cierra el TODO de mañana ([[project_pending_reactivar_antifraud_answer_save]]).
+
+### Fase 1.5ter — Robustez worker outbox (30/05 ~07:30 UTC, post-incidente cuelgue silencioso)
+
+Tras la activación shadow del 29/05 a las 21:02 UTC, el worker procesó eventos
+con 0 errores hasta las **21:54:41 UTC**, momento en que dejó de tickar
+silenciosamente (sin log, sin error). Detectado a las 05:30 UTC del 30/05:
+8h sin procesar (queue=298 acumulada). Stats reales no afectadas
+(triggers SQL siguen vivos), pero shadow no acumulaba paridad.
+
+**Diagnóstico:** el `await processBatch()` se quedó esperando indefinidamente
+por una operación BD (probable conexión zombi sin timeout). `@Interval(5000)`
+respetó el contrato no-overlap → siguiente tick nunca disparó.
+
+**Fix profesional aplicado (NO chapuza):**
+
+#### 1. Causa raíz — `statement_timeout` en cliente postgres (DatabaseModule)
+
+```ts
+postgres(url, {
+  // ...config existente
+  connection: {
+    statement_timeout: 30000,                    // 30s — mata query individual
+    idle_in_transaction_session_timeout: 60000,  // 60s — mata txn ociosa
+  },
+});
+```
+
+Postgres mata cualquier query que tarde > 30s. El slot del pool se libera.
+El catch del worker se dispara. Siguiente tick reintenta. Sin parches en
+código de app.
+
+#### 2. Visibilidad — heartbeat in-memory + observable cada 60s
+
+`OutboxProcessorCron.tick()` ahora:
+- Actualiza `lastTickAtMs = Date.now()` en cada tick (éxito o error).
+- Emite `cron_run` observable cada 12 ticks (60s) AUNQUE batch vacío.
+- Counter `tickCounter` reemplaza el módulo de timestamp para lag check.
+
+Resultado: dashboard puede distinguir "worker idle por queue vacía" de
+"worker muerto" sin necesidad de tablear adivinanzas.
+
+#### 3. Auto-recovery — endpoint `/health/outbox` + ECS liveness probe
+
+```
+GET /health/outbox
+  → 200 OK si lastTickMsAgo <= 30s
+  → 503 SERVICE UNAVAILABLE si lastTickMsAgo > 30s
+```
+
+ECS task definition health check apunta al endpoint. Si 503 N consecutivos
+(configurable en task def `healthCheck.retries`), ECS mata el container y
+relanza. Auto-recovery a nivel correcto (container), no watchdog en app.
+
+**No es chapuza:** patrón estándar de procesadores async (Stripe webhooks,
+AWS SQS consumers). Tres niveles de defensa independientes:
+
+```
+┌── BD level: statement_timeout
+│   Mata queries colgadas, libera slot del pool
+│
+├── App level: heartbeat + observable
+│   Visibility "vivo aunque ocioso", alerta si silencio anormal
+│
+└── Infra level: ECS liveness probe
+    Mata container si app no responde, auto-recovery sin intervención
+```
+
+Si cualquier nivel falla, el siguiente lo cubre. Defensa en profundidad.
+
+---
+
+### Fase 1.5bis — Hardening pre-shadow (`412a1f51`, 29/05 ~21:00 UTC)
+
+Tras el incidente del 29/05 al activar `SHADOW_HANDLERS_ENABLED=true` durante tráfico real, dos cambios mínimos en `outbox-processor` que dejan el worker preparado para reactivar shadow sin saturar pool BD:
+
+1. **`DEFAULT_CONFIG.batchSize` 100 → 10** (`outbox-processor.schema.ts`)
+   - Cada evento dispara 9 handlers en paralelo, cada handler hace 2 queries (SELECT EXISTS + UPSERT shadow).
+   - Con `batchSize=100` → ~1800 queries/tick (~5s) — pool BD saturado.
+   - Con `batchSize=10` → 180 queries/tick, margen seguro.
+   - Si la queue crece bajo carga, reducir `intervalSeconds` del @Interval del cron, NO subir batchSize.
+
+2. **`Promise.all` → `Promise.allSettled`** en `dispatch()` (`outbox-processor.service.ts`)
+   - Un handler caído ya NO arrastra a los 8 restantes.
+   - Cada fallo se logea individualmente con contexto del handler (`user_article_stats: <error>`).
+   - Solo se reintenta el evento si TODOS los handlers fallan; si fallan algunos, los exitosos ya escribieron a shadow y la divergencia será visible en `scripts/outbox-shadow-diff.cjs` antes del cutover.
+
+**Cambios INERTES mientras `SHADOW_HANDLERS_ENABLED=false`** (estado actual prod tras task def `v13`). 213/213 tests backend siguen pasando. Listo para reactivación segura en ventana nocturna.
+
+**Reactivación segura recomendada (Fase 1.5ter pendiente):**
+- Ventana 01:00–04:00 UTC (mínimo tráfico real, fuera de horario laboral España).
+- `aws ecs register-task-definition` con `SHADOW_HANDLERS_ENABLED=true` + `aws ecs update-service`.
+- Monitor activo de 5xx + outbox queue depth + Postgres connection count + slow queries durante 30 min.
+- Si métricas estables → dejar correr 24h → ejecutar `scripts/outbox-shadow-diff.cjs --hours 24`.
+- Si divergencias detectadas → NO cutover, investigar handler.
 
 ### Fase 1.7 — Tests de carga (1 día)
 
