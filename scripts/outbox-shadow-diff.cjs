@@ -112,7 +112,14 @@ const TABLES = [
     const timeFilter = `s.${t.time_col} > NOW() - INTERVAL '${HOURS} hours'`;
 
     try {
-      // Solo claves presentes en shadow (las que activación + handlers tocaron)
+      // Solo claves presentes en shadow (las que activación + handlers tocaron).
+      // Importante: usamos IS NOT DISTINCT FROM (en vez de =) para que NULL = NULL.
+      // El UNIQUE INDEX de las tablas usa NULLS NOT DISTINCT (NULL = NULL), pero
+      // LEFT JOIN USING (...) trata NULL como UNKNOWN → filas con NULLs serían
+      // falsos positivos de "missing_in_real". Usamos ON con IS NOT DISTINCT FROM.
+      const joinCondition = t.pk
+        .map((col) => `s.${col} IS NOT DISTINCT FROM r.${col}`)
+        .join(' AND ');
       const result = await sql.unsafe(`
         SELECT
           COUNT(*) AS shadow_rows,
@@ -120,8 +127,8 @@ const TABLES = [
           COUNT(*) FILTER (WHERE r.user_id IS NULL) AS missing_in_real,
           COUNT(*) FILTER (WHERE (${shadowGtReal})) AS shadow_gt_real
         FROM public.${t.name}_shadow s
-        LEFT JOIN public.${t.name} r USING (${using})
-        WHERE ${timeFilter}
+        LEFT JOIN public.${t.name} r ON ${joinCondition}
+        WHERE s.${t.time_col} > NOW() - INTERVAL '${HOURS} hours'
       `);
 
       const row = result[0];

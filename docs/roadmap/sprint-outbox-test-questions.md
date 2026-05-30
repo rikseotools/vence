@@ -6,7 +6,27 @@
 >
 > **Principio agnóstico** ([[feedback_prioridades_escala_y_agnostico]]): el worker es un container NestJS estándar → corre en Fargate hoy, Kubernetes/Hetzner/GCE mañana sin reescribir.
 >
-> **Última actualización:** 2026-05-30 08:30 UTC. Estado: ✅ Fases 1.1-1.6 + 1.5bis + **1.5ter robustez worker** + **1.5quater patrón sistémico heartbeat 22 crons** COMPLETAS. Shadow ACTIVADO 29/05 21:02 UTC. Worker se colgó silenciosamente 29/05 21:54-30/05 05:30 (8h, root cause: connection BD zombi sin statement_timeout). Tras root-cause fix + abstracción HeartbeatRegistry + /health/crons agregado, TODOS los 22 crons backend están monitoreados con auto-recovery sistémico. Pendiente: re-soak 24h + DROP TRIGGER × 20 + RENAME shadow→real + Fase 1.7 (tests carga k6).
+> **Última actualización:** 2026-05-30 09:30 UTC. Estado: 🟡 Infraestructura COMPLETA, **objetivo principal del sprint NO ALCANZADO**.
+>
+> **HONESTIDAD BRUTAL — qué se ha hecho y qué falta:**
+>
+> ✅ HECHO:
+> - Infraestructura outbox (schema + worker + 9 handlers + 8 shadow tables)
+> - Defensa-en-profundidad anti-cuelgue (statement_timeout BD + heartbeat in-memory + ECS liveness probe)
+> - Sistema sistémico de heartbeat para los 22 crons backend
+>
+> ❌ NO HECHO (objetivo principal del sprint):
+> - **Los 27 triggers SQL siguen activos** escribiendo a tablas materializadas en cada INSERT
+> - **Cutover atómico (DROP TRIGGER × 20 + RENAME shadow→real) NO ejecutado**
+> - INSERT a `test_questions` sigue acoplado a 27 triggers + 1 outbox emit + 9 shadow handlers (carga doble cuando shadow está activo)
+>
+> 🚨 PROBLEMA DETECTADO 30/05 09:30 UTC:
+> - Diff shadow vs real (`outbox-shadow-diff.cjs --hours 1`) reporta **39 blockers**:
+>   - user_article_stats: 18 missing_in_real + 19 shadow_gt_real
+>   - user_daily_stats: 2 shadow_gt_real
+> - Bugs reales en handlers → si hicimos cutover con estos blockers, usuarios verían stats inconsistentes
+>
+> ➡️ DECISIÓN: desactivar SHADOW_HANDLERS_ENABLED inmediatamente (elimina carga doble), arreglar handlers, re-soak, cutover validado.
 >
 > **Resumen sesión 28-29/05/2026:**
 > - ✅ Fase 1.1: schema outbox + trigger emisor — aplicado BD prod (`20260528_test_questions_outbox.sql`)
