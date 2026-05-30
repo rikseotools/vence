@@ -1,5 +1,6 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { OutboxProcessorCron } from '../outbox-processor/outbox-processor.cron';
 
 interface HealthResponse {
@@ -12,6 +13,14 @@ interface OutboxHealthResponse {
   alive: boolean;
   lastTickMsAgo: number | null;
   thresholdMs: number;
+  timestamp: string;
+}
+
+interface CronsHealthResponse {
+  alive: boolean;
+  processUptimeMs: number;
+  crons: Record<string, number | null>;
+  stale: Array<{ name: string; lastTickMsAgo: number | null; thresholdMs: number }>;
   timestamp: string;
 }
 
@@ -42,7 +51,10 @@ export class HealthController {
   /** Timestamp del arranque del proceso (Date.now() del primer import). */
   private readonly startedAtMs = Date.now();
 
-  constructor(private readonly outboxCron: OutboxProcessorCron) {}
+  constructor(
+    private readonly outboxCron: OutboxProcessorCron,
+    private readonly heartbeatRegistry: HeartbeatRegistry,
+  ) {}
 
   @Get()
   check(): HealthResponse {
@@ -89,6 +101,34 @@ export class HealthController {
 
     res
       .status(alive ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+      .json(body);
+  }
+
+  /**
+   * Liveness agregada de TODOS los crons registrados en HeartbeatRegistry.
+   * - 200 OK si TODOS los crons están healthy (tick reciente o en grace period).
+   * - 503 SERVICE UNAVAILABLE si AL MENOS UNO está silencioso > threshold.
+   *
+   * Este es el endpoint que la ECS liveness probe debe consultar (no /health/outbox,
+   * que es legacy single-cron). Si CUALQUIER cron crítico cuelga, ECS mata el
+   * container y relanza — auto-recovery sistémico.
+   *
+   * Diseño profesional post-incidente cuelgue worker 29/05 21:54 UTC:
+   * los 20+ crons del backend comparten el mismo riesgo de cuelgue silencioso.
+   * Centralizando el monitoreo evitamos depender de N watchdogs distintos.
+   */
+  @Get('crons')
+  checkAllCrons(@Res() res: Response): void {
+    const stale = this.heartbeatRegistry.getStaleCrons();
+    const body: CronsHealthResponse = {
+      alive: stale.length === 0,
+      processUptimeMs: this.heartbeatRegistry.getProcessUptimeMs(),
+      crons: this.heartbeatRegistry.getAllSnapshot(),
+      stale,
+      timestamp: new Date().toISOString(),
+    };
+    res
+      .status(stale.length === 0 ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
       .json(body);
   }
 }

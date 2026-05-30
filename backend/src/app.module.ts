@@ -8,6 +8,7 @@ import { BoeChangesModule } from './boe-changes/boe-changes.module';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './db/database.module';
 import { HealthModule } from './health/health.module';
+import { HeartbeatModule } from './heartbeat/heartbeat.registry';
 import { RefreshRankingsModule } from './refresh-rankings/refresh-rankings.module';
 import { RefreshThemeCacheModule } from './refresh-theme-cache/refresh-theme-cache.module';
 import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
@@ -84,6 +85,10 @@ import { OutboxProcessorModule } from './outbox-processor/outbox-processor.modul
     // Scheduler in-app — sustituye a Vercel Cron / GitHub Actions.
     ScheduleModule.forRoot(),
     DatabaseModule,
+    // HeartbeatModule global — provee HeartbeatRegistry singleton para que
+    // cada cron se registre y el HealthController exponga /health/crons.
+    // Debe ir ANTES de HealthModule (que lo consume).
+    HeartbeatModule,
     HealthModule,
     // Cache compartido con Vercel (Bloque 3) — Global, exporta CacheService.
     CacheModule,

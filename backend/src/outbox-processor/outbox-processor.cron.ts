@@ -14,6 +14,8 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
+import { runWithHeartbeat, getLastTickMsAgo } from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { OutboxProcessorService } from './outbox-processor.service';
 
@@ -27,26 +29,41 @@ export class OutboxProcessorCron {
 
   /**
    * Heartbeat in-memory: timestamp del último tick que retornó.
-   * Lo lee el HealthController para exponer last_tick_ms_ago a la liveness
-   * probe de ECS. Si la liveness probe ve >30s sin tick, ECS mata el container
-   * y relanza — auto-recovery sin necesidad de watchdog externo.
+   * Auto-registrado en HeartbeatRegistry (constructor) para que /health/crons
+   * lo monitoree junto con todos los demás crons. La ECS liveness probe pega
+   * contra /health/crons y mata el container si CUALQUIER cron lleva mucho
+   * sin tickar — auto-recovery a nivel infra, no watchdog en app.
    *
-   * NULL al arrancar (antes del primer tick exitoso) → health endpoint
-   * devuelve 503 hasta que el worker esté operativo.
+   * NULL al arrancar (antes del primer tick exitoso). El grace period del
+   * HeartbeatRegistry evita que esto se reporte como unhealthy durante el
+   * bootstrap de NestJS.
    */
-  private lastTickAtMs: number | null = null;
+  public lastTickAtMs: number | null = null;
   /** Counter de ticks para heartbeat observable cada N ticks. */
   private tickCounter = 0;
 
   constructor(
     private readonly service: OutboxProcessorService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // Auto-registrar en el registro centralizado de heartbeats.
+    // Worker corre @Interval(5000); threshold 30s = 6 intervalos OK.
+    // Grace period 120s — NestJS bootstrap + primer tick.
+    heartbeatRegistry.register(
+      'outbox-processor',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 30_000, gracePeriodMs: 120_000 },
+    );
+  }
 
-  /** Lectura para HealthController. Devuelve ms desde último tick o null si nunca. */
+  /**
+   * Legacy: lectura individual del heartbeat. Mantenida para retrocompat con
+   * HealthController.checkOutbox() (/health/outbox endpoint legacy).
+   * Nuevo código debería usar HeartbeatRegistry directamente.
+   */
   getLastTickMsAgo(): number | null {
-    if (this.lastTickAtMs === null) return null;
-    return Date.now() - this.lastTickAtMs;
+    return getLastTickMsAgo(this, 'lastTickAtMs');
   }
 
   /**
@@ -75,13 +92,14 @@ export class OutboxProcessorCron {
   async tick(): Promise<void> {
     const startedAt = Date.now();
     this.tickCounter += 1;
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
+      await this.tickImpl(startedAt);
+    });
+  }
+
+  private async tickImpl(startedAt: number): Promise<void> {
     try {
       const result = await this.service.processBatch();
-
-      // Marcar heartbeat in-memory PARA EL HEALTH ENDPOINT.
-      // Se hace SIEMPRE (vivo aunque batch vacío) — clave para distinguir
-      // "worker silencioso por falta de trabajo" de "worker colgado".
-      this.lastTickAtMs = Date.now();
 
       // Log + observable si batch no vacío.
       if (result.size > 0) {
@@ -145,9 +163,8 @@ export class OutboxProcessorCron {
         }
       }
     } catch (error) {
-      // Marcar heartbeat AUN si el batch falló — el worker SIGUE VIVO.
-      // Solo NO se marca si el await del processBatch nunca retorna (cuelgue).
-      this.lastTickAtMs = Date.now();
+      // runWithHeartbeat marca el tick (finally) aunque el batch falle.
+      // El worker SIGUE VIVO — distinguir "vivo con errores" de "muerto silencioso".
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron outbox-processor falló: ${errorMessage}`);
