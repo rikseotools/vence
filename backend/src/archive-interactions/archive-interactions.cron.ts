@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { ArchiveInteractionsService } from './archive-interactions.service';
 
@@ -14,14 +19,26 @@ import { ArchiveInteractionsService } from './archive-interactions.service';
 @Injectable()
 export class ArchiveInteractionsCron {
   private readonly logger = new Logger(ArchiveInteractionsCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: ArchiveInteractionsService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'archive-interactions',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 90_000_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('30 3 * * *', { name: 'archive-interactions', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron archive-interactions disparado');
     const startedAt = Date.now();
     try {

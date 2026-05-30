@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { BoeChangesService } from './boe-changes.service';
 
@@ -13,14 +18,26 @@ import { BoeChangesService } from './boe-changes.service';
 @Injectable()
 export class BoeChangesCron {
   private readonly logger = new Logger(BoeChangesCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: BoeChangesService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'check-boe-changes',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 90_000_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 8 * * *', { name: 'check-boe-changes', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron check-boe-changes disparado');
     const startedAt = Date.now();
     try {

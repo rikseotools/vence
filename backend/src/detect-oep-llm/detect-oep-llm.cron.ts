@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { DetectOepLlmService } from './detect-oep-llm.service';
 
@@ -12,14 +17,26 @@ import { DetectOepLlmService } from './detect-oep-llm.service';
 @Injectable()
 export class DetectOepLlmCron {
   private readonly logger = new Logger(DetectOepLlmCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: DetectOepLlmService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'detect-oep-llm',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 345_600_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 10 * * 1-5', { name: 'detect-oep-llm', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron detect-oep-llm disparado');
     const startedAt = Date.now();
     try {

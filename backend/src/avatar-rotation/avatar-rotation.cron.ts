@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { AvatarRotationService } from './avatar-rotation.service';
 
@@ -16,14 +21,27 @@ import { AvatarRotationService } from './avatar-rotation.service';
 @Injectable()
 export class AvatarRotationCron {
   private readonly logger = new Logger(AvatarRotationCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: AvatarRotationService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // Weekly → threshold 8 días para tolerar 1 día de retraso.
+    heartbeatRegistry.register(
+      'avatar-rotation',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 691_200_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 4 * * 0', { name: 'avatar-rotation', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron avatar-rotation disparado');
     const startedAt = Date.now();
     try {

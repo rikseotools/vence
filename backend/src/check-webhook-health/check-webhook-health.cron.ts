@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CheckWebhookHealthService } from './check-webhook-health.service';
 
@@ -20,14 +25,27 @@ import { CheckWebhookHealthService } from './check-webhook-health.service';
 @Injectable()
 export class CheckWebhookHealthCron {
   private readonly logger = new Logger(CheckWebhookHealthCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: CheckWebhookHealthService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // Cron cada 15min → threshold 35min (2.3× interval).
+    heartbeatRegistry.register(
+      'check-webhook-health',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 2_100_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('*/15 * * * *', { name: 'check-webhook-health', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron check-webhook-health disparado');
     const startedAt = Date.now();
     try {

@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { DetectTimelineSilenceService } from './detect-timeline-silence.service';
 
@@ -12,14 +17,26 @@ import { DetectTimelineSilenceService } from './detect-timeline-silence.service'
 @Injectable()
 export class DetectTimelineSilenceCron {
   private readonly logger = new Logger(DetectTimelineSilenceCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: DetectTimelineSilenceService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'detect-timeline-silence',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 90_000_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 7 * * *', { name: 'detect-timeline-silence', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron detect-timeline-silence disparado');
     const startedAt = Date.now();
     try {

@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CheckSeguimientoService } from './check-seguimiento.service';
 
@@ -15,14 +20,27 @@ import { CheckSeguimientoService } from './check-seguimiento.service';
 @Injectable()
 export class CheckSeguimientoCron {
   private readonly logger = new Logger(CheckSeguimientoCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: CheckSeguimientoService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // L-V daily → threshold 4 días.
+    heartbeatRegistry.register(
+      'check-seguimiento',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 345_600_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 9 * * 1-5', { name: 'check-seguimiento', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron check-seguimiento disparado');
     const startedAt = Date.now();
     try {

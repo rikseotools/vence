@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { ProcessVerificationQueueService } from './process-verification-queue.service';
 
@@ -17,17 +22,30 @@ import { ProcessVerificationQueueService } from './process-verification-queue.se
 @Injectable()
 export class ProcessVerificationQueueCron {
   private readonly logger = new Logger(ProcessVerificationQueueCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: ProcessVerificationQueueService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // Cada 6h → threshold 13h (2.2× interval).
+    heartbeatRegistry.register(
+      'process-verification-queue',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 46_800_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 2,8,14,20 * * *', {
     name: 'process-verification-queue',
     timeZone: 'UTC',
   })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron process-verification-queue disparado');
     const startedAt = Date.now();
     try {

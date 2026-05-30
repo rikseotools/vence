@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CanaryAnswerSaveService } from './canary-answer-save.service';
 
@@ -17,14 +22,26 @@ import { CanaryAnswerSaveService } from './canary-answer-save.service';
 @Injectable()
 export class CanaryAnswerSaveCron {
   private readonly logger = new Logger(CanaryAnswerSaveCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: CanaryAnswerSaveService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'canary-answer-save',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 720_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('*/5 * * * *', { name: 'canary-answer-save', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron canary-answer-save disparado');
     const startedAt = Date.now();
     try {

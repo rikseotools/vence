@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { ALERT_RULES, type AlertRule } from './alert-rules';
 import {
@@ -32,16 +37,28 @@ import {
 export class AlertsCron {
   private readonly logger = new Logger(AlertsCron.name);
   private readonly lastFiredAt = new Map<string, number>();
+  public lastTickAtMs: number | null = null;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     @Inject(NOTIFICATION_ADAPTER)
     private readonly notifier: NotificationAdapter,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    heartbeatRegistry.register(
+      'alerts-engine',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 720_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('*/5 * * * *', { name: 'alerts-engine', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     const startedAt = Date.now();
     let fired = 0;
     let evaluated = 0;

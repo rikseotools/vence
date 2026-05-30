@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { DetectRegionalOepsService } from './detect-regional-oeps.service';
 
@@ -12,14 +17,27 @@ import { DetectRegionalOepsService } from './detect-regional-oeps.service';
 @Injectable()
 export class DetectRegionalOepsCron {
   private readonly logger = new Logger(DetectRegionalOepsCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: DetectRegionalOepsService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // Weekly (lunes) → threshold 8 días.
+    heartbeatRegistry.register(
+      'detect-regional-oeps',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 691_200_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 8 * * 1', { name: 'detect-regional-oeps', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron detect-regional-oeps disparado');
     const startedAt = Date.now();
     try {

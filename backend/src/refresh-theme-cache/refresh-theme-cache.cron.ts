@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
+import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { RefreshThemeCacheService } from './refresh-theme-cache.service';
 
@@ -13,14 +18,27 @@ import { RefreshThemeCacheService } from './refresh-theme-cache.service';
 @Injectable()
 export class RefreshThemeCacheCron {
   private readonly logger = new Logger(RefreshThemeCacheCron.name);
+  public lastTickAtMs: number | null = null;
 
   constructor(
     private readonly service: RefreshThemeCacheService,
     private readonly observability: ObservabilityService,
-  ) {}
+    heartbeatRegistry: HeartbeatRegistry,
+  ) {
+    // Daily cron → threshold 25h (más de 24h para tolerar 1h de retraso).
+    heartbeatRegistry.register(
+      'refresh-theme-cache',
+      () => getLastTickMsAgo(this, 'lastTickAtMs'),
+      { thresholdMs: 90_000_000, gracePeriodMs: 120_000 },
+    );
+  }
 
   @Cron('0 23 * * *', { name: 'refresh-theme-cache', timeZone: 'UTC' })
   async handle(): Promise<void> {
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+  }
+
+  private async runImpl(): Promise<void> {
     this.logger.log('Cron refresh-theme-cache disparado');
     const startedAt = Date.now();
     try {
