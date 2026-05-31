@@ -663,3 +663,46 @@ describe('RULE_CRON_OVERDUE — calendario Mon-Fri', () => {
     expect(RULE_CRON_OVERDUE.shouldFire(rows)).toBe(true);
   });
 });
+
+import { RULE_ANSWER_WATCHDOG_BURST } from './alert-rules';
+
+describe('RULE_ANSWER_WATCHDOG_BURST', () => {
+  it('dispara con ≥3 watchdog events en 30min', () => {
+    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+      { n: 3, maxDurationMs: 15000, uniqueUsers: 2 },
+    ])).toBe(true);
+    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+      { n: 9, maxDurationMs: 308109, uniqueUsers: 5 },
+    ])).toBe(true);
+  });
+
+  it('NO dispara con <3 events', () => {
+    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+      { n: 0, maxDurationMs: 0, uniqueUsers: 0 },
+    ])).toBe(false);
+    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+      { n: 2, maxDurationMs: 12500, uniqueUsers: 1 },
+    ])).toBe(false);
+  });
+
+  it('severity=warn (no critical, es bug client-side recurrente bajo carga)', () => {
+    expect(RULE_ANSWER_WATCHDOG_BURST.severity).toBe('warn');
+  });
+
+  it('notification cita 3 causas típicas + query de investigación', () => {
+    const notif = RULE_ANSWER_WATCHDOG_BURST.buildNotification([
+      { n: 9, maxDurationMs: 308109, uniqueUsers: 5 },
+    ]);
+    expect(notif.title).toContain('9 watchdog');
+    expect(notif.body).toContain('Saturación pool BD');
+    expect(notif.body).toContain('background');
+    expect(notif.body).toContain('móvil');
+    expect(notif.body).toContain('validation_error_logs');
+    expect(notif.body).toContain('308.1s');
+    expect(notif.fingerprint).toBe('answer_watchdog_burst');
+  });
+
+  it('cooldown 30 min (evitar spam si el bug se repite)', () => {
+    expect(RULE_ANSWER_WATCHDOG_BURST.cooldownMin).toBe(30);
+  });
+});

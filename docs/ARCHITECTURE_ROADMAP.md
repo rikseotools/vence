@@ -2700,6 +2700,37 @@ Cada fase tiene su memo con detalles técnicos en `~/.claude/projects/-home-manu
 
 ---
 
+## 🐕 useAnswerWatchdog — UI congelada en ExamLayout/TestLayout (detectado 31/05/2026)
+
+**Origen:** investigación de email CRITICAL en domingo (31/05) reveló bug recurrente sin alerting previo.
+
+### Síntoma
+El hook `hooks/useAnswerWatchdog.ts` (12s threshold) dispara cuando `isSaving`/`processingAnswer` se queda en true >12s, indicando UI bloqueada. El estado se resetea automáticamente y se registra el evento en `validation_error_logs` con prefijo `Watchdog: UI congelada Xms en ExamLayout`.
+
+### Frecuencia histórica
+- **17 events totales últimos 30d** (5 días con incidencia)
+- **9 events el 30/05 durante incidente cron-coincidence** (8 crons */5 min coincidían en mismo segundo, pool BD saturado, `/api/exam/validate` colgada)
+- **Durations máximas vistas: 308.109ms (5 minutos), 53s, 39s** — UI completamente bloqueada
+- 1-2 events/día en operación normal (probablemente tabs background con timers throttled o conexión móvil débil)
+
+### Causas raíz identificadas
+1. **Saturación pool BD**: `/api/exam/validate` o `/api/answer` cuelgan >12s. Fix parcial 31/05 con jitter en crons */5 min + pool 10→25 (commit `e20e81a1`).
+2. **Tab en background**: Chrome throttling de timers degrada el setTimeout del watchdog.
+3. **Conexión móvil débil**: timeout cliente 10s + retries 21s superan el watchdog 12s.
+
+### Mitigaciones aplicadas
+- ✅ Hook funcional: detecta + resetea + loguea (`useAnswerWatchdog.ts`).
+- ✅ Comentario en ExamLayout línea 752: `setIsSaving(false)` ANTES de `saveExamInBackground` (evita que guardado bg cuelgue UI).
+- ✅ 31/05: `RULE_ANSWER_WATCHDOG_BURST` añadida a `alert-rules.ts` (≥3 events en 30min → notificación warn). **Cierra gap de detección activa** — pre-fix los events quedaban silenciosos.
+- ✅ 31/05: jitter + pool ampliado en backend (causa raíz principal, commit `e20e81a1`).
+
+### Pendiente (deuda)
+- ❌ Causa #2 (Chrome timer throttling): requeriría `IntersectionObserver` o `Page Visibility API` para pausar/restaurar watchdog. Bajo prioridad.
+- ❌ Causa #3 (móvil débil): UX adicional con feedback de progreso (spinner + "guardando..." + retry button). Estimación: 4-6h.
+- ❌ Métricas en `/admin/observability`: panel dedicado watchdog (duration_ms histogram + users afectados). Estimación: 2h.
+
+---
+
 ## Deuda técnica detectada (auditoría 2026-05-02 noche)
 
 Hallazgos durante la investigación a fondo del trigger #9 (`user_learning_analytics`). Priorizado por impacto e inversión.

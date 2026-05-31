@@ -1063,6 +1063,54 @@ export const RULE_CANARY_REDIS_FAILED: AlertRule<{
 };
 
 /**
+ * Watchdog de respuesta — burst de UI congeladas en ExamLayout/TestLayout.
+ *
+ * El hook `useAnswerWatchdog` (12s threshold) detecta cuando `isSaving`/
+ * `processingAnswer` se queda en true >12s, indica UI congelada (API
+ * `/api/exam/validate` o `/api/answer` colgada, tab en background con
+ * timers throttled, conexión móvil débil) y resetea el estado +
+ * registra un evento.
+ *
+ * Caso real 30/05/2026: 9 eventos en un día durante incidente cron-coincidence
+ * (8 crons cada 5 min coincidían en mismo segundo, saturaban pool BD).
+ * Durations vistas: hasta 308.109ms (5 minutos) con UI bloqueada.
+ *
+ * Pre-fix los eventos quedaban silenciosos en validation_error_logs sin
+ * disparar alerta. Esta regla cierra ese gap.
+ */
+export const RULE_ANSWER_WATCHDOG_BURST: AlertRule<{
+  n: number;
+  maxDurationMs: number;
+  uniqueUsers: number;
+}> = {
+  name: 'answer_watchdog_burst',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COUNT(*)::int AS n,
+      MAX(duration_ms)::int AS "maxDurationMs",
+      COUNT(DISTINCT user_id)::int AS "uniqueUsers"
+    FROM public.validation_error_logs
+    WHERE error_message ILIKE '%Watchdog%'
+      AND created_at > NOW() - INTERVAL '30 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const maxMs = rows[0]?.maxDurationMs ?? 0;
+    const users = rows[0]?.uniqueUsers ?? 0;
+    const maxSec = (maxMs / 1000).toFixed(1);
+    return {
+      title: `${n} watchdog event${n > 1 ? 's' : ''} de UI congelada últimos 30 min`,
+      body: `${users} user(s) tuvieron la UI bloqueada en ExamLayout/TestLayout. Máxima duración: ${maxSec}s.\n\nCausas típicas:\n  1. Saturación pool BD → /api/exam/validate o /api/answer cuelgan\n  2. Tab en background con timers throttled (Chrome) → watchdog dispara tarde\n  3. Conexión móvil débil → timeout cliente 10s + retries 21s superan watchdog 12s\n\nInvestigar:\n  SELECT created_at, user_id, duration_ms, deploy_version\n  FROM validation_error_logs\n  WHERE error_message ILIKE '%Watchdog%'\n    AND created_at > NOW() - INTERVAL '1 hour'\n  ORDER BY created_at DESC;\n\nSi coincide con incidente de saturación BD → mirar /admin/observability ventana 1h.`,
+      metadata: { count: n, maxDurationMs: maxMs, uniqueUsers: users, windowMin: 30 },
+      fingerprint: 'answer_watchdog_burst',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -1090,6 +1138,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB as AlertRule,
   // Salud del frontend desde server-side metrics (no depende del cliente)
   RULE_TRAFFIC_DROP as AlertRule,
+  // Watchdog de UI congelada (2026-05-31, cierra gap detectado en incidente 30/05)
+  RULE_ANSWER_WATCHDOG_BURST as AlertRule,
   // Canary HTTP autenticado (2026-05-27, Nivel 3 sistema canary+simulaciones)
   RULE_CANARY_AUTH_FAILED as AlertRule,
   // Canary Stripe webhook sintético (2026-05-27, cierra gap incidente Rocío/Mercedes)
