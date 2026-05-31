@@ -121,7 +121,7 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(28)
+      expect(autonomicas).toHaveLength(30)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'administrativo-galicia',
         'administrativo-gva',  // Añadida 07/05/2026: Administrativo Generalitat Valenciana C1-01
@@ -133,12 +133,14 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-canarias',
         'auxiliar-administrativo-cantabria',
         'auxiliar-administrativo-carm',
+        'auxiliar-administrativo-catalunya',  // Añadida 31/05/2026: Aux Admin Generalitat Catalunya C2 (OEP 2025: 114 plz)
         'auxiliar-administrativo-clm',
         'auxiliar-administrativo-cyl',
         'auxiliar-administrativo-extremadura',
         'auxiliar-administrativo-galicia',
         'auxiliar-administrativo-la-rioja',
         'auxiliar-administrativo-madrid',
+        'auxiliar-administrativo-pais-vasco',  // Añadida 31/05/2026: Aux Admin Gobierno Vasco C2 (OPE 2026)
         'auxiliar-administrativo-valencia',
         'auxiliar-enfermeria-gva',
         'auxiliar-enfermeria-osakidetza',

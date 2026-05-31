@@ -3726,6 +3726,100 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/correos-personal-operativo/test', label: 'Tests', icon: '🎯' },
     ],
   },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO GENERALITAT CATALUNYA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_catalunya',
+    slug: 'auxiliar-administrativo-catalunya',
+    positionType: 'auxiliar_administrativo_catalunya',
+    name: 'Auxiliar Administrativo Generalitat de Catalunya',
+    shortName: 'Aux. Catalunya',
+    emoji: '📚',
+    badge: 'C2',
+    color: 'yellow',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Temari General (Resolució PRE/2423/2022)',
+        subtitle: '15 temes oficials — DOGC 8720 de 29/07/2022',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitució Espanyola i l\'Estatut d\'Autonomia de Catalunya' },
+          { id: 2, name: 'L\'organització de l\'Administració de la Generalitat de Catalunya' },
+          { id: 3, name: 'Bon govern i transparència. Drets dels ciutadans davant l\'Administració' },
+          { id: 4, name: 'Protecció de dades de caràcter personal' },
+          { id: 5, name: 'Procediment administratiu: concepte, interessats, terminis' },
+          { id: 6, name: 'Actes administratius i fases del procediment' },
+          { id: 7, name: 'El pressupost de la Generalitat de Catalunya' },
+          { id: 8, name: 'Funció pública: classes d\'empleats, situacions, mobilitat' },
+          { id: 9, name: 'Atenció ciutadana i comunicació interpersonal' },
+          { id: 10, name: 'Administració digital i serveis electrònics' },
+          { id: 11, name: 'Gestió documental i arxiu' },
+          { id: 12, name: 'Documentació administrativa' },
+          { id: 13, name: 'Tecnologies de la informació: programari ofimàtic LibreOffice' },
+          { id: 14, name: 'Drets dels empleats públics. Conciliació i prevenció de riscos' },
+          { id: 15, name: 'Règim disciplinari. Igualtat i no discriminació' },
+        ],
+      },
+    ],
+    totalTopics: 15,
+    aliases: ['cat', 'catalunya', 'cataluña', 'generalitat', 'gencat', 'barcelona', 'cos auxiliar'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-catalunya', label: 'Mi Oposición', icon: '📚', featured: true },
+      { href: '/auxiliar-administrativo-catalunya/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-catalunya/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO GOBIERNO VASCO (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_pais_vasco',
+    slug: 'auxiliar-administrativo-pais-vasco',
+    positionType: 'auxiliar_administrativo_pais_vasco',
+    name: 'Auxiliar Administrativo Gobierno Vasco',
+    shortName: 'Aux. País Vasco',
+    emoji: '🌳',
+    badge: 'C2',
+    color: 'green',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Temario Cuerpo Auxiliar Administrativo (en elaboración)',
+        subtitle: 'Eusko Jaurlaritzaren Administrazio Laguntzailearen Kidegoa',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'El Estatuto de Autonomía del País Vasco (Estatuto de Gernika)' },
+          { id: 3, name: 'Organización institucional de la Comunidad Autónoma de Euskadi' },
+          { id: 4, name: 'La Ley de Función Pública Vasca' },
+          { id: 5, name: 'Procedimiento administrativo común (Ley 39/2015)' },
+          { id: 6, name: 'Régimen jurídico del sector público (Ley 40/2015)' },
+          { id: 7, name: 'Transparencia y protección de datos personales' },
+          { id: 8, name: 'Igualdad de mujeres y hombres en Euskadi' },
+          { id: 9, name: 'Atención a la ciudadanía y comunicación' },
+          { id: 10, name: 'Administración electrónica y firma digital' },
+          { id: 11, name: 'Documentos administrativos, registro y archivo' },
+          { id: 12, name: 'Ofimática: tratamiento de textos y hojas de cálculo' },
+          { id: 13, name: 'Régimen disciplinario y de incompatibilidades' },
+        ],
+      },
+    ],
+    totalTopics: 13,
+    aliases: ['pais vasco', 'euskadi', 'eusko jaurlaritza', 'gobierno vasco', 'bilbao', 'vitoria', 'donostia', 'cuerpo auxiliar vasco'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-pais-vasco', label: 'Mi Oposición', icon: '🌳', featured: true },
+      { href: '/auxiliar-administrativo-pais-vasco/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-pais-vasco/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
 ]
 
 // ============================================

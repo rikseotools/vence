@@ -1045,7 +1045,7 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
     id: 'agente_hacienda',
     nombre: 'Agente de la Hacienda Pública',
-    categoria: 'C2',
+    categoria: 'C1',
     administracion: 'Estado',
     icon: '💰'
   },
