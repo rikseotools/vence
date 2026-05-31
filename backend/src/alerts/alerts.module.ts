@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CronScheduleModule } from '../cron-schedule/cron-schedule.module';
 import { AlertsCron } from './alerts.cron';
 import { EmailNotificationAdapter } from './email-notification.adapter';
 import { NOTIFICATION_ADAPTER } from './notification-adapter';
@@ -13,6 +14,7 @@ import { NOTIFICATION_ADAPTER } from './notification-adapter';
  *     solo la línea `useClass` aquí, código de reglas/cron NO se entera.
  */
 @Module({
+  imports: [CronScheduleModule],
   providers: [
     AlertsCron,
     {

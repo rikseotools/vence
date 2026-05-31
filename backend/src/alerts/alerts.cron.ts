@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { CronScheduleService } from '../cron-schedule/cron-schedule.service';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import {
   getLastTickMsAgo,
@@ -8,7 +9,7 @@ import {
 import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
-import { ALERT_RULES, type AlertRule } from './alert-rules';
+import { ALERT_RULES, type AlertRuleContext } from './alert-rules';
 import {
   NOTIFICATION_ADAPTER,
   type NotificationAdapter,
@@ -45,6 +46,7 @@ export class AlertsCron {
     @Inject(NOTIFICATION_ADAPTER)
     private readonly notifier: NotificationAdapter,
     private readonly observability: ObservabilityService,
+    private readonly cronSchedule: CronScheduleService,
     heartbeatRegistry: HeartbeatRegistry,
   ) {
     heartbeatRegistry.register(
@@ -68,6 +70,10 @@ export class AlertsCron {
     let evaluated = 0;
     let skipped = 0;
 
+    const ctx: AlertRuleContext = {
+      cronSchedule: this.cronSchedule,
+    };
+
     for (const rule of ALERT_RULES) {
       evaluated++;
       try {
@@ -86,10 +92,10 @@ export class AlertsCron {
         // `result` es un Array de filas en postgres-js
         const rows = Array.isArray(result) ? result : [];
 
-        if (!rule.shouldFire(rows)) continue;
+        if (!rule.shouldFire(rows, ctx)) continue;
 
         // Construir notificación
-        const partial = rule.buildNotification(rows);
+        const partial = rule.buildNotification(rows, ctx);
 
         // Enviar
         await this.notifier.send({

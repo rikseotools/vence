@@ -1,5 +1,22 @@
 import { sql, type SQL } from 'drizzle-orm';
+import type { CronScheduleService } from '../cron-schedule/cron-schedule.service';
 import type { AlertNotification } from './notification-adapter';
+
+/**
+ * Contexto inyectado a las reglas. Permite que una regla mezcle el
+ * resultado de su query SQL con metadata derivada de otros servicios
+ * (calendario de @Cron, etc.) sin tener que duplicar esa metadata en
+ * un mapa hardcoded paralelo al código que la define.
+ */
+export interface AlertRuleContext {
+  /**
+   * Resuelve, para cada @Cron registrado en SchedulerRegistry, su tick
+   * esperado anterior/siguiente a partir de la expresión declarada en el
+   * decorador. Fuente única de verdad: si una regla necesita saber cuándo
+   * debió ejecutarse un cron, lo pregunta aquí, no a un mapa duplicado.
+   */
+  cronSchedule: CronScheduleService;
+}
 
 /**
  * Definición declarativa de una regla de alerta.
@@ -29,18 +46,42 @@ export interface AlertRule<T = unknown> {
 
   /**
    * Predicado: ¿deben dispararse las notificaciones para este resultado?
-   * Si devuelve false, no se envía nada.
+   * Si devuelve false, no se envía nada. `ctx` se puede ignorar para
+   * reglas SQL-only puras; las reglas que dependen de él deben validar
+   * su presencia y lanzar si falta (invariante respetada por AlertsCron).
    */
-  shouldFire: (rows: T[]) => boolean;
+  shouldFire: (rows: T[], ctx?: AlertRuleContext) => boolean;
 
   /** Construye el contenido de la notificación a enviar. */
-  buildNotification: (rows: T[]) => Omit<AlertNotification, 'rule' | 'severity'>;
+  buildNotification: (
+    rows: T[],
+    ctx?: AlertRuleContext,
+  ) => Omit<AlertNotification, 'rule' | 'severity'>;
 
   /**
    * Tiempo mínimo entre dos firings consecutivos de la misma regla.
    * Evita spam si la condición persiste.
    */
   cooldownMin: number;
+}
+
+/**
+ * Invariante de runtime: una regla que declara que depende de `ctx`
+ * (porque consume `cronSchedule` u otro servicio) DEBE recibirlo. Si el
+ * caller (AlertsCron) lo omite por un bug, el fallo es ruidoso y nominal
+ * (no silencioso ni difícil de diagnosticar).
+ */
+function assertContextualRule(
+  ruleName: string,
+  ctx: AlertRuleContext | undefined,
+): asserts ctx is AlertRuleContext {
+  if (!ctx) {
+    throw new Error(
+      `Regla '${ruleName}' requiere AlertRuleContext pero recibió undefined. ` +
+        'Esto es un bug en el caller (alerts.cron o helper de tests); ' +
+        'la regla NO debe asumir un default silencioso.',
+    );
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -73,108 +114,166 @@ export const RULE_HTTP_5XX_SPIKE: AlertRule<{ n: number; topEndpoint: string | n
 };
 
 /**
- * Cron no se ejecutó en 2× su intervalo esperado.
+ * Margen tras el tick esperado antes de considerar un cron overdue.
  *
- * La lista de intervalos esperados vive aquí para que cron rules sea
- * 100% declarativo. Si añades un cron nuevo a backend, añadirlo aquí
- * para que su staleness se vigile.
+ * Es proporcional al intervalo nominal del cron (next - prev) para que el
+ * mismo umbral funcione tanto para crons cada 5 min como para crons
+ * diarios o semanales. Un margen fijo de 30 min sería absurdamente
+ * permisivo en crons frecuentes (6 ticks perdidos sin alertar) y
+ * absurdamente estricto en crons semanales bajo jitter de scheduling.
  *
- * `daysOfWeek` opcional (0=domingo, 1=lunes, ..., 6=sábado). Si está
- * presente, el cron solo se considera overdue cuando NOW() cae en un
- * día válido. Sin esto, los crons Mon-Fri disparaban falsos positivos
- * cada fin de semana (caso real 31/05/2026: ~13 emails CRITICAL en
- * domingo por 3 crons L-V + 1 endpoint deprecated).
+ * Bounded: nunca menos de 1 min (cubre la propagación a BD bajo carga) ni
+ * más de 30 min (el cron más pesado del proyecto tarda ~3.4 s; cualquier
+ * latencia >30 min es bug aparte de schedule overdue).
  */
-interface CronExpectation {
-  intervalMin: number;
-  /** Días de la semana en que el cron DEBE haber tickeado.
-   *  Si undefined → todos los días. */
-  daysOfWeek?: number[];
-}
+const MIN_GRACE_MS = 60 * 1000;
+const MAX_GRACE_MS = 30 * 60 * 1000;
+const GRACE_FRACTION_OF_INTERVAL = 0.2;
 
-const CRON_EXPECTED: Record<string, CronExpectation> = {
-  // every-5min crons
-  'refresh-rankings': { intervalMin: 5 },
-  'process-outbox': { intervalMin: 5 },
-  // every-15min
-  'check-webhook-health': { intervalMin: 15 },
-  // daily crons (todos los días)
-  'archive-interactions': { intervalMin: 60 * 24 },
-  'refresh-theme-cache': { intervalMin: 60 * 24 },
-  'update-streaks': { intervalMin: 60 * 24 },
-  'detect-timeline-silence': { intervalMin: 60 * 24 },
-  'check-boe-changes': { intervalMin: 60 * 24 },
-  'observability-cleanup': { intervalMin: 60 * 24 },
-  // 4× daily
-  'process-verification-queue': { intervalMin: 60 * 6 },
-  // weekly (cualquier día)
-  'avatar-rotation': { intervalMin: 60 * 24 * 7 },
-  // L-V daily (solo días laborales)
-  'check-seguimiento': { intervalMin: 60 * 24, daysOfWeek: [1, 2, 3, 4, 5] },
-  'detect-oep-llm': { intervalMin: 60 * 24, daysOfWeek: [1, 2, 3, 4, 5] },
-  'detect-generic-sources': { intervalMin: 60 * 24, daysOfWeek: [1, 2, 3, 4, 5] },
-  // solo lunes
-  'detect-regional-oeps': { intervalMin: 60 * 24 * 7, daysOfWeek: [1] },
-};
+function graceForJob(prevTick: Date, nextTick: Date): number {
+  const intervalMs = nextTick.getTime() - prevTick.getTime();
+  return Math.max(
+    MIN_GRACE_MS,
+    Math.min(MAX_GRACE_MS, intervalMs * GRACE_FRACTION_OF_INTERVAL),
+  );
+}
 
 /**
- * ¿Está el cron `endpoint` realmente overdue?
- *
- * Considera tanto el intervalo esperado como el calendario (daysOfWeek).
- * Si el cron es L-V y hoy es sábado o domingo, NO está overdue
- * (es esperado que no haya tickeado).
+ * Ventana mínima desde el primer tick esperado para empezar a vigilar un
+ * cron que NUNCA emitió. Evita disparar durante el bootstrap (deploy
+ * recién hecho, primer tick no completado todavía).
  */
-function isCronOverdue(endpoint: string, minutesSinceLast: number): boolean {
-  const cfg = CRON_EXPECTED[endpoint];
-  if (!cfg) return false;
-  const todayDow = new Date().getUTCDay();
-  if (cfg.daysOfWeek && !cfg.daysOfWeek.includes(todayDow)) {
-    // Hoy no es un día válido para este cron. Calcular el último día válido
-    // y comparar minutesSinceLast contra ese punto.
-    let daysBack = 1;
-    while (daysBack <= 7) {
-      const dow = (todayDow - daysBack + 7) % 7;
-      if (cfg.daysOfWeek.includes(dow)) break;
-      daysBack++;
-    }
-    // Margen: 2× intervalo + 30min, contando desde el último día válido
-    const expectedMaxMin = daysBack * 24 * 60 + cfg.intervalMin * 2 + 30;
-    return minutesSinceLast > expectedMaxMin;
-  }
-  return minutesSinceLast > cfg.intervalMin * 2 + 30;
+const CRON_NEVER_OBSERVED_GRACE_MS = 60 * 60 * 1000;
+
+interface OverdueEntry {
+  name: string;
+  expression: string;
+  timeZone: string;
+  prevExpectedTick: Date;
+  nextExpectedTick: Date;
+  lastActualRun: Date | null;
 }
 
+function findOverdueCrons(
+  rows: Array<{ endpoint: string; lastTs: Date | string | null }>,
+  ctx: AlertRuleContext,
+  now: Date = new Date(),
+): OverdueEntry[] {
+  const lastByEndpoint = new Map<string, Date | null>();
+  for (const row of rows) {
+    const ts = row.lastTs;
+    lastByEndpoint.set(
+      row.endpoint,
+      ts == null ? null : ts instanceof Date ? ts : new Date(ts),
+    );
+  }
+
+  const overdue: OverdueEntry[] = [];
+  const nowMs = now.getTime();
+
+  for (const job of ctx.cronSchedule.listCronJobs(now)) {
+    const prevMs = job.prevExpectedTick.getTime();
+    const graceMs = graceForJob(job.prevExpectedTick, job.nextExpectedTick);
+
+    if (nowMs - prevMs < graceMs) {
+      // El tick acaba de pasar; aún dentro de la propagación. No se
+      // puede juzgar todavía si el cron emitió o no.
+      continue;
+    }
+
+    const lastRun = lastByEndpoint.get(job.name) ?? null;
+    if (lastRun === null) {
+      // Nunca observado en la ventana de la query. Silenciar hasta que el
+      // primer tick esperado quede lo bastante atrás como para descartar
+      // un bootstrap post-deploy.
+      if (nowMs - prevMs < CRON_NEVER_OBSERVED_GRACE_MS) continue;
+      overdue.push({
+        name: job.name,
+        expression: job.expression,
+        timeZone: job.timeZone,
+        prevExpectedTick: job.prevExpectedTick,
+        nextExpectedTick: job.nextExpectedTick,
+        lastActualRun: null,
+      });
+      continue;
+    }
+
+    if (lastRun.getTime() < prevMs - graceMs) {
+      overdue.push({
+        name: job.name,
+        expression: job.expression,
+        timeZone: job.timeZone,
+        prevExpectedTick: job.prevExpectedTick,
+        nextExpectedTick: job.nextExpectedTick,
+        lastActualRun: lastRun,
+      });
+    }
+  }
+  return overdue;
+}
+
+/**
+ * Cron registrado en `SchedulerRegistry` que NO emitió `cron_run` para su
+ * tick esperado más reciente.
+ *
+ * Fuente de verdad del schedule: el propio decorador `@Cron(...)`, leído en
+ * runtime a través de `CronScheduleService`. Cualquier cron nuevo entra en
+ * la vigilancia automáticamente — sin mapas hardcoded que mantener.
+ *
+ * Cómo se evalúa cada cron:
+ *   1. `cron-parser` resuelve `prevExpectedTick` (último tick que el
+ *      schedule dice que debió ocurrir antes de NOW).
+ *   2. La query SQL devuelve `MAX(ts)` del evento `cron_run` por endpoint
+ *      en los últimos 60 días.
+ *   3. Si `lastActualRun < prevExpectedTick - grace` → overdue.
+ *   4. Si `prevExpectedTick > NOW - grace` → todavía dentro de la ventana
+ *      en la que el tick podría no haberse propagado a BD.
+ *   5. Si nunca tickeó en la ventana y el primer tick esperado fue hace
+ *      menos de 1h → silencio (bootstrap post-deploy).
+ *
+ * Reemplaza al mapa `CRON_EXPECTED` + `isCronOverdue` previos, cuya
+ * heurística `intervalMin * 2 + 30 min` fallaba cuando un cron se saltaba
+ * dos ticks consecutivos (caso 31/05/2026: `detect-oep-llm` /
+ * `detect-generic-sources` paralizados por el incidente outbox del 28-29/05,
+ * lo que generaba alertas legítimas pero indistinguibles del bug de la
+ * heurística).
+ */
 export const RULE_CRON_OVERDUE: AlertRule<{
   endpoint: string;
-  minutesSinceLast: number;
+  lastTs: Date | string | null;
 }> = {
   name: 'cron_overdue',
   severity: 'critical',
   query: sql`
     SELECT endpoint,
-           EXTRACT(EPOCH FROM (NOW() - MAX(ts))) / 60 AS "minutesSinceLast"
+           MAX(ts) AS "lastTs"
     FROM observable_events
     WHERE event_type = 'cron_run'
-      AND ts > NOW() - INTERVAL '14 days'  -- ventana para cubrir weekly
+      AND ts > NOW() - INTERVAL '60 days'
     GROUP BY endpoint
   `,
-  shouldFire: (rows) => {
-    return rows.some((r) => isCronOverdue(r.endpoint, r.minutesSinceLast));
+  shouldFire: (rows, ctx) => {
+    assertContextualRule('cron_overdue', ctx);
+    return findOverdueCrons(rows, ctx).length > 0;
   },
-  buildNotification: (rows) => {
-    const overdue = rows.filter((r) => isCronOverdue(r.endpoint, r.minutesSinceLast));
-    const lines = overdue.map((r) => {
-      const cfg = CRON_EXPECTED[r.endpoint];
-      const hours = (r.minutesSinceLast / 60).toFixed(1);
-      const calendarNote = cfg.daysOfWeek
-        ? ` [días ${cfg.daysOfWeek.join(',')}]`
-        : '';
-      return `  - ${r.endpoint}: ${hours}h sin emitir (esperado cada ${cfg.intervalMin} min${calendarNote})`;
+  buildNotification: (rows, ctx) => {
+    assertContextualRule('cron_overdue', ctx);
+    const overdue = findOverdueCrons(rows, ctx);
+    const lines = overdue.map((e) => {
+      const lastStr = e.lastActualRun
+        ? e.lastActualRun.toISOString()
+        : '(never observed in last 60d)';
+      const graceMin = Math.round(
+        graceForJob(e.prevExpectedTick, e.nextExpectedTick) / 60000,
+      );
+      return `  - ${e.name} ['${e.expression}' ${e.timeZone}, margen ${graceMin}min]\n      esperado: ${e.prevExpectedTick.toISOString()}\n      último real: ${lastStr}\n      próximo: ${e.nextExpectedTick.toISOString()}`;
     });
     return {
       title: `${overdue.length} cron${overdue.length > 1 ? 's' : ''} overdue`,
-      body: `Los siguientes crons no emiten "cron_run" desde hace más de 2× su intervalo esperado:\n\n${lines.join('\n')}\n\nVerificar ECS task vence-backend, CloudWatch Logs, o BD.`,
-      metadata: { overdueCrons: overdue.map((r) => r.endpoint) },
+      body: `Los siguientes crons no emitieron "cron_run" para su tick esperado más reciente (margen proporcional al intervalo):\n\n${lines.join('\n\n')}\n\nVerificar ECS task vence-backend, CloudWatch Logs, o BD.`,
+      metadata: {
+        overdueCrons: overdue.map((e) => e.name),
+      },
     };
   },
   cooldownMin: 60,
