@@ -112,6 +112,9 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
   'administrativo_galicia': [],
   'auxiliar_administrativo_clm': [],
   'auxiliar_administrativo_aragon': [],
+  // Añadidas 31/05/2026 — landings nuevas sin exámenes oficiales aún en BD
+  'auxiliar_administrativo_catalunya': [],
+  'auxiliar_administrativo_pais_vasco': [],
 }
 
 /**
@@ -151,6 +154,11 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'administrativo_gva': ['administrativo-gva'],
   'policia-nacional': ['policia-nacional'],
   'policia_nacional': ['policia-nacional'],
+  // Añadidas 31/05/2026 — landings nuevas
+  'auxiliar-administrativo-catalunya': ['auxiliar-administrativo-catalunya'],
+  'auxiliar_administrativo_catalunya': ['auxiliar-administrativo-catalunya'],
+  'auxiliar-administrativo-pais-vasco': ['auxiliar-administrativo-pais-vasco'],
+  'auxiliar_administrativo_pais_vasco': ['auxiliar-administrativo-pais-vasco'],
 }
 
 /**

@@ -606,6 +606,26 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_catalunya',
+      label: 'Auxiliar Administrativo Generalitat de Catalunya (C2)',
+      data: {
+        name: 'Auxiliar Administrativo Generalitat de Catalunya',
+        slug: 'auxiliar-administrativo-catalunya',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'auxiliar_administrativo_pais_vasco',
+      label: 'Auxiliar Administrativo Gobierno Vasco (C2)',
+      data: {
+        name: 'Auxiliar Administrativo Gobierno Vasco',
+        slug: 'auxiliar-administrativo-pais-vasco',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 
