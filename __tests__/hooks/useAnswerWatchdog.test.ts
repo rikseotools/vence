@@ -1,212 +1,241 @@
 // __tests__/hooks/useAnswerWatchdog.test.ts
-// Tests para el hook watchdog que detecta UI congelada
+// Tests del hook useAnswerWatchdog (refactor 31/05/2026 — Page Visibility-aware).
+//
+// Cubre:
+//   - Dispara onReset tras WATCHDOG_TIMEOUT_MS de tiempo visible
+//   - NO dispara cuando isProcessing pasa a false antes del threshold
+//   - NO dispara cuando la pestaña está en background (tiempo NO suma)
+//   - Reanuda contador al volver visible (sin contar el tiempo en background)
+//   - Reinicia el contador al pasar isProcessing false → true
+//   - Cleanup en unmount
+//   - Reporta visibleMs en el log (no wall clock)
 
-import * as fs from 'fs'
-import * as path from 'path'
+/**
+ * @jest-environment jsdom
+ */
+import { renderHook, act } from '@testing-library/react'
+import { useAnswerWatchdog } from '../../hooks/useAnswerWatchdog'
 
-const ROOT = path.resolve(__dirname, '../..')
+// Mock fetch para que el log no falle en JSDOM.
+const fetchMock = jest.fn(() =>
+  Promise.resolve({ ok: true } as unknown as Response),
+)
+beforeAll(() => {
+  ;(globalThis as { fetch: typeof fetch }).fetch =
+    fetchMock as unknown as typeof fetch
+})
 
-// ============================================
-// 1. LÓGICA PURA DEL WATCHDOG
-// ============================================
-describe('useAnswerWatchdog — lógica del timer', () => {
-
-  beforeEach(() => {
-    jest.useFakeTimers()
-  })
-
-  afterEach(() => {
-    jest.useRealTimers()
-  })
-
-  it('ejecuta onReset tras 20s si isProcessing sigue en true', () => {
-    const onReset = jest.fn()
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    // Simular: isProcessing pasa a true
-    timer = setTimeout(() => {
-      onReset()
-    }, 20_000)
-
-    // Antes de 20s: no se ha llamado
-    jest.advanceTimersByTime(19_999)
-    expect(onReset).not.toHaveBeenCalled()
-
-    // A los 20s: se llama
-    jest.advanceTimersByTime(1)
-    expect(onReset).toHaveBeenCalledTimes(1)
-
-    clearTimeout(timer!)
-  })
-
-  it('NO ejecuta onReset si se cancela antes de 20s', () => {
-    const onReset = jest.fn()
-
-    const timer = setTimeout(() => {
-      onReset()
-    }, 20_000)
-
-    // A los 5s el procesamiento termina
-    jest.advanceTimersByTime(5_000)
-    clearTimeout(timer)
-
-    // Avanzar más allá de 20s
-    jest.advanceTimersByTime(30_000)
-    expect(onReset).not.toHaveBeenCalled()
-  })
-
-  it('múltiples ciclos isProcessing=true/false no acumulan timers', () => {
-    const onReset = jest.fn()
-
-    // Ciclo 1: empieza y termina rápido
-    const t1 = setTimeout(onReset, 20_000)
-    jest.advanceTimersByTime(2_000)
-    clearTimeout(t1)
-
-    // Ciclo 2: empieza y termina rápido
-    const t2 = setTimeout(onReset, 20_000)
-    jest.advanceTimersByTime(2_000)
-    clearTimeout(t2)
-
-    // Avanzar mucho tiempo
-    jest.advanceTimersByTime(60_000)
-    expect(onReset).not.toHaveBeenCalled()
+beforeEach(() => {
+  fetchMock.mockClear()
+  jest.useFakeTimers()
+  // Default = visible. Cada test que necesite hidden la cambia.
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    get: () => 'visible',
   })
 })
 
-// ============================================
-// 2. VERIFICACIÓN SOURCE CODE DEL HOOK
-// ============================================
-describe('useAnswerWatchdog.ts — source code', () => {
-  const content = fs.readFileSync(
-    path.join(ROOT, 'hooks/useAnswerWatchdog.ts'), 'utf-8'
-  )
-
-  it('timeout es 20 segundos', () => {
-    expect(content).toMatch(/20[_,]?000/)
-  })
-
-  it('usa useEffect para manejar el timer', () => {
-    expect(content).toMatch(/useEffect/)
-  })
-
-  it('limpia el timer en cleanup (return de useEffect)', () => {
-    expect(content).toMatch(/clearTimeout/)
-  })
-
-  it('logea a validation_error_logs via fetch API', () => {
-    expect(content).toMatch(/fetch\(['"]\/api\/validation-error-log['"]/)
-  })
-
-  it('incluye component y questionId en el log', () => {
-    expect(content).toMatch(/component/)
-    expect(content).toMatch(/questionId/)
-  })
-
-  it('exporta WatchdogConfig como interfaz', () => {
-    expect(content).toMatch(/export interface WatchdogConfig/)
-  })
-
-  it('isProcessing controla inicio/cancelación del timer', () => {
-    expect(content).toMatch(/if \(isProcessing\)/)
-  })
-
-  it('solo inicia timer cuando isProcessing es true', () => {
-    // Verificar que setTimeout solo se llama en el branch isProcessing=true
-    const lines = content.split('\n')
-    let inProcessingBlock = false
-    let setTimeoutInCorrectBlock = false
-
-    for (const line of lines) {
-      if (line.includes('if (isProcessing)')) inProcessingBlock = true
-      if (inProcessingBlock && line.includes('setTimeout')) setTimeoutInCorrectBlock = true
-      if (line.includes('} else {')) inProcessingBlock = false
-    }
-
-    expect(setTimeoutInCorrectBlock).toBe(true)
-  })
+afterEach(() => {
+  jest.useRealTimers()
 })
 
-// ============================================
-// 3. INTEGRACIÓN EN COMPONENTES
-// ============================================
-describe('Componentes — watchdog integrado', () => {
-  // TestLayout y PsychometricTestLayout ya no usan watchdog — validación client-side instantánea.
-  // DynamicTest eliminado en refactor 7ee5c172 (07-may-2026), por eso solo queda ExamLayout.
-  const components = [
-    { name: 'ExamLayout', file: 'components/ExamLayout.tsx', flag: 'isSaving' },
-  ]
-
-  for (const { name, file, flag } of components) {
-    describe(name, () => {
-      const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
-
-      it('importa useAnswerWatchdog', () => {
-        expect(content).toMatch(/import.*useAnswerWatchdog.*from/)
-      })
-
-      it('llama a useAnswerWatchdog con isProcessing', () => {
-        expect(content).toMatch(/useAnswerWatchdog\(\{/)
-        expect(content).toMatch(/isProcessing:\s*\w+/)
-      })
-
-      it(`usa ${flag} como isProcessing`, () => {
-        expect(content).toMatch(new RegExp(`isProcessing:\\s*${flag}`))
-      })
-
-      it(`incluye component: '${name}'`, () => {
-        // El watchdog config debe incluir el nombre del componente
-        expect(content).toContain(`component: '${name}'`)
-      })
-
-      it('incluye onReset que resetea el flag de procesamiento', () => {
-        // El onReset debe poner el flag a false
-        expect(content).toMatch(new RegExp(`set\\w+\\(false\\)`))
-      })
-
-      it('incluye userId en la config del watchdog', () => {
-        expect(content).toMatch(/userId:\s*user\?\.id/)
-      })
-    })
-  }
-})
-
-// (Bloque "DynamicTest — processingAnswer guard" eliminado en refactor
-//  7ee5c172 (07-may-2026). El componente DynamicTest fue borrado y sus
-//  consumidores migraron a TestLayout, que NO usa watchdog porque la
-//  validación es client-side instantánea — no hay flujo asíncrono que
-//  pueda quedar colgado.)
-
-// ============================================
-// 5. SEGURIDAD: Watchdog no interfiere con flujo normal
-// ============================================
-describe('Watchdog — no interfiere con flujo normal', () => {
-
-  it('20s es mayor que timeout API máximo (10s x 2 retries + delays = ~32s... wait, 20s < 32s)', () => {
-    // En realidad: timeout 10s + retry delay 1s + timeout 10s + retry delay 1s + timeout 10s = 32s
-    // PERO el AbortController del client.ts aborta tras 10s cada intento
-    // Y el catch en el componente ejecuta setProcessingAnswer(false)
-    // Así que en la PRÁCTICA, processingAnswer se resetea en <32s por el catch
-    // El watchdog a 20s es un safety net para cuando el catch NO se ejecuta (bug, crash, etc.)
-    //
-    // Verificamos que el watchdog timeout (20s) es razonable:
-    // - Mayor que un solo intento (10s) + margen
-    // - Menor que "el usuario se ha ido" (60s+)
-    const WATCHDOG_MS = 20_000
-    const SINGLE_ATTEMPT_MS = 10_000
-
-    expect(WATCHDOG_MS).toBeGreaterThan(SINGLE_ATTEMPT_MS)
-    expect(WATCHDOG_MS).toBeLessThan(60_000)
+function setVisibility(state: 'visible' | 'hidden') {
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    get: () => state,
   })
+  document.dispatchEvent(new Event('visibilitychange'))
+}
 
-  it('el hook usa onReset como callback (no modifica estado directamente)', () => {
-    const content = fs.readFileSync(
-      path.join(ROOT, 'hooks/useAnswerWatchdog.ts'), 'utf-8'
+describe('useAnswerWatchdog', () => {
+  it('dispara onReset tras 12 s de tiempo visible', () => {
+    const onReset = jest.fn()
+    renderHook(() =>
+      useAnswerWatchdog({
+        isProcessing: true,
+        onReset,
+        component: 'ExamLayout',
+      }),
     )
-    // El hook llama a onReset(), no a setProcessingAnswer directamente
-    expect(content).toMatch(/onReset\(\)/)
-    expect(content).not.toMatch(/setProcessingAnswer/)
-    expect(content).not.toMatch(/setIsAnswering/)
-    expect(content).not.toMatch(/setIsSaving/)
+
+    act(() => {
+      jest.advanceTimersByTime(11_500)
+    })
+    expect(onReset).not.toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(1_000)
+    })
+    expect(onReset).toHaveBeenCalledTimes(1)
+  })
+
+  it('NO dispara si isProcessing pasa a false antes del threshold', () => {
+    const onReset = jest.fn()
+    const { rerender } = renderHook(
+      ({ isProcessing }: { isProcessing: boolean }) =>
+        useAnswerWatchdog({
+          isProcessing,
+          onReset,
+          component: 'ExamLayout',
+        }),
+      { initialProps: { isProcessing: true } },
+    )
+
+    act(() => {
+      jest.advanceTimersByTime(5_000)
+    })
+    rerender({ isProcessing: false })
+
+    act(() => {
+      jest.advanceTimersByTime(30_000)
+    })
+    expect(onReset).not.toHaveBeenCalled()
+  })
+
+  it('NO suma tiempo cuando la pestaña está hidden', () => {
+    const onReset = jest.fn()
+    renderHook(() =>
+      useAnswerWatchdog({
+        isProcessing: true,
+        onReset,
+        component: 'ExamLayout',
+      }),
+    )
+
+    // 5 s visible
+    act(() => {
+      jest.advanceTimersByTime(5_000)
+    })
+    // Hidden 5 min — wall clock muy alto, visible debería seguir en ~5 s
+    act(() => {
+      setVisibility('hidden')
+      jest.advanceTimersByTime(5 * 60 * 1000)
+    })
+    // Aún no debería disparar (visible ≈ 5 s < 12 s)
+    expect(onReset).not.toHaveBeenCalled()
+
+    // Vuelve visible, otros 6 s
+    act(() => {
+      setVisibility('visible')
+      jest.advanceTimersByTime(6_000)
+    })
+    // Visible total ≈ 11 s < 12 s → sigue sin disparar
+    expect(onReset).not.toHaveBeenCalled()
+
+    // +2 s más → 13 s visible → dispara
+    act(() => {
+      jest.advanceTimersByTime(2_000)
+    })
+    expect(onReset).toHaveBeenCalledTimes(1)
+  })
+
+  it('cuando dispara, reporta visibleMs en el body — no wall clock', () => {
+    const onReset = jest.fn()
+    renderHook(() =>
+      useAnswerWatchdog({
+        isProcessing: true,
+        onReset,
+        component: 'ExamLayout',
+        userId: 'user-1',
+      }),
+    )
+
+    // 5 s visible
+    act(() => {
+      jest.advanceTimersByTime(5_000)
+    })
+    // 30 min hidden — wall clock muy alto
+    act(() => {
+      setVisibility('hidden')
+      jest.advanceTimersByTime(30 * 60 * 1000)
+    })
+    // 8 s visible más → total visible 13 s → dispara
+    act(() => {
+      setVisibility('visible')
+      jest.advanceTimersByTime(8_000)
+    })
+
+    expect(onReset).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const call = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(call[1].body as string) as {
+      durationMs: number
+      errorMessage: string
+    }
+    // durationMs debe estar cerca de 13 s (visible), NO 30+ min (wall)
+    expect(body.durationMs).toBeGreaterThanOrEqual(12_000)
+    expect(body.durationMs).toBeLessThan(20_000)
+    expect(body.errorMessage).toContain('UI congelada')
+  })
+
+  it('reinicia el contador al pasar isProcessing false → true', () => {
+    const onReset = jest.fn()
+    const { rerender } = renderHook(
+      ({ isProcessing }: { isProcessing: boolean }) =>
+        useAnswerWatchdog({
+          isProcessing,
+          onReset,
+          component: 'ExamLayout',
+        }),
+      { initialProps: { isProcessing: true } },
+    )
+
+    act(() => {
+      jest.advanceTimersByTime(10_000)
+    })
+    rerender({ isProcessing: false })
+    rerender({ isProcessing: true })
+
+    // Como reinició, después de 11 s NO debería disparar
+    act(() => {
+      jest.advanceTimersByTime(11_000)
+    })
+    expect(onReset).not.toHaveBeenCalled()
+
+    // Con +2 s más (total 13 s en la nueva pasada) sí
+    act(() => {
+      jest.advanceTimersByTime(2_000)
+    })
+    expect(onReset).toHaveBeenCalledTimes(1)
+  })
+
+  it('cleanup en unmount cancela el interval', () => {
+    const onReset = jest.fn()
+    const { unmount } = renderHook(() =>
+      useAnswerWatchdog({
+        isProcessing: true,
+        onReset,
+        component: 'ExamLayout',
+      }),
+    )
+
+    act(() => {
+      jest.advanceTimersByTime(5_000)
+    })
+    unmount()
+
+    act(() => {
+      jest.advanceTimersByTime(60_000)
+    })
+    expect(onReset).not.toHaveBeenCalled()
+  })
+
+  it('NO dispara dos veces aunque siga corriendo el interval por race', () => {
+    const onReset = jest.fn()
+    renderHook(() =>
+      useAnswerWatchdog({
+        isProcessing: true,
+        onReset,
+        component: 'ExamLayout',
+      }),
+    )
+
+    act(() => {
+      jest.advanceTimersByTime(13_000)
+    })
+    act(() => {
+      jest.advanceTimersByTime(5_000)
+    })
+    expect(onReset).toHaveBeenCalledTimes(1)
   })
 })

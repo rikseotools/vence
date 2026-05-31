@@ -69,6 +69,10 @@ import { ExternalHeartbeatModule } from './external-heartbeat/external-heartbeat
 // progresivamente los 20 triggers analíticos del path crítico de
 // answer-and-save. Ver docs/roadmap/sprint-outbox-test-questions.md
 import { OutboxProcessorModule } from './outbox-processor/outbox-processor.module';
+// Refresh diario de las materialized views Fase D-bis Iter 1.5
+// (topic_law_question_summary + topic_official_by_position). Aplica también
+// endpoint admin POST /api/v2/admin/topic-summary/refresh para on-demand.
+import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic-summary.module';
 
 @Module({
   imports: [
@@ -124,6 +128,9 @@ import { OutboxProcessorModule } from './outbox-processor/outbox-processor.modul
     // Sprint 1 outbox test_questions (28/05/2026) — Fase 1.2 infra worker
     // (no-op handlers todavía; Fases 1.3+ añaden lógica con shadow mode).
     OutboxProcessorModule, // cada 1s — procesa batches de hasta 100 eventos
+    // Fase D-bis Iter 1.5 (31/05/2026) — refresh diario 03:30 UTC de las MVs
+    // topic_law_question_summary + topic_official_by_position.
+    RefreshTopicSummaryModule,
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

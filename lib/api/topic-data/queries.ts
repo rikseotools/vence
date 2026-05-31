@@ -27,6 +27,11 @@ import {
   calculateDetailedProgress,
 } from '@/lib/api/topic-progress'
 
+// Fase D-bis Iter 1.5 — lectura de los MVs topic_law_question_summary +
+// topic_official_by_position. Detrás de feature flag TOPIC_MV_ENABLED para
+// rollback inmediato si hace falta.
+import { getTopicAggregatesFromMV, isTopicMvEnabled } from './mv-queries'
+
 // Cache simple en memoria (5 minutos)
 const topicCache = new Map<string, { data: GetTopicDataResponse; timestamp: number }>()
 const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
@@ -118,24 +123,38 @@ export async function getTopicFullData(
       }
     }
 
-    // 3️⃣ OBTENER TODAS LAS PREGUNTAS DEL TEMA (una sola query)
-    // Construir condiciones para cada ley y sus artículos
-    const questionResults = await getQuestionsForTopic(db, scopeMappings)
+    // 3-6️⃣ AGREGADOS DEL TEMA — Fase D-bis Iter 1.5 con flag.
+    //   - Camino MV (flag TOPIC_MV_ENABLED=true): 2 PK lookups paralelos sobre
+    //     materialized views pre-agregadas (~50-150ms p50 cold).
+    //   - Camino antiguo (default): N queries serializadas sobre questions
+    //     + procesamiento en JS (~4-7s p50 cold, hasta 12s timeout en peor caso).
+    // El camino antiguo se mantiene como fallback de rollback sin redeploy.
+    let difficultyStats: DifficultyStats
+    let totalQuestions: number
+    let officialQuestionsCount: number
+    let articlesByLaw: ArticlesByLaw
 
-    // 4️⃣ PROCESAR ESTADÍSTICAS DE DIFICULTAD
-    const difficultyStats = processDifficultyStats(questionResults)
-    const totalQuestions = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
-
-    // 5️⃣ CONTAR PREGUNTAS OFICIALES (filtrado por exam_position de la oposición)
-    const validExamPositions = EXAM_POSITION_MAP[positionType] || []
-    const officialQuestionsCount = questionResults.filter(q =>
-      q.isOfficialExam &&
-      q.examPosition &&
-      validExamPositions.includes(q.examPosition.toLowerCase())
-    ).length
-
-    // 6️⃣ CONTAR ARTÍCULOS POR LEY
-    const articlesByLaw = processArticlesByLaw(questionResults, scopeMappings)
+    if (isTopicMvEnabled()) {
+      const agg = await getTopicAggregatesFromMV(db, topic.id, positionType)
+      difficultyStats = agg.difficultyStats
+      totalQuestions = agg.totalQuestions
+      officialQuestionsCount = agg.officialQuestionsCount
+      articlesByLaw = agg.articlesByLaw
+    } else {
+      const questionResults = await getQuestionsForTopic(db, scopeMappings)
+      difficultyStats = processDifficultyStats(questionResults)
+      totalQuestions = Object.values(difficultyStats).reduce(
+        (sum, count) => sum + count,
+        0,
+      )
+      const validExamPositions = EXAM_POSITION_MAP[positionType] || []
+      officialQuestionsCount = questionResults.filter((q) =>
+        q.isOfficialExam &&
+        q.examPosition &&
+        validExamPositions.includes(q.examPosition.toLowerCase()),
+      ).length
+      articlesByLaw = processArticlesByLaw(questionResults, scopeMappings)
+    }
 
     // 7️⃣ OBTENER PROGRESO DEL USUARIO (si hay userId)
     // V2: Deriva progreso desde article_id via topic_scope (no usa tema_number guardado)

@@ -174,7 +174,7 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 | Frontend Next.js | Vercel | **ECS / OpenNext Lambda + CloudFront** | ❌ Fase E |
 | API routes Next.js | Vercel functions | mover lógica al backend NestJS (parcial — ya hecho en Bloque 3) | 🟡 4/5 endpoints hot path en backend |
 | Postgres BD | Supabase Pro | **RDS Postgres** + read replica + pg_partman | ❌ Fase D |
-| Hot path projections (CQRS-light) | inexistentes — query O(N) por user | Materializadas por triggers (`user_topic_progress_summary`, `user_topic_recent_answers`) | 🟢 **Iter 1 APLICADA 2026-05-30** (covering indexes + SQL filter, 14s→1.5s cold). Iter 2 (triggers + tabla agregada) reservada post-RDS |
+| Hot path projections (CQRS-light) | inexistentes — query O(N) por user | Materializadas por triggers (`user_topic_progress_summary`, `user_topic_recent_answers`) | 🟢 **Iter 1 APLICADA 2026-05-30** (covering indexes + SQL filter, 14s→1.5s cold). 🟢 **Iter 1.5 APLICADA 2026-05-31** (MV `topic_law_question_summary` + `topic_official_by_position` para topic-level aggregates, sin triggers, ~50-150ms p50 vs 4-7s antes). Iter 2 (triggers + tabla agregada) reservada post-RDS |
 | Auth | Supabase Auth | **Auth.js self-hosted / AWS Cognito** | ❌ Fase C |
 | `supabase.from()` queries (PostgREST) | Supabase | endpoints propios + Drizzle | ❌ Fase B (96 archivos) |
 | ISR cache | Vercel Data Cache | CloudFront + S3 + `observable_events` versioned cache | ❌ Fase E |
@@ -292,6 +292,14 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 #### Fase D-bis — Hot path projections (CQRS-light) para 100k DAU (1-2 sem, riesgo 🟡)
 
 > **🟢 Iteración 1 APLICADA 2026-05-30** (migration `20260530_fase_d_bis_topic_progress_covering.sql`). Bench heavy user `c16c186a` (64.720 test_questions): **14.169ms → 1.500ms cold / 320ms → 180-260ms warm** (6.7× / 1.7× speedup). Paridad EXACTA verificada con tests. Tests `__tests__/api/topic-progress|topic-data|theme-stats`: **195/195 passing**. La iteración 1 evita la complejidad de proyecciones materializadas con triggers — soluciona el hot path con (a) covering indexes + (b) filtrar en SQL en vez de JS. Iteración 2 (proyecciones tabla agregada user_topic_progress_summary) queda RESERVADA para si 100k DAU detecta otra ola de saturación tras la migración a RDS.
+
+> **🟢 Iteración 1.5 APLICADA 2026-05-31** (migration `20260531_fase_d_bis_iter15_topic_question_summary.sql` + fix1). Objetivo: cerrar el cuello distinto al de Iter 1 — `getTopicFullData` en `lib/api/topic-data/queries.ts` hace N queries serializadas (una por scopeMapping/ley) sobre `questions × articles × laws` con COUNT DISTINCT, **pg_stat_statements** medía mean 2956ms / max 7310ms en la query principal. Cold path: 4-7s → 12s timeout → 503 user-facing. La causa raíz es estructural (N×SELECT no paralelizado + agregación on-demand sobre 90k filas activas), no de índices.
+>
+> **Solución**: 2 materialized views agregadas por (topic, law) y por (topic, exam_position) — datos topic-level que sólo cambian con curaciones (lentamente), NO con respuestas de usuario. Sin triggers, sin write amplification, REVERSIBLE con DROP. Refresh `CONCURRENTLY` cada 24h vía cron `refresh-topic-summary` (`@Cron('30 3 * * *')`, ~4-10s sin lock). Endpoint admin `POST /api/v2/admin/topic-summary/refresh` para on-demand tras edits del admin. Detrás de feature flag `TOPIC_MV_ENABLED=true` para rollback inmediato.
+>
+> **Paridad**: test sobre 30 topics aleatorios live → 30/30 PASS. Fix #1 detectó que el COUNT(*) FILTER sumaba erróneamente las filas con `q.id=NULL` del LEFT JOIN questions (artículos sin questions caían en bucket `auto`); cambio a COUNT(q.id) FILTER. Tests unitarios: `__tests__/api/topic-data/mvQueries.test.ts` (10/10), suite completo `__tests__/api/topic-data` (74/74).
+>
+> **Beneficio esperado (cold)**: p50 4-7s → ~50-150ms (40-80×), p95 ~12s timeout → ~300ms. Tamaño MVs: 1.6 MB total (cardinalidad fija). Iter 2 (CQRS con triggers per-user) sigue reservada para post-RDS si llegamos a 100k DAU.
 
 > **Añadida 2026-05-26** tras detectar vía observabilidad un pico de 5xx a las 09:15 UTC causado por `getUserAnswersWithArticles` (1.8-3.2s para heavy users) saturando pool durante un cron pesado concurrente. Cascada visible en 26 errores 5xx/min sobre 7 endpoints.
 
