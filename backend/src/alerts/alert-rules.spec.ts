@@ -21,6 +21,8 @@ import {
   RULE_CANARY_ANSWER_SAVE_FAILED,
   RULE_CANARY_DB_POOL_FAILED,
   RULE_CANARY_REDIS_FAILED,
+  RULE_CANARY_TOPIC_DATA_FAILED,
+  RULE_WATCHDOG_WALLCLOCK_RESIDUAL,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -636,5 +638,107 @@ describe('RULE_ANSWER_WATCHDOG_BURST', () => {
 
   it('cooldown 30 min (evitar spam si el bug se repite)', () => {
     expect(RULE_ANSWER_WATCHDOG_BURST.cooldownMin).toBe(30);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// RULE_CANARY_TOPIC_DATA_FAILED (31/05/2026, post Fase D-bis Iter 1.5)
+// ────────────────────────────────────────────────────────────────
+
+describe('RULE_CANARY_TOPIC_DATA_FAILED', () => {
+  it('dispara con ≥1 fallo en 10 min', () => {
+    expect(
+      RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
+        { n: 1, lastStep: 'http', lastError: 'HTTP 503', lastStatus: 503 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 0 fallos', () => {
+    expect(
+      RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null, lastStatus: null },
+      ]),
+    ).toBe(false);
+  });
+
+  it('NO dispara con resultado vacío', () => {
+    expect(RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('severity critical (cada fallo del path topic-data es P1)', () => {
+    expect(RULE_CANARY_TOPIC_DATA_FAILED.severity).toBe('critical');
+  });
+
+  it('cooldown 15 min', () => {
+    expect(RULE_CANARY_TOPIC_DATA_FAILED.cooldownMin).toBe(15);
+  });
+
+  it('notification cita step + runbook + acciones por step', () => {
+    const notif = RULE_CANARY_TOPIC_DATA_FAILED.buildNotification([
+      { n: 2, lastStep: 'shape_empty', lastError: 'totalQuestions=0', lastStatus: 200 },
+    ]);
+    expect(notif.title).toContain('2');
+    expect(notif.title).toContain('topic-data');
+    expect(notif.body).toContain('shape_empty');
+    expect(notif.body).toContain('totalQuestions=0');
+    expect(notif.body).toContain('topic-summary/refresh');
+    expect(notif.body).toContain('canary-y-simulaciones.md');
+    expect(notif.fingerprint).toBe('canary_topic_data_failed');
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// RULE_WATCHDOG_WALLCLOCK_RESIDUAL (31/05/2026, post commit a4051a6b)
+// ────────────────────────────────────────────────────────────────
+
+describe('RULE_WATCHDOG_WALLCLOCK_RESIDUAL', () => {
+  it('dispara si total≥5 y pct>20', () => {
+    expect(
+      RULE_WATCHDOG_WALLCLOCK_RESIDUAL.shouldFire([
+        { total: 10, over60s: 3, pctResidual: 30 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara si total<5 (sample insuficiente)', () => {
+    expect(
+      RULE_WATCHDOG_WALLCLOCK_RESIDUAL.shouldFire([
+        { total: 4, over60s: 3, pctResidual: 75 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('NO dispara si pct≤20 aunque haya muestras', () => {
+    expect(
+      RULE_WATCHDOG_WALLCLOCK_RESIDUAL.shouldFire([
+        { total: 50, over60s: 10, pctResidual: 20 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('NO dispara con resultado vacío', () => {
+    expect(RULE_WATCHDOG_WALLCLOCK_RESIDUAL.shouldFire([])).toBe(false);
+  });
+
+  it('severity warn (trending, no incidente)', () => {
+    expect(RULE_WATCHDOG_WALLCLOCK_RESIDUAL.severity).toBe('warn');
+  });
+
+  it('cooldown 240 min (4h) — no spamear', () => {
+    expect(RULE_WATCHDOG_WALLCLOCK_RESIDUAL.cooldownMin).toBe(240);
+  });
+
+  it('notification cita commit, % y causas Safari/mobile', () => {
+    const notif = RULE_WATCHDOG_WALLCLOCK_RESIDUAL.buildNotification([
+      { total: 25, over60s: 10, pctResidual: 40 },
+    ]);
+    expect(notif.title).toContain('40');
+    expect(notif.title).toContain('10/25');
+    expect(notif.body).toContain('a4051a6b');
+    expect(notif.body).toContain('Safari');
+    expect(notif.body).toContain('Mobile');
+    expect(notif.body).toContain('userAgent');
+    expect(notif.fingerprint).toBe('watchdog_wallclock_residual');
   });
 });

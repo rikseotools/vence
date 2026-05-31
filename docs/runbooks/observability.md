@@ -833,6 +833,34 @@ const RULES: AlertRule[] = [
     threshold: (n: number) => n > 0,
     cooldownMin: 60,
   },
+  // ── Sprint 6 (31/05/2026, post Fase D-bis Iter 1.5) ──
+  {
+    name: 'canary_topic_data_failed',
+    severity: 'critical',
+    // Dispara con ≥1 evento canary_topic_data_failed en últimos 10min.
+    // Cubre el endpoint público /api/topics/[numero] (Redis + BD + flag MV).
+    sql: `SELECT COUNT(*)::int AS n FROM observable_events
+          WHERE event_type = 'canary_topic_data_failed'
+            AND created_at > NOW() - INTERVAL '10 minutes'`,
+    threshold: (n: number) => n > 0,
+    cooldownMin: 15,
+  },
+  {
+    name: 'watchdog_wallclock_residual',
+    severity: 'warn',
+    // Detecta regresión del refactor Page Visibility (commit a4051a6b).
+    // Pre-fix: ~80% watchdog events tenían duration_ms > 60s (Chrome
+    // throttle wall-clock). Post-fix: ~0%. Si > 20% sostenido en 24h
+    // con sample ≥5, hay regresión en algún navegador real que JSDOM
+    // no detecta (probable Safari/mobile sin respetar visibilitychange).
+    sql: `SELECT COUNT(*) FILTER (WHERE duration_ms > 60000) AS over60s,
+                 COUNT(*) AS total
+          FROM validation_error_logs
+          WHERE error_message ILIKE '%Watchdog%'
+            AND created_at > NOW() - INTERVAL '24 hours'`,
+    threshold: ({total, over60s}) => total >= 5 && (over60s/total) > 0.2,
+    cooldownMin: 240,
+  },
 ]
 ```
 

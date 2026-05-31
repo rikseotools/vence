@@ -215,6 +215,31 @@ Dashboard `/admin/canary`: botón "⚡ Run Now (todos)" con visualización inmed
 
 ---
 
+### 🟢 Sprint 6 — Canary topic-data + alerta watchdog drift (HECHO 2026-05-31)
+
+**Contexto**: tras refactor Fase D-bis Iter 1.5 (`commit a4051a6b`) que introduce 2 materialized views detrás de feature flag `TOPIC_MV_ENABLED` + refactor `useAnswerWatchdog` Page Visibility-aware. Manuel: "deberíamos meter algo en canary para checkear, sobre todo infra o cosas no testeadas con unitarios".
+
+**Aplicada la REGLA DE ORO**: propuesta inicial 4 piezas → 2 piezas tras filtro (mismo 50% que Sprint 5). Las 2 descartadas:
+- `canary-topic-mv-freshness 1h` → cubierto por `RULE_CRON_OVERDUE` post-refactor (SchedulerRegistry auto-discovery).
+- Smoke post-deploy automático → cubierto por endpoint admin `POST /api/v2/admin/cron/run-now {name:'refresh-topic-summary'}` ya existente (`commit 01ba345d`).
+
+#### `canary-topic-data` (cron `*/5 * * * *`)
+
+GET sintético a `https://www.vence.es/api/topics/5?oposicion=auxiliar-administrativo-estado` con shape assertions:
+
+- HTTP 200 + JSON parseable.
+- `body.success === true`.
+- `totalQuestions > 0` y `articlesByLaw.length > 0` (detecta MV corrupta/refresh fallido — caso real fix #1 del 31/05 con COUNT FILTER sumando NULL).
+- Latencia < 8s (margen para cubrir cold path antiguo y MV).
+
+Discriminated union de resultado: `ok` / `failed:{step:http|parse|shape|shape_empty|shape_no_articles|validate_latency}`. Cada step lleva runbook específico en la notification de `RULE_CANARY_TOPIC_DATA_FAILED`.
+
+#### Alerta `watchdog_wallclock_residual` (sin canary nuevo, sólo regla SQL)
+
+Detecta regresión del fix Page Visibility-aware en navegadores reales (Safari / mobile) que JSDOM no puede cubrir. Pre-fix ~80% de los watchdog events tenían `duration_ms > 60s`; post-fix debería ser ~0%. Fire: `total >= 5 AND pct > 20%` en 24h. Severity warn (trending), cooldown 240 min.
+
+---
+
 ### 🟢 Sprint 5 bis — External heartbeat (HECHO 2026-05-27)
 
 **El watcher del watcher**. Cierra el ÚNICO gap del sistema canary actual: ¿qué pasa si Fargate cae completo?
@@ -312,6 +337,14 @@ Cada canary redundante con CI:
 - Tras pasar la regla anti-duplicación: **3** (`db-pool`, `redis-upstash`, `run-now`).
 - 50% del scope inicial eliminado por **ya tener cobertura CI**.
 - Tiempo ahorrado: ~5h de codificación de canarios redundantes.
+
+### Aprendizaje 2026-05-31 (Sprint 6)
+
+- Propuesta inicial: 4 piezas (`canary-topic-data`, `canary-topic-mv-freshness`, smoke post-deploy automático, alerta `watchdog_wallclock_residual`).
+- Tras pasar la regla: **2** (`canary-topic-data` + alerta watchdog).
+- 50% del scope eliminado, mismo ratio que Sprint 5 → patrón confirmado: la propuesta inicial sin filtro ~siempre dobla el scope necesario.
+- Lo descartado lo cubría infra existente: `RULE_CRON_OVERDUE` (post-refactor SchedulerRegistry) y endpoint `cron/run-now` (`commit 01ba345d`).
+- **Heurística operativa**: tras cada refactor que añade infra nueva (cron, endpoint admin, regla), recalcular qué canarios propuestos quedan duplicados.
 
 ---
 

@@ -14,6 +14,7 @@ Abrir en navegador `https://www.vence.es/admin/salud-sistema` (alias `/admin/inf
 
 1. **Errores 5xx servidor últimas 24h** (`http_status >= 500`) — verde 0, ámbar ≥1, rojo ≥5.
 2. **UI congelada cliente** (Watchdog hook `useAnswerWatchdog`, threshold 12s) — verde 0, ámbar ≥3, rojo ≥10. Cada evento = un user con UI bloqueada en ExamLayout/TestLayout. Suele correlar con saturación BD/antifraud, no con un fallo del servidor.
+   - **Nota — drift residual del fix Page Visibility** (commit `a4051a6b`, 31/05/2026): si % de events con `duration_ms > 60s` sube de ~0% (post-fix) a >20%, hay regresión en un navegador real (probable Safari/mobile) donde la Page Visibility API no se comporta como en Chrome/JSDOM. La alerta `watchdog_wallclock_residual` lo detecta automáticamente con cooldown 4h. Investigar con: `SELECT user_id, duration_ms, metadata->>'userAgent' FROM validation_error_logs WHERE error_message ILIKE '%Watchdog%' AND duration_ms > 60000 ORDER BY duration_ms DESC LIMIT 20;`
 3. **Drift contadores 24h** (>5%) — verde 0, ámbar ≥1, rojo ≥5.
 4. **Latencia INSERT test_questions** (mean histórico desde pg_stat_statements, incluye RTT cliente→pooler→DB) — verde <80ms, ámbar ≥80ms, rojo ≥250ms. Baseline actual (post-DROP de 2 NO-OPs el 23/05/2026): ≈44ms. El INSERT puro dentro de la BD es ~1.5ms p50 — la diferencia es RTT.
 5. **Cron de drift vivo** — verde <26h sin correr, ámbar 26-36h, rojo >36h.

@@ -1210,6 +1210,111 @@ export const RULE_ANSWER_WATCHDOG_BURST: AlertRule<{
 };
 
 /**
+ * Canary topic-data failed — el cron `canary-topic-data` (Fargate cada 5 min,
+ * Nivel 3 sintético) hace GET sintético a `/api/topics/[numero]` con shape
+ * assertions. Cualquier fallo = el endpoint que sirve el contenido del tema
+ * está roto en producción real (caída de Redis, BD, flag MV mal configurado,
+ * MV stale, regresión de shape).
+ *
+ * Origen: 31/05/2026, post Fase D-bis Iter 1.5. Cubre el path Next.js + Redis
+ * + BD + flag TOPIC_MV_ENABLED en runtime real, que ningún test CI puede
+ * cubrir (regla de oro PASS).
+ *
+ * Cooldown 15 min — dispara con ≥1 fallo en 10 min para detección rápida.
+ */
+export const RULE_CANARY_TOPIC_DATA_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_topic_data_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG((metadata->>'httpStatus')::int ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_topic_data_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary topic-data FALLÓ (${r.n} en 10 min) — endpoint /api/topics/[numero] roto`,
+      body: `El canary sintético detectó que GET /api/topics/[numero] NO responde correctamente. Esto afecta a cualquier user que abra la página de un tema (catálogo + estadísticas).\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES SEGÚN STEP:\n  - http 503: pool BD saturado o withDbTimeout disparó. Mirar /admin/infraestructura.\n  - http 5xx (no 503): excepción en handler. Logs Vercel/ECS frontend.\n  - parse: el response no es JSON. Probable middleware emitiendo HTML 500.\n  - shape: response.success != true. Bug en getTopicFullData.\n  - shape_empty: totalQuestions=0 — MV corrupta o refresh falló. Forzar refresh con POST /api/v2/admin/topic-summary/refresh.\n  - shape_no_articles: articlesByLaw vacío — bug en MV agg o en topic_scope.\n  - validate_latency: > 8s sostenido. Probable saturación pool o flag MV inactivo cuando debería estar activo.\n\nRoadmap: docs/roadmap/canary-y-simulaciones.md §Nivel 3 sintético.\nFase D-bis Iter 1.5: docs/ARCHITECTURE_ROADMAP.md.`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 10,
+      },
+      fingerprint: 'canary_topic_data_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
+ * Watchdog wall-clock residual — detecta que el fix del 31/05/2026 (commit
+ * `a4051a6b`, hook `useAnswerWatchdog` Page Visibility-aware) sigue
+ * funcionando bien en TODOS los navegadores en producción.
+ *
+ * Pre-fix: ~80% de los watchdog events tenían duration_ms > 60s (Chrome
+ * throttle setTimeout cuando la pestaña va a background; el contador wall
+ * clock seguía subiendo y disparaba al volver con duraciones de 58 min).
+ * Post-fix: durationMs reporta tiempo VISIBLE, debería ser <14s (12s
+ * threshold + 2s grace).
+ *
+ * Si vemos >20% de events con dur>60s sostenido en 24h, hay una regresión
+ * en algún navegador real (Safari, Firefox, mobile específico) donde la
+ * Page Visibility API no se comporta como esperamos. Tests CI (JSDOM) no
+ * lo detectan.
+ *
+ * Severity warn (no critical) porque el fix YA mitigó el síntoma — esto
+ * es trending. Cooldown 4h para no spamear.
+ */
+export const RULE_WATCHDOG_WALLCLOCK_RESIDUAL: AlertRule<{
+  total: number;
+  over60s: number;
+  pctResidual: number;
+}> = {
+  name: 'watchdog_wallclock_residual',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COUNT(*) FILTER (WHERE duration_ms > 60000)::int AS "over60s",
+      COUNT(*)::int                                    AS total,
+      COALESCE(
+        ROUND(100.0 * COUNT(*) FILTER (WHERE duration_ms > 60000) / NULLIF(COUNT(*), 0), 1),
+        0
+      )::numeric                                       AS "pctResidual"
+    FROM public.validation_error_logs
+    WHERE error_message ILIKE '%Watchdog%'
+      AND created_at > NOW() - INTERVAL '24 hours'
+  `,
+  shouldFire: (rows) => {
+    const r = rows[0];
+    if (!r) return false;
+    return Number(r.total) >= 5 && Number(r.pctResidual) > 20;
+  },
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Watchdog residual wall-clock ${r.pctResidual}% (${r.over60s}/${r.total} > 60s)`,
+      body: `El refactor 31/05/2026 (commit a4051a6b) Page Visibility-aware debía mantener este % en ~0%. Drift detectado:\n\n  - ${r.over60s} de ${r.total} watchdog events en últimas 24h reportan duration_ms > 60s.\n  - Pre-fix esto era esperado (Chrome tab-throttling). Post-fix NO debería pasar.\n\nProbables causas (en orden de frecuencia):\n  1. Safari no respeta el visibilitychange como Chrome — investigar User-Agent de los events afectados.\n  2. Mobile (iOS Safari) con suspensión agresiva del JS.\n  3. Edge case del hook donde lastTickRef no se reinicia tras un cambio de pestaña corto.\n\nInvestigar:\n  SELECT created_at, user_id, duration_ms, error_message,\n         metadata->>'userAgent' AS ua\n  FROM validation_error_logs\n  WHERE error_message ILIKE '%Watchdog%' AND duration_ms > 60000\n    AND created_at > NOW() - INTERVAL '24 hours'\n  ORDER BY duration_ms DESC LIMIT 20;`,
+      metadata: { total: r.total, over60s: r.over60s, pctResidual: r.pctResidual, windowH: 24 },
+      fingerprint: 'watchdog_wallclock_residual',
+    };
+  },
+  // 4 horas — drift es trending, no incidente; no spamear.
+  cooldownMin: 240,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -1248,4 +1353,8 @@ export const ALERT_RULES: AlertRule[] = [
   // Canarios de INFRA externa (Sprint 5, 27/05/2026) — únicos no duplicados con CI
   RULE_CANARY_DB_POOL_FAILED as AlertRule,
   RULE_CANARY_REDIS_FAILED as AlertRule,
+  // Canary endpoint topic-data (31/05/2026, post Fase D-bis Iter 1.5)
+  RULE_CANARY_TOPIC_DATA_FAILED as AlertRule,
+  // Watchdog drift detector — confirma que Page Visibility fix (a4051a6b) sigue ok
+  RULE_WATCHDOG_WALLCLOCK_RESIDUAL as AlertRule,
 ];
