@@ -145,7 +145,7 @@ línea en `getSink()` — cero cambios en callers.
 | API calls del cliente fallando (5xx) | ✅ | `Sentry.httpClientIntegration` |
 | Pre-hydration errors | ✅ | `EarlyErrorsBridge` inline script → procesado por `client.ts` |
 | React Error Boundary | ✅ | `Sentry.ErrorBoundary` (importar y envolver secciones) — disparados pasan por `beforeSend` |
-| Cron no se ejecutó | ✅ | `cron_overdue` rule en `alerts-engine` (cada 5min vs `CRON_EXPECTED_INTERVAL_MIN`) |
+| Cron no se ejecutó | ✅ | `cron_overdue` rule en `alerts-engine` — lee `SchedulerRegistry` + `cron-parser` para `prev/next expected tick` por cron (refactor 31/05/2026, commit `402171a4`); grace proporcional al intervalo (1m..30m). Auto-discovery: cualquier `@Cron` nuevo entra en la vigilancia. |
 | Cron falla repetido | ✅ | `cron_failure_burst` rule (≥3 fallos/hora) |
 | Deploy backend fallido | ✅ | GHA step `if: failure()` → ingest endpoint + `deploy_failed` rule (≥1/10min) |
 | GHA workflow failure (tests/lint/typecheck) | ✅ | Job `notify-failure` en `test.yml` → ingest endpoint |
@@ -1011,6 +1011,7 @@ Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
 - [x] **Gap 8**: Cron rules engine con `NotificationAdapter` ✅ COMPLETO (backend/src/alerts/)
   - Reglas iniciales (2026-05-25): `5xx_spike`, `cron_overdue`, `deploy_failed`, `cron_failure_burst`.
   - Reglas Fase 1.6 (2026-05-26): `runtime_kill`, `tts_error_burst`, `hydration_mismatch_spike`, `workflow_failure_burst`.
+  - **Refactor `cron_overdue` 2026-05-31 (commit `402171a4`)**: fuente única de verdad = `SchedulerRegistry`. El servicio `backend/src/cron-schedule/CronScheduleService` lee los `@Cron` registrados, resuelve `prev/next expected tick` con `cron-parser` y la regla compara contra `MAX(ts)` de `cron_run`. Borrado el mapa hardcoded `CRON_EXPECTED` + heurística `isCronOverdue`. Grace proporcional al intervalo (1m..30m, 20%). Bootstrap guard 1h. Tests deterministas con fake timers (8 + 15). Origen: incidente 31/05/2026 — `detect-oep-llm`/`detect-generic-sources` paralizados por outbox 28-29/05 disparaban 1 email/h en fin de semana con la heurística antigua.
 - [ ] **Gap 9**: Dashboard `/admin/observability` (2-3h)
 - [ ] **Gap 6**: GHA workflows con `if: failure()` → ingest (30 min) — emisor existe, falta wiring en cada workflow YAML
 - [ ] **Gap 13**: middleware Next.js para 405 framework-level (30 min)
