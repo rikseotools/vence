@@ -591,3 +591,75 @@ describe('RULE_CANARY_REDIS_FAILED (canary infra)', () => {
     expect(RULE_CANARY_REDIS_FAILED.cooldownMin).toBe(10);
   });
 });
+
+// ────────────────────────────────────────────────────────────────
+// RULE_CRON_OVERDUE — fix calendario Mon-Fri (31/05/2026)
+// ────────────────────────────────────────────────────────────────
+
+import { RULE_CRON_OVERDUE } from './alert-rules';
+
+describe('RULE_CRON_OVERDUE — calendario Mon-Fri', () => {
+  const REAL_DATE = global.Date;
+
+  function mockToday(year: number, month: number, day: number) {
+    const fixed = new Date(Date.UTC(year, month - 1, day, 8, 0, 0));
+    global.Date = class extends REAL_DATE {
+      constructor(...args: ConstructorParameters<typeof Date>) {
+        if (args.length === 0) {
+          super(fixed.getTime());
+        } else {
+          super(...args);
+        }
+      }
+      static now() { return fixed.getTime(); }
+    } as DateConstructor;
+  }
+
+  afterEach(() => { global.Date = REAL_DATE; });
+
+  it('domingo: NO dispara para crons Mon-Fri aunque lleven 71h sin tickear', () => {
+    // 31/05/2026 es DOMINGO (DOW=0)
+    mockToday(2026, 5, 31);
+    const rows = [
+      { endpoint: 'check-seguimiento', minutesSinceLast: 71 * 60 },     // viernes 28/05 09:00 → 71h
+      { endpoint: 'detect-oep-llm', minutesSinceLast: 94 * 60 },        // hace 4 días
+      { endpoint: 'detect-generic-sources', minutesSinceLast: 96 * 60 },// hace 4 días
+    ];
+    expect(RULE_CRON_OVERDUE.shouldFire(rows)).toBe(false);
+  });
+
+  it('martes: SÍ dispara para Mon-Fri si llevan >2× su intervalo desde lunes', () => {
+    // 2/06/2026 es MARTES (DOW=2)
+    mockToday(2026, 6, 2);
+    const rows = [
+      // Un cron L-V que tickeó el viernes anterior → 4 días = 96h
+      // Threshold sería 0 daysBack (hoy es martes válido) → 2*24*60 + 30 = 2910 min ≈ 48.5h
+      { endpoint: 'check-seguimiento', minutesSinceLast: 96 * 60 },
+    ];
+    expect(RULE_CRON_OVERDUE.shouldFire(rows)).toBe(true);
+  });
+
+  it('domingo: SÍ dispara para crons daily-all-week con >48h sin tickear', () => {
+    mockToday(2026, 5, 31);
+    const rows = [
+      { endpoint: 'archive-interactions', minutesSinceLast: 50 * 60 }, // >48h
+    ];
+    expect(RULE_CRON_OVERDUE.shouldFire(rows)).toBe(true);
+  });
+
+  it('IGNORA endpoints no registrados (ej. /api/cron/check-webhook-health deprecated)', () => {
+    mockToday(2026, 5, 31);
+    const rows = [
+      { endpoint: '/api/cron/check-webhook-health', minutesSinceLast: 96 * 60 },
+    ];
+    expect(RULE_CRON_OVERDUE.shouldFire(rows)).toBe(false);
+  });
+
+  it('check-webhook-health (Fargate, /15min): dispara si >60min sin tickear', () => {
+    mockToday(2026, 5, 31);
+    const rows = [
+      { endpoint: 'check-webhook-health', minutesSinceLast: 90 },
+    ];
+    expect(RULE_CRON_OVERDUE.shouldFire(rows)).toBe(true);
+  });
+});

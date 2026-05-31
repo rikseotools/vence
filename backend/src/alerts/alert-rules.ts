@@ -78,29 +78,71 @@ export const RULE_HTTP_5XX_SPIKE: AlertRule<{ n: number; topEndpoint: string | n
  * La lista de intervalos esperados vive aquí para que cron rules sea
  * 100% declarativo. Si añades un cron nuevo a backend, añadirlo aquí
  * para que su staleness se vigile.
+ *
+ * `daysOfWeek` opcional (0=domingo, 1=lunes, ..., 6=sábado). Si está
+ * presente, el cron solo se considera overdue cuando NOW() cae en un
+ * día válido. Sin esto, los crons Mon-Fri disparaban falsos positivos
+ * cada fin de semana (caso real 31/05/2026: ~13 emails CRITICAL en
+ * domingo por 3 crons L-V + 1 endpoint deprecated).
  */
-const CRON_EXPECTED_INTERVAL_MIN: Record<string, number> = {
+interface CronExpectation {
+  intervalMin: number;
+  /** Días de la semana en que el cron DEBE haber tickeado.
+   *  Si undefined → todos los días. */
+  daysOfWeek?: number[];
+}
+
+const CRON_EXPECTED: Record<string, CronExpectation> = {
   // every-5min crons
-  'refresh-rankings': 5,
-  'process-outbox': 5,
-  // daily crons
-  'archive-interactions': 60 * 24,
-  'refresh-theme-cache': 60 * 24,
-  'update-streaks': 60 * 24,
-  'detect-timeline-silence': 60 * 24,
-  'check-boe-changes': 60 * 24,
-  'observability-cleanup': 60 * 24,
+  'refresh-rankings': { intervalMin: 5 },
+  'process-outbox': { intervalMin: 5 },
+  // every-15min
+  'check-webhook-health': { intervalMin: 15 },
+  // daily crons (todos los días)
+  'archive-interactions': { intervalMin: 60 * 24 },
+  'refresh-theme-cache': { intervalMin: 60 * 24 },
+  'update-streaks': { intervalMin: 60 * 24 },
+  'detect-timeline-silence': { intervalMin: 60 * 24 },
+  'check-boe-changes': { intervalMin: 60 * 24 },
+  'observability-cleanup': { intervalMin: 60 * 24 },
   // 4× daily
-  'process-verification-queue': 60 * 6,
-  // weekly
-  'avatar-rotation': 60 * 24 * 7,
-  // L-V daily (1 vez por día laboral)
-  'check-seguimiento': 60 * 24,
-  'detect-oep-llm': 60 * 24,
-  'detect-generic-sources': 60 * 24,
+  'process-verification-queue': { intervalMin: 60 * 6 },
+  // weekly (cualquier día)
+  'avatar-rotation': { intervalMin: 60 * 24 * 7 },
+  // L-V daily (solo días laborales)
+  'check-seguimiento': { intervalMin: 60 * 24, daysOfWeek: [1, 2, 3, 4, 5] },
+  'detect-oep-llm': { intervalMin: 60 * 24, daysOfWeek: [1, 2, 3, 4, 5] },
+  'detect-generic-sources': { intervalMin: 60 * 24, daysOfWeek: [1, 2, 3, 4, 5] },
   // solo lunes
-  'detect-regional-oeps': 60 * 24 * 7,
+  'detect-regional-oeps': { intervalMin: 60 * 24 * 7, daysOfWeek: [1] },
 };
+
+/**
+ * ¿Está el cron `endpoint` realmente overdue?
+ *
+ * Considera tanto el intervalo esperado como el calendario (daysOfWeek).
+ * Si el cron es L-V y hoy es sábado o domingo, NO está overdue
+ * (es esperado que no haya tickeado).
+ */
+function isCronOverdue(endpoint: string, minutesSinceLast: number): boolean {
+  const cfg = CRON_EXPECTED[endpoint];
+  if (!cfg) return false;
+  const todayDow = new Date().getUTCDay();
+  if (cfg.daysOfWeek && !cfg.daysOfWeek.includes(todayDow)) {
+    // Hoy no es un día válido para este cron. Calcular el último día válido
+    // y comparar minutesSinceLast contra ese punto.
+    let daysBack = 1;
+    while (daysBack <= 7) {
+      const dow = (todayDow - daysBack + 7) % 7;
+      if (cfg.daysOfWeek.includes(dow)) break;
+      daysBack++;
+    }
+    // Margen: 2× intervalo + 30min, contando desde el último día válido
+    const expectedMaxMin = daysBack * 24 * 60 + cfg.intervalMin * 2 + 30;
+    return minutesSinceLast > expectedMaxMin;
+  }
+  return minutesSinceLast > cfg.intervalMin * 2 + 30;
+}
 
 export const RULE_CRON_OVERDUE: AlertRule<{
   endpoint: string;
@@ -117,22 +159,17 @@ export const RULE_CRON_OVERDUE: AlertRule<{
     GROUP BY endpoint
   `,
   shouldFire: (rows) => {
-    return rows.some((r) => {
-      const expected = CRON_EXPECTED_INTERVAL_MIN[r.endpoint];
-      if (!expected) return false;
-      // Permitir 2× el intervalo + 30 min de gracia
-      return r.minutesSinceLast > expected * 2 + 30;
-    });
+    return rows.some((r) => isCronOverdue(r.endpoint, r.minutesSinceLast));
   },
   buildNotification: (rows) => {
-    const overdue = rows.filter((r) => {
-      const expected = CRON_EXPECTED_INTERVAL_MIN[r.endpoint];
-      return expected && r.minutesSinceLast > expected * 2 + 30;
-    });
+    const overdue = rows.filter((r) => isCronOverdue(r.endpoint, r.minutesSinceLast));
     const lines = overdue.map((r) => {
-      const expected = CRON_EXPECTED_INTERVAL_MIN[r.endpoint];
+      const cfg = CRON_EXPECTED[r.endpoint];
       const hours = (r.minutesSinceLast / 60).toFixed(1);
-      return `  - ${r.endpoint}: ${hours}h sin emitir (esperado cada ${expected} min)`;
+      const calendarNote = cfg.daysOfWeek
+        ? ` [días ${cfg.daysOfWeek.join(',')}]`
+        : '';
+      return `  - ${r.endpoint}: ${hours}h sin emitir (esperado cada ${cfg.intervalMin} min${calendarNote})`;
     });
     return {
       title: `${overdue.length} cron${overdue.length > 1 ? 's' : ''} overdue`,
