@@ -5,11 +5,28 @@ import HeaderES from './Header'
 import FooterES from './Footer'
 // Breadcrumbs.js eliminado — InteractiveBreadcrumbs cubre todas las rutas
 import OnboardingModal from '../components/OnboardingModal'
+import OpenInscriptionBanner from '../components/OpenInscriptionBanner'
 import { useAuth } from '../contexts/AuthContext'
 import { useOposicion } from '../contexts/OposicionContext'
 import { usePathname } from 'next/navigation'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { captureMetaParams } from '../lib/metaPixelCapture'
+
+// Rutas donde NO mostramos el banner global de inscripción abierta:
+//   - tests activos (/test/, /[opo]/test/, /psicotecnicos/test/, etc.)
+//   - admin panel, auth flows, debug pages
+// Los configuradores tipo /test-oposiciones (con guion) SÍ ven banner.
+function shouldHideInscriptionBanner(pathname: string | null): boolean {
+  if (!pathname) return false
+  if (pathname.startsWith('/admin')) return true
+  if (pathname.startsWith('/auth')) return true
+  if (pathname.startsWith('/debug')) return true
+  if (pathname.startsWith('/test/')) return true
+  if (pathname === '/test') return true
+  if (pathname === '/test-recuperado' || pathname.startsWith('/test-recuperado/')) return true
+  if (pathname.includes('/test/')) return true // /[opo]/test/...
+  return false
+}
 
 // Componente interno que usa el contexto de Auth
 export default function ClientLayoutContent({ children }: { children: ReactNode }) {
@@ -17,6 +34,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const { needsOposicionFix } = useOposicion()
   const pathname = usePathname()
   const { showModal, handleComplete, handleSkip, forceShow } = useOnboarding()
+  const hideInscriptionBanner = shouldHideInscriptionBanner(pathname)
 
   // Capturar parámetros de Meta Ads (fbclid, utm_source, etc.) al cargar
   useEffect(() => {
@@ -54,6 +72,9 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
           </a>
         </div>
       )}
+      {/* Banner "Inscripción abierta" — ángulo boca-oreja (familiares/amigos).
+          Oculto en tests activos y admin/auth/debug para no interrumpir. */}
+      {!hideInscriptionBanner && <OpenInscriptionBanner />}
       {/* Breadcrumbs eliminados del layout global — cada página usa InteractiveBreadcrumbs */}
       {children}
       <FooterES />

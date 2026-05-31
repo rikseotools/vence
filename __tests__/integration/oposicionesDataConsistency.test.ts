@@ -304,6 +304,39 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
   })
 
   // ============================================================
+  // inscription_start vs hito "Apertura plazo de inscripción"
+  // Simétrico al test de inscription_deadline. Añadido tras incidente 27/05/2026
+  // (Cádiz y Aux Enfermería GVA tenían hitos con fecha pero columna NULL —
+  // banner global "Inscripción abierta" no las veía).
+  // ============================================================
+  test('inscription_start coincide con algún hito de apertura de inscripción', () => {
+    const conflicts: string[] = []
+    // Restrictivo: apertura/inicio + inscripción/solicitud(es) en la misma frase corta.
+    // Evita matchear "apertura plazo de méritos" (fase final, no inscripción).
+    const aperturaRegex = /(apertura|inicio)\s+(del\s+|de\s+)?plazo\s+de\s+(inscripci[oó]n|solicitud(es)?)/i
+    for (const o of oposiciones) {
+      if (!o.inscription_start) continue
+      const hitosOp = hitos.filter(h => h.oposicion_id === o.id)
+      const aperturas = hitosOp.filter(h => aperturaRegex.test(h.titulo))
+      if (aperturas.length === 0) continue
+      // Mismo trato tolerante que cierre: basta con que AL MENOS UN hito
+      // coincida (cubre reaperturas / ampliaciones).
+      const anyMatch = aperturas.some(a => a.fecha === o.inscription_start)
+      if (!anyMatch) {
+        const lista = aperturas.map(a => `"${a.titulo}" (${a.fecha})`).join(', ')
+        conflicts.push(
+          `${o.slug}: inscription_start=${o.inscription_start} pero ningún hito de apertura coincide: ${lista}`
+        )
+      }
+    }
+    if (conflicts.length > 0) {
+      console.warn('\nContradicciones inscription_start ↔ hitos apertura:')
+      for (const c of conflicts) console.warn('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
   // exam_date vs hito "Examen" / "Primer ejercicio"
   // ============================================================
   test('exam_date coincide con el hito de examen cuando existe', () => {

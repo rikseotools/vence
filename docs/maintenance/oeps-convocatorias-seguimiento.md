@@ -292,6 +292,44 @@ contradicciones automáticamente en CI.
 **Cuando actualices una fecha, hazlo en los 3 sitios** o al menos ejecuta el
 test antes de commitear para detectar desajustes.
 
+### 4g-bis. Integridad cruzada: inscription_start / inscription_deadline ↔ hitos
+
+Los plazos de inscripción aparecen en dos sitios que **DEBEN** coincidir:
+
+| Campo / ubicación | Qué contiene |
+|---|---|
+| `oposiciones.inscription_start` | Fecha oficial de apertura del plazo de presentación de solicitudes |
+| `oposiciones.inscription_deadline` | Fecha oficial de cierre del plazo |
+| `convocatoria_hitos` con título tipo "Apertura plazo de inscripción" / "Inicio plazo solicitudes" | Fecha = `inscription_start` |
+| `convocatoria_hitos` con título tipo "Cierre plazo de inscripción" / "Fin plazo solicitudes" | Fecha = `inscription_deadline` |
+
+**Regla:** al añadir un hito de apertura/cierre de inscripción, **siempre** actualizar también la columna correspondiente en `oposiciones`. Y a la inversa: si actualizas `inscription_*`, asegúrate de que el hito refleja la misma fecha (o créalo si no existe).
+
+**Por qué importa:** la columna `inscription_*` la consume el banner global de "Inscripción abierta" (componente `OpenInscriptionBanner.tsx`) y la landing pública del hero. Si solo metes el hito pero no la columna, el banner es ciego a esa convocatoria y la landing muestra "Inscripción no abierta" aunque sí lo esté.
+
+**Caso real (27/05/2026):** auditoría disparada por el lanzamiento del banner detectó:
+- `auxiliar-administrativo-diputacion-cadiz`: hito cierre 22/02/2024 presente, columna `inscription_deadline = NULL` → backfill desde BOE-A-2024-1395 (inicio 26/01, cierre 22/02).
+- `auxiliar-enfermeria-gva`: hitos apertura 13/03/2026 y cierre 27/03/2026 presentes, ambas columnas NULL → backfill desde DOGV 10321.
+
+**⚠️ Footgun de driver pg con DATE en Node.js:**
+
+La columna `inscription_*` y `convocatoria_hitos.fecha` son `date` (sin TZ). El driver `pg` las devuelve como objeto `Date` JS interpretado como medianoche UTC; si haces `.toISOString().slice(0,10)` desde Madrid (TZ +01) **te muestra el día anterior**. Verifica SIEMPRE con `::text` o `::date::text` en SQL, no con `.toISOString()` en Node:
+
+```js
+// ❌ MAL — resta 1 día
+console.log(row.inscription_deadline.toISOString().slice(0, 10))
+
+// ✅ BIEN — usa el cast SQL
+const q = await c.query(`SELECT inscription_deadline::text FROM oposiciones WHERE …`)
+console.log(q.rows[0].inscription_deadline)  // YYYY-MM-DD sin TZ shift
+
+// ✅ BIEN — desactivar el parser DATE de pg al inicio del script
+const { types } = require('pg')
+types.setTypeParser(1082, v => v)  // 1082 = OID de DATE
+```
+
+El test `__tests__/integration/oposicionesDataConsistency.test.ts` cubre esta regla y debería fallar si alguien rompe la sincronía sin querer.
+
 ### 4h. Detección de hitos con fechas estimadas (deuda §4e)
 
 Los hitos **upcoming** cuya descripción contiene `estimada | aproximada | prevista | tentativa | pendiente` violan §4e — ningún hito debe existir sin fecha oficial publicada. Detectar y limpiar periódicamente:
