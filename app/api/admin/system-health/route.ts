@@ -2,10 +2,16 @@
 // Endpoint admin: estado de salud del sistema.
 //
 // ─── Indicadores CRÍTICOS (cabecera del panel) ───
-//   1) Errores 5xx (desde validation_error_logs)
-//   2) Drift de contadores materializados (desde stats_drift_log)
-//   3) Latencia INSERT a test_questions (desde v_insert_test_questions_latency)
-//   4) Cron de drift vivo
+//   1) Errores 5xx servidor (http_status>=500 en validation_error_logs)
+//   2) UI congelada cliente (Watchdog en ExamLayout/TestLayout)
+//   3) Drift de contadores materializados (desde stats_drift_log)
+//   4) Latencia INSERT a test_questions (desde v_insert_test_questions_latency)
+//   5) Cron de drift vivo
+//
+// El 1 (errores 5xx) y el 2 (UI congelada) estaban en el mismo bucket
+// "severity=critical" hasta el 31/05/2026 — el watchdog client emite eventos
+// con http_status=null pero severity=critical, lo cual distorsionaba el
+// indicador 5xx mezclando fallos del servidor con UI freezes del cliente.
 //
 // ─── Indicadores SECUNDARIOS derivados de observable_events ───
 //   5) Canary uptime agregado (6 canarios Fargate)
@@ -41,6 +47,12 @@ function isAdmin(email: string | null | undefined): boolean {
 // Si cambian, actualizar el runbook.
 const ERROR_AMBER = 1
 const ERROR_RED = 5
+// UI congelada (Watchdog). Alineado con RULE_ANSWER_WATCHDOG_BURST en backend
+// (≥3 events en 30min → fire). En ventana 24h: ámbar ≥3 = burst confirmable;
+// rojo ≥10 = incidente sostenido afectando múltiples users (ver pico
+// 30/05/2026 17-21h UTC: 9 watchdog events).
+const UI_FROZEN_AMBER = 3
+const UI_FROZEN_RED = 10
 const DRIFT_AMBER = 1
 const DRIFT_RED = 5
 const INSERT_MEAN_AMBER_MS = 80
@@ -79,6 +91,11 @@ function parseWindow(raw: string | null): WindowKey {
 function classifyErrors(count: number): Status {
   if (count >= ERROR_RED) return 'red'
   if (count >= ERROR_AMBER) return 'amber'
+  return 'green'
+}
+function classifyUiFrozen(count: number): Status {
+  if (count >= UI_FROZEN_RED) return 'red'
+  if (count >= UI_FROZEN_AMBER) return 'amber'
   return 'green'
 }
 function classifyDrift(count: number): Status {
@@ -146,9 +163,10 @@ async function _GET(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  // ─── 9 lecturas en paralelo ───
+  // ─── 10 lecturas en paralelo ───
   const [
     errorsResult,
+    uiFrozenResult,
     driftResult,
     latencyResult,
     lastCronResult,
@@ -158,11 +176,27 @@ async function _GET(request: NextRequest) {
     canaryEventsResult,
     trafficResult,
   ] = await Promise.all([
-    // 1) Errores 5xx en window
+    // 1) Errores 5xx servidor (http_status >= 500).
+    // El filtro por status excluye los Watchdog client-side (status=null,
+    // pero severity=critical) que tienen su propio indicador en el grid.
     supabase
       .from('validation_error_logs')
-      .select('endpoint, error_type, created_at', { count: 'exact', head: false })
+      .select('endpoint, error_type, created_at, http_status', { count: 'exact', head: false })
       .eq('severity', 'critical')
+      .gte('http_status', 500)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(20),
+
+    // 1b) UI congelada (Watchdog). Eventos emitidos por el hook
+    // `useAnswerWatchdog` cuando el estado `processingAnswer`/`isSaving`
+    // de ExamLayout/TestLayout no se resetea en 12s. Cada evento = un
+    // user con UI bloqueada (no es un fallo del servidor, es un síntoma
+    // del cliente, a menudo correlacionado con latencia del backend).
+    supabase
+      .from('validation_error_logs')
+      .select('endpoint, error_message, duration_ms, user_id, created_at', { count: 'exact', head: false })
+      .ilike('error_message', '%Watchdog%')
       .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(20),
@@ -241,6 +275,24 @@ async function _GET(request: NextRequest) {
   // ─── Procesar 1-4 (existentes) ───
   const errorCount = errorsResult.error ? null : (errorsResult.count ?? 0)
   const errorSamples = errorsResult.data ?? []
+
+  // ─── Procesar 1b (nuevo): watchdog client ───
+  const uiFrozenCount = uiFrozenResult.error ? null : (uiFrozenResult.count ?? 0)
+  const uiFrozenRows = uiFrozenResult.data ?? []
+  const uiFrozenUniqueUsers = new Set(
+    uiFrozenRows
+      .map((r) => (r as { user_id: string | null }).user_id)
+      .filter((u): u is string => typeof u === 'string'),
+  ).size
+  const uiFrozenMaxDurationMs = uiFrozenRows.reduce((max, r) => {
+    const d = Number((r as { duration_ms: number | null }).duration_ms ?? 0)
+    return d > max ? d : max
+  }, 0) || null
+  const uiFrozenSamples = uiFrozenRows.slice(0, 5).map((r) => ({
+    endpoint: (r as { endpoint: string }).endpoint,
+    duration_ms: (r as { duration_ms: number | null }).duration_ms,
+    created_at: (r as { created_at: string }).created_at,
+  }))
 
   const driftCount = driftResult.error ? null : (driftResult.count ?? 0)
   const driftSamples = driftResult.data ?? []
@@ -340,6 +392,16 @@ async function _GET(request: NextRequest) {
           created_at: e.created_at,
         })),
         thresholds: { amber: ERROR_AMBER, red: ERROR_RED },
+        note: 'Filtra http_status >= 500. Excluye Watchdog client-side (ver indicador ui_frozen).',
+      },
+      ui_frozen: {
+        status: uiFrozenCount == null ? 'unknown' : classifyUiFrozen(uiFrozenCount),
+        count: uiFrozenCount,
+        uniqueUsers: uiFrozenUniqueUsers,
+        maxDurationMs: uiFrozenMaxDurationMs,
+        samples: uiFrozenSamples,
+        thresholds: { amber: UI_FROZEN_AMBER, red: UI_FROZEN_RED },
+        note: 'Watchdog del hook useAnswerWatchdog (12s threshold). Cada evento = user con UI bloqueada en ExamLayout/TestLayout. Correlaciona con saturación BD/antifraud.',
       },
       drift: {
         status: driftCount == null ? 'unknown' : classifyDrift(driftCount),

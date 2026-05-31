@@ -10,14 +10,17 @@ Mantenedor: `docs/runbooks/health-check.md`. Referenciado desde `CLAUDE.md`.
 
 Por humano:
 
-Abrir en navegador `https://www.vence.es/admin/salud-sistema`. Cuatro indicadores con semáforo:
+Abrir en navegador `https://www.vence.es/admin/salud-sistema` (alias `/admin/infraestructura`). Cinco indicadores con semáforo:
 
-1. **Errores 5xx últimas 24h** — verde 0, ámbar ≥1, rojo ≥5.
-2. **Drift contadores 24h** (>5%) — verde 0, ámbar ≥1, rojo ≥5.
-3. **Latencia INSERT test_questions** (mean histórico desde pg_stat_statements, incluye RTT cliente→pooler→DB) — verde <80ms, ámbar ≥80ms, rojo ≥250ms. Baseline actual (post-DROP de 2 NO-OPs el 23/05/2026): ≈44ms. El INSERT puro dentro de la BD es ~1.5ms p50 — la diferencia es RTT.
-4. **Cron de drift vivo** — verde <26h sin correr, ámbar 26-36h, rojo >36h.
+1. **Errores 5xx servidor últimas 24h** (`http_status >= 500`) — verde 0, ámbar ≥1, rojo ≥5.
+2. **UI congelada cliente** (Watchdog hook `useAnswerWatchdog`, threshold 12s) — verde 0, ámbar ≥3, rojo ≥10. Cada evento = un user con UI bloqueada en ExamLayout/TestLayout. Suele correlar con saturación BD/antifraud, no con un fallo del servidor.
+3. **Drift contadores 24h** (>5%) — verde 0, ámbar ≥1, rojo ≥5.
+4. **Latencia INSERT test_questions** (mean histórico desde pg_stat_statements, incluye RTT cliente→pooler→DB) — verde <80ms, ámbar ≥80ms, rojo ≥250ms. Baseline actual (post-DROP de 2 NO-OPs el 23/05/2026): ≈44ms. El INSERT puro dentro de la BD es ~1.5ms p50 — la diferencia es RTT.
+5. **Cron de drift vivo** — verde <26h sin correr, ámbar 26-36h, rojo >36h.
 
-Si los cuatro están en verde, no hay fuego activo. Tarea cerrada en 30 segundos.
+> Nota — Hasta 31/05/2026 los indicadores (1) y (2) estaban fusionados en un único card "Errores 5xx" que filtraba sólo por `severity=critical`. Eso metía los Watchdog (`http_status=null` pero `severity=critical`) en el mismo bucket que los 5xx servidor, distorsionando el verdict. La acción ante ámbar/rojo es distinta en cada caso (logs Fargate/Vercel vs pool BD + antifraud + topic-progress cold path), así que viven separados.
+
+Si los cinco están en verde, no hay fuego activo. Tarea cerrada en 30 segundos.
 
 Si alguno está ámbar o rojo, ir a la sección 2 con esa pista.
 

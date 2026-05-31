@@ -28,7 +28,8 @@ interface SystemHealth {
   window: WindowKey
   windowHours: number
   indicators: {
-    errors_5xx: { status: Status; count: number | null; samples: Array<{ endpoint: string; error_type: string; created_at: string }>; thresholds: { amber: number; red: number } }
+    errors_5xx: { status: Status; count: number | null; samples: Array<{ endpoint: string; error_type: string; created_at: string }>; thresholds: { amber: number; red: number }; note?: string }
+    ui_frozen: { status: Status; count: number | null; uniqueUsers: number; maxDurationMs: number | null; samples: Array<{ endpoint: string; duration_ms: number | null; created_at: string }>; thresholds: { amber: number; red: number }; note?: string }
     drift: { status: Status; count: number | null; samples: Array<{ target_table: string; field_name: string; drift_pct: number }>; thresholds: { amber: number; red: number } }
     insert_latency: { status: Status; mean_ms: number | null; thresholds: { amber: number; red: number }; note: string }
     drift_cron: { status: Status; last_run_at: string | null; stale_hours: number | null; thresholds: { amber: string; red: string }; note: string }
@@ -165,6 +166,7 @@ export default function InfraestructuraOverviewPage() {
     if (!ind) return 'unknown'
     const all = [
       ind.errors_5xx.status,
+      ind.ui_frozen.status,
       ind.drift.status,
       ind.insert_latency.status,
       ind.drift_cron.status,
@@ -238,18 +240,39 @@ export default function InfraestructuraOverviewPage() {
           <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2 mt-4">
             🔥 Críticos
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
             <Card
-              title="Errores 5xx"
+              title="Errores 5xx servidor"
               status={ind.errors_5xx.status}
               value={String(ind.errors_5xx.count ?? '—')}
               hint={`Umbrales: ámbar ≥${ind.errors_5xx.thresholds.amber}, rojo ≥${ind.errors_5xx.thresholds.red}`}
-              href={ind.errors_5xx.status === 'green' ? '/admin/errores-validacion' : '/admin/errores-validacion'}
+              href="/admin/errores-validacion"
               detail={
-                ind.errors_5xx.samples.length > 0 && (
+                ind.errors_5xx.samples.length > 0 ? (
                   <div className="font-mono text-xs truncate">
                     {ind.errors_5xx.samples[0].endpoint.slice(0, 30)}
                   </div>
+                ) : (
+                  <div className="text-xs text-gray-500">http_status ≥ 500</div>
+                )
+              }
+            />
+            <Card
+              title="UI congelada"
+              status={ind.ui_frozen.status}
+              value={String(ind.ui_frozen.count ?? '—')}
+              hint={`Watchdog 12s · ámbar ≥${ind.ui_frozen.thresholds.amber}, rojo ≥${ind.ui_frozen.thresholds.red}`}
+              href="/admin/errores-validacion"
+              detail={
+                ind.ui_frozen.count && ind.ui_frozen.count > 0 ? (
+                  <div className="text-xs">
+                    {ind.ui_frozen.uniqueUsers} user{ind.ui_frozen.uniqueUsers !== 1 ? 's' : ''}
+                    {ind.ui_frozen.maxDurationMs != null && (
+                      <> · max {Math.round(ind.ui_frozen.maxDurationMs / 1000)}s</>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500">processingAnswer reset OK</div>
                 )
               }
             />
