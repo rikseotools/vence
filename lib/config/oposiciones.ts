@@ -3738,7 +3738,7 @@ export const OPOSICIONES: Oposicion[] = [
     shortName: 'Aux. Catalunya',
     emoji: '📚',
     badge: 'C2',
-    color: 'yellow',
+    color: 'amber',
     administracion: 'autonomica',
     blocks: [
       {
