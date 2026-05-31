@@ -219,6 +219,10 @@ resource "aws_ecs_task_definition" "frontend" {
         { name = "UPSTASH_REDIS_REST_URL", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/UPSTASH_REDIS_REST_URL" },
         { name = "UPSTASH_REDIS_REST_TOKEN", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/UPSTASH_REDIS_REST_TOKEN" },
         { name = "GOOGLE_CLIENT_SECRET", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/GOOGLE_CLIENT_SECRET" },
+        # Feature flag boolean — Fase D-bis Iter 1.5 (31/05/2026). En SSM (no
+        # env var) para flip rápido sin terraform: ssm put-parameter --value
+        # false → force-new-deployment para rollback en ~3 min.
+        { name = "TOPIC_MV_ENABLED", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/TOPIC_MV_ENABLED" },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
