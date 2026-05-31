@@ -134,6 +134,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🩺'
   },
   {
+    id: 'auxiliar_administrativo_seguridad_social',
+    nombre: 'Auxiliar Administrativo de la Seguridad Social',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '🩺'
+  },
+  {
     id: 'maestro_primaria',
     nombre: 'Maestro de Educación Primaria',
     categoria: 'A2',
@@ -204,9 +211,86 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '💉'
   },
   {
+    id: 'tcae_sas',
+    nombre: 'TCAE del Servicio Andaluz de Salud (SAS)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_sespa',
+    nombre: 'TCAE del SESPA (Asturias)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_ibsalut',
+    nombre: 'TCAE del IB-Salut (Baleares)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_scs_cantabria',
+    nombre: 'TCAE del Servicio Cántabro de Salud',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_sescam',
+    nombre: 'TCAE del SESCAM (Castilla-La Mancha)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_sacyl',
+    nombre: 'TCAE del SACYL (Castilla y León)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_ics',
+    nombre: 'TCAE del ICS (Institut Català de la Salut)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_ses',
+    nombre: 'TCAE del SES (Servicio Extremeño de Salud)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_seris',
+    nombre: 'TCAE del SERIS (Servicio Riojano de Salud)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_navarra',
+    nombre: 'TCAE del Servicio Navarro de Salud-Osasunbidea',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_ingesa',
+    nombre: 'TCAE del INGESA (Ceuta y Melilla)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
     id: 'tramitacion_procesal',
     nombre: 'Tramitación Procesal y Administrativa',
-    categoria: 'C2',
+    categoria: 'C1',
     administracion: 'Justicia',
     icon: '⚖️'
   },
@@ -288,6 +372,429 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
     id: 'auxiliar_administrativo_diputacion_leon',
     nombre: 'Auxiliar Administrativo Dip. León',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES ANDALUCÍA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_almeria',
+    nombre: 'Auxiliar Administrativo Dip. Almería',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_cordoba',
+    nombre: 'Auxiliar Administrativo Dip. Córdoba',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_granada',
+    nombre: 'Auxiliar Administrativo Dip. Granada',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_huelva',
+    nombre: 'Auxiliar Administrativo Dip. Huelva',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_jaen',
+    nombre: 'Auxiliar Administrativo Dip. Jaén',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_malaga',
+    nombre: 'Auxiliar Administrativo Dip. Málaga',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_sevilla',
+    nombre: 'Auxiliar Administrativo Dip. Sevilla',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES ARAGÓN ===
+  {
+    id: 'auxiliar_administrativo_diputacion_huesca',
+    nombre: 'Auxiliar Administrativo Dip. Huesca',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_teruel',
+    nombre: 'Auxiliar Administrativo Dip. Teruel',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES CASTILLA-LA MANCHA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_albacete',
+    nombre: 'Auxiliar Administrativo Dip. Albacete',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_ciudad_real',
+    nombre: 'Auxiliar Administrativo Dip. Ciudad Real',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_cuenca',
+    nombre: 'Auxiliar Administrativo Dip. Cuenca',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_guadalajara',
+    nombre: 'Auxiliar Administrativo Dip. Guadalajara',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_toledo',
+    nombre: 'Auxiliar Administrativo Dip. Toledo',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES CASTILLA Y LEÓN ===
+  {
+    id: 'auxiliar_administrativo_diputacion_avila',
+    nombre: 'Auxiliar Administrativo Dip. Ávila',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_burgos',
+    nombre: 'Auxiliar Administrativo Dip. Burgos',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_palencia',
+    nombre: 'Auxiliar Administrativo Dip. Palencia',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_salamanca',
+    nombre: 'Auxiliar Administrativo Dip. Salamanca',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_segovia',
+    nombre: 'Auxiliar Administrativo Dip. Segovia',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_soria',
+    nombre: 'Auxiliar Administrativo Dip. Soria',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_valladolid',
+    nombre: 'Auxiliar Administrativo Dip. Valladolid',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_zamora',
+    nombre: 'Auxiliar Administrativo Dip. Zamora',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES CATALUÑA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_barcelona',
+    nombre: 'Auxiliar Administrativo Dip. Barcelona',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_girona',
+    nombre: 'Auxiliar Administrativo Dip. Girona',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_lleida',
+    nombre: 'Auxiliar Administrativo Dip. Lleida',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_tarragona',
+    nombre: 'Auxiliar Administrativo Dip. Tarragona',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES COMUNIDAD VALENCIANA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_alicante',
+    nombre: 'Auxiliar Administrativo Dip. Alicante',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_castellon',
+    nombre: 'Auxiliar Administrativo Dip. Castellón',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_valencia',
+    nombre: 'Auxiliar Administrativo Dip. Valencia',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES EXTREMADURA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_badajoz',
+    nombre: 'Auxiliar Administrativo Dip. Badajoz',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_caceres',
+    nombre: 'Auxiliar Administrativo Dip. Cáceres',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES GALICIA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_a_coruna',
+    nombre: 'Auxiliar Administrativo Dip. A Coruña',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_lugo',
+    nombre: 'Auxiliar Administrativo Dip. Lugo',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_ourense',
+    nombre: 'Auxiliar Administrativo Dip. Ourense',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_pontevedra',
+    nombre: 'Auxiliar Administrativo Dip. Pontevedra',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === DIPUTACIONES FORALES (PAÍS VASCO) ===
+  {
+    id: 'auxiliar_administrativo_diputacion_alava',
+    nombre: 'Auxiliar Administrativo Dip. Foral de Álava',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_bizkaia',
+    nombre: 'Auxiliar Administrativo Dip. Foral de Bizkaia',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_diputacion_gipuzkoa',
+    nombre: 'Auxiliar Administrativo Dip. Foral de Gipuzkoa',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === CABILDOS CANARIAS ===
+  {
+    id: 'auxiliar_administrativo_cabildo_tenerife',
+    nombre: 'Auxiliar Administrativo Cabildo de Tenerife',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_cabildo_gran_canaria',
+    nombre: 'Auxiliar Administrativo Cabildo de Gran Canaria',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_cabildo_lanzarote',
+    nombre: 'Auxiliar Administrativo Cabildo de Lanzarote',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_cabildo_fuerteventura',
+    nombre: 'Auxiliar Administrativo Cabildo de Fuerteventura',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_cabildo_la_palma',
+    nombre: 'Auxiliar Administrativo Cabildo de La Palma',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_cabildo_la_gomera',
+    nombre: 'Auxiliar Administrativo Cabildo de La Gomera',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_cabildo_el_hierro',
+    nombre: 'Auxiliar Administrativo Cabildo de El Hierro',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+
+  // === CONSELLS INSULARS BALEARES ===
+  {
+    id: 'auxiliar_administrativo_consell_mallorca',
+    nombre: 'Auxiliar Administrativo Consell de Mallorca',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_consell_menorca',
+    nombre: 'Auxiliar Administrativo Consell de Menorca',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_consell_eivissa',
+    nombre: 'Auxiliar Administrativo Consell d\'Eivissa',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+  {
+    id: 'auxiliar_administrativo_consell_formentera',
+    nombre: 'Auxiliar Administrativo Consell de Formentera',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏝️'
+  },
+
+  // === AYUNTAMIENTOS GRANDES (TOP CAPITALES) ===
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_madrid',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Madrid',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_barcelona',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Barcelona',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_sevilla',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Sevilla',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_zaragoza',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Zaragoza',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_malaga',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Málaga',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_bilbao',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Bilbao',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_las_palmas',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Las Palmas de Gran Canaria',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_palma',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Palma',
     categoria: 'C2',
     administracion: 'Local',
     icon: '🏛️'
@@ -416,6 +923,41 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '⛰️'
   },
   {
+    id: 'auxiliar_administrativo_catalunya',
+    nombre: 'Auxiliar Administrativo Generalitat de Catalunya',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🎗️'
+  },
+  {
+    id: 'auxiliar_administrativo_pais_vasco',
+    nombre: 'Auxiliar Administrativo Gobierno Vasco',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🌳'
+  },
+  {
+    id: 'auxiliar_administrativo_navarra',
+    nombre: 'Auxiliar Administrativo Gobierno de Navarra',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏰'
+  },
+  {
+    id: 'auxiliar_administrativo_ceuta',
+    nombre: 'Auxiliar Administrativo Ciudad Autónoma de Ceuta',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_melilla',
+    nombre: 'Auxiliar Administrativo Ciudad Autónoma de Melilla',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'administrativo_navarra',
     nombre: 'Administrativo del Gobierno de Navarra',
     categoria: 'C1',
@@ -503,7 +1045,7 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
     id: 'agente_hacienda',
     nombre: 'Agente de la Hacienda Pública',
-    categoria: 'C1',
+    categoria: 'C2',
     administracion: 'Estado',
     icon: '💰'
   },
@@ -760,6 +1302,121 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     categoria: 'A1',
     administracion: 'Estado',
     icon: '📜'
+  },
+
+  // === UNIVERSIDADES ===
+  {
+    id: 'auxiliar_administrativo_universidad',
+    nombre: 'Auxiliar Administrativo de Universidad',
+    categoria: 'C2',
+    administracion: 'Universidad',
+    icon: '🎓'
+  },
+
+  // === OTROS CUERPOS ESTATALES C2 ===
+  {
+    id: 'auxiliar_catastro',
+    nombre: 'Auxiliar del Catastro',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '🗺️'
+  },
+  {
+    id: 'auxiliar_vigilancia_aduanera',
+    nombre: 'Auxiliar de Vigilancia Aduanera',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '🛃'
+  },
+  {
+    id: 'auxiliar_sepe',
+    nombre: 'Auxiliar del SEPE (Servicio Público de Empleo Estatal)',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '💼'
+  },
+  {
+    id: 'mecanico_conductor_estado',
+    nombre: 'Mecánico-Conductor del Parque Móvil del Estado',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '🚗'
+  },
+  {
+    id: 'auxiliar_estadistica_ine',
+    nombre: 'Auxiliar de Estadística del INE',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '📊'
+  },
+  {
+    id: 'auxiliar_inspeccion_soivre',
+    nombre: 'Auxiliar de Inspección del SOIVRE',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '🌾'
+  },
+
+  // === SERVICIOS SOCIALES (CCAA) ===
+  {
+    id: 'auxiliar_servicios_sociales',
+    nombre: 'Auxiliar de Servicios Sociales',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🤝'
+  },
+  {
+    id: 'auxiliar_educador_centros_menores',
+    nombre: 'Auxiliar Educador de Centros de Menores',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🧒'
+  },
+  {
+    id: 'auxiliar_residencia_mayores',
+    nombre: 'Auxiliar de Residencia de Mayores',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '👵'
+  },
+
+  // === LOCALES ESPECIALIZADOS ===
+  {
+    id: 'ayudante_recaudacion',
+    nombre: 'Ayudante de Recaudación (Diputaciones)',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '💰'
+  },
+  {
+    id: 'auxiliar_inspeccion_tributos_locales',
+    nombre: 'Auxiliar de Inspección de Tributos Locales',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🧾'
+  },
+  {
+    id: 'operador_emergencias_112',
+    nombre: 'Operador de Emergencias 112',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🚨'
+  },
+
+  // === MEDIOAMBIENTE / FORESTAL (CCAA) ===
+  {
+    id: 'agente_forestal',
+    nombre: 'Agente Forestal',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🌲'
+  },
+  {
+    id: 'agente_medioambiental',
+    nombre: 'Agente Medioambiental',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🌿'
   }
 ]
 
