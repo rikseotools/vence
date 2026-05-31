@@ -1274,6 +1274,11 @@ export const RULE_CANARY_TOPIC_DATA_FAILED: AlertRule<{
  * Page Visibility API no se comporta como esperamos. Tests CI (JSDOM) no
  * lo detectan.
  *
+ * Filtra por `deploy_version = current_deploy` para que el historial
+ * pre-fix NO contamine el ratio (fix 31/05/2026 — primera versión sufría
+ * falsos positivos porque la ventana 24h incluía events del hook viejo
+ * de los deploys anteriores). Mismo patrón que health-check.md con 5xx.
+ *
  * Severity warn (no critical) porque el fix YA mitigó el síntoma — esto
  * es trending. Cooldown 4h para no spamear.
  */
@@ -1285,16 +1290,29 @@ export const RULE_WATCHDOG_WALLCLOCK_RESIDUAL: AlertRule<{
   name: 'watchdog_wallclock_residual',
   severity: 'warn',
   query: sql`
+    WITH current_deploy AS (
+      -- Deploy actual = el más frecuente entre eventos recientes en la
+      -- misma tabla. Evita contar events de deploys anteriores donde
+      -- el hook aún era wall-clock (ratio histórico siempre alto).
+      SELECT deploy_version
+      FROM validation_error_logs
+      WHERE created_at > NOW() - INTERVAL '4 hours'
+        AND deploy_version IS NOT NULL
+      GROUP BY deploy_version
+      ORDER BY COUNT(*) DESC
+      LIMIT 1
+    )
     SELECT
-      COUNT(*) FILTER (WHERE duration_ms > 60000)::int AS "over60s",
-      COUNT(*)::int                                    AS total,
+      COUNT(*) FILTER (WHERE vel.duration_ms > 60000)::int AS "over60s",
+      COUNT(*)::int                                        AS total,
       COALESCE(
-        ROUND(100.0 * COUNT(*) FILTER (WHERE duration_ms > 60000) / NULLIF(COUNT(*), 0), 1),
+        ROUND(100.0 * COUNT(*) FILTER (WHERE vel.duration_ms > 60000) / NULLIF(COUNT(*), 0), 1),
         0
-      )::numeric                                       AS "pctResidual"
-    FROM public.validation_error_logs
-    WHERE error_message ILIKE '%Watchdog%'
-      AND created_at > NOW() - INTERVAL '24 hours'
+      )::numeric                                           AS "pctResidual"
+    FROM public.validation_error_logs vel, current_deploy cd
+    WHERE vel.error_message ILIKE '%Watchdog%'
+      AND vel.created_at > NOW() - INTERVAL '24 hours'
+      AND vel.deploy_version = cd.deploy_version
   `,
   shouldFire: (rows) => {
     const r = rows[0];

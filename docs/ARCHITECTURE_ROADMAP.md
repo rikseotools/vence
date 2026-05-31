@@ -293,13 +293,32 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 > **🟢 Iteración 1 APLICADA 2026-05-30** (migration `20260530_fase_d_bis_topic_progress_covering.sql`). Bench heavy user `c16c186a` (64.720 test_questions): **14.169ms → 1.500ms cold / 320ms → 180-260ms warm** (6.7× / 1.7× speedup). Paridad EXACTA verificada con tests. Tests `__tests__/api/topic-progress|topic-data|theme-stats`: **195/195 passing**. La iteración 1 evita la complejidad de proyecciones materializadas con triggers — soluciona el hot path con (a) covering indexes + (b) filtrar en SQL en vez de JS. Iteración 2 (proyecciones tabla agregada user_topic_progress_summary) queda RESERVADA para si 100k DAU detecta otra ola de saturación tras la migración a RDS.
 
-> **🟢 Iteración 1.5 APLICADA 2026-05-31** (migration `20260531_fase_d_bis_iter15_topic_question_summary.sql` + fix1). Objetivo: cerrar el cuello distinto al de Iter 1 — `getTopicFullData` en `lib/api/topic-data/queries.ts` hace N queries serializadas (una por scopeMapping/ley) sobre `questions × articles × laws` con COUNT DISTINCT, **pg_stat_statements** medía mean 2956ms / max 7310ms en la query principal. Cold path: 4-7s → 12s timeout → 503 user-facing. La causa raíz es estructural (N×SELECT no paralelizado + agregación on-demand sobre 90k filas activas), no de índices.
+> **🟢 Iteración 1.5 APLICADA 2026-05-31 — flag LIVE en producción 18:09 UTC** (migration `20260531_fase_d_bis_iter15_topic_question_summary.sql` + fix1 + commits `a4051a6b`/`381594fe`). Objetivo: cerrar el cuello distinto al de Iter 1 — `getTopicFullData` en `lib/api/topic-data/queries.ts` hace N queries serializadas (una por scopeMapping/ley) sobre `questions × articles × laws` con COUNT DISTINCT, **pg_stat_statements** medía mean 2956ms / max 7310ms en la query principal. Cold path: 4-7s → 12s timeout → 503 user-facing. La causa raíz es estructural (N×SELECT no paralelizado + agregación on-demand sobre 90k filas activas), no de índices.
 >
-> **Solución**: 2 materialized views agregadas por (topic, law) y por (topic, exam_position) — datos topic-level que sólo cambian con curaciones (lentamente), NO con respuestas de usuario. Sin triggers, sin write amplification, REVERSIBLE con DROP. Refresh `CONCURRENTLY` cada 24h vía cron `refresh-topic-summary` (`@Cron('30 3 * * *')`, ~4-10s sin lock). Endpoint admin `POST /api/v2/admin/topic-summary/refresh` para on-demand tras edits del admin. Detrás de feature flag `TOPIC_MV_ENABLED=true` para rollback inmediato.
+> **Solución**: 2 materialized views agregadas por (topic, law) y por (topic, exam_position) — datos topic-level que sólo cambian con curaciones (lentamente), NO con respuestas de usuario. Sin triggers, sin write amplification, REVERSIBLE con DROP. Refresh `CONCURRENTLY` cada 24h vía cron `refresh-topic-summary` (`@Cron('30 3 * * *')`, ~4-10s sin lock). Endpoint admin `POST /api/v2/admin/topic-summary/refresh` para on-demand tras edits del admin. Detrás de feature flag `TOPIC_MV_ENABLED` en SSM `/vence-frontend/TOPIC_MV_ENABLED` — rollback en ~3 min sin terraform: `aws ssm put-parameter --value false --overwrite` + `aws ecs update-service --force-new-deployment`.
 >
 > **Paridad**: test sobre 30 topics aleatorios live → 30/30 PASS. Fix #1 detectó que el COUNT(*) FILTER sumaba erróneamente las filas con `q.id=NULL` del LEFT JOIN questions (artículos sin questions caían en bucket `auto`); cambio a COUNT(q.id) FILTER. Tests unitarios: `__tests__/api/topic-data/mvQueries.test.ts` (10/10), suite completo `__tests__/api/topic-data` (74/74).
 >
-> **Beneficio esperado (cold)**: p50 4-7s → ~50-150ms (40-80×), p95 ~12s timeout → ~300ms. Tamaño MVs: 1.6 MB total (cardinalidad fija). Iter 2 (CQRS con triggers per-user) sigue reservada para post-RDS si llegamos a 100k DAU.
+> **Bench REAL post-flag** (31/05/2026 18:10 UTC, cold path con `?_canary=<rand>` para esquivar cache Redis):
+>
+> | Tema | Leyes | Questions | Latencia |
+> |---|---|---|---|
+> | 7  | 2  | 391   | 243ms |
+> | 9  | 4  | 876   | 176ms |
+> | 11 | 3  | 3.392 | **124ms** |
+> | 13 | **11** | 930   | **211ms** |
+>
+> Tema 13 con 11 leyes habría sido el caso peor del camino antiguo: 11×~2-3s serializadas = 22-33s → **12s timeout → 503 garantizado**. Ahora **211ms** = **~100× speedup** (mejor que la estimación inicial 40-80×). Tema 11 con **3.392 questions en 124ms** confirma escalabilidad O(1) por número de questions del tema (PK lookup en MV, ignora el volumen).
+>
+> Canary `canary-topic-data` (5 ticks consecutivos verdes 18:00-18:20 UTC, dur 24-93ms) confirma estabilidad. Iter 2 (CQRS con triggers per-user) sigue reservada para post-RDS si llegamos a 100k DAU.
+>
+> **Footguns post-flag detectados y mitigados el mismo día**:
+>
+> 1. **`RULE_WATCHDOG_WALLCLOCK_RESIDUAL` (commit `80239faa`)** miraba ventana 24h sin filtrar por `deploy_version`. El historial de events pre-fix Page Visibility (deploy `9257553d`, hook viejo, 30/05 17-21h) dominaba el ratio y la regla disparaba un falso positivo "50% watchdog > 60s" cuando el ratio REAL del deploy actual era 0%. **Fix**: filtrar por `deploy_version = current_deploy` (mismo patrón que health-check runbook §1 con 5xx servidor). Commit local pendiente push.
+>
+> 2. **`RULE_CRON_OVERDUE` falso positivo de bootstrap** por `refresh-topic-summary` (cron nuevo del deploy `a4051a6b`, prev tick natural 31/05 03:30 UTC = 15h atrás, jamás observado en `observable_events`). El bootstrap-guard de 1h del refactor de SchedulerRegistry no lo cubría para crons daily. **Mitigación operativa**: disparar el cron una vez tras el deploy con `POST /api/v2/admin/cron/run-now {name:'refresh-topic-summary'}` (commit `01ba345d`) — emitió `cron_run` a 18:30:19 UTC, silenció la regla. **Mejora arquitectural posible** (pendiente): subir bootstrap-guard del nunca-observado a 24h cuando el cron es daily o semanal.
+>
+> **Beneficio esperado (cold) — para referencia futura**: p50 4-7s → ~50-150ms (40-80×), p95 ~12s timeout → ~300ms. Tamaño MVs: 1.6 MB total (cardinalidad fija). El bench real superó la estimación.
 
 > **Añadida 2026-05-26** tras detectar vía observabilidad un pico de 5xx a las 09:15 UTC causado por `getUserAnswersWithArticles` (1.8-3.2s para heavy users) saturando pool durante un cron pesado concurrente. Cascada visible en 26 errores 5xx/min sobre 7 endpoints.
 
