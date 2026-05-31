@@ -30,6 +30,9 @@ export const CCAA_FILTERS: Record<string, OposicionFilter> = {
   'navarra': { type: 'ccaa', slug: 'navarra', label: 'Navarra', value: 'navarra', seoTitle: 'Oposiciones en Navarra 2026', seoDescription: 'Convocatorias de Administrativo del Gobierno de Navarra. 585 plazas.' },
   'la-rioja': { type: 'ccaa', slug: 'la-rioja', label: 'La Rioja', value: 'la-rioja', seoTitle: 'Oposiciones en La Rioja 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo del Gobierno de La Rioja.' },
   'pais-vasco': { type: 'ccaa', slug: 'pais-vasco', label: 'País Vasco', value: 'pais-vasco', seoTitle: 'Oposiciones en el País Vasco 2026', seoDescription: 'Convocatorias de oposiciones en Osakidetza y Gobierno Vasco.' },
+  'cataluna': { type: 'ccaa', slug: 'cataluna', label: 'Cataluña', value: 'cataluna', seoTitle: 'Oposiciones en Cataluña 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo de la Generalitat de Catalunya y TCAE del ICS.' },
+  'ceuta': { type: 'ccaa', slug: 'ceuta', label: 'Ceuta', value: 'ceuta', seoTitle: 'Oposiciones en Ceuta 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo de la Ciudad Autónoma de Ceuta.' },
+  'melilla': { type: 'ccaa', slug: 'melilla', label: 'Melilla', value: 'melilla', seoTitle: 'Oposiciones en Melilla 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo de la Ciudad Autónoma de Melilla.' },
 }
 
 export const SUBGRUPO_FILTERS: Record<string, OposicionFilter> = {
@@ -95,6 +98,8 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'celador-sescam-clm': 'castilla-la-mancha',
     'celador-scs-canarias': 'canarias',
     'auxiliar-enfermeria-osakidetza': 'pais-vasco',
+    'auxiliar-administrativo-pais-vasco': 'pais-vasco',
+    'auxiliar-administrativo-catalunya': 'cataluna',
     'guardia-civil': 'estado',
     'policia-nacional': 'estado',
     'policia-municipal-madrid': 'madrid',
