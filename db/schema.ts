@@ -1519,25 +1519,6 @@ export const userNotificationSettings = pgTable("user_notification_settings", {
 	check("user_notification_settings_motivation_level_check", sql`motivation_level = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'extreme'::text])`),
 ]);
 
-export const userActivityPatterns = pgTable("user_activity_patterns", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id"),
-	preferredHours: integer("preferred_hours").array().default([9, 14, 2]),
-	activeDays: integer("active_days").array().default([1, 2, 3, 4, 5, 6]),
-	avgSessionDuration: integer("avg_session_duration").default(15),
-	peakPerformanceTime: time("peak_performance_time"),
-	streakPattern: text("streak_pattern"),
-	lastCalculated: timestamp("last_calculated", { withTimezone: true, mode: 'string' }).defaultNow(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_user_activity_patterns_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_activity_patterns_user_id_fkey"
-		}).onDelete("cascade"),
-]);
-
 export const notificationLogs = pgTable("notification_logs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),
@@ -1611,31 +1592,6 @@ export const notificationMetrics = pgTable("notification_metrics", {
 			foreignColumns: [notificationTemplates.id],
 			name: "notification_metrics_template_id_fkey"
 		}),
-]);
-
-export const userSmartScheduling = pgTable("user_smart_scheduling", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id"),
-	nextNotificationTime: timestamp("next_notification_time", { withTimezone: true, mode: 'string' }),
-	notificationFrequencyHours: integer("notification_frequency_hours").default(24),
-	lastSessionTime: timestamp("last_session_time", { withTimezone: true, mode: 'string' }),
-	streakStatus: integer("streak_status").default(0),
-	riskLevel: text("risk_level").default('low'),
-	lastRiskCalculation: timestamp("last_risk_calculation", { withTimezone: true, mode: 'string' }).defaultNow(),
-	pauseUntil: timestamp("pause_until", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_user_smart_scheduling_next_notification").using("btree", table.nextNotificationTime.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_user_smart_scheduling_risk_level").using("btree", table.riskLevel.asc().nullsLast().op("text_ops")),
-	index("idx_user_smart_scheduling_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_smart_scheduling_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("user_smart_scheduling_user_id_unique").on(table.userId),
-	check("user_smart_scheduling_risk_level_check", sql`risk_level = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text])`),
 ]);
 
 export const userMedals = pgTable("user_medals", {
@@ -3639,20 +3595,6 @@ export const adminPwaStats = pgView("admin_pwa_stats", {	// You can use { mode: 
 	totalPrompts: bigint("total_prompts", { mode: "number" }),
 	conversionRatePercentage: numeric("conversion_rate_percentage"),
 }).as(sql`SELECT count(DISTINCT pe.user_id) FILTER (WHERE pe.event_type = 'pwa_installed'::text) AS total_installations, count(DISTINCT ps.user_id) FILTER (WHERE ps.is_standalone = true) AS active_pwa_users, count(DISTINCT pe.user_id) FILTER (WHERE pe.event_type = 'install_prompt_shown'::text) AS prompt_shows, count(*) FILTER (WHERE pe.event_type = 'pwa_installed'::text) AS total_installs, count(*) FILTER (WHERE pe.event_type = 'install_prompt_shown'::text) AS total_prompts, round(count(*) FILTER (WHERE pe.event_type = 'pwa_installed'::text)::numeric / NULLIF(count(*) FILTER (WHERE pe.event_type = 'install_prompt_shown'::text), 0)::numeric * 100::numeric, 2) AS conversion_rate_percentage FROM pwa_events pe LEFT JOIN pwa_sessions ps ON pe.user_id = ps.user_id WHERE pe.created_at >= (now() - '30 days'::interval)`);
-
-export const usersNeedingNotifications = pgView("users_needing_notifications", {	userId: uuid("user_id"),
-	pushSubscription: jsonb("push_subscription"),
-	preferredTimes: jsonb("preferred_times"),
-	timezone: text(),
-	motivationLevel: text("motivation_level"),
-	examDate: date("exam_date"),
-	nextNotificationTime: timestamp("next_notification_time", { withTimezone: true, mode: 'string' }),
-	riskLevel: text("risk_level"),
-	streakStatus: integer("streak_status"),
-	preferredHours: integer("preferred_hours"),
-	peakPerformanceTime: time("peak_performance_time"),
-	hoursSinceLastSession: numeric("hours_since_last_session"),
-}).as(sql`SELECT uns.user_id, uns.push_subscription, uns.preferred_times, uns.timezone, uns.motivation_level, uns.exam_date, uss.next_notification_time, uss.risk_level, uss.streak_status, uap.preferred_hours, uap.peak_performance_time, EXTRACT(epoch FROM now() - uss.last_session_time) / 3600::numeric AS hours_since_last_session FROM user_notification_settings uns JOIN user_smart_scheduling uss ON uns.user_id = uss.user_id LEFT JOIN user_activity_patterns uap ON uns.user_id = uap.user_id WHERE uns.push_enabled = true AND uns.frequency <> 'off'::text AND (uss.pause_until IS NULL OR uss.pause_until < now()) AND uss.next_notification_time <= now()`);
 
 export const adminNotificationAnalytics = pgView("admin_notification_analytics", {	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	totalUsersWithNotifications: bigint("total_users_with_notifications", { mode: "number" }),

@@ -76,3 +76,6 @@ backend/infra/terraform.tfstate.backup
 backend/infra/terraform.tfstate.local-backup-*
 backend/infra/.terraform/
 backend/infra/.terraform.lock.hcl
+
+# Backups locales de datos (pre-DROP, etc.) — nunca commitear (contienen user_ids)
+backups/
