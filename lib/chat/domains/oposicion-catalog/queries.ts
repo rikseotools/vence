@@ -1,15 +1,10 @@
 // lib/chat/domains/oposicion-catalog/queries.ts
 // Cache de oposiciones + registro de solicitudes de oposiciones no disponibles
 
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb, getAdminDb } from '@/db/client'
+import { oposiciones, userFeedback } from '@/db/schema'
+import { eq, and, ilike, gte } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-function getSupabase() {
-  return createClient(supabaseUrl, supabaseServiceKey)
-}
 
 export interface OposicionEntry {
   id: string
@@ -110,18 +105,38 @@ export async function loadOposicionesCache(force = false): Promise<OposicionEntr
   const now = Date.now()
   if (!force && cache && (now - cacheLoadedAt) < CACHE_TTL_MS) return cache
 
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('oposiciones')
-    .select('id,slug,nombre,short_name,categoria,administracion,is_convocatoria_activa,grupo,subgrupo,titulo_requerido,exam_date,exam_date_approximate,convocatoria_fecha,plazas_libres,plazas_discapacidad,plazas_promocion_interna,estado_proceso,boe_reference')
-    .eq('is_active', true)
-
-  if (error) {
+  let data: Array<Record<string, any>>
+  try {
+    const db = getReadDb()
+    data = await db
+      .select({
+        id: oposiciones.id,
+        slug: oposiciones.slug,
+        nombre: oposiciones.nombre,
+        short_name: oposiciones.shortName,
+        categoria: oposiciones.categoria,
+        administracion: oposiciones.administracion,
+        is_convocatoria_activa: oposiciones.isConvocatoriaActiva,
+        grupo: oposiciones.grupo,
+        subgrupo: oposiciones.subgrupo,
+        titulo_requerido: oposiciones.tituloRequerido,
+        exam_date: oposiciones.examDate,
+        exam_date_approximate: oposiciones.examDateApproximate,
+        convocatoria_fecha: oposiciones.convocatoriaFecha,
+        plazas_libres: oposiciones.plazasLibres,
+        plazas_discapacidad: oposiciones.plazasDiscapacidad,
+        plazas_promocion_interna: oposiciones.plazasPromocionInterna,
+        estado_proceso: oposiciones.estadoProceso,
+        boe_reference: oposiciones.boeReference,
+      })
+      .from(oposiciones)
+      .where(eq(oposiciones.isActive, true))
+  } catch (error) {
     logger.error('Error loading oposiciones cache', error, { domain: 'oposicion-catalog' })
     return cache ?? []
   }
 
-  cache = (data || []).map(r => ({
+  cache = data.map(r => ({
     id: r.id,
     slug: r.slug,
     nombre: r.nombre,
@@ -261,21 +276,23 @@ export type RegisterResult =
  * Dedupe: no crea registro si el mismo user pidió la misma oposición en últimos 7 días.
  */
 export async function registerOposicionRequest(input: OposicionRequestInput): Promise<RegisterResult> {
-  const supabase = getSupabase()
+  const db = getAdminDb()
 
   // Dedupe
   if (input.userId) {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: existing } = await supabase
-      .from('user_feedback')
-      .select('id')
-      .eq('user_id', input.userId)
-      .eq('type', 'suggestion')
-      .ilike('message', `%[SOLICITUD OPOSICIÓN]%${input.detectedName}%`)
-      .gte('created_at', sevenDaysAgo)
+    const existing = await db
+      .select({ id: userFeedback.id })
+      .from(userFeedback)
+      .where(and(
+        eq(userFeedback.userId, input.userId),
+        eq(userFeedback.type, 'suggestion'),
+        ilike(userFeedback.message, `%[SOLICITUD OPOSICIÓN]%${input.detectedName}%`),
+        gte(userFeedback.createdAt, sevenDaysAgo),
+      ))
       .limit(1)
 
-    if (existing && existing.length > 0) {
+    if (existing.length > 0) {
       logger.info('Oposición request deduplicated', {
         domain: 'oposicion-catalog',
         userId: input.userId,
@@ -292,22 +309,23 @@ Mensaje original del usuario: "${input.userMessage}"
 Oposición activa del usuario: ${input.userOposicion || 'ninguna'}
 Log chat: ${input.logId || 'n/a'}`
 
-  const { data, error } = await supabase
-    .from('user_feedback')
-    .insert({
-      user_id: input.userId,
-      type: 'suggestion',
-      message,
-      url: 'chat:oposicion-catalog',
-      status: 'pending',
-      priority: 'medium',
-    })
-    .select('id')
-    .single()
+  try {
+    const inserted = await db
+      .insert(userFeedback)
+      .values({
+        userId: input.userId,
+        type: 'suggestion',
+        message,
+        url: 'chat:oposicion-catalog',
+        status: 'pending',
+        priority: 'medium',
+      })
+      .returning({ id: userFeedback.id })
 
-  if (error) {
-    logger.error('Error registering oposición request', error, { domain: 'oposicion-catalog' })
-    return { status: 'failed', error: error.message }
+    return { status: 'created', id: inserted[0].id }
+  } catch (err) {
+    const error = err instanceof Error ? err.message : 'Unknown error'
+    logger.error('Error registering oposición request', err, { domain: 'oposicion-catalog' })
+    return { status: 'failed', error }
   }
-  return { status: 'created', id: data!.id }
 }
