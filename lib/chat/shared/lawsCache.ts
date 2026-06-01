@@ -8,7 +8,9 @@
 // Antes este código vivía en StatsService.ts (slot global 'stats-laws-cache-v1').
 // Movido aquí para que SearchDomain también lo aproveche y se evite duplicación.
 
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { laws } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { createGlobalCache } from '@/lib/cache/globalCache'
 import { mapSlugToShortName as mapLawSlugToShortName } from '@/lib/lawSlugSync'
 import { logger } from './logger'
@@ -74,17 +76,15 @@ const _lawsCache = createGlobalCache<LawsCacheData>(
  */
 export async function loadLawsCache(): Promise<void> {
   await _lawsCache.getOrLoad(async () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    const { data, error } = await supabase
-      .from('laws')
-      .select('slug, short_name, name')
-      .eq('is_active', true)
-
-    if (error || !data) {
-      logger.warn('Could not load laws cache from DB', { domain: 'shared', error: error?.message })
+    let data: Array<{ slug: string | null; short_name: string; name: string }>
+    try {
+      const db = getReadDb()
+      data = await db
+        .select({ slug: laws.slug, short_name: laws.shortName, name: laws.name })
+        .from(laws)
+        .where(eq(laws.isActive, true))
+    } catch (error) {
+      logger.warn('Could not load laws cache from DB', { domain: 'shared', error: (error as Error)?.message })
       return { slugMap: new Map(), shortNameMap: new Map(), nameKeywords: [] }
     }
 
