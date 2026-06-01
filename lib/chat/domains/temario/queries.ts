@@ -1,14 +1,11 @@
 // lib/chat/domains/temario/queries.ts
 // Queries para consultas sobre temarios, programas y epigrafes
 
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { topics, oposiciones } from '@/db/schema'
+import { eq, and, or, ilike } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 import { getChatCache, CACHE_KEYS, CACHE_TTL } from '../../shared/cache'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // ============================================
 // TIPOS
@@ -85,19 +82,26 @@ export async function getTopicsByPositionType(positionType: string): Promise<Top
     return cached
   }
 
-  const { data, error } = await getSupabase()
-    .from('topics')
-    .select('id, position_type, topic_number, title, description')
-    .eq('position_type', positionType)
-    .eq('is_active', true)
-    .order('topic_number')
-
-  if (error) {
+  let data: Array<Record<string, unknown>>
+  try {
+    const db = getReadDb()
+    data = await db
+      .select({
+        id: topics.id,
+        position_type: topics.positionType,
+        topic_number: topics.topicNumber,
+        title: topics.title,
+        description: topics.description,
+      })
+      .from(topics)
+      .where(and(eq(topics.positionType, positionType), eq(topics.isActive, true)))
+      .orderBy(topics.topicNumber)
+  } catch (error) {
     logger.error('Error fetching topics by position_type', error, { domain: 'temario' })
     return []
   }
 
-  const result = (data || []).map(mapTopic)
+  const result = data.map(mapTopic)
   cache.set(cacheKey, result, CACHE_TTL.TOPICS)
   return result
 }
@@ -120,32 +124,37 @@ export async function searchTopicsByContent(
     return cached
   }
 
-  const supabase = getSupabase()
+  // Condiciones OR: buscar cada término en título y descripción (ILIKE %term%)
+  const orConditions = searchTerms.flatMap(term => [
+    ilike(topics.title, `%${term}%`),
+    ilike(topics.description, `%${term}%`),
+  ])
 
-  // Construir condiciones OR para buscar en titulo y descripcion
-  const orConditions = searchTerms
-    .map(term => `title.ilike.%${term}%,description.ilike.%${term}%`)
-    .join(',')
-
-  let query = supabase
-    .from('topics')
-    .select('id, position_type, topic_number, title, description')
-    .eq('is_active', true)
-    .or(orConditions)
-    .order('topic_number')
-
+  const conditions = [eq(topics.isActive, true), or(...orConditions)]
   if (positionType) {
-    query = query.eq('position_type', positionType)
+    conditions.push(eq(topics.positionType, positionType))
   }
 
-  const { data, error } = await query
-
-  if (error) {
+  let data: Array<Record<string, unknown>>
+  try {
+    const db = getReadDb()
+    data = await db
+      .select({
+        id: topics.id,
+        position_type: topics.positionType,
+        topic_number: topics.topicNumber,
+        title: topics.title,
+        description: topics.description,
+      })
+      .from(topics)
+      .where(and(...conditions))
+      .orderBy(topics.topicNumber)
+  } catch (error) {
     logger.error('Error searching topics by content', error, { domain: 'temario' })
     return []
   }
 
-  const result = (data || []).map(mapTopic)
+  const result = data.map(mapTopic)
   cache.set(cacheKey, result, CACHE_TTL.TOPIC_SEARCH)
   return result
 }
@@ -168,13 +177,28 @@ export async function getOposicionInfo(oposicionId: string): Promise<OposicionIn
 
   if (!slug) return null
 
-  const { data, error } = await getSupabase()
-    .from('oposiciones')
-    .select('id, nombre, short_name, slug, temas_count, grupo, subgrupo')
-    .eq('slug', slug)
-    .single()
+  let data: Record<string, unknown> | undefined
+  try {
+    const db = getReadDb()
+    const rows = await db
+      .select({
+        id: oposiciones.id,
+        nombre: oposiciones.nombre,
+        short_name: oposiciones.shortName,
+        slug: oposiciones.slug,
+        temas_count: oposiciones.temasCount,
+        grupo: oposiciones.grupo,
+        subgrupo: oposiciones.subgrupo,
+      })
+      .from(oposiciones)
+      .where(eq(oposiciones.slug, slug))
+      .limit(1)
+    data = rows[0]
+  } catch {
+    return null
+  }
 
-  if (error || !data) {
+  if (!data) {
     return null
   }
 
@@ -194,18 +218,28 @@ export async function getAllOposiciones(): Promise<OposicionInfo[]> {
   const cached = cache.get<OposicionInfo[]>(cacheKey)
   if (cached) return cached
 
-  const { data, error } = await getSupabase()
-    .from('oposiciones')
-    .select('id, nombre, short_name, slug, temas_count, grupo, subgrupo')
-    .eq('is_active', true)
-    .order('nombre')
-
-  if (error) {
+  let data: Array<Record<string, unknown>>
+  try {
+    const db = getReadDb()
+    data = await db
+      .select({
+        id: oposiciones.id,
+        nombre: oposiciones.nombre,
+        short_name: oposiciones.shortName,
+        slug: oposiciones.slug,
+        temas_count: oposiciones.temasCount,
+        grupo: oposiciones.grupo,
+        subgrupo: oposiciones.subgrupo,
+      })
+      .from(oposiciones)
+      .where(eq(oposiciones.isActive, true))
+      .orderBy(oposiciones.nombre)
+  } catch (error) {
     logger.error('Error fetching oposiciones', error, { domain: 'temario' })
     return []
   }
 
-  const result = (data || []).map(mapOposicion)
+  const result = data.map(mapOposicion)
   cache.set(cacheKey, result, CACHE_TTL.OPOSICIONES)
   return result
 }
