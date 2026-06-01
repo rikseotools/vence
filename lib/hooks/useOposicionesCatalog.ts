@@ -18,7 +18,10 @@
 import { useEffect, useState } from 'react'
 import type { OposicionItem } from '@/components/OnboardingModal'
 
-const CACHE_KEY = 'oposiciones-catalog-v1'
+// v2 (01/06/2026): el id de cada item pasó de UUID de BD a position_type
+// (slug con underscores). Bump de versión para invalidar caches v1 cuyos
+// items aún guardan el UUID y romperían el badge "implementada" del selector.
+const CACHE_KEY = 'oposiciones-catalog-v2'
 const CACHE_TTL_MS = 600_000 // 10 min, alineado con el TTL de Redis + Vercel ISR
 
 interface CacheEntry {
