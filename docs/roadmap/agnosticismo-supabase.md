@@ -166,6 +166,15 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 > ✅ **STRANGLER 2026-06-01 (cont.) — `lib/teoriaFetchers.ts` 100% sin supabase** (4 funciones: fetchLawsList, fetchRelatedArticles, searchArticles, fetchLawSections → Drizzle; las otras 2 ya lo eran). Joins `laws!inner(articles)` → innerJoin; `.or(ilike)` → or()+ilike(). Cliente supabase eliminado del módulo. Paridad verificada (related/search/sections idénticos). **FIX latente**: el embed anidado de PostgREST capaba los artículos en fetchLawsList (45434 vs 46345 reales) → articleCount infra-contado en el índice /teoria; el join da el total correcto. Commit `46ba7303`.
 
 > 📊 **Resumen sesión 2026-06-01**: 5 ficheros migrados (3 SSR legales + avatar-settings + teoriaFetchers), con 2 bugs latentes de cap de PostgREST arreglados de paso (conteos de preguntas y de artículos infra-reportados en landings/índices). Patrón + verificación de paridad (reads + txn-rollback para writes) rodados. Quedan ~87 ficheros (varios son falsos positivos de storage).
+>
+> 🧭 **RESUME AQUÍ (triage de los ~87 restantes, hecho 2026-06-01)** — NO todos son migraciones Drizzle mecánicas:
+> 1. **Server-side DB puro (Drizzle directo, bajo riesgo)** — el patrón ya rodado: `getReadDb()`/`getAdminDb()`/`getTeoriaDb()` + paridad (reads comparados, writes en txn+ROLLBACK). Quedan algunos fetchers/SSR. ⚠️ **OJO al cap de PostgREST**: `.length` sobre SELECT capa a 1000 filas y los embeds anidados también capan → al migrar a `count()`/join SUELE aparecer un conteo MAYOR (más correcto, no un bug nuevo). Verificar siempre.
+> 2. **Client-side trackers** (`notificationTracker`, `emailTracker`, `adminConversationTracking`): usan `supabase.auth.getUser()` + escriben desde el navegador. **NO migrables a Drizzle** (server-only). Requieren refactor a endpoint API (patrón Fase 1/2) y están acoplados a Auth. Patrón distinto, decidir aparte.
+> 3. **Dead code** (`lib/notifications/userPatternAnalyzer.ts`: 7 usos, sin importador de producción, solo en 2 tests): candidato a **BORRAR**, no migrar. Auditar similares (grep importadores) y eliminar — reduce recuento sin riesgo ni necesidad de paridad.
+> 4. **Riesgo alto, al final, con lupa**: `app/api/stripe/webhook/route.ts` (31 usos, ya tuvo incidente), componentes cliente `TestLayout`/`ExamLayout`, `contexts/AuthContext` (necesita discriminated union, ya se revirtió un intento).
+> 5. **Fase 4 (Auth)** — bloqueador real de RDS Multi-AZ. Proyecto dedicado, no strangler.
+>
+> **Recomendación próxima sesión**: empezar por (3) dead-code audit (rápido, 0 riesgo) → seguir con (1) los server-side puros que queden → dejar (2) y (4) como proyectos con diseño propio.
 
 > ⚠️ El recuento inicial en este roadmap subestimaba (contaba solo líneas que matcheaban, no usos por línea). Recuento real corregido: 70 usos en 10 archivos (módulo admin). Tras 2 migrados quedan 8 archivos con ~67 usos en ese módulo.
 
