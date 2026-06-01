@@ -1,10 +1,11 @@
 // components/CcaaFlag.tsx
-// Banderas SVG de CCAA para usar como iconos inline
-// Reemplaza emojis genéricos 🏛️ con banderas reales reconocibles
+// Banderas SVG (CCAA + España) para usar como iconos inline.
+// Reemplaza el emoji genérico 🏛️ con la bandera real de la región a la que
+// pertenece CADA oposición (autonómica, ayuntamiento, diputación, cabildo,
+// consell, sanitaria o universidad). El componente recibe el oposicionId
+// (position_type o slug) y resuelve la bandera por palabra clave.
 
 import { type ReactNode } from 'react'
-
-type OposicionId = keyof typeof FLAG_PATHS
 
 type FlagSize = 'sm' | 'md' | 'lg'
 
@@ -14,10 +15,12 @@ interface CcaaFlagProps {
   className?: string
 }
 
-// viewBox siempre 0 0 20 14, el tamaño real se controla con width/height
+// viewBox siempre 0 0 20 14, el tamaño real se controla con width/height.
+// Claves = CCAA (no oposición concreta): una bandera sirve a todas sus
+// oposiciones (comunidad + ayuntamientos + diputaciones + sanitaria + uni).
 const FLAG_PATHS: Record<string, ReactNode> = {
-  // Región de Murcia: fondo carmesí (rojo Cartagena), 4 castillos dorados arriba-izq, 7 coronas doradas abajo-der
-  auxiliar_administrativo_carm: (
+  // Región de Murcia: fondo carmesí, 4 castillos dorados arriba-izq, 7 coronas abajo-der
+  murcia: (
     <>
       <rect width="20" height="14" fill="#9B154A"/>
       <rect x="1.5" y="1.5" width="3" height="3.5" rx="0.3" fill="#F5C400" opacity="0.85"/>
@@ -29,7 +32,7 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Castilla y León: cuartelada rojo/blanco, castillos dorados y leones púrpura
-  auxiliar_administrativo_cyl: (
+  cyl: (
     <>
       <rect width="10" height="7" fill="#BF0000"/>
       <rect x="10" width="10" height="7" fill="#fff"/>
@@ -41,8 +44,8 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect x="13.5" y="8.5" width="3" height="4" rx="0.3" fill="#F5C400" opacity="0.8"/>
     </>
   ),
-  // Comunidad de Madrid: fondo rojo carmesí con 7 estrellas blancas (5 puntas)
-  auxiliar_administrativo_madrid: (
+  // Comunidad de Madrid: fondo rojo carmesí con 7 estrellas blancas
+  madrid: (
     <>
       <rect width="20" height="14" fill="#BF0000"/>
       <circle cx="5" cy="3.5" r="1" fill="#fff"/>
@@ -54,16 +57,16 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <circle cx="16.5" cy="7" r="1" fill="#fff"/>
     </>
   ),
-  // Canarias: franjas blanco-azul-amarillo (3 franjas verticales)
-  auxiliar_administrativo_canarias: (
+  // Canarias: franjas blanco-azul-amarillo (3 verticales)
+  canarias: (
     <>
       <rect width="6.67" height="14" fill="#fff"/>
       <rect x="6.67" width="6.67" height="14" fill="#003DA5"/>
       <rect x="13.33" width="6.67" height="14" fill="#FECB00"/>
     </>
   ),
-  // Castilla-La Mancha: cuartelada rojo con castillo dorado / blanco con escudo
-  auxiliar_administrativo_clm: (
+  // Castilla-La Mancha: cuartelada rojo con castillo dorado / blanco
+  clm: (
     <>
       <rect width="10" height="7" fill="#BF0000"/>
       <rect x="10" width="10" height="7" fill="#fff"/>
@@ -74,32 +77,26 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Extremadura: franjas verde-blanco-negro horizontales
-  auxiliar_administrativo_extremadura: (
+  extremadura: (
     <>
       <rect width="20" height="4.67" fill="#007844"/>
       <rect y="4.67" width="20" height="4.67" fill="#fff"/>
       <rect y="9.33" width="20" height="4.67" fill="#1a1a1a"/>
     </>
   ),
-  // Comunitat Valenciana: Senyera - 4 franjas rojas sobre fondo amarillo (dorado)
-  auxiliar_administrativo_valencia: (
+  // Comunitat Valenciana: Senyera coronada - 4 franjas rojas sobre amarillo + franja azul en asta
+  valencia: (
     <>
       <rect width="20" height="14" fill="#FCDD09"/>
       <rect y="0" width="20" height="1.75" fill="#DA121A"/>
       <rect y="3.5" width="20" height="1.75" fill="#DA121A"/>
       <rect y="7" width="20" height="1.75" fill="#DA121A"/>
       <rect y="10.5" width="20" height="1.75" fill="#DA121A"/>
+      <rect x="0" width="3.2" height="14" fill="#0050A0"/>
     </>
   ),
   // Galicia: franja azul con banda diagonal blanca (simplificada)
-  auxiliar_administrativo_galicia: (
-    <>
-      <rect width="20" height="14" fill="#fff"/>
-      <rect width="20" height="14" fill="#0070B8" opacity="0.9"/>
-      <line x1="0" y1="14" x2="20" y2="0" stroke="#fff" strokeWidth="3"/>
-    </>
-  ),
-  administrativo_galicia: (
+  galicia: (
     <>
       <rect width="20" height="14" fill="#fff"/>
       <rect width="20" height="14" fill="#0070B8" opacity="0.9"/>
@@ -107,7 +104,7 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Aragón: Senyera aragonesa - 4 franjas rojas (gules) sobre fondo dorado (oro)
-  auxiliar_administrativo_aragon: (
+  aragon: (
     <>
       <rect width="20" height="14" fill="#FCDD09"/>
       <rect y="1.56" width="20" height="1.56" fill="#DA121A"/>
@@ -116,8 +113,37 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect y="10.89" width="20" height="1.56" fill="#DA121A"/>
     </>
   ),
+  // Catalunya: Senyera - 9 franjas (5 amarillas + 4 rojas finas)
+  catalunya: (
+    <>
+      <rect width="20" height="14" fill="#FCDD09"/>
+      <rect y="1.555" width="20" height="1.555" fill="#DA121A"/>
+      <rect y="4.665" width="20" height="1.555" fill="#DA121A"/>
+      <rect y="7.775" width="20" height="1.555" fill="#DA121A"/>
+      <rect y="10.885" width="20" height="1.555" fill="#DA121A"/>
+    </>
+  ),
+  // País Vasco: Ikurriña - fondo rojo, aspa verde, cruz blanca
+  pais_vasco: (
+    <>
+      <rect width="20" height="14" fill="#D52B1E"/>
+      <line x1="0" y1="0" x2="20" y2="14" stroke="#009B48" strokeWidth="2.4"/>
+      <line x1="20" y1="0" x2="0" y2="14" stroke="#009B48" strokeWidth="2.4"/>
+      <rect x="8.6" y="0" width="2.8" height="14" fill="#fff"/>
+      <rect x="0" y="5.6" width="20" height="2.8" fill="#fff"/>
+    </>
+  ),
+  // La Rioja: 4 franjas horizontales rojo-blanco-verde-amarillo
+  rioja: (
+    <>
+      <rect width="20" height="3.5" fill="#C8102E"/>
+      <rect y="3.5" width="20" height="3.5" fill="#fff"/>
+      <rect y="7" width="20" height="3.5" fill="#00843D"/>
+      <rect y="10.5" width="20" height="3.5" fill="#FFCD00"/>
+    </>
+  ),
   // Asturias: fondo azul con Cruz de la Victoria dorada
-  auxiliar_administrativo_asturias: (
+  asturias: (
     <>
       <rect width="20" height="14" fill="#0054A6"/>
       <rect x="9" y="1" width="2" height="12" fill="#FFC300"/>
@@ -125,7 +151,7 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Illes Balears: Senyera con castillo morado en el cantón
-  auxiliar_administrativo_baleares: (
+  baleares: (
     <>
       <rect width="20" height="14" fill="#FCDD09"/>
       <rect y="0" width="20" height="1.75" fill="#DA121A"/>
@@ -137,7 +163,7 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Cantabria: blanca con franja roja horizontal y escudo simplificado
-  auxiliar_administrativo_cantabria: (
+  cantabria: (
     <>
       <rect width="20" height="14" fill="#fff"/>
       <rect y="5.25" width="20" height="3.5" fill="#DA121A"/>
@@ -145,7 +171,7 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Navarra: fondo rojo con cadenas doradas (simplificado)
-  administrativo_navarra: (
+  navarra: (
     <>
       <rect width="20" height="14" fill="#D4213D"/>
       <rect x="8" y="5" width="4" height="4" rx="0.5" fill="#FFD700" opacity="0.7"/>
@@ -154,7 +180,7 @@ const FLAG_PATHS: Record<string, ReactNode> = {
     </>
   ),
   // Andalucía: franjas verde-blanco-verde horizontales
-  auxiliar_administrativo_andalucia: (
+  andalucia: (
     <>
       <rect width="20" height="4.67" fill="#006633"/>
       <rect y="4.67" width="20" height="4.67" fill="#fff"/>
@@ -162,6 +188,71 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <circle cx="10" cy="7" r="1.8" fill="#006633" opacity="0.5"/>
     </>
   ),
+  // España: rojo-amarillo-rojo (1:2:1) — para oposiciones estatales (AGE, Justicia,
+  // Correos, Guardia Civil, Policía Nacional, UNED) y Ceuta/Melilla.
+  espana: (
+    <>
+      <rect width="20" height="3.5" fill="#AD1519"/>
+      <rect y="3.5" width="20" height="7" fill="#FABD00"/>
+      <rect y="10.5" width="20" height="3.5" fill="#AD1519"/>
+    </>
+  ),
+}
+
+// Resolución oposición → CCAA por palabra clave (provincia, isla, ciudad,
+// servicio sanitario o universidad). Orden IMPORTA: lo más específico primero
+// (p.ej. castilla-la-mancha antes que castilla, las-palmas/cabildo antes que palma).
+const KEYWORD_TO_FLAG: Array<[string[], string]> = [
+  // Estatales / sin CCAA → bandera de España (AGE, Justicia y cuerpos estatales)
+  [['estado', 'estatal', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'guardia-civil', 'policia-nacional', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
+  // Castilla-La Mancha (antes que "castilla")
+  [['castilla-la-mancha', 'clm', 'sescam', 'albacete', 'ciudad-real', 'cuenca', 'guadalajara', 'toledo'], 'clm'],
+  // Castilla y León
+  [['castilla-y-leon', 'castilla-leon', 'cyl', 'leon', 'valladolid', 'burgos', 'salamanca', 'segovia', 'soria', 'avila', 'palencia', 'zamora'], 'cyl'],
+  // País Vasco (antes que genéricos)
+  [['pais-vasco', 'vasco', 'euskadi', 'eusko', 'osakidetza', 'ehu', 'bilbao', 'bizkaia', 'vizcaya', 'alava', 'araba', 'gipuzkoa', 'guipuzcoa', 'vitoria', 'donostia', 'san-sebastian'], 'pais_vasco'],
+  // Catalunya
+  [['catalunya', 'cataluna', 'catalan', 'tcae-ics', 'barcelona', 'girona', 'gerona', 'lleida', 'lerida', 'tarragona'], 'catalunya'],
+  // Galicia
+  [['galicia', 'sergas', 'a-coruna', 'coruna', 'lugo', 'ourense', 'orense', 'pontevedra', 'santiago', 'compostela', 'vigo'], 'galicia'],
+  // Andalucía
+  [['andalucia', 'andaluz', 'sas-', '-sas', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada', 'huelva', 'jaen', 'almeria'], 'andalucia'],
+  // Aragón (incl. servicio SALUD aragonés y Zaragoza/Huesca/Teruel)
+  [['aragon', 'zaragoza', 'huesca', 'teruel'], 'aragon'],
+  // Comunitat Valenciana
+  [['valencia', 'gva', 'alicante', 'castellon', 'elche'], 'valencia'],
+  // Murcia
+  [['murcia', 'carm', 'cartagena', '-sms', 'sms-'], 'murcia'],
+  // Canarias (cabildos + islas; antes que Baleares por "palma")
+  [['canarias', 'canario', '-scs', 'scs-', 'las-palmas', 'palmas', 'tenerife', 'gran-canaria', 'lanzarote', 'fuerteventura', 'la-gomera', 'la-palma', 'el-hierro', 'la-laguna', 'ulpgc', 'cabildo'], 'canarias'],
+  // Illes Balears (consells + islas)
+  [['baleares', 'balear', 'illes', 'caib', 'ibsalut', 'mallorca', 'menorca', 'ibiza', 'eivissa', 'formentera', 'palma', 'consell'], 'baleares'],
+  // Madrid (comunidad, ayto, sanidad, universidades madrileñas)
+  [['madrid', 'sermas', 'carlos-iii', 'complutense'], 'madrid'],
+  // Asturias (antes que Extremadura: 'tcae-sespa' contiene 'tcae-ses')
+  [['asturias', 'sespa', 'oviedo', 'gijon', 'principado'], 'asturias'],
+  // Extremadura
+  [['extremadura', 'tcae-ses', 'badajoz', 'caceres', 'merida'], 'extremadura'],
+  // Cantabria
+  [['cantabria', 'santander'], 'cantabria'],
+  // Navarra
+  [['navarra', 'pamplona', 'nafarroa'], 'navarra'],
+  // La Rioja
+  [['rioja', 'seris', 'logrono'], 'rioja'],
+]
+
+/**
+ * Resuelve la clave de bandera (CCAA o España) para una oposición, a partir de
+ * su id (position_type con underscores o slug con guiones). Devuelve null si no
+ * se reconoce ninguna región (entonces el llamador usa el emoji de fallback).
+ */
+export function resolveFlagKey(oposicionId: string): string | null {
+  if (!oposicionId) return null
+  const norm = oposicionId.toLowerCase().replace(/_/g, '-')
+  for (const [keywords, flag] of KEYWORD_TO_FLAG) {
+    if (keywords.some(k => norm.includes(k))) return flag
+  }
+  return null
 }
 
 // Tamaños predefinidos (width x height, proporción 20:14)
@@ -172,7 +263,8 @@ const SIZES: Record<FlagSize, { width: number; height: number }> = {
 }
 
 export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }: CcaaFlagProps) {
-  const paths = FLAG_PATHS[oposicionId]
+  const key = resolveFlagKey(oposicionId)
+  const paths = key ? FLAG_PATHS[key] : null
   if (!paths) return null
   const { width, height } = SIZES[size as FlagSize] || SIZES.sm
   return (
@@ -185,5 +277,5 @@ export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }: C
 }
 
 export function hasCcaaFlag(oposicionId: string): boolean {
-  return !!FLAG_PATHS[oposicionId]
+  return resolveFlagKey(oposicionId) !== null
 }

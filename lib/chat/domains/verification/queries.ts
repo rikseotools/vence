@@ -1,13 +1,10 @@
 // lib/chat/domains/verification/queries.ts
 // Queries para obtener datos de verificación
 
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { questions, articles, laws, psychometricQuestions } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export interface LinkedArticle {
   id: string
@@ -18,134 +15,50 @@ export interface LinkedArticle {
   lawName: string
 }
 
-export interface QuestionFullData {
-  id: string
-  questionText: string
-  optionA: string
-  optionB: string
-  optionC: string
-  optionD: string | null
-  optionE?: string | null
-  correctOption: number
-  explanation: string | null
-  primaryArticleId: string | null
-  linkedArticle: LinkedArticle | null
-  lawShortName: string | null
-}
-
 /**
- * Obtiene el artículo vinculado a una pregunta
+ * Obtiene el artículo vinculado a una pregunta.
+ *
+ * Une questions → articles (primary_article_id) → laws (law_id, inner). El
+ * innerJoin a laws reproduce el `laws!inner` del código anterior: si la
+ * pregunta no existe, no tiene artículo, o el artículo no tiene ley, no hay
+ * fila y se devuelve null.
  */
 export async function getLinkedArticle(questionId: string): Promise<LinkedArticle | null> {
   if (!questionId) return null
 
   try {
-    // Primero obtener el primary_article_id de la pregunta
-    const { data: question, error: questionError } = await getSupabase()
-      .from('questions')
-      .select('primary_article_id')
-      .eq('id', questionId)
-      .single()
+    const db = getReadDb()
+    const rows = await db
+      .select({
+        id: articles.id,
+        articleNumber: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        lawShortName: laws.shortName,
+        lawName: laws.name,
+      })
+      .from(questions)
+      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(eq(questions.id, questionId))
+      .limit(1)
 
-    if (questionError || !question?.primary_article_id) {
+    const row = rows[0]
+    if (!row) {
       logger.debug(`No linked article for question ${questionId}`, { domain: 'verification' })
       return null
     }
 
-    // Obtener el artículo con su ley
-    const { data: article, error: articleError } = await getSupabase()
-      .from('articles')
-      .select(`
-        id,
-        article_number,
-        title,
-        content,
-        law:laws!inner(short_name, name)
-      `)
-      .eq('id', question.primary_article_id)
-      .single()
-
-    if (articleError || !article) {
-      logger.warn(`Article ${question.primary_article_id} not found`, { domain: 'verification' })
-      return null
-    }
-
-    // Supabase puede devolver el objeto de ley directamente o como array (según la relación)
-    const lawData = article.law as { short_name: string; name: string } | { short_name: string; name: string }[] | null
-    const law = Array.isArray(lawData) ? lawData[0] : lawData
-    if (!law) {
-      logger.warn(`Law not found for article ${question.primary_article_id}`, { domain: 'verification' })
-      return null
-    }
-
     return {
-      id: article.id,
-      articleNumber: article.article_number,
-      title: article.title,
-      content: article.content,
-      lawShortName: law.short_name,
-      lawName: law.name,
+      id: row.id,
+      articleNumber: row.articleNumber,
+      title: row.title,
+      content: row.content,
+      lawShortName: row.lawShortName,
+      lawName: row.lawName,
     }
   } catch (error) {
     logger.error('Error getting linked article', error, { domain: 'verification' })
-    return null
-  }
-}
-
-/**
- * Obtiene todos los datos de una pregunta incluyendo el artículo vinculado
- */
-export async function getQuestionFullData(questionId: string): Promise<QuestionFullData | null> {
-  if (!questionId) return null
-
-  try {
-    const { data: question, error } = await getSupabase()
-      .from('questions')
-      .select(`
-        id,
-        question_text,
-        option_a,
-        option_b,
-        option_c,
-        option_d,
-        correct_option,
-        explanation,
-        primary_article_id,
-        law:laws(short_name)
-      `)
-      .eq('id', questionId)
-      .single()
-
-    if (error || !question) {
-      logger.warn(`Question ${questionId} not found`, { domain: 'verification' })
-      return null
-    }
-
-    // Obtener artículo vinculado si existe
-    let linkedArticle: LinkedArticle | null = null
-    if (question.primary_article_id) {
-      linkedArticle = await getLinkedArticle(questionId)
-    }
-
-    // Supabase puede devolver el objeto de ley directamente o como array
-    const lawData = question.law as { short_name: string } | { short_name: string }[] | null
-    const law = Array.isArray(lawData) ? lawData[0] : lawData
-
-    return {
-      id: question.id,
-      questionText: question.question_text,
-      optionA: question.option_a,
-      optionB: question.option_b,
-      optionC: question.option_c,
-      optionD: question.option_d,
-      correctOption: question.correct_option,
-      explanation: question.explanation,
-      primaryArticleId: question.primary_article_id,
-      linkedArticle,
-      lawShortName: law?.short_name || null,
-    }
-  } catch (error) {
-    logger.error('Error getting question full data', error, { domain: 'verification' })
     return null
   }
 }
@@ -157,13 +70,14 @@ export async function checkIsPsychometric(questionId: string): Promise<boolean> 
   if (!questionId) return false
 
   try {
-    const { data } = await getSupabase()
-      .from('psychometric_questions')
-      .select('id')
-      .eq('id', questionId)
-      .maybeSingle()
+    const db = getReadDb()
+    const rows = await db
+      .select({ id: psychometricQuestions.id })
+      .from(psychometricQuestions)
+      .where(eq(psychometricQuestions.id, questionId))
+      .limit(1)
 
-    return !!data
+    return rows.length > 0
   } catch {
     return false
   }
