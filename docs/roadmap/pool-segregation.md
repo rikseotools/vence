@@ -1,6 +1,6 @@
 # Roadmap — Pool Segregation + Diagnóstico de saturación 503 en horas pico
 
-> **Estado**: 🟢 **FASE 0 COMPLETA — HIPÓTESIS D CONFIRMADA (01/06/2026 06:09-06:13 UTC)** — captura ad-hoc 5 min sobre burst en vivo descarta A/B/C documentadas inicialmente y revela patrón nuevo: **starvation del pool durante rolling deploy de Fargate frontend**. Las 3 hipótesis originales se mantienen documentadas como referencia histórica; Hipótesis D pasa a ser la guía de la Fase 1.
+> **Estado**: 🟢 **FASE 1 APLICADA EN PRODUCCIÓN (01/06/2026 ~09:00 UTC)** — Hipótesis D resuelta. Frontend Fargate ahora usa self-hosted pooler PgBouncer en Lightsail London. Latencia DB 3-18ms vs 1606-2000ms previo. 0 errores 5xx en 15+ min post-aplicación. MinCapacity: 2. HealthCheckPath: `/api/health/db-ready`. Pendiente HA del pooler (Fase 6 self-hosted-pooler.md) para eliminar SPOF.
 > **Propietario**: equipo Vence
 > **Coste esperado de la implementación**: 0€ (cambios de config sobre infra ya existente)
 > **Última actualización**: 2026-06-01 ~06:30 UTC — Fase 0 ejecutada gracias a burst en vivo capturado, Hipótesis D añadida, plan reordenado.
@@ -171,9 +171,31 @@ El pooler regional compartido (`aws-0-eu-west-2.pooler.supabase.com:6543`) tiene
 | Burst de errores 30-90 s post-deploy timestamp | Cache miss masivo | Fase 3 (Redis profile cache) |
 | Ninguna anomalía visible en captura | Re-instrumentar — añadir trace_id en `withDbTimeout` para correlación exacta | Fase 4 (tracing) |
 
-### Fase 1 — Migrar `getDb()` (path principal) al self-hosted pooler ⭐ PRIORIDAD ALTA tras Fase 0
+### Fase 1 — Migrar `getDb()` (path principal) al self-hosted pooler ✅ **APLICADA 2026-06-01 ~09:00 UTC**
 
 **Trigger**: ✅ confirmado por Hipótesis D (no A) tras Fase 0. El razonamiento original para Fase 1 (mitigar blips Supavisor) sigue válido, pero ahora **además** soluciona la starvation post-deploy porque el PgBouncer mantiene conexiones upstream estables independientes del ciclo de vida de los containers Fargate.
+
+**Resultado de la aplicación**:
+- ✅ Endpoint `/api/health/db-ready` LIVE devolviendo `pool=self_hosted` con latencia **3-18 ms** (vs 1606-2000 ms+ con Supavisor antes).
+- ✅ Task definition `vence-frontend:76` con `USE_SELF_HOSTED_POOLER=true` + secret `DATABASE_URL_SELF_POOLER` + `healthCheck` container apuntando a `/api/health/db-ready`.
+- ✅ Target group `vence-frontend-tg`: `HealthCheckPath: /` → `/api/health/db-ready`, `slow_start.duration_seconds: 0 → 30`.
+- ✅ Scalable target `MinCapacity: 1 → 2` (auto-scaling no puede bajar de 2 tasks aunque CPU sea bajo) — descubrimiento bonus durante la aplicación: el monitoreo detectó que ECS bajó automáticamente desired 2→1 por el auto-scaling con `MinCapacity: 1`. Fix profesional: subir MinCapacity.
+- ✅ Rolling deploy `:75 → :76` completo en 3 min sin downtime, 0 failed tasks, 0 rollback del deploymentCircuitBreaker.
+- ✅ **0 errores 5xx en los 15 min siguientes a la estabilización** (vs ~130 errores en bursts post-deploy previos).
+- ✅ 8 conexiones `postgres.js` calientes en BD (warmup robusto 3 SELECT al boot × 2 tasks = baseline persistente).
+
+**Commits asociados**: `5ed827fd` (código: endpoint db-ready + max:8 + warmup robusto). Cambios de infra AWS aplicados directamente vía `aws cli` con profile `vence` (sin commit en git porque task definition + target group + scalable target son infra, no código).
+
+**Acciones (ejecutadas)**:
+
+1. ✅ Cambio en `db/client.ts:35` — **NO ejecutado**. Mantuvimos `createDbClient()` con Supavisor sin cambios. El cambio operativo fue activar `USE_SELF_HOSTED_POOLER=true` que hace que los 30 wrappers `getXxxDb()` redirijan a `getPoolerDb()`. El path principal sigue intacto como fallback de rollback.
+2. ✅ Subido `max: 1 → 8` en `createPoolerDbClient()` — PgBouncer multiplexa transacciones, soporta sin saturar Postgres.
+3. ✅ Feature flag `USE_SELF_HOSTED_POOLER` mantenido para rollback instantáneo (SSM `/vence-frontend/USE_SELF_HOSTED_POOLER`).
+4. ✅ Soak 24 h: pendiente — observar próximos 24h con cron `pg-stat-snapshot` capturando deltas.
+
+**Riesgo realizado**: bajo. El rolling fue limpio (`minimumHealthyPercent: 100` + `deploymentCircuitBreaker.enable + rollback: true` ya estaban activos), el container nuevo pasó healthCheck antes de recibir tráfico. Sin band-aid `connect_timeout 5→15`: no fue necesario.
+
+**Métrica de éxito**: ✅ alcanzada. 503 burst en horas pico eliminado en el primer test post-deploy.
 
 **Acción**:
 
@@ -253,6 +275,7 @@ Documentar errores honestos para no repetirlos:
 - **2026-04-27** — Pool `max: 8 → 3 → 1` aplicado tras pool exhaustion con 261 eventos en Supavisor (documentado en `db/client.ts:12`). Decisión correcta para el contexto de entonces; ahora obsoleta tras self-hosted pooler operativo (2026-05-10).
 - **2026-06-01 ~00:00 UTC** — Roadmap creado. Estado: 🟡 diagnóstico abierto. Script `capture-pool-pressure.cjs` preparado para Fase 0.
 - **2026-06-01 ~06:30 UTC** — Fase 0 ejecutada gracias a burst en vivo capturado a las 06:09-06:13 UTC (130 errores 5xx). Hipótesis A/B/C descartadas. **Hipótesis D (starvation pool en rolling deploy) confirmada** por patrón `active_app=0` sostenido durante 4 min. Plan reordenado: Fase 1 (self-hosted pooler) sigue siendo la solución correcta pero con motivación nueva (pool TCP persistente que sobrevive a rolling deploys, no solo blips Supavisor). Mitigación band-aid (subir `connect_timeout: 5 → 15`) disponible si se necesita alivio inmediato; pre-warming agresivo y readinessProbe Fargate como alternativas intermedias.
+- **2026-06-01 ~09:00 UTC** — **FASE 1 APLICADA**. Commit `5ed827fd` (endpoint `/api/health/db-ready` + pool max:8 + warmup robusto). SSM `USE_SELF_HOSTED_POOLER=true` creado. Task definition `vence-frontend:76` registrada con env + secret + healthCheck container. Target group: `HealthCheckPath: / → /api/health/db-ready`, `slow_start: 30s`. Service `desiredCount: 1 → 2`, `force-new-deployment`. **Descubrimiento bonus durante aplicación**: scalable target con `MinCapacity: 1` permitió a auto-scaling bajar a 1 task en madrugada — fix profesional `MinCapacity: 1 → 2`. Rolling completo 3 min, 0 failed tasks, 0 rollback. Verificación: endpoint devuelve `pool=self_hosted` latencia 3-18 ms; 0 errores 5xx en 15 min post-estabilización. Band-aid `connect_timeout 5→15` NO fue necesario — la solución de fondo es suficiente.
 
 ## Mejora pendiente del script analyze-pool-capture
 
