@@ -1332,6 +1332,191 @@ export const RULE_WATCHDOG_WALLCLOCK_RESIDUAL: AlertRule<{
   cooldownMin: 240,
 };
 
+// ════════════════════════════════════════════════════════════════════
+// Pool capacity sampler (Acción 2 observability-capacity, 2026-06-01)
+// ────────────────────────────────────────────────────────────────────
+// El cron pool-capacity-sampler escribe en `pool_capacity_samples` cada
+// minuto. Estas 4 reglas explotan esa data para detección granular de
+// problemas en el pool DB ANTES de que se traduzcan en 5xx (leading
+// indicator) y para garantizar que la pieza de observabilidad sigue viva.
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Zombie crítico: hay conexiones `idle in transaction` >5s desde un
+ * cliente real (no autovacuum). Es la firma de Hipótesis B del roadmap
+ * pool-segregation: `after()`/Stripe webhook retiene slot pool.
+ *
+ * Una sola muestra con esta bandera ya merece alerta — es un slot
+ * perdido del pool max:8 que no se recupera hasta que el cliente cierre
+ * la conexión o el `idle_in_transaction_session_timeout` (60s) actúe.
+ */
+export const RULE_POOL_IDLE_IN_TX_DETECTED: AlertRule<{
+  n: number;
+  lastAt: Date | string | null;
+}> = {
+  name: 'pool_idle_in_tx_detected',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MAX(sample_at) AS "lastAt"
+    FROM pool_capacity_samples
+    WHERE sample_at > NOW() - INTERVAL '5 minutes'
+      AND idle_in_tx_over_5s > 0
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    return {
+      title: `Pool: ${n} muestras con idle-in-transaction >5s en 5 min`,
+      body:
+        `Hay clientes manteniendo transacciones abiertas sin commit/rollback.\n` +
+        `Firma típica de Hipótesis B (after()/Stripe webhook retiene slot).\n\n` +
+        `Diagnóstico:\n` +
+        `  SELECT pid, application_name, state, query, NOW()-state_change AS age\n` +
+        `  FROM pg_stat_activity\n` +
+        `  WHERE state='idle in transaction' AND NOW()-state_change > INTERVAL '5 seconds';\n\n` +
+        `Si persiste >5 min, considerar pg_terminate_backend(pid) sobre el zombi.`,
+      metadata: { samples: n, windowMin: 5 },
+      fingerprint: 'pool_idle_in_tx',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * Conexiones colgadas en wait_event=ClientRead con state NO-IDLE >10s.
+ * (ClientRead+idle es comportamiento normal y se excluye del filtro
+ * a nivel SQL en `take_pool_capacity_sample`).
+ *
+ * Esto indica:
+ *   - Cliente cerró TCP sin commit/abort (Supavisor blip, kill -9 del task).
+ *   - O autovacuum/worker en estado raro con ClientRead — improbable
+ *     porque filtramos backend_type='client backend'.
+ */
+export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
+  n: number;
+  totalHung: number;
+}> = {
+  name: 'pool_hung_clientread_detected',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           COALESCE(SUM(hung_clientread_over_10s), 0)::int AS "totalHung"
+    FROM pool_capacity_samples
+    WHERE sample_at > NOW() - INTERVAL '5 minutes'
+      AND hung_clientread_over_10s > 0
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const total = rows[0]?.totalHung ?? 0;
+    return {
+      title: `Pool: ${n} muestras con conexiones colgadas en ClientRead (${total} conn-min)`,
+      body:
+        `Conexiones cliente en estado active/idle-in-tx con wait_event=ClientRead\n` +
+        `durante >10s. Firma típica de cliente que cerró TCP sin\n` +
+        `commit/abort, o Supavisor blip (Hipótesis A pool-segregation).\n\n` +
+        `Diagnóstico:\n` +
+        `  SELECT pid, application_name, state, wait_event, NOW()-state_change AS age\n` +
+        `  FROM pg_stat_activity\n` +
+        `  WHERE wait_event='ClientRead' AND state IN ('active','idle in transaction')\n` +
+        `    AND NOW()-state_change > INTERVAL '10 seconds';`,
+      metadata: { samples: n, totalHungConnMin: total, windowMin: 5 },
+      fingerprint: 'pool_hung_clientread',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * Saturación alta del pool del frontend. Con 2 tasks Fargate × max:8
+ * en createPoolerDbClient (post-Fase 1), el techo lógico es 16. Si
+ * sostenidamente vemos >=13 conexiones activas (~81%), estamos cerca
+ * del techo y el siguiente burst puede tirar el endpoint.
+ *
+ * Cooldown 15 min — saturación sostenida es un patrón que justifica
+ * notificar más rápido que zombis ocasionales.
+ */
+export const RULE_POOL_FRONTEND_SATURATION_HIGH: AlertRule<{
+  maxActive: number;
+  samples: number;
+}> = {
+  name: 'pool_frontend_saturation_high',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COALESCE(MAX(frontend_active_conns), 0)::int AS "maxActive",
+      COUNT(*)::int AS samples
+    FROM pool_capacity_samples
+    WHERE sample_at > NOW() - INTERVAL '5 minutes'
+      AND frontend_active_conns >= 13
+  `,
+  shouldFire: (rows) => (rows[0]?.samples ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const samples = rows[0]?.samples ?? 0;
+    const max = rows[0]?.maxActive ?? 0;
+    return {
+      title: `Pool frontend saturación alta: ${samples} muestras con ≥13 conns activas (pico ${max})`,
+      body:
+        `El pool postgres-js del frontend (2 tasks × max:8 = 16 techo)\n` +
+        `lleva ${samples} muestras de los últimos 5 min cerca del techo.\n` +
+        `Si sube más, próximo burst de tráfico = 503 cascada.\n\n` +
+        `Considerar:\n` +
+        `  - Subir desiredCount: 2 → 3 (escalar horizontal).\n` +
+        `  - Investigar qué endpoint consume conexiones más tiempo:\n` +
+        `    SELECT endpoint, AVG(duration_ms), COUNT(*)\n` +
+        `    FROM observable_events\n` +
+        `    WHERE event_type='request_completed' AND ts > NOW()-INTERVAL '15 min'\n` +
+        `    GROUP BY endpoint ORDER BY 2 DESC LIMIT 10;`,
+      metadata: { samples, peakActiveConns: max, ceilingEstimate: 16 },
+      fingerprint: 'pool_saturation',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
+ * El cron pool-capacity-sampler NO ha emitido muestra en >3 min.
+ * Sin sampler vivo, perdemos el leading indicator → ceguera operativa.
+ *
+ * Esta regla es meta-observabilidad: vigila al vigilante.
+ */
+export const RULE_POOL_SAMPLER_STALE: AlertRule<{
+  lastAt: Date | string | null;
+  ageMin: number;
+}> = {
+  name: 'pool_sampler_stale',
+  severity: 'critical',
+  query: sql`
+    SELECT
+      MAX(sample_at) AS "lastAt",
+      EXTRACT(EPOCH FROM (NOW() - MAX(sample_at)))::int / 60 AS "ageMin"
+    FROM pool_capacity_samples
+  `,
+  shouldFire: (rows) => {
+    const ageMin = Number(rows[0]?.ageMin ?? 0);
+    return ageMin > 3 || rows[0]?.lastAt == null;
+  },
+  buildNotification: (rows) => {
+    const lastAt = rows[0]?.lastAt;
+    const ageMin = Number(rows[0]?.ageMin ?? 0);
+    return {
+      title: `Pool capacity sampler MUERTO: última muestra hace ${ageMin} min`,
+      body:
+        `El cron pool-capacity-sampler debería emitir cada 1 min pero NO\n` +
+        `lo hace desde ${lastAt ?? '(nunca)'}.\n\n` +
+        `Pérdida de leading indicator del pool. Investigar:\n` +
+        `  - Logs CloudWatch del backend Fargate (¿cron crasheó?)\n` +
+        `  - /health/crons (¿registrado?)\n` +
+        `  - Si el container está vivo: reiniciar el service ECS.\n\n` +
+        `Mientras tanto: vuelta al script ad-hoc capture-pool-pressure.cjs.`,
+      metadata: { lastAt: lastAt ? String(lastAt) : null, ageMin },
+      fingerprint: 'pool_sampler_stale',
+    };
+  },
+  cooldownMin: 60,
+};
+
 /**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
@@ -1375,4 +1560,11 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CANARY_TOPIC_DATA_FAILED as AlertRule,
   // Watchdog drift detector — confirma que Page Visibility fix (a4051a6b) sigue ok
   RULE_WATCHDOG_WALLCLOCK_RESIDUAL as AlertRule,
+  // Pool capacity sampler (01/06/2026, Acción 2 observability-capacity):
+  // leading indicators del pool DB ANTES de que se traduzcan en 5xx.
+  RULE_POOL_IDLE_IN_TX_DETECTED as AlertRule,
+  RULE_POOL_HUNG_CLIENTREAD_DETECTED as AlertRule,
+  RULE_POOL_FRONTEND_SATURATION_HIGH as AlertRule,
+  // Meta-observabilidad: vigila al vigilante (cron sampler vivo).
+  RULE_POOL_SAMPLER_STALE as AlertRule,
 ];

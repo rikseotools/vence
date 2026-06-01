@@ -23,6 +23,10 @@ import {
   RULE_CANARY_REDIS_FAILED,
   RULE_CANARY_TOPIC_DATA_FAILED,
   RULE_WATCHDOG_WALLCLOCK_RESIDUAL,
+  RULE_POOL_IDLE_IN_TX_DETECTED,
+  RULE_POOL_HUNG_CLIENTREAD_DETECTED,
+  RULE_POOL_FRONTEND_SATURATION_HIGH,
+  RULE_POOL_SAMPLER_STALE,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -741,4 +745,149 @@ describe('RULE_WATCHDOG_WALLCLOCK_RESIDUAL', () => {
     expect(notif.body).toContain('userAgent');
     expect(notif.fingerprint).toBe('watchdog_wallclock_residual');
   });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// Pool capacity sampler — 4 reglas granulares (2026-06-01)
+// Acción 2 observability-capacity
+// ════════════════════════════════════════════════════════════════════
+
+describe('RULE_POOL_IDLE_IN_TX_DETECTED', () => {
+  it('dispara con ≥2 muestras con idle_in_tx_over_5s > 0 en 5 min', () => {
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 2, lastAt: new Date() }])).toBe(true);
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 5, lastAt: new Date() }])).toBe(true);
+  });
+
+  it('NO dispara con 1 muestra (puede ser blip transitorio)', () => {
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 1, lastAt: new Date() }])).toBe(false);
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 0, lastAt: null }])).toBe(false);
+  });
+
+  it('NO dispara con resultado vacío', () => {
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([])).toBe(false);
+  });
+
+  it('notification incluye SQL de diagnóstico + referencia Hipótesis B', () => {
+    const notif = RULE_POOL_IDLE_IN_TX_DETECTED.buildNotification([
+      { n: 3, lastAt: new Date('2026-06-01T10:00:00Z') },
+    ]);
+    expect(notif.title).toContain('3');
+    expect(notif.body).toContain('pg_stat_activity');
+    expect(notif.body).toContain('idle in transaction');
+    expect(notif.body).toContain('Hipótesis B');
+    expect(notif.fingerprint).toBe('pool_idle_in_tx');
+  });
+
+  it('severity critical (zombi pool = pierde slot crítico)', () => {
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.severity).toBe('critical');
+  });
+
+  it('cooldown 30 min', () => {
+    expect(RULE_POOL_IDLE_IN_TX_DETECTED.cooldownMin).toBe(30);
+  });
+});
+
+describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
+  it('dispara con ≥2 muestras con hung_clientread_over_10s > 0', () => {
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 4 }])).toBe(true);
+  });
+
+  it('NO dispara con 1 muestra (blip transitorio)', () => {
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 1, totalHung: 1 }])).toBe(false);
+  });
+
+  it('NO dispara con resultado vacío o cero', () => {
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([])).toBe(false);
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 0, totalHung: 0 }])).toBe(false);
+  });
+
+  it('notification referencia Hipótesis A + SQL de diagnóstico', () => {
+    const notif = RULE_POOL_HUNG_CLIENTREAD_DETECTED.buildNotification([
+      { n: 3, totalHung: 10 },
+    ]);
+    expect(notif.body).toContain('Hipótesis A');
+    expect(notif.body).toContain('ClientRead');
+    expect(notif.body).toContain('pg_stat_activity');
+    expect(notif.fingerprint).toBe('pool_hung_clientread');
+  });
+
+  it('severity critical', () => {
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.severity).toBe('critical');
+  });
+});
+
+describe('RULE_POOL_FRONTEND_SATURATION_HIGH', () => {
+  it('dispara con ≥3 muestras de saturación (≥13 conns en últimos 5 min)', () => {
+    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 15, samples: 3 }])).toBe(true);
+    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 16, samples: 5 }])).toBe(true);
+  });
+
+  it('NO dispara con menos de 3 muestras (transitorio aceptable)', () => {
+    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 14, samples: 2 }])).toBe(false);
+    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 0, samples: 0 }])).toBe(false);
+  });
+
+  it('notification incluye plan de mitigación', () => {
+    const notif = RULE_POOL_FRONTEND_SATURATION_HIGH.buildNotification([
+      { maxActive: 15, samples: 4 },
+    ]);
+    expect(notif.title).toContain('4');
+    expect(notif.title).toContain('15');
+    expect(notif.body).toContain('desiredCount');
+    expect(notif.body).toContain('observable_events');
+    expect(notif.fingerprint).toBe('pool_saturation');
+  });
+
+  it('severity warn (no crítico — todavía hay margen)', () => {
+    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.severity).toBe('warn');
+  });
+
+  it('cooldown 15 min (más rápido que zombis, justifica notificar pronto)', () => {
+    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.cooldownMin).toBe(15);
+  });
+});
+
+describe('RULE_POOL_SAMPLER_STALE', () => {
+  it('dispara si última muestra hace >3 min', () => {
+    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 5 }])).toBe(true);
+    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 15 }])).toBe(true);
+  });
+
+  it('NO dispara con muestra reciente (<3 min)', () => {
+    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 1 }])).toBe(false);
+    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 0 }])).toBe(false);
+  });
+
+  it('dispara si NUNCA hubo muestra (tabla vacía)', () => {
+    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: null, ageMin: 0 }])).toBe(true);
+  });
+
+  it('notification incluye plan de recovery', () => {
+    const notif = RULE_POOL_SAMPLER_STALE.buildNotification([
+      { lastAt: new Date('2026-06-01T10:00:00Z'), ageMin: 10 },
+    ]);
+    expect(notif.title).toContain('10');
+    expect(notif.body).toContain('CloudWatch');
+    expect(notif.body).toContain('/health/crons');
+    expect(notif.body).toContain('capture-pool-pressure.cjs');
+    expect(notif.fingerprint).toBe('pool_sampler_stale');
+  });
+
+  it('cooldown 60 min (meta-alerta — no spammear si cron muerto)', () => {
+    expect(RULE_POOL_SAMPLER_STALE.cooldownMin).toBe(60);
+  });
+});
+
+describe('ALERT_RULES — registro de las 4 nuevas reglas del pool', () => {
+  const expected = [
+    'pool_idle_in_tx_detected',
+    'pool_hung_clientread_detected',
+    'pool_frontend_saturation_high',
+    'pool_sampler_stale',
+  ];
+  for (const name of expected) {
+    it(`incluye ${name}`, () => {
+      expect(ALERT_RULES.map((r) => r.name)).toContain(name);
+    });
+  }
 });
