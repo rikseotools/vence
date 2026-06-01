@@ -814,6 +814,57 @@ describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
   it('severity critical', () => {
     expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.severity).toBe('critical');
   });
+
+  describe('deploy-aware (silencia goteo de rolling, alerta saturación real)', () => {
+    const deployCtx = {
+      deployWindow: { active: true, reasons: ['frontend_rolling: 2 versiones'] },
+    } as never;
+    const calmCtx = {
+      deployWindow: { active: false, reasons: [] },
+    } as never;
+
+    it('NO dispara con ventana de deploy activa y recuento bajo (<5 conn-min)', () => {
+      expect(
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
+          [{ n: 2, totalHung: 1 }],
+          deployCtx,
+        ),
+      ).toBe(false);
+    });
+
+    it('SÍ dispara con deploy activo si el recuento es alto (≥5 conn-min = saturación real)', () => {
+      expect(
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
+          [{ n: 2, totalHung: 14 }],
+          deployCtx,
+        ),
+      ).toBe(true);
+    });
+
+    it('SÍ dispara sin deploy aunque el recuento sea bajo', () => {
+      expect(
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
+          [{ n: 2, totalHung: 1 }],
+          calmCtx,
+        ),
+      ).toBe(true);
+    });
+
+    it('sin ctx (fail-open) dispara como antes', () => {
+      expect(
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 1 }]),
+      ).toBe(true);
+    });
+
+    it('la notificación marca deployWindowActive en metadata', () => {
+      const notif = RULE_POOL_HUNG_CLIENTREAD_DETECTED.buildNotification(
+        [{ n: 2, totalHung: 14 }],
+        deployCtx,
+      );
+      expect(notif.metadata?.deployWindowActive).toBe(true);
+      expect(notif.body).toContain('Deploy/churn en curso');
+    });
+  });
 });
 
 describe('RULE_POOL_FRONTEND_SATURATION_HIGH', () => {

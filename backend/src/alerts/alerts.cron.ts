@@ -11,6 +11,12 @@ import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { ALERT_RULES, type AlertRuleContext } from './alert-rules';
 import {
+  DEPLOY_WINDOW_QUERY,
+  evaluateDeployWindow,
+  type DeployWindow,
+  type DeployWindowRow,
+} from './deploy-window';
+import {
   NOTIFICATION_ADAPTER,
   type NotificationAdapter,
 } from './notification-adapter';
@@ -70,8 +76,23 @@ export class AlertsCron {
     let evaluated = 0;
     let skipped = 0;
 
+    // Detectar ventana de deploy/churn UNA vez por tick (no por regla).
+    // Fail-open: si la detección falla, la ventana queda inactiva → no se
+    // suprime nada (preferimos alerta de más que silencio).
+    let deployWindow: DeployWindow = { active: false, reasons: [] };
+    try {
+      const dwResult = await this.db.execute(DEPLOY_WINDOW_QUERY);
+      const dwRows = (Array.isArray(dwResult) ? dwResult : []) as DeployWindowRow[];
+      deployWindow = evaluateDeployWindow(dwRows);
+    } catch (err) {
+      this.logger.warn(
+        `Detección de ventana de deploy falló (fail-open, no suprime): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
     const ctx: AlertRuleContext = {
       cronSchedule: this.cronSchedule,
+      deployWindow,
     };
 
     for (const rule of ALERT_RULES) {
@@ -135,6 +156,8 @@ export class AlertsCron {
         rulesEvaluated: evaluated,
         rulesFired: fired,
         rulesSkippedCooldown: skipped,
+        deployWindowActive: deployWindow.active,
+        deployWindowReasons: deployWindow.reasons,
       },
     });
   }

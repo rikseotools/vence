@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { CronScheduleService } from '../cron-schedule/cron-schedule.service';
 import type { AlertNotification } from './notification-adapter';
+import type { DeployWindow } from './deploy-window';
 
 /**
  * Contexto inyectado a las reglas. Permite que una regla mezcle el
@@ -16,6 +17,18 @@ export interface AlertRuleContext {
    * debió ejecutarse un cron, lo pregunta aquí, no a un mapa duplicado.
    */
   cronSchedule: CronScheduleService;
+
+  /**
+   * Ventana de deploy/churn de infraestructura activa, calculada UNA vez
+   * por tick por AlertsCron. Las reglas que vigilan estados transitorios
+   * causados por deploys (pool_hung_clientread) la consultan para silenciar
+   * falsos positivos durante un rolling, salvo señales de severidad alta.
+   *
+   * Opcional: si falta (tests sin ctx, callers legacy) se interpreta como
+   * "sin deploy" → no se suprime nada (fail-open, alerta de más mejor que
+   * silencio). NUNCA la consume `cron_overdue` — ver deploy-window.ts.
+   */
+  deployWindow?: DeployWindow;
 }
 
 /**
@@ -1392,7 +1405,18 @@ export const RULE_POOL_IDLE_IN_TX_DETECTED: AlertRule<{
  *   - Cliente cerró TCP sin commit/abort (Supavisor blip, kill -9 del task).
  *   - O autovacuum/worker en estado raro con ClientRead — improbable
  *     porque filtramos backend_type='client backend'.
+ *
+ * Deploy-aware (diagnóstico 2026-06-01): en cada rolling deploy del frontend,
+ * el task viejo cierra TCP sin commit al morir → 1-2 conexiones quedan en
+ * ClientRead ~2-3 min → la regla disparaba un email CRITICAL por deploy
+ * (ruido). Si hay ventana de deploy activa (ver `ctx.deployWindow`), se
+ * silencia SALVO que el recuento de conn-min colgadas supere
+ * `POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN` — eso ya no es el goteo de un rolling
+ * sino saturación real (ej. el pico de 14 conn-min visto el 2026-06-01
+ * 07:49) y debe alertar aunque haya deploy.
  */
+const POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN = 5;
+
 export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
   n: number;
   totalHung: number;
@@ -1406,10 +1430,29 @@ export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
     WHERE sample_at > NOW() - INTERVAL '5 minutes'
       AND hung_clientread_over_10s > 0
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
-  buildNotification: (rows) => {
+  shouldFire: (rows, ctx) => {
+    const n = rows[0]?.n ?? 0;
+    const totalHung = rows[0]?.totalHung ?? 0;
+    if (n < 2) return false;
+    // Durante un deploy, el goteo de 1-2 conexiones colgadas es ruido
+    // esperado del rolling. Se silencia salvo recuento alto (saturación
+    // real). Sin ventana de deploy (o ctx ausente) → siempre alerta.
+    if (
+      ctx?.deployWindow?.active &&
+      totalHung < POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN
+    ) {
+      return false;
+    }
+    return true;
+  },
+  buildNotification: (rows, ctx) => {
     const n = rows[0]?.n ?? 0;
     const total = rows[0]?.totalHung ?? 0;
+    const deployNote = ctx?.deployWindow?.active
+      ? `\n\n⚠️ Deploy/churn en curso (${ctx.deployWindow.reasons.join('; ')}), ` +
+        `pero ${total} conn-min colgadas supera el umbral ` +
+        `${POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN} → no es solo goteo del rolling.`
+      : '';
     return {
       title: `Pool: ${n} muestras con conexiones colgadas en ClientRead (${total} conn-min)`,
       body:
@@ -1420,8 +1463,14 @@ export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
         `  SELECT pid, application_name, state, wait_event, NOW()-state_change AS age\n` +
         `  FROM pg_stat_activity\n` +
         `  WHERE wait_event='ClientRead' AND state IN ('active','idle in transaction')\n` +
-        `    AND NOW()-state_change > INTERVAL '10 seconds';`,
-      metadata: { samples: n, totalHungConnMin: total, windowMin: 5 },
+        `    AND NOW()-state_change > INTERVAL '10 seconds';` +
+        deployNote,
+      metadata: {
+        samples: n,
+        totalHungConnMin: total,
+        windowMin: 5,
+        deployWindowActive: ctx?.deployWindow?.active ?? false,
+      },
       fingerprint: 'pool_hung_clientread',
     };
   },
