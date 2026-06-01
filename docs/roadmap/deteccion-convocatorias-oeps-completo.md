@@ -188,12 +188,18 @@ CREATE TABLE discovered_process_milestones (
 );
 ```
 
-**Modelo de uso:**
+**Modelo de uso (decidido 01/06/2026):**
 
-1. Sensores (regional_scan, llm_semantic, etc.) hacen UPSERT en `discovered_processes` por su unique key — la 2ª vez que ven el mismo proceso UPDATEan `last_seen_at`/datos + INSERT en `milestones` para hitos nuevos.
-2. Admin `/admin/discovered-processes` (Fase 6) lista los `new`+`watching` con su timeline.
-3. Manuel decide: `watching` (seguir vigilando), `irrelevant` (no crear, conservar histórico), o `promoted` (yo, Claude, creo la oposición Vence desde sus datos; trigger valida que `promoted_to_oposicion_id` se rellene).
-4. `oep_detection_signals` sigue como tabla de **alerta efímera** ("hay novedad — revísala"). `discovered_processes` es el **almacén persistente** con todo el detalle estructurado.
+1. Sensores siguen escribiendo señales efímeras en `oep_detection_signals` (sin cambio).
+2. Badge admin avisa "hay novedades".
+3. Manuel dice "revisa oeps" → Claude analiza cada señal con criterio (verifica fuentes oficiales si dudoso, distingue ruido de novedad real, mapea a oposición existente o a proceso nuevo).
+4. Claude decide y ejecuta tras OK de Manuel por bloque:
+   - Señal con oposición Vence + datos nuevos → UPDATE en `oposiciones` + invalidar cache landing.
+   - Señal sin oposición Vence + datos estructurados → UPSERT en `discovered_processes` + INSERT en `milestones`.
+   - Ruido o LLM error → señal `dismissed` con nota del por qué.
+5. Cuando Manuel quiera crear una oposición Vence desde un proceso descubierto: lee `discovered_processes` + milestones y se crea con datos pre-rellenados. Marca `manuel_status='promoted'`.
+
+**Por qué NO automatizar la decisión sensor→discovered_processes:** los sensores tienen falsos positivos (LLM mal sumó plazas Badajoz, atribuyó BOE-Fuenlabrada a GC, hash changes sin info, prensa genérica La Moncloa). Inyectar todo automáticamente ensucia el inventario. La capa de juicio (Claude con OK de Manuel) es la garantía de calidad. La tabla de señales sigue siendo la cola de revisión.
 
 ### 2.3 Estrategia de redundancia (clave para 95% cobertura)
 
@@ -304,18 +310,6 @@ Recomendación robusta inicial: **ScrapingBee** para validar valor en 1-2 semana
 3. Si match → genera señal `boe_extracto` con score 90 + datos pre-rellenados para auto-apply.
 
 **Criterio de éxito:** extracto BOE Ayto Badajoz Aux Admin (cuando se publique) genera señal en <24h.
-
-### Fase 5-bis — Migrar sensores a `discovered_processes` (2-3 días, **siguiente**)
-
-**Objetivo:** que los sensores ya existentes escriban en la tabla persistente (no solo en `oep_detection_signals` efímera).
-
-**Tareas:**
-1. Modificar `backend/src/detect-regional-oeps/detect-regional-oeps.service.ts`: tras detectar proceso → UPSERT en `discovered_processes` por unique key. Si llegan datos nuevos en un proceso ya conocido → UPDATE + INSERT milestones.
-2. Modificar `backend/src/detect-oep-llm/detect-oep-llm.service.ts`: cuando la oposición Vence YA existe → seguir como hoy (actualiza `oposiciones`). Cuando NO existe match → UPSERT en `discovered_processes`.
-3. Modificar `backend/src/detect-generic-sources/detect-generic-sources.service.ts`: solo escribir en `discovered_processes` si la extracción tiene datos estructurados (no si es ruido genérico tipo "La Moncloa").
-4. Backfill: las señales `pending` actuales en `oep_detection_signals` que no tienen `oposicion_id` → INSERT en `discovered_processes` + marcar señal `applied`. Script: `scripts/backfill-discovered-processes-from-signals.cjs`.
-
-**Criterio de éxito:** una semana después de aplicar, `discovered_processes` tiene >50 filas con datos coherentes y timeline poblado.
 
 ### Fase 6 — Panel admin `/admin/discovered-processes` (2 días)
 
