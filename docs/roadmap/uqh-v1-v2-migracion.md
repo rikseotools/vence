@@ -22,14 +22,40 @@ Cada uno: repointar a `userQuestionHistoryV2`. Paridad verificada (usuario más 
 - [x] `lib/api/filtered-questions/queries.ts` → v2 (nunca-vistas + solo-falladas).
 - [x] `lib/api/admin-delete-user/queries.ts` → AÑADIDO borrado de `user_question_history_v2` (antes solo borraba v1 = bug: dejaba huérfano el historial v2 al borrar un usuario). Mantiene borrado v1 mientras v1 exista.
 
-> ⚠️ Cambios en working tree, SIN commit/deploy aún. Fase 4 (DROP v1) solo DESPUÉS de desplegar y confirmar en prod que se lee v2.
+> ✅ Commiteado en `16ef0b4c` y pusheado a `origin/main` (01/06). Entra en el próximo deploy. **Fase 4 (DROP v1) solo DESPUÉS de desplegar y confirmar en prod que se lee v2.**
 
-## Fase 4 — eliminar v1 (solo cuando 0 referencias a v1)
-- [ ] Eliminar/migrar funciones SQL que referencian v1: `update_user_question_history` (función del trigger antiguo, latente), `update_user_question_history_correct_delta`, `migrate_existing_data`.
-- [ ] Borrar los triggers v1 desactivados de `test_questions`.
-- [ ] Parar y quitar el bridge (`SyncUqhV1BridgeModule` + cron + service + entrada en `app.module.ts`).
-- [ ] `DROP TABLE user_question_history`.
-- Nota: el plan original decía "DROP v1 + RENAME v2→v1", pero renombrar obligaría a repointar TODO el código ya migrado que lee v2. Alternativa más limpia: migrar todos los lectores a v2 y solo `DROP` v1 (sin rename), dejando `user_question_history_v2` como nombre definitivo.
+## Fase 4 — eliminar v1 (RUNBOOK — NO ejecutar hasta cumplir las precondiciones)
+
+### Precondiciones (TODAS obligatorias antes de tocar nada)
+1. El commit `16ef0b4c` está **desplegado** en prod (frontend ECS).
+2. `git grep -nE "userQuestionHistory[^V]|from\('user_question_history'\)" lib/ app/ components/` → **0 resultados** (ningún lector de app en v1). *(verificado el 01/06; re-verificar tras deploy por si entró código nuevo).*
+3. Tras el deploy, navegar/probar en prod: configurador (nunca-vistas/falladas), progreso por tema, chat IA stats, y borrado de usuario → sin errores. Confirmar que esos endpoints leen v2.
+
+### Paso 1 — Código (PR + deploy):
+- Quitar el bridge: borrar `backend/src/sync-uqh-v1-bridge/` + `import SyncUqhV1BridgeModule` y su entrada en `backend/src/app.module.ts`.
+- `lib/api/admin-delete-user/queries.ts`: quitar la entrada `{ table: 'user_question_history', column: 'user_id' }` (dejar solo la v2).
+- `db/schema.ts`: quitar el export `userQuestionHistory` (v1) si ya nadie lo importa.
+- Deploy. Confirmar que el bridge dejó de correr.
+
+### Paso 2 — SQL (solo tras Paso 1 desplegado; el bridge ya NO escribe v1):
+```sql
+-- a) triggers v1 desactivados en test_questions
+DROP TRIGGER IF EXISTS trigger_update_user_question_history_correct ON test_questions;
+DROP TRIGGER IF EXISTS trigger_update_user_question_history_insert  ON test_questions;
+-- b) funciones que referencian v1 (verificar dependencias antes: \df+ / pg_depend)
+DROP FUNCTION IF EXISTS update_user_question_history() CASCADE;
+DROP FUNCTION IF EXISTS update_user_question_history_correct_delta() CASCADE;
+-- migrate_existing_data: one-off, verificar que no la llama nada y DROP si procede.
+-- c) la tabla v1 (último paso; backup recomendado)
+DROP TABLE IF EXISTS user_question_history;
+```
+- Verificar después: `SELECT to_regclass('public.user_question_history')` → null; v2 sigue intacta y alimentándose por el outbox handler.
+
+### Decisión rename
+- El plan original decía "DROP v1 + RENAME v2→v1". Renombrar obligaría a repointar TODO el código ya migrado que lee v2 → más churn y riesgo. **Recomendado: NO renombrar** — dejar `user_question_history_v2` como nombre definitivo. Si se quiere el nombre `user_question_history`, hacerlo en un paso posterior y coordinado (rename + repoint masivo en un solo PR).
+
+### Rollback
+- Si algo falla tras el DROP: restaurar `user_question_history` desde backup + re-añadir el bridge. Por eso el orden es código primero (deja de depender de v1) y DROP al final.
 
 ## Notas
 - `psychometric_user_question_history` es tabla **distinta** (psicotécnicas), ajena a esta migración.
