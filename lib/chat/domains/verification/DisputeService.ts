@@ -1,14 +1,31 @@
 // lib/chat/domains/verification/DisputeService.ts
 // Servicio para gestionar impugnaciones de preguntas
 
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb, getAdminDb } from '@/db/client'
+import { questionDisputes, psychometricQuestionDisputes } from '@/db/schema'
+import { eq, and, desc, inArray, count } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 
-// Cliente Supabase
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Selector de tabla según tipo de pregunta. Ambas tablas comparten las columnas
+// que usa este servicio, así que casteamos a una para un único code path.
+function disputeTable(isPsychometric?: boolean) {
+  return (isPsychometric ? psychometricQuestionDisputes : questionDisputes) as typeof questionDisputes
+}
+
+// Columnas que consume mapDisputeFromDb (aliasadas a snake_case)
+function disputeCols(t: typeof questionDisputes) {
+  return {
+    id: t.id,
+    question_id: t.questionId,
+    user_id: t.userId,
+    dispute_type: t.disputeType,
+    description: t.description,
+    status: t.status,
+    admin_response: t.adminResponse,
+    created_at: t.createdAt,
+    resolved_at: t.resolvedAt,
+  }
+}
 
 // ============================================
 // TIPOS
@@ -161,59 +178,50 @@ export async function createUserDispute(
 async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> {
   // Elegir tabla según tipo de pregunta
   const tableName = input.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+  const table = disputeTable(input.isPsychometric)
 
   const insertData: Record<string, unknown> = {
-    question_id: input.questionId,
-    user_id: input.userId || null,
-    dispute_type: input.disputeType,
+    questionId: input.questionId,
+    userId: input.userId || null,
+    disputeType: input.disputeType,
     description: input.description,
     status: 'pending',
     source: input.source || 'user',
   }
 
   if (input.aiChatLogId) {
-    insertData.ai_chat_log_id = input.aiChatLogId
+    insertData.aiChatLogId = input.aiChatLogId
   }
 
-  const { data, error } = await getSupabase()
-    .from(tableName)
-    .insert(insertData)
-    .select('id')
-    .single()
+  const db = getAdminDb()
 
-  if (error) {
+  try {
+    const inserted = await db.insert(table).values(insertData as any).returning({ id: table.id })
+    return { success: true, disputeId: inserted[0].id }
+  } catch (err: any) {
     // Si falla por FK violation del ai_chat_log_id (race condition: el chat log aún no se insertó),
     // reintentar sin ai_chat_log_id para no perder la disputa
-    if (error.code === '23503' && error.message?.includes('ai_chat_log_id') && input.aiChatLogId) {
+    if (err?.code === '23503' && String(err?.message || '').includes('ai_chat_log_id') && input.aiChatLogId) {
       logger.warn('FK violation on ai_chat_log_id, retrying without it', {
         domain: 'verification',
         table: tableName,
         aiChatLogId: input.aiChatLogId,
       })
-      delete insertData.ai_chat_log_id
-      const { data: retryData, error: retryError } = await getSupabase()
-        .from(tableName)
-        .insert(insertData)
-        .select('id')
-        .single()
-
-      if (retryError) {
-        logger.error('Database error creating dispute (retry)', retryError, { domain: 'verification', table: tableName })
-        return { success: false, error: retryError.message }
+      delete insertData.aiChatLogId
+      try {
+        const retry = await db.insert(table).values(insertData as any).returning({ id: table.id })
+        return { success: true, disputeId: retry[0].id }
+      } catch (retryErr: any) {
+        logger.error('Database error creating dispute (retry)', retryErr, { domain: 'verification', table: tableName })
+        return { success: false, error: retryErr?.message || 'Error desconocido' }
       }
-      return { success: true, disputeId: retryData.id }
     }
 
-    logger.error('Database error creating dispute', error, { domain: 'verification', table: tableName })
+    logger.error('Database error creating dispute', err, { domain: 'verification', table: tableName })
     return {
       success: false,
-      error: error.message,
+      error: err?.message || 'Error desconocido',
     }
-  }
-
-  return {
-    success: true,
-    disputeId: data.id,
   }
 }
 
@@ -229,20 +237,20 @@ async function findExistingDispute(
   disputeType: DisputeType,
   isPsychometric?: boolean
 ): Promise<Dispute | null> {
-  const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+  const table = disputeTable(isPsychometric)
 
-  const { data, error } = await getSupabase()
-    .from(tableName)
-    .select('*')
-    .eq('question_id', questionId)
-    .eq('dispute_type', disputeType)
-    .single()
+  // .single() del código anterior: error (→ null) si 0 o >1 filas; fila si exactamente 1.
+  const rows = await getAdminDb()
+    .select(disputeCols(table))
+    .from(table)
+    .where(and(eq(table.questionId, questionId), eq(table.disputeType, disputeType)))
+    .limit(2)
 
-  if (error || !data) {
+  if (rows.length !== 1) {
     return null
   }
 
-  return mapDisputeFromDb(data)
+  return mapDisputeFromDb(rows[0])
 }
 
 /**
@@ -253,72 +261,70 @@ async function findUserDispute(
   userId: string,
   isPsychometric?: boolean
 ): Promise<Dispute | null> {
-  const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+  const table = disputeTable(isPsychometric)
 
-  const { data, error } = await getSupabase()
-    .from(tableName)
-    .select('*')
-    .eq('question_id', questionId)
-    .eq('user_id', userId)
-    .single()
+  // .single() del código anterior: error (→ null) si 0 o >1 filas; fila si exactamente 1.
+  const rows = await getAdminDb()
+    .select(disputeCols(table))
+    .from(table)
+    .where(and(eq(table.questionId, questionId), eq(table.userId, userId)))
+    .limit(2)
 
-  if (error || !data) {
+  if (rows.length !== 1) {
     return null
   }
 
-  return mapDisputeFromDb(data)
+  return mapDisputeFromDb(rows[0])
 }
 
 /**
  * Obtiene todas las disputas de una pregunta
  */
 export async function getDisputesForQuestion(questionId: string): Promise<Dispute[]> {
-  const { data, error } = await getSupabase()
-    .from('question_disputes')
-    .select('*')
-    .eq('question_id', questionId)
-    .order('created_at', { ascending: false })
-
-  if (error || !data) {
+  try {
+    const rows = await getReadDb()
+      .select(disputeCols(questionDisputes))
+      .from(questionDisputes)
+      .where(eq(questionDisputes.questionId, questionId))
+      .orderBy(desc(questionDisputes.createdAt))
+    return rows.map(mapDisputeFromDb)
+  } catch {
     return []
   }
-
-  return data.map(mapDisputeFromDb)
 }
 
 /**
  * Obtiene las disputas pendientes de un usuario
  */
 export async function getUserPendingDisputes(userId: string): Promise<Dispute[]> {
-  const { data, error } = await getSupabase()
-    .from('question_disputes')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-
-  if (error || !data) {
+  try {
+    const rows = await getReadDb()
+      .select(disputeCols(questionDisputes))
+      .from(questionDisputes)
+      .where(and(eq(questionDisputes.userId, userId), eq(questionDisputes.status, 'pending')))
+      .orderBy(desc(questionDisputes.createdAt))
+    return rows.map(mapDisputeFromDb)
+  } catch {
     return []
   }
-
-  return data.map(mapDisputeFromDb)
 }
 
 /**
  * Verifica si una pregunta tiene disputas pendientes
  */
 export async function hasOpenDisputes(questionId: string): Promise<boolean> {
-  const { count, error } = await getSupabase()
-    .from('question_disputes')
-    .select('*', { count: 'exact', head: true })
-    .eq('question_id', questionId)
-    .in('status', ['pending', 'reviewing'])
-
-  if (error) {
+  try {
+    const rows = await getReadDb()
+      .select({ c: count() })
+      .from(questionDisputes)
+      .where(and(
+        eq(questionDisputes.questionId, questionId),
+        inArray(questionDisputes.status, ['pending', 'reviewing']),
+      ))
+    return Number(rows[0]?.c ?? 0) > 0
+  } catch {
     return false
   }
-
-  return (count || 0) > 0
 }
 
 // ============================================

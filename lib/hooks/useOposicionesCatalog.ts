@@ -113,7 +113,9 @@ async function fetchAndCache(): Promise<OposicionItem[]> {
       if (!json.ok || !Array.isArray(json.oposiciones)) {
         throw new Error('respuesta inválida del endpoint')
       }
-      const items = json.oposiciones.map(mapApiToOposicionItem)
+      // Filtrar entradas sin slug: no son navegables y romperían el map
+      // (mapApiToOposicionItem deriva el id de slug.replace).
+      const items = json.oposiciones.filter(o => !!o.slug).map(mapApiToOposicionItem)
       const entry: CacheEntry = { data: items, expiresAt: Date.now() + CACHE_TTL_MS }
       memoryCache = entry
       writeLocalStorageCache(entry)
