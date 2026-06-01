@@ -1,6 +1,6 @@
 # Roadmap — Observabilidad de capacidad (de eventos a margen disponible)
 
-> **Estado**: 🟢 **2/3 ACCIONES APLICADAS (01/06/2026)** — Acción 1 (userId logger) y Acción 3 (pg_stat snapshot) LIVE en repo. Acción 2 (pool capacity sampler) condicionada a Fase 0 del roadmap [`pool-segregation.md`](pool-segregation.md).
+> **Estado**: 🟢 **3/3 ACCIONES APLICADAS (01/06/2026)** — Acciones 1 (userId logger), 2 (pool capacity sampler) y 3 (pg_stat snapshot) LIVE en producción. Sistema con observabilidad de capacidad completa.
 > **Propietario**: equipo Vence
 > **Coste recurrente**: 0 € (cron en backend Fargate ya existente + 1 tabla pequeña + cambio en logger).
 > **Última actualización**: 2026-06-01 — Acción 1 y 3 implementadas y testeadas. Pendiente Acción 2 (espera Fase 0).
@@ -26,8 +26,8 @@ Los gaps son del manual `docs/runbooks/observability.md` §13 — están identif
 | # | Acción | Esfuerzo | Gap que cierra | Estado |
 |---|---|---|---|---|
 | 1 | Extraer `userId` del query param en `withErrorLogging` | 30 min | "¿cuántos users sufren?" | ✅ **APLICADA 01/06/2026** (commit `88808e6e`) |
-| 2 | Cron `*/1 min` muestreando `pg_stat_activity` → tabla `pool_capacity_samples` + KPI en `/admin/salud-sistema` | 2-3 h | "¿cuánto margen queda?" | ⏳ pendiente, espera Fase 0 |
-| 3 | Snapshot diario de `pg_stat_statements` a tabla histórica + vista delta | 1-2 h | "¿esta query es lenta HOY o legacy?" | ✅ **APLICADA 01/06/2026** (sin commit aún — pendiente OK migración SQL) |
+| 2 | Cron `*/1 min` muestreando `pg_stat_activity` → tabla `pool_capacity_samples` + KPI en `/admin/salud-sistema` | 2-3 h | "¿cuánto margen queda?" | ✅ **APLICADA 01/06/2026** (commit `ddd2824a`) — KPI en panel queda como follow-up |
+| 3 | Snapshot diario de `pg_stat_statements` a tabla histórica + vista delta | 1-2 h | "¿esta query es lenta HOY o legacy?" | ✅ **APLICADA 01/06/2026** (commit `bef2f3e4`) |
 
 ---
 
@@ -58,6 +58,25 @@ Resultado actual al investigar: `user_id=NULL` en 100 % de los errores → diagn
 ---
 
 ## Acción 2 — Pool capacity sampler (2-3 h, ROI muy alto)
+
+> **✅ APLICADA 2026-06-01 ~10:00 UTC** (commit `ddd2824a`). Migración SQL + módulo NestJS backend Fargate + 16 tests + registrado en app.module.ts + verificación en prod con status GREEN correcto tras filtros.
+>
+> **Archivos creados**:
+> - `supabase/migrations/20260601_pool_capacity_samples.sql` — tabla + función `take_pool_capacity_sample()` + función `prune_pool_capacity_samples(days)` + vista `v_pool_capacity_last_15min` con status calculado.
+> - `backend/src/pool-capacity-sampler/pool-capacity-sampler.service.ts` — helper puro `parseSampleResult` + wrapper Drizzle.
+> - `backend/src/pool-capacity-sampler/pool-capacity-sampler.cron.ts` — `@Cron(EVERY_MINUTE)` UTC con jitter 3s + heartbeat threshold 3min + emit `pool_capacity_flag` SOLO cuando hay banderas rojas (evita 1.440 events/día sin valor).
+> - `backend/src/pool-capacity-sampler/pool-capacity-sampler.module.ts` + spec.
+> - `backend/src/app.module.ts` — registro de `PoolCapacitySamplerModule`.
+>
+> **Bugs encontrados durante implementación** (todos cerrados — patrón "siempre robusto"):
+> 1. `GET DIAGNOSTICS ROW_COUNT` no asignable a boolean — fix variable intermedia integer.
+> 2. `wait_event=ClientRead` + `state=idle` es comportamiento NORMAL (toda conexión idle espera la próxima query en ClientRead) — filtro requiere `state IN ('active', 'idle in transaction')`.
+> 3. `backend_type='walsender'` (replication) corre durante días en `active` — filtro `is_client_backend` excluye walsender/autovacuum/etc para evitar falsos positivos sostenidos.
+> 4. CTE `WITH snap` no persiste entre statements plpgsql — query combinada con `counts` + `by_app_agg` en un único SELECT INTO.
+>
+> **Pendiente como follow-up** (no bloquea valor):
+> - KPI card "Capacidad pool" en `/admin/salud-sistema` con timeseries.
+> - Regla `POOL_CAPACITY_SUSTAINED_HIGH` en `alert-rules.ts` con cooldown 30 min.
 
 ### Qué hay hoy
 
