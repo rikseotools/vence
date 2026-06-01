@@ -78,6 +78,11 @@ import { OutboxProcessorModule } from './outbox-processor/outbox-processor.modul
 // (topic_law_question_summary + topic_official_by_position). Aplica también
 // endpoint admin POST /api/v2/admin/topic-summary/refresh para on-demand.
 import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic-summary.module';
+// Snapshot diario de pg_stat_statements para cálculo de deltas 24h vía
+// vista `v_pg_stat_statements_delta`. Cierra el gap "queries lentas HOY vs
+// ruido histórico acumulado" del incidente 31/05. Ver
+// docs/roadmap/observability-capacity.md Acción 3.
+import { PgStatSnapshotModule } from './pg-stat-snapshot/pg-stat-snapshot.module';
 
 @Module({
   imports: [
@@ -139,6 +144,9 @@ import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic
     // Fase D-bis Iter 1.5 (31/05/2026) — refresh diario 03:30 UTC de las MVs
     // topic_law_question_summary + topic_official_by_position.
     RefreshTopicSummaryModule,
+    // Acción 3 observability-capacity (01/06/2026) — snapshot diario 00:05 UTC
+    // de pg_stat_statements + poda 30d. Habilita v_pg_stat_statements_delta.
+    PgStatSnapshotModule,
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

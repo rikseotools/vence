@@ -1,9 +1,9 @@
 # Roadmap — Observabilidad de capacidad (de eventos a margen disponible)
 
-> **Estado**: 🟡 **NO INICIADO** — diseño cerrado, implementación condicionada a Fase 0 del roadmap [`pool-segregation.md`](pool-segregation.md). 3 acciones independientes con valor acumulativo.
+> **Estado**: 🟢 **2/3 ACCIONES APLICADAS (01/06/2026)** — Acción 1 (userId logger) y Acción 3 (pg_stat snapshot) LIVE en repo. Acción 2 (pool capacity sampler) condicionada a Fase 0 del roadmap [`pool-segregation.md`](pool-segregation.md).
 > **Propietario**: equipo Vence
 > **Coste recurrente**: 0 € (cron en backend Fargate ya existente + 1 tabla pequeña + cambio en logger).
-> **Última actualización**: 2026-06-01 — roadmap creado tras incidente 31/05 (los gaps de capacidad bloquearon el diagnóstico durante 2 horas).
+> **Última actualización**: 2026-06-01 — Acción 1 y 3 implementadas y testeadas. Pendiente Acción 2 (espera Fase 0).
 
 ---
 
@@ -23,11 +23,11 @@ Los gaps son del manual `docs/runbooks/observability.md` §13 — están identif
 
 **Las 3 acciones de este roadmap son INDEPENDIENTES** — se pueden implementar por separado y cada una aporta valor por sí sola. Ordenadas por ROI:
 
-| # | Acción | Esfuerzo | Gap que cierra |
-|---|---|---|---|
-| 1 | Extraer `userId` del query param en `withErrorLogging` | 30 min | "¿cuántos users sufren?" |
-| 2 | Cron `*/1 min` muestreando `pg_stat_activity` → tabla `pool_capacity_samples` + KPI en `/admin/salud-sistema` | 2-3 h | "¿cuánto margen queda?" |
-| 3 | Snapshot diario de `pg_stat_statements` a tabla histórica + vista delta | 1-2 h | "¿esta query es lenta HOY o legacy?" |
+| # | Acción | Esfuerzo | Gap que cierra | Estado |
+|---|---|---|---|---|
+| 1 | Extraer `userId` del query param en `withErrorLogging` | 30 min | "¿cuántos users sufren?" | ✅ **APLICADA 01/06/2026** (commit `88808e6e`) |
+| 2 | Cron `*/1 min` muestreando `pg_stat_activity` → tabla `pool_capacity_samples` + KPI en `/admin/salud-sistema` | 2-3 h | "¿cuánto margen queda?" | ⏳ pendiente, espera Fase 0 |
+| 3 | Snapshot diario de `pg_stat_statements` a tabla histórica + vista delta | 1-2 h | "¿esta query es lenta HOY o legacy?" | ✅ **APLICADA 01/06/2026** (sin commit aún — pendiente OK migración SQL) |
 
 ---
 
@@ -112,6 +112,19 @@ El cron muestrea con **su propio cliente DB dedicado** (no comparte pool con `ge
 ---
 
 ## Acción 3 — Snapshot histórico de `pg_stat_statements` (1-2 h, ROI medio-alto)
+
+> **✅ APLICADA en repo (2026-06-01)**. Migración SQL + módulo NestJS + tests creados.
+> **PENDIENTE OK del usuario**: aplicar `supabase/migrations/20260601_pg_stat_statements_snapshots.sql` en BD producción + commit + push.
+>
+> **Archivos creados**:
+> - `supabase/migrations/20260601_pg_stat_statements_snapshots.sql` — tabla + función `take_pg_stat_statements_snapshot()` + función `prune_pg_stat_statements_snapshots(days)` + vista `v_pg_stat_statements_delta` + verificación pg_stat_statements habilitado.
+> - `backend/src/pg-stat-snapshot/pg-stat-snapshot.service.ts` — wrapper Drizzle de las funciones SQL + helper puro `parseSnapshotResult` testeado.
+> - `backend/src/pg-stat-snapshot/pg-stat-snapshot.cron.ts` — `@Cron('5 0 * * *')` UTC + jitter + HeartbeatRegistry (threshold 28h) + observability emit.
+> - `backend/src/pg-stat-snapshot/pg-stat-snapshot.module.ts` — NestJS module estándar.
+> - `backend/src/pg-stat-snapshot/pg-stat-snapshot.service.spec.ts` — 15 tests (6 unit puros sobre `parseSnapshotResult` + 9 contract asserts sobre source code del service + cron).
+> - `backend/src/app.module.ts` — registro de `PgStatSnapshotModule` junto a `RefreshTopicSummaryModule`.
+>
+> **Tests**: 15/15 OK. `npx tsc --noEmit` sin errores.
 
 ### Qué hay hoy
 
@@ -205,12 +218,14 @@ Esta vista da el **delta real de las últimas 24 h**: cuántas calls nuevas, su 
 
 ## Orden de ejecución sugerido
 
-1. **Acción 1** (userId en logger) — 30 min, riesgo cero, gana 30 % de claridad diagnóstica.
-2. **Fase 0 de pool-segregation** (captura del próximo pico) — usa el script ad-hoc, ya está listo.
-3. **Acción 2** (pool capacity sampler) — 2-3 h, internaliza lo que hoy es ad-hoc.
-4. **Acción 3** (snapshot pg_stat_statements) — 1-2 h, baja prioridad pero alta utilidad cuando se necesita.
+1. ✅ **Acción 1** (userId en logger) — APLICADA 01/06/2026 (commit `88808e6e`).
+2. ✅ **Acción 3** (snapshot pg_stat_statements) — APLICADA en repo 01/06/2026, pendiente migración SQL en BD.
+3. ⏳ **Fase 0 de pool-segregation** (captura del próximo pico) — script ad-hoc listo en `scripts/diagnostic/capture-pool-pressure.cjs`.
+4. ⏳ **Acción 2** (pool capacity sampler) — 2-3 h, internaliza lo que hoy es ad-hoc. Espera Fase 0.
 
-Total: **4-6 h de trabajo** para pasar de "diagnóstico forense reactivo" (lo de hoy) a "detección predictiva con datos históricos".
+**Razón del reorden**: las acciones 1 y 3 son no-bloqueantes para Fase 0 y enriquecen los datos disponibles cuando se ejecute. Acción 2 sí se beneficia de Fase 0 para confirmar el formato exacto del muestreo necesario.
+
+Total ejecutado hoy: **~2 h** (Acción 1 + Acción 3 con tests + roadmap + commits parciales). Pendiente: ~3 h (Fase 0 + Acción 2).
 
 ---
 
@@ -225,4 +240,6 @@ Total: **4-6 h de trabajo** para pasar de "diagnóstico forense reactivo" (lo de
 
 ## Histórico de decisiones
 
-- **2026-06-01** — Roadmap creado tras incidente 31/05 demostrar que los 3 gaps de capacidad son operativamente bloqueantes (no opcionales). Diseño cerrado, implementación condicionada a completar Fase 0 de pool-segregation para no añadir ruido al diagnóstico en curso.
+- **2026-06-01** — Roadmap creado tras incidente 31/05 demostrar que los 3 gaps de capacidad son operativamente bloqueantes (no opcionales).
+- **2026-06-01** — Acción 1 (`extractUserIdFromRequest`) APLICADA + commit `88808e6e` + push a `origin/main`. 19 tests unitarios + regression del incidente 31/05. Decisión arquitectónica: módulo aparte (`lib/api/extractUserId.ts`) en vez de inline, para reutilización futura (Acción 2 pool sampler, Sentry scope enrichment) y testabilidad directa.
+- **2026-06-01** — Acción 3 (pg_stat_statements snapshot) APLICADA en repo: migración SQL + módulo NestJS backend + 15 tests OK + `tsc --noEmit` clean. Pendiente aplicar migración en BD prod (decisión del usuario — no automatizada por ser DDL en producción) + commit + push. Reordenado el plan: Acción 3 antes que Fase 0 porque enriquece los datos que mañana se analizarán en la captura del pico.
