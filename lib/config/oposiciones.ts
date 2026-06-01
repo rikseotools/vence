@@ -750,6 +750,80 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE ZARAGOZA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_zaragoza',
+    slug: 'auxiliar-administrativo-ayuntamiento-zaragoza',
+    positionType: 'auxiliar_administrativo_ayuntamiento_zaragoza',
+    name: 'Auxiliar Administrativo Ayuntamiento de Zaragoza',
+    shortName: 'Aux. Ayto. Zaragoza',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'organizacion',
+        title: 'Organización Jurídica y Administrativa',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Igualdad efectiva de mujeres y hombres. Violencia de género' },
+          { id: 3, name: 'El Estatuto de Autonomía de Aragón' },
+          { id: 4, name: 'El Procedimiento Administrativo Común (I): los interesados' },
+          { id: 5, name: 'El Procedimiento Administrativo Común (II): actividad, términos y plazos' },
+          { id: 6, name: 'El Procedimiento Administrativo Común (III): los actos administrativos' },
+          { id: 7, name: 'El Procedimiento Administrativo Común (IV): el procedimiento' },
+          { id: 8, name: 'El Procedimiento Administrativo Común (V): revisión y recursos' },
+          { id: 9, name: 'Los contratos del sector público' },
+        ],
+      },
+      {
+        id: 'local',
+        title: 'Administración Local y Empleo Público',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 10, name: 'Los bienes de las entidades locales' },
+          { id: 11, name: 'La actividad de las entidades locales' },
+          { id: 12, name: 'Las Haciendas Locales (I): los recursos' },
+          { id: 13, name: 'Las Haciendas Locales (II): el presupuesto municipal' },
+          { id: 14, name: 'El municipio. Régimen especial de Zaragoza como capital de Aragón' },
+          { id: 15, name: 'Reglamento de Órganos Territoriales y Participación Ciudadana de Zaragoza' },
+          { id: 16, name: 'Reglamentos y ordenanzas de los municipios' },
+          { id: 17, name: 'Los empleados públicos (I): clases, derechos y deberes' },
+          { id: 18, name: 'Los empleados públicos (II): situaciones administrativas y régimen disciplinario' },
+          { id: 19, name: 'Los empleados públicos (III): la función pública local' },
+          { id: 20, name: 'La Ley de Prevención de Riesgos Laborales' },
+        ],
+      },
+      {
+        id: 'ofimatica',
+        title: 'Ofimática e Informática',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 21, name: 'Sistemas operativos y software libre. Windows 11' },
+          { id: 22, name: 'LibreOffice Writer (tratamiento de textos)' },
+          { id: 23, name: 'LibreOffice Calc (hoja de cálculo)' },
+          { id: 24, name: 'LibreOffice Base e Impress (bases de datos y presentaciones)' },
+          { id: 25, name: 'Internet y correo electrónico' },
+        ],
+      },
+    ],
+    totalTopics: 25,
+    aliases: ['ayuntamiento zaragoza', 'ayto zaragoza', 'aux zaragoza', 'auxiliar zaragoza', 'maña', 'cesaraugusta'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-zaragoza', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-zaragoza/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-zaragoza/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE CÁDIZ (C2)
   // ========================================
   {

@@ -1,0 +1,50 @@
+{
+  "slug": "auxiliar-administrativo-ayuntamiento-zaragoza",
+  "position_type": "auxiliar_administrativo_ayuntamiento_zaragoza",
+  "nombre": "Auxiliar Administrativo Ayuntamiento de Zaragoza",
+  "categoria": "C2",
+  "administracion": "Local (Ayuntamiento de Zaragoza)",
+  "fuente_programa": {
+    "diario": "BOPZ",
+    "referencia": "BOPZ núm. 147, 30/06/2025 — Bases CONV. Auxiliar Administrativo OEP 2025",
+    "pdf": "https://www.zaragoza.es/cont/paginas/oferta/archivos/bases/bases1681.pdf",
+    "anexo": "ANEXO I - Temario (Auxiliar administrativa/o)"
+  },
+  "convocatoria": {
+    "oep": "2025",
+    "plazas_total": 47,
+    "plazas_detalle": "40 TLOR + 1 discapacidad (TLRF) + 1 reserva salud (TLRM) + 1 violencia de género (TLRVG) + 4 ampliación",
+    "bopz": "147 (30/06/2025)",
+    "boe": "257 (25/10/2025)",
+    "inscripcion_fin": "2025-11-14",
+    "examen": "celebrado ~01/06/2026 (plantillas provisionales y cuestionarios publicados 01/06/2026)",
+    "estructura_examen": "Dos ejercicios obligatorios y eliminatorios el mismo día: 1º teórico tipo test (50 preguntas, 55 min); 2º práctico (dos supuestos con diez preguntas cada uno)"
+  },
+  "temas": [
+    { "n": 1, "epigrafe": "La Constitución española: elaboración y aprobación. Estructura y título preliminar. La Administración pública en la Constitución. Organización territorial del Estado en la Constitución: principios generales y Administración local.", "leyes_plan": ["CE"] },
+    { "n": 2, "epigrafe": "La Ley para la igualdad efectiva de mujeres y hombres: el principio de igualdad y la tutela contra la discriminación. La Ley de Prevención y Protección Integral a las Mujeres Víctimas de Violencia en Aragón: disposiciones generales y medidas de protección y apoyo a las víctimas. El Plan de Igualdad para empleadas y empleados del Ayuntamiento de Zaragoza.", "leyes_plan": ["LO 3/2007", "Igualdad Violencia Genero Aragon"], "gap": "Plan Igualdad Ayto Zaragoza (municipal, no en BD)" },
+    { "n": 3, "epigrafe": "El Estatuto de Autonomía de Aragón: título preliminar, organización institucional de la Comunidad Autónoma y clases de competencias.", "leyes_plan": ["LO 5/2007 Estatuto Aragón"] },
+    { "n": 4, "epigrafe": "La Ley del Procedimiento Administrativo Común de las Administraciones Públicas (I): los interesados en el procedimiento.", "leyes_plan": ["Ley 39/2015"] },
+    { "n": 5, "epigrafe": "La Ley del Procedimiento Administrativo Común de las Administraciones Públicas (II): la actividad de las Administraciones Públicas. Normas generales de actuación. Términos y plazos.", "leyes_plan": ["Ley 39/2015"] },
+    { "n": 6, "epigrafe": "La Ley del Procedimiento Administrativo Común de las Administraciones Públicas (III): los actos administrativos. Requisitos. Eficacia. Nulidad y anulabilidad.", "leyes_plan": ["Ley 39/2015"] },
+    { "n": 7, "epigrafe": "La Ley del Procedimiento Administrativo Común de las Administraciones Públicas (IV): disposiciones sobre el procedimiento administrativo común (iniciación, ordenación, instrucción y finalización).", "leyes_plan": ["Ley 39/2015"] },
+    { "n": 8, "epigrafe": "La Ley del Procedimiento Administrativo Común de las Administraciones Públicas (V): revisión de los actos en vía administrativa. Revisión de oficio y recursos administrativos.", "leyes_plan": ["Ley 39/2015"] },
+    { "n": 9, "epigrafe": "Los contratos del sector público: delimitación de los tipos contractuales. Competencias en materia de contratación en las Entidades Locales. Normas específicas de contratación pública en las Entidades Locales.", "leyes_plan": ["Ley 9/2017"] },
+    { "n": 10, "epigrafe": "Los bienes de las entidades locales: bienes de dominio público y bienes patrimoniales.", "leyes_plan": ["Ley 7/1985", "TRRL"], "gap": "Reglamento de Bienes de las EELL (RD 1372/1986) no en BD" },
+    { "n": 11, "epigrafe": "La actividad de las entidades Locales. Policía. El fomento. El servicio público local y sus formas de gestión.", "leyes_plan": ["Ley 7/1985", "TRRL"] },
+    { "n": 12, "epigrafe": "La Ley reguladora de las Haciendas Locales (I): los recursos de las haciendas municipales.", "leyes_plan": ["RDL 2/2004"] },
+    { "n": 13, "epigrafe": "La Ley reguladora de las Haciendas Locales (II): el presupuesto de los municipios (contenido, aprobación y ejecución). La aprobación del presupuesto municipal en la ley de capitalidad de Zaragoza.", "leyes_plan": ["RDL 2/2004"], "gap": "Ley de capitalidad de Zaragoza no en BD" },
+    { "n": 14, "epigrafe": "El municipio: territorio y población. Competencias de los municipios. Servicios mínimos obligatorios. Régimen de organización de los municipios de gran población. La Ley de régimen especial del municipio de Zaragoza como capital de Aragón: disposiciones generales y especialidades en materia de organización.", "leyes_plan": ["Ley 7/1985"], "gap": "Ley de capitalidad de Zaragoza no en BD (segunda parte del tema)" },
+    { "n": 15, "epigrafe": "El Reglamento de Órganos territoriales y Participación ciudadana de Zaragoza. El Manual de Atención a la ciudadanía del Ayuntamiento de Zaragoza.", "leyes_plan": [], "gap": "Reglamentos municipales (no en BD) → tema en elaboración" },
+    { "n": 16, "epigrafe": "Reglamentos y ordenanzas de los municipios. La aprobación de ordenanzas, ordenanzas fiscales y Reglamentos en la ley de capitalidad de Zaragoza.", "leyes_plan": ["Ley 7/1985"], "gap": "Ley de capitalidad de Zaragoza no en BD (segunda parte)" },
+    { "n": 17, "epigrafe": "Los empleados públicos (I): clases. Derechos y deberes.", "leyes_plan": ["RDL 5/2015"] },
+    { "n": 18, "epigrafe": "Los empleados públicos (II): adquisición y pérdida de la relación de servicio, situaciones administrativas y régimen disciplinario.", "leyes_plan": ["RDL 5/2015"] },
+    { "n": 19, "epigrafe": "Los empleados públicos (III): peculiaridades del régimen de los empleados públicos de las entidades locales. Estructura de la función pública local.", "leyes_plan": ["RDL 5/2015", "Ley 7/1985", "TRRL"] },
+    { "n": 20, "epigrafe": "La Ley de Prevención de Riesgos laborales: objeto y carácter de la norma, derecho a la protección frente a los riesgos laborales, servicios de prevención.", "leyes_plan": ["LPRL"] }
+  ],
+  "prueba_adicional_ofimatica": {
+    "epigrafe": "Sistemas operativos para PC. Software libre: conceptos generales, libertades, marco jurídico y licencias. Manejo a nivel de usuario de Windows 11 y distribución Ubuntu 24 de GNU/Linux. Ofimática e Internet: tratamiento de textos, hoja de cálculo, base de datos y presentaciones. LibreOffice Writer y Calc. Internet: conceptos básicos, navegación y uso del correo electrónico.",
+    "leyes_plan": ["Windows 11", "LibreOffice Writer", "LibreOffice Calc", "LibreOffice Base", "LibreOffice Impress", "La Red Internet"],
+    "gap": "Ubuntu 24 GNU/Linux no en BD; correo electrónico genérico (no Outlook específico)"
+  }
+}

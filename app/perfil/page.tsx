@@ -388,6 +388,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_zaragoza',
+      label: 'Auxiliar Administrativo Ayto. Zaragoza',
+      data: {
+        name: 'Auxiliar Administrativo Ayuntamiento de Zaragoza',
+        slug: 'auxiliar-administrativo-ayuntamiento-zaragoza',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_leon',
       label: 'Auxiliar Administrativo Dip. León',
       data: {
