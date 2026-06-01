@@ -83,6 +83,10 @@ import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic
 // ruido histórico acumulado" del incidente 31/05. Ver
 // docs/roadmap/observability-capacity.md Acción 3.
 import { PgStatSnapshotModule } from './pg-stat-snapshot/pg-stat-snapshot.module';
+// Muestreo continuo del pool de Postgres cada minuto. Leading indicator
+// vs los 5xx (lagging). Detecta saturación ANTES de que se traduzca en
+// errores user-facing. Ver docs/roadmap/observability-capacity.md Acción 2.
+import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity-sampler.module';
 
 @Module({
   imports: [
@@ -147,6 +151,9 @@ import { PgStatSnapshotModule } from './pg-stat-snapshot/pg-stat-snapshot.module
     // Acción 3 observability-capacity (01/06/2026) — snapshot diario 00:05 UTC
     // de pg_stat_statements + poda 30d. Habilita v_pg_stat_statements_delta.
     PgStatSnapshotModule,
+    // Acción 2 observability-capacity (01/06/2026) — muestreo continuo del
+    // pool cada minuto (leading indicator de saturación vs lagging 5xx).
+    PoolCapacitySamplerModule,
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,
