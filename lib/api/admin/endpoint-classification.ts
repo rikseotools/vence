@@ -31,6 +31,13 @@
  *   - Herramientas de mantenimiento / verificación
  *   - Debug / development tools
  *   - Armando-tools (partner operacional)
+ *   - Probes de infra (readiness/liveness del ALB/ECS) — ningún usuario
+ *     real los navega; solo ELB-HealthChecker y la liveness probe del
+ *     container. Su 5xx es señal de orquestación (ej. el 503 de warmup
+ *     del pool en `/api/health/db-ready` es por contrato), no impacto UX.
+ *     Defensa en profundidad: el 503 esperado ya se filtra en origen vía
+ *     `withErrorLogging({expectedStatuses})`, pero clasificarlo aquí evita
+ *     que CUALQUIER 5xx de un probe dispare el umbral estricto user-facing.
  */
 export const ADMIN_ENDPOINT_PATTERNS: readonly RegExp[] = [
   /^\/api\/admin(\/|$)/,
@@ -39,6 +46,7 @@ export const ADMIN_ENDPOINT_PATTERNS: readonly RegExp[] = [
   /^\/api\/debug(\/|$)/,
   /^\/api\/verify-articles(\/|$)/,
   /^\/api\/armando(\/|$)/,
+  /^\/api\/health(\/|$)/,
 ] as const
 
 export type EndpointCategory = 'admin' | 'user_facing'
@@ -61,6 +69,7 @@ export type EndpointCategory = 'admin' | 'user_facing'
  *   classifyEndpoint('/api/v2/answer-and-save')       // 'user_facing'
  *   classifyEndpoint('/api/cron/check-stats-drift')   // 'admin'
  *   classifyEndpoint('/api/topics/[numero]')          // 'user_facing'
+ *   classifyEndpoint('/api/health/db-ready')          // 'admin' (probe infra)
  */
 export function classifyEndpoint(
   endpoint: string | null | undefined,

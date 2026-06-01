@@ -31,7 +31,7 @@ Por Claude (CLI, cuando el humano pide "busca errores"):
 
 Ejecutar el bloque siguiente y reportar el resumen al usuario. **No leer Sentry directamente — sus eventos llegan a validation_error_logs vía withErrorLogging y los ves más rápido por SQL que por la UI de Sentry.**
 
-> **Sub-categorización admin vs user-facing (2026-06-01).** El verdict separa errores en `/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*` (admin, umbrales relajados ámbar≥5 / rojo≥20) del resto (user-facing, umbrales estrictos ámbar≥1 / rojo≥5). Sin esto, 13 errores en una herramienta interna disparaban ROJO sin afectar UX (incidente 2026-06-01). **Fuente de verdad de la lista**: `lib/api/admin/endpoint-classification.ts`. El bloque bash de abajo duplica los patrones manualmente porque Node desde shell no puede importar TS — si añades un patrón nuevo al módulo TS, actualizar también `ADMIN_PATTERNS` aquí.
+> **Sub-categorización admin vs user-facing (2026-06-01).** El verdict separa errores en `/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`, `/api/health/*` (admin/infra, umbrales relajados ámbar≥5 / rojo≥20) del resto (user-facing, umbrales estrictos ámbar≥1 / rojo≥5). Sin esto, 13 errores en una herramienta interna disparaban ROJO sin afectar UX (incidente 2026-06-01). **Fuente de verdad de la lista**: `lib/api/admin/endpoint-classification.ts`. El bloque bash de abajo duplica los patrones manualmente porque Node desde shell no puede importar TS — si añades un patrón nuevo al módulo TS, actualizar también `ADMIN_PATTERNS` aquí.
 
 ```bash
 node -e "
@@ -56,9 +56,9 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
   // 1) Errores 5xx 24h — separa por deploy_version + sub-categoriza admin vs user-facing
   // - 'current' = ocurridos en el deploy actual (fuego activo)
   // - 'legacy'  = ocurridos en deploys anteriores (histórico)
-  // - admin endpoints (umbrales relajados): /api/admin/*, /api/cron/*,
-  //   /api/debug/*, /api/verify-articles/*, /api/armando/*, /api/v2/admin/*
-  //   Fuente de verdad: lib/api/admin/endpoint-classification.ts
+  // - admin/infra endpoints (umbrales relajados): /api/admin/*, /api/cron/*,
+  //   /api/debug/*, /api/verify-articles/*, /api/armando/*, /api/v2/admin/*,
+  //   /api/health/* (probes ALB/ECS) — Fuente de verdad: lib/api/admin/endpoint-classification.ts
   const ADMIN_PATTERNS = [
     /^\\/api\\/admin(\\/|$)/,
     /^\\/api\\/v2\\/admin(\\/|$)/,
@@ -66,6 +66,7 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
     /^\\/api\\/debug(\\/|$)/,
     /^\\/api\\/verify-articles(\\/|$)/,
     /^\\/api\\/armando(\\/|$)/,
+    /^\\/api\\/health(\\/|$)/,
   ];
   const classify = (ep) => ADMIN_PATTERNS.some(p => p.test(ep || '')) ? 'admin' : 'user_facing';
 
@@ -157,7 +158,7 @@ Reportar el output al usuario. Si veredicto es rojo o ámbar, ir a sección 2.
 **Notas sobre los filtros del verdict** (introducidos 2026-05-23 tras detectar dos falsos positivos; sub-categorización admin/user-facing añadida 2026-06-01):
 
 - Los **errores 5xx** se separan por `deploy_version`. Solo los del deploy actual cuentan para el verdict; los de deploys anteriores son informativos. Sin esto, un incidente histórico (ej. cascada 22/05) infla el indicador durante 24h aunque ya esté resuelto.
-- Los **errores 5xx del deploy actual** se sub-categorizan en **admin** (`/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`) y **user-facing** (todo lo demás). Umbrales diferenciados: user-facing ámbar≥1/rojo≥5 vs admin ámbar≥5/rojo≥20. Sin esto, una herramienta admin con 13 errores disparaba ROJO sin afectar UX (incidente real 2026-06-01). **Fuente de verdad**: `lib/api/admin/endpoint-classification.ts`.
+- Los **errores 5xx del deploy actual** se sub-categorizan en **admin/infra** (`/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`, `/api/health/*`) y **user-facing** (todo lo demás). Umbrales diferenciados: user-facing ámbar≥1/rojo≥5 vs admin ámbar≥5/rojo≥20. Sin esto, una herramienta admin con 13 errores disparaba ROJO sin afectar UX (incidente real 2026-06-01); y el readiness probe `/api/health/db-ready` con sus 503 de warmup metía ~30-50 falsos positivos en cada deploy (diagnóstico 2026-06-01 — además filtrados en origen vía `withErrorLogging({expectedStatuses:[503]})`). **Fuente de verdad**: `lib/api/admin/endpoint-classification.ts`.
 - Los errores 5xx filtran por `http_status >= 500` (excluye Watchdog client-side con `http_status=null`, que tiene su propio indicador en el panel).
 - El **drift** excluye explícitamente `target_table IN ('__cron_run__', '__exception__')`. Esos son markers técnicos (la función `check_stats_drift` los inserta al final de cada ejecución para liveness check); su columna generated `drift_pct` puede salir alta por la semántica de stored/fresh values pero NO indica drift real.
 - El **cron** se mide por `MAX(checked_at) WHERE target_table='__cron_run__'`, no por el `MAX` general — sin esto, un cron sano sin drift detectado parecería muerto.
@@ -294,7 +295,7 @@ Los umbrales también están codificados en `app/api/admin/system-health/route.t
 
 **Errores 5xx 24h** (sub-categorizados):
 - **User-facing** (afecta UX): ámbar ≥ 1, rojo ≥ 5
-- **Admin** (`/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`): ámbar ≥ 5, rojo ≥ 20
+- **Admin/infra** (`/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`, `/api/health/*`): ámbar ≥ 5, rojo ≥ 20. Además, los 5xx esperados por contrato (ej. 503 de warmup del readiness probe) se filtran en origen y NO llegan a `validation_error_logs` — ver `withErrorLogging({expectedStatuses})`.
 
 **Otros indicadores**:
 - Drift contadores 24h con drift_pct > 5: ámbar ≥ 1 fila, rojo ≥ 5 filas

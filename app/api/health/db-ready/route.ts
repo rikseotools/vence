@@ -93,4 +93,14 @@ async function _GET() {
   }
 }
 
-export const GET = withErrorLogging('/api/health/db-ready', _GET as unknown as () => Promise<Response>)
+// expectedStatuses: [503] — el 503 de este probe es comportamiento por
+// CONTRATO (warmup del pool en container Fargate frío), no un fallo. Sin
+// esto, cada deploy/reinicio de container inflaba el indicador "Errores
+// 5xx" del panel de salud con ~30-50 falsos positivos, todos provenientes
+// de ELB-HealthChecker/2.0 y Wget (nunca usuarios reales) y durando exacto
+// el READINESS_TIMEOUT_MS. Diagnóstico documentado el 2026-06-01.
+export const GET = withErrorLogging(
+  '/api/health/db-ready',
+  _GET as unknown as () => Promise<Response>,
+  { expectedStatuses: [503] },
+)

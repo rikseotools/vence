@@ -56,7 +56,17 @@ describe('/api/health/db-ready — contrato del endpoint', () => {
   })
 
   it('usa withErrorLogging para que fallos se registren en validation_error_logs', () => {
-    expect(content).toMatch(/withErrorLogging\(['"]\/api\/health\/db-ready['"]/)
+    // Tolerante a whitespace/newline: la llamada puede estar en varias líneas
+    // (el handler pasa opts.expectedStatuses como tercer argumento).
+    expect(content).toMatch(/withErrorLogging\(\s*['"]\/api\/health\/db-ready['"]/)
+  })
+
+  it('declara 503 como expectedStatus (no es un fallo — es señal de warmup al ALB)', () => {
+    // El 503 de warmup del pool es comportamiento por contrato, no un error.
+    // Marcarlo como expectedStatus evita ~30-50 falsos positivos en el
+    // indicador "Errores 5xx" del panel de salud por cada deploy (incidente
+    // diagnóstico 2026-06-01).
+    expect(content).toMatch(/expectedStatuses:\s*\[\s*503\s*\]/)
   })
 })
 

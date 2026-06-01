@@ -120,6 +120,44 @@ describe('withErrorLogging — errorRef injection', () => {
     expect(logged.errorStack).toContain('Error: unexpected boom')
   })
 
+  test('expectedStatuses: 503 esperado NO se loguea como crítico ni inyecta errorRef', async () => {
+    // Caso readiness probe /api/health/db-ready: el 503 de warmup es por
+    // contrato, no un fallo. Con expectedStatuses:[503] no debe ensuciar VLE
+    // ni Sentry, y el body del probe se preserva intacto (sin errorRef).
+    const handler = jest.fn(async () =>
+      NextResponse.json({ ok: false, reason: 'SELECT 1 timeout after 2000ms' }, { status: 503 })
+    )
+    const wrapped = withErrorLogging('/api/health/db-ready', handler, { expectedStatuses: [503] })
+
+    const res = await wrapped(makeRequest('POST', {}))
+    expect(res.status).toBe(503)
+
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.reason).toBe('SELECT 1 timeout after 2000ms')
+    expect(body.errorRef).toBeUndefined() // contrato del probe intacto
+
+    expect(mockLog).not.toHaveBeenCalled()
+    expect(mockLogAwait).not.toHaveBeenCalled()
+  })
+
+  test('expectedStatuses: un 500 NO declarado SÍ se loguea como crítico', async () => {
+    // Solo se silencian los statuses listados. Un 500 inesperado en el mismo
+    // endpoint sigue siendo un error real que debe registrarse.
+    const handler = jest.fn(async () =>
+      NextResponse.json({ ok: false, error: 'boom inesperado' }, { status: 500 })
+    )
+    const wrapped = withErrorLogging('/api/health/db-ready', handler, { expectedStatuses: [503] })
+
+    const res = await wrapped(makeRequest('POST', {}))
+    expect(res.status).toBe(500)
+
+    const body = await res.json()
+    expect(body.errorRef).toMatch(UUID_REGEX)
+    expect(mockLogAwait).toHaveBeenCalledTimes(1)
+    expect(mockLogAwait.mock.calls[0][0].severity).toBe('critical')
+  })
+
   test('cada 5xx genera un errorRef diferente (unicidad)', async () => {
     const handler = jest.fn(async () =>
       NextResponse.json({ error: 'boom' }, { status: 500 })

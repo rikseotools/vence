@@ -119,8 +119,32 @@ function getSeverity(status: number): 'critical' | 'warning' | 'info' {
 export function withErrorLogging(
   endpoint: string,
   handler: RouteHandler,
-  opts?: { skipBodyParse?: boolean },
+  opts?: {
+    skipBodyParse?: boolean
+    /**
+     * Statuses que son comportamiento ESPERADO por contrato para este
+     * endpoint y por tanto NO deben loguearse como error crítico en
+     * validation_error_logs ni capturarse en Sentry.
+     *
+     * Caso de uso: el readiness probe `/api/health/db-ready` devuelve 503
+     * a propósito durante el warmup del pool de un container Fargate frío
+     * — es una SEÑAL al ALB para que no le mande tráfico todavía, no un
+     * fallo. Sin esto, cada deploy/reinicio de container inflaba el
+     * indicador "Errores 5xx" del panel de salud con ~30-50 falsos
+     * positivos (incidente diagnóstico 2026-06-01).
+     *
+     * Estos statuses SIGUEN emitiendo `request_completed` a
+     * observable_events (con severity degradada a 'info') para conservar
+     * el histograma de timing/volumen, pero no ensucian VLE ni Sentry y
+     * no se les inyecta errorRef en el body (preserva el contrato JSON
+     * del probe).
+     */
+    expectedStatuses?: number[]
+  },
 ): RouteHandler {
+  const isExpectedStatus = (status: number): boolean =>
+    opts?.expectedStatuses?.includes(status) ?? false
+
   return async (...args: unknown[]) => {
     const request = args[0] as Request
     const startTime = Date.now()
@@ -164,8 +188,11 @@ export function withErrorLogging(
       }
       // errorRef se genera ANTES del emit para incluirlo en obs_events.
       // Solo para 5xx (VLE-equivalente). Permite cruzar obs_events ↔ VLE
-      // por mismo ID.
-      const errorRef = response.status >= 500 ? randomUUID() : undefined
+      // por mismo ID. Excluye statuses esperados por contrato (ej. el 503
+      // de warmup del readiness probe) — no son errores, no necesitan ref.
+      const errorRef = (response.status >= 500 && !isExpectedStatus(response.status))
+        ? randomUUID()
+        : undefined
 
       // ============================================================
       // Bloque 5 Fase E.4.5.b — emitir timing a observable_events.
@@ -189,6 +216,7 @@ export function withErrorLogging(
         const durationMs = Date.now() - startTime
         const host = request?.headers?.get?.('host') ?? null
         const timingSeverity: 'critical' | 'error' | 'warn' | 'info' =
+          isExpectedStatus(response.status) ? 'info' :
           response.status >= 500 ? 'error' :
           response.status >= 400 ? 'warn' :
           'info'
@@ -232,6 +260,14 @@ export function withErrorLogging(
       // Logar respuestas 4xx y 5xx
       if (response.status >= 400) {
         // errorMessage y responseBody ya parseados arriba — no repetir el clone().json()
+
+        // No logear statuses ESPERADOS por contrato (ej. 503 de warmup del
+        // readiness probe). El timing ya se emitió arriba como 'info'; aquí
+        // solo evitamos ensuciar validation_error_logs y Sentry con lo que
+        // no es un fallo. Ver opts.expectedStatuses.
+        if (isExpectedStatus(response.status)) {
+          return response
+        }
 
         // Filtrar ruido: no logear 400 con body vacío (bots/crawlers haciendo requests sin parámetros)
         const isEmptyBodyNoise = response.status === 400
