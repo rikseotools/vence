@@ -53,7 +53,13 @@ export class DetectOepLlmService {
       scanned++;
 
       // 1. Fetch HTML
-      const fetchResult = await this.llm.fetchPageHtml(opo.seguimientoUrl);
+      // Sprint 2: usa Lambda Playwright si la oposición está marcada como
+      // headless_required (URL JS-rendered según audit Fase 0).
+      const fetchResult = await this.llm.fetchPageHtml(
+        opo.seguimientoUrl,
+        undefined,
+        opo.fetcherType === 'headless' ? 'headless' : 'http',
+      );
       if (!fetchResult.html) {
         this.logger.warn(`Fetch error ${label}: ${fetchResult.error}`);
         errors++;

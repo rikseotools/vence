@@ -42,6 +42,8 @@ export class OepSignalsQueriesService {
         plazasDiscapacidad: oposiciones.plazasDiscapacidad,
         oepFecha: oposiciones.oepFecha,
         convocatoriaNumero: oposiciones.convocatoriaNumero,
+        // Sprint 2: dispatch a Lambda Playwright si fetcher_type='headless'
+        fetcherType: oposiciones.fetcherType,
       })
       .from(oposiciones)
       .where(

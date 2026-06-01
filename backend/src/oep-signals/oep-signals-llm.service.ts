@@ -26,9 +26,32 @@ export class OepSignalsLlmService {
   // FETCH HTML
   // ============================================
 
+  /**
+   * Fetcha la página vía HTTP nativo o vía Lambda headless según `fetcherType`.
+   *
+   * - `'http'` (default): fetch nativo Node. Rápido (~200-500ms) pero solo ve
+   *   el HTML inicial. No ejecuta JS.
+   * - `'headless'`: invoca Lambda `vence-backend-headless-fetcher` con Playwright
+   *   + Chromium. Renderiza JS, espera networkidle, devuelve HTML post-hydration.
+   *   Latencia ~3-10s. Sprint 1 + 2 del roadmap deteccion-convocatorias-oeps-completo.md.
+   *
+   * El `fetcher_type` viene de `oposiciones.fetcher_type` (Sprint A del roadmap
+   * oposiciones-coverage-level). El audit Fase 0 marcó las JS-rendered.
+   */
   async fetchPageHtml(
     url: string,
     timeoutMs = 15000,
+    fetcherType: 'http' | 'headless' = 'http',
+  ): Promise<{ html: string | null; status: number; error?: string }> {
+    if (fetcherType === 'headless') {
+      return this.fetchViaLambda(url, timeoutMs);
+    }
+    return this.fetchViaHttp(url, timeoutMs);
+  }
+
+  private async fetchViaHttp(
+    url: string,
+    timeoutMs: number,
   ): Promise<{ html: string | null; status: number; error?: string }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -50,6 +73,54 @@ export class OepSignalsLlmService {
     } catch (err) {
       clearTimeout(timeoutId);
       const msg = err instanceof Error ? err.message : String(err);
+      return { html: null, status: 0, error: msg };
+    }
+  }
+
+  private async fetchViaLambda(
+    url: string,
+    timeoutMs: number,
+  ): Promise<{ html: string | null; status: number; error?: string }> {
+    // Lazy import del SDK AWS para no penalizar arranque cuando no se usa.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda');
+    const region = process.env.AWS_REGION ?? 'eu-west-2';
+    const functionName =
+      process.env.HEADLESS_FETCHER_FUNCTION_NAME ?? 'vence-backend-headless-fetcher';
+    const client = new LambdaClient({ region });
+
+    try {
+      const payload = {
+        url,
+        timeout_ms: Math.min(timeoutMs, 50_000),
+      };
+      const cmd = new InvokeCommand({
+        FunctionName: functionName,
+        InvocationType: 'RequestResponse',
+        Payload: Buffer.from(JSON.stringify(payload)),
+      });
+      const resp = await client.send(cmd);
+      if (!resp.Payload) {
+        return { html: null, status: 0, error: 'Lambda devolvió payload vacío' };
+      }
+      const decoded = Buffer.from(resp.Payload).toString('utf-8');
+      const parsed = JSON.parse(decoded) as {
+        ok: boolean;
+        status: number;
+        html: string | null;
+        error?: string;
+      };
+      if (!parsed.ok || parsed.html === null) {
+        return {
+          html: parsed.html ?? null,
+          status: parsed.status ?? 0,
+          error: parsed.error ?? 'Lambda devolvió ok=false',
+        };
+      }
+      return { html: parsed.html, status: parsed.status };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Lambda fetcher falló (${url}): ${msg}`);
       return { html: null, status: 0, error: msg };
     }
   }

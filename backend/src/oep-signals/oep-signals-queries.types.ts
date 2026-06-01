@@ -11,6 +11,10 @@ export interface OposicionToScan {
   plazasDiscapacidad: number | null;
   oepFecha: string | null;
   convocatoriaNumero: string | null;
+  // Sprint 2 Lambda backend integration: tipo de fetcher según audit.
+  // - 'http' (default): fetch nativo Node, rápido (~200ms).
+  // - 'headless': Lambda Playwright + Chromium para JS-rendered (~3-10s).
+  fetcherType: 'http' | 'headless' | 'pdf' | 'rss' | 'boe_api';
 }
 
 export interface TimelineSilenceCandidate {

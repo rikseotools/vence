@@ -31,6 +31,9 @@ export const oposiciones = pgTable('oposiciones', {
   convocatoriaNumero: text('convocatoria_numero'),
   plazasLibres: integer('plazas_libres'),
   plazasDiscapacidad: integer('plazas_discapacidad'),
+  // Sprint 2 backend integration: dispatch sensor LLM a Lambda Playwright.
+  // Default 'http' (fetch nativo). 'headless' invoca Lambda con Chromium.
+  fetcherType: text('fetcher_type').notNull().default('http'),
 });
 
 /** Tabla `convocatoria_hitos` — para detección de silencio en timeline. */
