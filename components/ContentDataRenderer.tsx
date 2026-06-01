@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import MarkdownExplanation from './MarkdownExplanation'
+import { emitClientEvent } from '@/lib/observability/client'
 
 /**
  * ContentDataRenderer — Componente centralizado para renderizar content_data
@@ -18,6 +19,10 @@ interface ContentDataRendererProps {
   // (bug Miau 17/05/2026). Mantener required para forzar a TS a recordárselo a
   // cualquier futuro caller.
   imageUrl: string | null | undefined
+  // Opcionales — solo para observabilidad de carga de imagen. Identifican qué
+  // pregunta es la que (no) renderizó su imagen en el cliente del usuario.
+  questionId?: string | null
+  questionType?: 'psychometric' | 'legislative' | string | null
 }
 
 interface TableData {
@@ -26,8 +31,43 @@ interface TableData {
   rows?: string[][]
 }
 
-export default function ContentDataRenderer({ contentData, imageUrl }: ContentDataRendererProps) {
+export default function ContentDataRenderer({ contentData, imageUrl, questionId, questionType }: ContentDataRendererProps) {
   const [zoomImage, setZoomImage] = useState<string | null>(null)
+
+  // Observabilidad de carga de imagen (Bloque 4). Sabemos por la BD que la
+  // imagen EXISTE; lo que no sabíamos es si renderiza en el navegador del
+  // usuario. Si falla → el usuario ve "no hay información". Marca de tiempo
+  // por imagen para medir cuánto tardó en cargar/fallar.
+  const imgStartRef = useRef<number>(0)
+  useEffect(() => {
+    if (imageUrl && typeof performance !== 'undefined') imgStartRef.current = performance.now()
+  }, [imageUrl])
+
+  const reportImageEvent = (kind: 'loaded' | 'error', extra?: Record<string, unknown>) => {
+    try {
+      const durationMs =
+        typeof performance !== 'undefined' && imgStartRef.current
+          ? Math.max(0, Math.round(performance.now() - imgStartRef.current))
+          : undefined
+      emitClientEvent({
+        severity: kind === 'error' ? 'error' : 'debug',
+        eventType: kind === 'error' ? 'question_image_error' : 'question_image_loaded',
+        errorMessage:
+          kind === 'error'
+            ? 'La imagen de la pregunta no renderizó en el cliente'
+            : undefined,
+        durationMs,
+        metadata: {
+          questionId: questionId ?? null,
+          questionType: questionType ?? null,
+          imageUrl: imageUrl ?? null,
+          ...extra,
+        },
+      })
+    } catch {
+      // Observabilidad nunca debe romper el render.
+    }
+  }
 
   const hasContentData = contentData && Object.keys(contentData).length > 0
 
@@ -85,6 +125,15 @@ export default function ContentDataRenderer({ contentData, imageUrl }: ContentDa
                 alt="Imagen de la pregunta"
                 className="max-w-full max-h-96 border border-gray-300 dark:border-gray-600 rounded-lg bg-white"
                 loading="lazy"
+                onError={() => reportImageEvent('error', { reason: 'onerror' })}
+                onLoad={(e) => {
+                  // naturalWidth === 0 ⇒ el navegador disparó onLoad pero la
+                  // imagen no decodificó (recurso roto). Lo tratamos como fallo.
+                  const w = e.currentTarget.naturalWidth
+                  const h = e.currentTarget.naturalHeight
+                  if (w === 0) reportImageEvent('error', { reason: 'zero-dimensions' })
+                  else reportImageEvent('loaded', { naturalWidth: w, naturalHeight: h })
+                }}
               />
               <button
                 className="absolute top-2 right-2 flex items-center justify-center w-8 h-8 rounded-lg bg-white/80 hover:bg-white border border-gray-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"

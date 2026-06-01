@@ -162,7 +162,7 @@ export default function ChartQuestion({
       )}
 
       {/* Content data visual (tablas, imágenes, instrucciones) — solo si no hay chartComponent especializado */}
-      {!chartComponent && <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} />}
+      {!chartComponent && <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} questionId={(question.id as string) ?? null} questionType="psychometric" />}
 
       {/* Gráfico - Componente específico (solo si existe) */}
       {chartComponent && (

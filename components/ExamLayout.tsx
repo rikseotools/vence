@@ -1211,7 +1211,7 @@ export default function ExamLayout({
                   )}
                 </div>
 
-                <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} />
+                <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} questionId={(question.id as string) ?? null} questionType="legislative" />
 
                 <div className="mb-6">
                   <p className="text-lg text-gray-900 leading-relaxed"><MarkdownQuestionText text={question.question_text} /></p>

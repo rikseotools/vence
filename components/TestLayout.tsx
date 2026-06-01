@@ -2013,6 +2013,8 @@ export default function TestLayout({
                 <ContentDataRenderer
                   contentData={currentQ?.content_data as Record<string, unknown> | null}
                   imageUrl={currentQ?.image_url as string | null}
+                  questionId={(currentQ?.id as string) ?? null}
+                  questionType="legislative"
                 />
 
                 <div

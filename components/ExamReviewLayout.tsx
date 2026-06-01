@@ -362,6 +362,8 @@ export default function ExamReviewLayout({
                         <ContentDataRenderer
                           contentData={question.contentData as Record<string, unknown> | null}
                           imageUrl={question.imageUrl}
+                          questionId={(question as { id?: string }).id ?? null}
+                          questionType="legislative"
                         />
                       </div>
                     </div>

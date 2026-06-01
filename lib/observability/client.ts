@@ -39,6 +39,12 @@ const SAMPLE_RATES: Record<string, number> = {
   tts_watchdog_retry: 0.1, // alto volumen — muestreo 10%
   tts_user_action: 0.2, // alto volumen — muestreo 20%
   tts_seek: 1.0, // bajo volumen — drag/skip por sección
+  // Imágenes de preguntas (psicotécnicas con anexo, capturas Excel/Word, etc.).
+  // El ERROR de carga es la señal accionable (usuario ve "no hay información"
+  // porque la imagen no renderizó) → 100%. El LOAD exitoso es alto volumen pero
+  // se muestrea al 10% para tener denominador y poder calcular la tasa de fallo.
+  question_image_error: 1.0,
+  question_image_loaded: 0.1,
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -70,6 +76,9 @@ export type ClientEventType =
   | 'tts_unsupported'
   | 'tts_user_action'
   | 'tts_seek'
+  // Imágenes de preguntas — ¿renderizó realmente la imagen en el cliente?
+  | 'question_image_loaded'
+  | 'question_image_error'
 
 interface ClientEvent {
   ts: string

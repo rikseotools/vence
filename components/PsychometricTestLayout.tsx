@@ -613,6 +613,8 @@ export default function PsychometricTestLayout({
             <ContentDataRenderer
               contentData={currentQ.content_data as Record<string, unknown> | null}
               imageUrl={currentQ.image_url as string | null | undefined}
+              questionId={currentQ.id as string}
+              questionType="psychometric"
             />
 
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 whitespace-pre-line">

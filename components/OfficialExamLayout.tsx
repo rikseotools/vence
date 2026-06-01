@@ -1245,6 +1245,8 @@ export default function OfficialExamLayout({
         <ContentDataRenderer
           contentData={question.contentData as Record<string, unknown> | null}
           imageUrl={question.imageUrl}
+          questionId={(question as { id?: string }).id ?? null}
+          questionType="legislative"
         />
         {(['A', 'B', 'C', 'D', 'E'] as const).slice(0, question.options.length).map((letter, optIndex) => {
           const optionText = question.options[optIndex]
@@ -1644,6 +1646,8 @@ export default function OfficialExamLayout({
                   <ContentDataRenderer
                     contentData={question.contentData as Record<string, unknown> | null}
                     imageUrl={question.imageUrl}
+                    questionId={(question as { id?: string }).id ?? null}
+                    questionType={isPsychometric ? 'psychometric' : 'legislative'}
                   />
                 )}
 
