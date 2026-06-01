@@ -903,6 +903,67 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE BADAJOZ (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_badajoz',
+    slug: 'auxiliar-administrativo-ayuntamiento-badajoz',
+    positionType: 'auxiliar_administrativo_ayuntamiento_badajoz',
+    name: 'Auxiliar Administrativo Ayuntamiento de Badajoz',
+    shortName: 'Aux. Ayto. Badajoz',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'green',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comun',
+        title: 'Bloque I: Temario común',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Ley 7/1985 LRBRL: El Municipio' },
+          { id: 3, name: 'Acuerdo laboral, igualdad y violencia de género' },
+          { id: 4, name: 'Ley 39/2015 LPAC: disposiciones generales e interesados' },
+        ],
+      },
+      {
+        id: 'especifico',
+        title: 'Bloque II: Temario específico',
+        subtitle: null,
+        icon: '📚',
+        themes: [
+          { id: 5, name: 'Ley 7/1985 LRBRL: organización municipal y bienes' },
+          { id: 6, name: 'LO 3/2018 LOPDGDD: protección de datos' },
+          { id: 7, name: 'Ley 31/1995 LPRL: prevención de riesgos laborales' },
+          { id: 8, name: 'Ley 39/2015 LPAC: actividad de las AAPP' },
+          { id: 9, name: 'Ley 39/2015 LPAC: actos administrativos' },
+          { id: 10, name: 'Ley 39/2015 LPAC: procedimiento administrativo común' },
+          { id: 11, name: 'Ley 39/2015 LPAC: revisión de actos en vía administrativa' },
+          { id: 12, name: 'Ley 40/2015 LRJSP: disposiciones y órganos' },
+          { id: 13, name: 'Ley 40/2015 LRJSP: potestad sancionadora y responsabilidad' },
+          { id: 14, name: 'TREBEP: empleados públicos y derechos individuales' },
+          { id: 15, name: 'Función Pública de Extremadura: estructura y selección' },
+          { id: 16, name: 'Función Pública de Extremadura: situaciones y disciplina' },
+          { id: 17, name: 'Ley 9/2017 LCSP: contratos del sector público' },
+          { id: 18, name: 'Microsoft Word 2016' },
+          { id: 19, name: 'Microsoft Excel 2016' },
+          { id: 20, name: 'Microsoft Access 2016' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['ayuntamiento badajoz', 'ayto badajoz', 'aux admin badajoz', 'badajoz'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-badajoz', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-badajoz/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-badajoz/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO CASTILLA Y LEÓN (C2)
   // ========================================
   {

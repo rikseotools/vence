@@ -799,6 +799,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     administracion: 'Local',
     icon: '🏛️'
   },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_badajoz',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Badajoz',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
 
   // === AYUNTAMIENTO DE MURCIA ===
   {
