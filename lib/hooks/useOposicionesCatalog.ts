@@ -65,7 +65,11 @@ function inferIconFromAdmin(admin: string): string {
 
 function mapApiToOposicionItem(api: ApiOposicionEntry): OposicionItem {
   return {
-    id: api.id,
+    // El `id` del item DEBE ser el position_type (underscores), no el UUID de BD.
+    // Es lo que consume OPOSICION_MAP (clave = positionType) para el badge
+    // "implementada" y lo que se guarda en user_profiles.target_oposicion.
+    // Convención garantizada: slug (guiones) === positionType (underscores).
+    id: api.slug.replace(/-/g, '_'),
     nombre: api.nombre,
     categoria: api.categoria ?? '',
     administracion: api.administracion,

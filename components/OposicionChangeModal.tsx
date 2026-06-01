@@ -254,7 +254,7 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
                             {hasCcaaFlag(op.id) ? <CcaaFlag oposicionId={op.id} /> : op.icon}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 block truncate">
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 block break-words">
                               {op.nombre}
                             </span>
                             <span className="text-xs text-gray-400 dark:text-gray-500">
