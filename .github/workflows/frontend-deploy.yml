@@ -143,12 +143,48 @@ jobs:
 
           # 2. Obtener la task def más reciente (terraform-base + cualquier
           #    cambio aplicado). Limpia campos read-only.
+          #
+          # El jq filter no solo cambia la imagen — también GARANTIZA por
+          # construcción que los campos críticos de la HA (Fase 6 pool-
+          # segregation, 2026-06-01) están presentes en cada nueva revision:
+          #
+          #   - secrets[USE_SELF_HOSTED_POOLER]: feature flag que enruta el
+          #     pool al self-hosted PgBouncer (pooler.vence.es vía AWS NLB).
+          #   - secrets[DATABASE_URL_SELF_POOLER]: DSN del pooler.
+          #   - healthCheck container-level: ECS verifica /api/health/db-ready
+          #     antes de marcar el container ready. Sin esto, container con
+          #     pool muerto recibiría tráfico durante el rolling.
+          #
+          # MOTIVO: el 2026-06-01 una sesión paralela registró task def :77
+          # sin estos campos, tirando momentáneamente la HA. El bug raíz era
+          # que el filter jq no era idempotente — si la revision base venía
+          # sin los campos, el deploy heredaba la regresión. Ahora el filter
+          # los re-aplica siempre, por tanto cualquier base es válida.
           aws ecs describe-task-definition \
             --task-definition vence-frontend \
             --region "${{ env.AWS_REGION }}" \
             --query 'taskDefinition' \
-          | jq --arg IMAGE "$IMAGE_PINNED" '
+          | jq --arg IMAGE "$IMAGE_PINNED" --arg ACCOUNT_ID "349744179687" --arg REGION "${{ env.AWS_REGION }}" '
+              # Helper inline para añadir un secret SSM si no existe ya.
+              def ensure_secret(name):
+                .containerDefinitions[0].secrets |= (
+                  if (map(.name) | index(name)) == null then
+                    . + [{name: name, valueFrom: ("arn:aws:ssm:" + $REGION + ":" + $ACCOUNT_ID + ":parameter/vence-frontend/" + name)}]
+                  else
+                    .
+                  end
+                );
+
               .containerDefinitions[0].image = $IMAGE
+              | ensure_secret("USE_SELF_HOSTED_POOLER")
+              | ensure_secret("DATABASE_URL_SELF_POOLER")
+              | .containerDefinitions[0].healthCheck = {
+                  "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
+                  "interval": 30,
+                  "timeout": 5,
+                  "retries": 3,
+                  "startPeriod": 60
+                }
               | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             ' > new-task-def.json
 

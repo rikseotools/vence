@@ -333,7 +333,23 @@ Commits: `438c735d` (34 user-facing files) + `7c79202e` (avatar-settings + verif
 
 **Criterio de éxito**: 7 días sin incidentes en producción 100% con pooler propio.
 
-### Fase 6 — HA (Alta Disponibilidad) ⏳ NECESARIA — no opcional
+### Fase 6 — HA (Alta Disponibilidad) ✅ **APLICADA 2026-06-01 ~09:42 UTC**
+
+**Resultado verificado en producción**:
+- ✅ 2 VMs Lightsail PgBouncer en distintas AZ:
+  - `vence-pooler-prod-1` en `eu-west-2a` (IP estática `16.60.146.159`, private `172.26.6.134`)
+  - `vence-pooler-prod-2` en `eu-west-2b` (IP estática `18.132.218.219`, private `172.26.23.115`) creada desde snapshot
+- ✅ AWS NLB `vence-pooler-nlb` internet-facing en 3 AZs, cross-zone enabled, listener TCP:6543, target group con healthcheck TCP cada 10s (2 fails → unhealthy)
+- ✅ VPC peering Lightsail (172.26.0.0/16) ↔ default VPC (172.31.0.0/16) operativo
+- ✅ DNS `pooler.vence.es` cambiado de A `16.60.146.159` → ALIAS al NLB con `EvaluateTargetHealth: true` (failover DNS-level si NLB queda sin targets healthy)
+- ✅ Test failover REAL ejecutado: `stop vence-pooler-prod-1` → NLB detectó unhealthy en ~37s, VM-2 sirvió tráfico sin downtime visible, `start vence-pooler-prod-1` → vuelve a healthy en ~38s
+- ✅ **Bug latente DESCUBIERTO Y CERRADO en ambas VMs**: PgBouncer fallaba al boot porque `/run/pgbouncer` no se recreaba (tmpfs se borra en reboot). VM-2 lo reveló al bootear desde snapshot. Fix `tmpfiles.d` aplicado a ambas. Sin HA, este bug habría tirado VM-1 en su próximo reboot (kernel update, cert renewal hook, etc.).
+
+**Coste real implementado**: $10 (2ª Lightsail micro_3_0) + $18 (NLB) = **~$28/mes adicionales** vs $10 actual = **$38/mes total**.
+
+**Fix sistémico complementario** (no en el plan original, descubierto en aplicación): el workflow GHA `frontend-deploy.yml` jq filter ahora **garantiza por construcción** que cada task def registrada incluye `USE_SELF_HOSTED_POOLER` + `DATABASE_URL_SELF_POOLER` + `healthCheck` apuntando a `/api/health/db-ready`. Sin esto, cualquier sesión paralela o script que registrara una task def sin esos campos (caso real: `:77` 2026-06-01 09:31) habría tirado la HA en el siguiente deploy del CI. Fix idempotente: el filter añade si falta, mantiene si está.
+
+### Fase 6 — HA (Alta Disponibilidad) — PLAN ORIGINAL (referencia histórica) ⏳ NECESARIA — no opcional
 
 > **Decisión arquitectónica (2026-05-10)**: dejar de tratar HA como "opcional si crecemos". Es **necesaria por compromiso con usuarios de pago**. Un usuario que paga no puede permitirse que el servicio esté caído por reinicio del kernel, OOM-killer, o un cert renew. Single VM = SPOF inaceptable a partir de cierta escala.
 
