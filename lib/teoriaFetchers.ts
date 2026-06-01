@@ -1,9 +1,8 @@
 // lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import 'server-only'
-import { getSupabaseClient } from './supabase'
 import { getDb, getPoolerDb } from '@/db/client'
-import { articles, laws } from '@/db/schema'
-import { eq, and, isNotNull, ne, sql as dsql } from 'drizzle-orm'
+import { articles, laws, lawSections } from '@/db/schema'
+import { eq, and, asc, ilike, isNotNull, ne, or, sql as dsql } from 'drizzle-orm'
 import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } from './api/laws/queries'
 import { isDisposicionArticle } from './boe-extractor'
 import { normalizeArticleNumber } from './boeScrapingUtils'
@@ -33,9 +32,6 @@ function isValidArticleNumber(articleNum: string): boolean {
   if (isDisposicionArticle(trimmed)) return true
   return false
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClientAny = any
 
 interface LawWithStats {
   id: string
@@ -156,8 +152,6 @@ interface FetchLawSectionsOptions {
   lawShortName?: string
 }
 
-const supabase: SupabaseClientAny = getSupabaseClient()
-
 function getTeoriaDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
@@ -172,39 +166,52 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
     console.log('📚 Cargando lista de leyes con teoría disponible...')
     console.time('⏱️ fetchLawsList')
 
-    // 🚀 Query ligera: NO traer content, solo id y article_number
-    const { data, error } = await supabase
-      .from('laws')
-      .select(`
-        id, name, short_name, slug, description,
-        articles!inner(id, article_number)
-      `)
-      .eq('is_active', true)
-      .eq('articles.is_active', true)
-      .not('articles.content', 'is', null)
+    // 🚀 Query ligera: NO traer content (17MB+), join laws⋈articles solo
+    // con article_number. Equivale al laws!inner(articles!inner) de PostgREST.
+    const db = getTeoriaDb()
+    const rows = await db
+      .select({
+        id: laws.id,
+        name: laws.name,
+        shortName: laws.shortName,
+        slug: laws.slug,
+        description: laws.description,
+        articleNumber: articles.articleNumber,
+      })
+      .from(laws)
+      .innerJoin(articles, eq(articles.lawId, laws.id))
+      .where(and(
+        eq(laws.isActive, true),
+        eq(articles.isActive, true),
+        isNotNull(articles.content),
+      ))
 
-    if (error) {
-      console.error('❌ Error cargando leyes:', error)
-      throw error
+    // Agrupar artículos por ley (el join devuelve una fila por artículo)
+    const byLaw = new Map<string, { name: string; shortName: string; slug: string | null; description: string | null; articleNumbers: string[] }>()
+    for (const r of rows) {
+      let entry = byLaw.get(r.id)
+      if (!entry) {
+        entry = { name: r.name, shortName: r.shortName, slug: r.slug, description: r.description, articleNumbers: [] }
+        byLaw.set(r.id, entry)
+      }
+      if (r.articleNumber) entry.articleNumbers.push(r.articleNumber)
     }
 
     // Procesar en JS - filtrar artículos válidos (numéricos, bis/ter/quater, disposiciones)
-    const lawsWithStats: LawWithStats[] = data
-      .map((law: Record<string, unknown>) => {
-        const articles = (law.articles || []) as Array<{ article_number: string }>
-        const validArticles = articles.filter((article: { article_number: string }) => {
-          const articleNum = article.article_number
+    const lawsWithStats: LawWithStats[] = Array.from(byLaw.entries())
+      .map(([id, law]) => {
+        const validArticles = law.articleNumbers.filter((articleNum) => {
           if (!articleNum || articleNum.trim() === '') return false
           return isValidArticleNumber(articleNum)
         })
 
         return {
-          id: law.id as string,
-          name: law.name as string,
-          short_name: law.short_name as string,
-          description: law.description as string | null,
+          id,
+          name: law.name,
+          short_name: law.shortName,
+          description: law.description,
           articleCount: validArticles.length,
-          slug: (law.slug as string) || resolveSlug(law.short_name as string)
+          slug: law.slug || resolveSlug(law.shortName)
         }
       })
       .filter((law: LawWithStats) => law.articleCount > 0)
@@ -523,33 +530,33 @@ export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber
 
     const lawShortName = await getShortNameBySlug(lawSlug)
 
-    const { data, error } = await supabase
-      .from('articles')
-      .select(`
-        id,
-        article_number,
-        title,
-        content,
-        laws!inner(short_name, slug, name)
-      `)
-      .eq('is_active', true)
-      .eq('laws.short_name', lawShortName)
-      .neq('article_number', currentArticleNumber.toString()) // 🔥 CONVERTIR A STRING
-      .not('content', 'is', null)
-      .order('article_number')
+    const db = getTeoriaDb()
+    const data = await db
+      .select({
+        articleNumber: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        lawShortName: laws.shortName,
+        lawSlug: laws.slug,
+        lawName: laws.name,
+      })
+      .from(articles)
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(and(
+        eq(articles.isActive, true),
+        eq(laws.shortName, lawShortName as string),
+        ne(articles.articleNumber, currentArticleNumber.toString()),
+        isNotNull(articles.content),
+      ))
+      .orderBy(asc(articles.articleNumber))
       .limit(limit)
 
-    if (error) throw error
-
-    const relatedArticles: RelatedArticle[] = data.map((article: Record<string, unknown>) => {
-      const laws = article.laws as Record<string, unknown>
-      return {
-        article_number: article.article_number as string,
-        title: article.title as string | null,
-        contentPreview: extractContentPreview(article.content as string),
-        lawSlug: (laws.slug as string) || resolveSlug(laws.short_name as string)
-      }
-    })
+    const relatedArticles: RelatedArticle[] = data.map((article) => ({
+      article_number: article.articleNumber,
+      title: article.title,
+      contentPreview: extractContentPreview(article.content),
+      lawSlug: article.lawSlug || resolveSlug(article.lawShortName)
+    }))
 
     console.log(`✅ ${relatedArticles.length} artículos relacionados cargados`)
     return relatedArticles
@@ -618,47 +625,52 @@ export async function searchArticles(query: string, lawSlug: string | null = nul
     const resolveSlug = await getSlugResolver()
     console.log(`🔍 Buscando artículos: "${query}"`)
 
-    let supabaseQuery = supabase
-      .from('articles')
-      .select(`
-        id,
-        article_number,
-        title,
-        content,
-        laws!inner(name, short_name, slug)
-      `)
-      .eq('is_active', true)
-      .not('content', 'is', null)
+    const conditions = [
+      eq(articles.isActive, true),
+      isNotNull(articles.content),
+    ]
 
     // Filtrar por ley si se especifica
     if (lawSlug) {
       const lawShortName = await getShortNameBySlug(lawSlug)
-      supabaseQuery = supabaseQuery.eq('laws.short_name', lawShortName)
+      conditions.push(eq(laws.shortName, lawShortName as string))
     }
 
-    // Buscar en título y contenido
-    supabaseQuery = supabaseQuery
-      .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
+    // Buscar en título y contenido (OR de ILIKE)
+    conditions.push(
+      or(
+        ilike(articles.title, `%${query}%`),
+        ilike(articles.content, `%${query}%`)
+      )!
+    )
+
+    const db = getTeoriaDb()
+    const data = await db
+      .select({
+        id: articles.id,
+        articleNumber: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        lawName: laws.name,
+        lawShortName: laws.shortName,
+        lawSlug: laws.slug,
+      })
+      .from(articles)
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(and(...conditions))
       .limit(limit)
 
-    const { data, error } = await supabaseQuery
-
-    if (error) throw error
-
-    const results: SearchResult[] = data.map((article: Record<string, unknown>) => {
-      const laws = article.laws as Record<string, unknown>
-      return {
-        id: article.id as string,
-        article_number: article.article_number as string,
-        title: article.title as string | null,
-        contentPreview: extractContentPreview(article.content as string),
-        law: {
-          name: laws.name as string,
-          short_name: laws.short_name as string,
-          slug: (laws.slug as string) || resolveSlug(laws.short_name as string)
-        }
+    const results: SearchResult[] = data.map((article) => ({
+      id: article.id,
+      article_number: article.articleNumber,
+      title: article.title,
+      contentPreview: extractContentPreview(article.content),
+      law: {
+        name: article.lawName,
+        short_name: article.lawShortName,
+        slug: article.lawSlug || resolveSlug(article.lawShortName)
       }
-    })
+    }))
 
     console.log(`✅ ${results.length} resultados encontrados`)
     return results
@@ -688,6 +700,8 @@ export async function fetchLawSections(lawSlugOrShortName: string, options: Fetc
     const lawShortName = resolved.shortName
     console.log(`🔍 Mapeo: "${lawSlugOrShortName}" → "${lawShortName}" (id: ${resolved.id})`)
 
+    const db = getTeoriaDb()
+
     // Si nos pasan lawId, reutilizarlo en vez de consultar de nuevo
     let lawData: { id: string; name: string; short_name: string }
     if (options.lawId) {
@@ -699,43 +713,40 @@ export async function fetchLawSections(lawSlugOrShortName: string, options: Fetc
       }
     } else {
       // Obtener ID de la ley (query original)
-      const { data: queryResult, error: lawError } = await supabase
-        .from('laws')
-        .select('id, name, short_name')
-        .eq('short_name', lawShortName)
-        .eq('is_active', true)
-        .single()
+      const lawRows = await db
+        .select({ id: laws.id, name: laws.name, shortName: laws.shortName })
+        .from(laws)
+        .where(and(eq(laws.shortName, lawShortName), eq(laws.isActive, true)))
+        .limit(1)
+      const queryResult = lawRows[0]
 
-      if (lawError || !queryResult) {
+      if (!queryResult) {
         throw new Error(`Ley "${lawShortName}" no encontrada`)
       }
-      lawData = queryResult
+      lawData = { id: queryResult.id, name: queryResult.name, short_name: queryResult.shortName }
     }
 
     // Obtener secciones de la ley
-    const { data: sectionsData, error: sectionsError } = await supabase
-      .from('law_sections')
-      .select('*')
-      .eq('law_id', lawData.id)
-      .eq('is_active', true)
-      .order('order_position')
-
-    if (sectionsError) {
-      throw sectionsError
-    }
+    const sectionsData = await db
+      .select()
+      .from(lawSections)
+      .where(and(eq(lawSections.lawId, lawData.id), eq(lawSections.isActive, true)))
+      .orderBy(asc(lawSections.orderPosition))
 
     // Transformar datos para la interfaz
-    const sections: LawSection[] = sectionsData.map((section: Record<string, unknown>) => ({
-      id: section.id as string,
-      slug: section.slug as string,
-      title: section.title as string,
-      description: section.description as string | null,
-      articleRange: section.article_range_start && section.article_range_end
-        ? { start: section.article_range_start as number, end: section.article_range_end as number }
+    const sections: LawSection[] = sectionsData.map((section) => ({
+      id: section.id,
+      slug: section.slug,
+      title: section.title,
+      description: section.description,
+      articleRange: section.articleRangeStart && section.articleRangeEnd
+        ? { start: section.articleRangeStart, end: section.articleRangeEnd }
         : null,
-      sectionNumber: section.section_number as number | null,
-      sectionType: section.section_type as string | null,
-      orderPosition: section.order_position as number
+      // section_number es columna text en BD; el tipo es number|null (igual
+      // que el cast anterior de supabase). Se preserva el valor runtime.
+      sectionNumber: section.sectionNumber as unknown as number | null,
+      sectionType: section.sectionType,
+      orderPosition: section.orderPosition
     }))
 
     console.log(`✅ ${sections.length} secciones cargadas para ${lawShortName}`)
