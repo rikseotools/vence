@@ -1,5 +1,13 @@
 // lib/api/avatar-settings/queries.ts - Queries para configuración de avatares
-import { createClient } from '@supabase/supabase-js'
+//
+// Migrado de supabase.from()/.rpc() (PostgREST) a Drizzle (2026-06-01,
+// agnosticismo Fase 3). getAdminDb() es el portal privilegiado para
+// operaciones de servidor (incluye writes: upsert/update), agnóstico a si por
+// debajo es Supabase, RDS o Neon. La RPC pasa a db.execute(sql`SELECT ... FROM
+// fn(...)`), que sigue siendo una función SQL estándar.
+import { desc, eq, sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
+import { avatarProfiles, userAvatarSettings } from '@/db/schema'
 import type {
   GetAvatarSettingsRequest,
   GetAvatarSettingsResponse,
@@ -9,49 +17,35 @@ import type {
   AvatarProfile
 } from './schemas'
 
-// Cliente de Supabase con service role para operaciones de servidor
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
-}
-
 // ============================================
 // OBTENER TODOS LOS PERFILES DE AVATAR
 // ============================================
 
 export async function getAllAvatarProfiles(): Promise<AvatarProfile[]> {
   try {
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    const { data, error } = await supabase
-      .from('avatar_profiles')
-      .select('id, emoji, name_es, name_es_f, description_es, color, priority')
-      .order('priority', { ascending: false })
+    const rows = await db
+      .select({
+        id: avatarProfiles.id,
+        emoji: avatarProfiles.emoji,
+        nameEs: avatarProfiles.nameEs,
+        nameEsF: avatarProfiles.nameEsF,
+        descriptionEs: avatarProfiles.descriptionEs,
+        color: avatarProfiles.color,
+        priority: avatarProfiles.priority,
+      })
+      .from(avatarProfiles)
+      .orderBy(desc(avatarProfiles.priority))
 
-    if (error) {
-      console.error('❌ [AvatarSettings] Error obteniendo perfiles:', error)
-      return []
-    }
-
-    return (data || []).map(p => ({
+    return rows.map(p => ({
       id: p.id,
       emoji: p.emoji,
-      nameEs: p.name_es,
-      nameEsF: p.name_es_f,
-      descriptionEs: p.description_es,
+      nameEs: p.nameEs,
+      nameEsF: p.nameEsF,
+      descriptionEs: p.descriptionEs,
       color: p.color,
-      priority: p.priority
+      priority: p.priority ?? 50
     }))
   } catch (error) {
     console.error('❌ [AvatarSettings] Error en getAllAvatarProfiles:', error)
@@ -65,26 +59,35 @@ export async function getAllAvatarProfiles(): Promise<AvatarProfile[]> {
 
 export async function getAvatarProfileById(profileId: string): Promise<AvatarProfile | null> {
   try {
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    const { data, error } = await supabase
-      .from('avatar_profiles')
-      .select('id, emoji, name_es, name_es_f, description_es, color, priority')
-      .eq('id', profileId)
-      .single()
+    const rows = await db
+      .select({
+        id: avatarProfiles.id,
+        emoji: avatarProfiles.emoji,
+        nameEs: avatarProfiles.nameEs,
+        nameEsF: avatarProfiles.nameEsF,
+        descriptionEs: avatarProfiles.descriptionEs,
+        color: avatarProfiles.color,
+        priority: avatarProfiles.priority,
+      })
+      .from(avatarProfiles)
+      .where(eq(avatarProfiles.id, profileId))
+      .limit(1)
+    const data = rows[0]
 
-    if (error || !data) {
+    if (!data) {
       return null
     }
 
     return {
       id: data.id,
       emoji: data.emoji,
-      nameEs: data.name_es,
-      nameEsF: data.name_es_f,
-      descriptionEs: data.description_es,
+      nameEs: data.nameEs,
+      nameEsF: data.nameEsF,
+      descriptionEs: data.descriptionEs,
       color: data.color,
-      priority: data.priority
+      priority: data.priority ?? 50
     }
   } catch (error) {
     console.error('❌ [AvatarSettings] Error en getAvatarProfileById:', error)
@@ -100,16 +103,17 @@ export async function getAvatarSettings(
   params: GetAvatarSettingsRequest
 ): Promise<GetAvatarSettingsResponse> {
   try {
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    const { data: settings, error } = await supabase
-      .from('user_avatar_settings')
-      .select('*')
-      .eq('user_id', params.userId)
-      .single()
+    const rows = await db
+      .select()
+      .from(userAvatarSettings)
+      .where(eq(userAvatarSettings.userId, params.userId))
+      .limit(1)
+    const settings = rows[0]
 
-    // Si no existe, devolver configuración por defecto
-    if (error && error.code === 'PGRST116') {
+    // Si no existe, devolver configuración por defecto (antes: PGRST116)
+    if (!settings) {
       console.log('🦊 [AvatarSettings] Sin configuración previa para usuario:', params.userId)
 
       const allProfiles = await getAllAvatarProfiles()
@@ -131,24 +135,16 @@ export async function getAvatarSettings(
       }
     }
 
-    if (error) {
-      console.error('❌ [AvatarSettings] Error obteniendo configuración:', error)
-      return {
-        success: false,
-        error: error.message
-      }
-    }
-
     console.log('🦊 [AvatarSettings] Configuración obtenida:', {
-      userId: settings.user_id,
+      userId: settings.userId,
       mode: settings.mode,
-      currentProfile: settings.current_profile
+      currentProfile: settings.currentProfile
     })
 
     // Obtener perfil actual si existe
     let profile: AvatarProfile | undefined
-    if (settings.current_profile) {
-      const foundProfile = await getAvatarProfileById(settings.current_profile)
+    if (settings.currentProfile) {
+      const foundProfile = await getAvatarProfileById(settings.currentProfile)
       if (foundProfile) {
         profile = foundProfile
       }
@@ -159,14 +155,14 @@ export async function getAvatarSettings(
 
     const data: UserAvatarSettingsData = {
       id: settings.id,
-      userId: settings.user_id,
-      mode: settings.mode,
-      currentProfile: settings.current_profile,
-      currentEmoji: settings.current_emoji,
-      currentName: settings.current_name,
-      lastRotationAt: settings.last_rotation_at,
-      createdAt: settings.created_at,
-      updatedAt: settings.updated_at
+      userId: settings.userId ?? params.userId,
+      mode: (settings.mode ?? 'automatic') as 'automatic' | 'manual',
+      currentProfile: settings.currentProfile,
+      currentEmoji: settings.currentEmoji,
+      currentName: settings.currentName,
+      lastRotationAt: settings.lastRotationAt,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt
     }
 
     return {
@@ -193,60 +189,45 @@ export async function updateAvatarSettings(
   params: UpdateAvatarSettingsRequest
 ): Promise<UpdateAvatarSettingsResponse> {
   try {
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    // Construir objeto de actualización con nombres de columna snake_case
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString()
-    }
+    // Valores finales del upsert (mismo resultado que el upsert de supabase:
+    // si el campo viene definido se usa, si no, el default automatic/null).
+    const now = new Date().toISOString()
+    const mode = params.data.mode ?? 'automatic'
+    const currentProfile = params.data.currentProfile ?? null
+    const currentEmoji = params.data.currentEmoji ?? null
+    const currentName = params.data.currentName ?? null
 
-    if (params.data.mode !== undefined) {
-      updateData.mode = params.data.mode
-    }
-    if (params.data.currentProfile !== undefined) {
-      updateData.current_profile = params.data.currentProfile
-    }
-    if (params.data.currentEmoji !== undefined) {
-      updateData.current_emoji = params.data.currentEmoji
-    }
-    if (params.data.currentName !== undefined) {
-      updateData.current_name = params.data.currentName
-    }
-
-    // Intentar upsert
-    const { data: result, error } = await supabase
-      .from('user_avatar_settings')
-      .upsert({
-        user_id: params.userId,
-        mode: params.data.mode ?? 'automatic', // Por defecto activado
-        current_profile: params.data.currentProfile ?? null,
-        current_emoji: params.data.currentEmoji ?? null,
-        current_name: params.data.currentName ?? null,
-        ...updateData
-      }, {
-        onConflict: 'user_id'
+    // INSERT ... ON CONFLICT (user_id) DO UPDATE — equivalente al upsert
+    // onConflict:'user_id'. Unique constraint user_avatar_settings_user_id_key.
+    const upserted = await db
+      .insert(userAvatarSettings)
+      .values({
+        userId: params.userId,
+        mode,
+        currentProfile,
+        currentEmoji,
+        currentName,
+        updatedAt: now,
       })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('❌ [AvatarSettings] Error actualizando configuración:', error)
-      return {
-        success: false,
-        error: error.message
-      }
-    }
+      .onConflictDoUpdate({
+        target: userAvatarSettings.userId,
+        set: { mode, currentProfile, currentEmoji, currentName, updatedAt: now },
+      })
+      .returning()
+    const result = upserted[0]
 
     console.log('✅ [AvatarSettings] Configuración actualizada:', {
-      userId: result.user_id,
+      userId: result.userId,
       mode: result.mode,
       fields: Object.keys(params.data)
     })
 
     // Obtener perfil actual si existe
     let profile: AvatarProfile | undefined
-    if (result.current_profile) {
-      const foundProfile = await getAvatarProfileById(result.current_profile)
+    if (result.currentProfile) {
+      const foundProfile = await getAvatarProfileById(result.currentProfile)
       if (foundProfile) {
         profile = foundProfile
       }
@@ -254,14 +235,14 @@ export async function updateAvatarSettings(
 
     const data: UserAvatarSettingsData = {
       id: result.id,
-      userId: result.user_id,
-      mode: result.mode,
-      currentProfile: result.current_profile,
-      currentEmoji: result.current_emoji,
-      currentName: result.current_name,
-      lastRotationAt: result.last_rotation_at,
-      createdAt: result.created_at,
-      updatedAt: result.updated_at
+      userId: result.userId ?? params.userId,
+      mode: (result.mode ?? 'automatic') as 'automatic' | 'manual',
+      currentProfile: result.currentProfile,
+      currentEmoji: result.currentEmoji,
+      currentName: result.currentName,
+      lastRotationAt: result.lastRotationAt,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt
     }
 
     return {
@@ -292,48 +273,38 @@ export async function updateAvatarSettings(
  */
 export async function getUsersWithAutomaticAvatar(daysBack: number = 7): Promise<string[]> {
   try {
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    // Usar función RPC optimizada que filtra por actividad
-    const { data, error } = await supabase.rpc('get_active_users_with_automatic_avatar', {
-      p_days_back: daysBack
-    })
+    // Función SQL optimizada que filtra por actividad (antes supabase.rpc()).
+    const rows = (await db.execute(
+      sql`SELECT user_id FROM get_active_users_with_automatic_avatar(${daysBack})`
+    )) as unknown as Array<{ user_id: string }>
 
-    if (error) {
-      console.error('❌ [AvatarSettings] Error en RPC get_active_users_with_automatic_avatar:', error)
-      // Fallback: método tradicional (menos eficiente)
-      return getUsersWithAutomaticAvatarFallback()
-    }
-
-    const userIds = (data || []).map((row: { user_id: string }) => row.user_id)
+    const userIds = rows.map(row => row.user_id)
     console.log(`📊 [AvatarSettings] Usuarios activos en modo automático: ${userIds.length}`)
     return userIds
   } catch (error) {
-    console.error('❌ [AvatarSettings] Error en getUsersWithAutomaticAvatar:', error)
-    return []
+    console.error('❌ [AvatarSettings] Error en RPC get_active_users_with_automatic_avatar:', error)
+    // Fallback: método tradicional (menos eficiente)
+    return getUsersWithAutomaticAvatarFallback()
   }
 }
 
 /**
  * Fallback: obtiene TODOS los usuarios en modo automático (menos eficiente).
- * Se usa si la función RPC no está disponible.
+ * Se usa si la función SQL no está disponible.
  */
 async function getUsersWithAutomaticAvatarFallback(): Promise<string[]> {
   try {
     console.warn('⚠️ [AvatarSettings] Usando fallback - obteniendo todos los usuarios automáticos')
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    const { data, error } = await supabase
-      .from('user_avatar_settings')
-      .select('user_id')
-      .eq('mode', 'automatic')
+    const rows = await db
+      .select({ userId: userAvatarSettings.userId })
+      .from(userAvatarSettings)
+      .where(eq(userAvatarSettings.mode, 'automatic'))
 
-    if (error) {
-      console.error('❌ [AvatarSettings] Error en fallback:', error)
-      return []
-    }
-
-    return (data || []).map(row => row.user_id)
+    return rows.map(row => row.userId).filter((id): id is string => id !== null)
   } catch (error) {
     console.error('❌ [AvatarSettings] Error en getUsersWithAutomaticAvatarFallback:', error)
     return []
@@ -349,23 +320,18 @@ export async function updateAvatarRotation(
   profile: AvatarProfile
 ): Promise<boolean> {
   try {
-    const supabase = getSupabaseAdmin()
+    const db = getAdminDb()
 
-    const { error } = await supabase
-      .from('user_avatar_settings')
-      .update({
-        current_profile: profile.id,
-        current_emoji: profile.emoji,
-        current_name: profile.nameEs,
-        last_rotation_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+    await db
+      .update(userAvatarSettings)
+      .set({
+        currentProfile: profile.id,
+        currentEmoji: profile.emoji,
+        currentName: profile.nameEs,
+        lastRotationAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       })
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('❌ [AvatarSettings] Error actualizando rotación:', error)
-      return false
-    }
+      .where(eq(userAvatarSettings.userId, userId))
 
     console.log('🔄 [AvatarSettings] Rotación completada:', {
       userId,
