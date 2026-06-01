@@ -25,6 +25,13 @@ export interface OposicionCatalogEntry {
   coverage_level: 'catalogada' | 'monitorizada' | 'con_temario' | 'con_tests' | 'con_landing' | 'full'
   is_active: boolean
   demand_score: number | null
+  // Sprint G — campos de la convocatoria vigente (null si no tiene)
+  convocatoria_año?: number | null
+  convocatoria_estado_proceso?: string | null
+  convocatoria_plazas_libres?: number | null
+  convocatoria_exam_date?: string | null
+  convocatoria_inscription_start?: string | null
+  convocatoria_inscription_deadline?: string | null
   // icon/emoji se calcula desde administracion en el cliente para no duplicar data
 }
 
