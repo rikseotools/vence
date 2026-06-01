@@ -1,10 +1,14 @@
 // lib/ley39SSR.ts
 // Funciones para SSR de la Ley 39/2015
+//
+// Migrado de supabase.from() (PostgREST) a Drizzle (2026-06-01, agnosticismo
+// Fase 3). getReadDb() ofrece la read replica para descargar la primaria en
+// SSR y, con role postgres, mantiene el mismo bypass de RLS que tenía el
+// service_role anterior. Lecturas de contenido legal público: bajo riesgo.
 
-import { createClient } from '@supabase/supabase-js'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClientAny = any
+import { and, count, eq, inArray } from 'drizzle-orm'
+import { getReadDb } from '@/db/client'
+import { articles, laws, lawSections, questions } from '@/db/schema'
 
 interface ArticleRange {
   start: number
@@ -65,14 +69,6 @@ interface SectionMetadata {
   }
 }
 
-// Cliente de Supabase para uso en servidor (usando service role key)
-function getServerSupabaseClient(): SupabaseClientAny {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
 // Mapeo de iconos para las secciones
 export const sectionIcons: Record<string, string> = {
   'titulo-preliminar': '📜',
@@ -94,18 +90,19 @@ export const sectionIcons: Record<string, string> = {
 
 // Cargar datos de la ley 39/2015 para SSR
 export async function loadLey39Data(): Promise<Ley39Data> {
-  const supabase = getServerSupabaseClient()
+  const db = getReadDb()
 
   try {
     // Obtener la ley 39/2015 y sus secciones
-    const { data: lawData, error: lawError } = await supabase
-      .from('laws')
-      .select('id')
-      .eq('short_name', 'Ley 39/2015')
-      .single()
+    const lawRows = await db
+      .select({ id: laws.id })
+      .from(laws)
+      .where(eq(laws.shortName, 'Ley 39/2015'))
+      .limit(1)
+    const lawData = lawRows[0]
 
-    if (lawError || !lawData) {
-      console.error('Error cargando ley:', lawError)
+    if (!lawData) {
+      console.error('Error cargando ley: no encontrada (short_name=Ley 39/2015)')
       return {
         sections: [],
         stats: { totalSections: 0, totalQuestions: 0, totalArticles: 0 }
@@ -113,20 +110,11 @@ export async function loadLey39Data(): Promise<Ley39Data> {
     }
 
     // Cargar secciones desde law_sections
-    const { data: sectionsData, error: sectionsError } = await supabase
-      .from('law_sections')
-      .select('*')
-      .eq('law_id', lawData.id)
-      .eq('is_active', true)
-      .order('order_position')
-
-    if (sectionsError) {
-      console.error('Error cargando secciones:', sectionsError)
-      return {
-        sections: [],
-        stats: { totalSections: 0, totalQuestions: 0, totalArticles: 0 }
-      }
-    }
+    const sectionsData = await db
+      .select()
+      .from(lawSections)
+      .where(and(eq(lawSections.lawId, lawData.id), eq(lawSections.isActive, true)))
+      .orderBy(lawSections.orderPosition)
 
     // Mapeo de slugs BD a slugs filesystem
     const slugMapping: Record<string, string> = {
@@ -140,44 +128,46 @@ export async function loadLey39Data(): Promise<Ley39Data> {
     }
 
     // Transformar datos para la interfaz
-    const transformedSections: Ley39Section[] = sectionsData.map((section: Record<string, unknown>) => {
-      const filesystemSlug = slugMapping[section.slug as string] || section.slug as string
+    const transformedSections: Ley39Section[] = sectionsData.map((section) => {
+      const filesystemSlug = slugMapping[section.slug] || section.slug
       return {
-        id: section.slug as string,
-        title: section.title as string,
-        description: section.description as string | null,
+        id: section.slug,
+        title: section.title,
+        description: section.description,
         slug: filesystemSlug,
         image: sectionIcons[filesystemSlug] || '📄',
-        articles: section.article_range_start && section.article_range_end
-          ? { start: section.article_range_start as number, end: section.article_range_end as number }
+        articles: section.articleRangeStart && section.articleRangeEnd
+          ? { start: section.articleRangeStart, end: section.articleRangeEnd }
           : null
       }
     })
 
     // Obtener estadísticas generales
-    const { data: articles, error: articlesError } = await supabase
-      .from('articles')
-      .select('id')
-      .eq('law_id', lawData.id)
+    const articleRows = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(eq(articles.lawId, lawData.id))
 
     let totalQuestions = 0
 
-    if (!articlesError && articles && articles.length > 0) {
-      const { data: questions, error: questionsError } = await supabase
-        .from('questions')
-        .select('id')
-        .in('primary_article_id', articles.map((a: { id: string }) => a.id))
-        .eq('is_active', true)
-
-      if (!questionsError && questions) {
-        totalQuestions = questions.length
-      }
+    if (articleRows.length > 0) {
+      // count() agregado: el código supabase anterior usaba .length sobre el
+      // SELECT, que PostgREST capaba a 1000 filas → infra-contaba (mostraba
+      // 1000 cuando hay 2779). count() da el total real y no carga las filas.
+      const [{ value }] = await db
+        .select({ value: count() })
+        .from(questions)
+        .where(and(
+          inArray(questions.primaryArticleId, articleRows.map((a) => a.id)),
+          eq(questions.isActive, true)
+        ))
+      totalQuestions = value
     }
 
     const stats: Ley39Stats = {
       totalSections: sectionsData?.length || 0,
       totalQuestions,
-      totalArticles: articles?.length || 0
+      totalArticles: articleRows.length
     }
 
     return {
@@ -196,7 +186,7 @@ export async function loadLey39Data(): Promise<Ley39Data> {
 
 // Cargar datos de una sección específica para SSR
 export async function loadSectionData(sectionSlug: string): Promise<SectionData | null> {
-  const supabase = getServerSupabaseClient()
+  const db = getReadDb()
 
   try {
     // Mapeo inverso: de filesystem slug a BD slug
@@ -222,14 +212,15 @@ export async function loadSectionData(sectionSlug: string): Promise<SectionData 
     const dbSlug = inverseBDMapping[sectionSlug] || sectionSlug
 
     // Cargar configuración de la sección desde law_sections
-    const { data: sectionData, error: sectionError } = await supabase
-      .from('law_sections')
-      .select('*')
-      .eq('slug', dbSlug)
-      .single()
+    const sectionRows = await db
+      .select()
+      .from(lawSections)
+      .where(eq(lawSections.slug, dbSlug))
+      .limit(1)
+    const sectionData = sectionRows[0]
 
-    if (sectionError || !sectionData) {
-      console.error('Error cargando sección:', sectionError)
+    if (!sectionData) {
+      console.error('Error cargando sección: no encontrada slug=' + dbSlug)
       return null
     }
 
@@ -237,9 +228,9 @@ export async function loadSectionData(sectionSlug: string): Promise<SectionData 
     const config: SectionConfig = {
       title: sectionData.title,
       description: sectionData.description,
-      lawId: sectionData.law_id,
-      articleRange: sectionData.article_range_start && sectionData.article_range_end
-        ? { start: sectionData.article_range_start, end: sectionData.article_range_end }
+      lawId: sectionData.lawId,
+      articleRange: sectionData.articleRangeStart && sectionData.articleRangeEnd
+        ? { start: sectionData.articleRangeStart, end: sectionData.articleRangeEnd }
         : null,
       slug: sectionData.slug
     }
@@ -258,38 +249,34 @@ export async function loadSectionData(sectionSlug: string): Promise<SectionData 
       (_, i) => String(config.articleRange!.start + i)
     )
 
-    const { data: articles, error: articlesError } = await supabase
-      .from('articles')
-      .select('id')
-      .eq('law_id', config.lawId)
-      .in('article_number', articleNumbers)
-
-    if (articlesError) {
-      console.error('Error cargando artículos:', articlesError)
-      return {
-        config,
-        stats: { questionsCount: 0, articlesCount: 0 }
-      }
-    }
+    const articleRows = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(and(
+        eq(articles.lawId, config.lawId),
+        inArray(articles.articleNumber, articleNumbers)
+      ))
 
     // Contar preguntas de estos artículos
     let totalQuestions = 0
 
-    if (articles && articles.length > 0) {
-      const { data: questions, error: questionsError } = await supabase
-        .from('questions')
-        .select('id')
-        .in('primary_article_id', articles.map((a: { id: string }) => a.id))
-        .eq('is_active', true)
-
-      if (!questionsError && questions) {
-        totalQuestions = questions.length
-      }
+    if (articleRows.length > 0) {
+      // count() agregado: el código supabase anterior usaba .length sobre el
+      // SELECT, que PostgREST capaba a 1000 filas → infra-contaba (mostraba
+      // 1000 cuando hay 2779). count() da el total real y no carga las filas.
+      const [{ value }] = await db
+        .select({ value: count() })
+        .from(questions)
+        .where(and(
+          inArray(questions.primaryArticleId, articleRows.map((a) => a.id)),
+          eq(questions.isActive, true)
+        ))
+      totalQuestions = value
     }
 
     const stats: SectionStats = {
       questionsCount: totalQuestions,
-      articlesCount: articles?.length || 0
+      articlesCount: articleRows.length
     }
 
     return { config, stats }
