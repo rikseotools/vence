@@ -157,10 +157,10 @@ resource "aws_ecs_task_definition" "frontend" {
   # proceso Node; en Vercel cada request era una lambda aislada).
   # Subido a 1 vCPU / 2 GB. Combinado con autoscaling (más abajo) y fix del
   # leak en LawsAPI (pendiente, task #117) cubre el rango objetivo a 10k DAU.
-  cpu                      = "1024"
-  memory                   = "2048"
-  execution_role_arn       = aws_iam_role.frontend_task_execution.arn
-  task_role_arn            = aws_iam_role.frontend_task.arn
+  cpu                = "1024"
+  memory             = "2048"
+  execution_role_arn = aws_iam_role.frontend_task_execution.arn
+  task_role_arn      = aws_iam_role.frontend_task.arn
 
   runtime_platform {
     operating_system_family = "LINUX"
@@ -223,7 +223,31 @@ resource "aws_ecs_task_definition" "frontend" {
         # env var) para flip rápido sin terraform: ssm put-parameter --value
         # false → force-new-deployment para rollback en ~3 min.
         { name = "TOPIC_MV_ENABLED", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/TOPIC_MV_ENABLED" },
+        # Fase 1 pool-segregation (01/06/2026): activar self-hosted PgBouncer
+        # (pooler.vence.es) como pool principal. Si flag=false → fallback al
+        # Supavisor regional. Rollback en ~3 min via SSM update + force-new-deployment.
+        { name = "USE_SELF_HOSTED_POOLER", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/USE_SELF_HOSTED_POOLER" },
+        # DSN del self-hosted PgBouncer en Lightsail London (Fase 6 HA: 2 VMs
+        # detrás de NLB, ver self-hosted-pooler.md). Mismo password que
+        # DATABASE_URL (SCRAM passthrough en PgBouncer).
+        { name = "DATABASE_URL_SELF_POOLER", valueFrom = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-frontend/DATABASE_URL_SELF_POOLER" },
       ]
+      # Container-level healthCheck (Fase 1 pool-segregation, 01/06/2026).
+      # ECS solo marca el container `ready` cuando wget al endpoint devuelve
+      # JSON con "ok":true (i.e. pool DB establecido y SELECT 1 < 2s). Sin
+      # esto, el container con pool cold-start recibiría tráfico → cascada 5xx.
+      # startPeriod=60s da margen al warmup robusto en createPoolerDbClient
+      # (3 SELECT 1 paralelos al boot).
+      healthCheck = {
+        command = [
+          "CMD-SHELL",
+          "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q '\"ok\":true' /tmp/hc.json || exit 1",
+        ]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
         logDriver = "awslogs"
@@ -268,18 +292,27 @@ resource "aws_lb_target_group" "frontend" {
   target_type = "ip" # Fargate awsvpc → IPs, no instance IDs
   vpc_id      = data.aws_vpc.default.id
 
+  # Health check apunta al endpoint que verifica el pool BD (Fase 1
+  # pool-segregation, 01/06/2026). Antes era "/" (ping superficial del
+  # Next.js — devolvía 200 con pool muerto). Ahora ALB solo marca el
+  # target healthy si /api/health/db-ready devuelve 200 (pool establecido
+  # y SELECT 1 < 2s).
   health_check {
     enabled             = true
-    path                = "/"
+    path                = "/api/health/db-ready"
     protocol            = "HTTP"
-    matcher             = "200-399"
+    matcher             = "200" # estricto: 503 → unhealthy inmediato
     interval            = 30
-    timeout             = 10
+    timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 3
   }
 
   deregistration_delay = 30
+  # Slow start: cuando un target nuevo pasa a healthy, recibe tráfico
+  # gradualmente durante 30s en vez de full speed (Fase 1
+  # pool-segregation). Da más margen al warmup del pool.
+  slow_start = 30
 }
 
 # Anexar el cert preview-aws.vence.es al listener :443 existente (SNI).
@@ -379,9 +412,9 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 # Para el default (SSR/ISR): respect Cache-Control del origin, TTL razonable.
 resource "aws_cloudfront_cache_policy" "frontend_default" {
   name        = "vence-frontend-default"
-  default_ttl = 60      # 1 min si origin no devuelve Cache-Control
+  default_ttl = 60 # 1 min si origin no devuelve Cache-Control
   min_ttl     = 0
-  max_ttl     = 86400   # 1 día si origin pide más
+  max_ttl     = 86400 # 1 día si origin pide más
   parameters_in_cache_key_and_forwarded_to_origin {
     cookies_config {
       cookie_behavior = "all" # cookies de sesión pueden afectar render
@@ -433,49 +466,49 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # Default behavior: SSR/ISR. TTL corto, respect Cache-Control.
   default_cache_behavior {
-    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods             = ["GET", "HEAD"]
-    target_origin_id           = "vence-alb-origin"
-    viewer_protocol_policy     = "redirect-to-https"
-    compress                   = true
-    cache_policy_id            = aws_cloudfront_cache_policy.frontend_default.id
-    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "vence-alb-origin"
+    viewer_protocol_policy   = "redirect-to-https"
+    compress                 = true
+    cache_policy_id          = aws_cloudfront_cache_policy.frontend_default.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
   }
 
   # /_next/static/* — assets versionados, cache forever.
   ordered_cache_behavior {
-    path_pattern               = "/_next/static/*"
-    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
-    cached_methods             = ["GET", "HEAD"]
-    target_origin_id           = "vence-alb-origin"
-    viewer_protocol_policy     = "redirect-to-https"
-    compress                   = true
-    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+    path_pattern             = "/_next/static/*"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "vence-alb-origin"
+    viewer_protocol_policy   = "redirect-to-https"
+    compress                 = true
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
   }
 
   # /_next/image/* — Next.js Image Optimization. Cache 24h (key con qs).
   ordered_cache_behavior {
-    path_pattern               = "/_next/image*"
-    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
-    cached_methods             = ["GET", "HEAD"]
-    target_origin_id           = "vence-alb-origin"
-    viewer_protocol_policy     = "redirect-to-https"
-    compress                   = true
-    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+    path_pattern             = "/_next/image*"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "vence-alb-origin"
+    viewer_protocol_policy   = "redirect-to-https"
+    compress                 = true
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
   }
 
   # /api/* — sin cache, passthrough.
   ordered_cache_behavior {
-    path_pattern               = "/api/*"
-    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods             = ["GET", "HEAD"]
-    target_origin_id           = "vence-alb-origin"
-    viewer_protocol_policy     = "redirect-to-https"
-    compress                   = true
-    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
-    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+    path_pattern             = "/api/*"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "vence-alb-origin"
+    viewer_protocol_policy   = "redirect-to-https"
+    compress                 = true
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
   }
 
   viewer_certificate {
@@ -505,8 +538,13 @@ resource "aws_ecs_service" "frontend" {
   name            = "vence-frontend"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1 # Fase E.3: 1 task corriendo (preview canary).
-  launch_type     = "FARGATE"
+  # Fase 1 pool-segregation (01/06/2026): desired_count = 2 garantiza que
+  # nunca quede solo 1 task durante un rolling deploy. Con 1 task la
+  # ventana de "container nuevo arrancando + viejo drenando" causaba
+  # cascada de 5xx (Hipótesis D). Min capacity del autoscaling también
+  # subido a 2 (más abajo) para que scaling-in no pueda bajar de aquí.
+  desired_count = 2
+  launch_type   = "FARGATE"
 
   network_configuration {
     subnets          = data.aws_subnets.default.ids
@@ -568,8 +606,14 @@ resource "aws_ecs_service" "frontend" {
 # ============================================================
 
 resource "aws_appautoscaling_target" "frontend" {
-  max_capacity       = 3
-  min_capacity       = 1
+  max_capacity = 3
+  # Fase 1 pool-segregation (01/06/2026): min_capacity = 2 obligatorio.
+  # Cuando estaba a 1, en horas de bajo tráfico autoscaling bajaba de 2 a
+  # 1, dejando una sola task. El siguiente rolling deploy con 1 task = 0
+  # tasks healthy durante la ventana del swap = 5xx cascada para usuarios
+  # reales. Coste extra ($15/task/mes × 1 task = $15) << coste reputacional
+  # de downtime.
+  min_capacity       = 2
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"

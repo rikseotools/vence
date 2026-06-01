@@ -162,11 +162,25 @@ resource "aws_route53_record" "acm_wildcard_validation" {
 # INFRA INTERNA (self-hosted PgBouncer)
 # ============================================================
 
-# pooler.vence.es → AWS Lightsail London (eu-west-2a), IP estática 16.60.146.159.
+# pooler.vence.es → AWS NLB internet-facing (Fase 6 HA, 2026-06-01).
+#
+# Antes (hasta 2026-06-01 09:35 UTC): A directo a la IP estática 16.60.146.159
+# de la única VM Lightsail `vence-pooler-prod-1` (eu-west-2a) — SPOF.
+#
+# Ahora: ALIAS al NLB `vence-pooler-nlb` que reparte tráfico entre 2 VMs
+# Lightsail (eu-west-2a + eu-west-2b) con healthcheck TCP cada 10s. Si una
+# VM cae, NLB la saca del pool en ~20s. EvaluateTargetHealth=true → si el
+# NLB queda sin targets healthy, R53 ni siquiera devuelve esa IP.
 #
 # Self-hosted PgBouncer 1.25.2 que aísla nuestro tráfico del Supavisor regional
 # compartido de Supabase. Provisión y arquitectura completas en
-# infra/pooler/README.md y docs/roadmap/self-hosted-pooler.md.
+# infra/pooler/README.md y docs/roadmap/self-hosted-pooler.md (Fase 6 HA).
+#
+# DRIFT controlado: los recursos AWS del HA (NLB, target group, 2ª Lightsail
+# VM, VPC peering, static IP secundaria) se crearon a mano vía `aws cli` el
+# 2026-06-01 ~09:30-09:35 UTC. Pendiente declarar en Terraform (roadmap
+# self-hosted-pooler.md Fase 6.6). Los identifiers están hardcoded aquí
+# como string literal hasta que se haga `terraform import` y se declaren.
 #
 # AUDIT 2026-05-26: este record se quedó FUERA de la migración inicial
 # DonDominio → Route 53 (Bloque 5 Fase E.4.3, commit dd63e0e9). Al cambiar
@@ -179,8 +193,13 @@ resource "aws_route53_record" "pooler" {
   zone_id = aws_route53_zone.vence.zone_id
   name    = "pooler.vence.es"
   type    = "A"
-  ttl     = 300
-  records = ["16.60.146.159"]
+  alias {
+    # NLB DNS + canonical hosted zone ID. Hardcoded hasta que el NLB
+    # esté declarado en Terraform (pendiente Fase 6.6 IaC sync).
+    name                   = "vence-pooler-nlb-3756c9b56991b72b.elb.eu-west-2.amazonaws.com"
+    zone_id                = "ZD4D7Y8KGAS4G" # NLB hosted zone fija en eu-west-2
+    evaluate_target_health = true
+  }
 }
 
 # ============================================================
