@@ -3,7 +3,7 @@
 // es escalable y funciona para todas las oposiciones desde OPOSICIONES config.
 
 import { OPOSICIONES, getBlockForTopic } from '@/lib/config/oposiciones'
-import { hasCcaaFlag } from '@/components/CcaaFlag'
+import { hasCcaaFlag, resolveFlagKey } from '@/components/CcaaFlag'
 
 // Simular la lógica central del componente refactorizado
 function detectOposicion(pathname: string) {
@@ -120,14 +120,16 @@ describe('InteractiveBreadcrumbs — labels escalables', () => {
     }
   })
 
-  test('oposiciones nacionales usan emoji + shortName', () => {
-    const nationalOpos = OPOSICIONES.filter(o => !hasCcaaFlag(o.id))
+  test('oposiciones nacionales usan la bandera de España + shortName', () => {
+    // Las oposiciones de ámbito nacional (estado, tramitación, correos, guardia
+    // civil...) ya no usan emoji: resuelven a la bandera de España ('espana').
+    const nationalOpos = OPOSICIONES.filter(o => resolveFlagKey(o.id) === 'espana')
     expect(nationalOpos.length).toBeGreaterThan(0)
 
     for (const opo of nationalOpos) {
       const label = getLabel(`/${opo.slug}/test`)
       expect(label).toContain(opo.shortName)
-      expect(label).toContain(opo.emoji)
+      expect(label).toContain(`[FLAG:${opo.id}]`)
     }
   })
 
