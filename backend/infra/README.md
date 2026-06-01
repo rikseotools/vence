@@ -76,8 +76,34 @@ de las leyes a diario:
 
 ## Notas
 
-- **Estado de Terraform**: local (`terraform.tfstate`) para Etapa 1. Migrar a
-  backend S3 + lock cuando aplique más de una persona.
+- **Estado de Terraform**: **remoto en S3 con DynamoDB lock desde 2026-06-01**
+  (migración tras incidente de sesiones paralelas pisándose el state).
+  Configurado en `versions.tf`:
+  - **Bucket S3**: `vence-terraform-state-349744179687` (versioning + AES256 +
+    block-public-access, eu-west-2).
+  - **DynamoDB table**: `vence-terraform-locks` (PAY_PER_REQUEST, key `LockID`).
+  - **Path en bucket**: `vence/backend/terraform.tfstate`.
+
+  Cualquier `terraform plan/apply` desde cualquier máquina lee/escribe el state
+  remoto y respeta el lock. NO modificar el state local (no debería existir).
+
+  **Rollback granular** (bucket tiene versioning):
+  ```bash
+  aws s3api list-object-versions --bucket vence-terraform-state-349744179687 \
+    --prefix vence/backend/terraform.tfstate
+  # Para restaurar VersionId X como current:
+  aws s3api copy-object --bucket vence-terraform-state-349744179687 \
+    --copy-source 'vence-terraform-state-349744179687/vence/backend/terraform.tfstate?versionId=X' \
+    --key vence/backend/terraform.tfstate
+  ```
+
+  **Lock contention**: si un apply queda colgado y bloquea, manual unlock:
+  ```bash
+  terraform force-unlock <lock-id>
+  ```
+  NO usar a la ligera — confirmar antes que el apply original NO está corriendo
+  (ver DynamoDB item para detalles del lock).
+
 - **OIDC**: si la cuenta ya tiene el proveedor OIDC de GitHub, importarlo
   (`terraform import aws_iam_openid_connect_provider.github <arn>`) antes del apply.
-- `terraform.tfvars` y `*.tfstate` NO se commitean (ver `.gitignore`).
+- `terraform.tfvars` y `*.tfstate` NO se commitean (ver `.gitignore` raíz).
