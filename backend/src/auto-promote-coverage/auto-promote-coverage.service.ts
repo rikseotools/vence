@@ -52,6 +52,11 @@ export class AutoPromoteCoverageService {
 
     // Calcular el nivel "deseado" para cada oposición vía CTE.
     // El position_type es derivado del slug invirtiendo guiones por underscores.
+    //
+    // Sprint G refactor: los datos del proceso (plazas, fechas, BOE, landing
+    // JSONBs) ahora viven en `convocatorias` con is_current=true. JOIN
+    // explícito a la convocatoria vigente; LEFT por si una oposición está
+    // catalogada sin convocatoria todavía (esperando sensor LLM).
     const rows = await this.db.execute<{
       id: string;
       slug: string;
@@ -74,28 +79,36 @@ export class AutoPromoteCoverageService {
         JOIN questions q ON q.primary_article_id = a.id
         WHERE t.is_active = true AND q.is_active = true
         GROUP BY t.position_type
+      ),
+      convocatoria_vigente AS (
+        SELECT
+          oposicion_id,
+          plazas_libres, exam_date, boe_reference, convocatoria_fecha,
+          landing_faqs, landing_estadisticas, examen_config
+        FROM convocatorias
+        WHERE is_current = true
       )
       SELECT
         o.id::text AS id,
         o.slug,
         o.coverage_level AS current_level,
         CASE
-          WHEN o.landing_faqs IS NOT NULL
-               AND jsonb_array_length(o.landing_faqs) >= 3
-               AND o.landing_estadisticas IS NOT NULL
-               AND jsonb_array_length(o.landing_estadisticas) >= 3
-               AND o.examen_config IS NOT NULL
-               AND o.examen_config != '{}'::jsonb
+          WHEN cv.landing_faqs IS NOT NULL
+               AND jsonb_array_length(cv.landing_faqs) >= 3
+               AND cv.landing_estadisticas IS NOT NULL
+               AND jsonb_array_length(cv.landing_estadisticas) >= 3
+               AND cv.examen_config IS NOT NULL
+               AND cv.examen_config != '{}'::jsonb
                AND COALESCE(qc.n_questions, 0) >= 50
             THEN 'con_landing'
           WHEN COALESCE(qc.n_questions, 0) >= 50
             THEN 'con_tests'
           WHEN COALESCE(tc.n_topics, 0) >= 5
             THEN 'con_temario'
-          WHEN o.plazas_libres IS NOT NULL
-               OR o.exam_date IS NOT NULL
-               OR o.boe_reference IS NOT NULL
-               OR o.convocatoria_fecha IS NOT NULL
+          WHEN cv.plazas_libres IS NOT NULL
+               OR cv.exam_date IS NOT NULL
+               OR cv.boe_reference IS NOT NULL
+               OR cv.convocatoria_fecha IS NOT NULL
             THEN 'monitorizada'
           ELSE 'catalogada'
         END AS calculated_level
@@ -104,6 +117,8 @@ export class AutoPromoteCoverageService {
              ON tc.position_type = REPLACE(o.slug, '-', '_')
       LEFT JOIN questions_count qc
              ON qc.position_type = REPLACE(o.slug, '-', '_')
+      LEFT JOIN convocatoria_vigente cv
+             ON cv.oposicion_id = o.id
       WHERE o.coverage_level != 'full'
     `);
 
