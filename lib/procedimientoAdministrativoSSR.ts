@@ -1,15 +1,26 @@
 // lib/procedimientoAdministrativoSSR.ts
 // Funciones para SSR del Procedimiento Administrativo
 
-import { createClient } from '@supabase/supabase-js'
+// Migrado de supabase.from() (PostgREST) a Drizzle (2026-06-01, agnosticismo
+// Fase 3). getReadDb() (read replica, role postgres → mismo bypass RLS que el
+// service_role anterior) para lecturas SSR. Los joins propietarios
+// content_scope→laws y content_sections→content_collections pasan a
+// innerJoin/leftJoin explícitos de Drizzle.
+import { and, count, eq, ilike, inArray, or } from 'drizzle-orm'
+import { getReadDb } from '@/db/client'
+import {
+  articles,
+  contentCollections,
+  contentScope,
+  contentSections,
+  laws,
+  questions,
+} from '@/db/schema'
 import {
   getSectionMapping,
   getSectionStats,
   getProcedimientoLaws
 } from './procedimientoAdministrativoMapping'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClientAny = any
 
 interface LawInfo {
   short_name: string
@@ -78,34 +89,6 @@ interface SectionData {
   stats: SectionStats
 }
 
-interface QuestionLoadOptions {
-  limit?: number
-  offset?: number
-  onlyOfficial?: boolean
-}
-
-interface LoadedQuestion {
-  id: string
-  question_text: string
-  option_a: string
-  option_b: string
-  option_c: string
-  option_d: string
-  correct_option: number
-  explanation: string | null
-  difficulty_level: string | null
-  is_official: boolean
-  created_at: string
-  articles: Record<string, unknown>
-}
-
-interface QuestionsResult {
-  questions: LoadedQuestion[]
-  error: string | null
-  totalFound?: number
-  mapping?: ReturnType<typeof getSectionMapping>
-}
-
 interface SectionMetadata {
   title: string
   description: string
@@ -122,28 +105,21 @@ interface SectionMetadata {
   }
 }
 
-// Cliente de Supabase para uso en servidor (usando service role key)
-function getServerSupabaseClient(): SupabaseClientAny {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
 // Cargar datos del Procedimiento Administrativo para SSR
 export async function loadProcedimientoAdministrativoData(): Promise<ProcedimientoData> {
-  const supabase = getServerSupabaseClient()
+  const db = getReadDb()
 
   try {
     // Obtener la colección de Procedimiento Administrativo
-    const { data: collectionData, error: collectionError } = await supabase
-      .from('content_collections')
-      .select('id, name, description')
-      .eq('slug', 'procedimiento-administrativo')
-      .single()
+    const collectionRows = await db
+      .select({ id: contentCollections.id })
+      .from(contentCollections)
+      .where(eq(contentCollections.slug, 'procedimiento-administrativo'))
+      .limit(1)
+    const collectionData = collectionRows[0]
 
-    if (collectionError || !collectionData) {
-      console.error('Error cargando colección:', collectionError)
+    if (!collectionData) {
+      console.error('Error cargando colección: no encontrada (slug=procedimiento-administrativo)')
       return {
         sections: [],
         stats: { totalSections: 0, totalQuestions: 0, totalArticles: 0 }
@@ -151,33 +127,24 @@ export async function loadProcedimientoAdministrativoData(): Promise<Procedimien
     }
 
     // Cargar secciones desde content_sections
-    const { data: sectionsData, error: sectionsError } = await supabase
-      .from('content_sections')
-      .select('*')
-      .eq('collection_id', collectionData.id)
-      .eq('is_active', true)
-      .order('order_position')
-
-    if (sectionsError) {
-      console.error('Error cargando secciones:', sectionsError)
-      return {
-        sections: [],
-        stats: { totalSections: 0, totalQuestions: 0, totalArticles: 0 }
-      }
-    }
+    const sectionsData = await db
+      .select()
+      .from(contentSections)
+      .where(and(eq(contentSections.collectionId, collectionData.id), eq(contentSections.isActive, true)))
+      .orderBy(contentSections.orderPosition)
 
     // Transformar datos para la interfaz, enriqueciendo con mapeo real
-    const transformedSections: TransformedSection[] = sectionsData.map((section: Record<string, unknown>) => {
-      const mapping = getSectionMapping(section.slug as string)
-      const sectionStats = getSectionStats(section.slug as string)
+    const transformedSections: TransformedSection[] = sectionsData.map((section) => {
+      const mapping = getSectionMapping(section.slug)
+      const sectionStats = getSectionStats(section.slug)
 
       return {
-        id: section.id as string,
-        section_number: section.section_number as number | null,
-        name: section.name as string,
-        description: section.description as string | null,
-        slug: section.slug as string,
-        icon: section.icon as string | null,
+        id: section.id,
+        section_number: section.sectionNumber,
+        name: section.name,
+        description: section.description,
+        slug: section.slug,
+        icon: section.icon,
         // Añadir estadísticas reales
         articlesCount: sectionStats.articlesCount,
         lawsCount: sectionStats.lawsCount,
@@ -192,44 +159,43 @@ export async function loadProcedimientoAdministrativoData(): Promise<Procedimien
     // Obtener count real de preguntas relacionadas con procedimiento administrativo
     let totalQuestions = 0
 
-    // Obtener información de las leyes utilizadas en content_scope
+    // Obtener información de las leyes utilizadas en content_scope (JOIN laws)
     let lawsUsed: LawInfo[] = []
     try {
-      const { data: contentScopes } = await supabase
-        .from('content_scope')
-        .select(`
-          law_id,
-          laws!inner (
-            short_name,
-            name
-          )
-        `)
-        .in('section_id', sectionsData.map((s: Record<string, unknown>) => s.id))
+      const sectionIds = sectionsData.map((s) => s.id)
+      const contentScopes = sectionIds.length
+        ? await db
+            .select({ shortName: laws.shortName, name: laws.name })
+            .from(contentScope)
+            .innerJoin(laws, eq(contentScope.lawId, laws.id))
+            .where(inArray(contentScope.sectionId, sectionIds))
+        : []
 
-      if (contentScopes) {
-        // Obtener leyes únicas
-        const uniqueLaws = contentScopes.reduce((acc: LawInfo[], scope: Record<string, unknown>) => {
-          const laws = scope.laws as LawInfo
-          if (!acc.find((l: LawInfo) => l.short_name === laws.short_name)) {
-            acc.push({
-              short_name: laws.short_name,
-              name: laws.name
-            })
-          }
-          return acc
-        }, [] as LawInfo[])
+      // Obtener leyes únicas
+      const uniqueLaws = contentScopes.reduce((acc: LawInfo[], scope) => {
+        if (!acc.find((l) => l.short_name === scope.shortName)) {
+          acc.push({ short_name: scope.shortName, name: scope.name })
+        }
+        return acc
+      }, [] as LawInfo[])
 
-        lawsUsed = uniqueLaws.sort((a: LawInfo, b: LawInfo) => a.short_name.localeCompare(b.short_name))
-      }
+      lawsUsed = uniqueLaws.sort((a, b) => a.short_name.localeCompare(b.short_name))
 
-      // Buscar preguntas que mencionen las leyes de procedimiento administrativo
-      const { count } = await supabase
-        .from('questions')
-        .select('id', { count: 'exact', head: true })
-        .or('question_text.ilike.%Ley 39/2015%,question_text.ilike.%Ley 40/2015%,question_text.ilike.%procedimiento administrativo%,question_text.ilike.%acto administrativo%')
-        .eq('is_active', true)
-
-      totalQuestions = count || 0
+      // Buscar preguntas que mencionen las leyes de procedimiento administrativo.
+      // count() agregado (el head:true de supabase ya contaba sin traer filas).
+      const [{ value }] = await db
+        .select({ value: count() })
+        .from(questions)
+        .where(and(
+          or(
+            ilike(questions.questionText, '%Ley 39/2015%'),
+            ilike(questions.questionText, '%Ley 40/2015%'),
+            ilike(questions.questionText, '%procedimiento administrativo%'),
+            ilike(questions.questionText, '%acto administrativo%')
+          ),
+          eq(questions.isActive, true)
+        ))
+      totalQuestions = value
     } catch (error) {
       console.log('⚠️ Error calculando preguntas:', (error as Error).message)
     }
@@ -257,25 +223,29 @@ export async function loadProcedimientoAdministrativoData(): Promise<Procedimien
 
 // Cargar datos de una sección específica para SSR
 export async function loadProcedimientoSectionData(sectionSlug: string): Promise<SectionData | null> {
-  const supabase = getServerSupabaseClient()
+  const db = getReadDb()
 
   try {
-    // Cargar configuración de la sección desde content_sections
-    const { data: sectionData, error: sectionError } = await supabase
-      .from('content_sections')
-      .select(`
-        *,
-        content_collections (
-          name,
-          slug,
-          description
-        )
-      `)
-      .eq('slug', sectionSlug)
-      .single()
+    // Cargar configuración de la sección desde content_sections (+ colección)
+    const sectionRows = await db
+      .select({
+        id: contentSections.id,
+        name: contentSections.name,
+        description: contentSections.description,
+        slug: contentSections.slug,
+        sectionNumber: contentSections.sectionNumber,
+        icon: contentSections.icon,
+        collectionName: contentCollections.name,
+        collectionSlug: contentCollections.slug,
+      })
+      .from(contentSections)
+      .leftJoin(contentCollections, eq(contentSections.collectionId, contentCollections.id))
+      .where(eq(contentSections.slug, sectionSlug))
+      .limit(1)
+    const sectionData = sectionRows[0]
 
-    if (sectionError || !sectionData) {
-      console.error('Error cargando sección:', sectionError)
+    if (!sectionData) {
+      console.error('Error cargando sección: no encontrada slug=' + sectionSlug)
       return null
     }
 
@@ -283,20 +253,19 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
     let contentScopeMapping: ContentScopeMapping | null = null
     let hasContentScope = false
 
-    // Cargar content_scope para esta sección
-    const { data: contentScopes } = await supabase
-      .from('content_scope')
-      .select(`
-        law_id,
-        article_numbers,
-        laws!inner (
-          short_name,
-          name
-        )
-      `)
-      .eq('section_id', sectionData.id)
+    // Cargar content_scope para esta sección (JOIN laws)
+    const contentScopes = await db
+      .select({
+        lawId: contentScope.lawId,
+        articleNumbers: contentScope.articleNumbers,
+        lawShortName: laws.shortName,
+        lawName: laws.name,
+      })
+      .from(contentScope)
+      .innerJoin(laws, eq(contentScope.lawId, laws.id))
+      .where(eq(contentScope.sectionId, sectionData.id))
 
-    if (contentScopes && contentScopes.length > 0) {
+    if (contentScopes.length > 0) {
       hasContentScope = true
       // Construir mapeo desde content_scope
       contentScopeMapping = {
@@ -304,15 +273,15 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
       }
 
       for (const scope of contentScopes) {
-        const lawKey = scope.laws.short_name as string
+        const lawKey = scope.lawShortName
         if (!contentScopeMapping.laws[lawKey]) {
           contentScopeMapping.laws[lawKey] = {
-            description: scope.laws.name as string,
+            description: scope.lawName,
             articles: []
           }
         }
         // Añadir artículos únicos
-        for (const articleNum of scope.article_numbers as string[]) {
+        for (const articleNum of scope.articleNumbers) {
           if (!contentScopeMapping.laws[lawKey].articles.includes(articleNum)) {
             contentScopeMapping.laws[lawKey].articles.push(articleNum)
           }
@@ -334,11 +303,11 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
       name: sectionData.name,
       description: sectionData.description,
       slug: sectionData.slug,
-      section_number: sectionData.section_number,
+      section_number: sectionData.sectionNumber,
       icon: sectionData.icon,
       collection: {
-        name: sectionData.content_collections?.name || 'Procedimiento Administrativo',
-        slug: sectionData.content_collections?.slug || 'procedimiento-administrativo'
+        name: sectionData.collectionName || 'Procedimiento Administrativo',
+        slug: sectionData.collectionSlug || 'procedimiento-administrativo'
       },
       // Añadir información del mapeo
       mapping: finalMapping,
@@ -350,29 +319,33 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
     // Calcular estadísticas reales
     let questionsCount = 0
 
-    if (hasContentScope && contentScopes) {
+    if (hasContentScope && contentScopes.length > 0) {
       try {
         // Usar content_scope ya cargado para encontrar preguntas de esta sección
         for (const scope of contentScopes) {
           // Para cada artículo específico en el scope
-          for (const articleNumber of scope.article_numbers as string[]) {
+          for (const articleNumber of scope.articleNumbers) {
             // Obtener el ID del artículo específico
-            const { data: article } = await supabase
-              .from('articles')
-              .select('id')
-              .eq('law_id', scope.law_id)
-              .eq('article_number', articleNumber)
-              .single()
+            const artRows = await db
+              .select({ id: articles.id })
+              .from(articles)
+              .where(and(
+                eq(articles.lawId, scope.lawId),
+                eq(articles.articleNumber, articleNumber)
+              ))
+              .limit(1)
+            const article = artRows[0]
 
             if (article) {
               // Contar preguntas vinculadas a este artículo específico
-              const { count } = await supabase
-                .from('questions')
-                .select('id', { count: 'exact', head: true })
-                .eq('primary_article_id', article.id)
-                .eq('is_active', true)
-
-              questionsCount += count || 0
+              const [{ value }] = await db
+                .select({ value: count() })
+                .from(questions)
+                .where(and(
+                  eq(questions.primaryArticleId, article.id),
+                  eq(questions.isActive, true)
+                ))
+              questionsCount += value
             }
           }
         }
@@ -382,13 +355,14 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
     } else if (finalMapping) {
       try {
         // Fallback: buscar por contenido temático usando mapeo estático
-        const { count } = await supabase
-          .from('questions')
-          .select('id', { count: 'exact', head: true })
-          .ilike('question_text', '%Ley 39/2015%')
-          .eq('is_active', true)
-
-        questionsCount = count || 0
+        const [{ value }] = await db
+          .select({ value: count() })
+          .from(questions)
+          .where(and(
+            ilike(questions.questionText, '%Ley 39/2015%'),
+            eq(questions.isActive, true)
+          ))
+        questionsCount = value
       } catch (error) {
         console.log('⚠️ Error calculando preguntas de sección (fallback):', (error as Error).message)
       }
@@ -423,166 +397,6 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
   }
 }
 
-// Cargar preguntas específicas de una sección
-export async function loadProcedimientoSectionQuestions(sectionSlug: string, options: QuestionLoadOptions = {}): Promise<QuestionsResult> {
-  const supabase = getServerSupabaseClient()
-  const mapping = getSectionMapping(sectionSlug)
-
-  if (!mapping) {
-    return { questions: [], error: 'Sección no encontrada en el mapeo' }
-  }
-
-  const { limit = 50, offset = 0, onlyOfficial = false } = options
-
-  try {
-    const query = supabase
-      .from('questions')
-      .select(`
-        id,
-        question_text,
-        option_a,
-        option_b,
-        option_c,
-        option_d,
-        correct_option,
-        explanation,
-        difficulty_level,
-        is_official,
-        created_at,
-        articles!inner (
-          id,
-          article_number,
-          laws!inner (
-            short_name,
-            name
-          )
-        )
-      `)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    // Filtrar por las leyes y artículos específicos de la sección
-    const lawsInSection = Object.keys(mapping.laws)
-    let filteredQuestions: LoadedQuestion[] = []
-
-    for (const lawShortName of lawsInSection) {
-      const articleNumbers = mapping.laws[lawShortName].articles
-
-      for (const articleNumber of articleNumbers) {
-        const { data, error } = await query
-          .eq('articles.laws.short_name', lawShortName)
-          .eq('articles.article_number', articleNumber)
-
-        if (error) {
-          console.log(`⚠️ Error cargando preguntas ${lawShortName}:${articleNumber}:`, error.message)
-          continue
-        }
-
-        if (data && data.length > 0) {
-          filteredQuestions = filteredQuestions.concat(data as LoadedQuestion[])
-        }
-      }
-    }
-
-    // Filtrar solo oficiales si se solicita
-    if (onlyOfficial) {
-      filteredQuestions = filteredQuestions.filter((q: LoadedQuestion) => q.is_official)
-    }
-
-    // Limitar resultados finales
-    filteredQuestions = filteredQuestions.slice(0, limit)
-
-    return {
-      questions: filteredQuestions,
-      error: null,
-      totalFound: filteredQuestions.length,
-      mapping
-    }
-
-  } catch (error) {
-    console.error('Error cargando preguntas de sección:', error)
-    return { questions: [], error: (error as Error).message }
-  }
-}
-
-// Función para obtener keywords de búsqueda específicos para cada sección
-function getSectionKeywords(sectionSlug: string): string[] {
-  const keywords: Record<string, string[]> = {
-    'conceptos-generales': [
-      'Ley 39/2015',
-      'principios de actuación',
-      'procedimiento administrativo',
-      'derechos de los ciudadanos',
-      'capacidad de obrar'
-    ],
-    'el-procedimiento-administrativo': [
-      'iniciación del procedimiento',
-      'ordenación del procedimiento',
-      'instrucción del procedimiento',
-      'finalización del procedimiento',
-      'tramitación'
-    ],
-    'responsabilidad-patrimonial': [
-      'responsabilidad patrimonial',
-      'daños y perjuicios',
-      'indemnización',
-      'nexo causal',
-      'Ley 40/2015'
-    ],
-    'terminos-plazos': [
-      'cómputo de plazos',
-      'términos',
-      'plazo para resolver',
-      'calendario administrativo',
-      'días hábiles'
-    ],
-    'actos-administrativos': [
-      'acto administrativo',
-      'requisitos de los actos',
-      'forma de los actos',
-      'motivación',
-      'contenido'
-    ],
-    'eficacia-validez-actos': [
-      'eficacia de los actos',
-      'suspensión',
-      'ejecutividad',
-      'validez',
-      'revocación'
-    ],
-    'nulidad-anulabilidad': [
-      'nulidad de pleno derecho',
-      'anulabilidad',
-      'nulos',
-      'vicios',
-      'invalidez'
-    ],
-    'revision-oficio': [
-      'revisión de oficio',
-      'revisión de disposiciones',
-      'revisión de actos',
-      'declaración de lesividad',
-      'rectificación de errores'
-    ],
-    'recursos-administrativos': [
-      'recurso de alzada',
-      'recurso de reposición',
-      'recurso administrativo',
-      'recurso extraordinario',
-      'impugnación'
-    ],
-    'jurisdiccion-contencioso': [
-      'jurisdicción contencioso',
-      'contencioso-administrativa',
-      'Ley 29/1998',
-      'control jurisdiccional',
-      'recurso contencioso'
-    ]
-  }
-
-  return keywords[sectionSlug] || []
-}
 
 // Generar metadata dinámica para secciones
 export function generateProcedimientoSectionMetadata(sectionConfig: { name: string; description: string | null; slug: string }): SectionMetadata {
