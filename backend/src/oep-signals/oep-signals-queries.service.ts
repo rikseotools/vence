@@ -46,12 +46,13 @@ export class OepSignalsQueriesService {
         fetcherType: oposiciones.fetcherType,
       })
       .from(oposiciones)
-      .where(
-        and(
-          eq(oposiciones.isActive, true),
-          isNotNull(oposiciones.seguimientoUrl),
-        ),
-      )
+      // Monitoreo on-demand-friendly (01/06/2026): vigilar CUALQUIER oposición con
+      // seguimiento_url, aunque is_active=false. Esto incluye las ~100 filas
+      // coverage_level='catalogada' (cuerpos C2 registrados sin landing pública aún).
+      // El descubrimiento de cuerpos lo hace Claude a mano; el cron solo revisa
+      // novedades sobre las URLs que ya tenemos. is_active sigue gobernando la
+      // visibilidad pública en /oposiciones (no se toca).
+      .where(isNotNull(oposiciones.seguimientoUrl))
       .orderBy(oposiciones.nombre);
 
     return rows.filter((r) => r.seguimientoUrl !== null) as OposicionToScan[];

@@ -6,17 +6,19 @@ Cuando el admin dice "el seguimiento ha detectado cambios" o se ven badges de **
 
 ## Arquitectura actual (desde 06/04/2026): sistema multi-sensor
 
-Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** con 3 sensores activos:
+Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** con los sensores activos:
 
 | Sensor | Qué detecta | Score base | Cron |
 |--------|-------------|------------|------|
-| `llm_semantic` | Entidades OEP extraídas con Claude Haiku (año, plazas, BOC ref, fechas, estado) | 40 | L-V 10:00 UTC |
+| `llm_semantic` | Entidades OEP extraídas con Claude Haiku (año, plazas, BOC ref, fechas, estado) sobre `oposiciones.seguimiento_url` del catálogo | 40 | L-V 10:00 UTC |
+| `generic_source` | Cambios en fuentes genéricas/portales fuera de catálogo (`generic_source_checks`) — hash + filtro LLM. Aquí se dan de alta URLs de cuerpos NUEVOS (ver §10) | 50 | Diario |
 | `timeline_silence` | Hitos `current` con fecha pasada +3 días sin avance | 70 | Diario 7:00 UTC |
 | `hash_change` | SHA-256 del contenido de la página cambió (sensor antiguo, integrado como complemento) | 30 | L-V 9:00 UTC |
+| ~~`regional_scan`~~ | **RETIRADO 01/06/2026** (56% error + falsos positivos). Descubrimiento de cuerpos nuevos → on-demand por Claude. Ver §10 | — | — |
 
 **Score final** (con bonus por evidencias): 0-100. Score ≥ 60 → badge rojo, 40-59 → amarillo, <40 → normal.
 
-**Flujo:** cada sensor genera señales en la tabla `oep_detection_signals`. El admin las revisa en `/admin/oep-signals` y decide `Aplicar` (requiere acción manual siguiendo este manual) o `Descartar` (falso positivo).
+**Flujo:** cada sensor genera señales en la tabla `oep_detection_signals`. El admin las revisa en `/admin/oep-signals` y decide `Aplicar` (requiere acción manual siguiendo este manual) o `Descartar` (falso positivo). El badge 🎯 OEPs tiene además un sub-badge **morado** para `discovered_processes` (ver §10).
 
 > **Nota:** La página `/admin/seguimiento-convocatorias` queda como vista histórica técnica de hashes. Ya no tiene badge — todas las alertas van a **🎯 OEPs**.
 
@@ -632,7 +634,7 @@ Para cada una, determinar en qué caso cae:
 | **B. Proceso en curso, datos incorrectos** | Plazas mal, estado mal, hitos desactualizados | Corregir datos BD (estado, plazas, hitos, fechas). |
 | **C. Proceso acabado, HAY nueva OEP** | Nombramientos hechos + nueva convocatoria publicada | Archivar fila vieja (slug-YYYY), crear fila nueva con datos de la nueva OEP, redirect 301. |
 | **D. Proceso acabado, NO hay nueva OEP** | Nombramientos hechos, sin convocatoria nueva | **Transicionar a modo captación** (ver Paso 3). |
-| **E. OEP detectada que no tenemos** | Señal regional_scan con oposicion_id=NULL | Decidir si crear nueva oposición en Vence (nueva landing, temario). |
+| **E. OEP detectada que no tenemos** | Señal `generic_source` con oposicion_id=NULL, o cuerpo nuevo descubierto on-demand (§10) | Verificar demanda. Si merece: dar de alta su `seguimiento_url` server-rendered en `generic_source_checks` para vigilancia; construir oposición Vence completa (landing+temario+preguntas) solo si se decide cubrirla. |
 
 ### Paso 3: Transicionar a modo captación (Caso D)
 
@@ -707,31 +709,72 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 Si hay fecha de examen, listas definitivas o resultados, avisar a los usuarios con la plantilla `novedad-convocatoria` (ver seccion 7b).
 
-## 10. Escaneo regional (Sensor 4 — detect-regional-oeps)
+## 10. Descubrimiento de oposiciones NUEVAS (cuerpos fuera de catálogo)
 
-Cron semanal (lunes 08:00 UTC) que escanea ~30 fuentes regionales:
-- 1 estado + 17 CCAA + Ceuta/Melilla + 10 top ayuntamientos
-- Tabla: `detection_sources` (URLs genéricas de "convocatorias en curso")
-- LLM extrae TODAS las convocatorias C1/C2 de cada listado
-- Cruza contra `oposiciones` existentes
-- Si no match → señal `regional_scan` con `oposicion_id=NULL` (OEP nueva)
+> **⛔ CAMBIO 01/06/2026 — el scraper regional `detect-regional-oeps` fue RETIRADO.** Run forzado real: 167 fuentes, 93 fallos (56% error), falsos positivos demostrados ("Listado de colaboradores", procesos finalizados, C1 de 1 plaza). El descubrimiento de cuerpos nuevos pasa a ser **on-demand por Claude**. Código borrado en `backend/src/detect-regional-oeps/`; la tabla `detection_sources` (167 filas) queda dormida sin cron que la lea. Detalle: `docs/roadmap/deteccion-convocatorias-oeps-completo.md` (banner decisión 01/06).
 
-### Admin: ver detecciones regionales
-`/admin/oep-signals` → filtro "🌍 Nuevas regionales" → muestra OEPs no cubiertas por Vence.
+### Modelo actual: "Claude mete, el cron revisa"
 
-### Ampliar fuentes
-```javascript
-// Insertar nueva fuente regional
-await supabase.from('detection_sources').insert({
-  source_type: 'ayuntamiento',
-  region_name: 'Ayto. Córdoba',
-  boletin_name: 'BOP Córdoba',
-  listing_url: 'https://www.cordoba.es/...',
-  position_groups: ['C1', 'C2'],
-})
+**Los crons NO descubren** — solo revisan novedades sobre las `seguimiento_url` que ya tenemos. Meter/verificar cuerpos lo hace **Claude a mano, poco a poco**.
+
+**Punto de partida: el universo C2 YA está registrado.** `oposiciones` tiene 146 filas: 45 activas (públicas) + **101 `coverage_level='catalogada'`** (`is_active=false`, NO públicas), de las cuales **100 ya traen `seguimiento_url`**: todos los grandes ayuntamientos (Madrid, Barcelona, Sevilla, Zaragoza, Málaga, Bilbao, Las Palmas…), todas las diputaciones, todos los cabildos, Navarra, Ceuta, Melilla, sanitarias. Listarlas:
+
+```sql
+SELECT slug, seguimiento_url FROM oposiciones
+WHERE coverage_level='catalogada' AND seguimiento_url IS NOT NULL ORDER BY slug;
 ```
 
-Seed inicial: `scripts/seed-detection-sources.js` (30 fuentes).
+**El cron ya las vigila** (cambio 01/06): `getOposicionesForLlmScan` dejó de filtrar `is_active=true` → revisa toda `seguimiento_url` aunque `is_active=false`. `is_active` solo gobierna la visibilidad pública (no se toca, así no salen tarjetas vacías).
+
+**Trabajo poco a poco de Claude** (cuando el admin diga *"revisa oeps"* / *"mete oposiciones"*):
+1. Tomar una `catalogada` (o un hueco real si faltara algún cuerpo).
+2. **Verificar su `seguimiento_url` con WebFetch**: que sea **server-rendered y específica** (ver caveat JS abajo). Si es genérica/SPA → buscar alternativa server-rendered y `UPDATE oposiciones SET seguimiento_url=...`.
+3. Cuando se decida **cubrir** el cuerpo de verdad → construir landing+temario+preguntas y `is_active=true` (deja de ser `catalogada`).
+
+> Nota: `generic_source_checks` + cron `detect-generic-sources` se reservan para **fuentes agregadoras** que NO son un cuerpo concreto (DGFP, INAP, Moncloa…). Para cuerpos C2 individuales, la `seguimiento_url` va en su fila de `oposiciones` (catalogada), que es lo que el cron de revisión vigila.
+
+### ⚠️ Caveat JS-rendering (CRÍTICO — es el problema de raíz del roadmap)
+
+El monitoreo hace **fetch HTML plano + hash + LLM**. Las webs **JS-rendered (SPA)** devuelven un shell de navegación vacío que nunca cambia → el monitor **nunca dispararía**. Meter una URL SPA sería una chapuza silenciosa: parece vigilada pero no detecta nada.
+
+**Regla:** solo dar de alta URLs **server-rendered** (boletín oficial, sede electrónica con detalle, listado plano de OEP). Verificar SIEMPRE con WebFetch antes de insertar: pedir "¿lista entradas concretas con años/fechas/BOAM o solo un menú?". Si solo trae menú → es SPA, buscar alternativa server-rendered o dejarla para cuando exista el headless browser (Fase 1 del roadmap).
+
+- Ejemplo confirmado SPA (NO sirve): `madrid.es/.../Oposiciones/` (buscador de oposiciones) → solo menú.
+- Ejemplo confirmado server-rendered (SÍ sirve): `madrid.es/.../Oferta-de-Empleo-Publico/Ofertas-de-empleo-publico/` → lista OEP 2025/2024/2021 con BOAM y fechas.
+
+### Cómo dar de alta / corregir una `seguimiento_url`
+
+**Caso primario — cuerpo C2 individual (la fila ya existe como `catalogada`):** simplemente `UPDATE` su `seguimiento_url` con la URL server-rendered verificada. El cron ya la vigila (no filtra `is_active`). La fila sigue `is_active=false` (no pública) hasta que se construya su landing.
+
+```javascript
+// Verificada server-rendered con WebFetch antes de escribir
+await s.from('oposiciones')
+  .update({ seguimiento_url: 'https://www.madrid.es/.../Ofertas-de-empleo-publico/...' })
+  .eq('slug', 'auxiliar-administrativo-ayuntamiento-madrid');
+```
+
+**Caso secundario — fuente agregadora que NO es un cuerpo concreto** (DGFP, INAP, Moncloa, un BOP entero): va en `generic_source_checks` (RLS admin → `SUPABASE_SERVICE_ROLE_KEY`), la vigila el cron `detect-generic-sources`:
+
+```javascript
+const s = createClient(URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth:{persistSession:false} });
+await s.from('generic_source_checks').insert({
+  source_key: 'snake_case_unico', source_name: '…', source_url: '…server-rendered…', is_active: true,
+});
+```
+
+### Por qué NO poner `is_active=true` sin landing
+
+- `is_active=true` sin landing/temario → **tarjeta vacía rota** en `/oposiciones` (el frontend filtra por `is_active`, no por `coverage_level`).
+- Por eso los cuerpos registrados se quedan `catalogada` + `is_active=false` (no públicos) PERO con `seguimiento_url`, y el cron de revisión los vigila igualmente (ya no filtra `is_active`). Se pasan a `is_active=true` solo cuando se construye su landing+temario.
+
+### Forzar un cron manualmente (smoke / tras incidente)
+
+Endpoint admin del backend: `POST https://api.vence.es/api/v2/admin/cron/run-now` body `{"name":"<cron>"}` (requiere JWT de admin). `fireOnTick()` lanza el tick en background (responde `durationMs:1` al instante); el resultado se confirma en `observable_events` (`endpoint=<cron>`, `event_type=cron_run`) cuando termina. Cualquier `@Cron` registrado es dispatcheable por nombre.
+
+### Badge 🎯 OEPs — dos tipos de aviso por color (desde 01/06/2026)
+
+- **Naranja/rojo** = `oep_detection_signals` pendientes (rojo si confianza ≥60). Cambios en seguimiento de cuerpos del catálogo + nuevas OEP de las fuentes `generic_source_checks`.
+- **Morado** = `discovered_processes` activos (`manuel_status IN ('new','watching')`). Procesos sembrados manualmente fuera de catálogo. Triaje por SQL bajo demanda (no hay panel; Fase 6 descartada).
 
 ## 11. Filosofia de landings: siempre activas para captar
 
@@ -940,21 +983,9 @@ Desde 22/05/2026 `checkSeguimientoUrl` (`lib/api/seguimiento-convocatorias/queri
 
 Resultado: la oposición aparece con `seguimiento_change_status='error'` en `/admin/seguimiento-convocatorias` pero **no genera señal** en `/admin/oep-signals`. El sensor `hash_change` simplemente no puede monitorear esa fuente; hay que seguirla manualmente o buscar una URL alternativa accesible (no toda fuente tiene una — el Ayto. de Madrid no la tiene). No cambiar la `seguimiento_url` por una no oficial solo para silenciar el sensor; es preferible que un humano pueda abrir la URL oficial en el navegador.
 
-### 14.4 regional_scan
+### 14.4 regional_scan — ⛔ OBSOLETO (cron retirado 01/06/2026)
 
-```js
-// Cuántas fuentes se escanearon en el último run
-const { data } = await supabase
-  .from('oep_detection_signals')
-  .select('source_url, created_at')
-  .eq('sensor_type', 'regional_scan')
-  .gte('created_at', new Date(Date.now() - 7*24*60*60*1000).toISOString())
-
-const uniqueSources = new Set(data?.map(s => s.source_url))
-console.log('Fuentes distintas últimos 7 días:', uniqueSources.size, 'de 30')
-```
-
-Si el número es mucho menor que el total en `detection_sources`, algunas URLs pueden estar devolviendo 4xx/5xx o el LLM no extrae nada.
+El sensor `regional_scan` y su cron `detect-regional-oeps` ya no existen (ver §10). El descubrimiento de cuerpos nuevos es on-demand por Claude. Para vigilar fuentes nuevas, dar de alta su URL server-rendered en `generic_source_checks` (§10) — las verás bajo el sensor `generic_source`.
 
 ## 15. Ver también
 

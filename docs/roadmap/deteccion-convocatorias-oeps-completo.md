@@ -26,16 +26,20 @@ Tras forzar manualmente el cron `detect-regional-oeps` y medir su rendimiento re
 - **El trabajo de valor** — verificar contra BOE/diario oficial, encontrar la `seguimiento_url` estable correcta, decidir demanda, rellenar landing/temario — **lo hace Claude con criterio, no el scraper**. Como hay que vetar el 100% del output igualmente, el ruido del scraper no compensa su coste.
 - **Universo C2 conocido y enumerable:** Estado + 17 CCAA + grandes ayuntamientos/diputaciones + sanitarias TCAE. No requiere red ancha automática.
 
-**Nuevo modelo de descubrimiento:**
-1. **Monitoreo de cuerpos del catálogo** (45 oposiciones) → se mantiene: `llm_semantic` + `hash_change` + `check-seguimiento` + `timeline_silence`. Barato y preciso, caza convocatorias nuevas de cuerpos ya cubiertos.
-2. **Descubrimiento de cuerpos NUEVOS** → **on-demand por Claude**: Manuel dice "revisa oeps / busca C2 nuevas", Claude hace WebSearch dirigido + verifica fuente oficial + halla `seguimiento_url` estable + decide demanda + rellena la fila en `oposiciones`. Lento pero fiable, una a una.
+**Modelo final acordado (01/06/2026 tarde) — "Claude mete, el cron revisa":**
+
+- **Los crons NO descubren.** Su único papel es **revisar si hay novedades en las `seguimiento_url` que ya tenemos**. El descubrimiento/alta de cuerpos lo hace **Claude a mano, poco a poco** (verificar fuente oficial, hallar `seguimiento_url` monitorizable, decidir demanda).
+- **El universo C2 ya está registrado.** El catálogo tiene **146 filas** en `oposiciones`: **45 activas** (`con_landing`/`con_tests`, públicas) + **101 `coverage_level='catalogada'`** (`is_active=false`, NO públicas, **100 de ellas ya con `seguimiento_url`**): todos los grandes ayuntamientos (Madrid, Barcelona, Sevilla, Zaragoza, Málaga, Bilbao, Las Palmas…), todas las diputaciones, todos los cabildos, Navarra, Ceuta, Melilla, sanitarias, etc. "Meter oposiciones nuevas" es sobre todo **verificar/mejorar estas URLs ya registradas**, no inventarlas.
+- **Ajuste del cron (aplicado):** `getOposicionesForLlmScan` ya **NO filtra por `is_active=true`** — vigila CUALQUIER oposición con `seguimiento_url` (incluidas las `catalogada`). `is_active` sigue gobernando solo la visibilidad pública en `/oposiciones` (sin tocar). Así el cron revisa las ~145 URLs sin que las `catalogada` salgan como tarjetas vacías.
+- **Trabajo poco a poco de Claude:** recorrer las `catalogada` una a una, verificar que su `seguimiento_url` es **server-rendered y específica** (muchas serán genéricas/JS-rendered — el problema de raíz de este roadmap), corregirla, y construir landing+temario cuando se decida cubrir el cuerpo (entonces `is_active=true`).
+
+**Caveat clave (problema de raíz):** el monitoreo hace fetch HTML plano + hash + LLM. URLs **JS-rendered (SPA)** devuelven shell vacío → nunca disparan. Al verificar cada URL, exigir que sea server-rendered (boletín/sede/listado plano). Ejemplo: `madrid.es/.../Oposiciones/` (buscador) es SPA ❌; `madrid.es/.../Ofertas-de-empleo-publico/` es server-rendered ✅.
 
 **Cambios aplicados (01/06/2026):**
-- Borrado `backend/src/detect-regional-oeps/` (cron + service + module).
-- Retirado `DetectRegionalOepsModule` de `backend/src/app.module.ts`.
-- Eliminado `detect-regional-oeps` de `ALLOWED_CRONS` (frontend `trigger-cron`) y el botón "🌍 Scan regional" del panel `/admin/oep-signals`.
-- ⚠️ **Requiere redeploy del backend Fargate** para que el `@Cron` deje de registrarse (hasta entonces seguiría disparándose el próximo lunes 08:00 UTC).
-- **Código huérfano consciente:** la extracción regional del LLM (`regionalExtractionSchema`, `regionalUserPrompt` en `oep-signals-llm.service.ts`) y la query `getActiveSources` / tabla `detection_sources` quedan como librería dormida, reutilizable si el descubrimiento on-demand quiere apoyarse en ellas. GC futuro opcional.
+- Borrado `backend/src/detect-regional-oeps/` (cron + service + module) + retirado de `app.module.ts` + de `ALLOWED_CRONS` + botón "🌍 Scan regional".
+- `getOposicionesForLlmScan` (backend) deja de filtrar `is_active=true` → monitoriza todas las `seguimiento_url`, incluidas las `catalogada`.
+- ⚠️ **Requiere redeploy del backend Fargate** (desregistrar el `@Cron` regional + activar el nuevo filtro de monitoreo).
+- **Código huérfano consciente:** extracción regional del LLM + `getActiveSources`/`detection_sources` quedan como librería dormida. GC futuro opcional.
 - **Fases 3 y 6 del roadmap quedan obsoletas** (dependían del scraper regional / panel de descubiertos). Ver notas en cada fase.
 
 ---
