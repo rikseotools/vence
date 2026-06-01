@@ -31,6 +31,8 @@ Por Claude (CLI, cuando el humano pide "busca errores"):
 
 Ejecutar el bloque siguiente y reportar el resumen al usuario. **No leer Sentry directamente — sus eventos llegan a validation_error_logs vía withErrorLogging y los ves más rápido por SQL que por la UI de Sentry.**
 
+> **Sub-categorización admin vs user-facing (2026-06-01).** El verdict separa errores en `/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*` (admin, umbrales relajados ámbar≥5 / rojo≥20) del resto (user-facing, umbrales estrictos ámbar≥1 / rojo≥5). Sin esto, 13 errores en una herramienta interna disparaban ROJO sin afectar UX (incidente 2026-06-01). **Fuente de verdad de la lista**: `lib/api/admin/endpoint-classification.ts`. El bloque bash de abajo duplica los patrones manualmente porque Node desde shell no puede importar TS — si añades un patrón nuevo al módulo TS, actualizar también `ADMIN_PATTERNS` aquí.
+
 ```bash
 node -e "
 const pgMod = require('/home/manuel/Documentos/github/vence/node_modules/postgres');
@@ -51,13 +53,27 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
   \`;
   const currentDeploy = deployRow[0]?.deploy_version ?? null;
 
-  // 1) Errores 5xx 24h — separa por deploy_version
+  // 1) Errores 5xx 24h — separa por deploy_version + sub-categoriza admin vs user-facing
   // - 'current' = ocurridos en el deploy actual (fuego activo)
   // - 'legacy'  = ocurridos en deploys anteriores (histórico)
+  // - admin endpoints (umbrales relajados): /api/admin/*, /api/cron/*,
+  //   /api/debug/*, /api/verify-articles/*, /api/armando/*, /api/v2/admin/*
+  //   Fuente de verdad: lib/api/admin/endpoint-classification.ts
+  const ADMIN_PATTERNS = [
+    /^\\/api\\/admin(\\/|$)/,
+    /^\\/api\\/v2\\/admin(\\/|$)/,
+    /^\\/api\\/cron(\\/|$)/,
+    /^\\/api\\/debug(\\/|$)/,
+    /^\\/api\\/verify-articles(\\/|$)/,
+    /^\\/api\\/armando(\\/|$)/,
+  ];
+  const classify = (ep) => ADMIN_PATTERNS.some(p => p.test(ep || '')) ? 'admin' : 'user_facing';
+
   const errs = await sql\`
     SELECT endpoint, error_type, deploy_version, COUNT(*)::int AS n
     FROM validation_error_logs
     WHERE severity = 'critical' AND created_at >= \${since}
+      AND http_status >= 500
     GROUP BY endpoint, error_type, deploy_version
     ORDER BY n DESC LIMIT 30
   \`;
@@ -65,6 +81,13 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
   const errsLegacy = errs.filter(e => e.deploy_version !== currentDeploy);
   const totalCurrent = errsCurrent.reduce((a,r) => a + Number(r.n), 0);
   const totalLegacy = errsLegacy.reduce((a,r) => a + Number(r.n), 0);
+  // Sub-totales por categoría — solo deploy actual
+  const totalCurrentUser = errsCurrent
+    .filter(e => classify(e.endpoint) === 'user_facing')
+    .reduce((a,r) => a + Number(r.n), 0);
+  const totalCurrentAdmin = errsCurrent
+    .filter(e => classify(e.endpoint) === 'admin')
+    .reduce((a,r) => a + Number(r.n), 0);
 
   // 2) Drift 24h con drift_pct > 5 — excluye markers técnicos
   // (__cron_run__ tiene stored/fresh con semántica distinta y produce
@@ -90,8 +113,9 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 
   console.log('Deploy actual:', currentDeploy ?? '(desconocido)');
   console.log();
-  console.log('1) Errores 5xx 24h en deploy actual:', totalCurrent);
-  if (errsCurrent.length) for (const e of errsCurrent) console.log('   -', e.endpoint, e.error_type, '×', e.n);
+  console.log('1) Errores 5xx 24h en deploy actual:', totalCurrent,
+    '(user-facing: ' + totalCurrentUser + ', admin: ' + totalCurrentAdmin + ')');
+  if (errsCurrent.length) for (const e of errsCurrent) console.log('   -', '[' + classify(e.endpoint) + ']', e.endpoint, e.error_type, '×', e.n);
   console.log('   (informativo) Errores 5xx 24h en deploys anteriores:', totalLegacy);
   if (errsLegacy.length) for (const e of errsLegacy.slice(0,5)) console.log('     -', e.endpoint, e.error_type, '×', e.n, '[' + (e.deploy_version || '?') + ']');
 
@@ -103,11 +127,22 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 
   console.log('\\n4) Cron drift último run:', lastRun, staleH != null ? '(hace ' + staleH.toFixed(1) + 'h)' : '');
 
-  // Verdict — basado en errores del deploy actual, no del histórico
+  // Verdict — basado en errores del deploy actual, sub-categorizados:
+  //   - user-facing: ámbar ≥1, rojo ≥5 (cualquier error afecta a UX)
+  //   - admin:       ámbar ≥5, rojo ≥20 (bajo tráfico, ocasional aceptable)
+  // El verdict final es el PEOR de las 2 sub-categorías + drift + latencia.
   const stale = staleH === null || staleH > 36;
-  const fire = totalCurrent >= 5 || drifts.length >= 5 || (lat[0] && Number(lat[0].mean_ms) >= 250) || stale;
-  const warn = totalCurrent >= 1 || drifts.length >= 1 || (lat[0] && Number(lat[0].mean_ms) >= 80) || (staleH != null && staleH > 26);
+  const userFire = totalCurrentUser >= 5;
+  const adminFire = totalCurrentAdmin >= 20;
+  const userWarn = totalCurrentUser >= 1;
+  const adminWarn = totalCurrentAdmin >= 5;
+  const fire = userFire || adminFire || drifts.length >= 5 || (lat[0] && Number(lat[0].mean_ms) >= 250) || stale;
+  const warn = userWarn || adminWarn || drifts.length >= 1 || (lat[0] && Number(lat[0].mean_ms) >= 80) || (staleH != null && staleH > 26);
   console.log('\\nVeredicto:', fire ? '🔴 ROJO — atender ya' : warn ? '🟡 ÁMBAR — investigar' : '🟢 VERDE — todo OK');
+  if (userFire || adminFire) {
+    console.log('  - user-facing: ' + (userFire ? '🔴 ROJO' : userWarn ? '🟡 ÁMBAR' : '🟢') + ' (' + totalCurrentUser + ' errores, umbral rojo ≥5)');
+    console.log('  - admin:       ' + (adminFire ? '🔴 ROJO' : adminWarn ? '🟡 ÁMBAR' : '🟢') + ' (' + totalCurrentAdmin + ' errores, umbral rojo ≥20)');
+  }
   if (totalLegacy > 0 && !fire && !warn) {
     console.log('(Hay', totalLegacy, 'errores legacy de deploys anteriores en ventana 24h — informativo, no cuenta para verdict)');
   }
@@ -119,9 +154,11 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 
 Reportar el output al usuario. Si veredicto es rojo o ámbar, ir a sección 2.
 
-**Notas sobre los filtros del verdict** (introducidos 2026-05-23 tras detectar dos falsos positivos):
+**Notas sobre los filtros del verdict** (introducidos 2026-05-23 tras detectar dos falsos positivos; sub-categorización admin/user-facing añadida 2026-06-01):
 
 - Los **errores 5xx** se separan por `deploy_version`. Solo los del deploy actual cuentan para el verdict; los de deploys anteriores son informativos. Sin esto, un incidente histórico (ej. cascada 22/05) infla el indicador durante 24h aunque ya esté resuelto.
+- Los **errores 5xx del deploy actual** se sub-categorizan en **admin** (`/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`) y **user-facing** (todo lo demás). Umbrales diferenciados: user-facing ámbar≥1/rojo≥5 vs admin ámbar≥5/rojo≥20. Sin esto, una herramienta admin con 13 errores disparaba ROJO sin afectar UX (incidente real 2026-06-01). **Fuente de verdad**: `lib/api/admin/endpoint-classification.ts`.
+- Los errores 5xx filtran por `http_status >= 500` (excluye Watchdog client-side con `http_status=null`, que tiene su propio indicador en el panel).
 - El **drift** excluye explícitamente `target_table IN ('__cron_run__', '__exception__')`. Esos son markers técnicos (la función `check_stats_drift` los inserta al final de cada ejecución para liveness check); su columna generated `drift_pct` puede salir alta por la semántica de stored/fresh values pero NO indica drift real.
 - El **cron** se mide por `MAX(checked_at) WHERE target_table='__cron_run__'`, no por el `MAX` general — sin esto, un cron sano sin drift detectado parecería muerto.
 
@@ -253,9 +290,13 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 4. Umbrales — fuente de verdad
 
-Los umbrales también están codificados en `app/api/admin/system-health/route.ts`. Si los cambias, actualiza ambos.
+Los umbrales también están codificados en `app/api/admin/system-health/route.ts`. La clasificación admin/user-facing y sus umbrales viven en `lib/api/admin/endpoint-classification.ts` (importado por el endpoint). Si cambias cualquiera, actualiza también el script bash CLI de §1.
 
-- Errores 5xx 24h: ámbar ≥ 1, rojo ≥ 5
+**Errores 5xx 24h** (sub-categorizados):
+- **User-facing** (afecta UX): ámbar ≥ 1, rojo ≥ 5
+- **Admin** (`/api/admin/*`, `/api/cron/*`, `/api/debug/*`, `/api/verify-articles/*`, `/api/armando/*`, `/api/v2/admin/*`): ámbar ≥ 5, rojo ≥ 20
+
+**Otros indicadores**:
 - Drift contadores 24h con drift_pct > 5: ámbar ≥ 1 fila, rojo ≥ 5 filas
 - Latencia INSERT mean histórico de pg_stat_statements (incluye RTT): ámbar ≥ 80ms, rojo ≥ 250ms. proxy_p95 (mean + 2·stddev) se muestra como informativo en el panel pero sin umbral propio — es muy sensible a outliers de contención.
 - Cron de drift staleness: ámbar > 26h, rojo > 36h

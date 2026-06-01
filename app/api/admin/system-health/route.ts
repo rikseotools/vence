@@ -29,6 +29,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import {
+  classifyEndpoint,
+  ERROR_5XX_THRESHOLDS,
+} from '@/lib/api/admin/endpoint-classification'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
@@ -45,8 +49,14 @@ function isAdmin(email: string | null | undefined): boolean {
 
 // Umbrales — duplicados también en docs/runbooks/health-check.md.
 // Si cambian, actualizar el runbook.
-const ERROR_AMBER = 1
-const ERROR_RED = 5
+//
+// Los umbrales user-facing/admin se importan de
+// `@/lib/api/admin/endpoint-classification` (fuente única de verdad).
+// Mantenemos ERROR_AMBER/RED por compat con el campo `errors_5xx.thresholds`
+// del JSON de respuesta (UI los muestra como "umbral genérico"). El verdict
+// real ya está sub-categorizado por `byCategory`.
+const ERROR_AMBER = ERROR_5XX_THRESHOLDS.user_facing.amber
+const ERROR_RED = ERROR_5XX_THRESHOLDS.user_facing.red
 // UI congelada (Watchdog). Alineado con RULE_ANSWER_WATCHDOG_BURST en backend
 // (≥3 events en 30min → fire). En ventana 24h: ámbar ≥3 = burst confirmable;
 // rojo ≥10 = incidente sostenido afectando múltiples users (ver pico
@@ -91,6 +101,29 @@ function parseWindow(raw: string | null): WindowKey {
 function classifyErrors(count: number): Status {
   if (count >= ERROR_RED) return 'red'
   if (count >= ERROR_AMBER) return 'amber'
+  return 'green'
+}
+
+/**
+ * Clasifica errores 5xx por categoría de endpoint (admin vs user_facing).
+ * Aplica umbrales distintos: user_facing es 4× más estricto (cualquier
+ * error afecta a un user real) que admin (bajo tráfico, ocasional aceptable).
+ */
+function classifyErrorsByCategory(
+  count: number,
+  category: 'admin' | 'user_facing',
+): Status {
+  const t = ERROR_5XX_THRESHOLDS[category]
+  if (count >= t.red) return 'red'
+  if (count >= t.amber) return 'amber'
+  return 'green'
+}
+
+/** Devuelve el peor status de un conjunto (red > amber > unknown > green). */
+function worstStatus(...statuses: Status[]): Status {
+  if (statuses.some((s) => s === 'red')) return 'red'
+  if (statuses.some((s) => s === 'amber')) return 'amber'
+  if (statuses.some((s) => s === 'unknown')) return 'unknown'
   return 'green'
 }
 function classifyUiFrozen(count: number): Status {
@@ -276,6 +309,32 @@ async function _GET(request: NextRequest) {
   const errorCount = errorsResult.error ? null : (errorsResult.count ?? 0)
   const errorSamples = errorsResult.data ?? []
 
+  // Sub-categorización admin vs user_facing (cambio 2026-06-01 para evitar
+  // falsos ROJOS por errores en admin tools como /api/verify-articles/sync-all
+  // que cruzaban umbral user_facing pero no afectan UX). Ver
+  // lib/api/admin/endpoint-classification.ts.
+  //
+  // Limitación honesta: el COUNT de errorsResult es el total global; los
+  // samples solo son los 20 más recientes. El conteo por categoría se calcula
+  // sobre los samples disponibles — preciso para incidentes pequeños, una
+  // aproximación para incidentes masivos (>20 errores). Cuando se quiera
+  // count exacto por categoría, hacer 2 queries separadas (futuro refactor
+  // si el desglose pasa a ser indicador principal del panel).
+  const samplesAdmin = errorSamples.filter(
+    (e) => classifyEndpoint(e.endpoint) === 'admin',
+  )
+  const samplesUserFacing = errorSamples.filter(
+    (e) => classifyEndpoint(e.endpoint) === 'user_facing',
+  )
+  const adminCount = samplesAdmin.length
+  const userFacingCount = samplesUserFacing.length
+  const adminStatus =
+    errorCount === null ? 'unknown' : classifyErrorsByCategory(adminCount, 'admin')
+  const userFacingStatus =
+    errorCount === null
+      ? 'unknown'
+      : classifyErrorsByCategory(userFacingCount, 'user_facing')
+
   // ─── Procesar 1b (nuevo): watchdog client ───
   const uiFrozenCount = uiFrozenResult.error ? null : (uiFrozenResult.count ?? 0)
   const uiFrozenRows = uiFrozenResult.data ?? []
@@ -384,15 +443,41 @@ async function _GET(request: NextRequest) {
     indicators: {
       // ─── CRÍTICOS (cabecera) ───
       errors_5xx: {
-        status: errorCount == null ? 'unknown' : classifyErrors(errorCount),
+        // status global = peor de las 2 sub-categorías (evita falso ROJO
+        // por errores admin que no afectan UX). Ver byCategory para detalle.
+        status: errorCount == null ? 'unknown' : worstStatus(userFacingStatus, adminStatus),
         count: errorCount,
         samples: errorSamples.map(e => ({
           endpoint: e.endpoint,
           error_type: e.error_type,
           created_at: e.created_at,
+          category: classifyEndpoint(e.endpoint),
         })),
         thresholds: { amber: ERROR_AMBER, red: ERROR_RED },
-        note: 'Filtra http_status >= 500. Excluye Watchdog client-side (ver indicador ui_frozen).',
+        // Sub-categorización (2026-06-01) — admin vs user_facing.
+        byCategory: {
+          user_facing: {
+            status: userFacingStatus,
+            count: userFacingCount,
+            thresholds: ERROR_5XX_THRESHOLDS.user_facing,
+            samples: samplesUserFacing.slice(0, 10).map(e => ({
+              endpoint: e.endpoint,
+              error_type: e.error_type,
+              created_at: e.created_at,
+            })),
+          },
+          admin: {
+            status: adminStatus,
+            count: adminCount,
+            thresholds: ERROR_5XX_THRESHOLDS.admin,
+            samples: samplesAdmin.slice(0, 10).map(e => ({
+              endpoint: e.endpoint,
+              error_type: e.error_type,
+              created_at: e.created_at,
+            })),
+          },
+        },
+        note: 'Filtra http_status >= 500. Excluye Watchdog client-side (ver indicador ui_frozen). Sub-categorizado admin vs user_facing por endpoint (ver byCategory).',
       },
       ui_frozen: {
         status: uiFrozenCount == null ? 'unknown' : classifyUiFrozen(uiFrozenCount),
