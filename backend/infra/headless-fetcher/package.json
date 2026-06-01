@@ -1,0 +1,15 @@
+{
+  "name": "vence-headless-fetcher",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AWS Lambda con Playwright + Chromium para renderizar páginas JS-rendered. Fase 1 roadmap deteccion-convocatorias-oeps-completo.md",
+  "main": "handler.mjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
+    "playwright-core": "^1.60.0"
+  }
+}
