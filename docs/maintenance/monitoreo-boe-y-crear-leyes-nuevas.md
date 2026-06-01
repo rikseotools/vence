@@ -788,6 +788,88 @@ SCRIPT
 |-----|--------------|-------|
 | LOPDGDD (LO 3/2018) | 46 (23 adic + 6 trans + 1 derog + 16 finales) | 2026-02-14 |
 
+## Limitaciones del extractor BOE y workflow manual
+
+El endpoint `/api/verify-articles/sync-all` funciona bien con leyes/RDs que usan **numeración arábiga estándar** (`Art. 1`, `Art. 2`…). Hay dos formatos que NO capta y requieren inserción manual con cita literal del BOE consolidado.
+
+### Limitación 1 — Anexos no se importan
+
+El extractor recoge artículos y (opcionalmente con `includeDisposiciones: true`) disposiciones, pero **no toca los anexos**. En muchas normas (Órdenes contables, Resoluciones de clasificación, normas con tablas/modelos) el grueso del contenido sustantivo está en los anexos.
+
+**Síntoma:** sync devuelve `success: true` con count razonable pero faltan claramente los anexos. Por ejemplo, Orden 1/2/1996 Docs Contables AGE: `boeTotal: 12` (capítulos I-III + DF) pero la norma tiene 23 arts en 8 capítulos + Anexo I (87 notas) + Anexo II (modelos).
+
+**Workflow de inserción manual:**
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  // Texto LITERAL extraído del BOE consolidado (WebFetch con prompt "copia exactamente y verbatim")
+  const content = `NORMAS DE CUMPLIMENTACIÓN DE DOCUMENTOS CONTABLES
+
+[Importación parcial del Anexo I del BOE-A-1996-2749 consolidado.]
+
+**Nota 34. Fecha del gasto**
+
+Subvenciones. Se distinguen los siguientes casos:
+
+a.1) Subvenciones en régimen de concurrencia: Una vez aprobado el acuerdo de concesión, se indicará como fecha de gasto la fecha en la que se tenga constancia documental de que el beneficiario ha cumplido las condiciones para el pago de la subvención.
+...`;
+
+  await supabase.from('articles').insert({
+    law_id: 'UUID_DE_LA_LEY',
+    article_number: 'Anexo I',
+    title: 'Anexo I. Normas de cumplimentación de documentos contables',
+    content: content,
+    is_active: true,
+  });
+})();
+SCRIPT
+```
+
+**Reglas:**
+
+- `article_number` = `'Anexo I'`, `'Anexo II'`, etc. (literal, sin convertir).
+- Si el anexo es muy largo (>50 notas/secciones), importar **al menos** las secciones que tengan preguntas vinculadas, con cita verbatim del BOE. Documentar en el `content` que es importación parcial y dejar referencia a `BOE-A-XXXX-XXXXX` para que un humano amplíe después.
+- **NUNCA resumir, parafrasear ni inventar** — aplicar la regla PROHIBIDO §"Artículos Truncados".
+
+### Limitación 2 — Numeración ordinal en letras
+
+Órdenes y Resoluciones modernas a menudo usan **ordinales en letras** (`Primero.`, `Segundo.`, …, `Cuadragésimo tercero.`) en lugar de `Art. 1`, `Art. 2`. El extractor no reconoce este patrón y devuelve:
+
+```json
+{"success": false, "error": "No se encontraron artículos en el BOE"}
+```
+
+**Caso real:** Orden TDF/469/2024 (BOE-A-2024-10005) — 43 artículos numerados Primero a Cuadragésimo tercero. Sync falla en bloque.
+
+**Workflow:**
+
+1. Identificar qué "artículo" (Primero, Sexto, etc.) necesitan las preguntas vinculadas.
+2. WebFetch al consolidado pidiendo verbatim el contenido de ese artículo.
+3. INSERT manual con `article_number = 'Sexto'` (literal, sin conversión).
+4. Marcar la ley con `last_verification_summary.manual_verification: true` y `missing_in_db: <N>` indicando cuántos artículos faltan respecto al BOE.
+
+```js
+await supabase.from('laws').update({
+  verification_status: 'actualizada',
+  last_verification_summary: {
+    is_ok: true, manual_verification: true,
+    db_count: 1, boe_count: 43, missing_in_db: 42,
+    verified_at: new Date().toISOString(),
+    message: 'Importación parcial: art Sexto insertado manualmente. Extractor BOE no parsea numeración ordinal en letras. Resto pendiente de importación manual.',
+    source: 'BOE-A-2024-10005',
+  },
+}).eq('id', lawId);
+```
+
+### Estrategia: priorizar manual sobre completo
+
+Cuando hay limitación del extractor, **NO bloquear la importación de la pregunta** mientras se decide qué hacer con la norma entera. Importar el artículo concreto que cubre la pregunta + dejar el resto como cabo documentado en `last_verification_summary`. Lo opuesto (esperar a una importación completa antes de aprobar preguntas) deja las preguntas en `needs_human` indefinidamente.
+
 ## Leyes Excluidas del Monitoreo BOE
 
 ### Leyes de la UE (scope: 'eu')

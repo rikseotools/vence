@@ -823,3 +823,119 @@ Antes de cerrar la importación:
 | `pdfimages -png` para preservar A/B/C/D | Las letras se pierden (no son parte de la imagen raw) | Usar `pdftoppm -r 200` y recortar la página completa |
 | `content_data.tables[]` con tabla sin `headers` | `DataTableQuestion` crashea con TypeError | Validar defensivamente: `Array.isArray(table.headers) && table.headers.length > 0` |
 | Enunciado largo duplicado en `question_text` de 5 preguntas | UX pobre cross-context, content_hash contaminado | Mover a `content_data.text_passage` |
+
+---
+
+## 12. Bugs comunes del parser PDF
+
+### 12.1 Footer "MODELO X — Página N de M" se cuela como contenido
+
+**Síntoma:** preguntas concretas (13, 22, 31, 39, 48, 60 en Admin Estado 23/05/2026) desaparecen del JSON o aparecen partidas. El footer del PDF (`2025 - ADVO-L – MODELO A ... Página 10 de 14`) se queda dentro del enunciado o las opciones porque el detector busca "Página X de Y" sin condicionar a la presencia de "MODELO".
+
+**Fix en el parser:** exigir ambos patrones simultáneamente:
+
+```js
+if (/MODELO\s+[A-Z]/.test(line) && /P[áa]gina\s+\d+\s+de\s+\d+/i.test(line)) return true;
+```
+
+Validar después del parse que la cuenta de preguntas extraídas coincide con la plantilla.
+
+### 12.2 Cita "art. X.Y" en el enunciado confunde detección de opciones
+
+**Síntoma:** una pregunta queda malformada porque su enunciado contiene "art. 49.c) del TREBEP" — el parser interpreta "c)" como el inicio de la opción C y trunca el enunciado.
+
+**Caso real (Admin Estado 23/05/2026 Q `8eb7a4d7`):** "Don Eduardo decide disfrutar del permiso previsto en el artículo 49.**c)** del TREBEP… ¿Con cuánto tiempo deberá preavisar?" — el parser puso "c)" como opción y el enunciado quedó cortado.
+
+**Mitigación:** después de extraer las opciones, validar que `option_c` no empieza por un fragmento del enunciado anterior. Heurística: si `option_a/b/c/d` arranca con un sustantivo común de enunciados (`del`, `de la`, `texto`, `Ley`…) — bandera roja, marcar para revisión manual.
+
+Cuando se detecta este patrón, **el fix es re-parsear desde el PDF** (no inventar): localizar la pregunta en el `.txt` extraído por `pdftotext -layout`, copiar enunciado + 4 opciones literalmente, hacer UPDATE en BD.
+
+### 12.3 Validación post-parse obligatoria
+
+Antes del INSERT batch, comparar contra el conteo de la plantilla:
+
+```js
+const expectedTotal = parteUno.ordinarias + parteUno.reserva + parteDos.ordinarias + parteDos.reserva;
+if (jsonExamen.length !== expectedTotal) throw new Error(`Parse incompleto: ${jsonExamen.length} vs ${expectedTotal} esperadas`);
+```
+
+Discrepancia ≠ "lo apaño con un UPDATE post-import". Re-parsear hasta que el conteo cuadre.
+
+---
+
+## 13. Tratamiento de cabos post-importación (taxonomía de `needs_human`)
+
+Después del INSERT + verificación IA con agentes Sonnet, las preguntas que quedan en `needs_human` se categorizan por causa raíz. **Esta taxonomía es la guía de actuación**, no opcional.
+
+### Categoría A — Linker falló (artículo SÍ está en BD)
+
+**Síntoma:** la pregunta cita literalmente "art. 16 RD 951/2005" o "Ley 4/2023 art. 5" y el artículo existe en BD, pero el linker textual no lo asoció (variación de short_name, abreviatura, número con sufijo "bis").
+
+**Plan:** consulta directa a BD por `law.short_name LIKE` + `article_number`. Si encuentra match, UPDATE `primary_article_id` + INSERT en `question_articles` + `transition_question_state needs_human → needs_review → approved` (intermedio obligatorio, no se puede saltar entre terminales).
+
+**Caso real Admin Estado 23/05/2026:** 4 preguntas con leyes presentes que el linker no detectó (RD 951/2005, Ley 4/2023 LGTBI, Ley 39/2015, RD 364/1995).
+
+### Categoría B — Norma citada NO está en BD
+
+**Síntoma:** la pregunta cita una Orden, Resolución o Convenio que no existe en `laws`. Plan:
+
+1. **Antes** de etiquetarla Cat B, verificar §14 (¿está derogada y sustituida?).
+2. Si la norma vigente existe pero no está en BD, importarla siguiendo `monitoreo-boe-y-crear-leyes-nuevas.md` § "Crear ley nueva desde URL del BOE".
+3. Vincular la pregunta al artículo importado y transicionar.
+
+**Caso real:** 4 preguntas vinculadas a Orden 1/2/1996 ICALPE + Orden 1/2/1996 Documentos Contables AGE — ambas vigentes con consolidado BOE, importadas tras detectar el cabo.
+
+### Categoría C — Norma no identificable
+
+**Síntoma:** la pregunta cita una norma genéricamente ("RD de delegación de competencias", "instrucción interna", "circular DGP") sin identificador concreto, o cita una norma derogada hace décadas sin sustituta clara.
+
+**Plan:** buscar la norma vigente que cubre la misma materia. Si hay match con cobertura razonable, vincular ahí con nota explicativa. Si no hay match, **dejar en `needs_human` con nota detallada en `explanation`** indicando qué norma falta — no inventar fallback temático.
+
+**Caso real:** Q sobre "competencia para nombrar funcionarios del Cuerpo de Gestión" → vinculada a Orden TDF/469/2024 art Sexto (delegación en SE Función Pública) tras identificar la norma.
+
+### Categoría D — Errata de plantilla provisional
+
+**Síntoma:** Sonnet detecta `answer_ok=false` porque el texto literal del artículo dice una cosa y la plantilla otra. Si es errata reconocida, aplicar **política §9.1** (mantener respuesta de plantilla + nota documentando errata). Si es errata grave, **dejar como cabo abierto pendiente de plantilla DEFINITIVA**.
+
+**Caso real Admin Estado:** Q6ef60118 (errata capítulo presupuestario A vs B), Qd158eb9c (plazo concurso 2 vs 3 meses). Ambas con política §9.1 + cabo abierto re-verificar al salir definitiva del INAP.
+
+### Categoría E — Pregunta malformada por bug del parser
+
+**Síntoma:** la pregunta tiene `question_text` truncado, una opción con contenido del enunciado, o numeración descuadrada (ver §12.2).
+
+**Plan:** re-parsear del PDF original. NUNCA reconstruir de memoria.
+
+**Caso real Q `8eb7a4d7`:** "49.c)" del enunciado se confundió con opción C → re-parseada del `1A_cuestionario.txt` línea 673.
+
+### Plantilla de notas
+
+En `transition_question_state.p_notes`, dejar trazabilidad:
+
+```
+Cabo Cat X: vinculada a <LEY> art <N> (fuente: <BOE-A-...>). <detalle si aplica>
+```
+
+Esto permite auditoría posterior y aprendizaje sistémico para siguientes importaciones.
+
+---
+
+## 14. Verificar vigencia antes de marcar "norma no en BD"
+
+Antes de etiquetar una pregunta como Categoría B (importar norma nueva), **verificar siempre el estado vigente** de la norma citada por el examen. Los exámenes oficiales a veces citan normas derogadas:
+
+- **Por descuido del organismo convocante** (la convocatoria reutiliza temarios viejos).
+- **Por errata real** (cita "III Convenio" cuando lo vigente es el IV).
+
+### Flujo de verificación
+
+1. **WebSearch + WebFetch al BOE** de la norma citada literalmente.
+2. **Estado actual:** cabecera del consolidado → `"Norma vigente"`, `"Norma derogada por..."`, o `"Modificada por..."`.
+3. **Si está derogada:** identificar la norma sustituta vigente. Si la regla material de la pregunta se mantiene equivalente, vincular al sucesor y documentar la errata en `p_notes` y opcionalmente en `explanation`.
+
+### Caso real — III Convenio Único AGE (Admin Estado 23/05/2026)
+
+El examen cita literalmente "III Convenio Único para el personal laboral AGE". El III está **derogado desde 17/05/2019** por el IV Convenio (BOE-A-2019-7414). La regla material (grupo profesional E2 = título Bachiller) se mantiene equivalente en el art. 8 del IV.
+
+**Acción:** importar el IV Convenio vía sync BOE → vincular Q `eb071385` al art. 8 → `p_notes` incluye: *"el examen cita literalmente III Convenio — el III está derogado desde 2019. El IV vigente mantiene grupo E2 = Bachiller. Errata de la convocatoria INAP."*
+
+Si el opositor estudia con el material original del examen y se topa con la pregunta en simulacro, la explicación le aclara qué norma debe consultar.

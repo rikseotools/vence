@@ -389,6 +389,51 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/administrativo-estado/temario', label: 'Temario', icon: '📚' },
       { href: '/administrativo-estado/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2026-05-23',
+        title: 'Convocatoria 23 de mayo de 2026',
+        oep: 'OEP 2024-2025',
+        partes: [
+          {
+            id: 'unica',
+            icon: '📘',
+            title: 'Ejercicio único — Primera parte',
+            ordinaryCount: 67,
+            reserveCount: 5,
+            durationMin: 75,
+            breakdown: [
+              { label: 'legislativo', count: 42 },
+              { label: 'ofimática y tecnologías', count: 25 },
+            ],
+            notes: 'Plantilla provisional; definitiva INAP pendiente.',
+          },
+          {
+            id: 'supuesto1',
+            icon: '📙',
+            title: 'Ejercicio único — Supuesto práctico I (Confederación Hidrográfica)',
+            ordinaryCount: 20,
+            reserveCount: 5,
+            durationMin: 30,
+            breakdown: [
+              { label: 'preguntas supuesto I', count: 20 },
+            ],
+          },
+          {
+            id: 'supuesto2',
+            icon: '📗',
+            title: 'Ejercicio único — Supuesto práctico II (Ministerio Transformación Digital)',
+            ordinaryCount: 20,
+            reserveCount: 5,
+            durationMin: 30,
+            breakdown: [
+              { label: 'preguntas supuesto II', count: 20 },
+            ],
+            notes: '1 posible errata plantilla provisional (capítulo presupuestario) — política §9.1 aplicada.',
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================

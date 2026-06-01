@@ -200,7 +200,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             'auxiliar_administrativo_cyl': '%Auxiliar Administrativo CyL%',
             'tramitacion_procesal': '%Tramitación Procesal%',
             'auxilio_judicial': '%Auxilio Judicial%',
-            'administrativo_estado': '%Administrativo Estado%',
+            'administrativo_estado': 'Examen Administrativo Estado%',
             'policia_nacional': '%Policía Nacional%',
             'guardia_civil': '%Guardia Civil%',
           }
