@@ -145,24 +145,55 @@ CREATE TABLE convocatoria_documents (
 );
 ```
 
-Nueva tabla para OEPs detectadas (separadas de convocatorias):
+**Procesos detectados (implementado 2026-06-01)** — almacén persistente de cualquier proceso selectivo detectado por sensores, exista o no en el catálogo Vence. Sustituye al diseño anterior `oeps_detected` (que era demasiado específico a "OEP" y obligaba a discriminar de convocatorias). Migration: `supabase/migrations/20260601_discovered_processes.sql`.
 
 ```sql
-CREATE TABLE oeps_detected (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  administracion_key TEXT NOT NULL,   -- 'estado', 'cam', 'jccm', 'ayto_badajoz', etc.
-  oep_year INTEGER NOT NULL,
-  decreto_referencia TEXT,             -- 'Real Decreto X/YYYY' o 'Decreto autonómico Y/YYYY'
-  publicacion_boletin TEXT,            -- 'BOE-A-YYYY-XXX' o 'BOP nº X de DD/MM'
-  publicacion_fecha DATE,
-  source_url TEXT,                     -- URL del boletín
-  cuerpos_afectados JSONB,             -- array de cuerpos C1/C2 con plazas
+CREATE TABLE discovered_processes (
+  id UUID PRIMARY KEY,
+  region_name TEXT NOT NULL,            -- "Dip. Cádiz", "Ayto. Las Palmas G.C."
+  position_name TEXT NOT NULL,          -- "Ayudante de Recaudación"
+  position_subgrupo TEXT,               -- A1, A2, B, C1, C2, E
+  year INTEGER,
+  boc_ref TEXT,                         -- BOP/BOCM/BOE/DOGV...
+  plazas_libres INTEGER,
+  plazas_discapacidad INTEGER,
+  plazas_promocion_interna INTEGER,
+  estado_proceso TEXT,
+  fecha_publicacion DATE,
+  fecha_inscripcion_inicio DATE,
+  fecha_inscripcion_fin DATE,
+  fecha_examen DATE,
+  source_url TEXT NOT NULL,
+  source_sensor TEXT NOT NULL,          -- regional_scan, llm_semantic, generic_source, pdf_extract, rss, boe_api
+  raw_extraction JSONB DEFAULT '{}',
+  discovered_at TIMESTAMPTZ DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  manuel_status TEXT DEFAULT 'new',     -- new, watching, irrelevant, promoted
+  manuel_notes TEXT,
+  promoted_to_oposicion_id UUID REFERENCES oposiciones(id) ON DELETE SET NULL,
+  promoted_at TIMESTAMPTZ,
+  UNIQUE (region_name, position_name, COALESCE(year, -1), COALESCE(boc_ref, ''))
+);
+
+CREATE TABLE discovered_process_milestones (
+  id UUID PRIMARY KEY,
+  process_id UUID REFERENCES discovered_processes(id) ON DELETE CASCADE,
+  fecha DATE NOT NULL,
+  titulo TEXT NOT NULL,                 -- "Bases publicadas", "Inscripción abierta", "Lista provisional"
+  descripcion TEXT,
+  url_source TEXT,
   detected_at TIMESTAMPTZ DEFAULT NOW(),
-  applied_at TIMESTAMPTZ,
-  signal_id UUID REFERENCES oep_detection_signals(id),
-  UNIQUE (administracion_key, oep_year)
+  UNIQUE (process_id, fecha, titulo)
 );
 ```
+
+**Modelo de uso:**
+
+1. Sensores (regional_scan, llm_semantic, etc.) hacen UPSERT en `discovered_processes` por su unique key — la 2ª vez que ven el mismo proceso UPDATEan `last_seen_at`/datos + INSERT en `milestones` para hitos nuevos.
+2. Admin `/admin/discovered-processes` (Fase 6) lista los `new`+`watching` con su timeline.
+3. Manuel decide: `watching` (seguir vigilando), `irrelevant` (no crear, conservar histórico), o `promoted` (yo, Claude, creo la oposición Vence desde sus datos; trigger valida que `promoted_to_oposicion_id` se rellene).
+4. `oep_detection_signals` sigue como tabla de **alerta efímera** ("hay novedad — revísala"). `discovered_processes` es el **almacén persistente** con todo el detalle estructurado.
 
 ### 2.3 Estrategia de redundancia (clave para 95% cobertura)
 
@@ -254,8 +285,8 @@ Recomendación robusta inicial: **ScrapingBee** para validar valor en 1-2 semana
 **Tareas:**
 1. Cron `detect-oep-anual` que en Q4 (oct-dic) y Q1 (ene-mar) escanea boletines buscando patrón "Oferta de Empleo Público [año]" + "Decreto X/YYYY".
 2. LLM Haiku extrae: administración, año, cuerpos afectados, plazas por cuerpo.
-3. Insert en `oeps_detected` + genera señal `oep_anual` con score 80.
-4. Auto-crea aspiracional en `OnboardingModal` si la combinación (administración, cuerpo) no existe.
+3. UPSERT en `discovered_processes` con `source_sensor='boe_api'` o `'pdf_extract'` según el origen.
+4. Hito "Publicación OEP {año}" insertado en `discovered_process_milestones`.
 
 **Criterio de éxito:** OEP Estado 2027 (publicación típica nov-dic 2026) se detecta automáticamente en <72h.
 
@@ -274,16 +305,45 @@ Recomendación robusta inicial: **ScrapingBee** para validar valor en 1-2 semana
 
 **Criterio de éxito:** extracto BOE Ayto Badajoz Aux Admin (cuando se publique) genera señal en <24h.
 
-### Fase 6 — Dashboard de cobertura `/admin/oep-coverage` (3 días)
+### Fase 5-bis — Migrar sensores a `discovered_processes` (2-3 días, **siguiente**)
 
-**Objetivo:** visibilidad permanente del estado del sistema.
+**Objetivo:** que los sensores ya existentes escriban en la tabla persistente (no solo en `oep_detection_signals` efímera).
+
+**Tareas:**
+1. Modificar `backend/src/detect-regional-oeps/detect-regional-oeps.service.ts`: tras detectar proceso → UPSERT en `discovered_processes` por unique key. Si llegan datos nuevos en un proceso ya conocido → UPDATE + INSERT milestones.
+2. Modificar `backend/src/detect-oep-llm/detect-oep-llm.service.ts`: cuando la oposición Vence YA existe → seguir como hoy (actualiza `oposiciones`). Cuando NO existe match → UPSERT en `discovered_processes`.
+3. Modificar `backend/src/detect-generic-sources/detect-generic-sources.service.ts`: solo escribir en `discovered_processes` si la extracción tiene datos estructurados (no si es ruido genérico tipo "La Moncloa").
+4. Backfill: las señales `pending` actuales en `oep_detection_signals` que no tienen `oposicion_id` → INSERT en `discovered_processes` + marcar señal `applied`. Script: `scripts/backfill-discovered-processes-from-signals.cjs`.
+
+**Criterio de éxito:** una semana después de aplicar, `discovered_processes` tiene >50 filas con datos coherentes y timeline poblado.
+
+### Fase 6 — Panel admin `/admin/discovered-processes` (2 días)
+
+**Objetivo:** Manuel revisa los procesos descubiertos y decide cuáles promover a oposiciones Vence.
+
+**UI:**
+- Lista filtrable por (region, subgrupo, año, estado_proceso, manuel_status).
+- Cada card muestra: identidad (región + posición + año + BOC), datos (plazas, fechas clave), timeline ordenado de milestones, link al source_url.
+- Acciones por card: marcar `watching`, `irrelevant`, o "promover" → este último abre flujo que llama a Claude con los datos pre-rellenados para crear la oposición Vence.
+- Vista secundaria `/admin/discovered-processes/promoted`: histórico de los ya creados, con link al slug Vence.
+
+**Endpoints:**
+- `GET /api/admin/discovered-processes` (lista paginada con filtros).
+- `PATCH /api/admin/discovered-processes/:id` (cambia manuel_status y notes).
+- `POST /api/admin/discovered-processes/:id/promote` (marca promoted + dispara flujo de creación).
+
+**Criterio de éxito:** Manuel puede decidir 20 procesos en <10min con info suficiente.
+
+### Fase 6-bis — Dashboard de cobertura `/admin/oep-coverage` (3 días, opcional)
+
+**Objetivo:** visibilidad permanente del estado del sistema (complementaria al panel de Fase 6).
 
 **Métricas a mostrar:**
 - Cobertura: % oposiciones activas con ≥2 sensores funcionando.
 - Latencia: tiempo entre publicación oficial (cuando se sabe) y detección.
 - Health: por cada `detection_source`, last_success vs last_error, % uptime últimas 30d.
 - Falsos positivos: % señales `dismissed` vs `applied` por sensor.
-- Vista por oposición: timeline esperado (próximos hitos según patrón) vs hitos detectados.
+- Conversión: % `discovered_processes` que terminaron en `promoted`.
 
 **Criterio de éxito:** una mirada al dashboard responde "¿esta oposición está bien monitorizada?" sin abrir BD.
 
