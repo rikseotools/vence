@@ -10,7 +10,7 @@ function getWeakArticlesDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
 import {
-  userQuestionHistory,
+  userQuestionHistoryV2,
   questions,
   articles,
   laws,
@@ -109,21 +109,21 @@ export async function getWeakArticlesForUser(
     const maxSuccessRateDecimal = maxSuccessRate / 100
     const weakQuestions = await db
       .select({
-        successRate: userQuestionHistory.successRate,
-        totalAttempts: userQuestionHistory.totalAttempts,
+        successRate: userQuestionHistoryV2.successRate,
+        totalAttempts: userQuestionHistoryV2.totalAttempts,
         articleNumber: articles.articleNumber,
         lawId: articles.lawId,
         lawName: laws.shortName,
       })
-      .from(userQuestionHistory)
-      .innerJoin(questions, eq(userQuestionHistory.questionId, questions.id))
+      .from(userQuestionHistoryV2)
+      .innerJoin(questions, eq(userQuestionHistoryV2.questionId, questions.id))
       .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
       .innerJoin(laws, eq(articles.lawId, laws.id))
       .where(
         and(
-          eq(userQuestionHistory.userId, userId),
-          lt(userQuestionHistory.successRate, String(maxSuccessRateDecimal)),
-          gte(userQuestionHistory.totalAttempts, minAttempts)
+          eq(userQuestionHistoryV2.userId, userId),
+          lt(userQuestionHistoryV2.successRate, String(maxSuccessRateDecimal)),
+          gte(userQuestionHistoryV2.totalAttempts, minAttempts)
         )
       )
 

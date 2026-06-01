@@ -12,7 +12,7 @@ import {
   questions,
   articles,
   laws,
-  userQuestionHistory,
+  userQuestionHistoryV2,
   userProfiles,
   aiApiConfig
 } from '@/db/schema'
@@ -269,20 +269,20 @@ export async function getUserStats(
   limit = 10
 ): Promise<UserArticleStat[]> {
   // Query con join a questions, articles y laws
-  // userQuestionHistory almacena datos agregados por pregunta (totalAttempts, correctAttempts)
+  // userQuestionHistoryV2 almacena datos agregados por pregunta (totalAttempts, correctAttempts)
   let query = getDb()
     .select({
       articleNumber: articles.articleNumber,
       lawShortName: laws.shortName,
-      totalAttempts: userQuestionHistory.totalAttempts,
-      correctAttempts: userQuestionHistory.correctAttempts
+      totalAttempts: userQuestionHistoryV2.totalAttempts,
+      correctAttempts: userQuestionHistoryV2.correctAttempts
     })
-    .from(userQuestionHistory)
-    .innerJoin(questions, eq(userQuestionHistory.questionId, questions.id))
+    .from(userQuestionHistoryV2)
+    .innerJoin(questions, eq(userQuestionHistoryV2.questionId, questions.id))
     .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
     .innerJoin(laws, eq(articles.lawId, laws.id))
     .where(and(
-      eq(userQuestionHistory.userId, userId),
+      eq(userQuestionHistoryV2.userId, userId),
       isNotNull(questions.primaryArticleId)
     ))
     .$dynamic()

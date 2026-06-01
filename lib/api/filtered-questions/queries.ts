@@ -10,7 +10,7 @@ import { getDb, getReadDb, getPoolerDb } from '@/db/client'
 function getFilteredCountDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
-import { questions, articles, laws, topicScope, topics, testQuestions, userQuestionHistory } from '@/db/schema'
+import { questions, articles, laws, topicScope, topics, testQuestions, userQuestionHistoryV2 } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt, isNull } from 'drizzle-orm'
 import {
   getAllowedLawIds,
@@ -221,11 +221,11 @@ async function getNeverSeenQuestionIds(
   // (user_id, question_id); en producción el IN contra test_questions con miles
   // de IDs estaba agotando statement_timeout.
   const seenAnswers = await db
-    .select({ questionId: userQuestionHistory.questionId })
-    .from(userQuestionHistory)
+    .select({ questionId: userQuestionHistoryV2.questionId })
+    .from(userQuestionHistoryV2)
     .where(and(
-      eq(userQuestionHistory.userId, userId),
-      inArray(userQuestionHistory.questionId, uniqueCandidateIds)
+      eq(userQuestionHistoryV2.userId, userId),
+      inArray(userQuestionHistoryV2.questionId, uniqueCandidateIds)
     ))
 
   const seenIds = new Set((seenAnswers || []).map(r => r.questionId).filter(Boolean))
@@ -853,11 +853,11 @@ export async function getFilteredQuestions(
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .innerJoin(
-          userQuestionHistory,
+          userQuestionHistoryV2,
           and(
-            eq(userQuestionHistory.questionId, questions.id),
-            eq(userQuestionHistory.userId, userId),
-            lt(userQuestionHistory.successRate, '1.00')
+            eq(userQuestionHistoryV2.questionId, questions.id),
+            eq(userQuestionHistoryV2.userId, userId),
+            lt(userQuestionHistoryV2.successRate, '1.00')
           )
         )
         .where(and(...lawConditions))

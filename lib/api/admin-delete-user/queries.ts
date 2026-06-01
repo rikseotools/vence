@@ -128,6 +128,7 @@ const TABLES_TO_CLEAN_GDPR: Array<{ table: string; column: string }> = [
   { table: 'user_notification_settings', column: 'user_id' },
   { table: 'user_psychometric_preferences', column: 'user_id' },
   { table: 'user_question_history', column: 'user_id' },
+  { table: 'user_question_history_v2', column: 'user_id' },
   { table: 'user_sessions', column: 'user_id' },
   { table: 'user_streaks', column: 'user_id' },
   { table: 'user_test_sessions', column: 'user_id' },
