@@ -5,7 +5,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getRandomTestQDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { topics, topicScope, laws, questions, articles, testQuestions, userQuestionHistory } from '@/db/schema'
+import { topics, topicScope, laws, questions, articles, testQuestions, userQuestionHistoryV2 } from '@/db/schema'
 import { eq, and, sql, inArray, desc, gte, isNotNull, isNull } from 'drizzle-orm'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { unstable_cache } from 'next/cache'
@@ -257,9 +257,10 @@ export async function checkQuestionAvailability(
       sql`(${topicScope.articleNumbers} IS NULL OR ${articles.articleNumber} = ANY(${topicScope.articleNumbers}))`
     ))
     .innerJoin(questions, eq(questions.primaryArticleId, articles.id))
-    .innerJoin(userQuestionHistory, and(
-      eq(userQuestionHistory.questionId, questions.id),
-      eq(userQuestionHistory.userId, request.userId),
+    // UQH Fase 3: migrado de v1 (congelada desde cutover outbox 2026-05-30) a v2.
+    .innerJoin(userQuestionHistoryV2, and(
+      eq(userQuestionHistoryV2.questionId, questions.id),
+      eq(userQuestionHistoryV2.userId, request.userId),
     ))
     .where(and(...conditions))
 

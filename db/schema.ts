@@ -1381,6 +1381,29 @@ export const userQuestionHistory = pgTable("user_question_history", {
 	pgPolicy("Allow trigger updates for question history", { as: "permissive", for: "update", to: ["public"] }),
 ]);
 
+// UQH v2 — versión post-cutover outbox (2026-05-30). Mismo schema que v1 con
+// dos diferencias: total_attempts/correct_attempts NOT NULL, personal_difficulty
+// como varchar (no enum). Sprint G del plan UQH: migrar lectores aquí.
+export const userQuestionHistoryV2 = pgTable("user_question_history_v2", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	questionId: uuid("question_id").notNull(),
+	totalAttempts: integer("total_attempts").notNull().default(0),
+	correctAttempts: integer("correct_attempts").notNull().default(0),
+	successRate: numeric("success_rate", { precision: 3, scale:  2 }).default('0.00'),
+	personalDifficulty: varchar("personal_difficulty", { length: 20 }).default('medium'),
+	firstAttemptAt: timestamp("first_attempt_at", { withTimezone: true, mode: 'string' }),
+	lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true, mode: 'string' }),
+	trend: varchar({ length: 20 }).default('stable'),
+	trendCalculatedAt: timestamp("trend_calculated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_uqh_v2_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("idx_uqh_v2_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	unique("user_question_history_v2_user_id_question_id_key").on(table.userId, table.questionId),
+]);
+
 export const psychometricCategories = pgTable("psychometric_categories", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	categoryKey: text("category_key").notNull(),

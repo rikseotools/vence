@@ -566,8 +566,9 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
           .eq('user_id', userId)
           .order('created_at', { ascending: true })
 
+        // UQH Fase 3: migrado de v1 (congelada desde cutover outbox 2026-05-30) a v2.
         const { data: questionStats } = await supabase
-          .from('user_question_history')
+          .from('user_question_history_v2')
           .select('first_attempt_at, last_attempt_at, total_attempts')
           .eq('user_id', userId)
           .eq('question_id', questionId)

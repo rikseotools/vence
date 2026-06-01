@@ -145,8 +145,10 @@ async function getWeekStats(
 
   try {
     // Obtener respuestas de la semana
+    // UQH Fase 3: migrado de user_question_history (v1, congelada desde
+    // cutover outbox 2026-05-30) a v2 que escribe el handler Fargate.
     const { data, error } = await supabase
-      .from('user_question_history')
+      .from('user_question_history_v2')
       .select('total_attempts, correct_attempts')
       .eq('user_id', userId)
       .gte('last_attempt_at', startDate.toISOString())
@@ -252,11 +254,12 @@ export async function getUserStats(
       ? sql`AND l.short_name ILIKE ${'%' + lawShortName + '%'}`
       : sql``
 
+    // UQH Fase 3: migrado a v2 (cutover outbox 2026-05-30 dejó v1 congelada).
     const articleResult = await db.execute(sql`
       SELECT a.article_number, l.short_name as law_name,
              uqh.total_attempts as total, uqh.correct_attempts as correct,
              ROUND(uqh.success_rate::numeric * 100, 1) as accuracy
-      FROM user_question_history uqh
+      FROM user_question_history_v2 uqh
       JOIN questions q ON q.id = uqh.question_id
       JOIN articles a ON q.primary_article_id = a.id
       JOIN laws l ON a.law_id = l.id
