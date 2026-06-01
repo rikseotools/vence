@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module';
 import { HeartbeatModule } from './heartbeat/heartbeat.registry';
 import { RefreshRankingsModule } from './refresh-rankings/refresh-rankings.module';
 import { RefreshThemeCacheModule } from './refresh-theme-cache/refresh-theme-cache.module';
+import { SyncUqhV1BridgeModule } from './sync-uqh-v1-bridge/sync-uqh-v1-bridge.module';
 import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
 import { AvatarRotationModule } from './avatar-rotation/avatar-rotation.module';
 import { CheckSeguimientoModule } from './check-seguimiento/check-seguimiento.module';
@@ -113,6 +114,8 @@ import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic
     RefreshThemeCacheModule,
     RefreshRankingsModule,
     UpdateStreaksModule,
+    // Puente temporal UQH v1 ← v2 (eliminar tras Fase 4 plan UQH).
+    SyncUqhV1BridgeModule,
     // Crons — sub-etapa 1b tanda 2 (monitoreo + colas)
     CheckSeguimientoModule,
     ProcessOutboxModule,

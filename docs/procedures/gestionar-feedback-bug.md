@@ -4,6 +4,18 @@
 
 **Principio: recopilar datos primero, diagnosticar después.** Ejecuta TODOS los pasos antes de sacar conclusiones.
 
+## Triaje por `type` antes de empezar
+
+Antes de aplicar la metodología, mira el campo `user_feedback.type`. No todos los feedbacks son bugs — algunos tienen su propio runbook:
+
+| `type` | Runbook |
+|---|---|
+| `account_deletion` | **`docs/maintenance/eliminacion-cuentas.md`** — investigación + `deletion_reason` exhaustivo + `/api/admin/delete-user`. NO uses este manual. |
+| `email` (reply a newsletter/aviso) | Este manual + sección "Email threading" más abajo para mantener el hilo en Gmail. |
+| `bug`, `other`, resto | Este manual. |
+
+Si el feedback es `account_deletion`, **detente y abre el manual de eliminación**. El flujo es distinto (RGPD Art. 17 + retención contable) y exige `deletion_reason` con journey completo antes de ejecutar nada.
+
 ## Paso 1: Identificar al usuario y contexto
 
 ```js
@@ -354,6 +366,7 @@ const fecha = 'PONER_FECHA';  // ej: '2026-04-04T00:00:00'
 
 ## Manuales relacionados
 
+- **Eliminación de cuentas (RGPD):** `docs/maintenance/eliminacion-cuentas.md` — runbook obligatorio para `type='account_deletion'`. Incluye plantilla de `deletion_reason` exhaustivo.
 - **Journey detallado:** `docs/procedures/investigar-journey-usuario.md`
 - **Impugnaciones:** `docs/maintenance/impugnaciones-claude-code.md` — **NUNCA cerrar sin aprobación explícita.**
 - **Chat IA:** `docs/maintenance/revisar-chat-ai.md`
