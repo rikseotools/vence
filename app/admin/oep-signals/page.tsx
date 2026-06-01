@@ -78,7 +78,7 @@ export default function OepSignalsPage() {
     }
   }
 
-  const triggerCron = async (endpoint: 'detect-oep-llm' | 'detect-timeline-silence' | 'detect-regional-oeps') => {
+  const triggerCron = async (endpoint: 'detect-oep-llm' | 'detect-timeline-silence') => {
     if (!confirm(`¿Ejecutar cron "${endpoint}" ahora?`)) return
     try {
       const triggerHeaders = await getAuthHeaders()
@@ -108,7 +108,7 @@ export default function OepSignalsPage() {
               {' '}<span className="font-medium">LLM semántico</span> L-V 10:00 UTC (17 oposiciones)
               {' '}· <span className="font-medium">Timeline silence</span> diario 7:00 UTC
               {' '}· <span className="font-medium">Hash change</span> L-V 9:00 UTC
-              {' '}· <span className="font-medium">Regional scan</span> lunes 8:00 UTC (30 fuentes C1/C2)
+              {' '}· <span className="font-medium text-gray-400 line-through">Regional scan</span> retirado (descubrimiento on-demand)
             </div>
           </div>
         </div>
@@ -125,12 +125,7 @@ export default function OepSignalsPage() {
           >
             ⏰ Check timeline
           </button>
-          <button
-            onClick={() => triggerCron('detect-regional-oeps')}
-            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md font-medium"
-          >
-            🌍 Scan regional
-          </button>
+          {/* 🌍 Scan regional RETIRADO 01/06/2026 — scraper autónomo descartado, descubrimiento on-demand por Claude */}
           <a
             href="/admin/seguimiento-convocatorias"
             className="text-xs text-gray-500 hover:text-gray-700 underline"

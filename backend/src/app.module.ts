@@ -21,7 +21,6 @@ import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
 import { AnthropicModule } from './anthropic/anthropic.module';
 import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
-import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional-oeps.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
@@ -164,7 +163,9 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     AnthropicModule,
     DetectTimelineSilenceModule,
     DetectOepLlmModule,
-    DetectRegionalOepsModule,
+    // detect-regional-oeps RETIRADO (01/06/2026): scraper autónomo de 167 fuentes
+    // con 56% de tasa de error + falsos positivos. Descubrimiento de oposiciones
+    // nuevas pasa a ser on-demand por Claude. Ver docs/roadmap/deteccion-convocatorias-oeps-completo.md
     DetectGenericSourcesModule,
     // HTTP endpoints — Bloque 3 canary (Etapa 2)
     MedalsModule,

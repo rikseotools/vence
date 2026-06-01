@@ -17,6 +17,29 @@
 
 ---
 
+## ⛔ DECISIÓN 01/06/2026 — Scraper regional autónomo RETIRADO; descubrimiento on-demand por Claude
+
+Tras forzar manualmente el cron `detect-regional-oeps` y medir su rendimiento real, Manuel decide **retirarlo**:
+
+- **Datos del run real (01/06 11:28 UTC):** 167 fuentes escaneadas, **93 fallos (56% error)**, solo 66 extracciones OK, 8,7 min de compute + coste LLM Haiku por fuente.
+- **Falsos positivos demostrados:** "Listado de colaboradores" (no es convocatoria), procesos finalizados, C1 de 1 plaza. Ya motivaron descartar la **Fase 5-bis** (auto-escritura) y la **Fase 7** (auto-apply).
+- **El trabajo de valor** — verificar contra BOE/diario oficial, encontrar la `seguimiento_url` estable correcta, decidir demanda, rellenar landing/temario — **lo hace Claude con criterio, no el scraper**. Como hay que vetar el 100% del output igualmente, el ruido del scraper no compensa su coste.
+- **Universo C2 conocido y enumerable:** Estado + 17 CCAA + grandes ayuntamientos/diputaciones + sanitarias TCAE. No requiere red ancha automática.
+
+**Nuevo modelo de descubrimiento:**
+1. **Monitoreo de cuerpos del catálogo** (45 oposiciones) → se mantiene: `llm_semantic` + `hash_change` + `check-seguimiento` + `timeline_silence`. Barato y preciso, caza convocatorias nuevas de cuerpos ya cubiertos.
+2. **Descubrimiento de cuerpos NUEVOS** → **on-demand por Claude**: Manuel dice "revisa oeps / busca C2 nuevas", Claude hace WebSearch dirigido + verifica fuente oficial + halla `seguimiento_url` estable + decide demanda + rellena la fila en `oposiciones`. Lento pero fiable, una a una.
+
+**Cambios aplicados (01/06/2026):**
+- Borrado `backend/src/detect-regional-oeps/` (cron + service + module).
+- Retirado `DetectRegionalOepsModule` de `backend/src/app.module.ts`.
+- Eliminado `detect-regional-oeps` de `ALLOWED_CRONS` (frontend `trigger-cron`) y el botón "🌍 Scan regional" del panel `/admin/oep-signals`.
+- ⚠️ **Requiere redeploy del backend Fargate** para que el `@Cron` deje de registrarse (hasta entonces seguiría disparándose el próximo lunes 08:00 UTC).
+- **Código huérfano consciente:** la extracción regional del LLM (`regionalExtractionSchema`, `regionalUserPrompt` en `oep-signals-llm.service.ts`) y la query `getActiveSources` / tabla `detection_sources` quedan como librería dormida, reutilizable si el descubrimiento on-demand quiere apoyarse en ellas. GC futuro opcional.
+- **Fases 3 y 6 del roadmap quedan obsoletas** (dependían del scraper regional / panel de descubiertos). Ver notas en cada fase.
+
+---
+
 ## 1. Diagnóstico del sistema actual
 
 ### 1.1 Sensores existentes
@@ -24,7 +47,7 @@
 | Sensor | Fuente | Mecanismo | Score base | Cron |
 |---|---|---|---|---|
 | `llm_semantic` | `oposiciones.seguimiento_url` | fetch HTML → cleanHtml → Claude Haiku → entidades estructuradas | 40 | L-V 10:00 UTC |
-| `regional_scan` | `detection_sources` (167 fuentes activas) | fetch HTML listado → Haiku → títulos C1/C2 nuevos | 50 | L-V 9:30 UTC |
+| ~~`regional_scan`~~ **RETIRADO 01/06** | ~~`detection_sources` (167 fuentes)~~ | ~~fetch HTML listado → Haiku → títulos C1/C2~~ — 56% error, falsos positivos → descubrimiento on-demand por Claude (ver decisión arriba) | — | — |
 | `timeline_silence` | `convocatoria_hitos` + `oposiciones` | hitos `current` con fecha pasada +3 días | 70 | Diario 7:00 UTC |
 | `generic_source` | `generic_source_checks` (6 fuentes: DGFP, INAP, Moncloa, MTDFP, Función Pública, Transparencia) | hash + LLM filtro | 50 | Diario |
 | `hash_change` (legacy) | `oposiciones.seguimiento_url` | SHA-256 sobre cleanHtml | 30 | L-V 9:00 UTC |
@@ -201,6 +224,28 @@ CREATE TABLE discovered_process_milestones (
 
 **Por qué NO automatizar la decisión sensor→discovered_processes:** los sensores tienen falsos positivos (LLM mal sumó plazas Badajoz, atribuyó BOE-Fuenlabrada a GC, hash changes sin info, prensa genérica La Moncloa). Inyectar todo automáticamente ensucia el inventario. La capa de juicio (Claude con OK de Manuel) es la garantía de calidad. La tabla de señales sigue siendo la cola de revisión.
 
+### 2.4 Estado real C2 al cierre 01/06/2026
+
+Auditoría del subgrupo C2 (objetivo de cobertura prioritario):
+
+- **31 oposiciones C2 activas** en `oposiciones`, todas con `seguimiento_url`.
+- **22 completas** (estado + BOC + plazas + oep_fecha) tras esta sesión (+4 hoy).
+- **6 con campos `null` que son correctos** según la fase del proceso (no son cabos): Andalucía y P. Vasco con BOC null por estado `oep_aprobada` (convocatoria aún no publicada), Correos con todo null por estado `sin_oep` (no hay proceso).
+- **3 cabos URL/datos no cerrables sin investigación humana** (Sprint URLs):
+  - TCAE Murcia oep_fecha — URL `murciasalud.es/oposicionsms` genérica; buscar resolución TCAE en BORM.
+  - TCAE Canarias BOC + oep_fecha — página SCS genérica; buscar BOC Canarias resolución TCAE.
+  - TCAE Galicia BOC + oep_fecha — `fides.sergas.es` requiere navegación interactiva; buscar DOG Galicia resolución TCAE SERGAS.
+- **1 cabo confirmado no localizable web**: Badajoz `oep_fecha` no aparece en bases PDF (sí está, vacía, en Decreto Alcaldía previo no accesible públicamente). Si se necesita, requiere contacto RRHH Ayto Badajoz.
+
+**Cobertura de C2 NO incluidas en BD aún** (estimación honesta):
+- 17 CCAA × ~3-5 cuerpos C2 ≈ 50-85 perfiles (mayoría salud ya cubierta).
+- 41 diputaciones × cuerpos C2 ≈ 80-200 (cubiertas pocas: Cádiz, León, Zaragoza, Palencia detectada).
+- Ayuntamientos >50k habitantes × 1-3 C2 ≈ 150-450 (cubiertos solo Badajoz, Murcia, Valencia).
+- Estado: cubierto.
+- **Total potencial: 300-700 C2 en España; en BD tenemos 31 (4-10%)**.
+
+El catálogo crecerá vía Fase 3 (50 BOPs como `detection_sources`) + Fase 4 (detector OEPs anuales): cada vez que el cron detecte un proceso de cuerpo C2 ausente, llega a `discovered_processes` y Manuel decide promoverlo.
+
 ### 2.3 Estrategia de redundancia (clave para 95% cobertura)
 
 Cada oposición debe estar cubierta por **≥2 sensores ortogonales**, de forma que un único punto de fallo no la deje a oscuras.
@@ -270,9 +315,11 @@ Recomendación robusta inicial: **ScrapingBee** para validar valor en 1-2 semana
 
 **Criterio de éxito:** el PDF de Ayto Badajoz se monitoriza; cuando se actualice (extracto BOE + apertura inscripción), genera señal con score ≥70.
 
-### Fase 3 — BOPs provinciales como `detection_sources` (1 semana)
+### Fase 3 — BOPs provinciales como `detection_sources` (1 semana) — ⛔ OBSOLETA (01/06/2026)
 
-**Objetivo:** cubrir los 50 BOPs provinciales para detectar convocatorias y OEPs municipales que hoy se nos escapan.
+> Dependía del cron `regional_scan`, retirado el 01/06 (ver decisión arriba). Los BOPs provinciales / convocatorias municipales pasan a descubrirse **on-demand por Claude** cuando haya demanda real, no por scraping masivo de 50 fuentes.
+
+**Objetivo (histórico):** cubrir los 50 BOPs provinciales para detectar convocatorias y OEPs municipales que hoy se nos escapan.
 
 **Tareas:**
 1. Identificar el patrón de URL/RSS de cada BOP (varios usan estructura igual: `dip-XXX.es/bop/...`).
@@ -311,9 +358,11 @@ Recomendación robusta inicial: **ScrapingBee** para validar valor en 1-2 semana
 
 **Criterio de éxito:** extracto BOE Ayto Badajoz Aux Admin (cuando se publique) genera señal en <24h.
 
-### Fase 6 — Panel admin `/admin/discovered-processes` (2 días)
+### Fase 6 — Panel admin `/admin/discovered-processes` (2 días) — ⛔ DESCARTADA (01/06/2026)
 
-**Objetivo:** Manuel revisa los procesos descubiertos y decide cuáles promover a oposiciones Vence.
+> Manuel descarta el panel propio. En su lugar: **sub-badge morado en el badge de OEPs existente** (estilo Feedbacks, por tipo) que cuenta `discovered_processes` activos como simple aviso. El triaje lo hace Claude por SQL bajo demanda ("revisa las señales"), no una UI dedicada. Implementado en `app/admin/layout.tsx` + `getPendingSignalsCount` (commit cf90a0ee).
+
+**Objetivo (histórico):** Manuel revisa los procesos descubiertos y decide cuáles promover a oposiciones Vence.
 
 **UI:**
 - Lista filtrable por (region, subgrupo, año, estado_proceso, manuel_status).
@@ -396,7 +445,7 @@ Al cerrar las 7 fases:
 
 - **Manual de seguimiento actual:** `docs/maintenance/oeps-convocatorias-seguimiento.md`
 - **Canary y simulaciones:** `docs/roadmap/canary-y-simulaciones.md`
-- **Crons OEP existentes:** `backend/src/detect-oep-llm/`, `backend/src/detect-regional-oeps/`, `backend/src/detect-timeline-silence/`, `backend/src/detect-generic-sources/`, `backend/src/check-seguimiento/`
+- **Crons OEP existentes:** `backend/src/detect-oep-llm/`, `backend/src/detect-timeline-silence/`, `backend/src/detect-generic-sources/`, `backend/src/check-seguimiento/` (`detect-regional-oeps/` **borrado 01/06/2026**)
 - **LLM service:** `backend/src/oep-signals/oep-signals-llm.service.ts`
 - **Queries:** `backend/src/oep-signals/oep-signals-queries.service.ts`
 - **Panel admin:** `/admin/oep-signals` (existe), `/admin/oep-coverage` (NUEVO en Fase 6)
