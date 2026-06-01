@@ -8,6 +8,7 @@ import { useOposicion } from '@/contexts/OposicionContext'
 import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { matchesOposicion } from '@/lib/utils/searchOposicion'
+import { useOposicionesCatalog } from '@/lib/hooks/useOposicionesCatalog'
 
 // Orden de las agrupaciones por administración
 const ADMIN_ORDER = [
@@ -35,6 +36,9 @@ export default function OposicionGuard() {
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Catálogo desde BD (fallback al array estático para SSR + zero downtime).
+  const catalog = useOposicionesCatalog(OFFICIAL_OPOSICIONES)
+
   // Lookup de aliases desde lib/config/oposiciones.ts (single source of truth)
   const aliasesById = useMemo(
     () => Object.fromEntries(OPOSICIONES.map(o => [o.id, o.aliases || []])),
@@ -44,10 +48,10 @@ export default function OposicionGuard() {
   const filtered = useMemo(() => {
     const term = search.trim()
     const list: OposicionItem[] = term
-      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) =>
+      ? catalog.filter((o: OposicionItem) =>
           matchesOposicion({ ...o, aliases: aliasesById[o.id] }, term)
         )
-      : OFFICIAL_OPOSICIONES
+      : catalog
 
     // Agrupar por administración
     const groups: Record<string, OposicionItem[]> = {}
@@ -71,7 +75,7 @@ export default function OposicionGuard() {
     }
 
     return sorted
-  }, [search, aliasesById])
+  }, [search, aliasesById, catalog])
 
   const handleSelect = async (oposicionId: string | null) => {
     setSaving(true)

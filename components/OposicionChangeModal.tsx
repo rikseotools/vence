@@ -9,6 +9,7 @@ import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { getSupabaseClient } from '@/lib/supabase'
 import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
 import { matchesOposicion } from '@/lib/utils/searchOposicion'
+import { useOposicionesCatalog } from '@/lib/hooks/useOposicionesCatalog'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 
 const supabase = getSupabaseClient()
@@ -70,6 +71,9 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
     return () => window.removeEventListener('keydown', handleKey)
   }, [open, onClose])
 
+  // Catálogo desde BD (fallback al array estático para SSR + zero downtime).
+  const catalog = useOposicionesCatalog(OFFICIAL_OPOSICIONES)
+
   // Lookup de aliases desde el config central de oposiciones.ts (single source of truth)
   const aliasesById = useMemo(
     () => Object.fromEntries(OPOSICIONES.map(o => [o.id, o.aliases || []])),
@@ -79,10 +83,10 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
   const filtered = useMemo(() => {
     const term = search.trim()
     const list: OposicionItem[] = term
-      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) =>
+      ? catalog.filter((o: OposicionItem) =>
           matchesOposicion({ ...o, aliases: aliasesById[o.id] }, term)
         )
-      : OFFICIAL_OPOSICIONES
+      : catalog
 
     const groups: Record<string, OposicionItem[]> = {}
     for (const op of list) {
@@ -103,7 +107,7 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
     }
 
     return sorted
-  }, [search, aliasesById])
+  }, [search, aliasesById, catalog])
 
   const handleSelect = async (oposicionId: string) => {
     // Modo formulario: solo notificar la selección

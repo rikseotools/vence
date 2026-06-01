@@ -23,7 +23,9 @@ import { PoolCapacitySamplerService } from './pool-capacity-sampler.service';
  * deja ceguera operativa.
  *
  * Jitter pequeño (0-3s) — no es necesario más con cron 1×/min porque no
- * coincide con los crones */5min.
+ * coincide con los crones cada 5 min (la expresión "* / 5 * * * *", sin
+ * espacios, cerraría este JSDoc prematuramente, por eso usamos lenguaje
+ * natural aquí).
  */
 @Injectable()
 export class PoolCapacitySamplerCron {

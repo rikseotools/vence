@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
 import { OPOSICIONES } from '../lib/config/oposiciones'
 import { matchesOposicion } from '../lib/utils/searchOposicion'
+import { useOposicionesCatalog } from '../lib/hooks/useOposicionesCatalog'
 
 // Set de ids de oposiciones ya implementadas (con temario/tests reales).
 // Se usa para marcar las aspiracionales con badge "🔜 En elaboración".
@@ -1762,10 +1763,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
   }
 
   // Filtrar y reordenar oposiciones por búsqueda y región detectada.
+  // Catálogo desde BD (fallback al array estático para SSR + zero downtime).
+  // Sprint B del roadmap oposiciones-coverage-level-y-promocion-automatica.md:
+  // hook con triple cache (memoria → localStorage → fallback estático).
+  const catalog = useOposicionesCatalog(OFFICIAL_OPOSICIONES)
+
   // Filtrado central en lib/utils/searchOposicion.ts (compartido con
   // OposicionChangeModal y OposicionGuard). Aliases viven en lib/config/oposiciones.ts.
   const filteredOposiciones = useMemo(() => {
-    const sorted = sortByRegionPriority(OFFICIAL_OPOSICIONES, detectedRegion)
+    const sorted = sortByRegionPriority(catalog, detectedRegion)
     const term = searchTerm.trim()
     if (!term) return { official: sorted, custom: customOposiciones }
 
@@ -1780,7 +1786,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
         matchesOposicion(op, term)
       ),
     }
-  }, [searchTerm, customOposiciones, detectedRegion])
+  }, [searchTerm, customOposiciones, detectedRegion, catalog])
 
   // Seleccionar oposición oficial
   const handleSelectOfficial = (oposicion: OposicionItem) => {

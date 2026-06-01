@@ -77,18 +77,94 @@ Cada salto registra timestamp en una nueva tabla `coverage_history(oposicion_id,
 - `monitorizada` si tiene `convocatoria_fecha` o `exam_date` o `plazas_libres`.
 - `catalogada` resto.
 
-### Sprint B — Eliminar `OFFICIAL_OPOSICIONES` hardcoded (estimado 2h)
+### Sprint B — Endpoint catálogo + cache multi-capa + refactor frontend (estimado 3-4h)
 
-**Objetivo:** la BD es la única fuente de verdad. El componente `OnboardingModal` fetcha en vez de tener array hardcoded.
+**Objetivo:** la BD es la única fuente de verdad, accesible desde frontend con latencia <50ms en el caso 99% (cache hit) gracias a una estrategia de cache profesional desde el primer momento.
+
+**Estrategia de cache multi-capa (orden de consulta del request):**
+
+1. **Cliente — React Cache + localStorage** (Onboarding, Selector perfil):
+   - SWR (`useSWR`) con `revalidateOnFocus=false` + `dedupingInterval=600s` (10 min).
+   - localStorage como fallback offline: si la primera carga falla, mostrar el último catálogo conocido.
+   - El catálogo no cambia frecuentemente — caché agresivo en cliente sin penalizar UX.
+
+2. **Vercel Edge CDN — Next.js ISR**:
+   - `export const revalidate = 600` (10 min) en el endpoint.
+   - Tag de invalidación: `revalidateTag('oposiciones-catalog')`.
+   - Cuando una oposición cambia coverage_level / is_active / nombre / slug, el cron `auto-promote-coverage` (Sprint D) o el endpoint admin invalidan el tag.
+
+3. **Redis Upstash (ya en uso en el proyecto)**:
+   - Key: `oposiciones:catalog:v1`.
+   - TTL: 600s (10 min) — alineado con Vercel ISR.
+   - Pipeline de invalidación: cualquier UPDATE/INSERT en `oposiciones` que pase por la API (no SQL manual) borra esta key. Para SQL manual, el cron de invalidación nocturno la borra como red de seguridad.
+
+4. **PostgreSQL — índices y query simple**:
+   - Índice compuesto `idx_oposiciones_catalog (coverage_level, categoria, administracion)` para el filtro principal.
+   - Índice `idx_oposiciones_demand_score DESC` para ordenar por demanda.
+   - La query es SELECT plano sin JOINs. <50ms en p99.
+
+5. **Backup — Materialized view** (futuro, solo si la query base supera 100ms):
+   - `mv_oposiciones_catalog` refrescada cada hora.
+   - Sin necesidad inicial; añadir si los datos crecen >500 filas y la latencia BD se va.
 
 **Tareas:**
-1. Crear endpoint `/api/oposiciones/catalog` que devuelve TODAS las oposiciones con `coverage_level >= 'catalogada'`, paginado.
-2. Refactor `OnboardingModal.tsx`: borrar array `OFFICIAL_OPOSICIONES`, llamar al endpoint.
-3. Refactor `app/perfil/page.tsx` igual.
-4. Refactor `lib/utils/searchOposicion.ts` para trabajar con datos del endpoint.
-5. Tests adaptados.
 
-**Criterio de éxito:** búsqueda de oposición en onboarding sigue funcionando idéntica. Sin diff visible para el usuario.
+1. Migración SQL `YYYYMMDD_oposiciones_indices_catalog.sql`:
+   - CREATE INDEX CONCURRENTLY `idx_oposiciones_catalog` (coverage_level, categoria, administracion).
+   - CREATE INDEX CONCURRENTLY `idx_oposiciones_demand_score`.
+   - CREATE INDEX CONCURRENTLY `idx_oposiciones_slug` (si no existe).
+
+2. Endpoint `app/api/oposiciones/catalog/route.ts`:
+   - `GET /api/oposiciones/catalog?categoria=C2&search=madrid&limit=50` (filtros opcionales).
+   - Pipeline: Redis Upstash → query Drizzle → cachear en Redis → respuesta con headers `Cache-Control: public, s-maxage=600, stale-while-revalidate=86400`.
+   - `export const revalidate = 600` para Next.js ISR.
+   - Devuelve campos mínimos para listado: `id, slug, nombre, short_name, categoria, administracion, icon, coverage_level, is_active, badge_emoji, demand_score`.
+
+3. Endpoint `app/api/oposiciones/catalog/[slug]/route.ts`:
+   - `GET /api/oposiciones/catalog/<slug>` para detalle individual.
+   - Devuelve TODO lo del registro + datos derivados (URL de seguimiento, fase, etc.).
+   - Cache también por slug con key `oposiciones:slug:<slug>:v1` TTL 600s.
+
+4. Helper `lib/utils/oposiciones-cache.ts`:
+   - `getCatalog(opts?)` — fetcha del endpoint con SWR en cliente o desde Redis directo en server.
+   - `invalidateCatalog()` — llama a `revalidateTag` + `redis.del`.
+   - `searchOposicion(term, catalog)` — refactor de `matchesOposicion` actual, agnóstico de la fuente.
+
+5. Refactor `components/OnboardingModal.tsx`:
+   - Borrar array `OFFICIAL_OPOSICIONES`.
+   - Reemplazar con `const { data: oposiciones } = useSWR('/api/oposiciones/catalog', fetcher, { dedupingInterval: 600_000 })`.
+   - Mostrar skeleton durante primera carga (raro porque cache cliente lo evita).
+   - Badge visual según `coverage_level` (catalogada, monitorizada, etc.).
+
+6. Refactor `app/perfil/page.tsx`:
+   - Eliminar array `oposiciones` hardcoded del selector.
+   - Fetchar del endpoint igual que el modal.
+
+7. Refactor `lib/utils/searchOposicion.ts`:
+   - Mantener la función `matchesOposicion(o, term)` igual — recibe oposición + término.
+   - El cambio es solo de dónde viene el array, no en la función.
+   - Asegurar que sigue siendo agnóstica de la fuente.
+
+8. Cache invalidation hooks:
+   - Función `notifyOposicionChanged(slug)` que se llama desde cualquier UPDATE/INSERT a `oposiciones`.
+   - Llama a `revalidateTag('oposiciones-catalog')` + `redis.del('oposiciones:catalog:v1', 'oposiciones:slug:<slug>:v1')`.
+   - Documentar en el manual `crear-nueva-oposicion.md` que tras INSERT/UPDATE hay que llamar a esta función.
+
+9. Tests:
+   - Unitarios del endpoint con mock de Redis.
+   - Integración: crear oposición → invalidar → endpoint devuelve la nueva.
+   - E2E del onboarding modal mostrando las 100 catalogadas nuevas con badge.
+
+**Criterio de éxito:**
+- Onboarding y perfil siguen funcionando idénticos en UX.
+- 100 catalogadas nuevas visibles en el modal con badge "📋 Catalogada".
+- Latencia p95 del endpoint < 50ms (Redis hit) o < 150ms (BD fallback).
+- 0 array hardcoded de oposiciones en el código TypeScript.
+
+**Métricas a observar tras Sprint B:**
+- Hit ratio del endpoint en Redis (target >90%).
+- Latencia p50/p95/p99 del endpoint.
+- Errores en cache invalidation (deben ser 0).
 
 ### Sprint C — Investigación masiva de `seguimiento_url` (estimado 4-6h, distribuible)
 
