@@ -9,6 +9,7 @@ import { randomUUID } from 'crypto'
 import * as Sentry from '@sentry/nextjs'
 import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
 import { emit } from '@/lib/observability/emit'
+import { extractUserIdFromRequest } from '@/lib/api/extractUserId'
 
 /**
  * Sampling rate para eventos `request_completed` 2xx/3xx (Bloque 5
@@ -253,10 +254,12 @@ export function withErrorLogging(
         // request_completed → cross-referenciable con VLE).
         const sanitizedBody = body ? sanitizeRequestBody(body) : undefined
 
-        // userId: buscar en request body, luego en response body (device limit lo incluye ahí)
-        const resolvedUserId = (body?.userId as string)
-          || (responseBody?.userId as string)
-          || undefined
+        // userId: cascada body → responseBody → query param (ver extractUserId.ts).
+        // El último paso (query param) es crítico para GETs como /api/profile —
+        // sin él el log queda con user_id=NULL y los incidentes se diagnostican
+        // a ciegas (incidente 31/05/2026: 477 errores aparentemente "anónimos"
+        // eran 478 users reales).
+        const resolvedUserId = extractUserIdFromRequest(request, body, responseBody)
 
         const logInput = {
           id: errorRef,
@@ -310,7 +313,7 @@ export function withErrorLogging(
     } catch (error) {
       // Error no manejado — logar como critical y devolver 500 genérico
       const errorRef = randomUUID()
-      const throwUserId = (body?.userId as string) || undefined
+      const throwUserId = extractUserIdFromRequest(request, body, null)
       const throwErrorMessage = error instanceof Error ? error.message : String(error)
       const throwErrorStack = error instanceof Error ? error.stack : undefined
       const durationMs = Date.now() - startTime

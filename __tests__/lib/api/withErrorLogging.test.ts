@@ -47,9 +47,16 @@ describe('withErrorLogging — source code', () => {
     expect(content).toMatch(/request\?\.headers\?\.get\?\.\('user-agent'\)/)
   })
 
-  it('extrae questionId y userId del body', () => {
+  it('extrae questionId del body', () => {
     expect(content).toMatch(/body\?\.questionId/)
-    expect(content).toMatch(/body\?\.userId/)
+  })
+
+  it('extrae userId vía módulo extractUserIdFromRequest (no inline)', () => {
+    // El extractor de userId vive en lib/api/extractUserId.ts desde 2026-06-01
+    // para soportar la cascada body → responseBody → query param (fix del
+    // incidente 31/05 /api/profile donde GETs caían a user_id=NULL en el log).
+    expect(content).toMatch(/import\s*\{[^}]*extractUserIdFromRequest[^}]*\}\s*from\s*['"]@\/lib\/api\/extractUserId['"]/)
+    expect(content).toMatch(/extractUserIdFromRequest\(request, body,/)
   })
 
   it('4xx fire-and-forget, 5xx awaitable (política 2026-05-25)', () => {
