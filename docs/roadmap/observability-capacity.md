@@ -26,7 +26,7 @@ Los gaps son del manual `docs/runbooks/observability.md` §13 — están identif
 | # | Acción | Esfuerzo | Gap que cierra | Estado |
 |---|---|---|---|---|
 | 1 | Extraer `userId` del query param en `withErrorLogging` | 30 min | "¿cuántos users sufren?" | ✅ **APLICADA 01/06/2026** (commit `88808e6e`) |
-| 2 | Cron `*/1 min` muestreando `pg_stat_activity` → tabla `pool_capacity_samples` + KPI en `/admin/salud-sistema` | 2-3 h | "¿cuánto margen queda?" | ✅ **APLICADA 01/06/2026** (commit `ddd2824a`) — KPI en panel queda como follow-up |
+| 2 | Cron `*/1 min` muestreando `pg_stat_activity` → tabla `pool_capacity_samples` + 4 reglas alertas + endpoint admin + KPI en `/admin/salud-sistema` | 2-3 h | "¿cuánto margen queda?" | ✅ **COMPLETA 01/06/2026**. Sampler commit `ddd2824a`. Alertas + endpoint admin commit `01e9fbc8`. KPI card UI commit `e8f0af74` |
 | 3 | Snapshot diario de `pg_stat_statements` a tabla histórica + vista delta | 1-2 h | "¿esta query es lenta HOY o legacy?" | ✅ **APLICADA 01/06/2026** (commit `bef2f3e4`) |
 
 ---
@@ -74,9 +74,14 @@ Resultado actual al investigar: `user_id=NULL` en 100 % de los errores → diagn
 > 3. `backend_type='walsender'` (replication) corre durante días en `active` — filtro `is_client_backend` excluye walsender/autovacuum/etc para evitar falsos positivos sostenidos.
 > 4. CTE `WITH snap` no persiste entre statements plpgsql — query combinada con `counts` + `by_app_agg` en un único SELECT INTO.
 >
-> **Pendiente como follow-up** (no bloquea valor):
-> - KPI card "Capacidad pool" en `/admin/salud-sistema` con timeseries.
-> - Regla `POOL_CAPACITY_SUSTAINED_HIGH` en `alert-rules.ts` con cooldown 30 min.
+> **Resto de la pieza profesional aplicada el mismo día**:
+> - ✅ Endpoint admin `GET /api/admin/pool-capacity?window=15m|1h|6h|24h|7d&timeseries=true` (commit `01e9fbc8`).
+> - ✅ 4 reglas alertas granulares en `backend/src/alerts/alert-rules.ts` (commit `01e9fbc8`):
+>   - `RULE_POOL_IDLE_IN_TX_DETECTED` (critical, cooldown 30min) — Hipótesis B
+>   - `RULE_POOL_HUNG_CLIENTREAD_DETECTED` (critical, cooldown 30min) — Hipótesis A
+>   - `RULE_POOL_FRONTEND_SATURATION_HIGH` (warn, cooldown 15min) — saturación sostenida
+>   - `RULE_POOL_SAMPLER_STALE` (critical, cooldown 60min) — meta-alerta cron muerto
+> - ✅ KPI card "Capacidad pool BD" en `/admin/salud-sistema` como 5º indicador (commit `e8f0af74`). Status verde/ámbar/rojo + saturación pico + distribución samples + banderas rojas detalladas + degradación elegante si endpoint no responde.
 
 ### Qué hay hoy
 

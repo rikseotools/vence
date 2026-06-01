@@ -333,6 +333,20 @@ Commits: `438c735d` (34 user-facing files) + `7c79202e` (avatar-settings + verif
 
 **Criterio de éxito**: 7 días sin incidentes en producción 100% con pooler propio.
 
+### Fase 6.6 — IaC sync ✅ **APLICADA 2026-06-01 ~11:00 UTC**
+
+Tras aplicar Fase 6 HA via `aws cli` (recursos creados a mano), sincronización al estado declarativo en Terraform con state remoto:
+
+- ✅ State migrado de local `terraform.tfstate` a S3 + DynamoDB lock (`vence-terraform-state-349744179687` + `vence-terraform-locks`). Motivación: incidente del mismo día con sesión paralela revertiendo config del target group por state local divergente. Ver [[project_terraform_iac_state_remoto_01_06]] en memoria.
+- ✅ Archivo nuevo `backend/infra/pooler-ha.tf` declara 8 recursos: 2 × `aws_lightsail_instance` + `aws_lb` (NLB) + `aws_lb_target_group` (TCP:6543) + 2 × `aws_lb_target_group_attachment` + `aws_lb_listener`. Importados al state remoto con `terraform import`.
+- ✅ `backend/infra/route53.tf` actualizado: `aws_route53_record.pooler` ahora es ALIAS al NLB con `EvaluateTargetHealth=true` (era A directo a IP de VM-1).
+- ✅ `terraform plan` post-sync = "No changes. Your infrastructure matches the configuration."
+- ⚠️ Fuera de Terraform (documentado en `pooler-ha.tf`):
+  - `aws_lightsail_static_ip`: el provider AWS no soporta `terraform import` para este recurso.
+  - VPC peering Lightsail↔default: `aws lightsail peer-vpc` es comando idempotente sin recurso TF equivalente.
+
+Commits: `43c40263` (frontend.tf + route53.tf con HealthCheckPath + ALIAS), `5148e915` (pooler-ha.tf con HA).
+
 ### Fase 6 — HA (Alta Disponibilidad) ✅ **APLICADA 2026-06-01 ~09:42 UTC**
 
 **Resultado verificado en producción**:
