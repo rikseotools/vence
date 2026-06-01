@@ -24,13 +24,35 @@ FROM public.ecr.aws/lambda/nodejs:22
 
 # Variables que requiere @sparticuz/chromium en runtime.
 ENV FONTCONFIG_PATH=/var/task/fonts
-ENV PLAYWRIGHT_BROWSERS_PATH=/var/task/node_modules/@sparticuz/chromium/bin
+
+# Shared libraries del sistema que Chromium headless requiere y que la imagen
+# base de Lambda Node22 NO trae. Sin ellas, Chromium arranca pero crashea al
+# intentar renderizar y el frame se "detacha" (error típico).
+# Lista validada para @sparticuz/chromium 131 en AL2023.
+RUN dnf install -y \
+    nss \
+    nspr \
+    atk \
+    at-spi2-atk \
+    cups-libs \
+    libdrm \
+    libxkbcommon \
+    libXcomposite \
+    libXdamage \
+    libXfixes \
+    libXrandr \
+    mesa-libgbm \
+    alsa-lib \
+    pango \
+    cairo \
+    libxshmfence \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
 
 # Workdir Lambda runtime
 WORKDIR /var/task
 
-# Instalar deps. npm ci para reproducibilidad si hay package-lock.json;
-# fallback a npm install si no.
+# Instalar deps Node. npm install (no ci porque no commiteamos package-lock).
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 
