@@ -1,10 +1,11 @@
 // app/admin/salud-sistema/page.tsx
-// Panel admin de salud del sistema: 4 indicadores con semáforo.
+// Panel admin de salud del sistema: 5 indicadores con semáforo.
 //
 //   1) Errores 5xx últimas 24h
 //   2) Drift de contadores materializados últimas 24h
 //   3) Latencia INSERT a test_questions (proxy_p95 desde pg_stat_statements)
 //   4) Salud del cron de drift (¿corrió en últimas 36h?)
+//   5) Capacidad pool BD — leading indicator (sampler 1×/min desde 2026-06-01)
 //
 // El runbook docs/runbooks/health-check.md explica qué hacer cuando un
 // indicador se pone ámbar o rojo.
@@ -14,6 +15,44 @@ import { useState, useEffect, useCallback } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type Status = 'green' | 'amber' | 'red' | 'unknown'
+
+// Capacidad pool BD (endpoint /api/admin/pool-capacity desde 2026-06-01).
+// Leading indicator: la tabla pool_capacity_samples se llena cada 1 min con
+// el estado del pool postgres. Si vemos saturación SOSTENIDA antes del 5xx,
+// el sistema avisa por aquí (y por las 4 alertas asociadas en alert-rules.ts).
+interface PoolCapacityResponse {
+  success: boolean
+  generatedAt: string
+  window: string
+  currentStatus: 'green' | 'amber' | 'red' | null
+  currentSample: {
+    sample_at: string
+    total_conns: number
+    active_conns: number
+    idle_in_tx_over_5s: number
+    long_active_over_5s: number
+    hung_clientread_over_10s: number
+    frontend_active_conns: number
+    ageSec: number
+  } | null
+  aggregate: {
+    status: 'green' | 'amber' | 'red'
+    samplesCount: number
+    redCount: number
+    amberCount: number
+    greenCount: number
+    maxActiveConns: number
+    maxFrontendActive: number
+    totalIdleInTxFlags: number
+    totalHungCrFlags: number
+    peakFrontendSaturationPct: number
+  }
+  samplerHealth: {
+    lastSampleAt: string | null
+    ageSec: number | null
+    stale: boolean
+  }
+}
 
 interface SystemHealthResponse {
   success: boolean
@@ -78,6 +117,7 @@ const STATUS_LABEL: Record<Status, string> = {
 
 export default function SaludSistemaPage() {
   const [data, setData] = useState<SystemHealthResponse | null>(null)
+  const [pool, setPool] = useState<PoolCapacityResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -86,10 +126,32 @@ export default function SaludSistemaPage() {
     setError(null)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch('/api/admin/system-health', { headers })
-      const json = (await res.json()) as SystemHealthResponse
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
-      setData(json)
+      // Paralelo: system-health (4 indicadores existentes) + pool-capacity
+      // (5º indicador). Si pool-capacity falla, el panel sigue mostrando los
+      // 4 primeros — degradación elegante.
+      const [healthRes, poolRes] = await Promise.allSettled([
+        fetch('/api/admin/system-health', { headers }),
+        fetch('/api/admin/pool-capacity?window=1h', { headers }),
+      ])
+
+      if (healthRes.status === 'fulfilled') {
+        const json = (await healthRes.value.json()) as SystemHealthResponse
+        if (!healthRes.value.ok) throw new Error(json.error || `HTTP ${healthRes.value.status}`)
+        setData(json)
+      } else {
+        throw new Error(healthRes.reason instanceof Error ? healthRes.reason.message : 'system-health failed')
+      }
+
+      if (poolRes.status === 'fulfilled' && poolRes.value.ok) {
+        const poolJson = (await poolRes.value.json()) as PoolCapacityResponse
+        setPool(poolJson)
+      } else {
+        // pool-capacity opcional — si falla, indicador queda en "unknown" y
+        // el resto del panel funciona. Comportamiento desde 2026-06-01:
+        // mientras el endpoint no esté desplegado o haya error, mostramos el
+        // resto sin romper el panel.
+        setPool(null)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error desconocido')
     } finally {
@@ -232,10 +294,108 @@ export default function SaludSistemaPage() {
                 Workflow: <code>.github/workflows/check-stats-drift.yml</code> · 04:00 UTC diario
               </p>
             </IndicatorCard>
+
+            {/* 5) Capacidad pool BD — leading indicator (Acción 2 observability-capacity) */}
+            <PoolCapacityCard pool={pool} />
           </div>
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * Card para el 5º indicador "Capacidad pool BD".
+ *
+ * Status (calculado por el endpoint sobre los samples de la última 1h):
+ *   - red: ≥1 muestra con idle-in-tx>5s o hung_clientread>10s o frontend_active≥13
+ *   - amber: ≥3 muestras AMBER (long_active>5s sostenido, etc.)
+ *   - green: todo limpio
+ *   - unknown: endpoint no responde / sampler muerto (samplerHealth.stale=true)
+ *
+ * Métricas mostradas:
+ *   - "ageSec" del último sample: si >180s = sampler muerto (RED forzado)
+ *   - peakFrontendSaturationPct: %% del techo del pool (2 tasks × max:8 = 16)
+ *   - Contadores agregados de banderas rojas en última hora
+ */
+function PoolCapacityCard({ pool }: { pool: PoolCapacityResponse | null }) {
+  if (!pool) {
+    return (
+      <IndicatorCard
+        title="Capacidad pool BD"
+        status="unknown"
+        metric="—"
+        hint="Endpoint /api/admin/pool-capacity no responde (¿cron pool-capacity-sampler muerto?)"
+      >
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+          Sin datos del sampler. Investigar:{' '}
+          <code className="text-xs">SELECT MAX(sample_at) FROM pool_capacity_samples;</code>
+        </p>
+      </IndicatorCard>
+    )
+  }
+
+  // Si el sampler está stale, override a 'red' independientemente del status
+  // calculado (lo más prudente — sin datos no podemos saber si hay problema).
+  const effectiveStatus: Status = pool.samplerHealth.stale
+    ? 'red'
+    : (pool.currentStatus ?? 'unknown')
+
+  const metric =
+    pool.currentSample != null
+      ? `${pool.currentSample.frontend_active_conns}/16 conns frontend`
+      : '—'
+
+  const sat = pool.aggregate.peakFrontendSaturationPct
+  return (
+    <IndicatorCard
+      title="Capacidad pool BD (sampler 1×/min)"
+      status={effectiveStatus}
+      metric={metric}
+      hint={`Pico saturación últ. 1h: ${sat}% (techo: 2 tasks × max:8 = 16 conns)`}
+    >
+      {pool.samplerHealth.stale ? (
+        <p className="text-xs text-red-700 dark:text-red-300 mt-2 font-medium">
+          ⚠️ Sampler stale: última muestra hace{' '}
+          {pool.samplerHealth.ageSec != null ? `${pool.samplerHealth.ageSec}s` : 'nunca'}
+          . Esperado &lt; 180s. Cron pool-capacity-sampler probablemente muerto.
+        </p>
+      ) : (
+        <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+          <div>
+            <span className="font-medium">Última muestra:</span>{' '}
+            hace {pool.currentSample?.ageSec ?? '?'}s · {pool.aggregate.samplesCount} samples en 1h
+          </div>
+          <div>
+            <span className="font-medium">Distribución 1h:</span>{' '}
+            <span className="text-green-700 dark:text-green-400">{pool.aggregate.greenCount} 🟢</span>
+            {pool.aggregate.amberCount > 0 && (
+              <>
+                {' · '}
+                <span className="text-yellow-700 dark:text-yellow-400">{pool.aggregate.amberCount} 🟡</span>
+              </>
+            )}
+            {pool.aggregate.redCount > 0 && (
+              <>
+                {' · '}
+                <span className="text-red-700 dark:text-red-400 font-bold">{pool.aggregate.redCount} 🔴</span>
+              </>
+            )}
+          </div>
+          {(pool.aggregate.totalIdleInTxFlags > 0 ||
+            pool.aggregate.totalHungCrFlags > 0) && (
+            <div className="text-red-700 dark:text-red-300">
+              ⚠️ Banderas rojas 1h: idle-in-tx={pool.aggregate.totalIdleInTxFlags} ·
+              hung-ClientRead={pool.aggregate.totalHungCrFlags}
+            </div>
+          )}
+        </div>
+      )}
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+        Roadmap: <code>docs/roadmap/observability-capacity.md</code> Acción 2.
+        Detalle SQL: <code>SELECT * FROM v_pool_capacity_last_15min;</code>
+      </p>
+    </IndicatorCard>
   )
 }
 
