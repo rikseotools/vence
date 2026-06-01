@@ -428,6 +428,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_badajoz',
+      label: 'Auxiliar Administrativo Ayto. Badajoz',
+      data: {
+        name: 'Auxiliar Administrativo Ayuntamiento de Badajoz',
+        slug: 'auxiliar-administrativo-ayuntamiento-badajoz',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_carm',
       label: 'Auxiliar Administrativo CARM (Murcia)',
       data: {
