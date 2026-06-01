@@ -15,7 +15,6 @@ import { SyncUqhV1BridgeModule } from './sync-uqh-v1-bridge/sync-uqh-v1-bridge.m
 import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
 import { AutoPromoteCoverageModule } from './auto-promote-coverage/auto-promote-coverage.module';
 import { RefreshMvOposicionesModule } from './refresh-mv-oposiciones/refresh-mv-oposiciones.module';
-import { NotifyCoverageUpgradesModule } from './notify-coverage-upgrades/notify-coverage-upgrades.module';
 import { AvatarRotationModule } from './avatar-rotation/avatar-rotation.module';
 import { CheckSeguimientoModule } from './check-seguimiento/check-seguimiento.module';
 import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
@@ -132,8 +131,6 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     AutoPromoteCoverageModule,
     // Sprint G.4 roadmap sprint-g-oposiciones-vs-convocatorias — cron cada 30 min.
     RefreshMvOposicionesModule,
-    // Sprint F roadmap oposiciones-coverage-level — newsletter diario 06:00 UTC.
-    NotifyCoverageUpgradesModule,
     // Crons — sub-etapa 1b tanda 2 (monitoreo + colas)
     CheckSeguimientoModule,
     ProcessOutboxModule,

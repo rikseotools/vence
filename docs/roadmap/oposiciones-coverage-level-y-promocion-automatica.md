@@ -204,24 +204,25 @@ Cada salto registra timestamp en una nueva tabla `coverage_history(oposicion_id,
 
 **Criterio de éxito:** Manuel puede ver de un vistazo qué oposiciones merecen atención prioritaria.
 
-### Sprint F — Alertas y newsletter automatizada (estimado 1-2h)
+### Sprint F — DESCARTADO (riesgo de spam)
 
-**Objetivo:** monetizar la detección. Cuando una `catalogada` sube de nivel, los usuarios con `target_oposicion = X` reciben aviso.
+**Estado:** ❌ Descartado por Manuel el 01/06/2026 tras smoke E2E.
 
-**Tareas:**
-1. Cron `notify-coverage-upgrades`: lee `coverage_history` últimas 24h, agrupa por oposición, envía email a `user_profiles.target_oposicion = slug`.
-2. Plantilla email: "Tu oposición X ha pasado de Y a Z. Empieza a estudiar aquí: <link>".
-3. Para saltos a `con_landing` o `full`: incluye newsletter con highlight de funcionalidad nueva.
-4. Bell campana en la app.
+**Razón:** el cron `notify-coverage-upgrades` envía emails masivos a users con `target_oposicion = slug` cada vez que una oposición sube de nivel. Riesgo alto de percepción como spam (un user con `auxiliar_administrativo_madrid` puede recibir varios emails al año aunque ya esté usando la app). Manuel: "no es una funcion que me interese y puede provocar spam".
 
-**Criterio de éxito:** primera notificación enviada cuando una `monitorizada` sube a `con_temario`.
+**Decisión:** las promociones de `coverage_level` (Sprint D) se mantienen — Manuel las ve en `/admin` y decide manualmente si comunicar. Sin envío automático a users.
+
+**Si en el futuro se quiere rescatar:** el código eliminado vive en commit anterior al de descarte. Se requeriría:
+- Flag `DRY_RUN` por defecto.
+- Frecuencia max semanal por user (deduplicación cross-oposiciones).
+- Doble opt-in explícito en preferencias de email.
+- Borrador del email enviado siempre a Manuel para OK antes del envío masivo.
 
 ## 4. Métricas de éxito al cerrar las 6 fases
 
 - Cobertura: ≥95% de las oposiciones C1+C2 conocidas en España presentes en BD.
 - Detección: latencia mediana <24h entre publicación oficial y señal generada.
 - Auto-promoción: ≥40% de los saltos de nivel ocurren sin intervención humana.
-- Conversión: ≥10% de usuarios con `target_oposicion=X` clican el email cuando su oposición sube a `con_temario`.
 - Frontend honesto: 0 usuarios en encuestas reportan "no entiendo qué oposiciones puedo estudiar y cuáles no".
 
 ## 5. Conexión con roadmaps relacionados
@@ -237,7 +238,7 @@ Cada salto registra timestamp en una nueva tabla `coverage_history(oposicion_id,
 - Sprint B: ¿endpoint `/api/oposiciones/catalog` cacheado en Redis o regenerado cada N min? Decisión inicial: cachear Vercel ISR 1h. Subir a Redis si latencia >300ms p95.
 - Sprint C: ¿WebSearch para cada URL una a una o batch + LLM con prompt "lista 50 BOP URLs"? Inicial: batch por administración type.
 - Sprint D: ¿el cron envía email al admin antes de auto-aplicar el salto, o aplica y notifica? Para `catalogada → monitorizada` y `monitorizada → con_temario`: aplica directo. Para `con_landing → full`: requiere humano (no auto).
-- Sprint F: ¿qué umbral de demanda dispara newsletter? Inicial: ≥10 usuarios con `target_oposicion=X`.
+- Sprint F: descartado, ver §3 Sprint F.
 
 ## 7. Plan de salida (rollback)
 
@@ -248,7 +249,7 @@ Cada sprint es reversible:
 - Sprint C: solo añade datos a BD. Para rollback: UPDATE seguimiento_url = NULL WHERE coverage_level = 'catalogada'.
 - Sprint D: parar cron. Las filas `coverage_history` no se borran.
 - Sprint E: revert components. La data BD intacta.
-- Sprint F: parar cron. Emails enviados no se rebotan.
+- Sprint F: descartado, ya no aplica.
 
 ## 8. Referencias
 
