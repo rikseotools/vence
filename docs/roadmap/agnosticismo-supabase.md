@@ -157,7 +157,9 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 #### Inventario de archivos con `supabase.from()` (10 archivos, **~70 usos reales** — actualizado 27/05/2026 15:00 CEST)
 
-> ⚠️ El recuento inicial en este roadmap subestimaba (contaba solo líneas que matcheaban, no usos por línea). Recuento real corregido: 70 usos en 10 archivos. Tras 2 migrados hoy quedan 8 archivos con ~67 usos.
+> 🔴 **RE-AUDITORÍA 2026-06-01**: la cifra de "10 archivos" era SOLO el subconjunto del módulo admin/feedback auditado el 27/05. El recuento real en **toda la app** es **92 ficheros** con `.from('tabla')` REST (excluyendo los `.from(tablaDrizzle)` legítimos). Top por volumen: `stripe/webhook` (31), `chat/domains/search/queries` (22), `admin/fraudes` (14), `topic-review/verify` (14), `ai/create-test` (12), múltiples SSR (`procedimientoAdministrativoSSR`, `ley39SSR`, `constitucionSSR`) y crons. **Implicación**: agnosticar la BD para migrar a RDS es un programa de **1-2 sprints concentrados** (mayoría server-side, riesgo bajo) o meses en strangler-fig — NO una tarea de sesión. Auth (Fase 4) es bloqueador aparte para dejar Supabase del todo.
+
+> ⚠️ El recuento inicial en este roadmap subestimaba (contaba solo líneas que matcheaban, no usos por línea). Recuento real corregido: 70 usos en 10 archivos (módulo admin). Tras 2 migrados quedan 8 archivos con ~67 usos en ese módulo.
 
 | # | Archivo | Usos | Notas |
 |---|---|---|---|

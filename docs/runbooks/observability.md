@@ -2,7 +2,7 @@
 
 > **Documento vivo.** Plan para que Vence detecte problemas **antes que el usuario**, sin depender de feedback humano.
 >
-> **Última actualización:** 2026-05-25 (refactor incorporando aprendizajes de VicoHR + filosofía AWS-ready/agnóstica).
+> **Última actualización:** 2026-06-01 — auditoría de estado real: Gaps 1 y 2 (captura client-side + endpoint ingest) estaban marcados ❌ pero llevan LIVE desde el 25-26 may (verificado con eventos en tiempo real + 24 tests). Sentry **backend** eliminado (redundante con `observable_events`). Sentry cliente se queda (Session Replay). Gap real pendiente: tracing distribuido OpenTelemetry (Gap 12).
 
 ---
 
@@ -120,13 +120,15 @@ línea en `getSink()` — cero cambios en callers.
 | Capacidad | Implementación | Estado |
 |---|---|---|
 | Tabla `observable_events` + 4 índices | Migración `2026-05-25-observable-events.sql` aplicada | ✅ Live |
-| Endpoint ingest HTTP | `/api/observability/ingest` (auth: shared secret) | ❌ FALTA |
-| Cron poda 30d | — | ❌ FALTA |
-| Dashboard admin `/admin/observability` | — | ❌ FALTA |
-| Alertas activas (cron rules engine) | — | ❌ FALTA |
-| SLOs declarados + medidos | — | ❌ FALTA |
+| Endpoint ingest HTTP | `/api/observability/ingest` (auth: shared secret, Zod, batch ≤50) | ✅ Live (24 tests; eventos frontend llegando en tiempo real) |
+| Captura client-side | `EarlyErrorsBridge` (window.onerror + unhandledrejection) → ingest, montado en `app/layout.tsx` | ✅ Live |
+| Cron poda 30d | `observability/cleanup.cron.ts` (`@Cron`, emite su propio run) | ✅ Live |
+| Dashboard admin `/admin/observability` | 4 KPI + timeseries + tablas (commit `a01ef8ff`) | ✅ Live |
+| Alertas activas (cron rules engine) | `backend/src/alerts/` — 30 reglas, motor `alerts-engine` cada 5min | ✅ Live |
+| SLOs declarados + medidos | `/api/admin/slos` (7 indicadores) + `docs/SLO.md` | ✅ Live |
 | CloudWatch Logs Fargate | Auto vía ECS | ✅ Live (aislado) |
-| Sentry alerts | — | ⚠️ No configurado |
+| Sentry **backend** | **Eliminado 2026-06-01** — redundante con `observable_events` (era la fuente de verdad de todos modos) | ❌ Retirado a propósito |
+| Sentry **cliente** | Session Replay + Web Vitals; espejo a ingest vía `beforeSend` | ✅ Live (UI de deep-dive opcional, no source of truth) |
 
 ### 📋 Matriz de cobertura por categorías de bug (post-Opción E)
 
@@ -171,29 +173,15 @@ línea en `getSink()` — cero cambios en callers.
 
 Cada gap viene con un **caso real** que justifica la prioridad. No se mete un gap "por completitud" — solo cuando ha dolido.
 
-### 🔴 Gap 1 — Errores client-side desaparecen en silencio
+### ✅ Gap 1 — Errores client-side (RESUELTO 2026-05-26, verificado 2026-06-01)
 
-**Caso real (frecuente)**: usuarios reportan vía email que "no funciona el botón X" o "la página queda en blanco". Cuando vamos a buscar, no hay nada en `validation_error_logs` ni en CloudWatch. El error vivió y murió en la consola del navegador del usuario. **Tasa real de reporte de bugs: <5%**. El otro 95% se va a la competencia en silencio.
+Antes: usuarios reportaban "no funciona el botón X" y no había rastro en BD ni CloudWatch (el error moría en la consola del navegador).
 
-**Lo que tenemos**: Sentry SDK quizás funciona; no verificado.
+**Hecho y LIVE**: `components/observability/EarlyErrorsBridge.tsx` (montado en `app/layout.tsx`) captura `window.onerror` + `unhandledrejection` y los reporta a `/api/observability/ingest` → `observable_events`. Verificado 2026-06-01: eventos `frontend` (`react_hydration_mismatch`, `custom`, etc.) llegando en tiempo real. Nota: `lib/logClientError.ts` aún manda a Sentry cliente (Session Replay) — opcional, no source of truth.
 
-**Lo que falta**: ver §5 «Client-side observability» — bloque completo de scripts (`window.onerror`, `unhandledrejection`, `console.error` patch, React Error Boundary, FetchInterceptor) que reportan a `/api/observability/ingest`.
+### ✅ Gap 2 — Endpoint `/api/observability/ingest` (RESUELTO 2026-05-25, verificado 2026-06-01)
 
-**Esfuerzo**: 1-2h.
-
-### 🔴 Gap 2 — Endpoint `/api/observability/ingest` no existe
-
-**Caso real (presente)**: sin este endpoint, NO se puede:
-- Enviar eventos desde el navegador del cliente
-- Notificar fallos de GitHub Actions a la tabla
-- Espejar webhooks de Sentry / Vercel deploy hooks
-- Que GHA crons (Grupo B) emitan eventos
-
-**Lo que tenemos**: writers desde Vercel y Fargate escriben directo a BD vía Drizzle (no necesitan ingest), pero el resto del ecosistema queda fuera.
-
-**Lo que falta**: `app/api/observability/ingest/route.ts` con auth shared secret + Zod validation + batch INSERT.
-
-**Esfuerzo**: 45 min.
+**Hecho y LIVE**: `app/api/observability/ingest/route.ts` con auth shared secret (`x-ingest-secret`) + Zod (batch 1-50 eventos) + INSERT vía `getAdminDb`. 24 tests en `__tests__/api/observability/ingest.test.ts`. Es el gateway vendor-neutral que ya usan EarlyErrorsBridge (cliente) y puede usar GHA/webhooks. **Keystone cumplido.**
 
 ### 🔴 Gap 3 — Interceptor global NestJS para errores backend
 
