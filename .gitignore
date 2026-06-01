@@ -68,3 +68,11 @@ data/examenes-oficiales/auxiliar-administrativo-valencia/18-09-22 conv 9-16 OEP 
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Terraform state (live en S3 + DynamoDB lock — backend "s3" en versions.tf).
+# Cualquier .tfstate local es solo backup temporal y NO debe entrar al repo.
+backend/infra/terraform.tfstate
+backend/infra/terraform.tfstate.backup
+backend/infra/terraform.tfstate.local-backup-*
+backend/infra/.terraform/
+backend/infra/.terraform.lock.hcl
