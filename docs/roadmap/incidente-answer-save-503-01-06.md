@@ -44,12 +44,24 @@ Un blip de BD de ~30s se convirtió en una caída de 7 min por falta de una red 
 - **`backend/src/common/with-timeout.ts`** — `.catch` defensivo no-op sobre la promesa perdedora de la carrera (defensa-en-profundidad para casos límite; NO era la causa probada).
 - **`backend/src/common/with-timeout.spec.ts`** — 5 tests, incluido el candado "rejection tardía de la perdedora no queda unhandled".
 
+## Decisión de observabilidad — Sentry fuera del backend (2026-06-01)
+
+Durante el diagnóstico, el backend logueaba `Invalid Sentry Dsn` al arrancar: **Sentry no estaba capturando nada en el servidor**, y aun así diagnosticamos el incidente entero desde CloudWatch + `observable_events` + SQL. Eso confirma que en el servidor Sentry era **redundante** con nuestra fuente de verdad.
+
+**Acción tomada**: eliminado el SDK de Sentry del backend (borrado `src/instrument.ts`, `SentryModule.forRoot()` de `app.module.ts`, captura en `all-exceptions.filter.ts`, e import en `main.ts`). El filtro global sigue emitiendo `http_5xx` a `observable_events` + log a CloudWatch — **cero pérdida de fuente de verdad**. El handler de proceso (`main.ts`) loguea a stdout/CloudWatch (sink robusto de último recurso: no depende de la BD, que puede ser justo lo caído).
+
+**Dirección** (filosofía del manual: *AWS-native by default, agnóstico by contract*): fuente de verdad nuestra (`observable_events`) + contrato estándar (OpenTelemetry) + sink intercambiable. Sentry, si se mantiene, solo en cliente (Session Replay) y como exporter opcional, nunca como source of truth.
+
+**Follow-up trivial**: podar `@sentry/nestjs` + `@sentry/profiling-node` de `backend/package.json` (ya no se importan; se dejó para no tocar el lockfile en sesión multi-agente).
+
 ## Pendiente (priorizado)
 
 1. **Backend ECS desired=2 con leader-election en crons** (barato; pero NO habría salvado este incidente — las 2 tasks habrían crasheado igual; el handler global importa más para este modo de fallo). El leader-election es requisito previo (sin él, doble disparo de @Cron).
 2. **Migrar el backend a nuestro PgBouncer self-hosted** (`USE_SELF_HOSTED_POOLER` también en el backend) — hoy sigue en Supavisor, expuesto a sus blips. Hueco del proyecto pool-segregation, que solo cubrió el frontend.
 3. **Fase D — RDS Multi-AZ / Aurora** ([`ARCHITECTURE_ROADMAP.md`](../ARCHITECTURE_ROADMAP.md)): el fix estructural del SPOF de la primaria. Con failover automático (30-120s), un blip futuro no sería un apagón. Es el grande y planificado.
 4. **Reintento en cliente para answer-save** — que un blip breve devuelva latencia (reintento) en vez de 503 al usuario.
+5. **Endpoint `/api/observability/ingest`** (Gap 2 del manual de observabilidad) — gateway vendor-neutral; desbloquea capturar client-side sin Sentry. Keystone del resto.
+6. **OpenTelemetry** (frontend + backend → OTel Collector → backend AWS-native) — tracing distribuido request→BD. El incidente de hoy habría sido un trace de un clic. Solo después del paso 5 y de tener alertas (ya las hay) — tracing sin alertas es overengineering (regla del manual).
 
 ## Cómo se diagnosticó (para la próxima)
 

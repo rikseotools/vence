@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Request } from 'express';
-import * as Sentry from '@sentry/nestjs';
 import { ObservabilityService } from './observability.service';
 
 /**
@@ -80,30 +79,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         },
       });
 
-      // 2. Capturar en Sentry para Issue Alerts, Session Replay
-      //    correlation, grouping y dashboard.
-      try {
-        Sentry.withScope((scope) => {
-          scope.setTag('endpoint', request?.url ?? 'unknown');
-          scope.setTag('http_status', String(httpStatus));
-          scope.setTag('method', request?.method ?? 'unknown');
-          if (request?.headers?.['x-forwarded-by']) {
-            scope.setTag(
-              'x-forwarded-by',
-              String(request.headers['x-forwarded-by']),
-            );
-          }
-          Sentry.captureException(
-            exception instanceof Error ? exception : new Error(errorMessage),
-          );
-        });
-      } catch {
-        // Sentry NUNCA debe romper el flujo de respuesta
-      }
-
-      // También log a stdout — los logs CloudWatch siguen siendo el
-      // "audit trail" canónico para forensic deep dive (más rico que
-      // observable_events, que es señal agregada).
+      // 2. Log a stdout — los logs CloudWatch son el "audit trail" canónico
+      // para forensic deep dive (más rico que observable_events, que es
+      // señal agregada). Fue desde CloudWatch + observable_events, sin
+      // Sentry, como diagnosticamos el incidente 2026-06-01.
       this.logger.error(
         `[${httpStatus}] ${request?.method ?? '?'} ${request?.url ?? '?'} — ${errorMessage}`,
         exception instanceof Error ? exception.stack : undefined,
