@@ -247,15 +247,53 @@ function createPoolerDbClient() {
     ? `${poolerUrl}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
     : `${poolerUrl}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
+  // max:8 — el self-hosted PgBouncer (transaction mode) multiplexa transacciones
+  // sobre ~30 conexiones upstream. Cada cliente postgres-js puede pedir hasta 8
+  // conexiones lógicas; el upstream las sirve sin saturar Postgres porque cada
+  // query libera su slot en ms (no por toda la sesión).
+  //
+  // Comparativa pools del repo (mismo schema):
+  //   - createDbClient (Supavisor regional)  max:1  histórico tras 261 events 2026-04-27
+  //   - createPoolerDbClient (self-hosted)    max:8  ← este — PgBouncer multiplexa OK
+  //   - createAdminDbClient (admin queries)   max:12 ya en prod sin problemas
+  //
+  // CHANGELOG max:1 → max:8 (2026-06-01, Fase 1 pool-segregation):
+  //   La Hipótesis D del incidente 31/05/2026 reveló que max:1 sufre starvation
+  //   durante rolling deploy Fargate (container nuevo arranca con pool vacío,
+  //   las primeras requests bloquean al `pool.acquire()` mientras se establece
+  //   la conexión TCP/TLS). max:8 + warmup robusto cierra esa ventana.
   const conn = postgres(urlWithTimeout, {
-    max: 1,             // 1 conn por instancia, igual patrón que primary
+    max: 8,
     idle_timeout: 20,
     connect_timeout: 5,
-    prepare: false,     // Requerido para Supavisor; mantenemos por simetría
+    prepare: false,     // Requerido por compat — PgBouncer transaction mode
   })
 
-  // Warmup en background (no bloquea)
-  conn`SELECT 1`.catch(() => {})
+  // Warmup robusto al boot del container — abre 3 conexiones en paralelo y
+  // ejecuta SELECT 1 sobre cada una. Sin esto, el pool arranca con 0
+  // conexiones reales y la primera request real espera el handshake TCP/TLS.
+  // Con desired=2 instancias y max:8, 3 warmups por container = 6 conexiones
+  // calientes al arrancar, suficiente para absorber el primer minuto de
+  // tráfico real sin esperar al pool.acquire().
+  //
+  // `void` para evitar warning sobre promesa no manejada — los errores se
+  // loggean dentro del bloque, no propagamos al boot del módulo.
+  void (async () => {
+    const warmupResults = await Promise.allSettled([
+      conn`SELECT 1`,
+      conn`SELECT 1`,
+      conn`SELECT 1`,
+    ])
+    const failures = warmupResults.filter((r) => r.status === 'rejected')
+    if (failures.length > 0) {
+      console.warn(
+        `[poolerDb] warmup parcial: ${failures.length}/3 fallaron. ` +
+          `Primer error: ${(failures[0] as PromiseRejectedResult).reason}`,
+      )
+    } else {
+      console.log('[poolerDb] warmup OK: 3 conns establecidas a pooler.vence.es')
+    }
+  })()
 
   return drizzle(conn, { schema })
 }
