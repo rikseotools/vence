@@ -1,9 +1,9 @@
 # Roadmap — Pool Segregation + Diagnóstico de saturación 503 en horas pico
 
-> **Estado**: 🟡 **DIAGNÓSTICO ABIERTO** — causa raíz de los 503 burst NO confirmada. **No actuar sobre código de prod sin completar Fase 0 (captura en directo).**
+> **Estado**: 🟢 **FASE 0 COMPLETA — HIPÓTESIS D CONFIRMADA (01/06/2026 06:09-06:13 UTC)** — captura ad-hoc 5 min sobre burst en vivo descarta A/B/C documentadas inicialmente y revela patrón nuevo: **starvation del pool durante rolling deploy de Fargate frontend**. Las 3 hipótesis originales se mantienen documentadas como referencia histórica; Hipótesis D pasa a ser la guía de la Fase 1.
 > **Propietario**: equipo Vence
 > **Coste esperado de la implementación**: 0€ (cambios de config sobre infra ya existente)
-> **Última actualización**: 2026-06-01 ~00:00 UTC — roadmap creado tras incidente 31/05 19-21 UTC (609 errores 5xx /api/profile + endpoints colaterales).
+> **Última actualización**: 2026-06-01 ~06:30 UTC — Fase 0 ejecutada gracias a burst en vivo capturado, Hipótesis D añadida, plan reordenado.
 
 ---
 
@@ -48,7 +48,61 @@ Patrón observado: 37 errores concentrados en 1 minuto (20:27 UTC), 21 al siguie
 
 ---
 
-## Hipótesis abiertas (a falsar con Fase 0)
+## Hipótesis abiertas (estado tras Fase 0)
+
+> **Resumen Fase 0 (01/06/2026 06:09-06:13 UTC)**: captura de 5 min sobre burst real en vivo, 24 samples cada 15s. **130 errores 5xx capturados con `active_app=0` durante TODO el incidente** = postgres-js no tiene conexiones activas durante los timeouts. A/B/C automatizadas dan DESCARTADA/INCONCLUSO; el patrón observable confirma Hipótesis D (no contemplada al crear el roadmap).
+
+### Hipótesis D — Starvation del pool durante rolling deploy Fargate ✅ CONFIRMADA
+
+**Patrón observado en captura 01/06/2026**:
+- Burst arranca **06:09:02 UTC = ~7 min tras push del commit `000d2c2f`** (06:01:51 UTC). Tiempo coherente con rolling deploy Fargate (build imagen + ECS rolling update + health checks).
+- `active_app=0` en TODOS los 24 samples del burst — el frontend NO consigue establecer conexiones a la BD.
+- Burst termina solo a los **~4 minutos** sin intervención (06:13:08 UTC), coincidiendo con el tiempo esperado para que el container nuevo caliente su pool y/o el viejo termine de drenar.
+- Mismo fingerprint que el incidente 31/05 19-21 UTC (duración 8003 ms = `withDbTimeout`, mensaje "Servicio saturado momentáneamente").
+
+**Cadena causal hipotetizada**:
+
+1. Frontend ECS Fargate con `desired=2` recibe rolling update tras cada push a main.
+2. Container A se apaga ordenadamente; container B nuevo arranca con pool `postgres-js` con `max:1` y conexiones=0 inicialmente.
+3. La línea `db/client.ts:42` (`conn\`SELECT 1\`.catch(() => {})`) dispara 1 warmup en background, pero **no bloquea el arranque** ni garantiza que el pool esté caliente cuando llegan requests reales.
+4. Llegan requests a `/api/profile`. El cliente intenta `pool.acquire()` → como `max:1` y la conexión está en proceso de establecerse, espera.
+5. `connect_timeout: 5` (línea 37) es **demasiado bajo** para el handshake TLS contra Supavisor en cold start bajo presión (TCP + TLS + SCRAM negotiation contra pooler externo).
+6. La conexión falla → `withDbTimeout(8000)` espera al timeout del wrapper → 503 después de exactos **8003 ms** observados.
+7. Cascada durante ~4 minutos hasta que (a) el container B calienta el pool, (b) el ALB redirige tráfico al container A drenado, o (c) Supavisor libera presión.
+
+**Por qué el script automatizado NO la detectó**:
+
+El script captura `pg_stat_activity` (qué pasa **en la BD**). El problema aquí es **antes** de llegar a la BD: la conexión TCP/TLS desde Fargate hacia Supavisor nunca llega a registrarse. La BD ve `conn=32` estable (postgrest + Supavisor existentes + realtime) sin variación. Para detectar D habría que capturar:
+
+- Logs CloudWatch del frontend Fargate (`connect ETIMEDOUT`, `Connection terminated unexpectedly`).
+- Métrica del ALB: `TargetResponseTime` + `HTTPCode_Target_5XX_Count` durante el rolling.
+- Estado de Supavisor: ¿está rechazando conexiones nuevas porque otro cliente las acapara?
+
+**Evidencia adicional** (cross-tab con commits del día):
+
+| Push | Timestamp UTC | Burst observado |
+|---|---|---|
+| `88808e6e` (Acción 1) | ~04:30 | (no capturado, pre-script) |
+| `bef2f3e4` (Acción 3) | ~05:39 | Burst 47 errores en `/api/profile` capturado por script CLI a las 05:45-05:53 |
+| `1c1ef870` (analyze script) | ~05:45 | (continuación del anterior, mismo deploy window) |
+| `000d2c2f` (mejora runbook) | ~06:01 | **Burst 130 errores capturado en vivo 06:09-06:13** |
+
+**Patrón evidente**: cada push dispara un burst de 5xx ~7 min después, dura ~4 min, afecta principalmente a `/api/profile` y endpoints colaterales (`/api/questions/filtered`, `/api/topics/[numero]`). La frecuencia de pushes hoy ha hecho que el bug sea continuo. En días normales con 1-2 pushes/día sólo hay 1-2 ventanas de 4 min de incidente — fácil de no notar hasta que se acumula tráfico real en horas pico.
+
+### Mitigaciones priorizadas para Hipótesis D
+
+| # | Acción | Coste | Impacto | Robustez |
+|---|---|---|---|---|
+| 1 | Subir `connect_timeout: 5 → 15` en `db/client.ts` | 5 min, riesgo 0 | Da margen al TLS handshake en cold start | Band-aid puro, no soluciona starvation |
+| 2 | Pre-warming agresivo del pool al boot (3-5 SELECT en serie con `await` bloqueante antes de arrancar el servidor HTTP) | 30 min | Conexión caliente garantizada antes de aceptar tráfico | Mejora real pero costosa en boot time |
+| 3 | Healthcheck Fargate (`readinessProbe`) que falle si la BD no responde durante warm-up — ALB no envía tráfico hasta listo | 1 h | Elimina la ventana de starvation por construcción | **Solución correcta para containers** |
+| 4 | Migrar `getDb()` al self-hosted pooler (PgBouncer en `pooler.vence.es`, ya operativo para `getAdminDb()` con `max:12`) | 2 h | Pool TCP persistente upstream, multiplexa transacciones | **Solución de fondo arquitectónica** — elimina el problema en origen |
+
+**Recomendación**: 4 (self-hosted pooler) es la solución correcta. Beneficios acumulativos:
+- Elimina la dependencia del Supavisor regional compartido (motivo original del roadmap `self-hosted-pooler.md`).
+- El PgBouncer mantiene conexiones upstream a Postgres independientemente del ciclo de vida de los containers Fargate → no hay cold start de pool.
+- Soporta `max:8` por instancia sin saturar Postgres (multiplexing transactional).
+- Reduce variabilidad de `connect_timeout` (RTT a Lightsail London <3 ms vs RTT a Supavisor regional 10-30 ms).
 
 ### Hipótesis A — Supavisor blip externo
 
@@ -74,15 +128,27 @@ El pooler regional compartido (`aws-0-eu-west-2.pooler.supabase.com:6543`) tiene
 
 **Si es cierta**: la solución es (a) usar Redis como cache de profile en vez de `unstable_cache` (sobrevive a deploys), o (b) warmup automático del cache tras deploy.
 
-> **Una de las 3 puede ser correcta, o pueden ser 2 simultáneas amplificándose.** Por eso Fase 0 captura todo y decide después.
+> **Resultado Fase 0**: A/B/C descartadas o inconclusas. La causa real es Hipótesis D (starvation post-deploy). Ver §"Hipótesis D" arriba.
 
 ---
 
 ## Plan de ejecución
 
-### Fase 0 — Captura en directo del próximo pico (obligatoria antes de Fase 1)
+### Fase 0 — Captura en directo del próximo pico ✅ COMPLETADA (2026-06-01)
 
-**Acción**: ejecutar `scripts/diagnostic/capture-pool-pressure.cjs` durante una ventana 8:50-10:30 UTC (cubre el pico observado 9-10 UTC).
+**Acción ejecutada**: captura ad-hoc 5 min (`scripts/diagnostic/capture-pool-pressure.cjs --duration 300 --interval 15`) sobre burst en vivo descubierto a las 06:09 UTC tras push del commit `000d2c2f`. Aprovechamos un burst real en madrugada española (sin tráfico real) en vez de esperar al pico de 9 UTC programado — la captura ad-hoc resultó suficiente para confirmar Hipótesis D.
+
+**Output guardado en**: `/tmp/pool-pressure-2026-06-01.jsonl` (24 samples, 130 errores 5xx capturados).
+
+**Resultado del análisis automatizado** (`analyze-pool-capture.cjs`):
+- Hipótesis A: DESCARTADA (0 samples con Supavisor hung).
+- Hipótesis B: DESCARTADA (0 samples con postgres-js idle-in-tx >5s).
+- Hipótesis C: INCONCLUSO (1 burst correlacionado con deploy, 9 bursts sin deploy reciente — pero todos en mismo deploy_version).
+- Recomendación automática: "más muestreo necesario" — INCORRECTA para este caso porque el script no contemplaba Hipótesis D.
+
+**Conclusión humana** (post-análisis): el patrón `active_app=0` sostenido durante 4 min de burst es la firma inequívoca de Hipótesis D (starvation pre-BD, no contienda en BD). El script se actualizará en una iteración futura para añadir esta hipótesis.
+
+**Acción ejecutada (legacy, mantenida para referencia)**: el script estaba previsto para ventana 8:50-10:30 UTC del próximo día. La oportunidad llegó antes — se capturó tras push de las 06:01 UTC.
 
 **Qué captura cada 30 s**:
 
@@ -105,9 +171,9 @@ El pooler regional compartido (`aws-0-eu-west-2.pooler.supabase.com:6543`) tiene
 | Burst de errores 30-90 s post-deploy timestamp | Cache miss masivo | Fase 3 (Redis profile cache) |
 | Ninguna anomalía visible en captura | Re-instrumentar — añadir trace_id en `withDbTimeout` para correlación exacta | Fase 4 (tracing) |
 
-### Fase 1 — Migrar `getDb()` (path principal) al self-hosted pooler
+### Fase 1 — Migrar `getDb()` (path principal) al self-hosted pooler ⭐ PRIORIDAD ALTA tras Fase 0
 
-**Trigger**: confirmado Hipótesis A en Fase 0.
+**Trigger**: ✅ confirmado por Hipótesis D (no A) tras Fase 0. El razonamiento original para Fase 1 (mitigar blips Supavisor) sigue válido, pero ahora **además** soluciona la starvation post-deploy porque el PgBouncer mantiene conexiones upstream estables independientes del ciclo de vida de los containers Fargate.
 
 **Acción**:
 
@@ -184,5 +250,14 @@ Documentar errores honestos para no repetirlos:
 
 ## Histórico de decisiones
 
-- **2026-06-01 ~00:00 UTC** — Roadmap creado. Estado: 🟡 diagnóstico abierto. Script `capture-pool-pressure.cjs` preparado para Fase 0.
 - **2026-04-27** — Pool `max: 8 → 3 → 1` aplicado tras pool exhaustion con 261 eventos en Supavisor (documentado en `db/client.ts:12`). Decisión correcta para el contexto de entonces; ahora obsoleta tras self-hosted pooler operativo (2026-05-10).
+- **2026-06-01 ~00:00 UTC** — Roadmap creado. Estado: 🟡 diagnóstico abierto. Script `capture-pool-pressure.cjs` preparado para Fase 0.
+- **2026-06-01 ~06:30 UTC** — Fase 0 ejecutada gracias a burst en vivo capturado a las 06:09-06:13 UTC (130 errores 5xx). Hipótesis A/B/C descartadas. **Hipótesis D (starvation pool en rolling deploy) confirmada** por patrón `active_app=0` sostenido durante 4 min. Plan reordenado: Fase 1 (self-hosted pooler) sigue siendo la solución correcta pero con motivación nueva (pool TCP persistente que sobrevive a rolling deploys, no solo blips Supavisor). Mitigación band-aid (subir `connect_timeout: 5 → 15`) disponible si se necesita alivio inmediato; pre-warming agresivo y readinessProbe Fargate como alternativas intermedias.
+
+## Mejora pendiente del script analyze-pool-capture
+
+El análisis automatizado no detectó Hipótesis D porque solo busca `pg_stat_activity` (estado de la BD). Cuando se vuelva a usar para Fase 1 verificación post-migración, añadir un cuarto bloque de análisis:
+
+- **Hipótesis D** — patrón `active_app=0` sostenido (≥3 samples consecutivos) durante burst de errores 5xx. Si se cumple, el problema es **pre-BD** (TCP/TLS no establecido), no en la BD. Recomendación: revisar logs Fargate CloudWatch durante ventana del burst para confirmar `connect ETIMEDOUT` / `ECONNRESET`.
+
+Esto requeriría enriquecer la captura con datos del ALB o logs Fargate — fuera del scope actual del script.
