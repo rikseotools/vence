@@ -1,21 +1,11 @@
 // lib/chat/domains/stats/queries.ts
 // Queries para estadísticas de exámenes y usuarios
 
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { questions, articles, laws, userQuestionHistoryV2 } from '@/db/schema'
+import { eq, and, gte, lt, isNotNull } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 import type { ExamStatsResult, UserStatsResult, ArticleCount, ArticleStats } from './schemas'
-
-// ============================================
-// CLIENTE SUPABASE
-// ============================================
-
-// Usamos Supabase directamente porque test_questions no está en Drizzle schema
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-function getSupabase() {
-  return createClient(supabaseUrl, supabaseServiceKey)
-}
 
 // ============================================
 // ESTADÍSTICAS DE EXÁMENES OFICIALES
@@ -29,46 +19,41 @@ export async function getExamStats(
   limit: number = 15,
   examPosition: string | null = null
 ): Promise<ExamStatsResult | null> {
-  const supabase = getSupabase()
-
   try {
-    // Buscar preguntas de exámenes oficiales con join a través de articles
-    let query = supabase
-      .from('questions')
-      .select(`
-        id,
-        exam_position,
-        article:articles!primary_article_id(
-          id,
-          article_number,
-          law:laws!inner(id, short_name, name)
-        )
-      `)
-      .eq('is_active', true)
-      .eq('is_official_exam', true)
-      .not('primary_article_id', 'is', null)
-
-    // Filtrar por oposición si se especifica
+    // Preguntas de exámenes oficiales con join questions -> articles -> laws.
+    // El innerJoin a laws reproduce el `laws!inner` del embed supabase anterior.
+    const conditions = [
+      eq(questions.isActive, true),
+      eq(questions.isOfficialExam, true),
+      isNotNull(questions.primaryArticleId),
+    ]
     if (examPosition) {
-      query = query.eq('exam_position', examPosition)
+      conditions.push(eq(questions.examPosition, examPosition))
     }
 
-    const { data: questions, error } = await query
-
-    if (error || !questions?.length) {
-      logger.debug('No se encontraron preguntas de exámenes oficiales', {
-        domain: 'stats',
-        error: error?.message,
+    const db = getReadDb()
+    const allQuestions = await db
+      .select({
+        id: questions.id,
+        exam_position: questions.examPosition,
+        article_number: articles.articleNumber,
+        law_short_name: laws.shortName,
+        law_name: laws.name,
       })
+      .from(questions)
+      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(and(...conditions))
+
+    if (!allQuestions.length) {
+      logger.debug('No se encontraron preguntas de exámenes oficiales', { domain: 'stats' })
       return null
     }
 
-    // Filtrar por ley si se especifica (después del query porque el filtro nested es complejo)
-    let filteredQuestions = questions
+    // Filtrar por ley si se especifica
+    let filteredQuestions = allQuestions
     if (lawShortName) {
-      filteredQuestions = questions.filter((q: any) =>
-        q.article?.law?.short_name === lawShortName
-      )
+      filteredQuestions = allQuestions.filter((q) => q.law_short_name === lawShortName)
     }
 
     if (filteredQuestions.length === 0) {
@@ -78,9 +63,9 @@ export async function getExamStats(
 
     // Contar apariciones por artículo, incluyendo desglose por oposición
     const articleCounts: Record<string, ArticleCount> = {}
-    filteredQuestions.forEach((q: any) => {
-      const law = q.article?.law?.short_name || q.article?.law?.name || 'Ley'
-      const artNum = q.article?.article_number
+    filteredQuestions.forEach((q) => {
+      const law = q.law_short_name || q.law_name || 'Ley'
+      const artNum = q.article_number
       if (!artNum) return
 
       const key = `${law} Art. ${artNum}`
@@ -141,22 +126,22 @@ async function getWeekStats(
   correctAnswers: number
   accuracy: number
 } | null> {
-  const supabase = getSupabase()
-
   try {
     // Obtener respuestas de la semana
     // UQH Fase 3: migrado de user_question_history (v1, congelada desde
     // cutover outbox 2026-05-30) a v2 que escribe el handler Fargate.
-    const { data, error } = await supabase
-      .from('user_question_history_v2')
-      .select('total_attempts, correct_attempts')
-      .eq('user_id', userId)
-      .gte('last_attempt_at', startDate.toISOString())
-      .lt('last_attempt_at', endDate.toISOString())
-
-    if (error || !data) {
-      return { totalQuestions: 0, correctAnswers: 0, accuracy: 0 }
-    }
+    const db = getReadDb()
+    const data = await db
+      .select({
+        total_attempts: userQuestionHistoryV2.totalAttempts,
+        correct_attempts: userQuestionHistoryV2.correctAttempts,
+      })
+      .from(userQuestionHistoryV2)
+      .where(and(
+        eq(userQuestionHistoryV2.userId, userId),
+        gte(userQuestionHistoryV2.lastAttemptAt, startDate.toISOString()),
+        lt(userQuestionHistoryV2.lastAttemptAt, endDate.toISOString()),
+      ))
 
     const totalQuestions = data.reduce((sum, record) => sum + record.total_attempts, 0)
     const correctAnswers = data.reduce((sum, record) => sum + record.correct_attempts, 0)
