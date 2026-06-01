@@ -17,7 +17,7 @@ async function _GET(request: NextRequest) {
   } catch (err) {
     console.error('❌ [API/admin/oep-signals/pending-count] Error:', err)
     return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : 'Error', pendingCount: 0, criticalCount: 0 },
+      { success: false, error: err instanceof Error ? err.message : 'Error', pendingCount: 0, criticalCount: 0, discoveredCount: 0 },
       { status: 500 }
     )
   }

@@ -124,6 +124,9 @@ export const pendingSignalsCountResponseSchema = z.object({
   success: z.boolean(),
   pendingCount: z.number().int().min(0),
   criticalCount: z.number().int().min(0),
+  // Procesos descubiertos fuera de catálogo (tabla discovered_processes,
+  // manuel_status IN ('new','watching')). Distinto tipo de aviso → distinto color en el badge.
+  discoveredCount: z.number().int().min(0),
 })
 export type PendingSignalsCountResponse = z.infer<typeof pendingSignalsCountResponseSchema>
 

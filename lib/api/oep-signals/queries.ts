@@ -176,7 +176,7 @@ export async function listSignals(filters: { status?: SignalStatus; limit?: numb
 
 export async function getPendingSignalsCount(): Promise<PendingSignalsCountResponse> {
   const db = getDb()
-  const [total, critical] = await Promise.all([
+  const [total, critical, discovered] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(oepDetectionSignals)
@@ -188,12 +188,20 @@ export async function getPendingSignalsCount(): Promise<PendingSignalsCountRespo
         eq(oepDetectionSignals.status, 'pending'),
         gte(oepDetectionSignals.confidenceScore, 60),
       )),
+    // Procesos descubiertos fuera de catálogo (sensor regional_scan).
+    // Tabla nueva sin modelo Drizzle todavía → SQL crudo. Solo activos.
+    db.execute(sql`
+      SELECT count(*)::int AS count
+      FROM discovered_processes
+      WHERE manuel_status IN ('new', 'watching')
+    `),
   ])
 
   return {
     success: true,
     pendingCount: total[0]?.count ?? 0,
     criticalCount: critical[0]?.count ?? 0,
+    discoveredCount: Number((discovered as unknown as Array<{ count: number }>)[0]?.count ?? 0),
   }
 }
 

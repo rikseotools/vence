@@ -9,7 +9,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminNotifications = useAdminNotifications(true)
   const { hasUnreviewedChanges } = useLawChanges()
-  const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0 })
+  const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0, discovered: 0 })
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -20,7 +20,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       })
       const json = await res.json()
       if (json.success) {
-        setOepSignals({ pending: json.pendingCount ?? 0, critical: json.criticalCount ?? 0 })
+        setOepSignals({ pending: json.pendingCount ?? 0, critical: json.criticalCount ?? 0, discovered: json.discoveredCount ?? 0 })
       }
     } catch {}
   }, [])
@@ -180,16 +180,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <a
                     href="/admin/oep-signals"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
-                      oepSignals.pending > 0 ? 'animate-pulse' : ''
+                      oepSignals.pending > 0 || oepSignals.discovered > 0 ? 'animate-pulse' : ''
                     }`}
                   >
                     <span>🎯</span>
                     <span>OEPs</span>
-                    {oepSignals.pending > 0 && (
-                      <span className={`absolute -top-1 -right-1 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse ${
-                        oepSignals.critical > 0 ? 'bg-red-500' : 'bg-orange-500'
-                      }`}>
-                        {oepSignals.pending > 99 ? '99+' : oepSignals.pending}
+                    {(oepSignals.pending > 0 || oepSignals.discovered > 0) && (
+                      <span className="absolute -top-1 -right-1 flex space-x-0.5">
+                        {oepSignals.pending > 0 && (
+                          <span className={`text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse ${
+                            oepSignals.critical > 0 ? 'bg-red-500' : 'bg-orange-500'
+                          }`} title="Cambios en seguimiento de oposiciones del catálogo">
+                            {oepSignals.pending > 99 ? '99+' : oepSignals.pending}
+                          </span>
+                        )}
+                        {oepSignals.discovered > 0 && (
+                          <span className="bg-purple-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Procesos descubiertos fuera del catálogo (regional_scan)">
+                            {oepSignals.discovered > 99 ? '99+' : oepSignals.discovered}
+                          </span>
+                        )}
                       </span>
                     )}
                   </a>
