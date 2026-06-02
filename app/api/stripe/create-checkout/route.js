@@ -1,8 +1,9 @@
 // app/api/stripe/create-checkout/route.js - CORREGIDO PARA SISTEMA DUAL
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
-
+import { getAdminDb } from '@/db/client'
+import { userProfiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _POST(request) {
@@ -29,11 +30,6 @@ async function _POST(request) {
 
     console.log('👤 Creando checkout para usuario:', userId)
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-    
     // 🔄 BUSCAR USUARIO CON RETRY (para evitar problemas de timing)
     let user = null
     let attempts = 0
@@ -43,11 +39,27 @@ async function _POST(request) {
       attempts++
       console.log(`🔍 Buscando usuario (intento ${attempts}/${maxAttempts})...`)
       
-      const { data: userData, error: userError } = await supabase
-        .from('user_profiles')
-        .select('email, full_name, stripe_customer_id, plan_type, registration_source, requires_payment')
-        .eq('id', userId)
-        .single()
+      // Con Drizzle, "no encontrado" = array vacío (ya no hay PGRST116) → reintenta;
+      // un error real de BD lanza → 500.
+      let userData = null
+      let userError = null
+      try {
+        const rows = await getAdminDb()
+          .select({
+            email: userProfiles.email,
+            full_name: userProfiles.fullName,
+            stripe_customer_id: userProfiles.stripeCustomerId,
+            plan_type: userProfiles.planType,
+            registration_source: userProfiles.registrationSource,
+            requires_payment: userProfiles.requiresPayment,
+          })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, userId))
+          .limit(1)
+        userData = rows[0] ?? null
+      } catch (e) {
+        userError = e
+      }
 
       if (userData) {
         user = userData
@@ -55,7 +67,7 @@ async function _POST(request) {
         break
       }
 
-      if (userError && userError.code !== 'PGRST116') {
+      if (userError) {
         console.error('❌ Error buscando usuario:', userError)
         return NextResponse.json(
           { error: 'Database error: ' + userError.message },
@@ -106,12 +118,16 @@ async function _POST(request) {
         
         customerId = customer.id
         
-        // Guardar customer ID en Supabase
-        await supabase
-          .from('user_profiles')
-          .update({ stripe_customer_id: customerId })
-          .eq('id', userId)
-          
+        // Guardar customer ID en BD (best-effort, igual que antes)
+        try {
+          await getAdminDb()
+            .update(userProfiles)
+            .set({ stripeCustomerId: customerId })
+            .where(eq(userProfiles.id, userId))
+        } catch (updErr) {
+          console.error('⚠️ Error guardando stripe_customer_id:', updErr)
+        }
+
         console.log('✅ Customer creado:', customerId)
       } catch (customerError) {
         console.error('❌ Error creando customer:', customerError)

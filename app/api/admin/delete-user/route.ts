@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 import { deleteUserRequestSchema } from '@/lib/api/admin-delete-user/schemas'
 import { deleteUserData, sendDeletionConfirmationEmail } from '@/lib/api/admin-delete-user'
 import { getServiceClient } from '@/lib/api/shared/auth'
+import { getAdminDb } from '@/db/client'
+import { userProfiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _DELETE(request: Request) {
@@ -21,15 +24,17 @@ async function _DELETE(request: Request) {
 
     // Capturar datos del usuario ANTES del borrado (para enviar email de
     // confirmación RGPD posteriormente, cuando user_profiles ya no exista).
+    // `supabase` se mantiene SOLO para auth.admin.deleteUser (Auth = Fase 4);
+    // las lecturas de user_profiles van por Drizzle.
     const supabase = getServiceClient()
     let userEmail: string | null = null
     let userFullName: string | null = null
     try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('email, full_name')
-        .eq('id', userId)
-        .maybeSingle()
+      const [profile] = await getAdminDb()
+        .select({ email: userProfiles.email, full_name: userProfiles.fullName })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1)
 
       if (profile) {
         userEmail = profile.email
@@ -96,11 +101,11 @@ async function _DELETE(request: Request) {
     // user_profiles y auth.users siguieran existiendo.
     let profileStillExists = false
     try {
-      const { data: profileAfter } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle()
+      const [profileAfter] = await getAdminDb()
+        .select({ id: userProfiles.id })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1)
       profileStillExists = !!profileAfter
     } catch (err) {
       console.error('❌ Error verificando user_profiles post-delete:', err)
