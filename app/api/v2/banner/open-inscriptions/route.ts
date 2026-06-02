@@ -20,8 +20,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { getServiceClient } from '@/lib/api/shared/auth'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { getReadDb } from '@/db/client'
+import { oposiciones, userProfiles } from '@/db/schema'
+import { eq, and, lte, gte, sql } from 'drizzle-orm'
 
 export const maxDuration = 10
 
@@ -46,25 +48,38 @@ function todayMadrid(): string {
 }
 
 async function _GET(request: NextRequest) {
-  const supabase = getServiceClient()
+  const db = getReadDb()
   const today = todayMadrid()
 
   // Listado público de oposiciones con inscripción abierta hoy.
   // is_active=true → solo oposiciones publicadas.
-  const { data: openRaw, error: openErr } = await supabase
-    .from('oposiciones')
-    .select('slug, nombre, short_name, subgrupo, plazas_libres, inscription_start, inscription_deadline, exam_date, boe_reference, programa_url, color_primario')
-    .eq('is_active', true)
-    .lte('inscription_start', today)
-    .gte('inscription_deadline', today)
-    .order('inscription_deadline', { ascending: true })
-
-  if (openErr) {
+  let open: OpenInscription[]
+  try {
+    open = (await db
+      .select({
+        slug: oposiciones.slug,
+        nombre: oposiciones.nombre,
+        short_name: oposiciones.shortName,
+        subgrupo: oposiciones.subgrupo,
+        plazas_libres: oposiciones.plazasLibres,
+        inscription_start: oposiciones.inscriptionStart,
+        inscription_deadline: oposiciones.inscriptionDeadline,
+        exam_date: oposiciones.examDate,
+        boe_reference: oposiciones.boeReference,
+        programa_url: oposiciones.programaUrl,
+        color_primario: oposiciones.colorPrimario,
+      })
+      .from(oposiciones)
+      .where(and(
+        eq(oposiciones.isActive, true),
+        lte(oposiciones.inscriptionStart, today),
+        gte(oposiciones.inscriptionDeadline, today),
+      ))
+      .orderBy(oposiciones.inscriptionDeadline)) as OpenInscription[]
+  } catch (openErr) {
     console.error('❌ [API/banner/open-inscriptions] query open error:', openErr)
     return NextResponse.json({ open: [], dismissed: [], targetOposicion: null }, { status: 200 })
   }
-
-  const open = (openRaw ?? []) as OpenInscription[]
 
   // Auth opcional. Si hay sesión, traemos dismisses persistidos +
   // target_oposicion para que el cliente excluya el target. Si no,
@@ -81,17 +96,20 @@ async function _GET(request: NextRequest) {
   }
 
   // Dismisses persistentes + target_oposicion del user.
-  const [{ data: dismissedRows }, { data: profileRow }] = await Promise.all([
-    supabase
-      .from('user_inscription_banner_dismissals')
-      .select('oposicion_slug, boe_reference_at_dismiss')
-      .eq('user_id', auth.userId),
-    supabase
-      .from('user_profiles')
-      .select('target_oposicion')
-      .eq('id', auth.userId)
-      .maybeSingle(),
+  // user_inscription_banner_dismissals no está en el schema Drizzle -> raw SQL.
+  const [dismissedRows, profileRows] = await Promise.all([
+    db.execute(sql`
+      SELECT oposicion_slug, boe_reference_at_dismiss
+      FROM user_inscription_banner_dismissals
+      WHERE user_id = ${auth.userId}
+    `) as Promise<any[]>,
+    db
+      .select({ target_oposicion: userProfiles.targetOposicion })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, auth.userId))
+      .limit(1),
   ])
+  const profileRow = profileRows[0]
 
   // Un dismiss es válido SOLO si la convocatoria sigue siendo la misma
   // (mismo boe_reference). Si la oposición tiene nueva convocatoria,
