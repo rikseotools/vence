@@ -3,20 +3,17 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { getDb, getReadDb } from '@/db/client'
-import { articles, laws, topics, topicScope } from '@/db/schema'
-import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
+import { articles, laws, topics, topicScope, questions, hotArticles as hotArticlesTable } from '@/db/schema'
+import { eq, and, or, ilike, inArray, sql, desc, count, isNotNull } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 import { createGlobalCache } from '@/lib/cache/globalCache'
 import { getChatCache, CACHE_KEYS, CACHE_TTL } from '../../shared/cache'
 import type { ArticleMatch, SearchOptions } from '../../core/types'
 import { getOposicion } from '@/lib/config/oposiciones'
 
-// Cliente Supabase para RPC functions (match_articles usa pgvector)
+// Cliente Supabase aún expuesto para SearchDomain (pendiente de migrar). El
+// resto de este fichero ya no lo usa: todo migrado a Drizzle.
 export const getSupabaseForSearch = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -693,12 +690,17 @@ const _lawsDetectionCache = createGlobalCache<_LawDetectionEntry[]>(
  */
 async function loadLawsForDetection(): Promise<_LawDetectionEntry[]> {
   return _lawsDetectionCache.getOrLoad(async () => {
-    const { data } = await getSupabase()
-      .from('laws')
-      .select('id, short_name, name')
-      .eq('is_active', true)
+    let data: Array<{ id: string; short_name: string; name: string }>
+    try {
+      data = await getReadDb()
+        .select({ id: laws.id, short_name: laws.shortName, name: laws.name })
+        .from(laws)
+        .where(eq(laws.isActive, true))
+    } catch {
+      return []
+    }
 
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       return []
     }
 
@@ -989,44 +991,43 @@ export async function getHotArticlesByOposicion(
 
   logger.info(`🔥 getHotArticlesByOposicion: oposicion=${userOposicion} -> ${normalizedOposicion}, law=${lawShortName || 'all'}`, { domain: 'search' })
 
-  // Helper para ejecutar query
-  const executeQuery = async (targetOposicion: string | null) => {
-    let query = getSupabase()
-      .from('hot_articles')
-      .select(`
-        article_id,
-        article_number,
-        law_name,
-        target_oposicion,
-        total_official_appearances,
-        unique_exams_count,
-        priority_level,
-        hotness_score
-      `)
-      .order('hotness_score', { ascending: false })
-      .limit(limit)
+  // Helper para ejecutar query (devuelve filas, o null si hay error de BD)
+  const executeQuery = async (targetOposicion: string | null): Promise<any[] | null> => {
+    try {
+      const conds = []
+      if (targetOposicion) conds.push(eq(hotArticlesTable.targetOposicion, targetOposicion))
+      if (lawShortName) conds.push(eq(hotArticlesTable.lawName, lawShortName))
 
-    if (targetOposicion) {
-      query = query.eq('target_oposicion', targetOposicion)
+      return await getReadDb()
+        .select({
+          article_id: hotArticlesTable.articleId,
+          article_number: hotArticlesTable.articleNumber,
+          law_name: hotArticlesTable.lawName,
+          target_oposicion: hotArticlesTable.targetOposicion,
+          total_official_appearances: hotArticlesTable.totalOfficialAppearances,
+          unique_exams_count: hotArticlesTable.uniqueExamsCount,
+          priority_level: hotArticlesTable.priorityLevel,
+          hotness_score: hotArticlesTable.hotnessScore,
+        })
+        .from(hotArticlesTable)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(hotArticlesTable.hotnessScore))
+        .limit(limit)
+    } catch (e) {
+      logger.error('Error fetching hot_articles', e, { domain: 'search' })
+      return null
     }
-
-    if (lawShortName) {
-      query = query.eq('law_name', lawShortName)
-    }
-
-    return query
   }
 
   // 1. Primero intentar con la oposición del usuario (normalizada)
-  const { data: hotArticles, error } = await executeQuery(normalizedOposicion)
+  const hotArticles = await executeQuery(normalizedOposicion)
 
-  if (error) {
-    logger.error('Error fetching hot_articles', error, { domain: 'search' })
+  if (hotArticles === null) {
     return { articles: [], sourceOposicion: null, isFromUserOposicion: false }
   }
 
   // Si encontramos datos para la oposición del usuario, usarlos
-  if (hotArticles && hotArticles.length > 0) {
+  if (hotArticles.length > 0) {
     logger.info(`🔥 Found ${hotArticles.length} hot articles for ${normalizedOposicion}`, { domain: 'search' })
     const articles = await enrichHotArticles(hotArticles)
     const result = { articles, sourceOposicion: normalizedOposicion, isFromUserOposicion: true }
@@ -1043,9 +1044,9 @@ export async function getHotArticlesByOposicion(
     // No usar fallback si ya es la oposición del usuario normalizada
     if (fallbackOposicion === normalizedOposicion) continue
 
-    const { data: fallbackArticles, error: fallbackError } = await executeQuery(fallbackOposicion)
+    const fallbackArticles = await executeQuery(fallbackOposicion)
 
-    if (!fallbackError && fallbackArticles && fallbackArticles.length > 0) {
+    if (fallbackArticles && fallbackArticles.length > 0) {
       logger.info(`🔥 Using fallback data from ${fallbackOposicion}: ${fallbackArticles.length} articles`, { domain: 'search' })
       const articles = await enrichHotArticles(fallbackArticles)
       const result = { articles, sourceOposicion: fallbackOposicion, isFromUserOposicion: false }
@@ -1070,10 +1071,15 @@ async function enrichHotArticles(hotArticles: Array<{
   hotness_score: number
 }>): Promise<HotArticleResult[]> {
   const articleIds = hotArticles.map(h => h.article_id)
-  const { data: articlesData } = await getSupabase()
-    .from('articles')
-    .select('id, title, content')
-    .in('id', articleIds)
+  let articlesData: Array<{ id: string; title: string | null; content: string | null }> = []
+  try {
+    articlesData = await getReadDb()
+      .select({ id: articles.id, title: articles.title, content: articles.content })
+      .from(articles)
+      .where(inArray(articles.id, articleIds))
+  } catch (err) {
+    logger.warn('Error enriching hot articles', { domain: 'search', error: (err as Error)?.message })
+  }
 
   const articleContentMap: Record<string, { title: string | null; content: string | null }> = {}
   articlesData?.forEach(a => {
@@ -1086,10 +1092,10 @@ async function enrichHotArticles(hotArticles: Array<{
     lawName: h.law_name,
     title: articleContentMap[h.article_id]?.title || null,
     content: articleContentMap[h.article_id]?.content || null,
-    totalOfficialAppearances: h.total_official_appearances,
-    uniqueExamsCount: h.unique_exams_count,
+    totalOfficialAppearances: Number(h.total_official_appearances),
+    uniqueExamsCount: Number(h.unique_exams_count),
     priorityLevel: h.priority_level,
-    hotnessScore: h.hotness_score,
+    hotnessScore: Number(h.hotness_score),
   }))
 }
 
@@ -1176,19 +1182,12 @@ export function formatHotArticlesResponse(
  */
 export async function hasQuestionsForArticle(articleId: string): Promise<boolean> {
   try {
-    const { count, error } = await getSupabase()
-      .from('questions')
-      .select('id', { count: 'exact', head: true })
-      .eq('primary_article_id', articleId)
-      .eq('is_active', true)
-      .limit(1)
+    const rows = await getReadDb()
+      .select({ c: count() })
+      .from(questions)
+      .where(and(eq(questions.primaryArticleId, articleId), eq(questions.isActive, true)))
 
-    if (error) {
-      logger.error('Error checking questions for article', error, { domain: 'search' })
-      return false
-    }
-
-    return (count ?? 0) > 0
+    return Number(rows[0]?.c ?? 0) > 0
   } catch (e) {
     logger.error('Exception checking questions for article', e, { domain: 'search' })
     return false
@@ -1203,25 +1202,33 @@ export async function getArticleByQuestionId(
   questionId: string
 ): Promise<{ id: string; articleNumber: string; title: string; content: string; lawId: string; lawShortName: string; lawName: string } | null> {
   try {
-    const { data, error } = await getSupabase()
-      .from('questions')
-      .select('primary_article_id, articles(id, article_number, title, content, law_id, laws(short_name, name))')
-      .eq('id', questionId)
-      .not('primary_article_id', 'is', null)
+    const rows = await getReadDb()
+      .select({
+        id: articles.id,
+        article_number: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        law_id: articles.lawId,
+        law_short_name: laws.shortName,
+        law_name: laws.name,
+      })
+      .from(questions)
+      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+      .leftJoin(laws, eq(articles.lawId, laws.id))
+      .where(and(eq(questions.id, questionId), isNotNull(questions.primaryArticleId)))
       .limit(1)
-      .single()
 
-    if (error || !data?.articles) return null
+    const art = rows[0]
+    if (!art) return null
 
-    const art = data.articles as any
     return {
       id: art.id,
       articleNumber: art.article_number,
       title: art.title ?? '',
       content: art.content ?? '',
-      lawId: art.law_id,
-      lawShortName: art.laws?.short_name ?? '',
-      lawName: art.laws?.name ?? '',
+      lawId: art.law_id ?? '',
+      lawShortName: art.law_short_name ?? '',
+      lawName: art.law_name ?? '',
     }
   } catch {
     return null
