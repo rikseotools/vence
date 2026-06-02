@@ -22,13 +22,13 @@ import { isPsychometricSubtype } from '../shared/constants'
 import { isPlatformQuery } from '../domains/knowledge-base/queries'
 import { generateEmbedding } from '../domains/search/EmbeddingService'
 import { searchArticlesBySimilarity } from '../domains/search/queries'
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { oposiciones, topicScope, topics } from '@/db/schema'
+import { eq, and, sql } from 'drizzle-orm'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
 
-const getSupabaseForSearch = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Formatea un embedding (number[]) como literal pgvector para ::vector
+const toVector = (embedding: number[]) => `[${embedding.join(',')}]`
 
 /**
  * Orquestador principal del sistema de chat
@@ -58,12 +58,23 @@ export class ChatOrchestrator {
     }
 
     try {
-      const supabase = getSupabaseForSearch()
-      const { data } = await supabase
-        .from('oposiciones')
-        .select('nombre, slug, plazas_libres, temas_count, exam_date, exam_date_approximate, estado_proceso, is_convocatoria_activa, grupo, subgrupo, titulo_requerido')
-        .eq('is_active', true)
-        .order('nombre')
+      const data = await getReadDb()
+        .select({
+          nombre: oposiciones.nombre,
+          slug: oposiciones.slug,
+          plazas_libres: oposiciones.plazasLibres,
+          temas_count: oposiciones.temasCount,
+          exam_date: oposiciones.examDate,
+          exam_date_approximate: oposiciones.examDateApproximate,
+          estado_proceso: oposiciones.estadoProceso,
+          is_convocatoria_activa: oposiciones.isConvocatoriaActiva,
+          grupo: oposiciones.grupo,
+          subgrupo: oposiciones.subgrupo,
+          titulo_requerido: oposiciones.tituloRequerido,
+        })
+        .from(oposiciones)
+        .where(eq(oposiciones.isActive, true))
+        .orderBy(oposiciones.nombre)
 
       if (data?.length) {
         const lines = data.map(o => {
@@ -798,12 +809,13 @@ export class ChatOrchestrator {
       if (context.userDomain) {
         try {
           const domainNorm = context.userDomain.replace(/-/g, '_')
-          const { data: scopeLaws } = await getSupabaseForSearch()
-            .from('topic_scope')
-            .select('law_id, topics!inner(position_type)')
-            .eq('topics.position_type', domainNorm)
-          if (scopeLaws && scopeLaws.length > 0) {
-            priorityLawIds = [...new Set(scopeLaws.map((s: Record<string, unknown>) => s.law_id as string))]
+          const scopeLaws = await getReadDb()
+            .select({ law_id: topicScope.lawId })
+            .from(topicScope)
+            .innerJoin(topics, eq(topicScope.topicId, topics.id))
+            .where(eq(topics.positionType, domainNorm))
+          if (scopeLaws.length > 0) {
+            priorityLawIds = [...new Set(scopeLaws.map(s => s.law_id).filter((id): id is string => !!id))]
             logger.info(`Fallback RAG: ${priorityLawIds.length} priority laws for ${context.userDomain}`, { domain: 'orchestrator' })
           }
         } catch { /* no bloquear si falla */ }
@@ -818,14 +830,21 @@ export class ChatOrchestrator {
         priorityLawCount: priorityLawIds.length,
       })
 
-      const { data: hybridResults } = await getSupabaseForSearch().rpc('hybrid_search_articles', {
-        query_embedding: embedding,
-        query_text: queryText,
-        match_count: 15,
-        semantic_weight: 0.4,
-        text_weight: 0.6,
-        priority_law_ids: priorityLawIds,
-      })
+      let hybridResults: any[] = []
+      try {
+        hybridResults = (await getReadDb().execute(sql`
+          SELECT * FROM hybrid_search_articles(
+            ${toVector(embedding)}::vector,
+            ${queryText},
+            15,
+            0.4,
+            0.6,
+            ${priorityLawIds}::uuid[]
+          )
+        `)) as any[]
+      } catch (err) {
+        logger.error('Error in hybrid_search_articles RPC', err, { domain: 'orchestrator' })
+      }
 
       const allArticles = hybridResults || []
 
