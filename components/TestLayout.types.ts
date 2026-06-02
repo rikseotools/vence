@@ -92,7 +92,7 @@ export interface TestLayoutConfig {
   numQuestions?: number
   onlyOfficial?: boolean
   customNavigationLinks?: Record<string, CustomNavigationLink>
-  [key: string]: any  // eslint-disable-line @typescript-eslint/no-explicit-any — callers pass extra fields
+  [key: string]: any  // eslint-disable-line @typescript-eslint/no-explicit-any -- callers pass extra fields
 }
 
 // ============================================
