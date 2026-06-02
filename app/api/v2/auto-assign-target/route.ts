@@ -13,7 +13,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getAuthenticatedUser, getServiceClient } from '@/lib/api/shared/auth'
+import { getAuthenticatedUser } from '@/lib/api/shared/auth'
+import { getAdminDb } from '@/db/client'
+import { userProfiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateProfileCache } from '@/lib/api/profile'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
@@ -40,29 +43,41 @@ async function _POST(request: NextRequest) {
     return NextResponse.json({ assigned: false, reason: 'unknown_slug' })
   }
 
-  const supabase = getServiceClient()
-  const { data: profile, error: selErr } = await supabase
-    .from('user_profiles')
-    .select('target_oposicion')
-    .eq('id', auth.user.id)
-    .single()
+  const db = getAdminDb()
+  let profile = null
+  let selErr = null
+  try {
+    const [row] = await db
+      .select({ target_oposicion: userProfiles.targetOposicion })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, auth.user.id))
+      .limit(1)
+    profile = row ?? null
+  } catch (e) {
+    selErr = e
+  }
 
-  if (selErr) {
+  if (selErr || !profile) {
     return NextResponse.json({ error: 'Error leyendo perfil' }, { status: 500 })
   }
 
-  if (profile?.target_oposicion) {
+  if (profile.target_oposicion) {
     // Ya tiene → no tocar
     return NextResponse.json({ assigned: false, reason: 'already_assigned' })
   }
 
-  const { error: updErr } = await supabase
-    .from('user_profiles')
-    .update({
-      target_oposicion: positionType,
-      first_oposicion_detected_at: new Date().toISOString(),
-    })
-    .eq('id', auth.user.id)
+  let updErr = null
+  try {
+    await db
+      .update(userProfiles)
+      .set({
+        targetOposicion: positionType,
+        firstOposicionDetectedAt: new Date().toISOString(),
+      })
+      .where(eq(userProfiles.id, auth.user.id))
+  } catch (e) {
+    updErr = e
+  }
 
   if (updErr) {
     return NextResponse.json({ error: 'Error asignando' }, { status: 500 })
