@@ -67,6 +67,67 @@ export async function getOrganicByOposicion(
   return out
 }
 
+export interface SeoOpportunity {
+  query: string
+  impressions: number
+  clicks: number
+  ctr: number
+  position: number
+  /** Posición en el periodo anterior (28d previos). null si no aparecía. */
+  prevPosition: number | null
+  /** prevPosition - position. Positivo = ha SUBIDO (mejorado). null si sin previo. */
+  positionDelta: number | null
+}
+
+/**
+ * Oportunidades SEO: búsquedas con DEMANDA (impresiones) donde rankeas en
+ * "distancia de tiro" (posición 4-20) → mejorar contenido = tráfico gratis.
+ * Incluye TENDENCIA vs el periodo anterior para ver si los cambios funcionan.
+ */
+export async function getSeoOpportunities(
+  nowIso: string = new Date().toISOString(),
+  opts: { minImpressions?: number; minPos?: number; maxPos?: number } = {}
+): Promise<SeoOpportunity[]> {
+  const minImpr = opts.minImpressions ?? 150
+  const minPos = opts.minPos ?? 4
+  const maxPos = opts.maxPos ?? 20
+  const cur = organicWindow(nowIso) // [now-31, now-3]
+  const prevEnd = new Date(new Date(cur.startDate).getTime() - 86_400_000)
+  const prev = {
+    startDate: new Date(prevEnd.getTime() - 28 * 86_400_000).toISOString().slice(0, 10),
+    endDate: prevEnd.toISOString().slice(0, 10),
+  }
+
+  const [curRows, prevRows] = await Promise.all([
+    querySearchAnalytics({ ...cur, dimensions: ['query'], rowLimit: 5000 }),
+    querySearchAnalytics({ ...prev, dimensions: ['query'], rowLimit: 5000 }),
+  ])
+  const prevPos = new Map<string, number>()
+  for (const r of prevRows) prevPos.set(r.keys[0], r.position)
+
+  return curRows
+    .filter(
+      (r) =>
+        r.position >= minPos &&
+        r.position <= maxPos &&
+        r.impressions >= minImpr &&
+        !/vence/i.test(r.keys[0]) // excluir marca (ya rankea #1)
+    )
+    .map((r): SeoOpportunity => {
+      const pp = prevPos.get(r.keys[0]) ?? null
+      return {
+        query: r.keys[0],
+        impressions: r.impressions,
+        clicks: r.clicks,
+        ctr: r.ctr,
+        position: r.position,
+        prevPosition: pp,
+        positionDelta: pp != null ? pp - r.position : null,
+      }
+    })
+    .sort((a, b) => b.impressions - a.impressions)
+}
+
 export interface OrganicQuery {
   query: string
   clicks: number

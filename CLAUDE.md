@@ -278,6 +278,11 @@ git push origin main
 - **Cuándo consultarlo:** cuando el usuario diga *"investiga ads"*, *"campañas"*, *"rendimiento de anuncios"*, *"dónde meto presupuesto"* o similar, Claude DEBE seguir el runbook ANTES de improvisar.
 - **Resumen:** integración Google Ads API (`lib/services/googleAds/`, comandos `npm run ads:*`, panel `/admin/ads`). El runbook explica cómo mirar coste/clics/registros + ingreso real + fecha de examen, con queries listas y el framework de decisión de presupuesto. Aprendizaje clave (02/06/2026, datos reales): la gente compra premium cerca del examen (pico 0-30 días), el examen pasado seca las ventas, y el coste/registro solo engaña si no se cruza con fecha de examen e ingreso. Mantener puja por CLIC (decisión Manuel).
 
+### 🔎 Oportunidades SEO (runbook)
+- **Runbook:** `docs/runbooks/seo-oportunidades.md`
+- **Cuándo consultarlo:** cuando el usuario diga *"oportunidades SEO"*, *"qué mejoro de SEO"*, *"subir en Google"*, *"posiciones orgánicas"* o similar.
+- **Resumen:** datos de Google Search Console (conectado por API, `lib/services/googleSearchConsole/`). Comandos `npm run gsc:seo` (oportunidades con tendencia ↑/↓) y `gsc:keywords -- <slug>`. Panel `/admin/ads` tiene columna "Orgánico". Bucle: identificar (gsc:seo) → estudiar competidor (Google la query / Semrush) → mejorar contenido → medir a 3-4 semanas. **Ads NO sube el orgánico**; SEO se sube con contenido + enlaces. Mayor demanda: tests de leyes (39/2015, 40/2015, CE) + "examen auxiliar administrativo estado".
+
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado
 - Prefijo `💾` para operaciones de guardado

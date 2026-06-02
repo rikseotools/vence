@@ -3,6 +3,8 @@ export { querySearchAnalytics, type GscRow, type SearchAnalyticsOpts } from './c
 export {
   getOrganicByOposicion,
   getTopQueriesForSlug,
+  getSeoOpportunities,
   type OrganicStats,
   type OrganicQuery,
+  type SeoOpportunity,
 } from './reports'

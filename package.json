@@ -44,7 +44,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "test:e2e:install": "playwright install chromium",
-    "gsc:keywords": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts"
+    "gsc:keywords": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts",
+    "gsc:seo": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts seo"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
