@@ -275,7 +275,7 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 **Fases (strangler, cada una shippable + revertible):**
 - ✅ **A — Facade sin migrar nada** (0 cambio comportamiento). HECHO 02/06 (commit `8f526950`): `lib/auth/` creado + 17 tests adapter verdes + AuthContext 32/32 intactos + typecheck limpio.
-- ⏳ **B — Hub** (`lib/api/authHeaders.ts` → `contexts/AuthContext.tsx`). El cutover peligroso (sesión viva). Refactor mecánico + 32 tests ampliados + checklist manual en preview (iOS/Android) + soak 24-48h. `JWT_LOCAL_VERIFY_MODE=off` durante B. Red de seguridad: `git revert` (decisión Manuel, sin env-flag).
+- ⏳ **B — Hub** (`lib/api/authHeaders.ts` → `contexts/AuthContext.tsx`). El cutover peligroso (sesión viva). 🗓️ **PROGRAMADO sábado 2026-06-06 por la noche** (sin usuarios — decisión Manuel: un fallo aquí = logout masivo, se hace en ventana de tráfico cero). Refactor mecánico + 32 tests ampliados + checklist manual en preview (iOS/Android) + soak. `JWT_LOCAL_VERIFY_MODE=off` durante B. Red de seguridad: `git revert` (sin env-flag).
 - ⏳ **C — Componentes/hooks cliente por lotes** (C1 fetchers token-only → C2 modales/login+OAuth → C3 chat/notif → C4 `auth/callback` → C5 AvatarChanger).
 - ⏳ **D — Server admin.*** (`admin/delete-user`, `send-medal-congratulation` → `authAdmin.*`).
 - ⏳ **E — Lock ESLint**: prohibir `supabase.auth.*` fuera de `lib/auth/` + `lib/supabase.ts` (severidad `error` tras grep 0-violaciones).
