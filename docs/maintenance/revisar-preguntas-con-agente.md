@@ -1627,19 +1627,24 @@ IF p_new_state IN ('approved','tech_approved') AND p_reason_code NOT LIKE 'admin
   IF NOT EXISTS (
     SELECT 1 FROM public.ai_verification_results av
     WHERE av.question_id = p_question_id
-      AND av.answer_ok IS TRUE AND av.options_ok IS TRUE
-      AND av.explanation_ok IS TRUE AND av.article_ok IS TRUE
+      AND av.answer_ok IS TRUE
+      AND av.explanation_ok IS TRUE
+      AND av.article_ok IS DISTINCT FROM FALSE   -- true o null (virtual) OK; false bloquea
+      AND av.options_ok IS DISTINCT FROM FALSE   -- null OK por ahora (ver palanca 2/3)
       AND COALESCE(av.discarded, false) = false
   ) THEN
-    RAISE EXCEPTION 'AI promotion blocked: question % lacks a complete passing verification (answer_ok+options_ok+explanation_ok+article_ok all true)', p_question_id;
+    RAISE EXCEPTION 'AI promotion blocked: question % lacks a passing verification (needs answer_ok+explanation_ok TRUE and article_ok/options_ok not FALSE)', p_question_id;
   END IF;
 END IF;
 ```
 
-- **Implica que `options_ok` ya NO es opcional** para promover (cierra el agujero de §3.2/§355): el writer del pipeline DEBE persistir `options_ok=true`, o la promoción `ai_verified_*` falla.
-- **Sin verdad de referencia, no hay auto-perfect:** una pregunta con artículo de contenido vacío (`article_ok=false`) no puede auto-aprobarse — requiere `admin_%` (override humano) o re-vinculación a un artículo real. Esto cubre los ~1.822 ítems del lote sanitario colgados de artículos-placeholder.
-- **Humanos siguen pudiendo forzar** con cualquier `reason_code` que empiece por `admin_` (override confiable).
+- **`answer_ok` y `explanation_ok` deben ser TRUE; `article_ok` y `options_ok` no pueden ser FALSE** (true o null válidos). Esto caza el false-perfect (`83daa594`: tenía `explanation_ok=null` + `article_ok=false` → bloqueado) sin romper el pipeline vivo.
+- **⚠️ Calibración crítica (02/06):** la 1ª versión exigía los 4 flags en TRUE, pero **el pipeline vivo `topic-review/verify` NO setea `options_ok`** (lo omite → null) y usa `article_ok=null` para leyes virtuales. Con la versión estricta, el gate bloqueaba **toda** promoción legítima de ese pipeline (la transición fallaba silenciosamente, capturada como warning). Por eso se relajó a `IS DISTINCT FROM FALSE`. Lección: un gate que mira flags que el productor no rellena rompe el flujo en silencio.
+- **Sin verdad de referencia, no hay auto-perfect:** una pregunta con `article_ok=false` (artículo verificado como incorrecto/placeholder) no puede auto-aprobarse — requiere `admin_%` o re-vinculación. Las virtuales legítimas (`article_ok=null`) sí pasan.
+- **Humanos siguen pudiendo forzar** con cualquier `reason_code` `admin_%`.
 - **No afecta a preguntas ya aprobadas** (el gate solo dispara en transiciones nuevas).
+
+**PALANCA 2/3 (pendiente, código del pipeline `app/api/topic-review/verify/route.js`):** para recuperar la protección plena contra el error "clave equivocada" (§3.2/§355), el pipeline debe **verificar y persistir `options_ok`** (hoy `determineReviewStatus` solo mira article/answer/explanation, no options; y el INSERT de `ai_verification_results` omite `options_ok`). Una vez el pipeline setee `options_ok=true` afirmativamente en los "perfect", **re-endurecer el gate** a `options_ok IS TRUE`. Además, separar la fase estructural (`keep_structural`/`keep_no_law_exists`) de la aprobación de contenido: un pase estructural NO debe conceder `ai_verified_tech_perfect` (debe enrutar a `needs_review` para verificación de contenido en 3 pasadas).
 
 **Detector mecánico (palanca complementaria, coste IA cero).** Barrido programático bank-wide que rutea a `needs_human` defectos que los agentes dejan pasar. Alta precisión: opciones idénticas (`A===B` etc.), metadatos filtrados en opción/explicación (`(artículo N)` final, "Pregunta anulada", "por ."), corrupción OCR (`]`/`[` dentro de palabra, chars basura). Calibración 02/06: las heurísticas amplias (`[ABCD])` a media frase, camelCase intra-palabra) dan demasiados falsos positivos — restringir a TAB+letra y `]`/`[` intra-palabra. Resultado afinado sobre 91.678 activas: 26 `dup_options` + 46 `leaked_meta` + 17 `ocr` = 89 hits reales. Convertir en test de integración + cron (modelo `supuestoPracticoOrphans.test.ts`).
 
