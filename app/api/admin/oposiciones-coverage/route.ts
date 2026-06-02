@@ -15,8 +15,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, getServiceClient } from '@/lib/api/shared/auth'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getReadDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,12 +41,12 @@ interface CoverageStats {
 async function _GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (!auth.ok) return auth.response
-  const supabase = getServiceClient()
+  const db = getReadDb()
 
   // 1) Counts por coverage_level
-  const { data: rawCounts } = await supabase
-    .from('oposiciones')
-    .select('coverage_level, is_active')
+  const rawCounts = (await db.execute(sql`
+    SELECT coverage_level, is_active FROM oposiciones
+  `)) as any[]
 
   const byLevelMap: Record<string, { total: number; active: number; inactive: number }> = {}
   for (const r of rawCounts ?? []) {
@@ -58,9 +60,9 @@ async function _GET(request: NextRequest) {
   const byLevel = ORDER.map(lvl => ({ level: lvl, ...(byLevelMap[lvl] ?? { total: 0, active: 0, inactive: 0 }) }))
 
   // 2) Counts por administración × coverage_level
-  const { data: rawAdmin } = await supabase
-    .from('oposiciones')
-    .select('administracion, coverage_level')
+  const rawAdmin = (await db.execute(sql`
+    SELECT administracion, coverage_level FROM oposiciones
+  `)) as any[]
 
   const byAdminMap: Record<string, Record<string, number>> = {}
   for (const r of rawAdmin ?? []) {
@@ -77,51 +79,55 @@ async function _GET(request: NextRequest) {
   byAdminLevel.sort((a, b) => a.administracion.localeCompare(b.administracion) || a.level.localeCompare(b.level))
 
   // 3) Últimos 30 saltos
-  const { data: rawJumps } = await supabase
-    .from('coverage_history')
-    .select('from_level, to_level, reason, changed_by, changed_at, oposiciones(slug, nombre)')
-    .order('changed_at', { ascending: false })
-    .limit(30)
+  const rawJumps = (await db.execute(sql`
+    SELECT ch.from_level, ch.to_level, ch.reason, ch.changed_by, ch.changed_at,
+           o.slug AS opo_slug, o.nombre AS opo_nombre
+    FROM coverage_history ch
+    LEFT JOIN oposiciones o ON ch.oposicion_id = o.id
+    ORDER BY ch.changed_at DESC
+    LIMIT 30
+  `)) as any[]
 
-  const recentJumps = (rawJumps ?? []).map((r: Record<string, unknown>) => {
-    const opo = r.oposiciones as { slug?: string; nombre?: string } | null
-    return {
-      slug: opo?.slug ?? '(unknown)',
-      nombre: opo?.nombre ?? '(unknown)',
-      from_level: r.from_level as string,
-      to_level: r.to_level as string,
-      reason: r.reason as string,
-      changed_by: r.changed_by as string,
-      changed_at: r.changed_at as string,
-    }
-  })
+  const recentJumps = rawJumps.map((r: Record<string, unknown>) => ({
+    slug: (r.opo_slug as string) ?? '(unknown)',
+    nombre: (r.opo_nombre as string) ?? '(unknown)',
+    from_level: r.from_level as string,
+    to_level: r.to_level as string,
+    reason: r.reason as string,
+    changed_by: r.changed_by as string,
+    changed_at: r.changed_at as string,
+  }))
 
   // 4) Catalogadas sin seguimiento_url
-  const { data: rawSin } = await supabase
-    .from('oposiciones')
-    .select('slug, nombre, administracion, coverage_level')
-    .eq('coverage_level', 'catalogada')
-    .is('seguimiento_url', null)
-    .order('slug')
+  const rawSin = (await db.execute(sql`
+    SELECT slug, nombre, administracion, coverage_level
+    FROM oposiciones
+    WHERE coverage_level = 'catalogada' AND seguimiento_url IS NULL
+    ORDER BY slug
+  `)) as any[]
 
-  const sinSeguimientoUrl = (rawSin ?? []).map(r => ({
-    slug: r.slug,
-    nombre: r.nombre,
-    administracion: r.administracion ?? '(unknown)',
-    coverage_level: r.coverage_level,
+  const sinSeguimientoUrl = rawSin.map((r: Record<string, unknown>) => ({
+    slug: r.slug as string,
+    nombre: r.nombre as string,
+    administracion: (r.administracion as string) ?? '(unknown)',
+    coverage_level: r.coverage_level as string,
   }))
 
   // 5) Totals
-  const { count: total } = await supabase.from('oposiciones').select('*', { count: 'exact', head: true })
-  const { count: con_url } = await supabase.from('oposiciones').select('*', { count: 'exact', head: true }).not('seguimiento_url', 'is', null)
-  const { count: sin_url } = await supabase.from('oposiciones').select('*', { count: 'exact', head: true }).is('seguimiento_url', null)
+  const totalRow = (await db.execute(sql`SELECT count(*)::int AS c FROM oposiciones`)) as any[]
+  const conRow = (await db.execute(sql`SELECT count(*)::int AS c FROM oposiciones WHERE seguimiento_url IS NOT NULL`)) as any[]
+  const sinRow = (await db.execute(sql`SELECT count(*)::int AS c FROM oposiciones WHERE seguimiento_url IS NULL`)) as any[]
 
   const response: CoverageStats = {
     byLevel,
     byAdminLevel,
     recentJumps,
     sinSeguimientoUrl,
-    totals: { total: total ?? 0, con_url: con_url ?? 0, sin_url: sin_url ?? 0 },
+    totals: {
+      total: totalRow[0]?.c ?? 0,
+      con_url: conRow[0]?.c ?? 0,
+      sin_url: sinRow[0]?.c ?? 0,
+    },
   }
 
   return NextResponse.json(response)
