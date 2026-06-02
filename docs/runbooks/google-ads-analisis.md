@@ -51,7 +51,11 @@ o similar. Léelo ANTES de improvisar.
 - **Ingreso histórico por OPOSICIÓN** → `conversion_events` (event_type
   `payment_completed`, `event_data->>'amount'`) ⋈ `user_profiles.target_oposicion`.
   (target usa guiones_bajos; el slug usa guiones → `replace(target_oposicion,'_','-')`).
-- **Fecha de examen** → `convocatoria_hitos` (`titulo ILIKE '%examen%'`) por oposición.
+- **Fecha de examen** → **FUENTE ÚNICA `oposiciones.exam_date`** (+ `exam_date_approximate`),
+  mantenida por el manual de OEPs (`docs/maintenance/oeps-convocatorias-seguimiento.md`
+  §4e) con la **OEP vigente**. ⚠️ NO usar `convocatoria_hitos` para esto: mezcla OEPs
+  viejas y se queda con un examen pasado aunque haya OEP nueva (error real 02/06: Madrid
+  marcado "pasado 12-abr" cuando su OEP nueva tiene examen ~oct-2026 en `exam_date`).
 
 ---
 
@@ -82,9 +86,10 @@ LEFT JOIN LATERAL (
 WHERE ce.event_type='payment_completed' GROUP BY 1;
 ```
 
-**C) Fecha de examen por campaña** (mapeo vía URL final + hitos): sacar
-`ad_group_ad.ad.final_urls` de la API → slug → `convocatoria_hitos` con
-`titulo ILIKE '%examen%'`, elegir el próximo (`fecha>=hoy`) o el último pasado.
+**C) Fecha de examen por campaña**: sacar `ad_group_ad.ad.final_urls` de la API →
+slug → `SELECT exam_date::text, exam_date_approximate FROM oposiciones WHERE slug=…`.
+Esa columna ya tiene el **próximo** examen de la OEP vigente (NO derivar de hitos).
+El panel `/admin/ads` ya lo hace (`lib/services/googleAds/roi.ts → examInfoBySlug`).
 
 ---
 

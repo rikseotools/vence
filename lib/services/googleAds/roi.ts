@@ -12,10 +12,10 @@
 // que ventanas cortas infra-cuentan ingreso. La atribución solo existe para
 // registros posteriores al despliegue de /api/acquisition.
 
-import { and, eq, gte, ilike, inArray, isNotNull, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
 import type { Customer } from 'google-ads-api'
 import { getReadDb } from '@/db/client'
-import { userAcquisition, conversionEvents, convocatoriaHitos, oposiciones } from '@/db/schema'
+import { userAcquisition, conversionEvents, oposiciones } from '@/db/schema'
 import { getGoogleAdsCustomer } from './client'
 import { getCampaignPerformance, type DateRange } from './reports'
 
@@ -50,8 +50,10 @@ export interface CampaignRoi {
   roi: number | null
   /** Slug de la oposición que anuncia la campaña (de la URL final). */
   examSlug: string | null
-  /** Fecha del examen relevante (próximo, o último pasado) YYYY-MM-DD. */
+  /** Fecha del próximo examen (oposiciones.exam_date) YYYY-MM-DD. */
   examDate: string | null
+  /** True si exam_date es estimada (exam_date_approximate). */
+  examApproximate: boolean | null
   /** Días hasta el examen (negativo = ya pasado). null si sin fecha. */
   daysToExam: number | null
 }
@@ -120,40 +122,35 @@ async function campaignSlugMap(customer: Customer): Promise<Map<string, string>>
 }
 
 /**
- * Para cada slug, la fecha de examen relevante: el próximo examen (fecha >= hoy);
- * si no hay, el último pasado. De `convocatoria_hitos` (titulo con "examen").
+ * Fecha del próximo examen por slug, desde la FUENTE ÚNICA `oposiciones.exam_date`
+ * (+ `exam_date_approximate`). Esta columna la mantiene el manual de OEPs
+ * (docs/maintenance/oeps-convocatorias-seguimiento.md §4e) con la OEP vigente —
+ * NO usar convocatoria_hitos, que mezcla OEPs viejas. Escalable a todas las
+ * oposiciones. Drizzle `date()` devuelve 'YYYY-MM-DD' (sin shift de TZ).
  */
-async function examDateBySlug(slugs: string[], nowIso: string): Promise<Map<string, string>> {
+async function examInfoBySlug(
+  slugs: string[]
+): Promise<Map<string, { date: string | null; approximate: boolean }>> {
   if (slugs.length === 0) return new Map()
   const db = getReadDb()
   const rows = await db
-    .select({ slug: oposiciones.slug, fecha: convocatoriaHitos.fecha })
-    .from(convocatoriaHitos)
-    .innerJoin(oposiciones, eq(oposiciones.id, convocatoriaHitos.oposicionId))
-    .where(
-      and(
-        inArray(oposiciones.slug, slugs),
-        ilike(convocatoriaHitos.titulo, '%examen%'),
-        isNotNull(convocatoriaHitos.fecha)
-      )
-    )
+    .select({
+      slug: oposiciones.slug,
+      examDate: oposiciones.examDate,
+      approximate: oposiciones.examDateApproximate,
+    })
+    .from(oposiciones)
+    .where(inArray(oposiciones.slug, slugs))
 
-  const today = nowIso.slice(0, 10)
-  const bySlug = new Map<string, string[]>()
+  const map = new Map<string, { date: string | null; approximate: boolean }>()
   for (const r of rows) {
-    const slug = r.slug as string
-    const fecha = String(r.fecha).slice(0, 10)
-    if (!bySlug.has(slug)) bySlug.set(slug, [])
-    bySlug.get(slug)!.push(fecha)
+    if (!r.slug) continue
+    map.set(r.slug, {
+      date: r.examDate ? String(r.examDate).slice(0, 10) : null,
+      approximate: Boolean(r.approximate),
+    })
   }
-  const result = new Map<string, string>()
-  for (const [slug, dates] of bySlug) {
-    const sorted = [...dates].sort()
-    const upcoming = sorted.find((d) => d >= today)
-    const chosen = upcoming ?? sorted[sorted.length - 1] // próximo, o último pasado
-    if (chosen) result.set(slug, chosen)
-  }
-  return result
+  return map
 }
 
 /**
@@ -197,6 +194,7 @@ export async function getCampaignRoi(
       roi: p.costEur > 0 ? revenueEur / p.costEur : null,
       examSlug: null,
       examDate: null,
+      examApproximate: null,
       daysToExam: null,
     })
   }
@@ -219,23 +217,27 @@ export async function getCampaignRoi(
       roi: null,
       examSlug: null,
       examDate: null,
+      examApproximate: null,
       daysToExam: null,
     })
   }
 
-  // Enriquecer con la fecha de examen (campaña → slug de la URL final → hito de examen)
+  // Enriquecer con la fecha del próximo examen (campaña → slug de URL final →
+  // oposiciones.exam_date, fuente única mantenida por el manual de OEPs).
   const slugMap = await campaignSlugMap(customer)
   const slugs = [...new Set([...slugMap.values()])]
-  const examMap = await examDateBySlug(slugs, nowIso)
+  const examMap = await examInfoBySlug(slugs)
   const today = nowIso.slice(0, 10)
   for (const c of byId.values()) {
     const slug = slugMap.get(c.campaignId) ?? null
     c.examSlug = slug
-    const ed = slug ? examMap.get(slug) ?? null : null
-    c.examDate = ed
-    c.daysToExam = ed
+    const info = slug ? examMap.get(slug) ?? null : null
+    c.examDate = info?.date ?? null
+    c.examApproximate = info?.approximate ?? null
+    c.daysToExam = c.examDate
       ? Math.round(
-          (new Date(`${ed}T00:00:00Z`).getTime() - new Date(`${today}T00:00:00Z`).getTime()) /
+          (new Date(`${c.examDate}T00:00:00Z`).getTime() -
+            new Date(`${today}T00:00:00Z`).getTime()) /
             86_400_000
         )
       : null

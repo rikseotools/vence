@@ -33,6 +33,7 @@ interface Campaign {
   cpaEur: number | null
   roi: number | null
   examDate: string | null
+  examApproximate: boolean | null
   daysToExam: number | null
 }
 
@@ -250,7 +251,9 @@ export default function AdsPage() {
                 <td className={`px-3 py-2 text-right ${examCell(c).cls}`}>
                   {examCell(c).text}
                   {c.examDate && (
-                    <span className="block text-xs font-normal text-gray-400">{c.examDate}</span>
+                    <span className="block text-xs font-normal text-gray-400">
+                      {c.examApproximate ? '~' : ''}{c.examDate}
+                    </span>
                   )}
                 </td>
                 <td className="px-3 py-2 text-right">{eur(c.costEur)}</td>
