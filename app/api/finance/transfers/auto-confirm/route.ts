@@ -5,7 +5,8 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { authenticateFinanceRequest } from '@/lib/finance/auth'
-import { getArmandoSupabaseAdmin } from '@/lib/armando/supabaseAdmin'
+import { getAdminDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 interface AutoConfirmBody {
@@ -37,16 +38,21 @@ async function _POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'crypto_amount_received debe ser número' }, { status: 400 })
   }
 
-  const supabase = getArmandoSupabaseAdmin()
-  const { error } = await supabase
-    .from('payout_transfers')
-    .update({
-      manuel_confirmed: true,
-      manuel_confirmed_date: new Date().toISOString(),
-      crypto_tx_hash: body.crypto_tx_hash,
-      crypto_amount_received: body.crypto_amount_received,
-    })
-    .eq('stripe_payout_id', body.stripe_payout_id)
+  // crypto_tx_hash / crypto_amount_received NO están en el schema Drizzle
+  // (BD más nueva que el introspect) → raw SQL.
+  let error: unknown = null
+  try {
+    await getAdminDb().execute(sql`
+      UPDATE payout_transfers SET
+        manuel_confirmed = true,
+        manuel_confirmed_date = ${new Date().toISOString()},
+        crypto_tx_hash = ${body.crypto_tx_hash},
+        crypto_amount_received = ${body.crypto_amount_received}
+      WHERE stripe_payout_id = ${body.stripe_payout_id}
+    `)
+  } catch (e) {
+    error = e
+  }
 
   if (error) {
     console.error('[finance/transfers/auto-confirm] DB error:', error)

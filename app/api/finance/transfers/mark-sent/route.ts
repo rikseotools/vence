@@ -4,7 +4,8 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { authenticateFinanceRequest } from '@/lib/finance/auth'
-import { getArmandoSupabaseAdmin } from '@/lib/armando/supabaseAdmin'
+import { getAdminDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 interface MarkSentBody {
@@ -48,20 +49,32 @@ async function _POST(req: NextRequest): Promise<NextResponse> {
     ? null
     : (typeof body.expected_usd === 'number' ? body.expected_usd : null)
 
-  const supabase = getArmandoSupabaseAdmin()
-  const { error } = await supabase
-    .from('payout_transfers')
-    .upsert({
-      stripe_payout_id: body.stripe_payout_id,
-      payout_date: body.payout_date,
-      payout_amount: body.payout_amount,
-      payout_fee: body.payout_fee,
-      manuel_amount: body.manuel_amount,
-      armando_amount: body.armando_amount,
-      sent_to_manuel: true,
-      sent_date: new Date().toISOString(),
-      expected_usd: expectedUsd,
-    }, { onConflict: 'stripe_payout_id' })
+  // expected_usd NO está en el schema Drizzle (BD más nueva que el introspect)
+  // → raw SQL. upsert onConflict 'stripe_payout_id' (unique) → ON CONFLICT DO UPDATE.
+  let error: unknown = null
+  try {
+    await getAdminDb().execute(sql`
+      INSERT INTO payout_transfers
+        (stripe_payout_id, payout_date, payout_amount, payout_fee, manuel_amount,
+         armando_amount, sent_to_manuel, sent_date, expected_usd)
+      VALUES (
+        ${body.stripe_payout_id}, ${body.payout_date}, ${body.payout_amount},
+        ${body.payout_fee}, ${body.manuel_amount}, ${body.armando_amount},
+        true, ${new Date().toISOString()}, ${expectedUsd}
+      )
+      ON CONFLICT (stripe_payout_id) DO UPDATE SET
+        payout_date = EXCLUDED.payout_date,
+        payout_amount = EXCLUDED.payout_amount,
+        payout_fee = EXCLUDED.payout_fee,
+        manuel_amount = EXCLUDED.manuel_amount,
+        armando_amount = EXCLUDED.armando_amount,
+        sent_to_manuel = EXCLUDED.sent_to_manuel,
+        sent_date = EXCLUDED.sent_date,
+        expected_usd = EXCLUDED.expected_usd
+    `)
+  } catch (e) {
+    error = e
+  }
 
   if (error) {
     console.error('[finance/transfers/mark-sent] DB error:', error)

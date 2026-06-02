@@ -4,7 +4,9 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { authenticateFinanceRequest } from '@/lib/finance/auth'
-import { getArmandoSupabaseAdmin } from '@/lib/armando/supabaseAdmin'
+import { getAdminDb } from '@/db/client'
+import { payoutTransfers } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 interface ConfirmBody {
@@ -31,14 +33,18 @@ async function _POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'stripe_payout_id requerido' }, { status: 400 })
   }
 
-  const supabase = getArmandoSupabaseAdmin()
-  const { error } = await supabase
-    .from('payout_transfers')
-    .update({
-      manuel_confirmed: true,
-      manuel_confirmed_date: new Date().toISOString(),
-    })
-    .eq('stripe_payout_id', body.stripe_payout_id)
+  let error: unknown = null
+  try {
+    await getAdminDb()
+      .update(payoutTransfers)
+      .set({
+        manuelConfirmed: true,
+        manuelConfirmedDate: new Date().toISOString(),
+      })
+      .where(eq(payoutTransfers.stripePayoutId, body.stripe_payout_id))
+  } catch (e) {
+    error = e
+  }
 
   if (error) {
     console.error('[finance/transfers/confirm] DB error:', error)
