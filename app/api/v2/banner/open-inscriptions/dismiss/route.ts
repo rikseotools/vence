@@ -12,8 +12,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getAdminDb } from '@/db/client'
+import { oposiciones } from '@/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { getServiceClient } from '@/lib/api/shared/auth'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 export const maxDuration = 10
@@ -42,28 +44,37 @@ async function _POST(request: NextRequest) {
     return NextResponse.json({ ok: true, persisted: false }, { status: 200 })
   }
 
-  const supabase = getServiceClient()
+  const db = getAdminDb()
 
   // Buscar boe_reference actual para snapshot. Si la oposición ya no
   // existe o está inactiva, persistimos igualmente con boe NULL (el
   // dismiss simplemente no aparecerá en open list futura).
-  const { data: opo } = await supabase
-    .from('oposiciones')
-    .select('boe_reference')
-    .eq('slug', parsed.data.oposicion_slug)
-    .maybeSingle()
+  const [opo] = await db
+    .select({ boe_reference: oposiciones.boeReference })
+    .from(oposiciones)
+    .where(eq(oposiciones.slug, parsed.data.oposicion_slug))
+    .limit(1)
 
-  const { error } = await supabase
-    .from('user_inscription_banner_dismissals')
-    .upsert(
-      {
-        user_id: auth.userId,
-        oposicion_slug: parsed.data.oposicion_slug,
-        boe_reference_at_dismiss: opo?.boe_reference ?? null,
-        dismissed_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,oposicion_slug' },
-    )
+  // user_inscription_banner_dismissals no está tipada en Drizzle → raw SQL.
+  // onConflict (user_id, oposicion_slug) = PK; DO UPDATE de las no-clave.
+  let error = null
+  try {
+    await db.execute(sql`
+      INSERT INTO user_inscription_banner_dismissals
+        (user_id, oposicion_slug, boe_reference_at_dismiss, dismissed_at)
+      VALUES (
+        ${auth.userId}::uuid,
+        ${parsed.data.oposicion_slug},
+        ${opo?.boe_reference ?? null},
+        ${new Date().toISOString()}
+      )
+      ON CONFLICT (user_id, oposicion_slug) DO UPDATE SET
+        boe_reference_at_dismiss = EXCLUDED.boe_reference_at_dismiss,
+        dismissed_at = EXCLUDED.dismissed_at
+    `)
+  } catch (e) {
+    error = e
+  }
 
   if (error) {
     console.error('❌ [API/banner/dismiss] upsert error:', error)
