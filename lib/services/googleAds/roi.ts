@@ -18,6 +18,7 @@ import { getReadDb } from '@/db/client'
 import { userAcquisition, conversionEvents, oposiciones } from '@/db/schema'
 import { getGoogleAdsCustomer } from './client'
 import { getCampaignPerformance, type DateRange } from './reports'
+import { getOrganicByOposicion } from '@/lib/services/googleSearchConsole/reports'
 
 const RANGE_DAYS: Record<DateRange, number> = {
   TODAY: 1,
@@ -64,6 +65,10 @@ export interface CampaignRoi {
   budgetLostIS: number
   /** Impresiones perdidas por puja (0-1). Alto = CPC demasiado bajo para ganar. */
   rankLostIS: number
+  /** Posición media orgánica de la oposición (GSC). null si sin datos. 1 = top. */
+  organicPosition: number | null
+  /** Clics orgánicos de la oposición en ~28d (GSC). null si sin datos. */
+  organicClicks: number | null
 }
 
 /** Ingresos reales por campaña (google_ads) desde la BD, en una ventana. */
@@ -209,6 +214,8 @@ export async function getCampaignRoi(
         p.budgetEur > 0 ? (p.costEur / RANGE_DAYS[range] / p.budgetEur) * 100 : null,
       budgetLostIS: p.budgetLostIS,
       rankLostIS: p.rankLostIS,
+      organicPosition: null,
+      organicClicks: null,
     })
   }
   // Campañas con ingreso pero sin coste en la ventana (pausadas/antiguas)
@@ -236,6 +243,8 @@ export async function getCampaignRoi(
       budgetUtilizationPct: null,
       budgetLostIS: 0,
       rankLostIS: 0,
+      organicPosition: null,
+      organicClicks: null,
     })
   }
 
@@ -244,10 +253,15 @@ export async function getCampaignRoi(
   const slugMap = await campaignSlugMap(customer)
   const slugs = [...new Set([...slugMap.values()])]
   const examMap = await examInfoBySlug(slugs)
+  // Orgánico (GSC) por oposición — no bloqueante: si GSC falla, el panel sigue.
+  const organicMap = await getOrganicByOposicion(nowIso).catch(() => new Map())
   const today = nowIso.slice(0, 10)
   for (const c of byId.values()) {
     const slug = slugMap.get(c.campaignId) ?? null
     c.examSlug = slug
+    const org = slug ? organicMap.get(slug) : null
+    c.organicPosition = org ? org.position : null
+    c.organicClicks = org ? org.clicks : null
     const info = slug ? examMap.get(slug) ?? null : null
     c.examDate = info?.date ?? null
     c.examApproximate = info?.approximate ?? null

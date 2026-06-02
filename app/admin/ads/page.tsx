@@ -39,6 +39,8 @@ interface Campaign {
   budgetUtilizationPct: number | null
   budgetLostIS: number
   rankLostIS: number
+  organicPosition: number | null
+  organicClicks: number | null
 }
 
 interface AdsResponse {
@@ -82,7 +84,8 @@ function roiBadge(c: Campaign) {
 
 type SortKey =
   | 'name' | 'daysToExam' | 'budgetEur' | 'budgetUtilizationPct' | 'costEur' | 'clicks'
-  | 'avgCpcEur' | 'registrations' | 'costPerRegistrationEur' | 'payments' | 'revenueEur' | 'roi'
+  | 'avgCpcEur' | 'organicClicks' | 'registrations' | 'costPerRegistrationEur' | 'payments'
+  | 'revenueEur' | 'roi'
 
 function sortValue(c: Campaign, key: SortKey): number | string | null {
   switch (key) {
@@ -93,12 +96,24 @@ function sortValue(c: Campaign, key: SortKey): number | string | null {
     case 'costEur': return c.costEur
     case 'clicks': return c.clicks
     case 'avgCpcEur': return c.avgCpcEur
+    case 'organicClicks': return c.organicClicks
     case 'registrations': return c.registrations
     case 'costPerRegistrationEur': return c.costPerRegistrationEur
     case 'payments': return c.payments
     case 'revenueEur': return c.revenueEur
     case 'roi': return c.roi
   }
+}
+
+// Orgánico: posición media + clics gratis. Verde si rankea alto (pos ≤3),
+// gris si no. Dato, no veredicto: alto orgánico + ads = ojo a canibalización.
+function organicCell(c: Campaign): { text: string; cls: string } {
+  if (c.organicClicks == null) return { text: '—', cls: 'text-gray-400' }
+  const pos = c.organicPosition
+  const cls =
+    pos != null && pos <= 3 ? 'text-green-600 dark:text-green-400 font-semibold'
+    : 'text-gray-600 dark:text-gray-300'
+  return { text: `${pos != null ? 'pos ' + pos.toFixed(0) : '—'} · ${c.organicClicks}`, cls }
 }
 
 // Celda de examen: rojo si ya pasó, verde si inminente (ventana de venta),
@@ -250,6 +265,7 @@ export default function AdsPage() {
               <Th k="budgetUtilizationPct" label="Uso" />
               <Th k="clicks" label="Clics" />
               <Th k="avgCpcEur" label="CPC" />
+              <Th k="organicClicks" label="Orgánico" />
               <Th k="registrations" label="Registros" />
               <Th k="costPerRegistrationEur" label="€/registro" />
               <Th k="payments" label="Ventas" />
@@ -259,10 +275,10 @@ export default function AdsPage() {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {loading && (
-              <tr><td colSpan={12} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
+              <tr><td colSpan={13} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
             )}
             {!loading && sorted.length === 0 && (
-              <tr><td colSpan={12} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
+              <tr><td colSpan={13} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
             )}
             {!loading && sorted.map((c) => (
               <tr key={c.campaignId} className="text-gray-800 dark:text-gray-200">
@@ -290,6 +306,7 @@ export default function AdsPage() {
                 </td>
                 <td className="px-3 py-2 text-right">{c.clicks}</td>
                 <td className="px-3 py-2 text-right">{eur(c.avgCpcEur)}</td>
+                <td className={`px-3 py-2 text-right ${organicCell(c).cls}`}>{organicCell(c).text}</td>
                 <td className="px-3 py-2 text-right">{Math.round(c.registrations)}</td>
                 <td className={`px-3 py-2 text-right ${cprClass(c, t?.avgCostPerRegistration ?? null)}`}>
                   {c.costPerRegistrationEur != null
