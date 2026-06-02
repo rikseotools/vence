@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getCampaignRoi, GoogleAdsError, type DateRange } from '@/lib/services/googleAds'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const maxDuration = 30
 
@@ -18,7 +19,7 @@ function parseRange(raw: string | null): DateRange {
   return RANGES.includes(up) ? up : 'LAST_7_DAYS'
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (!auth.ok) return auth.response
 
@@ -62,3 +63,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/admin/ads', _GET)
