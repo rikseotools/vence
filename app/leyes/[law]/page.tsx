@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { resolveLawBySlug, getCanonicalSlugAsync, getAllActiveSlugs } from '@/lib/api/laws'
 import { queryLawStats } from '@/lib/api/law-stats/queries'
-import { fetchLawSections } from '@/lib/teoriaFetchers'
+import { fetchLawSections, fetchLawArticles } from '@/lib/teoriaFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
@@ -48,6 +48,15 @@ const getLawSectionsCached = (slug: string) =>
     tags: ['teoria'],
   })()
 
+// Fallback SSR para leyes SIN títulos (law_sections vacío) pero CON artículos
+// (p.ej. LPRL, Ley 9/2017, Ley 55/2003): índice de artículos crawleable. Mismo
+// patrón cacheable. Solo se llama cuando no hay secciones (evita BD extra).
+const getLawArticlesCached = (slug: string) =>
+  unstable_cache(() => fetchLawArticles(slug), ['law-articles-ssr', slug], {
+    revalidate: false,
+    tags: ['teoria'],
+  })()
+
 const SEO_DESCRIPTIONS: Record<string, string> = {
   'CE': 'Test de Constitución Española con preguntas de exámenes oficiales. Artículos, derechos fundamentales, organización del Estado. Preparación completa para oposiciones.',
   'Ley 39/2015': 'Test Ley 39/2015 LPAC - Procedimiento Administrativo Común. Preguntas oficiales sobre tramitación, plazos, recursos administrativos. Esencial para oposiciones.',
@@ -75,6 +84,37 @@ function getSEODescription(lawShortName: string, lawName: string): string {
   return SEO_DESCRIPTIONS[lawShortName] || `Test ${lawName} con preguntas actualizadas de exámenes oficiales. Contenido completo para preparación de oposiciones y estudio jurídico especializado.`
 }
 
+// Acrónimo/sigla que la gente busca pero que NO aparece en el nombre normativo
+// (mapeado por short_name). "ebep" 18.100/mes, "lopd", "lprl"… Si el short_name
+// ya ES la sigla (LPRL, LOTC, CE…), no hace falta entrada aquí. Ver roadmap:
+// docs/roadmap/seo-keywords-competidores.md (auditoría: títulos sin siglas).
+const SEARCH_ACRONYM: Record<string, string> = {
+  'RDL 5/2015': 'EBEP',
+  'LO 3/2018': 'LOPD',
+  'Ley 9/2017': 'LCSP',
+  'Ley 39/2015': 'LPAC',
+  'Ley 40/2015': 'LRJSP',
+  'Ley 7/1985': 'LBRL',
+  'Ley 47/2003': 'LGP',
+  'Ley 19/2013': 'LTBG',
+  'Ley 55/2003': 'Estatuto Marco',
+}
+
+/** Encabezado corto para el H1 visible: "EBEP (RDL 5/2015)", "LPRL", "Ley 50/1997". */
+function lawHeading(shortName: string): string {
+  const acr = SEARCH_ACRONYM[shortName]
+  return acr ? `${acr} (${shortName})` : shortName
+}
+
+/** Prefijo de sigla para el <title> descriptivo: "EBEP – ", "LPRL – " o "". */
+function lawTitlePrefix(shortName: string, name: string): string {
+  const acr = SEARCH_ACRONYM[shortName]
+  if (acr) return `${acr} – `
+  // short_name que es sigla (no encabeza el nombre normativo) → anteponerla.
+  if (!name.toLowerCase().startsWith(shortName.toLowerCase())) return `${shortName} – `
+  return ''
+}
+
 // 🎯 GENERAR METADATA DINÁMICOS CON CANONICAL URL
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params
@@ -90,8 +130,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { lawShortName, lawInfo } = resolved
   const canonicalSlug = await getCanonicalSlugAsync(lawShortName)
 
+  const titlePrefix = lawTitlePrefix(lawShortName, lawInfo.name)
+
   return {
-    title: `Test ${lawInfo.name} | Vence`,
+    title: `Test ${titlePrefix}${lawInfo.name} | Vence`,
     description: getSEODescription(lawShortName, lawInfo.name),
     keywords: [
       `test ${lawInfo.name.toLowerCase()}`,
@@ -107,7 +149,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
 
     openGraph: {
-      title: `Test: ${lawInfo.name} | Vence`,
+      title: `Test ${titlePrefix}${lawInfo.name} | Vence`,
       description: getSEODescription(lawShortName, lawInfo.name),
       type: 'website',
       siteName: 'Vence',
@@ -186,6 +228,17 @@ export default async function LawMainPage({ params }: PageProps) {
   // si falla, la página sigue (el resto ya era SSR + el cliente debajo).
   const sectionsResult = await getLawSectionsCached(resolvedParams.law).catch(() => null)
   const lawSections = sectionsResult?.sections ?? []
+  // Fallback: si la ley no tiene títulos (law_sections vacío) pero sí artículos,
+  // renderizamos el índice de artículos para que el temario SSR no quede vacío.
+  const FALLBACK_MAX = 100
+  let lawArticles: { article_number: string; title: string | null }[] = []
+  if (lawSections.length === 0) {
+    const articlesResult = await getLawArticlesCached(resolvedParams.law).catch(() => null)
+    lawArticles = (articlesResult?.articles ?? []).map((a) => ({
+      article_number: a.article_number,
+      title: a.title,
+    }))
+  }
   const seoText = SEO_DESCRIPTIONS[lawShortName] || lawInfo.description || `Test de ${lawInfo.name}`
 
   return (
@@ -214,6 +267,9 @@ export default async function LawMainPage({ params }: PageProps) {
               📚 TEST {lawShortName}
             </span>
           </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+            Test {lawHeading(lawShortName)}
+          </h1>
           <p className="text-xl text-gray-600 mb-6">
             {lawInfo.description}
           </p>
@@ -311,29 +367,48 @@ export default async function LawMainPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Temario SSR (crawleable por Google) — títulos de la ley + texto SEO.
-            Cacheado (tag 'teoria'). Esto es lo que rankea para "test/temario [ley]". */}
-        {lawSections.length > 0 && (
+        {/* Temario SSR (crawleable por Google) — títulos de la ley (o índice de
+            artículos como fallback) + texto SEO. Cacheado (tag 'teoria'). Esto es
+            lo que rankea para "test/temario [ley]". */}
+        {(lawSections.length > 0 || lawArticles.length > 0) && (
           <section className="mt-12 bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               Temario de {lawInfo.name}
             </h2>
             <p className="text-gray-600 mb-6">{seoText}</p>
-            <ul className="space-y-3">
-              {lawSections.map((s) => (
-                <li key={s.id} className="border-b border-gray-100 pb-3 last:border-0">
-                  <h3 className="font-semibold text-gray-800">{s.title}</h3>
-                  {s.articleRange && (
-                    <span className="text-sm text-gray-500">
-                      Artículos {s.articleRange.start} a {s.articleRange.end}
-                    </span>
-                  )}
-                  {s.description && (
-                    <p className="text-gray-600 text-sm mt-1">{s.description}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {lawSections.length > 0 ? (
+              <ul className="space-y-3">
+                {lawSections.map((s) => (
+                  <li key={s.id} className="border-b border-gray-100 pb-3 last:border-0">
+                    <h3 className="font-semibold text-gray-800">{s.title}</h3>
+                    {s.articleRange && (
+                      <span className="text-sm text-gray-500">
+                        Artículos {s.articleRange.start} a {s.articleRange.end}
+                      </span>
+                    )}
+                    {s.description && (
+                      <p className="text-gray-600 text-sm mt-1">{s.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <>
+                <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-2">
+                  {lawArticles.slice(0, FALLBACK_MAX).map((a) => (
+                    <li key={a.article_number} className="text-gray-700 text-sm border-b border-gray-100 pb-1">
+                      <span className="font-semibold text-gray-800">Artículo {a.article_number}</span>
+                      {a.title ? `: ${a.title}` : ''}
+                    </li>
+                  ))}
+                </ul>
+                {lawArticles.length > FALLBACK_MAX && (
+                  <p className="mt-3 text-sm text-gray-500">
+                    y {lawArticles.length - FALLBACK_MAX} artículos más.
+                  </p>
+                )}
+              </>
+            )}
             <p className="mt-6 text-sm text-gray-600">
               Practica con tests de {lawInfo.shortName} por título y prepárate para las
               oposiciones. <Link href={`/teoria/${canonicalSlug}`} className="text-blue-600 hover:underline">Ver teoría completa</Link>.
