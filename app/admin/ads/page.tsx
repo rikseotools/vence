@@ -73,6 +73,23 @@ function roiBadge(c: Campaign) {
   return <span className="text-gray-400">—</span>
 }
 
+type SortKey =
+  | 'name' | 'costEur' | 'clicks' | 'registrations'
+  | 'costPerRegistrationEur' | 'payments' | 'revenueEur' | 'roi'
+
+function sortValue(c: Campaign, key: SortKey): number | string | null {
+  switch (key) {
+    case 'name': return c.name.toLowerCase()
+    case 'costEur': return c.costEur
+    case 'clicks': return c.clicks
+    case 'registrations': return c.registrations
+    case 'costPerRegistrationEur': return c.costPerRegistrationEur
+    case 'payments': return c.payments
+    case 'revenueEur': return c.revenueEur
+    case 'roi': return c.roi
+  }
+}
+
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -88,6 +105,17 @@ export default function AdsPage() {
   const [data, setData] = useState<AdsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('costEur')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'name' ? 'asc' : 'desc')
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -110,6 +138,31 @@ export default function AdsPage() {
   }, [load])
 
   const t = data?.totals
+
+  const sorted = [...(data?.campaigns ?? [])].sort((a, b) => {
+    const av = sortValue(a, sortKey)
+    const bv = sortValue(b, sortKey)
+    if (av == null && bv == null) return 0
+    if (av == null) return 1 // nulls siempre al final
+    if (bv == null) return -1
+    const cmp =
+      typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const Th = ({ k, label, align = 'right' }: { k: SortKey; label: string; align?: 'left' | 'right' }) => (
+    <th
+      onClick={() => toggleSort(k)}
+      className={`px-3 py-2 font-medium cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 ${
+        align === 'left' ? 'text-left' : 'text-right'
+      }`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortKey === k && <span className="text-blue-500">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+      </span>
+    </th>
+  )
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -153,24 +206,24 @@ export default function AdsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500">
             <tr>
-              <th className="text-left px-3 py-2 font-medium">Campaña</th>
-              <th className="text-right px-3 py-2 font-medium">Gasto</th>
-              <th className="text-right px-3 py-2 font-medium">Clics</th>
-              <th className="text-right px-3 py-2 font-medium">Registros</th>
-              <th className="text-right px-3 py-2 font-medium">€/registro</th>
-              <th className="text-right px-3 py-2 font-medium">Ventas</th>
-              <th className="text-right px-3 py-2 font-medium">Ingreso</th>
-              <th className="text-right px-3 py-2 font-medium">ROI</th>
+              <Th k="name" label="Campaña" align="left" />
+              <Th k="costEur" label="Gasto" />
+              <Th k="clicks" label="Clics" />
+              <Th k="registrations" label="Registros" />
+              <Th k="costPerRegistrationEur" label="€/registro" />
+              <Th k="payments" label="Ventas" />
+              <Th k="revenueEur" label="Ingreso" />
+              <Th k="roi" label="ROI" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {loading && (
               <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
             )}
-            {!loading && data?.campaigns.length === 0 && (
+            {!loading && sorted.length === 0 && (
               <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
             )}
-            {!loading && data?.campaigns.map((c) => (
+            {!loading && sorted.map((c) => (
               <tr key={c.campaignId} className="text-gray-800 dark:text-gray-200">
                 <td className="px-3 py-2">
                   {c.name}
