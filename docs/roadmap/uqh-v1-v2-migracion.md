@@ -31,11 +31,11 @@ Cada uno: repointar a `userQuestionHistoryV2`. Paridad verificada (usuario más 
 2. `git grep -nE "userQuestionHistory[^V]|from\('user_question_history'\)" lib/ app/ components/` → **0 resultados** (ningún lector de app en v1). *(verificado el 01/06; re-verificar tras deploy por si entró código nuevo).*
 3. Tras el deploy, navegar/probar en prod: configurador (nunca-vistas/falladas), progreso por tema, chat IA stats, y borrado de usuario → sin errores. Confirmar que esos endpoints leen v2.
 
-### Paso 1 — Código (PR + deploy):
-- Quitar el bridge: borrar `backend/src/sync-uqh-v1-bridge/` + `import SyncUqhV1BridgeModule` y su entrada en `backend/src/app.module.ts`.
-- `lib/api/admin-delete-user/queries.ts`: quitar la entrada `{ table: 'user_question_history', column: 'user_id' }` (dejar solo la v2).
-- `db/schema.ts`: quitar el export `userQuestionHistory` (v1) si ya nadie lo importa.
-- Deploy. Confirmar que el bridge dejó de correr.
+### Paso 1 — Código ✅ HECHO (commit `ad1aedb4`, pusheado 02/06; PENDIENTE DEPLOY)
+- [x] Bridge eliminado: borrados `backend/src/sync-uqh-v1-bridge/` (cron+service+module) + import y entrada en `backend/src/app.module.ts`. typecheck backend exit 0.
+- [x] `lib/api/admin-delete-user/queries.ts`: quitada la entrada de borrado de v1 (queda solo v2).
+- [ ] `db/schema.ts`: el export `userQuestionHistory` (v1, línea ~1348) se DEJÓ (inocuo; nadie lo importa salvo un comentario). Quitarlo opcionalmente junto al DROP.
+- [ ] **DEPLOY de `ad1aedb4`** → el bridge deja de correr (v1 se congela, inocuo). Confirmar en logs Fargate que el cron del bridge ya no aparece.
 
 ### Paso 2 — SQL (solo tras Paso 1 desplegado; el bridge ya NO escribe v1):
 ```sql
