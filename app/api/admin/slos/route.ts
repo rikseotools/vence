@@ -18,7 +18,8 @@
 //   - canary uptime > 99.9% (verde) / > 99% (ámbar) / <= 99% (rojo)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 import {
   CloudWatchClient,
   GetMetricStatisticsCommand,
@@ -108,10 +109,7 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const db = getReadDb()
 
   const SINCE = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const indicators: Indicator[] = []
@@ -130,13 +128,14 @@ async function _GET(request: NextRequest) {
     { endpoint: 'canary-redis-upstash', label: 'Canary Redis Upstash (SET/GET)' },
   ]
   try {
-    const { data: canaryEvents } = await supabase
-      .from('observable_events')
-      .select('endpoint, event_type, created_at')
-      .in('endpoint', FARGATE_CANARIES.map(c => c.endpoint))
-      .gte('created_at', SINCE)
-      .or('event_type.like.%_ok,event_type.like.%_failed')
-      .limit(20000)
+    const canaryEvents = (await db.execute(sql`
+      SELECT endpoint, event_type, created_at
+      FROM observable_events
+      WHERE endpoint = ANY(${FARGATE_CANARIES.map(c => c.endpoint)})
+        AND created_at >= ${SINCE}
+        AND (event_type LIKE '%_ok' OR event_type LIKE '%_failed')
+      LIMIT 20000
+    `)) as any[]
 
     rawData.canaryEventsCount = canaryEvents?.length ?? 0
 
@@ -182,12 +181,12 @@ async function _GET(request: NextRequest) {
   }
 
   try {
-    const { data: timing } = await supabase
-      .from('observable_events')
-      .select('duration_ms, metadata')
-      .eq('event_type', 'request_completed')
-      .gte('ts', SINCE)
-      .limit(50000)
+    const timing = (await db.execute(sql`
+      SELECT duration_ms, metadata
+      FROM observable_events
+      WHERE event_type = 'request_completed' AND ts >= ${SINCE}
+      LIMIT 50000
+    `)) as any[]
 
     const byHost: Record<string, number[]> = {}
     for (const e of timing ?? []) {
@@ -241,19 +240,16 @@ async function _GET(request: NextRequest) {
   // ============================================================
 
   // 4. Errores 4xx (24h)
-  const { data: errs4xx } = await supabase
-    .from('observable_events')
-    .select('source, severity, event_type', { count: 'exact', head: true })
-    .gte('ts', SINCE)
-    .gte('http_status', 400)
-    .lt('http_status', 500)
-  const total4xxCount = (errs4xx as unknown as { count?: number })?.count ?? 0
+  const errs4xx = (await db.execute(sql`
+    SELECT count(*)::int AS c FROM observable_events
+    WHERE ts >= ${SINCE} AND http_status >= 400 AND http_status < 500
+  `)) as any[]
+  const total4xxCount = errs4xx[0]?.c ?? 0
 
-  const { data: total } = await supabase
-    .from('observable_events')
-    .select('id', { count: 'exact', head: true })
-    .gte('ts', SINCE)
-  const totalCount = (total as unknown as { count?: number })?.count ?? 1
+  const totalRows = (await db.execute(sql`
+    SELECT count(*)::int AS c FROM observable_events WHERE ts >= ${SINCE}
+  `)) as any[]
+  const totalCount = totalRows[0]?.c ?? 1
   const rate4xx = totalCount > 0 ? total4xxCount / totalCount : 0
   rawData.errors4xx = { count: total4xxCount, total: totalCount, rate: rate4xx }
   indicators.push({
@@ -273,12 +269,12 @@ async function _GET(request: NextRequest) {
   // pero no rompen la UX.
   const INTERNAL_PREFIXES = ['/api/cron/', '/api/debug/', '/api/admin/']
 
-  const { data: all5xx } = await supabase
-    .from('observable_events')
-    .select('endpoint, error_message')
-    .gte('ts', SINCE)
-    .gte('http_status', 500)
-    .limit(200)
+  const all5xx = (await db.execute(sql`
+    SELECT endpoint, error_message
+    FROM observable_events
+    WHERE ts >= ${SINCE} AND http_status >= 500
+    LIMIT 200
+  `)) as any[]
 
   let userFacing5xx = 0
   let loadShedding = 0 // 503 con mensaje "reintenta" — deliberado
@@ -318,12 +314,11 @@ async function _GET(request: NextRequest) {
   })
 
   // 6. React hydration mismatch
-  const { data: hyd } = await supabase
-    .from('observable_events')
-    .select('id', { count: 'exact', head: true })
-    .gte('ts', SINCE)
-    .eq('event_type', 'react_hydration_mismatch')
-  const hydCount = (hyd as unknown as { count?: number })?.count ?? 0
+  const hydRows = (await db.execute(sql`
+    SELECT count(*)::int AS c FROM observable_events
+    WHERE ts >= ${SINCE} AND event_type = 'react_hydration_mismatch'
+  `)) as any[]
+  const hydCount = hydRows[0]?.c ?? 0
   const hydRate = totalCount > 0 ? hydCount / totalCount : 0
   rawData.hydrationMismatch = { count: hydCount, rate: hydRate }
   indicators.push({
