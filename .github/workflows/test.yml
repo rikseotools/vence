@@ -136,6 +136,7 @@ jobs:
               deployVersion:($sha|.[0:8]),
               errorMessage:("Workflow " + $workflow + " falló en " + $event),
               metadata:{
+                workflow:$workflow,
                 runId:"${{ github.run_id }}",
                 runUrl:$job_url,
                 actor:$actor,
