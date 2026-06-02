@@ -209,6 +209,10 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 >
 > **GOTCHA array `.contains`**: `.contains(col, [v])` (columna `tipo[]`) → `arrayContains(tabla.col, [v])` = `col @> ARRAY[v]`. Verificar con `@>` directo.
 >
+> ✅ **+2 server-side más 02/06 (commits en origin):** `app/api/generate-explanation/route.ts` (−3, questions+ai_api_config; `.single()` inexistente→404 con `(fetchError||!question)`) commit `cfcfef6e`; `app/api/cron/sync-convocatorias/route.ts` (−3, convocatorias_boe; insert dinámico ~35 campos camelCase + cast `$inferInsert`; dedup+ref `.in()`→inArray) commit `905c94f9`. **GOTCHA insert dinámico**: objeto construido incremental Y leído después (generarResumen) → tiparlo `$inferInsert` mete `|undefined` que rompe los readers; mantener `Record<string,any>` + cast en `.values()`, validar las claves con test de paridad (insert real en txn+ROLLBACK).
+>
+> 🚨 **2º endpoint roto detectado (NO migrado): `app/api/ai/verify-answer/route.ts`** (lo llama AIChatWidget): RPC `match_articles_by_embedding` NO existe, `articles.law_name`/`law_short_name` NO existen, tabla `question_verifications` NO existe → búsqueda de artículos SIEMPRE [] (corre degradado) + insert discrepancias siempre falla. Requiere arreglar deps, no migración mecánica. Junto con `cron/fraud-detection` = 2 endpoints con bugs estructurales que el strangler destapó.
+>
 > **SIGUIENTE:** client-trackers (refactor a endpoint, no Drizzle directo) y **Fase 4 Auth** (bloqueador real de RDS). Servidor-puro restante: emails/send-reactivation (4, OJO envía email), v2/admin/broadcast (3, envía), generate-explanation (3), cron/sync-convocatorias (3), ai/verify-answer (3+1rpc), ai/chat-v2 (3). admin/fraudes (14) es client-side page; stripe/webhook (31) con lupa al final; cron/subscription-reconciliation (9) = BORRAR no migrar (replicado en Fargate); cron/fraud-detection (7) = ARREGLAR esquema antes (decisión Manuel).
 >
 > 🧭 **RESUME AQUÍ (triage de los ~87 restantes, hecho 2026-06-01)** — NO todos son migraciones Drizzle mecánicas:
