@@ -96,4 +96,24 @@ Por impacto (nº preguntas) y facilidad de sourcing:
 - ✅ **Contenedor 21 — Bioética sanitaria** (`2a8aa2bd`): 3 artículos (Principios fundamentales, Dilemas éticos, Secreto profesional) + 253 re-distribuidas (art1 165, dilemas 34, secreto 54). Fuentes: 4 principios Beauchamp-Childress, DVA, signos de muerte cierta (apnea/asistolia/midriasis), excepciones del secreto, LO 3/2021 eutanasia.
 - ✅ **Contenedor 22 — Termoterapia y crioterapia** (`fd4bd49a`): 3 artículos (Indicaciones frío/calor, Efectos sobre el organismo, Procedimientos y precauciones) + 253 re-distribuidas (art1 87, efectos 22, procedimientos 144). Fuentes: termoterapia/crioterapia, vasodilatación/vasoconstricción, calor/frío seco y húmedo, crenoterapia/talasoterapia, 15-20 min.
 - ✅ **Contenedor 23 — Residuos sanitarios** (`371d36e9`): 3 artículos (Clasificación, Transporte/eliminación/tratamiento, Manipulación de citostáticos) + 163 re-distribuidas (art1 108, transporte 27, citostáticos 28). Fuentes: clasificación 4 grupos (variación CCAA, Madrid 7 clases), Grupo III biosanitarios especiales, cortopunzantes galga 69, citostáticos cabina flujo laminar (Comunidad Madrid, EHU, SAS).
-- Pendiente: fase 2 (re-verificación con topic-review/verify para fijar `article_ok`) de los contenedores hechos, y los **~47 contenedores restantes**. TCAE clínico restante: Trabajo en equipo sanitario (73), Informática básica TCAE (22). Legislativo sanitario regional (B1, importar norma real): SERGAS Galicia (419+193), SALUD Aragón (317+188), Osakidetza planes (196+80+28+24), LOSCAM Madrid (104), SMS Murcia (88), Igualdad Aragón (67). No sanitarias: Inglés PN (3.494), Correos T1-T12 (~9.000), Ciencias Sociales PN (1.411), temas PN (ciberdelincuencia, vehículo prioritario, armas, inteligencia policial). Recomendado: **workflow por contenedor** para escalar.
+- ✅ **Contenedor 24 — Trabajo en equipo sanitario** (`15f0eb91`): 3 artículos (Concepto de equipo/multidisciplinar, Integración-consenso-motivación, Colaboración con otros profesionales) + 73 re-distribuidas (art1 41, integración/motivación 18, colaboración 14). Fuentes: equipo multidisciplinar, cohesión, motivación/satisfacción laboral, notificación de incidentes.
+- ✅ **Contenedor 25 — Informática básica TCAE** (`67795461`): artículo único poblado (hardware/software, periféricos, redes LAN/MAN/WAN, IP/Internet/Intranet, correo CC/CCO, ofimática) + 22 preguntas. Cross-oposición: contenido agnóstico de informática básica.
+
+### ✅ TODOS los contenedores clínicos/generales TCAE COMPLETADOS (1-25, ~16.400q)
+
+### ⏸️ PENDIENTE — DOS PISTAS QUE REQUIEREN DECISIÓN (no autopiloteables sin fuente oficial / fuera de dominio sanitario)
+
+**PISTA B1 — Legislativo sanitario regional (precisión legal crítica, NO cross-oposición).** Son leyes/decretos reales concretos; por CLAUDE.md **hay que importar el texto contra BOE/BOA/DOG/BOPV oficial**, no redactar de memoria. Varios contenedores son "cajón de sastre" (un único artículo vacío mezclando varias normas) y requieren decidir reestructuración:
+  - SERGAS Galicia (`a8b4a1f9` 419 + `d73d21ee` 193): mezcla Decreto 206/2005 provisión, Decreto 200/1993 atención primaria, FIS, Agenda 2030… → cajón de sastre.
+  - SALUD Aragón (`e3e6e305` 317 + `9735750a` 188 demografía): Ley 6/2002 de Salud de Aragón, Decreto 174/2010, Decreto Legislativo 2/2004.
+  - LOSCAM Madrid (`0bdba0c8` 104): Ley 12/2001 Ordenación Sanitaria CM + Convenio Colectivo.
+  - SMS Murcia (`d459c687` 88): Ley 3/2009 de Derechos y Deberes de Usuarios (ley coherente única → la más limpia de importar).
+  - Osakidetza planes (`8d912b20` 196 + `0d7e592b` 80 euskera + `fd4108d0` 28 + `9bb8dee7` 24): planes de salud Euskadi.
+  - Igualdad/Violencia Aragón (`877905aa` 67), Carta Social Europea (`803d9365` 140, tratado 1961/1996 — 33 arts).
+
+**PISTA C — No sanitarias (otras oposiciones, gran volumen).** Dominio distinto:
+  - Inglés PN (`f90685a6` 3.494, 14 arts): teoría de gramática/vocabulario inglés.
+  - Correos T1-T12 (`14e4eeb7`, `5f57438d`, `a1384a33`… ~9.000q): servicio postal, normativa Correos.
+  - Ciencias Sociales PN (`3ad8772b` 1.411, 7 arts) + temas PN (ciberdelincuencia 174, vehículo prioritario 105, armas de fuego 96, inteligencia policial 94).
+
+Recomendado para ambas pistas: **workflow por contenedor** (sourcing oficial → redacción/importación → auditoría por sub-materia). La pista B1 exige verificación BOE/DOG estricta; la pista C es de otro dominio. Pendiente además fase 2 (topic-review/verify → `article_ok`) de TODOS los contenedores hechos.
