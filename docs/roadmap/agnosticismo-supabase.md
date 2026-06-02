@@ -201,7 +201,15 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 >
 > **GOTCHA `count` embed PostgREST**: `tabla_hija(count)` (agregado one-to-many) → `leftJoin(hija) + count(hija.id)::int + groupBy(padre.id)` (Postgres permite seleccionar columnas del padre agrupando por su PK). Verificar conteos contra el `.[0].count` del embed viejo.
 >
-> **SIGUIENTE:** client-trackers (refactor a endpoint, no Drizzle directo) y **Fase 4 Auth** (bloqueador real de RDS). Servidor-puro restante: cron/fraud-detection (7), law-changes (4+4), fraud/report (4), ai/verify-answer (3+1rpc), v2/admin/broadcast (3), etc. admin/fraudes (14) es client-side page; stripe/webhook (31) con lupa al final; cron/subscription-reconciliation (9) = BORRAR no migrar (replicado en Fargate).
+> ✅ **+3 server-side más 02/06 (commits ya en origin):**
+> - **`app/api/law-changes/route.js`** (−4) + **`app/api/law-changes/check-optimized/route.js`** (−4): detección BOE en `laws`. `.not('boe_url','is',null)`→isNotNull; `.or('is_derogated.is.null,is_derogated.eq.false')`→`or(isNull,eq)`. Updates dinámicos (date_byte_offset/boe_content_length/change_status condicionales). **Alias `laws as lawsTable`** porque la variable local se llama `laws`. Commits `6c83d877`, `56cdcc12`.
+> - **`app/api/fraud/report/route.js`** (−4) + **`app/api/sessions/track-block/route.ts`** (−3): `fraud_alerts`. **`.contains('user_ids',[id])` (uuid[]) → `arrayContains` (`@>`)**. insert+returning. `42P01` (tabla inexistente) preservado vía try/catch+`e.code`. postgres-js usa `.detail` (no `.details`). Commits `d62cf130`, `ae016a43`.
+>
+> 🚨 **`app/api/cron/fraud-detection/route.js` (7 from) — ROTO, NO migrado a propósito**: inserta en columnas que NO existen en `fraud_alerts` (`affected_user_ids`/`metadata`/`description`; la tabla solo tiene `user_ids`/`details`/`match_criteria`). Cada insert falla y `if(!error)savedCount++` lo traga → **nunca guarda alertas**. Migrarlo a Drizzle tipado obligaría a arreglar el mapeo = **encender un detector de fraude dormido = decisión de producto de Manuel**, no migración mecánica. Dejado sin tocar y marcado.
+>
+> **GOTCHA array `.contains`**: `.contains(col, [v])` (columna `tipo[]`) → `arrayContains(tabla.col, [v])` = `col @> ARRAY[v]`. Verificar con `@>` directo.
+>
+> **SIGUIENTE:** client-trackers (refactor a endpoint, no Drizzle directo) y **Fase 4 Auth** (bloqueador real de RDS). Servidor-puro restante: emails/send-reactivation (4, OJO envía email), v2/admin/broadcast (3, envía), generate-explanation (3), cron/sync-convocatorias (3), ai/verify-answer (3+1rpc), ai/chat-v2 (3). admin/fraudes (14) es client-side page; stripe/webhook (31) con lupa al final; cron/subscription-reconciliation (9) = BORRAR no migrar (replicado en Fargate); cron/fraud-detection (7) = ARREGLAR esquema antes (decisión Manuel).
 >
 > 🧭 **RESUME AQUÍ (triage de los ~87 restantes, hecho 2026-06-01)** — NO todos son migraciones Drizzle mecánicas:
 > 1. **Server-side DB puro (Drizzle directo, bajo riesgo)** — el patrón ya rodado: `getReadDb()`/`getAdminDb()`/`getTeoriaDb()` + paridad (reads comparados, writes en txn+ROLLBACK). Quedan algunos fetchers/SSR. ⚠️ **OJO al cap de PostgREST**: `.length` sobre SELECT capa a 1000 filas y los embeds anidados también capan → al migrar a `count()`/join SUELE aparecer un conteo MAYOR (más correcto, no un bug nuevo). Verificar siempre.
