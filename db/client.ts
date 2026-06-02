@@ -35,6 +35,18 @@ function createDbClient() {
     max: 1,  // 1 conexión por instancia serverless (recomendado por Supabase)
     idle_timeout: 20,
     connect_timeout: 5,
+    // max_lifetime acota la vida de CADA conexión. El default de postgres-js
+    // es 60*(30+random*30) = 30-60 MIN, demasiado largo: si Supavisor
+    // medio-cierra una conexión TCP en un blip regional, postgres-js no lo
+    // detecta (keep_alive=60s es lento) y la reutiliza hasta 60 min → cada
+    // query por ese socket zombi cuelga hasta withDbTimeout (10s) y la BD ni
+    // se entera (queda ociosa). Confirmado 02/06/2026: distribución bimodal
+    // en /api/auth/track-session-ip (p50=57ms, p95=10003ms) con la BD a 1-4
+    // conns activas durante los picos. Bajar a 90s fuerza el reciclado y acota
+    // cualquier zombi a ≤90s. Defensa en profundidad, correcta sea cual sea el
+    // pooler (Supavisor hoy, PgBouncer/RDS mañana).
+    // Ver memoria project_supavisor_zombie_conn_root_cause.
+    max_lifetime: 90,
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 
@@ -61,6 +73,84 @@ export function getDb() {
     throw new Error('DATABASE_URL environment variable is not set')
   }
   return globalForDb.db
+}
+
+// ============================================
+// Probe de diagnóstico (SOLO se invoca en el path de TIMEOUT)
+// ============================================
+// Cuando una query del pool max:1 timeoutea (withDbTimeout), no sabemos si la
+// BD está caída o si la conexión del pool quedó ZOMBI (medio-cerrada por
+// Supavisor en un blip, pero postgres-js la cree viva). Este probe abre una
+// conexión NUEVA de un solo uso y hace SELECT 1:
+//   - responde rápido  → BD/red sanas, la conexión del POOL era el problema
+//                          → confirma la hipótesis zombi.
+//   - también falla     → fallo real de BD/red en ese instante.
+// Si DATABASE_URL_SELF_POOLER está set, prueba también el path PgBouncer
+// self-hosted: PgBouncer OK mientras Supavisor falla = evidencia directa para
+// reenrutar el path de escritura (Capa 2 del fix).
+//
+// COSTE: solo corre en el path de fallo (~cientos/día), nunca en el camino
+// sano → cero impacto en latencia de requests normales. Acotado a ~1.5-2s.
+
+const PROBE_BUDGET_MS = 1500
+
+async function probeOnce(connectionString: string): Promise<{ ok: boolean; ms: number; error?: string }> {
+  const start = Date.now()
+  const probe = postgres(connectionString, {
+    max: 1,
+    connect_timeout: 2,
+    idle_timeout: 1,
+    max_lifetime: 5,
+    prepare: false,
+  })
+  try {
+    const query = probe`SELECT 1`
+    // Evita unhandledRejection si el timer gana la carrera y la query
+    // subyacente rechaza más tarde.
+    query.catch(() => {})
+    await Promise.race([
+      query,
+      new Promise((_, rej) =>
+        setTimeout(() => rej(new Error(`probe_timeout_${PROBE_BUDGET_MS}ms`)), PROBE_BUDGET_MS),
+      ),
+    ])
+    return { ok: true, ms: Date.now() - start }
+  } catch (e) {
+    return { ok: false, ms: Date.now() - start, error: e instanceof Error ? e.message.slice(0, 120) : 'unknown' }
+  } finally {
+    probe.end({ timeout: 1 }).catch(() => {})
+  }
+}
+
+export interface DbProbeResult {
+  supavisorFreshOk: boolean
+  supavisorMs: number
+  supavisorError?: string
+  pgbouncerOk: boolean | null
+  pgbouncerMs: number | null
+  pgbouncerError?: string
+}
+
+/**
+ * Diagnostica el camino a BD tras un timeout. Abre conexiones nuevas de un
+ * solo uso (no toca los pools de la app). Devuelve si una conexión fresca a
+ * Supavisor —y, si está configurado, al PgBouncer self-hosted— responde AHORA.
+ */
+export async function probeDbPaths(): Promise<DbProbeResult> {
+  const supaUrl = process.env.DATABASE_URL
+  const poolerUrl = process.env.DATABASE_URL_SELF_POOLER
+  const supa = supaUrl
+    ? await probeOnce(supaUrl)
+    : { ok: false, ms: 0, error: 'no DATABASE_URL' }
+  const pooler = poolerUrl ? await probeOnce(poolerUrl) : null
+  return {
+    supavisorFreshOk: supa.ok,
+    supavisorMs: supa.ms,
+    supavisorError: supa.error,
+    pgbouncerOk: pooler ? pooler.ok : null,
+    pgbouncerMs: pooler ? pooler.ms : null,
+    pgbouncerError: pooler?.error,
+  }
 }
 
 // ============================================

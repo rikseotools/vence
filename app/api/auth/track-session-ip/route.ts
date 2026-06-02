@@ -1,7 +1,7 @@
 // app/api/auth/track-session-ip/route.ts
 // Guarda la IP y localidad en la sesión del usuario para detectar cuentas compartidas
-import { NextResponse } from 'next/server'
-import { getDb, getAdminDb } from '@/db/client'
+import { NextResponse, after } from 'next/server'
+import { getDb, getAdminDb, probeDbPaths } from '@/db/client'
 import { userSessions, userDevices } from '@/db/schema'
 import { eq, isNull, desc, and } from 'drizzle-orm'
 import { z } from 'zod/v3'
@@ -209,15 +209,34 @@ async function _POST(request: Request) {
       console.warn('⚠️ [SessionIP] Error de BD transitorio — degradado a 200/no-track:', errMsg.slice(0, 200))
     }
 
-    // Fire-and-forget — no esperamos al emit ni rompemos si falla
-    emit({
-      source: 'vercel',
-      severity: 'warn',
-      eventType: isTimeout ? 'track_session_ip_db_timeout' : 'track_session_ip_db_error',
-      endpoint: '/api/auth/track-session-ip',
-      errorMessage: errMsg.slice(0, 500),
-      metadata: { degraded_to: 200, reason: isTimeout ? 'db_unavailable' : 'db_error' },
-    }).catch(() => {})
+    if (isTimeout) {
+      // Probe de diagnóstico en after(): corre DESPUÉS de enviar la response
+      // (cero latencia para el usuario, que además trata esto como
+      // fire-and-forget). Distingue conexión ZOMBI (conexión nueva responde
+      // → la del pool estaba medio-muerta) de fallo real de BD. El resultado
+      // viaja en metadata para confirmar la causa raíz sin abrir Sentry.
+      after(async () => {
+        const probe = await probeDbPaths().catch(() => null)
+        await emit({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'track_session_ip_db_timeout',
+          endpoint: '/api/auth/track-session-ip',
+          errorMessage: errMsg.slice(0, 500),
+          metadata: { degraded_to: 200, reason: 'db_unavailable', probe },
+        }).catch(() => {})
+      })
+    } else {
+      // Fire-and-forget — no esperamos al emit ni rompemos si falla
+      emit({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'track_session_ip_db_error',
+        endpoint: '/api/auth/track-session-ip',
+        errorMessage: errMsg.slice(0, 500),
+        metadata: { degraded_to: 200, reason: 'db_error' },
+      }).catch(() => {})
+    }
 
     return NextResponse.json(
       { success: false, tracked: false, reason: isTimeout ? 'db_unavailable' : 'db_error' },
