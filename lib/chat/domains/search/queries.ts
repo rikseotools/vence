@@ -1,7 +1,6 @@
 // lib/chat/domains/search/queries.ts
 // Queries tipadas para búsqueda de artículos
 
-import { createClient } from '@supabase/supabase-js'
 import { getDb, getReadDb } from '@/db/client'
 import { articles, laws, topics, topicScope, questions, hotArticles as hotArticlesTable } from '@/db/schema'
 import { eq, and, or, ilike, inArray, sql, desc, count, isNotNull } from 'drizzle-orm'
@@ -10,13 +9,6 @@ import { createGlobalCache } from '@/lib/cache/globalCache'
 import { getChatCache, CACHE_KEYS, CACHE_TTL } from '../../shared/cache'
 import type { ArticleMatch, SearchOptions } from '../../core/types'
 import { getOposicion } from '@/lib/config/oposiciones'
-
-// Cliente Supabase aún expuesto para SearchDomain (pendiente de migrar). El
-// resto de este fichero ya no lo usa: todo migrado a Drizzle.
-export const getSupabaseForSearch = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // Formatea un embedding (number[]) como literal pgvector para ::vector
 const toVector = (embedding: number[]) => `[${embedding.join(',')}]`

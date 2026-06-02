@@ -16,7 +16,10 @@ import {
   isGenericLawQuery,
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
-import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers, getSupabaseForSearch } from './queries'
+import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers } from './queries'
+import { getReadDb } from '@/db/client'
+import { topics, topicScope, laws } from '@/db/schema'
+import { eq, and, inArray } from 'drizzle-orm'
 import { isPsychometricSubtype } from '../../shared/constants'
 import { detectStatsQueryType } from '../stats/StatsService'
 import { loadLawsCache } from '../../shared/lawsCache'
@@ -1018,27 +1021,27 @@ ${responseGuidelines}
       const temaNumber = parseInt(temaMatch[1])
       // Buscar las leyes de ese tema en topic_scope
       try {
-        const { data: topics } = await getSupabaseForSearch()
-          .from('topics')
-          .select('id')
-          .eq('position_type', context.userDomain)
-          .eq('topic_number', temaNumber)
+        const db = getReadDb()
+        const topicRows = await db
+          .select({ id: topics.id })
+          .from(topics)
+          .where(and(eq(topics.positionType, context.userDomain), eq(topics.topicNumber, temaNumber)))
           .limit(1)
 
-        if (topics?.length) {
-          const { data: scopes } = await getSupabaseForSearch()
-            .from('topic_scope')
-            .select('law_id')
-            .eq('topic_id', topics[0].id)
+        if (topicRows.length) {
+          const scopes = await db
+            .select({ law_id: topicScope.lawId })
+            .from(topicScope)
+            .where(eq(topicScope.topicId, topicRows[0].id))
 
-          if (scopes?.length) {
-            const lawIds = scopes.map(s => s.law_id)
-            const { data: laws } = await getSupabaseForSearch()
-              .from('laws')
-              .select('short_name')
-              .in('id', lawIds)
+          if (scopes.length) {
+            const lawIds = scopes.map(s => s.law_id).filter((id): id is string => !!id)
+            const lawRows = await db
+              .select({ short_name: laws.shortName })
+              .from(laws)
+              .where(inArray(laws.id, lawIds))
 
-            temaLaws = (laws || []).map(l => l.short_name).filter(Boolean)
+            temaLaws = lawRows.map(l => l.short_name).filter(Boolean)
             if (temaLaws.length === 1) {
               lawFilter = temaLaws[0]
             }
