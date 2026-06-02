@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@supabase/supabase-js'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getReadDb } from '@/db/client'
+import { tests } from '@/db/schema'
+import { eq, and, gt, desc, sql } from 'drizzle-orm'
 
 const userIdSchema = z.string().uuid()
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * GET /api/v2/official-exams/user-stats
@@ -35,24 +32,32 @@ async function _GET(request: NextRequest) {
     // Query tests table for official exams completed by user
     // Filter directly in DB by detailed_analytics->>'isOfficialExam' = 'true'
     // IMPORTANT: Filter total_questions > 0 to skip corrupted test sessions
-    let query = getSupabase()
-      .from('tests')
-      .select('id, score, total_questions, detailed_analytics, created_at')
-      .eq('user_id', userId)
-      .eq('test_type', 'exam')
-      .eq('is_completed', true)
-      .gt('total_questions', 0)
-      .filter('detailed_analytics->>isOfficialExam', 'eq', 'true')
-      .order('score', { ascending: false })
-
+    const conditions = [
+      eq(tests.userId, userId),
+      eq(tests.testType, 'exam'),
+      eq(tests.isCompleted, true),
+      gt(tests.totalQuestions, 0),
+      sql`${tests.detailedAnalytics}->>'isOfficialExam' = 'true'`,
+    ]
     // Filter by oposicion directly in the query if provided
     if (oposicion) {
-      query = query.filter('detailed_analytics->>oposicion', 'eq', oposicion)
+      conditions.push(sql`${tests.detailedAnalytics}->>'oposicion' = ${oposicion}`)
     }
 
-    const { data: sessions, error } = await query
-
-    if (error) {
+    let sessions: Array<Record<string, any>>
+    try {
+      sessions = await getReadDb()
+        .select({
+          id: tests.id,
+          score: tests.score,
+          total_questions: tests.totalQuestions,
+          detailed_analytics: tests.detailedAnalytics,
+          created_at: tests.createdAt,
+        })
+        .from(tests)
+        .where(and(...conditions))
+        .orderBy(desc(tests.score))
+    } catch (error) {
       console.error('❌ [API/v2/official-exams/user-stats] Error:', error)
       return NextResponse.json(
         { success: false, error: 'Error consultando estadísticas' },
