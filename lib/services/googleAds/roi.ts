@@ -56,6 +56,14 @@ export interface CampaignRoi {
   examApproximate: boolean | null
   /** Días hasta el examen (negativo = ya pasado). null si sin fecha. */
   daysToExam: number | null
+  /** Presupuesto diario (€). */
+  budgetEur: number
+  /** % de uso del presupuesto = gasto diario medio / presupuesto. null si sin presupuesto. */
+  budgetUtilizationPct: number | null
+  /** Impresiones perdidas por presupuesto (0-1). Alto = se queda corta de dinero. */
+  budgetLostIS: number
+  /** Impresiones perdidas por puja (0-1). Alto = CPC demasiado bajo para ganar. */
+  rankLostIS: number
 }
 
 /** Ingresos reales por campaña (google_ads) desde la BD, en una ventana. */
@@ -196,6 +204,11 @@ export async function getCampaignRoi(
       examDate: null,
       examApproximate: null,
       daysToExam: null,
+      budgetEur: p.budgetEur,
+      budgetUtilizationPct:
+        p.budgetEur > 0 ? (p.costEur / RANGE_DAYS[range] / p.budgetEur) * 100 : null,
+      budgetLostIS: p.budgetLostIS,
+      rankLostIS: p.rankLostIS,
     })
   }
   // Campañas con ingreso pero sin coste en la ventana (pausadas/antiguas)
@@ -219,6 +232,10 @@ export async function getCampaignRoi(
       examDate: null,
       examApproximate: null,
       daysToExam: null,
+      budgetEur: 0,
+      budgetUtilizationPct: null,
+      budgetLostIS: 0,
+      rankLostIS: 0,
     })
   }
 

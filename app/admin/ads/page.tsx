@@ -35,6 +35,10 @@ interface Campaign {
   examDate: string | null
   examApproximate: boolean | null
   daysToExam: number | null
+  budgetEur: number
+  budgetUtilizationPct: number | null
+  budgetLostIS: number
+  rankLostIS: number
 }
 
 interface AdsResponse {
@@ -77,13 +81,15 @@ function roiBadge(c: Campaign) {
 }
 
 type SortKey =
-  | 'name' | 'daysToExam' | 'costEur' | 'clicks' | 'avgCpcEur' | 'registrations'
-  | 'costPerRegistrationEur' | 'payments' | 'revenueEur' | 'roi'
+  | 'name' | 'daysToExam' | 'budgetEur' | 'budgetUtilizationPct' | 'costEur' | 'clicks'
+  | 'avgCpcEur' | 'registrations' | 'costPerRegistrationEur' | 'payments' | 'revenueEur' | 'roi'
 
 function sortValue(c: Campaign, key: SortKey): number | string | null {
   switch (key) {
     case 'name': return c.name.toLowerCase()
     case 'daysToExam': return c.daysToExam
+    case 'budgetEur': return c.budgetEur
+    case 'budgetUtilizationPct': return c.budgetUtilizationPct
     case 'costEur': return c.costEur
     case 'clicks': return c.clicks
     case 'avgCpcEur': return c.avgCpcEur
@@ -103,6 +109,22 @@ function examCell(c: Campaign): { text: string; cls: string } {
   if (d < 0) return { text: `pasó hace ${-d}d`, cls: 'text-red-600 dark:text-red-400 font-semibold' }
   if (d <= 45) return { text: `en ${d}d`, cls: 'text-green-600 dark:text-green-400 font-semibold' }
   return { text: `en ${d}d`, cls: 'text-gray-500 dark:text-gray-400' }
+}
+
+// Uso del presupuesto: % gastado del diario + por qué no gasta más.
+// Verde = gasta casi todo · ámbar/gris = deja dinero sin usar.
+function usoCell(c: Campaign): { text: string; cls: string; tag: string } {
+  if (c.budgetUtilizationPct == null) return { text: '—', cls: 'text-gray-400', tag: '' }
+  const u = c.budgetUtilizationPct
+  const cls =
+    u >= 80 ? 'text-green-600 dark:text-green-400 font-semibold'
+    : u >= 40 ? 'text-amber-600 dark:text-amber-400'
+    : 'text-gray-500 dark:text-gray-400'
+  // Por qué no gasta más: presupuesto corto (subir) vs puja baja (CPC no gana)
+  let tag = ''
+  if (c.budgetLostIS >= 0.2) tag = '📉 subir presup'
+  else if (c.rankLostIS >= 0.6) tag = '⬇ puja baja'
+  return { text: `${u.toFixed(0)}%`, cls, tag }
 }
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -224,6 +246,8 @@ export default function AdsPage() {
               <Th k="name" label="Campaña" align="left" />
               <Th k="daysToExam" label="Examen" />
               <Th k="costEur" label="Gasto" />
+              <Th k="budgetEur" label="Presup" />
+              <Th k="budgetUtilizationPct" label="Uso" />
               <Th k="clicks" label="Clics" />
               <Th k="avgCpcEur" label="CPC" />
               <Th k="registrations" label="Registros" />
@@ -235,10 +259,10 @@ export default function AdsPage() {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {loading && (
-              <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
             )}
             {!loading && sorted.length === 0 && (
-              <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
             )}
             {!loading && sorted.map((c) => (
               <tr key={c.campaignId} className="text-gray-800 dark:text-gray-200">
@@ -257,6 +281,13 @@ export default function AdsPage() {
                   )}
                 </td>
                 <td className="px-3 py-2 text-right">{eur(c.costEur)}</td>
+                <td className="px-3 py-2 text-right">{c.budgetEur > 0 ? eur(c.budgetEur) : '—'}</td>
+                <td className={`px-3 py-2 text-right ${usoCell(c).cls}`}>
+                  {usoCell(c).text}
+                  {usoCell(c).tag && (
+                    <span className="block text-xs font-normal text-gray-400">{usoCell(c).tag}</span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-right">{c.clicks}</td>
                 <td className="px-3 py-2 text-right">{eur(c.avgCpcEur)}</td>
                 <td className="px-3 py-2 text-right">{Math.round(c.registrations)}</td>

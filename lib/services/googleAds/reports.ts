@@ -39,6 +39,12 @@ export interface CampaignPerformance {
   avgCpcEur: number
   /** Retorno de la inversión publicitaria (valor / coste). null si coste 0. */
   roas: number | null
+  /** Presupuesto diario de la campaña (€). */
+  budgetEur: number
+  /** % de impresiones perdidas por presupuesto bajo (0-1). Alto = se queda corta de dinero. */
+  budgetLostIS: number
+  /** % de impresiones perdidas por ranking/puja (0-1). Alto = CPC demasiado bajo para ganar. */
+  rankLostIS: number
 }
 
 const microsToEur = (micros: number | string | null | undefined): number =>
@@ -61,11 +67,14 @@ export async function getCampaignPerformance(
         campaign.name,
         campaign.status,
         campaign.bidding_strategy_type,
+        campaign_budget.amount_micros,
         metrics.cost_micros,
         metrics.clicks,
         metrics.impressions,
         metrics.conversions,
-        metrics.conversions_value
+        metrics.conversions_value,
+        metrics.search_budget_lost_impression_share,
+        metrics.search_rank_lost_impression_share
       FROM campaign
       WHERE segments.date DURING ${range}
       ORDER BY metrics.cost_micros DESC
@@ -87,6 +96,9 @@ export async function getCampaignPerformance(
         conversionsValueEur,
         avgCpcEur: clicks > 0 ? costEur / clicks : 0,
         roas: costEur > 0 ? conversionsValueEur / costEur : null,
+        budgetEur: microsToEur(r.campaign_budget?.amount_micros),
+        budgetLostIS: Number(r.metrics?.search_budget_lost_impression_share ?? 0),
+        rankLostIS: Number(r.metrics?.search_rank_lost_impression_share ?? 0),
       }
     })
   } catch (e) {
