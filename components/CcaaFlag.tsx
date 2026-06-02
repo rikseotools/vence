@@ -203,8 +203,10 @@ const FLAG_PATHS: Record<string, ReactNode> = {
 // servicio sanitario o universidad). Orden IMPORTA: lo más específico primero
 // (p.ej. castilla-la-mancha antes que castilla, las-palmas/cabildo antes que palma).
 const KEYWORD_TO_FLAG: Array<[string[], string]> = [
-  // Estatales / sin CCAA → bandera de España (AGE, Justicia y cuerpos estatales)
-  [['estado', 'estatal', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'guardia-civil', 'policia-nacional', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
+  // Estatales / sin CCAA → bandera de España (AGE, Justicia y cuerpos estatales).
+  // OJO: guardia-civil y policia-nacional NO van aquí: tienen su escudo oficial
+  // propio (ver ESCUDO_KEYWORDS), que tiene prioridad sobre la bandera.
+  [['estado', 'estatal', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
   // Castilla-La Mancha (antes que "castilla")
   [['castilla-la-mancha', 'clm', 'sescam', 'albacete', 'ciudad-real', 'cuenca', 'guadalajara', 'toledo'], 'clm'],
   // Castilla y León
@@ -246,6 +248,24 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
  * su id (position_type con underscores o slug con guiones). Devuelve null si no
  * se reconoce ninguna región (entonces el llamador usa el emoji de fallback).
  */
+// Cuerpos con ESCUDO/LOGO oficial propio (no una bandera): se renderiza el
+// emblema real como <img> y tiene PRIORIDAD sobre la bandera de la CCAA/España.
+// Los SVG viven en /public/escudos/. Orden: lo más específico primero
+// (policia-municipal-* NO entra aquí; solo el cuerpo nacional).
+const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
+  [['guardia-civil'], { src: '/escudos/guardia-civil.svg', alt: 'Escudo de la Guardia Civil' }],
+  [['policia-nacional'], { src: '/escudos/policia-nacional.svg', alt: 'Escudo de la Policía Nacional' }],
+]
+
+export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {
+  if (!oposicionId) return null
+  const norm = oposicionId.toLowerCase().replace(/_/g, '-')
+  for (const [keywords, escudo] of ESCUDO_KEYWORDS) {
+    if (keywords.some(k => norm.includes(k))) return escudo
+  }
+  return null
+}
+
 export function resolveFlagKey(oposicionId: string): string | null {
   if (!oposicionId) return null
   const norm = oposicionId.toLowerCase().replace(/_/g, '-')
@@ -263,10 +283,35 @@ const SIZES: Record<FlagSize, { width: number; height: number }> = {
 }
 
 export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }: CcaaFlagProps) {
+  const { width, height } = SIZES[size as FlagSize] || SIZES.sm
+
+  // 1) Escudo/logo oficial del cuerpo (Guardia Civil, Policía Nacional): imagen
+  // real con prioridad sobre la bandera. Caja cuadrada (lado = alto de la
+  // bandera grande del mismo tamaño) y object-contain para no deformar.
+  const escudo = resolveEscudo(oposicionId)
+  if (escudo) {
+    const box = width // lado del cuadro (≈ ancho de la bandera del mismo size)
+    return (
+      <span className={className}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={escudo.src}
+          alt={escudo.alt}
+          width={box}
+          height={box}
+          className="inline-block align-middle object-contain"
+          style={{ width: box, height: box }}
+          loading="lazy"
+          decoding="async"
+        />
+      </span>
+    )
+  }
+
+  // 2) Bandera de la CCAA / España (SVG inline)
   const key = resolveFlagKey(oposicionId)
   const paths = key ? FLAG_PATHS[key] : null
   if (!paths) return null
-  const { width, height } = SIZES[size as FlagSize] || SIZES.sm
   return (
     <span className={className}>
       <svg width={width} height={height} viewBox="0 0 20 14" className="inline-block align-middle rounded-sm" style={{ boxShadow: '0 0 0 0.5px rgba(0,0,0,0.15)' }}>
@@ -277,5 +322,5 @@ export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }: C
 }
 
 export function hasCcaaFlag(oposicionId: string): boolean {
-  return resolveFlagKey(oposicionId) !== null
+  return resolveEscudo(oposicionId) !== null || resolveFlagKey(oposicionId) !== null
 }

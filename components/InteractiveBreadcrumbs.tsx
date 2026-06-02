@@ -64,8 +64,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     'temario': '📚 Temarios',
     'test': '🎯 Tests',
     'psicotecnicos': '🧩 Psicotécnicos',
-    'guardia-civil': '🚔 Guardia Civil',
-    'policia-nacional': '👮‍♂️ Policía Nacional'
+    'guardia-civil': '🛡️ Guardia Civil',
+    'policia-nacional': '🛡️ Policía Nacional'
   }
 
   // Combinar etiquetas por defecto con personalizadas

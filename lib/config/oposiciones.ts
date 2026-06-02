@@ -3731,7 +3731,7 @@ export const OPOSICIONES: Oposicion[] = [
     positionType: 'policia_nacional',
     name: 'Policía Nacional - Escala Básica',
     shortName: 'Policía Nacional',
-    emoji: '👮',
+    emoji: '🛡️',
     badge: 'C1',
     color: 'blue',
     administracion: 'estado',
@@ -3796,7 +3796,7 @@ export const OPOSICIONES: Oposicion[] = [
     aliases: ['cnp', 'policia nacional', 'escala basica', 'policía', 'pn oposiciones', 'oposiciones policia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/policia-nacional', label: 'Mi Oposición', icon: '👮', featured: true },
+      { href: '/policia-nacional', label: 'Mi Oposición', icon: '🛡️', featured: true },
       { href: '/policia-nacional/temario', label: 'Temario', icon: '📚' },
       { href: '/policia-nacional/test', label: 'Tests', icon: '🎯' },
     ],

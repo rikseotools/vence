@@ -6,6 +6,18 @@ import { getSupabaseClient } from '../lib/supabase'
 import { OPOSICIONES } from '../lib/config/oposiciones'
 import { matchesOposicion } from '../lib/utils/searchOposicion'
 import { useOposicionesCatalog } from '../lib/hooks/useOposicionesCatalog'
+import { resolveEscudo } from './CcaaFlag'
+
+// Icono de una oposición en las listas: escudo/logo oficial real (Guardia Civil,
+// Policía Nacional) si lo tiene, o el emoji configurado como fallback.
+function OposicionIcon({ id, icon }: { id: string; icon: string }) {
+  const escudo = resolveEscudo(id)
+  if (escudo) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={escudo.src} alt={escudo.alt} className="inline-block w-6 h-6 object-contain align-middle" loading="lazy" decoding="async" />
+  }
+  return <span className="text-lg">{icon}</span>
+}
 
 // Set de ids de oposiciones ya implementadas (con temario/tests reales).
 // Se usa para marcar las aspiracionales con badge "🔜 En elaboración".
@@ -160,14 +172,14 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     nombre: 'Policía Nacional (Escala Básica)',
     categoria: 'C1',
     administracion: 'Estado',
-    icon: '👮'
+    icon: '🛡️'
   },
   {
     id: 'guardia_civil',
     nombre: 'Guardia Civil',
     categoria: 'C1',
     administracion: 'Estado',
-    icon: '🚔'
+    icon: '🛡️'
   },
   {
     id: 'enfermero',
@@ -2160,7 +2172,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
                       className="w-full text-left p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-sm"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{op.icon}</span>
+                        <OposicionIcon id={op.id} icon={op.icon} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
                             {op.nombre}
