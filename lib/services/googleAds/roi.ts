@@ -30,7 +30,11 @@ const RANGE_DAYS: Record<DateRange, number> = {
 export interface CampaignRoi {
   campaignId: string
   name: string
+  status: string
   costEur: number
+  clicks: number
+  impressions: number
+  avgCpcEur: number
   revenueEur: number
   /** Nº de pagos atribuidos a la campaña en la ventana. */
   payments: number
@@ -97,7 +101,11 @@ export async function getCampaignRoi(
     byId.set(p.campaignId, {
       campaignId: p.campaignId,
       name: p.name,
+      status: p.status,
       costEur: p.costEur,
+      clicks: p.clicks,
+      impressions: p.impressions,
+      avgCpcEur: p.avgCpcEur,
       revenueEur,
       payments,
       cpaEur: payments > 0 ? p.costEur / payments : null,
@@ -110,7 +118,11 @@ export async function getCampaignRoi(
     byId.set(campaignId, {
       campaignId,
       name: `(campaña ${campaignId})`,
+      status: 'UNKNOWN',
       costEur: 0,
+      clicks: 0,
+      impressions: 0,
+      avgCpcEur: 0,
       revenueEur: rev.revenue,
       payments: rev.payments,
       cpaEur: null,

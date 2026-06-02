@@ -474,6 +474,9 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       // utm_campaign con el final_url_suffix nuevo = ID numérico de campaña.
       try {
         const campaign = detectCampaignSource()
+        // Las cookies google_*/meta_* las pone captureMetaParams() en CADA página
+        // (ClientLayoutContent), así que cubren tráfico de anuncios a cualquier
+        // página. Las campaign_* solo se ponen en /landing. Priorizar las globales.
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.access_token) {
           await fetch('/api/acquisition', {
@@ -484,11 +487,11 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             },
             body: JSON.stringify({
               channel: registrationSource,
-              gclid: campaign?.gclid ?? null,
-              fbclid: campaign?.fbclid ?? null,
-              utmSource: campaign?.utm_source ?? null,
+              gclid: getCookie('google_gclid') || campaign?.gclid || null,
+              fbclid: getCookie('meta_fbclid') || campaign?.fbclid || null,
+              utmSource: getCookie('google_utm_source') || campaign?.utm_source || null,
               utmMedium: getCookie('google_utm_medium') || getCookie('campaign_utm_medium') || null,
-              utmCampaign: campaign?.utm_campaign ?? null,
+              utmCampaign: getCookie('google_utm_campaign') || campaign?.utm_campaign || null,
               landingPath: campaign?.landing ?? null,
               referrer: typeof document !== 'undefined' ? document.referrer || null : null,
             }),
