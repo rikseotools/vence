@@ -2,14 +2,20 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import type Stripe from 'stripe'
+import { getAdminDb } from '@/db/client'
+import { userProfiles, userSubscriptions, cancellationFeedback, paymentSettlements } from '@/db/schema'
+import { and, eq, desc, sql } from 'drizzle-orm'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { invalidateProfileCache } from '@/lib/api/profile'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+// getAdminDb() = Drizzle/DATABASE_URL (bypass RLS, equivalente al service_role).
+// Agnóstico de proveedor. Cada handler lo obtiene del singleton cacheado.
+type Db = ReturnType<typeof getAdminDb>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type StripeSubscription = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,15 +142,7 @@ interface SettlementData {
   amountGross: number
   currency: string
   paymentDate: string
-  supabase: SupabaseClient
-}
-
-// Crear cliente con SERVICE_ROLE_KEY para bypasear RLS
-const getServiceSupabase = (): SupabaseClient => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  db: Db
 }
 
 async function _POST(request: NextRequest) {
@@ -167,23 +165,23 @@ async function _POST(request: NextRequest) {
       return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
     }
 
-    const supabase = getServiceSupabase()
+    const db = getAdminDb()
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object as StripeCheckoutSession, supabase)
+        await handleCheckoutSessionCompleted(event.data.object as StripeCheckoutSession, db)
         break
 
       case 'customer.subscription.created':
-        await handleSubscriptionCreated(event.data.object as StripeSubscription, supabase)
+        await handleSubscriptionCreated(event.data.object as StripeSubscription, db)
         break
 
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as StripeSubscription, supabase)
+        await handleSubscriptionUpdated(event.data.object as StripeSubscription, db)
         break
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as StripeSubscription, supabase)
+        await handleSubscriptionDeleted(event.data.object as StripeSubscription, db)
         break
 
       case 'invoice.created':
@@ -191,11 +189,11 @@ async function _POST(request: NextRequest) {
         break
 
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object as StripeInvoice, supabase)
+        await handlePaymentSucceeded(event.data.object as StripeInvoice, db)
         break
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as StripeInvoice, supabase)
+        await handlePaymentFailed(event.data.object as StripeInvoice, db)
         break
 
       default:
@@ -259,7 +257,7 @@ async function sendWebhookErrorEmail(error: Error): Promise<void> {
 
 async function handleCheckoutSessionCompleted(
   session: StripeCheckoutSession,
-  supabase: SupabaseClient
+  db: Db
 ): Promise<void> {
   console.log('🎯 Checkout completado:', session.id)
 
@@ -284,11 +282,11 @@ async function handleCheckoutSessionCompleted(
 
   // Fallback: buscar usuario por stripe_customer_id
   if (!userId && session.customer) {
-    const { data: userByCustomer } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('stripe_customer_id', session.customer as string)
-      .single()
+    const [userByCustomer] = await db
+      .select({ id: userProfiles.id })
+      .from(userProfiles)
+      .where(eq(userProfiles.stripeCustomerId, session.customer as string))
+      .limit(1)
 
     userId = userByCustomer?.id || null
     console.log('📋 userId desde stripe_customer_id:', userId)
@@ -297,21 +295,43 @@ async function handleCheckoutSessionCompleted(
   if (userId) {
     console.log('👤 Activando premium para usuario:', userId)
 
-    const { data: beforeData } = await supabase
-      .from('user_profiles')
-      .select('plan_type, updated_at')
-      .eq('id', userId)
-      .single()
+    const [beforeData] = await db
+      .select({ plan_type: userProfiles.planType, updated_at: userProfiles.updatedAt })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1)
     console.log('📊 ANTES del update:', beforeData)
 
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .update({
-        plan_type: 'premium',
-        stripe_customer_id: session.customer as string
-      })
-      .eq('id', userId)
-      .select()
+    let data: Array<{
+      email: string
+      full_name: string | null
+      target_oposicion: string | null
+      registration_source: string | null
+      registration_url: string | null
+      registration_funnel: string | null
+      created_at: string | null
+    }> | null = null
+    let error: unknown = null
+    try {
+      data = await db
+        .update(userProfiles)
+        .set({
+          planType: 'premium',
+          stripeCustomerId: session.customer as string
+        })
+        .where(eq(userProfiles.id, userId))
+        .returning({
+          email: userProfiles.email,
+          full_name: userProfiles.fullName,
+          target_oposicion: userProfiles.targetOposicion,
+          registration_source: userProfiles.registrationSource,
+          registration_url: userProfiles.registrationUrl,
+          registration_funnel: userProfiles.registrationFunnel,
+          created_at: userProfiles.createdAt,
+        })
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       console.error('❌ Error actualizando usuario a premium:', error)
@@ -326,27 +346,31 @@ async function handleCheckoutSessionCompleted(
           const subscription = await getSubscription(session.subscription as string)
           planType = determinePlanType(subscription)
 
-          const { error: subError } = await supabase
-            .from('user_subscriptions')
-            .upsert({
-              user_id: userId,
-              stripe_customer_id: session.customer as string,
-              stripe_subscription_id: subscription.id,
+          let subError: unknown = null
+          try {
+            const subValues = {
+              userId,
+              stripeCustomerId: session.customer as string,
+              stripeSubscriptionId: subscription.id,
               status: normalizeStripeStatus(subscription.status),
-              plan_type: planType,
-              current_period_start: subscription.current_period_start
+              planType,
+              currentPeriodStart: subscription.current_period_start
                 ? new Date(subscription.current_period_start * 1000).toISOString()
                 : null,
-              current_period_end: subscription.current_period_end
+              currentPeriodEnd: subscription.current_period_end
                 ? new Date(subscription.current_period_end * 1000).toISOString()
                 : null
-            }, {
-              onConflict: 'user_id',
-              ignoreDuplicates: false
-            })
+            }
+            await db
+              .insert(userSubscriptions)
+              .values(subValues)
+              .onConflictDoUpdate({ target: userSubscriptions.userId, set: subValues })
+          } catch (e) {
+            subError = e
+          }
 
           if (subError) {
-            console.error('⚠️ Error creando subscription record:', subError.message)
+            console.error('⚠️ Error creando subscription record:', (subError as Error).message)
           } else {
             console.log('✅ Subscription record creado/actualizado')
           }
@@ -369,41 +393,38 @@ async function handleCheckoutSessionCompleted(
 
       // Trackear conversiones
       try {
-        await supabase.rpc('track_conversion_event', {
-          p_user_id: userId,
-          p_event_type: 'payment_completed',
-          p_event_data: {
-            amount: (session.amount_total || 0) / 100,
-            currency: session.currency,
-            plan: planType,
-            timestamp: new Date().toISOString()
-          }
-        })
+        const eventData = {
+          amount: (session.amount_total || 0) / 100,
+          currency: session.currency,
+          plan: planType,
+          timestamp: new Date().toISOString()
+        }
+        await db.execute(sql`SELECT track_conversion_event(${userId}::uuid, ${'payment_completed'}::text, ${JSON.stringify(eventData)}::jsonb)`)
       } catch (trackErr) {
         console.error('Error tracking conversion:', trackErr)
       }
 
       try {
-        await supabase.rpc('mark_upgrade_conversion', { p_user_id: userId })
+        await db.execute(sql`SELECT mark_upgrade_conversion(${userId}::uuid)`)
       } catch (abErr) {
         console.error('Error marking A/B conversion:', abErr)
       }
 
       // Email admin
       try {
-        const userProfile = data?.[0] || {}
+        const userProfile = data?.[0]
         await sendAdminPurchaseEmail({
-          userEmail: userProfile.email || session.customer_email || '',
-          userName: userProfile.full_name || 'Sin nombre',
+          userEmail: userProfile?.email || session.customer_email || '',
+          userName: userProfile?.full_name || 'Sin nombre',
           amount: (session.amount_total || 0) / 100,
           currency: session.currency?.toUpperCase() || 'EUR',
           stripeCustomerId: session.customer as string,
           userId,
-          targetOposicion: userProfile.target_oposicion,
-          registrationSource: userProfile.registration_source,
-          registrationUrl: userProfile.registration_url,
-          registrationFunnel: userProfile.registration_funnel,
-          registrationDate: userProfile.created_at,
+          targetOposicion: userProfile?.target_oposicion,
+          registrationSource: userProfile?.registration_source,
+          registrationUrl: userProfile?.registration_url,
+          registrationFunnel: userProfile?.registration_funnel,
+          registrationDate: userProfile?.created_at,
         })
         console.log('📧 Email de nueva compra enviado')
       } catch (emailErr) {
@@ -418,22 +439,22 @@ async function handleCheckoutSessionCompleted(
           invoiceId: session.invoice as string | null,
           customerId: session.customer as string,
           userId,
-          userEmail: data?.[0]?.email || session.customer_email || '',
+          userEmail: (data?.[0]?.email as string) || session.customer_email || '',
           amountGross: session.amount_total || 0,
           currency: session.currency || 'eur',
           paymentDate: new Date((session.created || 0) * 1000).toISOString(),
-          supabase
+          db
         })
       } catch (settlementErr) {
         console.error('Error registrando settlement:', settlementErr)
       }
     }
 
-    const { data: afterData } = await supabase
-      .from('user_profiles')
-      .select('plan_type, updated_at')
-      .eq('id', userId)
-      .single()
+    const [afterData] = await db
+      .select({ plan_type: userProfiles.planType, updated_at: userProfiles.updatedAt })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1)
     console.log('📊 DESPUÉS del update:', afterData)
 
     if (afterData?.plan_type !== 'premium') {
@@ -448,31 +469,45 @@ async function handleCheckoutSessionCompleted(
     const customer = await stripe().customers.retrieve(session.customer as string) as StripeCustomer
 
     if (customer.email) {
-      const { data: existingUser } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, target_oposicion, registration_source, registration_url, registration_funnel, created_at')
-        .eq('email', customer.email)
-        .single()
+      const [existingUser] = await db
+        .select({
+          id: userProfiles.id,
+          full_name: userProfiles.fullName,
+          target_oposicion: userProfiles.targetOposicion,
+          registration_source: userProfiles.registrationSource,
+          registration_url: userProfiles.registrationUrl,
+          registration_funnel: userProfiles.registrationFunnel,
+          created_at: userProfiles.createdAt,
+        })
+        .from(userProfiles)
+        .where(eq(userProfiles.email, customer.email))
+        .limit(1)
 
       if (existingUser) {
         console.log('📧 Actualizando usuario existente por email:', customer.email)
 
         // Verificar estado ANTES del update
-        const { data: beforeData } = await supabase
-          .from('user_profiles')
-          .select('plan_type, stripe_customer_id')
-          .eq('id', existingUser.id)
-          .single()
+        const [beforeData] = await db
+          .select({ plan_type: userProfiles.planType, stripe_customer_id: userProfiles.stripeCustomerId })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, existingUser.id))
+          .limit(1)
         console.log('📊 ANTES del update (CASO 2):', beforeData)
 
-        const { data: updateData, error: updateError } = await supabase
-          .from('user_profiles')
-          .update({
-            plan_type: 'premium',
-            stripe_customer_id: session.customer as string
-          })
-          .eq('id', existingUser.id)
-          .select()
+        let updateData: Array<Record<string, unknown>> | null = null
+        let updateError: unknown = null
+        try {
+          updateData = await db
+            .update(userProfiles)
+            .set({
+              planType: 'premium',
+              stripeCustomerId: session.customer as string
+            })
+            .where(eq(userProfiles.id, existingUser.id))
+            .returning({ id: userProfiles.id })
+        } catch (e) {
+          updateError = e
+        }
 
         if (updateError) {
           console.error('❌ Error actualizando usuario a premium (CASO 2):', updateError)
@@ -482,31 +517,36 @@ async function handleCheckoutSessionCompleted(
         }
 
         // Verificar estado DESPUÉS del update
-        const { data: afterData } = await supabase
-          .from('user_profiles')
-          .select('plan_type, stripe_customer_id')
-          .eq('id', existingUser.id)
-          .single()
+        const [afterData] = await db
+          .select({ plan_type: userProfiles.planType, stripe_customer_id: userProfiles.stripeCustomerId })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, existingUser.id))
+          .limit(1)
         console.log('📊 DESPUÉS del update (CASO 2):', afterData)
 
         if (afterData?.plan_type !== 'premium') {
           console.error('🚨 ALERTA CRÍTICA: El plan_type NO se actualizó a premium (CASO 2)!')
           // Intentar una vez más
           console.log('🔄 Reintentando actualización...')
-          const { error: retryError } = await supabase
-            .from('user_profiles')
-            .update({ plan_type: 'premium' })
-            .eq('id', existingUser.id)
+          let retryError: unknown = null
+          try {
+            await db
+              .update(userProfiles)
+              .set({ planType: 'premium' })
+              .where(eq(userProfiles.id, existingUser.id))
+          } catch (e) {
+            retryError = e
+          }
 
           if (retryError) {
             console.error('❌ Error en reintento:', retryError)
           } else {
             invalidateProfileCache()
-            const { data: finalData } = await supabase
-              .from('user_profiles')
-              .select('plan_type')
-              .eq('id', existingUser.id)
-              .single()
+            const [finalData] = await db
+              .select({ plan_type: userProfiles.planType })
+              .from(userProfiles)
+              .where(eq(userProfiles.id, existingUser.id))
+              .limit(1)
             console.log('📊 Después del reintento:', finalData)
           }
         }
@@ -516,21 +556,23 @@ async function handleCheckoutSessionCompleted(
             const subscription = await getSubscription(session.subscription as string)
             const planType = determinePlanType(subscription)
 
-            await supabase
-              .from('user_subscriptions')
-              .upsert({
-                user_id: existingUser.id,
-                stripe_customer_id: session.customer as string,
-                stripe_subscription_id: subscription.id,
-                status: normalizeStripeStatus(subscription.status),
-                plan_type: planType,
-                current_period_start: subscription.current_period_start
-                  ? new Date(subscription.current_period_start * 1000).toISOString()
-                  : null,
-                current_period_end: subscription.current_period_end
-                  ? new Date(subscription.current_period_end * 1000).toISOString()
-                  : null
-              }, { onConflict: 'user_id', ignoreDuplicates: false })
+            const subValues = {
+              userId: existingUser.id,
+              stripeCustomerId: session.customer as string,
+              stripeSubscriptionId: subscription.id,
+              status: normalizeStripeStatus(subscription.status),
+              planType,
+              currentPeriodStart: subscription.current_period_start
+                ? new Date(subscription.current_period_start * 1000).toISOString()
+                : null,
+              currentPeriodEnd: subscription.current_period_end
+                ? new Date(subscription.current_period_end * 1000).toISOString()
+                : null
+            }
+            await db
+              .insert(userSubscriptions)
+              .values(subValues)
+              .onConflictDoUpdate({ target: userSubscriptions.userId, set: subValues })
           } catch (subErr) {
             const e = subErr as Error
             console.error('⚠️ Error creando subscription por email:', e.message)
@@ -566,7 +608,7 @@ async function handleCheckoutSessionCompleted(
             amountGross: session.amount_total || 0,
             currency: session.currency || 'eur',
             paymentDate: new Date((session.created || 0) * 1000).toISOString(),
-            supabase
+            db
           })
         } catch (settlementErr) {
           console.error('Error registrando settlement (CASO 2):', settlementErr)
@@ -582,18 +624,18 @@ async function handleCheckoutSessionCompleted(
 
 async function handleSubscriptionCreated(
   subscription: StripeSubscription,
-  supabase: SupabaseClient
+  db: Db
 ): Promise<void> {
   console.log('📋 handleSubscriptionCreated:', subscription.id)
 
   let userId = subscription.metadata?.supabase_user_id
 
   if (!userId) {
-    const { data: user } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('stripe_customer_id', subscription.customer as string)
-      .single()
+    const [user] = await db
+      .select({ id: userProfiles.id })
+      .from(userProfiles)
+      .where(eq(userProfiles.stripeCustomerId, subscription.customer as string))
+      .limit(1)
 
     userId = user?.id
     console.log('📋 userId encontrado por stripe_customer_id:', userId)
@@ -607,36 +649,30 @@ async function handleSubscriptionCreated(
   const planType = determinePlanType(subscription)
 
   try {
-    const { error } = await supabase
-      .from('user_subscriptions')
-      .upsert({
-        user_id: userId,
-        stripe_customer_id: subscription.customer as string,
-        stripe_subscription_id: subscription.id,
-        status: normalizeStripeStatus(subscription.status),
-        plan_type: planType,
-        trial_start: subscription.trial_start
-          ? new Date(subscription.trial_start * 1000).toISOString()
-          : null,
-        trial_end: subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null,
-        current_period_start: subscription.current_period_start
-          ? new Date(subscription.current_period_start * 1000).toISOString()
-          : null,
-        current_period_end: subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
-          : null
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false
-      })
-
-    if (error) {
-      console.error('⚠️ Error en upsert subscription:', error.message)
-    } else {
-      console.log(`✅ Subscription created/updated for user ${userId}`)
+    const subValues = {
+      userId,
+      stripeCustomerId: subscription.customer as string,
+      stripeSubscriptionId: subscription.id,
+      status: normalizeStripeStatus(subscription.status),
+      planType,
+      trialStart: subscription.trial_start
+        ? new Date(subscription.trial_start * 1000).toISOString()
+        : null,
+      trialEnd: subscription.trial_end
+        ? new Date(subscription.trial_end * 1000).toISOString()
+        : null,
+      currentPeriodStart: subscription.current_period_start
+        ? new Date(subscription.current_period_start * 1000).toISOString()
+        : null,
+      currentPeriodEnd: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null
     }
+    await db
+      .insert(userSubscriptions)
+      .values(subValues)
+      .onConflictDoUpdate({ target: userSubscriptions.userId, set: subValues })
+    console.log(`✅ Subscription created/updated for user ${userId}`)
   } catch (error) {
     console.error('Error creating subscription record:', error)
   }
@@ -644,27 +680,27 @@ async function handleSubscriptionCreated(
 
 async function handleSubscriptionUpdated(
   subscription: StripeSubscription,
-  supabase: SupabaseClient
+  db: Db
 ): Promise<void> {
   try {
     const { periodStart, periodEnd } = extractPeriodDates(subscription)
 
-    const updateData: Record<string, unknown> = {
+    const updateData: Partial<typeof userSubscriptions.$inferInsert> = {
       status: normalizeStripeStatus(subscription.status),
-      cancel_at_period_end: subscription.cancel_at_period_end
+      cancelAtPeriodEnd: subscription.cancel_at_period_end
     }
 
     if (periodStart) {
-      updateData.current_period_start = periodStart
+      updateData.currentPeriodStart = periodStart
     }
     if (periodEnd) {
-      updateData.current_period_end = periodEnd
+      updateData.currentPeriodEnd = periodEnd
     }
 
-    await supabase
-      .from('user_subscriptions')
-      .update(updateData)
-      .eq('stripe_subscription_id', subscription.id)
+    await db
+      .update(userSubscriptions)
+      .set(updateData)
+      .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
 
     console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`, periodEnd ? `period_end: ${periodEnd}` : '')
 
@@ -675,28 +711,28 @@ async function handleSubscriptionUpdated(
     // Detectar reactivación: cancel_at_period_end cambió a false en una sub activa
     if (!subscription.cancel_at_period_end && subscription.status === 'active') {
       try {
-        const { data: subData } = await supabase
-          .from('user_subscriptions')
-          .select('user_id')
-          .eq('stripe_subscription_id', subscription.id)
+        const subData = await db
+          .select({ user_id: userSubscriptions.userId })
+          .from(userSubscriptions)
+          .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
           .limit(1)
 
         if (subData?.[0]?.user_id) {
-          const userId = subData[0].user_id
-          const { data: lastFeedback } = await supabase
-            .from('cancellation_feedback')
-            .select('cancellation_type')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
+          const userId = subData[0].user_id!
+          const lastFeedback = await db
+            .select({ cancellation_type: cancellationFeedback.cancellationType })
+            .from(cancellationFeedback)
+            .where(eq(cancellationFeedback.userId, userId))
+            .orderBy(desc(cancellationFeedback.createdAt))
             .limit(1)
 
           if (lastFeedback?.[0] && lastFeedback[0].cancellation_type !== 'reactivation') {
-            await supabase.from('cancellation_feedback').insert({
-              user_id: userId,
-              subscription_id: subscription.id,
+            await db.insert(cancellationFeedback).values({
+              userId,
+              subscriptionId: subscription.id,
               reason: 'reactivated',
-              cancellation_type: 'reactivation',
-              period_end_at: periodEnd,
+              cancellationType: 'reactivation',
+              periodEndAt: periodEnd,
             })
             console.log(`🟢 Reactivation detected and logged for user ${userId}`)
           }
@@ -711,19 +747,19 @@ async function handleSubscriptionUpdated(
       const periodEndTimestamp = subscription.current_period_end || subscription.cancel_at || 0
       const shouldDowngrade = shouldDowngradeNow(periodEndTimestamp, now)
 
-      const { data: subDataArray } = await supabase
-        .from('user_subscriptions')
-        .select('user_id')
-        .eq('stripe_subscription_id', subscription.id)
+      const subDataArray = await db
+        .select({ user_id: userSubscriptions.userId })
+        .from(userSubscriptions)
+        .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
         .limit(1)
 
       const subData = subDataArray?.[0]
       if (subData?.user_id) {
         if (shouldDowngrade) {
-          await supabase
-            .from('user_profiles')
-            .update({ plan_type: 'free' })
-            .eq('id', subData.user_id)
+          await db
+            .update(userProfiles)
+            .set({ planType: 'free' })
+            .where(eq(userProfiles.id, subData.user_id))
           invalidateProfileCache()
           console.log(`✅ User ${subData.user_id} degradado a FREE`)
         } else {
@@ -736,18 +772,18 @@ async function handleSubscriptionUpdated(
     if (['past_due', 'unpaid'].includes(subscription.status)) {
       console.log(`⚠️ Subscription ${subscription.id} tiene problemas de pago: ${subscription.status}`)
 
-      const { data: paymentSubData } = await supabase
-        .from('user_subscriptions')
-        .select('user_id')
-        .eq('stripe_subscription_id', subscription.id)
+      const paymentSubData = await db
+        .select({ user_id: userSubscriptions.userId })
+        .from(userSubscriptions)
+        .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
         .limit(1)
 
       const paymentSub = paymentSubData?.[0]
       if (paymentSub?.user_id) {
-        const { data: profileData } = await supabase
-          .from('user_profiles')
-          .select('email, full_name')
-          .eq('id', paymentSub.user_id)
+        const profileData = await db
+          .select({ email: userProfiles.email, full_name: userProfiles.fullName })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, paymentSub.user_id))
           .limit(1)
 
         const userProfile = profileData?.[0]
@@ -755,7 +791,7 @@ async function handleSubscriptionUpdated(
           try {
             await sendAdminPaymentIssueEmail({
               userEmail: userProfile.email,
-              userName: userProfile.full_name,
+              userName: userProfile.full_name ?? 'Sin nombre',
               status: subscription.status,
               subscriptionId: subscription.id
             })
@@ -773,13 +809,13 @@ async function handleSubscriptionUpdated(
 
 async function handleSubscriptionDeleted(
   subscription: StripeSubscription,
-  supabase: SupabaseClient
+  db: Db
 ): Promise<void> {
   try {
-    const { data: subDataArray } = await supabase
-      .from('user_subscriptions')
-      .select('user_id')
-      .eq('stripe_subscription_id', subscription.id)
+    const subDataArray = await db
+      .select({ user_id: userSubscriptions.userId })
+      .from(userSubscriptions)
+      .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
       .limit(1)
 
     const subData = subDataArray?.[0]
@@ -790,15 +826,15 @@ async function handleSubscriptionDeleted(
 
     const { periodEnd } = extractPeriodDates(subscription)
 
-    const updateData: Record<string, unknown> = { status: 'canceled' }
+    const updateData: Partial<typeof userSubscriptions.$inferInsert> = { status: 'canceled' }
     if (periodEnd) {
-      updateData.current_period_end = periodEnd
+      updateData.currentPeriodEnd = periodEnd
     }
 
-    await supabase
-      .from('user_subscriptions')
-      .update(updateData)
-      .eq('stripe_subscription_id', subscription.id)
+    await db
+      .update(userSubscriptions)
+      .set(updateData)
+      .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
 
     console.log(`✅ Subscription ${subscription.id} canceled in user_subscriptions`)
 
@@ -808,10 +844,15 @@ async function handleSubscriptionDeleted(
 
     if (subData?.user_id) {
       if (shouldDowngrade) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .update({ plan_type: 'free' })
-          .eq('id', subData.user_id)
+        let profileError: unknown = null
+        try {
+          await db
+            .update(userProfiles)
+            .set({ planType: 'free' })
+            .where(eq(userProfiles.id, subData.user_id))
+        } catch (e) {
+          profileError = e
+        }
 
         if (profileError) {
           console.error('❌ Error degradando usuario:', profileError)
@@ -865,7 +906,7 @@ async function handleInvoiceCreated(invoice: StripeInvoice): Promise<void> {
 
 async function handlePaymentSucceeded(
   invoice: StripeInvoice,
-  supabase: SupabaseClient
+  db: Db
 ): Promise<void> {
   console.log('💳 handlePaymentSucceeded:', invoice.id, 'billing_reason:', invoice.billing_reason)
 
@@ -877,42 +918,42 @@ async function handlePaymentSucceeded(
       let userEmail: string | null = null
 
       if (!userId) {
-        const { data: user } = await supabase
-          .from('user_profiles')
-          .select('id, email')
-          .eq('stripe_customer_id', subscription.customer as string)
-          .single()
+        const [user] = await db
+          .select({ id: userProfiles.id, email: userProfiles.email })
+          .from(userProfiles)
+          .where(eq(userProfiles.stripeCustomerId, subscription.customer as string))
+          .limit(1)
 
         userId = user?.id
-        userEmail = user?.email
+        userEmail = user?.email ?? null
       }
 
       if (userId) {
-        await supabase
-          .from('user_profiles')
-          .update({ plan_type: 'premium' })
-          .eq('id', userId)
+        await db
+          .update(userProfiles)
+          .set({ planType: 'premium' })
+          .where(eq(userProfiles.id, userId))
         invalidateProfileCache()
 
         // Actualizar periodo en user_subscriptions (renovación)
         const { periodStart, periodEnd } = extractPeriodDates(subscription)
-        const periodUpdate: Record<string, unknown> = { status: 'active' }
-        if (periodStart) periodUpdate.current_period_start = periodStart
-        if (periodEnd) periodUpdate.current_period_end = periodEnd
+        const periodUpdate: Partial<typeof userSubscriptions.$inferInsert> = { status: 'active' }
+        if (periodStart) periodUpdate.currentPeriodStart = periodStart
+        if (periodEnd) periodUpdate.currentPeriodEnd = periodEnd
         // También intentar desde la invoice (más fiable en renovaciones)
         if (!periodEnd && invoice.period_end) {
-          periodUpdate.current_period_end = new Date(invoice.period_end * 1000).toISOString()
+          periodUpdate.currentPeriodEnd = new Date(invoice.period_end * 1000).toISOString()
         }
         if (!periodStart && invoice.period_start) {
-          periodUpdate.current_period_start = new Date(invoice.period_start * 1000).toISOString()
+          periodUpdate.currentPeriodStart = new Date(invoice.period_start * 1000).toISOString()
         }
 
-        await supabase
-          .from('user_subscriptions')
-          .update(periodUpdate)
-          .eq('stripe_subscription_id', subscription.id)
+        await db
+          .update(userSubscriptions)
+          .set(periodUpdate)
+          .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
 
-        console.log(`✅ Payment succeeded for user ${userId}`, periodUpdate.current_period_end ? `period_end: ${periodUpdate.current_period_end}` : '')
+        console.log(`✅ Payment succeeded for user ${userId}`, periodUpdate.currentPeriodEnd ? `period_end: ${periodUpdate.currentPeriodEnd}` : '')
 
         // Nota: los descuentos de fidelidad se gestionan en handleInvoiceCreated (invoice.created)
         // y en handleCheckoutSessionCompleted (cupón inicial). No se aplican aquí post-cobro.
@@ -928,7 +969,7 @@ async function handlePaymentSucceeded(
             amountGross: invoice.amount_paid || 0,
             currency: invoice.currency || 'eur',
             paymentDate: new Date((invoice.created || 0) * 1000).toISOString(),
-            supabase
+            db
           })
         } catch (settlementErr) {
           console.error('Error registrando settlement:', settlementErr)
@@ -942,7 +983,7 @@ async function handlePaymentSucceeded(
 
 async function handlePaymentFailed(
   invoice: StripeInvoice,
-  supabase: SupabaseClient
+  db: Db
 ): Promise<void> {
   console.log(`⚠️ Payment failed for invoice ${invoice.id}`)
 
@@ -953,21 +994,21 @@ async function handlePaymentFailed(
       let userId = subscription.metadata?.supabase_user_id
 
       if (!userId) {
-        const { data: user } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('stripe_customer_id', subscription.customer as string)
-          .single()
+        const [user] = await db
+          .select({ id: userProfiles.id })
+          .from(userProfiles)
+          .where(eq(userProfiles.stripeCustomerId, subscription.customer as string))
+          .limit(1)
 
         userId = user?.id
       }
 
       if (userId) {
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('email, full_name')
-          .eq('id', userId)
-          .single()
+        const [userProfile] = await db
+          .select({ email: userProfiles.email, full_name: userProfiles.fullName })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, userId))
+          .limit(1)
 
         if (userProfile) {
           await sendAdminPaymentIssueEmail({
@@ -1135,26 +1176,32 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
       armando: armandoAmount
     })
 
-    const { error } = await data.supabase
-      .from('payment_settlements')
-      .insert({
-        stripe_payment_intent_id: data.paymentIntentId,
-        stripe_charge_id: data.chargeId,
-        stripe_invoice_id: data.invoiceId,
-        stripe_customer_id: data.customerId,
-        user_id: data.userId,
-        user_email: data.userEmail,
-        amount_gross: data.amountGross,
-        stripe_fee: stripeFee,
-        amount_net: amountNet,
-        currency: data.currency || 'eur',
-        manuel_amount: manuelAmount,
-        armando_amount: armandoAmount,
-        payment_date: data.paymentDate || new Date().toISOString()
-      })
+    let error: unknown = null
+    try {
+      await data.db
+        .insert(paymentSettlements)
+        .values({
+          stripePaymentIntentId: data.paymentIntentId,
+          stripeChargeId: data.chargeId,
+          stripeInvoiceId: data.invoiceId,
+          stripeCustomerId: data.customerId,
+          userId: data.userId,
+          userEmail: data.userEmail,
+          amountGross: data.amountGross,
+          stripeFee: stripeFee,
+          amountNet: amountNet,
+          currency: data.currency || 'eur',
+          manuelAmount: manuelAmount,
+          armandoAmount: armandoAmount,
+          paymentDate: data.paymentDate || new Date().toISOString()
+        })
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
-      if (error.code === '23505') {
+      // 23505 = unique_violation (settlement ya registrado por stripe_payment_intent_id)
+      if ((error as { code?: string }).code === '23505') {
         console.log('💰 Settlement ya registrado (duplicado), ignorando')
         return
       }
