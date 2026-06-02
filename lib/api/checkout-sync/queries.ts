@@ -17,8 +17,10 @@
 // sepan distinguir "sync funcionó", "webhook llegó primero", "user no
 // autorizado", "3DS pending", "error Stripe".
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+import { getAdminDb } from '@/db/client'
+import { userProfiles, userSubscriptions } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { emit } from '@/lib/observability/emit'
 import {
   determinePlanType,
@@ -40,11 +42,10 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: '2024-06-20' as Stripe.LatestApiVersion })
 }
 
-function getServiceSupabase(): SupabaseClient {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+function getDb() {
+  return getAdminDb()
 }
 
 // Extracción defensiva de current_period_end / current_period_start.
@@ -85,15 +86,27 @@ export async function syncCheckoutSession(
   params: SyncCheckoutRequest,
 ): Promise<SyncCheckoutResponse | SyncCheckoutError> {
   const startedAt = Date.now()
-  const supabase = getServiceSupabase()
+  const db = getDb()
 
   try {
     // ─── 1. Perfil del user (anti-manipulación + customer match) ───
-    const { data: profile, error: profileErr } = await supabase
-      .from('user_profiles')
-      .select('id, email, stripe_customer_id, plan_type')
-      .eq('id', userId)
-      .single()
+    let profile = null
+    let profileErr = null
+    try {
+      const [row] = await db
+        .select({
+          id: userProfiles.id,
+          email: userProfiles.email,
+          stripe_customer_id: userProfiles.stripeCustomerId,
+          plan_type: userProfiles.planType,
+        })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1)
+      profile = row ?? null
+    } catch (e) {
+      profileErr = e instanceof Error ? e : new Error(String(e))
+    }
 
     if (profileErr || !profile) {
       await emitSyncEvent('error', 'checkout_sync_error', userId, params.sessionId, {
@@ -162,11 +175,11 @@ export async function syncCheckoutSession(
     let firstTimePayer = false
     if (profile.stripe_customer_id === null) {
       // Caso b — primer pago. Verificar que el customer NO está ya tomado.
-      const { data: ownerOfCustomer } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('stripe_customer_id', sessionCustomer)
-        .maybeSingle()
+      const [ownerOfCustomer] = await db
+        .select({ id: userProfiles.id })
+        .from(userProfiles)
+        .where(eq(userProfiles.stripeCustomerId, sessionCustomer))
+        .limit(1)
 
       if (ownerOfCustomer && ownerOfCustomer.id !== userId) {
         // Anti-takeover: el customer ya pertenece a otro user (probable que
@@ -245,11 +258,11 @@ export async function syncCheckoutSession(
     }
 
     // ─── 6. Comprobar si ya está sincronizada (webhook llegó primero) ───
-    const { data: existing } = await supabase
-      .from('user_subscriptions')
-      .select('id, status')
-      .eq('stripe_subscription_id', subscription.id)
-      .maybeSingle()
+    const [existing] = await db
+      .select({ id: userSubscriptions.id, status: userSubscriptions.status })
+      .from(userSubscriptions)
+      .where(eq(userSubscriptions.stripeSubscriptionId, subscription.id))
+      .limit(1)
 
     const { start: periodStartTs, end: periodEndTs } = extractPeriodTs(subscription)
     const periodStartIso = periodStartTs ? new Date(periodStartTs * 1000).toISOString() : null
@@ -260,10 +273,10 @@ export async function syncCheckoutSession(
       // user_profiles.plan_type='premium' (puede haber drift entre webhook
       // y profile si un trigger falló — defense in depth).
       if (profile.plan_type !== 'premium') {
-        await supabase
-          .from('user_profiles')
-          .update({ plan_type: 'premium', requires_payment: false })
-          .eq('id', userId)
+        await db
+          .update(userProfiles)
+          .set({ planType: 'premium', requiresPayment: false })
+          .where(eq(userProfiles.id, userId))
         await invalidateProfileCacheSafe()
       }
       await emitSyncEvent('info', 'checkout_sync_already_synced_by_webhook', userId, params.sessionId, {
@@ -288,26 +301,30 @@ export async function syncCheckoutSession(
     // si el webhook llega justo después, no falle por duplicate (haría UPDATE).
     const planType = determinePlanType(subscription as unknown as Subscription)
 
-    const { error: upsertErr } = await supabase
-      .from('user_subscriptions')
-      .upsert({
-        user_id: userId,
-        stripe_customer_id: sessionCustomer,
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        plan_type: planType,
-        trial_start: subscription.trial_start
-          ? new Date(subscription.trial_start * 1000).toISOString()
-          : null,
-        trial_end: subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null,
-        current_period_start: periodStartIso,
-        current_period_end: periodEndIso,
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false,
-      })
+    const subValues = {
+      userId,
+      stripeCustomerId: sessionCustomer,
+      stripeSubscriptionId: subscription.id,
+      status: subscription.status,
+      planType,
+      trialStart: subscription.trial_start
+        ? new Date(subscription.trial_start * 1000).toISOString()
+        : null,
+      trialEnd: subscription.trial_end
+        ? new Date(subscription.trial_end * 1000).toISOString()
+        : null,
+      currentPeriodStart: periodStartIso,
+      currentPeriodEnd: periodEndIso,
+    }
+    let upsertErr = null
+    try {
+      await db
+        .insert(userSubscriptions)
+        .values(subValues)
+        .onConflictDoUpdate({ target: userSubscriptions.userId, set: subValues })
+    } catch (e) {
+      upsertErr = e instanceof Error ? e : new Error(String(e))
+    }
 
     if (upsertErr) {
       await emitSyncEvent('error', 'checkout_sync_error', userId, params.sessionId, {
@@ -327,16 +344,21 @@ export async function syncCheckoutSession(
     // antes era null (caso primer pago — el sync llegó antes que el
     // webhook checkout.session.completed que normalmente lo rellenaba).
     const profileUpdate: Record<string, unknown> = {
-      plan_type: 'premium',
-      requires_payment: false,
+      planType: 'premium',
+      requiresPayment: false,
     }
     if (firstTimePayer) {
-      profileUpdate.stripe_customer_id = sessionCustomer
+      profileUpdate.stripeCustomerId = sessionCustomer
     }
-    const { error: updateErr } = await supabase
-      .from('user_profiles')
-      .update(profileUpdate)
-      .eq('id', userId)
+    let updateErr = null
+    try {
+      await db
+        .update(userProfiles)
+        .set(profileUpdate)
+        .where(eq(userProfiles.id, userId))
+    } catch (e) {
+      updateErr = e instanceof Error ? e : new Error(String(e))
+    }
 
     if (updateErr) {
       // El upsert ya pasó, pero el profile no se actualizó. La reconciliation
@@ -411,14 +433,18 @@ export async function reconcileUserPremium(userId: string): Promise<{
   reason?: string
 }> {
   const startedAt = Date.now()
-  const supabase = getServiceSupabase()
+  const db = getDb()
 
   try {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('id, stripe_customer_id, plan_type')
-      .eq('id', userId)
-      .single()
+    const [profile] = await db
+      .select({
+        id: userProfiles.id,
+        stripe_customer_id: userProfiles.stripeCustomerId,
+        plan_type: userProfiles.planType,
+      })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1)
 
     if (!profile?.stripe_customer_id) {
       // No es un user de pago, nada que reconciliar.
@@ -457,19 +483,26 @@ export async function reconcileUserPremium(userId: string): Promise<{
     const { start: periodStartTs, end: periodEndTs } = extractPeriodTs(sub)
     const planType = determinePlanType(sub as unknown as Subscription)
 
-    const { error: upsertErr } = await supabase
-      .from('user_subscriptions')
-      .upsert({
-        user_id: userId,
-        stripe_customer_id: profile.stripe_customer_id,
-        stripe_subscription_id: sub.id,
-        status: sub.status,
-        plan_type: planType,
-        trial_start: sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
-        trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-        current_period_start: periodStartTs ? new Date(periodStartTs * 1000).toISOString() : null,
-        current_period_end: periodEndTs ? new Date(periodEndTs * 1000).toISOString() : null,
-      }, { onConflict: 'user_id', ignoreDuplicates: false })
+    const subValues = {
+      userId,
+      stripeCustomerId: profile.stripe_customer_id,
+      stripeSubscriptionId: sub.id,
+      status: sub.status,
+      planType,
+      trialStart: sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
+      trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+      currentPeriodStart: periodStartTs ? new Date(periodStartTs * 1000).toISOString() : null,
+      currentPeriodEnd: periodEndTs ? new Date(periodEndTs * 1000).toISOString() : null,
+    }
+    let upsertErr = null
+    try {
+      await db
+        .insert(userSubscriptions)
+        .values(subValues)
+        .onConflictDoUpdate({ target: userSubscriptions.userId, set: subValues })
+    } catch (e) {
+      upsertErr = e instanceof Error ? e : new Error(String(e))
+    }
 
     if (upsertErr) {
       await emit({
@@ -485,10 +518,10 @@ export async function reconcileUserPremium(userId: string): Promise<{
       return { drift: true, fixed: false, reason: upsertErr.message }
     }
 
-    await supabase
-      .from('user_profiles')
-      .update({ plan_type: 'premium', requires_payment: false })
-      .eq('id', userId)
+    await db
+      .update(userProfiles)
+      .set({ planType: 'premium', requiresPayment: false })
+      .where(eq(userProfiles.id, userId))
 
     await invalidateProfileCacheSafe()
 
