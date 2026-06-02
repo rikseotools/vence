@@ -26,3 +26,4 @@ export {
   type CustomerInfo,
   type TrackingApplyResult,
 } from './account'
+export { getCampaignRoi, type CampaignRoi } from './roi'
