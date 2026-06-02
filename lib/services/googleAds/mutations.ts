@@ -64,6 +64,33 @@ export const enableCampaign = (
   opts?: { dryRun?: boolean; customer?: Customer }
 ) => setCampaignStatus(campaignId, 'ENABLED', opts)
 
+/** Fija el final_url_suffix (tracking) de UNA campaña. Útil al crear campañas nuevas. */
+export async function setCampaignFinalUrlSuffix(
+  campaignId: string | number,
+  suffix: string,
+  opts: { dryRun?: boolean; customer?: Customer } = {}
+): Promise<MutationResult> {
+  const dryRun = opts.dryRun ?? true
+  const customer = opts.customer ?? getGoogleAdsCustomer()
+  const customerId = loadAdsConfig().customerId
+  const resourceName = campaignResourceName(customerId, campaignId)
+
+  try {
+    await customer.campaigns.update(
+      [{ resource_name: resourceName, final_url_suffix: suffix }],
+      { validate_only: dryRun }
+    )
+    return {
+      applied: !dryRun,
+      dryRun,
+      resourceName,
+      change: `tracking campaña ${campaignId} → "${suffix}"`,
+    }
+  } catch (e) {
+    throw normalizeGoogleAdsError(e)
+  }
+}
+
 /**
  * Ajusta el presupuesto diario de una campaña (en euros). Resuelve primero el
  * recurso de presupuesto asociado a la campaña y luego lo actualiza.

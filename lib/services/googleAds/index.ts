@@ -15,6 +15,14 @@ export {
   setCampaignStatus,
   pauseCampaign,
   enableCampaign,
+  setCampaignFinalUrlSuffix,
   setCampaignDailyBudget,
   type MutationResult,
 } from './mutations'
+export {
+  getCustomerInfo,
+  applyTrackingSuffixToAllCampaigns,
+  RECOMMENDED_FINAL_URL_SUFFIX,
+  type CustomerInfo,
+  type TrackingApplyResult,
+} from './account'

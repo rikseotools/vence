@@ -13,6 +13,7 @@
     "ads:auth": "npx tsx --env-file=.env.local scripts/google-ads/get-refresh-token.ts",
     "ads:report": "npx tsx --env-file=.env.local scripts/google-ads/report.ts",
     "ads:campaign": "npx tsx --env-file=.env.local scripts/google-ads/campaign.ts",
+    "ads:tracking": "npx tsx --env-file=.env.local scripts/google-ads/tracking.ts",
     "dev": "next dev",
     "lint": "eslint .",
     "pre-commit": "npm run test:precommit && npm run test:unit && npm run lint",
