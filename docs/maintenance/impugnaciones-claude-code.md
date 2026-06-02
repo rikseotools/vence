@@ -12,6 +12,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 
 **Reglas que NO se saltan nunca:**
 - NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
+- **UNA POR UNA.** Resolver cada impugnación de forma **individual y completa** (§2): su propio análisis, su propio borrador, su propia aprobación y su propio email. **NUNCA agrupar** varias impugnaciones del mismo usuario en un solo mensaje/email, aunque compartan causa raíz o sea el mismo usuario. El análisis de denominador común (§7.5) sirve para **entender** el fallo, no para **fusionar** la respuesta. No presentar análisis de varias a la vez: terminar una (analizar → borrador → OK → cerrar) antes de empezar la siguiente.
 - SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
 - Cerrar SIEMPRE vía endpoint `/api/v2/dispute/resolve` — nunca UPDATE directo (§6, §15).
 - Listar impugnaciones requiere **SERVICE_ROLE_KEY** (con ANON devuelve `[]` silencioso por RLS).
@@ -23,7 +24,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 2. **Analizar a fondo** (§2): enunciado, opciones, respuesta marcada, explicación, artículo vinculado, `ai_verification_results`. Tabla por opción con su fundamento legal.
 
 3. **Clasificar el tipo** — decide la rama:
-   - **Informática** (Word/Excel/Access/Outlook/Windows/Internet) → la fuente es el ARTÍCULO; verifícalo y, si hace falta, corrígelo contra Microsoft Support (§5.1.1, §5.1.2, §5.1.3, §7.6). NO parchear solo la explicación.
+   - **Informática** (Word/Excel/Access/Outlook/Windows/Internet) → la fuente es el ARTÍCULO; verifícalo y, si hace falta, corrígelo contra Microsoft Support (§5.1.1, §5.1.2, §5.1.3, §7.6). NO parchear solo la explicación. **Comprueba SIEMPRE que el artículo vinculado responde LITERALMENTE a la pregunta** (que el atajo/función concreto que se pregunta aparece tal cual en el contenido del artículo, §5.1.2); si el artículo no lo recoge, re-vincula al artículo correcto — igual que en preguntas legislativas.
    - **`tema_incorrecto`** → es un problema de `topic_scope`, no de la pregunta (§7.2).
    - **Supuesto práctico huérfano** (cita "el supuesto" pero no se ve) → `exam_case_id` NULL (§7.4.ter).
    - **Mismo usuario con 3+ impugnaciones** → buscar el denominador común; suele ser un fallo sistémico (§7.5).
@@ -703,6 +704,14 @@ Misma usuaria, mismo día, otra impugnación: art. 13 CE (derechos de extranjero
 
 **Contraste:** si la pregunta es **oficial** (`is_official_exam = true`), no se toca enunciado ni opciones — solo se mejora la explicación, se corrige el `primary_article_id` y se reescribe la cita textual si era engañosa (caso #ca60036f Carmen Pavón, examen oficial CyL).
 
+## 7.3.bis Cifras legales volátiles (umbrales, IPREM, SMI) — verificar vigencia, no descartar a ciegas (post-02/06/2026)
+
+Algunas preguntas dependen de **importes que se revisan periódicamente** (umbrales de contratación armonizada de la UE, IPREM, SMI, indemnizaciones, etc.). Una impugnación `explicacion_mejorable`/`respuesta_incorrecta` sobre una cifra **no implica que la cifra esté mal**: puede que el usuario estudiara con el valor de otro periodo.
+
+**Regla:** verifica contra fuente oficial **el valor vigente para la fecha de hoy**. Si nuestro contenido coincide con el periodo actual, la pregunta es correcta — **no cambies la cifra** (cambiarla la dejaría obsoleta en la siguiente revisión). Mejora la explicación añadiendo una **nota de vigencia** que despeje la confusión.
+
+**Incidente que motiva la regla (02/06/2026 — Roberto, LCSP art. 22):** umbral de regulación armonizada de servicios para entidades distintas de la AGE marcado en **216.000 €**. Es correcto: es el valor **vigente desde el 1 de enero de 2026** (Orden HAC/1517/2025); en 2024-2025 era 221.000 € — justo lo que despistaba al usuario. Fix: mantener la cifra, reestructurar la explicación con los tres umbrales + nota de vigencia. Reconcilia con la trampa de "contenido volátil entre versiones" del §5.1.3 (allí informática, aquí legislación).
+
 ## 7.4 Cross-contamination de explicaciones entre preguntas (post-14/04/2026)
 
 **Patrón detectado:** preguntas cuya explicación pertenece a **otra pregunta distinta** del banco — texto coherente y bien formateado, pero del tema equivocado.
@@ -751,6 +760,8 @@ Si al resolver una dispute te aparece error del trigger al intentar transicionar
 
 **Regla:** si un mismo usuario (mismo `user_id`) abre **3+ impugnaciones** seguidas en poco tiempo, antes de tratarlas como casos independientes, buscar el **denominador común**. Casi siempre revela un fallo sistémico (de scope, de pipeline, de versión de programa, etc.) en lugar de N preguntas malas independientes.
 
+> ⚠️ **El clustering es solo para el diagnóstico, NO para la respuesta.** Detectar la causa raíz común no autoriza a fusionar el cierre: cada impugnación se sigue resolviendo **una por una** con su propio borrador, su propia aprobación y su propio email (ver regla "UNA POR UNA" del Procedimiento operativo). No agrupar varias del mismo usuario en un único mensaje/email aunque la raíz sea idéntica.
+
 **Caso motivador (14/04/2026):** Isabel Iglesias abrió 3 impugnaciones (`af869052`, `259780d8`, `70329edc`) en pocos días sobre 3 preguntas distintas. Tratadas individualmente parecían inconexas; en realidad las 3 tenían la misma raíz: artículos de la CE (art. 13, art. 103) que aparecían en topic_scopes equivocados (T2 Bloque I, T1 Bloque II) por error de configuración inicial. Un solo fix de scope cerró las 3.
 
 **Cómo detectar:**
@@ -783,6 +794,17 @@ const { data } = await s.from('question_disputes')
 5. **Solo si WebFetch confirma** que la página existe y aborda el tema → incluir como `Fuente:` al final de la explicación. Si devuelve 404 o el contenido no encaja, repetir desde paso 1 con otra búsqueda.
 
 **Por qué:** las URLs de Microsoft Support cambian, los IDs caducan y la versión `es-es` no siempre existe para la misma URL `en-us`. Inventar o asumir URLs lleva a `Fuente:` rotas que dañan la confianza del usuario.
+
+## 7.7 Barrido de fallos similares tras una impugnación (post-02/06/2026)
+
+Cuando una impugnación destapa un defecto que **puede ser sistémico** (clave intercambiada, pregunta con contexto regional colgada de ley nacional, defecto ligado a un lote de importación / `exam_source`), después de resolver la impugnación individual conviene un **barrido del mismo patrón** en el banco — distinto del clustering por mismo-usuario (§7.5), que es por autor.
+
+**Escalado proporcional al tamaño:**
+1. **Barrido acotado (SQL/heurística):** busca el mismo patrón (mismo `exam_source`, mismo eje de confusión, opciones duplicadas, etc.) y verifica a mano el subconjunto sospechoso. Avisa SIEMPRE de qué cubriste y qué no (no dar por auditado lo que no miraste).
+2. **Auditoría de lote con workflow (read-only)** si el lote es grande: agentes en paralelo verifican cada pregunta contra su artículo vinculado + coherencia interna, y cada hallazgo se **verifica adversarialmente** para cortar falsos positivos. Los hallazgos se corrigen con el flujo normal por pregunta (uno a uno, con OK).
+3. **Fix estructural** si el barrido revela que el sistema de revisión dejó pasar el defecto → ver `revisar-preguntas-con-agente.md` §19 (gate de contenido en `transition_question_state` + detector mecánico bank-wide).
+
+**Incidente que motiva la regla (02/06/2026 — Pilar, Galicia):** impugnación `respuesta_incorrecta` (control de la Xunta: Presidente vs Parlamento) → barrido de 48 preguntas Presidente/Parlamento del Estatuto de Galicia (limpias salvo esa) → auditoría workflow del lote completo "Aula Plus - Legislación autonómica" (2.220 preguntas, 74 agentes) → 28 hallazgos confirmados (4 clave equivocada) + descubrimiento de que 1.822/2.220 cuelgan de artículos-placeholder vacíos → gate estructural anti "false-perfect". Dos patrones sistémicos recurrentes que conviene vigilar al barrer: pregunta regional colgada de ley nacional (se cuela en bancos de otras CCAA) y cifras legales volátiles (§7.3.bis).
 
 ## 8. Columnas de `question_disputes`
 
@@ -1393,6 +1415,10 @@ Si un email no se envía:
 4. **Si `emailSkipReason === 'user_preferences'`:** el usuario optó por no recibir email de soporte → respetar.
 5. **Si `emailError` está set:** error real de Resend o sendEmailV2. Mirar `email_events` por `event_type='failed'` y reintentar manualmente vía endpoint admin.
 6. **Reintento manual:** llamar de nuevo al endpoint `/api/v2/dispute/resolve`. Como la disputa ya estará `resolved`/`rejected`, devolverá 409 — para reintentar **solo el email** habrá que añadir un endpoint específico (pendiente Fase 5).
+
+> **⚠️ Gotcha recurrente — respuesta HTML 502/504 del proxy (visto 2× el 01/06/2026):** a veces `/api/v2/dispute/resolve` devuelve **HTML de error (504/502)** en lugar del JSON, porque el proxy/CDN corta por timeout **después** de que el UPDATE de la disputa ya se aplicó pero **antes** (o durante) del `sendEmailV2`. Resultado: la disputa queda `resolved`/`rejected` con `admin_response` correcto y campana enviada, **pero el email NO sale** (no hay fila en `email_events`). Síntoma desde script: `res.json()` peta con "Unexpected token '<'".
+>
+> **Workaround probado (mientras no exista el endpoint de solo-email de Fase 5):** **reabrir la disputa a `pending`** (`UPDATE question_disputes SET status='pending', admin_response=null, resolved_at=null WHERE id=...`) y **volver a llamar** a `/api/v2/dispute/resolve` con el mismo `adminResponse`. El segundo intento hace UPDATE+email limpios. Verificar SIEMPRE el resultado mirando `email_events` por el email del usuario (no fiarse del HTTP), porque el endpoint puede haber cortado aunque el cierre se aplicara. Patrón de script: si `result.emailSent !== true`, reabrir y reintentar una vez.
 
 ### 15.8 Histórico: trigger de feedbacks (eliminado 14/04/2026)
 

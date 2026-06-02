@@ -1613,3 +1613,34 @@ function quoteIsLiteral(explanation, articleContent) {
 3. **La re-verificación es DESPUÉS de aplicar, sobre la pregunta viva.** Auditar la reparación *propuesta* (antes de aplicar) NO sustituye a verificar el resultado *aplicado*. El ciclo termina solo cuando una re-verificación independiente de la pregunta en BD devuelve cero defectos.
 4. **Iterar hasta cero.** Si la re-verificación encuentra defectos, se repara y se re-verifica otra vez. Un lote no se cierra hasta una pasada limpia completa.
 5. **Adjudicar las discrepancias.** Cuando verificación y auditoría discrepan sobre una pregunta, la decide un modelo más fuerte (Opus) o un humano — no se toma el veredicto de la auditoría por defecto (tuvo 17% de falsos negativos en este ciclo).
+
+---
+
+## 19. Gate de contenido en la promoción (palanca anti "false-perfect") — post-02/06/2026
+
+**Incidente que motiva la regla (02/06/2026 — q `83daa594`, lote "Aula Plus - Legislación autonómica"):** pregunta de estilos de liderazgo cuya clave marcaba **C "Contratransferente"** (concepto psicoanalítico, no un estilo de liderazgo) cuando la correcta es **D "Autocrático, democrático y laissez-faire"** (Lewin). Había sido marcada `needs_human` por el admin y un agente de `phase_a_resolve` (`claude-sonnet-4-6`, 17/05) la devolvió a `tech_approved` con `reason_code='ai_verified_tech_perfect'` y `answer_ok=true`. **La propia nota del agente citaba el concepto correcto ("autocrático-democrático…") pero no comprobó que la clave apuntaba a C.** Falló por: (a) `options_ok` no se exigía, (b) `answer_ok=true` con artículo placeholder vacío (`article_ok=false`), (c) una sola pasada (phase_a) promovió, sin verify+recheck+audit. Mismo patrón que §3.2, §1454 (rubber-stamp) y §1478.
+
+**Fix por construcción (aplicado a `transition_question_state`):** toda promoción **automática** a estado visible exige verificación completa. Inserción antes del UPDATE final:
+
+```sql
+IF p_new_state IN ('approved','tech_approved') AND p_reason_code NOT LIKE 'admin_%' THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.ai_verification_results av
+    WHERE av.question_id = p_question_id
+      AND av.answer_ok IS TRUE AND av.options_ok IS TRUE
+      AND av.explanation_ok IS TRUE AND av.article_ok IS TRUE
+      AND COALESCE(av.discarded, false) = false
+  ) THEN
+    RAISE EXCEPTION 'AI promotion blocked: question % lacks a complete passing verification (answer_ok+options_ok+explanation_ok+article_ok all true)', p_question_id;
+  END IF;
+END IF;
+```
+
+- **Implica que `options_ok` ya NO es opcional** para promover (cierra el agujero de §3.2/§355): el writer del pipeline DEBE persistir `options_ok=true`, o la promoción `ai_verified_*` falla.
+- **Sin verdad de referencia, no hay auto-perfect:** una pregunta con artículo de contenido vacío (`article_ok=false`) no puede auto-aprobarse — requiere `admin_%` (override humano) o re-vinculación a un artículo real. Esto cubre los ~1.822 ítems del lote sanitario colgados de artículos-placeholder.
+- **Humanos siguen pudiendo forzar** con cualquier `reason_code` que empiece por `admin_` (override confiable).
+- **No afecta a preguntas ya aprobadas** (el gate solo dispara en transiciones nuevas).
+
+**Detector mecánico (palanca complementaria, coste IA cero).** Barrido programático bank-wide que rutea a `needs_human` defectos que los agentes dejan pasar. Alta precisión: opciones idénticas (`A===B` etc.), metadatos filtrados en opción/explicación (`(artículo N)` final, "Pregunta anulada", "por ."), corrupción OCR (`]`/`[` dentro de palabra, chars basura). Calibración 02/06: las heurísticas amplias (`[ABCD])` a media frase, camelCase intra-palabra) dan demasiados falsos positivos — restringir a TAB+letra y `]`/`[` intra-palabra. Resultado afinado sobre 91.678 activas: 26 `dup_options` + 46 `leaked_meta` + 17 `ocr` = 89 hits reales. Convertir en test de integración + cron (modelo `supuestoPracticoOrphans.test.ts`).
+
+**Backsweep pendiente:** re-verificar preguntas promovidas vía `ai_verified_*` cuyo `ai_verification_results` sea `phase_a_resolve` con `article_ok=false` u `options_ok IS NULL`.
