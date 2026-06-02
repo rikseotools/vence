@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { tests, testQuestions, userFeedback, psychometricUserQuestionHistory } from '@/db/schema'
+import { and, eq } from 'drizzle-orm'
 import { safeParseSaveOfficialExamResults } from '@/lib/api/official-exams'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
-// Cliente con service role - bypasa RLS para operaciones de servidor
-const getSupabaseAdmin = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 /**
  * POST /api/v2/official-exams/save-results
@@ -81,33 +82,39 @@ async function _POST(request: NextRequest) {
     // 3a. Insert test session
     // Nota: test_type usa 'exam' porque el CHECK constraint solo permite 'practice'|'exam'
     // El flag isOfficialExam en detailed_analytics indica que es un examen oficial
-    const { data: testSession, error: testError } = await getSupabaseAdmin()
-      .from('tests')
-      .insert({
-        user_id: user.id,
-        title: parte
-          ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
-          : `Examen Oficial ${examDate} - ${oposicion}`,
-        test_type: 'exam',
-        total_questions: answeredResults.length, // Only count answered questions
-        score: score.toString(),
-        is_completed: true,
-        completed_at: new Date().toISOString(),
-        total_time_seconds: totalTimeSeconds,
-        detailed_analytics: {
-          isOfficialExam: true,
-          examDate,
-          oposicion,
-          parte: parte ?? null,
-          legislativeCount: metadata?.legislativeCount ?? legCount,
-          psychometricCount: metadata?.psychometricCount ?? psyCount,
-          reservaCount: metadata?.reservaCount ?? 0,
-          correctCount: totalCorrect,
-          incorrectCount: totalIncorrect,
-        },
-      })
-      .select('id')
-      .single()
+    let testSession: { id: string } | null = null
+    let testError: Error | null = null
+    try {
+      const [row] = await db()
+        .insert(tests)
+        .values({
+          userId: user.id,
+          title: parte
+            ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
+            : `Examen Oficial ${examDate} - ${oposicion}`,
+          testType: 'exam',
+          totalQuestions: answeredResults.length, // Only count answered questions
+          score: score.toString(),
+          isCompleted: true,
+          completedAt: new Date().toISOString(),
+          totalTimeSeconds,
+          detailedAnalytics: {
+            isOfficialExam: true,
+            examDate,
+            oposicion,
+            parte: parte ?? null,
+            legislativeCount: metadata?.legislativeCount ?? legCount,
+            psychometricCount: metadata?.psychometricCount ?? psyCount,
+            reservaCount: metadata?.reservaCount ?? 0,
+            correctCount: totalCorrect,
+            incorrectCount: totalIncorrect,
+          },
+        })
+        .returning({ id: tests.id })
+      testSession = row ?? null
+    } catch (e) {
+      testError = e instanceof Error ? e : new Error(String(e))
+    }
 
     if (testError || !testSession?.id) {
       console.error('❌ [API/v2/save] Test insert error:', testError)
@@ -123,39 +130,43 @@ async function _POST(request: NextRequest) {
     const testQuestionsData = answeredResults.map((result, index) => {
       const isLegislative = result.questionType === 'legislative'
       return {
-        test_id: testSession.id,
-        question_id: isLegislative ? result.questionId : null,
-        psychometric_question_id: isLegislative ? null : result.questionId,
-        question_order: index + 1,
-        question_text: result.questionText,
-        user_answer: result.userAnswer,
-        correct_answer: result.correctAnswer || 'unknown',
-        is_correct: result.isCorrect,
-        time_spent_seconds: 0,
-        article_number: isLegislative ? (result.articleNumber ?? null) : null,
-        law_name: isLegislative ? (result.lawName ?? null) : null,
+        testId: testSession!.id,
+        questionId: isLegislative ? result.questionId : null,
+        psychometricQuestionId: isLegislative ? null : result.questionId,
+        questionOrder: index + 1,
+        questionText: result.questionText,
+        userAnswer: result.userAnswer,
+        correctAnswer: result.correctAnswer || 'unknown',
+        isCorrect: result.isCorrect,
+        timeSpentSeconds: 0,
+        articleNumber: isLegislative ? (result.articleNumber ?? null) : null,
+        lawName: isLegislative ? (result.lawName ?? null) : null,
         difficulty: result.difficulty,
-        question_type: result.questionType,
-        user_id: user.id,
+        questionType: result.questionType,
+        userId: user.id,
       }
     })
 
-    const { error: questionsError } = await getSupabaseAdmin()
-      .from('test_questions')
-      .insert(testQuestionsData)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let questionsError: any = null
+    try {
+      await db().insert(testQuestions).values(testQuestionsData)
+    } catch (e) {
+      questionsError = e
+    }
 
     if (questionsError) {
       console.error('❌ [API/v2/save] Questions insert error:', questionsError)
 
       // Crear feedback automático con todos los datos para poder reconstruir el test
       try {
-        await getSupabaseAdmin().from('user_feedback').insert({
-          user_id: user.id,
+        await db().insert(userFeedback).values({
+          userId: user.id,
           type: 'system_error_ghost_test',
           message: JSON.stringify({
             error: questionsError.message,
-            errorCode: questionsError.code,
-            testId: testSession.id,
+            errorCode: questionsError.code, // postgres-js expone .code (SQLSTATE)
+            testId: testSession!.id,
             examDate,
             oposicion,
             parte: parte ?? null,
@@ -188,33 +199,39 @@ async function _POST(request: NextRequest) {
     if (psychometricResults.length > 0) {
       for (const result of psychometricResults) {
         // Check if history exists
-        const { data: existing } = await getSupabaseAdmin()
-          .from('psychometric_user_question_history')
-          .select('id, attempts, correct_attempts')
-          .eq('user_id', user.id)
-          .eq('question_id', result.questionId)
-          .maybeSingle()
+        const [existing] = await db()
+          .select({
+            id: psychometricUserQuestionHistory.id,
+            attempts: psychometricUserQuestionHistory.attempts,
+            correct_attempts: psychometricUserQuestionHistory.correctAttempts,
+          })
+          .from(psychometricUserQuestionHistory)
+          .where(and(
+            eq(psychometricUserQuestionHistory.userId, user.id!),
+            eq(psychometricUserQuestionHistory.questionId, result.questionId),
+          ))
+          .limit(1)
 
         if (existing) {
           // Update existing
-          await getSupabaseAdmin()
-            .from('psychometric_user_question_history')
-            .update({
-              attempts: existing.attempts + 1,
-              correct_attempts: result.isCorrect ? existing.correct_attempts + 1 : existing.correct_attempts,
-              last_attempt_at: new Date().toISOString(),
+          await db()
+            .update(psychometricUserQuestionHistory)
+            .set({
+              attempts: (existing.attempts ?? 0) + 1,
+              correctAttempts: result.isCorrect ? (existing.correct_attempts ?? 0) + 1 : (existing.correct_attempts ?? 0),
+              lastAttemptAt: new Date().toISOString(),
             })
-            .eq('id', existing.id)
+            .where(eq(psychometricUserQuestionHistory.id, existing.id))
         } else {
           // Insert new
-          await getSupabaseAdmin()
-            .from('psychometric_user_question_history')
-            .insert({
-              user_id: user.id,
-              question_id: result.questionId,
+          await db()
+            .insert(psychometricUserQuestionHistory)
+            .values({
+              userId: user.id,
+              questionId: result.questionId,
               attempts: 1,
-              correct_attempts: result.isCorrect ? 1 : 0,
-              last_attempt_at: new Date().toISOString(),
+              correctAttempts: result.isCorrect ? 1 : 0,
+              lastAttemptAt: new Date().toISOString(),
             })
         }
       }
