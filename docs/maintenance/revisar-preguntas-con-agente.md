@@ -779,6 +779,9 @@ Durante la verificación inicial del T18 (Estatuto de los Trabajadores), los age
 
 ### 8.3 Gotchas de ofimática — el verificador (agente) se equivoca aquí una y otra vez (SCS 02/06/2026)
 
+> Origen y caso completo: [`importar-examen-oficial-completo.md`](./importar-examen-oficial-completo.md) §16. Si una pregunta necesita una ley que no está en BD, créala con [`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md) §"Crear ley nueva".
+
+
 En la verificación de preguntas de ofimática/informática, los agentes Sonnet **fallan sistemáticamente** asumiendo convenciones en inglés o reglas que no recuerdan. **El adjudicador (Opus/humano, paso 4) DEBE revisar estos casos a mano — no aceptar el `FIX` del agente por defecto** (§18.1: la auditoría tuvo ~17% de falsos negativos; estos gotchas son una fuente principal):
 
 - **Atajos de Microsoft Office EN ESPAÑOL** (no en inglés): **Guardar = Ctrl+G** (no Ctrl+S), **Abrir = Ctrl+A**, **Seleccionar todo = Ctrl+E**, **Subrayado = Ctrl+S**, Negrita = Ctrl+N, Cursiva = Ctrl+K, Rehacer = Ctrl+Y. Un agente que marca "Ctrl+A abre = falso, debería ser seleccionar todo" está aplicando el inglés → es **falso positivo**.

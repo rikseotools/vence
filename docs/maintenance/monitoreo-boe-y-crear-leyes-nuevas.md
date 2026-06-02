@@ -417,7 +417,7 @@ Este flujo se usa cuando hay que **incorporar una ley nueva** que no existe toda
 > El endpoint `sync-all` solo parsea el **BOE consolidado**. Para una norma autonómica publicada en su boletín (p.ej. Decreto 105/2000 de Canarias en el BOC) **no funciona** y hay que crear los artículos manualmente:
 > 1. `laws.insert` con `scope='regional'`, `is_virtual=false` (es ley real), `slug` propio, y en `boe_url` la URL del **boletín autonómico** (BOC/DOG…). `verification_status='actualizada'` (verificada a mano contra el boletín).
 > 2. **Obtener el texto VERBATIM del boletín** — NO uses `WebFetch` para el articulado (resume/parafrasea, prohibido §"PROHIBIDO truncados"). Descarga el HTML crudo (`curl -sL <url> -o f.html`), quita `<script>/<style>/<tags>`, y **parte por `Artículo N.-`** programáticamente (evita transcripción manual = evita errores).
-> 3. `articles.insert` por artículo con `content` **íntegro literal** (sin truncar). Verifica `shortCount` (§ Paso 3).
+> 3. `articles.insert` por artículo con `content` **íntegro literal** (sin truncar). Verifica `shortCount` (§ Paso 3). Para `title_number`/`chapter_number`/`section_number` y la estructura de títulos y secciones, ver [`../database/estructura-leyes.md`](../database/estructura-leyes.md).
 > 4. Vincular las preguntas + (si procede) `topic_scope` + revalidar.
 >
 > Nota: muchos boletines autonómicos tienen también un visor "juriscan/legislación" que puede dar **timeout** o estar tras login (vLex) — el HTML del propio número del boletín suele ser la fuente libre más fiable.
