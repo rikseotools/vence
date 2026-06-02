@@ -1,11 +1,8 @@
 // app/api/law-titles/route.js
-import { createClient } from '@supabase/supabase-js'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+import { getReadDb } from '@/db/client'
+import { laws, articles } from '@/db/schema'
+import { eq, and, isNotNull } from 'drizzle-orm'
 
 async function _GET(request) {
   try {
@@ -17,27 +14,23 @@ async function _GET(request) {
     }
     
     // Obtener ID de la ley
-    const { data: lawData, error: lawError } = await getSupabase()
-      .from('laws')
-      .select('id, name')
-      .eq('short_name', lawShortName)
-      .single()
-    
-    if (lawError || !lawData) {
+    const db = getReadDb()
+    const lawData = (await db
+      .select({ id: laws.id, name: laws.name })
+      .from(laws)
+      .where(eq(laws.shortName, lawShortName))
+      .limit(1))[0]
+
+    if (!lawData) {
       return Response.json({ error: 'Ley no encontrada' }, { status: 404 })
     }
-    
+
     // Obtener títulos únicos con información agregada
-    const { data: titlesData, error: titlesError } = await getSupabase()
-      .from('articles')
-      .select('title_number, section, article_number')
-      .eq('law_id', lawData.id)
-      .not('title_number', 'is', null)
-      .order('title_number, article_number')
-    
-    if (titlesError) {
-      return Response.json({ error: 'Error obteniendo títulos' }, { status: 500 })
-    }
+    const titlesData = await db
+      .select({ title_number: articles.titleNumber, section: articles.section, article_number: articles.articleNumber })
+      .from(articles)
+      .where(and(eq(articles.lawId, lawData.id), isNotNull(articles.titleNumber)))
+      .orderBy(articles.titleNumber, articles.articleNumber)
     
     // Agrupar por título y calcular estadísticas
     const titleGroups = {}

@@ -1,0 +1,34 @@
+{\rtf1\ansi\ansicpg1252\deff0
+{\fonttbl{\f0\fnil\fcharset0 Calibri;}}
+\f0\fs22
+{\b\fs36 Vence \endash  Google Ads API Tool Design Document}\par
+\par
+{\b Company:} Vence (https://www.vence.es)\par
+{\b Tool type:} Internal advertiser tool (single advertiser, own account only)\par
+{\b Google Ads Manager account (MCC):} 221-720-1941\par
+{\b Operated account:} 914-896-7335\par
+\par
+{\b\fs28 1. Purpose}\par
+Vence is an online exam-preparation platform for Spanish public-sector entrance exams (\i oposiciones\i0 ). We run Google Ads campaigns to acquire users for our own website. This internal tool lets our small team manage our OWN advertising account programmatically. We do not, and will not, manage advertising for third parties.\par
+\par
+{\b\fs28 2. How we use Google Ads}\par
+We run Search and Performance Max campaigns that drive traffic to vence.es, where users register and may purchase a premium subscription. Conversions are tracked via the Google Ads tag (AW-7929322521) and Google Analytics 4 (G-WXQ069CRY9). The API tool complements the web UI by automating reporting and routine optimisation of these same campaigns.\par
+\par
+{\b\fs28 3. Architecture}\par
+The tool is a TypeScript/Node.js module inside our existing Next.js application, organised as a single typed service layer consumed by command-line scripts and (planned) internal admin endpoints:\par
+\par
+- {\b config} \endash  loads and validates credentials from environment variables (fail-fast).\par
+- {\b client} \endash  a singleton Google Ads API customer built with the official google-ads-api Node library.\par
+- {\b reports} \endash  read operations using GAQL queries (campaign performance: cost, clicks, impressions, conversions, ROAS).\par
+- {\b mutations (planned)} \endash  write operations (adjust budgets, pause/enable campaigns, manage keywords), each with a mandatory dry-run mode and explicit confirmation before applying.\par
+- {\b errors} \endash  normalises GoogleAdsFailure responses into a stable internal error type for logging and observability.\par
+\par
+{\b\fs28 4. Authentication}\par
+OAuth 2.0 with a refresh token. The refresh token is generated once via an internal bootstrap script, authorising with the account that owns the manager (MCC) account. API calls authenticate with the developer token plus login-customer-id = the MCC (221-720-1941) and operate on customer-id = 914-896-7335. All credentials are stored as environment variables, never committed to source control.\par
+\par
+{\b\fs28 5. API usage and operations}\par
+Read (GAQL SELECT): campaign, ad_group, keyword and metrics resources for performance reporting. Write (mutate): campaign budgets, campaign status, and keyword management on our own account only. Call volume is low \endash  on-demand reporting and occasional optimisation, well within standard rate limits. No bulk operations against external accounts.\par
+\par
+{\b\fs28 6. Access and security}\par
+Access is restricted to internal staff (employees only). Secrets live in a gitignored environment file. Write operations require a dry-run preview and human confirmation. The tool is developed and maintained in-house; it is not a third-party product and is not resold.\par
+}
