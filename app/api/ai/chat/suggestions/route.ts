@@ -1,12 +1,13 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
 
+import { getAdminDb } from '@/db/client'
+import { oposiciones, aiChatSuggestions, aiChatSuggestionClicks } from '@/db/schema'
+import { and, eq, or, isNull, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-const getSupabase = (): SupabaseClient => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 interface SuggestionRow {
   id: string
@@ -14,11 +15,9 @@ interface SuggestionRow {
   message: string
   suggestion_key: string
   emoji: string | null
-  priority: number
+  priority: number | null
   oposicion_id: string | null
-  context_type: string
-  page_context: string
-  ai_chat_suggestion_clicks: Array<{ count: number }>
+  clicks: number
 }
 
 interface ProcessedSuggestion {
@@ -27,7 +26,7 @@ interface ProcessedSuggestion {
   message: string
   suggestion_key: string
   emoji: string | null
-  priority: number
+  priority: number | null
   oposicion_id: string | null
   clicks: number
 }
@@ -49,13 +48,12 @@ async function _GET(request: NextRequest): Promise<Response> {
       const slugToSearch = oposicionId.replace(/_/g, '-')
       console.log('🔍 [Suggestions API] Converting slug:', oposicionId, '→', slugToSearch)
 
-      const { data: oposiciones } = await getSupabase()
-        .from('oposiciones')
-        .select('id')
-        .eq('slug', slugToSearch)
+      const [oposicion] = await db()
+        .select({ id: oposiciones.id })
+        .from(oposiciones)
+        .where(eq(oposiciones.slug, slugToSearch))
         .limit(1)
 
-      const oposicion = (oposiciones as Array<{ id: string }> | null)?.[0]
       console.log('🔍 [Suggestions API] Oposicion lookup result:', oposicion || 'not found')
 
       if (oposicion) {
@@ -68,36 +66,46 @@ async function _GET(request: NextRequest): Promise<Response> {
       }
     }
 
-    // Obtener sugerencias con conteo de clicks
-    let query = getSupabase()
-      .from('ai_chat_suggestions')
-      .select(`
-        id,
-        label,
-        message,
-        suggestion_key,
-        emoji,
-        priority,
-        oposicion_id,
-        context_type,
-        page_context,
-        ai_chat_suggestion_clicks(count)
-      `)
-      .eq('is_active', true)
-      .eq('context_type', contextType)
-      .eq('page_context', pageContext)
+    // Filtro por oposición solo para sugerencias generales de página general
+    // (el resto de page_context no filtra por oposición).
+    const oposicionFilter =
+      contextType === 'general' && pageContext === 'general'
+        ? oposicionId
+          ? or(eq(aiChatSuggestions.oposicionId, oposicionId), isNull(aiChatSuggestions.oposicionId))
+          : isNull(aiChatSuggestions.oposicionId)
+        : undefined
 
-    // Filtrar por oposición solo para sugerencias generales de página general
-    if (contextType === 'general' && pageContext === 'general') {
-      if (oposicionId) {
-        query = query.or(`oposicion_id.eq.${oposicionId},oposicion_id.is.null`)
-      } else {
-        query = query.is('oposicion_id', null)
-      }
+    // Obtener sugerencias con conteo de clicks. El embed agregado
+    // `ai_chat_suggestion_clicks(count)` de PostgREST → leftJoin + count + groupBy.
+    let data: SuggestionRow[] = []
+    let error: Error | null = null
+    try {
+      data = await db()
+        .select({
+          id: aiChatSuggestions.id,
+          label: aiChatSuggestions.label,
+          message: aiChatSuggestions.message,
+          suggestion_key: aiChatSuggestions.suggestionKey,
+          emoji: aiChatSuggestions.emoji,
+          priority: aiChatSuggestions.priority,
+          oposicion_id: aiChatSuggestions.oposicionId,
+          clicks: sql<number>`count(${aiChatSuggestionClicks.id})::int`,
+        })
+        .from(aiChatSuggestions)
+        .leftJoin(
+          aiChatSuggestionClicks,
+          eq(aiChatSuggestionClicks.suggestionId, aiChatSuggestions.id),
+        )
+        .where(and(
+          eq(aiChatSuggestions.isActive, true),
+          eq(aiChatSuggestions.contextType, contextType),
+          eq(aiChatSuggestions.pageContext, pageContext),
+          oposicionFilter,
+        ))
+        .groupBy(aiChatSuggestions.id)
+    } catch (e) {
+      error = e instanceof Error ? e : new Error(String(e))
     }
-    // law_context y otros page_context no filtran por oposición
-
-    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching suggestions:', error)
@@ -105,7 +113,7 @@ async function _GET(request: NextRequest): Promise<Response> {
     }
 
     // Procesar y ordenar por CTR (clicks) descendente, luego por prioridad
-    const suggestions: ProcessedSuggestion[] = (data as SuggestionRow[])
+    const suggestions: ProcessedSuggestion[] = data
       .map((s: SuggestionRow): ProcessedSuggestion => {
         // Reemplazar {lawName} en label y message si se proporciona
         let label = s.label
@@ -123,13 +131,13 @@ async function _GET(request: NextRequest): Promise<Response> {
           emoji: s.emoji,
           priority: s.priority,
           oposicion_id: s.oposicion_id,
-          clicks: s.ai_chat_suggestion_clicks?.[0]?.count || 0
+          clicks: Number(s.clicks) || 0,
         }
       })
       .sort((a: ProcessedSuggestion, b: ProcessedSuggestion): number => {
         // Primero por clicks (CTR), luego por prioridad
         if (b.clicks !== a.clicks) return b.clicks - a.clicks
-        return b.priority - a.priority
+        return (b.priority ?? 0) - (a.priority ?? 0)
       })
       .slice(0, 6) // Máximo 6 sugerencias
 
@@ -155,14 +163,14 @@ async function _POST(request: NextRequest): Promise<Response> {
     // Si tenemos suggestionKey pero no suggestionId, buscar el ID
     let finalSuggestionId: string | undefined = suggestionId
     if (!suggestionId && suggestionKey) {
-      const { data: suggestion } = await getSupabase()
-        .from('ai_chat_suggestions')
-        .select('id')
-        .eq('suggestion_key', suggestionKey)
-        .single()
+      const [suggestion] = await db()
+        .select({ id: aiChatSuggestions.id })
+        .from(aiChatSuggestions)
+        .where(eq(aiChatSuggestions.suggestionKey, suggestionKey))
+        .limit(1)
 
       if (suggestion) {
-        finalSuggestionId = (suggestion as { id: string }).id
+        finalSuggestionId = suggestion.id
       }
     }
 
@@ -173,13 +181,16 @@ async function _POST(request: NextRequest): Promise<Response> {
     }
 
     // Registrar click
-    const { error } = await getSupabase()
-      .from('ai_chat_suggestion_clicks')
-      .insert({
-        suggestion_id: finalSuggestionId,
-        user_id: userId || null,
-        session_id: sessionId || null
+    let error: unknown = null
+    try {
+      await db().insert(aiChatSuggestionClicks).values({
+        suggestionId: finalSuggestionId,
+        userId: userId || null,
+        sessionId: sessionId || null,
       })
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       console.error('Error tracking click:', error)
