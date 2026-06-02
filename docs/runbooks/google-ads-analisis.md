@@ -110,12 +110,20 @@ En orden de prioridad:
 (regional, NO toda España) · idioma español · 1 grupo · 1 anuncio RSA · keywords de
 intención (SIN marca).
 
+**Nombre de la campaña (norma Manuel):** SIEMPRE prefijo de grupo **`C2`** (Auxiliar
+Administrativo, Auxilio Judicial…) o **`C1`** (Administrativo, Tramitación Procesal…) +
+nombre claro. Si hay ambigüedad territorial, desambiguar (ej: `C2 Aux Admin Generalitat
+Valenciana` para la comunidad, NO confundir con el ayuntamiento). Ejemplos:
+`C2 Aux Admin Generalitat Valenciana`, `C2 Auxilio Judicial`.
+
 **Antes de crear:**
 1. **`oposiciones.exam_date`** — rellénalo si está NULL (sin él no sabes la ventana de venta).
-2. Datos: `nombre`, `plazas_libres`, landing `vence.es/<slug>`.
-3. **Geo de la comunidad** (los nombres están en INGLÉS): `SELECT geo_target_constant.id,
-   name FROM geo_target_constant WHERE name LIKE 'Canar%' AND country_code='ES'` →
-   "Canary Islands"=20277, "Region of Murcia"=20284, "Madrid"=… · idioma español = `languageConstants/1003`.
+2. **Territorial: NO confundir ayuntamiento vs comunidad** — hay oposiciones distintas con nombre parecido (Generalitat Valenciana ≠ Ayuntamiento de Valencia). Verifica el `nombre` y usa el geo correcto (comunidad autónoma vs ciudad).
+3. Datos: `nombre`, `plazas_libres`, landing `vence.es/<slug>`.
+4. **Geo correcto** (los nombres están en INGLÉS): `SELECT geo_target_constant.id, name
+   FROM geo_target_constant WHERE name LIKE 'Canar%' AND country_code='ES'` →
+   "Canary Islands"=20277, "Region of Murcia"=20284, "Valencian Community"=21388, **España=2724
+   (oposiciones NACIONALES: Auxilio Judicial, Tramitación, Guardia Civil…)**. Idioma español = `languageConstants/1003`.
 
 **Keywords:** solo intención de oposición (slug, nombre largo, variantes). **NUNCA la marca
 ("vence oposiciones")** — ya rankeas gratis en orgánico; pujar por marca = malgastar (y si
