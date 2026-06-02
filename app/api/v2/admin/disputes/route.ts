@@ -1,14 +1,11 @@
 // app/api/v2/admin/disputes/route.ts - API server-side para gestión de impugnaciones
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { resolveDispute } from '@/lib/api/v2/dispute'
-
-const getServiceSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getReadDb } from '@/db/client'
+import { psychometricQuestionDisputes, userProfiles, psychometricQuestions } from '@/db/schema'
+import { and, inArray, desc, sql } from 'drizzle-orm'
 
 // Mensaje genérico que se envía cuando el admin pulsa "Rechazar" sin texto.
 // Coincide literalmente con el mensaje histórico (preserva comportamiento de email
@@ -22,59 +19,67 @@ async function _GET(request: NextRequest) {
   if (!admin.ok) return admin.response
 
   try {
-    const supabase = getServiceSupabase()
+    const db = getReadDb()
 
     // 1. Impugnaciones normales via RPC
-    const { data: normalDisputes, error: normalError } = await supabase.rpc('get_disputes_with_users_debug')
-    if (normalError) throw normalError
+    const normalDisputes = (await db.execute(sql`SELECT * FROM get_disputes_with_users_debug()`)) as any[]
 
     // 2. Impugnaciones psicotécnicas
-    const { data: psychoDisputes } = await supabase
-      .from('psychometric_question_disputes')
-      .select('id, question_id, user_id, dispute_type, description, status, created_at, admin_response, source, ai_chat_log_id')
-      .order('created_at', { ascending: false })
+    const psychoDisputes = await db
+      .select({
+        id: psychometricQuestionDisputes.id,
+        question_id: psychometricQuestionDisputes.questionId,
+        user_id: psychometricQuestionDisputes.userId,
+        dispute_type: psychometricQuestionDisputes.disputeType,
+        description: psychometricQuestionDisputes.description,
+        status: psychometricQuestionDisputes.status,
+        created_at: psychometricQuestionDisputes.createdAt,
+        admin_response: psychometricQuestionDisputes.adminResponse,
+        source: psychometricQuestionDisputes.source,
+        ai_chat_log_id: psychometricQuestionDisputes.aiChatLogId,
+      })
+      .from(psychometricQuestionDisputes)
+      .orderBy(desc(psychometricQuestionDisputes.createdAt))
 
     // 3. Enriquecer psicotécnicas con datos de usuario y pregunta
     let enrichedPsychoDisputes: Record<string, unknown>[] = []
-    if (psychoDisputes && psychoDisputes.length > 0) {
-      const userIds = [...new Set(psychoDisputes.map(d => d.user_id).filter(Boolean))]
-      const questionIds = [...new Set(psychoDisputes.map(d => d.question_id).filter(Boolean))]
+    if (psychoDisputes.length > 0) {
+      const userIds = [...new Set(psychoDisputes.map(d => d.user_id).filter((id): id is string => !!id))]
+      const questionIds = [...new Set(psychoDisputes.map(d => d.question_id).filter((id): id is string => !!id))]
 
-      const { data: userProfiles } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email')
-        .in('id', userIds)
+      const userProfilesData = userIds.length > 0
+        ? await db.select({ id: userProfiles.id, full_name: userProfiles.fullName, email: userProfiles.email })
+            .from(userProfiles).where(inArray(userProfiles.id, userIds))
+        : []
 
-      const { data: questions } = await supabase
-        .from('psychometric_questions')
-        .select('id, question_text, question_subtype')
-        .in('id', questionIds)
+      const questions = questionIds.length > 0
+        ? await db.select({ id: psychometricQuestions.id, question_text: psychometricQuestions.questionText, question_subtype: psychometricQuestions.questionSubtype })
+            .from(psychometricQuestions).where(inArray(psychometricQuestions.id, questionIds))
+        : []
 
-      const userMap = new Map((userProfiles || []).map(u => [u.id, u]))
-      const questionMap = new Map((questions || []).map(q => [q.id, q]))
+      const userMap = new Map(userProfilesData.map(u => [u.id, u]))
+      const questionMap = new Map(questions.map(q => [q.id, q]))
 
       enrichedPsychoDisputes = psychoDisputes.map(d => ({
         ...d,
         isPsychometric: true,
-        user_full_name: userMap.get(d.user_id)?.full_name || null,
-        user_email: userMap.get(d.user_id)?.email || null,
-        question_text: questionMap.get(d.question_id)?.question_text || null,
-        question_subtype: questionMap.get(d.question_id)?.question_subtype || null,
+        user_full_name: (d.user_id ? userMap.get(d.user_id)?.full_name : null) || null,
+        user_email: (d.user_id ? userMap.get(d.user_id)?.email : null) || null,
+        question_text: (d.question_id ? questionMap.get(d.question_id)?.question_text : null) || null,
+        question_subtype: (d.question_id ? questionMap.get(d.question_id)?.question_subtype : null) || null,
       }))
     }
 
     // 4. Obtener usuarios premium
-    const allDisputes = [...(normalDisputes || []), ...(psychoDisputes || [])]
+    const allDisputes = [...(normalDisputes || []), ...psychoDisputes]
     let premiumUserIds: string[] = []
     if (allDisputes.length > 0) {
-      const userIds = [...new Set(allDisputes.map(d => d.user_id).filter(Boolean))]
+      const userIds = [...new Set(allDisputes.map((d: any) => d.user_id).filter((id: unknown): id is string => !!id))]
       if (userIds.length > 0) {
-        const { data: premiumData } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .in('id', userIds)
-          .in('plan_type', ['premium', 'trial'])
-        premiumUserIds = (premiumData || []).map(p => p.id)
+        const premiumData = await db.select({ id: userProfiles.id })
+          .from(userProfiles)
+          .where(and(inArray(userProfiles.id, userIds), inArray(userProfiles.planType, ['premium', 'trial'])))
+        premiumUserIds = premiumData.map(p => p.id)
       }
     }
 
