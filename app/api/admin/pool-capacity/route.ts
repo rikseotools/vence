@@ -16,7 +16,8 @@
 // Roadmap: docs/roadmap/observability-capacity.md Acción 2.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getReadDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
@@ -105,59 +106,50 @@ async function _GET(request: NextRequest) {
   const sinceIso = new Date(Date.now() - windowMin * 60_000).toISOString()
   const bucketMin = TIMESERIES_BUCKET_MIN[window]
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const db = getReadDb()
 
   // ─── Samples raw (limitado a 200 para no inflar respuesta) ───
   // Para ventanas grandes, los samples raw NO se sirven; el cliente
   // usa la timeseries agregada.
   const SAMPLES_LIMIT = window === '15m' || window === '1h' ? 200 : 0
 
-  const samplesQuery =
+  // pool_capacity_samples NO está en el schema Drizzle -> raw SQL.
+  const samplesQuery: Promise<any[]> =
     SAMPLES_LIMIT > 0
-      ? supabase
-          .from('pool_capacity_samples')
-          .select(
-            'sample_at, total_conns, active_conns, idle_conns, idle_in_tx_conns, idle_in_tx_over_5s, long_active_over_5s, hung_clientread_over_10s, frontend_active_conns, by_app',
-          )
-          .gte('sample_at', sinceIso)
-          .order('sample_at', { ascending: false })
-          .limit(SAMPLES_LIMIT)
-      : Promise.resolve({ data: [], error: null } as {
-          data: SampleRow[] | null
-          error: { message: string } | null
-        })
+      ? (db.execute(sql`
+          SELECT sample_at, total_conns, active_conns, idle_conns, idle_in_tx_conns,
+                 idle_in_tx_over_5s, long_active_over_5s, hung_clientread_over_10s,
+                 frontend_active_conns, by_app
+          FROM pool_capacity_samples
+          WHERE sample_at >= ${sinceIso}
+          ORDER BY sample_at DESC
+          LIMIT ${SAMPLES_LIMIT}
+        `) as unknown as Promise<any[]>)
+      : Promise.resolve([] as any[])
 
   // ─── Aggregate (counts + max + flags rojas) ───
-  // RPC en SQL puro vía Supabase REST funciona si tenemos función dedicada,
-  // pero como esto cambia raramente, lo hacemos en cliente sobre samples.
-  // Para windows >1h, hacemos consulta agregada separada.
-  const aggregateQuery = supabase
-    .from('pool_capacity_samples')
-    .select(
-      'sample_at, total_conns, active_conns, idle_in_tx_over_5s, long_active_over_5s, hung_clientread_over_10s, frontend_active_conns',
-    )
-    .gte('sample_at', sinceIso)
-    .order('sample_at', { ascending: false })
+  // Se calcula en cliente sobre los samples de la ventana.
+  const aggregateQuery = db.execute(sql`
+    SELECT sample_at, total_conns, active_conns, idle_in_tx_over_5s,
+           long_active_over_5s, hung_clientread_over_10s, frontend_active_conns
+    FROM pool_capacity_samples
+    WHERE sample_at >= ${sinceIso}
+    ORDER BY sample_at DESC
+  `) as unknown as Promise<any[]>
 
   // Último sample SIEMPRE (para "estado actual")
-  const lastSampleQuery = supabase
-    .from('pool_capacity_samples')
-    .select('*')
-    .order('sample_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const lastSampleQuery = db.execute(sql`
+    SELECT * FROM pool_capacity_samples ORDER BY sample_at DESC LIMIT 1
+  `) as unknown as Promise<any[]>
 
-  const [samplesResult, aggregateResult, lastSampleResult] = await Promise.all([
+  const [samplesRows, aggregateRows, lastSampleRows] = await Promise.all([
     samplesQuery,
     aggregateQuery,
     lastSampleQuery,
   ])
 
-  const samples = (samplesResult.data ?? []) as SampleRow[]
-  const aggSamples = (aggregateResult.data ?? []) as Pick<
+  const samples = (samplesRows ?? []) as SampleRow[]
+  const aggSamples = (aggregateRows ?? []) as Pick<
     SampleRow,
     | 'sample_at'
     | 'total_conns'
@@ -167,7 +159,7 @@ async function _GET(request: NextRequest) {
     | 'hung_clientread_over_10s'
     | 'frontend_active_conns'
   >[]
-  const lastSample = lastSampleResult.data as SampleRow | null
+  const lastSample = (lastSampleRows[0] ?? null) as SampleRow | null
 
   // ─── Aggregate metrics ───
   const samplesCount = aggSamples.length
