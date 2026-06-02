@@ -4,6 +4,26 @@ import postgres from 'postgres'
 import * as schema from './schema'
 
 // ============================================
+// max_lifetime compartido — TODOS los pools
+// ============================================
+// El default de postgres-js es 60*(30+random*30) = 30-60 MIN. Demasiado
+// largo contra un pooler externo: si Supavisor (o cualquier pooler/red)
+// medio-cierra una conexión TCP en un blip, postgres-js NO lo detecta
+// (keep_alive=60s es lento) y reutiliza el socket ZOMBI hasta su
+// max_lifetime → cada query por él cuelga hasta withDbTimeout (10s) y la BD
+// ni se entera (queda ociosa). Confirmado 02/06/2026 con datos: distribución
+// bimodal en /api/auth/track-session-ip (p50=57ms, p95=10003ms) con la BD a
+// 1-4 conns activas durante los picos — causa raíz del incidente abierto
+// 28/05 (ver memoria project_supavisor_zombie_conn_root_cause y
+// ARCHITECTURE_ROADMAP §Fase 3 "TRAMPA HISTÓRICA 2").
+//
+// 90s fuerza el reciclado y acota CUALQUIER zombi a ≤90s. Es un ajuste
+// universalmente correcto (no un parche para Supavisor): sigue siendo
+// correcto con PgBouncer self-hosted o RDS. Por eso se aplica a TODOS los
+// pools, no solo al que tocó el incidente.
+const POOL_MAX_LIFETIME_S = 90
+
+// ============================================
 // Pool principal (APIs de usuario)
 // ============================================
 // max: 1 → Una conexión por instancia serverless (recomendado por Supabase)
@@ -35,18 +55,7 @@ function createDbClient() {
     max: 1,  // 1 conexión por instancia serverless (recomendado por Supabase)
     idle_timeout: 20,
     connect_timeout: 5,
-    // max_lifetime acota la vida de CADA conexión. El default de postgres-js
-    // es 60*(30+random*30) = 30-60 MIN, demasiado largo: si Supavisor
-    // medio-cierra una conexión TCP en un blip regional, postgres-js no lo
-    // detecta (keep_alive=60s es lento) y la reutiliza hasta 60 min → cada
-    // query por ese socket zombi cuelga hasta withDbTimeout (10s) y la BD ni
-    // se entera (queda ociosa). Confirmado 02/06/2026: distribución bimodal
-    // en /api/auth/track-session-ip (p50=57ms, p95=10003ms) con la BD a 1-4
-    // conns activas durante los picos. Bajar a 90s fuerza el reciclado y acota
-    // cualquier zombi a ≤90s. Defensa en profundidad, correcta sea cual sea el
-    // pooler (Supavisor hoy, PgBouncer/RDS mañana).
-    // Ver memoria project_supavisor_zombie_conn_root_cause.
-    max_lifetime: 90,
+    max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 
@@ -182,6 +191,7 @@ function createAdminDbClient() {
     max: 12,
     idle_timeout: 20,
     connect_timeout: 5,
+    max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
     prepare: false,
   })
 
@@ -217,6 +227,7 @@ function createTraceDbClient() {
     max: 1,
     idle_timeout: 10,
     connect_timeout: 5,
+    max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
     prepare: false,
   })
 
@@ -271,6 +282,7 @@ function createReadDbClient() {
     max: 1,             // Igual que primary — replica también tiene Supavisor max
     idle_timeout: 20,
     connect_timeout: 5,
+    max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
     prepare: false,     // Requerido por Supavisor Transaction Pooler
   })
 
@@ -356,6 +368,7 @@ function createPoolerDbClient() {
     max: 8,
     idle_timeout: 20,
     connect_timeout: 5,
+    max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
     prepare: false,     // Requerido por compat — PgBouncer transaction mode
   })
 

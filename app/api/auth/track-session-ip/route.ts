@@ -14,6 +14,9 @@ import { emit } from '@/lib/observability/emit'
 // si el pooler parpadea, el lambda quedaría 30s esperando. 10s es
 // suficiente para SELECT+UPDATE de userSessions con margen para latencia.
 const TRACK_TIMEOUT_MS = 10000
+// Fracción de timeouts en los que se ejecuta el probe de diagnóstico (abre
+// conexiones nuevas a BD). Muestreado para no amplificar carga durante bursts.
+const PROBE_SAMPLE_RATE = 0.2
 const trackSessionIpSchema = z.object({
   userId: z.string().uuid(),
   sessionId: z.string().uuid().nullish(),
@@ -215,15 +218,21 @@ async function _POST(request: Request) {
       // fire-and-forget). Distingue conexión ZOMBI (conexión nueva responde
       // → la del pool estaba medio-muerta) de fallo real de BD. El resultado
       // viaja en metadata para confirmar la causa raíz sin abrir Sentry.
+      //
+      // MUESTREADO al 20%: en un burst (un blip de Supavisor genera decenas
+      // de timeouts a la vez) no queremos abrir una conexión nueva por cada
+      // uno contra el pooler que justo flaquea. 1 de cada 5 da señal de sobra
+      // (~60 probes/día en baseline) sin amplificar carga en el peor momento.
+      const sampled = Math.random() < PROBE_SAMPLE_RATE
       after(async () => {
-        const probe = await probeDbPaths().catch(() => null)
+        const probe = sampled ? await probeDbPaths().catch(() => null) : null
         await emit({
           source: 'vercel',
           severity: 'warn',
           eventType: 'track_session_ip_db_timeout',
           endpoint: '/api/auth/track-session-ip',
           errorMessage: errMsg.slice(0, 500),
-          metadata: { degraded_to: 200, reason: 'db_unavailable', probe },
+          metadata: { degraded_to: 200, reason: 'db_unavailable', probe, probeSampled: sampled },
         }).catch(() => {})
       })
     } else {
