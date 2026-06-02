@@ -56,8 +56,10 @@ DROP TABLE IF EXISTS user_question_history;
 ```
 - Verificar después: `SELECT to_regclass('public.user_question_history')` → null; v2 sigue intacta y alimentándose por el outbox handler.
 
-### Decisión rename
-- El plan original decía "DROP v1 + RENAME v2→v1". Renombrar obligaría a repointar TODO el código ya migrado que lee v2 → más churn y riesgo. **Recomendado: NO renombrar** — dejar `user_question_history_v2` como nombre definitivo. Si se quiere el nombre `user_question_history`, hacerlo en un paso posterior y coordinado (rename + repoint masivo en un solo PR).
+### Decisión rename — ✅ DECIDIDO 2026-06-02: NO renombrar (nombre definitivo `user_question_history_v2`)
+- El plan original decía "DROP v1 + RENAME v2→v1". Manuel decidió el 02/06 **NO renombrar**: `user_question_history_v2` queda como nombre definitivo.
+- **Por qué no se renombra:** el rename obligaría a repointar las ~51 referencias en ~15 ficheros (frontend + el handler de Fargate `outbox-processor/handlers/user-question-history-v2.handler.ts`, que es el *writer* en caliente del path outbox). Sería una migración coordinada expand-contract (repoint → `ALTER TABLE RENAME` + vista puente → 2 deploys frontend+backend → `DROP VIEW`), con churn y riesgo a cambio de un beneficio puramente cosmético (quitar el sufijo `_v2`).
+- **Si en el futuro se quisiera renombrar:** hacerlo expand-contract para no perder escrituras. El writer es at-least-once (outbox), así que una ventana de fallo del handler durante el deploy se recupera al drenar el outbox; los readers se cubren con una vista puente temporal `user_question_history_v2 AS SELECT * FROM user_question_history`.
 
 ### Rollback
 - Si algo falla tras el DROP: restaurar `user_question_history` desde backup + re-añadir el bridge. Por eso el orden es código primero (deja de depender de v1) y DROP al final.
