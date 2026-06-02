@@ -105,9 +105,10 @@ En orden de prioridad:
 
 ## Crear una campaña nueva para una oposición (apartado 02/06/2026)
 
-**Modelo de las exitosas:** Search · **Maximizar clics** (`target_spend`) · **~3€/día** ·
-geo = **comunidad de la oposición** (regional, NO toda España) · idioma español · 1 grupo
-· 1 anuncio RSA · keywords de intención (SIN marca).
+**Modelo de las exitosas:** Search · **Maximizar clics** (`target_spend`) con **CPC máx
+0,05€** (`cpc_bid_ceiling_micros: 50000`) · **~3€/día** · geo = **comunidad de la oposición**
+(regional, NO toda España) · idioma español · 1 grupo · 1 anuncio RSA · keywords de
+intención (SIN marca).
 
 **Antes de crear:**
 1. **`oposiciones.exam_date`** — rellénalo si está NULL (sin él no sabes la ventana de venta).
@@ -137,6 +138,9 @@ reales: **nº de plazas**, "temario oficial", "empieza gratis". **NO** referenci
 - `campaign.network_settings` (target_google_search:true, content:false), `delivery_method:'STANDARD'`.
 - El anuncio pasa **revisión de Google** (minutos-horas) antes de servir.
 - Crear como `status:'ENABLED'` publica; `'PAUSED'` la deja en pausa.
+- ⚠️ **`target_spend:{}` SIN `cpc_bid_ceiling_micros` = sin techo de CPC** → puede pagar de
+  más por clic y fundir el presupuesto en pocos clics. Pon SIEMPRE el techo en el create:
+  `target_spend:{cpc_bid_ceiling_micros:50000}` (0,05€, el estándar de las campañas; carm usa 0,10€).
 
 **Caso real 02/06:** `Aux Admin SCS Canarias` (campaña `23897199300`), 3€/día, geo Canarias
 (20277), español, 4 keywords sin marca, 7 titulares/3 descripciones, 643 plazas. Creada
