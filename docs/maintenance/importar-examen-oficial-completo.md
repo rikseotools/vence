@@ -35,6 +35,14 @@ Pipeline de transición automática:
 
 **Anti-patrón a evitar:** INSERT con `lifecycle_state='approved'` o `'tech_approved'` directamente (saltarse la verificación). Madrid 18/05/2026 lo hizo así y obligó a parches retroactivos. NO REPETIR.
 
+> 🚨 **Anti-patrón GRAVE (SCS Canarias 02/06/2026) — el "sello en blanco" que engaña al gate.**
+>
+> El gate de `transition_question_state` exige una fila en `ai_verification_results` con `answer_ok+explanation_ok=TRUE` y `article_ok/options_ok` no-FALSE para promover a `approved` (salvo `reason_code` `admin_%`). **El gate solo es tan fiable como la honestidad de esa fila: quien la escribe controla el candado.**
+>
+> En SCS se importaron 73 preguntas como `draft` (correcto) PERO acto seguido se **insertaron 73 filas `ai_verification_results` con `ai_provider='official_import'` marcando todo OK "porque es un examen oficial"** — sin auditoría real — y se transicionó a `approved`. El gate encontró esas filas, las dio por buenas y publicó 73 preguntas **sin verificación**. Al revisarlas de verdad después: 4 con fallo real (respuesta dudosa, 3 opciones ciertas, opción mal extraída, imagen ausente) y ~46 vinculadas a un artículo que **no responde la pregunta**.
+>
+> **NUNCA auto-generes la fila de verificación en el import.** La autoridad de la plantilla oficial cubre **solo** la respuesta del examen original; NO cubre: (a) errores de TU extracción del PDF (opciones cortadas/garbled, letra correcta mal leída, artefactos OCR como "CTRL+AA", imágenes no importadas), (b) **desfase por reformas** posteriores (la respuesta correcta del año del examen pudo cambiar), (c) preguntas que dependen de una imagen no importada. Todo eso solo lo caza una **auditoría independiente real** (agentes ciegos + revisión humana), que es lo único que debe escribir la fila `ai_verification_results`.
+
 ## 0.1 Resumen de fases
 
 ```
@@ -823,6 +831,8 @@ Antes de cerrar la importación:
 | `pdfimages -png` para preservar A/B/C/D | Las letras se pierden (no son parte de la imagen raw) | Usar `pdftoppm -r 200` y recortar la página completa |
 | `content_data.tables[]` con tabla sin `headers` | `DataTableQuestion` crashea con TypeError | Validar defensivamente: `Array.isArray(table.headers) && table.headers.length > 0` |
 | Enunciado largo duplicado en `question_text` de 5 preguntas | UX pobre cross-context, content_hash contaminado | Mover a `content_data.text_passage` |
+| **Auto-insertar `ai_verification_results` `official_import` con todo OK** (SCS 02/06/2026) | Preguntas visibles sin auditoría real; el gate engañado | La fila de verificación SOLO la escribe una auditoría independiente real. Importar `draft` y verificar de verdad antes de transicionar |
+| **Vincular a artículo "representativo"** (`firstArt` = el primero de la ley/ley-virtual) solo para cumplir el NOT NULL de `primary_article_id` (SCS 02/06/2026) | `article_ok` falso: el artículo no responde la pregunta; ~46/73 así en SCS | `article_ok=TRUE` exige auditar que ESE artículo fundamenta la respuesta. Mapear al artículo contenedor concreto (también las de ofimática: las leyes virtuales tienen artículos granulares por epígrafe — §16.3). Solo si NO existe contenedor → NO publicar hasta crearlo |
 
 ---
 
@@ -1025,6 +1035,35 @@ El toggle «Solo preguntas oficiales» de un test por tema aparece si `officialQ
 `getOfficialExamQuestions` **no tenía `ORDER BY`** → las preguntas salían en orden arbitrario de BD. `OfficialExamLayout` pinta la cabecera del supuesto **cada vez que el `examCaseId` cambia respecto a la pregunta anterior**; si las de dos casos vienen entremezcladas, la cabecera salta y cada supuesto aparece **partido en trozos** (síntoma: «un supuesto con 1 pregunta y otro con muchas», aunque cada uno tenga sus 10). No era un problema de datos, era de orden.
 
 **Regla:** (1) insertar las preguntas de supuesto **en orden de examen y agrupadas por caso** (caso 1 completo, luego caso 2…); (2) que el fetch ordene de forma estable — se añadió `.orderBy(questions.createdAt)`. Como las preguntas de supuesto **no se reutilizan** en otros tests (las excluye el filtro `exam_case_id`, §7.4.bis), su `created_at` = orden de inserción = orden de examen, estable. Las preguntas de test normales no necesitan este cuidado: su orden en el examen da igual porque se reutilizan por `topic_scope`/artículo en tests por tema.
+
+---
+
+## 16. Aprendizajes Aux Admin SCS Canarias 2016 (02/06/2026) — la verificación real NO es opcional
+
+Caso real que destapó Manuel: 73 preguntas del examen SCS 2016 quedaron **visibles en producción sin haber pasado ninguna auditoría real**. Diagnóstico y reglas para que no se repita:
+
+### 16.1 El gate de lifecycle no protege si tú fabricas la verificación
+El `transition_question_state` exige una fila `ai_verification_results` "passing". Se importó `draft` (bien) pero se insertaron 73 filas `official_import` con todo OK a mano y se promovió. **El candado solo es tan honesto como esa fila.** → La fila de verificación SOLO la escribe una auditoría independiente real (§8). Nunca el importador. Ver anti-patrón en §0 y §11.
+
+### 16.2 "Es un examen oficial" NO equivale a "está verificado"
+La plantilla oficial es autoridad sobre **la respuesta del examen original del año X**, y nada más. Hay que auditar igualmente, porque la plantilla NO detecta:
+- **Errores de extracción tuyos:** opción cortada o corrupta (SCS: opción C del Decreto 105/2000 llegó como «órganos para los que no desempeñan funciones», sin sentido), artefacto OCR tomado como literal (SCS: «CTRL + AA (dos veces A)»), letra correcta mal leída.
+- **Desfase normativo:** la respuesta correcta en el año del examen puede haber cambiado (ojo Ley 55/2003 arts 9/9bis temporalidad 2021, importes/bases de cotización, leyes derogadas y sustituidas). Importar solo lo que **sigue correcto hoy**.
+- **Dependencia de imagen no importada:** preguntas tipo «¿qué gráfico es el siguiente?» quedan irresolubles si la imagen no está (SCS: se mostraba el placeholder `[imagen de…]`). O importas el asset (§6) o no la publicas.
+- **Preguntas mal planteadas como respuesta única:** varias opciones simultáneamente ciertas (SCS: «las prestaciones de la SS son… inalienables / irrenunciables / inembargables», las tres ciertas por art. 53 LGSS).
+
+### 16.3 `article_ok` exige auditoría INDEPENDIENTE de que el artículo responde la pregunta
+El fallo más extendido en SCS: para cumplir el `NOT NULL` de `primary_article_id` se vincularon ~46/73 a un artículo **representativo** (el primero de la ley, p.ej. ofimática→primer art. de la ley virtual de Excel, archivo/SS→un art. cualquiera de Ley 39/2015 o LGSS) que **no fundamenta la respuesta**. Eso NO es `article_ok`.
+- **Regla:** `article_ok=TRUE` solo si ESE artículo concreto responde/soporta la pregunta, auditado de forma independiente (no por el linker, no por keyword).
+- **Ofimática/informática NO son excepción** (corrección Manuel 02/06): las leyes virtuales (`Excel 365`, `Word 365`, `Informática Básica`, `La Red Internet`, `Outlook 365`, `Access 365`) tienen **artículos contenedores granulares por epígrafe** — Excel 365 tiene 27 (atajos art.5/150, gráficos art.190/6, funciones lógicas art.100, referencias art.20, errores de fórmula art.140…), Informática Básica 6 (hardware art.3, software art.4, seguridad art.5), etc. Cada pregunta técnica DEBE mapearse al artículo virtual que **contiene su sub-tema** → así tiene `article_ok` genuino y va a `tech_approved`. El error SCS fue colgarlas todas del **primer** artículo (`firstArt` → Excel art.1, Info art.0): representativo, no contenedor.
+- Solo si de verdad NO existe artículo contenedor (ni de ley ni virtual) → no se da `article_ok` → no se publica hasta crear el artículo correcto.
+- No basta con que el linker encuentre «un art. con ese número»: puede ser de la **ley equivocada** (ver también `revisar-preguntas-con-agente.md` y el bug del importador que cuelga por número del artículo de otra ley).
+
+### 16.4 El auditor (agente) también se equivoca — verifica sus flags
+En la revisión SCS, varios flags del agente Sonnet eran **errores del propio agente**, no de la pregunta: SUMA de Excel SÍ coacciona texto-numérico y booleanos escritos directamente como argumentos (`=SUMA("5";15;VERDADERO)=21`); en Office **en español** Guardar = Ctrl+G (no Ctrl+S); art. 9.3 Ley 55/2003 sí lista eventual «temporal, coyuntural o extraordinario». → El veredicto del agente es **input para la revisión humana**, no la decisión final. Mira el contenido real antes de retirar/aprobar.
+
+### 16.5 Procedimiento correcto, en una línea
+Importar `draft` → **auditoría independiente real** (respuesta vs plantilla **y** vs ley vigente + opciones fieles + `article_ok` genuino + explicación) → escribir `ai_verification_results` con el resultado **real** → solo entonces `transition_question_state` a `approved`. Activar en el mismo paso del import = repetir el incidente.
 
 ---
 

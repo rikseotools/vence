@@ -306,13 +306,24 @@ El agente determina uno de estos 12 estados:
 | ❌ | ❌ | ✅ | `wrong_article_bad_answer` |
 | ❌ | ❌ | ❌ | `all_wrong` |
 
-### Para leyes virtuales/técnicas (4 estados):
-| answerOk | explanationOk | Estado |
-|----------|---------------|--------|
-| ✅ | ✅ | `tech_perfect` |
-| ✅ | ❌ | `tech_bad_explanation` |
-| ❌ | ✅ | `tech_bad_answer` |
-| ❌ | ❌ | `tech_bad_answer_and_explanation` |
+### Para leyes virtuales/técnicas:
+
+> ⚠️ **ACTUALIZADO (02/06/2026): las leyes virtuales/técnicas YA TIENEN contenido y `article_ok` SÍ aplica.**
+> Las leyes virtuales de ofimática/informática (`Excel 365` —27 arts—, `Word 365`, `Informática Básica`, `La Red Internet`, `Outlook 365`, `Access 365`) tienen **artículos contenedores granulares con contenido real** (13k–23k caracteres: atajos, funciones, hardware, protocolos…). Por tanto la pregunta técnica se verifica **igual que una legislativa**: hay que comprobar que el **artículo contenedor cubre literalmente** el supuesto (`article_ok`, criterio §3.1), además de `answer_ok` y `explanation_ok`.
+>
+> La diferencia con una ley normal es **solo el estado visible final** (`tech_approved` en vez de `approved`) y la **fuente** (Microsoft Support en español, §8.1 fuentes), NO que se salte `article_ok`.
+
+Matriz vigente (igual que «leyes normales», pero el estado verde es `tech_*`):
+
+| articleOk | answerOk | explanationOk | Estado |
+|-----------|----------|---------------|--------|
+| ✅ | ✅ | ✅ | `tech_perfect` → `tech_approved` |
+| ✅ | ✅ | ❌ | `tech_bad_explanation` |
+| ✅ | ❌ | ✅ | `tech_bad_answer` |
+| ✅ | ❌ | ❌ | `tech_bad_answer_and_explanation` |
+| ❌ | — | — | `wrong_article` (artículo contenedor no cubre el supuesto → re-mapear al artículo virtual correcto, p.ej. atajos→art.5/150, gráficos→art.190) |
+
+**Regla de oro técnica:** una pregunta de ofimática colgada del **primer** artículo de la ley virtual (representativo) NO tiene `article_ok` — hay que mapearla al artículo que **contiene su epígrafe** (incidente import oficial SCS 02/06/2026, ver `importar-examen-oficial-completo.md` §16.3).
 
 ### 3.1 Criterio estricto para `article_ok` (post-14/04/2026)
 
