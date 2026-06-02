@@ -101,7 +101,16 @@ Por impacto (nº preguntas) y facilidad de sourcing:
 
 ### ✅ TODOS los contenedores clínicos/generales TCAE COMPLETADOS (1-25, ~16.400q)
 
-### 🟢 PISTA B1 EN MARCHA — Legislativo sanitario regional (importar norma real contra fuente oficial)
+### 🟢 PISTA B1 — Legislativo sanitario regional (importar norma real contra fuente oficial)
+
+> 🚨 **CORRECCIÓN DE MÉTODO (02/06, Manuel):** para leyes legislativas, **resumir/agrupar temáticamente es chapuza**. Lo correcto (manual `monitoreo-boe-y-crear-leyes-nuevas.md`, regla PROHIBIDO truncar/parafrasear): **crear la ley real con su ARTICULADO LITERAL del BOE y vincular cada pregunta a su artículo real**. El primer intento de los contenedores 26-29 fue resumen temático → hay que rehacerlos literales. Método validado: `/api/verify-articles/sync-all` da **504 en producción** (CloudFront), así que se usa la **API de datos abiertos del BOE** (`/datosabiertos/api/legislacion-consolidada/id/<BOE-ID>/texto/indice` + `/texto/bloque/aN`) que devuelve el texto literal por `<p>`. Secuencia: aparcar preguntas en `_tmp_hold` → borrar artículos inventados → insertar articulado literal (nº real) → revincular por nº de artículo citado (los nº del banco COINCIDEN con la numeración real) + keyword fallback. Los **decretos regionales (BORM/DOG/BOPV) no están en BOE opendata** → inserción literal manual desde su boletín. **El Estatuto Marco (Ley 55/2003) YA EXISTE como ley real (85 arts, id `437f7e81`)** → el SERGAS 419 debe enlazar a ESA.
+>
+> Estado de la corrección:
+> - ✅ **26 Murcia (Ley 3/2009) REHECHO con articulado literal** (81 arts del BOE-A-2011-2493; 73 preguntas vinculadas a artículos reales; 13 de decretos conexos D.80/2005 y D.236/2010 pendientes de crear como leyes propias).
+> - ⏳ **27 LOSCAM Madrid, 28 Galicia (Ley 8/2008), 29 Aragón (Ley 6/2002): pendientes de rehacer literales** (siguen con los resúmenes temáticos del primer intento). Madrid y Aragón son cajón de sastre multi-ley (varias leyes reales + topic_scope multi-ley); Galicia es ley única limpia (como Murcia).
+> - ✅ **30 Carta Social Europea: NO rehacer** — sus 31 artículos ya eran el articulado real; solo se redistribuyó + enriqueció (correcto).
+
+
 
 - ✅ **Contenedor 26 — SMS Murcia / Ley 3/2009** (`d459c687`): importada contra **BOE-A-2011-2493 consolidado** + Decreto 80/2005 (instrucciones previas) + Decreto 236/2010 (atención al ciudadano). De 1 artículo cajón-de-sastre a **11 artículos** fieles a la estructura de la ley (8 títulos): (1) Disposiciones generales y destinatarios, (2) Ámbitos de protección y derechos básicos arts 9/11, (3) Elección facultativo y segunda opinión arts 12/14, (4) Intimidad/confidencialidad/acompañamiento arts 21/22, (5) Información sanitaria y asistencial arts 29-31, (6) Consentimiento informado y alta arts 41-47, (7) Instrucciones previas arts 50-51+Decreto 80/2005, (8) Documentación sanitaria HC/alta/certificados arts 53-62 (conservación 20 años), (9) Deberes art 63, (10) Protección y líneas de actuación Título VIII, (11) Decreto 236/2010. **88 preguntas re-distribuidas** (a1:6 a2:2 a3:8 a4:12 a5:8 a6:7 a7:14 a8:16 a9:3 a10:3 a11:9). Gotcha del router: el propio título "derechos y **deberes**" contamina el matching → hay que strip del boilerplate del nombre de la ley antes de enrutar. Patrón B1 validado: estructura oficial vía WebFetch BOE consolidado + respuestas verificadas del banco oficial → insertar arts reales → re-distribuir.
 
