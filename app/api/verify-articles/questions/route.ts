@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   getArticleByLawAndNumber,
   getQuestionsByArticleForDisplay,
   getLawById,
 } from '@/lib/api/verify-articles/queries'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getReadDb } from '@/db/client'
+import { questions as questionsTable, articles } from '@/db/schema'
+import { eq, and, or, ilike } from 'drizzle-orm'
 
 async function _GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -48,35 +45,37 @@ async function _GET(request: NextRequest) {
           `articulo ${articleNumber}`,
         ]
 
-        const { data: textQuestions } = await getSupabase()
-          .from('questions')
-          .select(`
-            id,
-            question_text,
-            option_a,
-            option_b,
-            option_c,
-            option_d,
-            correct_option,
-            explanation,
-            is_official_exam,
-            difficulty,
-            primary_article_id,
-            articles!inner (
-              law_id
-            )
-          `)
-          .eq('articles.law_id', lawId)
-          .eq('is_active', true)
-          .or(searchPatterns.map(p => `question_text.ilike.%${p}%`).join(','))
+        const rows = await getReadDb()
+          .select({
+            id: questionsTable.id,
+            question_text: questionsTable.questionText,
+            option_a: questionsTable.optionA,
+            option_b: questionsTable.optionB,
+            option_c: questionsTable.optionC,
+            option_d: questionsTable.optionD,
+            correct_option: questionsTable.correctOption,
+            explanation: questionsTable.explanation,
+            is_official_exam: questionsTable.isOfficialExam,
+            difficulty: questionsTable.difficulty,
+            primary_article_id: questionsTable.primaryArticleId,
+            law_id: articles.lawId,
+          })
+          .from(questionsTable)
+          .innerJoin(articles, eq(questionsTable.primaryArticleId, articles.id))
+          .where(and(
+            eq(articles.lawId, lawId),
+            eq(questionsTable.isActive, true),
+            or(...searchPatterns.map(p => ilike(questionsTable.questionText, `%${p}%`))),
+          ))
           .limit(50)
 
-        if (textQuestions) {
-          questions = textQuestions.filter((q: { question_text: string }) => {
-            const text = q.question_text.toLowerCase()
+        // Reconstruir la forma del embed supabase (articles anidado) + mismo filtro JS.
+        questions = rows
+          .map(({ law_id, ...q }) => ({ ...q, articles: { law_id } }))
+          .filter((q) => {
+            const text = (q.question_text as string).toLowerCase()
             return searchPatterns.some(p => text.includes(p.toLowerCase()))
           })
-        }
       }
     }
 
