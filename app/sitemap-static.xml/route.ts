@@ -3,7 +3,9 @@
  * /sitemap-static.xml
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { getReadDb } from '@/db/client';
+import { laws } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { generateSlugFromShortName } from '@/lib/api/laws';
 import { OPOSICIONES } from '@/lib/config/oposiciones';
 
@@ -12,11 +14,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es';
 export const revalidate = 86400; // Regenerar cada 24 horas
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    // eslint-disable-next-line no-restricted-syntax -- Route handler server-side: SERVICE_ROLE corre en servidor, no se incluye en el bundle cliente
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const db = getReadDb();
 
   const urls: string[] = [];
   const today = new Date().toISOString().split('T')[0];
@@ -155,24 +153,33 @@ export async function GET() {
   // ============================================
   try {
     // Una sola query: leyes con conteo de preguntas (en vez de N+1 queries)
-    const { data: laws } = await supabase
-      .from('laws')
-      .select('short_name, slug, updated_at')
-      .eq('is_active', true);
+    const lawsData = await db
+      .select({ short_name: laws.shortName, slug: laws.slug, updated_at: laws.updatedAt })
+      .from(laws)
+      .where(eq(laws.isActive, true));
 
-    const { data: questionCounts } = await supabase
-      .rpc('get_question_counts_by_law');
+    // RPC en su propio try/catch: si falla, questionCounts queda null y el
+    // fallback (!questionCounts) incluye TODAS las leyes — paridad con el
+    // comportamiento previo de supabase.rpc (error → data undefined).
+    let questionCounts: { law_short_name: string; question_count: number | string }[] | null = null;
+    try {
+      questionCounts = (await db.execute(
+        sql`SELECT * FROM get_question_counts_by_law()`
+      )) as { law_short_name: string; question_count: number | string }[];
+    } catch (rpcError) {
+      console.error('Error RPC get_question_counts_by_law (fallback: incluir todas las leyes):', rpcError);
+    }
 
     // Fallback si el RPC no existe: map vacío (todas las leyes se incluyen)
     const countMap = new Map<string, number>();
     if (questionCounts) {
-      for (const row of questionCounts as { law_short_name: string; question_count: number }[]) {
-        countMap.set(row.law_short_name, row.question_count);
+      for (const row of questionCounts) {
+        countMap.set(row.law_short_name, Number(row.question_count));
       }
     }
 
-    if (laws) {
-      for (const law of laws) {
+    if (lawsData) {
+      for (const law of lawsData) {
         const count = countMap.get(law.short_name) ?? 0;
         if (count >= 5 || !questionCounts) {
           const canonicalSlug = law.slug || generateSlugFromShortName(law.short_name);
