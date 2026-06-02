@@ -1,17 +1,13 @@
 // lib/chat/domains/knowledge-base/queries.ts
 // Queries para la base de conocimiento
 
-import { createClient } from '@supabase/supabase-js'
-import { getDb } from '@/db/client'
+import { getDb, getReadDb } from '@/db/client'
 import { aiKnowledgeBase } from '@/db/schema'
-import { eq, and, or, ilike, inArray } from 'drizzle-orm'
+import { eq, and, or, ilike, desc, sql } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 
-// Cliente Supabase para RPC functions (match_knowledge_base usa pgvector)
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Formatea un embedding (number[]) como literal pgvector para ::vector
+const toVector = (embedding: number[]) => `[${embedding.join(',')}]`
 
 // ============================================
 // TIPOS
@@ -50,17 +46,15 @@ export async function searchKnowledgeBase(
   const { threshold = 0.40, limit = 3, category = null } = options
 
   try {
-    const { data, error } = await getSupabase().rpc('match_knowledge_base', {
-      query_embedding: embedding,
-      match_threshold: threshold,
-      match_count: limit,
-      filter_category: category,
-    })
-
-    if (error) {
-      logger.error('Error in match_knowledge_base RPC', error, { domain: 'knowledge-base' })
-      return []
-    }
+    const db = getReadDb()
+    const data = (await db.execute(sql`
+      SELECT * FROM match_knowledge_base(
+        ${toVector(embedding)}::vector,
+        ${threshold},
+        ${limit},
+        ${category}
+      )
+    `)) as any[]
 
     if (data && data.length > 0) {
       logger.debug(`Knowledge base: ${data.length} results (best: ${(data[0].similarity * 100).toFixed(1)}%)`, {
@@ -96,31 +90,37 @@ export async function searchKnowledgeBaseByKeywords(
   }
 
   try {
-    // Construir condiciones OR para los keywords
-    const keywordConditions = keywords.map(kw =>
-      `title.ilike.%${kw}%,content.ilike.%${kw}%,short_answer.ilike.%${kw}%`
-    ).join(',')
+    // Condiciones OR: cada keyword buscado en title, content y short_answer (ILIKE)
+    const orConditions = keywords.flatMap(kw => [
+      ilike(aiKnowledgeBase.title, `%${kw}%`),
+      ilike(aiKnowledgeBase.content, `%${kw}%`),
+      ilike(aiKnowledgeBase.shortAnswer, `%${kw}%`),
+    ])
 
-    let query = getSupabase()
-      .from('ai_knowledge_base')
-      .select('*')
-      .eq('is_active', true)
-      .or(keywordConditions)
-      .order('priority', { ascending: false })
+    const conditions = [eq(aiKnowledgeBase.isActive, true), or(...orConditions)]
+    if (category) {
+      conditions.push(eq(aiKnowledgeBase.category, category))
+    }
+
+    const db = getReadDb()
+    const rows = await db
+      .select()
+      .from(aiKnowledgeBase)
+      .where(and(...conditions))
+      .orderBy(desc(aiKnowledgeBase.priority))
       .limit(limit)
 
-    if (category) {
-      query = query.eq('category', category)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      logger.error('Error in keyword search', error, { domain: 'knowledge-base' })
-      return []
-    }
-
-    return (data || []).map(mapKBEntry)
+    return rows.map(r => ({
+      id: r.id,
+      category: r.category,
+      subcategory: r.subcategory,
+      title: r.title,
+      content: r.content,
+      shortAnswer: r.shortAnswer,
+      keywords: r.keywords || [],
+      priority: r.priority || 0,
+      metadata: (r.metadata as Record<string, unknown>) || {},
+    }))
   } catch (err) {
     logger.error('Error in searchKnowledgeBaseByKeywords', err, { domain: 'knowledge-base' })
     return []
@@ -186,17 +186,29 @@ export async function getByCategory(
  */
 export async function getById(id: string): Promise<KnowledgeBaseEntry | null> {
   try {
-    const { data, error } = await getSupabase()
-      .from('ai_knowledge_base')
-      .select('*')
-      .eq('id', id)
-      .single()
+    const db = getReadDb()
+    const rows = await db
+      .select()
+      .from(aiKnowledgeBase)
+      .where(eq(aiKnowledgeBase.id, id))
+      .limit(1)
 
-    if (error || !data) {
+    const r = rows[0]
+    if (!r) {
       return null
     }
 
-    return mapKBEntry(data)
+    return {
+      id: r.id,
+      category: r.category,
+      subcategory: r.subcategory,
+      title: r.title,
+      content: r.content,
+      shortAnswer: r.shortAnswer,
+      keywords: r.keywords || [],
+      priority: r.priority || 0,
+      metadata: (r.metadata as Record<string, unknown>) || {},
+    }
   } catch (err) {
     logger.error('Error in getById', err, { domain: 'knowledge-base' })
     return null
@@ -489,16 +501,14 @@ export async function searchHelpArticles(
   const { threshold = 0.30, limit = 3 } = options
 
   try {
-    const { data, error } = await getSupabase().rpc('match_help_articles', {
-      query_embedding: embedding,
-      match_threshold: threshold,
-      match_count: limit,
-    })
-
-    if (error) {
-      logger.error('Error in match_help_articles RPC', error, { domain: 'knowledge-base' })
-      return []
-    }
+    const db = getReadDb()
+    const data = (await db.execute(sql`
+      SELECT * FROM match_help_articles(
+        ${toVector(embedding)}::vector,
+        ${threshold},
+        ${limit}
+      )
+    `)) as any[]
 
     return (data || []).map((d: Record<string, unknown>) => ({
       id: d.id as string,

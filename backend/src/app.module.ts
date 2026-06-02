@@ -10,7 +10,6 @@ import { HealthModule } from './health/health.module';
 import { HeartbeatModule } from './heartbeat/heartbeat.registry';
 import { RefreshRankingsModule } from './refresh-rankings/refresh-rankings.module';
 import { RefreshThemeCacheModule } from './refresh-theme-cache/refresh-theme-cache.module';
-import { SyncUqhV1BridgeModule } from './sync-uqh-v1-bridge/sync-uqh-v1-bridge.module';
 import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
 import { AutoPromoteCoverageModule } from './auto-promote-coverage/auto-promote-coverage.module';
 import { RefreshMvOposicionesModule } from './refresh-mv-oposiciones/refresh-mv-oposiciones.module';
@@ -118,8 +117,6 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     RefreshThemeCacheModule,
     RefreshRankingsModule,
     UpdateStreaksModule,
-    // Puente temporal UQH v1 ← v2 (eliminar tras Fase 4 plan UQH).
-    SyncUqhV1BridgeModule,
     // Sprint D roadmap oposiciones-coverage-level — cron diario 04:00 UTC.
     AutoPromoteCoverageModule,
     // Sprint G.4 roadmap sprint-g-oposiciones-vs-convocatorias — cron cada 30 min.
