@@ -107,7 +107,8 @@ Por impacto (nº preguntas) y facilidad de sourcing:
 >
 > Estado de la corrección:
 > - ✅ **26 Murcia (Ley 3/2009) REHECHO con articulado literal** (81 arts del BOE-A-2011-2493; 73 preguntas vinculadas a artículos reales; 13 de decretos conexos D.80/2005 y D.236/2010 pendientes de crear como leyes propias).
-> - ⏳ **27 LOSCAM Madrid, 28 Galicia (Ley 8/2008), 29 Aragón (Ley 6/2002): pendientes de rehacer literales** (siguen con los resúmenes temáticos del primer intento). Madrid y Aragón son cajón de sastre multi-ley (varias leyes reales + topic_scope multi-ley); Galicia es ley única limpia (como Murcia).
+> - ✅ **28 Galicia (Ley 8/2008) REHECHO con articulado literal** (149 arts del BOE-A-2008-14134; 171 de 193 preguntas vinculadas a artículos reales — 45 por nº citado + 87 por rúbrica + 39 por similitud de contenido; 14 conexas (Ley 3/2001, Decretos 54/2015, 55/2015, 206/2005, estrategias) + 8 baja confianza pendientes).
+> - ⏳ **27 LOSCAM Madrid, 29 Aragón (Ley 6/2002): pendientes de rehacer literales** (siguen con los resúmenes temáticos del primer intento). Son cajón de sastre multi-ley (varias leyes reales + topic_scope multi-ley): Madrid = Ley 12/2001 (BOE-A-2002-4375) + Ley 6/2009 + Ley 11/2017 + Convenio; Aragón = Ley 6/2002 (BOE-A-2002-9667) + DL 2/2004 + decretos.
 > - ✅ **30 Carta Social Europea: NO rehacer** — sus 31 artículos ya eran el articulado real; solo se redistribuyó + enriqueció (correcto).
 
 
