@@ -7,7 +7,9 @@ export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { userProfiles, aiChatLogs } from '@/db/schema'
+import { and, eq, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   buildChatContext,
@@ -22,11 +24,9 @@ import {
 import { insertChatLog } from '@/lib/api/ai-chat-logs'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Cliente Supabase para queries que no están en Drizzle (getUserDailyMessageCount, getUserName)
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+
+// getAdminDb() = Drizzle/DATABASE_URL (bypass RLS, equivalente al service_role).
+// Agnóstico de proveedor.
 
 /**
  * Generar UUID para el logId antes de procesar
@@ -96,31 +96,8 @@ const EXEMPT_SUGGESTIONS = [
   'Explícame la respuesta correcta',
 ]
 
-/**
- * Obtener nombre del usuario desde user_profiles
- */
-async function getUserName(userId: string): Promise<string | undefined> {
-  if (!userId || userId === 'anonymous') return undefined
-
-  try {
-    const { data, error } = await getSupabase()
-      .from('user_profiles')
-      .select('nickname, full_name')
-      .eq('id', userId)
-      .single()
-
-    if (error || !data) return undefined
-
-    // Preferir nickname, luego full_name
-    const name = data.nickname || data.full_name
-    if (!name) return undefined
-
-    // Extraer solo el primer nombre
-    return name.split(' ')[0]
-  } catch {
-    return undefined
-  }
-}
+// NOTA: getUserName() se eliminó (código muerto) — la query paralela a
+// user_profiles en _POST ya obtiene nickname/full_name junto con plan_type.
 
 /**
  * Obtener conteo de mensajes del día para rate limiting
@@ -134,17 +111,14 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
     today.setUTCHours(0, 0, 0, 0)
 
     // Contar mensajes del día excluyendo las explicaciones de preguntas
-    const { data, error } = await getSupabase()
-      .from('ai_chat_logs')
-      .select('suggestion_used')
-      .eq('user_id', userId)
-      .gte('created_at', today.toISOString())
-      .eq('had_error', false)
-
-    if (error) {
-      logger.error('Error counting daily messages', error)
-      return 0
-    }
+    const data = await getAdminDb()
+      .select({ suggestion_used: aiChatLogs.suggestionUsed })
+      .from(aiChatLogs)
+      .where(and(
+        eq(aiChatLogs.userId, userId),
+        gte(aiChatLogs.createdAt, today.toISOString()),
+        eq(aiChatLogs.hadError, false),
+      ))
 
     // Filtrar: solo contar mensajes que NO son explicaciones exentas
     const countableMessages = data?.filter(msg =>
@@ -189,18 +163,19 @@ async function _POST(request: NextRequest) {
     let isPremiumVerified = data.isPremium
     let userName: string | undefined
     if (data.userId && data.userId !== 'anonymous') {
-      const profilePromise = getSupabase()
-        .from('user_profiles')
-        .select('plan_type, nickname, full_name')
-        .eq('id', data.userId)
-        .single()
+      const profilePromise = getAdminDb()
+        .select({ plan_type: userProfiles.planType, nickname: userProfiles.nickname, full_name: userProfiles.fullName })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, data.userId))
+        .limit(1)
       const dailyCountPromise = isExemptSuggestion ? Promise.resolve(0) : getUserDailyMessageCount(data.userId)
 
-      const [profileResult, dailyCount] = await Promise.all([profilePromise, dailyCountPromise])
+      const [profileRows, dailyCount] = await Promise.all([profilePromise, dailyCountPromise])
 
-      if (profileResult.data) {
-        isPremiumVerified = profileResult.data.plan_type === 'premium' || profileResult.data.plan_type === 'trial'
-        const name = profileResult.data.nickname || profileResult.data.full_name
+      const profile = profileRows[0]
+      if (profile) {
+        isPremiumVerified = profile.plan_type === 'premium' || profile.plan_type === 'trial'
+        const name = profile.nickname || profile.full_name
         userName = name ? name.split(' ')[0] : undefined
       }
 
