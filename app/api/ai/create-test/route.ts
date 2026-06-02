@@ -2,17 +2,17 @@
 // API genérica para crear tests desde el chat de IA
 // Soporta múltiples tipos: preguntas falladas, por ley, por tema, etc.
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+
+import { getAdminDb } from '@/db/client'
+import { tests as testsTable, testQuestions, questions as questionsTable, articles, laws } from '@/db/schema'
+import { and, eq, gte, inArray } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
-// supabase client se mantiene para 10+ queries BD posteriores (tests, questions,
-// articles, laws) que bypaseando RLS. Solo la auth se delega al wrapper.
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role que usaba este endpoint). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 type TestType = 'failed_questions' | 'law' | 'topic' | 'essential_articles' | 'custom' | 'article'
 
@@ -61,7 +61,7 @@ async function _POST(request: NextRequest) {
 
     switch (type) {
       case 'failed_questions':
-        const failedResult = await getFailedQuestions(user.id, body)
+        const failedResult = await getFailedQuestions(user.id!, body)
         if (!failedResult.success) {
           return NextResponse.json(failedResult)
         }
@@ -151,38 +151,35 @@ async function _POST(request: NextRequest) {
     // Cargar las preguntas completas desde el servidor (evita problemas de RLS en cliente)
     console.log('🎯 [API/create-test] Loading', questionIds.length, 'questions:', questionIds)
 
-    // Primero, intentar con la relación completa
+    // El embed anidado de PostgREST `articles(..., laws(...))` (relación to-one
+    // vía primary_article_id) → leftJoin Drizzle. La relación con articles es
+    // opcional (left join): una pregunta huérfana sigue cargándose.
     let questionsData: any[] | null = null
     let questionsError: any = null
 
     try {
-      // Query simplificada - la relación con articles es opcional (left join)
-      const result = await getSupabase()
-        .from('questions')
-        .select(`
-          id,
-          question_text,
-          option_a,
-          option_b,
-          option_c,
-          option_d,
-          correct_option,
-          explanation,
-          difficulty,
-          primary_article_id,
-          articles(
-            article_number,
-            title,
-            content,
-            law_id,
-            laws(name, short_name)
-          )
-        `)
-        .in('id', questionIds)
-        .eq('is_active', true)
-
-      questionsData = result.data
-      questionsError = result.error
+      questionsData = await db()
+        .select({
+          id: questionsTable.id,
+          question_text: questionsTable.questionText,
+          option_a: questionsTable.optionA,
+          option_b: questionsTable.optionB,
+          option_c: questionsTable.optionC,
+          option_d: questionsTable.optionD,
+          correct_option: questionsTable.correctOption,
+          explanation: questionsTable.explanation,
+          difficulty: questionsTable.difficulty,
+          primary_article_id: questionsTable.primaryArticleId,
+          article_number: articles.articleNumber,
+          article_title: articles.title,
+          article_content: articles.content,
+          law_name: laws.name,
+          law_short_name: laws.shortName,
+        })
+        .from(questionsTable)
+        .leftJoin(articles, eq(questionsTable.primaryArticleId, articles.id))
+        .leftJoin(laws, eq(articles.lawId, laws.id))
+        .where(and(inArray(questionsTable.id, questionIds), eq(questionsTable.isActive, true)))
     } catch (e) {
       console.error('❌ [API/create-test] Exception loading questions:', e)
       questionsError = e
@@ -195,7 +192,7 @@ async function _POST(request: NextRequest) {
     })
 
     if (questionsError) {
-      console.error('❌ [API/create-test] Supabase error:', questionsError)
+      console.error('❌ [API/create-test] DB error:', questionsError)
       return NextResponse.json({
         success: false,
         error: `Error de base de datos: ${questionsError.message}`
@@ -211,40 +208,40 @@ async function _POST(request: NextRequest) {
     }
 
     // Transformar preguntas al formato esperado por TestLayout
-    const questions = questionsData.map(q => {
-      const articleData = q.articles as any
-      const law = articleData?.laws as any
+    const formattedQuestions = questionsData.map(q => {
+      const hasArticle =
+        q.article_number != null || q.article_title != null || q.article_content != null
       return {
         id: q.id,
         question: q.question_text, // TestLayout usa 'question', no 'question_text'
         question_text: q.question_text, // Mantener para compatibilidad
         options: [q.option_a, q.option_b, q.option_c, q.option_d],
         explanation: q.explanation,
-        correct_option: (q as any).correct_option ?? null,
+        correct_option: q.correct_option ?? null,
         difficulty: q.difficulty,
-        law_name: law?.name || 'Desconocida',
-        law_slug: law?.short_name,
-        article_number: articleData?.article_number,
-        article_title: articleData?.title,
+        law_name: q.law_name || 'Desconocida',
+        law_slug: q.law_short_name,
+        article_number: q.article_number,
+        article_title: q.article_title,
         primary_article_id: q.primary_article_id,
         // Incluir artículo completo para ArticleDropdown
-        article: articleData ? {
-          article_number: articleData.article_number,
-          number: articleData.article_number,
-          title: articleData.title,
-          full_text: articleData.content,
-          content: articleData.content,
-          law_short_name: law?.short_name,
+        article: hasArticle ? {
+          article_number: q.article_number,
+          number: q.article_number,
+          title: q.article_title,
+          full_text: q.article_content,
+          content: q.article_content,
+          law_short_name: q.law_short_name,
         } : null
       }
     })
 
-    console.log('🎯 [API/create-test] Returning', questions.length, 'questions')
+    console.log('🎯 [API/create-test] Returning', formattedQuestions.length, 'questions')
 
     return NextResponse.json({
       success: true,
-      questions,
-      questionCount: questions.length,
+      questions: formattedQuestions,
+      questionCount: formattedQuestions.length,
       message,
       testType: type
     })
@@ -280,15 +277,12 @@ async function getFailedQuestions(userId: string, options: CreateTestRequest) {
     console.log('🎯 [getFailedQuestions] Cutoff date:', cutoffDate, '| Period:', periodLabel)
 
     // Paso 1: Obtener TODOS los IDs de tests del usuario
-    const { data: tests, error: testsError } = await getSupabase()
-      .from('tests')
-      .select('id')
-      .eq('user_id', userId)
-
-    if (testsError) {
-      console.error('🎯 [getFailedQuestions] Error getting tests:', testsError)
-      return { success: false, error: 'Error al obtener tests' }
-    }
+    // (Drizzle no capa a 1000 filas como hacía PostgREST → heavy users con
+    // >1000 tests ahora ven su histórico completo de fallos.)
+    const tests = await db()
+      .select({ id: testsTable.id })
+      .from(testsTable)
+      .where(eq(testsTable.userId, userId))
 
     if (!tests || tests.length === 0) {
       console.log('🎯 [getFailedQuestions] No tests found for user')
@@ -303,17 +297,18 @@ async function getFailedQuestions(userId: string, options: CreateTestRequest) {
     console.log('🎯 [getFailedQuestions] Found', testIds.length, 'total tests for user')
 
     // Paso 2: Obtener respuestas falladas filtrando por created_at de test_questions
-    const { data: answers, error: answersError } = await getSupabase()
-      .from('test_questions')
-      .select('question_id, is_correct, created_at')
-      .in('test_id', testIds)
-      .eq('is_correct', false)
-      .gte('created_at', cutoffDate)
-
-    if (answersError) {
-      console.error('🎯 [getFailedQuestions] Error getting answers:', answersError)
-      return { success: false, error: 'Error al obtener respuestas' }
-    }
+    const answers = await db()
+      .select({
+        question_id: testQuestions.questionId,
+        is_correct: testQuestions.isCorrect,
+        created_at: testQuestions.createdAt,
+      })
+      .from(testQuestions)
+      .where(and(
+        inArray(testQuestions.testId, testIds),
+        eq(testQuestions.isCorrect, false),
+        gte(testQuestions.createdAt, cutoffDate),
+      ))
 
     if (!answers || answers.length === 0) {
       console.log('🎯 [getFailedQuestions] No failed answers in period')
@@ -329,6 +324,7 @@ async function getFailedQuestions(userId: string, options: CreateTestRequest) {
     // Agrupar por question_id y contar fallos
     const questionFailCounts: Record<string, { questionId: string, failCount: number, lastFail: string }> = {}
     answers.forEach(a => {
+      if (!a.question_id) return
       if (!questionFailCounts[a.question_id]) {
         questionFailCounts[a.question_id] = {
           questionId: a.question_id,
@@ -378,7 +374,11 @@ async function getFailedQuestions(userId: string, options: CreateTestRequest) {
   }
 }
 
-// Obtener preguntas de una ley específica
+// Obtener preguntas de una ley específica.
+// Las preguntas NO tienen columna law_id; se relacionan con la ley vía
+// primary_article_id → articles.law_id (el join que ya usa
+// getEssentialArticlesQuestions). El código anterior consultaba
+// `questions.law_id` (columna inexistente) → este tipo de test estaba roto.
 async function getLawQuestions(options: CreateTestRequest) {
   const { numQuestions = 10, lawSlug, lawId } = options
 
@@ -386,11 +386,11 @@ async function getLawQuestions(options: CreateTestRequest) {
 
   // Si tenemos slug, buscar el ID de la ley
   if (!lawIdToUse && lawSlug) {
-    const { data: law } = await getSupabase()
-      .from('laws')
-      .select('id')
-      .eq('slug', lawSlug)
-      .single()
+    const [law] = await db()
+      .select({ id: laws.id })
+      .from(laws)
+      .where(eq(laws.slug, lawSlug))
+      .limit(1)
 
     if (law) {
       lawIdToUse = law.id
@@ -404,15 +404,17 @@ async function getLawQuestions(options: CreateTestRequest) {
     }
   }
 
-  // Obtener preguntas de la ley
-  const { data: lawQuestions, error } = await getSupabase()
-    .from('questions')
-    .select('id')
-    .eq('law_id', lawIdToUse)
-    .eq('is_active', true)
-    .limit(numQuestions * 2) // Obtener más para randomizar
-
-  if (error || !lawQuestions) {
+  // Obtener preguntas de la ley (vía artículos de esa ley)
+  let lawQuestions: { id: string }[]
+  try {
+    lawQuestions = await db()
+      .select({ id: questionsTable.id })
+      .from(questionsTable)
+      .innerJoin(articles, eq(questionsTable.primaryArticleId, articles.id))
+      .where(and(eq(articles.lawId, lawIdToUse), eq(questionsTable.isActive, true)))
+      .limit(numQuestions * 2) // Obtener más para randomizar
+  } catch (error) {
+    console.error('🎯 [getLawQuestions] Error:', error)
     return {
       success: false,
       error: 'Error al obtener preguntas de la ley'
@@ -445,11 +447,11 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
   let lawIdToUse = lawId
 
   if (!lawIdToUse && lawSlug) {
-    const { data: law } = await getSupabase()
-      .from('laws')
-      .select('id')
-      .eq('slug', lawSlug)
-      .single()
+    const [law] = await db()
+      .select({ id: laws.id })
+      .from(laws)
+      .where(eq(laws.slug, lawSlug))
+      .limit(1)
 
     if (law) {
       lawIdToUse = law.id
@@ -459,16 +461,12 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
   // Obtener artículos esenciales
   // NOTA: La columna is_essential no existe actualmente en articles
   // Esta función está preparada para cuando se añada esa característica
-  let articlesQuery = getSupabase()
-    .from('articles')
-    .select('id')
-    // .eq('is_essential', true) // Descomentar cuando exista la columna
-
-  if (lawIdToUse) {
-    articlesQuery = articlesQuery.eq('law_id', lawIdToUse)
-  }
-
-  const { data: articlesData } = await articlesQuery.limit(100)
+  const articlesData = await db()
+    .select({ id: articles.id })
+    .from(articles)
+    .where(lawIdToUse ? eq(articles.lawId, lawIdToUse) : undefined)
+    // .where(... is_essential ...) // Descomentar cuando exista la columna
+    .limit(100)
 
   if (!articlesData || articlesData.length === 0) {
     return {
@@ -481,11 +479,10 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
   const articleIds = articlesData.map(a => a.id)
 
   // Obtener preguntas de esos artículos
-  const { data: essentialQuestions } = await getSupabase()
-    .from('questions')
-    .select('id')
-    .in('primary_article_id', articleIds)
-    .eq('is_active', true)
+  const essentialQuestions = await db()
+    .select({ id: questionsTable.id })
+    .from(questionsTable)
+    .where(and(inArray(questionsTable.primaryArticleId, articleIds), eq(questionsTable.isActive, true)))
     .limit(numQuestions * 2)
 
   if (!essentialQuestions || essentialQuestions.length === 0) {
@@ -523,11 +520,11 @@ async function getArticleQuestions(options: CreateTestRequest) {
   let lawId: string | null = null
 
   if (lawShortName) {
-    const { data: law } = await getSupabase()
-      .from('laws')
-      .select('id, short_name')
-      .eq('short_name', lawShortName)
-      .single()
+    const [law] = await db()
+      .select({ id: laws.id })
+      .from(laws)
+      .where(eq(laws.shortName, lawShortName))
+      .limit(1)
 
     if (law) {
       lawId = law.id
@@ -535,11 +532,11 @@ async function getArticleQuestions(options: CreateTestRequest) {
   }
 
   if (!lawId && lawSlug) {
-    const { data: law } = await getSupabase()
-      .from('laws')
-      .select('id, short_name')
-      .eq('slug', lawSlug)
-      .single()
+    const [law] = await db()
+      .select({ id: laws.id })
+      .from(laws)
+      .where(eq(laws.slug, lawSlug))
+      .limit(1)
 
     if (law) {
       lawId = law.id
@@ -554,12 +551,11 @@ async function getArticleQuestions(options: CreateTestRequest) {
   }
 
   // Buscar el artículo
-  const { data: article } = await getSupabase()
-    .from('articles')
-    .select('id, article_number, title')
-    .eq('law_id', lawId)
-    .eq('article_number', articleNumber)
-    .single()
+  const [article] = await db()
+    .select({ id: articles.id, article_number: articles.articleNumber, title: articles.title })
+    .from(articles)
+    .where(and(eq(articles.lawId, lawId), eq(articles.articleNumber, articleNumber)))
+    .limit(1)
 
   if (!article) {
     return {
@@ -571,14 +567,14 @@ async function getArticleQuestions(options: CreateTestRequest) {
   console.log('🎯 [getArticleQuestions] Found article:', article.id, article.article_number)
 
   // Obtener preguntas de este artículo
-  const { data: articleQuestions, error } = await getSupabase()
-    .from('questions')
-    .select('id')
-    .eq('primary_article_id', article.id)
-    .eq('is_active', true)
-    .limit(numQuestions * 2)
-
-  if (error) {
+  let articleQuestions: { id: string }[]
+  try {
+    articleQuestions = await db()
+      .select({ id: questionsTable.id })
+      .from(questionsTable)
+      .where(and(eq(questionsTable.primaryArticleId, article.id), eq(questionsTable.isActive, true)))
+      .limit(numQuestions * 2)
+  } catch (error) {
     console.error('🎯 [getArticleQuestions] Error:', error)
     return {
       success: false,
