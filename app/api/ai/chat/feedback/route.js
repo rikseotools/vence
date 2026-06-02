@@ -1,10 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
-
+import { getAdminDb } from '@/db/client'
+import { aiChatLogs } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
 
 async function _POST(request) {
   try {
@@ -25,13 +22,18 @@ async function _POST(request) {
     }
 
     // Actualizar el log con el feedback
-    const { error } = await getSupabase()
-      .from('ai_chat_logs')
-      .update({
-        feedback,
-        feedback_comment: comment || null
-      })
-      .eq('id', logId)
+    let error = null
+    try {
+      await getAdminDb()
+        .update(aiChatLogs)
+        .set({
+          feedback,
+          feedbackComment: comment || null
+        })
+        .where(eq(aiChatLogs.id, logId))
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       console.error('Error guardando feedback:', error)

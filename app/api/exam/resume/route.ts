@@ -5,14 +5,11 @@ import {
   getResumedExamData,
   verifyTestOwnership,
 } from '@/lib/api/exam'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { questions, articles, laws } from '@/db/schema'
+import { eq, inArray } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Supabase para obtener preguntas completas (questions table)
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * GET /api/exam/resume?testId=...&userId=...
@@ -85,21 +82,62 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    // Obtener preguntas completas desde Supabase
+    // Obtener preguntas completas (embed articles→laws → leftJoin + reconstrucción
+    // del shape anidado que se pasa tal cual al cliente).
     // SEGURIDAD: NO incluir correct_option - se valida via /api/exam/validate
-    const { data: fullQuestions, error: questionsError } = await getSupabase()
-      .from('questions')
-      .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
-        difficulty, is_official_exam,
-        primary_article_id,
-        image_url, content_data,
-        articles(
-          id, article_number, title, content,
-          laws(short_name, name)
-        )
-      `)
-      .in('id', questionIds)
+    let fullQuestions = null
+    let questionsError = null
+    try {
+      const rawQuestions = await getAdminDb()
+        .select({
+          id: questions.id,
+          question_text: questions.questionText,
+          option_a: questions.optionA,
+          option_b: questions.optionB,
+          option_c: questions.optionC,
+          option_d: questions.optionD,
+          difficulty: questions.difficulty,
+          is_official_exam: questions.isOfficialExam,
+          primary_article_id: questions.primaryArticleId,
+          image_url: questions.imageUrl,
+          content_data: questions.contentData,
+          art_id: articles.id,
+          art_number: articles.articleNumber,
+          art_title: articles.title,
+          art_content: articles.content,
+          law_short_name: laws.shortName,
+          law_name: laws.name,
+        })
+        .from(questions)
+        .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .leftJoin(laws, eq(articles.lawId, laws.id))
+        .where(inArray(questions.id, questionIds))
+
+      fullQuestions = rawQuestions.map(r => ({
+        id: r.id,
+        question_text: r.question_text,
+        option_a: r.option_a,
+        option_b: r.option_b,
+        option_c: r.option_c,
+        option_d: r.option_d,
+        difficulty: r.difficulty,
+        is_official_exam: r.is_official_exam,
+        primary_article_id: r.primary_article_id,
+        image_url: r.image_url,
+        content_data: r.content_data,
+        articles: r.art_id ? {
+          id: r.art_id,
+          article_number: r.art_number,
+          title: r.art_title,
+          content: r.art_content,
+          laws: (r.law_short_name != null || r.law_name != null)
+            ? { short_name: r.law_short_name, name: r.law_name }
+            : null,
+        } : null,
+      }))
+    } catch (e) {
+      questionsError = e
+    }
 
     if (questionsError) {
       console.error('Error obteniendo preguntas completas:', questionsError)

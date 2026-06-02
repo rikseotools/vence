@@ -1,8 +1,10 @@
 // app/api/sessions/check-active/route.ts
 // Detecta uso simultáneo real desde IPs distintas (últimos 15 min con actividad)
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getAdminDb } from '@/db/client'
+import { userSessions } from '@/db/schema'
+import { and, eq, isNull, gte, gt, desc } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
@@ -68,23 +70,34 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
       })
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
     const currentIp = getClientIp(request)
     const windowStart = new Date(Date.now() - SIMULTANEITY_WINDOW_MINUTES * 60 * 1000).toISOString()
 
     // Sesiones activas con actividad real en los últimos 15 min
-    const { data: sessions, error: sessionsError } = await supabaseAdmin
-      .from('user_sessions')
-      .select('id, session_start, ip_address, city, screen_resolution, user_agent, questions_answered')
-      .eq('user_id', user.id)
-      .is('session_end', null)
-      .gte('session_start', windowStart)
-      .gt('questions_answered', 0)
-      .order('session_start', { ascending: false })
+    let sessions = null
+    let sessionsError = null
+    try {
+      sessions = await getAdminDb()
+        .select({
+          id: userSessions.id,
+          session_start: userSessions.sessionStart,
+          ip_address: userSessions.ipAddress,
+          city: userSessions.city,
+          screen_resolution: userSessions.screenResolution,
+          user_agent: userSessions.userAgent,
+          questions_answered: userSessions.questionsAnswered,
+        })
+        .from(userSessions)
+        .where(and(
+          eq(userSessions.userId, user.id),
+          isNull(userSessions.sessionEnd),
+          gte(userSessions.sessionStart, windowStart),
+          gt(userSessions.questionsAnswered, 0),
+        ))
+        .orderBy(desc(userSessions.sessionStart))
+    } catch (e) {
+      sessionsError = e
+    }
 
     if (sessionsError) {
       console.error('[SessionControl] Error consultando sesiones:', sessionsError)
@@ -95,7 +108,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
       }, { status: 500 })
     }
 
-    const typedSessions = (sessions as SessionData[]) || []
+    const typedSessions = (sessions as unknown as SessionData[]) || []
 
     // Filtrar sesiones desde IPs DISTINTAS a la actual
     const sessionsFromOtherIps = currentIp

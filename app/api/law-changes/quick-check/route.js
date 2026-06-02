@@ -1,12 +1,9 @@
 // app/api/law-changes/quick-check/route.js
 // Endpoint ligero que solo verifica fechas del BOE sin parsear contenido completo
-import { createClient } from '@supabase/supabase-js'
-
+import { getAdminDb } from '@/db/client'
+import { laws as lawsTable } from '@/db/schema'
+import { isNotNull } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
 
 /**
  * Extrae SOLO la fecha de "Última actualización" del HTML del BOE
@@ -55,10 +52,22 @@ function parseSpanishDate(dateStr) {
 async function _GET() {
   try {
     // 1. Obtener leyes con URL del BOE
-    const { data: laws, error } = await getSupabase()
-      .from('laws')
-      .select('id, short_name, boe_url, last_update_boe, last_checked')
-      .not('boe_url', 'is', null)
+    let laws = null
+    let error = null
+    try {
+      laws = await getAdminDb()
+        .select({
+          id: lawsTable.id,
+          short_name: lawsTable.shortName,
+          boe_url: lawsTable.boeUrl,
+          last_update_boe: lawsTable.lastUpdateBoe,
+          last_checked: lawsTable.lastChecked,
+        })
+        .from(lawsTable)
+        .where(isNotNull(lawsTable.boeUrl))
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       return Response.json({ success: false, error: 'Error obteniendo leyes' }, { status: 500 })
