@@ -142,3 +142,12 @@ Por impacto (nº preguntas) y facilidad de sourcing:
   - Ciencias Sociales PN (`3ad8772b` 1.411, 7 arts) + temas PN (ciberdelincuencia 174, vehículo prioritario 105, armas de fuego 96, inteligencia policial 94).
 
 Recomendado para ambas pistas: **workflow por contenedor** (sourcing oficial → redacción/importación → auditoría por sub-materia). La pista B1 exige verificación BOE/DOG estricta; la pista C es de otro dominio. Pendiente además fase 2 (topic-review/verify → `article_ok`) de TODOS los contenedores hechos.
+
+### 🔧 Cabo normas conexas regionales — EN CURSO (importar decretos desde boletines autonómicos)
+
+Método por boletín (las normas conexas NO están en la API del BOE):
+- **BOA (Aragón):** `curl -sk "https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VERDOC&BASE=BOLE&DOCN=<DOCN>"` → **ISO-8859-1** (decode latin1) → strip tags → partir por cabeceras `Artículo N.-Rúbrica`. Parser en `/tmp/aulaplus_audit/boa_lib.cjs`. DOCN: 174/2010=`000153767`, 122/2020=`000238609`.
+- **noticias.juridicas**: descartado (texto cargado por JS, no en el HTML).
+- BORM (Murcia), BOCM (Madrid): PDF; DOG (Galicia): HTML xunta.gal/dog. Pendientes de método.
+
+Hecho (Aragón): ✅ **Decreto 174/2010 Áreas y Sectores** (`bbcae728`, 62 arts) + ✅ **Decreto 122/2020 Estructura Orgánica** (`46db2fb4`, 59 arts) creados desde BOA como leyes reales + topic_scope. Aragón: 252/317 preguntas vinculadas a artículo real. Restan 36 pendientes (decretos menores 37/2011, 100/2003, 59/1997, 286/2003, 23/2016, Orden SAN/441/2021, Convenio + mapa 168/2021 que es tabular) + 29 baja confianza.
