@@ -234,11 +234,12 @@ async function _POST(request: NextRequest) {
       .from(testQuestions)
       .where(eq(testQuestions.testId, testId))
 
-    // NOTA 2026-05-19: el UPSERT manual de userQuestionHistory para preguntas legislativas
-    // se eliminó porque el trigger BD `trigger_update_user_question_history` (AFTER INSERT
-    // OR UPDATE en test_questions) ya mantiene la tabla. Mantener ambos causaba doble
-    // contabilización: +74.812 attempts inflados globalmente (medido shadow validation v2).
-    // psychometric_user_question_history SÍ requiere upsert manual: no tiene trigger BD.
+    // NOTA 2026-05-19 (actualizada 2026-06-02): el UPSERT manual del historial de preguntas
+    // para legislativas se eliminó porque la escritura del historial está centralizada en el
+    // path INSERT test_questions → outbox → handler Fargate (user_question_history_v2). Antes
+    // lo cubría el trigger BD v1 `trigger_update_user_question_history` (ya eliminado en la
+    // migración UQH v1→v2 Fase 4). Hacer el upsert aquí causaría doble contabilización.
+    // psychometric_user_question_history SÍ requiere upsert manual: no pasa por el outbox.
 
     // Update psychometric question history
     const psychometricAnswers = savedQuestions.filter(

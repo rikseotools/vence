@@ -68,7 +68,6 @@ export type ConversionEvent = InferSelectModel<typeof schema.conversionEvents>
 export type FraudAlert = InferSelectModel<typeof schema.fraudAlerts>
 export type AiVerificationResult = InferSelectModel<typeof schema.aiVerificationResults>
 export type HotArticle = InferSelectModel<typeof schema.hotArticles>
-export type UserQuestionHistory = InferSelectModel<typeof schema.userQuestionHistory>
 export type DeletedUsersLog = InferSelectModel<typeof schema.deletedUsersLog>
 export type AiChatLog = InferSelectModel<typeof schema.aiChatLogs>
 export type VerificationQueue = InferSelectModel<typeof schema.verificationQueue>
@@ -195,11 +194,6 @@ export type Database = {
         Row: HotArticle
         Insert: Partial<HotArticle>
         Update: Partial<HotArticle>
-      }
-      user_question_history: {
-        Row: UserQuestionHistory
-        Insert: Partial<UserQuestionHistory>
-        Update: Partial<UserQuestionHistory>
       }
       deleted_users_log: {
         Row: DeletedUsersLog

@@ -1,5 +1,7 @@
 # Roadmap: Migración UQH v1 → v2 (eliminar `user_question_history` duplicada)
 
+> ✅ **MIGRACIÓN COMPLETA 2026-06-02.** v1 (`user_question_history`, 816.552 filas) eliminada de la BD (triggers + funciones + tabla). v2 (`user_question_history_v2`) es ya la única tabla de historial, alimentada por outbox→handler Fargate. Export Drizzle `userQuestionHistory` + tipos derivados eliminados del código. Ver §Fase 4.
+
 > Estado a 2026-06-01. Origen: el cutover outbox (commit `df76c84c`, 30/05 08:28 UTC) desactivó los triggers que escribían `user_question_history` (v1). El handler Fargate (vía outbox) escribe solo `user_question_history_v2`. v1 quedó congelada → se añadió un **bridge temporal** que la mantiene al día mientras se migran los lectores.
 
 ## Arquitectura actual
@@ -37,7 +39,10 @@ Cada uno: repointar a `userQuestionHistoryV2`. Paridad verificada (usuario más 
 - [ ] `db/schema.ts`: el export `userQuestionHistory` (v1, línea ~1348) se DEJÓ (inocuo; nadie lo importa salvo un comentario). Quitarlo opcionalmente junto al DROP.
 - [ ] **DEPLOY de `ad1aedb4`** → el bridge deja de correr (v1 se congela, inocuo). Confirmar en logs Fargate que el cron del bridge ya no aparece.
 
-### Paso 2 — SQL (solo tras Paso 1 desplegado; el bridge ya NO escribe v1):
+### Paso 2 — SQL ✅ EJECUTADO 2026-06-02
+v1 antes del DROP: 816.552 filas (congeladas, 0 lectores). Tras el DROP: `to_regclass('public.user_question_history')` = null; v2 intacta y fresca (816.878 filas, lag 8s — el outbox handler sigue escribiéndola). Export `userQuestionHistory` + tipo `UserQuestionHistory` eliminados de `db/schema.ts` y `types/database.types.ts`; comentario obsoleto en `official-exams/complete` actualizado. typecheck exit 0.
+
+SQL ejecutado:
 ```sql
 -- a) triggers v1 desactivados en test_questions
 DROP TRIGGER IF EXISTS trigger_update_user_question_history_correct ON test_questions;

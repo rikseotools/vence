@@ -1345,41 +1345,9 @@ export const paymentSettlements = pgTable("payment_settlements", {
 	pgPolicy("Allow public update on payment_settlements", { as: "permissive", for: "update", to: ["public"] }),
 ]);
 
-export const userQuestionHistory = pgTable("user_question_history", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	questionId: uuid("question_id").notNull(),
-	totalAttempts: integer("total_attempts").default(0),
-	correctAttempts: integer("correct_attempts").default(0),
-	successRate: numeric("success_rate", { precision: 3, scale:  2 }).default('0.00'),
-	personalDifficulty: difficultyLevel("personal_difficulty").default('medium'),
-	firstAttemptAt: timestamp("first_attempt_at", { withTimezone: true, mode: 'string' }),
-	lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true, mode: 'string' }),
-	trend: varchar({ length: 20 }).default('stable'),
-	trendCalculatedAt: timestamp("trend_calculated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_user_question_history_difficulty").using("btree", table.personalDifficulty.asc().nullsLast().op("enum_ops")),
-	index("idx_user_question_history_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
-	index("idx_user_question_history_success_rate").using("btree", table.successRate.asc().nullsLast().op("numeric_ops")),
-	index("idx_user_question_history_trend").using("btree", table.trend.asc().nullsLast().op("text_ops")),
-	index("idx_user_question_history_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.questionId],
-			foreignColumns: [questions.id],
-			name: "user_question_history_question_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_question_history_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("user_question_history_user_id_question_id_key").on(table.userId, table.questionId),
-	pgPolicy("Users can view their own question history", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Allow trigger inserts for question history", { as: "permissive", for: "insert", to: ["public"] }),
-	pgPolicy("Allow trigger updates for question history", { as: "permissive", for: "update", to: ["public"] }),
-]);
+// user_question_history (v1) ELIMINADA 2026-06-02 (migración UQH v1→v2 Fase 4).
+// Reemplazada por userQuestionHistoryV2 (alimentada por outbox→handler Fargate).
+// Ver docs/roadmap/uqh-v1-v2-migracion.md
 
 // UQH v2 — versión post-cutover outbox (2026-05-30). Mismo schema que v1 con
 // dos diferencias: total_attempts/correct_attempts NOT NULL, personal_difficulty
