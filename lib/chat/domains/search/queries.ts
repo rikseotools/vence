@@ -2,8 +2,8 @@
 // Queries tipadas para búsqueda de artículos
 
 import { createClient } from '@supabase/supabase-js'
-import { getDb } from '@/db/client'
-import { articles, laws } from '@/db/schema'
+import { getDb, getReadDb } from '@/db/client'
+import { articles, laws, topics, topicScope } from '@/db/schema'
 import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 import { createGlobalCache } from '@/lib/cache/globalCache'
@@ -541,78 +541,47 @@ export async function searchArticlesForPattern(
 export async function findLawByName(
   name: string
 ): Promise<{ id: string; shortName: string; name: string } | null> {
-  // 1. Primero intentar exact match por short_name (más preciso)
-  const { data: exactMatch } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name')
-    .eq('short_name', name)
-    .eq('is_derogated', false)
-    .limit(1)
-    .single()
+  const db = getReadDb()
+  const sel = { id: laws.id, short_name: laws.shortName, name: laws.name }
+  const result = (r: { id: string; short_name: string; name: string }) => ({
+    id: r.id, shortName: r.short_name, name: r.name,
+  })
 
+  // 1. Primero intentar exact match por short_name (más preciso)
+  const exactMatch = (await db.select(sel).from(laws)
+    .where(and(eq(laws.shortName, name), eq(laws.isDerogated, false))).limit(1))[0]
   if (exactMatch) {
     logger.debug(`🔎 findLawByName: exact match for "${name}" → ${exactMatch.short_name}`, { domain: 'search' })
-    return {
-      id: exactMatch.id,
-      shortName: exactMatch.short_name,
-      name: exactMatch.name,
-    }
+    return result(exactMatch)
   }
 
   // 2. Si no hay exact match, intentar case-insensitive exact
-  const { data: ciExact } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name')
-    .ilike('short_name', name)
-    .eq('is_derogated', false)
-    .limit(1)
-    .single()
-
+  const ciExact = (await db.select(sel).from(laws)
+    .where(and(ilike(laws.shortName, name), eq(laws.isDerogated, false))).limit(1))[0]
   if (ciExact) {
     logger.debug(`🔎 findLawByName: case-insensitive match for "${name}" → ${ciExact.short_name}`, { domain: 'search' })
-    return {
-      id: ciExact.id,
-      shortName: ciExact.short_name,
-      name: ciExact.name,
-    }
+    return result(ciExact)
   }
 
   // 3. Fallback: fuzzy search (solo si no hay match exacto)
-  const { data: fuzzyMatch } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name')
-    .or(`short_name.ilike.%${name}%,name.ilike.%${name}%`)
-    .eq('is_derogated', false)
-    .limit(1)
-    .single()
-
+  const fuzzyMatch = (await db.select(sel).from(laws)
+    .where(and(
+      or(ilike(laws.shortName, `%${name}%`), ilike(laws.name, `%${name}%`)),
+      eq(laws.isDerogated, false),
+    )).limit(1))[0]
   if (fuzzyMatch) {
     logger.debug(`🔎 findLawByName: fuzzy match for "${name}" → ${fuzzyMatch.short_name}`, { domain: 'search' })
-    return {
-      id: fuzzyMatch.id,
-      shortName: fuzzyMatch.short_name,
-      name: fuzzyMatch.name,
-    }
+    return result(fuzzyMatch)
   }
 
   // 4. Para refs tipo "LO 2/1979", "RD 366/2007", etc., buscar solo por "número/año" en name
   const numYearMatch = name.match(/\d+\/\d{4}/)
   if (numYearMatch) {
-    const { data: numYearResult } = await getSupabase()
-      .from('laws')
-      .select('id, short_name, name')
-      .ilike('name', `%${numYearMatch[0]}%`)
-      .eq('is_derogated', false)
-      .limit(1)
-      .single()
-
+    const numYearResult = (await db.select(sel).from(laws)
+      .where(and(ilike(laws.name, `%${numYearMatch[0]}%`), eq(laws.isDerogated, false))).limit(1))[0]
     if (numYearResult) {
       logger.debug(`🔎 findLawByName: num/year match for "${name}" → ${numYearResult.short_name}`, { domain: 'search' })
-      return {
-        id: numYearResult.id,
-        shortName: numYearResult.short_name,
-        name: numYearResult.name,
-      }
+      return result(numYearResult)
     }
   }
 
@@ -629,25 +598,23 @@ export async function getOposicionLawIds(userOposicion: string): Promise<string[
   const positionType = ID_TO_POSITION_TYPE[userOposicion]
   if (!positionType) return []
 
+  const db = getReadDb()
+
   // Obtener topics de esta oposición
-  const { data: topics } = await getSupabase()
-    .from('topics')
-    .select('id')
-    .eq('position_type', positionType)
+  const topicRows = await db.select({ id: topics.id }).from(topics)
+    .where(eq(topics.positionType, positionType))
 
-  if (!topics || topics.length === 0) return []
+  if (topicRows.length === 0) return []
 
-  const topicIds = topics.map(t => t.id)
+  const topicIds = topicRows.map(t => t.id)
 
   // Obtener leyes de estos topics
-  const { data: scopes } = await getSupabase()
-    .from('topic_scope')
-    .select('law_id')
-    .in('topic_id', topicIds)
+  const scopes = await db.select({ law_id: topicScope.lawId }).from(topicScope)
+    .where(inArray(topicScope.topicId, topicIds))
 
-  if (!scopes || scopes.length === 0) return []
+  if (scopes.length === 0) return []
 
-  return [...new Set(scopes.map(s => s.law_id))]
+  return [...new Set(scopes.map(s => s.law_id).filter((id): id is string => !!id))]
 }
 
 /**
@@ -879,55 +846,32 @@ export async function findArticleInLaw(
 } | null> {
   logger.debug(`🔎 findArticleInLaw: searching ${lawShortName} art. ${articleNumber}`, { domain: 'search' })
 
-  // Primero buscar la ley
-  const { data: law } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name')
-    .eq('short_name', lawShortName)
-    .eq('is_active', true)
-    .single()
+  const db = getReadDb()
+  const lawSel = { id: laws.id, short_name: laws.shortName, name: laws.name }
 
-  if (!law) {
-    // Intentar búsqueda case-insensitive
-    const { data: lawCI } = await getSupabase()
-      .from('laws')
-      .select('id, short_name, name')
-      .ilike('short_name', lawShortName)
-      .eq('is_active', true)
-      .single()
-
-    if (!lawCI) {
-      logger.debug(`🔎 findArticleInLaw: law not found: ${lawShortName}`, { domain: 'search' })
-      return null
-    }
+  // Primero buscar la ley (exact short_name) y, si no, case-insensitive
+  let effectiveLaw = (await db.select(lawSel).from(laws)
+    .where(and(eq(laws.shortName, lawShortName), eq(laws.isActive, true))).limit(1))[0]
+  if (!effectiveLaw) {
+    effectiveLaw = (await db.select(lawSel).from(laws)
+      .where(and(ilike(laws.shortName, lawShortName), eq(laws.isActive, true))).limit(1))[0]
   }
 
-  const effectiveLaw = law || (await getSupabase()
-    .from('laws')
-    .select('id, short_name, name')
-    .ilike('short_name', lawShortName)
-    .eq('is_active', true)
-    .single()).data
+  if (!effectiveLaw) {
+    logger.debug(`🔎 findArticleInLaw: law not found: ${lawShortName}`, { domain: 'search' })
+    return null
+  }
 
-  if (!effectiveLaw) return null
+  const artSel = { id: articles.id, article_number: articles.articleNumber, title: articles.title, content: articles.content }
 
   // Buscar el artículo en esa ley
-  const { data: article } = await getSupabase()
-    .from('articles')
-    .select('id, article_number, title, content')
-    .eq('law_id', effectiveLaw.id)
-    .eq('article_number', articleNumber)
-    .single()
+  let article = (await db.select(artSel).from(articles)
+    .where(and(eq(articles.lawId, effectiveLaw.id), eq(articles.articleNumber, articleNumber))).limit(1))[0]
 
   if (!article) {
     // Intentar con variantes (ej: "9" vs "9.1")
-    const { data: articleFuzzy } = await getSupabase()
-      .from('articles')
-      .select('id, article_number, title, content')
-      .eq('law_id', effectiveLaw.id)
-      .ilike('article_number', `${articleNumber}%`)
-      .limit(1)
-      .single()
+    const articleFuzzy = (await db.select(artSel).from(articles)
+      .where(and(eq(articles.lawId, effectiveLaw.id), ilike(articles.articleNumber, `${articleNumber}%`))).limit(1))[0]
 
     if (!articleFuzzy) {
       logger.debug(`🔎 findArticleInLaw: article ${articleNumber} not found in ${lawShortName}`, { domain: 'search' })
