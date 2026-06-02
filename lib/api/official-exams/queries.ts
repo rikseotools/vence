@@ -116,6 +116,7 @@ const oposicionToExamPosition: Record<string, string> = {
   'auxiliar-administrativo-andalucia': 'auxiliar_administrativo_andalucia',
   'auxiliar-administrativo-valencia': 'auxiliar_administrativo_valencia',
   'auxiliar-administrativo-ayuntamiento-valencia': 'auxiliar_administrativo_ayuntamiento_valencia',
+  'auxiliar-administrativo-ayuntamiento-zaragoza': 'auxiliar_administrativo_ayuntamiento_zaragoza',
   'policia-nacional': 'policia_nacional',
   'guardia-civil': 'guardia_civil',
 }

@@ -821,6 +821,29 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-ayuntamiento-zaragoza/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-ayuntamiento-zaragoza/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2025-06-01',
+        title: 'OEP 2024 — Examen 1 junio 2025',
+        oep: 'OEP 2024',
+        partes: [
+          {
+            id: 'primera',
+            icon: '📘',
+            title: 'Primera prueba (test)',
+            ordinaryCount: 50,
+            reserveCount: 5,
+          },
+          {
+            id: 'supuesto',
+            icon: '📝',
+            title: 'Segunda prueba (supuestos prácticos)',
+            ordinaryCount: 20,
+            reserveCount: 0,
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================
