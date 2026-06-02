@@ -57,6 +57,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo gobierno de canarias',
     'cuerpo auxiliar administracion publica comunidad autonoma canarias',
   ],
+  'auxiliar_administrativo_scs_canarias': [
+    'auxiliar_administrativo_scs_canarias',
+    'auxiliar administrativo scs canarias',
+    'auxiliar administrativo servicio canario de la salud',
+    'grupo auxiliar administrativo de la funcion administrativa',
+  ],
   'auxilio_judicial': [
     'auxilio_judicial',
     'auxilio judicial',
@@ -150,6 +156,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_extremadura': ['auxiliar-administrativo-extremadura'],
   'auxiliar-administrativo-canarias': ['auxiliar-administrativo-canarias'],
   'auxiliar_administrativo_canarias': ['auxiliar-administrativo-canarias'],
+  'auxiliar-administrativo-scs-canarias': ['auxiliar-administrativo-scs-canarias'],
+  'auxiliar_administrativo_scs_canarias': ['auxiliar-administrativo-scs-canarias'],
   'auxiliar-administrativo-valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar_administrativo_valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar-administrativo-ayuntamiento-valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],
