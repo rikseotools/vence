@@ -112,13 +112,15 @@ Por impacto (nº preguntas) y facilidad de sourcing:
 
 - ⚠️ **PENDIENTE (cajón de sastre extremo, sin autopilotar) — Personal Estatutario SERGAS** (`a8b4a1f9`, 419q): NO es una sola ley sino un mega-tema "legislación + temario común SERGAS" que mezcla ~10 normas: **Estatuto Marco Ley 55/2003 (NACIONAL → agnóstico, posible cross-oposición)**, Decreto 206/2005 (provisión), Pacto selección temporal, Decreto 200/1993 (atención primaria), Decreto 198/2010 (admin electrónica), Ley 1/2016 (transparencia), Ley 16/2010 (organización admin Galicia), Ley 1/1983 (Xunta y Presidencia), LO 2/1979 (Tribunal Constitucional), Agenda 2030/ODS, FIS/investigación, Manual de Calidad, dominio @sergas.es, tarjeta sanitaria, funciones de celador. Requiere su **propio pase dedicado / workflow** (estructurar por norma; separar lo agnóstico estatal de lo gallego). NO autopiloteado para no hacer chapuza.
 
+- ✅ **Contenedor 30 — Carta Social Europea (revisada)** (`803d9365`, 140q): tratado del Consejo de Europa. Los **31 artículos de la Parte II ya existían** con contenido breve fiel; las 140 preguntas estaban aparcadas en art0. Acciones: (1) **art0 reconvertido en artículo estructural** "Estructura, aceptación, control y disposiciones finales" (firma 1961/revisada 1996, vigor España 1/7/2021, aceptación art A núcleo duro 6 de 9 + 16 arts/63 párrafos, suspensión, control Comité de Expertos Independientes, denuncia tras 5 años + preaviso 6 meses, depósito ante Secretario General Consejo de Europa); (2) **13 artículos enriquecidos** con cifras testeadas (art 2 vacaciones 4 sem + info contrato 2 meses, art 7 edad 15/nocturno 18, art 8 maternidad 14 sem, art 4 igual retribución, arts 1/9/10/11/12/13/16/24/31); (3) **140 preguntas re-distribuidas** por nº de artículo citado → tema → estructural (a0:43 estructurales + resto en arts 1-31). Patrón "redistribución + enriquecimiento" para contenedores cuyos artículos ya existían.
+
 ### ⏸️ PENDIENTE — RESTO PISTA B1 + PISTA C
 
 **PISTA B1 restante — Legislativo sanitario regional (precisión legal crítica, NO cross-oposición).** Por CLAUDE.md **importar el texto contra BOE/BOA/DOG/BOPV oficial**, no redactar de memoria. Varios son "cajón de sastre" (un único artículo vacío mezclando varias normas) y requieren decidir reestructuración:
-  - **Personal Estatutario SERGAS (`a8b4a1f9` 419)** → contenedor 29 pendiente (cajón de sastre extremo, ver arriba).
+  - **Personal Estatutario SERGAS (`a8b4a1f9` 419)** → pendiente (cajón de sastre extremo, ver arriba).
   - Demografía y Economía de Aragón (`9735750a` 188): NO es la Ley 6/2002 sino temario de geografía/economía de Aragón (otro dominio, va con la pista C territorial-aragonesa).
   - Osakidetza planes (`8d912b20` 196 + `0d7e592b` 80 euskera + `fd4108d0` 28 + `9bb8dee7` 24): planes de salud Euskadi.
-  - Igualdad/Violencia Aragón (`877905aa` 67), Carta Social Europea (`803d9365` 140, tratado 1961/1996 — 33 arts).
+  - Igualdad/Violencia Aragón (`877905aa` 67).
 
 **PISTA C — No sanitarias (otras oposiciones, gran volumen).** Dominio distinto:
   - Inglés PN (`f90685a6` 3.494, 14 arts): teoría de gramática/vocabulario inglés.
