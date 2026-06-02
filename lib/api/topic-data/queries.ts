@@ -38,7 +38,6 @@ const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
 
 // Mapa de posición (desde config central)
 
-import { EXAM_POSITION_MAP } from '@/lib/config/exam-positions'
 
 /**
  * Obtiene todos los datos de un tema en una sola llamada
@@ -147,12 +146,9 @@ export async function getTopicFullData(
         (sum, count) => sum + count,
         0,
       )
-      const validExamPositions = EXAM_POSITION_MAP[positionType] || []
-      officialQuestionsCount = questionResults.filter((q) =>
-        q.isOfficialExam &&
-        q.examPosition &&
-        validExamPositions.includes(q.examPosition.toLowerCase()),
-      ).length
+      // Todas las oficiales del scope (de cualquier oposición), igual que el
+      // fetch de "solo oficiales" (filtered-questions) y getTopicAggregatesFromMV.
+      officialQuestionsCount = questionResults.filter((q) => q.isOfficialExam).length
       articlesByLaw = processArticlesByLaw(questionResults, scopeMappings)
     }
 

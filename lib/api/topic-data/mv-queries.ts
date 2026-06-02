@@ -16,7 +16,6 @@
 // edits de questions (ver migration `20260531_fase_d_bis_iter15_*`).
 import { sql } from 'drizzle-orm'
 import type { getDb } from '@/db/client'
-import { EXAM_POSITION_MAP } from '@/lib/config/exam-positions'
 import type {
   ArticlesByLaw,
   DifficultyStats,
@@ -59,19 +58,16 @@ type OfficialRow = {
  * @param db Cliente Drizzle (read-replica o pooler — ambos OK, MVs son
  *           cross-replica idénticas tras REFRESH).
  * @param topicId UUID del tema (NO topic_number).
- * @param positionType Position type interno (no slug) — se resuelve a
- *           validExamPositions vía EXAM_POSITION_MAP para el filtro de
- *           is_official_exam.
+ * @param _positionType Position type interno (no slug). Ya NO se usa para
+ *           filtrar oficiales: el conteo es de TODO el scope (todas las
+ *           posiciones), igual que el fetch de "solo oficiales". Se mantiene
+ *           en la firma por compatibilidad con los callers.
  */
 export async function getTopicAggregatesFromMV(
   db: ReturnType<typeof getDb>,
   topicId: string,
-  positionType: string,
+  _positionType: string,
 ): Promise<TopicAggregates> {
-  const validExamPositions = (EXAM_POSITION_MAP[positionType] ?? []).map((p) =>
-    p.toLowerCase(),
-  )
-
   // Dos PK lookups en paralelo. Cada uno toca su covering UNIQUE INDEX
   // (topic_id, law_id) o (topic_id, exam_position). Ambos < 5ms p50.
   const [byLawResult, officialResult] = await Promise.all([
@@ -111,13 +107,17 @@ export async function getTopicAggregatesFromMV(
     totalQuestions += Number(r.total_questions)
   }
 
-  // Official: sumar solo positions que el position_type acepta. Mismo
-  // filtro que tenía el código antiguo (`validExamPositions.includes(...)`).
+  // Official: TODAS las preguntas oficiales del tema (de la propia oposición Y
+  // de otras), porque el fetch de "solo oficiales" filtra por
+  // `is_official_exam=true` sin restringir por exam_position (ver
+  // filtered-questions/queries.ts: comentario "oficiales de otra oposición").
+  // Contar solo las propias dejaba el toggle OCULTO en oposiciones cuyo único
+  // oficial en el tema venía de leyes compartidas (p.ej. Ayto Zaragoza T2:
+  // 2 propias pero 57 oficiales en scope). Se cuenta todo el scope para que el
+  // conteo cuadre con lo que el filtro realmente sirve.
   let officialQuestionsCount = 0
   for (const r of officialRows) {
-    if (validExamPositions.includes(r.exam_position)) {
-      officialQuestionsCount += Number(r.official_questions)
-    }
+    officialQuestionsCount += Number(r.official_questions)
   }
 
   // articlesByLaw: la misma forma que devolvía processArticlesByLaw, ordenada

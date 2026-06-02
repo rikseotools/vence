@@ -11,6 +11,7 @@ export const OposicionType = {
   AUXILIAR_ADMINISTRATIVO_CARM: 'auxiliar-administrativo-carm',
   AUXILIAR_ADMINISTRATIVO_EXTREMADURA: 'auxiliar-administrativo-extremadura',
   AUXILIAR_ADMINISTRATIVO_VALENCIA: 'auxiliar-administrativo-valencia',
+  AUXILIAR_ADMINISTRATIVO_AYUNTAMIENTO_ZARAGOZA: 'auxiliar-administrativo-ayuntamiento-zaragoza',
   GESTION_ESTADO: 'gestion-estado',
   TRAMITACION_PROCESAL: 'tramitacion-procesal',
   AUXILIO_JUDICIAL: 'auxilio-judicial',
@@ -20,24 +21,20 @@ export const OposicionType = {
 
 export type OposicionType = typeof OposicionType[keyof typeof OposicionType]
 
+// Enum compartido derivado de OposicionType — FUENTE ÚNICA para los 5
+// request-schemas que validan `oposicion`. Antes cada schema tenía su propia
+// lista `z.enum([...])` hardcoded; al desincronizarse (faltaba una oposición en
+// unas y otras), el examen cargaba pero fallaba con 400 en init/save/review.
+// Derivar de OposicionType garantiza que añadir una oposición la habilita en
+// los 5 endpoints a la vez. Test de invariante: officialExamsRegistries.test.ts
+const oposicionEnum = z.enum(
+  Object.values(OposicionType) as [string, ...string[]],
+)
+
 // Request schema for getting official exam questions
 export const getOfficialExamQuestionsRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
-  oposicion: z.enum([
-    OposicionType.ADMINISTRATIVO_ESTADO,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CANARIAS,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CARM,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_EXTREMADURA,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_VALENCIA,
-    OposicionType.GESTION_ESTADO,
-    OposicionType.TRAMITACION_PROCESAL,
-    OposicionType.AUXILIO_JUDICIAL,
-    OposicionType.GUARDIA_CIVIL,
-    OposicionType.POLICIA_NACIONAL,
-  ]),
+  oposicion: oposicionEnum,
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   includeReservas: z.boolean().default(true),
 })
@@ -138,15 +135,7 @@ export type QuestionResult = z.infer<typeof questionResultSchema>
 // Save results request schema
 export const saveOfficialExamResultsRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
-  oposicion: z.enum([
-    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
-    OposicionType.TRAMITACION_PROCESAL,
-    OposicionType.AUXILIO_JUDICIAL,
-    OposicionType.GUARDIA_CIVIL,
-    OposicionType.POLICIA_NACIONAL,
-  ]),
+  oposicion: oposicionEnum,
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   results: z.array(questionResultSchema).min(1, 'Debe haber al menos un resultado'),
   totalTimeSeconds: z.number().int().min(0),
@@ -191,15 +180,7 @@ export type InitOfficialExamQuestion = z.infer<typeof initOfficialExamQuestionSc
 
 export const initOfficialExamRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
-  oposicion: z.enum([
-    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
-    OposicionType.TRAMITACION_PROCESAL,
-    OposicionType.AUXILIO_JUDICIAL,
-    OposicionType.GUARDIA_CIVIL,
-    OposicionType.POLICIA_NACIONAL,
-  ]),
+  oposicion: oposicionEnum,
   // `nullable()` permite que el componente OfficialExamLayout reutilizado por
   // el simulacro envíe `parte: null` (no aplica). En examen oficial sigue
   // siendo 'primera'|'segunda'|'unica'|etc. (válido como union de enum+null).
@@ -394,15 +375,7 @@ export const getOfficialExamFailedQuestionsRequestSchema = z.object({
   userId: z.string().uuid(),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
-  oposicion: z.enum([
-    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
-    OposicionType.TRAMITACION_PROCESAL,
-    OposicionType.AUXILIO_JUDICIAL,
-    OposicionType.GUARDIA_CIVIL,
-    OposicionType.POLICIA_NACIONAL,
-  ]),
+  oposicion: oposicionEnum,
 })
 
 export type GetOfficialExamFailedQuestionsRequest = z.infer<typeof getOfficialExamFailedQuestionsRequestSchema>
@@ -456,15 +429,7 @@ export const getOfficialExamReviewRequestSchema = z.object({
   userId: z.string().uuid(),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
-  oposicion: z.enum([
-    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
-    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
-    OposicionType.TRAMITACION_PROCESAL,
-    OposicionType.AUXILIO_JUDICIAL,
-    OposicionType.GUARDIA_CIVIL,
-    OposicionType.POLICIA_NACIONAL,
-  ]),
+  oposicion: oposicionEnum,
 })
 
 export type GetOfficialExamReviewRequest = z.infer<typeof getOfficialExamReviewRequestSchema>

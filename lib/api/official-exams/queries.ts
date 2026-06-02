@@ -102,7 +102,7 @@ import type {
 
 // Map oposicion slug to exam_position value (structured field in questions table)
 // TODO: Derivar de lib/config/exam-positions.ts
-const oposicionToExamPosition: Record<string, string> = {
+export const oposicionToExamPosition: Record<string, string> = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
   'auxiliar-administrativo-madrid': 'auxiliar_administrativo_madrid',
   'auxiliar-administrativo-cyl': 'auxiliar_administrativo_cyl',
@@ -230,6 +230,10 @@ export async function getOfficialExamQuestions(
           eq(questions.examPosition, examPosition)
         )
       )
+      // Orden estable = orden de inserción (= orden del examen). Sin esto, las
+      // preguntas salían en orden arbitrario de BD y los supuestos prácticos
+      // se entremezclaban (cabecera de caso saltando entre supuestos).
+      .orderBy(questions.createdAt)
 
     console.log(`✅ [OfficialExams] Found ${legislativeQuestions.length} legislative questions`)
 

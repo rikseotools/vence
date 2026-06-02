@@ -999,6 +999,29 @@ Además de §7.4 (tabla `exam_cases` + `exam_case_id`): en `officialExams[]` la 
 
 Pasar `p_changed_by: null` (o un UUID real), **nunca** un string como `'claude_code'` → error `invalid input syntax for type uuid`. La autoría de Claude se deja en `p_notes`. `reason_code` para activar tras verificación: `'ai_verified_perfect'` (draft → approved es transición legal directa).
 
+### 15.9 Cablear una oposición en el modo «Examen Oficial» = 3 ficheros (y `schemas.ts` tiene 5 enums)
+
+Que la **tarjeta** del examen aparezca solo necesita `lib/config/oposiciones.ts` (`officialExams[]`). Pero el examen **de verdad** valida el slug `oposicion` en varios sitios; faltar uno = `400 "Parámetros inválidos"` en un paso distinto (la tarjeta engaña: sale bien y peta al pulsar «Empezar» o al corregir). Para añadir una oposición hay que tocar:
+
+1. `lib/config/oposiciones.ts` → `officialExams[]` (la tarjeta + el test de coherencia).
+2. `lib/api/official-exams/queries.ts` → mapa `oposicionToExamPosition` (slug → `exam_position`).
+3. `lib/api/official-exams/schemas.ts` → el objeto `OposicionType`. Los 5 request-schemas validan `oposicion` con un **`oposicionEnum` compartido derivado de `OposicionType`** (`z.enum(Object.values(OposicionType))`) — añadir la oposición a `OposicionType` la habilita en los 5 endpoints a la vez. *(Antes había 5 `z.enum([...])` hardcoded duplicados que se desincronizaban: el examen cargaba pero fallaba 400 en init/save/review. Consolidados 02/06/2026.)*
+4. `lib/config/exam-positions.ts` → `EXAM_POSITION_MAP` (positionType → variantes de `exam_position`). Lo exige el **validador de import** (`lib/import/official-exams/validator.ts` §5.5) y la comprobación `isExamPositionRegistered`. **Aunque la oposición no tenga aún oficiales propias, debe estar registrada** (array con su propio `exam_position`).
+
+**Probar el flujo COMPLETO end-to-end**, no solo que salga la tarjeta: cargar preguntas (`/questions`) → iniciar sesión (`/init`) → responder → corregir (`/save-results`) → ver fallos (`/failed-questions`) → revisar (`/review`). Cada uno valida `oposicion`.
+
+**Red de seguridad:** `__tests__/config/officialExamsRegistries.test.ts` es un **invariante** que recorre `OPOSICIONES` y falla si una oposición con `officialExams` no está en los 5 schemas + `oposicionToExamPosition` + `EXAM_POSITION_MAP`. Caza el olvido en CI sin tener que probar a mano. (Cuando lo añadí, destapó que valencia/canarias/carm/extremadura/administrativo-estado ya estaban rotas en init/save/review desde antes.)
+
+### 15.11 El conteo de «preguntas oficiales» del tema cuenta TODO el scope, no solo las de tu oposición
+
+El toggle «Solo preguntas oficiales» de un test por tema aparece si `officialQuestionsCount > 0` (viene de `/api/topics/[numero]`). El **fetch** de ese filtro sirve **todas** las oficiales del scope (`is_official_exam=true`, de cualquier oposición — las leyes compartidas traen oficiales de estado/madrid/etc.; ver `filtered-questions/queries.ts` "oficiales de otra oposición"). El **conteo** debe contar lo mismo: en `lib/api/topic-data/mv-queries.ts` y `queries.ts` se suma TODO `topic_official_by_position` (no se filtra por `EXAM_POSITION_MAP`). Si se filtra por la oposición propia, el toggle queda oculto en oposiciones cuyo único oficial en el tema viene de leyes compartidas (caso Ayto Zaragoza T2: 2 propias pero 57 en scope → el toggle no salía). Conteo y fetch deben estar alineados.
+
+### 15.10 Los supuestos prácticos se rompen visualmente sin orden determinista
+
+`getOfficialExamQuestions` **no tenía `ORDER BY`** → las preguntas salían en orden arbitrario de BD. `OfficialExamLayout` pinta la cabecera del supuesto **cada vez que el `examCaseId` cambia respecto a la pregunta anterior**; si las de dos casos vienen entremezcladas, la cabecera salta y cada supuesto aparece **partido en trozos** (síntoma: «un supuesto con 1 pregunta y otro con muchas», aunque cada uno tenga sus 10). No era un problema de datos, era de orden.
+
+**Regla:** (1) insertar las preguntas de supuesto **en orden de examen y agrupadas por caso** (caso 1 completo, luego caso 2…); (2) que el fetch ordene de forma estable — se añadió `.orderBy(questions.createdAt)`. Como las preguntas de supuesto **no se reutilizan** en otros tests (las excluye el filtro `exam_case_id`, §7.4.bis), su `created_at` = orden de inserción = orden de examen, estable. Las preguntas de test normales no necesitan este cuidado: su orden en el examen da igual porque se reutilizan por `topic_scope`/artículo en tests por tema.
+
 ---
 
 ## Manuales relacionados
