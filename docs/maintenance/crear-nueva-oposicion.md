@@ -1674,6 +1674,35 @@ Ejemplo real: al añadir Dip. León (25 temas), **no hubo que crear ninguna ley 
 
 ---
 
+## Lecciones aprendidas creando Aux. Admin. SCS Canarias (jun 2026)
+
+Primera oposición **sanitaria estatutaria** creada de cero (22 temas, 12 con banco heredado + 10 generados con IA, incluidos 4 decretos canarios y 2 temas genéricos). Aprendizajes que corrigen o completan estos manuales:
+
+### 1. `scope='regional'`, NO `'autonomic'`, al crear leyes
+El check constraint de `laws.scope` admite `'national' | 'regional' | 'local' | 'eu'`. El ejemplo del Paso 1 de **`monitoreo-boe-y-crear-leyes-nuevas.md`** comenta `'autonomic'` — es incorrecto y **rompe el INSERT**. Para una ley/decreto autonómico usar `scope: 'regional'`.
+
+### 2. Decretos autonómicos (BOC/DOG/DOGC…) NO están en el consolidado del BOE
+El flujo "crear ley nueva" de `monitoreo-boe-…` asume `boe_url` + `/api/verify-articles/sync-all` (parsea boe.es). Los **decretos autonómicos no suelen estar en el consolidado del BOE** → el sync no encuentra artículos. Hay que **crear los artículos a mano** (INSERT en `articles` con el texto literal extraído del BOC oficial). Mismo resultado: ley + artículos + `topic_scope`, pero sin sync. Verificar el texto contra el PDF oficial del boletín autonómico (Libro Azul / sede del Gobierno autonómico), nunca academias.
+
+### 3. El temario puede estar en un boletín ANTERIOR referenciado por la convocatoria
+En categorías estatutarias (SCS y otros servicios de salud), la **convocatoria no incluye el temario en su anexo**: su Anexo de temarios **remite a una Resolución/BOC anterior** que aprobó los programas (caso SCS: convocatoria BOC 116/2025 → temario en BOC 117/2019). En FASE 1, tras localizar la convocatoria, **buscar a qué norma remite el anexo de temarios** y extraer el programa de ahí.
+
+### 4. `transition_question_state` exige los CUATRO checks `=true` (incluido `options_ok`)
+El RPC de promoción a `approved` requiere una verificación con `article_ok + answer_ok + options_ok + explanation_ok` **todos true**. El ejemplo del **Paso 8 de `generar-preguntas-con-ia.md`** solo escribe 3 (`article_ok/answer_ok/explanation_ok`) → hoy la promoción **falla** (`AI promotion blocked: lacks a complete passing verification`). Incluir siempre `options_ok: true` en el upsert a `ai_verification_results`.
+
+### 5. Preguntas "intruso": opciones reales también literales + un bullet por distractor
+`generar-preguntas-con-ia.md` §2.2 exige literalidad de la **opción correcta**. Pero en preguntas tipo "¿cuál NO figura?", el auditor Sonnet rechaza (con razón) que las **3 opciones que SÍ reproducen el artículo** estén truncadas: el opositor debe poder verificarlas contra la ley. Regla práctica: **toda opción que cite el artículo va en literal íntegro, sea correcta o distractor**. Y en la explicación, **un bullet por cada distractor** (no agrupar "B), C) y D)…").
+
+### 6. Temas genéricos sin ley → crear una "ley virtual" de contenido de referencia
+Para temas estándar sin norma concreta (suministros/almacén, nómina, atención al público), el patrón de las leyes virtuales de ofimática es replicable: crear una **ley virtual** (`type='law'`, `scope='national'`, `boe_url=null`, `verification_status='actualizada'`) con **artículos de contenido de referencia fiel** (conceptos administrativos estándar), mapear `topic_scope` y generar preguntas contra ese contenido. La auditoría pasa a ser de **coherencia interna** (no hay fuente legal literal); avisar de que no hay respaldo normativo. Caso SCS: ley virtual `gestion-administrativa-suministros-nomina` (art 1 suministros, art 2 nómina) para T16 y T18.
+
+### 7. Multi-convocatoria: una fila `oposiciones` = la convocatoria VIGENTE
+Cuando una oposición encadena convocatorias (p. ej. OEP 2024 ya celebrada + OEP nueva), la fila debe reflejar **solo la convocatoria vigente** (`convocatoria_numero`, plazas, `exam_date`). Los hitos de la convocatoria ANTERIOR **se borran de `convocatoria_hitos`** (su historia queda en `officialExams` de `oposiciones.ts`); si se dejan, aparecen `order_index` duplicados y el test `oposicionesDataConsistency` falla (hito #1 con plazas viejas, exam_date ≠ hito examen). Ver `oeps-convocatorias-seguimiento.md` §4d (reindexar) y §4e (hitos = solo hechos de la convocatoria vigente). Tras limpiar, reindexar `order_index` secuencial por fecha.
+
+> **Pendientes de portar a su manual** (no editados aquí por estar esas guías en edición paralela): lecciones 1-2 → `monitoreo-boe-y-crear-leyes-nuevas.md`; lecciones 4-5 → `generar-preguntas-con-ia.md`; lección 7 → `oeps-convocatorias-seguimiento.md`.
+
+---
+
 ## Manuales relacionados
 
 Crear una oposición encadena con el resto del flujo de contenido:
