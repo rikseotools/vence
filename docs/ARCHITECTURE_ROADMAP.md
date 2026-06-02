@@ -1138,8 +1138,8 @@ Si una ruta aparece en logs de muchas paginas no relacionadas, sospechar de comp
 **Lección importante aprendida (commit `932c15d0`)**: en `ai/create-test` eliminé el helper `getSupabase` asumiendo (por grep parcial) que solo se usaba para auth. TypeScript cazó el error: se usaba para 10+ queries BD. Ajusté proceso: Read del archivo COMPLETO, grep de TODAS las apariciones, mantener declaración si se usa fuera del bloque auth, TS check después de cada archivo individual (no acumulado).
 
 **Pendientes — solo client-side** (`'use client'`, no migrables a `verifyJwtLocal` porque requiere `SUPABASE_JWT_SECRET` server-only):
-- `lib/services/emailTracker.ts` — `'use client'`
-- `lib/services/notificationTracker.ts` — `'use client'`
+- ~~`lib/services/emailTracker.ts`~~ — BORRADO 02/06 (dead-code, ver roadmap agnosticismo)
+- ~~`lib/services/notificationTracker.ts`~~ — BORRADO 02/06 (dead-code, ver roadmap agnosticismo)
 - `lib/testFetchers.ts` — usa `getSupabaseClient` (browser SDK), consumido desde browser
 - `lib/supabase.ts` — es THE cliente Supabase del browser
 - `app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx` — `'use client'`
