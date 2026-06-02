@@ -1565,7 +1565,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2016-05-15',
         title: 'Convocatoria 2014 — preguntas vigentes (Modelo A)',
         oep: 'OEP 2014 (BOC 186/2014)',
-        note: 'Del examen oficial del 15/05/2016 (Grupo Auxiliar Administrativo de la Función Administrativa, Modelo A) se importaron 73 preguntas con normativa vigente. Tras revisión una a una (cada una vinculada a su artículo contenedor real + auditoría independiente), se sirven las 60 verificadas; 13 quedan retiradas (desfase normativo, respuesta dudosa o no fundamentables en un artículo concreto). Se excluyeron además las preguntas sobre normas derogadas.',
+        note: 'Del examen oficial del 15/05/2016 (Grupo Auxiliar Administrativo de la Función Administrativa, Modelo A) se importaron 73 preguntas con normativa vigente. Tras revisión una a una (cada una vinculada a su artículo contenedor real + auditoría independiente), se sirven las 68 verificadas; 5 quedan retiradas (3 desfasadas o mal planteadas + 2 no fundamentables en un artículo concreto). Se excluyeron además las preguntas sobre normas derogadas.',
         partes: [
           {
             id: 'unica',
@@ -1574,7 +1574,7 @@ export const OPOSICIONES: Oposicion[] = [
             ordinaryCount: 73,
             reserveCount: 0,
             durationMin: 180,
-            breakdown: [{ label: 'preguntas vigentes (60 verificadas y disponibles + 13 en revisión)', count: 73 }],
+            breakdown: [{ label: 'preguntas vigentes (68 verificadas y disponibles + 5 en revisión)', count: 73 }],
           },
         ],
       },
