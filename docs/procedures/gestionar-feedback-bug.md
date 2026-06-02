@@ -11,10 +11,21 @@ Antes de aplicar la metodología, mira el campo `user_feedback.type`. No todos l
 | `type` | Runbook |
 |---|---|
 | `account_deletion` | **`docs/maintenance/eliminacion-cuentas.md`** — investigación + `deletion_reason` exhaustivo + `/api/admin/delete-user`. NO uses este manual. |
+| **Facturación: cancelar suscripción / le han cobrado / reembolso / darse de baja** (cualquier `type`; suele venir como `other`) | **`docs/procedures/reembolsos.md`** — la metodología de investigación es la de este manual, pero el flujo de acción (Stripe + cancelar sub + degradar + audit) es el de reembolsos. La **decisión de reembolso es de Manuel**. |
 | `email` (reply a newsletter/aviso) | Este manual + sección "Email threading" más abajo para mantener el hilo en Gmail. |
 | `bug`, `other`, resto | Este manual. |
 
 Si el feedback es `account_deletion`, **detente y abre el manual de eliminación**. El flujo es distinto (RGPD Art. 17 + retención contable) y exige `deletion_reason` con journey completo antes de ejecutar nada.
+
+Si el feedback es de **facturación**, el estado real está en **Stripe**, no en la BD: `user_subscriptions`/`payment_settlements` pueden estar desincronizadas (p.ej. la BD marca la suscripción activa hasta fin de periodo cuando en Stripe ya está cerrada, o no refleja un cargo ya reembolsado). Verifica SIEMPRE facturas + charges + refunds en Stripe (`docs/procedures/reembolsos.md` §0 y TRAMPA #5) antes de prometer o diagnosticar nada.
+
+## Paso 0: ¿YA está respondido / resuelto? (mirar ANTES de redactar nada)
+
+Un feedback con `status='pending'` **NO significa que esté sin atender** — puede estar respondido y resuelto pero sin cerrar. Antes de redactar, busca la respuesta en la tabla correcta:
+
+- **`user_feedback.admin_response`** (campo de texto): aquí está la respuesta del admin. **Mirar SIEMPRE este campo primero** — la respuesta NO siempre se guarda en `feedback_messages`.
+- **`feedback_messages`** (si hay hilo): columnas `is_admin` + `sender_id` + `message` — **NO `sender_type`** (consultar con una columna inexistente puede devolver vacío sin error y hacerte creer que no hay respuesta). El `conversation_id` del mensaje puede no coincidir con el de `feedback_conversations`; cruza por `user_id`/`feedback_id`, no asumas el link.
+- Si ya está respondido y atendido, **no mandes otra respuesta**: cierra con `finalStatus:'resolved'` sin `message` (cierre silencioso, §Paso 10 caso B).
 
 ## Paso 1: Identificar al usuario y contexto
 
