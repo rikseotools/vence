@@ -22,7 +22,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 // 60s holgado: 50 users × ~200ms/user = ~10s real. Margen amplio.
@@ -78,23 +79,18 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckStatsDriftR
   const startTime = Date.now()
   const sampleSize = Number(new URL(request.url).searchParams.get('sample') ?? DEFAULT_SAMPLE_SIZE)
 
-  // Service role: la función SQL es SECURITY DEFINER pero el role anon
-  // no tiene EXECUTE permission. Usamos service_role para llamarla.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  // getAdminDb() = Drizzle/DATABASE_URL (bypass RLS, equivalente al
+  // service_role). La función SQL es SECURITY DEFINER; anon no tiene EXECUTE.
+  const db = getAdminDb()
 
   try {
     console.log(`🔍 [DriftCheck] Iniciando con sample_size=${sampleSize}`)
 
-    // Llamada principal a la función SQL
-    const { data: rpcResult, error: rpcError } = await supabase
-      .rpc('check_stats_drift', { p_sample_size: sampleSize })
-
-    if (rpcError) throw new Error(`RPC failed: ${rpcError.message}`)
-
-    // RETURNS TABLE devuelve array con una fila
+    // Llamada principal a la función SQL (RETURNS TABLE → array de filas).
+    // Un error de la RPC lanza → lo captura el catch externo (500 + Sentry),
+    // igual que el `throw` anterior.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpcResult = (await db.execute(sql`SELECT * FROM check_stats_drift(${sampleSize})`)) as any[]
     const summary = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult
     const checked = Number(summary?.checked ?? 0)
     const driftsFound = Number(summary?.drifts_found ?? 0)
@@ -102,18 +98,23 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckStatsDriftR
     const durationMs = Number(summary?.duration_ms ?? 0)
 
     // Recoger las divergencias significativas (drift_pct > umbral) que
-    // se acaban de escribir, para alertar a Sentry y devolver en payload
+    // se acaban de escribir, para alertar a Sentry y devolver en payload.
+    // stats_drift_log no está tipada en Drizzle → raw SQL. La lectura es
+    // NO-fatal (try/catch local): si falla, el cron sigue siendo success.
     const cutoffTime = new Date(startTime).toISOString()
-    const { data: significant, error: selError } = await supabase
-      .from('stats_drift_log')
-      .select('target_table, field_name, drift_pct')
-      .gte('checked_at', cutoffTime)
-      .gt('drift_pct', ALERT_DRIFT_PCT_THRESHOLD)
-      .order('drift_pct', { ascending: false })
-      .limit(100)
-
-    if (selError) {
-      console.warn('[DriftCheck] No se pudo leer stats_drift_log:', selError.message)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let significant: any[] = []
+    try {
+      significant = (await db.execute(sql`
+        SELECT target_table, field_name, drift_pct
+        FROM stats_drift_log
+        WHERE checked_at >= ${cutoffTime}
+          AND drift_pct > ${ALERT_DRIFT_PCT_THRESHOLD}
+        ORDER BY drift_pct DESC
+        LIMIT 100
+      `)) as any[]
+    } catch (selError) {
+      console.warn('[DriftCheck] No se pudo leer stats_drift_log:', (selError as Error).message)
     }
 
     const significantDrifts = significant?.length ?? 0
