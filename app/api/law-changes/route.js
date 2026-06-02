@@ -1,12 +1,14 @@
 // app/api/law-changes/route.js
-import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
+import { getAdminDb } from '@/db/client'
+import { laws as lawsTable } from '@/db/schema'
+import { and, eq, or, isNull, isNotNull } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 /**
  * Limpia elementos dinámicos del HTML para generar un hash estable
@@ -129,18 +131,30 @@ async function _GET(request) {
     const lawShortName = searchParams.get('law')
     const readonly = searchParams.get('readonly') === 'true'
 
-    // Si se especifica una ley, verificar solo esa
-    let query = getSupabase()
-      .from('laws')
-      .select('id, short_name, name, boe_url, content_hash, last_checked, change_status, last_update_boe')
-      .not('boe_url', 'is', null)
-      .or('is_derogated.is.null,is_derogated.eq.false') // Excluir leyes derogadas
-
-    if (lawShortName) {
-      query = query.eq('short_name', lawShortName)
+    // Si se especifica una ley, verificar solo esa. Excluir leyes derogadas.
+    let laws = []
+    let error = null
+    try {
+      laws = await db()
+        .select({
+          id: lawsTable.id,
+          short_name: lawsTable.shortName,
+          name: lawsTable.name,
+          boe_url: lawsTable.boeUrl,
+          content_hash: lawsTable.contentHash,
+          last_checked: lawsTable.lastChecked,
+          change_status: lawsTable.changeStatus,
+          last_update_boe: lawsTable.lastUpdateBoe,
+        })
+        .from(lawsTable)
+        .where(and(
+          isNotNull(lawsTable.boeUrl),
+          or(isNull(lawsTable.isDerogated), eq(lawsTable.isDerogated, false)),
+          lawShortName ? eq(lawsTable.shortName, lawShortName) : undefined,
+        ))
+    } catch (e) {
+      error = e
     }
-
-    const { data: laws, error } = await query
 
     if (error) {
       return Response.json({ error: 'Error obteniendo leyes' }, { status: 500 })
@@ -257,30 +271,30 @@ async function _GET(request) {
 
         // Si hay cambios reales, marcar como changed
         if (hasChanged) {
-          await getSupabase()
-            .from('laws')
-            .update({
-              content_hash: currentHash,
-              last_update_boe: currentLastUpdate || law.last_update_boe, // Preservar fecha existente si no hay nueva
-              last_checked: new Date().toISOString(),
-              change_status: 'changed',
-              change_detected_at: new Date().toISOString()
+          await db()
+            .update(lawsTable)
+            .set({
+              contentHash: currentHash,
+              lastUpdateBoe: currentLastUpdate || law.last_update_boe, // Preservar fecha existente si no hay nueva
+              lastChecked: new Date().toISOString(),
+              changeStatus: 'changed',
+              changeDetectedAt: new Date().toISOString()
             })
-            .eq('id', law.id)
+            .where(eq(lawsTable.id, law.id))
 
           result.changeStatus = 'changed'
           result.newChangeDetected = true
         } else {
           // NO hay cambios reales: solo actualizar hash y fecha sin cambiar el estado
-          await getSupabase()
-            .from('laws')
-            .update({
-              content_hash: currentHash,
-              last_update_boe: currentLastUpdate || law.last_update_boe, // Preservar fecha existente si no hay nueva
-              last_checked: new Date().toISOString()
+          await db()
+            .update(lawsTable)
+            .set({
+              contentHash: currentHash,
+              lastUpdateBoe: currentLastUpdate || law.last_update_boe, // Preservar fecha existente si no hay nueva
+              lastChecked: new Date().toISOString()
               // NO tocamos change_status para preservar "reviewed"
             })
-            .eq('id', law.id)
+            .where(eq(lawsTable.id, law.id))
           
           // Mantener el estado actual (reviewed, changed, etc.)
           result.changeStatus = law.change_status || 'none'
@@ -329,13 +343,18 @@ async function _POST(request) {
     const { action, lawId } = body
 
     if (action === 'mark_reviewed' && lawId) {
-      const { error } = await getSupabase()
-        .from('laws')
-        .update({
-          change_status: 'reviewed',
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', lawId)
+      let error = null
+      try {
+        await db()
+          .update(lawsTable)
+          .set({
+            changeStatus: 'reviewed',
+            reviewedAt: new Date().toISOString()
+          })
+          .where(eq(lawsTable.id, lawId))
+      } catch (e) {
+        error = e
+      }
 
       if (error) {
         return Response.json({ error: 'Error marcando como revisado' }, { status: 500 })
