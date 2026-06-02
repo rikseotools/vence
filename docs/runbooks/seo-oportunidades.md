@@ -8,6 +8,12 @@ similar. Datos de **Google Search Console** (ya conectado por API, ver
 > Relacionado: `docs/runbooks/google-ads-analisis.md` (Ads). Ads y SEO son cosas
 > distintas — **el dinero de Ads NO sube tu posición orgánica** (Google lo dice oficial).
 > SEO se sube con CONTENIDO + enlaces, no pagando.
+>
+> **Roadmap de keywords a atacar (análisis competidor testdeley + baseline + auditoría
+> técnica):** `docs/roadmap/seo-keywords-competidores.md`. Lista priorizada de leyes
+> (EBEP 18.100/mes, LPRL, Ley del Gobierno…), baseline de posiciones 02/06/2026 para
+> re-revisar a 1 mes, y los fallos técnicos detectados (sin H1, títulos sin siglas,
+> SSR temario vacío en leyes sin títulos).
 
 ---
 

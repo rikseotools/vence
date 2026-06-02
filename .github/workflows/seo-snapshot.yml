@@ -1,0 +1,45 @@
+name: SEO Snapshot (GSC)
+
+# Snapshot semanal de posición orgánica (Google Search Console) de cada keyword
+# objetivo activa → tabla seo_keyword_snapshots. Construye el histórico para
+# medir progreso SEO y correlacionar acción→ranking.
+#
+# Doc: docs/roadmap/seo-keywords-competidores.md, docs/runbooks/seo-oportunidades.md
+
+on:
+  schedule:
+    # Lunes 05:17 UTC. Semanal (SEO se mueve en semanas, no días). Off-peak y
+    # minuto no-:00 para no coincidir con el resto del planeta.
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call SEO snapshot endpoint
+        id: snap
+        run: |
+          URL="https://www.vence.es/api/cron/seo-snapshot"
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${URL}")
+          echo "Response: $RESPONSE"
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+          SNAP=$(echo "$RESPONSE" | jq -r '.snapshotted // 0')
+          RANK=$(echo "$RESPONSE" | jq -r '.ranking // 0')
+          echo "snapshotted=$SNAP" >> $GITHUB_OUTPUT
+          echo "ranking=$RANK" >> $GITHUB_OUTPUT
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ SEO snapshot endpoint failed"
+            exit 1
+          fi
+
+      - name: Log summary
+        run: |
+          echo "📈 SEO snapshot completado - $(date)"
+          echo "   Keywords snapshotteadas: ${{ steps.snap.outputs.snapshotted }}"
+          echo "   Rankeando (con impresiones): ${{ steps.snap.outputs.ranking }}"

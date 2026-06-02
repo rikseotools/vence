@@ -3866,3 +3866,56 @@ export const userAcquisition = pgTable("user_acquisition", {
 	// RLS habilitado SIN políticas (lockdown vía PostgREST; escritura/lectura por
 	// Drizzle privilegiado). Agnóstico: sin auth.uid(). Ver migración 20260602.
 ]).enableRLS();
+
+// === Seguimiento SEO (keywords objetivo + histórico GSC + bitácora) ===
+// Ver supabase/migrations/20260602_seo_keyword_tracking.sql y
+// docs/roadmap/seo-keywords-competidores.md
+export const seoKeywordTargets = pgTable("seo_keyword_targets", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	keyword: text().notNull(),
+	targetVolume: integer("target_volume"),
+	searchIntent: text("search_intent"),
+	targetSlug: text("target_slug"),
+	targetUrl: text("target_url"),
+	priority: text(),
+	competitor: text(),
+	competitorPosition: numeric("competitor_position"),
+	isActive: boolean("is_active").default(true).notNull(),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	unique("seo_keyword_targets_keyword_key").on(table.keyword),
+	index("idx_seo_targets_priority").using("btree", table.priority.asc().nullsLast().op("text_ops")),
+	index("idx_seo_targets_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
+	index("idx_seo_targets_slug").using("btree", table.targetSlug.asc().nullsLast().op("text_ops")),
+]).enableRLS();
+
+export const seoKeywordSnapshots = pgTable("seo_keyword_snapshots", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	keyword: text().notNull(),
+	capturedOn: date("captured_on").notNull(),
+	position: numeric(),
+	impressions: integer().default(0).notNull(),
+	clicks: integer().default(0).notNull(),
+	ctr: numeric(),
+	source: text().default('gsc').notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	unique("seo_keyword_snapshots_keyword_captured_on_key").on(table.keyword, table.capturedOn),
+	index("idx_seo_snapshots_keyword").using("btree", table.keyword.asc().nullsLast().op("text_ops")),
+]).enableRLS();
+
+export const seoActions = pgTable("seo_actions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	doneOn: date("done_on").defaultNow().notNull(),
+	scopeType: text("scope_type").default('global').notNull(),
+	scopeValue: text("scope_value"),
+	actionType: text("action_type").notNull(),
+	description: text().notNull(),
+	commitSha: text("commit_sha"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_seo_actions_scope").using("btree", table.scopeValue.asc().nullsLast().op("text_ops")),
+	index("idx_seo_actions_done").using("btree", table.doneOn.asc().nullsLast().op("date_ops")),
+]).enableRLS();
