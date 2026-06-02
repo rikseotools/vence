@@ -101,13 +101,16 @@ Por impacto (nº preguntas) y facilidad de sourcing:
 
 ### ✅ TODOS los contenedores clínicos/generales TCAE COMPLETADOS (1-25, ~16.400q)
 
-### ⏸️ PENDIENTE — DOS PISTAS QUE REQUIEREN DECISIÓN (no autopiloteables sin fuente oficial / fuera de dominio sanitario)
+### 🟢 PISTA B1 EN MARCHA — Legislativo sanitario regional (importar norma real contra fuente oficial)
 
-**PISTA B1 — Legislativo sanitario regional (precisión legal crítica, NO cross-oposición).** Son leyes/decretos reales concretos; por CLAUDE.md **hay que importar el texto contra BOE/BOA/DOG/BOPV oficial**, no redactar de memoria. Varios contenedores son "cajón de sastre" (un único artículo vacío mezclando varias normas) y requieren decidir reestructuración:
+- ✅ **Contenedor 26 — SMS Murcia / Ley 3/2009** (`d459c687`): importada contra **BOE-A-2011-2493 consolidado** + Decreto 80/2005 (instrucciones previas) + Decreto 236/2010 (atención al ciudadano). De 1 artículo cajón-de-sastre a **11 artículos** fieles a la estructura de la ley (8 títulos): (1) Disposiciones generales y destinatarios, (2) Ámbitos de protección y derechos básicos arts 9/11, (3) Elección facultativo y segunda opinión arts 12/14, (4) Intimidad/confidencialidad/acompañamiento arts 21/22, (5) Información sanitaria y asistencial arts 29-31, (6) Consentimiento informado y alta arts 41-47, (7) Instrucciones previas arts 50-51+Decreto 80/2005, (8) Documentación sanitaria HC/alta/certificados arts 53-62 (conservación 20 años), (9) Deberes art 63, (10) Protección y líneas de actuación Título VIII, (11) Decreto 236/2010. **88 preguntas re-distribuidas** (a1:6 a2:2 a3:8 a4:12 a5:8 a6:7 a7:14 a8:16 a9:3 a10:3 a11:9). Gotcha del router: el propio título "derechos y **deberes**" contamina el matching → hay que strip del boilerplate del nombre de la ley antes de enrutar. Patrón B1 validado: estructura oficial vía WebFetch BOE consolidado + respuestas verificadas del banco oficial → insertar arts reales → re-distribuir.
+
+### ⏸️ PENDIENTE — RESTO PISTA B1 + PISTA C
+
+**PISTA B1 restante — Legislativo sanitario regional (precisión legal crítica, NO cross-oposición).** Por CLAUDE.md **importar el texto contra BOE/BOA/DOG/BOPV oficial**, no redactar de memoria. Varios son "cajón de sastre" (un único artículo vacío mezclando varias normas) y requieren decidir reestructuración:
   - SERGAS Galicia (`a8b4a1f9` 419 + `d73d21ee` 193): mezcla Decreto 206/2005 provisión, Decreto 200/1993 atención primaria, FIS, Agenda 2030… → cajón de sastre.
   - SALUD Aragón (`e3e6e305` 317 + `9735750a` 188 demografía): Ley 6/2002 de Salud de Aragón, Decreto 174/2010, Decreto Legislativo 2/2004.
   - LOSCAM Madrid (`0bdba0c8` 104): Ley 12/2001 Ordenación Sanitaria CM + Convenio Colectivo.
-  - SMS Murcia (`d459c687` 88): Ley 3/2009 de Derechos y Deberes de Usuarios (ley coherente única → la más limpia de importar).
   - Osakidetza planes (`8d912b20` 196 + `0d7e592b` 80 euskera + `fd4108d0` 28 + `9bb8dee7` 24): planes de salud Euskadi.
   - Igualdad/Violencia Aragón (`877905aa` 67), Carta Social Europea (`803d9365` 140, tratado 1961/1996 — 33 arts).
 
