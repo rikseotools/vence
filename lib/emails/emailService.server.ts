@@ -1,7 +1,7 @@
 import 'server-only'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
-import { eq, and, gte, lt, isNotNull, desc, sql } from 'drizzle-orm'
+import { eq, and, gt, gte, lt, isNull, isNotNull, desc, sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
 import {
   emailLogs,
@@ -379,8 +379,15 @@ export async function testServerConnection() {
 
 export async function detectInactiveUsers(): Promise<DetectedUser[]> {
   try {
-    const supabase = getSupabase()
-    const { data: inactiveUsers, error } = await supabase.rpc('get_inactive_users_for_emails')
+    // RPC PostgREST → db.execute (RETURNS TABLE → array de filas snake_case,
+    // idéntico a lo que devolvía supabase.rpc).
+    let inactiveUsers: DetectedUser[] | null = null
+    let error: unknown = null
+    try {
+      inactiveUsers = (await getAdminDb().execute(sql`SELECT * FROM get_inactive_users_for_emails()`)) as unknown as DetectedUser[]
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       console.error('Error detectando usuarios inactivos:', error)
@@ -390,7 +397,7 @@ export async function detectInactiveUsers(): Promise<DetectedUser[]> {
     const usersWithEmailPermission: DetectedUser[] = []
 
     for (const user of inactiveUsers || []) {
-      const emailType = user.days_inactive >= 14 ? 'urgente' : 'reactivacion'
+      const emailType = (user.days_inactive ?? 0) >= 14 ? 'urgente' : 'reactivacion'
       const canSend = await canSendEmailType(user.user_id, emailType)
       if (canSend) {
         usersWithEmailPermission.push(user)
@@ -407,8 +414,13 @@ export async function detectInactiveUsers(): Promise<DetectedUser[]> {
 
 export async function detectUnmotivatedUsers(): Promise<DetectedUser[]> {
   try {
-    const supabase = getSupabase()
-    const { data: unmotivatedUsers, error } = await supabase.rpc('get_unmotivated_new_users')
+    let unmotivatedUsers: DetectedUser[] | null = null
+    let error: unknown = null
+    try {
+      unmotivatedUsers = (await getAdminDb().execute(sql`SELECT * FROM get_unmotivated_new_users()`)) as unknown as DetectedUser[]
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       console.error('Error detectando usuarios no motivados:', error)
@@ -667,9 +679,8 @@ export async function checkEmailSystemHealth() {
 
     let sqlFunctionsWorking = false
     try {
-      const supabase = getSupabase()
-      const { error } = await supabase.rpc('get_inactive_users_for_emails')
-      sqlFunctionsWorking = !error
+      await getAdminDb().execute(sql`SELECT * FROM get_inactive_users_for_emails()`)
+      sqlFunctionsWorking = true
     } catch {
       sqlFunctionsWorking = false
     }
@@ -739,11 +750,6 @@ export async function detectUsersForWeeklyReport(): Promise<WeeklyReportUser[]> 
       return []
     }
 
-    // Para el RPC get_user_problematic_articles_weekly (path legacy), mantenemos
-    // un cliente Supabase porque la RPC sigue siendo PostgREST-only. Se sustituye
-    // por el path migrado isInProblematicArticlesRollout cuando aplica.
-    const supabase = getSupabase()
-
     const usersForWeeklyReport: WeeklyReportUser[] = []
 
     for (const user of activeUsers || []) {
@@ -772,10 +778,10 @@ export async function detectUsersForWeeklyReport(): Promise<WeeklyReportUser[]> 
           if (usingNewPath) {
             problematicArticles = await getUserProblematicArticlesWeekly({ userId: user.id })
           } else {
-            const { data, error: articlesError } = await supabase
-              .rpc('get_user_problematic_articles_weekly', { user_uuid: user.id })
-            if (articlesError) continue
-            problematicArticles = data ?? []
+            // RPC legacy PostgREST → db.execute. Un fallo lanza → lo captura
+            // el catch externo (continue), igual que el `if (articlesError) continue`.
+            const rows = await getAdminDb().execute(sql`SELECT * FROM get_user_problematic_articles_weekly(${user.id}::uuid)`)
+            problematicArticles = (rows as unknown as any[]) ?? []
           }
         } catch (e) {
           console.warn('⚠️ problematic-articles fetch falló:', (e as Error).message)
