@@ -23,7 +23,12 @@ const CLIENT_SECRET =
 // exactamente con el redirect URI registrado en el OAuth client de Cloud Console.
 const PORT = 3456
 const REDIRECT_URI = `http://localhost:${PORT}/oauth2callback`
-const SCOPE = 'https://www.googleapis.com/auth/adwords'
+// Ads + Search Console (solo lectura) en un mismo token. Ambos scopes deben
+// estar en la pantalla de consentimiento de Cloud Console.
+const SCOPE = [
+  'https://www.googleapis.com/auth/adwords',
+  'https://www.googleapis.com/auth/webmasters.readonly',
+].join(' ')
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error(
