@@ -26,6 +26,9 @@ jest.mock('next/server', () => {
         json: async () => body,
       }),
     },
+    // after() corre DESPUÉS de enviar la response (probe de diagnóstico en el
+    // path de timeout). No afecta a la response que valida el test → no-op.
+    after: () => {},
   }
 })
 
