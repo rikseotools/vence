@@ -32,6 +32,8 @@ interface Campaign {
   payments: number
   cpaEur: number | null
   roi: number | null
+  examDate: string | null
+  daysToExam: number | null
 }
 
 interface AdsResponse {
@@ -74,20 +76,32 @@ function roiBadge(c: Campaign) {
 }
 
 type SortKey =
-  | 'name' | 'costEur' | 'clicks' | 'registrations'
+  | 'name' | 'daysToExam' | 'costEur' | 'clicks' | 'avgCpcEur' | 'registrations'
   | 'costPerRegistrationEur' | 'payments' | 'revenueEur' | 'roi'
 
 function sortValue(c: Campaign, key: SortKey): number | string | null {
   switch (key) {
     case 'name': return c.name.toLowerCase()
+    case 'daysToExam': return c.daysToExam
     case 'costEur': return c.costEur
     case 'clicks': return c.clicks
+    case 'avgCpcEur': return c.avgCpcEur
     case 'registrations': return c.registrations
     case 'costPerRegistrationEur': return c.costPerRegistrationEur
     case 'payments': return c.payments
     case 'revenueEur': return c.revenueEur
     case 'roi': return c.roi
   }
+}
+
+// Celda de examen: rojo si ya pasó, verde si inminente (ventana de venta),
+// gris si lejano o sin fecha. Los datos dicen que se vende cerca del examen.
+function examCell(c: Campaign): { text: string; cls: string } {
+  if (c.daysToExam == null) return { text: '—', cls: 'text-gray-400' }
+  const d = c.daysToExam
+  if (d < 0) return { text: `pasó hace ${-d}d`, cls: 'text-red-600 dark:text-red-400 font-semibold' }
+  if (d <= 45) return { text: `en ${d}d`, cls: 'text-green-600 dark:text-green-400 font-semibold' }
+  return { text: `en ${d}d`, cls: 'text-gray-500 dark:text-gray-400' }
 }
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -207,8 +221,10 @@ export default function AdsPage() {
           <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500">
             <tr>
               <Th k="name" label="Campaña" align="left" />
+              <Th k="daysToExam" label="Examen" />
               <Th k="costEur" label="Gasto" />
               <Th k="clicks" label="Clics" />
+              <Th k="avgCpcEur" label="CPC" />
               <Th k="registrations" label="Registros" />
               <Th k="costPerRegistrationEur" label="€/registro" />
               <Th k="payments" label="Ventas" />
@@ -218,10 +234,10 @@ export default function AdsPage() {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {loading && (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
+              <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-400">Cargando…</td></tr>
             )}
             {!loading && sorted.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
+              <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-400">Sin datos en {RANGE_LABEL[range]}.</td></tr>
             )}
             {!loading && sorted.map((c) => (
               <tr key={c.campaignId} className="text-gray-800 dark:text-gray-200">
@@ -231,8 +247,15 @@ export default function AdsPage() {
                     <span className="ml-2 text-xs text-gray-400">{c.status}</span>
                   )}
                 </td>
+                <td className={`px-3 py-2 text-right ${examCell(c).cls}`}>
+                  {examCell(c).text}
+                  {c.examDate && (
+                    <span className="block text-xs font-normal text-gray-400">{c.examDate}</span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-right">{eur(c.costEur)}</td>
                 <td className="px-3 py-2 text-right">{c.clicks}</td>
+                <td className="px-3 py-2 text-right">{eur(c.avgCpcEur)}</td>
                 <td className="px-3 py-2 text-right">{Math.round(c.registrations)}</td>
                 <td className={`px-3 py-2 text-right ${cprClass(c, t?.avgCostPerRegistration ?? null)}`}>
                   {c.costPerRegistrationEur != null

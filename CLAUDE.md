@@ -273,6 +273,11 @@ git push origin main
 - **Roadmap priorizado:** §13 del manual — siguiente paso recomendado es **endpoint `/api/observability/ingest`** (gateway universal, desbloquea client-side + GHA + Sentry webhook).
 - **Migración a AWS:** §11 del manual explica qué cambia (sinks, alertas) y qué NO (todo el código de app, queries SQL, dashboards, SLOs). Diseño Sink intercambiable en §4.
 
+### 📣 Análisis de Google Ads / Campañas (runbook)
+- **Runbook:** `docs/runbooks/google-ads-analisis.md`
+- **Cuándo consultarlo:** cuando el usuario diga *"investiga ads"*, *"campañas"*, *"rendimiento de anuncios"*, *"dónde meto presupuesto"* o similar, Claude DEBE seguir el runbook ANTES de improvisar.
+- **Resumen:** integración Google Ads API (`lib/services/googleAds/`, comandos `npm run ads:*`, panel `/admin/ads`). El runbook explica cómo mirar coste/clics/registros + ingreso real + fecha de examen, con queries listas y el framework de decisión de presupuesto. Aprendizaje clave (02/06/2026, datos reales): la gente compra premium cerca del examen (pico 0-30 días), el examen pasado seca las ventas, y el coste/registro solo engaña si no se cruza con fecha de examen e ingreso. Mantener puja por CLIC (decisión Manuel).
+
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado
 - Prefijo `💾` para operaciones de guardado
