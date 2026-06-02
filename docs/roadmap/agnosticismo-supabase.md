@@ -213,6 +213,14 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 >
 > 🚨 **2º endpoint roto detectado (NO migrado): `app/api/ai/verify-answer/route.ts`** (lo llama AIChatWidget): RPC `match_articles_by_embedding` NO existe, `articles.law_name`/`law_short_name` NO existen, tabla `question_verifications` NO existe → búsqueda de artículos SIEMPRE [] (corre degradado) + insert discrepancias siempre falla. Requiere arreglar deps, no migración mecánica. Junto con `cron/fraud-detection` = 2 endpoints con bugs estructurales que el strangler destapó.
 >
+> 🚨🚨 **CLÚSTER de 4 endpoints ROTOS por schema drift (NO migrables mecánicamente, decisión de producto)** — el agnosticismo tipado actúa como linter y destapó que varios endpoints leen/escriben columnas/RPCs/tablas que ya NO existen (errores tragados por `any`/try-catch/`||0`):
+> 1. `cron/fraud-detection` (7) — inserta `affected_user_ids`/`metadata`/`description` inexistentes → nunca guarda alertas.
+> 2. `ai/verify-answer` (3) — RPC+columnas+tabla inexistentes → búsqueda artículos siempre vacía (degradado).
+> 3. `emails/send-reactivation-email` (4) — lee `admin_users_with_roles.stats` (la vista ya no lo tiene, son columnas planas `total_tests_30d`…) → personalización a 0 siempre; + inserta `email_events.external_id` inexistente → log 'sent' siempre falla. El email SÍ sale.
+> 4. `v2/admin/broadcast` (3) — SELECT pide `user_profiles.display_name` (no existe, es `full_name`/`nickname`) → 500 "Error buscando usuarios" SIEMPRE → nunca envía broadcast.
+>
+> **REGLA**: antes de migrar cualquier endpoint, verificar columnas/RPC/tabla contra BD viva (`information_schema` + ejecutar el SELECT). Si referencia algo inexistente → NO es migración mecánica, es un bug estructural → flag + decisión, no fix silencioso. Detalle: memoria `project_pending_broken_endpoints_schema_drift`.
+>
 > **SIGUIENTE:** client-trackers (refactor a endpoint, no Drizzle directo) y **Fase 4 Auth** (bloqueador real de RDS). Servidor-puro restante: emails/send-reactivation (4, OJO envía email), v2/admin/broadcast (3, envía), generate-explanation (3), cron/sync-convocatorias (3), ai/verify-answer (3+1rpc), ai/chat-v2 (3). admin/fraudes (14) es client-side page; stripe/webhook (31) con lupa al final; cron/subscription-reconciliation (9) = BORRAR no migrar (replicado en Fargate); cron/fraud-detection (7) = ARREGLAR esquema antes (decisión Manuel).
 >
 > 🧭 **RESUME AQUÍ (triage de los ~87 restantes, hecho 2026-06-01)** — NO todos son migraciones Drizzle mecánicas:
