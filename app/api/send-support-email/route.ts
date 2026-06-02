@@ -1,35 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { Resend } from 'resend'
 import { requireAdmin } from '@/lib/api/shared/auth'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-
-function getSupabase() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Variables de entorno de Supabase no configuradas')
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
+import { getReadDb } from '@/db/client'
+import { userSessions, feedbackConversations, userFeedback } from '@/db/schema'
+import { eq, desc } from 'drizzle-orm'
 
 // Verificar si un usuario está activamente navegando (últimos 5 segundos)
 async function isUserActivelyBrowsing(userId: string): Promise<boolean> {
   try {
-    const supabase = getSupabase()
+    const db = getReadDb()
 
-    const { data: sessions, error } = await supabase
-      .from('user_sessions')
-      .select('updated_at')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
+    const sessions = await db
+      .select({ updated_at: userSessions.updatedAt })
+      .from(userSessions)
+      .where(eq(userSessions.userId, userId))
+      .orderBy(desc(userSessions.updatedAt))
       .limit(1)
 
-    if (error && error.code !== 'PGRST116') return false
-    if (!sessions || sessions.length === 0) return false
+    if (sessions.length === 0 || !sessions[0].updated_at) return false
 
     const lastActivity = new Date(sessions[0].updated_at)
     const secondsSinceLastActivity = (Date.now() - lastActivity.getTime()) / 1000
@@ -132,21 +122,21 @@ async function _POST(request: NextRequest) {
     // Buscar info de threading: si la conversación viene de un feedback type='email'
     // (Resend Inbound), recuperar el Message-ID original (guardado en referrer)
     // y el Subject original (guardado en message) para hacer reply en mismo hilo.
-    const supabaseShared = getSupabase()
+    const db = getReadDb()
     let originalMessageId: string | null = null
     let originalSubject: string | null = null
     try {
-      const { data: conv } = await supabaseShared
-        .from('feedback_conversations')
-        .select('feedback_id')
-        .eq('id', conversationId)
-        .single()
+      const conv = (await db
+        .select({ feedback_id: feedbackConversations.feedbackId })
+        .from(feedbackConversations)
+        .where(eq(feedbackConversations.id, conversationId))
+        .limit(1))[0]
       if (conv?.feedback_id) {
-        const { data: fb } = await supabaseShared
-          .from('user_feedback')
-          .select('type, message, referrer, email')
-          .eq('id', conv.feedback_id)
-          .single()
+        const fb = (await db
+          .select({ type: userFeedback.type, message: userFeedback.message, referrer: userFeedback.referrer, email: userFeedback.email })
+          .from(userFeedback)
+          .where(eq(userFeedback.id, conv.feedback_id))
+          .limit(1))[0]
         if (fb?.type === 'email') {
           originalMessageId = fb.referrer || null
           originalSubject = fb.message || null
@@ -197,17 +187,17 @@ async function _POST(request: NextRequest) {
     // --- Ruta 2: Contacto externo (email inbound, no registrado) ---
     let toEmail = email
     if (!toEmail) {
-      const { data: conv } = await supabaseShared
-        .from('feedback_conversations')
-        .select('feedback_id')
-        .eq('id', conversationId)
-        .single()
+      const conv = (await db
+        .select({ feedback_id: feedbackConversations.feedbackId })
+        .from(feedbackConversations)
+        .where(eq(feedbackConversations.id, conversationId))
+        .limit(1))[0]
       if (conv?.feedback_id) {
-        const { data: feedback } = await supabaseShared
-          .from('user_feedback')
-          .select('email')
-          .eq('id', conv.feedback_id)
-          .single()
+        const feedback = (await db
+          .select({ email: userFeedback.email })
+          .from(userFeedback)
+          .where(eq(userFeedback.id, conv.feedback_id))
+          .limit(1))[0]
         toEmail = feedback?.email
       }
     }
