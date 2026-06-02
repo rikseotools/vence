@@ -1001,16 +1001,20 @@ Pasar `p_changed_by: null` (o un UUID real), **nunca** un string como `'claude_c
 
 ### 15.9 Cablear una oposición en el modo «Examen Oficial» = 3 ficheros (y `schemas.ts` tiene 5 enums)
 
-Que la **tarjeta** del examen aparezca solo necesita `lib/config/oposiciones.ts` (`officialExams[]`). Pero el examen **de verdad** valida el slug `oposicion` en varios sitios; faltar uno = `400 "Parámetros inválidos"` en un paso distinto (la tarjeta engaña: sale bien y peta al pulsar «Empezar» o al corregir). Para añadir una oposición hay que tocar:
+Que la **tarjeta** del examen aparezca solo necesita `lib/config/oposiciones.ts` (`officialExams[]`). Pero el examen **de verdad** valida el slug `oposicion` en varios sitios.
 
-1. `lib/config/oposiciones.ts` → `officialExams[]` (la tarjeta + el test de coherencia).
-2. `lib/api/official-exams/queries.ts` → mapa `oposicionToExamPosition` (slug → `exam_position`).
-3. `lib/api/official-exams/schemas.ts` → el objeto `OposicionType`. Los 5 request-schemas validan `oposicion` con un **`oposicionEnum` compartido derivado de `OposicionType`** (`z.enum(Object.values(OposicionType))`) — añadir la oposición a `OposicionType` la habilita en los 5 endpoints a la vez. *(Antes había 5 `z.enum([...])` hardcoded duplicados que se desincronizaban: el examen cargaba pero fallaba 400 en init/save/review. Consolidados 02/06/2026.)*
-4. `lib/config/exam-positions.ts` → `EXAM_POSITION_MAP` (positionType → variantes de `exam_position`). Lo exige el **validador de import** (`lib/import/official-exams/validator.ts` §5.5) y la comprobación `isExamPositionRegistered`. **Aunque la oposición no tenga aún oficiales propias, debe estar registrada** (array con su propio `exam_position`).
+**Estado tras la unificación (02/06/2026):** la mayoría de registros se **derivan de `OPOSICIONES`**, así que añadir una oposición C2/C1 normalmente es **solo 2 pasos**:
+
+1. `lib/config/oposiciones.ts` → `OPOSICIONES` con su `slug`, `positionType` y (si hay examen) `officialExams[]`. De aquí se derivan automáticamente:
+   - el `oposicionEnum` compartido de los 5 request-schemas (`schemas.ts`: `z.enum(OPOSICIONES.map(o => o.slug))`),
+   - `oposicionToExamPosition` (`queries.ts`: `slug → positionType`).
+2. `lib/config/exam-positions.ts` → `EXAM_POSITION_MAP` (positionType → variantes/aliases de `exam_position`). **Este NO se deriva**: sus valores son aliases de texto libre de cómo está guardado `exam_position` en la BD histórica (no existen en `OPOSICIONES`). Lo exige el **validador de import** (`lib/import/official-exams/validator.ts` §5.5) y `isExamPositionRegistered`. Hay que añadirlo a mano (array con su propio `exam_position`).
+
+*(Historia: antes había un objeto `OposicionType` + 5 `z.enum([...])` + `oposicionToExamPosition`, todos hardcoded y duplicados de `OPOSICIONES`. Se desincronizaban → la tarjeta salía pero el examen daba 400 en init/save/review. Derivar de `OPOSICIONES` eliminó esa clase de bug. Cuerpos A2 fuera del catálogo C2/C1, como `gestion-estado` —0 preguntas— o `gestion-procesal`, no van en el modo examen; este último se preserva explícito en `oposicionToExamPosition` por tener preguntas legacy.)*
 
 **Probar el flujo COMPLETO end-to-end**, no solo que salga la tarjeta: cargar preguntas (`/questions`) → iniciar sesión (`/init`) → responder → corregir (`/save-results`) → ver fallos (`/failed-questions`) → revisar (`/review`). Cada uno valida `oposicion`.
 
-**Red de seguridad:** `__tests__/config/officialExamsRegistries.test.ts` es un **invariante** que recorre `OPOSICIONES` y falla si una oposición con `officialExams` no está en los 5 schemas + `oposicionToExamPosition` + `EXAM_POSITION_MAP`. Caza el olvido en CI sin tener que probar a mano. (Cuando lo añadí, destapó que valencia/canarias/carm/extremadura/administrativo-estado ya estaban rotas en init/save/review desde antes.)
+**Red de seguridad:** `__tests__/config/officialExamsRegistries.test.ts` es un **invariante** que recorre `OPOSICIONES` y falla si una oposición con `officialExams` no está en los 5 schemas + `oposicionToExamPosition` + `EXAM_POSITION_MAP`. Tras la unificación, los 2 primeros son tautológicos (derivados) y el invariante vigila sobre todo `EXAM_POSITION_MAP`, el único que se mantiene a mano. (Cuando lo añadí, destapó que valencia/canarias/carm/extremadura/administrativo-estado ya estaban rotas en init/save/review desde antes.)
 
 ### 15.11 El conteo de «preguntas oficiales» del tema cuenta TODO el scope, no solo las de tu oposición
 

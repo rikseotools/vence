@@ -1,6 +1,7 @@
 // CANARY self-hosted pooler (Fase 5 — WRITES, 2026-05-10 oleada 4):
 // Migrado tras blip Supavisor 20:35. saveOfficialExamAnswer hace inserts
 // críticos en tests/test_questions/user_feedback. Mismo patrón canary.
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { getDb, getPoolerDb } from '@/db/client'
 
 function getOfficialExamsDb() {
@@ -100,25 +101,16 @@ import type {
   OfficialExamReviewQuestion,
 } from './schemas'
 
-// Map oposicion slug to exam_position value (structured field in questions table)
-// TODO: Derivar de lib/config/exam-positions.ts
+// Map oposicion slug → exam_position. FUENTE ÚNICA: se deriva del catálogo
+// `OPOSICIONES` (slug → positionType), que es exactamente el mismo mapeo
+// (verificado: 0 divergencias). Añadir una oposición a `OPOSICIONES` la mapea
+// automáticamente. Se preserva `gestion-procesal` (cuerpo A2 fuera del catálogo
+// C2/C1 pero con preguntas oficiales en BD y referencias en filtros/detector).
 export const oposicionToExamPosition: Record<string, string> = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
-  'auxiliar-administrativo-madrid': 'auxiliar_administrativo_madrid',
-  'auxiliar-administrativo-cyl': 'auxiliar_administrativo_cyl',
-  'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
-  'auxiliar-administrativo-extremadura': 'auxiliar_administrativo_extremadura',
-  'auxiliar-administrativo-canarias': 'auxiliar_administrativo_canarias',
-  'tramitacion-procesal': 'tramitacion_procesal',
-  'auxilio-judicial': 'auxilio_judicial',
-  'administrativo-estado': 'administrativo_estado',
+  ...Object.fromEntries(
+    OPOSICIONES.filter((o) => o.slug).map((o) => [o.slug, o.positionType]),
+  ),
   'gestion-procesal': 'cuerpo_gestion_administracion_civil',
-  'auxiliar-administrativo-andalucia': 'auxiliar_administrativo_andalucia',
-  'auxiliar-administrativo-valencia': 'auxiliar_administrativo_valencia',
-  'auxiliar-administrativo-ayuntamiento-valencia': 'auxiliar_administrativo_ayuntamiento_valencia',
-  'auxiliar-administrativo-ayuntamiento-zaragoza': 'auxiliar_administrativo_ayuntamiento_zaragoza',
-  'policia-nacional': 'policia_nacional',
-  'guardia-civil': 'guardia_civil',
 }
 
 // Fallback: exam_source LIKE pattern for psychometric_questions (which lacks exam_position column)

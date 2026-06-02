@@ -1,35 +1,20 @@
 import { z } from 'zod'
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 
-// Available positions for official exams
-// TODO: Derivar de lib/config/oposiciones.ts cuando todas las oposiciones tengan exámenes oficiales
-export const OposicionType = {
-  ADMINISTRATIVO_ESTADO: 'administrativo-estado',
-  AUXILIAR_ADMINISTRATIVO_ESTADO: 'auxiliar-administrativo-estado',
-  AUXILIAR_ADMINISTRATIVO_MADRID: 'auxiliar-administrativo-madrid',
-  AUXILIAR_ADMINISTRATIVO_CYL: 'auxiliar-administrativo-cyl',
-  AUXILIAR_ADMINISTRATIVO_CANARIAS: 'auxiliar-administrativo-canarias',
-  AUXILIAR_ADMINISTRATIVO_CARM: 'auxiliar-administrativo-carm',
-  AUXILIAR_ADMINISTRATIVO_EXTREMADURA: 'auxiliar-administrativo-extremadura',
-  AUXILIAR_ADMINISTRATIVO_VALENCIA: 'auxiliar-administrativo-valencia',
-  AUXILIAR_ADMINISTRATIVO_AYUNTAMIENTO_ZARAGOZA: 'auxiliar-administrativo-ayuntamiento-zaragoza',
-  GESTION_ESTADO: 'gestion-estado',
-  TRAMITACION_PROCESAL: 'tramitacion-procesal',
-  AUXILIO_JUDICIAL: 'auxilio-judicial',
-  GUARDIA_CIVIL: 'guardia-civil',
-  POLICIA_NACIONAL: 'policia-nacional',
-} as const
+// FUENTE ÚNICA: las oposiciones válidas para el modo examen se derivan del
+// catálogo `OPOSICIONES` (lib/config/oposiciones.ts). Añadir una oposición allí
+// la habilita automáticamente en los 5 request-schemas (`oposicionEnum`).
+//
+// Antes había un objeto `OposicionType` hardcoded + 5 `z.enum([...])`
+// duplicados → se desincronizaban y daban 400 en init/save/review. Resuelto el
+// TODO histórico de derivar de oposiciones.ts (02/06/2026). La A2 'gestion-estado'
+// desaparece por descarte: 0 preguntas oficiales en BD y fuera del catálogo C2/C1.
+// El test de invariante `officialExamsRegistries.test.ts` vigila el resto.
+const OPOSICION_SLUGS = OPOSICIONES.map((o) => o.slug) as [string, ...string[]]
+const oposicionEnum = z.enum(OPOSICION_SLUGS)
 
-export type OposicionType = typeof OposicionType[keyof typeof OposicionType]
-
-// Enum compartido derivado de OposicionType — FUENTE ÚNICA para los 5
-// request-schemas que validan `oposicion`. Antes cada schema tenía su propia
-// lista `z.enum([...])` hardcoded; al desincronizarse (faltaba una oposición en
-// unas y otras), el examen cargaba pero fallaba con 400 en init/save/review.
-// Derivar de OposicionType garantiza que añadir una oposición la habilita en
-// los 5 endpoints a la vez. Test de invariante: officialExamsRegistries.test.ts
-const oposicionEnum = z.enum(
-  Object.values(OposicionType) as [string, ...string[]],
-)
+// Slug de oposición. Se mantiene el export por compatibilidad con consumidores.
+export type OposicionType = (typeof OPOSICION_SLUGS)[number]
 
 // Request schema for getting official exam questions
 export const getOfficialExamQuestionsRequestSchema = z.object({
