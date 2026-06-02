@@ -1,28 +1,38 @@
 // app/api/topic-review/verify/route.js
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import {
+  aiApiConfig,
+  psychometricQuestions,
+  questions as questionsTable,
+  articles,
+  laws,
+  aiVerificationResults,
+  aiApiUsage,
+} from '@/db/schema'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { legacyStatusToTransition } from '@/lib/constants/lifecycleReasons'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role que usaba este endpoint). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 /**
  * Obtiene la configuración de IA desde la base de datos
  */
 async function getAIConfig(provider) {
-  const { data: config } = await getSupabase()
-    .from('ai_api_config')
-    .select('*')
-    .eq('provider', provider)
-    .single()
+  const [config] = await db()
+    .select()
+    .from(aiApiConfig)
+    .where(eq(aiApiConfig.provider, provider))
+    .limit(1)
 
-  if (config?.api_key_encrypted) {
+  if (config?.apiKeyEncrypted) {
     return {
-      apiKey: Buffer.from(config.api_key_encrypted, 'base64').toString('utf-8'),
-      model: config.default_model,
-      isActive: config.is_active
+      apiKey: Buffer.from(config.apiKeyEncrypted, 'base64').toString('utf-8'),
+      model: config.defaultModel,
+      isActive: config.isActive
     }
   }
 
@@ -444,23 +454,23 @@ async function verifyPsychometricQuestions(questionIds, provider, model, apiKey)
 
     for (const questionId of questionIds) {
       // Marcar como verificada
-      const { error: updateError } = await getSupabase()
-        .from('psychometric_questions')
-        .update({ is_verified: true })
-        .eq('id', questionId)
+      try {
+        await db()
+          .update(psychometricQuestions)
+          .set({ isVerified: true })
+          .where(eq(psychometricQuestions.id, questionId))
 
-      if (updateError) {
+        results.push({
+          questionId,
+          success: true,
+          status: 'verified'
+        })
+      } catch (updateError) {
         console.error(`Error actualizando pregunta psicotécnica ${questionId}:`, updateError)
         results.push({
           questionId,
           success: false,
           error: updateError.message
-        })
-      } else {
-        results.push({
-          questionId,
-          success: true,
-          status: 'verified'
         })
       }
     }
@@ -518,34 +528,63 @@ async function _POST(request) {
 
     // Obtener preguntas con sus artículos (solo para questions normales)
     // Nota: Las leyes virtuales se detectan por tener "ficticia" en su descripción
-    const { data: questions, error: qError } = await getSupabase()
-      .from('questions')
-      .select(`
-        id,
-        question_text,
-        option_a,
-        option_b,
-        option_c,
-        option_d,
-        correct_option,
-        explanation,
-        primary_article_id,
-        articles!primary_article_id (
-          id,
-          article_number,
-          title,
-          content,
-          law_id,
-          laws (
-            id,
-            short_name,
-            name,
-            description
-          )
-        )
-      `)
-      .in('id', questionIds)
-      .eq('is_active', true)
+    // Embed anidado PostgREST articles!primary_article_id(laws()) (to-one)
+    // → leftJoin Drizzle + reconstrucción del shape anidado que espera el loop.
+    let questions, qError
+    try {
+      const rawQuestions = await db()
+        .select({
+          id: questionsTable.id,
+          question_text: questionsTable.questionText,
+          option_a: questionsTable.optionA,
+          option_b: questionsTable.optionB,
+          option_c: questionsTable.optionC,
+          option_d: questionsTable.optionD,
+          correct_option: questionsTable.correctOption,
+          explanation: questionsTable.explanation,
+          primary_article_id: questionsTable.primaryArticleId,
+          art_id: articles.id,
+          art_number: articles.articleNumber,
+          art_title: articles.title,
+          art_content: articles.content,
+          art_law_id: articles.lawId,
+          law_pk: laws.id,
+          law_short_name: laws.shortName,
+          law_name: laws.name,
+          law_description: laws.description,
+        })
+        .from(questionsTable)
+        .leftJoin(articles, eq(questionsTable.primaryArticleId, articles.id))
+        .leftJoin(laws, eq(articles.lawId, laws.id))
+        .where(and(inArray(questionsTable.id, questionIds), eq(questionsTable.isActive, true)))
+
+      questions = rawQuestions.map(r => ({
+        id: r.id,
+        question_text: r.question_text,
+        option_a: r.option_a,
+        option_b: r.option_b,
+        option_c: r.option_c,
+        option_d: r.option_d,
+        correct_option: r.correct_option,
+        explanation: r.explanation,
+        primary_article_id: r.primary_article_id,
+        articles: r.art_id ? {
+          id: r.art_id,
+          article_number: r.art_number,
+          title: r.art_title,
+          content: r.art_content,
+          law_id: r.art_law_id,
+          laws: r.law_pk ? {
+            id: r.law_pk,
+            short_name: r.law_short_name,
+            name: r.law_name,
+            description: r.law_description,
+          } : null,
+        } : null,
+      }))
+    } catch (e) {
+      qError = e
+    }
 
     if (qError) {
       return Response.json({
@@ -596,28 +635,23 @@ async function _POST(request) {
         if (emptyOptions.length > 0) {
           // Marcar como estructura inválida y saltar verificación IA
           // Lifecycle transition vía función SQL (sync trigger se encarga de is_active)
-          const { data: cur } = await getSupabase().from('questions').select('lifecycle_state').eq('id', question.id).single()
+          const [cur] = await db().select({ lifecycle_state: questionsTable.lifecycleState }).from(questionsTable).where(eq(questionsTable.id, question.id)).limit(1)
           if (cur && cur.lifecycle_state !== 'quarantine') {
-            const { error: txErr } = await getSupabase().rpc('transition_question_state', {
-              p_question_id: question.id,
-              p_expected_state: cur.lifecycle_state,
-              p_new_state: 'quarantine',
-              p_reason_code: 'structural_invalid',
-              p_changed_by: null,
-              p_ai_verification_id: null,
-              p_notes: null
-            })
-            if (txErr) console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+            try {
+              await db().execute(sql`SELECT transition_question_state(${question.id}::uuid, ${cur.lifecycle_state}::text, 'quarantine'::text, 'structural_invalid'::text, NULL::uuid, NULL::uuid, NULL::text)`)
+            } catch (txErr) {
+              console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+            }
           }
           // Legacy fields (eliminados en fase F)
-          await getSupabase()
-            .from('questions')
-            .update({
-              verified_at: new Date().toISOString(),
-              verification_status: 'problem',
-              topic_review_status: 'invalid_structure'
+          await db()
+            .update(questionsTable)
+            .set({
+              verifiedAt: new Date().toISOString(),
+              verificationStatus: 'problem',
+              topicReviewStatus: 'invalid_structure'
             })
-            .eq('id', question.id)
+            .where(eq(questionsTable.id, question.id))
 
           statusCounts.invalid_structure++
           results.push({
@@ -633,28 +667,23 @@ async function _POST(request) {
         // Verificar que el texto de la pregunta existe
         if (!question.question_text?.trim()) {
           // Lifecycle transition vía función SQL (sync trigger se encarga de is_active)
-          const { data: cur } = await getSupabase().from('questions').select('lifecycle_state').eq('id', question.id).single()
+          const [cur] = await db().select({ lifecycle_state: questionsTable.lifecycleState }).from(questionsTable).where(eq(questionsTable.id, question.id)).limit(1)
           if (cur && cur.lifecycle_state !== 'quarantine') {
-            const { error: txErr } = await getSupabase().rpc('transition_question_state', {
-              p_question_id: question.id,
-              p_expected_state: cur.lifecycle_state,
-              p_new_state: 'quarantine',
-              p_reason_code: 'structural_invalid',
-              p_changed_by: null,
-              p_ai_verification_id: null,
-              p_notes: null
-            })
-            if (txErr) console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+            try {
+              await db().execute(sql`SELECT transition_question_state(${question.id}::uuid, ${cur.lifecycle_state}::text, 'quarantine'::text, 'structural_invalid'::text, NULL::uuid, NULL::uuid, NULL::text)`)
+            } catch (txErr) {
+              console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+            }
           }
           // Legacy fields (eliminados en fase F)
-          await getSupabase()
-            .from('questions')
-            .update({
-              verified_at: new Date().toISOString(),
-              verification_status: 'problem',
-              topic_review_status: 'invalid_structure'
+          await db()
+            .update(questionsTable)
+            .set({
+              verifiedAt: new Date().toISOString(),
+              verificationStatus: 'problem',
+              topicReviewStatus: 'invalid_structure'
             })
-            .eq('id', question.id)
+            .where(eq(questionsTable.id, question.id))
 
           statusCounts.invalid_structure++
           results.push({
@@ -670,28 +699,23 @@ async function _POST(request) {
         if (question.correct_option === null || question.correct_option === undefined ||
             question.correct_option < 0 || question.correct_option > 3) {
           // Lifecycle transition vía función SQL (sync trigger se encarga de is_active)
-          const { data: cur } = await getSupabase().from('questions').select('lifecycle_state').eq('id', question.id).single()
+          const [cur] = await db().select({ lifecycle_state: questionsTable.lifecycleState }).from(questionsTable).where(eq(questionsTable.id, question.id)).limit(1)
           if (cur && cur.lifecycle_state !== 'quarantine') {
-            const { error: txErr } = await getSupabase().rpc('transition_question_state', {
-              p_question_id: question.id,
-              p_expected_state: cur.lifecycle_state,
-              p_new_state: 'quarantine',
-              p_reason_code: 'structural_invalid',
-              p_changed_by: null,
-              p_ai_verification_id: null,
-              p_notes: null
-            })
-            if (txErr) console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+            try {
+              await db().execute(sql`SELECT transition_question_state(${question.id}::uuid, ${cur.lifecycle_state}::text, 'quarantine'::text, 'structural_invalid'::text, NULL::uuid, NULL::uuid, NULL::text)`)
+            } catch (txErr) {
+              console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+            }
           }
           // Legacy fields (eliminados en fase F)
-          await getSupabase()
-            .from('questions')
-            .update({
-              verified_at: new Date().toISOString(),
-              verification_status: 'problem',
-              topic_review_status: 'invalid_structure'
+          await db()
+            .update(questionsTable)
+            .set({
+              verifiedAt: new Date().toISOString(),
+              verificationStatus: 'problem',
+              topicReviewStatus: 'invalid_structure'
             })
-            .eq('id', question.id)
+            .where(eq(questionsTable.id, question.id))
 
           statusCounts.invalid_structure++
           results.push({
@@ -776,27 +800,30 @@ async function _POST(request) {
           statusCounts[topicReviewStatus]++
         }
 
-        // Guardar en ai_verification_results
-        await getSupabase()
-          .from('ai_verification_results')
-          .upsert({
-            question_id: question.id,
-            article_id: article.id,
-            law_id: article.law_id,
-            article_ok: articleOkValue, // null para leyes virtuales
-            answer_ok: aiResponse.answerOk,
-            explanation_ok: aiResponse.explanationOk,
-            confidence: aiResponse.confidence,
-            explanation: aiResponse.analysis,
-            article_quote: isVirtual ? null : aiResponse.articleQuote,
-            correct_article_suggestion: isVirtual ? null : aiResponse.correctArticleSuggestion,
-            correct_option_should_be: aiResponse.correctOptionShouldBe,
-            explanation_fix: aiResponse.explanationFix,
-            ai_provider: normalizedProvider,
-            ai_model: modelUsed,
-            verified_at: new Date().toISOString()
-          }, {
-            onConflict: 'question_id,ai_provider'
+        // Guardar en ai_verification_results (upsert por unique question_id,ai_provider)
+        const verificationValues = {
+          questionId: question.id,
+          articleId: article.id,
+          lawId: article.law_id,
+          articleOk: articleOkValue, // null para leyes virtuales
+          answerOk: aiResponse.answerOk,
+          explanationOk: aiResponse.explanationOk,
+          confidence: aiResponse.confidence,
+          explanation: aiResponse.analysis,
+          articleQuote: isVirtual ? null : aiResponse.articleQuote,
+          correctArticleSuggestion: isVirtual ? null : aiResponse.correctArticleSuggestion,
+          correctOptionShouldBe: aiResponse.correctOptionShouldBe,
+          explanationFix: aiResponse.explanationFix,
+          aiProvider: normalizedProvider,
+          aiModel: modelUsed,
+          verifiedAt: new Date().toISOString()
+        }
+        await db()
+          .insert(aiVerificationResults)
+          .values(verificationValues)
+          .onConflictDoUpdate({
+            target: [aiVerificationResults.questionId, aiVerificationResults.aiProvider],
+            set: verificationValues
           })
 
         // Update lifecycle vía función SQL (sync trigger se encarga de is_active).
@@ -805,23 +832,16 @@ async function _POST(request) {
         const transition = legacyStatusToTransition(topicReviewStatus, 'ai')
         if (transition) {
           // Leer estado actual para optimistic check
-          const { data: currentRow } = await getSupabase()
-            .from('questions')
-            .select('lifecycle_state')
-            .eq('id', question.id)
-            .single()
+          const [currentRow] = await db()
+            .select({ lifecycle_state: questionsTable.lifecycleState })
+            .from(questionsTable)
+            .where(eq(questionsTable.id, question.id))
+            .limit(1)
 
           if (currentRow && currentRow.lifecycle_state !== transition.newState) {
-            const { error: txError } = await getSupabase().rpc('transition_question_state', {
-              p_question_id: question.id,
-              p_expected_state: currentRow.lifecycle_state,
-              p_new_state: transition.newState,
-              p_reason_code: transition.reasonCode,
-              p_changed_by: null,
-              p_ai_verification_id: null,
-              p_notes: null
-            })
-            if (txError) {
+            try {
+              await db().execute(sql`SELECT transition_question_state(${question.id}::uuid, ${currentRow.lifecycle_state}::text, ${transition.newState}::text, ${transition.reasonCode}::text, NULL::uuid, NULL::uuid, NULL::text)`)
+            } catch (txError) {
               // Errores esperados (estado mismatch concurrente, transición ilegal): log + continuar
               // No bloqueamos la verificación entera por una pregunta
               console.warn(`[verify] lifecycle transition failed for ${question.id}: ${txError.message}`)
@@ -830,25 +850,25 @@ async function _POST(request) {
         }
 
         // Legacy fields (eliminados en fase F)
-        await getSupabase()
-          .from('questions')
-          .update({
-            verified_at: new Date().toISOString(),
-            verification_status: isPerfect ? 'ok' : 'problem',
-            topic_review_status: topicReviewStatus
+        await db()
+          .update(questionsTable)
+          .set({
+            verifiedAt: new Date().toISOString(),
+            verificationStatus: isPerfect ? 'ok' : 'problem',
+            topicReviewStatus: topicReviewStatus
           })
-          .eq('id', question.id)
+          .where(eq(questionsTable.id, question.id))
 
         // Guardar uso de tokens
-        await getSupabase().from('ai_api_usage').insert({
+        await db().insert(aiApiUsage).values({
           provider: normalizedProvider,
           model: modelUsed,
           endpoint: 'topic-review-verify',
-          input_tokens: usage?.input_tokens || usage?.prompt_tokens,
-          output_tokens: usage?.output_tokens || usage?.completion_tokens,
-          total_tokens: usage?.total_tokens,
+          inputTokens: usage?.input_tokens || usage?.prompt_tokens,
+          outputTokens: usage?.output_tokens || usage?.completion_tokens,
+          totalTokens: usage?.total_tokens,
           feature: 'topic_review_verification',
-          questions_count: 1
+          questionsCount: 1
         })
 
         results.push({
