@@ -1,6 +1,5 @@
 import 'server-only'
 import { Resend } from 'resend'
-import { createClient } from '@supabase/supabase-js'
 import { eq, and, gt, gte, lt, isNull, isNotNull, desc, sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
 import {
@@ -33,16 +32,6 @@ function getResend() {
     throw new Error('RESEND_API_KEY no está configurada')
   }
   return new Resend(process.env.RESEND_API_KEY)
-}
-
-function getSupabase() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Variables de entorno de Supabase no configuradas')
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
 }
 
 // ============================================
@@ -179,26 +168,34 @@ export type ValidateTokenResult = ValidateTokenOk | ValidateTokenErr
 
 export async function validateUnsubscribeToken(token: string): Promise<ValidateTokenResult> {
   try {
-    const supabase = getSupabase()
-    const { data: tokenData, error } = await supabase
-      .from('email_unsubscribe_tokens')
-      .select(`
-        *,
-        user_profiles(email, full_name)
-      `)
-      .eq('token', token)
-      .is('used_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .single()
-
-    if (error) {
-      // PGRST116 = no rows returned (token no existe, expirado o ya usado)
-      if ((error as { code?: string }).code === 'PGRST116') {
-        return { ok: false, code: 'not_found', error: 'Token inválido, expirado o ya usado' }
-      }
-      console.error('❌ [validateUnsubscribeToken] DB error:', error)
-      return { ok: false, code: 'db_error', error: 'Error consultando token en BD', dbError: error }
+    const db = getAdminDb()
+    // Embed PostgREST user_profiles(email, full_name) → leftJoin. Con Drizzle
+    // "0 filas" = array vacío (ya NO hay error PGRST116) → not_found; un error
+    // de BD lanza → db_error.
+    let rows
+    try {
+      rows = await db
+        .select({
+          user_id: emailUnsubscribeTokens.userId,
+          email: emailUnsubscribeTokens.email,
+          email_type: emailUnsubscribeTokens.emailType,
+          profile_email: userProfiles.email,
+          profile_full_name: userProfiles.fullName,
+        })
+        .from(emailUnsubscribeTokens)
+        .leftJoin(userProfiles, eq(userProfiles.id, emailUnsubscribeTokens.userId))
+        .where(and(
+          eq(emailUnsubscribeTokens.token, token),
+          isNull(emailUnsubscribeTokens.usedAt),
+          gt(emailUnsubscribeTokens.expiresAt, new Date().toISOString()),
+        ))
+        .limit(1)
+    } catch (dbError) {
+      console.error('❌ [validateUnsubscribeToken] DB error:', dbError)
+      return { ok: false, code: 'db_error', error: 'Error consultando token en BD', dbError }
     }
+
+    const tokenData = rows[0]
     if (!tokenData) {
       return { ok: false, code: 'not_found', error: 'Token inválido, expirado o ya usado' }
     }
@@ -208,7 +205,9 @@ export async function validateUnsubscribeToken(token: string): Promise<ValidateT
       userId: tokenData.user_id as string,
       email: tokenData.email as string,
       emailType: tokenData.email_type as string,
-      userProfile: tokenData.user_profiles as { email: string; full_name: string } | null,
+      userProfile: tokenData.profile_email
+        ? { email: tokenData.profile_email, full_name: (tokenData.profile_full_name as string) }
+        : null,
     }
   } catch (error) {
     console.error('❌ [validateUnsubscribeToken] Exception:', error)
@@ -289,24 +288,19 @@ export async function processUnsubscribeByToken(
       }
     }
 
-    // ⚠️ NO migrado a Drizzle (Fase 3 strangler fig agnosticismo-supabase):
-    // los tests __tests__/emails/unsubscribeFlow.test.ts mockean
-    // @supabase/supabase-js (no Drizzle/Postgres) para simular escenarios
-    // específicos de error (prefsUpdateError, markUsedError). Migrar este
-    // código sin actualizar también los mocks del test rompe la suite (4
-    // tests fallidos en el primer intento).
-    // Para migrar correctamente, en próximo PR:
-    //   1. Cambiar el mock del test a mockear @/db/client (getAdminDb).
-    //   2. Cambiar el shape de mocks para que devuelvan promesas Drizzle-like.
-    //   3. Migrar el código aquí.
-    const supabase = getSupabase()
-    const { error: prefsError } = await supabase
-      .from('email_preferences')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId)
+    // updateData tiene claves snake_case DINÁMICAS (email_${type},
+    // unsubscribed_all, etc.) → no se pueden mapear a campos Drizzle camelCase
+    // estáticos. Raw SQL con identifiers + valores parametrizados (las claves
+    // SON los nombres de columna reales de email_preferences).
+    const db = getAdminDb()
+    let prefsError: unknown = null
+    try {
+      const setEntries = Object.entries({ ...updateData, updated_at: new Date().toISOString() })
+      const setSql = setEntries.map(([k, v]) => sql`${sql.identifier(k)} = ${v}`)
+      await db.execute(sql`UPDATE email_preferences SET ${sql.join(setSql, sql`, `)} WHERE user_id = ${userId}`)
+    } catch (e) {
+      prefsError = e
+    }
 
     if (prefsError) {
       console.error('❌ [processUnsubscribeByToken] DB error updating email_preferences', {
@@ -324,10 +318,15 @@ export async function processUnsubscribeByToken(
 
     // Mark token as used — no fatal si falla (baja ya aplicada) pero MUST ser traceable
     const warnings: string[] = []
-    const { error: markUsedError } = await supabase
-      .from('email_unsubscribe_tokens')
-      .update({ used_at: new Date().toISOString() })
-      .eq('token', token)
+    let markUsedError: unknown = null
+    try {
+      await db
+        .update(emailUnsubscribeTokens)
+        .set({ usedAt: new Date().toISOString() })
+        .where(eq(emailUnsubscribeTokens.token, token))
+    } catch (e) {
+      markUsedError = e
+    }
 
     if (markUsedError) {
       // CRÍTICO: token sigue siendo reutilizable hasta que expire.

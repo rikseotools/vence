@@ -9,62 +9,75 @@
  *  5. Exception no controlada → errorCode 'internal_error'
  *
  * Y también el caso happy-path para regresión.
+ *
+ * 2026-06-02: migrado de mock @supabase/supabase-js a mock @/db/client
+ * (getAdminDb, Drizzle) tras agnosticar emailService.server. Con Drizzle,
+ * "0 filas" = array vacío (ya no hay error PGRST116) y los errores de BD
+ * LANZAN (se simulan haciendo que la cadena thenable rechace).
  */
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
+process.env.DATABASE_URL = 'postgres://test:test@localhost:5432/test'
 process.env.RESEND_API_KEY = 'test-resend-key'
 
 jest.mock('server-only', () => ({}))
 
-// Mock @supabase/supabase-js antes de importar emailService.server
-// Usamos un mock controlable por test
-const mockSupabaseState: {
-  tokenSelectResponse: { data: unknown; error: unknown }
-  prefsUpdateError: unknown
-  markUsedError: unknown
-  throwOnGetSupabase: boolean
+// Estado controlable por test para el mock de Drizzle (@/db/client getAdminDb).
+const mockDbState: {
+  tokenRows: unknown[]        // resultado del SELECT del token (leftJoin)
+  tokenSelectError: unknown   // si !=null, el SELECT lanza esto
+  prefsUpdateError: unknown   // si !=null, db.execute (UPDATE prefs) rechaza esto
+  markUsedError: unknown      // si !=null, el UPDATE mark-used lanza esto
+  getDbThrows: boolean        // si true, getAdminDb() lanza (path "Error interno")
 } = {
-  tokenSelectResponse: { data: null, error: null },
+  tokenRows: [],
+  tokenSelectError: null,
   prefsUpdateError: null,
   markUsedError: null,
-  throwOnGetSupabase: false,
+  getDbThrows: false,
 }
 
-const mockFromFn = jest.fn((table: string) => {
-  if (table === 'email_unsubscribe_tokens') {
-    return {
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          is: jest.fn(() => ({
-            gt: jest.fn(() => ({
-              single: jest.fn(() => Promise.resolve(mockSupabaseState.tokenSelectResponse)),
-            })),
-          })),
-        })),
-      })),
-      update: jest.fn(() => ({
-        eq: jest.fn(() => Promise.resolve({ error: mockSupabaseState.markUsedError })),
-      })),
+// Cadena thenable estilo Drizzle: cualquier método (select/from/leftJoin/where/
+// limit/update/set/...) devuelve la propia cadena; al hacer `await` se ejecuta
+// getResult() (resuelve el valor o lanza para simular error de BD).
+function thenableChain(getResult: () => unknown) {
+  const chain: Record<string, unknown> = {}
+  const methods = ['select', 'from', 'leftJoin', 'where', 'limit', 'update', 'set', 'insert', 'values', 'returning', 'orderBy', 'onConflictDoUpdate']
+  for (const m of methods) chain[m] = () => chain
+  chain.then = (onF: (v: unknown) => unknown, onR: (e: unknown) => unknown) => {
+    try {
+      return Promise.resolve(getResult()).then(onF, onR)
+    } catch (e) {
+      return Promise.reject(e).then(onF, onR)
     }
   }
-  if (table === 'email_preferences') {
-    return {
-      update: jest.fn(() => ({
-        eq: jest.fn(() => Promise.resolve({ error: mockSupabaseState.prefsUpdateError })),
-      })),
-    }
+  return chain
+}
+
+const mockGetAdminDb = jest.fn(() => {
+  if (mockDbState.getDbThrows) throw new Error('getAdminDb init failed')
+  return {
+    // validateUnsubscribeToken: db.select().from().leftJoin().where().limit()
+    select: () => thenableChain(() => {
+      if (mockDbState.tokenSelectError) throw mockDbState.tokenSelectError
+      return mockDbState.tokenRows
+    }),
+    // mark-used: db.update().set().where()
+    update: () => thenableChain(() => {
+      if (mockDbState.markUsedError) throw mockDbState.markUsedError
+      return []
+    }),
+    // email_preferences update: db.execute(sql`UPDATE ...`)
+    execute: () => {
+      if (mockDbState.prefsUpdateError) return Promise.reject(mockDbState.prefsUpdateError)
+      return Promise.resolve([])
+    },
   }
-  return {}
 })
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => {
-    if (mockSupabaseState.throwOnGetSupabase) {
-      throw new Error('Supabase client init failed')
-    }
-    return { from: mockFromFn }
-  }),
+jest.mock('@/db/client', () => ({
+  getAdminDb: () => mockGetAdminDb(),
 }))
 
 import {
@@ -74,27 +87,29 @@ import {
 
 const VALID_TOKEN = 'abc123def456'
 
+// Shape de fila que devuelve el SELECT migrado (leftJoin token + user_profiles).
+const VALID_TOKEN_ROW = {
+  user_id: 'user-uuid',
+  email: 'test@vence.es',
+  email_type: 'newsletter',
+  profile_email: 'test@vence.es',
+  profile_full_name: 'Test User',
+}
+
 function resetMock() {
-  mockSupabaseState.tokenSelectResponse = { data: null, error: null }
-  mockSupabaseState.prefsUpdateError = null
-  mockSupabaseState.markUsedError = null
-  mockSupabaseState.throwOnGetSupabase = false
-  mockFromFn.mockClear()
+  mockDbState.tokenRows = []
+  mockDbState.tokenSelectError = null
+  mockDbState.prefsUpdateError = null
+  mockDbState.markUsedError = null
+  mockDbState.getDbThrows = false
+  mockGetAdminDb.mockClear()
 }
 
 describe('validateUnsubscribeToken', () => {
   beforeEach(resetMock)
 
   test('happy path: devuelve ok:true con datos del token', async () => {
-    mockSupabaseState.tokenSelectResponse = {
-      data: {
-        user_id: 'user-uuid',
-        email: 'test@vence.es',
-        email_type: 'newsletter',
-        user_profiles: { email: 'test@vence.es', full_name: 'Test User' },
-      },
-      error: null,
-    }
+    mockDbState.tokenRows = [VALID_TOKEN_ROW]
 
     const result = await validateUnsubscribeToken(VALID_TOKEN)
     expect(result.ok).toBe(true)
@@ -106,11 +121,8 @@ describe('validateUnsubscribeToken', () => {
     }
   })
 
-  test('token no existe: devuelve code:not_found (PGRST116)', async () => {
-    mockSupabaseState.tokenSelectResponse = {
-      data: null,
-      error: { code: 'PGRST116', message: 'No rows returned' },
-    }
+  test('token no existe: devuelve code:not_found (0 filas)', async () => {
+    mockDbState.tokenRows = []
 
     const result = await validateUnsubscribeToken(VALID_TOKEN)
     expect(result.ok).toBe(false)
@@ -120,11 +132,8 @@ describe('validateUnsubscribeToken', () => {
     }
   })
 
-  test('error de BD (no PGRST116): devuelve code:db_error con dbError', async () => {
-    mockSupabaseState.tokenSelectResponse = {
-      data: null,
-      error: { code: '42P01', message: 'relation does not exist' },
-    }
+  test('error de BD (SELECT lanza): devuelve code:db_error con dbError', async () => {
+    mockDbState.tokenSelectError = { code: '42P01', message: 'relation does not exist' }
 
     const result = await validateUnsubscribeToken(VALID_TOKEN)
     expect(result.ok).toBe(false)
@@ -134,8 +143,8 @@ describe('validateUnsubscribeToken', () => {
     }
   })
 
-  test('exception en el cliente Supabase: devuelve code:db_error', async () => {
-    mockSupabaseState.throwOnGetSupabase = true
+  test('exception en getAdminDb: devuelve code:db_error (Error interno)', async () => {
+    mockDbState.getDbThrows = true
 
     const result = await validateUnsubscribeToken(VALID_TOKEN)
     expect(result.ok).toBe(false)
@@ -145,8 +154,8 @@ describe('validateUnsubscribeToken', () => {
     }
   })
 
-  test('data=null sin error explícito: devuelve code:not_found', async () => {
-    mockSupabaseState.tokenSelectResponse = { data: null, error: null }
+  test('0 filas sin error: devuelve code:not_found', async () => {
+    mockDbState.tokenRows = []
 
     const result = await validateUnsubscribeToken(VALID_TOKEN)
     expect(result.ok).toBe(false)
@@ -160,15 +169,7 @@ describe('processUnsubscribeByToken', () => {
   beforeEach(resetMock)
 
   function mockValidToken() {
-    mockSupabaseState.tokenSelectResponse = {
-      data: {
-        user_id: 'user-uuid',
-        email: 'test@vence.es',
-        email_type: 'newsletter',
-        user_profiles: { email: 'test@vence.es', full_name: 'Test User' },
-      },
-      error: null,
-    }
+    mockDbState.tokenRows = [VALID_TOKEN_ROW]
   }
 
   test('happy path: unsubscribe por categorías funciona y marca token como usado', async () => {
@@ -183,10 +184,7 @@ describe('processUnsubscribeByToken', () => {
   })
 
   test('token inválido: devuelve errorCode invalid_token', async () => {
-    mockSupabaseState.tokenSelectResponse = {
-      data: null,
-      error: { code: 'PGRST116', message: 'No rows' },
-    }
+    mockDbState.tokenRows = []
 
     const result = await processUnsubscribeByToken(VALID_TOKEN, null, false, ['newsletter'])
     expect(result.success).toBe(false)
@@ -194,10 +192,7 @@ describe('processUnsubscribeByToken', () => {
   })
 
   test('BD falla al validar token: devuelve errorCode db_error', async () => {
-    mockSupabaseState.tokenSelectResponse = {
-      data: null,
-      error: { code: '08006', message: 'connection failure' },
-    }
+    mockDbState.tokenSelectError = { code: '08006', message: 'connection failure' }
 
     const result = await processUnsubscribeByToken(VALID_TOKEN, null, false, ['newsletter'])
     expect(result.success).toBe(false)
@@ -206,7 +201,7 @@ describe('processUnsubscribeByToken', () => {
 
   test('BD falla al actualizar email_preferences: devuelve errorCode db_error', async () => {
     mockValidToken()
-    mockSupabaseState.prefsUpdateError = { message: 'deadlock detected' }
+    mockDbState.prefsUpdateError = { message: 'deadlock detected' }
 
     const result = await processUnsubscribeByToken(VALID_TOKEN, null, false, ['newsletter'])
     expect(result.success).toBe(false)
@@ -216,7 +211,7 @@ describe('processUnsubscribeByToken', () => {
 
   test('falla al marcar token como usado: success:true pero con warnings', async () => {
     mockValidToken()
-    mockSupabaseState.markUsedError = { message: 'timeout' }
+    mockDbState.markUsedError = { message: 'timeout' }
 
     const result = await processUnsubscribeByToken(VALID_TOKEN, null, false, ['newsletter'])
     expect(result.success).toBe(true) // baja sí aplicada
