@@ -21,6 +21,9 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Formatea un embedding (number[]) como literal pgvector para ::vector
+const toVector = (embedding: number[]) => `[${embedding.join(',')}]`
+
 // ============================================
 // BÚSQUEDA SEMÁNTICA (via RPC)
 // ============================================
@@ -49,13 +52,18 @@ export async function searchArticlesBySimilarity(
   // Si hay leyes mencionadas, pedir más resultados
   const multiplier = mentionedLawNames.length > 0 ? 15 : 4
 
-  const { data: rawArticles, error } = await getSupabase().rpc('match_articles', {
-    query_embedding: embedding,
-    match_threshold: minSimilarity,
-    match_count: limit * multiplier,
-  })
+  const db = getReadDb()
 
-  if (error) {
+  let rawArticles: any[]
+  try {
+    rawArticles = (await db.execute(sql`
+      SELECT * FROM match_articles(
+        ${toVector(embedding)}::vector,
+        ${minSimilarity},
+        ${limit * multiplier}
+      )
+    `)) as any[]
+  } catch (error) {
     logger.error('Error in match_articles RPC', error, { domain: 'search' })
     return []
   }
@@ -65,13 +73,18 @@ export async function searchArticlesBySimilarity(
   }
 
   // Obtener info de las leyes
-  const lawIds = [...new Set(rawArticles.map((a: any) => a.law_id))]
-  const { data: lawsData } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name, is_derogated')
-    .in('id', lawIds)
+  const lawIds = [...new Set(rawArticles.map((a: any) => a.law_id))] as string[]
+  let lawsData: Array<{ id: string; short_name: string; name: string; is_derogated: boolean | null }> = []
+  try {
+    lawsData = await db
+      .select({ id: laws.id, short_name: laws.shortName, name: laws.name, is_derogated: laws.isDerogated })
+      .from(laws)
+      .where(inArray(laws.id, lawIds))
+  } catch (err) {
+    logger.warn('Error fetching laws for similarity search', { domain: 'search', error: (err as Error)?.message })
+  }
 
-  const lawMap: Record<string, { id: string; short_name: string; name: string; is_derogated: boolean }> = {}
+  const lawMap: Record<string, { id: string; short_name: string; name: string; is_derogated: boolean | null }> = {}
   lawsData?.forEach(l => { lawMap[l.id] = l })
 
   // Filtrar leyes derogadas
@@ -296,13 +309,14 @@ export async function searchArticlesByLawDirect(
   const { limit = 15, searchTerms = null, query = null } = options
 
   // Buscar la ley
-  const { data: law, error: lawError } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name, is_derogated')
-    .eq('short_name', lawShortName)
-    .single()
+  const db = getReadDb()
+  const law = (await db
+    .select({ id: laws.id, short_name: laws.shortName, name: laws.name, is_derogated: laws.isDerogated })
+    .from(laws)
+    .where(eq(laws.shortName, lawShortName))
+    .limit(1))[0]
 
-  if (lawError || !law) {
+  if (!law) {
     logger.warn(`Law not found: ${lawShortName}`, { domain: 'search' })
     return []
   }
@@ -318,25 +332,31 @@ export async function searchArticlesByLawDirect(
   }
 
   // Camino legacy: ILIKE con searchTerms, ordenado por número de artículo.
-  let supaQuery = getSupabase()
-    .from('articles')
-    .select('id, law_id, article_number, title, content')
-    .eq('law_id', law.id)
-    .eq('is_active', true)
-
+  const conditions = [eq(articles.lawId, law.id), eq(articles.isActive, true)]
   if (searchTerms && searchTerms.length > 0) {
-    const orConditions = searchTerms
-      .map(term => `title.ilike.%${term}%,content.ilike.%${term}%`)
-      .join(',')
-    supaQuery = supaQuery.or(orConditions)
+    const orConditions = searchTerms.flatMap(term => [
+      ilike(articles.title, `%${term}%`),
+      ilike(articles.content, `%${term}%`),
+    ])
+    conditions.push(or(...orConditions)!)
     logger.debug(`Legacy ILIKE search in ${lawShortName}: ${searchTerms.join(', ')}`, { domain: 'search' })
   }
 
-  const { data: articlesData, error } = await supaQuery
-    .order('article_number', { ascending: true })
-    .limit(limit)
-
-  if (error || !articlesData) {
+  let articlesData: any[]
+  try {
+    articlesData = await db
+      .select({
+        id: articles.id,
+        law_id: articles.lawId,
+        article_number: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+      })
+      .from(articles)
+      .where(and(...conditions))
+      .orderBy(articles.articleNumber)
+      .limit(limit)
+  } catch (error) {
     logger.error('Error searching articles directly', error, { domain: 'search' })
     return []
   }
