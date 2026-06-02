@@ -384,27 +384,30 @@ export async function searchArticlesByKeywords(
     return []
   }
 
-  // Construir condiciones OR
-  const orConditions = keywords
-    .map(kw => `title.ilike.%${kw}%,content.ilike.%${kw}%`)
-    .join(',')
+  // Condiciones OR: cada keyword en title/content (ILIKE)
+  const orConditions = keywords.flatMap(kw => [
+    ilike(articles.title, `%${kw}%`),
+    ilike(articles.content, `%${kw}%`),
+  ])
 
-  const { data: articlesData, error } = await getSupabase()
-    .from('articles')
-    .select(`
-      id,
-      article_number,
-      title,
-      content,
-      law_id,
-      law:laws!inner(id, short_name, name, is_derogated)
-    `)
-    .eq('is_active', true)
-    .eq('law.is_derogated', false)
-    .or(orConditions)
-    .limit(limit * 2)
-
-  if (error || !articlesData) {
+  let articlesData: any[]
+  try {
+    const db = getReadDb()
+    articlesData = await db
+      .select({
+        id: articles.id,
+        article_number: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        law_id: articles.lawId,
+        law_short_name: laws.shortName,
+        law_name: laws.name,
+      })
+      .from(articles)
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(and(eq(articles.isActive, true), eq(laws.isDerogated, false), or(...orConditions)))
+      .limit(limit * 2)
+  } catch (error) {
     logger.error('Error in keyword search', error, { domain: 'search' })
     return []
   }
@@ -427,8 +430,8 @@ export async function searchArticlesByKeywords(
     .map(a => ({
       id: a.id,
       lawId: a.law_id,
-      lawName: (a.law as any)?.name || '',
-      lawShortName: (a.law as any)?.short_name || '',
+      lawName: a.law_name || '',
+      lawShortName: a.law_short_name || '',
       articleNumber: a.article_number,
       title: a.title,
       content: a.content,
@@ -458,46 +461,48 @@ export async function searchArticlesForPattern(
   let lawInfo: { id: string; short_name: string; name: string } | null = null
 
   if (lawShortName) {
-    const { data: law } = await getSupabase()
-      .from('laws')
-      .select('id, short_name, name')
-      .eq('short_name', lawShortName)
-      .single()
+    const law = (await getReadDb()
+      .select({ id: laws.id, short_name: laws.shortName, name: laws.name })
+      .from(laws)
+      .where(eq(laws.shortName, lawShortName))
+      .limit(1))[0]
 
     if (law) {
       lawId = law.id
-      lawInfo = law
+      lawInfo = { id: law.id, short_name: law.short_name, name: law.name }
     }
   }
 
-  // Construir búsqueda con OR
-  const orConditions = keywords
-    .flatMap(term => [`title.ilike.%${term}%`, `content.ilike.%${term}%`])
-    .join(',')
+  // Condiciones OR: cada término en title/content (ILIKE)
+  const orConditions = keywords.flatMap(term => [
+    ilike(articles.title, `%${term}%`),
+    ilike(articles.content, `%${term}%`),
+  ])
 
-  let query = getSupabase()
-    .from('articles')
-    .select(`
-      id,
-      article_number,
-      title,
-      content,
-      law_id,
-      law:laws!inner(id, short_name, name, is_derogated)
-    `)
-    .eq('is_active', true)
-    .eq('law.is_derogated', false)
-    .or(orConditions)
-
+  const conditions = [eq(articles.isActive, true), eq(laws.isDerogated, false), or(...orConditions)]
   if (lawId) {
-    query = query.eq('law_id', lawId)
+    conditions.push(eq(articles.lawId, lawId))
   }
 
-  const { data: articlesData, error } = await query
-    .order('article_number', { ascending: true })
-    .limit(limit * 2)
-
-  if (error || !articlesData) {
+  let articlesData: any[]
+  try {
+    const db = getReadDb()
+    articlesData = await db
+      .select({
+        id: articles.id,
+        article_number: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        law_id: articles.lawId,
+        law_short_name: laws.shortName,
+        law_name: laws.name,
+      })
+      .from(articles)
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(and(...conditions))
+      .orderBy(articles.articleNumber)
+      .limit(limit * 2)
+  } catch (error) {
     logger.error('Error in pattern search', error, { domain: 'search' })
     return []
   }
@@ -520,8 +525,8 @@ export async function searchArticlesForPattern(
     .map(a => ({
       id: a.id,
       lawId: a.law_id,
-      lawName: (a.law as any)?.name || '',
-      lawShortName: (a.law as any)?.short_name || '',
+      lawName: a.law_name || '',
+      lawShortName: a.law_short_name || '',
       articleNumber: a.article_number,
       title: a.title,
       content: a.content,
