@@ -1560,10 +1560,25 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-scs-canarias/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-scs-canarias/test', label: 'Tests', icon: '🎯' },
     ],
-    // officialExams: examen oficial SCS 2016 RETIRADO 02/06/2026 — las 73 se activaron
-    // sin auditoría real (article_ok no verificado); despublicadas a draft/needs_human.
-    // Re-añadir este bloque cuando se republiquen tras la revisión una a una (ver
-    // importar-examen-oficial-completo.md §16 y memoria FASE 7 SCS).
+    officialExams: [
+      {
+        date: '2016-05-15',
+        title: 'Convocatoria 2014 — preguntas vigentes (Modelo A)',
+        oep: 'OEP 2014 (BOC 186/2014)',
+        note: 'Del examen oficial del 15/05/2016 (Grupo Auxiliar Administrativo de la Función Administrativa, Modelo A) se importaron 73 preguntas con normativa vigente. Tras revisión una a una (cada una vinculada a su artículo contenedor real + auditoría independiente), se sirven las 60 verificadas; 13 quedan retiradas (desfase normativo, respuesta dudosa o no fundamentables en un artículo concreto). Se excluyeron además las preguntas sobre normas derogadas.',
+        partes: [
+          {
+            id: 'unica',
+            icon: '📋',
+            title: 'Ejercicio único (tipo test)',
+            ordinaryCount: 73,
+            reserveCount: 0,
+            durationMin: 180,
+            breakdown: [{ label: 'preguntas vigentes (60 verificadas y disponibles + 13 en revisión)', count: 73 }],
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================
