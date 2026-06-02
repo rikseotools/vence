@@ -239,19 +239,26 @@ describe('Device limit attack scenarios', () => {
     // iPhone Safari
     await registerAndCheckDevice('u', 'd1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1')
     expect(mockRpc).toHaveBeenLastCalledWith('register_device', expect.objectContaining({
-      p_device_label: 'Safari / iOS',
+      p_device_label: 'Safari / iPhone',
     }))
 
-    // Android Chrome
+    // Android Chrome (móvil)
     await registerAndCheckDevice('u', 'd2', 'Mozilla/5.0 (Linux; Android 14) Chrome/120.0.0.0 Mobile')
     expect(mockRpc).toHaveBeenLastCalledWith('register_device', expect.objectContaining({
-      p_device_label: 'Chrome / Android',
+      p_device_label: 'Chrome / Android (móvil)',
     }))
 
     // Mac Firefox
     await registerAndCheckDevice('u', 'd3', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15) Firefox/121.0')
     expect(mockRpc).toHaveBeenLastCalledWith('register_device', expect.objectContaining({
       p_device_label: 'Firefox / Mac',
+    }))
+
+    // iPad Chrome (CriOS) → antes salía mal como 'Safari / iOS', indistinguible
+    // de un iPhone Safari. Ahora 'Chrome / iPad'. (caso Vanesa 02/06/2026)
+    await registerAndCheckDevice('u', 'd4', 'Mozilla/5.0 (iPad; CPU OS 26_5_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/148.0.7778.166 Mobile/15E148 Safari/604.1')
+    expect(mockRpc).toHaveBeenLastCalledWith('register_device', expect.objectContaining({
+      p_device_label: 'Chrome / iPad',
     }))
   })
 })

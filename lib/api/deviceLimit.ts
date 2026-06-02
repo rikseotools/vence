@@ -162,15 +162,24 @@ export async function getAccountsOnDevice(deviceId: string): Promise<string[]> {
 }
 
 function parseDeviceLabel(ua: string): string {
+  // Navegador. OJO con iOS: Chrome/Firefox/Edge se identifican como CriOS/FxiOS/
+  // EdgiOS (no el literal "Chrome"/"Firefox"/"Edge") y TODOS contienen "Safari".
+  // Hay que detectar las variantes iOS ANTES que Safari para no etiquetar como
+  // Safari un Chrome de iPad (bug caso Vanesa 02/06/2026).
   let browser = 'Unknown'
-  if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome'
-  else if (ua.includes('Firefox')) browser = 'Firefox'
-  else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari'
-  else if (ua.includes('Edg')) browser = 'Edge'
+  if (ua.includes('CriOS') || (ua.includes('Chrome') && !ua.includes('Edg'))) browser = 'Chrome'
+  else if (ua.includes('FxiOS') || ua.includes('Firefox')) browser = 'Firefox'
+  else if (ua.includes('EdgiOS') || ua.includes('Edg')) browser = 'Edge'
+  else if (ua.includes('Safari')) browser = 'Safari'
 
+  // Tipo de dispositivo / SO. Distinguir iPad de iPhone (y móvil/tablet Android)
+  // para que dos equipos del mismo usuario NO salgan con la misma etiqueta en el
+  // modal de límite de dispositivos — si no, no se puede saber cuál desconectar.
   let os = 'Unknown'
-  if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
-  else if (ua.includes('Android')) os = 'Android'
+  if (ua.includes('iPad')) os = 'iPad'
+  else if (ua.includes('iPhone')) os = 'iPhone'
+  else if (ua.includes('iPod')) os = 'iPod'
+  else if (ua.includes('Android')) os = ua.includes('Mobile') ? 'Android (móvil)' : 'Android (tablet)'
   else if (ua.includes('Windows')) os = 'Windows'
   else if (ua.includes('Mac OS') || ua.includes('Macintosh')) os = 'Mac'
   else if (ua.includes('Linux')) os = 'Linux'

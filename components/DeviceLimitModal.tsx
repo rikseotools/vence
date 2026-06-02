@@ -100,8 +100,11 @@ export default function DeviceLimitModal({
       const now = new Date()
       const diffMs = now.getTime() - d.getTime()
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-      if (diffDays === 0) return 'Hoy'
-      if (diffDays === 1) return 'Ayer'
+      // Incluir la hora en Hoy/Ayer: si dos dispositivos se usaron el mismo día,
+      // "Hoy" a secas los hace indistinguibles en el modal (caso Vanesa 02/06/2026).
+      const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      if (diffDays === 0) return `Hoy ${time}`
+      if (diffDays === 1) return `Ayer ${time}`
       if (diffDays < 7) return `Hace ${diffDays} dias`
       return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })
     } catch {
