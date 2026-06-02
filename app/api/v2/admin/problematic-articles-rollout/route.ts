@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getReadDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,21 +14,24 @@ async function _GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (!auth.ok) return auth.response
 
-  const supabase = auth.supabase
   const { searchParams } = new URL(request.url)
   const hours = Math.max(1, Math.min(720, parseInt(searchParams.get('hours') || '24', 10) || 24))
   const since = new Date(Date.now() - hours * 3600 * 1000).toISOString()
 
-  // Resumen agregado por path.
-  const { data: rows, error } = await supabase
-    .from('problematic_articles_rollout_logs')
-    .select('path, articles_count, duration_ms, user_id, position_type, law_names, created_at')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(500)
-
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  // Resumen agregado por path. Tabla no tipada en Drizzle -> raw SQL
+  // (rows se devuelven tal cual al cliente: snake_case + tipos preservados;
+  // articles_count/duration_ms integer, law_names array).
+  let rows: Array<Record<string, any>>
+  try {
+    rows = (await getReadDb().execute(sql`
+      SELECT path, articles_count, duration_ms, user_id, position_type, law_names, created_at
+      FROM problematic_articles_rollout_logs
+      WHERE created_at >= ${since}
+      ORDER BY created_at DESC
+      LIMIT 500
+    `)) as Array<Record<string, any>>
+  } catch (error) {
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 })
   }
 
   // Agregar por usuario para métricas más fiables (el hook hace polling y
