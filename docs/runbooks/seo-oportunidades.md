@@ -59,6 +59,32 @@ Lo que más demanda tiene y dónde estás cerca:
 
 ---
 
+## 🔧 Acción técnica nº1: SSR del contenido de las páginas de ley (02/06/2026)
+
+**Hallazgo (analizando a testdeley.com, #1 en "test constitución española"):** la
+arquitectura de Vence es correcta (página por ley `/leyes/[law]` + páginas por título
+`/test-oposiciones/.../titulo-i...`), PERO el contenido (la teoría/artículos) lo pinta un
+componente **cliente** (`app/teoria/[law]/LawArticlesClient.tsx`, `'use client'`, fetch en
+navegador) → Google recibe **"Cargando teoría…"** y una página vacía. Por eso `/leyes/
+constitucion-espanola` está en pos 7 y testdeley #1 (su `/ce/sumario.php` sirve los tests
+crawleables). **Mismo problema mata SEO Y conversión** (el usuario busca "test", entra,
+ve "configura tu test"/"cargando" y se va).
+
+**Decisión Manuel:** mantener el **registro** (es el funnel — como PreparaOposiciones, que
+rankea mostrando muestra crawleable + registra para el banco completo). Pero **SSR sí hay
+que hacerlo**.
+
+**Fix (aditivo, bajo riesgo):** `app/leyes/[law]/page.tsx` YA es server component con acceso
+a BD (llama `resolveLawBySlug`, `queryLawStats`). Añadir un **bloque SSR** que llame
+`fetchLawSections(slug)` / `fetchLawArticles(slug)` (server-usables, en `lib/teoriaFetchers`)
+y renderice el **índice de artículos (número + título) + texto SEO** como HTML estático →
+Google crawlea contenido legal real que casa con "test [ley]"/"temario [ley]". Mantener
+`LawArticlesClient` para lo interactivo (modales, hacer el test). Opcional fase 2: SSR de
+preguntas de ejemplo SIN respuesta (respeta anti-scraping de `correct_option`).
+
+**Medir:** tras desplegar, seguir la posición de "test constitución española", "test ley
+39/2015" con `npm run gsc:seo` durante 4-8 semanas.
+
 ## Caveats
 - **Ads ≠ SEO.** Pagar anuncios no sube el orgánico. Se confunde a menudo.
 - GSC tiene **~3 días de lag**; las ventanas usan [hoy-31 … hoy-3].
