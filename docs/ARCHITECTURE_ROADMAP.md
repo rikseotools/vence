@@ -1592,7 +1592,9 @@ Es el mismo Supavisor regional que motivó la Opción E (PgBouncer self-hosted):
 
 **Capa 2 (PENDIENTE, medida antes/después tras validar Capa 1):** reenrutar el path de escritura/auth fuera de Supavisor al PgBouncer self-hosted (que `getDb` prefiera `DATABASE_URL_SELF_POOLER` como `getAdminDb`; ojo read-after-write en `answer-and-save`, que ya está en el backend NestJS). Opción quirúrgica intermedia: `track-session-ip` + `store-registration-ip` → `getPoolerDb()`.
 
-Detalle y plan de validación: memoria `project_supavisor_zombie_conn_root_cause`.
+**Bug colateral encontrado y arreglado (02/06):** al revisar por qué las alertas de pool no cuadraban, se vio que `take_pool_capacity_sample()` contaba `application_name='postgres-js'` (GUION) pero el nombre real del cliente postgres-js es `postgres.js` (PUNTO) → `frontend_active_conns` era un gauge muerto pegado a 0 y la alerta `pool_frontend_saturation_high` (≥13) nunca podía disparar. Fix `20260602_fix_pool_sampler_appname.sql` aplicado a prod. Limitación restante: 'postgres.js' agrupa TODOS los clientes postgres-js (frontend + admin + trace + pooler); para atribución por pool habría que fijar `application_name` distinto por cliente en `db/client.ts` (mejora futura).
+
+Detalle y plan de validación: memoria `project_supavisor_zombie_conn_root_cause`. CI rojo + otros gaps de observabilidad de la misma sesión: memoria `project_ci_red_y_obs_gaps_02_06` y `docs/runbooks/observability.md §15`.
 
 ### Pool split (HOY, sin coste extra adicional)
 
