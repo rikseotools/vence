@@ -20,6 +20,7 @@ import { getUserIdFromToken, getDailyLimitStatus } from '@/lib/api/dailyLimit'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getCached, setCached } from '@/lib/cache/redis'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 interface DailyLimitResponse {
   questionsToday: number
@@ -49,7 +50,7 @@ const STALE_TTL_S = 24 * 60 * 60
 // lambda y devuelve stale (mejor UX que 503).
 const DAILY_LIMIT_TIMEOUT_MS = 5000
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const userId = await getUserIdFromToken(request)
 
@@ -167,3 +168,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/daily-limit', _GET)

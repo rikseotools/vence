@@ -7,10 +7,11 @@ import { eq, and, sql, desc, count, gte, isNotNull } from 'drizzle-orm'
 import { calculateDynamicLimit } from '@/lib/api/daily-limit/queries'
 import { GRADUATED_LIMIT_CONFIG } from '@/lib/api/daily-limit/config'
 import type { UserLimitProfile } from '@/lib/api/daily-limit/schemas'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+async function _GET() {
   const db = getDb()
 
   // ============================================================
@@ -180,3 +181,5 @@ export async function GET() {
 
   return NextResponse.json({ summary, conversionComparison, users: results })
 }
+
+export const GET = withErrorLogging('/api/admin/graduated-limits', _GET)

@@ -185,8 +185,6 @@ describe('withErrorLogging — cobertura de endpoints', () => {
   const excludedFromFunctionCheck = [
     'app/api/validation-error-log/route.ts',
     'app/api/debug/psico-images/route.ts',
-    'app/api/daily-limit/route.ts',            // TODO: añadir withErrorLogging
-    'app/api/admin/graduated-limits/route.ts',  // TODO: añadir withErrorLogging
   ]
   const failures: string[] = []
 
@@ -215,8 +213,6 @@ describe('withErrorLogging — cobertura de endpoints', () => {
       'app/api/validation-error-log/route.ts',
       'app/api/debug/psico-images/route.ts',
       'app/api/version/route.ts',
-      'app/api/daily-limit/route.ts',            // TODO: añadir withErrorLogging
-      'app/api/admin/graduated-limits/route.ts',  // TODO: añadir withErrorLogging
     ]
     let wrappedCount = 0
     for (const relPath of routeFiles) {
