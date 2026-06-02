@@ -1,15 +1,17 @@
 // app/api/generate-explanation/route.ts
 // Genera explicación con IA para preguntas sin explicación y la guarda en BD
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
+import { getAdminDb } from '@/db/client'
+import { questions, aiApiConfig } from '@/db/schema'
+import { and, eq } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 async function _POST(request: NextRequest) {
   try {
@@ -20,14 +22,21 @@ async function _POST(request: NextRequest) {
     }
 
     // Verificar que la pregunta existe y no tiene explicación
-    const { data: question, error: fetchError } = await getSupabase()
-      .from('questions')
-      .select('id, explanation')
-      .eq('id', questionId)
-      .single()
+    let question = null
+    let fetchError = null
+    try {
+      const [row] = await db()
+        .select({ id: questions.id, explanation: questions.explanation })
+        .from(questions)
+        .where(eq(questions.id, questionId))
+        .limit(1)
+      question = row ?? null
+    } catch (e) {
+      fetchError = e
+    }
 
-    if (fetchError) {
-      console.error('Error fetching question:', fetchError)
+    if (fetchError || !question) {
+      if (fetchError) console.error('Error fetching question:', fetchError)
       return NextResponse.json({ error: 'Pregunta no encontrada' }, { status: 404 })
     }
 
@@ -40,12 +49,11 @@ async function _POST(request: NextRequest) {
     }
 
     // Obtener API key de OpenAI
-    const { data: apiConfig } = await getSupabase()
-      .from('ai_api_config')
-      .select('api_key_encrypted')
-      .eq('provider', 'openai')
-      .eq('is_active', true)
-      .single()
+    const [apiConfig] = await db()
+      .select({ api_key_encrypted: aiApiConfig.apiKeyEncrypted })
+      .from(aiApiConfig)
+      .where(and(eq(aiApiConfig.provider, 'openai'), eq(aiApiConfig.isActive, true)))
+      .limit(1)
 
     if (!apiConfig?.api_key_encrypted) {
       return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
@@ -105,13 +113,18 @@ INSTRUCCIONES:
     }
 
     // Guardar la explicación en la base de datos
-    const { error: updateError } = await getSupabase()
-      .from('questions')
-      .update({
-        explanation,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', questionId)
+    let updateError = null
+    try {
+      await db()
+        .update(questions)
+        .set({
+          explanation,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(questions.id, questionId))
+    } catch (e) {
+      updateError = e
+    }
 
     if (updateError) {
       console.error('Error saving explanation:', updateError)
