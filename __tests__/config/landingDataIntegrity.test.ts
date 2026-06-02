@@ -16,6 +16,7 @@ const DYNAMIC_SLUGS = [
   'tramitacion-procesal',
   'auxilio-judicial',
   'auxiliar-administrativo-canarias',
+  'auxiliar-administrativo-scs-canarias',
   'auxiliar-administrativo-clm',
   'auxiliar-administrativo-extremadura',
   'auxiliar-administrativo-valencia',

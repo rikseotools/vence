@@ -268,6 +268,11 @@ function PerfilPageContent() {
       data: { name: 'Celador/a del Servicio Canario de Salud', slug: 'celador-scs-canarias', categoria: 'E', administracion: 'Sanitaria' }
     },
     {
+      value: 'auxiliar_administrativo_scs_canarias',
+      label: 'Aux. Admin. SCS (Canarias)',
+      data: { name: 'Auxiliar Administrativo del Servicio Canario de la Salud (SCS)', slug: 'auxiliar-administrativo-scs-canarias', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'tcae_galicia',
       label: 'TCAE Galicia (SERGAS)',
       data: { name: 'TCAE del SERGAS', slug: 'tcae-galicia', categoria: 'C2', administracion: 'Sanitaria' }

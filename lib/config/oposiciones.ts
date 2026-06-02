@@ -1500,6 +1500,69 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DEL SERVICIO CANARIO DE LA SALUD (SCS) (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_scs_canarias',
+    slug: 'auxiliar-administrativo-scs-canarias',
+    positionType: 'auxiliar_administrativo_scs_canarias',
+    name: 'Auxiliar Administrativo del Servicio Canario de la Salud (SCS)',
+    shortName: 'Aux. SCS Canarias',
+    emoji: '🏥',
+    badge: 'C2',
+    color: 'emerald',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Materias jurídicas, sanitarias y de personal',
+        subtitle: 'Estatuto Marco, autonomía del paciente, procedimiento, datos, Seguridad Social, contratación',
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'Prevención de Riesgos Laborales' },
+          { id: 2, name: 'Autonomía del paciente y documentación clínica' },
+          { id: 3, name: 'Estatuto Marco: personal estatutario, clasificación y derechos' },
+          { id: 4, name: 'Estatuto Marco: jornada de trabajo y situaciones del personal' },
+          { id: 5, name: 'Estatuto Marco: acceso, carrera, retribuciones e incompatibilidades' },
+          { id: 6, name: 'Ley 39/2015: objeto, interesado y actos administrativos' },
+          { id: 7, name: 'Ley 39/2015: garantías e iniciación del procedimiento' },
+          { id: 8, name: 'Ley 39/2015: eficacia, invalidez y silencio administrativo' },
+          { id: 9, name: 'Ley 39/2015: revisión de actos y recursos administrativos' },
+          { id: 10, name: 'Atención al público e información administrativa' },
+          { id: 11, name: 'Documento, registro, archivo e historia clínica' },
+          { id: 12, name: 'La Tarjeta Sanitaria Individual (Decreto 56/2007)' },
+          { id: 13, name: 'Oficina de Defensa de los Derechos de los Usuarios Sanitarios (ODDUS)' },
+          { id: 14, name: 'Protección de datos personales (LO 3/2018)' },
+          { id: 15, name: 'Régimen General de la Seguridad Social' },
+          { id: 16, name: 'Los suministros y la gestión del almacén' },
+          { id: 17, name: 'Los contratos administrativos' },
+          { id: 18, name: 'La nómina' },
+          { id: 19, name: 'Certificados y copias auténticas (Decreto 1/2015)' },
+          { id: 20, name: 'Listas de espera sanitarias (Decreto Territorial 116/2006)' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Ofimática y herramientas informáticas',
+        subtitle: 'Procesadores de texto, hojas de cálculo, bases de datos, presentaciones, Internet y correo',
+        icon: '💻',
+        themes: [
+          { id: 21, name: 'Sistemas ofimáticos: textos, bases de datos, hojas de cálculo y presentaciones' },
+          { id: 22, name: 'Internet, correo electrónico y Administración electrónica' },
+        ],
+      },
+    ],
+    totalTopics: 22,
+    aliases: ['scs', 'servicio canario de la salud', 'sanidad canarias', 'auxiliar sanidad canarias', 'aux scs', 'estatutario canarias', 'auxiliar administrativo sanidad canarias'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-scs-canarias', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/auxiliar-administrativo-scs-canarias/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-scs-canarias/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO JUNTA DE CASTILLA-LA MANCHA (C2)
   // ========================================
   {

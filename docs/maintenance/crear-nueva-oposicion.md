@@ -88,6 +88,30 @@ Para captar demanda de una oposición nueva que aparece (ej. convocan Ayto Bilba
 
 ---
 
+## 0.bis Criterio PREVIO: coste de creación — temario normativo vs editorial
+
+**Antes de comprometerse a crear una oposición, clasificar su temario por TIPO de contenido.** Esto determina el coste y si la podemos hacer en casa o no. Es el primer filtro al decidir entre una oposición y otra.
+
+### Dos tipos de contenido por tema
+
+| Tipo | Qué es | Coste | Cómo se cubre |
+|---|---|---|---|
+| **Normativo (ley)** | El tema deriva de un texto legal literal (ley/decreto del BOE/BOC) | **Bajo y autónomo** | O ya tenemos el banco en BD (reutilizable vía `topic_scope`), o lo generamos: importar la norma del boletín → generar preguntas IA contra el articulado literal → triple auditoría (ver `generar-preguntas-con-ia.md`). Cero dependencia externa. |
+| **Editorial** | El tema NO sale de un texto legal: materia técnica, doctrina, protocolos, oficios, "manuales" | **Alto y con dependencia** | Necesita un **editor humano** que redacte el contenido primero. No se puede citar artículo → la IA no puede generar preguntas fiables sin fuente literal. |
+
+### Cómo aplicarlo
+
+1. Al leer el programa oficial (FASE 1), etiquetar **cada tema**: ¿sale de una ley/decreto concreto, o es materia editorial?
+2. **Priorizar oposiciones con temario mayoritariamente normativo.** Las administrativas (C2/C1) lo son casi siempre → baratas y rápidas.
+3. Los temas **genéricos sin ley pero estándar** (ofimática, atención al público, suministros, nómina, registro/archivo) son una zona intermedia: NO tienen artículo de respaldo, pero son materia común y la IA los genera bien (la ofimática ya tiene miles de preguntas sin ser "ley"). Avisar de que no hay cita literal de respaldo.
+4. **Señal de alarma:** si una parte importante del temario es editorial puro (p.ej. oposiciones técnicas/sanitarias con protocolos clínicos, oficios con materia práctica), el coste se dispara y conviene posponerla o asumir que necesita editor.
+
+**Caso real SCS Canarias (02/06/2026):** 22 temas, prácticamente todos normativos (Ley 41/2002, Ley 55/2003, Ley 39/2015, LO 3/2018, LGSS, Ley 9/2017, LPRL, 4 decretos canarios) + 2 genéricos estándar (suministros, nómina) + ofimática. Cero temas editoriales → buena elección de "primera a crear" por este criterio. Solo hubo que importar 4 decretos canarios pequeños y generar preguntas; ningún editor.
+
+> Este criterio complementa la priorización por **demanda/vendibilidad** del roadmap `docs/roadmap/activacion-oposiciones-vendibles.md` (convocatoria abierta / examen 1-6 meses / nº candidatos). Demanda dice *cuáles interesan*; este criterio dice *cuáles son baratas de montar*. Cruzar ambos.
+
+---
+
 ## Modelo de datos (entender antes de empezar)
 
 ```
@@ -585,7 +609,7 @@ Muchos temas son comunes entre oposiciones. La regla:
 Los temas de legislacion autonomica (Estatuto de Autonomia, Ley de Gobierno, Hacienda autonomica, Funcion Publica autonomica) NO se pueden reutilizar de otras oposiciones. Opciones:
 
 1. **Si la ley autonomica esta en BD:** Crear topic_scope normal
-2. **Si NO esta en BD:** Dejar el tema SIN scope. Se marca como `disponible: false` en el temario. Se puede importar la ley despues y el tema se activa automaticamente al crear el scope.
+2. **Si NO esta en BD:** Dejar el tema SIN scope. Se marca como `disponible: false` en el temario. Se puede importar la ley despues (ver **[`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md)** — crear ley desde URL del BOE, o `includeDisposiciones: true` para añadir disposiciones a una ley existente) y el tema se activa automaticamente al crear el scope. Si la ley existe pero el tema queda con 0 preguntas, generarlas con **[`generar-preguntas-con-ia.md`](./generar-preguntas-con-ia.md)**.
 
 ### 3e. Error clasico: meter ley entera
 
@@ -1647,3 +1671,16 @@ find . -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.js" \) \
 Antes de crear leyes nuevas, hacer inventario en BD. Muchas oposiciones CyL/La Rioja/Zaragoza ya tienen cargadas **todas** las leyes autonómicas y estatales habituales (Estatuto CyL, Función Pública CyL, Régimen Local CyL, Transparencia CyL, Igualdad CyL, etc.). Querying por `short_name` con los códigos típicos (`Ley X/YYYY CyL`, `LO 14/2007`, `LPRL`, etc.) evita duplicar y asegura que las preguntas heredadas se reutilizan automáticamente vía `topic_scope`.
 
 Ejemplo real: al añadir Dip. León (25 temas), **no hubo que crear ninguna ley nueva** y se heredaron ~10k preguntas automáticamente de las otras oposiciones.
+
+---
+
+## Manuales relacionados
+
+Crear una oposición encadena con el resto del flujo de contenido:
+
+- **[`verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md)** — audita cada `topic_scope` creado en FASE 3 contra el epígrafe oficial (excesos, huecos, solapamientos). Obligatorio antes de `is_active=true`.
+- **[`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md)** — cuando un tema necesita una ley/disposición que NO está en BD (FASE 3d): créala o sincronízala desde el BOE (`includeDisposiciones: true` para disposiciones adicionales).
+- **[`generar-preguntas-con-ia.md`](./generar-preguntas-con-ia.md)** — para temas con scope correcto pero 0 preguntas (leyes autonómicas/locales recién creadas, materia sin banco).
+- **[`importar-examen-oficial-completo.md`](./importar-examen-oficial-completo.md)** — FASE 7: importar exámenes oficiales pasados (PDFs → preguntas verificadas).
+- **[`oeps-convocatorias-seguimiento.md`](./oeps-convocatorias-seguimiento.md)** — alta de `seguimiento_url`, hitos del proceso y modelo "Claude mete, el cron revisa".
+- **[`cache-revalidation.md`](./cache-revalidation.md)** — revalidar tags `landing`/`temario`/`test-counts` al terminar (FASE 6f).
