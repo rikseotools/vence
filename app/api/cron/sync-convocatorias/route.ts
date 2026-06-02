@@ -10,7 +10,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminDb } from '@/db/client';
+import { convocatoriasBoe } from '@/db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   fetchBoeSumario,
   fetchConvocatoriaXML,
@@ -33,18 +35,11 @@ import {
 } from '@/lib/boe/convocatoriasParser';
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Crear cliente Supabase con service role key (bypass RLS)
-function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+function getDb() {
+  return getAdminDb();
 }
 
 async function _GET(request: Request) {
@@ -61,7 +56,7 @@ async function _GET(request: Request) {
   }
 
   const startTime = Date.now();
-  const supabase = getSupabaseAdmin();
+  const db = getDb();
 
   try {
     // 2. Obtener parámetros
@@ -114,11 +109,11 @@ async function _GET(request: Request) {
     for (const conv of convocatoriasBOE) {
       try {
         // Verificar si ya existe
-        const { data: existe } = await supabase
-          .from('convocatorias_boe')
-          .select('id')
-          .eq('boe_id', conv.boeId)
-          .single();
+        const [existe] = await db
+          .select({ id: convocatoriasBoe.id })
+          .from(convocatoriasBoe)
+          .where(eq(convocatoriasBoe.boeId, conv.boeId))
+          .limit(1);
 
         if (existe) {
           stats.existentes++;
@@ -134,30 +129,32 @@ async function _GET(request: Request) {
         const tituloLimpio = limpiarTitulo(conv.titulo);
         const datosGeo = extraerDatosGeograficos(conv.titulo, conv.departamentoNombre);
 
-        // Preparar datos para insertar
+        // Preparar datos para insertar (claves camelCase = campos Drizzle de
+        // convocatorias_boe; validadas contra el schema y el test de paridad)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const nuevaConv: Record<string, any> = {
-          boe_id: conv.boeId,
-          boe_fecha: formatFecha(fecha),
-          boe_url_pdf: conv.urlPdf,
-          boe_url_html: conv.urlHtml,
-          boe_url_xml: conv.urlXml,
+          boeId: conv.boeId,
+          boeFecha: formatFecha(fecha),
+          boeUrlPdf: conv.urlPdf,
+          boeUrlHtml: conv.urlHtml,
+          boeUrlXml: conv.urlXml,
           titulo: conv.titulo,
-          titulo_limpio: tituloLimpio,
-          departamento_codigo: conv.departamentoCodigo,
-          departamento_nombre: conv.departamentoNombre,
+          tituloLimpio: tituloLimpio,
+          departamentoCodigo: conv.departamentoCodigo,
+          departamentoNombre: conv.departamentoNombre,
           epigrafe: conv.epigrafe,
           tipo,
           categoria,
           cuerpo: null, // Se puede extraer del texto XML
           acceso,
-          num_plazas: plazas.total,
-          num_plazas_libre: plazas.libre,
-          num_plazas_pi: plazas.pi,
-          num_plazas_discapacidad: plazas.discapacidad,
-          oposicion_relacionada: oposicion,
+          numPlazas: plazas.total,
+          numPlazasLibre: plazas.libre,
+          numPlazasPi: plazas.pi,
+          numPlazasDiscapacidad: plazas.discapacidad,
+          oposicionRelacionada: oposicion,
           // Datos geográficos
           ambito: datosGeo.ambito,
-          comunidad_autonoma: datosGeo.comunidadAutonoma,
+          comunidadAutonoma: datosGeo.comunidadAutonoma,
           provincia: datosGeo.provincia,
           municipio: datosGeo.municipio,
         };
@@ -168,44 +165,46 @@ async function _GET(request: Request) {
             const xmlData = await fetchConvocatoriaXML(conv.boeId);
             stats.xmlDescargados++;
 
-            nuevaConv.fecha_disposicion = xmlData.fechaDisposicion;
+            nuevaConv.fechaDisposicion = xmlData.fechaDisposicion;
             nuevaConv.rango = xmlData.rango;
-            nuevaConv.pagina_inicial = xmlData.paginaInicial;
-            nuevaConv.pagina_final = xmlData.paginaFinal;
-            nuevaConv.contenido_texto = xmlData.contenidoTexto;
+            nuevaConv.paginaInicial = xmlData.paginaInicial;
+            nuevaConv.paginaFinal = xmlData.paginaFinal;
+            nuevaConv.contenidoTexto = xmlData.contenidoTexto;
 
             // Vincular automáticamente a la convocatoria origen si existe
             if (xmlData.referenciasAnteriores.length > 0) {
-              const { data: existingRef } = await supabase
-                .from('convocatorias_boe')
-                .select('id, tipo')
-                .in('boe_id', xmlData.referenciasAnteriores)
-                .eq('is_active', true);
+              const existingRef = await db
+                .select({ id: convocatoriasBoe.id, tipo: convocatoriasBoe.tipo })
+                .from(convocatoriasBoe)
+                .where(and(
+                  inArray(convocatoriasBoe.boeId, xmlData.referenciasAnteriores),
+                  eq(convocatoriasBoe.isActive, true),
+                ));
 
               if (existingRef && existingRef.length > 0) {
                 // Preferir referencia tipo "convocatoria", si no la primera encontrada
                 const convocatoriaRef = existingRef.find(r => r.tipo === 'convocatoria') || existingRef[0];
-                nuevaConv.convocatoria_origen_id = convocatoriaRef.id;
+                nuevaConv.convocatoriaOrigenId = convocatoriaRef.id;
                 console.log(`  🔗 ${conv.boeId} vinculado a ${xmlData.referenciasAnteriores[0]}`);
               }
             }
 
             // Extraer datos adicionales del texto
             const datosTexto = extraerDatosDelTexto(xmlData.contenidoTexto);
-            nuevaConv.plazo_inscripcion_dias = datosTexto.plazoInscripcionDias;
-            nuevaConv.titulacion_requerida = datosTexto.titulacionRequerida;
-            nuevaConv.tiene_temario = datosTexto.tieneTemario;
-            nuevaConv.fecha_examen = datosTexto.fechaExamenMencionada;
-            nuevaConv.url_bases = datosTexto.urlBases;
+            nuevaConv.plazoInscripcionDias = datosTexto.plazoInscripcionDias;
+            nuevaConv.titulacionRequerida = datosTexto.titulacionRequerida;
+            nuevaConv.tieneTemario = datosTexto.tieneTemario;
+            nuevaConv.fechaExamen = datosTexto.fechaExamenMencionada;
+            nuevaConv.urlBases = datosTexto.urlBases;
 
             // Extraer datos mejorados del contenido_texto
             if (xmlData.contenidoTexto) {
               // Plazas (prioridad contenido > título)
               const plazasContenido = extraerPlazasDeContenido(xmlData.contenidoTexto);
-              if (plazasContenido.total) nuevaConv.num_plazas = plazasContenido.total;
-              if (plazasContenido.libre) nuevaConv.num_plazas_libre = plazasContenido.libre;
-              if (plazasContenido.pi) nuevaConv.num_plazas_pi = plazasContenido.pi;
-              if (plazasContenido.discapacidad) nuevaConv.num_plazas_discapacidad = plazasContenido.discapacidad;
+              if (plazasContenido.total) nuevaConv.numPlazas = plazasContenido.total;
+              if (plazasContenido.libre) nuevaConv.numPlazasLibre = plazasContenido.libre;
+              if (plazasContenido.pi) nuevaConv.numPlazasPi = plazasContenido.pi;
+              if (plazasContenido.discapacidad) nuevaConv.numPlazasDiscapacidad = plazasContenido.discapacidad;
 
               // Categoría (prioridad contenido > título)
               const categoriaContenido = detectarCategoriaDeContenido(xmlData.contenidoTexto);
@@ -219,15 +218,15 @@ async function _GET(request: Request) {
               nuevaConv.resumen = generarResumen({
                 tipo: nuevaConv.tipo,
                 categoria: nuevaConv.categoria,
-                numPlazas: nuevaConv.num_plazas,
-                numPlazasLibre: nuevaConv.num_plazas_libre,
-                numPlazasPI: nuevaConv.num_plazas_pi,
+                numPlazas: nuevaConv.numPlazas,
+                numPlazasLibre: nuevaConv.numPlazasLibre,
+                numPlazasPI: nuevaConv.numPlazasPi,
                 acceso: nuevaConv.acceso,
-                departamento: nuevaConv.departamento_nombre,
-                comunidadAutonoma: nuevaConv.comunidad_autonoma,
+                departamento: nuevaConv.departamentoNombre,
+                comunidadAutonoma: nuevaConv.comunidadAutonoma,
                 municipio: nuevaConv.municipio,
-                plazoInscripcion: nuevaConv.plazo_inscripcion_dias,
-                titulacion: nuevaConv.titulacion_requerida,
+                plazoInscripcion: nuevaConv.plazoInscripcionDias,
+                titulacion: nuevaConv.titulacionRequerida,
               });
             }
 
@@ -239,7 +238,7 @@ async function _GET(request: Request) {
         }
 
         // Calcular relevancia
-        nuevaConv.relevancia_score = calcularRelevancia({
+        nuevaConv.relevanciaScore = calcularRelevancia({
           tipo,
           categoria,
           oposicionRelacionada: oposicion,
@@ -248,9 +247,12 @@ async function _GET(request: Request) {
         });
 
         // Insertar en BD
-        const { error: insertError } = await supabase
-          .from('convocatorias_boe')
-          .insert(nuevaConv);
+        let insertError = null;
+        try {
+          await db.insert(convocatoriasBoe).values(nuevaConv as typeof convocatoriasBoe.$inferInsert);
+        } catch (e) {
+          insertError = e;
+        }
 
         if (insertError) {
           console.error(`❌ [sync-convocatorias] Error insertando ${conv.boeId}:`, insertError);
