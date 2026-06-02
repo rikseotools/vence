@@ -287,6 +287,12 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 **Anti-objetivos**: no migrar de proveedor de verdad (el POC no se mergea), no big-bang, no romper a un solo usuario (ante duda en B, no se mergea), no absorber `.from`/`.rpc`.
 
+**Datos de usuario, identidad y proveedor (claves para un cambio futuro de proveedor):**
+- **Dos capas distintas**: (1) IDENTIDAD/SESIÓN = lo único que posee Supabase Auth: `auth.users` (email + vínculo OAuth Google) + firma del JWT; (2) DATOS DE APP = `user_profiles` + TODO lo keyed por el UUID (test_sessions, detailed_answers, user_question_history, suscripciones, medallas…) → viven en NUESTRA Postgres (Drizzle), se van tal cual a RDS, NO dependen de Supabase Auth ni se migran con el cambio de proveedor.
+- 🔑 **RESTRICCIÓN #1 de cualquier cambio de proveedor**: `user_profiles.id` es FK a `auth.users.id` (ON DELETE CASCADE) y todo cuelga de ese UUID → el nuevo proveedor DEBE conservar los MISMOS UUIDs como `sub`. Migración de identidad = exportar `auth.users` preservando IDs, NUNCA recrear usuarios (regenerar UUIDs huérfana todo el historial).
+- **Emails**: Supabase Auth NO envía emails en esta app (solo OAuth Google, sin email/password ni magic link). TODO va por Resend. El único email atado al auth es el welcome (`processAuthCallback`→`sendEmailV2`), con detección de usuario-nuevo POR BD (`emailLogs` 'bienvenida_inmediato'), agnóstica del proveedor. ➡️ **Verificación obligatoria del cutover (sábado)**: registrar usuario nuevo y confirmar que llega el welcome email.
+- **Proveedor (TBD, decisión separada que el wrapper habilita)**: recomendación **Auth.js (NextAuth) + adapter Drizzle sobre nuestra RDS** (cero vendor, gratis, dentro del Next.js, preserva UUIDs trivialmente) — es lo que valida el POC (Fase F). Alternativa AWS-native gestionada: **Cognito** (otro vendor + volcar identidades). Decidir CON el POC delante, no antes.
+
 **Tiempo estimado**: ~6-9 días de trabajo + soaks (A: hecho; B+C4 requieren ventana + monitorización).
 
 ### Fase 5 — Migrar Supabase Realtime (2/3 migrados, 1 pendiente)
