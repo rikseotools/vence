@@ -777,6 +777,19 @@ Durante la verificación inicial del T18 (Estatuto de los Trabajadores), los age
 
 **Lección:** los agentes verificadores deben usar la función `isDidactic()` como gate estricto, no la mera "correctness" del contenido.
 
+### 8.3 Gotchas de ofimática — el verificador (agente) se equivoca aquí una y otra vez (SCS 02/06/2026)
+
+En la verificación de preguntas de ofimática/informática, los agentes Sonnet **fallan sistemáticamente** asumiendo convenciones en inglés o reglas que no recuerdan. **El adjudicador (Opus/humano, paso 4) DEBE revisar estos casos a mano — no aceptar el `FIX` del agente por defecto** (§18.1: la auditoría tuvo ~17% de falsos negativos; estos gotchas son una fuente principal):
+
+- **Atajos de Microsoft Office EN ESPAÑOL** (no en inglés): **Guardar = Ctrl+G** (no Ctrl+S), **Abrir = Ctrl+A**, **Seleccionar todo = Ctrl+E**, **Subrayado = Ctrl+S**, Negrita = Ctrl+N, Cursiva = Ctrl+K, Rehacer = Ctrl+Y. Un agente que marca "Ctrl+A abre = falso, debería ser seleccionar todo" está aplicando el inglés → es **falso positivo**.
+- **Excel `SUMA` con argumentos escritos directamente**: el texto que representa un número (`"5"`→5) y los lógicos (`VERDADERO`→1) **SÍ se coaccionan** cuando se escriben directos en la función: `=SUMA("5";15;VERDADERO)=21`. Solo se ignoran si están en **celdas referenciadas**. Los agentes suelen decir "16" o "error".
+- **Gráficos**: "barras verticales" = **Columnas**; "barras" (a secas) = horizontales.
+- **Enunciados con artefacto intencional** (p.ej. «CTRL+AA (dos veces A)»): a veces es un distractor deliberado del examen, no un error de OCR — verificar antes de "reparar".
+
+### 8.4 Verificar contra la LEY VIGENTE — preguntas de examen oficial pueden estar DESFASADAS
+
+Una pregunta de un examen oficial pasado pudo ser correcta entonces y ser **incorrecta hoy** por reforma legal. `answer_ok` se evalúa contra la ley **vigente**, no contra la del año del examen. Casos reales SCS 2016: Ley 55/2003 art.9 (la reforma 2021 quitó «coyuntural/extraordinario» del nombramiento temporal); cobertura AT/EP de autónomos (voluntaria en 2016 → **obligatoria** desde 2019, RDL 28/2018). Si la respuesta oficial quedó desfasada → `answer_ok=false`, no se publica (enseñaría derecho derogado).
+
 ### Cómo detectar cada nivel:
 
 **Copia del artículo** (más común):

@@ -412,6 +412,16 @@ Este flujo se usa cuando hay que **incorporar una ley nueva** que no existe toda
 
 > ⚠️ **Cuándo NO usar este flujo:** si la ley ya existe en BD y solo cambió su contenido (modificación parcial), usa "Sincronizar Ley desde BOE" (sección 3). El criterio: si el slug y el `boe_url` son el mismo → es actualización. Si cambian → es ley nueva.
 
+> 🏛️ **Fuente NO-BOE (norma autonómica: BOC, DOGV, DOG, BOJA, BOCM…) — el sync NO sirve, hay que insertar a mano (SCS Decreto 105/2000, 02/06/2026).**
+>
+> El endpoint `sync-all` solo parsea el **BOE consolidado**. Para una norma autonómica publicada en su boletín (p.ej. Decreto 105/2000 de Canarias en el BOC) **no funciona** y hay que crear los artículos manualmente:
+> 1. `laws.insert` con `scope='regional'`, `is_virtual=false` (es ley real), `slug` propio, y en `boe_url` la URL del **boletín autonómico** (BOC/DOG…). `verification_status='actualizada'` (verificada a mano contra el boletín).
+> 2. **Obtener el texto VERBATIM del boletín** — NO uses `WebFetch` para el articulado (resume/parafrasea, prohibido §"PROHIBIDO truncados"). Descarga el HTML crudo (`curl -sL <url> -o f.html`), quita `<script>/<style>/<tags>`, y **parte por `Artículo N.-`** programáticamente (evita transcripción manual = evita errores).
+> 3. `articles.insert` por artículo con `content` **íntegro literal** (sin truncar). Verifica `shortCount` (§ Paso 3).
+> 4. Vincular las preguntas + (si procede) `topic_scope` + revalidar.
+>
+> Nota: muchos boletines autonómicos tienen también un visor "juriscan/legislación" que puede dar **timeout** o estar tras login (vLex) — el HTML del propio número del boletín suele ser la fuente libre más fiable.
+
 ### Paso 1: INSERT de la nueva ley en `laws`
 
 ```bash
@@ -1173,3 +1183,15 @@ const supabase = createClient(
 })();
 SCRIPT
 ```
+
+---
+
+## Manuales relacionados
+
+Crear/sincronizar una ley es un paso intermedio de varios flujos. Encadena con:
+
+- **[`verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md)** — tras crear una ley o añadir disposiciones, añádelas al `topic_scope` de los temas cuyo epígrafe las cubra. Este manual se invoca desde ahí cuando un concepto del epígrafe no tiene norma en BD.
+- **[`crear-nueva-oposicion.md`](./crear-nueva-oposicion.md)** — FASE 3d: una oposición nueva puede necesitar leyes autonómicas/locales que aún no existen en BD.
+- **[`generar-preguntas-con-ia.md`](./generar-preguntas-con-ia.md)** — una ley/artículo recién creado tiene 0 preguntas; genera preguntas verificadas con IA para darle banco.
+- **[`importar-tema-tramitacion-procesal.md`](./importar-tema-tramitacion-procesal.md)** — Fase 0 de importación de temas.
+- **[`cache-revalidation.md`](./cache-revalidation.md)** — revalidar `teoria`/`temario` tras sincronizar artículos.
