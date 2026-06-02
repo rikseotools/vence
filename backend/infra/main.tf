@@ -372,6 +372,16 @@ resource "aws_iam_role_policy" "ci_deploy" {
             "iam:PassedToService" = "ecs-tasks.amazonaws.com"
           }
         }
+      },
+      # Invalidar CloudFront tras el rollout: las páginas prerenderizadas
+      # (ISR) quedan cacheadas en CloudFront hasta max_ttl (1 día). Sin
+      # invalidación, un cambio de página prerenderizada (p.ej. SSR del
+      # temario en /leyes/[law]) tarda hasta 24h en verse. El paso
+      # "Invalidar CloudFront" del workflow frontend-deploy lo dispara.
+      {
+        Effect   = "Allow"
+        Action   = ["cloudfront:CreateInvalidation"]
+        Resource = [aws_cloudfront_distribution.frontend.arn]
       }
     ]
   })

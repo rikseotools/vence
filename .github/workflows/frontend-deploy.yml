@@ -216,6 +216,27 @@ jobs:
             --region "${{ env.AWS_REGION }}"
           echo "✅ Rollout estable — task nuevo healthy en ALB."
 
+      # Invalidar CloudFront. Las páginas prerenderizadas (ISR) las cachea
+      # CloudFront hasta max_ttl (1 día, ver frontend.tf cache policy
+      # frontend_default). Sin esto, un cambio de página estática (p.ej. el
+      # SSR del temario en /leyes/[law]) tarda hasta 24h en propagarse a los
+      # usuarios y a Googlebot. `/*` cuenta como UN path (free tier: 1000/mes).
+      # continue-on-error: la invalidación es una optimización — si fallara
+      # (p.ej. permiso IAM no aplicado aún), el contenido se propaga igual en
+      # ≤24h por el max_ttl. No debe tumbar un deploy ya exitoso.
+      - name: Invalidar CloudFront
+        continue-on-error: true
+        env:
+          # Distribución www/apex/preview-aws.vence.es (cuenta 349744179687).
+          CLOUDFRONT_DISTRIBUTION_ID: E1EH4WF1H7ZGLA
+        run: |
+          ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --paths "/*" \
+            --query 'Invalidation.Id' --output text)
+          echo "✅ Invalidación CloudFront creada: $ID (paths /*)"
+          echo "- invalidación CloudFront: \`$ID\` (\`/*\`)" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Summary
         run: |
           echo "## Frontend deployed a AWS ECS" >> "$GITHUB_STEP_SUMMARY"

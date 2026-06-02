@@ -259,6 +259,55 @@ after(async () => {
 
 ---
 
+## CloudFront (CDN delante del frontend AWS) — la capa que NADIE invalidaba
+
+> Descubierto 2026-06-02 al desplegar el SSR del temario en `/leyes/[law]`: el
+> código estaba bien y el deploy ECS vivo, pero **prod seguía sirviendo el HTML
+> viejo**. Causa: una capa de cache que este manual no contemplaba — CloudFront.
+
+Desde el cutover a AWS, `www.vence.es` se sirve por **CloudFront** (distribución
+`E1EH4WF1H7ZGLA`, cuenta 349744179687) → ECS frontend. Las páginas
+**prerenderizadas (ISR/SSG)** llevan `cache-control: s-maxage=31536000` del
+origen, pero la cache policy de CloudFront (`frontend_default` en
+`backend/infra/frontend.tf`) **capa el TTL a `max_ttl = 86400` (1 día)**. O sea:
+
+- **Una página estática cambiada por un deploy tarda hasta 24h en verse**, aunque
+  el contenedor ECS nuevo ya sirva el HTML correcto. `revalidateTag` / Redis / MVs
+  **NO tocan CloudFront** — son capas independientes (igual que Next ↔ Redis).
+- El refresco es **automático en ≤24h**; no se pierde nada, solo es lento.
+
+### Cómo comprobar si el origen ya tiene el contenido nuevo (saltándose CloudFront)
+
+Un query-string distinto = otra cache key → `Miss from cloudfront` → fetch al origen:
+
+```bash
+curl -sI "https://www.vence.es/leyes/constitucion-espanola?nocache=$RANDOM" | grep -i x-cache
+# Miss from cloudfront  → te sirve el ORIGEN (deploy real), no la copia cacheada.
+curl -s  "https://www.vence.es/leyes/constitucion-espanola?nocache=$RANDOM" | grep -c "TU_MARCADOR"
+```
+
+Si con cache-buster aparece el contenido nuevo pero sin él aparece el viejo →
+es **solo** CloudFront cacheado; el deploy está bien.
+
+### Forzar que se vea YA (invalidación puntual)
+
+```bash
+AWS_PROFILE=vence aws cloudfront create-invalidation \
+  --distribution-id E1EH4WF1H7ZGLA --paths "/leyes/*"   # o "/*" para todo
+```
+
+`/*` cuenta como **un** path (free tier: 1000 paths/mes). Tarda ~1-2 min.
+
+### Automático en cada deploy
+
+El workflow `frontend-deploy.yml` ya invalida `/*` tras el rollout estable (paso
+«Invalidar CloudFront», `continue-on-error`). El rol CI OIDC tiene
+`cloudfront:CreateInvalidation` (en `backend/infra/main.tf`). Por tanto, **a
+partir de ahora un deploy normal propaga el cambio en minutos, no en 24h** — solo
+necesitas invalidación manual para casos fuera de un deploy.
+
+---
+
 ## Cuándo revalidar manualmente
 
 ### Tag `temario`
