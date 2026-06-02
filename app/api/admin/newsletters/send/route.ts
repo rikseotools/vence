@@ -1,6 +1,5 @@
 // app/api/admin/newsletters/send/route.ts - Sistema de envío de newsletters
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   safeParseSendRequest,
   getNewsletterAudience,
@@ -9,18 +8,11 @@ import {
   type EligibleUser
 } from '@/lib/api/newsletters'
 import { renderTemplate, getEmailTemplate, getActiveOposiciones } from '@/lib/api/newsletters'
+import { getAdminDb } from '@/db/client'
+import { userProfiles, emailEvents } from '@/db/schema'
+import { and, inArray, isNotNull } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
 
 interface SendError {
   email: string
@@ -102,17 +94,21 @@ async function _POST(request: NextRequest) {
       // Envío a usuarios específicos - obtener de DB
       console.log(`👥 [Newsletter/Send] Enviando a ${selectedUserIds.length} usuarios específicos`)
 
-      const { data } = await getSupabase()
-        .from('user_profiles')
-        .select('id, email, full_name, target_oposicion')
-        .in('id', selectedUserIds)
-        .not('email', 'is', null)
+      const data = await getAdminDb()
+        .select({
+          id: userProfiles.id,
+          email: userProfiles.email,
+          fullName: userProfiles.fullName,
+          targetOposicion: userProfiles.targetOposicion,
+        })
+        .from(userProfiles)
+        .where(and(inArray(userProfiles.id, selectedUserIds), isNotNull(userProfiles.email)))
 
-      users = (data || []).map(u => ({
+      users = data.map(u => ({
         id: u.id,
         email: u.email,
-        fullName: u.full_name,
-        targetOposicion: u.target_oposicion
+        fullName: u.fullName,
+        targetOposicion: u.targetOposicion
       }))
     } else if (audienceType) {
       // Envío por audiencia - usa Drizzle (respeta unsubscribedAll)
@@ -269,15 +265,15 @@ async function _POST(request: NextRequest) {
             // Registrar en analytics si no es modo test
             if (!testMode) {
               try {
-                await getSupabase().from('email_events').insert({
-                  user_id: user.id,
-                  event_type: 'sent',
-                  email_type: 'newsletter',
-                  email_address: user.email,
+                await getAdminDb().insert(emailEvents).values({
+                  userId: user.id,
+                  eventType: 'sent',
+                  emailType: 'newsletter',
+                  emailAddress: user.email,
                   subject: personalizedSubject,
-                  template_id: templateId || 'newsletter',
-                  campaign_id: campaignId,
-                  email_content_preview: personalizedHtml
+                  templateId: templateId || 'newsletter',
+                  campaignId,
+                  emailContentPreview: personalizedHtml
                 })
               } catch (eventErr) {
                 console.error(`❌ [Newsletter/Send] Error guardando evento para ${user.email}:`, eventErr)

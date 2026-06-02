@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
 import { canSendEmail } from '@/lib/api/emails'
+import { getAdminDb } from '@/db/client'
+import { emailEvents } from '@/db/schema'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 interface MedalStats {
@@ -44,7 +46,7 @@ async function _POST(request: Request) {
       })
     }
 
-    // Obtener email del usuario
+    // Obtener email del usuario (solo Auth — pendiente Fase 4 wrapper agnóstico)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -82,20 +84,20 @@ async function _POST(request: Request) {
       throw emailError
     }
 
-    // Registrar evento
-    const { error: insertError } = await supabase
-      .from('email_events')
-      .insert({
-        user_id: userId,
-        email_type: 'medal_congratulation',
-        event_type: 'sent',
-        email_address: userEmail,
-        subject: emailContent.subject,
-        template_id: medal.id,
-        email_content_preview: `Medalla conseguida: ${medal.title}`,
-      })
-
-    if (insertError) {
+    // Registrar evento (Drizzle — agnóstico de Supabase REST)
+    try {
+      await getAdminDb()
+        .insert(emailEvents)
+        .values({
+          userId,
+          emailType: 'medal_congratulation',
+          eventType: 'sent',
+          emailAddress: userEmail,
+          subject: emailContent.subject,
+          templateId: medal.id,
+          emailContentPreview: `Medalla conseguida: ${medal.title}`,
+        })
+    } catch (insertError) {
       console.error('❌ Error guardando evento de medalla en email_events:', insertError)
     }
 
