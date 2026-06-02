@@ -103,6 +103,45 @@ En orden de prioridad:
 
 ---
 
+## Crear una campaña nueva para una oposición (apartado 02/06/2026)
+
+**Modelo de las exitosas:** Search · **Maximizar clics** (`target_spend`) · **~3€/día** ·
+geo = **comunidad de la oposición** (regional, NO toda España) · idioma español · 1 grupo
+· 1 anuncio RSA · keywords de intención (SIN marca).
+
+**Antes de crear:**
+1. **`oposiciones.exam_date`** — rellénalo si está NULL (sin él no sabes la ventana de venta).
+2. Datos: `nombre`, `plazas_libres`, landing `vence.es/<slug>`.
+3. **Geo de la comunidad** (los nombres están en INGLÉS): `SELECT geo_target_constant.id,
+   name FROM geo_target_constant WHERE name LIKE 'Canar%' AND country_code='ES'` →
+   "Canary Islands"=20277, "Region of Murcia"=20284, "Madrid"=… · idioma español = `languageConstants/1003`.
+
+**Keywords:** solo intención de oposición (slug, nombre largo, variantes). **NUNCA la marca
+("vence oposiciones")** — ya rankeas gratis en orgánico; pujar por marca = malgastar (y si
+acaso, va en una campaña de marca aparte, defensiva). Con **Basic Access**: generar con
+`customer.keywordPlanIdeas.generateKeywordIdeas({customer_id, url_seed:{url}})` (volumen
+real). Sin Basic (explorer) está bloqueado → a mano.
+
+**Copy RSA:** titulares **≤30 car** (mín 3), descripciones **≤90 car** (mín 2). Ganchos
+reales: **nº de plazas**, "temario oficial", "empieza gratis". **NO** referencias de BOC/BORM
+(ruido para el usuario).
+
+**Creación = `customer.mutateResources([...])` atómico** (temp IDs negativos), en orden:
+`campaign_budget(-1)` → `campaign(-2)` → 2×`campaign_criterion`(geo+idioma) → `ad_group(-3)`
+→ `ad_group_ad`(RSA) → N×`ad_group_criterion`(keywords). **SIEMPRE `{validate_only:true}`
+(dry-run) antes de aplicar.**
+
+**Gotchas (errores reales):**
+- `campaign.contains_eu_political_advertising='DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'` — **OBLIGATORIO** desde 2025.
+- `generateKeywordIdeas` necesita `customer_id` explícito **y Basic Access**.
+- `campaign.network_settings` (target_google_search:true, content:false), `delivery_method:'STANDARD'`.
+- El anuncio pasa **revisión de Google** (minutos-horas) antes de servir.
+- Crear como `status:'ENABLED'` publica; `'PAUSED'` la deja en pausa.
+
+**Caso real 02/06:** `Aux Admin SCS Canarias` (campaña `23897199300`), 3€/día, geo Canarias
+(20277), español, 4 keywords sin marca, 7 titulares/3 descripciones, 643 plazas. Creada
+activa con un solo `mutateResources` (10 recursos) tras dry-run OK.
+
 ## Caveats (no olvidar)
 
 - `metrics.conversions` = **registros**, no compras. No es ROI.
