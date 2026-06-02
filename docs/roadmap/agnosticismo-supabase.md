@@ -1,9 +1,9 @@
 # Roadmap — Agnosticismo de Supabase
 
-> **Estado**: 🟢 Fase 1 ✅ + Fase 3 (Drizzle) ~95% server-side ✅ + Fase 5 (Realtime) 2/3 ✅. **Fase 3 prácticamente vaciada de lo migrable-en-seguro.**
+> **Estado**: 🟢 Fase 1 ✅ + Fase 3 (Drizzle `.from()`) ✅ AGOTADA (63 migrados + 5 borrados; quedan solo 4 rotos decididos + client-side acoplado a Auth) + Fase 5 (Realtime) 2/3 ✅. 🟡 **Fase 4 (Auth) EN CURSO** — Fase A (facade `lib/auth/`) hecha; es el bloqueador real de RDS.
 > **Propietario**: equipo Vence.
 > **Coste recurrente añadido**: 0 € (todas las fases reutilizan infra existente Postgres / Drizzle / SSM / ECS / Lightsail pooler).
-> **Última actualización**: 2026-06-02 (maratón Fase 3).
+> **Última actualización**: 2026-06-02 (Fase 4 Auth arrancada — ports & adapters).
 
 ## ⏯️ RESUME RÁPIDO (post-clear) — estado a 2026-06-02
 
@@ -265,19 +265,27 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 
 **Tiempo estimado revisado**: trabajo continuo. Realista con cifras reales: 6-12 meses si va por strangler fig, **1-2 sprints concentrados** si se ataca de golpe (la mayoría son server-side, riesgo bajo).
 
-### Fase 4 — Wrapper agnóstico de Auth (mes 1-2)
+### Fase 4 — Wrapper agnóstico de Auth (🟡 EN CURSO desde 02/06 — el bloqueador real de RDS)
 
-**Por qué**: Supabase Auth es funcional pero acoplado. Si decidimos migrar a Cognito / Auth0 / Clerk, hoy es trabajo de meses.
+**Por qué**: Supabase Auth es funcional pero acoplado. Es lo ÚNICO que queda tras vaciar el strangler de `.from()` (63 migrados + 5 borrados). Mientras dependamos directamente de `supabase.auth.*` no se puede cambiar de proveedor ni cerrar la salida de Supabase.
 
-**Entregables**:
-1. **Wrapper `lib/auth/`** que exponga: `signIn`, `signUp`, `signOut`, `getUser`, `getSession`, `verifyJWT`.
-2. **Implementación Supabase-backed** (la única hoy). Pero el resto del código solo conoce el wrapper.
-3. **Toda llamada `supabase.auth.*` directa en app/ y lib/ migra al wrapper** (~30-50 puntos).
-4. **POC paralela con Auth.js (NextAuth)** apuntando al mismo Postgres — verificación de que el wrapper funciona con backend distinto.
+**Plan aprobado (Manuel 02/06)** — patrón **ports & adapters**, como las apps grandes. Plan ejecutable detallado en el fichero de plan de la sesión. Hallazgos que lo acotan: (a) la capa **server-side ya es agnóstica** (`verifyAuth`/`verifyJwtLocal`/`shared/auth`) → se formaliza, no se reescribe; (b) el `supabase` crudo de `useAuth()` se usa sobre todo para `.from`/`.rpc` (datos, agnosticismo de BD, FUERA de Fase 4); (c) inventario real: **~73 llamadas `supabase.auth.*` en 36 ficheros** (getSession 33, getUser 15, refreshSession 7, signInWithOAuth 6, onAuthStateChange 4, updateUser 3, admin 4, signOut 1) — solo OAuth Google.
 
-**Criterio de éxito**: 0 imports directos de `supabase.auth` fuera de `lib/auth/`.
+**Arquitectura**: `lib/auth/` con `types.ts` (puerto `AuthClientPort` + tipos agnósticos `AuthUser`/`AuthSession`/`AuthChange`), `adapters/supabaseAdapter.ts` (envuelve `getSupabaseClient()`, no lo reemplaza), `client.ts` (singleton `auth`, único punto de swap), `server.ts` (fachada delgada sobre verifyAuth+shared/auth + `authAdmin.*`), `index.ts` (barrel cliente). No sobre-abstraer: superficie = exactamente la usada (8 métodos cliente + 2 admin), no inventar signUp/OTP/reset.
 
-**Tiempo estimado**: 3-4 semanas.
+**Fases (strangler, cada una shippable + revertible):**
+- ✅ **A — Facade sin migrar nada** (0 cambio comportamiento). HECHO 02/06 (commit `8f526950`): `lib/auth/` creado + 17 tests adapter verdes + AuthContext 32/32 intactos + typecheck limpio.
+- ⏳ **B — Hub** (`lib/api/authHeaders.ts` → `contexts/AuthContext.tsx`). El cutover peligroso (sesión viva). Refactor mecánico + 32 tests ampliados + checklist manual en preview (iOS/Android) + soak 24-48h. `JWT_LOCAL_VERIFY_MODE=off` durante B. Red de seguridad: `git revert` (decisión Manuel, sin env-flag).
+- ⏳ **C — Componentes/hooks cliente por lotes** (C1 fetchers token-only → C2 modales/login+OAuth → C3 chat/notif → C4 `auth/callback` → C5 AvatarChanger).
+- ⏳ **D — Server admin.*** (`admin/delete-user`, `send-medal-congratulation` → `authAdmin.*`).
+- ⏳ **E — Lock ESLint**: prohibir `supabase.auth.*` fuera de `lib/auth/` + `lib/supabase.ts` (severidad `error` tras grep 0-violaciones).
+- ⏳ **F — POC Auth.js** (rama desechable, NO merge): 2º adapter que prueba la agnosticidad. Entregable `docs/roadmap/poc-authjs.md`.
+
+**Criterio de éxito**: `grep "\.auth\." app lib components contexts hooks utils` = solo `lib/auth/**` + `lib/supabase.ts`; ESLint rule en `error` verde.
+
+**Anti-objetivos**: no migrar de proveedor de verdad (el POC no se mergea), no big-bang, no romper a un solo usuario (ante duda en B, no se mergea), no absorber `.from`/`.rpc`.
+
+**Tiempo estimado**: ~6-9 días de trabajo + soaks (A: hecho; B+C4 requieren ventana + monitorización).
 
 ### Fase 5 — Migrar Supabase Realtime (2/3 migrados, 1 pendiente)
 
@@ -372,7 +380,7 @@ return () => {
 | `NEXT_PUBLIC_*` con credenciales en código | 1 (`SUPABASE_SERVICE_ROLE_KEY`) | 0 (limpiado en Fase 1 + ESLint rule) | 0 ✅ |
 | Ocurrencias `createClient(.., service_role)` cliente | 10 | 0 (Fase 1 commit `1e65f76f`) | 0 ✅ |
 | Archivos con `supabase.from()` | ~96 (estimación pre-audit) | **63 migrados + 5 borrados (02/06)** (sitemap-static + adminConversationTracking server puro; borrados adaptiveDifficulty/emailTracker/notificationTracker/send-reactivation-email dead-code); 4 rotos DECIDIDOS (1 retirado + 3 diferidos); quedan **solo client-side puro** (pages/components/hooks/contexts → refactor a endpoint, acoplado Auth) + Fase 4 Auth + 3 falsos positivos | ≤ 5 (allowlist documentada) — el resto requiere refactor cliente→endpoint o Fase 4 Auth |
-| Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | pendiente auditar (Fase 4) | 0 |
+| Imports directos `supabase.auth.*` fuera de `lib/auth/` | ~30-50 | **~73 llamadas / 36 ficheros (auditado 02/06)**; Fase 4 EN CURSO (facade `lib/auth/` creado, Fase A ✅) | 0 (solo `lib/auth/**` + `lib/supabase.ts`) |
 | Usos de Supabase Realtime | desconocido | **1** (auditado 27/05: eran 3, 2 migrados a polling esta tarde) | 0 |
 | Tiempo a migrar BD a RDS (estimación) | meses | semanas (cuando se complete F3) | 1 PR + cutover planificado |
 
