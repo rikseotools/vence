@@ -1,14 +1,16 @@
 // app/api/fraud/report/route.js
 // Endpoint para reportar detección de bots y comportamiento sospechoso
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 
+import { getAdminDb } from '@/db/client'
+import { fraudAlerts } from '@/db/schema'
+import { and, eq, gte, arrayContains } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 async function _POST(request) {
   try {
@@ -59,22 +61,23 @@ async function _POST(request) {
 
     // Verificar si ya existe una alerta similar reciente (últimas 24h)
     // para evitar duplicados
-    const { data: existingAlert } = await getSupabase()
-      .from('fraud_alerts')
-      .select('id')
-      .eq('alert_type', alertType)
-      .contains('user_ids', [userId])
-      .gte('detected_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    const [existingAlert] = await db()
+      .select({ id: fraudAlerts.id })
+      .from(fraudAlerts)
+      .where(and(
+        eq(fraudAlerts.alertType, alertType),
+        arrayContains(fraudAlerts.userIds, [userId]),
+        gte(fraudAlerts.detectedAt, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+      ))
       .limit(1)
-      .single()
 
     if (existingAlert) {
       // Ya existe una alerta similar, actualizar detalles
-      const { data: currentAlert } = await getSupabase()
-        .from('fraud_alerts')
-        .select('details')
-        .eq('id', existingAlert.id)
-        .single()
+      const [currentAlert] = await db()
+        .select({ details: fraudAlerts.details })
+        .from(fraudAlerts)
+        .where(eq(fraudAlerts.id, existingAlert.id))
+        .limit(1)
 
       const updatedDetails = {
         ...(currentAlert?.details || {}),
@@ -83,10 +86,10 @@ async function _POST(request) {
         lastUrl: url
       }
 
-      await getSupabase()
-        .from('fraud_alerts')
-        .update({ details: updatedDetails })
-        .eq('id', existingAlert.id)
+      await db()
+        .update(fraudAlerts)
+        .set({ details: updatedDetails })
+        .where(eq(fraudAlerts.id, existingAlert.id))
 
       return NextResponse.json({
         success: true,
@@ -97,10 +100,10 @@ async function _POST(request) {
 
     // Crear nueva alerta
     const alertData = {
-      alert_type: alertType,
+      alertType,
       severity,
       status: 'new',
-      user_ids: [userId],
+      userIds: [userId],
       details: {
         botScore,
         behaviorScore,
@@ -117,27 +120,32 @@ async function _POST(request) {
           screenResolution
         }
       },
-      match_criteria: alertType === 'bot_detected'
+      matchCriteria: alertType === 'bot_detected'
         ? `bot_score:${score}`
         : `behavior_score:${score}`,
-      detected_at: timestamp || new Date().toISOString()
+      detectedAt: timestamp || new Date().toISOString()
     }
 
-    const { data: newAlert, error: insertError } = await getSupabase()
-      .from('fraud_alerts')
-      .insert(alertData)
-      .select('id')
-      .single()
+    let newAlert = null
+    let insertError = null
+    try {
+      const [row] = await db()
+        .insert(fraudAlerts)
+        .values(alertData)
+        .returning({ id: fraudAlerts.id })
+      newAlert = row ?? null
+    } catch (e) {
+      insertError = e
+    }
 
-    if (insertError) {
-      // Log detallado: el objeto error de Supabase puede estar vacío
+    if (insertError || !newAlert) {
+      // Log detallado: postgres-js expone message/code/detail/hint (puede faltar alguno)
       console.error('Error insertando alerta de fraude:', {
-        message: insertError.message || 'Unknown error',
-        code: insertError.code,
-        details: insertError.details,
-        hint: insertError.hint,
-        // Incluir status del response si el error está vacío
-        status: insertError.status || 'N/A'
+        message: insertError?.message || 'Unknown error',
+        code: insertError?.code,
+        details: insertError?.detail ?? insertError?.details,
+        hint: insertError?.hint,
+        status: insertError?.status || 'N/A'
       })
       // Graceful degradation: no romper la experiencia del usuario
       // El sistema de fraude es secundario, no crítico
