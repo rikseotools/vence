@@ -1572,6 +1572,28 @@ Si HOY se sube `getReadDb` a `max:4` SIN read replica:
 | D | NO subir el pool. Bajar latencia de queries | $0 | Si las queries son rápidas, max:1 sirve más requests/segundo. **Es lo que hicimos 4-5 may con 3 commits.** |
 | **E** | **Self-hosted Pooler (PgBouncer en AWS Lightsail London)** | **+$10/mes** | **Aísla nuestro tráfico del Supavisor regional compartido (que tuvo blips el 7-9 may). Misma red AWS = latencia ~3ms. Ver roadmap dedicado: [`docs/roadmap/self-hosted-pooler.md`](roadmap/self-hosted-pooler.md)** ⏳ Pendiente Fase 0 |
 
+### ⚠️ TRAMPA HISTÓRICA 2 — `max_lifetime` y conexiones zombi de Supavisor (28 may → 2 jun 2026)
+
+**El default de `max_lifetime` de postgres-js (30-60 min) convierte un blip del pooler en minutos de timeouts.** Diagnosticado y fijado el 2 jun (commit `1e11afe6`).
+
+Incidente: desde el 28 may, burst esporádicos de 503/timeouts (anotado en `health-check.md §3` como "antifraud quick-fail intermitente sin zombies — investigación pendiente"). El 2 jun se encontró la causa raíz con datos duros:
+
+- El rate de timeout **NO escala con el tráfico** (15:00 UTC: 1643 req/6.39% vs 10:00: 2079 req/3.37%; valle 03-05h: 0%). No es saturación por carga.
+- Durante los picos la **BD está ociosa**: `pool_capacity_samples` muestra 1-4 conns activas y 45-56 idle (techo 90). Las queries **no llegan a Postgres**.
+- Distribución **bimodal** en `/api/auth/track-session-ip`: p50=57ms (sano) vs p95=10003ms (clavado en el muro de `withDbTimeout` 10s). No hay degradación gradual → la conexión o responde al instante o está muerta.
+
+Mecanismo: `getDb()` (`max:1`, ~130 callers del path escritura/auth) conecta por `DATABASE_URL` = Supavisor regional `:6543`. En un blip, Supavisor medio-cierra el socket TCP; postgres-js no lo detecta (`keep_alive` 60s es lento) y **reutiliza el socket zombi hasta su `max_lifetime`** — cuyo default es `60*(30+random*30)` = **30-60 min**. Cada query por ese socket cuelga hasta los 10s del quick-fail; la BD ni se entera. A ráfagas porque un blip mata un lote de conexiones. Los zombis están en el **pool del cliente**, NO en `pg_stat_activity` (por eso "sin zombies" en el diagnóstico inicial).
+
+Es el mismo Supavisor regional que motivó la Opción E (PgBouncer self-hosted): admin + 59 módulos de lectura ya se movieron a `getPoolerDb`/`getAdminDb`, pero el path de escritura/auth (`getDb`) seguía colgando de Supavisor.
+
+**Capa 1 (HECHA, commit `1e11afe6`):**
+- `max_lifetime: 90` explícito en `getDb()` → acota cualquier zombi de 30-60 min a ≤90s. Protege los ~130 callers, coste imperceptible, correcto sea cual sea el pooler futuro (PgBouncer/RDS). **Regla: cualquier pool postgres-js contra un pooler externo debe fijar `max_lifetime` corto; el default es una bomba de relojería.**
+- `probeDbPaths()` (`db/client.ts`): conexión nueva de un solo uso (`SELECT 1`) a Supavisor y, si `DATABASE_URL_SELF_POOLER` está set, al PgBouncer. Solo corre en el path de timeout (cero latencia en el camino sano). Cableado en `track-session-ip` vía `after()`; el resultado viaja en `metadata.probe` del evento `track_session_ip_db_timeout`. Distingue zombi (conexión fresca OK) de fallo real de BD.
+
+**Capa 2 (PENDIENTE, medida antes/después tras validar Capa 1):** reenrutar el path de escritura/auth fuera de Supavisor al PgBouncer self-hosted (que `getDb` prefiera `DATABASE_URL_SELF_POOLER` como `getAdminDb`; ojo read-after-write en `answer-and-save`, que ya está en el backend NestJS). Opción quirúrgica intermedia: `track-session-ip` + `store-registration-ip` → `getPoolerDb()`.
+
+Detalle y plan de validación: memoria `project_supavisor_zombie_conn_root_cause`.
+
 ### Pool split (HOY, sin coste extra adicional)
 
 ```typescript
