@@ -939,3 +939,76 @@ El examen cita literalmente "III Convenio Único para el personal laboral AGE". 
 **Acción:** importar el IV Convenio vía sync BOE → vincular Q `eb071385` al art. 8 → `p_notes` incluye: *"el examen cita literalmente III Convenio — el III está derogado desde 2019. El IV vigente mantiene grupo E2 = Bachiller. Errata de la convocatoria INAP."*
 
 Si el opositor estudia con el material original del examen y se topa con la pregunta en simulacro, la explicación le aclara qué norma debe consultar.
+
+---
+
+## 15. Aprendizajes Aux Admin Ayto Zaragoza OEP 2024 (02/06/2026)
+
+Importación que destapó casos no cubiertos arriba. Cada punto es accionable para la próxima.
+
+### 15.1 Plantilla en PDF **escaneado** (imagen) → leer con `Read(pages)` + verificación ciega OBLIGATORIA
+
+`pdftotext` devuelve vacío en plantillas escaneadas (las burbujas marcadas son una imagen). Solución: leerla visualmente con la tool `Read` y el parámetro `pages` (renderiza la página y la transcribe).
+
+**CRÍTICO — lección dura:** la lectura visual de una plantilla de burbujas es **propensa a error de columna** (en OEP 2024 leí Q17 como «C» cuando la marca era «A»; el art. 93.1 LPAP dice «en régimen de concurrencia» = opción A, y la opción C decía «4 años» cuando la ley dice 75). Por eso, **con plantilla escaneada la verificación ciega de CADA respuesta contra el texto de la ley es obligatoria, no muestral** (§8). La deducción jurídica del agente es el ground-truth que corrige la lectura de la imagen, no al revés. Si agente y plantilla discrepan en una pregunta determinista, releer esa fila con zoom + comprobar la ley.
+
+Guardar la clave transcrita en un `plantilla_respuestas.txt` en el directorio del examen (no se pierde y queda auditable).
+
+### 15.2 Resolver la ley por número con **match exacto**, nunca `ilike '%N/YYYY%'`
+
+`laws ... ilike '%5/2015%'` casa también **`15/2015`** → se resolvió «Ley 15/2015 de Jurisdicción Voluntaria» en vez de «RDL 5/2015 (EBEP)». El art. 10 existe en AMBAS, así que el check «¿existe el artículo?» pasa en falso y la pregunta queda **mislinkada en silencio** (Cat A encubierta). El agente ciego lo cazó (el contenido del artículo no tenía relación con el enunciado).
+
+**Regla:** al buscar una ley por su número, usar igualdad de `short_name`/`name` o búsqueda por título (`name.ilike '%Estatuto Básico%'`), no por número con substring. Tras vincular, **verificar que el contenido del artículo casa con el enunciado**, no solo que el nº existe. Refuerza [[project_import_linker_wrong_law_bug]].
+
+### 15.3 El importador **omite en silencio** las preguntas cuya figura no tiene artículo concreto en BD
+
+Quedan fuera sin aviso: disposiciones adicionales (`DA 2ª.4 LCSP`), reglamentos municipales no cargados, y preguntas que citan «el Título III» / «los arts. 47 y siguientes» sin un nº de artículo único. **Cómo cazarlas:** (1) contar respuestas de la plantilla (p.ej. 50 + 5 reserva = 55) vs preguntas realmente activas; (2) si no cuadra, inventario `(ley, artículo)` de CADA pregunta del cuestionario y diff contra BD. En OEP 2024 faltaban 16 (LALA, DA LCSP, Decreto 347/2002, Reglamento Órganos Territoriales, Plan Igualdad, RD 500/1990, + Q27 Título III + Q41 TRRL). Ver Cat B/C (§13) para tratarlas.
+
+### 15.4 Pregunta sin artículo concreto → anclar al artículo de **cabecera/enumeración** del título
+
+Q27 («¿qué NO incluye el Título III, Recursos de las provincias?») no cita un artículo. Se ancla al **art. de enumeración** del título (art. 131 TRLRHL = «La Hacienda de las provincias estará constituida por los recursos…»). Da grounding correcto al agente y al feedback del usuario. Matiz operativo de Cat C.
+
+### 15.5 Fuentes oficiales por jurisdicción + API de datos abiertos del BOE
+
+Para traer **artículos o disposiciones sueltas** que el sync normal no carga (DA, un artículo concreto):
+
+```bash
+# 1) listar bloques de la norma consolidada
+curl -s -H "Accept: application/json" \
+  "https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/BOE-A-2017-12902/texto/indice"
+# titulos tipo "Art 56", "Disposición adicional segunda" → id de bloque: art56, da-2 ...
+# 2) traer el texto de un bloque (devuelve XML)
+curl -s -H "Accept: application/xml" \
+  "https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/BOE-A-2017-12902/texto/bloque/da-2"
+```
+
+- **Nacional:** API de datos abiertos del BOE = verbatim fiable (usada para LALA, DA 2ª/3ª LCSP, RD 500/1990 arts 56/67).
+- **Autonómico (Aragón):** iberley da resúmenes **fieles por apartado** pero no verbatim íntegro (límite de cita del fetcher) — suficiente para grounding + el agente valida; BOA como respaldo oficial.
+- **Municipal (reglamentos, planes):** web oficial del Ayuntamiento (zaragoza.es). Documentos solo-PDF: `Read(pages)`. PDF de texto: `pdftotext` y `grep` del artículo/apartado.
+- **No fiar:** `noticias.juridicas.com` falla en WebFetch por certificado; `carreteros.org` da ECONNREFUSED.
+
+### 15.6 Supuestos prácticos: `parte: 'supuesto'` en la config + coherencia cuenta los supuestos
+
+Además de §7.4 (tabla `exam_cases` + `exam_case_id`): en `officialExams[]` la 2ª prueba va como una parte con **`id: 'supuesto'`** (NO `'segunda'`) — el filtro de `getOfficialExamQuestions` devuelve las case-based solo cuando `parte === 'supuesto'`. El test `officialExamsCoherence` suma `ordinaryCount` de TODAS las partes (primera 50 + reserva 5 + supuesto 20 = 75) y exige que cuadre con las preguntas en BD por `exam_date`+`exam_position`. `exam_source` de los supuestos: `"… - Segunda parte (supuestos prácticos)"`. Los 3 fetchers de tests normales ya excluyen `isNull(exam_case_id)` (§7.4.bis), así que no se cuelan en tests por tema/aleatorio.
+
+### 15.7 Limitación conocida: el modo examen **no ordena por número de pregunta**
+
+`getOfficialExamQuestions` solo separa reserva (JS `.sort` por `isReserva`); no hay `ORDER BY` de secuencia y `questions` no tiene campo de orden (existe `question_official_exams.question_number` pero el fetch no lo usa). Los supuestos **agrupan por caso** (el `case_text` se pinta bien una vez por grupo), pero el orden interno 1→N no está garantizado. Para orden exacto habría que cablear `question_number` en la query compartida (afecta a todos los exámenes).
+
+### 15.8 Gotcha `transition_question_state`: `p_changed_by` es UUID
+
+Pasar `p_changed_by: null` (o un UUID real), **nunca** un string como `'claude_code'` → error `invalid input syntax for type uuid`. La autoría de Claude se deja en `p_notes`. `reason_code` para activar tras verificación: `'ai_verified_perfect'` (draft → approved es transición legal directa).
+
+---
+
+## Manuales relacionados
+
+Importar un examen oficial es el paso de mayor valor del flujo de contenido. Encadena con:
+
+- **[`oeps-convocatorias-seguimiento.md`](./oeps-convocatorias-seguimiento.md)** — §7c/§4.5: cuándo importar (examen celebrado + cuestionario y plantilla publicados, solo turno libre, modelo único). El seguimiento de convocatorias dispara este manual.
+- **[`crear-nueva-oposicion.md`](./crear-nueva-oposicion.md)** — FASE 7: si la oposición es nueva, los `officialExams[]` y los mapas de `exam-positions.ts` se configuran allí.
+- **[`verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md)** — los `article_ref` de las preguntas importadas se cruzan contra el `topic_scope` (un examen real puede destapar huecos de scope; §"Cruzar scope con preguntas scrapeadas").
+- **[`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md)** — §4: leyes/disposiciones que el examen cita pero no están en BD se crean/sincronizan desde el BOE (incl. `includeDisposiciones: true`).
+- **[`generar-preguntas-con-ia.md`](./generar-preguntas-con-ia.md)** — alternativa/complemento: para temas que el examen oficial no cubre (o materia local sin examen), generar preguntas verificadas con IA.
+- **[`revisar-preguntas-con-agente.md`](./revisar-preguntas-con-agente.md)** — §8: verificación con agentes Sonnet antes de activar (lifecycle `draft` → `tech_approved`).
+- **[`importar-preguntas-scrapeadas.md`](./importar-preguntas-scrapeadas.md)** y **[`manual-preguntas-oficiales.md`](../manual-preguntas-oficiales.md)** — variantes (scraping / formato rápido sin imágenes).
