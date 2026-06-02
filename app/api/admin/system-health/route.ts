@@ -26,7 +26,9 @@
 // docs/runbooks/health-check.md) cuando quiere saber si hay fuego.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { validationErrorLogs } from '@/db/schema'
+import { and, eq, gte, lt, desc, ilike, notInArray, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import {
@@ -191,10 +193,22 @@ async function _GET(request: NextRequest) {
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000
   const since = new Date(sinceMs).toISOString()
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const db = getAdminDb()
+
+  // Wrapper que preserva la resiliencia por-indicador del endpoint original:
+  // un fallo en una query (p.ej. observable_events caído) NO tumba todo el
+  // panel — ese indicador queda `unknown` y el resto se devuelve igual.
+  // Replica la forma `{ data, count, error }` que devolvía supabase-js.
+  const run = async <T>(
+    fn: () => Promise<{ data: T[] | null; count: number | null }>,
+  ): Promise<{ data: T[] | null; count: number | null; error: unknown }> => {
+    try {
+      const r = await fn()
+      return { data: r.data, count: r.count, error: null }
+    } catch (error) {
+      return { data: null, count: null, error }
+    }
+  }
 
   // ─── 10 lecturas en paralelo ───
   const [
@@ -212,97 +226,166 @@ async function _GET(request: NextRequest) {
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
     // pero severity=critical) que tienen su propio indicador en el grid.
-    supabase
-      .from('validation_error_logs')
-      .select('endpoint, error_type, created_at, http_status', { count: 'exact', head: false })
-      .eq('severity', 'critical')
-      .gte('http_status', 500)
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(20),
+    // `count(*) over()` da el total del set filtrado completo (antes del LIMIT).
+    run(async () => {
+      const rows = await db
+        .select({
+          endpoint: validationErrorLogs.endpoint,
+          error_type: validationErrorLogs.errorType,
+          created_at: validationErrorLogs.createdAt,
+          http_status: validationErrorLogs.httpStatus,
+          total: sql<number>`(count(*) over())::int`,
+        })
+        .from(validationErrorLogs)
+        .where(
+          and(
+            eq(validationErrorLogs.severity, 'critical'),
+            gte(validationErrorLogs.httpStatus, 500),
+            gte(validationErrorLogs.createdAt, since),
+          ),
+        )
+        .orderBy(desc(validationErrorLogs.createdAt))
+        .limit(20)
+      return { data: rows, count: rows[0]?.total ?? 0 }
+    }),
 
     // 1b) UI congelada (Watchdog). Eventos emitidos por el hook
     // `useAnswerWatchdog` cuando el estado `processingAnswer`/`isSaving`
     // de ExamLayout/TestLayout no se resetea en 12s. Cada evento = un
     // user con UI bloqueada (no es un fallo del servidor, es un síntoma
     // del cliente, a menudo correlacionado con latencia del backend).
-    supabase
-      .from('validation_error_logs')
-      .select('endpoint, error_message, duration_ms, user_id, created_at', { count: 'exact', head: false })
-      .ilike('error_message', '%Watchdog%')
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(20),
+    run(async () => {
+      const rows = await db
+        .select({
+          endpoint: validationErrorLogs.endpoint,
+          error_message: validationErrorLogs.errorMessage,
+          duration_ms: validationErrorLogs.durationMs,
+          user_id: validationErrorLogs.userId,
+          created_at: validationErrorLogs.createdAt,
+          total: sql<number>`(count(*) over())::int`,
+        })
+        .from(validationErrorLogs)
+        .where(
+          and(
+            ilike(validationErrorLogs.errorMessage, '%Watchdog%'),
+            gte(validationErrorLogs.createdAt, since),
+          ),
+        )
+        .orderBy(desc(validationErrorLogs.createdAt))
+        .limit(20)
+      return { data: rows, count: rows[0]?.total ?? 0 }
+    }),
 
     // 2) Drift activo en window (drift_pct > 5).
     // Filtra markers técnicos (__cron_run__, __exception__).
-    supabase
-      .from('stats_drift_log')
-      .select('target_table, field_name, drift_pct, user_id, checked_at, notes', { count: 'exact', head: false })
-      .gte('checked_at', since)
-      .gt('drift_pct', 5)
-      .not('target_table', 'in', '("__cron_run__","__exception__")')
-      .order('drift_pct', { ascending: false })
-      .limit(20),
+    // Tabla no tipada en Drizzle → raw SQL. drift_pct::float8 para que
+    // el passthrough a JSON sea number (no string de postgres-js).
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT target_table, field_name, drift_pct::float8 AS drift_pct,
+               user_id, checked_at, notes, (count(*) over())::int AS total
+        FROM stats_drift_log
+        WHERE checked_at >= ${since}
+          AND drift_pct > 5
+          AND target_table NOT IN ('__cron_run__', '__exception__')
+        ORDER BY drift_pct DESC
+        LIMIT 20
+      `)) as any[]
+      return { data: rows, count: rows[0]?.total ?? 0 }
+    }),
 
     // 3) Latencia INSERT — histórico pg_stat_statements (NO window-able).
-    supabase
-      .from('v_insert_test_questions_latency')
-      .select('*')
-      .order('calls', { ascending: false })
-      .limit(3),
+    // Vista no tipada → raw SQL. Casts ::float8/::int para JSON number.
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT calls::int AS calls, query_snippet,
+               mean_ms::float8 AS mean_ms, proxy_p95_ms::float8 AS proxy_p95_ms,
+               max_ms::float8 AS max_ms, stddev_ms::float8 AS stddev_ms
+        FROM v_insert_test_questions_latency
+        ORDER BY calls DESC
+        LIMIT 3
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
 
     // 4) Última ejecución cron drift — fijo (no window-able).
-    supabase
-      .from('stats_drift_log')
-      .select('checked_at, notes')
-      .eq('target_table', '__cron_run__')
-      .order('checked_at', { ascending: false })
-      .limit(1),
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT checked_at FROM stats_drift_log
+        WHERE target_table = '__cron_run__'
+        ORDER BY checked_at DESC
+        LIMIT 1
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
 
     // 5) Errores 4xx (NO 401/403 que son user-error normal)
-    supabase
-      .from('validation_error_logs')
-      .select('endpoint, http_status', { count: 'exact', head: false })
-      .gte('http_status', 400)
-      .lt('http_status', 500)
-      .not('http_status', 'in', '(401,403)')
-      .gte('created_at', since)
-      .limit(20),
+    run(async () => {
+      const rows = await db
+        .select({
+          endpoint: validationErrorLogs.endpoint,
+          http_status: validationErrorLogs.httpStatus,
+          total: sql<number>`(count(*) over())::int`,
+        })
+        .from(validationErrorLogs)
+        .where(
+          and(
+            gte(validationErrorLogs.httpStatus, 400),
+            lt(validationErrorLogs.httpStatus, 500),
+            notInArray(validationErrorLogs.httpStatus, [401, 403]),
+            gte(validationErrorLogs.createdAt, since),
+          ),
+        )
+        .limit(20)
+      return { data: rows, count: rows[0]?.total ?? 0 }
+    }),
 
-    // 6) Hydration mismatch
-    supabase
-      .from('observable_events')
-      .select('endpoint, created_at, metadata', { count: 'exact', head: false })
-      .eq('event_type', 'react_hydration_mismatch')
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(20),
+    // 6) Hydration mismatch (observable_events no tipada → raw SQL)
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT endpoint, created_at, metadata, (count(*) over())::int AS total
+        FROM observable_events
+        WHERE event_type = 'react_hydration_mismatch'
+          AND created_at >= ${since}
+        ORDER BY created_at DESC
+        LIMIT 20
+      `)) as any[]
+      return { data: rows, count: rows[0]?.total ?? 0 }
+    }),
 
     // 7) Latencia request_completed — sample para calcular p95
-    supabase
-      .from('observable_events')
-      .select('duration_ms, metadata')
-      .eq('event_type', 'request_completed')
-      .not('duration_ms', 'is', null)
-      .gte('created_at', since)
-      .limit(5000),
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT duration_ms FROM observable_events
+        WHERE event_type = 'request_completed'
+          AND duration_ms IS NOT NULL
+          AND created_at >= ${since}
+        LIMIT 5000
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
 
     // 8) Canary events (todos canary_*_ok + _failed)
-    supabase
-      .from('observable_events')
-      .select('endpoint, event_type')
-      .like('endpoint', 'canary-%')
-      .or('event_type.like.%_ok,event_type.like.%_failed')
-      .gte('created_at', since)
-      .limit(10000),
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT endpoint, event_type FROM observable_events
+        WHERE endpoint LIKE 'canary-%'
+          AND (event_type LIKE '%_ok' OR event_type LIKE '%_failed')
+          AND created_at >= ${since}
+        LIMIT 10000
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
 
     // 9) Volumen tráfico (sanity check)
-    supabase
-      .from('observable_events')
-      .select('id', { count: 'exact', head: true })
-      .eq('event_type', 'request_completed')
-      .gte('created_at', since),
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT (count(*))::int AS count FROM observable_events
+        WHERE event_type = 'request_completed'
+          AND created_at >= ${since}
+      `)) as any[]
+      return { data: null, count: rows[0]?.count ?? 0 }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
