@@ -1,9 +1,11 @@
 // app/leyes/[law]/page.tsx - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
 import { Suspense } from 'react'
+import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { resolveLawBySlug, getCanonicalSlugAsync, getAllActiveSlugs } from '@/lib/api/laws'
 import { queryLawStats } from '@/lib/api/law-stats/queries'
+import { fetchLawSections } from '@/lib/teoriaFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
@@ -35,6 +37,16 @@ async function resolveLaw(slug: string): Promise<{ lawShortName: string; lawInfo
     },
   }
 }
+
+// Secciones (títulos) de la ley, CACHEADAS para SSR. Tag 'teoria' → se invalida
+// con revalidateTag('teoria') al editar contenido (docs/maintenance/cache-revalidation.md).
+// revalidate:false = permanente (el texto legal cambia poco). Sirve contenido
+// crawleable a Google sin pegar a BD en cada visita.
+const getLawSectionsCached = (slug: string) =>
+  unstable_cache(() => fetchLawSections(slug), ['law-sections-ssr', slug], {
+    revalidate: false,
+    tags: ['teoria'],
+  })()
 
 const SEO_DESCRIPTIONS: Record<string, string> = {
   'CE': 'Test de Constitución Española con preguntas de exámenes oficiales. Artículos, derechos fundamentales, organización del Estado. Preparación completa para oposiciones.',
@@ -170,6 +182,12 @@ export default async function LawMainPage({ params }: PageProps) {
   const canonicalSlug = await getCanonicalSlugAsync(lawShortName)
   const isCanonical = resolvedParams.law === canonicalSlug
 
+  // SSR del temario (títulos) — contenido crawleable cacheado. No bloqueante:
+  // si falla, la página sigue (el resto ya era SSR + el cliente debajo).
+  const sectionsResult = await getLawSectionsCached(resolvedParams.law).catch(() => null)
+  const lawSections = sectionsResult?.sections ?? []
+  const seoText = SEO_DESCRIPTIONS[lawShortName] || lawInfo.description || `Test de ${lawInfo.name}`
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <ClientBreadcrumbsWrapper />
@@ -292,6 +310,36 @@ export default async function LawMainPage({ params }: PageProps) {
             </div>
           </div>
         </div>
+
+        {/* Temario SSR (crawleable por Google) — títulos de la ley + texto SEO.
+            Cacheado (tag 'teoria'). Esto es lo que rankea para "test/temario [ley]". */}
+        {lawSections.length > 0 && (
+          <section className="mt-12 bg-white rounded-xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Temario de {lawInfo.name}
+            </h2>
+            <p className="text-gray-600 mb-6">{seoText}</p>
+            <ul className="space-y-3">
+              {lawSections.map((s) => (
+                <li key={s.id} className="border-b border-gray-100 pb-3 last:border-0">
+                  <h3 className="font-semibold text-gray-800">{s.title}</h3>
+                  {s.articleRange && (
+                    <span className="text-sm text-gray-500">
+                      Artículos {s.articleRange.start} a {s.articleRange.end}
+                    </span>
+                  )}
+                  {s.description && (
+                    <p className="text-gray-600 text-sm mt-1">{s.description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-6 text-sm text-gray-600">
+              Practica con tests de {lawInfo.shortName} por título y prepárate para las
+              oposiciones. <Link href={`/teoria/${canonicalSlug}`} className="text-blue-600 hover:underline">Ver teoría completa</Link>.
+            </p>
+          </section>
+        )}
 
         {/* Contenido completo de la ley */}
         <div className="mt-12">
