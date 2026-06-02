@@ -19,16 +19,6 @@ jest.mock('../../components/SessionWarningModal', () => {
   }
 })
 
-// Mock de notificationTracker y emailTracker
-jest.mock('../../lib/services/notificationTracker', () => ({
-  __esModule: true,
-  default: { setSupabaseInstance: jest.fn() },
-}))
-jest.mock('../../lib/services/emailTracker', () => ({
-  __esModule: true,
-  default: { setSupabaseInstance: jest.fn() },
-}))
-
 // Mock de campaignTracker
 jest.mock('../../lib/campaignTracker', () => ({
   shouldForceCheckout: () => false,

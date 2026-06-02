@@ -5,8 +5,6 @@ import type { User, Session } from '@supabase/supabase-js'
 import type { UserProfileRow } from '@/types/database.types'
 
 import { getSupabaseClient } from '../lib/supabase'
-import notificationTracker from '../lib/services/notificationTracker'
-import emailTracker from '../lib/services/emailTracker'
 import { shouldForceCheckout, forceCampaignCheckout, detectCampaignSource, getCookie } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
@@ -99,14 +97,6 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   }
 
   const supabase = getSupabaseClient()
-
-  // Configurar instancia de Supabase en los trackers
-  useEffect(() => {
-    if (supabase) {
-      notificationTracker.setSupabaseInstance(supabase)
-      emailTracker.setSupabaseInstance(supabase)
-    }
-  }, [supabase])
 
   // 🎯 NUEVA FUNCIÓN: Detectar fuente de registro
   const detectRegistrationSource = (): string => {
