@@ -166,6 +166,28 @@ curl -sS /_next/static/chunks/*.js | grep -c 'eyJhbGc.*service_role'
 > ✅ **STRANGLER 2026-06-01 (cont.) — `lib/teoriaFetchers.ts` 100% sin supabase** (4 funciones: fetchLawsList, fetchRelatedArticles, searchArticles, fetchLawSections → Drizzle; las otras 2 ya lo eran). Joins `laws!inner(articles)` → innerJoin; `.or(ilike)` → or()+ilike(). Cliente supabase eliminado del módulo. Paridad verificada (related/search/sections idénticos). **FIX latente**: el embed anidado de PostgREST capaba los artículos en fetchLawsList (45434 vs 46345 reales) → articleCount infra-contado en el índice /teoria; el join da el total correcto. Commit `46ba7303`.
 
 > 📊 **Resumen sesión 2026-06-01**: 5 ficheros migrados (3 SSR legales + avatar-settings + teoriaFetchers), con 2 bugs latentes de cap de PostgREST arreglados de paso (conteos de preguntas y de artículos infra-reportados en landings/índices). Patrón + verificación de paridad (reads + txn-rollback para writes) rodados. Quedan ~87 ficheros (varios son falsos positivos de storage).
+
+> 🏁 **MARATÓN 2026-06-01/02 — 27 ficheros migrados (ESTADO AUTORITATIVO, RESUME AQUÍ)**
+>
+> **Pusheados a `origin/main` (verificados con paridad + build):**
+> 1. **Todo `lib/chat/` server-side sin supabase** (12 ficheros): `chat/shared/lawsCache`, `chat/domains/verification/queries` (+ borrado `getQuestionFullData` dead+roto), `chat/domains/temario/queries`, `chat/domains/stats/queries`, `chat/domains/oposicion-catalog/queries` (1er WRITE), `chat/domains/verification/DisputeService` (2 tablas dinámicas), `chat/domains/knowledge-base/queries` (1er RPC pgvector), `chat/domains/search/queries` (el gordo: 22 from+rpc en 4 chunks), `chat/domains/search/SearchDomain`, `chat/core/ChatOrchestrator`.
+> 2. **Endpoints server-side puros** (8): `admin/oposiciones-coverage`, `admin/slos`, `v2/admin/disputes`, `v2/banner/open-inscriptions`, `admin/pool-capacity`, `send-support-email`, `finance/transfers`, `oposiciones/catalog`, `verify-articles/questions`, `v2/official-exams/user-stats`, `v2/admin/problematic-articles-rollout`.
+> 3. **Dead-code borrado** (`userPatternAnalyzer` + 3 componentes) + **decommission del scheduler push muerto** (DROP user_smart_scheduling/user_activity_patterns + vista + función, con backup; tras confirmar Manuel "push deshabilitado").
+> - **27º `app/api/law-titles/route.js`**: migrado y commiteado pero ACOPLADO al commit `e40ab7d0 feat(google-ads)` de una sesión paralela (sweep). NO pushear ese commit (feature ajena sin revisar); el law-titles irá a origin cuando esa sesión pushee.
+>
+> **5 FIXES de regalo del cap PostgREST (1000 filas)**: exam stats del chat (1000→6296 preguntas), weekly stats heavy users, SLO canarios+latencia (uptime/percentiles mal calculados), admin disputes (1000→1480 mostradas), pool-capacity agregado 24h (1000→1394). + 1 bug de TIPO evitado en finanzas (numeric→string).
+>
+> **GOTCHAS clave para la próxima sesión:**
+> - **Tablas NO tipadas en Drizzle** (coverage_*, observable_events, hot... no, ese sí; pool_capacity_samples, problematic_articles_rollout_logs, convocatorias, coverage_history, user_inscription_banner_dismissals): usar `db.execute(sql\`...\`)` raw. **NO re-introspectar** (regenera todo `db/schema.ts`, riesgo con sesiones paralelas).
+> - **`SELECT *` raw passthrough (data devuelta tal cual al cliente)**: postgres-js devuelve `numeric`→**STRING** (supabase REST daba number) → castear `::float8`; y devuelve claves snake_case (correcto), mientras `db.select()` tipado da camelCase (rompería al cliente). Para passthroughs: raw SQL con columnas explícitas + casts numéricos. Verificar con comparación **JSON FULL**, no solo ids.
+> - **pgvector RPC**: `db.execute(sql\`SELECT * FROM fn(${toVector(emb)}::vector, ..., ${arr}::uuid[])\`)` con `toVector=e=>\`[${e.join(',')}]\``. Idéntico a supabase.rpc.
+> - **JSONB filter** `detailed_analytics->>'X'='Y'` → `sql\`${tabla.col}->>'X'=...\``.
+> - **`.limit(N)` sin ORDER BY** = subconjunto no-determinista (preexistente); verificar paridad con COUNT del filtro completo o con order secundario por id.
+> - **Cap PostgREST 1000 también aplica a RPC que devuelven TABLE.**
+> - **Timestamps**: `db.execute` raw devuelve Date (pierde µs→ms, formato Z vs +00:00) = cosmético para consumidores con `new Date()`; columnas Drizzle `mode:'string'` devuelven ISO string. Para passthrough verificar con epoch.
+> - **CADENCIA PUSH**: `frontend-deploy.yml` despliega en CADA push a main → commit por fichero SIN pushear, push en LOTE (1 deploy). El sweep de sesiones paralelas (`git add -A`) se mitiga commiteando rápido pero NO se elimina (3 sweeps esta sesión) → idealmente sesión sin paralelismo.
+>
+> **SIGUIENTE (pasada dedicada, NO cola de maratón):** `admin/system-health` (10 from, Promise.all con count:'exact'+data shape complejo → window `count(*) OVER()`), `ai/create-test` (12, user-facing), `topic-review/verify` (13 from+7 writes+4 rpc, 948 líneas). Luego client-trackers (refactor a endpoint, no Drizzle directo) y **Fase 4 Auth** (bloqueador real de RDS).
 >
 > 🧭 **RESUME AQUÍ (triage de los ~87 restantes, hecho 2026-06-01)** — NO todos son migraciones Drizzle mecánicas:
 > 1. **Server-side DB puro (Drizzle directo, bajo riesgo)** — el patrón ya rodado: `getReadDb()`/`getAdminDb()`/`getTeoriaDb()` + paridad (reads comparados, writes en txn+ROLLBACK). Quedan algunos fetchers/SSR. ⚠️ **OJO al cap de PostgREST**: `.length` sobre SELECT capa a 1000 filas y los embeds anidados también capan → al migrar a `count()`/join SUELE aparecer un conteo MAYOR (más correcto, no un bug nuevo). Verificar siempre.
