@@ -1,9 +1,11 @@
 // app/api/cron/daily-registration-summary/route.js
 // Cron que se ejecuta a las 21:00 y envía resumen de registros del día
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
+import { getAdminDb } from '@/db/client'
+import { userProfiles } from '@/db/schema'
+import { and, gte, lte, desc } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
@@ -22,11 +24,6 @@ async function _GET(request) {
       )
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     // Obtener fecha de hoy (zona horaria Madrid)
     const now = new Date()
     const madridTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
@@ -38,12 +35,26 @@ async function _GET(request) {
     console.log('📅 Buscando registros del día:', todayStart.toISOString(), 'a', todayEnd.toISOString())
 
     // Obtener usuarios registrados hoy
-    const { data: newUsers, error } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, registration_source, created_at')
-      .gte('created_at', todayStart.toISOString())
-      .lte('created_at', todayEnd.toISOString())
-      .order('created_at', { ascending: false })
+    let newUsers = null
+    let error = null
+    try {
+      newUsers = await getAdminDb()
+        .select({
+          id: userProfiles.id,
+          email: userProfiles.email,
+          full_name: userProfiles.fullName,
+          registration_source: userProfiles.registrationSource,
+          created_at: userProfiles.createdAt,
+        })
+        .from(userProfiles)
+        .where(and(
+          gte(userProfiles.createdAt, todayStart.toISOString()),
+          lte(userProfiles.createdAt, todayEnd.toISOString()),
+        ))
+        .orderBy(desc(userProfiles.createdAt))
+    } catch (e) {
+      error = e
+    }
 
     if (error) {
       console.error('❌ Error obteniendo usuarios:', error)

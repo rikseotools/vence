@@ -1,8 +1,10 @@
 // app/api/sessions/close-others/route.ts
 // API para cerrar todas las sesiones excepto la actual
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getAdminDb } from '@/db/client'
+import { userSessions } from '@/db/schema'
+import { and, eq, isNull, ne } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 // Lista de emails bajo control de sesiones simultáneas
@@ -52,23 +54,23 @@ async function _POST(request: NextRequest): Promise<NextResponse<CloseOthersResp
       }, { status: 400 })
     }
 
-    // Usar service role para modificar sesiones (bypass RLS)
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
     // Cerrar todas las sesiones activas excepto la actual
     // Actualizar session_end a NOW() para marcarlas como cerradas
-    const { data: closedSessions, error: closeError } = await supabaseAdmin
-      .from('user_sessions')
-      .update({
-        session_end: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .is('session_end', null)
-      .neq('id', currentSessionId)
-      .select('id')
+    let closedSessions = null
+    let closeError = null
+    try {
+      closedSessions = await getAdminDb()
+        .update(userSessions)
+        .set({ sessionEnd: new Date().toISOString() })
+        .where(and(
+          eq(userSessions.userId, user.id),
+          isNull(userSessions.sessionEnd),
+          ne(userSessions.id, currentSessionId),
+        ))
+        .returning({ id: userSessions.id })
+    } catch (e) {
+      closeError = e
+    }
 
     if (closeError) {
       console.error('Error cerrando sesiones:', closeError)

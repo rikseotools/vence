@@ -7,7 +7,8 @@
 // Consumido por /admin/canary/page.tsx.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
@@ -153,25 +154,23 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-
   // Una sola query trae todos los eventos relevantes últimas 7d.
   // Volumen estimado: 3 canarios × 288 ticks/día × ~2 eventos/tick × 7 días ≈ 12k filas. OK.
+  // observable_events NO está tipada en Drizzle → raw SQL. IN → = ANY(array).
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const { data, error } = await supabase
-    .from('observable_events')
-    .select('endpoint, event_type, severity, duration_ms, error_message, created_at')
-    .in('endpoint', CANARY_ENDPOINTS as readonly string[] as string[])
-    .gte('created_at', since7d)
-    .order('created_at', { ascending: false })
-    .limit(15000)
-
-  if (error) {
+  let data: CanaryEvent[]
+  try {
+    data = (await getAdminDb().execute(sql`
+      SELECT endpoint, event_type, severity, duration_ms, error_message, created_at
+      FROM observable_events
+      WHERE endpoint = ANY(${CANARY_ENDPOINTS as readonly string[] as string[]}::text[])
+        AND created_at >= ${since7d}
+      ORDER BY created_at DESC
+      LIMIT 15000
+    `)) as unknown as CanaryEvent[]
+  } catch (error) {
     return NextResponse.json(
-      { error: `Lectura observable_events falló: ${error.message}` },
+      { error: `Lectura observable_events falló: ${(error as Error).message}` },
       { status: 500 }
     )
   }

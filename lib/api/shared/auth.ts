@@ -15,6 +15,9 @@
 
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { getAdminDb } from '@/db/client'
+import { userProfiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 // ============================================
@@ -96,17 +99,18 @@ export async function getAuthenticatedUserWithOposicion(
   const auth = await getAuthenticatedUser(request)
   if (!auth.ok) return auth
 
-  const { data, error } = await auth.supabase
-    .from('user_profiles')
-    .select('target_oposicion')
-    .eq('id', auth.user.id)
-    .maybeSingle()
-
-  if (error) {
-    console.warn('⚠️ [auth] No se pudo leer target_oposicion:', error.message)
+  let raw: string | null | undefined
+  try {
+    const [row] = await getAdminDb()
+      .select({ target_oposicion: userProfiles.targetOposicion })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, auth.user.id))
+      .limit(1)
+    raw = row?.target_oposicion
+  } catch (error) {
+    console.warn('⚠️ [auth] No se pudo leer target_oposicion:', (error as Error).message)
   }
 
-  const raw = (data as { target_oposicion?: string | null } | null)?.target_oposicion
   const targetOposicion = raw && raw.trim().length > 0 ? raw : null
 
   return { ok: true, user: auth.user, supabase: auth.supabase, targetOposicion }

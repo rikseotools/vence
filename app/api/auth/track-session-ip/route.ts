@@ -1,8 +1,8 @@
 // app/api/auth/track-session-ip/route.ts
 // Guarda la IP y localidad en la sesión del usuario para detectar cuentas compartidas
 import { NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
-import { userSessions } from '@/db/schema'
+import { getDb, getAdminDb } from '@/db/client'
+import { userSessions, userDevices } from '@/db/schema'
 import { eq, isNull, desc, and } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
@@ -173,16 +173,13 @@ async function _POST(request: Request) {
     // Update hw_fingerprint in user_devices if both deviceId and hwFingerprint present
     if (deviceId && hwFingerprint) {
       try {
-        const { createClient } = await import('@supabase/supabase-js')
-        const admin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        )
-        await admin
-          .from('user_devices')
-          .update({ hw_fingerprint: hwFingerprint })
-          .eq('user_id', userId)
-          .eq('device_id', deviceId)
+        await getAdminDb()
+          .update(userDevices)
+          .set({ hwFingerprint })
+          .where(and(
+            eq(userDevices.userId, userId),
+            eq(userDevices.deviceId, deviceId),
+          ))
       } catch {}
     }
 
