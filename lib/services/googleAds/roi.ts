@@ -35,6 +35,10 @@ export interface CampaignRoi {
   clicks: number
   impressions: number
   avgCpcEur: number
+  /** Registros (conversiones que cuenta Google; la acción activa es "Registro"). */
+  registrations: number
+  /** Coste por registro = coste / registros. null si 0 registros. */
+  costPerRegistrationEur: number | null
   revenueEur: number
   /** Nº de pagos atribuidos a la campaña en la ventana. */
   payments: number
@@ -106,6 +110,8 @@ export async function getCampaignRoi(
       clicks: p.clicks,
       impressions: p.impressions,
       avgCpcEur: p.avgCpcEur,
+      registrations: p.conversions,
+      costPerRegistrationEur: p.conversions > 0 ? p.costEur / p.conversions : null,
       revenueEur,
       payments,
       cpaEur: payments > 0 ? p.costEur / payments : null,
@@ -123,6 +129,8 @@ export async function getCampaignRoi(
       clicks: 0,
       impressions: 0,
       avgCpcEur: 0,
+      registrations: 0,
+      costPerRegistrationEur: null,
       revenueEur: rev.revenue,
       payments: rev.payments,
       cpaEur: null,

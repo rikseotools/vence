@@ -32,18 +32,24 @@ export async function GET(request: NextRequest) {
         acc.costEur += c.costEur
         acc.clicks += c.clicks
         acc.impressions += c.impressions
+        acc.registrations += c.registrations
         acc.revenueEur += c.revenueEur
         acc.payments += c.payments
         return acc
       },
-      { costEur: 0, clicks: 0, impressions: 0, revenueEur: 0, payments: 0 }
+      { costEur: 0, clicks: 0, impressions: 0, registrations: 0, revenueEur: 0, payments: 0 }
     )
+
+    // Media de €/registro de la cuenta → referencia para el color relativo del panel.
+    const avgCostPerRegistration =
+      totals.registrations > 0 ? totals.costEur / totals.registrations : null
 
     return NextResponse.json({
       range,
       ranges: RANGES,
       totals: {
         ...totals,
+        avgCostPerRegistration,
         roi: totals.costEur > 0 ? totals.revenueEur / totals.costEur : null,
         cpaEur: totals.payments > 0 ? totals.costEur / totals.payments : null,
       },

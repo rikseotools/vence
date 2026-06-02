@@ -26,6 +26,8 @@ interface Campaign {
   clicks: number
   impressions: number
   avgCpcEur: number
+  registrations: number
+  costPerRegistrationEur: number | null
   revenueEur: number
   payments: number
   cpaEur: number | null
@@ -38,6 +40,8 @@ interface AdsResponse {
     costEur: number
     clicks: number
     impressions: number
+    registrations: number
+    avgCostPerRegistration: number | null
     revenueEur: number
     payments: number
     roi: number | null
@@ -47,6 +51,17 @@ interface AdsResponse {
 }
 
 const eur = (n: number) => `${n.toFixed(2)}€`
+
+// Color del coste/registro RELATIVO a la media de la cuenta: verde = barato
+// (escalar), rojo = caro (recortar). Se adapta solo a cada cuenta/periodo.
+function cprClass(c: Campaign, avg: number | null): string {
+  if (c.costEur > 0 && c.registrations === 0) return 'text-red-600 dark:text-red-400 font-semibold'
+  if (c.costPerRegistrationEur == null || avg == null) return 'text-gray-400'
+  const ratio = c.costPerRegistrationEur / avg
+  if (ratio <= 0.8) return 'text-green-600 dark:text-green-400 font-semibold'
+  if (ratio >= 1.5) return 'text-red-600 dark:text-red-400 font-semibold'
+  return 'text-amber-600 dark:text-amber-400'
+}
 
 function roiBadge(c: Campaign) {
   if (c.costEur > 0 && c.payments === 0)
@@ -124,11 +139,12 @@ export default function AdsPage() {
       )}
 
       {t && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
           <Kpi label="Gasto" value={eur(t.costEur)} />
           <Kpi label="Clics" value={t.clicks.toLocaleString('es-ES')} />
+          <Kpi label="Registros" value={String(Math.round(t.registrations))} />
+          <Kpi label="€/registro" value={t.avgCostPerRegistration != null ? eur(t.avgCostPerRegistration) : '—'} hint="media cuenta" />
           <Kpi label="Ingreso atribuido" value={eur(t.revenueEur)} />
-          <Kpi label="Ventas" value={String(t.payments)} hint={t.cpaEur != null ? `CPA ${eur(t.cpaEur)}` : undefined} />
           <Kpi label="ROI" value={t.roi != null ? `${t.roi.toFixed(2)}×` : '—'} />
         </div>
       )}
@@ -140,9 +156,9 @@ export default function AdsPage() {
               <th className="text-left px-3 py-2 font-medium">Campaña</th>
               <th className="text-right px-3 py-2 font-medium">Gasto</th>
               <th className="text-right px-3 py-2 font-medium">Clics</th>
-              <th className="text-right px-3 py-2 font-medium">CPC</th>
+              <th className="text-right px-3 py-2 font-medium">Registros</th>
+              <th className="text-right px-3 py-2 font-medium">€/registro</th>
               <th className="text-right px-3 py-2 font-medium">Ventas</th>
-              <th className="text-right px-3 py-2 font-medium">CPA</th>
               <th className="text-right px-3 py-2 font-medium">Ingreso</th>
               <th className="text-right px-3 py-2 font-medium">ROI</th>
             </tr>
@@ -164,9 +180,13 @@ export default function AdsPage() {
                 </td>
                 <td className="px-3 py-2 text-right">{eur(c.costEur)}</td>
                 <td className="px-3 py-2 text-right">{c.clicks}</td>
-                <td className="px-3 py-2 text-right">{eur(c.avgCpcEur)}</td>
+                <td className="px-3 py-2 text-right">{Math.round(c.registrations)}</td>
+                <td className={`px-3 py-2 text-right ${cprClass(c, t?.avgCostPerRegistration ?? null)}`}>
+                  {c.costPerRegistrationEur != null
+                    ? eur(c.costPerRegistrationEur)
+                    : c.costEur > 0 ? '0 reg' : '—'}
+                </td>
                 <td className="px-3 py-2 text-right">{c.payments}</td>
-                <td className="px-3 py-2 text-right">{c.cpaEur != null ? eur(c.cpaEur) : '—'}</td>
                 <td className="px-3 py-2 text-right">{eur(c.revenueEur)}</td>
                 <td className="px-3 py-2 text-right">{roiBadge(c)}</td>
               </tr>
