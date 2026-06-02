@@ -1,12 +1,14 @@
 // app/api/law-changes/check-optimized/route.js
 // Versión optimizada para cron diario - mínimo consumo de ancho de banda
-import { createClient } from '@supabase/supabase-js'
+import { getAdminDb } from '@/db/client'
+import { laws as lawsTable } from '@/db/schema'
+import { and, eq, isNotNull } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+
+// getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
+// service_role). Agnóstico de proveedor.
+const db = () => getAdminDb()
 
 /**
  * Extrae la fecha de "Última actualización" del HTML del BOE
@@ -213,16 +215,28 @@ async function _GET(request) {
 
   try {
     // Obtener leyes a verificar (incluir offset y content_length cacheados)
-    let query = getSupabase()
-      .from('laws')
-      .select('id, short_name, name, boe_url, last_update_boe, last_checked, date_byte_offset, boe_content_length')
-      .not('boe_url', 'is', null)
-
-    if (specificLaw) {
-      query = query.eq('short_name', specificLaw)
+    let laws = []
+    let error = null
+    try {
+      laws = await db()
+        .select({
+          id: lawsTable.id,
+          short_name: lawsTable.shortName,
+          name: lawsTable.name,
+          boe_url: lawsTable.boeUrl,
+          last_update_boe: lawsTable.lastUpdateBoe,
+          last_checked: lawsTable.lastChecked,
+          date_byte_offset: lawsTable.dateByteOffset,
+          boe_content_length: lawsTable.boeContentLength,
+        })
+        .from(lawsTable)
+        .where(and(
+          isNotNull(lawsTable.boeUrl),
+          specificLaw ? eq(lawsTable.shortName, specificLaw) : undefined,
+        ))
+    } catch (e) {
+      error = e
     }
-
-    const { data: laws, error } = await query
 
     if (error) {
       return Response.json({ success: false, error: 'Error obteniendo leyes' }, { status: 500 })
@@ -283,9 +297,9 @@ async function _GET(request) {
           lawResult.newDate = law.last_update_boe
 
           // Solo actualizar last_checked
-          await getSupabase().from('laws').update({
-            last_checked: now.toISOString()
-          }).eq('id', law.id)
+          await db().update(lawsTable).set({
+            lastChecked: now.toISOString()
+          }).where(eq(lawsTable.id, law.id))
 
           results.push(lawResult)
           stats.checked++
@@ -325,20 +339,20 @@ async function _GET(request) {
 
         // Actualizar BD (guardar offset y content_length para próximas consultas)
         const updateData = {
-          last_checked: now.toISOString(),
-          last_update_boe: partialResult.lastUpdateBOE
+          lastChecked: now.toISOString(),
+          lastUpdateBoe: partialResult.lastUpdateBOE
         }
         if (partialResult.dateOffset && partialResult.dateOffset > 0) {
-          updateData.date_byte_offset = partialResult.dateOffset
+          updateData.dateByteOffset = partialResult.dateOffset
         }
         if (currentContentLength && currentContentLength > 0) {
-          updateData.boe_content_length = currentContentLength
+          updateData.boeContentLength = currentContentLength
         }
         if (lawResult.changed) {
-          updateData.change_status = 'changed'
-          updateData.change_detected_at = now.toISOString()
+          updateData.changeStatus = 'changed'
+          updateData.changeDetectedAt = now.toISOString()
         }
-        await getSupabase().from('laws').update(updateData).eq('id', law.id)
+        await db().update(lawsTable).set(updateData).where(eq(lawsTable.id, law.id))
 
         results.push(lawResult)
         stats.checked++
@@ -366,20 +380,20 @@ async function _GET(request) {
         }
 
         const fullUpdateData = {
-          last_checked: now.toISOString(),
-          last_update_boe: fullResult.lastUpdateBOE
+          lastChecked: now.toISOString(),
+          lastUpdateBoe: fullResult.lastUpdateBOE
         }
         if (fullResult.dateOffset && fullResult.dateOffset > 0) {
-          fullUpdateData.date_byte_offset = fullResult.dateOffset
+          fullUpdateData.dateByteOffset = fullResult.dateOffset
         }
         if (currentContentLength && currentContentLength > 0) {
-          fullUpdateData.boe_content_length = currentContentLength
+          fullUpdateData.boeContentLength = currentContentLength
         }
         if (lawResult.changed) {
-          fullUpdateData.change_status = 'changed'
-          fullUpdateData.change_detected_at = now.toISOString()
+          fullUpdateData.changeStatus = 'changed'
+          fullUpdateData.changeDetectedAt = now.toISOString()
         }
-        await getSupabase().from('laws').update(fullUpdateData).eq('id', law.id)
+        await db().update(lawsTable).set(fullUpdateData).where(eq(lawsTable.id, law.id))
       } else {
         stats.errors++
         lawResult.error = fullResult.reason
