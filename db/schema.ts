@@ -3840,3 +3840,29 @@ export const outboxEvents = pgTable("outbox_events", {
 	index("outbox_events_type_idx").using("btree", table.eventType, table.createdAt),
 	check("outbox_events_attempts_nonneg", sql`attempts >= 0`),
 ]);
+
+// Atribución first-touch multicanal (Google Ads, Meta Ads, orgánico…).
+// Cruza coste por campaña (API Ads) con ingresos por campaña (conversion_events).
+// Ver supabase/migrations/20260602_user_acquisition.sql
+export const userAcquisition = pgTable("user_acquisition", {
+	userId: uuid("user_id").primaryKey().notNull(),
+	channel: text().notNull(),
+	gclid: text(),
+	fbclid: text(),
+	utmSource: text("utm_source"),
+	utmMedium: text("utm_medium"),
+	utmCampaign: text("utm_campaign"),
+	landingPath: text("landing_path"),
+	referrer: text(),
+	capturedAt: timestamp("captured_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_user_acquisition_channel").using("btree", table.channel.asc().nullsLast().op("text_ops")),
+	index("idx_user_acquisition_utm_campaign").using("btree", table.utmCampaign.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_acquisition_user_id_fkey"
+		}).onDelete("cascade"),
+	// RLS habilitado SIN políticas (lockdown vía PostgREST; escritura/lectura por
+	// Drizzle privilegiado). Agnóstico: sin auth.uid(). Ver migración 20260602.
+]).enableRLS();

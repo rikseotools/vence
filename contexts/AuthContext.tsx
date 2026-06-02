@@ -7,7 +7,7 @@ import type { UserProfileRow } from '@/types/database.types'
 import { getSupabaseClient } from '../lib/supabase'
 import notificationTracker from '../lib/services/notificationTracker'
 import emailTracker from '../lib/services/emailTracker'
-import { shouldForceCheckout, forceCampaignCheckout } from '../lib/campaignTracker'
+import { shouldForceCheckout, forceCampaignCheckout, detectCampaignSource, getCookie } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
 import SessionWarningModal from '../components/SessionWarningModal'
@@ -466,6 +466,36 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           user_email: authUser.email,
           user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0]
         })
+      }
+
+      // 📊 Atribución first-touch multicanal (gclid/fbclid/utm) desde las cookies
+      // de campaña capturadas en la landing. AGNÓSTICO: vía endpoint + Drizzle,
+      // no supabase.rpc. No bloqueante: si falla, el registro sigue.
+      // utm_campaign con el final_url_suffix nuevo = ID numérico de campaña.
+      try {
+        const campaign = detectCampaignSource()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          await fetch('/api/acquisition', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              channel: registrationSource,
+              gclid: campaign?.gclid ?? null,
+              fbclid: campaign?.fbclid ?? null,
+              utmSource: campaign?.utm_source ?? null,
+              utmMedium: getCookie('google_utm_medium') || getCookie('campaign_utm_medium') || null,
+              utmCampaign: campaign?.utm_campaign ?? null,
+              landingPath: campaign?.landing ?? null,
+              referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+            }),
+          })
+        }
+      } catch (acqError) {
+        console.warn('⚠️ /api/acquisition falló (no bloqueante):', acqError)
       }
 
       // Recargar perfil después de crear/actualizar
