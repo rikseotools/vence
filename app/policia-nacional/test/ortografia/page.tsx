@@ -19,6 +19,7 @@ const QUESTIONS_PER_TEST = 10
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    // eslint-disable-next-line no-restricted-syntax -- Server Component (sin 'use client'): SERVICE_ROLE corre server-side, no se incluye en el bundle cliente
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }

@@ -14,10 +14,17 @@ const eslintConfig = [
   {
     ignores: [
       ".next/",
+      ".open-next/",
+      ".sst/",
       "node_modules/",
       "scripts/",
       "database/",
       "docs/",
+      // Artefactos generados (reportes/builds) — no son código fuente y
+      // contienen bundles minificados que disparan miles de falsos positivos.
+      "playwright-report/",
+      "test-results/",
+      "coverage/",
       "_tmp_*.cjs",
       "*.cjs",
       "*.json",

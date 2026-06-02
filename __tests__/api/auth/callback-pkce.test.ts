@@ -325,6 +325,7 @@ async function getCallbackHandler() {
   const { isFromMeta, isFromGoogle, getMetaParams, getGoogleParams } = require('../../../lib/metaPixelCapture')
   const { useGoogleAds } = require('../../../utils/googleAds')
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- useGoogleAds es un helper de tracking, no un hook de render; aquí se usa fuera de un componente a propósito
   const { events } = useGoogleAds()
 
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!

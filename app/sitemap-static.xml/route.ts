@@ -14,6 +14,7 @@ export const revalidate = 86400; // Regenerar cada 24 horas
 export async function GET() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    // eslint-disable-next-line no-restricted-syntax -- Route handler server-side: SERVICE_ROLE corre en servidor, no se incluye en el bundle cliente
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 

@@ -1,6 +1,6 @@
 // components/admin/NotificationCharts.js - COMPONENTES DE GRÁFICOS PARA ADMIN
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 
 // Componente de gráfico de barras simple (sin dependencias externas)
 export function BarChart({ data, title, color = 'blue' }) {
@@ -357,7 +357,7 @@ export function ActivityHeatmap({ data, title }) {
           
           {/* Filas por día */}
           {days.map((day, dayIndex) => (
-            <React.Fragment key={day}>
+            <Fragment key={day}>
               <div className="text-gray-500 font-medium py-1">
                 {day}
               </div>
@@ -373,7 +373,7 @@ export function ActivityHeatmap({ data, title }) {
                   />
                 )
               })}
-            </React.Fragment>
+            </Fragment>
           ))}
         </div>
         

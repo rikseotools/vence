@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useIntelligentNotifications } from '../hooks/useIntelligentNotifications'
 
 export default function NotificationTester() {
+  // Los hooks deben llamarse SIEMPRE antes de cualquier return (rules-of-hooks).
+  const { injectTestNotification, clearAllNotifications } = useIntelligentNotifications()
+  const [isExpanded, setIsExpanded] = useState(false)
+
   // Solo mostrar en desarrollo
   if (process.env.NODE_ENV !== 'development') {
     return null
   }
-
-  const { injectTestNotification, clearAllNotifications } = useIntelligentNotifications()
-  const [isExpanded, setIsExpanded] = useState(false)
 
   // 📦 NOTIFICACIONES DE PRUEBA
   const testNotifications = {

@@ -600,7 +600,7 @@ export default function AIChatWidget() {
   }, [sendMessage])
 
   // Helper para usar sugerencias predefinidas - envía directamente y trackea click
-  const useSuggestion = useCallback((text, suggestionKey) => {
+  const applySuggestion = useCallback((text, suggestionKey) => {
     // 📊 Tracking de click en sugerencia
     trackChatAction('suggestion_clicked', {
       suggestionKey,
@@ -924,7 +924,7 @@ export default function AIChatWidget() {
                           <button
                             onClick={() => {
                               const dataInfo = formatPsicotecnicoData(currentQuestionContext)
-                              useSuggestion(`Explícame paso a paso cómo resolver esta ${currentQuestionContext.questionTypeName || 'pregunta'}: "${currentQuestionContext.questionText}"\n\nLas opciones son:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS DEL GRÁFICO/TABLA:${dataInfo}` : ''}`, 'explicar_psico')
+                              applySuggestion(`Explícame paso a paso cómo resolver esta ${currentQuestionContext.questionTypeName || 'pregunta'}: "${currentQuestionContext.questionText}"\n\nLas opciones son:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS DEL GRÁFICO/TABLA:${dataInfo}` : ''}`, 'explicar_psico')
                             }}
                             className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
                           >
@@ -935,7 +935,7 @@ export default function AIChatWidget() {
                             <button
                               onClick={() => {
                                 const dataInfo = formatPsicotecnicoData(currentQuestionContext)
-                                useSuggestion(`Analiza los datos y dime cuál es la respuesta correcta para: "${currentQuestionContext.questionText}"\n\nOpciones:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS:${dataInfo}` : ''}`, 'analizar_psico')
+                                applySuggestion(`Analiza los datos y dime cuál es la respuesta correcta para: "${currentQuestionContext.questionText}"\n\nOpciones:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS:${dataInfo}` : ''}`, 'analizar_psico')
                               }}
                               className="block w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
                             >
@@ -955,7 +955,7 @@ export default function AIChatWidget() {
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Sobre esta pregunta:</p>
                       {currentQuestionContext.correctAnswer !== undefined && currentQuestionContext.correctAnswer !== null && (
                         <button
-                          onClick={() => useSuggestion(`Explícame por qué la respuesta correcta es "${answerToLetter(currentQuestionContext.correctAnswer)}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
+                          onClick={() => applySuggestion(`Explícame por qué la respuesta correcta es "${answerToLetter(currentQuestionContext.correctAnswer)}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
                           className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
                         >
                           💡 Explícame la respuesta correcta
@@ -968,7 +968,7 @@ export default function AIChatWidget() {
                           {lawContextSuggestions.map((suggestion) => (
                             <button
                               key={suggestion.id}
-                              onClick={() => useSuggestion(suggestion.message, suggestion.suggestion_key)}
+                              onClick={() => applySuggestion(suggestion.message, suggestion.suggestion_key)}
                               className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300 mb-1"
                             >
                               {suggestion.emoji} {suggestion.label}
@@ -994,31 +994,31 @@ export default function AIChatWidget() {
                             {showExamMenu && (
                               <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-orange-200 dark:border-orange-700">
                                 <button
-                                  onClick={() => { useSuggestion('¿Qué artículos de la Constitución Española han caído más en exámenes oficiales?', 'exam_ce'); setShowExamMenu(false); }}
+                                  onClick={() => { applySuggestion('¿Qué artículos de la Constitución Española han caído más en exámenes oficiales?', 'exam_ce'); setShowExamMenu(false); }}
                                   className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
                                 >
                                   🏛️ Constitución Española
                                 </button>
                                 <button
-                                  onClick={() => { useSuggestion('¿Qué artículos de la Ley 39/2015 (LPAC) han caído más en exámenes oficiales?', 'exam_lpac'); setShowExamMenu(false); }}
+                                  onClick={() => { applySuggestion('¿Qué artículos de la Ley 39/2015 (LPAC) han caído más en exámenes oficiales?', 'exam_lpac'); setShowExamMenu(false); }}
                                   className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
                                 >
                                   📋 Ley 39/2015 (LPAC)
                                 </button>
                                 <button
-                                  onClick={() => { useSuggestion('¿Qué artículos de la Ley 40/2015 (LRJSP) han caído más en exámenes oficiales?', 'exam_lrjsp'); setShowExamMenu(false); }}
+                                  onClick={() => { applySuggestion('¿Qué artículos de la Ley 40/2015 (LRJSP) han caído más en exámenes oficiales?', 'exam_lrjsp'); setShowExamMenu(false); }}
                                   className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
                                 >
                                   🏢 Ley 40/2015 (LRJSP)
                                 </button>
                                 <button
-                                  onClick={() => { useSuggestion('¿Qué artículos del TREBEP han caído más en exámenes oficiales?', 'exam_trebep'); setShowExamMenu(false); }}
+                                  onClick={() => { applySuggestion('¿Qué artículos del TREBEP han caído más en exámenes oficiales?', 'exam_trebep'); setShowExamMenu(false); }}
                                   className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
                                 >
                                   👔 TREBEP
                                 </button>
                                 <button
-                                  onClick={() => { useSuggestion('¿Cuáles son los artículos más preguntados en exámenes oficiales de todas las leyes?', 'exam_todas'); setShowExamMenu(false); }}
+                                  onClick={() => { applySuggestion('¿Cuáles son los artículos más preguntados en exámenes oficiales de todas las leyes?', 'exam_todas'); setShowExamMenu(false); }}
                                   className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
                                 >
                                   📊 Todas las leyes
@@ -1043,13 +1043,13 @@ export default function AIChatWidget() {
                           {showProgressMenu && (
                             <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-green-200 dark:border-green-700">
                               <button
-                                onClick={() => { useSuggestion('¿Cómo voy esta semana en comparación con la anterior?', 'como_voy'); setShowProgressMenu(false); }}
+                                onClick={() => { applySuggestion('¿Cómo voy esta semana en comparación con la anterior?', 'como_voy'); setShowProgressMenu(false); }}
                                 className="block w-full text-left px-3 py-1.5 text-xs bg-green-50/50 dark:bg-green-900/20 rounded hover:bg-green-100 dark:hover:bg-green-900/40 transition text-green-600 dark:text-green-400"
                               >
                                 📈 ¿Cómo voy esta semana?
                               </button>
                               <button
-                                onClick={() => { useSuggestion('¿En qué artículos fallo más? Dime mis puntos débiles', 'donde_fallo'); setShowProgressMenu(false); }}
+                                onClick={() => { applySuggestion('¿En qué artículos fallo más? Dime mis puntos débiles', 'donde_fallo'); setShowProgressMenu(false); }}
                                 className="block w-full text-left px-3 py-1.5 text-xs bg-green-50/50 dark:bg-green-900/20 rounded hover:bg-green-100 dark:hover:bg-green-900/40 transition text-green-600 dark:text-green-400"
                               >
                                 ❌ ¿Dónde fallo más?
@@ -1071,31 +1071,31 @@ export default function AIChatWidget() {
                   <>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Pregúntame sobre:</p>
                     <button
-                      onClick={() => useSuggestion('Explícame cómo resolver series numéricas', 'series_numericas')}
+                      onClick={() => applySuggestion('Explícame cómo resolver series numéricas', 'series_numericas')}
                       className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                     >
                       🔢 Series numéricas
                     </button>
                     <button
-                      onClick={() => useSuggestion('Explícame cómo resolver series de letras', 'series_letras')}
+                      onClick={() => applySuggestion('Explícame cómo resolver series de letras', 'series_letras')}
                       className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                     >
                       🔤 Series de letras
                     </button>
                     <button
-                      onClick={() => useSuggestion('Dame técnicas para resolver razonamiento verbal', 'razonamiento_verbal')}
+                      onClick={() => applySuggestion('Dame técnicas para resolver razonamiento verbal', 'razonamiento_verbal')}
                       className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                     >
                       📝 Razonamiento verbal
                     </button>
                     <button
-                      onClick={() => useSuggestion('Explícame trucos para razonamiento numérico', 'razonamiento_numerico')}
+                      onClick={() => applySuggestion('Explícame trucos para razonamiento numérico', 'razonamiento_numerico')}
                       className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                     >
                       🧮 Razonamiento numérico
                     </button>
                     <button
-                      onClick={() => useSuggestion('¿Cómo mejorar mi velocidad en psicotécnicos?', 'velocidad_psico')}
+                      onClick={() => applySuggestion('¿Cómo mejorar mi velocidad en psicotécnicos?', 'velocidad_psico')}
                       className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                     >
                       ⚡ Mejorar velocidad
@@ -1112,7 +1112,7 @@ export default function AIChatWidget() {
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">Pregúntame sobre:</p>
                     {/* Botón fijo PRIMERO: ¿Te ayudo con psicotécnicos? */}
                     <button
-                      onClick={() => useSuggestion('¿Me ayudas a practicar psicotécnicos?', 'hacemos_psicotecnicos')}
+                      onClick={() => applySuggestion('¿Me ayudas a practicar psicotécnicos?', 'hacemos_psicotecnicos')}
                       className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -1126,7 +1126,7 @@ export default function AIChatWidget() {
                       dynamicSuggestions.map((suggestion) => (
                         <button
                           key={suggestion.id}
-                          onClick={() => useSuggestion(suggestion.message, suggestion.suggestion_key)}
+                          onClick={() => applySuggestion(suggestion.message, suggestion.suggestion_key)}
                           className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                         >
                           {suggestion.emoji} {suggestion.label}
@@ -1237,7 +1237,7 @@ export default function AIChatWidget() {
                       {msg.suggestions.followUpQuestions.map((q, i) => (
                         <button
                           key={i}
-                          onClick={() => useSuggestion(q.text, q.label)}
+                          onClick={() => applySuggestion(q.text, q.label)}
                           className="block w-full text-left text-xs px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-700 transition-all"
                         >
                           → {q.text}
