@@ -3855,6 +3855,18 @@ export const userAcquisition = pgTable("user_acquisition", {
 	landingPath: text("landing_path"),
 	referrer: text(),
 	capturedAt: timestamp("captured_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	// Click-IDs adicionales (20260603) — first-touch
+	gbraid: text(),
+	wbraid: text(),
+	ttclid: text(),
+	msclkid: text(),
+	// Last-touch (derivado de attribution_touches en el binding; first-touch = columnas sin prefijo)
+	lastChannel: text("last_channel"),
+	lastGclid: text("last_gclid"),
+	lastUtmSource: text("last_utm_source"),
+	lastUtmCampaign: text("last_utm_campaign"),
+	lastLandingPath: text("last_landing_path"),
+	lastCapturedAt: timestamp("last_captured_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_user_acquisition_channel").using("btree", table.channel.asc().nullsLast().op("text_ops")),
 	index("idx_user_acquisition_utm_campaign").using("btree", table.utmCampaign.asc().nullsLast().op("text_ops")),
@@ -3865,6 +3877,60 @@ export const userAcquisition = pgTable("user_acquisition", {
 		}).onDelete("cascade"),
 	// RLS habilitado SIN políticas (lockdown vía PostgREST; escritura/lectura por
 	// Drizzle privilegiado). Agnóstico: sin auth.uid(). Ver migración 20260602.
+]).enableRLS();
+
+// Atribución append-only multi-touch (F0 trackeo-conversiones-ventas).
+// Cada toque (anónimo por device_id, ligado a user_id en signup) con todos los
+// click-IDs. Ver supabase/migrations/20260603_attribution_touches.sql
+export const attributionTouches = pgTable("attribution_touches", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	deviceId: text("device_id").notNull(),
+	userId: uuid("user_id"),
+	gclid: text(),
+	gbraid: text(),
+	wbraid: text(),
+	fbclid: text(),
+	ttclid: text(),
+	msclkid: text(),
+	utmSource: text("utm_source"),
+	utmMedium: text("utm_medium"),
+	utmCampaign: text("utm_campaign"),
+	utmTerm: text("utm_term"),
+	utmContent: text("utm_content"),
+	landingPath: text("landing_path"),
+	referrer: text(),
+	occurredAt: timestamp("occurred_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_attribution_touches_device").using("btree", table.deviceId.asc().nullsLast().op("text_ops")),
+	index("idx_attribution_touches_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`${table.userId} IS NOT NULL`),
+	index("idx_attribution_touches_gclid").using("btree", table.gclid.asc().nullsLast().op("text_ops")).where(sql`${table.gclid} IS NOT NULL`),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "attribution_touches_user_id_fkey"
+		}).onDelete("cascade"),
+]).enableRLS();
+
+// Outbox de conversiones de marketing (F1 trackeo-conversiones-ventas).
+// 1 fila por (evento × destino). Escrito por lib/conversions/recordConversion.
+// Ver supabase/migrations/20260603_conversion_outbox.sql
+export const conversionOutbox = pgTable("conversion_outbox", {
+	id: text().primaryKey().notNull(),            // dedupId determinista
+	eventType: text("event_type").notNull(),
+	destination: text().notNull(),
+	userId: uuid("user_id"),
+	valueCents: integer("value_cents").default(0).notNull(),
+	currency: text().default('eur').notNull(),
+	occurredAt: timestamp("occurred_at", { withTimezone: true, mode: 'string' }).notNull(),
+	payload: jsonb().default({}).notNull(),
+	status: text().default('pending').notNull(),
+	retryCount: integer("retry_count").default(0).notNull(),
+	lastError: text("last_error"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	deliveredAt: timestamp("delivered_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_conversion_outbox_pending").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")).where(sql`status = 'pending'`),
+	index("idx_conversion_outbox_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`${table.userId} IS NOT NULL`),
 ]).enableRLS();
 
 // === Seguimiento SEO (keywords objetivo + histórico GSC + bitácora) ===

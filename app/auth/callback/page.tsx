@@ -285,6 +285,28 @@ function AuthCallbackContent() {
           console.warn('⚠️ [CALLBACK] API error (continuando con redirect):', apiError)
         }
 
+        // 5b. F0 trackeo-conversiones-ventas — ligar la atribución anónima
+        // (attribution_touches del vence_device_id) a este usuario. Fire-and-
+        // forget: no bloquea el redirect. Idempotente (first-touch inmutable,
+        // last-touch refrescado); se llama también en logins de retorno para
+        // mantener el last-touch al día.
+        try {
+          const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
+          if (deviceId) {
+            fetch('/api/acquisition', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ deviceId }),
+              keepalive: true,
+            }).catch(() => {})
+          }
+        } catch (bindErr) {
+          console.warn('⚠️ [CALLBACK] attribution bind error (no crítico):', bindErr)
+        }
+
         // 6. Client-side tracking (necesitan browser/pixels)
         if (isGoogleAds) {
           events.SIGNUP('google_ads')

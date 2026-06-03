@@ -12,7 +12,7 @@ import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import FraudTracker from '../components/FraudTracker'
 import ChallengeProvider from '../components/security/ChallengeProvider'
-import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
+import { GlobalClickTracker, PageViewTracker, AttributionCapture } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
 import { ClientObservabilityInstaller } from '../components/observability/ClientObservabilityInstaller'
@@ -51,6 +51,12 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                   <GlobalClickTracker>
                     <Suspense fallback={null}>
                       <PageViewTracker />
+                    </Suspense>
+                    {/* F0 trackeo-conversiones-ventas — captura global de click-IDs
+                        (gclid/gbraid/wbraid/fbclid/ttclid/msclkid) + UTM en cualquier
+                        página, no solo /landing/*. */}
+                    <Suspense fallback={null}>
+                      <AttributionCapture />
                     </Suspense>
                     <div className="flex flex-col min-h-screen">
                       <ClientLayoutContent>

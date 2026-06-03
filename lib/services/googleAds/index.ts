@@ -27,3 +27,9 @@ export {
   type TrackingApplyResult,
 } from './account'
 export { getCampaignRoi, type CampaignRoi } from './roi'
+export {
+  uploadPurchaseConversion,
+  hashEmail,
+  googleAdsDestination,
+  type PurchaseConversionInput,
+} from './conversions'

@@ -1,0 +1,56 @@
+name: Conversion Outbox
+
+# F1 trackeo-conversiones-ventas. Drena conversion_outbox y entrega cada venta
+# a su destino (Google Ads…). At-least-once + idempotente + DLQ en el worker.
+#
+# Arranque seguro: con ADS_CONVERSION_UPLOAD_ENABLED sin setear, el endpoint
+# corre en validate-only (no escribe en Ads; las filas quedan pending). Activar
+# el envío real = poner ADS_CONVERSION_UPLOAD_ENABLED=true en el entorno.
+#
+# Roadmap: docs/roadmap/trackeo-conversiones-ventas.md
+
+on:
+  schedule:
+    # Cada 15 min: las conversiones llegan a Ads con poca latencia y los scans
+    # vacíos son sub-segundo (índice parcial sobre pending).
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  drain-outbox:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call conversion-outbox endpoint
+        id: drain
+        run: |
+          URL="https://www.vence.es/api/cron/conversion-outbox"
+
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${URL}")
+
+          echo "Response: $RESPONSE"
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+          SCANNED=$(echo "$RESPONSE" | jq -r '.scanned // 0')
+          DELIVERED=$(echo "$RESPONSE" | jq -r '.delivered // 0')
+          VALIDATED=$(echo "$RESPONSE" | jq -r '.validated // 0')
+          RETRIED=$(echo "$RESPONSE" | jq -r '.retried // 0')
+          DLQ=$(echo "$RESPONSE" | jq -r '.dlq // 0')
+          DRYRUN=$(echo "$RESPONSE" | jq -r '.dryRun // true')
+
+          echo "dlq=$DLQ" >> $GITHUB_OUTPUT
+
+          echo "📤 Conversion outbox - $(date)"
+          echo "   scanned=$SCANNED delivered=$DELIVERED validated=$VALIDATED retried=$RETRIED dlq=$DLQ dryRun=$DRYRUN"
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ Cron endpoint failed"
+            exit 1
+          fi
+
+      - name: Warn on DLQ
+        if: steps.drain.outputs.dlq != '0'
+        run: echo "::warning::conversion_outbox DLQ=${{ steps.drain.outputs.dlq }} — conversiones que no se pudieron entregar tras 5 reintentos. Inspeccionar."

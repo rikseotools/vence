@@ -5,8 +5,10 @@ import { stripe } from '@/lib/stripe'
 import { Resend } from 'resend'
 import type Stripe from 'stripe'
 import { getAdminDb } from '@/db/client'
-import { userProfiles, userSubscriptions, cancellationFeedback, paymentSettlements } from '@/db/schema'
+import { userProfiles, userSubscriptions, cancellationFeedback, paymentSettlements, userAcquisition } from '@/db/schema'
 import { and, eq, desc, sql } from 'drizzle-orm'
+import { recordConversion } from '@/lib/conversions/recordConversion'
+import { hashEmail } from '@/lib/services/googleAds'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { invalidateProfileCache } from '@/lib/api/profile'
@@ -402,6 +404,42 @@ async function handleCheckoutSessionCompleted(
         await db.execute(sql`SELECT track_conversion_event(${userId}::uuid, ${'payment_completed'}::text, ${JSON.stringify(eventData)}::jsonb)`)
       } catch (trackErr) {
         console.error('Error tracking conversion:', trackErr)
+      }
+
+      // F1 trackeo-conversiones-ventas — encolar la compra hacia Google Ads
+      // (OCI por click-ID guardado en user_acquisition + Enhanced Conversions
+      // por email hasheado). recordConversion encola en el outbox y nunca lanza;
+      // el cron /api/cron/conversion-outbox hace la subida real (gated por flags).
+      try {
+        const orderId = (session.invoice as string) || session.id
+        const [acq] = await db
+          .select({
+            gclid: userAcquisition.gclid,
+            lastGclid: userAcquisition.lastGclid,
+            gbraid: userAcquisition.gbraid,
+            wbraid: userAcquisition.wbraid,
+          })
+          .from(userAcquisition)
+          .where(eq(userAcquisition.userId, userId))
+          .limit(1)
+        const email = data?.[0]?.email || session.customer_email || ''
+        await recordConversion({
+          dedupId: `purchase:${orderId}`,
+          type: 'purchase',
+          userId,
+          valueCents: session.amount_total || 0,
+          currency: session.currency || 'eur',
+          occurredAt: new Date((session.created || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+          orderId,
+          attribution: {
+            gclid: acq?.lastGclid || acq?.gclid || null,
+            gbraid: acq?.gbraid || null,
+            wbraid: acq?.wbraid || null,
+            emailSha256: email ? hashEmail(email) : null,
+          },
+        })
+      } catch (convErr) {
+        console.error('Error encolando conversión Ads:', convErr)
       }
 
       try {
