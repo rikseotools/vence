@@ -52,6 +52,14 @@ Pushes frontend concurrentes (sesiones paralelas) → "ganaba" el último en TER
 - **Capa D — log de retos + forense.** ✅ **HECHO (03/06).** Cada reto emite `scraping_challenge_shown` a `observable_events` con contexto (userId, ip, deviceId, qué sujeto disparó + contadores, reason: volume|bot_flag). El flag de bot emite `scraping_force_challenge_set`. Dataset para forense periódico (Claude) → propuesta de ban a Manuel, y para entrenar C-completa.
   - **Principio (Manuel 03/06): SIEMPRE observabilidad** — toda decisión del gate emite evento.
 
+### 📅 ¿Cuándo terminar lo pendiente? (plan)
+Las capas en producción (A/B/C-fácil/D) ya cierran el grueso. Lo que queda **necesita datos reales del log de la Capa D** para hacerse bien, no se debe hacer "a ciegas":
+- **~17/06/2026 (2 semanas):** 1ª **revisión forense** de los eventos `scraping_challenge_shown` — ¿se está retando a algún usuario LEGÍTIMO (falsos positivos)? ¿quién acumula? Tunear umbrales (user/anon/device) con datos. Barato y alto valor; valida que no molestamos a nadie.
+- **~01/07/2026 (4 semanas):** si hay suficientes eventos etiquetados (scraper real vs legítimo), construir la **Capa C-completa** (scoring por comportamiento: ratio servidas/respondidas + amplitud temas/oposiciones + sin-revisiones → umbral dinámico). El log de D es su dataset de entrenamiento.
+- **Sin fecha (oportunista):** honeypot, rutas trampa, watermarking de preguntas (forense de fugas). Solo si aparece una fuga concreta o hay hueco.
+
+> Nota: Manuel preguntará en Claude Code cuando llegue el día; está anotado en memoria (`project_scraping_abuso_y_correct_answer_leak`).
+
 ### Casos / aprendizajes
 - **Ana Fernández (02/06):** 617 tests/18d, 6.656 distintas, "scrape & refund". Reembolso DENEGADO (art.133 TRLPI + art.270 CP). Origen de toda esta tanda. Detalle en memoria `project_scraping_abuso_y_correct_answer_leak`.
 
@@ -73,19 +81,26 @@ Pushes frontend concurrentes (sesiones paralelas) → "ganaba" el último en TER
 
 ### ❌ Pendiente de Implementar
 
-| Vulnerabilidad | Descripción | Prioridad | Complejidad |
-|----------------|-------------|-----------|-------------|
-| **Protección de respuestas** | Actualmente `correct_option` se envía al cliente antes de responder. Un scraper puede interceptar la respuesta JSON y obtener todas las respuestas correctas. | 🔴 Alta | Alta |
-| **Honeypot fields** | Campos invisibles en formularios que solo los bots rellenan | 🟡 Media | Baja |
-| **Rutas trampa** | URLs falsas (`/api/v2/questions/export`) que solo scrapers intentan acceder | 🟡 Media | Baja |
-| **Rate limit por IP** | Adicional al rate limit por sesión, limitar por IP | 🟡 Media | Baja |
-| **CAPTCHA tras detección** | Mostrar CAPTCHA cuando se detecta comportamiento sospechoso | 🟡 Media | Media |
-| **Ofuscación de `__NEXT_DATA__`** | Next.js expone datos en script tag JSON que scrapers pueden extraer | 🟠 Media | Alta |
-| **Watermarking de preguntas** | ID único por usuario para rastrear fugas | 🟢 Baja | Media |
+> ⚠️ Esta tabla es de enero 2026. **Estado real arriba** (sección "ESTADO VIVO 2026-06-03"). Resumen del cambio:
+
+| Vulnerabilidad (enero) | Estado real 2026-06-03 |
+|----------------|-------------|
+| **Protección de respuestas** (`correct_option` al cliente) | ⚖️ **DECISIÓN (Manuel):** NO se quita — es intencional para UX instantánea. El riesgo es VOLUMEN, no que viaje la respuesta. Mitigado por el gate de volumen (ver arriba). |
+| **Rate limit por IP** | ✅ **HECHO** — gate por IP (anónimo) + por usuario + por dispositivo. |
+| **CAPTCHA tras detección** | ✅ **HECHO** — Turnstile por volumen (Capa A) + por señal de bot/BotD (Capa C-fácil). |
+| **Honeypot fields** | ⏳ pendiente (no priorizado). |
+| **Rutas trampa** (`/api/.../export`) | ⏳ pendiente (no priorizado). |
+| **Ofuscación de `__NEXT_DATA__`** | ⏳ pendiente — relacionado con "la respuesta viaja"; misma decisión: mitigar por volumen, no ocultar. |
+| **Watermarking de preguntas** | ⏳ pendiente — útil para rastrear fugas (forense), complementa la Capa D. |
 
 ### 📋 Detalle de Vulnerabilidades Pendientes
 
 #### 1. Protección de Respuestas (Crítico)
+
+> ⚖️ **SUPERADO por decisión (Manuel, 03/06):** NO se quita `correct_option` del
+> payload — es intencional para UX instantánea. El riesgo real es el VOLUMEN, no
+> que la respuesta viaje. Se mitiga con el gate de volumen (sección ESTADO VIVO).
+> Lo de abajo es el análisis histórico de enero, conservado como contexto.
 
 **Problema actual:**
 ```javascript
