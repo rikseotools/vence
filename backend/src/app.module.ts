@@ -64,6 +64,11 @@ import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-up
 // Detecta caída del path Next.js + Redis + BD + flag TOPIC_MV_ENABLED en
 // runtime real. Regla de oro PASS: ningún test CI cubre el endpoint vivo.
 import { CanaryTopicDataModule } from './canary-topic-data/canary-topic-data.module';
+// Canary del PIPELINE de stats materializadas (03/06/2026, post-incidente cutover
+// outbox a medias): inyecta respuesta sintética y verifica propagación e2e a
+// uqh_v2. Cobertura 24/7 independiente del tráfico (cierra el punto ciego de las
+// reglas de frescura/paridad en valle nocturno).
+import { CanaryStatsPipelineModule } from './canary-stats-pipeline/canary-stats-pipeline.module';
 // Endpoint admin POST /api/v2/canary/run-now (dispara los 5 canarios on-demand).
 import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
 // Canary del gate anti-scraping (Turnstile en /api/questions/filtered). SIN cron:
@@ -143,6 +148,7 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
     CanaryTopicDataModule, // cada 5min — GET /api/topics/5 con shape assertions
+    CanaryStatsPipelineModule, // cada 5min — respuesta sintética → verifica propagación e2e a uqh_v2
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
     CanaryQuestionsGateModule, // POST /api/v2/canary/run-questions-gate — gate post-deploy
     ExternalHeartbeatModule, // cada 5min — ping a Healthchecks.io (watcher del watcher)

@@ -164,6 +164,36 @@ Cubre el endpoint **MÁS caliente** de la app: `POST /api/v2/answer-and-save`. C
 
 ---
 
+### 🟢 Nivel 3 variante — Canary del PIPELINE de stats materializadas (HECHO 2026-06-03)
+
+**Origen**: incidente 2026-06-03 — el cutover de outbox se aplicó a medias
+(flags `CUTOVER_DONE`/`SHADOW_HANDLERS_ENABLED` sin desplegar) → 5 tablas
+materializadas (uqh_v2, article/difficulty/daily/hourly stats) **congeladas 14h
+para todos los users SIN alerta**. Lo reportó una usuaria, no la observabilidad.
+Ver `[[project_incidente_outbox_cutover_a_medias_03_06]]`.
+
+**Tres capas de protección añadidas** (`backend/src/alerts/alert-rules.ts`):
+1. `RULE_MATERIALIZED_STATS_STALE` — frescura: tabla parada con tráfico activo → CRITICAL.
+2. `RULE_STATS_PARIDAD_DIVERGENCE` — correctitud: paridad en vivo uqh_v2 vs test_questions (cubre el punto ciego del `check_stats_drift`, que no registró nada en 7d).
+3. **Este canary** (`canary-stats-pipeline`, `RULE_CANARY_STATS_PIPELINE_FAILED`).
+
+**Qué cubre el canary que las reglas 1-2 no**: las reglas dependen de TRÁFICO
+REAL (la de frescura exige ≥30 respuestas/30min para no dar falsos positivos de
+madrugada) → **punto ciego en valle nocturno**. El canary
+(`backend/src/canary-stats-pipeline/`, `@Cron('*/5 * * * *')`) inyecta una
+respuesta sintética con `questionIndex` fresco para el smoke user (vía
+`/api/v2/answer-and-save`, reusa creds SMOKE_USER_ID+SUPABASE_JWT_SECRET) y
+**poll-ea uqh_v2 hasta que `total_attempts` refleje el +1** (timeout 12s). Si no
+propaga → `canary_stats_pipeline_failed` (step='propagation', critical). Prueba
+el path completo emit→outbox→handler→tabla 24/7, INDEPENDIENTE del tráfico.
+
+**Eventos**: `canary_stats_pipeline_ok` / `_failed` / `_question_invalid` / `_skipped` + `cron_run`.
+
+**Regla de oro PASS**: ningún test CI cubre el pipeline async vivo (es runtime
+puro: estado del cutover/flags/handlers, no lógica). El incidente lo demostró.
+
+---
+
 ## Observabilidad cableada
 
 ### Dashboard `/admin/canary` (HECHO 2026-05-27)

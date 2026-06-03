@@ -1850,6 +1850,53 @@ export const RULE_CONVERSION_DELIVERY_FAILED: AlertRule<{
 };
 
 /**
+ * Canary del pipeline de stats — el cron `canary-stats-pipeline` inyecta una
+ * respuesta sintética cada 5 min y verifica que propaga e2e a uqh_v2. Si NO
+ * propaga (step='propagation') el pipeline outbox→handler está roto/parado.
+ * A diferencia de las reglas de frescura/paridad (que dependen de tráfico
+ * real), este canary cubre 24/7, INCLUIDO el valle nocturno → cierra ese punto
+ * ciego. Disparo vía `canaryFailureShouldFire`: la no-propagación es sustantiva
+ * → instantánea; un timeout de red del POST espera el siguiente tick.
+ */
+export const RULE_CANARY_STATS_PIPELINE_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+}> = {
+  name: 'canary_stats_pipeline_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'canary_stats_pipeline_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary stats-pipeline FALLÓ — la materialización no propaga`,
+      body:
+        `El canary inyectó una respuesta sintética pero NO llegó a las tablas\n` +
+        `materializadas en el tiempo esperado. Significa que el pipeline\n` +
+        `outbox→handler→uqh_v2 está roto o parado (mismo modo de fallo que el\n` +
+        `incidente 03/06: flags del cutover sin desplegar, handlers no-op, DLQ...).\n\n` +
+        `Último step: ${r?.lastStep ?? '(n/a)'}\n` +
+        `Último error: ${r?.lastError ?? '(n/a)'}\n\n` +
+        `Acciones:\n` +
+        `  - Verificar flags en el task def vence-backend (CUTOVER_DONE / SHADOW_HANDLERS_ENABLED).\n` +
+        `  - test_questions_outbox: pending / DLQ / error_message.\n` +
+        `  - MAX(updated_at) de las 5 tablas materializadas.`,
+      metadata: { count: r?.n ?? 0, lastStep: r?.lastStep, lastError: r?.lastError },
+      fingerprint: 'canary_stats_pipeline_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Materialized-stats freshness — detecta que el pipeline outbox→tablas
  * materializadas se ha PARADO EN SILENCIO mientras sigue entrando tráfico.
  *
@@ -2051,6 +2098,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_POOL_FRONTEND_SATURATION_HIGH as AlertRule,
   // Meta-observabilidad: vigila al vigilante (cron sampler vivo).
   RULE_POOL_SAMPLER_STALE as AlertRule,
+  // Canary e2e del pipeline de stats (cobertura 24/7, cierra punto ciego off-peak)
+  RULE_CANARY_STATS_PIPELINE_FAILED as AlertRule,
   // Pipeline de stats materializadas congelado (2026-06-03 post-cutover outbox a medias)
   RULE_MATERIALIZED_STATS_STALE as AlertRule,
   // Pipeline de stats escribe valores incorrectos (paridad en vivo uqh_v2 vs test_questions)

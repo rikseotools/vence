@@ -9,6 +9,7 @@ import {
   ALERT_RULES,
   RULE_MATERIALIZED_STATS_STALE,
   RULE_STATS_PARIDAD_DIVERGENCE,
+  RULE_CANARY_STATS_PIPELINE_FAILED,
 } from './alert-rules';
 
 describe('RULE_MATERIALIZED_STATS_STALE', () => {
@@ -92,5 +93,28 @@ describe('RULE_STATS_PARIDAD_DIVERGENCE', () => {
 
   it('está registrada en ALERT_RULES', () => {
     expect(ALERT_RULES.some((r) => r.name === 'stats_paridad_divergence')).toBe(true);
+  });
+});
+
+describe('RULE_CANARY_STATS_PIPELINE_FAILED', () => {
+  it('dispara instantáneo si la NO-propagación es sustantiva (no un timeout de red)', () => {
+    expect(
+      RULE_CANARY_STATS_PIPELINE_FAILED.shouldFire([
+        { n: 1, lastStep: 'propagation', lastError: 'uqh_v2 NO propagó: esperado >=5, visto 4' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 1 timeout de red suelto del POST (blip)', () => {
+    expect(
+      RULE_CANARY_STATS_PIPELINE_FAILED.shouldFire([
+        { n: 1, lastStep: 'answer_save', lastError: 'Excepción POST: The operation was aborted due to timeout' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('severity critical + registrada', () => {
+    expect(RULE_CANARY_STATS_PIPELINE_FAILED.severity).toBe('critical');
+    expect(ALERT_RULES.some((r) => r.name === 'canary_stats_pipeline_failed')).toBe(true);
   });
 });
