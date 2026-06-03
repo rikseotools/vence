@@ -192,6 +192,18 @@ jobs:
               # Turnstile (anti-scraping). Params SSM creados 03/06; ECS los inyecta.
               | ensure_secret("CLOUDFLARE_TURNSTILE_SECRET_KEY")
               | ensure_secret("CAPTCHA_ENABLED")
+              # Google Ads — credenciales + flag de subida de conversiones de venta
+              # (F1 trackeo-conversiones-ventas). Params SSM creados 03/06. El cron
+              # /api/cron/conversion-outbox y el adapter los necesitan para subir
+              # las compras (OCI) a Google Ads. ADS_CONVERSION_UPLOAD_ENABLED=false
+              # por defecto → validate-only; flip a true en SSM para envío real.
+              | ensure_secret("GOOGLE_ADS_CLIENT_ID")
+              | ensure_secret("GOOGLE_ADS_CLIENT_SECRET")
+              | ensure_secret("GOOGLE_ADS_DEVELOPER_TOKEN")
+              | ensure_secret("GOOGLE_ADS_REFRESH_TOKEN")
+              | ensure_secret("GOOGLE_ADS_CUSTOMER_ID")
+              | ensure_secret("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+              | ensure_secret("ADS_CONVERSION_UPLOAD_ENABLED")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
