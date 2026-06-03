@@ -712,6 +712,9 @@ Anadir nueva entrada al array `OPOSICIONES`:
     },
   ],
   totalTopics: 21,
+  // Penalización oficial del modo examen — OBLIGATORIO (ver 4a.ter).
+  // penaltyDivisor: N = cada N erróneas restan 1 correcta; null = no penaliza.
+  examScoring: { penaltyDivisor: 4, source: 'DOE nº244 19/12/2025: cada 4 erroneas resta 1 (1/4)' },
   // Aliases de búsqueda (refactor 07-may-2026): términos alternativos que
   // los usuarios escriben en los buscadores (Onboarding, Cambio de
   // oposición, Guard de tests). El test `oposicionAliases.test.ts` exige
@@ -776,6 +779,39 @@ officialExams: [
 - Las entries antiguas tienen `description: string` literal — se acepta como **legacy fallback**, pero toda convocatoria nueva debe usar el formato estructurado.
 
 **Workflow completo de importar un examen oficial** (PDFs → preguntas en BD → entry en `officialExams`): ver `docs/maintenance/importar-examen-oficial-completo.md`. Incluye lifecycle inicial `draft`, verificación con agentes Sonnet, formato exacto de `exam_source` (parseado por `getExamPart()`), reservas, psicotécnicas con figura, supuestos prácticos compartidos, y el §9.4 sobre el schema estructurado de partes.
+
+### 4a.ter `examScoring` — penalización del modo examen (OBLIGATORIO, verificar en la convocatoria)
+
+El modo examen (`ExamLayout`, `OfficialExamLayout`) y la pantalla de revisión
+(`ExamReviewLayout`) calculan la nota restando puntos por respuesta incorrecta.
+**Cada convocatoria penaliza distinto** y hay que leerlo en las bases oficiales
+del BOE/boletín autonómico — NO asumir 1/3. Auditoría 03/06/2026: de 47
+oposiciones, ~18 NO eran 1/3 (muchas 1/4, varias sin penalización, Policía
+Nacional 1/2 por tener 3 alternativas, Diputación de Cádiz 3/8).
+
+```typescript
+examScoring: {
+  penaltyDivisor: 4,   // N: cada N respuestas INCORRECTAS restan 1 correcta
+                       //    (penalización = 1/N por fallo). null = NO penaliza.
+  source: 'DOE nº244 19/12/2025 (Orden 17/12/2025): cada 4 erroneas resta 1 (1/4)',
+}
+```
+
+**Cómo obtener el valor (en las bases de la convocatoria, no inventar):**
+- *"se penalizará con un tercio del valor de una respuesta correcta"* → `penaltyDivisor: 3`.
+- *"cada 4 erróneas resta 1"* / *"un cuarto del valor"* → `penaltyDivisor: 4`.
+- Fórmula *"aciertos − errores/(nº alternativas − 1)"* → divisor = `alternativas − 1` (4 opciones → 3; 3 opciones → 2). **Cuidado con Policía Nacional (3 alternativas → 2).**
+- Valores en puntos (ej. acierto 0,20 / error −0,075) → divisor = acierto/error (= 8/3 en Cádiz). Se admite no-entero.
+- *"las respuestas incorrectas no se valoran / no penalizan"* (Correos, varios servicios de salud, Osakidetza) → `penaltyDivisor: null`.
+
+**`source` es obligatorio y debe citar el boletín** (BOE-A-…, DOE/BOJA/BORM/DOG/etc. nº y fecha) + la regla, con `confidence:alta/media/baja` si no se pudo extraer literal del PDF.
+
+**Enforcement:** `__tests__/config/examPenaltyCoherence.test.ts` **falla en CI** si la
+oposición nueva no lleva `examScoring`, si `source` está vacío, o si `penaltyDivisor`
+no es `null` ni un número positivo. No hay default silencioso: el helper
+`getExamPenaltyPerWrong()` solo cae a 1/3 para identificadores inexistentes.
+El backend (`/api/v2/official-exams/complete`) guarda el acierto crudo; la
+penalización es solo cálculo de nota en cliente, así que basta con el config.
 
 ### 4a.bis Patrones de matching en queries (OBLIGATORIO si hay `officialExams`)
 
