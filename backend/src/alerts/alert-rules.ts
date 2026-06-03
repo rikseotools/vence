@@ -1775,9 +1775,80 @@ export const RULE_SCRAPING_SWEEP: AlertRule<{
 };
 
 /**
+ * Gap 17 (2026-06-03, post-incidente email de Eva) — fallo silencioso de
+ * notificación de impugnación. Lee el evento `invariant_violation` que emite el
+ * cron `dispute-email-reconciliation` cuando una impugnación quedó resuelta pero
+ * el email al usuario NO se envió (ni se intentó). Hace accionable lo que antes
+ * era invisible: el usuario cree que le ignoramos.
+ */
+export const RULE_DISPUTE_EMAIL_DROP: AlertRule<{ realDrops: number }> = {
+  name: 'dispute_email_drop',
+  severity: 'error',
+  query: sql`
+    SELECT COALESCE(MAX((metadata->>'realDrops')::int), 0) AS "realDrops"
+    FROM observable_events
+    WHERE event_type = 'invariant_violation'
+      AND metadata->>'invariant' = 'dispute_resolved_without_email'
+      AND ts > NOW() - INTERVAL '90 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.realDrops ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.realDrops ?? 0} impugnación(es) resuelta(s) SIN email al usuario`,
+    body:
+      'El reconciliador detectó impugnaciones cerradas con respuesta cuyo email ' +
+      'nunca salió (el usuario cree que le ignoramos). Revisar observable_events ' +
+      "con event_type='invariant_violation' (sample con disputeId) y reenviar.",
+    metadata: { realDrops: rows[0]?.realDrops ?? 0 },
+  }),
+  cooldownMin: 60,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
+/**
+ * Conversiones de venta que NO llegaron a Google Ads: filas en DLQ (status
+ * 'failed', agotaron 5 reintentos) o atascadas en 'pending' más de 6h. Señal
+ * típica: refresh token de Google Ads caducado, API de Ads caída, o config rota.
+ * Es dinero de atribución que se pierde EN SILENCIO si nadie lo ve — sin esto,
+ * el sistema de conversiones podría dejar de subir ventas durante días sin que
+ * nos enteremos. F1 trackeo-conversiones-ventas (03/06/2026).
+ */
+export const RULE_CONVERSION_DELIVERY_FAILED: AlertRule<{
+  failed: number;
+  stuck: number;
+  lostEur: number;
+}> = {
+  name: 'conversion_delivery_failed',
+  severity: 'error',
+  query: sql`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'failed' AND created_at > NOW() - INTERVAL '48 hours')::int AS failed,
+      COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '6 hours')::int AS stuck,
+      COALESCE(SUM(value_cents) FILTER (WHERE status = 'failed' AND created_at > NOW() - INTERVAL '48 hours'), 0)::float / 100 AS "lostEur"
+    FROM conversion_outbox
+  `,
+  shouldFire: (rows) => (rows[0]?.failed ?? 0) > 0 || (rows[0]?.stuck ?? 0) > 0,
+  buildNotification: (rows) => {
+    const failed = rows[0]?.failed ?? 0;
+    const stuck = rows[0]?.stuck ?? 0;
+    const lost = rows[0]?.lostEur ?? 0;
+    return {
+      title: `Conversiones sin llegar a Google Ads — ${failed} en DLQ, ${stuck} atascadas`,
+      body:
+        `${failed} conversiones agotaron reintentos (DLQ, ~${lost}€ de atribución perdida) ` +
+        `y ${stuck} llevan >6h pendientes.\n\n` +
+        `Causa típica: refresh token de Google Ads caducado, API caída, o credenciales rotas.\n\n` +
+        `  SELECT id, status, retry_count, last_error FROM conversion_outbox\n` +
+        `  WHERE status IN ('failed','pending') ORDER BY created_at;`,
+      metadata: { failed, stuck, lostEur: lost },
+      fingerprint: 'conversion_delivery_failed',
+    };
+  },
+  cooldownMin: 120,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
@@ -1800,6 +1871,11 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED as AlertRule,
   RULE_STRIPE_WEBHOOK_4XX_BURST as AlertRule,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB as AlertRule,
+  // Gap 17 (2026-06-03 post-incidente Eva) — impugnación resuelta sin email al usuario
+  RULE_DISPUTE_EMAIL_DROP as AlertRule,
+  // Conversiones de venta que no llegan a Google Ads (03/06/2026, F1 trackeo-
+  // conversiones-ventas) — red de seguridad ante token Ads caducado / DLQ.
+  RULE_CONVERSION_DELIVERY_FAILED as AlertRule,
   // Salud del frontend desde server-side metrics (no depende del cliente)
   RULE_TRAFFIC_DROP as AlertRule,
   // Watchdog de UI congelada (2026-05-31, cierra gap detectado en incidente 30/05)
