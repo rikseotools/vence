@@ -15,27 +15,27 @@ locals {
   name = var.project
   # ARNs de los parámetros SSM con los secretos (se crean fuera de Terraform —
   # ver infra/README.md — para que el secreto NO entre en el estado de TF).
-  database_url_ssm_arn         = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
-  cron_secret_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
-  upstash_url_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_URL"
-  upstash_token_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_TOKEN"
-  resend_api_key_ssm_arn       = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/RESEND_API_KEY"
-  email_from_name_ssm_arn      = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_NAME"
-  email_from_address_ssm_arn   = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_ADDRESS"
-  supabase_jwt_secret_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SUPABASE_JWT_SECRET"
-  admin_alerts_email_ssm_arn   = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/ADMIN_ALERTS_EMAIL"
-  sentry_dsn_ssm_arn           = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SENTRY_DSN"
+  database_url_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
+  cron_secret_ssm_arn         = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
+  upstash_url_ssm_arn         = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_URL"
+  upstash_token_ssm_arn       = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_TOKEN"
+  resend_api_key_ssm_arn      = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/RESEND_API_KEY"
+  email_from_name_ssm_arn     = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_NAME"
+  email_from_address_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_ADDRESS"
+  supabase_jwt_secret_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SUPABASE_JWT_SECRET"
+  admin_alerts_email_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/ADMIN_ALERTS_EMAIL"
+  sentry_dsn_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SENTRY_DSN"
   # STRIPE_SECRET_KEY añadido 27/05/2026 para los crons check-webhook-health
   # y subscription-reconciliation migrados de GHA a Fargate. Mismo valor que
   # /vence-frontend/STRIPE_SECRET_KEY (sk_live_*).
-  stripe_secret_key_ssm_arn    = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/STRIPE_SECRET_KEY"
+  stripe_secret_key_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/STRIPE_SECRET_KEY"
   # SMOKE_USER_ID añadido 27/05/2026 para el canary HTTP Nivel 3
   # (backend/src/canary-smoke-auth/). UUID del user smoke@vence.es;
   # NO es credencial (almacenado como SSM String, no SecureString) pero
   # por uniformidad con el resto va por el mismo mecanismo secrets+SSM.
   # ECS lee SSM String y SecureString por el mismo API. Ver roadmap:
   # docs/roadmap/canary-y-simulaciones.md §Nivel 3.
-  smoke_user_id_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SMOKE_USER_ID"
+  smoke_user_id_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SMOKE_USER_ID"
   # Credenciales OAuth de Google (Search Console readonly + Ads) para el cron
   # seo-snapshot (backend Fargate). Aisladas en el backend, NO en el frontend de
   # usuario. Ver backend/src/seo-snapshot/.
@@ -219,6 +219,12 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "ADMIN_EMAIL", value = var.admin_email },
         { name = "BOE_NOTIFY_ENABLED", value = var.boe_notify_enabled },
         { name = "TZ", value = "UTC" },
+        # Outbox cutover (sprint-outbox-test-questions): completa el Paso 3.
+        # El RENAME shadow→canónica ya se hizo (~02:03 03/06) pero faltó el flip:
+        # sin estos flags los handlers son no-op / apuntan a *_shadow inexistente
+        # → 5 tablas materializadas congeladas. true = handlers escriben canónicas.
+        { name = "SHADOW_HANDLERS_ENABLED", value = "true" },
+        { name = "CUTOVER_DONE", value = "true" },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = local.database_url_ssm_arn },
