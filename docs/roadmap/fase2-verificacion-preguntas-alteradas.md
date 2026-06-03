@@ -218,3 +218,8 @@ Enriquecidos arts 1-3 (dispositivos bajo/alto flujo Venturi/FiO2; precauciones O
 Enriquecidos 4 arts (art2 ampliado con anatomía de la piel/faneras + lesiones elementales; concepto; encamado; baño asistido). 594 in-place + 247 article_ok=false (higiene bucodental, recién nacido, UPP, masaje) → **creado art5 "Higiene bucodental y de cavidades"** (10221883). Re-rutadas 236 (art5 + recién nacido→Gestante + UPP→Úlceras + masaje→Termoterapia + heridas→Urgencias) + 11 sin-casa + 25 clave.
 
 **Progreso Fase 2: 11.498/17.546 (66%).** Cerrados: legislativas + 6 small/medium + **10 grandes (Esteriliz, Nosocomiales, Movilización, Alimentación, Eliminación, Urgencias, Anciano, Salud mental, Oxigenoterapia, Higiene)**. Faltan 8 contenedores (~5.100): Úlceras 789, Quirúrgico 762, Constantes 721, Farmacología 717, Gestante 574, Comunicación 556, Paliativos 547, Muestras 443.
+
+## ✅ Úlceras por presión (796) CERRADO (04/06) — enriquecer, contenedor coherente (sin art nuevo)
+Enriquecidos 4 arts (concepto/estadios I-IV GNEAUPP; localización por decúbito/factores/escalas Norton-Braden; prevención SEMP/AGHO; cambios posturales). 683 in-place + 113 article_ok=false (heridas/quemaduras=cohorte→Urgencias art2/art3, + interno estadios/prevención, + nutrición→Alimentación). Re-rutadas 107 + 6 sin-casa (desbridamiento/cura UPP, sin artículo de tratamiento) + 20 clave (varios grado III vs IV, Norton).
+
+**Progreso Fase 2: 12.287/17.546 (70%).** Cerrados: legislativas + 6 small/medium + **11 grandes**. Faltan 7 contenedores (~4.400): Quirúrgico 762, Constantes 721, Farmacología 717, Gestante 574, Comunicación 556, Paliativos 547, Muestras 443.
