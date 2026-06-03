@@ -165,3 +165,7 @@ Enriquecidos 4 arts (Spaulding, antisépticos/desinfectantes con concentraciones
 - **708 article_ok=false**: el mega-artículo art1 "Antisépticos y desinfectantes" (1063 preguntas) era en realidad medio cajón de **Infecciones nosocomiales / asepsia hospitalaria** (aislamientos, higiene de manos OMS, EPI, cadena epidemiológica, EPINE) → re-rutar a contenedor 15. PENDIENTE re-ruteo (708, ~33 chunks).
 - **47 errores de clave** a revisión humana (muchos del tipo "infección nosocomial más frecuente": urinaria/quirúrgica/respiratoria — contestado, depende de fuente/año EPINE; revisar a mano).
 Backup contenido original en est_backup.json. Total registradas Fase2: 3287.
+
+## ✅ Esterilización y desinfección (1476) CERRADO del todo (03/06)
+768 colocadas + 695 re-rutadas (mayoría a Infecciones nosocomiales: aislamientos/higiene manos/EPI/cadena; algunas a Residuos/Eliminación/Quirúrgico/Alimentación) + 12 sin-casa + 47 errores de clave (en DB con flag answer_ok=false; muchos del tipo "infección nosocomial más frecuente"). El gigante mayor, hecho.
+**Efecto colateral:** el contenedor 15 "Infecciones nosocomiales" recibió ~600 preguntas → ahora ~1.200. Es el SIGUIENTE lógico (enriquecer sus 4 arts + verificar las ~1.200, incluidas las recién llegadas).
