@@ -1,11 +1,52 @@
 # Sistema Anti-Bot y Detección de Fraudes
 
 > Implementado: Enero 2026
-> Última actualización: 2026-01-09
+> Última actualización: **2026-06-03** (caso Ana Fernández + capa de volumen + Turnstile)
+> **Este es el ROADMAP VIVO central de defensa anti-scraping. Actualizarlo al cambiar cosas.**
 
 ## Resumen
 
-Sistema de protección contra scrapers y bots que copian preguntas de tests. **Solo afecta a usuarios autenticados** - no bloquea crawlers de SEO (Google, Bing, etc.).
+Sistema de protección del banco de preguntas contra scrapers/bots. Ya **NO** es "solo usuarios autenticados": desde 06/2026 también limita el serving **anónimo** (era la puerta abierta real).
+
+---
+
+## 🟢 ESTADO VIVO (2026-06-03) — fuente de verdad
+
+### Modelo de amenaza y filosofía (DECISIONES)
+- **El riesgo es el VOLUMEN (miles), no que la respuesta viaje.** `correct_option` SE envía al cliente a propósito (UX instantánea, sin latencia). Decisión Manuel 03/06: NO se quita; se mitiga limitando volumen. (Esto deja obsoleta la "vuln #1 Protección de respuestas" de más abajo → reconvertida en decisión.)
+- **Defensa anclada en la identidad MÁS ESTABLE disponible**, no la más frágil: IP (débil, rotable) < cuenta (media) < **dispositivo** (fuerte) < **comportamiento** (el discriminador real).
+- **Reto, NO bloqueo.** Mostrar Turnstile (Managed, invisible para humanos) en vez de cortar → cero daño a legítimos (incl. IPs compartidas/NAT). El bloqueo duro (ban) lo decide un humano tras análisis forense.
+- **El gate es también SENSOR**: cada reto se loguea para análisis posterior (forense manual, como con Ana) → ese log es el dataset para el scoring adaptativo futuro.
+- **Fail-open**: si Redis/Cloudflare caen, NO bloquear el estudio.
+
+### Capa de volumen + Turnstile (construido esta sesión)
+| Pieza | Estado | Ubicación |
+|---|---|---|
+| Capa captcha reutilizable (port+adapter Turnstile, agnóstica) | ✅ en prod | `lib/security/captcha/` |
+| Gate por volumen en `/api/questions/filtered` (usuario **+ IP anónima**) | ✅ código en prod | `app/api/questions/filtered/route.ts` |
+| Policy contador diario por sujeto (umbral logueado 500 / anónimo 300) | ✅ | `lib/security/challengePolicy/questionsServed.ts` |
+| Techo por petición anónimos (500→100, siempre-on) | ✅ **verificado vivo** | idem route |
+| Widget + modal + `fetchWithChallenge` | ✅ | `components/security/`, `lib/api/fetchWithChallenge.ts` |
+| Alerta detección barrido (cada 2h, email [Vence CRITICAL]) | ✅ backend desplegado | `RULE_SCRAPING_SWEEP` en `backend/src/alerts/alert-rules.ts` |
+| Canary post-deploy (gate no bloquea a normales) | ✅ | `backend/src/canary-questions-gate/` |
+| Flag maestro `CAPTCHA_ENABLED` + secrets | ✅ SSM `/vence-frontend/` | — |
+
+### 🔴 BUG CRÍTICO ABIERTO (03/06): el GATE Turnstile está OFF en prod
+- **Síntoma:** el contador por IP no incrementa; 500 servidas anónimas no disparan reto.
+- **Causa raíz:** `isCaptchaEnabled()` exige site key + secret. La site key es un **build-arg horneado**, pero el **Dockerfile NO declaraba** `ARG`/`ENV NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY` → `next build` no la incrustaba → server-side `null` → gate apagado (el cap, flag-independiente, sí iba). El canary daba verde porque con el gate OFF cargar va bien (no probaba que el gate dispare).
+- **Fix:** añadido el ARG/ENV al `Dockerfile` (03/06). Requiere redeploy frontend para hornear la key. **Validar tras deploy:** anónimo >300 servidas/día → 403 challengeRequired + contador `captcha:served:ip:*` en Redis.
+
+### Carrera de deploys (arreglada)
+Pushes frontend concurrentes (sesiones paralelas) → "ganaba" el último en TERMINAR, no el último commit → código viejo en prod. **Fix:** `concurrency: cancel-in-progress` en `frontend-deploy.yml` (03/06).
+
+### 📋 Roadmap por capas (siguiente nivel — pendiente)
+- **Capa A — anclar el gate al DEVICE fingerprint** (además de IP/usuario). Responde a "¿y si rota IP?". Reutiliza `lib/api/deviceLimit.ts` (`x-hw-fingerprint`, `user_devices`). Mayor salto, poco código. **(recomendado siguiente)**
+- **Capa B — contar por dispositivo a través de cuentas** (`getAccountsOnDevice`): mata la rotación de cuentas barata (N cuentas en un PC comparten contador).
+- **Capa C — gate adaptativo por comportamiento.** Difícil (la señal servidas/respondidas se conoce DESPUÉS de servir). Partir: **C-fácil** = señal BotD/automation → reto inmediato (alta precisión, ya tenemos BotD); **C-completa** = scoring (ratio+amplitud+sin-revisiones) → se alimenta del log de la Capa D.
+- **Capa D — log de retos + forense humano.** Enriquecer eventos `captcha_*` con contexto del sujeto (servidas-hoy, IP, deviceId) → revisión periódica por Claude → propuesta de ban a Manuel. Convierte el gate en sensor + genera el dataset de C-completa.
+
+### Casos / aprendizajes
+- **Ana Fernández (02/06):** 617 tests/18d, 6.656 distintas, "scrape & refund". Reembolso DENEGADO (art.133 TRLPI + art.270 CP). Origen de toda esta tanda. Detalle en memoria `project_scraping_abuso_y_correct_answer_leak`.
 
 ---
 
