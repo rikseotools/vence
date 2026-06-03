@@ -76,16 +76,40 @@ export function gateSubjects(
   return subjects
 }
 
+/** Evaluación por sujeto (para el log forense — Capa D). */
+export interface SubjectEval {
+  key: string
+  served: number
+  threshold: number
+  tripped: boolean
+}
+
+/**
+ * Evalúa el gate de volumen devolviendo el DETALLE por sujeto (para observabilidad
+ * y forense), no solo el booleano. Lecturas en paralelo. Fail-open.
+ */
+export async function evaluateLoadGate(
+  subjects: GateSubject[],
+): Promise<{ challenge: boolean; details: SubjectEval[] }> {
+  if (!subjects.length) return { challenge: false, details: [] }
+  const counts = await Promise.all(subjects.map((s) => getCounter(dayKey(s.key))))
+  const details: SubjectEval[] = subjects.map((s, i) => ({
+    key: s.key,
+    served: counts[i],
+    threshold: s.threshold,
+    tripped: counts[i] >= s.threshold,
+  }))
+  return { challenge: details.some((d) => d.tripped), details }
+}
+
 /**
  * ¿Debe retarse esta carga? True si CUALQUIER sujeto ya superó su umbral hoy.
- * Lecturas en paralelo. Fail-open: Redis caído → getCounter 0 → no reta.
+ * Wrapper de `evaluateLoadGate` para callers que solo quieren el booleano.
  */
 export async function shouldChallengeForLoad(
   subjects: GateSubject[],
 ): Promise<boolean> {
-  if (!subjects.length) return false
-  const counts = await Promise.all(subjects.map((s) => getCounter(dayKey(s.key))))
-  return counts.some((served, i) => served >= subjects[i].threshold)
+  return (await evaluateLoadGate(subjects)).challenge
 }
 
 /**

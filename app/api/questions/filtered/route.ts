@@ -51,10 +51,12 @@ import {
 } from '@/lib/security/captcha'
 import {
   gateSubjects,
-  shouldChallengeForLoad,
+  evaluateLoadGate,
   recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
+import { anyForcedChallenge } from '@/lib/security/challengePolicy/forceChallenge'
 import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
 // La query analítica de getFilteredQuestions puede ser pesada; 20s da margen.
@@ -239,15 +241,38 @@ async function _POST(request: NextRequest) {
     // IP o cuentas en la misma máquina. El deviceId solo si el cliente lo envió.
     const deviceId = getDeviceIdFromRequest(request)
     const gateSubs = gateSubjects(authUserId, deviceId, ip)
-    if (isCaptchaEnabled() && (await shouldChallengeForLoad(gateSubs))) {
-      const outcome = await verifyHumanChallenge(request, {
-        action: 'load_questions',
-        endpoint: '/api/questions/filtered',
-        userId: authUserId ?? undefined,
-        remoteIp: ip,
-      })
-      if (!outcome.ok) {
-        return challengeRequiredResponse('load_questions')
+    if (isCaptchaEnabled()) {
+      // Volumen (Capa A) + señal de bot (Capa C-fácil), en paralelo.
+      const [gateEval, botFlag] = await Promise.all([
+        evaluateLoadGate(gateSubs),
+        anyForcedChallenge(gateSubs),
+      ])
+      if (gateEval.challenge || botFlag) {
+        // Capa D — SIEMPRE observabilidad: log del reto con contexto del sujeto
+        // (quién, qué disparó, contadores) para forense periódico y para alimentar
+        // el scoring adaptativo (C-completa).
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'scraping_challenge_shown',
+          endpoint: '/api/questions/filtered',
+          userId: authUserId ?? undefined,
+          metadata: {
+            reason: botFlag ? 'bot_flag' : 'volume',
+            ip,
+            deviceId: deviceId ?? null,
+            subjects: gateEval.details,
+          },
+        })
+        const outcome = await verifyHumanChallenge(request, {
+          action: 'load_questions',
+          endpoint: '/api/questions/filtered',
+          userId: authUserId ?? undefined,
+          remoteIp: ip,
+        })
+        if (!outcome.ok) {
+          return challengeRequiredResponse('load_questions')
+        }
       }
     }
 

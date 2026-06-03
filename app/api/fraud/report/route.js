@@ -7,6 +7,8 @@ import { getAdminDb } from '@/db/client'
 import { fraudAlerts } from '@/db/schema'
 import { and, eq, gte, arrayContains } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { markForcedChallenge } from '@/lib/security/challengePolicy/forceChallenge'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
 // service_role). Agnóstico de proveedor.
@@ -57,6 +59,24 @@ async function _POST(request) {
       severity = 'high'
     } else if (score >= 50) {
       severity = 'medium'
+    }
+
+    // Capa C-fácil (anti-scraping): si el score es alto (bot probable), marcar el
+    // sujeto (usuario + dispositivo) para reto FORZADO en el gate de carga de
+    // preguntas — reta de inmediato, sin esperar a que acumule volumen. No
+    // spoofable. SIEMPRE observabilidad del flag.
+    if (severity === 'high' || severity === 'critical') {
+      const deviceId = headersList.get('x-device-id')
+      const subjectKeys = [userId, deviceId ? `device:${deviceId}` : null].filter(Boolean)
+      markForcedChallenge(subjectKeys).catch(() => {})
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'scraping_force_challenge_set',
+        endpoint: '/api/fraud/report',
+        userId,
+        metadata: { score, severity, deviceId: deviceId ?? null, subjectKeys },
+      })
     }
 
     // Verificar si ya existe una alerta similar reciente (últimas 24h)

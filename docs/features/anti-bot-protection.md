@@ -43,11 +43,14 @@ Sistema de protección del banco de preguntas contra scrapers/bots. Ya **NO** es
 ### Carrera de deploys (arreglada)
 Pushes frontend concurrentes (sesiones paralelas) → "ganaba" el último en TERMINAR, no el último commit → código viejo en prod. **Fix:** `concurrency: cancel-in-progress` en `frontend-deploy.yml` (`ee1b9d23`).
 
-### 📋 Roadmap por capas (siguiente nivel — pendiente)
-- **Capa A — anclar el gate al DEVICE fingerprint** (además de IP/usuario). Responde a "¿y si rota IP?". Reutiliza `lib/api/deviceLimit.ts` (`x-hw-fingerprint`, `user_devices`). Mayor salto, poco código. **🔨 EN CURSO (03/06).**
-- **Capa B — contar por dispositivo a través de cuentas** (`getAccountsOnDevice`): mata la rotación de cuentas barata (N cuentas en un PC comparten contador).
-- **Capa C — gate adaptativo por comportamiento.** Difícil (la señal servidas/respondidas se conoce DESPUÉS de servir). Partir: **C-fácil** = señal BotD/automation → reto inmediato (alta precisión, ya tenemos BotD); **C-completa** = scoring (ratio+amplitud+sin-revisiones) → se alimenta del log de la Capa D.
-- **Capa D — log de retos + forense humano.** Enriquecer eventos `captcha_*` con contexto del sujeto (servidas-hoy, IP, deviceId) → revisión periódica por Claude → propuesta de ban a Manuel. Convierte el gate en sensor + genera el dataset de C-completa.
+### 📋 Roadmap por capas
+- **Capa A — anclar el gate al DEVICE fingerprint** (+ IP/usuario). ✅ **HECHO (03/06, `00463c8c`).** Gate multi-sujeto: logueado=usuario(500)+device(800); anónimo=ip(300)+device(800); dispara si CUALQUIERA supera umbral. El deviceId viaja vía `fetchWithChallenge` (X-Device-Id desde localStorage, incl. anónimos). Caza la rotación de IP.
+- **Capa B — por dispositivo a través de cuentas.** ✅ **HECHO (cae con A).** El contador `device:<id>` es agnóstico a la cuenta → N cuentas en una máquina comparten contador.
+- **Capa C — gate adaptativo.**
+  - **C-fácil (señal de bot)** ✅ **HECHO (03/06).** `/api/fraud/report` con score alto (≥90, BotD/automation) marca `captcha:force:<subject>` en Redis (TTL 24h); el gate consulta el flag (`anyForcedChallenge`) y reta de inmediato, sin esperar volumen. No spoofable. `lib/security/challengePolicy/forceChallenge.ts`.
+  - **C-completa (scoring por comportamiento)** ⏳ pendiente — ratio servidas/respondidas + amplitud + sin-revisiones. Se alimenta del log de la Capa D.
+- **Capa D — log de retos + forense.** ✅ **HECHO (03/06).** Cada reto emite `scraping_challenge_shown` a `observable_events` con contexto (userId, ip, deviceId, qué sujeto disparó + contadores, reason: volume|bot_flag). El flag de bot emite `scraping_force_challenge_set`. Dataset para forense periódico (Claude) → propuesta de ban a Manuel, y para entrenar C-completa.
+  - **Principio (Manuel 03/06): SIEMPRE observabilidad** — toda decisión del gate emite evento.
 
 ### Casos / aprendizajes
 - **Ana Fernández (02/06):** 617 tests/18d, 6.656 distintas, "scrape & refund". Reembolso DENEGADO (art.133 TRLPI + art.270 CP). Origen de toda esta tanda. Detalle en memoria `project_scraping_abuso_y_correct_answer_leak`.
