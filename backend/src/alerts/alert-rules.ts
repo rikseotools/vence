@@ -1935,6 +1935,71 @@ export const RULE_MATERIALIZED_STATS_STALE: AlertRule<{
   cooldownMin: 30,
 };
 
+/**
+ * Materialized-stats CORRECTNESS — complementa a la regla de frescura. La
+ * frescura caza "la tabla no se escribe"; ésta caza "se escribe MAL" (valores
+ * incorrectos / propagación incompleta), que es un fallo distinto y más sutil.
+ *
+ * Por qué hace falta además del cron de drift existente: durante el incidente
+ * del 03/06 el `check_stats_drift` NO registró NADA en 7 días pese a 14h de
+ * valores congelados → su detección de correctitud tiene un punto ciego. Esta
+ * regla es una paridad EN VIVO y barata (36ms): para las claves (user,pregunta)
+ * respondidas hace 5-20 min (margen suficiente para que el handler async
+ * propague), `uqh_v2.total_attempts` DEBE igualar el conteo real en
+ * test_questions. Si no, la propagación está rota o escribe mal.
+ *
+ * uqh_v2 es el proxy (sin claves NULL, el más visible al usuario — fue lo que
+ * reportó Nila). Si propaga bien, el resto del pipeline también; si diverge,
+ * es señal de fallo del handler. Umbral ≥5 para absorber fuzz de lag puntual.
+ */
+export const RULE_STATS_PARIDAD_DIVERGENCE: AlertRule<{ divergent: number }> = {
+  name: 'stats_paridad_divergence',
+  severity: 'error',
+  query: sql`
+    WITH recent_keys AS (
+      SELECT DISTINCT user_id, question_id
+      FROM test_questions
+      WHERE created_at BETWEEN NOW() - INTERVAL '20 minutes' AND NOW() - INTERVAL '5 minutes'
+        AND question_id IS NOT NULL AND is_correct IS NOT NULL
+    ),
+    expected AS (
+      SELECT k.user_id, k.question_id, COUNT(*)::int AS real_total
+      FROM recent_keys k
+      JOIN test_questions tq
+        ON tq.user_id = k.user_id AND tq.question_id = k.question_id AND tq.is_correct IS NOT NULL
+      WHERE EXISTS (SELECT 1 FROM questions q WHERE q.id = k.question_id)
+      GROUP BY k.user_id, k.question_id
+    )
+    SELECT COUNT(*) FILTER (
+             WHERE u.user_id IS NULL OR u.total_attempts IS DISTINCT FROM e.real_total
+           )::int AS divergent
+    FROM expected e
+    LEFT JOIN user_question_history_v2 u USING (user_id, question_id)
+  `,
+  shouldFire: (rows) => (rows[0]?.divergent ?? 0) >= 5,
+  buildNotification: (rows) => {
+    const n = rows[0]?.divergent ?? 0;
+    return {
+      title: `${n} divergencias uqh_v2 vs test_questions — el pipeline de stats escribe MAL`,
+      body:
+        `Hay ${n} claves (user,pregunta) respondidas hace 5-20 min cuyo\n` +
+        `user_question_history_v2.total_attempts NO coincide con el conteo real\n` +
+        `en test_questions. Con 5 min de margen la propagación async ya debería\n` +
+        `estar hecha → o el handler no propaga o calcula mal.\n\n` +
+        `A diferencia de la frescura (tabla parada), esto es "escribe valores\n` +
+        `incorrectos". El cron de drift no lo cazó (punto ciego, incidente 03/06).\n\n` +
+        `Diagnóstico:\n` +
+        `  - test_questions_outbox: ¿DLQ o errores de handler?\n` +
+        `  - Comparar un user concreto: COUNT(test_questions) por pregunta vs\n` +
+        `    su fila en user_question_history_v2.\n` +
+        `  - Revisar deploys recientes del outbox-processor / handlers.`,
+      metadata: { divergent: n, windowMin: '5-20', table: 'user_question_history_v2' },
+      fingerprint: 'stats_paridad_divergence',
+    };
+  },
+  cooldownMin: 30,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
@@ -1988,6 +2053,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_POOL_SAMPLER_STALE as AlertRule,
   // Pipeline de stats materializadas congelado (2026-06-03 post-cutover outbox a medias)
   RULE_MATERIALIZED_STATS_STALE as AlertRule,
+  // Pipeline de stats escribe valores incorrectos (paridad en vivo uqh_v2 vs test_questions)
+  RULE_STATS_PARIDAD_DIVERGENCE as AlertRule,
   // Anti-scraping: barrido masivo del banco de preguntas (02/06/2026, caso Ana
   // Fernández "scrape & refund"). Premium no tiene límite diario → única red.
   RULE_SCRAPING_SWEEP as AlertRule,

@@ -5,7 +5,11 @@
 // la BD viva (un unit test no ejecuta SQL); aquí se valida el contrato shouldFire/
 // buildNotification/registro.
 
-import { ALERT_RULES, RULE_MATERIALIZED_STATS_STALE } from './alert-rules';
+import {
+  ALERT_RULES,
+  RULE_MATERIALIZED_STATS_STALE,
+  RULE_STATS_PARIDAD_DIVERGENCE,
+} from './alert-rules';
 
 describe('RULE_MATERIALIZED_STATS_STALE', () => {
   it('dispara con ≥1 tabla materializada con lag (pipeline parado)', () => {
@@ -59,5 +63,34 @@ describe('RULE_MATERIALIZED_STATS_STALE', () => {
 
   it('cooldown 30 min', () => {
     expect(RULE_MATERIALIZED_STATS_STALE.cooldownMin).toBe(30);
+  });
+});
+
+describe('RULE_STATS_PARIDAD_DIVERGENCE', () => {
+  it('dispara con ≥5 divergencias (pipeline escribe valores incorrectos)', () => {
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 5 }])).toBe(true);
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 40 }])).toBe(true);
+  });
+
+  it('NO dispara por debajo del umbral (absorbe fuzz de lag puntual)', () => {
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 0 }])).toBe(false);
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 4 }])).toBe(false);
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([])).toBe(false);
+  });
+
+  it('severity error (correctitud sutil; la frescura crítica cubre el freeze total)', () => {
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.severity).toBe('error');
+  });
+
+  it('notification explica divergencia + que el drift no lo caza', () => {
+    const notif = RULE_STATS_PARIDAD_DIVERGENCE.buildNotification([{ divergent: 12 }]);
+    expect(notif.title).toContain('12');
+    expect(notif.body).toContain('test_questions');
+    expect(notif.body).toContain('outbox');
+    expect(notif.fingerprint).toBe('stats_paridad_divergence');
+  });
+
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.some((r) => r.name === 'stats_paridad_divergence')).toBe(true);
   });
 });
