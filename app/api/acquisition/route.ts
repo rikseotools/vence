@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod/v3'
-import { and, asc, desc, eq, isNull, or } from 'drizzle-orm'
+import { and, asc, eq, isNull, or, sql } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
@@ -25,6 +25,8 @@ export const maxDuration = 15
 
 const bodySchema = z.object({
   deviceId: z.string().min(1).max(128).nullish(),
+  // client_id de GA4 (cookie _ga) — para el GA4Destination (Measurement Protocol).
+  gaClientId: z.string().max(128).nullish(),
   // Legacy / fallback directo:
   channel: z.string().min(1).max(40).nullish(),
   gclid: z.string().max(512).nullish(),
@@ -125,6 +127,23 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
           eq(attributionTouches.deviceId, a.deviceId),
           isNull(attributionTouches.userId),
         ))
+    }
+
+    // GA4 client_id: guardarlo aunque NO haya toques de campaña (sirve para que
+    // GA4 atribuya también ventas orgánicas/directas). Asegura la fila base y
+    // preserva el primer client_id capturado (coalesce).
+    if (a.gaClientId) {
+      await db
+        .insert(userAcquisition)
+        .values({
+          userId,
+          channel: touches.length > 0 ? deriveChannel(touches[0]) : 'direct',
+          gaClientId: a.gaClientId,
+        })
+        .onConflictDoUpdate({
+          target: userAcquisition.userId,
+          set: { gaClientId: sql`coalesce(${userAcquisition.gaClientId}, ${a.gaClientId})` },
+        })
     }
 
     return NextResponse.json({ success: true, touches: touches.length })

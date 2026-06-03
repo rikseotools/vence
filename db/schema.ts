@@ -3867,6 +3867,9 @@ export const userAcquisition = pgTable("user_acquisition", {
 	lastUtmCampaign: text("last_utm_campaign"),
 	lastLandingPath: text("last_landing_path"),
 	lastCapturedAt: timestamp("last_captured_at", { withTimezone: true, mode: 'string' }),
+	// client_id de GA4 (cookie _ga) capturado en el registro — para enviar el
+	// purchase a GA4 por Measurement Protocol atado al usuario (20260603).
+	gaClientId: text("ga_client_id"),
 }, (table) => [
 	index("idx_user_acquisition_channel").using("btree", table.channel.asc().nullsLast().op("text_ops")),
 	index("idx_user_acquisition_utm_campaign").using("btree", table.utmCampaign.asc().nullsLast().op("text_ops")),

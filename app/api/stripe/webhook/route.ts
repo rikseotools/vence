@@ -276,6 +276,7 @@ async function enqueueAdsPurchaseConversion(
         lastGclid: userAcquisition.lastGclid,
         gbraid: userAcquisition.gbraid,
         wbraid: userAcquisition.wbraid,
+        gaClientId: userAcquisition.gaClientId,
       })
       .from(userAcquisition)
       .where(eq(userAcquisition.userId, userId))
@@ -293,6 +294,7 @@ async function enqueueAdsPurchaseConversion(
         gbraid: acq?.gbraid || null,
         wbraid: acq?.wbraid || null,
         emailSha256: email ? hashEmail(email) : null,
+        gaClientId: acq?.gaClientId || null,
       },
     })
   } catch (convErr) {

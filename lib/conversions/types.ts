@@ -21,6 +21,8 @@ export interface AttributionSnapshot {
   msclkid?: string | null
   /** SHA-256 del email normalizado (lowercase+trim). Nunca PII en claro. */
   emailSha256?: string | null
+  /** client_id de GA4 (cookie _ga) — para enviar el purchase a GA4 (MP) atado al usuario. */
+  gaClientId?: string | null
 }
 
 export interface ConversionEvent {

@@ -5,10 +5,13 @@
 
 import type { ConversionDestination } from './types'
 import { googleAdsDestination } from '@/lib/services/googleAds'
+import { ga4Destination } from '@/lib/services/ga4/conversions'
 
 export function getDestinations(): ConversionDestination[] {
-  return [googleAdsDestination]
-  // Futuro: metaCapiDestination, ga4Destination, tiktokDestination…
+  // ga4 solo acepta ventas con client_id y si GA4_UPLOAD_ENABLED=true (ver
+  // supports()), así que añadirlo aquí es seguro: no encola nada hasta activarlo.
+  return [googleAdsDestination, ga4Destination]
+  // Futuro: metaCapiDestination, tiktokDestination…
 }
 
 export function getDestinationByName(name: string): ConversionDestination | undefined {

@@ -292,6 +292,12 @@ function AuthCallbackContent() {
         // mantener el last-touch al día.
         try {
           const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
+          // client_id de GA4 desde la cookie _ga (GA1.x.<clientid>) — para que
+          // GA4 ate la compra al usuario y atribuya su canal (Measurement Protocol).
+          const gaMatch = typeof document !== 'undefined'
+            ? document.cookie.match(/_ga=GA\d+\.\d+\.(\d+\.\d+)/)
+            : null
+          const gaClientId = gaMatch ? gaMatch[1] : null
           if (deviceId) {
             fetch('/api/acquisition', {
               method: 'POST',
@@ -299,7 +305,7 @@ function AuthCallbackContent() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
               },
-              body: JSON.stringify({ deviceId }),
+              body: JSON.stringify({ deviceId, gaClientId }),
               keepalive: true,
             }).catch(() => {})
           }

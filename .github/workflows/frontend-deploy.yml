@@ -205,6 +205,11 @@ jobs:
               | ensure_secret("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
               | ensure_secret("ADS_CONVERSION_UPLOAD_ENABLED")
               | ensure_secret("ADS_ENHANCED_CONVERSIONS_ENABLED")
+              # GA4 destino (Measurement Protocol) — envía purchase a GA4 para
+              # atribución multicanal + audiencias. Params SSM creados 03/06.
+              | ensure_secret("GA4_API_SECRET")
+              | ensure_secret("GA4_MEASUREMENT_ID")
+              | ensure_secret("GA4_UPLOAD_ENABLED")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
