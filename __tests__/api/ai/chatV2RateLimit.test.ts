@@ -39,9 +39,10 @@ describe('Chat IA v2 - Rate Limit Code Verification', () => {
   })
 
   it('NO confía solo en isPremium del frontend - verifica en BD', () => {
-    // Debe consultar user_profiles con plan_type (puede incluir otros campos como nickname)
-    expect(routeCode).toContain("from('user_profiles')")
-    expect(routeCode).toMatch(/select\('plan_type/)
+    // Debe consultar user_profiles con plan_type (puede incluir otros campos como nickname).
+    // Post-migración agnosticismo: Drizzle (.from(userProfiles)) en vez del REST de Supabase.
+    expect(routeCode).toContain('.from(userProfiles)')
+    expect(routeCode).toMatch(/plan_type:\s*userProfiles\.planType/)
     expect(routeCode).toContain("plan_type === 'premium'")
     expect(routeCode).toContain("plan_type === 'trial'")
   })
@@ -74,9 +75,12 @@ describe('Chat IA v2 - Rate Limit Code Verification', () => {
     expect(routeCode).toMatch(/filter|EXEMPT_SUGGESTIONS/)
   })
 
-  it('la verificación premium en BD usa service_role (no anon key)', () => {
-    // Debe usar SUPABASE_SERVICE_ROLE_KEY para poder leer user_profiles
-    expect(routeCode).toContain('SUPABASE_SERVICE_ROLE_KEY')
+  it('la verificación premium en BD usa acceso privilegiado (getAdminDb, bypass RLS) no anon', () => {
+    // Post-migración agnosticismo: getAdminDb() = Drizzle/DATABASE_URL, bypass RLS,
+    // equivalente al service_role. Es la vía privilegiada para leer user_profiles
+    // (no el cliente REST anon, que RLS bloquearía).
+    expect(routeCode).toContain('getAdminDb()')
+    expect(routeCode).toContain('.from(userProfiles)')
   })
 
   it('REGRESIÓN: el flujo completo premium-check está en el orden correcto', () => {
@@ -86,8 +90,8 @@ describe('Chat IA v2 - Rate Limit Code Verification', () => {
     const exemptLine = lines.findIndex(l => l.includes('isExemptSuggestion') && !l.includes('const isExplain'))
     // 2. Luego isPremiumVerified = data.isPremium (fast path)
     const fastPathLine = lines.findIndex(l => l.includes('isPremiumVerified = data.isPremium'))
-    // 3. Luego verificación en BD (select con plan_type)
-    const bdCheckLine = lines.findIndex(l => l.match(/select\('plan_type/))
+    // 3. Luego verificación en BD (select Drizzle con plan_type)
+    const bdCheckLine = lines.findIndex(l => l.match(/plan_type:\s*userProfiles\.planType/))
     // 4. Luego rate limit check
     const rateLimitLine = lines.findIndex(l => l.includes('FREE_USER_DAILY_LIMIT') && l.includes('>='))
 
