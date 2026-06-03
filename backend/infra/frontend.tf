@@ -439,6 +439,40 @@ data "aws_cloudfront_origin_request_policy" "all_viewer" {
   name = "Managed-AllViewer"
 }
 
+# CloudFront Function (viewer-request): redirige el apex vence.es → www.vence.es
+# (301, preservando path + querystring). Mantiene el comportamiento que hacía
+# Vercel (apex 308→www) ahora que el apex pasa por CloudFront, para no romper el
+# canonical SEO (que apunta a www). Solo actúa en host == "vence.es"; www y
+# preview-aws pasan sin tocar.
+resource "aws_cloudfront_function" "apex_redirect" {
+  name    = "vence-apex-to-www"
+  runtime = "cloudfront-js-2.0"
+  comment = "Redirige vence.es (apex) -> www.vence.es (301), preserva path+query"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      var host = request.headers.host && request.headers.host.value;
+      if (host === 'vence.es') {
+        var qs = '';
+        var keys = request.querystring ? Object.keys(request.querystring) : [];
+        if (keys.length) {
+          qs = '?' + keys.map(function (k) {
+            var v = request.querystring[k].value;
+            return v ? k + '=' + v : k;
+          }).join('&');
+        }
+        return {
+          statusCode: 301,
+          statusDescription: 'Moved Permanently',
+          headers: { location: { value: 'https://www.vence.es' + request.uri + qs } }
+        };
+      }
+      return request;
+    }
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
   enabled         = true
   is_ipv6_enabled = true
@@ -473,6 +507,12 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress                 = true
     cache_policy_id          = aws_cloudfront_cache_policy.frontend_default.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
+
+    # Redirige apex vence.es → www.vence.es (el resto pasa sin tocar).
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.apex_redirect.arn
+    }
   }
 
   # /_next/static/* — assets versionados, cache forever.

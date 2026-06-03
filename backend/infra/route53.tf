@@ -34,8 +34,16 @@ resource "aws_route53_record" "apex_a" {
   zone_id = aws_route53_zone.vence.zone_id
   name    = "vence.es"
   type    = "A"
-  ttl     = 300
-  records = ["216.198.79.1"]
+
+  # Cutover 2026-06-03: apex Vercel (216.198.79.1) → CloudFront. La distribución
+  # ya sirve vence.es como alias y la CloudFront Function `apex_redirect` hace el
+  # 301 a www. Elimina la última dependencia de Vercel. Reversible (volver a
+  # ttl=300 + records=["216.198.79.1"]).
+  alias {
+    name                   = aws_cloudfront_distribution.frontend.domain_name
+    zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
+    evaluate_target_health = false
+  }
 }
 
 # Apex TXT — SPF + Google Search Console verification.
