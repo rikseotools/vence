@@ -175,3 +175,8 @@ Recibió ~600 de Esterilización. Enriquecidos 4 arts (cadena epidemiológica 6 
 **Aprendizaje:** un contenedor puede necesitar artículos NUEVOS de temas transversales que el banco mete dentro (aquí Epi/Micro/Inmuno general). [[project_fase2_verificacion_clinica]]
 
 **Progreso Fase 2: 3.900/17.546.** Cerrados: legislativas + Trabajo equipo, Residuos, Termoterapia, Bioética, Documentación, Informática, **Esterilización (1476)**, **Infecciones nosocomiales (1080)**. Faltan 15 contenedores (~10.700).
+
+## ✅ Movilización y posiciones (1305) CERRADO (03/06) — enriquecer + 2 artículos NUEVOS (aparato locomotor)
+Enriquecidos 5 arts (posiciones del paciente una a una con indicaciones, camas cerrada/abierta/ocupada/quirúrgica, cambios posturales 2-3h, drenajes Penrose/Redón/Kehr, deambulación bastón-lado-sano/grúa). 767 in-place + 538 article_ok=false. Las 538 eran sobre todo **aparato locomotor** (anatomía ósea/articular/muscular, columna, fracturas, esguinces, luxaciones, tracciones, vendajes) + posiciones dispersas en sub-artículo erróneo → **creados 2 artículos NUEVOS**: "Aparato locomotor: anatomía y fisiología" (ace2c060) y "Patología osteoarticular, fracturas, vendajes y tracciones" (a7fda650). Re-rutadas 523 (in-contenedor a art1/6/7) + 15 sin-casa. 28 errores de clave.
+
+**Progreso Fase 2: 5.205/17.546 (30%).** Cerrados: legislativas + 6 small/medium + **3 gigantes (Esterilización 1476, Infecciones nosocomiales 1080, Movilización 1305)**. Faltan 15 contenedores (~10.400): Alimentación 1083, Eliminación 950, Urgencias 861, Anciano 861, Salud mental 852, Oxigenoterapia 851, Higiene 839, Úlceras 789, Quirúrgico 762, Constantes 721, Farmacología 717, Gestante 574, Comunicación 556, Paliativos 547, Muestras 443.
