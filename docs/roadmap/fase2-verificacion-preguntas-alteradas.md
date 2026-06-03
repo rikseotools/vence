@@ -158,3 +158,10 @@ Enriquecidos arts 1-3 (4 principios Beauchamp-Childress + jerarquía Diego Graci
 **Progreso Fase 2: 1811/17.546.** Cerrados: Trabajo equipo, Residuos, Termoterapia, Bioética, Documentación, Informática (+legislativas). Faltan 18 contenedores (~14.700), incluidos los GIGANTES (Esterilización 1476, Movilización 1305, Alimentación 1083…).
 
 **Tema sin-casa recurrente confirmado:** técnicas de exploración física (inspección/palpación/percusión/auscultación) — candidato a contenedor propio o a "Constantes vitales".
+
+## 🔶 Esterilización y desinfección (1476) — VERIFICACIÓN COMPLETA, re-ruteo pendiente (03/06)
+Enriquecidos 4 arts (Spaulding, antisépticos/desinfectantes con concentraciones, métodos físicos/químicos esterilización autoclave 121/134 + Poupinel 170-180, controles físico/químico/biológico Bowie-Dick/Geobacillus, manipulación/caducidad). Verificadas las 1476 (76 chunks, 5 oleadas):
+- **768 colocadas correctamente** en su contenedor (article_ok=true).
+- **708 article_ok=false**: el mega-artículo art1 "Antisépticos y desinfectantes" (1063 preguntas) era en realidad medio cajón de **Infecciones nosocomiales / asepsia hospitalaria** (aislamientos, higiene de manos OMS, EPI, cadena epidemiológica, EPINE) → re-rutar a contenedor 15. PENDIENTE re-ruteo (708, ~33 chunks).
+- **47 errores de clave** a revisión humana (muchos del tipo "infección nosocomial más frecuente": urinaria/quirúrgica/respiratoria — contestado, depende de fuente/año EPINE; revisar a mano).
+Backup contenido original en est_backup.json. Total registradas Fase2: 3287.
