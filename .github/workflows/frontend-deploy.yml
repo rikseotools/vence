@@ -204,6 +204,7 @@ jobs:
               | ensure_secret("GOOGLE_ADS_CUSTOMER_ID")
               | ensure_secret("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
               | ensure_secret("ADS_CONVERSION_UPLOAD_ENABLED")
+              | ensure_secret("ADS_ENHANCED_CONVERSIONS_ENABLED")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
