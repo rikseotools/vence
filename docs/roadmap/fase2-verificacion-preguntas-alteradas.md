@@ -33,3 +33,15 @@ Patrón por lote: extraer (pregunta + opciones + correct_option + artículo lite
 ## Estado
 - ✅ Cohorte identificada y definida (17.546 + 28).
 - ⬜ Verificación AI (pendiente de arrancar — workflow).
+
+## Piloto de calibración — Murcia (03/06/2026)
+86 preguntas (Ley 3/2009 + D80/2005 + D236/2010) verificadas con 5 agentes paralelos; 85 verdicts registrados en `ai_verification_results` (`ai_provider='claude_code_phase2_relink'`). Mecanismo validado end-to-end (extraer → agente juzga 4 flags → registrar con tag).
+
+**Resultado clave (Murcia fue de las MÁS limpias — ruteada por nº de artículo citado):**
+- **article_ok TRUE: 52 (61%) → 39% MAL VINCULADAS** (mi auto-ruteo keyword/similitud puso ~40% en artículo equivocado: deberes art.63 recibió líneas-de-actuación/CI/intimidad; art.12 elección recibió segunda-opinión/derechos-básicos; art.31 recibió art.32 excepciones; art.50 recibió formalización art.51; etc.). En clínicas (keyword) y similitud el error será ≥ este.
+- **answer_ok TRUE: 79/85** (las respuestas correctas del banco mayormente bien).
+- **explanation_ok TRUE: 3/85 (~96% NO didácticas)** — explicaciones heredadas/vacías.
+
+**Implicación para las 17.546:** Fase 2 NO es solo "verificar". Las preguntas YA están ACTIVAS (live), así que lo CRÍTICO es **re-rutar el ~40% mal vinculado a su artículo correcto** (daño de mi auto-ruteo sobre preguntas vivas: teoría/AIChat/impugnaciones apuntan a artículo equivocado). El rewrite de explicaciones (~96%) es mejora de calidad aparte. Gate lifecycle exige explanation_ok=true para promocionar a perfect, pero las preguntas ya están activas → la prioridad es corregir article_ok, no promocionar.
+
+**Decisión de alcance pendiente para las 17.546:** (A) solo verificar + RE-RUTAR wrong-article (corregir el daño, prioritario); (B) además reescribir explicaciones no didácticas (QA completa, enorme). Ejecución = lotes de agentes (Agent tool desde el bucle, no Workflow: los agentes necesitan los datos en el prompt y no pueden leer Supabase).
