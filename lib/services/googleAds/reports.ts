@@ -77,6 +77,7 @@ export async function getCampaignPerformance(
         metrics.search_rank_lost_impression_share
       FROM campaign
       WHERE segments.date DURING ${range}
+        AND campaign.status != 'REMOVED'
       ORDER BY metrics.cost_micros DESC
     `)
 
