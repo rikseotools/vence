@@ -197,6 +197,19 @@ Lo que está **BIEN** (no tocar):
 fix #1 (H1) + #2 (siglas en title/H1) + #3 (fallback artículos) → desbloquean los
 3 problemas de mayor volumen a la vez. #4 y #5 después.
 
+**✅ Estado 02-03/06/2026:** #1 + #2 + #3 HECHOS y verificados en prod (commit
+`640ce508`): `<h1>` en todas las leyes, sigla al frente del title (EBEP/LOPD/LPAC…),
+fallback de artículos en LPRL/Ley 9-2017/Ley 55-2003. Pendientes: #4 (JSON-LD),
+#5 (og:image). Otros pendientes vivos:
+- **Revisión a ~02/07/2026** (1 mes): `npm run gsc:seo` vs el Baseline de arriba;
+  ¿`ebep`/`lprl` empiezan a tener impresiones? El cron llena snapshots cada lunes.
+- **`terraform apply -target=aws_iam_role_policy.ci_deploy`** (permiso CloudFront
+  del workflow frontend; hasta entonces, invalidación manual).
+- **Landmine:** el task def del FRONTEND está driftado vs Terraform (el
+  `frontend-deploy.yml` registra revisiones fuera de TF con campos HA del pooler).
+  Un `terraform apply` TOTAL lo revertiría → reconciliar (import o `ignore_changes`)
+  antes de cualquier apply global.
+
 ---
 
 ## 🗄️ Tracker en BD (medición automática del progreso)
