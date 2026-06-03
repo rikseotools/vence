@@ -85,3 +85,13 @@ El formato **combinado** (verify+rewrite con explicación, escrito a fichero) se
 
 ### Cohorte legislativa CERRADA
 Murcia 86 + Galicia 181 + Madrid 97 + Aragón 257 + Carta 92(+50 rev) ≈ **772 verificadas**. Falta el grueso: **25 clínicas (~16.400)**. Estas son más simples (un artículo-contenedor temático por ley, re-ruteo dentro de la misma ley) → probablemente menor % de mal-vinculado. Ejecutar por tandas verify-only→rewrite-only con validación de unicidad.
+
+## ⚠️ HALLAZGO CLÍNICO (03/06) — los contenedores temáticos están mal-bucketizados ~50%
+Validación en "Trabajo en equipo sanitario" (73 preg): **36 article_ok=true, 37 article_ok=false, 2 errores de clave reales**. PERO el 37 article_ok=false **NO se arregla re-rutando dentro de la ley**: esas preguntas son de temas que NO existen como artículo en el contenedor (proxémica, bioética, estadística, epidemiología, deontología, funciones TCAE, técnicas de comunicación, relaciones familiares…). El bucketing por palabra-clave que creó los contenedores arrastró preguntas de OTROS temas.
+
+**Implicación:** para el grueso clínico (~16.400) `article_ok=false` significa mayoritariamente "pregunta en el contenedor equivocado", no "sub-artículo equivocado". El ciclo verify→reroute-dentro-de-ley NO basta para clínicas. Opciones:
+- **A) Re-bucketing global:** índice de TODOS los contenedores clínicos + re-rutar cada article_ok=false al contenedor correcto (caro, complejo, pero correcto).
+- **B) Enriquecer cada contenedor** con más sub-artículos que cubran los temas reales que aparecen (muchos sub-artículos por contenedor).
+- **C) Aceptar contenedores como "bolsa temática" gruesa** y en clínicas solo arreglar errores de clave reales (answer_ok=false), dejando article_ok como informativo.
+
+DECISIÓN PENDIENTE DE MANUEL antes de procesar las 16.400. Progreso Fase 2: **845/17.546** (legislativas 772 + Trabajo en equipo 73).
