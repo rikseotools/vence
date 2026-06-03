@@ -45,3 +45,17 @@ Patrón por lote: extraer (pregunta + opciones + correct_option + artículo lite
 **Implicación para las 17.546:** Fase 2 NO es solo "verificar". Las preguntas YA están ACTIVAS (live), así que lo CRÍTICO es **re-rutar el ~40% mal vinculado a su artículo correcto** (daño de mi auto-ruteo sobre preguntas vivas: teoría/AIChat/impugnaciones apuntan a artículo equivocado). El rewrite de explicaciones (~96%) es mejora de calidad aparte. Gate lifecycle exige explanation_ok=true para promocionar a perfect, pero las preguntas ya están activas → la prioridad es corregir article_ok, no promocionar.
 
 **Decisión de alcance pendiente para las 17.546:** (A) solo verificar + RE-RUTAR wrong-article (corregir el daño, prioritario); (B) además reescribir explicaciones no didácticas (QA completa, enorme). Ejecución = lotes de agentes (Agent tool desde el bucle, no Workflow: los agentes necesitan los datos en el prompt y no pueden leer Supabase).
+
+## Ciclo completo validado — Murcia (03/06/2026) — alcance B (QA completa)
+Murcia (86 preguntas, Ley 3/2009 + D80/2005 + D236/2010) procesada con el ciclo profesional completo, file-based (agentes escriben su JSON con Write → cero riesgo de transcripción):
+1. **Verificar** (5 agentes): detectó 39% mal vinculadas.
+2. **Re-rutar** (3 agentes con índice de artículos): 33 preguntas movidas a su artículo correcto (`primary_article_id`).
+3. **Reescribir explicación didáctica** (6 agentes, contra el artículo correcto): 86 explicaciones nuevas (negrita + cita en blockquote + análisis por opción + fuente).
+4. **Finalizar**: 86 `ai_verification_results` con `ai_provider='claude_code_phase2_relink'`; `questions.explanation` actualizada + `verified_at` + `verification_status`. 79 OK, **7 marcadas `problem`** (answer/article dudoso → revisión humana: p.ej. art.21/art.24/art.9 D236 donde el texto del artículo en BD no contiene literalmente la cláusula o la respuesta del banco es dudosa).
+
+**Pipeline reusable (scripts en /tmp/aulaplus_audit/):** export por ley agrupado por artículo → chunks → agentes verifican (rwout) → re-rutar wrong-article → agentes reescriben explicación (Write a fichero) → apply_phase2.cjs (merge+dedup+update explanation+upsert verification). **CLAVE FIABILIDAD: los agentes escriben su salida a fichero con Write, NO se transcribe a mano.** Coste Murcia ≈ 0,5M tokens / 86 preguntas → extrapolado a 17.546 ≈ 100M+ tokens: ejecutar ley por ley, en sesiones, "lento pero fiable".
+
+## Estado
+- ✅ Cohorte (17.546) identificada y definida.
+- ✅ Piloto + ciclo completo validado en **Murcia (86)** — alcance B.
+- ⬜ Resto (~17.460): mismo ciclo, ley por ley.
