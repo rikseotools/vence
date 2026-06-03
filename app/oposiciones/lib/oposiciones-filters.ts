@@ -97,6 +97,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'celador-sermas-madrid': 'madrid',
     'celador-sescam-clm': 'castilla-la-mancha',
     'celador-scs-canarias': 'canarias',
+    'auxiliar-administrativo-scs-canarias': 'canarias',
     'auxiliar-enfermeria-osakidetza': 'pais-vasco',
     'auxiliar-administrativo-pais-vasco': 'pais-vasco',
     'auxiliar-administrativo-catalunya': 'cataluna',
