@@ -67,3 +67,12 @@ Progreso Fase 2: **272 / 17.546** (Murcia 86 + Galicia 186). Siguiente: Madrid, 
 
 ## Madrid (03/06) — 97/98 verificadas. Pipeline 100% generalizado (scripts param.)
 Scripts reutilizables en /tmp/aulaplus_audit/: export+chunk por ley → agentes combinados verify+rewrite (Write a galout/madout_N) → apply_combined.cjs <pfx> <n> → reroute_prep.cjs <pfx> <cont> <n> → agentes reroute (Write a Xrrout_N) → reroute_apply_sim.cjs (aplica reroutes-agente + similitud para los que falten + export rewrite) → agentes rewrite (Write Xrwout_N) → apply_rw.cjs. **Incidencias infra: timeouts de stream y rate-limit transitorio del servidor con 4+ agentes en paralelo → el fallback de similitud (script, sin agentes) cubre los huecos de reroute.** Progreso: **362/17.546** (Murcia+Galicia+Madrid). Siguiente: Aragón (legislativa grande), Carta, luego clínicas 1-25.
+
+## Aragón (03/06) — 257/304 verificadas (la más dura). Progreso 650/17.546
+Aragón fue el peor caso: **53% mal vinculadas** (era el más ruteado por similitud). El router por similitud FALLÓ para re-rutar (decretos de estructura comparten vocabulario) → hubo que usar re-ruteo por AGENTE con índice (fiable). 257 verificadas+explicación; 36 de normas fuera de catálogo (Estatuto Marco Ley 55/2003, Convenio, Ley 39/2015, Ley 5/2014, geografía…) marcadas article_ok=false pendientes; 11 flagged.
+
+### ⚠️ LÍMITE DE FIABILIDAD detectado (importante para el resto)
+Los agentes que hacen **verify+rewrite combinado escribiendo a fichero se degeneran ~40-50% de las veces a esta escala** (escriben N copias del mismo question_id, o leen un fichero viejo y "saltan"). Mitigaciones que funcionan: (1) **borrar el fichero antes de re-correr** (no pueden saltar); (2) usar **rewrite-only** (sin lógica article_ok) que es mucho más estable; (3) **validar unicidad** tras cada pasada y re-correr degenerados; (4) re-ruteo SIEMPRE por agente+índice (la similitud falla en leyes de vocabulario solapado). Además: timeouts de stream y rate-limit del servidor con muchos agentes en paralelo.
+
+### Estado real
+Legislativas hechas (full QA): **Murcia, Galicia, Madrid, Aragón ≈ 660 preguntas**. Falta: Carta Social (140) + conexas menores + **las 25 clínicas (~16.400, el grueso)**. A la tasa y fiabilidad actuales, completar 17.546 en autopilot continuo NO es viable de una sola vez (miles de llamadas a agente con ~mitad de fallos que requieren reintento). Recomendación: ejecutar por tandas controladas (p. ej. N leyes/sesión) con validación de unicidad, o construir un harness más robusto.
