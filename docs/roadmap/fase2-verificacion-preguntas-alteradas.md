@@ -127,3 +127,13 @@ La verificación destapa DOS causas distintas de `article_ok=false`, que exigen 
 `verification_status` es columna LEGACY (no afecta is_active/visibilidad) → marcar 'problem' por error no daña al usuario; se corrige al re-verificar (mismo ai_provider sobrescribe el registro).
 
 **Residuos (163):** modo 2. Enriquecer arts 1-3 (clasificación completa 4 grupos + variación CCAA/Madrid 7 clases, Ley 22/2011, códigos H peligrosidad, colores de bolsa/contenedor, galga 69/200, capacidad 3/4, DIN, transporte, citostáticos cabina flujo laminar vertical) desde fuente oficial → re-verificar.
+
+## ✅ Residuos sanitarios CERRADO (03/06) — modo ENRIQUECER validado end-to-end
+Flujo: verify (vs resumen) → detecta thin-article → enriquecer 3 arts con fuente oficial (agente WebSearch; correcciones: Ley 7/2022 deroga 22/2011; galga 200=50µm no 69; Madrid 7 clases Decreto 83/1999; CSB clase II flujo laminar vertical) → re-verify vs enriquecido.
+**Resultado: article_ok=false 94→28, in-place verified 69→135.** Backup contenido original en `/tmp/aulaplus_audit/res_backup.json`.
+**8 defectos de clave reales a revisión humana:** eb2b8c4c, 64ac43ae, 99a8112c (químicos=Grupo IV no II), 1e489ea6 (sin opción correcta: Ley 10/1998 no está), cbb24630, 7151df91 (apósito=Grupo II no I), 0587d3f3, df4edc81 (todas opciones son Grupo III).
+28 article_ok=false residuales = detalles muy granulares (capacidad contenedor, etiquetado CLP, ENRESA/radiactivos, penitenciarías) → barrido de enriquecimiento fino opcional al final.
+
+**Progreso Fase 2: 1.008/17.546.** Legislativas 772 (Murcia/Galicia/Madrid/Aragón/Carta) + Trabajo en equipo 73 (modo re-rutar) + Residuos 163 (modo enriquecer).
+
+**Plantilla de enriquecimiento por contenedor (modo 2, para los grandes):** (1) export+verify rápido para confirmar modo 2; (2) agente WebSearch redacta artículos enriquecidos fieles con "Fuente:" y verificación de cifras; (3) aplicar con backup; (4) re-verify con criterio "temario TCAE estándar, no más estricto que el examen"; (5) registrar, marcar errores de clave reales, recoger estrays para reroute. Coste ~0.5-0.7M tokens por contenedor pequeño; los gigantes (Esterilización 1476…) por varias tandas.
