@@ -189,6 +189,9 @@ function PerfilPageContent() {
 
   // 🗑️ ELIMINACIÓN DE CUENTA
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false)
+  // Paso del modal de baja: 'retention' (pantalla de retención previa) → 'confirm'
+  // (escribir ELIMINAR). Retención: recuperar a quien se va por inactividad, no por enfado.
+  const [deleteStep, setDeleteStep] = useState<'retention' | 'confirm'>('retention')
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('')
   const [deletingAccount, setDeletingAccount] = useState<boolean>(false)
   const [deleteError, setDeleteError] = useState<string>('')
@@ -2458,7 +2461,7 @@ function PerfilPageContent() {
                             </div>
                           ) : (
                             <button
-                              onClick={() => setShowDeleteAccountModal(true)}
+                              onClick={() => { setDeleteStep('retention'); setShowDeleteAccountModal(true) }}
                               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 whitespace-nowrap"
                             >
                               <span>🗑️</span>
@@ -2515,6 +2518,45 @@ function PerfilPageContent() {
                   Entendido
                 </button>
               </div>
+            ) : deleteStep === 'retention' ? (
+              // 🔔 PASO 1 — Retención: recuperar a quien se va por inactividad (no por enfado).
+              // Mantener la cuenta (aunque inactiva) habilita avisos de convocatorias de
+              // su provincia/interés y actualizaciones de temario. Ver agenda: construir
+              // esos envíos a inactivos para que la promesa sea real.
+              <>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <span className="mr-2">🔔</span>
+                  Antes de irte…
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-gray-700 dark:text-gray-200">
+                    ¿Seguro que quieres borrar tus datos? Puedes <strong>mantener tu cuenta aunque no la uses</strong> y seguir recibiendo:
+                  </p>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-2 ml-1">
+                    <li className="flex gap-2"><span>📢</span><span>Avisos cuando se <strong>convoquen plazas</strong> de tu interés o en tu provincia.</span></li>
+                    <li className="flex gap-2"><span>📚</span><span><strong>Actualizaciones del temario</strong> para estar siempre al día.</span></li>
+                  </ul>
+                </div>
+                <div className="flex flex-col gap-2 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDeleteAccountModal(false)
+                      setDeleteStep('retention')
+                      setDeleteConfirmText('')
+                      setDeleteError('')
+                    }}
+                    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold transition-colors min-h-[44px]"
+                  >
+                    Mantener mi cuenta
+                  </button>
+                  <button
+                    onClick={() => setDeleteStep('confirm')}
+                    className="w-full px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:underline transition-colors"
+                  >
+                    No me interesa estar al día, darme de baja
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4 flex items-center">
