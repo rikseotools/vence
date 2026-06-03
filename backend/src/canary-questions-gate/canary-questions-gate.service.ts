@@ -50,6 +50,47 @@ export class CanaryQuestionsGateService {
       };
     }
 
+    // ─── Paso 0: el gate debe estar ENCENDIDO ───────────────────────────
+    // Verificación POSITIVA: un gate apagado parece idéntico a uno funcionando
+    // desde el camino feliz (cargar va bien igual). Por eso preguntamos el estado
+    // efectivo. Bug 03/06: site key no horneada → enabled=false sin que nada avisara.
+    try {
+      const statusRes = await fetch(
+        `${this.TARGET_URL}/api/security/captcha/status`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}`,
+            'User-Agent': 'Vence-Canary-Gate/1.0',
+            'x-vence-canary': '1',
+          },
+          signal: AbortSignal.timeout(5000),
+        },
+      )
+      if (statusRes.ok) {
+        const st = (await statusRes.json()) as {
+          enabled?: boolean
+          siteKeyPresent?: boolean
+          secretPresent?: boolean
+          flagOn?: boolean
+        }
+        if (st.enabled !== true) {
+          return {
+            ok: false,
+            step: 'gate_disabled',
+            errorMessage:
+              `Gate anti-scraping APAGADO en prod (enabled=${st.enabled}): ` +
+              `siteKeyPresent=${st.siteKeyPresent}, secretPresent=${st.secretPresent}, ` +
+              `flagOn=${st.flagOn}. El control NO está protegiendo el banco.`,
+            durationMs: Date.now() - startedAt,
+          }
+        }
+      }
+      // Si el status no responde OK, no fallamos por eso aquí (otras sondas lo
+      // cubren); seguimos al test de carga real.
+    } catch {
+      /* status check best-effort; no bloquear por su indisponibilidad */
+    }
+
     // ─── Paso 1: firmar JWT smoke (idéntico a canary-smoke-auth) ───
     let token: string;
     try {
@@ -187,6 +228,7 @@ export type CanaryGateResult =
   | {
       ok: false;
       step:
+        | 'gate_disabled'
         | 'sign_token'
         | 'request'
         | 'gate_false_positive'

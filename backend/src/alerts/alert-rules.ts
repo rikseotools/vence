@@ -1598,6 +1598,9 @@ export const RULE_CANARY_QUESTIONS_GATE_FAILED: AlertRule<{
         `funciona correctamente. Esto afecta al estudio de todos los usuarios.\n\n` +
         `Último fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\n` +
         `ACCIONES SEGÚN STEP:\n` +
+        `  - gate_disabled: el gate está APAGADO en prod (enabled=false). Causa típica:\n` +
+        `    site key NO horneada (build-arg sin ARG/ENV en Dockerfile) o CAPTCHA_ENABLED\n` +
+        `    /secret ausente en SSM. El banco NO está protegido. Revisar /api/security/captcha/status.\n` +
         `  - gate_false_positive (403): el gate Turnstile reta a usuarios que NO superan el umbral.\n` +
         `    Regresión en lib/security/challengePolicy/questionsServed o verifyHumanChallenge.\n` +
         `    MITIGACIÓN INMEDIATA: SSM /vence-frontend/CAPTCHA_ENABLED=false + redeploy frontend.\n` +

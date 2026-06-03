@@ -94,6 +94,15 @@ ENV DATABASE_URL_REPLICA=${DATABASE_URL_REPLICA}
 ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
 ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
 
+# 🚨 GUARD DE BUILD — falla LOUD si una NEXT_PUBLIC_* crítica para un control de
+# seguridad no está horneada (sería un fallo silencioso: feature OFF en prod sin
+# avisar). Aprendido el 03/06: la site key de Turnstile no se pasaba y el gate
+# anti-scraping quedó apagado sin que nada lo detectara. Mejor abortar el build.
+RUN test -n "$NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY" || ( \
+  echo "❌ BUILD ABORTADO: NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY vacío." && \
+  echo "   El gate anti-scraping quedaría OFF en prod. Pásalo como build-arg en" && \
+  echo "   frontend-deploy.yml y declara su ARG/ENV en este Dockerfile." && exit 1 )
+
 RUN npm run build
 
 # ============================================================
