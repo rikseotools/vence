@@ -67,6 +67,14 @@ export interface AuthClientPort {
   getAccessToken(): Promise<string | undefined>
   /** Inicia OAuth Google (único proveedor social en uso). */
   signInWithGoogle(options?: SignInOptions): Promise<SignInResult>
+  /**
+   * Completa el callback OAuth tras volver del proveedor y devuelve la sesión
+   * (o null si no se estableció en el timeout). Verbo de dominio SIN params de
+   * proveedor: toda la mecánica específica (intercambio del código, polling de
+   * storage, workarounds de locks) vive DENTRO del adapter. La página de
+   * callback solo orquesta (return_to, process-callback, tracking, redirect).
+   */
+  completeOAuthCallback(): Promise<AuthSession | null>
   signOut(): Promise<void>
   refreshSession(): Promise<AuthSession | null>
   updateUser(attrs: Record<string, unknown>): Promise<AuthUser | null>

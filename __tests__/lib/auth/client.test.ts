@@ -128,4 +128,75 @@ describe('supabaseAdapter — AuthClientPort', () => {
     off()
     expect(unsubscribe).toHaveBeenCalled()
   })
+
+  // --- completeOAuthCallback (C4) — build-only, NO cablea la página todavía ---
+  const SB_URL = 'https://proj123.supabase.co'
+  const STORAGE_KEY = 'sb-proj123-auth'
+
+  function setupCallbackEnv() {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = SB_URL
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
+    localStorage.clear()
+    mockAuth.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } })
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null })
+  }
+
+  test('completeOAuthCallback() resuelve la sesión ya presente en localStorage (mapeada)', async () => {
+    setupCallbackEnv()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(SB_SESSION))
+    const auth = createSupabaseAuthAdapter()
+    const s = await auth.completeOAuthCallback()
+    expect(s?.accessToken).toBe('tok-123')
+    expect(s?.user.id).toBe('user-1')
+    expect(s?.user.metadata).toEqual({ fullName: 'Ada Lovelace', avatarUrl: 'http://img/a.png' })
+  })
+
+  test('completeOAuthCallback() resuelve vía onAuthStateChange', async () => {
+    setupCallbackEnv()
+    let captured: ((evt: string, s: unknown) => void) | null = null
+    mockAuth.onAuthStateChange.mockImplementation((cb: (evt: string, s: unknown) => void) => {
+      captured = cb
+      return { data: { subscription: { unsubscribe: jest.fn() } } }
+    })
+    const auth = createSupabaseAuthAdapter()
+    const p = auth.completeOAuthCallback()
+    captured!('SIGNED_IN', SB_SESSION) // el SDK entrega la sesión por eventos
+    expect((await p)?.accessToken).toBe('tok-123')
+  })
+
+  test('completeOAuthCallback() hace el intercambio PKCE directo si el SDK se cuelga', async () => {
+    jest.useFakeTimers()
+    setupCallbackEnv()
+    window.history.pushState({}, '', '/auth/callback?code=auth-xyz')
+    localStorage.setItem(`${STORAGE_KEY}-code-verifier`, 'verifier-abc')
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ...SB_SESSION }) })
+    const prevFetch = global.fetch
+    global.fetch = fetchMock as unknown as typeof fetch
+
+    const auth = createSupabaseAuthAdapter()
+    const p = auth.completeOAuthCallback()
+    await jest.advanceTimersByTimeAsync(3100) // dispara el directPkceTimeout (3s)
+    const s = await p
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${SB_URL}/auth/v1/token?grant_type=pkce`,
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(s?.accessToken).toBe('tok-123')
+    expect(localStorage.getItem(STORAGE_KEY)).toBeTruthy() // persistió la sesión
+    expect(localStorage.getItem(`${STORAGE_KEY}-code-verifier`)).toBeNull() // limpió el verifier
+    global.fetch = prevFetch
+    jest.useRealTimers()
+  })
+
+  test('completeOAuthCallback() devuelve null si no llega sesión en 15s', async () => {
+    jest.useFakeTimers()
+    setupCallbackEnv()
+    window.history.pushState({}, '', '/auth/callback') // sin code → sin exchange directo
+    const auth = createSupabaseAuthAdapter()
+    const p = auth.completeOAuthCallback()
+    await jest.advanceTimersByTimeAsync(15100)
+    expect(await p).toBeNull()
+    jest.useRealTimers()
+  })
 })
