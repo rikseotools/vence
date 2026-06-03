@@ -241,7 +241,7 @@ async function logEmailSent(
 // ============================================
 
 export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailResponse> {
-  const { userId, emailType, customData = {} } = params
+  const { userId, emailType, customData = {}, idempotencyKey } = params
 
   console.log(`📧 [Emails/v2] Sending ${emailType} to user ${userId}`)
 
@@ -418,17 +418,24 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
       replyHeaders['References'] = replyToMessageId
     }
 
-    const r = await resend.emails.send({
-      from,
-      to: toEmail,
-      subject,
-      html,
-      headers: {
-        'List-Unsubscribe': `<${unsubscribeUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        ...replyHeaders,
+    const r = await resend.emails.send(
+      {
+        from,
+        to: toEmail,
+        subject,
+        html,
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          ...replyHeaders,
+        },
       },
-    })
+      // Idempotencia a nivel de proveedor: Resend deduplica peticiones con la
+      // misma `Idempotency-Key` en su ventana de retención (~24h). Hace que un
+      // reenvío (reconciliador/outbox) NO genere un segundo email aunque el
+      // original ya hubiera salido.
+      idempotencyKey ? { idempotencyKey } : undefined,
+    )
     data = r.data
     error = r.error
   } catch (throwErr) {

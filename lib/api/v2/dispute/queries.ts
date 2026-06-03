@@ -406,6 +406,10 @@ export async function resolveDispute(
       const emailResult = await sendEmailV2({
         userId,
         emailType: 'impugnacion_respuesta',
+        // Clave determinista por impugnación: si este envío se reintenta (vía
+        // outbox/reconciliador tras un timeout que lo cortó), Resend deduplica
+        // y NO manda un segundo email. Imprescindible para recuperación segura.
+        idempotencyKey: `dispute-resolve-${disputeId}`,
         customData: {
           to: userEmail,
           userName: userName || 'Usuario',

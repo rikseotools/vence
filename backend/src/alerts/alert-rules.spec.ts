@@ -16,6 +16,7 @@ import {
   RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED,
   RULE_STRIPE_WEBHOOK_4XX_BURST,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
+  RULE_DISPUTE_EMAIL_DROP,
   RULE_CANARY_AUTH_FAILED,
   RULE_CANARY_WEBHOOK_FAILED,
   RULE_CANARY_ANSWER_SAVE_FAILED,
@@ -475,6 +476,28 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
 
   it('severity=error — el daño está mitigado por el auto-fix, pero el bug raíz no', () => {
     expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.severity).toBe('error');
+  });
+});
+
+describe('RULE_DISPUTE_EMAIL_DROP (Gap 17 — impugnación resuelta sin email)', () => {
+  it('dispara con realDrops≥1 (notificación al usuario perdida)', () => {
+    expect(RULE_DISPUTE_EMAIL_DROP.shouldFire([{ realDrops: 1 }])).toBe(true);
+    expect(RULE_DISPUTE_EMAIL_DROP.shouldFire([{ realDrops: 3 }])).toBe(true);
+  });
+
+  it('NO dispara con realDrops=0 ni sin filas (skip legítimo no cuenta)', () => {
+    expect(RULE_DISPUTE_EMAIL_DROP.shouldFire([{ realDrops: 0 }])).toBe(false);
+    expect(RULE_DISPUTE_EMAIL_DROP.shouldFire([])).toBe(false);
+  });
+
+  it('notification incluye el conteo + apunta al detalle accionable', () => {
+    const notif = RULE_DISPUTE_EMAIL_DROP.buildNotification([{ realDrops: 2 }]);
+    expect(notif.title).toContain('2');
+    expect(notif.body).toContain('invariant_violation');
+  });
+
+  it('severity=error — el usuario cree que le ignoramos', () => {
+    expect(RULE_DISPUTE_EMAIL_DROP.severity).toBe('error');
   });
 });
 

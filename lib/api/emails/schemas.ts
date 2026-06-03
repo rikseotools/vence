@@ -95,6 +95,12 @@ export const sendEmailRequestSchema = z.object({
   userId: z.string().uuid(),
   emailType: emailTypeSchema,
   customData: z.record(z.unknown()).optional().default({}),
+  // Clave de idempotencia opcional → se envía como header `Idempotency-Key` a
+  // Resend, que deduplica peticiones con la misma clave en su ventana (~24h).
+  // Imprescindible para reintentos/reenvíos seguros (ej. recuperación de
+  // impugnaciones cuyo email se cayó). Usar una clave determinista por evento,
+  // p.ej. `dispute-resolve-{disputeId}`.
+  idempotencyKey: z.string().min(1).max(256).optional(),
 })
 
 export type SendEmailRequest = z.infer<typeof sendEmailRequestSchema>

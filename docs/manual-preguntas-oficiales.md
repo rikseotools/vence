@@ -404,17 +404,24 @@ await supabase
 - NO eliminar (mantener historial)
 - Documentar el motivo
 
-### Caso especial: Windows 10 → Windows 11
+### Caso especial: versión del sistema operativo (Windows 10 vs Windows 11)
 
-El programa oficial actual exige **Windows 11**, por lo que las preguntas de Windows 10 están obsoletas. En estos casos:
+> ⚠️ **NO asumir una versión global.** La versión la fija el **programa oficial de CADA oposición** (su Orden/convocatoria en el boletín correspondiente). Verifícalo antes de actualizar nada — actualizar a la versión equivocada deja la pregunta **fuera de programa** y confunde al opositor (que estudia con su temario), justo lo contrario de lo que se busca.
+>
+> **Ejemplo real — NO actualizar a Windows 11:** Auxiliar Administrativo de la **Comunidad de Madrid** (OEP 2023-2024 y OPE 2025) examina **Windows 10 + Microsoft 365** — Orden 1942/2023 y Orden 264/2026 (BOCM). Su examen oficial de abril 2026 fue íntegramente Windows 10. Sus preguntas deben estar en **Windows 10** y vincularse a las leyes "Windows 10" (`cb536623-fb75-429c-a839-0154b76ee27b`) / "Explorador Windows 10" (`9a4d819f-50d6-421b-b3ea-d66d72b8524b`). (Incidente 03/06/2026: 6 preguntas oficiales de Madrid se habían cambiado por error a Windows 11 y se revirtieron.)
 
-1. **Actualizar el texto** de la pregunta cambiando "Windows 10" por "Windows 11"
-2. **Vincular al artículo correcto** de la ley virtual "Windows 11" (ID: `932efcfb-5dce-4bcc-9c6c-55eab19752b0`)
-3. **Activar la pregunta** (`is_active: true`)
-4. **Añadir nota en la explicación** al final:
+**Solo si el programa de esa oposición concreta exige una versión más nueva** que la del examen original (p. ej. Windows 10 → Windows 11), entonces sí actualizar:
+
+1. **Verificar primero** la versión en el programa oficial vigente de esa oposición (Orden/convocatoria del boletín).
+2. **Actualizar el texto** de la pregunta cambiando la versión antigua por la vigente (enunciado **y opciones** que la mencionen).
+3. **Vincular al artículo correcto** de la ley virtual de la versión vigente (Windows 11: `932efcfb-5dce-4bcc-9c6c-55eab19752b0`).
+4. **Activar la pregunta** (`is_active: true`).
+5. **Añadir nota en la explicación** al final, citando la versión vigente:
    ```
-   📋 *La pregunta original se refería a Windows 10, actualizada a Windows 11 conforme al programa vigente.*
+   📋 *La pregunta original se refería a Windows 10, actualizada a Windows 11 conforme al programa vigente de esta oposición.*
    ```
+
+> ⚠️ Misma lógica para **Office 2016 → Office 365**: verificar el programa de cada oposición; no asumir.
 
 #### Artículos de Windows 11 disponibles:
 
