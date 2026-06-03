@@ -231,18 +231,37 @@ jobs:
         continue-on-error: true
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INGEST_URL: https://www.vence.es/api/observability/ingest
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
         run: |
+          # Emite a observabilidad un fallo de DISPARO (el canary no llegó a correr),
+          # para que un disparo roto no sea un punto ciego. NO lo hace en 503: ahí el
+          # canary SÍ corrió y el backend ya emitió canary_questions_gate_failed.
+          emit_trigger_failure() {
+            [ -z "${INGEST_SECRET}" ] && { echo "skip emit — sin INGEST_SECRET"; return; }
+            curl -sS -X POST "${INGEST_URL}" \
+              -H "Content-Type: application/json" \
+              -H "x-ingest-secret: ${INGEST_SECRET}" \
+              -d "{\"events\":[{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"source\":\"gha\",\"severity\":\"critical\",\"eventType\":\"canary_questions_gate_failed\",\"errorMessage\":\"Disparo del canary gate no llegó (HTTP $1) en frontend-deploy #${{ github.run_number }}\",\"metadata\":{\"step\":\"trigger_unreachable\",\"httpCode\":\"$1\"}}]}" \
+              >/dev/null && echo "→ emitido canary_questions_gate_failed (trigger_unreachable)"
+          }
+
           if [ -z "${CRON_SECRET}" ]; then
-            echo "skip — CRON_SECRET no configurado"; exit 0
+            echo "⚠️ CRON_SECRET no configurado — no se puede disparar el canary"
+            emit_trigger_failure 0
+            exit 0
           fi
           CODE=$(curl -s -o /tmp/gate.json -w '%{http_code}' --max-time 35 \
             -X POST https://api.vence.es/api/v2/canary/run-questions-gate \
-            -H "Authorization: Bearer ${CRON_SECRET}")
+            -H "Authorization: Bearer ${CRON_SECRET}" || echo 000)
           echo "HTTP $CODE"; cat /tmp/gate.json 2>/dev/null; echo
           if [ "$CODE" = "200" ]; then
             echo "✅ gate OK — usuario normal carga preguntas sin reto espurio."
+          elif [ "$CODE" = "503" ]; then
+            echo "⚠️ canary corrió y FALLÓ (503) — el backend ya emitió la alerta [Vence CRITICAL]."
           else
-            echo "⚠️ canary gate devolvió $CODE — revisar email [Vence CRITICAL]."
+            echo "⚠️ disparo no llegó al canary (HTTP $CODE) — emitiendo a observabilidad."
+            emit_trigger_failure "$CODE"
           fi
 
       # Invalidar CloudFront. Las páginas prerenderizadas (ISR) las cachea
