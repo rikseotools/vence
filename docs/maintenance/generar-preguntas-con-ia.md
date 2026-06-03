@@ -1,5 +1,7 @@
 # Manual: Generar preguntas con IA (Claude) + auditoría doble
 
+> **Versión 2.4** — 2026-06-03. **Hallazgo crítico a raíz del feedback de la usuaria Isa (`5e21fa2d`)**: las preguntas IA-generadas se acertaban eligiendo **"la opción más larga"** — la correcta era la más larga el **71%** de las veces (azar 25%), porque §2.2 exige que la correcta sea cita literal larga del artículo mientras los distractores se redactaban cortos. Es la causa de que las IA midieran más fáciles (global_difficulty 26 vs 33 del banco). **v2.4 añade la regla anti-tell**: nueva **§2.2-bis** (distractores ±30% de longitud de la correcta, construidos con texto legal real alterado) + nuevo **6º check `distractors_balance_ok`** (§2.4 + Paso 6) + Paso 2 reescrito. **Remediación aplicada (03/06)**: 778 preguntas vivas reequilibradas vía workflow (reescritura + auditor independiente) → tell de banco bajó 71%→31% (igual que el banco no-IA). Lección de pipeline: el fichero de entrada del auditor NO debe darle las opciones originales como verdad (le confunde); avisar explícito de que son obsoletas.
+>
 > **Versión 2.3** — 2026-05-25. Basado en **29 batches piloto**: 21 CARM + 8 Aragón. **388 preguntas activas IA-generadas, 0 defectos en producción**. **v2.3 cierra la SECUENCIA T13 completa (6 batches consecutivos sobre Ley 6/1990 Archivos Murcia)** llevándolo de 39 → 96 preguntas (96% del objetivo 100q). **Hallazgo principal**: la curva de rendimiento marginal por batch es **predecible y decreciente** (15 → 11 → 10 → 8 → 8 → 5 preguntas), confirmando empíricamente que el techo natural realista de una ley monotemática está en ~95-96%, no 100%. Forzar el último 5% requiere ángulos artificiales con rendimientos negativos.
 >
 > **Cambios v2.3**: secciones **5.26** (batch 20 redundancia arts con 3q, 8q PERFECT), **5.27** (batch 21 caso límite Art 7 con 7 existentes → 8 nuevas viables tras dedup mental por apartado), **5.28** (batch 22 cierre techo natural T13, 5q tras dedup mental estricto). Métricas acumuladas actualizadas a **29 batches / 388 preguntas** (sección 5.20). **Anti-pattern nuevo**: forzar el último 5% del objetivo cuando los rendimientos marginales caen por debajo de 5 preguntas/batch. Nuevos aprendizajes operativos: (a) **el número de apartados ESTRUCTURALES del artículo determina el techo natural** mejor que su tamaño en caracteres (Art 7 con 8 apartados admite 15q, Art 20 con 3 apartados admite ~6q); (b) **un art aparentemente saturado con 7 existentes puede admitir 8 nuevas** si el análisis dedup mental por apartado revela margen real; (c) **curva rendimiento marginal validada empíricamente**: 15→11→10→8→8→5 preguntas/batch en 6 batches consecutivos sobre la misma ley; (d) **declarar el techo natural a tiempo evita dilución de calidad** — 96/100 es mejor cierre que forzar 100/100 con candidatas dudosas.
@@ -139,6 +141,18 @@ Esta es **la regla cero**. Si la IA parafrasea, cambia un verbo o estrecha un su
 - Cambiar plazo, número, referencia normativa.
 - Reformular la cita.
 
+### 2.2-bis Los distractores deben igualar en longitud y forma a la correcta (regla anti-"opción más larga")
+
+Si la opción correcta es cita literal del artículo (texto legal completo, largo) y los distractores son frases cortas inventadas, **la correcta destaca por tamaño y el test se acierta sin saber la respuesta, eligiendo la más larga**.
+
+**Medido en producción (02/06/2026, a raíz del feedback de la usuaria Isa — `5e21fa2d`)**: en las 1.562 IA-generadas activas, la opción correcta era la más larga el **71%** de las veces (azar = 25%; resto del banco ≈ 31-39%), con **132 vs 71 caracteres** de media frente a los distractores. Patrón presente en TODOS los batches (53-87%) → es estructural, consecuencia directa de §2.2.
+
+**Regla:** cada distractor debe construirse **a partir de un fragmento de texto legal real (mismo artículo o norma afín) de longitud comparable a la correcta (±30% de caracteres)**, alterado para hacerlo falso — cambiar un sujeto, un verbo, un plazo o una remisión sobre una cláusula igual de larga. **Nunca** un distractor corto y plano frente a una correcta extensa.
+
+**Prohibido:** correcta de >100 chars con los tres distractores de <60.
+
+**Si no hay texto legal suficiente para construir 3 distractores largos *y* claramente falsos sin volverlos ambiguos, NO se genera la pregunta sobre ese punto** (mismo criterio que §2.2: mejor menos cantidad).
+
 ### 2.3 Tag obligatorio: `'ia_generada' + '<batch_id>'`
 
 Sin estos tags es imposible:
@@ -152,7 +166,7 @@ Convención del batch_id: `piloto_<ley>_<año>` o `gen_<ley>_<YYYY-MM-DD>`.
 
 El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de falsos negativos**. Para IA-generadas el riesgo se multiplica (sesgo del propio generador). El flujo v2.1 de `revisar-preguntas-con-agente.md` exige **además** una re-verificación tras aplicar los cambios sobre la pregunta viva en BD (§7).
 
-**Los 5 checks del workflow** (v1.10 amplía a 5 — antes eran 4):
+**Los 6 checks del workflow** (v2.4 amplía a 6 — antes 5):
 
 | Check | Criterio | Detectable por |
 |---|---|---|
@@ -160,7 +174,8 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 | `answer_ok` | La opción marcada es realmente la correcta según la ley | auto + Sonnet ciego + paso 9 |
 | `options_ok` (§3.2) | La opción correcta reproduce fielmente el texto legal (cita literal o condensación válida) | auto + Sonnet ciego + paso 9 |
 | `explanation_ok` (§8.1) | Blockquote literal + "Por qué [LETRA] correcta" + bullets "Por qué las demás" + sin emojis/Truco | auto + Sonnet ciego + paso 9 |
-| **`question_text_ok` (NUEVO v1.10)** | **El enunciado no condensa libremente el artículo. Si lo menciona, debe citar o usar elipsis explícita.** | **Frecuentemente solo por paso 9** — las dos pasadas pre-aplicación pueden converger en pasarlo por alto (caso b5 Aragón Q15) |
+| **`question_text_ok` (v1.10)** | **El enunciado no condensa libremente el artículo. Si lo menciona, debe citar o usar elipsis explícita.** | **Frecuentemente solo por paso 9** — las dos pasadas pre-aplicación pueden converger en pasarlo por alto (caso b5 Aragón Q15) |
+| **`distractors_balance_ok` (NUEVO v2.4)** | **Ningún distractor es manifiestamente más corto que la correcta (§2.2-bis). Criterio mecánico: la correcta NO debe ser la opción más larga por un margen ≥1,3× sobre la 2ª, y los distractores siguen siendo claramente falsos.** | **Automático (longitudes) + Sonnet (que los distractores reescritos sigan siendo falsos)** |
 
 **Mínimo (PRE-aplicación):**
 1. **Auto-audit** del propio generador (Claude) re-leyendo desde BD aplicando §3.1 + §3.2 + §8.1 + verificando fidelidad del enunciado.
@@ -367,7 +382,7 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 >
 > Por cada supuesto, formulo UNA pregunta con:
 > - **Opción correcta**: cita literal del artículo (o condensación válida).
-> - **3 distractores**: plausibles pero claramente falsos según el propio artículo. Si un distractor podría confundirse con otra norma vigente (Ley 39, Ley 40, etc.), añadirlo (trampa pedagógica útil).
+> - **3 distractores**: plausibles pero claramente falsos según el propio artículo. **Cada uno parte de un fragmento de texto legal real (mismo artículo o norma afín) de longitud comparable a la correcta (±30%), alterado para hacerlo falso (cambio de sujeto/verbo/plazo/remisión) — ver §2.2-bis. Prohibido distractor corto y plano frente a correcta larga: delata la respuesta por tamaño.** Si un distractor podría confundirse con otra norma vigente (Ley 39, Ley 40, etc.), añadirlo (trampa pedagógica útil).
 > - **Explicación con formato §8.1 exacto:**
 >   - Blockquote con cita literal del artículo (referencia "Art. X.Y Ley Z").
 >   - "Por qué [LETRA] es correcta: [razón clara]"
@@ -433,7 +448,8 @@ Re-leer cada pregunta DESDE BD junto con el contenido literal del artículo (no 
 | `answer_ok` | La opción marcada es realmente la correcta según el contenido del artículo |
 | `options_ok` (§3.2) | La opción marcada como correcta reproduce fielmente el texto legal (cita literal o condensación válida sin cambio de sentido) |
 | `explanation_ok` (§8.1) | `isDidactic()` = blockquote + "Por qué [LETRA] correcta" + "Por qué las demás son incorrectas" + markdown |
-| **`question_text_ok` (NUEVO v1.10)** | El enunciado no condensa libremente el artículo. Si menciona "según el artículo X", lo que diga de X debe ser cita o usar elipsis explícita (puntos suspensivos / paréntesis). Nunca resumir. Caso b5 Aragón Q15 Art 92 documentó este modo de fallo. |
+| **`question_text_ok` (v1.10)** | El enunciado no condensa libremente el artículo. Si menciona "según el artículo X", lo que diga de X debe ser cita o usar elipsis explícita (puntos suspensivos / paréntesis). Nunca resumir. Caso b5 Aragón Q15 Art 92 documentó este modo de fallo. |
+| **`distractors_balance_ok` (NUEVO v2.4)** | Longitud de la correcta NO ≥1,3× la 2ª opción más larga (§2.2-bis) Y cada distractor sigue siendo claramente falso. Comprobación mecánica de longitudes + verificación de que ningún distractor alargado se ha vuelto verdadero/ambiguo. |
 
 Veredicto por pregunta: `PERFECT` o `NEEDS_REVIEW` con motivo.
 
@@ -555,26 +571,49 @@ Verificar:
 - Conteo del tema afectado: ANTES + N = AHORA
 - Audit trail: filas en `question_lifecycle_history` con `from_state='draft'`, `to_state='approved'`, `reason_code='ai_verified_perfect'`.
 
-### Paso 11 — Invalidar caches
+### Paso 11 — Invalidar caches (3 capas obligatorias)
 
-Tras transicionar, las páginas de tema y test cachean conteos. Ver `docs/maintenance/cache-revalidation.md` para detalle completo y casos avanzados (cross-runtime tags, Redis Upstash, etc.). Resumen mínimo para un batch de generación IA:
+⚠️ **Tras un batch IA hay que invalidar TRES capas, no solo tags Next.js.** Ver `docs/maintenance/cache-revalidation.md` sección «Materialized views Postgres» para el detalle completo. Resumen operativo:
 
-**Tags a invalidar:** `test-counts` + `laws` + `questions`.
+**Las 3 capas:**
 
-**Páginas ISR a purgar:** landing + hub + temario de la oposición afectada + el tema concreto cuyo conteo cambia.
+1. **Materialized views Postgres** (`topic_law_question_summary` + `topic_official_by_position`) — el endpoint `/api/topics/[numero]` lee de aquí, NO de `questions` directo. El cron Fargate refresca solo 1× al día (03:30 UTC), así que hay que refrescar a mano tras cada batch.
+2. **Redis Upstash** — claves `topic_data:{oposicion}:{topicNumber}:{userId|anon}`, fresh window 5min.
+3. **Next.js ISR + tags** — páginas y data caches.
+
+**Procedimiento completo** (los 3 pasos son necesarios — saltar cualquiera deja datos viejos visibles):
 
 ```bash
 set -a; source .env.local; set +a
 
-# 1. Tags de datos
-for tag in test-counts laws questions; do
+# 1. Refrescar materialized views (~7s)
+node -e "require('dotenv').config({path:'.env.local'}); \
+  const {createClient} = require('@supabase/supabase-js'); \
+  const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY); \
+  s.rpc('refresh_topic_question_summary').then(r => console.log('MV refresh:', r))"
+
+# 2. Invalidar Redis claves topic_data:* afectadas
+#    (ajustar oposiciones y temas al alcance del batch)
+node -e "require('dotenv').config({path:'.env.local'}); \
+  (async () => { \
+    const {invalidateMany} = await import('./lib/cache/redis.ts'); \
+    const keys = []; \
+    for (const opo of ['<slug-oposicion>']) \
+      for (const num of [<N1>, <N2>]) \
+        for (const u of ['anon']) /* + user_ids relevantes */ \
+          keys.push('topic_data:' + opo + ':' + num + ':' + u); \
+    await invalidateMany(keys); \
+    console.log('Redis invalidado:', keys.length, 'keys'); \
+  })()"
+
+# 3. Tags Next.js + páginas ISR
+for tag in test-counts laws questions temario landing; do
   curl -sS -X POST "https://www.vence.es/api/admin/revalidate" \
     -H "Content-Type: application/json" \
     -H "x-cron-secret: $CRON_SECRET" \
     -d "{\"tag\": \"$tag\"}"; echo
 done
 
-# 2. Páginas ISR — ajustar a la oposición y temas afectados por el batch
 for path in \
   "/<slug-oposicion>" \
   "/<slug-oposicion>/test" \
@@ -591,11 +630,14 @@ done
 
 ```bash
 USER='<un_user_id_de_la_oposicion>'  # necesario para que la API devuelva userProgress
-curl -sS "https://www.vence.es/api/topics/<N>?oposicion=<slug>&userId=$USER" | \
-  node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{console.log(JSON.parse(d).userProgress?.totalQuestionsAvailable)})"
+curl -sS -H "Cache-Control: no-cache" \
+  "https://www.vence.es/api/topics/<N>?oposicion=<slug>&userId=$USER&_t=$(date +%s)" | \
+  node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log('totalQ:',j.userProgress?.totalQuestionsAvailable,'total:',j.totalQuestions)})"
 ```
 
-Si el conteo no coincide con BD raw, suele ser un filtro adicional del endpoint (lifecycle, sub-tablas) — comparar antes/después confirma que la invalidación funcionó.
+Si el conteo sigue viejo después de los 3 pasos: probablemente la MV no refrescó (timeout), o las claves Redis son distintas (ojo con userIds específicos). Re-ejecutar paso 1+2.
+
+**Caso real de referencia (2026-06-01):** 160 preguntas IA Cat+PV añadidas, BD raw=50q, pero `/api/topics` devolvía 10-28q porque solo se habían invalidado tags. Tras los 3 pasos: 50q correctos.
 
 ## 4. Métricas y calibración del prompt
 
@@ -1504,3 +1546,6 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 - **`revisar-preguntas-con-agente.md`** — Flujo v2.1, criterios §3.1 + §3.2 + §8.1, helper `transitionQuestion`, taxonomía de `reason_code`.
 - **`docs/roadmap/sistema-desactivacion-preguntas.md`** — Diseño del lifecycle, sync trigger, invariante por construcción.
 - **`crear-nueva-oposicion.md`** — Si vas a generar preguntas IA al crear una oposición nueva, leerlo antes para entender topic_scope.
+- **[`verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md)** — antes de generar, confirma qué artículos cubre el epígrafe del tema (no generes fuera de scope). Este manual se invoca desde ahí cuando un tema tiene scope pero 0 preguntas.
+- **[`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md)** — si la ley/artículo de origen aún no existe en BD, créalo/sincronízalo desde el BOE antes de generar.
+- **[`importar-examen-oficial-completo.md`](./importar-examen-oficial-completo.md)** — complemento: las preguntas oficiales de exámenes pasados son la fuente preferente; genera con IA solo lo que el examen no cubre.
