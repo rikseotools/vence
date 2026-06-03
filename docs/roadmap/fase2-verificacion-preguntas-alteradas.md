@@ -76,3 +76,12 @@ Los agentes que hacen **verify+rewrite combinado escribiendo a fichero se degene
 
 ### Estado real
 Legislativas hechas (full QA): **Murcia, Galicia, Madrid, Aragón ≈ 660 preguntas**. Falta: Carta Social (140) + conexas menores + **las 25 clínicas (~16.400, el grueso)**. A la tasa y fiabilidad actuales, completar 17.546 en autopilot continuo NO es viable de una sola vez (miles de llamadas a agente con ~mitad de fallos que requieren reintento). Recomendación: ejecutar por tandas controladas (p. ej. N leyes/sesión) con validación de unicidad, o construir un harness más robusto.
+
+## Carta Social Europea (03/06) — 142 (92 OK, 50 a revisión). LEGISLATIVAS COMPLETAS. Progreso 772/17.546
+Caso especial: el tratado tiene **artículos breves** (solo se enriquecieron 13 con cifras); muchas `article_ok=false` no son mal-ruteo sino **contenido insuficiente** (el artículo es el correcto pero su texto es un resumen) → tarea de enriquecimiento de contenido, no de re-vinculación. Otras sí son mal-ruteo real (grab-bag arts 27/10/31) → re-rutar. Quedan 50 marcadas.
+
+### Refuerzo del protocolo (confirma §20 del manual)
+El formato **combinado** (verify+rewrite con explicación, escrito a fichero) se degeneró otra vez ~50% en Carta. El split **verify-only** (salida mínima) fue 100% fiable. → **Estándar para el grueso clínico: pasada 1 verify-only (article_ok/answer_ok/options_ok) + pasada 2 rewrite-only solo sobre las article_ok=true.** Más pasadas pero sin degeneración.
+
+### Cohorte legislativa CERRADA
+Murcia 86 + Galicia 181 + Madrid 97 + Aragón 257 + Carta 92(+50 rev) ≈ **772 verificadas**. Falta el grueso: **25 clínicas (~16.400)**. Estas son más simples (un artículo-contenedor temático por ley, re-ruteo dentro de la misma ley) → probablemente menor % de mal-vinculado. Ejecutar por tandas verify-only→rewrite-only con validación de unicidad.
