@@ -3,6 +3,7 @@
 // Usa la API /api/questions/filtered para obtener preguntas de varias leyes
 'use client'
 
+import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -227,7 +228,7 @@ function MultiLeyTestContent() {
         if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
         // Llamar a la API de preguntas filtradas
-        const response = await fetch('/api/questions/filtered', {
+        const response = await fetchWithChallenge('/api/questions/filtered', {
           method: 'POST',
           headers,
           body: JSON.stringify({

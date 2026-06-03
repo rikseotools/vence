@@ -1567,6 +1567,98 @@ export const RULE_POOL_SAMPLER_STALE: AlertRule<{
 };
 
 /**
+ * Scraping / barrido del banco de preguntas.
+ *
+ * Detecta cuentas (incluido premium, que NO tiene límite diario) que se sirven
+ * cientos de preguntas en una ventana corta SIN responderlas — la firma del que
+ * usa la plataforma para descargar el banco, no para estudiar.
+ *
+ * Discriminador empírico (30d, ventana 2h): un alumno intenso real responde lo
+ * que se le sirve (ratio respondidas 25-100%); el scraper deja ~0%. El umbral
+ * cruza p999 de servidas (454) con un ratio bajo para no marcar estudiones:
+ *   - servidas >= 300 en 2h  (p99=227, p999=454)
+ *   - Y ratio respondidas < 15%  (legítimos >25%, scraper <5%)
+ * Se excluyen admins (user_roles). Caso origen: Ana Fernández 02/06/2026
+ * (617 tests/18d, picos de 2.500 servidas/2h al 0% respondidas, "scrape & refund").
+ *
+ * Detecta sobre `test_questions` directamente (una fila por pregunta servida con
+ * user_id+created_at+user_answer) → sin instrumentación nueva. 'BLANK' es el valor
+ * literal que escribe el modo examen para una pregunta saltada (no cuenta como respondida).
+ */
+export const RULE_SCRAPING_SWEEP: AlertRule<{
+  userId: string;
+  email: string | null;
+  planType: string | null;
+  served: number;
+  answered: number;
+}> = {
+  name: 'scraping_sweep',
+  severity: 'critical',
+  query: sql`
+    WITH sweep AS (
+      SELECT
+        tq.user_id,
+        COUNT(*)::int AS served,
+        COUNT(*) FILTER (
+          WHERE tq.user_answer IS NOT NULL
+            AND tq.user_answer <> ''
+            AND tq.user_answer <> 'BLANK'
+        )::int AS answered
+      FROM public.test_questions tq
+      WHERE tq.created_at > NOW() - INTERVAL '2 hours'
+        AND tq.user_id IS NOT NULL
+        AND tq.user_id NOT IN (
+          SELECT user_id FROM public.user_roles
+          WHERE role = 'admin' AND is_active = true
+        )
+      GROUP BY tq.user_id
+      HAVING COUNT(*) >= 300
+         AND COUNT(*) FILTER (
+               WHERE tq.user_answer IS NOT NULL
+                 AND tq.user_answer <> ''
+                 AND tq.user_answer <> 'BLANK'
+             )::float / NULLIF(COUNT(*), 0) < 0.15
+    )
+    SELECT
+      s.user_id AS "userId",
+      s.served,
+      s.answered,
+      p.email,
+      p.plan_type AS "planType"
+    FROM sweep s
+    LEFT JOIN public.user_profiles p ON p.id = s.user_id
+    ORDER BY s.served DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map((r) => {
+      const pct =
+        r.served > 0 ? ((r.answered / r.served) * 100).toFixed(1) : '0.0';
+      const who = r.email ?? (r.userId ?? '?').slice(0, 8);
+      return `  - ${who} [${r.planType ?? '?'}]: ${r.served} servidas / ${r.answered} respondidas (${pct}%)`;
+    });
+    return {
+      title: `Posible scraping del banco: ${rows.length} cuenta(s) con barrido masivo`,
+      body:
+        `${rows.length} cuenta(s) se han servido >=300 preguntas en 2h respondiendo <15% ` +
+        `— firma de descarga del banco, no de estudio:\n\n` +
+        `${lines.join('\n')}\n\n` +
+        `Premium NO tiene límite diario, así que esto es la única red. Revisar en\n` +
+        `/admin/fraudes y decidir (denegar reembolso de garantía, marcar admin_notes,\n` +
+        `degradar/limitar). Procedimiento: docs/procedures/reembolsos.md + caso Ana 02/06.`,
+      metadata: {
+        userIds: rows.map((r) => r.userId),
+        topServed: rows[0]?.served ?? 0,
+        count: rows.length,
+      },
+      fingerprint: `scraping_sweep:${rows.map((r) => r.userId).sort().join(',')}`,
+    };
+  },
+  // ≈ cada 2 horas: el engine corre cada 5 min, pero tras disparar se silencia 120 min.
+  cooldownMin: 120,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -1616,4 +1708,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_POOL_FRONTEND_SATURATION_HIGH as AlertRule,
   // Meta-observabilidad: vigila al vigilante (cron sampler vivo).
   RULE_POOL_SAMPLER_STALE as AlertRule,
+  // Anti-scraping: barrido masivo del banco de preguntas (02/06/2026, caso Ana
+  // Fernández "scrape & refund"). Premium no tiene límite diario → única red.
+  RULE_SCRAPING_SWEEP as AlertRule,
 ];

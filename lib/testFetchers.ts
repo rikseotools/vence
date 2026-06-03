@@ -1,4 +1,7 @@
 // lib/testFetchers.ts - FETCHERS MODULARES PARA TODOS LOS TIPOS DE TEST - CON SOPORTE MULTI-LEY
+// fetchWithChallenge: drop-in de fetch que resuelve el reto humano (anti-scraping)
+// si el servidor lo pide. Cuando la capa está apagada se comporta igual que fetch.
+import { fetchWithChallenge } from './api/fetchWithChallenge'
 import { getSupabaseClient } from './supabase'
 import { mapSlugToShortName as mapLawSlugToShortName } from './lawSlugSync'
 import { getValidExamPositions, applyExamPositionFilter } from './config/exam-positions'
@@ -542,7 +545,7 @@ export async function fetchRandomQuestions(tema: number, searchParams: SearchPar
 
     console.log('🎲 Cargando test aleatorio via API, tema:', tema, 'n:', poolSize, 'pos:', positionType)
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -630,7 +633,7 @@ export async function fetchQuickQuestions(tema: number, searchParams: SearchPara
     console.log('⚡ API Request (test rápido):', { tema, numQuestions, selectedLaws })
 
     // 🚀 LLAMAR A LA API CENTRALIZADA
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -673,7 +676,7 @@ export async function fetchOfficialQuestions(tema: number, searchParams: SearchP
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
     // 🚀 LLAMAR A LA API CENTRALIZADA CON FILTRO DE OFICIALES
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -755,7 +758,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -874,7 +877,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       }
     }
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -1028,7 +1031,7 @@ async function callFilteredAPI(params: {
   positionType: string; numQuestions: number;
   selectedLaws?: string[]; selectedArticlesByLaw?: Record<string, number[]>;
 }): Promise<TransformedQuestion[]> {
-  const response = await fetch('/api/questions/filtered', {
+  const response = await fetchWithChallenge('/api/questions/filtered', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1110,7 +1113,7 @@ async function fetchMantenerRachaViaAPI(n: number, positionType: string, topics:
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-  const response = await fetch('/api/questions/filtered', {
+  const response = await fetchWithChallenge('/api/questions/filtered', {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -1157,7 +1160,7 @@ export async function fetchExplorarContenido(tema: number, searchParams: SearchP
 
     console.log('🔍 Cargando contenido para explorar via API, n:', n, 'pos:', positionType)
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1242,7 +1245,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -1329,7 +1332,7 @@ export async function fetchContentScopeQuestions(config: FetchConfig = {}, conte
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -1436,7 +1439,7 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-    const response = await fetch('/api/questions/filtered', {
+    const response = await fetchWithChallenge('/api/questions/filtered', {
       method: 'POST',
       headers,
       body: JSON.stringify({

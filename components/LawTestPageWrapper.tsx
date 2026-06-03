@@ -1,6 +1,7 @@
 // components/LawTestPageWrapper.tsx - WRAPPER ESPECÍFICO PARA TESTS POR LEY
 // 🚀 v2: Usa API /api/questions/filtered (Drizzle ORM) en lugar de lawFetchers
 'use client'
+import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestLayout from './TestLayout'
@@ -329,7 +330,7 @@ export default function LawTestPageWrapper({
       console.log('📊 [LAW WRAPPER v2] Request a API:', apiRequest)
 
       // 🔥 Llamar a la API v2
-      const response = await fetch('/api/questions/filtered', {
+      const response = await fetchWithChallenge('/api/questions/filtered', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(apiRequest),

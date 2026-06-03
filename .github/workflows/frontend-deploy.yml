@@ -100,6 +100,8 @@ jobs:
             NEXT_PUBLIC_APP_NAME=Vence
             NEXT_PUBLIC_SUPPORT_EMAIL=info@vence.es
             NEXT_PUBLIC_USE_CHAT_V2=true
+            # Cloudflare Turnstile: site key es PÚBLICA (va en el bundle), literal.
+            NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=0x4AAAAAADd5nFRd3Kqg6rn7
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             DATABASE_URL_REPLICA=${{ secrets.DATABASE_URL_REPLICA }}
             SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -178,6 +180,12 @@ jobs:
               .containerDefinitions[0].image = $IMAGE
               | ensure_secret("USE_SELF_HOSTED_POOLER")
               | ensure_secret("DATABASE_URL_SELF_POOLER")
+              # Turnstile (anti-scraping): DESCOMENTAR sólo DESPUÉS de crear los
+              # params SSM /vence-frontend/CLOUDFLARE_TURNSTILE_SECRET_KEY (SecureString)
+              # y /vence-frontend/CAPTCHA_ENABLED. Si se arman antes, el task ECS
+              # falla al arrancar (no puede resolver un secret inexistente).
+              # | ensure_secret("CLOUDFLARE_TURNSTILE_SECRET_KEY")
+              # | ensure_secret("CAPTCHA_ENABLED")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,

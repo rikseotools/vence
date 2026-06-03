@@ -3,6 +3,7 @@
 // Recibe themeNames como prop desde server wrapper (fuente: BD).
 'use client'
 
+import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -92,7 +93,7 @@ function ExamAleatorioContent({ oposicionSlug, positionType, themeNames }: ExamA
       // Migrado a API centralizada (/api/questions/filtered) para cerrar vector de scraping
       const difficultyMode = testConfig.difficulty === 'mixed' ? 'random' : testConfig.difficulty
 
-      const response = await fetch('/api/questions/filtered', {
+      const response = await fetchWithChallenge('/api/questions/filtered', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

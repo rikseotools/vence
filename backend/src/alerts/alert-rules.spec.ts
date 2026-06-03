@@ -27,6 +27,7 @@ import {
   RULE_POOL_HUNG_CLIENTREAD_DETECTED,
   RULE_POOL_FRONTEND_SATURATION_HIGH,
   RULE_POOL_SAMPLER_STALE,
+  RULE_SCRAPING_SWEEP,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -178,6 +179,54 @@ describe('RULE_WORKFLOW_FAILURE_BURST', () => {
     const rows = [{ workflow: null, failures: 3 }];
     const notif = RULE_WORKFLOW_FAILURE_BURST.buildNotification(rows);
     expect(notif.body).toContain('(unknown)');
+  });
+});
+
+describe('RULE_SCRAPING_SWEEP', () => {
+  const sweeper = {
+    userId: 'a6bd29c1-0000-0000-0000-000000000000',
+    email: 'scraper@example.com',
+    planType: 'premium',
+    served: 912,
+    answered: 0,
+  };
+  const heavyStudent = {
+    userId: 'b0000000-0000-0000-0000-000000000000',
+    email: 'estudiante@example.com',
+    planType: 'premium',
+    served: 474,
+    answered: 474,
+  };
+
+  it('dispara con filas (la query ya filtra >=300 servidas y <15% respondidas)', () => {
+    expect(RULE_SCRAPING_SWEEP.shouldFire([sweeper])).toBe(true);
+  });
+
+  it('NO dispara sin filas (nadie cruza el umbral)', () => {
+    expect(RULE_SCRAPING_SWEEP.shouldFire([])).toBe(false);
+  });
+
+  it('es critical y se silencia ~2h (cooldown 120 min)', () => {
+    expect(RULE_SCRAPING_SWEEP.severity).toBe('critical');
+    expect(RULE_SCRAPING_SWEEP.cooldownMin).toBe(120);
+  });
+
+  it('la notificación lista email, plan, servidas/respondidas y % ', () => {
+    const notif = RULE_SCRAPING_SWEEP.buildNotification([sweeper]);
+    expect(notif.title).toContain('1 cuenta');
+    expect(notif.body).toContain('scraper@example.com');
+    expect(notif.body).toContain('912 servidas');
+    expect(notif.body).toContain('0.0%');
+    expect(notif.metadata?.userIds).toEqual([sweeper.userId]);
+    // fingerprint estable por conjunto de usuarios (dedup)
+    expect(notif.fingerprint).toContain(sweeper.userId);
+  });
+
+  it('un estudiante intenso (474/474 = 100%) NO aparecería: lo descarta la query, no shouldFire', () => {
+    // La query SQL excluye answered/served >= 0.15; aquí documentamos que
+    // shouldFire es agnóstico (solo mira longitud) y la lógica vive en la query.
+    const pct = (heavyStudent.answered / heavyStudent.served) * 100;
+    expect(pct).toBeGreaterThanOrEqual(15);
   });
 });
 

@@ -296,3 +296,51 @@ export async function incrementCounter(key: string): Promise<number> {
     return 0
   }
 }
+
+/**
+ * INCRBY atómico + EXPIRE — contador con ventana temporal (cuota diaria,
+ * rate window, etc.). Devuelve el nuevo total tras sumar `by`.
+ *
+ * Pensado para claves date-stamped (p.ej. `captcha:served:${userId}:${YYYYMMDD}`):
+ * el EXPIRE garantiza limpieza aunque la clave no se vuelva a tocar. Se re-aplica
+ * el TTL en cada llamada (idempotente; la clave rota sola por el date-stamp).
+ *
+ * Fallback graceful: si Redis está caído devuelve 0 — el caller decide si eso
+ * significa "no challenge" (fail-open) o lo contrario. Agnóstico a proveedor
+ * (INCRBY/EXPIRE existen en Redis/Memcached/DynamoDB TTL/etc.).
+ */
+export async function incrementCounterWithTtl(
+  key: string,
+  ttlSeconds: number,
+  by = 1,
+): Promise<number> {
+  const redis = getRedis()
+  if (!redis) return 0
+  try {
+    const result = await raceTimeout(redis.incrby(key, by), REDIS_TIMEOUT_MS)
+    if (result === TIMEOUT_SYMBOL) return 0
+    // EXPIRE fire-and-forget: no penaliza la latencia del caller.
+    redis.expire(key, ttlSeconds).catch(() => {})
+    return typeof result === 'number' ? result : Number(result) || 0
+  } catch (err) {
+    console.warn(`[incrementCounterWithTtl] INCRBY ${key} failed:`, err)
+    return 0
+  }
+}
+
+/**
+ * GET numérico best-effort de un contador (sin incrementar). Devuelve 0 si la
+ * clave no existe, Redis está caído o hay timeout. Útil para leer una cuota
+ * acumulada sin tocarla.
+ */
+export async function getCounter(key: string): Promise<number> {
+  const redis = getRedis()
+  if (!redis) return 0
+  try {
+    const result = await raceTimeout(redis.get<number | string>(key), REDIS_TIMEOUT_MS)
+    if (result === TIMEOUT_SYMBOL || result === null || result === undefined) return 0
+    return typeof result === 'number' ? result : Number(result) || 0
+  } catch {
+    return 0
+  }
+}

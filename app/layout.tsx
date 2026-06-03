@@ -11,6 +11,7 @@ import { getSlugMappingForApi } from '@/lib/api/laws'
 import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import FraudTracker from '../components/FraudTracker'
+import ChallengeProvider from '../components/security/ChallengeProvider'
 import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
@@ -61,6 +62,9 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                     <AIChatWidget />
                     <GoogleOneTapWrapper />
                     <FraudTracker />
+                    {/* Modal de verificación humana (anti-scraping). Invisible
+                        hasta que un endpoint protegido pide resolver un reto. */}
+                    <ChallengeProvider />
                   </GlobalClickTracker>
                   </TTSChainProvider>
                 </AIChatProvider>

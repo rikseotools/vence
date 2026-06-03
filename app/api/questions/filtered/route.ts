@@ -42,6 +42,17 @@ import { checkRateLimit, getClientIp, RATE_LIMIT_QUESTIONS } from '@/lib/api/rat
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { withDbTimeout, isDbTimeoutError, withConnectRetry } from '@/lib/db/timeout'
 import { getCached, setCached } from '@/lib/cache/redis'
+// Gate anti-scraping (verificación humana). Capa agnóstica reutilizable; aquí
+// es la primera integración. Cero overhead cuando CAPTCHA_ENABLED no está on.
+import {
+  isCaptchaEnabled,
+  verifyHumanChallenge,
+  challengeRequiredResponse,
+} from '@/lib/security/captcha'
+import {
+  shouldChallengeForQuestions,
+  recordQuestionsServed,
+} from '@/lib/security/challengePolicy/questionsServed'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
 // La query analítica de getFilteredQuestions puede ser pesada; 20s da margen.
@@ -203,6 +214,22 @@ async function _POST(request: NextRequest) {
       )
     }
 
+    // Gate anti-scraping: si el usuario YA superó su cuota diaria de preguntas
+    // servidas, exigir verificación humana antes de seguir sirviéndole banco.
+    // Cero coste cuando la capa está apagada (isCaptchaEnabled corta antes de
+    // tocar Redis). Fail-open: si Redis/CF fallan, NO bloquea el estudio.
+    if (authUserId && isCaptchaEnabled() && (await shouldChallengeForQuestions(authUserId))) {
+      const outcome = await verifyHumanChallenge(request, {
+        action: 'load_questions',
+        endpoint: '/api/questions/filtered',
+        userId: authUserId,
+        remoteIp: ip,
+      })
+      if (!outcome.ok) {
+        return challengeRequiredResponse('load_questions')
+      }
+    }
+
     // Doble cache key para stale-if-error: per-user (preferida) + global (fallback).
     // En condiciones normales no se lee ninguna; sólo poblamos al éxito.
     // En timeout: per-user → global → 503.
@@ -242,6 +269,12 @@ async function _POST(request: NextRequest) {
         const cached = { data: response, ts: Date.now() }
         setCached(cacheKey, cached, STALE_TTL_S)
         setCached(cacheKeyGlobal, cached, STALE_TTL_S)
+      }
+
+      // Contabilizar preguntas servidas (alimenta el gate anti-scraping).
+      // Fire-and-forget; solo si la capa está activa, para no tocar Redis en vano.
+      if (isCaptchaEnabled() && authUserId && result.questions?.length) {
+        recordQuestionsServed(authUserId, result.questions.length).catch(() => {})
       }
 
       return NextResponse.json(response)

@@ -1,6 +1,7 @@
 // app/test/desde-chat/page.js
 // Test iniciado desde el chat de IA - soporta tests de leyes y tests de preguntas falladas
 'use client'
+import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
@@ -37,7 +38,7 @@ function TestDesdeChatContent() {
 
           // Cargar las preguntas via API centralizada
           console.log('🎯 [desde-chat] Fetching questions via API...')
-          const response = await fetch('/api/questions/filtered', {
+          const response = await fetchWithChallenge('/api/questions/filtered', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

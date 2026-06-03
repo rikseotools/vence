@@ -1,6 +1,7 @@
 // components/test/TestExamenPage.tsx - Componente compartido para test en modo examen
 // Reemplaza las 17 copias de app/[oposicion]/test/tema/[numero]/test-examen/page.js
 'use client'
+import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ExamLayout from '@/components/ExamLayout'
@@ -98,7 +99,7 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
         console.error('Error parsing URL params:', parseError)
       }
 
-      const response = await fetch('/api/questions/filtered', {
+      const response = await fetchWithChallenge('/api/questions/filtered', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
