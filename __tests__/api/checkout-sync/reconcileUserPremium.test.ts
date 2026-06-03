@@ -5,7 +5,7 @@
 // degenerados (no customer, sin sub, ya premium → no-op).
 
 const mockStripeSubsList = jest.fn()
-const mockSupabaseFrom = jest.fn()
+const mockGetAdminDb = jest.fn()
 const mockEmit = jest.fn()
 
 jest.mock('stripe', () => {
@@ -15,10 +15,11 @@ jest.mock('stripe', () => {
   }))
 })
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({
-    from: (table: string) => mockSupabaseFrom(table),
-  })),
+// El módulo fue migrado de Supabase (createClient/.from) a Drizzle (getAdminDb).
+// Mockeamos en la frontera @/db/client siguiendo el patrón de los tests Drizzle
+// del repo (ver __tests__/lib/laws/lawSlugParity.test.ts).
+jest.mock('@/db/client', () => ({
+  getAdminDb: () => mockGetAdminDb(),
 }))
 
 jest.mock('@/lib/observability/emit', () => ({
@@ -37,23 +38,39 @@ import { reconcileUserPremium } from '@/lib/api/checkout-sync/queries'
 
 const USER_ID = '00000000-0000-0000-0000-000000000001'
 
-function makeProfileChain(profile: Record<string, unknown> | null) {
-  return {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: profile, error: null }),
-  }
-}
+// Mock del cliente Drizzle (getAdminDb). reconcileUserPremium hace:
+//   - SELECT: db.select(cols).from(userProfiles).where(eq).limit(1) -> [profile]
+//             (alias snake_case: id, stripe_customer_id, plan_type)
+//   - UPSERT: db.insert(userSubscriptions).values(v).onConflictDoUpdate(...)
+//   - UPDATE: db.update(userProfiles).set({planType,requiresPayment}).where(eq)
+// upsertErr / updateErr simulan throws de Drizzle (no objetos {error} de Supabase).
+function makeDb({
+  profile,
+  upsertErr = null,
+  updateErr = null,
+}: {
+  profile: Record<string, unknown> | null
+  upsertErr?: Error | null
+  updateErr?: Error | null
+}) {
+  const limit = jest.fn().mockResolvedValue(profile === null ? [] : [profile])
+  const where = jest.fn(() => ({ limit }))
+  const from = jest.fn(() => ({ where }))
+  const select = jest.fn(() => ({ from }))
 
-function makeUpsertChain(error: Error | null = null) {
-  return { upsert: jest.fn().mockResolvedValue({ error }) }
-}
+  const onConflictDoUpdate = upsertErr
+    ? jest.fn().mockRejectedValue(upsertErr)
+    : jest.fn().mockResolvedValue(undefined)
+  const values = jest.fn(() => ({ onConflictDoUpdate }))
+  const insert = jest.fn(() => ({ values }))
 
-function makeUpdateChain(error: Error | null = null) {
-  return {
-    update: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockResolvedValue({ error }),
-  }
+  const updWhere = updateErr
+    ? jest.fn().mockRejectedValue(updateErr)
+    : jest.fn().mockResolvedValue(undefined)
+  const set = jest.fn(() => ({ where: updWhere }))
+  const update = jest.fn(() => ({ set }))
+
+  return { select, insert, update, _set: set, _values: values }
 }
 
 function makeStripeSub() {
@@ -72,14 +89,12 @@ function makeStripeSub() {
 beforeEach(() => {
   jest.clearAllMocks()
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake'
-  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://fake.supabase.co'
-  process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake'
 })
 
 describe('reconcileUserPremium — short-circuits (zero-cost no-ops)', () => {
   test('user sin stripe_customer_id → no Stripe call, no drift', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID, stripe_customer_id: null, plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      profile: { id: USER_ID, stripe_customer_id: null, plan_type: 'free' },
     }))
 
     const res = await reconcileUserPremium(USER_ID)
@@ -89,8 +104,8 @@ describe('reconcileUserPremium — short-circuits (zero-cost no-ops)', () => {
   })
 
   test('user ya premium → no Stripe call (zero cost cuando todo OK)', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'premium',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      profile: { id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'premium' },
     }))
 
     const res = await reconcileUserPremium(USER_ID)
@@ -100,8 +115,8 @@ describe('reconcileUserPremium — short-circuits (zero-cost no-ops)', () => {
   })
 
   test('user free con customer pero SIN sub active en Stripe → no drift (caso canceled)', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      profile: { id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free' },
     }))
     mockStripeSubsList
       .mockResolvedValueOnce({ data: [] }) // active
@@ -115,14 +130,10 @@ describe('reconcileUserPremium — short-circuits (zero-cost no-ops)', () => {
 
 describe('reconcileUserPremium — drift real (caso Rocío/Mercedes/Andrea)', () => {
   test('user free + customer + sub active en Stripe → drift=true, fixed=true', async () => {
-    const updateMock = jest.fn().mockReturnThis()
-    const eqMock = jest.fn().mockResolvedValue({ error: null })
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free',
-      }))
-      .mockReturnValueOnce(makeUpsertChain(null))
-      .mockReturnValueOnce({ update: updateMock, eq: eqMock })
+    const db = makeDb({
+      profile: { id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free' },
+    })
+    mockGetAdminDb.mockReturnValue(db)
 
     mockStripeSubsList
       .mockResolvedValueOnce({ data: [makeStripeSub()] })
@@ -133,8 +144,8 @@ describe('reconcileUserPremium — drift real (caso Rocío/Mercedes/Andrea)', ()
     expect(res.drift).toBe(true)
     expect(res.fixed).toBe(true)
 
-    // user_profiles UPDATE a premium
-    expect(updateMock).toHaveBeenCalledWith({ plan_type: 'premium', requires_payment: false })
+    // user_profiles UPDATE a premium (Drizzle camelCase)
+    expect(db._set).toHaveBeenCalledWith({ planType: 'premium', requiresPayment: false })
 
     // Telemetría: warn porque el webhook NO sincronizó cuando debió
     const evt = mockEmit.mock.calls.find(c => (c[0] as { eventType?: string }).eventType === 'profile_reconcile_fixed')
@@ -143,14 +154,10 @@ describe('reconcileUserPremium — drift real (caso Rocío/Mercedes/Andrea)', ()
   })
 
   test('trialing también cuenta como acceso premium', async () => {
-    const updateMock = jest.fn().mockReturnThis()
-    const eqMock = jest.fn().mockResolvedValue({ error: null })
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free',
-      }))
-      .mockReturnValueOnce(makeUpsertChain(null))
-      .mockReturnValueOnce({ update: updateMock, eq: eqMock })
+    const db = makeDb({
+      profile: { id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free' },
+    })
+    mockGetAdminDb.mockReturnValue(db)
 
     mockStripeSubsList
       .mockResolvedValueOnce({ data: [] }) // active vacío
@@ -161,11 +168,10 @@ describe('reconcileUserPremium — drift real (caso Rocío/Mercedes/Andrea)', ()
   })
 
   test('upsert sub falla → drift=true, fixed=false (no engaña al caller)', async () => {
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free',
-      }))
-      .mockReturnValueOnce(makeUpsertChain(new Error('FK violation')))
+    mockGetAdminDb.mockReturnValue(makeDb({
+      profile: { id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free' },
+      upsertErr: new Error('FK violation'),
+    }))
 
     mockStripeSubsList
       .mockResolvedValueOnce({ data: [makeStripeSub()] })
@@ -186,8 +192,8 @@ describe('reconcileUserPremium — drift real (caso Rocío/Mercedes/Andrea)', ()
 
 describe('reconcileUserPremium — robustez', () => {
   test('Stripe API error → drift=false, error logueado, no propaga', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      profile: { id: USER_ID, stripe_customer_id: 'cus_x', plan_type: 'free' },
     }))
     mockStripeSubsList.mockRejectedValueOnce(new Error('Stripe rate limited'))
 

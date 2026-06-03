@@ -8,7 +8,7 @@
 // ─── Mocks ───────────────────────────────────────────────────────────────
 
 const mockStripeRetrieve = jest.fn()
-const mockSupabaseFrom = jest.fn()
+const mockGetAdminDb = jest.fn()
 const mockEmit = jest.fn()
 
 jest.mock('stripe', () => {
@@ -19,10 +19,11 @@ jest.mock('stripe', () => {
   }))
 })
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({
-    from: (table: string) => mockSupabaseFrom(table),
-  })),
+// El módulo fue migrado de Supabase (createClient/.from) a Drizzle (getAdminDb).
+// Mockeamos en la frontera @/db/client siguiendo el patrón de los tests Drizzle
+// del repo (ver __tests__/lib/laws/lawSlugParity.test.ts).
+jest.mock('@/db/client', () => ({
+  getAdminDb: () => mockGetAdminDb(),
 }))
 
 jest.mock('@/lib/observability/emit', () => ({
@@ -37,34 +38,44 @@ jest.mock('@/lib/api/profile', () => ({
   invalidateProfileCache: jest.fn(),
 }))
 
-// Helpers para construir las cadenas de Supabase ergonómicamente
-function makeProfileChain(profile: Record<string, unknown> | null, error: Error | null = null) {
-  return {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: profile, error }),
-  }
-}
+// Mock del cliente Drizzle (getAdminDb). syncCheckoutSession ejecuta, en orden:
+//   1. SELECT profile por id        -> [profile]
+//   2. (solo primer pago) SELECT owner por stripe_customer_id -> [owner] | []
+//   3. SELECT subscription existente -> [existing] | []
+//   y luego INSERT...onConflictDoUpdate + UPDATE userProfiles.
+// `selects` es la cola de resultados (arrays) que devuelve cada `.limit()` en
+// orden de llamada. upsertErr/updateErr simulan throws de Drizzle.
+function makeDb({
+  selects = [],
+  upsertErr = null,
+  updateErr = null,
+}: {
+  selects?: Array<Array<Record<string, unknown>>>
+  upsertErr?: Error | null
+  updateErr?: Error | null
+}) {
+  const queue = [...selects]
+  const select = jest.fn(() => ({
+    from: jest.fn(() => ({
+      where: jest.fn(() => ({
+        limit: jest.fn().mockResolvedValue(queue.length ? queue.shift() : []),
+      })),
+    })),
+  }))
 
-function makeExistingSubChain(existing: Record<string, unknown> | null) {
-  return {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: existing, error: null }),
-  }
-}
+  const onConflictDoUpdate = upsertErr
+    ? jest.fn().mockRejectedValue(upsertErr)
+    : jest.fn().mockResolvedValue(undefined)
+  const values = jest.fn(() => ({ onConflictDoUpdate }))
+  const insert = jest.fn(() => ({ values }))
 
-function makeUpsertChain(error: Error | null = null) {
-  return {
-    upsert: jest.fn().mockResolvedValue({ error }),
-  }
-}
+  const updWhere = updateErr
+    ? jest.fn().mockRejectedValue(updateErr)
+    : jest.fn().mockResolvedValue(undefined)
+  const set = jest.fn(() => ({ where: updWhere }))
+  const update = jest.fn(() => ({ set }))
 
-function makeUpdateChain(error: Error | null = null) {
-  return {
-    update: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockResolvedValue({ error }),
-  }
+  return { select, insert, update, _set: set, _values: values }
 }
 
 // SUT después de los mocks
@@ -76,8 +87,6 @@ const SESSION_ID = 'cs_test_abc123XYZ'
 beforeEach(() => {
   jest.clearAllMocks()
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake'
-  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://fake.supabase.co'
-  process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake'
 })
 
 function makeStripeSession(overrides: Record<string, unknown> = {}) {
@@ -109,16 +118,12 @@ function makeStripeSession(overrides: Record<string, unknown> = {}) {
 
 describe('syncCheckoutSession — happy path', () => {
   test('status=activated cuando paid + nuevo (sub no existe en BD)', async () => {
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID,
-        email: 'user@test.com',
-        stripe_customer_id: 'cus_user1',
-        plan_type: 'free',
-      }))
-      .mockReturnValueOnce(makeExistingSubChain(null)) // no existe en BD
-      .mockReturnValueOnce(makeUpsertChain(null))
-      .mockReturnValueOnce(makeUpdateChain(null))
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [
+        [{ id: USER_ID, email: 'user@test.com', stripe_customer_id: 'cus_user1', plan_type: 'free' }],
+        [], // existing sub: no existe en BD
+      ],
+    }))
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession())
 
@@ -141,14 +146,13 @@ describe('syncCheckoutSession — happy path', () => {
 
 describe('syncCheckoutSession — idempotencia con webhook', () => {
   test('si la sub ya existe en BD (webhook llegó primero) → already_active sin upsert', async () => {
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID,
-        email: 'user@test.com',
-        stripe_customer_id: 'cus_user1',
-        plan_type: 'premium',
-      }))
-      .mockReturnValueOnce(makeExistingSubChain({ id: 'row1', status: 'active' }))
+    const db = makeDb({
+      selects: [
+        [{ id: USER_ID, email: 'user@test.com', stripe_customer_id: 'cus_user1', plan_type: 'premium' }],
+        [{ id: 'row1', status: 'active' }], // existing sub
+      ],
+    })
+    mockGetAdminDb.mockReturnValue(db)
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession())
 
@@ -158,6 +162,7 @@ describe('syncCheckoutSession — idempotencia con webhook', () => {
     if (!res.success) return
     expect(res.status).toBe('already_active')
     expect(res.activatedBySync).toBe(false)
+    expect(db._values).not.toHaveBeenCalled() // no upsert
 
     const evt = mockEmit.mock.calls.find(c => (c[0] as { eventType?: string }).eventType === 'checkout_sync_already_synced_by_webhook')
     expect(evt).toBeDefined()
@@ -167,17 +172,13 @@ describe('syncCheckoutSession — idempotencia con webhook', () => {
     // Caso: webhook insertó user_subscriptions pero falló UPDATE profile
     // (race condition rara). El sync detecta y corrige profile sin volver
     // a tocar la sub (idempotencia preservada).
-    const updateMock = jest.fn().mockReturnThis()
-    const eqMock = jest.fn().mockResolvedValue({ error: null })
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID,
-        email: 'user@test.com',
-        stripe_customer_id: 'cus_user1',
-        plan_type: 'free', // ← drift detectado
-      }))
-      .mockReturnValueOnce(makeExistingSubChain({ id: 'row1', status: 'active' }))
-      .mockReturnValueOnce({ update: updateMock, eq: eqMock })
+    const db = makeDb({
+      selects: [
+        [{ id: USER_ID, email: 'user@test.com', stripe_customer_id: 'cus_user1', plan_type: 'free' }], // ← drift
+        [{ id: 'row1', status: 'active' }], // existing sub
+      ],
+    })
+    mockGetAdminDb.mockReturnValue(db)
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession())
 
@@ -186,17 +187,15 @@ describe('syncCheckoutSession — idempotencia con webhook', () => {
     expect(res.success).toBe(true)
     if (!res.success) return
     expect(res.status).toBe('already_active')
-    expect(updateMock).toHaveBeenCalledWith({ plan_type: 'premium', requires_payment: false })
+    expect(db._values).not.toHaveBeenCalled() // no toca la sub
+    expect(db._set).toHaveBeenCalledWith({ planType: 'premium', requiresPayment: false })
   })
 })
 
 describe('syncCheckoutSession — anti-manipulación session_id', () => {
   test('session.customer NO coincide con profile.stripe_customer_id → unauthorized', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID,
-      email: 'user@test.com',
-      stripe_customer_id: 'cus_user1',
-      plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [[{ id: USER_ID, email: 'user@test.com', stripe_customer_id: 'cus_user1', plan_type: 'free' }]],
     }))
 
     // Session pertenece a OTRO customer
@@ -214,10 +213,8 @@ describe('syncCheckoutSession — anti-manipulación session_id', () => {
   })
 
   test('session.customer es null → unauthorized (no asumimos identidad)', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID,
-      stripe_customer_id: 'cus_user1',
-      plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [[{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }]],
     }))
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession({ customer: null }))
 
@@ -231,28 +228,15 @@ describe('syncCheckoutSession — anti-manipulación session_id', () => {
 
 describe('syncCheckoutSession — primer pago (profile.stripe_customer_id era null)', () => {
   test('primer pago + customer libre → auto-vincula + activa premium', async () => {
-    // Profile sin stripe_customer_id (primer pago)
-    const updateMock = jest.fn().mockReturnThis()
-    const eqMock = jest.fn().mockResolvedValue({ error: null })
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID,
-        email: 'newpayer@test.com',
-        stripe_customer_id: null,
-        plan_type: 'free',
-      }))
-      // Comprobación "owner of customer" → libre (no asociado a nadie)
-      .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-      })
-      // existing sub
-      .mockReturnValueOnce(makeExistingSubChain(null))
-      // upsert sub
-      .mockReturnValueOnce(makeUpsertChain(null))
-      // UPDATE profile
-      .mockReturnValueOnce({ update: updateMock, eq: eqMock })
+    // Profile sin stripe_customer_id (primer pago); owner del customer libre.
+    const db = makeDb({
+      selects: [
+        [{ id: USER_ID, email: 'newpayer@test.com', stripe_customer_id: null, plan_type: 'free' }],
+        [], // owner of customer → libre
+        [], // existing sub → no existe
+      ],
+    })
+    mockGetAdminDb.mockReturnValue(db)
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession({ customer: 'cus_brand_new' }))
 
@@ -262,12 +246,12 @@ describe('syncCheckoutSession — primer pago (profile.stripe_customer_id era nu
     if (!res.success) return
     expect(res.status).toBe('activated')
 
-    // UPDATE profile incluye stripe_customer_id auto-vinculado
-    expect(updateMock).toHaveBeenCalledWith(
+    // UPDATE profile incluye stripe_customer_id auto-vinculado (Drizzle camelCase)
+    expect(db._set).toHaveBeenCalledWith(
       expect.objectContaining({
-        plan_type: 'premium',
-        requires_payment: false,
-        stripe_customer_id: 'cus_brand_new',
+        planType: 'premium',
+        requiresPayment: false,
+        stripeCustomerId: 'cus_brand_new',
       }),
     )
 
@@ -278,21 +262,12 @@ describe('syncCheckoutSession — primer pago (profile.stripe_customer_id era nu
   })
 
   test('primer pago + customer YA tomado por otro user → unauthorized (anti-takeover)', async () => {
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID,
-        stripe_customer_id: null,
-        plan_type: 'free',
-      }))
-      // Comprobación "owner of customer" → ya pertenece a OTRO user
-      .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: { id: 'other-user-id-XXX' },
-          error: null,
-        }),
-      })
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [
+        [{ id: USER_ID, stripe_customer_id: null, plan_type: 'free' }],
+        [{ id: 'other-user-id-XXX' }], // owner of customer → otro user
+      ],
+    }))
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession({ customer: 'cus_stolen' }))
 
@@ -310,36 +285,30 @@ describe('syncCheckoutSession — primer pago (profile.stripe_customer_id era nu
   })
 
   test('renewal: profile.stripe_customer_id coincide → NO auto-vincula (no añade stripe_customer_id al UPDATE)', async () => {
-    const updateMock = jest.fn().mockReturnThis()
-    const eqMock = jest.fn().mockResolvedValue({ error: null })
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID,
-        stripe_customer_id: 'cus_existing',
-        plan_type: 'free', // free porque webhook anterior se perdió y vuelven a pagar
-      }))
-      .mockReturnValueOnce(makeExistingSubChain(null))
-      .mockReturnValueOnce(makeUpsertChain(null))
-      .mockReturnValueOnce({ update: updateMock, eq: eqMock })
+    const db = makeDb({
+      selects: [
+        [{ id: USER_ID, stripe_customer_id: 'cus_existing', plan_type: 'free' }], // free porque webhook anterior se perdió
+        [], // existing sub
+      ],
+    })
+    mockGetAdminDb.mockReturnValue(db)
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession({ customer: 'cus_existing' }))
 
     const res = await syncCheckoutSession(USER_ID, { sessionId: SESSION_ID })
 
     expect(res.success).toBe(true)
-    // El UPDATE no incluye stripe_customer_id (ya estaba bien)
-    const call = updateMock.mock.calls[0]
-    expect(call[0]).toEqual({ plan_type: 'premium', requires_payment: false })
-    expect(call[0]).not.toHaveProperty('stripe_customer_id')
+    // El UPDATE no incluye stripeCustomerId (ya estaba bien)
+    const call = db._set.mock.calls[0]
+    expect(call[0]).toEqual({ planType: 'premium', requiresPayment: false })
+    expect(call[0]).not.toHaveProperty('stripeCustomerId')
   })
 })
 
 describe('syncCheckoutSession — 3DS / async payment', () => {
   test('payment_status=unpaid → pending_payment (no activa, no error)', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID,
-      stripe_customer_id: 'cus_user1',
-      plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [[{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }]],
     }))
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession({ payment_status: 'unpaid' }))
 
@@ -358,10 +327,8 @@ describe('syncCheckoutSession — 3DS / async payment', () => {
 
 describe('syncCheckoutSession — casos de error', () => {
   test('checkout session no encontrada → session_not_found', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID,
-      stripe_customer_id: 'cus_user1',
-      plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [[{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }]],
     }))
     mockStripeRetrieve.mockRejectedValueOnce(new Error('No such checkout.session: cs_test_xxx'))
 
@@ -373,10 +340,8 @@ describe('syncCheckoutSession — casos de error', () => {
   })
 
   test('error genérico Stripe → stripe_error', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID,
-      stripe_customer_id: 'cus_user1',
-      plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [[{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }]],
     }))
     mockStripeRetrieve.mockRejectedValueOnce(new Error('Service Unavailable'))
 
@@ -388,10 +353,8 @@ describe('syncCheckoutSession — casos de error', () => {
   })
 
   test('checkout en mode=payment sin subscription → no_subscription', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain({
-      id: USER_ID,
-      stripe_customer_id: 'cus_user1',
-      plan_type: 'free',
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [[{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }]],
     }))
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession({
       mode: 'payment',
@@ -406,7 +369,7 @@ describe('syncCheckoutSession — casos de error', () => {
   })
 
   test('perfil no existe en BD → db_error', async () => {
-    mockSupabaseFrom.mockReturnValueOnce(makeProfileChain(null, new Error('not found')))
+    mockGetAdminDb.mockReturnValue(makeDb({ selects: [[]] })) // SELECT profile → vacío
 
     const res = await syncCheckoutSession(USER_ID, { sessionId: SESSION_ID })
 
@@ -416,12 +379,13 @@ describe('syncCheckoutSession — casos de error', () => {
   })
 
   test('upsert user_subscriptions falla → db_error', async () => {
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free',
-      }))
-      .mockReturnValueOnce(makeExistingSubChain(null))
-      .mockReturnValueOnce(makeUpsertChain(new Error('FK violation')))
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [
+        [{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }],
+        [], // existing sub → no existe
+      ],
+      upsertErr: new Error('FK violation'),
+    }))
 
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession())
 
@@ -436,13 +400,12 @@ describe('syncCheckoutSession — casos de error', () => {
 describe('syncCheckoutSession — telemetría', () => {
   test('cada path emite un evento distinto en observable_events', async () => {
     // Happy path
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeProfileChain({
-        id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free',
-      }))
-      .mockReturnValueOnce(makeExistingSubChain(null))
-      .mockReturnValueOnce(makeUpsertChain(null))
-      .mockReturnValueOnce(makeUpdateChain(null))
+    mockGetAdminDb.mockReturnValue(makeDb({
+      selects: [
+        [{ id: USER_ID, stripe_customer_id: 'cus_user1', plan_type: 'free' }],
+        [], // existing sub
+      ],
+    }))
     mockStripeRetrieve.mockResolvedValueOnce(makeStripeSession())
 
     await syncCheckoutSession(USER_ID, { sessionId: SESSION_ID })
