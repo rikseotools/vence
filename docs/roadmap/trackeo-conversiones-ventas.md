@@ -242,16 +242,31 @@ Ficheros: ver commit. Flags introducidos:
 3. **OCI por gclid funciona sin Enhanced Conversions** (validate_only limpio salvo gclid de prueba).
    Es el 80% del valor (ventas de clic de anuncio).
 
-## 12. Go-live (acciones pendientes, account/ops — NO código)
+## 12. Go-live — ✅ HECHO (03/06)
 
-1. **Push** `main` (despliega; arranca en validate-only, no toca Ads).
-2. **`ADS_CONVERSION_UPLOAD_ENABLED=true`** en el env de prod → envío real (solo gclid).
-3. (Opcional, email) En Ads: configurar **"Conversiones mejoradas" método API** → luego
-   **`ADS_ENHANCED_CONVERSIONS_ENABLED=true`**.
-4. (Cuando haya histórico ~1-2 sem) promover `Vence Compra (Offline Import)` a **primaria** y
-   cambiar la puja de "Vista de una página"/"Registro" a **compra/tROAS**.
-5. El cron `conversion-outbox.yml` (cada 15 min) ya va en el commit; usa `secrets.CRON_SECRET`.
+- ✅ Desplegado en prod (ECS task def, deploy por workflow_dispatch).
+- ✅ Credenciales `GOOGLE_ADS_*` + flags en SSM `/vence-frontend/` (cableado `ensure_secret`).
+- ✅ `ADS_CONVERSION_UPLOAD_ENABLED=true` → envío real (verificado: `dryRun:false`).
+- ✅ `ADS_ENHANCED_CONVERSIONS_ENABLED=true` → email hasheado (los customer data terms ya
+  aceptados bastan; NO requiere config UI extra — verificado validate_only "solo email" ✅).
+  **Recuperó 2 ventas reales de hoy sin gclid (79€) por email → `delivered`.**
+- ✅ Acción `Vence Compra (Offline Import)` (UPLOAD_CLICKS) creada y activa = `7634202403`.
+- Pendiente account/ops (no código): cuando haya histórico ~1-2 sem, promover la acción a
+  **primaria** y cambiar la puja a **compra/tROAS**.
 
-Verificado 03/06: 6 unit + sims BD (touches/binding, outbox idempotencia/CHECK) + Google Ads
-validate_only (estructura OK) + smoke live (touch guarda fila, cron auth/dryRun, cadena completa
-worker→adapter→Ads→retry/last_error).
+Verificado 03/06: 6 unit + sims BD + Google Ads validate_only + smoke live + **cadena completa en
+prod con datos reales** (2 ventas `delivered` vía Enhanced Conversions).
+
+## 13. Robustez post-go-live
+
+- ✅ **#1 Alerta** `RULE_CONVERSION_DELIVERY_FAILED` (backend/src/alerts/alert-rules.ts):
+  [Vence ERROR] si hay conversiones en DLQ o atascadas >6h. Red de seguridad ante token Ads
+  caducado / API caída. Commit `86a1610a`.
+- ✅ **#3 Cobertura webhook**: `enqueueAdsPurchaseConversion` llamado desde AMBOS caminos de
+  checkout (metadata + búsqueda por email). Ya no se pierde ninguna venta. Commit `86a1610a`.
+- ⏳ **#2 Reembolsos → retracción (PENDIENTE)**: hoy `supports = solo purchase`; un reembolso NO
+  se descuenta en Google Ads → ROAS inflado cuando hay devoluciones. Falta enviar un *conversion
+  adjustment* (RETRACTION) por `order_id` desde el flujo de reembolso de Stripe. Requiere:
+  `GoogleAdsDestination.supports` acepte `refund` + un `uploadConversionAdjustment` en
+  `conversions.ts` (servicio `conversionAdjustmentUploads`) + enganche en el webhook
+  `charge.refunded`/`handleSubscriptionDeleted`. Decisión Manuel 03/06: dejarlo para después.
