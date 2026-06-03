@@ -95,3 +95,24 @@ Validación en "Trabajo en equipo sanitario" (73 preg): **36 article_ok=true, 37
 - **C) Aceptar contenedores como "bolsa temática" gruesa** y en clínicas solo arreglar errores de clave reales (answer_ok=false), dejando article_ok como informativo.
 
 DECISIÓN PENDIENTE DE MANUEL antes de procesar las 16.400. Progreso Fase 2: **845/17.546** (legislativas 772 + Trabajo en equipo 73).
+
+## ✅ MÉTODO ROBUSTO CLÍNICO validado (03/06) — re-ruteo cross-contenedor + índice global
+Decisión Manuel: hacerlo bien (cada pregunta cuelga del artículo que de verdad la responde), aunque sea lento. NO aceptar "bolsa gruesa".
+
+**Índice global** (`/tmp/aulaplus_audit/global_index.json`): 24 contenedores clínicos × sus artículos = **89 artículos** = menú de destinos válidos cross-contenedor.
+
+**Pipeline reutilizable por contenedor** (scripts en `/tmp/aulaplus_audit/`):
+1. `clin_export.cjs <lawId> <prefix>` → chunks de 16 por artículo.
+2. Agentes **verify-only** (article_ok/answer_ok/options_ok, sin explicación = no degenera) → `<prefix>out_i.json`.
+3. `clin_apply_verify.cjs <prefix> <n>` → registra verificación, marca errores de clave como `problem`, exporta `<prefix>_wrong.json` (article_ok=false).
+4. `clin_rr_prep.cjs <prefix> <nrr>` → empaqueta huérfanas + índice global.
+5. Agentes **reroute** (eligen target_article_id del índice global; null si no hay casa) → `<prefix>rrout_i.json`.
+6. `clin_apply_rr.cjs <prefix> <nrr>` → mueve `primary_article_id` al contenedor correcto, acumula sin-casa en `_sin_casa_global.json`.
+
+**Validación (Trabajo en equipo, 73):** 36 verificadas en sitio + 29 re-rutadas a su contenedor real (Comunicación, Bioética, Paliativos…) + 8 sin casa + 2 errores de clave. CERO preguntas dejadas en contenedor equivocado.
+
+**Temas sin-casa recurrentes** (necesitan contenedor nuevo, se acumulan global y se crean al final): estadística/bioestadística, epidemiología (cohortes), demografía, deontología, metodología de investigación, funciones sociales de la familia, gestión/rol administrativo TCAE.
+
+**Pendiente explicaciones:** Fase 2 fija el VÍNCULO correcto + caza errores de clave. La reescritura didáctica de explicaciones es una pasada posterior (rewrite-only) sobre las ya bien vinculadas.
+
+Progreso: **874/17.546** (legislativas 772 + Trabajo en equipo 73 resuelto + extras). Faltan 24 contenedores clínicos (~16.300). Los gigantes (Esterilización 1476, Movilización 1305…) van por varias tandas.
