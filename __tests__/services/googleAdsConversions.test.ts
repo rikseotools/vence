@@ -30,6 +30,21 @@ describe('googleAds/conversions', () => {
       })
       expect(res).toEqual({ ok: false, detail: 'no_identifier' })
     })
+
+    test('email pero Enhanced Conversions OFF → no_identifier (no envía email, no rompe)', async () => {
+      const prev = process.env.ADS_ENHANCED_CONVERSIONS_ENABLED
+      delete process.env.ADS_ENHANCED_CONVERSIONS_ENABLED
+      const res = await uploadPurchaseConversion({
+        emailSha256: 'a'.repeat(64),
+        valueEur: 59,
+        currency: 'eur',
+        orderId: 'in_test',
+        occurredAt: new Date().toISOString(),
+        dryRun: true,
+      })
+      expect(res).toEqual({ ok: false, detail: 'no_identifier' })
+      if (prev !== undefined) process.env.ADS_ENHANCED_CONVERSIONS_ENABLED = prev
+    })
   })
 
   describe('googleAdsDestination.supports', () => {

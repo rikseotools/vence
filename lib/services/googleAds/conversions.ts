@@ -59,9 +59,17 @@ function toAdsDateTime(iso: string): string {
 export async function uploadPurchaseConversion(input: PurchaseConversionInput): Promise<DeliveryResult> {
   const dryRun = input.dryRun ?? true
 
+  // El email hasheado (Enhanced Conversions) solo se envía si la cuenta lo tiene
+  // CONFIGURADO con método "Google Ads API" (no basta con aceptar los customer
+  // data terms). Si se manda sin configurar, Google RECHAZA la conversión ENTERA
+  // —aunque el gclid sea válido—. Por eso va detrás de un flag: por defecto OFF,
+  // así el camino gclid funciona limpio; se enciende cuando se configura en Ads.
+  const enhancedEnabled = process.env.ADS_ENHANCED_CONVERSIONS_ENABLED === 'true'
+  const useEmail = enhancedEnabled && !!input.emailSha256
+
   const hasClickId = !!(input.gclid || input.gbraid || input.wbraid)
-  if (!hasClickId && !input.emailSha256) {
-    return { ok: false, detail: 'no_identifier' } // ni click-ID ni email → no atribuible
+  if (!hasClickId && !useEmail) {
+    return { ok: false, detail: 'no_identifier' } // ni click-ID ni email utilizable → no atribuible
   }
 
   const conversion: Record<string, unknown> = {
@@ -74,7 +82,7 @@ export async function uploadPurchaseConversion(input: PurchaseConversionInput): 
   if (input.gclid) conversion.gclid = input.gclid
   if (input.gbraid) conversion.gbraid = input.gbraid
   if (input.wbraid) conversion.wbraid = input.wbraid
-  if (input.emailSha256) {
+  if (useEmail) {
     conversion.user_identifiers = [{ hashed_email: input.emailSha256 }]
   }
 
