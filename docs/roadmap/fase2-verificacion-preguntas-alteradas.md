@@ -59,3 +59,8 @@ Murcia (86 preguntas, Ley 3/2009 + D80/2005 + D236/2010) procesada con el ciclo 
 - ✅ Cohorte (17.546) identificada y definida.
 - ✅ Piloto + ciclo completo validado en **Murcia (86)** — alcance B.
 - ⬜ Resto (~17.460): mismo ciclo, ley por ley.
+
+## Galicia (03/06/2026) — ciclo completo, pipeline combinado
+186 preguntas. Pasada combinada verificar+reescribir (10 agentes, file-based): 116 OK directas. 70 mal vinculadas (38%, consistente con Murcia) → re-rutadas (5 agentes con índice de 325 arts): 65 a artículo correcto + 5 fuera de índice (Decreto 200/1993 y estructura, no creados) → reescritas (5 agentes). Total: **181/186 verificadas + explicación didáctica**, 5 pendientes, ~11 'problem' a revisión. Optimización vs Murcia: pasada combinada (verify+rewrite en una) reduce agentes para el 62% correcto.
+
+Progreso Fase 2: **272 / 17.546** (Murcia 86 + Galicia 186). Siguiente: Madrid, Aragón, Carta (legislativas) → luego clínicas 1-25.
