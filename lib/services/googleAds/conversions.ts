@@ -11,8 +11,10 @@
 // Seguridad: mismo patrón que mutations.ts — `dryRun` usa `validate_only` para
 // que Google VALIDE sin escribir (detecta errores reales sin tocar la cuenta).
 //
-// La acción de conversión "vence (web) purchase":
-//   customers/9148967335/conversionActions/7447588685  (activar antes del live).
+// Acción de conversión dedicada a Offline Conversion Import (tipo UPLOAD_CLICKS):
+//   "Vence Compra (Offline Import)" — customers/9148967335/conversionActions/7634202403
+// (creada 03/06 vía API; la antigua "vence (web) purchase" 7447588685 era de tipo
+//  GOOGLE_ANALYTICS_4_PURCHASE → NO admite subida offline por API, descartada).
 
 import { createHash } from 'crypto'
 import { loadAdsConfig } from './config'
@@ -23,7 +25,7 @@ import { normalizeGoogleAdsError } from './errors'
 import type { ConversionDestination, ConversionEvent, DeliverOptions, DeliveryResult } from '@/lib/conversions/types'
 
 // Resource name de la acción de conversión de compra (cuenta Vence 914-896-7335).
-const PURCHASE_CONVERSION_ACTION = 'customers/9148967335/conversionActions/7447588685'
+const PURCHASE_CONVERSION_ACTION = 'customers/9148967335/conversionActions/7634202403'
 
 export interface PurchaseConversionInput {
   gclid?: string | null

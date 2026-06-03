@@ -1,8 +1,8 @@
 # Roadmap — Trackeo de Conversiones de Venta (atribución + bus server-side + destinos enchufables)
 
-> **Estado:** DISEÑO (2026-06-03). Sin código aún. Este documento fija la
-> arquitectura del estado final ANTES de tocar nada, para no acumular deuda
-> técnica y que añadir destinos/señales luego sea un fichero nuevo, no un rewrite.
+> **Estado:** ✅ **F0 + F1 IMPLEMENTADOS y VERIFICADOS (2026-06-03).** Código
+> commiteado en `main` local (sin pushear), migraciones aplicadas a prod, acción
+> de conversión creada en Ads. Pendiente solo go-live (flags + push). Ver §12.
 >
 > **Origen:** investigación 03/06 — ayer hubo 4 primeras compras, todas correctas
 > en el badge interno (webhook Stripe → `conversion_events`/`payment_settlements`),
@@ -11,6 +11,9 @@
 > (2) captura de `gclid` rota (solo en `/landing/*`, `/api/acquisition` sin caller,
 > tabla `user_acquisition` con 1 fila), (3) las campañas optimizan por "Registro"
 > (señal client-side sujeta a consentimiento), no por venta.
+>
+> **Principio rector:** *pensar en grande* — diseñar para el destino, no para el
+> volumen actual. Mismo patrón "agnóstico by contract" que observabilidad.
 >
 > **Principio rector:** *pensar en grande* — diseñar para el destino, no para el
 > volumen actual. Mismo patrón "agnóstico by contract" que observabilidad (Sink
@@ -210,5 +213,45 @@ suscrito**, y retorna. El worker llama `destination.deliver()` con reintentos.
 - Google Ads: `lib/services/googleAds/` (client/config/mutations/reports/roi);
   añadir `conversions.ts`.
 - Patrón outbox de referencia: `docs/runbooks/outbox-cutover.md` + `test_questions_outbox`.
-- Cuenta Ads: acción "vence (web) purchase" (PURCHASE, HIDDEN) a activar.
 ```
+
+---
+
+## 10. Estado de implementación (2026-06-03)
+
+**F0 + F1 implementados, verificados y commiteados** (rama mergeada a `main` local,
+commits `e7d7e2a4` + `7ec99213`, **sin pushear**). Migraciones `20260603_attribution_touches.sql`
+y `20260603_conversion_outbox.sql` **aplicadas a prod**.
+
+Ficheros: ver commit. Flags introducidos:
+- `ADS_CONVERSION_UPLOAD_ENABLED` (default off → cron en validate-only, no escribe en Ads).
+- `ADS_CONVERSION_DRYRUN` (fuerza validate-only aunque esté enabled).
+- `ADS_ENHANCED_CONVERSIONS_ENABLED` (default off → NO envía email hasheado; solo click-ID).
+
+## 11. Hallazgos de la verificación (lo que destaparon los tests)
+
+1. **La acción "vence (web) purchase" (7447588685) era de tipo `GOOGLE_ANALYTICS_4_PURCHASE`** —
+   evento importado de GA4. **NO admite Offline Conversion Import por API.** Descartada.
+   → Creada por API una acción dedicada **`Vence Compra (Offline Import)` =
+   `customers/9148967335/conversionActions/7634202403`** (tipo `UPLOAD_CLICKS`, PURCHASE,
+   ENABLED, one-per-click, valor del upload, lookback 90d, secundaria). Es la que usa el adapter.
+2. **Aceptar los "customer data terms" NO basta para enviar el email hasheado** (`user_identifiers`):
+   hace falta además configurar "Conversiones mejoradas" con método Google Ads API. Si se manda
+   sin eso, Google **rechaza la conversión entera** (aunque el gclid sea válido). → El email va
+   detrás de `ADS_ENHANCED_CONVERSIONS_ENABLED` (default off); por defecto se sube **solo el click-ID**.
+3. **OCI por gclid funciona sin Enhanced Conversions** (validate_only limpio salvo gclid de prueba).
+   Es el 80% del valor (ventas de clic de anuncio).
+
+## 12. Go-live (acciones pendientes, account/ops — NO código)
+
+1. **Push** `main` (despliega; arranca en validate-only, no toca Ads).
+2. **`ADS_CONVERSION_UPLOAD_ENABLED=true`** en el env de prod → envío real (solo gclid).
+3. (Opcional, email) En Ads: configurar **"Conversiones mejoradas" método API** → luego
+   **`ADS_ENHANCED_CONVERSIONS_ENABLED=true`**.
+4. (Cuando haya histórico ~1-2 sem) promover `Vence Compra (Offline Import)` a **primaria** y
+   cambiar la puja de "Vista de una página"/"Registro" a **compra/tROAS**.
+5. El cron `conversion-outbox.yml` (cada 15 min) ya va en el commit; usa `secrets.CRON_SECRET`.
+
+Verificado 03/06: 6 unit + sims BD (touches/binding, outbox idempotencia/CHECK) + Google Ads
+validate_only (estructura OK) + smoke live (touch guarda fila, cron auth/dryRun, cadena completa
+worker→adapter→Ads→retry/last_error).
