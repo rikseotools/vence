@@ -19,6 +19,12 @@ interface DailyLimitResult {
   isPremium: boolean
   isGraduated: boolean
   tierLabel: string | null
+  // true cuando el resultado proviene de un FALLBACK por error/timeout de la BD
+  // (no de una lectura real). Los callers deben tratarlo como "no sé" y NO
+  // aplicar límites secundarios (device-daily-limit) sobre él — fail-open. Un
+  // blip de BD nunca debe bloquear a un usuario (free o premium). Ver
+  // project_exam_mode_answers_not_persisting + ARCHITECTURE_ROADMAP TRAMPA 2.
+  degraded?: boolean
 }
 
 let _supabaseAdmin: ReturnType<typeof createClient> | null = null
@@ -212,6 +218,16 @@ export async function getDailyLimitStatus(
     return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
 
+  // Resultado de FALLBACK ante error/timeout de la BD. Si el usuario era premium
+  // conocido (caché L1, ignorando TTL: el plan no cambia en un blip), preservamos
+  // su premium → no pierde el bypass por un timeout. Si no lo sabemos, fail-open
+  // marcado `degraded` para que los callers NO le apliquen el device-daily-limit.
+  const degradedFallback = (): DailyLimitResult => {
+    const cp = dailyLimitPremiumCache.get(userId)
+    if (cp && cp.data.isPremium) return cp.data
+    return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null, degraded: true }
+  }
+
   // L1 in-memory premium-only (mantiene fast-path lambda local)
   const cached = dailyLimitPremiumCache.get(userId)
   if (cached && cached.data.isPremium && Date.now() - cached.t < DAILY_LIMIT_CACHE_TTL_MS) {
@@ -230,13 +246,13 @@ export async function getDailyLimitStatus(
 
       if (error) {
         console.error('❌ [DailyLimit] Status RPC error:', error.message)
-        return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
+        return degradedFallback()
       }
 
       const result = Array.isArray(data) ? data[0] : data
 
       if (!result) {
-        return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
+        return degradedFallback()
       }
 
       const questionsToday = result.questions_today || 0
@@ -261,7 +277,7 @@ export async function getDailyLimitStatus(
       return returnValue
     } catch (err) {
       console.error('❌ [DailyLimit] Unexpected error:', err)
-      return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
+      return degradedFallback()
     }
   })
 }

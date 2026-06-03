@@ -197,6 +197,25 @@ describe('getDailyLimitStatus', () => {
     mockRpc.mockResolvedValue({ data: null, error: { message: 'err' } })
     expect((await getDailyLimitStatus('uid')).allowed).toBe(true)
   })
+
+  // Defensa (03/06/2026): un blip de BD no debe bloquear a nadie. El fallback
+  // marca degraded=true y los endpoints saltan el device-daily-limit con él.
+  it('marca degraded=true en error de RPC (fail-open, sin aplicar device-limit aguas abajo)', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'timeout' } })
+    const r = await getDailyLimitStatus('uid-degraded-fresh')
+    expect(r.allowed).toBe(true)
+    expect(r.degraded).toBe(true)
+    expect(r.isPremium).toBe(false)
+  })
+
+  it('una lectura real NO marca degraded', async () => {
+    mockRpc.mockResolvedValue({
+      data: { questions_today: 3, questions_remaining: 22, is_limit_reached: false, is_premium: false },
+      error: null,
+    })
+    const r = await getDailyLimitStatus('uid-ok')
+    expect(r.degraded).toBeFalsy()
+  })
 })
 
 // ============================================

@@ -80,8 +80,10 @@ async function _POST(request: NextRequest) {
       8_000
     )
 
-    // Shared device daily limit (solo free users — premium bypass)
-    if (!dailyLimit.isPremium) {
+    // Shared device daily limit (solo free users — premium bypass).
+    // `!degraded`: si el límite vino de un fallback por timeout de BD, NO
+    // aplicamos el device-limit (fail-open) — un blip no debe bloquear saves.
+    if (!dailyLimit.isPremium && !dailyLimit.degraded) {
       const deviceUsage = await withDbTimeout(
         () => checkDeviceDailyUsage(deviceId),
         8_000

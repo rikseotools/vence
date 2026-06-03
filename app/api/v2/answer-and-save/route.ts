@@ -157,8 +157,10 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // Shared device daily limit (solo para free users)
-    if (!dailyLimit.isPremium && deviceUsage && !deviceUsage.allowed) {
+    // Shared device daily limit (solo para free users).
+    // `!degraded`: si el daily-limit vino de un fallback por timeout de BD,
+    // fail-open — un blip no debe bloquear a un usuario (free ni premium).
+    if (!dailyLimit.isPremium && !dailyLimit.degraded && deviceUsage && !deviceUsage.allowed) {
       return NextResponse.json(
         {
           success: false,

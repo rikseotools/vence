@@ -1596,6 +1596,20 @@ Es el mismo Supavisor regional que motivó la Opción E (PgBouncer self-hosted):
 
 Detalle y plan de validación: memoria `project_supavisor_zombie_conn_root_cause`. CI rojo + otros gaps de observabilidad de la misma sesión: memoria `project_ci_red_y_obs_gaps_02_06` y `docs/runbooks/observability.md §15`.
 
+#### ⚠️ ACTUALIZACIÓN 03/06/2026 — el blip se ha MOVIDO al pooler self-hosted (no era solo Supavisor)
+
+Investigando el feedback de una usuaria PREMIUM ("el % no sube al hacer test") se hizo una Fase 0 de diagnóstico (solo lectura) que corrige el modelo mental anterior:
+
+- **Prod corre en ECS Fargate** (existe `/api/health/db-ready`), con `USE_SELF_HOSTED_POOLER=true` (SSM). Por tanto los endpoints que usan el ternario `flag ? getPoolerDb() : getDb()` —incluido `/api/exam/answer` (save por-respuesta del examen) y `answer-and-save`— **YA NO cuelgan de Supavisor: usan el PgBouncer self-hosted (`pooler.vence.es`)**. La "Capa 2" para el hot path está, de facto, hecha vía el flag en ECS.
+- **PERO el propio pooler self-hosted tiene blips intermitentes AHORA.** `/api/health/db-ready` en 7 llamadas seguidas (03/06 08:17 UTC): **1× `SELECT 1 timeout after 2000ms` (pool:self_hosted) + 6× 4-21ms**. Distribución bimodal idéntica al zombi de Supavisor — el problema de conexión zombi se ha trasladado al tramo PgBouncer Lightsail → DB, no se ha eliminado.
+- **Síntoma medible**: exámenes (`test_type='exam'`) completados con 0 filas en `test_questions` saltaron de ~3% (fin may) a ~70% (01-02/06); afecta a free Y premium. Un examen hace ~25 saves secuenciales (auth+límite+device+save por respuesta); con timeouts intermitentes basta que caigan unos pocos para dejar `saved:0`. El premium además pierde el bypass porque `getDailyLimitStatus` degrada a `isPremium:false` en su fallback de error → device-limit 403. (Detalle: memoria `project_exam_mode_answers_not_persisting`.)
+
+**Implicación de plan (corrige la dirección previa):** ampliar callers al pooler (mover los 76 `getDb()` directos restantes) **NO es la prioridad y sería arriesgado** mientras el pooler tenga blips — concentraría más tráfico en un cuello ya intermitente. La prioridad pasa a ser **la SALUD del pooler self-hosted**:
+1. **Observabilidad por instancia** (HOY no la hay): `pooler.vence.es` resuelve a 3 IPs vía NLB pero no sabemos CUÁL instancia da el timeout. Falta scrapear `SHOW POOLS/STATS/SERVERS` de cada PgBouncer + separar RTT de red vs exec de query + health-check que EXPULSE la instancia mala del NLB. Sin esto vamos a ciegas.
+2. **Tuning PgBouncer**: `server_lifetime`/`server_idle_timeout`/`tcp_keepalives` en el tramo PgBouncer→DB (el `max_lifetime:90` del cliente postgres-js solo cubre app→PgBouncer, no PgBouncer→upstream).
+3. **Defensa barata e independiente**: ✅ **PARTE A HECHA (03/06, local sin pushear)** — `getDailyLimitStatus` ahora marca `degraded:true` en su fallback por error/timeout y preserva premium desde caché L1; los endpoints `exam/answer` y `answer-and-save` saltan el device-daily-limit cuando `degraded` (fail-open: un blip de BD no bloquea a nadie, free ni premium). Test en `daily-limit-enforcement.test.ts` (49 verde). ⏳ **PARTE B pendiente**: que el examen no se "complete" perdiendo respuestas en silencio (avisar/reintentar) — toca la UI del examen, más delicado.
+4. **Fin de juego (Bloque 5 / Fase D)**: pooler gestionado (RDS Proxy) en vez de PgBouncer self-managed en un hop remoto cross-provider (Lightsail London → Supabase). Es a donde llega el estándar profesional para fiabilidad.
+
 ### Pool split (HOY, sin coste extra adicional)
 
 ```typescript
