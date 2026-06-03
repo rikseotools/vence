@@ -180,12 +180,9 @@ jobs:
               .containerDefinitions[0].image = $IMAGE
               | ensure_secret("USE_SELF_HOSTED_POOLER")
               | ensure_secret("DATABASE_URL_SELF_POOLER")
-              # Turnstile (anti-scraping): DESCOMENTAR sólo DESPUÉS de crear los
-              # params SSM /vence-frontend/CLOUDFLARE_TURNSTILE_SECRET_KEY (SecureString)
-              # y /vence-frontend/CAPTCHA_ENABLED. Si se arman antes, el task ECS
-              # falla al arrancar (no puede resolver un secret inexistente).
-              # | ensure_secret("CLOUDFLARE_TURNSTILE_SECRET_KEY")
-              # | ensure_secret("CAPTCHA_ENABLED")
+              # Turnstile (anti-scraping). Params SSM creados 03/06; ECS los inyecta.
+              | ensure_secret("CLOUDFLARE_TURNSTILE_SECRET_KEY")
+              | ensure_secret("CAPTCHA_ENABLED")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
