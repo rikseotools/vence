@@ -52,6 +52,7 @@ import {
 import {
   shouldChallengeForQuestions,
   recordQuestionsServed,
+  subjectFor,
 } from '@/lib/security/challengePolicy/questionsServed'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
@@ -214,15 +215,30 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Gate anti-scraping: si el usuario YA superó su cuota diaria de preguntas
-    // servidas, exigir verificación humana antes de seguir sirviéndole banco.
-    // Cero coste cuando la capa está apagada (isCaptchaEnabled corta antes de
-    // tocar Redis). Fail-open: si Redis/CF fallan, NO bloquea el estudio.
-    if (authUserId && isCaptchaEnabled() && (await shouldChallengeForQuestions(authUserId))) {
+    // Gate anti-scraping (volumen): si el SUJETO ya superó su cuota diaria de
+    // preguntas servidas, exigir verificación humana. El sujeto es el usuario
+    // logueado O la IP anónima — porque el endpoint sirve preguntas (con su
+    // respuesta, por UX) también sin login, y sin esto un anónimo se baja el
+    // banco entero en minutos (umbral anónimo más bajo). Cero coste cuando la
+    // capa está apagada. Fail-open: si Redis/CF fallan, NO bloquea el estudio.
+    // Techo por petición para ANÓNIMOS: un test/examen normal no pide cientos
+    // de golpe sin login; un scraper sí (server topa en 500). Bajarlo para anon
+    // mata el bulk y el ataque "1 petición limpia por IP" (sin esto, 14 IPs se
+    // llevan el banco sin tocar captcha). NO afecta a logueados. Always-on
+    // (independiente del flag captcha). Configurable por env.
+    if (!authUserId) {
+      const anonMax = Number(process.env.CAPTCHA_ANON_MAX_QUESTIONS) || 100
+      if (validation.data.numQuestions > anonMax) {
+        validation.data.numQuestions = anonMax
+      }
+    }
+
+    const captchaSubject = subjectFor(authUserId, ip)
+    if (isCaptchaEnabled() && (await shouldChallengeForQuestions(captchaSubject))) {
       const outcome = await verifyHumanChallenge(request, {
         action: 'load_questions',
         endpoint: '/api/questions/filtered',
-        userId: authUserId,
+        userId: authUserId ?? undefined,
         remoteIp: ip,
       })
       if (!outcome.ok) {
@@ -271,10 +287,10 @@ async function _POST(request: NextRequest) {
         setCached(cacheKeyGlobal, cached, STALE_TTL_S)
       }
 
-      // Contabilizar preguntas servidas (alimenta el gate anti-scraping).
-      // Fire-and-forget; solo si la capa está activa, para no tocar Redis en vano.
-      if (isCaptchaEnabled() && authUserId && result.questions?.length) {
-        recordQuestionsServed(authUserId, result.questions.length).catch(() => {})
+      // Contabilizar preguntas servidas por sujeto (usuario o IP anónima).
+      // Alimenta el gate anti-scraping. Fire-and-forget; solo si la capa activa.
+      if (isCaptchaEnabled() && result.questions?.length) {
+        recordQuestionsServed(captchaSubject, result.questions.length).catch(() => {})
       }
 
       return NextResponse.json(response)
