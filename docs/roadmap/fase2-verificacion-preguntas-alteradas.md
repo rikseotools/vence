@@ -150,3 +150,11 @@ Enriquecidos arts 1-3 (4 principios Beauchamp-Childress + jerarquía Diego Graci
 **2 errores clave revisión humana:** 4cb9bec4 (aborto ético≠eugenésico), 84894a0b (justicia distributiva).
 
 **Progreso Fase 2: 1.514/17.546.** Contenedores cerrados: Trabajo en equipo, Residuos, Termoterapia, Bioética (+ legislativas 772). Faltan 19 (~15.000).
+
+## ✅ Documentación sanitaria (279) + Informática básica (22) CERRADOS (03/06)
+**Documentación:** enriquecidos 4 arts (Ley 41/2002: HC art.15/conservación 5a art.17/acceso art.18, CI arts 8-10 escrito en quirúrgico/invasor/riesgo, VA art.11, sistemas info HCE/CMBD/CIE-10, SADC/SAU archivo dígito terminal). 232 in-place + 41 re-rutadas (dentro del contenedor: archivo→art3, VA→art4) + 6 sin-casa (técnicas de exploración física). 2 clave: a9bdeb94, a920f026.
+**Informática:** enriquecido art único (hardware/software, redes LAN/MAN/WAN, IP/TCP-IP, correo CC/CCO, ofimática + atajos Word ESPAÑOL Ctrl+N=Negrita/K=Cursiva/S=Subrayado/G=Guardar, byte=8bits). 20 in-place + 2 menores (octal/hex, certificados digitales). 0 clave.
+
+**Progreso Fase 2: 1811/17.546.** Cerrados: Trabajo equipo, Residuos, Termoterapia, Bioética, Documentación, Informática (+legislativas). Faltan 18 contenedores (~14.700), incluidos los GIGANTES (Esterilización 1476, Movilización 1305, Alimentación 1083…).
+
+**Tema sin-casa recurrente confirmado:** técnicas de exploración física (inspección/palpación/percusión/auscultación) — candidato a contenedor propio o a "Constantes vitales".
