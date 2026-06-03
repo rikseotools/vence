@@ -1650,3 +1650,74 @@ describe('AuthContext — singleflight loadUserProfile', () => {
     expect(profileFetchCallCount).toBeGreaterThan(3)
   })
 })
+
+// ============================================================
+// CUTOVER Fase 4B: resiliencia ante Supabase saturado (caso Nila 28/04/2026)
+// Ejercita la ruta MIGRADA al port: el reintento usa auth.getSession() y extrae
+// el User crudo de `.raw`. Premium NUNCA debe ver "¡Regístrate!".
+// ============================================================
+describe('AuthContext — resiliencia cutover (pool saturado / caso Nila)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+    authCallback = null
+    mockUnsubscribe.mockClear()
+    profileFetchCallCount = 0
+    customProfileFetchHandler = null
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  test('INITIAL_SESSION null con perfil premium cacheado → reintento recupera, premium NO se limpia', async () => {
+    const renders: Array<{ isPremium: boolean; isAuthenticated: boolean }> = []
+
+    configureProfileFetch({
+      data: { id: 'nila', planType: 'premium', email: 'nila@test.com' },
+    })
+
+    // getSession (usado por el reintento) devuelve sesión válida: la sesión SÍ existe,
+    // solo el INITIAL_SESSION llegó null por timeout del pool.
+    mockSupabase = createMockSupabase({
+      user: { id: 'nila', email: 'nila@test.com' },
+    })
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={(v) => renders.push({
+            isPremium: v.isPremium as boolean,
+            isAuthenticated: v.isAuthenticated as boolean,
+          })} />
+        </AuthProvider>
+      )
+    })
+
+    // INITIAL_SESSION (con user) carga el perfil premium
+    await act(async () => {
+      jest.advanceTimersByTime(50)
+    })
+    expect(renders[renders.length - 1].isPremium).toBe(true)
+
+    // 💥 Llega un INITIAL_SESSION con sesión null (pool saturado) mientras hay perfil cacheado
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('INITIAL_SESSION', null)
+      })
+    }
+
+    // El código NO limpia: programa un reintento a los 5s que llama auth.getSession()
+    await act(async () => {
+      jest.advanceTimersByTime(5000)
+    })
+
+    // KEY: nunca debe haber un render premium→no-premium (el bug de "regístrate")
+    const lostPremium = renders.some((r, i) => i > 0 && renders[i - 1].isPremium && !r.isPremium)
+    expect(lostPremium).toBe(false)
+
+    // Estado final: sigue premium y autenticado (sesión recuperada por el reintento)
+    const finalRender = renders[renders.length - 1]
+    expect(finalRender.isPremium).toBe(true)
+    expect(finalRender.isAuthenticated).toBe(true)
+  })
+})

@@ -1,10 +1,11 @@
 // contexts/AuthContext.tsx - CONTEXTO GLOBAL CON SISTEMA DUAL
 'use client'
 import { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react'
-import type { User, Session } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 import type { UserProfileRow } from '@/types/database.types'
 
 import { getSupabaseClient } from '../lib/supabase'
+import { auth } from '@/lib/auth'
 import { shouldForceCheckout, forceCampaignCheckout, detectCampaignSource, getCookie } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
@@ -260,9 +261,9 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       // loadUserProfile y choca con el singleflight ya activo (deadlock 5s+).
       // La sesión recién emitida por INITIAL_SESSION/SIGNED_IN ya tiene un
       // access_token válido; getSession() lo lee de localStorage sin red.
-      const { data: { session } } = await supabase.auth.getSession()
-      const authHeaders: Record<string, string> = session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
+      const session = await auth.getSession()
+      const authHeaders: Record<string, string> = session?.accessToken
+        ? { Authorization: `Bearer ${session.accessToken}` }
         : {}
 
       const response = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, {
@@ -467,13 +468,13 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         // Las cookies google_*/meta_* las pone captureMetaParams() en CADA página
         // (ClientLayoutContent), así que cubren tráfico de anuncios a cualquier
         // página. Las campaign_* solo se ponen en /landing. Priorizar las globales.
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.access_token) {
+        const session = await auth.getSession()
+        if (session?.accessToken) {
           await fetch('/api/acquisition', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${session.accessToken}`,
             },
             body: JSON.stringify({
               channel: registrationSource,
@@ -562,13 +563,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     // 🎯 FUENTE DE VERDAD: onAuthStateChange con INITIAL_SESSION
     // INITIAL_SESSION se emite después de _initialize() (incluye token refresh),
     // garantizando un token válido para cargar el perfil.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: string, session: Session | null) => {
+    const unsubscribe = auth.onAuthStateChange(
+      async (change) => {
+        // El port normaliza el evento; SIGNED_UP colapsa a SIGNED_IN+isNewUser.
+        // Lo reconstruimos para preservar LITERALMENTE la lógica de abajo y el
+        // detail.event que escucha /auth/callback (GoogleAdsEvents.SIGNUP).
+        const event = change.isNewUser ? 'SIGNED_UP' : change.event
+        const session = change.session
         if (event !== 'TOKEN_REFRESHED') {
           console.log('🔄 AuthProvider:', event, session?.user?.email || '(sin user)')
         }
 
-        const newUser = session?.user || null
+        // El resto del flujo y el contexto exponen el User CRUDO de Supabase
+        // (user_metadata, etc.) → lo extraemos de `raw`.
+        const newUser = (session?.user?.raw ?? null) as User | null
         // 🛡️ NO hacer setUser(null) si hay perfil cacheado — previene que
         // ProgressiveRegistrationManager muestre "Regístrate" a usuarios Premium
         // cuando Supabase no puede refrescar el token (pool saturado).
@@ -607,19 +615,19 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
               // No limpiar aún: mantener perfil cacheado para que la UI siga funcional
               setTimeout(async () => {
                 try {
-                  const { data: { session: retrySession } } = await supabase.auth.getSession()
+                  const retrySession = await auth.getSession()
                   if (retrySession?.user) {
                     console.log('✅ Sesión recuperada tras reintento:', retrySession.user.email)
-                    setUser(retrySession.user)
+                    setUser(retrySession.user.raw as User)
                     // Perfil ya está en cache, no recargar
                   } else {
                     // Segundo intento tras 10s más
                     setTimeout(async () => {
                       try {
-                        const { data: { session: retry2 } } = await supabase.auth.getSession()
+                        const retry2 = await auth.getSession()
                         if (retry2?.user) {
                           console.log('✅ Sesión recuperada en segundo reintento')
-                          setUser(retry2.user)
+                          setUser(retry2.user.raw as User)
                         } else {
                           // Sesión realmente perdida — limpiar
                           console.log('👋 Sesión perdida tras 2 reintentos — limpiando')
@@ -731,7 +739,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
     return () => {
       console.log('🧹 AuthProvider: Limpiando subscripción')
-      subscription.unsubscribe()
+      unsubscribe()
       clearTimeout(safetyTimeoutId)
     }
   }, [initialUser])
@@ -854,12 +862,9 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     try {
       console.log('🚪 AuthProvider: Cerrando sesión...')
 
-      // 1. Cerrar sesión en Supabase
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('❌ Error en logout de Supabase:', error)
-        throw error
-      }
+      // 1. Cerrar sesión (vía port agnóstico). Si falla, el catch fuerza el
+      //    logout local + redirect igual que antes.
+      await auth.signOut()
 
       // 2. Limpiar localStorage
       if (typeof window !== 'undefined') {
@@ -917,23 +922,23 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   const refreshUser = async (): Promise<User | null> => {
     try {
       console.log('🔄 AuthProvider: Refrescando usuario...')
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error) throw error
-      setUser(user)
+      const authUser = await auth.getUser()
+      const rawUser = (authUser?.raw ?? null) as User | null
+      setUser(rawUser)
 
-      if (user) {
+      if (rawUser) {
         // Forzar recarga del perfil (limpiar cache para que loadUserProfile no lo salte)
         console.log('🔄 Forzando recarga de perfil...')
         updateUserProfile(null)
-        loadUserProfile(user.id).catch((err: any) => {
+        loadUserProfile(rawUser.id).catch((err: any) => {
           console.warn('⚠️ Error refrescando perfil (no crítico):', err)
         })
       } else {
         updateUserProfile(null)
       }
 
-      console.log('✅ AuthProvider: Usuario refrescado:', user?.email)
-      return user
+      console.log('✅ AuthProvider: Usuario refrescado:', rawUser?.email)
+      return rawUser
     } catch (error) {
       console.error('❌ AuthProvider: Error refrescando usuario:', error)
       setUser(null)

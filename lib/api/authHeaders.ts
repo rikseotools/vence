@@ -1,5 +1,7 @@
 // lib/api/authHeaders.ts — Get Bearer token + device ID headers for client-side API calls
-import { getSupabaseClient } from '@/lib/supabase'
+// Agnóstico de proveedor: usa el puerto `auth` (lib/auth) en vez de supabase.auth.* directo.
+// El singleflight + cooldown anti-429 VIVEN aquí (no se mueven al port).
+import { auth } from '@/lib/auth'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -10,7 +12,6 @@ let lastRefreshTime = 0
 const REFRESH_COOLDOWN_MS = 30_000 // No refrescar más de 1 vez cada 30s
 
 async function getValidToken(): Promise<string | undefined> {
-  const supabase = getSupabaseClient()
   const now = Date.now()
 
   // 1. Si hay un refresh en curso, esperar a que termine (singleflight)
@@ -20,22 +21,22 @@ async function getValidToken(): Promise<string | undefined> {
 
   // 2. Si refrescamos hace menos de 30s, usar sesión cacheada directamente
   if (now - lastRefreshTime < REFRESH_COOLDOWN_MS) {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token
+    const session = await auth.getSession()
+    return session?.accessToken
   }
 
   // 3. Hacer refresh (una sola vez, compartida)
   refreshPromise = (async () => {
     try {
-      const { data: refreshData } = await supabase.auth.refreshSession()
-      if (refreshData?.session?.access_token) {
+      const refreshed = await auth.refreshSession()
+      if (refreshed?.accessToken) {
         lastRefreshTime = Date.now()
-        return refreshData.session.access_token
+        return refreshed.accessToken
       }
     } catch {}
     // Fallback a sesión cacheada
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token
+    const session = await auth.getSession()
+    return session?.accessToken
   })()
 
   try {
