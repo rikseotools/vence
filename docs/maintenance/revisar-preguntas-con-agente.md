@@ -1676,3 +1676,41 @@ END IF;
 **Detector mecánico (palanca complementaria, coste IA cero).** Barrido programático bank-wide que rutea a `needs_human` defectos que los agentes dejan pasar. Alta precisión: opciones idénticas (`A===B` etc.), metadatos filtrados en opción/explicación (`(artículo N)` final, "Pregunta anulada", "por ."), corrupción OCR (`]`/`[` dentro de palabra, chars basura). Calibración 02/06: las heurísticas amplias (`[ABCD])` a media frase, camelCase intra-palabra) dan demasiados falsos positivos — restringir a TAB+letra y `]`/`[` intra-palabra. Resultado afinado sobre 91.678 activas: 26 `dup_options` + 46 `leaked_meta` + 17 `ocr` = 89 hits reales. Convertir en test de integración + cron (modelo `supuestoPracticoOrphans.test.ts`).
 
 **Backsweep pendiente:** re-verificar preguntas promovidas vía `ai_verified_*` cuyo `ai_verification_results` sea `phase_a_resolve` con `article_ok=false` u `options_ok IS NULL`.
+
+## 20. Re-verificación masiva de preguntas RE-VINCULADAS (Fase 2) — protocolo fiable + gotchas de agentes a escala
+
+> **Contexto (03/06/2026):** tras re-vincular en masa ~17.500 preguntas a artículos nuevos (proyecto leyes-contenedores), hubo que re-verificarlas con agentes. Este es el protocolo que SÍ funciona y los fallos que hay que anticipar. Doc del proyecto: `docs/roadmap/fase2-verificacion-preguntas-alteradas.md`.
+
+### 20.1 El auto-ruteo masivo (keyword/similitud) tiene 38-53% de error → SIEMPRE re-verificar con agente
+Vincular miles de preguntas a su artículo por keyword o por similitud de tokens deja **un 38-53% en el artículo equivocado** (medido: Murcia/Galicia/Madrid ~38%, Aragón 53%). NUNCA dar por buena una re-vinculación automática sin pasada de verificación por agente contra el texto literal del artículo. La similitud de tokens es especialmente mala cuando los artículos comparten vocabulario (decretos de estructura orgánica) → ahí la similitud elige mal casi siempre.
+
+### 20.2 Ciclo fiable por ley (dos/tres pasadas)
+1. **Export + chunk:** preguntas activas de la ley + el `content` literal de su artículo, agrupadas por artículo, en lotes de ~15-25 preguntas. Una pregunta = un grupo (su `primary_article_id`).
+2. **Verificar (agente, escribe a fichero):** por pregunta → `article_ok` (¿el artículo responde la pregunta?), `answer_ok`, `options_ok`; si `article_ok=true` escribe la `explanation` didáctica; si `false`, `correct_article_suggestion`.
+3. **Aplicar correctas + colectar wrong.**
+4. **Re-rutar las wrong por AGENTE + ÍNDICE** (catálogo de art. de las leyes del tema con rúbrica + resumen): el agente elige el `article_id` correcto. **NO usar router por similitud aquí.**
+5. **Re-aplicar `primary_article_id`** (sobrescribe la mala colocación) + **reescribir** explicación de las re-ruteadas contra su artículo ya correcto.
+6. **Registrar** todo en `ai_verification_results` con `ai_provider='claude_code_phase2_relink'` (cohorte trazable aparte, §5.1).
+
+Las preguntas YA están activas (approved): el objetivo es **corregir `article_ok` + explicación**, NO promocionar.
+
+### 20.3 ⚠️ Gotcha grave: los agentes que escriben JSON a fichero se DEGENERAN a escala (~40-50%)
+Al pedir a un agente que procese un lote y **escriba un array JSON a un fichero**, a esta escala falla ~la mitad de las veces de dos formas:
+- **Salida degenerada:** escribe N objetos pero todos con **el mismo `question_id` repetido** (copia un objeto). 
+- **"Salta":** si el fichero de salida YA existe (de un intento previo), el agente lo lee, alucina que "ya está bien" y NO lo reescribe.
+
+**Mitigaciones obligatorias:**
+1. **Validar unicidad** tras cada pasada: `unique(question_id) ≈ nº objetos`. Si `unique << objetos` → degenerado.
+2. **Borrar el fichero de salida ANTES de re-correr** (así el agente no puede "saltar").
+3. **Preferir agentes `rewrite-only`** (solo escriben explicación + answer_ok/options_ok, sin lógica article_ok) — son MUCHO más estables que los combinados verify+rewrite.
+4. **Instrucción explícita:** "un objeto por pregunta distinta, NUNCA repitas question_id, verifica antes de escribir".
+5. **No transcribir a mano** la salida del agente (SendMessage no está disponible en Claude Code): el agente escribe el fichero con la herramienta Write y el bucle principal lo lee.
+
+### 20.4 Infra: rate-limit y timeouts con paralelismo alto
+Con muchos agentes en paralelo aparecen `Stream idle timeout` y `Server is temporarily limiting requests` (rate-limit del servidor, no de cuota). Reintentar; bajar el nº de agentes simultáneos; el fallback determinista (script) cubre huecos donde aplique (pero NO el re-ruteo, que debe ser por agente).
+
+### 20.5 Normas "fuera de catálogo"
+Algunas preguntas re-vinculadas pertenecen a normas que NO se han creado en BD (Estatuto Marco Ley 55/2003, convenios, leyes estatales 39/2015, geografía…). El agente las marca `correct_article_id:""`. Registrar `article_ok=false` + `correct_article_suggestion` (pendiente) y NO inventarles artículo.
+
+### 20.6 Coste y cadencia
+~0,5M tokens / ~90 preguntas con el ciclo completo. Para decenas de miles → **por tandas, ley por ley, con validación de unicidad y checkpoint**. No intentar un autopilot continuo de todo el banco: la tasa de fallo de agentes obliga a supervisión por lote.
