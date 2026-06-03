@@ -15,6 +15,7 @@ import { AutoPromoteCoverageModule } from './auto-promote-coverage/auto-promote-
 import { RefreshMvOposicionesModule } from './refresh-mv-oposiciones/refresh-mv-oposiciones.module';
 import { AvatarRotationModule } from './avatar-rotation/avatar-rotation.module';
 import { CheckSeguimientoModule } from './check-seguimiento/check-seguimiento.module';
+import { SeoSnapshotModule } from './seo-snapshot/seo-snapshot.module';
 import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
 import { AnthropicModule } from './anthropic/anthropic.module';
 import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
@@ -123,6 +124,7 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     RefreshMvOposicionesModule,
     // Crons — sub-etapa 1b tanda 2 (monitoreo + colas)
     CheckSeguimientoModule,
+    SeoSnapshotModule, // semanal lunes 05:17 UTC — snapshot posición GSC de keywords objetivo
     ProcessOutboxModule,
     ProcessVerificationQueueModule,
     AvatarRotationModule,

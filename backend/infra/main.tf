@@ -36,6 +36,12 @@ locals {
   # ECS lee SSM String y SecureString por el mismo API. Ver roadmap:
   # docs/roadmap/canary-y-simulaciones.md §Nivel 3.
   smoke_user_id_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SMOKE_USER_ID"
+  # Credenciales OAuth de Google (Search Console readonly + Ads) para el cron
+  # seo-snapshot (backend Fargate). Aisladas en el backend, NO en el frontend de
+  # usuario. Ver backend/src/seo-snapshot/.
+  google_ads_client_id_ssm_arn     = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/GOOGLE_ADS_CLIENT_ID"
+  google_ads_client_secret_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/GOOGLE_ADS_CLIENT_SECRET"
+  google_ads_refresh_token_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/GOOGLE_ADS_REFRESH_TOKEN"
   # STRIPE_WEBHOOK_SECRET (cross-namespace 27/05/2026): el secret VIVE en
   # /vence-frontend/ porque el handler real está en la app Next.js. Para
   # que el canary canary-stripe-webhook (backend Fargate) pueda firmar
@@ -130,6 +136,9 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           local.stripe_secret_key_ssm_arn,
           local.smoke_user_id_ssm_arn,
           local.stripe_webhook_secret_ssm_arn,
+          local.google_ads_client_id_ssm_arn,
+          local.google_ads_client_secret_ssm_arn,
+          local.google_ads_refresh_token_ssm_arn,
         ]
       },
       {
@@ -225,6 +234,9 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "STRIPE_SECRET_KEY", valueFrom = local.stripe_secret_key_ssm_arn },
         { name = "SMOKE_USER_ID", valueFrom = local.smoke_user_id_ssm_arn },
         { name = "STRIPE_WEBHOOK_SECRET", valueFrom = local.stripe_webhook_secret_ssm_arn },
+        { name = "GOOGLE_ADS_CLIENT_ID", valueFrom = local.google_ads_client_id_ssm_arn },
+        { name = "GOOGLE_ADS_CLIENT_SECRET", valueFrom = local.google_ads_client_secret_ssm_arn },
+        { name = "GOOGLE_ADS_REFRESH_TOKEN", valueFrom = local.google_ads_refresh_token_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {

@@ -212,9 +212,14 @@ Desde 02/06/2026 el seguimiento vive en 3 tablas (migración
 - **`seo_actions`** — bitácora de cambios SEO (las 5 acciones de hoy registradas)
   para correlacionar acción→ranking.
 
-**Captura automática:** cron `/api/cron/seo-snapshot` (GHA `seo-snapshot.yml`,
-lunes 05:17 UTC) insertar un snapshot semanal por keyword desde GSC. Disparable a
-mano con `workflow_dispatch` o `curl -H "Authorization: Bearer $CRON_SECRET"`.
+**Captura automática:** cron del **backend Fargate** `seo-snapshot`
+(`backend/src/seo-snapshot/`, `@Cron` lunes 05:17 UTC) inserta un snapshot semanal
+por keyword desde GSC. Elegido backend (no endpoint frontend ni GHA-cron) para
+aislar las credenciales Google del frontend de usuario y para que sea **plenamente
+observable**: heartbeat registry (alerta si deja de tickear/se cuelga), regla
+"cron registrado sin `cron_run`" (alerta si no corre), evento `cron_run`
+success/error con `durationMs` en `observable_events` y `/admin/infraestructura`.
+Credenciales en SSM `/vence-backend/GOOGLE_ADS_*` (no en el frontend).
 
 **Consultar progreso (ejemplo):**
 ```sql
