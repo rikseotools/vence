@@ -137,3 +137,10 @@ Flujo: verify (vs resumen) → detecta thin-article → enriquecer 3 arts con fu
 **Progreso Fase 2: 1.008/17.546.** Legislativas 772 (Murcia/Galicia/Madrid/Aragón/Carta) + Trabajo en equipo 73 (modo re-rutar) + Residuos 163 (modo enriquecer).
 
 **Plantilla de enriquecimiento por contenedor (modo 2, para los grandes):** (1) export+verify rápido para confirmar modo 2; (2) agente WebSearch redacta artículos enriquecidos fieles con "Fuente:" y verificación de cifras; (3) aplicar con backup; (4) re-verify con criterio "temario TCAE estándar, no más estricto que el examen"; (5) registrar, marcar errores de clave reales, recoger estrays para reroute. Coste ~0.5-0.7M tokens por contenedor pequeño; los gigantes (Esterilización 1476…) por varias tandas.
+
+## ✅ Termoterapia y crioterapia CERRADO (03/06) — modo enriquecer + sub-patrón "AÑADIR ARTÍCULO NUEVO"
+Enriquecidos arts 1-3 (WebSearch: tiempos 15-20min, vasoconstricción→vasodilatación refleja de Lewis, calor húmedo penetra más). Re-verify: 181 in-place + 72 article_ok=false. Las 72 NO eran estrays de otro contenedor: eran temas HERMANOS (hidroterapia, balneoterapia/crenoterapia, talasoterapia, helioterapia, peloides, sauna/vapor, termoterapia por conversión) que pertenecen al contenedor pero le faltaba artículo. → **Creado 4º artículo "Hidroterapia, balneoterapia y otras técnicas afines"** (id 87c303c8, 15k car., WebSearch) + reconstruido índice global (89→90) + re-rutadas 70 a él (in-contenedor), 2 sin-casa (electroterapia). 253 resueltas.
+**5 errores clave reales a revisión humana:** f04fb63f-6053-4754-8e2c-0856f006aa28 7e9677ca-b53e-4a59-8202-b41b2adf6668 f522b9d5-d39f-4beb-9dc3-5ddaa7793772 d00979b5-a272-4fc8-9e1c-08a89bcbc1c3 5a6039ed-a6ab-4604-b80c-c717c81e5148.
+**Sub-patrón clave:** enriquecer = (a) ampliar artículos existentes Y (b) AÑADIR artículos nuevos para sub-temas hermanos no cubiertos; luego re-rutar in-contenedor al nuevo. Copiar estructura de fila existente para el insert (slug, is_active…).
+
+**Progreso Fase 2: 1.261/17.546.**
