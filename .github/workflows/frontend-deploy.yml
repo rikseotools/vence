@@ -30,6 +30,15 @@ on:
       - '*.md'
   workflow_dispatch:
 
+# Serializa los deploys: si llegan varios pushes seguidos (incl. de sesiones
+# paralelas), cancela los runs en vuelo y deja solo el último → SIEMPRE se
+# despliega el HEAD de main, nunca una build de un commit anterior pisa a la
+# nueva. Descubierto 03/06/2026: deploys concurrentes hacían que el último en
+# TERMINAR ganara (no el último commit), dejando código viejo en prod.
+concurrency:
+  group: vence-frontend-deploy
+  cancel-in-progress: true
+
 permissions:
   id-token: write
   contents: read
