@@ -270,3 +270,18 @@ prod con datos reales** (2 ventas `delivered` vía Enhanced Conversions).
   `GoogleAdsDestination.supports` acepte `refund` + un `uploadConversionAdjustment` en
   `conversions.ts` (servicio `conversionAdjustmentUploads`) + enganche en el webhook
   `charge.refunded`/`handleSubscriptionDeleted`. Decisión Manuel 03/06: dejarlo para después.
+
+## 14. F4 — Destino GA4 (✅ HECHO 03/06)
+
+Segundo adapter del bus (demuestra que añadir plataforma = un fichero, sin rewrite).
+`ga4Destination` (`lib/services/ga4/conversions.ts`) envía el evento `purchase` a GA4 por
+**Measurement Protocol** server-side → GA4 ve INGRESO por canal (orgánico/directo/redes, no solo
+Ads) + base para audiencias de remarketing. NO sustituye a Google Ads (complementa).
+
+- Captura `client_id` de GA (cookie `_ga`) en el registro → `user_acquisition.ga_client_id`
+  (migración `20260603_ga4_client_id.sql`). Sin client_id GA4 MP no acepta → `supports` lo exige
+  (no ensucia DLQ).
+- Params SSM: `GA4_API_SECRET` (SecureString), `GA4_MEASUREMENT_ID`=G-WXQ069CRY9, `GA4_UPLOAD_ENABLED`.
+- Verificado: GA4 debug validation `validationMessages: []`. Commit `7d84dbb2`.
+- Pendiente futuro (no urgente): adapters Meta CAPI / TikTok (mismo patrón), audiencias de
+  remarketing en GA4, e-commerce items detallados en el evento purchase.
