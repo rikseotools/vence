@@ -116,3 +116,14 @@ Decisión Manuel: hacerlo bien (cada pregunta cuelga del artículo que de verdad
 **Pendiente explicaciones:** Fase 2 fija el VÍNCULO correcto + caza errores de clave. La reescritura didáctica de explicaciones es una pasada posterior (rewrite-only) sobre las ya bien vinculadas.
 
 Progreso: **874/17.546** (legislativas 772 + Trabajo en equipo 73 resuelto + extras). Faltan 24 contenedores clínicos (~16.300). Los gigantes (Esterilización 1476, Movilización 1305…) van por varias tandas.
+
+## 🔑 DOS MODOS DE FALLO en clínicas (refinado 03/06 con Residuos)
+La verificación destapa DOS causas distintas de `article_ok=false`, que exigen acciones OPUESTAS:
+1. **Estray (pregunta de OTRO tema)** — típico de contenedores pequeños/vagos (Trabajo en equipo: ~50% eran estadística, epidemiología, bioética…). Acción: **re-rutar** al contenedor correcto (índice global).
+2. **Artículo-resumen (pregunta ON-TOPIC pero el artículo no detalla)** — típico de contenedores coherentes y grandes (Residuos: las 163 SON de residuos, pero los arts son resúmenes y el banco pregunta colores/galga/Ley 22/2011/códigos H/capacidad). Acción: **ENRIQUECER el artículo del propio contenedor con fuente oficial**, NO mover ni marcar error.
+
+**Implicación crítica:** verificar contra un artículo-resumen produce **falsos `answer_ok=false`** (el agente no encuentra el dato en el texto y lo marca, aunque la respuesta sea correcta). → En contenedores coherentes, **enriquecer PRIMERO, verificar DESPUÉS**. Los grandes (Esterilización, Movilización, Higiene, Alimentación…) serán mayoritariamente modo 2 (enriquecer). Solo los pequeños/vagos (Trabajo en equipo, Informática, quizá Bioética) son modo 1 (re-rutar).
+
+`verification_status` es columna LEGACY (no afecta is_active/visibilidad) → marcar 'problem' por error no daña al usuario; se corrige al re-verificar (mismo ai_provider sobrescribe el registro).
+
+**Residuos (163):** modo 2. Enriquecer arts 1-3 (clasificación completa 4 grupos + variación CCAA/Madrid 7 clases, Ley 22/2011, códigos H peligrosidad, colores de bolsa/contenedor, galga 69/200, capacidad 3/4, DIN, transporte, citostáticos cabina flujo laminar vertical) desde fuente oficial → re-verificar.
