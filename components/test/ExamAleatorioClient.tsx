@@ -224,6 +224,7 @@ function ExamAleatorioContent({ oposicionSlug, positionType, themeNames }: ExamA
       }}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       questions={questions as any}
+      positionType={positionType}
     />
   )
 }

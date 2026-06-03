@@ -10,6 +10,7 @@ import MarkdownExplanation from './MarkdownExplanation'
 import ContentDataRenderer from './ContentDataRenderer'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAIChat } from '@/contexts/AIChatContext'
+import { getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
 import type {
   ReviewQuestion,
   TestInfo,
@@ -169,8 +170,9 @@ export default function ExamReviewLayout({
 
         {/* Nota de corte oficial - Solo referencia, sin comparación */}
         {notaCorte && (() => {
-          // Puntuación neta del usuario (aciertos - errores/3)
-          const puntuacionNeta = summary.correctCount - (summary.incorrectCount / 3)
+          // Puntuación neta del usuario según la penalización oficial de la
+          // oposición (1/N por fallo, 0 si no penaliza). Ver lib/config/oposiciones.ts.
+          const puntuacionNeta = summary.correctCount - (summary.incorrectCount * getExamPenaltyPerWrong(oposicionSlug))
 
           // Nota de corte según la parte que está viendo
           const notaCorteRelevante = parte === 'primera'

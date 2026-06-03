@@ -313,6 +313,7 @@ function TestAleatorioExamenContent() {
       questions={questions}
       resumeTestId={resumeTestId}
       initialAnswers={initialAnswers}
+      positionType={oposicionConfig?.positionType}
     />
   )
 }

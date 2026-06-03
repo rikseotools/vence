@@ -210,6 +210,7 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
       questions={questions}
       resumeTestId={resumeTestId}
       initialAnswers={savedAnswers}
+      positionType={positionType}
     />
   )
 }

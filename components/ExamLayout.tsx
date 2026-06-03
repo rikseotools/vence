@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
-import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
@@ -425,6 +425,11 @@ export default function ExamLayout({
   // Hook para obtener la URL actual
   const pathname = usePathname()
 
+  // Penalización oficial del modo examen para esta oposición: fracción restada
+  // por respuesta incorrecta (1/N según la regla oficial, o 0 si no penaliza).
+  // Valor verificado por oposición en lib/config/oposiciones.ts (examScoring).
+  const penaltyPerWrong = getExamPenaltyPerWrong(positionType || getOposicionSlugFromPathname(pathname))
+
   // Refs para tracking
   const pageLoadTime = useRef(Date.now())
   const sessionCreationRef = useRef(false)
@@ -647,7 +652,7 @@ export default function ExamLayout({
 
   // 📤 FUNCIÓN: Compartir resultado directo a redes
   const handleQuickShareResult = async (platform: string): Promise<void> => {
-    const nota = isSubmitted ? Math.max(0, ((correctCount - (incorrectCount / 3)) / totalQuestions) * 10).toFixed(2) : '0'
+    const nota = isSubmitted ? Math.max(0, ((correctCount - (incorrectCount * penaltyPerWrong)) / totalQuestions) * 10).toFixed(2) : '0'
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=exam_share&utm_content=score_${nota}`
     const url = `https://www.vence.es?${utmParams}`
     const shareText = `¡Acabo de sacar un ${nota}/10 en mi test de oposiciones! 💪`
@@ -1003,7 +1008,7 @@ export default function ExamLayout({
   const incorrectCount = answeredCount - score
   const blankCount = totalQuestions - answeredCount
 
-  const puntosBrutos = correctCount - (incorrectCount / 3)
+  const puntosBrutos = correctCount - (incorrectCount * penaltyPerWrong)
   const notaSobre10 = isSubmitted
     ? Math.max(0, (puntosBrutos / totalQuestions) * 10).toFixed(2)
     : '0'
@@ -1126,8 +1131,8 @@ export default function ExamLayout({
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
                     <div className="text-3xl font-bold text-red-600 mb-1">{incorrectCount}</div>
                     <div className="text-sm text-red-700 font-medium">❌ Incorrectas</div>
-                    {incorrectCount > 0 && (
-                      <div className="text-xs text-red-600 mt-1">(-{(incorrectCount / 3).toFixed(2)} pts)</div>
+                    {incorrectCount > 0 && penaltyPerWrong > 0 && (
+                      <div className="text-xs text-red-600 mt-1">(-{(incorrectCount * penaltyPerWrong).toFixed(2)} pts)</div>
                     )}
                   </div>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">

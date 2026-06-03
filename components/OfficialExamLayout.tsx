@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
 import { useAIChat } from '../contexts/AIChatContext'
@@ -353,6 +353,10 @@ export default function OfficialExamLayout({
 }: OfficialExamLayoutProps) {
   const { user, supabase } = useAuth() as AuthContextValue
   const pathname = usePathname()
+
+  // Penalización oficial del examen para esta oposición (1/N por fallo, 0 si no
+  // penaliza). Verificada por oposición en lib/config/oposiciones.ts (examScoring).
+  const penaltyPerWrong = getExamPenaltyPerWrong(oposicion || getOposicionSlugFromPathname(pathname))
 
   // Limite diario de preguntas (FREE = 25/dia)
   const {
@@ -1307,8 +1311,8 @@ export default function OfficialExamLayout({
   const incorrectCount = answeredCount - score
   const blankCount = totalQuestions - answeredCount
 
-  // Nota sobre 10 (cada 3 fallos restan 1 correcta)
-  const puntosBrutos = correctCount - (incorrectCount / 3)
+  // Nota sobre 10 según la penalización oficial de la oposición (1/N por fallo)
+  const puntosBrutos = correctCount - (incorrectCount * penaltyPerWrong)
   const notaSobre10 = isSubmitted
     ? Math.max(0, (puntosBrutos / totalQuestions) * 10).toFixed(2)
     : '0'
@@ -1536,9 +1540,9 @@ export default function OfficialExamLayout({
                     <div className="text-sm text-red-700 font-medium">
                       ❌ Incorrectas
                     </div>
-                    {incorrectCount > 0 && (
+                    {incorrectCount > 0 && penaltyPerWrong > 0 && (
                       <div className="text-xs text-red-600 mt-1">
-                        (-{(incorrectCount / 3).toFixed(2)} pts)
+                        (-{(incorrectCount * penaltyPerWrong).toFixed(2)} pts)
                       </div>
                     )}
                   </div>
