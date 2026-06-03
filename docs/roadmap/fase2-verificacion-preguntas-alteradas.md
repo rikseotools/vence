@@ -144,3 +144,9 @@ Enriquecidos arts 1-3 (WebSearch: tiempos 15-20min, vasoconstricción→vasodila
 **Sub-patrón clave:** enriquecer = (a) ampliar artículos existentes Y (b) AÑADIR artículos nuevos para sub-temas hermanos no cubiertos; luego re-rutar in-contenedor al nuevo. Copiar estructura de fila existente para el insert (slug, is_active…).
 
 **Progreso Fase 2: 1.261/17.546.**
+
+## ✅ Bioética sanitaria CERRADO (03/06) — enriquecer + nuevo art (4º "Investigación/donación-trasplante/responsabilidad")
+Enriquecidos arts 1-3 (4 principios Beauchamp-Childress + jerarquía Diego Gracia, Belmont 1978, art.199 CP, LO 3/2021, Oviedo). 191 in-place + 63 huérfanas → creado 4º art (id 13da7ac0: Núremberg/Helsinki, terapia génica, xenoinjerto/tipos injerto, donación-trasplante Ley 30/1979/ONT, negligencia/dolo/iatrogenia, signos de muerte/fenómenos cadavéricos). Re-rutadas 60 (al art4, secreto art3, post-mortem de Paliativos, CI de Documentación, Comunicación), 3 sin-casa (Ley 14/1986, humanización, tipos relación). 254 resueltas.
+**2 errores clave revisión humana:** 4cb9bec4 (aborto ético≠eugenésico), 84894a0b (justicia distributiva).
+
+**Progreso Fase 2: 1.514/17.546.** Contenedores cerrados: Trabajo en equipo, Residuos, Termoterapia, Bioética (+ legislativas 772). Faltan 19 (~15.000).
