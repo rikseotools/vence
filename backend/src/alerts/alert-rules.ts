@@ -958,6 +958,42 @@ export const RULE_STRIPE_WEBHOOK_4XX_BURST: AlertRule<{
 };
 
 /**
+ * Un fallo de canary cuyo error es un timeout/abort de red es, con UNA sola
+ * ocurrencia, indistinguible de un blip transitorio: latencia puntual de
+ * Upstash / Supavisor / Fargate↔Supabase que se auto-recupera al siguiente
+ * tick. Con cadencia de 5 min, exigir 2 fallos en la ventana de 10 min = 2
+ * ticks consecutivos = degradación SOSTENIDA, no blip. Mismo criterio que la
+ * alarma CloudWatch Synthetics (`evaluation_periods = 2` en synthetics.tf).
+ *
+ * Un fallo SUSTANTIVO (HTTP 4xx/5xx con cuerpo, validación incorrecta, shape
+ * roto) NO es transitorio → dispara INSTANTÁNEO con 1 sola ocurrencia: es un
+ * bug real, no un hipo de red.
+ *
+ * Recalibrado 2026-06-03: los canaries auth/webhook/redis/topic-data emitían
+ * 1 email CRITICAL por cada timeout suelto (datos 24h: 4/290 stripe, 1/290
+ * redis, 1/290 topic-data, 3/290 auth — TODOS auto-recuperados al tick
+ * siguiente) → spam que ahogaba los CRITICAL reales (filosofía martillo,
+ * observability.md §20: "alarma no accionable = ruido"). `answer-save` y
+ * `db-pool` NO usan este helper: siguen instantáneos con n≥1 porque app
+ * inutilizable / saturación de BD = P0 y un solo fallo ya es accionable.
+ */
+const TRANSIENT_CANARY_ERROR =
+  /timeout|abort|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|network|fetch failed/i;
+
+function canaryFailureShouldFire(
+  rows: Array<{ n: number; lastError: string | null }>,
+): boolean {
+  const r = rows[0];
+  const n = r?.n ?? 0;
+  if (n === 0) return false;
+  if (n >= 2) return true; // 2+ fallos = 2 ticks consecutivos = sostenido
+  // n === 1: un único fallo. Si es timeout/abort de red, esperar la
+  // confirmación del siguiente tick (blip transitorio). Si es sustantivo
+  // (4xx/5xx, validación, shape), disparar ya — es un bug real.
+  return !TRANSIENT_CANARY_ERROR.test(r?.lastError ?? '');
+}
+
+/**
  * Canary auth failed — el cron `canary-smoke-auth` (Fargate cada 5min, Nivel 3
  * del roadmap canary-y-simulaciones) ejecuta login + GET /api/profile contra
  * producción. Cualquier fallo es alarma critical inmediata.
@@ -965,9 +1001,10 @@ export const RULE_STRIPE_WEBHOOK_4XX_BURST: AlertRule<{
  * Hubiera cazado el incidente Rocío/Mercedes (2026-05-27) en ≤5 min,
  * sin depender del feedback humano.
  *
- * Cooldown 15 min para evitar spam si la regresión persiste; con 1 sola
- * ocurrencia ya dispara (sin agregación) porque cada fallo de auth en
- * producción es P1 por definición.
+ * Cooldown 15 min para evitar spam si la regresión persiste. Disparo vía
+ * `canaryFailureShouldFire`: un fallo sustantivo (401/403/5xx con cuerpo)
+ * dispara instantáneo (P1 real); un timeout/abort suelto espera la
+ * confirmación del siguiente tick (blip de red auto-recuperable).
  */
 export const RULE_CANARY_AUTH_FAILED: AlertRule<{
   n: number;
@@ -986,7 +1023,7 @@ export const RULE_CANARY_AUTH_FAILED: AlertRule<{
     WHERE event_type = 'canary_auth_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
   buildNotification: (rows) => {
     const r = rows[0];
     return {
@@ -1014,8 +1051,11 @@ export const RULE_CANARY_AUTH_FAILED: AlertRule<{
  * webhook tardó horas en detectarse porque solo se rompía con eventos
  * reales y no había canary sintético. Ahora: ≤5 min.
  *
- * Cooldown 15 min. Dispara con ≥1 evento en 10 min — cualquier fallo de
- * webhook es P1 (pagos sin procesar potencialmente).
+ * Cooldown 15 min. Disparo vía `canaryFailureShouldFire`: un fallo sustantivo
+ * (400 signature, 404 route, 5xx) dispara instantáneo (pago en riesgo = P1);
+ * un timeout/abort suelto espera el siguiente tick. Las firmas inválidas de
+ * eventos Stripe REALES siguen cubiertas instantáneamente por la regla
+ * hermana `stripe_webhook_signature_failed` (mira validation_error_logs).
  */
 export const RULE_CANARY_WEBHOOK_FAILED: AlertRule<{
   n: number;
@@ -1034,7 +1074,7 @@ export const RULE_CANARY_WEBHOOK_FAILED: AlertRule<{
     WHERE event_type = 'canary_stripe_webhook_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
   buildNotification: (rows) => {
     const r = rows[0];
     return {
@@ -1144,7 +1184,10 @@ export const RULE_CANARY_DB_POOL_FAILED: AlertRule<{
  * Si Redis cae, el cache compartido (user_stats, exam_pending, theme_stats)
  * deja de servir → cada user request va a BD → load 10× → 5xx cascada.
  *
- * Cooldown 10min — alta urgencia operativa.
+ * Cooldown 10min — alta urgencia operativa. Disparo vía
+ * `canaryFailureShouldFire`: corrupción/valor incorrecto (step=validate)
+ * dispara instantáneo; un timeout suelto de Upstash espera el siguiente tick
+ * (la app tiene fail-open en cache, 5 min extra no es catastrófico).
  */
 export const RULE_CANARY_REDIS_FAILED: AlertRule<{
   n: number;
@@ -1161,7 +1204,7 @@ export const RULE_CANARY_REDIS_FAILED: AlertRule<{
     WHERE event_type = 'canary_redis_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
   buildNotification: (rows) => {
     const r = rows[0];
     return {
@@ -1233,7 +1276,9 @@ export const RULE_ANSWER_WATCHDOG_BURST: AlertRule<{
  * + BD + flag TOPIC_MV_ENABLED en runtime real, que ningún test CI puede
  * cubrir (regla de oro PASS).
  *
- * Cooldown 15 min — dispara con ≥1 fallo en 10 min para detección rápida.
+ * Cooldown 15 min. Disparo vía `canaryFailureShouldFire`: un fallo sustantivo
+ * (503/5xx, parse, shape roto) dispara instantáneo; un timeout/abort de red
+ * suelto espera la confirmación del siguiente tick (blip auto-recuperable).
  */
 export const RULE_CANARY_TOPIC_DATA_FAILED: AlertRule<{
   n: number;
@@ -1252,7 +1297,7 @@ export const RULE_CANARY_TOPIC_DATA_FAILED: AlertRule<{
     WHERE event_type = 'canary_topic_data_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
   buildNotification: (rows) => {
     const r = rows[0];
     return {
@@ -1414,8 +1459,21 @@ export const RULE_POOL_IDLE_IN_TX_DETECTED: AlertRule<{
  * `POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN` — eso ya no es el goteo de un rolling
  * sino saturación real (ej. el pico de 14 conn-min visto el 2026-06-01
  * 07:49) y debe alertar aunque haya deploy.
+ *
+ * Piso de conn-min siempre-activo (recalibrado 2026-06-03): incluso FUERA de
+ * deploy hay un goteo permanente de 1-2 conexiones hung en ClientRead, con
+ * `frontend_active_conns = 0` — NO es el pool postgres-js del frontend, sino
+ * el residual del path `getDb()` (escritura/auth) que aún cuelga del Supavisor
+ * regional (raíz conocida en [[project_supavisor_zombie_conn_root_cause]],
+ * Capa 2 pendiente, se cierra del todo con RDS). A 1-2 conns es inofensivo,
+ * pero disparaba un email CRITICAL cada 30 min (cooldown) → spam que ahogaba
+ * los CRITICAL reales. El piso exige acumulación real: una cascada (caso
+ * 27/05) satura múltiples conns durante minutos = decenas de conn-min, muy por
+ * encima del piso, y además la cubren en paralelo `canary_db_pool` (SELECT 1
+ * timeout, instantáneo), `pool_frontend_saturation` y `5xx_spike`.
  */
 const POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN = 5;
+const POOL_HUNG_MIN_CONNMIN = 10;
 
 export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
   n: number;
@@ -1434,6 +1492,9 @@ export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
     const n = rows[0]?.n ?? 0;
     const totalHung = rows[0]?.totalHung ?? 0;
     if (n < 2) return false;
+    // Piso siempre-activo: por debajo de POOL_HUNG_MIN_CONNMIN es el goteo
+    // residual del path getDb() (front_active=0), no accionable. Ver doc arriba.
+    if (totalHung < POOL_HUNG_MIN_CONNMIN) return false;
     // Durante un deploy, el goteo de 1-2 conexiones colgadas es ruido
     // esperado del rolling. Se silencia salvo recuento alto (saturación
     // real). Sin ventana de deploy (o ctx ausente) → siempre alerta.

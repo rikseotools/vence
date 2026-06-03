@@ -487,6 +487,22 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
     ).toBe(true);
   });
 
+  it('NO dispara con 1 timeout de red suelto (blip transitorio)', () => {
+    expect(
+      RULE_CANARY_AUTH_FAILED.shouldFire([
+        { n: 1, lastStep: 'login', lastError: 'The operation was aborted due to timeout', lastStatus: null },
+      ]),
+    ).toBe(false);
+  });
+
+  it('dispara con 2 timeouts (2 ticks consecutivos = degradación sostenida)', () => {
+    expect(
+      RULE_CANARY_AUTH_FAILED.shouldFire([
+        { n: 2, lastStep: 'login', lastError: 'The operation was aborted due to timeout', lastStatus: null },
+      ]),
+    ).toBe(true);
+  });
+
   it('NO dispara con n=0 ni filas vacías (canary verde = silencio)', () => {
     expect(
       RULE_CANARY_AUTH_FAILED.shouldFire([
@@ -530,6 +546,22 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
     expect(
       RULE_CANARY_WEBHOOK_FAILED.shouldFire([
         { n: 1, lastStep: 'http', lastError: 'HTTP 400 signature failed', lastStatus: 400 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 1 timeout de red suelto (blip; firmas reales las cubre stripe_webhook_signature_failed)', () => {
+    expect(
+      RULE_CANARY_WEBHOOK_FAILED.shouldFire([
+        { n: 1, lastStep: 'http', lastError: 'Excepción POST webhook: The operation was aborted due to timeout', lastStatus: null },
+      ]),
+    ).toBe(false);
+  });
+
+  it('dispara con 2 timeouts (sostenido)', () => {
+    expect(
+      RULE_CANARY_WEBHOOK_FAILED.shouldFire([
+        { n: 2, lastStep: 'http', lastError: 'Excepción POST webhook: The operation was aborted due to timeout', lastStatus: null },
       ]),
     ).toBe(true);
   });
@@ -642,10 +674,26 @@ describe('RULE_CANARY_DB_POOL_FAILED (canary infra)', () => {
 });
 
 describe('RULE_CANARY_REDIS_FAILED (canary infra)', () => {
-  it('dispara con ≥1 fallo (caída Upstash = cascada BD inminente)', () => {
+  it('NO dispara con 1 timeout suelto de Upstash (blip transitorio, espera el siguiente tick)', () => {
     expect(
       RULE_CANARY_REDIS_FAILED.shouldFire([
         { n: 1, lastStep: 'get', lastError: 'Upstash timeout >2000ms' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('dispara con 2 fallos en la ventana (2 ticks consecutivos = sostenido)', () => {
+    expect(
+      RULE_CANARY_REDIS_FAILED.shouldFire([
+        { n: 2, lastStep: 'get', lastError: 'Upstash timeout >2000ms' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('dispara con 1 fallo SUSTANTIVO (corrupción step=validate, no es un blip de red)', () => {
+    expect(
+      RULE_CANARY_REDIS_FAILED.shouldFire([
+        { n: 1, lastStep: 'validate', lastError: 'GET devolvió X esperado Y' },
       ]),
     ).toBe(true);
   });
@@ -731,6 +779,22 @@ describe('RULE_CANARY_TOPIC_DATA_FAILED', () => {
     expect(
       RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
         { n: 1, lastStep: 'http', lastError: 'HTTP 503', lastStatus: 503 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 1 timeout de red suelto (blip transitorio)', () => {
+    expect(
+      RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
+        { n: 1, lastStep: 'http', lastError: 'Excepción GET: The operation was aborted due to timeout', lastStatus: null },
+      ]),
+    ).toBe(false);
+  });
+
+  it('dispara con 2 timeouts (sostenido)', () => {
+    expect(
+      RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
+        { n: 2, lastStep: 'http', lastError: 'Excepción GET: The operation was aborted due to timeout', lastStatus: null },
       ]),
     ).toBe(true);
   });
@@ -865,12 +929,18 @@ describe('RULE_POOL_IDLE_IN_TX_DETECTED', () => {
 });
 
 describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
-  it('dispara con ≥2 muestras con hung_clientread_over_10s > 0', () => {
-    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 4 }])).toBe(true);
+  it('dispara con ≥2 muestras y acumulación real (≥10 conn-min)', () => {
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 12 }])).toBe(true);
   });
 
   it('NO dispara con 1 muestra (blip transitorio)', () => {
     expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 1, totalHung: 1 }])).toBe(false);
+  });
+
+  it('NO dispara con el goteo residual de bajo volumen (≥2 muestras pero <10 conn-min)', () => {
+    // Recalibrado 2026-06-03: el residual de getDb()/Supavisor (front_active=0)
+    // a 1-2 conns era un email CRITICAL cada 30 min. El piso lo silencia.
+    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 4, totalHung: 4 }])).toBe(false);
   });
 
   it('NO dispara con resultado vacío o cero', () => {
@@ -918,18 +988,27 @@ describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
       ).toBe(true);
     });
 
-    it('SÍ dispara sin deploy aunque el recuento sea bajo', () => {
+    it('sin deploy: NO dispara con recuento bajo (piso conn-min silencia el goteo residual)', () => {
       expect(
         RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
           [{ n: 2, totalHung: 1 }],
           calmCtx,
         ),
+      ).toBe(false);
+    });
+
+    it('sin deploy: SÍ dispara con acumulación real (≥10 conn-min)', () => {
+      expect(
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
+          [{ n: 2, totalHung: 12 }],
+          calmCtx,
+        ),
       ).toBe(true);
     });
 
-    it('sin ctx (fail-open) dispara como antes', () => {
+    it('sin ctx (fail-open) dispara si supera el piso de conn-min', () => {
       expect(
-        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 1 }]),
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 12 }]),
       ).toBe(true);
     });
 
