@@ -34,17 +34,16 @@ describe('app/api/exam/resume/route.ts — contrato del SELECT', () => {
 
   test('image_url y content_data están dentro del SELECT de questions', () => {
     const src = loadSource()
-    // Localiza el bloque from('questions') ... .select(`...`)
-    const fromIdx = src.indexOf(".from('questions')")
+    // Post-migración agnosticismo: Drizzle .select({ ... }).from(questions)
+    // en vez del .from('questions').select(`...`) de Supabase.
+    const fromIdx = src.indexOf('.from(questions)')
     expect(fromIdx).toBeGreaterThan(-1)
 
-    const selectIdx = src.indexOf('.select(`', fromIdx)
+    // El .select({ ... }) que precede al .from(questions)
+    const selectIdx = src.lastIndexOf('.select({', fromIdx)
     expect(selectIdx).toBeGreaterThan(-1)
 
-    const closeIdx = src.indexOf('`)', selectIdx)
-    expect(closeIdx).toBeGreaterThan(-1)
-
-    const selectBlock = src.slice(selectIdx, closeIdx)
+    const selectBlock = src.slice(selectIdx, fromIdx)
     expect(selectBlock).toContain('image_url')
     expect(selectBlock).toContain('content_data')
   })

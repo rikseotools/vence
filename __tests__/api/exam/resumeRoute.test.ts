@@ -10,23 +10,30 @@ jest.mock('@/lib/api/exam', () => ({
   verifyTestOwnership: jest.fn(),
 }))
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        in: jest.fn(() => ({
-          data: [
-            {
-              id: 'aaaa0001-0001-0001-0001-000000000001',
-              question_text: 'P1',
-              option_a: 'A', option_b: 'B', option_c: 'C', option_d: 'D',
-              difficulty: 'medium',
-              is_official_exam: false,
-              primary_article_id: null,
-              articles: null,
-            },
-          ],
-          error: null,
+// El route fue migrado a Drizzle: getAdminDb().select({...}).from(questions)
+//   .leftJoin(articles).leftJoin(laws).where(inArray(ids)) -> filas planas.
+// La fila trae art_*/law_* aplanados (art_id=null -> articles:null al mapear).
+jest.mock('@/db/client', () => ({
+  getAdminDb: jest.fn(() => ({
+    select: jest.fn(() => ({
+      from: jest.fn(() => ({
+        leftJoin: jest.fn(() => ({
+          leftJoin: jest.fn(() => ({
+            where: jest.fn().mockResolvedValue([
+              {
+                id: 'aaaa0001-0001-0001-0001-000000000001',
+                question_text: 'P1',
+                option_a: 'A', option_b: 'B', option_c: 'C', option_d: 'D',
+                difficulty: 'medium',
+                is_official_exam: false,
+                primary_article_id: null,
+                image_url: null,
+                content_data: null,
+                art_id: null, art_number: null, art_title: null, art_content: null,
+                law_short_name: null, law_name: null,
+              },
+            ]),
+          })),
         })),
       })),
     })),
