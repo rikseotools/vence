@@ -1855,8 +1855,11 @@ export const RULE_CONVERSION_DELIVERY_FAILED: AlertRule<{
  * propaga (step='propagation') el pipeline outbox→handler está roto/parado.
  * A diferencia de las reglas de frescura/paridad (que dependen de tráfico
  * real), este canary cubre 24/7, INCLUIDO el valle nocturno → cierra ese punto
- * ciego. Disparo vía `canaryFailureShouldFire`: la no-propagación es sustantiva
- * → instantánea; un timeout de red del POST espera el siguiente tick.
+ * ciego. Disparo con **2 fallos en 10 min** (= 2 ticks consecutivos, el canary
+ * corre cada 5 min): una congelación real falla TODOS los ticks; un fallo
+ * suelto (propagación >12s puntual bajo carga, o el reinicio del worker justo
+ * tras un deploy) NO es freeze y no debe paginar → evita falsos positivos /
+ * fatiga de alertas. Mismo criterio que la alarma CloudWatch (evaluation_periods=2).
  */
 export const RULE_CANARY_STATS_PIPELINE_FAILED: AlertRule<{
   n: number;
@@ -1873,7 +1876,7 @@ export const RULE_CANARY_STATS_PIPELINE_FAILED: AlertRule<{
     WHERE event_type = 'canary_stats_pipeline_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => canaryFailureShouldFire(rows),
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
   buildNotification: (rows) => {
     const r = rows[0];
     return {

@@ -97,20 +97,21 @@ describe('RULE_STATS_PARIDAD_DIVERGENCE', () => {
 });
 
 describe('RULE_CANARY_STATS_PIPELINE_FAILED', () => {
-  it('dispara instantáneo si la NO-propagación es sustantiva (no un timeout de red)', () => {
+  it('dispara con 2 fallos en la ventana (2 ticks consecutivos = freeze sostenido)', () => {
     expect(
       RULE_CANARY_STATS_PIPELINE_FAILED.shouldFire([
-        { n: 1, lastStep: 'propagation', lastError: 'uqh_v2 NO propagó: esperado >=5, visto 4' },
+        { n: 2, lastStep: 'propagation', lastError: 'uqh_v2 NO propagó: esperado >=5, visto 4' },
       ]),
     ).toBe(true);
   });
 
-  it('NO dispara con 1 timeout de red suelto del POST (blip)', () => {
+  it('NO dispara con 1 fallo suelto (propagación lenta puntual / reinicio de worker tras deploy)', () => {
     expect(
       RULE_CANARY_STATS_PIPELINE_FAILED.shouldFire([
-        { n: 1, lastStep: 'answer_save', lastError: 'Excepción POST: The operation was aborted due to timeout' },
+        { n: 1, lastStep: 'propagation', lastError: 'uqh_v2 NO propagó: esperado >=5, visto 4' },
       ]),
     ).toBe(false);
+    expect(RULE_CANARY_STATS_PIPELINE_FAILED.shouldFire([])).toBe(false);
   });
 
   it('severity critical + registrada', () => {
