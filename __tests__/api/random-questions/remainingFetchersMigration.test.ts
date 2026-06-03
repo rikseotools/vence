@@ -205,7 +205,7 @@ describe('fetchContentScopeQuestions', () => {
     const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
     global.fetch = mockFetch
     await fetchContentScopeQuestions({ numQuestions: 5 }, scope)
-    expect(mockFetch.mock.calls[0][1].headers['Authorization']).toBe('Bearer tok')
+    expect(new Headers(mockFetch.mock.calls[0][1].headers).get('authorization')).toBe('Bearer tok')
   })
 
   test('HTTP 500 lanza error', async () => {
@@ -354,7 +354,7 @@ describe('fetchMantenerRacha', () => {
     await fetchMantenerRacha(0, { n: '5' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const headers = mockFetch.mock.calls[0][1].headers
-    expect(headers['Authorization']).toBe('Bearer tok')
+    expect(new Headers(headers).get('authorization')).toBe('Bearer tok')
   })
 
   test('usuario no autenticado: funciona en modo global', async () => {

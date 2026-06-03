@@ -148,7 +148,7 @@ describe('fetchPersonalizedQuestions — auth', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const [, options] = mockFetch.mock.calls[0]
-    expect(options.headers['Authorization']).toBe(`Bearer ${mockToken}`)
+    expect(new Headers(options.headers).get('authorization')).toBe(`Bearer ${mockToken}`)
   })
 
   test('funciona sin session token (API manejará como anónimo)', async () => {
@@ -159,7 +159,7 @@ describe('fetchPersonalizedQuestions — auth', () => {
     await fetchPersonalizedQuestions(0, { n: '25' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const [, options] = mockFetch.mock.calls[0]
-    expect(options.headers['Authorization']).toBeUndefined()
+    expect(new Headers(options.headers).get('authorization')).toBeNull()
   })
 })
 
@@ -573,7 +573,7 @@ describe('fetchPersonalizedQuestions — auth edge cases', () => {
     await fetchPersonalizedQuestions(0, { n: '10' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const [, options] = mockFetch.mock.calls[0]
-    expect(options.headers['Authorization']).toBeUndefined()
+    expect(new Headers(options.headers).get('authorization')).toBeNull()
   })
 
   test('getUser lanza error → lanza error de auth (no llama API)', async () => {

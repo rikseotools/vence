@@ -174,7 +174,7 @@ describe('fetchQuestionsByTopicScope — flujo normal', () => {
     await fetchQuestionsByTopicScope(5, { n: '25' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const headers = mockFetch.mock.calls[0][1].headers
-    expect(headers['Authorization']).toBe(`Bearer ${mockToken}`)
+    expect(new Headers(headers).get('authorization')).toBe(`Bearer ${mockToken}`)
   })
 
   test('funciona sin usuario autenticado (anónimo)', async () => {
@@ -822,6 +822,6 @@ describe('fetchQuestionsByTopicScope — edge cases', () => {
     await fetchQuestionsByTopicScope(5, { n: '10' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const headers = mockFetch.mock.calls[0][1].headers
-    expect(headers['Authorization']).toBeUndefined()
+    expect(new Headers(headers).get('authorization')).toBeNull()
   })
 })

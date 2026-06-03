@@ -97,7 +97,7 @@ describe('fetchQuestionsViaAPI — parámetros completos', () => {
     await fetchQuestionsViaAPI(1, { n: '5' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const headers = mockFetch.mock.calls[0][1].headers
-    expect(headers['Authorization']).toBe('Bearer tok123')
+    expect(new Headers(headers).get('authorization')).toBe('Bearer tok123')
   })
 
   test('funciona sin token (sesión expirada)', async () => {
@@ -108,7 +108,7 @@ describe('fetchQuestionsViaAPI — parámetros completos', () => {
     await fetchQuestionsViaAPI(1, { n: '5' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const headers = mockFetch.mock.calls[0][1].headers
-    expect(headers['Authorization']).toBeUndefined()
+    expect(new Headers(headers).get('authorization')).toBeNull()
   })
 
   test('pasa onlyOfficialQuestions + difficultyMode', async () => {

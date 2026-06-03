@@ -122,7 +122,8 @@ describe('fetchRandomQuestions — flujo normal', () => {
     const [url, options] = mockFetch.mock.calls[0]
     expect(url).toBe('/api/questions/filtered')
     expect(options.method).toBe('POST')
-    expect(options.headers['Content-Type']).toBe('application/json')
+    // fetchWithChallenge normaliza headers a un Headers instance (withDeviceHeaders)
+    expect(new Headers(options.headers).get('content-type')).toBe('application/json')
 
     const body = JSON.parse(options.body)
     expect(body.topicNumber).toBe(5)
