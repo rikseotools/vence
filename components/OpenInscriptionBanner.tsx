@@ -17,6 +17,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { auth } from '@/lib/auth'
 import { formatDateLarga, formatNumber } from '../lib/utils/format'
 
 type OpenInscription = {
@@ -63,7 +64,7 @@ function writeLocalDismisses(slugs: string[]) {
 }
 
 export default function OpenInscriptionBanner() {
-  const { user, userProfile, supabase, loading: authLoading } = useAuth()
+  const { user, userProfile, loading: authLoading } = useAuth()
   const [data, setData] = useState<ApiResponse | null>(null)
   const [localDismisses, setLocalDismisses] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -83,9 +84,9 @@ export default function OpenInscriptionBanner() {
       try {
         const headers: Record<string, string> = {}
         if (user) {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token) {
-            headers.Authorization = `Bearer ${session.access_token}`
+          const token = await auth.getAccessToken()
+          if (token) {
+            headers.Authorization = `Bearer ${token}`
           }
         }
         const res = await fetch('/api/v2/banner/open-inscriptions', { headers })
@@ -106,7 +107,7 @@ export default function OpenInscriptionBanner() {
     return () => {
       cancelled = true
     }
-  }, [authLoading, user, supabase])
+  }, [authLoading, user])
 
   // Picker: elige la primera open que no sea target y no esté dismissed.
   // user_profiles.target_oposicion guarda positionType con underscores
@@ -135,9 +136,9 @@ export default function OpenInscriptionBanner() {
       if (!user) return // anon: ya está en localStorage, no llamamos API.
 
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const token = await auth.getAccessToken()
         const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+        if (token) headers.Authorization = `Bearer ${token}`
         await fetch('/api/v2/banner/open-inscriptions/dismiss', {
           method: 'POST',
           headers,
@@ -148,7 +149,7 @@ export default function OpenInscriptionBanner() {
         // sesión sin localStorage el banner volvería — aceptable.
       }
     },
-    [user, supabase],
+    [user],
   )
 
   if (authLoading || !loaded) return null
