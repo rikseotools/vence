@@ -1849,6 +1849,92 @@ export const RULE_CONVERSION_DELIVERY_FAILED: AlertRule<{
   cooldownMin: 120,
 };
 
+/**
+ * Materialized-stats freshness — detecta que el pipeline outbox→tablas
+ * materializadas se ha PARADO EN SILENCIO mientras sigue entrando tráfico.
+ *
+ * Caso origen 2026-06-03: el cutover de outbox se aplicó a medias (RENAME
+ * shadow→canónica hecho ~02:03, pero los flags CUTOVER_DONE/SHADOW_HANDLERS_
+ * ENABLED nunca se desplegaron al task def). Resultado: 5 tablas materializadas
+ * (uqh_v2, article/difficulty/daily/hourly stats) dejaron de escribirse durante
+ * 14h SIN una sola alerta, mientras test_questions seguía llenándose. Lo reportó
+ * una usuaria ("el histórico de intentos está fallando"), no la observabilidad.
+ * Esta regla cierra ese gap: habría disparado a los ~20 min.
+ *
+ * Lógica: si hay volumen real de respuestas recientes (pipeline claramente
+ * activo) pero la última escritura de una tabla materializada es más vieja que
+ * su SLO de lag → CRITICAL. El umbral de volumen (≥30 en 30 min) evita falsos
+ * positivos en valle nocturno. ESCALABLE: añadir una tabla materializada nueva
+ * = una línea en el VALUES del registro `reg` + una en el UNION de `mat`.
+ */
+export const RULE_MATERIALIZED_STATS_STALE: AlertRule<{
+  table: string;
+  lagMin: number;
+}> = {
+  name: 'materialized_stats_stale',
+  severity: 'critical',
+  query: sql`
+    WITH src AS (
+      SELECT COUNT(*)::int AS n, MAX(created_at) AS last_answer
+      FROM test_questions
+      WHERE created_at > NOW() - INTERVAL '30 minutes'
+    ),
+    reg(tbl, max_lag_min) AS (
+      VALUES
+        ('user_question_history_v2', 20),
+        ('user_article_stats', 20),
+        ('user_difficulty_stats', 20),
+        ('user_daily_stats', 20),
+        ('user_hourly_stats', 20),
+        ('user_stats_summary', 20)
+    ),
+    mat AS (
+      SELECT 'user_question_history_v2' AS tbl, MAX(updated_at) AS last_upd FROM user_question_history_v2
+      UNION ALL SELECT 'user_article_stats', MAX(updated_at) FROM user_article_stats
+      UNION ALL SELECT 'user_difficulty_stats', MAX(updated_at) FROM user_difficulty_stats
+      UNION ALL SELECT 'user_daily_stats', MAX(updated_at) FROM user_daily_stats
+      UNION ALL SELECT 'user_hourly_stats', MAX(updated_at) FROM user_hourly_stats
+      UNION ALL SELECT 'user_stats_summary', MAX(updated_at) FROM user_stats_summary
+    )
+    SELECT r.tbl AS table,
+           ROUND(EXTRACT(EPOCH FROM (NOW() - m.last_upd)) / 60)::int AS "lagMin"
+    FROM reg r
+    JOIN mat m ON m.tbl = r.tbl
+    CROSS JOIN src
+    WHERE src.n >= 30
+      AND m.last_upd < NOW() - (r.max_lag_min * INTERVAL '1 minute')
+    ORDER BY "lagMin" DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map((r) => `  - ${r.table}: ${r.lagMin} min sin actualizar`);
+    return {
+      title: `${rows.length} tabla(s) materializada(s) congelada(s) — pipeline de stats parado`,
+      body:
+        `Entra volumen real de respuestas en test_questions pero estas tablas\n` +
+        `materializadas no se actualizan (lag > 20 min):\n\n${lines.join('\n')}\n\n` +
+        `El pipeline outbox→handlers se ha parado. Causas típicas:\n` +
+        `  - Flags del cutover sin desplegar tras un task def nuevo\n` +
+        `    (SHADOW_HANDLERS_ENABLED / CUTOVER_DONE ausentes en vence-backend).\n` +
+        `  - Handlers del outbox-processor erroring (DLQ con error_message).\n` +
+        `  - Triggers analíticos desactivados sin escritor de relevo.\n\n` +
+        `Diagnóstico:\n` +
+        `  SELECT COUNT(*) FILTER (WHERE processed_at IS NULL) AS pending,\n` +
+        `         COUNT(*) FILTER (WHERE retry_count>=3 AND processed_at IS NULL) AS dlq\n` +
+        `  FROM test_questions_outbox;\n` +
+        `  aws ecs describe-task-definition ... | grep -E 'CUTOVER_DONE|SHADOW_HANDLERS'\n\n` +
+        `Incidente origen 2026-06-03: cutover outbox a medias, 5 tablas congeladas\n` +
+        `14h sin alerta (lo reportó una usuaria, no la observabilidad).`,
+      metadata: {
+        staleTables: rows.map((r) => r.table),
+        maxLagMin: Math.max(...rows.map((r) => r.lagMin)),
+      },
+      fingerprint: `materialized_stats_stale_${rows.map((r) => r.table).sort().join(',')}`,
+    };
+  },
+  cooldownMin: 30,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
@@ -1900,6 +1986,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_POOL_FRONTEND_SATURATION_HIGH as AlertRule,
   // Meta-observabilidad: vigila al vigilante (cron sampler vivo).
   RULE_POOL_SAMPLER_STALE as AlertRule,
+  // Pipeline de stats materializadas congelado (2026-06-03 post-cutover outbox a medias)
+  RULE_MATERIALIZED_STATS_STALE as AlertRule,
   // Anti-scraping: barrido masivo del banco de preguntas (02/06/2026, caso Ana
   // Fernández "scrape & refund"). Premium no tiene límite diario → única red.
   RULE_SCRAPING_SWEEP as AlertRule,
