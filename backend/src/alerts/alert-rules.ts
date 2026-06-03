@@ -1567,6 +1567,58 @@ export const RULE_POOL_SAMPLER_STALE: AlertRule<{
 };
 
 /**
+ * Canary del GATE anti-scraping (Turnstile). Se dispara post-deploy vía
+ * POST /api/v2/canary/run-questions-gate. Si el gate retara a un usuario normal
+ * (regresión en la policy/contador Redis), el canary emite este evento.
+ */
+export const RULE_CANARY_QUESTIONS_GATE_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_questions_gate_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(http_status ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_questions_gate_failed'
+      AND created_at > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary gate anti-scraping FALLÓ (${r.n}) — cargar preguntas roto`,
+      body:
+        `El canary post-deploy detectó que cargar preguntas como usuario NORMAL no ` +
+        `funciona correctamente. Esto afecta al estudio de todos los usuarios.\n\n` +
+        `Último fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\n` +
+        `ACCIONES SEGÚN STEP:\n` +
+        `  - gate_false_positive (403): el gate Turnstile reta a usuarios que NO superan el umbral.\n` +
+        `    Regresión en lib/security/challengePolicy/questionsServed o verifyHumanChallenge.\n` +
+        `    MITIGACIÓN INMEDIATA: SSM /vence-frontend/CAPTCHA_ENABLED=false + redeploy frontend.\n` +
+        `  - request (5xx): el endpoint /api/questions/filtered cae. Logs frontend ECS.\n` +
+        `  - validate_body: 200 pero sin preguntas. Fetcher/BD/scope roto.\n` +
+        `  - validate_latency: >12s. Pool BD saturado.\n\n` +
+        `Contexto: gate anti-scraping (caso Ana Fernández 02/06). Doc reembolsos.md.`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 15,
+      },
+      fingerprint: 'canary_questions_gate_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Scraping / barrido del banco de preguntas.
  *
  * Detecta cuentas (incluido premium, que NO tiene límite diario) que se sirven
@@ -1711,4 +1763,6 @@ export const ALERT_RULES: AlertRule[] = [
   // Anti-scraping: barrido masivo del banco de preguntas (02/06/2026, caso Ana
   // Fernández "scrape & refund"). Premium no tiene límite diario → única red.
   RULE_SCRAPING_SWEEP as AlertRule,
+  // Canary post-deploy del gate anti-scraping: que NO bloquee a usuarios normales.
+  RULE_CANARY_QUESTIONS_GATE_FAILED as AlertRule,
 ];

@@ -65,6 +65,9 @@ import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-up
 import { CanaryTopicDataModule } from './canary-topic-data/canary-topic-data.module';
 // Endpoint admin POST /api/v2/canary/run-now (dispara los 5 canarios on-demand).
 import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
+// Canary del gate anti-scraping (Turnstile en /api/questions/filtered). SIN cron:
+// se dispara POST-DEPLOY vía POST /api/v2/canary/run-questions-gate (CRON_SECRET).
+import { CanaryQuestionsGateModule } from './canary-questions-gate/canary-questions-gate.module';
 // External heartbeat — watcher del watcher. Único monitoreo que SOBREVIVE
 // a una caída total del Fargate (la alarma viene de Healthchecks.io externo).
 import { ExternalHeartbeatModule } from './external-heartbeat/external-heartbeat.module';
@@ -139,6 +142,7 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
     CanaryTopicDataModule, // cada 5min — GET /api/topics/5 con shape assertions
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
+    CanaryQuestionsGateModule, // POST /api/v2/canary/run-questions-gate — gate post-deploy
     ExternalHeartbeatModule, // cada 5min — ping a Healthchecks.io (watcher del watcher)
     // Sprint 1 outbox test_questions (28/05/2026) — Fase 1.2 infra worker
     // (no-op handlers todavía; Fases 1.3+ añaden lógica con shadow mode).

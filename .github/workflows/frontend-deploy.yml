@@ -221,6 +221,30 @@ jobs:
             --region "${{ env.AWS_REGION }}"
           echo "✅ Rollout estable — task nuevo healthy en ALB."
 
+      # Smoke post-deploy del gate anti-scraping: verifica que un usuario NORMAL
+      # (usuario smoke, por debajo del umbral) puede cargar preguntas SIN que el
+      # gate Turnstile le exija un reto. Es el único momento en que el gate puede
+      # cambiar de comportamiento (deploy). El canary vive en el backend (tiene la
+      # identidad smoke); aquí solo lo disparamos. continue-on-error: el deploy ya
+      # está hecho; un fallo emite alerta [Vence CRITICAL] (RULE_CANARY_QUESTIONS_GATE_FAILED).
+      - name: Smoke post-deploy — gate anti-scraping
+        continue-on-error: true
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "skip — CRON_SECRET no configurado"; exit 0
+          fi
+          CODE=$(curl -s -o /tmp/gate.json -w '%{http_code}' --max-time 35 \
+            -X POST https://api.vence.es/api/v2/canary/run-questions-gate \
+            -H "Authorization: Bearer ${CRON_SECRET}")
+          echo "HTTP $CODE"; cat /tmp/gate.json 2>/dev/null; echo
+          if [ "$CODE" = "200" ]; then
+            echo "✅ gate OK — usuario normal carga preguntas sin reto espurio."
+          else
+            echo "⚠️ canary gate devolvió $CODE — revisar email [Vence CRITICAL]."
+          fi
+
       # Invalidar CloudFront. Las páginas prerenderizadas (ISR) las cachea
       # CloudFront hasta max_ttl (1 día, ver frontend.tf cache policy
       # frontend_default). Sin esto, un cambio de página estática (p.ej. el

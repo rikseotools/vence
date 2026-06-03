@@ -28,6 +28,7 @@ import {
   RULE_POOL_FRONTEND_SATURATION_HIGH,
   RULE_POOL_SAMPLER_STALE,
   RULE_SCRAPING_SWEEP,
+  RULE_CANARY_QUESTIONS_GATE_FAILED,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -227,6 +228,33 @@ describe('RULE_SCRAPING_SWEEP', () => {
     // shouldFire es agnóstico (solo mira longitud) y la lógica vive en la query.
     const pct = (heavyStudent.answered / heavyStudent.served) * 100;
     expect(pct).toBeGreaterThanOrEqual(15);
+  });
+});
+
+describe('RULE_CANARY_QUESTIONS_GATE_FAILED', () => {
+  it('dispara con ≥1 fallo del canary en la ventana', () => {
+    expect(
+      RULE_CANARY_QUESTIONS_GATE_FAILED.shouldFire([
+        { n: 1, lastStep: 'gate_false_positive', lastError: '403', lastStatus: 403 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara sin fallos', () => {
+    expect(
+      RULE_CANARY_QUESTIONS_GATE_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null, lastStatus: null },
+      ]),
+    ).toBe(false);
+  });
+
+  it('la notificación incluye step y la mitigación (CAPTCHA_ENABLED=false)', () => {
+    const notif = RULE_CANARY_QUESTIONS_GATE_FAILED.buildNotification([
+      { n: 1, lastStep: 'gate_false_positive', lastError: 'reto a usuario normal', lastStatus: 403 },
+    ]);
+    expect(notif.body).toContain('gate_false_positive');
+    expect(notif.body).toContain('CAPTCHA_ENABLED=false');
+    expect(RULE_CANARY_QUESTIONS_GATE_FAILED.cooldownMin).toBe(15);
   });
 });
 
