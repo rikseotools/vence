@@ -1,70 +1,93 @@
 // __tests__/security/questionsServed.test.ts
 //
-// Policy anti-scraping de volumen: gate por SUJETO (usuario logueado o IP
-// anónima) con umbral anónimo más bajo. Redis mockeado.
+// Policy anti-scraping de volumen MULTI-SUJETO (Capa A: usuario/IP + dispositivo).
+// El gate dispara si CUALQUIER sujeto supera su umbral. Redis mockeado.
 
-const mockGetCounter = jest.fn<Promise<number>, [string]>()
+const counters: Record<string, number> = {}
 jest.mock('@/lib/cache/redis', () => ({
-  getCounter: (k: string) => mockGetCounter(k),
-  incrementCounterWithTtl: jest.fn().mockResolvedValue(1),
+  getCounter: (k: string) => Promise.resolve(counters[k] ?? 0),
+  incrementCounterWithTtl: (k: string, _ttl: number, by: number) => {
+    counters[k] = (counters[k] ?? 0) + by
+    return Promise.resolve(counters[k])
+  },
 }))
 
 import {
-  subjectFor,
-  shouldChallengeForQuestions,
+  gateSubjects,
+  shouldChallengeForLoad,
+  recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
 
 const ORIGINAL_ENV = { ...process.env }
+const today = () => new Date().toISOString().slice(0, 10).replace(/-/g, '')
 
 beforeEach(() => {
-  mockGetCounter.mockReset()
+  for (const k of Object.keys(counters)) delete counters[k]
   process.env = { ...ORIGINAL_ENV }
   delete process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD
   delete process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD_ANON
+  delete process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD_DEVICE
 })
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
 })
 
-describe('subjectFor', () => {
-  it('usuario logueado → su userId', () => {
-    expect(subjectFor('uuid-123', '1.2.3.4')).toBe('uuid-123')
+describe('gateSubjects', () => {
+  it('logueado → usuario(500) + dispositivo(800), SIN IP (oficinas compartidas)', () => {
+    const subs = gateSubjects('uuid-1', 'dev-1', '1.2.3.4')
+    expect(subs).toEqual([
+      { key: 'uuid-1', threshold: 500 },
+      { key: 'device:dev-1', threshold: 800 },
+    ])
   })
-  it('anónimo → ip:<ip> (no colisiona con UUID)', () => {
-    expect(subjectFor(null, '1.2.3.4')).toBe('ip:1.2.3.4')
-    expect(subjectFor(undefined, null)).toBe('ip:unknown')
+
+  it('anónimo → ip(300) + dispositivo(800)', () => {
+    const subs = gateSubjects(null, 'dev-1', '9.9.9.9')
+    expect(subs).toEqual([
+      { key: 'ip:9.9.9.9', threshold: 300 },
+      { key: 'device:dev-1', threshold: 800 },
+    ])
+  })
+
+  it('sin huella de dispositivo → solo usuario/IP', () => {
+    expect(gateSubjects(null, null, '9.9.9.9')).toEqual([{ key: 'ip:9.9.9.9', threshold: 300 }])
+    expect(gateSubjects('u', undefined, null)).toEqual([{ key: 'u', threshold: 500 }])
+  })
+
+  it('umbrales configurables por env', () => {
+    process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD_DEVICE = '1200'
+    expect(gateSubjects(null, 'd', '1.1.1.1')[1]).toEqual({ key: 'device:d', threshold: 1200 })
   })
 })
 
-describe('shouldChallengeForQuestions — umbral por tipo de sujeto', () => {
-  it('ANÓNIMO supera su umbral (300) → reta', async () => {
-    mockGetCounter.mockResolvedValue(300)
-    expect(await shouldChallengeForQuestions('ip:9.9.9.9')).toBe(true)
+describe('shouldChallengeForLoad — dispara si CUALQUIER sujeto supera su umbral', () => {
+  it('anónimo bajo todos los umbrales → NO reta', async () => {
+    counters[`captcha:served:ip:9.9.9.9:${today()}`] = 299
+    counters[`captcha:served:device:d:${today()}`] = 799
+    expect(await shouldChallengeForLoad(gateSubjects(null, 'd', '9.9.9.9'))).toBe(false)
   })
 
-  it('ANÓNIMO con 299 (justo por debajo) → NO reta', async () => {
-    mockGetCounter.mockResolvedValue(299)
-    expect(await shouldChallengeForQuestions('ip:9.9.9.9')).toBe(false)
+  it('IP por debajo PERO dispositivo por encima → reta (rotación de IP cazada)', async () => {
+    counters[`captcha:served:ip:9.9.9.9:${today()}`] = 50 // IP rotada, bajo umbral
+    counters[`captcha:served:device:d:${today()}`] = 800 // misma máquina acumulada
+    expect(await shouldChallengeForLoad(gateSubjects(null, 'd', '9.9.9.9'))).toBe(true)
   })
 
-  it('LOGUEADO con 300 (umbral anónimo) NO reta — su umbral es 500', async () => {
-    mockGetCounter.mockResolvedValue(300)
-    expect(await shouldChallengeForQuestions('uuid-abc')).toBe(false)
+  it('usuario por encima de su umbral → reta', async () => {
+    counters[`captcha:served:uuid-1:${today()}`] = 500
+    expect(await shouldChallengeForLoad(gateSubjects('uuid-1', 'd', '1.2.3.4'))).toBe(true)
   })
 
-  it('LOGUEADO con 500 → reta', async () => {
-    mockGetCounter.mockResolvedValue(500)
-    expect(await shouldChallengeForQuestions('uuid-abc')).toBe(true)
+  it('Redis caído (todo 0) → fail-open, no reta', async () => {
+    expect(await shouldChallengeForLoad(gateSubjects(null, 'd', '9.9.9.9'))).toBe(false)
   })
+})
 
-  it('umbrales configurables por env', async () => {
-    process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD_ANON = '50'
-    mockGetCounter.mockResolvedValue(60)
-    expect(await shouldChallengeForQuestions('ip:1.1.1.1')).toBe(true)
-  })
-
-  it('Redis caído (getCounter=0) → fail-open, no reta', async () => {
-    mockGetCounter.mockResolvedValue(0)
-    expect(await shouldChallengeForQuestions('ip:9.9.9.9')).toBe(false)
+describe('recordServedForSubjects — incrementa todos los sujetos', () => {
+  it('cuenta en usuario Y dispositivo a la vez', async () => {
+    const subs = gateSubjects('uuid-1', 'dev-1', '1.2.3.4')
+    await recordServedForSubjects(subs, 25)
+    expect(counters[`captcha:served:uuid-1:${today()}`]).toBe(25)
+    expect(counters[`captcha:served:device:dev-1:${today()}`]).toBe(25)
   })
 })

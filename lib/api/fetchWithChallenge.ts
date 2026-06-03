@@ -15,14 +15,37 @@ import {
 import { solveChallenge } from './challengeBridge'
 
 /**
- * Igual que `fetch`, pero resuelve automáticamente un reto humano si el
- * servidor lo pide. Reintenta UNA vez con el token. Si el segundo intento
- * vuelve a pedir reto, devuelve esa respuesta tal cual (el caller decide).
+ * Adjunta la huella de dispositivo (X-Device-Id / X-Hw-Fingerprint) desde
+ * localStorage, si existe. Permite anclar el gate anti-scraping al DISPOSITIVO
+ * (Capa A) además de IP/usuario — caza al que rota IP o cuentas en la misma
+ * máquina. Funciona también anónimo (el deviceId vive en localStorage sin login).
+ * No pisa headers ya puestos por el caller.
+ */
+function withDeviceHeaders(init?: RequestInit): RequestInit {
+  if (typeof window === 'undefined') return init ?? {}
+  const headers = new Headers(init?.headers)
+  try {
+    const deviceId = window.localStorage.getItem('vence_device_id')
+    if (deviceId && !headers.has('X-Device-Id')) headers.set('X-Device-Id', deviceId)
+    const hwFp = window.localStorage.getItem('vence_hw_fingerprint')
+    if (hwFp && !headers.has('X-Hw-Fingerprint')) headers.set('X-Hw-Fingerprint', hwFp)
+  } catch {
+    /* localStorage no disponible (modo privado, etc.) → seguir sin la huella */
+  }
+  return { ...init, headers }
+}
+
+/**
+ * Igual que `fetch`, pero (1) adjunta la huella de dispositivo y (2) resuelve
+ * automáticamente un reto humano si el servidor lo pide. Reintenta UNA vez con
+ * el token. Si el segundo intento vuelve a pedir reto, devuelve esa respuesta
+ * tal cual (el caller decide).
  */
 export async function fetchWithChallenge(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
+  init = withDeviceHeaders(init)
   const first = await fetch(input, init)
 
   // Solo nos interesa el 403 con el marcador. Cualquier otra cosa pasa intacta.

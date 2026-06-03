@@ -1,88 +1,109 @@
 // lib/security/challengePolicy/questionsServed.ts
 //
-// POLICY: ¿cuándo retar a quien está CARGANDO preguntas? (anti-scraping de volumen)
+// POLICY anti-scraping de VOLUMEN, multi-sujeto (Capa A: + device fingerprint).
 //
-// El "cuándo retar" se separa del "cómo verificar" (capa captcha). Vigila la
-// firma del scraping: muchas preguntas SERVIDAS en un día. Funciona para CUALQUIER
-// "sujeto": un usuario logueado (`userId`) o una IP anónima (`ip:1.2.3.4`).
+// El "cuándo retar" se separa del "cómo verificar" (capa captcha). Vigila la firma
+// del scraping: muchas preguntas SERVIDAS en un día. Cuenta por VARIOS sujetos a la
+// vez y reta si CUALQUIERA supera su umbral — porque cada identificador tapa un
+// hueco del otro:
+//   - usuario (logueado): fuerte, pero un scraper se crea cuentas.
+//   - IP (anónimo): débil/rotable, pero cubre al no-registrado.
+//   - DISPOSITIVO (huella): difícil de rotar → caza al que rota IP o cuentas en
+//     la misma máquina. Es el ancla más estable disponible sin login.
 //
-// Por qué importa el anónimo: el endpoint sirve preguntas (con su respuesta, por
-// UX) también sin login; sin esto, un anónimo se baja el banco entero en minutos
-// (caso Ana Fernández 02/06/2026, y peor aún sin cuenta). El umbral anónimo es
-// MÁS BAJO que el de un usuario logueado: un no-registrado que hace decenas de
-// tests es sospechoso; uno logueado tiene más recorrido legítimo.
-//
-// Contador en Redis (Upstash) date-stamped con TTL → O(1), sin escanear
-// `test_questions`. Fail-open: si Redis cae, NO se reta (no romper el estudio).
+// Reto, no bloqueo (Turnstile Managed, invisible para humanos) → un falso positivo
+// en IP/dispositivo compartido es un check transparente, no un corte.
+// Contadores en Redis date-stamped con TTL → O(1). Fail-open: Redis caído → no reta.
 
 import { incrementCounterWithTtl, getCounter } from '@/lib/cache/redis'
 
-/** Umbral diario para usuarios LOGUEADOS. */
-function authedThreshold(): number {
-  const n = Number(process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD)
-  // Empírico (30d): p99 servidas/2h = 227; un día intenso real rara vez >500.
-  return Number.isFinite(n) && n > 0 ? n : 500
+/** Un sujeto del gate: su clave de contador y el umbral diario que le aplica. */
+export interface GateSubject {
+  key: string
+  threshold: number
 }
 
-/** Umbral diario para ANÓNIMOS (por IP). Más bajo: sin login, decenas de tests
- *  ya es anómalo. Un test normal son 10-50 preguntas → ~6-12 tests/día margen. */
+function envInt(name: string, def: number): number {
+  const n = Number(process.env[name])
+  return Number.isFinite(n) && n > 0 ? n : def
+}
+
+// Umbrales diarios (configurables por env):
+function authedThreshold(): number {
+  // Empírico (30d): p99 servidas/2h = 227; un día intenso real rara vez >500.
+  return envInt('CAPTCHA_QUESTIONS_SERVED_THRESHOLD', 500)
+}
 function anonThreshold(): number {
-  const n = Number(process.env.CAPTCHA_QUESTIONS_SERVED_THRESHOLD_ANON)
-  return Number.isFinite(n) && n > 0 ? n : 300
+  // Sin login, decenas de tests ya es anómalo. Un test normal son 10-50 preguntas.
+  return envInt('CAPTCHA_QUESTIONS_SERVED_THRESHOLD_ANON', 300)
+}
+function deviceThreshold(): number {
+  // Agrega TODAS las cuentas/IPs de una misma máquina. Más alto para tolerar un
+  // dispositivo compartido legítimo (familia), pero caza al scraper que rota
+  // IP/cuentas en un solo equipo.
+  return envInt('CAPTCHA_QUESTIONS_SERVED_THRESHOLD_DEVICE', 800)
 }
 
 /** TTL del contador: 26h cubre el día natural y se autolimpia. */
 const COUNTER_TTL_S = 26 * 60 * 60
 
-/**
- * Sujeto del contador. Para anónimos se prefija `ip:` para no colisionar nunca
- * con un userId (UUID) y poder distinguir ambos espacios.
- */
-export function subjectFor(userId: string | null | undefined, ip: string | null): string {
-  if (userId) return userId
-  return `ip:${ip ?? 'unknown'}`
-}
-
-/** ¿Es un sujeto anónimo (por IP)? Determina qué umbral aplica. */
-function isAnon(subject: string): boolean {
-  return subject.startsWith('ip:')
-}
-
 function dayKey(subject: string): string {
-  // YYYYMMDD en UTC (coherente con el resto de contadores diarios del repo).
   const d = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   return `captcha:served:${subject}:${d}`
 }
 
 /**
- * Registra `n` preguntas servidas a un sujeto y devuelve el total acumulado hoy.
- * Llamar DESPUÉS de servir. `subject` = userId (logueado) o `ip:<ip>` (anónimo);
- * usar `subjectFor()` para construirlo.
+ * Sujetos a vigilar para una carga de preguntas, con su umbral.
+ * - Logueado: usuario + dispositivo (NO IP: oficinas/NAT compartidos no deben
+ *   retar a un usuario legítimo por su IP).
+ * - Anónimo: IP + dispositivo.
+ * El dispositivo solo si el cliente envió la huella (`x-device-id`).
  */
-export async function recordQuestionsServed(
-  subject: string,
-  n: number,
-): Promise<number> {
-  if (!subject || n <= 0) return 0
-  return incrementCounterWithTtl(dayKey(subject), COUNTER_TTL_S, n)
+export function gateSubjects(
+  userId: string | null | undefined,
+  deviceId: string | null | undefined,
+  ip: string | null | undefined,
+): GateSubject[] {
+  const subjects: GateSubject[] = []
+  if (userId) {
+    subjects.push({ key: userId, threshold: authedThreshold() })
+  } else {
+    subjects.push({ key: `ip:${ip ?? 'unknown'}`, threshold: anonThreshold() })
+  }
+  if (deviceId) {
+    subjects.push({ key: `device:${deviceId}`, threshold: deviceThreshold() })
+  }
+  return subjects
 }
 
 /**
- * ¿Debe este sujeto resolver un reto antes de que le sirvamos más preguntas?
- * True si su acumulado de hoy ya supera el umbral (anónimo o logueado).
- * Fail-open implícito: si Redis cae, `getCounter` → 0 → no reta.
+ * ¿Debe retarse esta carga? True si CUALQUIER sujeto ya superó su umbral hoy.
+ * Lecturas en paralelo. Fail-open: Redis caído → getCounter 0 → no reta.
  */
-export async function shouldChallengeForQuestions(
-  subject: string,
+export async function shouldChallengeForLoad(
+  subjects: GateSubject[],
 ): Promise<boolean> {
-  if (!subject) return false
-  const served = await getCounter(dayKey(subject))
-  const limit = isAnon(subject) ? anonThreshold() : authedThreshold()
-  return served >= limit
+  if (!subjects.length) return false
+  const counts = await Promise.all(subjects.map((s) => getCounter(dayKey(s.key))))
+  return counts.some((served, i) => served >= subjects[i].threshold)
+}
+
+/**
+ * Contabiliza `n` preguntas servidas en TODOS los sujetos (usuario/IP + dispositivo).
+ * Fire-and-forget desde el caller. Devuelve los totales (para telemetría/debug).
+ */
+export async function recordServedForSubjects(
+  subjects: GateSubject[],
+  n: number,
+): Promise<number[]> {
+  if (n <= 0 || !subjects.length) return []
+  return Promise.all(
+    subjects.map((s) => incrementCounterWithTtl(dayKey(s.key), COUNTER_TTL_S, n)),
+  )
 }
 
 /** Solo lectura del acumulado de hoy de un sujeto (debug/admin). */
-export async function questionsServedToday(subject: string): Promise<number> {
-  if (!subject) return 0
-  return getCounter(dayKey(subject))
+export async function servedTodayFor(subjectKey: string): Promise<number> {
+  if (!subjectKey) return 0
+  return getCounter(dayKey(subjectKey))
 }

@@ -50,10 +50,11 @@ import {
   challengeRequiredResponse,
 } from '@/lib/security/captcha'
 import {
-  shouldChallengeForQuestions,
-  recordQuestionsServed,
-  subjectFor,
+  gateSubjects,
+  shouldChallengeForLoad,
+  recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
+import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
 // La query analítica de getFilteredQuestions puede ser pesada; 20s da margen.
@@ -233,8 +234,12 @@ async function _POST(request: NextRequest) {
       }
     }
 
-    const captchaSubject = subjectFor(authUserId, ip)
-    if (isCaptchaEnabled() && (await shouldChallengeForQuestions(captchaSubject))) {
+    // Sujetos del gate (Capa A): usuario o IP + DISPOSITIVO (huella). El gate
+    // dispara si cualquiera supera su umbral → el dispositivo caza al que rota
+    // IP o cuentas en la misma máquina. El deviceId solo si el cliente lo envió.
+    const deviceId = getDeviceIdFromRequest(request)
+    const gateSubs = gateSubjects(authUserId, deviceId, ip)
+    if (isCaptchaEnabled() && (await shouldChallengeForLoad(gateSubs))) {
       const outcome = await verifyHumanChallenge(request, {
         action: 'load_questions',
         endpoint: '/api/questions/filtered',
@@ -287,10 +292,10 @@ async function _POST(request: NextRequest) {
         setCached(cacheKeyGlobal, cached, STALE_TTL_S)
       }
 
-      // Contabilizar preguntas servidas por sujeto (usuario o IP anónima).
+      // Contabilizar preguntas servidas en TODOS los sujetos (usuario/IP + dispositivo).
       // Alimenta el gate anti-scraping. Fire-and-forget; solo si la capa activa.
       if (isCaptchaEnabled() && result.questions?.length) {
-        recordQuestionsServed(captchaSubject, result.questions.length).catch(() => {})
+        recordServedForSubjects(gateSubs, result.questions.length).catch(() => {})
       }
 
       return NextResponse.json(response)

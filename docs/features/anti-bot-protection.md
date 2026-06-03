@@ -23,7 +23,7 @@ Sistema de protección del banco de preguntas contra scrapers/bots. Ya **NO** es
 | Pieza | Estado | Ubicación |
 |---|---|---|
 | Capa captcha reutilizable (port+adapter Turnstile, agnóstica) | ✅ en prod | `lib/security/captcha/` |
-| Gate por volumen en `/api/questions/filtered` (usuario **+ IP anónima**) | ✅ código en prod | `app/api/questions/filtered/route.ts` |
+| Gate por volumen en `/api/questions/filtered` (usuario **+ IP anónima**) | ✅ **verificado FIRING** (403 a >umbral) | `app/api/questions/filtered/route.ts` |
 | Policy contador diario por sujeto (umbral logueado 500 / anónimo 300) | ✅ | `lib/security/challengePolicy/questionsServed.ts` |
 | Techo por petición anónimos (500→100, siempre-on) | ✅ **verificado vivo** | idem route |
 | Widget + modal + `fetchWithChallenge` | ✅ | `components/security/`, `lib/api/fetchWithChallenge.ts` |
@@ -31,16 +31,20 @@ Sistema de protección del banco de preguntas contra scrapers/bots. Ya **NO** es
 | Canary post-deploy (gate no bloquea a normales) | ✅ | `backend/src/canary-questions-gate/` |
 | Flag maestro `CAPTCHA_ENABLED` + secrets | ✅ SSM `/vence-frontend/` | — |
 
-### 🔴 BUG CRÍTICO ABIERTO (03/06): el GATE Turnstile está OFF en prod
-- **Síntoma:** el contador por IP no incrementa; 500 servidas anónimas no disparan reto.
-- **Causa raíz:** `isCaptchaEnabled()` exige site key + secret. La site key es un **build-arg horneado**, pero el **Dockerfile NO declaraba** `ARG`/`ENV NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY` → `next build` no la incrustaba → server-side `null` → gate apagado (el cap, flag-independiente, sí iba). El canary daba verde porque con el gate OFF cargar va bien (no probaba que el gate dispare).
-- **Fix:** añadido el ARG/ENV al `Dockerfile` (03/06). Requiere redeploy frontend para hornear la key. **Validar tras deploy:** anónimo >300 servidas/día → 403 challengeRequired + contador `captcha:served:ip:*` en Redis.
+### ✅ RESUELTO (03/06): el GATE Turnstile estuvo OFF en prod (semanas, en silencio)
+- **Síntoma:** el contador por IP no incrementaba; servidas anónimas no disparaban reto.
+- **Causa raíz:** `isCaptchaEnabled()` exige site key + secret. La site key es `NEXT_PUBLIC` = **build-arg HORNEADO**; se añadió el build-arg al workflow pero el **Dockerfile NO declaraba** `ARG`/`ENV NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY` → Docker **descarta en silencio** un build-arg sin ARG → `next build` no la incrustaba → server-side `null` → gate OFF (el cap, flag-independiente, sí iba). El canary daba FALSO VERDE: un gate apagado es indistinguible del bueno desde el camino feliz.
+- **Fix:** ARG/ENV en `Dockerfile` (commit `e60b33a3`). **VERIFICADO FIRING en prod:** anónimo >300/día → HTTP 403 `challengeRequired` + contador `captcha:served:ip:*` en Redis.
+- **Detección añadida para que NO se repita en silencio (commit `dba41d46`):**
+  - **Build guard:** el Dockerfile **aborta el build** si la site key no está horneada.
+  - **Canary positivo:** `GET /api/security/captcha/status` (CRON_SECRET, booleans) + `canary-questions-gate` paso 0 exige `enabled=true` → si OFF, email `[Vence CRITICAL]` step `gate_disabled`.
+  - **Principio:** un control fail-open necesita prueba POSITIVA de que DISPARA + alerta, no solo "no rompe el camino feliz".
 
 ### Carrera de deploys (arreglada)
-Pushes frontend concurrentes (sesiones paralelas) → "ganaba" el último en TERMINAR, no el último commit → código viejo en prod. **Fix:** `concurrency: cancel-in-progress` en `frontend-deploy.yml` (03/06).
+Pushes frontend concurrentes (sesiones paralelas) → "ganaba" el último en TERMINAR, no el último commit → código viejo en prod. **Fix:** `concurrency: cancel-in-progress` en `frontend-deploy.yml` (`ee1b9d23`).
 
 ### 📋 Roadmap por capas (siguiente nivel — pendiente)
-- **Capa A — anclar el gate al DEVICE fingerprint** (además de IP/usuario). Responde a "¿y si rota IP?". Reutiliza `lib/api/deviceLimit.ts` (`x-hw-fingerprint`, `user_devices`). Mayor salto, poco código. **(recomendado siguiente)**
+- **Capa A — anclar el gate al DEVICE fingerprint** (además de IP/usuario). Responde a "¿y si rota IP?". Reutiliza `lib/api/deviceLimit.ts` (`x-hw-fingerprint`, `user_devices`). Mayor salto, poco código. **🔨 EN CURSO (03/06).**
 - **Capa B — contar por dispositivo a través de cuentas** (`getAccountsOnDevice`): mata la rotación de cuentas barata (N cuentas en un PC comparten contador).
 - **Capa C — gate adaptativo por comportamiento.** Difícil (la señal servidas/respondidas se conoce DESPUÉS de servir). Partir: **C-fácil** = señal BotD/automation → reto inmediato (alta precisión, ya tenemos BotD); **C-completa** = scoring (ratio+amplitud+sin-revisiones) → se alimenta del log de la Capa D.
 - **Capa D — log de retos + forense humano.** Enriquecer eventos `captcha_*` con contexto del sujeto (servidas-hoy, IP, deviceId) → revisión periódica por Claude → propuesta de ban a Manuel. Convierte el gate en sensor + genera el dataset de C-completa.
