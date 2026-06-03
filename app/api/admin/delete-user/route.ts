@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { deleteUserRequestSchema } from '@/lib/api/admin-delete-user/schemas'
 import { deleteUserData, sendDeletionConfirmationEmail } from '@/lib/api/admin-delete-user'
-import { getServiceClient } from '@/lib/api/shared/auth'
+import { authAdmin } from '@/lib/auth/server'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -24,9 +24,8 @@ async function _DELETE(request: Request) {
 
     // Capturar datos del usuario ANTES del borrado (para enviar email de
     // confirmación RGPD posteriormente, cuando user_profiles ya no exista).
-    // `supabase` se mantiene SOLO para auth.admin.deleteUser (Auth = Fase 4);
-    // las lecturas de user_profiles van por Drizzle.
-    const supabase = getServiceClient()
+    // Lecturas de user_profiles por Drizzle; el borrado de auth.users por el
+    // puerto agnóstico `authAdmin` (Fase 4 D).
     let userEmail: string | null = null
     let userFullName: string | null = null
     try {
@@ -50,7 +49,7 @@ async function _DELETE(request: Request) {
     // Eliminar de auth.users (requiere Supabase Admin API)
     let authDeleted = false
     try {
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+      const { error: authError } = await authAdmin.deleteUser(userId)
 
       if (authError) {
         console.error('❌ Error eliminando de auth.users:', authError)

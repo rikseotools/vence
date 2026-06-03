@@ -1,7 +1,7 @@
 // app/api/emails/send-medal-congratulation/route.ts
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { createClient } from '@supabase/supabase-js'
+import { authAdmin } from '@/lib/auth/server'
 import { canSendEmail } from '@/lib/api/emails'
 import { getAdminDb } from '@/db/client'
 import { emailEvents } from '@/db/schema'
@@ -46,23 +46,18 @@ async function _POST(request: Request) {
       })
     }
 
-    // Obtener email del usuario (solo Auth — pendiente Fase 4 wrapper agnóstico)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Obtener email del usuario via el puerto agnóstico de Auth (Fase 4 D).
+    const adminUser = await authAdmin.getUserById(userId)
 
-    const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId)
-
-    if (userError || !user?.user?.email) {
-      console.error('Error getting user email:', userError)
+    if (!adminUser?.email) {
+      console.error('Error getting user email for', userId)
       return NextResponse.json({
         success: false,
         error: 'User email not found',
       }, { status: 404 })
     }
 
-    const userEmail = user.user.email
+    const userEmail = adminUser.email
 
     // Generar contenido del email
     const emailContent = generateMedalEmailContent(medal, userName)
