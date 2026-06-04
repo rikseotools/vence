@@ -918,6 +918,34 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
 | `app/oposiciones/page.tsx` | Tarjeta de la oposición (lee de tabla `oposiciones` automáticamente, no requiere cambio si la oposición está en BD). La ruta legacy `/nuestras-oposiciones` es 308 redirect → `/oposiciones` desde 07-may-2026. |
 | `app/page.js` | Links en "Test por Oposicion" y tarjeta en "Temarios" |
+| `components/CcaaFlag.tsx` | **Logo/bandera/escudo oficial** de la oposición. Ver §4c.bis. Casi siempre la nueva oposición YA matchea por palabra clave (CCAA, "estado/estatal", provincia…) y no hay que tocar nada; **verificar siempre** que resuelve a algo y no cae al emoji de fallback. |
+
+### 4c.bis Logo / bandera / escudo oficial de la oposición (verificar SIEMPRE)
+
+Cada oposición debe mostrar su **identidad visual oficial** (no un emoji genérico) en breadcrumbs, tarjetas y cabeceras. Lo resuelve `components/CcaaFlag.tsx` a partir del `id`/slug de la oposición, por **prioridad**:
+
+1. **Escudo/logo oficial propio del cuerpo** → `<img>` de un SVG en `public/escudos/`, vía `ESCUDO_KEYWORDS`. Tiene prioridad sobre cualquier bandera. Es el caso de cuerpos con emblema institucional: **Guardia Civil** (`/escudos/guardia-civil.svg`), **Policía Nacional** (`/escudos/policia-nacional.svg`). Una **policía municipal** o un cuerpo con logo propio iría aquí también (NO los municipales bajo la bandera de su ayto).
+2. **Bandera de lugar específico** (ciudad/provincia/isla, más concreta que la CCAA) → SVG inline en `FLAG_PATHS` + entrada en `PLACE_KEYWORDS`. Ej.: `ayuntamiento-zaragoza` → `zaragoza-ciudad`, `diputacion-zaragoza` → `zaragoza-provincia`.
+3. **Bandera de la CCAA / España** → SVG inline en `FLAG_PATHS` vía `KEYWORD_TO_FLAG`. Las **estatales** (AGE, Justicia, cuerpos estatales, INGESA Ceuta/Melilla) caen en el grupo `'espana'`; las **autonómicas** matchean por palabra clave de su CCAA (incluye servicio sanitario, provincias, islas, universidades).
+4. **Fallback**: si no resuelve nada, se usa el emoji de la oposición → señal de que **falta** configurar la identidad visual.
+
+**Qué hacer al crear la oposición (decidir el caso y verificar):**
+
+| Tipo de oposición | Acción en `CcaaFlag.tsx` |
+|---|---|
+| Estatal (AGE, justicia, cuerpo estatal, INGESA) | Suele matchear ya por `'estado'`/`'estatal'`. Si el slug es atípico, **añadir su palabra clave al grupo `'espana'`** de `KEYWORD_TO_FLAG`. |
+| Autonómica (CCAA, servicio sanitario, universidad, provincia, isla) | Suele matchear por la palabra clave de su CCAA. Si es un cuerpo/servicio nuevo, **añadir su keyword** al lote de esa CCAA (ej.: `'-sms'` → `murcia`, `'sescam'` → `clm`). |
+| Ayuntamiento / Diputación con escudo propio | **Dibujar el SVG** del escudo en `FLAG_PATHS` (`'<lugar>-ciudad'` / `'-provincia'`) + entrada en `PLACE_KEYWORDS`. Si no, hereda la bandera de su CCAA (aceptable como mínimo). |
+| Cuerpo con emblema institucional (Guardia Civil, Policía, etc.) | **Colocar el SVG oficial en `public/escudos/`** + entrada en `ESCUDO_KEYWORDS`. |
+
+**Verificación obligatoria** (no asumir que matchea): comprobar que `resolveEscudo(id)` o `resolveFlagKey(id)` devuelven algo para el nuevo `position_type` y para el slug. El orden de `KEYWORD_TO_FLAG` importa: lo más específico primero (p.ej. `castilla-la-mancha` antes que `castilla`, `las-palmas`/`cabildo` antes que `palma`). Para escudos nuevos, usar SVG (escala sin pérdida) y respetar el blasón/identidad oficial (CLAUDE.md: precisión en contenido oficial).
+
+**Cómo obtener el logo/escudo oficial:** la web institucional del organismo casi siempre lo expone. Pasos:
+1. Descargar el HTML de la home oficial (`curl -sL <web> -o /tmp/home.html`) y grepear `src="...logo...\.(svg|png)"` / `head_logo` / `marca`. Los portales del Estado (gestor JCR/AEM) sirven los assets bajo `/dam/jcr:<uuid>/<nombre>.(svg|png)`.
+2. Descargar el asset a `public/escudos/<slug>.<ext>` (`curl -sL <url> -o public/escudos/<slug>.svg`). **SVG preferible**; **PNG es aceptable** (el componente usa `<img>` con `object-contain`, no se deforma). Verificar que es imagen válida (`file public/escudos/<slug>.svg`).
+3. Añadir la entrada en `ESCUDO_KEYWORDS` y verificar que `resolveEscudo()` lo devuelve. Commitear el asset + el cambio de `CcaaFlag.tsx` juntos y desplegar (el logo es estático, aparece tras el deploy; si CloudFront cachea, invalidar).
+
+**Ejemplo real — INGESA (04/06/2026):** mostraba la bandera de España por estar en el grupo `'espana'`. INGESA tiene logo institucional propio → se añadió `[['ingesa'], { src: '/escudos/ingesa.png', alt: 'Logo del INGESA...' }]` a `ESCUDO_KEYWORDS` (la keyword `'ingesa'` cubre los 4 cuerpos: aux-admin, tcae, celador, enfermero). Logo descargado de `ingesa.sanidad.gob.es` (`/dam/jcr:.../head_logo-ingesa.png`, PNG 95×72). El escudo tiene prioridad sobre la bandera, así que NO hace falta sacar `'ingesa'` del grupo `'espana'` (queda de fallback).
 
 ### 4d. Tests a actualizar
 
