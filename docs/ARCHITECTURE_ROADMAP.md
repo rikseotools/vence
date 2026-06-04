@@ -1610,6 +1610,20 @@ Investigando el feedback de una usuaria PREMIUM ("el % no sube al hacer test") s
 3. **Defensa barata e independiente**: ✅ **PARTE A HECHA (03/06, local sin pushear)** — `getDailyLimitStatus` ahora marca `degraded:true` en su fallback por error/timeout y preserva premium desde caché L1; los endpoints `exam/answer` y `answer-and-save` saltan el device-daily-limit cuando `degraded` (fail-open: un blip de BD no bloquea a nadie, free ni premium). Test en `daily-limit-enforcement.test.ts` (49 verde). ⏳ **PARTE B pendiente**: que el examen no se "complete" perdiendo respuestas en silencio (avisar/reintentar) — toca la UI del examen, más delicado.
 4. **Fin de juego (Bloque 5 / Fase D)**: pooler gestionado (RDS Proxy) en vez de PgBouncer self-managed en un hop remoto cross-provider (Lightsail London → Supabase). Es a donde llega el estándar profesional para fiabilidad.
 
+#### ⚠️ ACTUALIZACIÓN 04/06/2026 — chat reads movidas a getPoolerDb (apaga fuego, NO sienta precedente)
+
+Investigando "el chat IA falla" (reportado tras desplegar el feature de límites del chat) se confirmó que la causa NO era el feature, sino el path de lectura del chat:
+
+- **Causa:** las ~10 fuentes de lectura del chat (`hybrid_search_articles` RPC en `ChatOrchestrator`, `search/queries`+`SearchDomain`, `verification/queries`+`DisputeService`, `stats/queries`, `temario/queries`, `knowledge-base/queries`, `oposicion-catalog/queries`, `shared/lawsCache`) usaban `getReadDb()`. En prod **`USE_READ_REPLICA` no está set** → `getReadDb()` cae a `getDb()` = **Supavisor primary `max:1`**. La búsqueda vectorial (lenta) saturaba esa única conexión → cascada **504** (el patrón de la línea 17 / TRAMPA 2).
+- **Fix (commit `9419b7fa`, desplegado #182):** las 10 fuentes pasan a `getPoolerDb()` (PgBouncer self-hosted, `max:8`). Lecturas al primary vía PgBouncer → nunca stale (sin read-after-write). Reversible con `USE_SELF_HOSTED_POOLER=false`.
+- **Efecto medido (20 min post-deploy):** `CONNECT_TIMEOUT` 3/3h → **0**; 5/5 preguntas legales → 200 por dominio `search`; pooler `warmup OK`. Los 17-24s residuales son latencia del LLM Anthropic (preguntas legales), no BD.
+
+**⚠️ CAVEAT — tensión con la guía del §03/06 (línea 1607):** este reenrutado es **un caller nuevo en el pooler self-hosted**, justo lo que la actualización del 03/06 marca como arriesgado ("ampliar callers al pooler NO es la prioridad… concentraría más tráfico en un cuello ya intermitente"). Se acepta como apaga-fuego porque (a) el volumen del chat es bajo (~5/h), (b) el pooler estaba sano al desplegar (0 `SELECT 1 timeout` / `db-ready` en 30 min), y (c) el chat colgaba de un cuello peor (Supavisor `max:1`). **NO sienta precedente para mover el hot path** (los 76 `getDb()` directos): eso sigue bloqueado hasta sanear el pooler. **Pendiente:** validar con tráfico real que el chat no añade presión al pooler; reconsiderar en Fase D.
+
+**Dirección robusta (reafirmada, NO es "mover más reads"):** la prioridad sigue siendo la del §03/06 — (1) observabilidad por instancia del pooler, (2) tuning PgBouncer→DB, (3) defensas fail-open, (4) **Fase D / RDS Proxy** como fin de juego. Materializar las queries lentas (Fase 2-bis style) ataca la causa raíz (una query de 50ms no satura ningún pool). Centralizar `getReadDb` hacia el pooler para TODOS los hot paths queda **descartado** mientras el pooler tenga blips.
+
+**Nota relacionada (mismo deploy):** feature de **límites de uso del chat** (`lib/api/chatLimit.ts`, contador atómico Redis, buckets explain/free/anon, gate por capas premium→burst IP→tope diario, flag `CHAT_LIMITS_MODE=off|shadow|on`). No toca BD primaria; vive en Redis. Memoria `project_chat_limits_y_coste_ia`.
+
 ### Pool split (HOY, sin coste extra adicional)
 
 ```typescript
