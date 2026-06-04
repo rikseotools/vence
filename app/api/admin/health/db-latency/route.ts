@@ -106,7 +106,7 @@ async function _GET(request: NextRequest) {
       maxMs: round(warm[warm.length - 1] ?? 0),
       allMs: warm.map(round),
     },
-    region: process.env.VERCEL_REGION || 'unknown',
+    region: process.env.AWS_REGION || process.env.VERCEL_REGION || 'unknown',
     poolerHost: extractPoolerHost(),
     timestamp: new Date().toISOString(),
   })
