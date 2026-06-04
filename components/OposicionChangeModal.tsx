@@ -6,13 +6,11 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
-import { getSupabaseClient } from '@/lib/supabase'
 import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
+import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import { matchesOposicion } from '@/lib/utils/searchOposicion'
 import { useOposicionesCatalog } from '@/lib/hooks/useOposicionesCatalog'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
-
-const supabase = getSupabaseClient()
 
 const ADMIN_ORDER = [
   'Estado',
@@ -128,18 +126,9 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
       const oposItem = OFFICIAL_OPOSICIONES.find((o: OposicionItem) => o.id === oposicionId)
       const nombre = oposItem?.nombre || oposicionId
       if (user) {
-        try {
-          await supabase
-            .from('user_profiles')
-            .update({
-              target_oposicion: oposicionId,
-              target_oposicion_data: JSON.stringify({ id: oposicionId, name: nombre }),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', user.id)
-        } catch {
-          // Seguir adelante mostrando el mensaje aunque falle el UPDATE
-        }
+        // Escritura centralizada (endpoint server, sin stringify). Captura
+        // demanda de oposiciones aún no implementadas igual que antes.
+        await setTargetOposicion(oposicionId).catch(() => {})
       }
       setPendingOposicion({ id: oposicionId, nombre })
       return
@@ -149,17 +138,9 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
 
     if (user) {
       try {
-        const newOposicionData = { id: oposicionId, name: info.name }
-        const { error } = await supabase
-          .from('user_profiles')
-          .update({
-            target_oposicion: oposicionId,
-            target_oposicion_data: JSON.stringify(newOposicionData),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id)
-
-        if (!error) {
+        // Escritura centralizada (endpoint server, shape canónico, sin stringify).
+        const result = await setTargetOposicion(oposicionId)
+        if (result.ok) {
           window.dispatchEvent(new CustomEvent('oposicionAssigned', { detail: { oposicionId } }))
           window.dispatchEvent(new CustomEvent('profileUpdated'))
         }

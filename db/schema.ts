@@ -96,6 +96,7 @@ export const userProfiles = pgTable("user_profiles", {
 	avatarUrl: text("avatar_url"),
 	preferredLanguage: text("preferred_language").default('es'),
 	studyGoal: integer("study_goal").default(25),
+	showDailyGoalBanner: boolean("show_daily_goal_banner").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	targetOposicion: text("target_oposicion"),
@@ -3740,10 +3741,16 @@ export const convocatoriaHitos = pgTable("convocatoria_hitos", {
 	orderIndex: integer("order_index").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	// Fase 8 (alertas usuario): canal + gate de verificación. Ver migración 20260604_hitos_notify_gate.sql
+	severity: text().default('important').notNull(),
+	notifyStatus: text("notify_status").default('pending').notNull(),
 }, (table) => [
 	index("idx_convocatoria_hitos_oposicion").using("btree", table.oposicionId, table.orderIndex),
+	index("idx_hitos_notify_ready").using("btree", table.notifyStatus, table.severity).where(sql`notify_status = 'verified'`),
 	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "convocatoria_hitos_oposicion_id_fkey" }).onDelete("cascade"),
 	check("convocatoria_hitos_status_check", sql`status IN ('completed', 'current', 'upcoming')`),
+	check("convocatoria_hitos_severity_check", sql`severity IN ('critical', 'important', 'cosmetic')`),
+	check("convocatoria_hitos_notify_status_check", sql`notify_status IN ('pending', 'verified', 'sent')`),
 ]);
 
 // Capa 1: fuentes regionales (entidades) para descubrir OEPs nuevas
@@ -3880,6 +3887,39 @@ export const userAcquisition = pgTable("user_acquisition", {
 		}).onDelete("cascade"),
 	// RLS habilitado SIN políticas (lockdown vía PostgREST; escritura/lectura por
 	// Drizzle privilegiado). Agnóstico: sin auth.uid(). Ver migración 20260602.
+]).enableRLS();
+
+// Fase 8 (alertas al usuario por hitos): oposiciones seguidas por usuario —
+// target actual + favoritas. Audiencia del fan-out de hitos verificados.
+// Ver supabase/migrations/20260604_user_oposiciones_seguidas.sql
+export const userOposicionesSeguidas = pgTable("user_oposiciones_seguidas", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	rol: text().default('favorita').notNull(),
+	notifyBell: boolean("notify_bell").default(true).notNull(),
+	notifyEmail: boolean("notify_email").default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	// Invariante: como mucho UN target por usuario.
+	uniqueIndex("uniq_user_oposicion_target").using("btree", table.userId).where(sql`rol = 'target'`),
+	index("idx_uos_oposicion_bell").using("btree", table.oposicionId).where(sql`notify_bell`),
+	index("idx_uos_user").using("btree", table.userId),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_oposiciones_seguidas_user_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "user_oposiciones_seguidas_oposicion_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_oposiciones_seguidas_user_id_oposicion_id_key").on(table.userId, table.oposicionId),
+	check("user_oposiciones_seguidas_rol_check", sql`rol IN ('target', 'favorita')`),
+	// RLS habilitado SIN políticas (lockdown vía PostgREST). Agnóstico: sin
+	// auth.uid(). Escritura/lectura por Drizzle privilegiado. Ver migración 20260604.
 ]).enableRLS();
 
 // Atribución append-only multi-touch (F0 trackeo-conversiones-ventas).

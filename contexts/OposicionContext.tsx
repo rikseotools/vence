@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, type NavLink } from '@/lib/config/oposiciones'
+import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 
 const supabase = getSupabaseClient()
 
@@ -298,16 +299,9 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         ? { id: newOposicionId, name: oposicionName! }
         : null
 
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          target_oposicion: newOposicionId,
-          target_oposicion_data: newOposicionData ? JSON.stringify(newOposicionData) : null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-
-      if (error) throw error
+      // Escritura centralizada (endpoint server, shape canónico, sin stringify).
+      const result = await setTargetOposicion(newOposicionId)
+      if (!result.ok) throw new Error(result.error || 'No se pudo cambiar la oposición')
 
       setUserOposicion(newOposicionData)
       setOposicionId(newOposicionId)

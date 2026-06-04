@@ -1,6 +1,6 @@
 // app/perfil/page.tsx - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
-import { useState, useEffect, useRef, Suspense, useMemo, ChangeEvent } from 'react'
+import { useState, useEffect, useRef, Suspense, useMemo, useCallback, ChangeEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { ALL_OPOSICION_IDS, getOposicion } from '@/lib/config/oposiciones'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { emitClientEvent } from '@/lib/observability/client'
+import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
 import type { User, SupabaseClient } from '@supabase/supabase-js'
@@ -23,6 +25,7 @@ interface UserProfile {
   avatar_url?: string
   preferred_language?: string
   study_goal?: number
+  show_daily_goal_banner?: boolean
   target_oposicion?: string
   target_oposicion_data?: OposicionData | null
   nickname?: string
@@ -123,6 +126,18 @@ interface OposicionOption {
   data?: OposicionData
 }
 
+// Fase 8 — fila de /api/profile/seguidas
+interface SeguidaItem {
+  id: string
+  oposicionId: string
+  rol: 'target' | 'favorita'
+  notifyBell: boolean
+  notifyEmail: boolean
+  slug: string | null
+  nombre: string | null
+  isActive: boolean | null
+}
+
 type TabType = 'general' | 'emails' | 'suscripcion'
 
 // Tipo para AuthContext (no está tipado)
@@ -130,6 +145,7 @@ interface AuthContextValue {
   user: User | null
   loading: boolean
   supabase: SupabaseClient
+  isPremium: boolean
 }
 
 // ============================================
@@ -137,7 +153,7 @@ interface AuthContextValue {
 // ============================================
 
 function PerfilPageContent() {
-  const { user, loading: authLoading, supabase } = useAuth() as AuthContextValue
+  const { user, loading: authLoading, supabase, isPremium } = useAuth() as AuthContextValue
   const { oposicionId } = useOposicion()
   const userOposicionName = oposicionId ? (getOposicion(oposicionId)?.name ?? null) : null
   const searchParams = useSearchParams()
@@ -182,6 +198,7 @@ function PerfilPageContent() {
   const [matchedBadges, setMatchedBadges] = useState<MatchedBadge[]>([])
   const [avatarModeLoading, setAvatarModeLoading] = useState<boolean>(true)
   const [avatarModeSaving, setAvatarModeSaving] = useState<boolean>(false)
+  const [bannerToggleSaving, setBannerToggleSaving] = useState<boolean>(false)
 
   // Para evitar guardado en primera carga
   const isInitialLoad = useRef<boolean>(true)
@@ -215,6 +232,13 @@ function PerfilPageContent() {
   // Estados para el selector de oposición con buscador
   const [showOposicionSelector, setShowOposicionSelector] = useState<boolean>(false)
   const [oposicionSearchTerm, setOposicionSearchTerm] = useState<string>('')
+
+  // Fase 8 — oposiciones seguidas (target + favoritas) para avisos por hitos
+  const [seguidas, setSeguidas] = useState<SeguidaItem[]>([])
+  const [seguidasLoading, setSeguidasLoading] = useState<boolean>(true)
+  const [seguidasBusy, setSeguidasBusy] = useState<boolean>(false)
+  const [showAddFavorita, setShowAddFavorita] = useState<boolean>(false)
+  const [favoritaSearchTerm, setFavoritaSearchTerm] = useState<string>('')
 
   // Oposiciones disponibles - SINCRONIZADO CON ONBOARDING MODAL
   const oposiciones: OposicionOption[] = [
@@ -833,6 +857,7 @@ function PerfilPageContent() {
             avatar_url: apiProfile.avatarUrl,
             preferred_language: apiProfile.preferredLanguage,
             study_goal: apiProfile.studyGoal,
+            show_daily_goal_banner: apiProfile.showDailyGoalBanner,
             target_oposicion: apiProfile.targetOposicion,
             target_oposicion_data: apiProfile.targetOposicionData,
             nickname: apiProfile.nickname,
@@ -958,6 +983,35 @@ function PerfilPageContent() {
   }, [user])
 
   // 🤖 CAMBIAR MODO DE AVATAR (manual/automático)
+  // Toggle de la barra de meta diaria en la cabecera. Es el ÚNICO sitio donde se
+  // puede re-activar tras ocultarla con la X (preferencia de cuenta). PUT inmediato
+  // + dispatch 'profileUpdated' para que la cabecera reaccione al instante.
+  const handleToggleDailyGoalBanner = async () => {
+    if (!user || bannerToggleSaving) return
+    const next = !(profile?.show_daily_goal_banner !== false) // toggle del valor efectivo (default true)
+    setBannerToggleSaving(true)
+    setProfile(prev => prev ? { ...prev, show_daily_goal_banner: next } : prev) // optimista
+    emitClientEvent({ severity: 'info', eventType: 'daily_goal_banner_action', metadata: { action: next ? 'show' : 'hide', source: 'perfil' } })
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, data: { showDailyGoalBanner: next } }),
+      })
+      const data = await response.json()
+      if (!data.success) throw new Error(data.error || 'Error')
+      window.dispatchEvent(new CustomEvent('profileUpdated'))
+      setMessage(next ? '✅ Barra de meta diaria activada' : '✅ Barra de meta diaria ocultada')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (err) {
+      setProfile(prev => prev ? { ...prev, show_daily_goal_banner: !next } : prev) // revertir
+      setMessage('❌ No se pudo guardar la preferencia')
+      setTimeout(() => setMessage(''), 3000)
+    } finally {
+      setBannerToggleSaving(false)
+    }
+  }
+
   const handleAvatarModeToggle = async () => {
     if (!user || avatarModeSaving) return
 
@@ -1207,6 +1261,108 @@ function PerfilPageContent() {
   }
 
   // GUARDAR PERFIL VIA API TIPADA
+  // ── Fase 8: oposiciones seguidas (target + favoritas) ──
+  const loadSeguidas = useCallback(async () => {
+    if (!user) return
+    try {
+      // getAuthHeaders refresca sesión y puede colgarse → race con timeout para
+      // que el fetch SIEMPRE se dispare y "Cargando…" nunca se quede fijo.
+      const headers = await Promise.race<HeadersInit>([
+        getAuthHeaders(),
+        new Promise<HeadersInit>((r) => setTimeout(() => r({}), 4000)),
+      ]).catch(() => ({} as HeadersInit))
+      const ac = new AbortController()
+      const t = setTimeout(() => ac.abort(), 8000)
+      const res = await fetch('/api/profile/seguidas', { headers, signal: ac.signal })
+      clearTimeout(t)
+      const json = await res.json()
+      if (json?.success) setSeguidas(json.data as SeguidaItem[])
+    } catch {
+      // silencioso: la sección es secundaria
+    } finally {
+      setSeguidasLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (user) loadSeguidas()
+  }, [user, loadSeguidas])
+
+  // Recargar cuando cambie el target (el trigger de BD reordena target/favorita)
+  useEffect(() => {
+    const handler = () => loadSeguidas()
+    window.addEventListener('oposicionAssigned', handler)
+    return () => window.removeEventListener('oposicionAssigned', handler)
+  }, [loadSeguidas])
+
+  const addFavorita = async (slug: string) => {
+    if (!user || !slug || seguidasBusy) return
+    setSeguidasBusy(true)
+    try {
+      const res = await fetch('/api/profile/seguidas', {
+        method: 'POST',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oposicionSlug: slug })
+      })
+      const json = await res.json()
+      if (json?.success) {
+        setSeguidas(json.data as SeguidaItem[])
+        setShowAddFavorita(false)
+        setFavoritaSearchTerm('')
+        setMessage('✅ Añadida a favoritas')
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        setMessage(`❌ ${json?.error || 'No se pudo añadir'}`)
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch {
+      setMessage('❌ Error al añadir favorita')
+      setTimeout(() => setMessage(''), 3000)
+    } finally {
+      setSeguidasBusy(false)
+    }
+  }
+
+  const removeFavorita = async (oposicionId: string) => {
+    if (!user || seguidasBusy) return
+    setSeguidasBusy(true)
+    try {
+      const res = await fetch('/api/profile/seguidas', {
+        method: 'DELETE',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oposicionId })
+      })
+      const json = await res.json()
+      if (json?.success) setSeguidas(json.data as SeguidaItem[])
+    } catch {
+      // silencioso
+    } finally {
+      setSeguidasBusy(false)
+    }
+  }
+
+  // Promover una favorita a objetivo = cambiar el target (el trigger degrada el anterior)
+  const promoteToTarget = async (slug: string | null) => {
+    if (!user || !slug || seguidasBusy) return
+    const op = oposiciones.find(o => o.data?.slug === slug)
+    if (!op) return
+    setSeguidasBusy(true)
+    try {
+      handleDirectChange('target_oposicion', op.value)
+      await setTargetOposicion(op.value)
+      setProfile(prev => prev ? { ...prev, target_oposicion: op.value, target_oposicion_data: op.data || null } : prev)
+      window.dispatchEvent(new CustomEvent('oposicionAssigned', { detail: { oposicionId: op.value } }))
+      await loadSeguidas()
+      setMessage('✅ Oposición objetivo actualizada')
+      setTimeout(() => setMessage(''), 3000)
+    } catch {
+      setMessage('❌ Error al cambiar objetivo')
+      setTimeout(() => setMessage(''), 3000)
+    } finally {
+      setSeguidasBusy(false)
+    }
+  }
+
   const saveProfile = async () => {
     if (!user || saving || !hasChanges) return
 
@@ -2292,17 +2448,10 @@ function PerfilPageContent() {
                             onSelect={async (id) => {
                               // Actualizar state local
                               handleDirectChange('target_oposicion', id)
-                              // Guardar solo oposición en BD directamente
+                              // Escritura centralizada (endpoint server, shape canónico)
                               const selectedOp = oposiciones.find(op => op.value === id)
                               const oposicionData = selectedOp?.data || null
-                              await fetch('/api/profile', {
-                                method: 'PUT',
-                                headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  userId: user?.id,
-                                  data: { targetOposicion: id, targetOposicionData: oposicionData }
-                                })
-                              }).catch(() => {})
+                              await setTargetOposicion(id).catch(() => {})
                               // Sincronizar profile local para que hasChanges no detecte diff
                               setProfile(prev => prev ? { ...prev, target_oposicion: id, target_oposicion_data: oposicionData } : prev)
                               window.dispatchEvent(new CustomEvent('oposicionAssigned', { detail: { oposicionId: id } }))
@@ -2333,7 +2482,152 @@ function PerfilPageContent() {
                             Número de preguntas que quieres responder cada día
                           </p>
                         </div>
+
+                        {/* Toggle: barra de meta diaria en la cabecera (premium). Único sitio
+                            para re-activarla tras ocultarla con la X de la propia barra. */}
+                        {isPremium && (
+                          <div className="md:col-span-2">
+                            <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  📊 Mostrar barra de meta diaria en la cabecera
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  La barra de progreso (0/{formData.study_goal}) que aparece arriba. Si la ocultas con la ✕, se vuelve a activar desde aquí.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={profile?.show_daily_goal_banner !== false}
+                                aria-label="Mostrar barra de meta diaria en la cabecera"
+                                disabled={bannerToggleSaving}
+                                onClick={handleToggleDailyGoalBanner}
+                                className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                  profile?.show_daily_goal_banner !== false ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                                } ${bannerToggleSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    profile?.show_daily_goal_banner !== false ? 'translate-x-6' : 'translate-x-1'
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Fase 8 — Mis oposiciones favoritas */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">
+                        ⭐ Mis oposiciones favoritas
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        Te avisaremos en la campana 🔔 (y por email en los hitos clave) cuando haya novedades de tus oposiciones favoritas.
+                      </p>
+
+                      {seguidasLoading ? (
+                        <div className="text-sm text-gray-400">Cargando…</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {seguidas.length === 0 && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              Aún no sigues ninguna oposición. Añade favoritas para recibir avisos de sus novedades.
+                            </div>
+                          )}
+                          {seguidas.map((s) => (
+                            <div
+                              key={s.id}
+                              className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  s.rol === 'target'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                }`}>
+                                  {s.rol === 'target' ? '🎯 Objetivo' : '⭐ Favorita'}
+                                </span>
+                                <span className="text-sm text-gray-800 dark:text-gray-100 truncate">
+                                  {s.nombre || s.slug}
+                                </span>
+                              </div>
+                              {s.rol === 'favorita' && (
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={seguidasBusy}
+                                    onClick={() => promoteToTarget(s.slug)}
+                                    className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 disabled:opacity-50"
+                                  >
+                                    Hacer objetivo
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={seguidasBusy}
+                                    onClick={() => removeFavorita(s.oposicionId)}
+                                    className="text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+                                  >
+                                    Quitar
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+
+                          {/* Añadir favorita */}
+                          {!showAddFavorita ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowAddFavorita(true)}
+                              className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 mt-1"
+                            >
+                              + Añadir favorita
+                            </button>
+                          ) : (
+                            <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 mt-1">
+                              <input
+                                type="text"
+                                autoFocus
+                                value={favoritaSearchTerm}
+                                onChange={(e) => setFavoritaSearchTerm(e.target.value)}
+                                placeholder="Busca una oposición…"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm mb-2"
+                              />
+                              <div className="max-h-48 overflow-y-auto space-y-1">
+                                {oposiciones
+                                  .filter(op => op.value && op.data?.slug)
+                                  .filter(op => !seguidas.some(s => s.slug === op.data!.slug))
+                                  .filter(op => {
+                                    const t = favoritaSearchTerm.toLowerCase().trim()
+                                    return !t || op.label.toLowerCase().includes(t)
+                                  })
+                                  .slice(0, 30)
+                                  .map(op => (
+                                    <button
+                                      key={op.value}
+                                      type="button"
+                                      disabled={seguidasBusy}
+                                      onClick={() => addFavorita(op.data!.slug)}
+                                      className="w-full text-left text-sm px-3 py-1.5 rounded hover:bg-blue-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+                                    >
+                                      {op.label}
+                                    </button>
+                                  ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => { setShowAddFavorita(false); setFavoritaSearchTerm('') }}
+                                className="text-xs text-gray-500 hover:text-gray-700 mt-2"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Avatar Actual */}

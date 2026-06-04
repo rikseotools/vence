@@ -193,7 +193,7 @@ async function assignOposicionToUser(userId: string, oposicionData: OposicionDat
     const profileData = {
       id: userId, // ✅ CRÍTICO: Usar ID del usuario autenticado
       target_oposicion: oposicionData.id,
-      target_oposicion_data: JSON.stringify(oposicionData),
+      target_oposicion_data: oposicionData, // objeto directo a jsonb (sin stringify → no doble-codifica)
       first_oposicion_detected_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -233,7 +233,7 @@ async function assignOposicionToUser(userId: string, oposicionData: OposicionDat
       .from('user_profiles')
       .update({
         target_oposicion: oposicionData.id,
-        target_oposicion_data: JSON.stringify(oposicionData),
+        target_oposicion_data: oposicionData, // objeto directo a jsonb (sin stringify → no doble-codifica)
         first_oposicion_detected_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })

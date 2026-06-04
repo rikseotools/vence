@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
-import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { OPOSICIONES, getBlockForTopic } from '@/lib/config/oposiciones'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
+import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 
 interface OppositionOption {
   key: string
@@ -29,8 +29,6 @@ interface InteractiveBreadcrumbsProps {
   customLabels?: Record<string, string>
   className?: string
 }
-
-const supabase = getSupabaseClient()
 
 export default function InteractiveBreadcrumbs({ customLabels = {}, className = "" }: InteractiveBreadcrumbsProps) {
   const pathname = usePathname()
@@ -232,27 +230,13 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
       try {
         const oposicionName = OPOSICION_NAMES[option.oposicionId] || 'Nueva Oposición'
-        const newOposicionData = {
-          id: option.oposicionId,
-          name: oposicionName
-        }
 
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .update({
-            target_oposicion: option.oposicionId,
-            target_oposicion_data: JSON.stringify(newOposicionData),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id)
-          .select()
+        // Escritura centralizada (endpoint server, shape canónico, sin stringify).
+        const result = await setTargetOposicion(option.oposicionId)
+        console.log('📊 Resultado update:', { result, userId: user.id })
 
-        console.log('📊 Resultado update:', { data, error, userId: user.id })
-
-        if (error) {
-          console.error('❌ Error actualizando oposición:', error.message || error.code || JSON.stringify(error))
-        } else if (!data || data.length === 0) {
-          console.warn('⚠️ Update no afectó ninguna fila - verificar user_id:', user.id)
+        if (!result.ok) {
+          console.error('❌ Error actualizando oposición:', result.error)
         } else {
           console.log('✅ Oposición actualizada en BD:', option.oposicionId)
 
