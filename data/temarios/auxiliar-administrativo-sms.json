@@ -1,0 +1,51 @@
+{
+  "slug": "auxiliar-administrativo-sms",
+  "nombre": "Auxiliar Administrativo del Servicio Murciano de Salud (SMS)",
+  "categoria_estatutaria": "Técnico Auxiliar no Sanitario, opción Auxiliar Administrativo",
+  "grupo": "C", "subgrupo": "C2",
+  "administracion": "autonomica",
+  "diario_oficial": "BORM",
+  "temario_fuente": "Resolución del Director Gerente del SMS — BORM nº 233, 07/10/2021 (NPE: A-071021-6104, marginal 6104)",
+  "convocatoria": {
+    "plazas": 130, "plazas_libres": 66, "plazas_promocion_interna": 64,
+    "diario_referencia": "BORM (bases dic-2025)",
+    "inscripcion": "19/12/2025 - 17/01/2026 (cerrada)",
+    "estado_proceso": "inscripcion_cerrada",
+    "examen": "85 preguntas, 4 alternativas, 95 min. Oposición 60% + concurso 40% (turno libre). Penalización 1/4 (cada 4 erróneas resta 1).",
+    "exam_date": null
+  },
+  "temas": [
+    {"id": 1, "parte": "general", "titulo": "La Constitución Española. Derechos y deberes fundamentales. La protección de la salud en la Constitución. Las Cortes Generales. El Gobierno y la Administración.", "norma": "CE", "cobertura": "TENEMOS (CE)"},
+    {"id": 2, "parte": "general", "titulo": "El Estatuto de Autonomía de la Región de Murcia: Órganos Institucionales. Régimen Jurídico. La reforma del Estatuto: procedimiento.", "norma": "LO 4/1982", "cobertura": "TENEMOS (LO 4/1982 Estatuto Murcia)"},
+    {"id": 3, "parte": "general", "titulo": "La protección de datos personales: Reglamento (UE) 2016/679. Ley Orgánica 3/2018. Ley 12/2014, de 16 de diciembre, de Transparencia y Participación Ciudadana de la CARM: objeto, finalidad y definiciones.", "norma": "RGPD 2016/679 + LO 3/2018 + Ley 12/2014 Murcia", "cobertura": "PARCIAL: tenemos RGPD/LOPDGDD; FALTA Ley 12/2014 Transparencia Murcia"},
+    {"id": 4, "parte": "general", "titulo": "La Ley 31/1995 de Prevención de Riesgos Laborales: objeto, ámbito, definiciones. Derechos y obligaciones. Servicio de Prevención.", "norma": "Ley 31/1995 PRL", "cobertura": "TENEMOS (PRL)"},
+    {"id": 5, "parte": "general", "titulo": "El principio de igualdad y la tutela contra la discriminación en la LO 3/2007. Planes de igualdad. El acoso por razón de sexo (Ley 7/2007).", "norma": "LO 3/2007 + Ley 7/2007 EBEP", "cobertura": "TENEMOS (Igualdad + EBEP)"},
+    {"id": 6, "parte": "general", "titulo": "La comunicación en la organización: interpersonal, descendente, ascendente y horizontal. Flujos y barreras. La organización y su cultura. Teorías sobre la motivación.", "norma": "(genérico/editorial)", "cobertura": "GENÉRICO → ley virtual de contenido"},
+    {"id": 7, "parte": "especifica", "titulo": "La Ley 14/1986, General de Sanidad: organización general del sistema sanitario público; los servicios de salud de las CCAA; las áreas de salud.", "norma": "Ley 14/1986 LGS", "cobertura": "TENEMOS (LGS)"},
+    {"id": 8, "parte": "especifica", "titulo": "La Ley 4/1994, de 26 de julio, de Salud de la Región de Murcia: planificación sanitaria; el mapa sanitario regional. El SMS: órganos de dirección, participación y gestión.", "norma": "Ley 4/1994 Salud Murcia", "cobertura": "FALTA → crear desde BORM (regional)"},
+    {"id": 9, "parte": "especifica", "titulo": "El Decreto 53/1989, de 1 de junio, Reglamento General de funcionamiento de los Equipos de Atención Primaria de la CARM: funciones y organización del EAP.", "norma": "Decreto 53/1989 Murcia", "cobertura": "FALTA → crear desde BORM (regional)"},
+    {"id": 10, "parte": "especifica", "titulo": "El Reglamento de estructura, organización y funcionamiento de los hospitales (RD 521/1987): disposiciones generales; estructura y órganos de dirección.", "norma": "RD 521/1987", "cobertura": "FALTA → import desde BOE (nacional)"},
+    {"id": 11, "parte": "especifica", "titulo": "Ley 3/2009, de 11 de mayo, de los derechos y deberes de los usuarios del Sistema Sanitario de la Región de Murcia.", "norma": "Ley 3/2009 Murcia", "cobertura": "CONFIRMAR (existe 'Ley 3/2009 Murcia' 82 arts en BD — verificar que es esta)"},
+    {"id": 12, "parte": "especifica", "titulo": "La Ley 5/2001, de 5 de diciembre, de personal estatutario del SMS: órganos superiores de dirección y gestión. Jornada de trabajo.", "norma": "Ley 5/2001 Murcia", "cobertura": "FALTA → crear desde BORM (regional)"},
+    {"id": 13, "parte": "especifica", "titulo": "La Ley 55/2003, Estatuto Marco del personal estatutario: adquisición/pérdida de la condición; selección; promoción interna, movilidad y carrera; régimen retributivo; derechos y deberes; régimen disciplinario.", "norma": "Ley 55/2003", "cobertura": "TENEMOS (55/2003)"},
+    {"id": 14, "parte": "especifica", "titulo": "Clasificación del personal estatutario, situaciones administrativas, permisos y licencias: Ley 5/2001, Ley 55/2003 y EBEP.", "norma": "Ley 5/2001 + 55/2003 + EBEP", "cobertura": "PARCIAL: 55/2003 y EBEP sí; 5/2001 falta"},
+    {"id": 15, "parte": "especifica", "titulo": "La Ley General de la Seguridad Social. Campo de aplicación y estructura. Afiliación y cotización. Liquidación y recaudación.", "norma": "LGSS RDL 8/2015", "cobertura": "TENEMOS (LGSS)"},
+    {"id": 16, "parte": "especifica", "titulo": "Régimen General de la Seguridad Social: campo de aplicación. Cotización. Recaudación. Aspectos comunes de la acción protectora.", "norma": "LGSS RDL 8/2015", "cobertura": "TENEMOS (LGSS)"},
+    {"id": 17, "parte": "especifica", "titulo": "El Decreto Legislativo 1/1999, Texto Refundido de la Ley de Hacienda de la Región de Murcia. Principios generales. Presupuestos Generales de la CARM.", "norma": "DLeg 1/1999 Hacienda Murcia", "cobertura": "TENEMOS (DL 1/1999 Hacienda Murcia)"},
+    {"id": 18, "parte": "especifica", "titulo": "Ley 39/2015 (I). Actividad de las AAPP: normas generales; términos y plazos. Los actos administrativos.", "norma": "Ley 39/2015", "cobertura": "TENEMOS (39/2015)"},
+    {"id": 19, "parte": "especifica", "titulo": "Ley 39/2015 (II). Identificación y firma. El procedimiento administrativo común. Revisión de los actos en vía administrativa.", "norma": "Ley 39/2015", "cobertura": "TENEMOS (39/2015)"},
+    {"id": 20, "parte": "especifica", "titulo": "Ley 40/2015 (I). Ámbito. Órganos de las AAPP. Responsabilidad patrimonial.", "norma": "Ley 40/2015", "cobertura": "TENEMOS (40/2015)"},
+    {"id": 21, "parte": "especifica", "titulo": "Ley 40/2015 (II). Funcionamiento electrónico del sector público; comunicaciones y notificaciones electrónicas; expediente administrativo electrónico.", "norma": "Ley 40/2015", "cobertura": "TENEMOS (40/2015)"},
+    {"id": 22, "parte": "especifica", "titulo": "La Ley 9/2017 de Contratos del Sector Público. Objeto y ámbito. Tipos contractuales; regulación armonizada; contratos administrativos y privados.", "norma": "Ley 9/2017", "cobertura": "TENEMOS (9/2017)"},
+    {"id": 23, "parte": "especifica", "titulo": "Los documentos administrativos: concepto, funciones y clases.", "norma": "(genérico/editorial)", "cobertura": "GENÉRICO → ley virtual de contenido"},
+    {"id": 24, "parte": "especifica", "titulo": "Informática básica: hardware y software. Word: formato, configuración de página, combinar correspondencia. Excel: tablas, fórmulas. Correo electrónico.", "norma": "(ofimática)", "cobertura": "TENEMOS (ofimática)"}
+  ],
+  "resumen_gap": {
+    "tenemos": ["CE","LO 4/1982 Murcia","RGPD/LOPDGDD","PRL 31/1995","LO 3/2007/EBEP","Ley 14/1986 LGS","Ley 55/2003","LGSS","DL 1/1999 Hacienda Murcia","Ley 39/2015","Ley 40/2015","Ley 9/2017","ofimática"],
+    "crear_regional_BORM": ["Ley 4/1994 Salud Murcia (T8)","Decreto 53/1989 EAP Murcia (T9)","Ley 5/2001 personal estatutario SMS (T12,T14)","Ley 12/2014 Transparencia Murcia (T3, parcial)"],
+    "import_nacional_BOE": ["RD 521/1987 Reglamento hospitales (T10)"],
+    "confirmar": ["Ley 3/2009 Murcia usuarios (T11) — existe en BD, verificar identidad"],
+    "virtual_generico": ["T6 comunicación en la organización","T23 documentos administrativos"]
+  },
+  "nota": "Existe además el grado ADMINISTRATIVO (C1) del SMS con temario propio (BORM 233/2021 también) — comprometido a Mayka. Pendiente extraer su temario literal aparte."
+}

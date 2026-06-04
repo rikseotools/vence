@@ -276,9 +276,19 @@ function PerfilPageContent() {
       data: { name: 'Auxiliar Administrativo del Servicio Canario de la Salud (SCS)', slug: 'auxiliar-administrativo-scs-canarias', categoria: 'C2', administracion: 'Sanitaria' }
     },
     {
+      value: 'auxiliar_administrativo_ingesa',
+      label: 'Aux. Admin. INGESA (Ceuta y Melilla)',
+      data: { name: 'Auxiliar Administrativo del INGESA (Ceuta y Melilla)', slug: 'auxiliar-administrativo-ingesa', categoria: 'C2', administracion: 'Estatal' }
+    },
+    {
       value: 'tcae_galicia',
       label: 'TCAE Galicia (SERGAS)',
       data: { name: 'TCAE del SERGAS', slug: 'tcae-galicia', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
+      value: 'auxiliar_administrativo_sms',
+      label: 'Aux. Admin. SMS (Murcia)',
+      data: { name: 'Auxiliar Administrativo del Servicio Murciano de Salud (SMS)', slug: 'auxiliar-administrativo-sms', categoria: 'C2', administracion: 'Autonómica' }
     },
     {
       value: 'tcae_murcia',

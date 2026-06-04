@@ -217,6 +217,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '💉'
   },
   {
+    id: 'auxiliar_administrativo_sms',
+    nombre: 'Auxiliar Administrativo del Servicio Murciano de Salud (SMS)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏥'
+  },
+  {
     id: 'tcae_murcia',
     nombre: 'TCAE del Servicio Murciano de Salud',
     categoria: 'C2',
@@ -873,6 +880,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏥'
   },
   {
+    id: 'auxiliar_administrativo_ingesa',
+    nombre: 'Auxiliar Administrativo del INGESA (Ceuta y Melilla)',
+    categoria: 'C2',
+    administracion: 'Estatal',
+    icon: '🏥'
+  },
+  {
     id: 'auxiliar_administrativo_clm',
     nombre: 'Auxiliar Administrativo Junta de Castilla-La Mancha',
     categoria: 'C2',
@@ -1472,6 +1486,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'La Rioja': ['auxiliar_administrativo_la_rioja', 'auxiliar_administrativo_estado'],
+  'Ceuta': ['auxiliar_administrativo_ingesa', 'auxiliar_administrativo_estado'],
+  'Melilla': ['auxiliar_administrativo_ingesa', 'auxiliar_administrativo_estado'],
   'País Vasco': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Basque Country': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Euskadi': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
@@ -1495,6 +1511,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_carm',        // 21
   'auxiliar_administrativo_canarias',    // 10
   'auxiliar_administrativo_scs_canarias', // sanitaria Canarias (Aux Admin SCS)
+  'auxiliar_administrativo_ingesa',       // INGESA Ceuta/Melilla (Aux Admin estatal sanitario)
   'auxiliar_administrativo_andalucia',   // 7
   'auxiliar_administrativo_madrid',      // 4+
   'auxiliar_administrativo_aragon',      // 3
