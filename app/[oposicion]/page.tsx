@@ -340,34 +340,6 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
             </div>
           )}
 
-          {/* Enlaces oficiales */}
-          {(programaUrl || seguimientoUrl) && (
-            <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-10">
-              {programaUrl && (
-                <a href={programaUrl} target="_blank" rel="noopener noreferrer"
-                  className={`flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg ${colors.hoverBorder} transition-all group`}>
-                  <div className={`flex-shrink-0 w-12 h-12 ${colors.badge} rounded-lg flex items-center justify-center text-2xl`}>📄</div>
-                  <div>
-                    <div className={`font-bold text-gray-800 group-${colors.linkHover} transition-colors`}>
-                      {esOepSinConvocatoria ? `Ver OEP en ${diarioOficial}` : `Ver convocatoria en ${diarioOficial}`}
-                    </div>
-                    <div className="text-sm text-gray-500">{boeRef} {boeFechaCorta ? `- ${boeFechaCorta}` : ''}</div>
-                  </div>
-                </a>
-              )}
-              {seguimientoUrl && (
-                <a href={seguimientoUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all group">
-                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">🔍</div>
-                  <div>
-                    <div className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Seguimiento del proceso</div>
-                    <div className="text-sm text-gray-500">Consulta el estado actualizado</div>
-                  </div>
-                </a>
-              )}
-            </div>
-          )}
-
           {/* Timeline de hitos */}
           {hitosSafe.length > 0 && (
             <section className="mb-10">
@@ -405,6 +377,34 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
                 </div>
               </div>
             </section>
+          )}
+
+          {/* Enlaces oficiales (tras el timeline, antes del temario) */}
+          {(programaUrl || seguimientoUrl) && (
+            <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-10">
+              {programaUrl && (
+                <a href={programaUrl} target="_blank" rel="noopener noreferrer"
+                  className={`flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg ${colors.hoverBorder} transition-all group`}>
+                  <div className={`flex-shrink-0 w-12 h-12 ${colors.badge} rounded-lg flex items-center justify-center text-2xl`}>📄</div>
+                  <div>
+                    <div className={`font-bold text-gray-800 group-${colors.linkHover} transition-colors`}>
+                      {esOepSinConvocatoria ? `Ver OEP en ${diarioOficial}` : `Ver convocatoria en ${diarioOficial}`}
+                    </div>
+                    <div className="text-sm text-gray-500">{boeRef} {boeFechaCorta ? `- ${boeFechaCorta}` : ''}</div>
+                  </div>
+                </a>
+              )}
+              {seguimientoUrl && (
+                <a href={seguimientoUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all group">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">🔍</div>
+                  <div>
+                    <div className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Seguimiento del proceso</div>
+                    <div className="text-sm text-gray-500">Consulta el estado actualizado</div>
+                  </div>
+                </a>
+              )}
+            </div>
           )}
 
           {/* Temario */}
