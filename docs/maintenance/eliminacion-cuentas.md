@@ -19,6 +19,7 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 **El `deletion_reason` debe contener el journey completo, no un resumen de tres líneas.** Es el único sitio donde queda preservada la investigación tras eliminar la cuenta. Si algún día alguien quiere entender por qué se fue un usuario, el deletion_reason es la referencia — no escribas "Se fue" y ya. Escribe:
 
 - Perfil completo (email, plan, días activo, oposición, ciudad, fuente)
+- **Cómo entró (captación):** canal real, anuncio/campaña y landing — de la tabla `user_acquisition`, **NO** de `registration_source` (que casi siempre vale `organic` y engaña). Ver §2bis. Sirve para detectar **campañas de pago mal configuradas** (gente que se da de baja a los minutos de llegar por un anuncio = dinero tirado).
 - Actividad cuantificada (tests, respuestas, chat IA, disputas, errores)
 - Subscripción y ciclo de pago
 - **Journey completo del día de la solicitud** reconstruido de `user_interactions` minuto a minuto
@@ -90,6 +91,36 @@ const { data: events } = await supabase.from('user_interactions')
 - **Deploy mid-test**: cambio de `deploy_version` durante una sesión activa → bug caso francofila (ver useVersionCheck.ts)
 
 Ver también: `docs/procedures/investigar-journey-usuario.md`
+
+---
+
+## 2bis. Cómo entró el usuario (captación) — detectar campañas mal configuradas
+
+**Objetivo:** ver de qué canal/anuncio vino quien se da de baja. Si muchas bajas tempranas concentran el mismo `channel`/`utm_campaign`/`landing_path`, esa campaña atrae gente que no encaja (mala segmentación, anuncio engañoso o landing equivocado) → estás **pagando por registros que se van**. Es la señal para apagar o reorientar la campaña.
+
+**Fuente correcta:** tabla `user_acquisition` (1 fila por usuario, escrita al registrarse). **NO** uses `user_profiles.registration_source` (por defecto `'organic'`, no fiable). El `channel` se deriva del `referrer` de la 1ª visita (p.ej. `https://chatgpt.com/` → `chatgpt.com`); los anuncios de pago se reconocen por los click-IDs en la URL (`gclid` Google, `fbclid` Meta) y `utm_campaign`, no por el referrer. (Cobertura: datos solo desde 2026-06-02.)
+
+```js
+const { data: acq } = await supabase.from('user_acquisition')
+  .select('channel, gclid, fbclid, utm_source, utm_medium, utm_campaign, landing_path, referrer, captured_at')
+  .eq('user_id', userId).maybeSingle();
+// channel='google_ads'/'meta_ads' + utm_campaign → vino de un anuncio de pago concreto.
+// channel='chatgpt.com'/'organic'/'direct' → no es publicidad de pago.
+```
+
+> ⚠️ **GOTCHA crítico — captúralo ANTES de borrar.** `user_acquisition` tiene FK `ON DELETE CASCADE`: al ejecutar el borrado **desaparece**. Por eso la captación (canal, `gclid`/`fbclid`, `utm_campaign`, `landing_path`) **debe quedar escrita en el `deletion_reason`** (bloque `=== CAPTACIÓN ===`) durante la investigación. Si no, después no hay forma de saber por qué campaña entró. Para el análisis agregado de campañas (§8) esa info se lee del `deletion_reason`, porque la fila original ya no existe.
+
+Bloque a incluir SIEMPRE en el `deletion_reason`:
+
+```
+=== CAPTACIÓN ===
+- channel: google_ads | utm_campaign: 23727564870 | landing: /auxiliar-administrativo-carm
+- gclid: SÍ | fbclid: no   (→ vino de publicidad de pago de Google)
+```
+
+(Si no hay fila en `user_acquisition` o no es de pago, anótalo igual: "sin fila / channel organic / sin click-IDs".)
+
+**Para el panorama de canales en vivo** (no solo bajas), ver el método de análisis de captación→conversión por canal (memoria `reference_analisis_captacion_canales`): agrupar `user_acquisition` por `channel`/`utm_campaign` y cruzar con `tests` (activó) y `payment_settlements` (pagó), ventana 7/15 días, separando captación nueva de re-engagement.
 
 ---
 
@@ -358,6 +389,24 @@ SELECT
   COUNT(*) AS total
 FROM deleted_users_log
 GROUP BY requested_via;
+
+-- 🎯 Campañas mal configuradas: bajas tempranas (<2 días) agrupadas por canal/campaña.
+-- La captación se lee del bloque "=== CAPTACIÓN ===" del deletion_reason (la fila de
+-- user_acquisition se borró en cascada). Si un mismo channel/utm_campaign concentra
+-- muchas bajas a los minutos/horas de registrarse → revisar/pausar esa campaña.
+SELECT
+  COALESCE(substring(deletion_reason FROM 'channel:\s*([^\s|]+)'), 'desconocido') AS channel,
+  substring(deletion_reason FROM 'utm_campaign:\s*([^\s|]+)') AS utm_campaign,
+  COUNT(*) AS bajas,
+  AVG(days_active) AS avg_days_active
+FROM deleted_users_log
+WHERE days_active < 2
+  AND deleted_at > NOW() - INTERVAL '30 days'
+GROUP BY 1, 2
+ORDER BY bajas DESC;
+-- Foco en channel IN ('google_ads','meta_ads') o gclid presente: ahí es donde se paga.
+-- Complementar con el análisis en vivo de user_acquisition (memoria
+-- reference_analisis_captacion_canales) para ver registros que churnean sin pedir baja.
 
 -- Eliminaciones con datos archivados (tenían pagos)
 SELECT COUNT(*)
