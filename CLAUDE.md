@@ -32,6 +32,15 @@
 
 ## Funcionalidades Recientes
 
+### Barra de Meta Diaria movible + ocultable (Implementado: 04/06/2026)
+- **Componente:** `components/DailyGoalBanner.tsx` (pill premium "X/Y (%)" en el Header)
+- **Problema:** en móvil vive en la fila flotante `absolute top-full` del Header y tapaba contenido.
+- **Arrastrable:** pointer events (ratón+táctil), posición persistida en `localStorage` (`daily_goal_pos:<uid>`, per-dispositivo), **clampada al viewport** (helper puro `clampBannerOffset`) y **re-clampada** en mount/resize (no queda fuera al rotar/cambiar pantalla). Distingue click de drag (umbral 6px) para no romper el dropdown.
+- **Ocultable con ✕:** es **preferencia de CUENTA** (`user_profiles.show_daily_goal_banner`, NO localStorage) → se ve igual en todos los dispositivos. La ✕ la pone `false`; el **único** sitio para re-activarla es el toggle en `/perfil`.
+- **Cableado:** `db/schema.ts` → `lib/api/profile/{schemas,queries}.ts` → `contexts/AuthContext.tsx` → `types/database.types.ts`. Helpers puros exportados (`effectiveBannerVisible`, `nextBannerVisible`, `clampBannerOffset`) testeados en `__tests__/components/DailyGoalBanner.test.ts` (18 tests).
+- **Observabilidad in-house:** evento `daily_goal_banner_action` (con `userId` auto) — `action ∈ {drag,hide,show}` en éxito; en fallo del PUT **revierte** el cambio optimista y emite `severity:'warn'` (`hide_failed`/`toggle_failed`). Consulta: `observable_events WHERE event_type='daily_goal_banner_action'`.
+- **Migración:** `supabase/migrations/20260604_show_daily_goal_banner.sql` (columna `boolean NOT NULL DEFAULT true`, additiva).
+
 ### Landing Pages Dinámicas con Datos de BD (Implementado: 22/03/2026)
 - **Ubicación:** `app/auxiliar-administrativo-estado/page.tsx` (primera migrada)
 - **Datos dinámicos de tabla `oposiciones`:** plazas, fechas, BOE reference, salario, título requerido
