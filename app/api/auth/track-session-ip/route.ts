@@ -33,42 +33,51 @@ interface GeoLocation {
 }
 
 /**
- * Extrae geolocation de los headers que Vercel inyecta en cada request
- * server-side (gratis en todos los planes, incluido Hobby).
+ * Extrae geolocation de los headers que el edge inyecta server-side (sync, 0
+ * latencia). Preferencia: CloudFront (infra actual desde la migración) →
+ * Vercel (legacy, por si se volviera a servir desde allí).
  *
- * Reemplaza la llamada externa a ip-api.com que tenía 3 problemas:
- *   1. Bloqueaba el await de la respuesta hasta 3s (AbortSignal timeout) →
- *      login lento si el proveedor estaba lento o caído
- *   2. HTTP no HTTPS → tráfico de geolocalización en claro
- *   3. Free tier 45 req/min → riesgo de rate limit a escala
+ * CloudFront-Viewer-* (requieren origin request policy que reenvíe las geo
+ * headers, p.ej. Managed-AllViewerAndCloudFrontHeaders-2022-06):
+ *   - CloudFront-Viewer-Country         (e.g. 'ES')
+ *   - CloudFront-Viewer-Country-Region  (e.g. 'M')
+ *   - CloudFront-Viewer-City            (e.g. 'Madrid', SIN url-encode)
+ *   - CloudFront-Viewer-Latitude / -Longitude
  *
- * Vercel headers disponibles (verificado en producción 2026-05-06):
- *   - x-vercel-ip-country         (e.g. 'ES')
- *   - x-vercel-ip-country-region  (e.g. 'M' para Madrid)
- *   - x-vercel-ip-city            (e.g. 'Madrid', URL-encoded)
- *   - x-vercel-ip-latitude        (e.g. '40.4168')
- *   - x-vercel-ip-longitude       (e.g. '-3.7038')
+ * Vercel headers (legacy): x-vercel-ip-country / -country-region / -city
+ *   (url-encoded) / -latitude / -longitude
  *
- * En dev local (next dev) los headers no existen → devolvemos null y la
- * sesión se guarda sin geo data. Comportamiento esperado.
+ * En dev local (next dev) ningún header existe → devolvemos null y la sesión
+ * se guarda sin geo data. Comportamiento esperado.
  *
- * Pérdida controlada: el campo isp ya no se rellena. Verificado que NO
- * se consume en ningún sitio del codebase (admin/fraudes solo usa city).
- * Filas históricas mantienen su isp; nuevas serán null.
+ * Pérdida controlada: el campo isp ya no se rellena (no se consume en el
+ * codebase; admin/fraudes solo usa city). Filas históricas mantienen su isp.
  */
-function extractGeoFromVercelHeaders(request: Request): GeoLocation | null {
+function extractGeo(request: Request): GeoLocation | null {
+  // 1) CloudFront (infra actual). Headers case-insensitive vía Headers.get().
+  const cfCountry = request.headers.get('cloudfront-viewer-country')
+  if (cfCountry) {
+    return {
+      country_code: cfCountry,
+      region: request.headers.get('cloudfront-viewer-country-region') || '',
+      city: request.headers.get('cloudfront-viewer-city') || '',
+      lat: parseFloatOrNull(request.headers.get('cloudfront-viewer-latitude')),
+      lon: parseFloatOrNull(request.headers.get('cloudfront-viewer-longitude')),
+    }
+  }
+
+  // 2) Vercel (legacy). El city viene url-encoded (espacios = %20, etc.)
   const country = request.headers.get('x-vercel-ip-country')
-  if (!country) return null // dev local o request sin pasar por Vercel edge
+  if (!country) return null // dev local o edge sin geo headers
 
   const cityEncoded = request.headers.get('x-vercel-ip-city')
-  // Vercel encodea el city con encodeURIComponent (espacios = %20, etc.)
-  const city = cityEncoded ? safeDecodeURIComponent(cityEncoded) : ''
-
-  const region = request.headers.get('x-vercel-ip-country-region') || ''
-  const lat = parseFloatOrNull(request.headers.get('x-vercel-ip-latitude'))
-  const lon = parseFloatOrNull(request.headers.get('x-vercel-ip-longitude'))
-
-  return { country_code: country, region, city, lat, lon }
+  return {
+    country_code: country,
+    region: request.headers.get('x-vercel-ip-country-region') || '',
+    city: cityEncoded ? safeDecodeURIComponent(cityEncoded) : '',
+    lat: parseFloatOrNull(request.headers.get('x-vercel-ip-latitude')),
+    lon: parseFloatOrNull(request.headers.get('x-vercel-ip-longitude')),
+  }
 }
 
 function safeDecodeURIComponent(s: string): string {
@@ -110,8 +119,8 @@ async function _POST(request: Request) {
       hasDeviceId: !!deviceId,
     })
 
-    // Obtener geolocalización de Vercel headers (sync, 0 latencia, 0 timeout)
-    const geo = extractGeoFromVercelHeaders(request)
+    // Geolocalización de los headers del edge (CloudFront → Vercel legacy), sync 0 latencia
+    const geo = extractGeo(request)
 
     const db = getDb()
 

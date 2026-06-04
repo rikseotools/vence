@@ -433,10 +433,15 @@ resource "aws_cloudfront_cache_policy" "frontend_default" {
   }
 }
 
-# Origin request policy: pasar host header al ALB (necesario para que el
-# listener rule matchee preview-aws.vence.es y vaya al TG correcto).
+# Origin request policy: reenvía al origen TODAS las cabeceras del visitante
+# (incl. Host, necesario para que el listener rule matchee preview-aws.vence.es)
+# Y ADEMÁS las cabeceras que añade CloudFront: CloudFront-Viewer-Country/-City/
+# -Country-Region/-Latitude/-Longitude/-Address. Sin estas, la geolocalización
+# de sesión (track-session-ip) y la IP de confianza (getClientIp) iban null
+# desde el cutover a CloudFront (incidente 2026-06: geo 65%→0%). NO afecta a la
+# cache key (eso es la cache policy), así que no fragmenta caché.
 data "aws_cloudfront_origin_request_policy" "all_viewer" {
-  name = "Managed-AllViewer"
+  name = "Managed-AllViewerAndCloudFrontHeaders-2022-06"
 }
 
 # CloudFront Function (viewer-request): redirige el apex vence.es → www.vence.es
