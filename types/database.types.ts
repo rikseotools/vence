@@ -20,7 +20,7 @@ export interface UserProfileRow {
   avatar_url: string | null
   preferred_language: string | null
   study_goal: number | null
-  show_daily_goal_banner: boolean | null
+  show_daily_goal_banner?: boolean | null
   created_at: string | null
   updated_at: string | null
   target_oposicion: string | null
