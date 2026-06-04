@@ -45,6 +45,9 @@ const SAMPLE_RATES: Record<string, number> = {
   // se muestrea al 10% para tener denominador y poder calcular la tasa de fallo.
   question_image_error: 1.0,
   question_image_loaded: 0.1,
+  // Barra de meta diaria — bajo volumen (premium, interacción manual ocasional)
+  // → 100% para tener la señal completa de quién oculta/mueve.
+  daily_goal_banner_action: 1.0,
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -84,6 +87,10 @@ export type ClientEventType =
   // (desfase). Caza regresiones (volver a leer un agregado materializado desfasado)
   // o anomalías de datos SIN esperar a que un usuario lo reporte.
   | 'question_evolution_inconsistency'
+  // Barra de meta diaria (premium) en la cabecera: interacciones de UX para
+  // entender quién la mueve / oculta / re-activa y así pulir el diseño (en móvil
+  // tapaba contenido). metadata.action ∈ {'drag','hide','show'}. userId va auto.
+  | 'daily_goal_banner_action'
 
 interface ClientEvent {
   ts: string

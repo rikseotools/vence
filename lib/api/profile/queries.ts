@@ -33,6 +33,7 @@ const SELF_PROFILE_COLUMNS = {
   avatarUrl: userProfiles.avatarUrl,
   preferredLanguage: userProfiles.preferredLanguage,
   studyGoal: userProfiles.studyGoal,
+  showDailyGoalBanner: userProfiles.showDailyGoalBanner,
   createdAt: userProfiles.createdAt,
   updatedAt: userProfiles.updatedAt,
   targetOposicion: userProfiles.targetOposicion,
