@@ -1628,6 +1628,110 @@ export const RULE_POOL_SAMPLER_STALE: AlertRule<{
 };
 
 /**
+ * Una instancia del pooler PgBouncer NO responde a un SELECT 1 real (reachable=false)
+ * en ≥2 de los últimos samples, mientras sigue registrada en el NLB. Es el caso
+ * que el health-check TCP del NLB NO caza: acepta TCP pero cuelga queries → 504.
+ * Datos del cron pooler-instance-sampler (tabla pgbouncer_instance_samples).
+ */
+export const RULE_POOLER_INSTANCE_UNREACHABLE: AlertRule<{
+  instance: string;
+  az: string | null;
+  badSamples: number;
+  lastError: string | null;
+}> = {
+  name: 'pooler_instance_unreachable',
+  severity: 'critical',
+  query: sql`
+    SELECT
+      instance,
+      MAX(az)                                   AS az,
+      COUNT(*) FILTER (WHERE NOT reachable)::int AS "badSamples",
+      (ARRAY_AGG(error ORDER BY sample_at DESC) FILTER (WHERE error IS NOT NULL))[1] AS "lastError"
+    FROM pgbouncer_instance_samples
+    WHERE sample_at > NOW() - INTERVAL '5 minutes'
+    GROUP BY instance
+    HAVING COUNT(*) FILTER (WHERE NOT reachable) >= 2
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows
+      .map((r) => `  - ${r.instance} (${r.az ?? '?'}): ${r.badSamples} fallos · ${r.lastError ?? ''}`)
+      .join('\n');
+    return {
+      title: `Pooler: ${rows.length} instancia(s) cuelga(n) queries (TCP vivo, SELECT 1 muerto)`,
+      body:
+        `Una o más VMs del PgBouncer aceptan TCP (el NLB las cree healthy) pero\n` +
+        `NO responden a un SELECT 1 real → 504 para el % de tráfico que el NLB les manda.\n\n` +
+        `${lines}\n\n` +
+        `Acción inmediata:\n` +
+        `  - Considerar sacarla del NLB: aws elbv2 deregister-targets --target-group-arn <tg> --targets Id=<ip>\n` +
+        `  - Revisar la VM (pgbouncer atascado / upstream Supabase): SHOW POOLS por su IP privada.\n` +
+        `  - Fase 2 (auto-eviction L7) eliminaría este paso manual.`,
+      metadata: { instances: rows.map((r) => r.instance) },
+      fingerprint: 'pooler_instance_unreachable',
+    };
+  },
+  cooldownMin: 10,
+};
+
+/**
+ * Una instancia del pooler está DEGRADADA (no caída): SELECT 1 lento, clientes
+ * en cola (cl_waiting) o el cliente más antiguo esperando (maxwait) — leading
+ * indicator ANTES de que cuelgue del todo. Por instancia, para distinguir cuál.
+ */
+export const RULE_POOLER_INSTANCE_DEGRADED: AlertRule<{
+  instance: string;
+  az: string | null;
+  maxSelect1Ms: number | null;
+  maxClWaiting: number | null;
+  maxMaxwaitMs: number | null;
+  badSamples: number;
+}> = {
+  name: 'pooler_instance_degraded',
+  severity: 'error',
+  query: sql`
+    SELECT
+      instance,
+      MAX(az)               AS az,
+      MAX(select1_ms)::int  AS "maxSelect1Ms",
+      MAX(cl_waiting)::int  AS "maxClWaiting",
+      (MAX(maxwait_us) / 1000)::int AS "maxMaxwaitMs",
+      COUNT(*) FILTER (
+        WHERE reachable AND (select1_ms > 1500 OR cl_waiting > 5 OR maxwait_us > 1000000)
+      )::int AS "badSamples"
+    FROM pgbouncer_instance_samples
+    WHERE sample_at > NOW() - INTERVAL '5 minutes'
+    GROUP BY instance
+    HAVING COUNT(*) FILTER (
+      WHERE reachable AND (select1_ms > 1500 OR cl_waiting > 5 OR maxwait_us > 1000000)
+    ) >= 2
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows
+      .map(
+        (r) =>
+          `  - ${r.instance} (${r.az ?? '?'}): SELECT1≤${r.maxSelect1Ms}ms · cl_waiting≤${r.maxClWaiting} · maxwait≤${r.maxMaxwaitMs}ms (${r.badSamples} samples)`,
+      )
+      .join('\n');
+    return {
+      title: `Pooler: ${rows.length} instancia(s) degradada(s) (leading indicator)`,
+      body:
+        `Una o más VMs del PgBouncer muestran latencia/cola alta (aún sirven, pero\n` +
+        `si empeora → cuelgues → 504). Por instancia:\n\n` +
+        `${lines}\n\n` +
+        `Investigar:\n` +
+        `  - SELECT * FROM v_pgbouncer_instances_last_15min;\n` +
+        `  - ¿es UNA instancia o ambas? UNA → problema de esa VM (reiniciar pgbouncer / sacar del NLB).\n` +
+        `  - Ambas → upstream Supabase lento (pg_stat_statements / query lenta).`,
+      metadata: { instances: rows.map((r) => r.instance) },
+      fingerprint: 'pooler_instance_degraded',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Canary del GATE anti-scraping (Turnstile). Se dispara post-deploy vía
  * POST /api/v2/canary/run-questions-gate. Si el gate retara a un usuario normal
  * (regresión en la policy/contador Redis), el canary emite este evento.
@@ -2101,6 +2205,10 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_POOL_FRONTEND_SATURATION_HIGH as AlertRule,
   // Meta-observabilidad: vigila al vigilante (cron sampler vivo).
   RULE_POOL_SAMPLER_STALE as AlertRule,
+  // Observabilidad POR INSTANCIA del self-hosted PgBouncer (lo que el health-check
+  // TCP del NLB no caza): instancia que acepta TCP pero cuelga queries, y degradación.
+  RULE_POOLER_INSTANCE_UNREACHABLE as AlertRule,
+  RULE_POOLER_INSTANCE_DEGRADED as AlertRule,
   // Canary e2e del pipeline de stats (cobertura 24/7, cierra punto ciego off-peak)
   RULE_CANARY_STATS_PIPELINE_FAILED as AlertRule,
   // Pipeline de stats materializadas congelado (2026-06-03 post-cutover outbox a medias)

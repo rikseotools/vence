@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
+    "@aws-sdk/client-elastic-load-balancing-v2": "^3.1061.0",
     "@aws-sdk/client-lambda": "^3.1057.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
@@ -36,6 +37,7 @@
     "cron-parser": "^5.5.0",
     "drizzle-orm": "^0.45.2",
     "jsonwebtoken": "^9.0.3",
+    "pg": "^8.21.0",
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.12.3",
@@ -52,6 +54,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

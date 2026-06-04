@@ -96,6 +96,9 @@ import { PgStatSnapshotModule } from './pg-stat-snapshot/pg-stat-snapshot.module
 // vs los 5xx (lagging). Detecta saturación ANTES de que se traduzca en
 // errores user-facing. Ver docs/roadmap/observability-capacity.md Acción 2.
 import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity-sampler.module';
+// Observabilidad POR INSTANCIA del self-hosted PgBouncer (ARCHITECTURE_ROADMAP
+// §03/06 prioridad nº1). Cron 1×/min scrapea cada VM por red privada.
+import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-instance-sampler.module';
 
 @Module({
   imports: [
@@ -164,6 +167,7 @@ import { PoolCapacitySamplerModule } from './pool-capacity-sampler/pool-capacity
     // Acción 2 observability-capacity (01/06/2026) — muestreo continuo del
     // pool cada minuto (leading indicator de saturación vs lagging 5xx).
     PoolCapacitySamplerModule,
+    PoolerInstanceSamplerModule, // cada 1min — scrape por instancia del pooler (red privada)
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,
     DetectTimelineSilenceModule,

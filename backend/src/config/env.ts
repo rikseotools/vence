@@ -23,6 +23,13 @@ const envSchema = z.object({
     .refine((v) => v.startsWith('postgres'), {
       message: 'debe ser una cadena de conexión postgres://',
     }),
+  // DSN del self-hosted PgBouncer (pooler.vence.es). Lo usa el cron
+  // pooler-instance-sampler reescribiendo el host a cada IP privada de VM.
+  // Vacío = sampler desactivado (degradación limpia).
+  DATABASE_URL_SELF_POOLER: z.string().default(''),
+  // ARN del target group del NLB del pooler — fuente de descubrimiento dinámico
+  // de las instancias (DescribeTargetHealth). Vacío = sampler desactivado.
+  POOLER_TARGET_GROUP_ARN: z.string().default(''),
   // URL de la app Next.js (para llamar a su endpoint de email de admin).
   APP_BASE_URL: z
     .string()

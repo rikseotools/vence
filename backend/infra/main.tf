@@ -15,16 +15,19 @@ locals {
   name = var.project
   # ARNs de los parámetros SSM con los secretos (se crean fuera de Terraform —
   # ver infra/README.md — para que el secreto NO entre en el estado de TF).
-  database_url_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
-  cron_secret_ssm_arn         = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
-  upstash_url_ssm_arn         = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_URL"
-  upstash_token_ssm_arn       = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_TOKEN"
-  resend_api_key_ssm_arn      = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/RESEND_API_KEY"
-  email_from_name_ssm_arn     = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_NAME"
-  email_from_address_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_ADDRESS"
-  supabase_jwt_secret_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SUPABASE_JWT_SECRET"
-  admin_alerts_email_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/ADMIN_ALERTS_EMAIL"
-  sentry_dsn_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SENTRY_DSN"
+  database_url_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
+  # DSN del self-hosted PgBouncer (con password) → secret. Lo usa el cron
+  # pooler-instance-sampler reescribiendo el host a cada IP privada de VM.
+  database_url_self_pooler_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/DATABASE_URL_SELF_POOLER"
+  cron_secret_ssm_arn              = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
+  upstash_url_ssm_arn              = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_URL"
+  upstash_token_ssm_arn            = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_TOKEN"
+  resend_api_key_ssm_arn           = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/RESEND_API_KEY"
+  email_from_name_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_NAME"
+  email_from_address_ssm_arn       = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_ADDRESS"
+  supabase_jwt_secret_ssm_arn      = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SUPABASE_JWT_SECRET"
+  admin_alerts_email_ssm_arn       = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/ADMIN_ALERTS_EMAIL"
+  sentry_dsn_ssm_arn               = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SENTRY_DSN"
   # STRIPE_SECRET_KEY añadido 27/05/2026 para los crons check-webhook-health
   # y subscription-reconciliation migrados de GHA a Fargate. Mismo valor que
   # /vence-frontend/STRIPE_SECRET_KEY (sk_live_*).
@@ -124,6 +127,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Action = ["ssm:GetParameters"]
         Resource = [
           local.database_url_ssm_arn,
+          local.database_url_self_pooler_ssm_arn,
           local.cron_secret_ssm_arn,
           local.upstash_url_ssm_arn,
           local.upstash_token_ssm_arn,
@@ -161,6 +165,29 @@ resource "aws_iam_role" "task" {
       Principal = { Service = "ecs-tasks.amazonaws.com" }
       Action    = "sts:AssumeRole"
     }]
+  })
+}
+
+# Permiso mínimo para que el cron pooler-instance-sampler descubra las
+# instancias del pooler leyendo el target group del NLB. DescribeTargetHealth
+# admite resource-level (scopeado al TG); DescribeTargetGroups requiere "*".
+resource "aws_iam_role_policy" "task_pooler_discovery" {
+  name = "${local.name}-pooler-discovery"
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["elasticloadbalancing:DescribeTargetHealth"]
+        Resource = var.pooler_target_group_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["elasticloadbalancing:DescribeTargetGroups"]
+        Resource = "*"
+      },
+    ]
   })
 }
 
@@ -225,9 +252,13 @@ resource "aws_ecs_task_definition" "backend" {
         # → 5 tablas materializadas congeladas. true = handlers escriben canónicas.
         { name = "SHADOW_HANDLERS_ENABLED", value = "true" },
         { name = "CUTOVER_DONE", value = "true" },
+        # Target group del NLB del pooler — descubrimiento dinámico de instancias
+        # del cron pooler-instance-sampler (no es secreto, es un ARN).
+        { name = "POOLER_TARGET_GROUP_ARN", value = var.pooler_target_group_arn },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = local.database_url_ssm_arn },
+        { name = "DATABASE_URL_SELF_POOLER", valueFrom = local.database_url_self_pooler_ssm_arn },
         { name = "CRON_SECRET", valueFrom = local.cron_secret_ssm_arn },
         { name = "UPSTASH_REDIS_REST_URL", valueFrom = local.upstash_url_ssm_arn },
         { name = "UPSTASH_REDIS_REST_TOKEN", valueFrom = local.upstash_token_ssm_arn },

@@ -64,6 +64,12 @@ variable "database_url_ssm_name" {
   default     = "/vence-backend/DATABASE_URL"
 }
 
+variable "pooler_target_group_arn" {
+  description = "ARN del target group del NLB del pooler PgBouncer. El cron pooler-instance-sampler lo usa (DescribeTargetHealth) para descubrir las instancias dinámicamente."
+  type        = string
+  default     = "arn:aws:elasticloadbalancing:eu-west-2:349744179687:targetgroup/vence-pooler-tg/c9946622d4e38dfe"
+}
+
 variable "cron_secret_ssm_name" {
   description = "Nombre del parámetro SSM (SecureString) con el CRON_SECRET (token Bearer para endpoints internos de la app). Se crea fuera de Terraform."
   type        = string

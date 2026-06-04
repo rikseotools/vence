@@ -1622,6 +1622,26 @@ Investigando "el chat IA falla" (reportado tras desplegar el feature de límites
 
 **Dirección robusta (reafirmada, NO es "mover más reads"):** la prioridad sigue siendo la del §03/06 — (1) observabilidad por instancia del pooler, (2) tuning PgBouncer→DB, (3) defensas fail-open, (4) **Fase D / RDS Proxy** como fin de juego. Materializar las queries lentas (Fase 2-bis style) ataca la causa raíz (una query de 50ms no satura ningún pool). Centralizar `getReadDb` hacia el pooler para TODOS los hot paths queda **descartado** mientras el pooler tenga blips.
 
+#### ✅ 04/06 — Observabilidad POR INSTANCIA del pooler: FASE 1 construida (prioridad nº1 del §03/06)
+
+Cierra el punto (1) de la dirección robusta. Antes: el health-check del NLB es TCP-only (una VM
+que acepta TCP pero cuelga queries sigue sirviendo → 504) y `/api/admin/infra-stats` scrapea vía el
+NLB → instancia al azar. Ahora hay medición **por instancia**:
+- **Cron Fargate `pooler-instance-sampler`** (1×/min, `backend/src/pooler-instance-sampler/`): descubre
+  las VMs **dinámicamente** del target group del NLB (`DescribeTargetHealth`, cero IPs hardcodeadas) y
+  conecta a **cada una por su IP privada** (VPC peering, no IP pública) midiendo: SELECT 1 real
+  (`select1_ms` = la señal que el check TCP NO ve) + `SHOW POOLS/STATS_TOTALS/SERVERS` (cl_waiting,
+  maxwait…). Persiste en `pgbouncer_instance_samples` (migración `20260604_*`, retención 14d,
+  vista `v_pgbouncer_instances_last_15min`). Aislamiento: una VM colgada no impide muestrear la otra.
+- **Alertas por instancia** (`alert-rules.ts`): `RULE_POOLER_INSTANCE_UNREACHABLE` (critical — VM que
+  cuelga queries) + `RULE_POOLER_INSTANCE_DEGRADED` (error — leading indicator: SELECT1/cl_waiting/maxwait
+  altos en UNA instancia). Heartbeat del sampler registrado (meta-obs).
+- **NO añade tráfico de app al pooler** (es monitorización del admin) → consistente con "no concentrar
+  tráfico". Riesgo cero al serving (solo lee + 1 SELECT 1/min/instancia; escribe a tabla nueva).
+- **Pendiente Fase 2** (auto-eviction L7): servicio HTTP de salud por VM (`SELECT 1` local → 200/503) +
+  health-check del NLB TCP→HTTP → expulsa automáticamente la instancia que cuelga. Toca la HA en prod;
+  se hace tras validar Fase 1 con datos. Hardening aparte: cerrar 6543 público al NLB/VPC peered.
+
 **Nota relacionada (mismo deploy):** feature de **límites de uso del chat** (`lib/api/chatLimit.ts`, contador atómico Redis, buckets explain/free/anon, gate por capas premium→burst IP→tope diario, flag `CHAT_LIMITS_MODE=off|shadow|on`). No toca BD primaria; vive en Redis. Memoria `project_chat_limits_y_coste_ia`.
 
 ### Pool split (HOY, sin coste extra adicional)
