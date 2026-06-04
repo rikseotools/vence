@@ -3,6 +3,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
+import { unstable_cache } from 'next/cache'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import CcaaFlag from '@/components/CcaaFlag'
 
@@ -161,6 +162,44 @@ async function getTopLaws(): Promise<TopLaw[]> {
     })
 }
 
+interface OpenConvocatoria {
+  slug: string
+  nombre: string
+  inscription_deadline: string | null
+  plazas_libres: number | null
+}
+
+// Convocatorias PÚBLICAS con inscripción abierta — mismo criterio que la página
+// SEO /oposiciones/inscripcion-abierta (estado_proceso='inscripcion_abierta').
+// Cacheado con tag 'landing': aunque la home sea estática (revalidate=false), el
+// flujo de seguimiento ya revalida 'landing' al cambiar el estado de una
+// convocatoria → la tarjeta se refresca sola sin esperar a un deploy.
+const getOpenConvocatorias = unstable_cache(
+  async (): Promise<OpenConvocatoria[]> => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      // eslint-disable-next-line no-restricted-syntax -- Server Component: SERVICE_ROLE corre server-side
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data } = await supabase
+      .from('oposiciones')
+      .select('slug, nombre, inscription_deadline, plazas_libres')
+      .eq('is_active', true)
+      .eq('estado_proceso', 'inscripcion_abierta')
+      .order('inscription_deadline', { ascending: true, nullsFirst: false })
+    return (data ?? []) as OpenConvocatoria[]
+  },
+  ['home-open-convocatorias'],
+  { tags: ['landing'] }
+)
+
+function formatDeadline(d: string | null): string {
+  if (!d) return ''
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  const [y, m, day] = d.slice(0, 10).split('-').map(Number)
+  return `${day} ${months[m - 1]} ${y}`
+}
+
 function getFormattedDate(): string {
   const now = new Date()
   const day = now.getDate()
@@ -170,7 +209,7 @@ function getFormattedDate(): string {
 }
 
 export default async function HomePage() {
-  const topLaws = await getTopLaws()
+  const [topLaws, openConvocatorias] = await Promise.all([getTopLaws(), getOpenConvocatorias()])
 
   // Group oposiciones by category, preserving config order
   const categoryOrder = ['estado', 'autonomica', 'local', 'justicia', 'sanidad', 'seguridad']
@@ -202,6 +241,42 @@ export default async function HomePage() {
             Última revisión: {getFormattedDate()}
           </p>
         </div>
+
+        {/* Convocatorias con inscripción abierta — CTA a la página SEO dedicada.
+            Solo se muestra si hay alguna abierta. */}
+        {openConvocatorias.length > 0 && (
+          <Link
+            href="/oposiciones/inscripcion-abierta"
+            className="block mb-10 rounded-xl border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-5 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-600"></span>
+              </span>
+              <h2 className="text-base font-bold text-green-800 dark:text-green-300">
+                {openConvocatorias.length === 1
+                  ? '1 convocatoria con inscripción abierta'
+                  : `${openConvocatorias.length} convocatorias con inscripción abierta`}
+              </h2>
+            </div>
+            <ul className="space-y-1 mb-2">
+              {openConvocatorias.slice(0, 4).map(c => (
+                <li key={c.slug} className="text-sm text-green-900 dark:text-green-200 flex items-center justify-between gap-3">
+                  <span className="truncate">{c.nombre}</span>
+                  {c.inscription_deadline && (
+                    <span className="shrink-0 text-xs text-green-700 dark:text-green-400 whitespace-nowrap">
+                      cierra {formatDeadline(c.inscription_deadline)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+              Ver convocatorias abiertas →
+            </span>
+          </Link>
+        )}
 
         <p className="text-center text-slate-600 dark:text-slate-400 mb-6">
           Puedes hacer Test por oposición o por leyes
