@@ -7,20 +7,20 @@
 // Sin esto, un bug en cualquier trigger de materialización corrompe los
 // contadores en silencio: el endpoint /api/stats responde 200 con
 // números incorrectos durante días o semanas hasta que un usuario lo
-// nota. Sentry NO lo ve (no es excepción).
+// nota. Una excepción normal NO lo ve (los contadores no lanzan).
 //
 // Flujo:
 //   1) GHA llama este endpoint cada noche 4 AM UTC con Bearer CRON_SECRET.
 //   2) Endpoint llama a check_stats_drift(50) (función SQL append-only).
-//   3) Si drifts_found > 0 con drift_pct > 5%, captura warning a Sentry
-//      con tag check=stats_drift.
+//   3) Si drifts_found > 0 con drift_pct > 5%, emite un evento `stats_drift`
+//      a observable_events (fuente de verdad in-house; Sentry backend retirado 01/06).
 //   4) El admin panel /admin/infraestructura → tab "Salud sistema"
 //      muestra el resumen para que un humano lo mire en 30s.
 //
 // Runbook: docs/runbooks/health-check.md
 
 import { NextRequest, NextResponse } from 'next/server'
-import * as Sentry from '@sentry/nextjs'
+import { emit } from '@/lib/observability/emit'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
@@ -87,7 +87,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckStatsDriftR
     console.log(`🔍 [DriftCheck] Iniciando con sample_size=${sampleSize}`)
 
     // Llamada principal a la función SQL (RETURNS TABLE → array de filas).
-    // Un error de la RPC lanza → lo captura el catch externo (500 + Sentry),
+    // Un error de la RPC lanza → lo captura el catch externo (500 + observable_events),
     // igual que el `throw` anterior.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rpcResult = (await db.execute(sql`SELECT * FROM check_stats_drift(${sampleSize})`)) as any[]
@@ -98,7 +98,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckStatsDriftR
     const durationMs = Number(summary?.duration_ms ?? 0)
 
     // Recoger las divergencias significativas (drift_pct > umbral) que
-    // se acaban de escribir, para alertar a Sentry y devolver en payload.
+    // se acaban de escribir, para emitir a observable_events y devolver en payload.
     // stats_drift_log no está tipada en Drizzle → raw SQL. La lectura es
     // NO-fatal (try/catch local): si falla, el cron sigue siendo success.
     const cutoffTime = new Date(startTime).toISOString()
@@ -142,29 +142,27 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckStatsDriftR
         sample_count: g.count,
       }))
 
-    // Sentry warning si hay divergencias significativas. NO falla el
-    // endpoint — el cron sigue siendo "successful" porque DETECTAR drift
-    // es justamente su trabajo. La señal va a Sentry para que un humano
-    // mire el panel admin.
+    // Señal a observable_events (fuente de verdad in-house; Sentry backend se
+    // retiró el 01/06 por redundante). NO falla el endpoint — el cron sigue
+    // siendo "successful" porque DETECTAR drift es justamente su trabajo.
+    // `await` (no fire-and-forget): es un cron, garantizamos persistencia antes
+    // de que la lambda suspenda (ver nota de race en lib/observability/emit.ts).
     if (significantDrifts > 0) {
-      Sentry.captureMessage(
-        `Stats drift detected: ${significantDrifts} significant divergences (>${ALERT_DRIFT_PCT_THRESHOLD}%)`,
-        {
-          level: 'warning',
-          tags: {
-            check: 'stats_drift',
-            severity: significantDrifts > 10 ? 'high' : 'medium',
-          },
-          extra: {
-            sample_size: sampleSize,
-            checked,
-            drifts_found: driftsFound,
-            significant_drifts: significantDrifts,
-            top_drifts: topDrifts,
-          },
+      await emit({
+        source: 'vercel',
+        severity: significantDrifts > 10 ? 'critical' : 'warn',
+        eventType: 'stats_drift',
+        endpoint: '/api/cron/check-stats-drift',
+        errorMessage: `Stats drift: ${significantDrifts} divergencias significativas (>${ALERT_DRIFT_PCT_THRESHOLD}%)`,
+        metadata: {
+          sample_size: sampleSize,
+          checked,
+          drifts_found: driftsFound,
+          significant_drifts: significantDrifts,
+          top_drifts: topDrifts,
         },
-      )
-      console.warn(`⚠️ [DriftCheck] ${significantDrifts} divergencias >${ALERT_DRIFT_PCT_THRESHOLD}% — reported to Sentry`)
+      })
+      console.warn(`⚠️ [DriftCheck] ${significantDrifts} divergencias >${ALERT_DRIFT_PCT_THRESHOLD}% — emitido a observable_events`)
     } else {
       console.log(`✅ [DriftCheck] OK — ${checked} users checked, ${driftsFound} minor drifts, 0 significant`)
     }
@@ -187,11 +185,15 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckStatsDriftR
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
     console.error('❌ [DriftCheck] Error:', errorMsg)
 
-    // Sentry SÍ captura excepciones del propio cron — un fallo del check
-    // es un problema distinto del drift detectado
-    Sentry.captureException(error, {
-      level: 'error',
-      tags: { check: 'stats_drift', component: 'cron_endpoint' },
+    // Un fallo del propio cron es un problema distinto del drift detectado →
+    // se emite como 'error' a observable_events (fuente de verdad in-house).
+    await emit({
+      source: 'vercel',
+      severity: 'error',
+      eventType: 'cron_error',
+      endpoint: '/api/cron/check-stats-drift',
+      errorMessage: errorMsg,
+      metadata: { check: 'stats_drift', component: 'cron_endpoint' },
     })
 
     return NextResponse.json(
