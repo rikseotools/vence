@@ -692,6 +692,15 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
       FROM observable_events
       WHERE event_type = 'request_completed'
         AND ts >= NOW() - INTERVAL '29 days'
+        -- FLOOR de régimen (04/06/2026): el sampling 10% de request_completed
+        -- (commit c088e927, activo en prod ~31/05) bajó el conteo logueado ~78%
+        -- SIN caída de tráfico real. El baseline de 29 días aún incluía la era
+        -- pre-sampling (100% logueado) → cur (sampleado) < 40% de la mediana
+        -- (sin samplear) → spam "Tráfico HTTP cayó 70-80%" cada hora. Comparar
+        -- solo contra la era post-sampling. ELIMINAR este floor cuando la
+        -- ventana de 29 días ya no alcance el 31/05 (≈28/06/2026): a partir de
+        -- ahí el régimen es homogéneo y el floor es inocuo.
+        AND ts >= TIMESTAMPTZ '2026-05-31 00:00:00+00'
         AND ts <  date_trunc('hour', NOW() - INTERVAL '1 hour')
         AND EXTRACT(HOUR FROM ts AT TIME ZONE 'UTC')
             = EXTRACT(HOUR FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
@@ -717,7 +726,7 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
     const r = rows[0];
     return {
       title: `Tráfico HTTP cayó ${r.dropPct}% — frontend probablemente caído`,
-      body: `Última hora: ${r.currentN} req. Mediana 6h previas: ${r.baselineMedian} req. Caída del ${r.dropPct}%.\n\nProbables causas:\n  - OOM / crash loop en frontend ECS (mirar CloudWatch ECS metrics)\n  - Deploy reciente caído (cobertura: regla 'workflow_failure_burst')\n  - Incidente Vercel o Supabase\n  - DNS / red\n\nIncidente origen 2026-05-26: dos caídas brutales (94% y 70%) durante las cuales Lidia, mbcapitas y otros intentaron pagar y los clicks "Pagar" no producían redirect a Stripe.`,
+      body: `Última hora: ${r.currentN} req. Mediana misma hora/día (28d, post-sampling): ${r.baselineMedian} req. Caída del ${r.dropPct}%.\n\nProbables causas:\n  - OOM / crash loop en frontend ECS (mirar CloudWatch ECS metrics)\n  - Deploy reciente caído (cobertura: regla 'workflow_failure_burst')\n  - Incidente Vercel o Supabase\n  - DNS / red\n\nIncidente origen 2026-05-26: dos caídas brutales (94% y 70%) durante las cuales Lidia, mbcapitas y otros intentaron pagar y los clicks "Pagar" no producían redirect a Stripe.`,
       metadata: { currentN: r.currentN, baselineMedian: r.baselineMedian, dropPct: r.dropPct },
     };
   },
