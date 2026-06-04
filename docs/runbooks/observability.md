@@ -2,7 +2,9 @@
 
 > **Documento vivo.** Plan para que Vence detecte problemas **antes que el usuario**, sin depender de feedback humano.
 >
-> **Última actualización:** 2026-06-01 — auditoría de estado real: Gaps 1 y 2 (captura client-side + endpoint ingest) estaban marcados ❌ pero llevan LIVE desde el 25-26 may (verificado con eventos en tiempo real + 24 tests). Sentry **backend** eliminado (redundante con `observable_events`). Sentry cliente se queda (Session Replay). Gap real pendiente: tracing distribuido OpenTelemetry (Gap 12).
+> **Última actualización:** 2026-06-03 — **⚠️ CAMBIO DE STACK: ya NO usamos Vercel.** El frontend Next.js corre con **OpenNext en ECS Fargate** (service `vence-frontend`, cluster `vence-backend`) detrás de **CloudFront** (dist. `E1EH4WF1H7ZGLA`); el backend NestJS también en Fargate. Implicaciones para este manual: (a) toda mención a «Vercel functions / Vercel runtime kill / Vercel Log Drain» está **desfasada** y en migración a equivalentes AWS-native; (b) **Gap 14 reescrito** — el Log Drain de Vercel ya no aplica, hay que instrumentar **CloudFront/ALB con CloudWatch**; (c) **2 gaps nuevos** — Gap 16 (durabilidad de side-effects vía outbox) y Gap 17 (reconciliadores de invariantes), detectados con el incidente del email de Eva (03/06: impugnación cerrada pero email perdido sin dejar rastro en `observable_events`); (d) el §11 «Migración a AWS» pasa de *futuro* a *hecho para compute*.
+>
+> **2026-06-01** — auditoría de estado real: Gaps 1 y 2 (captura client-side + endpoint ingest) estaban marcados ❌ pero llevan LIVE desde el 25-26 may (verificado con eventos en tiempo real + 24 tests). Sentry **backend** eliminado (redundante con `observable_events`). Sentry cliente se queda (Session Replay). Gap real pendiente: tracing distribuido OpenTelemetry (Gap 12).
 
 ---
 
@@ -100,6 +102,8 @@ línea en `getSink()` — cero cambios en callers.
 | Logger NestJS contextual | `Logger` por servicio con prefix | Estándar NestJS |
 | Health endpoint | `GET /health` devuelve `{status:'ok',ts,...}` | `backend/src/health/` |
 | Cron `refresh-rankings` emite | 1 evento por run con `metadata.totalInserted`, `slowestMs` | `backend/src/refresh-rankings/refresh-rankings.cron.ts` |
+| Sampler de capacidad del pool (frontend) | 1×/min `pg_stat_activity` → `pool_capacity_samples` | `backend/src/pool-capacity-sampler/` |
+| **Observabilidad POR INSTANCIA del pooler** (04/06) | 1×/min scrape de cada VM PgBouncer por IP privada (SELECT 1 + SHOW POOLS/STATS/SERVERS) → `pgbouncer_instance_samples` + 2 alertas. Caza la VM que cuelga queries (TCP-check del NLB no la ve) | `backend/src/pooler-instance-sampler/` |
 
 #### Client-side (browser) — Opción E aplicada 2026-05-25
 
@@ -296,7 +300,22 @@ Antes: usuarios reportaban "no funciona el botón X" y no había rastro en BD ni
 
 **Esfuerzo**: 30 min.
 
-### 🔴 Gap 14 — Vercel runtime kill (504 SIGTERM) invisible al código de app — ✅ ENDPOINT LIVE 2026-05-26
+### 🟠 Gap 14 — Timeouts de gateway (502/504) invisibles al código de app — ⚠️ REESCRITO 2026-06-03 (fuera Vercel)
+
+> ⚠️ **SUPERSEDED 2026-06-03.** El fix original (Vercel Log Drain) quedó **obsoleto**: ya no usamos Vercel. El front es OpenNext en **ECS Fargate** tras **CloudFront**. El 502/504 lo inyecta ahora **CloudFront/ALB** cuando el origen (Fargate) tarda más que su timeout; el handler Fargate, al ser proceso largo, **sigue corriendo y a menudo termina con éxito** (registra 200) mientras el cliente ya vio un 504. **Caso real 2026-06-03**: `/api/v2/dispute/resolve` cerró la disputa de Eva (`cfc85dd3`) pero el cliente recibió 504 y `observable_events` quedó a 0 — el health-check no lo habría visto.
+>
+> **Sustituto AWS-native (PENDIENTE)** — alarmas **CloudWatch** sobre la capa que SÍ ve el corte:
+> - CloudFront: `5xxErrorRate`, `OriginLatency` (p99).
+> - ALB / target group del service `vence-frontend`: `HTTPCode_Target_5XX_Count`, `HTTPCode_ELB_5XX_Count`, `TargetResponseTime` p99.
+> - Log metric filter sobre los logs del task Fargate para `SIGTERM` / circuit-breaker rollbacks / timeouts de origen.
+>
+> Esfuerzo: ~1-2h (definir alarmas en el Terraform de infra, p.ej. `frontend.tf`). El texto histórico de Vercel se conserva abajo como referencia del razonamiento original.
+
+**Caso real adicional (2026-06-03) — `/api/verify-articles/sync-all`:** al crear la oposición SMS se llamó al sync del BOE para sembrar el articulado de la Ley 4/1994 (`law_id d67910d6…`). El handler logueó `🔄 [API/SyncAll] Iniciando sincronización` pero **nunca** `✅ completada`; el cliente recibió **504** (en prod, vía CloudFront) y **fetch failed** (en dev). `observable_events` y `validation_error_logs` para ese endpoint: **0 filas**. Confirma el patrón de Gap 14 (el 504 lo inyecta el gateway, el wrapper nunca emite).
+
+**Sub-caso a distinguir (matiz que completa Gap 14):** hay DOS variantes del 504-invisible y NO se arreglan igual:
+- **(a) 504 pero el trabajo SÍ se hizo** (ej. `dispute/resolve`, `feedback/respond`): el handler termina con éxito tras el corte. Fix = observar (alarmas CloudWatch) + **idempotencia** para no re-ejecutar el side-effect en el reintento.
+- **(b) 504 y el trabajo NO se completa** (ej. `sync-all`): el endpoint **arquitecturalmente no cabe** en el timeout del gateway (parsear BOE + insertar ~100 artículos; agravado si las escrituras cuelgan por el path Supavisor — ver [[project_supavisor_zombie_conn_root_cause]]). Observarlo no basta: **estas operaciones bulk/import NO deben ir detrás del gateway HTTP** → moverlas a **job/script en background o cola** (off the request path), con su propia observabilidad de inicio/fin. Aplica a `sync-all`, importaciones masivas de preguntas, y cualquier recorrido largo de BD. Regla: si un endpoint puede superar el timeout de CloudFront/ALB, no es un endpoint, es un job.
 
 **Caso real (2026-05-25 20:31 UTC)**: `GET /api/v2/admin/dashboard 504 Vercel Runtime Timeout Error: Task timed out after 300 seconds`. La lambda alcanzó el límite `maxDuration` (300s default sin declarar) y Vercel la mató con SIGTERM. El handler **nunca retornó** — el wrapper `withErrorLogging` jamás vio `response.status`, no logueó nada. **El usuario vio un 504 sin que quedara rastro en nuestra observabilidad**.
 
@@ -345,6 +364,30 @@ El `console.log` muere con la lambda — no llega a `observable_events`, no es q
 **Lo que falta**: auditar `console.log`/`console.warn` con prefijos `🔍`/`🔒`/`[shadow]` en `app/api/**` (~5-10 sitios) y migrarlos a `emitFireAndForget({ source:'vercel', severity:'info', eventType:'auth_shadow_no_bearer'|'auth_shadow_token_invalid'|..., endpoint, userId, metadata })`. Tras 1-2 semanas con datos en BD, podremos correr queries de cohort/UA distribution para diseñar el cutover del shadow → enforced con confianza.
 
 **Esfuerzo**: 1-2h.
+
+---
+
+### 🔴 Gap 16 — Side-effects críticos sin durabilidad (se caen en silencio tras el commit)
+
+**Caso real (2026-06-03, impugnación de Eva Moya `cfc85dd3`)**: el handler `/api/v2/dispute/resolve` aplicó el UPDATE (disputa → `rejected`) y luego llamó a `sendEmailV2()` **en el mismo request**. CloudFront/ALB cortó por timeout (502 → 504) tras el UPDATE pero **antes** de que el email saliera. Resultado: disputa cerrada correctamente, **email jamás enviado, `email_events` vacío, `observable_events` a 0**. 4 intentos: todos cerraron la disputa, ninguno mandó el email. Viola el principio nº1 («cero blind spots» en flujos de usuario).
+
+**Patrón (no solo dispute/resolve)**: cualquier handler que tras escribir en BD hace un side-effect síncrono que puede cortarse — `/api/v2/dispute/resolve` (email), `/api/v2/feedback/respond` (email), `/api/stripe/webhook` (email admin de compra), `/api/v2/admin/broadcast` y `/api/admin/newsletters/send` (envío masivo).
+
+**Lo que tenemos**: outbox genérico **a medio construir** — tabla `outbox_events` (migración `20260516_outbox_events.sql`) + esqueleto `lib/outbox/processBatch.ts`, pero el `dispatch` está **VACÍO** (Fase 2 paso 0). Sí funcionan el `conversion-outbox` (Google Ads) y el `outbox-processor` de stats.
+
+**Lo que falta**: enrutar emails/notificaciones transaccionales por el outbox — el handler hace `enqueue('send_email', payload)` en la **misma transacción** que el UPDATE; un cron drena con reintentos + dead-letter. Side-effect durable e independiente del request. Mata de raíz el §15.7 (gotcha del proxy que corta antes del email).
+
+**Esfuerzo**: 3-4h (cablear handler de email en `dispatch` + cron de drenado + migrar los 2-3 callers críticos).
+
+### 🔴 Gap 17 — Sin reconciliadores de invariantes de negocio (más allá de suscripciones)
+
+**Caso real (2026-06-03)**: tras el incidente de Eva, **nada** detectó «disputa `resolved` sin email enviado». El monitoreo de email solo ve `email_events.event_type='failed'` (intentado y fallido), no el **«nunca intentado»** (el email que el timeout impidió siquiera registrar). Un email perdido así es invisible para la observabilidad actual.
+
+**Lo que tenemos**: el patrón de reconciliación SÍ existe, pero solo para pagos — `subscription-reconciliation` (Pass-1 BD + Pass-2 Stripe API, cada hora) detecta y autocorrige drift de suscripciones. No hay equivalente para impugnaciones / feedback / email.
+
+**Lo que falta**: cron que afirme invariantes — *«toda `question_disputes` en `resolved`/`rejected` con `admin_response` no vacío debe tener fila en `email_events` (o un `skip_reason` registrado) en ≤N min»*; ídem feedback respondido → notificación. Lo que viole emite `event_type='invariant_violation'` y (opcional) reintenta el side-effect. Captura **retroactivamente** lo que el outbox (Gap 16) previene en caliente.
+
+**Esfuerzo**: ~2h (copiar el patrón del subscription-reconciler).
 
 ---
 
@@ -708,6 +751,7 @@ Categorías estables. Si necesitas una nueva: añadirla aquí Y al manual antes 
 | Deploys | `deploy_started`, `deploy_completed`, `deploy_failed` |
 | Cliente | `js_uncaught`, `unhandled_rejection`, `react_error_boundary`, `console_error`, `fetch_failure`, `hydration_mismatch`, `intent_unfulfilled`, `web_vital_degraded` |
 | Negocio | `payment_failed`, `signup_completed`, `daily_limit_reached`, `slo_breach` |
+| Invariantes | `invariant_violation` (metadata.invariant: `dispute_resolved_without_email`, …) — un reconciliador detectó un estado de negocio roto (Gap 17) |
 | Sintético | `smoke_e2e` |
 
 ---
@@ -1015,6 +1059,18 @@ Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
 
 ### Fases
 
+**Fase 0 — Post-incidente email de Eva (03/06/2026) — durabilidad de side-effects 🔴 PRIORIDAD**
+
+Progreso (03/06/2026):
+- [x] **Gap 17** ✅ código hecho — reconciliador `dispute-email-reconciliation` (backend, cron horario `:15`) que verifica la invariante "impugnación cerrada ⇒ email enviado o skip legítimo". Distingue `real_drop` (soporte activo, sin email = fallo silencioso, caso Eva) de `expected_skip` (soporte off, caso Marta). Emite `invariant_violation` + regla de alerta `dispute_email_drop` (accionable) + test. **Validado contra BD real: pilla a Eva, clasifica a Marta como skip, 0 falsos positivos.** Pendiente: deploy backend. *(Detección, NO auto-cura todavía.)*
+- [x] **Gap 14 (AWS)** ✅ código hecho — `backend/infra/edge-observability.tf` con 6 alarmas CloudWatch (ALB ELB-5xx/target-5xx/p99/unhealthy + CloudFront 5xxRate/OriginLatency-p99). Pendiente: `terraform apply` + confirmar email SNS us-east-1.
+- [ ] **Gap 16** — enrutar emails transaccionales por el outbox `outbox_events` (helper `enqueueEvent(tx, …)` dentro de la TX del UPDATE + worker que drena con `processed_at`/`attempts`/`last_error`). Empezar por `dispute/resolve` y `feedback/respond`.
+  - **Decisión de diseño (03/06, tras objeción de duplicados de Manuel)**: la recuperación de emails caídos va **por el outbox, NO por un endpoint de resend suelto**. Motivo: existe una ventana en la que **Resend envió pero morimos antes del `INSERT email_events`** → un resend ingenuo duplicaría. Defensas exactly-once:
+    1. **`Idempotency-Key` determinista en Resend** (`dispute-resolve-{disputeId}`) en el envío original Y en el reintento → Resend deduplica en su ventana (~24h) aunque el original ya saliera. *(Verificar soporte del SDK.)*
+    2. **UNIQUE en el outbox por `(disputeId, email_type)`** → no se encola dos veces. Worker marca `processed_at` → no se procesa dos veces.
+    3. **El reconciliador (Gap 17) re-encola en el outbox** en vez de reenviar directo → prevención + recuperación con una sola pieza idempotente. Reintentos transitorios de Resend son seguros (la idempotency-key deduplica) y acotados (`attempts` + tope → escalar a humano).
+- [ ] Canaries de journey: `dispute/resolve`, `feedback/respond`, ida-y-vuelta de email transaccional (parte del Gap 4)
+
 **Fase 1 — Cerrar agujeros críticos (~4-5h, $0/mes)**
 - [x] **Gap 2**: Endpoint `/api/observability/ingest` ✅ COMPLETO (2026-05-25)
 - [x] **Gap 3**: Interceptor global NestJS errores ≥500 ✅ COMPLETO (2026-05-25)
@@ -1022,7 +1078,7 @@ Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
 - [ ] **Gap 7**: Verificar Sentry, anotar dashboard URL (15 min)
 - [x] **Gap 10**: Cron poda 30d ✅ COMPLETO (2026-05-25)
 - [ ] **Migración batch de los 12 crons Fargate restantes** a emitir (~1h con helper común)
-- [x] **Gap 14**: Vercel Log Drain ✅ ENDPOINT LIVE (2026-05-26) — pendiente activación operativa en Vercel UI (5 min)
+- [~] **Gap 14** (REESCRITO 2026-06-03): el Vercel Log Drain quedó **obsoleto** al salir de Vercel (front ahora OpenNext/ECS Fargate tras CloudFront). Sustituto AWS-native pendiente en **Fase 0** → alarmas CloudWatch sobre CloudFront `5xxErrorRate`/`OriginLatency` + ALB `HTTPCode_Target_5XX`/`TargetResponseTime` p99 (la capa que SÍ ve los 504 que el handler Fargate registra como 200)
 
 **Fase 2 — Alertas + dashboard (~3-4h, $0/mes)**
 - [x] **Gap 8**: Cron rules engine con `NotificationAdapter` ✅ COMPLETO (backend/src/alerts/)

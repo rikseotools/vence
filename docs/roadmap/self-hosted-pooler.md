@@ -402,6 +402,34 @@ Commits: `43c40263` (frontend.tf + route53.tf con HealthCheckPath + ALIAS), `514
 
 ---
 
+## Observabilidad POR INSTANCIA — Fase 1 ✅ (2026-06-04)
+
+Cierra la prioridad nº1 del `ARCHITECTURE_ROADMAP` §03/06: el health-check del NLB es **TCP-only**
+(una VM que acepta TCP pero cuelga queries pasa el check y sigue sirviendo → 504), y
+`/api/admin/infra-stats` scrapea **vía el NLB** = instancia al azar. No sabíamos cuál VM blipea.
+
+**Construido (en prod, verificado):**
+- **Cron `pooler-instance-sampler`** (`backend/src/pooler-instance-sampler/`, 1×/min): descubre las VMs
+  **dinámicamente** del target group del NLB (`DescribeTargetHealth` — cero IPs hardcodeadas, recoge
+  también las que el NLB marcó unhealthy) y conecta a **cada una por su IP PRIVADA** (VPC peering, no
+  IP pública): `SELECT 1` real (`select1_ms` = la señal que el TCP-check no ve) + `SHOW POOLS/
+  STATS_TOTALS/SERVERS` (cl_waiting, maxwait, sv_active…). Aislamiento por instancia.
+- **Tabla `pgbouncer_instance_samples`** (migración `20260604_*`, retención 14d) + vista
+  `v_pgbouncer_instances_last_15min`.
+- **Alertas** (`backend/src/alerts/alert-rules.ts`): `RULE_POOLER_INSTANCE_UNREACHABLE` (critical — VM
+  que cuelga queries) + `RULE_POOLER_INSTANCE_DEGRADED` (error — leading indicator por instancia).
+- **GOTCHAs cazados en prod:** (1) conectar por IP requiere `servername: 'pooler.vence.es'` en el TLS
+  (el cert es para el FQDN, idéntico en ambas VMs) + parsear el DSN con `pg-connection-string` (no
+  `new URL()`, que se rompe con passwords especiales). (2) `elasticloadbalancing:DescribeTargetHealth`
+  **NO admite resource-level** → la policy IAM debe usar `Resource: "*"`.
+
+**Pendiente — Fase 2 (auto-eviction L7):** servicio HTTP de salud por VM (`SELECT 1` local a través del
+PgBouncer → 200/503, systemd + `provision-pooler.sh`) + cambiar el health-check del NLB de TCP a HTTP →
+**expulsa automáticamente** la instancia que cuelga (lo que el TCP-check no hace). Toca la HA en prod;
+hacer tras validar Fase 1 con datos. Hardening aparte: cerrar el 6543 público de las VMs al NLB/VPC.
+
+---
+
 ## Análisis de costes
 
 ### Coste mensual recurrente
