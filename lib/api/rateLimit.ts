@@ -114,6 +114,16 @@ export const RATE_LIMIT_PSYCHOMETRIC: RateLimitConfig = {
   windowMs: 60 * 1000,
 }
 
+/** Chat IA — burst guard por IP (30 requests por minuto).
+ * Anti-hammering para cualquier identidad (anónimo o logueado). El tope DIARIO
+ * real vive en lib/api/chatLimit.ts (Redis, cross-lambda). Esto solo corta
+ * ráfagas de bots: 30/min = un mensaje cada 2s sostenido, holgado para un humano. */
+export const RATE_LIMIT_CHAT: RateLimitConfig = {
+  name: 'chat',
+  maxRequests: 30,
+  windowMs: 60 * 1000,
+}
+
 /** Anonymous answer validation — 30 per IP per day (rolling 24h window).
  * Was 5, but logged-in users with expired Supabase tokens fall here too.
  * With 5, premium users mid-session got 401 → fallback showed wrong answer.

@@ -8,8 +8,8 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { getAdminDb } from '@/db/client'
-import { userProfiles, aiChatLogs } from '@/db/schema'
-import { and, eq, gte } from 'drizzle-orm'
+import { userProfiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   buildChatContext,
@@ -24,6 +24,15 @@ import {
 import { insertChatLog } from '@/lib/api/ai-chat-logs'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkRateLimit, getClientIp, RATE_LIMIT_CHAT } from '@/lib/api/rateLimit'
+import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import {
+  getChatLimitStatus,
+  incrementChatUsage,
+  getChatLimitMode,
+  type ChatBucket,
+} from '@/lib/api/chatLimit'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // getAdminDb() = Drizzle/DATABASE_URL (bypass RLS, equivalente al service_role).
 // Agnóstico de proveedor.
@@ -85,10 +94,9 @@ const chatApiRequestSchema = z.object({
   }).nullable().optional(),
 })
 
-const FREE_USER_DAILY_LIMIT = 5
-
-// Sugerencias que NO cuentan contra el límite diario (explicaciones de preguntas)
-// Estas son parte del flujo de estudio, no "chat libre"
+// Sugerencias que cuentan como "explicación de pregunta" (flujo de estudio) en
+// vez de "chat libre". Determinan el cubo de límite: explain vs free. El tope
+// diario real vive en lib/api/chatLimit.ts (Redis).
 const EXEMPT_SUGGESTIONS = [
   'explicar_respuesta',
   'explicar_psico',
@@ -98,39 +106,6 @@ const EXEMPT_SUGGESTIONS = [
 
 // NOTA: getUserName() se eliminó (código muerto) — la query paralela a
 // user_profiles en _POST ya obtiene nickname/full_name junto con plan_type.
-
-/**
- * Obtener conteo de mensajes del día para rate limiting
- * Excluye las explicaciones de preguntas (EXEMPT_SUGGESTIONS)
- */
-async function getUserDailyMessageCount(userId: string): Promise<number> {
-  if (!userId) return 0
-
-  try {
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-
-    // Contar mensajes del día excluyendo las explicaciones de preguntas
-    const data = await getAdminDb()
-      .select({ suggestion_used: aiChatLogs.suggestionUsed })
-      .from(aiChatLogs)
-      .where(and(
-        eq(aiChatLogs.userId, userId),
-        gte(aiChatLogs.createdAt, today.toISOString()),
-        eq(aiChatLogs.hadError, false),
-      ))
-
-    // Filtrar: solo contar mensajes que NO son explicaciones exentas
-    const countableMessages = data?.filter(msg =>
-      !msg.suggestion_used || !EXEMPT_SUGGESTIONS.includes(msg.suggestion_used)
-    ) || []
-
-    return countableMessages.length
-  } catch (error) {
-    logger.error('Error counting daily messages', error)
-    return 0
-  }
-}
 
 async function _POST(request: NextRequest) {
   const startTime = Date.now()
@@ -154,23 +129,40 @@ async function _POST(request: NextRequest) {
 
     const data = validation.data
 
-    // Rate limiting para usuarios free
-    // Las explicaciones de preguntas (EXEMPT_SUGGESTIONS) no cuentan contra el límite
-    const isExemptSuggestion = data.suggestionUsed && EXEMPT_SUGGESTIONS.includes(data.suggestionUsed)
+    // ── Límite de uso del chat (free + anónimos) ────────────────────────────
+    // Las explicaciones (EXEMPT_SUGGESTIONS) van al cubo 'explain'; el resto a
+    // 'free'. Para anónimos chatLimit.ts normaliza ambos a un único cubo 'anon'.
+    const isExemptSuggestion = !!(data.suggestionUsed && EXEMPT_SUGGESTIONS.includes(data.suggestionUsed))
+    const limitBucket: ChatBucket = isExemptSuggestion ? 'explain' : 'free'
+    const clientIp = getClientIp(request)
+    const deviceId = getDeviceIdFromRequest(request)
+    const limitMode = getChatLimitMode()
 
-    // Obtener perfil + conteo diario en paralelo (antes eran 3 queries secuenciales → ~300-900ms)
-    // Una sola query a user_profiles para plan_type + nickname (elimina getUserName posterior)
+    // Capa burst: corta ráfagas de bots por IP (anti-hammering, coste cero).
+    const burst = checkRateLimit(clientIp, RATE_LIMIT_CHAT)
+    if (!burst.allowed) {
+      logger.warn('Chat burst rate limit exceeded', { domain: 'api', ip: clientIp, resetMs: burst.resetMs })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Demasiadas solicitudes seguidas. Espera unos segundos.',
+          code: 'RATE_LIMIT',
+          limitReached: true,
+          retryAfterMs: burst.resetMs,
+        },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(burst.resetMs / 1000)) } }
+      )
+    }
+
+    // Verificar premium contra BD (no fiarse del isPremium del cliente) + nickname.
     let isPremiumVerified = data.isPremium
     let userName: string | undefined
     if (data.userId && data.userId !== 'anonymous') {
-      const profilePromise = getAdminDb()
+      const profileRows = await getAdminDb()
         .select({ plan_type: userProfiles.planType, nickname: userProfiles.nickname, full_name: userProfiles.fullName })
         .from(userProfiles)
         .where(eq(userProfiles.id, data.userId))
         .limit(1)
-      const dailyCountPromise = isExemptSuggestion ? Promise.resolve(0) : getUserDailyMessageCount(data.userId)
-
-      const [profileRows, dailyCount] = await Promise.all([profilePromise, dailyCountPromise])
 
       const profile = profileRows[0]
       if (profile) {
@@ -178,24 +170,63 @@ async function _POST(request: NextRequest) {
         const name = profile.nickname || profile.full_name
         userName = name ? name.split(' ')[0] : undefined
       }
+    }
 
-      if (!isPremiumVerified && !isExemptSuggestion && dailyCount >= FREE_USER_DAILY_LIMIT) {
-        logger.warn('Rate limit exceeded', {
+    // Capa tope diario (Redis, cross-lambda). Premium salta. 'off' desactiva todo.
+    const countUsage = !isPremiumVerified && limitMode !== 'off'
+    if (countUsage) {
+      const status = await getChatLimitStatus({
+        userId: data.userId,
+        deviceId,
+        ip: clientIp,
+        bucket: limitBucket,
+        isPremium: false,
+      })
+
+      if (!status.allowed) {
+        // Registrar siempre (en shadow es el would-block; en on es el bloqueo real).
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'chat_limit_reached',
+          endpoint: '/api/ai/chat-v2',
+          userId: data.userId ?? null,
+          httpStatus: limitMode === 'on' ? 429 : 200,
+          metadata: {
+            scope: status.scope,
+            bucket: status.bucket,
+            used: status.used,
+            limit: status.limit,
+            mode: limitMode,
+            deviceId: deviceId || null,
+          },
+        })
+        logger.warn('Chat daily limit reached', {
           domain: 'api',
-          userId: data.userId,
-          count: dailyCount,
+          userId: data.userId ?? undefined,
+          scope: status.scope,
+          bucket: status.bucket,
+          used: status.used,
+          limit: status.limit,
+          mode: limitMode,
         })
 
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Límite diario de mensajes alcanzado',
-            code: 'RATE_LIMIT',
-            dailyUsed: dailyCount,
-            dailyLimit: FREE_USER_DAILY_LIMIT,
-          },
-          { status: 429 }
-        )
+        if (limitMode === 'on') {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Límite diario de mensajes alcanzado',
+              code: 'RATE_LIMIT',
+              limitReached: true,
+              dailyUsed: status.used,
+              dailyLimit: status.limit,
+              scope: status.scope,
+              bucket: status.bucket,
+            },
+            { status: 429 }
+          )
+        }
+        // shadow: continúa sin bloquear.
       }
     }
 
@@ -438,6 +469,11 @@ async function _POST(request: NextRequest) {
             modelId: capturedModelId,
           })
 
+          // Consumir 1 unidad de cuota SOLO si hubo respuesta real (no en error).
+          if (countUsage && fullResponse) {
+            await incrementChatUsage({ userId: data.userId, deviceId, ip: clientIp, bucket: limitBucket, isPremium: false })
+          }
+
           // Enviar logId para feedback
           if (savedLogId) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'logId', logId: savedLogId })}\n\n`))
@@ -483,6 +519,11 @@ async function _POST(request: NextRequest) {
         modelProvider: response.metadata?.modelProvider ?? null,
         modelId: response.metadata?.modelId ?? null,
       })
+
+      // Consumir 1 unidad de cuota SOLO si hubo respuesta real (no en error).
+      if (countUsage && response.content) {
+        await incrementChatUsage({ userId: data.userId, deviceId, ip: clientIp, bucket: limitBucket, isPremium: false })
+      }
 
       return NextResponse.json({
         success: true,

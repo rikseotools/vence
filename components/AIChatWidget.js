@@ -9,6 +9,8 @@ import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getChatEndpoint } from '../lib/chat/config'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
+import { getAuthHeaders } from '../lib/api/authHeaders'
+import { getOrCreateDeviceId } from '../hooks/useDeviceTracking'
 
 // Mensaje que aparece si el chat tarda >8s en responder
 function SlowLoadingHint() {
@@ -55,6 +57,7 @@ export default function AIChatWidget() {
   const [showProgressMenu, setShowProgressMenu] = useState(false) // Menú expandible de progreso
   const [showExamMenu, setShowExamMenu] = useState(false) // Menú expandible de exámenes
   const [limitReached, setLimitReached] = useState(false) // Límite diario alcanzado (usuarios free)
+  const [limitInfo, setLimitInfo] = useState(null) // { limit, bucket } del 429 — para mensaje dinámico
   const [dynamicSuggestions, setDynamicSuggestions] = useState([]) // Sugerencias dinámicas desde BD
   const [lawContextSuggestions, setLawContextSuggestions] = useState([]) // Sugerencias contextuales de ley
   const [isVerifying, setIsVerifying] = useState(false) // Estado de verificación independiente
@@ -429,9 +432,15 @@ export default function AIChatWidget() {
       // Obtener endpoint según feature flag (chat original o chat-v2)
       const chatEndpoint = getChatEndpoint(user?.id)
 
+      // Asegurar device id (anónimos): la API limita por dispositivo→IP.
+      getOrCreateDeviceId()
+      // getAuthHeaders adjunta Authorization (si logueado) + X-Device-Id +
+      // X-Hw-Fingerprint, que el servidor usa para el tope diario del chat.
+      const authHeaders = await getAuthHeaders()
+
       const response = await fetch(chatEndpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: bodyString,
         signal: abortControllerRef.current.signal
       })
@@ -440,6 +449,7 @@ export default function AIChatWidget() {
         const errorData = await response.json()
         // Verificar si es error de límite diario
         if (errorData.limitReached) {
+          setLimitInfo({ limit: errorData.dailyLimit, bucket: errorData.bucket })
           setLimitReached(true)
           setIsLoading(false)
           setIsStreaming(false)
@@ -1363,10 +1373,12 @@ export default function AIChatWidget() {
             <div className="text-center py-2">
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                  Has alcanzado el límite de 5 consultas diarias
+                  Has alcanzado el límite de {limitInfo?.limit ?? 5} {limitInfo?.bucket === 'explain' ? 'explicaciones' : 'consultas'} diarias
                 </p>
                 <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
-                  Para seguir usando el chat de IA sin límites, hazte Premium
+                  {user
+                    ? 'Para seguir usando el chat de IA sin límites, hazte Premium'
+                    : 'Regístrate gratis para más consultas, o hazte Premium para uso ilimitado'}
                 </p>
                 <a
                   href="/premium?from=ai_chat_limit"
