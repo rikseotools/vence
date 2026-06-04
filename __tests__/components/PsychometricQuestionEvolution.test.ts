@@ -201,15 +201,15 @@ describe('calcularAnalisisTemporal', () => {
     expect(calcularAnalisisTemporal([])).toBeNull()
   })
 
-  it('1 intento previo → frecuencia "1 intento previo" (NO "Primera vez": ese caso es length===0 y devuelve null)', () => {
+  it('1 intento → frecuencia "1 intento"', () => {
     const result = calcularAnalisisTemporal([
       makeEntry({ created_at: '2026-04-20T10:00:00Z' }),
     ])
     expect(result).not.toBeNull()
     expect(result!.sesionesUnicas).toBe(1)
-    // CONTRATO: history aquí son intentos PREVIOS al actual. length=1 ⇒ ya hay 1 intento
-    // guardado, el usuario está viendo la pregunta por 2.ª vez (no "Primera vez").
-    expect(result!.frecuenciaEstudio).toBe('1 intento previo')
+    // CONTRATO (04/06): history aquí YA incluye el intento actual (ver
+    // calculateCompleteEvolution) → las cifras son el total real, no solo previos.
+    expect(result!.frecuenciaEstudio).toBe('1 intento')
   })
 
   it('calcula intervalos con múltiples intentos', () => {
@@ -336,8 +336,9 @@ describe('calculateCompleteEvolution', () => {
   it('primera_vez con historial vacío', () => {
     const result = calculateCompleteEvolution([], CURRENT_RESULT)
     expect(result.tipoEvolucion).toBe('primera_vez')
-    expect(result.totalIntentos).toBe(0)
-    expect(result.tasaAciertos).toBe(0)
+    // CONTRATO (04/06): totalIntentos incluye el intento actual → 0 previos + 1 = 1.
+    expect(result.totalIntentos).toBe(1)
+    expect(result.tasaAciertos).toBe(100) // 1/1 (el actual es correcto)
     expect(result.color).toBe('blue')
     expect(result.mensaje).toContain('Primera vez')
   })
@@ -357,7 +358,7 @@ describe('calculateCompleteEvolution', () => {
       { isCorrect: true, timeSpent: 0, answer: 0 },
     )
     expect(result.tipoEvolucion).toBe('consistente_correcto')
-    expect(result.totalIntentos).toBe(1)  // total previos, no incluye actual
+    expect(result.totalIntentos).toBe(2)  // 1 previo + el actual (contrato 04/06)
     expect(result.tasaAciertos).toBe(100)
     expect(result.mensaje).toContain('Dominas')
     expect(result.mensaje).toContain('2/2')  // visible al usuario: 2 aciertos en 2 intentos (incl. actual)
@@ -456,8 +457,8 @@ describe('calculateCompleteEvolution', () => {
       ],
       CURRENT_RESULT,
     )
-    expect(result.totalIntentos).toBe(4)
-    expect(result.tasaAciertos).toBe(75) // 3/4
+    expect(result.totalIntentos).toBe(5)  // 4 previos + el actual (contrato 04/06)
+    expect(result.tasaAciertos).toBe(80) // 4/5 (incluye el actual, correcto)
   })
 
   // ============================================================================
@@ -493,9 +494,9 @@ describe('calculateCompleteEvolution', () => {
 
       // El bloque temporal debe mostrarse (no null) y reflejar correctamente el historial
       expect(result.analisisTemporal).not.toBeNull()
-      expect(result.analisisTemporal!.frecuenciaEstudio).toBe('1 intento previo')
+      expect(result.analisisTemporal!.frecuenciaEstudio).toBe('2 intentos en 2 días')
       expect(result.analisisTemporal!.frecuenciaEstudio).not.toBe('Primera vez')
-      expect(result.analisisTemporal!.sesionesUnicas).toBe(1)
+      expect(result.analisisTemporal!.sesionesUnicas).toBe(2) // 27-mar + hoy (incluye el actual)
     })
 
     it('CONTRATO: previousHistory NUNCA debe incluir el intento actual (asíncrono via cola offline)', () => {
@@ -504,7 +505,7 @@ describe('calculateCompleteEvolution', () => {
       // el componente asume que el actual NO está en la lista que recibe.
       const result = calculateCompleteEvolution([], { isCorrect: true, timeSpent: 0, answer: 0 })
       expect(result.tipoEvolucion).toBe('primera_vez')
-      expect(result.totalIntentos).toBe(0)
+      expect(result.totalIntentos).toBe(1) // 0 previos + el actual (contrato 04/06)
     })
 
     it('simula caso "unas funcionan y otras no" (4 preguntas, solo 1 con bug histórico)', () => {
@@ -551,7 +552,7 @@ describe('calculateCompleteEvolution', () => {
     expect(result.analisisTemporal).not.toBeNull()
     expect(result.patronesRendimiento).not.toBeNull()
     expect(result.estadisticasAvanzadas).not.toBeNull()
-    expect(result.historialCompleto).toHaveLength(3)
+    expect(result.historialCompleto).toHaveLength(4) // 3 previos + el actual
   })
 })
 

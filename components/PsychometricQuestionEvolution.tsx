@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
+import { emitClientEvent } from '../lib/observability/client'
 
 const supabase = getSupabaseClient()
 
@@ -203,11 +204,11 @@ export function calcularAnalisisTemporal(history: HistoryEntry[]): AnalisisTempo
 
   const diasEstudiando = Math.ceil((ultimoIntento.getTime() - primerIntento.getTime()) / (1000 * 60 * 60 * 24))
 
-  // Nota: history aquí representa los intentos PREVIOS al actual (ver calculateCompleteEvolution).
-  // length=1 ⇒ ya hay 1 intento previo (la pregunta no es nueva, el usuario la ve por 2.ª vez).
+  // Nota: history aquí ya INCLUYE el intento actual (ver calculateCompleteEvolution),
+  // por lo que las cifras reflejan el total real, no solo los previos.
   let frecuenciaEstudio: string
   if (history.length === 1) {
-    frecuenciaEstudio = '1 intento previo'
+    frecuenciaEstudio = '1 intento'
   } else {
     frecuenciaEstudio = `${history.length} intentos en ${diasUnicos.length} días`
   }
@@ -311,8 +312,27 @@ export function calculateCompleteEvolution(
   previousHistory: HistoryEntry[],
   current: PsychometricQuestionEvolutionProps['currentResult'],
 ): EvolutionData {
-  const totalIntentos = previousHistory.length
-  const intentosCorrectos = previousHistory.filter(h => h.is_correct).length
+  // FUENTE ÚNICA (alineado con QuestionEvolution, decisión 04/06): el intento
+  // ACTUAL se pliega junto a los previos en una sola lista, de modo que TODAS las
+  // cifras visibles (total, tasa, último intento, racha, timeline) reflejan lo que
+  // el usuario acaba de responder — no solo los previos. Sin doble conteo: `current`
+  // llega antes de persistirse, no está en previousHistory. calcularAnalisisInteraccion
+  // descarta el actual (interaction_data null) y no distorsiona las medias de clics/hover.
+  const all: HistoryEntry[] = [...previousHistory, ({
+    id: 'current',
+    user_answer: current.answer ?? -1,
+    is_correct: current.isCorrect,
+    time_spent_seconds: current.timeSpent ?? 0,
+    created_at: new Date().toISOString(),
+    test_session_id: '',
+    question_order: previousHistory.length + 1,
+    interaction_data: null,
+    psychometric_test_sessions: null,
+  } as unknown as HistoryEntry)]
+
+  const previosCount = previousHistory.length
+  const totalIntentos = all.length
+  const intentosCorrectos = all.filter(h => h.is_correct).length
   const tasaAciertos = totalIntentos > 0 ? Math.round((intentosCorrectos / totalIntentos) * 100) : 0
 
   let tipoEvolucion: TipoEvolucion = 'primera_vez'
@@ -320,7 +340,7 @@ export function calculateCompleteEvolution(
   let icono = '🆕'
   let color: ColorEvolucion = 'blue'
 
-  if (totalIntentos === 0) {
+  if (previosCount === 0) {
     tipoEvolucion = 'primera_vez'
     mensaje = 'Primera vez que ves esta pregunta psicotécnica'
     icono = '🆕'
@@ -331,9 +351,9 @@ export function calculateCompleteEvolution(
     const previoCorrect = ultimoPrevio.is_correct
     const currentCorrect = current.isCorrect
 
-    // Cuenta total incluyendo el actual (visible al usuario en el mensaje)
-    const totalConActual = totalIntentos + 1
-    const correctosConActual = intentosCorrectos + (currentCorrect ? 1 : 0)
+    // total y aciertos ya incluyen el actual (lista `all`) → coherente con el resto
+    const totalConActual = totalIntentos
+    const correctosConActual = intentosCorrectos
 
     if (!previoCorrect && currentCorrect) {
       tipoEvolucion = 'mejora'
@@ -365,12 +385,12 @@ export function calculateCompleteEvolution(
     color,
     totalIntentos,
     tasaAciertos,
-    mejorasTiempo: calcularMejoraTiempo(previousHistory),
-    analisisInteraccion: calcularAnalisisInteraccion(previousHistory),
-    analisisTemporal: calcularAnalisisTemporal(previousHistory),
-    patronesRendimiento: calcularPatronesRendimiento(previousHistory),
-    estadisticasAvanzadas: calcularEstadisticasAvanzadas(previousHistory),
-    historialCompleto: previousHistory,
+    mejorasTiempo: calcularMejoraTiempo(all),
+    analisisInteraccion: calcularAnalisisInteraccion(all),
+    analisisTemporal: calcularAnalisisTemporal(all),
+    patronesRendimiento: calcularPatronesRendimiento(all),
+    estadisticasAvanzadas: calcularEstadisticasAvanzadas(all),
+    historialCompleto: all,
   }
 }
 
@@ -468,7 +488,31 @@ export default function PsychometricQuestionEvolution({
         }
 
         const historialCompleto = (previousHistory || []) as HistoryEntry[]
-        setEvolutionData(calculateCompleteEvolution(historialCompleto, currentResult))
+        const evo = calculateCompleteEvolution(historialCompleto, currentResult)
+        setEvolutionData(evo)
+
+        // Invariante observable (igual que QuestionEvolution): tras responder, el
+        // "último intento" debe reflejar el intento actual (≈ahora). Si queda muy
+        // desfasado, es señal de regresión/anomalía → se emite sin esperar reporte.
+        if (evo.analisisTemporal) {
+          const skewMs = Date.now() - evo.analisisTemporal.ultimoIntento.getTime()
+          if (skewMs > 5 * 60_000 || skewMs < -60_000) {
+            emitClientEvent({
+              severity: 'warn',
+              eventType: 'question_evolution_inconsistency',
+              errorMessage: `[psicotécnico] ultimoIntento desfasado ${Math.round(skewMs / 60_000)}min respecto al intento actual`,
+              metadata: {
+                questionId,
+                userId,
+                ultimoIntento: evo.analisisTemporal.ultimoIntento.toISOString(),
+                totalIntentos: evo.totalIntentos,
+                historyLen: historialCompleto.length,
+                skewMs,
+                kind: 'psychometric',
+              },
+            })
+          }
+        }
       } catch (err) {
         console.error('Error en fetchQuestionHistory psicotécnico:', err)
         setEvolutionData(calculateCompleteEvolution([], currentResult))
