@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, TouchEvent, MouseEvent } from 'react'
 import { useIntelligentNotifications } from '../hooks/useIntelligentNotifications'
 import { useDisputeNotifications } from '../hooks/useDisputeNotifications'
+import { useOposicionAlerts } from '../hooks/useOposicionAlerts'
 import { getActionTimeEstimate, getActionIcon } from '../hooks/useIntelligentNotifications'
 import type { Notification, NotificationAction } from '../hooks/useIntelligentNotifications.types'
 import { useLawSlugs } from '../contexts/LawSlugContext'
@@ -57,6 +58,8 @@ export default function NotificationBell() {
 
   // Hook para impugnaciones/disputas
   const disputeNotifications = useDisputeNotifications()
+  // Fase 8 (8c): avisos por hito de oposiciones seguidas (target + favoritas)
+  const oposicionAlerts = useOposicionAlerts(true)
 
   // Estados locales
   const [isOpen, setIsOpen] = useState<boolean>(false)
@@ -218,6 +221,8 @@ export default function NotificationBell() {
         if (notification.type === 'dispute_update') {
           const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
           disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
+        } else if (notification.type === 'oposicion_hito') {
+          oposicionAlerts.markAsRead(notification.id)
         } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
           markAsRead(notification.id)
         } else {
@@ -252,6 +257,16 @@ export default function NotificationBell() {
   const handleActionClick = async (notification: Notification, actionType: 'primary' | 'secondary', event: MouseEvent<HTMLButtonElement>): Promise<void> => {
     event.stopPropagation()
     console.log('🔍 handleActionClick called:', { notificationId: notification?.id, actionType })
+
+    // Aviso de oposición (8c): no está en el registro notificationTypes — se
+    // maneja aquí (marcar leído + navegar a la convocatoria) y salir.
+    if (notification.type === 'oposicion_hito') {
+      oposicionAlerts.markAsRead(notification.id)
+      const url = (notification as { actionUrl?: string }).actionUrl
+      if (url) setTimeout(() => { window.location.href = url }, 150)
+      setIsOpen(false)
+      return
+    }
 
     const notificationType = notificationTypes[notification.type as keyof typeof notificationTypes]
     if (!notificationType) {
@@ -485,6 +500,8 @@ export default function NotificationBell() {
     if (notification.type === 'dispute_update') {
       const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
       disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
+    } else if (notification.type === 'oposicion_hito') {
+      oposicionAlerts.markAsRead(notification.id)
     } else {
       markAsRead(notification.id)
     }
@@ -497,14 +514,19 @@ export default function NotificationBell() {
     if (notification.type === 'dispute_update') {
       const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
       disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
+      markAsRead(notification.id)
+    } else if (notification.type === 'oposicion_hito') {
+      oposicionAlerts.markAsRead(notification.id) // persiste read_at server-side
+    } else {
+      markAsRead(notification.id)
     }
-    markAsRead(notification.id)
   }
 
   // Recargar notificaciones
   const handleRefresh = (): void => {
     loadAllNotifications()
     disputeNotifications.refreshNotifications() // Refrescar también las disputas
+    oposicionAlerts.refresh() // y los avisos de oposición (8c)
   }
 
   // 🆕 MEZCLAR NOTIFICACIONES DE DISPUTAS CON NOTIFICACIONES PRINCIPALES
@@ -520,10 +542,11 @@ export default function NotificationBell() {
       borderColor: 'border-blue-200 dark:border-blue-800'
     }))
 
-    // Combinar notificaciones principales con disputas
+    // Combinar notificaciones principales con disputas + avisos de oposición (8c)
     const combinedNotifications: Notification[] = [
       ...notifications,
-      ...disputeNotifs
+      ...disputeNotifs,
+      ...oposicionAlerts.notifications
     ]
 
     // Ordenar por timestamp (más recientes primero)
@@ -571,7 +594,8 @@ export default function NotificationBell() {
   const getTotalUnreadCount = (): number => {
     const mainUnread = unreadCount || 0
     const disputeUnread = disputeNotifications.unreadCount || 0
-    return mainUnread + disputeUnread
+    const oposicionUnread = oposicionAlerts.unreadCount || 0
+    return mainUnread + disputeUnread + oposicionUnread
   }
 
   // Obtener color del badge según la prioridad máxima
@@ -767,6 +791,14 @@ export default function NotificationBell() {
                       primary: {
                         type: 'view_dispute',
                         label: '📋 Ver Impugnación'
+                      }
+                    }
+                  } else if (notification.type === 'oposicion_hito') {
+                    // Aviso por hito de oposición (8c): ir a la convocatoria
+                    actions = {
+                      primary: {
+                        type: 'view_oposicion',
+                        label: '🔔 Ver convocatoria'
                       }
                     }
                   } else {

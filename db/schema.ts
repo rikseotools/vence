@@ -3922,6 +3922,28 @@ export const userOposicionesSeguidas = pgTable("user_oposiciones_seguidas", {
 	// auth.uid(). Escritura/lectura por Drizzle privilegiado. Ver migración 20260604.
 ]).enableRLS();
 
+// Fase 8 (8c): feed in-app (campana) de avisos por hito verificado.
+// Ver supabase/migrations/20260604_user_oposicion_alerts.sql
+export const userOposicionAlerts = pgTable("user_oposicion_alerts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	hitoId: uuid("hito_id").notNull(),
+	titulo: text().notNull(),
+	descripcion: text(),
+	severity: text().notNull(),
+	url: text(),
+	readAt: timestamp("read_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_alerts_user_created").using("btree", table.userId, table.createdAt.desc()),
+	index("idx_alerts_user_unread").using("btree", table.userId).where(sql`read_at IS NULL`),
+	foreignKey({ columns: [table.userId], foreignColumns: [users.id], name: "user_oposicion_alerts_user_id_fkey" }).onDelete("cascade"),
+	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "user_oposicion_alerts_oposicion_id_fkey" }).onDelete("cascade"),
+	foreignKey({ columns: [table.hitoId], foreignColumns: [convocatoriaHitos.id], name: "user_oposicion_alerts_hito_id_fkey" }).onDelete("cascade"),
+	unique("user_oposicion_alerts_user_id_hito_id_key").on(table.userId, table.hitoId),
+]).enableRLS();
+
 // Atribución append-only multi-touch (F0 trackeo-conversiones-ventas).
 // Cada toque (anónimo por device_id, ligado a user_id en signup) con todos los
 // click-IDs. Ver supabase/migrations/20260603_attribution_touches.sql
