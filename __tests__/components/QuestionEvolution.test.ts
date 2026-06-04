@@ -331,13 +331,32 @@ describe('calcularEvolucionCompleta — desglose correct/incorrect/blank', () =>
     // feedback c294a029 (psicotécnicos) y feedbacks recurrentes en tests normales.
     // Este test documenta el contrato y bloquea la regresión.
     const h = [mkEntry({ correct: true })]
-    const eWithCurrent = calcularEvolucionCompleta(h, null, { is_correct: true })
+    const eWithCurrent = calcularEvolucionCompleta(h, { is_correct: true })
     expect(eWithCurrent.tipoEvolucion).not.toBe('primera_vez')
     expect(eWithCurrent.tipoEvolucion).toBe('consistente_correcto')
 
     // Modo legacy (sin currentResult): tampoco debe ser primera_vez si hay 1 previo
     const eLegacy = calcularEvolucionCompleta(h)
     expect(eLegacy.tipoEvolucion).not.toBe('primera_vez')
+  })
+
+  test('CONTRATO + REGRESIÓN (Nila 04/06): el intento actual se pliega en TODAS las cifras', () => {
+    // Bug reportado por Nila: cabecera "12/12" pero "(11 intentos)" y "Último intento:
+    // hace 3 meses" tras responder. Causa: las sub-stats usaban solo el historial
+    // persistido (+ un agregado materializado desfasado), no el intento actual.
+    // Contrato: con currentResult, totalIntentos = historial + 1 y el "último intento"
+    // refleja AHORA (no un agregado viejo).
+    const viejo = '2026-03-01T10:00:00Z'
+    const h = Array.from({ length: 11 }, () => mkEntry({ correct: true, at: viejo }))
+    const e = calcularEvolucionCompleta(h, { is_correct: true })
+    expect(e.totalIntentos).toBe(12)                 // 11 previos + el actual (antes daba 11)
+    expect(e.aciertosAbsolutos).toBe(12)
+    expect(e.historialCompleto.length).toBe(12)
+    expect(e.historialCompleto[11].current).toBe(true)
+    // "Último intento" ≈ ahora, NO el de hace meses del historial
+    const skewMs = Date.now() - (e.analisisTemporal?.ultimoIntento.getTime() ?? 0)
+    expect(skewMs).toBeLessThan(60_000)
+    expect(skewMs).toBeGreaterThanOrEqual(0)
   })
 
   test('regresión: data legacy sin was_blank (antes del 15/4/2026) se trata como is_correct normal', () => {

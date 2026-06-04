@@ -79,6 +79,11 @@ export type ClientEventType =
   // Imágenes de preguntas — ¿renderizó realmente la imagen en el cliente?
   | 'question_image_loaded'
   | 'question_image_error'
+  // Panel "Tu Evolución en esta pregunta": invariante de coherencia. Se emite si,
+  // tras responder, el "último intento" mostrado NO refleja el intento actual
+  // (desfase). Caza regresiones (volver a leer un agregado materializado desfasado)
+  // o anomalías de datos SIN esperar a que un usuario lo reporte.
+  | 'question_evolution_inconsistency'
 
 interface ClientEvent {
   ts: string

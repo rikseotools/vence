@@ -19,6 +19,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
+import { emitClientEvent } from '../lib/observability/client'
 
 const supabase = getSupabaseClient()
 
@@ -346,14 +347,15 @@ function formatearFechaRelativa(fecha: Date): string {
 // Cálculos auxiliares por subseccion
 // ============================================================
 
-function calcularAnalisisTemporal(history: HistoryEntry[], questionStats: QuestionStats | null): AnalisisTemporal | null {
+function calcularAnalisisTemporal(history: HistoryEntry[]): AnalisisTemporal | null {
   if (history.length === 0) return null
-  const primerIntento = questionStats?.first_attempt_at
-    ? new Date(questionStats.first_attempt_at)
-    : new Date(history[0].created_at)
-  const ultimoIntento = questionStats?.last_attempt_at
-    ? new Date(questionStats.last_attempt_at)
-    : new Date(history[history.length - 1].created_at)
+  // Primer/último intento desde la propia lista de intentos (fuente única en vivo).
+  // Ya NO se lee user_question_history_v2 (tabla materializada por outbox que puede
+  // ir con retraso/congelarse — causa del incidente 30/05): `history` aquí ya
+  // incluye el intento actual, así que el "último" refleja lo que el usuario acaba
+  // de responder en lugar de un agregado potencialmente desfasado.
+  const primerIntento = new Date(history[0].created_at)
+  const ultimoIntento = new Date(history[history.length - 1].created_at)
 
   const diasUnicos = [...new Set(history.map(h => h.created_at.split('T')[0]))]
   const fechas = history.map(h => new Date(h.created_at))
@@ -479,15 +481,43 @@ function calcularEstadisticasAvanzadas(history: HistoryEntry[]): EstadisticasAva
 
 export function calcularEvolucionCompleta(
   history: HistoryEntry[],
-  questionStats: QuestionStats | null = null,
   currentResult?: CurrentResult | null,
 ): EvolutionData {
-  const total = history.length
-  const aciertos = history.filter(h => clasificarIntento(h) === 'correct').length
-  const blancos = history.filter(h => clasificarIntento(h) === 'blank').length
+  // FUENTE ÚNICA Y EN VIVO: el historial persistido en `test_questions` (que el
+  // componente ya trae) + el intento ACTUAL en memoria. Antes las sub-stats se
+  // calculaban solo con `history` (y "último intento" se leía de
+  // user_question_history_v2, agregado por outbox que puede desfasarse), mientras
+  // la cabecera SÍ incluía el intento actual → incoherencia (12/12 vs "11
+  // intentos / último hace 3 meses"). Plegando el intento actual en TODO se elimina
+  // el off-by-one y la dependencia del agregado.
+  //
+  // Sin doble conteo: `currentResult` llega ANTES de persistirse, por lo que NO
+  // está en `history`. Si no hay intento actual (p.ej. revisión post-examen ya
+  // guardada), `all === history` y el comportamiento es el de antes.
+  const all: HistoryEntry[] = currentResult
+    ? [...history, ({
+        id: 'current',
+        user_answer: '',
+        correct_answer: '',
+        is_correct: currentResult.is_correct ?? false,
+        was_blank: currentResult.was_blank ?? false,
+        confidence_level: currentResult.confidence_level ?? null,
+        time_spent_seconds: currentResult.time_spent_seconds ?? 0,
+        created_at: new Date().toISOString(),
+        test_id: '',
+        question_order: history.length + 1,
+        current: true,
+      } as unknown as HistoryEntry)]
+    : history
+
+  const total = all.length
+  const aciertos = all.filter(h => clasificarIntento(h) === 'correct').length
+  const blancos = all.filter(h => clasificarIntento(h) === 'blank').length
   const fallos = total - aciertos - blancos
   const tasaAciertos = total > 0 ? Math.round((aciertos / total) * 100) : 0
 
+  // La cabecera sigue usando (history, currentResult): su lógica compara el último
+  // previo con el actual para el mensaje de transición. Coincide en conteo con `all`.
   const evo = determinarTipoEvolucion(history, currentResult)
 
   return {
@@ -500,12 +530,12 @@ export function calcularEvolucionCompleta(
     fallosAbsolutos: fallos,
     blancosAbsolutos: blancos,
     tasaAciertos,
-    mejorasTiempo: calcularMejoraTiempo(history),
-    mejorasConfianza: calcularMejoraConfianza(history),
-    analisisTemporal: calcularAnalisisTemporal(history, questionStats),
-    patronesRendimiento: calcularPatronesRendimiento(history),
-    estadisticasAvanzadas: calcularEstadisticasAvanzadas(history),
-    historialCompleto: history,
+    mejorasTiempo: calcularMejoraTiempo(all),
+    mejorasConfianza: calcularMejoraConfianza(all),
+    analisisTemporal: calcularAnalisisTemporal(all),
+    patronesRendimiento: calcularPatronesRendimiento(all),
+    estadisticasAvanzadas: calcularEstadisticasAvanzadas(all),
+    historialCompleto: all,
   }
 }
 
@@ -566,14 +596,10 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
           .eq('user_id', userId)
           .order('created_at', { ascending: true })
 
-        // UQH Fase 3: migrado de v1 (congelada desde cutover outbox 2026-05-30) a v2.
-        const { data: questionStats } = await supabase
-          .from('user_question_history_v2')
-          .select('first_attempt_at, last_attempt_at, total_attempts')
-          .eq('user_id', userId)
-          .eq('question_id', questionId)
-          .maybeSingle()
-
+        // Ya NO se consulta user_question_history_v2: "primer/último intento" y el
+        // total se derivan de `test_questions` (fuente de verdad en vivo) + el intento
+        // actual, dentro de calcularEvolucionCompleta. Evita el desfase del agregado
+        // por outbox (incidente 30/05) y el off-by-one con la cabecera.
         if (histError) {
           console.error('Error fetching question history:', histError)
           setHistory([])
@@ -588,10 +614,33 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
 
         const evo = calcularEvolucionCompleta(
           historialCompleto,
-          (questionStats ?? null) as QuestionStats | null,
           currentResult ?? null,
         )
         setEvolutionData(evo)
+
+        // Invariante observable: tras responder, el "último intento" del panel debe
+        // reflejar el intento actual (≈ahora). Si aparece muy desfasado, es señal de
+        // regresión (p.ej. volver a leer un agregado materializado congelado, como en
+        // el incidente del 30/05) o de anomalía de datos. Lo emitimos a observabilidad
+        // para cazarlo sin depender de que un usuario lo reporte.
+        if (currentResult && evo.analisisTemporal) {
+          const skewMs = Date.now() - evo.analisisTemporal.ultimoIntento.getTime()
+          if (skewMs > 5 * 60_000 || skewMs < -60_000) {
+            emitClientEvent({
+              severity: 'warn',
+              eventType: 'question_evolution_inconsistency',
+              errorMessage: `ultimoIntento desfasado ${Math.round(skewMs / 60_000)}min respecto al intento actual`,
+              metadata: {
+                questionId,
+                userId,
+                ultimoIntento: evo.analisisTemporal.ultimoIntento.toISOString(),
+                totalIntentos: evo.totalIntentos,
+                historyLen: historialCompleto.length,
+                skewMs,
+              },
+            })
+          }
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'unknown'
         console.error('Error en fetchQuestionHistory:', err)
