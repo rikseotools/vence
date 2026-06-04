@@ -1,7 +1,8 @@
 // lib/chat/domains/stats/queries.ts
 // Queries para estadísticas de exámenes y usuarios
 
-import { getReadDb } from '@/db/client'
+// Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
+import { getPoolerDb } from '@/db/client'
 import { questions, articles, laws, userQuestionHistoryV2 } from '@/db/schema'
 import { eq, and, gte, lt, isNotNull } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -31,7 +32,7 @@ export async function getExamStats(
       conditions.push(eq(questions.examPosition, examPosition))
     }
 
-    const db = getReadDb()
+    const db = getPoolerDb()
     const allQuestions = await db
       .select({
         id: questions.id,
@@ -130,7 +131,7 @@ async function getWeekStats(
     // Obtener respuestas de la semana
     // UQH Fase 3: migrado de user_question_history (v1, congelada desde
     // cutover outbox 2026-05-30) a v2 que escribe el handler Fargate.
-    const db = getReadDb()
+    const db = getPoolerDb()
     const data = await db
       .select({
         total_attempts: userQuestionHistoryV2.totalAttempts,

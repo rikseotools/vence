@@ -17,7 +17,8 @@ import {
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
 import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers } from './queries'
-import { getReadDb } from '@/db/client'
+// Self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504. Ver ARCHITECTURE_ROADMAP L17.
+import { getPoolerDb } from '@/db/client'
 import { topics, topicScope, laws } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { isPsychometricSubtype } from '../../shared/constants'
@@ -1021,7 +1022,7 @@ ${responseGuidelines}
       const temaNumber = parseInt(temaMatch[1])
       // Buscar las leyes de ese tema en topic_scope
       try {
-        const db = getReadDb()
+        const db = getPoolerDb()
         const topicRows = await db
           .select({ id: topics.id })
           .from(topics)

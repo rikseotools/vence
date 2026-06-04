@@ -1,7 +1,8 @@
 // lib/chat/domains/knowledge-base/queries.ts
 // Queries para la base de conocimiento
 
-import { getDb, getReadDb } from '@/db/client'
+// Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
+import { getDb, getPoolerDb } from '@/db/client'
 import { aiKnowledgeBase } from '@/db/schema'
 import { eq, and, or, ilike, desc, sql } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -46,7 +47,7 @@ export async function searchKnowledgeBase(
   const { threshold = 0.40, limit = 3, category = null } = options
 
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     const data = (await db.execute(sql`
       SELECT * FROM match_knowledge_base(
         ${toVector(embedding)}::vector,
@@ -102,7 +103,7 @@ export async function searchKnowledgeBaseByKeywords(
       conditions.push(eq(aiKnowledgeBase.category, category))
     }
 
-    const db = getReadDb()
+    const db = getPoolerDb()
     const rows = await db
       .select()
       .from(aiKnowledgeBase)
@@ -186,7 +187,7 @@ export async function getByCategory(
  */
 export async function getById(id: string): Promise<KnowledgeBaseEntry | null> {
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     const rows = await db
       .select()
       .from(aiKnowledgeBase)
@@ -501,7 +502,7 @@ export async function searchHelpArticles(
   const { threshold = 0.30, limit = 3 } = options
 
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     const data = (await db.execute(sql`
       SELECT * FROM match_help_articles(
         ${toVector(embedding)}::vector,

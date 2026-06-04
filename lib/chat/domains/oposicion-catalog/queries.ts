@@ -1,7 +1,8 @@
 // lib/chat/domains/oposicion-catalog/queries.ts
 // Cache de oposiciones + registro de solicitudes de oposiciones no disponibles
 
-import { getReadDb, getAdminDb } from '@/db/client'
+// Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
+import { getPoolerDb, getAdminDb } from '@/db/client'
 import { oposiciones, userFeedback } from '@/db/schema'
 import { eq, and, ilike, gte } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -107,7 +108,7 @@ export async function loadOposicionesCache(force = false): Promise<OposicionEntr
 
   let data: Array<Record<string, any>>
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     data = await db
       .select({
         id: oposiciones.id,

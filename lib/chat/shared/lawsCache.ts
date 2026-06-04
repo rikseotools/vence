@@ -8,7 +8,8 @@
 // Antes este código vivía en StatsService.ts (slot global 'stats-laws-cache-v1').
 // Movido aquí para que SearchDomain también lo aproveche y se evite duplicación.
 
-import { getReadDb } from '@/db/client'
+// Self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504. Ver ARCHITECTURE_ROADMAP L17.
+import { getPoolerDb } from '@/db/client'
 import { laws } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { createGlobalCache } from '@/lib/cache/globalCache'
@@ -78,7 +79,7 @@ export async function loadLawsCache(): Promise<void> {
   await _lawsCache.getOrLoad(async () => {
     let data: Array<{ slug: string | null; short_name: string; name: string }>
     try {
-      const db = getReadDb()
+      const db = getPoolerDb()
       data = await db
         .select({ slug: laws.slug, short_name: laws.shortName, name: laws.name })
         .from(laws)

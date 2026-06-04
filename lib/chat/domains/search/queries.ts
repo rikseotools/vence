@@ -1,7 +1,10 @@
 // lib/chat/domains/search/queries.ts
 // Queries tipadas para búsqueda de artículos
 
-import { getDb, getReadDb } from '@/db/client'
+// Lecturas del chat por el self-hosted PgBouncer (getPoolerDb, max:8, sano) en
+// vez de getReadDb → que en prod cae a getDb (Supavisor primary max:1) y satura
+// el pool causando 504 en cascada. Ver ARCHITECTURE_ROADMAP línea 17.
+import { getDb, getPoolerDb } from '@/db/client'
 import { articles, laws, topics, topicScope, questions, hotArticles as hotArticlesTable } from '@/db/schema'
 import { eq, and, or, ilike, inArray, sql, desc, count, isNotNull } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -41,7 +44,7 @@ export async function searchArticlesBySimilarity(
   // Si hay leyes mencionadas, pedir más resultados
   const multiplier = mentionedLawNames.length > 0 ? 15 : 4
 
-  const db = getReadDb()
+  const db = getPoolerDb()
 
   let rawArticles: any[]
   try {
@@ -298,7 +301,7 @@ export async function searchArticlesByLawDirect(
   const { limit = 15, searchTerms = null, query = null } = options
 
   // Buscar la ley
-  const db = getReadDb()
+  const db = getPoolerDb()
   const law = (await db
     .select({ id: laws.id, short_name: laws.shortName, name: laws.name, is_derogated: laws.isDerogated })
     .from(laws)
@@ -401,7 +404,7 @@ export async function searchArticlesByKeywords(
 
   let articlesData: any[]
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     articlesData = await db
       .select({
         id: articles.id,
@@ -470,7 +473,7 @@ export async function searchArticlesForPattern(
   let lawInfo: { id: string; short_name: string; name: string } | null = null
 
   if (lawShortName) {
-    const law = (await getReadDb()
+    const law = (await getPoolerDb()
       .select({ id: laws.id, short_name: laws.shortName, name: laws.name })
       .from(laws)
       .where(eq(laws.shortName, lawShortName))
@@ -495,7 +498,7 @@ export async function searchArticlesForPattern(
 
   let articlesData: any[]
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     articlesData = await db
       .select({
         id: articles.id,
@@ -555,7 +558,7 @@ export async function searchArticlesForPattern(
 export async function findLawByName(
   name: string
 ): Promise<{ id: string; shortName: string; name: string } | null> {
-  const db = getReadDb()
+  const db = getPoolerDb()
   const sel = { id: laws.id, short_name: laws.shortName, name: laws.name }
   const result = (r: { id: string; short_name: string; name: string }) => ({
     id: r.id, shortName: r.short_name, name: r.name,
@@ -612,7 +615,7 @@ export async function getOposicionLawIds(userOposicion: string): Promise<string[
   const positionType = ID_TO_POSITION_TYPE[userOposicion]
   if (!positionType) return []
 
-  const db = getReadDb()
+  const db = getPoolerDb()
 
   // Obtener topics de esta oposición
   const topicRows = await db.select({ id: topics.id }).from(topics)
@@ -684,7 +687,7 @@ async function loadLawsForDetection(): Promise<_LawDetectionEntry[]> {
   return _lawsDetectionCache.getOrLoad(async () => {
     let data: Array<{ id: string; short_name: string; name: string }>
     try {
-      data = await getReadDb()
+      data = await getPoolerDb()
         .select({ id: laws.id, short_name: laws.shortName, name: laws.name })
         .from(laws)
         .where(eq(laws.isActive, true))
@@ -865,7 +868,7 @@ export async function findArticleInLaw(
 } | null> {
   logger.debug(`🔎 findArticleInLaw: searching ${lawShortName} art. ${articleNumber}`, { domain: 'search' })
 
-  const db = getReadDb()
+  const db = getPoolerDb()
   const lawSel = { id: laws.id, short_name: laws.shortName, name: laws.name }
 
   // Primero buscar la ley (exact short_name) y, si no, case-insensitive
@@ -990,7 +993,7 @@ export async function getHotArticlesByOposicion(
       if (targetOposicion) conds.push(eq(hotArticlesTable.targetOposicion, targetOposicion))
       if (lawShortName) conds.push(eq(hotArticlesTable.lawName, lawShortName))
 
-      return await getReadDb()
+      return await getPoolerDb()
         .select({
           article_id: hotArticlesTable.articleId,
           article_number: hotArticlesTable.articleNumber,
@@ -1065,7 +1068,7 @@ async function enrichHotArticles(hotArticles: Array<{
   const articleIds = hotArticles.map(h => h.article_id)
   let articlesData: Array<{ id: string; title: string | null; content: string | null }> = []
   try {
-    articlesData = await getReadDb()
+    articlesData = await getPoolerDb()
       .select({ id: articles.id, title: articles.title, content: articles.content })
       .from(articles)
       .where(inArray(articles.id, articleIds))
@@ -1174,7 +1177,7 @@ export function formatHotArticlesResponse(
  */
 export async function hasQuestionsForArticle(articleId: string): Promise<boolean> {
   try {
-    const rows = await getReadDb()
+    const rows = await getPoolerDb()
       .select({ c: count() })
       .from(questions)
       .where(and(eq(questions.primaryArticleId, articleId), eq(questions.isActive, true)))
@@ -1194,7 +1197,7 @@ export async function getArticleByQuestionId(
   questionId: string
 ): Promise<{ id: string; articleNumber: string; title: string; content: string; lawId: string; lawShortName: string; lawName: string } | null> {
   try {
-    const rows = await getReadDb()
+    const rows = await getPoolerDb()
       .select({
         id: articles.id,
         article_number: articles.articleNumber,

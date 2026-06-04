@@ -1,7 +1,8 @@
 // lib/chat/domains/verification/queries.ts
 // Queries para obtener datos de verificación
 
-import { getReadDb } from '@/db/client'
+// Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
+import { getPoolerDb } from '@/db/client'
 import { questions, articles, laws, psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -27,7 +28,7 @@ export async function getLinkedArticle(questionId: string): Promise<LinkedArticl
   if (!questionId) return null
 
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     const rows = await db
       .select({
         id: articles.id,
@@ -70,7 +71,7 @@ export async function checkIsPsychometric(questionId: string): Promise<boolean> 
   if (!questionId) return false
 
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     const rows = await db
       .select({ id: psychometricQuestions.id })
       .from(psychometricQuestions)

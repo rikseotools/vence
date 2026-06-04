@@ -1,7 +1,8 @@
 // lib/chat/domains/verification/DisputeService.ts
 // Servicio para gestionar impugnaciones de preguntas
 
-import { getReadDb, getAdminDb } from '@/db/client'
+// Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
+import { getPoolerDb, getAdminDb } from '@/db/client'
 import { questionDisputes, psychometricQuestionDisputes } from '@/db/schema'
 import { eq, and, desc, inArray, count } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -282,7 +283,7 @@ async function findUserDispute(
  */
 export async function getDisputesForQuestion(questionId: string): Promise<Dispute[]> {
   try {
-    const rows = await getReadDb()
+    const rows = await getPoolerDb()
       .select(disputeCols(questionDisputes))
       .from(questionDisputes)
       .where(eq(questionDisputes.questionId, questionId))
@@ -298,7 +299,7 @@ export async function getDisputesForQuestion(questionId: string): Promise<Disput
  */
 export async function getUserPendingDisputes(userId: string): Promise<Dispute[]> {
   try {
-    const rows = await getReadDb()
+    const rows = await getPoolerDb()
       .select(disputeCols(questionDisputes))
       .from(questionDisputes)
       .where(and(eq(questionDisputes.userId, userId), eq(questionDisputes.status, 'pending')))
@@ -314,7 +315,7 @@ export async function getUserPendingDisputes(userId: string): Promise<Dispute[]>
  */
 export async function hasOpenDisputes(questionId: string): Promise<boolean> {
   try {
-    const rows = await getReadDb()
+    const rows = await getPoolerDb()
       .select({ c: count() })
       .from(questionDisputes)
       .where(and(

@@ -22,7 +22,10 @@ import { isPsychometricSubtype } from '../shared/constants'
 import { isPlatformQuery } from '../domains/knowledge-base/queries'
 import { generateEmbedding } from '../domains/search/EmbeddingService'
 import { searchArticlesBySimilarity } from '../domains/search/queries'
-import { getReadDb } from '@/db/client'
+// Lecturas del chat por el self-hosted PgBouncer (max:8, sano), no por getReadDb
+// → getDb (Supavisor primary max:1) que satura el pool y causa 504. Ver
+// ARCHITECTURE_ROADMAP línea 17.
+import { getPoolerDb } from '@/db/client'
 import { oposiciones, topicScope, topics } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
@@ -58,7 +61,7 @@ export class ChatOrchestrator {
     }
 
     try {
-      const data = await getReadDb()
+      const data = await getPoolerDb()
         .select({
           nombre: oposiciones.nombre,
           slug: oposiciones.slug,
@@ -809,7 +812,7 @@ export class ChatOrchestrator {
       if (context.userDomain) {
         try {
           const domainNorm = context.userDomain.replace(/-/g, '_')
-          const scopeLaws = await getReadDb()
+          const scopeLaws = await getPoolerDb()
             .select({ law_id: topicScope.lawId })
             .from(topicScope)
             .innerJoin(topics, eq(topicScope.topicId, topics.id))
@@ -832,7 +835,7 @@ export class ChatOrchestrator {
 
       let hybridResults: any[] = []
       try {
-        hybridResults = (await getReadDb().execute(sql`
+        hybridResults = (await getPoolerDb().execute(sql`
           SELECT * FROM hybrid_search_articles(
             ${toVector(embedding)}::vector,
             ${queryText},

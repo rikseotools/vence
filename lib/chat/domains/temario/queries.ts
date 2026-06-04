@@ -1,7 +1,8 @@
 // lib/chat/domains/temario/queries.ts
 // Queries para consultas sobre temarios, programas y epigrafes
 
-import { getReadDb } from '@/db/client'
+// Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
+import { getPoolerDb } from '@/db/client'
 import { topics, oposiciones } from '@/db/schema'
 import { eq, and, or, ilike } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
@@ -84,7 +85,7 @@ export async function getTopicsByPositionType(positionType: string): Promise<Top
 
   let data: Array<Record<string, unknown>>
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     data = await db
       .select({
         id: topics.id,
@@ -137,7 +138,7 @@ export async function searchTopicsByContent(
 
   let data: Array<Record<string, unknown>>
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     data = await db
       .select({
         id: topics.id,
@@ -179,7 +180,7 @@ export async function getOposicionInfo(oposicionId: string): Promise<OposicionIn
 
   let data: Record<string, unknown> | undefined
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     const rows = await db
       .select({
         id: oposiciones.id,
@@ -220,7 +221,7 @@ export async function getAllOposiciones(): Promise<OposicionInfo[]> {
 
   let data: Array<Record<string, unknown>>
   try {
-    const db = getReadDb()
+    const db = getPoolerDb()
     data = await db
       .select({
         id: oposiciones.id,
