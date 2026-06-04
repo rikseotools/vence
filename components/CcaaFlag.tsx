@@ -259,6 +259,10 @@ const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   // con prioridad sobre la bandera de España. Aplica a todos sus cuerpos
   // (aux-admin, tcae, celador, enfermero), que contienen 'ingesa' en el id/slug.
   [['ingesa'], { src: '/escudos/ingesa.png', alt: 'Logo del INGESA (Instituto Nacional de Gestión Sanitaria)' }],
+  // Servicio Murciano de Salud (SMS): logo institucional oficial (Murcia Salud),
+  // con prioridad sobre la bandera de Murcia. Cubre la oposición Aux. Admin. del
+  // SMS (slug …-sms). Lo más específico ('-sms'/'sms-') para no pisar CARM (regional).
+  [['-sms', 'sms-', 'servicio-murciano'], { src: '/escudos/sms.svg', alt: 'Logo del Servicio Murciano de Salud (SMS)' }],
 ]
 
 export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {

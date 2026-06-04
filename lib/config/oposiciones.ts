@@ -1816,6 +1816,26 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-clm/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-clm/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2025-10-14',
+        title: 'Convocatoria OEP 2023-2024 — examen 14/10/2025',
+        oep: 'OEP 2023-2024',
+        note: 'Del examen oficial se importaron y verificaron 86 preguntas, cada una contra su artículo + auditoría independiente. Se excluyeron las anuladas y las desfasadas por reforma legal posterior.',
+        partes: [
+          {
+            id: 'unica',
+            icon: '📋',
+            title: 'Ejercicio único (tipo test)',
+            ordinaryCount: 86,
+            reserveCount: 3,
+            breakdown: [
+              { label: 'Legislación, parte común e informática', count: 86 },
+            ],
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================

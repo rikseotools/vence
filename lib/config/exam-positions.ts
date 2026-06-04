@@ -80,6 +80,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo carm',
     'auxiliar administrativo murcia',
   ],
+  'auxiliar_administrativo_clm': [
+    'auxiliar_administrativo_clm',
+    'auxiliar administrativo clm',
+    'auxiliar administrativo castilla-la mancha',
+  ],
   'auxiliar_administrativo_valencia': [
     'auxiliar_administrativo_valencia',
     'auxiliar administrativo valencia',
@@ -120,7 +125,6 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_diputacion_zaragoza': [],
   'tcae_sermas_madrid': [],
   'administrativo_galicia': [],
-  'auxiliar_administrativo_clm': [],
   'auxiliar_administrativo_aragon': [],
   // Añadidas 31/05/2026 — landings nuevas sin exámenes oficiales aún en BD
   'auxiliar_administrativo_catalunya': [],
