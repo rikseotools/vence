@@ -143,9 +143,20 @@ await supabase
     descripcion: 'Plazo alegaciones: 3 dias habiles.',
     url: 'https://...',  // URL al documento si existe
     status: 'current',   // completed | current | upcoming
-    order_index: 7        // Siguiente numero disponible (sin duplicar)
+    order_index: 7,       // Siguiente numero disponible (sin duplicar)
+    // ── Fase 8 (campana 🔔) ──
+    severity: 'critical', // critical=campana+email | important=solo campana | cosmetic=nada
+    notify_status: 'pending' // pending=NO notifica. Pasar a 'verified' SOLO tras
+                             // confirmar la fuente oficial → dispara la campana (ver §7b.0)
   })
 ```
+
+> **Severidad (criterio Manuel):** `critical` = lo que el opositor espera/actúa
+> (apertura de convocatoria/inscripción, fecha de examen, **listas de admitidos
+> provisionales**, **plantilla del examen** una vez hecho, resultados). `important`
+> = avances sin acción inmediata (tribunal, aulas, ampliación de plazo). `cosmetic`
+> = no afecta (maquetación). Un hito nace `notify_status='pending'`: NO notifica
+> hasta que tú (Claude) lo verificas (§7b.0).
 
 ### 4c. Actualizar estado de la oposicion
 
@@ -468,6 +479,45 @@ Siempre forzar la revalidacion despues de actualizar hitos o estado de la oposic
 
 ## 7b. Notificar a los usuarios
 
+> Hay DOS canales: **(7b.0) la campana 🔔 in-app** (automática, Fase 8) y **(7b.1) el email newsletter** (manual, abajo). La campana es el canal por defecto; el email solo para hitos críticos.
+
+### 7b.0 Campana automática (Fase 8) — lo haces TÚ al verificar el hito
+
+**Mecanismo:** cuando un hito de `convocatoria_hitos` pasa a `notify_status='verified'` (y `severity != 'cosmetic'`), un trigger (`tg_hito_fanout_alerts`) crea automáticamente un aviso en `user_oposicion_alerts` para **cada usuario que sigue esa oposición** con la campana activada (su **target** actual **o** una **favorita**). La campana 🔔 (`NotificationBell`) lo muestra al instante.
+
+**GUARDARRAÍL (innegociable):** un aviso NO sale de un dato sin verificar. Por eso el hito nace `pending` y **solo TÚ (Claude) lo pasas a `verified`**, y SOLO después de confirmar la fuente oficial (BOE/boletín/sede) — que es justo lo que ya haces en §2-§3 de este manual. El cron NUNCA pone `verified`.
+
+**⚠️ COMPROBACIÓN PREVIA OBLIGATORIA (antes de poner `verified`):** el aviso de la campana lleva al usuario a **nuestra landing** (`/<slug>`). Como vas a mandar ahí a cientos/miles de opositores, **verifica que la landing está correcta ANTES de disparar**:
+1. Abre `https://www.vence.es/<slug>` y comprueba que el **timeline "📅 Estado del Proceso Selectivo"** muestra los hitos **bien y al día** (el hito que vas a notificar aparece, fechas correctas, `status` coherente, sin hitos duplicados/estimados sucios — §4d/§4h).
+2. Los **datos** de la landing son correctos (plazas, fechas, estado — §4g integridad cruzada).
+3. Cada hito relevante **enlaza a su fuente oficial** (`convocatoria_hitos.url` → el título es un `<a>` a BOE/boletín/sede). Si al hito que notificas le falta la `url` oficial, **añádela** (§4b) antes de notificar.
+4. Si la landing es ISR/cacheada, **revalida** (§Paso 5) para que el usuario vea los datos nuevos al llegar.
+
+Solo cuando la landing está impecable, procede al fan-out.
+
+**Cuándo hacerlo (durante "revisa oep"):** tras insertar/actualizar un hito notable (§4b) cuya fuente has confirmado **y con la landing verificada (arriba)**, márcalo verificado:
+
+```javascript
+// 1) Resolver la audiencia ANTES de disparar (para informar a Manuel)
+const { count } = await supabase
+  .from('user_oposiciones_seguidas')
+  .select('*', { count: 'exact', head: true })
+  .eq('oposicion_id', '<uuid_oposicion>')
+  .eq('notify_bell', true)
+console.log('Avisaría en campana a', count, 'usuarios')
+
+// 2) Disparar el fan-out (poner verified) — el trigger crea los avisos
+await supabase.from('convocatoria_hitos')
+  .update({ severity: 'critical', notify_status: 'verified' })
+  .eq('id', '<hito_id>')
+```
+
+**Política con Manuel (confirmar antes de disparar):** como el fan-out impacta a usuarios reales (cientos/miles), antes de poner `verified` **dile a Manuel qué hito vas a notificar, con qué `severity` y a cuántos usuarios**, y espera su OK. Para `critical` (que en 8d además mandará email) confirma siempre. Solo `verified` dispara; `important` = solo campana, `critical` = campana (+email cuando exista 8d). Históricos quedan `pending` (no se notifican retroactivamente).
+
+**Idempotente y seguro:** `unique(user_id, hito_id)` evita duplicados; el trigger es fail-open + observable (`observable_events` event_type `hito_fanout_failed`) — si fallara, NO bloquea la edición del hito.
+
+### 7b.1 Email newsletter (manual)
+
 Cuando hay un cambio relevante (fecha de examen, listas definitivas, etc.), enviar newsletter a los usuarios de esa oposicion usando la plantilla `novedad-convocatoria`:
 
 ### Paso 1: Verificar audiencia
@@ -676,6 +726,16 @@ await supabase.from('convocatoria_hitos').insert([
 - "Prepárate ya con nuestros tests y temario"
 - Timeline con estimación de convocatoria y examen
 → Convierte a premium porque empieza a prepararse antes de que salga la convocatoria.
+
+### Paso 3.5: Notificar en la campana 🔔 los hitos verificados (Fase 8)
+
+Para cada hito **notable que hayas confirmado contra la fuente oficial** en este barrido (listas provisionales/definitivas, fecha de examen, apertura de convocatoria, plantilla, resultados):
+1. **Verifica la landing PRIMERO** (`/<slug>`): timeline de hitos al día y correcto, datos correctos, enlace a la fuente oficial en el hito, y revalida si es cacheada. El aviso manda al usuario ahí — no notifiques sobre una landing desactualizada (checklist completo en **§7b.0**).
+2. Pon su `severity` (criterio en §4b) y resuelve la audiencia (nº de seguidores con campana).
+3. **Avisa a Manuel:** "voy a notificar `<hito>` (`severity`) a `<N>` usuarios de `<oposición>`" y espera OK.
+4. Con el OK, pon `notify_status='verified'` → el trigger crea los avisos en la campana (ver **§7b.0**).
+
+NO notifiques hitos cosméticos ni sin verificar. Históricos quedan `pending`.
 
 ### Paso 4: Marcar revisado
 
