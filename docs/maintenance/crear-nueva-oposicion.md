@@ -143,10 +143,11 @@ El articulo es la unidad base. Las preguntas se vinculan al articulo via `primar
 FASE 1: Programa oficial       → Leer BOE, extraer epigrafes literales
 FASE 2: Base de datos          → oposicion, topics (con epigrafes)
 FASE 3: Topic scope con IA     → Analizar epigrafes, mapear a leyes/articulos
-FASE 4: Config y schemas       → oposiciones.ts, archivos manuales
+FASE 4: Config y schemas       → oposiciones.ts, archivos manuales, logo/bandera/escudo oficial (CcaaFlag §4c.bis)
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
 FASE 6: Verificacion           → Build, tests, funcional, revalidar caches
 FASE 7: Examenes oficiales     → exam_position, hot_articles, mapas (si aplica)
+FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook google-ads-analisis §Crear campaña
 ```
 
 ---
@@ -1410,6 +1411,24 @@ Y tambien en `oposicionToExamSourcePattern` (fallback para preguntas psicotecnic
 
 ---
 
+## FASE 8: Campaña de Google Ads (captación, fase final)
+
+Una vez la oposición está **pública y verificada** (`is_active=true`, desplegada, landing/temario/tests OK), el último paso para captar leads es crearle una **campaña de Google Ads**. El proceso completo, el modelo de campaña y los gotchas están en el runbook **[`../runbooks/google-ads-analisis.md`](../runbooks/google-ads-analisis.md) §"Crear una campaña nueva para una oposición"** — seguirlo siempre (no improvisar).
+
+**Prerrequisitos (no crear sin esto):**
+- `oposiciones.is_active=true` y landing viva (la campaña manda tráfico a `vence.es/<slug>`; si no está viva, se quema presupuesto en una página rota).
+- `oposiciones.exam_date` relleno (sin fecha de examen no se conoce la ventana de venta; el gasto solo convierte cerca del examen — aprendizaje clave del runbook).
+
+**Modelo (el de las campañas que funcionan):** Search · **Maximizar clics** (`target_spend`) con **CPC máx 0,05€** (`cpc_bid_ceiling_micros: 50000`) · **~3€/día** · geo = **comunidad de la oposición** (regional; **España=2724** solo para oposiciones NACIONALES como Estado/INGESA/Justicia/Guardia Civil) · idioma español (`languageConstants/1003`) · 1 grupo · 1 anuncio RSA · **keywords de intención SIN marca** (nunca "vence oposiciones": ya rankea gratis en orgánico).
+
+**Nombre (norma Manuel):** prefijo de grupo `C2` (Auxiliar Administrativo, Auxilio Judicial…) o `C1` (Administrativo, Tramitación…) + nombre claro y desambiguado territorialmente (comunidad ≠ ayuntamiento).
+
+**Creación:** no hay comando `ads:campaign create` (ese script solo hace pause/enable/budget). Se crea con un `customer.mutateResources([...])` atómico a medida (temp IDs negativos: budget→campaign→criterios geo+idioma→ad_group→RSA→keywords), **SIEMPRE con `{validate_only:true}` (dry-run) antes de aplicar**. Obligatorio `contains_eu_political_advertising='DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`. El anuncio pasa revisión de Google antes de servir. Es **gasto real** → confirmar con Manuel antes del create definitivo.
+
+**Tras crearla:** verificar con `npm run ads:report` que aparece, y a las 3-4 semanas cruzar coste vs ingreso real con `npm run ads:roi` (no optimizar por "conversiones"=registros; el ROI real es cerca del examen).
+
+---
+
 ## Errores frecuentes
 
 | Error | Causa | Solucion |
@@ -1777,3 +1796,4 @@ Crear una oposición encadena con el resto del flujo de contenido:
 - **[`importar-examen-oficial-completo.md`](./importar-examen-oficial-completo.md)** — FASE 7: importar exámenes oficiales pasados (PDFs → preguntas verificadas).
 - **[`oeps-convocatorias-seguimiento.md`](./oeps-convocatorias-seguimiento.md)** — alta de `seguimiento_url`, hitos del proceso y modelo "Claude mete, el cron revisa".
 - **[`cache-revalidation.md`](./cache-revalidation.md)** — revalidar tags `landing`/`temario`/`test-counts` al terminar (FASE 6f).
+- **[`../runbooks/google-ads-analisis.md`](../runbooks/google-ads-analisis.md)** — FASE 8: crear la campaña de Google Ads de captación (§"Crear una campaña nueva"), tras `is_active=true`.
