@@ -1,5 +1,28 @@
 # Verificar Epígrafe vs Topic Scope de un Tema
 
+## 🤖 Fase automática (correr SIEMPRE primero)
+
+Antes de revisar a mano, ejecuta el detector mecánico — caza la mayoría de incoherencias en segundos:
+
+```bash
+npm run audit:epigrafe                                              # todas las oposiciones
+npm run audit:epigrafe auxiliar_administrativo_clm auxiliar_administrativo_sms   # filtrado
+```
+
+Marca con exit code 1 (apto como gate de CI) cuando hay un hallazgo 🔴:
+
+| Flag | Significado |
+|------|-------------|
+| 🔴 **UNDER** | El epígrafe cita una ley (con número) que NO está en el scope o está a 0 arts |
+| 🔴 **WRONG_SUBJECT** | Una ley del scope aporta ≥80% de las preguntas pero ni su número ni su nombre aparecen en el epígrafe (materia equivocada, p.ej. Subvenciones en un tema de Presupuesto) |
+| 🟡 **EMPTY_ROW** | Fila de `topic_scope` con `article_numbers` vacío (poblar la ley relevante o borrarla) |
+| 🟡 **OVER** | Ley del scope no referenciada en el epígrafe (puede ser proxy legítimo de la estatal equivalente — revisar) |
+| 🟡 **LOW_COVERAGE** | Tema con <10 preguntas servidas (candidato a generación IA) |
+
+El detector reconoce leyes por **número** (`Ley 39/2015`), por **nombre completo** (`name` de la tabla `laws`) y por **acrónimo** (`EBEP`→Estatuto Básico, `RGPD`, `LPRL`…). Los 🔴 restantes tras la pasada suelen ser proxies defendibles (la estatal equivalente sirve un tema autonómico) o citas-quirk del temario — revísalos a mano con los pasos de abajo. **La revisión manual sigue siendo obligatoria** para los casos que el detector no puede resolver (proxies, convenios colectivos sin modelar como ley, materia sin número).
+
+Script: `scripts/audit-epigrafe-scope.cjs`.
+
 ## ⚠️ Principio fundamental
 
 **El epígrafe DEBE ser el texto LITERAL del boletín oficial** (BOE, BOP, BOCYL, BOJA, DOG, DOGV, BORM, etc.) que publicó la convocatoria. NUNCA:

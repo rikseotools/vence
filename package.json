@@ -10,6 +10,7 @@
     "db:load-constitucion": "node scripts/load-constitucion.js",
     "db:load-constitucion-pdf": "node scripts/load-constitucion.js pdfs/constitucion-espanola.pdf",
     "db:pull": "drizzle-kit introspect",
+    "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
     "ads:auth": "npx tsx --env-file=.env.local scripts/google-ads/get-refresh-token.ts",
     "ads:report": "npx tsx --env-file=.env.local scripts/google-ads/report.ts",
     "ads:campaign": "npx tsx --env-file=.env.local scripts/google-ads/campaign.ts",

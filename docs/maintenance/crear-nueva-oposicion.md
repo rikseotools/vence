@@ -143,6 +143,7 @@ El articulo es la unidad base. Las preguntas se vinculan al articulo via `primar
 FASE 1: Programa oficial       → Leer BOE, extraer epigrafes literales
 FASE 2: Base de datos          → oposicion, topics (con epigrafes)
 FASE 3: Topic scope con IA     → Analizar epigrafes, mapear a leyes/articulos
+        └─ 3g: npm run audit:epigrafe <position_type>  → FASE AUTOMÁTICA coherencia epígrafe↔scope (obligatoria)
 FASE 4: Config y schemas       → oposiciones.ts, archivos manuales, logo/bandera/escudo oficial (CcaaFlag §4c.bis)
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
 FASE 6: Verificacion           → Build, tests, funcional, revalidar caches
@@ -636,24 +637,26 @@ Resumen de las trampas mas frecuentes:
 3. **BOE sync trae ley equivocada:** Verificar art 1 tras sincronizar.
 4. **OpositaTest clasifica mal:** Si tenemos la oposicion scrapeada, cruzar los articulos que referencian las preguntas contra el scope para detectar divergencias.
 
-### 3g. Verificar resultado
+### 3g. Verificar resultado (FASE AUTOMÁTICA — obligatoria, escalable)
 
-Despues de crear todos los scopes, contar preguntas por tema:
+Despues de crear todos los scopes, **correr el detector automático** que valida coherencia epígrafe ↔ scope y cuenta preguntas por tema para CUALQUIER oposición:
 
-```javascript
-// Para cada topic, contar preguntas via scope → articles → questions
-for (const topic of topics) {
-  const scopes = await getScopes(topic.id);
-  let total = 0;
-  for (const scope of scopes) {
-    const articles = await getArticles(scope.law_id, scope.article_numbers);
-    for (const art of articles) {
-      total += await countQuestions(art.id);
-    }
-  }
-  console.log(`T${topic.topic_number}: ${total} preguntas`);
-}
+```bash
+npm run audit:epigrafe <position_type>     # ej. npm run audit:epigrafe auxiliar_administrativo_clm
+npm run audit:epigrafe                     # todas las oposiciones (apto como gate de CI)
 ```
+
+Caza mecánicamente lo que antes dependía de revisión manual (y se saltaba):
+
+| Flag | Acción |
+|------|--------|
+| 🔴 **UNDER** | El epígrafe cita una ley ausente del scope (o a 0 arts) → añadir esa ley/artículos |
+| 🔴 **WRONG_SUBJECT** | Una ley aporta ≥80% de las preguntas pero no está en el epígrafe (materia equivocada, p.ej. Subvenciones en Presupuesto) → corregir scope |
+| 🟡 **EMPTY_ROW** | Fila de scope a 0 arts → poblar la ley relevante o borrarla |
+| 🟡 **OVER** | Ley no referenciada en el epígrafe → revisar (puede ser proxy legítimo de la estatal equivalente) |
+| 🟡 **LOW_COVERAGE** | Tema con <10 preguntas → candidato a generación IA (`generar-preguntas-con-ia.md`) |
+
+Exit code 1 si hay algún 🔴. **Detalle y revisión manual de los casos que el detector no resuelve** (proxies, convenios colectivos, materia sin número): [`docs/maintenance/verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md) → sección "🤖 Fase automática". Script: `scripts/audit-epigrafe-scope.cjs`.
 
 Temas con 0 preguntas = o falta scope, o falta la ley en BD, o no hay preguntas para esos articulos.
 
