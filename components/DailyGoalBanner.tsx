@@ -108,6 +108,32 @@ export default function DailyGoalBanner() {
     } catch { /* ignore */ }
   }, [user?.id])
 
+  // Re-clampea la posición guardada al viewport ACTUAL (al montar y al
+  // redimensionar/rotar). Sin esto, una posición guardada en pantalla ancha
+  // podría dejar la barra fuera de pantalla o tapando contenido en una estrecha
+  // — justo lo que esta feature pretende evitar. Idempotente (si ya cabe,
+  // devuelve el mismo objeto → no re-renderiza ni hace bucle).
+  useEffect(() => {
+    if (hidden || !pos) return
+    const reclamp = () => setPos(prev => {
+      const wrapper = dropdownRef.current
+      if (!prev || !wrapper) return prev
+      const rect = wrapper.getBoundingClientRect()
+      const next = clampBannerOffset({
+        naturalLeft: rect.left - prev.x, naturalTop: rect.top - prev.y,
+        baseX: prev.x, baseY: prev.y, dx: 0, dy: 0,
+        width: rect.width, height: rect.height,
+        viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+      })
+      if (next.x === prev.x && next.y === prev.y) return prev
+      try { localStorage.setItem(`daily_goal_pos:${user.id}`, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+    reclamp()
+    window.addEventListener('resize', reclamp)
+    return () => window.removeEventListener('resize', reclamp)
+  }, [hidden, pos, user?.id])
+
   // Fire confetti from the pill position, multiple bursts over 3 seconds
   const fireConfetti = () => {
     if (confettiFiredRef.current) return

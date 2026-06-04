@@ -109,6 +109,23 @@ describe('clampBannerOffset — la barra nunca se pierde fuera del viewport', ()
     expect(r.x).toBe(80)
   })
 
+  it('re-clamp de posición guardada: offset que cabía en pantalla ancha se corrige en una estrecha', () => {
+    // Guardada en viewport ancho: offset x=+96 (barra pegada al borde derecho de 1000px).
+    // Al reabrir en viewport estrecho (400px), ese mismo offset la sacaría fuera →
+    // re-clamp con dx=dy=0 sobre la posición aplicada debe recolocarla dentro.
+    const applied = { x: 96, y: 0 }
+    const rectLeft = 896 // natural(800) + applied.x(96), pero en 400px de ancho está fuera
+    const reclamped = clampBannerOffset({
+      naturalLeft: rectLeft - applied.x, // natural = 800
+      naturalTop: 10 - applied.y,
+      baseX: applied.x, baseY: applied.y, dx: 0, dy: 0,
+      width: 100, height: 24, viewportWidth: 400, viewportHeight: 800,
+    })
+    const absLeft = (rectLeft - applied.x) + reclamped.x
+    expect(absLeft + 100).toBeLessThanOrEqual(400 - 4) // cabe en el viewport estrecho
+    expect(absLeft).toBeGreaterThanOrEqual(4)
+  })
+
   it('el resultado clampado siempre deja la barra completamente visible', () => {
     const r = clampBannerOffset({ ...natural, baseX: 0, baseY: 0, dx: 9999, dy: 9999 })
     const absLeft = natural.naturalLeft + r.x
