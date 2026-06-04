@@ -255,6 +255,10 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
 const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   [['guardia-civil'], { src: '/escudos/guardia-civil.svg', alt: 'Escudo de la Guardia Civil' }],
   [['policia-nacional'], { src: '/escudos/policia-nacional.svg', alt: 'Escudo de la Policía Nacional' }],
+  // INGESA (Instituto Nacional de Gestión Sanitaria): logo institucional oficial,
+  // con prioridad sobre la bandera de España. Aplica a todos sus cuerpos
+  // (aux-admin, tcae, celador, enfermero), que contienen 'ingesa' en el id/slug.
+  [['ingesa'], { src: '/escudos/ingesa.png', alt: 'Logo del INGESA (Instituto Nacional de Gestión Sanitaria)' }],
 ]
 
 export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {
