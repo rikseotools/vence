@@ -6,6 +6,7 @@
 // service_role anterior) para lecturas SSR. Los joins propietarios
 // content_scope→laws y content_sections→content_collections pasan a
 // innerJoin/leftJoin explícitos de Drizzle.
+import { cache } from 'react'
 import { and, count, eq, ilike, inArray, or } from 'drizzle-orm'
 import { getReadDb } from '@/db/client'
 import {
@@ -105,8 +106,11 @@ interface SectionMetadata {
   }
 }
 
-// Cargar datos del Procedimiento Administrativo para SSR
-export async function loadProcedimientoAdministrativoData(): Promise<ProcedimientoData> {
+// Cargar datos del Procedimiento Administrativo para SSR.
+// Envuelto en React cache() → dentro de una misma petición (p. ej. generateMetadata
+// + el componente de página) se ejecuta UNA sola vez, no se duplica el trabajo a BD.
+export const loadProcedimientoAdministrativoData = cache(_loadProcedimientoAdministrativoData)
+async function _loadProcedimientoAdministrativoData(): Promise<ProcedimientoData> {
   const db = getReadDb()
 
   try {
@@ -221,8 +225,11 @@ export async function loadProcedimientoAdministrativoData(): Promise<Procedimien
   }
 }
 
-// Cargar datos de una sección específica para SSR
-export async function loadProcedimientoSectionData(sectionSlug: string): Promise<SectionData | null> {
+// Cargar datos de una sección específica para SSR.
+// Envuelto en React cache() → generateMetadata y el componente comparten una única
+// resolución a BD por petición (antes se cargaba dos veces por página).
+export const loadProcedimientoSectionData = cache(_loadProcedimientoSectionData)
+async function _loadProcedimientoSectionData(sectionSlug: string): Promise<SectionData | null> {
   const db = getReadDb()
 
   try {
@@ -321,32 +328,33 @@ export async function loadProcedimientoSectionData(sectionSlug: string): Promise
 
     if (hasContentScope && contentScopes.length > 0) {
       try {
-        // Usar content_scope ya cargado para encontrar preguntas de esta sección
-        for (const scope of contentScopes) {
-          // Para cada artículo específico en el scope
-          for (const articleNumber of scope.articleNumbers) {
-            // Obtener el ID del artículo específico
-            const artRows = await db
-              .select({ id: articles.id })
-              .from(articles)
-              .where(and(
-                eq(articles.lawId, scope.lawId),
-                eq(articles.articleNumber, articleNumber)
-              ))
-              .limit(1)
-            const article = artRows[0]
+        // Resolución por CONJUNTOS (evita el patrón N+1: antes hacía 2 queries por
+        // artículo → hasta decenas de round-trips secuenciales contra el pooler).
+        // 1) Una query: todos los artículos de los pares (ley, [artículos]) del scope.
+        const lawConds = contentScopes
+          .filter((scope) => scope.articleNumbers && scope.articleNumbers.length > 0)
+          .map((scope) => and(
+            eq(articles.lawId, scope.lawId),
+            inArray(articles.articleNumber, scope.articleNumbers)
+          ))
 
-            if (article) {
-              // Contar preguntas vinculadas a este artículo específico
-              const [{ value }] = await db
-                .select({ value: count() })
-                .from(questions)
-                .where(and(
-                  eq(questions.primaryArticleId, article.id),
-                  eq(questions.isActive, true)
-                ))
-              questionsCount += value
-            }
+        if (lawConds.length > 0) {
+          const articleRows = await db
+            .select({ id: articles.id })
+            .from(articles)
+            .where(lawConds.length === 1 ? lawConds[0] : or(...lawConds))
+          const articleIds = articleRows.map((a) => a.id)
+
+          // 2) Una query: count de preguntas activas vinculadas a esos artículos.
+          if (articleIds.length > 0) {
+            const [{ value }] = await db
+              .select({ value: count() })
+              .from(questions)
+              .where(and(
+                inArray(questions.primaryArticleId, articleIds),
+                eq(questions.isActive, true)
+              ))
+            questionsCount = value
           }
         }
       } catch (error) {

@@ -208,26 +208,14 @@ export async function generateMetadata({ params }) {
   }
 }
 
-// Pre-generar páginas estáticas para todas las secciones válidas
+// ISR on-demand: estas páginas se nutren de la BD (a través del pooler). NO se
+// pre-renderizan en build-time para que el build no dependa de la latencia/zombis
+// del pooler (Supavisor) — ese acoplamiento hacía abortar el build por timeout SSG.
+// Con generateStaticParams vacío + dynamicParams (true por defecto), cada sección
+// válida se genera server-side en su primera petición y se cachea/revalida (ISR);
+// las secciones no válidas se filtran con isValidSection() → notFound().
+export const revalidate = 86400 // 24h
+
 export function generateStaticParams() {
-  // Importar directamente las secciones del mapeo
-  const sectionSlugs = [
-    'conceptos-generales',
-    'el-procedimiento-administrativo', 
-    'responsabilidad-patrimonial',
-    'terminos-plazos',
-    'actos-administrativos',
-    'eficacia-validez-actos',
-    'nulidad-anulabilidad',
-    'revision-oficio',
-    'recursos-administrativos',
-    'jurisdiccion-contencioso',
-    'ejecucion',
-    'finalizacion-procedimiento',
-    'garantias',
-    'instruccion',
-    'ordenacion'
-  ]
-  
-  return sectionSlugs.map(slug => ({ seccion: slug }))
+  return []
 }
