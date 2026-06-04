@@ -9,6 +9,7 @@ import { useOposicion } from '@/contexts/OposicionContext'
 import { ALL_OPOSICION_IDS, getOposicion } from '@/lib/config/oposiciones'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { emitClientEvent } from '@/lib/observability/client'
+import { effectiveBannerVisible, nextBannerVisible } from '@/components/DailyGoalBanner'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
@@ -982,13 +983,12 @@ function PerfilPageContent() {
     loadAvatarSettings()
   }, [user])
 
-  // 🤖 CAMBIAR MODO DE AVATAR (manual/automático)
   // Toggle de la barra de meta diaria en la cabecera. Es el ÚNICO sitio donde se
   // puede re-activar tras ocultarla con la X (preferencia de cuenta). PUT inmediato
   // + dispatch 'profileUpdated' para que la cabecera reaccione al instante.
   const handleToggleDailyGoalBanner = async () => {
     if (!user || bannerToggleSaving) return
-    const next = !(profile?.show_daily_goal_banner !== false) // toggle del valor efectivo (default true)
+    const next = nextBannerVisible(effectiveBannerVisible(profile?.show_daily_goal_banner))
     setBannerToggleSaving(true)
     setProfile(prev => prev ? { ...prev, show_daily_goal_banner: next } : prev) // optimista
     emitClientEvent({ severity: 'info', eventType: 'daily_goal_banner_action', metadata: { action: next ? 'show' : 'hide', source: 'perfil' } })
@@ -999,12 +999,19 @@ function PerfilPageContent() {
         body: JSON.stringify({ userId: user.id, data: { showDailyGoalBanner: next } }),
       })
       const data = await response.json()
-      if (!data.success) throw new Error(data.error || 'Error')
+      if (!data.success) throw new Error(data.error || `HTTP ${response.status}`)
       window.dispatchEvent(new CustomEvent('profileUpdated'))
       setMessage(next ? '✅ Barra de meta diaria activada' : '✅ Barra de meta diaria ocultada')
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
       setProfile(prev => prev ? { ...prev, show_daily_goal_banner: !next } : prev) // revertir
+      const message = err instanceof Error ? err.message : 'unknown'
+      emitClientEvent({
+        severity: 'warn',
+        eventType: 'daily_goal_banner_action',
+        errorMessage: `perfil toggle PUT failed: ${message}`,
+        metadata: { action: 'toggle_failed', source: 'perfil', intended: next ? 'show' : 'hide' },
+      })
       setMessage('❌ No se pudo guardar la preferencia')
       setTimeout(() => setMessage(''), 3000)
     } finally {
@@ -1012,6 +1019,7 @@ function PerfilPageContent() {
     }
   }
 
+  // 🤖 CAMBIAR MODO DE AVATAR (manual/automático)
   const handleAvatarModeToggle = async () => {
     if (!user || avatarModeSaving) return
 
@@ -2499,17 +2507,17 @@ function PerfilPageContent() {
                               <button
                                 type="button"
                                 role="switch"
-                                aria-checked={profile?.show_daily_goal_banner !== false}
+                                aria-checked={effectiveBannerVisible(profile?.show_daily_goal_banner)}
                                 aria-label="Mostrar barra de meta diaria en la cabecera"
                                 disabled={bannerToggleSaving}
                                 onClick={handleToggleDailyGoalBanner}
                                 className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                  profile?.show_daily_goal_banner !== false ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                                  effectiveBannerVisible(profile?.show_daily_goal_banner) ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                                 } ${bannerToggleSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                               >
                                 <span
                                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    profile?.show_daily_goal_banner !== false ? 'translate-x-6' : 'translate-x-1'
+                                    effectiveBannerVisible(profile?.show_daily_goal_banner) ? 'translate-x-6' : 'translate-x-1'
                                   }`}
                                 />
                               </button>

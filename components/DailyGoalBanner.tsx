@@ -7,9 +7,59 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useDailyGoal } from '../hooks/useDailyGoal'
 import { getAuthHeaders } from '../lib/api/authHeaders'
+import { emitClientEvent } from '../lib/observability/client'
+
+// ============================================================================
+// Helpers puros (testeados en __tests__/components/DailyGoalBanner.test.ts).
+// La lógica de negocio vive aquí fuera del componente para poder testearla sin
+// montar React (mismo patrón que QuestionEvolution).
+// ============================================================================
+
+/**
+ * Visibilidad efectiva de la barra a partir de la preferencia de cuenta.
+ * Default = visible: sólo se oculta si el flag es explícitamente `false`
+ * (null/undefined = aún no cargado o sin preferencia → visible).
+ */
+export function effectiveBannerVisible(flag: boolean | null | undefined): boolean {
+  return flag !== false
+}
+
+/** Valor siguiente al pulsar el toggle (invierte el estado efectivo actual). */
+export function nextBannerVisible(currentEffective: boolean): boolean {
+  return !currentEffective
+}
+
+/**
+ * Clampea el desplazamiento de arrastre para que la barra NUNCA se pierda fuera
+ * del viewport (queda siempre completamente visible con un margen). Devuelve el
+ * offset (relativo a la posición natural) ya corregido. Pura: sin DOM ni window.
+ */
+export function clampBannerOffset(args: {
+  naturalLeft: number
+  naturalTop: number
+  baseX: number
+  baseY: number
+  dx: number
+  dy: number
+  width: number
+  height: number
+  viewportWidth: number
+  viewportHeight: number
+  margin?: number
+}): { x: number; y: number } {
+  const m = args.margin ?? 4
+  let absLeft = args.naturalLeft + args.baseX + args.dx
+  let absTop = args.naturalTop + args.baseY + args.dy
+  absLeft = Math.min(Math.max(absLeft, m), args.viewportWidth - args.width - m)
+  absTop = Math.min(Math.max(absTop, m), args.viewportHeight - args.height - m)
+  return {
+    x: Math.round(absLeft - args.naturalLeft),
+    y: Math.round(absTop - args.naturalTop),
+  }
+}
 
 export default function DailyGoalBanner() {
-  const { user, isPremium } = useAuth() as any
+  const { user, isPremium, userProfile } = useAuth() as any
   const {
     questionsToday, studyGoal, goalReached, justReachedGoal,
     dismissGoalCelebration, loading: goalLoading,
@@ -21,6 +71,12 @@ export default function DailyGoalBanner() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const confettiFiredRef = useRef(false)
+  // Barra movible + ocultable: en móvil vive en la fila flotante `absolute top-full`
+  // del Header y tapaba contenido. La X la oculta (persistido por dispositivo) y se
+  // puede arrastrar a otro sitio (posición persistida). Ambos por-usuario en localStorage.
+  const [hidden, setHidden] = useState(false)
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const movedRef = useRef(false)
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -34,6 +90,23 @@ export default function DailyGoalBanner() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showDropdown])
+
+  // Visibilidad = preferencia de CUENTA (fuente de verdad: user_profiles.show_daily_goal_banner).
+  // No es localStorage por-dispositivo: ocultarla con la X se ve en todos los
+  // dispositivos y se refleja como toggle en /perfil; sólo se re-activa allí.
+  useEffect(() => {
+    if (!userProfile) return
+    setHidden(!effectiveBannerVisible(userProfile.show_daily_goal_banner))
+  }, [userProfile?.show_daily_goal_banner, userProfile])
+
+  // La POSICIÓN sí es per-dispositivo (depende del tamaño de pantalla) → localStorage.
+  useEffect(() => {
+    if (!user?.id) return
+    try {
+      const raw = localStorage.getItem(`daily_goal_pos:${user.id}`)
+      setPos(raw ? JSON.parse(raw) : null)
+    } catch { /* ignore */ }
+  }, [user?.id])
 
   // Fire confetti from the pill position, multiple bursts over 3 seconds
   const fireConfetti = () => {
@@ -96,8 +169,79 @@ export default function DailyGoalBanner() {
   }, [goalLoading, goalReached, user])
 
   if (!user || !isPremium || goalLoading) return null
+  if (hidden) return null
 
   const progress = studyGoal > 0 ? Math.round((questionsToday / studyGoal) * 100) : 0
+
+  // Ocultar = preferencia de cuenta (PUT). Optimista en local + dispatch
+  // 'profileUpdated' para que AuthContext recargue y todo quede coherente.
+  // Sólo se re-activa desde el toggle de /perfil.
+  const hidePill = async () => {
+    setHidden(true)
+    setShowDropdown(false)
+    emitClientEvent({ severity: 'info', eventType: 'daily_goal_banner_action', metadata: { action: 'hide' } })
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, data: { showDailyGoalBanner: false } }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      window.dispatchEvent(new CustomEvent('profileUpdated'))
+    } catch (err) {
+      // El PUT falló: la ✕ era optimista → revertimos para no dejar una
+      // inconsistencia silenciosa (oculta en local pero reaparece al recargar).
+      setHidden(false)
+      const message = err instanceof Error ? err.message : 'unknown'
+      console.warn('Error ocultando barra de meta:', message)
+      emitClientEvent({
+        severity: 'warn',
+        eventType: 'daily_goal_banner_action',
+        errorMessage: `hide PUT failed: ${message}`,
+        metadata: { action: 'hide_failed' },
+      })
+    }
+  }
+
+  // Arrastre (pointer events → mouse + touch). Distingue click de drag por umbral (6px)
+  // para no romper la apertura del dropdown. Clampea al viewport: nunca se pierde fuera.
+  const onPillPointerDown = (e: React.PointerEvent) => {
+    if (e.button && e.button !== 0) return
+    const wrapper = dropdownRef.current
+    if (!wrapper) return
+    const base = pos ?? { x: 0, y: 0 }
+    const rect = wrapper.getBoundingClientRect()
+    const naturalLeft = rect.left - base.x
+    const naturalTop = rect.top - base.y
+    const w = rect.width
+    const h = rect.height
+    const startX = e.clientX
+    const startY = e.clientY
+    let latest = base
+    movedRef.current = false
+
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (!movedRef.current && Math.hypot(dx, dy) < 6) return
+      movedRef.current = true
+      latest = clampBannerOffset({
+        naturalLeft, naturalTop, baseX: base.x, baseY: base.y, dx, dy,
+        width: w, height: h, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+      })
+      setPos(latest)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      if (movedRef.current) {
+        try { localStorage.setItem(`daily_goal_pos:${user.id}`, JSON.stringify(latest)) } catch { /* ignore */ }
+        emitClientEvent({ severity: 'info', eventType: 'daily_goal_banner_action', metadata: { action: 'drag', x: latest.x, y: latest.y } })
+      }
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   const saveGoalValue = async (goal: number) => {
     if (isNaN(goal) || goal < 1) return
@@ -119,13 +263,33 @@ export default function DailyGoalBanner() {
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Pill: siempre barra de progreso */}
+    <div
+      className="relative"
+      ref={dropdownRef}
+      style={pos ? { transform: `translate(${pos.x}px, ${pos.y}px)`, zIndex: 50 } : undefined}
+    >
+      {/* Botón X: ocultar permanentemente (en móvil tapaba contenido). Persistido por dispositivo. */}
+      <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); hidePill() }}
+        className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 flex items-center justify-center rounded-full bg-gray-400 dark:bg-gray-600 text-white text-[11px] leading-none hover:bg-red-500 transition-colors"
+        aria-label="Ocultar meta diaria"
+        title="Ocultar meta diaria"
+      >
+        ×
+      </button>
+      {/* Pill: siempre barra de progreso. Arrastrable para moverla de sitio. */}
       <button
         ref={buttonRef}
-        onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-        title={`Meta diaria: ${questionsToday}/${studyGoal} preguntas (${Math.round(progress)}%)`}
+        onPointerDown={onPillPointerDown}
+        onClick={() => {
+          if (movedRef.current) { movedRef.current = false; return }
+          setShowDropdown(!showDropdown)
+        }}
+        style={{ touchAction: 'none' }}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-grab active:cursor-grabbing select-none"
+        title={`Meta diaria: ${questionsToday}/${studyGoal} preguntas (${Math.round(progress)}%) · arrastra para mover`}
       >
         <div className="w-14 h-2 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
           <div
