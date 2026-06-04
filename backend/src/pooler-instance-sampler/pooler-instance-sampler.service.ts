@@ -1,8 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
-import { Client as PgClient } from 'pg';
+import { Client as PgClient, type ClientConfig } from 'pg';
+import { parse as parsePgDsn } from 'pg-connection-string';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+
+/** El cert TLS de las VMs es para este FQDN; al conectar por IP fijamos el
+ * servername para que el cert valide (cert idéntico en ambas VMs). */
+const POOLER_TLS_SERVERNAME = 'pooler.vence.es';
 import {
   PoolerDiscoveryService,
   type PoolerInstance,
@@ -35,17 +40,27 @@ export interface PoolerSampleRunResult {
   samples: InstanceSample[];
 }
 
-/** Reescribe el host:port y la dbname de un DSN base para apuntar a una instancia. */
-export function buildInstanceUrl(
+/**
+ * Construye la config de conexión `pg` para una instancia concreta a partir del
+ * DSN base del pooler. Usa el parser oficial de `pg` (robusto ante passwords con
+ * caracteres especiales — `new URL()` se rompía y caía a localhost) y fija el
+ * host a la IP privada + el servername TLS al FQDN del cert (validación correcta
+ * conectando por IP).
+ */
+export function buildInstanceConfig(
   baseDsn: string,
   ip: string,
   dbname: 'postgres' | 'pgbouncer',
-): string {
-  const u = new URL(baseDsn);
-  u.hostname = ip;
-  u.port = '6543';
-  u.pathname = `/${dbname}`;
-  return u.toString();
+): ClientConfig {
+  const parsed = parsePgDsn(baseDsn);
+  return {
+    host: ip,
+    port: 6543,
+    user: parsed.user,
+    password: parsed.password,
+    database: dbname,
+    ssl: { rejectUnauthorized: false, servername: POOLER_TLS_SERVERNAME },
+  };
 }
 
 /** Parsea la fila del pool postgres/postgres de SHOW POOLS. */
@@ -190,8 +205,7 @@ export class PoolerInstanceSamplerService {
     try {
       const t0 = Date.now();
       const real = new PgClient({
-        connectionString: buildInstanceUrl(baseDsn, inst.ip, 'postgres'),
-        ssl: { rejectUnauthorized: false },
+        ...buildInstanceConfig(baseDsn, inst.ip, 'postgres'),
         connectionTimeoutMillis: PoolerInstanceSamplerService.PROBE_TIMEOUT_MS,
         statement_timeout: PoolerInstanceSamplerService.PROBE_TIMEOUT_MS,
       });
@@ -210,8 +224,7 @@ export class PoolerInstanceSamplerService {
     // 2) Stats internas de PgBouncer (admin console, simple protocol).
     try {
       const admin = new PgClient({
-        connectionString: buildInstanceUrl(baseDsn, inst.ip, 'pgbouncer'),
-        ssl: { rejectUnauthorized: false },
+        ...buildInstanceConfig(baseDsn, inst.ip, 'pgbouncer'),
         connectionTimeoutMillis: PoolerInstanceSamplerService.PROBE_TIMEOUT_MS,
         statement_timeout: PoolerInstanceSamplerService.PROBE_TIMEOUT_MS,
       });

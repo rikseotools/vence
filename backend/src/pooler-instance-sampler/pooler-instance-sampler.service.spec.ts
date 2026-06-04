@@ -1,23 +1,40 @@
 import {
-  buildInstanceUrl,
+  buildInstanceConfig,
   parsePoolRow,
   parseStatsRow,
 } from './pooler-instance-sampler.service';
 
-describe('buildInstanceUrl', () => {
+describe('buildInstanceConfig', () => {
   const base =
     'postgresql://postgres:s3cr3t@pooler.vence.es:6543/postgres?sslmode=require';
 
-  it('reescribe host a la IP y mantiene puerto 6543 + dbname postgres', () => {
-    const u = buildInstanceUrl(base, '172.26.6.134', 'postgres');
-    expect(u).toContain('@172.26.6.134:6543/postgres');
-    expect(u).toContain('sslmode=require');
-    expect(u).toContain('postgres:s3cr3t@'); // credenciales preservadas
+  it('fija host a la IP, puerto 6543, dbname y servername TLS del cert', () => {
+    const cfg: any = buildInstanceConfig(base, '172.26.6.134', 'postgres');
+    expect(cfg.host).toBe('172.26.6.134');
+    expect(cfg.port).toBe(6543);
+    expect(cfg.database).toBe('postgres');
+    expect(cfg.user).toBe('postgres');
+    expect(cfg.password).toBe('s3cr3t');
+    expect(cfg.ssl).toMatchObject({
+      rejectUnauthorized: false,
+      servername: 'pooler.vence.es',
+    });
   });
 
   it('apunta a la admin db pgbouncer cuando se pide', () => {
-    const u = buildInstanceUrl(base, '172.26.23.115', 'pgbouncer');
-    expect(u).toContain('@172.26.23.115:6543/pgbouncer');
+    const cfg: any = buildInstanceConfig(base, '172.26.23.115', 'pgbouncer');
+    expect(cfg.host).toBe('172.26.23.115');
+    expect(cfg.database).toBe('pgbouncer');
+  });
+
+  it('robusto ante password con caracteres especiales (donde new URL fallaba)', () => {
+    const tricky =
+      'postgresql://postgres:p%40ss%2Fw0rd%3A@pooler.vence.es:6543/postgres';
+    const cfg: any = buildInstanceConfig(tricky, '172.26.6.134', 'postgres');
+    expect(cfg.host).toBe('172.26.6.134');
+    expect(cfg.user).toBe('postgres');
+    expect(typeof cfg.password).toBe('string');
+    expect(cfg.password.length).toBeGreaterThan(0);
   });
 });
 

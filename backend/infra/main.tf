@@ -169,8 +169,10 @@ resource "aws_iam_role" "task" {
 }
 
 # Permiso mínimo para que el cron pooler-instance-sampler descubra las
-# instancias del pooler leyendo el target group del NLB. DescribeTargetHealth
-# admite resource-level (scopeado al TG); DescribeTargetGroups requiere "*".
+# instancias del pooler leyendo el target group del NLB.
+# OJO: las acciones Describe* de ELBv2 NO admiten resource-level permissions
+# (scopear al ARN del TG → deniega siempre, "no identity-based policy allows").
+# Por eso Resource = "*" (verificado en prod 04/06: con el ARN scopeado fallaba).
 resource "aws_iam_role_policy" "task_pooler_discovery" {
   name = "${local.name}-pooler-discovery"
   role = aws_iam_role.task.id
@@ -178,13 +180,11 @@ resource "aws_iam_role_policy" "task_pooler_discovery" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["elasticloadbalancing:DescribeTargetHealth"]
-        Resource = var.pooler_target_group_arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["elasticloadbalancing:DescribeTargetGroups"]
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:DescribeTargetHealth",
+          "elasticloadbalancing:DescribeTargetGroups",
+        ]
         Resource = "*"
       },
     ]
