@@ -146,7 +146,15 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
         })
     }
 
-    return NextResponse.json({ success: true, touches: touches.length })
+    // Fallback de COBERTURA: si no hubo toques NI gaClientId (directo sin GA,
+    // consentimiento rechazado, adblock…), garantizar fila base 'direct' para
+    // que TODO usuario tenga canal. onConflictDoNothing → nunca pisa atribución
+    // real existente. Sube la cobertura hacia el 100%.
+    const baseRow = touches.length === 0 && !a.gaClientId
+      ? await db.insert(userAcquisition).values({ userId, channel: 'direct' }).onConflictDoNothing().returning({ id: userAcquisition.userId })
+      : null
+
+    return NextResponse.json({ success: true, touches: touches.length, baseCreated: !!baseRow?.length })
   }
 
   // ─── Modo legacy: first-touch desde campos directos ──────────────
