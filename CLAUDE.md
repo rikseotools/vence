@@ -190,6 +190,17 @@ git push origin main
 
 ## Base de Datos (Supabase)
 
+### 🧩 Modelo NUCLEAR: preguntas ↔ artículos ↔ temas (FUENTE DE VERDAD)
+
+**Tenerlo SIEMPRE claro — no liarse con los `tags`:**
+
+1. **La pregunta cuelga de un ARTÍCULO de una ley** (`questions.primary_article_id` → `articles`; adicionales en `question_articles`). **El artículo es la fuente única de la verdad** del contenido de la pregunta.
+2. **Cada tema de cada oposición se forma con `topic_scope`**: filas `(position_type, topic_id, law_id, article_numbers[])` construidas **según el epígrafe oficial** de ese tema. Un tema = "estos artículos de estas leyes porque su epígrafe los incluye".
+3. **Una pregunta aparece en un tema SI su artículo (law_id + article_number) está en el `topic_scope` de ese tema.** La misma ley/artículo escopa en temas distintos de oposiciones distintas (cada `position_type` arma su temario).
+4. **`questions.tags` son metadatos y NO mandan en la colocación** (suelen venir cruzados/stale de otra oposición). Para colocación, IGNORAR tags y mirar `topic_scope`. No existe tabla `question_topics`.
+
+**Diagnóstico `tema_incorrecto`:** coger el artículo de la pregunta → buscar en qué `topic_scope` de la oposición del usuario aparece → comparar el artículo con el `topics.epigrafe` → si no encaja con el epígrafe, quitarlo del `article_numbers`. Detalle: `docs/maintenance/verificar-epigrafe-topic-scope.md` + impugnaciones §7.2.
+
 ### Tablas Principales
 - `questions` - Preguntas de exámenes (con `lifecycle_state`, `is_active` GENERATED)
 - `question_lifecycle_history` - Audit trail append-only de transiciones de estado
