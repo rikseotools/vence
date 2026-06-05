@@ -41,7 +41,7 @@ const bodySchema = z.object({
 type Touch = typeof attributionTouches.$inferSelect
 
 /** Deriva el canal de marketing a partir de los click-IDs/UTM de un toque. */
-function deriveChannel(t: Pick<Touch, 'gclid' | 'gbraid' | 'wbraid' | 'fbclid' | 'ttclid' | 'msclkid' | 'utmSource' | 'utmMedium'>): string {
+function deriveChannel(t: Pick<Touch, 'gclid' | 'gbraid' | 'wbraid' | 'fbclid' | 'ttclid' | 'msclkid' | 'utmSource' | 'utmMedium' | 'referrer'>): string {
   if (t.gclid || t.gbraid || t.wbraid) return 'google_ads'
   if (t.fbclid) return 'meta_ads'
   if (t.ttclid) return 'tiktok_ads'
@@ -51,7 +51,16 @@ function deriveChannel(t: Pick<Touch, 'gclid' | 'gbraid' | 'wbraid' | 'fbclid' |
   if (src === 'google' && med === 'cpc') return 'google_ads'
   if (['facebook', 'instagram', 'meta'].includes(src) || src.includes('fb') || src.includes('meta')) return 'meta_ads'
   if (src || med) return src ? `${src}${med ? '/' + med : ''}` : 'referral'
-  return 'organic'
+  // Sin UTM ni click-id → clasificar por el referrer:
+  const ref = (t.referrer || '').toLowerCase()
+  if (ref && !ref.includes('vence.es') && !ref.includes('localhost')) {
+    // Buscadores → orgánico; cualquier otro sitio externo → referral.
+    if (/(?:^|\.)(google|bing|duckduckgo|yahoo|ecosia|yandex|brave|startpage|baidu)\.|search\.|chatgpt\.com|perplexity\.|bard\.|gemini\./.test(ref)) {
+      return ref.includes('chatgpt') || ref.includes('perplexity') || ref.includes('bard') || ref.includes('gemini') ? 'ai_referral' : 'organic'
+    }
+    return 'referral'
+  }
+  return 'direct' // sin referrer ni campaña = tráfico directo (antes devolvía 'organic', incorrecto)
 }
 
 async function _POST(request: NextRequest): Promise<NextResponse> {

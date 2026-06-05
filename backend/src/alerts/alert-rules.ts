@@ -1963,6 +1963,46 @@ export const RULE_CONVERSION_DELIVERY_FAILED: AlertRule<{
 };
 
 /**
+ * Cobertura de atribución — tras el fix de fila base (05/06), todo usuario nuevo
+ * debe quedar con fila en user_acquisition (canal). Si la cobertura de las
+ * últimas 24h cae, la captura (AttributionCapture → /api/acquisition) se rompió
+ * y dejamos de saber de dónde vienen los usuarios (orgánico vs ads). Umbral
+ * conservador (<50%, ≥30 altas) para no falsar durante la rampa post-fix; subir
+ * a ~80% cuando el estado estable confirme ~95%+. Detalle en v_attribution_coverage.
+ */
+export const RULE_ATTRIBUTION_COVERAGE_LOW: AlertRule<{
+  altas: number;
+  conCanal: number;
+  pct: number;
+}> = {
+  name: 'attribution_coverage_low',
+  severity: 'warn',
+  query: sql`
+    SELECT count(*)::int AS altas,
+           count(ua.user_id)::int AS "conCanal",
+           CASE WHEN count(*) > 0 THEN round(100.0 * count(ua.user_id) / count(*), 1) ELSE 100 END::float AS pct
+    FROM user_profiles u
+    LEFT JOIN user_acquisition ua ON ua.user_id = u.id
+    WHERE u.created_at > NOW() - INTERVAL '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.altas ?? 0) >= 30 && (rows[0]?.pct ?? 100) < 50,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Cobertura de atribución baja — ${r?.pct ?? 0}% (${r?.conCanal ?? 0}/${r?.altas ?? 0} altas con canal)`,
+      body:
+        `En las últimas 24h solo ${r?.conCanal ?? 0}/${r?.altas ?? 0} altas tienen canal en user_acquisition.\n\n` +
+        `Causa típica: AttributionCapture (app/layout) o POST /api/acquisition rotos → dejamos de\n` +
+        `saber de dónde vienen los usuarios (orgánico vs ads), y las ventas no se atan a campaña.\n\n` +
+        `  SELECT * FROM v_attribution_coverage ORDER BY dia DESC LIMIT 7;`,
+      metadata: { altas: r?.altas ?? 0, conCanal: r?.conCanal ?? 0, pct: r?.pct ?? 0 },
+      fingerprint: 'attribution_coverage_low',
+    };
+  },
+  cooldownMin: 720,
+};
+
+/**
  * Canary del pipeline de stats — el cron `canary-stats-pipeline` inyecta una
  * respuesta sintética cada 5 min y verifica que propaga e2e a uqh_v2. Si NO
  * propaga (step='propagation') el pipeline outbox→handler está roto/parado.
@@ -2190,6 +2230,9 @@ export const ALERT_RULES: AlertRule[] = [
   // Conversiones de venta que no llegan a Google Ads (03/06/2026, F1 trackeo-
   // conversiones-ventas) — red de seguridad ante token Ads caducado / DLQ.
   RULE_CONVERSION_DELIVERY_FAILED as AlertRule,
+  // Cobertura de atribución (05/06/2026) — avisa si dejamos de capturar el canal
+  // de las altas (orgánico vs ads). Detalle en v_attribution_coverage.
+  RULE_ATTRIBUTION_COVERAGE_LOW as AlertRule,
   // Salud del frontend desde server-side metrics (no depende del cliente)
   RULE_TRAFFIC_DROP as AlertRule,
   // Watchdog de UI congelada (2026-05-31, cierra gap detectado en incidente 30/05)
