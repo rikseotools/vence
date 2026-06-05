@@ -27,6 +27,7 @@ import type {
   ResolveDisputeResponse,
 } from './schemas'
 import { sendEmailV2 } from '@/lib/api/emails'
+import { emit } from '@/lib/observability/emit'
 
 /**
  * Obtiene una impugnación existente del usuario para una pregunta.
@@ -446,6 +447,19 @@ export async function resolveDispute(
         }
       }
 
+      const failReason = ('error' in emailResult && emailResult.error) || 'Error desconocido enviando email'
+      // Hacer VISIBLE el drop silencioso: la impugnación quedó resuelta pero el
+      // email de respuesta NO salió. Sin esto solo se detecta 1h tarde y sin
+      // causa, vía el cron de reconciliación (invariante dispute_resolved_without_email).
+      // `await` (no fire-and-forget): garantiza persistencia antes de que la lambda suspenda.
+      await emit({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'dispute_email_failed',
+        endpoint: '/api/v2/dispute/resolve',
+        errorMessage: `Email impugnacion_respuesta no enviado (${disputeId}): ${failReason}`,
+        metadata: { disputeId, userId, status, questionType, reason: failReason, kind: 'send_unsuccessful' },
+      }).catch(() => { /* la observabilidad nunca rompe el flujo de resolución */ })
       return {
         success: true,
         disputeId,
@@ -453,11 +467,20 @@ export async function resolveDispute(
         bellSent,
         emailSent: false,
         emailId: null,
-        emailError: ('error' in emailResult && emailResult.error) || 'Error desconocido enviando email',
+        emailError: failReason,
         emailSkipReason: null,
       }
     } catch (emailError) {
       console.error(`[Dispute] Excepcion enviando email para ${disputeId}:`, emailError)
+      const failReason = emailError instanceof Error ? emailError.message : 'Excepcion desconocida enviando email'
+      await emit({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'dispute_email_failed',
+        endpoint: '/api/v2/dispute/resolve',
+        errorMessage: `Email impugnacion_respuesta excepción (${disputeId}): ${failReason}`,
+        metadata: { disputeId, userId, status, questionType, reason: failReason, kind: 'exception' },
+      }).catch(() => { /* la observabilidad nunca rompe el flujo de resolución */ })
       return {
         success: true,
         disputeId,
@@ -465,7 +488,7 @@ export async function resolveDispute(
         bellSent,
         emailSent: false,
         emailId: null,
-        emailError: emailError instanceof Error ? emailError.message : 'Excepcion desconocida enviando email',
+        emailError: failReason,
         emailSkipReason: null,
       }
     }

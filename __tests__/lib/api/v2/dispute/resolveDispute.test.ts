@@ -13,6 +13,13 @@ jest.mock('@/lib/api/emails', () => ({
   sendEmailV2: (...args: unknown[]) => mockSendEmailV2(...args),
 }))
 
+// Observabilidad: el drop silencioso del email debe emitir un evento estructurado.
+const mockEmit = jest.fn().mockResolvedValue(undefined)
+jest.mock('@/lib/observability/emit', () => ({
+  __esModule: true,
+  emit: (...args: unknown[]) => mockEmit(...args),
+}))
+
 // Drizzle chain mock: cada `select`/`update` consume el siguiente "response"
 // programado en `dbResponses`. Las llamadas chainables (.from, .leftJoin,
 // .where, .set, .returning, .limit) devuelven el propio chain. La cadena se
@@ -154,6 +161,7 @@ beforeEach(() => {
   lastUpdateSet = null
   lastUpdateWhereCalled = false
   mockSendEmailV2.mockReset()
+  mockEmit.mockClear()
 })
 
 describe('resolveDispute - disputa no encontrada o estado invalido', () => {
@@ -343,6 +351,13 @@ describe('resolveDispute - email falla pero la disputa queda resuelta (sin rollb
       expect(r.emailError).toBe('Resend 503')
       expect(r.emailSkipReason).toBeNull()
     }
+    // El drop debe quedar VISIBLE en observabilidad (no solo detectable 1h tarde)
+    expect(mockEmit).toHaveBeenCalledTimes(1)
+    expect(mockEmit.mock.calls[0][0]).toMatchObject({
+      eventType: 'dispute_email_failed',
+      severity: 'warn',
+      metadata: expect.objectContaining({ reason: 'Resend 503', kind: 'send_unsuccessful' }),
+    })
   })
 
   it('sendEmailV2 lanza excepcion → success:true con emailError generico', async () => {
@@ -356,6 +371,11 @@ describe('resolveDispute - email falla pero la disputa queda resuelta (sin rollb
       expect(r.emailSent).toBe(false)
       expect(r.emailError).toBe('network down')
     }
+    expect(mockEmit).toHaveBeenCalledTimes(1)
+    expect(mockEmit.mock.calls[0][0]).toMatchObject({
+      eventType: 'dispute_email_failed',
+      metadata: expect.objectContaining({ reason: 'network down', kind: 'exception' }),
+    })
   })
 
   it('sendEmailV2 lanza excepcion no-Error (string) → emailError fallback', async () => {
