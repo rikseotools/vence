@@ -765,8 +765,18 @@ async function _GET() {
 
     // 3. Premisas dinámicas (todas calculadas de datos reales)
     const POST_EXAM_CHURN_RATE = 0.60 // Estimación — sin datos históricos de churn post-examen
+    // Ventana de churn post-examen: los exámenes RECIENTES (ya celebrados) y los
+    // del mes en curso siguen generando abandono AHORA. Antes la proyección solo
+    // miraba meses futuros → ignoraba el churn de los cohortes cuyo examen acababa
+    // de pasar (p.ej. auxiliar_administrativo_estado, 61 subs, examen 23/05) →
+    // MRR irrealmente optimista. Ver auditoría 05/06/2026.
+    const EXAM_CHURN_WINDOW_DAYS = 60
     const NATURAL_MONTHLY_CHURN = churnMonthly // churn mensual base (calculado de cancelaciones reales)
-    const newSubsPerMonth = dailyRegistrationRate * 30 * conversionRate // registros/día × 30 × tasa conversión
+    // Nuevas/mes = registros/día × 30 × conversión-global. VALIDADO 05/06/2026:
+    // payment_settlements da ~94-99 pagos nuevos/mes reales (~22 en 7 días) ≈ este
+    // valor → magnitud correcta, no tocar. (El método es teóricamente flojo pero
+    // empíricamente acierta; si en el futuro diverge de los settlements, revisar.)
+    const newSubsPerMonth = dailyRegistrationRate * 30 * conversionRate
     // MRR por sub: usar el real (MRR actual ÷ subs activas), no la media ponderada teórica
     const realMrrPerSub = stripeSubs.length > 0 ? mrr / stripeSubs.length : mrrPerNewSub
 
@@ -792,12 +802,19 @@ async function _GET() {
 
       const startSubs = currentSubs
 
-      // Churn por exámenes este mes
+      // Churn por exámenes. En el PRIMER mes proyectado ampliamos la ventana hacia
+      // atrás (EXAM_CHURN_WINDOW_DAYS): los cohortes cuyo examen YA pasó (p.ej.
+      // auxiliar_administrativo_estado, examen 23/05) o es el mes en curso siguen
+      // abandonando AHORA. Antes solo se miraban meses futuros → se ignoraba el
+      // churn post-examen de la mayor parte de la base (bug auditado 05/06/2026).
       let examChurnCount = 0
       const examDetails: string[] = []
+      const examWindowStart = m === 1
+        ? new Date(now.getTime() - EXAM_CHURN_WINDOW_DAYS * 24 * 3600 * 1000)
+        : monthStart
 
       for (const [slug, examDate] of Object.entries(examBySlug)) {
-        if (examDate >= monthStart && examDate <= monthEnd) {
+        if (examDate >= examWindowStart && examDate <= monthEnd) {
           // Map slug to target_oposicion format
           const oposKey = slug.replace(/-/g, '_')
           const subsForOpos = runningPremiumByOpos[oposKey] || 0
@@ -852,9 +869,11 @@ async function _GET() {
       mrrPerSub: Math.round(realMrrPerSub * 100) / 100,
       mrrPerSubSource: `MRR actual (${Math.round(mrr)}€) ÷ ${stripeSubs.length} subs`,
       currentPremiumByOpos: premiumCountByOpos,
+      // Incluye los exámenes recientes (ventana de churn) además de los futuros,
+      // porque ahora también aplican churn post-examen en el primer mes.
       examDatesUsed: Object.fromEntries(
         Object.entries(examBySlug)
-          .filter(([, d]) => d >= now)
+          .filter(([, d]) => d >= new Date(now.getTime() - EXAM_CHURN_WINDOW_DAYS * 24 * 3600 * 1000))
           .map(([slug, d]) => [slug, d.toISOString().slice(0, 10)])
       ),
     }
