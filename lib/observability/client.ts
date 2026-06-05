@@ -48,6 +48,11 @@ const SAMPLE_RATES: Record<string, number> = {
   // Barra de meta diaria — bajo volumen (premium, interacción manual ocasional)
   // → 100% para tener la señal completa de quién oculta/mueve.
   daily_goal_banner_action: 1.0,
+  // Avisos de la campana (Fase 8) — 100% para CTR fiable (shown=denominador,
+  // clicked=numerador) mientras el volumen sea bajo.
+  oposicion_alert_shown: 1.0,
+  oposicion_alert_clicked: 1.0,
+  oposicion_alert_dismissed: 1.0,
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -91,6 +96,12 @@ export type ClientEventType =
   // entender quién la mueve / oculta / re-activa y así pulir el diseño (en móvil
   // tapaba contenido). metadata.action ∈ {'drag','hide','show'}. userId va auto.
   | 'daily_goal_banner_action'
+  // Avisos de la campana 🔔 (Fase 8): engagement con los hitos de oposiciones
+  // seguidas. shown=impresión al abrir la campana, clicked=clic "Ver
+  // convocatoria", dismissed=X/swipe. metadata: {oposicion, hitoId, severity}.
+  | 'oposicion_alert_shown'
+  | 'oposicion_alert_clicked'
+  | 'oposicion_alert_dismissed'
 
 interface ClientEvent {
   ts: string

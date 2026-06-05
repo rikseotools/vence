@@ -19,8 +19,13 @@ interface AlertRow {
   createdAt: string
 }
 
-// Notification + url de navegación (campo extra propio de este feed).
-export type AlertNotification = Notification & { actionUrl?: string }
+// Notification + campos extra propios de este feed (navegación + observabilidad).
+export type AlertNotification = Notification & {
+  actionUrl?: string
+  hitoId?: string
+  oposicionSlug?: string
+  alertSeverity?: string
+}
 
 function mapToNotification(a: AlertRow): AlertNotification {
   const critical = a.severity === 'critical'
@@ -38,6 +43,9 @@ function mapToNotification(a: AlertRow): AlertNotification {
     textColor: 'text-blue-600 dark:text-blue-400',
     borderColor: 'border-blue-200 dark:border-blue-800',
     actionUrl: a.url || undefined,
+    hitoId: a.hitoId,
+    oposicionSlug: (a.url || '').replace(/^\//, '') || undefined,  // url = /<slug>
+    alertSeverity: a.severity,
   }
 }
 

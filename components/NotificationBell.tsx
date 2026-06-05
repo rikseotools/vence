@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, TouchEvent, MouseEvent } from 'react'
 import { useIntelligentNotifications } from '../hooks/useIntelligentNotifications'
 import { useDisputeNotifications } from '../hooks/useDisputeNotifications'
-import { useOposicionAlerts } from '../hooks/useOposicionAlerts'
+import { useOposicionAlerts, type AlertNotification } from '../hooks/useOposicionAlerts'
+import { emitClientEvent } from '../lib/observability/client'
 import { getActionTimeEstimate, getActionIcon } from '../hooks/useIntelligentNotifications'
 import type { Notification, NotificationAction } from '../hooks/useIntelligentNotifications.types'
 import { useLawSlugs } from '../contexts/LawSlugContext'
@@ -60,6 +61,18 @@ export default function NotificationBell() {
   const disputeNotifications = useDisputeNotifications()
   // Fase 8 (8c): avisos por hito de oposiciones seguidas (target + favoritas)
   const oposicionAlerts = useOposicionAlerts(true)
+  // Observabilidad de engagement de los avisos (→ observable_events)
+  const emitAlertEvent = (
+    n: Notification,
+    eventType: 'oposicion_alert_shown' | 'oposicion_alert_clicked' | 'oposicion_alert_dismissed',
+  ) => {
+    const a = n as AlertNotification
+    emitClientEvent({
+      severity: 'info',
+      eventType,
+      metadata: { oposicion: a.oposicionSlug, hitoId: a.hitoId, severity: a.alertSeverity },
+    })
+  }
 
   // Estados locales
   const [isOpen, setIsOpen] = useState<boolean>(false)
@@ -67,6 +80,18 @@ export default function NotificationBell() {
   const [isDesktop, setIsDesktop] = useState<boolean>(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  // Impresiones de avisos de oposición: emitir 'shown' una vez por aviso al abrir la campana
+  const shownAlertsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!isOpen) return
+    oposicionAlerts.notifications.forEach((n) => {
+      if (!shownAlertsRef.current.has(n.id)) {
+        shownAlertsRef.current.add(n.id)
+        emitAlertEvent(n, 'oposicion_alert_shown')
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, oposicionAlerts.notifications])
 
   // Estados para alegaciones
   const [showingAppealForm, setShowingAppealForm] = useState<string | null>(null) // ID de la disputa
@@ -222,6 +247,7 @@ export default function NotificationBell() {
           const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
           disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
         } else if (notification.type === 'oposicion_hito') {
+          emitAlertEvent(notification, 'oposicion_alert_dismissed')
           oposicionAlerts.markAsRead(notification.id)
         } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
           markAsRead(notification.id)
@@ -261,6 +287,7 @@ export default function NotificationBell() {
     // Aviso de oposición (8c): no está en el registro notificationTypes — se
     // maneja aquí (marcar leído + navegar a la convocatoria) y salir.
     if (notification.type === 'oposicion_hito') {
+      emitAlertEvent(notification, 'oposicion_alert_clicked')
       oposicionAlerts.markAsRead(notification.id)
       const url = (notification as { actionUrl?: string }).actionUrl
       if (url) setTimeout(() => { window.location.href = url }, 150)
@@ -501,6 +528,7 @@ export default function NotificationBell() {
       const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
       disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
     } else if (notification.type === 'oposicion_hito') {
+      emitAlertEvent(notification, 'oposicion_alert_dismissed')
       oposicionAlerts.markAsRead(notification.id)
     } else {
       markAsRead(notification.id)
@@ -516,6 +544,7 @@ export default function NotificationBell() {
       disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
       markAsRead(notification.id)
     } else if (notification.type === 'oposicion_hito') {
+      emitAlertEvent(notification, 'oposicion_alert_dismissed')
       oposicionAlerts.markAsRead(notification.id) // persiste read_at server-side
     } else {
       markAsRead(notification.id)
