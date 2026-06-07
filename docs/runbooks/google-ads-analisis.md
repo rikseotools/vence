@@ -154,6 +154,51 @@ reales: **nº de plazas**, "temario oficial", "empieza gratis". **NO** referenci
 (20277), español, 4 keywords sin marca, 7 titulares/3 descripciones, 643 plazas. Creada
 activa con un solo `mutateResources` (10 recursos) tras dry-run OK.
 
+## 🧪 Experimento ABIERTO: techo de CPC (07/06/2026 — APLICADO) — analizar ~10-12/06
+
+**Hallazgo que lo motiva:** las campañas que más venden (carm, Madrid, seg. social)
+**NO están limitadas por presupuesto, sino por RANKING.** Métricas 07/06 (LAST_30_DAYS):
+cuota de impresiones (`search_impression_share`) ~10%, perdido por **rank** 86-90%,
+perdido por **presupuesto** solo 2-3%. Gastan 0,2-0,8€/día de un presupuesto de 3-5€/día.
+→ **Subir el presupuesto es un no-op** (no agotan el que tienen). La palanca real es el
+**techo de CPC** (todas estaban a 0,05€). Además `abs-top IS == IS`: cuando salen ya son
+#1, así que subir la puja **no mejora posición, aumenta presencia** (entrar en más subastas).
+Ojo: Google **no ofrece simulador de pujas** para "Maximizar clics" (TARGET_SPEND) → el
+único modo de saber el efecto es **probar y medir**.
+
+**Diseño = diferencia-en-diferencias (para que el "efecto examen" no contamine):**
+- TRATADAS → techo **0,15€**: `aux admin carm` (23727564870, examen 21-jun) +
+  `c1 administrativo ss` (23745484739, examen 28-jun).
+- CONTROL → resto de campañas TARGET_SPEND a **0,05€** (viven el mismo mercado/examen).
+- **Métrica limpia (insensible al volumen de búsqueda):** cuota de impresiones (`IS`) y
+  `% perdido por rank`. Si la IS de las tratadas sube y la del control no → **es la puja,
+  no el examen**. Clics/CPC/coste suben por puja *y* por examen (leer con cuidado);
+  registros/ventas = N pequeño, solo direccional.
+- **Baseline 07/06 (LAST_7_DAYS):** IS media tratadas 13% = control 13% (igualado).
+
+**Herramientas (creadas 07/06):**
+- `npm run ads:campaign -- ceiling <id> <eur> [--apply]` — fija el techo de CPC (dry-run
+  por defecto; valida que la estrategia sea TARGET_SPEND). Servicio: `setCampaignCpcCeiling`.
+- **Lectura del experimento:** `npx tsx --env-file=.env.local scripts/google-ads/cpc-experiment.ts LAST_7_DAYS`
+  → imprime tratadas vs control con IS/top/abs-top/perdido-rank/CPC/clics/coste/registros.
+  (Editar el set `TREATED` del script si cambian las campañas del experimento.)
+
+**Cómo ANALIZARLO cuando Manuel lo pida de nuevo (~10-12/06):**
+1. Correr `cpc-experiment.ts LAST_7_DAYS` (y `YESTERDAY` para ver lo más fresco).
+2. Comparar la **IS media de tratadas vs control** contra el baseline (13% = 13%).
+3. Aplicar la regla de decisión:
+
+| Resultado | Significado | Acción |
+|---|---|---|
+| IS tratadas ↑ (13%→25%+) y **control ~plano** | La puja funciona | Mantener + extender a Madrid (23697376522) |
+| IS tratadas ↑ **igual que control** | Efecto-examen general, no la puja | Revertir a 0,05€ |
+| CPC medio salta a ~0,15€ con **IS plana** | Competencia cara, no se gana ni pujando 3× | Revertir a 0,05€ |
+| IS ↑ pero coste/registro empeora sin más ventas | Presencia que no convierte | Revertir |
+
+**Tope de seguridad:** el presupuesto diario (5€ carm / 3€ SS) limita el gasto pase lo que
+pase. **Revertir a 0,05€ tras el examen** (carm 21-jun, SS 28-jun) — se cierra la ventana.
+Revertir = `ads:campaign -- ceiling <id> 0.05 --apply`.
+
 ## Caveats (no olvidar)
 
 - `metrics.conversions` = **registros**, no compras. No es ROI.

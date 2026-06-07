@@ -92,6 +92,76 @@ export async function setCampaignFinalUrlSuffix(
 }
 
 /**
+ * Ajusta el TECHO de CPC (puja máxima por clic) de una campaña con estrategia
+ * "Maximizar clics" (TARGET_SPEND). NO cambia la estrategia de puja — sigue
+ * siendo puja por clic, solo sube/baja el límite máximo que se paga por clic.
+ *
+ * Sirve para campañas limitadas por RANKING (no por presupuesto): cuando una
+ * campaña pierde el grueso de las subastas por `search_rank_lost_impression_share`
+ * y gasta muy por debajo de su presupuesto, subir el techo le permite ganar más
+ * subastas (más presencia), no mejorar posición. El presupuesto diario sigue
+ * siendo el tope de gasto, así que el riesgo está acotado por construcción.
+ *
+ * ⚠️ Solo aplica a campañas TARGET_SPEND. Si la campaña usa otra estrategia,
+ * Google rechazará el `validate_only` (que es justo lo que queremos detectar).
+ */
+export async function setCampaignCpcCeiling(
+  campaignId: string | number,
+  ceilingEur: number,
+  opts: { dryRun?: boolean; customer?: Customer } = {}
+): Promise<MutationResult> {
+  const dryRun = opts.dryRun ?? true
+  const customer = opts.customer ?? getGoogleAdsCustomer()
+  const customerId = loadAdsConfig().customerId
+  const resourceName = campaignResourceName(customerId, campaignId)
+
+  try {
+    const rows = await customer.query(`
+      SELECT
+        campaign.id,
+        campaign.name,
+        campaign.bidding_strategy_type,
+        campaign.target_spend.cpc_bid_ceiling_micros
+      FROM campaign
+      WHERE campaign.id = ${campaignId}
+      LIMIT 1
+    `)
+    const row = rows[0]
+    if (!row?.campaign) {
+      throw new Error(`No se encontró la campaña ${campaignId}`)
+    }
+    const strategy = row.campaign.bidding_strategy_type
+    const currentMicros = row.campaign.target_spend?.cpc_bid_ceiling_micros
+    const currentLabel =
+      currentMicros == null ? '(sin techo)' : `${(Number(currentMicros) / 1_000_000).toFixed(3)}€`
+
+    await customer.campaigns.update(
+      [
+        {
+          resource_name: resourceName,
+          target_spend: { cpc_bid_ceiling_micros: eurToMicros(ceilingEur) },
+        },
+      ],
+      { validate_only: dryRun }
+    )
+
+    return {
+      applied: !dryRun,
+      dryRun,
+      resourceName,
+      change:
+        `techo CPC campaña ${campaignId} (${row.campaign.name ?? ''}) ` +
+        `${currentLabel} → ${ceilingEur.toFixed(3)}€` +
+        (strategy !== enums.BiddingStrategyType.TARGET_SPEND
+          ? ` ⚠️ estrategia ${strategy} (no es Maximizar clics)`
+          : ''),
+    }
+  } catch (e) {
+    throw normalizeGoogleAdsError(e)
+  }
+}
+
+/**
  * Ajusta el presupuesto diario de una campaña (en euros). Resuelve primero el
  * recurso de presupuesto asociado a la campaña y luego lo actualiza.
  *

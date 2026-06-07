@@ -17,6 +17,7 @@ export {
   enableCampaign,
   setCampaignFinalUrlSuffix,
   setCampaignDailyBudget,
+  setCampaignCpcCeiling,
   type MutationResult,
 } from './mutations'
 export {

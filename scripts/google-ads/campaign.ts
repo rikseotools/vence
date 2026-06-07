@@ -5,13 +5,15 @@
 //
 //   npm run ads:campaign -- pause  <campaignId>           # prueba (valida, no aplica)
 //   npm run ads:campaign -- pause  <campaignId> --apply   # APLICA
-//   npm run ads:campaign -- enable <campaignId> [--apply]
-//   npm run ads:campaign -- budget <campaignId> <eur> [--apply]
+//   npm run ads:campaign -- enable  <campaignId> [--apply]
+//   npm run ads:campaign -- budget  <campaignId> <eur> [--apply]
+//   npm run ads:campaign -- ceiling <campaignId> <eur> [--apply]   # techo CPC (Maximizar clics)
 
 import {
   pauseCampaign,
   enableCampaign,
   setCampaignDailyBudget,
+  setCampaignCpcCeiling,
   GoogleAdsError,
   type MutationResult,
 } from '@/lib/services/googleAds'
@@ -22,7 +24,8 @@ function usage(msg?: string): never {
     'Uso:\n' +
       '  ads:campaign -- pause  <campaignId> [--apply]\n' +
       '  ads:campaign -- enable <campaignId> [--apply]\n' +
-      '  ads:campaign -- budget <campaignId> <eur> [--apply]\n\n' +
+      '  ads:campaign -- budget  <campaignId> <eur> [--apply]\n' +
+      '  ads:campaign -- ceiling <campaignId> <eur> [--apply]\n\n' +
       'Sin --apply hace una PRUEBA (valida contra Google, no cambia nada).'
   )
   process.exit(1)
@@ -59,6 +62,12 @@ async function main() {
       const eur = Number(maybeAmount)
       if (!Number.isFinite(eur) || eur <= 0) usage('El presupuesto debe ser un número de euros > 0')
       report(await setCampaignDailyBudget(campaignId, eur, { dryRun }))
+      break
+    }
+    case 'ceiling': {
+      const eur = Number(maybeAmount)
+      if (!Number.isFinite(eur) || eur <= 0) usage('El techo de CPC debe ser un número de euros > 0')
+      report(await setCampaignCpcCeiling(campaignId, eur, { dryRun }))
       break
     }
     default:
