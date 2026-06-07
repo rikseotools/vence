@@ -145,7 +145,7 @@ function PremiumPageContent() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
+      if (!response.ok) throw new Error(data.message || data.error)
 
       console.log('✅ Checkout session creada, redirigiendo a Stripe...')
 
@@ -260,7 +260,7 @@ function PremiumPageContent() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
+      if (!response.ok) throw new Error(data.message || data.error)
 
       // Refrescar sesión antes de salir del dominio
       try {

@@ -83,7 +83,7 @@ function PremiumAdsContent() {
       
       if (!response.ok) {
         console.error('❌ Error en API:', data)
-        throw new Error(data.error || 'Error creating checkout session')
+        throw new Error(data.message || data.error || 'Error creating checkout session')
       }
 
       console.log('✅ Checkout session creada:', data.sessionId)

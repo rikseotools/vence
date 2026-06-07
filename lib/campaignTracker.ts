@@ -112,7 +112,7 @@ export async function forceCampaignCheckout(user: User, supabase: SupabaseClient
     })
 
     const data = await response.json()
-    if (!response.ok) throw new Error(data.error)
+    if (!response.ok) throw new Error(data.message || data.error)
 
     // Redirigir a Stripe
     const { loadStripe } = await import('@stripe/stripe-js')

@@ -75,7 +75,7 @@ function PremiumEducationalContent() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
+      if (!response.ok) throw new Error(data.message || data.error)
 
       const { loadStripe } = await import('@stripe/stripe-js')
       const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)

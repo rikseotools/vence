@@ -1334,6 +1334,11 @@ export const paymentSettlements = pgTable("payment_settlements", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	payoutFeeEstimated: integer("payout_fee_estimated").default(0),
+	refundedAmount: integer("refunded_amount").default(0).notNull(),
+	refundedAt: timestamp("refunded_at", { withTimezone: true, mode: 'string' }),
+	refundReason: text("refund_reason"),
+	disputedAt: timestamp("disputed_at", { withTimezone: true, mode: 'string' }),
+	disputeStatus: text("dispute_status"),
 }, (table) => [
 	index("idx_payment_settlements_pending").using("btree", table.manuelConfirmedReceived.asc().nullsLast().op("bool_ops")).where(sql`(manuel_confirmed_received = false)`),
 	foreignKey({

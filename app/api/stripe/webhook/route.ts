@@ -6,8 +6,10 @@ import { Resend } from 'resend'
 import type Stripe from 'stripe'
 import { getAdminDb } from '@/db/client'
 import { userProfiles, userSubscriptions, cancellationFeedback, paymentSettlements, userAcquisition } from '@/db/schema'
-import { and, eq, desc, sql } from 'drizzle-orm'
+import { and, eq, desc, sql, or } from 'drizzle-orm'
 import { recordConversion } from '@/lib/conversions/recordConversion'
+import { emit } from '@/lib/observability/emit'
+import { computeSettlementAfterRefund } from '@/lib/stripe-settlement-helpers'
 import { hashEmail } from '@/lib/services/googleAds'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
 import { sendEmailV2 } from '@/lib/api/emails'
@@ -196,6 +198,14 @@ async function _POST(request: NextRequest) {
 
       case 'invoice.payment_failed':
         await handlePaymentFailed(event.data.object as StripeInvoice, db)
+        break
+
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object as Stripe.Charge, db)
+        break
+
+      case 'charge.dispute.created':
+        await handleChargeDisputeCreated(event.data.object as Stripe.Dispute, db)
         break
 
       default:
@@ -1268,6 +1278,149 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
     console.error('❌ Error registrando settlement:', error)
     throw error
   }
+}
+
+/**
+ * Localiza la settlement de un charge probando charge_id → payment_intent →
+ * invoice. Necesario porque las settlements de suscripción a veces sólo guardan
+ * el invoice_id (charge/payment_intent null) — fue el caso del incidente Lidia.
+ */
+async function findSettlementForCharge(
+  charge: Stripe.Charge,
+  db: Db,
+): Promise<typeof paymentSettlements.$inferSelect | null> {
+  // `charge.invoice` está en el payload con apiVersion 2024-06-20 pero el SDK
+  // 18.3.0 lo quitó del tipo Charge → accessor de runtime tipado.
+  const rawInvoice = (charge as { invoice?: string | { id?: string } | null }).invoice ?? null
+  const invoiceId = typeof rawInvoice === 'string' ? rawInvoice : rawInvoice?.id ?? null
+  const paymentIntentId =
+    typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id ?? null
+
+  const conditions = [eq(paymentSettlements.stripeChargeId, charge.id)]
+  if (paymentIntentId) conditions.push(eq(paymentSettlements.stripePaymentIntentId, paymentIntentId))
+  if (invoiceId) conditions.push(eq(paymentSettlements.stripeInvoiceId, invoiceId))
+
+  const rows = await db
+    .select()
+    .from(paymentSettlements)
+    .where(or(...conditions))
+    .orderBy(desc(paymentSettlements.createdAt))
+    .limit(1)
+  return rows[0] ?? null
+}
+
+/**
+ * `charge.refunded` — un cargo fue reembolsado (total o parcial). Reflejarlo en
+ * la settlement: NO mutamos amount_gross/stripe_fee (base histórica), pero
+ * recalculamos el neto adeudado y el split Manuel/Armando desde esa base menos
+ * lo reembolsado (idempotente; `charge.amount_refunded` es acumulado). Así las
+ * queries de ingresos/payout que suman esas columnas quedan correctas.
+ *
+ * Origen 07/06/2026: sin este handler los reembolsos eran invisibles para la BD
+ * (caso Lidia: hubo que corregir a mano). NO degradamos al usuario aquí: la
+ * pérdida de acceso, si la hay, la gestiona `customer.subscription.deleted`.
+ */
+async function handleChargeRefunded(charge: Stripe.Charge, db: Db): Promise<void> {
+  const refundedAmount = charge.amount_refunded ?? 0
+  const refundReason = charge.refunds?.data?.[0]?.reason ?? null
+
+  const settlement = await findSettlementForCharge(charge, db)
+  if (!settlement) {
+    console.warn(`⚠️ charge.refunded sin settlement (charge ${charge.id}) — no se pudo reflejar`)
+    await emit({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: 'settlement_refund_no_match',
+      endpoint: '/api/stripe/webhook',
+      metadata: { chargeId: charge.id, refundedAmount },
+    })
+    return
+  }
+
+  const split = computeSettlementAfterRefund({
+    amountGross: settlement.amountGross,
+    stripeFee: settlement.stripeFee,
+    refundedAmount,
+  })
+
+  await db
+    .update(paymentSettlements)
+    .set({
+      refundedAmount,
+      refundedAt: new Date().toISOString(),
+      refundReason,
+      amountNet: split.amountNet,
+      manuelAmount: split.manuelAmount,
+      armandoAmount: split.armandoAmount,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(paymentSettlements.id, settlement.id))
+
+  console.log(
+    `💸 Refund reflejado settlement ${settlement.id}: reembolsado ${refundedAmount}, neto ${settlement.amountNet}→${split.amountNet}`,
+  )
+
+  // Si la comisión de Armando YA estaba marcada como pagada y ahora se reduce,
+  // hay un sobrepago que reclamar — visibilizarlo (no se auto-corrige).
+  const clawback = settlement.armandoMarkedPaid && split.armandoAmount < settlement.armandoAmount
+  await emit({
+    source: 'vercel',
+    severity: clawback ? 'warn' : 'info',
+    eventType: 'settlement_refunded',
+    endpoint: '/api/stripe/webhook',
+    metadata: {
+      settlementId: settlement.id,
+      userEmail: settlement.userEmail,
+      chargeId: charge.id,
+      refundedAmount,
+      refundReason,
+      amountNetBefore: settlement.amountNet,
+      amountNetAfter: split.amountNet,
+      armandoClawbackNeeded: clawback,
+      armandoAlreadyPaid: settlement.armandoMarkedPaid,
+    },
+  })
+}
+
+/**
+ * `charge.dispute.created` — un chargeback abierto. Lo registramos (visibilidad
+ * + plazo de respuesta) y emitimos alerta. NO ajustamos dinero todavía: un
+ * dispute puede ganarse; el ajuste se hará cuando se cierre como `lost`.
+ */
+async function handleChargeDisputeCreated(dispute: Stripe.Dispute, db: Db): Promise<void> {
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id ?? null
+  let settlementId: string | null = null
+  let userEmail: string | null = null
+
+  if (chargeId) {
+    const settlement = await findSettlementForCharge({ id: chargeId } as Stripe.Charge, db)
+    if (settlement) {
+      settlementId = settlement.id
+      userEmail = settlement.userEmail
+      await db
+        .update(paymentSettlements)
+        .set({ disputedAt: new Date().toISOString(), disputeStatus: dispute.status, updatedAt: new Date().toISOString() })
+        .where(eq(paymentSettlements.id, settlement.id))
+    }
+  }
+
+  console.warn(`🚨 Chargeback abierto: dispute ${dispute.id} charge ${chargeId} status ${dispute.status}`)
+  await emit({
+    source: 'vercel',
+    severity: 'critical',
+    eventType: 'chargeback_opened',
+    endpoint: '/api/stripe/webhook',
+    metadata: {
+      disputeId: dispute.id,
+      chargeId,
+      amount: dispute.amount,
+      reason: dispute.reason,
+      status: dispute.status,
+      dueBy: dispute.evidence_details?.due_by ?? null,
+      settlementId,
+      userEmail,
+    },
+  })
 }
 
 
