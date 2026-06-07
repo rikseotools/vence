@@ -8,6 +8,16 @@ const nextConfig = {
   // Vercel ignora este output y usa su propio runtime.
   output: 'standalone',
 
+  // Timeout de prerender por página en `next build`. El default (60s) es
+  // demasiado justo para páginas SSG data-heavy (p.ej.
+  // /test-oposiciones/procedimiento-administrativo: varias queries + un count
+  // sobre questions). Bajo contención de BD al prerenderizar muchas páginas en
+  // paralelo (saturación del pooler), una sola página puede superar 60s y
+  // abortar TODO el build. Las queries individuales son ~2-3s → 180s da margen
+  // sin enmascarar un problema real. (07/06/2026: deploy de 136d8e3d falló 2×
+  // aquí; root cause = contención build-time, no regresión de código.)
+  staticPageGenerationTimeout: 180,
+
   // ✅ Optimizaciones de rendimiento (estables en Next.js 16)
   experimental: {
     optimizeCss: true,
