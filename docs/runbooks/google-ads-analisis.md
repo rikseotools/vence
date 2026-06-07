@@ -199,6 +199,48 @@ Ojo: Google **no ofrece simulador de pujas** para "Maximizar clics" (TARGET_SPEN
 pase. **Revertir a 0,05€ tras el examen** (carm 21-jun, SS 28-jun) — se cierra la ventana.
 Revertir = `ads:campaign -- ceiling <id> 0.05 --apply`.
 
+**Al analizar, mirar también el Quality Score (07/06):**
+4. Sacar la evolución del **QS por keyword** de las tratadas. Hipótesis: a carm hoy le sale
+   QS "—" (sin datos por poca presencia); si el experimento le da impresiones, debería
+   poblarse y subir. Si la IS sube pero el QS sigue "—" o bajo, el cuello no es solo la
+   puja sino la **relevancia** (anuncio/landing) → tocar copy/landing, no solo pujar.
+5. Revisar el **copy de SS**: su punto débil medido es el **CTR esperado "por debajo de la
+   media"** (la landing y la relevancia del anuncio están OK). Mejorar titulares/copy del
+   RSA sube el CTR → sube el QS → mejor Ad Rank pagando lo mismo.
+
+### Qué se sabe (y qué NO) de Ad Rank / Quality Score
+
+- **Ad Rank ≈ puja × Quality Score + contexto.** Es lo que decide si apareces (umbral
+  mínimo) y en qué orden. Subasta de **segundo precio**: pagas lo justo para batir al de
+  abajo, nunca más que tu techo (por eso CPC medio 0,038€ < techo 0,05€).
+- **Tu Quality Score: SÍ se sabe**, a nivel de KEYWORD (no campaña/anuncio). 1-10 + 3
+  sub-notas (relevancia anuncio / experiencia landing / CTR esperado, cada una
+  below/avg/above). Solo se puebla con datos suficientes (keywords de poca presencia → "—").
+  Query:
+  ```sql
+  SELECT campaign.name, ad_group_criterion.keyword.text,
+         ad_group_criterion.quality_info.quality_score,
+         ad_group_criterion.quality_info.creative_quality_score,
+         ad_group_criterion.quality_info.post_click_quality_score,
+         ad_group_criterion.quality_info.search_predicted_ctr,
+         metrics.impressions
+  FROM keyword_view
+  WHERE campaign.id IN (<ids>) AND segments.date DURING LAST_30_DAYS
+  ORDER BY metrics.impressions DESC
+  ```
+  (enum sub-notas: 2=BELOW_AVERAGE, 3=AVERAGE, 4=ABOVE_AVERAGE). Baseline 07/06:
+  SS QS=7 (CTR esperado por debajo media = punto débil = copy); carm sin QS (sin datos).
+- **Tu Ad Rank exacto: NO se sabe** (Google nunca da el número). Se infiere por cuota de
+  impresiones + `% perdido por rank`.
+- **QS / Ad Rank / puja de la COMPETENCIA: imposible** (nadie ve los de otro anunciante).
+  Lo más cercano = informe **"Estadísticas de subasta" (Auction Insights)**: dominios con
+  los que coincides, outranking/position-above-rate, su cuota de impresiones — **NO su QS
+  ni su puja**. Es **solo-UI** (no fiable por API) → mirar a mano en ads.google.com.
+
+**Dos palancas para subir en subastas:** (1) **puja** (techo CPC) → más presencia, lo que
+estamos probando; (2) **Quality Score** → gratis y permanente, mejor Ad Rank pagando lo
+mismo; se sube con relevancia de anuncio (copy/CTR) y de landing.
+
 ## Caveats (no olvidar)
 
 - `metrics.conversions` = **registros**, no compras. No es ROI.
