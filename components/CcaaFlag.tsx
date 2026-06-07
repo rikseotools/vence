@@ -263,6 +263,10 @@ const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   // con prioridad sobre la bandera de Murcia. Cubre la oposición Aux. Admin. del
   // SMS (slug …-sms). Lo más específico ('-sms'/'sms-') para no pisar CARM (regional).
   [['-sms', 'sms-', 'servicio-murciano'], { src: '/escudos/sms.svg', alt: 'Logo del Servicio Murciano de Salud (SMS)' }],
+  // Seguridad Social: emblema rojo oficial (símbolo de la Seguridad Social/TGSS),
+  // con prioridad sobre la bandera de España. Cubre Administrativo y Auxiliar
+  // Administrativo de la Administración de la Seguridad Social (slug …seguridad-social).
+  [['seguridad-social'], { src: '/escudos/seguridad-social.png', alt: 'Emblema de la Seguridad Social' }],
 ]
 
 export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {
