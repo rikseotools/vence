@@ -982,12 +982,25 @@ export const RULE_STRIPE_WEBHOOK_4XX_BURST: AlertRule<{
  * 1 email CRITICAL por cada timeout suelto (datos 24h: 4/290 stripe, 1/290
  * redis, 1/290 topic-data, 3/290 auth — TODOS auto-recuperados al tick
  * siguiente) → spam que ahogaba los CRITICAL reales (filosofía martillo,
- * observability.md §20: "alarma no accionable = ruido"). `answer-save` y
- * `db-pool` NO usan este helper: siguen instantáneos con n≥1 porque app
- * inutilizable / saturación de BD = P0 y un solo fallo ya es accionable.
+ * observability.md §20: "alarma no accionable = ruido"). `db-pool` NO usa
+ * este helper: sigue instantáneo con n≥1 porque saturación de BD = P0 y un
+ * solo fallo ya es accionable.
+ *
+ * Recalibrado 2026-06-07: un **502/504 de gateway** (CloudFront/ALB devuelve
+ * "Bad Gateway"/"Gateway Time-out" sin que la request llegue a la app) es,
+ * con UNA ocurrencia, indistinguible de un blip de infra que se auto-recupera
+ * al siguiente tick — misma clase que un timeout, NO un bug de la app. Datos
+ * 7d: la práctica totalidad del ruido de los canaries auth (34) y topic-data
+ * (30) eran 502 sueltos o timeouts. Se clasifican como transitorios → esperan
+ * la confirmación del segundo tick. Un outage real persiste → n≥2 → dispara en
+ * ≤5 min. `answer-save` pasa a usar este helper también: un 502 de gateway no
+ * es "app inutilizable" (la request nunca llegó al handler), pero un fallo
+ * sustantivo del handler (503 load-shed, 422 schema, 404 route, validate sin
+ * success) sigue disparando instantáneo con n=1. 503/500 NO son transitorios:
+ * 503 = load shedding real, 500 = bug del handler — ambos señal accionable.
  */
 const TRANSIENT_CANARY_ERROR =
-  /timeout|abort|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|network|fetch failed/i;
+  /timeout|abort|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|network|fetch failed|Bad Gateway|Gateway Time-?out|\bHTTP 50[24]\b/i;
 
 function canaryFailureShouldFire(
   rows: Array<{ n: number; lastError: string | null }>,
@@ -1111,8 +1124,12 @@ export const RULE_CANARY_WEBHOOK_FAILED: AlertRule<{
  * No dispara con `canary_answer_save_question_invalid` (warn — pregunta
  * canary retirada, accionable distinto).
  *
- * Cooldown 15 min. Dispara con ≥1 fallo en 10 min — endpoint crítico,
- * cualquier rotura es P1.
+ * Cooldown 15 min. Disparo vía `canaryFailureShouldFire` (recalibrado
+ * 2026-06-07): un fallo sustantivo del handler (503 load-shed, 422 schema,
+ * 404 route, 5xx, validate sin success) dispara instantáneo con n=1 — endpoint
+ * crítico, rotura real = P1. Un 502/504 de gateway suelto (la request nunca
+ * llegó al handler) espera la confirmación del segundo tick: es un blip de
+ * infra auto-recuperable, no la app rota.
  */
 export const RULE_CANARY_ANSWER_SAVE_FAILED: AlertRule<{
   n: number;
@@ -1131,7 +1148,7 @@ export const RULE_CANARY_ANSWER_SAVE_FAILED: AlertRule<{
     WHERE event_type = 'canary_answer_save_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
   buildNotification: (rows) => {
     const r = rows[0];
     return {

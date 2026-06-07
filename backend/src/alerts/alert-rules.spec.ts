@@ -526,6 +526,22 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
     ).toBe(true);
   });
 
+  it('NO dispara con 1 solo 502 de gateway (CloudFront/ALB blip, no la app rota)', () => {
+    expect(
+      RULE_CANARY_AUTH_FAILED.shouldFire([
+        { n: 1, lastStep: 'profile', lastError: 'Profile falló: HTTP 502 <html><title>502 Bad Gateway</title>', lastStatus: 502 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('SÍ dispara con 1 fallo sustantivo no-gateway (401 = auth roto de verdad)', () => {
+    expect(
+      RULE_CANARY_AUTH_FAILED.shouldFire([
+        { n: 1, lastStep: 'profile', lastError: 'Profile falló: HTTP 401 Unauthorized', lastStatus: 401 },
+      ]),
+    ).toBe(true);
+  });
+
   it('NO dispara con n=0 ni filas vacías (canary verde = silencio)', () => {
     expect(
       RULE_CANARY_AUTH_FAILED.shouldFire([
@@ -622,10 +638,26 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
 });
 
 describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
-  it('dispara con ≥1 fallo (cualquier rotura del endpoint más caliente = app inutilizable)', () => {
+  it('dispara con 1 fallo sustantivo del handler (503 load-shed = app saturada = P1)', () => {
     expect(
       RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
         { n: 1, lastStep: 'http', lastError: 'HTTP 503 saturated', lastStatus: 503 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con 1 solo 502 de gateway (blip de infra; la request no llegó al handler)', () => {
+    expect(
+      RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
+        { n: 1, lastStep: 'http', lastError: 'HTTP 502: <html><title>502 Bad Gateway</title>', lastStatus: 502 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('SÍ dispara con 2 fallos 502 (2 ticks = gateway sostenido, no blip)', () => {
+    expect(
+      RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
+        { n: 2, lastStep: 'http', lastError: 'HTTP 502: <html><title>502 Bad Gateway</title>', lastStatus: 502 },
       ]),
     ).toBe(true);
   });
