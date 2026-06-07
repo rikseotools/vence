@@ -19,6 +19,7 @@ import type {
   OposicionKey,
 } from './schemas'
 import { SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
+import { ownOfficialPredicate } from '@/lib/api/oposicion-scope/queries'
 
 // Importar módulo compartido
 import {
@@ -146,9 +147,16 @@ export async function getTopicFullData(
         (sum, count) => sum + count,
         0,
       )
-      // Todas las oficiales del scope (de cualquier oposición), igual que el
-      // fetch de "solo oficiales" (filtered-questions) y getTopicAggregatesFromMV.
-      officialQuestionsCount = questionResults.filter((q) => q.isOfficialExam).length
+      // Oficiales de ESTA oposición (exam_position ∈ EXAM_POSITION_MAP), vía
+      // el helper de FUENTE ÚNICA. Coherente con buildOfficialExamFilter que
+      // filtered-questions aplica SIEMPRE (casos Laura/Sergio, 26/05/2026): el
+      // toggle "solo oficiales" sirve únicamente las propias, así que el conteo
+      // del label debe contar solo esas. Contar cross-oposición inflaba el
+      // label (p.ej. Seg. Social T3 "Tribunal Constitucional": 115 cross vs
+      // ~1 propia).
+      officialQuestionsCount = questionResults.filter(
+        ownOfficialPredicate(positionType),
+      ).length
       articlesByLaw = processArticlesByLaw(questionResults, scopeMappings)
     }
 

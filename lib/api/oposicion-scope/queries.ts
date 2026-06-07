@@ -244,3 +244,29 @@ export function buildOfficialExamFilter(positionType: string) {
     ),
   )
 }
+
+/**
+ * Versión JS de {@link buildOfficialExamFilter} para CONTAR sobre filas ya
+ * cargadas en memoria (no queries SQL). MISMA semántica y MISMA fuente
+ * (`getValidExamPositions`): una pregunta cuenta como oficial de `positionType`
+ * solo si es oficial Y su `examPosition` está en el mapeo de la oposición.
+ * Oposición sin posiciones válidas → ninguna oficial cuenta.
+ *
+ * FUENTE ÚNICA: todo conteo de "oficiales de esta oposición" (label del
+ * configurador, agregados de tema, etc.) debe pasar por aquí o por
+ * `buildOfficialExamFilter`. NUNCA un `filter(q => q.isOfficialExam)` a pelo:
+ * ese atajo, sin filtrar por exam_position, fue el bug del label "115" en
+ * Seg. Social T3 (07/06/2026) — contaba oficiales de otras oposiciones sobre
+ * leyes compartidas (CE, LOTC…). El guard `officialCountSingleSource.test.ts`
+ * vigila que no reaparezca.
+ *
+ * Devuelve un predicado con las posiciones válidas ya resueltas (1 sola lectura
+ * del mapa, no por fila).
+ */
+export function ownOfficialPredicate(
+  positionType: string,
+): (q: { isOfficialExam?: boolean | null; examPosition?: string | null }) => boolean {
+  const valid = new Set(getValidExamPositions(positionType))
+  return (q) =>
+    q.isOfficialExam === true && q.examPosition != null && valid.has(q.examPosition)
+}
