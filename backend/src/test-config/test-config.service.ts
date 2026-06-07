@@ -141,11 +141,14 @@ export class TestConfigService {
           );
         }
 
-        if (validPositions.length > 0) {
-          officialConditions.push(
-            inArray(questions.examPosition, validPositions),
-          );
-        }
+        // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → forzar 0 oficiales (filtro
+        // imposible) en vez de contar oficiales de otras oposiciones (bug Seg. Social).
+        officialConditions.push(
+          inArray(
+            questions.examPosition,
+            validPositions.length > 0 ? validPositions : ['__none__'],
+          ),
+        );
 
         const officialData = await this.db
           .select({
@@ -301,6 +304,10 @@ export class TestConfigService {
         if (onlyOfficialQuestions || focusEssentialArticles) {
           const validPositions = getValidExamPositions(positionType);
 
+          // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → 0 oficiales (no omitir el
+          // filtro, que contaría oficiales de otras oposiciones y mentiría: 94 vs 1 real).
+          if (validPositions.length === 0) continue;
+
           if (focusEssentialArticles) {
             // Solo artículos que tengan al menos 1 pregunta oficial.
             const officialConditions = [
@@ -425,6 +432,19 @@ export class TestConfigService {
       }> = [];
       let totalQuestions = 0;
       const byDifficulty: Record<string, number> = {};
+
+      // Fail-safe: si la oposición no está registrada en EXAM_POSITION_MAP, validPositions=[].
+      // Devolver 0 imprescindibles en vez de contar oficiales de otras oposiciones (bug Seg.
+      // Social: Tema 2 mostraba 94 oficiales cross-oposición frente a 1 real).
+      if (validPositions.length === 0) {
+        return {
+          success: true,
+          essentialCount: 0,
+          essentialArticles: [],
+          totalQuestions: 0,
+          byDifficulty: {},
+        };
+      }
 
       // 2. Para cada ley, encontrar artículos con preguntas oficiales
       for (const mapping of topicScopeResults) {

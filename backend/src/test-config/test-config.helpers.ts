@@ -103,6 +103,27 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'policia nacional',
     'escala basica policia nacional',
   ],
+  auxiliar_administrativo_scs_canarias: [
+    'auxiliar_administrativo_scs_canarias',
+    'auxiliar administrativo scs canarias',
+    'auxiliar administrativo servicio canario de la salud',
+    'grupo auxiliar administrativo de la funcion administrativa',
+  ],
+  auxiliar_administrativo_clm: [
+    'auxiliar_administrativo_clm',
+    'auxiliar administrativo clm',
+    'auxiliar administrativo castilla-la mancha',
+  ],
+  auxiliar_administrativo_ayuntamiento_zaragoza: [
+    'auxiliar_administrativo_ayuntamiento_zaragoza',
+    'auxiliar administrativo ayuntamiento zaragoza',
+  ],
+  auxiliar_administrativo_diputacion_zaragoza: [],
+  tcae_sermas_madrid: [],
+  administrativo_galicia: [],
+  auxiliar_administrativo_aragon: [],
+  auxiliar_administrativo_catalunya: [],
+  auxiliar_administrativo_pais_vasco: [],
 };
 
 /**

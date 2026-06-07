@@ -916,7 +916,7 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | Archivo | Que actualizar |
 |---------|---------------|
 | `lib/api/topic-data/schemas.ts` | `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
-| `lib/config/exam-positions.ts` | **OBLIGATORIO** si la oposición tiene examenes oficiales propios. Añadir entrada en `EXAM_POSITION_MAP` y `HOT_ARTICLE_TARGET_MAP`. Sin esto, el filtro cross-oposición bloquea todas las oficiales (default seguro post-15/04/2026). El log emite `[scope] sin mapeo exam_position para "..."` cuando falta. |
+| `lib/config/exam-positions.ts` **+ `backend/src/test-config/test-config.helpers.ts`** | **OBLIGATORIO + EN LAS DOS COPIAS.** `EXAM_POSITION_MAP` está DUPLICADO: la del frontend y la del **backend** (el endpoint `test-config` se sirve desde el backend NestJS/Fargate). Añadir la entrada en **ambas** + `HOT_ARTICLE_TARGET_MAP`. ⚠️ **Bug real 07/06/2026**: Admin. Seguridad Social se añadió solo al front → el Tema 2 mostraba "94 preguntas oficiales" (cross-oposición) frente a 1 real, porque en el back `getValidExamPositions()` devolvía `[]` y la estimación no filtraba. **Guardarraíles:** el test `__tests__/config/examPositionMapParity.test.ts` (CI) falla si las dos copias divergen; y el fail-safe en `test-config` (front+back) cuenta 0 oficiales —no cross-oposición— si la oposición no está en el mapa. Aun así, registra en las DOS. |
 | `components/InteractiveBreadcrumbs.tsx` | **No requiere cambios** — se adapta automáticamente desde OPOSICIONES |
 | `components/OnboardingModal.tsx` | `OFFICIAL_OPOSICIONES` array. **Obligatorio para toda oposición** (implementada o aspiracional — ver §0.1). Si no está aquí, no aparece ni en el onboarding ni en el selector de cambio. Si ya existía como aspiracional, **mantener el mismo id** para heredar los usuarios con target_oposicion en ese id (ver §0.4). **Los aliases YA NO se ponen aquí** (refactor 07-may-2026): viven en el campo `aliases` de la oposición en `lib/config/oposiciones.ts`. |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
@@ -1157,6 +1157,8 @@ VALUES
 - `upcoming` → circulo gris, texto opaco
 
 El timeline se renderiza entre los links oficiales y el temario. Los hitos con `url` son clickeables.
+
+> **Hito de PREVISIÓN DE PLAZAS (captar el siguiente ciclo):** cuando el examen del ciclo en curso ya pasó pero hay una **OEP nueva publicada** (el decreto sale meses antes que la convocatoria y ya trae el reparto por cuerpo), añadir un hito `upcoming` *"Próxima OEP [año]: N plazas previstas del cuerpo [X] (pendiente convocatoria)"* con la cifra **verificada en el decreto del boletín** (no en academias) + enlace. Mantiene la oposición viva para captación entre ciclos. Procedimiento completo, cautelas de precisión y ejemplo real (CLM OEP 2025 = 327 plazas turno libre) en [`oeps-convocatorias-seguimiento.md` §4e-bis](./oeps-convocatorias-seguimiento.md).
 
 **JSON-LD Event:** Ademas del FAQPage schema, se genera un schema `Event` con la fecha del examen para rich snippets de Google.
 

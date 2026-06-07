@@ -294,6 +294,11 @@ export async function estimateAvailableQuestions(
       if (onlyOfficialQuestions || focusEssentialArticles) {
         const validPositions = getValidExamPositions(positionType)
 
+        // Fail-safe: si la oposición no está registrada en EXAM_POSITION_MAP, validPositions=[].
+        // NO omitir el filtro de examPosition (eso contaría oficiales de OTRAS oposiciones y la
+        // estimación mentiría: 94 vs 1 real). Sin posiciones válidas no hay oficiales propios → 0.
+        if (validPositions.length === 0) continue
+
         if (focusEssentialArticles) {
           // Solo artículos que tengan al menos 1 pregunta oficial
           // Primero obtener artículos "esenciales" (con preguntas oficiales)
@@ -415,9 +420,10 @@ export async function getEssentialArticles(
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
       ]
 
-      if (validPositions.length > 0) {
-        officialConditions.push(inArray(questions.examPosition, validPositions))
-      }
+      // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → 0 imprescindibles (no contar
+      // oficiales de otras oposiciones). Es la causa del bug Seg. Social (94 vs 1).
+      if (validPositions.length === 0) continue
+      officialConditions.push(inArray(questions.examPosition, validPositions))
 
       const articlesWithOfficial = await db
         .select({
