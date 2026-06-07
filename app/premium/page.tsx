@@ -145,7 +145,16 @@ function PremiumPageContent() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.message || data.error)
+      if (!response.ok) {
+        // Ya tiene una suscripción activa (guardia anti-doble-cobro): en vez de
+        // un error seco, llevarlo a gestionar su plan.
+        if (response.status === 409 || data.error === 'already_subscribed') {
+          setError('Ya tienes una suscripción activa. Te llevamos a tu perfil para gestionarla…')
+          setTimeout(() => { window.location.href = '/perfil?tab=suscripcion' }, 1500)
+          return
+        }
+        throw new Error(data.message || data.error)
+      }
 
       console.log('✅ Checkout session creada, redirigiendo a Stripe...')
 
@@ -260,7 +269,16 @@ function PremiumPageContent() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.message || data.error)
+      if (!response.ok) {
+        // Ya tiene una suscripción activa (guardia anti-doble-cobro): en vez de
+        // un error seco, llevarlo a gestionar su plan.
+        if (response.status === 409 || data.error === 'already_subscribed') {
+          setError('Ya tienes una suscripción activa. Te llevamos a tu perfil para gestionarla…')
+          setTimeout(() => { window.location.href = '/perfil?tab=suscripcion' }, 1500)
+          return
+        }
+        throw new Error(data.message || data.error)
+      }
 
       // Refrescar sesión antes de salir del dominio
       try {

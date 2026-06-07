@@ -208,6 +208,10 @@ async function _POST(request: NextRequest) {
         await handleChargeDisputeCreated(event.data.object as Stripe.Dispute, db)
         break
 
+      case 'charge.dispute.closed':
+        await handleChargeDisputeClosed(event.data.object as Stripe.Dispute, db)
+        break
+
       default:
         console.log(`Unhandled event type: ${event.type}`)
     }
@@ -1419,6 +1423,57 @@ async function handleChargeDisputeCreated(dispute: Stripe.Dispute, db: Db): Prom
       dueBy: dispute.evidence_details?.due_by ?? null,
       settlementId,
       userEmail,
+    },
+  })
+}
+
+/**
+ * `charge.dispute.closed` — el chargeback se resolvió. Si se PERDIÓ (`lost`) el
+ * dinero salió de nuestra cuenta: tratamos el importe disputado como dinero
+ * devuelto adicional al ya reembolsado y recalculamos el neto adeudado y el
+ * split desde la base inmutable (idempotente: no mutamos refunded_amount, sólo
+ * sumamos dispute.amount en el cálculo). Si se ganó (`won`), sólo registramos
+ * el estado: el dinero se mantiene.
+ */
+async function handleChargeDisputeClosed(dispute: Stripe.Dispute, db: Db): Promise<void> {
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id ?? null
+  const lost = dispute.status === 'lost'
+  const settlement = chargeId ? await findSettlementForCharge({ id: chargeId } as Stripe.Charge, db) : null
+
+  if (settlement) {
+    let moneyUpdate: Record<string, number> = {}
+    if (lost) {
+      const split = computeSettlementAfterRefund({
+        amountGross: settlement.amountGross,
+        stripeFee: settlement.stripeFee,
+        refundedAmount: (settlement.refundedAmount ?? 0) + dispute.amount,
+      })
+      moneyUpdate = {
+        amountNet: split.amountNet,
+        manuelAmount: split.manuelAmount,
+        armandoAmount: split.armandoAmount,
+      }
+    }
+    await db
+      .update(paymentSettlements)
+      .set({ disputeStatus: dispute.status, updatedAt: new Date().toISOString(), ...moneyUpdate })
+      .where(eq(paymentSettlements.id, settlement.id))
+  }
+
+  console.warn(`⚖️ Chargeback cerrado: dispute ${dispute.id} status ${dispute.status}${lost ? ' (PERDIDO, dinero retirado)' : ''}`)
+  await emit({
+    source: 'vercel',
+    severity: lost ? 'critical' : 'info',
+    eventType: 'chargeback_closed',
+    endpoint: '/api/stripe/webhook',
+    metadata: {
+      disputeId: dispute.id,
+      chargeId,
+      status: dispute.status,
+      lost,
+      amount: dispute.amount,
+      settlementId: settlement?.id ?? null,
+      userEmail: settlement?.userEmail ?? null,
     },
   })
 }

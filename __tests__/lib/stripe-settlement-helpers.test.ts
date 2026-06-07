@@ -93,4 +93,14 @@ describe('computeSettlementAfterRefund', () => {
       armandoAmount: 0,
     })
   })
+
+  it('dispute perdido se acumula sobre lo ya reembolsado (returned = refunded + dispute.amount)', () => {
+    // Caso handleChargeDisputeClosed(lost): reembolso parcial previo 500 + dispute
+    // de 1500 sobre bruto 2000 → returned 2000 = total → todo a 0.
+    const refundedPrev = 500
+    const disputeAmount = 1500
+    expect(
+      computeSettlementAfterRefund({ amountGross: 2000, stripeFee: 0, refundedAmount: refundedPrev + disputeAmount }),
+    ).toEqual({ amountNet: 0, manuelAmount: 0, armandoAmount: 0 })
+  })
 })
