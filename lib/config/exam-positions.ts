@@ -36,6 +36,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo_gestion_administracion_civil',
     'cuerpo de gestión de la administración civil del estado',
   ],
+  'administrativo_seguridad_social': [
+    'administrativo_seguridad_social',
+    'administrativo de la administración de la seguridad social',
+    'cuerpo administrativo de la administración de la seguridad social',
+  ],
   'tramitacion_procesal': [
     'tramitacion_procesal',
     'tramitación procesal',
