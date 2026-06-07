@@ -18,7 +18,10 @@ import {
   isValidStripeCustomerId,
   isValidStripePriceId,
   isValidStripeSubscriptionId,
-  isValidStripeSessionId
+  isValidStripeSessionId,
+  findBlockingSubscription,
+  buildCheckoutIdempotencyKey,
+  BLOCKING_SUBSCRIPTION_STATUSES
 } from '@/lib/stripe-checkout-validators'
 
 describe('Stripe Create Checkout Validators', () => {
@@ -316,6 +319,96 @@ describe('Stripe Create Checkout Validators', () => {
       [null, false]
     ])('"%s" devuelve %s', (id, expected) => {
       expect(isValidStripeSessionId(id)).toBe(expected)
+    })
+  })
+
+  // ============================================
+  // findBlockingSubscription (guardia anti-doble-cobro, incidente 2026-06-07)
+  // ============================================
+  describe('findBlockingSubscription', () => {
+    it.each([
+      'active',
+      'trialing',
+      'past_due',
+      'unpaid'
+    ])('bloquea si existe una sub en estado "%s"', (status) => {
+      const blocking = findBlockingSubscription([{ id: 'sub_x', status }])
+      expect(blocking).not.toBeNull()
+      expect(blocking?.id).toBe('sub_x')
+    })
+
+    it.each([
+      'canceled',
+      'incomplete',
+      'incomplete_expired',
+      'paused',
+      'ended'
+    ])('NO bloquea si la única sub está en estado "%s" (re-suscripción/retry legítimos)', (status) => {
+      expect(findBlockingSubscription([{ id: 'sub_x', status }])).toBeNull()
+    })
+
+    it('reproduce el incidente: cliente con sub active ya existente → bloquea el 2º checkout', () => {
+      const subs = [
+        { id: 'sub_1TeyBh', status: 'active' },   // 1ª sub, ya pagada
+        { id: 'sub_old', status: 'canceled' }
+      ]
+      expect(findBlockingSubscription(subs)?.id).toBe('sub_1TeyBh')
+    })
+
+    it('devuelve null con lista vacía, null o no-array (customer nuevo / fail-safe)', () => {
+      expect(findBlockingSubscription([])).toBeNull()
+      expect(findBlockingSubscription(null)).toBeNull()
+      expect(findBlockingSubscription(undefined)).toBeNull()
+      // @ts-expect-error input defensivo
+      expect(findBlockingSubscription('nope')).toBeNull()
+    })
+
+    it('ignora subs sin status', () => {
+      expect(findBlockingSubscription([{ id: 'sub_x' }])).toBeNull()
+    })
+
+    it('BLOCKING_SUBSCRIPTION_STATUSES no incluye estados terminales/incompletos', () => {
+      expect(BLOCKING_SUBSCRIPTION_STATUSES).not.toContain('canceled')
+      expect(BLOCKING_SUBSCRIPTION_STATUSES).not.toContain('incomplete')
+    })
+  })
+
+  // ============================================
+  // buildCheckoutIdempotencyKey (anti doble-submit concurrente)
+  // ============================================
+  describe('buildCheckoutIdempotencyKey', () => {
+    const MINUTE_ALIGNED = 16_666_666 * 60_000 // 999_999_960_000, inicio exacto de minuto
+
+    it('mismo (usuario, precio) en el mismo minuto → MISMA key (reusa session)', () => {
+      const t1 = MINUTE_ALIGNED
+      const t2 = t1 + 30_000        // +30s, mismo bucket de minuto
+      expect(buildCheckoutIdempotencyKey('u1', 'price_1', t1)).toBe(
+        buildCheckoutIdempotencyKey('u1', 'price_1', t2)
+      )
+    })
+
+    it('distinto minuto → distinta key (permite nuevo intento más tarde)', () => {
+      const t1 = MINUTE_ALIGNED
+      const t2 = t1 + 61_000 // +61s → siguiente bucket
+      expect(buildCheckoutIdempotencyKey('u1', 'price_1', t1)).not.toBe(
+        buildCheckoutIdempotencyKey('u1', 'price_1', t2)
+      )
+    })
+
+    it('distinto usuario o precio → distinta key', () => {
+      const t = 1_000_000_000_000
+      expect(buildCheckoutIdempotencyKey('u1', 'price_1', t)).not.toBe(
+        buildCheckoutIdempotencyKey('u2', 'price_1', t)
+      )
+      expect(buildCheckoutIdempotencyKey('u1', 'price_1', t)).not.toBe(
+        buildCheckoutIdempotencyKey('u1', 'price_2', t)
+      )
+    })
+
+    it('formato estable y con prefijo checkout:', () => {
+      expect(buildCheckoutIdempotencyKey('u1', 'price_1', 1_000_000_000_000)).toBe(
+        'checkout:u1:price_1:16666666'
+      )
     })
   })
 })

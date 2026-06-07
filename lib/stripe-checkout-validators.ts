@@ -106,3 +106,64 @@ export function isValidStripeSubscriptionId(subscriptionId: string): boolean {
 export function isValidStripeSessionId(sessionId: string): boolean {
   return typeof sessionId === 'string' && sessionId.startsWith('cs_')
 }
+
+/**
+ * Estados de suscripción que deben BLOQUEAR la creación de un segundo
+ * checkout: el usuario ya tiene (o está pagando) una suscripción y crear otra
+ * lo cobraría dos veces.
+ *
+ * Incidente origen (2026-06-07): una clienta hizo doble checkout con 4 min de
+ * diferencia → 2 subs `active` + 2 charges de €20. El endpoint no comprobaba
+ * suscripciones existentes (solo bloqueaba `legacy_free`). `plan_type` en BD no
+ * vale como guardia porque va stale durante la propagación del webhook — hay
+ * que mirar Stripe, que es la fuente autoritativa.
+ *
+ * `incomplete`/`incomplete_expired` NO bloquean: son un checkout previo no
+ * finalizado; bloquear impediría reintentar un pago que falló. `canceled`,
+ * `paused` y `ended` tampoco: el usuario puede re-suscribirse legítimamente.
+ */
+export const BLOCKING_SUBSCRIPTION_STATUSES = [
+  'active',
+  'trialing',
+  'past_due',
+  'unpaid',
+] as const
+
+interface MinimalStripeSubscription {
+  id?: string
+  status?: string | null
+}
+
+/**
+ * Devuelve la primera suscripción en estado bloqueante (o null). Pura: recibe
+ * la lista ya obtenida de Stripe para poder testearse sin red.
+ */
+export function findBlockingSubscription(
+  subscriptions: MinimalStripeSubscription[] | null | undefined,
+): MinimalStripeSubscription | null {
+  if (!Array.isArray(subscriptions)) return null
+  return (
+    subscriptions.find(
+      (sub) =>
+        !!sub?.status &&
+        (BLOCKING_SUBSCRIPTION_STATUSES as readonly string[]).includes(sub.status),
+    ) ?? null
+  )
+}
+
+/**
+ * Idempotency key determinista para `checkout.sessions.create`. Bucket de 1
+ * minuto: dos envíos del mismo (usuario, precio) en el mismo minuto reusan la
+ * MISMA session de Stripe (replay idempotente) en vez de crear dos. Cubre el
+ * doble-clic/re-submit concurrente —los segundos previos a que exista ninguna
+ * sub, donde la guardia de suscripción activa aún no puede ver nada—. La
+ * guardia anti-sub-activa cubre la ventana larga (minutos después del 1er pago).
+ */
+export function buildCheckoutIdempotencyKey(
+  userId: string,
+  priceId: string,
+  nowMs: number,
+): string {
+  const minuteBucket = Math.floor(nowMs / 60_000)
+  return `checkout:${userId}:${priceId}:${minuteBucket}`
+}

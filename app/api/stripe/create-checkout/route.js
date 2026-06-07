@@ -6,6 +6,10 @@ import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import {
+  findBlockingSubscription,
+  buildCheckoutIdempotencyKey,
+} from '@/lib/stripe-checkout-validators'
 async function _POST(request) {
   try {
     console.log('🚀 API Stripe llamada - Sistema dual...')
@@ -102,6 +106,7 @@ async function _POST(request) {
 
     // Crear o obtener customer de Stripe
     let customerId = user.stripe_customer_id
+    const customerExisted = !!customerId
 
     if (!customerId) {
       console.log('🆕 Creando nuevo customer en Stripe...')
@@ -140,10 +145,45 @@ async function _POST(request) {
       console.log('♻️ Usando customer existente:', customerId)
     }
 
+    // 🛡️ GUARDIA ANTI-SUSCRIPCIÓN DUPLICADA (incidente 2026-06-07: doble
+    // checkout → 2 subs active + 2 charges de €20). Stripe permite N subs por
+    // customer; sin esta comprobación un doble-submit (volver atrás, doble
+    // clic, no ver la confirmación) cobra de nuevo. Se consulta a Stripe
+    // (autoritativo; user_subscriptions guarda 1 fila/usuario y va stale —
+    // fue justo el punto ciego del incidente). Solo aplica a customers que ya
+    // existían: uno recién creado no puede tener subs. Fail-open ante error de
+    // Stripe: no bloquear ingresos por un blip; la idempotency key de abajo
+    // sigue cubriendo el doble-clic concurrente.
+    if (customerExisted) {
+      try {
+        const existingSubs = await stripe().subscriptions.list({
+          customer: customerId,
+          status: 'all',
+          limit: 10,
+        })
+        const blocking = findBlockingSubscription(existingSubs.data)
+        if (blocking) {
+          console.log(`🛡️ Usuario ya tiene suscripción ${blocking.status} (${blocking.id}) — bloqueando 2º checkout`)
+          return NextResponse.json(
+            {
+              error: 'already_subscribed',
+              message: 'Ya tienes una suscripción activa. Gestiona tu plan desde tu perfil.',
+              subscriptionStatus: blocking.status,
+            },
+            { status: 409 }
+          )
+        }
+      } catch (guardErr) {
+        // Fail-open: registrar pero no bloquear (la idempotency key mitiga).
+        console.error('⚠️ No se pudo verificar suscripciones existentes (fail-open):', guardErr.message)
+      }
+    }
+
     // Crear checkout session con trial
     try {
       const sessionData = {
         customer: customerId,
+        client_reference_id: userId,
         mode: 'subscription',
         line_items: [
           {
@@ -168,7 +208,10 @@ async function _POST(request) {
       }
 
       console.log('🔄 Creando session de Stripe (pago inmediato)...')
-      const session = await stripe().checkout.sessions.create(sessionData)
+      // Idempotency key (bucket 1 min): dos submits del mismo (usuario, precio)
+      // en el mismo minuto reusan la MISMA session en vez de crear dos.
+      const idempotencyKey = buildCheckoutIdempotencyKey(userId, priceId, Date.now())
+      const session = await stripe().checkout.sessions.create(sessionData, { idempotencyKey })
 
       console.log('✅ Checkout session creada:', session.id)
       console.log('📊 Usuario:', user.email, '| Fuente:', user.registration_source, '| Plan:', user.plan_type)
