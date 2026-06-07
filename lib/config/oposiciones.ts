@@ -4178,6 +4178,29 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/administrativo-seguridad-social/temario', label: 'Temario', icon: '📚' },
       { href: '/administrativo-seguridad-social/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2025-09-13',
+        title: 'Convocatoria 13 de septiembre de 2025',
+        oep: 'OEP 2024-2025',
+        partes: [
+          {
+            id: 'unica',
+            icon: '📘',
+            title: 'Cuestionario',
+            ordinaryCount: 70,
+            notes: '2 preguntas anuladas en plantilla (nº 62 y 65).',
+          },
+          {
+            id: 'supuesto',
+            icon: '📙',
+            title: 'Supuesto práctico',
+            ordinaryCount: 15,
+            notes: '5 supuestos prácticos.',
+          },
+        ],
+      },
+    ],
   },
 
   // ============================================

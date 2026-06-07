@@ -226,6 +226,7 @@ describe('Official Exams Coherence', () => {
       'tramitacion-procesal': 'tramitacion_procesal',
       'auxilio-judicial': 'auxilio_judicial',
       'administrativo-estado': 'administrativo_estado',
+      'administrativo-seguridad-social': 'administrativo_seguridad_social',
       'gestion-procesal': 'cuerpo_gestion_administracion_civil',
       'auxiliar-administrativo-andalucia': 'auxiliar_administrativo_andalucia',
       'auxiliar-administrativo-valencia': 'auxiliar_administrativo_valencia',
