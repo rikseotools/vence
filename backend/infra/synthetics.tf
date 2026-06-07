@@ -147,9 +147,9 @@ resource "aws_synthetics_canary" "vence_preview" {
   }
 
   run_config {
-    timeout_in_seconds    = 120
-    memory_in_mb          = 1024
-    active_tracing        = false
+    timeout_in_seconds = 120
+    memory_in_mb       = 1024
+    active_tracing     = false
     environment_variables = {
       TARGET_URL = "https://preview-aws.vence.es"
     }
@@ -195,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "canary_failure" {
   alarm_name          = "vence-canary-preview-failure"
   alarm_description   = "Vence canary preview-aws.vence.es falló 2 ejecuciones consecutivas"
   comparison_operator = "LessThanThreshold"
-  evaluation_periods  = 2  # 2 ventanas de 5 min → 10 min de fallos = alarma
+  evaluation_periods  = 2 # 2 ventanas de 5 min → 10 min de fallos = alarma
   metric_name         = "SuccessPercent"
   namespace           = "CloudWatchSynthetics"
   period              = 300 # 5 min

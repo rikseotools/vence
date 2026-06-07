@@ -302,6 +302,24 @@ Cuando el epígrafe oficial **describe una materia sin citar leyes** (ej.: T22 C
 - Scope inicial: solo Ley 2/2010 CyL (derechos de ciudadanos).
 - Hueco detectado: el **Decreto 7/2013 CyL, de utilización de medios electrónicos en la Administración de CyL** regula literalmente la materia del epígrafe y existía en BD, pero no estaba en el scope. Buscarlo por literal "Ley 7/2013" en el PDF del programa habría fallado (no aparece, y además es decreto, no ley). Solo un cruce por contenido lo detecta.
 
+### Antes de flaggear scope: leer el ARTÍCULO, no solo el título (post-27/05/2026)
+
+Un nombre de ley o un título de artículo puede ser engañoso. Antes de proponer mover una entrada de scope de un topic a otro, **leer el contenido literal del artículo** (`articles.content`). El título es un resumen, no la materia.
+
+**Incidente (27/05/2026):** durante una auditoría de los topics tocados en una sesión IA se flaggeó `Orden 10/11/1999 Horarios Registros` en T13 Andalucía ("Comunicación y atención al público") como posible solapamiento erróneo con T16 ("Registros administrativos"), basándose solo en el título "Horarios Registros". Al abrir el contenido:
+- **Art 4** se titula literalmente *"Horario de atención al público"* y regula CUÁNDO los Registros prestan atención al público (9-20 h, días especiales 9-14 h, etc.) — encaja exactamente con el cierre del epígrafe T13 *"...La atención al público."*.
+- **Art 3** (jornada del personal) forma unidad temática indivisible con el 4 y se mantiene por coherencia normativa.
+- T16 habla de *"registros administrativos: presentación y tramitación"*, no de horarios.
+
+Conclusión: la Orden estaba bien donde estaba. El movimiento propuesto habría empobrecido T13.
+
+**Regla:**
+
+1. Antes de proponer movimiento de scope, leer `articles.content` literal de los artículos afectados (no basta con `articles.title`).
+2. Cotejar contra el epígrafe del topic actual y del topic destino propuesto.
+3. Si el contenido encaja con el epígrafe actual, no mover aunque el nombre de la ley o el título del artículo sugieran otra cosa.
+4. Si la ley tiene varios artículos en el scope, evaluar el bloque como unidad temática — no extraer uno suelto.
+
 ## Script de Verificación Rápida
 
 Crear archivo `check_topic_scope.cjs` en la raíz del proyecto:
@@ -700,3 +718,16 @@ Si tenemos la oposición scrapeada en OpositaTest (carpeta `preguntas-para-subir
 | Artículo de OpositaTest fuera de scope | Contenido fuera del epígrafe | No hacer nada — la pregunta sirve para otras oposiciones |
 
 **Ejemplo real (Valencia T5 vs T6):** OpositaTest clasificó preguntas de Ley 5/1983 arts 32-43 en "Tema 5 Consell (I)", pero esos artículos son del Título III-V que corresponden a nuestro T6. No hay que hacer nada — el scope de T6 [31-79] las cubre automáticamente.
+
+---
+
+## Manuales relacionados
+
+Este manual es una pieza del flujo de contenido de una oposición. Encadena con:
+
+- **[`crear-nueva-oposicion.md`](./crear-nueva-oposicion.md)** — FASE 3 crea los `topic_scope` iniciales; este manual los **verifica** contra el epígrafe oficial. Audita siempre tras crear una oposición nueva.
+- **[`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md)** — cuando un concepto del epígrafe **no tiene ley/artículo en BD** (típico: reglamento de desarrollo, disposición adicional, decreto autonómico), créalo o sincronízalo desde el BOE aquí (incl. `includeDisposiciones: true` para disposiciones), y luego añade el `law_id`/`article_numbers` al scope.
+- **[`generar-preguntas-con-ia.md`](./generar-preguntas-con-ia.md)** — cuando un tema tiene scope correcto pero **0 preguntas** (artículos recién creados o materia local sin banco), genera preguntas verificadas con IA para esos artículos.
+- **[`importar-examen-oficial-completo.md`](./importar-examen-oficial-completo.md)** — los exámenes oficiales importados aportan preguntas reales a los artículos del scope; cruza siempre sus `article_ref` contra el scope (§"Cruzar scope con preguntas scrapeadas").
+- **[`cache-revalidation.md`](./cache-revalidation.md)** — obligatorio tras tocar `topic_scope`/`topics` (no hay invalidación automática).
+- **[`gestionar-feedback-bug.md`](../procedures/gestionar-feedback-bug.md)** — muchos bugs de scope se descubren vía feedback de usuario (Vector 1).

@@ -19,6 +19,30 @@ interface CcaaFlagProps {
 // Claves = CCAA (no oposición concreta): una bandera sirve a todas sus
 // oposiciones (comunidad + ayuntamientos + diputaciones + sanitaria + uni).
 const FLAG_PATHS: Record<string, ReactNode> = {
+  // ── Banderas de LUGAR (más específicas que la CCAA) ──
+  // Zaragoza ciudad (Ayuntamiento): gules (rojo) con león rampante de oro coronado
+  'zaragoza-ciudad': (
+    <>
+      <rect width="20" height="14" fill="#C60B1E"/>
+      {/* corona real (oro) */}
+      <path d="M7.6 2.6 l0.85 0.95 0.9-1.15 0.9 1.15 0.9-1.15 0.9 1.15 0.85-0.95 0 1.5 -6.05 0z" fill="#F4C400"/>
+      {/* león rampante (oro), silueta estilizada */}
+      <path d="M8.3 5 c0.5-0.5 1.3-0.55 1.85-0.15 0.3-0.25 0.75-0.05 0.75 0.35 0.35 0 0.6 0.35 0.45 0.7 0.4 0.05 0.55 0.55 0.25 0.85 0.35 0.15 0.4 0.65 0.05 0.9 0.25 0.25 0.1 0.75-0.3 0.85 l0.5 2.7 -1.1 0 -0.35-1.7 c-0.25 0.1-0.55 0.15-0.85 0.15 l0.3 1.55 -1.1 0 -0.3-1.7 c-0.95-0.35-1.6-1.3-1.55-2.35 -0.4-0.25-0.5-0.8-0.2-1.2 -0.25-0.35-0.1-0.85 0.3-1.05 -0.05-0.45 0.35-0.8 0.8-0.7 0.05-0.4 0.4-0.6 0.75-0.45z" fill="#F4C400"/>
+    </>
+  ),
+  // Zaragoza provincia (Diputación): blanco con cruz de San Jorge (gules) + escudo central
+  'zaragoza-provincia': (
+    <>
+      <rect width="20" height="14" fill="#fff"/>
+      <rect x="8.6" width="2.8" height="14" fill="#C60B1E"/>
+      <rect y="5.6" width="20" height="2.8" fill="#C60B1E"/>
+      {/* escudo central simplificado: cuartelado oro + palos de Aragón */}
+      <rect x="7.6" y="4" width="4.8" height="6" rx="0.5" fill="#F4C400" stroke="#fff" strokeWidth="0.4"/>
+      <rect x="9.8" y="5.4" width="0.5" height="3.2" fill="#C60B1E"/>
+      <rect x="10.6" y="5.4" width="0.5" height="3.2" fill="#C60B1E"/>
+      <rect x="8.2" y="4.5" width="1.2" height="1.2" fill="#C60B1E"/>
+    </>
+  ),
   // Región de Murcia: fondo carmesí, 4 castillos dorados arriba-izq, 7 coronas abajo-der
   murcia: (
     <>
@@ -248,6 +272,13 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
  * su id (position_type con underscores o slug con guiones). Devuelve null si no
  * se reconoce ninguna región (entonces el llamador usa el emoji de fallback).
  */
+// Banderas de LUGAR específico (ciudad/provincia/isla), más prioritarias que la
+// CCAA. Se comprueban ANTES que KEYWORD_TO_FLAG. Cada lote nuevo se añade aquí.
+const PLACE_KEYWORDS: Array<[string[], string]> = [
+  [['ayuntamiento-zaragoza'], 'zaragoza-ciudad'],
+  [['diputacion-zaragoza'], 'zaragoza-provincia'],
+]
+
 // Cuerpos con ESCUDO/LOGO oficial propio (no una bandera): se renderiza el
 // emblema real como <img> y tiene PRIORIDAD sobre la bandera de la CCAA/España.
 // Los SVG viven en /public/escudos/. Orden: lo más específico primero
@@ -281,6 +312,11 @@ export function resolveEscudo(oposicionId: string): { src: string; alt: string }
 export function resolveFlagKey(oposicionId: string): string | null {
   if (!oposicionId) return null
   const norm = oposicionId.toLowerCase().replace(/_/g, '-')
+  // 1) Bandera de lugar específico (ciudad/provincia/isla)
+  for (const [keywords, flag] of PLACE_KEYWORDS) {
+    if (keywords.some(k => norm.includes(k))) return flag
+  }
+  // 2) Bandera de la CCAA (fallback para los lugares aún sin bandera propia)
   for (const [keywords, flag] of KEYWORD_TO_FLAG) {
     if (keywords.some(k => norm.includes(k))) return flag
   }

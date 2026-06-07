@@ -1,6 +1,8 @@
 // app/test-oposiciones/procedimiento-administrativo/page.js
 import Link from 'next/link'
 import { loadProcedimientoAdministrativoData } from '../../../lib/procedimientoAdministrativoSSR'
+export const dynamic = 'force-dynamic'
+
 
 export default async function ProcedimientoAdministrativoPage() {
   const { sections, stats } = await loadProcedimientoAdministrativoData()

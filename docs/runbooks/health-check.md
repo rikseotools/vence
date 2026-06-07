@@ -26,6 +26,31 @@ Si los cinco están en verde, no hay fuego activo. Tarea cerrada en 30 segundos.
 
 Si alguno está ámbar o rojo, ir a la sección 2 con esa pista.
 
+### 1.bis — Volumen de alertas / emails enviados (fatiga de alertas)
+
+**Cuándo:** SIEMPRE que se pida la salud ("dame la salud de la última hora", "busca errores", "hay fuego"). Si Manuel recibe **muchos** `[Vence CRITICAL]` en el correo, eso ES un síntoma: las alertas ruidosas ahogan las reales (alert-fatigue). Revisar **qué se está emitiendo y con qué frecuencia**, no solo si hay errores.
+
+```bash
+node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({path:'.env.local'});
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+(async()=>{
+  const since = new Date(Date.now()-24*3600*1000).toISOString();
+  const { data } = await s.from('observable_events').select('event_type,severity').gte('ts',since).in('severity',['critical','error','warning']);
+  const by={}; (data||[]).forEach(x=>{const k=x.severity+' | '+x.event_type; by[k]=(by[k]||0)+1;});
+  console.log('alertas 24h:', data?.length);
+  Object.entries(by).sort((a,b)=>b[1]-a[1]).forEach(([k,n])=>console.log('  '+String(n).padStart(4)+'  '+k));
+})();
+"
+```
+
+**Lectura:**
+- **Cualquier `event_type` con conteo desproporcionado (>~30/día) = candidato a recalibrar**, no a seguir emitiendo. La alerta debe agrupar/dedup (cooldown) o subir el umbral. El objetivo NO es 0 alertas — es que cada email signifique algo accionable.
+- Spammers conocidos (2026-06): **`http_traffic_drop` ("Tráfico HTTP cayó X%")** dispara cada ~30-60 min sobre variación normal de tráfico → recalibrar umbral/ventana; y **`tts_error`** (238/24h en un muestreo) = error recurrente real a investigar, no a silenciar.
+- Cruzar con la bandeja `[Vence CRITICAL]`: si un tipo domina el correo pero es un blip transitorio, **recalibrar la alert-rule** (ver `backend/src/alerts/alert-rules.ts` + `[[project_supavisor_zombie_conn_root_cause]]` para el precedente de recalibración pool/canary).
+- Un `event_type` que **desaparece** de golpe (p.ej. geo fill-rate a 0) también es señal — lo cubre el framework de calidad de datos (§ roadmap obs).
+
 ---
 
 Por Claude (CLI, cuando el humano pide "busca errores"):

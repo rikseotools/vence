@@ -1,6 +1,6 @@
 # Banner global "Inscripción abierta"
 
-**Estado:** ✅ v1 implementada + hardening de datos (2026-05-27, sin push)
+**Estado:** ✅ **DEPLOYED 2026-05-31 — commit `26e191b4`**
 **Owner:** Manuel · Claude
 
 ## Objetivo
@@ -88,14 +88,22 @@ del usuario sin emails/push intrusivos.
 
 ## Próximos pasos / deuda
 
-### Antes de push a producción
+### Antes de push a producción ✅ COMPLETADO 2026-05-31
 
-- [ ] Smoke test manual: levantar dev server, visitar `/leyes` (anon) y `/mis-estadisticas` (logueado), comprobar:
-  - Hoy NO aparece banner (0 open). ✅ esperado.
-  - Forzar artificialmente con un INSERT temporal en `oposiciones` (deadline futuro) y volver a probar.
-  - Pulsar X → desaparece. Recargar → sigue desaparecido (localStorage anon / tabla logueado).
-- [ ] Configurar `git push` cuando Manuel autorice.
-- [ ] Tras deploy: monitor de Vercel + verificar que el endpoint responde 200.
+- [x] Smoke E2E con UPDATE temporal en `administrativo-galicia` (deadline futuro 7-jun-2026, ≤10 min en aire, sábado bajo tráfico). Endpoint anon + logueado OK; dismiss persistido en BD; render visual confirmado.
+- [x] Push autorizado (commit `26e191b4`).
+- [x] Monitor frontend-deploy GHA + ECS rollout.
+
+### Bugs detectados en smoke (corregidos antes del commit)
+
+1. **`target_oposicion` underscore vs `slug` guion** — `user_profiles.target_oposicion='auxiliar_administrativo_estado'` pero `oposiciones.slug='auxiliar-administrativo-estado'`. La comparación nunca matcheaba → el banner se mostraba a usuarios sobre su propia oposición. Fix: normalización `.replace(/_/g, '-')` en el endpoint server (single source) + defensa en profundidad en el cliente para el fallback a `userProfile`.
+2. **Anidar `<button>` dentro de `<a>` rompía dismiss** — al pulsar X, el `<a>` parent capturaba el click y navegaba antes de procesar el setState. Fix: **stretched-link pattern** (`<a class="absolute inset-0">` + contenido `pointer-events-none` + botón X `pointer-events-auto`).
+
+### Refinamientos de copy aplicados pre-deploy
+
+- Orden: dato fuerte primero (`📢 Convocatoria abierta para <X>`), plazo después.
+- Hook boca-oreja (`¿Conoces a alguien que la prepare?`) **eliminado** por petición explícita de Manuel.
+- Toda la franja clickeable, no solo el botón "Ver convocatoria".
 
 ### Mejoras futuras (v2+)
 

@@ -1,9 +1,14 @@
 # Manual de Scraping — Aula Plus (App Android)
 
 > **Fecha:** 16 Abril 2026
-> **Estado:** ✅ API **completamente mapeada** vía análisis estático del APK. Listo para escribir scraper.
+> **Estado:** ✅ API **completamente mapeada** + scrape COMPLETO (139.106 preguntas en `preguntas-para-subir/aula-plus/raw/`, 464 páginas).
 > **App objetivo:** `com.aulaplus` — https://play.google.com/store/apps/details?id=com.aulaplus
 > **Backend real:** `https://app.aulaplusformacion.es/api` (API Platform + Symfony, JWT auth)
+
+> **📦 Importación a BD (verificado 2026-06-03): ✅ PARCIAL.**
+> - **Sanitaria / TCAE:** importada (verificación clínica FASE 2, ~17.546 preguntas re-vinculadas; `docs/roadmap/fase2-verificacion-preguntas-alteradas.md`).
+> - **Rama AUXILIAR ADMINISTRATIVO (branch id 6, 11.281 preg.): ❌ NO importada** (0/8 de la muestra en BD). Es el material para **SMS** (origin 18 Región de Murcia → 555 preg.) y **CLM** (origin 12 Castilla-La Mancha → 981 preg.). Solo ~1% trae explicación → al importar hay que vincular artículo + redactar explicación con agentes (pipeline `docs/maintenance/importar-preguntas-scrapeadas.md`).
+> - Tabla de estado completa por proveedor en `roadmap-proveedores-preguntas-scraping.md`.
 
 ---
 

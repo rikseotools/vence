@@ -1111,6 +1111,18 @@ Progreso (03/06/2026):
 - [ ] CloudWatch Alarms nativas (paralelo a rules engine custom)
 - [ ] X-Ray como visualizador de traces
 
+**Gap 18 — Observabilidad de CALIDAD/COMPLETITUD de datos (framework config-driven) 🔴**
+
+*Motivación (incidente 2026-06-04):* la geo de sesión cayó **65%→0%** durante ~1 semana tras el cutover a CloudFront (leía `x-vercel-ip-*`) y **nadie se enteró**: ningún 5xx, ninguna alerta, porque el geo nulo estaba codificado como "comportamiento esperado". La obs actual vigila errores/latencia/frescura, pero NO la **completitud/distribución de datos**. Mismo patrón cazaría: sesgo de posición de la IA, settlements de Stripe sin grabar, fill-rate de pipelines.
+
+*Diseño (acordado con Manuel — SIN panel dedicado):*
+- **Config-driven**: registro `data_quality_checks` { nombre, métrica (SQL), umbral, ventana, severidad, owner }. Añadir check = 1 fila, NO código.
+- **Tipos de check**: `fill_rate` (% no-null en ventana: geo, ip, isp…), `freshness` (última escritura < X), `distribution` (desviación de lo esperado, p.ej. χ² de `correct_option`), `volume` (filas/h en banda), `parity` (dos fuentes que cuadran — migrar `stats_paridad` aquí).
+- **Pipeline**: 1 cron evaluador → escribe a `observable_events` → (a) alert-rule si rompe umbral, (b) tarjeta semáforo en `/admin/salud-sistema` (reutiliza panel existente, NO dashboard nuevo), (c) **consumido por Claude** vía `health-check.md` §1.bis cuando se pide la salud.
+- **Scope honesto**: NO monitorizar cada columna (ruido). Solo campos enriquecidos/derivados/dependientes de terceros que degradan en silencio (los `NOT NULL` ya los protege la BD).
+- **Fases**: F0 ✅ geo arreglada + check de geo fill-rate (semilla); F1 framework + migrar checks sueltos (drift, paridad); F2 ampliar catálogo (ip, conversiones, distribuciones IA, frescura crons).
+- Detalle del incidente germen: `[[project_geo_roto_cloudfront_cutover]]`.
+
 ### Coste mensual estimado
 
 | Item | Hoy | Tras AWS |

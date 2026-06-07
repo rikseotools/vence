@@ -2,6 +2,8 @@
 import Link from 'next/link'
 import { loadConstitucionSectionData, generateConstitucionSectionMetadata } from '../../../../lib/constitucionSSR'
 import { StartTestButton, TabsSection } from './SectionClientComponents'
+export const dynamic = 'force-dynamic'
+
 
 // Generar metadata dinámicamente para SEO
 export async function generateMetadata() {

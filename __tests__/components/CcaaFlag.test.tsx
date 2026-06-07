@@ -14,9 +14,14 @@ describe('CcaaFlag', () => {
       expect(hasCcaaFlag(id)).toBe(true)
     })
 
-    test('devuelve false para oposiciones sin bandera', () => {
-      expect(hasCcaaFlag('auxiliar_administrativo_estado')).toBe(false)
-      expect(hasCcaaFlag('tramitacion_procesal')).toBe(false)
+    test('devuelve true para estatales (bandera de España)', () => {
+      expect(hasCcaaFlag('auxiliar_administrativo_estado')).toBe(true)
+      expect(hasCcaaFlag('tramitacion_procesal')).toBe(true)
+    })
+
+    test('devuelve false para arquetipos sin región', () => {
+      expect(hasCcaaFlag('bombero')).toBe(false)
+      expect(hasCcaaFlag('conductor')).toBe(false)
       expect(hasCcaaFlag('inventada')).toBe(false)
       expect(hasCcaaFlag('')).toBe(false)
     })

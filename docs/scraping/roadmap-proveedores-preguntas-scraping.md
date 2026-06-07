@@ -8,15 +8,38 @@
 
 ## Proveedores ya scrapeados
 
-| Proveedor | Preguntas | Manual | Estado |
-|---|---|---|---|
-| OpositaTest | 500K+ | `opositatest-api-manual.md` | Completado |
-| InnoTest | 50K+ (Correos 13.6K + GC 37K) | `innotest-app-manual.md` | Completado |
-| Testea | 12.2K | `testea-app-manual.md` | Completado |
-| Aula Plus | 139K (sanidad + admin) | `aulaplus-app-manual.md` | API mapeada |
-| TuTestDigital | ~5K (Extremadura) | `tutestdigital-api-manual.md` | Completado |
+| Proveedor | Manual | Scraping |
+|---|---|---|
+| OpositaTest | `opositatest-api-manual.md` | Completado |
+| InnoTest | `innotest-app-manual.md` | Completado |
+| Testea | `testea-app-manual.md` | Completado |
+| Aula Plus | `aulaplus-app-manual.md` | Completado |
+| TuTestDigital | `tutestdigital-api-manual.md` | Completado |
 
 **Total scrapeado:** ~700K+ preguntas
+
+---
+
+## ⚠️ Estado de IMPORTACIÓN a BD (verificado 2026-06-03)
+
+> **`Scraping` ≠ `Importado a BD`.** Tener el JSON en `preguntas-para-subir/`
+> NO significa que las preguntas estén en la tabla `questions`. Esta tabla
+> distingue ambas cosas para no re-importar lo ya hecho ni dar por hecho lo
+> que falta. **No existe columna `source` en `questions`** — el origen no queda
+> trazado en BD; la única forma fiable de saber si un proveedor está subido es
+> muestrear textos del disco y buscarlos por `ilike` en `question_text`
+> (lo que se hizo para esta tabla, muestra de ~20 por proveedor).
+
+| Proveedor | En disco | Importado a BD | Evidencia (muestra ilike) |
+|---|---|---|---|
+| **OpositaTest** | ~95K (`preguntas-para-subir/Tema_*`, `source: opositatest`) | ✅ **Sí** | 20/20 en BD |
+| **InnoTest** | 71.833 (`innotest-*`) | ✅ **Sí** | 20/20 en BD |
+| **Aula Plus — sanitaria / TCAE** | ~128K (`aula-plus/raw/`, ramas ENFERMERÍA/CELADOR/AUX ENFERMERÍA…) | ✅ **Parcial** | Importada en la verificación clínica FASE 2 (~17.546 re-vinculadas/enriquecidas, `/tmp/aulaplus_audit`). La parte importada es la TCAE legislativa+técnica, NO el banco clínico íntegro. Ver `docs/roadmap/fase2-verificacion-preguntas-alteradas.md` |
+| **Aula Plus — AUXILIAR ADMINISTRATIVO** | 11.281 (`aula-plus/raw/`, branch id 6) | ❌ **NO** | 0/8 en BD. **Pendiente de importar** — es el material para SMS (origin 18 Región de Murcia: 555 preg.) y CLM (origin 12 Castilla-La Mancha: 981 preg.). Solo ~1% trae explicación → requiere vincular artículo + redactar explicación con agentes |
+| **TuTestDigital** | 171.034 (`tutestdigital/`) | ❌ **NO** | 1/20 en BD. **Pendiente de importar** (mucho mayor que los ~5K de Extremadura que decía la nota antigua) |
+| **Testea** | 12,2K (`testea/flat/questions.ndjson`) | ❌ **NO** | 3/20 en BD, y esos 3 son duplicados de ley común (CE/LPAC/TREBEP) ya presentes vía OpositaTest/InnoTest |
+
+**Resumen:** Subidos OpositaTest e InnoTest (completos) y la rama sanitaria de Aula Plus (parcial, FASE 2). **Pendientes: TuTestDigital (171K), Aula Plus aux. admin (11K) y Testea (12K).**
 
 ---
 

@@ -1,6 +1,8 @@
 // app/test-oposiciones/constitucion-titulos/page.js
 import Link from 'next/link'
 import { loadConstitucionData } from '../../../lib/constitucionSSR'
+export const dynamic = 'force-dynamic'
+
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 

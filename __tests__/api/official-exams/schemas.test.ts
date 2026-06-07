@@ -9,7 +9,6 @@ import {
   officialExamQuestionSchema,
   safeParseGetOfficialExamQuestions,
   safeParseSaveOfficialExamResults,
-  OposicionType,
 } from '@/lib/api/official-exams/schemas'
 
 describe('Official Exams Zod Schemas', () => {
@@ -407,11 +406,15 @@ describe('Official Exams Zod Schemas', () => {
     })
   })
 
-  describe('OposicionType enum', () => {
-    it('debe tener los valores correctos', () => {
-      expect(OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO).toBe('auxiliar-administrativo-estado')
-      expect(OposicionType.TRAMITACION_PROCESAL).toBe('tramitacion-procesal')
-      expect(OposicionType.AUXILIO_JUDICIAL).toBe('auxilio-judicial')
+  // OposicionType es un tipo derivado de OPOSICIONES, no un objeto enum en runtime.
+  // Verificamos que el schema Zod acepta los slugs canónicos principales.
+  describe('OposicionType slugs canónicos', () => {
+    it('el schema acepta los slugs principales via oposicionEnum', () => {
+      const base = { examDate: '2024-07-09', includeReservas: true }
+      for (const slug of ['auxiliar-administrativo-estado', 'tramitacion-procesal', 'auxilio-judicial']) {
+        const result = getOfficialExamQuestionsRequestSchema.safeParse({ ...base, oposicion: slug })
+        expect(result.success).toBe(true)
+      }
     })
   })
 })

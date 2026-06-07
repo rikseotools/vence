@@ -3,6 +3,13 @@
 > **Fecha:** Abril 2026
 > **Propósito:** Documentación de endpoints, flujos de scraping y estructura de datos de tutestdigital.es
 
+> **📦 Importación a BD (verificado 2026-06-03): ❌ NO IMPORTADO.** Hay
+> **171.034 preguntas** scrapeadas en `preguntas-para-subir/tutestdigital/`
+> (organizadas por "Books"/libros, de ahí el endpoint `/api/Books/{id}`), pero
+> solo 1/20 de la muestra aparece en `questions` → el banco está **pendiente de
+> importar**. Es el mayor corpus sin subir. Ver tabla de estado en
+> `roadmap-proveedores-preguntas-scraping.md`.
+
 ---
 
 ## Notas Importantes (Lecciones Aprendidas)

@@ -55,7 +55,7 @@ output "acm_validation_records" {
 
 output "dondominio_setup_instructions" {
   description = "Instrucciones humanas resumidas para añadir los records en DonDominio."
-  value = <<-EOT
+  value       = <<-EOT
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Añadir EN DONDOMINIO (Dominios → vence.es → Zona DNS):

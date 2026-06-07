@@ -1,6 +1,8 @@
 # Incidente 28/05/2026 — Cascada 503 en `/api/v2/answer-and-save`
 
-> **Estado:** 🔴 **ACTIVO** al cierre del documento (28/05/2026 ~20:25 UTC).
+> **Estado:** ✅ **RESUELTO 2 veces** (28/05 04:17 UTC y 29/05 20:18 UTC). Ver §10 "Segundo incidente 29/05" abajo.
+>
+> **Estado primer incidente (28/05):** 503/5min cayó de **583 → 2** (-99.7%). Primer 200 OK con avg=221ms tras 6h+ de caída total. Antifraud reactivado con cache Redis cross-lambda.
 > **Impacto:** ~1.493 usuarios afectados (no se guardan respuestas, sesiones expulsadas).
 > **Causa raíz REAL DEFINITIVA (verificada 28/05 21:01 UTC):** `const timeoutMs = 10000` en **`lib/api/v2/answer-and-save/client.ts:52`** (CLIENTE JS, no servidor). El navegador del usuario aborta vía `AbortController` a los 10 s exactos, antes de que el servidor tenga oportunidad de responder.
 >
@@ -205,3 +207,52 @@ La función `refresh_ranking_cache()`:
 - `docs/runbooks/health-check.md` — runbook que detectó este incidente como 🔴 ROJO.
 - `docs/ARCHITECTURE_ROADMAP.md` §"Diagnóstico actual (mayo 2026)" — deuda técnica que enmarca el incidente.
 - Memorias relacionadas: `[[project_sistema_canary_completo]]`, `[[project_gha_cron_lag_migrate_fargate]]`, `[[feedback_incident_mitigation_act_fast]]`, `[[feedback_post_deploy_monitor]]`.
+
+---
+
+## 10. Segundo incidente — 29/05/2026 (activación shadow handlers en tráfico alto)
+
+> **Estado:** ✅ RESUELTO 20:18 UTC. 503/min cayó de 480 → 0 en 7 min tras force-restart ECS.
+>
+> **Impacto:** ~133.000 errores 503 entre 05:00–18:00 UTC. Pico **14.875 errores/hora a las 09:00 UTC** (sábado 30/05 hora España = horario laboral). Usuarios afectados: pendiente cuantificar.
+
+### 10.1 Cronología
+
+| Hora UTC | Evento |
+|---|---|
+| 28/05 ~21:00 | Push commit `9eaba4ad` activa `SHADOW_HANDLERS_ENABLED=true` en task def Fargate (revision 12). |
+| 28/05 21:50 | @Cron(EVERY_SECOND) en `outbox-processor.cron.ts` rompe scheduler NestJS → todos los crons backend caen. |
+| 29/05 04:11 | Hotfix `6457f8c8` cambia `@Cron(EVERY_SECOND)` → `@Interval(5000)`. Crons revive. |
+| 29/05 05:00 | **Spike empieza:** 1.796 errores/hora con shadow activo + tráfico real. |
+| 29/05 09:00 | **Pico 14.875 errores/hora.** Pool BD saturado, slow queries acumuladas. |
+| 29/05 16:00 | Segundo pico 13.086 errores/hora. |
+| 29/05 20:11 | Task def `v13` registrado: `SHADOW_HANDLERS_ENABLED=false`. |
+| 29/05 20:14 | Force-restart ECS service para limpiar scheduler. |
+| 29/05 20:18 | **503=0 sostenido.** Outbox worker revive, queue al día (pending=0, 7.560 procesados). |
+
+### 10.2 Causa raíz
+
+`outbox-processor.service.ts` ejecuta los 9 shadow handlers en `Promise.all` por cada evento del batch. Cada handler hace 2 queries BD (SELECT EXISTS + UPSERT shadow). Con `batchSize=100`:
+
+```
+100 eventos × 9 handlers × 2 queries = 1.800 queries en ráfaga por tick (~5s)
+```
+
+El pool de conexiones BD (PgBouncer Lightsail + postgres-js `max:N`) se saturó. Las queries entraban en cola, golpeaban `statement_timeout=30s`, y disparaban cascade de 503 vía `withDbTimeout`.
+
+### 10.3 Fix aplicado (commit `412a1f51`, 29/05 ~21:00 UTC)
+
+1. **`DEFAULT_CONFIG.batchSize` 100 → 10** (`outbox-processor.schema.ts`): ahora 180 queries/tick.
+2. **`Promise.all → Promise.allSettled`** en `dispatch()` (`outbox-processor.service.ts`): un handler caído no arrastra a los demás.
+3. **Log estructurado por handler** con nombre del handler en el mensaje.
+
+Cambios INERTES mientras `SHADOW_HANDLERS_ENABLED=false`. Activación shadow segura ahora en ventana nocturna (01:00–04:00 UTC = mínimo tráfico real).
+
+Ver `sprint-outbox-test-questions.md` §1.5bis para detalles del hardening.
+
+### 10.4 Lecciones operativas
+
+- **Activación de cambios estructurales en horario laboral España = riesgo máximo.** Cualquier toggle de carga BD (shadow, nuevos crons frecuentes, índices CONCURRENTLY) debe ir a ventana 01:00–04:00 UTC.
+- **Force-restart ECS es la mitigación más rápida y reversible** cuando el scheduler queda atascado (memoria `[[feedback_incident_mitigation_act_fast]]` confirmada de nuevo).
+- **`Promise.all` en handlers paralelos es trampa** si uno falla bajo carga BD — todos comparten pool, un cuelgue arrastra a todos. `Promise.allSettled` + retry granular es el patrón correcto.
+- **Worker outbox "vivo" ≠ procesando.** El monitor del incidente decía "worker Xs ago" mirando `test_questions_outbox.created_at` (filas creadas por trigger emisor), no `processed_at`. Necesitamos métrica explícita "last_processed_at" en dashboard.

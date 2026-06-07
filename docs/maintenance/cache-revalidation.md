@@ -220,6 +220,7 @@ Capa adicional al `unstable_cache` de Next.js. **Diferencias clave:**
 | `/api/v2/user-stats` | `user_stats:{userId}` | 30s | Tras INSERT en `test_questions` (`/api/v2/answer-and-save`) |
 | `/api/exam/pending` | `exam_pending:{userId}:{type}:{limit}` | 30s | Tras INSERT/UPDATE en `tests` (idem) |
 | `/api/v2/topic-progress/theme-stats` | `theme_stats:{userId}` | Fresh 5min, retain 24h | Tras INSERT en `test_questions` + freshness window expirada |
+| `/api/topics/[numero]` | `topic_data:{oposicion}:{topicNumber}:{userId\|anon}` | Fresh 5min, retain 24h | Tras INSERT en `questions` con `lifecycle_state=approved`. **Requiere también refrescar MVs** (sección «Materialized views» abajo) |
 
 ### Patrón "fresh con stale fallback" (theme-stats)
 
@@ -256,6 +257,94 @@ after(async () => {
 ```
 
 **No es bloqueante**: si Redis falla, el TTL natural eventualmente refresca el valor stale. Pero invalidar es preferible (datos frescos al instante para el usuario).
+
+---
+
+## Materialized views Postgres (`/api/topics/[numero]`) — Fase D-bis Iter 1.5
+
+El endpoint `/api/topics/[numero]` tiene **TRES capas de cache independientes** que deben invalidarse por separado tras INSERT/UPDATE de `questions`:
+
+1. **Materialized views Postgres**: `topic_law_question_summary` + `topic_official_by_position`. Pre-agregan dificultad y conteos por `(topic_id, law_id)` y `(topic_id, exam_position)`. Solo se refrescan con la función SQL `refresh_topic_question_summary()` que invoca `REFRESH MATERIALIZED VIEW CONCURRENTLY` (~7s en prod). `revalidateTag` y `revalidatePath` **NO las tocan**.
+2. **Redis Upstash**: clave `topic_data:{oposicion}:{topicNumber}:{userId|anon}` con fresh window de 5min y TTL 24h (cubierto en la tabla de endpoints arriba).
+3. **ISR Next.js**: páginas `/<slug>/test/tema/<N>` con `revalidate: false`. Tag `test-counts`.
+
+### Por qué importa
+
+Tras añadir N preguntas nuevas a `questions`:
+- BD raw muestra los nuevos conteos.
+- `revalidateTag('test-counts')` invalida Next.js ISR — pero el endpoint igualmente lee de las MVs.
+- Las MVs están desactualizadas → el endpoint sigue sirviendo conteos viejos.
+- Aunque la MV se actualice, Redis tiene fresh window 5min con el snapshot anterior.
+
+**Conclusión:** invalidar solo tags Next.js es insuficiente. Hay que refrescar las MVs **y** purgar Redis.
+
+### Procedimiento obligatorio tras INSERT/UPDATE masivo de `questions`
+
+```bash
+# 1. Refrescar materialized views (~7s)
+node -e "require('dotenv').config({path:'.env.local'}); \
+  const {createClient} = require('@supabase/supabase-js'); \
+  const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY); \
+  s.rpc('refresh_topic_question_summary').then(r => console.log(r))"
+
+# 2. Invalidar Redis claves topic_data:* afectadas
+node -e "require('dotenv').config({path:'.env.local'}); \
+  (async () => { \
+    const {invalidateMany} = await import('./lib/cache/redis.ts'); \
+    const keys = []; \
+    for (const opo of ['auxiliar-administrativo-X']) \
+      for (const num of [TEMAS]) \
+        for (const u of ['anon', '<user_id_test>']) \
+          keys.push('topic_data:' + opo + ':' + num + ':' + u); \
+    await invalidateMany(keys); \
+  })()"
+
+# 3. Tags Next.js + ISR (procedimiento estándar)
+for tag in test-counts laws questions temario landing; do
+  curl -X POST https://www.vence.es/api/admin/revalidate \
+    -H "x-cron-secret: $CRON_SECRET" -d "{\"tag\":\"$tag\"}"
+done
+```
+
+### Cron backend Fargate
+
+`RefreshTopicSummaryCron` (`backend/src/refresh-topic-summary/refresh-topic-summary.cron.ts`) corre **una vez al día a las 03:30 UTC**. Justificación documentada: las MVs son topic-level (~1.836 filas, no crecen con DAU) y el refresh (4-10s) es irrelevante a esa hora.
+
+**Implicación operativa:** cualquier INSERT/UPDATE de `questions` durante el día NO se reflejará en `/api/topics/[numero]` hasta la siguiente madrugada. Para verlo antes hay que refrescar manualmente con uno de los métodos abajo.
+
+### Endpoint admin para refresh on-demand
+
+`POST /api/v2/admin/topic-summary/refresh` (backend Fargate, requiere JWT admin). Caso de uso documentado en el controller: "tras aprobar/retirar preguntas desde el admin, invalidar el snapshot sin esperar al cron nocturno."
+
+```bash
+curl -X POST https://api.vence.es/api/v2/admin/topic-summary/refresh \
+  -H "Authorization: Bearer $JWT_ADMIN"
+```
+
+Alternativa sin JWT (desde script): llamar la función SQL directa vía Supabase service role (es lo que invoca el endpoint internamente):
+
+```bash
+node -e "require('dotenv').config({path:'.env.local'}); \
+  const {createClient} = require('@supabase/supabase-js'); \
+  const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY); \
+  s.rpc('refresh_topic_question_summary').then(r => console.log(r))"
+```
+
+### Feature flag de las MVs
+
+```bash
+TOPIC_MV_ENABLED=true   # Activa el camino rápido vía MV (default en prod)
+# cualquier otro valor → cae al camino antiguo (N queries serializadas, ~5s p50, sin cache MV)
+```
+
+Si la MV está corrupta o desincronizada y no hay tiempo de refrescarla, desactivar el flag es el rollback inmediato (los conteos vienen siempre directos de `questions`).
+
+### Caso real (2026-06-01)
+
+Tras 160 preguntas IA añadidas a Cat T2/T7 + PV T2/T3:
+- BD raw: 50q por tema.
+- `/api/topics/[numero]`: Cat T2=28, Cat T7=18, PV T2=10, PV T3=10 (snapshot anterior).
+- Tras `refresh_topic_question_summary()` + `invalidateMany('topic_data:*')`: 50q en los 4. ✓
 
 ---
 
@@ -618,6 +707,7 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-01 | **Sección «Materialized views Postgres (`/api/topics/[numero]`) — Fase D-bis Iter 1.5» añadida.** Documenta las 3 capas de cache (MV + Redis + Next.js ISR) que afectan a este endpoint y el procedimiento obligatorio (refresh MV + invalidateMany Redis + revalidateTag) tras INSERT/UPDATE masivo de `questions`. Origen: caso real con 160 preguntas IA Cat+PV añadidas, BD raw=50q pero API devolvía 10-28q porque las MVs no se refrescan con `revalidateTag` y nadie había documentado que hay que hacerlo a mano. Añadido `/api/topics/[numero]` a la tabla de endpoints Redis. |
 | 2026-05-25 | **Fix bug `/api/admin/revalidate` cross-runtime** (commit `3980cf87`). Antes del fix: invocar el endpoint con `{tag:'test-config'}` solo invalidaba `unstable_cache` de Next.js — el backend NestJS canary `test-config` (activo desde commit `93fedcf5`) seguía sirviendo cache versionado viejo 6-24h. Fix: mapping `TAG_INVALIDATORS` que llama el invalidador específico (`invalidateTestConfigCache()`) cuando el tag tiene counterpart cross-runtime. Response añade `crossRuntime: true/false` para confirmación. Nueva sección «Cross-runtime cache (Bloque 3)» añadida al manual documentando el patrón versioned cache keys + warning explícito en «Opción 1: revalidateTag desde código» para no caer otra vez en el mismo bug. |
 | 2026-05-25 | **Patrón versioned cache keys agnóstico a proveedor** (commit `9133eef8`). `CacheVersioningService` en backend usa solo GET+INCR estándar (portable a Redis/Memcached/DynamoDB/etcd/KeyDB/DragonflyDB). Cross-runtime coherente con Vercel via misma key `cache_version:${tag}` en Upstash compartido. |
 | 2026-05-24 | **Familia test-config migrada al backend NestJS** (commit `06c9c2be` + `93fedcf5`). Primer endpoint canary con cache versionado tag-like. |

@@ -1,5 +1,7 @@
 # Manual: Generar preguntas con IA (Claude) + auditoría doble
 
+> **Versión 2.5** — 2026-06-04. **Segundo tell estructural detectado (investigación de Manuel "debe haber un patrón")**: además del de longitud, `correct_option` estaba **sesgado por posición** — en las 1.562 IA-generadas la correcta caía en **B 48,7% · A+B 79% · D 4,4%** (azar 25%; humanos ≈ uniforme), explotable porque la app no baraja opciones. **v2.5 añade**: nueva **§2.2-ter** (posición aleatoria uniforme) + **7º check `answer_position_uniform_ok`** (§2.4 + Paso 6). **Remediación aplicada (04/06)**: 437 preguntas re-permutadas por transposición mínima con relabel determinista de header+bullets → distribución A 25,2/B 25,7/C 24,6/D 24,5% (χ²=0,58, uniforme). Coherencia clave: al reordenar hay que mover la letra en la explicación (header + bullets), no solo `correct_option`.
+>
 > **Versión 2.4** — 2026-06-03. **Hallazgo crítico a raíz del feedback de la usuaria Isa (`5e21fa2d`)**: las preguntas IA-generadas se acertaban eligiendo **"la opción más larga"** — la correcta era la más larga el **71%** de las veces (azar 25%), porque §2.2 exige que la correcta sea cita literal larga del artículo mientras los distractores se redactaban cortos. Es la causa de que las IA midieran más fáciles (global_difficulty 26 vs 33 del banco). **v2.4 añade la regla anti-tell**: nueva **§2.2-bis** (distractores ±30% de longitud de la correcta, construidos con texto legal real alterado) + nuevo **6º check `distractors_balance_ok`** (§2.4 + Paso 6) + Paso 2 reescrito. **Remediación aplicada (03/06)**: 778 preguntas vivas reequilibradas vía workflow (reescritura + auditor independiente) → tell de banco bajó 71%→31% (igual que el banco no-IA). Lección de pipeline: el fichero de entrada del auditor NO debe darle las opciones originales como verdad (le confunde); avisar explícito de que son obsoletas.
 >
 > **Versión 2.3** — 2026-05-25. Basado en **29 batches piloto**: 21 CARM + 8 Aragón. **388 preguntas activas IA-generadas, 0 defectos en producción**. **v2.3 cierra la SECUENCIA T13 completa (6 batches consecutivos sobre Ley 6/1990 Archivos Murcia)** llevándolo de 39 → 96 preguntas (96% del objetivo 100q). **Hallazgo principal**: la curva de rendimiento marginal por batch es **predecible y decreciente** (15 → 11 → 10 → 8 → 8 → 5 preguntas), confirmando empíricamente que el techo natural realista de una ley monotemática está en ~95-96%, no 100%. Forzar el último 5% requiere ángulos artificiales con rendimientos negativos.
@@ -153,6 +155,16 @@ Si la opción correcta es cita literal del artículo (texto legal completo, larg
 
 **Si no hay texto legal suficiente para construir 3 distractores largos *y* claramente falsos sin volverlos ambiguos, NO se genera la pregunta sobre ese punto** (mismo criterio que §2.2: mejor menos cantidad).
 
+### 2.2-ter La posición de la correcta debe ser ALEATORIA UNIFORME (regla anti-"siempre la B")
+
+Segundo tell estructural, independiente del de longitud y de mayor impacto. **Medido en producción (04/06/2026)**: en las 1.562 IA-generadas activas, `correct_option` se distribuía **A 30,2% · B 48,7% · C 16,8% · D 4,4%** (azar = 25% c/u; control humano —exámenes oficiales y banco entero— ≈ 25% uniforme). **Elegir siempre B acertaba el 48,7%; A+B cubría el 79%; la D casi nunca.** Presente en TODOS los batches. Causa: el generador escribe la opción correcta (cita literal) en la 1ª o 2ª posición y rellena los distractores después, sin barajar. La app **no baraja opciones en render** (índice `correct_option` → posición en pantalla 1:1), por lo que el sesgo es directamente explotable.
+
+**Regla:** al construir cada pregunta, **asignar la posición de la correcta (`correct_option`) de forma aleatoria uniforme** entre las opciones disponibles (0-3). No dejar que caiga "donde toque" tras redactar. Si se generan en lote, **comprobar la distribución del batch** antes de insertar: las cuatro posiciones deben repartirse ~25% cada una.
+
+**Recordatorio de coherencia:** la explicación nombra la letra correcta (`**Por qué <LETRA> es correcta:**` + bullets `- **<LETRA>)**`). Si se reordena una pregunta ya redactada, hay que **mover la letra del header Y la de los bullets de distractor** en bloque (es una transposición: intercambiar las dos letras en opciones + explicación), nunca solo `correct_option`.
+
+**Remediación de la cohorte histórica (04/06/2026):** 437 preguntas re-permutadas (transposición mínima B/A→C/D con relabel determinista del header + bullets + validación per-pregunta + skip-on-fail). Distribución post: A 25,2 / B 25,7 / C 24,6 / D 24,5% (χ²=0,58 vs uniforme, indistinguible). 13 saltadas (9 sin header parseable + 4 con header≠`correct_option`, posible bug de clave a revisar). Backup `/tmp/ia_position_backup.json`.
+
 ### 2.3 Tag obligatorio: `'ia_generada' + '<batch_id>'`
 
 Sin estos tags es imposible:
@@ -176,6 +188,7 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 | `explanation_ok` (§8.1) | Blockquote literal + "Por qué [LETRA] correcta" + bullets "Por qué las demás" + sin emojis/Truco | auto + Sonnet ciego + paso 9 |
 | **`question_text_ok` (v1.10)** | **El enunciado no condensa libremente el artículo. Si lo menciona, debe citar o usar elipsis explícita.** | **Frecuentemente solo por paso 9** — las dos pasadas pre-aplicación pueden converger en pasarlo por alto (caso b5 Aragón Q15) |
 | **`distractors_balance_ok` (NUEVO v2.4)** | **Ningún distractor es manifiestamente más corto que la correcta (§2.2-bis). Criterio mecánico: la correcta NO debe ser la opción más larga por un margen ≥1,3× sobre la 2ª, y los distractores siguen siendo claramente falsos.** | **Automático (longitudes) + Sonnet (que los distractores reescritos sigan siendo falsos)** |
+| **`answer_position_uniform_ok` (NUEVO v2.5)** | **La posición de la correcta es aleatoria; en lote, las 4 posiciones se reparten ~25% (§2.2-ter). Criterio mecánico por batch: ninguna posición >40% ni <10%.** | **Automático (distribución de `correct_option` del batch)** |
 
 **Mínimo (PRE-aplicación):**
 1. **Auto-audit** del propio generador (Claude) re-leyendo desde BD aplicando §3.1 + §3.2 + §8.1 + verificando fidelidad del enunciado.
@@ -450,6 +463,7 @@ Re-leer cada pregunta DESDE BD junto con el contenido literal del artículo (no 
 | `explanation_ok` (§8.1) | `isDidactic()` = blockquote + "Por qué [LETRA] correcta" + "Por qué las demás son incorrectas" + markdown |
 | **`question_text_ok` (v1.10)** | El enunciado no condensa libremente el artículo. Si menciona "según el artículo X", lo que diga de X debe ser cita o usar elipsis explícita (puntos suspensivos / paréntesis). Nunca resumir. Caso b5 Aragón Q15 Art 92 documentó este modo de fallo. |
 | **`distractors_balance_ok` (NUEVO v2.4)** | Longitud de la correcta NO ≥1,3× la 2ª opción más larga (§2.2-bis) Y cada distractor sigue siendo claramente falso. Comprobación mecánica de longitudes + verificación de que ningún distractor alargado se ha vuelto verdadero/ambiguo. |
+| **`answer_position_uniform_ok` (NUEVO v2.5)** | Distribución de `correct_option` del batch ~25% por posición (§2.2-ter). Mecánico sobre el batch completo: ninguna posición >40% ni <10%. Si está sesgado, re-permutar por transposición (mover header+bullets de la explicación, no solo `correct_option`) antes de insertar. |
 
 Veredicto por pregunta: `PERFECT` o `NEEDS_REVIEW` con motivo.
 

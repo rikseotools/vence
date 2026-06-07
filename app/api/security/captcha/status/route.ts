@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getCaptchaConfig } from '@/lib/security/captcha'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +33,4 @@ async function _GET(request: NextRequest) {
   })
 }
 
-export async function GET(request: NextRequest) {
-  return _GET(request)
-}
+export const GET = withErrorLogging('/api/security/captcha/status', _GET)

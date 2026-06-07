@@ -2,6 +2,8 @@
 import Link from 'next/link'
 import { loadSectionData, generateSectionMetadata } from '../../../../lib/ley39SSR'
 import { StartTestButton, TabsSection } from './SectionClientComponents'
+export const dynamic = 'force-dynamic'
+
 
 // Generar metadata dinámicamente para SEO
 export async function generateMetadata() {

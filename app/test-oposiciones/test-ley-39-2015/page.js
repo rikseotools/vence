@@ -1,6 +1,8 @@
 // app/test-oposiciones/test-ley-39-2015/page.js
 import Link from 'next/link'
 import { loadLey39Data } from '../../../lib/ley39SSR'
+export const dynamic = 'force-dynamic'
+
 
 // Pre-renderizar datos en el servidor
 export default async function TestLey392015Page() {

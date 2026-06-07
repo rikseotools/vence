@@ -229,6 +229,46 @@ Si `estado_proceso` es `examen_realizado`, `resultados` o `nombramientos`:
 - `exam_date_approximate` debe ser `false`
 - No debe haber hitos upcoming de "Examen" (el examen ya paso)
 
+### 4e-bis. Captar el siguiente ciclo: hito de PREVISIÓN DE PLAZAS desde la OEP
+
+**Principio:** una vez celebrado el examen, la oposición NO debe quedar "muerta" (estado `resultados`/`nombramientos`). El siguiente ciclo de captación de leads empieza **en cuanto se publica la OEP** del año siguiente — que sale **meses antes** que la convocatoria y **ya trae el reparto de plazas por cuerpo**. Eso es contenido *forward-looking* real para seguir captando a quien empieza a preparar el próximo proceso.
+
+**Dos documentos, no confundir:**
+- **OEP (Oferta de Empleo Público)** = decreto/acuerdo del Consejo de Gobierno, publicado en DOCM/BOE/boletín autonómico. Fija el **nº de plazas por cuerpo/escala** (turno libre + reserva discapacidad + promoción interna). Sale primero.
+- **Convocatoria** = las bases concretas (inscripción + fechas + examen). Sale después, normalmente con el mismo nº de plazas que la OEP.
+
+**Qué hacer cuando el examen del ciclo en curso ya pasó y hay OEP nueva publicada:**
+1. **Localizar el decreto de la OEP en el boletín oficial** (no en academias: dan cifras contradictorias y mezclan ordinaria/estabilización y años). Leer la **tabla de distribución por cuerpo** y extraer la cifra EXACTA del cuerpo objetivo, distinguiendo **turno libre** (lo que importa para nuestra landing) de promoción interna, y el desglose acceso general / reserva discapacidad.
+2. **Añadir/actualizar un hito `upcoming`** del tipo:
+   > *"Próxima OEP [año]: N plazas previstas del cuerpo [X] (pendiente convocatoria)"* — descripción con el desglose verificado + **enlace al decreto**, `severity='important'`.
+3. **Etiquetar SIEMPRE como "previstas / pendiente convocatoria"** (no son plazas convocadas; el reparto definitivo de turno libre lo fija la convocatoria).
+4. **Coherencia con el test de plazas:** el test `oposicionesDataConsistency` cruza el hito `order_index=1` con `plazas_libres`. El hito de previsión debe ir en un `order_index` posterior (es el último del timeline), de modo que NO altere ese cruce. Si en cambio se decide **pivotar la oposición al nuevo ciclo** (estado→`oep_aprobada`, `plazas_libres`→cifra OEP, `exam_date`→`NULL`+`approximate`), entonces actualizar también `seo_description`/`landing_description` y re-ejecutar los tests de §6a del manual de crear-oposiciones.
+
+**Ejemplo real verificado (CLM, 04/06/2026):** examen del ciclo OEP 2023-2024 celebrado 14/10/2025 (estado `resultados`). Nueva **OEP 2025** aprobada por Acuerdo 09/12/2025, publicada en **DOCM nº 240 de 12/12/2025** (ref `2025_9540`). Leída la tabla "Turno libre" del decreto: **Cuerpo Auxiliar (C2) = 327 plazas de turno libre** (305 acceso general + 9 reserva discapacidad general + 13 reserva discapacidad intelectual). Se actualizó el hito de previsión con esa cifra + enlace al decreto. Convocatoria esperada en 2026.
+
+#### Procedimiento de ROLLOVER al nuevo ciclo (examen pasado + OEP nueva publicada)
+
+Cuando el proceso vigente ya terminó (examen celebrado, estado `resultados`/`nombramientos`) y hay **OEP nueva publicada**, se **pivota la oposición al nuevo ciclo** para que la landing deje de mostrar un proceso muerto y capte leads del siguiente. La landing ya se reconfigura sola al estado `oep_aprobada` (caja "Ver OEP en [diario]", hero "Examen pendiente de confirmación"). Pasos (validado en CLM, 04/06/2026):
+
+1. **Verificar la cifra en el decreto del boletín** (no academias) — turno libre del cuerpo objetivo, con desglose acceso general / reserva discapacidad.
+2. **Backup de los hitos del ciclo anterior** (`SELECT * → /tmp`) por si hay que revertir.
+3. **Retirar los hitos del ciclo cerrado** y dejar un timeline limpio del nuevo ciclo: hito `#1` `completed` *"OEP [año] aprobada (DOCM/BOE nº…, fecha): N plazas previstas del cuerpo [X]"* con enlace al decreto. (El usuario que prepara el nuevo proceso no necesita el calendario del proceso anterior.)
+4. **Pivotar la fila `oposiciones`** al nuevo ciclo de forma coherente:
+   - `estado_proceso='oep_aprobada'`
+   - `plazas_libres` / `plazas_discapacidad` → cifras del cuerpo en la OEP (turno libre)
+   - `exam_date=NULL`, `exam_date_approximate=false` (sin fecha aún; combinación válida = "sin fecha conocida")
+   - `inscription_start=NULL`, `inscription_deadline=NULL` (aún no hay convocatoria)
+   - `convocatoria_dogv=NULL`, `convocatoria_fecha=NULL`, `convocatoria_numero=NULL` (la OEP NO es convocatoria)
+   - `oep_decreto` / `oep_fecha` → el acuerdo/decreto de la OEP
+   - `boe_reference` / `boe_publication_date` → publicación de la OEP en el boletín
+   - `seo_description` / `landing_description` → marco "OEP [año]: N plazas previstas, convocatoria pendiente". **N debe ser coherente con `plazas_libres`** (la regla del test: `plazas_libres`, o `+disc`, o `+interna`).
+5. **Re-ejecutar tests** `oposicionesDataConsistency` + `oposicionDataCompleteness` (deben quedar verdes) y **revalidar** tags `landing`+`temario`.
+6. Cuando se publique la **convocatoria** del nuevo ciclo, actualizar de nuevo (estado→`convocada`/`inscripcion_abierta`, fechas, inscripción, hitos del proceso) — vuelta al flujo normal del manual.
+
+**Caso CLM (04/06/2026):** ciclo OEP 2023-2024 (234 plz, examen 14/10/2025) → pivotado a **OEP 2025** (`oep_aprobada`, 305 acceso general + 22 discapacidad = 327 turno libre, examen pendiente, boletín DOCM nº 240 12/12/2025). Backup en `/tmp/clm_hitos_backup_2024.json`. 19/19 tests verdes, landing en vivo mostrando "OEP 2025 · 327 plazas previstas".
+
+**Estado de la detección automática (honesto, 04/06/2026):** existe infraestructura de señales (`lib/api/oep-signals/`) que el seguimiento usa, PERO **el cron `check-seguimiento` está DESACTIVADO** (`.github/workflows/check-seguimiento.yml.DISABLED`) y la detección genera señales **genéricas de cambio de hash**, NO un clasificador "OEP publicada". Por tanto el rollover es **manual** (lo dispara una persona al ver la señal o la noticia). **Pendiente (automatización):** (a) reactivar el cron; (b) clasificador que distinga "OEP publicada en el boletín" → señal específica → propuesta de rollover con la cifra ya extraída del decreto.
+
 ### Ejemplo: oposicion sin fecha de examen oficial
 
 ```

@@ -13,7 +13,7 @@
 >
 > **Estado:** 📋 ROADMAP — pendiente de aprobación. No hay deploys.
 >
-> **Última actualización:** 2026-06-01.
+> **Última actualización:** 2026-06-04 (añadida Fase 8 — alertas al usuario por hitos + oposiciones favoritas).
 
 ---
 
@@ -41,6 +41,38 @@ Tras forzar manualmente el cron `detect-regional-oeps` y medir su rendimiento re
 - ⚠️ **Requiere redeploy del backend Fargate** (desregistrar el `@Cron` regional + activar el nuevo filtro de monitoreo).
 - **Código huérfano consciente:** extracción regional del LLM + `getActiveSources`/`detection_sources` quedan como librería dormida. GC futuro opcional.
 - **Fases 3 y 6 del roadmap quedan obsoletas** (dependían del scraper regional / panel de descubiertos). Ver notas en cada fase.
+
+---
+
+## ✅ Barrido `catalogada` poco a poco — lecciones (en curso desde 01/06/2026)
+
+Recorrido manual por Claude de las 101 `catalogada` para verificar/corregir sus URLs y rellenar BD (plazas, OEP, convocatoria, estado, subgrupo) desde fuente oficial. Una a una. **Política Manuel: "aunque tardes, hay que hacerlo bien" — sin URLs débiles ni cabos sueltos.**
+
+### Modelo de DOS URLs por oposición (confirmado Manuel 01/06)
+
+El esquema `oposiciones` ya tiene los dos roles; hay que rellenar **ambos**:
+1. **`seguimiento_url` = AGREGADOR ESTABLE** (tablón de edictos / "oferta de empleo" / convocatorias-en-curso del organismo). NO cambia entre convocatorias; es donde aparecen los anuncios nuevos. **→ es la que vigila el cron para detectar novedades (nueva OEP/convocatoria).** NUNCA la home genérica ni una ficha de detalle.
+2. **`programa_url` = DOC DE LA CONVOCATORIA CONCRETA** (PDF de bases / ficha del proceso actual). Es **efímera**, cambia con cada OEP/convocatoria. (+ `diario_oficial`/`diario_referencia` = ref del boletín.)
+
+**Principio clave:** las convocatorias nuevas usan URLs de detalle nuevas cada vez, pero los anuncios siempre salen en el agregador estable → monitorizar el agregador, guardar el detalle en `programa_url`.
+
+**Pattern por cuerpo:**
+1. `SELECT` la fila. La `seguimiento_url` suele ser la home genérica (placeholder del poblado masivo) → inútil.
+2. WebSearch datos oficiales + localizar el agregador estable y el doc de la convocatoria actual.
+3. **Verificar con WebFetch** que el agregador lista entradas concretas (no menú vacío). Solo-menú/dinámico = SPA.
+4. **SPA → `fetcher_type='headless'`** (Lambda `vence-backend-headless-fetcher`, operativo, 22+ oposiciones). Server-rendered → `http`. Muchas sedes usan **sedipualba** (`<org>.sedipualba.es/tablondeanuncios/`): tablón server-rendered, agregador ideal.
+5. `UPDATE seguimiento_url + programa_url + plazas + oep_fecha + estado + subgrupo + diario_referencia` vía `SUPABASE_SERVICE_ROLE_KEY`. **NO tocar `is_active`** (sigue `false` → no pública; el cron la vigila igual desde el cambio a `getOposicionesForLlmScan`).
+
+**Hallazgo recurrente:** ~todas las `catalogada` traen la home del organismo como `seguimiento_url` (placeholder). El valor del barrido es sustituirla por el agregador estable + rellenar `programa_url`.
+
+### Estado del barrido (audit 01/06)
+
+**8 ayuntamientos con `seguimiento_url` (agregador) hecho:** Madrid (http, listado OEP), Barcelona (headless, seu SPA), Sevilla (http, acceso libre), Zaragoza (http, oferta), Málaga (http, ofertas), Las Palmas (http, convocatorias-en-curso), Palma (http, sedipualba tablón), Bilbao (headless, app OPE).
+- ⚠️ **CABO: `programa_url` vacío en los 8** — falta backfill de la 2ª URL (doc convocatoria actual).
+- ⚠️ **CABO Bilbao:** URL SPA con render headless sin confirmar + plazas Aux C2 sin cifrar (fuente mezcla con Administrativo C1 76 plz).
+- ⚠️ **CABO Palma:** seu Liferay sin URL de listado limpia; se usó el tablón sedipualba (válido, server-rendered).
+
+**Pendientes:** ~93 `catalogada` (Diputació Barcelona en curso vía CIDO `cido.diba.cat/oposicions`; resto diputaciones, cabildos, consells, Ceuta/Melilla/Navarra, cuerpos Estado C2, TCAE autonómicas + ~16 categorías genéricas que Manuel quiere desglosar en instancias territoriales). Detalle/contador en memoria `project_catalogada_seguimiento_sweep`.
 
 ---
 
@@ -408,6 +440,126 @@ Recomendación robusta inicial: **ScrapingBee** para validar valor en 1-2 semana
 
 ---
 
+### Fase 8 — Alertas al usuario por hitos de SUS oposiciones (campana + email) + oposiciones favoritas (1-2 semanas)
+
+> **Detonante:** propuesta de Manuel (2026-06-04, tras el barrido "revisa oep"). Hasta ahora el pipeline TERMINA cuando Claude/el cron actualiza un hito (p.ej. "Lista provisional de admitidos y excluidos, BOCM 04/06" en `auxiliar-administrativo-madrid`). **No hay consumidor downstream que avise al usuario que está estudiando esa oposición.** El esfuerzo de detección se pierde de cara al opositor, que es justo a quien le cambia la vida ese hito.
+>
+> **Objetivo:** cuando se añade/actualiza un hito relevante de una oposición, **notificar a los usuarios que la siguen** (target actual + favoritas), con click-through a la página de info de la oposición / su timeline de hitos. Solo a usuarios relevantes (nunca broadcast). Hitos muy importantes → además email; el resto → solo campana; cosméticos → nada.
+
+#### ⛔ GUARDARRAÍL INNEGOCIABLE — verificar a ciencia cierta ANTES de comunicar (Manuel 2026-06-04)
+
+> **Una notificación, y sobre todo un EMAIL, NO puede salir nunca de un dato sin verificar.** Un dato erróneo enviado a miles de opositores (fecha de examen falsa, "ya hay listas" cuando no las hay) destruye la confianza y es peor que no avisar.
+
+Reglas que esto impone al diseño de toda la Fase 8:
+1. **El fan-out se dispara desde un hito VERIFICADO, nunca desde una señal cruda del cron.** El cron (`oep_detection_signals`) solo *propone*; Claude/un humano *verifica contra la fuente oficial* (BOE/boletín/sede) y solo entonces el hito queda en estado notificable. El email no se engancha al detector, se engancha al **acto humano/Claude de confirmar el hito** (que ya existe en este pipeline — ver Fase 7: auto-apply es conservador y todo lo demás lo valida Claude).
+2. **Columna de gate en `convocatoria_hitos`**: `notify_status enum('pending','verified','sent')` (o `verified_at timestamptz NULL`). El worker de fan-out (8.3) **solo** procesa hitos `verified`. Un hito recién insertado por el cron entra `pending` y NO notifica hasta verificación.
+3. **El email exige doble confirmación**: `severity='critical'` **Y** `notify_status='verified'` **Y** la fuente oficial citada (`url` del hito apunta al boletín/sede, no a un agregador). Sin esos tres, como mucho campana.
+4. **Trazabilidad**: cada alerta enviada guarda el `hito_id` y la fuente que la respaldó, para poder auditar "¿de dónde salió este email?" y, si hiciera falta, rectificar.
+5. **Preferir no avisar a avisar mal.** Ante duda sobre una fecha/dato, el hito se queda `important` (solo campana, reversible) o `pending`, nunca `critical` por email.
+
+Esta regla es coherente con el guardarraíl general del proyecto [[feedback_siempre_robusto_nunca_chapuzas]] y con la verificación legal del CLAUDE.md ("NUNCA crear datos sin verificar fuente oficial").
+
+#### 8.0 Por qué encaja aquí (no es un sistema nuevo, es cablear lo existente)
+
+Estado actual verificado (2026-06-04):
+- **Target:** `user_profiles.target_oposicion` (TEXT, **un solo slug**) + `target_oposicion_data` (jsonb). Singular.
+- **Favoritas: NO EXISTEN.** `custom_oposiciones` es otra cosa (oposiciones personalizadas por el usuario, no "seguir una del catálogo").
+- **Campana: YA EXISTE** — `components/NotificationBell.tsx` (badge no-leídas + dropdown + categorías critical/important/info). Hoy se alimenta de `notification_events`/`notification_logs` (orientadas a push/email) y el estado de leído vive en **localStorage**, no hay feed in-app por oposición.
+- **Hitos:** `convocatoria_hitos` (`oposicion_id`, `titulo`, `fecha`, `status`, `order_index`, `convocatoria_id`). **Sin trigger al insertar.**
+- **Email:** infra existente (`email_events`, plantillas de notificación).
+- **Outbox:** el proyecto ya tiene patrón outbox (cutover 03/06) → es el bus natural para el fan-out, agnóstico by contract.
+
+Lo que FALTA es: (1) un modelo de "oposiciones seguidas" (target ∪ favoritas), (2) clasificar qué hito es notificable y por qué canal, (3) un fan-out al insertar hito, (4) un feed in-app con estado de leído, (5) UI de favoritas en el perfil.
+
+#### 8.1 Modelo de "oposiciones seguidas" (target + favoritas)
+
+Tabla nueva join usuario↔oposición (many-to-many), fuente única de "a quién avisar":
+
+```
+user_oposiciones_seguidas (
+  id            uuid pk,
+  user_id       uuid → users.id,
+  oposicion_id  uuid → oposiciones.id,
+  rol           enum('target','favorita'),   -- target = la que estudia ahora; favorita = la sigue
+  notify_email  boolean default true,         -- el usuario puede silenciar email por oposición
+  notify_bell   boolean default true,
+  created_at    timestamptz,
+  unique(user_id, oposicion_id)
+)
+```
+
+Reglas de negocio:
+- **Un solo `target` por usuario** (constraint parcial o lógica de servicio). El resto, `favorita`.
+- **Al cambiar de target, el target anterior NO se pierde: pasa automáticamente a `favorita`.** Ejemplo de Manuel: el usuario tiene target `auxiliar-administrativo-estado`, cambia a `auxiliar-administrativo-comunidad-madrid` → Madrid pasa a `target`, Estado queda como `favorita` y le seguirán llegando novedades por la campana.
+- **Migración del modelo actual:** `user_profiles.target_oposicion` sigue siendo la fuente para el target activo (no se rompe nada); `user_oposiciones_seguidas` lo refleja + añade las favoritas. Decidir si `target_oposicion` queda como cache denormalizada o se deriva de la tabla nueva (recomendado: mantener `target_oposicion` como rápida y la tabla como verdad del conjunto seguido).
+- **Pensar en grande** [[feedback_pensar_en_grande_no_por_tamano]]: el modelo soporta N favoritas desde el principio; la UI puede empezar limitando a pocas.
+
+#### 8.2 Qué hito notificar y por qué canal (tiering de severidad)
+
+No todo hito se notifica, y no todos por el mismo canal. Clasificar el hito en origen:
+
+Criterio (definido por Manuel 2026-06-04): **crítico = hito que el opositor espera con ansiedad o sobre el que tiene que actuar.**
+
+| Severidad | Ejemplos de hito | Canal |
+|---|---|---|
+| **critical** (el opositor lo espera / actúa) | **Apertura de convocatoria** (e inscripción), **fecha de examen publicada**, **listas de admitidos provisionales** (y definitivas), **plantilla de respuestas del examen** (una vez realizado — provisional y definitiva), resultados/aprobados | **Campana + email** (+ push si suscrito) |
+| **important** (avance relevante, sin acción inmediata) | Composición del tribunal, distribución por aulas, ampliación de plazo, cambio menor de fecha/sede | **Solo campana** |
+| **cosmetic** (no afecta al opositor) | Reordenaciones, correcciones menores, cambios de maquetación de la fuente | **Nada** |
+
+Implementación: añadir a `convocatoria_hitos` una columna `severity enum('critical','important','cosmetic')` (o `notify_channels text[]`), que Claude/el cron rellena al crear el hito (ya tiene el criterio: este barrido distinguió la "lista provisional Madrid" — ahora **critical** — de los hash cosméticos). El fan-out lee `severity` para decidir canal. **El opositor manda sobre el email** vía `notify_email` (8.1); la campana es el canal por defecto y de bajo coste.
+
+> Anti-spam: agrupar (digest) si se generan varios hitos de la misma oposición en poco tiempo; respetar `user_notification_settings.frequency` para el email; nunca más de 1 email/oposición/día.
+
+#### 8.3 Fan-out al insertar hito (vía outbox)
+
+Flujo agnóstico por contrato (no acopla la inserción del hito al envío):
+1. Un hito pasa a `notify_status='verified'` (acto humano/Claude tras confirmar fuente oficial — NO el cron) con `severity != 'cosmetic'` → **trigger/outbox event** `hito_notable` (payload: `oposicion_id`, `hito_id`, `severity`). Hitos `pending` (propuestos por el cron, sin verificar) NUNCA disparan fan-out (ver GUARDARRAÍL).
+2. Worker consume el evento → resuelve audiencia: `SELECT user_id, rol, notify_email, notify_bell FROM user_oposiciones_seguidas WHERE oposicion_id = ? AND notify_bell` (∪ target).
+3. Por cada usuario: inserta fila en el feed in-app (8.4) y, si `severity='critical' AND notify_email`, encola email.
+4. Idempotencia: `unique(user_id, hito_id)` en el feed evita duplicados si el evento se reprocesa.
+
+Encaja con el outbox ya existente → swap de sink (cola, email provider) no toca la lógica.
+
+#### 8.4 Feed in-app + reusar `NotificationBell`
+
+Tabla nueva (la campana hoy no tiene estado de leído server-side por oposición):
+
+```
+user_oposicion_alerts (
+  id            uuid pk,
+  user_id       uuid → users.id,
+  oposicion_id  uuid → oposiciones.id,
+  hito_id       uuid → convocatoria_hitos.id,
+  titulo        text,            -- snapshot del hito (denormalizado para el feed)
+  severity      text,
+  url           text,            -- → /<slug-oposicion> (sección hitos) o programa_url
+  read_at       timestamptz,
+  created_at    timestamptz,
+  unique(user_id, hito_id)
+)
+```
+
+- `NotificationBell.tsx` añade esta fuente a su dropdown (badge = `count(read_at IS NULL)`). Click → marca leído + navega a la landing de la oposición / su timeline.
+- Migrar el estado de leído de localStorage a `read_at` (server-side) para coherencia multi-dispositivo (mejora colateral del bell actual).
+
+#### 8.5 UI en el perfil — gestionar favoritas
+
+En `app/perfil/page.tsx` (donde hoy se elige el target):
+- Sección "Mis oposiciones": muestra la **target** (destacada) + lista de **favoritas**.
+- Acciones: **añadir** favorita (buscador del catálogo de `oposiciones` públicas), **borrar**, **promover a target** (lo que hoy es cambiar target; el target saliente cae a favorita automáticamente, 8.1).
+- Toggle por oposición: campana sí/no, email sí/no (`notify_bell`/`notify_email`).
+
+#### 8.6 Fases internas (incremental, sin big-bang)
+
+1. **8a** ✅ HECHO (04/06) — Tabla `user_oposiciones_seguidas` + backfill desde `target_oposicion` (6098 usuarios → 1 fila `target`). Migración `20260604_user_oposiciones_seguidas.sql`. *(No envía nada; seguro y reversible.)*
+2. **8b** 🔶 EN CURSO — ✅ `severity` + `notify_status` (gate del GUARDARRAÍL) en `convocatoria_hitos` (`20260604_hitos_notify_gate.sql`; 1340 hitos históricos → `pending`, no notifican retroactivamente). ✅ **Trigger** `tg_sync_user_oposiciones_seguidas` en `user_profiles` (`20260604_trigger_sync_seguidas.sql`, SECURITY DEFINER): al cambiar target, el saliente→favorita y el nuevo→target, cubriendo los 3 write-paths (incl. REST cliente) — validado con 3 escenarios. ⬜ PENDIENTE: **UI perfil** add/remove/promote favoritas (endpoint server con getAdminDb por RLS-lockdown + sección en `app/perfil/page.tsx`; necesita deploy).
+3. **8c** ⬜ — Outbox `hito_notable` (disparado solo por hitos `verified`) + worker + tabla `user_oposicion_alerts` + bell lee el feed (**solo campana** en esta fase; aún sin email).
+4. **8d** ⬜ — Canal email para `critical` **verificado** + digest/anti-spam + respeto de `notify_email`/`frequency`. Email es lo ÚLTIMO que se enciende, cuando el gate de verificación lleva semanas probado en campana.
+
+**Criterio de éxito:** un usuario con target Madrid recibe, <24h tras el barrido, el hito **critical** "Lista provisional de admitidos" en campana **y email** con link a su timeline; un usuario con Estado en favoritas recibe sus novedades aunque ya no sea su target; cero notificaciones a usuarios sin esa oposición seguida; cero emails por hitos `important`/cosméticos.
+
+---
+
 ## 4. Costes mensuales estimados
 
 | Concepto | Coste |
@@ -425,7 +577,7 @@ Comparativa: el coste de un cliente Premium que se da de baja por landing desact
 
 ## 5. Métricas de éxito del roadmap
 
-Al cerrar las 7 fases:
+Al cerrar las fases 0-7 (detección):
 
 - **Cobertura:** ≥95% oposiciones activas con ≥2 sensores reportando health OK.
 - **Latencia mediana:** <24h entre publicación oficial y señal generada.
@@ -433,6 +585,10 @@ Al cerrar las 7 fases:
 - **Auto-apply:** ≥30% señales aplicadas sin intervención.
 - **Coste:** <$50/mes en estado estable.
 - **Tiempo de admin:** <1h/semana de triaje (vs cualquiera de las 2-3h actuales).
+
+Con la Fase 8 (alertas al usuario):
+- **Activación:** el hito relevante llega a la campana del opositor que sigue esa oposición en <24h, con cero notificaciones a usuarios no interesados.
+- **Engagement/retención:** CTR de la campana hacia la landing de la oposición; reducción de bajas premium por "no me enteré" de un hito clave.
 
 ---
 
