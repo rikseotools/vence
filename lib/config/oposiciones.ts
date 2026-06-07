@@ -4188,7 +4188,8 @@ export const OPOSICIONES: Oposicion[] = [
             id: 'unica',
             icon: '📘',
             title: 'Cuestionario',
-            ordinaryCount: 70,
+            ordinaryCount: 68,
+            reserveCount: 3,
             notes: '2 preguntas anuladas en plantilla (nº 62 y 65).',
           },
           {
@@ -4196,6 +4197,7 @@ export const OPOSICIONES: Oposicion[] = [
             icon: '📙',
             title: 'Supuesto práctico',
             ordinaryCount: 15,
+            reserveCount: 3,
             notes: '5 supuestos prácticos.',
           },
         ],
