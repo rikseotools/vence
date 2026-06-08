@@ -102,6 +102,28 @@ function getSeverity(status: number): 'critical' | 'warning' | 'info' {
 }
 
 /**
+ * Extrae identificadores de traza del body parseado para enriquecer
+ * `request_completed`. Whitelist estricta de claves conocidas (UUID/number),
+ * nunca PII ni texto libre. Defensivo: el body puede ser undefined o cualquier
+ * forma (no asumimos schema). Devuelve solo lo que existe y tiene el tipo
+ * esperado para no ensuciar la columna user_id ni la metadata.
+ */
+export function extractTraceIds(body: Record<string, unknown> | undefined): {
+  userId?: string | null
+  testId?: string
+  questionId?: string
+  questionOrder?: number
+} {
+  if (!body || typeof body !== 'object') return {}
+  const out: { userId?: string | null; testId?: string; questionId?: string; questionOrder?: number } = {}
+  if (typeof body.userId === 'string') out.userId = body.userId
+  if (typeof body.testId === 'string') out.testId = body.testId
+  if (typeof body.questionId === 'string') out.questionId = body.questionId
+  if (typeof body.questionOrder === 'number') out.questionOrder = body.questionOrder
+  return out
+}
+
+/**
  * Envuelve un route handler para capturar y logar errores automáticamente.
  *
  * - Errores no manejados (throw sin catch): logea como critical + devuelve 500 genérico
@@ -237,12 +259,20 @@ export function withErrorLogging(
         // la response pero ANTES de suspender la lambda — Vercel mantiene
         // el runtime vivo hasta que termine. Esto cierra correctamente la
         // conexión PG.
+        // Identificadores de traza extraídos del body (solo claves conocidas,
+        // todas UUID/number → sin PII). Permiten reconstruir el journey de un
+        // usuario/examen concreto desde un solo SQL cuando reporta un bug
+        // (antes: imposible trazar las ~50 llamadas de un examen entre cientos
+        // de POST anónimos — caso Rosa 07/06). userId va a la columna top-level
+        // user_id; testId/questionId a metadata (forense de incidentes).
+        const traceIds = extractTraceIds(body)
         after(async () => {
           await emit({
             source: 'vercel',
             severity: timingSeverity,
             eventType: 'request_completed',
             endpoint,
+            userId: traceIds.userId,
             httpStatus: response.status,
             durationMs,
             deployVersion: DEPLOY_VERSION,
@@ -252,6 +282,9 @@ export function withErrorLogging(
               method: request?.method ?? 'GET',
               sampled: isError ? 'false' : 'true',
               errorRef: errorRef || null,
+              ...(traceIds.testId ? { testId: traceIds.testId } : {}),
+              ...(traceIds.questionId ? { questionId: traceIds.questionId } : {}),
+              ...(traceIds.questionOrder != null ? { questionOrder: traceIds.questionOrder } : {}),
             },
           })
         })

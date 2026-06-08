@@ -51,8 +51,7 @@ import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 
 // Imports modularizados
 import {
-  createDetailedTestSession,
-  updateTestScore
+  createDetailedTestSession
 } from '../utils/testSession'
 import {
   completeDetailedTest,
