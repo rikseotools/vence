@@ -2220,6 +2220,76 @@ export const RULE_STATS_PARIDAD_DIVERGENCE: AlertRule<{ divergent: number }> = {
   cooldownMin: 30,
 };
 
+/**
+ * Integridad de exámenes — disparada por el cron check-exam-integrity
+ * (/api/cron/check-exam-integrity, 04:30 UTC diario). Emite
+ * 'exam_integrity_drift' cuando hay exámenes is_completed (test_type='exam')
+ * a los que les faltan >5% de filas en test_questions respecto a
+ * total_questions.
+ *
+ * Origen: caso Rosa (07/06/2026). El examen se marca completado con score/
+ * total correctos pero el detalle por-pregunta no se persistió (saves
+ * fire-and-forget perdidos bajo carga) → /revisar sale vacío EN SILENCIO.
+ * Sin esta regla, solo se ve mirando /admin/salud-sistema activamente; con
+ * ella, llega email proactivo — que es el punto, porque la clase de bug es
+ * "pérdida silenciosa de datos".
+ *
+ * severity 'error': pérdida de datos de usuario confirmada y NO recuperable
+ * (el detalle por-pregunta no se puede reconstruir), pero no es un outage.
+ *
+ * Baseline post-deploy del fix (e52b91fa, 08/06): el histórico pre-fix tarda
+ * ~24h en salir de la ventana de 24h del cron. Un email el primer día con
+ * histórico es esperado; tras eso, cualquier afectado = el bulk-write de
+ * /api/exam/validate se rompió. cooldownMin 24h: el cron corre 1×/día, no
+ * tiene sentido reenviar el mismo run.
+ */
+export const RULE_EXAM_INTEGRITY_DRIFT: AlertRule<{
+  affected: number;
+  empty: number;
+  worstMissing: number;
+  lastRun: Date;
+}> = {
+  name: 'exam_integrity_drift',
+  severity: 'error',
+  query: sql`
+    SELECT
+      COALESCE((metadata->>'affected')::int, 0) AS affected,
+      COALESCE((metadata->>'empty')::int, 0) AS empty,
+      COALESCE((metadata->>'worst_missing')::int, 0) AS "worstMissing",
+      ts AS "lastRun"
+    FROM observable_events
+    WHERE event_type = 'exam_integrity_drift'
+      AND ts > NOW() - INTERVAL '25 hours'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => rows.length > 0 && rows[0].affected >= 1,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Integridad exámenes: ${r.affected} exámenes con filas perdidas${r.empty > 0 ? ` (${r.empty} vacíos)` : ''}`,
+      body:
+        `El cron check-exam-integrity detectó ${r.affected} examen(es) is_completed\n` +
+        `con filas de test_questions faltantes (>5%). ${r.empty} totalmente vacíos.\n` +
+        `Peor caso: faltan ${r.worstMissing} preguntas en un examen.\n\n` +
+        `Clase de bug Rosa (07/06): la nota se guarda pero el detalle por-pregunta\n` +
+        `NO → /revisar sale vacío. El fix (e52b91fa) hace bulk-write en validate.\n\n` +
+        `⚠️ Primer día tras el deploy del 08/06: histórico pre-fix esperado. Tras\n` +
+        `24h, cualquier afectado = el bulk-write de /api/exam/validate se rompió.\n\n` +
+        `Investigar en /admin/salud-sistema o:\n\n` +
+        `  SELECT t.id, t.total_questions, count(tq.id) AS filas\n` +
+        `  FROM tests t LEFT JOIN test_questions tq ON tq.test_id=t.id\n` +
+        `  WHERE t.test_type='exam' AND t.is_completed\n` +
+        `    AND t.completed_at >= NOW()-INTERVAL '24 hours' AND t.total_questions>0\n` +
+        `  GROUP BY t.id HAVING count(tq.id) < t.total_questions*0.95\n` +
+        `  ORDER BY (t.total_questions-count(tq.id)) DESC;`,
+      metadata: { affected: r.affected, empty: r.empty, worstMissing: r.worstMissing, lastRun: r.lastRun },
+      fingerprint: 'exam_integrity_drift',
+    };
+  },
+  cooldownMin: 1440,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
@@ -2284,6 +2354,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_MATERIALIZED_STATS_STALE as AlertRule,
   // Pipeline de stats escribe valores incorrectos (paridad en vivo uqh_v2 vs test_questions)
   RULE_STATS_PARIDAD_DIVERGENCE as AlertRule,
+  // Integridad de exámenes (08/06/2026 post-caso Rosa) — exámenes is_completed
+  // con filas test_questions perdidas (pérdida silenciosa de datos por-pregunta).
+  RULE_EXAM_INTEGRITY_DRIFT as AlertRule,
   // Anti-scraping: barrido masivo del banco de preguntas (02/06/2026, caso Ana
   // Fernández "scrape & refund"). Premium no tiene límite diario → única red.
   RULE_SCRAPING_SWEEP as AlertRule,

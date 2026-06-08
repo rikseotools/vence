@@ -30,6 +30,7 @@ import {
   RULE_POOL_SAMPLER_STALE,
   RULE_SCRAPING_SWEEP,
   RULE_CANARY_QUESTIONS_GATE_FAILED,
+  RULE_EXAM_INTEGRITY_DRIFT,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -256,6 +257,47 @@ describe('RULE_CANARY_QUESTIONS_GATE_FAILED', () => {
     expect(notif.body).toContain('gate_false_positive');
     expect(notif.body).toContain('CAPTCHA_ENABLED=false');
     expect(RULE_CANARY_QUESTIONS_GATE_FAILED.cooldownMin).toBe(15);
+  });
+});
+
+describe('RULE_EXAM_INTEGRITY_DRIFT', () => {
+  const row = (affected: number, empty = 0, worstMissing = 0) => ({
+    affected, empty, worstMissing, lastRun: new Date('2026-06-08T04:30:00Z'),
+  });
+
+  it('dispara con ≥1 examen afectado', () => {
+    expect(RULE_EXAM_INTEGRITY_DRIFT.shouldFire([row(1)])).toBe(true);
+    expect(RULE_EXAM_INTEGRITY_DRIFT.shouldFire([row(50, 30, 77)])).toBe(true);
+  });
+
+  it('NO dispara con 0 afectados', () => {
+    expect(RULE_EXAM_INTEGRITY_DRIFT.shouldFire([row(0)])).toBe(false);
+  });
+
+  it('NO dispara sin filas (cron no emitió evento = todo OK)', () => {
+    expect(RULE_EXAM_INTEGRITY_DRIFT.shouldFire([])).toBe(false);
+  });
+
+  it('notification incluye afectados, vacíos, peor caso y SQL de investigación', () => {
+    const notif = RULE_EXAM_INTEGRITY_DRIFT.buildNotification([row(3, 1, 77)]);
+    expect(notif.title).toContain('3');
+    expect(notif.title).toContain('1 vacíos');
+    expect(notif.body).toContain('77');
+    expect(notif.body).toContain('SELECT');
+    expect(notif.body).toContain('test_questions');
+    expect(notif.fingerprint).toBe('exam_integrity_drift');
+  });
+
+  it('severity error (pérdida de datos confirmada, no recuperable, pero no outage)', () => {
+    expect(RULE_EXAM_INTEGRITY_DRIFT.severity).toBe('error');
+  });
+
+  it('cooldown 24h (el cron corre 1×/día — no reenviar el mismo run)', () => {
+    expect(RULE_EXAM_INTEGRITY_DRIFT.cooldownMin).toBe(1440);
+  });
+
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('exam_integrity_drift');
   });
 });
 
