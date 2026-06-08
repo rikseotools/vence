@@ -811,6 +811,13 @@ const ORDINAL_TO_NUMBER: Record<string, string> = {
   'duodécimo': '12', 'duodecimo': '12',
 }
 
+// Cardinales en palabra → número, para "los TRES primeros artículos"
+const CARDINAL_TO_NUMBER: Record<string, number> = {
+  'un': 1, 'uno': 1, 'una': 1,
+  'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+  'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
+}
+
 /**
  * Extrae números de artículo mencionados en un texto
  * Detecta formatos: "artículo 9", "art. 9", "artículo noveno", "art. noveno"
@@ -845,6 +852,35 @@ export function extractArticleNumbers(text: string): string[] {
     const num = match[1].trim()
     if (!articles.includes(num)) {
       articles.push(num)
+    }
+  }
+
+  // Patrón 4: "los N primeros artículos" / "los primeros N artículos" → 1..N
+  // N como dígito o como cardinal en palabra (dos, tres...). Cap a 30 para no
+  // explotar ante abuso ("los primeros 500 artículos"). Caso real: negativo
+  // cbe5313b "test sobre la ley 39/2015 los tres primeros artículos".
+  const firstNPattern = /\b(?:(\d{1,2})|(un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez))\s+primeros?\s+art[ií]culos?\b|\bprimeros?\s+(?:(\d{1,2})|(un[oa]?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez))\s+art[ií]culos?\b/gi
+  while ((match = firstNPattern.exec(textLower)) !== null) {
+    const digit = match[1] || match[3]
+    const word = match[2] || match[4]
+    const n = digit ? parseInt(digit, 10) : (word ? CARDINAL_TO_NUMBER[word] : 0)
+    if (n > 0 && n <= 30) {
+      for (let i = 1; i <= n; i++) {
+        if (!articles.includes(String(i))) articles.push(String(i))
+      }
+    }
+  }
+
+  // Patrón 5: rango "artículos X a/al/hasta Y" o "del artículo X al Y" → X..Y
+  // Cap del rango a 30 artículos para evitar expansiones absurdas.
+  const rangePattern = /\bart[ií]culos?\s+(?:del\s+)?(\d{1,3})\s+(?:a|al|hasta)\s+(?:el\s+)?(\d{1,3})\b/gi
+  while ((match = rangePattern.exec(textLower)) !== null) {
+    const from = parseInt(match[1], 10)
+    const to = parseInt(match[2], 10)
+    if (from > 0 && to >= from && to - from <= 30) {
+      for (let i = from; i <= to; i++) {
+        if (!articles.includes(String(i))) articles.push(String(i))
+      }
     }
   }
 
