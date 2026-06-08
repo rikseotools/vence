@@ -1087,7 +1087,108 @@ Resultado: la oposición aparece con `seguimiento_change_status='error'` en `/ad
 
 El sensor `regional_scan` y su cron `detect-regional-oeps` ya no existen (ver §10). El descubrimiento de cuerpos nuevos es on-demand por Claude. Para vigilar fuentes nuevas, dar de alta su URL server-rendered en `generic_source_checks` (§10) — las verás bajo el sensor `generic_source`.
 
-## 15. Ver también
+## 15. Acceso a portales por comunidad: técnicas específicas
+
+### 15.1 Generalitat de Catalunya (DOGC + web.gencat.cat)
+
+**Problema:** las URLs antiguas de `web.gencat.cat/ca/generalitat/treballar-generalitat/oposicions/convocatories` devuelven 404. El DOGC tiene el JS-render que bloquea curl/WebFetch estándar para los resultados de búsqueda.
+
+**Patrón de URLs estables (server-rendered):**
+
+| Tipo | Patrón | Ejemplo |
+|------|--------|---------|
+| `seguimiento_url` | `https://web.gencat.cat/ca/generalitat/treballar-generalitat/oposicions/funcionari/funcio-publica/convocatoria-{N}` | `.../convocatoria-870` |
+| `programa_url` | `https://dogc.gencat.cat/ca/document-del-dogc/?documentId={docId}` | `...?documentId=1035641` |
+| PDF directo | `https://portaldogc.gencat.cat/utilsEADOP/AppJava/PdfProviderServlet?versionId={V}&type=01` | `...?versionId=2132526&type=01` |
+
+Donde `N` es el número de registro de la convocatoria (ej: `870` = Resolució PRE/212/2026 de 31 processos) y `docId` el ID de documento DOGC.
+
+**Buscar documentos en el DOGC con la API REST:**
+
+El DOGC tiene una API REST no documentada pero funcional. La forma correcta es POST a `searchDOGC`:
+
+```python
+import urllib.request, ssl, json
+
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+data = json.dumps({
+    "typeSearch": "1",
+    "value": "cos auxiliar administracio generalitat",   # palabras clave
+    "publicationDateInitial": "01/01/2026",             # DD/MM/YYYY — opcional
+    "publicationDateFinal": "30/06/2026",
+    "orderBy": "3",       # 3 = más reciente primero (obligatorio)
+    "page": 1,
+    "numResultsByPage": 10,
+    "advanced": False,
+    "language": "ca",
+    # el resto de campos pueden quedar vacíos / []
+    "title": "", "current": "", "range": [], "issuingAuthority": [],
+    "dispositionDateInitial": "", "dispositionDateFinal": "",
+    "sectionDOGC": [], "thematicDescriptor": [], "organizationDescriptor": [],
+    "geographicDescriptor": [], "aranese": "", "expandSearchFullText": "",
+    "noCurrent": "", "subject": []
+}).encode("utf-8")
+
+req = urllib.request.Request(
+    "https://portaldogc.gencat.cat/eadop-rest/api/dogc/searchDOGC",
+    data=data,
+    headers={
+        "User-Agent": "Mozilla/5.0 Chrome/124.0.0.0",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Origin": "https://dogc.gencat.cat",
+        "Referer": "https://dogc.gencat.cat/"
+    }
+)
+with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+    resp = json.loads(r.read().decode("utf-8", errors="ignore"))
+    for item in resp.get("resultSearch", []):
+        print(f'[{item["date"]}] docId:{item["idDocument"]}')
+        print(f'  {item["title"][:150]}')
+        print(f'  PDF: {item["linkDownloadPDF"]}')
+```
+
+**Resultado:** devuelve `resultSearch[]` con `idDocument`, `title`, `date`, `linkDownloadPDF` (URL directa al PDF con `versionId`). El campo `orderBy` es **obligatorio** — sin él la API devuelve 500.
+
+**Cómo identificar la convocatoria correcta:** el texto completo de la resolución PRE incluye siempre el número de convocatoria y los códigos de trámite de cada proceso (ej: "Convocatòria 870, codi tràmit 878 = Cos auxiliar d'administració C2"). Descargarlo con `pdftotext` confirma en segundos si es el documento correcto.
+
+**URL de seguimiento tras conocer el número:** una vez identificado el número de convocatoria (ej: `870`), la URL `seguimiento_url` es siempre `https://web.gencat.cat/ca/generalitat/treballar-generalitat/oposicions/funcionari/funcio-publica/convocatoria-870`. Esta página está server-rendered, es estable y no requiere sesión.
+
+**Caso real (08/06/2026):** `auxiliar-administrativo-catalunya` tenía `programa_url` apuntando a docId=934181 (documento incorrecto del Consell d'Aran). Buscando "auxiliar administratiu convocatoria generalitat" con fecha 01/02/2026–05/02/2026, se encontró en la primera página docId=1035641 (Resolució PRE/212/2026, convocatoria 870, tramit 878, publicada DOGC 9595 de 02/02/2026, examen previsto "primera quinzena de juny de 2026"). `seguimiento_url` correcta: `convocatoria-870`.
+
+### 15.2 Diputación de Zaragoza (dpz.es) — SSL caducado
+
+`dpz.es` tiene certificado SSL con cadena rota/caducada. Curl y WebFetch estándar fallan. Solución:
+
+```js
+// Playwright con ignoreHTTPSErrors
+const { chromium } = require('/path/to/node_modules/playwright');
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ ignoreHTTPSErrors: true });
+const page = await context.newPage();
+await page.goto('https://www.dpz.es/ciudadano/empleo-publico/nuevo-ingreso/...');
+const text = await page.textContent('body');
+```
+
+O bien con Python: `ssl.CERT_NONE` en el contexto SSL (ejemplo en §15.1).
+
+La URL de seguimiento para la OEP Auxiliar C2 DPZ: `https://www.dpz.es/ciudadano/empleo-publico/nuevo-ingreso/auxiliar-de-administracion-general-oep-2023-7-2024-10-y-2025-9` (confirmada accesible con este método, inscripción cerrada 26/03–27/04/2026, 26 plazas C2).
+
+### 15.3 Ayuntamiento de Madrid (sede.madrid.es / www.madrid.es) — WAF Akamai
+
+Ver §14.3. Resumen: `sede.madrid.es` y `www.madrid.es` tienen WAF Akamai que bloquea cualquier petición automatizada (curl, requests, Playwright) con 403 o "Access Denied". **No hay URL alternativa sin WAF para las fichas de proceso selectivo del Ayuntamiento de Madrid.**
+
+Alternativa estable: usar el BOE como `seguimiento_url` para la convocatoria inicial. Aunque no es una página de seguimiento dinámica, es siempre accesible y es la publicación oficial. Para actualizaciones del proceso (listas admitidos, resultados), hay que acceder manualmente desde un navegador a `sede.madrid.es`.
+
+```js
+// Para Policía Municipal Madrid: BOE de la convocatoria
+seguimiento_url = 'https://www.boe.es/buscar/doc.php?id=BOE-A-2025-25740'
+```
+
+## 16. Ver también
 
 - `docs/maintenance/importar-examen-oficial-completo.md` — flujo end-to-end para importar exámenes oficiales (PDFs → preguntas verificadas activas). Imprescindible tras §7c.
 - `docs/manual-preguntas-oficiales.md` — variante rápida: formato de pregunta oficial, lifecycle, `question_official_exams`, sin imágenes ni psicotécnicas.
