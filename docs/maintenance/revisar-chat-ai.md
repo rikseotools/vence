@@ -409,6 +409,13 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
 - **Causa raíz 2 (prompt)**: el prompt legal de `buildVerificationSystemPrompt` ya tenía "MENSAJES CORTOS" para "No entiendo"/"Más fácil", pero **no cubría un `"no"` a secas ni el desacuerdo** → reexplicaba igual.
 - **Solución 2**: nueva sección `🚫 NUNCA REPITAS LA MISMA EXPLICACIÓN` en ambos prompts (derecho + informática): ante `"no"`/`"no es eso"`/`"sigo sin entenderlo"`/`"no me convence"` → cambiar de enfoque (atacar la confusión más probable, distinguir conceptos parecidos) o preguntar qué no encaja. Verificado E2E: la respuesta al `"no"` baja a Jaccard 0,40 vs la anterior y distingue "reclamación de responsabilidad" (B, en 39/2015) vs "principios del sistema de responsabilidad" (D, en 40/2015). Script `scripts/simulate-neg1-no-followup.ts`.
 
+### 14. Referencias en lenguaje natural a rangos/ordinales de artículos no se parseaban (2026-06-09)
+- **User**: 4b735f8b (Valencia, 05/06/2026, log `cbe5313b`).
+- **Problema**: "test de 20 preguntas sobre la ley 39/2015 **los tres primeros artículos**" → la búsqueda detectó bien la ley pero NO los arts 1-3 (no hay dígitos) → `searchByContextLaw` cayó a semántica `direct` y trajo artículos arbitrarios (22, 41, 42, 125, 133, df1-3, preámbulo). Con contexto equivocado, Sonnet punteó ("no encuentro el texto literal, facilítamelo") → 👎. En el follow-up "puedes crearlos?" sí los generó → fricción innecesaria.
+- **Causa raíz**: `extractArticleNumbers` (`lib/chat/domains/search/queries.ts`) solo cubría "artículo 9", "artículo primero" y "N de la ley". No parseaba ordinales/cardinales/rangos en lenguaje natural.
+- **Solución (parser general, no hardcode)**: añadidos 4 patrones a `extractArticleNumbers` — "los N primeros artículos" (dígito o cardinal en palabra → 1..N), ordinal antes de "artículo" singular ("el primer artículo"), y rangos ("artículos X a/al/hasta Y" → X..Y). Caps a 30 para no explotar ante abuso, rango invertido descartado, "ley 39/2015" no confunde el año. Regresión permanente en `__tests__/lib/chat/extractArticleNumbers.test.ts` (19 casos, incl. negativos/caps). E2E `scripts/simulate-neg2-primeros-articulos.ts`: ahora trae arts 1-3 y genera el test.
+- **Pendiente (producto, no bug)**: que el chat genere tests ad-hoc esquiva la auditoría del banco de preguntas (ver `generar-preguntas-con-ia.md`); son efímeros (no se guardan), pero conviene decidir si el chat debe ofrecer "crear test real" en su lugar.
+
 ## Aprendizajes transversales (para futuras sesiones)
 
 ### "Los N negativos" del panel = `feedback='negative' AND reviewed_at IS NULL`

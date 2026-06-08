@@ -871,6 +871,15 @@ export function extractArticleNumbers(text: string): string[] {
     }
   }
 
+  // Patrón 4-bis: ordinal ANTES de "artículo" en singular ("el primer artículo",
+  // "tercer artículo"). El Patrón 2 solo cubre "artículo primero" (ordinal
+  // después). Se exige singular para no solapar con "los primeros artículos".
+  const ordinalBeforePattern = /\b(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]|quint[oa]|sext[oa]|s[eé]ptim[oa]|octav[oa]|noven[oa]|d[eé]cim[oa]|und[eé]cim[oa]|duod[eé]cim[oa])\s+art[ií]culo\b/gi
+  while ((match = ordinalBeforePattern.exec(textLower)) !== null) {
+    const number = ORDINAL_TO_NUMBER[match[1].toLowerCase()]
+    if (number && !articles.includes(number)) articles.push(number)
+  }
+
   // Patrón 5: rango "artículos X a/al/hasta Y" o "del artículo X al Y" → X..Y
   // Cap del rango a 30 artículos para evitar expansiones absurdas.
   const rangePattern = /\bart[ií]culos?\s+(?:del\s+)?(\d{1,3})\s+(?:a|al|hasta)\s+(?:el\s+)?(\d{1,3})\b/gi
