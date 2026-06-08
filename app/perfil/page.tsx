@@ -266,6 +266,11 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_sermas',
+      label: 'Auxiliar Administrativo SERMAS',
+      data: { name: 'Auxiliar Administrativo del SERMAS (Madrid)', slug: 'auxiliar-administrativo-sermas', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'tcae_sermas_madrid',
       label: 'TCAE SERMAS Madrid',
       data: { name: 'TCAE del Servicio Madrileño de Salud', slug: 'tcae-sermas-madrid', categoria: 'C2', administracion: 'Sanitaria' }

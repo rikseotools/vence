@@ -119,6 +119,7 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo ayuntamiento zaragoza',
   ],
   auxiliar_administrativo_diputacion_zaragoza: [],
+  auxiliar_administrativo_sermas: [],
   tcae_sermas_madrid: [],
   administrativo_galicia: [],
   auxiliar_administrativo_aragon: [],

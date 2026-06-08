@@ -866,6 +866,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_sermas',
+    nombre: 'Auxiliar Administrativo del SERMAS (Madrid)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '🏥'
+  },
+  {
     id: 'auxiliar_administrativo_canarias',
     nombre: 'Auxiliar Administrativo Gobierno de Canarias',
     categoria: 'C2',
@@ -1464,7 +1471,7 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 // Mapa de regiones (ipapi.co) → oposiciones prioritarias de esa comunidad autónoma
 // Las oposiciones estatales (Estado, Justicia) siempre se incluyen como relevantes
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
-  'Madrid': ['auxiliar_administrativo_madrid', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
+  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
@@ -1528,6 +1535,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'administrativo_navarra',            // nueva
   'auxiliar_administrativo_la_rioja',  // nueva
   'enfermero_sas_andalucia',          // sanitaria
+  'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid
   'auxiliar_enfermeria_osakidetza',   // sanitaria País Vasco (TCAE)

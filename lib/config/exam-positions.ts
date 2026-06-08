@@ -128,6 +128,7 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
   // Cuando se importen preguntas oficiales para alguna, añadir las variantes
   // de exam_position aquí (igual que el resto de oposiciones).
   'auxiliar_administrativo_diputacion_zaragoza': [],
+  'auxiliar_administrativo_sermas': [],
   'tcae_sermas_madrid': [],
   'administrativo_galicia': [],
   'auxiliar_administrativo_aragon': [],
@@ -180,6 +181,9 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_catalunya': ['auxiliar-administrativo-catalunya'],
   'auxiliar-administrativo-pais-vasco': ['auxiliar-administrativo-pais-vasco'],
   'auxiliar_administrativo_pais_vasco': ['auxiliar-administrativo-pais-vasco'],
+  // Añadida 09/06/2026 — SERMAS auxiliar administrativo
+  'auxiliar-administrativo-sermas': ['auxiliar-administrativo-sermas'],
+  'auxiliar_administrativo_sermas': ['auxiliar-administrativo-sermas'],
 }
 
 /**

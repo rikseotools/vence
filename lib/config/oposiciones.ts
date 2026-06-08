@@ -3352,6 +3352,87 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // AUXILIAR ADMINISTRATIVO SERMAS (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_sermas',
+    slug: 'auxiliar-administrativo-sermas',
+    positionType: 'auxiliar_administrativo_sermas',
+    examScoring: { penaltyDivisor: 4, source: 'BOCM nº158 04/07/2025 (Resolución 23/06/2025 SERMAS): erróneas restan 1/4 del valor de la correcta, 4 alternativas. confidence:alta' },
+    name: 'Auxiliar Administrativo del Servicio Madrileño de Salud (SERMAS)',
+    shortName: 'Auxiliar Administrativo SERMAS',
+    emoji: '🏥',
+    badge: 'C2',
+    color: 'green',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Organización Política y Sanitaria', subtitle: 'Constitución, CAM y legislación sanitaria', icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución española de 1978' },
+          { id: 2, name: 'El Estatuto de Autonomía de la Comunidad de Madrid' },
+          { id: 3, name: 'La Ley de Gobierno y Administración de la Comunidad de Madrid' },
+          { id: 4, name: 'Ley 14/1986, General de Sanidad' },
+          { id: 5, name: 'Ley 12/2001, de Ordenación Sanitaria de la Comunidad de Madrid' },
+          { id: 6, name: 'Leyes de Violencia de Género e Igualdad' },
+          { id: 7, name: 'Ley 16/2003, de cohesión y calidad del SNS; autonomía del paciente' },
+          { id: 8, name: 'Las modalidades de la asistencia sanitaria' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Derecho Administrativo', subtitle: 'Régimen jurídico y procedimiento', icon: '⚖️',
+        themes: [
+          { id: 9, name: 'Ley 40/2015, de Régimen Jurídico del Sector Público' },
+          { id: 10, name: 'Ley 39/2015, del Procedimiento Administrativo Común (I)' },
+          { id: 11, name: 'Ley 39/2015, del Procedimiento Administrativo Común (II)' },
+        ],
+      },
+      {
+        id: 'bloque3', title: 'Personal y Legislación Laboral', subtitle: 'Empleo público, Estatuto Marco y Seguridad Social', icon: '👥',
+        themes: [
+          { id: 12, name: 'Ley 11/2017, de Buen Gobierno Sanitario del SERMAS' },
+          { id: 13, name: 'Ley 31/1995, de Prevención de Riesgos Laborales' },
+          { id: 14, name: 'Real Decreto Legislativo 5/2015, Estatuto Básico del Empleado Público' },
+          { id: 15, name: 'Estatuto Marco del personal estatutario de los Servicios de Salud (I)' },
+          { id: 16, name: 'Estatuto Marco del personal estatutario de los Servicios de Salud (II)' },
+          { id: 17, name: 'Estatuto Marco del personal estatutario de los Servicios de Salud (III)' },
+          { id: 18, name: 'Ley Orgánica 8/2021, de protección integral a la infancia y adolescencia' },
+          { id: 19, name: 'Real Decreto Legislativo 8/2015, Ley General de la Seguridad Social' },
+        ],
+      },
+      {
+        id: 'bloque4', title: 'Gestión Administrativa y Sanitaria', subtitle: 'Documentación, datos y contratación', icon: '🏥',
+        themes: [
+          { id: 20, name: 'Documentación de uso de las Instituciones Sanitarias' },
+          { id: 21, name: 'El servicio de Admisión y documentación clínica' },
+          { id: 22, name: 'Información administrativa y atención al ciudadano en la Comunidad de Madrid' },
+          { id: 23, name: 'La protección de datos. Reglamento (UE) 2016/679 (RGPD)' },
+          { id: 24, name: 'Ley 9/2017, de Contratos del Sector Público' },
+          { id: 25, name: 'Los centros hospitalarios: estructura funcional' },
+          { id: 26, name: 'Plataformas informáticas sanitarias de la Comunidad de Madrid' },
+        ],
+      },
+      {
+        id: 'bloque5', title: 'Informática y Administración Electrónica', subtitle: 'Windows 10, Office 2016 e internet', icon: '💻',
+        themes: [
+          { id: 27, name: 'Trabajo en el entorno gráfico de Windows 10' },
+          { id: 28, name: 'Word 2016: principales funciones y utilidades' },
+          { id: 29, name: 'Excel 2016: Hojas de cálculo' },
+          { id: 30, name: 'Redes de Comunicaciones e Internet' },
+          { id: 31, name: 'La Administración Electrónica en la Comunidad de Madrid' },
+        ],
+      },
+    ],
+    totalTopics: 31,
+    aliases: ['sermas', 'auxiliar sermas', 'sermas madrid', 'auxiliar administrativo madrid salud', 'aux admin sermas', 'sermas c2', 'c2 sermas', 'auxiliar administrativo sermas'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-sermas', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/auxiliar-administrativo-sermas/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-sermas/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // CELADOR SCS CANARIAS (E)
   // ========================================
   {
