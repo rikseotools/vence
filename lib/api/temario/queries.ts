@@ -6,14 +6,16 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getTemarioDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { topics, topicScope, articles, laws, questions } from '@/db/schema'
+import { topics, topicScope, articles, laws, questions, videoCourses } from '@/db/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
 import type {
   TopicContent,
   LawWithArticles,
+  VideoCourse,
 } from './schemas'
+import { deriveVideoCourses } from './videoCourses'
 import {
   OPOSICIONES,
   type OposicionSlug,
@@ -35,6 +37,7 @@ type TopicContentBase = {
   oposicionName: string
   laws: LawWithArticles[]
   totalArticles: number
+  videoCourses: VideoCourse[]
 }
 
 // Función interna que obtiene el contenido del tema
@@ -96,6 +99,7 @@ async function getTopicContentBaseInternal(
       oposicionName: oposicion.name,
       laws: [],
       totalArticles: 0,
+      videoCourses: [],
     }
   }
 
@@ -265,6 +269,28 @@ async function getTopicContentBaseInternal(
     totalArticles += sortedArticles.length
   }
 
+  // Derivar vídeo-cursos del tema: cruzar las leyes del tema con
+  // video_courses.law_id. Fuente única — versión correcta garantizada (solo
+  // aparece el curso si la ley exacta está en el scope). Reemplaza el mapping
+  // hardcodeado por oposición (ver lib/api/temario/videoCourses.ts).
+  let videoCoursesForTopic: VideoCourse[] = []
+  if (sortedLawIds.length > 0) {
+    const courseRows = await db
+      .select({
+        slug: videoCourses.slug,
+        title: videoCourses.title,
+        totalLessons: videoCourses.totalLessons,
+        totalDurationMinutes: videoCourses.totalDurationMinutes,
+        description: videoCourses.description,
+        lawId: videoCourses.lawId,
+        isActive: videoCourses.isActive,
+        orderPosition: videoCourses.orderPosition,
+      })
+      .from(videoCourses)
+      .where(and(eq(videoCourses.isActive, true), inArray(videoCourses.lawId, sortedLawIds)))
+    videoCoursesForTopic = deriveVideoCourses(sortedLawIds, courseRows)
+  }
+
   return {
     topicNumber: topic.topicNumber,
     title: topic.title,
@@ -273,6 +299,7 @@ async function getTopicContentBaseInternal(
     oposicionName: oposicion.name,
     laws: lawsWithArticles,
     totalArticles,
+    videoCourses: videoCoursesForTopic,
   }
 }
 

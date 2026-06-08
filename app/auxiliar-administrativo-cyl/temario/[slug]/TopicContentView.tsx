@@ -7,26 +7,10 @@ import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
-import VideoCourseBanner from '@/components/VideoCourseBanner'
+import TopicVideoCourses from '@/components/TopicVideoCourses'
 import TopicNavFooter from '@/components/TopicNavFooter'
 import MarkdownContent from '@/components/MarkdownContent'
 
-// Mapping de temas a cursos de video
-const topicVideoCourses: Record<number, {
-  slug: string
-  title: string
-  totalLessons: number
-  totalDurationMinutes: number
-  description: string
-}> = {
-  25: {
-    slug: 'windows-11',
-    title: 'Curso de Windows 11',
-    totalLessons: 3,
-    totalDurationMinutes: 192,
-    description: '38 lecciones en video: escritorio, configuracion, herramientas y utilidades de Windows 11.',
-  },
-}
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -241,15 +225,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
         </header>
 
         {/* Video course banner */}
-        {topicVideoCourses[content.topicNumber] && (
-          <VideoCourseBanner
-            courseSlug={topicVideoCourses[content.topicNumber].slug}
-            courseTitle={topicVideoCourses[content.topicNumber].title}
-            totalLessons={topicVideoCourses[content.topicNumber].totalLessons}
-            totalDurationMinutes={topicVideoCourses[content.topicNumber].totalDurationMinutes}
-            description={topicVideoCourses[content.topicNumber].description}
-          />
-        )}
+        <TopicVideoCourses courses={content.videoCourses} />
 
         {/* Laws and articles */}
         <div className="space-y-6">

@@ -9,60 +9,9 @@ import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/s
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
-import VideoCourseBanner from '@/components/VideoCourseBanner'
+import TopicVideoCourses from '@/components/TopicVideoCourses'
 import TopicNavFooter from '@/components/TopicNavFooter'
 
-// Mapping de temas a cursos de video
-const topicVideoCourses: Record<number, {
-  slug: string
-  title: string
-  totalLessons: number
-  totalDurationMinutes: number
-  description: string
-}> = {
-  106: {
-    slug: 'windows-11',
-    title: 'Curso de Windows 11',
-    totalLessons: 3,
-    totalDurationMinutes: 192,
-    description: '38 lecciones en video: escritorio, configuración, herramientas y utilidades de Windows 11.',
-  },
-  107: {
-    slug: 'windows-11',
-    title: 'Curso de Windows 11',
-    totalLessons: 3,
-    totalDurationMinutes: 192,
-    description: '38 lecciones en video: escritorio, configuración, herramientas y utilidades de Windows 11.',
-  },
-  108: {
-    slug: 'word-365',
-    title: 'Curso de Word 365',
-    totalLessons: 6,
-    totalDurationMinutes: 365,
-    description: '74 lecciones en video: desde lo básico hasta macros, ChatGPT y colaboración online.',
-  },
-  109: {
-    slug: 'excel-365',
-    title: 'Curso de Excel 365',
-    totalLessons: 7,
-    totalDurationMinutes: 423,
-    description: '79 lecciones en video: fórmulas, tablas dinámicas, gráficos, macros y más.',
-  },
-  110: {
-    slug: 'access-365',
-    title: 'Curso de Access 365',
-    totalLessons: 5,
-    totalDurationMinutes: 339,
-    description: '60 lecciones en video: tablas, consultas, formularios, informes, macros y seguridad.',
-  },
-  111: {
-    slug: 'outlook-365',
-    title: 'Curso de Outlook 365',
-    totalLessons: 3,
-    totalDurationMinutes: 196,
-    description: '45 lecciones en video: gestión de correo, calendario, contactos, configuración y Outlook Online.',
-  },
-}
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -302,15 +251,7 @@ export default function TopicContentView({ content, updatedAt }: TopicContentVie
         </header>
 
         {/* Video course banner for topics 108 (Word) and 109 (Excel) */}
-        {topicVideoCourses[content.topicNumber] && (
-          <VideoCourseBanner
-            courseSlug={topicVideoCourses[content.topicNumber].slug}
-            courseTitle={topicVideoCourses[content.topicNumber].title}
-            totalLessons={topicVideoCourses[content.topicNumber].totalLessons}
-            totalDurationMinutes={topicVideoCourses[content.topicNumber].totalDurationMinutes}
-            description={topicVideoCourses[content.topicNumber].description}
-          />
-        )}
+        <TopicVideoCourses courses={content.videoCourses} />
 
         {/* Laws and articles */}
         <div className="space-y-6">

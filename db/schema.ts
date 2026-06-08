@@ -3376,8 +3376,18 @@ export const videoCourses = pgTable("video_courses", {
 	isActive: boolean("is_active").default(true),
 	orderPosition: integer("order_position").default(0),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	// Ley a la que corresponde el curso. El temario deriva el banner cruzando
+	// topic_scope (leyes del tema) con esta columna — fuente única, sustituye al
+	// mapping hardcodeado por oposición. Migración 20260608_video_courses_law_id.
+	lawId: uuid("law_id"),
 }, (table) => [
 	unique("video_courses_slug_key").on(table.slug),
+	index("idx_video_courses_law_id").using("btree", table.lawId.asc().nullsLast().op("uuid_ops")).where(sql`(law_id IS NOT NULL)`),
+	foreignKey({
+		columns: [table.lawId],
+		foreignColumns: [laws.id],
+		name: "video_courses_law_id_fkey"
+	}).onDelete("set null"),
 ]);
 
 export const userVideoProgress = pgTable("user_video_progress", {

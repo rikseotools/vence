@@ -9,6 +9,7 @@ import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/s
 import { useAuth } from '@/contexts/AuthContext'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import TopicNavFooter from '@/components/TopicNavFooter'
+import TopicVideoCourses from '@/components/TopicVideoCourses'
 import MarkdownContent from '@/components/MarkdownContent'
 
 interface TopicContentViewProps {
@@ -181,6 +182,9 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
             </p>
           </div>
         </header>
+
+        {/* Vídeo-cursos del tema (derivados de las leyes — ver content.videoCourses) */}
+        <TopicVideoCourses courses={content.videoCourses} />
 
         {/* Laws and articles */}
         <div className="space-y-6">

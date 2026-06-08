@@ -35,6 +35,19 @@ export const LawWithArticlesSchema = z.object({
   articleCount: z.number(),
 })
 
+// Vídeo-curso asociado a un tema. Se deriva automáticamente cruzando las leyes
+// del tema (topic_scope) con video_courses.law_id — NO mapping hardcodeado por
+// oposición (ver migración 20260608_video_courses_law_id). Garantiza versión
+// correcta: solo aparece el curso si la ley exacta (p.ej. "Windows 11") está en
+// el temario de esa oposición.
+export const VideoCourseSchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  totalLessons: z.number(),
+  totalDurationMinutes: z.number(),
+  description: z.string().nullable(),
+})
+
 // ============================================
 // SCHEMAS DE PROGRESO Y DESBLOQUEO
 // ============================================
@@ -75,6 +88,9 @@ export const TopicContentSchema = z.object({
   // Contenido: leyes con sus artículos
   laws: z.array(LawWithArticlesSchema),
   totalArticles: z.number(),
+
+  // Vídeo-cursos derivados de las leyes del tema (vacío si ninguna ley tiene curso).
+  videoCourses: z.array(VideoCourseSchema).default([]),
 
   // Progreso del usuario (null si no autenticado)
   userProgress: UserProgressSchema.nullable(),
@@ -123,6 +139,7 @@ export const TopicContentResponseSchema = z.object({
 export type Article = z.infer<typeof ArticleSchema>
 export type Law = z.infer<typeof LawSchema>
 export type LawWithArticles = z.infer<typeof LawWithArticlesSchema>
+export type VideoCourse = z.infer<typeof VideoCourseSchema>
 export type UnlockRequirements = z.infer<typeof UnlockRequirementsSchema>
 export type UserProgress = z.infer<typeof UserProgressSchema>
 export type TopicContent = z.infer<typeof TopicContentSchema>
