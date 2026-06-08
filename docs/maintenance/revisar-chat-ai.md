@@ -400,7 +400,24 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
   - **Short-circuit en `canHandle`**: si `isInformaticsQuery=true`, capturar directamente.
 - Commit `5ce09b44`.
 
+### 13. Historial con turnos `assistant` VACÍOS por race de streaming + follow-up "no" reexplicado (2026-06-09)
+- **User**: 4b735f8b (Valencia, 04/06/2026, log `40cc425e`) — pregunta "NO constituye objeto de la Ley 39/2015" (correcta D).
+- **Problema**: el usuario pulsó "Explícame" 3 veces en ráfaga y luego escribió `"no"`. El sistema **repitió la misma explicación** → 👎.
+- **Diagnóstico via traces (el `messagesArray` del `llm_call` fue la clave)**: el historial enviado a GPT-4o tenía los 3 turnos `assistant` con `content` **vacío** (`len=0`). El LLM nunca vio sus propias respuestas → ante un `"no"`, con un system prompt que solo sabe "explica por qué es correcta", solo podía repetir.
+- **Causa raíz 1 (frontend, race)**: `AIChatWidget.js` — el guard `if (isLoading || isStreaming) return` usa estado de React (async), así que dos envíos en ráfaga pasan ambos. El stream escribe siempre en `updated[length-1]`, dejando placeholders viejos huérfanos con `content:''` que luego `cleanHistory` manda vacíos. **NO sistémico**: solo 2 de 400 `llm_call` recientes lo sufrían.
+- **Solución 1**: guard **síncrono** con `isSendingRef` (ref, no estado) al inicio de `sendMessage`, reseteado en `finally`. Elimina el solapamiento de raíz.
+- **Causa raíz 2 (prompt)**: el prompt legal de `buildVerificationSystemPrompt` ya tenía "MENSAJES CORTOS" para "No entiendo"/"Más fácil", pero **no cubría un `"no"` a secas ni el desacuerdo** → reexplicaba igual.
+- **Solución 2**: nueva sección `🚫 NUNCA REPITAS LA MISMA EXPLICACIÓN` en ambos prompts (derecho + informática): ante `"no"`/`"no es eso"`/`"sigo sin entenderlo"`/`"no me convence"` → cambiar de enfoque (atacar la confusión más probable, distinguir conceptos parecidos) o preguntar qué no encaja. Verificado E2E: la respuesta al `"no"` baja a Jaccard 0,40 vs la anterior y distingue "reclamación de responsabilidad" (B, en 39/2015) vs "principios del sistema de responsabilidad" (D, en 40/2015). Script `scripts/simulate-neg1-no-followup.ts`.
+
 ## Aprendizajes transversales (para futuras sesiones)
+
+### "Los N negativos" del panel = `feedback='negative' AND reviewed_at IS NULL`
+El panel `/admin/ai` cuenta sobre `reviewed_at IS NULL`, **no** sobre el booleano `reviewed` — divergen (caso 09/06: 54 negativos totales, 27 con `reviewed=false`, **4** con `reviewed_at IS NULL`). Si el usuario dice "revisa los 4 negativos", filtrar por `reviewed_at IS NULL`, no por `reviewed`.
+
+### Al diagnosticar un negativo, vuelca SIEMPRE el `messagesArray` del trace `llm_call`
+Un `full_response` que repite contenido suele esconder un **historial corrupto**: turnos `assistant` con `content` vacío (race de streaming, ver #13). No es visible en `ai_chat_logs`; solo aparece en `ai_chat_traces.input_data.messagesArray`. Si los assistant llegan vacíos, el LLM responde a ciegas y cualquier fix de prompt es insuficiente sin arreglar antes el historial.
+
+
 
 ### Estrategia para auditorías de gran volumen (>50 logs)
 

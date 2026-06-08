@@ -67,6 +67,12 @@ export default function AIChatWidget() {
   const abortControllerRef = useRef(null)
   const contentBufferRef = useRef('')
   const lastUpdateRef = useRef(0)
+  // Guard síncrono single-flight: isLoading/isStreaming son estado de React y
+  // se actualizan async, así que dos envíos en ráfaga (ej: 3 clics seguidos en
+  // "Explícame") pasan ambos el check y solapan streams. El stream escribe en
+  // updated[length-1], dejando placeholders viejos huérfanos con content:'' que
+  // luego se mandan como historial vacío al LLM → reexplica a ciegas (👎).
+  const isSendingRef = useRef(false)
 
   // NO auto-scroll durante ni después del streaming
   // El usuario lee desde arriba a su ritmo, sin interrupciones
@@ -278,7 +284,8 @@ export default function AIChatWidget() {
 
   const sendMessage = useCallback(async (messageOverride = null, suggestionLabel = null, questionContextOverride = null) => {
     const userMessage = (messageOverride || input).trim()
-    if (!userMessage || isLoading || isStreaming) return
+    if (!userMessage || isLoading || isStreaming || isSendingRef.current) return
+    isSendingRef.current = true
 
     const currentSuggestion = suggestionLabel || suggestionUsed
 
@@ -601,6 +608,7 @@ export default function AIChatWidget() {
       setIsLoading(false)
       setIsStreaming(false)
       abortControllerRef.current = null
+      isSendingRef.current = false
     }
   }, [input, isLoading, isStreaming, messages, currentQuestionContext, oposicionId, user, suggestionUsed, isPremium])
 
