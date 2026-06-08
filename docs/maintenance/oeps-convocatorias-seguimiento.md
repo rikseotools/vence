@@ -1188,7 +1188,46 @@ Alternativa estable: usar el BOE como `seguimiento_url` para la convocatoria ini
 seguimiento_url = 'https://www.boe.es/buscar/doc.php?id=BOE-A-2025-25740'
 ```
 
-## 16. Ver también
+## 16. Audit de seguimiento_url en catalogadas (08/06/2026)
+
+Se auditaron todas las `seguimiento_url` de las 464 oposiciones `catalogada` (inactivas). Resultado: 464/464 tienen URL. Se corrigieron **~42 slugs** con URLs rotas o inaccesibles.
+
+### Patrones de URL a evitar
+
+| Patrón | Motivo |
+|--------|--------|
+| `www.madrid.es/portales/munimadrid/...` | WAF Akamai → 403 (solo legible en browser) |
+| `dipalme.org` (Almería) | Timeout sistemático en automatización |
+| `registro.diputaciondeburgos.es` | Timeout sistemático |
+| `www.terrassa.cat` | 403 para toda automatización |
+| `www.alcobendas.org` | 403 |
+| Dominios Liferay SPA con 1-8 líneas | `dphuesca.es`, `diputaciondevalladolid.es`, `dipucuenca.es`, `majadahonda.org`, `trescantos.es`, `asturias.es` — HTML shell; el LLM semantic sí puede leer su contenido |
+| `seuelectronica.vic.cat` | Connection refused (dominio migrado a www.vic.cat) |
+
+### Correcciones principales aplicadas
+
+- **SERIS (Rioja Salud)**: `/profesionales/recursos-humanos` (→ error-404) → `/profesionales`
+- **SES Extremadura**: `/seleccionpersonal/` (1L) → `/seleccion-personal` (96L)
+- **INGESA**: `/Novedades/Novedades-2025.html` (404) → `/ingesa`
+- **Cabildo Lanzarote**: Liferay SPA → `cabildodelanzarote.convoca.online`
+- **Cabildo La Palma**: timeout en sede electrónica → `cabildodelapalma.es`
+- **Diputación Lugo**: portaltransparencia.deputacionlugo.org (1L SPA) → `www.deputacionlugo.gal`
+- **Comunidad de Madrid** (admin/agente forestal): `/servicios/empleo/oposiciones` (404) → `/empleo`
+- **Diputación Ávila**: `/diputacion/oferta-empleo-publico` (soft 404) → root
+- **Diputaciones Tarragona y Toledo**: paths inexistentes → roots
+- **Ceuta bombero/policía**: URL con fecha específica 2024 → `/ceuta/por-servicios/tablon`
+- **León y Oviedo ayuntamientos**: paths de oposiciones desaparecidos → roots
+- **Universidades UIB, Unirioja, ULPGC**: redirect loops / 404 → paths funcionales
+- **Bombero Consorcio Huelva**: `bomberoshuelva.es` (DNS inexistente) → `diphuelva.es/empleopublico/`
+- **Bombero Consorcio Ourense**: path 404 en depourense.gal → root
+
+### Comportamiento de URLs bot-protegidas
+
+- `murciasalud.es/oposicionsms` → redirige a Perf Drive (bot protection). Devuelve 200 con contenido fijo → el sensor LLM semantic puede detectar cambios en el redirect destination si cambia.
+- `ssreyes.org` → redirige a `/verify.html` (verificación). Similar.
+- Para estas, el seguimiento funciona solo desde browser o tras cookie de bot-check.
+
+## 17. Ver también
 
 - `docs/maintenance/importar-examen-oficial-completo.md` — flujo end-to-end para importar exámenes oficiales (PDFs → preguntas verificadas activas). Imprescindible tras §7c.
 - `docs/manual-preguntas-oficiales.md` — variante rápida: formato de pregunta oficial, lifecycle, `question_official_exams`, sin imágenes ni psicotécnicas.
