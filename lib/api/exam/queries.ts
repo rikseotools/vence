@@ -183,8 +183,8 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 
       answerId = existing[0].id
 
-      // Actualizar score del test
-      await updateTestScore(params.testId)
+      // Score se actualiza en bloque al finalizar el examen (markTestAsCompleted en /api/exam/validate).
+      // Hacerlo aquí por cada save individual crea race conditions con el validate final.
 
       return {
         success: true,
@@ -254,8 +254,8 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 
       answerId = result[0].id
 
-      // Actualizar score del test
-      await updateTestScore(params.testId)
+      // Score se actualiza en bloque al finalizar el examen (markTestAsCompleted en /api/exam/validate).
+      // Hacerlo aquí por cada save individual crea race conditions con el validate final.
 
       return {
         success: true,

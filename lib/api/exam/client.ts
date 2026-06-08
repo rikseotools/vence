@@ -26,7 +26,19 @@ export type {
  */
 export async function validateExam(
   testId: string | undefined,
-  answers: Array<{ questionId: string; userAnswer: string | null }>
+  answers: Array<{
+    questionId: string
+    userAnswer: string | null
+    // Enriquecimiento opcional: permite a validate persistir test_questions en
+    // bloque (fiable) en vez de depender de saves fire-and-forget durante el examen.
+    questionOrder?: number
+    questionText?: string
+    articleId?: string | null
+    articleNumber?: string | null
+    lawName?: string | null
+    temaNumber?: number | null
+    difficulty?: string | null
+  }>
 ): Promise<ValidatedResults> {
   if (!answers || answers.length === 0) {
     throw new Error('Empty answers array')

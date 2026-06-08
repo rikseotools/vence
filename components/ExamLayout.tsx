@@ -720,9 +720,19 @@ export default function ExamLayout({
     setIsSaving(true)
 
     try {
+      // Enviamos metadatos por-pregunta (NO la respuesta correcta — eso lo
+      // calcula el servidor) para que validate persista test_questions en bloque
+      // de forma fiable. El cliente ya tiene estos datos en effectiveQuestions.
       const answersForApi = effectiveQuestions.map((question, index) => ({
         questionId: question.id,
-        userAnswer: userAnswers[index] || null
+        userAnswer: userAnswers[index] || null,
+        questionOrder: index + 1,
+        questionText: question.question_text || '',
+        articleId: question.articles?.id || question.primary_article_id || null,
+        articleNumber: question.articles?.article_number || null,
+        lawName: question.articles?.laws?.short_name || null,
+        temaNumber: question.tema_number ?? null,
+        difficulty: normalizeDifficulty(question.difficulty),
       }))
 
       console.log('🔒 Enviando respuestas a API /api/exam/validate (timeout 30s, retry x2)...')
@@ -871,42 +881,11 @@ export default function ExamLayout({
 
       console.log(`✅ ${allAnswers.length} respuestas preparadas para análisis`)
 
-      // Guardar preguntas sin respuesta como incorrectas (para historial de aprendizaje)
-      if (currentTestSession?.id) {
-        const unanswered = allAnswers.filter(a => a.selectedAnswer === -1)
-        if (unanswered.length > 0) {
-          console.log(`📝 Guardando ${unanswered.length} preguntas sin respuesta como incorrectas`)
-          const examAuthHeaders = await getAuthHeaders()
-          for (const answer of unanswered) {
-            const correctLetter = apiResult?.results?.[answer.questionIndex]?.correctAnswer || 'a'
-            fetch('/api/exam/answer', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...examAuthHeaders },
-              body: JSON.stringify({
-                testId: currentTestSession.id,
-                questionId: effectiveQuestions[answer.questionIndex]?.id || null,
-                questionOrder: answer.questionIndex + 1,
-                userAnswer: '',
-                correctAnswer: correctLetter,
-                questionText: effectiveQuestions[answer.questionIndex]?.question_text || '',
-                articleId: effectiveQuestions[answer.questionIndex]?.articles?.id || null,
-                articleNumber: effectiveQuestions[answer.questionIndex]?.articles?.article_number || null,
-                lawName: effectiveQuestions[answer.questionIndex]?.articles?.laws?.short_name || null,
-                temaNumber: effectiveQuestions[answer.questionIndex]?.tema_number || null,
-                difficulty: normalizeDifficulty(effectiveQuestions[answer.questionIndex]?.difficulty),
-                timeSpentSeconds: 0,
-                confidenceLevel: null,
-              })
-            }).catch(() => {})
-          }
-        }
-      }
-
-      if (currentTestSession?.id) {
-        // Score = COUNT de aciertos (no porcentaje). El % se deriva en stats.
-        await updateTestScore(currentTestSession.id, correctCount)
-        console.log(`✅ Score actualizado: ${correctCount}/${effectiveQuestions.length}`)
-      }
+      // NOTA: la persistencia de test_questions (respondidas + en blanco) y el
+      // score/total ya los hace /api/exam/validate en bloque (1 UPSERT fiable)
+      // al corregir. Antes aquí se lanzaban ~N saves fire-and-forget para los
+      // blancos — poco fiables bajo carga y causa del race que corrompía el
+      // score (bug Rosa 07/06). Eliminado: validate es ahora la fuente única.
 
       if (currentTestSession?.id) {
         console.log(`🏁 Marcando test como completado...`)

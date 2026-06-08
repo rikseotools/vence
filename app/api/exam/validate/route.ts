@@ -9,8 +9,8 @@ import { NextRequest, NextResponse } from 'next/server'
 export const maxDuration = 60
 
 import { getDb } from '@/db/client'
-import { questions, tests } from '@/db/schema'
-import { inArray, eq } from 'drizzle-orm'
+import { questions, tests, testQuestions } from '@/db/schema'
+import { inArray, eq, sql } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
@@ -19,7 +19,18 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 const examAnswerSchema = z.object({
   questionId: z.string().uuid('ID de pregunta inválido'),
-  userAnswer: z.string().length(1).nullable() // 'a', 'b', 'c', 'd' o null
+  userAnswer: z.string().length(1).nullable(), // 'a', 'b', 'c', 'd' o null
+  // Campos de enriquecimiento OPCIONALES (additivos): el cliente los manda para
+  // que validate persista las filas de test_questions en bloque (fiable) en vez
+  // de depender de ~50 saves fire-and-forget durante el examen. Si no llegan, el
+  // servidor rellena lo que puede desde la tabla questions.
+  questionOrder: z.number().int().min(1).optional(),
+  questionText: z.string().optional(),
+  articleId: z.string().uuid().nullable().optional(),
+  articleNumber: z.string().nullable().optional(),
+  lawName: z.string().nullable().optional(),
+  temaNumber: z.number().int().nullable().optional(),
+  difficulty: z.string().nullable().optional(),
 })
 
 const validateExamRequestSchema = z.object({
@@ -56,6 +67,101 @@ async function markTestAsCompleted(testId: string, score: number, totalQuestions
 }
 
 // ============================================
+// PERSISTENCIA EN BLOQUE DE test_questions
+// ============================================
+//
+// Escribe TODAS las preguntas del examen (respondidas + en blanco) en una sola
+// query UPSERT. Idempotente vía constraint (test_id, question_order): si los
+// saves en tiempo real (resume) ya escribieron alguna fila, se actualiza.
+//
+// Robustez: si esto falla, se loguea pero NO se aborta validate — el usuario
+// debe ver su nota igualmente (score/results vienen de memoria del servidor).
+// La pérdida de filas degradaría solo el detalle por-pregunta de /revisar.
+type ValidatedResult = {
+  questionId: string
+  userAnswer: string | null
+  correctAnswer: string
+  correctIndex: number
+  isCorrect: boolean
+}
+type QuestionMeta = {
+  correct: number
+  explanation: string | null
+  questionText: string
+  difficulty: string | null
+  primaryArticleId: string | null
+}
+
+async function persistExamQuestions(
+  testId: string,
+  answers: ExamAnswer[],
+  results: ValidatedResult[],
+  metaMap: Map<string, QuestionMeta>
+): Promise<void> {
+  try {
+    const db = getDb()
+
+    // userId del test (para poblar test_questions.user_id como hacen los saves directos)
+    const testRow = await db
+      .select({ userId: tests.userId })
+      .from(tests)
+      .where(eq(tests.id, testId))
+      .limit(1)
+    const userId = testRow[0]?.userId ?? null
+
+    // Construir filas. Se omiten preguntas no encontradas en BD (correctIndex -1):
+    // son edge-cases (preguntas retiradas) y no tienen metadatos válidos.
+    const rows = results
+      .map((r, i) => {
+        if (r.correctIndex < 0) return null
+        const meta = metaMap.get(r.questionId)
+        if (!meta) return null
+        // Campos de enriquecimiento del cliente (additivos); fallback al servidor.
+        const clientAnswer = answers[i]
+        const answered = r.userAnswer != null && r.userAnswer !== ''
+        return {
+          testId,
+          userId,
+          questionId: r.questionId,
+          articleId: clientAnswer?.articleId ?? meta.primaryArticleId ?? null,
+          questionOrder: clientAnswer?.questionOrder ?? i + 1,
+          questionText: clientAnswer?.questionText || meta.questionText || '',
+          userAnswer: r.userAnswer ?? '',
+          correctAnswer: r.correctAnswer,
+          isCorrect: r.isCorrect,
+          articleNumber: clientAnswer?.articleNumber ?? null,
+          lawName: clientAnswer?.lawName ?? null,
+          temaNumber: clientAnswer?.temaNumber ?? null,
+          difficulty: clientAnswer?.difficulty ?? meta.difficulty ?? null,
+          wasBlank: !answered,
+        }
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+
+    if (rows.length === 0) return
+
+    // UPSERT en bloque sobre la constraint única (test_id, question_order).
+    await db
+      .insert(testQuestions)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: [testQuestions.testId, testQuestions.questionOrder],
+        set: {
+          userAnswer: sql`excluded.user_answer`,
+          correctAnswer: sql`excluded.correct_answer`,
+          isCorrect: sql`excluded.is_correct`,
+          wasBlank: sql`excluded.was_blank`,
+        },
+      })
+
+    console.log(`✅ [API/exam/validate] ${rows.length} filas persistidas en test_questions (bulk) para test ${testId}`)
+  } catch (error) {
+    // No abortamos validate: el usuario debe ver su nota igualmente.
+    console.error('❌ [API/exam/validate] Error persistiendo test_questions en bloque:', error)
+  }
+}
+
+// ============================================
 // FUNCIÓN DE VALIDACIÓN
 // ============================================
 
@@ -75,22 +181,35 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
       }
     }
 
-    // Consultar respuestas correctas de la BD
+    // Consultar respuestas correctas de la BD (+ campos core para persistir
+    // test_questions de forma fiable en bloque al final del examen)
     const dbQuestions = await db
       .select({
         id: questions.id,
         correctOption: questions.correctOption,
-        explanation: questions.explanation
+        explanation: questions.explanation,
+        questionText: questions.questionText,
+        difficulty: questions.difficulty,
+        primaryArticleId: questions.primaryArticleId
       })
       .from(questions)
       .where(inArray(questions.id, questionIds))
 
-    // Crear mapa de respuestas correctas
-    const correctAnswersMap = new Map<string, { correct: number; explanation: string | null }>()
+    // Crear mapa de respuestas correctas (+ metadatos core de cada pregunta)
+    const correctAnswersMap = new Map<string, {
+      correct: number
+      explanation: string | null
+      questionText: string
+      difficulty: string | null
+      primaryArticleId: string | null
+    }>()
     for (const q of dbQuestions) {
       correctAnswersMap.set(q.id, {
         correct: q.correctOption,
-        explanation: q.explanation
+        explanation: q.explanation,
+        questionText: q.questionText,
+        difficulty: q.difficulty,
+        primaryArticleId: q.primaryArticleId
       })
     }
 
@@ -158,9 +277,14 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
       testId: testId || 'no proporcionado'
     })
 
-    // 🔴 FIX: Marcar test como completado ANTES de devolver la respuesta
-    // Esto evita el bug de "exámenes fantasma" cuando el usuario navega fuera
+    // 🔴 Persistencia autoritativa: validate recibe TODAS las respuestas de una
+    // vez, así que escribe las filas de test_questions en bloque (1 query) en vez
+    // de depender de ~50 saves fire-and-forget durante el examen (poco fiables
+    // bajo carga → filas perdidas, bug 30/40 exámenes 08/06). markTestAsCompleted
+    // fija score/total DESPUÉS, con la vista completa.
     if (testId) {
+      await persistExamQuestions(testId, answers, results, correctAnswersMap)
+
       const completed = await markTestAsCompleted(testId, totalCorrect, totalQuestions)
       if (!completed) {
         console.warn('⚠️ [API/exam/validate] No se pudo marcar el test como completado, pero continuamos')
