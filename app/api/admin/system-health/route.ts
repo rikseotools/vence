@@ -67,6 +67,10 @@ const UI_FROZEN_AMBER = 3
 const UI_FROZEN_RED = 10
 const DRIFT_AMBER = 1
 const DRIFT_RED = 5
+// Integridad de exámenes: nº de exámenes con filas test_questions faltantes
+// (>5%) en 24h, según el cron check-exam-integrity. Alineado con drift.
+const EXAM_INTEGRITY_AMBER = 1
+const EXAM_INTEGRITY_RED = 5
 const INSERT_MEAN_AMBER_MS = 80
 const INSERT_MEAN_RED_MS = 250
 
@@ -136,6 +140,11 @@ function classifyUiFrozen(count: number): Status {
 function classifyDrift(count: number): Status {
   if (count >= DRIFT_RED) return 'red'
   if (count >= DRIFT_AMBER) return 'amber'
+  return 'green'
+}
+function classifyExamIntegrity(affected: number): Status {
+  if (affected >= EXAM_INTEGRITY_RED) return 'red'
+  if (affected >= EXAM_INTEGRITY_AMBER) return 'amber'
   return 'green'
 }
 function classifyInsertLatency(mean_ms: number | null): Status {
@@ -222,6 +231,7 @@ async function _GET(request: NextRequest) {
     requestLatencyResult,
     canaryEventsResult,
     trafficResult,
+    examIntegrityResult,
   ] = await Promise.all([
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
@@ -386,6 +396,23 @@ async function _GET(request: NextRequest) {
       `)) as any[]
       return { data: null, count: rows[0]?.count ?? 0 }
     }),
+
+    // 10) Integridad de exámenes — eventos exam_integrity_drift emitidos por
+    // el cron check-exam-integrity (exámenes is_completed con filas de
+    // test_questions faltantes >5%, clase de bug de Rosa 07/06). El cron solo
+    // emite si HAY afectados, así que 0 eventos = OK. Leemos el más reciente
+    // para extraer metadata.affected (peor caso de la ventana).
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT created_at, metadata, (count(*) over())::int AS total
+        FROM observable_events
+        WHERE event_type = 'exam_integrity_drift'
+          AND created_at >= ${since}
+        ORDER BY created_at DESC
+        LIMIT 5
+      `)) as any[]
+      return { data: rows, count: rows[0]?.total ?? 0 }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
@@ -518,6 +545,22 @@ async function _GET(request: NextRequest) {
   // ─── Procesar 9: tráfico ───
   const trafficCount = trafficResult.error ? null : (trafficResult.count ?? 0)
 
+  // ─── Procesar 10: integridad de exámenes ───
+  // El verdict usa el PEOR `affected` de los eventos en la ventana (el cron
+  // emite 1 evento/run solo si hay afectados). 0 eventos → 0 afectados → verde.
+  // Punto ciego conocido: si el cron muere, no hay eventos → verde falso
+  // (mismo patrón que stats_drift; el "cron vivo" general lo cubriría aparte).
+  const examIntegrityEvents = examIntegrityResult.error ? null : (examIntegrityResult.data ?? [])
+  const examIntegrityAffected = examIntegrityEvents == null
+    ? null
+    : examIntegrityEvents.reduce((max, e) => {
+        const meta = (e as { metadata?: { affected?: number } }).metadata
+        return Math.max(max, Number(meta?.affected ?? 0))
+      }, 0)
+  const examIntegrityLatest = (examIntegrityEvents && examIntegrityEvents[0])
+    ? (examIntegrityEvents[0] as { metadata?: Record<string, unknown>; created_at?: string })
+    : null
+
   return NextResponse.json({
     success: true,
     generatedAt: new Date().toISOString(),
@@ -583,6 +626,18 @@ async function _GET(request: NextRequest) {
           notes: d.notes,
         })),
         thresholds: { amber: DRIFT_AMBER, red: DRIFT_RED },
+      },
+      exam_integrity: {
+        status: examIntegrityAffected == null ? 'unknown' : classifyExamIntegrity(examIntegrityAffected),
+        affected: examIntegrityAffected,
+        empty: examIntegrityLatest ? Number((examIntegrityLatest.metadata as { empty?: number })?.empty ?? 0) : null,
+        worst_missing: examIntegrityLatest ? Number((examIntegrityLatest.metadata as { worst_missing?: number })?.worst_missing ?? 0) : null,
+        last_detected_at: examIntegrityLatest?.created_at ?? null,
+        samples: examIntegrityLatest
+          ? (((examIntegrityLatest.metadata as { top_affected?: unknown[] })?.top_affected ?? []).slice(0, 5))
+          : [],
+        thresholds: { amber: EXAM_INTEGRITY_AMBER, red: EXAM_INTEGRITY_RED },
+        note: 'Exámenes is_completed con filas test_questions faltantes >5% (cron check-exam-integrity, ventana 24h). Clase de bug Rosa 07/06. 0 eventos = OK.',
       },
       insert_latency: {
         status: classifyInsertLatency(topInsertMean),

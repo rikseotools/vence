@@ -1,0 +1,75 @@
+name: Check Exam Integrity
+
+# Detecta exámenes is_completed (test_type='exam') a los que les faltan filas
+# en test_questions (>5%) en las últimas 24h — la clase de bug que afectó a
+# Rosa (07/06/2026): el examen se marca completado con score/total correctos
+# pero el detalle por-pregunta no se persistió (saves perdidos bajo carga).
+#
+# Pérdida silenciosa: 200 OK con datos incompletos. Una excepción no lo ve;
+# solo este check de integridad sobre la invariante lo caza.
+#
+# Runbook: docs/runbooks/health-check.md
+
+on:
+  schedule:
+    # 04:30 UTC diario — 30 min después de check-stats-drift para no solapar
+    # carga. Off-peak en Madrid (05:30/06:30). Día indiferente.
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+    inputs:
+      window:
+        description: 'Ventana de inspección en horas (default 24)'
+        required: false
+        default: '24'
+
+jobs:
+  check-integrity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call exam integrity endpoint
+        id: check
+        run: |
+          WINDOW="${{ github.event.inputs.window || '24' }}"
+          URL="https://www.vence.es/api/cron/check-exam-integrity?window=${WINDOW}"
+
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${URL}")
+
+          echo "Response: $RESPONSE"
+
+          CHECKED=$(echo "$RESPONSE" | jq -r '.stats.checked // 0')
+          AFFECTED=$(echo "$RESPONSE" | jq -r '.stats.affected // 0')
+          EMPTY=$(echo "$RESPONSE" | jq -r '.stats.empty // 0')
+          WORST=$(echo "$RESPONSE" | jq -r '.stats.worst_missing // 0')
+          DURATION=$(echo "$RESPONSE" | jq -r '.duration // "?"')
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+
+          echo "checked=$CHECKED" >> $GITHUB_OUTPUT
+          echo "affected=$AFFECTED" >> $GITHUB_OUTPUT
+          echo "empty=$EMPTY" >> $GITHUB_OUTPUT
+          echo "worst=$WORST" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+
+          # Fallar el step solo si el endpoint en sí falló (no si detectó
+          # exámenes incompletos — eso es trabajo del cron, no error).
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ Cron endpoint failed"
+            exit 1
+          fi
+
+      - name: Log summary
+        run: |
+          echo "🔍 Exam integrity check completado - $(date)"
+          echo "   Exámenes inspeccionados (24h): ${{ steps.check.outputs.checked }}"
+          echo "   Con filas faltantes (>5%): ${{ steps.check.outputs.affected }}"
+          echo "   Vacíos (0 filas): ${{ steps.check.outputs.empty }}"
+          echo "   Peor caso (preguntas que faltan): ${{ steps.check.outputs.worst }}"
+          echo "   Duración: ${{ steps.check.outputs.duration }}"
+
+          if [ "${{ steps.check.outputs.affected }}" != "0" ]; then
+            echo "::warning::Integridad exámenes: ${{ steps.check.outputs.affected }} exámenes con filas faltantes — ver /admin/salud-sistema"
+          fi

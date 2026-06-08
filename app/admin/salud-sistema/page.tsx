@@ -77,6 +77,22 @@ interface SystemHealthResponse {
       }>
       thresholds: { amber: number; red: number }
     }
+    exam_integrity: {
+      status: Status
+      affected: number | null
+      empty: number | null
+      worst_missing: number | null
+      last_detected_at: string | null
+      samples: Array<{
+        test_id?: string
+        total_questions?: number
+        row_count?: number
+        missing?: number
+        completed_at?: string | null
+      }>
+      thresholds: { amber: number; red: number }
+      note: string
+    }
     insert_latency: {
       status: Status
       mean_ms: number | null
@@ -243,6 +259,35 @@ export default function SaludSistemaPage() {
               ) : (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                   Sin drift significativo en 24h.
+                </p>
+              )}
+            </IndicatorCard>
+
+            {/* 2bis) Integridad de exámenes (filas test_questions vs total) */}
+            <IndicatorCard
+              title="Integridad exámenes 24h"
+              status={data.indicators.exam_integrity.status}
+              metric={String(data.indicators.exam_integrity.affected ?? '—')}
+              hint={`Umbrales: ámbar ≥${data.indicators.exam_integrity.thresholds.amber}, rojo ≥${data.indicators.exam_integrity.thresholds.red}`}
+            >
+              {data.indicators.exam_integrity.affected && data.indicators.exam_integrity.affected > 0 ? (
+                <>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
+                    {data.indicators.exam_integrity.empty ?? 0} vacíos · faltan hasta{' '}
+                    {data.indicators.exam_integrity.worst_missing ?? 0} preguntas en el peor caso
+                  </p>
+                  <ul className="text-xs space-y-1 mt-2 max-h-48 overflow-y-auto">
+                    {data.indicators.exam_integrity.samples.map((s, i) => (
+                      <li key={i} className="text-gray-600 dark:text-gray-300">
+                        <span className="font-mono">{(s.test_id ?? '').slice(0, 8)}…</span>{' '}
+                        · {s.row_count}/{s.total_questions} filas · faltan {s.missing}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Todos los exámenes con sus filas completas en 24h.
                 </p>
               )}
             </IndicatorCard>
