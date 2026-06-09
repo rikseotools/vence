@@ -8,8 +8,8 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { getAdminDb } from '@/db/client'
-import { userProfiles } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { userProfiles, aiChatLogs } from '@/db/schema'
+import { eq, and, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   buildChatContext,
@@ -300,6 +300,35 @@ async function _POST(request: NextRequest) {
     // Generar logId antes de procesar para vincular traces y disputas
     const logId = generateLogId()
     context.logId = logId
+
+    // Re-explicación: ¿este usuario YA pidió explicar esta MISMA pregunta antes?
+    // Detección server-side contra ai_chat_logs (fuente de verdad persistente),
+    // robusta aunque el frontend limpie el historial al cambiar de pregunta
+    // (causa de los negativos a8ee13db/80496a64: "Explícame" repetido → idéntico).
+    // Si ya existe, el tutor variará el enfoque en vez de repetir.
+    if (isExplainSuggestion && data.userId && normalizedQuestionContext?.questionId) {
+      try {
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        const prior = await getAdminDb()
+          .select({ id: aiChatLogs.id })
+          .from(aiChatLogs)
+          .where(and(
+            eq(aiChatLogs.userId, data.userId),
+            eq(aiChatLogs.questionContextId, normalizedQuestionContext.questionId),
+            gte(aiChatLogs.createdAt, cutoff)
+          ))
+          .limit(1)
+        if (prior.length > 0) {
+          context.isRepeatExplanation = true
+          logger.info('🔁 Re-explicación detectada → el tutor variará el enfoque', {
+            domain: 'api', userId: data.userId, questionId: normalizedQuestionContext.questionId,
+          })
+        }
+      } catch (e) {
+        // Degradación elegante: si la query falla, seguimos sin variar (no rompe el chat)
+        logger.warn('No se pudo comprobar re-explicación', { domain: 'api', error: e instanceof Error ? e.message : String(e) })
+      }
+    }
 
     // Obtener orquestador y procesar
     const orchestrator = getOrchestrator()

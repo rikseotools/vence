@@ -416,7 +416,20 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
 - **Solución (parser general, no hardcode)**: añadidos 4 patrones a `extractArticleNumbers` — "los N primeros artículos" (dígito o cardinal en palabra → 1..N), ordinal antes de "artículo" singular ("el primer artículo"), y rangos ("artículos X a/al/hasta Y" → X..Y). Caps a 30 para no explotar ante abuso, rango invertido descartado, "ley 39/2015" no confunde el año. Regresión permanente en `__tests__/lib/chat/extractArticleNumbers.test.ts` (19 casos, incl. negativos/caps). E2E `scripts/simulate-neg2-primeros-articulos.ts`: ahora trae arts 1-3 y genera el test.
 - **Pendiente (producto, no bug)**: que el chat genere tests ad-hoc esquiva la auditoría del banco de preguntas (ver `generar-preguntas-con-ia.md`); son efímeros (no se guardan), pero conviene decidir si el chat debe ofrecer "crear test real" en su lugar.
 
+### 15. "Explícame" repetido → explicación idéntica + preguntas negativas mal enmarcadas (2026-06-09)
+- **Logs**: a8ee13db (Madrid, 125.2) y 80496a64 (Estado, CE 10.2). **Patrón dominante: 3 de los 4 negativos** (#1, #3, #4) eran el mismo: el usuario re-pulsa "Explícame" y recibe la **misma** explicación → 👎.
+- **Causa raíz**: el historial del chat se **limpia al cambiar de pregunta** (`AIChatWidget.js` efecto "Limpiar mensajes cuando cambia la pregunta", intencionado para no mezclar preguntas) y el botón "Explícame" del test abre un intercambio fresco → el LLM **casi nunca tiene historial** (`messagesArray`=2) y no sabe que ya explicó esa pregunta. Apoyarse en el historial del frontend para esto es frágil.
+- **Solución robusta (server-side, no depende del frontend)**:
+  1. `app/api/ai/chat-v2/route.ts`: ante un `explicar_*` con `userId` real + `questionContextId`, consulta `ai_chat_logs` (fuente de verdad) por una explicación previa de ESA pregunta por ESE usuario en las últimas 24h → si existe, `context.isRepeatExplanation = true`. Query indexada, try/catch (degradación elegante).
+  2. `lib/chat/core/types.ts`: nuevo campo `ChatContext.isRepeatExplanation`.
+  3. `VerificationService`: si el flag está activo, usa un **prompt DEDICADO** `buildRepeatExplanationPrompt` (modo analogía: "Vamos a verlo de otra forma 👇" + analogía cotidiana + mnemotecnia, ≤120 palabras). **Un simple append NO basta** — el formato rígido del prompt estándar arrastra a GPT-4o a repetir la misma estructura (probado: Jaccard 0,82→0,67 con append; **0,23 con prompt dedicado**).
+- **Regla de preguntas negativas (#4)**: CE 10.2 "…**no** se interpretarán de conformidad: A) La ley" → A es correcta (es la única que NO es criterio), pero la explicación en vivo la enmarcaba como positiva y confundía. Nueva sección en `buildVerificationSystemPrompt` (derecho): ante enunciados negativos ("no", "salvo", "excepto", "incorrecta", "no constituye") avisar explícitamente que se pide la opción que NO cumple y mostrar que las otras tres SÍ. Verificado E2E (`scripts/simulate-neg34-negativa-y-repeticion.ts`).
+- **Contenido OK en ambos**: 125.2→3 meses (causa b) y CE 10.2→A son correctas; no eran bugs de pregunta.
+
 ## Aprendizajes transversales (para futuras sesiones)
+
+### El historial del frontend se limpia al cambiar de pregunta — no te fíes de él para lógica cross-turn
+`AIChatWidget` borra `messages` en cada cambio de pregunta (para no mezclar contextos) y el botón "Explícame" abre intercambios frescos. Resultado: el `messagesArray` que llega al LLM suele ser solo `[system, user]`. Para cualquier lógica que dependa de "qué pasó antes" (detectar re-explicación, no repetir, etc.) usa **`ai_chat_logs` en el servidor**, no el historial del cliente.
 
 ### "Los N negativos" del panel = `feedback='negative' AND reviewed_at IS NULL`
 El panel `/admin/ai` cuenta sobre `reviewed_at IS NULL`, **no** sobre el booleano `reviewed` — divergen (caso 09/06: 54 negativos totales, 27 con `reviewed=false`, **4** con `reviewed_at IS NULL`). Si el usuario dice "revisa los 4 negativos", filtrar por `reviewed_at IS NULL`, no por `reviewed`.

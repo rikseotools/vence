@@ -313,7 +313,7 @@ export async function verifyAnswer(
     articleFromQuestion, // Artículo citado en la pregunta
     context.messages, // Historial de conversación para follow-ups
     tracer,
-    { userDomain: context.userDomain }
+    { userDomain: context.userDomain, isRepeatExplanation: context.isRepeatExplanation }
   )
   const response = verificationGenResult.content
   const tokensUsed = verificationGenResult.tokensUsed
@@ -446,7 +446,7 @@ async function generateVerificationResponse(
   articleFromQuestion?: ArticleFromExplanation,
   conversationHistory?: Array<{ role: string; content: string }>,
   tracer?: AITracerInterface,
-  context?: { userDomain?: string | null }
+  context?: { userDomain?: string | null; isRepeatExplanation?: boolean }
 ): Promise<{ content: string; tokensUsed?: number; modelProvider?: string; modelId?: string }> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -531,8 +531,13 @@ ${ourExplanation}
 `
   }
 
-  // Construir el system prompt (diferente para informática vs derecho)
-  let systemPrompt = buildVerificationSystemPrompt(isVirtual ?? false)
+  // Construir el system prompt. Si es RE-EXPLICACIÓN (el usuario ya pidió esta
+  // misma pregunta y la explicación estándar no le sirvió), usamos un prompt
+  // DEDICADO de modo analogía: un simple append no basta porque el formato
+  // rígido del prompt estándar arrastra al modelo a repetir la misma estructura.
+  let systemPrompt = context?.isRepeatExplanation
+    ? buildRepeatExplanationPrompt(isVirtual ?? false)
+    : buildVerificationSystemPrompt(isVirtual ?? false)
 
   // Añadir contexto de oposición del usuario para respuestas más precisas
   if (context?.userDomain) {
@@ -883,6 +888,13 @@ Si el usuario te señala (o detectas) que una opción del enunciado contradice L
 - Sugiérele que use el botón de impugnación de la pregunta para reportar el error
 - NUNCA defiendas la respuesta de BD cuando es lógicamente imposible dado el texto literal de las opciones
 
+## 🔄 PREGUNTAS NEGATIVAS / DE EXCLUSIÓN (lee el enunciado con cuidado)
+Si el enunciado pide la opción que **NO** cumple algo (contiene "NO", "no se…", "salvo", "excepto", "incorrecta", "falsa", "no constituye", "no figura"), tu explicación DEBE:
+1. **Avisar explícitamente al principio** de que la pregunta es negativa: "Ojo: la pregunta pide la opción que **NO** [criterio]".
+2. Explicar que la correcta lo es **precisamente porque es la única que NO** aparece/cumple en el artículo.
+3. Mostrar que las **otras tres SÍ** cumplen (eso es lo que las hace "incorrectas" en una pregunta negativa).
+Nunca expliques una pregunta negativa como si fuera positiva: confunde al opositor y parece que la respuesta marcada está mal.
+
 ## ❌ EXPLICACIÓN DE OPCIONES INCORRECTAS (reglas estrictas)
 Cuando expliques por qué una opción es incorrecta:
 1. **Cita literal del fragmento que la descarta**. Si el artículo dice "X" y la opción dice "Y", muéstralo: "La opción dice *Y*; el artículo dice *X*".
@@ -925,6 +937,36 @@ Si el usuario reacciona a tu explicación anterior con un mensaje corto de duda 
 - Usa una analogía o un ejemplo concreto si el texto legal por sí solo no aclara.
 - Si de verdad no sabes qué le confunde, pregúntale en UNA frase qué parte no le encaja, en vez de repetir.
 - Mantén un tono empático: reconoce que la distinción es sutil antes de aclararla.`
+}
+
+/**
+ * Prompt DEDICADO para re-explicar una pregunta que el usuario ya pidió antes y
+ * cuya explicación estándar no le sirvió. Es un prompt distinto (no un append)
+ * para que el modelo NO recaiga en la estructura rígida del prompt estándar.
+ * Modo analogía: corto, cotidiano, con regla mnemotécnica.
+ */
+function buildRepeatExplanationPrompt(isVirtualLaw: boolean = false): string {
+  const materia = isVirtualLaw
+    ? 'informática y tecnología para oposiciones'
+    : 'derecho administrativo español para oposiciones'
+  return `Eres un tutor experto en ${materia}, desarrollado por Vence. Si te preguntan quién eres, di que eres el asistente de Vence.
+
+## CONTEXTO
+El usuario YA te pidió explicar esta MISMA pregunta antes y la explicación anterior NO le sirvió (por eso vuelve a pedirla). Repetir lo mismo no ayuda.
+
+## CÓMO RESPONDER (OBLIGATORIO)
+NO uses la estructura típica de explicación (NADA de "Según el artículo X" + cita literal + lista "Por qué las demás son incorrectas"). Cámbialo por completo:
+1. Empieza con: "Vamos a verlo de otra forma 👇"
+2. Explica el concepto con **UNA analogía cotidiana** o un ejemplo del día a día que lo haga obvio (sin recitar el texto legal).
+3. Da **UNA regla para recordarlo** (mnemotecnia o frase corta).
+4. Cierra en una sola frase confirmando cuál es la opción correcta.
+- Máximo ~120 palabras. Tono cercano y motivador.
+- Si crees que lo que falla es entender QUÉ se pregunta, reformula el enunciado con tus palabras antes de la analogía.
+${isVirtualLaw ? '' : `
+## OJO CON LAS PREGUNTAS NEGATIVAS
+Si el enunciado pide la opción que **NO** cumple algo ("no", "salvo", "excepto", "incorrecta", "no constituye"), déjalo claro: la correcta lo es porque es la única que NO encaja, y las otras tres SÍ.`}
+## CONFIANZA EN LA BD
+La respuesta marcada está verificada por expertos: confírmala, no la cuestiones. Nunca digas "posible error".`
 }
 
 // ============================================

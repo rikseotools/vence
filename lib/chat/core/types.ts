@@ -148,6 +148,12 @@ export interface ChatContext {
   conversationId?: string
   logId?: string
   startTime: number
+
+  // True si este usuario YA recibió una explicación de esta misma pregunta antes
+  // (detectado server-side contra ai_chat_logs). Hace que el tutor varíe el
+  // enfoque en vez de repetir la misma explicación. Robusto frente a que el
+  // historial del frontend se limpie al cambiar de pregunta.
+  isRepeatExplanation?: boolean
 }
 
 // ============================================
