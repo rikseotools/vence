@@ -1,0 +1,23 @@
+// app/tcae-sas/temario/page.tsx - Thin wrapper del componente dinamico compartido.
+// Fuente unica de verdad: BD (oposicion_bloques + topics).
+import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
+
+// force-dynamic: renderizar bajo demanda para no saturar BD en build (3600+ páginas)
+export const dynamic = 'force-dynamic'
+
+export const metadata = {
+  title: 'Temario TCAE SAS | Vence.es',
+  description: 'Temario oficial BOJA de TCAE (Auxiliar de Enfermeria) del Canarias. 29 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria. Acceso gratuito.',
+  alternates: {
+    canonical: 'https://www.vence.es/tcae-sas/temario',
+  },
+}
+
+export default async function TemarioPage() {
+  return (
+    <DynamicTemarioPage
+      oposicionSlug="tcae-sas"
+      oposicionDisplayName="TCAE SAS"
+    />
+  )
+}

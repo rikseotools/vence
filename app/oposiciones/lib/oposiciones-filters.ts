@@ -105,6 +105,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-gva': 'valencia',
     'auxiliar-enfermeria-gva': 'valencia',
     'tcae-aragon': 'aragon',
+    'tcae-sas': 'andalucia',
     'tcae-canarias': 'canarias',
     'tcae-galicia': 'galicia',
     'tcae-murcia': 'murcia',

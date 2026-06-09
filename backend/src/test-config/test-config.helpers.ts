@@ -85,6 +85,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo generalitat valenciana',
     'auxiliar administrativo gva',
   ],
+  administrativo_diputacion_valencia: [
+    'administrativo_diputacion_valencia',
+    'administrativo diputacion valencia',
+    'administrativo dival',
+  ],
   auxiliar_administrativo_ayuntamiento_valencia: [
     'auxiliar_administrativo_ayuntamiento_valencia',
     'auxiliar administrativo ayuntamiento valencia',

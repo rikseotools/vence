@@ -26,6 +26,17 @@
 ### Alto volumen no-C2 (fases posteriores, requieren temario propio)
 - Enfermero ICS Cataluña (1.713, A2, sept) · Administrativo País Vasco (350 C1, oct) · Bombero Comunidad de Madrid (131, sept) · Celador Murcia (106, grupo E, sept) · Mossos (1.587 C1).
 
+### Personal laboral Junta de Extremadura — Grupo V (PENDIENTE crear, de feedback de usuario 09-10/06/2026)
+> Origen: feedback de usuario (Jesús, `d2561ead`) pidiendo "cocinero, ordenanza y camarero limpiador" de Extremadura. Investigado: convocatorias VIVAS (OPE 2025 Extremadura, 2.356 plz; DOE 244 de 19/12/2025; solicitudes 12/01–06/02/2026 → exámenes pendientes en 2026).
+- **Ordenanza (Grupo V) — 119-130 plz. ★ PRIORITARIA.** Sin titulación → bolsa enorme de opositores; examen tipo test (encaja con Vence). **Temario mayormente parte general (CE, Estatuto de Extremadura, Ley 39/2015, igualdad, PRL) que YA tenemos en Aux. Admin. Extremadura** → coste marginal bajo; solo falta parte específica pequeña.
+- **Camarero/a-Limpiador/a (Grupo V) — 39 plz.** Test 37 preguntas/70 min. Mismo reuse de parte general + específica pequeña. Buen complemento.
+- **Cocinero / Ayudante de cocina (Grupo IV/V) — nicho.** Contenido especializado (cocina) → editorial; dejar para el final.
+- **Acción:** confirmar fecha de examen en DOE antes de campaña; arrancar por Ordenanza reutilizando topics de Aux. Admin. Extremadura.
+
+### Administrativo (C1) Diputación de Valencia (PENDIENTE crear, de feedback de usuario 10/06/2026)
+> Origen: feedback (María José, `1eac3652`, premium) pidiendo "Temario administrativo Diputación de Valencia, convocatoria 03/26". Investigado: convocatoria VIVA — **66 plazas** (acumuladas 2023-26, 10 reserva discapacidad), bases BOP Valencia nº72 17/04/2026 + BOE 105 30/04/2026, solicitudes 04-15/05/2026 (cerradas) → **examen pendiente, estudio AHORA**. Formato **test** (1ª parte 75+10 preguntas + 2ª parte 5 casos prácticos × 5 preguntas) → encaja con Vence.
+- **C1 Administrativo** (no C2). Ya tenemos `auxiliar-administrativo-diputacion-valencia` (C2) inactiva y Administrativo GVA activa → mucha **parte general reutilizable**. Vendible (66 plz, test). Confirmar fecha de examen en BOP antes de campaña.
+
 ## Orden de arranque (por ROI)
 1. **Aux. Administrativo SCS Canarias** (643, otoño). ← EN CURSO
 2. Aux. Administrativo UNED (abierta).

@@ -286,6 +286,11 @@ function PerfilPageContent() {
       data: { name: 'TCAE del Servicio Aragonés de Salud', slug: 'tcae-aragon', categoria: 'C2', administracion: 'Sanitaria' }
     },
     {
+      value: 'tcae_sas',
+      label: 'TCAE Andalucía (SAS)',
+      data: { name: 'TCAE del Servicio Andaluz de Salud (SAS)', slug: 'tcae-sas', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'auxiliar_enfermeria_gva',
       label: 'Aux Enfermería GVA',
       data: { name: 'Auxiliar de Enfermería Generalitat Valenciana', slug: 'auxiliar-enfermeria-gva', categoria: 'C2', administracion: 'Sanitaria' }
@@ -573,6 +578,16 @@ function PerfilPageContent() {
         slug: 'auxiliar-administrativo-valencia',
         categoria: 'C2',
         administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'administrativo_diputacion_valencia',
+      label: 'Administrativo Diputación de Valencia',
+      data: {
+        name: 'Administrativo Diputación de Valencia',
+        slug: 'administrativo-diputacion-valencia',
+        categoria: 'C1',
+        administracion: 'Local'
       }
     },
     {

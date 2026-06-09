@@ -915,6 +915,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🍊'
   },
   {
+    id: 'administrativo_diputacion_valencia',
+    nombre: 'Administrativo Diputación de Valencia',
+    categoria: 'C1',
+    administracion: 'Local',
+    icon: '🍊'
+  },
+  {
     id: 'administrativo_gva',
     nombre: 'Administrativo Generalitat Valenciana',
     categoria: 'C1',
@@ -1477,8 +1484,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
-  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
-  'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
+  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
+  'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'auxiliar_administrativo_estado'],
@@ -1499,9 +1506,9 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Basque Country': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Euskadi': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'tcae_galicia', 'auxiliar_administrativo_estado'],
-  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
-  'Valencian Community': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
-  'Valencia': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencian Community': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencia': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
 }
 
 // Oposiciones con contenido disponible, ordenadas por demanda real de usuarios
@@ -1529,6 +1536,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'administrativo_galicia',              // nueva C1
   'auxiliar_administrativo_valencia',    // 2+
   'administrativo_gva',                  // nueva C1
+  'administrativo_diputacion_valencia',  // nueva C1 (Diputación Valencia, feedback Mª José)
   'auxiliar_administrativo_clm',         // 1+
   'auxiliar_administrativo_extremadura', // 1+
   'auxiliar_administrativo_cantabria',  // nueva
@@ -1541,6 +1549,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_enfermeria_osakidetza',   // sanitaria País Vasco (TCAE)
   'auxiliar_enfermeria_gva',          // sanitaria Valencia (TCAE)
   'tcae_aragon',                      // sanitaria Aragón (TCAE)
+  'tcae_sas',                         // sanitaria Andalucía (TCAE SAS)
   'tcae_canarias',                    // sanitaria Canarias (TCAE)
   'tcae_galicia',                     // sanitaria Galicia (TCAE)
   'tcae_murcia',                      // sanitaria Murcia (TCAE)
