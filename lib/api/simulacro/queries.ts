@@ -16,6 +16,7 @@
 import { getDb, getPoolerDb } from '@/db/client'
 import { questions, psychometricQuestions, articles, laws, topics, topicScope } from '@/db/schema'
 import { eq, and, inArray, sql, ilike, gte, isNotNull, isNull } from 'drizzle-orm'
+import { articleInScope } from '@/lib/api/_shared/topicScopeSql'
 import type {
   GetSimulacroQuestionsRequest,
   GetSimulacroQuestionsResponse,
@@ -197,10 +198,10 @@ async function getTopicWeights(
   if (topicNumbers.length === 0) return result
   const db = getSimulacroDb()
 
-  // Query con el builder de Drizzle. `article_number = ANY(article_numbers)`
-  // se expresa como `sql\`a.article_number = ANY(ts.article_numbers)\`` —
-  // Drizzle no tiene operador nativo para "scalar = ANY(array)" así que
-  // ese trozo queda como SQL raw, pero sin valores → no rompe placeholders.
+  // Query con el builder de Drizzle. La pertenencia artículo→scope se resuelve
+  // con `articleInScope()` (fuente única): `article_numbers IS NULL` = "toda la
+  // ley". NO usar un `= ANY(...)` suelto aquí — `x = ANY(NULL)` es NULL y
+  // descartaría silenciosamente los scopes de ley completa (bug 2026-06-10).
   const rows = await db
     .select({
       topicNumber: topics.topicNumber,
@@ -212,7 +213,7 @@ async function getTopicWeights(
       topicScope,
       and(
         eq(topicScope.lawId, articles.lawId),
-        sql`${articles.articleNumber} = ANY(${topicScope.articleNumbers})`,
+        articleInScope(articles.articleNumber, topicScope.articleNumbers),
       ),
     )
     .innerJoin(topics, eq(topics.id, topicScope.topicId))

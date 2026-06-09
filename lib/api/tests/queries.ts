@@ -8,6 +8,7 @@ function getTestsDb() {
 import { tests, testQuestions, userProfiles, questions, articles, laws, topics, topicScope } from '@/db/schema'
 import { eq, sql, inArray, gte, and, desc } from 'drizzle-orm'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
+import { articleInScope } from '@/lib/api/_shared/topicScopeSql'
 import type {
   RecoverTestRequest,
   RecoverTestResponse,
@@ -391,7 +392,7 @@ export async function getFailedQuestionsForUser(
           SELECT 1 FROM ${topicScope} ts
           INNER JOIN ${topics} t ON t.id = ts.topic_id
           WHERE ts.law_id = ${articles.lawId}
-            AND ${articles.articleNumber} = ANY(ts.article_numbers)
+            AND ${articleInScope(articles.articleNumber, sql.raw('ts.article_numbers'))}
             AND t.position_type = ${positionType}
             AND t.is_active = true
         )`
@@ -428,7 +429,7 @@ export async function getFailedQuestionsForUser(
           SELECT 1 FROM ${topicScope} ts
           INNER JOIN ${topics} t ON t.id = ts.topic_id
           WHERE ts.law_id = ${articles.lawId}
-            AND ${articles.articleNumber} = ANY(ts.article_numbers)
+            AND ${articleInScope(articles.articleNumber, sql.raw('ts.article_numbers'))}
             AND t.position_type = ${positionType}
             AND t.topic_number IN (${sql.join(topicNumbers, sql`, `)})
         )`
