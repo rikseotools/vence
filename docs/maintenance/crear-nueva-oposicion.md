@@ -245,6 +245,23 @@ El campo `estado_proceso` indica en que fase se encuentra la oposicion. Es **obl
 
 **IMPORTANTE:** Actualizar `estado_proceso` cuando cambie la fase. El seguimiento de convocatorias (cron) detecta cambios en la pagina de seguimiento, pero hay que actualizar manualmente el estado.
 
+### 2a.1-bis 🎯 La landing SIEMPRE mira hacia delante (captación de leads) — BÁSICO OBLIGATORIO
+
+**Principio:** la landing de una oposición es un **activo de captación de leads que NUNCA debe quedarse en un callejón sin salida.** Una oposición **no muere cuando pasa su examen**: casi todas son **recurrentes** (nueva OEP/convocatoria cada 1-2 años) y el opositor que llega tras el examen está preparándose para el **siguiente ciclo**. El 90%+ de las conversiones son estudiantes nuevos; el examen marca el pico de demanda del ciclo actual, pero la landing tiene que **seguir captando al próximo ciclo todo el año** (SEO + leads).
+
+Estados como `examen_realizado` / `resultados` / `nombramientos` muestran por defecto mensajes de cierre ("Examen realizado. Pendiente de resultados") que **no captan**. Por eso, **cuando el examen de un ciclo pasa, hay que pivotar la landing hacia delante**:
+
+**Checklist post-examen (o al crear una oposición cuyo examen ya pasó):**
+1. **Investigar la próxima OEP** (fuentes: sede oficial / opositatest / ADAMS): ¿hay plazas de ESA categoría **pendientes de convocar** en OEP recientes? Anota cifras y año (verificado, no inventado).
+2. **Hitos forward-looking**: añade la(s) próxima(s) OEP como hitos `upcoming` en `convocatoria_hitos` ("OEP 20XX: N plazas, pendiente de convocar", fecha placeholder + "(pendiente de convocar)" en el título). El timeline pasa a mostrar el **pipeline futuro**, no solo el proceso cerrado.
+3. **SEO forward-looking**: `seo_title` y `seo_description` deben mirar al **próximo ciclo/OEP**, NO al examen/año pasado. Mal: "...SERMAS 2025 | 933 Plazas" (examen ya celebrado). Bien: "Auxiliar Administrativo SERMAS 2026 | OEP +1.100 plazas". Capta búsquedas del nuevo ciclo ("OEP 20XX", "próxima convocatoria <oposición>").
+4. **Estado/badge**: si hay un decreto de OEP nuevo confirmado, pasar `estado_proceso='oep_aprobada'` + rellenar `oep_decreto`/`oep_fecha`/`plazas_*` de la **próxima** OEP (badge "X plazas (OEP 20XX). Pendiente de convocatoria"). Si aún no hay decreto, mantener el estado real pero con hitos+SEO forward (puntos 2-3).
+5. **Revalidar caché** (tag `landing`) tras tocar hitos/SEO/oposiciones.
+
+**Coherencia con los runbooks:** el de Google Ads (`google-ads-analisis.md`) dice que el **pago** se seca tras el examen → pausar la campaña; pero el **orgánico y la captación de leads NO** — siguen todo el año, y es justo lo que sostiene esta landing forward-looking. El de SEO (`seo-oportunidades.md`): el contenido + estas señales de frescura/long-tail ("OEP 20XX", "próxima convocatoria") posicionan a 3-4 semanas.
+
+**Caso real (SERMAS, 09/06/2026):** examen 31/05/2026 ya pasado (933 plazas, OEP 2022-2024). Pipeline futuro verificado: OEP 2025 (640 plazas) + OEP 2026 (474). Aplicado: 2 hitos `upcoming` de OEP + `seo_title`/`seo_description` forward + `oep_decreto`/`oep_fecha` = **Decreto 54/2026, de 27 de mayo** (OEP 2026 CM, BOCM nº125, 28/05/2026). Se mantuvo `estado_proceso='examen_realizado'` (las 933 esperan resultados) en vez de `oep_aprobada` para no romper la consistencia del "933 plazas" del resto de la landing (estadísticas/hitos): el lead-capture lo llevan los hitos forward + el SEO, no el badge.
+
 ### 2a.2 Campos de la OEP vs la Convocatoria
 
 La OEP y la convocatoria son documentos diferentes publicados en momentos distintos:
@@ -591,20 +608,43 @@ Muchos temas son comunes entre oposiciones. La regla:
 | Seguridad Social | Aux Estado T11 (LGSS) |
 | Ofimatica (Word, Excel...) | Leyes virtuales compartidas |
 
+> 🧱 **PRINCIPIO AL CREAR UNA LEY VIRTUAL NUEVA: nómbrala y estructúrala POR CONTENIDO temático, NUNCA por oposición.** Una ley virtual es un contenedor de preguntas reutilizable cross-oposición. El mismo contenido (ofimática, documentación clínica, atención al ciudadano, una plataforma sanitaria…) reaparece en decenas de temarios distintos, así que el banco debe poder servir a todas. **Bien:** `Historia Clínica Electrónica`, `Cibeles`, `Documentacion sanitaria`, `La Red Internet`. **Mal:** `Plataformas SERMAS T26`, `Ofimática Auxiliar Madrid` (atado a una opo → nadie más lo reutiliza y se acaba duplicando el mismo banco N veces). Antes de crear una virtual nueva, busca si ya existe un contenedor de ese contenido (queries de abajo) y reúsalo vía `topic_scope`; solo crea uno nuevo si el contenido temático no existe en BD.
+
 **Leyes virtuales de ofimatica** (compartidas entre todas las oposiciones):
 
 | Contenido | law_id | Notas |
 |-----------|--------|-------|
 | Informatica Basica | `82fd3977-ecf7-4f36-a6df-95c41445d3c2` | |
 | Windows 11 | `932efcfb-5dce-4bcc-9c6c-55eab19752b0` | Para opos que piden W11 |
-| Windows 10 | `cb536623-fb75-429c-a839-0154b76ee27b` | Para opos que piden W10 (CLM, EXT, VAL) |
+| Windows 10 | `cb536623-fb75-429c-a839-0154b76ee27b` | Para opos que piden W10 (CLM, EXT, VAL, SERMAS) |
 | Explorador Windows 11 | `9c0b25a4-c819-478c-972f-ee462d724a40` | |
-| Explorador Windows 10 | `9a4d819f-50d6-421b-b3ea-d66d72b8524b` | Para Madrid T16, CLM T15 |
-| Procesadores de texto (Word) | `86f671a9-4fd8-42e6-91db-694f27eb4292` | |
-| Excel | `c7475712-5ae4-4bec-9bd5-ff646c378e33` | |
-| Access | `b403019a-bdf7-4795-886e-1d26f139602d` | |
-| Correo electronico (Outlook) | `c9df042b-15df-4285-affb-6c93e2a71139` | |
-| Internet | `7814de3a-7c9c-4045-88c2-d452b31f449a` | |
+| Explorador Windows 10 | `9a4d819f-50d6-421b-b3ea-d66d72b8524b` | Para Madrid T16, CLM T15, SERMAS T27 |
+| Procesadores de texto (Word 365) | `86f671a9-4fd8-42e6-91db-694f27eb4292` | 1.267 preg |
+| Excel (365) | `c7475712-5ae4-4bec-9bd5-ff646c378e33` | 846 preg |
+| Access (365) | `b403019a-bdf7-4795-886e-1d26f139602d` | |
+| Correo electronico (Outlook 365) | `c9df042b-15df-4285-affb-6c93e2a71139` | |
+| Internet (La Red Internet) | `7814de3a-7c9c-4045-88c2-d452b31f449a` | 404 preg |
+
+> ⚠️ **HAY VIRTUALES POR VERSIÓN — usa la que pida el epígrafe, NO siempre la 365.** Si el programa dice "Word 2016" o "Excel 2019", existe el contenedor de esa versión exacta (su preámbulo y preguntas son version-specific). Versiones existentes en BD a fecha 2026-06: Word **2016** (`4197a28f`, 93 preg), Word **2019** (`9e48c8d9`), Word 365; Excel **2016** (`b49380e5`, 92 preg), Excel **2019** (`30dd450e`), Excel 365; PowerPoint **2016** (`06b8d513`); Outlook **2016**/**2019**/365; además LibreOffice Writer/Calc. **Antes de enganchar, lista TODAS las versiones y elige por epígrafe:**
+> ```bash
+> node -e "require('dotenv').config({path:'.env.local'});const {createClient}=require('@supabase/supabase-js');const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);(async()=>{const {data}=await s.from('laws').select('id,short_name').or('short_name.ilike.%word%,short_name.ilike.%excel%,short_name.ilike.%windows%,short_name.ilike.%outlook%');data.forEach(l=>console.log(l.short_name,l.id))})()"
+> ```
+
+**Contenedores virtuales SANITARIOS** (para oposiciones de salud — SERMAS, SCS, SAS, Osakidetza, SMS, etc.). Son "leyes virtuales" temáticas (no normas del BOE) con banco propio de preguntas, igual que la ofimática. **Plantilla de referencia: `tcae_sermas_madrid`** (la oposición sanitaria hermana ya los tiene cableados). Enganchar con `include_full_title: true`. Algunos con banco grande (preg a 2026-06):
+
+| Contenido | law_id | Preg | Para temas tipo… |
+|-----------|--------|------|------------------|
+| Documentacion sanitaria | `2069097c` | 281 | Documentación clínica/administrativa, historia clínica, archivo, registro E/S |
+| Comunicacion sanitaria | `f36de7ef` | 565 | Información administrativa, atención al ciudadano, canales |
+| Bioetica sanitaria | `2a8aa2bd` | 254 | |
+| RD 521/1987 Hospitales | `c4589650` | 19 | Estructura funcional de centros hospitalarios |
+| Decreto 246/2023 Estructura Directiva SERMAS | `76f3086b` | 7 | Gerencia/Direcciones SERMAS (Madrid-específico) |
+| Ley 12/2001 LOSCAM | `0bdba0c8` | 63 | Ordenación sanitaria Madrid |
+| Ley 11/2017 Buen Gobierno SERMAS | `1583cb85` | 6 | Buen gobierno sanitario Madrid |
+| Ley 6/2009 Libre Elección Madrid | `e2295ec8` | 9 | |
+| LGS / LCCSNS / LAP | `d70d507a` / `80bf2d25` / `19097661` | 11/11/25 | Modalidades asistencia, cohesión SNS, autonomía paciente |
+
+> Para listar TODO el catálogo sanitario disponible (mismo patrón que la query de ofimática, con tokens `sanit/salud/hospital/clínic/admisión/paciente/SERMAS/HORUS/Selene/Cibeles`). **Hueco típico no cubierto:** plataformas informáticas autonómicas concretas (HORUS, AP-Madrid, Selene, Cibeles, HCE Única) — rara vez hay container; suele tocar generar con IA.
 
 ### 3d. Temas especificos de comunidad autonoma
 

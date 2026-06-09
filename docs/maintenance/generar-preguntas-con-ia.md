@@ -1525,6 +1525,28 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 
 **Patrón replicable para otras leyes**: ejecutar `select count(*) from questions where primary_article_id IN (...) and is_active=true group by apartado` antes de cada batch. Si la ratio (preguntas activas / apartados estructurales) está <1.5, hay margen. Si >2.0, saturación cercana al techo.
 
+### 5.21 Batch 30 — LGS (Ley 14/1986) T8 SERMAS «Modalidades de asistencia sanitaria» (2026-06-09)
+
+- **batch_id**: `gen_lgs_2026-06-09`. Scope: LGS arts 18, 59, 60, 62-69 (Título III: áreas de salud, zona básica, atención primaria, Centro de Salud, hospital general). 11 preguntas.
+- **Contexto**: tema `auxiliar_administrativo_sermas` T8 estaba `disponible=false` sin scope. Caso de aprendizaje: primero se creó por error un **contenedor virtual** para T8; se corrigió porque su contenido **está respaldado por ley real** (LGS Tít. III) → regla: virtual solo si NO hay articulado; si lo hay, preguntas respaldadas por ley. El virtual se borró y se scopeó a artículos reales.
+- **Distribución correct_option**: 3A/3B/3C/2D (27/27/27/18%, sin sesgo).
+- **Auditoría doble PRE**: auto-audit 9/11 PERFECT; Sonnet ciego marcó 2 NEEDS_REVIEW (art 68 y art 60: opción correcta más larga que distractores, §2.2-bis). Rebalanceados distractores con funciones/órganos sanitarios plausibles-pero-falsos.
+- **Paso 9 (3er auditor, valor demostrado)**: Sonnet nuevo detectó **3 defectos que las 2 pasadas previas pasaron**: (1) art 64 tipo intruso → explicación boilerplate **factualmente invertida** (decía que A/B/C no figuran en la norma cuando SÍ son funciones del Centro de Salud); (2) art 62 enunciado condensó "en el funcionamiento de"; (3) art 18 opción correcta truncó "del individuo y de la comunidad". Reparados + recheck v2 → 3/3 PERFECT.
+- **Lección nueva**: el **boilerplate genérico de explicación de distractores NO sirve para preguntas de tipo intruso/negación** ("¿cuál NO es?"). En esas, la explicación debe decir que las otras opciones SÍ cumplen (y por eso no son la respuesta). Generarla específica desde el inicio para preguntas con NO/EXCEPTO.
+- **Trazas**: `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en `ai_verification_results`. T8 activado (`disponible=true`), 2→13 preguntas activas. Audit `npm run audit:epigrafe` deja T8 con WRONG_SUBJECT (LGS 100%, nombre no en epígrafe) — **aceptado**: epígrafe descriptivo que no cita la norma (caso documentado en `verificar-epigrafe-topic-scope.md`).
+
+### 5.22 Tanda SERMAS T13/T18/T12/T4 — 4 batches law-backed consecutivos (2026-06-09)
+
+- **batches**: `gen_lprl_2026-06-09` (T13 Ley 31/1995 PRL, 14q), `gen_lopivi_2026-06-09` (T18 LO 8/2021, 13q), `gen_l11_2017_2026-06-09` (T12 Ley 11/2017 SERMAS, 9q), `gen_lgs_t4_2026-06-09` (T4 Ley 14/1986 LGS, 6q). 42 preguntas, todas respaldadas por ley con cita literal.
+- **Resultado**: SERMAS pasó de 26 a 30/31 temas `disponible=true`. Solo queda T26 (plataformas Cibeles/HCE, virtual editorial sin norma ni banco).
+- **Lección DOMINANTE (coste real de la tanda)**: el cuello de botella NO fue la corrección jurídica (las 42 fueron correctas de fondo en answer_ok/article_ok desde la 1ª pasada), sino el **equilibrio de longitud de distractores (§2.2-bis)** y la **fidelidad literal de la opción correcta**. Cuando la correcta es cita literal de un artículo, tiende a ser la más larga → el auditor del Paso 9 (estricto) lo marca una y otra vez. Cada batch necesitó 1-2 iteraciones extra de Paso 9 solo por esto.
+- **Regla operativa derivada (aplicar desde la generación, ahorra iteraciones)**:
+  1. La opción correcta = **texto literal exacto** del artículo (no parafrasear "garantizar" por "debido cumplimiento", no omitir "profesional y ciudadana", no truncar enumeraciones). El Paso 9 estricto marca cualquier condensación como `options_ok` fallido.
+  2. Los **distractores deben medir ≥0,8× la longitud de la correcta** (verificar ratio correcta/2ª-más-larga < 1,3 en el propio script de generación, ANTES de insertar). Si la cita literal es muy larga, alargar los distractores con cláusulas plausibles-pero-falsas, NO acortar la correcta.
+  3. Si la cita literal es larguísima (listas de órganos, enumeraciones), **reencuadrar el enunciado** para preguntar un punto concreto cuya respuesta literal sea corta (ej. art 50 LGS: en vez de "¿qué Servicio se constituye?" → "¿bajo la responsabilidad de quién estará gestionado?" → "La respectiva Comunidad Autónoma"). Más limpio que pelear el balance.
+  4. **Intruso/negación**: header de la explicación = `**Por qué las demás NO son la respuesta (sí figuran en la norma):**` (no "son incorrectas", que es ambiguo). Y cada bullet dice "sí es/figura: art X.Y".
+- Trazas `claude_code` + `claude_code_recheck` en `ai_verification_results` para las 42.
+
 ## 6. Anti-patterns (qué NO hacer)
 
 | Anti-pattern | Por qué falla |

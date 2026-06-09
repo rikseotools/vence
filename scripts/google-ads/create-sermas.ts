@@ -4,44 +4,43 @@
 // modelo del runbook google-ads-analisis.md §"Crear una campaña nueva" y el script
 // hermano create-sms.ts (plantilla probada).
 //
-// ⚠️ TIMING (leer antes de --apply): el examen del SERMAS fue el 31/05/2026
-//    (oposiciones.estado_proceso = 'examen_realizado'). Según el TL;DR del runbook,
-//    "el examen pasado seca las ventas" (pico de compra 0-30 días ANTES del examen).
-//    → NO conviene activarla ahora. Dejarla PAUSED y ENABLE solo cuando se abra la
-//      próxima convocatoria (vigilar seguimiento_url / OEP Madrid). El script crea
-//      la campaña en PAUSED salvo --apply, y aun con --apply la deja PAUSED por
-//      defecto (cambiar START_ENABLED=true solo cuando haya ventana de venta).
+// CONTEXTO (lead capture): el examen de las 933 plazas (OEP 2022-2024) fue el
+//    31/05/2026, pero hay pipeline futuro de Auxiliar Administrativo SERMAS pendiente
+//    de convocar — OEP 2025 (640 plazas) + OEP 2026 (474, Decreto 54/2026). La campaña
+//    capta leads del próximo ciclo. El presupuesto se autorregula (Maximizar clics +
+//    3€/día + CPC máx 0,05€ → estas campañas gastan 0,2-0,8€/día, limitadas por ranking,
+//    no por presupuesto; ver runbook §experimento). Bajo riesgo. Copy forward-looking.
 //
 //   npx tsx --env-file=.env.local scripts/google-ads/create-sermas.ts            # dry-run
-//   npx tsx --env-file=.env.local scripts/google-ads/create-sermas.ts --apply    # CREA (en PAUSED)
+//   npx tsx --env-file=.env.local scripts/google-ads/create-sermas.ts --apply    # CREA (ENABLED)
 
 import { getGoogleAdsCustomer } from '@/lib/services/googleAds/client'
 import { loadAdsConfig } from '@/lib/services/googleAds/config'
 
 const APPLY = process.argv.includes('--apply')
-// Examen ya realizado (31/05/2026): crear SIEMPRE en PAUSED hasta que haya próxima
-// convocatoria. Poner a true solo cuando se abra la ventana de venta.
-const START_ENABLED = false
+// Lead capture activo (OEP 2025/2026 pendientes de convocar): --apply crea ENABLED,
+// igual que las campañas que funcionan (create-sms.ts). Poner a false para crear en pausa.
+const START_ENABLED = true
 
 const GEO_MADRID = 'geoTargetConstants/20282' // Community of Madrid (Autonomous Community)
 const LANG_ES = 'languageConstants/1003'      // Spanish
 const FINAL_URL = 'https://www.vence.es/auxiliar-administrativo-sermas'
 
-// Titulares ≤30 car (mín 3). Ganchos reales: nº de plazas, temario oficial, empieza gratis.
+// Titulares ≤30 car (mín 3). Forward-looking (próximo ciclo OEP 2025-2026), no el examen pasado.
 const HEADLINES = [
   'Auxiliar Administrativo SERMAS',   // 30
-  '933 plazas en Madrid',             // 21
+  'OEP 2025 y 2026 del SERMAS',       // 27
   'Tests del temario oficial',        // 26
   'Empieza gratis',                   // 14
-  'Prepara el examen SERMAS',         // 24
+  'Prepara tu plaza en Madrid',       // 27
   'Oposición SERMAS Madrid',          // 24
-  'Practica con tests reales',        // 25
+  'Más de 1.000 plazas',              // 20
 ]
 // Descripciones ≤90 car (mín 2).
 const DESCRIPTIONS = [
-  'Tests del temario oficial del Auxiliar Administrativo del SERMAS. Empieza gratis hoy.', // 85
-  '933 plazas en la Comunidad de Madrid. Practica con preguntas tipo examen y progresa.',  // 85
-  'Prepara la oposición del Servicio Madrileño de Salud con tests actualizados.',          // 76
+  'Prepara el Auxiliar Administrativo del SERMAS (Madrid) para la próxima convocatoria.', // 84
+  'OEP 2025-2026: más de 1.000 plazas. Practica con tests del temario oficial del SERMAS.',      // 87
+  'Tests tipo examen del Servicio Madrileño de Salud. Mide tu progreso y empieza gratis hoy.',   // 89
 ]
 // Keywords de intención, SIN marca.
 const KEYWORDS = [
