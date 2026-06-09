@@ -25,6 +25,43 @@ import type {
   SectionFilter,
 } from './TestConfigurator.types';
 
+// ============================================================
+// Helpers puros del nº de preguntas — lógica del selector (presets +
+// personalizado). Exportados y testeados en
+// __tests__/components/TestConfigurator.questionCount.test.ts
+// (mismo patrón que DailyGoalBanner: no montamos el componente).
+// ============================================================
+
+/** Tamaños preset ofrecidos como botones. Fuente única de verdad. */
+export const QUESTION_COUNT_PRESETS = [10, 25, 50, 100] as const
+
+/**
+ * Tope del nº personalizado en cliente. El backend acepta hasta 500
+ * (`lib/api/filtered-questions/schemas.ts`) pero >100 satura Supabase, así que
+ * limitamos a 100 y, si hay menos preguntas disponibles, a esas.
+ */
+export function customQuestionCap(availableQuestions: number): number {
+  const HARD_CAP = 100
+  if (!Number.isFinite(availableQuestions) || availableQuestions <= 0) return HARD_CAP
+  return Math.min(HARD_CAP, Math.floor(availableQuestions))
+}
+
+/** ¿El valor actual NO es un preset? → el input personalizado está "activo". */
+export function isCustomQuestionCount(selected: number): boolean {
+  return !(QUESTION_COUNT_PRESETS as readonly number[]).includes(selected)
+}
+
+/**
+ * Sanea lo que el usuario teclea en el input personalizado. Devuelve el valor
+ * dentro de [1, cap], o `null` si no es un número usable (para que el caller
+ * ignore el cambio y no rompa el estado).
+ */
+export function clampCustomQuestionCount(raw: number, availableQuestions: number): number | null {
+  if (!Number.isFinite(raw)) return null
+  const cap = customQuestionCap(availableQuestions)
+  return Math.max(1, Math.min(Math.floor(raw), cap))
+}
+
 const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   tema = 7,
   temaDisplayName = null,
@@ -1150,7 +1187,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
             </div>
           )}
           <div className="grid grid-cols-4 gap-2 mb-2">
-            {[10, 25, 50, 100].map((num) => {
+            {QUESTION_COUNT_PRESETS.map((num) => {
               const exceedsAvailable = num > availableQuestions
               const exceedsDailyLimit = hasLimit && num > questionsRemaining
               const needsPremium = exceedsDailyLimit && !exceedsAvailable
@@ -1182,6 +1219,35 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                 </button>
               )
             })}
+          </div>
+          {/* Cantidad personalizada: los presets cubren 10/25/50/100; aquí
+              cualquier número (ej. 70 para simular el examen real). El backend
+              ya acepta numQuestions hasta 500, pero limitamos a 100 en cliente
+              para no saturar Supabase. Los useEffect de clamp (disponibles /
+              límite diario / oficiales) ajustan el valor automáticamente. */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="custom-question-count" className="text-xs text-gray-600">
+              O personalizado:
+            </label>
+            <input
+              id="custom-question-count"
+              type="number"
+              min={1}
+              max={customQuestionCap(availableQuestions)}
+              inputMode="numeric"
+              placeholder="ej. 70"
+              value={isCustomQuestionCount(selectedQuestions) ? selectedQuestions : ''}
+              onChange={(e) => {
+                const next = clampCustomQuestionCount(parseInt(e.target.value, 10), availableQuestions)
+                if (next !== null) setSelectedQuestions(next)
+              }}
+              className={`w-20 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
+                isCustomQuestionCount(selectedQuestions)
+                  ? 'border-blue-600 ring-1 ring-blue-600 text-blue-700'
+                  : 'border-gray-300 text-gray-700'
+              } focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none`}
+            />
+            <span className="text-xs text-gray-400">máx. {customQuestionCap(availableQuestions)}</span>
           </div>
           {selectedQuestions > availableQuestions && (
             <p className="text-xs text-orange-600 mt-1">
