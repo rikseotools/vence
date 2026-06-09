@@ -233,10 +233,18 @@ export default function FailedQuestionsModal({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-red-600">
-                        ❌ {question.failedCount}
-                      </div>
-                      <div className="text-xs text-gray-500">
+                      {question.onlyBlank ? (
+                        <>
+                          <div className="text-lg font-bold text-gray-500">⬜ {question.blankCount ?? question.failedCount}</div>
+                          <div className="text-xs text-gray-500">en blanco</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-lg font-bold text-red-600">❌ {question.wrongCount ?? question.failedCount}</div>
+                          <div className="text-xs text-gray-500">falladas{typeof question.blankCount === 'number' && question.blankCount > 0 ? ` (+${question.blankCount} en blanco)` : ''}</div>
+                        </>
+                      )}
+                      <div className="text-xs text-gray-400">
                         {new Date(question.lastFailed).toLocaleDateString('es-ES')}
                       </div>
                     </div>

@@ -28,6 +28,10 @@ export const failedQuestionItemSchema = z.object({
   articleNumber: z.string().nullable(),
   lawShortName: z.string().nullable(),
   failedCount: z.number().int(),
+  // Desglose en blanco vs fallo real (aditivo; opcional por retrocompat).
+  wrongCount: z.number().int().optional(),
+  blankCount: z.number().int().optional(),
+  onlyBlank: z.boolean().optional(),
   lastFailed: z.string(),
   firstFailed: z.string(),
   totalTime: z.number().int(),
@@ -43,6 +47,9 @@ export const getUserFailedQuestionsResponseSchema = z.object({
   success: z.boolean(),
   totalQuestions: z.number().int().optional(),
   totalFailures: z.number().int().optional(),
+  // Preguntas con al menos un fallo real (contestadas mal) vs solo en blanco.
+  totalRealFailures: z.number().int().optional(),
+  totalBlankOnly: z.number().int().optional(),
   questions: z.array(failedQuestionItemSchema).optional(),
   error: z.string().optional(),
 })
@@ -57,6 +64,9 @@ export const failedByTopicItemSchema = z.object({
   topicNumber: z.number().int(),
   topicTitle: z.string().nullable(),
   failedQuestions: z.number().int(),
+  // Desglose aditivo: preguntas con fallo real vs solo en blanco.
+  realFailedQuestions: z.number().int().optional(),
+  blankQuestions: z.number().int().optional(),
   totalFailures: z.number().int(),
 })
 

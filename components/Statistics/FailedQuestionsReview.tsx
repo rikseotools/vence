@@ -13,6 +13,9 @@ interface TopicFailed {
   topicNumber: number
   topicTitle: string | null
   failedQuestions: number
+  // Desglose: preguntas con fallo real vs solo dejadas en blanco (aditivo).
+  realFailedQuestions?: number
+  blankQuestions?: number
   totalFailures: number
 }
 
@@ -94,6 +97,8 @@ export default function FailedQuestionsReview() {
         setModalData({
           totalQuestions: data.totalQuestions,
           totalFailures: data.totalFailures,
+          totalRealFailures: data.totalRealFailures,
+          totalBlankOnly: data.totalBlankOnly,
           questions: data.questions,
         })
       } else {
@@ -217,7 +222,15 @@ export default function FailedQuestionsReview() {
                     Tema {topic.topicNumber}{topic.topicTitle ? ` - ${topic.topicTitle}` : ''}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
-                    {topic.totalFailures} fallos en {topic.failedQuestions} preguntas
+                    {typeof topic.blankQuestions === 'number' && topic.blankQuestions > 0 ? (
+                      <>
+                        <span className="text-red-600 font-medium">{topic.realFailedQuestions ?? topic.failedQuestions} falladas</span>
+                        {' · '}
+                        <span className="text-gray-500">{topic.blankQuestions} en blanco</span>
+                      </>
+                    ) : (
+                      <>{topic.totalFailures} fallos en {topic.failedQuestions} preguntas</>
+                    )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">

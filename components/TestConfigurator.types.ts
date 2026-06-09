@@ -113,6 +113,10 @@ export interface FailedQuestionItem {
   articleNumber: string | null
   lawShortName: string | null
   failedCount: number
+  // Desglose en blanco vs fallo real (aditivo; opcional por retrocompat).
+  wrongCount?: number
+  blankCount?: number
+  onlyBlank?: boolean
   lastFailed: string
   firstFailed: string
   totalTime?: number
@@ -122,6 +126,8 @@ export interface FailedQuestionItem {
 export interface FailedQuestionsData {
   totalQuestions: number
   totalFailures: number
+  totalRealFailures?: number
+  totalBlankOnly?: number
   questions: FailedQuestionItem[]
 }
 

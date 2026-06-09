@@ -20,6 +20,7 @@ import type {
   FailedQuestionItem,
   FailedByTopicItem,
 } from './schemas'
+import { isBlankAnswer } from './blank'
 
 // ============================================
 // OBTENER PREGUNTAS FALLADAS DEL USUARIO
@@ -158,6 +159,7 @@ export async function getUserFailedQuestions(
         difficulty: testQuestions.difficulty,
         articleNumber: testQuestions.articleNumber,
         lawShortName: testQuestions.lawName,
+        userAnswer: testQuestions.userAnswer,
       })
       .from(testQuestions)
       .innerJoin(questions, eq(testQuestions.questionId, questions.id))
@@ -191,6 +193,9 @@ export async function getUserFailedQuestions(
           articleNumber: answer.articleNumber,
           lawShortName: answer.lawShortName,
           failedCount: 0,
+          wrongCount: 0,
+          blankCount: 0,
+          onlyBlank: true,
           lastFailed: answer.createdAt || new Date().toISOString(),
           firstFailed: answer.createdAt || new Date().toISOString(),
           totalTime: 0,
@@ -199,6 +204,14 @@ export async function getUserFailedQuestions(
 
       const question = failedQuestionsMap.get(questionId)!
       question.failedCount++
+      // Desglose en blanco vs fallo real (la blanca sigue contando como fallada
+      // para el motor de áreas débiles; esto solo permite etiquetarla aparte).
+      if (isBlankAnswer(answer.userAnswer)) {
+        question.blankCount = (question.blankCount ?? 0) + 1
+      } else {
+        question.wrongCount = (question.wrongCount ?? 0) + 1
+      }
+      question.onlyBlank = (question.wrongCount ?? 0) === 0
       question.totalTime += answer.timeSpentSeconds || 0
 
       // Actualizar fechas
@@ -213,12 +226,19 @@ export async function getUserFailedQuestions(
 
     const failedQuestionsList = Array.from(failedQuestionsMap.values())
 
-    console.log(`✅ [v2] Encontradas ${failedQuestionsList.length} preguntas falladas (${failedAnswers.length} fallos totales)`)
+    // Totales separando fallo real de "solo en blanco" (para la UI: que el
+    // opositor controle sus errores reales sin sacar las blancas del repaso).
+    const totalRealFailures = failedQuestionsList.filter(q => !q.onlyBlank).length
+    const totalBlankOnly = failedQuestionsList.filter(q => q.onlyBlank).length
+
+    console.log(`✅ [v2] ${failedQuestionsList.length} preguntas falladas (${totalRealFailures} con fallo real, ${totalBlankOnly} solo en blanco; ${failedAnswers.length} apariciones)`)
 
     return {
       success: true,
       totalQuestions: failedQuestionsList.length,
       totalFailures: failedAnswers.length,
+      totalRealFailures,
+      totalBlankOnly,
       questions: failedQuestionsList,
     }
   } catch (error) {
@@ -255,6 +275,7 @@ export async function getFailedQuestionsByTopic(
         temaNumber: testQuestions.temaNumber,
         topicTitle: topics.title,
         questionId: testQuestions.questionId,
+        userAnswer: testQuestions.userAnswer,
       })
       .from(testQuestions)
       .innerJoin(questions, eq(testQuestions.questionId, questions.id))
@@ -271,26 +292,36 @@ export async function getFailedQuestionsByTopic(
         gt(testQuestions.temaNumber, 0),
       ))
 
-    // Agrupar por tema
-    const byTopic = new Map<number, { title: string | null; questionIds: Set<string>; totalFailures: number }>()
+    // Agrupar por tema. Por pregunta guardamos si ALGUNA vez se contestó mal
+    // (everWrong) → distingue "fallo real" de "solo en blanco" a nivel de tema.
+    const byTopic = new Map<number, { title: string | null; everWrong: Map<string, boolean>; totalFailures: number }>()
 
     for (const row of rows) {
       const tema = row.temaNumber!
       if (!byTopic.has(tema)) {
-        byTopic.set(tema, { title: row.topicTitle, questionIds: new Set(), totalFailures: 0 })
+        byTopic.set(tema, { title: row.topicTitle, everWrong: new Map(), totalFailures: 0 })
       }
       const entry = byTopic.get(tema)!
-      if (row.questionId) entry.questionIds.add(row.questionId)
+      if (row.questionId) {
+        const wrong = !isBlankAnswer(row.userAnswer)
+        entry.everWrong.set(row.questionId, (entry.everWrong.get(row.questionId) ?? false) || wrong)
+      }
       entry.totalFailures++
     }
 
     const result: FailedByTopicItem[] = Array.from(byTopic.entries())
-      .map(([topicNumber, data]) => ({
-        topicNumber,
-        topicTitle: data.title,
-        failedQuestions: data.questionIds.size,
-        totalFailures: data.totalFailures,
-      }))
+      .map(([topicNumber, data]) => {
+        const realFailedQuestions = Array.from(data.everWrong.values()).filter(Boolean).length
+        const blankQuestions = data.everWrong.size - realFailedQuestions
+        return {
+          topicNumber,
+          topicTitle: data.title,
+          failedQuestions: data.everWrong.size,
+          realFailedQuestions,
+          blankQuestions,
+          totalFailures: data.totalFailures,
+        }
+      })
       .sort((a, b) => b.failedQuestions - a.failedQuestions)
 
     return { success: true, topics: result }

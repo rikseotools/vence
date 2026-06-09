@@ -70,6 +70,8 @@ async function _POST(request: Request) {
       success: true,
       totalQuestions: result.totalQuestions,
       totalFailures: result.totalFailures,
+      totalRealFailures: result.totalRealFailures,
+      totalBlankOnly: result.totalBlankOnly,
       questions: result.questions,
     })
   } catch (error) {
