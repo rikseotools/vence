@@ -3339,6 +3339,66 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNED (C2 estatal)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_uned',
+    slug: 'auxiliar-administrativo-universidad-uned',
+    positionType: 'auxiliar_administrativo_universidad_uned',
+    examScoring: { penaltyDivisor: null, source: 'Convocatoria UNED 2026 (BOE 28/05/2026): ejercicio test de 90 preguntas; penalización por errores pendiente de confirmar en las bases. confidence:baja' },
+    name: 'Auxiliar Administrativo de la UNED',
+    shortName: 'Aux. Admin. UNED',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'indigo',
+    administracion: 'estado',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Materia General', subtitle: 'Normativa estatal y procedimiento administrativo', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978 (I)' },
+          { id: 2, name: 'La Constitución Española de 1978 (II)' },
+          { id: 3, name: 'Ley 40/2015, de Régimen Jurídico del Sector Público' },
+          { id: 4, name: 'Ley 39/2015, del Procedimiento Administrativo Común (I)' },
+          { id: 5, name: 'Ley 39/2015, del Procedimiento Administrativo Común (II)' },
+          { id: 6, name: 'Ley 39/2015, del Procedimiento Administrativo Común (III)' },
+          { id: 7, name: 'Servicios de información administrativa y atención al público' },
+          { id: 8, name: 'Estatuto Básico del Empleado Público (I)' },
+          { id: 9, name: 'Estatuto Básico del Empleado Público (II)' },
+          { id: 10, name: 'Ley Orgánica 3/2007, para la igualdad efectiva de mujeres y hombres' },
+          { id: 11, name: 'Ley Orgánica 3/2018, de Protección de Datos Personales' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Materia Específica (UNED)', subtitle: 'Sistema universitario y Estatutos de la UNED', icon: '🎓',
+        themes: [
+          { id: 12, name: 'Ley Orgánica 2/2023, del Sistema Universitario (I)' },
+          { id: 13, name: 'Ley Orgánica 2/2023, del Sistema Universitario (II)' },
+          { id: 14, name: 'Ley Orgánica 2/2023, del Sistema Universitario (III)' },
+          { id: 15, name: 'Los Estatutos de la UNED (I)' },
+          { id: 16, name: 'Los Estatutos de la UNED (II)' },
+          { id: 17, name: 'Los estudiantes de la UNED' },
+          { id: 18, name: 'Los estudios en la UNED (I)' },
+          { id: 19, name: 'Los estudios en la UNED (II)' },
+        ],
+      },
+      {
+        id: 'bloque3', title: 'Ofimática', subtitle: 'Microsoft Office 365', icon: '💻',
+        themes: [
+          { id: 20, name: 'Word y Excel (Microsoft Office 365)' },
+          { id: 21, name: 'Outlook 365' },
+        ],
+      },
+    ],
+    totalTopics: 21,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-uned', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-uned/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-uned/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // TCAE GALICIA (C2)
   // ========================================
   {
