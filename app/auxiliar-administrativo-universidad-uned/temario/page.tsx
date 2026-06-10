@@ -1,3 +1,4 @@
+// Aux. Admin. UNED — temario SSR (DynamicTemarioPage). Deploy trigger: fix de build en scripts/ (8f421764) está en paths-ignore.
 // app/auxiliar-administrativo-universidad-uned/temario/page.tsx - Thin wrapper del componente dinamico compartido.
 // Fuente unica de verdad: BD (oposicion_bloques + topics).
 import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
