@@ -140,6 +140,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏢'
   },
   {
+    id: 'auxiliar_administrativo_universidad_uned',
+    nombre: 'Auxiliar Administrativo de la UNED',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '🎓'
+  },
+  {
     id: 'administrativo_seguridad_social',
     nombre: 'Administrativo de la Seguridad Social',
     categoria: 'C1',
@@ -1478,7 +1485,7 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 // Mapa de regiones (ipapi.co) → oposiciones prioritarias de esa comunidad autónoma
 // Las oposiciones estatales (Estado, Justicia) siempre se incluyen como relevantes
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
-  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
+  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_universidad_uned', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],

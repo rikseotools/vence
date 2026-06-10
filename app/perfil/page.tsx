@@ -291,6 +291,11 @@ function PerfilPageContent() {
       data: { name: 'TCAE del Servicio Andaluz de Salud (SAS)', slug: 'tcae-sas', categoria: 'C2', administracion: 'Sanitaria' }
     },
     {
+      value: 'auxiliar_administrativo_universidad_uned',
+      label: 'Aux. Administrativo UNED',
+      data: { name: 'Auxiliar Administrativo de la UNED', slug: 'auxiliar-administrativo-universidad-uned', categoria: 'C2', administracion: 'Estado' }
+    },
+    {
       value: 'auxiliar_enfermeria_gva',
       label: 'Aux Enfermería GVA',
       data: { name: 'Auxiliar de Enfermería Generalitat Valenciana', slug: 'auxiliar-enfermeria-gva', categoria: 'C2', administracion: 'Sanitaria' }
