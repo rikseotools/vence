@@ -471,9 +471,7 @@ async function sendMedalEmail(db: ReturnType<typeof getDb>, userId: string, meda
     const userName = profile?.display_name || 'Estudiante'
 
     // Llamar a la API de emails (server-side)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'http://localhost:3000'
 
     await fetch(`${baseUrl}/api/emails/send-medal-congratulation`, {
       method: 'POST',

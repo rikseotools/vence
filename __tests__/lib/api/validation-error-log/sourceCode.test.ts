@@ -87,8 +87,8 @@ describe('next.config.mjs — deploy version', () => {
     expect(config).toMatch(/NEXT_PUBLIC_DEPLOY_VERSION/)
   })
 
-  it('usa VERCEL_GIT_COMMIT_SHA', () => {
-    expect(config).toMatch(/VERCEL_GIT_COMMIT_SHA/)
+  it('usa GIT_COMMIT_SHA', () => {
+    expect(config).toMatch(/GIT_COMMIT_SHA/)
   })
 
   it('fallback a "local" cuando no hay SHA', () => {
@@ -110,12 +110,12 @@ describe('queries.ts — logValidationError es fire-and-forget', () => {
     expect(content).toMatch(/\.catch\(/)
   })
 
-  it('usa VERCEL_GIT_COMMIT_SHA para deploy version', () => {
-    expect(content).toMatch(/VERCEL_GIT_COMMIT_SHA/)
+  it('usa GIT_COMMIT_SHA para deploy version', () => {
+    expect(content).toMatch(/GIT_COMMIT_SHA/)
   })
 
-  it('usa VERCEL_REGION', () => {
-    expect(content).toMatch(/VERCEL_REGION/)
+  it('usa AWS_REGION', () => {
+    expect(content).toMatch(/AWS_REGION/)
   })
 
   it('sanitiza el request body', () => {

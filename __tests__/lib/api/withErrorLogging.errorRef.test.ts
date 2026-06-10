@@ -7,7 +7,7 @@
 // - 4xx: NO inyecta errorRef (solo ruido)
 // - throw sin catch: genera errorRef y lo devuelve en respuesta 500 genérica
 
-process.env.VERCEL_GIT_COMMIT_SHA = 'abcdef12' // force non-local so logValidationError no-ops check passes
+process.env.GIT_COMMIT_SHA = 'abcdef12' // force non-local so logValidationError no-ops check passes
 
 // Mock loggers. Política 2026-05-25:
 //   - logValidationError      → fire-and-forget para 4xx

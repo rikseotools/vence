@@ -21,7 +21,6 @@ declare global {
 const getURL = (): string => {
   let url =
     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Configurado en producción
-    process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automático de Vercel
     'http://localhost:3000/' // Fallback desarrollo
 
   // Asegurar protocolo https (excepto localhost)

@@ -23,19 +23,18 @@ function getAuditLogDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getTraceDb()
 }
 
-// Deploy version: Vercel inyectaba VERCEL_GIT_COMMIT_SHA; en ECS Fargate
+// Deploy version: En ECS Fargate el workflow inyecta GIT_COMMIT_SHA;
 // (cutover 2026-05-26) usamos GIT_COMMIT_SHA (build-arg del Dockerfile).
 // Fallback final 'unknown' para casos imprevistos en producción.
 const DEPLOY_VERSION =
   process.env.GIT_COMMIT_SHA?.slice(0, 8)
-  || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
   || (process.env.NODE_ENV === 'production' ? 'unknown' : 'local')
-const VERCEL_REGION = process.env.VERCEL_REGION || null
+const DEPLOY_REGION = process.env.AWS_REGION || null
 
-// Skip persistence solo en dev local. En producción (Vercel o ECS)
+// Skip persistence solo en dev local. En producción (ECS)
 // SIEMPRE escribir, aunque DEPLOY_VERSION sea 'unknown' (mejor un log
 // sin SHA que perder el error). Bug detectado 2026-05-27 (cabo #7):
-// tras cutover a ECS, VERCEL_GIT_COMMIT_SHA es undefined → DEPLOY_VERSION='local'
+// si no está inyectado, GIT_COMMIT_SHA es undefined → DEPLOY_VERSION='local'
 // → guard descartaba 100% de 5xx. 643 errores perdidos en 24h.
 const SKIP_PERSISTENCE = process.env.NODE_ENV !== 'production'
 
@@ -181,7 +180,7 @@ async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
     httpStatus: input.httpStatus || null,
     errorMessage: input.errorMessage.slice(0, 2000),
     metadata: {
-      vercelRegion: VERCEL_REGION,
+      vercelRegion: DEPLOY_REGION,
       questionId: input.questionId || null,
       testId: input.testId || null,
       userAgent: input.userAgent?.slice(0, 200) || null,
@@ -200,7 +199,7 @@ async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
     requestBody: sanitizedBody,
     severity: input.severity || 'critical',
     deployVersion: DEPLOY_VERSION,
-    vercelRegion: VERCEL_REGION,
+    vercelRegion: DEPLOY_REGION,
     httpStatus: input.httpStatus || null,
     durationMs: input.durationMs || null,
     userAgent: input.userAgent?.slice(0, 1000) || null,

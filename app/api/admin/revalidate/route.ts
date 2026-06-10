@@ -8,7 +8,7 @@
 // de Next.js — hay que ADEMÁS incrementar el contador
 // `cache_version:${tag}` en Upstash para que el backend vea el nuevo
 // version. Los invalidadores específicos en `lib/cache/<tag>.ts`
-// encapsulan ambos planos (Vercel + backend) y son la fuente única.
+// encapsulan ambos planos (web/ECS + backend) y son la fuente única.
 //
 // Patrón: TAG_INVALIDATORS mapea tags con counterpart cross-runtime a
 // su función específica. Tags sin entrada usan el dispatch genérico
@@ -68,7 +68,7 @@ async function _POST(request: NextRequest) {
   }
 
   // Dispatch: si el tag tiene invalidador específico cross-runtime, usarlo.
-  // Si no, fallback al revalidateTag genérico (solo Vercel).
+  // Si no, fallback al revalidateTag genérico (solo runtime web).
   const specificInvalidator = TAG_INVALIDATORS[tag as ValidTag]
   let crossRuntime = false
   if (specificInvalidator) {
@@ -81,7 +81,7 @@ async function _POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     revalidated: tag,
-    crossRuntime, // true = invalidó también backend canary, false = solo Vercel
+    crossRuntime, // true = invalidó también backend canary, false = solo runtime web
     timestamp: new Date().toISOString(),
   })
 }

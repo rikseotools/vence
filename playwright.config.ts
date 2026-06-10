@@ -2,7 +2,7 @@
  * Playwright E2E config — Bloque 5 Fase E.4.1
  *
  * Suite mínima de smoke crítico que valida el frontend en dos entornos en
- * paralelo (preview AWS + producción Vercel). Bloquea cutover si preview
+ * paralelo (preview AWS + producción). Bloquea cutover si preview
  * regresa donde producción funciona.
  *
  * Inspirado en VicoHR — patrones validados en producción:
@@ -12,9 +12,9 @@
  *   - Reporters layered (github + list + html)
  *
  * Modos de ejecución:
- *   npm run test:e2e               # ambos entornos (preview AWS + prod Vercel)
+ *   npm run test:e2e               # ambos entornos (preview AWS + prod)
  *   npm run test:e2e:preview       # solo preview AWS
- *   npm run test:e2e:prod          # solo prod Vercel (baseline)
+ *   npm run test:e2e:prod          # solo prod (baseline)
  *   npm run test:e2e -- -g "home"  # solo tests que matcheen "home"
  *
  * Override de URLs (raro):
@@ -38,7 +38,7 @@ export default defineConfig({
   retries: IS_CI ? 2 : 0,
   // Paralelismo: respetuoso con prod — 2 workers en CI, 3 local. Cada
   // worker corre los proyectos secuencialmente, así nunca más de 6 reqs
-  // simultáneas contra Vercel/AWS.
+  // simultáneas contra AWS.
   workers: IS_CI ? 2 : 3,
   // Reporters: html siempre + github (annotations) + list (legible).
   reporter: IS_CI
@@ -71,7 +71,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], baseURL: PREVIEW_URL },
     },
     {
-      name: 'prod-vercel',
+      name: 'prod',
       use: { ...devices['Desktop Chrome'], baseURL: PROD_URL },
     },
   ],

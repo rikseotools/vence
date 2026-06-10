@@ -129,7 +129,7 @@ export default function DespliegueArticulosProblematicosPage() {
 
           {data.summary.new.calls === 0 && (
             <div className="rounded bg-yellow-100 text-yellow-800 p-3 mb-4 text-sm">
-              Aún no hay llamadas al path nuevo. Sube <code>NEXT_PUBLIC_PROBLEMATIC_ARTICLES_ROLLOUT_PCT</code> en Vercel.
+              Aún no hay llamadas al path nuevo. Sube <code>NEXT_PUBLIC_PROBLEMATIC_ARTICLES_ROLLOUT_PCT</code> en la configuración del servicio ECS.
             </div>
           )}
           {data.summary.new.zeroUsersPct > 80 && data.summary.new.distinctUsers >= 5 && (

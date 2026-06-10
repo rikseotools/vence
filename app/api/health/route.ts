@@ -167,7 +167,7 @@ async function _GET() {
       overall,
       durationMs: Date.now() - t0,
       timestamp: new Date().toISOString(),
-      deploy: process.env.GIT_COMMIT_SHA?.slice(0, 8) || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'unknown',
+      deploy: process.env.GIT_COMMIT_SHA?.slice(0, 8) || 'unknown',
       checks,
     },
     {

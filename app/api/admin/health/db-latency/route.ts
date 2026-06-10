@@ -1,5 +1,5 @@
 // app/api/admin/health/db-latency/route.ts
-// Probe focalizado de latencia Vercel→Supabase round-trip.
+// Probe focalizado de latencia ECS→Supabase round-trip.
 //
 // Diferente de /api/admin/health (que es dump completo de incidentes):
 // este endpoint SOLO mide latencia de query DB. Pensado para repetir
@@ -12,7 +12,7 @@
 // Devuelve:
 //   - coldStartMs: primera query (incluye establecimiento de conexión si frío)
 //   - p50/p95/min/max: estadísticos de las samples-1 queries restantes (warm)
-//   - region: VERCEL_REGION para confirmar que el cambio de vercel.json llegó
+//   - region: AWS_REGION del contenedor ECS
 //   - poolerHost: parsea DATABASE_URL para verificar que apuntamos al pooler
 //     correcto (eu-west-2)
 //
@@ -106,7 +106,7 @@ async function _GET(request: NextRequest) {
       maxMs: round(warm[warm.length - 1] ?? 0),
       allMs: warm.map(round),
     },
-    region: process.env.AWS_REGION || process.env.VERCEL_REGION || 'unknown',
+    region: process.env.AWS_REGION || 'unknown',
     poolerHost: extractPoolerHost(),
     timestamp: new Date().toISOString(),
   })

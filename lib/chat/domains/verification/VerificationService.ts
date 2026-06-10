@@ -754,7 +754,7 @@ ${analysisInstructions}`
       userId: typeof (error as { userId?: string } | null)?.userId === 'string'
         ? (error as { userId?: string }).userId
         : null,
-      deployVersion: process.env.VERCEL_GIT_COMMIT_SHA || null,
+      deployVersion: process.env.GIT_COMMIT_SHA?.slice(0, 8) || null,
     })
     return { content: classified.userFacingMessage }
   }

@@ -3,7 +3,7 @@
 //
 // Los triggers PG sobre topics/topic_scope/oposicion_bloques/oposiciones
 // fueron eliminados el 16/04/2026 (migración 20260416_drop_revalidate_triggers.sql)
-// porque generaban ~5M ISR Writes/mes (~$20 facturados por Vercel).
+// porque generaban ~5M ISR Writes/mes (~$20 facturados por el hosting/CDN).
 // El cron check-seguimiento por sí solo disparaba 41 invalidaciones/día sin
 // que cambiara nada visible para el usuario. Mismo patrón ya aplicado a
 // feedback (commit 166c1ddf) y disputes (commit 3774509e).

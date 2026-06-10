@@ -1,3 +1,0 @@
-# El backend NestJS (carpeta backend/) se despliega aparte en AWS Fargate.
-# Se excluye del build y deploy de la app Next.js en Vercel.
-backend

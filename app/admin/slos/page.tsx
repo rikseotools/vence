@@ -1,6 +1,6 @@
 // app/admin/slos/page.tsx
 //
-// Panel admin SLO — cutover readiness Vercel→AWS (Bloque 5 Fase E.4.5).
+// Panel admin SLO — readiness de SLOs (Bloque 5 Fase E.4.5).
 //
 // 7 indicadores con semáforo verde/ámbar/rojo. Si TODOS verdes →
 // "CUTOVER GO". Cualquier rojo → "NO CUTOVER, investigar".
@@ -94,7 +94,7 @@ export default function SLODashboardPage() {
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Bloque 5 Fase E.4.5 · 7 indicadores semáforo + decisión GO/NO-GO
-            cutover Vercel→AWS · auto-refresh 30s
+            SLOs de producción · auto-refresh 30s
           </p>
         </div>
 

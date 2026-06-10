@@ -8,11 +8,11 @@ import pg from 'pg'
 const { Pool } = pg
 
 async function main() {
-  const prevSha = process.env.VERCEL_GIT_PREVIOUS_SHA
-  const currentSha = process.env.VERCEL_GIT_COMMIT_SHA || 'HEAD'
+  const prevSha = process.env.GIT_PREVIOUS_SHA
+  const currentSha = process.env.GIT_COMMIT_SHA || 'HEAD'
 
   if (!prevSha) {
-    console.log('⏭️ [help-articles] Sin VERCEL_GIT_PREVIOUS_SHA, saltando check')
+    console.log('⏭️ [help-articles] Sin GIT_PREVIOUS_SHA, saltando check')
     return
   }
 

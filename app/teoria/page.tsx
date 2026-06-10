@@ -1,10 +1,10 @@
 // app/teoria/page.tsx - PÁGINA PRINCIPAL DE TEORÍA CON SEO
 //
 // Edge caching con stale-while-revalidate (2026-05-17):
-// - revalidate=3600: la página se cachea 1h en CDN edge de Vercel (y en
+// - revalidate=3600: la página se cachea 1h en CDN edge (CloudFront) (y en
 //   cualquier CDN si migráramos a otro hosting — `Cache-Control` es
 //   estándar HTTP).
-// - Cuando expira, Vercel sirve la versión stale al usuario instantáneo
+// - Cuando expira, el CDN sirve la versión stale al usuario instantáneo
 //   y regenera en background. Si la regeneración falla (statement
 //   timeout, BD saturada), sigue sirviendo stale.
 // - Resultado: el usuario nunca paga los ~4s de fetchLawsList ni ve

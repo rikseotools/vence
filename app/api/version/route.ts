@@ -3,10 +3,8 @@
 import { NextResponse } from 'next/server'
 
 // En Fargate el workflow inyecta GIT_COMMIT_SHA/NEXT_PUBLIC_GIT_COMMIT_SHA.
-// VERCEL_GIT_COMMIT_SHA queda como fallback legacy.
 const BUILD_VERSION = process.env.GIT_COMMIT_SHA?.slice(0, 8)
   || process.env.NEXT_PUBLIC_GIT_COMMIT_SHA?.slice(0, 8)
-  || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
   || 'dev'
 
 export function GET() {

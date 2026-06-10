@@ -4,8 +4,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig = {
   // Bloque 5 Fase E (ECS Fargate path, no SST/OpenNext): build standalone
   // para Docker/ECS. Genera .next/standalone con server.js + minimal
-  // node_modules, ~10x más ligero que el build normal. No afecta a Vercel —
-  // Vercel ignora este output y usa su propio runtime.
+  // node_modules, ~10x más ligero que el build normal. Es el output que consume el build Docker para ECS Fargate (open-next/standalone).
   output: 'standalone',
 
   // Timeout de prerender por página en `next build`. El default (60s) es
@@ -36,7 +35,7 @@ const nextConfig = {
     //
     // Coste de desactivar: pierde ~8-14KB de CSS crítico inline → FCP/LCP sube
     // ~50-100ms en first paint. Mitigado por: optimizeCss activo (minify+dedup),
-    // cssChunking:'strict' (chunks pequeños), Vercel CDN cache agresivo,
+    // cssChunking:'strict' (chunks pequeños), CloudFront cache agresivo,
     // y la mayoría de users de Vence son recurrentes (CSS en cache navegador).
     //
     // Reactivar cuando Next.js publique parche del bug.
@@ -55,11 +54,10 @@ const nextConfig = {
     // ✅ Forzar exposición de variable Stripe al cliente (fix para Next.js 15.3+)
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     // ✅ Versión del deploy para diagnóstico. En Fargate el workflow inyecta
-    // GIT_COMMIT_SHA/NEXT_PUBLIC_GIT_COMMIT_SHA; VERCEL_GIT_COMMIT_SHA es fallback legacy.
+    // GIT_COMMIT_SHA/NEXT_PUBLIC_GIT_COMMIT_SHA
     NEXT_PUBLIC_DEPLOY_VERSION:
       process.env.GIT_COMMIT_SHA?.slice(0, 8)
       || process.env.NEXT_PUBLIC_GIT_COMMIT_SHA?.slice(0, 8)
-      || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
       || 'local',
   },
 
@@ -232,8 +230,6 @@ const sentryWebpackPluginOptions = {
     treeshake: {
       removeDebugLogging: true,
     },
-    // Automatic Vercel Cron Monitors
-    automaticVercelMonitors: true,
   },
 };
 
