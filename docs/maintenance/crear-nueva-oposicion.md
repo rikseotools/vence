@@ -141,7 +141,7 @@ El articulo es la unidad base. Las preguntas se vinculan al articulo via `primar
 
 ```
 FASE 1: Programa oficial       → Leer BOE, extraer epigrafes literales
-FASE 2: Base de datos          → oposicion, topics (con epigrafes)
+FASE 2: Base de datos          → oposicion, oposicion_bloques (¡obligatorio!), topics (con epigrafes)
 FASE 3: Topic scope con IA     → Analizar epigrafes, mapear a leyes/articulos
         └─ 3g: npm run audit:epigrafe <position_type>  → FASE AUTOMÁTICA coherencia epígrafe↔scope (obligatoria)
 FASE 4: Config y schemas       → oposiciones.ts, archivos manuales, logo/bandera/escudo oficial (CcaaFlag §4c.bis)
@@ -506,6 +506,39 @@ Ejemplos reales de como numeran distintas convocatorias:
 4. **Documentar el mapeo** en `lib/config/oposiciones.ts` para que quede claro
 
 **El `topic_number` en BD debe coincidir con lo que usa `oposiciones.ts` en blocks.themes[].id.** Si hay duda, consultar primero la config existente de oposiciones similares.
+
+### 2b.2 🚨 OBLIGATORIO: `oposicion_bloques` (si no, `/temario` da 404)
+
+**El INSERT de topics de arriba NO basta para que el temario funcione.** La página `/<slug>/temario` (`components/temario/DynamicTemarioPage.tsx` → `getTemarioByPositionType`) hace:
+
+```sql
+SELECT ... FROM oposicion_bloques WHERE position_type = '<position_type>'
+```
+
+y **si esa consulta devuelve 0 filas → `return null` → `notFound()` → la página da 404**. Crear los `topics` con su `bloque_number` **NO crea** las filas de `oposicion_bloques`: son una tabla aparte que define los bloques (títulos/iconos del temario). Hay que insertarlas explícitamente, **una fila por bloque**:
+
+```sql
+INSERT INTO oposicion_bloques (position_type, bloque_number, titulo, icon, sort_order)
+VALUES
+  ('<position_type>', 1, 'Materia Común',     '⚖️', 1),
+  ('<position_type>', 2, 'Materia Específica', '🏥', 2);
+```
+
+- El `bloque_number` de `oposicion_bloques` **debe coincidir** con el `bloque_number` de los `topics` (el temario agrupa los topics por ese número). Asegúrate de que el INSERT de topics (§2b) incluye `bloque_number`.
+- El nº de bloques debe cuadrar con `oposiciones.bloques_count` (§2a) y con `oposiciones.ts` (§4).
+
+**Tras insertar los bloques, INVALIDAR la caché** (el resultado se cachea en `unstable_cache` con `revalidate:false`, tag `'temario'` → un `null` cacheado persiste para siempre si no se invalida):
+
+```bash
+# 1) revalidar tag temario (limpia el null cacheado en el server)
+curl -X POST https://www.vence.es/api/admin/revalidate -H "x-cron-secret: $CRON_SECRET" -d '{"tag":"temario"}'
+# 2) invalidar CloudFront (CDN) — ver docs/maintenance/cache-revalidation.md §CloudFront
+AWS_PROFILE=vence aws cloudfront create-invalidation --distribution-id E1EH4WF1H7ZGLA --paths "/<slug>/*"
+```
+
+**Diagnóstico si `/temario` da 404:** `curl -sI "https://www.vence.es/<slug>/temario?nocache=$RANDOM" | grep x-cache`. Si con cache-buster sigue 404 (`x-cache: Error from cloudfront`) → es un **404 real del origen** (falta `oposicion_bloques`, o el `null` sigue cacheado en el server), NO la CDN. Si con cache-buster da 200 pero sin él 404 → es **solo** CloudFront (invalidar).
+
+> 📌 El flujo completo bloques+topics+disponible también está en FASE 5 (§temario); este aviso lo adelanta a FASE 2 porque **es donde se crean los topics y donde se olvida** (bug real 10/06/2026: TCAE SAS nació sin `oposicion_bloques` → `/tcae-sas/temario` 404 en producción).
 
 ### 2c. Insertar convocatoria con enlaces oficiales
 
