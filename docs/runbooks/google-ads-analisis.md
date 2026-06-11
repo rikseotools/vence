@@ -282,9 +282,15 @@ ni mejorando QS sacamos mucho más de Search. El alcance extra viene de **otros 
 
 1. **Remarketing** — a quien ya visitó y no se registró. Lo más rentable (convierte mejor
    que el frío). **⚠️ HOY BLOQUEADO** — ver estado abajo.
-2. **Broad match en las 3 ganadoras** (carm/CAM/Extremadura, hoy en *phrase*) — con su QS
-   alto, *broad* capta variantes que no cogemos sin perder relevancia. Bajo riesgo con
-   presupuesto capado. (Pendiente — hacer DESPUÉS del punto 1.)
+2. ~~**Broad match en las 3 ganadoras**~~ **CERRADO/DESCARTADO (11/06): ya estaban en broad.**
+   Al ir a montar el experimento se descubrió que las 3 ganadoras **ya usan broad match** en
+   su núcleo (Extremadura 22 kw broad, CAM 18 kw broad, carm 3 kw broad que traen 1.753 impr
+   vs 396 de sus 11 phrase). El broad **ya es la palanca activa de alcance y funciona** (las
+   broad traen el grueso de impresiones; Extremadura/CAM van 100% broad con ROI 8.9×/15.8×).
+   → No hay nada que convertir. Lección: **broad + maximizar clics SÍ funciona en esta cuenta**
+   (contra la teoría general), seguramente porque las keywords son de intención muy específica
+   (nombre de oposición). Verificar match type con `ad_group_criterion.keyword.match_type`
+   (enum 2=EXACT 3=PHRASE 4=BROAD) antes de asumir nada.
 3. **YouTube / Demand Gen** — vídeo barato por impresión, gran alcance, embudo alto
    (notoriedad, no venta directa). Requiere creatividad en vídeo.
 4. **SEO orgánico** (runbook `seo-oportunidades.md`) — la mayor demanda no capturada y sin
