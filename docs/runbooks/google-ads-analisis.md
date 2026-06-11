@@ -154,7 +154,35 @@ reales: **nº de plazas**, "temario oficial", "empieza gratis". **NO** referenci
 (20277), español, 4 keywords sin marca, 7 titulares/3 descripciones, 643 plazas. Creada
 activa con un solo `mutateResources` (10 recursos) tras dry-run OK.
 
-## 🧪 Experimento ABIERTO: techo de CPC (07/06/2026 — APLICADO) — analizar ~10-12/06
+## 🧪 Experimento CERRADO: techo de CPC (07/06 → 11/06/2026) — RESULTADO NEGATIVO
+
+> **Veredicto (11/06): subir el techo de CPC NO funciona. Revertidas carm + SS a 0,05€.**
+> Pagar 2-3× más por clic **no ganó ni una subasta más**: la cuota de impresiones de las
+> tratadas se quedó clavada en 13% mientras el control subía a 16% por efecto-examen.
+> El cuello **no es la puja, es el Quality Score** (relevancia anuncio/landing). Próxima
+> palanca = copy/landing, NO pujar más. Datos y razonamiento abajo.
+
+### Resultado medido (LAST_7_DAYS al 11/06)
+
+| | IS | CPC | coste 7d | ventas | ROI | Lectura |
+|---|---|---|---|---|---|---|
+| **carm** (tratada 0,15€) | 16% | **0,082€** | 18,42€ | 2 | **4,29×** | mismas 2 ventas que a 0,05€ pero coste 12€→18€: el techo solo encareció el clic (ROI 6,44×→4,29×) |
+| **SS** (tratada 0,15€) | 10% | **0,111€** | 12,37€ | **0** | **0×** | 12€ a CPC 0,11€ sin una sola venta |
+| **Control** (0,05€) | **16%** media | ~0,04€ | — | varias | — | CAM 15,75× · Extremadura IS 28%/6,63×: las baratas convierten mejor |
+
+- **Métrica decisiva:** IS media **tratadas 13% vs control 16%** (baseline 07/06 era 13%=13%).
+  Las tratadas NO se movieron; el control subió por efecto-examen. → la puja no aporta IS.
+- **perdRank** siguió en **84-90%** en las tratadas pese a pujar 3×: el techo alto no
+  cambió el % de subastas perdidas por rank → confirma que el cuello es **Quality Score**,
+  no la puja. Cumplió **dos** filas "Revertir" de la tabla de decisión a la vez (IS plana
+  como el control + CPC saltando con IS plana).
+
+**Aprendizaje permanente:** en esta cuenta, con perdRank ~85-90% y `abs-top == IS`, **subir
+el techo de CPC es quemar dinero** — no compra presencia, solo encarece el clic. La única
+palanca que queda es **mejorar el Quality Score** (copy del RSA + relevancia de landing),
+que sube el Ad Rank pagando lo mismo. Pendiente: trabajar copy de SS (CTR esperado bajo).
+
+<details><summary>Diseño original del experimento (histórico)</summary>
 
 **Hallazgo que lo motiva:** las campañas que más venden (carm, Madrid, seg. social)
 **NO están limitadas por presupuesto, sino por RANKING.** Métricas 07/06 (LAST_30_DAYS):
@@ -199,14 +227,16 @@ Ojo: Google **no ofrece simulador de pujas** para "Maximizar clics" (TARGET_SPEN
 pase. **Revertir a 0,05€ tras el examen** (carm 21-jun, SS 28-jun) — se cierra la ventana.
 Revertir = `ads:campaign -- ceiling <id> 0.05 --apply`.
 
-**Al analizar, mirar también el Quality Score (07/06):**
-4. Sacar la evolución del **QS por keyword** de las tratadas. Hipótesis: a carm hoy le sale
-   QS "—" (sin datos por poca presencia); si el experimento le da impresiones, debería
-   poblarse y subir. Si la IS sube pero el QS sigue "—" o bajo, el cuello no es solo la
-   puja sino la **relevancia** (anuncio/landing) → tocar copy/landing, no solo pujar.
-5. Revisar el **copy de SS**: su punto débil medido es el **CTR esperado "por debajo de la
-   media"** (la landing y la relevancia del anuncio están OK). Mejorar titulares/copy del
-   RSA sube el CTR → sube el QS → mejor Ad Rank pagando lo mismo.
+</details>
+
+**Siguiente frente abierto — Quality Score (la palanca que SÍ queda):**
+- Sacar la evolución del **QS por keyword** (query en la sección de abajo). El experimento
+  confirmó que dar impresiones pujando no basta: si la IS no sube pese a pujar 3×, el cuello
+  es la **relevancia** (anuncio/landing) → tocar copy/landing, no pujar.
+- Revisar el **copy de SS**: su punto débil medido es el **CTR esperado "por debajo de la
+  media"** (la landing y la relevancia del anuncio están OK). Mejorar titulares/copy del
+  RSA sube el CTR → sube el QS → mejor Ad Rank pagando lo mismo. **Es el siguiente paso
+  recomendado** ahora que el experimento de puja cerró en negativo.
 
 ### Qué se sabe (y qué NO) de Ad Rank / Quality Score
 
