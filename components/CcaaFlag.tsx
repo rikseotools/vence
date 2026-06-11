@@ -298,6 +298,13 @@ const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   // con prioridad sobre la bandera de España. Cubre Administrativo y Auxiliar
   // Administrativo de la Administración de la Seguridad Social (slug …seguridad-social).
   [['seguridad-social'], { src: '/escudos/seguridad-social.png', alt: 'Emblema de la Seguridad Social' }],
+  // Correos: logotipo oficial (corneta), con prioridad sobre la bandera de España.
+  [['correos'], { src: '/escudos/correos.svg', alt: 'Logotipo de Correos' }],
+  // Administración de Justicia: logotipo del Ministerio de Justicia, para los
+  // cuerpos de Justicia (Tramitación Procesal, Auxilio Judicial, Gestión Procesal).
+  [['tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia'], { src: '/escudos/justicia.svg', alt: 'Logotipo del Ministerio de Justicia' }],
+  // UNED: logo institucional, para Aux. Admin. de la UNED (slug …universidad-uned).
+  [['uned'], { src: '/escudos/uned.jpg', alt: 'Logo de la UNED' }],
 ]
 
 export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {
