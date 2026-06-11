@@ -14,6 +14,7 @@ import FraudTracker from '../components/FraudTracker'
 import ChallengeProvider from '../components/security/ChallengeProvider'
 import { GlobalClickTracker, PageViewTracker, AttributionCapture } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
+import ConsentModeDefault from '../components/ConsentModeDefault'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
 import { ClientObservabilityInstaller } from '../components/observability/ClientObservabilityInstaller'
 import { EarlyErrorsBridge } from '../components/observability/EarlyErrorsBridge'
@@ -30,6 +31,9 @@ export default async function SpanishLayout({ children }: { children: React.Reac
   return (
     <html lang="es">
       <head>
+        {/* Google Consent Mode v2 — estado por defecto (denied). DEBE ir antes
+            que cualquier etiqueta de Google. beforeInteractive lo garantiza. */}
+        <ConsentModeDefault />
         {/* Bloque 4 Gap 1 — captura errores ANTES de hydration. Debe
             ir lo más arriba posible en <head> para que pille errores
             de otros scripts inline (GTM, polyfills, Sentry init, ...). */}

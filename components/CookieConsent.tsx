@@ -82,9 +82,28 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
       timestamp: new Date().toISOString()
     }
     setConsent(consentData)
+
+    // Google Consent Mode v2: comunicar la decisión a Google. El estado por
+    // defecto ("denied") lo fija components/ConsentModeDefault.tsx; aquí solo
+    // emitimos el cambio. analytics → analytics_storage; marketing → cookies y
+    // señales de publicidad (remarketing).
+    try {
+      const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag
+      if (typeof gtag === 'function') {
+        gtag('consent', 'update', {
+          analytics_storage: consentData.analytics ? 'granted' : 'denied',
+          ad_storage: consentData.marketing ? 'granted' : 'denied',
+          ad_user_data: consentData.marketing ? 'granted' : 'denied',
+          ad_personalization: consentData.marketing ? 'granted' : 'denied'
+        })
+      }
+    } catch (e) {
+      console.warn('Error updating consent mode:', e)
+    }
+
     try {
       localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(consentData))
-      // Disparar evento para que otros componentes (GoogleAnalytics) lo detecten
+      // Notifica a cualquier componente que escuche cambios de consentimiento.
       window.dispatchEvent(new CustomEvent('cookieConsentChanged', { detail: consentData }))
     } catch (e) {
       console.warn('Error saving cookie consent:', e)

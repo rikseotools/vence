@@ -271,6 +271,56 @@ Revertir = `ads:campaign -- ceiling <id> 0.05 --apply`.
 estamos probando; (2) **Quality Score** → gratis y permanente, mejor Ad Rank pagando lo
 mismo; se sube con relevancia de anuncio (copy/CTR) y de landing.
 
+## 🎯 Cómo alcanzar a MÁS gente (diagnóstico 11/06/2026)
+
+**Punto de partida (medido):** el **Quality Score es BUENO** donde hay datos (carm 7-10, SS
+7-8, Extremadura 7-10; anuncio "alto", landing media/alta). **No hay nada roto que arreglar
+en copy/landing.** Y el experimento de puja cerró en negativo. Conclusión: **la búsqueda
+(Search) está TOPADA** — el volumen de gente que busca nuestras keywords ya lo capturamos en
+buena parte, y el resto se lo llevan academias grandes con presupuestos enormes. Ni pujando
+ni mejorando QS sacamos mucho más de Search. El alcance extra viene de **otros canales**:
+
+1. **Remarketing** — a quien ya visitó y no se registró. Lo más rentable (convierte mejor
+   que el frío). **⚠️ HOY BLOQUEADO** — ver estado abajo.
+2. **Broad match en las 3 ganadoras** (carm/CAM/Extremadura, hoy en *phrase*) — con su QS
+   alto, *broad* capta variantes que no cogemos sin perder relevancia. Bajo riesgo con
+   presupuesto capado. (Pendiente — hacer DESPUÉS del punto 1.)
+3. **YouTube / Demand Gen** — vídeo barato por impresión, gran alcance, embudo alto
+   (notoriedad, no venta directa). Requiere creatividad en vídeo.
+4. **SEO orgánico** (runbook `seo-oportunidades.md`) — la mayor demanda no capturada y sin
+   guerra de pujas. Ads NO lo sube; se sube con contenido + enlaces. Mayor potencial a medio
+   plazo.
+5. **Más oposiciones vendibles** — cada mercado nuevo = gente nueva (lo que ya se hace con
+   las TCAE).
+
+### 🔴 Estado del REMARKETING (Punto 1) — investigado 11/06: NO se puede lanzar aún
+
+- **Audiencia vacía:** `All visitors (AdWords)` = **110 en Search / 40 en Display**. Google
+  exige **mínimo 1.000 (Search) / 100 (Display)** para servir. No hay a quién mostrar.
+  Query: `SELECT user_list.name, user_list.size_for_search, user_list.size_for_display FROM user_list`.
+- **Causa = recogida deficiente:** el tag de Google Ads `AW-7929322521` (en
+  `components/GoogleAnalytics.js`) **solo se carga si el usuario acepta cookies**
+  (`consent.analytics === true`) y **NO hay Google Consent Mode v2**. Sin Consent Mode, el
+  que no acepta no entra en la lista ni como señal modelada → en España (mayoría rechaza) la
+  lista no crece. Por eso solo 110 personas pese al tráfico real.
+- **El "experimento" del punto 1 es un proyecto de habilitación en 3 fases, NO un flip:**
+  1. ✅ **HECHO (11/06) — Consent Mode v2** (Advanced) implementado: `components/ConsentModeDefault.tsx`
+     (default `denied` en `<head>`, `beforeInteractive`) + `GoogleAnalytics.tsx` (carga el tag
+     siempre, ya no condicionado) + `CookieConsent.tsx` (emite `gtag('consent','update')` al
+     aceptar). Ahora el tag carga siempre y Google modela audiencias con consent denegado →
+     la lista de remarketing debería empezar a crecer respetando RGPD.
+  2. ⏳ **MIDIENDO — esperar a que `All visitors` supere 1.000 en Search.** Baseline 11/06:
+     **110 Search / 40 Display**. Revisar **~02/07/2026** (≈3 semanas) con:
+     `SELECT user_list.name, user_list.size_for_search, user_list.size_for_display FROM user_list`.
+     Si NO crece → revisar en GA4 DebugView/Tag Assistant que los pings de consent llegan, y
+     que en la cuenta Ads "Orígenes de audiencia" tiene el modelado activo.
+  3. ⬜ **PENDIENTE — lanzar** campaña de remarketing cuando la lista pase de 1.000 (Search con
+     observación/segmentación de audiencia, o Display) a quien visitó y no se registró.
+- **Verificación post-deploy pendiente:** GA4 DebugView + Tag Assistant (pings default denied →
+  update granted). Revisar que `/privacidad` menciona Consent Mode (tema legal de Manuel).
+- **Mientras tanto:** Meta Pixel sí captura (`lib/metaPixelCapture.ts`) → el remarketing en
+  Meta/Facebook podría estar menos bloqueado; valorar como vía alternativa.
+
 ## Caveats (no olvidar)
 
 - `metrics.conversions` = **registros**, no compras. No es ROI.
