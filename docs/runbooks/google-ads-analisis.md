@@ -310,10 +310,19 @@ ni mejorando QS sacamos mucho más de Search. El alcance extra viene de **otros 
      aceptar). Ahora el tag carga siempre y Google modela audiencias con consent denegado →
      la lista de remarketing debería empezar a crecer respetando RGPD.
   2. ⏳ **MIDIENDO — esperar a que `All visitors` supere 1.000 en Search.** Baseline 11/06:
-     **110 Search / 40 Display**. Revisar **~02/07/2026** (≈3 semanas) con:
+     **110 Search / 40 Display**. Query de medición:
      `SELECT user_list.name, user_list.size_for_search, user_list.size_for_display FROM user_list`.
-     Si NO crece → revisar en GA4 DebugView/Tag Assistant que los pings de consent llegan, y
-     que en la cuenta Ads "Orígenes de audiencia" tiene el modelado activo.
+     - **Checkpoint 1 — ~18/06/2026 (1 semana):** ¿la lista CRECE vs 110/40? No hace falta que
+       llegue a 1.000; solo confirmar tendencia ↑ = el Consent Mode está poblando. Si sigue
+       plana → revisar GA4 DebugView/Tag Assistant (pings de consent) y que en la cuenta Ads
+       "Orígenes de audiencia" tiene el modelado activo. **Anotar la cifra aquí.**
+     - **Checkpoint 2 — ~02/07/2026 (3 semanas):** ¿superó 1.000 en Search? → pasar a fase 3.
+
+     | Fecha | Search | Display | Nota |
+     |---|---|---|---|
+     | 11/06 (baseline) | 110 | 40 | Consent Mode v2 recién desplegado |
+     | ~18/06 | _pendiente_ | _pendiente_ | checkpoint tendencia |
+     | ~02/07 | _pendiente_ | _pendiente_ | checkpoint umbral 1.000 |
   3. ⬜ **PENDIENTE — lanzar** campaña de remarketing cuando la lista pase de 1.000 (Search con
      observación/segmentación de audiencia, o Display) a quien visitó y no se registró.
 - **Verificación post-deploy pendiente:** GA4 DebugView + Tag Assistant (pings default denied →
