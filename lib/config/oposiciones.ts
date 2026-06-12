@@ -3746,6 +3746,58 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // CELADOR SERGAS GALICIA (E)
+  // ========================================
+  {
+    id: 'celador_galicia',
+    slug: 'celador-galicia',
+    positionType: 'celador_galicia',
+    examScoring: { penaltyDivisor: null, source: 'Resolución de 21 de agosto de 2025 SERGAS (DOG): penalización pendiente de confirmar en las bases; los servicios de salud habitualmente no penalizan. confidence:baja' },
+    name: 'Celador/a del Servicio Gallego de Salud (SERGAS)',
+    shortName: 'Celador SERGAS',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'cyan',
+    administracion: 'autonomica',
+    aliases: ['celador galicia', 'celador sergas', 'sergas', 'celador xunta', 'galicia', 'xunta de galicia'],
+    blocks: [
+      {
+        id: 'bloque1', title: 'Parte Común', subtitle: 'Legislación y sistema sanitario gallego', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución española' },
+          { id: 2, name: 'El Estatuto de autonomía de Galicia' },
+          { id: 3, name: 'La Ley general de sanidad' },
+          { id: 4, name: 'La Ley de salud de Galicia' },
+          { id: 5, name: 'El Estatuto marco del personal estatutario' },
+          { id: 6, name: 'Personal estatutario del Servicio Gallego de Salud' },
+          { id: 7, name: 'Protección de datos, consentimiento informado e historia clínica' },
+          { id: 8, name: 'Prevención de riesgos laborales, violencia de género e igualdad' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Parte Específica', subtitle: 'Funciones del celador', icon: '🏥',
+        themes: [
+          { id: 9, name: 'Funciones del celador/a y vigilancia' },
+          { id: 10, name: 'Utensilios, mobiliario y objetos: cuidados y conservación' },
+          { id: 11, name: 'Movilización de pacientes y posiciones' },
+          { id: 12, name: 'Área quirúrgica, hospitalización y salud mental' },
+          { id: 13, name: 'Actuación con pacientes fallecidos. Mortuorios' },
+          { id: 14, name: 'Los suministros y el almacén' },
+          { id: 15, name: 'Farmacia, esterilización, higiene y reprografía' },
+          { id: 16, name: 'Urgencias y transporte de enfermos' },
+          { id: 17, name: 'Informática y ofimática básica' },
+        ],
+      },
+    ],
+    totalTopics: 17,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-galicia', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-galicia/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-galicia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // CELADOR SESCAM CLM (E)
   // ========================================
   {

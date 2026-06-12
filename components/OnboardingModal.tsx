@@ -1073,6 +1073,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏥'
   },
   {
+    id: 'celador_galicia',
+    nombre: 'Celador/a SERGAS (Galicia)',
+    categoria: 'E',
+    administracion: 'Sanitaria',
+    icon: '🏥'
+  },
+  {
     id: 'celador',
     nombre: 'Celador (otras CCAA)',
     categoria: 'E',

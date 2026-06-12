@@ -121,7 +121,7 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(36)
+      expect(autonomicas).toHaveLength(37)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'administrativo-galicia',
         'administrativo-gva',  // Añadida 07/05/2026: Administrativo Generalitat Valenciana C1-01
@@ -148,6 +148,7 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-valencia',
         'auxiliar-enfermeria-gva',
         'auxiliar-enfermeria-osakidetza',
+        'celador-galicia',  // Añadida 12/06/2026: Celador SERGAS Galicia E (DOG 04/09/2025: 135 plz TL)
         'celador-scs-canarias',
         'celador-sermas-madrid',
         'celador-sescam-clm',
