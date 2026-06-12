@@ -3798,6 +3798,60 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // CELADOR SAS — Servicio Andaluz de Salud (E)
+  // ========================================
+  {
+    id: 'celador_sas',
+    slug: 'celador-sas',
+    positionType: 'celador_sas',
+    examScoring: { penaltyDivisor: null, source: 'Bases SAS OEP 2025 (BOJA): las respuestas incorrectas penalizan; divisor pendiente de confirmar en las bases. confidence:baja' },
+    name: 'Celador/a del Servicio Andaluz de Salud (SAS)',
+    shortName: 'Celador SAS',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'green',
+    administracion: 'autonomica',
+    aliases: ['celador sas', 'celador andalucia', 'celador servicio andaluz salud', 'sas celador', 'andalucia'],
+    blocks: [
+      {
+        id: 'bloque1', title: 'Temario Común', subtitle: 'Legislación y organización sanitaria andaluza', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'El Estatuto de Autonomía para Andalucía' },
+          { id: 3, name: 'Organización sanitaria (I): Ley General de Sanidad y Ley de Salud de Andalucía' },
+          { id: 4, name: 'Organización sanitaria (II): Consejería y Servicio Andaluz de Salud' },
+          { id: 5, name: 'Protección de datos y transparencia' },
+          { id: 6, name: 'Prevención de riesgos laborales' },
+          { id: 7, name: 'Igualdad de género y violencia de género en Andalucía' },
+          { id: 8, name: 'El Estatuto Marco del personal estatutario' },
+          { id: 9, name: 'Autonomía del paciente, consentimiento informado e historia clínica' },
+          { id: 10, name: 'Tecnologías de la información y ciberseguridad en el SAS' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Temario Específico', subtitle: 'Funciones del celador', icon: '🏥',
+        themes: [
+          { id: 11, name: 'Visión general del Celador y trabajo en equipo' },
+          { id: 12, name: 'Habilidades sociales y comunicación' },
+          { id: 13, name: 'El Celador en hospitalización, quirófano y unidades de críticos' },
+          { id: 14, name: 'El Celador en consultas, suministros, almacenes, farmacia y salud mental' },
+          { id: 15, name: 'Movilización y traslado de pacientes. Mortuorios' },
+          { id: 16, name: 'Manual de Estilo del SAS' },
+          { id: 17, name: 'Prevención de riesgos laborales en celadores' },
+          { id: 18, name: 'Autoprotección, emergencias y evacuación' },
+          { id: 19, name: 'Política ambiental y gestión de residuos del SAS' },
+        ],
+      },
+    ],
+    totalTopics: 19,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-sas', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-sas/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-sas/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // CELADOR SESCAM CLM (E)
   // ========================================
   {
