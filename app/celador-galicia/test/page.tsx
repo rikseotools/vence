@@ -14,3 +14,5 @@ export const metadata: Metadata = {
 export default function TestsCeladorScsGaliciaPage() {
   return <TestHubPage oposicion="celador-galicia" />
 }
+
+// redeploy trigger cdc68f27
