@@ -47,7 +47,10 @@ export class CanarySmokeAuthCron {
   async handle(): Promise<void> {
     // Jitter 0-10s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(10_000);
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'canary-smoke-auth',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {
@@ -109,7 +112,8 @@ export class CanarySmokeAuthCron {
         metadata: { cron: 'canary-smoke-auth', status: 'completed' },
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron canary-smoke-auth falló: ${errorMessage}`);
       this.observability.emitFireAndForget({
         source: 'fargate',

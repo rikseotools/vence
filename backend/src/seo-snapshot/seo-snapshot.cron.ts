@@ -43,7 +43,10 @@ export class SeoSnapshotCron {
 
   @Cron('17 5 * * 1', { name: 'seo-snapshot', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'seo-snapshot',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {
@@ -66,7 +69,8 @@ export class SeoSnapshotCron {
         },
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron seo-snapshot falló: ${errorMessage}`);
       this.observability.emitFireAndForget({
         source: 'fargate',

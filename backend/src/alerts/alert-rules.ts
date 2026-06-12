@@ -102,7 +102,10 @@ function assertContextualRule(
 // ────────────────────────────────────────────────────────────────
 
 /** Spike de errores 5xx — alertar si >20 en últimos 5 minutos. */
-export const RULE_HTTP_5XX_SPIKE: AlertRule<{ n: number; topEndpoint: string | null }> = {
+export const RULE_HTTP_5XX_SPIKE: AlertRule<{
+  n: number;
+  topEndpoint: string | null;
+}> = {
   name: '5xx_spike',
   severity: 'critical',
   query: sql`
@@ -136,8 +139,17 @@ export const RULE_HTTP_5XX_SPIKE: AlertRule<{ n: number; topEndpoint: string | n
  * absurdamente estricto en crons semanales bajo jitter de scheduling.
  *
  * Bounded: nunca menos de 1 min (cubre la propagación a BD bajo carga) ni
- * más de 30 min (el cron más pesado del proyecto tarda ~3.4 s; cualquier
- * latencia >30 min es bug aparte de schedule overdue).
+ * más de 30 min.
+ *
+ * ⚠️ Nota (2026-06-12): el margen mide el retraso de la SEÑAL DE ARRANQUE
+ * (`cron_tick`), no la duración del job. Antes el único signal era `cron_run`
+ * (emitido AL COMPLETAR): un cron sano pero lento (escaneo LLM `detect-oep-llm`
+ * tarda ~30 min) emitía su `cron_run` pasado el margen y aparentaba overdue
+ * durante toda su ejecución → falso positivo auto-resuelto. Desde que la regla
+ * lee `cron_tick` (arranque, emitido por `runWithHeartbeat` antes del work),
+ * el cap de 30 min vuelve a ser correcto: mide "¿disparó el scheduler a su
+ * hora?", independientemente de cuánto tarde el job. El viejo comentario decía
+ * "el cron más pesado tarda ~3.4 s" — premisa rota por los crons de escaneo IA.
  */
 const MIN_GRACE_MS = 60 * 1000;
 const MAX_GRACE_MS = 30 * 60 * 1000;
@@ -226,17 +238,26 @@ function findOverdueCrons(
 }
 
 /**
- * Cron registrado en `SchedulerRegistry` que NO emitió `cron_run` para su
+ * Cron registrado en `SchedulerRegistry` que NO emitió señal de tick para su
  * tick esperado más reciente.
  *
  * Fuente de verdad del schedule: el propio decorador `@Cron(...)`, leído en
  * runtime a través de `CronScheduleService`. Cualquier cron nuevo entra en
  * la vigilancia automáticamente — sin mapas hardcoded que mantener.
  *
+ * Señal de liveness (recalibrado 2026-06-12): lee `cron_tick` ∪ `cron_run`.
+ *   - `cron_tick` = ARRANQUE del tick, emitido por `runWithHeartbeat` ANTES del
+ *     work. Es la señal correcta: "¿disparó el scheduler?", independiente de
+ *     cuánto tarde el job. Lo emiten los crons migrados a pasar opts al wrapper.
+ *   - `cron_run` = COMPLETADO, fallback para crons aún no migrados (rápidos, su
+ *     completado cae dentro del margen). `MAX(ts)` de ambos = el más reciente.
+ *   Antes solo se leía `cron_run`: un cron lento (escaneo LLM) emitía su
+ *   completado pasado el margen y falseaba overdue durante toda su ejecución.
+ *
  * Cómo se evalúa cada cron:
  *   1. `cron-parser` resuelve `prevExpectedTick` (último tick que el
  *      schedule dice que debió ocurrir antes de NOW).
- *   2. La query SQL devuelve `MAX(ts)` del evento `cron_run` por endpoint
+ *   2. La query SQL devuelve `MAX(ts)` de `cron_tick`/`cron_run` por endpoint
  *      en los últimos 60 días.
  *   3. Si `lastActualRun < prevExpectedTick - grace` → overdue.
  *   4. Si `prevExpectedTick > NOW - grace` → todavía dentro de la ventana
@@ -261,7 +282,7 @@ export const RULE_CRON_OVERDUE: AlertRule<{
     SELECT endpoint,
            MAX(ts) AS "lastTs"
     FROM observable_events
-    WHERE event_type = 'cron_run'
+    WHERE event_type IN ('cron_tick', 'cron_run')
       AND ts > NOW() - INTERVAL '60 days'
     GROUP BY endpoint
   `,
@@ -283,7 +304,7 @@ export const RULE_CRON_OVERDUE: AlertRule<{
     });
     return {
       title: `${overdue.length} cron${overdue.length > 1 ? 's' : ''} overdue`,
-      body: `Los siguientes crons no emitieron "cron_run" para su tick esperado más reciente (margen proporcional al intervalo):\n\n${lines.join('\n\n')}\n\nVerificar ECS task vence-backend, CloudWatch Logs, o BD.`,
+      body: `Los siguientes crons no emitieron señal de tick ("cron_tick" de arranque ni "cron_run" de completado) para su tick esperado más reciente (margen proporcional al intervalo):\n\n${lines.join('\n\n')}\n\nVerificar ECS task vence-backend, CloudWatch Logs, o BD.`,
       metadata: {
         overdueCrons: overdue.map((e) => e.name),
       },
@@ -293,7 +314,10 @@ export const RULE_CRON_OVERDUE: AlertRule<{
 };
 
 /** Deploy fallido — alertar inmediato si aparece event deploy_failed. */
-export const RULE_DEPLOY_FAILED: AlertRule<{ n: number; lastMsg: string | null }> = {
+export const RULE_DEPLOY_FAILED: AlertRule<{
+  n: number;
+  lastMsg: string | null;
+}> = {
   name: 'deploy_failed',
   severity: 'critical',
   query: sql`
@@ -334,7 +358,9 @@ export const RULE_CRON_FAILURE_BURST: AlertRule<{
     body: rows
       .map((r) => `  - ${r.endpoint}: ${r.failures} fallos en última hora`)
       .join('\n'),
-    metadata: { burst: rows.map((r) => `${r.endpoint}:${r.failures}`).join(',') },
+    metadata: {
+      burst: rows.map((r) => `${r.endpoint}:${r.failures}`).join(','),
+    },
   }),
   cooldownMin: 30,
 };
@@ -417,7 +443,10 @@ export const RULE_TTS_ERROR_BURST: AlertRule<{
     return {
       title: `${rows.length} sesión(es) TTS con ≥10 errores en 5 min — circuit breaker eludido`,
       body: `El fix del 26/05 (lib/tts/engine.ts MAX_CONSECUTIVE_CHUNK_ERRORS=5) debería cortar tras 5 errores consecutivos. Si una sesión llega a 10+ errores, el breaker no funcionó:\n\n${lines.join('\n')}\n\nInvestigar:\n  - ¿onend OK entre errores está reseteando el contador indebidamente?\n  - ¿Hay un retry path nuevo que bypaseó el handler?\n  - ¿Cambió el shape del evento error tras refactor?`,
-      metadata: { sessionsAffected: rows.length, topBrowsers: rows.map((r) => r.browser).filter(Boolean) },
+      metadata: {
+        sessionsAffected: rows.length,
+        topBrowsers: rows.map((r) => r.browser).filter(Boolean),
+      },
     };
   },
   cooldownMin: 60,
@@ -451,7 +480,8 @@ export const RULE_HYDRATION_MISMATCH_SPIKE: AlertRule<{
   shouldFire: (rows) => rows.length > 0,
   buildNotification: (rows) => {
     const lines = rows.map(
-      (r) => `  - ${r.endpoint ?? '(unknown)'} [${r.deployVersion ?? '?'}]: ${r.n} mismatches`,
+      (r) =>
+        `  - ${r.endpoint ?? '(unknown)'} [${r.deployVersion ?? '?'}]: ${r.n} mismatches`,
     );
     return {
       title: `${rows.length} ruta(s) con spike de hydration mismatch`,
@@ -584,7 +614,11 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
     return {
       title: `Webhook Stripe unhealthy: ${r.pending}/${r.total} eventos pending (${r.pendingPct}%)`,
       body: `El cron check-webhook-health detectó que ${r.pendingPct}% de los eventos Stripe en la última hora siguen pending. Investigar inmediatamente:\n\n  - Evento más antiguo pending: ${r.oldestType ?? 'unknown'} (${r.oldestAgeS ?? '?'}s)\n  - Stripe Dashboard → Webhooks → /api/stripe/webhook → tab "Webhook attempts"\n\nIncidente origen 2026-05-26: webhook respondía 400 a todos los eventos por un bug en withErrorLogging consumiendo el raw body. Andrea pagó 20€ sin activarse.`,
-      metadata: { pendingPct: r.pendingPct, pending: r.pending, total: r.total },
+      metadata: {
+        pendingPct: r.pendingPct,
+        pending: r.pending,
+        total: r.total,
+      },
     };
   },
   cooldownMin: 15,
@@ -727,7 +761,11 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
     return {
       title: `Tráfico HTTP cayó ${r.dropPct}% — frontend probablemente caído`,
       body: `Última hora: ${r.currentN} req. Mediana misma hora/día (28d, post-sampling): ${r.baselineMedian} req. Caída del ${r.dropPct}%.\n\nProbables causas:\n  - OOM / crash loop en frontend ECS (mirar CloudWatch ECS metrics)\n  - Deploy reciente caído (cobertura: regla 'workflow_failure_burst')\n  - Incidente Vercel o Supabase\n  - DNS / red\n\nIncidente origen 2026-05-26: dos caídas brutales (94% y 70%) durante las cuales Lidia, mbcapitas y otros intentaron pagar y los clicks "Pagar" no producían redirect a Stripe.`,
-      metadata: { currentN: r.currentN, baselineMedian: r.baselineMedian, dropPct: r.dropPct },
+      metadata: {
+        currentN: r.currentN,
+        baselineMedian: r.baselineMedian,
+        dropPct: r.dropPct,
+      },
     };
   },
   cooldownMin: 30,
@@ -1196,7 +1234,12 @@ export const RULE_CANARY_DB_POOL_FAILED: AlertRule<{
     return {
       title: `🚨 Canary DB pool FALLÓ (${r.n} en 10 min) — saturación PgBouncer o BD caída`,
       body: `SELECT 1 desde el backend Fargate NO completó en <1s. Significa una de:\n  - PgBouncer saturado (pool_size agotado, conexiones colgadas).\n  - max_connections de Postgres alcanzado.\n  - Postgres caído o sin red.\n  - Conexión Fargate→Supabase degradada.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. Verificar /admin/salud-sistema → latencia INSERT.\n  2. Supabase Dashboard → Database → Pool size + active connections.\n  3. Si pool saturado: kill connections idle largas, bajar timeout, escalar PgBouncer.\n  4. Si BD caída: status.supabase.com + escalation a soporte.\n\nNO es bug de código — es bug operativo. App entera afectada.`,
-      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: 10 },
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        windowMin: 10,
+      },
       fingerprint: 'canary_db_pool_failed',
     };
   },
@@ -1236,7 +1279,12 @@ export const RULE_CANARY_REDIS_FAILED: AlertRule<{
     return {
       title: `🚨 Canary Redis FALLÓ (${r.n} en 10 min) — Upstash caído, cascada BD inminente`,
       body: `SET/GET/DEL contra Upstash falló. Si Redis está caído:\n  - Cache compartido (user_stats, exam_pending, theme_stats) deja de servir.\n  - Cada user request va a BD directa → load 10×.\n  - Cascada: BD se satura → canary-db-pool dispara → 5xx generalizado.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. https://console.upstash.com — verificar Redis OK + cuota.\n  2. Si caído: status Upstash + considerar bypass temporal del cache (fail-open ya hay en CacheService TIMEOUT_SYMBOL).\n  3. Si cuota: upgrade plan o purgar keys low-priority.\n  4. NO redeploy precipitado — la app tiene fail-open en cache; solo monitorizar latencia.\n\nstep=validate significa CORRUPCIÓN (SET un valor, GET devolvió otro) → bug raro pero crítico de Upstash.`,
-      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: 10 },
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        windowMin: 10,
+      },
       fingerprint: 'canary_redis_failed',
     };
   },
@@ -1284,7 +1332,12 @@ export const RULE_ANSWER_WATCHDOG_BURST: AlertRule<{
     return {
       title: `${n} watchdog event${n > 1 ? 's' : ''} de UI congelada últimos 30 min`,
       body: `${users} user(s) tuvieron la UI bloqueada en ExamLayout/TestLayout. Máxima duración: ${maxSec}s.\n\nCausas típicas:\n  1. Saturación pool BD → /api/exam/validate o /api/answer cuelgan\n  2. Tab en background con timers throttled (Chrome) → watchdog dispara tarde\n  3. Conexión móvil débil → timeout cliente 10s + retries 21s superan watchdog 12s\n\nInvestigar:\n  SELECT created_at, user_id, duration_ms, deploy_version\n  FROM validation_error_logs\n  WHERE error_message ILIKE '%Watchdog%'\n    AND created_at > NOW() - INTERVAL '1 hour'\n  ORDER BY created_at DESC;\n\nSi coincide con incidente de saturación BD → mirar /admin/observability ventana 1h.`,
-      metadata: { count: n, maxDurationMs: maxMs, uniqueUsers: users, windowMin: 30 },
+      metadata: {
+        count: n,
+        maxDurationMs: maxMs,
+        uniqueUsers: users,
+        windowMin: 30,
+      },
       fingerprint: 'answer_watchdog_burst',
     };
   },
@@ -1408,7 +1461,12 @@ export const RULE_WATCHDOG_WALLCLOCK_RESIDUAL: AlertRule<{
     return {
       title: `Watchdog residual wall-clock ${r.pctResidual}% (${r.over60s}/${r.total} > 60s)`,
       body: `El refactor 31/05/2026 (commit a4051a6b) Page Visibility-aware debía mantener este % en ~0%. Drift detectado:\n\n  - ${r.over60s} de ${r.total} watchdog events en últimas 24h reportan duration_ms > 60s.\n  - Pre-fix esto era esperado (Chrome tab-throttling). Post-fix NO debería pasar.\n\nProbables causas (en orden de frecuencia):\n  1. Safari no respeta el visibilitychange como Chrome — investigar User-Agent de los events afectados.\n  2. Mobile (iOS Safari) con suspensión agresiva del JS.\n  3. Edge case del hook donde lastTickRef no se reinicia tras un cambio de pestaña corto.\n\nInvestigar:\n  SELECT created_at, user_id, duration_ms, error_message,\n         metadata->>'userAgent' AS ua\n  FROM validation_error_logs\n  WHERE error_message ILIKE '%Watchdog%' AND duration_ms > 60000\n    AND created_at > NOW() - INTERVAL '24 hours'\n  ORDER BY duration_ms DESC LIMIT 20;`,
-      metadata: { total: r.total, over60s: r.over60s, pctResidual: r.pctResidual, windowH: 24 },
+      metadata: {
+        total: r.total,
+        over60s: r.over60s,
+        pctResidual: r.pctResidual,
+        windowH: 24,
+      },
       fingerprint: 'watchdog_wallclock_residual',
     };
   },
@@ -1497,19 +1555,34 @@ export const RULE_POOL_IDLE_IN_TX_DETECTED: AlertRule<{
  * 27/05) satura múltiples conns durante minutos = decenas de conn-min, muy por
  * encima del piso, y además la cubren en paralelo `canary_db_pool` (SELECT 1
  * timeout, instantáneo), `pool_frontend_saturation` y `5xx_spike`.
+ *
+ * Gate de pico simultáneo (recalibrado 2026-06-12, post alert-fatigue): el piso
+ * de conn-min por sí solo NO bastaba. El goteo residual creció a 2-3 conns
+ * sostenidas (no 1-2), y `SUM(conn-min)` confunde "pocas conns mucho rato"
+ * (residual: 2-3 conns × 5 muestras ≈ 10-15 conn-min) con "muchas conns un
+ * instante" (cascada real). En 24h reales el pico simultáneo (`maxHung`) NUNCA
+ * pasó de 3 y el pool frontend nunca rozó su techo, pero el email CRITICAL
+ * disparaba cada 30 min igual. La señal que discrimina de verdad es el PICO
+ * simultáneo: el residual es ≤3, una saturación real satura muchas conns a la
+ * vez. Exigimos `maxHung >= POOL_HUNG_MIN_PEAK` además del piso de conn-min.
+ * La cascada real sigue cubierta por `canary_db_pool` + `pool_frontend_saturation`
+ * + `5xx_spike`, así que silenciar el goteo NO deja punto ciego.
  */
 const POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN = 5;
 const POOL_HUNG_MIN_CONNMIN = 10;
+const POOL_HUNG_MIN_PEAK = 5;
 
 export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
   n: number;
   totalHung: number;
+  maxHung: number;
 }> = {
   name: 'pool_hung_clientread_detected',
   severity: 'critical',
   query: sql`
     SELECT COUNT(*)::int AS n,
-           COALESCE(SUM(hung_clientread_over_10s), 0)::int AS "totalHung"
+           COALESCE(SUM(hung_clientread_over_10s), 0)::int AS "totalHung",
+           COALESCE(MAX(hung_clientread_over_10s), 0)::int AS "maxHung"
     FROM pool_capacity_samples
     WHERE sample_at > NOW() - INTERVAL '5 minutes'
       AND hung_clientread_over_10s > 0
@@ -1517,7 +1590,13 @@ export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
   shouldFire: (rows, ctx) => {
     const n = rows[0]?.n ?? 0;
     const totalHung = rows[0]?.totalHung ?? 0;
+    const maxHung = rows[0]?.maxHung ?? 0;
     if (n < 2) return false;
+    // Gate de pico simultáneo (recalibrado 2026-06-12): el goteo residual del
+    // path getDb()/Supavisor es SIEMPRE <=3 conns simultáneas; una saturación
+    // real satura muchas conns a la vez. Exigir pico alto filtra el goteo
+    // crónico que disparaba un CRITICAL cada 30 min (alert-fatigue). Ver doc.
+    if (maxHung < POOL_HUNG_MIN_PEAK) return false;
     // Piso siempre-activo: por debajo de POOL_HUNG_MIN_CONNMIN es el goteo
     // residual del path getDb() (front_active=0), no accionable. Ver doc arriba.
     if (totalHung < POOL_HUNG_MIN_CONNMIN) return false;
@@ -1535,13 +1614,14 @@ export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
   buildNotification: (rows, ctx) => {
     const n = rows[0]?.n ?? 0;
     const total = rows[0]?.totalHung ?? 0;
+    const peak = rows[0]?.maxHung ?? 0;
     const deployNote = ctx?.deployWindow?.active
       ? `\n\n⚠️ Deploy/churn en curso (${ctx.deployWindow.reasons.join('; ')}), ` +
         `pero ${total} conn-min colgadas supera el umbral ` +
         `${POOL_HUNG_DEPLOY_OVERRIDE_CONNMIN} → no es solo goteo del rolling.`
       : '';
     return {
-      title: `Pool: ${n} muestras con conexiones colgadas en ClientRead (${total} conn-min)`,
+      title: `Pool: ${n} muestras con conexiones colgadas en ClientRead (${total} conn-min, pico ${peak} simultáneas)`,
       body:
         `Conexiones cliente en estado active/idle-in-tx con wait_event=ClientRead\n` +
         `durante >10s. Firma típica de cliente que cerró TCP sin\n` +
@@ -1555,6 +1635,7 @@ export const RULE_POOL_HUNG_CLIENTREAD_DETECTED: AlertRule<{
       metadata: {
         samples: n,
         totalHungConnMin: total,
+        peakHungConns: peak,
         windowMin: 5,
         deployWindowActive: ctx?.deployWindow?.active ?? false,
       },
@@ -1681,7 +1762,10 @@ export const RULE_POOLER_INSTANCE_UNREACHABLE: AlertRule<{
   shouldFire: (rows) => rows.length > 0,
   buildNotification: (rows) => {
     const lines = rows
-      .map((r) => `  - ${r.instance} (${r.az ?? '?'}): ${r.badSamples} fallos · ${r.lastError ?? ''}`)
+      .map(
+        (r) =>
+          `  - ${r.instance} (${r.az ?? '?'}): ${r.badSamples} fallos · ${r.lastError ?? ''}`,
+      )
       .join('\n');
     return {
       title: `Pooler: ${rows.length} instancia(s) cuelga(n) queries (TCP vivo, SELECT 1 muerto)`,
@@ -1897,7 +1981,10 @@ export const RULE_SCRAPING_SWEEP: AlertRule<{
         topServed: rows[0]?.served ?? 0,
         count: rows.length,
       },
-      fingerprint: `scraping_sweep:${rows.map((r) => r.userId).sort().join(',')}`,
+      fingerprint: `scraping_sweep:${rows
+        .map((r) => r.userId)
+        .sort()
+        .join(',')}`,
     };
   },
   // ≈ cada 2 horas: el engine corre cada 5 min, pero tras disparar se silencia 120 min.
@@ -2002,7 +2089,8 @@ export const RULE_ATTRIBUTION_COVERAGE_LOW: AlertRule<{
     LEFT JOIN user_acquisition ua ON ua.user_id = u.id
     WHERE u.created_at > NOW() - INTERVAL '24 hours'
   `,
-  shouldFire: (rows) => (rows[0]?.altas ?? 0) >= 30 && (rows[0]?.pct ?? 100) < 50,
+  shouldFire: (rows) =>
+    (rows[0]?.altas ?? 0) >= 30 && (rows[0]?.pct ?? 100) < 50,
   buildNotification: (rows) => {
     const r = rows[0];
     return {
@@ -2012,7 +2100,11 @@ export const RULE_ATTRIBUTION_COVERAGE_LOW: AlertRule<{
         `Causa típica: AttributionCapture (app/layout) o POST /api/acquisition rotos → dejamos de\n` +
         `saber de dónde vienen los usuarios (orgánico vs ads), y las ventas no se atan a campaña.\n\n` +
         `  SELECT * FROM v_attribution_coverage ORDER BY dia DESC LIMIT 7;`,
-      metadata: { altas: r?.altas ?? 0, conCanal: r?.conCanal ?? 0, pct: r?.pct ?? 0 },
+      metadata: {
+        altas: r?.altas ?? 0,
+        conCanal: r?.conCanal ?? 0,
+        pct: r?.pct ?? 0,
+      },
       fingerprint: 'attribution_coverage_low',
     };
   },
@@ -2062,7 +2154,11 @@ export const RULE_CANARY_STATS_PIPELINE_FAILED: AlertRule<{
         `  - Verificar flags en el task def vence-backend (CUTOVER_DONE / SHADOW_HANDLERS_ENABLED).\n` +
         `  - test_questions_outbox: pending / DLQ / error_message.\n` +
         `  - MAX(updated_at) de las 5 tablas materializadas.`,
-      metadata: { count: r?.n ?? 0, lastStep: r?.lastStep, lastError: r?.lastError },
+      metadata: {
+        count: r?.n ?? 0,
+        lastStep: r?.lastStep,
+        lastError: r?.lastError,
+      },
       fingerprint: 'canary_stats_pipeline_failed',
     };
   },
@@ -2127,7 +2223,9 @@ export const RULE_MATERIALIZED_STATS_STALE: AlertRule<{
   `,
   shouldFire: (rows) => rows.length > 0,
   buildNotification: (rows) => {
-    const lines = rows.map((r) => `  - ${r.table}: ${r.lagMin} min sin actualizar`);
+    const lines = rows.map(
+      (r) => `  - ${r.table}: ${r.lagMin} min sin actualizar`,
+    );
     return {
       title: `${rows.length} tabla(s) materializada(s) congelada(s) — pipeline de stats parado`,
       body:
@@ -2149,7 +2247,10 @@ export const RULE_MATERIALIZED_STATS_STALE: AlertRule<{
         staleTables: rows.map((r) => r.table),
         maxLagMin: Math.max(...rows.map((r) => r.lagMin)),
       },
-      fingerprint: `materialized_stats_stale_${rows.map((r) => r.table).sort().join(',')}`,
+      fingerprint: `materialized_stats_stale_${rows
+        .map((r) => r.table)
+        .sort()
+        .join(',')}`,
     };
   },
   cooldownMin: 30,
@@ -2213,7 +2314,11 @@ export const RULE_STATS_PARIDAD_DIVERGENCE: AlertRule<{ divergent: number }> = {
         `  - Comparar un user concreto: COUNT(test_questions) por pregunta vs\n` +
         `    su fila en user_question_history_v2.\n` +
         `  - Revisar deploys recientes del outbox-processor / handlers.`,
-      metadata: { divergent: n, windowMin: '5-20', table: 'user_question_history_v2' },
+      metadata: {
+        divergent: n,
+        windowMin: '5-20',
+        table: 'user_question_history_v2',
+      },
       fingerprint: 'stats_paridad_divergence',
     };
   },
@@ -2283,7 +2388,12 @@ export const RULE_EXAM_INTEGRITY_DRIFT: AlertRule<{
         `    AND t.completed_at >= NOW()-INTERVAL '24 hours' AND t.total_questions>0\n` +
         `  GROUP BY t.id HAVING count(tq.id) < t.total_questions*0.95\n` +
         `  ORDER BY (t.total_questions-count(tq.id)) DESC;`,
-      metadata: { affected: r.affected, empty: r.empty, worstMissing: r.worstMissing, lastRun: r.lastRun },
+      metadata: {
+        affected: r.affected,
+        empty: r.empty,
+        worstMissing: r.worstMissing,
+        lastRun: r.lastRun,
+      },
       fingerprint: 'exam_integrity_drift',
     };
   },

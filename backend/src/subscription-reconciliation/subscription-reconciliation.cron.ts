@@ -44,7 +44,10 @@ export class SubscriptionReconciliationCron {
 
   @Cron('0 * * * *', { name: 'subscription-reconciliation', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'subscription-reconciliation',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

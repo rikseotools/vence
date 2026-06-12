@@ -37,7 +37,10 @@ export class CheckSeguimientoCron {
 
   @Cron('0 9 * * 1-5', { name: 'check-seguimiento', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'check-seguimiento',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

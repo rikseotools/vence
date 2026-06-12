@@ -38,37 +38,45 @@ export class ProcessOutboxCron {
     await jitter(5_000);
     this.logger.log('Cron process-outbox disparado');
     const startedAt = Date.now();
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'cron_run',
-          endpoint: 'process-outbox',
-          durationMs: Date.now() - startedAt,
-          metadata: {
-            status: 'success',
-            fetched: result.fetched,
-            processed: result.processed,
-            failed: result.failed,
-            skipped: result.skipped,
-          },
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(`Cron process-outbox falló: ${errorMessage}`);
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'process-outbox',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
+          this.observability.emitFireAndForget({
+            source: 'fargate',
+            severity: 'info',
+            eventType: 'cron_run',
+            endpoint: 'process-outbox',
+            durationMs: Date.now() - startedAt,
+            metadata: {
+              status: 'success',
+              fetched: result.fetched,
+              processed: result.processed,
+              failed: result.failed,
+              skipped: result.skipped,
+            },
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(`Cron process-outbox falló: ${errorMessage}`);
+          this.observability.emitFireAndForget({
+            source: 'fargate',
+            severity: 'error',
+            eventType: 'cron_run',
+            endpoint: 'process-outbox',
+            durationMs: Date.now() - startedAt,
+            errorMessage,
+            metadata: { status: 'failure' },
+          });
+        }
+      },
+      {
+        name: 'process-outbox',
+        observability: this.observability,
+      },
+    );
   }
 }

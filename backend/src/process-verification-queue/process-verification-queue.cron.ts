@@ -42,7 +42,10 @@ export class ProcessVerificationQueueCron {
     timeZone: 'UTC',
   })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'process-verification-queue',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

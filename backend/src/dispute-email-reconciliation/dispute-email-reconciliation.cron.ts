@@ -44,7 +44,10 @@ export class DisputeEmailReconciliationCron {
     timeZone: 'UTC',
   })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'dispute-email-reconciliation',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

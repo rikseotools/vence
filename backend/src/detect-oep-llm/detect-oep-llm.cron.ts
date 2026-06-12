@@ -33,7 +33,10 @@ export class DetectOepLlmCron {
 
   @Cron('0 10 * * 1-5', { name: 'detect-oep-llm', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'detect-oep-llm',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

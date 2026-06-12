@@ -38,7 +38,10 @@ export class AvatarRotationCron {
 
   @Cron('0 4 * * 0', { name: 'avatar-rotation', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'avatar-rotation',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

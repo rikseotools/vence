@@ -41,37 +41,45 @@ export class AutoPromoteCoverageCron {
     // Jitter 0-30s para no colisionar con otros crons diarios @ 04:00.
     await jitter(30_000);
     const startedAt = Date.now();
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'cron_run',
-          endpoint: 'auto-promote-coverage',
-          durationMs: Date.now() - startedAt,
-          metadata: {
-            status: 'success',
-            evaluated: result.evaluated,
-            promoted: result.promoted,
-            bySalto: result.bySalto,
-            cacheInvalidated: result.cacheInvalidated,
-          },
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(`auto-promote-coverage falló: ${errorMessage}`);
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'auto-promote-coverage',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'info',
+            eventType: 'cron_run',
+            endpoint: 'auto-promote-coverage',
+            durationMs: Date.now() - startedAt,
+            metadata: {
+              status: 'success',
+              evaluated: result.evaluated,
+              promoted: result.promoted,
+              bySalto: result.bySalto,
+              cacheInvalidated: result.cacheInvalidated,
+            },
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(`auto-promote-coverage falló: ${errorMessage}`);
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'error',
+            eventType: 'cron_run',
+            endpoint: 'auto-promote-coverage',
+            durationMs: Date.now() - startedAt,
+            errorMessage,
+            metadata: { status: 'failure' },
+          });
+        }
+      },
+      {
+        name: 'auto-promote-coverage',
+        observability: this.observability,
+      },
+    );
   }
 }

@@ -38,7 +38,10 @@ export class CanaryDatabasePoolCron {
   async handle(): Promise<void> {
     // Jitter 0-20s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(20_000);
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'canary-database-pool',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

@@ -34,7 +34,10 @@ export class DetectGenericSourcesCron {
 
   @Cron('0 8 * * 1-5', { name: 'detect-generic-sources', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'detect-generic-sources',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

@@ -51,36 +51,44 @@ export class PgStatSnapshotCron {
     this.logger.log('Cron pg-stat-snapshot disparado');
     const startedAt = Date.now();
 
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'cron_run',
-          endpoint: 'pg-stat-snapshot',
-          durationMs: Date.now() - startedAt,
-          metadata: {
-            status: 'success',
-            snapshotAt: result.snapshotAt.toISOString(),
-            rowsInserted: result.rowsInserted,
-            sqlFunctionMs: result.durationMs,
-          },
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(`Cron pg-stat-snapshot falló: ${errorMessage}`);
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'pg-stat-snapshot',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'info',
+            eventType: 'cron_run',
+            endpoint: 'pg-stat-snapshot',
+            durationMs: Date.now() - startedAt,
+            metadata: {
+              status: 'success',
+              snapshotAt: result.snapshotAt.toISOString(),
+              rowsInserted: result.rowsInserted,
+              sqlFunctionMs: result.durationMs,
+            },
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(`Cron pg-stat-snapshot falló: ${errorMessage}`);
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'error',
+            eventType: 'cron_run',
+            endpoint: 'pg-stat-snapshot',
+            durationMs: Date.now() - startedAt,
+            errorMessage,
+            metadata: { status: 'failure' },
+          });
+        }
+      },
+      {
+        name: 'pg-stat-snapshot',
+        observability: this.observability,
+      },
+    );
   }
 }

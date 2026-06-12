@@ -67,7 +67,12 @@ describe('RULE_RUNTIME_KILL', () => {
 describe('RULE_TTS_ERROR_BURST', () => {
   it('dispara con cualquier sesión que tenga ≥10 errores en 5 min', () => {
     const rows = [
-      { sessionId: 'sess-abc', browser: 'chrome', isMobile: 'true', errors: 12 },
+      {
+        sessionId: 'sess-abc',
+        browser: 'chrome',
+        isMobile: 'true',
+        errors: 12,
+      },
     ];
     expect(RULE_TTS_ERROR_BURST.shouldFire(rows)).toBe(true);
   });
@@ -78,8 +83,18 @@ describe('RULE_TTS_ERROR_BURST', () => {
 
   it('notification lista sesiones afectadas con browser/mobile', () => {
     const rows = [
-      { sessionId: 'sess-aaaa1111', browser: 'chrome', isMobile: 'true', errors: 50 },
-      { sessionId: 'sess-bbbb2222', browser: 'safari', isMobile: 'false', errors: 15 },
+      {
+        sessionId: 'sess-aaaa1111',
+        browser: 'chrome',
+        isMobile: 'true',
+        errors: 50,
+      },
+      {
+        sessionId: 'sess-bbbb2222',
+        browser: 'safari',
+        isMobile: 'false',
+        errors: 15,
+      },
     ];
     const notif = RULE_TTS_ERROR_BURST.buildNotification(rows);
     expect(notif.title).toContain('2');
@@ -116,7 +131,11 @@ describe('RULE_TTS_ERROR_BURST', () => {
 describe('RULE_HYDRATION_MISMATCH_SPIKE', () => {
   it('dispara con cualquier (endpoint, deploy) con ≥5 mismatches', () => {
     const rows = [
-      { endpoint: '/auxiliar-administrativo-madrid/temario/tema-1', deployVersion: 'abc123', n: 7 },
+      {
+        endpoint: '/auxiliar-administrativo-madrid/temario/tema-1',
+        deployVersion: 'abc123',
+        n: 7,
+      },
     ];
     expect(RULE_HYDRATION_MISMATCH_SPIKE.shouldFire(rows)).toBe(true);
   });
@@ -237,7 +256,12 @@ describe('RULE_CANARY_QUESTIONS_GATE_FAILED', () => {
   it('dispara con ≥1 fallo del canary en la ventana', () => {
     expect(
       RULE_CANARY_QUESTIONS_GATE_FAILED.shouldFire([
-        { n: 1, lastStep: 'gate_false_positive', lastError: '403', lastStatus: 403 },
+        {
+          n: 1,
+          lastStep: 'gate_false_positive',
+          lastError: '403',
+          lastStatus: 403,
+        },
       ]),
     ).toBe(true);
   });
@@ -252,7 +276,12 @@ describe('RULE_CANARY_QUESTIONS_GATE_FAILED', () => {
 
   it('la notificación incluye step y la mitigación (CAPTCHA_ENABLED=false)', () => {
     const notif = RULE_CANARY_QUESTIONS_GATE_FAILED.buildNotification([
-      { n: 1, lastStep: 'gate_false_positive', lastError: 'reto a usuario normal', lastStatus: 403 },
+      {
+        n: 1,
+        lastStep: 'gate_false_positive',
+        lastError: 'reto a usuario normal',
+        lastStatus: 403,
+      },
     ]);
     expect(notif.body).toContain('gate_false_positive');
     expect(notif.body).toContain('CAPTCHA_ENABLED=false');
@@ -262,7 +291,10 @@ describe('RULE_CANARY_QUESTIONS_GATE_FAILED', () => {
 
 describe('RULE_EXAM_INTEGRITY_DRIFT', () => {
   const row = (affected: number, empty = 0, worstMissing = 0) => ({
-    affected, empty, worstMissing, lastRun: new Date('2026-06-08T04:30:00Z'),
+    affected,
+    empty,
+    worstMissing,
+    lastRun: new Date('2026-06-08T04:30:00Z'),
   });
 
   it('dispara con ≥1 examen afectado', () => {
@@ -370,17 +402,27 @@ describe('RULE_SUBSCRIPTION_VOID_FAILED', () => {
 
 describe('RULE_SUBSCRIPTION_FORCE_CANCEL_BURST', () => {
   it('dispara con ≥5 en 1h (señal de problema sistémico de cobros)', () => {
-    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 5 }])).toBe(true);
-    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 12 }])).toBe(true);
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 5 }])).toBe(
+      true,
+    );
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 12 }])).toBe(
+      true,
+    );
   });
 
   it('NO dispara con <5 (tasa normal <2/h, 3-4 es ruido aceptable)', () => {
-    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 4 }])).toBe(false);
-    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 0 }])).toBe(false);
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 4 }])).toBe(
+      false,
+    );
+    expect(RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.shouldFire([{ n: 0 }])).toBe(
+      false,
+    );
   });
 
   it('notification incluye SQL para investigar últimas 2h', () => {
-    const notif = RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.buildNotification([{ n: 8 }]);
+    const notif = RULE_SUBSCRIPTION_FORCE_CANCEL_BURST.buildNotification([
+      { n: 8 },
+    ]);
     expect(notif.title).toContain('8');
     expect(notif.body).toContain('SELECT');
     expect(notif.body).toContain('subscription_force_canceled_past_due');
@@ -434,7 +476,9 @@ describe('RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED', () => {
 
   it('NO dispara con 0', () => {
     expect(
-      RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.shouldFire([{ n: 0, lastMsg: null }]),
+      RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED.shouldFire([
+        { n: 0, lastMsg: null },
+      ]),
     ).toBe(false);
   });
 
@@ -463,7 +507,9 @@ describe('RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED', () => {
 describe('RULE_STRIPE_WEBHOOK_4XX_BURST', () => {
   it('dispara con ≥5 4xx en 10 min (excluyendo signature_failed)', () => {
     expect(
-      RULE_STRIPE_WEBHOOK_4XX_BURST.shouldFire([{ n: 5, topError: 'Invalid body' }]),
+      RULE_STRIPE_WEBHOOK_4XX_BURST.shouldFire([
+        { n: 5, topError: 'Invalid body' },
+      ]),
     ).toBe(true);
   });
 
@@ -490,19 +536,35 @@ describe('RULE_STRIPE_WEBHOOK_4XX_BURST', () => {
 
 describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
   it('dispara con detected≥1 (cualquier sub Stripe sin BD = pago no procesado)', () => {
-    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 1, fixed: 1 }])).toBe(true);
-    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 3, fixed: 2 }])).toBe(true);
+    expect(
+      RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
+        { detected: 1, fixed: 1 },
+      ]),
+    ).toBe(true);
+    expect(
+      RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
+        { detected: 3, fixed: 2 },
+      ]),
+    ).toBe(true);
   });
 
   it('NO dispara con detected=0 (sin filas tampoco)', () => {
-    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 0, fixed: 0 }])).toBe(false);
+    expect(
+      RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
+        { detected: 0, fixed: 0 },
+      ]),
+    ).toBe(false);
     expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([])).toBe(false);
   });
 
   it('dispara aunque fixed===detected (la mitigación NO silencia la alerta — el bug raíz sigue)', () => {
     // Caso típico: Pass-2 detecta 3 subs missing y las arregla todas. Aun
     // así disparamos porque eso significa que el webhook entrante sigue roto.
-    expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([{ detected: 3, fixed: 3 }])).toBe(true);
+    expect(
+      RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
+        { detected: 3, fixed: 3 },
+      ]),
+    ).toBe(true);
   });
 
   it('notification incluye conteo detected/fixed + runbook hacia el bug raíz', () => {
@@ -555,7 +617,12 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
   it('NO dispara con 1 timeout de red suelto (blip transitorio)', () => {
     expect(
       RULE_CANARY_AUTH_FAILED.shouldFire([
-        { n: 1, lastStep: 'login', lastError: 'The operation was aborted due to timeout', lastStatus: null },
+        {
+          n: 1,
+          lastStep: 'login',
+          lastError: 'The operation was aborted due to timeout',
+          lastStatus: null,
+        },
       ]),
     ).toBe(false);
   });
@@ -563,7 +630,12 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
   it('dispara con 2 timeouts (2 ticks consecutivos = degradación sostenida)', () => {
     expect(
       RULE_CANARY_AUTH_FAILED.shouldFire([
-        { n: 2, lastStep: 'login', lastError: 'The operation was aborted due to timeout', lastStatus: null },
+        {
+          n: 2,
+          lastStep: 'login',
+          lastError: 'The operation was aborted due to timeout',
+          lastStatus: null,
+        },
       ]),
     ).toBe(true);
   });
@@ -571,7 +643,13 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
   it('NO dispara con 1 solo 502 de gateway (CloudFront/ALB blip, no la app rota)', () => {
     expect(
       RULE_CANARY_AUTH_FAILED.shouldFire([
-        { n: 1, lastStep: 'profile', lastError: 'Profile falló: HTTP 502 <html><title>502 Bad Gateway</title>', lastStatus: 502 },
+        {
+          n: 1,
+          lastStep: 'profile',
+          lastError:
+            'Profile falló: HTTP 502 <html><title>502 Bad Gateway</title>',
+          lastStatus: 502,
+        },
       ]),
     ).toBe(false);
   });
@@ -579,7 +657,12 @@ describe('RULE_CANARY_AUTH_FAILED', () => {
   it('SÍ dispara con 1 fallo sustantivo no-gateway (401 = auth roto de verdad)', () => {
     expect(
       RULE_CANARY_AUTH_FAILED.shouldFire([
-        { n: 1, lastStep: 'profile', lastError: 'Profile falló: HTTP 401 Unauthorized', lastStatus: 401 },
+        {
+          n: 1,
+          lastStep: 'profile',
+          lastError: 'Profile falló: HTTP 401 Unauthorized',
+          lastStatus: 401,
+        },
       ]),
     ).toBe(true);
   });
@@ -626,7 +709,12 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
   it('dispara con ≥1 fallo (cualquier rotura del webhook = pagos en riesgo)', () => {
     expect(
       RULE_CANARY_WEBHOOK_FAILED.shouldFire([
-        { n: 1, lastStep: 'http', lastError: 'HTTP 400 signature failed', lastStatus: 400 },
+        {
+          n: 1,
+          lastStep: 'http',
+          lastError: 'HTTP 400 signature failed',
+          lastStatus: 400,
+        },
       ]),
     ).toBe(true);
   });
@@ -634,7 +722,13 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
   it('NO dispara con 1 timeout de red suelto (blip; firmas reales las cubre stripe_webhook_signature_failed)', () => {
     expect(
       RULE_CANARY_WEBHOOK_FAILED.shouldFire([
-        { n: 1, lastStep: 'http', lastError: 'Excepción POST webhook: The operation was aborted due to timeout', lastStatus: null },
+        {
+          n: 1,
+          lastStep: 'http',
+          lastError:
+            'Excepción POST webhook: The operation was aborted due to timeout',
+          lastStatus: null,
+        },
       ]),
     ).toBe(false);
   });
@@ -642,7 +736,13 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
   it('dispara con 2 timeouts (sostenido)', () => {
     expect(
       RULE_CANARY_WEBHOOK_FAILED.shouldFire([
-        { n: 2, lastStep: 'http', lastError: 'Excepción POST webhook: The operation was aborted due to timeout', lastStatus: null },
+        {
+          n: 2,
+          lastStep: 'http',
+          lastError:
+            'Excepción POST webhook: The operation was aborted due to timeout',
+          lastStatus: null,
+        },
       ]),
     ).toBe(true);
   });
@@ -662,7 +762,12 @@ describe('RULE_CANARY_WEBHOOK_FAILED', () => {
 
   it('notification cita Rocío/Mercedes + runbook con 5 acciones step-aware', () => {
     const notif = RULE_CANARY_WEBHOOK_FAILED.buildNotification([
-      { n: 2, lastStep: 'http', lastError: 'HTTP 400 signature verification failed', lastStatus: 400 },
+      {
+        n: 2,
+        lastStep: 'http',
+        lastError: 'HTTP 400 signature verification failed',
+        lastStatus: 400,
+      },
     ]);
     expect(notif.title).toContain('2');
     expect(notif.title).toContain('Stripe webhook');
@@ -683,7 +788,12 @@ describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
   it('dispara con 1 fallo sustantivo del handler (503 load-shed = app saturada = P1)', () => {
     expect(
       RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
-        { n: 1, lastStep: 'http', lastError: 'HTTP 503 saturated', lastStatus: 503 },
+        {
+          n: 1,
+          lastStep: 'http',
+          lastError: 'HTTP 503 saturated',
+          lastStatus: 503,
+        },
       ]),
     ).toBe(true);
   });
@@ -691,7 +801,12 @@ describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
   it('NO dispara con 1 solo 502 de gateway (blip de infra; la request no llegó al handler)', () => {
     expect(
       RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
-        { n: 1, lastStep: 'http', lastError: 'HTTP 502: <html><title>502 Bad Gateway</title>', lastStatus: 502 },
+        {
+          n: 1,
+          lastStep: 'http',
+          lastError: 'HTTP 502: <html><title>502 Bad Gateway</title>',
+          lastStatus: 502,
+        },
       ]),
     ).toBe(false);
   });
@@ -699,7 +814,12 @@ describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
   it('SÍ dispara con 2 fallos 502 (2 ticks = gateway sostenido, no blip)', () => {
     expect(
       RULE_CANARY_ANSWER_SAVE_FAILED.shouldFire([
-        { n: 2, lastStep: 'http', lastError: 'HTTP 502: <html><title>502 Bad Gateway</title>', lastStatus: 502 },
+        {
+          n: 2,
+          lastStep: 'http',
+          lastError: 'HTTP 502: <html><title>502 Bad Gateway</title>',
+          lastStatus: 502,
+        },
       ]),
     ).toBe(true);
   });
@@ -719,7 +839,12 @@ describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
 
   it('notification step-aware con runbook diferenciado por código HTTP', () => {
     const notif = RULE_CANARY_ANSWER_SAVE_FAILED.buildNotification([
-      { n: 2, lastStep: 'http', lastError: 'HTTP 422 schema validation failed', lastStatus: 422 },
+      {
+        n: 2,
+        lastStep: 'http',
+        lastError: 'HTTP 422 schema validation failed',
+        lastStatus: 422,
+      },
     ]);
     expect(notif.title).toContain('2');
     expect(notif.title).toContain('answer-save');
@@ -746,7 +871,11 @@ describe('RULE_CANARY_DB_POOL_FAILED (canary infra)', () => {
   });
 
   it('NO dispara con 0', () => {
-    expect(RULE_CANARY_DB_POOL_FAILED.shouldFire([{ n: 0, lastStep: null, lastError: null }])).toBe(false);
+    expect(
+      RULE_CANARY_DB_POOL_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null },
+      ]),
+    ).toBe(false);
     expect(RULE_CANARY_DB_POOL_FAILED.shouldFire([])).toBe(false);
   });
 
@@ -796,7 +925,11 @@ describe('RULE_CANARY_REDIS_FAILED (canary infra)', () => {
   });
 
   it('NO dispara con 0', () => {
-    expect(RULE_CANARY_REDIS_FAILED.shouldFire([{ n: 0, lastStep: null, lastError: null }])).toBe(false);
+    expect(
+      RULE_CANARY_REDIS_FAILED.shouldFire([
+        { n: 0, lastStep: null, lastError: null },
+      ]),
+    ).toBe(false);
   });
 
   it('severity=critical', () => {
@@ -828,21 +961,29 @@ import { RULE_ANSWER_WATCHDOG_BURST } from './alert-rules';
 
 describe('RULE_ANSWER_WATCHDOG_BURST', () => {
   it('dispara con ≥3 watchdog events en 30min', () => {
-    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
-      { n: 3, maxDurationMs: 15000, uniqueUsers: 2 },
-    ])).toBe(true);
-    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
-      { n: 9, maxDurationMs: 308109, uniqueUsers: 5 },
-    ])).toBe(true);
+    expect(
+      RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+        { n: 3, maxDurationMs: 15000, uniqueUsers: 2 },
+      ]),
+    ).toBe(true);
+    expect(
+      RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+        { n: 9, maxDurationMs: 308109, uniqueUsers: 5 },
+      ]),
+    ).toBe(true);
   });
 
   it('NO dispara con <3 events', () => {
-    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
-      { n: 0, maxDurationMs: 0, uniqueUsers: 0 },
-    ])).toBe(false);
-    expect(RULE_ANSWER_WATCHDOG_BURST.shouldFire([
-      { n: 2, maxDurationMs: 12500, uniqueUsers: 1 },
-    ])).toBe(false);
+    expect(
+      RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+        { n: 0, maxDurationMs: 0, uniqueUsers: 0 },
+      ]),
+    ).toBe(false);
+    expect(
+      RULE_ANSWER_WATCHDOG_BURST.shouldFire([
+        { n: 2, maxDurationMs: 12500, uniqueUsers: 1 },
+      ]),
+    ).toBe(false);
   });
 
   it('severity=warn (no critical, es bug client-side recurrente bajo carga)', () => {
@@ -883,7 +1024,12 @@ describe('RULE_CANARY_TOPIC_DATA_FAILED', () => {
   it('NO dispara con 1 timeout de red suelto (blip transitorio)', () => {
     expect(
       RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
-        { n: 1, lastStep: 'http', lastError: 'Excepción GET: The operation was aborted due to timeout', lastStatus: null },
+        {
+          n: 1,
+          lastStep: 'http',
+          lastError: 'Excepción GET: The operation was aborted due to timeout',
+          lastStatus: null,
+        },
       ]),
     ).toBe(false);
   });
@@ -891,7 +1037,12 @@ describe('RULE_CANARY_TOPIC_DATA_FAILED', () => {
   it('dispara con 2 timeouts (sostenido)', () => {
     expect(
       RULE_CANARY_TOPIC_DATA_FAILED.shouldFire([
-        { n: 2, lastStep: 'http', lastError: 'Excepción GET: The operation was aborted due to timeout', lastStatus: null },
+        {
+          n: 2,
+          lastStep: 'http',
+          lastError: 'Excepción GET: The operation was aborted due to timeout',
+          lastStatus: null,
+        },
       ]),
     ).toBe(true);
   });
@@ -918,7 +1069,12 @@ describe('RULE_CANARY_TOPIC_DATA_FAILED', () => {
 
   it('notification cita step + runbook + acciones por step', () => {
     const notif = RULE_CANARY_TOPIC_DATA_FAILED.buildNotification([
-      { n: 2, lastStep: 'shape_empty', lastError: 'totalQuestions=0', lastStatus: 200 },
+      {
+        n: 2,
+        lastStep: 'shape_empty',
+        lastError: 'totalQuestions=0',
+        lastStatus: 200,
+      },
     ]);
     expect(notif.title).toContain('2');
     expect(notif.title).toContain('topic-data');
@@ -992,13 +1148,21 @@ describe('RULE_WATCHDOG_WALLCLOCK_RESIDUAL', () => {
 
 describe('RULE_POOL_IDLE_IN_TX_DETECTED', () => {
   it('dispara con ≥2 muestras con idle_in_tx_over_5s > 0 en 5 min', () => {
-    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 2, lastAt: new Date() }])).toBe(true);
-    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 5, lastAt: new Date() }])).toBe(true);
+    expect(
+      RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 2, lastAt: new Date() }]),
+    ).toBe(true);
+    expect(
+      RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 5, lastAt: new Date() }]),
+    ).toBe(true);
   });
 
   it('NO dispara con 1 muestra (puede ser blip transitorio)', () => {
-    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 1, lastAt: new Date() }])).toBe(false);
-    expect(RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 0, lastAt: null }])).toBe(false);
+    expect(
+      RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 1, lastAt: new Date() }]),
+    ).toBe(false);
+    expect(
+      RULE_POOL_IDLE_IN_TX_DETECTED.shouldFire([{ n: 0, lastAt: null }]),
+    ).toBe(false);
   });
 
   it('NO dispara con resultado vacío', () => {
@@ -1026,32 +1190,61 @@ describe('RULE_POOL_IDLE_IN_TX_DETECTED', () => {
 });
 
 describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
-  it('dispara con ≥2 muestras y acumulación real (≥10 conn-min)', () => {
-    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 12 }])).toBe(true);
+  it('dispara con ≥2 muestras, acumulación real (≥10 conn-min) y pico ≥5', () => {
+    expect(
+      RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([
+        { n: 2, totalHung: 12, maxHung: 6 },
+      ]),
+    ).toBe(true);
   });
 
   it('NO dispara con 1 muestra (blip transitorio)', () => {
-    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 1, totalHung: 1 }])).toBe(false);
+    expect(
+      RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([
+        { n: 1, totalHung: 1, maxHung: 1 },
+      ]),
+    ).toBe(false);
   });
 
   it('NO dispara con el goteo residual de bajo volumen (≥2 muestras pero <10 conn-min)', () => {
     // Recalibrado 2026-06-03: el residual de getDb()/Supavisor (front_active=0)
     // a 1-2 conns era un email CRITICAL cada 30 min. El piso lo silencia.
-    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 4, totalHung: 4 }])).toBe(false);
+    expect(
+      RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([
+        { n: 4, totalHung: 4, maxHung: 2 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('NO dispara con el goteo residual sostenido (≥10 conn-min pero pico ≤3 simultáneas)', () => {
+    // Recalibrado 2026-06-12: el caso real que spameaba — 2-3 conns colgadas
+    // durante 5 muestras acumulan ~10-15 conn-min y cruzaban el piso, pero el
+    // pico simultáneo nunca pasa de 3. El gate de pico lo silencia.
+    expect(
+      RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([
+        { n: 5, totalHung: 14, maxHung: 3 },
+      ]),
+    ).toBe(false);
   });
 
   it('NO dispara con resultado vacío o cero', () => {
     expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([])).toBe(false);
-    expect(RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 0, totalHung: 0 }])).toBe(false);
+    expect(
+      RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([
+        { n: 0, totalHung: 0, maxHung: 0 },
+      ]),
+    ).toBe(false);
   });
 
-  it('notification referencia Hipótesis A + SQL de diagnóstico', () => {
+  it('notification referencia Hipótesis A + SQL de diagnóstico + pico', () => {
     const notif = RULE_POOL_HUNG_CLIENTREAD_DETECTED.buildNotification([
-      { n: 3, totalHung: 10 },
+      { n: 3, totalHung: 10, maxHung: 6 },
     ]);
     expect(notif.body).toContain('Hipótesis A');
     expect(notif.body).toContain('ClientRead');
     expect(notif.body).toContain('pg_stat_activity');
+    expect(notif.title).toContain('pico 6');
+    expect(notif.metadata?.peakHungConns).toBe(6);
     expect(notif.fingerprint).toBe('pool_hung_clientread');
   });
 
@@ -1061,7 +1254,10 @@ describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
 
   describe('deploy-aware (silencia goteo de rolling, alerta saturación real)', () => {
     const deployCtx = {
-      deployWindow: { active: true, reasons: ['frontend_rolling: 2 versiones'] },
+      deployWindow: {
+        active: true,
+        reasons: ['frontend_rolling: 2 versiones'],
+      },
     } as never;
     const calmCtx = {
       deployWindow: { active: false, reasons: [] },
@@ -1070,16 +1266,16 @@ describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
     it('NO dispara con ventana de deploy activa y recuento bajo (<5 conn-min)', () => {
       expect(
         RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
-          [{ n: 2, totalHung: 1 }],
+          [{ n: 2, totalHung: 1, maxHung: 1 }],
           deployCtx,
         ),
       ).toBe(false);
     });
 
-    it('SÍ dispara con deploy activo si el recuento es alto (≥5 conn-min = saturación real)', () => {
+    it('SÍ dispara con deploy activo si hay saturación real (conn-min alto + pico ≥5)', () => {
       expect(
         RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
-          [{ n: 2, totalHung: 14 }],
+          [{ n: 2, totalHung: 14, maxHung: 8 }],
           deployCtx,
         ),
       ).toBe(true);
@@ -1088,30 +1284,32 @@ describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
     it('sin deploy: NO dispara con recuento bajo (piso conn-min silencia el goteo residual)', () => {
       expect(
         RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
-          [{ n: 2, totalHung: 1 }],
+          [{ n: 2, totalHung: 1, maxHung: 1 }],
           calmCtx,
         ),
       ).toBe(false);
     });
 
-    it('sin deploy: SÍ dispara con acumulación real (≥10 conn-min)', () => {
+    it('sin deploy: SÍ dispara con saturación real (≥10 conn-min + pico ≥5)', () => {
       expect(
         RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire(
-          [{ n: 2, totalHung: 12 }],
+          [{ n: 2, totalHung: 12, maxHung: 6 }],
           calmCtx,
         ),
       ).toBe(true);
     });
 
-    it('sin ctx (fail-open) dispara si supera el piso de conn-min', () => {
+    it('sin ctx (fail-open) dispara si supera piso de conn-min y pico', () => {
       expect(
-        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([{ n: 2, totalHung: 12 }]),
+        RULE_POOL_HUNG_CLIENTREAD_DETECTED.shouldFire([
+          { n: 2, totalHung: 12, maxHung: 6 },
+        ]),
       ).toBe(true);
     });
 
     it('la notificación marca deployWindowActive en metadata', () => {
       const notif = RULE_POOL_HUNG_CLIENTREAD_DETECTED.buildNotification(
-        [{ n: 2, totalHung: 14 }],
+        [{ n: 2, totalHung: 14, maxHung: 8 }],
         deployCtx,
       );
       expect(notif.metadata?.deployWindowActive).toBe(true);
@@ -1122,13 +1320,29 @@ describe('RULE_POOL_HUNG_CLIENTREAD_DETECTED', () => {
 
 describe('RULE_POOL_FRONTEND_SATURATION_HIGH', () => {
   it('dispara con ≥3 muestras de saturación (≥13 conns en últimos 5 min)', () => {
-    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 15, samples: 3 }])).toBe(true);
-    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 16, samples: 5 }])).toBe(true);
+    expect(
+      RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([
+        { maxActive: 15, samples: 3 },
+      ]),
+    ).toBe(true);
+    expect(
+      RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([
+        { maxActive: 16, samples: 5 },
+      ]),
+    ).toBe(true);
   });
 
   it('NO dispara con menos de 3 muestras (transitorio aceptable)', () => {
-    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 14, samples: 2 }])).toBe(false);
-    expect(RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([{ maxActive: 0, samples: 0 }])).toBe(false);
+    expect(
+      RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([
+        { maxActive: 14, samples: 2 },
+      ]),
+    ).toBe(false);
+    expect(
+      RULE_POOL_FRONTEND_SATURATION_HIGH.shouldFire([
+        { maxActive: 0, samples: 0 },
+      ]),
+    ).toBe(false);
   });
 
   it('notification incluye plan de mitigación', () => {
@@ -1153,17 +1367,27 @@ describe('RULE_POOL_FRONTEND_SATURATION_HIGH', () => {
 
 describe('RULE_POOL_SAMPLER_STALE', () => {
   it('dispara si última muestra hace >3 min', () => {
-    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 5 }])).toBe(true);
-    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 15 }])).toBe(true);
+    expect(
+      RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 5 }]),
+    ).toBe(true);
+    expect(
+      RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 15 }]),
+    ).toBe(true);
   });
 
   it('NO dispara con muestra reciente (<3 min)', () => {
-    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 1 }])).toBe(false);
-    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 0 }])).toBe(false);
+    expect(
+      RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 1 }]),
+    ).toBe(false);
+    expect(
+      RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: new Date(), ageMin: 0 }]),
+    ).toBe(false);
   });
 
   it('dispara si NUNCA hubo muestra (tabla vacía)', () => {
-    expect(RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: null, ageMin: 0 }])).toBe(true);
+    expect(
+      RULE_POOL_SAMPLER_STALE.shouldFire([{ lastAt: null, ageMin: 0 }]),
+    ).toBe(true);
   });
 
   it('notification incluye plan de recovery', () => {

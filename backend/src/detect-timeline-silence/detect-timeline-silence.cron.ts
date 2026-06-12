@@ -33,7 +33,10 @@ export class DetectTimelineSilenceCron {
 
   @Cron('0 7 * * *', { name: 'detect-timeline-silence', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'detect-timeline-silence',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

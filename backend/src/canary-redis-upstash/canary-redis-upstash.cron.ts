@@ -39,7 +39,10 @@ export class CanaryRedisUpstashCron {
   async handle(): Promise<void> {
     // Jitter 0-15s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(15_000);
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'canary-redis-upstash',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

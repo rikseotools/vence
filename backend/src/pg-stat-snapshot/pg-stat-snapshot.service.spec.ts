@@ -47,17 +47,19 @@ describe('parseSnapshotResult — helper puro', () => {
   });
 
   it('lanza si devuelve 0 filas (la función SQL siempre devuelve 1)', () => {
-    expect(() => parseSnapshotResult([])).toThrow(
-      /devolvió 0 filas/,
-    );
+    expect(() => parseSnapshotResult([])).toThrow(/devolvió 0 filas/);
   });
 
   it('lanza si rows es undefined/null (defensa contra cambios futuros)', () => {
     expect(() =>
-      parseSnapshotResult(undefined as unknown as Parameters<typeof parseSnapshotResult>[0]),
+      parseSnapshotResult(
+        undefined as unknown as Parameters<typeof parseSnapshotResult>[0],
+      ),
     ).toThrow(/devolvió 0 filas/);
     expect(() =>
-      parseSnapshotResult(null as unknown as Parameters<typeof parseSnapshotResult>[0]),
+      parseSnapshotResult(
+        null as unknown as Parameters<typeof parseSnapshotResult>[0],
+      ),
     ).toThrow(/devolvió 0 filas/);
   });
 });
@@ -105,7 +107,9 @@ describe('PgStatSnapshotCron — contrato', () => {
   });
 
   it('se registra en HeartbeatRegistry con threshold 28h', () => {
-    expect(content).toMatch(/heartbeatRegistry\.register\(\s*'pg-stat-snapshot'/);
+    expect(content).toMatch(
+      /heartbeatRegistry\.register\(\s*'pg-stat-snapshot'/,
+    );
     expect(content).toMatch(/thresholdMs:\s*28\s*\*\s*3600\s*\*\s*1000/);
   });
 
@@ -120,6 +124,14 @@ describe('PgStatSnapshotCron — contrato', () => {
   });
 
   it('usa runWithHeartbeat para tracking de lastTickAtMs', () => {
-    expect(content).toMatch(/runWithHeartbeat\(this, 'lastTickAtMs'/);
+    // Tolerante a saltos de línea: prettier multilínea los argumentos cuando
+    // se pasa el opts de cron_tick (4º arg).
+    expect(content).toMatch(/runWithHeartbeat\(\s*this,\s*'lastTickAtMs'/);
+  });
+
+  it('pasa el opts de arranque (cron_tick) a runWithHeartbeat', () => {
+    // Señal de liveness por ARRANQUE — ver heartbeat.helpers CronTickOpts.
+    expect(content).toMatch(/name:\s*'pg-stat-snapshot'/);
+    expect(content).toMatch(/observability:\s*this\.observability/);
   });
 });

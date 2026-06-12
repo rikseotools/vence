@@ -43,7 +43,10 @@ export class CanaryStripeWebhookCron {
   async handle(): Promise<void> {
     // Jitter 0-25s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(25_000);
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'canary-stripe-webhook',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

@@ -39,7 +39,10 @@ export class CanaryTopicDataCron {
   @Cron('*/5 * * * *', { name: 'canary-topic-data', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await jitter(30_000);
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'canary-topic-data',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

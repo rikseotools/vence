@@ -35,7 +35,10 @@ export class ArchiveInteractionsCron {
 
   @Cron('30 3 * * *', { name: 'archive-interactions', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'archive-interactions',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

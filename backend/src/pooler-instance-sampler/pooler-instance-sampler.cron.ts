@@ -45,44 +45,58 @@ export class PoolerInstanceSamplerCron {
     await jitter(3_000);
 
     const startedAt = Date.now();
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
 
-        // Solo emitir observable_event cuando hay algo anómalo — 1.440
-        // events/día sin valor saturaría observable_events. La tabla
-        // pgbouncer_instance_samples SIEMPRE tiene los datos.
-        if (result.unreachable > 0) {
+          // Solo emitir observable_event cuando hay algo anómalo — 1.440
+          // events/día sin valor saturaría observable_events. La tabla
+          // pgbouncer_instance_samples SIEMPRE tiene los datos.
+          if (result.unreachable > 0) {
+            await this.observability.emit({
+              source: 'fargate',
+              severity: 'error',
+              eventType: 'pooler_instance_unreachable',
+              endpoint: 'pooler-instance-sampler',
+              durationMs: Date.now() - startedAt,
+              metadata: {
+                discovered: result.discovered,
+                reachable: result.reachable,
+                unreachable: result.unreachable,
+                instances: result.samples
+                  .filter((s) => !s.reachable)
+                  .map((s) => ({
+                    instance: s.instance,
+                    az: s.az,
+                    error: s.error,
+                  })),
+              },
+            });
+          }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Cron pooler-instance-sampler falló: ${errorMessage}`,
+          );
           await this.observability.emit({
             source: 'fargate',
             severity: 'error',
-            eventType: 'pooler_instance_unreachable',
+            eventType: 'cron_run',
             endpoint: 'pooler-instance-sampler',
             durationMs: Date.now() - startedAt,
-            metadata: {
-              discovered: result.discovered,
-              reachable: result.reachable,
-              unreachable: result.unreachable,
-              instances: result.samples
-                .filter((s) => !s.reachable)
-                .map((s) => ({ instance: s.instance, az: s.az, error: s.error })),
-            },
+            errorMessage,
+            metadata: { status: 'failure' },
           });
         }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(`Cron pooler-instance-sampler falló: ${errorMessage}`);
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'pooler-instance-sampler',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+      },
+      {
+        name: 'pooler-instance-sampler',
+        observability: this.observability,
+      },
+    );
   }
 }

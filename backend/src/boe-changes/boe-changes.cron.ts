@@ -34,7 +34,10 @@ export class BoeChangesCron {
 
   @Cron('0 8 * * *', { name: 'check-boe-changes', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'check-boe-changes',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {

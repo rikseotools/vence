@@ -195,4 +195,20 @@ describe('RULE_CRON_OVERDUE', () => {
       expect.arrayContaining(['detect-oep-llm', 'detect-generic-sources']),
     );
   });
+
+  it('la query lee la señal de ARRANQUE cron_tick (no solo el cron_run de completado)', () => {
+    // Anti-regresión del fix 2026-06-12: medir liveness por el arranque del
+    // tick, no por el completado — si no, un cron lento (escaneo LLM) falsea
+    // overdue durante toda su ejecución. Ver runWithHeartbeat + CronTickOpts.
+    const chunks = (
+      RULE_CRON_OVERDUE.query as unknown as {
+        queryChunks: Array<{ value?: unknown }>;
+      }
+    ).queryChunks;
+    const sqlText = chunks
+      .map((c) => (Array.isArray(c.value) ? c.value.join('') : ''))
+      .join('');
+    expect(sqlText).toContain('cron_tick');
+    expect(sqlText).toContain('cron_run');
+  });
 });

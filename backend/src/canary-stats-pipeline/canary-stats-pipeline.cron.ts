@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { getLastTickMsAgo, runWithHeartbeat } from '../heartbeat/heartbeat.helpers';
+import {
+  getLastTickMsAgo,
+  runWithHeartbeat,
+} from '../heartbeat/heartbeat.helpers';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { CanaryStatsPipelineService } from './canary-stats-pipeline.service';
@@ -37,7 +40,10 @@ export class CanaryStatsPipelineCron {
 
   @Cron('*/5 * * * *', { name: 'canary-stats-pipeline', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'canary-stats-pipeline',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {
@@ -48,44 +54,73 @@ export class CanaryStatsPipelineCron {
 
       if ('skipped' in result) {
         this.observability.emitFireAndForget({
-          source: 'fargate', severity: 'warn', eventType: 'canary_stats_pipeline_skipped',
-          endpoint: 'canary-stats-pipeline', durationMs: result.durationMs,
+          source: 'fargate',
+          severity: 'warn',
+          eventType: 'canary_stats_pipeline_skipped',
+          endpoint: 'canary-stats-pipeline',
+          durationMs: result.durationMs,
           metadata: { cron: 'canary-stats-pipeline', reason: result.reason },
         });
       } else if ('questionInvalid' in result) {
         this.observability.emitFireAndForget({
-          source: 'fargate', severity: 'warn', eventType: 'canary_stats_pipeline_question_invalid',
-          endpoint: 'canary-stats-pipeline', durationMs: result.durationMs,
-          errorMessage: result.errorMessage, httpStatus: result.httpStatus,
-          metadata: { cron: 'canary-stats-pipeline', hint: 'Actualizar SMOKE_QUESTION.id' },
+          source: 'fargate',
+          severity: 'warn',
+          eventType: 'canary_stats_pipeline_question_invalid',
+          endpoint: 'canary-stats-pipeline',
+          durationMs: result.durationMs,
+          errorMessage: result.errorMessage,
+          httpStatus: result.httpStatus,
+          metadata: {
+            cron: 'canary-stats-pipeline',
+            hint: 'Actualizar SMOKE_QUESTION.id',
+          },
         });
       } else if (result.ok) {
         this.observability.emitFireAndForget({
-          source: 'fargate', severity: 'info', eventType: 'canary_stats_pipeline_ok',
-          endpoint: 'canary-stats-pipeline', durationMs: result.durationMs,
-          metadata: { cron: 'canary-stats-pipeline', propagationMs: result.propagationMs, uqh: result.uqh },
+          source: 'fargate',
+          severity: 'info',
+          eventType: 'canary_stats_pipeline_ok',
+          endpoint: 'canary-stats-pipeline',
+          durationMs: result.durationMs,
+          metadata: {
+            cron: 'canary-stats-pipeline',
+            propagationMs: result.propagationMs,
+            uqh: result.uqh,
+          },
         });
       } else {
         this.observability.emitFireAndForget({
-          source: 'fargate', severity: 'critical', eventType: 'canary_stats_pipeline_failed',
-          endpoint: 'canary-stats-pipeline', durationMs: result.durationMs,
-          errorMessage: result.errorMessage, httpStatus: result.httpStatus,
+          source: 'fargate',
+          severity: 'critical',
+          eventType: 'canary_stats_pipeline_failed',
+          endpoint: 'canary-stats-pipeline',
+          durationMs: result.durationMs,
+          errorMessage: result.errorMessage,
+          httpStatus: result.httpStatus,
           metadata: { cron: 'canary-stats-pipeline', step: result.step },
         });
       }
 
       this.observability.emitFireAndForget({
-        source: 'fargate', severity: 'info', eventType: 'cron_run',
-        endpoint: 'canary-stats-pipeline', durationMs: Date.now() - startedAt,
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'canary-stats-pipeline',
+        durationMs: Date.now() - startedAt,
         metadata: { cron: 'canary-stats-pipeline', status: 'completed' },
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron canary-stats-pipeline falló: ${errorMessage}`);
       this.observability.emitFireAndForget({
-        source: 'fargate', severity: 'error', eventType: 'cron_run',
-        endpoint: 'canary-stats-pipeline', durationMs: Date.now() - startedAt,
-        errorMessage, metadata: { cron: 'canary-stats-pipeline', status: 'failure' },
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'canary-stats-pipeline',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { cron: 'canary-stats-pipeline', status: 'failure' },
       });
     }
   }

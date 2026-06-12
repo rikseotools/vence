@@ -38,35 +38,43 @@ export class RefreshMvOposicionesCron {
     // Jitter 0-15s para no colisionar exactamente XX:00/XX:30 con otros.
     await jitter(15_000);
     const startedAt = Date.now();
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'cron_run',
-          endpoint: 'refresh-mv-oposiciones',
-          durationMs: Date.now() - startedAt,
-          metadata: {
-            status: 'success',
-            refreshMs: result.durationMs,
-            cacheInvalidated: result.cacheInvalidated,
-          },
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(`refresh-mv-oposiciones falló: ${errorMessage}`);
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'refresh-mv-oposiciones',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'info',
+            eventType: 'cron_run',
+            endpoint: 'refresh-mv-oposiciones',
+            durationMs: Date.now() - startedAt,
+            metadata: {
+              status: 'success',
+              refreshMs: result.durationMs,
+              cacheInvalidated: result.cacheInvalidated,
+            },
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(`refresh-mv-oposiciones falló: ${errorMessage}`);
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'error',
+            eventType: 'cron_run',
+            endpoint: 'refresh-mv-oposiciones',
+            durationMs: Date.now() - startedAt,
+            errorMessage,
+            metadata: { status: 'failure' },
+          });
+        }
+      },
+      {
+        name: 'refresh-mv-oposiciones',
+        observability: this.observability,
+      },
+    );
   }
 }

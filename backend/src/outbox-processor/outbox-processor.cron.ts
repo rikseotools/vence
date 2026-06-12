@@ -14,7 +14,10 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { runWithHeartbeat, getLastTickMsAgo } from '../heartbeat/heartbeat.helpers';
+import {
+  runWithHeartbeat,
+  getLastTickMsAgo,
+} from '../heartbeat/heartbeat.helpers';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
 import { OutboxProcessorService } from './outbox-processor.service';
@@ -92,6 +95,12 @@ export class OutboxProcessorCron {
   async tick(): Promise<void> {
     const startedAt = Date.now();
     this.tickCounter += 1;
+    // NO se pasa el opts de `cron_tick` a propósito: esto es @Interval (cada
+    // 5 s), NO @Cron — la regla `cron_overdue` solo vigila crons de
+    // SchedulerRegistry, así que un tick aquí no aporta detección de overdue y
+    // emitir ~17k eventos/día saturaría observable_events. La liveness de este
+    // worker ya la cubre el heartbeat in-memory (/health/outbox + ECS probe) y
+    // el `cron_run` que emite cada 12 ticks (60 s).
     await runWithHeartbeat(this, 'lastTickAtMs', async () => {
       await this.tickImpl(startedAt);
     });

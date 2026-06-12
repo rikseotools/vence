@@ -46,7 +46,10 @@ export class ObservabilityCleanupCron {
 
   @Cron('0 4 * * *', { name: 'observability-cleanup', timeZone: 'UTC' })
   async handle(): Promise<void> {
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'observability-cleanup',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {
@@ -80,7 +83,8 @@ export class ObservabilityCleanupCron {
         },
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Cron observability-cleanup falló: ${errorMessage}`);
       await this.observability.emit({
         source: 'fargate',

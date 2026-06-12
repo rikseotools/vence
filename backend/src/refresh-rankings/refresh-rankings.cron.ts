@@ -45,35 +45,43 @@ export class RefreshRankingsCron {
     await jitter(30_000);
     this.logger.log('Cron refresh-rankings disparado');
     const startedAt = Date.now();
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'cron_run',
-          endpoint: 'refresh-rankings',
-          durationMs: Date.now() - startedAt,
-          metadata: {
-            status: 'success',
-            totalInserted: result.totalInserted,
-            slowestMs: result.slowestMs,
-          },
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(`Cron refresh-rankings falló: ${errorMessage}`);
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'refresh-rankings',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'info',
+            eventType: 'cron_run',
+            endpoint: 'refresh-rankings',
+            durationMs: Date.now() - startedAt,
+            metadata: {
+              status: 'success',
+              totalInserted: result.totalInserted,
+              slowestMs: result.slowestMs,
+            },
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(`Cron refresh-rankings falló: ${errorMessage}`);
+          await this.observability.emit({
+            source: 'fargate',
+            severity: 'error',
+            eventType: 'cron_run',
+            endpoint: 'refresh-rankings',
+            durationMs: Date.now() - startedAt,
+            errorMessage,
+            metadata: { status: 'failure' },
+          });
+        }
+      },
+      {
+        name: 'refresh-rankings',
+        observability: this.observability,
+      },
+    );
   }
 }

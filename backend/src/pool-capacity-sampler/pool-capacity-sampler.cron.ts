@@ -55,49 +55,57 @@ export class PoolCapacitySamplerCron {
     await jitter(3_000);
 
     const startedAt = Date.now();
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => {
-      try {
-        const result = await this.service.run();
+    await runWithHeartbeat(
+      this,
+      'lastTickAtMs',
+      async () => {
+        try {
+          const result = await this.service.run();
 
-        // Sólo emitir observable_event cuando hay banderas rojas — 1.440
-        // events/día sin valor saturaría observable_events. La tabla
-        // pool_capacity_samples SIEMPRE tiene los datos; observable_events
-        // sólo trackea los picos.
-        const hasFlags =
-          result.idleInTxOver5s > 0 || result.hungClientreadOver10s > 0;
-        if (hasFlags) {
+          // Sólo emitir observable_event cuando hay banderas rojas — 1.440
+          // events/día sin valor saturaría observable_events. La tabla
+          // pool_capacity_samples SIEMPRE tiene los datos; observable_events
+          // sólo trackea los picos.
+          const hasFlags =
+            result.idleInTxOver5s > 0 || result.hungClientreadOver10s > 0;
+          if (hasFlags) {
+            await this.observability.emit({
+              source: 'fargate',
+              severity: 'warn',
+              eventType: 'pool_capacity_flag',
+              endpoint: 'pool-capacity-sampler',
+              durationMs: Date.now() - startedAt,
+              metadata: {
+                sampleAt: result.sampleAt.toISOString(),
+                totalConns: result.totalConns,
+                activeConns: result.activeConns,
+                idleInTxOver5s: result.idleInTxOver5s,
+                hungClientreadOver10s: result.hungClientreadOver10s,
+                frontendActiveConns: result.frontendActiveConns,
+              },
+            });
+          }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Cron pool-capacity-sampler falló: ${errorMessage}`,
+          );
           await this.observability.emit({
             source: 'fargate',
-            severity: 'warn',
-            eventType: 'pool_capacity_flag',
+            severity: 'error',
+            eventType: 'cron_run',
             endpoint: 'pool-capacity-sampler',
             durationMs: Date.now() - startedAt,
-            metadata: {
-              sampleAt: result.sampleAt.toISOString(),
-              totalConns: result.totalConns,
-              activeConns: result.activeConns,
-              idleInTxOver5s: result.idleInTxOver5s,
-              hungClientreadOver10s: result.hungClientreadOver10s,
-              frontendActiveConns: result.frontendActiveConns,
-            },
+            errorMessage,
+            metadata: { status: 'failure' },
           });
         }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `Cron pool-capacity-sampler falló: ${errorMessage}`,
-        );
-        await this.observability.emit({
-          source: 'fargate',
-          severity: 'error',
-          eventType: 'cron_run',
-          endpoint: 'pool-capacity-sampler',
-          durationMs: Date.now() - startedAt,
-          errorMessage,
-          metadata: { status: 'failure' },
-        });
-      }
-    });
+      },
+      {
+        name: 'pool-capacity-sampler',
+        observability: this.observability,
+      },
+    );
   }
 }

@@ -67,7 +67,10 @@ export class AlertsCron {
     // Jitter 0-30s: cron pesado (3.2s típico, 24 reglas SQL). Evita colisión
     // XX:25:00 UTC con refresh-rankings + 4 canaries en el mismo segundo.
     await jitter(30_000);
-    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl());
+    await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
+      name: 'alerts-engine',
+      observability: this.observability,
+    });
   }
 
   private async runImpl(): Promise<void> {
@@ -82,7 +85,9 @@ export class AlertsCron {
     let deployWindow: DeployWindow = { active: false, reasons: [] };
     try {
       const dwResult = await this.db.execute(DEPLOY_WINDOW_QUERY);
-      const dwRows = (Array.isArray(dwResult) ? dwResult : []) as DeployWindowRow[];
+      const dwRows = (
+        Array.isArray(dwResult) ? dwResult : []
+      ) as DeployWindowRow[];
       deployWindow = evaluateDeployWindow(dwRows);
     } catch (err) {
       this.logger.warn(
