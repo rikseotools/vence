@@ -102,6 +102,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-scs-canarias': 'canarias',
     'auxiliar-enfermeria-osakidetza': 'pais-vasco',
     'auxiliar-administrativo-pais-vasco': 'pais-vasco',
+    'administrativo-pais-vasco': 'pais-vasco',
     'auxiliar-administrativo-catalunya': 'cataluna',
     'administrativo-gva': 'valencia',
     'auxiliar-enfermeria-gva': 'valencia',
