@@ -3339,6 +3339,71 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // TCAE SESCAM — Servicio de Salud de Castilla-La Mancha (C2)
+  // ========================================
+  {
+    id: 'tcae_sescam',
+    slug: 'tcae-sescam',
+    positionType: 'tcae_sescam',
+    examScoring: { penaltyDivisor: null, source: 'Convocatoria SESCAM OEP 2023-2024 (DOCM): test 100 preguntas, errores penalizan; divisor pendiente de confirmar en las bases. confidence:baja' },
+    name: 'TCAE del SESCAM (Castilla-La Mancha)',
+    shortName: 'TCAE SESCAM',
+    emoji: '💉',
+    badge: 'C2',
+    color: 'green',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Temario Común', subtitle: 'Legislación y organización sanitaria', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española y el Estatuto de Castilla-La Mancha' },
+          { id: 2, name: 'Ley General de Sanidad y Ordenación Sanitaria de CLM' },
+          { id: 3, name: 'Cohesión y calidad del SNS y garantía de la atención en CLM' },
+          { id: 4, name: 'Estatuto Marco, Prevención de Riesgos Laborales e igualdad' },
+          { id: 5, name: 'Derechos y deberes en salud y documentación sanitaria de CLM' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Temario Específico', subtitle: 'Cuidados auxiliares de enfermería', icon: '🏥',
+        themes: [
+          { id: 6, name: 'Planes estratégicos del SESCAM' },
+          { id: 7, name: 'Actividades del TCAE en Atención Primaria y Especializada' },
+          { id: 8, name: 'Documentación sanitaria y consentimiento informado' },
+          { id: 9, name: 'Bioética y secreto profesional' },
+          { id: 10, name: 'Salud laboral y movilización de pacientes' },
+          { id: 11, name: 'Unidad del paciente, aseo y movilización' },
+          { id: 12, name: 'Cuidados del paciente para la exploración' },
+          { id: 13, name: 'Aparato cardiovascular y respiratorio. Constantes vitales' },
+          { id: 14, name: 'Aparato digestivo. Dietética y alimentación' },
+          { id: 15, name: 'Vías de alimentación y sonda nasogástrica' },
+          { id: 16, name: 'Medicamentos: administración, almacenamiento y caducidad' },
+          { id: 17, name: 'Termoterapia, crioterapia e hidroterapia' },
+          { id: 18, name: 'Oxigenoterapia' },
+          { id: 19, name: 'Higiene del paciente y necesidades de eliminación' },
+          { id: 20, name: 'Cadena epidemiológica de la infección nosocomial' },
+          { id: 21, name: 'Prevención de la infección hospitalaria y aislamiento' },
+          { id: 22, name: 'Residuos sanitarios y muestras biológicas' },
+          { id: 23, name: 'Limpieza, desinfección, asepsia y antisepsia' },
+          { id: 24, name: 'Esterilización' },
+          { id: 25, name: 'Atención al paciente terminal y cuidados paliativos' },
+          { id: 26, name: 'Prevención de úlceras por presión' },
+          { id: 27, name: 'Urgencias y emergencias. Primeros auxilios y RCP' },
+          { id: 28, name: 'Comunicación, relación interpersonal y trabajo en equipo' },
+          { id: 29, name: 'Atención al paciente de salud mental' },
+          { id: 30, name: 'Atención y cuidados en el anciano' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    aliases: ['sescam', 'tcae sescam', 'castilla-la mancha', 'castilla la mancha', 'clm', 'jccm', 'auxiliar enfermeria castilla la mancha', 'tcae clm'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/tcae-sescam', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/tcae-sescam/temario', label: 'Temario', icon: '📚' },
+      { href: '/tcae-sescam/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // AUXILIAR ADMINISTRATIVO UNED (C2 estatal)
   // ========================================
   {
