@@ -27,9 +27,12 @@ dotenv.config({ path: '.env.local', override: true })
 const DB_URL = process.env.DATABASE_URL
 const describeIfDb = DB_URL ? describe : describe.skip
 
-// Baseline capturado el 2026-06-10 tras migrar redes. Bajar este número conforme se
-// escriba temario para más leyes virtuales (Correos, Inglés PN, Ciencias Sociales PN…).
-const BASELINE_PLACEHOLDER_QUESTIONS = 17504
+// Baseline capturado el 2026-06-10 tras migrar redes. Se fue bajando conforme se escribía
+// temario para las leyes virtuales (CCSS PN, Inglés PN/GC, Correos, SERGAS, Osakidetza,
+// textos legales internacionales, etc.). El 2026-06-15 llegó a 0: todas las preguntas
+// activas sobre artículos virtuales (incluido art 0) tienen ya temario real. A partir de
+// aquí el ratchet es estricto: cualquier nueva pregunta sobre un stub vacío rompe CI.
+const BASELINE_PLACEHOLDER_QUESTIONS = 0
 
 describeIfDb('Guardarraíl: temario placeholder en leyes virtuales', () => {
   let client: Client
