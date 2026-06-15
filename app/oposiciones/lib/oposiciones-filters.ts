@@ -114,6 +114,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'tcae-galicia': 'galicia',
     'tcae-murcia': 'murcia',
     'tcae-sescam': 'castilla-la-mancha',
+    'tcae-extremadura': 'extremadura',
     'auxiliar-administrativo-sms': 'murcia',
     'guardia-civil': 'estado',
     'policia-nacional': 'estado',

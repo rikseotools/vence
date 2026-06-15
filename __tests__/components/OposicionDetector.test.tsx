@@ -121,7 +121,7 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(38)
+      expect(autonomicas).toHaveLength(39)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'administrativo-galicia',
         'administrativo-gva',  // Añadida 07/05/2026: Administrativo Generalitat Valenciana C1-01
@@ -156,6 +156,7 @@ describe('OposicionDetector', () => {
         'enfermero-sas-andalucia',
         'tcae-aragon',
         'tcae-canarias',
+        'tcae-extremadura',  // Añadida 15/06/2026: TCAE SES Extremadura C2 (DOE 249/2024: 224 plz TL)
         'tcae-galicia',
         'tcae-murcia',
         'tcae-sas',  // Añadida 10/06/2026: TCAE Servicio Andaluz de Salud C2 (OEP 2022-2024: 3.049 plz TL)

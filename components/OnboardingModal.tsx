@@ -273,6 +273,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '💉'
   },
   {
+    id: 'tcae_extremadura',
+    nombre: 'TCAE del SES (Extremadura)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
     id: 'tcae_sacyl',
     nombre: 'TCAE del SACYL (Castilla y León)',
     categoria: 'C2',

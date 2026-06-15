@@ -336,6 +336,11 @@ function PerfilPageContent() {
       data: { name: 'TCAE del Servicio Murciano de Salud', slug: 'tcae-murcia', categoria: 'C2', administracion: 'Sanitaria' }
     },
     {
+      value: 'tcae_extremadura',
+      label: 'TCAE SES (Extremadura)',
+      data: { name: 'TCAE del Servicio Extremeño de Salud', slug: 'tcae-extremadura', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'administrativo_estado',
       label: 'Administrativo del Estado',
       data: {
