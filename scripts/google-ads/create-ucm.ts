@@ -12,7 +12,7 @@ const K=['auxiliar administrativo universidad complutense','oposicion auxiliar a
 if(H.some(h=>h.length>30))throw new Error('H>30: '+JSON.stringify(H.filter(h=>h.length>30)))
 if(D.some(d=>d.length>90))throw new Error('D>90: '+JSON.stringify(D.filter(d=>d.length>90)))
 async function main(){
-  const c=getGoogleAdsCustomer(),cid=loadAdsConfig().customerId,R=(e,i)=>`customers/${cid}/${e}/${i}`,st=APPLY?'ENABLED':'PAUSED'
+  const c=getGoogleAdsCustomer(),cid=loadAdsConfig().customerId,R=(e:string,i:number)=>`customers/${cid}/${e}/${i}`,st=APPLY?'ENABLED':'PAUSED'
   const ops=[
     {entity:'campaign_budget',operation:'create',resource:{resource_name:R('campaignBudgets',-1),name:'C2 Aux Admin Universidad Complutense - budget',amount_micros:3_000_000,delivery_method:'STANDARD',explicitly_shared:false}},
     {entity:'campaign',operation:'create',resource:{resource_name:R('campaigns',-2),name:'C2 Aux Admin Universidad Complutense',status:st,advertising_channel_type:'SEARCH',campaign_budget:R('campaignBudgets',-1),target_spend:{cpc_bid_ceiling_micros:50_000},network_settings:{target_google_search:true,target_search_network:false,target_content_network:false,target_partner_search_network:false},contains_eu_political_advertising:'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'}},
@@ -23,6 +23,6 @@ async function main(){
     ...K.map(text=>({entity:'ad_group_criterion',operation:'create',resource:{ad_group:R('adGroups',-3),status:'ENABLED',keyword:{text,match_type:'PHRASE'}}})),
   ]
   console.log(`${APPLY?'🔴 APPLY':'🔍 DRY'} | ${ops.length} ops | geo Community of Madrid | 3€/día | CPC 0,05€`)
-  try{const res=await c.mutateResources(ops,{validate_only:!APPLY});if(!APPLY)console.log('✅ DRY OK');else{(res as any).mutate_operation_responses?.forEach((r:any)=>{const v=Object.values(r)[0] as any;if(v?.resource_name&&v.resource_name.includes('/campaigns/'))console.log('   '+v.resource_name)})}}catch(e:any){console.error('❌',e?.message||e);if(e?.errors)console.error(JSON.stringify(e.errors,null,2));process.exit(1)}
+  try{const res=await c.mutateResources(ops as any,{validate_only:!APPLY});if(!APPLY)console.log('✅ DRY OK');else{(res as any).mutate_operation_responses?.forEach((r:any)=>{const v=Object.values(r)[0] as any;if(v?.resource_name&&v.resource_name.includes('/campaigns/'))console.log('   '+v.resource_name)})}}catch(e:any){console.error('❌',e?.message||e);if(e?.errors)console.error(JSON.stringify(e.errors,null,2));process.exit(1)}
 }
 main()

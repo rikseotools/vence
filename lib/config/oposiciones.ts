@@ -1169,6 +1169,58 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE ALCALÁ (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_alcala',
+    slug: 'auxiliar-administrativo-universidad-alcala',
+    positionType: 'auxiliar_administrativo_universidad_alcala',
+    examScoring: { penaltyDivisor: 4, source: 'BOE-A-2025-20547 (Resolución 06/10/2025): respuesta incorrecta penaliza 1/4 del valor de una respuesta correcta; en blanco no puntúa. 80 preguntas, 4 alternativas. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Universidad de Alcalá',
+    shortName: 'Aux. Admin. UAH',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'cyan',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (18 temas)',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'La Ley 39/2015 del Procedimiento Administrativo Común' },
+          { id: 3, name: 'La Ley 40/2015 de Régimen Jurídico del Sector Público' },
+          { id: 4, name: 'Protección de datos (LO 3/2018)' },
+          { id: 5, name: 'Transparencia y buen gobierno (Ley 19/2013)' },
+          { id: 6, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 7, name: 'El Estatuto Básico del Empleado Público (EBEP)' },
+          { id: 8, name: 'Incompatibilidades del personal al servicio de las AAPP (Ley 53/1984)' },
+          { id: 9, name: 'Prevención de Riesgos Laborales (Ley 31/1995)' },
+          { id: 10, name: 'Ley Orgánica del Sistema Universitario (LOSU)' },
+          { id: 11, name: 'Normativa de Gestión Económica y Presupuestaria de la UAH' },
+          { id: 12, name: 'Contratos del Sector Público (Ley 9/2017)' },
+          { id: 13, name: 'Ofimática: Microsoft Word 365' },
+          { id: 14, name: 'Ofimática: Microsoft Excel 365' },
+          { id: 15, name: 'Ofimática: Microsoft Outlook 365' },
+          { id: 16, name: 'Código ético general de la Universidad de Alcalá' },
+          { id: 17, name: 'Normas de Convivencia de la Universidad de Alcalá' },
+          { id: 18, name: 'Derechos de las personas con discapacidad (RDL 1/2013)' },
+        ],
+      },
+    ],
+    totalTopics: 18,
+    aliases: ['uah', 'alcala', 'universidad de alcala', 'aux alcala', 'auxiliar alcala', 'universidad alcala'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-alcala', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-alcala/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-alcala/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

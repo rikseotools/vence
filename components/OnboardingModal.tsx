@@ -801,6 +801,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'auxiliar_administrativo_universidad_alcala',
+    nombre: 'Auxiliar Administrativo Universidad de Alcalá (UAH)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_ayuntamiento_barcelona',
     nombre: 'Auxiliar Administrativo Ayuntamiento de Barcelona',
     categoria: 'C2',

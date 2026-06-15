@@ -521,6 +521,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_alcala',
+      label: 'Auxiliar Administrativo UAH',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad de Alcalá',
+        slug: 'auxiliar-administrativo-universidad-alcala',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

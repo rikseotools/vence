@@ -1,0 +1,37 @@
+{
+  "slug": "auxiliar-administrativo-universidad-alcala",
+  "position_type": "auxiliar_administrativo_universidad_alcala",
+  "nombre": "Auxiliar Administrativo de la Universidad de Alcalá",
+  "administracion": "Autonómica",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Concurso-oposición",
+  "fuente_temario": "BOE-A-2025-20547 (Resolución 06/10/2025, BOE nº247 14/10/2025)",
+  "oep": "OEP 2022 (32) + 2023 (18) + 2025 (4). 54 plazas Escala Auxiliar Administrativa C2 (52 turno libre + 2 discapacidad)",
+  "examen": {
+    "ejercicio_unico": true, "tipo": "test", "preguntas": 80, "opciones": 4, "minutos": 90,
+    "penalizacion": "1/4 del valor de una respuesta correcta (las no contestadas no puntúan)",
+    "penalizacion_fuente": "BOE-A-2025-20547 (cita literal)",
+    "sistema": "concurso-oposición (oposición 60% / concurso 40%)", "minimo": "30/60 puntos"
+  },
+  "temario": [
+    { "n": 1, "epi": "La Constitución Española de 1978: Título Preliminar. Título I (De los derechos y deberes fundamentales)." },
+    { "n": 2, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: Título Preliminar. Título I (interesados). Título II (actividad de las Administraciones Públicas). Título III (actos administrativos). Título IV (procedimiento administrativo común). Título V (revisión de los actos en vía administrativa)." },
+    { "n": 3, "epi": "La Ley 40/2015, de 1 de octubre, de Régimen del Sector Público: Título Preliminar: disposiciones generales; órganos de las Administraciones Públicas; funcionamiento; órganos colegiados de la AGE; abstención y recusación; funcionamiento electrónico del sector público." },
+    { "n": 4, "epi": "La Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales: Título I (Disposiciones generales), Título II (Principios de protección de datos), Título III (Derechos de las personas)." },
+    { "n": 5, "epi": "La Ley 19/2013, de 9 de diciembre, de Transparencia, Acceso a la Información Pública y Buen Gobierno: Título preliminar. Título I (Transparencia de la actividad pública). Título III (Consejo de Transparencia y Buen Gobierno)." },
+    { "n": 6, "epi": "La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres: Título Preliminar, Título I (El principio de igualdad y la tutela contra la discriminación), Título II (Políticas públicas para la igualdad) y Título V (El principio de igualdad en el empleo público)." },
+    { "n": 7, "epi": "Real Decreto Legislativo 5/2015, de 30 de octubre, del Estatuto Básico del Empleado Público: Título I (Objeto y ámbito de aplicación), Capítulo I del Título II (Clases de personal), Título III (Derechos y deberes. Código de conducta) y Título VII (Régimen disciplinario)." },
+    { "n": 8, "epi": "Ley 53/1984, de 26 de diciembre, de Incompatibilidades del personal al servicio de las Administraciones Públicas: Capítulo I (Principios generales). Capítulo II (Ámbito de aplicación). Capítulo III (Actividades públicas). Capítulo IV (Actividades privadas)." },
+    { "n": 9, "epi": "Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales: Capítulo I (Objeto, ámbito de aplicación y definiciones). Capítulo III (Derechos y obligaciones). Capítulo IV (Servicios de Prevención). Capítulo V (Consulta y participación de los trabajadores)." },
+    { "n": 10, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario: Título I (Funciones del sistema universitario y autonomía de las universidades), Título II (Creación y reconocimiento de las universidades y calidad), Título III (Organización de enseñanzas), Título IX (Régimen específico de las universidades públicas)." },
+    { "n": 11, "epi": "Normativa de Gestión Económica y Presupuestaria de la Universidad de Alcalá (Consejo de Gobierno de 26 de noviembre de 2009; ratificada por Consejo Social de 18 de diciembre de 2009): Capítulo IV (El presupuesto: concepto, contenido y estructura)." },
+    { "n": 12, "epi": "Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público: Título I (Disposiciones generales sobre la contratación del sector público)." },
+    { "n": 13, "epi": "Word 365: Creación y estructuración del documento. Gestión, grabación, recuperación, impresión y control de versiones. Tablas. Objetos. Columnas. Encabezado y pie de página. Viñetas, numeración y esquema numerado. Formato de fuente, párrafo y página. Tabulaciones. Diseño de impresión." },
+    { "n": 14, "epi": "Excel 365: Libros, hojas y celdas. Configuración. Introducción y edición de datos. Fórmulas, funciones y referencias. Gráficos. Gestión de datos. Formato de celdas. Formatos condicionales. Diseño de impresión." },
+    { "n": 15, "epi": "Outlook 365: conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas de mensaje. Libreta de direcciones." },
+    { "n": 16, "epi": "Código ético general de la Universidad de Alcalá (aprobado en Consejo de Gobierno de 22 de junio de 2017)." },
+    { "n": 17, "epi": "Reglamento por el que se establecen las Normas de Convivencia de la Universidad de Alcalá (Consejo de Gobierno de 16 de febrero de 2023, modificado el 21 de marzo de 2024)." },
+    { "n": 18, "epi": "Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el texto refundido de la Ley General de Derechos de las Personas con Discapacidad y su inclusión social: Título I, Capítulo IV (Derecho a la educación) y Capítulo VI (Derecho al trabajo)." }
+  ]
+}
