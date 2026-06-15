@@ -121,7 +121,7 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(39)
+      expect(autonomicas).toHaveLength(40)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'administrativo-galicia',
         'administrativo-gva',  // Añadida 07/05/2026: Administrativo Generalitat Valenciana C1-01
@@ -145,6 +145,7 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-scs-canarias',
         'auxiliar-administrativo-sermas',  // Añadida 09/06/2026: Aux Admin SERMAS C2 (BOCM 04/07/2025: 933 plz)
         'auxiliar-administrativo-sms',
+        'auxiliar-administrativo-universidad-complutense',  // Añadida 15/06/2026: Aux Admin UCM C2 (OEP 2022: 53 plz TL)
         'auxiliar-administrativo-valencia',
         'auxiliar-enfermeria-gva',
         'auxiliar-enfermeria-osakidetza',

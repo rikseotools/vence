@@ -794,6 +794,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_universidad_complutense',
+    nombre: 'Auxiliar Administrativo Universidad Complutense (UCM)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_ayuntamiento_barcelona',
     nombre: 'Auxiliar Administrativo Ayuntamiento de Barcelona',
     categoria: 'C2',

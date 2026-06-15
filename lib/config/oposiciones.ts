@@ -1123,6 +1123,52 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD COMPLUTENSE DE MADRID (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_complutense',
+    slug: 'auxiliar-administrativo-universidad-complutense',
+    positionType: 'auxiliar_administrativo_universidad_complutense',
+    examScoring: { penaltyDivisor: 10, source: 'BOUC nº36 03/12/2025, base 11.2: error penaliza 1/10 del valor de un acierto (0,70 acierto / -0,07 error, 4 alternativas; en blanco no penaliza). confidence:alta' },
+    name: 'Auxiliar Administrativo de la Universidad Complutense de Madrid',
+    shortName: 'Aux. Admin. UCM',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'violet',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Ley 39/2015 (I): actos administrativos, revisión y recursos' },
+          { id: 3, name: 'Ley 39/2015 (II): el procedimiento administrativo común' },
+          { id: 4, name: 'El Estatuto Básico del Empleado Público (EBEP)' },
+          { id: 5, name: 'Ley Orgánica del Sistema Universitario (LOSU) I' },
+          { id: 6, name: 'Ley Orgánica del Sistema Universitario (LOSU) II' },
+          { id: 7, name: 'Estatutos de la Universidad Complutense de Madrid (I)' },
+          { id: 8, name: 'Estatutos de la Universidad Complutense de Madrid (II)' },
+          { id: 9, name: 'Prevención de Riesgos Laborales (Ley 31/1995)' },
+          { id: 10, name: 'Transparencia, acceso a la información pública y buen gobierno (Ley 19/2013)' },
+          { id: 11, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 12, name: 'Protección de datos y garantía de los derechos digitales (LO 3/2018)' },
+        ],
+      },
+    ],
+    totalTopics: 12,
+    aliases: ['ucm', 'complutense', 'universidad complutense', 'aux complutense', 'auxiliar complutense'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-complutense', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-complutense/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-complutense/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

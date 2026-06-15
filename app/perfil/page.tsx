@@ -511,6 +511,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_complutense',
+      label: 'Auxiliar Administrativo UCM',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad Complutense de Madrid',
+        slug: 'auxiliar-administrativo-universidad-complutense',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

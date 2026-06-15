@@ -1,0 +1,32 @@
+{
+  "slug": "auxiliar-administrativo-universidad-complutense",
+  "position_type": "auxiliar_administrativo_universidad_complutense",
+  "nombre": "Auxiliar Administrativo de la Universidad Complutense de Madrid",
+  "administracion": "Estado",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Concurso-oposición",
+  "fuente_temario": "BOUC nº 36, 03/12/2025 (Resolución 19/11/2025); BOE-A-2025-25193",
+  "oep": "OEP 2022 UCM (PTGAS). 54 plazas Escala Auxiliar Administrativa C2 (53 turno libre general + 1 discapacidad)",
+  "examen": {
+    "fase_oposicion": "un ejercicio test, 100 preguntas, 4 opciones, 120 min, +10 reserva",
+    "penalizacion": "1/10 del valor de una respuesta correcta (acierto 0,70; error -0,07; en blanco no penaliza)",
+    "penalizacion_fuente": "BOUC nº36 base 11.2 (cita literal)",
+    "sistema": "concurso-oposición (oposición 70% / concurso 30%)",
+    "minimo": "35/70 puntos en el ejercicio"
+  },
+  "temario": [
+    { "n": 1, "epi": "La Constitución Española de 1978: Título Preliminar. Título I. Los derechos y deberes fundamentales. Título II. La Corona. Título IX. El Tribunal Constitucional. Título X. La reforma constitucional." },
+    { "n": 2, "epi": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas (I): Título III. Los actos administrativos: Requisitos. Eficacia. Nulidad y anulabilidad. Título V. Revisión de los actos en vía administrativa: Revisión de oficio. Recursos administrativos." },
+    { "n": 3, "epi": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas (II): Título IV. Las disposiciones sobre el procedimiento administrativo común: Garantías del procedimiento. Iniciación. Ordenación. Instrucción. Finalización." },
+    { "n": 4, "epi": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Título II. Personal al servicio de las Administraciones Públicas. Título III. Derechos y deberes. Código de conducta. Título IV. Adquisición y pérdida de la relación de servicio. Título VI. Situaciones administrativas. Título VII. Régimen disciplinario." },
+    { "n": 5, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario (I): Título I. Funciones del sistema universitario y autonomía de las Universidades. Título II. Creación y reconocimiento de las Universidades y calidad del sistema universitario. Título III. Organización de enseñanzas y títulos. Título IV. Investigación, transferencia e intercambio del conocimiento e innovación. Título VII. Internacionalización. Título VIII. El estudiantado en el Sistema Universitario." },
+    { "n": 6, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario (II): Título IX. Régimen específico de las universidades públicas: Régimen jurídico y estructura. Gobernanza. Régimen económico y financiero. Personal docente e investigador. Personal técnico, de gestión y de administración y servicios." },
+    { "n": 7, "epi": "Decreto 32/2017, de 21 de marzo, por el que se aprueban los Estatutos de la Universidad Complutense de Madrid (I): Título Preliminar. Disposiciones generales. Título I. Régimen jurídico de la UCM. Título II. Estructura de la Universidad. Título III. Gobierno y Representación en la UCM." },
+    { "n": 8, "epi": "Decreto 32/2017, de 21 de marzo, por el que se aprueban los Estatutos de la Universidad Complutense de Madrid (II): Título VI. Los Estudiantes de la UCM. Título VII. El Personal de Administración y Servicios. Título VIII. El/la Defensor/a Universitario. Título X. Las Enseñanzas e Investigación. Título XII. El Régimen Económico y Financiero. Título XIII. Los Servicios de la UCM." },
+    { "n": 9, "epi": "Ley 31/1995, de 8 de noviembre, de prevención de Riesgos Laborales: Capítulo I. Objeto, ámbito de aplicación y definiciones. Capítulo II. Política en materia de prevención. Capítulo III. Derechos y Obligaciones. Capítulo V. Consulta y participación de los trabajadores." },
+    { "n": 10, "epi": "Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno: Título Preliminar. Título I. Transparencia de la actividad pública: ámbito subjetivo, publicidad activa, derecho de acceso. Título III. El Consejo de Transparencia y Buen Gobierno." },
+    { "n": 11, "epi": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres: Título I. El principio de igualdad y la tutela contra la discriminación. Título II. Políticas públicas para la igualdad. Título V. El principio de igualdad en el empleo público." },
+    { "n": 12, "epi": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales: Título I. Disposiciones Generales. Título II. Principios de protección de datos. Título III. Derechos de las personas." }
+  ]
+}
