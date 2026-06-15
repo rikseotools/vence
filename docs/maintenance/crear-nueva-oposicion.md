@@ -153,11 +153,17 @@ FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook go
 ```
 
 > 🤖 **REGLA DE ORO (reevaluación independiente):** crear la oposición a mano hace fácil saltarse un sub-paso (p.ej. la fila de la tabla `convocatorias` §2c, o el schema JSONB de `landing_estadisticas`). Por eso **antes de `is_active=true` / commit es OBLIGATORIO** correr el auditor mecánico que comprueba TODOS los artefactos del manual contra BD + config + filesystem y devuelve ❌ en lo que falte (exit 1 = gate). No depende de la memoria de quien la creó:
+> **Dos capas, distinta fiabilidad para distinta clase de fallo (validado 15/06):**
 > ```bash
-> npm run audit:oposicion <slug>          # FASES 2-6: fila oposiciones, campos, JSONB schema, topics, bloques, scope+cobertura, convocatorias, hitos, rutas, registros UI
-> npm run audit:epigrafe <position_type>  # FASE 3g: coherencia epígrafe↔scope (complementario)
+> # CAPA 1 — completitud/estructura (SCRIPT determinista; lo más fiable para "no me salté un paso")
+> npm run audit:oposicion <slug>          # FASES 2-6: fila oposiciones, campos, JSONB schema, topics, bloques, scope+cobertura, convocatorias §2c, hitos, rutas, registros UI. exit 1 = gate.
+> npm run audit:epigrafe <position_type>  # FASE 3g: coherencia epígrafe↔scope (heurístico)
+>
+> # CAPA 3 — corrección/cobertura semántica (AGENTES; lo único capaz de juzgar contenido)
+> npm run audit:oposicion-contenido <slug> [muestra]   # vuelca JSON (epígrafe+scope+muestra de preguntas con su artículo literal)
+> #   → lanzar N agentes en paralelo (un subconjunto de temas c/u) que juzgan: (1) fidelidad scope↔epígrafe, (2) corrección de cada pregunta vs su artículo. El prompt lo imprime el prep.
 > ```
-> Ambos deben salir limpios (+ build/tests verdes) antes de activar. Script: `scripts/audit-oposicion-completa.ts`.
+> **El script NO sustituye a los agentes ni viceversa**: el script confirma que TODO está presente y bien cableado (determinista, no olvida); los agentes detectan lo que un script no puede leer — p.ej. que un tema con scope+preguntas (✅ para el script) NO cubre una sub-materia del epígrafe (caso real Córdoba T10 Agenda 2030 / T11 derecho de petición / T13 archivos). Completitud→script, corrección→agentes. Scripts: `scripts/audit-oposicion-completa.ts`, `scripts/audit-oposicion-contenido-prep.ts`.
 
 ---
 

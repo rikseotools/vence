@@ -12,6 +12,7 @@
     "db:pull": "drizzle-kit introspect",
     "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
+    "audit:oposicion-contenido": "npx tsx --env-file=.env.local scripts/audit-oposicion-contenido-prep.ts",
     "ads:auth": "npx tsx --env-file=.env.local scripts/google-ads/get-refresh-token.ts",
     "ads:report": "npx tsx --env-file=.env.local scripts/google-ads/report.ts",
     "ads:campaign": "npx tsx --env-file=.env.local scripts/google-ads/campaign.ts",
