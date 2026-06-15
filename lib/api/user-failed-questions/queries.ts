@@ -14,6 +14,7 @@ function getUserFailedDb() {
 }
 import { questions, articles, laws, testQuestions, topics, topicScope, userProfiles } from '@/db/schema'
 import { eq, and, inArray, desc, gte, gt, isNull, sql } from 'drizzle-orm'
+import { articleInScope } from '@/lib/api/_shared/topicScopeSql'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -94,7 +95,8 @@ export async function getUserFailedQuestions(
           topicScope,
           and(
             eq(topicScope.lawId, articles.lawId),
-            sql`${articles.articleNumber} = ANY(${topicScope.articleNumbers})`,
+            // article_numbers NULL = toda la ley (helper canónico, no `= ANY` suelto)
+            articleInScope(articles.articleNumber, topicScope.articleNumbers),
           ),
         )
         .innerJoin(topics, eq(topics.id, topicScope.topicId))

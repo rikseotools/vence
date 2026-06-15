@@ -8,6 +8,7 @@ function getRandomTestDb() {
 }
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, gte, isNull } from 'drizzle-orm'
+import { articleInScope } from '@/lib/api/_shared/topicScopeSql'
 import { unstable_cache } from 'next/cache'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import type {
@@ -115,8 +116,10 @@ async function getThemeQuestionCountsInternal(
   // tablas grandes). Ahora UNA sola query agregada con GROUP BY topic_number,
   // mismo patrón que lib/api/random-test/queries.ts:40-87.
   //
-  // Mantiene comportamiento del original: skip mappings con article_numbers
-  // NULL (lo conseguimos con la condición `= ANY(...)` que excluye nulls).
+  // Convención topic_scope: article_numbers NULL = "toda la ley". Usamos el
+  // helper canónico articleInScope (lib/api/_shared/topicScopeSql) en vez de un
+  // `= ANY(...)` suelto, que con NULL descartaba la fila y servía 0 preguntas
+  // (bug del feature "mezclar temas", feedback Rosa 2026-06-15).
   // Mantiene tagFilter para filtrar preguntas por exclusividad de oposición.
   const countsResult = await db
     .select({
@@ -127,7 +130,7 @@ async function getThemeQuestionCountsInternal(
     .innerJoin(topicScope, eq(topicScope.topicId, topics.id))
     .innerJoin(articles, and(
       eq(articles.lawId, topicScope.lawId),
-      sql`${articles.articleNumber} = ANY(${topicScope.articleNumbers})`,
+      articleInScope(articles.articleNumber, topicScope.articleNumbers),
     ))
     .innerJoin(questions, and(
       eq(questions.primaryArticleId, articles.id),
@@ -341,18 +344,25 @@ export async function getDetailedThemeStats(
     // 2. Obtener todas las preguntas del tema
     const allQuestionIds = new Set<string>()
     for (const mapping of mappings) {
-      if (!mapping.lawId || !mapping.articleNumbers?.length) continue
+      if (!mapping.lawId) continue
+      // article_numbers NULL = toda la ley (sin filtro de artículo). Un array
+      // vacío [] es un scope inválido y se descarta (convención del modelo).
+      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
+
+      const whereConds = [
+        eq(questions.isActive, true),
+        eq(articles.lawId, mapping.lawId),
+        tagFilter,
+      ]
+      if (mapping.articleNumbers !== null) {
+        whereConds.push(inArray(articles.articleNumber, mapping.articleNumbers))
+      }
 
       const questionResults = await db
         .select({ id: questions.id })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
-        .where(and(
-          eq(questions.isActive, true),
-          eq(articles.lawId, mapping.lawId),
-          inArray(articles.articleNumber, mapping.articleNumbers),
-          tagFilter,
-        ))
+        .where(and(...whereConds))
 
       for (const q of questionResults) {
         allQuestionIds.add(q.id)
@@ -509,17 +519,19 @@ export async function checkAvailableQuestions(
     }
 
     // 3. Construir condiciones para contar preguntas
-    // Recolectar todos los pares (lawId, articleNumbers) válidos
-    const lawArticlePairs: Array<{ lawId: string; articleNumbers: string[] }> = []
+    // Recolectar todos los pares (lawId, articleNumbers) válidos.
+    // article_numbers NULL = "toda la ley" (se cuenta sin filtro de artículo);
+    // un array vacío [] es scope inválido y se descarta.
+    const lawArticlePairs: Array<{ lawId: string; articleNumbers: string[] | null }> = []
 
     for (const [, topicMappings] of mappingsByTopic) {
       for (const mapping of topicMappings) {
-        if (mapping.lawId && mapping.articleNumbers?.length) {
-          lawArticlePairs.push({
-            lawId: mapping.lawId,
-            articleNumbers: mapping.articleNumbers,
-          })
-        }
+        if (!mapping.lawId) continue
+        if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
+        lawArticlePairs.push({
+          lawId: mapping.lawId,
+          articleNumbers: mapping.articleNumbers,
+        })
       }
     }
 
@@ -538,12 +550,15 @@ export async function checkAvailableQuestions(
     const breakdown: Record<string, number> = {}
 
     for (const pair of lawArticlePairs) {
-      // Construir condiciones base
+      // Construir condiciones base. article_numbers NULL = toda la ley → sin
+      // filtro de artículo.
       const conditions = [
         eq(questions.isActive, true),
         eq(articles.lawId, pair.lawId),
-        inArray(articles.articleNumber, pair.articleNumbers),
       ]
+      if (pair.articleNumbers !== null) {
+        conditions.push(inArray(articles.articleNumber, pair.articleNumbers))
+      }
 
       // Filtro de dificultad
       if (difficulty !== 'mixed') {
