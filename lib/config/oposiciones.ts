@@ -997,6 +997,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE CÓRDOBA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_cordoba',
+    slug: 'auxiliar-administrativo-diputacion-cordoba',
+    positionType: 'auxiliar_administrativo_diputacion_cordoba',
+    examScoring: { penaltyDivisor: 4, source: 'BOP Córdoba nº102 28/05/2026 (BOP-A-2026-1795) base 8ª: cada respuesta incorrecta resta una cuarta parte del valor de una correcta (1/4; 4 alternativas). confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Córdoba',
+    shortName: 'Aux. Dip. Córdoba',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'emerald',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comunes',
+        title: 'Bloque I: Materias Comunes',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978: estructura, derechos y la Corona' },
+          { id: 2, name: 'Las Cortes Generales, el Gobierno, el Poder Judicial y las leyes' },
+          { id: 3, name: 'La organización territorial del Estado y el Estatuto de Autonomía para Andalucía' },
+          { id: 4, name: 'Normativa estatal y autonómica sobre igualdad de género' },
+        ],
+      },
+      {
+        id: 'especificas',
+        title: 'Bloque II: Materias Específicas',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 5, name: 'Régimen local español: municipio, provincia y otras entidades locales' },
+          { id: 6, name: 'Las Haciendas Locales y los Presupuestos Locales' },
+          { id: 7, name: 'Órganos colegiados locales. Ordenanzas y reglamentos de las Entidades Locales' },
+          { id: 8, name: 'El procedimiento administrativo común: interesados, plazos y el acto administrativo' },
+          { id: 9, name: 'Fases del procedimiento, recursos, revisión y la Ley 40/2015' },
+          { id: 10, name: 'Gobierno Abierto, Agenda 2030 y Agenda Digital' },
+          { id: 11, name: 'Atención al público e información administrativa al ciudadano' },
+          { id: 12, name: 'Protección de datos personales (LO 3/2018)' },
+          { id: 13, name: 'Registros, archivos, comunicaciones y notificaciones' },
+          { id: 14, name: 'El personal al servicio de la entidad local' },
+          { id: 15, name: 'El sistema operativo: el entorno Windows' },
+          { id: 16, name: 'El explorador de Windows. Gestión de carpetas y archivos' },
+          { id: 17, name: 'Procesador de texto: LibreOffice Writer' },
+          { id: 18, name: 'Hoja de cálculo: LibreOffice Calc' },
+          { id: 19, name: 'Correo electrónico' },
+          { id: 20, name: 'La Red Internet' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['cordoba', 'diputacion cordoba', 'dip cordoba', 'aux cordoba', 'auxiliar cordoba', 'diputacion de cordoba'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-cordoba', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-cordoba/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-cordoba/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

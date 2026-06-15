@@ -104,6 +104,7 @@ describeIfDb('Oposición data completeness', () => {
     // Cuando se complete su INSERT en oposiciones, eliminar de aquí.
     const KNOWN_PENDING = new Set<string>([
       'auxiliar-enfermeria-osakidetza', // en preparación en otra sesión
+      'auxiliar-administrativo-diputacion-cordoba', // en preparación: BD lista (is_active=false hasta go-live)
     ])
     const dbSlugs = new Set(oposiciones.map(o => o.slug))
     const missing = OPOSICIONES.filter(o => !dbSlugs.has(o.slug) && !KNOWN_PENDING.has(o.slug))

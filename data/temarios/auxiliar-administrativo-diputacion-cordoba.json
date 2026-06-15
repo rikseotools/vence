@@ -1,0 +1,141 @@
+{
+  "slug": "auxiliar-administrativo-diputacion-cordoba",
+  "position_type": "auxiliar_administrativo_diputacion_cordoba",
+  "nombre": "Auxiliar Administrativo Diputación de Córdoba",
+  "administracion": "Local",
+  "categoria": "C2",
+  "grupo": "C",
+  "subgrupo": "C2",
+  "titulo_requerido": "Graduado en ESO o equivalente",
+  "sistema_seleccion": "Oposición",
+  "plazas": {
+    "total": 19,
+    "turno_libre": 15,
+    "discapacidad": 4,
+    "promocion_interna": 0
+  },
+  "convocatoria": {
+    "diario_oficial": "BOP Córdoba",
+    "diario_referencia": "BOP nº 102, 28/05/2026, BOP-A-2026-1795",
+    "programa_url": "https://bop.dipucordoba.es/visor-pdf/28-05-2026/BOP-A-2026-1795.pdf",
+    "acuerdo": "Junta de Gobierno de 26/05/2026",
+    "oep": "OEP 2023 (BOP nº 218, 16/11/2023), 2024 (BOP nº 232, 03/12/2024) y 2025 (BOP nº 243, 19/12/2025)",
+    "inscripcion": "20 días hábiles desde el día siguiente a la publicación en el BOE (aprox. 12/06–11/07/2026; confirmar BOE)",
+    "seguimiento_url": "https://empleo.dipucordoba.es/"
+  },
+  "examen": {
+    "tipo": "test + supuesto práctico",
+    "penalizacion": "1/4 (cada respuesta incorrecta resta una cuarta parte del valor de una correcta)",
+    "penalizacion_fuente": "BOP-A-2026-1795 base 8ª: 'Cada respuesta incorrecta restará una cuarta parte de la puntuación proporcional correspondiente a una respuesta correcta.'",
+    "duracion_total_minutos": 150,
+    "partes": [
+      {
+        "nombre": "Parte primera (teórica)",
+        "preguntas": 50,
+        "reserva": 5,
+        "opciones": 4,
+        "puntuacion_max": 15,
+        "puntuacion_min": 7.5
+      },
+      {
+        "nombre": "Parte segunda (práctica, supuestos de ofimática Bloque II)",
+        "preguntas": 40,
+        "reserva": 5,
+        "opciones": 4,
+        "puntuacion_max": 20,
+        "puntuacion_min": 10
+      }
+    ],
+    "notas": "Ejercicio único con dos partes en la misma sesión, ambas eliminatorias. No puede comenzar hasta transcurridos 2 meses desde el fin del plazo de solicitudes."
+  },
+  "bloques": [
+    { "bloque_number": 1, "titulo": "Bloque I: Materias Comunes", "temas": 4 },
+    { "bloque_number": 2, "titulo": "Bloque II: Materias Específicas", "temas": 16 }
+  ],
+  "temario": {
+    "bloque_1_comunes": [
+      {
+        "tema_oficial": 1,
+        "epigrafe": "Antecedentes, características y estructura de la Constitución Española de 1978. Los derechos y deberes fundamentales. Garantías de las libertades y derechos fundamentales. Suspensión de los derechos y libertades. La Corona: funciones, sucesión, regencia y refrendo."
+      },
+      {
+        "tema_oficial": 2,
+        "epigrafe": "La Constitución Española de 1978: las Cortes Generales. El Gobierno y la Administración. Relaciones entre el Gobierno y las Cortes Generales. El Poder Judicial. Las leyes: concepto y clases. Disposiciones del Ejecutivo con fuerza de ley: Decretos-leyes y Decretos Legislativos."
+      },
+      {
+        "tema_oficial": 3,
+        "epigrafe": "La organización territorial del Estado en la Constitución Española de 1978: principios generales. Las Comunidades Autónomas: los Estatutos de Autonomía. El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales."
+      },
+      {
+        "tema_oficial": 4,
+        "epigrafe": "Aspectos generales de la normativa estatal y autonómica sobre la igualdad de género."
+      }
+    ],
+    "bloque_2_especificas": [
+      {
+        "tema_oficial": 1,
+        "epigrafe": "Régimen local español. Principios constitucionales y regulación jurídica. La Administración Local: el municipio, la provincia y otras entidades locales. Organización y competencias."
+      },
+      {
+        "tema_oficial": 2,
+        "epigrafe": "Las Haciendas Locales. Los Presupuestos Locales. Recursos de los Entes Locales. Clasificación de los recursos. Ordenanzas Fiscales."
+      },
+      {
+        "tema_oficial": 3,
+        "epigrafe": "Los órganos colegiados locales. Convocatoria y orden del día. Requisitos de constitución. Funcionamiento. Ordenanzas y reglamentos de las Entidades Locales. Procedimiento de elaboración y aprobación."
+      },
+      {
+        "tema_oficial": 4,
+        "epigrafe": "El procedimiento administrativo común de las Administraciones Públicas: las personas interesadas y sus derechos. Términos y plazos: cómputo, ampliación y tramitación de urgencia. La obligación de resolver: el silencio administrativo. El acto administrativo: concepto, clases y requisitos. La eficacia de los actos. Nulidad y anulabilidad."
+      },
+      {
+        "tema_oficial": 5,
+        "epigrafe": "Las fases del procedimiento común: iniciación, ordenación, instrucción y resolución. Recursos administrativos. La revisión de los actos en vía administrativa. La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público: los órganos de las Administraciones Públicas."
+      },
+      {
+        "tema_oficial": 6,
+        "epigrafe": "El Gobierno Abierto. Concepto y principios informadores. La Agenda 2030 y los Objetivos de Desarrollo Sostenible. La Agenda Digital para España."
+      },
+      {
+        "tema_oficial": 7,
+        "epigrafe": "Atención al público: acogida e información al ciudadano. Atención de personas con discapacidad. Los servicios de información administrativa. Información general y particular al ciudadano. Reclamaciones. Quejas. Peticiones."
+      },
+      {
+        "tema_oficial": 8,
+        "epigrafe": "La protección de datos personales. La Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales: principios de protección de datos; derechos de las personas; responsable y encargado del tratamiento. Delegado de protección de datos en las Administraciones Públicas."
+      },
+      {
+        "tema_oficial": 9,
+        "epigrafe": "Los Registros de entrada y salida de documentos: registros electrónicos, interoperabilidad. Los archivos. Concepto, clases y criterios de ordenación. Comunicaciones y notificaciones."
+      },
+      {
+        "tema_oficial": 10,
+        "epigrafe": "El personal al servicio de la entidad local. Los funcionarios públicos: clases, selección, situaciones administrativas. Provisión de puestos de trabajo. El personal laboral: tipología y selección. Derechos y deberes. Régimen disciplinario. Régimen de incompatibilidad."
+      },
+      {
+        "tema_oficial": 11,
+        "epigrafe": "Introducción al sistema operativo: el entorno Windows. Trabajo en el entorno gráfico de Windows: ventanas, iconos, menús contextuales, cuadros de diálogo. El escritorio y sus elementos. El menú de inicio."
+      },
+      {
+        "tema_oficial": 12,
+        "epigrafe": "El explorador de Windows. Gestión de carpetas y archivos. Operaciones de búsqueda. Accesorios. Herramientas del sistema."
+      },
+      {
+        "tema_oficial": 13,
+        "epigrafe": "Procesador de texto: Libre Office Writer. Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación, recuperación e impresión de ficheros."
+      },
+      {
+        "tema_oficial": 14,
+        "epigrafe": "Hoja de cálculo: Libre Office Calc. Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Introducción y edición de datos. Fórmulas y funciones. Gráficos. Gestión de datos."
+      },
+      {
+        "tema_oficial": 15,
+        "epigrafe": "Correo electrónico: conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas/Filtros de mensaje. Gestión de contactos."
+      },
+      {
+        "tema_oficial": 16,
+        "epigrafe": "La Red Internet: origen, evolución y estado actual. Conceptos elementales sobre protocolos y servicios en Internet. Buscadores y principales navegadores, opciones de marcadores/favoritos y gestión de historial."
+      }
+    ]
+  }
+}

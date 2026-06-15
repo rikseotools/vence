@@ -486,6 +486,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_cordoba',
+      label: 'Auxiliar Administrativo Dip. Córdoba',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Córdoba',
+        slug: 'auxiliar-administrativo-diputacion-cordoba',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
