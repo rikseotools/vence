@@ -26,6 +26,28 @@ o similar. Léelo ANTES de improvisar.
 
 ---
 
+## 🛑 "Empujar caro en ventana de examen" NO funciona (investigado 15/06/2026)
+
+**Mito refutado.** El TL;DR original sugería empujar gasto/puja cerca del examen "aunque
+sea caro". Tres líneas de evidencia independientes dicen que NO genera ventas extra:
+
+1. **Experimento CPC directo (07-11/06):** carm y SS estaban EN ventana de examen cuando se
+   les subió la puja 3× (techo 0,05€→0,15€). Resultado: **0 ventas extra**, solo más coste
+   (carm ROI 6,4×→4,3×). Pagar más caro no compró ni una venta.
+2. **Reparto de canales (post-02/06, tracking fiable, 44 ventas):** Google Ads solo genera el
+   **14%** de las ventas (6). El 45% es `direct` (URL/marca/orgánico), el resto email,
+   notificaciones, chatgpt. **La demanda caliente cerca del examen la capturan canales
+   PROPIOS, no ads.**
+3. **Nadie agota presupuesto** (usan 14-19% del diario) → subir presupuesto tampoco mueve la
+   aguja. En esta cuenta **no hay palanca de ads efectiva para forzar más ventas**.
+
+**Regla corregida:** cerca del examen, mantener presencia **eficiente** (CPC bajo). El timing
+de compra (la gente compra cerca del examen) es real, PERO no se "compra" con ads más caros;
+ocurre por canales propios. Invertir en ads a CPC bajo SÍ aporta (14%, rentable); encarecerlo
+NO. Matiz: atribución last-click infravalora algo a ads (parte del `direct` pudo nacer de un
+anuncio), pero ni así se justifica encarecer. Reproducir: query de canal = `conversion_events`
+(payment_completed, ≥2026-06-02) ⋈ `user_acquisition.channel`.
+
 ## Dónde mirar (herramientas)
 
 - **Panel admin:** `/admin/ads` — selector de rango, campañas ordenables por columna,
@@ -97,7 +119,9 @@ El panel `/admin/ads` ya lo hace (`lib/services/googleAds/roi.ts → examInfoByS
 
 En orden de prioridad:
 1. **¿Examen ya pasó?** → apagar/reducir (salvo nueva convocatoria a la vista). Único veredicto casi seguro.
-2. **¿Examen ≤ ~60 días?** → es la ventana de venta; **empujar** aunque los registros sean caros.
+2. **¿Examen ≤ ~60 días?** → mantener presencia **EFICIENTE** (CPC bajo), NO encarecer.
+   ⚠️ **CORREGIDO 15/06/2026:** el consejo anterior ("empujar aunque sea caro") está
+   **REFUTADO por los datos** — ver §"Empujar caro en ventana de examen NO funciona".
 3. **¿Oposición que vende histórico pero SIN campaña?** (estado, valencia…) → **crear/financiar campaña**. Suele ser la mayor oportunidad.
 4. **Cuando `ads:roi` muestre ingreso > 0** (atribución real fluyendo) → validar con ROI real, no solo con registros.
 
