@@ -148,7 +148,7 @@ reales: **nº de plazas**, "temario oficial", "empieza gratis". **NO** referenci
 - Crear como `status:'ENABLED'` publica; `'PAUSED'` la deja en pausa.
 - ⚠️ **`target_spend:{}` SIN `cpc_bid_ceiling_micros` = sin techo de CPC** → puede pagar de
   más por clic y fundir el presupuesto en pocos clics. Pon SIEMPRE el techo en el create:
-  `target_spend:{cpc_bid_ceiling_micros:50000}` (0,05€, el estándar de las campañas; carm usa 0,10€).
+  `target_spend:{cpc_bid_ceiling_micros:50000}` (0,05€, el estándar de TODAS las campañas — verificado 15/06: carm, SS y Córdoba a 0,05€. Subir el techo cerró en NEGATIVO el 11/06 y carm/SS se revirtieron a 0,05€; ver §"Experimento CERRADO: techo de CPC". El cuello es el Quality Score, no la puja).
 
 **Caso real 02/06:** `Aux Admin SCS Canarias` (campaña `23897199300`), 3€/día, geo Canarias
 (20277), español, 4 keywords sin marca, 7 titulares/3 descripciones, 643 plazas. Creada
