@@ -11,9 +11,16 @@ o similar. Léelo ANTES de improvisar.
 
 ## TL;DR — qué dicen los datos (aprendizajes 02/06/2026, 290 ventas / 9.232€)
 
-1. **La gente compra premium MÁS cerca del examen.** Pico absoluto: **0-30 días
-   antes** (85 ventas, 2.174€, media **15 días**). Decae cuanto más lejos está el
-   examen. → **Examen inminente = momento dulce de venta, NO "demasiado tarde".**
+1. ⚠️ **CUESTIONADA (15/06/2026) — NO usar como hecho.** Afirmación original (02/06):
+   "la gente compra premium más cerca del examen; pico 0-30 días antes (85 ventas,
+   2.174€, media 15 días)". **Re-comprobada el 15/06 con `oposiciones.exam_date` (no
+   `convocatoria_hitos`) sobre 332 pagos: NO se sostiene.** Distribución real (156 con
+   fecha de examen conocida; 176 = 53% SIN fecha): 0-30d **7,8%**, 31-60d 3,9%, 61-90d
+   3,9%, **91-180d 19,0%** (el mayor), >180d 12,3%. El "pico 0-30 días" se calculó con
+   `convocatoria_hitos` (fuente que el propio runbook marca como NO fiable, ver §Modelo
+   de datos) → sesgada. **Conclusión: no concentrar la decisión de pausar/activar en la
+   cercanía del examen hasta re-analizar bien.** (Pendiente: recomputar la ventana de
+   compra con exam_date limpio y rellenar los exam_date NULL.)
 2. **Examen ya pasado → la fuente se seca.** Apenas hay ventas tras el examen.
    La única regla casi segura: *"examen pasado = apagar/reducir, salvo nueva convocatoria"*.
 3. **El coste/registro POR SÍ SOLO engaña.** Hay que cruzarlo con (a) **fecha de
