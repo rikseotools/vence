@@ -147,9 +147,17 @@ FASE 3: Topic scope con IA     → Analizar epigrafes, mapear a leyes/articulos
 FASE 4: Config y schemas       → oposiciones.ts, archivos manuales, logo/bandera/escudo oficial (CcaaFlag §4c.bis)
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
 FASE 6: Verificacion           → Build, tests, funcional, revalidar caches
+        └─ 6.0: npm run audit:oposicion <slug>  → REEVALUACIÓN INDEPENDIENTE de completitud (obligatoria, gate)
 FASE 7: Examenes oficiales     → exam_position, hot_articles, mapas (si aplica)
 FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook google-ads-analisis §Crear campaña
 ```
+
+> 🤖 **REGLA DE ORO (reevaluación independiente):** crear la oposición a mano hace fácil saltarse un sub-paso (p.ej. la fila de la tabla `convocatorias` §2c, o el schema JSONB de `landing_estadisticas`). Por eso **antes de `is_active=true` / commit es OBLIGATORIO** correr el auditor mecánico que comprueba TODOS los artefactos del manual contra BD + config + filesystem y devuelve ❌ en lo que falte (exit 1 = gate). No depende de la memoria de quien la creó:
+> ```bash
+> npm run audit:oposicion <slug>          # FASES 2-6: fila oposiciones, campos, JSONB schema, topics, bloques, scope+cobertura, convocatorias, hitos, rutas, registros UI
+> npm run audit:epigrafe <position_type>  # FASE 3g: coherencia epígrafe↔scope (complementario)
+> ```
+> Ambos deben salir limpios (+ build/tests verdes) antes de activar. Script: `scripts/audit-oposicion-completa.ts`.
 
 ---
 
