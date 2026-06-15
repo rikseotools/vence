@@ -501,6 +501,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_sevilla',
+      label: 'Auxiliar Administrativo Ayto. Sevilla',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Sevilla',
+        slug: 'auxiliar-administrativo-ayuntamiento-sevilla',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_madrid',
       label: 'Auxiliar Administrativo Ayto. Madrid',
       data: {

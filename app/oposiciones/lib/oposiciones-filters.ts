@@ -78,6 +78,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-universidad-alcala': 'madrid',
     'auxiliar-administrativo-ayuntamiento-madrid': 'madrid',
     'auxiliar-administrativo-diputacion-cordoba': 'andalucia',
+    'auxiliar-administrativo-ayuntamiento-sevilla': 'andalucia',
     'auxilio-judicial': 'justicia',
     'tramitacion-procesal': 'justicia',
     'auxiliar-administrativo-madrid': 'madrid',

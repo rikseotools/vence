@@ -1059,6 +1059,74 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE SEVILLA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_sevilla',
+    slug: 'auxiliar-administrativo-ayuntamiento-sevilla',
+    positionType: 'auxiliar_administrativo_ayuntamiento_sevilla',
+    examScoring: { penaltyDivisor: 3, source: 'BOP Sevilla nº256 06/11/2023 (bases): cada contestación errónea se penaliza descontando un tercio (1/3) del valor de una respuesta correcta; las no contestadas no penalizan (4 alternativas). confidence:alta' },
+    name: 'Auxiliar Administrativo del Ayuntamiento de Sevilla',
+    shortName: 'Aux. Admin. Ayto. Sevilla',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'rose',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'parte1',
+        title: 'Parte I: Organización pública y Derecho administrativo',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española (I): derechos fundamentales, Tribunal Constitucional y reforma' },
+          { id: 2, name: 'La Constitución Española (II): Corona, Cortes Generales, Gobierno y Poder Judicial' },
+          { id: 3, name: 'La Constitución Española (III): la organización territorial del Estado' },
+          { id: 4, name: 'El Estatuto de Autonomía para Andalucía' },
+          { id: 5, name: 'La Unión Europea: valores, libertades e instituciones' },
+          { id: 6, name: 'Ley 7/1985, Reguladora de las Bases del Régimen Local' },
+          { id: 7, name: 'Ley 39/2015 (I): disposiciones generales, interesados y plazos' },
+          { id: 8, name: 'Ley 39/2015 (II): el acto administrativo y el procedimiento' },
+          { id: 9, name: 'Ley 39/2015 (III): los recursos administrativos' },
+          { id: 10, name: 'Protección de Datos y derechos digitales (LO 3/2018)' },
+          { id: 11, name: 'Ley 40/2015, de Régimen Jurídico del Sector Público' },
+          { id: 12, name: 'Transparencia, acceso a la información y buen gobierno (Ley 19/2013)' },
+          { id: 13, name: 'Contratos del Sector Público (Ley 9/2017)' },
+          { id: 14, name: 'Organización y funcionamiento del Ayuntamiento de Sevilla' },
+          { id: 15, name: 'El personal al servicio de las entidades locales (I)' },
+          { id: 16, name: 'El personal al servicio de las entidades locales (II)' },
+          { id: 17, name: 'Igualdad efectiva de mujeres y hombres y violencia de género' },
+          { id: 18, name: 'El Presupuesto Municipal' },
+        ],
+      },
+      {
+        id: 'ofimatica',
+        title: 'Parte II: Ofimática',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 19, name: 'Informática básica' },
+          { id: 20, name: 'El sistema operativo: el entorno Windows' },
+          { id: 21, name: 'El explorador de Windows' },
+          { id: 22, name: 'Procesadores de texto: Word 2021' },
+          { id: 23, name: 'Hojas de cálculo: Excel 2021' },
+          { id: 24, name: 'Bases de datos: Access 2021' },
+          { id: 25, name: 'Correo electrónico: Outlook 2021' },
+          { id: 26, name: 'La red Internet' },
+        ],
+      },
+    ],
+    totalTopics: 26,
+    aliases: ['sevilla', 'ayuntamiento sevilla', 'ayto sevilla', 'aux sevilla', 'auxiliar sevilla', 'ayuntamiento de sevilla'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-sevilla', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-sevilla/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-sevilla/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE MADRID (C2)
   // ========================================
   {

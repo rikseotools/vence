@@ -1,0 +1,57 @@
+{
+  "slug": "auxiliar-administrativo-ayuntamiento-sevilla",
+  "position_type": "auxiliar_administrativo_ayuntamiento_sevilla",
+  "nombre": "Auxiliar Administrativo del Ayuntamiento de Sevilla",
+  "administracion": "Local",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Oposición (sin fase de concurso)",
+  "fuente_temario": "BOP Sevilla nº256 de 06/11/2023 (CVE BOP-SE-2023-256022) + modificación de bases; Resolución BOE-A-2024-4098 (14/02/2024)",
+  "oep": "OEP 2021 (13) + 2022 (27) + 2023 (6) = 46 plazas turno libre (5 reservadas a discapacidad). Escala Administración General, Subescala Auxiliar.",
+  "examen": {
+    "ejercicio_unico": true,
+    "tipo": "test",
+    "partes": [
+      { "nombre": "Parte 1 (Bloque I)", "preguntas_evaluables": 60, "preguntas_reserva": 10, "puntuacion_max": 60, "puntuacion_min": 30 },
+      { "nombre": "Parte 2 (Ofimática)", "preguntas_evaluables": 40, "preguntas_reserva": 10, "puntuacion_max": 40, "puntuacion_min": 20 }
+    ],
+    "preguntas_evaluables_total": 100,
+    "opciones": 4,
+    "minutos": 100,
+    "penalizacion": "1/3 del valor de una respuesta correcta (las no contestadas no penalizan)",
+    "penalizacion_fuente": "BOP Sevilla nº256 06/11/2023, base del ejercicio único (cita literal)",
+    "minimo_total": "50/100 puntos (y mínimos por parte: 30/60 y 20/40, ambas eliminatorias)"
+  },
+  "temario": [
+    { "n": 1, "parte": "I", "epi": "La Constitución española (I). España como Estado social y democrático de Derecho y los valores superiores del ordenamiento jurídico. Los derechos y deberes fundamentales: Título I de la CE (excluido el capítulo tercero). El Tribunal Constitucional: Título IX. La reforma constitucional: Título X." },
+    { "n": 2, "parte": "I", "epi": "La Constitución española (II). La Monarquía parlamentaria. La Corona: Título II. Las Cortes Generales: capítulo primero del Título III. El Gobierno y la Administración: Título IV. El Poder Judicial: Título VI." },
+    { "n": 3, "parte": "I", "epi": "La Constitución española (III). El Estado español como Estado compuesto. La organización territorial del Estado: Título VIII." },
+    { "n": 4, "parte": "I", "epi": "El Estatuto de Autonomía para Andalucía. La organización institucional de la Comunidad Autónoma: capítulos I, III, IV, VI y VII del Título IV. La organización territorial: Título III del Estatuto." },
+    { "n": 5, "parte": "I", "epi": "La Unión Europea. Relación de Estados miembros. Valores y objetivos (arts. 2 y 3 TUE). La libre circulación de mercancías, personas, servicios y capitales (arts. 28, 45, 49, 56 y 63 TFUE). Principales instituciones: Parlamento Europeo (art. 14 TUE), Consejo Europeo (art. 15 TUE), Consejo (art. 16 TUE), Comisión Europea (art. 17 TUE) y Tribunal de Justicia (art. 19 TUE)." },
+    { "n": 6, "parte": "I", "epi": "Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local. Disposiciones generales (arts. 1 a 6). El municipio: concepto, territorio y población (arts. 11, 12, 15, 16, 17 y 18). Competencias del municipio (arts. 7, 25, 26 y 27). La provincia: concepto y competencias (arts. 31 y 36.1). Municipios de gran población: Título X." },
+    { "n": 7, "parte": "I", "epi": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las AAPP (I). Disposiciones generales: objeto y ámbito (arts. 1 y 2). El interesado y la representación (arts. 4 y 5). Derechos de las personas (art. 13). Derecho y obligación de relacionarse electrónicamente (art. 14). Registros (art. 16). Archivo (art. 17). Copias (art. 27). Documentos aportados (art. 28). Términos y plazos (arts. 29 a 33)." },
+    { "n": 8, "parte": "I", "epi": "Ley 39/2015 (II). El acto administrativo. Motivación (art. 35). Eficacia (art. 39). La notificación (arts. 40 a 46). Nulidad de pleno derecho (art. 47). Anulabilidad (art. 48). Derechos del interesado en el procedimiento (art. 53) y ordenación del procedimiento (arts. 70 a 74)." },
+    { "n": 9, "parte": "I", "epi": "Ley 39/2015 (III). Los recursos administrativos: principios generales (arts. 112 a 120). Recurso de alzada (arts. 121 y 122). Recurso potestativo de reposición (arts. 123 y 124). Recurso extraordinario de revisión (arts. 125 y 126)." },
+    { "n": 10, "parte": "I", "epi": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales. Objeto y ámbito (arts. 1 a 3). Principios de protección de datos (arts. 4 a 10). Derechos de las personas (arts. 11 a 18). Garantía de los derechos digitales (arts. 79 a 97)." },
+    { "n": 11, "parte": "I", "epi": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. Objeto, ámbito y principios generales (arts. 1 a 4). Los órganos administrativos (art. 5). La competencia: delegación, avocación, encomienda de gestión, delegación de firma y suplencia (arts. 8 a 13). Órganos colegiados (arts. 15 a 18). Abstención y recusación (arts. 23 y 24). Principios de la potestad sancionadora (arts. 25 a 31). Responsabilidad patrimonial (art. 32)." },
+    { "n": 12, "parte": "I", "epi": "Ley 19/2013, de 9 de diciembre, de Transparencia, Acceso a la Información Pública y Buen Gobierno. Objeto y ámbito subjetivo (arts. 1 a 4). Publicidad activa: principios generales (art. 5); información institucional, organizativa y de planificación (art. 6); información económica, presupuestaria y estadística (art. 8). El derecho de acceso a la información pública: régimen general, ejercicio y formalización (arts. 12 a 20 y art. 22)." },
+    { "n": 13, "parte": "I", "epi": "Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público. Objeto y finalidad (arts. 1 a 3). Delimitación de los tipos contractuales (arts. 12 a 18). Contratos sujetos a regulación armonizada (arts. 21 a 23). Contratos administrativos y contratos privados (arts. 24 a 27)." },
+    { "n": 14, "parte": "I", "epi": "Organización y funcionamiento del Ayuntamiento de Sevilla. El alcalde: funciones y competencias delegables. Los tenientes de alcalde. Las áreas y delegaciones. La junta de gobierno local. La división territorial: distritos y juntas municipales de distrito. La administración instrumental: organismos autónomos, entidades públicas empresariales y empresas públicas." },
+    { "n": 15, "parte": "I", "epi": "El personal al servicio de las entidades locales (I). Normativa aplicable a los funcionarios locales (art. 3 EBEP, art. 92 LBRL, art. 3.1.d de la Ley de Función Pública de Andalucía). El personal laboral (art. 7 EBEP). Clases de empleados públicos (arts. 8 a 12 EBEP). Derechos y deberes (arts. 14, 15, 52, 53 y 54 EBEP). Selección (arts. 55, 56, 60 y 61 EBEP; arts. 91, 97 y 100 LBRL; arts. 133, 134, 169, 171 y 172 del RDLeg 781/1986; y RD 896/1991)." },
+    { "n": 16, "parte": "I", "epi": "El personal al servicio de las entidades locales (II). Derechos retributivos (Capítulo III del Título III del EBEP). La negociación colectiva: materias objeto de negociación (art. 37 EBEP). Provisión de puestos de trabajo y movilidad (Capítulo III del Título V del EBEP). Situaciones administrativas (Título VI del EBEP). Régimen disciplinario (Título VII del EBEP)." },
+    { "n": 17, "parte": "I", "epi": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres. Objeto y ámbito (Título Preliminar). El principio de igualdad y la tutela contra la discriminación (Título I). Los planes de igualdad (arts. 45 a 49). Criterios de actuación de las AAPP (art. 51). Principales medidas del Plan para la Igualdad de oportunidades del Ayuntamiento de Sevilla. Ley Orgánica 1/2004, de Medidas de Protección Integral contra la Violencia de Género: objeto y principios (arts. 1 y 2); derechos de las víctimas a la información, asistencia social integrada y asistencia jurídica gratuita (arts. 17 a 20); derechos de las funcionarias públicas (arts. 24 a 26)." },
+    { "n": 18, "parte": "I", "epi": "El Presupuesto Municipal. Contenido y aprobación (arts. 162 a 171 del Texto Refundido de la Ley Reguladora de las Haciendas Locales, RDLeg 2/2004). La ejecución del presupuesto (arts. 183 a 189 TRLRHL)." },
+    { "n": 19, "parte": "II", "epi": "Informática básica: hardware y software. Sistemas de almacenamiento de datos. Sistemas operativos. Nociones básicas de seguridad informática." },
+    { "n": 20, "parte": "II", "epi": "Introducción al sistema operativo: el entorno Windows. Fundamentos. Trabajo en el entorno gráfico: ventanas, iconos, menús contextuales, cuadros de diálogo. El escritorio. El menú de inicio. Cortana." },
+    { "n": 21, "parte": "II", "epi": "El explorador de Windows. Gestión de carpetas y archivos. Búsqueda de archivos y carpetas. 'Este equipo' y 'Acceso rápido'. Accesorios. Herramientas del sistema." },
+    { "n": 22, "parte": "II", "epi": "Procesadores de texto: Word 2021. Funciones y utilidades. Creación y estructuración del documento. Gestión, grabación, recuperación e impresión de ficheros. Personalización del entorno de trabajo." },
+    { "n": 23, "parte": "II", "epi": "Hojas de cálculo: Excel 2021. Libros, hojas y celdas. Configuración. Introducción y edición de datos. Fórmulas y funciones. Gráficos. Gestión de datos. Personalización del entorno de trabajo." },
+    { "n": 24, "parte": "II", "epi": "Bases de datos: Access 2021. Tablas. Consultas. Formularios. Informes. Relaciones. Importación, vinculación y exportación de datos." },
+    { "n": 25, "parte": "II", "epi": "Correo electrónico: Outlook 2021. Conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas de mensaje. La libreta de direcciones." },
+    { "n": 26, "parte": "II", "epi": "La red Internet: origen, evolución y estado actual. Protocolos y servicios. Funcionalidades básicas de los navegadores web." }
+  ],
+  "normativa_municipal_propia": [
+    "Tema 14: Organización y funcionamiento del Ayuntamiento de Sevilla (reglamentos orgánicos municipales + Título X LBRL gran población).",
+    "Tema 17 (parte final): Plan para la Igualdad de oportunidades del Ayuntamiento de Sevilla."
+  ]
+}
