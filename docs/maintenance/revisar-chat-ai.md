@@ -422,9 +422,21 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
 - **Solución robusta (server-side, no depende del frontend)**:
   1. `app/api/ai/chat-v2/route.ts`: ante un `explicar_*` con `userId` real + `questionContextId`, consulta `ai_chat_logs` (fuente de verdad) por una explicación previa de ESA pregunta por ESE usuario en las últimas 24h → si existe, `context.isRepeatExplanation = true`. Query indexada, try/catch (degradación elegante).
   2. `lib/chat/core/types.ts`: nuevo campo `ChatContext.isRepeatExplanation`.
-  3. `VerificationService`: si el flag está activo, usa un **prompt DEDICADO** `buildRepeatExplanationPrompt` (modo analogía: "Vamos a verlo de otra forma 👇" + analogía cotidiana + mnemotecnia, ≤120 palabras). **Un simple append NO basta** — el formato rígido del prompt estándar arrastra a GPT-4o a repetir la misma estructura (probado: Jaccard 0,82→0,67 con append; **0,23 con prompt dedicado**).
+  3. `VerificationService`: si el flag está activo, usa un **prompt DEDICADO** `buildRepeatExplanationPrompt`. **Un simple append NO basta** — el formato rígido del prompt estándar arrastra a GPT-4o a repetir la misma estructura (probado: Jaccard 0,82→0,67 con append; **0,23 con prompt dedicado**).
 - **Regla de preguntas negativas (#4)**: CE 10.2 "…**no** se interpretarán de conformidad: A) La ley" → A es correcta (es la única que NO es criterio), pero la explicación en vivo la enmarcaba como positiva y confundía. Nueva sección en `buildVerificationSystemPrompt` (derecho): ante enunciados negativos ("no", "salvo", "excepto", "incorrecta", "no constituye") avisar explícitamente que se pide la opción que NO cumple y mostrar que las otras tres SÍ. Verificado E2E (`scripts/simulate-neg34-negativa-y-repeticion.ts`).
 - **Contenido OK en ambos**: 125.2→3 meses (causa b) y CE 10.2→A son correctas; no eran bugs de pregunta.
+- **⚠️ ACTUALIZADO 2026-06-15 (ver #16)**: el modo analogía original de este `buildRepeatExplanationPrompt` ("Vamos a verlo de otra forma 👇" + analogía cotidiana + mnemotecnia) fue **eliminado**. La re-explicación es ahora **técnica y sin analogías** (regla de producto). El mecanismo server-side (`isRepeatExplanation`) y el prompt dedicado siguen vigentes; solo cambió su contenido.
+
+### 16. Re-explicación con analogías → infantil y poco profesional (2026-06-15)
+- **Log**: 7f9dfc55 (TCAE Galicia, pregunta d6cbfcd7 "¿Qué función cumple el TCAE…?", correcta B dependiente). El usuario pulsó **"Explícame" 4×** en 80 s: 1ª estándar (con fuente), 2ª/3ª/4ª la **misma analogía de cocina** ("imagina que eres ayudante en una cocina, el chef…") → 👎.
+- **Regla de producto (Manuel)**: **el chat NUNCA usa analogías/alegorías cotidianas** (cocina, deporte, conducir…). Es infantil y poco profesional para un opositor; además esquiva el contenido del examen (taxonomía, fuente, distinción entre opciones). Memoria: `feedback-chat-nunca-analogias`.
+- **Causa raíz**: el caso #15 introdujo el prompt de re-explicación **en modo analogía** + mnemotecnia. Curó "repetir la misma explicación estándar" pero creó "repetir la misma analogía" (el `messagesArray`=2 — historial limpiado — impide que el LLM sepa que ya la dio). Datos: de 25 respuestas con ese prompt, **0 👍 / 1 👎 / 24 sin voto**.
+- **Solución** (commit `9dd350d2`, `VerificationService.ts`):
+  - `buildRepeatExplanationPrompt` reescrito → re-explica con **sustancia**: reformula el enunciado, contrasta la opción correcta con la más confundible palabra por palabra, desglosa por qué fallan las demás. Bloque **PROHIBIDO** que veta analogías/metáforas/símiles/mnemotecnias.
+  - Eliminadas **4 instrucciones de analogía** más en los prompts estándar (derecho + informática): "No entiendo/Más fácil → analogías cotidianas" y "NUNCA REPITAS → usa una analogía".
+  - Validado: jest chat **333/333** + E2E LLM real (`scripts/simulate-neg-tcae-analogia.ts`) → respuesta sustantiva, sin analogía, confirma B.
+- **Pendiente (mejora, no bug)**: el check `isRepeatExplanation` es binario (estándar vs re-explicación). No cuenta cuántas veces ni pasa las respuestas previas al LLM, así que al 3er/4º "Explícame" puede variar poco. Si reaparece, escalar: contar `n` explicaciones previas y pasar el ángulo ya usado para forzar variación.
+- **Nota colateral**: en `buildRepeatExplanationPrompt` la `materia` para leyes virtuales se etiqueta como "informática y tecnología" — incorrecto para contenedores clínicos (TCAE). No afecta al output observado pero conviene revisar el rótulo.
 
 ## Aprendizajes transversales (para futuras sesiones)
 
