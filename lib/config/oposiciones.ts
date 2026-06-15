@@ -1059,6 +1059,70 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE MADRID (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_madrid',
+    slug: 'auxiliar-administrativo-ayuntamiento-madrid',
+    positionType: 'auxiliar_administrativo_ayuntamiento_madrid',
+    examScoring: { penaltyDivisor: 3, source: 'BOAM nº 9.128 29/04/2022, base 5.2: cada respuesta incorrecta penaliza 1/3 del valor de una correcta (3 alternativas; no contestadas no penalizan). confidence:alta' },
+    name: 'Auxiliar Administrativo del Ayuntamiento de Madrid',
+    shortName: 'Aux. Ayto. Madrid',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'red',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'teorica',
+        title: 'Parte teórica (materias comunes y de Madrid)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: estructura, derechos y garantías' },
+          { id: 2, name: 'Organización territorial del Estado y autonomía local' },
+          { id: 3, name: 'La Ley 39/2015 (I): disposiciones, interesados y actos administrativos' },
+          { id: 4, name: 'La Ley 39/2015 (II): fases del procedimiento y recursos' },
+          { id: 5, name: 'La Ley 7/1985 (LRBRL): el municipio y los municipios de gran población' },
+          { id: 6, name: 'Haciendas Locales (I): los impuestos (TRLRHL)' },
+          { id: 7, name: 'Haciendas Locales (II): tasas, contribuciones especiales y precios públicos' },
+          { id: 8, name: 'La Ley de Capitalidad y de Régimen Especial de Madrid' },
+          { id: 9, name: 'Organización del Ayuntamiento de Madrid (I): Pleno, Alcalde y Junta de Gobierno' },
+          { id: 10, name: 'Organización del Ayuntamiento de Madrid (II): Administración, Intervención, Tesorería y TEAM' },
+          { id: 11, name: 'Reglamento Orgánico del Gobierno y la Administración: Áreas de Gobierno' },
+          { id: 12, name: 'Reglamento Orgánico de los Distritos del Ayuntamiento de Madrid' },
+          { id: 13, name: 'Ordenanzas y reglamentos de las Entidades locales' },
+          { id: 14, name: 'Contratos del Sector Público en la esfera local' },
+          { id: 15, name: 'El personal al servicio de la Administración Pública (EBEP)' },
+          { id: 16, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007) y Plan de Igualdad del Ayuntamiento' },
+          { id: 17, name: 'Prevención de Riesgos Laborales (Ley 31/1995)' },
+          { id: 18, name: 'Ordenanza de Atención a la Ciudadanía: registro electrónico y archivo' },
+          { id: 19, name: 'Atención a la ciudadanía, buenas prácticas y transparencia de la Ciudad de Madrid' },
+          { id: 20, name: 'Sugerencias, reclamaciones y felicitaciones' },
+        ],
+      },
+      {
+        id: 'ofimatica',
+        title: 'Parte práctica: Ofimática',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 21, name: 'Ofimática (I): procesador de textos Microsoft Word (Office 365)' },
+          { id: 22, name: 'Ofimática (II): hoja de cálculo Microsoft Excel (Office 365)' },
+        ],
+      },
+    ],
+    totalTopics: 22,
+    aliases: ['ayuntamiento madrid', 'ayto madrid', 'aux ayuntamiento madrid', 'auxiliar ayuntamiento madrid', 'administrativo ayuntamiento madrid'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-madrid', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-madrid/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-madrid/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

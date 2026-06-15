@@ -1,0 +1,47 @@
+{
+  "slug": "auxiliar-administrativo-ayuntamiento-madrid",
+  "position_type": "auxiliar_administrativo_ayuntamiento_madrid",
+  "nombre": "Auxiliar Administrativo del Ayuntamiento de Madrid",
+  "administracion": "Local",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Oposición",
+  "fuente_temario": "BOAM nº 9.128, 29/04/2022 (bases turno libre, CSV 2LI4O663F7GHMQD6)",
+  "oep": "OEP 2025 Ayuntamiento de Madrid (Acuerdo 27/11/2025, BOAM nº 10.017 de 01/12/2025): 111 plazas Auxiliar Administrativo turno libre, pendiente de convocatoria",
+  "examen": {
+    "ejercicio_unico": true,
+    "opciones": 3,
+    "penalizacion": "1/3 del valor de una respuesta correcta (las no contestadas o con más de una marca no penalizan)",
+    "penalizacion_fuente": "BOAM nº 9.128, base 5.2 (cita literal)",
+    "partes": [
+      { "nombre": "Parte teórica (temas 1-20)", "preguntas": 70, "minutos": 70 },
+      { "nombre": "Parte práctica ofimática (temas 21-22)", "preguntas": 20, "minutos": 40 }
+    ],
+    "total_preguntas": 90,
+    "minimo": "5 puntos en cada parte por separado"
+  },
+  "temario": [
+    { "n": 1, "epi": "La Constitución: estructura y contenido. Principios generales. Los derechos y deberes fundamentales. Sus garantías." },
+    { "n": 2, "epi": "Organización territorial del Estado en la Constitución: las Entidades locales. El principio de autonomía local." },
+    { "n": 3, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas (I): Disposiciones generales. Interesados en el procedimiento. Actividad en la Administración Pública. Actos administrativos." },
+    { "n": 4, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas (II): Iniciación, ordenación, instrucción, finalización y ejecución del procedimiento. Los recursos administrativos. Concepto y clases." },
+    { "n": 5, "epi": "La Ley 7/1985, de 2 de abril, reguladora de las Bases del Régimen Local: Disposiciones Generales. El municipio. Disposiciones comunes a las entidades locales. Régimen de organización de los municipios de gran población." },
+    { "n": 6, "epi": "Real Decreto Legislativo 2/2004, de 5 de marzo, por el que se aprueba el Texto refundido de la Ley Reguladora de las Haciendas Locales (I): Impuestos." },
+    { "n": 7, "epi": "Real Decreto Legislativo 2/2004, de 5 de marzo, por el que se aprueba el Texto refundido de la Ley Reguladora de las Haciendas Locales (II): Tasas. Contribuciones especiales. Precios públicos." },
+    { "n": 8, "epi": "La Ley de Capitalidad y de Régimen Especial de Madrid: Las competencias del Ayuntamiento de Madrid." },
+    { "n": 9, "epi": "La organización política y administrativa del Ayuntamiento de Madrid (I): el Pleno, el Alcalde, los Tenientes de Alcalde y la Junta de Gobierno." },
+    { "n": 10, "epi": "La organización política y administrativa del Ayuntamiento de Madrid (II): la Administración Pública. La Intervención General. La Tesorería. El Tribunal Económico-Administrativo Municipal. El Ente autónomo de gestión tributaria. La Asesoría Jurídica." },
+    { "n": 11, "epi": "La Organización central en el Reglamento Orgánico del Gobierno y de la Administración del Ayuntamiento de Madrid: las Áreas de Gobierno y su estructura interna. Órganos superiores y directivos de las Áreas de Gobierno. Número y denominación de las actuales Áreas de Gobierno." },
+    { "n": 12, "epi": "La Organización territorial en el Reglamento Orgánico de los Distritos: órganos de los Distritos y estructura administrativa del Distrito." },
+    { "n": 13, "epi": "Ordenanzas y reglamentos de las Entidades locales. Procedimiento de elaboración y aprobación. Especial referencia al Ayuntamiento de Madrid." },
+    { "n": 14, "epi": "Contratos del Sector Público: Objeto y ámbito de aplicación. Órganos de contratación en las Entidades Locales." },
+    { "n": 15, "epi": "El Personal al servicio de la Administración Pública conforme al Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el Texto Refundido de la Ley del Estatuto Básico del Empleado Público: Clases de personal. Adquisición y pérdida de la relación de servicio. Situaciones administrativas. Derechos de los empleados públicos. Régimen disciplinario." },
+    { "n": 16, "epi": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres: objeto y ámbito de la ley. El principio de igualdad y la tutela contra la discriminación. El Plan de Igualdad entre mujeres y hombres del Ayuntamiento de Madrid y sus Organismos Autónomos en vigor: ámbito municipal; estructura; objetivo general; líneas de intervención y objetivos específicos." },
+    { "n": 17, "epi": "Ley 31/1995, de 8 de noviembre de Prevención de Riesgos Laborales: Delegados/as de prevención. Comités de seguridad y salud. Especial referencia a la prevención de riesgos laborales del Acuerdo Convenio en vigor sobre condiciones de trabajo comunes al personal funcionario y laboral del Ayuntamiento de Madrid y de sus Organismos Autónomos. Representación de los empleados públicos." },
+    { "n": 18, "epi": "Ordenanza de Atención a la Ciudadanía y Administración Electrónica: Título V. Registro electrónico general. Título IX. El archivo electrónico." },
+    { "n": 19, "epi": "Ordenanza de Atención a la Ciudadanía y Administración Electrónica: Título II. Atención a la ciudadanía. El Código de Buenas Prácticas Administrativas del Ayuntamiento de Madrid: Principios generales. Ordenanza de Transparencia de la Ciudad de Madrid: Ámbito de aplicación y principios generales." },
+    { "n": 20, "epi": "Ordenanza de Atención a la Ciudadanía y Administración Electrónica: Título III. Sugerencias, reclamaciones y felicitaciones." },
+    { "n": 21, "epi": "Ofimática (I): Programa de tratamiento de textos \"Microsoft Office 365: Word\"." },
+    { "n": 22, "epi": "Ofimática (II): Programa de hoja de cálculo \"Microsoft Office 365: Excel\"." }
+  ]
+}

@@ -501,6 +501,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_madrid',
+      label: 'Auxiliar Administrativo Ayto. Madrid',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Madrid',
+        slug: 'auxiliar-administrativo-ayuntamiento-madrid',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
