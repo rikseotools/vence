@@ -611,6 +611,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_girona',
+      label: 'Auxiliar Administrativo Dip. Girona',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación de Girona',
+        slug: 'auxiliar-administrativo-diputacion-girona',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

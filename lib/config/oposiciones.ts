@@ -1720,6 +1720,60 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE GIRONA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_girona',
+    slug: 'auxiliar-administrativo-diputacion-girona',
+    positionType: 'auxiliar_administrativo_diputacion_girona',
+    examScoring: { penaltyDivisor: null, source: 'BOPG nº211 03/11/2023 (bases OEP 2023): el test puntúa 1 punto por acierto, sin penalización por error. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación de Girona',
+    shortName: 'Aux. Dip. Girona',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'purple',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (20 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: significado, estructura y principios' },
+          { id: 2, name: 'La organización territorial del Estado' },
+          { id: 3, name: 'La Administración Local: concepto y entidades' },
+          { id: 4, name: 'La provincia: organización y competencias' },
+          { id: 5, name: 'El Derecho administrativo: fuentes y principios de actuación' },
+          { id: 6, name: 'Ley 39/2015: fases del procedimiento y notificaciones' },
+          { id: 7, name: 'El acto administrativo: revisión y recursos' },
+          { id: 8, name: 'La gestión electrónica de los procedimientos administrativos' },
+          { id: 9, name: 'Ley 40/2015: órganos de las Administraciones Públicas' },
+          { id: 10, name: 'Funcionamiento de los órganos colegiados locales' },
+          { id: 11, name: 'Las subvenciones (Ley 38/2003 y ordenanza de la Diputació)' },
+          { id: 12, name: 'Transparencia y buen gobierno en Cataluña (Ley 19/2014)' },
+          { id: 13, name: 'Contratos del sector público: procedimientos de adjudicación' },
+          { id: 14, name: 'Tipología de los contratos públicos y el contrato menor' },
+          { id: 15, name: 'El presupuesto de las entidades locales' },
+          { id: 16, name: 'Las haciendas locales y los ingresos' },
+          { id: 17, name: 'El servicio público y sus formas de gestión' },
+          { id: 18, name: 'Los bienes de las entidades locales' },
+          { id: 19, name: 'El personal al servicio de las entidades locales' },
+          { id: 20, name: 'Sistema retributivo, régimen disciplinario y situaciones administrativas' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['girona', 'gerona', 'diputacion girona', 'dip girona', 'aux girona', 'auxiliar girona', 'diputacio de girona'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-girona', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-girona/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-girona/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
