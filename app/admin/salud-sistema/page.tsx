@@ -20,6 +20,16 @@ type Status = 'green' | 'amber' | 'red' | 'unknown'
 // Leading indicator: la tabla pool_capacity_samples se llena cada 1 min con
 // el estado del pool postgres. Si vemos saturación SOSTENIDA antes del 5xx,
 // el sistema avisa por aquí (y por las 4 alertas asociadas en alert-rules.ts).
+interface OepConsistencyResponse {
+  status: 'green' | 'amber' | 'red'
+  generatedAt: string
+  checks: {
+    estados_stale: { status: Status; count: number; detail: string; sample: { slug: string | null; estado: string | null; deadline: string | null }[] }
+    pending_anejas: { status: Status; count: number; detail: string }
+    activas_sin_hitos: { status: Status; count: number; detail: string; sample: (string | null)[] }
+  }
+}
+
 interface PoolCapacityResponse {
   success: boolean
   generatedAt: string
@@ -134,6 +144,7 @@ const STATUS_LABEL: Record<Status, string> = {
 export default function SaludSistemaPage() {
   const [data, setData] = useState<SystemHealthResponse | null>(null)
   const [pool, setPool] = useState<PoolCapacityResponse | null>(null)
+  const [oep, setOep] = useState<OepConsistencyResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -145,9 +156,10 @@ export default function SaludSistemaPage() {
       // Paralelo: system-health (4 indicadores existentes) + pool-capacity
       // (5º indicador). Si pool-capacity falla, el panel sigue mostrando los
       // 4 primeros — degradación elegante.
-      const [healthRes, poolRes] = await Promise.allSettled([
+      const [healthRes, poolRes, oepRes] = await Promise.allSettled([
         fetch('/api/admin/system-health', { headers }),
         fetch('/api/admin/pool-capacity?window=1h', { headers }),
+        fetch('/api/admin/oep-consistency', { headers }),
       ])
 
       if (healthRes.status === 'fulfilled') {
@@ -167,6 +179,13 @@ export default function SaludSistemaPage() {
         // mientras el endpoint no esté desplegado o haya error, mostramos el
         // resto sin romper el panel.
         setPool(null)
+      }
+
+      // OEP consistency (6º indicador) — opcional, degradación elegante.
+      if (oepRes.status === 'fulfilled' && oepRes.value.ok) {
+        setOep((await oepRes.value.json()) as OepConsistencyResponse)
+      } else {
+        setOep(null)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error desconocido')
@@ -191,7 +210,7 @@ export default function SaludSistemaPage() {
             Salud del sistema
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            4 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
+            6 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
               docs/runbooks/health-check.md
             </code>
@@ -342,6 +361,9 @@ export default function SaludSistemaPage() {
 
             {/* 5) Capacidad pool BD — leading indicator (Acción 2 observability-capacity) */}
             <PoolCapacityCard pool={pool} />
+
+            {/* 6) Coherencia OEP — estados stale, señales pending añejas, activas sin hitos (16/06/2026) */}
+            <OepConsistencyCard oep={oep} />
           </div>
         </>
       )}
@@ -439,6 +461,66 @@ function PoolCapacityCard({ pool }: { pool: PoolCapacityResponse | null }) {
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
         Roadmap: <code>docs/roadmap/observability-capacity.md</code> Acción 2.
         Detalle SQL: <code>SELECT * FROM v_pool_capacity_last_15min;</code>
+      </p>
+    </IndicatorCard>
+  )
+}
+
+/**
+ * Card del 6º indicador "Coherencia OEP" (endpoint /api/admin/oep-consistency).
+ * Vigila incoherencias en datos de convocatorias (16/06/2026):
+ *   - estados stale (plazo vencido sin avanzar — ¿cron advance-estado?)
+ *   - señales OEP pending >7d sin revisar (cola de triaje estancada)
+ *   - oposiciones activas sin hitos (timeline vacío)
+ */
+function OepConsistencyCard({ oep }: { oep: OepConsistencyResponse | null }) {
+  if (!oep) {
+    return (
+      <IndicatorCard
+        title="Coherencia OEP"
+        status="unknown"
+        metric="—"
+        hint="Endpoint /api/admin/oep-consistency no responde"
+      >
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+          Sin datos. Panel <code>/admin/oep-signals</code>.
+        </p>
+      </IndicatorCard>
+    )
+  }
+
+  const c = oep.checks
+  const total = c.estados_stale.count + c.pending_anejas.count + c.activas_sin_hitos.count
+  const metric = total === 0 ? 'Sin incidencias' : `${total} incidencia(s)`
+  return (
+    <IndicatorCard
+      title="Coherencia OEP"
+      status={oep.status}
+      metric={metric}
+      hint="Estados stale · señales pending añejas · activas sin hitos"
+    >
+      <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+        <div>
+          <span className="font-medium">Estados stale:</span>{' '}
+          {c.estados_stale.count === 0 ? '0 🟢' : `${c.estados_stale.count} ⚠️`}
+          {c.estados_stale.count > 0 && (
+            <span className="text-gray-500"> ({c.estados_stale.sample.map((s) => s.slug).filter(Boolean).join(', ')})</span>
+          )}
+        </div>
+        <div>
+          <span className="font-medium">Señales pending &gt;7d:</span>{' '}
+          {c.pending_anejas.count === 0 ? '0 🟢' : `${c.pending_anejas.count} ⚠️`}
+        </div>
+        <div>
+          <span className="font-medium">Activas sin hitos:</span>{' '}
+          {c.activas_sin_hitos.count === 0 ? '0 🟢' : `${c.activas_sin_hitos.count} ⚠️`}
+          {c.activas_sin_hitos.count > 0 && (
+            <span className="text-gray-500"> ({c.activas_sin_hitos.sample.filter(Boolean).join(', ')})</span>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+        Gestión: <code>/admin/oep-signals</code>. Cron <code>advance-estado</code> 06:30 UTC.
       </p>
     </IndicatorCard>
   )
