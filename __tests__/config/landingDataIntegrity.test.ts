@@ -36,6 +36,7 @@ const DYNAMIC_SLUGS = [
   'auxiliar-administrativo-ayuntamiento-zaragoza',
   'auxiliar-administrativo-diputacion-cordoba',
   'auxiliar-administrativo-ayuntamiento-sevilla',
+  'auxiliar-administrativo-diputacion-alicante',
   'auxiliar-administrativo-ayuntamiento-madrid',
   'auxiliar-administrativo-universidad-complutense',
   'auxiliar-administrativo-universidad-alcala',

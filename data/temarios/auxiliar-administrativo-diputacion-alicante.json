@@ -1,0 +1,47 @@
+{
+  "slug": "auxiliar-administrativo-diputacion-alicante",
+  "position_type": "auxiliar_administrativo_diputacion_alicante",
+  "nombre": "Auxiliar Administrativo de la Diputación Provincial de Alicante",
+  "administracion": "Local",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Oposición (turno libre)",
+  "fuente_temario": "Bases BOP Alicante nº118 de 25/06/2025 (anuncio 4574/2025); extracto BOE-A-2026-5649 (11/03/2026)",
+  "oep": "32 plazas turno libre (oposición), Escala Administración General, Subescala Auxiliar, C2. OEP 2022, 2023, 2024 y 2025. Sin cupo de reserva de discapacidad (solo adaptaciones).",
+  "examen": {
+    "ejercicios": 2,
+    "tipo": "1º test + 2º teórico-práctico",
+    "primer_ejercicio": { "tipo": "test", "preguntas": 60, "opciones": 4, "minutos_min": 60, "puntuacion_min": 5, "penalizacion": "1/3 del valor de una respuesta correcta; los blancos no penalizan" },
+    "segundo_ejercicio": { "tipo": "teórico-práctico (supuestos y/o preguntas cortas a desarrollar)", "minutos_max": 150, "puntuacion_min": 5 },
+    "opciones": 4,
+    "penalizacion": "1/3 del valor de una respuesta correcta (primer ejercicio tipo test)",
+    "penalizacion_fuente": "BOP Alicante nº118 25/06/2025, Base Sexta A (cita literal: 'un tercio (1/3) del valor de cada contestación correcta')",
+    "sistema": "oposición (turno libre, sin fase de concurso)",
+    "minimo": "5/10 en cada ejercicio (ambos eliminatorios)"
+  },
+  "temario": [
+    { "n": 1, "epi": "La Constitución Española de 1978. Estructura y Principios Fundamentales. Derechos y Deberes: Garantía y Suspensión. Principios rectores de la política social y económica. La Corona. La reforma constitucional." },
+    { "n": 2, "epi": "El Estatuto de Autonomía de la Comunidad Valenciana. Estructura y Principios Fundamentales. Competencias de la Generalitat Valenciana y su desarrollo normativo. La Generalitat Valenciana: Les Corts: composición, constitución y funciones. El Consell: composición, atribuciones y funcionamiento. Otras Instituciones: El Sindic de Greuges y la Sindicatura de Comptes." },
+    { "n": 3, "epi": "La provincia como entidad local. Organización y competencias. El Pleno Provincial: composición y atribuciones. El Presidente: competencias, delegación de las mismas, y sus resoluciones. La Junta de Gobierno y las Comisiones Informativas." },
+    { "n": 4, "epi": "Régimen de sesiones y acuerdos de los órganos de gobierno locales. Actas, certificaciones, comunicaciones, notificaciones y publicación de los acuerdos. El registro de Documentos. La utilización de medios telemáticos." },
+    { "n": 5, "epi": "El acto administrativo: concepto, clases y elementos. Requisitos de los actos administrativos: motivación, notificación y publicación. Eficacia y validez de los actos administrativos." },
+    { "n": 6, "epi": "Disposiciones generales sobre los procedimientos administrativos y normas reguladoras de los distintos procedimientos. La iniciación del procedimiento: clases, subsanación y mejora de solicitudes. Presentación de solicitudes, escritos y comunicaciones. Los registros administrativos." },
+    { "n": 7, "epi": "Términos y plazos del procedimiento administrativo: cómputo, ampliación y tramitación de urgencia. Ordenación. Instrucción: intervención de los interesados, prueba e informes. Singularidades del procedimiento de las Entidades Locales." },
+    { "n": 8, "epi": "Terminación del procedimiento. La obligación de resolver. Contenido de la resolución expresa: principios de congruencia y de no agravación de la situación inicial. La terminación convencional. La falta de resolución expresa: el régimen del silencio administrativo. El desistimiento y la renuncia. La caducidad." },
+    { "n": 9, "epi": "El personal al servicio de las Entidades Locales: Clases y régimen jurídico. Los instrumentos de organización del personal: plantillas y relaciones de puestos de trabajo. Los instrumentos reguladores de los recursos humanos: la oferta de empleo, los planes de empleo y otros sistemas de racionalización." },
+    { "n": 10, "epi": "Los derechos de los funcionarios locales. Derechos individuales. Especial referencia a la carrera administrativa y a las retribuciones. El régimen de Seguridad Social. Los deberes de los funcionarios locales. El régimen disciplinario. El régimen de responsabilidad civil, penal y patrimonial. El régimen de incompatibilidades." },
+    { "n": 11, "epi": "Recursos administrativos: principios generales. Actos susceptibles de recurso administrativo. Reglas generales de tramitación de los recursos administrativos. Clases de recursos." },
+    { "n": 12, "epi": "Los contratos administrativos en la esfera local. Disposiciones generales: objeto y ámbito de aplicación de la Ley. Clasificación de los contratos administrativos. Disposiciones generales sobre la contratación del sector público." },
+    { "n": 13, "epi": "Los bienes de las Entidades Locales. El dominio público. El patrimonio privado de las mismas." },
+    { "n": 14, "epi": "Los Presupuestos de las Entidades Locales. Principios, integración y documentos de que constan. Proceso de aprobación del Presupuesto Local. Principios generales de ejecución del Presupuesto. Modificaciones presupuestarias: los créditos extraordinarios y los suplementos de crédito, las transferencias de créditos y otras figuras. Liquidación del Presupuesto." },
+    { "n": 15, "epi": "La Ley de Prevención de Riesgos Laborales: Objeto y ámbito de aplicación. Nociones básicas de seguridad e higiene en el trabajo. Derechos y obligaciones. Consulta y participación de los trabajadores." },
+    { "n": 16, "epi": "La protección de datos de carácter personal. Regulación y definiciones. Principios de la protección de datos. Derechos de las personas. La Agencia Española de Protección de Datos." },
+    { "n": 17, "epi": "Políticas de Igualdad de Género. La Ley Orgánica para la igualdad efectiva de Mujeres y Hombres: principios generales. Acción administrativa para la igualdad. Igualdad y medios de comunicación. Igualdad de trato y de oportunidades en el ámbito laboral. El principio de igualdad en el empleo público." },
+    { "n": 18, "epi": "La Ley de Transparencia, acceso a la información pública y buen gobierno. El derecho de acceso a la información pública. Buen Gobierno. El Consejo de Transparencia y buen gobierno." },
+    { "n": 19, "epi": "Correo Electrónico: Conceptos elementales y funcionamiento. Configuración del entorno de trabajo. Mensajes. Organizar: Bandejas, Carpetas, Etiquetas. Reglas. Contactos y Libreta de direcciones. Panel de lectura. Visualizar. Buscar." },
+    { "n": 20, "epi": "Procesadores de texto: Microsoft Word. Principales funciones y utilidades. Creación, modificación, guardado y borrado de documentos. Configuración del entorno de trabajo. Plantillas. Tablas. Correspondencia. Visualizar. Imprimir. Revisar. Referencias. Configuración de documentos." }
+  ],
+  "normativa_autonomica": [
+    "Tema 2: Estatuto de Autonomía de la Comunidad Valenciana (único tema autonómico; resto estatal/local). Sin tema de valenciano ni de Función Pública Valenciana en el turno libre."
+  ]
+}

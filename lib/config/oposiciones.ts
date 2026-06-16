@@ -1127,6 +1127,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ALICANTE (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_alicante',
+    slug: 'auxiliar-administrativo-diputacion-alicante',
+    positionType: 'auxiliar_administrativo_diputacion_alicante',
+    examScoring: { penaltyDivisor: 3, source: 'BOP Alicante nº118 25/06/2025 (Base Sexta A): primer ejercicio test, cada error resta un tercio (1/3) del valor de una respuesta correcta; blancos no penalizan (4 alternativas). confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Alicante',
+    shortName: 'Aux. Dip. Alicante',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'orange',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'juridico',
+        title: 'Materias jurídico-administrativas',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978: estructura, derechos, Corona y reforma' },
+          { id: 2, name: 'El Estatuto de Autonomía de la Comunidad Valenciana' },
+          { id: 3, name: 'La provincia como entidad local: organización y competencias' },
+          { id: 4, name: 'Régimen de sesiones y acuerdos de los órganos locales' },
+          { id: 5, name: 'El acto administrativo: concepto, clases, elementos y eficacia' },
+          { id: 6, name: 'Iniciación del procedimiento y registros administrativos' },
+          { id: 7, name: 'Términos y plazos, ordenación e instrucción del procedimiento' },
+          { id: 8, name: 'Terminación del procedimiento y silencio administrativo' },
+          { id: 9, name: 'El personal al servicio de las Entidades Locales (I)' },
+          { id: 10, name: 'Derechos, deberes, régimen disciplinario e incompatibilidades' },
+          { id: 11, name: 'Los recursos administrativos' },
+          { id: 12, name: 'Los contratos en la esfera local (Ley 9/2017)' },
+          { id: 13, name: 'Los bienes de las Entidades Locales' },
+          { id: 14, name: 'Los Presupuestos de las Entidades Locales' },
+          { id: 15, name: 'La Ley de Prevención de Riesgos Laborales' },
+          { id: 16, name: 'La protección de datos de carácter personal' },
+          { id: 17, name: 'Políticas de Igualdad de Género (LO 3/2007)' },
+          { id: 18, name: 'Transparencia, acceso a la información y buen gobierno (Ley 19/2013)' },
+        ],
+      },
+      {
+        id: 'ofimatica',
+        title: 'Ofimática',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 19, name: 'Ofimática: Correo electrónico' },
+          { id: 20, name: 'Ofimática: Procesador de texto Microsoft Word' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['alicante', 'diputacion alicante', 'dip alicante', 'aux alicante', 'auxiliar alicante', 'diputacion de alicante'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-alicante', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-alicante/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-alicante/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE MADRID (C2)
   // ========================================
   {

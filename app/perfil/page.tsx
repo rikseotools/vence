@@ -511,6 +511,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_alicante',
+      label: 'Auxiliar Administrativo Dip. Alicante',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Alicante',
+        slug: 'auxiliar-administrativo-diputacion-alicante',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_madrid',
       label: 'Auxiliar Administrativo Ayto. Madrid',
       data: {
