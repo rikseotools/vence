@@ -97,7 +97,10 @@ export class DetectOepLlmService {
         bocRef: extraction.bocRef,
       });
 
-      const summary = `${extraction.summary} · Diff: ${reasons.join('; ')}`;
+      const cuerpoNota = extraction.cuerpoDetectado
+        ? ` · Cuerpo detectado: ${extraction.cuerpoDetectado}`
+        : '';
+      const summary = `${extraction.summary}${cuerpoNota} · Diff: ${reasons.join('; ')}`;
 
       const { inserted } = await this.queries.insertSignal({
         oposicionId: opo.id,

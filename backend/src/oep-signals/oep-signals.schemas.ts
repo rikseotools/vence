@@ -57,6 +57,9 @@ export const llmExtractionSchema = z.object({
       'resultados',
     ])
     .nullable(),
+  // Cuerpo/puesto de la convocatoria extraída — para verificar que coincide con
+  // el cuerpo de la oposición y no es otro proceso de una página multi-convocatoria.
+  cuerpoDetectado: z.string().nullable().default(null),
   summary: z.string(),
 });
 export type LlmExtraction = z.infer<typeof llmExtractionSchema>;

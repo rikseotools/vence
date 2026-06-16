@@ -319,8 +319,14 @@ export class OepSignalsLlmService {
 const EXTRACTION_SYSTEM_PROMPT = `Eres un extractor de datos estructurados. Analizas páginas oficiales de convocatorias de oposiciones españolas (Gobierno de Canarias, Comunidad de Madrid, etc.) y extraes información de OEPs/convocatorias.
 
 IMPORTANTE:
-- Si la página no contiene información clara de una OEP activa → hasOepInfo=false
-- Si detectas MÚLTIPLES OEPs, extrae SOLO la MÁS RECIENTE (año mayor)
+- La oposición de Vence es de un CUERPO/PUESTO concreto (ver "Nombre" en el contexto BD).
+  Extrae ÚNICAMENTE la convocatoria de ESE MISMO cuerpo/puesto.
+- Las páginas oficiales suelen listar MUCHOS cuerpos a la vez (peón, psicólogo, bombero,
+  policía local, administrativo, auxiliar, ordenanza, conductor…). NO cojas otro cuerpo
+  solo por ser el más reciente: si no es el cuerpo de la oposición, ignóralo.
+- Si en la página NO hay ninguna convocatoria del cuerpo de la oposición → hasOepInfo=false
+  (aunque haya otras OEPs de otros cuerpos)
+- cuerpoDetectado: nombre textual del cuerpo/puesto de la convocatoria que extraes (para verificación)
 - Fechas en formato ISO (YYYY-MM-DD). Si solo hay mes/año aproximados, null
 - Plazas: números enteros. Si no se menciona, null
 - bocRef: formato exacto "BOC-A-2026-057-948" o equivalente para otros boletines
@@ -338,7 +344,9 @@ Contenido de la página oficial a analizar:
 ${text}
 </pagina>
 
-Extrae la OEP/convocatoria más reciente. Devuelve JSON con esta forma exacta:
+Extrae la convocatoria del MISMO cuerpo/puesto que la oposición del contexto BD
+(campo "Nombre"). Si ese cuerpo no aparece en la página, hasOepInfo=false.
+Devuelve JSON con esta forma exacta:
 {
   "hasOepInfo": boolean,
   "year": number | null,
@@ -350,6 +358,7 @@ Extrae la OEP/convocatoria más reciente. Devuelve JSON con esta forma exacta:
   "fechaInscripcionFin": string | null,
   "fechaExamen": string | null,
   "estado": "oep_aprobada" | "convocada" | "inscripcion_abierta" | "inscripcion_cerrada" | "lista_admitidos" | "pendiente_examen" | "examen_realizado" | "resultados" | null,
+  "cuerpoDetectado": string | null,
   "summary": string
 }`;
 }
