@@ -591,6 +591,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_cuenca',
+      label: 'Auxiliar Administrativo Dip. Cuenca',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Cuenca',
+        slug: 'auxiliar-administrativo-diputacion-cuenca',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

@@ -1604,6 +1604,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE CUENCA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_cuenca',
+    slug: 'auxiliar-administrativo-diputacion-cuenca',
+    positionType: 'auxiliar_administrativo_diputacion_cuenca',
+    examScoring: { penaltyDivisor: 4, source: 'BOP Cuenca nº13 30/01/2026 (base quinta): cada error descuenta 0,25 del valor de un acierto (1/4); en blanco no penaliza. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Cuenca',
+    shortName: 'Aux. Dip. Cuenca',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'red',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comun',
+        title: 'Materia Común',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: estructura, derechos y organización territorial' },
+          { id: 2, name: 'La Administración Local y la Provincia: organización y órganos provinciales' },
+          { id: 3, name: 'Ley 39/2015: ámbito, interesados, derechos y garantías del procedimiento' },
+          { id: 4, name: 'Políticas de igualdad y contra la violencia de género' },
+        ],
+      },
+      {
+        id: 'especifica',
+        title: 'Materia Específica',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 5, name: 'Régimen local: TRRL (RD Leg 781/1986) y ROF (RD 2568/1986)' },
+          { id: 6, name: 'Ley 39/2015 (I): disposiciones generales e interesados' },
+          { id: 7, name: 'Ley 39/2015 (II): actividad de las AAPP y actos administrativos' },
+          { id: 8, name: 'Ley 39/2015 (III): procedimiento, revisión y recursos' },
+          { id: 9, name: 'Ley 40/2015 (I): Título Preliminar del Régimen Jurídico del Sector Público' },
+          { id: 10, name: 'Ley 40/2015 (II): relaciones interadministrativas' },
+          { id: 11, name: 'Ley 38/2003 General de Subvenciones' },
+          { id: 12, name: 'EBEP (I): clases de personal, derechos, deberes y código de conducta' },
+          { id: 13, name: 'EBEP (II): condición de funcionario, situaciones y régimen disciplinario' },
+          { id: 14, name: 'Reglamento de Bienes de las Entidades Locales (RD 1372/1986)' },
+          { id: 15, name: 'Contratos del Sector Público: tipos contractuales (Ley 9/2017)' },
+          { id: 16, name: 'Haciendas Locales: tributos, tasas y precios públicos' },
+          { id: 17, name: 'Haciendas Locales: los presupuestos y sus modificaciones' },
+          { id: 18, name: 'Funcionamiento del sector público por medios electrónicos (RD 203/2021)' },
+          { id: 19, name: 'Informática básica y el explorador de Windows 10' },
+          { id: 20, name: 'Ofimática: Word, Outlook y Excel (Office 2021)' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['cuenca', 'diputacion cuenca', 'dip cuenca', 'aux cuenca', 'auxiliar cuenca', 'diputacion de cuenca'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-cuenca', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-cuenca/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-cuenca/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
