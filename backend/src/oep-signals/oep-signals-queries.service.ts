@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, desc, eq, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import {
   convocatoriaHitos,
@@ -86,7 +86,24 @@ export class OepSignalsQueriesService {
         ),
       );
 
-    return rows.map((r) => {
+    // Anti-falso-positivo (ventanas largas): un hito 'current' con fecha pasada
+    // NO es un silencio si la misma oposición tiene OTRO hito con fecha futura —
+    // significa que el timeline sigue su curso (p.ej. "Apertura inscripción"
+    // sigue current durante todo el plazo, con "Cierre" futuro por delante).
+    // Solo es silencio real si no hay ningún hito futuro planificado (proceso
+    // realmente estancado en su último hito conocido).
+    const today = new Date().toISOString().slice(0, 10);
+    const futureRows = await this.db
+      .select({ oposicionId: convocatoriaHitos.oposicionId })
+      .from(convocatoriaHitos)
+      .where(gte(convocatoriaHitos.fecha, today));
+    const oposicionesConFuturo = new Set(
+      futureRows.map((r) => r.oposicionId),
+    );
+
+    return rows
+      .filter((r) => !oposicionesConFuturo.has(r.oposicionId))
+      .map((r) => {
       const fechaDate = new Date(r.hitoFecha);
       const hoyDate = new Date();
       const diffMs = hoyDate.getTime() - fechaDate.getTime();
