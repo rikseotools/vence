@@ -621,6 +621,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_zamora',
+      label: 'Auxiliar Administrativo Dip. Zamora',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Zamora',
+        slug: 'auxiliar-administrativo-diputacion-zamora',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

@@ -1,0 +1,49 @@
+{
+  "slug": "auxiliar-administrativo-diputacion-zamora",
+  "position_type": "auxiliar_administrativo_diputacion_zamora",
+  "nombre": "Auxiliar Administrativo de la Diputación Provincial de Zamora",
+  "administracion": "Local",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Oposición (turno libre)",
+  "fuente_temario": "Bases BOP Zamora nº23 de 26/02/2025 (corr. nº25 03/03/2025); apertura BOE-A-2025-4955 (13/03/2025); OEP 2023",
+  "oep": "3 plazas turno libre (1 reservada a discapacidad no intelectual), Escala Administración General, Subescala Auxiliar, C2, oposición. Diputación Provincial de Zamora.",
+  "examen": {
+    "ejercicios": 2,
+    "tipo": "1º test teórico + 2º supuesto práctico",
+    "primer_ejercicio": { "tipo": "test", "preguntas": 70, "minutos": 100, "puntuacion_max": 10, "minimo": "≥40% de la máxima (lo fija el tribunal)" },
+    "segundo_ejercicio": { "tipo": "supuesto práctico (1 de 2)", "minutos": 90, "puntuacion_max": 10, "puntuacion_min": 5 },
+    "opciones": 4,
+    "penalizacion": "Cada error resta 1/4 del valor de un acierto; las no contestadas no penalizan",
+    "penalizacion_fuente": "BOP Zamora nº23 26/02/2025 (cita literal: 'un cuarto del valor de la respuesta correcta')",
+    "sistema": "oposición (turno libre, sin concurso)",
+    "minimo": "1er ejercicio: ≥40% (lo fija el tribunal); 2º ejercicio: 5/10"
+  },
+  "temario": [
+    { "n": 1, "bloque": 1, "epi": "La Constitución Española de 1978: estructura y contenido. Principios generales. Derechos fundamentales y libertades públicas. La organización territorial del Estado. Las Comunidades Autónomas: Constitución y competencias. Los Estatutos de Autonomía: su significado. El Estatuto de Autonomía de Castilla y León. El Régimen Local español: principios constitucionales y regulación jurídica. La provincia en el Régimen Local: organización provincial y competencias." },
+    { "n": 2, "bloque": 1, "epi": "La Ley 39/2015, del Procedimiento Administrativo Común: los actos administrativos y las fases del procedimiento. La Ley 40/2015, de Régimen Jurídico del Sector Público: los órganos de las Administraciones Públicas. El RDLeg 2/2004, Texto Refundido de la Ley Reguladora de las Haciendas Locales: tasas y precios públicos como recursos de las provincias." },
+    { "n": 3, "bloque": 1, "epi": "La Función Pública Local y su organización. Derechos y deberes de los funcionarios públicos locales." },
+    { "n": 4, "bloque": 1, "epi": "Políticas de igualdad de género. La Ley Orgánica 3/2007 para la igualdad efectiva de mujeres y hombres. Políticas contra la violencia de género. La Ley Orgánica 1/2004 de medidas de protección integral contra la violencia de género." },
+    { "n": 5, "bloque": 2, "epi": "El procedimiento administrativo: iniciación, ordenación, instrucción y terminación. Especial referencia al procedimiento administrativo electrónico." },
+    { "n": 6, "bloque": 2, "epi": "El acto administrativo. Concepto. Elementos. Su motivación y notificación. Eficacia. Actos nulos y anulables." },
+    { "n": 7, "bloque": 2, "epi": "Los recursos administrativos: clases." },
+    { "n": 8, "bloque": 2, "epi": "Los contratos de las Administraciones Públicas. Principios generales y clases de contratos administrativos. Requisitos para contratar con la Administración." },
+    { "n": 9, "bloque": 2, "epi": "Concepto de documento. Documentos oficiales. Formación del expediente. Documentación de apoyo informativo. El archivo de los documentos administrativos: clases de archivo y criterios de ordenación. El acceso a los documentos administrativos: limitaciones y formas de acceso." },
+    { "n": 10, "bloque": 2, "epi": "Servicios de información y atención al ciudadano de la Administración Local. Derechos de los ciudadanos en sus relaciones con las Administraciones Públicas. La información administrativa. El registro de documentos: presentación y recepción." },
+    { "n": 11, "bloque": 2, "epi": "El Régimen Local español: principios constitucionales y regulación jurídica. La provincia en el Régimen Local. Organización provincial. Competencias." },
+    { "n": 12, "bloque": 2, "epi": "El municipio. Organización municipal y competencias. El término municipal. La población. Consideración especial del vecino. El empadronamiento." },
+    { "n": 13, "bloque": 2, "epi": "Régimen de sesiones y acuerdos de los órganos colegiados locales. Convocatoria y orden del día. Requisitos de constitución. Votaciones. Actas y certificación de acuerdos." },
+    { "n": 14, "bloque": 2, "epi": "El personal funcionario al servicio de las Administraciones Públicas: régimen jurídico. Clasificación del personal al servicio de la Administración Local. Competencias de los distintos órganos de las entidades locales en materia de personal." },
+    { "n": 15, "bloque": 2, "epi": "El presupuesto general de las entidades locales: principios, contenido, elaboración y aprobación." },
+    { "n": 16, "bloque": 2, "epi": "Recursos de las entidades locales: impuestos, tasas, contribuciones especiales y precios públicos." },
+    { "n": 17, "bloque": 2, "epi": "El explorador de Windows. Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas 'Este equipo' y 'Acceso rápido'. Accesorios. Herramientas del sistema. Nociones básicas de seguridad informática." },
+    { "n": 18, "bloque": 2, "epi": "Procesadores de texto: Word 365 y Word 2016. Funciones y utilidades. Creación y estructuración del documento. Gestión, grabación, recuperación e impresión. Personalización del entorno." },
+    { "n": 19, "bloque": 2, "epi": "Hojas de cálculo: Excel 365 y Excel 2016. Libros, hojas y celdas. Configuración. Datos. Fórmulas y funciones. Gráficos. Gestión de datos. Personalización del entorno." },
+    { "n": 20, "bloque": 2, "epi": "Correo electrónico: Outlook 365. Conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas de mensaje. Libreta de direcciones." }
+  ],
+  "bloques": [
+    { "n": 1, "titulo": "Parte General" },
+    { "n": 2, "titulo": "Parte Específica" }
+  ],
+  "normativa": "Todo reutilizado: CE, Estatuto de Autonomía de Castilla y León, LBRL, TRRL, ROF (RD 2568/1986), TRLRHL, EBEP, Ley 39/2015, Ley 40/2015, LO 3/2007, LO 1/2004, Ley 9/2017 y ofimática Office 365 (Word/Excel/Outlook) + Windows."
+}

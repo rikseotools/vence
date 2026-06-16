@@ -1774,6 +1774,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_zamora',
+    slug: 'auxiliar-administrativo-diputacion-zamora',
+    positionType: 'auxiliar_administrativo_diputacion_zamora',
+    examScoring: { penaltyDivisor: 4, source: 'BOP Zamora nº23 26/02/2025: cada error resta un cuarto (1/4) del valor de un acierto; en blanco no penaliza. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Zamora',
+    shortName: 'Aux. Dip. Zamora',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'yellow',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'general',
+        title: 'Parte General',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución, el Estatuto de Castilla y León y el régimen local' },
+          { id: 2, name: 'Ley 39/2015, Ley 40/2015 y recursos de las haciendas locales' },
+          { id: 3, name: 'La Función Pública Local: derechos y deberes' },
+          { id: 4, name: 'Políticas de igualdad y contra la violencia de género' },
+        ],
+      },
+      {
+        id: 'especifica',
+        title: 'Parte Específica',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 5, name: 'El procedimiento administrativo: fases y procedimiento electrónico' },
+          { id: 6, name: 'El acto administrativo: elementos, eficacia, nulidad y anulabilidad' },
+          { id: 7, name: 'Los recursos administrativos' },
+          { id: 8, name: 'Los contratos de las Administraciones Públicas' },
+          { id: 9, name: 'El documento administrativo, el expediente y los archivos' },
+          { id: 10, name: 'Información y atención al ciudadano. El registro de documentos' },
+          { id: 11, name: 'El régimen local: la provincia, organización y competencias' },
+          { id: 12, name: 'El municipio: organización, término, población y padrón' },
+          { id: 13, name: 'Régimen de sesiones y acuerdos de los órganos colegiados locales' },
+          { id: 14, name: 'El personal al servicio de las entidades locales' },
+          { id: 15, name: 'El presupuesto general de las entidades locales' },
+          { id: 16, name: 'Recursos de las entidades locales: impuestos, tasas y precios públicos' },
+          { id: 17, name: 'Informática básica y el explorador de Windows' },
+          { id: 18, name: 'Ofimática: Word (Office 365/2016)' },
+          { id: 19, name: 'Ofimática: Excel (Office 365/2016)' },
+          { id: 20, name: 'Ofimática: Outlook 365' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['zamora', 'diputacion zamora', 'dip zamora', 'aux zamora', 'auxiliar zamora', 'diputacion de zamora'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-zamora', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-zamora/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-zamora/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
