@@ -1402,6 +1402,91 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE CÁDIZ (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_cadiz',
+    slug: 'auxiliar-administrativo-universidad-cadiz',
+    positionType: 'auxiliar_administrativo_universidad_cadiz',
+    examScoring: { penaltyDivisor: 3, source: 'BOE-A-2026-9563 (bases UCA): penalización N=A−E/(nº alternativas−1); con 4 alternativas equivale a restar 1/3 por error; en blanco no penaliza. confidence:media (el nº de alternativas lo fija el Tribunal)' },
+    name: 'Auxiliar Administrativo de la Universidad de Cádiz',
+    shortName: 'Aux. Admin. UCA',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'sky',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'organizacion',
+        title: 'Bloque I: Organización de la Administración',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: Título Preliminar y Título I' },
+          { id: 2, name: 'La Constitución: Corona, Cortes Generales y Gobierno' },
+          { id: 3, name: 'La Constitución: Gobierno-Cortes, Poder Judicial y organización territorial' },
+          { id: 4, name: 'El Estatuto de Autonomía para Andalucía' },
+          { id: 5, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 6, name: 'Protección de Datos y derechos digitales (LO 3/2018)' },
+          { id: 7, name: 'Sistema de Dirección Estratégica de la Universidad de Cádiz' },
+        ],
+      },
+      {
+        id: 'derecho-admin',
+        title: 'Bloque II: Derecho Administrativo',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 8, name: 'Las fuentes del Derecho Administrativo' },
+          { id: 9, name: 'Ley 40/2015: disposiciones generales y órganos' },
+          { id: 10, name: 'Ley 40/2015: funcionamiento electrónico del sector público' },
+          { id: 11, name: 'Ley 39/2015: interesados y actividad de las Administraciones' },
+          { id: 12, name: 'Ley 39/2015: los actos administrativos' },
+          { id: 13, name: 'Ley 39/2015: el procedimiento administrativo común' },
+          { id: 14, name: 'Ley 39/2015: revisión de los actos en vía administrativa' },
+        ],
+      },
+      {
+        id: 'personal',
+        title: 'Bloque III: Gestión de personal',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 15, name: 'EBEP: el personal al servicio de las Administraciones Públicas' },
+          { id: 16, name: 'EBEP: derechos, deberes y código de conducta' },
+          { id: 17, name: 'EBEP: adquisición y pérdida de la relación de servicio' },
+          { id: 18, name: 'EBEP: ordenación de la actividad profesional' },
+          { id: 19, name: 'EBEP: régimen disciplinario' },
+        ],
+      },
+      {
+        id: 'universitaria',
+        title: 'Bloque IV: Gestión universitaria',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 20, name: 'LOSU: funciones, autonomía y creación de universidades' },
+          { id: 21, name: 'LOSU: régimen jurídico, estructura y gobernanza' },
+          { id: 22, name: 'LOSU: estudiantado, PDI y personal técnico, de gestión y administración' },
+          { id: 23, name: 'Ley 1/2026 Universitaria para Andalucía: sistema, régimen jurídico y funciones' },
+          { id: 24, name: 'Ley 1/2026 LUA: docencia, investigación y transferencia' },
+          { id: 25, name: 'Ley 1/2026 LUA: régimen económico, financiero y patrimonial' },
+          { id: 26, name: 'Normas de Ejecución del Presupuesto de la Universidad de Cádiz' },
+          { id: 27, name: 'Código Ético de la Universidad de Cádiz (Código Peñalver)' },
+        ],
+      },
+    ],
+    totalTopics: 27,
+    aliases: ['cadiz', 'universidad de cadiz', 'uca', 'aux cadiz', 'auxiliar cadiz', 'universidad cadiz'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-cadiz', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-cadiz/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-cadiz/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

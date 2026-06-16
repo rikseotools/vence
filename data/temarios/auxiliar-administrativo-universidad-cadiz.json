@@ -1,0 +1,63 @@
+{
+  "slug": "auxiliar-administrativo-universidad-cadiz",
+  "position_type": "auxiliar_administrativo_universidad_cadiz",
+  "nombre": "Auxiliar Administrativo de la Universidad de Cádiz",
+  "administracion": "Autonómica",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Concurso-oposición (oposición 65% / concurso 35%)",
+  "fuente_temario": "Resolución 28/04/2026; BOE-A-2026-9563 (02/05/2026) + modificación BOE-A-2026-10851 (20/05/2026); BOJA nº84 (05/05/2026) y nº91 (14/05/2026)",
+  "oep": "12 plazas Escala Auxiliar Administrativa C2 (10 turno libre + 2 discapacidad: 1 intelectual + 1 enfermedad mental). OEP 2023, 2024 y 2025.",
+  "examen": {
+    "ejercicios": 2,
+    "tipo": "test (teórico + práctico)",
+    "primer_ejercicio": { "tipo": "test teórico", "preguntas": 90, "preguntas_reserva": 5, "minutos": 90, "puntuacion_min": 5 },
+    "segundo_ejercicio": { "tipo": "test sobre 2 casos prácticos (bloques II-IV)", "preguntas": 30, "minutos": 45, "puntuacion_min": 5 },
+    "opciones": 4,
+    "penalizacion": "Fórmula N = A − [E / (nº alternativas − 1)]. Con 4 alternativas equivale a restar 1/3 por error (el nº de alternativas lo fija el Tribunal antes del examen)",
+    "penalizacion_fuente": "BOE-A-2026-9563 (bases UCA): penalización paramétrica según nº de alternativas; en blanco no penaliza",
+    "sistema": "concurso-oposición (oposición 65% eliminatoria / concurso 35%)",
+    "minimo": "5/10 en cada ejercicio y suma ≥10 entre ambos"
+  },
+  "temario": [
+    { "n": 1, "bloque": 1, "epi": "La Constitución Española de 1978. Estructura y contenido. Título preliminar. Título I. De los derechos y deberes fundamentales." },
+    { "n": 2, "bloque": 1, "epi": "La Constitución de 1978: Título II. De la Corona. Título III. De las Cortes Generales. Título IV. Del Gobierno y de la Administración." },
+    { "n": 3, "bloque": 1, "epi": "La Constitución de 1978: Título V. De las relaciones entre el Gobierno y las Cortes Generales. Título VI. Del Poder Judicial. Título VIII. De la Organización Territorial del Estado." },
+    { "n": 4, "bloque": 1, "epi": "El Estatuto de Autonomía para Andalucía. Derechos y deberes. Principios rectores. Competencias de la Comunidad Autónoma." },
+    { "n": 5, "bloque": 1, "epi": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres. Objeto y ámbito de la Ley. El principio de igualdad y la tutela contra la discriminación. El principio de igualdad en el empleo público: criterios de actuación de las Administraciones Públicas." },
+    { "n": 6, "bloque": 1, "epi": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales. Disposiciones generales. Principios de protección de los datos. Derecho de las personas." },
+    { "n": 7, "bloque": 1, "epi": "Sistema de Dirección Estratégica de la Universidad de Cádiz: misión, visión, valores, ámbitos estratégicos y objetivos generales." },
+    { "n": 8, "bloque": 2, "epi": "Las fuentes del Derecho Administrativo: concepto y clases. La Ley. El Reglamento: concepto, naturaleza y clases. Otras fuentes del Derecho Administrativo." },
+    { "n": 9, "bloque": 2, "epi": "La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. Disposiciones generales. Los órganos de las Administraciones Públicas." },
+    { "n": 10, "bloque": 2, "epi": "La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. Funcionamiento electrónico del sector público." },
+    { "n": 11, "bloque": 2, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas. De los interesados en el procedimiento. De la actividad de las Administraciones Públicas." },
+    { "n": 12, "bloque": 2, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas. De los actos administrativos." },
+    { "n": 13, "bloque": 2, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas. De las disposiciones sobre el procedimiento administrativo común." },
+    { "n": 14, "bloque": 2, "epi": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas. De la revisión de los actos en vía administrativa." },
+    { "n": 15, "bloque": 3, "epi": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. Personal al servicio de las Administraciones Públicas." },
+    { "n": 16, "bloque": 3, "epi": "Real Decreto Legislativo 5/2015. Derechos y deberes. Código de conducta de los empleados públicos." },
+    { "n": 17, "bloque": 3, "epi": "Real Decreto Legislativo 5/2015. Adquisición y pérdida de la relación de servicio." },
+    { "n": 18, "bloque": 3, "epi": "Real Decreto Legislativo 5/2015. Ordenación de la actividad profesional." },
+    { "n": 19, "bloque": 3, "epi": "Real Decreto Legislativo 5/2015. Régimen disciplinario." },
+    { "n": 20, "bloque": 4, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario. Funciones del sistema universitario y autonomía de las universidades. Creación y reconocimiento de las universidades." },
+    { "n": 21, "bloque": 4, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario. Régimen jurídico y estructura de las universidades públicas. Gobernanza de las universidades públicas." },
+    { "n": 22, "bloque": 4, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario. El estudiantado en el Sistema Universitario. El personal docente e investigador. El personal técnico, de gestión y de administración y servicios." },
+    { "n": 23, "bloque": 4, "epi": "Ley 1/2026, de 20 de febrero, Universitaria para Andalucía. Sistema universitario andaluz. Régimen jurídico. Funciones, reserva de actividad y de denominación. Prerrogativas y potestades de las universidades públicas." },
+    { "n": 24, "bloque": 4, "epi": "Ley 1/2026, de 20 de febrero, Universitaria para Andalucía. Docencia, Investigación y Transferencia del Conocimiento." },
+    { "n": 25, "bloque": 4, "epi": "Ley 1/2026, de 20 de febrero, Universitaria para Andalucía. Régimen económico, financiero y patrimonial de las universidades públicas." },
+    { "n": 26, "bloque": 4, "epi": "Normas de Ejecución del Presupuesto de la Universidad de Cádiz: el presupuesto de la UCA, los créditos y sus modificaciones, ejecución del presupuesto." },
+    { "n": 27, "bloque": 4, "epi": "Código ético de la Universidad de Cádiz (Código Peñalver)." }
+  ],
+  "bloques": [
+    { "n": 1, "titulo": "Bloque I: Organización de la Administración" },
+    { "n": 2, "titulo": "Bloque II: Derecho Administrativo" },
+    { "n": 3, "titulo": "Bloque III: Gestión de personal" },
+    { "n": 4, "titulo": "Bloque IV: Gestión universitaria" }
+  ],
+  "normativa_propia_uca": [
+    "Tema 7: Sistema de Dirección Estratégica de la UCA.",
+    "Tema 26: Normas de Ejecución del Presupuesto de la UCA.",
+    "Tema 27: Código Ético de la UCA (Código Peñalver).",
+    "Temas 23-25: Ley 1/2026 Universitaria para Andalucía (LUA) — ley autonómica nueva, probablemente no en BD."
+  ]
+}

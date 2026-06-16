@@ -561,6 +561,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_cadiz',
+      label: 'Auxiliar Administrativo UCA',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad de Cádiz',
+        slug: 'auxiliar-administrativo-universidad-cadiz',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
