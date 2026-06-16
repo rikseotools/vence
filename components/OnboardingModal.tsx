@@ -808,6 +808,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'auxiliar_administrativo_universidad_huelva',
+    nombre: 'Auxiliar Administrativo Universidad de Huelva (UHU)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_ayuntamiento_barcelona',
     nombre: 'Auxiliar Administrativo Ayuntamiento de Barcelona',
     categoria: 'C2',

@@ -76,6 +76,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-universidad-uned': 'estado',
     'auxiliar-administrativo-universidad-complutense': 'madrid',
     'auxiliar-administrativo-universidad-alcala': 'madrid',
+    'auxiliar-administrativo-universidad-huelva': 'andalucia',
     'auxiliar-administrativo-ayuntamiento-madrid': 'madrid',
     'auxiliar-administrativo-diputacion-cordoba': 'andalucia',
     'auxiliar-administrativo-ayuntamiento-sevilla': 'andalucia',

@@ -1289,6 +1289,57 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE HUELVA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_huelva',
+    slug: 'auxiliar-administrativo-universidad-huelva',
+    positionType: 'auxiliar_administrativo_universidad_huelva',
+    examScoring: { penaltyDivisor: null, source: 'BOJA nº228 26/11/2025 (bases UHU): "No penalizarán las respuestas erróneas". Test de 100 preguntas, 4 alternativas. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Universidad de Huelva',
+    shortName: 'Aux. Admin. UHU',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'teal',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (17 temas)',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978: Título Preliminar, Título I y Título IV' },
+          { id: 2, name: 'Ley 39/2015 (I): disposiciones generales, interesados y plazos' },
+          { id: 3, name: 'Ley 39/2015 (II): el procedimiento administrativo común' },
+          { id: 4, name: 'Ley 39/2015 (III): los recursos administrativos' },
+          { id: 5, name: 'Ley 40/2015: Título Preliminar del Régimen Jurídico del Sector Público' },
+          { id: 6, name: 'El Estatuto Básico del Empleado Público (EBEP)' },
+          { id: 7, name: 'Protección de Datos: principios y derechos (LO 3/2018)' },
+          { id: 8, name: 'Transparencia y acceso a la información pública (Ley 19/2013)' },
+          { id: 9, name: 'Igualdad de género en Andalucía (Ley 12/2007)' },
+          { id: 10, name: 'Ley Orgánica del Sistema Universitario (LOSU)' },
+          { id: 11, name: 'Los Estatutos de la Universidad de Huelva' },
+          { id: 12, name: 'Organización de las enseñanzas universitarias (RD 822/2021)' },
+          { id: 13, name: 'Información general de la Universidad de Huelva' },
+          { id: 14, name: 'Bases de ejecución presupuestaria de la Universidad de Huelva' },
+          { id: 15, name: 'Reglamento de permanencia y progreso en Grado y Máster de la UHU' },
+          { id: 16, name: 'Ofimática: Microsoft 365 Word' },
+          { id: 17, name: 'Ofimática: Microsoft 365 Excel' },
+        ],
+      },
+    ],
+    totalTopics: 17,
+    aliases: ['huelva', 'universidad de huelva', 'uhu', 'aux huelva', 'auxiliar huelva', 'universidad huelva'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-huelva', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-huelva/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-huelva/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

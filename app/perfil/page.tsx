@@ -541,6 +541,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_huelva',
+      label: 'Auxiliar Administrativo UHU',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad de Huelva',
+        slug: 'auxiliar-administrativo-universidad-huelva',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
