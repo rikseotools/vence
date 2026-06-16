@@ -571,6 +571,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_leon',
+      label: 'Auxiliar Administrativo ULE',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad de León',
+        slug: 'auxiliar-administrativo-universidad-leon',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

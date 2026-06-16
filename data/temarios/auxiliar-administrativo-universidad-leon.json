@@ -1,0 +1,51 @@
+{
+  "slug": "auxiliar-administrativo-universidad-leon",
+  "position_type": "auxiliar_administrativo_universidad_leon",
+  "nombre": "Auxiliar Administrativo de la Universidad de León",
+  "administracion": "Autonómica",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Concurso-oposición libre (oposición 75% / concurso 25%)",
+  "fuente_temario": "Resolución 16/02/2026 ULE; BOE-A-2026-4150 (BOE nº48, 23/02/2026) = BOCYL-D-19022026-34-17",
+  "oep": "9 plazas Escala Auxiliar Administrativa C2 (8 turno libre + 1 discapacidad), concurso-oposición libre. OEP 2023, 2024 y 2025 (ampliable con C2 OEP 2026).",
+  "examen": {
+    "ejercicios": 2,
+    "tipo": "1º test (teórico + aptitudinal) + 2º práctico de ofimática",
+    "primer_ejercicio": { "tipo": "test", "preguntas": 70, "preguntas_reserva": 5, "opciones": 4, "minutos": 60, "puntuacion_max": 37.5, "incluye": "preguntas de atención/razonamiento/aptitud espacial, verbal y numérica" },
+    "segundo_ejercicio": { "tipo": "supuesto práctico en ordenador (Office 2021: Word y Excel)", "minutos": 60, "puntuacion_max": 37.5 },
+    "opciones": 4,
+    "penalizacion": "0,333 por respuesta errónea (1/3), descontado del total de aciertos; en blanco no penaliza",
+    "penalizacion_fuente": "BOE-A-2026-4150, base 5 (cita literal: 'a razón de 0,333 preguntas por cada respuesta errónea')",
+    "sistema": "concurso-oposición libre (oposición 75% máx 75 pts / concurso 25% máx 25 pts)",
+    "minimo": "El Tribunal fija el nivel para superar cada ejercicio (no hay corte fijo en bases)"
+  },
+  "temario": [
+    { "n": 1, "epi": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: Títulos I a V." },
+    { "n": 2, "epi": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público: Capítulos I y II del Título Preliminar; Capítulo V (funcionamiento electrónico del sector público)." },
+    { "n": 3, "epi": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres: Títulos I, II, IV, V y VIII." },
+    { "n": 4, "epi": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales: Títulos II y III." },
+    { "n": 5, "epi": "Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno: Título I." },
+    { "n": 6, "epi": "Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales: Capítulo III." },
+    { "n": 7, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario: Título Preliminar y Títulos I a IV." },
+    { "n": 8, "epi": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario: Títulos V, VIII y IX." },
+    { "n": 9, "epi": "Real Decreto 822/2021, de 28 de septiembre, por el que se establece la organización de las enseñanzas universitarias y del procedimiento de aseguramiento de su calidad: Capítulos II, III, IV, V, VI y VIII." },
+    { "n": 10, "epi": "Real Decreto 99/2011, de 28 de enero, por el que se regulan las enseñanzas oficiales de doctorado." },
+    { "n": 11, "epi": "Normativa reguladora de las enseñanzas conducentes a títulos propios de la Universidad de León." },
+    { "n": 12, "epi": "Real Decreto 1002/2010, de 5 de agosto, sobre expedición de títulos universitarios oficiales." },
+    { "n": 13, "epi": "Real Decreto 889/2022, de 18 de octubre, sobre homologación, declaración de equivalencia y convalidación de enseñanzas universitarias de sistemas educativos extranjeros." },
+    { "n": 14, "epi": "Normativa de la Universidad de León sobre matrícula y régimen académico y de permanencia." },
+    { "n": 15, "epi": "Real Decreto 1791/2010, de 30 de diciembre, por el que se aprueba el Estatuto del Estudiante Universitario." },
+    { "n": 16, "epi": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Títulos I a VII." },
+    { "n": 17, "epi": "II Convenio Colectivo del Personal de Administración y Servicios laboral de las Universidades Públicas de Castilla y León: Títulos IV, V, VI y XIII." },
+    { "n": 18, "epi": "Normas de ejecución presupuestaria del presupuesto de la Universidad de León." },
+    { "n": 19, "epi": "Principales componentes de un ordenador. Sistema operativo Windows 10. Explorador de Archivos. Trabajo con directorios y archivos. Gestión de impresión. Panel de control. Compartición de recursos. Nociones básicas de seguridad informática." },
+    { "n": 20, "epi": "Aplicaciones de Office 2021 Pro Plus: procesador de textos Word y hoja de cálculo Excel." },
+    { "n": 21, "epi": "Intranet/Internet: navegación; correo electrónico; obtención de recursos vía web; Google Workspace." }
+  ],
+  "normativa_propia_ule": [
+    "Tema 11: Normativa de títulos propios de la ULE.",
+    "Tema 14: Normativa de matrícula y régimen académico y de permanencia de la ULE.",
+    "Tema 18: Normas de ejecución presupuestaria de la ULE.",
+    "Tema 17: II Convenio Colectivo del PAS laboral de las Universidades Públicas de Castilla y León (sectorial autonómico)."
+  ]
+}

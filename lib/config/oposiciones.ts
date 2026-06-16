@@ -1487,6 +1487,61 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE LEÓN (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_leon',
+    slug: 'auxiliar-administrativo-universidad-leon',
+    positionType: 'auxiliar_administrativo_universidad_leon',
+    examScoring: { penaltyDivisor: 3, source: 'BOE-A-2026-4150 (bases ULE, base 5): cada respuesta errónea resta 0,333 (1/3); en blanco no penaliza; 4 alternativas. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Universidad de León',
+    shortName: 'Aux. Admin. ULE',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'indigo',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (21 temas)',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 1, name: 'Ley 39/2015: el procedimiento administrativo común (Títulos I-V)' },
+          { id: 2, name: 'Ley 40/2015: disposiciones generales y funcionamiento electrónico' },
+          { id: 3, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 4, name: 'Protección de Datos: principios y derechos (LO 3/2018)' },
+          { id: 5, name: 'Transparencia y acceso a la información pública (Ley 19/2013)' },
+          { id: 6, name: 'Prevención de Riesgos Laborales: derechos y obligaciones (Ley 31/1995)' },
+          { id: 7, name: 'LOSU (I): funciones, autonomía, estructura y enseñanzas' },
+          { id: 8, name: 'LOSU (II): personal, régimen y garantías' },
+          { id: 9, name: 'Organización de las enseñanzas universitarias (RD 822/2021)' },
+          { id: 10, name: 'Enseñanzas oficiales de doctorado (RD 99/2011)' },
+          { id: 11, name: 'Normativa de títulos propios de la Universidad de León' },
+          { id: 12, name: 'Expedición de títulos universitarios oficiales (RD 1002/2010)' },
+          { id: 13, name: 'Homologación y equivalencia de títulos extranjeros (RD 889/2022)' },
+          { id: 14, name: 'Matrícula, régimen académico y permanencia en la Universidad de León' },
+          { id: 15, name: 'El Estatuto del Estudiante Universitario (RD 1791/2010)' },
+          { id: 16, name: 'El Estatuto Básico del Empleado Público (EBEP)' },
+          { id: 17, name: 'II Convenio Colectivo del PAS laboral de las Universidades Públicas de Castilla y León' },
+          { id: 18, name: 'Normas de ejecución presupuestaria de la Universidad de León' },
+          { id: 19, name: 'Informática básica y sistema operativo Windows 10' },
+          { id: 20, name: 'Ofimática: Word y Excel (Office 2021)' },
+          { id: 21, name: 'Internet, correo electrónico y Google Workspace' },
+        ],
+      },
+    ],
+    totalTopics: 21,
+    aliases: ['leon universidad', 'universidad de leon', 'ule', 'aux universidad leon', 'auxiliar universidad leon'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-leon', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-leon/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-leon/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
