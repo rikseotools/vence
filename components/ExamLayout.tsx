@@ -979,7 +979,12 @@ export default function ExamLayout({
   }
 
   const totalQuestions = effectiveQuestions.length
-  const answeredCount = Object.keys(userAnswers).length
+  // Tras corregir, las cuentas salen de la nota AUTORITATIVA del servidor (BD)
+  // para que respondidas/incorrectas/en blanco cuadren con la nota mostrada y no
+  // del estado local userAnswers, que pudo desalinearse (caso Isabel 16/06).
+  const answeredCount = (isSubmitted && validatedResults?.summary)
+    ? validatedResults.summary.totalAnswered
+    : Object.keys(userAnswers).length
   const accuracy = isSubmitted && totalQuestions > 0 ? (score / totalQuestions * 100).toFixed(1) : 0
 
   const correctCount = score
@@ -1162,8 +1167,13 @@ export default function ExamLayout({
         {/* ✅ LISTA DE PREGUNTAS */}
         <div className="space-y-6">
           {effectiveQuestions.map((question, index) => {
-            const selectedOption = userAnswers[index]
             const validatedResult = validatedResults?.results?.[index]
+            // Tras corregir, la respuesta a mostrar es la AUTORITATIVA de la BD
+            // (validatedResult.userAnswer), no el estado local userAnswers[index]
+            // que pudo desalinearse. Antes de corregir, el estado local.
+            const selectedOption = (isSubmitted && validatedResult)
+              ? (validatedResult.userAnswer || undefined)
+              : userAnswers[index]
             const correctOptionLetter = validatedResult?.correctAnswer || null
             const isCorrect = validatedResult?.isCorrect ?? false
             const showFeedback = isSubmitted && validatedResult

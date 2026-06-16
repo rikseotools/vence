@@ -13,6 +13,14 @@ import { questions, tests, testQuestions } from '@/db/schema'
 import { inArray, eq, sql } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getSink } from '@/lib/observability/sink'
+import {
+  summarizeDbScore,
+  overlayResultsWithDb,
+  indexDbRowsByQuestionId,
+  scoreDivergence,
+  type DbAnswerRow,
+} from '@/lib/api/exam/reconcile'
 // ============================================
 // SCHEMAS DE VALIDACIÓN
 // ============================================
@@ -141,16 +149,23 @@ async function persistExamQuestions(
     if (rows.length === 0) return
 
     // UPSERT en bloque sobre la constraint única (test_id, question_order).
+    //
+    // NO-DESTRUCTIVO: si la fila ya tiene una respuesta NO blanca (la escribió un
+    // save realtime, que empareja questionId↔respuesta en el servidor y es fiable
+    // por construcción), se CONSERVA — el batch va indexado por posición y puede
+    // venir desalineado (caso Isabel 16/06: batch 0/71 con la BD en 62/71). El
+    // batch solo RELLENA filas en blanco (o inexistentes → INSERT). `correct_answer`
+    // se refresca siempre: es la clave del servidor, nunca depende del cliente.
     await db
       .insert(testQuestions)
       .values(rows)
       .onConflictDoUpdate({
         target: [testQuestions.testId, testQuestions.questionOrder],
         set: {
-          userAnswer: sql`excluded.user_answer`,
+          userAnswer: sql`CASE WHEN ${testQuestions.userAnswer} IS NULL OR ${testQuestions.userAnswer} = '' THEN excluded.user_answer ELSE ${testQuestions.userAnswer} END`,
           correctAnswer: sql`excluded.correct_answer`,
-          isCorrect: sql`excluded.is_correct`,
-          wasBlank: sql`excluded.was_blank`,
+          isCorrect: sql`CASE WHEN ${testQuestions.userAnswer} IS NULL OR ${testQuestions.userAnswer} = '' THEN excluded.is_correct ELSE ${testQuestions.isCorrect} END`,
+          wasBlank: sql`CASE WHEN ${testQuestions.userAnswer} IS NULL OR ${testQuestions.userAnswer} = '' THEN excluded.was_blank ELSE ${testQuestions.wasBlank} END`,
         },
       })
 
@@ -282,15 +297,74 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
     // de depender de ~50 saves fire-and-forget durante el examen (poco fiables
     // bajo carga → filas perdidas, bug 30/40 exámenes 08/06). markTestAsCompleted
     // fija score/total DESPUÉS, con la vista completa.
+    //
+    // La nota mostrada y el detalle por-pregunta se derivan de la BD (fuente
+    // autoritativa), NO del batch indexado por posición que puede desalinearse.
     if (testId) {
       await persistExamQuestions(testId, answers, results, correctAnswersMap)
 
-      const completed = await markTestAsCompleted(testId, totalCorrect, totalQuestions)
+      // Re-leer el estado autoritativo (incluye lo que escribieron los saves
+      // realtime + lo que rellenó el persist) y recomputar la nota desde ahí.
+      const dbRows: DbAnswerRow[] = (await db
+        .select({
+          questionId: testQuestions.questionId,
+          userAnswer: testQuestions.userAnswer,
+          isCorrect: testQuestions.isCorrect,
+        })
+        .from(testQuestions)
+        .where(eq(testQuestions.testId, testId)))
+        .map(r => ({ questionId: r.questionId, userAnswer: r.userAnswer ?? '', isCorrect: !!r.isCorrect }))
+
+      const authSummary = summarizeDbScore(dbRows, totalQuestions)
+      const authResults = overlayResultsWithDb(results, indexDbRowsByQuestionId(dbRows))
+      const divergence = scoreDivergence(totalCorrect, authSummary.totalCorrect)
+
+      const completed = await markTestAsCompleted(testId, authSummary.totalCorrect, totalQuestions)
       if (!completed) {
         console.warn('⚠️ [API/exam/validate] No se pudo marcar el test como completado, pero continuamos')
       }
+
+      // 📡 Observabilidad: la nota que el cliente calculó (batch) diverge de la
+      // autoritativa (BD) → desalineado/corrupción del estado del cliente. Es la
+      // señal que habría cazado el caso Isabel (pantalla 0, BD 62). Resiliente:
+      // el sink nunca propaga errores.
+      if (divergence.diverged) {
+        console.warn('⚠️ [API/exam/validate] Divergencia de nota batch vs BD:', {
+          testId, payloadCorrect: totalCorrect, dbCorrect: authSummary.totalCorrect, delta: divergence.delta,
+        })
+        await getSink().emit({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'exam_score_divergence',
+          endpoint: '/api/exam/validate',
+          deployVersion: process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 8) ?? null,
+          metadata: {
+            testId,
+            payloadCorrect: totalCorrect,
+            dbCorrect: authSummary.totalCorrect,
+            delta: divergence.delta,
+            payloadAnswered: totalAnswered,
+            dbAnswered: authSummary.totalAnswered,
+            totalQuestions,
+          },
+        })
+      }
+
+      return {
+        success: true,
+        results: authResults,
+        summary: {
+          totalQuestions: authSummary.totalQuestions,
+          totalAnswered: authSummary.totalAnswered,
+          totalCorrect: authSummary.totalCorrect,
+          totalIncorrect: authSummary.totalQuestions - authSummary.totalCorrect,
+          percentage: authSummary.percentage,
+        },
+      }
     }
 
+    // Sin testId (anónimo / sin sesión): no hay BD autoritativa, se devuelve la
+    // validación del batch tal cual (comportamiento previo).
     return {
       success: true,
       results,
