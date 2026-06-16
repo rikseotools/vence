@@ -5,6 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
+import {
+  QUESTION_COUNT_PRESETS,
+  customQuestionCap,
+  isCustomQuestionCount,
+  clampCustomQuestionCount,
+} from '@/lib/test/questionCount'
 import type {
   OposicionSlug,
   DifficultyLevel,
@@ -343,7 +349,7 @@ export default function RandomTestClient({
                 </div>
               )}
               <div className="grid grid-cols-4 gap-2 mb-2">
-                {[10, 25, 50, 100].map((num) => {
+                {QUESTION_COUNT_PRESETS.map((num) => {
                   const exceedsAvailable = num > availableQuestions && availableQuestions > 0
                   const exceedsDailyLimit = hasLimit && num > questionsRemaining
                   const needsPremium = exceedsDailyLimit && !exceedsAvailable
@@ -375,6 +381,33 @@ export default function RandomTestClient({
                     </button>
                   )
                 })}
+              </div>
+              {/* Cantidad personalizada: los presets cubren 10/25/50/100; aquí
+                  cualquier número (ej. 70 para simular el examen real mezclando
+                  temas). Mismo patrón que TestConfigurator (tema individual). */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="random-custom-question-count" className="text-xs text-gray-600">
+                  O personalizado:
+                </label>
+                <input
+                  id="random-custom-question-count"
+                  type="number"
+                  min={1}
+                  max={customQuestionCap(availableQuestions)}
+                  inputMode="numeric"
+                  placeholder="ej. 70"
+                  value={isCustomQuestionCount(numQuestions) ? numQuestions : ''}
+                  onChange={(e) => {
+                    const next = clampCustomQuestionCount(parseInt(e.target.value, 10), availableQuestions)
+                    if (next !== null) setNumQuestions(next)
+                  }}
+                  className={`w-20 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
+                    isCustomQuestionCount(numQuestions)
+                      ? 'border-blue-600 ring-1 ring-blue-600 text-blue-700'
+                      : 'border-gray-300 text-gray-700'
+                  } focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none`}
+                />
+                <span className="text-xs text-gray-400">máx. {customQuestionCap(availableQuestions)}</span>
               </div>
             </div>
 
