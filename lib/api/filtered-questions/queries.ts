@@ -28,6 +28,7 @@ import type {
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
+import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import { logValidationError } from '@/lib/api/validation-error-log'
 
 // ============================================
@@ -818,30 +819,17 @@ export async function getFilteredQuestions(
 
       let failedQuestions
       if (hasScopes) {
-        // Construimos la query con CTE inline. drizzle.execute con sql template
-        // no nos da type safety completo, así que mantenemos el query builder y
-        // añadimos un EXISTS contra una subquery LATERAL preparada (equivalente
-        // semántico al CTE pero compatible con el query builder de Drizzle).
-        const scopeFilter = hasTopicFilter
-          ? sql`EXISTS (
-              SELECT 1
-              FROM ${topicScope} ts
-              INNER JOIN ${topics} t ON t.id = ts.topic_id
-              CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
-              WHERE ts.law_id = ${articles.lawId}
-                AND t.position_type = ${positionType}
-                AND t.topic_number = ${topicNumber}
-                AND an.num = ${articles.articleNumber}::text
-            )`
-          : sql`EXISTS (
-              SELECT 1
-              FROM ${topicScope} ts
-              INNER JOIN ${topics} t ON t.id = ts.topic_id
-              CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
-              WHERE ts.law_id = ${articles.lawId}
-                AND t.position_type = ${positionType}
-                AND an.num = ${articles.articleNumber}::text
-            )`
+        // FUENTE ÚNICA del scope por artículo (articleInPositionScopeExists):
+        // respeta article_numbers IS NULL = "toda la ley". El CROSS JOIN LATERAL
+        // unnest anterior NO la respetaba → se perdían las falladas de leyes
+        // virtuales (Word/Excel/eIDAS…) en el repaso con scope (verificado:
+        // recuperaba ~203 falladas para un usuario CARM real; plan sin Seq Scan).
+        const scopeFilter = articleInPositionScopeExists({
+          lawId: articles.lawId,
+          articleNumber: articles.articleNumber,
+          positionType,
+          topicNumber: hasTopicFilter ? topicNumber : null,
+        })
         lawConditions.push(scopeFilter)
       } else {
         console.warn(`⚠️ [failed-questions] positionType="${positionType}" no tiene topic_scopes configurados — fallback a modo legacy (sin filtro de oposición). Solo se respeta selectedLaws.`)
@@ -914,25 +902,15 @@ export async function getFilteredQuestions(
       const hasScopes = (scopeAvailable[0]?.n ?? 0) > 0
 
       const hasTopicFilter = !!topicNumber && topicNumber > 0
+      // FUENTE ÚNICA del scope por artículo (respeta article_numbers IS NULL =
+      // "toda la ley"; el unnest anterior excluía las falladas de leyes virtuales).
       const scopeFilter = hasScopes
-        ? (hasTopicFilter
-            ? sql`EXISTS (
-                SELECT 1 FROM ${topicScope} ts
-                INNER JOIN ${topics} t ON t.id = ts.topic_id
-                CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
-                WHERE ts.law_id = ${articles.lawId}
-                  AND t.position_type = ${positionType}
-                  AND t.topic_number = ${topicNumber}
-                  AND an.num = ${articles.articleNumber}::text
-              )`
-            : sql`EXISTS (
-                SELECT 1 FROM ${topicScope} ts
-                INNER JOIN ${topics} t ON t.id = ts.topic_id
-                CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
-                WHERE ts.law_id = ${articles.lawId}
-                  AND t.position_type = ${positionType}
-                  AND an.num = ${articles.articleNumber}::text
-              )`)
+        ? articleInPositionScopeExists({
+            lawId: articles.lawId,
+            articleNumber: articles.articleNumber,
+            positionType,
+            topicNumber: hasTopicFilter ? topicNumber : null,
+          })
         : sql`true`
 
       const failedQuestions = await db
@@ -1025,6 +1003,35 @@ export async function getFilteredQuestions(
 
       console.log(`🔍 Modo global: ${validLawIds.length} leyes válidas para "${positionType}"`)
 
+      // 🎯 FIX (16/06/2026 — caso Laura CARM, dispute e7f0b57c): el modo global
+      // (Test Rápido / aleatorio sin tema) acotaba SOLO por law_id. En leyes
+      // compartidas donde la oposición escopa solo PARTE de los artículos
+      // (CARM escopa de la CE los arts. 1-55+116, NO el 134 de presupuestos),
+      // las preguntas de los artículos NO escopados se colaban en el test.
+      //
+      // Replicamos la MISMA semántica de scope a nivel de artículo del modo
+      // tema (ver queryQuestionsForMappingsLightweight, ~L597):
+      //   - article_numbers IS NULL  → ley virtual: toda la ley (745 filas hoy,
+      //                                 p.ej. Word/Excel/eIDAS en CARM)
+      //   - article_numbers = []     → fila inerte: no aporta (no matchea)
+      //   - article_numbers = [vals] → solo esos artículos
+      //
+      // Se usa allowed.positionType (MISMO origen que validLawIds) para que el
+      // scope por artículo sea coherente con el de ley. El filtro anti-
+      // contaminación de OFICIALES mantiene su vía propia (buildOfficialExamFilter).
+      // El inArray(laws.id) se conserva como pre-poda indexada barata; el EXISTS
+      // refina sin reintroducir el Seq Scan del incidente 2026-05-04 (la tabla
+      // grande `articles` ya viene podada por ese inArray + el JOIN — plan
+      // verificado: Merge Semi Join sobre topic_scope, sin Seq Scan).
+      // FUENTE ÚNICA: articleInPositionScopeExists (respeta article_numbers
+      // IS NULL = "toda la ley"; misma semántica que el modo tema).
+      const scopePositionType = allowed.positionType
+      const articleScopeFilter = articleInPositionScopeExists({
+        lawId: articles.lawId,
+        articleNumber: articles.articleNumber,
+        positionType: scopePositionType,
+      })
+
       const globalQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
         .from(questions)
@@ -1034,6 +1041,8 @@ export async function getFilteredQuestions(
           eq(questions.isActive, true),
           isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           inArray(laws.id, validLawIds),
+          // 🎯 Scope a nivel de ARTÍCULO (no solo ley) — cierra la fuga CE 134.
+          articleScopeFilter,
           // 🏛️ Filtro anti-contaminación de OFICIALES — ver comentario en
           // queryQuestionsForMappingsLightweight. Aplica SIEMPRE salvo opt-in.
           includeSharedOfficials ? sql`true` : buildOfficialExamFilter(positionType),
@@ -1043,6 +1052,17 @@ export async function getFilteredQuestions(
         .limit(numQuestions)
 
       if (!globalQuestions || globalQuestions.length === 0) {
+        // 🔭 Observabilidad: hay leyes en scope (validLawIds>0) pero 0 preguntas.
+        // Puede ser legítimo (oposición nueva sin banco) o señal de regresión
+        // del scope por artículo. severity=warning → espejo a observable_events.
+        logValidationError({
+          endpoint: '/api/questions/filtered',
+          errorType: 'global_scope_empty',
+          severity: 'warning',
+          errorMessage: `Modo global sin resultados pese a ${validLawIds.length} leyes en scope para "${scopePositionType}" (numQuestions=${numQuestions}, onlyOfficial=${onlyOfficialQuestions}).`,
+          userId: userId ?? undefined,
+          requestBody: { positionType: scopePositionType, validLaws: validLawIds.length },
+        })
         return {
           success: true,
           questions: [],

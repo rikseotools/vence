@@ -27,3 +27,44 @@ type SqlExpr = SQL | SQL.Aliased | { getSQL: () => SQL }
 export function articleInScope(articleNumber: SqlExpr, articleNumbers: SqlExpr): SQL {
   return sql`(${articleNumbers} IS NULL OR ${articleNumber} = ANY(${articleNumbers}))`
 }
+
+/**
+ * EXISTS correlado: el artículo `(lawId, articleNumber)` pertenece a ALGÚN
+ * `topic_scope` del `positionType` (opcionalmente acotado a un `topicNumber`).
+ *
+ * FUENTE ÚNICA del "scope por artículo a nivel de oposición". La pertenencia
+ * por artículo delega en {@link articleInScope}, por lo que respeta
+ * `article_numbers IS NULL` = "toda la ley" (ley virtual). Pensado para
+ * incrustarse como condición en el WHERE de queries que sirven preguntas:
+ *   - modo global de /api/questions/filtered (Test Rápido / aleatorio sin tema)
+ *   - repaso de falladas con scope de oposición
+ *
+ * Referencia `topic_scope`/`topics` por nombre crudo (alias ts/t) porque vive
+ * dentro de un EXISTS correlacionado con la query externa. Plan verificado sin
+ * Seq Scan sobre `articles` (la externa ya viene podada por law_id + joins).
+ *
+ * @param lawId         expr del law_id del artículo externo (p.ej. `articles.lawId`)
+ * @param articleNumber expr del article_number externo (p.ej. `articles.articleNumber`)
+ * @param positionType  position_type de la oposición
+ * @param topicNumber   si se pasa y es > 0, acota además a ese tema concreto
+ */
+export function articleInPositionScopeExists(opts: {
+  lawId: SqlExpr
+  articleNumber: SqlExpr
+  positionType: string
+  topicNumber?: number | null
+}): SQL {
+  const topicCond =
+    opts.topicNumber && opts.topicNumber > 0
+      ? sql`AND t.topic_number = ${opts.topicNumber}`
+      : sql``
+  return sql`EXISTS (
+    SELECT 1
+    FROM topic_scope ts
+    INNER JOIN topics t ON t.id = ts.topic_id
+    WHERE t.position_type = ${opts.positionType}
+      AND ts.law_id = ${opts.lawId}
+      ${topicCond}
+      AND ${articleInScope(opts.articleNumber, sql`ts.article_numbers`)}
+  )`
+}
