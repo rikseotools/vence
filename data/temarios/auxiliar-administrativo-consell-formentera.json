@@ -1,0 +1,54 @@
+{
+  "slug": "auxiliar-administrativo-consell-formentera",
+  "position_type": "auxiliar_administrativo_consell_formentera",
+  "nombre": "Auxiliar Administrativo del Consell Insular de Formentera",
+  "administracion": "Local",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Concurso-oposición (oposición 60% / concurso 40%)",
+  "fuente_temario": "Bases BOIB nº160 de 04/12/2025; extracto BOE-A-2025-25460 (12/12/2025). OPE Extraordinaria 2024.",
+  "oep": "24 plazas turno libre, Escala Administración General, Subescala Auxiliar, C2. OPE Extraordinaria 2024 del Consell Insular de Formentera. Requisito: catalán nivel B2.",
+  "examen": {
+    "ejercicios": 2,
+    "tipo": "1º test teórico + 2º práctico",
+    "primer_ejercicio": { "tipo": "test", "preguntas": 40, "desglose": "16 generales (T1-8) + 24 específicos (T9-20)", "preguntas_reserva": "10%", "opciones": 4, "minutos": 75, "puntuacion_max": 30, "puntuacion_min": 15 },
+    "segundo_ejercicio": { "tipo": "práctico (tratamiento de textos, psicotécnicos, supuestos, informes)", "minutos": 180, "puntuacion_max": 30, "puntuacion_min": 15 },
+    "opciones": 4,
+    "penalizacion": "Cada 3 preguntas erróneas penalizan el valor de un acierto (error = -1/3); en blanco no penaliza",
+    "penalizacion_fuente": "BOIB nº160 04/12/2025, base octava (cita literal)",
+    "sistema": "concurso-oposición (oposición 60% máx 60 pts / concurso 40% máx 40 pts)",
+    "minimo": "15/30 en cada prueba; 30/60 en la oposición",
+    "catalan": "Nivel B2 como requisito de acceso (no hay ejercicio de catalán)"
+  },
+  "temario": [
+    { "n": 1, "bloque": 1, "epi": "La Constitución española de 1978 (I): estructura, contenido y principios generales. Los derechos y deberes fundamentales. La Administración pública: principios constitucionales." },
+    { "n": 2, "bloque": 1, "epi": "La Constitución española de 1978 (II): La reforma de la Constitución. El Tribunal Constitucional. El poder judicial. Otros órganos constitucionales: el Defensor del Pueblo y el Tribunal de Cuentas." },
+    { "n": 3, "bloque": 1, "epi": "El Estatuto de Autonomía de las Illes Balears: estructura, contenido básico y principios fundamentales. Competencias de la Comunidad Autónoma de las Illes Balears. La reforma del Estatuto de Autonomía." },
+    { "n": 4, "bloque": 1, "epi": "Los consells insulars. Características generales. Composición, organización y competencias en el marco legislativo estatal y autonómico. El régimen especial para la isla de Formentera." },
+    { "n": 5, "bloque": 1, "epi": "El Consell Insular de Formentera: múltiple naturaleza jurídica, estructura orgánica, funcionamiento de los órganos del Consell Insular, singularidad de organización. Reglamento Orgánico del Consell Insular de Formentera. Normativa de régimen local y autonómica aplicable." },
+    { "n": 6, "bloque": 1, "epi": "La Unión Europea: los tratados. Las instituciones: el Consejo, el Parlamento, la Comisión Europea y el Tribunal de Justicia. Las fuentes del derecho comunitario. Los fondos estructurales y los objetivos prioritarios." },
+    { "n": 7, "bloque": 1, "epi": "La Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales. Riesgos y medidas preventivas asociadas al puesto de trabajo." },
+    { "n": 8, "bloque": 1, "epi": "Normativa estatal y autonómica en materia de igualdad y contra la violencia de género: disposiciones generales, objeto, principios y políticas públicas." },
+    { "n": 9, "bloque": 2, "epi": "Las fuentes del derecho administrativo. Jerarquía de fuentes. La ley. Concepto y clases. El reglamento. Fundamento y límites de la potestad reglamentaria. Clases de reglamentos." },
+    { "n": 10, "bloque": 2, "epi": "La Ley 39/2015 (I): objeto y ámbito de aplicación. Los derechos de los ciudadanos en las relaciones con las administraciones públicas." },
+    { "n": 11, "bloque": 2, "epi": "La Ley 39/2015 (II): El acto administrativo: características generales. Requisitos, validez y eficacia. Nulidad y anulabilidad." },
+    { "n": 12, "bloque": 2, "epi": "La Ley 39/2015 (III): Fases del procedimiento administrativo: iniciación, ordenación, instrucción y finalización. Ejecución. Obligación de resolver. El silencio administrativo." },
+    { "n": 13, "bloque": 2, "epi": "La Ley 39/2015 (IV): Términos y plazos. La notificación y publicación de los actos administrativos." },
+    { "n": 14, "bloque": 2, "epi": "La Ley 40/2015 (I): concepto, principios de actuación y funcionamiento. Los órganos de las administraciones públicas: especial referencia a los órganos colegiados." },
+    { "n": 15, "bloque": 2, "epi": "La Ley 40/2015 (II): Las relaciones interadministrativas, principios. Los convenios." },
+    { "n": 16, "bloque": 2, "epi": "Sede electrónica: concepto. La Sede Electrónica: procedimientos y servicios. Transparencia: concepto y tipo. Publicidad activa: Portal de Transparencia." },
+    { "n": 17, "bloque": 2, "epi": "La función pública local. Clases de personal. Régimen jurídico del personal de las entidades locales de las Illes Balears. Derechos y deberes de las personas empleadas públicas. Situaciones administrativas. Incompatibilidades y régimen disciplinario." },
+    { "n": 18, "bloque": 2, "epi": "Derechos y obligaciones de relacionarse electrónicamente con las administraciones públicas. Canales de atención a la ciudadanía: presencial, telefónico y electrónico. Transformación de las oficinas de registro en oficinas de asistencia en materia de registro. Quejas y sugerencias." },
+    { "n": 19, "bloque": 2, "epi": "Marco normativo relativo a la protección de datos de las personas físicas: principios de la protección de datos personales. Derechos de las personas. Responsable y encargado del tratamiento." },
+    { "n": 20, "bloque": 2, "epi": "Los recursos administrativos: concepto y naturaleza jurídica. Clases de recursos y regulación positiva. Requisitos subjetivos y objetivos." }
+  ],
+  "bloques": [
+    { "n": 1, "titulo": "Temario General" },
+    { "n": 2, "titulo": "Temario Específico" }
+  ],
+  "normativa_propia": [
+    "Tema 3: Estatuto de Autonomía de las Illes Balears (LO 1/2007) — autonómica, no en BD.",
+    "Tema 4: Ley 4/2022 de Consells Insulars + régimen especial de Formentera.",
+    "Tema 5: Reglamento Orgánico del Consell Insular de Formentera (normativa propia)."
+  ]
+}

@@ -1542,6 +1542,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO CONSELL INSULAR DE FORMENTERA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_consell_formentera',
+    slug: 'auxiliar-administrativo-consell-formentera',
+    positionType: 'auxiliar_administrativo_consell_formentera',
+    examScoring: { penaltyDivisor: 3, source: 'BOIB nº160 04/12/2025 (base octava): cada 3 preguntas erróneas penalizan el valor de un acierto (error -1/3); en blanco no penaliza; 4 alternativas. confidence:alta' },
+    name: 'Auxiliar Administrativo del Consell Insular de Formentera',
+    shortName: 'Aux. Admin. Formentera',
+    emoji: '🏝️',
+    badge: 'C2',
+    color: 'blue',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'general',
+        title: 'Temario General',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española (I): derechos, deberes y principios de la Administración' },
+          { id: 2, name: 'La Constitución Española (II): reforma, TC, poder judicial y órganos constitucionales' },
+          { id: 3, name: 'El Estatuto de Autonomía de las Illes Balears' },
+          { id: 4, name: 'Los Consells Insulars y el régimen especial de Formentera' },
+          { id: 5, name: 'El Consell Insular de Formentera: naturaleza, organización y Reglamento Orgánico' },
+          { id: 6, name: 'La Unión Europea: tratados, instituciones y fuentes' },
+          { id: 7, name: 'Prevención de Riesgos Laborales (Ley 31/1995)' },
+          { id: 8, name: 'Igualdad y violencia de género: normativa estatal y autonómica' },
+        ],
+      },
+      {
+        id: 'especifico',
+        title: 'Temario Específico',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 9, name: 'Las fuentes del Derecho Administrativo' },
+          { id: 10, name: 'Ley 39/2015 (I): objeto, ámbito y derechos de la ciudadanía' },
+          { id: 11, name: 'Ley 39/2015 (II): el acto administrativo, validez y eficacia' },
+          { id: 12, name: 'Ley 39/2015 (III): fases del procedimiento y silencio administrativo' },
+          { id: 13, name: 'Ley 39/2015 (IV): términos, plazos y notificación' },
+          { id: 14, name: 'Ley 40/2015 (I): principios, funcionamiento y órganos colegiados' },
+          { id: 15, name: 'Ley 40/2015 (II): relaciones interadministrativas y convenios' },
+          { id: 16, name: 'Sede electrónica, transparencia y publicidad activa' },
+          { id: 17, name: 'La función pública local y el régimen del personal' },
+          { id: 18, name: 'Atención a la ciudadanía y oficinas de asistencia en materia de registro' },
+          { id: 19, name: 'Protección de datos de carácter personal' },
+          { id: 20, name: 'Los recursos administrativos' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['formentera', 'consell formentera', 'consell de formentera', 'aux formentera', 'auxiliar formentera'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-consell-formentera', label: 'Mi Oposición', icon: '🏝️', featured: true },
+      { href: '/auxiliar-administrativo-consell-formentera/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-consell-formentera/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

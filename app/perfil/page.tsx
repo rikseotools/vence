@@ -581,6 +581,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_consell_formentera',
+      label: 'Auxiliar Administrativo Formentera',
+      data: {
+        name: 'Auxiliar Administrativo del Consell Insular de Formentera',
+        slug: 'auxiliar-administrativo-consell-formentera',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
