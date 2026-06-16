@@ -31,6 +31,12 @@ export const oposiciones = pgTable('oposiciones', {
   convocatoriaNumero: text('convocatoria_numero'),
   plazasLibres: integer('plazas_libres'),
   plazasDiscapacidad: integer('plazas_discapacidad'),
+  // Fechas de convocatoria — usadas por el cron `advance-estado` para avanzar
+  // `estado_proceso` cuando un plazo/fecha vence (evita estados stale).
+  inscriptionStart: date('inscription_start'),
+  inscriptionDeadline: date('inscription_deadline'),
+  examDate: date('exam_date'),
+  examDateApproximate: boolean('exam_date_approximate'),
   // Sprint 2 backend integration: dispatch sensor LLM a Lambda Playwright.
   // Default 'http' (fetch nativo). 'headless' invoca Lambda con Chromium.
   fetcherType: text('fetcher_type').notNull().default('http'),

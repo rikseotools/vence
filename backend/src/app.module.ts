@@ -20,6 +20,7 @@ import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
 import { AnthropicModule } from './anthropic/anthropic.module';
 import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
+import { AdvanceEstadoModule } from './advance-estado/advance-estado.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
@@ -176,6 +177,8 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     // con 56% de tasa de error + falsos positivos. Descubrimiento de oposiciones
     // nuevas pasa a ser on-demand por Claude. Ver docs/roadmap/deteccion-convocatorias-oeps-completo.md
     DetectGenericSourcesModule,
+    // Cron de higiene: avanza estado_proceso según fechas vencidas (06:30 UTC)
+    AdvanceEstadoModule,
     // HTTP endpoints — Bloque 3 canary (Etapa 2)
     MedalsModule,
     // answer-and-save (Fase 1 foundational, esqueletos sin lógica todavía).
