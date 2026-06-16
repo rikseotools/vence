@@ -601,6 +601,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_ourense',
+      label: 'Auxiliar Administrativo Dip. Ourense',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Ourense',
+        slug: 'auxiliar-administrativo-diputacion-ourense',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

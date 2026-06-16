@@ -1666,6 +1666,60 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE OURENSE (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_ourense',
+    slug: 'auxiliar-administrativo-diputacion-ourense',
+    positionType: 'auxiliar_administrativo_diputacion_ourense',
+    examScoring: { penaltyDivisor: 3, source: 'BOP Ourense nº52 18/03/2026: tres respuestas incorrectas restan un acierto (1/3); en blanco no penaliza. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Ourense',
+    shortName: 'Aux. Dip. Ourense',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'green',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (20 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución: principios, monarquía y derechos fundamentales' },
+          { id: 2, name: 'Las Cortes Generales, el Gobierno y órganos dependientes' },
+          { id: 3, name: 'El Poder Judicial, el Ministerio Fiscal y el Tribunal Constitucional' },
+          { id: 4, name: 'Organización territorial del Estado y el Estatuto de Autonomía de Galicia' },
+          { id: 5, name: 'Organización política e instituciones de autogobierno de Galicia' },
+          { id: 6, name: 'El régimen local: municipio, provincia y diputaciones' },
+          { id: 7, name: 'Las Administraciones Públicas en la Constitución' },
+          { id: 8, name: 'Las fuentes del Derecho Administrativo' },
+          { id: 9, name: 'El acto administrativo: concepto, clases y eficacia' },
+          { id: 10, name: 'El procedimiento administrativo común (Ley 39/2015)' },
+          { id: 11, name: 'Ley 40/2015: principios y órganos colegiados' },
+          { id: 12, name: 'Igualdad efectiva de mujeres y hombres (estatal y de Galicia)' },
+          { id: 13, name: 'El empleo público: EBEP y Ley de empleo público de Galicia' },
+          { id: 14, name: 'El patrimonio y los bienes de las entidades locales' },
+          { id: 15, name: 'El servicio público local y sus modos de gestión' },
+          { id: 16, name: 'Los presupuestos de las entidades locales' },
+          { id: 17, name: 'Las subvenciones públicas' },
+          { id: 18, name: 'Los contratos del sector público' },
+          { id: 19, name: 'La responsabilidad patrimonial de las Administraciones Públicas' },
+          { id: 20, name: 'Ofimática: paquete Office (textos, hojas de cálculo)' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['ourense', 'diputacion ourense', 'dip ourense', 'aux ourense', 'auxiliar ourense', 'diputacion de ourense', 'orense'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-ourense', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-ourense/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-ourense/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
