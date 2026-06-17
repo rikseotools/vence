@@ -414,18 +414,13 @@ function computeProjections(userStats: Awaited<ReturnType<typeof queryUserStats>
     weeklyGrowthRate = -100; isGrowing = false
   }
 
-  // Annual projection (weekly)
+  // Annual projection (weekly) — lineal por unidades: ritmo actual de altas × 52
+  // semanas. Sin interés compuesto ni decay: proyectar % sobre un año disparaba
+  // la cifra (hockey stick irreal) y hacía que la proyección semanal y la mensual
+  // se contradijeran. El run-rate ya refleja la tendencia reciente.
   let projectedUsersNextYear = totalUsers
   if (projectedUsersPerWeek > 0) {
-    if (isGrowing && weeklyGrowthRate > 0) {
-      const linearProjection = projectedUsersPerWeek * 52
-      const cappedGrowthRate = Math.min(weeklyGrowthRate / 100, 0.10)
-      const compoundProjection = projectedUsersPerWeek * ((Math.pow(1 + cappedGrowthRate, 52) - 1) / cappedGrowthRate)
-      projectedUsersNextYear = totalUsers + Math.round((linearProjection * 0.7) + (compoundProjection * 0.3))
-    } else {
-      const decayFactor = Math.max(0.5, 1 + (weeklyGrowthRate / 100))
-      projectedUsersNextYear = totalUsers + Math.round(projectedUsersPerWeek * 52 * decayFactor)
-    }
+    projectedUsersNextYear = totalUsers + Math.round(projectedUsersPerWeek * 52)
   }
 
   // Monthly growth
@@ -440,18 +435,11 @@ function computeProjections(userStats: Awaited<ReturnType<typeof queryUserStats>
     monthlyGrowthRate = -100; isGrowingMonthly = false
   }
 
-  // Annual projection (monthly)
+  // Annual projection (monthly) — lineal por unidades: altas del último mes × 12.
+  // Mismo criterio que la semanal (ver arriba): sin compuesto ni decay.
   let projectedUsersNextYearMonthly = totalUsers
   if (newUsersLast30Days > 0) {
-    if (isGrowingMonthly && monthlyGrowthRate > 0) {
-      const cappedMonthlyGrowth = Math.min(monthlyGrowthRate / 100, 0.30)
-      const monthlyCompound = newUsersLast30Days * ((Math.pow(1 + cappedMonthlyGrowth, 12) - 1) / cappedMonthlyGrowth)
-      const monthlyLinear = newUsersLast30Days * 12
-      projectedUsersNextYearMonthly = totalUsers + Math.round((monthlyLinear * 0.8) + (monthlyCompound * 0.2))
-    } else {
-      const decayFactor = Math.max(0.5, 1 + (monthlyGrowthRate / 100))
-      projectedUsersNextYearMonthly = totalUsers + Math.round(newUsersLast30Days * 12 * decayFactor)
-    }
+    projectedUsersNextYearMonthly = totalUsers + Math.round(newUsersLast30Days * 12)
   }
 
   return {
