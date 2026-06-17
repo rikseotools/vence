@@ -641,6 +641,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_avila',
+      label: 'Auxiliar Administrativo Dip. Ávila',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Ávila',
+        slug: 'auxiliar-administrativo-diputacion-avila',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

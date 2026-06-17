@@ -49,6 +49,7 @@ const DYNAMIC_SLUGS = [
   'auxiliar-administrativo-diputacion-girona',
   'auxiliar-administrativo-diputacion-zamora',
   'auxiliar-administrativo-diputacion-huesca',
+  'auxiliar-administrativo-diputacion-avila',
   'auxiliar-administrativo-sms',
   'auxiliar-administrativo-sermas',
 ]

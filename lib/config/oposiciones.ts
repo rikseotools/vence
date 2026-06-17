@@ -1893,6 +1893,78 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ÁVILA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_avila',
+    slug: 'auxiliar-administrativo-diputacion-avila',
+    positionType: 'auxiliar_administrativo_diputacion_avila',
+    examScoring: { penaltyDivisor: 3, source: 'BOCyL nº182 03/09/2020 (convocatoria anterior): cada error resta un tercio (1/3) del valor de un acierto; en blanco no penaliza. confidence:media (bases OEP 2024 pendientes)' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Ávila',
+    shortName: 'Aux. Dip. Ávila',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'emerald',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comunes',
+        title: 'Materias Comunes',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: derechos y deberes fundamentales' },
+          { id: 2, name: 'La Corona' },
+          { id: 3, name: 'Las Cortes Generales y órganos de control' },
+          { id: 4, name: 'El Gobierno en el sistema constitucional' },
+          { id: 5, name: 'El Poder Judicial y el CGPJ' },
+          { id: 6, name: 'Organización territorial y el Estatuto de Castilla y León' },
+          { id: 7, name: 'La Unión Europea' },
+          { id: 8, name: 'El ordenamiento administrativo y los interesados' },
+          { id: 9, name: 'El acto administrativo y la notificación' },
+          { id: 10, name: 'El procedimiento administrativo común (I)' },
+          { id: 11, name: 'El procedimiento administrativo común (II)' },
+          { id: 12, name: 'Los recursos administrativos' },
+          { id: 13, name: 'El Régimen Local: fuentes y potestad normativa' },
+          { id: 14, name: 'El municipio: organización y competencias' },
+          { id: 15, name: 'La provincia: organización y régimen de sesiones' },
+          { id: 16, name: 'Las competencias de la provincia y los Planes Provinciales' },
+          { id: 17, name: 'La actividad subvencional' },
+          { id: 18, name: 'Los contratos del Sector Público' },
+          { id: 19, name: 'Los empleados públicos: régimen jurídico y disciplinario' },
+          { id: 20, name: 'El empleo público: acceso y situaciones administrativas' },
+          { id: 21, name: 'La Hacienda Local y las Ordenanzas Fiscales' },
+          { id: 22, name: 'Participación en tributos del Estado y CCAA' },
+          { id: 23, name: 'El presupuesto general de las Entidades Locales' },
+          { id: 24, name: 'Estructura, modificaciones y ejecución presupuestaria' },
+        ],
+      },
+      {
+        id: 'especificas',
+        title: 'Materias Específicas',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 25, name: 'La atención al público' },
+          { id: 26, name: 'La administración electrónica y la sede electrónica' },
+          { id: 27, name: 'El registro de documentos' },
+          { id: 28, name: 'Transparencia y protección de datos' },
+          { id: 29, name: 'Prevención de Riesgos Laborales (Ley 31/1995)' },
+          { id: 30, name: 'Igualdad y violencia de género (LO 3/2007 y LO 1/2004)' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    aliases: ['avila', 'diputacion avila', 'dip avila', 'aux avila', 'auxiliar avila', 'diputacion de avila'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-avila', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-avila/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-avila/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
