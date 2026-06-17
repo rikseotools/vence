@@ -88,6 +88,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'tramitacion-procesal': 'justicia',
     'auxiliar-administrativo-madrid': 'madrid',
     'auxiliar-administrativo-andalucia': 'andalucia',
+    'administrativo-andalucia': 'andalucia',
     'auxiliar-administrativo-canarias': 'canarias',
     'auxiliar-administrativo-valencia': 'valencia',
     'auxiliar-administrativo-ayuntamiento-valencia': 'valencia',

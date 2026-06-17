@@ -62,7 +62,10 @@ const OPOSICION_DETECTION: Record<string, OposicionData> = {
 
 function detectOposicionFromUrl(pathname: string | null) {
   if (!pathname) return null
-  for (const [pattern, oposicion] of Object.entries(OPOSICION_DETECTION)) {
+  // Patrón más largo primero: evita colisión por substring (p.ej.
+  // 'administrativo-andalucia' ⊂ 'auxiliar-administrativo-andalucia').
+  const entries = Object.entries(OPOSICION_DETECTION).sort((a, b) => b[0].length - a[0].length)
+  for (const [pattern, oposicion] of entries) {
     if (pathname.includes(pattern)) {
       return oposicion
     }
@@ -121,8 +124,9 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(45)
+      expect(autonomicas).toHaveLength(46)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
+        'administrativo-andalucia',
         'administrativo-castilla-leon',
         'administrativo-galicia',
         'administrativo-gva',  // Añadida 07/05/2026: Administrativo Generalitat Valenciana C1-01

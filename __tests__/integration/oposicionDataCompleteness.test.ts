@@ -121,6 +121,7 @@ describeIfDb('Oposición data completeness', () => {
       'auxiliar-administrativo-diputacion-barcelona', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-ayuntamiento-alcala-henares', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-ayuntamiento-granada', // en preparación: BD lista (is_active=false hasta go-live)
+      'administrativo-andalucia', // C1 en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-zamora', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-huesca', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-avila', // en preparación: BD lista (is_active=false hasta go-live)

@@ -140,7 +140,11 @@ export default function OposicionDetector() {
 function detectOposicionFromUrl(pathname: string | null): OposicionData | null {
   if (!pathname) return null
 
-  for (const [pattern, oposicion] of Object.entries(OPOSICION_DETECTION)) {
+  // Ordenar por longitud de patrón DESCENDENTE: el slug más específico (más largo)
+  // gana ante colisiones por substring (p.ej. 'administrativo-andalucia' ⊂
+  // 'auxiliar-administrativo-andalucia'). Evita que el genérico capture la URL del específico.
+  const entries = Object.entries(OPOSICION_DETECTION).sort((a, b) => b[0].length - a[0].length)
+  for (const [pattern, oposicion] of entries) {
     if (pathname.includes(pattern)) {
       return oposicion
     }

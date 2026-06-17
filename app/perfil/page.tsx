@@ -651,6 +651,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_andalucia',
+      label: 'Administrativo Junta de Andalucía',
+      data: {
+        name: 'Administrativo de la Junta de Andalucía',
+        slug: 'administrativo-andalucia',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_zamora',
       label: 'Auxiliar Administrativo Dip. Zamora',
       data: {
