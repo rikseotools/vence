@@ -641,6 +641,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_granada',
+      label: 'Auxiliar Administrativo Ayto. Granada',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Granada',
+        slug: 'auxiliar-administrativo-ayuntamiento-granada',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_zamora',
       label: 'Auxiliar Administrativo Dip. Zamora',
       data: {

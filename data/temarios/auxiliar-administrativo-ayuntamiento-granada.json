@@ -1,0 +1,50 @@
+{
+  "slug": "auxiliar-administrativo-ayuntamiento-granada",
+  "position_type": "auxiliar_administrativo_ayuntamiento_granada",
+  "nombre": "Auxiliar Administrativo del Ayuntamiento de Granada",
+  "administracion": "local",
+  "categoria": "C2",
+  "grupo": "C",
+  "subgrupo": "C2",
+  "titulo_requerido": "Graduado en ESO o equivalente",
+  "sistema": "oposición",
+  "plazas": 7,
+  "oep": "OEP 2023/2024/2025 acumuladas — 7 plazas turno libre (+3 discapacidad, +5 promoción interna)",
+  "convocatoria": {
+    "diario_oficial": "BOP Granada / BOE",
+    "diario_referencia": "Bases: BOP Granada nº216, 12/11/2025 (CVE BOP-GRA-2025-216018). Extracto: BOE-A-2025-24309 (01/12/2025). OEP nueva: BOP Granada nº211, 05/11/2025",
+    "programa_url": "https://www.granada.org/inet/personal.nsf/22cd39d5e82038c9c1258bdd002de37b/c1f417ee00034fe4c1258d4c003895a3/$FILE/Temario%20Aux%20Adm.pdf",
+    "nota": "Temario oficial ANEXO I (turno libre), 22 temas. Convocatoria más reciente del Ayuntamiento de Granada (ciudad)."
+  },
+  "examen": {
+    "sistema": "oposición (ejercicio único, 2 partes)",
+    "parte1": "Test 100 preguntas + 10 reserva, 3 alternativas",
+    "parte2": "Test práctico 40-60 preguntas",
+    "duracion": "160 min",
+    "penalizacion": "cada error resta media correcta: C = (A - E/2) x (M/P)"
+  },
+  "temario": [
+    {"n": 1, "bloque": 1, "epi": "La Constitución Española de 1978: Características y estructura. Derechos y deberes fundamentales. Su garantía y suspensión. Reforma constitucional."},
+    {"n": 2, "bloque": 1, "epi": "La Administración Pública en el Ordenamiento Jurídico Español. Tipología de los Entes Públicos: Las Administraciones del Estado. Autonómica. Local e Institucional."},
+    {"n": 3, "bloque": 1, "epi": "Las Comunidades Autónomas: constitución y competencias. El Estatuto de Autonomía para Andalucía: Estructura. Competencias de la Comunidad Autónoma de Andalucía en materia de organización territorial y régimen local."},
+    {"n": 4, "bloque": 1, "epi": "La protección de datos personales y su régimen jurídico: principios, derechos y obligaciones."},
+    {"n": 5, "bloque": 1, "epi": "Ley Orgánica 3/2007, de 22 de marzo: el principio de igualdad y la tutela contra la discriminación. Políticas públicas para la igualdad: principios generales."},
+    {"n": 6, "bloque": 2, "epi": "El Derecho Administrativo y sus fuentes. La Ley y el Reglamento."},
+    {"n": 7, "bloque": 2, "epi": "Régimen local español. Tipos de entidades locales. Principios constitucionales y regulación jurídica en la Ley 7/1985 y en la Ley 5/2010, de 11 de junio, de Autonomía Local de Andalucía."},
+    {"n": 8, "bloque": 2, "epi": "El Municipio. Organización municipal. Competencias. Especial referencia a los municipios de gran población."},
+    {"n": 9, "bloque": 2, "epi": "Los interesados en el procedimiento: capacidad de obrar y concepto de interesado. Derechos de las personas en sus relaciones con las Administraciones Públicas. Derechos del interesado en el procedimiento administrativo."},
+    {"n": 10, "bloque": 2, "epi": "Funcionamiento electrónico del sector público: Sede electrónica. Canales y puntos de acceso. Identificación y autenticación. Firma electrónica. El acceso electrónico de la ciudadanía a los servicios públicos. Los servicios públicos electrónicos. Derecho y obligación de relacionarse electrónicamente con las Administraciones Públicas."},
+    {"n": 11, "bloque": 2, "epi": "El documento administrativo: concepto y tipología. El expediente administrativo. El registro de documentos: funciones. Conceptos de presentación, recepción, entrada y salida de documentos. El documento electrónico."},
+    {"n": 12, "bloque": 2, "epi": "Los actos administrativos: Concepto y clases. Motivación y notificación. Eficacia y validez de los actos. La notificación."},
+    {"n": 13, "bloque": 2, "epi": "Las fases del procedimiento administrativo común: Iniciación, Ordenación, Instrucción y Finalización. Ejecución. Los recursos administrativos."},
+    {"n": 14, "bloque": 2, "epi": "Funcionamiento de los órganos colegiados locales. Convocatoria y orden del día. Actas y Certificaciones de acuerdos."},
+    {"n": 15, "bloque": 2, "epi": "Personal al servicio de las entidades locales: la función pública local y su organización. Adquisición y pérdida de la condición de personal funcionario. Derechos y deberes del personal al servicio de la Entidades Locales. Régimen de Incompatibilidades."},
+    {"n": 16, "bloque": 2, "epi": "Introducción al sistema operativo: el entorno Windows. Trabajo en el entorno gráfico de Windows: ventanas, iconos, menús contextuales, cuadros de diálogo. El escritorio. El menú inicio. El explorador de Windows. Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas \"Este equipo\" y \"Acceso rápido\". Accesorios. Herramientas del sistema."},
+    {"n": 17, "bloque": 2, "epi": "Procesadores de texto. Principales funciones y utilidades. Hojas de cálculo. Principales funciones y utilidades. Bases de datos: Principales funciones y utilidades."},
+    {"n": 18, "bloque": 2, "epi": "Funcionalidades básicas de los navegadores web. Nociones básicas de seguridad informática."},
+    {"n": 19, "bloque": 2, "epi": "Transparencia y acceso a la información pública. Las relaciones de la ciudadanía; derechos de información, petición y participación. Los servicios del Ayuntamiento de Granada en la página web. Atención de personas con discapacidad. Las sugerencias y reclamaciones."},
+    {"n": 20, "bloque": 2, "epi": "Inteligencia Artificial aplicada a la gestión pública: La estrategia nacional de Inteligencia Artificial."},
+    {"n": 21, "bloque": 2, "epi": "Ética pública y valores del servicio público: Conflictos de intereses. Códigos éticos. El derecho a una buena Administración."},
+    {"n": 22, "bloque": 2, "epi": "La calidad: Concepto. Calidad del servicio y calidad percibida por el cliente. Medición de la calidad y costes de la no calidad. Las Cartas de Servicios: Definición, estructura y contenido."}
+  ]
+}

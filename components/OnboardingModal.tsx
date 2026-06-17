@@ -801,6 +801,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_ayuntamiento_granada',
+    nombre: 'Auxiliar Administrativo Ayto. Granada',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_administrativo_universidad_complutense',
     nombre: 'Auxiliar Administrativo Universidad Complutense (UCM)',
     categoria: 'C2',
