@@ -156,7 +156,7 @@ FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook go
 > **Dos capas, distinta fiabilidad para distinta clase de fallo (validado 15/06):**
 > ```bash
 > # CAPA 1 — completitud/estructura (SCRIPT determinista; lo más fiable para "no me salté un paso")
-> npm run audit:oposicion <slug>          # FASES 2-6: fila oposiciones, campos, JSONB schema, topics, bloques, scope+cobertura, convocatorias §2c, hitos, rutas, registros UI. exit 1 = gate.
+> npm run audit:oposicion <slug>          # FASES 2-6: fila oposiciones, campos, JSONB schema, topics, bloques, scope+cobertura, convocatorias §2c, hitos, rutas, registros UI, identidad visual CcaaFlag (4c.bis) + mapeo CCAA (4c). exit 1 = gate.
 > npm run audit:epigrafe <position_type>  # FASE 3g: coherencia epígrafe↔scope (heurístico)
 >
 > # CAPA 3 — corrección/cobertura semántica (AGENTES; lo único capaz de juzgar contenido)
