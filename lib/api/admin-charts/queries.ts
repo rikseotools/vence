@@ -112,7 +112,7 @@ export async function getRegistrationsChartData(days = 14): Promise<Registration
       count(*)::int as total,
       count(*) filter (where registration_source = 'organic')::int as organic,
       count(*) filter (where registration_source = 'google_ads')::int as google,
-      count(*) filter (where registration_source = 'meta_ads')::int as meta,
+      count(*) filter (where registration_source = 'meta')::int as meta,
       count(*) filter (where registration_source is null or registration_source = 'unknown')::int as other
     from user_profiles
     where created_at >= ${startDate.toISOString()}::timestamptz

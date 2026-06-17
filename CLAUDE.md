@@ -298,6 +298,11 @@ git push origin main
 - **Cuándo consultarlo:** cuando el usuario diga *"investiga ads"*, *"campañas"*, *"rendimiento de anuncios"*, *"dónde meto presupuesto"* o similar, Claude DEBE seguir el runbook ANTES de improvisar.
 - **Resumen:** integración Google Ads API (`lib/services/googleAds/`, comandos `npm run ads:*`, panel `/admin/ads`). El runbook explica cómo mirar coste/clics/registros + ingreso real + fecha de examen, con queries listas y el framework de decisión de presupuesto. Aprendizaje clave (02/06/2026, datos reales): la gente compra premium cerca del examen (pico 0-30 días), el examen pasado seca las ventas, y el coste/registro solo engaña si no se cruza con fecha de examen e ingreso. Mantener puja por CLIC (decisión Manuel).
 
+### 📘 Análisis y gestión de Meta Ads (Facebook/Instagram) (runbook)
+- **Runbook:** `docs/runbooks/meta-ads-analisis.md`
+- **Cuándo consultarlo:** cuando el usuario diga *"meta ads"*, *"facebook ads"*, *"instagram ads"*, *"campañas de meta"*, *"publi en meta"* o similar.
+- **Resumen:** Marketing API v21.0 vía System User (credenciales `META_ADS_*` en `.env.local`), página de anuncios **Vence Oposiciones** (`META_PAGE_ID`). El runbook tiene comandos `curl` listos (listar/insights/pausar/activar/presupuesto/crear campaña-conjunto-anuncio), playbook de creación, cruce con ingresos en BD y los **gotchas** del alta (app en modo Live, política de no discriminación en Usuarios del sistema → "+ Agregar", unidades en céntimos, géneros 1/2, geo region keys, subir imágenes multipart). **Cliente ideal que paga (datos reales 17/06): MUJER, 25-55** (73% mujeres; 92% de ventas en 25-54; 18-24 solo 3%). Pujar por CLIC con techo bajo (Conversiones arranca caro). Creativos: `marketing/ad-creatives/meta/generate.py`. Atribución BD: `registration_source='meta'` (NO `'meta_ads'`).
+
 ### 🔎 Oportunidades SEO (runbook)
 - **Runbook:** `docs/runbooks/seo-oportunidades.md`
 - **Cuándo consultarlo:** cuando el usuario diga *"oportunidades SEO"*, *"qué mejoro de SEO"*, *"subir en Google"*, *"posiciones orgánicas"* o similar.

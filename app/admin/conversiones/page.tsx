@@ -547,13 +547,13 @@ export default function ConversionesPage() {
                 const colors: Record<string, string> = {
                   'organic': 'bg-green-50 dark:bg-green-900/20 text-green-600',
                   'google_ads': 'bg-blue-50 dark:bg-blue-900/20 text-blue-600',
-                  'meta_ads': 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
+                  'meta': 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
                   'default': 'bg-gray-50 dark:bg-gray-700 text-gray-600'
                 }
                 const icons: Record<string, string> = {
                   'organic': '🌱',
                   'google_ads': '🔍',
-                  'meta_ads': '📘'
+                  'meta': '📘'
                 }
                 return (
                   <div key={source} className={`p-4 rounded-lg ${colors[source] || colors.default}`}>
