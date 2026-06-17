@@ -794,6 +794,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_ayuntamiento_alcala_henares',
+    nombre: 'Auxiliar Administrativo Ayto. Alcalá de Henares',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_administrativo_universidad_complutense',
     nombre: 'Auxiliar Administrativo Universidad Complutense (UCM)',
     categoria: 'C2',

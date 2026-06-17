@@ -631,6 +631,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_alcala_henares',
+      label: 'Auxiliar Administrativo Ayto. Alcalá de Henares',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Alcalá de Henares',
+        slug: 'auxiliar-administrativo-ayuntamiento-alcala-henares',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_zamora',
       label: 'Auxiliar Administrativo Dip. Zamora',
       data: {
