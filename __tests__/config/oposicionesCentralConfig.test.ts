@@ -83,14 +83,14 @@ describe('Config central de oposiciones', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(81)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(83)
   })
 
   test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(81)
+    expect(ALL_POSITION_TYPES.length).toBe(83)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -152,7 +152,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(7)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin("autonomica").length).toBe(46)
+    expect(byAdmin("autonomica").length).toBe(48)
     expect(byAdmin('empresa_publica').length).toBe(1)
   })
 

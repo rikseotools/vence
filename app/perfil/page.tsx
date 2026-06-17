@@ -661,6 +661,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_cantabria',
+      label: 'Administrativo Gobierno de Cantabria',
+      data: {
+        name: 'Administrativo del Gobierno de Cantabria',
+        slug: 'administrativo-cantabria',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_zamora',
       label: 'Auxiliar Administrativo Dip. Zamora',
       data: {

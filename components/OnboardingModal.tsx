@@ -1029,6 +1029,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'administrativo_cantabria',
+    nombre: 'Administrativo Gobierno de Cantabria',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_administrativo_aragon',
     nombre: 'Auxiliar Administrativo de Aragón',
     categoria: 'C2',
