@@ -89,28 +89,42 @@ async function auditPositionType(pt) {
     const epiRefs = extractLawRefs(t.epigrafe);
     const { data: scope } = await s
       .from('topic_scope')
-      .select('law_id, article_numbers')
+      .select('law_id, article_numbers, include_full_title')
       .eq('topic_id', t.id);
 
     const rows = [];
     let topicTotal = 0;
     for (const r of scope || []) {
       const { data: l } = await s.from('laws').select('short_name, name, slug').eq('id', r.law_id).single();
+      // include_full_title=true → toda la ley está en scope (article_numbers suele ser null).
+      // Hay que resolver TODOS sus artículos, si no la fila se trataría como "0 arts" y
+      // dispararía UNDER/EMPTY_ROW en falso (la ley sí está cubierta).
+      const fullTitle = r.include_full_title === true;
       const arts = r.article_numbers || [];
       let q = 0;
-      if (arts.length) {
+      let artCount = arts.length;
+      let articleIds = [];
+      if (fullTitle) {
+        const { data: as } = await s.from('articles').select('id').eq('law_id', r.law_id);
+        articleIds = (as || []).map(x => x.id);
+        artCount = articleIds.length;
+      } else if (arts.length) {
         const { data: as } = await s.from('articles').select('id').eq('law_id', r.law_id).in('article_number', arts);
-        if (as && as.length) {
+        articleIds = (as || []).map(x => x.id);
+      }
+      if (articleIds.length) {
+        // contar preguntas en lotes (evita límite de URL de .in con leyes grandes)
+        for (let i = 0; i < articleIds.length; i += 150) {
           const { count } = await s.from('questions')
             .select('id', { count: 'exact', head: true })
-            .eq('is_active', true).in('primary_article_id', as.map(x => x.id));
-          q = count || 0;
+            .eq('is_active', true).in('primary_article_id', articleIds.slice(i, i + 150));
+          q += count || 0;
         }
       }
       // refs por número (short_name + name) + reconocimiento descriptivo por nombre
       const refs = new Set([...extractLawRefs(l ? l.short_name : ''), ...extractLawRefs(l ? l.name : '')]);
       const named = nameReferenced(l ? l.name : '', l ? l.short_name : '', t.epigrafe);
-      rows.push({ name: l ? l.short_name : '?', arts: arts.length, q, refs, named });
+      rows.push({ name: l ? l.short_name : '?', arts: artCount, q, refs, named });
       topicTotal += q;
     }
 

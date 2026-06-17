@@ -15,6 +15,8 @@ import { createClient } from '@supabase/supabase-js'
 import * as fs from 'fs'
 import * as path from 'path'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
+import { hasCcaaFlag, resolveEscudo, resolveFlagKey } from '@/components/CcaaFlag'
+import { oposicionToCcaa } from '@/app/oposiciones/lib/oposiciones-filters'
 
 const slug = process.argv[2]
 if (!slug) { console.error('Uso: ... audit-oposicion-completa.ts <slug>'); process.exit(2) }
@@ -140,6 +142,19 @@ async function main() {
   for (const [file, label] of [['components/OnboardingModal.tsx','OnboardingModal'],['app/perfil/page.tsx','perfil']] as const) {
     const content = fs.readFileSync(path.join(process.cwd(), file), 'utf8')
     if (content.includes(PT)) ok(`${label} contiene ${PT}`) ; else bad(`${label} NO contiene ${PT}`)
+  }
+  // mapeo CCAA para filtros del catálogo (oposicionToCcaa); null → no aparece bien filtrada
+  if (oposicionToCcaa(slug)) ok(`oposicionToCcaa('${slug}') = '${oposicionToCcaa(slug)}'`) ; else bad(`oposicionToCcaa('${slug}') = null → falta mapeo CCAA (app/oposiciones/lib/oposiciones-filters.ts)`)
+
+  // ── FASE 4c.bis: identidad visual oficial (CcaaFlag) ──
+  // Sin escudo ni bandera, la oposición cae al emoji genérico 🏛️ (señal de "falta configurar").
+  console.log('\nFASE 4c.bis — identidad visual (CcaaFlag)')
+  const escudo = resolveEscudo(slug) || resolveEscudo(PT)
+  const flag = resolveFlagKey(slug) || resolveFlagKey(PT)
+  if (hasCcaaFlag(slug) || hasCcaaFlag(PT)) {
+    ok(`CcaaFlag resuelve ${escudo ? 'escudo (' + escudo.src + ')' : 'bandera (' + flag + ')'}`)
+  } else {
+    bad(`CcaaFlag NO resuelve nada → emoji de fallback. Añadir keyword a CcaaFlag.tsx (FASE 4c.bis)`)
   }
 
   finish()
