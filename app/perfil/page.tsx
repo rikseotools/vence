@@ -701,6 +701,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_castilla_leon',
+      label: 'Cuerpo Administrativo de Castilla y León',
+      data: {
+        name: 'Cuerpo Administrativo de Castilla y León',
+        slug: 'administrativo-castilla-leon',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_andalucia',
       label: 'Auxiliar Administrativo Junta de Andalucía',
       data: {

@@ -1,0 +1,302 @@
+{
+  "slug": "administrativo-castilla-leon",
+  "position_type": "administrativo_castilla_leon",
+  "fuente": "BOCYL nº7, 13/01/2026, Resolución 7-ene-2026, Anexo I.B",
+  "examen": {
+    "preguntas": 100,
+    "opciones": 4,
+    "minutos": 130,
+    "penalizacion": "1/4",
+    "min": 50
+  },
+  "grupos": 5,
+  "temas": [
+    {
+      "bloque": 1,
+      "topic_number": 1,
+      "display": 1,
+      "title": "La Constitución Española",
+      "epigrafe": "La Constitución Española."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 2,
+      "display": 2,
+      "title": "La Administración General del Estado: regulación y estructura",
+      "epigrafe": "La Administración General del Estado: regulación y estructura."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 3,
+      "display": 3,
+      "title": "La Administración local y la organización territorial de Castilla y León",
+      "epigrafe": "La Administración local: la provincia, el municipio y otras entidades. La organización territorial de la Comunidad Autónoma de Castilla y León."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 4,
+      "display": 4,
+      "title": "La Unión Europea. Las instituciones europeas",
+      "epigrafe": "La Unión Europea. Las instituciones europeas: el Consejo Europeo, el Parlamento, la Comisión y el Tribunal de Justicia."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 5,
+      "display": 5,
+      "title": "El Estatuto de Autonomía de Castilla y León",
+      "epigrafe": "El Estatuto de Autonomía de Castilla y León."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 6,
+      "display": 6,
+      "title": "Las Cortes de Castilla y León",
+      "epigrafe": "Las Cortes de Castilla y León."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 7,
+      "display": 7,
+      "title": "Instituciones propias de la Comunidad de Castilla y León",
+      "epigrafe": "Instituciones propias de la Comunidad de Castilla y León: Procurador del Común, Consejo Consultivo, Consejo de Cuentas y Consejo Económico y Social."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 8,
+      "display": 8,
+      "title": "El Gobierno de la Comunidad de Castilla y León",
+      "epigrafe": "El Gobierno de la Comunidad de Castilla y León: El Presidente de la Junta de Castilla y León, la Junta de Castilla y León y los Consejeros."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 9,
+      "display": 9,
+      "title": "La Administración de la Comunidad de Castilla y León",
+      "epigrafe": "La Administración de la Comunidad de Castilla y León. Principios de organización y funcionamiento. Órganos Centrales y Periféricos."
+    },
+    {
+      "bloque": 1,
+      "topic_number": 10,
+      "display": 10,
+      "title": "El sector público de la Comunidad de Castilla y León",
+      "epigrafe": "El sector público de la Comunidad de Castilla y León. Administración Institucional y Empresas Públicas."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 201,
+      "display": 1,
+      "title": "Las fuentes del derecho administrativo",
+      "epigrafe": "Las fuentes del derecho administrativo: la jerarquía de las fuentes. La Constitución. La ley. Los Estatutos de Autonomía y las Leyes de las Comunidades Autónomas. Disposiciones normativas del ejecutivo estatal y autonómico con fuerza de ley. El reglamento."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 202,
+      "display": 2,
+      "title": "El acto administrativo",
+      "epigrafe": "El acto administrativo: concepto, clases y elementos. Su motivación y notificación. Eficacia y validez de los actos administrativos. El principio de legalidad en la actuación administrativa."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 203,
+      "display": 3,
+      "title": "El procedimiento administrativo común",
+      "epigrafe": "El procedimiento administrativo común: concepto, naturaleza y principios generales. Fases del procedimiento: iniciación, ordenación, instrucción y finalización. Ejecución."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 204,
+      "display": 4,
+      "title": "La revisión de los actos administrativos y los recursos",
+      "epigrafe": "La revisión de los actos administrativos: revisión de oficio. Recursos administrativos: alzada, reposición y extraordinario de revisión. La revocación y la rectificación de los actos administrativos. La Jurisdicción contencioso-administrativa: concepto y naturaleza."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 205,
+      "display": 5,
+      "title": "El régimen jurídico del Sector Público y los órganos",
+      "epigrafe": "El régimen jurídico del Sector Público: principios de actuación y funcionamiento. Los órganos de las Administraciones Públicas: especial referencia a los órganos colegiados. La atribución de competencias a los órganos administrativos: desconcentración, delegación, avocación, encomienda de gestión, delegación de firma y suplencia."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 206,
+      "display": 6,
+      "title": "La potestad sancionadora y la responsabilidad patrimonial",
+      "epigrafe": "La potestad sancionadora de la Administración: principios y procedimiento. La responsabilidad patrimonial de las Administraciones Públicas: principios y procedimiento. Responsabilidad de autoridades y personal al servicio de las Administraciones Públicas."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 207,
+      "display": 7,
+      "title": "Los contratos del Sector Público",
+      "epigrafe": "Los contratos del Sector Público: Tipología contractual. Las partes en el contrato. Órganos competentes en materia de contratación en la Administración de Castilla y León."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 208,
+      "display": 8,
+      "title": "Las subvenciones públicas",
+      "epigrafe": "Las subvenciones públicas: concepto y naturaleza jurídica. Legislación básica y autonómica. Los procedimientos para la concesión de subvenciones en la Administración de la Comunidad de Castilla y León."
+    },
+    {
+      "bloque": 2,
+      "topic_number": 209,
+      "display": 9,
+      "title": "Políticas de igualdad y no discriminación en Castilla y León",
+      "epigrafe": "Las políticas de igualdad y no discriminación desarrolladas por la Administración de la Comunidad de Castilla y León. Igualdad de género: especial referencia a las medidas contra la violencia de género. Discapacidad y dependencia."
+    },
+    {
+      "bloque": 3,
+      "topic_number": 301,
+      "display": 1,
+      "title": "El Estatuto Básico del Empleado Público",
+      "epigrafe": "El Estatuto Básico del Empleado Público."
+    },
+    {
+      "bloque": 3,
+      "topic_number": 302,
+      "display": 2,
+      "title": "La Ley de la Función Pública de Castilla y León",
+      "epigrafe": "La Ley de la Función Pública de Castilla y León."
+    },
+    {
+      "bloque": 3,
+      "topic_number": 303,
+      "display": 3,
+      "title": "Sindicación, huelga e incompatibilidades",
+      "epigrafe": "El derecho de sindicación y de huelga. Régimen de incompatibilidades."
+    },
+    {
+      "bloque": 3,
+      "topic_number": 304,
+      "display": 4,
+      "title": "El personal laboral al servicio de las Administraciones Públicas",
+      "epigrafe": "El personal laboral al servicio de las Administraciones Públicas: Régimen jurídico. El contrato de trabajo en la Administración Pública: modalidades. El convenio colectivo para el personal laboral de la Administración General de la Comunidad de Castilla y León y organismos autónomos dependientes de esta: ámbito de aplicación, clasificación profesional y retribuciones."
+    },
+    {
+      "bloque": 3,
+      "topic_number": 305,
+      "display": 5,
+      "title": "El Texto Refundido de la Ley General de la Seguridad Social",
+      "epigrafe": "El Texto Refundido de la Ley General de la Seguridad Social: Disposiciones generales sobre el campo de aplicación y estructura del sistema de la Seguridad Social. Acción protectora: disposiciones generales."
+    },
+    {
+      "bloque": 4,
+      "topic_number": 401,
+      "display": 1,
+      "title": "El presupuesto de la Comunidad de Castilla y León",
+      "epigrafe": "El presupuesto: concepto y principios presupuestarios. Clases de presupuestos. El presupuesto de la Comunidad de Castilla y León: principios de programación y de gestión. Contenido, estructura y elaboración de los presupuestos generales de la Comunidad. Clasificaciones presupuestarias."
+    },
+    {
+      "bloque": 4,
+      "topic_number": 402,
+      "display": 2,
+      "title": "Los créditos presupuestarios y sus operaciones",
+      "epigrafe": "Los créditos presupuestarios. Operaciones presupuestarias. Transferencias de crédito. Generaciones de crédito. Minoraciones de crédito. Ampliaciones de crédito. Créditos extraordinarios y suplementos de crédito. Anticipos de Tesorería. Incorporaciones de crédito. Gastos plurianuales."
+    },
+    {
+      "bloque": 4,
+      "topic_number": 403,
+      "display": 3,
+      "title": "La gestión del gasto",
+      "epigrafe": "La gestión del gasto: órganos competentes, fases del procedimiento y documentos contables que intervienen. Pagos: concepto y tipos. Pagos a justificar y pagos en firme. Anticipos de caja fija. Liquidación y cierre del ejercicio."
+    },
+    {
+      "bloque": 4,
+      "topic_number": 404,
+      "display": 4,
+      "title": "Gestión de expedientes de gasto: contratos y subvenciones",
+      "epigrafe": "Gestión de los expedientes de gasto de los contratos del sector público. Gestión de los expedientes de gasto de las subvenciones."
+    },
+    {
+      "bloque": 4,
+      "topic_number": 405,
+      "display": 5,
+      "title": "Nóminas de los empleados públicos",
+      "epigrafe": "Nóminas de los empleados públicos: estructura y normas de confección. Gestión administrativa y económica de la nómina."
+    },
+    {
+      "bloque": 4,
+      "topic_number": 406,
+      "display": 6,
+      "title": "El control del gasto público",
+      "epigrafe": "El control del gasto público. El control interno: la función interventora y el control financiero. El control externo realizado por el Tribunal de Cuentas, el Consejo de Cuentas de Castilla y León y las Cortes de Castilla y León."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 501,
+      "display": 1,
+      "title": "Derechos de las personas ante la Administración y calidad",
+      "epigrafe": "Los derechos de las personas en sus relaciones con la Administración: legislación básica estatal y legislación de Castilla y León. La calidad en la prestación de los servicios públicos: marco para la mejora de la calidad y la innovación de los servicios públicos de la Administración de la Comunidad de Castilla y León."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 502,
+      "display": 2,
+      "title": "Oficinas de asistencia en materia de registros de Castilla y León",
+      "epigrafe": "Las oficinas de asistencia en materia de registros de la Administración de la Comunidad de Castilla y León: Organización y funcionamiento. Funciones."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 503,
+      "display": 3,
+      "title": "La administración electrónica en la atención al ciudadano",
+      "epigrafe": "La administración electrónica en las funciones de información y atención al ciudadano. El Servicio de Atención al Ciudadano 012. El portal web de la Junta de Castilla y León."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 504,
+      "display": 4,
+      "title": "Transparencia y protección de datos en Castilla y León",
+      "epigrafe": "Transparencia de la actividad pública: la publicidad activa y el derecho de acceso a la información pública en Castilla y León. La protección de datos personales: principios y derechos de los interesados y obligaciones de los empleados públicos. Seguridad de la información y protección de datos de la Administración de la Comunidad de Castilla y León: uso de medios digitales y obligaciones del personal."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 505,
+      "display": 5,
+      "title": "El concepto de documento y el expediente",
+      "epigrafe": "El concepto de documento. Análisis documental: documentos oficiales. Formación del expediente. El expediente electrónico. Documentación de apoyo informativo."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 506,
+      "display": 6,
+      "title": "El archivo de los documentos administrativos",
+      "epigrafe": "El archivo de los documentos administrativos. Clases de archivos y criterios de ordenación. Archivo electrónico de documentos. El acceso a los documentos administrativos: sus limitaciones y formas de acceso."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 507,
+      "display": 7,
+      "title": "El trabajo administrativo y la simplificación administrativa",
+      "epigrafe": "El trabajo administrativo: técnicas de simplificación administrativa. Las actuaciones de la Administración de Castilla y León en administración electrónica y simplificación administrativa."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 508,
+      "display": 8,
+      "title": "Informática básica y Windows 11",
+      "epigrafe": "Informática básica. Principales componentes de un ordenador. Sistemas operativos: especial referencia a Windows 11. El explorador de Windows 11. Gestión de carpetas y archivos. Nociones básicas de seguridad informática."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 509,
+      "display": 9,
+      "title": "Word y Excel para Microsoft 365",
+      "epigrafe": "Sistemas ofimáticos colaborativos. Procesadores de textos: Word para Microsoft 365. Hojas de cálculo: Excel para Microsoft 365. Funciones y utilidades."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 510,
+      "display": 10,
+      "title": "Correo electrónico e Internet",
+      "epigrafe": "Correo electrónico: conceptos elementales y funcionamiento. La red Internet: Conceptos elementales y servicios."
+    },
+    {
+      "bloque": 5,
+      "topic_number": 511,
+      "display": 11,
+      "title": "Seguridad y salud en el puesto de trabajo",
+      "epigrafe": "Conceptos básicos sobre seguridad y salud en el puesto de trabajo. Riesgos y medidas preventivas asociadas al puesto de trabajo a desempeñar."
+    }
+  ]
+}

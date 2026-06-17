@@ -2331,6 +2331,113 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // CUERPO ADMINISTRATIVO DE CASTILLA Y LEÓN (C1)
+  // ========================================
+  {
+    id: 'administrativo_castilla_leon',
+    slug: 'administrativo-castilla-leon',
+    positionType: 'administrativo_castilla_leon',
+    examScoring: { penaltyDivisor: 4, source: 'BOCYL nº7 13/01/2026 (Resolución 7/01/2026, Anexo I.A): contestaciones erroneas penalizan 1/4 del valor de la correcta. confidence:alta' },
+    name: 'Cuerpo Administrativo de Castilla y León',
+    shortName: 'Admin. CyL',
+    emoji: '👨‍💼',
+    badge: 'C1',
+    color: 'cyan',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Grupo I: Organización del Estado, la UE y Castilla y León',
+        subtitle: 'Constitución, Administración e Instituciones',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española' },
+          { id: 2, name: 'La Administración General del Estado: regulación y estructura' },
+          { id: 3, name: 'La Administración local y la organización territorial de Castilla y León' },
+          { id: 4, name: 'La Unión Europea. Las instituciones europeas' },
+          { id: 5, name: 'El Estatuto de Autonomía de Castilla y León' },
+          { id: 6, name: 'Las Cortes de Castilla y León' },
+          { id: 7, name: 'Instituciones propias de la Comunidad de Castilla y León' },
+          { id: 8, name: 'El Gobierno de la Comunidad de Castilla y León' },
+          { id: 9, name: 'La Administración de la Comunidad de Castilla y León' },
+          { id: 10, name: 'El sector público de la Comunidad de Castilla y León' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Grupo II: Derecho y régimen jurídico de las AAPP',
+        subtitle: 'Acto, procedimiento, contratos y subvenciones',
+        icon: '⚖️',
+        themes: [
+          { id: 201, name: 'Las fuentes del derecho administrativo', displayNumber: 11 },
+          { id: 202, name: 'El acto administrativo', displayNumber: 12 },
+          { id: 203, name: 'El procedimiento administrativo común', displayNumber: 13 },
+          { id: 204, name: 'La revisión de los actos administrativos y los recursos', displayNumber: 14 },
+          { id: 205, name: 'El régimen jurídico del Sector Público y los órganos', displayNumber: 15 },
+          { id: 206, name: 'La potestad sancionadora y la responsabilidad patrimonial', displayNumber: 16 },
+          { id: 207, name: 'Los contratos del Sector Público', displayNumber: 17 },
+          { id: 208, name: 'Las subvenciones públicas', displayNumber: 18 },
+          { id: 209, name: 'Políticas de igualdad y no discriminación en Castilla y León', displayNumber: 19 },
+        ],
+      },
+      {
+        id: 'bloque3',
+        title: 'Grupo III: Régimen jurídico de los empleados públicos',
+        subtitle: 'EBEP, Función Pública CyL y Seguridad Social',
+        icon: '👥',
+        themes: [
+          { id: 301, name: 'El Estatuto Básico del Empleado Público', displayNumber: 20 },
+          { id: 302, name: 'La Ley de la Función Pública de Castilla y León', displayNumber: 21 },
+          { id: 303, name: 'Sindicación, huelga e incompatibilidades', displayNumber: 22 },
+          { id: 304, name: 'El personal laboral al servicio de las Administraciones Públicas', displayNumber: 23 },
+          { id: 305, name: 'El Texto Refundido de la Ley General de la Seguridad Social', displayNumber: 24 },
+        ],
+      },
+      {
+        id: 'bloque4',
+        title: 'Grupo IV: Gestión financiera',
+        subtitle: 'Presupuesto, gasto, nóminas y control',
+        icon: '💶',
+        themes: [
+          { id: 401, name: 'El presupuesto de la Comunidad de Castilla y León', displayNumber: 25 },
+          { id: 402, name: 'Los créditos presupuestarios y sus operaciones', displayNumber: 26 },
+          { id: 403, name: 'La gestión del gasto', displayNumber: 27 },
+          { id: 404, name: 'Gestión de expedientes de gasto: contratos y subvenciones', displayNumber: 28 },
+          { id: 405, name: 'Nóminas de los empleados públicos', displayNumber: 29 },
+          { id: 406, name: 'El control del gasto público', displayNumber: 30 },
+        ],
+      },
+      {
+        id: 'bloque5',
+        title: 'Grupo V: Competencias',
+        subtitle: 'Atención al ciudadano, documentación, ofimática y PRL',
+        icon: '📋',
+        themes: [
+          { id: 501, name: 'Derechos de las personas ante la Administración y calidad', displayNumber: 31 },
+          { id: 502, name: 'Oficinas de asistencia en materia de registros de Castilla y León', displayNumber: 32 },
+          { id: 503, name: 'La administración electrónica en la atención al ciudadano', displayNumber: 33 },
+          { id: 504, name: 'Transparencia y protección de datos en Castilla y León', displayNumber: 34 },
+          { id: 505, name: 'El concepto de documento y el expediente', displayNumber: 35 },
+          { id: 506, name: 'El archivo de los documentos administrativos', displayNumber: 36 },
+          { id: 507, name: 'El trabajo administrativo y la simplificación administrativa', displayNumber: 37 },
+          { id: 508, name: 'Informática básica y Windows 11', displayNumber: 38 },
+          { id: 509, name: 'Word y Excel para Microsoft 365', displayNumber: 39 },
+          { id: 510, name: 'Correo electrónico e Internet', displayNumber: 40 },
+          { id: 511, name: 'Seguridad y salud en el puesto de trabajo', displayNumber: 41 },
+        ],
+      },
+    ],
+    totalTopics: 41,
+    aliases: ['administrativo castilla y leon', 'administrativo cyl', 'c1 castilla', 'cuerpo administrativo cyl', 'administrativo jcyl', 'administrativo castilla leon', 'admin c1 cyl'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-castilla-leon', label: 'Mi Oposición', icon: '👨‍💼', featured: true },
+      { href: '/administrativo-castilla-leon/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-castilla-leon/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO JUNTA DE ANDALUCÍA (C2)
   // ========================================
   {

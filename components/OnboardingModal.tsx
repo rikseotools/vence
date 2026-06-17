@@ -910,6 +910,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'administrativo_castilla_leon',
+    nombre: 'Cuerpo Administrativo de Castilla y León',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '👨‍💼'
+  },
+  {
     id: 'auxiliar_administrativo_andalucia',
     nombre: 'Auxiliar Administrativo Junta de Andalucía',
     categoria: 'C2',
@@ -1554,8 +1561,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Castilla y León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
-  'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
+  'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
+  'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
@@ -1590,6 +1597,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'tramitacion_procesal',                // incluida por relevancia
   'auxilio_judicial',                    // incluida por relevancia
   'auxiliar_administrativo_cyl',         // 24
+  'administrativo_castilla_leon',        // C1 CyL (191 plazas, convocatoria BOCYL 13/01/2026)
   'auxiliar_administrativo_diputacion_zaragoza', // 20
   'auxiliar_administrativo_diputacion_leon',     // 25
   'auxiliar_administrativo_diputacion_cadiz',    // 24
