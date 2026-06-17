@@ -93,6 +93,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-universidad-leon': 'castilla-y-leon',
     'auxiliar-administrativo-diputacion-zamora': 'castilla-y-leon',
     'auxiliar-administrativo-diputacion-avila': 'castilla-y-leon',
+    'auxiliar-administrativo-diputacion-segovia': 'castilla-y-leon',
     'auxiliar-administrativo-clm': 'castilla-la-mancha',
     'auxiliar-administrativo-diputacion-cuenca': 'castilla-la-mancha',
     'auxiliar-administrativo-carm': 'murcia',

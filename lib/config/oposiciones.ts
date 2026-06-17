@@ -1965,6 +1965,70 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE SEGOVIA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_segovia',
+    slug: 'auxiliar-administrativo-diputacion-segovia',
+    positionType: 'auxiliar_administrativo_diputacion_segovia',
+    examScoring: { penaltyDivisor: 2.5, source: 'BOCyL nº120 23/06/2023 (convocatoria anterior, base 7ª): acierto +0,25 / error -0,10 (= 2,5 errores por acierto); en blanco 0. confidence:media (bases OEP 2025 pendientes)' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Segovia',
+    shortName: 'Aux. Dip. Segovia',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'teal',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (30 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: derechos y deberes fundamentales' },
+          { id: 2, name: 'La Corona, las Cortes Generales y órganos de control' },
+          { id: 3, name: 'El Gobierno en el sistema constitucional' },
+          { id: 4, name: 'El Poder Judicial y el CGPJ' },
+          { id: 5, name: 'Organización territorial y el Estatuto de Castilla y León' },
+          { id: 6, name: 'La Unión Europea: instituciones y fuentes' },
+          { id: 7, name: 'El ordenamiento administrativo y los interesados' },
+          { id: 8, name: 'El acto administrativo, la notificación y el registro' },
+          { id: 9, name: 'El procedimiento administrativo común (I)' },
+          { id: 10, name: 'El procedimiento administrativo común (II)' },
+          { id: 11, name: 'Los recursos administrativos' },
+          { id: 12, name: 'El Régimen Local: fuentes y potestad normativa' },
+          { id: 13, name: 'El municipio: organización y competencias' },
+          { id: 14, name: 'La provincia y el funcionamiento de los órganos colegiados' },
+          { id: 15, name: 'Las competencias de la provincia y la cooperación municipal' },
+          { id: 16, name: 'La actividad subvencional' },
+          { id: 17, name: 'Los contratos del Sector Público' },
+          { id: 18, name: 'Los empleados públicos: régimen jurídico y disciplinario' },
+          { id: 19, name: 'El empleo público: acceso y situaciones administrativas' },
+          { id: 20, name: 'El sistema tributario y las Haciendas Locales' },
+          { id: 21, name: 'El presupuesto de las Entidades Locales' },
+          { id: 22, name: 'El gasto público local y su control' },
+          { id: 23, name: 'La atención al público y la administración electrónica' },
+          { id: 24, name: 'Los Servicios Sociales de Castilla y León (Ley 16/2010)' },
+          { id: 25, name: 'La Ley de Dependencia (Ley 39/2006)' },
+          { id: 26, name: 'Transparencia y protección de datos' },
+          { id: 27, name: 'Igualdad y violencia de género (LO 3/2007 y LO 1/2004)' },
+          { id: 28, name: 'Prevención de riesgos laborales y pantallas de visualización' },
+          { id: 29, name: 'Informática básica, Windows y ofimática (Word, Excel, Access)' },
+          { id: 30, name: 'Internet y seguridad informática' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    aliases: ['segovia', 'diputacion segovia', 'dip segovia', 'aux segovia', 'auxiliar segovia', 'diputacion de segovia'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-segovia', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-segovia/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-segovia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

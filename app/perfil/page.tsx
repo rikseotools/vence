@@ -651,6 +651,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_segovia',
+      label: 'Auxiliar Administrativo Dip. Segovia',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Segovia',
+        slug: 'auxiliar-administrativo-diputacion-segovia',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
