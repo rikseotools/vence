@@ -3789,7 +3789,7 @@ export const detectionSources = pgTable("detection_sources", {
 	index("idx_detection_sources_type").using("btree", table.sourceType, table.isActive),
 	index("idx_detection_sources_region").using("btree", table.regionName),
 	uniqueIndex("idx_detection_sources_url_unique").using("btree", table.listingUrl),
-	check("detection_sources_source_type_check", sql`source_type IN ('estado', 'ccaa', 'ayuntamiento', 'diputacion')`),
+	check("detection_sources_source_type_check", sql`source_type IN ('estado', 'ccaa', 'ayuntamiento', 'diputacion', 'universidad')`),
 ]);
 
 // Sistema proactivo de detección de nuevas OEPs — multi-sensor con confidence scoring

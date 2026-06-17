@@ -9,7 +9,7 @@ import { z } from 'zod/v3'
 // SCHEMAS
 // ============================================
 
-export const sourceTypeOptions = ['estado', 'ccaa', 'ayuntamiento', 'diputacion'] as const
+export const sourceTypeOptions = ['estado', 'ccaa', 'ayuntamiento', 'diputacion', 'universidad'] as const
 export type SourceType = typeof sourceTypeOptions[number]
 
 export const detectionSourceSchema = z.object({

@@ -14,7 +14,8 @@ Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** co
 | `generic_source` | Cambios en fuentes genéricas/portales fuera de catálogo (`generic_source_checks`) — hash + filtro LLM. Aquí se dan de alta URLs de cuerpos NUEVOS (ver §10) | 50 | Diario |
 | `timeline_silence` | Hitos `current` con fecha pasada +3 días sin avance | 70 | Diario 7:00 UTC |
 | `hash_change` | SHA-256 del contenido de la página cambió (sensor antiguo, integrado como complemento) | 30 | L-V 9:00 UTC |
-| ~~`regional_scan`~~ | **RETIRADO 01/06/2026** (56% error + falsos positivos). Descubrimiento de cuerpos nuevos → on-demand por Claude. Ver §10 | — | — |
+| `regional_scan` / `boe_api` (vía **`detect-boletines`**) | 🆕 Convocatorias de ingreso C1/C2 NUEVAS leídas de los **sumarios de boletines oficiales** (BOCYL HTML por fecha + BOE API JSON). Pre-filtro regex + filtro LLM (`extractRegionalOeps`). Cubre el hueco del scraper de webs retirado. Ver §10 | 55 / 20 | L-V 06:30 UTC |
+| ~~`detect-regional-oeps` (scraper de WEBS)~~ | **RETIRADO 01/06/2026** (56% error + falsos positivos sobre webs institucionales JS). **Sustituido el 18/06/2026 por `detect-boletines`**, que lee boletines (estáticos/API), no webs. | — | — |
 
 **Score final** (con bonus por evidencias): 0-100. Score ≥ 60 → badge rojo, 40-59 → amarillo, <40 → normal.
 
@@ -815,7 +816,11 @@ Si hay fecha de examen, listas definitivas o resultados, avisar a los usuarios c
 
 ## 10. Descubrimiento de oposiciones NUEVAS (cuerpos fuera de catálogo)
 
-> **⛔ CAMBIO 01/06/2026 — el scraper regional `detect-regional-oeps` fue RETIRADO.** Run forzado real: 167 fuentes, 93 fallos (56% error), falsos positivos demostrados ("Listado de colaboradores", procesos finalizados, C1 de 1 plaza). El descubrimiento de cuerpos nuevos pasa a ser **on-demand por Claude**. Código borrado en `backend/src/detect-regional-oeps/`; la tabla `detection_sources` (167 filas) queda dormida sin cron que la lea. Detalle: `docs/roadmap/deteccion-convocatorias-oeps-completo.md` (banner decisión 01/06).
+> **⛔ CAMBIO 01/06/2026 — el scraper regional `detect-regional-oeps` fue RETIRADO.** Run forzado real: 167 fuentes, 93 fallos (56% error), falsos positivos demostrados ("Listado de colaboradores", procesos finalizados, C1 de 1 plaza). Código borrado en `backend/src/detect-regional-oeps/`; la tabla `detection_sources` (167 filas) quedó dormida sin cron que la leyera. Detalle: `docs/roadmap/deteccion-convocatorias-oeps-completo.md` (banner decisión 01/06).
+>
+> **🆕 CAMBIO 18/06/2026 — el punto ciego de convocatorias nuevas se cubre con `detect-boletines` (no con webs).** Motivo: la Escala Administrativa (C1) de la Universidad de León se publicó en el **BOCYL el 17/06/2026** y ningún sensor activo la cogió (la web de la ULE es JS y no había fuente de universidades). El error de raíz del scraper viejo era escanear **webs institucionales** (JS, ruidosas); la fuente FIABLE es el **sumario del boletín**, que es HTML estático (BOCYL `boletin.do?fechaBoletin=DD/MM/YYYY`) o API (BOE `datosabiertos/api/boe/sumario/YYYYMMDD`). El sensor `detect-boletines` (`backend/src/detect-boletines/`, cron L-V 06:30 UTC) lee esos sumarios, pre-filtra C1/C2 por regex barata, afina con `extractRegionalOeps` (LLM) y genera señales `regional_scan`/`boe_api`. Validado: detecta la ULE Escala Administrativa (BOCYL) + convocatorias de ingreso de UNED/UPM/UCA… (BOE).
+>
+> Reparto de tablas: **`detection_sources`** (incl. el nuevo tipo `universidad`, 7 universidades sembradas) es la "lista de a quién vigilar"; la señal **fiable sale del boletín**, no de la web. **Las webs JS NO se escanean** (Playwright queda como 2ª iteración solo para fuentes sin boletín).
 
 ### Modelo actual: "Claude mete, el cron revisa"
 

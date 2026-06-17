@@ -22,6 +22,7 @@ import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-ti
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { AdvanceEstadoModule } from './advance-estado/advance-estado.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
+import { DetectBoletinesModule } from './detect-boletines/detect-boletines.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { TestConfigModule } from './test-config/test-config.module';
@@ -177,6 +178,10 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     // con 56% de tasa de error + falsos positivos. Descubrimiento de oposiciones
     // nuevas pasa a ser on-demand por Claude. Ver docs/roadmap/deteccion-convocatorias-oeps-completo.md
     DetectGenericSourcesModule,
+    // Sensor detect-boletines: descubre convocatorias C1/C2 nuevas leyendo los
+    // sumarios de boletines oficiales (BOCYL/BOE). Cubre el punto ciego del
+    // retiro de detect-regional-oeps (01/06/2026) — caso ULE Escala Administrativa.
+    DetectBoletinesModule,
     // Cron de higiene: avanza estado_proceso según fechas vencidas (06:30 UTC)
     AdvanceEstadoModule,
     // HTTP endpoints — Bloque 3 canary (Etapa 2)
