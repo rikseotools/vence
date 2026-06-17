@@ -6,6 +6,7 @@
 // random-selection sigue contra replica/primary hasta migrar todo el módulo
 // en una fase posterior (alto tráfico, requiere observación cuidadosa).
 import { getDb, getReadDb, getPoolerDb } from '@/db/client'
+import { allocateProportional } from '@/lib/test-selection/allocateProportional'
 
 function getFilteredCountDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
@@ -243,80 +244,17 @@ export function selectProportionally<T extends { sourceTopic: number | null }>(
   topics: number[],
   numQuestions: number
 ): T[] {
-  if (topics.length <= 1) {
-    // Single topic, just shuffle and slice
-    return questions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
-  }
-
-  // Group questions by topic
-  const byTopic = new Map<number, T[]>()
-  for (const topic of topics) {
-    byTopic.set(topic, [])
-  }
-
-  for (const q of questions) {
-    if (q.sourceTopic !== null && byTopic.has(q.sourceTopic)) {
-      byTopic.get(q.sourceTopic)!.push(q)
-    }
-  }
-
-  // Calculate base allocation per topic
-  const questionsPerTopic = Math.floor(numQuestions / topics.length)
-  const remainder = numQuestions % topics.length
-
-  const selected: T[] = []
-  const topicAllocations: { topic: number; count: number }[] = []
-
-  // Shuffle each topic's questions and calculate available counts
-  for (const topic of topics) {
-    const topicQuestions = byTopic.get(topic) || []
-    // Shuffle in place
-    for (let i = topicQuestions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[topicQuestions[i], topicQuestions[j]] = [topicQuestions[j], topicQuestions[i]]
-    }
-    topicAllocations.push({
-      topic,
-      count: Math.min(questionsPerTopic, topicQuestions.length)
-    })
-  }
-
-  // Distribute remainder to topics that have extra questions
-  let extraNeeded = remainder
-  for (const allocation of topicAllocations) {
-    if (extraNeeded <= 0) break
-    const topicQuestions = byTopic.get(allocation.topic) || []
-    if (topicQuestions.length > allocation.count) {
-      allocation.count++
-      extraNeeded--
-    }
-  }
-
-  // Select from each topic
-  for (const allocation of topicAllocations) {
-    const topicQuestions = byTopic.get(allocation.topic) || []
-    selected.push(...topicQuestions.slice(0, allocation.count))
-  }
-
-  // If we couldn't fill all slots, try to get more from topics with extras
-  const deficit = numQuestions - selected.length
-  if (deficit > 0) {
-    // Get remaining questions from any topic
-    const selectedIds = new Set(selected.map(q => (q as any).id))
-    const remaining = questions.filter(q => !selectedIds.has((q as any).id))
-    selected.push(...remaining.slice(0, deficit))
-  }
-
-  // Final shuffle to mix topics
-  for (let i = selected.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[selected[i], selected[j]] = [selected[j], selected[i]]
-  }
-
-  console.log(`📊 Selección proporcional: ${selected.length} preguntas de ${topics.length} temas`)
-  topicAllocations.forEach(a => {
-    console.log(`  - Tema ${a.topic}: ${a.count} preguntas`)
+  // Reparto proporcional con relleno de déficit garantizado (fuente de verdad
+  // única: lib/test-selection/allocateProportional). El orden de prioridad
+  // nunca-vistas ya viene aplicado aguas arriba (sortedQuestions); aquí solo
+  // repartimos y completamos hasta numQuestions.
+  const { selected, exhausted } = allocateProportional(questions, topics, numQuestions, {
+    groupKey: (q) => q.sourceTopic,
   })
+
+  if (exhausted) {
+    console.log(`📊 Selección proporcional: ${selected.length}/${numQuestions} (pool agotado) en ${topics.length} temas`)
+  }
 
   return selected
 }

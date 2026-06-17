@@ -87,6 +87,7 @@ interface AdaptiveResult {
 
 // Tipos adaptativo importados de lib/types/adaptive.ts
 import { topicKey, articleKey, emptyBuckets, pickDiverseByArticle } from '@/lib/types/adaptive'
+import { allocateProportional } from '@/lib/test-selection/allocateProportional'
 import type { AdaptiveCatalog as AdaptiveCatalogNew, DifficultyBuckets } from '@/lib/types/adaptive'
 
 // Legacy compat: el viejo AdaptiveCatalog era flat (difficulty como clave directa)
@@ -147,8 +148,9 @@ function buildAdaptiveCatalog(
   answeredIds: Set<string>,
   themes: number[],
   numQuestions: number
-): { catalog: AdaptiveCatalog; initialQuestions: TransformedQuestion[] } {
+): { catalog: AdaptiveCatalog; initialQuestions: TransformedQuestion[]; exhausted: boolean } {
   const getDifficulty = (q: TransformedQuestion) => q.metadata?.difficulty || 'medium'
+  let exhausted = false
 
   // Clasificar por tema
   const byTopic = new Map<string, TransformedQuestion[]>()
@@ -197,26 +199,25 @@ function buildAdaptiveCatalog(
     // Seleccionar sin repetir artículo hasta agotar los disponibles
     initialQuestions = pickDiverseByArticle(pool, numQuestions, q => articleKey(q.article?.number, q.article?.law_short_name))
   } else {
-    // Multi-tema: proporcional por tema, luego diversificar artículos
-    const perTopic = Math.floor(numQuestions / themes.length)
-    const remainder = numQuestions % themes.length
-    const selected: TransformedQuestion[] = []
+    // Multi-tema: reparto proporcional por tema, priorizando nunca-vistas, CON
+    // relleno de déficit garantizado (fuente de verdad única:
+    // lib/test-selection/allocateProportional). Antes este bloque NO rellenaba
+    // el déficit → pedías 75 y salían 57 si algún tema no llegaba a su cupo
+    // (bug 16/06/2026, caso Laura). El relleno garantiza min(target, disponibles).
+    const groups = themes.map((t) => topicKey(t))
+    const result = allocateProportional(allQuestions, groups, numQuestions, {
+      groupKey: (q) => topicKey(q.tema),
+      isPriority: (q) => !answeredIds.has(q.id),
+    })
+    initialQuestions = result.selected
+    exhausted = result.exhausted
 
-    const topicKeys = [...byTopic.keys()].sort(() => Math.random() - 0.5)
-    let extra = remainder
-
-    for (const tKey of topicKeys) {
-      const topicQs = byTopic.get(tKey) || []
-      const neverSeen = topicQs.filter(q => !answeredIds.has(q.id)).sort(() => Math.random() - 0.5)
-      const count = perTopic + (extra > 0 ? 1 : 0)
-      if (extra > 0) extra--
-
-      const pick = neverSeen.length >= count ? neverSeen.slice(0, count) : [...neverSeen, ...topicQs.filter(q => answeredIds.has(q.id)).sort(() => Math.random() - 0.5)].slice(0, count)
-      selected.push(...pick)
-      topicDistribution[tKey] = pick.length
+    // Distribución real por tema (para el catálogo)
+    for (const g of groups) topicDistribution[g] = 0
+    for (const q of initialQuestions) {
+      const k = topicKey(q.tema)
+      topicDistribution[k] = (topicDistribution[k] || 0) + 1
     }
-
-    initialQuestions = selected.sort(() => Math.random() - 0.5)
   }
 
   // Registrar distribución para single tema
@@ -224,7 +225,9 @@ function buildAdaptiveCatalog(
     topicDistribution['all'] = initialQuestions.length
   }
 
-  console.log(`[AdaptCatalog] Initial: ${initialQuestions.length} preguntas, topics: ${JSON.stringify(topicDistribution)}`)
+  // Invariante: exhausted = se devolvieron menos de las pedidas (pool real corto).
+  exhausted = initialQuestions.length < numQuestions
+  console.log(`[AdaptCatalog] Initial: ${initialQuestions.length}/${numQuestions} preguntas${exhausted ? ' (pool agotado)' : ''}, topics: ${JSON.stringify(topicDistribution)}`)
 
   return {
     catalog: {
@@ -234,6 +237,7 @@ function buildAdaptiveCatalog(
       articlesSeen: initialQuestions.map(q => articleKey(q.article?.number, q.article?.law_short_name)),
     },
     initialQuestions,
+    exhausted,
   }
 }
 
@@ -1281,9 +1285,19 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
       console.log('🧠 Construyendo catálogo adaptativo multi-tema')
       const answeredIds = user ? await getCachedAnsweredIds(user.id) : new Set<string>()
 
-      const { catalog, initialQuestions } = buildAdaptiveCatalog(
+      const { catalog, initialQuestions, exhausted } = buildAdaptiveCatalog(
         allQuestions, answeredIds, themes, numQuestions
       )
+
+      // Observabilidad: si no llegamos al nº pedido pese al relleno, el banco de
+      // esa oposición/temas es realmente corto. Lo registramos para detectarlo
+      // nosotros antes de que lo reporte el usuario (martillo de observabilidad).
+      if (exhausted) {
+        console.warn('⚠️ [test-pool-exhausted]', JSON.stringify({
+          positionType, themes: themes.length, requested: numQuestions,
+          delivered: initialQuestions.length, poolFetched: allQuestions.length,
+        }))
+      }
 
       return {
         isAdaptive: true,
