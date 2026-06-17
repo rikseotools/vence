@@ -356,6 +356,15 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 mb-1">
                       <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                       {onlineUsers.length} usuarios online
+                      {(() => {
+                        const premiumOnline = onlineUsers.filter(u => u.is_premium).length
+                        const pct = Math.round((premiumOnline / onlineUsers.length) * 100)
+                        return (
+                          <span className="ml-auto flex-shrink-0 text-amber-600 dark:text-amber-400">
+                            💎 {pct}% premium
+                          </span>
+                        )
+                      })()}
                     </div>
                     <div className="space-y-0.5">
                       {onlineUsers.map(user => (
