@@ -631,6 +631,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_huesca',
+      label: 'Auxiliar Administrativo Dip. Huesca',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Huesca',
+        slug: 'auxiliar-administrativo-diputacion-huesca',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

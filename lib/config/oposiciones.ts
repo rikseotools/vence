@@ -1836,6 +1836,63 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE HUESCA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_huesca',
+    slug: 'auxiliar-administrativo-diputacion-huesca',
+    positionType: 'auxiliar_administrativo_diputacion_huesca',
+    examScoring: { penaltyDivisor: 3, source: 'BOA nº158 18/08/2025 (base quinta): cada error resta la tercera parte (1/3) del valor de un acierto; en blanco no puntúa. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Huesca',
+    shortName: 'Aux. Dip. Huesca',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'cyan',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'programa',
+        title: 'Programa oficial (23 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: estructura, Corona, Cortes y Poder Judicial' },
+          { id: 2, name: 'El Estatuto de Autonomía de Aragón y la organización institucional' },
+          { id: 3, name: 'El Derecho administrativo: concepto y fuentes' },
+          { id: 4, name: 'El procedimiento administrativo y el acto administrativo' },
+          { id: 5, name: 'La invalidez del acto administrativo y la revisión de oficio' },
+          { id: 6, name: 'Comunicaciones y notificaciones. La notificación electrónica' },
+          { id: 7, name: 'Recursos administrativos y jurisdiccionales' },
+          { id: 8, name: 'Las entidades locales: clases, competencias y régimen jurídico' },
+          { id: 9, name: 'La provincia y la organización provincial' },
+          { id: 10, name: 'Las competencias de las Diputaciones Provinciales' },
+          { id: 11, name: 'Registro electrónico, atención al público y oficinas de asistencia' },
+          { id: 12, name: 'La contratación pública' },
+          { id: 13, name: 'Haciendas Locales: ingresos y tributos locales' },
+          { id: 14, name: 'Recaudación de los ingresos locales y procedimiento de apremio' },
+          { id: 15, name: 'Los presupuestos locales y el gasto público local' },
+          { id: 16, name: 'Las subvenciones (Ley 38/2003 y Ley de Subvenciones de Aragón)' },
+          { id: 17, name: 'Transparencia, protección de datos e igualdad en Aragón' },
+          { id: 18, name: 'El empleo público local: derechos y deberes' },
+          { id: 19, name: 'El archivo, los documentos y el expediente administrativo' },
+          { id: 20, name: 'Windows, navegadores de internet y correo electrónico (Thunderbird)' },
+          { id: 21, name: 'Protección de datos personales (RGPD y LO 3/2018)' },
+          { id: 22, name: 'Ofimática: la suite LibreOffice (Writer, Calc, Draw y Base)' },
+          { id: 23, name: 'Seguridad informática: ENS, malware e INCIBE' },
+        ],
+      },
+    ],
+    totalTopics: 23,
+    aliases: ['huesca', 'diputacion huesca', 'dip huesca', 'aux huesca', 'auxiliar huesca', 'diputacion de huesca'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-huesca', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-huesca/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-huesca/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
