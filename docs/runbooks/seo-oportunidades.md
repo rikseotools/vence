@@ -65,7 +65,20 @@ Lo que más demanda tiene y dónde estás cerca:
 
 ---
 
-## 🔧 Acción técnica nº1: SSR del contenido de las páginas de ley (02/06/2026)
+## ✅ Acción técnica nº1: SSR del contenido de las páginas de ley — HECHO (commit 640ce508)
+
+**ESTADO (verificado 17/06/2026): IMPLEMENTADO, DESPLEGADO Y FUNCIONANDO.**
+`app/leyes/[law]/page.tsx` (server component) ya hace SSR: `fetchLawSections`/`fetchLawArticles`
+con `unstable_cache` y renderiza "Temario de {ley}" + índice de títulos (o fallback al índice
+de artículos, máx 100) como HTML estático. Verificado en producción: el HTML de
+`/leyes/constitucion-espanola` sirve "Temario de… Título I, II…" crawleable. **Está rindiendo:**
+en `gsc:seo` (17/06) las queries diana SUBEN — "test constitución española" pos 6 (↑2.4),
+"test ley 39/2015" pos 4.5 (↑1.6), "test constitución" pos 8.7 (↑2.2).
+**Siguiente palanca (pos 4-6 → top 3):** ya no es técnica; es CONTENIDO — estudiar a
+testdeley.com (#1), más profundidad/preguntas crawleables, enlaces internos desde páginas
+fuertes. Ver paso 3 del bucle. (Fase 2 opcional ya citada abajo: SSR de preguntas de ejemplo.)
+
+<details><summary>Diagnóstico original (02/06/2026) — histórico</summary>
 
 **Hallazgo (analizando a testdeley.com, #1 en "test constitución española"):** la
 arquitectura de Vence es correcta (página por ley `/leyes/[law]` + páginas por título
@@ -90,6 +103,8 @@ preguntas de ejemplo SIN respuesta (respeta anti-scraping de `correct_option`).
 
 **Medir:** tras desplegar, seguir la posición de "test constitución española", "test ley
 39/2015" con `npm run gsc:seo` durante 4-8 semanas.
+
+</details>
 
 ## Caveats
 - **Ads ≠ SEO.** Pagar anuncios no sube el orgánico. Se confunde a menudo.
