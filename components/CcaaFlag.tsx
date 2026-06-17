@@ -254,7 +254,8 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
   // Illes Balears (consells + islas)
   [['baleares', 'balear', 'illes', 'caib', 'ibsalut', 'mallorca', 'menorca', 'ibiza', 'eivissa', 'formentera', 'palma', 'consell'], 'baleares'],
   // Madrid (comunidad, ayto, sanidad, universidades madrileñas)
-  [['madrid', 'sermas', 'carlos-iii', 'complutense'], 'madrid'],
+  // 'alcala' = Universidad de Alcalá (Alcalá de Henares, Comunidad de Madrid)
+  [['madrid', 'sermas', 'carlos-iii', 'complutense', 'alcala'], 'madrid'],
   // Asturias (antes que Extremadura: 'tcae-sespa' contiene 'tcae-ses')
   [['asturias', 'sespa', 'oviedo', 'gijon', 'principado'], 'asturias'],
   // Extremadura
