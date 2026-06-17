@@ -2029,6 +2029,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE HUELVA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_huelva',
+    slug: 'auxiliar-administrativo-diputacion-huelva',
+    positionType: 'auxiliar_administrativo_diputacion_huelva',
+    examScoring: { penaltyDivisor: null, source: 'BOP Huelva nº129 03/07/2024 (convocatoria anterior): la oposición no es tipo test (preguntas cortas + supuesto práctico), no hay penalización. confidence:media (bases OEP 2025 pendientes)' },
+    name: 'Auxiliar Administrativo de la Diputación de Huelva',
+    shortName: 'Aux. Dip. Huelva',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'orange',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comunes',
+        title: 'Temas Comunes',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española: derechos y deberes fundamentales' },
+          { id: 2, name: 'Relaciones de las entidades locales con otras administraciones' },
+          { id: 3, name: 'El sometimiento a la ley y las fuentes del Derecho administrativo' },
+          { id: 4, name: 'Los derechos del ciudadano ante la Administración' },
+        ],
+      },
+      {
+        id: 'especificos',
+        title: 'Temas Específicos',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 5, name: 'El acto administrativo: validez, eficacia y nulidad' },
+          { id: 6, name: 'El registro de documentos, días hábiles y cómputo de plazos' },
+          { id: 7, name: 'El procedimiento administrativo común y el silencio' },
+          { id: 8, name: 'Los recursos administrativos y la revisión de oficio' },
+          { id: 9, name: 'El municipio: organización y competencias' },
+          { id: 10, name: 'La provincia: organización y competencias' },
+          { id: 11, name: 'El funcionamiento de los órganos colegiados locales' },
+          { id: 12, name: 'Ordenanzas y reglamentos de las entidades locales' },
+          { id: 13, name: 'Los bienes de las entidades locales' },
+          { id: 14, name: 'El personal al servicio de la Administración local' },
+          { id: 15, name: 'El presupuesto general de las entidades locales' },
+          { id: 16, name: 'Ofimática: LibreOffice Calc' },
+          { id: 17, name: 'Ofimática: LibreOffice Writer' },
+          { id: 18, name: 'La igualdad de género: marco jurídico' },
+          { id: 19, name: 'La Corporación Provincial de la Diputación de Huelva' },
+          { id: 20, name: 'Prevención de riesgos laborales: derechos y deberes' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['huelva diputacion', 'diputacion huelva', 'dip huelva', 'aux diputacion huelva', 'diputacion de huelva'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-huelva', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-huelva/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-huelva/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {

@@ -1,0 +1,49 @@
+{
+  "slug": "auxiliar-administrativo-diputacion-huelva",
+  "position_type": "auxiliar_administrativo_diputacion_huelva",
+  "nombre": "Auxiliar Administrativo de la Diputación de Huelva",
+  "administracion": "Local",
+  "categoria": "C2",
+  "subgrupo": "C2",
+  "sistema": "Oposición (turno libre)",
+  "fuente_temario": "Temario de la última convocatoria equivalente: 11 plazas Auxiliar de Administración General, BOP Huelva nº129 de 03/07/2024 (BOE-A-2024-19866). Posicionamiento para la OEP 2025 (~3 plazas turno libre), pendiente de convocar.",
+  "oep": "OEP 2025 (BOP Huelva 25/11/2025): ~3 plazas turno libre Auxiliar de Administración General C2 (+ cupos discapacidad), pendientes de convocar. Temario basado en la convocatoria 2024.",
+  "examen": {
+    "ejercicios": 2,
+    "tipo": "1º teórico (preguntas cortas) + 2º supuesto práctico",
+    "primer_ejercicio": { "tipo": "preguntas cortas a desarrollar (25)", "minutos": 180, "puntuacion_min": 5 },
+    "segundo_ejercicio": { "tipo": "supuesto práctico (con medios informáticos)", "minutos": 180, "puntuacion_min": 5 },
+    "opciones": null,
+    "penalizacion": "No aplica: los ejercicios no son tipo test (preguntas cortas y supuesto práctico)",
+    "penalizacion_fuente": "BOP Huelva nº129 03/07/2024 (bases de la Diputación de Huelva)",
+    "sistema": "oposición (turno libre, sin concurso)",
+    "minimo": "5/10 en cada ejercicio"
+  },
+  "temario": [
+    { "n": 1, "bloque": 1, "epi": "La Constitución Española de 1978: antecedentes, características y estructura. Principios generales. Derechos y deberes fundamentales de los españoles." },
+    { "n": 2, "bloque": 1, "epi": "Relaciones de las entidades locales con las restantes administraciones territoriales. Deberes recíprocos. Tutela y control de las entidades locales." },
+    { "n": 3, "bloque": 1, "epi": "Sometimiento de la Administración a la ley y al derecho. Fuentes del derecho administrativo. La ley. Clases de leyes. Disposiciones del ejecutivo con rango de ley. El reglamento y otras disposiciones generales." },
+    { "n": 4, "bloque": 1, "epi": "Los derechos del ciudadano ante la Administración pública. Consideración especial del interesado. Colaboración y participación de los ciudadanos en la Administración, con especial referencia a la Administración local." },
+    { "n": 5, "bloque": 2, "epi": "El acto administrativo: concepto, elementos, clases y requisitos. Eficacia y validez. Nulidad y anulabilidad." },
+    { "n": 6, "bloque": 2, "epi": "El registro general de entrada y salida de documentos. Días y horas hábiles. Cómputo de plazos. Requisitos en la presentación de documentos." },
+    { "n": 7, "bloque": 2, "epi": "El procedimiento administrativo común: iniciación, ordenación, instrucción y terminación. La obligación de resolver: el silencio administrativo." },
+    { "n": 8, "bloque": 2, "epi": "Los recursos administrativos: concepto y clases. La revisión de oficio de los actos administrativos." },
+    { "n": 9, "bloque": 2, "epi": "El municipio: concepto y elementos. Organización municipal. Competencias." },
+    { "n": 10, "bloque": 2, "epi": "La provincia en el régimen local. Organización y competencias." },
+    { "n": 11, "bloque": 2, "epi": "Funcionamiento de los órganos colegiados en las entidades locales: régimen de sesiones y acuerdos. Convocatoria y orden del día. Actas y certificaciones de acuerdo." },
+    { "n": 12, "bloque": 2, "epi": "Ordenanzas y reglamentos de las entidades locales. Procedimiento de elaboración y aprobación." },
+    { "n": 13, "bloque": 2, "epi": "Los bienes de las entidades locales: concepto y clases. Bienes de dominio público local y bienes patrimoniales." },
+    { "n": 14, "bloque": 2, "epi": "El personal al servicio de la Administración local. El personal funcionario: clases, selección, situaciones administrativas. Régimen de provisión de puestos. El personal laboral." },
+    { "n": 15, "bloque": 2, "epi": "El presupuesto general de las entidades locales. Elaboración y aprobación. Ejecución del presupuesto de gastos: fases." },
+    { "n": 16, "bloque": 2, "epi": "Hoja de cálculo del paquete LibreOffice (Calc). Introducción. Formato de celdas. Fórmulas y funciones básicas. Trabajo con varias hojas. Tablas dinámicas. Impresión." },
+    { "n": 17, "bloque": 2, "epi": "Procesador de textos del paquete LibreOffice (Writer). Formato y edición de caracteres, párrafos y tabulaciones. Autotexto. Tablas. Columnas. Formato de página. Combinar correspondencia. Listas numeradas y con viñetas. Ortografía y autocorrección." },
+    { "n": 18, "bloque": 2, "epi": "La igualdad de género: marco jurídico de referencia. Regulación en el marco constitucional, comunitario e internacional." },
+    { "n": 19, "bloque": 2, "epi": "La Corporación Provincial en la Diputación de Huelva. Su organización y funcionamiento." },
+    { "n": 20, "bloque": 2, "epi": "Derechos y deberes básicos en seguridad y salud en el trabajo. Marco normativo básico en materia de prevención de riesgos laborales." }
+  ],
+  "bloques": [
+    { "n": 1, "titulo": "Temas Comunes" },
+    { "n": 2, "titulo": "Temas Específicos" }
+  ],
+  "normativa": "Todo reutilizado: CE, LBRL, Ley 40/2015, fuentes del Derecho, Ley 39/2015, ROF (RD 2568/1986), RD 1372/1986 Bienes EELL, EBEP, TRLRHL, LibreOffice Calc y Writer, LO 3/2007 y LPRL. La Corporación Provincial (T19) se cubre vía LBRL/ROF (organización provincial)."
+}

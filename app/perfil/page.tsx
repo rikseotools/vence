@@ -661,6 +661,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_huelva',
+      label: 'Auxiliar Administrativo Dip. Huelva',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación de Huelva',
+        slug: 'auxiliar-administrativo-diputacion-huelva',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {
