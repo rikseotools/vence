@@ -118,6 +118,7 @@ describeIfDb('Oposición data completeness', () => {
       'auxiliar-administrativo-diputacion-cuenca', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-ourense', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-girona', // en preparación: BD lista (is_active=false hasta go-live)
+      'auxiliar-administrativo-diputacion-barcelona', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-zamora', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-huesca', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-avila', // en preparación: BD lista (is_active=false hasta go-live)

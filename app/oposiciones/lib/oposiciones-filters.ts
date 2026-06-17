@@ -125,6 +125,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-pais-vasco': 'pais-vasco',
     'auxiliar-administrativo-catalunya': 'cataluna',
     'auxiliar-administrativo-diputacion-girona': 'cataluna',
+    'auxiliar-administrativo-diputacion-barcelona': 'cataluna',
     'administrativo-gva': 'valencia',
     'auxiliar-enfermeria-gva': 'valencia',
     'tcae-aragon': 'aragon',

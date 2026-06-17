@@ -1,0 +1,42 @@
+{
+  "slug": "auxiliar-administrativo-diputacion-barcelona",
+  "position_type": "auxiliar_administrativo_diputacion_barcelona",
+  "nombre": "Auxiliar Administratiu/iva de la Diputació de Barcelona",
+  "administracion": "local",
+  "categoria": "C2",
+  "grupo": "C",
+  "subgrupo": "C2",
+  "titulo_requerido": "Graduat en ESO o equivalent",
+  "sistema": "concurs-oposició",
+  "idioma_requerido": "Català nivell C1 (certificat de suficiència)",
+  "plazas": 79,
+  "oep": "OEP aprovada DOGC nº9594, 30/01/2026 (ref. 20260130O76) — pendent de convocatòria",
+  "convocatoria": {
+    "diario_oficial": "BOPB",
+    "diario_referencia": "Temari: BOPB 24/12/2024 (procés 01/23, 77 places). OEP 79 places: DOGC nº9594, 30/01/2026",
+    "programa_url": "https://cido.diba.cat/oposicions/21001704/79-places-dauxiliar-administratiu-diputacio-de-barcelona",
+    "nota": "Forward build: temari de la convocatòria immediatament anterior (77 places, procés 01/23). El programa definitiu es confirmarà en publicar-se les bases de les 79 places."
+  },
+  "temario": [
+    {"n": 1, "bloque": 1, "epi": "La Constitució espanyola de 1978. Estructura i principis generals. El Tribunal Constitucional. La reforma constitucional."},
+    {"n": 2, "bloque": 1, "epi": "L'Estatut d'autonomia de Catalunya. La Generalitat de Catalunya i els seus òrgans de govern."},
+    {"n": 3, "bloque": 1, "epi": "La província en el règim local: organització provincial i competències. El municipi: organització municipal i competències. Organització i funcionament de la Diputació de Barcelona."},
+    {"n": 4, "bloque": 1, "epi": "La funció pública local. El personal al servei de l'Administració local: funcionaris, personal eventual i personal laboral. L'ingrés a la funció pública. Adquisició i pèrdua de la condició de funcionari. Drets i deures dels funcionaris locals. Aspectes bàsics de les polítiques d'igualtat de gènere de la Diputació de Barcelona."},
+    {"n": 5, "bloque": 2, "epi": "La província en el règim local. Organització provincial. Competències."},
+    {"n": 6, "bloque": 2, "epi": "El municipi. Organització municipal. Competències."},
+    {"n": 7, "bloque": 2, "epi": "Altres entitats locals. Mancomunitats. Agrupacions. La comarca. Entitats d'àmbit territorial inferior al municipi."},
+    {"n": 8, "bloque": 2, "epi": "Ordenances i reglaments de les entitats locals. Classes. Procediments d'elaboració i aprovació."},
+    {"n": 9, "bloque": 2, "epi": "La funció pública local. El personal al servei de l'Administració local: funcionaris, personal eventual i personal laboral. L'ingrés a la funció pública. Adquisició i pèrdua de la condició de funcionari. La relació de serveis dels funcionaris públics locals. Drets i deures dels funcionaris locals. Sistema retributiu. Les situacions administratives."},
+    {"n": 10, "bloque": 2, "epi": "Contractes de les administracions públiques: obres, concessió d'obres, concessió de serveis, subministrament, serveis. Parts en el contracte: òrgan de contractació, competència per contractar, capacitat i prohibicions de contractar, responsable del contracte, perfil del contractant, solvència i classificació de les empreses. Objecte, pressupost base de licitació, valor estimat, preu del contracte i la seva revisió. Garanties exigibles. Actuacions relatives a la contractació de les administracions públiques: preparació, adjudicació, efectes, compliment i extinció dels contractes de les administracions públiques."},
+    {"n": 11, "bloque": 2, "epi": "Les hisendes locals i els seus pressupostos. Classificació dels ingressos. Ordenances fiscals. Els pressupostos de les entitats locals: concepte, principis i estructura. Elaboració i aprovació del pressupost."},
+    {"n": 12, "bloque": 2, "epi": "Els actes administratius. Elements. Motivació i forma. Eficàcia de l'acte administratiu: notificació i publicació. Invalidesa dels actes: nul·litat i anul·labilitat."},
+    {"n": 13, "bloque": 2, "epi": "El procediment administratiu. Els interessats. L'expedient. Còmput de terminis. Fases del procediment. Revisió dels actes administratius. Recursos administratius."},
+    {"n": 14, "bloque": 2, "epi": "Les administracions públiques i la societat de la informació. L'administració electrònica."},
+    {"n": 15, "bloque": 2, "epi": "La protecció de dades de caràcter personal. Obligació del seu compliment."},
+    {"n": 16, "bloque": 2, "epi": "Els principis de transparència i bon govern. Legislació bàsica, objecte, àmbit d'aplicació i definicions. Transparència de l'activitat pública i accés a la informació."},
+    {"n": 17, "bloque": 2, "epi": "Funcionament dels òrgans col·legiats locals. Convocatòria i ordre del dia. Règim de sessions i acords. Votacions. Actes i certificats dels acords."},
+    {"n": 18, "bloque": 2, "epi": "L'arxiu. Definició i funció de l'arxiu a l'Administració. Ordenació dels documents. Ordenació numèrica, cronològica i alfabètica. El registre d'entrada i sortida de documents."},
+    {"n": 19, "bloque": 2, "epi": "Concepte i contingut dels documents propis de l'Administració: dictàmens, decrets, propostes de resolució, convenis, notificacions, informes, etc."},
+    {"n": 20, "bloque": 2, "epi": "Organització i funcionament de la Diputació de Barcelona. Objectius que té plantejats en relació amb l'àmbit local. Principals polítiques d'assistència i assessorament. Aspectes bàsics de les polítiques d'igualtat de gènere de la Diputació de Barcelona."}
+  ]
+}

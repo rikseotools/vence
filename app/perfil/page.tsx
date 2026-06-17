@@ -621,6 +621,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_barcelona',
+      label: 'Auxiliar Administrativo Dip. Barcelona',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación de Barcelona',
+        slug: 'auxiliar-administrativo-diputacion-barcelona',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_zamora',
       label: 'Auxiliar Administrativo Dip. Zamora',
       data: {
