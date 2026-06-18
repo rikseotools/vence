@@ -76,6 +76,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo administrativo de administracion general la rioja',
     'administrativo gobierno de la rioja',
   ],
+  administrativo_diputacion_jaen: [
+    'administrativo_diputacion_jaen',
+    'administrativo diputacion jaen',
+    'administrativo diputacion provincial de jaen',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

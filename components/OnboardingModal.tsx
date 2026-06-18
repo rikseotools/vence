@@ -1148,6 +1148,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🍇'
   },
   {
+    id: 'administrativo_diputacion_jaen',
+    nombre: 'Administrativo Diputación de Jaén (C1)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
@@ -1619,7 +1626,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
-  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
+  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],

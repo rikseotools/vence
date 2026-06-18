@@ -981,6 +981,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_diputacion_jaen',
+      label: 'Administrativo Diputación de Jaén (C1)',
+      data: {
+        name: 'Administrativo de la Diputación Provincial de Jaén',
+        slug: 'administrativo-diputacion-jaen',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_catalunya',
       label: 'Auxiliar Administrativo Generalitat de Catalunya (C2)',
       data: {

@@ -70,6 +70,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo administrativo de administracion general la rioja',
     'administrativo gobierno de la rioja',
   ],
+  'administrativo_diputacion_jaen': [
+    'administrativo_diputacion_jaen',
+    'administrativo diputacion jaen',
+    'administrativo diputacion provincial de jaen',
+  ],
   'auxiliar_administrativo_extremadura': [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',
@@ -179,6 +184,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'administrativo_castilla_la_mancha': ['administrativo-castilla-la-mancha'],
   'administrativo-la-rioja': ['administrativo-la-rioja'],
   'administrativo_la_rioja': ['administrativo-la-rioja'],
+  'administrativo-diputacion-jaen': ['administrativo-diputacion-jaen'],
+  'administrativo_diputacion_jaen': ['administrativo-diputacion-jaen'],
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],
   'cuerpo-general-administrativo': ['administrativo-estado'],

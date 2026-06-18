@@ -2455,6 +2455,120 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO DIPUTACIÓN DE JAÉN (C1)
+  // ========================================
+  {
+    id: 'administrativo_diputacion_jaen',
+    slug: 'administrativo-diputacion-jaen',
+    positionType: 'administrativo_diputacion_jaen',
+    examScoring: { penaltyDivisor: 3, source: 'Bases convocatoria 2026 (BOP Jaén nº 97, 21/05/2026). Penalización por respuesta errónea según bases; divisor pendiente de extracción literal del PDF. confidence:media' },
+    name: 'Administrativo de la Diputación Provincial de Jaén',
+    shortName: 'Administrativo Dip. Jaén',
+    emoji: '🏛️',
+    badge: 'C1',
+    color: 'green',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'materias-comunes',
+        title: 'Materias Comunes (8 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Los Poderes del Estado. La Corona. El Gobierno. Las Cortes. El Poder Judicial' },
+          { id: 3, name: 'La Administración Pública Española. La AGE. Órganos superiores y periféricos' },
+          { id: 4, name: 'Las Comunidades Autónomas. La Comunidad Autónoma de Andalucía. El Estatuto de Autonomía' },
+          { id: 5, name: 'El Régimen Local Español. Organización municipal y provincial. Competencias' },
+          { id: 6, name: 'Las Haciendas Locales. Los recursos de las Entidades Locales. Las ordenanzas fiscales' },
+          { id: 7, name: 'Los derechos de los ciudadanos ante la Administración. Participación ciudadana' },
+          { id: 8, name: 'Políticas sociales: Igualdad, Violencia de Género, Discapacidad y Dependencia' },
+        ],
+      },
+      {
+        id: 'derecho-administrativo',
+        title: 'Derecho Administrativo General (13 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 9, name: 'El principio de legalidad. Las potestades administrativas. La actividad discrecional' },
+          { id: 10, name: 'Fuentes del Derecho Administrativo. Jerarquía normativa' },
+          { id: 11, name: 'La Constitución como fuente. La Ley. Decretos Legislativos y Decretos-Leyes' },
+          { id: 12, name: 'El Reglamento y la potestad reglamentaria' },
+          { id: 13, name: 'La relación jurídico-administrativa. El administrado. Actos del administrado' },
+          { id: 14, name: 'El acto administrativo: concepto, clases, elementos y eficacia' },
+          { id: 15, name: 'Validez e invalidez de los actos. Revisión de oficio' },
+          { id: 16, name: 'La obligación de resolver. El silencio administrativo. Los plazos' },
+          { id: 17, name: 'El procedimiento administrativo común. Fases. Los interesados' },
+          { id: 18, name: 'Los recursos administrativos. Las reclamaciones económico-administrativas' },
+          { id: 19, name: 'La Ley de Contratos del Sector Público' },
+          { id: 20, name: 'La potestad sancionadora y el procedimiento sancionador' },
+          { id: 21, name: 'La responsabilidad patrimonial de la Administración' },
+        ],
+      },
+      {
+        id: 'regimen-local',
+        title: 'Régimen Local y Protección de Datos (7 temas)',
+        subtitle: null,
+        icon: '🏘️',
+        themes: [
+          { id: 22, name: 'El Servicio Público Local. Formas de gestión' },
+          { id: 23, name: 'Ley Orgánica 3/2018 de Protección de Datos Personales y garantía de derechos digitales' },
+          { id: 24, name: 'La potestad normativa de las Entidades Locales: Ordenanzas, reglamentos y bandos' },
+          { id: 25, name: 'La Provincia como entidad local. El Reglamento Orgánico de la Diputación de Jaén' },
+          { id: 26, name: 'El Municipio. El término municipal. La población. La organización municipal' },
+          { id: 27, name: 'Funcionamiento de los órganos colegiados locales. Actas. El registro de documentos' },
+          { id: 28, name: 'Los bienes de las Entidades Locales' },
+        ],
+      },
+      {
+        id: 'funcion-publica-local',
+        title: 'Función Pública Local (5 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 29, name: 'El TREBEP. El personal al servicio de las Entidades Locales' },
+          { id: 30, name: 'Plantillas y RPT. Oferta de empleo y planes de empleo' },
+          { id: 31, name: 'El acceso a los empleos locales. Situaciones administrativas' },
+          { id: 32, name: 'Los derechos de los funcionarios locales. Seguridad Social' },
+          { id: 33, name: 'Los deberes de los funcionarios. Régimen disciplinario. Incompatibilidades' },
+        ],
+      },
+      {
+        id: 'haciendas-locales',
+        title: 'Haciendas Locales (5 temas)',
+        subtitle: null,
+        icon: '💶',
+        themes: [
+          { id: 34, name: 'IBI, IAE, IIVTNU, IVTM e ICIO' },
+          { id: 35, name: 'Las Tasas. Las Contribuciones Especiales. Los Precios Públicos' },
+          { id: 36, name: 'La gestión recaudatoria local' },
+          { id: 37, name: 'El gasto público local. Ejecución de los gastos públicos' },
+          { id: 38, name: 'Los Presupuestos de las Entidades Locales. Modificaciones presupuestarias' },
+        ],
+      },
+      {
+        id: 'documentacion-admin-e',
+        title: 'Documentación y Administración Electrónica (2 temas)',
+        subtitle: null,
+        icon: '📄',
+        themes: [
+          { id: 39, name: 'Los documentos administrativos. El expediente. El lenguaje administrativo' },
+          { id: 40, name: 'La Administración Electrónica' },
+        ],
+      },
+    ],
+    totalTopics: 40,
+    aliases: ['administrativo diputacion jaen', 'administrativo diputación de jaén', 'administrativo jaen', 'c1 diputacion jaen', 'administrativo dipujaen'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-diputacion-jaen', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/administrativo-diputacion-jaen/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-diputacion-jaen/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {
