@@ -254,10 +254,20 @@ Tras la eliminación, los datos quedan:
 
 ### Vía API (recomendado en producción)
 
+> 🔒 **Desde 18/06/2026 el endpoint exige Bearer token de admin** (`requireAdmin`).
+> Antes era invocable sin auth (no hay middleware `/api/admin/*`) — una llamada
+> con solo `Content-Type` borraba la cuenta. Mintea el token como en
+> `/api/v2/feedback/respond`: `supabase.auth.admin.generateLink({type:'magiclink',
+> email:'manueltrader@gmail.com'})` → `verifyOtp({type:'magiclink', token_hash})`
+> → `session.access_token`.
+
 ```js
 const response = await fetch('https://www.vence.es/api/admin/delete-user', {
   method: 'DELETE',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${adminToken}`, // email en la whitelist de requireAdmin
+  },
   body: JSON.stringify({ userId })
 })
 const result = await response.json()

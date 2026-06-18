@@ -1,15 +1,22 @@
 // app/api/admin/delete-user/route.ts
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { deleteUserRequestSchema } from '@/lib/api/admin-delete-user/schemas'
 import { deleteUserData, sendDeletionConfirmationEmail } from '@/lib/api/admin-delete-user'
 import { authAdmin } from '@/lib/auth/server'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-async function _DELETE(request: Request) {
+async function _DELETE(request: NextRequest) {
   try {
+    // 🔒 Endpoint destructivo e irreversible (borra cualquier cuenta por userId).
+    // Sin este guard era invocable SIN autenticación (no hay middleware /api/admin/*).
+    // Requiere Bearer token de un email admin (whitelist en requireAdmin).
+    const auth = await requireAdmin(request)
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const parsed = deleteUserRequestSchema.safeParse(body)
 
