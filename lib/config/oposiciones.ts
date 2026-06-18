@@ -2467,7 +2467,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '🏛️',
     badge: 'C1',
     color: 'green',
-    administracion: 'autonomica',
+    administracion: 'local',
     blocks: [
       {
         id: 'materias-comunes',
@@ -2565,6 +2565,99 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/administrativo-diputacion-jaen', label: 'Mi Oposición', icon: '🏛️', featured: true },
       { href: '/administrativo-diputacion-jaen/temario', label: 'Temario', icon: '📚' },
       { href: '/administrativo-diputacion-jaen/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE MARBELLA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_marbella',
+    slug: 'auxiliar-administrativo-ayuntamiento-marbella',
+    positionType: 'auxiliar_administrativo_ayuntamiento_marbella',
+    examScoring: { penaltyDivisor: 2, source: 'Bases convocatoria 2026 (BOP Málaga nº 47, 10/03/2026): test de 3 alternativas → penalización 1/2 si aplica regla aciertos-(errores/(alternativas-1)); divisor pendiente de extracción literal. confidence:media' },
+    name: 'Auxiliar Administrativo del Ayuntamiento de Marbella',
+    shortName: 'Aux. Ayto. Marbella',
+    emoji: '🏖️',
+    badge: 'C2',
+    color: 'green',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'materias-comunes',
+        title: 'Materias Comunes (6 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978. Derechos fundamentales. El Tribunal Constitucional' },
+          { id: 2, name: 'La Corona: carácter, sucesión, proclamación y funciones' },
+          { id: 3, name: 'Las Cortes Generales. El Gobierno' },
+          { id: 4, name: 'La Administración Pública en el ordenamiento jurídico español. Tipología de Entes Públicos' },
+          { id: 5, name: 'Las Comunidades Autónomas. El Estatuto de Autonomía para Andalucía' },
+          { id: 6, name: 'Fuentes del Derecho Público. La jerarquía de las fuentes. Leyes y Reglamentos' },
+        ],
+      },
+      {
+        id: 'administracion-local',
+        title: 'Administración Local (5 temas)',
+        subtitle: null,
+        icon: '🏘️',
+        themes: [
+          { id: 7, name: 'El Régimen Local español. Entidades que integran la Administración Local' },
+          { id: 8, name: 'El Municipio. El término municipal. La población. El empadronamiento' },
+          { id: 9, name: 'Organización municipal. Clases de órganos. Competencias' },
+          { id: 10, name: 'La Provincia. Organización y competencias provinciales' },
+          { id: 11, name: 'Haciendas locales. Recursos. Las Ordenanzas Fiscales' },
+        ],
+      },
+      {
+        id: 'regimen-juridico',
+        title: 'Régimen Jurídico y Derechos (7 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 12, name: 'La Ley 31/1995 de Prevención de Riesgos Laborales' },
+          { id: 13, name: 'La Ley Orgánica 3/2018 de Protección de Datos. El RGPD' },
+          { id: 14, name: 'Normativa estatal, autonómica y local en materia de igualdad' },
+          { id: 15, name: 'Normativa estatal y autonómica en materia de violencia de género' },
+          { id: 16, name: 'Los actos administrativos. El procedimiento administrativo común. Cómputo de plazos' },
+          { id: 17, name: 'Recursos administrativos: alzada, reposición y revisión' },
+          { id: 18, name: 'Ordenanzas y Reglamentos de las Entidades Locales' },
+        ],
+      },
+      {
+        id: 'gestion-local',
+        title: 'Gestión y Función Pública Local (7 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 19, name: 'Funcionamiento de los órganos colegiados locales. Actas y certificados' },
+          { id: 20, name: 'El registro de entrada y salida. El Archivo. El acceso a archivos y registros' },
+          { id: 21, name: 'Los Presupuestos locales. Estructura, aprobación y modificaciones' },
+          { id: 22, name: 'La Función pública local. Funcionarios. Personal laboral. Régimen disciplinario' },
+          { id: 23, name: 'Los Bienes de las Entidades locales' },
+          { id: 24, name: 'Los Contratos del Sector Público. Especial regulación en el ámbito local' },
+          { id: 25, name: 'Formas de la acción administrativa: Fomento, Policía y Servicio Público. Licencias' },
+        ],
+      },
+      {
+        id: 'transparencia-informatica',
+        title: 'Transparencia e Informática (2 temas)',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 26, name: 'La Ley 19/2013 de transparencia, acceso a la información pública y buen gobierno' },
+          { id: 27, name: 'Informática básica. Windows. Word y Excel. Internet y correo electrónico' },
+        ],
+      },
+    ],
+    totalTopics: 27,
+    aliases: ['auxiliar administrativo marbella', 'auxiliar administrativo ayuntamiento de marbella', 'aux administrativo marbella', 'auxiliar marbella', 'administrativo ayuntamiento marbella'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-marbella', label: 'Mi Oposición', icon: '🏖️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-marbella/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-marbella/test', label: 'Tests', icon: '🎯' },
     ],
   },
 

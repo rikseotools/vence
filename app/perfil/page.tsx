@@ -991,6 +991,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_marbella',
+      label: 'Auxiliar Administrativo Ayuntamiento de Marbella (C2)',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Marbella',
+        slug: 'auxiliar-administrativo-ayuntamiento-marbella',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_catalunya',
       label: 'Auxiliar Administrativo Generalitat de Catalunya (C2)',
       data: {

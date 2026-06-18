@@ -242,7 +242,7 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
   // Galicia
   [['galicia', 'sergas', 'a-coruna', 'coruna', 'lugo', 'ourense', 'orense', 'pontevedra', 'santiago', 'compostela', 'vigo'], 'galicia'],
   // Andalucía
-  [['andalucia', 'andaluz', 'sas-', '-sas', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada', 'huelva', 'jaen', 'almeria'], 'andalucia'],
+  [['andalucia', 'andaluz', 'sas-', '-sas', 'sevilla', 'malaga', 'marbella', 'cadiz', 'cordoba', 'granada', 'huelva', 'jaen', 'almeria'], 'andalucia'],
   // Aragón (incl. servicio SALUD aragonés y Zaragoza/Huesca/Teruel)
   [['aragon', 'zaragoza', 'huesca', 'teruel'], 'aragon'],
   // Comunitat Valenciana

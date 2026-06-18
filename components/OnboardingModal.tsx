@@ -1155,6 +1155,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_ayuntamiento_marbella',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Marbella',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏖️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
@@ -1626,7 +1633,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
-  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_estado'],
+  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
@@ -1687,6 +1694,8 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_cantabria',  // nueva
   'administrativo_navarra',            // nueva
   'auxiliar_administrativo_la_rioja',  // nueva
+  'administrativo_diputacion_jaen',    // C1 Dip. Jaén (inscripción abierta)
+  'auxiliar_administrativo_ayuntamiento_marbella', // C2 Marbella (extracto BOE pendiente)
   'enfermero_sas_andalucia',          // sanitaria
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
