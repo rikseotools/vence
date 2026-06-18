@@ -581,6 +581,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_universidad_leon',
+      label: 'Escala Administrativa ULE',
+      data: {
+        name: 'Escala Administrativa de la Universidad de León',
+        slug: 'administrativo-universidad-leon',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_consell_formentera',
       label: 'Auxiliar Administrativo Formentera',
       data: {
@@ -666,6 +676,16 @@ function PerfilPageContent() {
       data: {
         name: 'Administrativo del Gobierno de Cantabria',
         slug: 'administrativo-cantabria',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'administrativo_madrid',
+      label: 'Administrativo Comunidad de Madrid',
+      data: {
+        name: 'Administrativo de la Comunidad de Madrid',
+        slug: 'administrativo-madrid',
         categoria: 'C1',
         administracion: 'Autonómica'
       }

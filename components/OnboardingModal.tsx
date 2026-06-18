@@ -843,6 +843,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'administrativo_universidad_leon',
+    nombre: 'Escala Administrativa de la Universidad de León (ULE)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_ayuntamiento_barcelona',
     nombre: 'Auxiliar Administrativo Ayuntamiento de Barcelona',
     categoria: 'C2',
@@ -1031,6 +1038,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
     id: 'administrativo_cantabria',
     nombre: 'Administrativo Gobierno de Cantabria',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
+    id: 'administrativo_madrid',
+    nombre: 'Administrativo Comunidad de Madrid',
     categoria: 'C1',
     administracion: 'Autonómica',
     icon: '🏛️'
