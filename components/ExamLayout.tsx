@@ -629,16 +629,20 @@ export default function ExamLayout({
 
     if (user && shareUrl) {
       try {
-        await supabase.from('share_events').insert({
-          user_id: user.id,
-          share_type: 'question_quiz',
-          platform: platform,
-          share_text: shareText,
-          share_url: shareUrl,
-          device_info: {
-            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
-            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
-          }
+        // Desacople PostgREST: insert vía /api/share-events (Drizzle + verifyAuth).
+        await fetch('/api/share-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+          body: JSON.stringify({
+            share_type: 'question_quiz',
+            platform: platform,
+            share_text: shareText,
+            share_url: shareUrl,
+            device_info: {
+              screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+            }
+          })
         })
         console.log('📤 Share pregunta registrado:', platform)
       } catch (error) {
@@ -676,18 +680,22 @@ export default function ExamLayout({
 
     if (user && shareUrl) {
       try {
-        await supabase.from('share_events').insert({
-          user_id: user.id,
-          share_type: 'exam_result',
-          platform: platform,
-          score: parseFloat(nota),
-          test_session_id: currentTestSession?.id || null,
-          share_text: shareText,
-          share_url: shareUrl,
-          device_info: {
-            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
-            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
-          }
+        // Desacople PostgREST: insert vía /api/share-events (Drizzle + verifyAuth).
+        await fetch('/api/share-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+          body: JSON.stringify({
+            share_type: 'exam_result',
+            platform: platform,
+            score: parseFloat(nota),
+            test_session_id: currentTestSession?.id || null,
+            share_text: shareText,
+            share_url: shareUrl,
+            device_info: {
+              screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+            }
+          })
         })
         console.log('📤 Share registrado:', platform, nota)
       } catch (error) {

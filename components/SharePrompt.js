@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 /**
  * SharePrompt - Componente inteligente para incentivar shares
@@ -92,10 +93,11 @@ export default function SharePrompt({
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('share_events')
-        .insert({
-          user_id: user.id,
+      // Desacople PostgREST: insert vía /api/share-events (Drizzle + verifyAuth).
+      const resp = await fetch('/api/share-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+        body: JSON.stringify({
           share_type: 'exam_result',
           platform: platform,
           score: parseFloat(score),
@@ -108,9 +110,10 @@ export default function SharePrompt({
             referrer: typeof document !== 'undefined' ? document.referrer : null
           }
         })
+      })
 
-      if (error) {
-        console.error('Error registrando share:', error)
+      if (!resp.ok) {
+        console.error('Error registrando share:', resp.status)
       } else {
         console.log('📤 Share registrado:', { platform, shareText, shareUrl })
       }

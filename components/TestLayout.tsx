@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useQuestionContext, type QuestionContextData } from '../contexts/QuestionContext'
 import { useAIChat } from '../contexts/AIChatContext'
 import PersistentRegistrationManager from './PersistentRegistrationManager'
@@ -974,19 +975,22 @@ export default function TestLayout({
       window.open(shareUrl, '_blank', 'width=600,height=400')
     }
 
-    // Registrar intento de share
-    if (user && supabase) {
+    // Registrar intento de share — Desacople PostgREST: vía /api/share-events.
+    if (user) {
       try {
-        await supabase.from('share_events').insert({
-          user_id: user.id,
-          share_type: 'question_quiz',
-          platform: platform,
-          share_text: shareText,
-          share_url: cleanUrl,
-          device_info: {
-            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
-            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
-          }
+        await fetch('/api/share-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+          body: JSON.stringify({
+            share_type: 'question_quiz',
+            platform: platform,
+            share_text: shareText,
+            share_url: cleanUrl,
+            device_info: {
+              screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+            }
+          })
         })
         console.log('📤 Share pregunta registrado:', platform)
       } catch (error) {
