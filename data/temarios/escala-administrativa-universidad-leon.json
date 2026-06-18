@@ -1,0 +1,47 @@
+{
+  "position_type": "administrativo_universidad_leon",
+  "nombre": "Escala Administrativa de la Universidad de León (C1)",
+  "fuente": "RESOLUCIÓN de 15 de junio de 2026, del Rectorado de la Universidad de León (BOCYL 17/06/2026, BOCYL-D-17062026-115-10)",
+  "subgrupo": "C1",
+  "plazas": 11,
+  "turnos": {"libre": 10, "discapacidad": 1},
+  "titulacion": "Bachiller o Técnico",
+  "proceso": "Oposición: 1er ejercicio (test 60 preg + 2 supuestos prácticos de 10 preg); 2º ejercicio voluntario inglés B1",
+  "bloques": [
+    {"numero": 1, "titulo": "Derecho y régimen jurídico de las AAPP", "temas": [
+      {"n":1,"titulo":"La Constitución Española de 1978: Estructura, Título Preliminar, Título I, Título IV, Título VIII"},
+      {"n":2,"titulo":"Ley 39/2015 del Procedimiento Administrativo Común (Títulos preliminar-V)"},
+      {"n":3,"titulo":"Ley 40/2015 de Régimen Jurídico del Sector Público (Título Preliminar, Cap. I y II)"},
+      {"n":4,"titulo":"Ley 19/2013 de transparencia (Título I). Código ético de la Universidad de León"},
+      {"n":5,"titulo":"Ley 29/1998 reguladora de la Jurisdicción Contencioso-administrativa (Títulos I-III)"}
+    ]},
+    {"numero": 2, "titulo": "Régimen jurídico de los empleados públicos", "temas": [
+      {"n":6,"titulo":"EBEP (RDL 5/2015): Títulos I-VII"},
+      {"n":7,"titulo":"RD 364/1995 Reglamento general de ingreso y provisión"},
+      {"n":8,"titulo":"Cuerpos Docentes Universitarios (LO 2/2023 LOSU). Ley 14/2011 de la Ciencia (Título II Cap. I): personal investigador"},
+      {"n":9,"titulo":"LO 3/2007 igualdad efectiva de mujeres y hombres (Títulos Preliminar, I, II, IV y Cap. I del Título V)"},
+      {"n":10,"titulo":"TR Ley General de la Seguridad Social (Títulos I y II, normas generales y Régimen General)"},
+      {"n":11,"titulo":"Ley 53/1984 de Incompatibilidades. Decreto 227/1997 Reglamento de Incompatibilidades de Castilla y León"}
+    ]},
+    {"numero": 3, "titulo": "Gestión presupuestaria y financiera", "temas": [
+      {"n":12,"titulo":"Régimen económico y financiero de las Universidades (Cap. 3 Título IX LOSU). Estatutos de la ULE"},
+      {"n":13,"titulo":"El presupuesto de la Universidad de León: contenido, estructura, ingresos, gastos, bases de ejecución"},
+      {"n":14,"titulo":"Ley 25/2013 de impulso de la factura electrónica y registro contable de facturas"},
+      {"n":15,"titulo":"Ley 9/2017 de Contratos del Sector Público (delimitación, partes, contratos de suministros y servicios)"}
+    ]},
+    {"numero": 4, "titulo": "Gestión académica", "temas": [
+      {"n":16,"titulo":"Ley Orgánica 2/2023 del Sistema Universitario (LOSU)"},
+      {"n":17,"titulo":"Los Estatutos de la Universidad de León"},
+      {"n":18,"titulo":"RD 822/2021 Ordenación de las Enseñanzas Universitarias. RD 1125/2003 sistema europeo de créditos (ECTS)"},
+      {"n":19,"titulo":"Normativa de matrícula oficial de la ULE: gestión, traslados, reconocimiento de créditos, permanencia"},
+      {"n":20,"titulo":"RD 1002/2010 expedición de títulos universitarios oficiales. RD 22/2015 Suplemento Europeo al Título"},
+      {"n":21,"titulo":"RD 99/2011 enseñanzas de doctorado"}
+    ]},
+    {"numero": 5, "titulo": "Informática básica y ofimática", "temas": [
+      {"n":22,"titulo":"Nociones básicas de seguridad informática"},
+      {"n":23,"titulo":"Procesador de textos Word (Microsoft 365)"},
+      {"n":24,"titulo":"Hoja de cálculo Excel (Microsoft 365)"},
+      {"n":25,"titulo":"Herramientas colaborativas de Google Workspace y correo electrónico"}
+    ]}
+  ]
+}
