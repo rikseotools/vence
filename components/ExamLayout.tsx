@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
-import { getOposicionSlugFromPathname, getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
@@ -427,7 +427,9 @@ export default function ExamLayout({
   // Penalización oficial del modo examen para esta oposición: fracción restada
   // por respuesta incorrecta (1/N según la regla oficial, o 0 si no penaliza).
   // Valor verificado por oposición en lib/config/oposiciones.ts (examScoring).
-  const penaltyPerWrong = getExamPenaltyPerWrong(positionType || getOposicionSlugFromPathname(pathname))
+  const examScoringId = positionType || getOposicionSlugFromPathname(pathname)
+  const penaltyPerWrong = getExamPenaltyPerWrong(examScoringId)
+  const penaltyLabel = getExamPenaltyLabel(examScoringId)
 
   // Refs para tracking
   const pageLoadTime = useRef(Date.now())
@@ -1088,7 +1090,7 @@ export default function ExamLayout({
                     </div>
                     <div className={`text-6xl font-bold ${motivationalData.color} mb-2`}>{notaSobre10}</div>
                     <div className="text-xl text-gray-700 font-medium">sobre 10</div>
-                    <div className="text-sm text-gray-500 mt-2">(Cada 3 fallos restan 1 correcta)</div>
+                    <div className="text-sm text-gray-500 mt-2">({penaltyLabel})</div>
 
                     {/* Compartir resultado - oculto temporalmente */}
                   </div>

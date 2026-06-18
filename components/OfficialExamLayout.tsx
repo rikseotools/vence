@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getOposicionSlugFromPathname, getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
 import { useAIChat } from '../contexts/AIChatContext'
@@ -356,7 +356,9 @@ export default function OfficialExamLayout({
 
   // Penalización oficial del examen para esta oposición (1/N por fallo, 0 si no
   // penaliza). Verificada por oposición en lib/config/oposiciones.ts (examScoring).
-  const penaltyPerWrong = getExamPenaltyPerWrong(oposicion || getOposicionSlugFromPathname(pathname))
+  const examScoringId = oposicion || getOposicionSlugFromPathname(pathname)
+  const penaltyPerWrong = getExamPenaltyPerWrong(examScoringId)
+  const penaltyLabel = getExamPenaltyLabel(examScoringId)
 
   // Limite diario de preguntas (FREE = 25/dia)
   const {
@@ -1504,7 +1506,7 @@ export default function OfficialExamLayout({
                       sobre 10
                     </div>
                     <div className="text-sm text-gray-500 mt-2">
-                      (Cada 3 fallos restan 1 correcta)
+                      ({penaltyLabel})
                     </div>
                   </div>
 

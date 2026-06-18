@@ -6934,11 +6934,37 @@ export function getOposicion(identifier: string): Oposicion | undefined {
  * examPenaltyCoherence garantiza que toda oposición real tenga su valor
  * explícito y verificado, así que el fallback nunca debería usarse en prod.
  */
-export function getExamPenaltyPerWrong(identifier: string): number {
+/**
+ * Resuelve el `penaltyDivisor` EFECTIVO de una oposición (única fuente de verdad
+ * de la penalización). Devuelve:
+ *  - `3` cuando la oposición no tiene `examScoring` (default histórico 1/3),
+ *  - el `penaltyDivisor` configurado (puede ser `null` = sin penalización).
+ * Tanto el cálculo (`getExamPenaltyPerWrong`) como el texto (`getExamPenaltyLabel`)
+ * derivan de aquí, por lo que NO pueden desincronizarse.
+ */
+function resolvePenaltyDivisor(identifier: string): number | null {
   const oposicion = getOposicion(identifier)
-  if (!oposicion || !oposicion.examScoring) return 1 / 3
-  const divisor = oposicion.examScoring.penaltyDivisor
+  if (!oposicion || !oposicion.examScoring) return 3
+  return oposicion.examScoring.penaltyDivisor
+}
+
+export function getExamPenaltyPerWrong(identifier: string): number {
+  const divisor = resolvePenaltyDivisor(identifier)
   return divisor ? 1 / divisor : 0
+}
+
+/**
+ * Texto explicativo de la penalización del modo examen, COHERENTE con el
+ * cálculo de `getExamPenaltyPerWrong` (mismo `resolvePenaltyDivisor`). Evita el
+ * antiguo literal hardcodeado "Cada 3 fallos restan 1 correcta", que era falso
+ * para las oposiciones cuyo `penaltyDivisor` ≠ 3 (p. ej. Admin. Seguridad
+ * Social, 1/4).
+ */
+export function getExamPenaltyLabel(identifier: string): string {
+  const divisor = resolvePenaltyDivisor(identifier)
+  if (!divisor) return 'Sin penalización por error'
+  if (Number.isInteger(divisor)) return `Cada ${divisor} fallos restan 1 correcta`
+  return `Cada fallo resta ${(1 / divisor).toFixed(2)} de una correcta`
 }
 
 /** Devuelve el enlace a /test para una oposición dada (por id o slug) */

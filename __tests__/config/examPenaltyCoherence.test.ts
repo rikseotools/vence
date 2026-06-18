@@ -14,7 +14,7 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { OPOSICIONES, getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
+import { OPOSICIONES, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
 
 // Réplica EXACTA de la fórmula de nota del modo examen (components/ExamLayout.tsx):
 //   puntosBrutos = correctCount - (incorrectCount * penaltyPerWrong)
@@ -114,5 +114,49 @@ describe('Source guard — ningún componente de examen penaliza con un /3 fijo'
 
   it.each(COMPONENTES)('%s no tiene "incorrectCount / 3" hardcodeado', (file) => {
     expect(readFileSync(join(process.cwd(), file), 'utf8')).not.toMatch(/incorrectCount\s*\/\s*3/)
+  })
+
+  it.each(COMPONENTES)('%s no muestra el literal "Cada 3 fallos restan 1 correcta" hardcodeado', (file) => {
+    // Regresión real (Isabel, 18/06/2026): el texto estaba fijo a "Cada 3" aunque
+    // la oposición penalizara 1/4. Debe derivar de getExamPenaltyLabel.
+    expect(readFileSync(join(process.cwd(), file), 'utf8')).not.toContain('Cada 3 fallos restan 1 correcta')
+  })
+})
+
+describe('getExamPenaltyLabel — texto coherente con la penalización', () => {
+  it('refleja el divisor real de cada oposición (anclas verificadas)', () => {
+    expect(getExamPenaltyLabel('auxiliar_administrativo_estado')).toBe('Cada 3 fallos restan 1 correcta')
+    expect(getExamPenaltyLabel('administrativo_seguridad_social')).toBe('Cada 4 fallos restan 1 correcta') // caso Isabel
+    expect(getExamPenaltyLabel('policia_nacional')).toBe('Cada 2 fallos restan 1 correcta')
+  })
+
+  it('sin penalización (divisor null) → texto explícito, no "Cada 0…"', () => {
+    expect(getExamPenaltyLabel('correos_personal_operativo')).toBe('Sin penalización por error')
+    expect(getExamPenaltyLabel('auxiliar_administrativo_scs_canarias')).toBe('Sin penalización por error')
+  })
+
+  it('divisor no entero (Cádiz 8/3) → expresa el descuento por fallo, sin frase "Cada N"', () => {
+    expect(getExamPenaltyLabel('auxiliar_administrativo_diputacion_cadiz')).toBe('Cada fallo resta 0.38 de una correcta')
+  })
+
+  it('identificador desconocido → mismo default que el cálculo (1/3)', () => {
+    expect(getExamPenaltyLabel('oposicion_que_no_existe')).toBe('Cada 3 fallos restan 1 correcta')
+  })
+
+  it('label y getExamPenaltyPerWrong NUNCA divergen (misma fuente del divisor)', () => {
+    for (const o of OPOSICIONES) {
+      const perWrong = getExamPenaltyPerWrong(o.positionType)
+      const label = getExamPenaltyLabel(o.positionType)
+      if (perWrong === 0) {
+        expect(label).toBe('Sin penalización por error')
+      } else {
+        const divisor = 1 / perWrong
+        if (Number.isInteger(divisor)) {
+          expect(label).toBe(`Cada ${divisor} fallos restan 1 correcta`)
+        } else {
+          expect(label).toBe(`Cada fallo resta ${perWrong.toFixed(2)} de una correcta`)
+        }
+      }
+    }
   })
 })
