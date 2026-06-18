@@ -84,6 +84,21 @@ El **proveedor de identidad** (login Google OAuth, `exchangeCodeForSession`, `on
 | 4 | `app/admin/notificaciones/overview/page.js` | C | email_events, notification_events, user_notification_metrics, user_profiles | admin |
 | 6 | `app/admin/notificaciones/users/page.js` | C | email_events, notification_events, user_notification_metrics, user_profiles | admin |
 
+## 1-bis. Audit de existencia contra el schema vivo (2026-06-18) — PRERREQUISITO
+
+Antes de migrar nada hay que separar **acoplamiento vivo** de **código muerto** (Batches A/C demostraron que mucho código referencia objetos que ya no existen, con el error tragado). Audit de las 43 tablas referenciadas en `.from(...)` contra la BD prod:
+
+- **🟢 40 tablas EXISTEN** → su `supabase.from` es acoplamiento real a migrar.
+- **🔴 3 tablas NO EXISTEN** (código muerto, inserts/selects que fallan en silencio):
+  - `shared_question_responses` → tracking en `app/pregunta/[id]/page.tsx` (dead)
+  - `question_verifications` → insert en `app/api/ai/verify-answer` (dead)
+  - `psychometric_adaptive_logs` → `lib/adaptiveQuestionSelection.ts` (dead)
+- **🟡 Drift a nivel columna/función** (tabla existe, pero la query referencia algo inexistente → query parcialmente rota): `user_profiles.display_name` (broadcast), `articles.law_name`/`law_short_name` + función `match_articles_by_embedding` (verify-answer).
+
+**Decisión de producto pendiente (las 3 tablas muertas + los 4 RPCs de fraude parecen "features intencionadas nunca terminadas", no basura):** por cada una → ¿se construye (crear tabla/función + completar) o se borra el código muerto? No es decisión de desacople. Mientras tanto, **NO migrar** queries sobre objetos inexistentes.
+
+**Regla añadida al checklist (§3):** antes de migrar un fichero, ejecutar el check de existencia tabla+columnas+función contra la BD. El audit reproducible: extraer tablas con `grep -rEoh "\.from\(['\"][a-z_]+" ... | sort -u` y `select('*').limit(0)` por cada una.
+
 ## 2. Plan incremental
 
 Lotes en orden de riesgo creciente. Cada fichero es independiente, testeable y reversible (patrón de los 6 batches de `verifyAuth`).
