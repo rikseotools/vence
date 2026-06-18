@@ -85,6 +85,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo ayuntamiento de valladolid',
     'auxiliar administrativo valladolid',
   ],
+  'administrativo_canarias': [
+    'administrativo_canarias',
+    'administrativo gobierno de canarias',
+    'cuerpo administrativo de canarias',
+  ],
   'auxiliar_administrativo_extremadura': [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',
@@ -200,6 +205,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_ayuntamiento_marbella': ['auxiliar-administrativo-ayuntamiento-marbella'],
   'auxiliar-administrativo-ayuntamiento-valladolid': ['auxiliar-administrativo-ayuntamiento-valladolid'],
   'auxiliar_administrativo_ayuntamiento_valladolid': ['auxiliar-administrativo-ayuntamiento-valladolid'],
+  'administrativo-canarias': ['administrativo-canarias'],
+  'administrativo_canarias': ['administrativo-canarias'],
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],
   'cuerpo-general-administrativo': ['administrativo-estado'],

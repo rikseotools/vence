@@ -831,6 +831,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_canarias',
+      label: 'Administrativo Gobierno de Canarias (C1)',
+      data: {
+        name: 'Administrativo del Gobierno de Canarias (Cuerpo Administrativo)',
+        slug: 'administrativo-canarias',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_clm',
       label: 'Auxiliar Administrativo Junta de Castilla-La Mancha',
       data: {

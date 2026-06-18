@@ -59,6 +59,7 @@ const DYNAMIC_SLUGS = [
   'administrativo-diputacion-jaen',
   'auxiliar-administrativo-ayuntamiento-marbella',
   'auxiliar-administrativo-ayuntamiento-valladolid',
+  'administrativo-canarias',
 ]
 
 // Mapeo de displayNumber en landing (17→101, etc.) para auxiliar estado

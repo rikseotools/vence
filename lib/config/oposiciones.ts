@@ -2758,6 +2758,102 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO GOBIERNO DE CANARIAS (C1)
+  // ========================================
+  {
+    id: 'administrativo_canarias',
+    slug: 'administrativo-canarias',
+    positionType: 'administrativo_canarias',
+    examScoring: { penaltyDivisor: 3, source: 'Convocatoria 2026 (BOC nº 57, 24/03/2026). Penalización por respuesta errónea según bases; divisor pendiente de extracción literal. confidence:media' },
+    name: 'Administrativo del Gobierno de Canarias (Cuerpo Administrativo)',
+    shortName: 'Administrativo Canarias',
+    emoji: '🌴',
+    badge: 'C1',
+    color: 'cyan',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'organizacion-estado',
+        title: 'Organización del Estado (8 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española. Características del Estado. Valores superiores' },
+          { id: 2, name: 'La protección constitucional de los derechos y deberes y de los principios rectores' },
+          { id: 3, name: 'El poder legislativo. Las Cortes Generales. Los procedimientos legislativos' },
+          { id: 4, name: 'El poder ejecutivo. El Gobierno de la Nación' },
+          { id: 5, name: 'El poder judicial. El Consejo General del Poder Judicial' },
+          { id: 6, name: 'La Administración General del Estado: concepto, estructura y organización' },
+          { id: 7, name: 'Las Comunidades Autónomas. Vías de acceso. Distribución de competencias' },
+          { id: 8, name: 'La autonomía local. Las entidades locales' },
+        ],
+      },
+      {
+        id: 'organizacion-canarias',
+        title: 'Organización de Canarias (6 temas)',
+        subtitle: null,
+        icon: '🌴',
+        themes: [
+          { id: 9, name: 'El Estatuto de Autonomía de Canarias: estructura, contenido y naturaleza' },
+          { id: 10, name: 'El Parlamento de Canarias. La función legislativa y de control' },
+          { id: 11, name: 'Las competencias de la Comunidad Autónoma de Canarias (Título V del Estatuto)' },
+          { id: 12, name: 'El Gobierno de Canarias: concepto y régimen jurídico' },
+          { id: 13, name: 'La Administración Pública de la Comunidad Autónoma de Canarias' },
+          { id: 14, name: 'Organización territorial de Canarias. Los Cabildos Insulares' },
+        ],
+      },
+      {
+        id: 'union-europea',
+        title: 'La Unión Europea (6 temas)',
+        subtitle: null,
+        icon: '🇪🇺',
+        themes: [
+          { id: 15, name: 'Instituciones de la UE (I): la Comisión, el Consejo Europeo y el Consejo' },
+          { id: 16, name: 'Instituciones de la UE (II): el Tribunal de Cuentas y el Banco Central Europeo' },
+          { id: 17, name: 'Instituciones de la UE (III): el Tribunal de Justicia de la Unión Europea' },
+          { id: 18, name: 'Instituciones de la UE (IV): el Parlamento Europeo' },
+          { id: 19, name: 'Las libertades básicas de la UE (I): libre circulación de mercancías y personas' },
+          { id: 20, name: 'Las libertades básicas de la UE (II): libre circulación de trabajadores, servicios y capitales' },
+        ],
+      },
+      {
+        id: 'regimen-juridico',
+        title: 'Régimen Jurídico, Transparencia y Datos (4 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 21, name: 'La responsabilidad patrimonial de las Administraciones Públicas' },
+          { id: 22, name: 'La potestad sancionadora de las Administraciones Públicas' },
+          { id: 23, name: 'La transparencia de las Administraciones Públicas. La publicidad activa' },
+          { id: 24, name: 'El régimen jurídico de la protección de datos de carácter personal' },
+        ],
+      },
+      {
+        id: 'derechos-igualdad-empleo',
+        title: 'Derechos, Igualdad, Empleo Público y Prevención (6 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 25, name: 'La condición política de canarios. Los derechos y deberes de los canarios' },
+          { id: 26, name: 'La participación de la ciudadanía. Los derechos para la participación' },
+          { id: 27, name: 'La igualdad en la Constitución Española y en el Estatuto de Autonomía' },
+          { id: 28, name: 'La igualdad en la legislación canaria' },
+          { id: 29, name: 'Principios estatutarios de acceso al empleo público' },
+          { id: 30, name: 'La prevención de riesgos laborales: régimen jurídico' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    aliases: ['administrativo canarias', 'administrativo gobierno de canarias', 'cuerpo administrativo canarias', 'c1 canarias', 'administrativo c1 canarias'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-canarias', label: 'Mi Oposición', icon: '🌴', featured: true },
+      { href: '/administrativo-canarias/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-canarias/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {

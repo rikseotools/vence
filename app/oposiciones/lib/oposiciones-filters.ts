@@ -93,6 +93,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-andalucia': 'andalucia',
     'administrativo-andalucia': 'andalucia',
     'auxiliar-administrativo-canarias': 'canarias',
+    'administrativo-canarias': 'canarias',
     'auxiliar-administrativo-valencia': 'valencia',
     'auxiliar-administrativo-ayuntamiento-valencia': 'valencia',
     'auxiliar-administrativo-diputacion-alicante': 'valencia',

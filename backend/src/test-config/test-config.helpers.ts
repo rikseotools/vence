@@ -91,6 +91,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo ayuntamiento de valladolid',
     'auxiliar administrativo valladolid',
   ],
+  administrativo_canarias: [
+    'administrativo_canarias',
+    'administrativo gobierno de canarias',
+    'cuerpo administrativo de canarias',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

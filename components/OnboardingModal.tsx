@@ -973,6 +973,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'administrativo_canarias',
+    nombre: 'Administrativo Gobierno de Canarias (C1)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🌴'
+  },
+  {
     id: 'auxiliar_administrativo_scs_canarias',
     nombre: 'Auxiliar Administrativo del Servicio Canario de la Salud (SCS)',
     categoria: 'C2',
@@ -1642,8 +1649,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
-  'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
-  'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
+  'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
+  'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'administrativo_castilla_la_mancha', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
@@ -1683,6 +1690,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_ayuntamiento_murcia', // 20
   'auxiliar_administrativo_carm',        // 21
   'auxiliar_administrativo_canarias',    // 10
+  'administrativo_canarias',              // C1 Canarias (57 plz, BOC 57)
   'auxiliar_administrativo_scs_canarias', // sanitaria Canarias (Aux Admin SCS)
   'auxiliar_administrativo_ingesa',       // INGESA Ceuta/Melilla (Aux Admin estatal sanitario)
   'auxiliar_administrativo_andalucia',   // 7
