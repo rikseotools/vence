@@ -745,7 +745,14 @@ export default function AdminFeedbackPage() {
       )
       const sessions = enrich.sessions ?? []
       const emailProfilesData = enrich.emailProfiles ?? []
+      const subscriptionsData = enrich.subscriptions ?? []
       const sessionsError = null
+
+      // Map user_id → suscripción (hasta cuándo tiene premium + si cancela al final del período)
+      const subscriptionMap = new Map<string, { current_period_end: string | null; cancel_at_period_end: boolean | null; status: string | null }>()
+      subscriptionsData.forEach((s: { user_id: string; current_period_end: string | null; cancel_at_period_end: boolean | null; status: string | null }) => {
+        subscriptionMap.set(s.user_id, s)
+      })
 
       console.log(`✅ Perfiles cargados: ${profiles.length}/${userIds.length}`)
       console.log('📝 IDs de perfiles obtenidos:', profiles.map((p: { id: string }) => p.id))
@@ -816,7 +823,9 @@ export default function AdminFeedbackPage() {
             browserName: lastSession?.browser_name,
             operatingSystem: lastSession?.operating_system,
             deviceModel: lastSession?.device_model,
-            cancellationType: userCancellationType.get(profile.id) || null // 'refund', 'cancelled', o null
+            cancellationType: userCancellationType.get(profile.id) || null, // 'refund', 'cancelled', o null
+            premiumUntil: subscriptionMap.get(profile.id)?.current_period_end || null,
+            premiumCancelAtEnd: subscriptionMap.get(profile.id)?.cancel_at_period_end || false
           }
           profilesMap.set(profile.id, profileWithDevice)
           const cancelIcon = userCancellationType.get(profile.id) === 'refund' ? ' 🔴' : userCancellationType.get(profile.id) === 'cancelled' ? ' 🟠' : ''
@@ -833,7 +842,9 @@ export default function AdminFeedbackPage() {
               browserName: lastSession?.browser_name,
               operatingSystem: lastSession?.operating_system,
               deviceModel: lastSession?.device_model,
-              cancellationType: userCancellationType.get(profile.id) || null
+              cancellationType: userCancellationType.get(profile.id) || null,
+              premiumUntil: subscriptionMap.get(profile.id)?.current_period_end || null,
+              premiumCancelAtEnd: subscriptionMap.get(profile.id)?.cancel_at_period_end || false
             })
           })
           return newCache
@@ -850,7 +861,9 @@ export default function AdminFeedbackPage() {
           browserName: lastSession?.browser_name,
           operatingSystem: lastSession?.operating_system,
           deviceModel: lastSession?.device_model,
-          cancellationType: userCancellationType.get(profile.id) || null
+          cancellationType: userCancellationType.get(profile.id) || null,
+          premiumUntil: subscriptionMap.get(profile.id)?.current_period_end || null,
+          premiumCancelAtEnd: subscriptionMap.get(profile.id)?.cancel_at_period_end || false
         }
         emailProfilesMap.set(profile.email, profileWithDevice)
         console.log(`📧 Perfil encontrado por email: ${profile.full_name || profile.email} (${profile.plan_type})`)
@@ -902,6 +915,8 @@ export default function AdminFeedbackPage() {
           isActiveStudent: profile?.is_active_student,
           ciudad: profile?.ciudad,
           cancellationType: profile?.cancellationType || null, // 'refund', 'cancelled', o null
+          premiumUntil: profile?.premiumUntil || null, // hasta cuándo tiene premium (current_period_end)
+          premiumCancelAtEnd: profile?.premiumCancelAtEnd || false, // si cancela al final del período
           // Info de dispositivo
           browserName: profile?.browserName,
           operatingSystem: profile?.operatingSystem,
@@ -1813,6 +1828,15 @@ export default function AdminFeedbackPage() {
                           : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                       }`}>
                         {selectedUser.planType === 'premium' || selectedUser.planType === 'pro' ? '⭐ Premium' : 'Free'}
+                      </span>
+                    )}
+                    {(selectedUser.planType === 'premium' || selectedUser.planType === 'pro') && selectedUser.premiumUntil && (
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800"
+                        title={selectedUser.premiumCancelAtEnd || selectedUser.cancellationType ? 'Acceso premium hasta esta fecha (no renueva)' : 'Próxima renovación'}
+                      >
+                        {selectedUser.premiumCancelAtEnd || selectedUser.cancellationType ? '⏳ hasta ' : '🔁 renueva '}
+                        {new Date(selectedUser.premiumUntil).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     )}
                     {selectedUser.pendingConversations > 0 && (

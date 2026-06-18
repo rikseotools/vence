@@ -13,7 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { inArray, desc } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { getAdminDb } from '@/db/client'
-import { userProfiles, cancellationFeedback, userSessions } from '@/db/schema'
+import { userProfiles, cancellationFeedback, userSessions, userSubscriptions } from '@/db/schema'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
@@ -78,7 +78,7 @@ async function _POST(request: NextRequest) {
   })
 
   // Paralelizar — todas las queries son independientes.
-  const [profilesRows, cancellationsRows, sessionsRows, emailProfilesRows] = await Promise.all([
+  const [profilesRows, cancellationsRows, sessionsRows, emailProfilesRows, subscriptionsRows] = await Promise.all([
     ids.length > 0
       ? db.select(profileColumns).from(userProfiles).where(inArray(userProfiles.id, ids))
       : Promise.resolve([]),
@@ -108,6 +108,18 @@ async function _POST(request: NextRequest) {
     emails.length > 0
       ? db.select(profileColumns).from(userProfiles).where(inArray(userProfiles.email, emails))
       : Promise.resolve([]),
+    // Suscripción (1 por usuario): hasta cuándo tiene premium + si cancela al final del período.
+    ids.length > 0
+      ? db
+          .select({
+            userId: userSubscriptions.userId,
+            currentPeriodEnd: userSubscriptions.currentPeriodEnd,
+            cancelAtPeriodEnd: userSubscriptions.cancelAtPeriodEnd,
+            status: userSubscriptions.status,
+          })
+          .from(userSubscriptions)
+          .where(inArray(userSubscriptions.userId, ids))
+      : Promise.resolve([]),
   ])
 
   return NextResponse.json({
@@ -126,6 +138,12 @@ async function _POST(request: NextRequest) {
       session_start: s.sessionStart,
     })),
     emailProfiles: emailProfilesRows.map(toSnake),
+    subscriptions: subscriptionsRows.map((s) => ({
+      user_id: s.userId,
+      current_period_end: s.currentPeriodEnd,
+      cancel_at_period_end: s.cancelAtPeriodEnd,
+      status: s.status,
+    })),
   })
 }
 
