@@ -1,0 +1,55 @@
+name: Audit Estados Convocatoria
+
+# Segunda auditoría independiente: coherencia estado_proceso ↔ fechas de las
+# oposiciones. El estado_proceso lo fijan los signals (LLM/seguimiento) y nunca
+# se re-verifica solo → deriva a estados imposibles (inscripcion_abierta con
+# plazo vencido, pendiente_examen con examen pasado, etc.). Ninguna otra
+# auditoría lo mira; ninguna excepción lo ve (200 OK con dato incoherente).
+#
+# Lógica en app/api/cron/audit-estados/route.ts (CLI: npm run audit:estados).
+# Doc: docs/maintenance/oeps-convocatorias-seguimiento.md §0.bis
+
+on:
+  schedule:
+    # 05:00 UTC diario = 06:00/07:00 Madrid. Off-peak. La deriva puede aparecer
+    # cualquier día (al aplicar señales o al pasar una fecha).
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  audit-estados:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call audit endpoint
+        id: audit
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "https://www.vence.es/api/cron/audit-estados")
+
+          echo "Response: $RESPONSE"
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+          CHECKED=$(echo "$RESPONSE" | jq -r '.stats.checked // 0')
+          ERRORS=$(echo "$RESPONSE" | jq -r '.stats.errors // 0')
+          WARNS=$(echo "$RESPONSE" | jq -r '.stats.warns // 0')
+
+          echo "checked=$CHECKED" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "warns=$WARNS" >> $GITHUB_OUTPUT
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ Endpoint audit-estados falló"
+            exit 1
+          fi
+
+      - name: Summary
+        run: |
+          echo "🔍 Audit estados completado - $(date)"
+          echo "   Oposiciones revisadas: ${{ steps.audit.outputs.checked }}"
+          echo "   Contradicciones (❌): ${{ steps.audit.outputs.errors }}"
+          echo "   Sospechas/incompletos (🟡): ${{ steps.audit.outputs.warns }}"
+          if [ "${{ steps.audit.outputs.errors }}" != "0" ]; then
+            echo "::warning::${{ steps.audit.outputs.errors }} contradicciones estado↔fecha — ver observable_events (estado_proceso_drift) y corregir"
+          fi

@@ -1,0 +1,120 @@
+// app/api/cron/audit-estados/route.ts
+// Cron diario: SEGUNDA AUDITORÍA INDEPENDIENTE — coherencia estado_proceso ↔ fechas.
+//
+// El estado_proceso de las oposiciones lo fijan los signals llm_semantic/seguimiento
+// y nunca se re-verifica solo → deriva (casos reales 18/06/2026: baleares
+// 'inscripcion_abierta' sin convocatoria viva; osakidetza 'inscripcion_abierta' con
+// inscripción ya cerrada y examen inminente; varias abierta con plazo vencido/sin fecha).
+// Ninguna excepción lo ve (200 OK, dato incoherente) y ninguna otra auditoría lo mira
+// (audit:oposicion = completitud, audit:epigrafe = scope).
+//
+// Determinista (solo fechas). Versión CLI equivalente: `npm run audit:estados`
+// (scripts/audit-estados-convocatoria.cjs). Documentado en
+// docs/maintenance/oeps-convocatorias-seguimiento.md §0.bis.
+//
+// LÍMITE: caza contradicciones de fecha, NO un dato coherente-pero-erróneo (fecha
+// falsa pero futura) — eso lo corrige re-leer el boletín (detect-boletines/detect-oep-llm).
+//
+// Flujo: GHA llama cada noche con Bearer CRON_SECRET → query oposiciones → si hay
+// contradicciones (❌) emite `estado_proceso_drift` a observable_events.
+
+import { NextRequest, NextResponse } from 'next/server'
+import { emit } from '@/lib/observability/emit'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getAdminDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
+
+export const dynamic = 'force-dynamic'
+export const maxDuration = 20
+
+// estados "post-examen": no pueden tener el examen en el futuro
+const POST_EXAMEN = new Set(['examen_realizado', 'resultados', 'nombramientos'])
+// nº de contradicciones que escala el evento a 'critical'
+const CRITICAL_THRESHOLD = 5
+
+interface OposRow {
+  slug: string
+  is_active: boolean
+  estado_proceso: string | null
+  inscription_deadline: string | null
+  inscription_start: string | null
+  exam_date: string | null
+  exam_date_approximate: boolean | null
+}
+
+async function _GET(request: NextRequest) {
+  // Auth: solo GHA con CRON_SECRET
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 })
+  }
+
+  const startTime = Date.now()
+  const hoy = new Date().toISOString().slice(0, 10)
+  const db = getAdminDb()
+
+  const result = await db.execute(sql`
+    SELECT slug, is_active, estado_proceso, inscription_deadline,
+           inscription_start, exam_date, exam_date_approximate
+    FROM oposiciones
+  `)
+  const rows = result as unknown as OposRow[]
+
+  const errors: string[] = []
+  const warns: string[] = []
+
+  for (const o of rows) {
+    const e = o.estado_proceso
+    const dl = o.inscription_deadline
+    const ex = o.exam_date
+    const tag = `${o.slug}${o.is_active ? ' [PUBLICADA]' : ''}`
+    if (!e) {
+      warns.push(`${tag} → estado_proceso vacío`)
+      continue
+    }
+    if (e === 'inscripcion_abierta') {
+      if (!dl) warns.push(`${tag} → inscripcion_abierta SIN fecha de cierre`)
+      else if (dl < hoy) errors.push(`${tag} → inscripcion_abierta con plazo VENCIDO (${dl})`)
+    }
+    if (e === 'convocada' && dl && dl < hoy) {
+      warns.push(`${tag} → convocada con plazo de inscripción ya vencido (${dl})`)
+    }
+    if (e === 'inscripcion_cerrada' && dl && dl > hoy) {
+      warns.push(`${tag} → inscripcion_cerrada pero el plazo (${dl}) aún no ha vencido`)
+    }
+    if (e === 'pendiente_examen') {
+      if (!ex) warns.push(`${tag} → pendiente_examen SIN fecha de examen`)
+      else if (ex < hoy && !o.exam_date_approximate) errors.push(`${tag} → pendiente_examen con examen YA PASADO (${ex})`)
+    }
+    if (POST_EXAMEN.has(e) && ex && ex > hoy) {
+      errors.push(`${tag} → '${e}' con examen FUTURO (${ex})`)
+    }
+    if (o.inscription_start && dl && o.inscription_start > dl) {
+      warns.push(`${tag} → inscription_start (${o.inscription_start}) posterior al deadline (${dl})`)
+    }
+  }
+
+  if (errors.length > 0) {
+    await emit({
+      source: 'vercel',
+      severity: errors.length >= CRITICAL_THRESHOLD ? 'critical' : 'warn',
+      eventType: 'estado_proceso_drift',
+      endpoint: '/api/cron/audit-estados',
+      errorMessage: `Coherencia estado↔fecha: ${errors.length} contradicciones (+${warns.length} sospechas)`,
+      metadata: { errorCount: errors.length, warnCount: warns.length, errors: errors.slice(0, 20) },
+    })
+    console.warn(`⚠️ [AuditEstados] ${errors.length} contradicciones estado↔fecha — emitido a observable_events`)
+  } else {
+    console.log(`✅ [AuditEstados] OK — ${rows.length} oposiciones, 0 contradicciones (${warns.length} sospechas)`)
+  }
+
+  return NextResponse.json({
+    success: true,
+    duration: `${((Date.now() - startTime) / 1000).toFixed(2)}s`,
+    stats: { checked: rows.length, errors: errors.length, warns: warns.length },
+    errors,
+    warns,
+  })
+}
+
+export const GET = withErrorLogging('/api/cron/audit-estados', _GET)
