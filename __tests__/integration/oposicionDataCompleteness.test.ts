@@ -131,6 +131,7 @@ describeIfDb('Oposición data completeness', () => {
       'auxiliar-administrativo-diputacion-avila', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-segovia', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-huelva', // en preparación: BD lista (is_active=false hasta go-live)
+      'auxiliar-administrativo-ayuntamiento-salamanca', // en preparación: BD lista (is_active=false hasta go-live)
     ])
     const dbSlugs = new Set(oposiciones.map(o => o.slug))
     const missing = OPOSICIONES.filter(o => !dbSlugs.has(o.slug) && !KNOWN_PENDING.has(o.slug))

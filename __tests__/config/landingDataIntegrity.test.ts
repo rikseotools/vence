@@ -59,6 +59,7 @@ const DYNAMIC_SLUGS = [
   'administrativo-diputacion-jaen',
   'auxiliar-administrativo-ayuntamiento-marbella',
   'auxiliar-administrativo-ayuntamiento-valladolid',
+  'auxiliar-administrativo-ayuntamiento-salamanca',
   'administrativo-canarias',
   'administrativo-carm',
 ]
