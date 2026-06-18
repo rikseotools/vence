@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import NavigationButton from '@/components/ui/NavigationButton'
 
@@ -69,7 +70,7 @@ export default function OfficialExamAttempts({
   parte,
   oposicion,
 }: OfficialExamAttemptsProps) {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [attempts, setAttempts] = useState<ExamAttempt[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,30 +87,16 @@ export default function OfficialExamAttempts({
       if (authLoading || !user) return
 
       try {
-        const { data, error } = await supabase
-          .from('tests')
-          .select('id, title, score, total_questions, completed_at, total_time_seconds')
-          .eq('user_id', user.id)
-          .eq('is_completed', true)
-          .eq('test_type', 'exam')
-          .filter('detailed_analytics->>isOfficialExam', 'eq', 'true')
-          .filter('detailed_analytics->>examDate', 'eq', examDate)
-          .filter('detailed_analytics->>parte', 'eq', parte)
-          .filter('detailed_analytics->>oposicion', 'eq', oposicion)
-          .order('completed_at', { ascending: false })
+        // Desacople PostgREST: la query (con WHERE user_id + filtros JSONB) vive
+        // ahora en /api/exams/official-attempts (Drizzle + verifyAuth).
+        const qs = new URLSearchParams({ examDate, parte, oposicion })
+        const response = await fetch(`/api/exams/official-attempts?${qs}`, { headers: await getAuthHeaders() })
+        const data = await response.json()
 
-        if (error) {
-          console.error('Error loading attempts:', error)
+        if (!response.ok || !data.success) {
+          console.error('Error loading attempts:', data.error)
         } else {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setAttempts((data || []).map((t: any) => ({
-            id: t.id,
-            title: t.title,
-            score: t.score,
-            totalQuestions: t.total_questions,
-            completedAt: t.completed_at,
-            totalTimeSeconds: t.total_time_seconds,
-          })))
+          setAttempts(data.attempts || [])
         }
       } catch (err) {
         console.error('Error:', err)
@@ -119,7 +106,7 @@ export default function OfficialExamAttempts({
     }
 
     loadAttempts()
-  }, [user, authLoading, supabase, examDate, parte, oposicion])
+  }, [user, authLoading, examDate, parte, oposicion])
 
   if (authLoading || loading) {
     return (
