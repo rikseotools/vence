@@ -34,6 +34,7 @@
 | Bloque 4 Fase 2 (PostgresSink → KinesisSink AWS) | observabilidad a escala | ⏸️ pendiente (>30k DAU) | «Bloque 4 cont.» abajo |
 | **Fase E — Frontend Vercel → ECS Fargate** (+ apex → CloudFront) | salir de Vercel; última dep. Vercel eliminada | ✅ operativa (deploy `frontend-deploy.yml` → ECS; apex cutover 03-jun) | §Fase E abajo |
 | **Fase D — Migración BD → RDS (con failover)** | **SPOF de la PRIMARIA Supabase** (sin failover) = raíz del goteo 5xx residual | ⏸️ **PENDIENTE — gatillo: >$200/mes sostenido o ≥2 incidentes/mes** (hoy ~$40/mes, solo goteo) | §Fase D abajo |
+| **Fase P — Desacople PostgREST + RLS** (preparación portable de Fase D) | acoplamiento a Supabase de la **capa de datos** (45 ficheros `supabase.from`, 125 políticas RLS con `auth.uid()`) — **único bloqueo independiente de la carga** | 🟢 **ADELANTABLE YA, incremental.** P1 (inventario) ✅ 18-jun | [`roadmap/desacople-postgrest-rls.md`](roadmap/desacople-postgrest-rls.md) |
 
 **Lectura rápida (2026-06-18):** las palancas baratas de resiliencia/rendimiento ya están aplicadas
 (PgBouncer HA + proyecciones hot-path Iter 1/1.5 + read replica + stale-if-error + JWT local). El
