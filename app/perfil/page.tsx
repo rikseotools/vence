@@ -971,6 +971,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_la_rioja',
+      label: 'Administrativo de La Rioja (C1)',
+      data: {
+        name: 'Administrativo de La Rioja (Cuerpo Administrativo de Administración General)',
+        slug: 'administrativo-la-rioja',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_catalunya',
       label: 'Auxiliar Administrativo Generalitat de Catalunya (C2)',
       data: {

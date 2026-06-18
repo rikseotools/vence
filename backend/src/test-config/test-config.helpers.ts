@@ -70,6 +70,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo ejecutivo administrativa',
     'administrativo jccm',
   ],
+  administrativo_la_rioja: [
+    'administrativo_la_rioja',
+    'administrativo la rioja',
+    'cuerpo administrativo de administracion general la rioja',
+    'administrativo gobierno de la rioja',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

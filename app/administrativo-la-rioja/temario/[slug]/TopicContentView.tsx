@@ -1,5 +1,4 @@
-// app/auxiliar-enfermeria-osakidetza/temario/[slug]/TopicContentView.tsx
-// TCAE Osakidetza: Bloque I común 1-19 + Bloque II específico 101-130
+// app/administrativo-la-rioja/temario/[slug]/TopicContentView.tsx
 'use client'
 
 import { useState } from 'react'
@@ -19,23 +18,30 @@ interface TopicContentViewProps {
   updatedAt: string
 }
 
-// Determinar el bloque según el número de tema (TCAE Osakidetza)
-// Bloque I (Común): topics 1-19, display 1-19
-// Bloque II (Específico): topics 101-130, display 1-30
+// Determinar el bloque según el número de tema (Administrativo C1 La Rioja)
 function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
-  if (topicNumber >= 1 && topicNumber <= 11) {
-    return { block: 'Materia General', displayNum: topicNumber }
-  } else if (topicNumber >= 12 && topicNumber <= 19) {
-    return { block: 'Materia Específica (UNED)', displayNum: topicNumber - 11 }
-  } else if (topicNumber >= 20 && topicNumber <= 21) {
-    return { block: 'Ofimática', displayNum: topicNumber - 19 }
+  // Numeración secuencial 1-42 en 6 bloques
+  if (topicNumber >= 1 && topicNumber <= 10) {
+    return { block: 'Organización del Estado', displayNum: topicNumber }
+  } else if (topicNumber >= 11 && topicNumber <= 16) {
+    return { block: 'Organización de La Rioja', displayNum: topicNumber }
+  } else if (topicNumber >= 17 && topicNumber <= 26) {
+    return { block: 'Derecho Administrativo General', displayNum: topicNumber }
+  } else if (topicNumber >= 27 && topicNumber <= 31) {
+    return { block: 'Gestión de Personal', displayNum: topicNumber }
+  } else if (topicNumber >= 32 && topicNumber <= 39) {
+    return { block: 'Gestión Financiera', displayNum: topicNumber }
+  } else if (topicNumber >= 40 && topicNumber <= 42) {
+    return { block: 'Informática', displayNum: topicNumber }
   }
-  return { block: 'Temario', displayNum: topicNumber }
+  return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'auxiliar-enfermeria-osakidetza', updatedAt }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'administrativo-la-rioja', updatedAt }: TopicContentViewProps) {
   const { getSlug } = useLawSlugs()
-  const [expandedLaws, setExpandedLaws] = useState<Set<string>>(new Set())
+  const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
+    new Set()
+  )
   const [showPrintModal, setShowPrintModal] = useState(false)
   const { user, userProfile } = useAuth() as { user: any; userProfile: any }
 
@@ -51,6 +57,14 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
       }
       return next
     })
+  }
+
+  const expandAll = () => {
+    setExpandedLaws(new Set(content.laws.map((l) => l.law.id)))
+  }
+
+  const collapseAll = () => {
+    setExpandedLaws(new Set())
   }
 
   const handlePrint = () => {
@@ -73,14 +87,34 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
       {/* Print styles */}
       <style jsx global>{`
         @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; color: black !important; }
-          .print-break-before { page-break-before: always; }
-          .print-avoid-break { page-break-inside: avoid; }
-          .article-content { font-size: 11pt; line-height: 1.5; }
-          .print-header { border-bottom: 2px solid #000; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-          .law-section { margin-bottom: 2rem; }
-          @page { margin: 2cm; }
+          .no-print {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          .print-break-before {
+            page-break-before: always;
+          }
+          .print-avoid-break {
+            page-break-inside: avoid;
+          }
+          .article-content {
+            font-size: 11pt;
+            line-height: 1.5;
+          }
+          .print-header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+          }
+          .law-section {
+            margin-bottom: 2rem;
+          }
+          @page {
+            margin: 2cm;
+          }
         }
       `}</style>
 
@@ -131,13 +165,22 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
           {/* Stats */}
           <div className="flex flex-wrap gap-4 text-sm">
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
               {content.laws.length} {content.laws.length === 1 ? 'ley' : 'leyes'}
             </span>
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
               {content.totalArticles} artículos
             </span>
             {articlesWithOfficialQuestions > 0 && (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-full">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 rounded-full">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
                 {articlesWithOfficialQuestions} con preguntas de examen
               </span>
             )}
@@ -145,11 +188,14 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
 
           {/* Mensaje personalizado para usuarios logueados */}
           {user && (() => {
+            // Obtener nombre: userProfile > user_metadata > email
             const userName = userProfile?.user_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Opositor/a'
+            // Obtener avatar: userProfile > user_metadata
             const avatarUrl = userProfile?.avatar_url || user?.user_metadata?.avatar_url
             return (
               <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700 rounded-xl">
                 <div className="flex items-start gap-3">
+                  {/* Avatar del usuario */}
                   <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-800 rounded-full flex items-center justify-center overflow-hidden">
                     {avatarUrl ? (
                       <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -171,6 +217,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
             )
           })()}
 
+          {/* Fecha de actualización y registro */}
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Actualizado a{' '}
@@ -205,6 +252,9 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
         {/* Empty state */}
         {content.laws.length === 0 && (
           <div className="text-center py-12">
+            <svg className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               Contenido no disponible
             </h3>
@@ -235,19 +285,28 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
             </button>
 
             <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+              </div>
+
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 Descarga el temario en PDF
               </h3>
+
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Regístrate gratis para descargar el PDF y recibir actualizaciones cuando cambie la legislación.
               </p>
+
               <div className="space-y-3">
                 <Link
-                  href={`/login?oposicion=${oposicion.replace(/-/g, '_')}&return_to=${basePath}/temario`}
+                  href="/login?oposicion=administrativo_la_rioja&return_to=/administrativo-la-rioja/temario"
                   className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Registrarse gratis
                 </Link>
+
                 <button
                   onClick={() => setShowPrintModal(false)}
                   className="block w-full py-3 px-4 text-gray-600 dark:text-gray-400 font-medium hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
@@ -264,44 +323,77 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
 }
 
 // Law section component
-function LawSection({ lawData, isExpanded, onToggle, isFirst }: { lawData: LawWithArticles; isExpanded: boolean; onToggle: () => void; isFirst: boolean }) {
+interface LawSectionProps {
+  lawData: LawWithArticles
+  isExpanded: boolean
+  onToggle: () => void
+  isFirst: boolean
+}
+
+function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps) {
   const { getSlug } = useLawSlugs()
   const { law, articles } = lawData
   const officialCount = articles.filter(a => a.officialQuestionCount > 0).length
 
   return (
     <section className={`law-section ${!isFirst ? 'print-break-before' : ''}`}>
+      {/* Law header - clickable */}
       <button
         onClick={onToggle}
         className="no-print w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
       >
         <div className="text-left">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{law.shortName}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{law.name} {law.year && `(${law.year})`}</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {law.shortName}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {law.name} {law.year && `(${law.year})`}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <span className="text-sm text-gray-500 dark:text-gray-400">{articles.length} artículos</span>
-            {officialCount > 0 && <span className="block text-xs text-red-600 dark:text-red-400">{officialCount} con examen</span>}
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {articles.length} artículos
+            </span>
+            {officialCount > 0 && (
+              <span className="block text-xs text-rose-600 dark:text-rose-400">
+                {officialCount} con examen
+              </span>
+            )}
           </div>
-          <svg className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </button>
 
+      {/* Enlace a test - siempre visible */}
       <div className="no-print flex items-center justify-between mt-1 -mb-1 px-1">
         <ArticleTTS articles={articles} lawName={law.shortName} />
-        <Link href={`/leyes/${getSlug(law.shortName)}`} className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline">
+        <Link
+          href={`/leyes/${getSlug(law.shortName)}`}
+          className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
+        >
           Hacer test de {law.shortName} →
         </Link>
       </div>
 
+      {/* Print-only law header */}
       <div className="hidden print:block mb-4">
-        <h2 className="text-xl font-bold text-black border-b-2 border-gray-300 pb-2">{law.shortName}</h2>
-        <p className="text-sm text-gray-600 mt-1">{law.name} {law.year && `(${law.year})`}</p>
+        <h2 className="text-xl font-bold text-black border-b-2 border-gray-300 pb-2">
+          {law.shortName}
+        </h2>
+        <p className="text-sm text-gray-600 mt-1">
+          {law.name} {law.year && `(${law.year})`}
+        </p>
       </div>
 
+      {/* Articles list */}
       {(isExpanded || true) && (
         <div className={`mt-2 space-y-4 ${!isExpanded ? 'hidden print:block' : ''}`}>
           {articles.map((article) => (
@@ -313,6 +405,7 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: { lawData: LawWi
   )
 }
 
+// Article card component
 function ArticleCard({ article, lawShortName }: { article: Article; lawShortName: string }) {
   const { getSlug } = useLawSlugs()
   const hasOfficialQuestions = article.officialQuestionCount > 0
@@ -320,26 +413,48 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
   const formatContent = (content: string | null) => {
     if (!content) return null
     const lines = content.split(/\n/).filter(line => line.trim())
-    return lines.map((line, index) => <p key={index} className="mb-2 last:mb-0">{line.trim()}</p>)
+    return lines.map((line, index) => (
+      <p key={index} className="mb-2 last:mb-0">
+        {line.trim()}
+      </p>
+    ))
   }
 
   return (
     <article className={`print-avoid-break bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${
-      hasOfficialQuestions ? 'border-red-300 dark:border-red-600 ring-1 ring-red-200 dark:ring-red-700' : 'border-gray-200 dark:border-gray-700'
+      hasOfficialQuestions
+        ? 'border-rose-300 dark:border-rose-600 ring-1 ring-rose-200 dark:ring-rose-700'
+        : 'border-gray-200 dark:border-gray-700'
     }`}>
-      <div className={`px-4 py-3 border-b ${hasOfficialQuestions ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'}`}>
+      {/* Article header */}
+      <div className={`px-4 py-3 border-b ${
+        hasOfficialQuestions
+          ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-700'
+          : 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
+      }`}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-1 min-w-0">
-            <span className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">Art. {article.articleNumber}</span>
-            {article.title && <h3 className="font-medium text-gray-900 dark:text-white truncate">{article.title}</h3>}
+            <span className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+              Art. {article.articleNumber}
+            </span>
+            {article.title && (
+              <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                {article.title}
+              </h3>
+            )}
           </div>
+          {/* Badge de pregunta de examen */}
           {hasOfficialQuestions && (
-            <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-800/50 text-red-800 dark:text-red-200 text-xs font-medium rounded-full">
+            <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-rose-100 dark:bg-rose-800/50 text-rose-800 dark:text-rose-200 text-xs font-medium rounded-full">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+              </svg>
               <span className="hidden sm:inline">Examen</span>
               <span className="font-semibold">{article.officialQuestionCount}</span>
             </div>
           )}
         </div>
+        {/* Location info */}
         {(article.titleNumber || article.chapterNumber || article.section) && (
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
             {article.titleNumber && <span>Título {article.titleNumber}</span>}
@@ -350,15 +465,28 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
       </div>
 
 
+      {/* Article content */}
       <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed">
-        {article.content ? <MarkdownContent content={article.content} /> : <p className="text-gray-400 dark:text-gray-500 italic">Contenido no disponible</p>}
+        {article.content ? (
+          <MarkdownContent content={article.content} />
+        ) : (
+          <p className="text-gray-400 dark:text-gray-500 italic">
+            Contenido no disponible
+          </p>
+        )}
       </div>
 
+      {/* Test button for this article - only show if article has questions */}
       {article.questionCount > 0 && (
       <div className="no-print px-4 pb-4 flex justify-end">
         <Link
           href={`/leyes/${getSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
-          onClick={() => { if (typeof window !== 'undefined') sessionStorage.setItem('temario_return_url', window.location.href) }}
+          onClick={() => {
+            // Store current URL for "Volver a mi temario" button
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('temario_return_url', window.location.href)
+            }
+          }}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
         >
           Hacer test Art. {article.articleNumber}

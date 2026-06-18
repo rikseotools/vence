@@ -118,6 +118,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-cantabria': 'cantabria',
     'administrativo-navarra': 'navarra',
     'auxiliar-administrativo-la-rioja': 'la-rioja',
+    'administrativo-la-rioja': 'la-rioja',
     'enfermero-sas-andalucia': 'andalucia',
     'tcae-sermas-madrid': 'madrid',
     'celador-sermas-madrid': 'madrid',

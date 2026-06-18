@@ -2339,6 +2339,122 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO LA RIOJA (C1 - Cuerpo Administrativo de Administración General)
+  // ========================================
+  {
+    id: 'administrativo_la_rioja',
+    slug: 'administrativo-la-rioja',
+    positionType: 'administrativo_la_rioja',
+    examScoring: { penaltyDivisor: 3, source: 'Convocatoria 2026 (Resolución 1368/2026, BOR nº 108 de 10/06/2026). Penalización por respuesta errónea según bases; divisor pendiente de extracción literal del PDF. confidence:media' },
+    name: 'Administrativo de La Rioja (Cuerpo Administrativo de Administración General)',
+    shortName: 'Administrativo La Rioja',
+    emoji: '🍇',
+    badge: 'C1',
+    color: 'green',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'organizacion-estado',
+        title: 'Organización del Estado y de la Administración Pública (10 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978. Estructura y derechos fundamentales' },
+          { id: 2, name: 'El Tribunal Constitucional y el Defensor del Pueblo. Reforma de la Constitución' },
+          { id: 3, name: 'La Jefatura del Estado. La Corona' },
+          { id: 4, name: 'Las Cortes Generales. La elaboración de las leyes. Los Tratados Internacionales' },
+          { id: 5, name: 'El Poder Judicial. El CGPJ. El Tribunal Supremo' },
+          { id: 6, name: 'El Gobierno y la Administración. El Consejo de Ministros. El Presidente' },
+          { id: 7, name: 'La Administración periférica del Estado. Delegados y Subdelegados del Gobierno' },
+          { id: 8, name: 'La organización territorial del Estado. La Administración Local. Las CCAA' },
+          { id: 9, name: 'La Ley de Régimen Jurídico del Sector Público: los órganos administrativos' },
+          { id: 10, name: 'El sistema institucional de la Unión Europea' },
+        ],
+      },
+      {
+        id: 'organizacion-rioja',
+        title: 'Organización y Administración de La Rioja (6 temas)',
+        subtitle: null,
+        icon: '🍇',
+        themes: [
+          { id: 11, name: 'El Estatuto de Autonomía de La Rioja (I): estructura, competencias y reforma' },
+          { id: 12, name: 'El Estatuto de Autonomía de La Rioja (II): organización institucional' },
+          { id: 13, name: 'El Estatuto de Autonomía de La Rioja (III): administración y financiación' },
+          { id: 14, name: 'La Ley de Funcionamiento y Régimen Jurídico de la Administración CAR (I)' },
+          { id: 15, name: 'La Ley de Funcionamiento y Régimen Jurídico de la Administración CAR (II)' },
+          { id: 16, name: 'La Ley de organización del sector público de la Administración General CAR' },
+        ],
+      },
+      {
+        id: 'derecho-administrativo',
+        title: 'Derecho Administrativo General (10 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 17, name: 'Las fuentes del Derecho Administrativo. La Ley. El Reglamento' },
+          { id: 18, name: 'El acto administrativo: concepto, clases y elementos. Eficacia y validez' },
+          { id: 19, name: 'El Procedimiento Administrativo. Garantías y fases' },
+          { id: 20, name: 'Los recursos administrativos: alzada, reposición y revisión' },
+          { id: 21, name: 'La Jurisdicción Contencioso-Administrativa' },
+          { id: 22, name: 'Los contratos del Sector Público: concepto, tipos y elementos' },
+          { id: 23, name: 'Formas de la actividad administrativa: limitación, servicio público y fomento' },
+          { id: 24, name: 'Responsabilidad patrimonial de las AAPP. La potestad sancionadora' },
+          { id: 25, name: 'La expropiación forzosa' },
+          { id: 26, name: 'Ley de Protección de Datos Personales y Garantía de los Derechos Digitales' },
+        ],
+      },
+      {
+        id: 'gestion-personal',
+        title: 'Gestión de Personal (5 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 27, name: 'La Función Pública en La Rioja. Clases de personal. OEP. Derechos y deberes' },
+          { id: 28, name: 'Personal funcionario de la CAR: selección, promoción, RPT y provisión' },
+          { id: 29, name: 'El personal laboral de la CAR. El contrato laboral. Convenios colectivos' },
+          { id: 30, name: 'El régimen de Seguridad Social. Afiliación. Cotización. Acción protectora' },
+          { id: 31, name: 'Prestaciones del Régimen General de la Seguridad Social' },
+        ],
+      },
+      {
+        id: 'gestion-financiera',
+        title: 'Gestión Financiera (8 temas)',
+        subtitle: null,
+        icon: '💶',
+        themes: [
+          { id: 32, name: 'El presupuesto: concepto y principios. El presupuesto por programas' },
+          { id: 33, name: 'El presupuesto de la CAR: estructura, créditos y modificaciones' },
+          { id: 34, name: 'La ejecución del presupuesto de gasto. La ordenación del pago' },
+          { id: 35, name: 'Las retribuciones de los empleados públicos de la CAR. Nóminas' },
+          { id: 36, name: 'La ejecución presupuestaria y los contratos administrativos' },
+          { id: 37, name: 'El procedimiento para la concesión de las subvenciones' },
+          { id: 38, name: 'Anticipos de caja fija y pagos a justificar' },
+          { id: 39, name: 'El control del gasto público. El Tribunal de Cuentas' },
+        ],
+      },
+      {
+        id: 'informatica',
+        title: 'Informática (3 temas)',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 40, name: 'Bases de datos: Microsoft Access 2016' },
+          { id: 41, name: 'Hojas de cálculo: Microsoft Excel 2016' },
+          { id: 42, name: 'Procesadores de textos: Microsoft Word 2016' },
+        ],
+      },
+    ],
+    totalTopics: 42,
+    aliases: ['administrativo la rioja', 'administrativo gobierno de la rioja', 'administrativo car', 'c1 la rioja', 'cuerpo administrativo la rioja', 'administrativo rioja'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-la-rioja', label: 'Mi Oposición', icon: '🍇', featured: true },
+      { href: '/administrativo-la-rioja/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-la-rioja/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {

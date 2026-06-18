@@ -1141,6 +1141,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🍇'
   },
   {
+    id: 'administrativo_la_rioja',
+    nombre: 'Administrativo de La Rioja (C1)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🍇'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
@@ -1627,7 +1634,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Cantabria': ['auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
-  'La Rioja': ['auxiliar_administrativo_la_rioja', 'auxiliar_administrativo_estado'],
+  'La Rioja': ['auxiliar_administrativo_la_rioja', 'administrativo_la_rioja', 'auxiliar_administrativo_estado'],
   'Ceuta': ['auxiliar_administrativo_ingesa', 'auxiliar_administrativo_estado'],
   'Melilla': ['auxiliar_administrativo_ingesa', 'auxiliar_administrativo_estado'],
   'País Vasco': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],

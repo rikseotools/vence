@@ -241,7 +241,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
               </p>
               <div className="space-y-3">
                 <Link
-                  href="/login?oposicion=auxiliar_administrativo_scs_canarias&return_to=/auxiliar-administrativo-ingesa/temario"
+                  href={`/login?oposicion=${oposicion.replace(/-/g, '_')}&return_to=${basePath}/temario`}
                   className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Registrarse gratis
