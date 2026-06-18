@@ -312,6 +312,41 @@ jobs:
           echo "✅ Invalidación CloudFront creada: $ID (paths /*)"
           echo "- invalidación CloudFront: \`$ID\` (\`/*\`)" >> "$GITHUB_STEP_SUMMARY"
 
+      # Smoke HTTP post-deploy del SITIO REAL (CloudFront → ALB → ECS). Cierra el
+      # punto ciego que obligaba a curlear a mano para saber si un deploy acabó
+      # bien: si una ruta clave no responde el código esperado, FALLA el job →
+      # dispara el job notify-failure (emite workflow_failure a observabilidad).
+      #
+      # Robusto contra la ventana de propagación multi-edge de CloudFront / la
+      # transición del rollout: cada ruta se sondea hasta ~2min y exige 3 aciertos
+      # CONSECUTIVOS (no un único hit con suerte) antes de darla por buena.
+      - name: Smoke HTTP post-deploy (sitio real)
+        run: |
+          SMOKE_FAIL=0
+          check() {
+            local path="$1" expect="$2" ok=0 attempts=0 code=000
+            while [ $attempts -lt 24 ]; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://www.vence.es${path}" || echo 000)
+              if [ "$code" = "$expect" ]; then ok=$((ok+1)); else ok=0; fi
+              if [ $ok -ge 3 ]; then echo "✅ ${path} → ${expect} (estable ×3)"; return 0; fi
+              attempts=$((attempts+1)); sleep 5
+            done
+            echo "❌ ${path}: esperaba ${expect}, último=${code} tras ${attempts} intentos"
+            return 1
+          }
+          # Rutas clave: homepage (SSG) + directorio de oposiciones (server component
+          # que lee BD → un build/BD roto da 5xx aquí, no 200). Públicas y estables
+          # (no dependen de una feature concreta → no se vuelven brittle).
+          check "/" 200 || SMOKE_FAIL=1
+          check "/oposiciones" 200 || SMOKE_FAIL=1
+          if [ "$SMOKE_FAIL" -ne 0 ]; then
+            echo "::error::Smoke HTTP post-deploy FALLÓ — el sitio no sirve rutas clave tras el deploy"
+            echo "- ❌ smoke HTTP post-deploy: FALLÓ" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "✅ Smoke HTTP post-deploy OK"
+          echo "- ✅ smoke HTTP post-deploy: OK (/ y /oposiciones = 200 estables)" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Summary
         run: |
           echo "## Frontend deployed a AWS ECS" >> "$GITHUB_STEP_SUMMARY"
