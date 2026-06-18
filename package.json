@@ -11,6 +11,7 @@
     "db:load-constitucion-pdf": "node scripts/load-constitucion.js pdfs/constitucion-espanola.pdf",
     "db:pull": "drizzle-kit introspect",
     "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
+    "audit:estados": "node scripts/audit-estados-convocatoria.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:oposicion-contenido": "npx tsx --env-file=.env.local scripts/audit-oposicion-contenido-prep.ts",
     "ads:auth": "npx tsx --env-file=.env.local scripts/google-ads/get-refresh-token.ts",

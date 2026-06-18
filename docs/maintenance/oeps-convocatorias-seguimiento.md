@@ -23,6 +23,23 @@ Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** co
 
 > **Nota:** La página `/admin/seguimiento-convocatorias` queda como vista histórica técnica de hashes. Ya no tiene badge — todas las alertas van a **🎯 OEPs**.
 
+## 0.bis 🆕 Segunda auditoría independiente: coherencia `estado_proceso` ↔ fechas (`npm run audit:estados`)
+
+> **Por qué existe (18/06/2026):** el `estado_proceso` lo fijan los signals `llm_semantic`/seguimiento y **nunca se re-verifica solo** → deriva. Casos reales: `administrativo-baleares` quedó `inscripcion_abierta` sin convocatoria viva; `enfermero-osakidetza` quedó `inscripcion_abierta` cuando la inscripción ya había cerrado y el examen era inminente; varias `inscripcion_abierta` con plazo vencido o sin fecha. **Ninguna de las otras auditorías (audit:oposicion = completitud, audit:epigrafe = scope) mira esto.**
+
+**`npm run audit:estados`** (`scripts/audit-estados-convocatoria.cjs`, determinista, exit 1 = ❌ → apto para CI/cron) recorre TODAS las oposiciones y marca **contradicciones estado↔fecha**:
+
+| Regla | Resultado |
+|---|---|
+| `inscripcion_abierta` con plazo (`inscription_deadline`) **vencido** | ❌ (debe avanzar) |
+| `inscripcion_abierta` **sin** fecha de cierre | 🟡 (incompleto/stale) |
+| `pendiente_examen` con `exam_date` **ya pasado** | ❌ (→ examen_realizado) |
+| `pendiente_examen` **sin** fecha de examen | 🟡 |
+| Estado post-examen (`examen_realizado`/`resultados`/`nombramientos`) con examen **futuro** | ❌ |
+| `convocada`/`inscripcion_cerrada` incoherente con el plazo | 🟡 |
+
+**Límite (importante):** es determinista → caza contradicciones de fecha, **NO** un dato *coherente pero erróneo* (p. ej. una fecha de cierre falsa pero futura, como Osakidetza). Eso solo lo corrige **re-leer el boletín oficial** (sensores `detect-boletines`/`detect-oep-llm` o verificación manual). **Dos capas complementarias:** `audit:estados` (barato, gate) + boletín (fuente de verdad). Recomendado correr `audit:estados` periódicamente (cron/CI) y tras cada tanda de "Aplicar" señales.
+
 ## 1. Identificar qué oposiciones tienen señales pendientes
 
 ### Opción A — Panel admin (recomendado)
