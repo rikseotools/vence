@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 /**
  * ShareQuestion - Compartir preguntas individuales en redes sociales
@@ -17,7 +18,7 @@ export default function ShareQuestion({
   onClose = () => {},
   isOpen = false
 }) {
-  const { user, supabase } = useAuth()
+  const { user } = useAuth()
   const [shareSuccess, setShareSuccess] = useState(false)
 
   if (!isOpen || !question) return null
@@ -68,10 +69,12 @@ D) ${options[3] || ''}
     if (!user) return
 
     try {
-      await supabase
-        .from('share_events')
-        .insert({
-          user_id: user.id,
+      // Desacople PostgREST: el insert vive ahora en /api/share-events
+      // (Drizzle + verifyAuth; user_id derivado del token).
+      await fetch('/api/share-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+        body: JSON.stringify({
           share_type: 'question_quiz',
           platform: platform,
           share_text: formatShareText(platform),
@@ -81,6 +84,7 @@ D) ${options[3] || ''}
             userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
           }
         })
+      })
       console.log('📤 Share pregunta registrado:', platform)
     } catch (error) {
       console.error('Error registrando share:', error)
