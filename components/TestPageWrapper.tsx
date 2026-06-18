@@ -19,7 +19,9 @@ import {
   fetchMantenerRacha,          // 🆕 Para mantener rachas
   fetchExplorarContenido,      // 🆕 Para explorar contenido
   fetchAleatorioMultiTema,     // 🎲 Para tests aleatorios con múltiples temas
-  fetchContentScopeQuestions   // 📋 Para content_scope
+  fetchContentScopeQuestions,  // 📋 Para content_scope
+  readTestNotice,              // 📣 Aviso adjunto (relleno exclude-recent)
+  type TestNotice
 } from '../lib/testFetchers'
 
 interface ContentScopeConfig {
@@ -73,6 +75,7 @@ export default function TestPageWrapper({
 
   // Estados básicos
   const [questions, setQuestions] = useState<any>([])
+  const [testNotice, setTestNotice] = useState<TestNotice | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [config, setConfig] = useState<any>(null)
@@ -418,6 +421,10 @@ export default function TestPageWrapper({
         fetchedQuestions = await fetcher(tema, finalSearchParams, finalTestConfig)
       }
 
+      // 📣 Leer el aviso adjunto ANTES de cualquier spread/slice (relleno
+      // exclude-recent). readTestNotice es tolerante a null/objeto adaptativo.
+      setTestNotice(readTestNotice(fetchedQuestions))
+
       // 🧠 Verificar si es modo adaptativo o normal
       if (fetchedQuestions && fetchedQuestions.isAdaptive) {
         // Modo adaptativo - verificar estructura
@@ -670,6 +677,27 @@ export default function TestPageWrapper({
         questionsLength: questions.length,
         testType
       })}
+
+      {/* 📣 Aviso de relleno por exclude-recent: el test se completó con
+          preguntas ya vistas porque no había suficientes nuevas en el tema. */}
+      {testNotice?.type === 'backfilled_recent' && testNotice.backfilledRecentCount > 0 && (
+        <div className="max-w-3xl mx-auto px-4 pt-3">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-100">
+            <span className="text-base leading-none">ℹ️</span>
+            <p className="flex-1">
+              Se completaron con {testNotice.backfilledRecentCount} {testNotice.backfilledRecentCount === 1 ? 'pregunta' : 'preguntas'} que ya habías visto (no había suficientes nuevas en este tema).
+            </p>
+            <button
+              type="button"
+              onClick={() => setTestNotice(null)}
+              aria-label="Cerrar aviso"
+              className="shrink-0 text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <TestLayout
         tema={tema || 0}

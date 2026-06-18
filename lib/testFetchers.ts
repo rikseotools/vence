@@ -118,6 +118,42 @@ function logTestSizeShortfall(
   }
 }
 
+// Aviso de UX que viaja adjunto al array de preguntas (lo lee TestPageWrapper
+// justo tras el await). Hoy solo "backfilled_recent": se completó el test con
+// preguntas ya vistas porque no había suficientes nuevas (exclude-recent).
+export interface TestNotice {
+  type: 'backfilled_recent'
+  backfilledRecentCount: number
+  requestedCount: number
+}
+
+// Adjunta el aviso al array como propiedad NO enumerable (no contamina
+// JSON.stringify/map/length; se lee por acceso directo antes de cualquier
+// spread). No-op si la API no repescó nada. Devuelve el mismo array.
+export function attachBackfillNotice<T>(questions: T[], data: any): T[] {
+  try {
+    const n = Number(data?.backfilledRecentCount) || 0
+    if (n > 0 && Array.isArray(questions)) {
+      const notice: TestNotice = {
+        type: 'backfilled_recent',
+        backfilledRecentCount: n,
+        requestedCount: Number(data?.requestedCount) || questions.length,
+      }
+      Object.defineProperty(questions, '__testNotice', {
+        value: notice, enumerable: false, configurable: true, writable: true,
+      })
+    }
+  } catch { /* el aviso nunca debe romper la carga */ }
+  return questions
+}
+
+// Lee el aviso adjunto (o null). Usado por TestPageWrapper.
+export function readTestNotice(questions: any): TestNotice | null {
+  try {
+    return (questions && questions.__testNotice) || null
+  } catch { return null }
+}
+
 // Legacy compat: el viejo AdaptiveCatalog era flat (difficulty como clave directa)
 // El nuevo usa topic como clave intermedia. Para backward compat con TestLayout,
 // convertimos al formato viejo al devolver al cliente.
@@ -624,7 +660,7 @@ export async function fetchRandomQuestions(tema: number, searchParams: SearchPar
     }
 
     console.log('✅ Test aleatorio cargado via API:', questions.length, 'preguntas')
-    return questions
+    return attachBackfillNotice(questions, data)
 
   } catch (error) {
     console.error('❌ Error en fetchRandomQuestions:', error)
@@ -688,7 +724,7 @@ export async function fetchQuickQuestions(tema: number, searchParams: SearchPara
     }
 
     console.log(`✅ Test rápido: ${data.questions?.length || 0} preguntas (${data.totalAvailable} disponibles)`)
-    return data.questions || []
+    return attachBackfillNotice(data.questions || [], data)
 
   } catch (error) {
     console.error('❌ Error en fetchQuickQuestions:', error)
@@ -848,7 +884,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
       positionType, tema, serverReturned: data.questions?.length ?? 0,
       requestSize, sessionCacheSize: sessionUsedIds.size, totalAvailable: data.totalAvailable,
     })
-    return questions
+    return attachBackfillNotice(questions, data)
 
   } catch (error) {
     console.error('❌ Error en fetchPersonalizedQuestions:', error)
@@ -1543,7 +1579,7 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
       positionType, tema, selectedLaws: selectedLaws.length, selectedArticles: Object.keys(articlesForAPI).length,
       onlyFailedQuestions, serverReturned: viaApiQuestions.length, totalAvailable: data.totalAvailable,
     })
-    return viaApiQuestions
+    return attachBackfillNotice(viaApiQuestions, data)
 
   } catch (error) {
     console.error('❌ Error en fetchQuestionsViaAPI:', error)

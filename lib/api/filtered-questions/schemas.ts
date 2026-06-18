@@ -136,6 +136,10 @@ export const getFilteredQuestionsResponseSchema = z.object({
   success: z.boolean(),
   questions: z.array(filteredQuestionSchema).optional(),
   totalAvailable: z.number().int().optional(),
+  // Relleno por déficit de exclude-recent: nº de preguntas ya vistas repescadas
+  // para alcanzar las pedidas, y cuántas se habían pedido (para el aviso al usuario).
+  backfilledRecentCount: z.number().int().optional(),
+  requestedCount: z.number().int().optional(),
   filtersApplied: z.object({
     laws: z.number().int(),
     articles: z.number().int(),

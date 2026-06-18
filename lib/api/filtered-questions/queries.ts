@@ -194,13 +194,22 @@ async function getRecentlyAnsweredQuestionIds(
   const dateThreshold = new Date()
   dateThreshold.setDate(dateThreshold.getDate() - daysAgo)
 
+  // IDs DISTINTOS ordenados por su respuesta MÁS RECIENTE ascendente: las que
+  // llevan más tiempo sin responderse van primero. Así el relleno por déficit
+  // (backfillFromReserve) repesca "oldest-first", alineado con repaso espaciado
+  // (repite antes lo que hace más que no ves, no lo de hace 5 minutos).
   const recentAnswers = await db
-    .select({ questionId: testQuestions.questionId })
+    .select({
+      questionId: testQuestions.questionId,
+      lastAnswered: sql<string>`max(${testQuestions.createdAt})`,
+    })
     .from(testQuestions)
     .where(and(
       eq(testQuestions.userId, userId),
       sql`${testQuestions.createdAt} >= ${dateThreshold.toISOString()}`
     ))
+    .groupBy(testQuestions.questionId)
+    .orderBy(sql`max(${testQuestions.createdAt}) asc`)
 
   return (recentAnswers || [])
     .map(r => r.questionId)
@@ -234,6 +243,37 @@ async function getNeverSeenQuestionIds(
 
   // Devolver solo las que no ha visto
   return uniqueCandidateIds.filter(id => !seenIds.has(id))
+}
+
+// ============================================
+// HELPER: Relleno por déficit de exclude-recent
+// ============================================
+// Si tras excluir las preguntas recientes y hacer la selección final quedan
+// MENOS de las pedidas, en vez de devolver un test corto completamos con las
+// recientes que habíamos apartado (la `reserve`, ya ordenada oldest-first).
+// Devuelve cuántas se repescaron (`backfilledCount`) para que el cliente avise
+// al usuario ("se completaron con N ya vistas"). Pura y determinista → testeable
+// en aislamiento. NO toca el orden de lo ya seleccionado (el relleno va a la cola)
+// y dedup contra lo ya elegido para no repetir dentro del mismo test.
+export function backfillFromReserve<T extends { id: string }>(
+  selected: T[],
+  reserve: T[],
+  target: number
+): { questions: T[]; backfilledCount: number } {
+  if (!Number.isFinite(target) || selected.length >= target || reserve.length === 0) {
+    return { questions: selected, backfilledCount: 0 }
+  }
+  const already = new Set(selected.map(q => q.id))
+  const deficit = target - selected.length
+  const fill: T[] = []
+  for (const q of reserve) {
+    if (fill.length >= deficit) break
+    if (already.has(q.id)) continue
+    already.add(q.id)
+    fill.push(q)
+  }
+  if (fill.length === 0) return { questions: selected, backfilledCount: 0 }
+  return { questions: [...selected, ...fill], backfilledCount: fill.length }
 }
 
 // ============================================
@@ -1204,13 +1244,20 @@ export async function getFilteredQuestions(
     // 6️⃣ Aplicar filtros avanzados de usuario
     let filteredQuestions = [...allQuestions]
 
-    // 6a. Excluir preguntas respondidas recientemente
+    // 6a. Excluir preguntas respondidas recientemente. Las apartamos en
+    // `recentReserve` (oldest-first) en vez de tirarlas: si tras la selección
+    // final no llegamos a numQuestions, las repescamos (paso 7c) para no
+    // devolver un test corto a quien ha practicado mucho el tema.
+    let recentReserve: typeof filteredQuestions = []
     if (excludeRecentDays && excludeRecentDays > 0 && userId) {
       const recentIds = await getRecentlyAnsweredQuestionIds(db, userId, excludeRecentDays)
       if (recentIds.length > 0) {
-        const recentSet = new Set(recentIds)
-        filteredQuestions = filteredQuestions.filter(q => !recentSet.has(q.id))
-        console.log(`🔄 Excluidas ${recentIds.length} preguntas recientes, quedan ${filteredQuestions.length}`)
+        const recentRank = new Map(recentIds.map((id, i) => [id, i])) // 0 = la más antigua
+        recentReserve = filteredQuestions
+          .filter(q => recentRank.has(q.id))
+          .sort((a, b) => recentRank.get(a.id)! - recentRank.get(b.id)!)
+        filteredQuestions = filteredQuestions.filter(q => !recentRank.has(q.id))
+        console.log(`🔄 Excluidas ${recentReserve.length} preguntas recientes, quedan ${filteredQuestions.length} (reserva oldest-first para relleno)`)
       }
     }
 
@@ -1290,6 +1337,21 @@ export async function getFilteredQuestions(
       }
     }
 
+    // 7c. Relleno por déficit de exclude-recent: si la selección quedó por debajo
+    // de numQuestions porque excluimos recientes, repescamos de la reserva
+    // (oldest-first) en vez de servir un test corto. `backfilledRecentCount`
+    // viaja al cliente para avisar ("se completaron con N ya vistas").
+    // No afecta al caso "banco corto" (reserva vacía) ni a anónimos (sin userId).
+    let backfilledRecentCount = 0
+    if (recentReserve.length > 0) {
+      const filled = backfillFromReserve(finalQuestions, recentReserve, numQuestions)
+      finalQuestions = filled.questions
+      backfilledRecentCount = filled.backfilledCount
+      if (backfilledRecentCount > 0) {
+        console.log(`🔁 Relleno exclude-recent: +${backfilledRecentCount} ya vistas (oldest-first) para alcanzar ${numQuestions}`)
+      }
+    }
+
     // 8️⃣ Q2 HIDRATACIÓN: trae filas completas para los IDs ganadores.
     // Postgres no garantiza orden de WHERE id IN (...) → Map preserva orden
     // de selección JS. Si una pregunta fue desactivada entre Q1 y Q2 (race
@@ -1316,7 +1378,9 @@ export async function getFilteredQuestions(
     return {
       success: true,
       questions: transformedQuestions,
-      totalAvailable: filteredQuestions.length, // Después de aplicar filtros de usuario
+      totalAvailable: filteredQuestions.length, // Frescas tras filtros de usuario (sin contar reserva)
+      backfilledRecentCount, // nº de recientes repescadas para alcanzar numQuestions (0 si no hizo falta)
+      requestedCount: numQuestions,
       filtersApplied: {
         laws: selectedLaws?.length || 0,
         articles: Object.keys(selectedArticlesByLaw || {}).length,

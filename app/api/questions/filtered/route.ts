@@ -303,6 +303,8 @@ async function _POST(request: NextRequest) {
         success: true,
         questions: result.questions,
         totalAvailable: result.totalAvailable,
+        backfilledRecentCount: result.backfilledRecentCount ?? 0,
+        requestedCount: result.requestedCount,
         filtersApplied: result.filtersApplied,
         ...(result.emptyReason && { emptyReason: result.emptyReason }),
       }
