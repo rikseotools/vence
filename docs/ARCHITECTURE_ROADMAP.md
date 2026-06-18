@@ -10,6 +10,37 @@
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
 
+---
+
+## 📊 Estado actual de fases (resumen vivo — ACTUALIZAR al cerrar cada fase)
+
+> **A fecha 2026-06-18.** Tabla de consulta rápida para no recomendar algo **ya hecho**.
+> ⚠️ **El "Histórico de decisiones" de abajo se corta el 2026-05-26**; el trabajo de junio
+> vive en docs específicos (`self-hosted-pooler.md`, `pool-segregation.md`, etc.). Esta tabla
+> consolida el estado real cruzando todos esos docs. Si tocas una fase, **actualiza aquí**.
+
+| Fase / Bloque | Qué resuelve | Estado | Detalle en |
+|---|---|---|---|
+| Fase 0–0.6 (quick wins pool contention) | triggers/queries lentas en pool max:1 | ✅ hecho (may-2026) | histórico abajo |
+| Fase 0.7 (JWT local verify) | `getUser()` 250-1000ms → <5ms | ✅ COMPLETA server-side (11-may) | histórico abajo |
+| Fase 1 (Redis L2 + stale-if-error) | 503 en blips del pooler | ✅ hecho | histórico abajo |
+| Fase 3 (read replica Supabase, $15/mes) | CPU/IO primary + contención max:1 | ✅ hecho (09-may) | histórico abajo |
+| Self-hosted PgBouncer Fases 0–5 | blips Supavisor regional; 1606ms→3-18ms | ✅ hecho (10-may) | `self-hosted-pooler.md` |
+| **Fase 6 — HA del PgBouncer** (2 VMs distinta AZ + NLB + failover DNS) | SPOF de la VM única del pooler | ✅ **APLICADA (01-jun)**, failover real probado | `self-hosted-pooler.md` §Fase 6 |
+| Pool segregation Fase 1 (frontend → PgBouncer) | saturación 503 horas pico | ✅ APLICADA (01-jun) | `pool-segregation.md` |
+| **Fase D-bis — proyecciones hot-path** Iter 1 + 1.5 (covering indexes + SQL filter + MVs) | heavy users 14s→1.5s cold | ✅ APLICADAS (30-31 may) | §Fase D-bis abajo |
+| Fase D-bis **Iter 2** (tablas-proyección con triggers) | escala read a 100k DAU | ⏸️ **RESERVADA** (post-RDS / 100k DAU; añade write-cost a `test_questions`) | §Fase D-bis abajo |
+| Bloque 4 Observabilidad Fases 0/1/1.5/1.6 (sink + writers + log drain + alert rules) | pérdida de eventos / alertas | ✅ hecho (26-may) | «Bloque 4 cont.» abajo |
+| Bloque 4 Fase 2 (PostgresSink → KinesisSink AWS) | observabilidad a escala | ⏸️ pendiente (>30k DAU) | «Bloque 4 cont.» abajo |
+| **Fase E — Frontend Vercel → ECS Fargate** (+ apex → CloudFront) | salir de Vercel; última dep. Vercel eliminada | ✅ operativa (deploy `frontend-deploy.yml` → ECS; apex cutover 03-jun) | §Fase E abajo |
+| **Fase D — Migración BD → RDS (con failover)** | **SPOF de la PRIMARIA Supabase** (sin failover) = raíz del goteo 5xx residual | ⏸️ **PENDIENTE — gatillo: >$200/mes sostenido o ≥2 incidentes/mes** (hoy ~$40/mes, solo goteo) | §Fase D abajo |
+
+**Lectura rápida (2026-06-18):** las palancas baratas de resiliencia/rendimiento ya están aplicadas
+(PgBouncer HA + proyecciones hot-path Iter 1/1.5 + read replica + stale-if-error + JWT local). El
+**goteo residual de 5xx** (~20/día, aislado, no cascadas) es la consecuencia del **SPOF de la primaria
+Supabase**, que **solo cierra Fase D (RDS)** — gatillada a más escala/coste, **no antes**. Meter retry/
+caché extra para tapar ese goteo sería deuda técnica que enmascara la causa.
+
 ## Por qué este documento
 
 Vence creció con una arquitectura "todo en BD" (8 triggers en `test_questions`, queries en línea para stats, sin caché). Funciona bien hasta ~5-10k usuarios pero **no escala** a 100k sin cambios.
