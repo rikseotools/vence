@@ -938,6 +938,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '👨‍💼'
   },
   {
+    id: 'administrativo_castilla_la_mancha',
+    nombre: 'Administrativo de Castilla-La Mancha (C1)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🏰'
+  },
+  {
     id: 'auxiliar_administrativo_andalucia',
     nombre: 'Auxiliar Administrativo Junta de Andalucía',
     categoria: 'C2',
@@ -1609,7 +1616,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
-  'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'auxiliar_administrativo_estado'],
+  'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'administrativo_castilla_la_mancha', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
   'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
@@ -1640,6 +1647,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxilio_judicial',                    // incluida por relevancia
   'auxiliar_administrativo_cyl',         // 24
   'administrativo_castilla_leon',        // C1 CyL (191 plazas, convocatoria BOCYL 13/01/2026)
+  'administrativo_castilla_la_mancha',                  // C1 CLM (OEP 2025, 23 plazas, pendiente convocatoria)
   'auxiliar_administrativo_diputacion_zaragoza', // 20
   'auxiliar_administrativo_diputacion_leon',     // 25
   'auxiliar_administrativo_diputacion_cadiz',    // 24

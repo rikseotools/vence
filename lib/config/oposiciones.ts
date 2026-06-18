@@ -2261,6 +2261,84 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO CASTILLA-LA MANCHA (C1 - Cuerpo Ejecutivo, esp. Administrativa)
+  // ========================================
+  {
+    id: 'administrativo_castilla_la_mancha',
+    slug: 'administrativo-castilla-la-mancha',
+    positionType: 'administrativo_castilla_la_mancha',
+    examScoring: { penaltyDivisor: 4, source: 'Regla general JCCM (cf. aux. DOCM 2024/9905: aciertos - errores/4 = 1/4). Convocatoria OEP 2025 pendiente; confirmar al publicarse. confidence:media' },
+    name: 'Administrativo de Castilla-La Mancha (Cuerpo Ejecutivo, especialidad Administrativa)',
+    shortName: 'Administrativo CLM',
+    emoji: '🏰',
+    badge: 'C1',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'parte-comun',
+        title: 'Parte Común (10 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Unión Europea: instituciones y libertades básicas' },
+          { id: 2, name: 'La Constitución Española de 1978' },
+          { id: 3, name: 'El Estatuto de Autonomía de CLM. El Gobierno y la Administración Regional' },
+          { id: 4, name: 'Los actos administrativos. Los recursos. El procedimiento común' },
+          { id: 5, name: 'Los contratos del Sector Público' },
+          { id: 6, name: 'El personal al servicio de la JCCM: clases y régimen jurídico' },
+          { id: 7, name: 'El presupuesto de la JCCM. El control de la actividad financiera' },
+          { id: 8, name: 'La igualdad efectiva de mujeres y hombres. Políticas públicas de igualdad' },
+          { id: 9, name: 'La transparencia en la Administración de la JCCM' },
+          { id: 10, name: 'Seguridad de la Información. La protección de datos' },
+        ],
+      },
+      {
+        id: 'parte-especifica',
+        title: 'Parte Específica (26 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 11, name: 'La administración pública: principios y organización. Relaciones interadministrativas' },
+          { id: 12, name: 'Relaciones AP-ciudadanos. Administración electrónica. Información y atención en CLM' },
+          { id: 13, name: 'La relación orgánica: los órganos administrativos. La competencia. Órganos colegiados' },
+          { id: 14, name: 'Los Convenios. El Sector Público Institucional' },
+          { id: 15, name: 'El derecho Administrativo y sus fuentes. El procedimiento administrativo común' },
+          { id: 16, name: 'Medios de impugnación. Revisión de oficio. Recursos. Jurisdicción contencioso-administrativa' },
+          { id: 17, name: 'El procedimiento sancionador y el de responsabilidad patrimonial' },
+          { id: 18, name: 'El servicio público. Los contratos: concepto, tipos, elementos y garantías' },
+          { id: 19, name: 'Preparación, adjudicación, efectos, cumplimiento y extinción de los contratos' },
+          { id: 20, name: 'La organización del personal de la JCCM. EBEP. Ley de Empleo Público de CLM' },
+          { id: 21, name: 'Situaciones administrativas. Régimen disciplinario' },
+          { id: 22, name: 'Las retribuciones del personal funcionario y laboral de CLM' },
+          { id: 23, name: 'El contrato laboral. El Convenio Colectivo de la JCCM' },
+          { id: 24, name: 'El sistema español de la Seguridad Social. El Régimen General' },
+          { id: 25, name: 'La acción protectora del Régimen General de la Seguridad Social' },
+          { id: 26, name: 'El presupuesto: concepto y principios. El presupuesto de la JCCM' },
+          { id: 27, name: 'El procedimiento de ejecución del presupuesto de gastos' },
+          { id: 28, name: 'Régimen jurídico y presupuestario de las subvenciones públicas en CLM' },
+          { id: 29, name: 'El Estatuto de Autonomía de CLM: competencias. La Administración Local en CLM' },
+          { id: 30, name: 'Informática básica' },
+          { id: 31, name: 'El sistema operativo Windows' },
+          { id: 32, name: 'El explorador de Windows' },
+          { id: 33, name: 'Procesadores de textos: Word' },
+          { id: 34, name: 'Hojas de cálculo: Excel' },
+          { id: 35, name: 'Internet: protocolos y servicios' },
+          { id: 36, name: 'Correo electrónico: Outlook' },
+        ],
+      },
+    ],
+    totalTopics: 36,
+    aliases: ['administrativo clm', 'administrativo castilla-la mancha', 'administrativo castilla la mancha', 'administrativo jccm', 'cuerpo ejecutivo administrativa', 'c1 clm'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-castilla-la-mancha', label: 'Mi Oposición', icon: '🏰', featured: true },
+      { href: '/administrativo-castilla-la-mancha/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-castilla-la-mancha/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {

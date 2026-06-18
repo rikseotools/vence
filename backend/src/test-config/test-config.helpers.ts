@@ -63,6 +63,13 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo administrativo castilla y leon',
     'administrativo cyl',
   ],
+  administrativo_castilla_la_mancha: [
+    'administrativo_castilla_la_mancha',
+    'administrativo castilla-la mancha',
+    'administrativo castilla la mancha',
+    'cuerpo ejecutivo administrativa',
+    'administrativo jccm',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

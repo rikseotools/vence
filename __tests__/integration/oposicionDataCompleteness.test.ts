@@ -124,6 +124,7 @@ describeIfDb('Oposición data completeness', () => {
       'administrativo-andalucia', // C1 en preparación: BD lista (is_active=false hasta go-live)
       'administrativo-cantabria', // C1 en preparación: BD lista (is_active=false hasta go-live)
       'administrativo-madrid', // C1 en preparación: BD lista (is_active=false hasta go-live)
+      'administrativo-castilla-la-mancha', // C1 en preparación: BD lista (is_active=false hasta go-live)
       'administrativo-universidad-leon', // C1 en preparación (otra sesión): config sin fila activa en BD
       'auxiliar-administrativo-diputacion-zamora', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-huesca', // en preparación: BD lista (is_active=false hasta go-live)

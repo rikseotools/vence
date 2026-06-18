@@ -791,6 +791,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_castilla_la_mancha',
+      label: 'Administrativo de Castilla-La Mancha (C1)',
+      data: {
+        name: 'Administrativo de Castilla-La Mancha (Cuerpo Ejecutivo, especialidad Administrativa)',
+        slug: 'administrativo-castilla-la-mancha',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_andalucia',
       label: 'Auxiliar Administrativo Junta de Andalucía',
       data: {

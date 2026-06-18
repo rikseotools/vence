@@ -57,6 +57,13 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo administrativo castilla y leon',
     'administrativo cyl',
   ],
+  'administrativo_castilla_la_mancha': [
+    'administrativo_castilla_la_mancha',
+    'administrativo castilla-la mancha',
+    'administrativo castilla la mancha',
+    'cuerpo ejecutivo administrativa',
+    'administrativo jccm',
+  ],
   'auxiliar_administrativo_extremadura': [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',
@@ -162,6 +169,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_cyl': ['auxiliar-administrativo-cyl'],
   'administrativo-castilla-leon': ['administrativo-castilla-leon'],
   'administrativo_castilla_leon': ['administrativo-castilla-leon'],
+  'administrativo-castilla-la-mancha': ['administrativo-castilla-la-mancha'],
+  'administrativo_castilla_la_mancha': ['administrativo-castilla-la-mancha'],
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],
   'cuerpo-general-administrativo': ['administrativo-estado'],
