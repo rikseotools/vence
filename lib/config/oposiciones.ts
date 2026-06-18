@@ -2662,6 +2662,102 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE VALLADOLID (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_valladolid',
+    slug: 'auxiliar-administrativo-ayuntamiento-valladolid',
+    positionType: 'auxiliar_administrativo_ayuntamiento_valladolid',
+    examScoring: { penaltyDivisor: 4, source: 'Convocatoria anterior (BOPVA nº 52, 17/03/2025): en la parte práctica los errores penalizan 1/4. confidence:media' },
+    name: 'Auxiliar Administrativo del Ayuntamiento de Valladolid',
+    shortName: 'Aux. Ayto. Valladolid',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'organizacion-estado-cyl',
+        title: 'Organización del Estado y de Castilla y León (6 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978. Reforma. El Tribunal Constitucional' },
+          { id: 2, name: 'La Corona. Las Cortes Generales. El Poder Judicial. El Defensor del Pueblo y el Tribunal de Cuentas' },
+          { id: 3, name: 'El Gobierno y la Administración. La Administración General del Estado' },
+          { id: 4, name: 'Organización territorial (I): CCAA y Estatutos. La Comunidad de Castilla y León' },
+          { id: 5, name: 'Organización territorial (II): las Entidades locales. La autonomía local' },
+          { id: 6, name: 'Las Entidades locales: tipología. La Ley de Bases del Régimen Local' },
+        ],
+      },
+      {
+        id: 'ayuntamiento-valladolid',
+        title: 'El Ayuntamiento de Valladolid (3 temas)',
+        subtitle: null,
+        icon: '🏘️',
+        themes: [
+          { id: 7, name: 'Organización del Ayuntamiento de Valladolid (I): Pleno, Alcalde, Tenientes y Junta de Gobierno Local' },
+          { id: 9, name: 'Organización del Ayuntamiento de Valladolid (II): la Administración Pública municipal' },
+          { id: 10, name: 'Organización del Ayuntamiento de Valladolid (III): las Áreas de Gobierno' },
+        ],
+      },
+      {
+        id: 'derecho-administrativo',
+        title: 'Derecho Administrativo y Contratación (9 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 11, name: 'Las fuentes del derecho administrativo. Ordenanzas y reglamentos de las Entidades locales' },
+          { id: 12, name: 'El acto administrativo. Validez y eficacia. Nulidad y anulabilidad' },
+          { id: 13, name: 'Los recursos administrativos. La revisión de oficio y la declaración de lesividad' },
+          { id: 14, name: 'El procedimiento sancionador. La responsabilidad patrimonial de las AAPP' },
+          { id: 15, name: 'El procedimiento administrativo común. El silencio administrativo' },
+          { id: 16, name: 'El régimen jurídico del sector público. La competencia. Los órganos colegiados' },
+          { id: 17, name: 'Los contratos administrativos. La contratación del sector público' },
+          { id: 18, name: 'La Ley de Haciendas Locales: régimen jurídico' },
+          { id: 19, name: 'El Presupuesto municipal. Ordenación de gastos y de pagos' },
+        ],
+      },
+      {
+        id: 'personal-igualdad-prl',
+        title: 'Personal, Igualdad y Prevención de Riesgos (3 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 20, name: 'El personal al servicio de las Entidades locales. El EBEP' },
+          { id: 21, name: 'Igualdad LGTBI (Ley 4/2023). Igualdad de género. Discapacidad y dependencia' },
+          { id: 22, name: 'La Ley 31/1995 de Prevención de Riesgos Laborales' },
+        ],
+      },
+      {
+        id: 'informacion-transparencia-informatica',
+        title: 'Información, Archivo, Transparencia e Informática (9 temas)',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 23, name: 'La atención al público. Atención a las personas con discapacidad' },
+          { id: 24, name: 'La información administrativa: general y particular. Calidad. Quejas' },
+          { id: 25, name: 'La administración electrónica en la información y atención al ciudadano. La Sede Electrónica' },
+          { id: 26, name: 'El Registro de documentos. La presentación telemática' },
+          { id: 27, name: 'El archivo de los documentos administrativos. El acceso a los documentos' },
+          { id: 28, name: 'La transparencia administrativa. La protección de datos de carácter personal' },
+          { id: 29, name: 'Procesadores de texto: Word para Microsoft 365' },
+          { id: 30, name: 'Hojas de cálculo: Excel para Microsoft 365' },
+          { id: 31, name: 'Correo electrónico e Internet' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    aliases: ['auxiliar administrativo valladolid', 'auxiliar administrativo ayuntamiento de valladolid', 'aux administrativo valladolid', 'auxiliar valladolid', 'administrativo ayuntamiento valladolid'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-valladolid', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-valladolid/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-valladolid/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {

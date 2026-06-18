@@ -1001,6 +1001,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_valladolid',
+      label: 'Auxiliar Administrativo Ayuntamiento de Valladolid (C2)',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Valladolid',
+        slug: 'auxiliar-administrativo-ayuntamiento-valladolid',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_catalunya',
       label: 'Auxiliar Administrativo Generalitat de Catalunya (C2)',
       data: {

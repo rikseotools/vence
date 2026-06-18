@@ -1162,6 +1162,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏖️'
   },
   {
+    id: 'auxiliar_administrativo_ayuntamiento_valladolid',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Valladolid',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
@@ -1631,7 +1638,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
+  'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
@@ -1696,6 +1703,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_la_rioja',  // nueva
   'administrativo_diputacion_jaen',    // C1 Dip. Jaén (inscripción abierta)
   'auxiliar_administrativo_ayuntamiento_marbella', // C2 Marbella (extracto BOE pendiente)
+  'auxiliar_administrativo_ayuntamiento_valladolid', // C2 Valladolid (OEP 2026, 23 plz)
   'enfermero_sas_andalucia',          // sanitaria
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid

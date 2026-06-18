@@ -86,6 +86,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo ayuntamiento de marbella',
     'auxiliar administrativo marbella',
   ],
+  auxiliar_administrativo_ayuntamiento_valladolid: [
+    'auxiliar_administrativo_ayuntamiento_valladolid',
+    'auxiliar administrativo ayuntamiento de valladolid',
+    'auxiliar administrativo valladolid',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

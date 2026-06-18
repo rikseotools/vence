@@ -83,14 +83,14 @@ describe('Config central de oposiciones', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(88)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(89)
   })
 
   test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(88)
+    expect(ALL_POSITION_TYPES.length).toBe(89)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {

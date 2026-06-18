@@ -97,6 +97,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-ayuntamiento-valencia': 'valencia',
     'auxiliar-administrativo-diputacion-alicante': 'valencia',
     'auxiliar-administrativo-cyl': 'castilla-y-leon',
+    'auxiliar-administrativo-ayuntamiento-valladolid': 'castilla-y-leon',
     'administrativo-castilla-leon': 'castilla-y-leon',
     'auxiliar-administrativo-universidad-leon': 'castilla-y-leon',
     'administrativo-universidad-leon': 'castilla-y-leon',
