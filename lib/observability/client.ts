@@ -102,6 +102,11 @@ export type ClientEventType =
   | 'oposicion_alert_shown'
   | 'oposicion_alert_clicked'
   | 'oposicion_alert_dismissed'
+  // Diagnóstico (2026-06-18): un test se genera con MENOS preguntas de las
+  // pedidas (feedback opoauxiliar... CARM: pide 25, salen 9). Server + adaptativo
+  // probados devuelven el total → la merma es client-runtime. Captura el punto
+  // exacto: fetcher, pedido, devueltas-server, mostradas-final + selección.
+  | 'test_size_shortfall'
 
 interface ClientEvent {
   ts: string

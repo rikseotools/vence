@@ -89,6 +89,34 @@ interface AdaptiveResult {
 import { topicKey, articleKey, emptyBuckets, pickDiverseByArticle } from '@/lib/types/adaptive'
 import { allocateProportional } from '@/lib/test-selection/allocateProportional'
 import type { AdaptiveCatalog as AdaptiveCatalogNew, DifficultyBuckets } from '@/lib/types/adaptive'
+import { emitClientEvent } from '@/lib/observability/client'
+
+// Instrumentación (2026-06-18): registra cuándo un test se genera con MENOS
+// preguntas de las pedidas, para cazar en vivo el bug reportado (CARM: pide 25,
+// salen 9). Server + adaptativo probados devuelven el total → la merma es
+// client-runtime; este log captura el punto exacto cuando se repita. Solo emite
+// si finalCount < requested (bajo ruido). Nunca lanza.
+function logTestSizeShortfall(
+  fetcher: string,
+  requested: number,
+  finalCount: number,
+  ctx: Record<string, unknown>,
+): void {
+  try {
+    if (!Number.isFinite(requested) || !Number.isFinite(finalCount)) return
+    if (finalCount >= requested) return
+    emitClientEvent({
+      severity: 'warn',
+      eventType: 'test_size_shortfall',
+      endpoint: '/api/questions/filtered',
+      errorMessage: `Test corto: pedidas ${requested}, generadas ${finalCount} (${fetcher})`,
+      metadata: { fetcher, requested, finalCount, ...ctx },
+    })
+    console.warn(`📉 [test_size_shortfall] ${fetcher}: pedidas ${requested} → ${finalCount}`, ctx)
+  } catch {
+    // observabilidad nunca debe romper la carga del test
+  }
+}
 
 // Legacy compat: el viejo AdaptiveCatalog era flat (difficulty como clave directa)
 // El nuevo usa topic como clave intermedia. Para backward compat con TestLayout,
@@ -816,6 +844,10 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
     questions.forEach(q => sessionUsedIds.add(q.id))
 
     console.log(`✅ Test personalizado cargado via API: ${questions.length} preguntas (cache: ${sessionUsedIds.size})`)
+    logTestSizeShortfall('fetchPersonalizedQuestions', numQuestions, questions.length, {
+      positionType, tema, serverReturned: data.questions?.length ?? 0,
+      requestSize, sessionCacheSize: sessionUsedIds.size, totalAvailable: data.totalAvailable,
+    })
     return questions
 
   } catch (error) {
@@ -932,7 +964,11 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     // Bug reportado por gaditadelgado@gmail.com (21/04/2026).
     if (needsAdaptiveCatalog && allQuestions.length <= numQuestions) {
       console.log(`⏩ Pool pequeño (${allQuestions.length} ≤ ${numQuestions}): saltando adaptativo, devolviendo todo`)
-      return shuffleArray([...allQuestions]).slice(0, numQuestions)
+      const small = shuffleArray([...allQuestions]).slice(0, numQuestions)
+      logTestSizeShortfall('fetchQuestionsByTopicScope:poolPequeño', numQuestions, small.length, {
+        positionType, tema, selectedLaws, serverReturned: allQuestions.length, totalAvailable: data.totalAvailable,
+      })
+      return small
     }
 
     // Modo adaptativo: construir catálogo con buildAdaptiveCatalog()
@@ -947,6 +983,10 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
 
       console.log(`✅ Catálogo adaptativo: ${initialQuestions.length} iniciales, total: ${allQuestions.length}`)
 
+      logTestSizeShortfall('fetchQuestionsByTopicScope:adaptativo', numQuestions, initialQuestions.length, {
+        positionType, tema, selectedLaws, serverReturned: allQuestions.length,
+        totalAvailable: data.totalAvailable, requestSize,
+      })
       return {
         isAdaptive: true,
         activeQuestions: initialQuestions,
@@ -958,6 +998,9 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     // Modo normal: devolver las N preguntas
     const finalQuestions = allQuestions.slice(0, numQuestions)
     console.log(`✅ Test multi-ley cargado via API: ${finalQuestions.length} preguntas`)
+    logTestSizeShortfall('fetchQuestionsByTopicScope:normal', numQuestions, finalQuestions.length, {
+      positionType, tema, selectedLaws, serverReturned: allQuestions.length, totalAvailable: data.totalAvailable,
+    })
     return finalQuestions
     
   } catch (error) {
@@ -1299,6 +1342,10 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
         }))
       }
 
+      logTestSizeShortfall('fetchAleatorioMultiTema:adaptativo', numQuestions, initialQuestions.length, {
+        positionType, themes: themes.length, serverReturned: allQuestions.length,
+        totalAvailable: data.totalAvailable, exhausted,
+      })
       return {
         isAdaptive: true,
         activeQuestions: initialQuestions,
@@ -1307,6 +1354,9 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
       } as AdaptiveResult
     }
 
+    logTestSizeShortfall('fetchAleatorioMultiTema:normal', numQuestions, allQuestions.length, {
+      positionType, themes: themes.length, serverReturned: allQuestions.length, totalAvailable: data.totalAvailable,
+    })
     return allQuestions
 
   } catch (error) {
@@ -1488,7 +1538,12 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
     }
 
     // La API ya devuelve las preguntas en el formato correcto (transformadas)
-    return data.questions || []
+    const viaApiQuestions = data.questions || []
+    logTestSizeShortfall('fetchQuestionsViaAPI', numQuestions, viaApiQuestions.length, {
+      positionType, tema, selectedLaws: selectedLaws.length, selectedArticles: Object.keys(articlesForAPI).length,
+      onlyFailedQuestions, serverReturned: viaApiQuestions.length, totalAvailable: data.totalAvailable,
+    })
+    return viaApiQuestions
 
   } catch (error) {
     console.error('❌ Error en fetchQuestionsViaAPI:', error)
