@@ -93,7 +93,7 @@ Antes de migrar nada hay que separar **acoplamiento vivo** de **código muerto**
   - `shared_question_responses` → tracking en `app/pregunta/[id]/page.tsx` (dead)
   - `question_verifications` → insert en `app/api/ai/verify-answer` (dead)
   - `psychometric_adaptive_logs` → `lib/adaptiveQuestionSelection.ts` (dead)
-- **🟡 Drift a nivel columna/función** (tabla existe, pero la query referencia algo inexistente → query parcialmente rota): `user_profiles.display_name` (broadcast), `articles.law_name`/`law_short_name` + función `match_articles_by_embedding` (verify-answer).
+- **🟡 Drift a nivel columna/función** (tabla existe, pero la query referencia algo inexistente → query parcialmente rota): `user_profiles.display_name` (broadcast), `articles.law_name`/`law_short_name` + función `match_articles_by_embedding` (verify-answer), RPC `get_user_share_stats` (SharePrompt; referencia interna a tabla `detailed_answers` inexistente → degrada a "siempre prompt first").
 
 **Decisión de producto pendiente (las 3 tablas muertas + los 4 RPCs de fraude parecen "features intencionadas nunca terminadas", no basura):** por cada una → ¿se construye (crear tabla/función + completar) o se borra el código muerto? No es decisión de desacople. Mientras tanto, **NO migrar** queries sobre objetos inexistentes.
 
@@ -141,8 +141,26 @@ Los 3 restantes (`broadcast`, `fraud-detection/route.js`, `ai/verify-answer`) so
 
 **Conclusión de re-scope:** las 3 vías "fáciles" resultaron: A (SSG público) = frágil en build, B (server por-usuario) = vacío, C (admin/cron) = roto/bugs. **El trabajo real y útil del desacople está concentrado en Batch D** (client→endpoint), que además es código que **sí funciona** y tiene el acoplamiento PostgREST de runtime real.
 
-### Batch D — client (EL trabajo real del desacople) ← SIGUIENTE
+### Batch D — client (EL trabajo real del desacople) ← EN CURSO
 ~28 ficheros client (los 26 de P1 + `lawFetchers.ts`/`warmCache.ts` reclasificados; `admin/feedback.tsx` resultó client también). Cada query de navegador debe convertirse en **endpoint API + Drizzle + authz**, y el componente pasa a `fetch()`. Plan detallado en §6.
+
+**✅ Progreso (2026-06-18, todo en `main` y desplegado):**
+| Unidad | Endpoint nuevo | Estado |
+|---|---|---|
+| `/mis-impugnaciones` (`question_disputes`) | `GET /api/disputes/mine` | ✅ verificado en prod (401 estable; aislamiento por user_id confirmado) |
+| `OfficialExamAttempts` (`tests`, filtros JSONB) | `GET /api/exams/official-attempts` | ✅ verificado en prod |
+| **`share_events` (TABLA COMPLETA: ShareQuestion + ExamLayout×2 + SharePrompt + TestLayout)** | `POST /api/share-events` | ✅ 0 `.from('share_events')` en cliente; INSERT validado con ROLLBACK |
+| **Infra:** smoke HTTP post-deploy en `frontend-deploy.yml` | — | ✅ gate automático (curl `/`+`/oposiciones`, falla→`notify-failure`→observabilidad) |
+
+Patrón probado (replicable): verificar existencia tabla/cols vs BD → endpoint server (Drizzle + `verifyAuth` + `WHERE user_id` del token) → componente a `fetch()` con `getAuthHeaders()` → verificar query contra BD real (incl. 2 usuarios / ROLLBACK) → tsc/eslint.
+
+> **Lección añadida:** el inventario **por-tabla subestima** los sitios — `TestLayout` tenía un insert de `share_events` que NO estaba en el inventario P1. Tras migrar una tabla, `grep -rn "from(['\"]<tabla>"` para cazar todos los call-sites.
+
+**Pendiente (~21 ficheros), por dificultad creciente:**
+- Grupos auto-contenidos (como `share_events`): `psychometric_*` (PsychometricQuestionEvolution, PsychometricWeakAreasAnalysis, mis-estadisticas/psicotecnicos, adaptiveQuestionSelection, psychometricDifficulty), `feedback_*` (ChatInterface, ArticleModal), `user_message_interactions` (MotivationalMessage).
+- **Hot/central (máximo cuidado):** `user_profiles` en `AuthContext`, `Header`, `OposicionContext`, `OnboardingModal`, `OposicionDetector`, `setTargetOposicion`, `perfil`.
+- `lawFetchers.ts`/`warmCache.ts` (reclasificados; hot-path de tests).
+- `admin/*` (D.3, gate admin; verificar drift de columnas como en Batch C).
 
 > Nota: muchas de estas client-queries YA dependen de RLS para no filtrar datos. En RDS, sin PostgREST, **dejan de funcionar de raíz** — D es el blocker real del cutover, no un nice-to-have.
 
