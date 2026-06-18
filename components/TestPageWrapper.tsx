@@ -249,6 +249,19 @@ export default function TestPageWrapper({
 
   // 🚀 Función principal de carga
   const loadQuestions = async () => {
+    // ⏳ No cargar hasta conocer la oposición real. En rutas globales
+    // (/test/rapido, /test/aleatorio…) `oposicionId` llega async desde el perfil;
+    // sin esperar, `effectivePositionType` cae al default 'auxiliar_administrativo_estado'
+    // y sirve preguntas de OTRA oposición (caso Laura/CARM 18/06/2026: CE art 134
+    // del temario de Estado a una usuaria de CARM). Las rutas /[oposicion]/… traen
+    // `positionType` explícito → no esperan. El useEffect re-dispara al pasar
+    // `oposicionLoading` a false (está en sus deps). NO marca loadedForRef → al
+    // resolverse la oposición se hace UN único fetch con el scope correcto.
+    if (!positionType && (oposicionLoading || authLoading)) {
+      console.log('⏳ TestPageWrapper: esperando contexto de oposición antes de cargar preguntas')
+      return
+    }
+
     // 🔒 Generar clave de configuración para detectar re-ejecuciones
     const loadKey = `${tema}-${testType}-${searchParamsKey}`
     const currentKey = `${loadKey}-${Date.now()}`
@@ -457,9 +470,12 @@ export default function TestPageWrapper({
 
   // 🔄 Cargar preguntas al montar y cuando cambien los parámetros
   // 🔒 Usar searchParamsKey (estable) en vez de finalSearchParams (referencia inestable de useSearchParams)
+  // ⏳ oposicionLoading/authLoading/oposicionId en deps: re-dispara cuando el
+  // contexto de oposición se resuelve (ruta global), para fetchear con el
+  // scope correcto en vez del default (ver gate al inicio de loadQuestions).
   useEffect(() => {
     loadQuestions()
-  }, [tema, testType, searchParamsKey, lawName, themes])
+  }, [tema, testType, searchParamsKey, lawName, themes, oposicionLoading, authLoading, oposicionId])
 
   // Guard: si usuario logueado no tiene oposición, mostrar selector antes del test
   // No bloquear a anónimos — el test se carga por URL
