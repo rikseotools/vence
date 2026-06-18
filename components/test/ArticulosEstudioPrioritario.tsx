@@ -5,6 +5,13 @@
 
 import { useMemo } from 'react'
 
+// Escudo UI: una ley es "enlazable" a teoría solo si está resuelta. El literal
+// "unknown" (o vacío) venía del bug del WRITE y generaba /api/teoria/unknown/N → 404.
+// Exportada para test.
+export function isResolvableLaw(lawName: string | null | undefined): boolean {
+  return !!lawName && lawName.trim().toLowerCase() !== 'unknown'
+}
+
 interface ArticulosEstudioPrioritarioProps {
   userAnswers: any[]
   tema: number
@@ -305,12 +312,18 @@ export default function ArticulosEstudioPrioritario({ userAnswers, tema, totalRe
                 </div>
 
                 <div className="mt-3 flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => openArticleModal(articulo.article_number || '', articulo.law_name || '')}
-                    className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md font-medium transition-colors flex items-center"
-                  >
-                    Ver artículo {articulo.article_number} de {articulo.law_name}
-                  </button>
+                  {isResolvableLaw(articulo.law_name) ? (
+                    <button
+                      onClick={() => openArticleModal(articulo.article_number || '', articulo.law_name || '')}
+                      className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md font-medium transition-colors flex items-center"
+                    >
+                      Ver artículo {articulo.article_number} de {articulo.law_name}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-500 px-2 py-1">
+                      Artículo {articulo.article_number}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

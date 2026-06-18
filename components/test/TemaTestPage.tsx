@@ -288,7 +288,10 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
   }
 
   function openArticleModal(articleNumber: string, lawName: string) {
-    const lawSlug = lawName ? generateLawSlug(lawName) : 'ley-desconocida'
+    // Escudo: si la ley no se resolvió (vacío o el literal "unknown" del bug del
+    // WRITE), no abrir teoría — generaba /api/teoria/unknown/N → 404.
+    if (!lawName || lawName.trim().toLowerCase() === 'unknown') return
+    const lawSlug = generateLawSlug(lawName)
     setSelectedArticle({ number: articleNumber, lawSlug })
     setModalOpen(true)
   }

@@ -5,7 +5,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getTestAnswersDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { testQuestions, userProfiles } from '@/db/schema'
+import { testQuestions, userProfiles, articles, laws } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { resolveTemaNumber } from '@/lib/api/tema-resolver/queries'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
@@ -153,6 +153,36 @@ async function computeTema(
 }
 
 /**
+ * Resuelve el short_name de la ley a partir del article_id (fuente de verdad).
+ * Se usa SOLO cuando el cliente no manda `article.law_short_name`, para no
+ * persistir el literal "unknown" (causa del bug del enlace /api/teoria/unknown/...
+ * → 404; ver feedback Rosa 14/06). Devuelve null si no se puede resolver.
+ * Cacheable por petición vía `lawCache` para no repetir lookups en batch.
+ */
+async function resolveLawShortNameFromArticle(
+  articleId: string | null,
+  lawCache?: Map<string, string | null>,
+): Promise<string | null> {
+  if (!articleId) return null
+  if (lawCache?.has(articleId)) return lawCache.get(articleId) ?? null
+  let resolved: string | null = null
+  try {
+    const db = getTestAnswersDb()
+    const rows = await db
+      .select({ shortName: laws.shortName })
+      .from(articles)
+      .innerJoin(laws, eq(articles.lawId, laws.id))
+      .where(eq(articles.id, articleId))
+      .limit(1)
+    resolved = rows[0]?.shortName ?? null
+  } catch {
+    resolved = null
+  }
+  lawCache?.set(articleId, resolved)
+  return resolved
+}
+
+/**
  * Construye el objeto de row listo para insertar en test_questions.
  * Función pura excepto por la resolución de tema. Usada tanto por inserción
  * individual como por batch.
@@ -161,6 +191,7 @@ async function buildTestAnswerRow(
   req: SaveAnswerRequest,
   userId: string,
   resolvedOposicionCache?: { current: string | null },
+  lawCache?: Map<string, string | null>,
 ) {
   const isPsychometric = req.questionData.questionType === 'psychometric'
   const calculatedTema = await computeTema(req, userId, resolvedOposicionCache)
@@ -172,6 +203,14 @@ async function buildTestAnswerRow(
     `tema-${calculatedTema}-art-${req.questionData.article?.number || 'unknown'}-${req.questionData.article?.law_short_name || 'unknown'}-${generateContentHash(req.questionData.question, req.questionData.options)}`
 
   const articleId = req.questionData.article?.id || null
+
+  // Resolver la ley desde el artículo si el cliente no la mandó, para no guardar
+  // el literal "unknown" (que luego rompe el enlace de teoría → 404). Si no se
+  // puede resolver, va null (honesto), no "unknown".
+  let lawShortName: string | null = req.questionData.article?.law_short_name || null
+  if (!lawShortName && articleId) {
+    lawShortName = await resolveLawShortNameFromArticle(articleId, lawCache)
+  }
 
   const hesitationTime = req.firstInteractionTime
     ? Math.max(0, req.firstInteractionTime - req.questionStartTime)
@@ -200,7 +239,7 @@ async function buildTestAnswerRow(
       psychometricQuestionId: isPsychometric ? questionId : null,
       articleId: articleId,
       articleNumber: req.questionData.article?.number || 'unknown',
-      lawName: req.questionData.article?.law_short_name || 'unknown',
+      lawName: lawShortName,
       temaNumber: calculatedTema,
       questionType: isPsychometric ? 'psychometric' : 'legislative',
 
@@ -316,11 +355,13 @@ export async function insertTestAnswersBatch(
   try {
     // Caché compartida de oposicionId para minimizar lookups a userProfiles
     const cache = { current: null as string | null }
+    // Caché de ley por artículo para no repetir lookups al resolver "unknown" en batch
+    const lawCache = new Map<string, string | null>()
 
     const rows: any[] = []
     for (const req of requests) {
       try {
-        const { row } = await buildTestAnswerRow(req, userId, cache)
+        const { row } = await buildTestAnswerRow(req, userId, cache, lawCache)
         rows.push(row)
       } catch (err) {
         console.warn('⚠️ [insertTestAnswersBatch] Fila descartada en build:', err)

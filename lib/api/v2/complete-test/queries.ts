@@ -6,7 +6,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getCompleteTestDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { tests, testQuestions, userSessions, questions, psychometricQuestions } from '@/db/schema'
+import { tests, testQuestions, userSessions, questions, psychometricQuestions, articles, laws } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import type { CompleteTestRequest, DetailedAnswerInput } from './schemas'
 import { insertTestAnswersBatch } from '@/lib/api/test-answers'
@@ -78,6 +78,28 @@ export async function completeTest(
     extreme: detailedAnswers.filter(a => a.questionData?.metadata?.difficulty === 'extreme'),
   }
 
+  // Resolver la ley real desde article_id para no emitir "unknown" en el
+  // analytics (mismo bug del enlace /api/teoria/unknown/... → 404). Un solo
+  // lookup batcheado; si el cliente ya mandó la ley, se respeta.
+  const distinctArticleIds = [...new Set(
+    detailedAnswers.map(a => a.questionData?.article?.id).filter(Boolean) as string[]
+  )]
+  const lawByArticle = new Map<string, string>()
+  if (distinctArticleIds.length > 0) {
+    try {
+      const lawRows = await db
+        .select({ id: articles.id, shortName: laws.shortName })
+        .from(articles)
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(inArray(articles.id, distinctArticleIds))
+      lawRows.forEach(r => { if (r.shortName) lawByArticle.set(r.id, r.shortName) })
+    } catch { /* si falla, caemos al valor del cliente */ }
+  }
+  const resolveLaw = (a: DetailedAnswerInput): string =>
+    a.questionData?.article?.law_short_name ||
+    (a.questionData?.article?.id ? lawByArticle.get(a.questionData.article.id) : undefined) ||
+    'unknown'
+
   const articleStats: Record<string, ArticleStat> = {}
   for (const answer of detailedAnswers) {
     const articleId = answer.questionData?.article?.id
@@ -90,7 +112,7 @@ export async function completeTest(
           total: 0,
           correct: 0,
           time_spent: 0,
-          law_name: answer.questionData?.article?.law_short_name || 'unknown',
+          law_name: resolveLaw(answer),
         }
       }
       articleStats[key].total++
@@ -175,7 +197,7 @@ export async function completeTest(
     improvement_areas: incorrectAnswers.map(a => ({
       question_order: (a.questionIndex || 0) + 1,
       article_number: a.questionData?.article?.number || 'unknown',
-      law_name: a.questionData?.article?.law_short_name || 'unknown',
+      law_name: resolveLaw(a),
       difficulty: a.questionData?.metadata?.difficulty || 'unknown',
       time_spent: a.timeSpent || 0,
       confidence: a.confidence || 'unknown',
