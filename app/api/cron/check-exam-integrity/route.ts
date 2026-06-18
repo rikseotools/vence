@@ -173,7 +173,13 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckExamIntegri
     })
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-    console.error('❌ [ExamIntegrity] Error:', errorMsg)
+    // Drizzle envuelve el error de postgres-js como "Failed query: <sql>" y deja
+    // el error REAL (timeout/conexión/CONNECT_TIMEOUT) en error.cause. Sin esto
+    // el diagnóstico era ciego (caso 12-17/06: 6 días de fallos sin causa visible).
+    const cause = (error as { cause?: unknown })?.cause
+    const causeMsg = cause instanceof Error ? cause.message : cause != null ? String(cause) : null
+    const fullMsg = causeMsg ? `${errorMsg} | cause: ${causeMsg}` : errorMsg
+    console.error('❌ [ExamIntegrity] Error:', fullMsg)
 
     // Un fallo del propio cron es distinto de la divergencia detectada.
     await emit({
@@ -181,8 +187,8 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckExamIntegri
       severity: 'error',
       eventType: 'cron_error',
       endpoint: '/api/cron/check-exam-integrity',
-      errorMessage: errorMsg,
-      metadata: { check: 'exam_integrity', component: 'cron_endpoint' },
+      errorMessage: fullMsg,
+      metadata: { check: 'exam_integrity', component: 'cron_endpoint', cause: causeMsg },
     })
 
     return NextResponse.json(

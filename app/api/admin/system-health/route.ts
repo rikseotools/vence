@@ -232,6 +232,7 @@ async function _GET(request: NextRequest) {
     canaryEventsResult,
     trafficResult,
     examIntegrityResult,
+    examIntegrityCronErrorResult,
   ] = await Promise.all([
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
@@ -413,6 +414,23 @@ async function _GET(request: NextRequest) {
       `)) as any[]
       return { data: rows, count: rows[0]?.total ?? 0 }
     }),
+
+    // 11) Salud del PROPIO cron de integridad (anti verde-falso). El cron solo
+    // emite exam_integrity_drift si HAY afectados; si el cron FALLA (cron_error)
+    // no hay drift → el indicador #10 se quedaba en verde aunque el check no
+    // corrió (punto ciego del runbook §1). Leemos si el cron falló en la
+    // ventana para degradar el estado a 'unknown' en vez de mentir verde.
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT created_at FROM observable_events
+        WHERE event_type = 'cron_error'
+          AND endpoint = '/api/cron/check-exam-integrity'
+          AND created_at >= ${since}
+        ORDER BY created_at DESC
+        LIMIT 1
+      `)) as any[]
+      return { data: rows, count: rows.length }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
@@ -548,8 +566,15 @@ async function _GET(request: NextRequest) {
   // ─── Procesar 10: integridad de exámenes ───
   // El verdict usa el PEOR `affected` de los eventos en la ventana (el cron
   // emite 1 evento/run solo si hay afectados). 0 eventos → 0 afectados → verde.
-  // Punto ciego conocido: si el cron muere, no hay eventos → verde falso
-  // (mismo patrón que stats_drift; el "cron vivo" general lo cubriría aparte).
+  // Anti verde-falso (#11): si el propio cron FALLÓ en la ventana (cron_error),
+  // el check no corrió de verdad → degradamos a 'unknown' en vez de mentir verde
+  // (cierra el punto ciego del runbook §1; cron fallando 6 días = caso real 17/06).
+  const examIntegrityCronFailing =
+    !examIntegrityCronErrorResult.error &&
+    (examIntegrityCronErrorResult.data?.length ?? 0) > 0
+  const examIntegrityCronErrorAt = examIntegrityCronFailing
+    ? ((examIntegrityCronErrorResult.data?.[0] as { created_at?: string })?.created_at ?? null)
+    : null
   const examIntegrityEvents = examIntegrityResult.error ? null : (examIntegrityResult.data ?? [])
   const examIntegrityAffected = examIntegrityEvents == null
     ? null
@@ -628,8 +653,14 @@ async function _GET(request: NextRequest) {
         thresholds: { amber: DRIFT_AMBER, red: DRIFT_RED },
       },
       exam_integrity: {
-        status: examIntegrityAffected == null ? 'unknown' : classifyExamIntegrity(examIntegrityAffected),
+        // Si el cron falló en la ventana, el check NO corrió → 'unknown' (no verde
+        // falso). Si corrió, clasifica por afectados como siempre.
+        status: examIntegrityCronFailing
+          ? 'unknown'
+          : (examIntegrityAffected == null ? 'unknown' : classifyExamIntegrity(examIntegrityAffected)),
         affected: examIntegrityAffected,
+        cron_failing: examIntegrityCronFailing,
+        cron_error_at: examIntegrityCronErrorAt,
         empty: examIntegrityLatest ? Number((examIntegrityLatest.metadata as { empty?: number })?.empty ?? 0) : null,
         worst_missing: examIntegrityLatest ? Number((examIntegrityLatest.metadata as { worst_missing?: number })?.worst_missing ?? 0) : null,
         last_detected_at: examIntegrityLatest?.created_at ?? null,
@@ -637,7 +668,7 @@ async function _GET(request: NextRequest) {
           ? (((examIntegrityLatest.metadata as { top_affected?: unknown[] })?.top_affected ?? []).slice(0, 5))
           : [],
         thresholds: { amber: EXAM_INTEGRITY_AMBER, red: EXAM_INTEGRITY_RED },
-        note: 'Exámenes is_completed con filas test_questions faltantes >5% (cron check-exam-integrity, ventana 24h). Clase de bug Rosa 07/06. 0 eventos = OK.',
+        note: 'Exámenes is_completed con filas test_questions faltantes >5% (cron check-exam-integrity, ventana 24h). Clase de bug Rosa 07/06. 0 eventos = OK. cron_failing=true → el cron falló y el check no corrió (estado unknown, NO verde).',
       },
       insert_latency: {
         status: classifyInsertLatency(topInsertMean),
