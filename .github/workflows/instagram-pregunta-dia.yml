@@ -1,0 +1,62 @@
+name: Instagram — Pregunta del día
+
+# Publica 1 pregunta/día en @vence.es a las 10:00 (Europe/Madrid).
+# GitHub cron es UTC y no respeta DST, así que disparamos a 08:00 y 09:00 UTC
+# y un guard deja pasar SOLO cuando en Madrid son las 10:00 (robusto verano/invierno).
+on:
+  schedule:
+    - cron: '0 8,9 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'DRY_RUN (elige y genera imagen, no publica)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: instagram-pregunta-dia
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard horario (solo 10:00 Madrid)
+        if: github.event_name == 'schedule'
+        run: |
+          HOUR=$(TZ=Europe/Madrid date +%H)
+          echo "Hora en Madrid: $HOUR"
+          if [ "$HOUR" != "10" ]; then
+            echo "No son las 10:00 en Madrid → no publico en esta ejecución."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout
+        if: env.SKIP != '1'
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        if: env.SKIP != '1'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar fuentes Open Sans + dependencias
+        if: env.SKIP != '1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-open-sans
+          python3 -m pip install --quiet psycopg2-binary boto3 requests pillow
+
+      - name: Publicar pregunta del día
+        if: env.SKIP != '1'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          META_ADS_ACCESS_TOKEN: ${{ secrets.META_ADS_ACCESS_TOKEN }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: python3 marketing/social-content/instagram_daily.py

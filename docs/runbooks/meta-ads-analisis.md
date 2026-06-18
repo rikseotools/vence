@@ -166,6 +166,42 @@ const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_S
 
 ---
 
+## 📷 Instagram orgánico — "Pregunta del día" (auto, 17/06/2026)
+
+Cuenta **@vence.es** (id `17841460897412178`, ~19.700 seguidores — es ILoveTest rebautizada),
+vinculada a la página **Vence Oposiciones** y a la cuenta publicitaria.
+
+**Publicación automática diaria:**
+- Workflow GitHub Actions `.github/workflows/instagram-pregunta-dia.yml` → cron `0 8,9 * * *`
+  UTC + guard `TZ=Europe/Madrid date +%H == 10` → publica **exactamente a las 10:00 Madrid**
+  (robusto ante cambio de hora). `workflow_dispatch` con input `dry_run` para probar a mano.
+- Script `marketing/social-content/instagram_daily.py`: elige pregunta fiable (BD) →
+  imagen 1080² (Pillow) → sube a S3 `vence-uploads` (bucket público) → publica vía Graph API
+  (`/{ig}/media` contenedor → `/{ig}/media_publish`) → registra en tabla `instagram_posts`.
+- **Criterios de pregunta:** lifecycle approved/tech_approved + leyes transversales
+  (CE, EBEP/RDL 5/2015, Ley 39/2015, Ley 40/2015) + `difficulty_sample_size>=40` +
+  acierto ≥80% + sin impugnaciones + `option_e IS NULL` + no publicada antes.
+- Secrets GitHub: `DATABASE_URL`, `META_ADS_ACCESS_TOKEN`, `META_IG_USER_ID`,
+  `AWS_ACCESS_KEY_ID/SECRET`, `AWS_S3_REGION`, `AWS_S3_BUCKET`.
+- Prueba local: `DRY_RUN=1 python3 marketing/social-content/instagram_daily.py`.
+
+**Gotchas Instagram (NO repetir el viacrucis del 17/06):**
+- Para publicar por API el token del System User necesita `instagram_basic` +
+  `instagram_content_publish` → caso de uso "Administrar mensajes y contenido en Instagram"
+  en la app + **regenerar token** (los scopes no se añaden a tokens ya emitidos).
+- **NO App Review** para tu propia cuenta vía System User (igual que ads).
+- La imagen DEBE estar en **URL pública** (Instagram la descarga); `vence-uploads` ya es
+  público (`s3:GetObject` en bucket policy) → no hace falta presign.
+- Para asignar identidad IG a un ANUNCIO, la cuenta IG debe estar vinculada a la **PÁGINA**
+  (no solo a la cuenta publicitaria), o crear el creativo da *"La página no tiene acceso a la
+  cuenta de Instagram"*. Vincular en Business Suite → página → "Conectar con Instagram"
+  (si estaba en otra página, "Cambiar de página"). `gen NOT IN` con subquery que tenga NULLs
+  devuelve 0 filas → usar `NOT EXISTS` en la selección de preguntas.
+- `bid`/`budget` en céntimos. Géneros 1=hombre 2=mujer.
+
+**Fase 2 pendiente (no hecha):** migrar el job al backend NestJS (`@Cron`) cuando se valide
+el formato — requiere secret en SSM + permiso S3 al task role del backend + `sharp` + deploy.
+
 ## Caveats (no olvidar)
 
 - Lanzar **2-4 creativos por conjunto** y dejar que Meta reparta hacia el de mejor CTR/coste;
