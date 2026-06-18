@@ -109,6 +109,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-castilla-la-mancha': 'castilla-la-mancha',
     'auxiliar-administrativo-diputacion-cuenca': 'castilla-la-mancha',
     'auxiliar-administrativo-carm': 'murcia',
+    'administrativo-carm': 'murcia',
     'auxiliar-administrativo-aragon': 'aragon',
     'auxiliar-administrativo-diputacion-huesca': 'aragon',
     'auxiliar-administrativo-extremadura': 'extremadura',

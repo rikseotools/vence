@@ -90,6 +90,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'administrativo gobierno de canarias',
     'cuerpo administrativo de canarias',
   ],
+  'administrativo_carm': [
+    'administrativo_carm',
+    'administrativo region de murcia',
+    'cuerpo administrativo de murcia',
+  ],
   'auxiliar_administrativo_extremadura': [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',
@@ -207,6 +212,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_ayuntamiento_valladolid': ['auxiliar-administrativo-ayuntamiento-valladolid'],
   'administrativo-canarias': ['administrativo-canarias'],
   'administrativo_canarias': ['administrativo-canarias'],
+  'administrativo-carm': ['administrativo-carm'],
+  'administrativo_carm': ['administrativo-carm'],
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],
   'cuerpo-general-administrativo': ['administrativo-estado'],

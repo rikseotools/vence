@@ -771,6 +771,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_carm',
+      label: 'Administrativo Región de Murcia (CARM, C1)',
+      data: {
+        name: 'Administrativo de la Región de Murcia (Cuerpo Administrativo)',
+        slug: 'administrativo-carm',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_cyl',
       label: 'Auxiliar Administrativo de Castilla y León',
       data: {

@@ -96,6 +96,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'administrativo gobierno de canarias',
     'cuerpo administrativo de canarias',
   ],
+  administrativo_carm: [
+    'administrativo_carm',
+    'administrativo region de murcia',
+    'cuerpo administrativo de murcia',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

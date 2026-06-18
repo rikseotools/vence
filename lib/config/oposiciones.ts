@@ -2854,6 +2854,84 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO REGIÓN DE MURCIA (CARM, C1)
+  // ========================================
+  {
+    id: 'administrativo_carm',
+    slug: 'administrativo-carm',
+    positionType: 'administrativo_carm',
+    examScoring: { penaltyDivisor: 3, source: 'Convocatoria CGX00L24 (BORM nº 226, 30/09/2025; Orden 14/02/2025 de estructura de ejercicios). Penalización según bases; divisor pendiente de extracción literal. confidence:media' },
+    name: 'Administrativo de la Región de Murcia (Cuerpo Administrativo)',
+    shortName: 'Administrativo CARM',
+    emoji: '🍋',
+    badge: 'C1',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'organizacion-estado',
+        title: 'Organización del Estado y Gestión Administrativa (14 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978. Derechos y deberes. Garantías y suspensión' },
+          { id: 2, name: 'El Estatuto de Autonomía de la Región de Murcia' },
+          { id: 3, name: 'El Presidente. El Consejo de Gobierno. La Administración Pública de la Región de Murcia' },
+          { id: 4, name: 'El régimen jurídico del Sector Público. Los órganos. Órganos colegiados' },
+          { id: 5, name: 'Los interesados. Derechos de los ciudadanos. El silencio. Términos y plazos' },
+          { id: 6, name: 'Las disposiciones y los actos administrativos: requisitos, eficacia, nulidad' },
+          { id: 7, name: 'Disposiciones generales sobre los procedimientos administrativos' },
+          { id: 8, name: 'La revisión de los actos en vía administrativa. Los recursos administrativos' },
+          { id: 9, name: 'La potestad sancionadora. La responsabilidad patrimonial de la Administración' },
+          { id: 10, name: 'El Patrimonio: bienes demaniales y patrimoniales' },
+          { id: 11, name: 'Información administrativa y atención al ciudadano' },
+          { id: 12, name: 'La protección de datos de carácter personal' },
+          { id: 13, name: 'La Ley de Prevención de Riesgos Laborales' },
+          { id: 14, name: 'Igualdad e impacto de género. Transparencia y acceso a la información' },
+        ],
+      },
+      {
+        id: 'recursos-humanos',
+        title: 'Gestión de Recursos Humanos (7 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 15, name: 'El Estatuto Básico del Empleado Público' },
+          { id: 16, name: 'La Ley de Función Pública de la Región de Murcia' },
+          { id: 17, name: 'OEP y selección. Carrera y provisión. Situaciones administrativas' },
+          { id: 18, name: 'Retribuciones y Seguridad Social. Derechos, deberes y régimen disciplinario' },
+          { id: 19, name: 'Órganos de representación. Negociación colectiva. Derecho de reunión' },
+          { id: 20, name: 'La sede electrónica. Documento y expediente electrónico. Interoperabilidad' },
+          { id: 21, name: 'El Régimen General de la Seguridad Social. Clases pasivas' },
+        ],
+      },
+      {
+        id: 'gestion-economica',
+        title: 'Gestión Económico-Presupuestaria y Tributaria (7 temas)',
+        subtitle: null,
+        icon: '💶',
+        themes: [
+          { id: 22, name: 'La Hacienda Pública Regional. Derechos y obligaciones económicas' },
+          { id: 23, name: 'Los Presupuestos. Créditos y modificaciones. Ejecución. Control interno' },
+          { id: 24, name: 'El Plan General de Contabilidad Pública de la Región de Murcia' },
+          { id: 25, name: 'La LOFCA. Cesión de tributos del Estado a la CARM' },
+          { id: 26, name: 'La Ley de Tasas, Precios Públicos y Contribuciones Especiales de Murcia' },
+          { id: 27, name: 'Los contratos del Sector Público: ámbito, régimen y órganos de contratación' },
+          { id: 28, name: 'Preparación y adjudicación de los contratos. El contrato de obras' },
+        ],
+      },
+    ],
+    totalTopics: 28,
+    aliases: ['administrativo carm', 'administrativo murcia', 'administrativo region de murcia', 'cuerpo administrativo murcia', 'c1 murcia', 'administrativo c1 murcia'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-carm', label: 'Mi Oposición', icon: '🍋', featured: true },
+      { href: '/administrativo-carm/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-carm/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {

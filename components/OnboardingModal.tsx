@@ -924,6 +924,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'administrativo_carm',
+    nombre: 'Administrativo Región de Murcia (CARM, C1)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🍋'
+  },
+  {
     id: 'auxiliar_administrativo_cyl',
     nombre: 'Auxiliar Administrativo de Castilla y León',
     categoria: 'C2',
@@ -1643,8 +1650,8 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_universidad_uned', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
-  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
@@ -1689,6 +1696,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_diputacion_cordoba',  // nueva (19 plazas, inscripción abierta jun-jul 2026)
   'auxiliar_administrativo_ayuntamiento_murcia', // 20
   'auxiliar_administrativo_carm',        // 21
+  'administrativo_carm',                 // C1 Murcia (48 plz, BORM 226)
   'auxiliar_administrativo_canarias',    // 10
   'administrativo_canarias',              // C1 Canarias (57 plz, BOC 57)
   'auxiliar_administrativo_scs_canarias', // sanitaria Canarias (Aux Admin SCS)
