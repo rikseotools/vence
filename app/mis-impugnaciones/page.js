@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 const DEBUG = process.env.NODE_ENV === 'development'
 
 export default function MisImpugnacionesPage() {
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [disputes, setDisputes] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -25,7 +26,7 @@ export default function MisImpugnacionesPage() {
     }
     
     loadUserDisputes()
-  }, [user, authLoading, supabase])
+  }, [user, authLoading])
 
   async function loadUserDisputes() {
     try {
@@ -36,47 +37,21 @@ export default function MisImpugnacionesPage() {
         console.log('🔍 DEBUG: User email:', user?.email)
       }
 
-      // ✅ QUERY CORREGIDA: SIN reviewed_at que no existe
-      const { data: disputes, error } = await supabase
-        .from('question_disputes')
-        .select(`
-          id,
-          dispute_type,
-          description,
-          status,
-          created_at,
-          resolved_at,
-          admin_response,
-          appeal_text,
-          appeal_submitted_at,
-          questions!inner (
-            question_text,
-            correct_option,
-            option_a,
-            option_b,
-            option_c,
-            option_d,
-            articles!inner (
-              article_number,
-              title,
-              laws!inner (short_name)
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      // Desacople PostgREST: la query (join + WHERE user_id) vive ahora en el
+      // endpoint server /api/disputes/mine (Drizzle + verifyAuth). El user_id lo
+      // deriva el endpoint del token, no se manda desde el cliente.
+      const response = await fetch('/api/disputes/mine', { headers: await getAuthHeaders() })
+      const data = await response.json()
 
       if (DEBUG) {
-        console.log('🔍 DEBUG: Query ejecutada con user_id:', user.id)
-        console.log('🔍 DEBUG: Error:', error)
-        console.log('🔍 DEBUG: Disputes encontradas:', disputes)
-        console.log('🔍 DEBUG: Número de disputes:', disputes?.length)
-        
+        console.log('🔍 DEBUG: /api/disputes/mine status:', response.status)
+        console.log('🔍 DEBUG: Disputes encontradas:', data?.disputes?.length)
       }
 
-      if (error) throw error
-      
-      setDisputes(disputes || [])
+      if (!response.ok || !data.success) throw new Error(data.error || 'Error cargando impugnaciones')
+
+      const disputes = data.disputes || []
+      setDisputes(disputes)
       
       // Calcular estadísticas
       const stats = {
