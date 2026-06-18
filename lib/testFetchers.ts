@@ -771,7 +771,7 @@ export async function fetchOfficialQuestions(tema: number, searchParams: SearchP
     }
 
     console.log(`✅ Test oficial: ${data.questions.length} preguntas (${data.totalAvailable} disponibles)`)
-    return data.questions
+    return attachBackfillNotice(data.questions, data)
 
   } catch (error) {
     console.error('❌ Error en fetchOfficialQuestions:', error)
@@ -1037,7 +1037,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     logTestSizeShortfall('fetchQuestionsByTopicScope:normal', numQuestions, finalQuestions.length, {
       positionType, tema, selectedLaws, serverReturned: allQuestions.length, totalAvailable: data.totalAvailable,
     })
-    return finalQuestions
+    return attachBackfillNotice(finalQuestions, data)
     
   } catch (error) {
     console.warn(`⚠️ Error en fetchQuestionsByTopicScope tema ${tema}:`, (error as Error)?.message || 'Error desconocido')
@@ -1135,7 +1135,7 @@ async function callFilteredAPI(params: {
 
   const data = await response.json()
   if (!data.success) return []
-  return data.questions || []
+  return attachBackfillNotice(data.questions || [], data)
 }
 
 
@@ -1225,7 +1225,7 @@ async function fetchMantenerRachaViaAPI(n: number, positionType: string, topics:
   }
 
   console.log(`✅ Mantener racha via API: ${data.questions.length} preguntas de ${topics.length || 'todos los'} temas`)
-  return data.questions
+  return attachBackfillNotice(data.questions, data)
 }
 
 
@@ -1268,7 +1268,7 @@ export async function fetchExplorarContenido(tema: number, searchParams: SearchP
     }
 
     console.log(`✅ ${data.questions.length} preguntas para explorar via API`)
-    return data.questions
+    return attachBackfillNotice(data.questions, data)
   } catch (error) {
     console.error('❌ Error en fetchExplorarContenido:', error)
     throw error
@@ -1393,7 +1393,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     logTestSizeShortfall('fetchAleatorioMultiTema:normal', numQuestions, allQuestions.length, {
       positionType, themes: themes.length, serverReturned: allQuestions.length, totalAvailable: data.totalAvailable,
     })
-    return allQuestions
+    return attachBackfillNotice(allQuestions, data)
 
   } catch (error) {
     console.error('❌ Error en fetchAleatorioMultiTema:', error)
@@ -1460,7 +1460,7 @@ export async function fetchContentScopeQuestions(config: FetchConfig = {}, conte
     }
 
     console.log(`✅ Content scope via API: ${data.questions.length} preguntas para "${contentScopeConfig.sectionInfo?.name}"`)
-    return data.questions
+    return attachBackfillNotice(data.questions, data)
   } catch (error) {
     console.error('❌ Error en fetchContentScopeQuestions:', error)
     throw error
