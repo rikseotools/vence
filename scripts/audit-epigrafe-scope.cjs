@@ -96,10 +96,14 @@ async function auditPositionType(pt) {
     let topicTotal = 0;
     for (const r of scope || []) {
       const { data: l } = await s.from('laws').select('short_name, name, slug').eq('id', r.law_id).single();
-      // include_full_title=true → toda la ley está en scope (article_numbers suele ser null).
-      // Hay que resolver TODOS sus artículos, si no la fila se trataría como "0 arts" y
-      // dispararía UNDER/EMPTY_ROW en falso (la ley sí está cubierta).
-      const fullTitle = r.include_full_title === true;
+      // Semántica de scope IDÉNTICA al fetcher de producción (lib/api/topic-data/queries.ts:230):
+      //   article_numbers = null  → ley virtual: TODA la ley está en scope.
+      //   article_numbers = []    → fila inerte: no aporta nada (EMPTY_ROW real).
+      //   article_numbers = [vals]→ solo esos artículos.
+      // include_full_title=true es la forma explícita equivalente a null.
+      // Tratar null como "toda la ley" evita UNDER/EMPTY_ROW EN FALSO sobre temas que en
+      // producción sí sirven preguntas (footgun null+include_full_title=false del manual).
+      const fullTitle = r.include_full_title === true || r.article_numbers === null;
       const arts = r.article_numbers || [];
       let q = 0;
       let artCount = arts.length;
@@ -158,8 +162,16 @@ async function auditPositionType(pt) {
 (async () => {
   let targets = process.argv.slice(2);
   if (!targets.length) {
-    const { data } = await s.from('topics').select('position_type');
-    targets = [...new Set((data || []).map(x => x.position_type).filter(Boolean))];
+    // Paginar: Supabase capa a 1000 filas. Sin paginar, con >1000 topics se
+    // enumeraban solo ~33 de las 92 oposiciones (las demás quedaban sin auditar).
+    const rows = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await s.from('topics').select('position_type').eq('is_active', true).range(from, from + 999);
+      if (!data || !data.length) break;
+      rows.push(...data);
+      if (data.length < 1000) break;
+    }
+    targets = [...new Set(rows.map(x => x.position_type).filter(Boolean))];
   }
   let red = 0, yellow = 0;
   for (const pt of targets.sort()) {

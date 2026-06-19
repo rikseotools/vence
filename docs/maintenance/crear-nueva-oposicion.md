@@ -148,6 +148,7 @@ FASE 4: Config y schemas       → oposiciones.ts, archivos manuales, logo/bande
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
 FASE 6: Verificacion           → Build, tests, funcional, revalidar caches
         └─ 6.0: npm run audit:oposicion <slug>  → REEVALUACIÓN INDEPENDIENTE de completitud (obligatoria, gate)
+        └─ 6.1: npm run audit:served <slug>     → cobertura REAL vía fetcher de producción (obligatoria, gate; exit 1 si un tema disponible sirve 0q)
 FASE 7: Examenes oficiales     → exam_position, hot_articles, mapas (si aplica)
 FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook google-ads-analisis §Crear campaña
 ```
@@ -157,7 +158,8 @@ FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook go
 > ```bash
 > # CAPA 1 — completitud/estructura (SCRIPT determinista; lo más fiable para "no me salté un paso")
 > npm run audit:oposicion <slug>          # FASES 2-6: fila oposiciones, campos, JSONB schema, topics, bloques, scope+cobertura, convocatorias §2c, hitos, rutas, registros UI, identidad visual CcaaFlag (4c.bis) + mapeo CCAA (4c). exit 1 = gate.
-> npm run audit:epigrafe <position_type>  # FASE 3g: coherencia epígrafe↔scope (heurístico)
+> npm run audit:served <slug>            # FASE 6.1: cobertura REAL llamando al fetcher de producción getTopicFullData() — FUENTE ÚNICA, no reimplementa scope. exit 1 si un tema disponible=true sirve 0q.
+> npm run audit:epigrafe <position_type>  # FASE 3g: coherencia epígrafe↔scope (heurístico; null=toda la ley como producción)
 >
 > # CAPA 3 — corrección/cobertura semántica (AGENTES; lo único capaz de juzgar contenido)
 > npm run audit:oposicion-contenido <slug> [muestra]   # vuelca JSON (epígrafe+scope+muestra de preguntas con su artículo literal)
