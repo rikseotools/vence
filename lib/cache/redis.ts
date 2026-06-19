@@ -1,39 +1,30 @@
 // lib/cache/redis.ts
-// Cache server-side compartido con Upstash Redis (Fase 1 del roadmap).
-// Patrón: cache-aside con fallback graceful a BD si Redis falla.
+// Cache server-side compartido (Fase 1 del roadmap). Patrón: cache-aside con
+// fallback graceful a BD si la caché falla.
 //
 // Uso típico:
 //   const stats = await getOrSet(`user_stats:${userId}`, 30, () => fetchFromDb())
 //
-// Si Redis está caído o lento, NO bloquea la app: cae directo a fetcher (BD).
-// Esto preserva la disponibilidad. La latencia añadida en caso de fallo es
-// como máximo REDIS_TIMEOUT_MS (100ms).
+// Si la caché está caída o lenta, NO bloquea la app: cae directo a fetcher (BD).
+// La latencia añadida en caso de fallo es como máximo REDIS_TIMEOUT_MS (100ms).
+//
+// AGNÓSTICO POR CONTRATO: toda la LÓGICA (timeout, singleflight, métricas,
+// fallback) vive aquí y habla con la interfaz `CacheSink` (lib/cache/sink). El
+// proveedor (Upstash REST hoy, ElastiCache TCP mañana) se elige por env
+// `CACHE_PROVIDER` sin tocar ni esta lógica ni los callers.
 //
 // Feature flag REDIS_CACHE_ENABLED:
-// - Si !== 'true' → bypass total, ir siempre a fetcher (rollback instantáneo).
+// - Si === 'false' → bypass total, ir siempre a fetcher (rollback instantáneo).
 // - Por defecto activado en producción.
 
-import { Redis } from '@upstash/redis'
+import { getSink, type CacheSink } from './sink'
 
-// Timeout estricto: si Redis no responde en 100ms, ir a BD.
-// 100ms es 10x lo que tarda un GET normal, suficiente margen para latencia
-// de red puntual sin penalizar la request del usuario.
+// Timeout estricto: si la caché no responde en 100ms, ir a BD.
 const REDIS_TIMEOUT_MS = 100
-
-let _redis: Redis | null = null
-function getRedis(): Redis | null {
-  if (process.env.REDIS_CACHE_ENABLED === 'false') return null
-  if (_redis) return _redis
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) return null
-  _redis = new Redis({ url, token })
-  return _redis
-}
 
 /**
  * Race una promesa contra un timeout. Si supera ms, resuelve con symbol único
- * que el caller puede detectar (mejor que throw que sería ambiguo con errores reales).
+ * que el caller puede detectar (mejor que throw, ambiguo con errores reales).
  */
 const TIMEOUT_SYMBOL = Symbol('redis_timeout')
 async function raceTimeout<T>(p: Promise<T>, ms: number): Promise<T | typeof TIMEOUT_SYMBOL> {
@@ -46,33 +37,18 @@ async function raceTimeout<T>(p: Promise<T>, ms: number): Promise<T | typeof TIM
 // ============================================
 // SINGLEFLIGHT — deduplica fetchers in-flight
 // ============================================
-// Cuando una key caliente expira y N requests concurrentes hacen miss
-// simultáneamente, sin singleflight las N llamarían al fetcher (BD) → tormenta.
-// Con singleflight: la primera lanza el fetcher y guarda la Promise en este
-// Map; las N-1 siguientes encuentran la Promise existente y await sobre ella.
-// Resultado: 1 query a BD en vez de N por expiración.
-//
-// Map module-scoped → un slot por key por instancia serverless (cold start
-// resetea, lo cual es correcto). Cleanup en finally garantiza que ni éxitos
-// ni excepciones dejan entradas zombi.
-//
-// Nota: hay una ventana microscópica entre fetcher.resolve y redis.set landing
-// donde una request entrante podría no encontrar entrada inflight ni cache
-// fresh y disparar otro fetcher. Es aceptable (microsegundos) y resolverlo
-// requeriría hacer redis.set bloqueante, perdiendo la latencia ganada.
+// Cuando una key caliente expira y N requests concurrentes hacen miss a la vez,
+// sin singleflight las N llamarían al fetcher (BD) → tormenta. Con singleflight:
+// la primera lanza el fetcher y guarda la Promise; las N-1 siguientes await sobre
+// ella. Resultado: 1 query a BD en vez de N por expiración. Cleanup en finally.
 const inflight = new Map<string, Promise<unknown>>()
 
 // ============================================
 // MÉTRICAS — hit/miss por prefijo (Phase 6 obs)
 // ============================================
-// Sin telemetría no podemos saber si el cache está sirviendo lo que
-// esperábamos. Cada hit/miss hace HINCRBY fire-and-forget en Redis sobre
-// la clave 'cache_metrics' bajo el campo `${prefix}:hit` o `:miss`.
-// Para verlo: GET /api/admin/health/cache-stats.
-//
-// Feature flag: CACHE_METRICS_ENABLED=false → desactiva los HINCRBY.
-// Coste: ~1 op Redis extra por cache access. A 1k ops/s totales,
-// añade 200ms de Upstash bandwidth en pico, despreciable.
+// Cada hit/miss hace HINCRBY fire-and-forget sobre la clave 'cache_metrics' bajo
+// el campo `${prefix}:hit`/`:miss`. Verlo en GET /api/admin/health/cache-stats.
+// Flag CACHE_METRICS_ENABLED=false → desactiva.
 
 const METRICS_HASH_KEY = 'cache_metrics'
 
@@ -81,34 +57,27 @@ function metricsEnabled(): boolean {
 }
 
 function metricPrefix(cacheKey: string): string {
-  // El convenio del repo es prefix:userId / prefix:userId:variant.
-  // Para agrupar por endpoint, tomamos hasta el primer ':'.
   const idx = cacheKey.indexOf(':')
   return idx === -1 ? cacheKey : cacheKey.slice(0, idx)
 }
 
-function recordCacheEvent(redis: Redis, key: string, kind: 'hit' | 'miss'): void {
+function recordCacheEvent(sink: CacheSink, key: string, kind: 'hit' | 'miss'): void {
   if (!metricsEnabled()) return
   const field = `${metricPrefix(key)}:${kind}`
-  // Fire-and-forget. Si Upstash falla, el cache funcional no se afecta.
-  redis.hincrby(METRICS_HASH_KEY, field, 1).catch(() => {})
+  // Fire-and-forget. Si la caché falla, el cache funcional no se afecta.
+  sink.hincrby(METRICS_HASH_KEY, field, 1).catch(() => {})
 }
 
 /**
  * Lee el snapshot actual de hits/misses por prefijo.
- * Devuelve un Map { 'user_stats:hit': 1234, 'user_stats:miss': 56, ... }.
- * Usa raceTimeout — si Redis tarda, devuelve {} (no es crítico).
+ * Usa raceTimeout — si la caché tarda, devuelve {} (no es crítico).
  */
 export async function getCacheMetrics(): Promise<Record<string, number>> {
-  const redis = getRedis()
-  if (!redis) return {}
+  const sink = getSink()
+  if (!sink) return {}
   try {
-    const result = await raceTimeout(
-      redis.hgetall<Record<string, string | number>>(METRICS_HASH_KEY),
-      REDIS_TIMEOUT_MS,
-    )
+    const result = await raceTimeout(sink.hgetall(METRICS_HASH_KEY), REDIS_TIMEOUT_MS)
     if (result === TIMEOUT_SYMBOL || !result) return {}
-    // Upstash devuelve string a veces, number otras — normalizar
     const out: Record<string, number> = {}
     for (const [k, v] of Object.entries(result)) {
       out[k] = typeof v === 'number' ? v : parseInt(String(v), 10) || 0
@@ -119,81 +88,64 @@ export async function getCacheMetrics(): Promise<Record<string, number>> {
   }
 }
 
-/**
- * Resetea contadores de cache_metrics. Solo para uso de operaciones
- * (deploy, debug). Best-effort.
- */
+/** Resetea contadores de cache_metrics. Operaciones/debug. Best-effort. */
 export async function resetCacheMetrics(): Promise<void> {
-  const redis = getRedis()
-  if (!redis) return
+  const sink = getSink()
+  if (!sink) return
   try {
-    await raceTimeout(redis.del(METRICS_HASH_KEY), REDIS_TIMEOUT_MS)
+    await raceTimeout(sink.del([METRICS_HASH_KEY]), REDIS_TIMEOUT_MS)
   } catch { /* idem */ }
 }
 
 /**
- * Cache-aside pattern con singleflight. Si hay cache hit, devuelve. Si miss
- * o Redis falla, llama fetcher (deduplicado por key entre requests
- * concurrentes) y guarda el resultado (best-effort, sin bloquear).
+ * Cache-aside con singleflight. Hit → devuelve. Miss o caché caída → fetcher
+ * (deduplicado por key entre requests concurrentes) y guarda el resultado
+ * (best-effort, sin bloquear).
  *
- * @param key Clave única (incluir tipo + userId/identificador)
- * @param ttlSeconds TTL en segundos
- * @param fetcher Función que produce el valor desde la fuente real (BD).
- *                DEBE ser idempotente — singleflight comparte el resultado
- *                entre N requests concurrentes con la misma key.
- * @returns El valor cacheado o recién obtenido
+ * @param fetcher DEBE ser idempotente — singleflight comparte su resultado.
  */
 export async function getOrSet<T>(
   key: string,
   ttlSeconds: number,
   fetcher: () => Promise<T>,
 ): Promise<T> {
-  const redis = getRedis()
+  const sink = getSink()
 
-  // Sin Redis: ir directo a fetcher (preserva disponibilidad).
-  // No aplicamos singleflight tampoco — sin cache no hay tormenta de "expiración"
-  // que prevenir, y añadirlo cambiaría la semántica esperada por callers que
-  // hayan asumido que sin Redis cada request hace su propia query.
-  if (!redis) {
+  // Sin caché: ir directo a fetcher (preserva disponibilidad). Sin singleflight
+  // tampoco (sin cache no hay tormenta de expiración que prevenir).
+  if (!sink) {
     return fetcher()
   }
 
   // 1. Intentar GET con timeout estricto
   try {
-    const cached = await raceTimeout(redis.get<T>(key), REDIS_TIMEOUT_MS)
+    const cached = await raceTimeout(sink.get<T>(key), REDIS_TIMEOUT_MS)
     if (cached !== TIMEOUT_SYMBOL && cached !== null && cached !== undefined) {
-      recordCacheEvent(redis, key, 'hit')
+      recordCacheEvent(sink, key, 'hit')
       return cached
     }
-    // Si timeout o miss, seguir a fetcher
   } catch {
-    // Error de Redis (network, parse) → fetcher
+    // Error de caché (network, parse) → fetcher
   }
 
-  // 2. Singleflight: si ya hay un fetcher in-flight para esta key, esperar
-  // a que termine y reutilizar su resultado (o su error).
-  // Nota: contamos esto como hit porque el caller no toca BD —
-  // se reutiliza el resultado del fetcher in-flight.
+  // 2. Singleflight: si ya hay un fetcher in-flight, reutilizar su resultado.
   const existing = inflight.get(key)
   if (existing) {
-    recordCacheEvent(redis, key, 'hit')
+    recordCacheEvent(sink, key, 'hit')
     return existing as Promise<T>
   }
 
-  // 3. Cache miss y sin in-flight → lanzar fetcher, almacenar Promise
-  recordCacheEvent(redis, key, 'miss')
+  // 3. Miss y sin in-flight → lanzar fetcher, almacenar Promise
+  recordCacheEvent(sink, key, 'miss')
   const promise = (async () => {
     try {
       const value = await fetcher()
-      // SET cache fire-and-forget (preserve la latencia ganada)
-      redis.set(key, value, { ex: ttlSeconds }).catch(() => {
+      // SET fire-and-forget (preserva la latencia ganada)
+      sink.set(key, value, ttlSeconds).catch(() => {
         // Silently ignore - el fetcher ya devolvió el valor correcto
       })
       return value
     } finally {
-      // Cleanup garantizado: si el fetcher resuelve o rechaza, la entrada
-      // se libera para que la siguiente request pueda reintentar (en caso
-      // de error) o ver el cache fresco (en caso de éxito).
       inflight.delete(key)
     }
   })()
@@ -202,10 +154,7 @@ export async function getOrSet<T>(
   return promise
 }
 
-/**
- * Test-only helper para inspeccionar/limpiar el Map de singleflight.
- * No debe usarse en código de producción.
- */
+/** Test-only helper para inspeccionar/limpiar el Map de singleflight. */
 export function _singleflightInternalForTests() {
   return {
     size: () => inflight.size,
@@ -215,15 +164,14 @@ export function _singleflightInternalForTests() {
 }
 
 /**
- * GET con timeout estricto y fallback graceful. Devuelve null si miss,
- * timeout o Redis caído. Útil para patrones donde el caller quiere control
- * fino sobre fresh/stale (p.ej. servir cache stale en caso de timeout BD).
+ * GET con timeout estricto y fallback graceful. Devuelve null si miss, timeout
+ * o caché caída. Para patrones donde el caller quiere control fresh/stale.
  */
 export async function getCached<T>(key: string): Promise<T | null> {
-  const redis = getRedis()
-  if (!redis) return null
+  const sink = getSink()
+  if (!sink) return null
   try {
-    const cached = await raceTimeout(redis.get<T>(key), REDIS_TIMEOUT_MS)
+    const cached = await raceTimeout(sink.get<T>(key), REDIS_TIMEOUT_MS)
     if (cached !== TIMEOUT_SYMBOL && cached !== null && cached !== undefined) {
       return cached
     }
@@ -234,13 +182,13 @@ export async function getCached<T>(key: string): Promise<T | null> {
 }
 
 /**
- * SET fire-and-forget con TTL. No espera la confirmación de Redis: si falla,
- * la próxima request será otro miss (aceptable). Sin bloquear la respuesta.
+ * SET fire-and-forget con TTL. No espera confirmación: si falla, la próxima
+ * request será otro miss (aceptable). Sin bloquear la respuesta.
  */
 export async function setCached<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
-  const redis = getRedis()
-  if (!redis) return
-  redis.set(key, value, { ex: ttlSeconds }).catch(() => {
+  const sink = getSink()
+  if (!sink) return
+  sink.set(key, value, ttlSeconds).catch(() => {
     // Silently ignore - el caller ya tiene el valor correcto
   })
 }
@@ -250,45 +198,35 @@ export async function setCached<T>(key: string, value: T, ttlSeconds: number): P
  * Útil tras UPDATE en BD para forzar refresh en próxima lectura.
  */
 export async function invalidate(key: string): Promise<void> {
-  const redis = getRedis()
-  if (!redis) return
+  const sink = getSink()
+  if (!sink) return
   try {
-    await raceTimeout(redis.del(key), REDIS_TIMEOUT_MS)
+    await raceTimeout(sink.del([key]), REDIS_TIMEOUT_MS)
   } catch {
-    // Si falla la invalidación, el TTL eventualmente limpiará el valor stale
+    // Si falla, el TTL eventualmente limpiará el valor stale
   }
 }
 
-/**
- * Invalidar múltiples claves de un patrón. Best-effort.
- * Para Upstash Redis sin SCAN soportado, mejor invalidar por claves explícitas.
- */
+/** Invalidar múltiples claves explícitas. Best-effort. */
 export async function invalidateMany(keys: string[]): Promise<void> {
-  const redis = getRedis()
-  if (!redis || keys.length === 0) return
+  const sink = getSink()
+  if (!sink || keys.length === 0) return
   try {
-    await raceTimeout(redis.del(...keys), REDIS_TIMEOUT_MS)
+    await raceTimeout(sink.del(keys), REDIS_TIMEOUT_MS)
   } catch {
     // Idem
   }
 }
 
 /**
- * INCR atómico — devuelve el nuevo valor tras incrementar (1 si no existía).
- *
- * Operación nativa de Redis/Memcached/DynamoDB/etcd → agnóstica a proveedor.
- * Usada para implementar el patrón de cache versionado tag-like: cada INCR
- * de `cache_version:${tag}` invalida atómicamente todas las cache keys que
- * incluyan la versión anterior. Sin SCAN, sin Lua scripts.
- *
- * Cross-runtime coherente: la misma key en Upstash es vista igual por
- * Vercel (esta función) y por el backend NestJS (`CacheVersioningService`).
+ * INCR atómico — devuelve el nuevo valor (1 si no existía). Op nativa de
+ * Redis/Memcached/DynamoDB → agnóstica. Para cache versionado tag-like.
  */
 export async function incrementCounter(key: string): Promise<number> {
-  const redis = getRedis()
-  if (!redis) return 0
+  const sink = getSink()
+  if (!sink) return 0
   try {
-    const result = await raceTimeout(redis.incr(key), REDIS_TIMEOUT_MS)
+    const result = await raceTimeout(sink.incr(key), REDIS_TIMEOUT_MS)
     if (result === TIMEOUT_SYMBOL) return 0
     return typeof result === 'number' ? result : Number(result) || 0
   } catch (err) {
@@ -298,29 +236,21 @@ export async function incrementCounter(key: string): Promise<number> {
 }
 
 /**
- * INCRBY atómico + EXPIRE — contador con ventana temporal (cuota diaria,
- * rate window, etc.). Devuelve el nuevo total tras sumar `by`.
- *
- * Pensado para claves date-stamped (p.ej. `captcha:served:${userId}:${YYYYMMDD}`):
- * el EXPIRE garantiza limpieza aunque la clave no se vuelva a tocar. Se re-aplica
- * el TTL en cada llamada (idempotente; la clave rota sola por el date-stamp).
- *
- * Fallback graceful: si Redis está caído devuelve 0 — el caller decide si eso
- * significa "no challenge" (fail-open) o lo contrario. Agnóstico a proveedor
- * (INCRBY/EXPIRE existen en Redis/Memcached/DynamoDB TTL/etc.).
+ * INCRBY atómico + EXPIRE — contador con ventana temporal (cuota diaria, rate
+ * window). Devuelve el nuevo total. Fallback graceful → 0 si caché caída.
  */
 export async function incrementCounterWithTtl(
   key: string,
   ttlSeconds: number,
   by = 1,
 ): Promise<number> {
-  const redis = getRedis()
-  if (!redis) return 0
+  const sink = getSink()
+  if (!sink) return 0
   try {
-    const result = await raceTimeout(redis.incrby(key, by), REDIS_TIMEOUT_MS)
+    const result = await raceTimeout(sink.incrby(key, by), REDIS_TIMEOUT_MS)
     if (result === TIMEOUT_SYMBOL) return 0
     // EXPIRE fire-and-forget: no penaliza la latencia del caller.
-    redis.expire(key, ttlSeconds).catch(() => {})
+    sink.expire(key, ttlSeconds).catch(() => {})
     return typeof result === 'number' ? result : Number(result) || 0
   } catch (err) {
     console.warn(`[incrementCounterWithTtl] INCRBY ${key} failed:`, err)
@@ -329,15 +259,14 @@ export async function incrementCounterWithTtl(
 }
 
 /**
- * GET numérico best-effort de un contador (sin incrementar). Devuelve 0 si la
- * clave no existe, Redis está caído o hay timeout. Útil para leer una cuota
- * acumulada sin tocarla.
+ * GET numérico best-effort de un contador (sin incrementar). 0 si no existe,
+ * caché caída o timeout.
  */
 export async function getCounter(key: string): Promise<number> {
-  const redis = getRedis()
-  if (!redis) return 0
+  const sink = getSink()
+  if (!sink) return 0
   try {
-    const result = await raceTimeout(redis.get<number | string>(key), REDIS_TIMEOUT_MS)
+    const result = await raceTimeout(sink.get<number | string>(key), REDIS_TIMEOUT_MS)
     if (result === TIMEOUT_SYMBOL || result === null || result === undefined) return 0
     return typeof result === 'number' ? result : Number(result) || 0
   } catch {
