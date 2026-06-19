@@ -1,15 +1,13 @@
-// middleware.ts — Guard global de /api/admin/*
+// lib/security/adminApiGuard.ts
+// Guard de /api/admin/* para el proxy (Next 16+). Devuelve una NextResponse de
+// rechazo (401/403) si NO está autorizado, o null si pasa.
 //
-// Contexto (ver memoria project-admin-endpoints-sin-auth): NO había middleware,
-// así que 38 rutas /api/admin/* eran invocables SIN autenticación (delete-user
-// borraba cuentas sin token). Este middleware exige, para TODA ruta /api/admin/*:
-//   - un Bearer token de un email admin (whitelist), O
-//   - un x-cron-secret válido (para automatización: revalidate, health/*, etc.)
-// La sesión del panel vive en localStorage (no cookie), por eso el panel manda
-// el token en el header Authorization vía `adminFetch`/`getAuthHeaders` (Push A).
-//
-// No hay SUPABASE_JWT_SECRET ni jose en el proyecto → se valida el token llamando
-// a supabase.auth.getUser(token) (1 roundtrip; el panel es de bajo tráfico).
+// Contexto (project-admin-endpoints-sin-auth): no había guard global → 38 rutas
+// admin invocables sin auth (delete-user borraba cuentas sin token). La sesión
+// del panel vive en localStorage (no cookie), por eso el panel manda el Bearer
+// por header (adminFetch/getAuthHeaders, Push A). Automatización (revalidate,
+// health/*…) usa x-cron-secret. No hay SUPABASE_JWT_SECRET/jose → se valida el
+// token con supabase.auth.getUser (1 roundtrip; el panel es de bajo tráfico).
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -18,22 +16,23 @@ const ADMIN_EMAILS = [
   'manuel@vencemitfg.es',
   'manueltrader@gmail.com',
 ]
-function isAdminEmail(email?: string | null): boolean {
+export function isAdminEmail(email?: string | null): boolean {
   if (!email) return false
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
-export async function middleware(request: NextRequest) {
-  // Preflight CORS: sin cuerpo ni acción, dejar pasar.
-  if (request.method === 'OPTIONS') return NextResponse.next()
+/** null = autorizado (continúa); NextResponse = rechazado. */
+export async function guardAdminApi(request: NextRequest): Promise<NextResponse | null> {
+  // Preflight CORS: sin cuerpo ni acción.
+  if (request.method === 'OPTIONS') return null
 
-  // 1) Automatización por x-cron-secret (scripts/cron: revalidate, health/*…)
+  // 1) Automatización por x-cron-secret (scripts/cron: revalidate, health/*…).
   const cronSecret = request.headers.get('x-cron-secret')
   if (cronSecret && process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET) {
-    return NextResponse.next()
+    return null
   }
 
-  // 2) Panel admin por Bearer token
+  // 2) Panel admin por Bearer token.
   const authz = request.headers.get('authorization') || ''
   const token = authz.startsWith('Bearer ') ? authz.slice(7).trim() : null
   if (!token) {
@@ -53,12 +52,8 @@ export async function middleware(request: NextRequest) {
     if (!isAdminEmail(data.user.email)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
-    return NextResponse.next()
+    return null
   } catch {
     return NextResponse.json({ error: 'Error de verificación de auth' }, { status: 401 })
   }
-}
-
-export const config = {
-  matcher: '/api/admin/:path*',
 }

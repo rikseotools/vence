@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { resolveAlias } from './lib/lawSlugAliases'
+import { guardAdminApi } from './lib/security/adminApiGuard'
 
 // Rutas donde los slugs de leyes aparecen (redirect aliases → canonical)
 const LAW_SLUG_PATTERNS = [
@@ -69,6 +70,13 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/api/auth') ||
       pathname.startsWith('/_next')) {
     return NextResponse.next()
+  }
+
+  // 🔒 GUARD /api/admin/*: exige Bearer admin o x-cron-secret (no había guard
+  // global → rutas admin invocables sin auth; ver project-admin-endpoints-sin-auth).
+  if (pathname.startsWith('/api/admin')) {
+    const denied = await guardAdminApi(request)
+    if (denied) return denied
   }
 
   // 🔀 REDIRECTS: Aliases de slugs de leyes → slug canónico (301)
