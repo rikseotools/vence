@@ -234,36 +234,52 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
   // Castilla-La Mancha (antes que "castilla")
   [['castilla-la-mancha', 'clm', 'sescam', 'albacete', 'ciudad-real', 'cuenca', 'guadalajara', 'toledo'], 'clm'],
   // Castilla y León
-  [['castilla-y-leon', 'castilla-leon', 'cyl', 'leon', 'valladolid', 'burgos', 'salamanca', 'segovia', 'soria', 'avila', 'palencia', 'zamora'], 'cyl'],
+  [['castilla-y-leon', 'castilla-leon', 'cyl', 'leon', 'valladolid', 'burgos', 'salamanca', 'segovia', 'soria', 'avila', 'palencia', 'zamora', 'ponferrada'], 'cyl'],
   // País Vasco (antes que genéricos)
-  [['pais-vasco', 'vasco', 'euskadi', 'eusko', 'osakidetza', 'ehu', 'bilbao', 'bizkaia', 'vizcaya', 'alava', 'araba', 'gipuzkoa', 'guipuzcoa', 'vitoria', 'donostia', 'san-sebastian'], 'pais_vasco'],
+  [['pais-vasco', 'vasco', 'euskadi', 'eusko', 'osakidetza', 'ehu', 'bilbao', 'bizkaia', 'vizcaya', 'alava', 'araba', 'gipuzkoa', 'guipuzcoa', 'vitoria', 'donostia', 'san-sebastian', 'ertzaintza'], 'pais_vasco'],
   // Catalunya
-  [['catalunya', 'cataluna', 'catalan', 'tcae-ics', 'barcelona', 'girona', 'gerona', 'lleida', 'lerida', 'tarragona'], 'catalunya'],
+  [['catalunya', 'cataluna', 'catalan', 'tcae-ics', 'barcelona', 'girona', 'gerona', 'lleida', 'lerida', 'tarragona',
+    // Municipios catalanes (policía local/guàrdia urbana), Mossos, ICS salud, univ.
+    'badalona', 'castelldefels', 'cerdanyola', 'cornella', 'el-prat', 'granollers', 'hospitalet',
+    'igualada', 'manresa', 'mataro', 'mollet', '-reus', 'ripollet', '-rubi', 'sabadell',
+    'sant-adria-besos', 'sant-boi', 'sant-cugat', 'santa-coloma-gramenet', 'terrassa', 'local-vic',
+    'viladecans', 'vilanova-geltru', 'mossos-esquadra', 'pompeu-fabra', 'rovira-virgili', '-ics'], 'catalunya'],
   // Galicia
-  [['galicia', 'sergas', 'a-coruna', 'coruna', 'lugo', 'ourense', 'orense', 'pontevedra', 'santiago', 'compostela', 'vigo'], 'galicia'],
+  [['galicia', 'sergas', 'a-coruna', 'coruna', 'lugo', 'ourense', 'orense', 'pontevedra', 'santiago', 'compostela', 'vigo', 'ferrol'], 'galicia'],
   // Andalucía
-  [['andalucia', 'andaluz', 'sas-', '-sas', 'sevilla', 'malaga', 'marbella', 'cadiz', 'cordoba', 'granada', 'huelva', 'jaen', 'almeria'], 'andalucia'],
+  [['andalucia', 'andaluz', 'sas-', '-sas', 'sevilla', 'malaga', 'marbella', 'cadiz', 'cordoba', 'granada', 'huelva', 'jaen', 'almeria',
+    // Municipios andaluces (policía local/bomberos) + univ. Pablo de Olavide
+    'algeciras', 'chiclana', 'dos-hermanas', 'el-ejido', 'estepona', 'jerez', 'la-linea', 'linares',
+    'mijas', 'motril', 'puerto-santa-maria', 'roquetas-mar', 'sanlucar-barrameda', 'velez-malaga',
+    'levante-almeriense', 'poniente-almeriense', 'pablo-olavide'], 'andalucia'],
   // Aragón (incl. servicio SALUD aragonés y Zaragoza/Huesca/Teruel)
   [['aragon', 'zaragoza', 'huesca', 'teruel'], 'aragon'],
   // Comunitat Valenciana
-  [['valencia', 'gva', 'alicante', 'castellon', 'elche'], 'valencia'],
+  [['valencia', 'gva', 'alicante', 'castellon', 'elche',
+    // Municipios valencianos (policía local) + univ. Jaume I / Miguel Hernández
+    'alcoi', 'benidorm', 'burjassot', '-elda', 'gandia', 'mislata', 'orihuela', 'paterna',
+    'sagunto', 'san-vicente-raspeig', 'torrent', 'torrevieja', 'jaume-i', 'miguel-hernandez'], 'valencia'],
   // Murcia
-  [['murcia', 'carm', 'cartagena', '-sms', 'sms-'], 'murcia'],
+  [['murcia', 'carm', 'cartagena', '-sms', 'sms-', 'local-lorca', 'molina-segura'], 'murcia'],
   // Canarias (cabildos + islas; antes que Baleares por "palma")
-  [['canarias', 'canario', '-scs', 'scs-', 'las-palmas', 'palmas', 'tenerife', 'gran-canaria', 'lanzarote', 'fuerteventura', 'la-gomera', 'la-palma', 'el-hierro', 'la-laguna', 'ulpgc', 'cabildo'], 'canarias'],
+  [['canarias', 'canario', '-scs', 'scs-', 'las-palmas', 'palmas', 'tenerife', 'gran-canaria', 'lanzarote', 'fuerteventura', 'la-gomera', 'la-palma', 'el-hierro', 'la-laguna', 'ulpgc', 'cabildo', 'arona', 'telde', 'policia-canaria'], 'canarias'],
   // Illes Balears (consells + islas)
   [['baleares', 'balear', 'illes', 'caib', 'ibsalut', 'mallorca', 'menorca', 'ibiza', 'eivissa', 'formentera', 'palma', 'consell'], 'baleares'],
   // Madrid (comunidad, ayto, sanidad, universidades madrileñas)
   // 'alcala' = Universidad de Alcalá (Alcalá de Henares, Comunidad de Madrid)
-  [['madrid', 'sermas', 'carlos-iii', 'complutense', 'alcala'], 'madrid'],
+  [['madrid', 'sermas', 'carlos-iii', 'complutense', 'alcala',
+    // Municipios de la Comunidad de Madrid (policía local) + univ. madrileñas
+    'alcobendas', 'alcorcon', 'aranjuez', 'arganda-rey', 'boadilla-monte', 'collado-villalba',
+    'coslada', 'fuenlabrada', 'getafe', 'las-rozas', 'leganes', 'majadahonda', 'mostoles',
+    '-parla', 'pozuelo-alarcon', 'torrejon-ardoz', 'tres-cantos', 'rey-juan-carlos'], 'madrid'],
   // Asturias (antes que Extremadura: 'tcae-sespa' contiene 'tcae-ses')
-  [['asturias', 'sespa', 'oviedo', 'gijon', 'principado'], 'asturias'],
+  [['asturias', 'sespa', 'oviedo', 'gijon', 'principado', 'siero'], 'asturias'],
   // Extremadura
   [['extremadura', 'tcae-ses', 'badajoz', 'caceres', 'merida'], 'extremadura'],
   // Cantabria
-  [['cantabria', 'santander'], 'cantabria'],
+  [['cantabria', 'santander', 'torrelavega'], 'cantabria'],
   // Navarra
-  [['navarra', 'pamplona', 'nafarroa'], 'navarra'],
+  [['navarra', 'pamplona', 'nafarroa', 'osasunbidea'], 'navarra'],
   // La Rioja
   [['rioja', 'seris', 'logrono'], 'rioja'],
 ]
@@ -317,9 +333,20 @@ export function resolveEscudo(oposicionId: string): { src: string; alt: string }
   return null
 }
 
+// Match EXACTO de slug → bandera, para casos donde el substring colisiona y no se
+// puede distinguir con includes(): p.ej. el Servicio Extremeño de Salud (slug acaba
+// en '-ses') chocaría con 'sescam' (CLM) / 'sespa' (Asturias).
+const EXACT_SLUG_TO_FLAG: Record<string, string> = {
+  'auxiliar-administrativo-ses': 'extremadura',
+  'celador-ses': 'extremadura',
+  'enfermero-ses': 'extremadura',
+}
+
 export function resolveFlagKey(oposicionId: string): string | null {
   if (!oposicionId) return null
   const norm = oposicionId.toLowerCase().replace(/_/g, '-')
+  // 0) Match exacto (desambigua colisiones de substring)
+  if (EXACT_SLUG_TO_FLAG[norm]) return EXACT_SLUG_TO_FLAG[norm]
   // 1) Bandera de lugar específico (ciudad/provincia/isla)
   for (const [keywords, flag] of PLACE_KEYWORDS) {
     if (keywords.some(k => norm.includes(k))) return flag
