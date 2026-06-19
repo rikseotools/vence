@@ -62,6 +62,7 @@ import { CanaryAnswerSaveModule } from './canary-answer-save/canary-answer-save.
 // que cubra saturación PgBouncer ni caída Upstash en runtime real.
 import { CanaryDatabasePoolModule } from './canary-database-pool/canary-database-pool.module';
 import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-upstash.module';
+import { CanaryThemeStatsModule } from './canary-theme-stats/canary-theme-stats.module';
 // Canary GET /api/topics/[numero] sintético (31/05/2026, post Fase D-bis Iter 1.5).
 // Detecta caída del path Next.js + Redis + BD + flag TOPIC_MV_ENABLED en
 // runtime real. Regla de oro PASS: ningún test CI cubre el endpoint vivo.
@@ -152,6 +153,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CanaryAnswerSaveModule, // cada 5min — POST sintético al endpoint más caliente
     CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
+    CanaryThemeStatsModule, // cada 10min — endpoint theme-stats refleja progreso real (regresión semántica tipo V4)
     CanaryTopicDataModule, // cada 5min — GET /api/topics/5 con shape assertions
     CanaryStatsPipelineModule, // cada 5min — respuesta sintética → verifica propagación e2e a uqh_v2
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand

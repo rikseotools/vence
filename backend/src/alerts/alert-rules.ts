@@ -1292,6 +1292,51 @@ export const RULE_CANARY_REDIS_FAILED: AlertRule<{
 };
 
 /**
+ * Canary del ENDPOINT de stats por tema — caza una regresión SEMÁNTICA que
+ * devuelve datos incompletos/vacíos con `success:true` (sin error ni 5xx).
+ *
+ * Origen: incidente 19/06. La V4 del endpoint agrupaba por tema_number
+ * estampado + filtraba por tests.position_type → excluía los tests "globales"
+ * → un usuario con 68k respuestas veía su panel casi vacío. Silencioso (la
+ * observabilidad no distingue `[]` de "usuario sin progreso"). Lo cazó un
+ * usuario quejándose. Este canary compara el progreso que el endpoint DEVUELVE
+ * con el ESPERADO desde BD (artículo→topic_scope) para el usuario más pesado:
+ * si la suma cae <70% → regresión → critical.
+ */
+export const RULE_CANARY_THEME_STATS_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+}> = {
+  name: 'canary_theme_stats_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'canary_theme_stats_failed'
+      AND created_at > NOW() - INTERVAL '25 minutes'
+  `,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary theme-stats FALLÓ (${r.n} en 25 min) — el panel de temas oculta progreso`,
+      body: `El endpoint /api/v2/topic-progress/theme-stats devolvió un progreso INCOMPLETO para el usuario más pesado (regresión semántica tipo V4: stats por sello en vez de por artículo→topic_scope).\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - detalle: ${r.lastError ?? '(n/a)'}\n\nQué significa cada step:\n  - semantic: el endpoint suma << lo esperado en BD → usuarios ven el panel casi vacío pese a haber estudiado.\n  - http/response: el endpoint devolvió error o forma inesperada.\n  - timeout/query: la verificación no completó (¿BD lenta? ¿endpoint colgado?).\n\nACCIONES:\n  1. Comparar en vivo: GET el endpoint para ese usuario vs el cálculo article→topic_scope de BD.\n  2. Revisar el último deploy del frontend (¿se tocó theme-stats/route.ts?).\n  3. Revisar la caché (clave theme_stats_*): si sirve datos viejos de una versión rota, bumpear la versión de la clave.\n  4. NO es un fallo de infra — es de lógica del endpoint; revertir el commit que rompió el modelo.`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        windowMin: 25,
+      },
+      fingerprint: 'canary_theme_stats_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Watchdog de respuesta — burst de UI congeladas en ExamLayout/TestLayout.
  *
  * El hook `useAnswerWatchdog` (12s threshold) detecta cuando `isSaving`/
@@ -2445,6 +2490,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CANARY_REDIS_FAILED as AlertRule,
   // Canary endpoint topic-data (31/05/2026, post Fase D-bis Iter 1.5)
   RULE_CANARY_TOPIC_DATA_FAILED as AlertRule,
+  // Canary SEMÁNTICO del endpoint theme-stats (19/06/2026, post incidente V4):
+  // el panel de temas refleja el progreso real (artículo→topic_scope).
+  RULE_CANARY_THEME_STATS_FAILED as AlertRule,
   // Watchdog drift detector — confirma que Page Visibility fix (a4051a6b) sigue ok
   RULE_WATCHDOG_WALLCLOCK_RESIDUAL as AlertRule,
   // Pool capacity sampler (01/06/2026, Acción 2 observability-capacity):
