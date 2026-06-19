@@ -56,9 +56,18 @@ interface ThemeStats {
   accuracy: number
   accuracy30d: number | null
   total_30d: number
+  // Cobertura: % de artículos del tema (con preguntas) que el usuario ha tocado.
+  // accuracy = "¿lo hago bien?"; coverage = "¿me lo he estudiado entero?".
+  coverage: number          // 0-100
+  scopeArticles: number     // artículos del tema con preguntas (universo)
+  answeredArticles: number  // artículos distintos respondidos
   lastStudy: Date | null
   lastStudyFormatted: string
 }
+
+// Franja de cobertura: baja (<33%) / media (33-66%) / alta (>66%).
+const coverageBand = (coverage: number): 'baja' | 'media' | 'alta' =>
+  coverage < 33 ? 'baja' : coverage <= 66 ? 'media' : 'alta'
 
 interface ExamStat {
   accuracy: number
@@ -187,12 +196,17 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
         data.stats.forEach((stat: any) => {
           // tema_number ya es 1-indexed (coincide con topics.topic_number)
           const temaNumber = stat.tema_number
+          const scopeArt = stat.scope_articles ?? 0
+          const answeredArt = stat.answered_articles ?? 0
           themeStats[temaNumber] = {
             total: stat.total,
             correct: stat.correct,
             accuracy: stat.accuracy,
             accuracy30d: stat.accuracy_30d ?? null,
             total_30d: stat.total_30d ?? 0,
+            scopeArticles: scopeArt,
+            answeredArticles: answeredArt,
+            coverage: scopeArt > 0 ? Math.round((answeredArt / scopeArt) * 100) : 0,
             lastStudy: stat.last_study ? new Date(stat.last_study) : null,
             lastStudyFormatted: stat.last_study
               ? new Date(stat.last_study).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
@@ -325,8 +339,8 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
             {/* Leyenda de colores */}
             <div className="mb-6">
               <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="text-sm font-medium text-gray-700 mb-3">Leyenda de colores por % de aciertos:</div>
-                <div className="flex flex-wrap gap-2 justify-center">
+                <div className="text-sm font-medium text-gray-700 mb-1">🎨 Color del tema = % de aciertos <span className="font-normal text-gray-500">(lo bien que lo haces)</span></div>
+                <div className="flex flex-wrap gap-2 justify-center mb-4">
                   <div className="flex items-center px-3 py-1 bg-green-100 rounded-lg">
                     <span className="w-3 h-3 bg-green-600 rounded-full mr-2"></span>
                     <span className="text-xs font-medium text-green-800">90-100%: Excelente</span>
@@ -347,6 +361,24 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                     <span className="w-3 h-3 bg-red-600 rounded-full mr-2"></span>
                     <span className="text-xs font-medium text-red-800">0-39%: Necesita práctica</span>
                   </div>
+                </div>
+                <div className="border-t border-gray-100 pt-3">
+                  <div className="text-sm font-medium text-gray-700 mb-2">📊 Barra de cobertura = cuánto del tema has practicado <span className="font-normal text-gray-500">(de cuántos artículos)</span></div>
+                  <div className="flex flex-wrap gap-2 justify-center items-center">
+                    <div className="flex items-center px-3 py-1 bg-gray-100 rounded-lg gap-2">
+                      <span className="w-14 h-1.5 bg-gray-300 rounded-full overflow-hidden inline-block"><span className="block h-full w-[20%] bg-gray-500 rounded-full"></span></span>
+                      <span className="text-xs font-medium text-gray-700">&lt;33% · <span className="text-amber-600 font-semibold">⚠ poca</span> (el % es con poca muestra)</span>
+                    </div>
+                    <div className="flex items-center px-3 py-1 bg-gray-100 rounded-lg gap-2">
+                      <span className="w-14 h-1.5 bg-gray-300 rounded-full overflow-hidden inline-block"><span className="block h-full w-1/2 bg-gray-500 rounded-full"></span></span>
+                      <span className="text-xs font-medium text-gray-700">33-66%: media</span>
+                    </div>
+                    <div className="flex items-center px-3 py-1 bg-gray-100 rounded-lg gap-2">
+                      <span className="w-14 h-1.5 bg-gray-300 rounded-full overflow-hidden inline-block"><span className="block h-full w-full bg-gray-600 rounded-full"></span></span>
+                      <span className="text-xs font-medium text-gray-700">&gt;66%: completa</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-2">Un tema puede estar en verde (aciertas) pero con cobertura baja si solo has practicado unos pocos artículos. Cubre el tema entero para fiarte del color.</div>
                 </div>
               </div>
             </div>
@@ -907,6 +939,27 @@ function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }:
           )}
         </div>
       </div>
+      {/* Barra de cobertura (V5.1): cuánto del tema ha practicado. El color de
+          la tarjeta = % aciertos (dominio); esta barra = % del tema cubierto. */}
+      {hasStats && stats.scopeArticles > 0 && (
+        <div className="mt-2">
+          <div className="flex items-center justify-between text-[11px] text-white/80 mb-0.5">
+            <span className="flex items-center gap-1">
+              Cobertura del tema
+              {coverageBand(stats.coverage) === 'baja' && (
+                <span className="text-amber-200 font-semibold" title="Has practicado pocos artículos de este tema; el % de aciertos es con poca muestra">⚠ poca</span>
+              )}
+            </span>
+            <span className="font-medium">{stats.coverage}% · {stats.answeredArticles}/{stats.scopeArticles} art.</span>
+          </div>
+          <div className="h-1.5 bg-white/25 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white/85 rounded-full transition-all duration-300"
+              style={{ width: `${Math.max(stats.coverage, 3)}%` }}
+            />
+          </div>
+        </div>
+      )}
     </Link>
   )
 }

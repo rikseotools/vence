@@ -37,6 +37,11 @@ interface ThemeStat {
   total: number
   correct: number
   accuracy: number
+  // Cobertura (V5.1): cuántos artículos del tema (de los que TIENEN preguntas)
+  // ha tocado el usuario. accuracy mide "¿lo hago bien?"; cobertura mide
+  // "¿me lo he estudiado entero?". Un tema verde con poca cobertura engaña.
+  scope_articles: number     // artículos del tema con preguntas activas (universo)
+  answered_articles: number  // artículos distintos que el usuario ha respondido
   total_30d: number
   correct_30d: number
   accuracy_30d: number | null  // null si no hay datos en los últimos 30 días
@@ -74,8 +79,8 @@ async function _GET(request: NextRequest) {
   // mundo recalcula con la V5 (artículo→topic_scope) inmediatamente, sin
   // ventana de 5min sirviendo el resultado roto.
   const cacheKey = oposicionId
-    ? `theme_stats_v5:${userId}:${oposicionId}`
-    : `theme_stats_v5:${userId}`
+    ? `theme_stats_v6:${userId}:${oposicionId}`
+    : `theme_stats_v6:${userId}`
   const cached = await getCached<CachedThemeStats>(cacheKey)
 
   // Fast path: cache fresco (< 5min) → devolver sin tocar BD
@@ -135,33 +140,44 @@ async function _GET(request: NextRequest) {
       // 30d → accuracy_30d=null por ahora (follow-up: añadir ventana al pipeline).
       const queryPromise = db.execute(sql`
         WITH per_article AS MATERIALIZED (
-          SELECT a.law_id, a.article_number,
+          -- Agregado del usuario por artículo (dedup del PK granular de uas).
+          SELECT uas.article_id,
             SUM(uas.total_questions) AS total_questions,
             SUM(uas.correct_answers) AS correct_answers,
             MAX(uas.updated_at) AS updated_at
           FROM user_article_stats uas
-          INNER JOIN articles a ON a.id = uas.article_id
           WHERE uas.user_id = ${userId} AND uas.article_id IS NOT NULL
-          GROUP BY uas.article_id, a.law_id, a.article_number
+          GROUP BY uas.article_id
         ),
-        article_topic AS (
-          SELECT DISTINCT pa.law_id, pa.article_number, t.topic_number,
-            pa.total_questions, pa.correct_answers, pa.updated_at
-          FROM per_article pa
-          INNER JOIN topic_scope ts ON ts.law_id = pa.law_id
-            AND (ts.article_numbers IS NULL OR pa.article_number = ANY(ts.article_numbers))
-          INNER JOIN topics t ON t.id = ts.topic_id AND t.position_type = ${positionType}
+        scope AS (
+          -- Universo: (tema, artículo) del temario de la oposición que TIENE
+          -- preguntas activas. Base de la cobertura. DISTINCT evita duplicar por
+          -- filas de topic_scope solapadas.
+          SELECT DISTINCT t.topic_number, a.id AS article_id
+          FROM topics t
+          INNER JOIN topic_scope ts ON ts.topic_id = t.id
+          INNER JOIN articles a ON a.law_id = ts.law_id
+            AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
+          WHERE t.position_type = ${positionType}
+            AND EXISTS (
+              SELECT 1 FROM questions q
+              WHERE q.primary_article_id = a.id AND q.is_active = true
+            )
         )
         SELECT
-          topic_number AS tema_number,
-          SUM(total_questions)::int AS total,
-          SUM(correct_answers)::int AS correct,
-          ROUND(SUM(correct_answers)::numeric
-            / NULLIF(SUM(total_questions), 0) * 100, 0)::int AS accuracy,
-          MAX(updated_at)::text AS last_study
-        FROM article_topic
-        GROUP BY topic_number
-        ORDER BY topic_number
+          s.topic_number AS tema_number,
+          COUNT(DISTINCT s.article_id)::int AS scope_articles,
+          COUNT(DISTINCT pa.article_id)::int AS answered_articles,
+          COALESCE(SUM(pa.total_questions), 0)::int AS total,
+          COALESCE(SUM(pa.correct_answers), 0)::int AS correct,
+          ROUND(SUM(pa.correct_answers)::numeric
+            / NULLIF(SUM(pa.total_questions), 0) * 100, 0)::int AS accuracy,
+          MAX(pa.updated_at)::text AS last_study
+        FROM scope s
+        LEFT JOIN per_article pa ON pa.article_id = s.article_id
+        GROUP BY s.topic_number
+        HAVING SUM(pa.total_questions) > 0
+        ORDER BY s.topic_number
       `)
 
       const result = await Promise.race([
@@ -176,6 +192,8 @@ async function _GET(request: NextRequest) {
         total: Number(r.total),
         correct: Number(r.correct),
         accuracy: Number(r.accuracy),
+        scope_articles: Number(r.scope_articles),
+        answered_articles: Number(r.answered_articles),
         // user_article_stats no guarda ventana temporal → 30d no disponible aún
         total_30d: 0,
         correct_30d: 0,
