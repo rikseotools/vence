@@ -24,6 +24,7 @@ const DYNAMIC_SLUGS = [
   'auxiliar-administrativo-carm',
   'auxiliar-administrativo-aragon',
   'auxiliar-administrativo-asturias',
+  'administrativo-asturias',
   'auxiliar-administrativo-baleares',
   'auxiliar-administrativo-cyl',
   'auxiliar-administrativo-andalucia',

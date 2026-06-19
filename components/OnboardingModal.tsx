@@ -1085,6 +1085,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '⛰️'
   },
   {
+    id: 'administrativo_asturias',
+    nombre: 'Administrativo (C1) del Principado de Asturias',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '⛰️'
+  },
+  {
     id: 'auxiliar_administrativo_baleares',
     nombre: 'Auxiliar Administrativo de la CAIB',
     categoria: 'C2',
@@ -1669,8 +1676,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
   'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
-  'Asturias': ['auxiliar_administrativo_asturias', 'auxiliar_administrativo_estado'],
-  'Principality of Asturias': ['auxiliar_administrativo_asturias', 'auxiliar_administrativo_estado'],
+  'Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'auxiliar_administrativo_estado'],
+  'Principality of Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'auxiliar_administrativo_estado'],
   'Islas Baleares': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
   'Balearic Islands': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
   'Cantabria': ['auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
@@ -1712,6 +1719,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_madrid',      // 4+
   'auxiliar_administrativo_aragon',      // 3
   'auxiliar_administrativo_asturias',    // 3
+  'administrativo_asturias',             // nueva C1
   'auxiliar_administrativo_ayuntamiento_valencia', // 3
   'auxiliar_administrativo_baleares',    // 3
   'auxiliar_administrativo_galicia',     // 2+

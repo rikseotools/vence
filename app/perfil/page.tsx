@@ -941,6 +941,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_asturias',
+      label: 'Administrativo (C1) del Principado de Asturias',
+      data: {
+        name: 'Administrativo (C1) del Principado de Asturias',
+        slug: 'administrativo-asturias',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_baleares',
       label: 'Auxiliar Administrativo de la CAIB (C2)',
       data: {
