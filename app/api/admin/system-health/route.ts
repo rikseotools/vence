@@ -233,6 +233,7 @@ async function _GET(request: NextRequest) {
     trafficResult,
     examIntegrityResult,
     examIntegrityCronErrorResult,
+    cacheCanaryResult,
   ] = await Promise.all([
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
@@ -431,6 +432,20 @@ async function _GET(request: NextRequest) {
       `)) as any[]
       return { data: rows, count: rows.length }
     }),
+
+    // 13) Último resultado de la canary de CACHÉ (salud AHORA, no el agregado de
+    // la ventana). Endpoint 'canary-redis-upstash' (nombre legacy; prueba el
+    // proveedor activo). Caza el fallo SILENCIOSO de ElastiCache/Upstash.
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT event_type, created_at, metadata FROM observable_events
+        WHERE endpoint = 'canary-redis-upstash'
+          AND (event_type LIKE '%_ok' OR event_type LIKE '%_failed')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `)) as any[]
+      return { data: rows, count: rows.length }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
@@ -559,6 +574,25 @@ async function _GET(request: NextRequest) {
       uptimePct: decided > 0 ? (c.ok / decided) * 100 : null,
     }
   })
+
+  // ─── Procesar 13: salud de CACHÉ (último canary, salud AHORA) ───
+  const cacheCanaryRow = ((cacheCanaryResult.data ?? [])[0]) as
+    | { event_type?: string; created_at?: string; metadata?: unknown }
+    | undefined
+  let cacheStatus: Status = 'unknown'
+  let cacheLastAt: string | null = null
+  let cacheLatencyMs: number | null = null
+  let cacheProvider: string | null = null
+  if (cacheCanaryRow?.event_type) {
+    cacheLastAt = cacheCanaryRow.created_at ?? null
+    const meta = (cacheCanaryRow.metadata ?? {}) as { durationMs?: number; provider?: string }
+    cacheLatencyMs = typeof meta.durationMs === 'number' ? meta.durationMs : null
+    cacheProvider = typeof meta.provider === 'string' ? meta.provider : null
+    const ageMin = cacheLastAt ? (Date.now() - new Date(cacheLastAt).getTime()) / 60000 : Infinity
+    if (cacheCanaryRow.event_type.endsWith('_failed')) cacheStatus = 'red'
+    else if (ageMin <= 15) cacheStatus = 'green'
+    else cacheStatus = 'amber' // último OK pero la canary lleva >15 min sin correr
+  }
 
   // ─── Procesar 9: tráfico ───
   const trafficCount = trafficResult.error ? null : (trafficResult.count ?? 0)
@@ -700,6 +734,14 @@ async function _GET(request: NextRequest) {
         failed: canaryFails,
         breakdown: canaryBreakdown,
         thresholds: { green: '≥99%', amber: '≥95%' },
+      },
+      cache: {
+        status: cacheStatus,
+        provider: cacheProvider,
+        latencyMs: cacheLatencyMs,
+        last_at: cacheLastAt,
+        thresholds: { amber: '>15 min sin canary', red: 'último canary falló' },
+        note: 'Salud de la caché compartida (ElastiCache/Upstash) según el último canary canary-redis-upstash (SET+GET+verify cada 5 min). Fallo SILENCIOSO: caché caída → la app degrada a BD sin error visible.',
       },
       errors_4xx: {
         status: errors4xxCount == null ? 'unknown' : classify4xx(errors4xxCount),

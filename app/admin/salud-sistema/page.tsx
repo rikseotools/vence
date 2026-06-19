@@ -123,6 +123,14 @@ interface SystemHealthResponse {
       stale_hours: number | null
       thresholds: { amber: string; red: string }
     }
+    cache: {
+      status: Status
+      provider: string | null
+      latencyMs: number | null
+      last_at: string | null
+      thresholds: { amber: string; red: string }
+      note: string
+    }
   }
   error?: string
 }
@@ -210,7 +218,7 @@ export default function SaludSistemaPage() {
             Salud del sistema
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            6 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
+            7 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
               docs/runbooks/health-check.md
             </code>
@@ -356,6 +364,30 @@ export default function SaludSistemaPage() {
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Workflow: <code>.github/workflows/check-stats-drift.yml</code> · 04:00 UTC diario
+              </p>
+            </IndicatorCard>
+
+            {/* Caché (ElastiCache/Upstash) — fallo SILENCIOSO (cae a BD sin error) */}
+            <IndicatorCard
+              title="Caché (ElastiCache)"
+              status={data.indicators.cache.status}
+              metric={
+                data.indicators.cache.latencyMs != null
+                  ? `${data.indicators.cache.latencyMs}ms`
+                  : data.indicators.cache.status === 'unknown'
+                    ? 'sin datos'
+                    : 'OK'
+              }
+              hint={`Proveedor: ${data.indicators.cache.provider ?? '—'} · ámbar ${data.indicators.cache.thresholds.amber}, rojo ${data.indicators.cache.thresholds.red}`}
+            >
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Último canary:{' '}
+                {data.indicators.cache.last_at
+                  ? new Date(data.indicators.cache.last_at).toLocaleString('es-ES')
+                  : '—'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Canary <code>canary-redis-upstash</code> (SET+GET+verify cada 5 min). Fallo = caché caída → la app degrada a BD sin error visible.
               </p>
             </IndicatorCard>
 
