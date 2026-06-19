@@ -438,7 +438,7 @@ async function _GET(request: NextRequest) {
     // proveedor activo). Caza el fallo SILENCIOSO de ElastiCache/Upstash.
     run(async () => {
       const rows = (await db.execute(sql`
-        SELECT event_type, created_at, metadata FROM observable_events
+        SELECT event_type, created_at, duration_ms, metadata FROM observable_events
         WHERE endpoint = 'canary-redis-upstash'
           AND (event_type LIKE '%_ok' OR event_type LIKE '%_failed')
         ORDER BY created_at DESC
@@ -577,7 +577,7 @@ async function _GET(request: NextRequest) {
 
   // ─── Procesar 13: salud de CACHÉ (último canary, salud AHORA) ───
   const cacheCanaryRow = ((cacheCanaryResult.data ?? [])[0]) as
-    | { event_type?: string; created_at?: string; metadata?: unknown }
+    | { event_type?: string; created_at?: string; duration_ms?: number; metadata?: unknown }
     | undefined
   let cacheStatus: Status = 'unknown'
   let cacheLastAt: string | null = null
@@ -585,8 +585,8 @@ async function _GET(request: NextRequest) {
   let cacheProvider: string | null = null
   if (cacheCanaryRow?.event_type) {
     cacheLastAt = cacheCanaryRow.created_at ?? null
-    const meta = (cacheCanaryRow.metadata ?? {}) as { durationMs?: number; provider?: string }
-    cacheLatencyMs = typeof meta.durationMs === 'number' ? meta.durationMs : null
+    cacheLatencyMs = typeof cacheCanaryRow.duration_ms === 'number' ? cacheCanaryRow.duration_ms : null
+    const meta = (cacheCanaryRow.metadata ?? {}) as { provider?: string }
     cacheProvider = typeof meta.provider === 'string' ? meta.provider : null
     const ageMin = cacheLastAt ? (Date.now() - new Date(cacheLastAt).getTime()) / 60000 : Infinity
     if (cacheCanaryRow.event_type.endsWith('_failed')) cacheStatus = 'red'

@@ -67,7 +67,7 @@ export class CanaryRedisUpstashCron {
           eventType: 'canary_redis_ok',
           endpoint: 'canary-redis-upstash',
           durationMs: result.durationMs,
-          metadata: { cron: 'canary-redis-upstash' },
+          metadata: { cron: 'canary-redis-upstash', provider: result.provider },
         });
       } else {
         this.observability.emitFireAndForget({
@@ -77,7 +77,7 @@ export class CanaryRedisUpstashCron {
           endpoint: 'canary-redis-upstash',
           durationMs: result.durationMs,
           errorMessage: result.errorMessage,
-          metadata: { cron: 'canary-redis-upstash', step: result.step },
+          metadata: { cron: 'canary-redis-upstash', step: result.step, provider: result.provider },
         });
       }
 
