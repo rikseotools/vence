@@ -186,6 +186,11 @@ resource "aws_ecs_task_definition" "frontend" {
         { name = "HOSTNAME", value = "0.0.0.0" },
         { name = "TZ", value = "UTC" },
         { name = "NEXT_TELEMETRY_DISABLED", value = "1" },
+        # Caché: ElastiCache (Valkey, vence-cache) en-VPC. DEBE coincidir con el
+        # backend (CACHE_PROVIDER) por coherencia de cache_version. Cutover 19/06,
+        # ver docs/runbooks/cache-elasticache-migracion.md.
+        { name = "CACHE_PROVIDER", value = "elasticache" },
+        { name = "ELASTICACHE_URL", value = "rediss://master.vence-cache.pcfmfa.euw2.cache.amazonaws.com:6379" },
         # Site URLs: NEXT_PUBLIC_SITE_URL queda inlineado en bundle build-time,
         # pero algunas APIs server-side las leen runtime. SITE_URL es para esos.
         { name = "SITE_URL", value = "https://www.vence.es" },

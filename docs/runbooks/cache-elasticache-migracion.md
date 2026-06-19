@@ -1,5 +1,29 @@
 # Migración de caché: Upstash → AWS ElastiCache
 
+## ✅ CUTOVER COMPLETADO (19/06/2026)
+Frontend + backend corriendo en **ElastiCache** (Valkey 8.1, TLS), verificado:
+CurrConnections=8, GetTypeCmds/SetTypeCmds activos, 0 errores. Recursos AWS
+(eu-west-2, creados por CLI — **drift IaC**, importar a TF como follow-up):
+- Replication group **`vence-cache`** (cache.t4g.micro, single-node, TLS) →
+  endpoint `master.vence-cache.pcfmfa.euw2.cache.amazonaws.com:6379` (`rediss://`).
+- Cache subnet group `vence-cache-subnets` (subnets del VPC de ECS).
+- SG `sg-0c74ed9f516a353a9` (inbound 6379 desde frontend `sg-024a64a5807ff6e9f`
+  y backend `sg-0663f77e0d44ca693`).
+- Env `CACHE_PROVIDER=elasticache` + `ELASTICACHE_URL` en task defs
+  vence-frontend:250 y vence-backend:24, **y en TF** (frontend.tf, main.tf) para
+  durabilidad ante `terraform apply`.
+
+**Rollback** (si hiciera falta): poner `CACHE_PROVIDER=upstash` en las task defs
+(o TF) + redeploy. Upstash sigue activo. **NO cancelar Upstash** hasta tener
+varios días estable en ElastiCache. **Follow-ups:** (1) importar ElastiCache+SG a
+Terraform (quitar drift); (2) la canary `canary-redis-upstash` ahora prueba un
+store que ya no se usa — actualizar/retirar; (3) re-tag: el backend usa
+`vence-backend:latest` (mutable) → deploys futuros OK.
+
+---
+**(Histórico del plan:)**
+
+
 Mover la caché (`lib/cache`) de Upstash REST a **ElastiCache (Redis TCP en-VPC)**.
 Motiva: quitar el límite de ~1MB por request de Upstash (alerta "Max Request Size"),
 abaratar a escala (coste plano vs pago-por-request) y alinear con la dirección

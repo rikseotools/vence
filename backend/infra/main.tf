@@ -242,6 +242,10 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "LOG_LEVEL", value = var.log_level },
+        # Caché: ElastiCache (Valkey, vence-cache) en-VPC. DEBE coincidir con el
+        # frontend (CACHE_PROVIDER) por coherencia de cache_version. Cutover 19/06.
+        { name = "CACHE_PROVIDER", value = "elasticache" },
+        { name = "ELASTICACHE_URL", value = "rediss://master.vence-cache.pcfmfa.euw2.cache.amazonaws.com:6379" },
         { name = "APP_BASE_URL", value = var.app_base_url },
         { name = "ADMIN_EMAIL", value = var.admin_email },
         { name = "BOE_NOTIFY_ENABLED", value = var.boe_notify_enabled },
