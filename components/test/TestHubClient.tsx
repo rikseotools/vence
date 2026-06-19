@@ -380,6 +380,20 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   </div>
                   <div className="text-[11px] text-gray-400 mt-2">Un tema puede estar en verde (aciertas) pero con cobertura baja si solo has practicado unos pocos artículos. Cubre el tema entero para fiarte del color.</div>
                 </div>
+                <div className="border-t border-gray-100 pt-3 mt-3">
+                  <div className="text-sm font-medium text-gray-700 mb-2">📈 Flecha junto al % = tendencia <span className="font-normal text-gray-500">(tus últimos 30 días vs tu media)</span></div>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <div className="flex items-center px-3 py-1 bg-green-50 rounded-lg">
+                      <span className="text-green-600 font-bold mr-2">▲</span>
+                      <span className="text-xs font-medium text-gray-700">Estás mejorando (aciertas más que tu media)</span>
+                    </div>
+                    <div className="flex items-center px-3 py-1 bg-red-50 rounded-lg">
+                      <span className="text-red-600 font-bold mr-2">▼</span>
+                      <span className="text-xs font-medium text-gray-700">Estás bajando (repasa este tema)</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-2">La flecha solo aparece si has practicado lo suficiente en los últimos 30 días.</div>
+                </div>
               </div>
             </div>
 

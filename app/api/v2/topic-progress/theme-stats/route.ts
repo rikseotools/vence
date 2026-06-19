@@ -79,8 +79,8 @@ async function _GET(request: NextRequest) {
   // mundo recalcula con la V5 (artículo→topic_scope) inmediatamente, sin
   // ventana de 5min sirviendo el resultado roto.
   const cacheKey = oposicionId
-    ? `theme_stats_v6:${userId}:${oposicionId}`
-    : `theme_stats_v6:${userId}`
+    ? `theme_stats_v7:${userId}:${oposicionId}`
+    : `theme_stats_v7:${userId}`
   const cached = await getCached<CachedThemeStats>(cacheKey)
 
   // Fast path: cache fresco (< 5min) → devolver sin tocar BD
@@ -132,13 +132,16 @@ async function _GET(request: NextRequest) {
       //     near-real-time vía outbox-processor). Medido: 52-442ms para el user
       //     más pesado (Nila, 68k) vs 12s de la V3 que hacía el JOIN sobre
       //     test_questions crudas.
-      //   - Fiabilidad: user_article_stats lleva la corrección validada del
-      //     outbox (test_questions.is_correct quedó poco fiable tras el
-      //     anti-scraping).
       // DISTINCT (artículo,tema) evita doble conteo si hay filas de topic_scope
-      // solapadas para el mismo tema. NOTA: user_article_stats no guarda ventana
-      // 30d → accuracy_30d=null por ahora (follow-up: añadir ventana al pipeline).
-      const queryPromise = db.execute(sql`
+      // solapadas para el mismo tema.
+      // DOS dimensiones + tendencia, con DOS queries en paralelo:
+      //   - Q1 (user_article_stats): accuracy de por vida + cobertura del tema.
+      //   - Q2 (test_questions ACOTADO a 30d): accuracy_30d para la flecha ▲▼.
+      //     user_article_stats agrega de por vida sin ventana, por eso el 30d sale
+      //     de test_questions (acotado a 30d = poco volumen → rápido).
+      // Q1 — VIDA + COBERTURA desde user_article_stats (agregado por artículo,
+      // rápido, sin timestamps). Da accuracy de por vida + cobertura del tema.
+      const lifetimeQuery = db.execute(sql`
         WITH per_article AS MATERIALIZED (
           -- Agregado del usuario por artículo (dedup del PK granular de uas).
           SELECT uas.article_id,
@@ -180,26 +183,73 @@ async function _GET(request: NextRequest) {
         ORDER BY s.topic_number
       `)
 
-      const result = await Promise.race([
-        queryPromise,
+      // Q2 — TENDENCIA 30d desde test_questions ACOTADO a 30 días (datos
+      // pequeños → rápido) → mismo modelo article→topic_scope. Permite la flecha
+      // ▲▼ (¿mejoro o empeoro?). No se puede sacar de user_article_stats porque
+      // agrega de por vida sin ventana temporal. is_correct es fiable (verificado
+      // 2026-06-19: 0 NULL, casa con la accuracy de por vida).
+      const trend30dQuery = db.execute(sql`
+        WITH recent AS (
+          SELECT q.primary_article_id AS article_id, tq.is_correct
+          FROM test_questions tq
+          INNER JOIN questions q ON q.id = tq.question_id
+          WHERE tq.user_id = ${userId}
+            AND tq.created_at >= now() - interval '30 days'
+            AND q.primary_article_id IS NOT NULL
+        ),
+        per_art AS (
+          SELECT article_id, COUNT(*) AS tot,
+            SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) AS cor
+          FROM recent GROUP BY article_id
+        ),
+        scope AS (
+          SELECT DISTINCT t.topic_number, a.id AS article_id
+          FROM topics t
+          INNER JOIN topic_scope ts ON ts.topic_id = t.id
+          INNER JOIN articles a ON a.law_id = ts.law_id
+            AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
+          WHERE t.position_type = ${positionType}
+        )
+        SELECT s.topic_number AS tema_number,
+          SUM(pa.tot)::int AS total_30d,
+          SUM(pa.cor)::int AS correct_30d,
+          ROUND(SUM(pa.cor)::numeric / NULLIF(SUM(pa.tot), 0) * 100, 0)::int AS accuracy_30d
+        FROM scope s
+        INNER JOIN per_art pa ON pa.article_id = s.article_id
+        GROUP BY s.topic_number
+        HAVING SUM(pa.tot) > 0
+      `)
+
+      // Las dos en paralelo bajo el mismo timeout (wall = la más lenta).
+      const [lifeRows, trendRows] = (await Promise.race([
+        Promise.all([lifetimeQuery, trend30dQuery]),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('theme-stats v5 timeout')), BD_TIMEOUT_MS)
         ),
-      ])
+      ])) as [any[], any[]]
 
-      const stats: ThemeStat[] = (result as any[]).map((r: any) => ({
-        tema_number: Number(r.tema_number),
-        total: Number(r.total),
-        correct: Number(r.correct),
-        accuracy: Number(r.accuracy),
-        scope_articles: Number(r.scope_articles),
-        answered_articles: Number(r.answered_articles),
-        // user_article_stats no guarda ventana temporal → 30d no disponible aún
-        total_30d: 0,
-        correct_30d: 0,
-        accuracy_30d: null,
-        last_study: r.last_study,
-      }))
+      const trendByTema = new Map<number, { t: number; c: number; a: number }>()
+      for (const r of trendRows) {
+        trendByTema.set(Number(r.tema_number), {
+          t: Number(r.total_30d), c: Number(r.correct_30d), a: Number(r.accuracy_30d),
+        })
+      }
+
+      const stats: ThemeStat[] = lifeRows.map((r: any) => {
+        const tr = trendByTema.get(Number(r.tema_number))
+        return {
+          tema_number: Number(r.tema_number),
+          total: Number(r.total),
+          correct: Number(r.correct),
+          accuracy: Number(r.accuracy),
+          scope_articles: Number(r.scope_articles),
+          answered_articles: Number(r.answered_articles),
+          total_30d: tr?.t ?? 0,
+          correct_30d: tr?.c ?? 0,
+          accuracy_30d: tr?.a ?? null,
+          last_study: r.last_study,
+        }
+      })
 
       setCached(cacheKey, { data: stats, ts: Date.now() }, STALE_TTL_S)
       return NextResponse.json({ success: true, stats })
