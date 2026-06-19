@@ -12,6 +12,7 @@ import { getAdminDb } from '@/db/client'
 import { conversionOutbox } from '@/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { getDestinationByName } from './registry'
+import { classifyDeliveryOutcome } from './outcome'
 import type { ConversionEvent } from './types'
 
 const MAX_RETRY = 5
@@ -22,6 +23,8 @@ export interface DrainSummary {
   validated: number
   retried: number
   dlq: number
+  /** Fallos TERMINALES marcados como `skipped` (no atribuibles, no reintentables). */
+  skipped: number
   dryRun: boolean
 }
 
@@ -58,7 +61,7 @@ export async function drainConversionOutbox(
     .orderBy(asc(conversionOutbox.createdAt))
     .limit(limit)
 
-  const summary: DrainSummary = { scanned: pending.length, delivered: 0, validated: 0, retried: 0, dlq: 0, dryRun }
+  const summary: DrainSummary = { scanned: pending.length, delivered: 0, validated: 0, retried: 0, dlq: 0, skipped: 0, dryRun }
 
   for (const row of pending) {
     const dest = getDestinationByName(row.destination)
@@ -73,7 +76,20 @@ export async function drainConversionOutbox(
     const event = rehydrate(row)
     try {
       const res = await dest.deliver(event, { dryRun })
-      if (!res.ok) throw new Error(res.detail || 'delivery_failed')
+      const outcome = classifyDeliveryOutcome(res, dryRun)
+
+      // Fallo TERMINAL (no atribuible / datos inválidos / config ausente):
+      // reintentar es inútil → marcar `skipped` y dejar de tocarla.
+      if (outcome === 'skip') {
+        await db.update(conversionOutbox)
+          .set({ status: 'skipped', lastError: res.detail ?? 'skipped' })
+          .where(eq(conversionOutbox.id, row.id))
+        summary.skipped++
+        continue
+      }
+
+      // Fallo REINTENTABLE (red/OAuth/5xx) o dryRun: al catch (retry/DLQ).
+      if (outcome === 'retry') throw new Error(res.detail || 'delivery_failed')
 
       if (dryRun) {
         // Validate-only: no consumir la fila; solo limpiar error previo.

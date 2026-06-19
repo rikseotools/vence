@@ -44,6 +44,14 @@ export interface DeliveryResult {
   ok: boolean
   /** Descripción legible (para logs / last_error). */
   detail?: string
+  /**
+   * Sólo relevante si `ok === false`. `true` = fallo TERMINAL (reintentar no
+   * sirve: el evento no es entregable a este destino — sin click-ID, datos
+   * inválidos, config ausente) → el worker lo marca `skipped` sin reintentar.
+   * `false`/undefined = fallo REINTENTABLE (red, OAuth, 5xx, rate-limit) →
+   * retry/DLQ. Cada destino clasifica sus propios verdictos.
+   */
+  terminal?: boolean
 }
 
 export interface DeliverOptions {

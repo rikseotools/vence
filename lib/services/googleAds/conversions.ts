@@ -71,7 +71,9 @@ export async function uploadPurchaseConversion(input: PurchaseConversionInput): 
 
   const hasClickId = !!(input.gclid || input.gbraid || input.wbraid)
   if (!hasClickId && !useEmail) {
-    return { ok: false, detail: 'no_identifier' } // ni click-ID ni email utilizable → no atribuible
+    // Ni click-ID ni email utilizable → NO atribuible a Google Ads. Terminal:
+    // reintentar es inútil (la venta nunca va a ganar un gclid).
+    return { ok: false, detail: 'no_identifier', terminal: true }
   }
 
   const conversion: Record<string, unknown> = {
@@ -104,11 +106,15 @@ export async function uploadPurchaseConversion(input: PurchaseConversionInput): 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pfe = (response as any)?.partial_failure_error
     if (pfe && (pfe.code || pfe.message)) {
-      return { ok: false, detail: `partial_failure: ${pfe.message || JSON.stringify(pfe)}` }
+      // Google rechazó la fila por sus datos (acción inexistente, duplicado,
+      // click demasiado antiguo…) → terminal, reintentar no la arregla.
+      return { ok: false, detail: `partial_failure: ${pfe.message || JSON.stringify(pfe)}`, terminal: true }
     }
 
     return { ok: true, detail: dryRun ? 'validated' : 'uploaded' }
   } catch (e) {
+    // Error de transporte/OAuth (red, "Premature close", 5xx, rate-limit) →
+    // REINTENTABLE (terminal queda undefined). El worker hará retry/DLQ.
     const err = normalizeGoogleAdsError(e)
     return { ok: false, detail: err.message }
   }

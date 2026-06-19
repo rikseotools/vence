@@ -29,8 +29,9 @@ export interface Ga4PurchaseInput {
 export async function sendGa4Purchase(input: Ga4PurchaseInput): Promise<DeliveryResult> {
   const apiSecret = process.env.GA4_API_SECRET
   const measurementId = process.env.GA4_MEASUREMENT_ID || DEFAULT_MEASUREMENT_ID
-  if (!apiSecret) return { ok: false, detail: 'ga4_api_secret_missing' }
-  if (!input.clientId) return { ok: false, detail: 'no_client_id' }
+  // Terminales: reintentar no arregla ni la config ausente ni la falta de id.
+  if (!apiSecret) return { ok: false, detail: 'ga4_api_secret_missing', terminal: true }
+  if (!input.clientId) return { ok: false, detail: 'no_client_id', terminal: true }
 
   const body = {
     client_id: input.clientId,
@@ -65,13 +66,16 @@ export async function sendGa4Purchase(input: Ga4PurchaseInput): Promise<Delivery
       const json = await res.json().catch(() => ({}))
       const msgs = (json as { validationMessages?: unknown[] }).validationMessages || []
       if (Array.isArray(msgs) && msgs.length > 0) {
-        return { ok: false, detail: `validation: ${JSON.stringify(msgs).slice(0, 200)}` }
+        // Datos inválidos → terminal (reintentar el mismo payload no cambia).
+        return { ok: false, detail: `validation: ${JSON.stringify(msgs).slice(0, 200)}`, terminal: true }
       }
       return { ok: true, detail: 'validated' }
     }
     if (res.status === 204 || res.ok) return { ok: true, detail: 'sent' }
-    return { ok: false, detail: `http_${res.status}` }
+    // 4xx = error de cliente (datos/auth) → terminal; 5xx = servidor → reintentable.
+    return { ok: false, detail: `http_${res.status}`, terminal: res.status >= 400 && res.status < 500 }
   } catch (e) {
+    // Error de red → reintentable (terminal undefined).
     return { ok: false, detail: e instanceof Error ? e.message : String(e) }
   }
 }
