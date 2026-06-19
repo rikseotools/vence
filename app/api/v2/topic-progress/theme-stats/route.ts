@@ -68,11 +68,14 @@ async function _GET(request: NextRequest) {
   const oposicionId = (oposicionIdRaw as OposicionSlug | null) ?? undefined
 
   // Cache key incluye oposicionId para no mezclar entre oposiciones.
-  // Las claves antiguas (`theme_stats:${userId}`) coexisten para clientes
-  // que aún no envían oposicionId (backward compat).
+  // VERSIÓN v5 en el prefijo: invalida de golpe todas las entradas cacheadas
+  // por la V4 (que servían `[]` para usuarios con tests globales). Al cambiar el
+  // prefijo, las claves viejas (`theme_stats:...`) dejan de leerse → todo el
+  // mundo recalcula con la V5 (artículo→topic_scope) inmediatamente, sin
+  // ventana de 5min sirviendo el resultado roto.
   const cacheKey = oposicionId
-    ? `theme_stats:${userId}:${oposicionId}`
-    : `theme_stats:${userId}`
+    ? `theme_stats_v5:${userId}:${oposicionId}`
+    : `theme_stats_v5:${userId}`
   const cached = await getCached<CachedThemeStats>(cacheKey)
 
   // Fast path: cache fresco (< 5min) → devolver sin tocar BD
