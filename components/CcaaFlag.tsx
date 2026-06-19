@@ -230,7 +230,11 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
   // Estatales / sin CCAA → bandera de España (AGE, Justicia y cuerpos estatales).
   // OJO: guardia-civil y policia-nacional NO van aquí: tienen su escudo oficial
   // propio (ver ESCUDO_KEYWORDS), que tiene prioridad sobre la bandera.
-  [['estado', 'estatal', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
+  // OJO: 'sepe' (SEPE) iría aquí pero colisiona con 'sepei' (consorcios de bomberos
+  // provinciales: SEPEI Albacete/Cáceres) → se usa 'auxiliar-sepe' para no pisarlos
+  // (esos caen a su CCAA por albacete/caceres). Igual, estado/estatal/ceuta/melilla/
+  // estadistica-ine ya tienen su escudo (prioritario) — quedan aquí solo de fallback.
+  [['estado', 'estatal', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'auxiliar-sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
   // Castilla-La Mancha (antes que "castilla")
   [['castilla-la-mancha', 'clm', 'sescam', 'albacete', 'ciudad-real', 'cuenca', 'guadalajara', 'toledo'], 'clm'],
   // Castilla y León
@@ -322,6 +326,18 @@ const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   [['tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia'], { src: '/escudos/justicia.svg', alt: 'Logotipo del Ministerio de Justicia' }],
   // UNED: logo institucional, para Aux. Admin. de la UNED (slug …universidad-uned).
   [['uned'], { src: '/escudos/uned.jpg', alt: 'Logo de la UNED' }],
+  // INE (Instituto Nacional de Estadística): logo oficial, para Aux. de Estadística.
+  [['estadistica-ine'], { src: '/escudos/ine.svg', alt: 'Logotipo del Instituto Nacional de Estadística (INE)' }],
+  // Ciudades Autónomas de Ceuta y Melilla: su bandera propia (Aux. Admin., bomberos,
+  // policía local) — más identitaria que la bandera de España.
+  [['ceuta'], { src: '/escudos/ceuta.svg', alt: 'Bandera de la Ciudad Autónoma de Ceuta' }],
+  [['melilla'], { src: '/escudos/melilla.svg', alt: 'Bandera de la Ciudad Autónoma de Melilla' }],
+  // Cuerpos GENERALES de la Administración del Estado (Auxiliar/Administrativo del
+  // Estado, Mecánico-Conductor, SOIVRE): el Escudo de España (emblema oficial del
+  // Estado en las convocatorias del BOE), en vez de la bandera tricolor genérica.
+  // Va al final: los organismos con logo propio (AEAT, SEPE, IIPP…) se añadirán
+  // ANTES con su keyword específica para tener prioridad sobre este genérico.
+  [['estado', 'estatal', 'soivre'], { src: '/escudos/escudo-espana.svg', alt: 'Escudo de España' }],
 ]
 
 export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {
