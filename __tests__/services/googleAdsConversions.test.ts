@@ -6,10 +6,27 @@ import {
   hashEmail,
   uploadPurchaseConversion,
   googleAdsDestination,
+  isTransientTransportError,
 } from '@/lib/services/googleAds/conversions'
 import type { ConversionEvent } from '@/lib/conversions/types'
 
 describe('googleAds/conversions', () => {
+  describe('isTransientTransportError', () => {
+    test('reconoce errores de transporte transitorios (reintento inmediato)', () => {
+      expect(isTransientTransportError('2 UNKNOWN: Getting metadata from plugin failed with error: Invalid response body while trying to fetch https://oauth2.googleapis.com/token: Premature close')).toBe(true)
+      expect(isTransientTransportError('socket hang up')).toBe(true)
+      expect(isTransientTransportError('read ECONNRESET')).toBe(true)
+      expect(isTransientTransportError('14 UNAVAILABLE: connection error')).toBe(true)
+      expect(isTransientTransportError('other side closed')).toBe(true)
+    })
+    test('NO marca como transitorio errores de datos/terminales', () => {
+      expect(isTransientTransportError('partial_failure: conversion action not found')).toBe(false)
+      expect(isTransientTransportError('no_identifier')).toBe(false)
+      expect(isTransientTransportError('INVALID_ARGUMENT: order_id too long')).toBe(false)
+      expect(isTransientTransportError('')).toBe(false)
+    })
+  })
+
   describe('hashEmail', () => {
     test('SHA-256 hex del email normalizado (lowercase + trim)', () => {
       const expected = '973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b'
@@ -28,7 +45,7 @@ describe('googleAds/conversions', () => {
         occurredAt: new Date().toISOString(),
         dryRun: true,
       })
-      expect(res).toEqual({ ok: false, detail: 'no_identifier' })
+      expect(res).toEqual({ ok: false, detail: 'no_identifier', terminal: true })
     })
 
     test('email pero Enhanced Conversions OFF → no_identifier (no envía email, no rompe)', async () => {
@@ -42,7 +59,7 @@ describe('googleAds/conversions', () => {
         occurredAt: new Date().toISOString(),
         dryRun: true,
       })
-      expect(res).toEqual({ ok: false, detail: 'no_identifier' })
+      expect(res).toEqual({ ok: false, detail: 'no_identifier', terminal: true })
       if (prev !== undefined) process.env.ADS_ENHANCED_CONVERSIONS_ENABLED = prev
     })
   })

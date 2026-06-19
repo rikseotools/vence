@@ -41,6 +41,31 @@ export interface PurchaseConversionInput {
   dryRun?: boolean
 }
 
+/**
+ * Errores de TRANSPORTE transitorios en los que un reintento INMEDIATO suele
+ * resolver. Caso real (incidente 19/06): el cron corre cada 15 min; entre runs
+ * el socket keep-alive a oauth2.googleapis.com queda idle y Google lo cierra;
+ * undici reutiliza el socket muerto → "Premature close" en el fetch del token
+ * OAuth ("Getting metadata from plugin failed"). Reintentar al instante hace que
+ * undici descarte el socket roto y abra uno fresco. La subida es idempotente por
+ * order_id en el lado de Google, así que reintentar nunca duplica.
+ */
+export function isTransientTransportError(message: string): boolean {
+  const m = (message || '').toLowerCase()
+  return (
+    m.includes('premature close') ||
+    m.includes('socket hang up') ||
+    m.includes('econnreset') ||
+    m.includes('etimedout') ||
+    m.includes('econnrefused') ||
+    m.includes('und_err_socket') ||
+    m.includes('getting metadata from plugin failed') ||
+    m.includes('14 unavailable') ||
+    m.includes('deadline_exceeded') ||
+    m.includes('other side closed')
+  )
+}
+
 /** SHA-256 hex de un email normalizado (lowercase + trim). Para Enhanced Conversions. */
 export function hashEmail(email: string): string {
   return createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
@@ -90,34 +115,53 @@ export async function uploadPurchaseConversion(input: PurchaseConversionInput): 
     conversion.user_identifiers = [{ hashed_email: input.emailSha256 }]
   }
 
-  try {
-    const { getGoogleAdsCustomer } = await import('./client')
-    const customer = getGoogleAdsCustomer()
-    const customerId = loadAdsConfig().customerId
-    const response = await customer.conversionUploads.uploadClickConversions({
-      customer_id: customerId,
-      conversions: [conversion],
-      partial_failure: true,
-      validate_only: dryRun,
+  // Reintento INMEDIATO ante errores de transporte transitorios (socket
+  // keep-alive muerto reutilizado por undici → "Premature close"). El primer
+  // reintento descarta el socket roto y abre uno fresco. Idempotente por
+  // order_id, así que reintentar nunca duplica en Google.
+  const MAX_ATTEMPTS = 3
+  let lastTransientDetail = 'delivery_failed'
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const { getGoogleAdsCustomer } = await import('./client')
+      const customer = getGoogleAdsCustomer()
+      const customerId = loadAdsConfig().customerId
+      const response = await customer.conversionUploads.uploadClickConversions({
+        customer_id: customerId,
+        conversions: [conversion],
+        partial_failure: true,
+        validate_only: dryRun,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any)
+
+      // partial_failure devuelve los errores por fila aquí en vez de lanzar.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any)
+      const pfe = (response as any)?.partial_failure_error
+      if (pfe && (pfe.code || pfe.message)) {
+        // Google rechazó la fila por sus datos (acción inexistente, duplicado,
+        // click demasiado antiguo…) → terminal, reintentar no la arregla.
+        return { ok: false, detail: `partial_failure: ${pfe.message || JSON.stringify(pfe)}`, terminal: true }
+      }
 
-    // partial_failure devuelve los errores por fila aquí en vez de lanzar.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pfe = (response as any)?.partial_failure_error
-    if (pfe && (pfe.code || pfe.message)) {
-      // Google rechazó la fila por sus datos (acción inexistente, duplicado,
-      // click demasiado antiguo…) → terminal, reintentar no la arregla.
-      return { ok: false, detail: `partial_failure: ${pfe.message || JSON.stringify(pfe)}`, terminal: true }
+      return { ok: true, detail: dryRun ? 'validated' : 'uploaded' }
+    } catch (e) {
+      // Error de transporte/OAuth (red, "Premature close", 5xx, rate-limit).
+      const err = normalizeGoogleAdsError(e)
+      if (isTransientTransportError(err.message) && attempt < MAX_ATTEMPTS) {
+        // Socket fresco en el siguiente intento; backoff corto (200ms, 600ms).
+        lastTransientDetail = err.message
+        await new Promise((r) => setTimeout(r, attempt * 200 + 200 * (attempt - 1)))
+        continue
+      }
+      // Agotados los reintentos inmediatos (o error no transitorio):
+      // REINTENTABLE a nivel de outbox (terminal undefined). El worker hará
+      // retry/DLQ en la siguiente pasada del cron.
+      return { ok: false, detail: err.message }
     }
-
-    return { ok: true, detail: dryRun ? 'validated' : 'uploaded' }
-  } catch (e) {
-    // Error de transporte/OAuth (red, "Premature close", 5xx, rate-limit) →
-    // REINTENTABLE (terminal queda undefined). El worker hará retry/DLQ.
-    const err = normalizeGoogleAdsError(e)
-    return { ok: false, detail: err.message }
   }
+
+  // Inalcanzable en la práctica (el for siempre retorna), pero satisface el tipo.
+  return { ok: false, detail: lastTransientDetail }
 }
 
 /** Adapter de Google Ads para el bus de conversiones. */
