@@ -15,10 +15,28 @@ CurrConnections=8, GetTypeCmds/SetTypeCmds activos, 0 errores. Recursos AWS
 
 **Rollback** (si hiciera falta): poner `CACHE_PROVIDER=upstash` en las task defs
 (o TF) + redeploy. Upstash sigue activo. **NO cancelar Upstash** hasta tener
-varios días estable en ElastiCache. **Follow-ups:** (1) importar ElastiCache+SG a
-Terraform (quitar drift); (2) la canary `canary-redis-upstash` ahora prueba un
-store que ya no se usa — actualizar/retirar; (3) re-tag: el backend usa
-`vence-backend:latest` (mutable) → deploys futuros OK.
+varios días estable en ElastiCache.
+
+## Monitorización (defensa en profundidad — hecha 19/06)
+1. **Canary app-level agnóstica** (`backend/.../canary-redis-upstash.service.ts`,
+   nombre legacy): prueba el proveedor ACTIVO (`CACHE_PROVIDER`) con SET+GET+verify
+   cada 5 min vía `createCacheSink` (sink dedicado, NO el `CacheService` fail-open).
+   Caza el fallo SILENCIOSO (caché caída → app degrada a BD sin error) en ~5 min.
+   Sobrevive el swap de proveedor. Emite a `observable_events`. Test 5/5.
+2. **4 alarmas CloudWatch** sobre el nodo `vence-cache-001` → SNS
+   `vence-canary-alerts` (canal existente) + OK-actions:
+   `vence-cache-evictions` (thrashing memoria), `vence-cache-low-memory` (<50MB),
+   `vence-cache-engine-cpu` (>90%), `vence-cache-no-connections` (<1 conexión).
+3. **Coherencia** frontend↔backend: NO necesita alarma — está garantizada por
+   **Terraform** (mismo `CACHE_PROVIDER` fijado en frontend.tf y main.tf). Las
+   canaries probarían cada store por separado y pasarían aunque divergieran, así
+   que un guard de monitorización sería redundante; la defensa es el IaC.
+
+## Follow-ups pendientes
+1. Importar ElastiCache + SG (`sg-0c74ed9f516a353a9`) + subnet group a Terraform
+   (ahora son drift, creados por CLI).
+2. Tras estabilizar varios días → **cancelar Upstash** (y quitar sus secrets SSM).
+3. (hecho) re-tag: el backend usa `vence-backend:latest` (mutable) → deploys futuros OK.
 
 ---
 **(Histórico del plan:)**
