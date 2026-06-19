@@ -3,11 +3,12 @@ import { CacheService } from './cache.service';
 import { CacheVersioningService } from './cache-versioning.service';
 
 /**
- * Módulo Global de cache Redis (Upstash REST).
+ * Módulo Global de cache (agnóstica por contrato — ver cache-sink.ts).
  *
- * Compartido con la app Next.js — mismas keys, mismo formato JSON,
- * misma instancia Upstash. Invalidación coherente cross-runtime
- * porque ambos leen del mismo store.
+ * Compartido con la app Next.js — mismas keys, mismo formato JSON, MISMO
+ * proveedor (CACHE_PROVIDER: upstash|elasticache). Invalidación coherente
+ * cross-runtime porque ambos leen del mismo store. CRÍTICO: frontend y backend
+ * deben usar el MISMO CACHE_PROVIDER o `cache_version` diverge → stale.
  *
  * Exporta:
  *   - CacheService: GET/SET/DEL/INCR/getNumber

@@ -45,10 +45,14 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   // Token Bearer para llamar a endpoints internos protegidos de la app Next.js.
   CRON_SECRET: z.string().default(''),
-  // Redis (Upstash REST) — compartido con la app Next.js para coherencia
-  // de invalidación cross-runtime. Ver docs/architecture/bloque3-redis-cross-runtime.md
+  // Caché — compartida con la app Next.js para coherencia de invalidación
+  // cross-runtime. CACHE_PROVIDER debe COINCIDIR en frontend y backend.
+  // Ver docs/architecture/bloque3-redis-cross-runtime.md y
+  // docs/runbooks/cache-elasticache-migracion.md
+  CACHE_PROVIDER: z.string().default('upstash'), // 'upstash' | 'elasticache'
   UPSTASH_REDIS_REST_URL: z.string().default(''),
   UPSTASH_REDIS_REST_TOKEN: z.string().default(''),
+  ELASTICACHE_URL: z.string().default(''), // rediss://host:6379 (TLS) cuando CACHE_PROVIDER=elasticache
   // Email (Resend SDK directo — agnóstico, idéntico al usado por la app).
   // Si vacío, el envío de emails se desactiva (operación degradada).
   // Flag MEDALS_RUNTIME_RECALC_ENABLED='false' desactiva todo el cálculo

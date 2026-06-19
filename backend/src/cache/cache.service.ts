@@ -1,40 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Redis } from '@upstash/redis';
+import { createCacheSink, type CacheSink } from './cache-sink';
 
 /**
- * Cache Redis (Upstash REST). Mismo contrato que `lib/cache/redis.ts`
- * de la app Next.js — keys, JSON, semánticas idénticas.
+ * Cache agnóstica por contrato (CacheSink). Mismo contrato que
+ * `lib/cache/redis.ts` del frontend — keys, JSON, semánticas idénticas, MISMO
+ * proveedor (CACHE_PROVIDER) para coherencia cross-runtime de `cache_version`.
  *
- * Patrón cache-aside con fallback graceful: si Redis cae o tarda,
- * NO bloquea — los callers caen al fetcher (BD). La latencia añadida
- * en caso de fallo es máximo REDIS_TIMEOUT_MS.
+ * Patrón cache-aside con fallback graceful: si la caché cae o tarda, NO bloquea
+ * — los callers caen al fetcher (BD). Latencia máx. en fallo = REDIS_TIMEOUT_MS.
  */
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
-  private readonly redis: Redis | null;
+  private readonly sink: CacheSink | null;
   private readonly enabled: boolean;
 
   private static readonly REDIS_TIMEOUT_MS = 100;
   private static readonly TIMEOUT_SYMBOL = Symbol('redis_timeout');
 
   constructor(private readonly config: ConfigService) {
-    const url = this.config.get<string>('UPSTASH_REDIS_REST_URL');
-    const token = this.config.get<string>('UPSTASH_REDIS_REST_TOKEN');
-
-    if (!url || !token) {
-      this.logger.warn(
-        'Redis NO configurado (faltan UPSTASH_REDIS_REST_URL/TOKEN) — cache bypassed',
-      );
-      this.redis = null;
-      this.enabled = false;
-      return;
+    this.sink = createCacheSink({
+      provider: (this.config.get<string>('CACHE_PROVIDER') || 'upstash').toLowerCase(),
+      upstashUrl: this.config.get<string>('UPSTASH_REDIS_REST_URL'),
+      upstashToken: this.config.get<string>('UPSTASH_REDIS_REST_TOKEN'),
+      elasticacheUrl: this.config.get<string>('ELASTICACHE_URL'),
+    });
+    this.enabled = !!this.sink;
+    if (!this.sink) {
+      this.logger.warn('Cache NO configurada (sin credenciales del proveedor) — cache bypassed');
+    } else {
+      this.logger.log(`Cache configurada (proveedor: ${this.sink.name})`);
     }
-
-    this.redis = new Redis({ url, token });
-    this.enabled = true;
-    this.logger.log('Cache Redis (Upstash) configurado');
   }
 
   /**
@@ -56,10 +53,10 @@ export class CacheService {
    * de Redis (network, parse). El caller decide si hacer fetch a BD.
    */
   async getCached<T>(key: string): Promise<T | null> {
-    if (!this.redis) return null;
+    if (!this.sink) return null;
     try {
       const cached = await this.raceTimeout(
-        this.redis.get<T>(key),
+        this.sink.get<T>(key),
         CacheService.REDIS_TIMEOUT_MS,
       );
       if (
@@ -81,8 +78,8 @@ export class CacheService {
    * la respuesta del usuario.
    */
   setCached<T>(key: string, value: T, ttlSeconds: number): void {
-    if (!this.redis) return;
-    this.redis.set(key, value, { ex: ttlSeconds }).catch(() => {
+    if (!this.sink) return;
+    this.sink.set(key, value, ttlSeconds).catch(() => {
       // Silently ignore - el caller ya tiene el valor correcto
     });
   }
@@ -92,10 +89,10 @@ export class CacheService {
    * Útil tras UPDATE en BD para forzar refresh en próxima lectura.
    */
   async invalidate(key: string): Promise<void> {
-    if (!this.redis) return;
+    if (!this.sink) return;
     try {
       await this.raceTimeout(
-        this.redis.del(key),
+        this.sink.del([key]),
         CacheService.REDIS_TIMEOUT_MS,
       );
     } catch {
@@ -111,11 +108,10 @@ export class CacheService {
    * Upstash REST no soporta SCAN, así que pasamos las claves explícitas.
    */
   async invalidateMany(keys: string[]): Promise<void> {
-    if (!this.redis || keys.length === 0) return;
+    if (!this.sink || keys.length === 0) return;
     try {
       await this.raceTimeout(
-        // @upstash/redis acepta del(...spread) o del([array]) — usar spread
-        this.redis.del(...keys),
+        this.sink.del(keys),
         CacheService.REDIS_TIMEOUT_MS,
       );
     } catch {
@@ -132,10 +128,10 @@ export class CacheService {
    * versión anterior). Ver cache-versioning.service.ts.
    */
   async increment(key: string): Promise<number> {
-    if (!this.redis) return 0;
+    if (!this.sink) return 0;
     try {
       const result = await this.raceTimeout(
-        this.redis.incr(key),
+        this.sink.incr(key),
         CacheService.REDIS_TIMEOUT_MS,
       );
       if (result === CacheService.TIMEOUT_SYMBOL) return 0;
@@ -155,10 +151,10 @@ export class CacheService {
    * getNumber, invalida con increment.
    */
   async getNumber(key: string): Promise<number> {
-    if (!this.redis) return 0;
+    if (!this.sink) return 0;
     try {
       const raw = await this.raceTimeout(
-        this.redis.get<number | string>(key),
+        this.sink.get<number | string>(key),
         CacheService.REDIS_TIMEOUT_MS,
       );
       if (raw === CacheService.TIMEOUT_SYMBOL || raw === null || raw === undefined) {
