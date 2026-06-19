@@ -1,6 +1,7 @@
 // app/admin/newsletters/page.tsx - Panel de newsletters
 'use client'
 import { useState, useEffect, ChangeEvent } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@supabase/supabase-js'
 import EmailTemplatesTab from './EmailTemplatesTab'
@@ -235,7 +236,7 @@ export default function NewslettersPage() {
 
   const loadAudienceStats = async () => {
     try {
-      const response = await fetch('/api/admin/newsletters/audience')
+      const response = await adminFetch('/api/admin/newsletters/audience')
       const data = await response.json()
       if (data.success) {
         setAudienceStats(data.audienceStats)
@@ -248,7 +249,7 @@ export default function NewslettersPage() {
   const loadHistory = async () => {
     setLoadingHistory(true)
     try {
-      const response = await fetch('/api/admin/newsletters/history')
+      const response = await adminFetch('/api/admin/newsletters/history')
       const data = await response.json()
 
       if (data.success) {
@@ -273,7 +274,7 @@ export default function NewslettersPage() {
       const sentDate = new Date(newsletter.sentAt)
       const dateKey = `${sentDate.getFullYear()}-${String(sentDate.getMonth() + 1).padStart(2, '0')}-${String(sentDate.getDate()).padStart(2, '0')}`
 
-      const response = await fetch(
+      const response = await adminFetch(
         `/api/admin/newsletters/history?templateId=${encodeURIComponent(newsletter.templateId)}&date=${dateKey}&eventType=${eventType}`
       )
       const data = await response.json()
@@ -311,7 +312,7 @@ export default function NewslettersPage() {
   const loadTemplateStats = async () => {
     setLoadingStats(true)
     try {
-      const response = await fetch('/api/admin/newsletters/template-stats')
+      const response = await adminFetch('/api/admin/newsletters/template-stats')
       const data = await response.json()
       
       if (data.success) {
@@ -343,7 +344,7 @@ export default function NewslettersPage() {
         limit: '50'
       })
       
-      const response = await fetch(`/api/admin/newsletters/users?${params}`)
+      const response = await adminFetch(`/api/admin/newsletters/users?${params}`)
       const data = await response.json()
       
       if (data.success) {
@@ -487,7 +488,7 @@ export default function NewslettersPage() {
       }
 
       // Enviar usando el endpoint con usuarios específicos
-      const response = await fetch('/api/admin/newsletters/send', {
+      const response = await adminFetch('/api/admin/newsletters/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -619,7 +620,7 @@ export default function NewslettersPage() {
           phase: `Enviando a ${selectedUsers.size} usuarios seleccionados...`
         }))
         
-        const response = await fetch('/api/admin/newsletters/send', {
+        const response = await adminFetch('/api/admin/newsletters/send', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -663,7 +664,7 @@ export default function NewslettersPage() {
             phase: `Enviando a ${audienceName} (${audienceCount.toLocaleString()} usuarios)...`,
             sent: i
           }))
-          const response = await fetch('/api/admin/newsletters/send', {
+          const response = await adminFetch('/api/admin/newsletters/send', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

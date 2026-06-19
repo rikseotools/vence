@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -790,7 +791,7 @@ export default function AdminAIPage() {
     setLoadingLogs(true)
     try {
       const params = new URLSearchParams({ page: page.toString(), limit: '20', feedback: filter })
-      const response = await fetch(`/api/admin/ai-chat-logs?${params}`)
+      const response = await adminFetch(`/api/admin/ai-chat-logs?${params}`)
       const data = await response.json()
       if (data.success) {
         setLogs(data)

@@ -1,6 +1,7 @@
 // app/admin/conversiones/page.tsx - Panel completo de tracking de conversiones
 'use client'
 import { useState, useEffect } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { ConversionStatsResponse } from '@/lib/api/admin-conversion-stats'
@@ -99,7 +100,7 @@ export default function ConversionesPage() {
   const loadPredictions = async () => {
     setLoadingPredictions(true)
     try {
-      const response = await fetch('/api/admin/sales-prediction')
+      const response = await adminFetch('/api/admin/sales-prediction')
       if (!response.ok) throw new Error('Error loading predictions')
       const data = await response.json()
       setPredictionData(data)
@@ -113,7 +114,7 @@ export default function ConversionesPage() {
   const loadGraduatedLimits = async () => {
     setLoadingGraduated(true)
     try {
-      const response = await fetch('/api/admin/graduated-limits')
+      const response = await adminFetch('/api/admin/graduated-limits')
       if (!response.ok) throw new Error('Error loading graduated limits')
       const data = await response.json()
       setGraduatedData(data)
@@ -300,7 +301,7 @@ export default function ConversionesPage() {
     setStageUsers([])
 
     try {
-      const response = await fetch(`/api/admin/funnel-users?stage=${stageKey}&days=${dateRange}&limit=100`)
+      const response = await adminFetch(`/api/admin/funnel-users?stage=${stageKey}&days=${dateRange}&limit=100`)
       if (!response.ok) {
         throw new Error('Error loading users')
       }

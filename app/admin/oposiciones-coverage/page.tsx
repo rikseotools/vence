@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 
 interface CoverageStats {
   byLevel: Array<{ level: string; total: number; active: number; inactive: number }>
@@ -66,7 +67,7 @@ export default function OposicionesCoveragePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/oposiciones-coverage')
+    adminFetch('/api/admin/oposiciones-coverage')
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()

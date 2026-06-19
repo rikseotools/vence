@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 
 interface SeguimientoItem {
   id: string
@@ -43,7 +44,7 @@ export default function SeguimientoConvocatoriasPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/seguimiento-convocatorias')
+      const res = await adminFetch('/api/admin/seguimiento-convocatorias')
       const json = await res.json()
       if (json.success) setItems(json.data)
     } catch (e) {
@@ -78,7 +79,7 @@ export default function SeguimientoConvocatoriasPage() {
 
   const handleMarkReviewed = async (oposicionId: string) => {
     try {
-      await fetch('/api/admin/seguimiento-convocatorias', {
+      await adminFetch('/api/admin/seguimiento-convocatorias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'mark_reviewed', oposicionId }),

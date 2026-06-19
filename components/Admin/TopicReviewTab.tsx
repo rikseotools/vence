@@ -276,7 +276,7 @@ export default function TopicReviewTab() {
   // Cargar conteo de preguntas pendientes por embeddings
   const loadEmbeddingCount = async () => {
     try {
-      const response = await fetch('/api/admin/embedding-review')
+      const response = await fetch('/api/admin/embedding-review', { headers: await getAuthHeaders() })
       const data = await response.json()
       if (data.success) {
         setEmbeddingCount(data.stats?.total || 0)

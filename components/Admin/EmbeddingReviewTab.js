@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { useRouter } from 'next/navigation'
 
 // Spinner component
@@ -38,7 +39,7 @@ export default function EmbeddingReviewTab() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/api/admin/embedding-review')
+      const response = await adminFetch('/api/admin/embedding-review')
       const data = await response.json()
 
       if (data.success) {
@@ -91,7 +92,7 @@ export default function EmbeddingReviewTab() {
   // Marcar como revisado manualmente
   const markAsReviewed = async (questionId, isCorrect) => {
     try {
-      const response = await fetch('/api/admin/embedding-review', {
+      const response = await adminFetch('/api/admin/embedding-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

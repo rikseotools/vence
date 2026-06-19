@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 
 interface QualityIssue {
   id: string
@@ -228,7 +229,7 @@ export default function CalidadPage() {
     setMarkingForReview(true)
     setMarkResult(null)
     try {
-      const res = await fetch('/api/admin/question-quality', {
+      const res = await adminFetch('/api/admin/question-quality', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'mark_copied_for_review' }),

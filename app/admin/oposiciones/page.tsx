@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 // No necesita supabase client - todo via API route
 import { OFFICIAL_OPOSICIONES } from '@/components/OnboardingModal'
 
@@ -75,7 +76,7 @@ export default function AdminOposicionesPage() {
     setLoading(true)
     try {
       // 1. Todo via API route (bypass RLS, datos ya agregados en servidor)
-      const res = await fetch('/api/admin/oposiciones-stats')
+      const res = await adminFetch('/api/admin/oposiciones-stats')
       const json = await res.json()
 
       // Oposiciones de BD
@@ -446,7 +447,7 @@ function CustomTab({ data, onMigrated }: { data: UserOposicion[]; onMigrated: ()
     setMessage(null)
 
     try {
-      const res = await fetch('/api/admin/oposiciones-migrate', {
+      const res = await adminFetch('/api/admin/oposiciones-migrate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

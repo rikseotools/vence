@@ -2,6 +2,7 @@
 // Pestaña de gestión de plantillas de email desde BD
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 
 interface TemplateVariable {
   key: string
@@ -65,7 +66,7 @@ export default function EmailTemplatesTab() {
   const loadTemplates = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/newsletters/templates')
+      const res = await adminFetch('/api/admin/newsletters/templates')
       const data = await res.json()
       if (data.success) {
         setTemplates(data.templates)
@@ -80,7 +81,7 @@ export default function EmailTemplatesTab() {
   useEffect(() => {
     loadTemplates()
     // Cargar audiencias dinámicamente desde BD
-    fetch('/api/admin/newsletters/audience')
+    adminFetch('/api/admin/newsletters/audience')
       .then(r => r.json())
       .then(data => {
         if (data.success && data.audienceStats?.byOposicion) {
@@ -131,7 +132,7 @@ export default function EmailTemplatesTab() {
         : `/api/admin/newsletters/templates/${selectedTemplate!.slug}`
       const method = isNew ? 'POST' : 'PUT'
 
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         method,
         headers,
         body: JSON.stringify(editForm),
@@ -160,7 +161,7 @@ export default function EmailTemplatesTab() {
     setPreviewVars(varsToUse)
 
     try {
-      const res = await fetch('/api/admin/newsletters/preview', {
+      const res = await adminFetch('/api/admin/newsletters/preview', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -207,7 +208,7 @@ export default function EmailTemplatesTab() {
     setSendResult(null)
 
     try {
-      const res = await fetch('/api/admin/newsletters/send', {
+      const res = await adminFetch('/api/admin/newsletters/send', {
         method: 'POST',
         headers,
         body: JSON.stringify({
