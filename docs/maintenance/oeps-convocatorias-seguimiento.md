@@ -1220,6 +1220,16 @@ Alternativa estable: usar el BOE como `seguimiento_url` para la convocatoria ini
 seguimiento_url = 'https://www.boe.es/buscar/doc.php?id=BOE-A-2025-25740'
 ```
 
+## 16.bis Rescate de 27 fuentes ciegas (20/06/2026)
+
+Tras quitar el filtro `is_active` (§10), el baseline reveló **28 oposiciones cuya `seguimiento_url` el fetcher no podía leer**. Investigadas con 5 agentes en paralelo (Playwright para explorar SPAs + verificación con `curl` plano, **solo fuentes oficiales**). Resultado: **27 rescatadas, 1 irrecuperable** (`policia-local-alcobendas`, WAF Akamai sin alternativa → monitoreo humano). Tres patrones de fix:
+
+1. **Host con cadena de certificado incompleta** (FNMT leaf-only / Camerfirma distrusted): la web es server-rendered y `curl -k`=200, pero `fetch`/`curl` estricto falla con `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. **Fix: añadir el host a `INSECURE_TLS_HOSTS`** (en `backend/src/check-seguimiento/seguimiento-fetch.ts` Y `lib/api/seguimiento-convocatorias/queries.ts`). Añadidos: `sede.getafe.es`, `coslada.es`, `www.dipucuenca.es`, `cbomberosalicante.sedelectronica.es`, `seuelectronica.vilanova.cat`, `santcugat.cat`, `ayuntamiento.marbella.es`, `www.ponferrada.org`.
+2. **WAF que filtra por User-Agent**: sitios (emergenciasgc.org, consorciobomberosalicante.es WP) devuelven 403 a UAs con `"VenceBot"`/`"bot"`. **Fix: el `USER_AGENT` del fetcher es ahora un navegador real (Chrome).** Si un host sigue dando 403 con UA navegador, es WAF de IP/Akamai (no hay fix de UA).
+3. **SPA / WAF municipal sin arreglo de host**: la web del ayuntamiento es JS-shell o bloquea por IP de datacenter. **Fix: migrar la `seguimiento_url` a una fuente oficial server-rendered**: el BOP provincial (Joomla/Liferay con buscador `com_search`), **CIDO de la Diputació de Barcelona** (`cido.diba.cat/oposicions?...` — agregador oficial server-rendered, ideal para Cataluña), **BOJA** (`juntadeandalucia.es/boja/...`), **BOE** (`boe.es/diario_boe/txt.php?id=BOE-A-...` — permalink estable, último recurso para WAF tipo Madrid/Ponferrada; ojo: es snapshot estático de UNA convocatoria, no descubre futuras), o la **sede electrónica STA** del propio ente (`sede.<ente>.es/sta/CarpetaPublic/...PTS2_EMPLEO/PTS2_TABLON_DESC`).
+
+**Aprendizaje:** el cron corre desde IP de datacenter (Fargate); algunos municipales resetean TCP a esas IPs aunque funcionen desde residencial. El `INSECURE_TLS_HOSTS` solo arregla cadena-de-cert, NO el bloqueo por IP/WAF — para esos, boletín oficial. La forma fiable de decidir entre allowlist y boletín es **re-correr el baseline real** tras el cambio y ver qué da 200.
+
 ## 16. Audit de seguimiento_url en catalogadas (08/06/2026)
 
 Se auditaron todas las `seguimiento_url` de las 464 oposiciones `catalogada` (inactivas). Resultado: 464/464 tienen URL. Se corrigieron **~42 slugs** con URLs rotas o inaccesibles.
