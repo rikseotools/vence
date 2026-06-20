@@ -169,15 +169,23 @@ interface OpenConvocatoria {
   inscription_start: string | null
   inscription_deadline: string | null
   plazas_libres: number | null
+  is_active: boolean
+  seguimiento_url: string | null
 }
 
-// Convocatorias PÚBLICAS con inscripción abierta. FUENTE DE VERDAD = fechas
-// (isInscripcionAbierta), NO estado_proceso (que puede quedar desfasado y mostraba
-// convocatorias vencidas / se contradecía con el banner — incidente 20/06). Mismo
-// criterio que el banner y que la página SEO /oposiciones/inscripcion-abierta.
-// revalidate:3600 → la apertura cambia a medianoche (un cierre de "hoy" pasa a
-// "ayer"); sin revalidación temporal se serviría el set de ayer aunque la query
-// sea correcta. El tag 'landing' además la refresca al cambiar una convocatoria.
+// Convocatorias con inscripción abierta. FUENTE DE VERDAD = fechas (isInscripcionAbierta),
+// NO estado_proceso (que puede quedar desfasado y mostraba convocatorias vencidas / se
+// contradecía con el banner — incidente 20/06). Mismo criterio que el banner y la SEO.
+//
+// Incluye DOS niveles (20/06):
+//   - PUBLICADAS (is_active=true): tenemos landing/tests → la card enlaza interno.
+//   - CATALOGADAS (is_active=false): aún sin tests pero con inscripción abierta y URL
+//     oficial → se muestran como "sin test todavía" enlazando a la convocatoria oficial
+//     (nunca a una landing inexistente). Gateadas a tener seguimiento_url (si no, no hay
+//     a dónde enlazar y el dato suele ser menos fiable). El service-role ve las
+//     catalogadas (RLS las ocultaría al anon); alineado con la retirada de RLS (Fase P).
+// revalidate:3600 → la apertura cambia a medianoche; el tag 'landing' la refresca al
+// cambiar una convocatoria.
 const getOpenConvocatorias = unstable_cache(
   async (): Promise<OpenConvocatoria[]> => {
     const supabase = createClient(
@@ -187,11 +195,15 @@ const getOpenConvocatorias = unstable_cache(
     )
     const { data } = await supabase
       .from('oposiciones')
-      .select('slug, nombre, inscription_start, inscription_deadline, plazas_libres')
-      .eq('is_active', true)
+      .select('slug, nombre, inscription_start, inscription_deadline, plazas_libres, is_active, seguimiento_url')
       .order('inscription_deadline', { ascending: true, nullsFirst: false })
     const today = todayMadrid()
-    return ((data ?? []) as OpenConvocatoria[]).filter((o) => isInscripcionAbierta(o, today))
+    return ((data ?? []) as OpenConvocatoria[])
+      .filter((o) => isInscripcionAbierta(o, today))
+      // publicadas siempre; catalogadas solo si tienen convocatoria oficial a la que enlazar
+      .filter((o) => o.is_active || !!o.seguimiento_url)
+      // publicadas primero (son producto), luego catalogadas; dentro, por cierre más próximo
+      .sort((a, b) => Number(b.is_active) - Number(a.is_active))
   },
   ['home-open-convocatorias'],
   { revalidate: 3600, tags: ['landing'] }
@@ -265,9 +277,16 @@ export default async function HomePage() {
               </h2>
             </div>
             <ul className="space-y-1 mb-2">
-              {openConvocatorias.slice(0, 4).map(c => (
+              {openConvocatorias.slice(0, 6).map(c => (
                 <li key={c.slug} className="text-sm text-green-900 dark:text-green-200 flex items-center justify-between gap-3">
-                  <span className="truncate">{c.nombre}</span>
+                  <span className="truncate flex items-center gap-1.5 min-w-0">
+                    <span className="truncate">{c.nombre}</span>
+                    {!c.is_active && (
+                      <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-200/70 dark:bg-green-800/60 text-green-800 dark:text-green-300">
+                        sin test
+                      </span>
+                    )}
+                  </span>
                   {c.inscription_deadline && (
                     <span className="shrink-0 text-xs text-green-700 dark:text-green-400 whitespace-nowrap">
                       cierra {formatDeadline(c.inscription_deadline)}

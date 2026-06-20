@@ -97,6 +97,35 @@ async function getFilteredOposiciones(filter: OposicionFilter): Promise<Oposicio
   }
 }
 
+// Catalogadas (is_active=false, sin landing/tests) con inscripción abierta HOY y
+// convocatoria oficial. Se muestran solo en /oposiciones/inscripcion-abierta, como
+// sección "sin test todavía" enlazando a la fuente oficial (nunca a una landing
+// inexistente). Service-role: las catalogadas no son visibles por el camino anon
+// (RLS); alineado con la retirada de RLS (Fase P). Decisión producto 20/06.
+interface CatalogadaAbierta {
+  slug: string
+  nombre: string
+  plazas_libres: number | null
+  inscription_deadline: string | null
+  seguimiento_url: string | null
+}
+
+async function getCatalogadasAbiertas(): Promise<CatalogadaAbierta[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return []
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    // eslint-disable-next-line no-restricted-syntax -- Server Component: SERVICE_ROLE corre server-side
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+  )
+  const { data } = await supabase
+    .from('oposiciones')
+    .select('slug, nombre, plazas_libres, inscription_start, inscription_deadline, seguimiento_url')
+    .eq('is_active', false)
+    .order('inscription_deadline', { ascending: true, nullsFirst: false })
+  return ((data ?? []) as (CatalogadaAbierta & { inscription_start: string | null })[])
+    .filter(o => isInscripcionAbierta(o) && !!o.seguimiento_url)
+}
+
 // ============================================
 // PAGE
 // ============================================
@@ -107,6 +136,8 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
   if (!filter) notFound()
 
   const oposiciones = await getFilteredOposiciones(filter)
+  // Solo en la página de inscripción abierta añadimos las catalogadas (sin test todavía).
+  const catalogadas = filter.type === 'inscripcion_abierta' ? await getCatalogadasAbiertas() : []
 
   const totalPlazas = oposiciones.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
 
@@ -201,7 +232,7 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
 
           {/* Main: cards */}
           <main className="lg:col-span-3">
-            {oposiciones.length === 0 ? (
+            {oposiciones.length === 0 && catalogadas.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 dark:text-gray-400">
                   No hay oposiciones activas con este filtro.
@@ -211,23 +242,79 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {oposiciones.map(o => (
-                  <OposicionCard
-                    key={o.slug}
-                    slug={o.slug}
-                    nombre={o.nombre}
-                    plazasLibres={o.plazas_libres}
-                    plazasDiscapacidad={o.plazas_discapacidad}
-                    estadoProceso={o.estado_proceso}
-                    isConvocatoriaActiva={o.is_convocatoria_activa}
-                    examDate={o.exam_date}
-                    inscriptionStart={o.inscription_start}
-                    inscriptionDeadline={o.inscription_deadline}
-                    subgrupo={o.subgrupo}
-                  />
-                ))}
-              </div>
+              <>
+                {oposiciones.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {oposiciones.map(o => (
+                      <OposicionCard
+                        key={o.slug}
+                        slug={o.slug}
+                        nombre={o.nombre}
+                        plazasLibres={o.plazas_libres}
+                        plazasDiscapacidad={o.plazas_discapacidad}
+                        estadoProceso={o.estado_proceso}
+                        isConvocatoriaActiva={o.is_convocatoria_activa}
+                        examDate={o.exam_date}
+                        inscriptionStart={o.inscription_start}
+                        inscriptionDeadline={o.inscription_deadline}
+                        subgrupo={o.subgrupo}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Catalogadas: inscripción abierta pero aún sin tests en Vence.
+                    Enlazan a la convocatoria oficial (no a una landing inexistente). */}
+                {catalogadas.length > 0 && (
+                  <div className={oposiciones.length > 0 ? 'mt-10' : ''}>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Otras convocatorias abiertas <span className="font-normal text-gray-500 dark:text-gray-400">(sin test todavía en Vence)</span>
+                    </h2>
+                    <p className="mt-1 mb-4 text-sm text-gray-600 dark:text-gray-400">
+                      Tienen el plazo de inscripción abierto. Aún no hemos preparado tests, pero puedes ir a la convocatoria oficial.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {catalogadas.map(c => (
+                        <a
+                          key={c.slug}
+                          href={c.seguimiento_url ?? '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-5 hover:shadow-lg transition-shadow"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 dark:text-white text-base leading-tight">{c.nombre}</h3>
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 animate-pulse">
+                                  Inscripción Abierta
+                                </span>
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                  Sin test todavía
+                                </span>
+                              </div>
+                            </div>
+                            {(c.plazas_libres ?? 0) > 0 && (
+                              <div className="text-right flex-shrink-0">
+                                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{c.plazas_libres}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">plazas</div>
+                              </div>
+                            )}
+                          </div>
+                          {c.inscription_deadline && (
+                            <div className="mt-3 text-xs text-green-700 dark:text-green-400 font-medium">
+                              Inscripción hasta {new Date(c.inscription_deadline).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </div>
+                          )}
+                          <div className="mt-3 text-sm text-blue-600 dark:text-blue-400 font-medium">
+                            Ver convocatoria oficial →
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </main>
         </div>
