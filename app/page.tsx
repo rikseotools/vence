@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { unstable_cache } from 'next/cache'
+import { isInscripcionAbierta, todayMadrid } from '@/lib/oposiciones/inscripcion'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import CcaaFlag from '@/components/CcaaFlag'
 
@@ -165,15 +166,18 @@ async function getTopLaws(): Promise<TopLaw[]> {
 interface OpenConvocatoria {
   slug: string
   nombre: string
+  inscription_start: string | null
   inscription_deadline: string | null
   plazas_libres: number | null
 }
 
-// Convocatorias PÚBLICAS con inscripción abierta — mismo criterio que la página
-// SEO /oposiciones/inscripcion-abierta (estado_proceso='inscripcion_abierta').
-// Cacheado con tag 'landing': aunque la home sea estática (revalidate=false), el
-// flujo de seguimiento ya revalida 'landing' al cambiar el estado de una
-// convocatoria → la tarjeta se refresca sola sin esperar a un deploy.
+// Convocatorias PÚBLICAS con inscripción abierta. FUENTE DE VERDAD = fechas
+// (isInscripcionAbierta), NO estado_proceso (que puede quedar desfasado y mostraba
+// convocatorias vencidas / se contradecía con el banner — incidente 20/06). Mismo
+// criterio que el banner y que la página SEO /oposiciones/inscripcion-abierta.
+// revalidate:3600 → la apertura cambia a medianoche (un cierre de "hoy" pasa a
+// "ayer"); sin revalidación temporal se serviría el set de ayer aunque la query
+// sea correcta. El tag 'landing' además la refresca al cambiar una convocatoria.
 const getOpenConvocatorias = unstable_cache(
   async (): Promise<OpenConvocatoria[]> => {
     const supabase = createClient(
@@ -183,14 +187,14 @@ const getOpenConvocatorias = unstable_cache(
     )
     const { data } = await supabase
       .from('oposiciones')
-      .select('slug, nombre, inscription_deadline, plazas_libres')
+      .select('slug, nombre, inscription_start, inscription_deadline, plazas_libres')
       .eq('is_active', true)
-      .eq('estado_proceso', 'inscripcion_abierta')
       .order('inscription_deadline', { ascending: true, nullsFirst: false })
-    return (data ?? []) as OpenConvocatoria[]
+    const today = todayMadrid()
+    return ((data ?? []) as OpenConvocatoria[]).filter((o) => isInscripcionAbierta(o, today))
   },
   ['home-open-convocatorias'],
-  { tags: ['landing'] }
+  { revalidate: 3600, tags: ['landing'] }
 )
 
 function formatDeadline(d: string | null): string {

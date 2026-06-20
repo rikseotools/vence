@@ -1,7 +1,7 @@
 // app/oposiciones/lib/oposiciones-filters.ts
 // Filtros y mapeos para el directorio de nuestras oposiciones
 
-export type FilterType = 'ccaa' | 'subgrupo' | 'tipo' | 'estado' | 'position'
+export type FilterType = 'ccaa' | 'subgrupo' | 'tipo' | 'estado' | 'position' | 'inscripcion_abierta'
 
 export interface OposicionFilter {
   type: FilterType
@@ -51,7 +51,9 @@ export const TIPO_FILTERS: Record<string, OposicionFilter> = {
 }
 
 export const ESTADO_FILTERS: Record<string, OposicionFilter> = {
-  'inscripcion-abierta': { type: 'estado', slug: 'inscripcion-abierta', label: 'Inscripción abierta', value: 'inscripcion_abierta', seoTitle: 'Oposiciones con Inscripción Abierta 2026', seoDescription: 'Convocatorias de oposiciones con plazo de inscripción abierto ahora mismo.' },
+  // type 'inscripcion_abierta' → se filtra por FECHAS (isInscripcionAbierta), no por
+  // estado_proceso (que puede quedar desfasado). Coherente con home y banner.
+  'inscripcion-abierta': { type: 'inscripcion_abierta', slug: 'inscripcion-abierta', label: 'Inscripción abierta', value: 'inscripcion_abierta', seoTitle: 'Oposiciones con Inscripción Abierta 2026', seoDescription: 'Convocatorias de oposiciones con plazo de inscripción abierto ahora mismo.' },
   'proximos-examenes': { type: 'estado', slug: 'proximos-examenes', label: 'Próximos exámenes', value: 'pendiente_examen', seoTitle: 'Próximos Exámenes de Oposiciones 2026', seoDescription: 'Oposiciones con fecha de examen próxima. Prepárate a tiempo.' },
 }
 

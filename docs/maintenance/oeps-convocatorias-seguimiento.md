@@ -47,6 +47,10 @@ Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** co
 | `pendiente_examen` **sin** fecha de examen | 🟡 |
 | Estado post-examen (`examen_realizado`/`resultados`/`nombramientos`) con examen **futuro** | ❌ |
 | `convocada`/`inscripcion_cerrada` incoherente con el plazo | 🟡 |
+| **(publicada)** `inscripcion_abierta` pero NO abierta-por-fechas (sin `inscription_start`, sin deadline o vencido) → **invisible en el front** | ❌ |
+| **(publicada)** abierta-por-fechas pero `estado_proceso` ≠ `inscripcion_abierta` → **aparece en el front**; reconciliar estado | 🟡 |
+
+> **Coherencia de front (20/06/2026):** las dos últimas reglas existen porque home/SEO/banner ya filtran por **fechas** (`isInscripcionAbierta`), no por `estado_proceso` (ver §4g-bis). El cron usa **el mismo predicado** que el front (importado de `lib/oposiciones/inscripcion.ts` en la route; espejo inline en el `.cjs`) → no puede divergir de lo que el usuario ve. Además el cron compara en `Europe/Madrid` (no UTC), igual que el front.
 
 **Límite (importante):** es determinista → caza contradicciones de fecha, **NO** un dato *coherente pero erróneo* (p. ej. una fecha de cierre falsa pero futura, como Osakidetza). Eso solo lo corrige **re-leer el boletín oficial** (sensores `detect-boletines`/`detect-oep-llm` o verificación manual). **Dos capas complementarias:** `audit:estados` (barato, gate) + boletín (fuente de verdad). Recomendado correr `audit:estados` periódicamente (cron/CI) y tras cada tanda de "Aplicar" señales.
 
@@ -390,7 +394,7 @@ Los plazos de inscripción aparecen en dos sitios que **DEBEN** coincidir:
 
 **Regla:** al añadir un hito de apertura/cierre de inscripción, **siempre** actualizar también la columna correspondiente en `oposiciones`. Y a la inversa: si actualizas `inscription_*`, asegúrate de que el hito refleja la misma fecha (o créalo si no existe).
 
-**Por qué importa:** la columna `inscription_*` la consume el banner global de "Inscripción abierta" (componente `OpenInscriptionBanner.tsx`) y la landing pública del hero. Si solo metes el hito pero no la columna, el banner es ciego a esa convocatoria y la landing muestra "Inscripción no abierta" aunque sí lo esté.
+**Por qué importa:** la columna `inscription_*` es la **fuente de verdad de "inscripción abierta" para TODO el front** (desde 20/06/2026): el banner global (`OpenInscriptionBanner.tsx`), la caja del home (`app/page.tsx`), la página SEO `/oposiciones/inscripcion-abierta` y la landing del hero — todas derivan la apertura de las fechas vía `isInscripcionAbierta()` (`lib/oposiciones/inscripcion.ts`), **NO de `estado_proceso`**. Antes home y SEO filtraban por `estado_proceso='inscripcion_abierta'` y se contradecían con el banner (incidente 20/06: INGESA con plazo vencido salía en la caja pero no en el banner). Ahora un único predicado las alimenta a todas → imposible que difieran. Consecuencia: si metes el hito pero **no** la columna `inscription_*`, esa convocatoria es invisible en todo el front aunque su `estado_proceso` diga "abierta" (lo caza `audit:estados`, §0.bis).
 
 **Caso real (27/05/2026):** auditoría disparada por el lanzamiento del banner detectó:
 - `auxiliar-administrativo-diputacion-cadiz`: hito cierre 22/02/2024 presente, columna `inscription_deadline = NULL` → backfill desde BOE-A-2024-1395 (inicio 26/01, cierre 22/02).

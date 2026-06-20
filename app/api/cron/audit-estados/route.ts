@@ -8,6 +8,16 @@
 // Ninguna excepción lo ve (200 OK, dato incoherente) y ninguna otra auditoría lo mira
 // (audit:oposicion = completitud, audit:epigrafe = scope).
 //
+// COHERENCIA DE FRONT (incidente 20/06/2026): home, SEO /oposiciones/inscripcion-abierta
+// y el banner ya NO filtran por estado_proceso sino por FECHAS (isInscripcionAbierta, la
+// fuente de verdad) → imposible que se contradigan entre sí. Pero eso abre dos huecos que
+// este cron vigila usando EL MISMO predicado que las superficies (no se reimplementa →
+// no puede derivar del front):
+//   1. estado='inscripcion_abierta' pero las fechas dicen NO-abierta (sin start, sin
+//      deadline o vencido) → DESAPARECE del front aunque el estado diga que está abierta.
+//   2. fechas dicen abierta pero estado != 'inscripcion_abierta' → APARECE en el front
+//      aunque el ciclo diga otra cosa (dato a reconciliar).
+//
 // Determinista (solo fechas). Versión CLI equivalente: `npm run audit:estados`
 // (scripts/audit-estados-convocatoria.cjs). Documentado en
 // docs/maintenance/oeps-convocatorias-seguimiento.md §0.bis.
@@ -23,6 +33,7 @@ import { emit } from '@/lib/observability/emit'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
+import { isInscripcionAbierta, todayMadrid } from '@/lib/oposiciones/inscripcion'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 20
@@ -50,7 +61,9 @@ async function _GET(request: NextRequest) {
   }
 
   const startTime = Date.now()
-  const hoy = new Date().toISOString().slice(0, 10)
+  // Madrid, NO UTC: las superficies derivan "abierta hoy" con todayMadrid(); auditar con
+  // toISOString() (UTC) compararía con el día equivocado en madrugada → falsos positivos.
+  const hoy = todayMadrid()
   const db = getAdminDb()
 
   const result = await db.execute(sql`
@@ -91,6 +104,21 @@ async function _GET(request: NextRequest) {
     }
     if (o.inscription_start && dl && o.inscription_start > dl) {
       warns.push(`${tag} → inscription_start (${o.inscription_start}) posterior al deadline (${dl})`)
+    }
+
+    // Coherencia de FRONT (solo publicadas: lo que el usuario ve). Mismo predicado que
+    // home/SEO/banner → si diverge del estado_proceso, el dato está mal en algún lado.
+    if (o.is_active) {
+      const abiertaPorFechas = isInscripcionAbierta(o, hoy)
+      if (e === 'inscripcion_abierta' && !abiertaPorFechas) {
+        // Antes salía por estado; ahora el front filtra por fechas → DESAPARECE.
+        const motivo = !o.inscription_start ? 'sin inscription_start'
+          : !dl ? 'sin deadline' : `plazo vencido (${dl})`
+        errors.push(`${tag} → estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`)
+      } else if (abiertaPorFechas && e !== 'inscripcion_abierta') {
+        // Sale en el front (fechas mandan) aunque el ciclo diga otra cosa → reconciliar estado.
+        warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
+      }
     }
   }
 

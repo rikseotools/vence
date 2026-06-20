@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import OposicionCard from './components/OposicionCard'
 import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS, ESTADO_FILTERS, oposicionToCcaa, oposicionToTipo } from './lib/oposiciones-filters'
+import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
 
 export const metadata: Metadata = {
   title: 'Oposiciones en España 2026 | Plazas y Convocatorias | Vence',
@@ -39,6 +40,7 @@ interface OposicionRow {
   estado_proceso: string | null
   is_convocatoria_activa: boolean
   exam_date: string | null
+  inscription_start: string | null
   inscription_deadline: string | null
   subgrupo: string | null
 }
@@ -48,7 +50,7 @@ async function getOposiciones(): Promise<OposicionRow[]> {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   const { data } = await supabase
     .from('oposiciones')
-    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_deadline, subgrupo')
+    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_start, inscription_deadline, subgrupo')
     .eq('is_active', true)
     .order('plazas_libres', { ascending: false, nullsFirst: false })
   return (data ?? []) as OposicionRow[]
@@ -73,15 +75,21 @@ function estadoOrder(estado: string | null): number {
 export default async function OposicionesPage() {
   const oposiciones = await getOposiciones()
 
-  // Ordenar: inscripción abierta primero, luego por plazas
+  // "Inscripción abierta" se deriva de FECHAS (fuente de verdad, igual que home/SEO/banner/
+  // card), no de estado_proceso (que puede estar desfasado) — incidente 20/06.
+  const conInscripcion = oposiciones.filter(o => isInscripcionAbierta(o))
+  const abiertaSet = new Set(conInscripcion.map(o => o.slug))
+
+  // Ordenar: inscripción abierta (por fechas) primero, luego por fase del estado, luego plazas
   const sorted = [...oposiciones].sort((a, b) => {
+    const abiertaDiff = (abiertaSet.has(b.slug) ? 1 : 0) - (abiertaSet.has(a.slug) ? 1 : 0)
+    if (abiertaDiff !== 0) return abiertaDiff
     const estadoDiff = estadoOrder(a.estado_proceso) - estadoOrder(b.estado_proceso)
     if (estadoDiff !== 0) return estadoDiff
     return (b.plazas_libres ?? 0) - (a.plazas_libres ?? 0)
   })
 
   const totalPlazas = oposiciones.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
-  const conInscripcion = oposiciones.filter(o => o.estado_proceso === 'inscripcion_abierta')
 
   // JSON-LD
   const jsonLd = {
@@ -210,6 +218,7 @@ export default async function OposicionesPage() {
                   estadoProceso={o.estado_proceso}
                   isConvocatoriaActiva={o.is_convocatoria_activa}
                   examDate={o.exam_date}
+                  inscriptionStart={o.inscription_start}
                   inscriptionDeadline={o.inscription_deadline}
                   subgrupo={o.subgrupo}
                 />

@@ -24,6 +24,7 @@ import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { getReadDb } from '@/db/client'
 import { oposiciones, userProfiles } from '@/db/schema'
 import { eq, and, lte, gte, sql } from 'drizzle-orm'
+import { todayMadrid } from '@/lib/oposiciones/inscripcion'
 
 export const maxDuration = 10
 
@@ -41,12 +42,9 @@ type OpenInscription = {
   color_primario: string | null
 }
 
-// Hoy en Europa/Madrid como 'YYYY-MM-DD' (no usar new Date().toISOString
-// porque eso da UTC; en madrugada UTC podría devolver "ayer" en Madrid).
-function todayMadrid(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })
-}
-
+// El filtro SQL de abajo (inscription_start <= today <= inscription_deadline) es la
+// MISMA semántica que isInscripcionAbierta() de @/lib/oposiciones/inscripcion, que
+// usan home y SEO. todayMadrid se importa de ahí (fuente única).
 async function _GET(request: NextRequest) {
   const db = getReadDb()
   const today = todayMadrid()

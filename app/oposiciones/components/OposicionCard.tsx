@@ -1,6 +1,7 @@
 // app/oposiciones/components/OposicionCard.tsx
 // Card de una oposición para el directorio /oposiciones
 import Link from 'next/link'
+import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
 
 interface OposicionCardProps {
   slug: string
@@ -10,6 +11,7 @@ interface OposicionCardProps {
   estadoProceso: string | null
   isConvocatoriaActiva: boolean
   examDate: string | null
+  inscriptionStart: string | null
   inscriptionDeadline: string | null
   subgrupo: string | null
 }
@@ -35,9 +37,17 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function OposicionCard(props: OposicionCardProps) {
-  const estado = ESTADO_LABELS[props.estadoProceso ?? ''] ?? ESTADO_LABELS.sin_oep
   const totalPlazas = (props.plazasLibres ?? 0) + (props.plazasDiscapacidad ?? 0)
-  const isUrgent = props.estadoProceso === 'inscripcion_abierta'
+  // "Inscripción abierta ahora" se deriva de FECHAS (fuente de verdad, igual que home/SEO/
+  // banner), no de estado_proceso (que puede estar desfasado). Si las fechas dicen abierta,
+  // la card lo muestra coherentemente aunque el estado no se haya reconciliado todavía.
+  const isUrgent = isInscripcionAbierta({
+    inscription_start: props.inscriptionStart,
+    inscription_deadline: props.inscriptionDeadline,
+  })
+  const estado = isUrgent
+    ? ESTADO_LABELS.inscripcion_abierta
+    : ESTADO_LABELS[props.estadoProceso ?? ''] ?? ESTADO_LABELS.sin_oep
 
   return (
     <Link
@@ -72,7 +82,7 @@ export default function OposicionCard(props: OposicionCardProps) {
       </div>
 
       <div className="mt-3 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-        {props.inscriptionDeadline && props.estadoProceso === 'inscripcion_abierta' && (
+        {isUrgent && props.inscriptionDeadline && (
           <span className="text-green-700 dark:text-green-400 font-medium">
             Inscripción hasta {formatDate(props.inscriptionDeadline)}
           </span>

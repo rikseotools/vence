@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import OposicionCard from '../components/OposicionCard'
+import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
 import {
   detectFilter,
   getAllFilterSlugs,
@@ -61,6 +62,7 @@ interface OposicionRow {
   estado_proceso: string | null
   is_convocatoria_activa: boolean
   exam_date: string | null
+  inscription_start: string | null
   inscription_deadline: string | null
   subgrupo: string | null
 }
@@ -71,7 +73,7 @@ async function getFilteredOposiciones(filter: OposicionFilter): Promise<Oposicio
 
   const { data } = await supabase
     .from('oposiciones')
-    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_deadline, subgrupo')
+    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_start, inscription_deadline, subgrupo')
     .eq('is_active', true)
     .order('plazas_libres', { ascending: false, nullsFirst: false })
 
@@ -87,6 +89,9 @@ async function getFilteredOposiciones(filter: OposicionFilter): Promise<Oposicio
       return all.filter(o => oposicionToTipo(o.slug) === filter.value)
     case 'estado':
       return all.filter(o => o.estado_proceso === filter.value)
+    case 'inscripcion_abierta':
+      // FUENTE DE VERDAD = fechas, no estado_proceso (que puede estar desfasado).
+      return all.filter(o => isInscripcionAbierta(o))
     default:
       return all
   }
@@ -217,6 +222,7 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
                     estadoProceso={o.estado_proceso}
                     isConvocatoriaActiva={o.is_convocatoria_activa}
                     examDate={o.exam_date}
+                    inscriptionStart={o.inscription_start}
                     inscriptionDeadline={o.inscription_deadline}
                     subgrupo={o.subgrupo}
                   />

@@ -26,10 +26,20 @@ const s = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 )
-const HOY = new Date().toISOString().slice(0, 10)
+// Madrid, NO UTC: el front deriva "abierta hoy" en Europa/Madrid; auditar en UTC
+// compararía con el día equivocado en madrugada. Espejo de todayMadrid() de
+// lib/oposiciones/inscripcion.ts (fuente de verdad; aquí inline porque es .cjs).
+const HOY = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })
 
 // estados "post-examen": no pueden tener examen en el futuro
 const POST_EXAMEN = new Set(['examen_realizado', 'resultados', 'nombramientos'])
+
+// Espejo de isInscripcionAbierta() de lib/oposiciones/inscripcion.ts (el front usa esa).
+const abiertaPorFechas = (o) => {
+  const start = o.inscription_start && o.inscription_start.slice(0, 10)
+  const dl = o.inscription_deadline && o.inscription_deadline.slice(0, 10)
+  return !!start && !!dl && start <= HOY && dl >= HOY
+}
 
 async function main() {
   const { data: ops, error } = await s
@@ -85,6 +95,19 @@ async function main() {
     // 6. coherencia start <= deadline
     if (o.inscription_start && dl && o.inscription_start > dl) {
       warns.push(`${tag} → inscription_start (${o.inscription_start}) posterior al deadline (${dl})`)
+    }
+
+    // 7. coherencia de FRONT (solo publicadas): home/SEO/banner filtran por FECHAS, no por
+    // estado_proceso. Si divergen, el dato está mal en algún lado (incidente 20/06/2026).
+    if (o.is_active) {
+      const abierta = abiertaPorFechas(o)
+      if (e === 'inscripcion_abierta' && !abierta) {
+        const motivo = !o.inscription_start ? 'sin inscription_start'
+          : !dl ? 'sin deadline' : `plazo vencido (${dl})`
+        errs.push(`${tag} → estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`)
+      } else if (abierta && e !== 'inscripcion_abierta') {
+        warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
+      }
     }
   }
 
