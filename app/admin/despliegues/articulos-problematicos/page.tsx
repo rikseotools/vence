@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { adminFetch } from '@/lib/api/adminFetch'
 
 type BucketStats = {
   calls: number
@@ -54,7 +55,7 @@ export default function DespliegueArticulosProblematicosPage() {
       const token = session?.access_token
       if (!token) throw new Error('Sesión no encontrada')
 
-      const resp = await fetch(
+      const resp = await adminFetch(
         `/api/v2/admin/problematic-articles-rollout?hours=${hours}`,
         { headers: { Authorization: `Bearer ${token}` } },
       )

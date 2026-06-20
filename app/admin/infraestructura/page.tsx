@@ -8,6 +8,7 @@
 'use client'
 
 import Link from 'next/link'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { useCallback, useEffect, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -136,7 +137,7 @@ export default function InfraestructuraOverviewPage() {
     try {
       setError(null)
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/admin/system-health?window=${windowKey}`, {
+      const res = await adminFetch(`/api/admin/system-health?window=${windowKey}`, {
         headers,
       })
       if (!res.ok) {

@@ -88,7 +88,7 @@ export default function LifecycleQueueTab() {
       const headers = await getAuthHeaders()
       const results = await Promise.all(
         QUEUE_STATES.map(s =>
-          fetch(`/api/admin/lifecycle/queue?state=${s.state}&limit=1`, { headers })
+          adminFetch(`/api/admin/lifecycle/queue?state=${s.state}&limit=1`, { headers })
             .then(r => r.json())
             .then(d => [s.state, d.total ?? 0])
             .catch(() => [s.state, 0])
@@ -107,7 +107,7 @@ export default function LifecycleQueueTab() {
     setBulkResult(null)
     try {
       const headers = await getAuthHeaders()
-      const r = await fetch(`/api/admin/lifecycle/queue?state=${newState}&limit=50`, { headers })
+      const r = await adminFetch(`/api/admin/lifecycle/queue?state=${newState}&limit=50`, { headers })
       const d = await r.json()
       if (!d.success) throw new Error(d.error || 'Error desconocido')
       setQuestions(d.questions)

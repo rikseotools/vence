@@ -566,7 +566,7 @@ function LogDetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }
     try {
       const authHeaders = await getAuthHeaders()
       if (!authHeaders['Authorization']) return
-      const res = await fetch(`/api/admin/ai-traces/${log.id}`, {
+      const res = await adminFetch(`/api/admin/ai-traces/${log.id}`, {
         headers: authHeaders
       })
       if (res.ok) {

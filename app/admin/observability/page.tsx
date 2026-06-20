@@ -15,6 +15,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type WindowKey = '1h' | '6h' | '24h' | '7d'
@@ -91,7 +92,7 @@ export default function ObservabilityDashboard() {
     setError(null)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/admin/observability?window=${window}`, { headers })
+      const res = await adminFetch(`/api/admin/observability?window=${window}`, { headers })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`)
       setData(json)

@@ -5,7 +5,8 @@ const { execSync } = require('child_process')
 
 const EXCLUDE = ['app/armando/page.tsx']
 // Migra fetch crudo a /api/admin/* Y /api/v2/admin/* (ambos guardados por proxy.ts).
-const files = execSync(`grep -rlnE "fetch\\((['\\"])/api/(v2/)?admin/" app components hooks`, { encoding: 'utf8' })
+// Cubre comillas simples, dobles Y template literals (backticks con ${}).
+const files = execSync('grep -rlnE "fetch\\\\((\\x27|\\"|\\`)/api/(v2/)?admin/" app components hooks', { encoding: 'utf8' })
   .trim().split('\n').filter(f => f && !EXCLUDE.includes(f))
 
 const IMPORT = "import { adminFetch } from '@/lib/api/adminFetch'"
@@ -13,8 +14,8 @@ let changed = 0
 for (const f of files) {
   let src = fs.readFileSync(f, 'utf8')
   const before = src
-  // swap las llamadas a /api/admin/ y /api/v2/admin/ (ambas comillas)
-  src = src.replace(/\bfetch\((['"])(\/api\/(?:v2\/)?admin\/)/g, 'adminFetch($1$2')
+  // swap las llamadas a /api/admin/ y /api/v2/admin/ (comillas ' " y backtick `)
+  src = src.replace(/\bfetch\((['"`])(\/api\/(?:v2\/)?admin\/)/g, 'adminFetch($1$2')
   if (src === before) continue
   // asegurar import (una vez)
   if (!/from '@\/lib\/api\/adminFetch'/.test(src)) {
