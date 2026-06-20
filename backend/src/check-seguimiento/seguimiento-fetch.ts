@@ -11,10 +11,22 @@ import * as https from 'https';
 const INSECURE_TLS_HOSTS = new Set<string>([
   'www.dpz.es', // FNMT-RCM intermedio no servido (15-may-2026)
   'www.institucionpenitenciaria.es', // cadena de certificado incompleta (19-jun-2026): curl estricto=000, -k=200
+  // Cadena de certificado incompleta (FNMT/Camerfirma distrusted) — server-rendered, curl -k=200 (20-jun-2026):
+  'sede.getafe.es',
+  'coslada.es',
+  'www.dipucuenca.es',
+  'cbomberosalicante.sedelectronica.es',
+  'seuelectronica.vilanova.cat',
+  'santcugat.cat',
+  'ayuntamiento.marbella.es',
+  'www.ponferrada.org',
 ]);
 
+// UA de navegador real: algunos WAF (p.ej. emergenciasgc.org, consorciobomberosalicante.es)
+// devuelven 403 a User-Agents que contienen "VenceBot"/"bot". Identificarse como navegador
+// reduce bloqueos sin afectar a los sitios que ya respondían (20-jun-2026).
 const USER_AGENT =
-  'Mozilla/5.0 (compatible; VenceBot/1.0; +https://www.vence.es)';
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 const FETCH_HEADERS = {
   'User-Agent': USER_AGENT,
