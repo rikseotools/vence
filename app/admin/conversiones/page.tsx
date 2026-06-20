@@ -144,7 +144,7 @@ export default function ConversionesPage() {
 
   // Cargar datos principales desde la API (usa service role para bypasear RLS)
   const loadMainStats = async () => {
-    const response = await fetch(`/api/v2/admin/conversion-stats?days=${dateRange}`)
+    const response = await adminFetch(`/api/v2/admin/conversion-stats?days=${dateRange}`)
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Error loading stats')
@@ -202,7 +202,7 @@ export default function ConversionesPage() {
     // podía obtener journey de cualquier user.
     try {
       const authHeaders = await getAuthHeaders()
-      const res = await fetch(`/api/admin/conversions/user-journey?userId=${encodeURIComponent(userId)}`, { headers: authHeaders })
+      const res = await adminFetch(`/api/admin/conversions/user-journey?userId=${encodeURIComponent(userId)}`, { headers: authHeaders })
       if (!res.ok) {
         console.error('Error loading journey:', res.status)
         return

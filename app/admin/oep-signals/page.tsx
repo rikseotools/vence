@@ -43,7 +43,7 @@ export default function OepSignalsPage() {
     setLoading(true)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/admin/oep-signals?status=${status}&scope=${currentScope}&limit=200`, { headers })
+      const res = await adminFetch(`/api/admin/oep-signals?status=${status}&scope=${currentScope}&limit=200`, { headers })
       const json = await res.json() as ListResponse
       setData(json)
     } catch (err) {
@@ -83,7 +83,7 @@ export default function OepSignalsPage() {
     if (!confirm(`¿Ejecutar cron "${endpoint}" ahora?`)) return
     try {
       const triggerHeaders = await getAuthHeaders()
-      const res = await fetch(`/api/admin/oep-signals/trigger-cron?cron=${endpoint}`, { method: 'POST', headers: triggerHeaders })
+      const res = await adminFetch(`/api/admin/oep-signals/trigger-cron?cron=${endpoint}`, { method: 'POST', headers: triggerHeaders })
       const json = await res.json()
       alert(json.success ? `✅ ${endpoint} ejecutado` : `❌ ${json.error}`)
       await loadData(activeTab, scope)
