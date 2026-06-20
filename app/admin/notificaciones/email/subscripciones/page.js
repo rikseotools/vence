@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@supabase/supabase-js'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 
 export default function EmailSubscriptionsPage() {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [subscriptionData, setSubscriptionData] = useState(null)
@@ -24,30 +24,15 @@ export default function EmailSubscriptionsPage() {
         return
       }
 
-      try {
-        // 🔧 FIX: Use same admin verification as Header  
-        const { data: isAdminResult, error } = await supabase.rpc('is_current_user_admin')
-        
-        if (error) {
-          console.error('Error verificando admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(isAdminResult === true)
-        }
-        
-        if (isAdminResult === true) {
-          loadSubscriptionData()
-        }
-      } catch (error) {
-        console.error('Error checking admin access:', error)
-        setIsAdmin(false)
-      } finally {
-        setLoading(false)
-      }
+      // Admin vía allowlist de email (agnóstico, sin RPC auth.uid()). Solo UI.
+      const admin = isAdminEmail(user.email)
+      setIsAdmin(admin)
+      if (admin) loadSubscriptionData()
+      setLoading(false)
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase])
+  }, [user, authLoading])
 
   const loadSubscriptionData = async () => {
     try {

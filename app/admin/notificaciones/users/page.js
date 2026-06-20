@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 import Link from 'next/link'
 
 export default function UsersDetailPage() {
@@ -24,26 +25,12 @@ export default function UsersDetailPage() {
         return
       }
 
-      try {
-        // 🔧 FIX: Use same admin verification as Header  
-        const { data: isAdminResult, error } = await supabase.rpc('is_current_user_admin')
-        
-        if (error) {
-          console.error('Error verificando admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(isAdminResult === true)
-        }
-        
-        if (isAdminResult === true) {
-          loadUsersData()
-        }
-      } catch (error) {
-        console.error('Error checking admin access:', error)
-        setIsAdmin(false)
-      } finally {
-        setLoading(false)
-      }
+      // Admin vía allowlist de email (agnóstico, sin RPC auth.uid()). Solo UI;
+      // el gate real es server-side (requireAdmin).
+      const admin = isAdminEmail(user.email)
+      setIsAdmin(admin)
+      if (admin) loadUsersData()
+      setLoading(false)
     }
 
     checkAdminAccess()

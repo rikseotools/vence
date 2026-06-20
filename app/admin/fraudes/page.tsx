@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 
 type Tab = 'premium' | 'multicuenta' | 'bots' | 'bloqueados'
 
@@ -65,9 +66,10 @@ export default function FraudesPage() {
   useEffect(() => {
     if (!supabase || !user) return
     ;(async () => {
-      const { data } = await supabase.rpc('is_current_user_admin')
-      setIsAdmin(data === true)
-      if (data === true) loadAll()
+      // Admin vía allowlist de email (agnóstico). Solo UI; el gate real es server-side.
+      const admin = isAdminEmail(user.email)
+      setIsAdmin(admin)
+      if (admin) loadAll()
       setLoading(false)
     })()
   }, [supabase, user])

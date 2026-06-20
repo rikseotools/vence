@@ -19,6 +19,7 @@ import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 
 // ============================================
 // Tipos
@@ -119,17 +120,10 @@ export async function getAuthenticatedUserWithOposicion(
 // ============================================
 // Verificación de admin (email whitelist)
 // ============================================
+// La allowlist vive en lib/auth/adminEmails (client-safe, fuente única). Se
+// reexporta aquí para no romper los imports existentes de los 27 callers.
 
-const ADMIN_EMAILS = [
-  'admin@vencemitfg.es',
-  'manuel@vencemitfg.es',
-  'manueltrader@gmail.com',
-]
-
-export function isAdminEmail(email: string | undefined): boolean {
-  if (!email) return false
-  return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
-}
+export { isAdminEmail }
 
 export async function requireAdmin(
   request: NextRequest

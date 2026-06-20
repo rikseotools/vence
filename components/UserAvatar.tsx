@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname, getOposicion } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 
 // ── Types ────────────────────────────────────────────────────────
@@ -206,20 +207,10 @@ export default function UserAvatar() {
         return
       }
 
-      try {
-        const { data, error } = await supabase.rpc('is_current_user_admin')
-        if (error) {
-          console.error('Error verificando admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(data === true)
-        }
-      } catch (err) {
-        console.error('Error en verificacion de admin:', err)
-        setIsAdmin(false)
-      } finally {
-        setAdminLoading(false)
-      }
+      // Admin vía allowlist de email (agnóstico, sin RPC auth.uid()). Solo UI;
+      // el gate real es server-side (requireAdmin).
+      setIsAdmin(isAdminEmail(user.email))
+      setAdminLoading(false)
     }
 
     checkAdminStatus()

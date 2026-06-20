@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
 export default function EmailDetailPage() {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [data, setData] = useState(null)
@@ -31,30 +31,16 @@ export default function EmailDetailPage() {
         return
       }
 
-      try {
-        // 🔧 FIX: Use same admin verification as Header
-        const { data: isAdminResult, error } = await supabase.rpc('is_current_user_admin')
-        
-        if (error) {
-          console.error('Error verificando admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(isAdminResult === true)
-        }
-        
-        if (isAdminResult === true) {
-          loadEmailData()
-        }
-      } catch (error) {
-        console.error('Error checking admin access:', error)
-        setIsAdmin(false)
-      } finally {
-        setLoading(false)
-      }
+      // Admin vía allowlist de email (agnóstico, sin RPC auth.uid()). Solo UI;
+      // el gate real es server-side (requireAdmin en los endpoints admin).
+      const admin = isAdminEmail(user.email)
+      setIsAdmin(admin)
+      if (admin) loadEmailData()
+      setLoading(false)
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase, timeRange, emailTypeFilter, templateFilter, campaignFilter, eventsLimit, currentPage])
+  }, [user, authLoading, timeRange, emailTypeFilter, templateFilter, campaignFilter, eventsLimit, currentPage])
 
   // Función para reiniciar página cuando cambien filtros
   const handleFilterChange = (filterType, value) => {

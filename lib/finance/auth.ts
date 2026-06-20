@@ -11,10 +11,10 @@
 // El check de admin sigue requiriendo client Supabase para llamar la
 // RPC `is_current_user_admin` que opera contra auth.uid() del JWT.
 
-import { createClient } from '@supabase/supabase-js'
 import type { NextRequest } from 'next/server'
 import { readSession } from '@/lib/armando/session'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 
 export type FinanceCaller =
   | { kind: 'armando' }
@@ -49,26 +49,10 @@ export async function authenticateFinanceRequest(req: NextRequest): Promise<Fina
     }
   }
 
-  // RPC `is_current_user_admin` requiere cliente Supabase con el token del
-  // user (no service_role) porque la función SQL usa auth.uid() del JWT.
-  // Reconstruimos cliente para esta llamada específica.
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !anon) {
-    return { ok: false, status: 500, error: 'Supabase no configurado' }
-  }
-  const authHeader = req.headers.get('authorization')
-  const token = authHeader!.slice('Bearer '.length)
-  const supabase = createClient(url, anon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  })
-
-  const { data: isAdmin, error: roleError } = await supabase.rpc('is_current_user_admin')
-  if (roleError) {
-    console.error('[finance/auth] role check error:', roleError)
-    return { ok: false, status: 500, error: 'Error verificando permisos' }
-  }
-  if (isAdmin !== true) {
+  // Admin vía allowlist de email (agnóstico, del token verifyAuth). Sustituye a
+  // la RPC is_current_user_admin (auth.uid(), no portable). Mismo gate que
+  // requireAdmin en el resto de la API.
+  if (!isAdminEmail(auth.email)) {
     return { ok: false, status: 403, error: 'Solo admins' }
   }
 

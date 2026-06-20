@@ -15,6 +15,7 @@ import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { useAIChat } from '../contexts/AIChatContext'
 import { getOposicion, ALL_OPOSICION_SLUGS, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
@@ -140,21 +141,10 @@ export default function HeaderES() {
         return
       }
 
-      try {
-        const { data, error } = await supabase.rpc('is_current_user_admin')
-        
-        if (error) {
-          console.error('Error verificando admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(data === true)
-        }
-      } catch (err) {
-        console.error('Error en verificación de admin:', err)
-        setIsAdmin(false)
-      } finally {
-        setAdminLoading(false)
-      }
+      // Admin se deriva de la allowlist de email (agnóstico, sin RPC auth.uid()).
+      // El gate REAL sigue siendo server-side (requireAdmin); esto es solo UI.
+      setIsAdmin(isAdminEmail(user.email))
+      setAdminLoading(false)
     }
 
     if (!authLoading) {

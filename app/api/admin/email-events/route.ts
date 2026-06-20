@@ -46,32 +46,7 @@ async function _GET(request: NextRequest) {
   }
 }
 
-// Verify admin access — se mantiene con Supabase RPC (no migrable a Drizzle)
-async function _POST(request: NextRequest) {
-  const admin = await requireAdmin(request)
-  if (!admin.ok) return admin.response
-
-  try {
-    const { userId } = await request.json()
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
-    }
-
-    const { data: isAdmin, error } = await getSupabaseAdmin()
-      .rpc('is_user_admin', { check_user_id: userId })
-
-    if (error) {
-      console.error('❌ Error checking admin status:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ isAdmin: isAdmin === true })
-  } catch (error) {
-    console.error('❌ Admin verification error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+// (POST eliminado 2026-06-20: handler muerto —0 callers— que usaba la RPC
+//  is_user_admin/auth.uid(), no portable. El único uso del endpoint es el GET.)
 
 export const GET = withErrorLogging('/api/admin/email-events', _GET)
-export const POST = withErrorLogging('/api/admin/email-events', _POST)

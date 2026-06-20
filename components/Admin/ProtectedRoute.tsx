@@ -1,6 +1,7 @@
 // components/Admin/ProtectedRoute.tsx - Componente de protección para rutas administrativas
 'use client'
 import { useAuth } from '../../contexts/AuthContext'
+import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
@@ -31,23 +32,10 @@ export default function ProtectedRoute({ children, requireRole = 'admin' }: Prot
         return
       }
 
-      try {
-        const { data, error } = await supabase.rpc('is_current_user_admin')
-
-        if (error) {
-          console.error('Error verificando permisos:', error)
-          setError('Error verificando permisos de administrador')
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(data === true)
-        }
-      } catch (err) {
-        console.error('Error en verificación de admin:', err)
-        setError('Error de conexión al verificar permisos')
-        setIsAdmin(false)
-      } finally {
-        setIsLoading(false)
-      }
+      // Admin vía allowlist de email (agnóstico, sin RPC auth.uid()). Solo UI;
+      // el gate real es server-side (requireAdmin).
+      setIsAdmin(isAdminEmail(user.email))
+      setIsLoading(false)
     }
 
     checkAdminStatus()
