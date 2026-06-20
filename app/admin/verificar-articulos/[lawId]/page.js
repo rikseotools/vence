@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -298,7 +297,7 @@ export default function VerificarArticulosPage() {
     const loadAiConfigs = async () => {
       try {
         const headers = await getAuthHeaders()
-        const response = await adminFetch('/api/admin/ai-config', { headers })
+        const response = await fetch('/api/admin/ai-config', { headers })
         const data = await response.json()
         if (data.success) {
           setAiConfigs(data.configs)

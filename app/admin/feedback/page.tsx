@@ -3,7 +3,6 @@
 // app/admin/feedback/page.tsx - Panel de administración de soporte
 'use client'
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -273,7 +272,7 @@ export default function AdminFeedbackPage() {
     
     // Marcar conversación como vista por admin en BD
     try {
-      const response = await adminFetch('/api/admin/mark-conversation-viewed', {
+      const response = await fetch('/api/admin/mark-conversation-viewed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: conversation.id })
@@ -290,7 +289,7 @@ export default function AdminFeedbackPage() {
     
     // Marcar mensajes del usuario como leídos y luego cargar mensajes
     try {
-      const response = await adminFetch('/api/admin/mark-messages-read', {
+      const response = await fetch('/api/admin/mark-messages-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: conversation.id })

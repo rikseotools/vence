@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function CobrosPage() {
@@ -31,7 +30,7 @@ export default function CobrosPage() {
       const timeoutId = setTimeout(() => controller.abort(), 35000)
 
       const stripeAuthHeaders = await getAuthHeaders()
-      const response = await adminFetch('/api/admin/stripe-fees-summary', {
+      const response = await fetch('/api/admin/stripe-fees-summary', {
         signal: controller.signal,
         headers: stripeAuthHeaders,
       })

@@ -173,7 +173,7 @@ export default function ConversionesPage() {
   const loadAdminViews = async () => {
     try {
       const authHeaders = await getAuthHeaders()
-      const res = await adminFetch('/api/admin/conversions/views', { headers: authHeaders })
+      const res = await fetch('/api/admin/conversions/views', { headers: authHeaders })
       if (!res.ok) {
         console.error('Error cargando admin views:', res.status)
         setTimeAnalysis([])

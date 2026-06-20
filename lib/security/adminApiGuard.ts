@@ -21,25 +21,10 @@ export function isAdminEmail(email?: string | null): boolean {
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
-// Rutas /api/admin/* que implementan su PROPIA autenticación en el handler (en
-// Node runtime) y por tanto NO deben pasar por este guard (que corre en el
-// runtime edge del proxy y solo sabe de Bearer/x-cron-secret). Caso real:
-// stripe-fees-summary usa el dual-auth de finanzas (authenticateFinanceRequest:
-// cookie armando HMAC con node:crypto O Bearer admin). El guard edge no puede
-// validar esa cookie (node:crypto no existe en edge) → la exime y deja que la
-// ruta se autoproteje. Mantener mínima y solo para rutas con auth propia probada.
-const SELF_AUTHENTICATED_PREFIXES = ['/api/admin/stripe-fees-summary']
-
 /** null = autorizado (continúa); NextResponse = rechazado. */
 export async function guardAdminApi(request: NextRequest): Promise<NextResponse | null> {
   // Preflight CORS: sin cuerpo ni acción.
   if (request.method === 'OPTIONS') return null
-
-  // 0) Rutas que se autentican por sí mismas en el handler (ver constante arriba).
-  const pathname = request.nextUrl.pathname
-  if (SELF_AUTHENTICATED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
-    return null
-  }
 
   // 1) Automatización por x-cron-secret (scripts/cron: revalidate, health/*…).
   const cronSecret = request.headers.get('x-cron-secret')

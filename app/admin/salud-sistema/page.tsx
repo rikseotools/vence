@@ -12,7 +12,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type Status = 'green' | 'amber' | 'red' | 'unknown'
@@ -166,9 +165,9 @@ export default function SaludSistemaPage() {
       // (5º indicador). Si pool-capacity falla, el panel sigue mostrando los
       // 4 primeros — degradación elegante.
       const [healthRes, poolRes, oepRes] = await Promise.allSettled([
-        adminFetch('/api/admin/system-health', { headers }),
-        adminFetch('/api/admin/pool-capacity?window=1h', { headers }),
-        adminFetch('/api/admin/oep-consistency', { headers }),
+        fetch('/api/admin/system-health', { headers }),
+        fetch('/api/admin/pool-capacity?window=1h', { headers }),
+        fetch('/api/admin/oep-consistency', { headers }),
       ])
 
       if (healthRes.status === 'fulfilled') {

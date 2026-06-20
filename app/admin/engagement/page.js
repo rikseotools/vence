@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function EngagementPage() {
@@ -26,7 +25,7 @@ export default function EngagementPage() {
           throw new Error('No session token available')
         }
 
-        const response = await adminFetch('/api/admin/engagement-stats', {
+        const response = await fetch('/api/admin/engagement-stats', {
           headers: authHeaders,
         })
 

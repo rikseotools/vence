@@ -1,10 +1,8 @@
 // lib/api/adminFetch.ts
 // Wrapper de fetch para llamadas del panel admin a /api/admin/*.
-// Inyecta SIEMPRE el Bearer token (getAuthHeaders) para que el guard de
-// /api/admin/* (guardAdminApi en proxy.ts — Next 16 usa proxy, NO middleware;
-// ver project-admin-endpoints-sin-auth) pueda autorizar. El guard solo acepta
-// Bearer admin o x-cron-secret: un fetch crudo a /api/admin/* devuelve 401.
-// Úsalo en TODA llamada del panel admin en vez de fetch crudo.
+// Inyecta SIEMPRE el Bearer token (getAuthHeaders) para que el middleware de
+// /api/admin/* (ver middleware.ts + project-admin-endpoints-sin-auth) pueda
+// autorizar. Úsalo en TODA llamada nueva del panel admin en vez de fetch crudo.
 import { getAuthHeaders } from './authHeaders'
 
 export async function adminFetch(

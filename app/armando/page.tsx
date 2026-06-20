@@ -99,10 +99,7 @@ export default function ArmandoPage() {
       // el caché de netVolume4w está frío y debe esperar al Stripe Reporting API
       const timeoutId = setTimeout(() => controller.abort(), 35000)
 
-      // La cookie httpOnly de armando viaja automáticamente (sameSite=strict, mismo origen).
-      // NO usa adminFetch: /armando se autentica por cookie HMAC, no por Bearer Supabase,
-      // y la ruta está exenta del guard (SELF_AUTHENTICATED_PREFIXES en adminApiGuard.ts).
-      // eslint-disable-next-line no-restricted-syntax
+      // La cookie httpOnly de armando viaja automáticamente (sameSite=strict, mismo origen)
       const response = await fetch('/api/admin/stripe-fees-summary', { signal: controller.signal })
       clearTimeout(timeoutId)
       const data = await response.json()

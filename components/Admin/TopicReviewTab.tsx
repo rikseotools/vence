@@ -2,7 +2,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { useRouter } from 'next/navigation'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import EmbeddingReviewTab from './EmbeddingReviewTab'
@@ -277,7 +276,7 @@ export default function TopicReviewTab() {
   // Cargar conteo de preguntas pendientes por embeddings
   const loadEmbeddingCount = async () => {
     try {
-      const response = await adminFetch('/api/admin/embedding-review', { headers: await getAuthHeaders() })
+      const response = await fetch('/api/admin/embedding-review', { headers: await getAuthHeaders() })
       const data = await response.json()
       if (data.success) {
         setEmbeddingCount(data.stats?.total || 0)
@@ -345,7 +344,7 @@ export default function TopicReviewTab() {
     try {
       setLoadingAiConfig(true)
       const headers = await getAuthHeaders()
-      const response = await adminFetch('/api/admin/ai-config', { headers })
+      const response = await fetch('/api/admin/ai-config', { headers })
       const data = await response.json()
 
       if (data.success && data.configs) {

@@ -1,7 +1,6 @@
 // app/admin/notificaciones/email/subscripciones/page.js - Página detallada de subscripciones de email
 'use client'
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -58,7 +57,7 @@ export default function EmailSubscriptionsPage() {
       // cualquier user authenticated podía obtener emails+subscripciones de
       // todos los users. Endpoint admin cierra ese leak.
       const authHeaders = await getAuthHeaders()
-      const res = await adminFetch('/api/admin/users/subscriptions', { headers: authHeaders })
+      const res = await fetch('/api/admin/users/subscriptions', { headers: authHeaders })
       let usersData = null
       let rpcError = null
       if (res.ok) {
