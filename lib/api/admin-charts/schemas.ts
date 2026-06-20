@@ -22,8 +22,19 @@ export const activityDaySchema = z.object({
   anterior: z.number(),
 })
 
+// Stats con ventana EXPLÍCITA (antes "promedio"/"máximo" no decían de qué periodo eran).
+export const activityStatsSchema = z.object({
+  avg7d: z.number(),        // promedio diario de los últimos 7 días (ritmo reciente)
+  max90d: z.number(),       // pico diario en 90 días (récord real, no de la quincena)
+  delta30dPct: z.number().nullable(), // % del avg7d actual vs el avg7d de hace ~30 días
+  delta90dPct: z.number().nullable(), // % del avg7d actual vs el avg7d de hace ~90 días
+})
+
+export type ActivityStats = z.infer<typeof activityStatsSchema>
+
 export const activityChartResponseSchema = z.object({
   data: z.array(activityDaySchema),
+  stats: activityStatsSchema.optional(),
 })
 
 export type ActivityChartResponse = z.infer<typeof activityChartResponseSchema>

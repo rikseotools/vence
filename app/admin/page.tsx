@@ -16,6 +16,7 @@ type OnlineUser = DashboardResponse['onlineUsers'][number]
 type RecentUser = DashboardResponse['users'][number]
 type TodayTest = DashboardResponse['recentActivity'][number]
 type ActivityDay = ActivityChartResponse['data'][number]
+type ActivityStats = NonNullable<ActivityChartResponse['stats']>
 type RegistrationDay = RegistrationsChartResponse['data'][number]
 
 export default function AdminDashboard() {
@@ -32,6 +33,7 @@ export default function AdminDashboard() {
 
   // Charts data (cargados en paralelo via v2 API server-side)
   const [activityData, setActivityData] = useState<ActivityDay[] | null>(null)
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null)
   const [registrationsData, setRegistrationsData] = useState<RegistrationDay[] | null>(null)
 
   useEffect(() => {
@@ -63,6 +65,7 @@ export default function AdminDashboard() {
         if (chartsRes.ok) {
           const charts = await chartsRes.json()
           setActivityData(charts.activity?.data || null)
+          setActivityStats(charts.activity?.stats || null)
           setRegistrationsData(charts.registrations?.data || null)
         }
       } catch (err) {
@@ -571,7 +574,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Gráfico de evolución temporal - Ancho completo (v2 API server-side) */}
-      <AdminActivityChart data={activityData} />
+      <AdminActivityChart data={activityData} stats={activityStats} />
 
       {/* Gráfico de registros por día (v2 API server-side) */}
       <AdminRegistrationsChart data={registrationsData} />

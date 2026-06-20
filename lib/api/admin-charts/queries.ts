@@ -3,6 +3,11 @@
 import { getAdminDb as getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { ActivityChartResponse, RegistrationsChartResponse } from './schemas'
+import { computeActivityStats } from './activityStats'
+
+// Ventana para los stats (avg7d / max90d / deltas): 90 días + 7 de colchón para el
+// avg7d de "hace 90 días". Una sola query cacheada cubre chart (14d) y stats (97d).
+const STATS_WINDOW_DAYS = 97
 
 // -- Helper de fechas (zona horaria Madrid) --
 
@@ -49,13 +54,20 @@ export async function getActivityChartData(days = 14): Promise<ActivityChartResp
   const startPrevious = new Date(startCurrent)
   startPrevious.setDate(startPrevious.getDate() - days)
 
-  // Una sola query: contar usuarios únicos por día en los últimos 28 días
+  // Lower bound = el más antiguo entre (N días anteriores) y la ventana de stats (97d),
+  // así una sola query alimenta tanto el chart de 14d como los stats de 90d.
+  const startStats = new Date(nowMadrid)
+  startStats.setDate(startStats.getDate() - (STATS_WINDOW_DAYS - 1))
+  startStats.setHours(0, 0, 0, 0)
+  const queryStart = startPrevious < startStats ? startPrevious : startStats
+
+  // Una sola query: usuarios únicos por día en la ventana (chart 28d + stats 97d)
   const rows = await db.execute(sql`
     select
       (started_at at time zone 'Europe/Madrid')::date as day,
       count(distinct user_id)::int as unique_users
     from tests
-    where started_at >= ${startPrevious.toISOString()}::timestamptz
+    where started_at >= ${queryStart.toISOString()}::timestamptz
       and started_at < ${new Date(nowMadrid.getFullYear(), nowMadrid.getMonth(), nowMadrid.getDate() + 1).toISOString()}::timestamptz
       and user_id is not null
     group by (started_at at time zone 'Europe/Madrid')::date
@@ -89,7 +101,14 @@ export async function getActivityChartData(days = 14): Promise<ActivityChartResp
     })
   }
 
-  return { data }
+  // Stats con ventana explícita: conteos MÁS RECIENTE PRIMERO (0=hoy … 96=hace 96 días).
+  const countsMostRecentFirst: number[] = []
+  for (let i = 0; i < STATS_WINDOW_DAYS; i++) {
+    countsMostRecentFirst.push(byDay.get(getMadridDayRange(i).dateKey) || 0)
+  }
+  const stats = computeActivityStats(countsMostRecentFirst)
+
+  return { data, stats }
 }
 
 // ============================================

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import type { ActivityStats } from '@/lib/api/admin-charts/schemas'
 
 interface ActivityDay {
   dia: string
@@ -18,10 +19,12 @@ interface TooltipProps {
 
 interface AdminActivityChartProps {
   data?: ActivityDay[] | null
+  stats?: ActivityStats | null
 }
 
-export default function AdminActivityChart({ data: externalData }: AdminActivityChartProps) {
+export default function AdminActivityChart({ data: externalData, stats: externalStats }: AdminActivityChartProps) {
   const [chartData, setChartData] = useState<ActivityDay[]>([])
+  const [fetchedStats, setFetchedStats] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(!externalData)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,6 +42,7 @@ export default function AdminActivityChart({ data: externalData }: AdminActivity
         if (!res.ok) throw new Error(`Error ${res.status}`)
         const json = await res.json()
         setChartData(json.activity?.data || [])
+        setFetchedStats(json.activity?.stats || null)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       } finally {
@@ -103,7 +107,15 @@ export default function AdminActivityChart({ data: externalData }: AdminActivity
   const totalActual = chartData.reduce((sum, d) => sum + d.actual, 0)
   const totalAnterior = chartData.reduce((sum, d) => sum + d.anterior, 0)
   const trend = totalAnterior > 0 ? Math.round(((totalActual - totalAnterior) / totalAnterior) * 100) : 0
-  const avgDaily = chartData.length > 0 ? Math.round(totalActual / chartData.length) : 0
+
+  // Stats con ventana EXPLÍCITA (del server). Si no llegan (modo legacy), fallback honesto
+  // a la quincena visible, etiquetado como 14d (nunca un "promedio/máximo" sin ventana).
+  const stats = externalStats ?? fetchedStats
+  const avgValue = stats ? stats.avg7d : (chartData.length > 0 ? Math.round(totalActual / chartData.length) : 0)
+  const avgLabel = stats ? 'promedio/día (7d)' : 'promedio/día (14d)'
+  const maxValue = stats ? stats.max90d : Math.max(...chartData.map(d => d.actual), 0)
+  const maxLabel = stats ? 'máximo (90d)' : 'máximo (14d)'
+  const hoy = chartData[chartData.length - 1]?.actual || 0
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
@@ -168,18 +180,40 @@ export default function AdminActivityChart({ data: externalData }: AdminActivity
 
       <div className="mt-4 flex items-center justify-center gap-6 text-sm">
         <div className="text-center">
-          <div className="font-bold text-blue-600 text-lg">{avgDaily}</div>
-          <div className="text-gray-500 text-xs">promedio/dia</div>
+          <div className="font-bold text-blue-600 text-lg">{avgValue}</div>
+          <div className="text-gray-500 text-xs">{avgLabel}</div>
         </div>
         <div className="text-center">
-          <div className="font-bold text-green-600 text-lg">{chartData[chartData.length - 1]?.actual || 0}</div>
+          <div className="font-bold text-green-600 text-lg">{hoy}</div>
           <div className="text-gray-500 text-xs">hoy</div>
         </div>
         <div className="text-center">
-          <div className="font-bold text-purple-600 text-lg">{Math.max(...chartData.map(d => d.actual), 0)}</div>
-          <div className="text-gray-500 text-xs">maximo</div>
+          <div className="font-bold text-purple-600 text-lg">{maxValue}</div>
+          <div className="text-gray-500 text-xs">{maxLabel}</div>
         </div>
       </div>
+
+      {/* Comparativa de horizonte largo: ¿crezco vs hace un mes / un trimestre?
+          Chips en vez de líneas para no saturar el gráfico (decisión 20/06). */}
+      {stats && (stats.delta30dPct !== null || stats.delta90dPct !== null) && (
+        <div className="mt-3 flex items-center justify-center gap-2 flex-wrap text-xs">
+          {stats.delta30dPct !== null && (
+            <DeltaChip label="vs hace 30d" pct={stats.delta30dPct} />
+          )}
+          {stats.delta90dPct !== null && (
+            <DeltaChip label="vs hace 90d" pct={stats.delta90dPct} />
+          )}
+        </div>
+      )}
     </div>
+  )
+}
+
+function DeltaChip({ label, pct }: { label: string; pct: number }) {
+  const up = pct >= 0
+  return (
+    <span className={`px-2 py-1 rounded font-medium ${up ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
+      {label}: {up ? '↑' : '↓'} {up ? '+' : ''}{pct}%
+    </span>
   )
 }
