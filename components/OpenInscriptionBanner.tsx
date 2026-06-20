@@ -19,6 +19,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { auth } from '@/lib/auth'
 import { formatDateLarga, formatNumber } from '../lib/utils/format'
+import { emitClientEvent, flushClientObservability } from '@/lib/observability/client'
+import { isBannerSnoozed, latestDismiss } from '@/lib/oposiciones/bannerSnooze'
 
 type OpenInscription = {
   slug: string
@@ -38,9 +40,32 @@ type ApiResponse = {
   open: OpenInscription[]
   dismissed: string[]
   targetOposicion: string | null
+  // último cierre account-level (MAX dismissed_at) — ancla del cooldown cross-device.
+  lastDismissedAt?: string | null
 }
 
 const LOCALSTORAGE_KEY = 'vence_dismissed_inscription_banners'
+// Timestamp ISO del último cierre en ESTE dispositivo (cooldown anónimo + respuesta
+// inmediata en logueados antes de que el server lo refleje).
+const LAST_DISMISS_KEY = 'vence_inscription_banner_last_dismiss'
+
+function readLocalLastDismiss(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(LAST_DISMISS_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeLocalLastDismiss(iso: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(LAST_DISMISS_KEY, iso)
+  } catch {
+    // localStorage no disponible: ignorar (el cooldown server lo tapa en logueados).
+  }
+}
 
 function readLocalDismisses(): string[] {
   if (typeof window === 'undefined') return []
@@ -67,11 +92,13 @@ export default function OpenInscriptionBanner() {
   const { user, userProfile, loading: authLoading } = useAuth()
   const [data, setData] = useState<ApiResponse | null>(null)
   const [localDismisses, setLocalDismisses] = useState<string[]>([])
+  const [localLastDismiss, setLocalLastDismiss] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
 
-  // Inicializar dismisses de localStorage tras mount (evita hydration mismatch).
+  // Inicializar dismisses + último cierre de localStorage tras mount (evita hydration mismatch).
   useEffect(() => {
     setLocalDismisses(readLocalDismisses())
+    setLocalLastDismiss(readLocalLastDismiss())
   }, [])
 
   // Fetch al banner endpoint. Espera a que auth termine de cargar para
@@ -126,12 +153,19 @@ export default function OpenInscriptionBanner() {
 
   const handleDismiss = useCallback(
     async (slug: string) => {
+      // Observabilidad: registrar el cierre por convocatoria (antes era ciego).
+      emitClientEvent({ severity: 'info', eventType: 'banner_inscription_dismissed', metadata: { slug } })
+
       // Optimistic: añadir a localDismisses ya, persistir después.
       setLocalDismisses((prev) => {
         const next = prev.includes(slug) ? prev : [...prev, slug]
         writeLocalDismisses(next)
         return next
       })
+      // Activar el cooldown YA en este dispositivo (no esperar al refetch del server).
+      const nowIso = new Date().toISOString()
+      setLocalLastDismiss(nowIso)
+      writeLocalLastDismiss(nowIso)
 
       if (!user) return // anon: ya está en localStorage, no llamamos API.
 
@@ -152,8 +186,25 @@ export default function OpenInscriptionBanner() {
     [user],
   )
 
-  if (authLoading || !loaded) return null
-  const chosen = pick()
+  // Cooldown anti-martilleo: tras CUALQUIER cierre, silencio durante el cooldown.
+  // Ancla = el más reciente entre el server (cross-device) y el local (inmediato).
+  const lastDismiss = latestDismiss(data?.lastDismissedAt ?? null, localLastDismiss)
+  const ready = !authLoading && loaded
+  const snoozed = isBannerSnoozed(lastDismiss, Date.now())
+  const chosen = ready && !snoozed ? pick() : null
+
+  // Observabilidad: impresión por convocatoria (antes era ciego). Una vez por slug visible.
+  useEffect(() => {
+    if (chosen) {
+      emitClientEvent({
+        severity: 'info',
+        eventType: 'banner_inscription_viewed',
+        metadata: { slug: chosen.slug },
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen?.slug])
+
   if (!chosen) return null
 
   const name = chosen.short_name || chosen.nombre
@@ -171,6 +222,16 @@ export default function OpenInscriptionBanner() {
         href={`/${chosen.slug}`}
         aria-label={`Ver convocatoria ${name}`}
         className="absolute inset-0 z-0"
+        onClick={() => {
+          // Apertura por convocatoria. flush con beacon: la navegación inmediata
+          // se llevaría por delante el batch si no lo forzamos.
+          emitClientEvent({
+            severity: 'info',
+            eventType: 'banner_inscription_clicked',
+            metadata: { slug: chosen.slug },
+          })
+          flushClientObservability(true)
+        }}
       />
       <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between gap-3 text-sm px-4 py-2.5 pointer-events-none">
         <div className="flex-1 min-w-0 text-emerald-900 dark:text-emerald-100">

@@ -97,7 +97,7 @@ async function _GET(request: NextRequest) {
   // user_inscription_banner_dismissals no está en el schema Drizzle -> raw SQL.
   const [dismissedRows, profileRows] = await Promise.all([
     db.execute(sql`
-      SELECT oposicion_slug, boe_reference_at_dismiss
+      SELECT oposicion_slug, boe_reference_at_dismiss, dismissed_at
       FROM user_inscription_banner_dismissals
       WHERE user_id = ${auth.userId}
     `) as Promise<any[]>,
@@ -128,11 +128,20 @@ async function _GET(request: NextRequest) {
   // para que la comparación cliente `o.slug !== target` funcione.
   const targetOposicion = profileRow?.target_oposicion?.replace(/_/g, '-') ?? null
 
+  // Anti-martilleo: último cierre de CUALQUIER banner (account-level). El cliente lo
+  // usa para silenciar el banner durante el cooldown, cross-device (no solo localStorage).
+  const lastDismissedAt = (dismissedRows ?? []).reduce<string | null>((max, d) => {
+    const ts = d.dismissed_at ? String(d.dismissed_at) : null
+    if (!ts) return max
+    return !max || ts > max ? ts : max
+  }, null)
+
   return NextResponse.json(
     {
       open,
       dismissed,
       targetOposicion,
+      lastDismissedAt,
     },
     { headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=600' } }
   )

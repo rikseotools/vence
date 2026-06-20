@@ -96,6 +96,12 @@ export type ClientEventType =
   // entender quién la mueve / oculta / re-activa y así pulir el diseño (en móvil
   // tapaba contenido). metadata.action ∈ {'drag','hide','show'}. userId va auto.
   | 'daily_goal_banner_action'
+  // Banner global "Inscripción abierta" (boca-oreja). Antes era CIEGO (20/06): ni
+  // impresiones, ni aperturas, ni cierres. Ahora medimos por convocatoria
+  // (metadata.slug) → CTR, tasa de cierre y si el cooldown reduce el martilleo.
+  | 'banner_inscription_viewed'
+  | 'banner_inscription_clicked'
+  | 'banner_inscription_dismissed'
   // Avisos de la campana 🔔 (Fase 8): engagement con los hitos de oposiciones
   // seguidas. shown=impresión al abrir la campana, clicked=clic "Ver
   // convocatoria", dismissed=X/swipe. metadata: {oposicion, hitoId, severity}.
