@@ -108,7 +108,7 @@ export function useAdminNotifications(enabled = false) {
         ]),
         // 4. Obtener ventas no leídas
         Promise.race([
-          fetch('/api/v2/admin/unread-sales').then(r => r.json()),
+          adminFetch('/api/v2/admin/unread-sales').then(r => r.json()),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )
@@ -117,7 +117,7 @@ export function useAdminNotifications(enabled = false) {
         Promise.resolve({ success: true, totalIssues: 0, skipped: true }),
         // 6. Contar errores de validación API (últimas 24h) — via API (usa service role, bypass RLS)
         Promise.race([
-          fetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json()),
+          adminFetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json()),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )
@@ -283,7 +283,7 @@ export function useAdminNotifications(enabled = false) {
 
   const markSalesRead = async () => {
     try {
-      await fetch('/api/v2/admin/unread-sales', { method: 'POST' })
+      await adminFetch('/api/v2/admin/unread-sales', { method: 'POST' })
       setNotifications(prev => ({ ...prev, ventas: 0 }))
     } catch (error) {
       console.warn('Error marcando ventas como leídas:', error)

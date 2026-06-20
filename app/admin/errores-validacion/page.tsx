@@ -1,6 +1,7 @@
 // app/admin/errores-validacion/page.tsx
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import type { ValidationErrorsResponse, ValidationErrorEntry } from '@/lib/api/admin-validation-errors/schemas'
 
 type ErrorTypeFilter = 'timeout' | 'network' | 'db_connection' | 'validation' | 'not_found' | 'unknown' | 'auth' | 'forbidden' | 'rate_limit' | 'all'
@@ -42,7 +43,7 @@ export default function ErroresValidacionPage() {
 
   const handleMarkReviewed = useCallback(async (id: string) => {
     try {
-      const res = await fetch('/api/v2/admin/validation-errors', {
+      const res = await adminFetch('/api/v2/admin/validation-errors', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [id] }),

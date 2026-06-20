@@ -400,7 +400,7 @@ export default function AdminFeedbackPage() {
         // Si la conversación está en waiting_admin, marcar como vista (quitar pendiente)
         if (conversation.status === 'waiting_admin') {
           const authHeaders = await getAuthHeaders()
-          await fetch('/api/v2/admin/feedback/mark-viewed', {
+          await adminFetch('/api/v2/admin/feedback/mark-viewed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...authHeaders },
             body: JSON.stringify({
@@ -462,7 +462,7 @@ export default function AdminFeedbackPage() {
       // Si no hay conversación, crear una antes de llamar al endpoint
       if (!conversation) {
         const authHeaders = await getAuthHeaders()
-        const res = await fetch('/api/v2/admin/feedback/create-conversation', {
+        const res = await adminFetch('/api/v2/admin/feedback/create-conversation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({
@@ -531,7 +531,7 @@ export default function AdminFeedbackPage() {
 
     try {
       const authHeaders = await getAuthHeaders()
-      const res = await fetch('/api/v2/admin/feedback/find-user-by-email', {
+      const res = await adminFetch('/api/v2/admin/feedback/find-user-by-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ email: newConvEmail.trim().toLowerCase() }),
@@ -560,7 +560,7 @@ export default function AdminFeedbackPage() {
       // 1+2 atómicos: INSERT user_feedback + INSERT feedback_conversation
       const messagePreview = newConvMessage.trim().substring(0, 100) + (newConvMessage.length > 100 ? '...' : '')
       const authHeaders = await getAuthHeaders()
-      const createRes = await fetch('/api/v2/admin/feedback/create-admin-conversation', {
+      const createRes = await adminFetch('/api/v2/admin/feedback/create-admin-conversation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
@@ -730,7 +730,7 @@ export default function AdminFeedbackPage() {
       // Cargar perfiles + cancelaciones + sesiones + perfiles huérfanos
       // via endpoint server-side agnóstico (Drizzle, sin service_role en cliente).
       const authHeaders = await getAuthHeaders()
-      const enrichRes = await fetch('/api/v2/admin/feedback/enrich-profiles', {
+      const enrichRes = await adminFetch('/api/v2/admin/feedback/enrich-profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ userIds, orphanEmails }),
@@ -1046,7 +1046,7 @@ export default function AdminFeedbackPage() {
   const loadConversations = async () => {
     try {
       const authHeaders = await getAuthHeaders()
-      const res = await fetch('/api/v2/admin/feedback/list', {
+      const res = await adminFetch('/api/v2/admin/feedback/list', {
         headers: authHeaders,
       })
       const json = await res.json()
@@ -1436,7 +1436,7 @@ export default function AdminFeedbackPage() {
       const fd = new FormData()
       fd.append('file', file)
       const authHeaders = await getAuthHeaders()
-      const uploadRes = await fetch('/api/v2/admin/feedback/upload-image', {
+      const uploadRes = await adminFetch('/api/v2/admin/feedback/upload-image', {
         method: 'POST',
         headers: authHeaders,
         body: fd,
@@ -1515,7 +1515,7 @@ export default function AdminFeedbackPage() {
       console.log('🗑️ Eliminando imagen via API server-side:', imagePath)
 
       const authHeaders = await getAuthHeaders()
-      const delRes = await fetch('/api/v2/admin/feedback/delete-image', {
+      const delRes = await adminFetch('/api/v2/admin/feedback/delete-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ imagePath }),
@@ -2004,7 +2004,7 @@ export default function AdminFeedbackPage() {
                                   const conv = conversations[selectedFeedback.id]
                                   if (conv) {
                                     const authHeaders = await getAuthHeaders()
-                                    const closeRes = await fetch('/api/v2/admin/feedback/close', {
+                                    const closeRes = await adminFetch('/api/v2/admin/feedback/close', {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json', ...authHeaders },
                                       body: JSON.stringify({
@@ -2453,7 +2453,7 @@ export default function AdminFeedbackPage() {
                         if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
                         try {
                           const authHeaders = await getAuthHeaders()
-                          const closeRes = await fetch('/api/v2/admin/feedback/close', {
+                          const closeRes = await adminFetch('/api/v2/admin/feedback/close', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', ...authHeaders },
                             body: JSON.stringify({

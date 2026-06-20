@@ -34,7 +34,7 @@ export default function ConversionesPage() {
 
   // Marcar ventas como leídas al montar
   useEffect(() => {
-    fetch('/api/v2/admin/unread-sales', { method: 'POST' }).catch(() => {})
+    adminFetch('/api/v2/admin/unread-sales', { method: 'POST' }).catch(() => {})
   }, [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

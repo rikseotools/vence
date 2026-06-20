@@ -72,9 +72,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 🔒 GUARD /api/admin/*: exige Bearer admin o x-cron-secret (no había guard
-  // global → rutas admin invocables sin auth; ver project-admin-endpoints-sin-auth).
-  if (pathname.startsWith('/api/admin')) {
+  // 🔒 GUARD /api/admin/* Y /api/v2/admin/*: exige Bearer admin o x-cron-secret
+  // (no había guard global → rutas admin invocables sin auth; varias /api/v2/admin/*
+  // —dashboard, charts, validation-errors, unread-sales…— exponían datos de admin sin
+  // token. Ver project-admin-endpoints-sin-auth). Rutas con auth propia se eximen
+  // dentro de guardAdminApi (SELF_AUTHENTICATED_PREFIXES).
+  if (pathname.startsWith('/api/admin') || pathname.startsWith('/api/v2/admin')) {
     const denied = await guardAdminApi(request)
     if (denied) return denied
   }
