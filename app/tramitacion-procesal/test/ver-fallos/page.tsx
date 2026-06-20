@@ -5,6 +5,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth'
 import { useAIChat } from '@/contexts/AIChatContext'
 import Link from 'next/link'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
@@ -373,8 +374,8 @@ function VerFallosContent() {
       }
 
       try {
-        const session = await supabase.auth.getSession()
-        const token = session.data.session?.access_token
+        const session = await auth.getSession()
+        const token = session?.accessToken
 
         if (!token) {
           setError('No hay sesion activa')

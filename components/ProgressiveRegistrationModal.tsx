@@ -1,7 +1,8 @@
 // components/ProgressiveRegistrationModal.tsx - CON DARK MODE COMPLETO
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { getSupabaseClient, signInWithGoogle } from '../lib/supabase'
+import { signInWithGoogle } from '../lib/supabase'
+import { auth } from '@/lib/auth'
 
 interface ProgressiveRegistrationModalProps {
   isOpen: boolean
@@ -66,10 +67,9 @@ export default function ProgressiveRegistrationModal({
       // ⚡ Verificar si ya hay usuario autenticado
       const checkUser = async () => {
         try {
-          const supabase = getSupabaseClient()
-          const { data: { user }, error } = await supabase.auth.getUser()
+          const user = await auth.getUser()
 
-          if (user && !error) {
+          if (user) {
             console.log('✅ [MODAL] Usuario ya autenticado:', user.email)
             onRegister()
           }

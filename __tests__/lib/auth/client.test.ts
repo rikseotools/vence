@@ -8,6 +8,7 @@ const mockAuth = {
   refreshSession: jest.fn(),
   updateUser: jest.fn(),
   onAuthStateChange: jest.fn(),
+  signInWithIdToken: jest.fn(),
 }
 const mockSignInWithGoogle = jest.fn().mockResolvedValue({ success: true, data: { url: 'https://google' } })
 const mockGetAuthHeaders = jest.fn()
@@ -85,6 +86,23 @@ describe('supabaseAdapter — AuthClientPort', () => {
     const r = await auth.signInWithGoogle({ funnel: 'premium-ads' })
     expect(mockSignInWithGoogle).toHaveBeenCalledWith({ funnel: 'premium-ads' })
     expect(r).toEqual({ success: true, data: { url: 'https://google' } })
+  })
+
+  test('signInWithIdToken() mapea sesión y usuario en éxito', async () => {
+    mockAuth.signInWithIdToken.mockResolvedValue({ data: { session: SB_SESSION, user: SB_USER }, error: null })
+    const auth = createSupabaseAuthAdapter()
+    const r = await auth.signInWithIdToken({ provider: 'google', token: 'id-tok', nonce: 'n1' })
+    expect(mockAuth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'google', token: 'id-tok', nonce: 'n1' })
+    expect(r.error).toBeUndefined()
+    expect(r.user).toMatchObject({ id: 'user-1', email: 'a@b.com' })
+    expect(r.session).toMatchObject({ accessToken: 'tok-123' })
+  })
+
+  test('signInWithIdToken() devuelve error normalizado (string) y sin sesión', async () => {
+    mockAuth.signInWithIdToken.mockResolvedValue({ data: { session: null, user: null }, error: { message: 'bad nonce' } })
+    const auth = createSupabaseAuthAdapter()
+    const r = await auth.signInWithIdToken({ provider: 'google', token: 'id-tok' })
+    expect(r).toEqual({ session: null, user: null, error: 'bad nonce' })
   })
 
   test('signOut() / refreshSession() / updateUser() delegan al cliente', async () => {

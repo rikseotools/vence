@@ -11,7 +11,9 @@ import type {
   AuthEvent,
   AuthSession,
   AuthUser,
+  IdTokenSignInResult,
   SignInOptions,
+  SignInWithIdTokenArgs,
 } from '../types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -219,6 +221,16 @@ export function createSupabaseAuthAdapter(): AuthClientPort {
 
     signInWithGoogle(options?: SignInOptions) {
       return supabaseSignInWithGoogle(options ?? {})
+    },
+
+    async signInWithIdToken(args: SignInWithIdTokenArgs): Promise<IdTokenSignInResult> {
+      const { data, error } = await sb().auth.signInWithIdToken({
+        provider: args.provider,
+        token: args.token,
+        nonce: args.nonce,
+      })
+      if (error) return { session: null, user: null, error: error.message }
+      return { session: mapSession(data.session), user: mapUser(data.user) }
     },
 
     async completeOAuthCallback() {

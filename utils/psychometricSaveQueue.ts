@@ -55,12 +55,12 @@ function saveQueue(state: QueueState): void {
 
 async function getAccessToken(): Promise<string | null> {
   try {
-    const { getSupabaseClient } = await import('@/lib/supabase')
-    const supabase = getSupabaseClient()
-    const { data: refreshData } = await supabase.auth.refreshSession()
-    if (refreshData?.session?.access_token) return refreshData.session.access_token
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
+    // Vía puerto agnóstico (lib/auth)
+    const { auth } = await import('@/lib/auth')
+    const refreshed = await auth.refreshSession()
+    if (refreshed?.accessToken) return refreshed.accessToken
+    const session = await auth.getSession()
+    return session?.accessToken || null
   } catch {
     return null
   }

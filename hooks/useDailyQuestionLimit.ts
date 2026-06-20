@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { auth } from '../lib/auth'
 import { trackLimitReached } from '../lib/services/conversionTracker'
 
 interface DailyLimitStatus {
@@ -65,11 +66,11 @@ export function useDailyQuestionLimit() {
     if (!user || !supabase) return DEFAULT_LIMIT
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return DEFAULT_LIMIT
+      const session = await auth.getSession()
+      if (!session?.accessToken) return DEFAULT_LIMIT
 
       const res = await fetch('/api/daily-limit', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session.accessToken}` },
       })
 
       if (!res.ok) return DEFAULT_LIMIT

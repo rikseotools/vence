@@ -2,8 +2,8 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import type { User } from '@supabase/supabase-js'
-import { getSupabaseClient } from '../../../../../lib/supabase'
+import { auth } from '../../../../../lib/auth'
+import type { AuthUser } from '../../../../../lib/auth/types'
 import TestConfigurator from '@/components/TestConfigurator'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
 import type { TestStartConfig } from '@/components/TestConfigurator.types'
@@ -11,8 +11,6 @@ import ArticleModal from '@/components/ArticleModal'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 import { getBlockForTopic } from '@/lib/config/oposiciones'
-
-const supabase = getSupabaseClient()
 
 // Tipos para el componente principal
 interface PageProps {
@@ -111,7 +109,7 @@ export default function TemaPage({ params }: PageProps) {
   const [resolvedParams, setResolvedParams] = useState<{ numero: string } | null>(null)
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
   const [topicData, setTopicData] = useState<TopicData | null>(null)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [temaNotFound, setTemaNotFound] = useState(false)
   const [showOposicionDropdown, setShowOposicionDropdown] = useState(false)
@@ -324,7 +322,7 @@ export default function TemaPage({ params }: PageProps) {
         setLoading(false)
 
         // FASE 2: Cargar progreso del usuario en segundo plano (lazy loading)
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await auth.getUser()
         setCurrentUser(user)
 
         if (user) {

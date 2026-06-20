@@ -114,7 +114,7 @@ describe('saveDetailedAnswerWithRetry - sesión expirada', () => {
   it('SÍ hace fallback a V1 cuando V2 falla por error de red (no por sesión)', async () => {
     // V2 tiene token válido pero falla por red
     mockRefreshSession.mockResolvedValue({
-      data: { session: { access_token: 'valid-token' } },
+      data: { session: { access_token: 'valid-token', user: { id: 'u1', email: 'a@b.com' } } },
       error: null,
     })
 
@@ -185,7 +185,7 @@ describe('createDetailedTestSession - sesión expirada', () => {
 
   it('NO devuelve null inmediatamente si getSession tiene token válido', async () => {
     mockGetSession.mockResolvedValue({
-      data: { session: { access_token: 'valid-token' } },
+      data: { session: { access_token: 'valid-token', user: { id: 'u1', email: 'a@b.com' } } },
       error: null,
     })
     // El insert puede fallar por otros motivos (mock incompleto),

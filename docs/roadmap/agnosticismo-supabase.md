@@ -1,5 +1,7 @@
 # Roadmap — Agnosticismo de Supabase
 
+> 📘 **La Fase 4 (Auth) tiene plan de ejecución dedicado (aprobado 2026-06-20):** [`auth-agnostico-jwks-y-rls.md`](auth-agnostico-jwks-y-rls.md) — fija el **emisor (Auth.js v5)** y la **firma RS256/JWKS**, y unifica con la retirada de RLS. Lo de abajo (facade/puerto/hub) es la base ya construida sobre la que arranca ese plan.
+
 > **Estado**: 🟢 Fase 1 ✅ + Fase 3 (Drizzle `.from()`) ✅ AGOTADA (63 migrados + 5 borrados; quedan solo 4 rotos decididos + client-side acoplado a Auth) + Fase 5 (Realtime) 2/3 ✅. 🟡 **Fase 4 (Auth) MUY AVANZADA** — A (facade) ✅ + **B (hub authHeaders+AuthContext) ✅ EN PROD** (commit `3f26fa41`, sesión paralela 03/06; SOAK 24-48h en curso) + **D (server admin→authAdmin) ✅** + **C4 port `completeOAuthCallback` ✅ build-only** (falta cablear la página) + **C1 iniciado** (banner). Pendiente: cablear C4, C1 hot-paths, **C2 (login funnel, no drop-in)**, C3/C5, E (ESLint lock), F (POC). Es el bloqueador real de RDS.
 > **Propietario**: equipo Vence.
 > **Coste recurrente añadido**: 0 € (todas las fases reutilizan infra existente Postgres / Drizzle / SSM / ECS / Lightsail pooler).

@@ -19,6 +19,8 @@ Las conexiones **Drizzle** de la app (PgBouncer, user `postgres`) **ya bypasean 
 
 ### Lo que NO entra (separable, decisión posterior)
 
+> ⚠️ **SUPERSEDED (2026-06-20):** la decisión de abajo ("el IdP se queda en Supabase") ha sido revertida. **Sí migramos el IdP a Auth.js (RS256/JWKS)** — plan en [`auth-agnostico-jwks-y-rls.md`](auth-agnostico-jwks-y-rls.md). La parte RLS de este doc (Fase P) es prerrequisito de aquella Fase C. El párrafo original se conserva como contexto histórico.
+
 El **proveedor de identidad** (login Google OAuth, `exchangeCodeForSession`, `onAuthStateChange`, reset, signup) se queda en Supabase Auth. Puedes tener **datos en RDS + Auth en Supabase** (Supabase emite el JWT, la app lo verifica local con `verifyAuth` — ya agnóstico, Fase 0.7, 63+ endpoints). Migrar el IdP (Auth.js/Clerk) es otra decisión, posterior y opcional.
 
 ## 1. Inventario (Fase P1 — 2026-06-18)

@@ -4,6 +4,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
@@ -116,8 +117,8 @@ function OfficialExamContent() {
       try {
         console.log('🔄 [OfficialExam] Loading resume for:', testId)
 
-        const { data: sessionData } = await supabase.auth.getSession()
-        const token = sessionData?.session?.access_token
+        const sessionData = await auth.getSession()
+        const token = sessionData?.accessToken
 
         if (!token) {
           setError('Debes iniciar sesión para reanudar el examen')

@@ -3,6 +3,7 @@
 // si el servidor lo pide. Cuando la capa está apagada se comporta igual que fetch.
 import { fetchWithChallenge } from './api/fetchWithChallenge'
 import { getSupabaseClient } from './supabase'
+import { auth } from './auth'
 import { mapSlugToShortName as mapLawSlugToShortName } from './lawSlugSync'
 import { getValidExamPositions, applyExamPositionFilter } from './config/exam-positions'
 import { isDisposicionArticle } from './boe-extractor'
@@ -787,7 +788,7 @@ export async function fetchOfficialQuestions(tema: number, searchParams: SearchP
 export async function fetchPersonalizedQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     // Auth check — personalizado requiere usuario
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await auth.getUser()
     if (!user) {
       throw new Error('Usuario no autenticado')
     }
@@ -817,8 +818,8 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
     // Obtener token para que la API resuelva userId y active excludeRecent/prioritizeNeverSeen
     let authToken: string | null = null
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      authToken = session?.access_token ?? null
+      const session = await auth.getSession()
+      authToken = session?.accessToken ?? null
     } catch {
       console.warn('⚠️ No se pudo obtener token de sesión')
     }
@@ -899,7 +900,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
 // =================================================================
 export async function fetchQuestionsByTopicScope(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[] | AdaptiveResult> {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await auth.getUser()
 
     const numQuestions = parseInt(getParam(searchParams, 'n', '25'))
     const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true'
@@ -931,8 +932,8 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     // Obtener token para auth server-side
     let authToken = null
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      authToken = session?.access_token ?? null
+      const session = await auth.getSession()
+      authToken = session?.accessToken ?? null
     } catch {
       console.warn('⚠️ No se pudo obtener token de sesión')
     }
@@ -1151,7 +1152,7 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
 
     console.log('🚀 Cargando test para mantener racha via API, n:', n, 'pos:', positionType)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await auth.getUser()
     if (!user) {
       console.log('⚠️ Usuario no autenticado, usando API en modo global')
       return await callFilteredAPI({ positionType, numQuestions: n })
@@ -1189,8 +1190,8 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
 async function fetchMantenerRachaViaAPI(n: number, positionType: string, topics: number[]): Promise<TransformedQuestion[]> {
   let authToken: string | null = null
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    authToken = session?.access_token ?? null
+    const session = await auth.getSession()
+    authToken = session?.accessToken ?? null
   } catch {}
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -1295,7 +1296,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     console.log('🎲 fetchAleatorioMultiTema via API centralizada, temas:', themes)
 
     // Obtener usuario actual
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await auth.getUser()
 
     // Leer parámetros de configuración (usando helper para URLSearchParams u objeto)
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
@@ -1319,8 +1320,8 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     // Obtener token para que la API resuelva userId (excludeRecent, prioritizeNeverSeen)
     let authToken: string | null = null
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      authToken = session?.access_token ?? null
+      const session = await auth.getSession()
+      authToken = session?.accessToken ?? null
     } catch {
       console.warn('⚠️ No se pudo obtener token de sesión')
     }
@@ -1423,8 +1424,8 @@ export async function fetchContentScopeQuestions(config: FetchConfig = {}, conte
 
     let authToken: string | null = null
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      authToken = session?.access_token ?? null
+      const session = await auth.getSession()
+      authToken = session?.accessToken ?? null
     } catch {
       console.warn('⚠️ No se pudo obtener token de sesión')
     }
@@ -1528,9 +1529,8 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
     // Necesario para: excludeRecentDays, prioritizeNeverSeen, onlyFailedQuestions
     let authToken: string | null = null
     try {
-      const supabase = getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      authToken = session?.access_token ?? null
+      const session = await auth.getSession()
+      authToken = session?.accessToken ?? null
     } catch {
       console.warn('⚠️ No se pudo obtener token de sesión')
     }

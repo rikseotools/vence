@@ -1,10 +1,13 @@
-// app/auxiliar-administrativo-estado/test/repaso-fallos-oficial/page.js
+// app/auxiliar-administrativo-estado/test/repaso-fallos-oficial/page.tsx
 // Page to retry failed questions from a completed official exam
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth'
+import type { OfficialExamFailedQuestion } from '@/lib/api/official-exams/schemas'
+import type { LegacyQuestion } from '@/components/TestLayout.types'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
@@ -21,7 +24,7 @@ const TestLayout = dynamic(() => import('@/components/TestLayout'), {
   )
 })
 
-function transformFailedQuestions(failedQuestions) {
+function transformFailedQuestions(failedQuestions: OfficialExamFailedQuestion[]) {
   return failedQuestions.map((q) => ({
     id: q.id,
     question: q.questionText,
@@ -52,10 +55,10 @@ function transformFailedQuestions(failedQuestions) {
 function RepasoFallosOficialContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth()
-  const [questions, setQuestions] = useState([])
+  const { user, loading: authLoading } = useAuth()
+  const [questions, setQuestions] = useState<ReturnType<typeof transformFailedQuestions>>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   const examDate = searchParams.get('fecha')
   const parte = searchParams.get('parte')
@@ -76,8 +79,8 @@ function RepasoFallosOficialContent() {
       }
 
       try {
-        const session = await supabase.auth.getSession()
-        const token = session.data.session?.access_token
+        const session = await auth.getSession()
+        const token = session?.accessToken
 
         if (!token) {
           setError('No hay sesion activa')
@@ -121,7 +124,7 @@ function RepasoFallosOficialContent() {
     }
 
     loadFailedQuestions()
-  }, [user, authLoading, examDate, parte, router, supabase])
+  }, [user, authLoading, examDate, parte, router])
 
   // Loading state
   if (authLoading || loading) {
@@ -167,7 +170,10 @@ function RepasoFallosOficialContent() {
     ? ` - ${parte.charAt(0).toUpperCase() + parte.slice(1)} parte`
     : ''
 
-  // Render TestLayout with failed questions
+  // Render TestLayout with failed questions.
+  // Modo seguro: las preguntas se cargan SIN correct_option (se valida por API,
+  // patrón anti-scraping). TestLayout lo soporta en runtime; el tipo LegacyQuestion
+  // lo exige, así que casteamos en el límite (`as unknown as LegacyQuestion[]`).
   return (
     <TestLayout
       tema={0}
@@ -179,7 +185,7 @@ function RepasoFallosOficialContent() {
         icon: '🎯',
         color: 'from-amber-500 to-orange-600'
       }}
-      questions={questions}
+      questions={questions as unknown as LegacyQuestion[]}
     />
   )
 }

@@ -3,6 +3,7 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth'
 import { useSearchParams } from 'next/navigation'
 import { trackPremiumPageView, trackCheckoutStarted } from '@/lib/services/conversionTracker'
 import { trackIntent, confirmIntent } from '@/lib/observability/client'
@@ -161,7 +162,7 @@ function PremiumPageContent() {
       // Refrescar sesión antes de salir del dominio para que el token
       // tenga vida útil completa al volver de Stripe
       try {
-        await supabase.auth.refreshSession()
+        await auth.refreshSession()
         console.log('🔄 Sesión refrescada antes de redirect a Stripe')
       } catch (e) {
         console.warn('⚠️ No se pudo refrescar sesión (no crítico):', e)
@@ -282,7 +283,7 @@ function PremiumPageContent() {
 
       // Refrescar sesión antes de salir del dominio
       try {
-        await supabase.auth.refreshSession()
+        await auth.refreshSession()
       } catch (e) {
         console.warn('⚠️ No se pudo refrescar sesión (no crítico):', e)
       }

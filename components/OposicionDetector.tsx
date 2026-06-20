@@ -6,7 +6,8 @@
 'use client'
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { getSupabaseClient } from '../lib/supabase' // 🔧 USAR SINGLETON
+import { getSupabaseClient } from '../lib/supabase' // 🔧 USAR SINGLETON (solo .from)
+import { auth } from '@/lib/auth' // puerto agnóstico para auth.*
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
@@ -58,7 +59,7 @@ export default function OposicionDetector() {
 
       try {
         // 1. Verificar si hay usuario autenticado (getSession es local/cache, no hace network call)
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await auth.getSession()
 
         if (!session?.user) {
           console.log('👤 Usuario no autenticado - no se asigna oposición')
@@ -179,9 +180,9 @@ async function assignOposicionToUser(userId: string, oposicionData: OposicionDat
     console.log('💾 Asignando oposición con políticas RLS corregidas...')
 
     // ✅ VERIFICAR USUARIO AUTENTICADO PRIMERO
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const user = await auth.getUser()
 
-    if (userError || !user) {
+    if (!user) {
       console.error('❌ Usuario no autenticado para asignación')
       return false
     }

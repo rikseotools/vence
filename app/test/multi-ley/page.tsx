@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import TestLayout from '@/components/TestLayout'
 import { useAuth } from '@/contexts/AuthContext'
-import { getSupabaseClient } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
 
 // Tipos
 interface Question {
@@ -202,9 +202,8 @@ function MultiLeyTestContent() {
         // Obtener token de sesión para que la API resuelva userId
         let authToken: string | null = null
         try {
-          const supabase = getSupabaseClient()
-          const { data: { session } } = await supabase.auth.getSession()
-          authToken = session?.access_token ?? null
+          const session = await auth.getSession()
+          authToken = session?.accessToken ?? null
         } catch {
           console.warn('⚠️ [MultiLey] No se pudo obtener token de sesión')
         }

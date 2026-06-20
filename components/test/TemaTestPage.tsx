@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { getSupabaseClient } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
 import TestConfigurator from '@/components/TestConfigurator'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
 import type { TestStartConfig } from '@/components/TestConfigurator.types'
@@ -14,8 +14,6 @@ import ArticulosEstudioPrioritario from '@/components/test/ArticulosEstudioPrior
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getOposicion, getBlockForTopic, type Block } from '@/lib/config/oposiciones'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
-
-const supabase = getSupabaseClient()
 
 interface TopicData {
   id: string
@@ -233,7 +231,7 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
         })) || [])
         setLoading(false)
 
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await auth.getUser()
         setCurrentUser(user)
 
         if (user) {

@@ -1,10 +1,34 @@
-// components/AvatarChanger.js - CON ACTUALIZACIÓN AUTOMÁTICA DEL HEADER Y AVATARES POR COMPORTAMIENTO
+// components/AvatarChanger.tsx - CON ACTUALIZACIÓN AUTOMÁTICA DEL HEADER Y AVATARES POR COMPORTAMIENTO
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ChangeEvent } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth' // puerto agnóstico para auth.* (updateUser/getSession)
+
+interface AvatarOption { id: string; emoji: string; name: string; color: string }
+interface AvatarCategory { title: string; avatars: AvatarOption[] }
+
+interface AvatarData {
+  type: 'predefined' | 'custom' | 'default'
+  emoji?: string
+  color?: string
+  name?: string
+  url?: string
+}
+
+interface AvatarChangerUser {
+  id: string
+  email?: string | null
+  user_metadata?: { full_name?: string | null } | null
+}
+
+interface AvatarChangerProps {
+  user: AvatarChangerUser
+  currentAvatar?: { type?: string | null; url?: string | null; emoji?: string | null; color?: string | null; name?: string | null } | null
+  onAvatarChange: (avatarData: AvatarData) => void
+}
 
 // 🎨 Avatares organizados por categorías
-const AVATAR_CATEGORIES = {
+const AVATAR_CATEGORIES: Record<string, AvatarCategory> = {
   animals: {
     title: '🐾 Animales',
     avatars: [
@@ -104,7 +128,7 @@ const AVATAR_CATEGORIES = {
   }
 }
 
-export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
+export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: AvatarChangerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('animals')
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -134,7 +158,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
   }
 
   // 🎨 Seleccionar avatar predefinido
-  const handleSelectPredefinedAvatar = async (avatar) => {
+  const handleSelectPredefinedAvatar = async (avatar: AvatarOption) => {
     try {
       // Si estaba en modo automático, cambiar a manual
       if (avatarMode === 'automatic') {
@@ -149,7 +173,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
         setAvatarMode('manual')
       }
 
-      const avatarData = {
+      const avatarData: AvatarData = {
         type: 'predefined',
         emoji: avatar.emoji,
         color: avatar.color,
@@ -157,7 +181,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       }
 
       // Actualizar en Supabase Auth user_metadata
-      const { error } = await supabase.auth.updateUser({
+      const updated = await auth.updateUser({
         data: {
           avatar_type: 'predefined',
           avatar_emoji: avatar.emoji,
@@ -166,7 +190,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
         }
       })
 
-      if (error) throw error
+      if (!updated) throw new Error('No se pudo actualizar el avatar')
 
       // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
       // Usar UPDATE en lugar de UPSERT porque display_name es NOT NULL y el registro ya existe
@@ -210,7 +234,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
   }
 
   // 📸 Subir imagen propia
-  const handleUploadImage = async (event) => {
+  const handleUploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -241,7 +265,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       // Bloque 5 Fase A: el upload pasa por /api/upload-avatar (server-side),
       // que usa el adapter agnóstico `lib/storage` (S3 o Supabase según
       // STORAGE_PROVIDER). El navegador ya NO habla con supabase.storage.
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await auth.getSession()
       if (!session) throw new Error('No hay sesión activa')
 
       const formData = new FormData()
@@ -249,7 +273,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
 
       const uploadResponse = await fetch('/api/upload-avatar', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session.accessToken}` },
         body: formData,
       })
 
@@ -261,14 +285,14 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       const { url: publicUrl } = await uploadResponse.json()
 
       // Actualizar metadata del usuario
-      const { error: updateError } = await supabase.auth.updateUser({
+      const updated = await auth.updateUser({
         data: {
           avatar_type: 'custom',
           avatar_url: publicUrl
         }
       })
 
-      if (updateError) throw updateError
+      if (!updated) throw new Error('No se pudo actualizar el avatar')
 
       // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
       // Usar UPDATE en lugar de UPSERT porque display_name es NOT NULL y el registro ya existe
@@ -291,7 +315,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       }
 
       // Actualizar estado local
-      const avatarData = {
+      const avatarData: AvatarData = {
         type: 'custom',
         url: publicUrl
       }
@@ -319,7 +343,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
   // 🔄 Resetear a inicial por defecto
   const handleResetToDefault = async () => {
     try {
-      const { error } = await supabase.auth.updateUser({
+      const updated = await auth.updateUser({
         data: {
           avatar_type: 'default',
           avatar_emoji: null,
@@ -328,7 +352,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
         }
       })
 
-      if (error) throw error
+      if (!updated) throw new Error('No se pudo restablecer el avatar')
 
       // IMPORTANTE: También resetear en public_user_profiles
       const { error: profileError } = await supabase

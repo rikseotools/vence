@@ -6,6 +6,7 @@ import type { UserProfileRow } from '@/types/database.types'
 
 import { getSupabaseClient } from '../lib/supabase'
 import { auth } from '@/lib/auth'
+import { LIFECYCLE_VIA_API } from '@/lib/auth/lifecycleFlag'
 import { shouldForceCheckout, forceCampaignCheckout, detectCampaignSource, getCookie } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
@@ -428,35 +429,40 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
       console.log('📍 Fuente detectada:', registrationSource)
 
-      if (registrationSource === 'google_ads') {
-        // Usuario de Google Ads - requiere pago
-        console.log('💰 Creando usuario Google Ads (requiere pago)')
+      const userName = authUser.user_metadata?.full_name || authUser.email?.split('@')[0]
+      console.log('📍 Creando usuario, fuente:', registrationSource)
 
+      if (LIFECYCLE_VIA_API) {
+        // Vía endpoint Drizzle agnóstico. El user_id/email se derivan del TOKEN
+        // server-side (no del body); aquí solo enviamos datos de routing/display.
+        const token = await auth.getAccessToken()
+        const resp = await fetch('/api/v2/auth/ensure-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ registrationSource, campaignId, userName }),
+        })
+        if (!resp.ok) console.error('❌ ensure-profile endpoint falló:', resp.status)
+      } else if (registrationSource === 'google_ads') {
+        // Usuario de Google Ads - requiere pago
         await supabase.rpc('create_google_ads_user', {
           user_id: authUser.id,
           user_email: authUser.email,
-          user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0],
+          user_name: userName,
           campaign_id: campaignId
         })
-
       } else if (registrationSource === 'meta_ads') {
         // Usuario de Meta/Facebook Ads - acceso gratis pero trackear fuente
-        console.log('📘 Creando usuario Meta Ads (acceso gratis)')
-
         await supabase.rpc('create_meta_ads_user', {
           user_id: authUser.id,
           user_email: authUser.email,
-          user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0]
+          user_name: userName
         })
-
       } else {
         // Usuario orgánico - acceso gratis
-        console.log('🆓 Creando usuario orgánico (acceso gratis)')
-
         await supabase.rpc('create_organic_user', {
           user_id: authUser.id,
           user_email: authUser.email,
-          user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0]
+          user_name: userName
         })
       }
 
@@ -807,6 +813,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     }
 
     try {
+      if (LIFECYCLE_VIA_API) {
+        const token = await auth.getAccessToken()
+        const resp = await fetch('/api/v2/access/check', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (!resp.ok) {
+          console.error('❌ access/check endpoint falló:', resp.status)
+          return { can_access: false, user_type: 'error', message: 'Error verificando acceso' }
+        }
+        const json = await resp.json()
+        return json.access ?? { can_access: false, user_type: 'error', message: 'Error verificando acceso' }
+      }
+
       const { data, error } = await supabase.rpc('check_user_access', {
         user_id: user.id
       })
@@ -833,10 +853,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     try {
       console.log('💳 Activando premium para usuario:', user.email)
 
-      await supabase.rpc('activate_premium_user', {
-        user_id: user.id,
-        stripe_customer_id: stripeCustomerId
-      })
+      if (LIFECYCLE_VIA_API) {
+        const token = await auth.getAccessToken()
+        const resp = await fetch('/api/v2/premium/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ stripeCustomerId }),
+        })
+        if (!resp.ok) throw new Error(`premium/activate endpoint ${resp.status}`)
+      } else {
+        await supabase.rpc('activate_premium_user', {
+          user_id: user.id,
+          stripe_customer_id: stripeCustomerId
+        })
+      }
 
       // Recargar perfil
       if (!userProfile || userProfile.id !== user.id) {

@@ -31,12 +31,13 @@ beforeEach(() => {
   global.fetch = mockFetch
   jest.spyOn(console, 'warn').mockImplementation(() => {})
 
-  // Default: auth returns a valid token
+  // Default: auth returns a valid token. Incluye `user` porque el puerto
+  // (lib/auth) mapea la sesión y descarta las que no tienen usuario.
   mockRefreshSession.mockResolvedValue({
-    data: { session: { access_token: 'test-token-123' } },
+    data: { session: { access_token: 'test-token-123', user: { id: 'u1', email: 'a@b.com' } } },
   })
   mockGetSession.mockResolvedValue({
-    data: { session: { access_token: 'fallback-token' } },
+    data: { session: { access_token: 'fallback-token', user: { id: 'u1', email: 'a@b.com' } } },
   })
 })
 
@@ -199,10 +200,10 @@ describe('completeTestOnServer — SESSION_EXPIRED (no token)', () => {
 
   it('throws SESSION_EXPIRED when session exists but access_token is undefined', async () => {
     mockRefreshSession.mockResolvedValue({
-      data: { session: { access_token: undefined } },
+      data: { session: { access_token: undefined, user: { id: 'u1', email: 'a@b.com' } } },
     })
     mockGetSession.mockResolvedValue({
-      data: { session: { access_token: undefined } },
+      data: { session: { access_token: undefined, user: { id: 'u1', email: 'a@b.com' } } },
     })
 
     await expect(completeTestOnServer(validRequest())).rejects.toThrow('SESSION_EXPIRED')

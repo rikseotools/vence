@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import { getSupabaseClient } from '../lib/supabase'
+import { auth } from '../lib/auth'
 import { getClientVersion } from '@/hooks/useVersionCheck'
 import { logClientError } from '@/lib/logClientError'
 import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
@@ -559,8 +560,8 @@ export async function createDetailedTestSession(
     }
 
     // Verificar sesión antes de insertar (evita fallos silenciosos por RLS)
-    const { data: { session: currentSession } } = await supabase.auth.getSession()
-    if (!currentSession?.access_token) {
+    const currentSession = await auth.getSession()
+    if (!currentSession?.accessToken) {
       console.error('🔒 [testSession] Sesión expirada — no se puede crear test')
       logClientError('createDetailedTestSession', new Error('Supabase session expired (no access_token)'), {
         component: 'testSession',

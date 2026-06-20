@@ -4,7 +4,7 @@
 // Ver docs/maintenance/despliegue-articulos-problematicos.md
 
 import { useCallback, useEffect, useState } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
 import { adminFetch } from '@/lib/api/adminFetch'
 
 type BucketStats = {
@@ -50,9 +50,8 @@ export default function DespliegueArticulosProblematicosPage() {
     setLoading(true)
     setError(null)
     try {
-      const supabase = getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const session = await auth.getSession()
+      const token = session?.accessToken
       if (!token) throw new Error('Sesión no encontrada')
 
       const resp = await adminFetch(

@@ -1,6 +1,8 @@
 // utils/testAnswers.ts - ACTUALIZADO CON FIX ANTI-DUPLICADOS Y SISTEMA DE REINTENTOS
-import type { User, SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseClient } from '../lib/supabase'
+import { auth } from '../lib/auth'
+import type { AuthUser } from '../lib/auth/types'
 import { getDeviceInfo } from './testSession'
 import { TestBackupSystem } from './testBackup'
 import type { BackupAnswerData, SyncResults } from './testBackup'
@@ -77,7 +79,7 @@ type ConfidenceLevel = 'very_sure' | 'sure' | 'unsure' | 'guessing'
 const supabase: SupabaseClient = getSupabaseClient()
 
 // 🛡️ CACHE DE USUARIO (evitar múltiples llamadas a getUser)
-let cachedUser: User | null = null
+let cachedUser: AuthUser | null = null
 let userCacheTime: number = 0
 const USER_CACHE_TTL = 60000 // 1 minuto
 
@@ -85,14 +87,14 @@ const USER_CACHE_TTL = 60000 // 1 minuto
 let cachedUserProfile: UserProfile | null = null
 let userProfileCacheTime: number = 0
 
-async function getCachedUser(): Promise<User | null> {
+async function getCachedUser(): Promise<AuthUser | null> {
   const now = Date.now()
   if (cachedUser && (now - userCacheTime) < USER_CACHE_TTL) {
     return cachedUser
   }
 
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (!error && user) {
+  const user = await auth.getUser()
+  if (user) {
     cachedUser = user
     userCacheTime = now
   }
@@ -466,15 +468,15 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
     // Nivel 1: Refresh proactivo antes de usar el token
     let accessToken: string | undefined
     try {
-      const { data: refreshData } = await supabase.auth.refreshSession()
-      accessToken = refreshData?.session?.access_token
+      const refreshed = await auth.refreshSession()
+      accessToken = refreshed?.accessToken
     } catch {
       // refreshSession puede fallar si no hay red — fallback a getSession
     }
     if (!accessToken) {
       console.warn('⚠️ [V2] refreshSession falló, fallback a getSession')
-      const { data: { session: fallbackSession } } = await supabase.auth.getSession()
-      accessToken = fallbackSession?.access_token
+      const fallbackSession = await auth.getSession()
+      accessToken = fallbackSession?.accessToken
     }
     if (!accessToken) {
       console.error('❌ [V2] No hay sesion activa después de refresh')
@@ -554,13 +556,13 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
     if (response.status === 401) {
       console.warn('⚠️ [V2] 401 recibido, intentando refresh + retry...')
       try {
-        const { data: retryRefresh } = await supabase.auth.refreshSession()
-        if (retryRefresh?.session?.access_token) {
+        const retryRefresh = await auth.refreshSession()
+        if (retryRefresh?.accessToken) {
           const retryResponse = await fetch('/api/test/save-answer', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${retryRefresh.session.access_token}`
+              'Authorization': `Bearer ${retryRefresh.accessToken}`
             },
             body: JSON.stringify(body)
           })

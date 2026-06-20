@@ -28,7 +28,7 @@ export interface UserRecentStats {
 /** Usuario actual (subset de Supabase User) */
 export interface CurrentUser {
   id: string
-  email?: string
+  email?: string | null
 }
 
 export type DifficultyMode = 'random' | 'easy' | 'medium' | 'hard' | 'extreme' | 'adaptive'

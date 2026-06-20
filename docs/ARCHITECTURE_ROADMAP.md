@@ -33,7 +33,7 @@
 | Bloque 4 Observabilidad Fases 0/1/1.5/1.6 (sink + writers + log drain + alert rules) | pérdida de eventos / alertas | ✅ hecho (26-may) | «Bloque 4 cont.» abajo |
 | Bloque 4 Fase 2 (PostgresSink → KinesisSink AWS) | observabilidad a escala | ⏸️ pendiente (>30k DAU) | «Bloque 4 cont.» abajo |
 | **Fase E — Frontend Vercel → ECS Fargate** (+ apex → CloudFront) | salir de Vercel; última dep. Vercel eliminada | ✅ operativa (deploy `frontend-deploy.yml` → ECS; apex cutover 03-jun) | §Fase E abajo |
-| **Fase D — Migración BD → RDS (con failover)** | **SPOF de la PRIMARIA Supabase** (sin failover) = raíz del goteo 5xx residual | ⏸️ **PENDIENTE — gatillo: >$200/mes sostenido o ≥2 incidentes/mes** (hoy ~$40/mes, solo goteo) | §Fase D abajo |
+| **Fase D — Migración BD → Neon/RDS (con failover)** | **SPOF de la PRIMARIA Supabase** (sin failover) = raíz del goteo 5xx residual | ⏸️ **PENDIENTE — gatillo: >$200/mes sostenido o ≥2 incidentes/mes** (hoy ~$40/mes, solo goteo). **Destino preferente: Neon (Londres)**; alt: RDS Multi-AZ; Aurora Serverless v2 ❌ descartado (más caro) | §Fase D abajo (comparativa Neon/RDS/Aurora) |
 | **Fase P — Desacople PostgREST + RLS** (preparación portable de Fase D) | acoplamiento a Supabase de la **capa de datos** (45 ficheros `supabase.from`, 125 políticas RLS con `auth.uid()`) — **único bloqueo independiente de la carga** | 🟢 **ADELANTABLE YA, incremental.** P1 (inventario) ✅ 18-jun | [`roadmap/desacople-postgrest-rls.md`](roadmap/desacople-postgrest-rls.md) |
 
 **Lectura rápida (2026-06-18):** las palancas baratas de resiliencia/rendimiento ya están aplicadas
@@ -281,33 +281,35 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 #### Fase C — Swap Supabase Auth (1-2 sem, riesgo 🟡)
 
-**Objetivo:** Supabase Auth → Auth.js self-hosted o AWS Cognito.
+> **📘 Plan de ejecución detallado (aprobado 2026-06-20):** [`roadmap/auth-agnostico-jwks-y-rls.md`](roadmap/auth-agnostico-jwks-y-rls.md) — unifica esta Fase C (emisor) con la retirada de RLS (Fase P) y la Fase 4 de `agnosticismo-supabase.md`. **Decisión:** emisor **Auth.js (NextAuth v5)** + firma **RS256/JWKS asimétrica** (no el HS256 heredado), por fases reversibles con shadow mode + doble-aceptación.
 
-**Opciones evaluadas:**
-- **Auth.js (NextAuth)**: self-hosted, OSS, cero coste extra. Más control. Más mantenimiento.
-- **AWS Cognito**: managed AWS native. ~$0.0055/MAU. Cero mantenimiento. Vendor lock-in AWS.
-- **WorkOS / Clerk**: SaaS pago. Lock-in mayor. Descartado para Vence.
+**Objetivo:** Supabase Auth → **Auth.js self-hosted** (decidido; Cognito descartado por lock-in AWS, va contra la prioridad nº2). Solo Google OAuth → sin migración de hashes.
 
-**Recomendación: Auth.js** por ser OSS + cero coste + cero lock-in extra. (Cognito reconsiderable si Auth.js da problemas operacionales).
+**Firma RS256/JWKS (actualizado 2026-06-20):** el emisor firma con clave **privada** (SSM), Next y NestJS verifican con la **pública** vía JWKS por `kid`. Más profesional que el HS256-secreto-compartido para arquitectura multi-servicio (un verificador no puede falsificar tokens; rotación sin compartir secretos). Los verificadores se amplían a RS256 manteniendo aceptación HS256 durante la ventana de transición. Detalle, contrato de token y secuencia completa en el plan enlazado arriba.
 
-**JwtGuard del backend YA está preparado:** verifica cualquier JWT HS256 con `audience='authenticated'`. Swap = cambiar `SUPABASE_JWT_SECRET` por el secret de Auth.js. **0 cambios en código del backend.**
+**Criterio fase cerrada:** 100% sesiones nuevas vía Auth.js. 0 tokens Supabase Auth válidos en producción. `JWT_LOCAL_VERIFY_MODE=on` con rama HS256 retirada.
 
-**Migración graceful:**
-1. Deploy Auth.js en paralelo (nuevos signups van a Auth.js)
-2. Frontend lee dual: si hay cookie Supabase válida usar esa, si hay cookie Auth.js usar esa
-3. Tras 2-4 semanas con dual: deprecate Supabase Auth, fuerza relogin para los pocos restantes
-4. Borrar Supabase Auth del proyecto
-
-**Criterio fase cerrada:** 100% sesiones nuevas vía Auth.js. 0 tokens Supabase Auth válidos en producción.
-
-#### Fase D — Postgres Supabase → RDS (1 sem, riesgo 🟠)
+#### Fase D — Postgres Supabase → Neon o RDS (1 sem, riesgo 🟠)
 
 **Objetivo:** el swap más impactante. Lleva consigo el final efectivo de Supabase.
+
+**Destino — Neon (Londres) preferente, RDS alternativa (investigado a fondo 2026-06-20):**
+
+| Destino | Coste ~235 DAU | Coste 1.000 DAU | HA / failover | Pooler | Ops |
+|---|---|---|---|---|---|
+| **Neon `aws-eu-west-2`** ⭐ preferente | ~$30-50/mes | ~$65-105/mes | storage multi-AZ + failover de cómputo auto (AZ entera 1-10 min), connstring estable | **integrado y HA** (jubilamos el nuestro) | casi nula |
+| RDS `db.t4g.medium` Multi-AZ | ~$60/mes | ~$100-130/mes | Multi-AZ failover ~1-2 min | RDS Proxy gestionado | media-alta |
+| ~~Aurora Serverless v2~~ ❌ descartado | ~$105-130/mes | ~$180-250/mes | sí | — | media |
+
+- **Neon gana** en coste + cero-ops + Londres (misma región que Fargate → sin penalización de latencia) + drop-in vía Drizzle. **Aurora Serverless v2 descartado**: su modelo "suelo 0.5 ACU × 2 instancias 24/7" lo hace el más caro para carga constante (a 1.000 DAU él solo casi dispara el gatillo de $200).
+- **Trade-off Neon:** proveedor gestionado (corre sobre AWS pero en la cuenta de Neon, no la nuestra `349744179687`) + riesgo estratégico tras compra por **Databricks (mayo 2025; de momento bajó precios -15-25%)**. RDS gana solo si la prioridad es "todo en nuestra cuenta AWS + control máximo".
+- **Pooler:** con Neon → **usar el integrado y jubilar el PgBouncer Lightsail** (hop extra + SPOF de VM única + hack SCRAM passthrough + Fase 6 HA pendiente = todo desaparece). Ya somos compatibles con transaction mode (`FOR UPDATE SKIP LOCKED`, commit `c003ce0f`); endpoint directo de Neon para migraciones. **NO encadenar dos poolers** (antipatrón). El PgBouncer propio solo existía como parche de Supabase/Supavisor.
+- **Auth/RLS NO los resuelve ningún destino** — es trabajo aparte (Fase C Auth + Fase P RLS), prerrequisito de cualquier swap. Plan: Auth.js self-hosted ($0, consumo ya agnóstico vía `verifyAuth`) + **NO usar RLS** en el destino, mover autorización a capa de app (`verifyAuth` + `WHERE user_id`) + guardrail/test anti-fuga que sustituya la red de seguridad que daba RLS.
 
 **Pre-requisitos:**
 - Fase B completa (cero `supabase.from()`)
 - Fase C completa o casi (Auth ya migrado, sino los tokens fallarán al cambiar BD)
-- PgBouncer Lightsail ya operativo (lo está)
+- Pooler según destino: Neon trae el suyo (jubila el Lightsail); RDS usa RDS Proxy
 
 **Pasos:**
 1. Crear RDS Postgres 17 en VPC vence (eu-west-2), MultiAZ para resiliencia
@@ -318,9 +320,9 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 6. Verificar drift con queries diff: count por tabla, MD5 sampling
 7. Tras 7 días estable: borrar BD Supabase (después de backup final a S3)
 
-**Coste:** RDS db.t4g.medium MultiAZ ~$60/mes vs Supabase Pro $25/mes. Diferencia justificada por control + escala.
+**Coste:** ver tabla de destino arriba. **Neon** ~$30-50/mes (~235 DAU) / ~$65-105 (1k DAU); **RDS Multi-AZ** ~$60-130; Supabase Pro hoy ~$40/mes. Neon sale igual o más barato que Supabase **y** elimina el SPOF.
 
-**Rollback:** PgBouncer apunta de nuevo a Supabase. RDS queda como sandbox.
+**Rollback:** la BD origen (Supabase) sigue viva 7 días; revertir = apuntar `DATABASE_URL` de vuelta. El destino nuevo queda como sandbox.
 
 **Criterio fase cerrada:** 7 días RDS sin incidentes. Supabase BD apagada.
 

@@ -2,11 +2,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import ProgressiveRegistrationModal from './ProgressiveRegistrationModal'
-
-import { getSupabaseClient } from '../lib/supabase'
-const supabase = getSupabaseClient()
+import { auth } from '@/lib/auth'
 
 type SupabaseUser = Record<string, unknown>
 
@@ -72,13 +69,13 @@ export default function PersistentRegistrationManager({
 
     const checkUser = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser()
-        if (error) {
+        const user = await auth.getUser()
+        if (!user) {
           console.log('🔍 No hay sesión activa, usuario no registrado')
           setInternalUser(null)
         } else {
           console.log('✅ Usuario encontrado:', user?.email || 'sin email')
-          setInternalUser(user as SupabaseUser | null)
+          setInternalUser(user as unknown as SupabaseUser)
         }
       } catch (error) {
         console.log('🔍 Error verificando usuario (normal en localhost):', (error as Error).message)
@@ -90,17 +87,16 @@ export default function PersistentRegistrationManager({
 
     checkUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
-        console.log('🔄 Auth change:', event, session?.user?.email || 'no user')
-        setInternalUser((session?.user as unknown as SupabaseUser) || null)
-        if (session?.user) {
-          setShowModal(false)
-        }
+    const unsubscribe = auth.onAuthStateChange((change) => {
+      const { event, session } = change
+      console.log('🔄 Auth change:', event, session?.user?.email || 'no user')
+      setInternalUser((session?.user as unknown as SupabaseUser) || null)
+      if (session?.user) {
+        setShowModal(false)
       }
-    )
+    })
 
-    return () => subscription.unsubscribe()
+    return () => unsubscribe()
   }, [externalUser, externalAuthLoading])
 
   // 🎯 MODAL AL INICIAR TEST (después de 10 segundos)

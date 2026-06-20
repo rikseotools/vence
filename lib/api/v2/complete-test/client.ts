@@ -1,6 +1,6 @@
 // lib/api/v2/complete-test/client.ts
 // Client-side: llamada para completar test en servidor
-import { getSupabaseClient } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
 import { completeTestResponseSchema, type CompleteTestRequest, type CompleteTestResponse } from './schemas'
 
 /**
@@ -14,19 +14,17 @@ import { completeTestResponseSchema, type CompleteTestRequest, type CompleteTest
 export async function completeTestOnServer(
   params: CompleteTestRequest
 ): Promise<CompleteTestResponse> {
-  const supabase = getSupabaseClient()
-
-  // Obtener token de auth
+  // Obtener token de auth (vía puerto agnóstico lib/auth)
   let accessToken: string | undefined
   try {
-    const { data: refreshData } = await supabase.auth.refreshSession()
-    accessToken = refreshData?.session?.access_token
+    const refreshed = await auth.refreshSession()
+    accessToken = refreshed?.accessToken
   } catch {
     // fallback a getSession
   }
   if (!accessToken) {
-    const { data: { session } } = await supabase.auth.getSession()
-    accessToken = session?.access_token
+    const session = await auth.getSession()
+    accessToken = session?.accessToken
   }
   if (!accessToken) {
     throw new Error('SESSION_EXPIRED')

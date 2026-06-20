@@ -188,25 +188,20 @@ function notifyListeners(): void {
  */
 async function getAccessToken(): Promise<string | null> {
   try {
-    const { getSupabaseClient } = await import('@/lib/supabase')
-    const supabase = getSupabaseClient()
+    // Vía puerto agnóstico (lib/auth). refreshSession/getSession devuelven la
+    // sesión normalizada (o null en error) — sin objeto error que loggear.
+    const { auth } = await import('@/lib/auth')
 
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-    if (refreshError) {
-      console.warn(`⚠️ [answerSaveQueue] refreshSession error: ${refreshError.message}`)
-    }
-    if (refreshData?.session?.access_token) {
+    const refreshed = await auth.refreshSession()
+    if (refreshed?.accessToken) {
       authFailCount = 0
-      return refreshData.session.access_token
+      return refreshed.accessToken
     }
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError) {
-      console.warn(`⚠️ [answerSaveQueue] getSession error: ${sessionError.message}`)
-    }
-    if (session?.access_token) {
+    const session = await auth.getSession()
+    if (session?.accessToken) {
       authFailCount = 0
-      return session.access_token
+      return session.accessToken
     }
 
     authFailCount++
@@ -214,7 +209,7 @@ async function getAccessToken(): Promise<string | null> {
     console.error(`❌ [answerSaveQueue] Sin token (intento #${authFailCount}, ${pending} pendientes)`)
 
     if (authFailCount >= 2 && pending > 0) {
-      logClientError('/api/v2/answer-and-save', new Error(`Auth null x${authFailCount}. ${pending} pendientes. refresh=${refreshError?.message ?? 'empty'} session=${sessionError?.message ?? 'empty'}`), {
+      logClientError('/api/v2/answer-and-save', new Error(`Auth null x${authFailCount}. ${pending} pendientes (refresh+getSession vía puerto devolvieron sin token)`), {
         component: 'answerSaveQueue auth',
       })
     }
@@ -509,10 +504,10 @@ if (typeof window !== 'undefined') {
 
   // MEJORA #3: escuchar cambios de auth para flush automático
   // Cuando el usuario se re-autentica, flushear cola pendiente
-  import('@/lib/supabase').then(({ getSupabaseClient }) => {
+  import('@/lib/auth').then(({ auth }) => {
     try {
-      const supabase = getSupabaseClient()
-      supabase.auth.onAuthStateChange((event: string) => {
+      auth.onAuthStateChange((change) => {
+        const event = change.event
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           authFailCount = 0
           const pending = getPendingCount()

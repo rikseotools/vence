@@ -1,5 +1,5 @@
 // lib/api/v2/complete-onboarding/client.ts
-import { getSupabaseClient } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
 import { completeOnboardingResponseSchema, type CompleteOnboardingRequest, type CompleteOnboardingResponse } from './schemas'
 
 /**
@@ -9,18 +9,17 @@ import { completeOnboardingResponseSchema, type CompleteOnboardingRequest, type 
 export async function completeOnboardingOnServer(
   params: CompleteOnboardingRequest
 ): Promise<CompleteOnboardingResponse> {
-  const supabase = getSupabaseClient()
-
+  // Token de auth vía puerto agnóstico (lib/auth)
   let accessToken: string | undefined
   try {
-    const { data: refreshData } = await supabase.auth.refreshSession()
-    accessToken = refreshData?.session?.access_token
+    const refreshed = await auth.refreshSession()
+    accessToken = refreshed?.accessToken
   } catch {
     // fallback
   }
   if (!accessToken) {
-    const { data: { session } } = await supabase.auth.getSession()
-    accessToken = session?.access_token
+    const session = await auth.getSession()
+    accessToken = session?.accessToken
   }
   if (!accessToken) {
     return { success: false, error: 'Sesión expirada' }

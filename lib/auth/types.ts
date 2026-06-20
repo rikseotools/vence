@@ -54,6 +54,20 @@ export interface SignInResult {
   error?: string
 }
 
+/** Args del login con id_token (Google One Tap / FedCM). `nonce` raw (sin hashear). */
+export interface SignInWithIdTokenArgs {
+  provider: 'google'
+  token: string
+  nonce?: string
+}
+
+/** Resultado normalizado del login con id_token. */
+export interface IdTokenSignInResult {
+  session: AuthSession | null
+  user: AuthUser | null
+  error?: string
+}
+
 /**
  * Puerto CLIENTE (browser). Lo implementa un adapter por proveedor.
  * Superficie = exactamente lo que la app usa (no añadir métodos "por si acaso").
@@ -67,6 +81,8 @@ export interface AuthClientPort {
   getAccessToken(): Promise<string | undefined>
   /** Inicia OAuth Google (único proveedor social en uso). */
   signInWithGoogle(options?: SignInOptions): Promise<SignInResult>
+  /** Login con id_token de Google (One Tap / FedCM). Devuelve sesión normalizada. */
+  signInWithIdToken(args: SignInWithIdTokenArgs): Promise<IdTokenSignInResult>
   /**
    * Completa el callback OAuth tras volver del proveedor y devuelve la sesión
    * (o null si no se estableció en el timeout). Verbo de dominio SIN params de
