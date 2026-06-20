@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import OposicionCard from '../components/OposicionCard'
-import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
+import { isInscripcionAbierta, isShowableCatalogada } from '@/lib/oposiciones/inscripcion'
 import {
   detectFilter,
   getAllFilterSlugs,
@@ -122,8 +122,8 @@ async function getCatalogadasAbiertas(): Promise<CatalogadaAbierta[]> {
     .select('slug, nombre, plazas_libres, inscription_start, inscription_deadline, seguimiento_url')
     .eq('is_active', false)
     .order('inscription_deadline', { ascending: true, nullsFirst: false })
-  return ((data ?? []) as (CatalogadaAbierta & { inscription_start: string | null })[])
-    .filter(o => isInscripcionAbierta(o) && !!o.seguimiento_url)
+  return ((data ?? []) as (CatalogadaAbierta & { inscription_start: string | null; is_active: boolean })[])
+    .filter(o => isShowableCatalogada({ ...o, is_active: false }))
 }
 
 // ============================================

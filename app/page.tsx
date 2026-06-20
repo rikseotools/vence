@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { unstable_cache } from 'next/cache'
-import { isInscripcionAbierta, todayMadrid } from '@/lib/oposiciones/inscripcion'
+import { isOpenForDisplay, todayMadrid } from '@/lib/oposiciones/inscripcion'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import CcaaFlag from '@/components/CcaaFlag'
 
@@ -199,9 +199,8 @@ const getOpenConvocatorias = unstable_cache(
       .order('inscription_deadline', { ascending: true, nullsFirst: false })
     const today = todayMadrid()
     return ((data ?? []) as OpenConvocatoria[])
-      .filter((o) => isInscripcionAbierta(o, today))
-      // publicadas siempre; catalogadas solo si tienen convocatoria oficial a la que enlazar
-      .filter((o) => o.is_active || !!o.seguimiento_url)
+      // ÚNICA puerta de inclusión (publicadas abiertas + catalogadas abiertas con url oficial)
+      .filter((o) => isOpenForDisplay(o, today))
       .sort((a, b) => {
         // publicadas primero (son producto), en su orden por cierre más próximo (estable)
         if (a.is_active !== b.is_active) return Number(b.is_active) - Number(a.is_active)

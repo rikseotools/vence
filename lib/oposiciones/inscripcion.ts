@@ -39,3 +39,30 @@ export function isInscripcionAbierta(
   if (!start || !deadline) return false
   return start <= today && deadline >= today
 }
+
+export interface ConvocatoriaDisplay extends InscripcionFechas {
+  /** publicada (true) = tenemos landing/tests; catalogada (false) = aún sin tests */
+  is_active: boolean
+  /** URL de la convocatoria oficial (a la que enlaza una catalogada) */
+  seguimiento_url: string | null
+}
+
+/**
+ * ¿Se muestra esta convocatoria en las superficies de "inscripción abierta" (home + SEO)?
+ * - PUBLICADA abierta-por-fechas → sí (enlaza interno, tiene tests).
+ * - CATALOGADA abierta-por-fechas CON url oficial → sí ("sin test todavía", enlaza oficial).
+ * - Catalogada sin url → no (no hay a dónde enlazar y el dato suele ser menos fiable).
+ * Decisión producto 20/06. Mantener esta función como ÚNICA puerta de inclusión.
+ */
+export function isOpenForDisplay(o: ConvocatoriaDisplay, today: string = todayMadrid()): boolean {
+  if (!isInscripcionAbierta(o, today)) return false
+  return o.is_active || !!o.seguimiento_url
+}
+
+/**
+ * ¿Es una CATALOGADA mostrable (sección "sin test todavía" de la SEO)?
+ * Catalogada (is_active=false) + abierta-por-fechas + con convocatoria oficial.
+ */
+export function isShowableCatalogada(o: ConvocatoriaDisplay, today: string = todayMadrid()): boolean {
+  return !o.is_active && isOpenForDisplay(o, today)
+}
