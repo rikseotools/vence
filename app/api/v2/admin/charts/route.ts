@@ -24,9 +24,12 @@ const QUERY_TIMEOUT_MS = 5000
 // revalidateTag('admin-charts') si se necesita forzar refresh manual.
 const CACHE_TTL_SECONDS = 300 // 5 min
 
+// Clave versionada: al CAMBIAR la forma del dato (20/06: + activity.stats) hay que
+// bumpear el sufijo, si no la caché (disco en dev, data cache en prod tras deploy) sigue
+// sirviendo la forma vieja sin stats durante el TTL. Subir -vN en cada cambio de shape.
 const getCachedActivity = unstable_cache(
   async (days: number) => getActivityChartData(days),
-  ['admin-charts-activity'],
+  ['admin-charts-activity-v2'],
   { revalidate: CACHE_TTL_SECONDS, tags: ['admin-charts'] },
 )
 
