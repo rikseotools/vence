@@ -1,4 +1,4 @@
-// app/admin/notificaciones/email/subscripciones/page.js - Página detallada de subscripciones de email
+// app/admin/notificaciones/email/subscripciones/page.tsx - Página detallada de subscripciones de email
 'use client'
 import { useState, useEffect } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
@@ -7,11 +7,45 @@ import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 
+interface ApiSubUser {
+  id: string
+  email: string
+  created_at: string
+  plan_type: string | null
+  full_name: string | null
+  unsubscribed_all: boolean | null
+  unsubscribe_date: string | null
+}
+
+interface SubUser {
+  id: string
+  email: string
+  created_at: string
+  plan_type: string | null
+  full_name: string | null
+  isSubscribed: boolean
+  unsubscribeDate: string | null
+  preferences: {
+    unsubscribed_all?: boolean | null
+    updated_at?: string | null
+    unsubscribed_motivation?: boolean
+    unsubscribed_achievement?: boolean
+  } | null
+  unsubscribeEvents: unknown[]
+  firstEmailDate: string | null
+  totalUnsubscribeEvents: number
+}
+
+interface SubscriptionData {
+  users: SubUser[]
+  stats: { total: number; subscribed: number; unsubscribed: number; subscriptionRate: number | string }
+}
+
 export default function EmailSubscriptionsPage() {
   const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [subscriptionData, setSubscriptionData] = useState(null)
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null)
   const [filterStatus, setFilterStatus] = useState('all') // all, subscribed, unsubscribed
   const [searchEmail, setSearchEmail] = useState('')
 
@@ -44,8 +78,8 @@ export default function EmailSubscriptionsPage() {
       // todos los users. Endpoint admin cierra ese leak.
       const authHeaders = await getAuthHeaders()
       const res = await adminFetch('/api/admin/users/subscriptions', { headers: authHeaders })
-      let usersData = null
-      let rpcError = null
+      let usersData: ApiSubUser[] | null = null
+      let rpcError: { message: string } | null = null
       if (res.ok) {
         const json = await res.json()
         usersData = json.users
@@ -74,7 +108,7 @@ export default function EmailSubscriptionsPage() {
       console.log(`📊 Procesando ${usersData.length} usuarios obtenidos via RPC`)
 
       // Procesar datos de usuarios
-      const processedUsers = usersData.map(user => ({
+      const processedUsers: SubUser[] = usersData.map((user) => ({
         id: user.id,
         email: user.email,
         created_at: user.created_at,
