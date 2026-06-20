@@ -102,6 +102,10 @@ export type ClientEventType =
   | 'banner_inscription_viewed'
   | 'banner_inscription_clicked'
   | 'banner_inscription_dismissed'
+  // Cards de "Otras convocatorias abiertas (sin test todavía)" en /oposiciones/
+  // inscripcion-abierta: clic hacia la convocatoria OFICIAL. Señal de demanda directa
+  // (qué catalogada construir después). metadata.slug = qué convocatoria.
+  | 'catalogada_inscription_clicked'
   // Avisos de la campana 🔔 (Fase 8): engagement con los hitos de oposiciones
   // seguidas. shown=impresión al abrir la campana, clicked=clic "Ver
   // convocatoria", dismissed=X/swipe. metadata: {oposicion, hitoId, severity}.

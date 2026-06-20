@@ -40,11 +40,14 @@ const abiertaPorFechas = (o) => {
   const dl = o.inscription_deadline && o.inscription_deadline.slice(0, 10)
   return !!start && !!dl && start <= HOY && dl >= HOY
 }
+// Espejo de isShowableCatalogada(): catalogada (is_active=false) + abierta + url oficial.
+const catalogadaVisible = (o) => !o.is_active && abiertaPorFechas(o) && !!o.seguimiento_url
+const CATALOGADA_STALE_DAYS = 30
 
 async function main() {
   const { data: ops, error } = await s
     .from('oposiciones')
-    .select('slug, is_active, coverage_level, estado_proceso, inscription_deadline, inscription_start, exam_date, exam_date_approximate')
+    .select('slug, is_active, coverage_level, estado_proceso, inscription_deadline, inscription_start, exam_date, exam_date_approximate, seguimiento_url, seguimiento_last_checked')
   if (error) {
     console.error('ERROR leyendo oposiciones:', error.message)
     process.exit(2)
@@ -97,8 +100,8 @@ async function main() {
       warns.push(`${tag} → inscription_start (${o.inscription_start}) posterior al deadline (${dl})`)
     }
 
-    // 7. coherencia de FRONT (solo publicadas): home/SEO/banner filtran por FECHAS, no por
-    // estado_proceso. Si divergen, el dato está mal en algún lado (incidente 20/06/2026).
+    // 7. coherencia de FRONT: home/SEO/banner filtran por FECHAS, no por estado_proceso.
+    // Si divergen, el dato está mal en algún lado (incidente 20/06/2026).
     if (o.is_active) {
       const abierta = abiertaPorFechas(o)
       if (e === 'inscripcion_abierta' && !abierta) {
@@ -107,6 +110,21 @@ async function main() {
         errs.push(`${tag} → estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`)
       } else if (abierta && e !== 'inscripcion_abierta') {
         warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
+      }
+    } else if (catalogadaVisible(o)) {
+      // 8. catalogadas visibles en /oposiciones/inscripcion-abierta (sin test, enlace oficial).
+      // Ahora son superficie de usuario → vigilar su dato.
+      if (e !== 'inscripcion_abierta') {
+        warns.push(`${tag} → CATALOGADA visible en el front (abierta) pero estado='${e}' → reconciliar`)
+      }
+      const lc = o.seguimiento_last_checked
+      if (!lc) {
+        warns.push(`${tag} → CATALOGADA visible en el front pero el radar NUNCA la verificó (seguimiento_last_checked NULL) → fecha sin garantía`)
+      } else {
+        const days = Math.floor((Date.parse(HOY) - Date.parse(lc)) / 86400000)
+        if (days > CATALOGADA_STALE_DAYS) {
+          warns.push(`${tag} → CATALOGADA visible en el front pero el radar no la verifica hace ${days}d (>${CATALOGADA_STALE_DAYS}) → posible fecha stale`)
+        }
       }
     }
   }

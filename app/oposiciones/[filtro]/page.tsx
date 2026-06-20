@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import OposicionCard from '../components/OposicionCard'
+import CatalogadaCard from '../components/CatalogadaCard'
 import { isInscripcionAbierta, isShowableCatalogada } from '@/lib/oposiciones/inscripcion'
 import {
   detectFilter,
@@ -275,41 +276,14 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {catalogadas.map(c => (
-                        <a
+                        <CatalogadaCard
                           key={c.slug}
-                          href={c.seguimiento_url ?? '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-5 hover:shadow-lg transition-shadow"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 dark:text-white text-base leading-tight">{c.nombre}</h3>
-                              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 animate-pulse">
-                                  Inscripción Abierta
-                                </span>
-                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                  Sin test todavía
-                                </span>
-                              </div>
-                            </div>
-                            {(c.plazas_libres ?? 0) > 0 && (
-                              <div className="text-right flex-shrink-0">
-                                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{c.plazas_libres}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">plazas</div>
-                              </div>
-                            )}
-                          </div>
-                          {c.inscription_deadline && (
-                            <div className="mt-3 text-xs text-green-700 dark:text-green-400 font-medium">
-                              Inscripción hasta {new Date(c.inscription_deadline).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </div>
-                          )}
-                          <div className="mt-3 text-sm text-blue-600 dark:text-blue-400 font-medium">
-                            Ver convocatoria oficial →
-                          </div>
-                        </a>
+                          slug={c.slug}
+                          nombre={c.nombre}
+                          plazasLibres={c.plazas_libres}
+                          inscriptionDeadline={c.inscription_deadline}
+                          seguimientoUrl={c.seguimiento_url}
+                        />
                       ))}
                     </div>
                   </div>

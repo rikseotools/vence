@@ -33,7 +33,7 @@ import { emit } from '@/lib/observability/emit'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
-import { isInscripcionAbierta, todayMadrid } from '@/lib/oposiciones/inscripcion'
+import { isInscripcionAbierta, isShowableCatalogada, todayMadrid } from '@/lib/oposiciones/inscripcion'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 20
@@ -42,6 +42,9 @@ export const maxDuration = 20
 const POST_EXAMEN = new Set(['examen_realizado', 'resultados', 'nombramientos'])
 // nº de contradicciones que escala el evento a 'critical'
 const CRITICAL_THRESHOLD = 5
+// Una catalogada que YA se muestra al usuario (sin test, enlazando a la oficial) debería
+// haber sido verificada por el radar hace poco; si no, su fecha "abierta" puede estar stale.
+const CATALOGADA_STALE_DAYS = 30
 
 interface OposRow {
   slug: string
@@ -51,6 +54,8 @@ interface OposRow {
   inscription_start: string | null
   exam_date: string | null
   exam_date_approximate: boolean | null
+  seguimiento_url: string | null
+  seguimiento_last_checked: string | null
 }
 
 async function _GET(request: NextRequest) {
@@ -68,7 +73,8 @@ async function _GET(request: NextRequest) {
 
   const result = await db.execute(sql`
     SELECT slug, is_active, estado_proceso, inscription_deadline,
-           inscription_start, exam_date, exam_date_approximate
+           inscription_start, exam_date, exam_date_approximate,
+           seguimiento_url, seguimiento_last_checked
     FROM oposiciones
   `)
   const rows = result as unknown as OposRow[]
@@ -106,9 +112,10 @@ async function _GET(request: NextRequest) {
       warns.push(`${tag} → inscription_start (${o.inscription_start}) posterior al deadline (${dl})`)
     }
 
-    // Coherencia de FRONT (solo publicadas: lo que el usuario ve). Mismo predicado que
-    // home/SEO/banner → si diverge del estado_proceso, el dato está mal en algún lado.
+    // Coherencia de FRONT. Mismo predicado que home/SEO/banner → si diverge del
+    // estado_proceso, el dato está mal en algún lado.
     if (o.is_active) {
+      // PUBLICADAS (lo que el usuario ve con test).
       const abiertaPorFechas = isInscripcionAbierta(o, hoy)
       if (e === 'inscripcion_abierta' && !abiertaPorFechas) {
         // Antes salía por estado; ahora el front filtra por fechas → DESAPARECE.
@@ -118,6 +125,23 @@ async function _GET(request: NextRequest) {
       } else if (abiertaPorFechas && e !== 'inscripcion_abierta') {
         // Sale en el front (fechas mandan) aunque el ciclo diga otra cosa → reconciliar estado.
         warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
+      }
+    } else if (isShowableCatalogada(o, hoy)) {
+      // CATALOGADAS visibles en /oposiciones/inscripcion-abierta (sin test, enlace oficial).
+      // Ahora son superficie de usuario → hay que vigilar su dato (antes no se mostraban).
+      if (e !== 'inscripcion_abierta') {
+        warns.push(`${tag} → CATALOGADA visible en el front (abierta por fechas) pero estado='${e}' → reconciliar`)
+      }
+      // Frescura: si el radar nunca/hace mucho la verificó, su fecha "abierta" no tiene
+      // garantía (el audit es determinista, no puede detectar "coherente pero stale").
+      const lc = o.seguimiento_last_checked
+      if (!lc) {
+        warns.push(`${tag} → CATALOGADA visible en el front pero el radar NUNCA la verificó (seguimiento_last_checked NULL) → fecha sin garantía`)
+      } else {
+        const days = Math.floor((Date.parse(hoy) - Date.parse(lc)) / 86_400_000)
+        if (days > CATALOGADA_STALE_DAYS) {
+          warns.push(`${tag} → CATALOGADA visible en el front pero el radar no la verifica hace ${days}d (>${CATALOGADA_STALE_DAYS}) → posible fecha stale`)
+        }
       }
     }
   }
