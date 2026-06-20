@@ -1,7 +1,6 @@
 // app/admin/notificaciones/email/page.js - PÁGINA DETALLADA DE EMAIL TRACKING
 'use client'
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { createClient } from '@supabase/supabase-js'
@@ -88,7 +87,7 @@ export default function EmailDetailPage() {
     try {
       // Call admin API with auth
       const authHeaders = await getAuthHeaders()
-      const response = await adminFetch(`/api/admin/email-events?timeRange=${timeRange}`, {
+      const response = await fetch(`/api/admin/email-events?timeRange=${timeRange}`, {
         headers: authHeaders,
       })
       

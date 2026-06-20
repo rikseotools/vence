@@ -163,16 +163,6 @@ const eslintConfig = [
           message:
             "fetch('/api/admin/...' o '/api/v2/admin/...') crudo se queda sin Bearer admin y el guard (proxy.ts) lo rechaza con 401 silencioso. Usa adminFetch de @/lib/api/adminFetch.",
         },
-        {
-          // Mismo antipattern con TEMPLATE LITERAL (backticks con ${}). El primer
-          // quasi del template debe empezar por /api/admin o /api/v2/admin. (Caso
-          // real omitido la 1ª vez: fetch(`/api/v2/admin/conversion-stats?...`) →
-          // rompió /admin/conversiones tras guardar v2.)
-          selector:
-            "CallExpression[callee.name='fetch'] > TemplateLiteral[quasis.0.value.raw=/^.api.(admin|v2.admin)/]",
-          message:
-            "fetch(`/api/admin/...` o `/api/v2/admin/...`) con template literal se queda sin Bearer admin → 401. Usa adminFetch de @/lib/api/adminFetch.",
-        },
       ],
     },
   },

@@ -6,7 +6,6 @@
 // manteniendo puja por clic. Datos: Google Ads API (coste) + BD (ingreso real).
 
 import { useCallback, useEffect, useState } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type Range = 'LAST_7_DAYS' | 'LAST_14_DAYS' | 'LAST_30_DAYS' | 'THIS_MONTH' | 'LAST_MONTH'
@@ -175,7 +174,7 @@ export default function AdsPage() {
     setError(null)
     try {
       const headers = await getAuthHeaders()
-      const res = await adminFetch(`/api/admin/ads?range=${range}`, { headers })
+      const res = await fetch(`/api/admin/ads?range=${range}`, { headers })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`)
       setData(json)

@@ -73,7 +73,7 @@ export default function ErroresValidacionPage() {
         params.set('userId', userIdFilter.trim())
       }
 
-      const res = await adminFetch(`/api/v2/admin/validation-errors?${params}`)
+      const res = await fetch(`/api/v2/admin/validation-errors?${params}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setData(json)
