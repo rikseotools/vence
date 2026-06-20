@@ -202,8 +202,13 @@ const getOpenConvocatorias = unstable_cache(
       .filter((o) => isInscripcionAbierta(o, today))
       // publicadas siempre; catalogadas solo si tienen convocatoria oficial a la que enlazar
       .filter((o) => o.is_active || !!o.seguimiento_url)
-      // publicadas primero (son producto), luego catalogadas; dentro, por cierre más próximo
-      .sort((a, b) => Number(b.is_active) - Number(a.is_active))
+      .sort((a, b) => {
+        // publicadas primero (son producto), en su orden por cierre más próximo (estable)
+        if (a.is_active !== b.is_active) return Number(b.is_active) - Number(a.is_active)
+        if (a.is_active) return 0
+        // catalogadas: por plazas desc (la más relevante arriba, p.ej. IIPP 1050)
+        return (b.plazas_libres ?? 0) - (a.plazas_libres ?? 0)
+      })
   },
   ['home-open-convocatorias'],
   { revalidate: 3600, tags: ['landing'] }
@@ -277,7 +282,7 @@ export default async function HomePage() {
               </h2>
             </div>
             <ul className="space-y-1 mb-2">
-              {openConvocatorias.slice(0, 6).map(c => (
+              {openConvocatorias.map(c => (
                 <li key={c.slug} className="text-sm text-green-900 dark:text-green-200 flex items-center justify-between gap-3">
                   <span className="truncate flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{c.nombre}</span>
