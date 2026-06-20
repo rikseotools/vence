@@ -77,7 +77,10 @@ export async function getOposicionesForSeguimientoCheck(
     })
     .from(oposiciones)
     .where(
-      sql`${oposiciones.isActive} = true AND ${oposiciones.seguimientoUrl} IS NOT NULL`,
+      // Radar OEP: vigilamos TODA seguimiento_url, incluidas las catalogadas
+      // (is_active=false). Manuel 19/06/2026: todas las C1/C2 al radar aunque no
+      // se construyan. Antes filtraba is_active=true y dejaba ~100 catalogadas ciegas.
+      sql`${oposiciones.seguimientoUrl} IS NOT NULL`,
     )
     .orderBy(oposiciones.nombre);
 

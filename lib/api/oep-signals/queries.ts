@@ -45,10 +45,9 @@ export async function getOposicionesForLlmScan(): Promise<OposicionToScan[]> {
       convocatoriaNumero: oposiciones.convocatoriaNumero,
     })
     .from(oposiciones)
-    .where(and(
-      eq(oposiciones.isActive, true),
-      isNotNull(oposiciones.seguimientoUrl),
-    ))
+    // Radar OEP: escanea TODA seguimiento_url, incluidas catalogadas (is_active=false).
+    // Manuel 19/06/2026: todas las C1/C2 al radar aunque no se construyan.
+    .where(isNotNull(oposiciones.seguimientoUrl))
     .orderBy(oposiciones.nombre)
 
   return rows.filter(r => r.seguimientoUrl !== null) as OposicionToScan[]
@@ -282,7 +281,9 @@ export async function matchDetectedOepToOposicion(params: {
       subgrupo: oposiciones.subgrupo,
     })
     .from(oposiciones)
-    .where(eq(oposiciones.isActive, true))
+    // Permite enlazar señales descubiertas (BOE/BOCYL) también a oposiciones
+    // catalogadas (is_active=false), no solo a las activas.
+    .where(isNotNull(oposiciones.seguimientoUrl))
 
   for (const o of all) {
     const nomNorm = normalize(o.nombre)

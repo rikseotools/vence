@@ -10,6 +10,7 @@ import * as https from 'https';
 /** Hosts cuyo servidor no envía cadena intermedia y Node no puede validar. */
 const INSECURE_TLS_HOSTS = new Set<string>([
   'www.dpz.es', // FNMT-RCM intermedio no servido (15-may-2026)
+  'www.institucionpenitenciaria.es', // cadena de certificado incompleta (19-jun-2026): curl estricto=000, -k=200
 ]);
 
 const USER_AGENT =

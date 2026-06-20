@@ -837,6 +837,8 @@ Si hay fecha de examen, listas definitivas o resultados, avisar a los usuarios c
 >
 > **🆕 CAMBIO 18/06/2026 — el punto ciego de convocatorias nuevas se cubre con `detect-boletines` (no con webs).** Motivo: la Escala Administrativa (C1) de la Universidad de León se publicó en el **BOCYL el 17/06/2026** y ningún sensor activo la cogió (la web de la ULE es JS y no había fuente de universidades). El error de raíz del scraper viejo era escanear **webs institucionales** (JS, ruidosas); la fuente FIABLE es el **sumario del boletín**, que es HTML estático (BOCYL `boletin.do?fechaBoletin=DD/MM/YYYY`) o API (BOE `datosabiertos/api/boe/sumario/YYYYMMDD`). El sensor `detect-boletines` (`backend/src/detect-boletines/`, cron L-V 06:30 UTC) lee esos sumarios, pre-filtra C1/C2 por regex barata, afina con `extractRegionalOeps` (LLM) y genera señales `regional_scan`/`boe_api`. Validado: detecta la ULE Escala Administrativa (BOCYL) + convocatorias de ingreso de UNED/UPM/UCA… (BOE).
 >
+> **🆕 CAMBIO 19/06/2026 — el pre-filtro capta ahora CUALQUIER cuerpo C1/C2, no solo "administrativos".** El gate viejo (`C1C2_RE` en `backend/src/detect-boletines/boletines.ts`) exigía una palabra administrativa (*auxiliar administrativo, cuerpo administrativo, subalterno, oficial…*) → dejaba ciegos IIPP (Ayudantes), Justicia (Tramitación/Auxilio), Hacienda (Agentes), etc. Sustituido por `INGRESO_RE` (contexto de proceso selectivo de ingreso: *proceso selectivo / pruebas selectivas / oposición / concurso-oposición / bolsa de empleo*) + `NOISE_RE` (descarta A1/A2/superior/docente) + el guardarraíl de grupo del LLM (`['C1','C2','C']`). Tests en `boletines.spec.ts` cubren IIPP/Justicia/Hacienda.
+>
 > Reparto de tablas: **`detection_sources`** (incl. el nuevo tipo `universidad`, 7 universidades sembradas) es la "lista de a quién vigilar"; la señal **fiable sale del boletín**, no de la web. **Las webs JS NO se escanean** (Playwright queda como 2ª iteración solo para fuentes sin boletín).
 
 ### Modelo actual: "Claude mete, el cron revisa"
@@ -850,7 +852,9 @@ SELECT slug, seguimiento_url FROM oposiciones
 WHERE coverage_level='catalogada' AND seguimiento_url IS NOT NULL ORDER BY slug;
 ```
 
-**El cron ya las vigila** (cambio 01/06): `getOposicionesForLlmScan` dejó de filtrar `is_active=true` → revisa toda `seguimiento_url` aunque `is_active=false`. `is_active` solo gobierna la visibilidad pública (no se toca, así no salen tarjetas vacías).
+**El cron ya las vigila** (cambio 01/06, **realmente aplicado el 19/06/2026**): los escáneres revisan toda `seguimiento_url` aunque `is_active=false`. `is_active` solo gobierna la visibilidad pública (no se toca, así no salen tarjetas vacías).
+
+> **⚠️ Aviso (19/06/2026): el filtro `is_active=true` había vuelto / nunca se quitó del todo.** Auditoría real (investigando "por qué no detectó IIPP"): **444/528** oposiciones con `seguimiento_url` tenían `seguimiento_last_hash=NULL` (nunca leídas) porque las 4 fuentes de escaneo seguían filtrando `is_active=true` → las ~100 catalogadas estaban **ciegas**. Corregido quitando ese filtro en: `backend/src/check-seguimiento/seguimiento-queries.ts` (`getOposicionesForSeguimientoCheck`, cron hash_change), `lib/api/oep-signals/queries.ts` (`getOposicionesForLlmScan`, sensor llm_semantic + el matcher de descubrimientos), y `lib/api/seguimiento-convocatorias/queries.ts` (legacy + vista admin). Tras el fix: 93 → 528 vigiladas. **Coste:** el sensor `llm_semantic` (Claude Haiku) pasa de ~93 a ~528 fetches por run (~6×). Norma de Manuel: **todas las C1/C2 al radar, indep. de administración/cuerpo/ministerio.**
 
 **Trabajo poco a poco de Claude** (cuando el admin diga *"revisa oeps"* / *"mete oposiciones"*):
 1. Tomar una `catalogada` (o un hueco real si faltara algún cuerpo).
@@ -1092,14 +1096,14 @@ Si hay hitos `current` con fecha pasada >3 días pero sin señal correspondiente
 // Oposiciones con seguimiento_url cuyo último check falló o no hay check reciente
 const { data: ops } = await supabase
   .from('oposiciones')
-  .select('slug, last_checked_at, seguimiento_url')
+  .select('slug, seguimiento_last_checked, seguimiento_url')
   .eq('is_active', true)
   .not('seguimiento_url', 'is', null)
-  .order('last_checked_at', { ascending: true, nullsFirst: true })
+  .order('seguimiento_last_checked', { ascending: true, nullsFirst: true })
   .limit(10)
 ```
 
-Si `last_checked_at` es muy antiguo: el workflow `check-seguimiento.yml` puede estar fallando. Revisar runs en GitHub Actions.
+Si `seguimiento_last_checked` es muy antiguo: el workflow `check-seguimiento.yml` puede estar fallando. Revisar runs en GitHub Actions.
 
 **Fuentes bloqueadas por WAF (anti-bot):** algunos portales oficiales (notablemente `sede.madrid.es` del Ayuntamiento de Madrid) devuelven una página de "Access Denied" a peticiones automatizadas. Esa página de error incluye un token dinámico (`Reference 18 3a6b0117...`) que cambia en cada check → el hash cambia siempre → señales `hash_change` infinitas (ruido diario).
 
@@ -1200,6 +1204,8 @@ const text = await page.textContent('body');
 ```
 
 O bien con Python: `ssl.CERT_NONE` en el contexto SSL (ejemplo en §15.1).
+
+**Hosts con cadena de certificado incompleta (allowlist en el cron).** El fetcher del cron (`backend/src/check-seguimiento/seguimiento-fetch.ts` y su gemelo `lib/api/seguimiento-convocatorias/queries.ts`) tiene un `INSECURE_TLS_HOSTS` que usa `https.request({rejectUnauthorized:false})` para hosts que no sirven la cadena intermedia. Miembros actuales: `www.dpz.es` (FNMT-RCM, 15-may-2026) y **`www.institucionpenitenciaria.es`** (IIPP, 19-jun-2026: `curl` estricto=`000`, `curl -k`=`200`). Si una `seguimiento_url` nueva da error de certificado pero `curl -k` la lee, añadir el host a ese set en **ambos** ficheros. El TLS-tolerante resuelve el certificado; el contenido se lee con las cabeceras estándar (probado IIPP → 200 + 165 KB).
 
 La URL de seguimiento para la OEP Auxiliar C2 DPZ: `https://www.dpz.es/ciudadano/empleo-publico/nuevo-ingreso/auxiliar-de-administracion-general-oep-2023-7-2024-10-y-2025-9` (confirmada accesible con este método, inscripción cerrada 26/03–27/04/2026, 26 plazas C2).
 

@@ -22,6 +22,26 @@ describe('looksLikeC1C2Convocatoria', () => {
     ).toBe(true);
   });
 
+  it('detecta cuerpos NO administrativos C1/C2 (IIPP, Justicia, Hacienda)', () => {
+    // Caso real Manuel 19/06/2026: el gate viejo exigía palabra "administrativa"
+    // y dejaba ciego a IIPP/Justicia/Hacienda.
+    expect(
+      looksLikeC1C2Convocatoria(
+        'Resolución por la que se convoca proceso selectivo para ingreso, por acceso libre, en el Cuerpo de Ayudantes de Instituciones Penitenciarias.',
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeC1C2Convocatoria(
+        'Orden por la que se convocan pruebas selectivas para ingreso en el Cuerpo de Tramitación Procesal y Administrativa.',
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeC1C2Convocatoria(
+        'Resolución por la que se convoca oposición para ingreso en el Cuerpo General de Agentes de la Hacienda Pública.',
+      ),
+    ).toBe(true);
+  });
+
   it('descarta listas de resultados (relación de aspirantes que han superado)', () => {
     expect(
       looksLikeC1C2Convocatoria(

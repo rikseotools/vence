@@ -34,14 +34,20 @@ export interface BoletinAdapter {
 
 // --- Heurística compartida de pre-filtrado (la limpieza fina la hace el LLM) ---
 
-const CONVOCA_RE = /(se convoca|convoca proceso selectivo|pruebas selectivas|proceso selectivo para el ingreso|convocatoria del proceso selectivo)/i
-const C1C2_RE = /(escala administrativa|escala auxiliar|auxiliar administrativ|cuerpo administrativo|cuerpo de gesti[oó]n|subgrupo c1|subgrupo c2|grupo c\b|t[eé]cnico administrativo|administrativ|subalterno|oficial)/i
+// Contexto de un proceso selectivo de INGRESO. NO exige que el cuerpo sea
+// "administrativo": IIPP (Ayudantes), Justicia (Tramitación/Auxilio), Hacienda,
+// etc. también son C1/C2. La precisión de grupo la dan NOISE_RE (descarta
+// A1/A2/superior/docente) + el guardarraíl de grupo del LLM en
+// detect-boletines.service (`['C1','C2','C']`). Antes este gate exigía una
+// palabra administrativa y dejaba ciegos todos los cuerpos no-administrativos
+// (caso real: IIPP — Manuel 19/06/2026).
+const INGRESO_RE = /(proceso selectivo|pruebas selectivas|proceso de selecci[oó]n|concurso-oposici[oó]n|\boposici[oó]n|bolsa de empleo)/i
 // Cosas que NUNCA son una convocatoria de ingreso C1/C2 (resultados, A1/A2, laboral…)
 const NOISE_RE = /(relaci[oó]n de aspirantes|lista de admitidos|lista provisional|lista definitiva|han superado|nombramiento|adjudicaci[oó]n de plazas|apartamentos|v[ií]as pecuarias|catedr|cuerpo superior|titulado superior|facultativo superior|personal laboral|libre designaci[oó]n|profesor|investigador|subgrupo a1|subgrupo a2)/i
 
-/** ¿Esta línea/disposición huele a convocatoria de ingreso C1/C2? */
+/** ¿Esta línea/disposición huele a convocatoria de ingreso C1/C2 (de cualquier cuerpo)? */
 export function looksLikeC1C2Convocatoria(text: string): boolean {
-  return CONVOCA_RE.test(text) && C1C2_RE.test(text) && !NOISE_RE.test(text)
+  return INGRESO_RE.test(text) && !NOISE_RE.test(text)
 }
 
 export function htmlToText(html: string): string {

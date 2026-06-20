@@ -12,6 +12,7 @@ import { baseScoreBySensor, buildDedupeKey } from '@/lib/api/oep-signals/schemas
 // Para estos solo hasheamos HTML público, así que aceptamos cert no verificado.
 const INSECURE_TLS_HOSTS = new Set<string>([
   'www.dpz.es', // FNMT-RCM intermedio no servido (15-may-2026)
+  'www.institucionpenitenciaria.es', // cadena de certificado incompleta (19-jun-2026): curl estricto=000, -k=200
 ])
 
 export interface OposicionToCheck {
@@ -62,8 +63,8 @@ export async function getOposicionesForSeguimientoCheck(): Promise<OposicionToCh
     SELECT id, nombre, slug, short_name, seguimiento_url,
            seguimiento_last_hash, seguimiento_last_checked, seguimiento_change_status
     FROM oposiciones
+    -- Radar OEP: incluye catalogadas (is_active=false) — Manuel 19/06/2026
     WHERE seguimiento_url IS NOT NULL
-      AND is_active = true
     ORDER BY nombre
   `)
 
@@ -361,7 +362,8 @@ export async function getSeguimientoAdminData(): Promise<Array<{
              0
            ) as unreviewed
     FROM oposiciones o
-    WHERE o.seguimiento_url IS NOT NULL AND o.is_active = true
+    -- Radar OEP: incluye catalogadas (is_active=false) — Manuel 19/06/2026
+    WHERE o.seguimiento_url IS NOT NULL
     ORDER BY
       CASE WHEN o.seguimiento_change_status = 'changed' THEN 0
            WHEN o.seguimiento_change_status = 'error' THEN 1
