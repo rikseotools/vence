@@ -1,6 +1,12 @@
 // lib/api/admin-charts/queries.ts - Drizzle queries para charts de admin
-// Reemplaza 28 queries secuenciales del cliente por 2 queries SQL server-side
-import { getAdminDb as getDb } from '@/db/client'
+// Reemplaza 28 queries secuenciales del cliente por 2 queries SQL server-side.
+//
+// READ REPLICA (20/06): analítica read-only tolerable a stale ≤1s → getReadDb, NO el
+// primario (getAdminDb). Saca la carga del dashboard del pool del PRIMARIO (donde viven
+// las escrituras answer-and-save que se saturaban) — y revierte el aporte de la query de
+// stats de 97 días, más pesada. Rollback-safe: si USE_READ_REPLICA!=true, getReadDb cae
+// al primario solo. Mismo patrón que difficulty-insights/topic-progress/ranking.
+import { getReadDb as getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { ActivityChartResponse, RegistrationsChartResponse } from './schemas'
 import { computeActivityStats } from './activityStats'
