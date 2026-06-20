@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { adminFetch } from '@/lib/api/adminFetch'
 
 interface AdminNotificationState {
   feedback: number
@@ -95,9 +96,12 @@ export function useAdminNotifications(enabled = false) {
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
-        // 3. Obtener impugnaciones via API (usa SERVICE_ROLE para bypass RLS)
+        // 3. Obtener impugnaciones via API (usa SERVICE_ROLE para bypass RLS).
+        // adminFetch inyecta el Bearer admin: la ruta /api/admin/* está guardada por
+        // proxy.ts (guardAdminApi) y un fetch crudo devuelve 401 (regresión del badge
+        // de impugnaciones tras el commit 2d67ab33; contrato: usar adminFetch, no fetch).
         Promise.race([
-          fetch('/api/admin/pending-counts').then(r => r.json()),
+          adminFetch('/api/admin/pending-counts').then(r => r.json()),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )

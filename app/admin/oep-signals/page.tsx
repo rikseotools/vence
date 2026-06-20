@@ -2,6 +2,7 @@
 // Panel admin de señales de detección de OEPs (multi-sensor)
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { SignalRow, SignalStatus } from '@/lib/api/oep-signals/schemas'
 
@@ -60,7 +61,7 @@ export default function OepSignalsPage() {
     setActionLoading(signalId)
     try {
       const authHeaders = await getAuthHeaders()
-      const res = await fetch('/api/admin/oep-signals', {
+      const res = await adminFetch('/api/admin/oep-signals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ signalId, action }),

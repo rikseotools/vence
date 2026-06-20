@@ -7,6 +7,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type Status = 'green' | 'amber' | 'red' | 'unknown'
@@ -124,7 +125,7 @@ export default function CanaryDashboardPage() {
     try {
       setError(null)
       const headers = await getAuthHeaders()
-      const res = await fetch('/api/admin/canary', { headers })
+      const res = await adminFetch('/api/admin/canary', { headers })
       if (!res.ok) {
         const body = await res.text().catch(() => '')
         throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`)
@@ -151,7 +152,7 @@ export default function CanaryDashboardPage() {
     setRunResult(null)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch('/api/admin/canary/run-now', {
+      const res = await adminFetch('/api/admin/canary/run-now', {
         method: 'POST',
         headers,
       })

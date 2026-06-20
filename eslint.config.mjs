@@ -147,6 +147,21 @@ const eslintConfig = [
           message:
             "createClient con SERVICE_ROLE bypasea RLS y, en código cliente, expone el JWT en el bundle JS público. Usa un endpoint API server-side con getAdminDb() en su lugar.",
         },
+        // ─── Antipattern 3: fetch crudo a /api/admin/* ───────────────────
+        // El guard guardAdminApi (proxy.ts) exige Bearer admin o x-cron-secret;
+        // un fetch sin cabecera de auth recibe 401 SILENCIOSO. Origen: regresión
+        // del badge de impugnaciones (19/06, commit 2d67ab33 movió el guard a
+        // proxy.ts y el hook seguía con fetch crudo). Usa adminFetch de
+        // @/lib/api/adminFetch (inyecta el token). Excepción legítima: /armando
+        // usa su cookie httpOnly propia y su ruta está exenta del guard.
+        {
+          // `.` casa la barra `/` (esquery no admite `/` escapado en el regex de
+          // atributo); en un primer arg literal de fetch no hay falsos positivos.
+          selector:
+            "CallExpression[callee.name='fetch'] > Literal[value=/^.api.admin/]",
+          message:
+            "fetch('/api/admin/...') crudo se queda sin Bearer admin y el guard (proxy.ts) lo rechaza con 401 silencioso. Usa adminFetch de @/lib/api/adminFetch.",
+        },
       ],
     },
   },

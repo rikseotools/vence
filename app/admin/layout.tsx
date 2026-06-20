@@ -1,6 +1,7 @@
 // app/admin/layout.tsx - Layout base para área administrativa
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import ProtectedRoute from '@/components/Admin/ProtectedRoute'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useLawChanges } from '@/hooks/useLawChanges'
@@ -15,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     try {
       const authHeaders = await getAuthHeaders()
       if (!authHeaders['Authorization']) return
-      const res = await fetch('/api/admin/oep-signals/pending-count', {
+      const res = await adminFetch('/api/admin/oep-signals/pending-count', {
         headers: authHeaders,
       })
       const json = await res.json()
