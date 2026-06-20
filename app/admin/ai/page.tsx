@@ -763,7 +763,7 @@ export default function AdminAIPage() {
   const loadConfigs = async () => {
     try {
       const headers = await getAuthHeaders()
-      const response = await fetch('/api/admin/ai-config', { headers })
+      const response = await adminFetch('/api/admin/ai-config', { headers })
       const data = await response.json()
       if (data.success) setConfigs(data.configs)
     } catch (err) {
@@ -777,7 +777,7 @@ export default function AdminAIPage() {
     setLoadingUsage(true)
     try {
       const usageHeaders = await getAuthHeaders()
-      const response = await fetch('/api/admin/ai-config/usage?days=30', { headers: usageHeaders })
+      const response = await adminFetch('/api/admin/ai-config/usage?days=30', { headers: usageHeaders })
       const data = await response.json()
       if (data.success) setUsage(data)
     } catch (err) {
@@ -807,7 +807,7 @@ export default function AdminAIPage() {
   const handleUpdate = async (provider: string, updates: Record<string, unknown>) => {
     try {
       const updateHeaders = await getAuthHeaders()
-      const response = await fetch('/api/admin/ai-config', {
+      const response = await adminFetch('/api/admin/ai-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...updateHeaders },
         body: JSON.stringify({ provider, ...updates })
@@ -822,7 +822,7 @@ export default function AdminAIPage() {
   const handleTest = async (provider: string, apiKey: string | null, model: string, testAllModels = true): Promise<TestResult> => {
     try {
       const testHeaders = await getAuthHeaders()
-      const response = await fetch('/api/admin/ai-config/test', {
+      const response = await adminFetch('/api/admin/ai-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...testHeaders },
         body: JSON.stringify({ provider, apiKey, model, testAllModels })

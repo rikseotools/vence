@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface AiModel {
@@ -152,7 +153,7 @@ export default function LifecycleQueueTab() {
     setBulkResult(null)
     try {
       const headers = await getAuthHeaders()
-      const r = await fetch('/api/admin/lifecycle/apply-fix-bulk', {
+      const r = await adminFetch('/api/admin/lifecycle/apply-fix-bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ export default function LifecycleQueueTab() {
   const loadAiConfig = useCallback(async () => {
     try {
       const headers = await getAuthHeaders()
-      const r = await fetch('/api/admin/ai-config', { headers })
+      const r = await adminFetch('/api/admin/ai-config', { headers })
       const d = await r.json()
       if (!d.success || !d.configs) return
       const active: AiConfig[] = d.configs.filter(
@@ -314,7 +315,7 @@ export default function LifecycleQueueTab() {
     setError(null)
     try {
       const headers = await getAuthHeaders()
-      const r = await fetch('/api/admin/lifecycle/apply-fix', {
+      const r = await adminFetch('/api/admin/lifecycle/apply-fix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({
@@ -346,7 +347,7 @@ export default function LifecycleQueueTab() {
     setError(null)
     try {
       const headers = await getAuthHeaders()
-      const r = await fetch('/api/admin/questions/lifecycle/transition', {
+      const r = await adminFetch('/api/admin/questions/lifecycle/transition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({

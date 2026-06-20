@@ -9,6 +9,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type Status = 'green' | 'amber' | 'red' | 'unknown'
@@ -59,7 +60,7 @@ export default function SLODashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const headers = await getAuthHeaders()
-      const resp = await fetch('/api/admin/slos', { headers, cache: 'no-store' })
+      const resp = await adminFetch('/api/admin/slos', { headers, cache: 'no-store' })
       if (!resp.ok) {
         if (resp.status === 401 || resp.status === 403) {
           setError('No autorizado — solo admins.')

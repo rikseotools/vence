@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -70,7 +71,7 @@ export default function InfraStatsTab() {
       const timeoutId = setTimeout(() => controller.abort(), 20000)
 
       try {
-        const res = await fetch('/api/admin/infra-stats', {
+        const res = await adminFetch('/api/admin/infra-stats', {
           headers: authHeaders,
           signal: controller.signal,
         })
