@@ -1,7 +1,6 @@
 // app/admin/impugnaciones/page.js - Gestión de impugnaciones de preguntas
 'use client'
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
@@ -24,7 +23,7 @@ export default function ImpugnacionesPage() {
     try {
       setLoading(true)
       const authHeaders = await getAuthHeaders()
-      const response = await adminFetch('/api/v2/admin/disputes', { headers: authHeaders })
+      const response = await fetch('/api/v2/admin/disputes', { headers: authHeaders })
       const data = await response.json()
 
       if (!data.success) throw new Error(data.error || 'Error cargando impugnaciones')
@@ -43,7 +42,7 @@ export default function ImpugnacionesPage() {
   const closeDispute = async (disputeId, isPsychometric = false) => {
     try {
       const authHeaders = await getAuthHeaders()
-      const response = await adminFetch('/api/v2/admin/disputes', {
+      const response = await fetch('/api/v2/admin/disputes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

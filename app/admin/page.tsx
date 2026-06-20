@@ -1,7 +1,6 @@
 // app/admin/page.tsx - Dashboard con API v2 Drizzle
 'use client'
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import dynamic from 'next/dynamic'
 import type { DashboardResponse } from '@/lib/api/admin-dashboard/schemas'
 import type { ActivityChartResponse, RegistrationsChartResponse } from '@/lib/api/admin-charts/schemas'
@@ -43,7 +42,7 @@ export default function AdminDashboard() {
 
         // Dashboard primero, charts después (en dev, Turbopack bloquea si dos
         // API routes que comparten el pool de BD se llaman en paralelo)
-        const dashRes = await adminFetch('/api/v2/admin/dashboard', { signal: controller.signal })
+        const dashRes = await fetch('/api/v2/admin/dashboard', { signal: controller.signal })
         if (controller.signal.aborted) return
         if (!dashRes.ok) throw new Error(`Error ${dashRes.status}: ${dashRes.statusText}`)
         const data = await dashRes.json()
@@ -58,7 +57,7 @@ export default function AdminDashboard() {
         setLoading(false)
 
         // Charts se cargan después sin bloquear el dashboard
-        const chartsRes = await adminFetch('/api/v2/admin/charts?days=14', { signal: controller.signal })
+        const chartsRes = await fetch('/api/v2/admin/charts?days=14', { signal: controller.signal })
         if (controller.signal.aborted) return
         if (chartsRes.ok) {
           const charts = await chartsRes.json()

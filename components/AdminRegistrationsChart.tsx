@@ -1,7 +1,6 @@
 // components/AdminRegistrationsChart.tsx - Gráfico de registros por día (v2 API)
 'use client'
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 interface RegistrationDay {
@@ -38,7 +37,7 @@ export default function AdminRegistrationsChart({ data: externalData }: AdminReg
     // Fallback: fetch directo si no se pasan datos
     async function load() {
       try {
-        const res = await adminFetch('/api/v2/admin/charts?days=14')
+        const res = await fetch('/api/v2/admin/charts?days=14')
         if (!res.ok) throw new Error(`Error ${res.status}`)
         const json = await res.json()
         setChartData(json.registrations?.data || [])

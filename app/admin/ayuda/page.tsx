@@ -2,7 +2,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { adminFetch } from '@/lib/api/adminFetch'
 
 interface HelpArticle {
   id: string
@@ -42,7 +41,7 @@ export default function AdminAyudaPage() {
 
   async function loadArticles() {
     try {
-      const res = await adminFetch('/api/v2/admin/help-articles')
+      const res = await fetch('/api/v2/admin/help-articles')
       if (!res.ok) throw new Error('Error cargando artículos')
       const data = await res.json()
       setArticles(data.articles)
