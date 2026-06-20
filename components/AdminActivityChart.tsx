@@ -1,6 +1,7 @@
 // components/AdminActivityChart.tsx - Gráfico de usuarios activos por día (v2 API)
 'use client'
 import { useState, useEffect } from 'react'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface ActivityDay {
@@ -34,7 +35,7 @@ export default function AdminActivityChart({ data: externalData }: AdminActivity
     // Fallback: fetch directo si no se pasan datos
     async function load() {
       try {
-        const res = await fetch('/api/v2/admin/charts?days=14')
+        const res = await adminFetch('/api/v2/admin/charts?days=14')
         if (!res.ok) throw new Error(`Error ${res.status}`)
         const json = await res.json()
         setChartData(json.activity?.data || [])

@@ -155,12 +155,13 @@ const eslintConfig = [
         // @/lib/api/adminFetch (inyecta el token). Excepción legítima: /armando
         // usa su cookie httpOnly propia y su ruta está exenta del guard.
         {
+          // Cubre /api/admin/* Y /api/v2/admin/* (ambos guardados por proxy.ts).
           // `.` casa la barra `/` (esquery no admite `/` escapado en el regex de
           // atributo); en un primer arg literal de fetch no hay falsos positivos.
           selector:
-            "CallExpression[callee.name='fetch'] > Literal[value=/^.api.admin/]",
+            "CallExpression[callee.name='fetch'] > Literal[value=/^.api.(admin|v2.admin)/]",
           message:
-            "fetch('/api/admin/...') crudo se queda sin Bearer admin y el guard (proxy.ts) lo rechaza con 401 silencioso. Usa adminFetch de @/lib/api/adminFetch.",
+            "fetch('/api/admin/...' o '/api/v2/admin/...') crudo se queda sin Bearer admin y el guard (proxy.ts) lo rechaza con 401 silencioso. Usa adminFetch de @/lib/api/adminFetch.",
         },
       ],
     },
