@@ -4,6 +4,16 @@
 
 Cuando el admin dice "el seguimiento ha detectado cambios" o se ven badges de **🎯 OEPs** en el sidebar admin, seguir este manual para sincronizar las landing pages con la realidad.
 
+## ⭐ Aprendizajes clave del radar (20/06/2026 — leer antes de tocar nada)
+
+Sesión investigando "por qué no se detectó IIPP" (convocatoria viva de 1.050 plazas C1 que el sistema no veía). Destapó tres verdades que NO eran obvias:
+
+1. **Tener `seguimiento_url` ≠ estar vigilada.** El canario fiable de una fuente ciega es **`seguimiento_last_hash IS NULL`** (nunca leída con éxito). Auditarlo periódicamente: `SELECT count(*) FROM oposiciones WHERE seguimiento_url IS NOT NULL AND seguimiento_last_hash IS NULL`. El 19/06 eran **444/528** (radar real ≈ 18% del catálogo, no el 100% que el manual daba por hecho). Tras el fix: 527/528.
+2. **El cron usa `fetch` plano (NO navegador).** Una URL solo se monitoriza si es **(a) server-rendered** (curl plano devuelve el contenido, no un shell SPA), **(b) TLS válido o el host está en `INSECURE_TLS_HOSTS`**, y **(c) el UA no la bloquea** (el fetcher se identifica como navegador, no como bot). **Antes de dar de alta cualquier `seguimiento_url`, verificar con `curl -sL` plano** que el contenido real está en el HTML. Playwright sirve para *investigar* una SPA, nunca como fuente (el cron no renderiza JS).
+3. **Todas las C1/C2 al radar, indep. de administración/cuerpo/ministerio** (IIPP, Justicia, Hacienda… no solo "administrativo"). Y **no filtrar `is_active`** — las catalogadas también se vigilan (§10). El descubridor de boletines no debe sesgar el regex a cuerpos administrativos (§10 detect-boletines).
+
+**Método para fuentes que no leen:** clasificar el fallo con `curl` (estricto vs `-k` vs UA) → cert-chain roto = `INSECURE_TLS_HOSTS`; WAF por UA = UA navegador; SPA/WAF por IP = migrar a boletín oficial server-rendered (BOP/BOJA/BOE/CIDO-Diba/sede-STA). Cuando dos diagnósticos discrepan (cert vs IP-reset), **decidir empíricamente re-corriendo el baseline real**, no a ojo. Detalle de los 3 patrones en §16.bis.
+
 ## Arquitectura actual (desde 06/04/2026): sistema multi-sensor
 
 Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** con los sensores activos:
