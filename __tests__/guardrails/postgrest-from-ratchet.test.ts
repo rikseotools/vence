@@ -21,8 +21,9 @@ const FROM = /\.from\(['"]/g
 // Baseline: SOLO bajar al migrar a endpoints/Drizzle.
 //   2026-06-20: 128 sitios / 43 ficheros (inicial).
 //   C1#1: app/oposiciones/page.tsx (oposiciones, server→Drizzle) → 127 / 42.
-const BASELINE_SITES = 127
-const BASELINE_FILES = 42
+//   C1#2: app/oposiciones/[filtro]/page.tsx (2 queries oposiciones) → 125 / 41.
+const BASELINE_SITES = 125
+const BASELINE_FILES = 41
 
 function walk(rel: string): string[] {
   let out: string[] = []

@@ -6,7 +6,8 @@
  * /oposiciones/inscripcion-abierta → Con inscripción abierta
  */
 import { Metadata } from 'next'
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getDb, getPoolerDb, getAdminDb } from '@/db/client'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import OposicionCard from '../components/OposicionCard'
@@ -68,17 +69,32 @@ interface OposicionRow {
   subgrupo: string | null
 }
 
+// Agnóstico (Fase C1): Drizzle en vez de supabase.from. Fechas ::text (string
+// 'YYYY-MM-DD' EXACTO como PostgREST; isInscripcionAbierta/isShowableCatalogada
+// hacen .slice(0,10)). Público (is_active=true) → getDb/getPoolerDb.
+function db() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
+
 async function getFilteredOposiciones(filter: OposicionFilter): Promise<OposicionRow[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return []
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-
-  const { data } = await supabase
-    .from('oposiciones')
-    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_start, inscription_deadline, subgrupo')
-    .eq('is_active', true)
-    .order('plazas_libres', { ascending: false, nullsFirst: false })
-
-  const all = (data ?? []) as OposicionRow[]
+  let all: OposicionRow[] = []
+  try {
+    const rows = await db().execute(sql`
+      SELECT slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso,
+             is_convocatoria_activa,
+             exam_date::text AS exam_date,
+             inscription_start::text AS inscription_start,
+             inscription_deadline::text AS inscription_deadline,
+             subgrupo
+      FROM oposiciones
+      WHERE is_active = true
+      ORDER BY plazas_libres DESC NULLS LAST
+    `)
+    all = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as OposicionRow[]
+  } catch (e) {
+    console.warn('[oposiciones/filtro] getFilteredOposiciones falló:', (e as Error).message)
+    return []
+  }
 
   // Filtrar según tipo
   switch (filter.type) {
@@ -112,19 +128,23 @@ interface CatalogadaAbierta {
 }
 
 async function getCatalogadasAbiertas(): Promise<CatalogadaAbierta[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return []
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    // eslint-disable-next-line no-restricted-syntax -- Server Component: SERVICE_ROLE corre server-side
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-  )
-  const { data } = await supabase
-    .from('oposiciones')
-    .select('slug, nombre, plazas_libres, inscription_start, inscription_deadline, seguimiento_url')
-    .eq('is_active', false)
-    .order('inscription_deadline', { ascending: true, nullsFirst: false })
-  return ((data ?? []) as (CatalogadaAbierta & { inscription_start: string | null; is_active: boolean })[])
-    .filter(o => isShowableCatalogada({ ...o, is_active: false }))
+  try {
+    // is_active=false → no visible por anon/RLS; getAdminDb bypasea RLS (= service_role).
+    const rows = await getAdminDb().execute(sql`
+      SELECT slug, nombre, plazas_libres,
+             inscription_start::text AS inscription_start,
+             inscription_deadline::text AS inscription_deadline,
+             seguimiento_url
+      FROM oposiciones
+      WHERE is_active = false
+      ORDER BY inscription_deadline ASC NULLS LAST
+    `)
+    const results = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as (CatalogadaAbierta & { inscription_start: string | null })[]
+    return results.filter(o => isShowableCatalogada({ ...o, is_active: false }))
+  } catch (e) {
+    console.warn('[oposiciones/filtro] getCatalogadasAbiertas falló:', (e as Error).message)
+    return []
+  }
 }
 
 // ============================================
