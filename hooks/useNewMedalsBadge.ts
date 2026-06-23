@@ -3,9 +3,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 
 export function useNewMedalsBadge() {
-  const { user, supabase } = useAuth() as any
+  const { user } = useAuth() as any
   const [hasNewMedals, setHasNewMedals] = useState(false)
   const [newMedalsCount, setNewMedalsCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -28,7 +29,7 @@ export function useNewMedalsBadge() {
   }
 
   const checkNewMedals = async () => {
-    if (!user || !supabase) {
+    if (!user) {
       setLoading(false)
       return
     }
@@ -48,18 +49,18 @@ export function useNewMedalsBadge() {
       const data = await res.json()
       const currentMedals = data.success ? (data.medals || []) : []
 
-      // Obtener medallas almacenadas/vistas
-      const { data: storedMedals, error: storedError } = await supabase
-        .from('user_medals')
-        .select('medal_id, unlocked_at, viewed')
-        .eq('user_id', user.id)
+      // Obtener medallas almacenadas/vistas (Fase C1: endpoint Drizzle, user del token)
+      const headers = await getAuthHeaders()
+      const badgeRes = await fetch('/api/v2/medals/badge', { headers })
 
-      if (storedError) {
-        console.warn('Error loading stored medals for badge:', storedError)
+      if (!badgeRes.ok) {
+        console.warn('Error loading stored medals for badge:', badgeRes.status)
         setHasNewMedals(false)
         setNewMedalsCount(0)
         return
       }
+
+      const storedMedals = ((await badgeRes.json()).medals || []) as any[]
 
       const storedMedalIds = new Set(storedMedals?.map((m: any) => m.medal_id) || [])
 
@@ -85,17 +86,14 @@ export function useNewMedalsBadge() {
   }
 
   const markMedalsAsViewed = async () => {
-    if (!user || !supabase) return
+    if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('user_medals')
-        .update({ viewed: true })
-        .eq('user_id', user.id)
-        .eq('viewed', false)
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/medals/badge', { method: 'POST', headers })
 
-      if (error) {
-        console.warn('Error marking medals as viewed:', error)
+      if (!res.ok) {
+        console.warn('Error marking medals as viewed:', res.status)
       } else {
         const lastViewedKey = `${MEDALS_BADGE_COOLDOWN_KEY}_${user.id}`
         localStorage.setItem(lastViewedKey, new Date().toISOString())
@@ -110,7 +108,7 @@ export function useNewMedalsBadge() {
 
   useEffect(() => {
     checkNewMedals()
-  }, [user?.id, supabase])
+  }, [user?.id])
 
   return {
     hasNewMedals,
