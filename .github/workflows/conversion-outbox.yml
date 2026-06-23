@@ -10,10 +10,12 @@ name: Conversion Outbox
 # Roadmap: docs/roadmap/trackeo-conversiones-ventas.md
 
 on:
-  schedule:
-    # Cada 15 min: las conversiones llegan a Ads con poca latencia y los scans
-    # vacíos son sub-segundo (índice parcial sobre pending).
-    - cron: '*/15 * * * *'
+  # SCHEDULE RETIRADO (23/06/2026). GitHub Actions descartaba la mayoría de los
+  # ticks `*/15`: la cadencia REAL medida era ~2,6h (mediana, hasta 6h), que era
+  # la causa raíz DOMINANTE de las conversiones en DLQ (incidente 19-23/06). El
+  # drain lo dispara ahora el worker Fargate caliente cada 2 min, de forma fiable
+  # (backend/src/conversion-drain). Este workflow se deja SOLO como escape-hatch
+  # manual (workflow_dispatch) por si hace falta forzar un drain desde GHA.
   workflow_dispatch:
 
 jobs:

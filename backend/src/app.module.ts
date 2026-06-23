@@ -17,6 +17,7 @@ import { AvatarRotationModule } from './avatar-rotation/avatar-rotation.module';
 import { CheckSeguimientoModule } from './check-seguimiento/check-seguimiento.module';
 import { SeoSnapshotModule } from './seo-snapshot/seo-snapshot.module';
 import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
+import { ConversionDrainModule } from './conversion-drain/conversion-drain.module';
 import { AnthropicModule } from './anthropic/anthropic.module';
 import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
@@ -141,6 +142,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CheckSeguimientoModule,
     SeoSnapshotModule, // semanal lunes 05:17 UTC — snapshot posición GSC de keywords objetivo
     ProcessOutboxModule,
+    ConversionDrainModule, // cada 2 min — drain fiable de conversiones (reemplaza el cron GHA, ~2,6h real)
     ProcessVerificationQueueModule,
     AvatarRotationModule,
     // Crons Stripe (migrados de GHA 27/05/2026 post-incidente Rocío/Mercedes
