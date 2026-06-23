@@ -13,7 +13,7 @@ import { effectiveBannerVisible, nextBannerVisible } from '@/components/DailyGoa
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
-import type { User, SupabaseClient } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
 // ============================================
 // TIPOS E INTERFACES
@@ -145,7 +145,6 @@ type TabType = 'general' | 'emails' | 'suscripcion'
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  supabase: SupabaseClient
   isPremium: boolean
 }
 
@@ -154,7 +153,7 @@ interface AuthContextValue {
 // ============================================
 
 function PerfilPageContent() {
-  const { user, loading: authLoading, supabase, isPremium } = useAuth() as AuthContextValue
+  const { user, loading: authLoading, isPremium } = useAuth() as AuthContextValue
   const { oposicionId } = useOposicion()
   const userOposicionName = oposicionId ? (getOposicion(oposicionId)?.name ?? null) : null
   const searchParams = useSearchParams()
@@ -1110,14 +1109,14 @@ function PerfilPageContent() {
   useEffect(() => {
     async function checkPendingDeletion() {
       if (!user) return
-      const { count } = await supabase
-        .from('user_feedback')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('type', 'account_deletion')
-        .eq('status', 'pending')
-      if (count && count > 0) {
-        setDeletionRequested(true)
+      try {
+        const headers = await getAuthHeaders()
+        const res = await fetch('/api/v2/account/deletion-request', { headers })
+        if (res.ok && (await res.json()).pending) {
+          setDeletionRequested(true)
+        }
+      } catch (e) {
+        console.warn('⚠️ checkPendingDeletion error:', e)
       }
     }
     checkPendingDeletion()
@@ -1601,40 +1600,15 @@ function PerfilPageContent() {
     }, 15000)
 
     try {
-      // Verificar si ya existe una solicitud pendiente (evita duplicados)
-      const { count } = await supabase
-        .from('user_feedback')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('type', 'account_deletion')
-        .eq('status', 'pending')
+      // POST idempotente: el endpoint hace el dedup-check + INSERT server-side
+      // (no duplica si ya hay una solicitud pendiente). Tanto si la crea como si
+      // ya existía, la intención de la usuaria se cumple → mostramos éxito.
+      // El usuario cierra el modal manualmente con el botón "Entendido"
+      // (caso Helga 11-abr-2026: auto-close de 2.5s no daba tiempo a leer).
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/account/deletion-request', { method: 'POST', headers })
+      if (!res.ok) throw new Error(`deletion-request ${res.status}`)
 
-      if (count && count > 0) {
-        // Ya había una solicitud pendiente: mostrar éxito igualmente
-        // (la intención de la usuaria se cumplió). El usuario cierra el
-        // modal manualmente con el botón "Entendido".
-        setDeletionSuccess(true)
-        setDeletionRequested(true)
-        return
-      }
-
-      // Crear feedback automático con la solicitud
-      const { error } = await supabase
-        .from('user_feedback')
-        .insert({
-          user_id: user.id,
-          message: '[Solicitud de eliminación de cuenta desde perfil]',
-          type: 'account_deletion',
-          status: 'pending',
-          url: '/perfil'
-        })
-
-      if (error) throw error
-
-      // ÉXITO: mostrar confirmación INLINE en el modal. El usuario cierra
-      // manualmente con el botón "Entendido" (caso Helga 11-abr-2026:
-      // auto-close de 2.5s no daba tiempo a leer y dejaba al usuario clicando
-      // botones al azar por no encontrar feedback persistente).
       setDeletionSuccess(true)
       setDeletionRequested(true)
 
@@ -1871,32 +1845,57 @@ function PerfilPageContent() {
 
   const createInitialProfile = async (user: User) => {
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || '',
-          nickname: getFirstName(user.user_metadata?.full_name),
-          preferred_language: 'es',
-          study_goal: 25,
-          target_oposicion: '',
-          target_oposicion_data: null
-        })
-        .select()
-        .single()
+      // AGNÓSTICO (Fase C1): en vez de un INSERT PostgREST a user_profiles desde
+      // cliente, delegamos en la función SQL canónica vía endpoint (la MISMA que
+      // usa AuthContext en el primer login → create_organic_user). Luego releemos
+      // el perfil ya creado por la API tipada /api/profile (camelCase) y lo mapeamos
+      // igual que la rama de éxito de loadUserProfile.
+      const headers = await getAuthHeaders()
+      const ensureRes = await fetch('/api/v2/auth/ensure-profile', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registrationSource: 'organic',
+          userName: user.user_metadata?.full_name || null,
+        }),
+      })
+      if (!ensureRes.ok) throw new Error(`ensure-profile ${ensureRes.status}`)
 
-      if (error) throw error
-      
-      setProfile(data)
+      const response = await fetch(`/api/profile?userId=${user.id}`)
+      const result = await response.json()
+      const apiProfile = result?.data
+      if (!apiProfile) throw new Error('perfil no disponible tras ensure-profile')
+
+      const profileData = {
+        id: apiProfile.id,
+        email: apiProfile.email,
+        full_name: apiProfile.fullName,
+        avatar_url: apiProfile.avatarUrl,
+        preferred_language: apiProfile.preferredLanguage,
+        study_goal: apiProfile.studyGoal,
+        show_daily_goal_banner: apiProfile.showDailyGoalBanner,
+        target_oposicion: apiProfile.targetOposicion,
+        target_oposicion_data: apiProfile.targetOposicionData,
+        nickname: apiProfile.nickname,
+        age: apiProfile.age,
+        gender: apiProfile.gender,
+        ciudad: apiProfile.ciudad,
+        daily_study_hours: apiProfile.dailyStudyHours,
+        plan_type: apiProfile.planType,
+        created_at: apiProfile.createdAt,
+        updated_at: apiProfile.updatedAt,
+        is_active_student: apiProfile.isActiveStudent,
+        stripe_customer_id: apiProfile.stripeCustomerId
+      }
+      setProfile(profileData)
       setFormData({
-        nickname: data.nickname || getFirstName(user.user_metadata?.full_name),
-        study_goal: String(data.study_goal || 25),
-        target_oposicion: data.target_oposicion || '',
-        age: data.age?.toString() || '',
-        gender: data.gender || '',
-        ciudad: data.ciudad || '',
-        daily_study_hours: data.daily_study_hours?.toString() || ''
+        nickname: profileData.nickname || getFirstName(user.user_metadata?.full_name),
+        study_goal: String(profileData.study_goal || 25),
+        target_oposicion: profileData.target_oposicion || '',
+        age: profileData.age?.toString() || '',
+        gender: profileData.gender || '',
+        ciudad: profileData.ciudad || '',
+        daily_study_hours: profileData.daily_study_hours?.toString() || ''
       })
     } catch (error) {
       console.error('Error creando perfil:', error)

@@ -32,8 +32,9 @@ const FROM = /\.from\(['"]/g
 //   C1#10: app/pregunta/[id]/page.tsx (INSERT shared_question_responses → endpoint auth-opcional) → 106 / 33.
 //   C1#11: hooks/useTestCompletion.ts (handleTestCompletion DEAD CODE borrado; INSERT tests no portable) → 105 / 32.
 //   C1#12: hooks/useOnboarding.ts (4 .from user_profiles → GET status + POST skip atómico; complete UPDATE redundante eliminado) → 101 / 31.
-const BASELINE_SITES = 101
-const BASELINE_FILES = 31
+//   C1#13: app/perfil/page.tsx (4 .from → GET/POST account/deletion-request idempotente + createInitialProfile delega en ensure-profile) → 97 / 30.
+const BASELINE_SITES = 97
+const BASELINE_FILES = 30
 
 function walk(rel: string): string[] {
   let out: string[] = []
