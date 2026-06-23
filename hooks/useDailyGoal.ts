@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 
 interface DailyGoalStatus {
   questionsToday: number
@@ -15,7 +16,7 @@ interface DailyGoalStatus {
 }
 
 export function useDailyGoal() {
-  const { user, userProfile, supabase, isPremium } = useAuth() as any
+  const { user, userProfile, isPremium } = useAuth() as any
   const [status, setStatus] = useState<DailyGoalStatus>({
     questionsToday: 0,
     studyGoal: 25,
@@ -28,7 +29,7 @@ export function useDailyGoal() {
 
   // Cargar conteo del día + calcular meta al montar
   useEffect(() => {
-    if (!user || !supabase || !isPremium) {
+    if (!user || !isPremium) {
       setStatus(prev => ({ ...prev, loading: false }))
       return
     }
@@ -38,50 +39,30 @@ export function useDailyGoal() {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
-        // 1. Contar preguntas respondidas hoy (legislativas + psicotécnicas)
-        const [legRes, psychoRes] = await Promise.all([
-          supabase
-            .from('test_questions')
-            .select('id, tests!inner(user_id)', { count: 'exact', head: true })
-            .eq('tests.user_id', user.id)
-            .gte('created_at', today.toISOString())
-            .neq('user_answer', ''),
-          supabase
-            .from('psychometric_test_answers')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .gte('created_at', today.toISOString()),
-        ])
-
-        const questionsToday = (legRes.count || 0) + (psychoRes.count || 0)
-
-        // 2. Determinar meta: si el usuario la configuró (distinto de 25), usar esa. Si no, calcular media semanal.
+        // Meta: si el usuario la configuró (distinto de 25), usar esa. Si no, media semanal.
         let studyGoal = userProfile?.study_goal || 0
         const hasCustomGoal = userProfile?.study_goal && userProfile.study_goal !== 25
 
+        // Fase C1: los conteos van por endpoint Drizzle (user_id del token). Las
+        // fechas se calculan aquí (tz local) y se pasan al endpoint para preservar
+        // EXACTO el "hoy"/"semana" del usuario. La semana solo se pide si no hay meta custom.
+        const qs = new URLSearchParams({ today: today.toISOString() })
         if (!hasCustomGoal) {
           const weekAgo = new Date()
           weekAgo.setDate(weekAgo.getDate() - 7)
           weekAgo.setHours(0, 0, 0, 0)
+          qs.set('weekAgo', weekAgo.toISOString())
+        }
 
-          const [legWeek, psychoWeek] = await Promise.all([
-            supabase
-              .from('test_questions')
-              .select('id, tests!inner(user_id)', { count: 'exact', head: true })
-              .eq('tests.user_id', user.id)
-              .gte('created_at', weekAgo.toISOString())
-              .lt('created_at', today.toISOString())
-              .neq('user_answer', ''),
-            supabase
-              .from('psychometric_test_answers')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .gte('created_at', weekAgo.toISOString())
-              .lt('created_at', today.toISOString()),
-          ])
+        const headers = await getAuthHeaders()
+        const res = await fetch(`/api/v2/daily-goal/status?${qs.toString()}`, { headers })
+        if (!res.ok) {
+          setStatus(prev => ({ ...prev, loading: false }))
+          return
+        }
+        const { questionsToday, weekCount } = await res.json()
 
-          const weekCount = (legWeek.count || 0) + (psychoWeek.count || 0)
-
+        if (!hasCustomGoal) {
           if (weekCount > 0) {
             const rawAvg = weekCount / 7
             studyGoal = Math.max(25, Math.round(rawAvg / 5) * 5)
@@ -107,7 +88,7 @@ export function useDailyGoal() {
     }
 
     fetchData()
-  }, [user, supabase, isPremium, userProfile?.study_goal])
+  }, [user, isPremium, userProfile?.study_goal])
 
   // Escuchar evento de respuesta desde otras instancias del hook
   useEffect(() => {
