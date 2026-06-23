@@ -5,17 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTopicUnlock } from './useTopicUnlock'
 import { useMedalChecker } from './useMedalChecker'
 
-interface TestData {
-  tema: number
-  questions: any[]
-  answers: any[]
-  score: number
-  totalTime: number
-  testType?: string
-}
-
 export function useTestCompletion() {
-  const { user, supabase } = useAuth() as any
+  const { user } = useAuth() as any
   const { updateTopicProgress } = useTopicUnlock()
   const { checkMedalsAfterTest } = useMedalChecker()
 
@@ -70,93 +61,9 @@ export function useTestCompletion() {
     }
   }, [])
 
-  // Función para manejar la completion de un test
-  const handleTestCompletion = useCallback(async (testData: TestData) => {
-    if (!user || !supabase) {
-      console.log('No user or supabase for test completion')
-      return
-    }
-
-    try {
-      const {
-        tema,
-        questions,
-        answers,
-        score,
-        totalTime,
-        testType = 'normal'
-      } = testData
-
-      console.log(`🏁 Test completado: Tema ${tema}, Score: ${score}/${questions.length}`)
-
-      // Calcular estadísticas del test
-      const accuracy = (score / questions.length) * 100
-      const avgTimePerQuestion = totalTime / questions.length
-
-      // Guardar resultado del test en la tabla tests
-      const testResult = {
-        user_id: user.id,
-        tema_number: tema,
-        score: score,
-        total_questions: questions.length,
-        accuracy_percentage: Math.round(accuracy),
-        time_spent_seconds: Math.round(totalTime / 1000),
-        test_type: testType,
-        is_completed: true,
-        completed_at: new Date().toISOString(),
-        avg_time_per_question: Math.round(avgTimePerQuestion / 1000)
-      }
-
-      const { data: testInsert, error: testError } = await supabase
-        .from('tests')
-        .insert(testResult)
-        .select('id')
-        .single()
-
-      if (testError) {
-        console.error('Error saving test result:', testError)
-        return
-      }
-
-      console.log(`✅ Test guardado con ID: ${testInsert.id}`)
-
-      // 🏆 VERIFICAR MEDALLAS DE RANKING DESPUÉS DE COMPLETAR EL TEST
-      try {
-        console.log('🏆 Verificando medallas de ranking...')
-        const newMedals = await checkMedalsAfterTest()
-        if (newMedals && newMedals.length > 0) {
-          console.log(`🎉 ¡${newMedals.length} nueva(s) medalla(s) conseguida(s)!`, newMedals.map((m: any) => m.title))
-        }
-      } catch (medalError) {
-        console.error('❌ Error verificando medallas:', medalError)
-      }
-
-      // 🔔 Auto-descartar notificaciones resueltas (racha rota, inactividad, etc.)
-      try {
-        autoDismissResolvedNotifications()
-      } catch (dismissError) {
-        console.warn('❌ Error auto-descartando notificaciones:', dismissError)
-      }
-
-      // Actualizar progreso
-      if (tema && typeof tema === 'number') {
-        await updateTopicProgress()
-      }
-
-      return {
-        success: true,
-        testId: testInsert.id,
-        accuracy
-      }
-
-    } catch (error: any) {
-      console.error('Error in handleTestCompletion:', error)
-      return {
-        success: false,
-        error: error.message
-      }
-    }
-  }, [user, supabase, updateTopicProgress, checkMedalsAfterTest])
+  // (handleTestCompletion eliminado 2026-06-23: dead code —0 callers vivos, solo
+  //  TestLayout.notifyTestCompletion se usa; los tests se guardan por el endpoint
+  //  v2 complete-test. Contenía un INSERT PostgREST a la tabla tests, no portable.)
 
   // Función simplificada para tests que ya tienen la lógica de guardado
   const notifyTestCompletion = useCallback(async (tema?: number, accuracy?: number, questionCount?: number) => {
@@ -194,7 +101,6 @@ export function useTestCompletion() {
   }, [user, updateTopicProgress, checkMedalsAfterTest])
 
   return {
-    handleTestCompletion,
     notifyTestCompletion
   }
 }

@@ -30,8 +30,9 @@ const FROM = /\.from\(['"]/g
 //   C1#8: contexts/OposicionContext.tsx (2 SELECT user_profiles target → endpoint) → 109 / 35.
 //   C1#9: hooks/useNewMedalsBadge.ts (SELECT+UPDATE user_medals → endpoint GET/POST) → 107 / 34.
 //   C1#10: app/pregunta/[id]/page.tsx (INSERT shared_question_responses → endpoint auth-opcional) → 106 / 33.
-const BASELINE_SITES = 106
-const BASELINE_FILES = 33
+//   C1#11: hooks/useTestCompletion.ts (handleTestCompletion DEAD CODE borrado; INSERT tests no portable) → 105 / 32.
+const BASELINE_SITES = 105
+const BASELINE_FILES = 32
 
 function walk(rel: string): string[] {
   let out: string[] = []
