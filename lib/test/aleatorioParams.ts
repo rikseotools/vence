@@ -41,7 +41,16 @@ export function buildAleatorioTestParams(input: AleatorioParamsInput): URLSearch
   })
 
   if (input.hasOwnOfficialQuestions) {
-    if (input.onlyOfficialQuestions) params.append('official_only', 'true')
+    if (input.onlyOfficialQuestions) {
+      // Doble alias a propósito: los dos destinos de RandomTestClient leen
+      // nombres distintos — test-personalizado (TestPersonalizadoPage) lee
+      // `only_official`, mientras que test-aleatorio-examen (ExamAleatorioClient)
+      // lee `official_only`. Emitimos ambos para que el toggle "Solo oficiales"
+      // surta efecto sea cual sea el modo (práctica vs examen). Antes solo se
+      // emitía `official_only` y el filtro se ignoraba en práctica.
+      params.append('only_official', 'true')
+      params.append('official_only', 'true')
+    }
     if (input.includeSharedOfficials) params.append('include_shared_officials', 'true')
     if (input.focusEssentialArticles) params.append('focus_essential', 'true')
   }

@@ -37,9 +37,10 @@ describe('buildAleatorioTestParams', () => {
       expect(p.has('focus_essential')).toBe(false)
     })
 
-    it('NO emite official_only aunque el flag venga activado', () => {
+    it('NO emite official_only ni only_official aunque el flag venga activado', () => {
       const p = buildAleatorioTestParams({ ...noOfficials, onlyOfficialQuestions: true })
       expect(p.has('official_only')).toBe(false)
+      expect(p.has('only_official')).toBe(false)
     })
 
     it('NO emite include_shared_officials aunque venga activado', () => {
@@ -59,13 +60,15 @@ describe('buildAleatorioTestParams', () => {
       expect(p.get('focus_essential')).toBe('true')
     })
 
-    it('emite official_only + include_shared_officials cuando aplican', () => {
+    it('emite official_only + only_official (doble alias) + include_shared_officials', () => {
       const p = buildAleatorioTestParams({
         ...base,
         onlyOfficialQuestions: true,
         includeSharedOfficials: true,
       })
+      // Doble alias: práctica lee only_official, examen lee official_only.
       expect(p.get('official_only')).toBe('true')
+      expect(p.get('only_official')).toBe('true')
       expect(p.get('include_shared_officials')).toBe('true')
     })
   })
