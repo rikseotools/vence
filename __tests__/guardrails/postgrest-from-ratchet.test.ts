@@ -29,8 +29,9 @@ const FROM = /\.from\(['"]/g
 //   C1#7: hooks/useDailyGoal.ts (4 COUNT test_questions/psychometric → endpoint) → 111 / 36.
 //   C1#8: contexts/OposicionContext.tsx (2 SELECT user_profiles target → endpoint) → 109 / 35.
 //   C1#9: hooks/useNewMedalsBadge.ts (SELECT+UPDATE user_medals → endpoint GET/POST) → 107 / 34.
-const BASELINE_SITES = 107
-const BASELINE_FILES = 34
+//   C1#10: app/pregunta/[id]/page.tsx (INSERT shared_question_responses → endpoint auth-opcional) → 106 / 33.
+const BASELINE_SITES = 106
+const BASELINE_FILES = 33
 
 function walk(rel: string): string[] {
   let out: string[] = []

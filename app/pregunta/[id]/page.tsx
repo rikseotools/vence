@@ -1,11 +1,11 @@
 // app/pregunta/[id]/page.tsx - Página individual de pregunta con modo quiz interactivo
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface QuestionArticle {
   id: string
@@ -40,7 +40,6 @@ interface QuestionData {
 }
 
 export default function QuestionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { user, supabase } = useAuth() as { user: { id: string } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
   const { getSlug: resolveLawSlug } = useLawSlugs()
   const searchParams = useSearchParams()
   const [question, setQuestion] = useState<QuestionData | null>(null)
@@ -80,7 +79,7 @@ export default function QuestionPage({ params }: { params: Promise<{ id: string 
       loadQuestion(resolvedParams.id)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedParams, supabase])
+  }, [resolvedParams])
 
   const loadQuestion = async (questionId: string) => {
     try {
@@ -113,22 +112,26 @@ export default function QuestionPage({ params }: { params: Promise<{ id: string 
   // Trackear respuesta a pregunta compartida
   const trackSharedQuestionResponse = async (answerIndex: number, isCorrect: boolean, timeMs: number | null) => {
     try {
-      await supabase
-        .from('shared_question_responses')
-        .insert({
-          question_id: resolvedParams?.id,
-          answer_selected: answerIndex,
-          is_correct: isCorrect,
-          time_to_answer_ms: timeMs,
-          source_platform: sourcePlatform,
-          share_mode: isQuizMode ? 'quiz' : 'educational',
+      // Fase C1: vía endpoint Drizzle (auth opcional; visitor_user_id lo pone el
+      // server desde el token, o null si anónimo). Antes: insert PostgREST directo.
+      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
+      await fetch('/api/v2/shared-question/track', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          questionId: resolvedParams?.id,
+          answerSelected: answerIndex,
+          isCorrect,
+          timeToAnswerMs: timeMs,
+          sourcePlatform,
+          shareMode: isQuizMode ? 'quiz' : 'educational',
           referrer: typeof document !== 'undefined' ? document.referrer : null,
-          visitor_user_id: user?.id || null,
-          device_info: {
+          deviceInfo: {
             screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
             userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
           }
         })
+      })
     } catch (error) {
       console.error('Error tracking response:', error)
     }
