@@ -15,7 +15,6 @@ import CatalogadaCard from '../components/CatalogadaCard'
 import { isInscripcionAbierta, isShowableCatalogada } from '@/lib/oposiciones/inscripcion'
 import {
   detectFilter,
-  getAllFilterSlugs,
   oposicionToCcaa,
   oposicionToTipo,
   CCAA_FILTERS,
@@ -25,10 +24,19 @@ import {
   type OposicionFilter,
 } from '../lib/oposiciones-filters'
 
+// NO pre-renderizamos en build: tras migrar getFilteredOposiciones a conexión
+// Postgres directa (Fase C1, getDb max:1), pre-generar las ~50 páginas de filtro
+// durante `next build` (13 workers en paralelo, con DATABASE_URL pasado como
+// build-arg en CI) saturaba el pooler y las páginas superaban el timeout de 180s
+// → el build de Docker fallaba y bloqueaba TODOS los deploys (23/06). Con
+// `dynamicParams` (default true) + `revalidate`, cada filtro se renderiza
+// on-demand en el primer request (runtime: max:1 por instancia, sin contención)
+// y se cachea 1h. Mismo resultado para el usuario/SEO, sin DB en build.
 export async function generateStaticParams() {
-  return getAllFilterSlugs().map(slug => ({ filtro: slug }))
+  return []
 }
 
+export const dynamicParams = true
 export const revalidate = 3600
 
 // ============================================
