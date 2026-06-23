@@ -10,12 +10,11 @@
 
 import { getAdminDb } from '@/db/client'
 import { conversionOutbox } from '@/db/schema'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNull, lte, or } from 'drizzle-orm'
 import { getDestinationByName } from './registry'
 import { classifyDeliveryOutcome } from './outcome'
+import { decideRetry } from './retry'
 import type { ConversionEvent } from './types'
-
-const MAX_RETRY = 5
 
 export interface DrainSummary {
   scanned: number
@@ -54,10 +53,21 @@ export async function drainConversionOutbox(
   const { limit = 50, dryRun } = opts
   const db = getAdminDb()
 
+  // Elegibles: pendientes cuyo backoff ya venció (next_attempt_at <= now) o que
+  // nunca fallaron (next_attempt_at NULL = filas nuevas/legacy). FIFO por alta.
+  const nowIso = new Date().toISOString()
   const pending = await db
     .select()
     .from(conversionOutbox)
-    .where(eq(conversionOutbox.status, 'pending'))
+    .where(
+      and(
+        eq(conversionOutbox.status, 'pending'),
+        or(
+          isNull(conversionOutbox.nextAttemptAt),
+          lte(conversionOutbox.nextAttemptAt, nowIso),
+        ),
+      ),
+    )
     .orderBy(asc(conversionOutbox.createdAt))
     .limit(limit)
 
@@ -82,7 +92,7 @@ export async function drainConversionOutbox(
       // reintentar es inútil → marcar `skipped` y dejar de tocarla.
       if (outcome === 'skip') {
         await db.update(conversionOutbox)
-          .set({ status: 'skipped', lastError: res.detail ?? 'skipped' })
+          .set({ status: 'skipped', lastError: res.detail ?? 'skipped', nextAttemptAt: null })
           .where(eq(conversionOutbox.id, row.id))
         summary.skipped++
         continue
@@ -99,17 +109,24 @@ export async function drainConversionOutbox(
         summary.validated++
       } else {
         await db.update(conversionOutbox)
-          .set({ status: 'delivered', deliveredAt: new Date().toISOString(), lastError: null })
+          .set({ status: 'delivered', deliveredAt: new Date().toISOString(), lastError: null, nextAttemptAt: null })
           .where(eq(conversionOutbox.id, row.id))
         summary.delivered++
       }
     } catch (err) {
-      const retry = row.retryCount + 1
-      const status = retry >= MAX_RETRY ? 'failed' : 'pending'
+      // Fallo REINTENTABLE: backoff exponencial hasta la deadline por edad. Solo
+      // se rinde a DLQ ('failed') al superar la ventana — un blip (o caída
+      // sostenida) de OAuth/red nunca pierde la venta de forma permanente.
+      const decision = decideRetry(row.retryCount, new Date(row.createdAt), new Date())
       await db.update(conversionOutbox)
-        .set({ status, retryCount: retry, lastError: err instanceof Error ? err.message : String(err) })
-        .where(and(eq(conversionOutbox.id, row.id)))
-      if (status === 'failed') summary.dlq++
+        .set({
+          status: decision.giveUp ? 'failed' : 'pending',
+          retryCount: row.retryCount + 1,
+          nextAttemptAt: decision.nextAttemptAt ? decision.nextAttemptAt.toISOString() : null,
+          lastError: err instanceof Error ? err.message : String(err),
+        })
+        .where(eq(conversionOutbox.id, row.id))
+      if (decision.giveUp) summary.dlq++
       else summary.retried++
     }
   }

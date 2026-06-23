@@ -4008,8 +4008,12 @@ export const conversionOutbox = pgTable("conversion_outbox", {
 	lastError: text("last_error"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	deliveredAt: timestamp("delivered_at", { withTimezone: true, mode: 'string' }),
+	// Backoff exponencial + deadline (ver supabase/migrations/20260623_conversion_outbox_backoff.sql
+	// y lib/conversions/retry.ts). NULL = elegible para reintento ya.
+	nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_conversion_outbox_pending").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")).where(sql`status = 'pending'`),
+	index("idx_conversion_outbox_due").using("btree", table.nextAttemptAt.asc().nullsFirst().op("timestamptz_ops"), table.createdAt.asc().nullsLast().op("timestamptz_ops")).where(sql`status = 'pending'`),
 	index("idx_conversion_outbox_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`${table.userId} IS NOT NULL`),
 ]).enableRLS();
 
