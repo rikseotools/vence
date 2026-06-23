@@ -3,9 +3,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getSupabaseClient } from '../lib/supabase'
-
-const supabase = getSupabaseClient()
+import { getAuthHeaders } from '../lib/api/authHeaders'
 
 // Solo usar sessionStorage para evitar mostrar 2 veces en la misma sesión
 const ONBOARDING_SESSION_SHOWN_KEY = 'onboarding_session_shown'
@@ -34,11 +32,9 @@ export function useOnboarding() {
         if (hasChecked) return
         try {
           console.log('🎯 Onboarding: userProfile null tras 5s, consultando BD directamente')
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('target_oposicion, onboarding_completed_at, age, gender, ciudad, daily_study_hours, onboarding_skip_count, onboarding_last_skip_at')
-            .eq('id', user.id)
-            .single()
+          const headers = await getAuthHeaders()
+          const res = await fetch('/api/v2/onboarding/status', { headers })
+          const profile = res.ok ? (await res.json()).profile : null
           if (profile && !hasChecked) {
             checkOnboardingStatus(profile)
           }
@@ -166,20 +162,12 @@ export function useOnboarding() {
     setShowModal(false)
     setNeedsOnboarding(false)
 
-    // Resetear contadores en BD
-    try {
-      await supabase
-        .from('user_profiles')
-        .update({
-          onboarding_skip_count: 0,
-          onboarding_last_skip_at: null
-        })
-        .eq('id', user.id)
-
-      console.log('✅ Onboarding completado - contadores reseteados')
-    } catch (err) {
-      console.error('Error reseteando contadores:', err)
-    }
+    // Los contadores ya se resetean en el servidor: OnboardingModal llama a
+    // completeOnboardingOnServer (POST /api/v2/complete-onboarding, que pone
+    // onboarding_skip_count=0 y onboarding_last_skip_at=null) ANTES de invocar
+    // este onComplete, y solo lo invoca si el server respondió success. El UPDATE
+    // de cliente que había aquí era redundante (eliminado en Fase C1).
+    console.log('✅ Onboarding completado - recargando contexto')
 
     // Recargar página para actualizar el contexto de usuario
     window.location.reload()
@@ -194,22 +182,10 @@ export function useOnboarding() {
       // Marcar como mostrado en esta sesión
       sessionStorage.setItem(ONBOARDING_SESSION_SHOWN_KEY, 'true')
 
-      // Incrementar contador en BD
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('onboarding_skip_count')
-        .eq('id', user.id)
-        .single()
-
-      const newSkips = (profile?.onboarding_skip_count || 0) + 1
-
-      await supabase
-        .from('user_profiles')
-        .update({
-          onboarding_skip_count: newSkips,
-          onboarding_last_skip_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+      // Incrementar contador en BD (UPDATE atómico server-side, RETURNING el nuevo valor)
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/onboarding/skip', { method: 'POST', headers })
+      const newSkips = res.ok ? ((await res.json()).skipCount || 0) : 0
 
       console.log(`🎯 Onboarding saltado (${newSkips} veces) - guardado en BD`)
 

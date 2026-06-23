@@ -31,8 +31,9 @@ const FROM = /\.from\(['"]/g
 //   C1#9: hooks/useNewMedalsBadge.ts (SELECT+UPDATE user_medals → endpoint GET/POST) → 107 / 34.
 //   C1#10: app/pregunta/[id]/page.tsx (INSERT shared_question_responses → endpoint auth-opcional) → 106 / 33.
 //   C1#11: hooks/useTestCompletion.ts (handleTestCompletion DEAD CODE borrado; INSERT tests no portable) → 105 / 32.
-const BASELINE_SITES = 105
-const BASELINE_FILES = 32
+//   C1#12: hooks/useOnboarding.ts (4 .from user_profiles → GET status + POST skip atómico; complete UPDATE redundante eliminado) → 101 / 31.
+const BASELINE_SITES = 101
+const BASELINE_FILES = 31
 
 function walk(rel: string): string[] {
   let out: string[] = []
