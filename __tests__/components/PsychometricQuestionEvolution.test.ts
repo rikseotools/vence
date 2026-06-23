@@ -588,11 +588,15 @@ describe('PsychometricQuestionEvolution — source file', () => {
     expect(content).not.toMatch(/!inner/)
   })
 
-  it('filtra por user_id directamente (no via JOIN)', () => {
+  it('obtiene el historial vía endpoint Drizzle (no PostgREST), filtrado por user_id server-side', () => {
+    // Fase C1: el componente ya NO consulta la BD directo. Llama al endpoint
+    // /api/v2/psychometric-evolution/history, que filtra WHERE user_id = <token>
+    // (el aislamiento se prueba en __tests__/api/v2/psychometricEvolutionHistory).
     const content = fs.readFileSync(
       path.join(__dirname, '../../components/PsychometricQuestionEvolution.tsx'),
       'utf-8',
     )
-    expect(content).toMatch(/\.eq\('user_id', userId\)/)
+    expect(content).toMatch(/\/api\/v2\/psychometric-evolution\/history/)
+    expect(content).not.toMatch(/supabase/)
   })
 })

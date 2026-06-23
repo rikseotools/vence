@@ -1,9 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { getSupabaseClient } from '../lib/supabase'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { emitClientEvent } from '../lib/observability/client'
-
-const supabase = getSupabaseClient()
 
 // ============================================
 // TYPES
@@ -465,29 +463,23 @@ export default function PsychometricQuestionEvolution({
           return
         }
 
-        const { data: previousHistory, error } = await supabase
-          .from('psychometric_test_answers')
-          .select(`
-            id,
-            user_answer,
-            is_correct,
-            time_spent_seconds,
-            created_at,
-            test_session_id,
-            question_order
-          `)
-          .eq('question_id', questionId)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true })
+        // Agnóstico (Fase C1): historial vía endpoint Drizzle (user_id del TOKEN,
+        // no del prop). Antes: PostgREST psicotécnico (cliente Supabase + RLS).
+        const headers = await getAuthHeaders()
+        const res = await fetch(
+          `/api/v2/psychometric-evolution/history?questionId=${encodeURIComponent(questionId)}`,
+          { headers },
+        )
 
-        if (error) {
-          console.error('Error fetching psychometric question history:', error)
+        if (!res.ok) {
+          console.error('Error fetching psychometric question history:', res.status)
           setEvolutionData(calculateCompleteEvolution([], currentResult))
           setLoading(false)
           return
         }
 
-        const historialCompleto = (previousHistory || []) as HistoryEntry[]
+        const json = await res.json()
+        const historialCompleto = (json.history || []) as HistoryEntry[]
         const evo = calculateCompleteEvolution(historialCompleto, currentResult)
         setEvolutionData(evo)
 
