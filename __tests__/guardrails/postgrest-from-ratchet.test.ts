@@ -27,8 +27,9 @@ const FROM = /\.from\(['"]/g
 //   C1#5: components/QuestionEvolution.tsx (test_questions, user-scoped→endpoint) → 116 / 38.
 //   C1#6: components/PsychometricQuestionEvolution.tsx (psychometric_test_answers) → 115 / 37.
 //   C1#7: hooks/useDailyGoal.ts (4 COUNT test_questions/psychometric → endpoint) → 111 / 36.
-const BASELINE_SITES = 111
-const BASELINE_FILES = 36
+//   C1#8: contexts/OposicionContext.tsx (2 SELECT user_profiles target → endpoint) → 109 / 35.
+const BASELINE_SITES = 109
+const BASELINE_FILES = 35
 
 function walk(rel: string): string[] {
   let out: string[] = []

@@ -4,12 +4,10 @@
 'use client'
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { getSupabaseClient } from '../lib/supabase'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { useAuth } from './AuthContext'
 import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, type NavLink } from '@/lib/config/oposiciones'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
-
-const supabase = getSupabaseClient()
 
 // ============================================
 // TIPOS
@@ -131,13 +129,12 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('target_oposicion, target_oposicion_data')
-          .eq('id', user.id)
-          .single()
+        // Fase C1: vía endpoint Drizzle (user_id del token), no PostgREST/RLS.
+        const headers = await getAuthHeaders()
+        const res = await fetch('/api/v2/oposicion/target', { headers })
+        const profile = res.ok ? await res.json() : null
 
-        if (profileError || !profile?.target_oposicion) {
+        if (!profile?.target_oposicion) {
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
@@ -208,11 +205,9 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
       if (user && !authLoading) {
         ;(async () => {
           try {
-            const { data: profile } = await supabase
-              .from('user_profiles')
-              .select('target_oposicion, target_oposicion_data')
-              .eq('id', user.id)
-              .single()
+            const headers = await getAuthHeaders()
+            const res = await fetch('/api/v2/oposicion/target', { headers })
+            const profile = res.ok ? await res.json() : null
 
             if (profile?.target_oposicion) {
               const opoId = profile.target_oposicion
