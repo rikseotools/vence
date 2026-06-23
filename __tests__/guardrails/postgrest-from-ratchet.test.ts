@@ -24,8 +24,9 @@ const FROM = /\.from\(['"]/g
 //   C1#2: app/oposiciones/[filtro]/page.tsx (2 queries oposiciones) → 125 / 41.
 //   C1#3: app/cursos/[slug]/page.tsx (3 queries video_courses/lessons) → 122 / 40.
 //   C1#4: app/page.tsx (5 queries; getTopLaws N+1→1 JOIN; oposiciones) → 117 / 39.
-const BASELINE_SITES = 117
-const BASELINE_FILES = 39
+//   C1#5: components/QuestionEvolution.tsx (test_questions, user-scoped→endpoint) → 116 / 38.
+const BASELINE_SITES = 116
+const BASELINE_FILES = 38
 
 function walk(rel: string): string[] {
   let out: string[] = []

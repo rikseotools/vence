@@ -18,10 +18,8 @@
 
 'use client'
 import { useState, useEffect } from 'react'
-import { getSupabaseClient } from '../lib/supabase'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { emitClientEvent } from '../lib/observability/client'
-
-const supabase = getSupabaseClient()
 
 // ============================================================
 // TYPES
@@ -568,48 +566,28 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
           return
         }
 
-        const { data: previousHistory, error: histError } = await supabase
-          .from('test_questions')
-          .select(`
-            id,
-            user_answer,
-            correct_answer,
-            is_correct,
-            was_blank,
-            confidence_level,
-            time_spent_seconds,
-            created_at,
-            test_id,
-            question_order,
-            tests(
-              id,
-              title,
-              completed_at,
-              created_at,
-              tema_number,
-              user_id,
-              total_questions,
-              score
-            )
-          `)
-          .eq('question_id', questionId)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true })
+        // Agnóstico (Fase C1): el historial viene del endpoint Drizzle
+        // (/api/v2/question-evolution/history); el user_id sale del TOKEN, no del
+        // prop. Antes: PostgREST (supabase + RLS) sobre test_questions. El server
+        // sigue derivando de `test_questions` (fuente viva) — NO user_question_history_v2
+        // (evita el desfase del agregado por outbox, incidente 30/05, y el off-by-one).
+        const headers = await getAuthHeaders()
+        const res = await fetch(
+          `/api/v2/question-evolution/history?questionId=${encodeURIComponent(questionId)}`,
+          { headers },
+        )
 
-        // Ya NO se consulta user_question_history_v2: "primer/último intento" y el
-        // total se derivan de `test_questions` (fuente de verdad en vivo) + el intento
-        // actual, dentro de calcularEvolucionCompleta. Evita el desfase del agregado
-        // por outbox (incidente 30/05) y el off-by-one con la cabecera.
-        if (histError) {
-          console.error('Error fetching question history:', histError)
+        if (!res.ok) {
+          console.error('Error fetching question history:', res.status)
           setHistory([])
           setEvolutionData(calcularEvolucionCompleta([]))
-          setError(histError.message)
+          setError(`HTTP ${res.status}`)
           setLoading(false)
           return
         }
 
-        const historialCompleto = (previousHistory ?? []) as unknown as HistoryEntry[]
+        const json = await res.json()
+        const historialCompleto = (json.history ?? []) as HistoryEntry[]
         setHistory(historialCompleto)
 
         const evo = calcularEvolucionCompleta(
