@@ -2,7 +2,8 @@
 // Home page — datos de OPOSICIONES config + leyes top de BD. HTML estático (ISR 24h).
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
 import { unstable_cache } from 'next/cache'
 import { isOpenForDisplay, todayMadrid } from '@/lib/oposiciones/inscripcion'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
@@ -94,73 +95,29 @@ interface TopLaw {
 }
 
 async function getTopLaws(): Promise<TopLaw[]> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    // eslint-disable-next-line no-restricted-syntax -- Server Component (sin 'use client'): SERVICE_ROLE corre server-side, no se incluye en el bundle cliente
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
-  // Step 1: Get articles grouped by law_id with question count
-  // articles → questions is the join path (questions.primary_article_id → articles.id)
-  const { data: articles } = await supabase
-    .from('articles')
-    .select('law_id')
-    .eq('is_active', true)
-
-  if (!articles) return []
-
-  // Step 2: Get law metadata
-  const { data: laws } = await supabase
-    .from('laws')
-    .select('id, short_name, slug')
-    .eq('is_active', true)
-    .eq('is_virtual', false)
-    .not('slug', 'is', null)
-
-  if (!laws) return []
-
-  const lawMap = new Map(laws.map(l => [l.id, l]))
-
-  // Step 3: Count articles per law (as proxy — laws with more articles tend to have more questions)
-  // For accuracy, count questions per law in parallel but only for non-virtual laws with slugs
-  const lawIds = laws.map(l => l.id)
-  const articlesByLaw = new Map<string, string[]>()
-  for (const art of articles) {
-    if (!lawIds.includes(art.law_id)) continue
-    if (!articlesByLaw.has(art.law_id)) articlesByLaw.set(art.law_id, [])
-    articlesByLaw.get(art.law_id)!.push(art.law_id) // just counting
+  // Agnóstico (Fase C1): el N+1 anterior (articles + 1 COUNT de questions por ley,
+  // con .in() limitado a 1000 ids) → un solo JOIN+GROUP BY equivalente. Cada
+  // question tiene UN primary_article_id (→ 1 artículo → 1 ley), así que COUNT(q.id)
+  // = el mismo conteo, sin el cap de 1000 (más exacto en leyes enormes). getAdminDb
+  // bypasea RLS (= el service_role anterior). NO se expone correct_option (es un COUNT).
+  try {
+    const rows = await getAdminDb().execute(sql`
+      SELECT l.short_name, l.slug, COUNT(q.id)::int AS question_count
+      FROM laws l
+      JOIN articles a ON a.law_id = l.id AND a.is_active = true
+      JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+      WHERE l.is_active = true AND l.is_virtual = false AND l.slug IS NOT NULL
+      GROUP BY l.id, l.short_name, l.slug
+      HAVING COUNT(q.id) >= 100
+      ORDER BY question_count DESC
+      LIMIT 15
+    `)
+    const results = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []
+    return results as unknown as TopLaw[]
+  } catch (e) {
+    console.warn('[home] getTopLaws falló:', (e as Error).message)
+    return []
   }
-
-  // Step 4: For laws with articles, count questions in parallel (only ~50 laws to check)
-  const lawsWithArticles = [...articlesByLaw.keys()]
-  const counts = await Promise.all(
-    lawsWithArticles.map(async (lawId) => {
-      const { data: artIds } = await supabase
-        .from('articles')
-        .select('id')
-        .eq('law_id', lawId)
-        .eq('is_active', true)
-
-      if (!artIds || artIds.length === 0) return { lawId, count: 0 }
-
-      const { count } = await supabase
-        .from('questions')
-        .select('id', { count: 'exact', head: true })
-        .in('primary_article_id', artIds.map(a => a.id))
-        .eq('is_active', true)
-
-      return { lawId, count: count ?? 0 }
-    })
-  )
-
-  return counts
-    .filter(c => c.count >= 100 && lawMap.has(c.lawId))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 15)
-    .map(c => {
-      const law = lawMap.get(c.lawId)!
-      return { short_name: law.short_name, slug: law.slug!, question_count: c.count }
-    })
 }
 
 interface OpenConvocatoria {
@@ -188,17 +145,27 @@ interface OpenConvocatoria {
 // cambiar una convocatoria.
 const getOpenConvocatorias = unstable_cache(
   async (): Promise<OpenConvocatoria[]> => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      // eslint-disable-next-line no-restricted-syntax -- Server Component: SERVICE_ROLE corre server-side
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const { data } = await supabase
-      .from('oposiciones')
-      .select('slug, nombre, inscription_start, inscription_deadline, plazas_libres, is_active, seguimiento_url')
-      .order('inscription_deadline', { ascending: true, nullsFirst: false })
+    // Agnóstico (Fase C1): Drizzle (getAdminDb = service_role, ve catalogadas
+    // is_active=false que RLS ocultaría). Fechas ::text (string 'YYYY-MM-DD';
+    // isOpenForDisplay/formatDeadline hacen .slice). Sin WHERE is_active: trae todas
+    // y filtra isOpenForDisplay, igual que antes.
+    let rows: unknown = []
+    try {
+      rows = await getAdminDb().execute(sql`
+        SELECT slug, nombre,
+               inscription_start::text AS inscription_start,
+               inscription_deadline::text AS inscription_deadline,
+               plazas_libres, is_active, seguimiento_url
+        FROM oposiciones
+        ORDER BY inscription_deadline ASC NULLS LAST
+      `)
+    } catch (e) {
+      console.warn('[home] getOpenConvocatorias falló:', (e as Error).message)
+      return []
+    }
+    const data = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as OpenConvocatoria[]
     const today = todayMadrid()
-    return ((data ?? []) as OpenConvocatoria[])
+    return data
       // ÚNICA puerta de inclusión (publicadas abiertas + catalogadas abiertas con url oficial)
       .filter((o) => isOpenForDisplay(o, today))
       .sort((a, b) => {
