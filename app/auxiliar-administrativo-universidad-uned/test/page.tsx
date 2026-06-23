@@ -7,10 +7,10 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Tests Auxiliar Administrativo UNED - Practica por Temas | Vence',
-  description: 'Prepara tu oposicion de TCAE del UNED con tests organizados por temas. 21 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
-  keywords: ['test tcae sas', 'oposiciones sas andalucia', 'examen tcae sas', 'test oposiciones C2 sermas'],
+  description: 'Prepara tu oposicion de Auxiliar Administrativo de la UNED con tests organizados por temas. 21 temas oficiales con preguntas personalizables.',
+  keywords: ['test auxiliar administrativo uned', 'oposiciones uned', 'examen auxiliar administrativo uned', 'test oposiciones C2 uned'],
 }
 
-export default function TestsTcaeSermasMadridPage() {
+export default function TestsAuxiliarAdministrativoUniversidadUnedPage() {
   return <TestHubPage oposicion="auxiliar-administrativo-universidad-uned" />
 }

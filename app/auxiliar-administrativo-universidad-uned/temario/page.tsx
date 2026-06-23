@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Temario Auxiliar Administrativo UNED | Vence.es',
-  description: 'Temario oficial BOJA de TCAE (Auxiliar de Enfermeria) del Canarias. 21 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria. Acceso gratuito.',
+  description: 'Temario oficial de Auxiliar Administrativo de la UNED. 21 temas oficiales con teoria para la oposicion administrativa de la UNED. Acceso gratuito.',
   alternates: {
     canonical: 'https://www.vence.es/auxiliar-administrativo-universidad-uned/temario',
   },

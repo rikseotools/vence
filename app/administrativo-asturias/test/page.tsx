@@ -15,6 +15,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TestsAuxiliarAsturiasPage() {
+export default function TestsAdministrativoAsturiasPage() {
   return <TestHubPage oposicion="administrativo-asturias" />
 }

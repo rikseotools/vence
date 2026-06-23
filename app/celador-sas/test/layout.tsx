@@ -4,14 +4,14 @@ export const metadata = {
   title: 'Tests Celador SAS Andalucía 2025 | 19 Temas Oficiales | Vence',
   description: 'Tests de Celador del Servicio Andaluz de Salud con los 19 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo E.',
   keywords: [
-    'test celador scs',
-    'tests celador canarias',
-    'tests celador scs 2025',
-    'tests oposiciones celador canarias',
-    'preguntas celador scs',
-    'examen celador canarias',
-    '19 temas celador scs',
-    'grupo E celador canarias'
+    'test celador sas',
+    'tests celador andalucia',
+    'tests celador sas 2025',
+    'tests oposiciones celador andalucia',
+    'preguntas celador sas',
+    'examen celador andalucia',
+    '19 temas celador sas',
+    'grupo E celador andalucia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

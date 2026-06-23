@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Temario TCAE SAS | Vence.es',
-  description: 'Temario oficial BOJA de TCAE (Auxiliar de Enfermeria) del Canarias. 29 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria. Acceso gratuito.',
+  description: 'Temario oficial BOJA de TCAE (Auxiliar de Enfermeria) del Servicio Andaluz de Salud (SAS). 29 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria. Acceso gratuito.',
   alternates: {
     canonical: 'https://www.vence.es/tcae-sas/temario',
   },

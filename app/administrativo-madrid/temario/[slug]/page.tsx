@@ -35,10 +35,10 @@ export async function generateMetadata({ params }: PageProps) {
   }
 
   return {
-    title: `${content.title} | Auxiliar Administrativo de la Comunidad de Madrid`,
-    description: content.description || `Contenido teórico del Tema ${topicNumber} para Auxiliar Administrativo de la Comunidad de Madrid`,
+    title: `${content.title} | Administrativo de la Comunidad de Madrid`,
+    description: content.description || `Contenido teórico del Tema ${topicNumber} para Administrativo de la Comunidad de Madrid`,
     openGraph: {
-      title: `${content.title} | Auxiliar Administrativo de la Comunidad de Madrid`,
+      title: `${content.title} | Administrativo de la Comunidad de Madrid`,
       description: content.description || `Contenido teórico del Tema ${topicNumber}`,
       url: `https://www.vence.es/administrativo-madrid/temario/${slug}`,
       siteName: 'Vence.es',

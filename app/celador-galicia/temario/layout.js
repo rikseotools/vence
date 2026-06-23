@@ -4,13 +4,13 @@ export const metadata = {
   title: 'Temario Celador SERGAS Galicia 2025 | 17 Temas Oficiales | Vence',
   description: 'Temario oficial de Celador del Servicio Gallego de Salud. 17 temas sobre funciones del celador en instituciones sanitarias.',
   keywords: [
-    'temario celador scs',
-    'temario celador canarias',
-    'temario celador scs 2025',
-    'temario oficial celador canarias',
-    'temas celador scs',
-    'teoria celador servicio canario salud',
-    'temario gratis celador canarias'
+    'temario celador sergas',
+    'temario celador galicia',
+    'temario celador sergas 2025',
+    'temario oficial celador galicia',
+    'temas celador sergas',
+    'teoria celador servicio gallego de salud',
+    'temario gratis celador galicia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario Celador SERGAS Galicia - 17 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de Celador del Servicio Gallego de Salud. 17 temas oficiales segun BOC.',
+    description: 'Temario completo y actualizado de Celador del Servicio Gallego de Salud. 17 temas oficiales segun DOG.',
     url: `${SITE_URL}/celador-galicia/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

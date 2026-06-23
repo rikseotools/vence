@@ -4,13 +4,13 @@ export const metadata = {
   title: 'Temario Auxiliar Administrativo del INGESA (Ceuta y Melilla) | Vence',
   description: 'Temario completo de Auxiliar Administrativo del INGESA (Ceuta y Melilla). 35 temas oficiales organizados en 2 bloques con teoria.',
   keywords: [
-    'temario auxiliar administrativo canarias',
-    'temario auxiliar canarias',
-    'temario oficial auxiliar canarias',
-    'temario oposiciones gobierno canarias',
-    'temas auxiliar administrativo scs canarias',
-    'teoria auxiliar canarias',
-    'temario gratis auxiliar canarias'
+    'temario auxiliar administrativo ingesa',
+    'temario auxiliar administrativo ceuta melilla',
+    'temario oficial auxiliar administrativo ingesa',
+    'temario oposiciones ingesa',
+    'temas auxiliar administrativo ingesa',
+    'teoria auxiliar administrativo ceuta melilla',
+    'temario gratis auxiliar administrativo ingesa'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

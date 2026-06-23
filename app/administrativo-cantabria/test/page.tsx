@@ -6,16 +6,16 @@ export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Tests Auxiliar Administrativo de la Gobierno de Cantabria - Practica por Temas | Vence',
-  description: 'Prepara tu oposición de Auxiliar Administrativo de la Gobierno de Cantabria con tests organizados por temas. 40 temas oficiales.',
-  keywords: ['test auxiliar administrativo gobierno de cantabria', 'oposiciones gobierno de cantabria', 'examen auxiliar junta-de-cantabria', 'test oposiciones C2 junta-de-cantabria'],
+  title: 'Tests Administrativo del Gobierno de Cantabria - Practica por Temas | Vence',
+  description: 'Prepara tu oposición de Administrativo del Gobierno de Cantabria con tests organizados por temas. 40 temas oficiales.',
+  keywords: ['test administrativo gobierno de cantabria', 'oposiciones gobierno de cantabria', 'examen administrativo junta-de-cantabria', 'test oposiciones C1 junta-de-cantabria'],
   openGraph: {
-    title: 'Tests Auxiliar Administrativo de la Gobierno de Cantabria - Practica por Temas',
-    description: 'Prepara tu oposición de Auxiliar Administrativo de la Gobierno de Cantabria con tests organizados por temas. 40 temas oficiales.',
+    title: 'Tests Administrativo del Gobierno de Cantabria - Practica por Temas',
+    description: 'Prepara tu oposición de Administrativo del Gobierno de Cantabria con tests organizados por temas. 40 temas oficiales.',
     type: 'website',
   },
 }
 
-export default function TestsAuxiliarDiputacionMadridPage() {
+export default function TestsAdministrativoCantabriaPage() {
   return <TestHubPage oposicion="administrativo-cantabria" />
 }

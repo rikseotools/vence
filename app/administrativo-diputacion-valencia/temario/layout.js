@@ -4,13 +4,13 @@ export const metadata = {
   title: 'Temario Administrativo Diputación de Valencia C1-01 | Vence',
   description: 'Temario completo de Administrativo Diputación de Valencia C1-01. 40 temas oficiales organizados en 2 bloques con teoria.',
   keywords: [
-    'temario auxiliar administrativo valencia',
-    'temario auxiliar Diputación de Valencia',
-    'temario oficial auxiliar valencia',
+    'temario administrativo valencia',
+    'temario administrativo Diputación de Valencia',
+    'temario oficial administrativo valencia',
     'temario oposiciones valencia',
-    'temas auxiliar administrativo valencia',
-    'teoria auxiliar valencia',
-    'temario gratis auxiliar valencia'
+    'temas administrativo valencia',
+    'teoria administrativo valencia',
+    'temario gratis administrativo valencia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

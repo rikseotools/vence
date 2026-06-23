@@ -4,14 +4,14 @@ export const metadata = {
   title: 'Tests TCAE Galicia 2025 | 31 Temas Oficiales | Vence',
   description: 'Tests de TCAE (Auxiliar de Enfermeria) del SERGAS con los 31 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
-    'test tcae sermas',
-    'tests auxiliar enfermeria madrid',
-    'tests tcae sermas 2025',
-    'tests oposiciones sermas',
-    'preguntas tcae sermas madrid',
-    'examen tcae sermas',
-    '31 temas tcae sermas',
-    'C2 sermas madrid'
+    'test tcae sergas',
+    'tests auxiliar enfermeria galicia',
+    'tests tcae sergas 2025',
+    'tests oposiciones sergas',
+    'preguntas tcae sergas galicia',
+    'examen tcae sergas',
+    '31 temas tcae sergas',
+    'C2 sergas galicia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

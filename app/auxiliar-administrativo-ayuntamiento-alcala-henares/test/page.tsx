@@ -16,6 +16,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TestsAuxiliarDiputacionMadridPage() {
+export default function TestsAuxiliarAdministrativoAyuntamientoAlcalaHenaresPage() {
   return <TestHubPage oposicion="auxiliar-administrativo-ayuntamiento-alcala-henares" />
 }

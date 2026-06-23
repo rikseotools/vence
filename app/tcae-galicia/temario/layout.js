@@ -4,13 +4,13 @@ export const metadata = {
   title: 'Temario TCAE Galicia 2025 | 31 Temas Oficiales | Vence',
   description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del SERGAS. 31 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
   keywords: [
-    'temario tcae sermas',
-    'temario auxiliar enfermeria madrid',
-    'temario tcae sermas 2025',
-    'temario oficial tcae madrid',
-    'temas tcae sermas',
-    'teoria tcae servicio madrileno salud',
-    'temario gratis tcae sermas'
+    'temario tcae sergas',
+    'temario auxiliar enfermeria galicia',
+    'temario tcae sergas 2025',
+    'temario oficial tcae galicia',
+    'temas tcae sergas',
+    'teoria tcae servicio gallego salud',
+    'temario gratis tcae sergas'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario TCAE Galicia - 31 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de TCAE del SERGAS. 31 temas oficiales segun BOCM 31/07/2025.',
+    description: 'Temario completo y actualizado de TCAE del SERGAS. 31 temas oficiales (DOG).',
     url: `${SITE_URL}/tcae-galicia/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

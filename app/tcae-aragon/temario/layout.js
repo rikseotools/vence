@@ -2,12 +2,12 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Temario TCAE Aragón 2025 | 30 Temas Oficiales | Vence',
-  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Aragón. 30 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
+  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Servicio Aragonés de Salud. 30 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
   keywords: [
     'temario tcae aragon',
-    'temario auxiliar enfermeria madrid',
+    'temario auxiliar enfermeria aragon',
     'temario tcae aragon 2025',
-    'temario oficial tcae madrid',
+    'temario oficial tcae aragon',
     'temas tcae aragon',
     'teoria tcae servicio aragones salud',
     'temario gratis tcae aragon'
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario TCAE Aragón - 30 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de TCAE del Servicio Aragonés de Salud. 30 temas oficiales segun BOCM 31/07/2025.',
+    description: 'Temario completo y actualizado de TCAE del Servicio Aragonés de Salud. 30 temas oficiales (BOA).',
     url: `${SITE_URL}/tcae-aragon/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

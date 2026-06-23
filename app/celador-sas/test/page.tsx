@@ -8,10 +8,10 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests Celador SAS Andalucía - Practica por Temas | Vence',
   description: 'Prepara tu oposicion de Celador del Servicio Andaluz de Salud con tests organizados por temas. 19 temas sobre funciones del celador en instituciones sanitarias.',
-  keywords: ['test celador scs', 'oposiciones celador canarias', 'examen celador scs', 'test oposiciones celador'],
+  keywords: ['test celador sas', 'oposiciones celador andalucia', 'examen celador sas', 'test oposiciones celador'],
 }
 
-export default function TestsCeladorScsAndalucíaPage() {
+export default function TestsCeladorSasAndalucíaPage() {
   return <TestHubPage oposicion="celador-sas" />
 }
 

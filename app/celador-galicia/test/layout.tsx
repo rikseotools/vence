@@ -4,14 +4,14 @@ export const metadata = {
   title: 'Tests Celador SERGAS Galicia 2025 | 17 Temas Oficiales | Vence',
   description: 'Tests de Celador del Servicio Gallego de Salud con los 17 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo E.',
   keywords: [
-    'test celador scs',
-    'tests celador canarias',
-    'tests celador scs 2025',
-    'tests oposiciones celador canarias',
-    'preguntas celador scs',
-    'examen celador canarias',
-    '17 temas celador scs',
-    'grupo E celador canarias'
+    'test celador sergas',
+    'tests celador galicia',
+    'tests celador sergas 2025',
+    'tests oposiciones celador galicia',
+    'preguntas celador sergas',
+    'examen celador galicia',
+    '17 temas celador sergas',
+    'grupo E celador galicia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

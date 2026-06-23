@@ -2,13 +2,13 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Tests TCAE SAS 2025 | 29 Temas Oficiales | Vence',
-  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Canarias con los 29 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
+  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Servicio Andaluz de Salud (SAS) con los 29 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
     'test tcae sas',
-    'tests auxiliar enfermeria madrid',
+    'tests auxiliar enfermeria andalucia',
     'tests tcae sas 2025',
-    'tests oposiciones sermas',
-    'preguntas tcae sas madrid',
+    'tests oposiciones sas',
+    'preguntas tcae sas andalucia',
     'examen tcae sas',
     '29 temas tcae sas',
     'C2 sas andalucia'

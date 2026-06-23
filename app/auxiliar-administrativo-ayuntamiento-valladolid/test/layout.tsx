@@ -2,7 +2,7 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Tests Cuerpo Auxiliar Administrativo Valladolid 2026 | 27 temas Oficiales | Vence',
-  description: 'Tests de Cuerpo Auxiliar Administrativo Valladolid con los 27 temas oficiales del DOCM. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C1.',
+  description: 'Tests de Cuerpo Auxiliar Administrativo Valladolid con los 27 temas oficiales del Ayuntamiento de Valladolid. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
     'test auxiliar administrativo valladolid',
     'tests auxiliar administrativo valladolid',
@@ -37,7 +37,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Tests Cuerpo Auxiliar Administrativo Valladolid | Vence',
-    description: 'Tests de los 27 temas oficiales del DOCM. Estadísticas por tema y progreso personalizado.',
+    description: 'Tests de los 27 temas oficiales del Ayuntamiento de Valladolid. Estadísticas por tema y progreso personalizado.',
     images: ['/twitter-image-es.jpg'],
   },
   alternates: {

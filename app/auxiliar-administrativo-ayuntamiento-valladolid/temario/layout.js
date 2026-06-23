@@ -1,8 +1,8 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Temario Administrativo Junta Valladolid 2026 | Vence',
-  description: 'Temario completo del Auxiliar Administrativo de la Junta de Comunidades de Valladolid actualizado 2026. 27 temas oficiales organizados en 6 bloques.',
+  title: 'Temario Auxiliar Administrativo Ayuntamiento de Valladolid 2026 | Vence',
+  description: 'Temario completo del Auxiliar Administrativo del Ayuntamiento de Valladolid actualizado 2026. 27 temas oficiales organizados en 6 bloques.',
   keywords: [
     'temario auxiliar administrativo valladolid',
     'temario auxiliar administrativo ayuntamiento de valladolid 2026',
@@ -18,8 +18,8 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Temario Administrativo Junta Valladolid 2026 | Vence',
-    description: 'Accede al temario completo del Auxiliar Administrativo de la Junta de Comunidades de Valladolid. 27 temas oficiales organizados en 6 bloques.',
+    title: 'Temario Auxiliar Administrativo Ayuntamiento de Valladolid 2026 | Vence',
+    description: 'Accede al temario completo del Auxiliar Administrativo del Ayuntamiento de Valladolid. 27 temas oficiales organizados en 6 bloques.',
     url: `${SITE_URL}/auxiliar-administrativo-ayuntamiento-valladolid/temario`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -29,13 +29,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'Vence - Temario Administrativo Junta Valladolid',
+        alt: 'Vence - Temario Auxiliar Administrativo Ayuntamiento de Valladolid',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Temario Administrativo Junta Valladolid | Vence',
+    title: 'Temario Auxiliar Administrativo Ayuntamiento de Valladolid | Vence',
     description: 'Temario completo y actualizado 2026. 27 temas oficiales del Auxiliar Administrativo.',
     images: ['/twitter-image-es.jpg'],
   },

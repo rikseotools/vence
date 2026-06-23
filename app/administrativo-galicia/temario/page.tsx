@@ -6,8 +6,8 @@ import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Temario administrativo galicia | Vence.es',
-  description: 'Temario oficial de administrativo galicia con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
+  title: 'Temario Administrativo Xunta de Galicia | Vence.es',
+  description: 'Temario oficial de Administrativo Xunta de Galicia con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
   alternates: {
     canonical: 'https://www.vence.es/administrativo-galicia/temario',
   },
@@ -17,7 +17,7 @@ export default async function TemarioPage() {
   return (
     <DynamicTemarioPage
       oposicionSlug="administrativo-galicia"
-      oposicionDisplayName="administrativo galicia"
+      oposicionDisplayName="Administrativo Xunta de Galicia"
     />
   )
 }

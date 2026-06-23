@@ -1,7 +1,7 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Administrativo Xunta de Galicia | 17 Temas Oficiales | Vence',
+  title: 'Tests Administrativo Xunta de Galicia | 19 Temas Oficiales | Vence',
   description: 'Tests de Administrativo Xunta de Galicia con los 19 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C1.',
   keywords: [
     'test administrativo galicia',
@@ -19,7 +19,7 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Tests Administrativo Xunta de Galicia - 17 Temas Oficiales | Vence',
+    title: 'Tests Administrativo Xunta de Galicia - 19 Temas Oficiales | Vence',
     description: 'Practica con tests de Administrativo Xunta de Galicia. 19 temas oficiales en 2 partes, estadisticas personalizadas y seguimiento de progreso.',
     url: `${SITE_URL}/administrativo-galicia/test`,
     siteName: 'Vence',

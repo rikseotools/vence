@@ -1,24 +1,24 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Temario Auxiliar Administrativo de la Gobierno de Cantabria 2026 | Vence',
-  description: 'Temario completo de Auxiliar Administrativo de la Gobierno de Cantabria actualizado 2026. 40 temas oficiales con teoría.',
+  title: 'Temario Administrativo del Gobierno de Cantabria 2026 | Vence',
+  description: 'Temario completo de Administrativo del Gobierno de Cantabria actualizado 2026. 40 temas oficiales con teoría.',
   keywords: [
-    'temario auxiliar administrativo gobierno de cantabria',
-    'temario auxiliar gobierno de cantabria 2026',
-    'temario oficial auxiliar gobierno de cantabria',
+    'temario administrativo gobierno de cantabria',
+    'temario administrativo gobierno de cantabria 2026',
+    'temario oficial administrativo gobierno de cantabria',
     'temario oposiciones gobierno de cantabria',
-    'temas auxiliar administrativo gobierno de cantabria',
-    'teoría auxiliar gobierno de cantabria',
-    'temario gratis auxiliar gobierno de cantabria'
+    'temas administrativo gobierno de cantabria',
+    'teoría administrativo gobierno de cantabria',
+    'temario gratis administrativo gobierno de cantabria'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Temario Auxiliar Administrativo de la Gobierno de Cantabria 2026 | Teoría Oficial',
-    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo de la Gobierno de Cantabria. 40 temas oficiales con teoría completa.',
+    title: 'Temario Administrativo del Gobierno de Cantabria 2026 | Teoría Oficial',
+    description: 'Accede al temario completo y actualizado de Administrativo del Gobierno de Cantabria. 40 temas oficiales con teoría completa.',
     url: `${SITE_URL}/administrativo-cantabria/temario`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -28,13 +28,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'Vence - Temario Auxiliar Administrativo de la Gobierno de Cantabria',
+        alt: 'Vence - Temario Administrativo del Gobierno de Cantabria',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Temario Auxiliar Administrativo de la Gobierno de Cantabria | Vence',
+    title: 'Temario Administrativo del Gobierno de Cantabria | Vence',
     description: 'Temario completo y actualizado 2026. 40 temas oficiales con teoría.',
     images: ['/twitter-image-es.jpg'],
   },

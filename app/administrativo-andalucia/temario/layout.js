@@ -1,24 +1,24 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Temario Auxiliar Administrativo de la Junta de Andalucía 2026 | Vence',
-  description: 'Temario completo de Auxiliar Administrativo de la Junta de Andalucía actualizado 2026. 42 temas oficiales con teoría.',
+  title: 'Temario Administrativo de la Junta de Andalucía 2026 | Vence',
+  description: 'Temario completo de Administrativo de la Junta de Andalucía actualizado 2026. 42 temas oficiales con teoría.',
   keywords: [
-    'temario auxiliar administrativo junta de andalucía',
-    'temario auxiliar junta de andalucía 2026',
-    'temario oficial auxiliar junta de andalucía',
+    'temario administrativo junta de andalucía',
+    'temario administrativo junta de andalucía 2026',
+    'temario oficial administrativo junta de andalucía',
     'temario oposiciones junta de andalucía',
-    'temas auxiliar administrativo junta de andalucía',
-    'teoría auxiliar junta de andalucía',
-    'temario gratis auxiliar junta de andalucía'
+    'temas administrativo junta de andalucía',
+    'teoría administrativo junta de andalucía',
+    'temario gratis administrativo junta de andalucía'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Temario Auxiliar Administrativo de la Junta de Andalucía 2026 | Teoría Oficial',
-    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo de la Junta de Andalucía. 42 temas oficiales con teoría completa.',
+    title: 'Temario Administrativo de la Junta de Andalucía 2026 | Teoría Oficial',
+    description: 'Accede al temario completo y actualizado de Administrativo de la Junta de Andalucía. 42 temas oficiales con teoría completa.',
     url: `${SITE_URL}/administrativo-andalucia/temario`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -28,13 +28,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'Vence - Temario Auxiliar Administrativo de la Junta de Andalucía',
+        alt: 'Vence - Temario Administrativo de la Junta de Andalucía',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Temario Auxiliar Administrativo de la Junta de Andalucía | Vence',
+    title: 'Temario Administrativo de la Junta de Andalucía | Vence',
     description: 'Temario completo y actualizado 2026. 42 temas oficiales con teoría.',
     images: ['/twitter-image-es.jpg'],
   },

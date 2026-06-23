@@ -6,8 +6,8 @@ import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Temario administrativo asturias | Vence.es',
-  description: 'Temario oficial de administrativo asturias con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
+  title: 'Temario Administrativo Principado de Asturias | Vence.es',
+  description: 'Temario oficial de Administrativo Principado de Asturias con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
   alternates: {
     canonical: 'https://www.vence.es/administrativo-asturias/temario',
   },
@@ -17,7 +17,7 @@ export default async function TemarioPage() {
   return (
     <DynamicTemarioPage
       oposicionSlug="administrativo-asturias"
-      oposicionDisplayName="administrativo asturias"
+      oposicionDisplayName="Administrativo Principado de Asturias"
     />
   )
 }

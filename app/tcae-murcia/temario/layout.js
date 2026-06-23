@@ -2,15 +2,15 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Temario TCAE Murcia 2025 | 44 Temas Oficiales | Vence',
-  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del SMS. 44 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
+  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Servicio Murciano de Salud (SMS). 44 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
   keywords: [
-    'temario tcae sermas',
-    'temario auxiliar enfermeria madrid',
-    'temario tcae sermas 2025',
-    'temario oficial tcae madrid',
-    'temas tcae sermas',
-    'teoria tcae servicio madrileno salud',
-    'temario gratis tcae sermas'
+    'temario tcae sms',
+    'temario auxiliar enfermeria murcia',
+    'temario tcae sms 2025',
+    'temario oficial tcae murcia',
+    'temas tcae sms',
+    'teoria tcae servicio murciano salud',
+    'temario gratis tcae sms'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario TCAE Murcia - 44 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de TCAE del SMS. 44 temas oficiales segun BOCM 31/07/2025.',
+    description: 'Temario completo y actualizado de TCAE del SMS. 44 temas oficiales (BORM).',
     url: `${SITE_URL}/tcae-murcia/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

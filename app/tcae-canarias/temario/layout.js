@@ -2,15 +2,15 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Temario TCAE Canarias 2025 | 24 Temas Oficiales | Vence',
-  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Canarias. 24 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
+  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Servicio Canario de Salud. 24 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
   keywords: [
-    'temario tcae sermas',
-    'temario auxiliar enfermeria madrid',
-    'temario tcae sermas 2025',
-    'temario oficial tcae madrid',
-    'temas tcae sermas',
+    'temario tcae canarias',
+    'temario auxiliar enfermeria canarias',
+    'temario tcae canarias 2025',
+    'temario oficial tcae canarias',
+    'temas tcae servicio canario salud',
     'teoria tcae servicio canario salud',
-    'temario gratis tcae sermas'
+    'temario gratis tcae canarias'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario TCAE Canarias - 24 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de TCAE del Servicio Canario de Salud. 24 temas oficiales segun BOCM 31/07/2025.',
+    description: 'Temario completo y actualizado de TCAE del Servicio Canario de Salud. 24 temas oficiales (BOC).',
     url: `${SITE_URL}/tcae-canarias/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

@@ -1,16 +1,16 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Escala Administrativa Universidad de León 2026 | 41 Temas Oficiales | Vence',
+  title: 'Tests Escala Administrativa Universidad de León 2026 | 25 Temas Oficiales | Vence',
   description: 'Tests de Escala Administrativa Universidad de León con los 25 temas oficiales del BOCYL. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C1.',
   keywords: [
-    'test auxiliar administrativo universidad de leon',
-    'tests auxiliar ule',
-    'tests temas auxiliar ule',
-    'test auxiliar administrativo ule 2026',
+    'test administrativo universidad de leon',
+    'tests administrativo ule',
+    'tests temas administrativo ule',
+    'test administrativo ule 2026',
     'tests oposiciones universidad de leon',
-    'preguntas auxiliar administrativo ule',
-    'examen auxiliar universidad de leon',
+    'preguntas administrativo ule',
+    'examen administrativo universidad de leon',
     '25 temas administrativo ule c1',
     'C1 universidad de leon'
   ].join(', '),
@@ -19,7 +19,7 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Tests Escala Administrativa Universidad de León - 41 Temas Oficiales | Vence',
+    title: 'Tests Escala Administrativa Universidad de León - 25 Temas Oficiales | Vence',
     description: 'Practica con tests de Escala Administrativa Universidad de León. 25 temas oficiales en 5 grupos, estadísticas personalizadas y seguimiento de progreso.',
     url: `${SITE_URL}/administrativo-universidad-leon/test`,
     siteName: 'Vence',

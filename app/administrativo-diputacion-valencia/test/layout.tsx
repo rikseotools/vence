@@ -1,7 +1,7 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Administrativo Diputación de Valencia C1-01 | 35 Temas Oficiales | Vence',
+  title: 'Tests Administrativo Diputación de Valencia C1-01 | 40 Temas Oficiales | Vence',
   description: 'Tests de Administrativo Diputación de Valencia C1-01 con los 40 temas oficiales del DOGV (Conv. 58/26). Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C1.',
   keywords: [
     'test administrativo valencia',
@@ -20,7 +20,7 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Tests Administrativo Diputación de Valencia C1-01 — 35 Temas Oficiales | Vence',
+    title: 'Tests Administrativo Diputación de Valencia C1-01 — 40 Temas Oficiales | Vence',
     description: 'Practica con tests de Administrativo Diputación de Valencia C1-01. 40 temas oficiales en 2 bloques, estadísticas personalizadas y seguimiento de progreso.',
     url: `${SITE_URL}/administrativo-diputacion-valencia/test`,
     siteName: 'Vence',

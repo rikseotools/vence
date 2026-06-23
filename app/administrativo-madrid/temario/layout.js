@@ -1,24 +1,24 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Temario Auxiliar Administrativo de la Comunidad de Madrid 2026 | Vence',
-  description: 'Temario completo de Auxiliar Administrativo de la Comunidad de Madrid actualizado 2026. 47 temas oficiales con teoría.',
+  title: 'Temario Administrativo de la Comunidad de Madrid 2026 | Vence',
+  description: 'Temario completo de Administrativo de la Comunidad de Madrid actualizado 2026. 47 temas oficiales con teoría.',
   keywords: [
-    'temario auxiliar administrativo comunidad de madrid',
-    'temario auxiliar comunidad de madrid 2026',
-    'temario oficial auxiliar comunidad de madrid',
+    'temario administrativo comunidad de madrid',
+    'temario administrativo comunidad de madrid 2026',
+    'temario oficial administrativo comunidad de madrid',
     'temario oposiciones comunidad de madrid',
-    'temas auxiliar administrativo comunidad de madrid',
-    'teoría auxiliar comunidad de madrid',
-    'temario gratis auxiliar comunidad de madrid'
+    'temas administrativo comunidad de madrid',
+    'teoría administrativo comunidad de madrid',
+    'temario gratis administrativo comunidad de madrid'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Temario Auxiliar Administrativo de la Comunidad de Madrid 2026 | Teoría Oficial',
-    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo de la Comunidad de Madrid. 47 temas oficiales con teoría completa.',
+    title: 'Temario Administrativo de la Comunidad de Madrid 2026 | Teoría Oficial',
+    description: 'Accede al temario completo y actualizado de Administrativo de la Comunidad de Madrid. 47 temas oficiales con teoría completa.',
     url: `${SITE_URL}/administrativo-madrid/temario`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -28,13 +28,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'Vence - Temario Auxiliar Administrativo de la Comunidad de Madrid',
+        alt: 'Vence - Temario Administrativo de la Comunidad de Madrid',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Temario Auxiliar Administrativo de la Comunidad de Madrid | Vence',
+    title: 'Temario Administrativo de la Comunidad de Madrid | Vence',
     description: 'Temario completo y actualizado 2026. 47 temas oficiales con teoría.',
     images: ['/twitter-image-es.jpg'],
   },

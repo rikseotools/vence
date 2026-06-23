@@ -35,10 +35,10 @@ export async function generateMetadata({ params }: PageProps) {
   }
 
   return {
-    title: `${content.title} | Auxiliar Administrativo de la Gobierno de Cantabria`,
-    description: content.description || `Contenido teórico del Tema ${topicNumber} para Auxiliar Administrativo de la Gobierno de Cantabria`,
+    title: `${content.title} | Administrativo del Gobierno de Cantabria`,
+    description: content.description || `Contenido teórico del Tema ${topicNumber} para Administrativo del Gobierno de Cantabria`,
     openGraph: {
-      title: `${content.title} | Auxiliar Administrativo de la Gobierno de Cantabria`,
+      title: `${content.title} | Administrativo del Gobierno de Cantabria`,
       description: content.description || `Contenido teórico del Tema ${topicNumber}`,
       url: `https://www.vence.es/administrativo-cantabria/temario/${slug}`,
       siteName: 'Vence.es',

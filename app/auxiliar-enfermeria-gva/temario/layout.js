@@ -5,11 +5,11 @@ export const metadata = {
   description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del GVA. 24 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
   keywords: [
     'temario auxiliar enfermeria gva',
-    'temario auxiliar enfermeria madrid',
+    'temario auxiliar enfermeria valencia',
     'temario auxiliar enfermeria gva 2025',
-    'temario oficial tcae madrid',
+    'temario oficial tcae valencia',
     'temas auxiliar enfermeria gva',
-    'teoria tcae servicio madrileno salud',
+    'teoria tcae generalitat valenciana',
     'temario gratis auxiliar enfermeria gva'
   ].join(', '),
   authors: [{ name: 'Vence' }],
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario Aux Enfermería GVA - 24 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de Auxiliar de Enfermería GVA. 24 temas oficiales segun BOCM 31/07/2025.',
+    description: 'Temario completo y actualizado de Auxiliar de Enfermería GVA. 24 temas oficiales segun DOGV.',
     url: `${SITE_URL}/auxiliar-enfermeria-gva/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

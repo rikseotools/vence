@@ -16,6 +16,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TestsAuxiliarDiputacionMadridPage() {
+export default function TestsAuxiliarAdministrativoAyuntamientoMadridPage() {
   return <TestHubPage oposicion="auxiliar-administrativo-ayuntamiento-madrid" />
 }

@@ -2,16 +2,16 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Tests Auxiliar Administrativo UNED 2025 | 21 Temas Oficiales | Vence',
-  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Canarias con los 21 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
+  description: 'Tests de Auxiliar Administrativo de la UNED con los 21 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
-    'test tcae sas',
-    'tests auxiliar enfermeria madrid',
-    'tests tcae sas 2025',
-    'tests oposiciones sermas',
-    'preguntas tcae sas madrid',
-    'examen tcae sas',
-    '21 temas tcae sas',
-    'C2 sas andalucia'
+    'test auxiliar administrativo uned',
+    'tests oposiciones uned',
+    'tests auxiliar administrativo uned 2025',
+    'tests oposiciones uned',
+    'preguntas auxiliar administrativo uned',
+    'examen auxiliar administrativo uned',
+    '21 temas auxiliar administrativo uned',
+    'C2 uned'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
@@ -19,7 +19,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Tests Auxiliar Administrativo UNED - 21 Temas Oficiales | Vence',
-    description: 'Practica con tests de TCAE del UNED. 21 temas oficiales en 2 bloques, estadisticas personalizadas y seguimiento de progreso.',
+    description: 'Practica con tests de Auxiliar Administrativo de la UNED. 21 temas oficiales, estadisticas personalizadas y seguimiento de progreso.',
     url: `${SITE_URL}/auxiliar-administrativo-universidad-uned/test`,
     siteName: 'Vence',
     locale: 'es_ES',

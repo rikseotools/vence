@@ -2,12 +2,12 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Temario TCAE SAS 2025 | 29 Temas Oficiales | Vence',
-  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Canarias. 29 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
+  description: 'Temario oficial de TCAE (Auxiliar de Enfermeria) del Servicio Andaluz de Salud (SAS). 29 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
   keywords: [
     'temario tcae sas',
-    'temario auxiliar enfermeria madrid',
+    'temario auxiliar enfermeria andalucia',
     'temario tcae sas 2025',
-    'temario oficial tcae madrid',
+    'temario oficial tcae andalucia',
     'temas tcae sas',
     'teoria tcae servicio andaluz salud',
     'temario gratis tcae sas'

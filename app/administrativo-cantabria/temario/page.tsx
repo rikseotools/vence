@@ -6,8 +6,8 @@ import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Temario Auxiliar Administrativo de la Gobierno de Cantabria | Vence.es',
-  description: 'Temario oficial de Auxiliar Administrativo de la Gobierno de Cantabria con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
+  title: 'Temario Administrativo del Gobierno de Cantabria | Vence.es',
+  description: 'Temario oficial de Administrativo del Gobierno de Cantabria con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
   alternates: {
     canonical: 'https://www.vence.es/administrativo-cantabria/temario',
   },
@@ -17,7 +17,7 @@ export default async function TemarioPage() {
   return (
     <DynamicTemarioPage
       oposicionSlug="administrativo-cantabria"
-      oposicionDisplayName="Auxiliar Administrativo de la Gobierno de Cantabria"
+      oposicionDisplayName="Administrativo del Gobierno de Cantabria"
     />
   )
 }

@@ -8,9 +8,9 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests TCAE Aragón - Practica por Temas | Vence',
   description: 'Prepara tu oposicion de TCAE del Servicio Aragonés de Salud con tests organizados por temas. 30 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
-  keywords: ['test tcae aragon', 'oposiciones sermas madrid', 'examen tcae aragon', 'test oposiciones C2 sermas'],
+  keywords: ['test tcae aragon', 'oposiciones tcae aragon', 'examen tcae aragon', 'test oposiciones C2 servicio aragones salud'],
 }
 
-export default function TestsTcaeSermasMadridPage() {
+export default function TestsTcaeAragonPage() {
   return <TestHubPage oposicion="tcae-aragon" />
 }

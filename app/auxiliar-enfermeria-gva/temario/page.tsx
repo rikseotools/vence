@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Temario Aux Enfermería GVA | Vence.es',
-  description: 'Temario oficial BOCM de TCAE (Auxiliar de Enfermeria) del GVA. 24 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria. Acceso gratuito.',
+  description: 'Temario oficial DOGV de TCAE (Auxiliar de Enfermeria) del GVA. 24 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria. Acceso gratuito.',
   alternates: {
     canonical: 'https://www.vence.es/auxiliar-enfermeria-gva/temario',
   },

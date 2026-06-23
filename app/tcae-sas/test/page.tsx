@@ -8,9 +8,9 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests TCAE SAS - Practica por Temas | Vence',
   description: 'Prepara tu oposicion de TCAE del Servicio Andaluz de Salud con tests organizados por temas. 29 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
-  keywords: ['test tcae sas', 'oposiciones sas andalucia', 'examen tcae sas', 'test oposiciones C2 sermas'],
+  keywords: ['test tcae sas', 'oposiciones sas andalucia', 'examen tcae sas', 'test oposiciones C2 sas andalucia'],
 }
 
-export default function TestsTcaeSermasMadridPage() {
+export default function TestsTcaeSasPage() {
   return <TestHubPage oposicion="tcae-sas" />
 }

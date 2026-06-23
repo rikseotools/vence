@@ -8,10 +8,10 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests Celador SERGAS Galicia - Practica por Temas | Vence',
   description: 'Prepara tu oposicion de Celador del Servicio Gallego de Salud con tests organizados por temas. 17 temas sobre funciones del celador en instituciones sanitarias.',
-  keywords: ['test celador scs', 'oposiciones celador canarias', 'examen celador scs', 'test oposiciones celador'],
+  keywords: ['test celador sergas', 'oposiciones celador galicia', 'examen celador sergas', 'test oposiciones celador'],
 }
 
-export default function TestsCeladorScsGaliciaPage() {
+export default function TestsCeladorSergasGaliciaPage() {
   return <TestHubPage oposicion="celador-galicia" />
 }
 

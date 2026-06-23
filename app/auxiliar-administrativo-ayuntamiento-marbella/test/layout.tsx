@@ -2,7 +2,7 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Tests Cuerpo Auxiliar Administrativo Marbella 2026 | 27 temas Oficiales | Vence',
-  description: 'Tests de Cuerpo Auxiliar Administrativo Marbella con los 27 temas oficiales del DOCM. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C1.',
+  description: 'Tests de Cuerpo Auxiliar Administrativo Marbella con los 27 temas oficiales del Ayuntamiento de Marbella. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
     'test auxiliar administrativo marbella',
     'tests auxiliar administrativo marbella',
@@ -37,7 +37,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Tests Cuerpo Auxiliar Administrativo Marbella | Vence',
-    description: 'Tests de los 27 temas oficiales del DOCM. Estadísticas por tema y progreso personalizado.',
+    description: 'Tests de los 27 temas oficiales del Ayuntamiento de Marbella. Estadísticas por tema y progreso personalizado.',
     images: ['/twitter-image-es.jpg'],
   },
   alternates: {

@@ -2,16 +2,16 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Tests TCAE Canarias 2025 | 24 Temas Oficiales | Vence',
-  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Canarias con los 24 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
+  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Servicio Canario de Salud con los 24 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
-    'test tcae sermas',
-    'tests auxiliar enfermeria madrid',
-    'tests tcae sermas 2025',
-    'tests oposiciones sermas',
-    'preguntas tcae sermas madrid',
-    'examen tcae sermas',
-    '24 temas tcae sermas',
-    'C2 sermas madrid'
+    'test tcae canarias',
+    'tests auxiliar enfermeria canarias',
+    'tests tcae canarias 2025',
+    'tests oposiciones tcae canarias',
+    'preguntas tcae canarias',
+    'examen tcae canarias',
+    '24 temas tcae canarias',
+    'C2 servicio canario salud'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

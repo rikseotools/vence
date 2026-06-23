@@ -7,7 +7,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests Auxiliar Administrativo del INGESA (Ceuta y Melilla) - Practica por Temas | Vence',
   description: 'Prepara tu oposicion de Auxiliar Administrativo del INGESA (Ceuta y Melilla) con tests organizados por temas. 35 temas en 2 bloques.',
-  keywords: ['test auxiliar administrativo canarias', 'oposiciones gobierno canarias', 'examen auxiliar canarias', 'test oposiciones C2 canarias'],
+  keywords: ['test auxiliar administrativo ingesa', 'oposiciones ingesa ceuta melilla', 'examen auxiliar administrativo ingesa', 'test oposiciones C2 ingesa'],
   openGraph: {
     title: 'Tests Auxiliar Administrativo del INGESA (Ceuta y Melilla) - Practica por Temas',
     description: 'Prepara tu oposicion con tests organizados por temas. 35 temas oficiales.',
@@ -15,6 +15,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TestsAuxiliarCanariasPage() {
+export default function TestsAuxiliarAdministrativoIngesaPage() {
   return <TestHubPage oposicion="auxiliar-administrativo-ingesa" />
 }

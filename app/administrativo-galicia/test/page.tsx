@@ -15,6 +15,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TestsAuxiliarGaliciaPage() {
+export default function TestsAdministrativoGaliciaPage() {
   return <TestHubPage oposicion="administrativo-galicia" />
 }

@@ -4,13 +4,13 @@ export const metadata = {
   title: 'Temario Celador SAS Andalucía 2025 | 19 Temas Oficiales | Vence',
   description: 'Temario oficial de Celador del Servicio Andaluz de Salud. 19 temas sobre funciones del celador en instituciones sanitarias.',
   keywords: [
-    'temario celador scs',
-    'temario celador canarias',
-    'temario celador scs 2025',
-    'temario oficial celador canarias',
-    'temas celador scs',
-    'teoria celador servicio canario salud',
-    'temario gratis celador canarias'
+    'temario celador sas',
+    'temario celador andalucia',
+    'temario celador sas 2025',
+    'temario oficial celador andalucia',
+    'temas celador sas',
+    'teoria celador servicio andaluz de salud',
+    'temario gratis celador andalucia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario Celador SAS Andalucía - 19 Temas Oficiales | Vence',
-    description: 'Temario completo y actualizado de Celador del Servicio Andaluz de Salud. 19 temas oficiales segun BOC.',
+    description: 'Temario completo y actualizado de Celador del Servicio Andaluz de Salud. 19 temas oficiales segun BOJA.',
     url: `${SITE_URL}/celador-sas/temario`,
     siteName: 'Vence',
     locale: 'es_ES',

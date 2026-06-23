@@ -4,14 +4,14 @@ export const metadata = {
   title: 'Tests TCAE Murcia 2025 | 44 Temas Oficiales | Vence',
   description: 'Tests de TCAE (Auxiliar de Enfermeria) del SMS con los 44 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
-    'test tcae sermas',
-    'tests auxiliar enfermeria madrid',
-    'tests tcae sermas 2025',
-    'tests oposiciones sermas',
-    'preguntas tcae sermas madrid',
-    'examen tcae sermas',
-    '44 temas tcae sermas',
-    'C2 sermas madrid'
+    'test tcae sms',
+    'tests auxiliar enfermeria murcia',
+    'tests tcae sms 2025',
+    'tests oposiciones sms',
+    'preguntas tcae sms murcia',
+    'examen tcae sms',
+    '44 temas tcae sms',
+    'C2 sms murcia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

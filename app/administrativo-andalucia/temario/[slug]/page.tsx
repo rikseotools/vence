@@ -35,10 +35,10 @@ export async function generateMetadata({ params }: PageProps) {
   }
 
   return {
-    title: `${content.title} | Auxiliar Administrativo de la Junta de Andalucía`,
-    description: content.description || `Contenido teórico del Tema ${topicNumber} para Auxiliar Administrativo de la Junta de Andalucía`,
+    title: `${content.title} | Administrativo de la Junta de Andalucía`,
+    description: content.description || `Contenido teórico del Tema ${topicNumber} para Administrativo de la Junta de Andalucía`,
     openGraph: {
-      title: `${content.title} | Auxiliar Administrativo de la Junta de Andalucía`,
+      title: `${content.title} | Administrativo de la Junta de Andalucía`,
       description: content.description || `Contenido teórico del Tema ${topicNumber}`,
       url: `https://www.vence.es/administrativo-andalucia/temario/${slug}`,
       siteName: 'Vence.es',

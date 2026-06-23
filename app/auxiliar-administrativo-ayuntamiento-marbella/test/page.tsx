@@ -8,10 +8,10 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests Cuerpo Auxiliar Administrativo Marbella - Practica por Temas | Vence',
   description: 'Prepara tu oposición de Cuerpo Auxiliar Administrativo Marbella con tests organizados por temas. 27 temas en 6 bloques: Parte Común y Parte Específica.',
-  keywords: ['test auxiliar administrativo marbella', 'oposiciones marbella', 'examen auxiliar administrativo marbella', 'test oposiciones C1 marbella'],
+  keywords: ['test auxiliar administrativo marbella', 'oposiciones marbella', 'examen auxiliar administrativo marbella', 'test oposiciones C2 marbella'],
   openGraph: {
     title: 'Tests Cuerpo Auxiliar Administrativo Marbella - Practica por Temas',
-    description: 'Prepara tu oposición de Cuerpo Auxiliar Administrativo Marbella con tests organizados por temas. 27 temas oficiales DOCM.',
+    description: 'Prepara tu oposición de Cuerpo Auxiliar Administrativo Marbella con tests organizados por temas. 27 temas oficiales del Ayuntamiento de Marbella.',
     type: 'website',
   },
 }

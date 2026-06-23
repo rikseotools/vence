@@ -6,8 +6,8 @@ import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Temario Auxiliar Administrativo de la Junta de Andalucía | Vence.es',
-  description: 'Temario oficial de Auxiliar Administrativo de la Junta de Andalucía con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
+  title: 'Temario Administrativo de la Junta de Andalucía | Vence.es',
+  description: 'Temario oficial de Administrativo de la Junta de Andalucía con legislación literal del BOE. Acceso gratuito a todos los temas organizados por bloques.',
   alternates: {
     canonical: 'https://www.vence.es/administrativo-andalucia/temario',
   },
@@ -17,7 +17,7 @@ export default async function TemarioPage() {
   return (
     <DynamicTemarioPage
       oposicionSlug="administrativo-andalucia"
-      oposicionDisplayName="Auxiliar Administrativo de la Junta de Andalucía"
+      oposicionDisplayName="Administrativo de la Junta de Andalucía"
     />
   )
 }

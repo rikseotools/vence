@@ -5,13 +5,13 @@ export const metadata = {
   description: 'Tests de TCAE (Auxiliar de Enfermeria) del GVA con los 24 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
     'test auxiliar enfermeria gva',
-    'tests auxiliar enfermeria madrid',
+    'tests auxiliar enfermeria valencia',
     'tests auxiliar enfermeria gva 2025',
-    'tests oposiciones sermas',
-    'preguntas auxiliar enfermeria gva madrid',
+    'tests oposiciones gva',
+    'preguntas auxiliar enfermeria gva valencia',
     'examen auxiliar enfermeria gva',
     '24 temas auxiliar enfermeria gva',
-    'C2 sermas madrid'
+    'C2 generalitat valenciana'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

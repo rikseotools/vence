@@ -8,9 +8,9 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Tests TCAE Murcia - Practica por Temas | Vence',
   description: 'Prepara tu oposicion de TCAE del SMS con tests organizados por temas. 44 temas en 2 bloques: legislacion sanitaria y cuidados auxiliares de enfermeria.',
-  keywords: ['test tcae sermas', 'oposiciones sermas madrid', 'examen tcae sermas', 'test oposiciones C2 sermas'],
+  keywords: ['test tcae sms', 'oposiciones sms murcia', 'examen tcae sms', 'test oposiciones C2 sms murcia'],
 }
 
-export default function TestsTcaeSermasMadridPage() {
+export default function TestsTcaeSmsPage() {
   return <TestHubPage oposicion="tcae-murcia" />
 }

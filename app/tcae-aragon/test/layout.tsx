@@ -2,16 +2,16 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Tests TCAE Aragón 2025 | 30 Temas Oficiales | Vence',
-  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Aragón con los 30 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
+  description: 'Tests de TCAE (Auxiliar de Enfermeria) del Servicio Aragonés de Salud con los 30 temas oficiales. Preguntas personalizables, estadisticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
     'test tcae aragon',
-    'tests auxiliar enfermeria madrid',
+    'tests auxiliar enfermeria aragon',
     'tests tcae aragon 2025',
-    'tests oposiciones sermas',
-    'preguntas tcae aragon madrid',
+    'tests oposiciones tcae aragon',
+    'preguntas tcae aragon',
     'examen tcae aragon',
     '30 temas tcae aragon',
-    'C2 sermas madrid'
+    'C2 servicio aragones salud'
   ].join(', '),
   authors: [{ name: 'Vence' }],
   creator: 'Vence',

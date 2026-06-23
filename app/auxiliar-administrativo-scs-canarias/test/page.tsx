@@ -15,6 +15,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TestsAuxiliarCanariasPage() {
+export default function TestsAuxiliarAdministrativoScsCanariasPage() {
   return <TestHubPage oposicion="auxiliar-administrativo-scs-canarias" />
 }

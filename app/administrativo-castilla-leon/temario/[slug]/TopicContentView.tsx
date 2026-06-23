@@ -18,7 +18,7 @@ interface TopicContentViewProps {
   updatedAt: string
 }
 
-// Determinar el grupo según el número de tema (Auxiliar Administrativo CyL)
+// Determinar el grupo según el número de tema (Cuerpo Administrativo de Castilla y León)
 function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
   // Cuerpo Administrativo C1 CyL: topic_number con prefijo por grupo; displayNum continuo 1-41
   if (topicNumber >= 1 && topicNumber <= 10) {
