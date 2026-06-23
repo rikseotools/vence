@@ -208,6 +208,40 @@ export async function checkQuestionAvailability(
     if (filter) conditions.push(filter)
   }
 
+  // ⭐ Filtro "Artículos imprescindibles" (focusEssentialArticles): cuenta solo
+  // preguntas cuyo artículo tiene ≥1 pregunta OFICIAL de ESTA oposición — mismo
+  // criterio que la generación (filtered-questions/test-config). Si la oposición
+  // no tiene oficiales propios (p.ej. administrativo_carm, C1 sin examen oficial
+  // cargado), el conjunto es vacío → total 0, para que el botón "Generar" quede
+  // deshabilitado en vez de mandar al usuario a un test que la generación no
+  // puede crear ("no puede generarlo", caso Pilar 2026-06-22). Antes este filtro
+  // se ignoraba aquí y solo se aplicaba al generar → contador inflado + fallo.
+  if (request.focusEssentialArticles) {
+    const { getValidExamPositions } = await import('@/lib/config/exam-positions')
+    const validPositions = getValidExamPositions(positionType)
+    if (validPositions.length === 0) {
+      conditions.push(sql`false`)
+    } else {
+      const essentialArticleRows = await db
+        .selectDistinct({ articleId: questions.primaryArticleId })
+        .from(questions)
+        .where(and(
+          eq(questions.isActive, true),
+          eq(questions.isOfficialExam, true),
+          isNull(questions.examCaseId),
+          inArray(questions.examPosition, validPositions),
+        ))
+      const essentialArticleIds = essentialArticleRows
+        .map(r => r.articleId)
+        .filter((id): id is string => Boolean(id))
+      if (essentialArticleIds.length === 0) {
+        conditions.push(sql`false`)
+      } else {
+        conditions.push(inArray(questions.primaryArticleId, essentialArticleIds))
+      }
+    }
+  }
+
   // UNA SOLA QUERY con GROUP BY
   const countsResult = await db
     .select({

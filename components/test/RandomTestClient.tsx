@@ -11,6 +11,7 @@ import {
   isCustomQuestionCount,
   clampCustomQuestionCount,
 } from '@/lib/test/questionCount'
+import { buildAleatorioTestParams } from '@/lib/test/aleatorioParams'
 import type {
   OposicionSlug,
   DifficultyLevel,
@@ -78,6 +79,14 @@ export default function RandomTestClient({
     isPremiumUser,
     loading: limitLoading,
   } = useDailyQuestionLimit()
+
+  // ¿Esta oposición tiene exámenes oficiales PROPIOS cargados? (suma estricta por
+  // exam_position, calculada en servidor). Si no (p.ej. Administrativo CARM C1),
+  // ocultamos los filtros que dependen de oficiales propios — "Solo oficiales" y
+  // "Artículos imprescindibles" — porque no pueden generar ningún test y dejaban
+  // al usuario en una pantalla de error (caso Pilar, 2026-06-22). Mismo criterio
+  // que ya aplica TestConfigurator (officialQuestionsCount > 0).
+  const hasOwnOfficialQuestions = totalOfficialQuestions > 0
 
   // Theme config
   const themeBlocks = config.blocks
@@ -265,19 +274,17 @@ export default function RandomTestClient({
     if (hasLimit && questionsRemaining <= 0) return
     setGenerating(true)
     try {
-      const testParams = new URLSearchParams({
-        themes: selectedThemes.join(','),
-        n: effectiveNumQuestions.toString(),
-        difficulty: difficulty,
-        mode: 'aleatorio',
+      const testParams = buildAleatorioTestParams({
+        selectedThemes,
+        numQuestions: effectiveNumQuestions,
+        difficulty,
+        onlyOfficialQuestions,
+        includeSharedOfficials,
+        focusEssentialArticles,
+        adaptiveMode,
+        includeSeenQuestions,
+        hasOwnOfficialQuestions,
       })
-      if (onlyOfficialQuestions) testParams.append('official_only', 'true')
-      if (includeSharedOfficials) testParams.append('include_shared_officials', 'true')
-      if (focusEssentialArticles) testParams.append('focus_essential', 'true')
-      if (adaptiveMode) testParams.append('adaptive', 'true')
-      // Solo pasamos el flag cuando el usuario opta explícitamente por incluir vistas;
-      // el default del fetcher es prioritizar nunca-vistas (preserva comportamiento previo).
-      if (includeSeenQuestions) testParams.append('prioritize_never_seen', 'false')
 
       const testPath = testMode === 'examen' ? 'test-aleatorio-examen' : 'test-personalizado'
       router.push(`/${oposicion}/test/${testPath}?${testParams.toString()}`)
@@ -443,6 +450,10 @@ export default function RandomTestClient({
 
             {/* 3. Opciones Avanzadas */}
             <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+              {/* Filtros que dependen de exámenes oficiales PROPIOS: solo si la
+                  oposición los tiene (si no, generan tests vacíos — caso Pilar). */}
+              {hasOwnOfficialQuestions && (
+              <>
               {/* Solo preguntas oficiales */}
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input
@@ -497,6 +508,8 @@ export default function RandomTestClient({
                   <p className="text-sm font-bold text-yellow-800">Artículos Imprescindibles Activado</p>
                   <p className="text-xs text-yellow-700">Solo preguntas de los artículos que más se repiten en exámenes oficiales de {config.shortName}. Ideal para centrarte en lo que más cae.</p>
                 </div>
+              )}
+              </>
               )}
 
               {/* Modo adaptativo */}
