@@ -22,8 +22,9 @@ const FROM = /\.from\(['"]/g
 //   2026-06-20: 128 sitios / 43 ficheros (inicial).
 //   C1#1: app/oposiciones/page.tsx (oposiciones, server→Drizzle) → 127 / 42.
 //   C1#2: app/oposiciones/[filtro]/page.tsx (2 queries oposiciones) → 125 / 41.
-const BASELINE_SITES = 125
-const BASELINE_FILES = 41
+//   C1#3: app/cursos/[slug]/page.tsx (3 queries video_courses/lessons) → 122 / 40.
+const BASELINE_SITES = 122
+const BASELINE_FILES = 40
 
 function walk(rel: string): string[] {
   let out: string[] = []

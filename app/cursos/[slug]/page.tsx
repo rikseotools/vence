@@ -1,12 +1,28 @@
 import { Metadata } from 'next'
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
 import VideoCoursePage from './VideoCoursePage'
 
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  // eslint-disable-next-line no-restricted-syntax -- Server Component (sin 'use client'): SERVICE_ROLE corre server-side, no se incluye en el bundle cliente
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Agnóstico (Fase C1): Drizzle (getAdminDb bypasea RLS = el service_role anterior)
+// en vez de supabase.from. Lecturas de video_courses/video_lessons (server component).
+// Tipos alineados con el contrato de VideoCoursePage (Course/Lesson): estos
+// campos son no-null en BD; el código previo (supabase any) ya los pasaba directos.
+interface CourseRow {
+  id: string; slug: string; title: string; description: string | null
+  total_lessons: number; total_duration_minutes: number; is_premium: boolean
+}
+interface LessonRow {
+  id: string; slug: string; title: string; description: string | null
+  duration_seconds: number; order_position: number
+  is_preview: boolean; preview_seconds: number
+}
+function firstRow<T>(rows: unknown): T | null {
+  const arr = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []
+  return (arr[0] as T) ?? null
+}
+function allRows<T>(rows: unknown): T[] {
+  return (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as T[]
+}
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -15,12 +31,12 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
 
-  const { data: course } = await getSupabase()
-    .from('video_courses')
-    .select('title, description')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single()
+  let course: { title: string; description: string | null } | null = null
+  try {
+    course = firstRow(await getAdminDb().execute(sql`
+      SELECT title, description FROM video_courses WHERE slug = ${slug} AND is_active = true LIMIT 1
+    `))
+  } catch { /* metadata best-effort */ }
 
   if (!course) {
     return { title: 'Curso no encontrado' }
@@ -36,22 +52,15 @@ export default async function Page({ params }: Props) {
   const { slug } = await params
 
   // Get course with lessons
-  const { data: course, error } = await getSupabase()
-    .from('video_courses')
-    .select(`
-      id,
-      slug,
-      title,
-      description,
-      total_lessons,
-      total_duration_minutes,
-      is_premium
-    `)
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single()
+  let course: CourseRow | null = null
+  try {
+    course = firstRow<CourseRow>(await getAdminDb().execute(sql`
+      SELECT id, slug, title, description, total_lessons, total_duration_minutes, is_premium
+      FROM video_courses WHERE slug = ${slug} AND is_active = true LIMIT 1
+    `))
+  } catch { course = null }
 
-  if (error || !course) {
+  if (!course) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -67,21 +76,13 @@ export default async function Page({ params }: Props) {
   }
 
   // Get lessons
-  const { data: lessons } = await getSupabase()
-    .from('video_lessons')
-    .select(`
-      id,
-      slug,
-      title,
-      description,
-      duration_seconds,
-      order_position,
-      is_preview,
-      preview_seconds
-    `)
-    .eq('course_id', course.id)
-    .eq('is_active', true)
-    .order('order_position', { ascending: true })
+  let lessons: LessonRow[] = []
+  try {
+    lessons = allRows<LessonRow>(await getAdminDb().execute(sql`
+      SELECT id, slug, title, description, duration_seconds, order_position, is_preview, preview_seconds
+      FROM video_lessons WHERE course_id = ${course.id}::uuid AND is_active = true ORDER BY order_position ASC
+    `))
+  } catch { lessons = [] }
 
   return (
     <VideoCoursePage
@@ -94,7 +95,7 @@ export default async function Page({ params }: Props) {
         totalDurationMinutes: course.total_duration_minutes,
         isPremium: course.is_premium,
       }}
-      lessons={lessons?.map(l => ({
+      lessons={lessons.map(l => ({
         id: l.id,
         slug: l.slug,
         title: l.title,
@@ -103,7 +104,7 @@ export default async function Page({ params }: Props) {
         orderPosition: l.order_position,
         isPreview: l.is_preview,
         previewSeconds: l.preview_seconds,
-      })) || []}
+      }))}
     />
   )
 }
