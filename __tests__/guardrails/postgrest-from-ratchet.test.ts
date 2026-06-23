@@ -40,8 +40,9 @@ const RPC = /\.rpc\(/g
 //   C1#12: hooks/useOnboarding.ts (4 .from user_profiles → GET status + POST skip atómico; complete UPDATE redundante eliminado) → 101 / 31.
 //   C1#13: app/perfil/page.tsx (4 .from → GET/POST account/deletion-request idempotente + createInitialProfile delega en ensure-profile) → 97 / 30.
 //   C1#14: components/OnboardingModal.tsx (2 .from user_profiles + 2 .rpc custom-oposiciones → status/save-field + custom-oposiciones GET/POST) → from 95/29, rpc 19→17.
-const BASELINE_SITES = 95
-const BASELINE_FILES = 29
+//   C1#15: hooks/useDisputeNotifications.ts (5 .from question_disputes/psychometric → GET notifications + POST mark-all-read + POST appeal) → 90 / 28.
+const BASELINE_SITES = 90
+const BASELINE_FILES = 28
 // Trinquete .rpc( de cliente (baseline al añadirlo: 17, tras migrar los 2 de OnboardingModal).
 const BASELINE_RPC = 17
 

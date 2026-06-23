@@ -1,8 +1,9 @@
 // hooks/useDisputeNotifications.ts
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { z } from 'zod'
-import type { User, SupabaseClient } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
 // ============================================
 // TIPOS E INTERFACES
@@ -11,7 +12,6 @@ import type { User, SupabaseClient } from '@supabase/supabase-js'
 // Tipo para el contexto de autenticación (AuthContext.js no está tipado)
 interface AuthContextValue {
   user: User | null
-  supabase: SupabaseClient
 }
 
 // Notificación de disputa/impugnación
@@ -93,7 +93,7 @@ type PsychoDispute = z.infer<typeof psychoDisputeSchema>
 // ============================================
 
 export function useDisputeNotifications(): UseDisputeNotificationsReturn {
-  const { user, supabase } = useAuth() as AuthContextValue
+  const { user } = useAuth() as AuthContextValue
   const [notifications, setNotifications] = useState<DisputeNotification[]>([])
   const [unreadCount, setUnreadCount] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(true)
@@ -150,42 +150,21 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
       stopPolling()
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [user, supabase])
+  }, [user])
 
   async function loadNotifications(): Promise<void> {
     try {
       if (!user) return
 
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-
-      // 📚 Cargar impugnaciones de leyes (normales)
-      const { data: disputes, error } = await supabase
-        .from('question_disputes')
-        .select(`
-          id,
-          dispute_type,
-          status,
-          resolved_at,
-          admin_response,
-          created_at,
-          is_read,
-          appeal_text,
-          appeal_submitted_at,
-          questions!inner (
-            question_text,
-            articles!inner (
-              article_number,
-              laws!inner (short_name)
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .in('status', ['resolved', 'rejected', 'appealed'])
-        .gte('resolved_at', thirtyDaysAgo)
-        .eq('is_read', false)
-        .order('resolved_at', { ascending: false })
-
-      if (error) throw error
+      // 📡 Una sola llamada al endpoint agnóstico (Drizzle, user_id del token):
+      // devuelve normales (con embed questions→articles→laws) + psicotécnicas,
+      // ventana de 30 días + is_read=false aplicada server-side. Fase C1.
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/disputes/notifications', { headers })
+      if (!res.ok) throw new Error(`disputes/notifications ${res.status}`)
+      const payload = await res.json()
+      const disputes = payload.disputes || []
+      const psychoDisputes = payload.psychoDisputes || []
 
       // Validar con Zod (soft validation - log pero no romper)
       let validatedDisputes: NormalDispute[] = []
@@ -217,27 +196,9 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
         canAppeal: dispute.status === 'rejected' && !dispute.appeal_text
       }))
 
-      // 🧠 Cargar impugnaciones psicotécnicas
-      const { data: psychoDisputes, error: psychoError } = await supabase
-        .from('psychometric_question_disputes')
-        .select(`
-          id,
-          dispute_type,
-          status,
-          resolved_at,
-          admin_response,
-          created_at,
-          is_read,
-          question_id
-        `)
-        .eq('user_id', user.id)
-        .in('status', ['resolved', 'rejected'])
-        .gte('resolved_at', thirtyDaysAgo)
-        .eq('is_read', false)
-        .order('resolved_at', { ascending: false })
-
+      // 🧠 Impugnaciones psicotécnicas (ya vienen en el payload del endpoint)
       let psychoNotifications: DisputeNotification[] = []
-      if (!psychoError && psychoDisputes?.length > 0) {
+      if (psychoDisputes?.length > 0) {
         // Validar con Zod (soft validation)
         let validatedPsychoDisputes: PsychoDispute[] = []
         try {
@@ -322,25 +283,10 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
     try {
       if (!user || unreadCount === 0) return
 
-      // Marcar impugnaciones normales
-      const { error: normalError } = await supabase
-        .from('question_disputes')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .in('status', ['resolved', 'rejected', 'appealed'])
-        .eq('is_read', false)
-
-      if (normalError) console.error('Error en question_disputes:', normalError)
-
-      // Marcar impugnaciones psicotécnicas
-      const { error: psychoError } = await supabase
-        .from('psychometric_question_disputes')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .in('status', ['resolved', 'rejected'])
-        .eq('is_read', false)
-
-      if (psychoError) console.error('Error en psychometric_question_disputes:', psychoError)
+      // Marca normales + psicotécnicas server-side (user_id del token). Fase C1.
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/disputes/mark-all-read', { method: 'POST', headers })
+      if (!res.ok) console.error('Error en mark-all-read:', res.status)
 
       // Actualizar estado local
       setNotifications(prev =>
@@ -362,18 +308,17 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
     try {
       if (!user || !appealText.trim()) return false
 
-      const { error } = await supabase
-        .from('question_disputes')
-        .update({
-          appeal_text: appealText.trim(),
-          appeal_submitted_at: new Date().toISOString(),
-          status: 'appealed' // Cambiar estado a 'appealed'
-        })
-        .eq('id', disputeId)
-        .eq('user_id', user.id)
-        .eq('status', 'rejected') // Solo permitir alegaciones de impugnaciones rechazadas
-
-      if (error) throw error
+      // El endpoint exige user_id (del token) + status='rejected' en el WHERE →
+      // solo se puede alegar la propia impugnación rechazada. Fase C1.
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/disputes/appeal', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disputeId, appealText: appealText.trim() }),
+      })
+      if (!res.ok) throw new Error(`disputes/appeal ${res.status}`)
+      const result = await res.json()
+      if (!result.success) return false
 
       // Recargar notificaciones para actualizar la UI
       await loadNotifications()
