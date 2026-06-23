@@ -2,7 +2,7 @@
 // Modal de Onboarding Compacto - Una sola pantalla
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getSupabaseClient } from '../lib/supabase'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { OPOSICIONES } from '../lib/config/oposiciones'
 import { matchesOposicion } from '../lib/utils/searchOposicion'
 import { useOposicionesCatalog } from '../lib/hooks/useOposicionesCatalog'
@@ -68,8 +68,6 @@ interface OnboardingModalProps {
   onSkip: () => void
   user: { id: string; user_metadata?: any; email?: string }
 }
-
-const supabase = getSupabaseClient()
 
 // Función para normalizar nombres de oposiciones (quitar acentos, minúsculas)
 const normalizeOposicionName = (name: string): string => {
@@ -1834,13 +1832,11 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
   // Cargar perfil existente del usuario
   const loadExistingProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('target_oposicion, target_oposicion_data, age, gender, daily_study_hours, ciudad')
-        .eq('id', user.id)
-        .single()
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/onboarding/status', { headers })
+      const data = res.ok ? (await res.json()).profile : null
 
-      if (error) {
+      if (!data) {
         console.log('No hay perfil previo, iniciando desde cero')
         setProfileLoaded(true)
         return
@@ -1951,19 +1947,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       setSaving(fieldName)
       console.log(`💾 Guardando ${fieldName}:`, value)
 
-      // Preparar el update
-      const updates = { [fieldName]: value }
+      // Guardado server-side con whitelist de campos + user_id del token (Fase C1).
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/onboarding/save-field', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: fieldName, value }),
+      })
 
-      // Actualizar directamente (el perfil ya existe)
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-
-      if (error) throw error
+      if (!res.ok) throw new Error(`save-field ${fieldName} -> ${res.status}`)
 
       console.log(`✅ ${fieldName} guardado exitosamente`)
       return true // ✅ Devolver true si tuvo éxito
@@ -2000,11 +1992,11 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
 
   const loadCustomOposiciones = async () => {
     try {
-      const { data, error } = await supabase
-        .rpc('get_popular_custom_oposiciones', { p_limit: 10 })
-
-      if (error) throw error
-      setCustomOposiciones(data || [])
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/custom-oposiciones/popular?limit=10', { headers })
+      if (!res.ok) throw new Error(`custom-oposiciones/popular ${res.status}`)
+      const { items } = await res.json()
+      setCustomOposiciones(items || [])
     } catch (err) {
       console.error('Error cargando oposiciones custom:', err)
     }
@@ -2110,21 +2102,24 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       setLoading(true)
       setError(null)
 
-      const { data, error } = await supabase
-        .rpc('create_or_select_custom_oposicion', {
-          p_user_id: user.id,
-          p_nombre: customOposicionData.nombre,
-          p_categoria: customOposicionData.categoria || null,
-          p_administracion: customOposicionData.administracion || null,
-          p_is_public: true,
-          p_created_by_username: user.user_metadata?.full_name || user.email?.split('@')[0]
-        })
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/custom-oposiciones', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: customOposicionData.nombre,
+          categoria: customOposicionData.categoria || null,
+          administracion: customOposicionData.administracion || null,
+          createdByUsername: user.user_metadata?.full_name || user.email?.split('@')[0] || null,
+        }),
+      })
 
-      if (error) throw error
+      if (!res.ok) throw new Error(`custom-oposiciones ${res.status}`)
+      const data = await res.json()
 
       // Seleccionar la oposición recién creada
       const oposicionData: SelectedOposicion = {
-        id: data.oposicion_id,
+        id: data.oposicionId,
         nombre: customOposicionData.nombre,
         categoria: customOposicionData.categoria,
         administracion: customOposicionData.administracion,
@@ -2138,7 +2133,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
 
       // 💾 Guardar inmediatamente - NOTA: Para custom seguimos guardando UUID
       // porque no hay un slug oficial para oposiciones personalizadas
-      saveField('target_oposicion', data.oposicion_id)
+      saveField('target_oposicion', data.oposicionId)
       saveField('target_oposicion_data', oposicionData)
 
       setShowCreateForm(false)

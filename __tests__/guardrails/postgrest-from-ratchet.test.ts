@@ -11,12 +11,18 @@ import { join } from 'path'
 // Nota: Drizzle usa `.from(tabla)` con un OBJETO (sin comillas) → no lo cuenta;
 // el patrón `.from('` / `.from("` captura solo las llamadas PostgREST con nombre
 // de tabla string.
+//
+// Se trinquetea TAMBIÉN `supabase.rpc(` de cliente: las funciones plpgsql siguen
+// existiendo en RDS/Neon, pero el transporte PostgREST `.rpc()` no → hay que
+// llamarlas vía endpoint Drizzle (getAdminDb().execute(sql`SELECT fn(...)`)).
+// Mismo trinquete: el recuento de `.rpc(` SOLO puede BAJAR.
 
 const ROOT = join(__dirname, '..', '..')
 const SCAN_DIRS = ['app', 'components', 'contexts', 'hooks']
 const EXT = /\.(ts|tsx|js)$/
 const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\/api\/|\.test\./
 const FROM = /\.from\(['"]/g
+const RPC = /\.rpc\(/g
 
 // Baseline: SOLO bajar al migrar a endpoints/Drizzle.
 //   2026-06-20: 128 sitios / 43 ficheros (inicial).
@@ -33,8 +39,11 @@ const FROM = /\.from\(['"]/g
 //   C1#11: hooks/useTestCompletion.ts (handleTestCompletion DEAD CODE borrado; INSERT tests no portable) → 105 / 32.
 //   C1#12: hooks/useOnboarding.ts (4 .from user_profiles → GET status + POST skip atómico; complete UPDATE redundante eliminado) → 101 / 31.
 //   C1#13: app/perfil/page.tsx (4 .from → GET/POST account/deletion-request idempotente + createInitialProfile delega en ensure-profile) → 97 / 30.
-const BASELINE_SITES = 97
-const BASELINE_FILES = 30
+//   C1#14: components/OnboardingModal.tsx (2 .from user_profiles + 2 .rpc custom-oposiciones → status/save-field + custom-oposiciones GET/POST) → from 95/29, rpc 19→17.
+const BASELINE_SITES = 95
+const BASELINE_FILES = 29
+// Trinquete .rpc( de cliente (baseline al añadirlo: 17, tras migrar los 2 de OnboardingModal).
+const BASELINE_RPC = 17
 
 function walk(rel: string): string[] {
   let out: string[] = []
@@ -54,16 +63,20 @@ function walk(rel: string): string[] {
   return out
 }
 
-describe('RATCHET: PostgREST (supabase.from) de cliente solo puede decrecer', () => {
+describe('RATCHET: PostgREST (supabase.from / supabase.rpc) de cliente solo puede decrecer', () => {
   const files = SCAN_DIRS.flatMap(walk)
   let sites = 0
   let withFrom = 0
+  let rpcSites = 0
   for (const f of files) {
-    const m = readFileSync(join(ROOT, f), 'utf8').match(FROM)
+    const txt = readFileSync(join(ROOT, f), 'utf8')
+    const m = txt.match(FROM)
     if (m && m.length > 0) {
       sites += m.length
       withFrom += 1
     }
+    const r = txt.match(RPC)
+    if (r && r.length > 0) rpcSites += r.length
   }
 
   it(`nº de sitios .from('…') de cliente no supera el baseline (${BASELINE_SITES})`, () => {
@@ -72,5 +85,9 @@ describe('RATCHET: PostgREST (supabase.from) de cliente solo puede decrecer', ()
 
   it(`nº de ficheros con .from('…') de cliente no supera el baseline (${BASELINE_FILES})`, () => {
     expect(withFrom).toBeLessThanOrEqual(BASELINE_FILES)
+  })
+
+  it(`nº de sitios .rpc(…) de cliente no supera el baseline (${BASELINE_RPC})`, () => {
+    expect(rpcSites).toBeLessThanOrEqual(BASELINE_RPC)
   })
 })

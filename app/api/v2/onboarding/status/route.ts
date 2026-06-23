@@ -1,6 +1,8 @@
 // app/api/v2/onboarding/status/route.ts
-// Devuelve los campos de onboarding del usuario AUTENTICADO (fallback del hook
-// useOnboarding cuando AuthContext.userProfile sigue null tras 5s).
+// Devuelve los campos de onboarding del usuario AUTENTICADO. Lo consumen:
+//   - hooks/useOnboarding.ts (fallback cuando AuthContext.userProfile sigue null tras 5s)
+//   - components/OnboardingModal.tsx (loadExistingProfile, pre-rellena el formulario;
+//     por eso incluye target_oposicion_data)
 //
 // AGNÓSTICO (Fase C1): sustituye el supabase.from('user_profiles').select(...)
 // .eq('id', user.id) de cliente (PostgREST+RLS) por Drizzle. El id sale del
@@ -21,8 +23,9 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const rows = await getAdminDb().execute(sql`
-    SELECT target_oposicion, onboarding_completed_at, age, gender, ciudad,
-           daily_study_hours, onboarding_skip_count, onboarding_last_skip_at
+    SELECT target_oposicion, target_oposicion_data, onboarding_completed_at, age,
+           gender, ciudad, daily_study_hours, onboarding_skip_count,
+           onboarding_last_skip_at
     FROM user_profiles
     WHERE id = ${auth.userId}::uuid
     LIMIT 1
