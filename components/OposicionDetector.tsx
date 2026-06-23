@@ -6,11 +6,9 @@
 'use client'
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { getSupabaseClient } from '../lib/supabase' // 🔧 USAR SINGLETON (solo .from)
 import { auth } from '@/lib/auth' // puerto agnóstico para auth.*
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
-
-const supabase = getSupabaseClient()
 
 interface OposicionData {
   id: string
@@ -73,13 +71,11 @@ export default function OposicionDetector() {
         // 2. Verificar si ya tiene oposición asignada
         console.log('🔍 Verificando oposición existente...')
 
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('target_oposicion, target_oposicion_data')
-          .eq('id', user.id)
-          .single()
+        const headers = await getAuthHeaders()
+        const profileRes = await fetch('/api/v2/onboarding/status', { headers })
+        const profile = profileRes.ok ? (await profileRes.json()).profile : null
 
-        if (!profileError && profile?.target_oposicion) {
+        if (profile?.target_oposicion) {
           console.log('✅ Usuario ya tiene oposición asignada:', profile.target_oposicion)
           return
         }
@@ -174,12 +170,10 @@ async function assignOposicionToUserWithRetry(userId: string, oposicionData: Opo
   return false
 }
 
-// ✅ FUNCIÓN CORREGIDA para evitar error RLS
+// Asignar oposición vía endpoint agnóstico (Drizzle, user_id del token). Fase C1.
 async function assignOposicionToUser(userId: string, oposicionData: OposicionData): Promise<boolean> {
   try {
-    console.log('💾 Asignando oposición con políticas RLS corregidas...')
-
-    // ✅ VERIFICAR USUARIO AUTENTICADO PRIMERO
+    // ✅ VERIFICAR USUARIO AUTENTICADO PRIMERO (el endpoint reverifica el token igual)
     const user = await auth.getUser()
 
     if (!user) {
@@ -192,68 +186,22 @@ async function assignOposicionToUser(userId: string, oposicionData: OposicionDat
       return false
     }
 
-    // ✅ MÉTODO 1: UPSERT con verificación previa
-    console.log('📝 Intentando UPSERT...')
+    const headers = await getAuthHeaders()
+    const res = await fetch('/api/v2/oposicion/assign', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        oposicionId: oposicionData.id,
+        oposicionData, // objeto → jsonb server-side
+      }),
+    })
 
-    const profileData = {
-      id: userId, // ✅ CRÍTICO: Usar ID del usuario autenticado
-      target_oposicion: oposicionData.id,
-      target_oposicion_data: oposicionData, // objeto directo a jsonb (sin stringify → no doble-codifica)
-      first_oposicion_detected_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    const { error: upsertError } = await supabase
-      .from('user_profiles')
-      .upsert(profileData, {
-        onConflict: 'id',
-        ignoreDuplicates: false
-      })
-
-    if (!upsertError) {
-      console.log('✅ UPSERT exitoso')
+    if (res.ok && (await res.json()).updated) {
+      console.log('✅ Oposición asignada')
       return true
     }
 
-    console.warn('⚠️ UPSERT falló:', upsertError.message)
-
-    // ✅ MÉTODO 2: INSERT directo como fallback
-    console.log('📝 Intentando INSERT directo...')
-
-    const { error: insertError } = await supabase
-      .from('user_profiles')
-      .insert(profileData)
-
-    if (!insertError) {
-      console.log('✅ INSERT directo exitoso')
-      return true
-    }
-
-    console.warn('⚠️ INSERT directo falló:', insertError.message)
-
-    // ✅ MÉTODO 3: UPDATE si el perfil ya existe
-    console.log('📝 Intentando UPDATE...')
-
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        target_oposicion: oposicionData.id,
-        target_oposicion_data: oposicionData, // objeto directo a jsonb (sin stringify → no doble-codifica)
-        first_oposicion_detected_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-
-    if (!updateError) {
-      console.log('✅ UPDATE exitoso')
-      return true
-    }
-
-    console.error('❌ Todos los métodos fallaron')
-    console.error('UPSERT error:', upsertError)
-    console.error('INSERT error:', insertError)
-    console.error('UPDATE error:', updateError)
-
+    console.warn('⚠️ Asignación no aplicada (status:', res.status, ')')
     return false
 
   } catch (error) {
