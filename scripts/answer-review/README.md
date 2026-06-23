@@ -27,10 +27,18 @@ una "answer_wrong" de agente casi siempre es falso positivo, wrong-article o pre
 ## Uso
 
 ```bash
-# 1. Extraer una ola de 200 (auto-avanza: el pool vivo excluye las ya procesadas)
+# 1a. OFIMÁTICA/VIRTUAL (flag de sonnet/opus): extraer una ola de 200
 WAVE=N node scripts/answer-review/wave_extract.cjs
 #    LAWRX='365|Red Internet|Inform|Windows|Outlook'  -> solo ofimática
 #    LAWRX='!365|Red Internet|Inform|Windows|Outlook'  -> excluir ofimática (clínico/legal)
+
+# 1b. LEGAL (leyes normales, flag de CUALQUIER modelo incl. gpt-4o-mini/Haiku).
+#     wave_extract.cjs da 0 aquí: exige is_virtual + sonnet/opus. Usa el legal:
+WAVE=ce  LAWRX='^CE$'    node scripts/answer-review/wave_extract_legal.cjs   # solo CE (caza CEDH también)
+WAVE=l39 LAWRX='39/2015' node scripts/answer-review/wave_extract_legal.cjs   # Ley 39/2015
+#    LAWRX obligatorio (regex de short_name). '!' al inicio = excluir.
+#    Historial: CE+CEDH (234) cerrado 23/06 — 229 reseal, 5 needs_human adjudicadas como
+#    Opus (3 flips de clave: CE reformas C->A, 2x CEDH art.35 A->C) + 9 relinks de artículo.
 
 # 2. Lanzar 8 agentes Sonnet PROFUNDOS (prompt en el historial / manual §4) sobre
 #    wave{N}_blind_1..8.json -> wave{N}_deep_1..8.json. Para virtuales añadir cautelas §8.3.
@@ -38,6 +46,12 @@ WAVE=N node scripts/answer-review/wave_extract.cjs
 # 3. Aplicar por reglas (re-sellar answer-correct, needs_human dudosas, nunca flip)
 WAVE=N node scripts/answer-review/wave_apply.cjs    # DRY_RUN=1 para simular
 ```
+
+> **GOTCHA al adjudicar needs_human → approved (flip de clave o reseal manual):** `wave_apply.cjs`
+> solo descarta los `answer_ok=false` viejos en los RESEAL, NO en los que manda a `needs_human`.
+> Si luego readjudicas esas a `approved`, vuelven a estar activas con el flag stale y REAPARECEN en
+> el pool. Tras readjudicar SIEMPRE: `UPDATE ai_verification_results SET discarded=true,discarded_at=now()
+> WHERE question_id=... AND answer_ok=false AND COALESCE(discarded,false)=false`.
 
 ### Clínico = DOBLE PASADA
 
