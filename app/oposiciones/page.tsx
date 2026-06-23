@@ -3,7 +3,8 @@
  * Muestra NUESTRAS oposiciones (tabla oposiciones) con filtros SEO.
  */
 import { Metadata } from 'next'
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getDb, getPoolerDb } from '@/db/client'
 import Link from 'next/link'
 import OposicionCard from './components/OposicionCard'
 import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS, ESTADO_FILTERS, oposicionToCcaa, oposicionToTipo } from './lib/oposiciones-filters'
@@ -45,15 +46,33 @@ interface OposicionRow {
   subgrupo: string | null
 }
 
+// Agnóstico (Fase C1): Drizzle en vez de supabase.from (PostgREST). Lectura
+// pública (tabla `oposiciones`), sin auth/user_id. Las columnas `date` se
+// castean a ::text para devolver 'YYYY-MM-DD' string EXACTO como hacía PostgREST
+// (isInscripcionAbierta hace .slice(0,10) sobre ellas — un Date rompería).
+function db() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
+
 async function getOposiciones(): Promise<OposicionRow[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return []
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  const { data } = await supabase
-    .from('oposiciones')
-    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_start, inscription_deadline, subgrupo')
-    .eq('is_active', true)
-    .order('plazas_libres', { ascending: false, nullsFirst: false })
-  return (data ?? []) as OposicionRow[]
+  try {
+    const rows = await db().execute(sql`
+      SELECT slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso,
+             is_convocatoria_activa,
+             exam_date::text AS exam_date,
+             inscription_start::text AS inscription_start,
+             inscription_deadline::text AS inscription_deadline,
+             subgrupo
+      FROM oposiciones
+      WHERE is_active = true
+      ORDER BY plazas_libres DESC NULLS LAST
+    `)
+    const results = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []
+    return results as unknown as OposicionRow[]
+  } catch (e) {
+    console.warn('[oposiciones] getOposiciones falló:', (e as Error).message)
+    return []
+  }
 }
 
 function estadoOrder(estado: string | null): number {

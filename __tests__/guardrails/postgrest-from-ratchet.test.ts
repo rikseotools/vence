@@ -18,9 +18,11 @@ const EXT = /\.(ts|tsx|js)$/
 const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\/api\/|\.test\./
 const FROM = /\.from\(['"]/g
 
-// Baseline 2026-06-20: 128 sitios en 43 ficheros. SOLO bajar al migrar a endpoints.
-const BASELINE_SITES = 128
-const BASELINE_FILES = 43
+// Baseline: SOLO bajar al migrar a endpoints/Drizzle.
+//   2026-06-20: 128 sitios / 43 ficheros (inicial).
+//   C1#1: app/oposiciones/page.tsx (oposiciones, server→Drizzle) → 127 / 42.
+const BASELINE_SITES = 127
+const BASELINE_FILES = 42
 
 function walk(rel: string): string[] {
   let out: string[] = []
