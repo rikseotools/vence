@@ -1,0 +1,62 @@
+import { readFileSync, readdirSync, statSync } from 'fs'
+import { join } from 'path'
+
+// RATCHET Fase C1 (docs/roadmap/auth-agnostico-jwks-y-rls.md / desacople-postgrest-rls.md).
+// Cuenta los `supabase.from('tabla')` (PostgREST) en código de CLIENTE
+// (app excl. /api, components, contexts, hooks). PostgREST no existe en RDS/Neon,
+// así que esto debe llegar a 0. Este test es un trinquete: el recuento SOLO puede
+// BAJAR. Si sube (alguien añade un .from de cliente nuevo), falla. Al migrar cada
+// uno a un endpoint Drizzle, se baja el BASELINE.
+//
+// Nota: Drizzle usa `.from(tabla)` con un OBJETO (sin comillas) → no lo cuenta;
+// el patrón `.from('` / `.from("` captura solo las llamadas PostgREST con nombre
+// de tabla string.
+
+const ROOT = join(__dirname, '..', '..')
+const SCAN_DIRS = ['app', 'components', 'contexts', 'hooks']
+const EXT = /\.(ts|tsx|js)$/
+const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\/api\/|\.test\./
+const FROM = /\.from\(['"]/g
+
+// Baseline 2026-06-20: 128 sitios en 43 ficheros. SOLO bajar al migrar a endpoints.
+const BASELINE_SITES = 128
+const BASELINE_FILES = 43
+
+function walk(rel: string): string[] {
+  let out: string[] = []
+  let entries: string[]
+  try {
+    entries = readdirSync(join(ROOT, rel))
+  } catch {
+    return []
+  }
+  for (const e of entries) {
+    const childRel = `${rel}/${e}`
+    if (SKIP.test(childRel)) continue
+    const st = statSync(join(ROOT, childRel))
+    if (st.isDirectory()) out = out.concat(walk(childRel))
+    else if (EXT.test(e)) out.push(childRel)
+  }
+  return out
+}
+
+describe('RATCHET: PostgREST (supabase.from) de cliente solo puede decrecer', () => {
+  const files = SCAN_DIRS.flatMap(walk)
+  let sites = 0
+  let withFrom = 0
+  for (const f of files) {
+    const m = readFileSync(join(ROOT, f), 'utf8').match(FROM)
+    if (m && m.length > 0) {
+      sites += m.length
+      withFrom += 1
+    }
+  }
+
+  it(`nº de sitios .from('…') de cliente no supera el baseline (${BASELINE_SITES})`, () => {
+    expect(sites).toBeLessThanOrEqual(BASELINE_SITES)
+  })
+
+  it(`nº de ficheros con .from('…') de cliente no supera el baseline (${BASELINE_FILES})`, () => {
+    expect(withFrom).toBeLessThanOrEqual(BASELINE_FILES)
+  })
+})
