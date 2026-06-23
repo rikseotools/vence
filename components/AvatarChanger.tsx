@@ -1,8 +1,32 @@
 // components/AvatarChanger.tsx - CON ACTUALIZACIÓN AUTOMÁTICA DEL HEADER Y AVATARES POR COMPORTAMIENTO
 'use client'
 import { useState, useEffect, type ChangeEvent } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
 import { auth } from '@/lib/auth' // puerto agnóstico para auth.* (updateUser/getSession)
+import { getAuthHeaders } from '@/lib/api/authHeaders'
+
+// Actualiza el avatar en public_user_profiles vía endpoint agnóstico (Drizzle,
+// user_id del token). Reemplaza los UPDATE PostgREST de cliente sobre esa tabla.
+// Devuelve el error (string) o null si OK, para preservar el log previo.
+async function updatePublicAvatar(fields: {
+  avatarType: string | null
+  avatarUrl: string | null
+  avatarEmoji: string | null
+  avatarColor: string | null
+  avatarName: string | null
+}): Promise<string | null> {
+  try {
+    const headers = await getAuthHeaders()
+    const res = await fetch('/api/v2/avatar/public-profile', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    })
+    if (!res.ok) return `status ${res.status}`
+    return null
+  } catch (e) {
+    return (e as Error).message
+  }
+}
 
 interface AvatarOption { id: string; emoji: string; name: string; color: string }
 interface AvatarCategory { title: string; avatars: AvatarOption[] }
@@ -132,7 +156,6 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: A
   const [isOpen, setIsOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('animals')
   const [uploadingImage, setUploadingImage] = useState(false)
-  const { supabase } = useAuth() // Obtener supabase del contexto
 
   // 🤖 Estado para avatar automático
   const [avatarMode, setAvatarMode] = useState('manual') // 'manual' | 'automatic'
@@ -194,17 +217,13 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: A
 
       // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
       // Usar UPDATE en lugar de UPSERT porque display_name es NOT NULL y el registro ya existe
-      const { error: profileError } = await supabase
-        .from('public_user_profiles')
-        .update({
-          avatar_type: 'predefined',
-          avatar_emoji: avatar.emoji,
-          avatar_color: avatar.color,
-          avatar_name: avatar.name,
-          avatar_url: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+      const profileError = await updatePublicAvatar({
+        avatarType: 'predefined',
+        avatarEmoji: avatar.emoji,
+        avatarColor: avatar.color,
+        avatarName: avatar.name,
+        avatarUrl: null,
+      })
 
       if (profileError) {
         console.warn('Error actualizando perfil público:', profileError)
@@ -296,17 +315,13 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: A
 
       // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
       // Usar UPDATE en lugar de UPSERT porque display_name es NOT NULL y el registro ya existe
-      const { error: profileError } = await supabase
-        .from('public_user_profiles')
-        .update({
-          avatar_type: 'uploaded',
-          avatar_url: publicUrl,
-          avatar_emoji: null,
-          avatar_color: null,
-          avatar_name: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+      const profileError = await updatePublicAvatar({
+        avatarType: 'uploaded',
+        avatarUrl: publicUrl,
+        avatarEmoji: null,
+        avatarColor: null,
+        avatarName: null,
+      })
 
       if (profileError) {
         console.warn('Error actualizando perfil público con imagen:', profileError)
@@ -355,19 +370,13 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: A
       if (!updated) throw new Error('No se pudo restablecer el avatar')
 
       // IMPORTANTE: También resetear en public_user_profiles
-      const { error: profileError } = await supabase
-        .from('public_user_profiles')
-        .upsert({
-          id: user.id,
-          avatar_type: null,
-          avatar_url: null,
-          avatar_emoji: null,
-          avatar_color: null,
-          avatar_name: null,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        })
+      const profileError = await updatePublicAvatar({
+        avatarType: null,
+        avatarUrl: null,
+        avatarEmoji: null,
+        avatarColor: null,
+        avatarName: null,
+      })
 
       if (profileError) {
         console.warn('Error reseteando avatar en perfil público:', profileError)
