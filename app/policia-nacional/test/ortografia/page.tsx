@@ -1,6 +1,7 @@
 // app/policia-nacional/test/ortografia/page.tsx
 // Página server-side para tests de ortografía y gramática de Policía Nacional
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
 import SpellingTestLayout from '@/components/SpellingTestLayout'
 import type { SpellingQuestionData } from '@/components/SpellingTestLayout'
 import type { Metadata } from 'next'
@@ -16,14 +17,6 @@ export const revalidate = 3600
 
 const QUESTIONS_PER_TEST = 10
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    // eslint-disable-next-line no-restricted-syntax -- Server Component (sin 'use client'): SERVICE_ROLE corre server-side, no se incluye en el bundle cliente
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
 interface SpellingQuestionRow {
   id: string
   question_text: string
@@ -35,25 +28,27 @@ async function getRandomSpellingQuestions(
   category?: string,
   count: number = QUESTIONS_PER_TEST
 ): Promise<SpellingQuestionData[]> {
-  const supabase = getSupabase()
+  // AGNÓSTICO (Fase C1): server component → Drizzle (getAdminDb) en vez de
+  // createClient(SERVICE_ROLE)+PostgREST. Contenido público (is_active),
+  // fetch de un pool y shuffle client-side (igual que antes).
+  const catFilter = category && category !== 'all' ? sql` AND category = ${category}` : sql``
+  const poolSize = Math.min(count * 5, 200)
 
-  // Build query — fetch more than needed, shuffle client-side (Supabase doesn't have random ordering)
-  let query = supabase
-    .from('spelling_questions')
-    .select('id, question_text, options, category')
-    .eq('is_active', true)
-    .eq('oposicion_slug', 'policia-nacional')
-
-  if (category && category !== 'all') {
-    query = query.eq('category', category)
+  let data: SpellingQuestionRow[] = []
+  try {
+    const res = await getAdminDb().execute(sql`
+      SELECT id, question_text, options, category
+      FROM spelling_questions
+      WHERE is_active = true AND oposicion_slug = 'policia-nacional'${catFilter}
+      LIMIT ${poolSize}
+    `)
+    data = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as SpellingQuestionRow[]
+  } catch (error) {
+    console.error('❌ [Spelling] Error fetching questions:', (error as Error)?.message)
+    return []
   }
 
-  // Fetch a pool to randomize from
-  const poolSize = Math.min(count * 5, 200)
-  const { data, error } = await query.limit(poolSize)
-
-  if (error || !data || data.length === 0) {
-    console.error('❌ [Spelling] Error fetching questions:', error?.message)
+  if (data.length === 0) {
     return []
   }
 

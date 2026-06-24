@@ -4,6 +4,7 @@
 import { useState, useEffect, MouseEvent } from 'react'
 import type { LawSection } from '@/lib/teoriaFetchers'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
 import SectionFilterModal from '@/components/SectionFilterModal'
@@ -15,7 +16,6 @@ import {
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
   user: { id: string; email?: string } | null
-  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
 }
 
 interface LawArticle {
@@ -79,7 +79,7 @@ const VIRTUAL_LAW_VIDEOS: Record<string, string> = {
 }
 
 export default function LawArticlesClient({ params, searchParams }: LawArticlesClientProps) {
-  const { user, supabase } = useAuth() as AuthContextValue
+  const { user } = useAuth() as AuthContextValue
   const [lawData, setLawData] = useState<LawData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [problematicArticles, setProblematicArticles] = useState<string[]>([])
@@ -114,25 +114,22 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
   // Cargar oposición del usuario
   useEffect(() => {
     async function loadUserOposicion() {
-      if (!user || !supabase) return
-      
+      if (!user) return
+
       try {
-        const { data: profile, error } = await supabase
-          .from('user_profiles')
-          .select('target_oposicion')
-          .eq('id', user.id)
-          .single()
-        
-        if (!error && profile?.target_oposicion) {
+        const headers = await getAuthHeaders()
+        const res = await fetch('/api/v2/onboarding/status', { headers })
+        const profile = res.ok ? (await res.json()).profile : null
+        if (profile?.target_oposicion) {
           setUserOposicion(profile.target_oposicion as string)
         }
       } catch (err) {
         console.error('Error cargando oposición del usuario:', err)
       }
     }
-    
+
     loadUserOposicion()
-  }, [user, supabase])
+  }, [user])
 
   // Cargar datos de la ley
   useEffect(() => {
