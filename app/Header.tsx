@@ -16,6 +16,7 @@ import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useAIChat } from '../contexts/AIChatContext'
 import { getOposicion, ALL_OPOSICION_SLUGS, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
@@ -65,7 +66,7 @@ export default function HeaderES() {
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
 
-  const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
+  const { user, loading: authLoading, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
   const { openChat } = useAIChat()
   const isOnAdminPage = pathname?.startsWith('/admin') ?? false
@@ -92,28 +93,22 @@ export default function HeaderES() {
   // 🆕 CARGAR RACHA DEL USUARIO
   useEffect(() => {
     async function loadUserStreak() {
-      if (!user || !supabase) {
+      if (!user) {
         setUserStreak(0)
         return
       }
 
       try {
-        // ⚡ CONSULTA SÚPER OPTIMIZADA - Una sola query simple
-        // Usar maybeSingle() para evitar error 406 cuando no existe el registro
-        const { data: streakData, error: streakError } = await supabase
-          .from('user_streaks')
-          .select('current_streak')
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        if (streakError) {
-          console.warn('Error loading user streak:', streakError)
+        // Endpoint agnóstico (Drizzle, user_id del token). Fase C1.
+        const headers = await getAuthHeaders()
+        const res = await fetch('/api/v2/streak', { headers })
+        if (!res.ok) {
+          console.warn('Error loading user streak:', res.status)
           setUserStreak(0)
           return
         }
-
         // Si no hay datos (usuario nuevo), la racha es 0
-        setUserStreak(streakData?.current_streak || 0)
+        setUserStreak((await res.json()).currentStreak || 0)
       } catch (error) {
         console.warn('Error calculating user streak:', error)
         setUserStreak(0)
@@ -129,13 +124,13 @@ export default function HeaderES() {
     }
     window.addEventListener('refreshUserStreak', handleRefreshStreak)
     return () => window.removeEventListener('refreshUserStreak', handleRefreshStreak)
-  }, [user, supabase])
+  }, [user])
 
 
   // Verificar si es admin
   useEffect(() => {
     async function checkAdminStatus() {
-      if (!user || !supabase) {
+      if (!user) {
         setIsAdmin(false)
         setAdminLoading(false)
         return
@@ -150,7 +145,7 @@ export default function HeaderES() {
     if (!authLoading) {
       checkAdminStatus()
     }
-  }, [user, supabase, authLoading])
+  }, [user, authLoading])
 
   // 🆕 CARGAR EXÁMENES Y TESTS PENDIENTES
   useEffect(() => {
@@ -295,24 +290,20 @@ export default function HeaderES() {
   // 🆕 VERIFICAR CONVERSACIONES DE FEEDBACK PENDIENTES (Sistema BD)
   useEffect(() => {
     async function checkPendingFeedbacks() {
-      if (!user || !supabase || !isAdmin) {
+      if (!user || !isAdmin) {
         setPendingFeedbacks(0)
         return
       }
 
       try {
-        // Consultar conversaciones abiertas no vistas por admin
-        const { data, error } = await supabase
-          .from('feedback_conversations')
-          .select('id')
-          .eq('status', 'open')
-          .is('admin_viewed_at', null)
-
-        if (error) {
-          console.error('Error verificando feedbacks pendientes:', error)
+        // Endpoint admin (requireAdmin + Drizzle): conversaciones abiertas no vistas.
+        const headers = await getAuthHeaders()
+        const res = await fetch('/api/v2/admin/feedback/open-count', { headers })
+        if (!res.ok) {
+          console.error('Error verificando feedbacks pendientes:', res.status)
           setPendingFeedbacks(0)
         } else {
-          const unviewedCount = data?.length || 0
+          const unviewedCount = (await res.json()).count || 0
           if (unviewedCount > 0) {
             console.log(`🔔 Header: ${unviewedCount} conversaciones pendientes`)
           }
@@ -331,7 +322,7 @@ export default function HeaderES() {
       return () => clearInterval(interval)
     }
     return undefined
-  }, [user, supabase, authLoading, isAdmin, isOnAdminPage])
+  }, [user, authLoading, isAdmin, isOnAdminPage])
 
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = (): NavLink[] => {

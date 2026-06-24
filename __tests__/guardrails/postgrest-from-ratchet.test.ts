@@ -44,8 +44,9 @@ const RPC = /\.rpc\(/g
 //   C1#16: components/OposicionDetector.tsx (4 .from user_profiles → reusa GET status + POST oposicion/assign UPSERT-as-UPDATE) → 86 / 27.
 //   C1#17: components/AvatarChanger.tsx (3 .from public_user_profiles update/upsert → POST avatar/public-profile UPDATE-only) → 83 / 26.
 //   C1#18: components/ArticleModal.tsx (3 .from → reusa GET onboarding/status + POST /api/feedback existente -doble insert-) → 80 / 25.
-const BASELINE_SITES = 80
-const BASELINE_FILES = 25
+//   C1#19: app/Header.tsx (2 .from: user_streaks user-scoped + feedback_conversations admin → GET /api/v2/streak + GET /api/v2/admin/feedback/open-count requireAdmin) → 78 / 24.
+const BASELINE_SITES = 78
+const BASELINE_FILES = 24
 // Trinquete .rpc( de cliente (baseline al añadirlo: 17, tras migrar los 2 de OnboardingModal).
 const BASELINE_RPC = 17
 
