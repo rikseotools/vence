@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -53,7 +54,7 @@ export default function ArticleModal({
   options = null,
   userOposicion: userOposicionProp = null,
 }: ArticleModalProps) {
-  const { user, supabase } = useAuth()
+  const { user } = useAuth()
   const [articleData, setArticleData] = useState<ArticleData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,16 +68,13 @@ export default function ArticleModal({
     }
 
     async function loadUserOposicion() {
-      if (!user || !supabase) return
+      if (!user) return
 
       try {
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('target_oposicion')
-          .eq('id', user.id)
-          .single()
-
-        if (!profileError && profile?.target_oposicion) {
+        const headers = await getAuthHeaders()
+        const res = await fetch('/api/v2/onboarding/status', { headers })
+        const profile = res.ok ? (await res.json()).profile : null
+        if (profile?.target_oposicion) {
           setUserOposicion(profile.target_oposicion)
         }
       } catch (err) {
@@ -85,7 +83,7 @@ export default function ArticleModal({
     }
 
     loadUserOposicion()
-  }, [user, supabase, userOposicionProp])
+  }, [user, userOposicionProp])
 
   // Cargar datos del artículo desde la base de datos
   useEffect(() => {
@@ -385,36 +383,30 @@ export default function ArticleModal({
 • **Oposición:** ${userOposicion || 'No establecida'}
 • **Fecha:** ${new Date().toISOString()}`
 
-                        const { data: feedbackResult, error: submitError } = await supabase
-                          .from('user_feedback')
-                          .insert({
-                            user_id: user?.id || null,
+                        // Endpoint tipado (Drizzle): crea user_feedback + la
+                        // conversación automáticamente. Fase C1 (agnóstico).
+                        const headers = await getAuthHeaders()
+                        const submitRes = await fetch('/api/feedback', {
+                          method: 'POST',
+                          headers: { ...headers, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            userId: user?.id || null,
                             email: user?.email || null,
                             type: 'bug',
                             message: feedbackMessage,
                             url: window.location.href,
-                            user_agent: navigator.userAgent,
+                            userAgent: navigator.userAgent,
                             viewport: `${window.innerWidth}x${window.innerHeight}`,
                             referrer: document.referrer || null,
                             status: 'pending',
                             priority: 'high'
                           })
-                          .select()
+                        })
 
-                        if (submitError) {
-                          console.error('Error enviando feedback:', submitError)
+                        if (!submitRes.ok || !(await submitRes.json()).success) {
+                          console.error('Error enviando feedback:', submitRes.status)
                           alert('Error enviando el reporte. Por favor, inténtalo manualmente.')
                           return
-                        }
-
-                        if (feedbackResult?.[0]) {
-                          await supabase
-                            .from('feedback_conversations')
-                            .insert({
-                              feedback_id: feedbackResult[0].id,
-                              user_id: user?.id || null,
-                              status: 'waiting_admin'
-                            })
                         }
 
                         alert('✅ Error reportado automáticamente. Nos pondremos en contacto contigo pronto.')
