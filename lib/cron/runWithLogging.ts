@@ -14,6 +14,16 @@
 //   })
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
+
+// AGNÓSTICO (Fase C1): el logging de cron_runs va por Drizzle (getAdminDb, pool
+// max:12 — NO el getDb max:1 que satura) en vez de supabase.rpc. El param `supabase`
+// se mantiene en la firma (los crons lo siguen usando para su propio trabajo);
+// runWithLogging ya no lo usa para el logging.
+function rowsOf(res: unknown): any[] {
+  return (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as any[]
+}
 
 export interface CronResult {
   processed?: number
@@ -50,13 +60,9 @@ export async function runCronWithLogging(
 
   // 1. Intentar abrir log de start (best-effort, no bloquea si falla)
   try {
-    const { data, error } = await supabase.rpc('cron_run_start', {
-      p_cron_name: cronName,
-      p_metadata: {},
-    })
-    if (!error && data) {
-      runId = data as string
-    }
+    const startRes = await getAdminDb().execute(sql`SELECT cron_run_start(${cronName}, '{}'::jsonb) AS run_id`)
+    const rid = rowsOf(startRes)[0]?.run_id
+    if (rid) runId = rid as string
   } catch {
     // Si no podemos loggear el start, continuamos igualmente
   }
@@ -69,13 +75,10 @@ export async function runCronWithLogging(
     // 3. Cerrar log con resultado
     if (runId) {
       try {
-        await supabase.rpc('cron_run_end', {
-          p_run_id: runId,
-          p_status: result.status,
-          p_processed: result.processed ?? null,
-          p_error_message: result.errorMessage ?? null,
-          p_metadata: result.metadata ?? null,
-        })
+        await getAdminDb().execute(sql`
+          SELECT cron_run_end(${runId}::uuid, ${result.status}, ${result.processed ?? null},
+            ${result.errorMessage ?? null}, ${result.metadata ? JSON.stringify(result.metadata) : null}::jsonb)
+        `)
       } catch {
         // Silently ignore — ya loggeado en respuesta del endpoint
       }
@@ -97,13 +100,10 @@ export async function runCronWithLogging(
     // 3b. Cerrar log con error
     if (runId) {
       try {
-        await supabase.rpc('cron_run_end', {
-          p_run_id: runId,
-          p_status: 'error',
-          p_processed: null,
-          p_error_message: errorMessage,
-          p_metadata: { stack: err instanceof Error ? err.stack?.slice(0, 500) : null },
-        })
+        await getAdminDb().execute(sql`
+          SELECT cron_run_end(${runId}::uuid, 'error', ${null},
+            ${errorMessage}, ${JSON.stringify({ stack: err instanceof Error ? err.stack?.slice(0, 500) : null })}::jsonb)
+        `)
       } catch {
         // Silently ignore
       }
