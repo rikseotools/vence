@@ -448,6 +448,7 @@ const supabase = createClient(
 - [ ] Los artículos incluyen rangos completos de capítulos relevantes (no solo los que tienen preguntas)
 - [ ] El conteo de preguntas mostrado en la página es razonable para el tema
 - [ ] Si un tema similar existe en varias oposiciones, cada una tiene su propio scope adaptado a su epígrafe
+- [ ] **En temas de temario implícito/virtual (informática, ofimática, materias transversales), verificar el set de leyes contra la oposición hermana canónica (Vector 2 / Vector 6) — NO fiarse del verde de `audit:epigrafe`, que no ve leyes virtuales**
 
 ## Detección de Mismatches Epígrafe ↔ Topic Scope
 
@@ -662,6 +663,24 @@ Al investigar un feedback de usuario, distinguir desde el principio si es:
 
 Ver también `docs/procedures/gestionar-feedback-bug.md` para metodología general de investigación.
 
+### Vector 6 — Punto ciego: leyes virtuales y scope parcial (post-24/06/2026)
+
+`audit:epigrafe` y el script bulk (Vector 4) **NO cazan** la situación más traicionera: un tema con scope **parcial** al que le falta una **ley dedicada o virtual** que cubre un concepto entero del epígrafe. Por qué se escapa:
+
+1. **El detector casa leyes por número/nombre/acrónimo.** Las **leyes virtuales** (`Informática Básica`, `La Red Internet`, `Windows 11`, `Word 365`, `Outlook 365`…) no tienen número de BOE → **son invisibles para `audit:epigrafe`**. Un tema puede servir **0 preguntas de un concepto entero del epígrafe y pasar el audit en verde**.
+2. **Vector 4 solo marca `sinScope` (sin ninguna entrada) o `leyMismatch` (el título dice "Ley X/AAAA" y no está).** Un tema con scope parcial + una ley virtual/dedicada ausente **cuyo nombre no aparece en el título** se escapa de ambos.
+
+**El catch barato y fiable es Vector 2 (comparación con hermanas).** Para temas de **informática/ofimática y materias transversales**, comparar el *conjunto de leyes* del scope contra la oposición hermana canónica (normalmente `auxiliar_administrativo_estado` o `administrativo_estado`). Un outlier al que le falta una ley es gap casi seguro.
+
+**Script — para un concepto/ley, qué temas la tienen en scope (encontrar outliers):**
+```js
+const LAW_ID = '...' // p.ej. la ley virtual "La Red Internet"
+const { data: sc } = await s.from('topic_scope').select('topic_id').eq('law_id', LAW_ID)
+// resolver position_type+topic_number de cada topic_id → si 29 oposiciones la tienen y la tuya no, es gap
+```
+
+**Regla:** en cualquier tema de temario implícito o con ley virtual, el verde de `audit:epigrafe` **no es garantía**. Verificar por contenido (¿cada concepto del epígrafe tiene artículos que lo sirven?) Y por hermanas (¿qué leyes tienen las demás oposiciones para este mismo concepto?).
+
 ## Notas de incidentes reales
 
 ### 2026-04-13 — Asturias T7 mapeado a TUE
@@ -694,6 +713,19 @@ Ver también `docs/procedures/gestionar-feedback-bug.md` para metodología gener
   console.log('Art 1:', data?.content?.slice(0, 200));
   // ¿Habla del tema esperado?
   ```
+
+### 2026-06-24 — Aragón aux. admin.: 4 gaps invisibles al detector
+
+- **Origen**: feedback de usuaria (Isabel) — "La Red Internet la nombráis en el tema, pero no veo la teoría ni sé si he hecho preguntas".
+- **Diagnóstico**: el T16 (Informática básica) tenía en scope la ley virtual `Informática Básica` pero le faltaba la ley virtual `La Red Internet` (10 arts, **574 preguntas que servían 0**), pese a estar literal en el epígrafe. La usuaria llevaba 1000 preguntas respondidas y **0 de Red Internet**.
+- **Por qué el audit pasó en verde**: `La Red Internet` es ley virtual (sin número) → invisible a `audit:epigrafe`. El tema tenía scope parcial → invisible a Vector 4.
+- **Cómo se cazó**: Vector 2 — `La Red Internet` estaba en scope de **29 temas** de otras oposiciones; Aragón era el único outlier que la omitía.
+- **Auditoría completa posterior** (los 20 temas, revisión semántica + por contenido) destapó **3 gaps más** del mismo patrón "ley existe en BD, está en el epígrafe, falta en scope", todos con el audit en verde:
+  - **T2** "comarcalización de Aragón" → faltaba `DL 1/2006 Comarcalización Aragón`.
+  - **T5** "el Consejo de Estado" → faltaba `LO 3/1980` (el scope solo tenía el Consejo Consultivo de Aragón).
+  - **T13** "Régimen General y Mutualismo Administrativo" → faltaban `RDL 8/2015 LGSS` (set acotado) + `RD 375/2003 Mutualismo`.
+- **Fix**: INSERT de cada ley en el scope del tema correspondiente + revalidación de cache (`purge-cache` de la ruta + `revalidate-temario`) + verificación end-to-end (teoría renderiza + endpoint de preguntas sirve).
+- **Lección**: una oposición entera puede tener varios temas con un concepto del epígrafe **sin servir nada** y pasar `audit:epigrafe` limpia. En temas de temario implícito/virtual la verificación obligatoria es **por contenido + Vector 2 (hermanas)**, no el verde del detector. Ver Vector 6.
 
 ## Lecciones aprendidas (post-abril 2026)
 
