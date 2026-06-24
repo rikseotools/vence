@@ -791,6 +791,14 @@ genera el render → no hay forma de que dos vistas diverjan.
 - Si la parte tiene un único sub-bloque (ej. "30 preguntas Bloque II Ofimática"), usa `breakdown: [{ label: 'Bloque II Ofimática', count: 30 }]` — el helper omite paréntesis cuando hay un solo item.
 - `description` (string legacy) sigue aceptándose para entries antiguas no migradas, pero **toda convocatoria nueva debe usar el formato estructurado**.
 
+> 🚨 **`note` SE RENDERIZA AL USUARIO — `internalNote` NO. No confundirlos (incidente 24/06/2026).**
+>
+> El campo `note` de la convocatoria lo pinta `TestHubClient` en la tarjeta del examen → **lo ve el opositor**. NUNCA metas en `note` estado de QA ni trazabilidad de import: "verificado por IA", "X/Y importadas", "pendiente importar 2º ejercicio", "N preguntas retiradas", `content_hash`/dedup, fuentes de scraping (`repasandosinpapeles.com`, `mjusticia.gob.es`…), "needs_human", fechas estimadas internas, etc. En `note` SOLO info de cara al opositor: plazas, turno, número/tipo de ejercicios.
+>
+> Todo el detalle interno (recuento real importado/verificado, pendientes, fuentes, decisiones de QA) va en **`internalNote`** — campo opcional del schema que **ninguna vista renderiza**. Sirve para trazabilidad sin exponerla.
+>
+> El 24/06/2026 había 8 convocatorias (aux-carm, Madrid, SCS Canarias, Extremadura, Auxilio Judicial, Zaragoza, admin-carm) usando `note` como bitácora interna; se añadió `internalNote` al schema y se migró todo el detalle. Antes de añadir/editar una convocatoria, relee tu `note` y pregúntate: *"¿quiero que el opositor lea esto?"* Si no → va en `internalNote`.
+
 **Test de coherencia:**
 
 `__tests__/config/officialExamsCoherence.test.ts` ejecuta en CI:
