@@ -52,8 +52,9 @@ const RPC = /\.rpc\(/g
 //   C1#24: hooks/useAdminNotifications.ts (3 .from admin: 2 embeds feedback + COUNT rate-limit → GET /api/v2/admin/pending-feedback-counts requireAdmin, lógica needsAttention portada) → 69/21.
 //   C1#25: app/admin/conversiones/page.tsx (3 .from admin: impressions embed + 2 UPDATE upgrade_messages → GET impressions + POST update, requireAdmin) → 66/20.
 //   C1#26: 2 ortografia (spelling_questions, server-component → Drizzle getAdminDb in-place) + teoria/[law] (user_profiles target_oposicion → reusa GET onboarding/status) → 63/17.
-const BASELINE_SITES = 63
-const BASELINE_FILES = 17
+//   C1#27: app/soporte (UPDATE notification_logs por conversación → POST /api/v2/notifications/mark-conversation-read) → 62/16.
+const BASELINE_SITES = 62
+const BASELINE_FILES = 16
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit → 15; -1 MotivationalMessage → 14; -1 comentario UserProfileModal → 13).
 const BASELINE_RPC = 13
 

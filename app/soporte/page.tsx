@@ -370,18 +370,18 @@ function SoporteContent() {
       loadInlineChatMessages(conversationId)
       setActiveTab('conversations')
 
-      // Marcar notificaciones como leídas
-      supabase
-        .from('notification_logs')
-        .update({ opened_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .is('opened_at', null)
-        .contains('context_data', { conversation_id: conversationId })
-        .then(({ error }: { error: any }) => {
-          if (!error) {
-            window.dispatchEvent(new Event('notifications-updated'))
-          }
-        })
+      // Marcar notificaciones como leídas (endpoint agnóstico, user_id del token)
+      ;(async () => {
+        try {
+          const headers = await getAuthHeaders()
+          const res = await fetch('/api/v2/notifications/mark-conversation-read', {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversationId }),
+          })
+          if (res.ok) window.dispatchEvent(new Event('notifications-updated'))
+        } catch { /* best-effort */ }
+      })()
     }
   }, [searchParams, user, supabase, loadInlineChatMessages])
 
