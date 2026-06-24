@@ -48,10 +48,11 @@ const RPC = /\.rpc\(/g
 //   C1#20: lib/notifications/motivationalAnalyzer.ts (2 .from tests → GET /api/v2/motivational/recent-tests; analyzer ya no recibe supabase) + borrado bloque dispute COMENTADO en useIntelligentNotifications → 77 / 24. (lib/ no cuenta en el ratchet; baja por el comentado.)
 //   C1#21: hooks/useDailyQuestionLimit.ts (2 .rpc → GET status + POST increment) + lib/services/conversionTracker (1 .rpc track_conversion_event → POST /api/v2/conversion-event, firmas sin supabase; callers premium/UpgradeLimitModal actualizados) → RPC 17→15.
 //   C1#22: components/MotivationalMessage.js (1 .rpc get_personalized_message + 2 .from user_message_interactions → GET /api/v2/motivational-message + POST .../interaction) → 75/23, RPC 15→14.
-const BASELINE_SITES = 75
-const BASELINE_FILES = 23
-// Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit → 15; -1 MotivationalMessage → 14).
-const BASELINE_RPC = 14
+//   C1#23: components/UserProfileModal.js (3 .from CROSS-USER → GET /api/v2/user-public-profile con gate de privacidad: tests solo self/admin) + comentario .rpc deflactado → 72/22, RPC 14→13.
+const BASELINE_SITES = 72
+const BASELINE_FILES = 22
+// Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit → 15; -1 MotivationalMessage → 14; -1 comentario UserProfileModal → 13).
+const BASELINE_RPC = 13
 
 function walk(rel: string): string[] {
   let out: string[] = []

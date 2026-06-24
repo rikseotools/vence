@@ -1,20 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { getOposicionById } from '@/lib/config/oposiciones'
 
 export default function UserProfileModal({ isOpen, onClose, userId, userName }) {
-  const { supabase } = useAuth()
   const [loading, setLoading] = useState(true)
   const [profileData, setProfileData] = useState(null)
   const [todayActivity, setTodayActivity] = useState(null)
 
   useEffect(() => {
-    if (isOpen && userId && supabase) {
+    if (isOpen && userId) {
       console.log('🔍 Cargando perfil de usuario:', userId)
       loadUserProfile()
     }
-  }, [isOpen, userId, supabase])
+  }, [isOpen, userId])
 
   // Prevenir scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -29,26 +28,40 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
   const loadUserProfile = async () => {
     setLoading(true)
     try {
-      // 1. Cargar datos básicos del perfil desde public_user_profiles (accesible para todos)
-      const { data: publicProfile, error: publicProfileError } = await supabase
-        .from('public_user_profiles')
-        .select('display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
-        .eq('id', userId)
-        .maybeSingle() // Usar maybeSingle en lugar de single para evitar error si no existe
+      // 1+1.5+3. Perfil público + avatar settings + tests de hoy en UN endpoint
+      // agnóstico (Drizzle). 🔒 Los tests SOLO se devuelven si el viewer es el dueño
+      // o admin (el endpoint replica la RLS de `tests`); para otros viewers llega [].
+      // Fechas de hoy del cliente para preservar el corte de medianoche por tz.
+      const todayBoundary = new Date()
+      todayBoundary.setHours(0, 0, 0, 0)
+      const tomorrowBoundary = new Date(todayBoundary)
+      tomorrowBoundary.setDate(tomorrowBoundary.getDate() + 1)
 
-      if (publicProfileError && publicProfileError.code !== 'PGRST116') {
-        console.error('Error loading public profile:', publicProfileError)
+      let publicProfile = null
+      let avatarSettings = null
+      let todayTests = []
+      try {
+        const headers = await getAuthHeaders()
+        const qs = new URLSearchParams({
+          userId,
+          todayStart: todayBoundary.toISOString(),
+          todayEnd: tomorrowBoundary.toISOString(),
+        })
+        const res = await fetch(`/api/v2/user-public-profile?${qs}`, { headers })
+        if (res.ok) {
+          const body = await res.json()
+          publicProfile = body.publicProfile
+          avatarSettings = body.avatarSettings
+          todayTests = body.todayTests || []
+        } else {
+          console.error('Error loading public profile:', res.status)
+        }
+      } catch (profileError) {
+        console.error('Error loading public profile:', profileError)
       }
 
-      // 1.5. Cargar avatar automático desde user_avatar_settings
-      const { data: avatarSettings } = await supabase
-        .from('user_avatar_settings')
-        .select('current_emoji, current_profile, mode')
-        .eq('user_id', userId)
-        .maybeSingle()
-
       // 2. Cargar estadísticas generales via API (usa user_stats_summary, <1ms)
-      // Antes usaba supabase.rpc('get_user_public_stats') que hacía count(*) sobre
+      // Antes usaba una RPC get_user_public_stats que hacía count(*) sobre
       // test_questions (11s para heavy users → 504 → cascada de saturación).
       let stats = null
       try {
@@ -71,18 +84,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         })
       }
 
-      // 3. Cargar tests detallados de hoy para extraer leyes
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-
-      const { data: todayTests } = await supabase
-        .from('tests')
-        .select('title, test_type, is_completed, score, total_questions')
-        .eq('user_id', userId)
-        .gte('created_at', today.toISOString())
-        .lt('created_at', tomorrow.toISOString())
+      // 3. (los tests de hoy ya vienen del endpoint user-public-profile arriba)
 
       // 3.5. Método de estudio: derivado de tests completados.
       // La API ya no devuelve mastered_topics (era cálculo on-the-fly de
