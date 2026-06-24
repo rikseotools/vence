@@ -3,9 +3,7 @@
 // =====================================================
 // Sistema que diferencia dificultad global vs personal
 // Solo primeras respuestas afectan dificultad global
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClientAny = any
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type BaseDifficulty = 'easy' | 'medium' | 'hard'
 
@@ -22,29 +20,6 @@ export interface DifficultyInfo {
   isAdaptive: boolean
 }
 
-interface FirstAttemptsStats {
-  totalAttempts: number
-  correctAttempts: number
-  accuracy: number
-  avgTime: number
-  isStatisticallySignificant: boolean
-}
-
-interface DifficultyStats {
-  id: string
-  difficulty: BaseDifficulty | string
-  global_difficulty: number | null
-  difficulty_sample_size: number | null
-  last_difficulty_update: string | null
-  estimated_time_seconds: number | null
-  firstAttemptsStats: FirstAttemptsStats | null
-  difficultyEvolution: {
-    baseDifficulty: number
-    adaptiveDifficulty: number | null
-    hasEvolved: boolean
-  }
-}
-
 interface DifficultyDisplay {
   displayText: string
   tooltip: string
@@ -53,30 +28,42 @@ interface DifficultyDisplay {
   icon: string
 }
 
-interface RebalanceResult {
-  needsRebalance: boolean
-  reason: string
-  message: string
-  suggestedAction?: string
+
+// Construye un DifficultyInfo de fallback a partir de una dificultad base ('easy'|...).
+function buildFallbackDifficulty(questionId: string, baseDifficulty: string | null): DifficultyInfo {
+  const base = baseDifficulty || 'medium'
+  const numericDifficulty = convertBaseDifficultyToNumeric(base)
+  return {
+    questionId,
+    baseDifficulty: base,
+    globalDifficulty: null,
+    personalDifficulty: null,
+    sampleSize: 0,
+    effectiveDifficulty: numericDifficulty,
+    recommendation: 'fallback',
+    difficultyLevel: getDifficultyLevel(numericDifficulty),
+    difficultyColor: getDifficultyColor(numericDifficulty),
+    isAdaptive: false
+  }
 }
 
-export async function getDifficultyInfo(supabase: SupabaseClientAny, questionId: string, userId: string | null = null): Promise<DifficultyInfo> {
+// AGNÓSTICO (Fase C1): la dificultad efectiva (rpc + fallback) se calcula en
+// GET /api/v2/psychometric/difficulty (user_id del token). Esta función solo
+// formatea el resultado para el cliente con los helpers puros de presentación.
+export async function getDifficultyInfo(questionId: string): Promise<DifficultyInfo> {
   try {
-    console.log('🎯 Getting difficulty info for question:', questionId)
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/v2/psychometric/difficulty?questionId=${encodeURIComponent(questionId)}`, { headers })
+    if (!res.ok) return buildFallbackDifficulty(questionId, null)
 
-    const { data, error } = await supabase
-      .rpc('get_effective_psychometric_difficulty', {
-        p_question_id: questionId,
-        p_user_id: userId
-      })
+    const json = await res.json()
+    const data = json?.rpc as {
+      base_difficulty: string; global_difficulty: number | null; personal_difficulty: number | null
+      sample_size: number; effective_difficulty: number; recommendation: string
+    } | null
 
-    if (error) {
-      console.error('❌ Error getting difficulty info:', error)
-      // Fallback: obtener dificultad base
-      return await getFallbackDifficulty(supabase, questionId)
-    }
+    if (!data) return buildFallbackDifficulty(questionId, json?.fallbackBaseDifficulty ?? null)
 
-    console.log('✅ Difficulty info:', data)
     return {
       questionId,
       baseDifficulty: data.base_difficulty,
@@ -91,44 +78,7 @@ export async function getDifficultyInfo(supabase: SupabaseClientAny, questionId:
     }
   } catch (err) {
     console.error('❌ Error in getDifficultyInfo:', err)
-    return await getFallbackDifficulty(supabase, questionId)
-  }
-}
-
-async function getFallbackDifficulty(supabase: SupabaseClientAny, questionId: string): Promise<DifficultyInfo> {
-  try {
-    const { data, error } = await supabase
-      .from('psychometric_questions')
-      .select('difficulty')
-      .eq('id', questionId)
-      .single()
-
-    if (error) throw error
-
-    const numericDifficulty = convertBaseDifficultyToNumeric(data.difficulty)
-
-    return {
-      questionId,
-      baseDifficulty: data.difficulty,
-      globalDifficulty: null,
-      personalDifficulty: null,
-      sampleSize: 0,
-      effectiveDifficulty: numericDifficulty,
-      recommendation: 'fallback',
-      difficultyLevel: getDifficultyLevel(numericDifficulty),
-      difficultyColor: getDifficultyColor(numericDifficulty),
-      isAdaptive: false
-    }
-  } catch (err) {
-    console.error('❌ Error in fallback difficulty:', err)
-    return {
-      questionId,
-      baseDifficulty: 'medium',
-      effectiveDifficulty: 50.0,
-      difficultyLevel: 'Medio',
-      difficultyColor: 'text-yellow-600',
-      isAdaptive: false
-    }
+    return buildFallbackDifficulty(questionId, null)
   }
 }
 
@@ -165,78 +115,18 @@ export function getDifficultyIcon(numericDifficulty: number): string {
   return '⚫'
 }
 
-export async function isFirstAttempt(supabase: SupabaseClientAny, userId: string, questionId: string): Promise<boolean> {
+// AGNÓSTICO (Fase C1): primera respuesta del usuario del TOKEN vía
+// GET /api/v2/psychometric/first-attempt (sustituye supabase.from de cliente).
+export async function isFirstAttempt(questionId: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .from('psychometric_first_attempts')
-      .select('user_id')
-      .eq('user_id', userId)
-      .eq('question_id', questionId)
-      .limit(1)
-
-    if (error) {
-      console.error('❌ Error checking first attempt:', error)
-      return true // En caso de error, asumir primera vez
-    }
-
-    // Si no hay datos, es primera vez
-    return !data || data.length === 0
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/v2/psychometric/first-attempt?questionId=${encodeURIComponent(questionId)}`, { headers })
+    if (!res.ok) return true // En caso de error, asumir primera vez
+    const json = await res.json()
+    return json?.isFirstAttempt !== false
   } catch (err) {
     console.error('❌ Error checking first attempt:', err)
     return true // En caso de error, asumir primera vez
-  }
-}
-
-export async function getQuestionDifficultyStats(supabase: SupabaseClientAny, questionId: string): Promise<DifficultyStats | null> {
-  try {
-    const { data, error } = await supabase
-      .from('psychometric_questions')
-      .select(`
-        id,
-        difficulty,
-        global_difficulty,
-        difficulty_sample_size,
-        last_difficulty_update,
-        estimated_time_seconds
-      `)
-      .eq('id', questionId)
-      .single()
-
-    if (error) throw error
-
-    // Obtener estadísticas de primeras respuestas
-    const { data: firstAttempts, error: attemptsError } = await supabase
-      .from('psychometric_first_attempts')
-      .select('is_correct, time_taken_seconds')
-      .eq('question_id', questionId)
-
-    let firstAttemptsStats: FirstAttemptsStats | null = null
-    if (!attemptsError && firstAttempts) {
-      const totalAttempts = firstAttempts.length
-      const correctAttempts = firstAttempts.filter((a: { is_correct: boolean }) => a.is_correct).length
-      const avgTime = firstAttempts.reduce((sum: number, a: { time_taken_seconds?: number }) => sum + (a.time_taken_seconds || 0), 0) / totalAttempts
-
-      firstAttemptsStats = {
-        totalAttempts,
-        correctAttempts,
-        accuracy: totalAttempts > 0 ? (correctAttempts / totalAttempts) * 100 : 0,
-        avgTime: Math.round(avgTime),
-        isStatisticallySignificant: totalAttempts >= 10
-      }
-    }
-
-    return {
-      ...data,
-      firstAttemptsStats,
-      difficultyEvolution: {
-        baseDifficulty: convertBaseDifficultyToNumeric(data.difficulty),
-        adaptiveDifficulty: data.global_difficulty,
-        hasEvolved: data.global_difficulty !== null && Math.abs(data.global_difficulty - convertBaseDifficultyToNumeric(data.difficulty)) > 10
-      }
-    }
-  } catch (err) {
-    console.error('❌ Error getting difficulty stats:', err)
-    return null
   }
 }
 
@@ -281,51 +171,3 @@ export function formatDifficultyDisplay(difficultyInfo: DifficultyInfo): Difficu
   }
 }
 
-export function analyzeDifficultyRebalance(stats: DifficultyStats | null): RebalanceResult | null {
-  if (!stats || !stats.firstAttemptsStats) return null
-
-  const { firstAttemptsStats, difficulty, global_difficulty } = stats
-  const { totalAttempts, accuracy, isStatisticallySignificant } = firstAttemptsStats
-
-  if (!isStatisticallySignificant) {
-    return {
-      needsRebalance: false,
-      reason: 'insufficient_data',
-      message: `Necesita ${10 - totalAttempts} respuestas más para análisis confiable.`
-    }
-  }
-
-  const baseDifficultyNumeric = convertBaseDifficultyToNumeric(difficulty)
-  const adaptiveDifficulty = global_difficulty || baseDifficultyNumeric
-
-  // Análisis de discrepancias
-  const accuracyDiscrepancy = Math.abs(accuracy - 70) // 70% es el target ideal
-
-  if (accuracyDiscrepancy > 20) {
-    return {
-      needsRebalance: true,
-      reason: accuracy > 90 ? 'too_easy' : 'too_hard',
-      message: accuracy > 90
-        ? `Pregunta muy fácil: ${accuracy.toFixed(1)}% de aciertos. Considerar aumentar dificultad.`
-        : `Pregunta muy difícil: ${accuracy.toFixed(1)}% de aciertos. Considerar reducir dificultad.`,
-      suggestedAction: accuracy > 90 ? 'increase_base_difficulty' : 'decrease_base_difficulty'
-    }
-  }
-
-  const difficultyDiscrepancy = Math.abs(adaptiveDifficulty - baseDifficultyNumeric)
-
-  if (difficultyDiscrepancy > 25) {
-    return {
-      needsRebalance: true,
-      reason: 'evolved_significantly',
-      message: `La dificultad ha evolucionado significativamente (${baseDifficultyNumeric}→${adaptiveDifficulty.toFixed(1)}). Considerar actualizar dificultad base.`,
-      suggestedAction: 'update_base_difficulty'
-    }
-  }
-
-  return {
-    needsRebalance: false,
-    reason: 'balanced',
-    message: 'La dificultad está bien balanceada.'
-  }
-}

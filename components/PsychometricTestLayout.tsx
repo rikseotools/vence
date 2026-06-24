@@ -249,12 +249,12 @@ export default function PsychometricTestLayout({
       try {
         console.log('🎯 Loading difficulty info for question:', currentQ.id)
         
-        // Cargar información de dificultad
-        const diffInfo = await getDifficultyInfo(supabase, currentQ.id, user.id)
+        // Cargar información de dificultad (user_id del token vía endpoint agnóstico)
+        const diffInfo = await getDifficultyInfo(currentQ.id)
         setDifficultyInfo(diffInfo)
-        
+
         // Verificar si es primera vez para este usuario
-        const firstTime = await isFirstAttempt(supabase, user.id, currentQ.id)
+        const firstTime = await isFirstAttempt(currentQ.id)
         setIsFirstTime(firstTime)
         
         console.log('✅ Difficulty info loaded:', diffInfo)
