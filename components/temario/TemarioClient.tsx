@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
-import { slugToPositionType } from '@/lib/config/oposiciones'
+import { slugToPositionType, getOposicionByPositionType } from '@/lib/config/oposiciones'
 import { isTopicTrendVisible, summarizeTopicProgress } from '@/lib/utils/topicTrend'
 import TopicMetricsInfoModal from '@/components/temario/TopicMetricsInfoModal'
 
@@ -36,6 +36,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
   const { user, userProfile } = useAuth() as { user: any; userProfile: { show_topic_trend?: boolean | null } | null }
   // Convertir slug de URL a positionType de BD
   const positionType = useMemo(() => slugToPositionType(oposicion), [oposicion])
+  const oposicionName = useMemo(() => positionType ? getOposicionByPositionType(positionType)?.name : undefined, [positionType])
   const { getTopicProgress } = useTopicUnlock({ positionType: positionType ?? undefined }) as { getTopicProgress: (id: number) => { accuracy: number; accuracy30d: number | null; questionsAnswered: number } }
 
   // Visibilidad de las flechitas de tendencia (preferencia de cuenta). El % de
@@ -288,6 +289,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
         open={showInfoModal}
         onClose={() => setShowInfoModal(false)}
         summary={trendSummary}
+        oposicionName={oposicionName}
       />
     </>
   )

@@ -10,6 +10,8 @@ import CcaaFlag, { hasCcaaFlag } from '@/components/CcaaFlag'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
 import ExamActionsDropdown from '@/components/ExamActionsDropdown'
 import SimulacroPaywallModal from '@/components/test/SimulacroPaywallModal'
+import TopicMetricsInfoModal from '@/components/temario/TopicMetricsInfoModal'
+import { summarizeTopicProgress } from '@/lib/utils/topicTrend'
 import {
   SIMULACRO_AVAILABLE_OPOSICIONES,
   getSimulacroConfig,
@@ -151,6 +153,24 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const [showOposicionModal, setShowOposicionModal] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('tema')
   const [showStatsInfo, setShowStatsInfo] = useState(false)
+
+  // Resumen de progreso del usuario para el modal informativo "¿qué significan
+  // estos números?" (explica el % de acierto + las flechitas ▲/▼ con SUS datos
+  // reales). Mismo modal y helper puro que el temario para mantener consistencia.
+  const trendSummary = useMemo(() => {
+    const entries = bloques.flatMap(b =>
+      b.topics.map(t => {
+        const s = userStats[t.topicNumber]
+        return {
+          titulo: `Tema ${t.displayNumber}: ${t.title.split(/\.\s/)[0]}`,
+          accuracy: s?.accuracy ?? 0,
+          accuracy30d: s?.accuracy30d ?? null,
+          questionsAnswered: s?.total ?? 0,
+        }
+      })
+    )
+    return summarizeTopicProgress(entries)
+  }, [bloques, userStats])
 
   // Official exams state
   const [examStats, setExamStats] = useState<Record<string, ExamStat>>({})
@@ -529,29 +549,13 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
               )}
             </div>
 
-            {/* Modal de información de estadísticas */}
-            {showStatsInfo && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-                <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Estadísticas de Rendimiento</h3>
-                  <div className="space-y-3 text-sm text-gray-700">
-                    <p><strong>Porcentaje de aciertos:</strong> Calculado como (respuestas correctas / total respuestas) × 100</p>
-                    <p><strong>Respuestas:</strong> Formato (correctas/total)</p>
-                    <p><strong>Último estudio:</strong> Fecha de tu última sesión de test en ese tema</p>
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <p className="text-blue-800 font-medium">💡 Consejo</p>
-                      <p className="text-blue-700">Practica los temas con menor porcentaje para mejorar tu preparación general.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowStatsInfo(false)}
-                    className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Entendido
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Modal informativo: explica % de acierto + flechitas ▲/▼ con datos reales */}
+            <TopicMetricsInfoModal
+              open={showStatsInfo}
+              onClose={() => setShowStatsInfo(false)}
+              summary={trendSummary}
+              oposicionName={oposicionInfo.name || oposicionInfo.short}
+            />
           </div>
         </div>
       </div>
@@ -930,17 +934,27 @@ function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }:
                     </span>
                   )}
                 </span>
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
                     onInfoClick()
                   }}
-                  className="text-white/70 hover:text-white transition-colors p-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onInfoClick()
+                    }
+                  }}
+                  className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer select-none"
+                  aria-label="¿Qué significa este porcentaje?"
                   title="¿Qué significa este porcentaje?"
                 >
                   ℹ️
-                </button>
+                </span>
               </div>
               <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
                 {stats.lastStudyFormatted}

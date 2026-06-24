@@ -12,9 +12,11 @@ interface TopicMetricsInfoModalProps {
   open: boolean
   onClose: () => void
   summary: TrendSummary | null
+  /** Nombre de la oposición para personalizar el título (ej. "Administrativo CARM"). */
+  oposicionName?: string
 }
 
-export default function TopicMetricsInfoModal({ open, onClose, summary }: TopicMetricsInfoModalProps) {
+export default function TopicMetricsInfoModal({ open, onClose, summary, oposicionName }: TopicMetricsInfoModalProps) {
   // Cerrar con Escape (mismo patrón que OposicionChangeModal/ArticleModal).
   useEffect(() => {
     if (!open) return
@@ -74,7 +76,7 @@ export default function TopicMetricsInfoModal({ open, onClose, summary }: TopicM
 
           {hasData ? (
             <div className="mt-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
-              <div className="font-semibold text-gray-900 dark:text-white mb-2">Tus datos en esta oposición</div>
+              <div className="font-semibold text-gray-900 dark:text-white mb-2">{oposicionName ? `Tus datos en ${oposicionName}` : 'Tus datos en esta oposición'}</div>
               <ul className="space-y-1.5">
                 <li>📚 Temas practicados: <span className="font-semibold">{summary!.temasPracticados}</span> ({summary!.totalRespondidas} preguntas)</li>
                 <li>🎯 Media de acierto: <span className={`font-semibold ${summary!.mediaAciertos >= 70 ? 'text-green-600' : 'text-amber-600'}`}>{summary!.mediaAciertos}%</span></li>
@@ -100,7 +102,7 @@ export default function TopicMetricsInfoModal({ open, onClose, summary }: TopicM
             </div>
           ) : (
             <div className="mt-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
-              Aún no has practicado temas de esta oposición. En cuanto respondas algunas preguntas, aquí verás tu progreso real.
+              Aún no has practicado temas de {oposicionName || 'esta oposición'}. En cuanto respondas algunas preguntas, aquí verás tu progreso real.
             </div>
           )}
         </div>
