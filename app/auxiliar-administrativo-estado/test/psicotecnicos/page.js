@@ -21,7 +21,7 @@ import { selectAdaptiveQuestions } from '@/lib/adaptiveQuestionSelection'
 
 function MultipleCategoriesPsychometricTestContent() {
   const searchParams = useSearchParams()
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -44,28 +44,17 @@ function MultipleCategoriesPsychometricTestContent() {
         
         console.log('🔍 Loading psychometric questions for multiple categories:', categories)
         
-        if (!supabase) {
-          setError('Error de conexión a la base de datos')
-          return
-        }
-
-        // Build query for multiple categories
-        const { data, error } = await supabase
-          .from('psychometric_questions')
-          .select(`
-            *,
-            psychometric_categories!inner(category_key, display_name),
-            psychometric_sections!inner(section_key, display_name)
-          `)
-          .in('psychometric_categories.category_key', categories)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          console.error('❌ Error loading psychometric questions:', error)
+        // AGNÓSTICO (Fase C1): carga vía endpoint Drizzle (mismo shape con embeds,
+        // incl. correct_option para el feedback instantáneo). Reemplaza el
+        // carga PostgREST de psychometric_questions multi-categoría (eliminada).
+        const resp = await fetch(`/api/v2/psychometric/questions?categories=${encodeURIComponent(categories.join(','))}`)
+        const json = await resp.json().catch(() => ({}))
+        if (!resp.ok || !json.success) {
+          console.error('❌ Error loading psychometric questions:', json?.error)
           setError('Error al cargar las preguntas psicotécnicas')
           return
         }
+        const data = json.questions
 
         if (!data || data.length === 0) {
           console.log('⚠️ No questions found for categories:', categories)
@@ -150,10 +139,8 @@ function MultipleCategoriesPsychometricTestContent() {
       }
     }
 
-    if (supabase) {
-      loadMultipleCategoriesQuestions()
-    }
-  }, [supabase, searchParams, user])
+    loadMultipleCategoriesQuestions()
+  }, [searchParams, user])
 
   // Loading del auth
   if (authLoading) {

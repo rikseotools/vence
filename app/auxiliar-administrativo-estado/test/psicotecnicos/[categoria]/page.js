@@ -6,11 +6,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import PsychometricTestLayout from '@/components/PsychometricTestLayout'
 import { selectAdaptiveQuestions } from '@/lib/adaptiveQuestionSelection'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function PsychometricTestPage() {
   const { categoria } = useParams()
   const searchParams = useSearchParams()
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -27,29 +28,21 @@ export default function PsychometricTestPage() {
         console.log('🔍 Loading psychometric questions for category:', categoria)
         console.log('🎯 Selected sections:', selectedSections)
         
-        // Build query with section filtering if specified
-        let query = supabase
-          .from('psychometric_questions')
-          .select(`
-            *,
-            psychometric_categories!inner(category_key, display_name),
-            psychometric_sections!inner(section_key, display_name)
-          `)
-          .eq('psychometric_categories.category_key', categoria)
-          .eq('is_active', true)
-        
-        // Add section filter if specific sections are selected
+        // AGNÓSTICO (Fase C1): carga vía endpoint Drizzle (mismo shape con embeds
+        // psychometric_categories/psychometric_sections, incl. correct_option para el
+        // feedback instantáneo). Reemplaza la carga PostgREST de psychometric_questions.
+        const qsParams = new URLSearchParams({ categories: categoria })
         if (selectedSections && selectedSections.length > 0) {
-          query = query.in('psychometric_sections.section_key', selectedSections)
+          qsParams.set('sections', selectedSections.join(','))
         }
-        
-        const { data, error } = await query.order('created_at', { ascending: false })
-
-        if (error) {
-          console.error('❌ Error loading psychometric questions:', error)
+        const resp = await fetch(`/api/v2/psychometric/questions?${qsParams.toString()}`)
+        const json = await resp.json().catch(() => ({}))
+        if (!resp.ok || !json.success) {
+          console.error('❌ Error loading psychometric questions:', json?.error)
           setError('Error al cargar las preguntas psicotécnicas')
           return
         }
+        const data = json.questions
 
         if (!data || data.length === 0) {
           console.log('⚠️ No questions found for category:', categoria)
@@ -66,13 +59,19 @@ export default function PsychometricTestPage() {
         // Obtener estadísticas del usuario si está autenticado
         let userAnsweredCount = 0
         if (user) {
-          const { data: userAnswers } = await supabase
-            .from('psychometric_test_answers')
-            .select('question_id')
-            .eq('user_id', user.id)
-            .in('question_id', data.map(q => q.id))
-          
-          userAnsweredCount = new Set(userAnswers?.map(a => a.question_id) || []).size
+          // AGNÓSTICO (Fase C1): conteo vía endpoint (user_id del token).
+          try {
+            const headers = await getAuthHeaders()
+            const acResp = await fetch('/api/v2/psychometric/answered-count', {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ questionIds: data.map(q => q.id) }),
+            })
+            const acJson = await acResp.json().catch(() => ({}))
+            if (acResp.ok && acJson.success) userAnsweredCount = acJson.count
+          } catch (e) {
+            console.warn('⚠️ answered-count falló:', e)
+          }
         }
         
         setCategoryStats({
@@ -143,10 +142,10 @@ export default function PsychometricTestPage() {
       }
     }
 
-    if (supabase && categoria) {
+    if (categoria) {
       loadPsychometricQuestions()
     }
-  }, [categoria, supabase, searchParams, user])
+  }, [categoria, searchParams, user])
 
   // Loading del auth
   if (authLoading) {
