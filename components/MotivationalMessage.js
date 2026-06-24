@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 
 export default function MotivationalMessage({
   category = 'exam_result',
@@ -9,7 +10,7 @@ export default function MotivationalMessage({
   className = '',
   hideShareButton = false
 }) {
-  const { user, supabase } = useAuth()
+  const { user } = useAuth()
   const [message, setMessage] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reaction, setReaction] = useState(null) // 'love', 'like', 'dislike', 'funny'
@@ -29,35 +30,20 @@ export default function MotivationalMessage({
 
       console.log('🔍 Obteniendo mensaje motivacional:', { category, context })
 
-      // Llamar a la función SQL
-      const { data, error } = await supabase.rpc('get_personalized_message', {
-        p_user_id: user.id,
-        p_category: category,
-        p_context: context
-      })
+      // Endpoint agnóstico (Drizzle, user_id del token): mensaje + reacción previa
+      const headers = await getAuthHeaders()
+      const qs = new URLSearchParams({ category, context: JSON.stringify(context || {}) })
+      const res = await fetch(`/api/v2/motivational-message?${qs}`, { headers })
+      if (!res.ok) throw new Error(`motivational-message ${res.status}`)
+      const { message: msg, reaction: prevReaction } = await res.json()
 
-      if (error) {
-        console.error('❌ Error en get_personalized_message:', error)
-        throw error
-      }
+      console.log('✅ Mensaje recibido:', msg)
 
-      console.log('✅ Mensaje recibido:', data)
-
-      if (data && data.length > 0) {
-        const msg = data[0]
+      if (msg) {
         setMessage(msg)
 
-        // Detectar reacción previa del usuario
-        const { data: userReaction } = await supabase
-          .from('user_message_interactions')
-          .select('action_type')
-          .eq('user_id', user.id)
-          .eq('message_id', msg.message_id)
-          .in('action_type', ['love', 'like', 'dislike', 'funny'])
-          .single()
-
-        if (userReaction) {
-          setReaction(userReaction.action_type)
+        if (prevReaction) {
+          setReaction(prevReaction)
         }
 
         // Registrar que se vio el mensaje (solo si no se ha trackeado ya este mensaje)
@@ -94,13 +80,12 @@ export default function MotivationalMessage({
 
     try {
       const interactionData = {
-        user_id: user.id,
-        message_id: messageId,
-        action_type: actionType,
-        shown_in: category,
-        message_text: messageText,
-        share_platform: platform,
-        device_info: {
+        messageId,
+        actionType,
+        shownIn: category,
+        messageText,
+        sharePlatform: platform,
+        deviceInfo: {
           screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
         }
@@ -108,25 +93,19 @@ export default function MotivationalMessage({
 
       console.log('📤 Datos a insertar:', interactionData)
 
-      const { data, error } = await supabase
-        .from('user_message_interactions')
-        .insert(interactionData)
-        .select()
+      // Endpoint agnóstico (Drizzle, user_id del token). ON CONFLICT DO NOTHING
+      // server-side → un duplicado ya no es error (antes era el 23505).
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/motivational-message/interaction', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(interactionData),
+      })
 
-      if (error) {
-        if (error.code === '23505') {
-          // Duplicado - comportamiento esperado, no mostrar como error
-          console.log('ℹ️ Ya has reaccionado así a este mensaje')
-        } else {
-          console.error('❌ Error guardando interacción:', {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            hint: error.hint
-          })
-        }
+      if (!res.ok) {
+        console.error('❌ Error guardando interacción:', res.status)
       } else {
-        console.log('✅ Interacción guardada exitosamente:', data)
+        console.log('✅ Interacción guardada exitosamente')
       }
     } catch (error) {
       console.error('❌ Error en trackInteraction (catch):', error)
