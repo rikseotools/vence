@@ -2977,7 +2977,7 @@ export const OPOSICIONES: Oposicion[] = [
         partes: [
           { id: 'primera', icon: '📘', title: 'Primer ejercicio', ordinaryCount: 95 },
         ],
-        note: '7 plazas — turno libre. Primer ejercicio (100 preguntas oficiales): 95 importadas y verificadas (doble verificación ciega independiente + auditoría estricta de artículo literal; respuestas contra plantilla oficial). 5 en needs_human (no servidas): 2 cuyo artículo no responde literalmente (formato de partida presupuestaria; respuesta multi-artículo "a y b"), 2 de la Ley de Tasas con cita de artículo que no casa en BD, 1 sobre el Plan General de PRL (sin articulado).',
+        note: '7 plazas — turno libre. Primer ejercicio (examen tipo test).',
       },
     ],
     emoji: '🍋',
