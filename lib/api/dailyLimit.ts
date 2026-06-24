@@ -3,7 +3,8 @@
 // The client hook (useDailyQuestionLimit) shows the UI modal,
 // but this module is the actual gate that prevents bypassing via direct API calls.
 
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
 import { NextRequest } from 'next/server'
 import { getDynamicLimit, invalidateLimitCache, GRADUATED_LIMIT_CONFIG } from './daily-limit'
 import type { DailyLimitStatus } from './daily-limit'
@@ -27,15 +28,11 @@ interface DailyLimitResult {
   degraded?: boolean
 }
 
-let _supabaseAdmin: ReturnType<typeof createClient> | null = null
-function getSupabaseAdmin() {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
-  }
-  return _supabaseAdmin
+// AGNÓSTICO (Fase C1): server-only (solo lo importan app/api/*). Las RPCs plpgsql
+// se invocan vía Drizzle (getAdminDb, bypass RLS = equivalente al service role) en
+// vez de supabase.rpc — portable a RDS/Neon (PostgREST no existe allí).
+function rowsOf(res: unknown): any[] {
+  return (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as any[]
 }
 
 // ============================================
@@ -84,18 +81,10 @@ export async function checkAndIncrementDailyLimit(
     // Get the personalized limit for this user
     const dynamicLimit = await getDynamicLimit(userId)
 
-    const { data, error } = await getSupabaseAdmin().rpc('increment_daily_questions', {
-      p_user_id: userId,
-      p_limit: dynamicLimit.dailyLimit,
-    })
-
-    if (error) {
-      console.error('❌ [DailyLimit] RPC error:', error.message)
-      // Fail open: don't block users if the check itself fails
-      return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
-    }
-
-    const result = Array.isArray(data) ? data[0] : data
+    const incRes = await getAdminDb().execute(sql`
+      SELECT * FROM increment_daily_questions(${userId}::uuid, ${dynamicLimit.dailyLimit})
+    `)
+    const result = rowsOf(incRes)[0]
 
     if (!result) {
       return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
@@ -146,17 +135,8 @@ export async function checkDeviceDailyUsage(
     30,
     async () => {
       try {
-        const { data, error } = await getSupabaseAdmin().rpc('get_device_daily_usage', {
-          p_device_id: deviceId,
-        })
-
-        if (error) {
-          if (error.code === '42P01' || error.code === 'PGRST202') return null
-          console.error('❌ [DailyLimit] Device usage RPC error:', error.message)
-          return null
-        }
-
-        const total = typeof data === 'number' ? data : 0
+        const devRes = await getAdminDb().execute(sql`SELECT get_device_daily_usage(${deviceId}) AS total`)
+        const total = Number(rowsOf(devRes)[0]?.total) || 0
 
         return {
           allowed: total < GRADUATED_LIMIT_CONFIG.defaultLimit,
@@ -188,10 +168,9 @@ export async function incrementDailyCount(
   try {
     const dynamicLimit = await getDynamicLimit(userId)
 
-    await getSupabaseAdmin().rpc('increment_daily_questions', {
-      p_user_id: userId,
-      p_limit: dynamicLimit.dailyLimit,
-    })
+    await getAdminDb().execute(sql`
+      SELECT increment_daily_questions(${userId}::uuid, ${dynamicLimit.dailyLimit})
+    `)
 
     // Invalidar cache tras incrementar — siguiente lectura forzada a BD.
     await invalidateDailyLimitCache(userId)
@@ -240,16 +219,8 @@ export async function getDailyLimitStatus(
     try {
       const dynamicLimit = await getDynamicLimit(userId)
 
-      const { data, error } = await getSupabaseAdmin().rpc('get_daily_question_status', {
-        p_user_id: userId,
-      })
-
-      if (error) {
-        console.error('❌ [DailyLimit] Status RPC error:', error.message)
-        return degradedFallback()
-      }
-
-      const result = Array.isArray(data) ? data[0] : data
+      const stRes = await getAdminDb().execute(sql`SELECT * FROM get_daily_question_status(${userId}::uuid)`)
+      const result = rowsOf(stRes)[0]
 
       if (!result) {
         return degradedFallback()
