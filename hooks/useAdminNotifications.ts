@@ -1,7 +1,6 @@
 // hooks/useAdminNotifications.ts - Hook para detectar elementos pendientes en admin
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useAuth } from '../contexts/AuthContext'
 import { adminFetch } from '@/lib/api/adminFetch'
 
 interface AdminNotificationState {
@@ -35,7 +34,6 @@ const EMPTY_STATE: AdminNotificationState = {
  * @param enabled - Solo ejecuta queries cuando es true (pasar isAdmin)
  */
 export function useAdminNotifications(enabled = false) {
-  const { supabase } = useAuth() as any
   const [notifications, setNotifications] = useState<AdminNotificationState>({
     ...EMPTY_STATE,
     loading: enabled
@@ -70,76 +68,34 @@ export function useAdminNotifications(enabled = false) {
   }, [notifications.feedback, notifications.impugnaciones, notifications.ventas, notifications.calidad, notifications.loading, enabled])
 
   const loadPendingCounts = useCallback(async () => {
-    if (!supabase || !enabledRef.current) return
+    if (!enabledRef.current) return
+
+    const withTimeout = (p: Promise<unknown>) => Promise.race([
+      p,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000)),
+    ])
 
     try {
-      // Usar Promise.allSettled para manejar errores independientemente
+      // Usar Promise.allSettled para manejar errores independientemente.
+      // Fase C1: feedback pendiente + rate-limit ya NO usan supabase de cliente;
+      // los calcula server-side /api/v2/admin/pending-feedback-counts (requireAdmin).
       const results = await Promise.allSettled([
-        // 1a. Feedbacks pending/in_progress (con conversaciones y tipo para badges)
-        Promise.race([
-          supabase
-            .from('user_feedback')
-            .select('id, type, feedback_conversations(id, status, feedback_messages(id, is_admin, created_at))')
-            .in('status', ['pending', 'in_progress']),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
-        // 1b. Conversaciones reabiertas: feedback ya resolved pero conversación no cerrada con último msg del usuario
-        Promise.race([
-          supabase
-            .from('feedback_conversations')
-            .select('id, status, feedback_id, feedback_messages(id, is_admin, created_at), user_feedback!inner(id, type, status)')
-            .neq('status', 'closed')
-            .eq('user_feedback.status', 'resolved'),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
-        // 3. Obtener impugnaciones via API (usa SERVICE_ROLE para bypass RLS).
-        // adminFetch inyecta el Bearer admin: la ruta /api/admin/* está guardada por
-        // proxy.ts (guardAdminApi) y un fetch crudo devuelve 401 (regresión del badge
-        // de impugnaciones tras el commit 2d67ab33; contrato: usar adminFetch, no fetch).
-        Promise.race([
-          adminFetch('/api/admin/pending-counts').then(r => r.json()),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
-        // 4. Obtener ventas no leídas
-        Promise.race([
-          adminFetch('/api/v2/admin/unread-sales').then(r => r.json()),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
-        // 5. Calidad de preguntas — desactivado del polling (tarda ~20s, solo se ejecuta en /admin/calidad)
+        // 1. Feedback pendiente (clasificado) + rate-limit hits — endpoint admin Drizzle
+        withTimeout(adminFetch('/api/v2/admin/pending-feedback-counts').then(r => r.json())),
+        // 2. Impugnaciones (legislativas + psicotécnicas) via API admin
+        withTimeout(adminFetch('/api/admin/pending-counts').then(r => r.json())),
+        // 3. Ventas no leídas
+        withTimeout(adminFetch('/api/v2/admin/unread-sales').then(r => r.json())),
+        // 4. Calidad de preguntas — desactivado del polling (solo en /admin/calidad)
         Promise.resolve({ success: true, totalIssues: 0, skipped: true }),
-        // 6. Contar errores de validación API (últimas 24h) — via API (usa service role, bypass RLS)
-        Promise.race([
-          adminFetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json()),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
-        // 7. Contar rate limit hits (últimas 24h) — indica posible scraping
-        Promise.race([
-          supabase
-            .from('validation_error_logs')
-            .select('id', { count: 'exact', head: true })
-            .eq('error_type', 'rate_limit')
-            .is('reviewed_at', null)
-            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ])
+        // 5. Errores de validación API (últimas 24h)
+        withTimeout(adminFetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json())),
       ])
 
-      const [feedbacksResult, reopenedConvsResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
+      const [feedbackCountsResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult] = results
 
       let pendingFeedback = 0
-      const feedbackTypeCounts = { deletion: 0, bug: 0, email: 0, other: 0 }
+      let feedbackTypeCounts = { deletion: 0, bug: 0, email: 0, other: 0 }
       let pendingImpugnaciones = 0
       const impugnacionesTypeCounts = { legislativas: 0, psicotecnicas: 0 }
       let pendingVentas = 0
@@ -147,68 +103,19 @@ export function useAdminNotifications(enabled = false) {
       let pendingErroresApi = 0
       let pendingRateLimitHits = 0
 
-      // Contar feedbacks pendientes y clasificar por tipo
-      if (feedbacksResult.status === 'fulfilled') {
-        const feedbacks = feedbacksResult.value.data || []
-        feedbacks.forEach((fb: any) => {
-          const conv = fb.feedback_conversations?.[0]
-          let needsAttention = false
-
-          if (!conv) {
-            // Sin conversación = ticket nuevo sin responder
-            needsAttention = true
-          } else if (conv.status !== 'closed') {
-            const msgs = conv.feedback_messages || []
-            if (msgs.length === 0) {
-              needsAttention = true
-            } else {
-              const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-              if (sorted[0] && sorted[0].is_admin === false) {
-                needsAttention = true
-              }
-            }
-          }
-
-          if (needsAttention) {
-            pendingFeedback++
-            if (fb.type === 'account_deletion') feedbackTypeCounts.deletion++
-            else if (fb.type === 'bug') feedbackTypeCounts.bug++
-            else if (fb.type === 'email') feedbackTypeCounts.email++
-            else feedbackTypeCounts.other++
-          }
-        })
+      // Feedback pendiente + rate-limit (calculados server-side)
+      if (feedbackCountsResult.status === 'fulfilled') {
+        const fc = feedbackCountsResult.value as { pendingFeedback?: number; feedbackByType?: typeof feedbackTypeCounts; rateLimitHits?: number }
+        pendingFeedback = fc.pendingFeedback || 0
+        if (fc.feedbackByType) feedbackTypeCounts = fc.feedbackByType
+        pendingRateLimitHits = fc.rateLimitHits || 0
       } else {
-        console.warn('Error cargando feedbacks:', feedbacksResult.reason?.message)
-      }
-
-      // Contar conversaciones reabiertas (feedback resolved pero conversación necesita atención)
-      if (reopenedConvsResult.status === 'fulfilled') {
-        const convs = reopenedConvsResult.value.data || []
-        convs.forEach((conv: any) => {
-          const msgs = conv.feedback_messages || []
-          let needsAttention = false
-          if (msgs.length === 0) {
-            needsAttention = true
-          } else {
-            const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            if (sorted[0] && sorted[0].is_admin === false) {
-              needsAttention = true
-            }
-          }
-          if (needsAttention) {
-            pendingFeedback++
-            const fbType = conv.user_feedback?.type
-            if (fbType === 'account_deletion') feedbackTypeCounts.deletion++
-            else if (fbType === 'bug') feedbackTypeCounts.bug++
-            else if (fbType === 'email') feedbackTypeCounts.email++
-            else feedbackTypeCounts.other++
-          }
-        })
+        console.warn('Error cargando feedback counts:', feedbackCountsResult.reason?.message)
       }
 
       // Obtener conteo de impugnaciones desde la API (legislativas + psicotécnicas)
       if (impugnacionesApiResult.status === 'fulfilled') {
-        const apiData = impugnacionesApiResult.value
+        const apiData = impugnacionesApiResult.value as any
         if (apiData.success) {
           pendingImpugnaciones = apiData.impugnaciones || 0
           impugnacionesTypeCounts.legislativas = apiData.detail?.normal || 0
@@ -219,13 +126,14 @@ export function useAdminNotifications(enabled = false) {
       // Obtener ventas no leídas
       let ventasImporte = 0
       if (salesResult.status === 'fulfilled') {
-        pendingVentas = salesResult.value.count || 0
-        ventasImporte = salesResult.value.totalAmount || 0
+        const sales = salesResult.value as any
+        pendingVentas = sales.count || 0
+        ventasImporte = sales.totalAmount || 0
       }
 
       // Obtener problemas de calidad
       if (calidadResult.status === 'fulfilled') {
-        const calidadData = calidadResult.value
+        const calidadData = calidadResult.value as any
         if (calidadData.success) {
           pendingCalidad = calidadData.totalIssues || 0
         }
@@ -233,13 +141,11 @@ export function useAdminNotifications(enabled = false) {
 
       // Obtener errores de validación API no revisados (últimas 24h)
       if (erroresApiResult.status === 'fulfilled') {
-        pendingErroresApi = erroresApiResult.value?.unreviewedCount ?? erroresApiResult.value?.summary?.totalErrors ?? 0
+        const err = erroresApiResult.value as any
+        pendingErroresApi = err?.unreviewedCount ?? err?.summary?.totalErrors ?? 0
       }
 
-      // Obtener rate limit hits no revisados (últimas 24h)
-      if (rateLimitResult.status === 'fulfilled') {
-        pendingRateLimitHits = (rateLimitResult.value as any)?.count ?? 0
-      }
+      // (rate-limit hits ya viene de feedbackCountsResult arriba)
 
       setNotifications({
         feedback: pendingFeedback,
@@ -258,10 +164,10 @@ export function useAdminNotifications(enabled = false) {
       console.error('❌ Error cargando notificaciones admin:', error)
       setNotifications(prev => ({ ...prev, loading: false }))
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
-    if (!supabase || !enabled) {
+    if (!enabled) {
       // Si no es admin, devolver estado vacío inmediatamente
       setNotifications(EMPTY_STATE)
       return
@@ -279,7 +185,7 @@ export function useAdminNotifications(enabled = false) {
       clearTimeout(initialDelay)
       clearInterval(interval)
     }
-  }, [supabase, enabled, loadPendingCounts])
+  }, [enabled, loadPendingCounts])
 
   const markSalesRead = async () => {
     try {
