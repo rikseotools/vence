@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,11 +56,17 @@ function PremiumEducationalContent() {
     try {
       console.log('🎯 Usuario de Google Ads Educativo - crear como premium_required')
       
-      await supabase.rpc('create_google_ads_user', {
-        user_id: user.id,
-        user_email: user.email,
-        user_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-        campaign_id: campaignId
+      // AGNÓSTICO (Fase C1): el RPC create_google_ads_user se invoca vía el endpoint
+      // canónico ensure-profile (Drizzle, user_id/email del token).
+      const ensureHeaders = await getAuthHeaders()
+      await fetch('/api/v2/auth/ensure-profile', {
+        method: 'POST',
+        headers: { ...ensureHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registrationSource: 'google_ads',
+          campaignId,
+          userName: user.user_metadata?.full_name || user.email?.split('@')[0] || null,
+        }),
       })
 
       const response = await fetch('/api/stripe/create-checkout', {

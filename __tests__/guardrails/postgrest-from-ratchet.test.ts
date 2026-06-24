@@ -54,10 +54,12 @@ const RPC = /\.rpc\(/g
 //   C1#26: 2 ortografia (spelling_questions, server-component → Drizzle getAdminDb in-place) + teoria/[law] (user_profiles target_oposicion → reusa GET onboarding/status) → 63/17.
 //   C1#27: app/soporte (UPDATE notification_logs por conversación → POST /api/v2/notifications/mark-conversation-read) → 62/16.
 //   C1#28: components/test/TestHubPage.tsx (topics, server-component → Drizzle in-place) + app/test-personalizado (3 .from content_sections/scope/articles → GET /api/v2/content-scope-config consolidado) → 58/14.
-const BASELINE_SITES = 58
-const BASELINE_FILES = 14
-// Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit → 15; -1 MotivationalMessage → 14; -1 comentario UserProfileModal → 13).
-const BASELINE_RPC = 13
+//   C1#29: SharePrompt (.rpc get_user_share_stats → GET /api/v2/share-stats) + premium-edu (.rpc create_google_ads_user → reusa ensure-profile) + admin/configuracion (.from email_logs → GET /api/v2/admin/email-logs) → from 57/13, rpc 13→11.
+const BASELINE_SITES = 57
+const BASELINE_FILES = 13
+// Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
+// -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu → 11).
+const BASELINE_RPC = 11
 
 function walk(rel: string): string[] {
   let out: string[] = []

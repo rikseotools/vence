@@ -23,7 +23,7 @@ export default function SharePrompt({
   onClose = () => {},
   forceShow = false
 }) {
-  const { user, supabase } = useAuth()
+  const { user } = useAuth()
   const [isVisible, setIsVisible] = useState(false)
   const [shareStats, setShareStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -41,12 +41,12 @@ export default function SharePrompt({
 
   const checkIfShouldShowPrompt = async () => {
     try {
-      // Obtener estadísticas de shares del usuario
-      const { data: stats, error } = await supabase
-        .rpc('get_user_share_stats', { p_user_id: user.id })
+      // Obtener estadísticas de shares del usuario (endpoint agnóstico, user del token)
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/share-stats', { headers })
 
-      if (error) {
-        console.error('Error obteniendo stats de shares:', error)
+      if (!res.ok) {
+        console.error('Error obteniendo stats de shares:', res.status)
         // Si la función no existe aún, asumir que nunca ha compartido
         setShareStats({ total_shares: 0, total_tests: 1 })
         setPromptType('first')
@@ -55,7 +55,7 @@ export default function SharePrompt({
         return
       }
 
-      const shareData = stats?.[0] || { total_shares: 0, total_tests: 0 }
+      const shareData = (await res.json()).stats || { total_shares: 0, total_tests: 0 }
       setShareStats(shareData)
 
       // Lógica para decidir si mostrar prompt

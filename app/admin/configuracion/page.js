@@ -1,11 +1,10 @@
 // app/admin/configuracion/page.js - Dashboard de configuración y emails
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { adminFetch } from '@/lib/api/adminFetch'
 import Link from 'next/link'
 
 export default function ConfiguracionPage() {
-  const { supabase } = useAuth()
   const [emailQueue, setEmailQueue] = useState([])
   const [emailLogs, setEmailLogs] = useState([])
   const [loading, setLoading] = useState(false)
@@ -27,18 +26,10 @@ export default function ConfiguracionPage() {
       const queue = queueData.success ? queueData.queue : []
       setEmailQueue(queue)
 
-      // 2. Cargar historial de emails (últimos 50)
-      const { data: logs, error } = await supabase
-        .from('email_logs')
-        .select(`
-          *,
-          user_profiles!inner(email, full_name)
-        `)
-        .order('sent_at', { ascending: false })
-        .limit(50)
-
-      if (error) throw error
-      setEmailLogs(logs || [])
+      // 2. Cargar historial de emails (últimos 50) — endpoint admin Drizzle
+      const logsRes = await adminFetch('/api/v2/admin/email-logs')
+      if (!logsRes.ok) throw new Error(`email-logs ${logsRes.status}`)
+      setEmailLogs((await logsRes.json()).logs || [])
 
     } catch (err) {
       console.error('Error cargando datos de emails:', err)
