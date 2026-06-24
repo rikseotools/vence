@@ -53,8 +53,9 @@ const RPC = /\.rpc\(/g
 //   C1#25: app/admin/conversiones/page.tsx (3 .from admin: impressions embed + 2 UPDATE upgrade_messages → GET impressions + POST update, requireAdmin) → 66/20.
 //   C1#26: 2 ortografia (spelling_questions, server-component → Drizzle getAdminDb in-place) + teoria/[law] (user_profiles target_oposicion → reusa GET onboarding/status) → 63/17.
 //   C1#27: app/soporte (UPDATE notification_logs por conversación → POST /api/v2/notifications/mark-conversation-read) → 62/16.
-const BASELINE_SITES = 62
-const BASELINE_FILES = 16
+//   C1#28: components/test/TestHubPage.tsx (topics, server-component → Drizzle in-place) + app/test-personalizado (3 .from content_sections/scope/articles → GET /api/v2/content-scope-config consolidado) → 58/14.
+const BASELINE_SITES = 58
+const BASELINE_FILES = 14
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit → 15; -1 MotivationalMessage → 14; -1 comentario UserProfileModal → 13).
 const BASELINE_RPC = 13
 

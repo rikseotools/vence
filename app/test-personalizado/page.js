@@ -2,12 +2,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
-import { createClient } from '@supabase/supabase-js'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
 
 function TestPersonalizadoContent() {
   const searchParams = useSearchParams()
@@ -28,62 +22,24 @@ function TestPersonalizadoContent() {
 
       try {
         console.log('🔍 Cargando configuración content_scope para:', seccionSlug)
-        
-        // 1. Obtener información de la sección
-        const { data: section, error: sectionError } = await getSupabase()
-          .from('content_sections')
-          .select(`
-            id,
-            name,
-            slug,
-            description,
-            icon,
-            content_collections (
-              name,
-              slug
-            )
-          `)
-          .eq('slug', seccionSlug)
-          .single()
 
-        if (sectionError || !section) {
+        // Endpoint agnóstico (Drizzle): resuelve sección + scope + IDs de artículos
+        // en una sola llamada (contenido público). Reemplaza 3 supabase.from + N+1.
+        const res = await fetch(`/api/v2/content-scope-config?seccion=${encodeURIComponent(seccionSlug)}`)
+        if (res.status === 404) {
           throw new Error(`Sección "${seccionSlug}" no encontrada`)
         }
-
-        // 2. Obtener content_scope para esta sección
-        const { data: contentScopes, error: scopeError } = await getSupabase()
-          .from('content_scope')
-          .select('law_id, article_numbers')
-          .eq('section_id', section.id)
-
-        if (scopeError) {
-          throw new Error(`Error cargando content_scope: ${scopeError.message}`)
+        if (!res.ok) {
+          throw new Error(`Error cargando configuración (${res.status})`)
         }
+        const body = await res.json()
 
-        // 3. Obtener IDs de artículos específicos
-        const articleIds = []
-        
-        for (const scope of contentScopes) {
-          for (const articleNumber of scope.article_numbers) {
-            const { data: article } = await getSupabase()
-              .from('articles')
-              .select('id')
-              .eq('law_id', scope.law_id)
-              .eq('article_number', articleNumber)
-              .single()
-            
-            if (article) {
-              articleIds.push(article.id)
-            }
-          }
-        }
-
-        console.log('📋 Artículos encontrados:', articleIds.length)
+        console.log('📋 Artículos encontrados:', body.articleIds?.length || 0)
 
         const config = {
-          sectionInfo: section,
-          articleIds,
-          contentScopes,
+          sectionInfo: body.sectionInfo,
+          articleIds: body.articleIds || [],
+          contentScopes: body.contentScopes || [],
           questionsMode: 'content_scope'
         }
 

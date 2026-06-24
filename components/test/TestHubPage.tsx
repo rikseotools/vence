@@ -1,5 +1,6 @@
 // components/test/TestHubPage.tsx - Server Component SSR para SEO
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
 import { OPOSICIONES, SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
 import TestHubClient from './TestHubClient'
 import { getThemeQuestionCounts } from '@/lib/api/random-test/queries'
@@ -57,20 +58,22 @@ interface Props {
 }
 
 export default async function TestHubPage({ oposicion }: Props) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
   const positionType = SLUG_TO_POSITION_TYPE[oposicion]
 
-  // Obtener topics de la BD (cacheado por Next.js)
-  const { data: topics, error } = await supabase
-    .from('topics')
-    .select('id, topic_number, title, description, is_active')
-    .eq('position_type', positionType)
-    .order('topic_number', { ascending: true })
-
-  if (error) {
+  // Obtener topics de la BD (cacheado por Next.js). AGNÓSTICO (Fase C1): Drizzle
+  // (getAdminDb) en vez de createClient(ANON)+PostgREST — coherente con
+  // getThemeQuestionCounts (que ya es Drizzle) en este mismo server component.
+  type TopicRow = { id: string; topic_number: number; title: string; description: string | null; is_active: boolean | null }
+  let topics: TopicRow[]
+  try {
+    const res = await getAdminDb().execute(sql`
+      SELECT id, topic_number, title, description, is_active
+      FROM topics
+      WHERE position_type = ${positionType}
+      ORDER BY topic_number ASC
+    `)
+    topics = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as TopicRow[]
+  } catch (error) {
     console.error('Error fetching topics:', error)
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
