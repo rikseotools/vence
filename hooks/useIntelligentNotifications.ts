@@ -1193,16 +1193,11 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
       const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
       
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data: weeklyStats, error } = await supabase
-        .from('tests')
-        .select('id, score, completed_at, tema_number')
-        .eq('user_id', user.id)
-        .eq('is_completed', true)
-        .gte('completed_at', weekAgo);
-
-      if (error) throw error;
+      // Tests completados de la última semana (endpoint agnóstico, user del token)
+      const ahdr = await getAuthHeaders()
+      const ares = await fetch('/api/v2/motivational/recent-tests?days=7', { headers: ahdr })
+      if (!ares.ok) throw new Error(`recent-tests ${ares.status}`)
+      const weeklyStats = (await ares.json()).tests || []
 
       const notifications = [];
       const testsThisWeek = weeklyStats?.length || 0;
@@ -1328,17 +1323,8 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
       const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
       
-      const { data: lastTest, error } = await supabase
-        .from('tests')
-        .select('completed_at')
-        .eq('user_id', user.id)
-        .eq('is_completed', true)
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-
+      // (query a 'tests' eliminada en Fase C1: lastTest no se usaba — las notificaciones
+      //  de inactividad/racha rota se eliminaron y este array queda vacío.)
       const notifications = [];
 
       // 🚫 ELIMINADAS notificaciones de inactividad cuando el usuario está navegando
@@ -1371,18 +1357,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   const loadSystemNotifications = async () => {
     try {
       const dismissedNotifications = getDismissedNotifications()
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      
-      const { data: notifications, error } = await supabase
-        .from('notification_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('opened_at', null)
-        .gte('created_at', thirtyDaysAgo)
-        .order('created_at', { ascending: false })
 
-      if (error) throw error
-      
+      // Notificaciones de sistema no abiertas (endpoint agnóstico, user del token)
+      const shdr = await getAuthHeaders()
+      const sres = await fetch('/api/v2/notifications/system', { headers: shdr })
+      if (!sres.ok) throw new Error(`notifications/system ${sres.status}`)
+      const notifications = (await sres.json()).notifications || []
+
       console.log('📧 Notificaciones encontradas:', notifications?.length || 0, notifications)
 
       const systemNotifs = notifications?.map(notif => {
@@ -1442,28 +1423,18 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   // 🦊 CARGAR NOTIFICACIONES DE ROTACIÓN DE AVATAR
   const loadAvatarRotationNotifications = async () => {
     try {
-      if (!user?.id || !supabase) return []
+      if (!user?.id) return []
 
-      // Fetch avatar settings sin filtrar por rotation_notification_pending
-      // para evitar 406 si la columna no existe en cache de PostgREST
-      const { data: avatarSettings, error } = await supabase
-        .from('user_avatar_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
+      // Endpoint agnóstico: ajustes de avatar + perfil actual (solo si rotación pendiente)
+      const rhdr = await getAuthHeaders()
+      const rres = await fetch('/api/v2/avatar/rotation', { headers: rhdr })
+      if (!rres.ok) { setAvatarRotationNotifications([]); return [] }
+      const { avatarSettings, profile: profileData } = await rres.json()
 
-      // Verificar si hay notificación pendiente (en JS, no en query)
-      if (error || !avatarSettings || !avatarSettings.rotation_notification_pending) {
+      if (!avatarSettings || !avatarSettings.rotation_notification_pending) {
         setAvatarRotationNotifications([])
         return []
       }
-
-      // Obtener información del perfil actual
-      const { data: profileData } = await supabase
-        .from('avatar_profiles')
-        .select('emoji, name_es, description_es')
-        .eq('id', avatarSettings.current_profile)
-        .single()
 
       if (!profileData) {
         setAvatarRotationNotifications([])
@@ -1500,12 +1471,10 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   // Función para marcar notificación de avatar como leída
   const markAvatarNotificationAsRead = async () => {
     try {
-      if (!user?.id || !supabase) return
+      if (!user?.id) return
 
-      await supabase
-        .from('user_avatar_settings')
-        .update({ rotation_notification_pending: false })
-        .eq('user_id', user.id)
+      const mhdr = await getAuthHeaders()
+      await fetch('/api/v2/avatar/rotation/mark-read', { method: 'POST', headers: mhdr })
 
       setAvatarRotationNotifications([])
       console.log('✅ Notificación de avatar marcada como leída')
@@ -1625,16 +1594,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       console.log('🗑️ Marcando como leída (desaparecerá):', notificationId)
       
       if (notificationId.startsWith('dispute-')) {
-        // Para impugnaciones: marcar en BD
-        // 🚫 NOTA: Las impugnaciones ahora se manejan en useDisputeNotifications
+        // Para impugnaciones: endpoint existente (user_id en body, pre-existente)
         const disputeId = notificationId.replace('dispute-', '');
-        const { error } = await supabase
-          .from('question_disputes')
-          .update({ is_read: true })
-          .eq('id', disputeId)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
+        await fetch('/api/dispute/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+          body: JSON.stringify({ disputeId, userId: user.id, isPsychometric: false }),
+        });
 
         // Remover de la lista general de notificaciones
         setAllNotifications(prev => {
@@ -1644,15 +1610,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
         });
       }
       else if (notificationId.startsWith('system-')) {
-        // Para notificaciones del sistema: marcar en BD
+        // Para notificaciones del sistema: endpoint agnóstico (user del token)
         const systemNotifId = notificationId.replace('system-', '');
-        const { error } = await supabase
-          .from('notification_logs')
-          .update({ opened_at: new Date().toISOString() })
-          .eq('id', systemNotifId)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
+        await fetch('/api/v2/notifications/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+          body: JSON.stringify({ notificationId: systemNotifId }),
+        });
 
         // Remover inmediatamente de la lista local
         setSystemNotifications(prev => {

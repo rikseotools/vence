@@ -62,7 +62,8 @@ const RPC = /\.rpc\(/g
 //   C1#34: app/admin/newsletters/page.tsx (1 .from user_profiles, createClient propio → POST /api/v2/admin/newsletters/resolve-users requireAdmin) → 43/8.
 //   C1#35: app/admin/feedback/page.tsx (13 .from → 7 endpoints nuevos requireAdmin: feedbacks-list/messages/waiting-conversations/user-conversations/conversation-feedback-id/update-feedback/start-conversation + reuso mark-viewed/close). Fix: start-conversation usaba columnas inexistentes admin_id/started_by_admin → admin_user_id. supabase queda solo para Realtime + helper respondViaFeedbackEndpoint (no .from). → 30/7.
 //   C1#36: app/admin/fraudes/page.tsx (14 .from → 5 endpoints requireAdmin /api/v2/admin/fraud/{premium,multi,bots,scripts,blocked}, lógica de detección portada verbatim). Fix: bots usaba test_questions.answered_at inexistente → created_at. → 16/6.
-const BASELINE_SITES = 16
+//   C1#37: hooks/useIntelligentNotifications.ts (8 .from NO-canary: achievements→reusa recent-tests, study-reminders dead-delete, system→notifications/system, avatar×2→avatar/rotation, avatar mark-read→avatar/rotation/mark-read, dispute→/api/dispute/mark-read, system mark-read→notifications/mark-read). Quedan 2 .from + 1 rpc en loadProblematicArticles (BLOQUEADO por canary FASE 4/5). → 8/6.
+const BASELINE_SITES = 8
 const BASELINE_FILES = 6
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
 // -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
