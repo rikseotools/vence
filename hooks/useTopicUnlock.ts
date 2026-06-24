@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 
 interface TopicProgress {
   accuracy: number
@@ -64,10 +65,17 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
       let error: any = null
 
       try {
-        const res = await fetch(
-          `/api/v2/topic-progress/theme-stats?userId=${user.id}`,
-          { signal: controller.signal }
-        )
+        // Pasar oposicionId (slug) cuando lo tengamos: el endpoint filtra las
+        // stats por position_type de esa oposición. SIN oposicionId cae en la
+        // query legacy que mezcla el progreso entre oposiciones distintas (el
+        // accuracy se agrupaba por tema_number, que colisiona entre oposiciones)
+        // → salían porcentajes en temas no estudiados de la oposición actual y
+        // no se "reseteaban" al cambiar de oposición (bug reportado por usuaria).
+        const oposicionSlug = positionType ? getOposicionByPositionType(positionType)?.slug : undefined
+        const themeStatsUrl = oposicionSlug
+          ? `/api/v2/topic-progress/theme-stats?userId=${user.id}&oposicionId=${oposicionSlug}`
+          : `/api/v2/topic-progress/theme-stats?userId=${user.id}`
+        const res = await fetch(themeStatsUrl, { signal: controller.signal })
         clearTimeout(timeoutId)
 
         if (res.ok) {
