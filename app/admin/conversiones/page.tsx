@@ -2,7 +2,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
-import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { ConversionStatsResponse } from '@/lib/api/admin-conversion-stats'
 
@@ -30,7 +29,6 @@ interface StageUser {
 }
 
 export default function ConversionesPage() {
-  const { supabase } = useAuth()
 
   // Marcar ventas como leídas al montar
   useEffect(() => {
@@ -73,19 +71,17 @@ export default function ConversionesPage() {
   const [graduatedData, setGraduatedData] = useState<any>(null)
   const [loadingGraduated, setLoadingGraduated] = useState(false)
 
-  // Cargar datos
+  // Cargar datos (acceso admin gestionado por el layout + endpoints requireAdmin)
   useEffect(() => {
-    if (supabase) {
-      loadAllData()
-    }
-  }, [supabase, dateRange])
+    loadAllData()
+  }, [dateRange])
 
   // Cargar datos de A/B testing cuando cambia el tab
   useEffect(() => {
-    if (supabase && activeTab === 'ab-testing') {
+    if (activeTab === 'ab-testing') {
       loadABTestingData()
     }
-  }, [supabase, activeTab])
+  }, [activeTab])
 
   // Cargar predicciones cuando cambia el tab
   useEffect(() => {
@@ -235,17 +231,10 @@ export default function ConversionesPage() {
         avgConversionRate: totalImpressions > 0 ? ((totalConversions / totalImpressions) * 100).toFixed(1) : 0
       })
 
-      // Cargar impresiones recientes
-      const { data: impressions, error: impError } = await supabase
-        .from('upgrade_message_impressions')
-        .select(`
-          *,
-          upgrade_messages(title, message_key)
-        `)
-        .order('shown_at', { ascending: false })
-        .limit(20)
-
-      if (!impError) {
+      // Cargar impresiones recientes (endpoint admin Drizzle; embed reconstruido)
+      const impRes = await adminFetch('/api/v2/admin/upgrade-messages/impressions')
+      if (impRes.ok) {
+        const { impressions } = await impRes.json()
         setAbImpressions(impressions || [])
       }
     } catch (err) {
@@ -253,42 +242,33 @@ export default function ConversionesPage() {
     }
   }
 
-  // Actualizar peso de un mensaje
+  // Actualizar peso de un mensaje (endpoint admin Drizzle)
   const updateMessageWeight = async (messageId: string, newWeight: number) => {
-    if (!supabase) {
-      console.error('❌ Supabase no inicializado')
-      return
-    }
+    const res = await adminFetch('/api/v2/admin/upgrade-messages/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId, weight: newWeight }),
+    })
 
-    const { error } = await supabase
-      .from('upgrade_messages')
-      .update({ weight: newWeight })
-      .eq('id', messageId)
-
-    if (error) {
-      console.error('❌ Error actualizando peso:', error)
-      alert('Error actualizando peso: ' + error.message)
+    if (!res.ok) {
+      console.error('❌ Error actualizando peso:', res.status)
+      alert('Error actualizando peso')
     } else {
       console.log('✅ Peso actualizado a', newWeight)
       loadABTestingData()
     }
   }
 
-  // Activar/desactivar mensaje
+  // Activar/desactivar mensaje (endpoint admin Drizzle)
   const toggleMessageActive = async (messageId: string, currentActive: boolean) => {
-    if (!supabase) {
-      console.error('❌ Supabase no inicializado')
-      return
-    }
+    const res = await adminFetch('/api/v2/admin/upgrade-messages/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId, isActive: !currentActive }),
+    })
 
-    const { error } = await supabase
-      .from('upgrade_messages')
-      .update({ is_active: !currentActive })
-      .eq('id', messageId)
-
-    if (error) {
-      console.error('❌ Error actualizando estado:', error)
-      alert('Error actualizando estado: ' + error.message)
+    if (!res.ok) {
+      console.error('❌ Error actualizando estado:', res.status)
     } else {
       loadABTestingData()
     }

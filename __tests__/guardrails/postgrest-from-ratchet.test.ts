@@ -50,8 +50,9 @@ const RPC = /\.rpc\(/g
 //   C1#22: components/MotivationalMessage.js (1 .rpc get_personalized_message + 2 .from user_message_interactions → GET /api/v2/motivational-message + POST .../interaction) → 75/23, RPC 15→14.
 //   C1#23: components/UserProfileModal.js (3 .from CROSS-USER → GET /api/v2/user-public-profile con gate de privacidad: tests solo self/admin) + comentario .rpc deflactado → 72/22, RPC 14→13.
 //   C1#24: hooks/useAdminNotifications.ts (3 .from admin: 2 embeds feedback + COUNT rate-limit → GET /api/v2/admin/pending-feedback-counts requireAdmin, lógica needsAttention portada) → 69/21.
-const BASELINE_SITES = 69
-const BASELINE_FILES = 21
+//   C1#25: app/admin/conversiones/page.tsx (3 .from admin: impressions embed + 2 UPDATE upgrade_messages → GET impressions + POST update, requireAdmin) → 66/20.
+const BASELINE_SITES = 66
+const BASELINE_FILES = 20
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit → 15; -1 MotivationalMessage → 14; -1 comentario UserProfileModal → 13).
 const BASELINE_RPC = 13
 
