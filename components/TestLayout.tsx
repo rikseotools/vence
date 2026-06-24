@@ -846,13 +846,16 @@ export default function TestLayout({
     console.log('💾 ═══════════════════════════════════════════')
 
     try {
-      // Obtener qué preguntas ya están guardadas
-      const { data: savedQuestions } = await supabase
-        .from('test_questions')
-        .select('question_order')
-        .eq('test_id', sessionId)
+      // Obtener qué preguntas ya están guardadas (endpoint agnóstico; el server
+      // verifica que el test pertenece al usuario del token). Fase C1.
+      let savedOrdersList: number[] = []
+      try {
+        const headers = await getAuthHeaders()
+        const res = await fetch(`/api/v2/test-questions/saved-orders?testId=${encodeURIComponent(sessionId)}`, { headers })
+        if (res.ok) savedOrdersList = (await res.json()).orders || []
+      } catch { /* best-effort: si falla, se reintenta el guardado completo */ }
 
-      const savedOrders = new Set<number>(savedQuestions?.map((q: any) => q.question_order as number) || [])
+      const savedOrders = new Set<number>(savedOrdersList)
       console.log(`📊 Question_orders ya guardados:`, Array.from(savedOrders).sort((a, b) => a - b))
 
       let savedCount = 0

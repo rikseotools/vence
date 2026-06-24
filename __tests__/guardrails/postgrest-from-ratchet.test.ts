@@ -55,8 +55,9 @@ const RPC = /\.rpc\(/g
 //   C1#27: app/soporte (UPDATE notification_logs por conversación → POST /api/v2/notifications/mark-conversation-read) → 62/16.
 //   C1#28: components/test/TestHubPage.tsx (topics, server-component → Drizzle in-place) + app/test-personalizado (3 .from content_sections/scope/articles → GET /api/v2/content-scope-config consolidado) → 58/14.
 //   C1#29: SharePrompt (.rpc get_user_share_stats → GET /api/v2/share-stats) + premium-edu (.rpc create_google_ads_user → reusa ensure-profile) + admin/configuracion (.from email_logs → GET /api/v2/admin/email-logs) → from 57/13, rpc 13→11.
-const BASELINE_SITES = 57
-const BASELINE_FILES = 13
+//   C1#30: components/TestLayout.tsx (.from test_questions dedup de guardado → GET /api/v2/test-questions/saved-orders, JOIN tests user_id del token) → 56/12.
+const BASELINE_SITES = 56
+const BASELINE_FILES = 12
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
 // -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu → 11).
 const BASELINE_RPC = 11
