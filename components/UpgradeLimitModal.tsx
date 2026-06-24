@@ -171,7 +171,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
         setImpressionId(data)
         hasTrackedRef.current = true
         console.log('Impresion trackeada:', data, '| Mensaje:', messageData.message_key)
-        trackUpgradeModalView(supabase, userId, isGraduated ? 'graduated_limit' : 'daily_limit')
+        trackUpgradeModalView(userId, isGraduated ? 'graduated_limit' : 'daily_limit')
       }
     } catch (err) {
       console.error('Error trackeando impresion:', err)
@@ -197,7 +197,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
       // For graduated messages (no BD id), track via conversion_events only
       if (isGraduated && !message.id) {
         if (supabase && userId) {
-          trackUpgradeModalView(supabase, userId, 'graduated_limit')
+          trackUpgradeModalView(userId, 'graduated_limit')
           hasTrackedRef.current = true
         }
       } else if (message.id) {
@@ -235,7 +235,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
       }
     }
     if (supabase && userId) {
-      trackUpgradeButtonClick(supabase, userId, isGraduated ? 'graduated_modal' : 'modal')
+      trackUpgradeButtonClick(userId, isGraduated ? 'graduated_modal' : 'modal')
     }
 
     router.push(`/premium?plan=${plan}`)

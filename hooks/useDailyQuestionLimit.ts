@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { auth } from '../lib/auth'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 import { trackLimitReached } from '../lib/services/conversionTracker'
 
 interface DailyLimitStatus {
@@ -28,7 +29,7 @@ const CACHE_TTL = 60000 // 1 minuto — para evitar queries excesivas mid-test
 let inflightFetch: Promise<void> | null = null
 
 export function useDailyQuestionLimit() {
-  const { user, userProfile, isPremium, isLegacy, supabase } = useAuth() as any
+  const { user, userProfile, isPremium, isLegacy } = useAuth() as any
 
   const [status, setStatus] = useState<DailyLimitStatus>({
     questionsToday: 0,
@@ -63,7 +64,7 @@ export function useDailyQuestionLimit() {
 
   // Fetch the dynamic limit from the server API
   const fetchDynamicLimit = useCallback(async (): Promise<number> => {
-    if (!user || !supabase) return DEFAULT_LIMIT
+    if (!user) return DEFAULT_LIMIT
 
     try {
       const session = await auth.getSession()
@@ -82,11 +83,11 @@ export function useDailyQuestionLimit() {
     } catch {
       return DEFAULT_LIMIT
     }
-  }, [user, supabase])
+  }, [user])
 
   // Obtener estado actual desde BD
   const fetchStatus = useCallback(async (force = false) => {
-    if (!user || !supabase) {
+    if (!user) {
       setStatus(prev => ({ ...prev, loading: false }))
       return
     }
@@ -121,17 +122,17 @@ export function useDailyQuestionLimit() {
 
     const doFetch = async () => {
       try {
-        // Fetch dynamic limit and RPC status in parallel
-        const [userDailyLimit, rpcResult] = await Promise.all([
+        // Fetch dynamic limit + estado diario (endpoint Drizzle) en paralelo
+        const headers = await getAuthHeaders()
+        const [userDailyLimit, statusRes] = await Promise.all([
           fetchDynamicLimit(),
-          supabase.rpc('get_daily_question_status', { p_user_id: user.id }),
+          fetch('/api/v2/daily-question/status', { headers }),
         ])
 
-        const { data, error } = rpcResult
-        if (error) throw error
+        if (!statusRes.ok) throw new Error(`daily-question/status ${statusRes.status}`)
         if (!isMountedRef.current) return
 
-        const result = Array.isArray(data) ? data[0] : data
+        const result = (await statusRes.json()).status
 
         if (result) {
           const questionsToday = result.questions_today || 0
@@ -179,12 +180,12 @@ export function useDailyQuestionLimit() {
 
     // Envolver en promise compartida para deduplicar mounts simultáneos
     inflightFetch = doFetch().finally(() => { inflightFetch = null })
-  }, [user, userProfile, isPremium, isLegacy, supabase, fetchDynamicLimit])
+  }, [user, userProfile, isPremium, isLegacy, fetchDynamicLimit])
 
   // Registrar respuesta (llamar DESPUES de guardar respuesta exitosamente)
   const recordAnswer = useCallback(async () => {
-    if (!user || !supabase) {
-      return { success: false, error: 'No user or supabase' }
+    if (!user) {
+      return { success: false, error: 'No user' }
     }
 
     // Usuarios premium no incrementan contador
@@ -195,14 +196,16 @@ export function useDailyQuestionLimit() {
     const currentLimit = dynamicLimitRef.current
 
     try {
-      const { data, error } = await supabase.rpc('increment_daily_questions', {
-        p_user_id: user.id,
-        p_limit: currentLimit
+      const headers = await getAuthHeaders()
+      const incRes = await fetch('/api/v2/daily-question/increment', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: currentLimit }),
       })
 
-      if (error) throw error
+      if (!incRes.ok) throw new Error(`daily-question/increment ${incRes.status}`)
 
-      const result = Array.isArray(data) ? data[0] : data
+      const result = (await incRes.json()).status
 
       if (result && isMountedRef.current) {
         const questionsToday = result.questions_today
@@ -246,7 +249,7 @@ export function useDailyQuestionLimit() {
               localStorage.setItem(storageKey, 'true')
             }
             // Track with graduated limit context for observability
-            trackLimitReached(supabase, user.id, questionsToday, {
+            trackLimitReached(user.id, questionsToday, {
               daily_limit: currentLimit,
               is_graduated: currentLimit < DEFAULT_LIMIT,
             })
@@ -267,7 +270,7 @@ export function useDailyQuestionLimit() {
       console.error('Error recording answer:', error)
       return { success: false, error: error.message }
     }
-  }, [user, supabase, isPremium, isLegacy, status.isPremiumUser])
+  }, [user, isPremium, isLegacy, status.isPremiumUser])
 
   // Cargar estado inicial — force=true para no usar cache viejo entre navegaciones
   // inflightFetch deduplicata si múltiples componentes montan a la vez

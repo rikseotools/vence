@@ -46,10 +46,11 @@ const RPC = /\.rpc\(/g
 //   C1#18: components/ArticleModal.tsx (3 .from → reusa GET onboarding/status + POST /api/feedback existente -doble insert-) → 80 / 25.
 //   C1#19: app/Header.tsx (2 .from: user_streaks user-scoped + feedback_conversations admin → GET /api/v2/streak + GET /api/v2/admin/feedback/open-count requireAdmin) → 78 / 24.
 //   C1#20: lib/notifications/motivationalAnalyzer.ts (2 .from tests → GET /api/v2/motivational/recent-tests; analyzer ya no recibe supabase) + borrado bloque dispute COMENTADO en useIntelligentNotifications → 77 / 24. (lib/ no cuenta en el ratchet; baja por el comentado.)
+//   C1#21: hooks/useDailyQuestionLimit.ts (2 .rpc → GET status + POST increment) + lib/services/conversionTracker (1 .rpc track_conversion_event → POST /api/v2/conversion-event, firmas sin supabase; callers premium/UpgradeLimitModal actualizados) → RPC 17→15.
 const BASELINE_SITES = 77
 const BASELINE_FILES = 24
-// Trinquete .rpc( de cliente (baseline al añadirlo: 17, tras migrar los 2 de OnboardingModal).
-const BASELINE_RPC = 17
+// Trinquete .rpc( de cliente (17 al añadirlo; C1#21 useDailyQuestionLimit -2 → 15).
+const BASELINE_RPC = 15
 
 function walk(rel: string): string[] {
   let out: string[] = []

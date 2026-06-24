@@ -1,9 +1,12 @@
 // lib/services/conversionTracker.ts
 // Servicio para tracking de eventos de conversion
+//
+// AGNÓSTICO (Fase C1): ya no recibe el cliente supabase ni hace supabase.rpc.
+// Llama a POST /api/v2/conversion-event (Drizzle + verifyAuth), que ejecuta la
+// MISMA función plpgsql track_conversion_event. user_id sale del TOKEN. Client-only.
 'use client'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClientAny = any
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export const CONVERSION_EVENTS = {
   // Registro
@@ -36,36 +39,34 @@ export const CONVERSION_EVENTS = {
   PAYMENT_FAILED: 'payment_failed'
 } as const
 
+// NOTA de firma (Fase C1): se eliminó el 1er parámetro `supabase` de TODAS las
+// funciones. El user_id se deriva del token en el endpoint, no del argumento; el
+// param `userId` que conservan algunas firmas es solo para logging/compatibilidad.
 export async function trackConversionEvent(
-  supabase: SupabaseClientAny,
   userId: string,
   eventType: string,
   eventData: Record<string, unknown> = {}
 ): Promise<unknown> {
-  if (!supabase || !userId || !eventType) {
-    console.warn('trackConversionEvent: faltan parametros', { userId, eventType })
+  if (!eventType) {
+    console.warn('trackConversionEvent: falta eventType', { userId })
     return null
   }
 
   try {
-    const { data, error } = await supabase.rpc('track_conversion_event', {
-      p_user_id: userId,
-      p_event_type: eventType,
-      p_event_data: eventData
+    const headers = await getAuthHeaders()
+    const res = await fetch('/api/v2/conversion-event', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType, eventData }),
     })
 
-    if (error) {
-      // Si la tabla no existe aun, no romper la app
-      if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        console.warn('Tabla conversion_events no existe aun - ejecutar migracion')
-        return null
-      }
-      console.error('Error tracking conversion event:', error)
+    if (!res.ok) {
+      console.error('Error tracking conversion event:', res.status)
       return null
     }
 
     console.log(`📊 Conversion event tracked: ${eventType}`, eventData)
-    return data
+    return (await res.json()).id ?? null
 
   } catch (err) {
     // Nunca romper la app por un error de tracking
@@ -74,45 +75,45 @@ export async function trackConversionEvent(
   }
 }
 
-export async function trackUpgradeModalView(supabase: SupabaseClientAny, userId: string, source: string = 'limit'): Promise<unknown> {
-  return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.UPGRADE_MODAL_VIEWED, {
+export async function trackUpgradeModalView(userId: string, source: string = 'limit'): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.UPGRADE_MODAL_VIEWED, {
     source,
     timestamp: new Date().toISOString()
   })
 }
 
-export async function trackUpgradeButtonClick(supabase: SupabaseClientAny, userId: string, source: string = 'modal'): Promise<unknown> {
-  return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.UPGRADE_BUTTON_CLICKED, {
+export async function trackUpgradeButtonClick(userId: string, source: string = 'modal'): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.UPGRADE_BUTTON_CLICKED, {
     source,
     timestamp: new Date().toISOString()
   })
 }
 
-export async function trackLimitReached(supabase: SupabaseClientAny, userId: string, questionsToday: number, extra: Record<string, unknown> = {}): Promise<unknown> {
-  return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.LIMIT_REACHED, {
+export async function trackLimitReached(userId: string, questionsToday: number, extra: Record<string, unknown> = {}): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.LIMIT_REACHED, {
     questions_today: questionsToday,
     timestamp: new Date().toISOString(),
     ...extra,
   })
 }
 
-export async function trackPremiumPageView(supabase: SupabaseClientAny, userId: string, referrer: string | null = null, fromSource: string | null = null): Promise<unknown> {
-  return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.PREMIUM_PAGE_VIEWED, {
+export async function trackPremiumPageView(userId: string, referrer: string | null = null, fromSource: string | null = null): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.PREMIUM_PAGE_VIEWED, {
     referrer,
     from_source: fromSource,
     timestamp: new Date().toISOString()
   })
 }
 
-export async function trackCheckoutStarted(supabase: SupabaseClientAny, userId: string, plan: string): Promise<unknown> {
-  return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.CHECKOUT_STARTED, {
+export async function trackCheckoutStarted(userId: string, plan: string): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.CHECKOUT_STARTED, {
     plan,
     timestamp: new Date().toISOString()
   })
 }
 
-export async function trackPaymentCompleted(supabase: SupabaseClientAny, userId: string, amount: number, plan: string): Promise<unknown> {
-  return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.PAYMENT_COMPLETED, {
+export async function trackPaymentCompleted(userId: string, amount: number, plan: string): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.PAYMENT_COMPLETED, {
     amount,
     plan,
     timestamp: new Date().toISOString()

@@ -47,7 +47,7 @@ function PremiumPageContent() {
     if (user && supabase && !hasTrackedPageView.current && !authLoading) {
       const referrer = document.referrer || null
       const fromSource = searchParams.get('from')
-      trackPremiumPageView(supabase, user.id, referrer, fromSource)
+      trackPremiumPageView(user.id, referrer, fromSource)
       hasTrackedPageView.current = true
     }
   }, [user, supabase, authLoading, searchParams])
@@ -124,7 +124,7 @@ function PremiumPageContent() {
 
       // Trackear inicio de checkout
       if (supabase && user.id) {
-        trackCheckoutStarted(supabase, user.id, selectedPlan)
+        trackCheckoutStarted(user.id, selectedPlan)
       }
 
       // Determinar el priceId según el plan seleccionado
@@ -249,7 +249,7 @@ function PremiumPageContent() {
       console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', plan)
 
       if (supabase && user.id) {
-        trackCheckoutStarted(supabase, user.id, plan)
+        trackCheckoutStarted(user.id, plan)
       }
 
       const priceIds: PriceIds = {
