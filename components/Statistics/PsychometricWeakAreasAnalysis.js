@@ -1,8 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
-
-const supabase = getSupabaseClient()
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function PsychometricWeakAreasAnalysis({ userId }) {
   const [analysis, setAnalysis] = useState(null)
@@ -30,44 +28,17 @@ export default function PsychometricWeakAreasAnalysis({ userId }) {
         dateFilter = monthAgo.toISOString()
       }
 
-      // Query para obtener todas las respuestas psicotécnicas del usuario
-      let query = supabase
-        .from('psychometric_test_answers')
-        .select(`
-          *,
-          psychometric_questions!inner(
-            id,
-            question_text,
-            difficulty_level,
-            estimated_time_seconds,
-            psychometric_sections!inner(
-              section_key,
-              display_name,
-              question_type,
-              psychometric_categories!inner(
-                category_key,
-                display_name
-              )
-            )
-          ),
-          psychometric_test_sessions!inner(
-            session_type,
-            total_questions,
-            score
-          )
-        `)
-        .eq('user_id', userId)
-
-      if (dateFilter) {
-        query = query.gte('created_at', dateFilter)
-      }
-
-      const { data: answers, error } = await query.order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching psychometric answers:', error)
+      // Respuestas psicotécnicas del usuario con detalle pregunta/sección/categoría/sesión
+      // (endpoint agnóstico, user del token; embed reconstruido server-side).
+      const days = selectedTimeframe === 'week' ? 7 : selectedTimeframe === 'month' ? 30 : null
+      const qs = days ? `?days=${days}` : ''
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/v2/psychometric/weak-areas${qs}`, { headers })
+      if (!res.ok) {
+        console.error('Error fetching psychometric answers:', res.status)
         return
       }
+      const answers = (await res.json()).answers || []
 
       // Analizar áreas débiles
       const weakAreasAnalysis = analyzeWeakAreas(answers)

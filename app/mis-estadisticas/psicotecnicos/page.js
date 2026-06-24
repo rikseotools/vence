@@ -2,10 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import PsychometricWeakAreasAnalysis from '@/components/Statistics/PsychometricWeakAreasAnalysis'
-
-const supabase = getSupabaseClient()
 
 export default function PsychometricStatistics() {
   const { user } = useAuth()
@@ -36,38 +34,18 @@ export default function PsychometricStatistics() {
         dateFilter = { created_at: { gte: monthAgo.toISOString() } }
       }
 
-      // Usar tabla psychometric_test_sessions que sí existe
-      // IMPORTANTE: Filtrar solo sesiones psicotécnicas, no mezclar con preguntas de ley
-      console.log('🔍 DEBUG: User ID:', user.id, 'Email:', user.email)
-      
-      let query = supabase
-        .from('psychometric_test_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('session_type', 'psychometric')
-
-      // Aplicar filtro de fecha si es necesario
-      if (dateFilter.created_at) {
-        query = query.gte('created_at', dateFilter.created_at.gte)
-      }
-
-      // Aplicar filtro de categoría si es necesario
-      if (selectedCategory !== 'all') {
-        query = query.eq('psychometric_questions.psychometric_sections.psychometric_categories.category_key', selectedCategory)
-      }
-
-      const { data: answers, error } = await query.order('created_at', { ascending: false })
-
-      console.log('🔍 DEBUG: Query result for user', user.email, ':', { 
-        answers: answers?.length || 0, 
-        error: error?.message,
-        firstAnswer: answers?.[0] 
-      })
-
-      if (error) {
-        console.error('Error loading psychometric stats:', error)
+      // Sesiones psicotécnicas del usuario (endpoint agnóstico, user del token).
+      // El filtro de categoría del original usaba un embed-path inexistente (roto);
+      // la agrupación byCategory la hace processPsychometricStats sobre los datos.
+      const days = selectedPeriod === 'week' ? 7 : selectedPeriod === 'month' ? 30 : null
+      const qs = days ? `?days=${days}` : ''
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/v2/psychometric/sessions${qs}`, { headers })
+      if (!res.ok) {
+        console.error('Error loading psychometric stats:', res.status)
         return
       }
+      const answers = (await res.json()).sessions || []
 
       // Procesar estadísticas
       const processedStats = processPsychometricStats(answers)
