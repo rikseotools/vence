@@ -233,18 +233,11 @@ export default function AdminFeedbackPage() {
     try {
       console.log('🔍 Cargando otras conversaciones del usuario:', userId)
 
-      const { data, error } = await supabase
-        .from('feedback_conversations')
-        .select(`
-          *,
-          feedback:user_feedback(id, message, type, created_at, status)
-        `)
-        .eq('user_id', userId)
-        .neq('id', currentConversationId) // Excluir la conversación actual
-        .order('last_message_at', { ascending: false })
-        .limit(10)
-
-      if (error) throw error
+      const authHeaders = await getAuthHeaders()
+      const res = await adminFetch(`/api/v2/admin/feedback/user-conversations?userId=${userId}&excludeId=${currentConversationId}`, { headers: authHeaders })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'user-conversations')
+      const data = json.conversations
 
       console.log(`📂 Otras conversaciones del usuario: ${data?.length || 0}`)
       setUserOtherConversations(data || [])
@@ -387,13 +380,11 @@ export default function AdminFeedbackPage() {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('feedback_messages')
-          .select('*')
-          .eq('conversation_id', conversation.id)
-          .order('created_at', { ascending: true })
-
-        if (error) throw error
+        const mhdr = await getAuthHeaders()
+        const mres = await adminFetch(`/api/v2/admin/feedback/messages?conversationId=${conversation.id}`, { headers: mhdr })
+        const mjson = await mres.json()
+        if (!mres.ok) throw new Error(mjson?.error || 'messages')
+        const data = mjson.messages
         setInlineChatMessages(data || [])
         console.log('💬 Mensajes inline cargados:', data?.length || 0)
 
@@ -430,12 +421,15 @@ export default function AdminFeedbackPage() {
           console.log('✅ Conversación marcada como vista (waiting_user)')
         }
 
-        // Marcar como leído en notificaciones
+        // Marcar como leído en notificaciones (endpoint admin: mark-viewed sin status
+        // solo sella admin_viewed_at)
         if (newUserMessages.has(conversation.id)) {
-          await supabase
-            .from('feedback_conversations')
-            .update({ admin_viewed_at: new Date().toISOString() })
-            .eq('id', conversation.id)
+          const vhdr = await getAuthHeaders()
+          await adminFetch('/api/v2/admin/feedback/mark-viewed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...vhdr },
+            body: JSON.stringify({ conversationId: conversation.id }),
+          })
 
           setNewUserMessages(prev => {
             const newSet = new Set(prev)
@@ -623,52 +617,26 @@ export default function AdminFeedbackPage() {
     }
 
     try {
-      // Obtener conversaciones que tienen status 'waiting_admin' Y NO han sido vistas por admin
-      const { data: waitingConversations, error: convError } = await supabase
-        .from('feedback_conversations')
-        .select('id, feedback_id, status, last_message_at')
-        .eq('status', 'waiting_admin')
-        .is('admin_viewed_at', null) // Solo las que NO han sido vistas
+      // Conversaciones waiting_admin NO vistas (endpoint admin Drizzle)
+      const whdr = await getAuthHeaders()
+      const wres = await adminFetch('/api/v2/admin/feedback/waiting-conversations', { headers: whdr })
+      const wjson = await wres.json()
+      if (!wres.ok) throw new Error(wjson?.error || 'waiting-conversations')
+      const waitingConversations = wjson.conversations
 
-      if (convError) {
-        // Si el campo admin_viewed_at no existe, usar fallback temporal
-        if (convError.message && convError.message.includes('admin_viewed_at')) {
-          console.log('⚠️ Campo admin_viewed_at no existe, usando conteo básico como fallback en admin panel')
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('feedback_conversations')
-            .select('id, feedback_id, status, last_message_at')
-            .eq('status', 'waiting_admin')
-          
-          if (fallbackError) {
-            console.error('Error en fallback admin panel:', fallbackError)
-            setNewUserMessages(new Set())
-          } else {
-            const unviewedIds = fallbackData?.map(conv => conv.id) || []
-            console.log(`🔔 Conversaciones esperando admin (fallback): ${unviewedIds.length}`)
-            setNewUserMessages(new Set(unviewedIds))
-          }
-        } else {
-          console.error('Error verificando nuevos mensajes:', convError)
-          setNewUserMessages(new Set())
-        }
+      if (waitingConversations && waitingConversations.length > 0) {
+        const unviewedIds: string[] = waitingConversations.map((conv: { id: string }) => conv.id)
+        console.log(`🔔 Conversaciones no vistas esperando admin: ${unviewedIds.length}`)
+        setNewUserMessages(new Set<string>(unviewedIds))
       } else {
-        if (waitingConversations && waitingConversations.length > 0) {
-          const unviewedIds: string[] = waitingConversations.map((conv: { id: string }) => conv.id)
-          console.log(`🔔 Conversaciones no vistas esperando admin: ${unviewedIds.length}`)
-
-          const newSet = new Set<string>(unviewedIds)
-          setNewUserMessages(newSet)
-        } else {
-          // No hay conversaciones esperando, limpiar notificaciones
-          console.log(`🧹 No hay conversaciones no vistas esperando admin`)
-          setNewUserMessages(new Set())
-        }
+        console.log(`🧹 No hay conversaciones no vistas esperando admin`)
+        setNewUserMessages(new Set())
       }
     } catch (error) {
       console.error('Error verificando nuevos mensajes:', error)
       setNewUserMessages(new Set())
     }
-  }, [supabase, viewedConversationsLoaded])
+  }, [viewedConversationsLoaded])
 
   // Polling para detectar nuevas respuestas de usuarios
   useEffect(() => {
@@ -681,17 +649,16 @@ export default function AdminFeedbackPage() {
       checkForNewUserMessages()
       // 🔄 También recargar feedbacks para detectar cambios de estado (más frecuente)
       try {
-        const { data, error } = await supabase
-          .from('user_feedback')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
+        const fhdr = await getAuthHeaders()
+        const fres = await adminFetch('/api/v2/admin/feedback/feedbacks-list', { headers: fhdr })
+        const fjson = await fres.json()
+        if (!fres.ok) throw new Error(fjson?.error || 'feedbacks-list')
+        const data = fjson.feedbacks
 
         // Cargar perfiles de usuario para los feedbacks que tienen user_id
         const feedbacksWithProfiles = await loadUserProfiles(data || [])
         setFeedbacks(feedbacksWithProfiles)
-        
+
         // Calcular estadísticas
         const stats = {
           total: data?.length || 0,
@@ -993,12 +960,11 @@ export default function AdminFeedbackPage() {
       setLoading(true)
       console.log('🔄 Iniciando carga de feedbacks...')
       
-      const { data, error } = await supabase
-        .from('user_feedback')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
+      const fhdr = await getAuthHeaders()
+      const fres = await adminFetch('/api/v2/admin/feedback/feedbacks-list', { headers: fhdr })
+      const fjson = await fres.json()
+      if (!fres.ok) throw new Error(fjson?.error || 'feedbacks-list')
+      const data = fjson.feedbacks
 
       console.log(`📋 Feedbacks obtenidos: ${data?.length || 0}`)
 
@@ -1071,26 +1037,11 @@ export default function AdminFeedbackPage() {
 
   const loadChatMessages = async (conversationId) => {
     try {
-      const { data, error } = await supabase
-        .from('feedback_messages')
-        .select(`
-          id,
-          conversation_id,
-          sender_id,
-          is_admin,
-          message,
-          created_at,
-          read_at,
-          sender:sender_id (
-            full_name,
-            email
-          )
-        `)
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-      setChatMessages(data || [])
+      const mhdr = await getAuthHeaders()
+      const mres = await adminFetch(`/api/v2/admin/feedback/messages?conversationId=${conversationId}`, { headers: mhdr })
+      const mjson = await mres.json()
+      if (!mres.ok) throw new Error(mjson?.error || 'messages')
+      setChatMessages(mjson.messages || [])
     } catch (error) {
       console.error('Error cargando mensajes:', error)
     }
@@ -1099,13 +1050,11 @@ export default function AdminFeedbackPage() {
   const sendAdminMessage = async (conversationId, message) => {
     try {
       // Necesitamos feedbackId para el endpoint unificado
-      const { data: conv } = await supabase
-        .from('feedback_conversations')
-        .select('feedback_id')
-        .eq('id', conversationId)
-        .single()
+      const chdr = await getAuthHeaders()
+      const cres = await adminFetch(`/api/v2/admin/feedback/conversation-feedback-id?conversationId=${conversationId}`, { headers: chdr })
+      const conv = cres.ok ? await cres.json() : { feedbackId: null }
 
-      if (!conv?.feedback_id) {
+      if (!conv?.feedbackId) {
         console.error('❌ No se pudo obtener feedback_id de la conversación')
         return
       }
@@ -1114,7 +1063,7 @@ export default function AdminFeedbackPage() {
       // Semántica post-14/04/2026: admin reply = feedback cerrado ('resolved').
       // Si el user responde después, el endpoint /api/feedback/message reabre a 'pending'.
       const result = await respondViaFeedbackEndpoint(supabase, {
-        feedbackId: conv.feedback_id,
+        feedbackId: conv.feedbackId,
         adminUserId: user.id,
         message: message.trim(),
         finalStatus: 'resolved',
@@ -1142,34 +1091,15 @@ export default function AdminFeedbackPage() {
     try {
       setUpdatingStatus(true)
 
-      const updateData: {
-        status: FeedbackStatus
-        updated_at: string
-        admin_response?: string
-        admin_user_id?: string
-        resolved_at?: string
-      } = {
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      }
-
-      if (response) {
-        // La respuesta ya incluye las URLs de imagen directamente en el texto
-        updateData.admin_response = response
-        // Nota: attachments se incluyen en el texto de la respuesta, no como columna separada
-        updateData.admin_user_id = user?.id
-      }
-
-      if (newStatus === 'resolved' || newStatus === 'dismissed') {
-        updateData.resolved_at = new Date().toISOString()
-      }
-
-      const { error } = await supabase
-        .from('user_feedback')
-        .update(updateData)
-        .eq('id', feedbackId)
-
-      if (error) throw error
+      // Endpoint admin Drizzle: status + (admin_response/admin_user_id del token si hay
+      // respuesta) + resolved_at si resolved/dismissed (lógica server-side).
+      const uhdr = await getAuthHeaders()
+      const ures = await adminFetch('/api/v2/admin/feedback/update-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...uhdr },
+        body: JSON.stringify({ feedbackId, status: newStatus, adminResponse: response || null }),
+      })
+      if (!ures.ok) throw new Error('update-feedback')
 
       // Recargar feedbacks
       await loadFeedbacks()
@@ -1189,20 +1119,16 @@ export default function AdminFeedbackPage() {
     try {
       console.log('🚀 Iniciando chat con usuario para feedback:', feedback.id)
       
-      // Crear la conversación
-      const { data: conversation, error: convError } = await supabase
-        .from('feedback_conversations')
-        .insert({
-          feedback_id: feedback.id,
-          user_id: feedback.user_id,
-          status: 'waiting_admin',
-          admin_id: user.id,
-          started_by_admin: true
-        })
-        .select()
-        .single()
-
-      if (convError) throw convError
+      // Crear la conversación (endpoint admin Drizzle; admin_id del token)
+      const shdr = await getAuthHeaders()
+      const sres = await adminFetch('/api/v2/admin/feedback/start-conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...shdr },
+        body: JSON.stringify({ feedbackId: feedback.id, userId: feedback.user_id }),
+      })
+      const sjson = await sres.json()
+      if (!sres.ok) throw new Error(sjson?.error || 'start-conversation')
+      const conversation = sjson.conversation
 
       console.log('✅ Conversación creada:', conversation.id)
       
@@ -2688,25 +2614,20 @@ export default function AdminFeedbackPage() {
                     onClick={async () => {
                       if (confirm('¿Cerrar este chat de soporte?') && selectedConversation) {
                         try {
-                          // Cerrar conversación
-                          const closeTime = new Date().toISOString()
-                          await supabase
-                            .from('feedback_conversations')
-                            .update({ status: 'closed', closed_at: closeTime, last_message_at: closeTime })
-                            .eq('id', selectedConversation.id)
+                          // Cerrar conversación + resolver feedback (endpoint admin close)
+                          const chdr = await getAuthHeaders()
+                          const cRes = await adminFetch('/api/v2/admin/feedback/close', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', ...chdr },
+                            body: JSON.stringify({
+                              conversationId: selectedConversation.id,
+                              alsoResolveFeedback: true,
+                              feedbackId: selectedConversation.feedback_id,
+                            }),
+                          })
+                          if (!cRes.ok) throw new Error('close')
 
-                          console.log('💬 Conversación cerrada')
-
-                          // Marcar feedback como resuelto
-                          await supabase
-                            .from('user_feedback')
-                            .update({
-                              status: 'resolved',
-                              resolved_at: closeTime
-                            })
-                            .eq('id', selectedConversation.feedback_id)
-
-                          console.log('✅ Feedback marcado como resuelto')
+                          console.log('✅ Conversación cerrada y feedback resuelto')
                           setSelectedConversation(null)
                           loadConversations()
                           loadFeedbacks()
