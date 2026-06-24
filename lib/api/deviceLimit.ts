@@ -1,21 +1,17 @@
 // lib/api/deviceLimit.ts — Server-side device registration and limit enforcement
 // All users: max 2 devices (computer + phone). Blocks 3rd device.
 
-import { createClient } from '@supabase/supabase-js'
+import { sql } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
 import { NextRequest } from 'next/server'
 // Fase 1.5 outbox sprint (28/05/2026): cache Redis cross-lambda para
 // 3 RPCs antifraude. Ver docs/roadmap/sprint-outbox-test-questions.md
 import { getOrSet, invalidate as redisInvalidate } from '@/lib/cache/redis'
 
-let _supabaseAdmin: ReturnType<typeof createClient> | null = null
-function getSupabaseAdmin() {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
-  }
-  return _supabaseAdmin
+// AGNÓSTICO (Fase C1): server-only (solo app/api/*). RPCs plpgsql vía Drizzle
+// (getAdminDb, bypass RLS) en vez de supabase.rpc — portable a RDS/Neon.
+function rowsOf(res: unknown): any[] {
+  return (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as any[]
 }
 
 export interface DeviceCheckResult {
@@ -92,23 +88,10 @@ export async function registerAndCheckDevice(
     try {
       const deviceLabel = userAgent ? parseDeviceLabel(userAgent) : null
 
-      const { data, error } = await getSupabaseAdmin().rpc('register_device', {
-        p_user_id: userId,
-        p_device_id: deviceId,
-        p_device_label: deviceLabel,
-        p_hw_fingerprint: hwFingerprint || null,
-      })
-
-      if (error) {
-        // Table might not exist yet — fail open
-        if (error.code === '42P01' || error.code === 'PGRST202') {
-          return FAIL_OPEN
-        }
-        console.error('❌ [DeviceLimit] RPC error:', error.message)
-        return FAIL_OPEN
-      }
-
-      const result = Array.isArray(data) ? data[0] : data
+      const regRes = await getAdminDb().execute(sql`
+        SELECT * FROM register_device(${userId}::uuid, ${deviceId}, ${deviceLabel}, ${hwFingerprint || null})
+      `)
+      const result = rowsOf(regRes)[0]
       if (!result) return FAIL_OPEN
 
       const checkResult: DeviceCheckResult = {
@@ -144,18 +127,10 @@ export async function getAccountsOnDevice(deviceId: string): Promise<string[]> {
   if (!deviceId) return []
 
   try {
-    const { data, error } = await getSupabaseAdmin().rpc('get_accounts_on_device', {
-      p_device_id: deviceId,
-    })
-
-    if (error) {
-      if (error.code === '42P01' || error.code === 'PGRST202') return []
-      console.error('❌ [DeviceLimit] get_accounts error:', error.message)
-      return []
-    }
-
-    if (!data) return []
-    return (data as { user_id: string }[]).map(r => r.user_id)
+    const accRes = await getAdminDb().execute(sql`
+      SELECT * FROM get_accounts_on_device(${deviceId})
+    `)
+    return rowsOf(accRes).map((r: { user_id: string }) => r.user_id)
   } catch {
     return []
   }
