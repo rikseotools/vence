@@ -101,13 +101,32 @@ function errResponse(status: number, error: string) {
   return { ok: false, status, json: async () => ({ success: false, error }) }
 }
 
+// fetchMantenerRacha ahora llama 1º a /api/v2/studied-topics (temas del usuario, agnóstico)
+// y luego a /api/questions/filtered. Este mock distingue por URL: studied-topics → temas
+// (por defecto vacío → modo global), resto → la respuesta de preguntas indicada.
+function rachaFetch(filteredResp: unknown, temas: number[] = []) {
+  return jest.fn((url: string) =>
+    url === '/api/v2/studied-topics'
+      ? Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true, temas }) })
+      : Promise.resolve(filteredResp)
+  )
+}
+// Localiza la llamada a /api/questions/filtered (la de preguntas), ignorando studied-topics.
+function filteredCall(mockFetch: jest.Mock) {
+  const c = mockFetch.mock.calls.find((call) => call[0] === '/api/questions/filtered')
+  if (!c) throw new Error('No se llamó a /api/questions/filtered')
+  return c
+}
+
 const originalFetch = global.fetch
 const mockUser = { id: 'user-rem-1', email: 'test@test.com' }
 
 beforeEach(() => {
   jest.clearAllMocks()
   mockAuthFns.getUser.mockResolvedValue({ data: { user: mockUser }, error: null })
-  mockAuthFns.getSession.mockResolvedValue({ data: { session: { access_token: 'tok' } }, error: null })
+  // La sesión DEBE incluir user: mapSession() del puerto auth devuelve null si falta
+  // (→ token null → sin Bearer). Mock fiel a la forma real de supabase.auth.getSession.
+  mockAuthFns.getSession.mockResolvedValue({ data: { session: { access_token: 'tok', user: mockUser } }, error: null })
 })
 afterAll(() => { global.fetch = originalFetch })
 
@@ -336,24 +355,24 @@ describe('fetchArticulosDirigido', () => {
 
 describe('fetchMantenerRacha', () => {
   test('llama a API con difficultyMode easy y prioritizeNeverSeen', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
-    global.fetch = mockFetch
+    const mockFetch = rachaFetch(okResponse(5))
+    global.fetch = mockFetch as unknown as typeof fetch
 
     await fetchMantenerRacha(0, { n: '5' }, { positionType: 'auxiliar_administrativo_estado' })
 
     expect(mockFetch).toHaveBeenCalled()
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const body = JSON.parse(filteredCall(mockFetch)[1].body)
     expect(body.difficultyMode).toBe('easy')
     expect(body.prioritizeNeverSeen).toBe(true)
   })
 
   test('envía Bearer token', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
-    global.fetch = mockFetch
+    const mockFetch = rachaFetch(okResponse(5))
+    global.fetch = mockFetch as unknown as typeof fetch
 
     await fetchMantenerRacha(0, { n: '5' }, { positionType: 'auxiliar_administrativo_estado' })
 
-    const headers = mockFetch.mock.calls[0][1].headers
+    const headers = filteredCall(mockFetch)[1].headers
     expect(new Headers(headers).get('authorization')).toBe('Bearer tok')
   })
 
@@ -369,22 +388,30 @@ describe('fetchMantenerRacha', () => {
   })
 
   test('API sin preguntas con temas: fallback a sin filtros', async () => {
-    const mockFetch = jest.fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions: [] }) }) // con temas → vacío
-      .mockResolvedValueOnce(okResponse(5)) // sin filtros → éxito
-    global.fetch = mockFetch
+    let filteredCalls = 0
+    const mockFetch = jest.fn((url: string) => {
+      if (url === '/api/v2/studied-topics') {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true, temas: [1] }) })
+      }
+      // 1ª llamada filtrada (con temas) → vacío; 2ª (sin filtros) → éxito
+      filteredCalls++
+      return Promise.resolve(filteredCalls === 1
+        ? { ok: true, status: 200, json: async () => ({ success: true, questions: [] }) }
+        : okResponse(5))
+    })
+    global.fetch = mockFetch as unknown as typeof fetch
 
     const result = await fetchMantenerRacha(0, { n: '5' }, { positionType: 'auxiliar_administrativo_estado' })
     expect(result).toHaveLength(5)
   })
 
   test('pasa positionType correcto', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
-    global.fetch = mockFetch
+    const mockFetch = rachaFetch(okResponse(5))
+    global.fetch = mockFetch as unknown as typeof fetch
 
     await fetchMantenerRacha(0, { n: '5' }, { positionType: 'auxiliar_administrativo_cyl' })
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const body = JSON.parse(filteredCall(mockFetch)[1].body)
     expect(body.positionType).toBe('auxiliar_administrativo_cyl')
   })
 
@@ -398,12 +425,12 @@ describe('fetchMantenerRacha', () => {
   })
 
   test('n default es 5', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
-    global.fetch = mockFetch
+    const mockFetch = rachaFetch(okResponse(5))
+    global.fetch = mockFetch as unknown as typeof fetch
 
     await fetchMantenerRacha(0, {}, { positionType: 'auxiliar_administrativo_estado' })
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const body = JSON.parse(filteredCall(mockFetch)[1].body)
     expect(body.numQuestions).toBe(5)
   })
 

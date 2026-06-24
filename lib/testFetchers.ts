@@ -2,7 +2,6 @@
 // fetchWithChallenge: drop-in de fetch que resuelve el reto humano (anti-scraping)
 // si el servidor lo pide. Cuando la capa está apagada se comporta igual que fetch.
 import { fetchWithChallenge } from './api/fetchWithChallenge'
-import { getSupabaseClient } from './supabase'
 import { auth } from './auth'
 import { mapSlugToShortName as mapLawSlugToShortName } from './lawSlugSync'
 import { getValidExamPositions, applyExamPositionFilter } from './config/exam-positions'
@@ -29,12 +28,6 @@ interface SectionFilterItem {
   title: string
   articleRange?: { start: number; end: number }
   [key: string]: unknown
-}
-
-interface BatchedQueryOptions {
-  gte?: { column: string; value: string }
-  order?: { column: string; ascending: boolean }
-  limit?: number
 }
 
 interface CacheEntry {
@@ -335,8 +328,6 @@ interface QuestionHistoryItem {
   lastAnsweredAt: string
 }
 
-const supabase = getSupabaseClient()
-
 // =================================================================
 // HELPER: SAFE PARAM GETTER (URLSearchParams o objeto plano)
 // =================================================================
@@ -382,99 +373,6 @@ export function clearAllSessionQuestionCache(): void {
   sessionQuestionCache.clear()
 }
 
-// =================================================================
-// HELPER: BATCHED QUERIES PARA EVITAR URLs MUY LARGAS
-// =================================================================
-// Supabase convierte .in() queries a GET con URL params - si hay muchos IDs, la URL excede límites
-// Esta función divide las queries en lotes paralelos y combina resultados
-const BATCH_SIZE = 50 // 50 UUIDs por lote para evitar límites de URL
-
-async function batchedTestQuestionsQuery(testIds: string[], selectFields: string, options: BatchedQueryOptions = {}): Promise<{ data: SupabaseQuestionAny[] | null; error: SupabaseQuestionAny }> {
-  if (!testIds || testIds.length === 0) {
-    return { data: [], error: null }
-  }
-
-  // Si hay pocos IDs, hacer query directa
-  if (testIds.length <= BATCH_SIZE) {
-    let query = supabase
-      .from('test_questions')
-      .select(selectFields)
-      .in('test_id', testIds)
-
-    if (options.gte) {
-      query = query.gte(options.gte.column, options.gte.value)
-    }
-    if (options.order) {
-      query = query.order(options.order.column, { ascending: options.order.ascending })
-    }
-    if (options.limit) {
-      query = query.limit(options.limit)
-    }
-
-    return await query
-  }
-
-  // Dividir en lotes
-  const batches = []
-  for (let i = 0; i < testIds.length; i += BATCH_SIZE) {
-    batches.push(testIds.slice(i, i + BATCH_SIZE))
-  }
-
-  // Ejecutar queries en paralelo
-  const batchLimit = options.limit ? Math.ceil(options.limit / batches.length) : undefined
-  const results = await Promise.all(
-    batches.map(async (batch) => {
-      let query = supabase
-        .from('test_questions')
-        .select(selectFields)
-        .in('test_id', batch)
-
-      if (options.gte) {
-        query = query.gte(options.gte.column, options.gte.value)
-      }
-      if (options.order) {
-        query = query.order(options.order.column, { ascending: options.order.ascending })
-      }
-      if (batchLimit) {
-        query = query.limit(batchLimit)
-      }
-
-      return await query
-    })
-  )
-
-  // Combinar resultados
-  let allData: SupabaseQuestionAny[] = []
-  for (const result of results) {
-    if (result.error) {
-      return { data: null, error: result.error }
-    }
-    if (result.data) {
-      allData = allData.concat(result.data)
-    }
-  }
-
-  // Ordenar si es necesario
-  if (options.order) {
-    const orderCol = options.order.column
-    const ascending = options.order.ascending
-    allData.sort((a: SupabaseQuestionAny, b: SupabaseQuestionAny) => {
-      const aVal = a[orderCol]
-      const bVal = b[orderCol]
-      if (ascending) {
-        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-      }
-      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
-    })
-  }
-
-  // Aplicar límite final
-  if (options.limit && allData.length > options.limit) {
-    allData = allData.slice(0, options.limit)
-  }
-
-  return { data: allData, error: null }
-}
 
 // =================================================================
 // 🔧 FUNCIÓN DE TRANSFORMACIÓN COMÚN
@@ -1158,22 +1056,28 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
       return await callFilteredAPI({ positionType, numQuestions: n })
     }
 
-    // Detectar temas estudiados (query a tests, NO a questions → no afectada por RLS)
-    const { data: temasEstudiados, error: temasError } = await supabase
-      .from('tests')
-      .select('tema_number')
-      .eq('user_id', user.id)
-      .not('tema_number', 'is', null)
-      .eq('is_completed', true)
+    // Detectar temas estudiados via endpoint agnóstico (user_id del TOKEN, no del prop).
+    // AGNÓSTICO (Fase C1): sustituye supabase.from('tests') por GET /api/v2/studied-topics.
+    let temaNumbers: number[] = []
+    try {
+      const session = await auth.getSession()
+      const token = session?.accessToken ?? null
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const resp = await fetch('/api/v2/studied-topics', { headers })
+      if (resp.ok) {
+        const json = await resp.json()
+        temaNumbers = Array.isArray(json?.temas) ? json.temas : []
+      }
+    } catch (e) {
+      console.warn('⚠️ /api/v2/studied-topics falló, racha en modo global:', e)
+    }
 
-    if (temasError || !temasEstudiados?.length) {
+    if (!temaNumbers.length) {
       console.log('📚 Sin temas estudiados, usando API en modo global')
       return await fetchMantenerRachaViaAPI(n, positionType, [])
     }
 
-    const temaNumbers: number[] = temasEstudiados
-      .map((t: { tema_number: number }) => t.tema_number)
-      .filter((n: number): n is number => typeof n === 'number' && !isNaN(n))
     const uniqueTemas = [...new Set<number>(temaNumbers)].slice(0, 3)
 
     console.log('🎯 Temas para racha:', uniqueTemas)
