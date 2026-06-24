@@ -358,7 +358,8 @@ ni mejorando QS sacamos mucho más de Search. El alcance extra viene de **otros 
      | Fecha | Search | Display | Nota |
      |---|---|---|---|
      | 11/06 (baseline) | 110 | 40 | Consent Mode v2 recién desplegado |
-     | ~18/06 | _pendiente_ | _pendiente_ | checkpoint tendencia |
+     | ~18/06 | (no medido) | (no medido) | checkpoint tendencia — no se midió en fecha |
+     | 24/06 | 590 | 1.400 | ✅ tendencia ↑ confirmada (Consent Mode funciona): Search 110→590, Display 40→1.400. **Display ya >100 (elegible).** Search aún <1.000 (~60% del umbral). Aparte: "AdWords optimized list" (auto de Google, lista distinta a "All visitors") = 3.300/1.400. |
      | ~02/07 | _pendiente_ | _pendiente_ | checkpoint umbral 1.000 |
   3. ⬜ **PENDIENTE — lanzar** campaña de remarketing cuando la lista pase de 1.000 (Search con
      observación/segmentación de audiencia, o Display) a quien visitó y no se registró.
