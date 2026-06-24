@@ -2969,6 +2969,17 @@ export const OPOSICIONES: Oposicion[] = [
     examScoring: { penaltyDivisor: 3, source: 'Convocatoria CGX00L24 (BORM nº 226, 30/09/2025; Orden 14/02/2025 de estructura de ejercicios). Penalización según bases; divisor pendiente de extracción literal. confidence:media' },
     name: 'Administrativo de la Región de Murcia (Cuerpo Administrativo)',
     shortName: 'Administrativo CARM',
+    officialExams: [
+      {
+        date: '2024-09-21',
+        title: 'Convocatoria CGX00L19 ej.1 (turno libre)',
+        oep: 'OEP 2018-2019',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', ordinaryCount: 88 },
+        ],
+        note: '7 plazas — turno libre. Primer ejercicio (100 preguntas oficiales): 88 importadas y verificadas (doble verificación ciega + auditoría estricta de artículo literal). 12 pendientes: 7 de 3 leyes autonómicas de Murcia aún no en BD (Patrimonio CARM 3/1992, Función Pública TRLFPRM, Tasas CARM) + 3 supuestos/planes sin artículo + 2 en revisión (respuesta/artículo disputado).',
+      },
+    ],
     emoji: '🍋',
     badge: 'C1',
     color: 'red',
