@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import PsychometricTestLayout from '@/components/PsychometricTestLayout'
-import { selectAdaptiveQuestions, analyzeCurrentPerformance } from '@/lib/adaptiveQuestionSelection'
+import { selectAdaptiveQuestions } from '@/lib/adaptiveQuestionSelection'
 
 export default function PsychometricTestPage() {
   const { categoria } = useParams()
@@ -103,8 +103,6 @@ export default function PsychometricTestPage() {
           
           try {
             const adaptiveQuestions = await selectAdaptiveQuestions(
-              supabase,
-              user.id,
               'initial-session', // Se actualizará con la sesión real
               data,
               mockPerformance

@@ -17,7 +17,7 @@ const PsychometricTestLayout = dynamic(() => import('@/components/PsychometricTe
     </div>
   )
 })
-import { selectAdaptiveQuestions, analyzeCurrentPerformance } from '@/lib/adaptiveQuestionSelection'
+import { selectAdaptiveQuestions } from '@/lib/adaptiveQuestionSelection'
 
 function MultipleCategoriesPsychometricTestContent() {
   const searchParams = useSearchParams()
@@ -91,8 +91,6 @@ function MultipleCategoriesPsychometricTestContent() {
           
           try {
             const adaptiveQuestions = await selectAdaptiveQuestions(
-              supabase,
-              user.id,
               'initial-session-multiple', // Se actualizará con la sesión real
               data,
               mockPerformance
