@@ -56,11 +56,12 @@ const RPC = /\.rpc\(/g
 //   C1#28: components/test/TestHubPage.tsx (topics, server-component → Drizzle in-place) + app/test-personalizado (3 .from content_sections/scope/articles → GET /api/v2/content-scope-config consolidado) → 58/14.
 //   C1#29: SharePrompt (.rpc get_user_share_stats → GET /api/v2/share-stats) + premium-edu (.rpc create_google_ads_user → reusa ensure-profile) + admin/configuracion (.from email_logs → GET /api/v2/admin/email-logs) → from 57/13, rpc 13→11.
 //   C1#30: components/TestLayout.tsx (.from test_questions dedup de guardado → GET /api/v2/test-questions/saved-orders, JOIN tests user_id del token) → 56/12.
+//   C1#31: components/UpgradeLimitModal.tsx (4 .rpc A/B: get_random_upgrade_message + track shown/click/dismiss → GET /api/v2/upgrade-message + POST .../track; quita prop supabase de 4 renderers) → RPC 11→7.
 const BASELINE_SITES = 56
 const BASELINE_FILES = 12
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
-// -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu → 11).
-const BASELINE_RPC = 11
+// -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
+const BASELINE_RPC = 7
 
 function walk(rel: string): string[] {
   let out: string[] = []

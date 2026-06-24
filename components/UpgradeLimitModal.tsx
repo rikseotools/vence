@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, useCallback, type FC } from 'react'
 import { useRouter } from 'next/navigation'
 import { trackUpgradeModalView, trackUpgradeButtonClick } from '@/lib/services/conversionTracker'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // Iconos SVG para cada tipo de mensaje
 function MessageIcon({ type }: { type: string }) {
@@ -92,7 +92,6 @@ export interface UpgradeLimitModalProps {
   dailyLimit?: number
   isGraduated?: boolean
   resetTime?: string | null
-  supabase?: SupabaseClient | null
   userId?: string | null
   userName?: string | null
 }
@@ -104,7 +103,6 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
   dailyLimit = 25,
   isGraduated = false,
   resetTime = null,
-  supabase = null,
   userId = null,
   userName = null,
 }) => {
@@ -130,22 +128,16 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
       return
     }
 
-    if (!supabase) {
-      setMessage(DEFAULT_MESSAGE)
-      setIsLoading(false)
-      return
-    }
-
+    // Endpoint agnóstico (Drizzle, user del token). Fase C1.
     try {
-      const { data, error } = await (supabase as any).rpc('get_random_upgrade_message', {
-        p_user_id: userId
-      })
-
-      if (error || !data || data.length === 0) {
-        console.warn('Error cargando mensaje de upgrade, usando default:', error)
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/upgrade-message', { headers })
+      const message = res.ok ? (await res.json()).message : null
+      if (!message) {
+        console.warn('Error cargando mensaje de upgrade, usando default')
         setMessage(DEFAULT_MESSAGE)
       } else {
-        setMessage(data[0])
+        setMessage(message)
       }
     } catch (err) {
       console.error('Error en loadMessage:', err)
@@ -153,30 +145,36 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
     } finally {
       setIsLoading(false)
     }
-  }, [supabase, isGraduated, userId])
+  }, [isGraduated, userId])
 
   // Trackear que el mensaje fue mostrado
   const trackImpression = useCallback(async (messageData: UpgradeMessage) => {
-    if (!supabase || !userId || !messageData?.id || hasTrackedRef.current) return
+    if (!userId || !messageData?.id || hasTrackedRef.current) return
 
     try {
-      const { data, error } = await (supabase as any).rpc('track_upgrade_message_shown', {
-        p_user_id: userId,
-        p_message_id: messageData.id,
-        p_trigger_type: 'daily_limit',
-        p_questions_answered: questionsAnswered
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/upgrade-message/track', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'shown',
+          messageId: messageData.id,
+          triggerType: 'daily_limit',
+          questionsAnswered,
+        }),
       })
 
-      if (!error && data) {
-        setImpressionId(data)
+      const impId = res.ok ? (await res.json()).impressionId : null
+      if (impId) {
+        setImpressionId(impId)
         hasTrackedRef.current = true
-        console.log('Impresion trackeada:', data, '| Mensaje:', messageData.message_key)
+        console.log('Impresion trackeada:', impId, '| Mensaje:', messageData.message_key)
         trackUpgradeModalView(userId, isGraduated ? 'graduated_limit' : 'daily_limit')
       }
     } catch (err) {
       console.error('Error trackeando impresion:', err)
     }
-  }, [supabase, userId, questionsAnswered, isGraduated])
+  }, [userId, questionsAnswered, isGraduated])
 
   // Efecto al abrir modal
   useEffect(() => {
@@ -196,7 +194,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
     if (isOpen && message && !hasTrackedRef.current) {
       // For graduated messages (no BD id), track via conversion_events only
       if (isGraduated && !message.id) {
-        if (supabase && userId) {
+        if (userId) {
           trackUpgradeModalView(userId, 'graduated_limit')
           hasTrackedRef.current = true
         }
@@ -204,7 +202,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
         trackImpression(message)
       }
     }
-  }, [isOpen, message, trackImpression, isGraduated, supabase, userId])
+  }, [isOpen, message, trackImpression, isGraduated, userId])
 
   // Calcular tiempo hasta reset
   const getTimeUntilReset = (): string | null => {
@@ -225,16 +223,19 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
 
   // Handler para clic en upgrade con plan especifico
   const handleUpgradeWithPlan = async (plan: string) => {
-    if (supabase && impressionId) {
+    if (impressionId) {
       try {
-        await (supabase as any).rpc('track_upgrade_message_click', {
-          p_impression_id: impressionId
+        const headers = await getAuthHeaders()
+        await fetch('/api/v2/upgrade-message/track', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'click', impressionId }),
         })
       } catch (err) {
         console.error('Error trackeando clic:', err)
       }
     }
-    if (supabase && userId) {
+    if (userId) {
       trackUpgradeButtonClick(userId, isGraduated ? 'graduated_modal' : 'modal')
     }
 
@@ -247,10 +248,13 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
   }
 
   const handleDismiss = async () => {
-    if (supabase && impressionId) {
+    if (impressionId) {
       try {
-        await (supabase as any).rpc('track_upgrade_message_dismiss', {
-          p_impression_id: impressionId
+        const headers = await getAuthHeaders()
+        await fetch('/api/v2/upgrade-message/track', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'dismiss', impressionId }),
         })
       } catch (err) {
         console.error('Error trackeando dismiss:', err)

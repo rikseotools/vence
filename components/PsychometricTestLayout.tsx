@@ -912,7 +912,6 @@ export default function PsychometricTestLayout({
         dailyLimit={dailyLimit}
         isGraduated={isGraduated}
         resetTime={resetTime}
-        supabase={supabase}
         userId={user?.id}
         userName={(user?.user_metadata?.full_name || user?.user_metadata?.name) as string | undefined}
       />

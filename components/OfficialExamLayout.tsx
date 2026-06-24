@@ -1897,7 +1897,6 @@ export default function OfficialExamLayout({
         questionsAnswered={questionsToday}
         dailyLimit={dailyLimit}
         isGraduated={isGraduated}
-        supabase={supabase}
         userId={user?.id}
       />
 
