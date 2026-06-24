@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
+import { adminFetch } from '@/lib/api/adminFetch'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 type Tab = 'premium' | 'multicuenta' | 'bots' | 'bloqueados'
 
@@ -52,7 +54,7 @@ interface DeviceBlocked {
 }
 
 export default function FraudesPage() {
-  const { supabase, user } = useAuth() as any
+  const { user } = useAuth() as any
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('premium')
@@ -64,334 +66,54 @@ export default function FraudesPage() {
   const [blockedData, setBlockedData] = useState<DeviceBlocked[]>([])
 
   useEffect(() => {
-    if (!supabase || !user) return
+    if (!user) return
     ;(async () => {
-      // Admin vía allowlist de email (agnóstico). Solo UI; el gate real es server-side.
+      // Admin vía allowlist de email (agnóstico). Solo UI; el gate real es server-side
+      // (los endpoints /api/v2/admin/fraud/* exigen requireAdmin).
       const admin = isAdminEmail(user.email)
       setIsAdmin(admin)
       if (admin) loadAll()
       setLoading(false)
     })()
-  }, [supabase, user])
+  }, [user])
 
   async function loadAll() {
     await Promise.all([loadPremium(), loadMulti(), loadBots(), loadScripts(), loadBlocked()])
   }
 
+  // AGNÓSTICO (Fase C1): cada análisis de fraude se ejecuta server-side en su
+  // endpoint requireAdmin (queries Drizzle + la MISMA lógica de agregación, portada
+  // verbatim). El cliente solo hace fetch del resultado final.
+  async function fraudFetch<T>(path: string, key: string): Promise<T[]> {
+    try {
+      const headers = await getAuthHeaders()
+      const res = await adminFetch(path, { headers })
+      if (!res.ok) return []
+      return ((await res.json())[key] || []) as T[]
+    } catch (e) {
+      console.error('Error en', path, e)
+      return []
+    }
+  }
+
   async function loadPremium() {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    const { data: sessions } = await supabase
-      .from('user_sessions')
-      .select('user_id, city, session_start, device_fingerprint')
-      .not('city', 'is', null)
-      .gte('session_start', sevenDaysAgo)
-
-    if (!sessions?.length) return
-
-    const { data: premiumProfiles } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, plan_type')
-      .in('plan_type', ['premium', 'premium_semester', 'trial'])
-
-    if (!premiumProfiles?.length) return
-
-    const premiumIds = new Set<string>(premiumProfiles.map((p: any) => p.id))
-    const profileMap: Map<string, any> = new Map(premiumProfiles.map((p: any) => [p.id, p]))
-
-    // Also get device labels from user_devices
-    const { data: userDevices } = await supabase
-      .from('user_devices')
-      .select('user_id, device_id, device_label')
-      .in('user_id', premiumProfiles.map((p: any) => p.id))
-
-    const deviceLabelMap: Map<string, string> = new Map(
-      (userDevices || []).map((d: any) => [d.device_id, d.device_label || d.device_id?.substring(0, 8)])
-    )
-
-    const byUser = new Map<string, { cities: Set<string>; devices: Set<string>; count: number; last: string }>()
-    for (const s of sessions) {
-      if (!premiumIds.has(s.user_id) || !s.city) continue
-      const entry = byUser.get(s.user_id) || { cities: new Set(), devices: new Set(), count: 0, last: '' }
-      entry.cities.add(s.city)
-      if (s.device_fingerprint) {
-        const label = deviceLabelMap.get(s.device_fingerprint) || s.device_fingerprint.substring(0, 8) + '...'
-        entry.devices.add(label)
-      }
-      entry.count++
-      if (s.session_start > entry.last) entry.last = s.session_start
-      byUser.set(s.user_id, entry)
-    }
-
-    // Also check user_devices for premium users who may not have city data
-    const premiumUserIds = premiumProfiles.map((p: any) => p.id)
-    const { data: allPremiumDevices } = await supabase
-      .from('user_devices')
-      .select('user_id, device_id, device_label')
-      .in('user_id', premiumUserIds)
-
-    const devicesByUser = new Map<string, Set<string>>()
-    for (const d of (allPremiumDevices || []) as any[]) {
-      const set = devicesByUser.get(d.user_id) || new Set()
-      set.add(d.device_label || d.device_id?.substring(0, 8))
-      devicesByUser.set(d.user_id, set)
-    }
-
-    const results: PremiumSharing[] = []
-    for (const [uid, entry] of byUser) {
-      // Merge devices from user_devices table
-      const extraDevices = devicesByUser.get(uid)
-      if (extraDevices) extraDevices.forEach(d => entry.devices.add(d))
-
-      // Show if 3+ devices (suspicious sharing) OR 2+ devices with 3+ cities
-      if (entry.devices.size < 3 && !(entry.devices.size >= 2 && entry.cities.size >= 3)) continue
-      const profile = profileMap.get(uid)
-      if (!profile) continue
-      results.push({
-        user_id: uid,
-        email: profile.email,
-        full_name: profile.full_name || '',
-        cities: [...entry.cities],
-        devices: [...entry.devices],
-        session_count: entry.count,
-        last_session: entry.last,
-      })
-    }
-
-    // Also add premium users with 3+ devices who had no city data in sessions
-    for (const [uid, devSet] of devicesByUser) {
-      if (devSet.size < 3 || byUser.has(uid)) continue
-      const profile = profileMap.get(uid)
-      if (!profile) continue
-      results.push({
-        user_id: uid,
-        email: profile.email,
-        full_name: profile.full_name || '',
-        cities: [],
-        devices: [...devSet],
-        session_count: 0,
-        last_session: '',
-      })
-    }
-
-    results.sort((a, b) => b.devices.length - a.devices.length)
-    setPremiumData(results)
+    setPremiumData(await fraudFetch<PremiumSharing>('/api/v2/admin/fraud/premium', 'premium'))
   }
 
   async function loadMulti() {
-    const { data: devices, error } = await supabase
-      .from('user_devices')
-      .select('device_id, device_label, user_id, first_seen_at, last_seen_at')
-      .gte('last_seen_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-
-    if (error || !devices?.length) return
-
-    const byDevice = new Map<string, { label: string; users: Set<string>; first: string; last: string }>()
-    for (const d of devices) {
-      const entry = byDevice.get(d.device_id) || { label: d.device_label || '', users: new Set(), first: d.first_seen_at, last: d.last_seen_at }
-      entry.users.add(d.user_id)
-      if (d.first_seen_at < entry.first) entry.first = d.first_seen_at
-      if (d.last_seen_at > entry.last) entry.last = d.last_seen_at
-      byDevice.set(d.device_id, entry)
-    }
-
-    const sharedDevices = [...byDevice.entries()].filter(([, e]) => e.users.size >= 2)
-    if (!sharedDevices.length) { setMultiData([]); return }
-
-    const allUserIds = [...new Set(sharedDevices.flatMap(([, e]) => [...e.users]))]
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, plan_type')
-      .in('id', allUserIds)
-
-    const profileMap: Map<string, any> = new Map((profiles || []).map((p: any) => [p.id, p]))
-
-    const today = new Date().toISOString().split('T')[0]
-    const { data: usage } = await supabase
-      .from('daily_question_usage')
-      .select('user_id, questions_answered')
-      .in('user_id', allUserIds)
-      .eq('usage_date', today)
-
-    const usageMap: Map<string, number> = new Map((usage || []).map((u: any) => [u.user_id, u.questions_answered]))
-
-    const results: MultiAccount[] = sharedDevices.map(([deviceId, entry]) => ({
-      device_id: deviceId,
-      device_label: entry.label,
-      first_seen: entry.first,
-      last_seen: entry.last,
-      accounts: [...entry.users].map(uid => {
-        const p = profileMap.get(uid)
-        return {
-          user_id: uid,
-          email: p?.email || '?',
-          full_name: p?.full_name || '',
-          plan_type: p?.plan_type || 'free',
-          questions_today: usageMap.get(uid) || 0,
-        }
-      }),
-    }))
-    results.sort((a, b) => b.accounts.length - a.accounts.length)
-    setMultiData(results)
+    setMultiData(await fraudFetch<MultiAccount>('/api/v2/admin/fraud/multi', 'multi'))
   }
 
   async function loadBots() {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    const { data: fast, error } = await supabase
-      .from('test_questions')
-      .select('user_id, time_spent_seconds, answered_at')
-      .gt('time_spent_seconds', 0)
-      .gte('answered_at', sevenDaysAgo)
-
-    if (error || !fast?.length) return
-
-    const byUser = new Map<string, { total: number; count: number; last: string }>()
-    for (const r of fast) {
-      if (!r.user_id) continue
-      const entry = byUser.get(r.user_id) || { total: 0, count: 0, last: '' }
-      entry.total += r.time_spent_seconds
-      entry.count++
-      if (r.answered_at > entry.last) entry.last = r.answered_at
-      byUser.set(r.user_id, entry)
-    }
-
-    const suspects = [...byUser.entries()]
-      .map(([uid, e]) => ({ uid, avg: e.total / e.count, count: e.count, last: e.last }))
-      .filter(s => s.avg < 3 && s.count >= 10)
-      .sort((a, b) => a.avg - b.avg)
-
-    if (!suspects.length) { setBotData([]); return }
-
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name')
-      .in('id', suspects.map(s => s.uid))
-
-    const profileMap: Map<string, any> = new Map((profiles || []).map((p: any) => [p.id, p]))
-
-    setBotData(suspects.map(s => {
-      const p = profileMap.get(s.uid)
-      return {
-        user_id: s.uid,
-        email: p?.email || '?',
-        full_name: p?.full_name || '',
-        avg_seconds: Math.round(s.avg * 10) / 10,
-        total_answers: s.count,
-        last_answer: s.last,
-      }
-    }))
+    setBotData(await fraudFetch<BotSuspect>('/api/v2/admin/fraud/bots', 'bots'))
   }
 
   async function loadScripts() {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-    // Users with recent daily usage
-    const { data: recentUsage } = await supabase
-      .from('daily_question_usage')
-      .select('user_id, questions_answered, usage_date')
-      .gte('usage_date', sevenDaysAgo)
-
-    if (!recentUsage?.length) return
-
-    // Get all users who have devices registered
-    const usageUserIds = [...new Set(recentUsage.map((u: any) => u.user_id))]
-    const { data: deviceUsers } = await supabase
-      .from('user_devices')
-      .select('user_id')
-      .in('user_id', usageUserIds)
-
-    const usersWithDevices = new Set((deviceUsers || []).map((d: any) => d.user_id))
-
-    // Users who answered questions but have NO device registered = script/curl
-    const suspectIds = usageUserIds.filter(id => !usersWithDevices.has(id))
-    if (!suspectIds.length) { setScriptData([]); return }
-
-    // Sum their total questions
-    const totalByUser = new Map<string, { total: number; last: string }>()
-    for (const u of recentUsage as any[]) {
-      if (!suspectIds.includes(u.user_id)) continue
-      const entry = totalByUser.get(u.user_id) || { total: 0, last: '' }
-      entry.total += u.questions_answered
-      if (u.usage_date > entry.last) entry.last = u.usage_date
-      totalByUser.set(u.user_id, entry)
-    }
-
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, plan_type')
-      .in('id', suspectIds)
-
-    const profileMap: Map<string, any> = new Map((profiles || []).map((p: any) => [p.id, p]))
-
-    const results: ScriptSuspect[] = [...totalByUser.entries()]
-      .map(([uid, entry]) => {
-        const p = profileMap.get(uid)
-        return {
-          user_id: uid,
-          email: p?.email || '?',
-          full_name: p?.full_name || '',
-          plan_type: p?.plan_type || 'free',
-          questions_total: entry.total,
-          last_usage: entry.last,
-        }
-      })
-      .sort((a, b) => b.questions_total - a.questions_total)
-
-    setScriptData(results)
+    setScriptData(await fraudFetch<ScriptSuspect>('/api/v2/admin/fraud/scripts', 'scripts'))
   }
 
   async function loadBlocked() {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    const { data: logs } = await supabase
-      .from('validation_error_logs')
-      .select('user_id, error_message, created_at')
-      .ilike('error_message', '%dispositivos conectados%')
-      .gte('created_at', sevenDaysAgo)
-      .not('user_id', 'is', null)
-
-    if (!logs?.length) { setBlockedData([]); return }
-
-    // Agrupar por usuario
-    const byUser = new Map<string, { count: number; last: string; devices: string }>()
-    for (const log of logs) {
-      if (!log.user_id) continue
-      const entry = byUser.get(log.user_id) || { count: 0, last: '', devices: '' }
-      entry.count++
-      if (log.created_at > entry.last) {
-        entry.last = log.created_at
-        // Extraer dispositivos del mensaje: "Ya tienes 2 dispositivos conectados (Chrome / Android, Edge / Windows)"
-        const match = (log.error_message || '').match(/\(([^)]+)\)/)
-        if (match) entry.devices = match[1]
-      }
-      byUser.set(log.user_id, entry)
-    }
-
-    const userIds = [...byUser.keys()]
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, plan_type')
-      .in('id', userIds)
-
-    const profileMap: Map<string, any> = new Map((profiles || []).map((p: any) => [p.id, p]))
-
-    const results: DeviceBlocked[] = [...byUser.entries()]
-      .map(([uid, entry]) => {
-        const p = profileMap.get(uid)
-        return {
-          user_id: uid,
-          email: p?.email || '?',
-          full_name: p?.full_name || '',
-          plan_type: p?.plan_type || 'free',
-          existing_devices: entry.devices,
-          block_count: entry.count,
-          last_blocked: entry.last,
-        }
-      })
-      .sort((a, b) => b.block_count - a.block_count)
-
-    setBlockedData(results)
+    setBlockedData(await fraudFetch<DeviceBlocked>('/api/v2/admin/fraud/blocked', 'blocked'))
   }
 
   if (loading) return <div className="p-8 text-center text-gray-500">Cargando...</div>
