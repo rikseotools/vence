@@ -97,6 +97,7 @@ export const userProfiles = pgTable("user_profiles", {
 	preferredLanguage: text("preferred_language").default('es'),
 	studyGoal: integer("study_goal").default(25),
 	showDailyGoalBanner: boolean("show_daily_goal_banner").default(true).notNull(),
+	showTopicTrend: boolean("show_topic_trend").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	targetOposicion: text("target_oposicion"),

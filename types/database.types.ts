@@ -21,6 +21,7 @@ export interface UserProfileRow {
   preferred_language: string | null
   study_goal: number | null
   show_daily_goal_banner?: boolean | null
+  show_topic_trend?: boolean | null
   created_at: string | null
   updated_at: string | null
   target_oposicion: string | null

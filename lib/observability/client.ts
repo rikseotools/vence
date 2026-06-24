@@ -48,6 +48,8 @@ const SAMPLE_RATES: Record<string, number> = {
   // Barra de meta diaria — bajo volumen (premium, interacción manual ocasional)
   // → 100% para tener la señal completa de quién oculta/mueve.
   daily_goal_banner_action: 1.0,
+  // Flechitas de tendencia del temario — bajo volumen, 100% para señal completa.
+  topic_trend_action: 1.0,
   // Avisos de la campana (Fase 8) — 100% para CTR fiable (shown=denominador,
   // clicked=numerador) mientras el volumen sea bajo.
   oposicion_alert_shown: 1.0,
@@ -96,6 +98,10 @@ export type ClientEventType =
   // entender quién la mueve / oculta / re-activa y así pulir el diseño (en móvil
   // tapaba contenido). metadata.action ∈ {'drag','hide','show'}. userId va auto.
   | 'daily_goal_banner_action'
+  // Flechitas de tendencia (▲/▼ de 30 días) en el temario: quién las oculta /
+  // re-activa, para entender la fricción de la métrica. metadata.action ∈
+  // {'show','hide','toggle_failed'}. userId va auto.
+  | 'topic_trend_action'
   // Banner global "Inscripción abierta" (boca-oreja). Antes era CIEGO (20/06): ni
   // impresiones, ni aperturas, ni cierres. Ahora medimos por convocatoria
   // (metadata.slug) → CTR, tasa de cierre y si el cooldown reduce el martilleo.

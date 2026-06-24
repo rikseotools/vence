@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import { slugToPositionType } from '@/lib/config/oposiciones'
+import { isTopicTrendVisible, summarizeTopicProgress } from '@/lib/utils/topicTrend'
+import TopicMetricsInfoModal from '@/components/temario/TopicMetricsInfoModal'
 
 // Tipos
 interface Tema {
@@ -31,10 +33,26 @@ interface TemarioClientProps {
 }
 
 export default function TemarioClient({ bloques, oposicion, fechaActualizacion }: TemarioClientProps) {
-  const { user } = useAuth() as { user: any }
+  const { user, userProfile } = useAuth() as { user: any; userProfile: { show_topic_trend?: boolean | null } | null }
   // Convertir slug de URL a positionType de BD
   const positionType = useMemo(() => slugToPositionType(oposicion), [oposicion])
   const { getTopicProgress } = useTopicUnlock({ positionType: positionType ?? undefined }) as { getTopicProgress: (id: number) => { accuracy: number; accuracy30d: number | null; questionsAnswered: number } }
+
+  // Visibilidad de las flechitas de tendencia (preferencia de cuenta). El % de
+  // acierto y su barra se muestran siempre, independientemente de esto.
+  const showTrend = isTopicTrendVisible(userProfile?.show_topic_trend)
+
+  // Modal informativo "¿qué significan estos números?" con datos reales del usuario.
+  const [showInfoModal, setShowInfoModal] = useState(false)
+  const trendSummary = useMemo(() => {
+    if (!user) return null
+    const entries = bloques.flatMap(b => b.temas.map(t => {
+      const p = getTopicProgress(t.id)
+      return { titulo: t.titulo, accuracy: p.accuracy, accuracy30d: p.accuracy30d, questionsAnswered: p.questionsAnswered }
+    }))
+    return summarizeTopicProgress(entries)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, bloques, getTopicProgress])
   // Expandir solo el primer bloque por defecto (resto colapsados). Funciona con cualquier número de bloques.
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {}
@@ -120,7 +138,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
             <div className="text-right">
               <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
                 {progress.accuracy}%
-                {progress.accuracy30d != null && progress.accuracy30d !== progress.accuracy && (
+                {showTrend && progress.accuracy30d != null && progress.accuracy30d !== progress.accuracy && (
                   <span className={`text-xs ml-1 font-semibold ${progress.accuracy30d > progress.accuracy ? 'text-green-500' : 'text-red-500'}`}>
                     {progress.accuracy30d > progress.accuracy ? '▲' : '▼'}{Math.abs(progress.accuracy30d - progress.accuracy)}%
                   </span>
@@ -171,6 +189,22 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
               Crear cuenta gratis
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* Botón de info: explica el % de acierto y las flechitas de tendencia con datos reales */}
+      {user && (
+        <div className="max-w-4xl mx-auto mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowInfoModal(true)}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            ¿Qué significan estos números?
+          </button>
         </div>
       )}
 
@@ -234,6 +268,13 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
           </Link>
         </div>
       </div>
+
+      {/* Modal informativo: explica % de acierto + flechitas con datos reales del usuario */}
+      <TopicMetricsInfoModal
+        open={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        summary={trendSummary}
+      />
     </>
   )
 }

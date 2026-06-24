@@ -34,6 +34,7 @@ const SELF_PROFILE_COLUMNS = {
   preferredLanguage: userProfiles.preferredLanguage,
   studyGoal: userProfiles.studyGoal,
   showDailyGoalBanner: userProfiles.showDailyGoalBanner,
+  showTopicTrend: userProfiles.showTopicTrend,
   createdAt: userProfiles.createdAt,
   updatedAt: userProfiles.updatedAt,
   targetOposicion: userProfiles.targetOposicion,

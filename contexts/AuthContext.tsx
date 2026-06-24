@@ -183,6 +183,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       preferred_language: (data.preferredLanguage ?? null) as string | null,
       study_goal: (data.studyGoal ?? null) as number | null,
       show_daily_goal_banner: (data.showDailyGoalBanner ?? true) as boolean | null,
+      show_topic_trend: (data.showTopicTrend ?? true) as boolean | null,
       created_at: (data.createdAt ?? null) as string | null,
       updated_at: (data.updatedAt ?? null) as string | null,
       target_oposicion: (data.targetOposicion ?? null) as string | null,

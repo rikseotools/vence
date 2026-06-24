@@ -10,6 +10,7 @@ import { ALL_OPOSICION_IDS, getOposicion } from '@/lib/config/oposiciones'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { emitClientEvent } from '@/lib/observability/client'
 import { effectiveBannerVisible, nextBannerVisible } from '@/components/DailyGoalBanner'
+import { isTopicTrendVisible, nextTopicTrendVisible } from '@/lib/utils/topicTrend'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
@@ -27,6 +28,7 @@ interface UserProfile {
   preferred_language?: string
   study_goal?: number
   show_daily_goal_banner?: boolean
+  show_topic_trend?: boolean
   target_oposicion?: string
   target_oposicion_data?: OposicionData | null
   nickname?: string
@@ -199,6 +201,7 @@ function PerfilPageContent() {
   const [avatarModeLoading, setAvatarModeLoading] = useState<boolean>(true)
   const [avatarModeSaving, setAvatarModeSaving] = useState<boolean>(false)
   const [bannerToggleSaving, setBannerToggleSaving] = useState<boolean>(false)
+  const [topicTrendToggleSaving, setTopicTrendToggleSaving] = useState<boolean>(false)
 
   // Para evitar guardado en primera carga
   const isInitialLoad = useRef<boolean>(true)
@@ -1238,6 +1241,7 @@ function PerfilPageContent() {
             preferred_language: apiProfile.preferredLanguage,
             study_goal: apiProfile.studyGoal,
             show_daily_goal_banner: apiProfile.showDailyGoalBanner,
+            show_topic_trend: apiProfile.showTopicTrend,
             target_oposicion: apiProfile.targetOposicion,
             target_oposicion_data: apiProfile.targetOposicionData,
             nickname: apiProfile.nickname,
@@ -1395,6 +1399,41 @@ function PerfilPageContent() {
       setTimeout(() => setMessage(''), 3000)
     } finally {
       setBannerToggleSaving(false)
+    }
+  }
+
+  // Toggle de las flechitas de tendencia (▲/▼ de los últimos 30 días) que aparecen
+  // junto al % de acierto en el temario. Preferencia de cuenta; el % y su barra NO
+  // se ven afectados. Único sitio para re-activarlas tras ocultarlas desde el temario.
+  const handleToggleTopicTrend = async () => {
+    if (!user || topicTrendToggleSaving) return
+    const next = nextTopicTrendVisible(isTopicTrendVisible(profile?.show_topic_trend))
+    setTopicTrendToggleSaving(true)
+    setProfile(prev => prev ? { ...prev, show_topic_trend: next } : prev) // optimista
+    emitClientEvent({ severity: 'info', eventType: 'topic_trend_action', metadata: { action: next ? 'show' : 'hide', source: 'perfil' } })
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, data: { showTopicTrend: next } }),
+      })
+      const data = await response.json()
+      if (!data.success) throw new Error(data.error || `HTTP ${response.status}`)
+      setMessage(next ? '✅ Flechitas de tendencia activadas' : '✅ Flechitas de tendencia ocultadas')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (err) {
+      setProfile(prev => prev ? { ...prev, show_topic_trend: !next } : prev) // revertir
+      const message = err instanceof Error ? err.message : 'unknown'
+      emitClientEvent({
+        severity: 'warn',
+        eventType: 'topic_trend_action',
+        errorMessage: `perfil toggle PUT failed: ${message}`,
+        metadata: { action: 'toggle_failed', source: 'perfil', intended: next ? 'show' : 'hide' },
+      })
+      setMessage('❌ No se pudo guardar la preferencia')
+      setTimeout(() => setMessage(''), 3000)
+    } finally {
+      setTopicTrendToggleSaving(false)
     }
   }
 
@@ -1874,6 +1913,7 @@ function PerfilPageContent() {
         preferred_language: apiProfile.preferredLanguage,
         study_goal: apiProfile.studyGoal,
         show_daily_goal_banner: apiProfile.showDailyGoalBanner,
+        show_topic_trend: apiProfile.showTopicTrend,
         target_oposicion: apiProfile.targetOposicion,
         target_oposicion_data: apiProfile.targetOposicionData,
         nickname: apiProfile.nickname,
@@ -2903,6 +2943,39 @@ function PerfilPageContent() {
                             </div>
                           </div>
                         )}
+
+                        {/* Toggle: flechitas de tendencia (▲/▼) del temario. Para todos los
+                            usuarios. El % de acierto y su barra NO se ven afectados. Único
+                            sitio para re-activarlas tras ocultarlas desde el temario. */}
+                        <div className="md:col-span-2">
+                          <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                📈 Mostrar flechitas de tendencia en el temario
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Las flechitas ▲/▼ que indican si mejoras o bajas en cada tema en los últimos 30 días. El porcentaje de acierto se sigue mostrando siempre.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isTopicTrendVisible(profile?.show_topic_trend)}
+                              aria-label="Mostrar flechitas de tendencia en el temario"
+                              disabled={topicTrendToggleSaving}
+                              onClick={handleToggleTopicTrend}
+                              className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                isTopicTrendVisible(profile?.show_topic_trend) ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                              } ${topicTrendToggleSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  isTopicTrendVisible(profile?.show_topic_trend) ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
