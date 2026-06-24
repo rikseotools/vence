@@ -915,65 +915,8 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
     }
   }
 
-  // 1️⃣ CARGAR IMPUGNACIONES CON ACCIONES ESPECÍFICAS
-  // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
-  /*
-  const loadDisputeNotifications = async (): Promise<Notification[]> => {
-    try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-
-      const { data: disputes, error } = await supabase
-        .from('question_disputes')
-        .select(`
-          id,
-          dispute_type,
-          status,
-          resolved_at,
-          admin_response,
-          created_at,
-          is_read,
-          questions!inner (
-            id,
-            question_text,
-            articles!inner (
-              id,
-              article_number,
-              laws!inner (short_name)
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .in('status', ['resolved', 'rejected'])
-        .gte('resolved_at', thirtyDaysAgo)
-        .or('is_read.is.null,is_read.eq.false')
-        .order('resolved_at', { ascending: false })
-
-      if (error) throw error
-
-      const notifications = disputes?.map(dispute => ({
-        id: `dispute-${dispute.id}`,
-        type: 'dispute_update' as const,
-        title: dispute.status === 'resolved' ? '✅ Impugnación Aceptada' : '❌ Impugnación Rechazada',
-        body: `Tu reporte sobre ${dispute.questions.articles.laws.short_name} Art. ${dispute.questions.articles.article_number} ha sido ${dispute.status === 'resolved' ? 'aceptado' : 'rechazado'}.`,
-        timestamp: dispute.resolved_at,
-        isRead: dispute.is_read || false,
-        article: `${dispute.questions.articles.laws.short_name} - Art. ${dispute.questions.articles.article_number}`,
-        article_id: dispute.questions.articles.id,
-        question_id: dispute.questions.id,
-        dispute_status: dispute.status,
-        law_short_name: dispute.questions.articles.laws.short_name,
-        priority: NOTIFICATION_TYPES.dispute_update.priority,
-        ...NOTIFICATION_TYPES.dispute_update
-      })) || []
-
-      return notifications
-
-    } catch (error) {
-      console.error('❌ Error cargando impugnaciones:', error)
-      return []
-    }
-  }
-  */
+  // 1️⃣ CARGAR IMPUGNACIONES: 🚫 ELIMINADO — ahora se maneja en useDisputeNotifications
+  // (el bloque comentado con el supabase.from se borró en la migración Fase C1).
 
   // 2️⃣ CARGAR ARTÍCULOS PROBLEMÁTICOS - CON SISTEMA CENTRALIZADO Y COOLDOWN
   const loadProblematicArticles = async () => {
@@ -1574,14 +1517,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   // 8️⃣ CARGAR NOTIFICACIONES MOTIVACIONALES (solo cuando no hay urgentes)
   const loadMotivationalNotifications = async () => {
     try {
-      if (!user?.id || !supabase) {
-        console.log('❌ Usuario o supabase no disponible para notificaciones motivacionales')
+      if (!user?.id) {
+        console.log('❌ Usuario no disponible para notificaciones motivacionales')
         return []
       }
 
-
-      // Crear instancia del analizador motivacional
-      const analyzer = new MotivationalAnalyzer(supabase, user.id)
+      // Crear instancia del analizador motivacional (agnóstico: ya no recibe supabase)
+      const analyzer = new MotivationalAnalyzer(user.id)
 
       // Generar notificaciones motivacionales basadas en datos reales
       const motivationalNotifs = await analyzer.generateMotivationalNotifications()

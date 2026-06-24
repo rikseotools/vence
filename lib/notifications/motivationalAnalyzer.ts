@@ -2,7 +2,7 @@
 // Analizador de datos del usuario para generar notificaciones motivacionales
 
 import { z } from 'zod'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import {
   MOTIVATIONAL_NOTIFICATION_TYPES,
   MOTIVATIONAL_CONFIG,
@@ -137,12 +137,23 @@ const analyticsResponseSchema = z.object({
 // ============================================
 
 export class MotivationalAnalyzer {
-  private supabase: SupabaseClient
   private userId: string
 
-  constructor(supabase: SupabaseClient, userId: string) {
-    this.supabase = supabase
+  // AGNÓSTICO (Fase C1): ya no recibe el cliente supabase. Las consultas de tests
+  // van por GET /api/v2/motivational/recent-tests (Drizzle, user_id del token), y
+  // las respuestas por /api/user/question-history (como antes). Es client-only
+  // (usa fetch con URL relativa), igual que ya lo era.
+  constructor(userId: string) {
     this.userId = userId
+  }
+
+  // Helper: tests completados recientes del usuario (vía endpoint agnóstico).
+  private async fetchRecentTests(days: number): Promise<TestRecord[]> {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/v2/motivational/recent-tests?days=${days}`, { headers })
+    if (!res.ok) throw new Error(`recent-tests ${res.status}`)
+    const body = await res.json()
+    return (body.tests || []) as TestRecord[]
   }
 
   // Función principal para generar notificaciones motivacionales
@@ -218,16 +229,8 @@ export class MotivationalAnalyzer {
   // Verificar actividad mínima del usuario
   private async checkMinimumActivity(): Promise<boolean> {
     try {
-      const { data: tests, error } = await this.supabase
-        .from('tests')
-        .select('completed_at')
-        .eq('user_id', this.userId)
-        .eq('is_completed', true)
-        .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-
-      if (error) throw error
-
-      return (tests?.length || 0) >= MOTIVATIONAL_CONFIG.min_study_sessions
+      const tests = await this.fetchRecentTests(7)
+      return tests.length >= MOTIVATIONAL_CONFIG.min_study_sessions
     } catch (error) {
       console.error('Error verificando actividad mínima:', error)
       return false
@@ -240,16 +243,8 @@ export class MotivationalAnalyzer {
       const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
       const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
 
-      // Tests recientes (esta query es rápida, tiene índice en user_id)
-      const { data: recentTestsRaw, error: testsError } = await this.supabase
-        .from('tests')
-        .select('*')
-        .eq('user_id', this.userId)
-        .eq('is_completed', true)
-        .gte('completed_at', twoWeeksAgo)
-        .order('completed_at', { ascending: false })
-
-      if (testsError) throw testsError
+      // Tests recientes (vía endpoint agnóstico; ventana de 14 días)
+      const recentTestsRaw = await this.fetchRecentTests(14)
 
       // Validar con Zod (soft validation)
       let recentTests: TestRecord[] = []
