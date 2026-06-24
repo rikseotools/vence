@@ -3,13 +3,7 @@
 import { useState, useEffect, ChangeEvent } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@supabase/supabase-js'
 import EmailTemplatesTab from './EmailTemplatesTab'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 // ============================================
 // TIPOS
@@ -475,12 +469,13 @@ export default function NewslettersPage() {
     setLoading(true)
 
     try {
-      // Buscar los IDs de usuarios por email
-      const { data: failedUsers } = await getSupabase()
-        .from('user_profiles')
-        .select('id, email, full_name')
-        .in('email', failedEmails)
-        .not('email', 'is', null)
+      // Buscar los IDs de usuarios por email (endpoint admin Drizzle)
+      const resolveRes = await adminFetch('/api/v2/admin/newsletters/resolve-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails: failedEmails })
+      })
+      const failedUsers = resolveRes.ok ? (await resolveRes.json()).users : []
 
       if (!failedUsers || failedUsers.length === 0) {
         alert('No se encontraron usuarios para reenviar')
@@ -496,7 +491,7 @@ export default function NewslettersPage() {
         body: JSON.stringify({
           subject,
           htmlContent,
-          selectedUserIds: failedUsers.map(u => u.id),
+          selectedUserIds: failedUsers.map((u: { id: string }) => u.id),
           audienceType: 'retry',
           testMode: false
         })

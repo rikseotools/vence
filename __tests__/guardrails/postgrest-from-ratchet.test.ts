@@ -59,8 +59,9 @@ const RPC = /\.rpc\(/g
 //   C1#31: components/UpgradeLimitModal.tsx (4 .rpc A/B: get_random_upgrade_message + track shown/click/dismiss → GET /api/v2/upgrade-message + POST .../track; quita prop supabase de 4 renderers) → RPC 11→7.
 //   C1#32: app/admin/notificaciones/overview/page.js (4 .from: notification_events/email_events/user_notification_metrics/user_profiles → GET /api/v2/admin/notification-overview requireAdmin, enrich server-side, agregación queda en cliente) → 52/11.
 //   C1#33: app/admin/notificaciones/events/page.js (2 .from embed) + users/page.js (6 .from: lista+detalle) → GET /api/v2/admin/notification-events + notification-users + notification-user-events (requireAdmin; counts vía GROUP BY) → 44/9.
-const BASELINE_SITES = 44
-const BASELINE_FILES = 9
+//   C1#34: app/admin/newsletters/page.tsx (1 .from user_profiles, createClient propio → POST /api/v2/admin/newsletters/resolve-users requireAdmin) → 43/8.
+const BASELINE_SITES = 43
+const BASELINE_FILES = 8
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
 // -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
 const BASELINE_RPC = 7
