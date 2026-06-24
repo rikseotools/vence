@@ -19,7 +19,7 @@ Criterios de pregunta (lo pedido por Manuel):
   activa (lifecycle approved/tech_approved) + leyes transversales (CE/EBEP/39/40) +
   no publicada antes.
 """
-import os, sys, io, datetime, random
+import os, sys, io, time, datetime, random
 import psycopg2
 import psycopg2.extras
 import boto3
@@ -198,6 +198,16 @@ def publish_ig(image_url, caption):
     r = requests.post(f"{GRAPH}/{ig}/media",
                       data={"image_url": image_url, "caption": caption, "access_token": tok}, timeout=60)
     r.raise_for_status(); cid = r.json()["id"]
+    # IG procesa la imagen de forma asíncrona: hay que esperar a FINISHED antes de
+    # publicar, o media_publish devuelve 400 (Media ID is not available).
+    for _ in range(12):
+        st = requests.get(f"{GRAPH}/{cid}", params={"fields": "status_code", "access_token": tok},
+                          timeout=30).json()
+        if st.get("status_code") == "FINISHED":
+            break
+        if st.get("status_code") == "ERROR":
+            raise SystemExit(f"IG falló al procesar el contenedor: {st}")
+        time.sleep(5)
     r = requests.post(f"{GRAPH}/{ig}/media_publish",
                       data={"creation_id": cid, "access_token": tok}, timeout=60)
     r.raise_for_status(); mid = r.json()["id"]
