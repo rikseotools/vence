@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
+import { adminFetch } from '@/lib/api/adminFetch'
 import Link from 'next/link'
 
 export default function EventsDetailPage() {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [data, setData] = useState(null)
@@ -32,31 +33,16 @@ export default function EventsDetailPage() {
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase, timeRange])
+  }, [user, authLoading, timeRange])
 
   const loadEventsData = async () => {
     try {
-      const daysAgo = new Date(Date.now() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString()
-
-      // Obtener eventos push
-      const { data: pushEvents } = await supabase
-        .from('notification_events')
-        .select(`
-          *,
-          user_profiles!inner(email, created_at, plan_type)
-        `)
-        .gte('created_at', daysAgo)
-        .order('created_at', { ascending: false })
-
-      // Obtener eventos email
-      const { data: emailEvents } = await supabase
-        .from('email_events')
-        .select(`
-          *,
-          user_profiles!inner(email, created_at, plan_type)
-        `)
-        .gte('created_at', daysAgo)
-        .order('created_at', { ascending: false })
+      // Endpoint admin Drizzle: eventos push/email con perfil (embed reconstruido)
+      const res = await adminFetch(`/api/v2/admin/notification-events?days=${parseInt(timeRange)}`)
+      if (!res.ok) throw new Error(`notification-events ${res.status}`)
+      const body = await res.json()
+      const pushEvents = body.pushEvents || []
+      const emailEvents = body.emailEvents || []
 
       const pushEventsWithType = (pushEvents || []).map(event => ({ ...event, source: 'push' }))
       const emailEventsWithType = (emailEvents || []).map(event => ({ ...event, source: 'email' }))

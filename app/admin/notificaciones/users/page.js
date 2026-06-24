@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
+import { adminFetch } from '@/lib/api/adminFetch'
 import Link from 'next/link'
 
 export default function UsersDetailPage() {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [users, setUsers] = useState([])
@@ -34,73 +35,14 @@ export default function UsersDetailPage() {
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase])
+  }, [user, authLoading])
 
   const loadUsersData = async () => {
     try {
-      // Obtener métricas de usuarios
-      const { data: userMetrics } = await supabase
-        .from('user_notification_metrics')
-        .select('*')
-        .order('overall_engagement_score', { ascending: false })
-
-      // Obtener perfiles de usuarios
-      const userIds = (userMetrics || []).map(m => m.user_id)
-      const { data: userProfiles } = await supabase
-        .from('user_profiles')
-        .select(`
-          id,
-          email, 
-          created_at, 
-          plan_type, 
-          registration_source,
-          requires_payment,
-          stripe_customer_id
-        `)
-        .in('id', userIds)
-
-      // Obtener conteos de eventos por usuario (últimos 30 días)
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      
-      const { data: pushCounts } = await supabase
-        .from('notification_events')
-        .select('user_id')
-        .gte('created_at', thirtyDaysAgo)
-
-      const { data: emailCounts } = await supabase
-        .from('email_events')
-        .select('user_id')
-        .gte('created_at', thirtyDaysAgo)
-
-      // Procesar datos
-      const pushCountsByUser = {}
-      const emailCountsByUser = {}
-
-      pushCounts?.forEach(event => {
-        pushCountsByUser[event.user_id] = (pushCountsByUser[event.user_id] || 0) + 1
-      })
-
-      emailCounts?.forEach(event => {
-        emailCountsByUser[event.user_id] = (emailCountsByUser[event.user_id] || 0) + 1
-      })
-
-      // Crear mapa de perfiles
-      const profileMap = {}
-      userProfiles?.forEach(profile => {
-        profileMap[profile.id] = profile
-      })
-
-      // Combinar datos
-      const enrichedUsers = userMetrics?.map(user => ({
-        ...user,
-        user_profiles: profileMap[user.user_id],
-        recentPushEvents: pushCountsByUser[user.user_id] || 0,
-        recentEmailEvents: emailCountsByUser[user.user_id] || 0,
-        totalRecentEvents: (pushCountsByUser[user.user_id] || 0) + (emailCountsByUser[user.user_id] || 0)
-      })) || []
-
-      setUsers(enrichedUsers)
-
+      // Endpoint admin Drizzle: usuarios con métricas + perfil + conteos (30d) ya enriquecidos
+      const res = await adminFetch('/api/v2/admin/notification-users')
+      if (!res.ok) throw new Error(`notification-users ${res.status}`)
+      setUsers((await res.json()).users || [])
     } catch (error) {
       console.error('Error loading users data:', error)
     }
@@ -108,27 +50,12 @@ export default function UsersDetailPage() {
 
   const loadUserDetails = async (userId) => {
     try {
-      // Obtener eventos recientes del usuario
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-
-      const [pushEventsResult, emailEventsResult] = await Promise.all([
-        supabase
-          .from('notification_events')
-          .select('*')
-          .eq('user_id', userId)
-          .gte('created_at', thirtyDaysAgo)
-          .order('created_at', { ascending: false }),
-        
-        supabase
-          .from('email_events')
-          .select('*')
-          .eq('user_id', userId)
-          .gte('created_at', thirtyDaysAgo)
-          .order('created_at', { ascending: false })
-      ])
-
-      const pushEvents = pushEventsResult.data || []
-      const emailEvents = emailEventsResult.data || []
+      // Endpoint admin Drizzle: eventos push/email del usuario (30d)
+      const res = await adminFetch(`/api/v2/admin/notification-user-events?userId=${userId}`)
+      if (!res.ok) throw new Error(`notification-user-events ${res.status}`)
+      const body = await res.json()
+      const pushEvents = body.pushEvents || []
+      const emailEvents = body.emailEvents || []
 
       // Procesar estadísticas del usuario
       const stats = {
