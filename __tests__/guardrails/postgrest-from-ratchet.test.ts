@@ -57,8 +57,9 @@ const RPC = /\.rpc\(/g
 //   C1#29: SharePrompt (.rpc get_user_share_stats → GET /api/v2/share-stats) + premium-edu (.rpc create_google_ads_user → reusa ensure-profile) + admin/configuracion (.from email_logs → GET /api/v2/admin/email-logs) → from 57/13, rpc 13→11.
 //   C1#30: components/TestLayout.tsx (.from test_questions dedup de guardado → GET /api/v2/test-questions/saved-orders, JOIN tests user_id del token) → 56/12.
 //   C1#31: components/UpgradeLimitModal.tsx (4 .rpc A/B: get_random_upgrade_message + track shown/click/dismiss → GET /api/v2/upgrade-message + POST .../track; quita prop supabase de 4 renderers) → RPC 11→7.
-const BASELINE_SITES = 56
-const BASELINE_FILES = 12
+//   C1#32: app/admin/notificaciones/overview/page.js (4 .from: notification_events/email_events/user_notification_metrics/user_profiles → GET /api/v2/admin/notification-overview requireAdmin, enrich server-side, agregación queda en cliente) → 52/11.
+const BASELINE_SITES = 52
+const BASELINE_FILES = 11
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
 // -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
 const BASELINE_RPC = 7

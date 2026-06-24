@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
+import { adminFetch } from '@/lib/api/adminFetch'
 import Link from 'next/link'
 
 export default function OverviewDetailPage() {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [data, setData] = useState(null)
@@ -30,74 +31,33 @@ export default function OverviewDetailPage() {
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase, timeRange])
+  }, [user, authLoading, timeRange])
 
   const loadDetailedData = async () => {
     try {
-      const daysAgo = new Date(Date.now() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString()
+      // Endpoint admin Drizzle: eventos push/email/métricas YA enriquecidos con perfil.
+      const res = await adminFetch(`/api/v2/admin/notification-overview?days=${parseInt(timeRange)}`)
+      if (!res.ok) throw new Error(`notification-overview ${res.status}`)
+      const body = await res.json()
+      const enrichedPushEvents = body.pushEvents || []
+      const enrichedEmailEvents = body.emailEvents || []
+      const enrichedUserMetrics = body.userMetrics || []
 
-      // Datos completos de notificaciones
-      const { data: pushEvents } = await supabase
-        .from('notification_events')
-        .select('*')
-        .gte('created_at', daysAgo)
-        .order('created_at', { ascending: false })
-
-      // Datos completos de emails
-      const { data: emailEvents } = await supabase
-        .from('email_events')
-        .select('*')
-        .gte('created_at', daysAgo)
-        .order('created_at', { ascending: false })
-
-      // Métricas por usuario
-      const { data: userMetrics } = await supabase
-        .from('user_notification_metrics')
-        .select('*')
-        .order('overall_engagement_score', { ascending: false })
-
-      // Obtener perfiles de usuarios
+      // unión de user_ids para el summary (igual que antes)
       const allUserIds = [...new Set([
-        ...(pushEvents || []).map(e => e.user_id),
-        ...(emailEvents || []).map(e => e.user_id),
-        ...(userMetrics || []).map(m => m.user_id)
+        ...enrichedPushEvents.map(e => e.user_id),
+        ...enrichedEmailEvents.map(e => e.user_id),
+        ...enrichedUserMetrics.map(m => m.user_id)
       ])]
 
-      const { data: userProfiles } = await supabase
-        .from('user_profiles')
-        .select('id, email, created_at, plan_type, registration_source')
-        .in('id', allUserIds)
-
-      // Crear mapa de usuarios
-      const userMap = {}
-      userProfiles?.forEach(profile => {
-        userMap[profile.id] = profile
-      })
-
-      // Enriquecer datos con perfiles
-      const enrichedPushEvents = (pushEvents || []).map(event => ({
-        ...event,
-        user_profiles: userMap[event.user_id]
-      }))
-
-      const enrichedEmailEvents = (emailEvents || []).map(event => ({
-        ...event,
-        user_profiles: userMap[event.user_id]
-      }))
-
-      const enrichedUserMetrics = (userMetrics || []).map(metric => ({
-        ...metric,
-        user_profiles: userMap[metric.user_id]
-      }))
-
-      // Estadísticas por hora del día
-      const hourlyStats = processHourlyStats(pushEvents, emailEvents)
+      // Estadísticas por hora del día (sobre los arrays enriquecidos)
+      const hourlyStats = processHourlyStats(enrichedPushEvents, enrichedEmailEvents)
       
       // Estadísticas por día de la semana
-      const weeklyStats = processWeeklyStats(pushEvents, emailEvents)
-      
+      const weeklyStats = processWeeklyStats(enrichedPushEvents, enrichedEmailEvents)
+
       // Dispositivos más activos
-      const deviceStats = processDeviceStats(pushEvents, emailEvents)
+      const deviceStats = processDeviceStats(enrichedPushEvents, enrichedEmailEvents)
 
       setData({
         pushEvents: enrichedPushEvents.slice(0, 100),
