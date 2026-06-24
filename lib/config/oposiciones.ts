@@ -81,11 +81,13 @@ const OfficialExamConvocatoriaSchema = z.object({
   oep: z.string(),
   partes: z.array(OfficialExamParteSchema),
   // `note` se RENDERIZA al usuario en la tarjeta del examen (TestHubClient).
-  // SOLO info de cara al opositor (plazas, turno, ejercicios). NUNCA estado de QA,
-  // fuentes de import, "verificado por IA", pendientes, content_hash, etc.
+  // ⚠️ Este archivo se BUNDLEA AL CLIENTE → TODO lo que pongas aquí viaja al
+  // navegador y es visible en el código fuente, aunque no se renderice. Por eso
+  // NO existe un campo "interno": NUNCA metas estado de QA, fuentes de import,
+  // "verificado por IA", pendientes, content_hash, needs_human, etc. en NINGÚN
+  // campo. SOLO info de cara al opositor (plazas, turno, ejercicios). La
+  // trazabilidad interna va en commits/memoria/docs, NO en la config.
   note: z.string().optional(),
-  // `internalNote` NO se renderiza nunca — bitácora interna (import/QA/fuentes/pendientes).
-  internalNote: z.string().optional(),
   comingSoon: z.boolean().optional(),
 })
 
@@ -707,7 +709,6 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: '75 preguntas test (incluye 2 supuestos prácticos)' },
         ],
         note: '10 plazas — turno libre. Primer ejercicio.',
-        internalNote: '10 plazas — turno libre. Pendiente importar 2º ejercicio.',
       },
     ],
   },
@@ -2984,7 +2985,6 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 'primera', icon: '📘', title: 'Primer ejercicio', ordinaryCount: 95 },
         ],
         note: '7 plazas — turno libre. Primer ejercicio (examen tipo test).',
-        internalNote: 'CGX00L19 (fuente empleopublico.carm.es). 95/100 importadas y verificadas (doble verificación ciega independiente + auditoría estricta de artículo literal; respuestas contra plantilla oficial). 5 en needs_human (no servidas): 2 cuyo artículo no responde literalmente, 2 de la Ley de Tasas con cita que no casa en BD, 1 del Plan PRL sin articulado. Leyes creadas: Patrimonio CARM (Ley 3/1992), Tasas CARM (DL 1/2004); Función Pública ya existía como Ley 1/2001 CARM FP.',
       },
     ],
     emoji: '🍋',
@@ -4023,7 +4023,6 @@ export const OPOSICIONES: Oposicion[] = [
         partes: [
           { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: 'Preguntas legislativas' },
         ],
-        internalNote: 'Incluye preguntas psicotécnicas (pendientes de importar)',
       },
       {
         date: '2024-11-23',
@@ -4032,7 +4031,6 @@ export const OPOSICIONES: Oposicion[] = [
         partes: [
           { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: 'Preguntas legislativas' },
         ],
-        internalNote: 'Incluye preguntas psicotécnicas (pendientes de importar)',
       },
       {
         date: '2026-04-12',
@@ -4311,7 +4309,6 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 2014 — preguntas vigentes (Modelo A)',
         oep: 'OEP 2014 (BOC 186/2014)',
         note: 'Examen oficial de 2016 (Modelo A).',
-        internalNote: 'Del examen oficial del 15/05/2016 (Grupo Auxiliar Administrativo de la Función Administrativa, Modelo A) se importaron 73 preguntas con normativa vigente. Tras revisión una a una (cada una vinculada a su artículo contenedor real + auditoría independiente), se sirven las 68 verificadas; 5 quedan retiradas (3 desfasadas o mal planteadas + 2 no fundamentables en un artículo concreto). Se excluyeron además las preguntas sobre normas derogadas.',
         partes: [
           {
             id: 'unica',
@@ -4397,7 +4394,6 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria OEP 2023-2024 — examen 14/10/2025',
         oep: 'OEP 2023-2024',
         note: 'Examen oficial.',
-        internalNote: 'Del examen oficial se importaron y verificaron 86 preguntas, cada una contra su artículo + auditoría independiente. Se excluyeron las anuladas y las desfasadas por reforma legal posterior.',
         partes: [
           {
             id: 'unica',
@@ -4485,7 +4481,6 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria OEP 2018 - Turno libre/discapacidad (Test 1, original)',
         oep: 'OEP 2018',
         note: 'Examen oficial (Test 1).',
-        internalNote: 'Fecha exacta del examen original (test tipo 1) pendiente de confirmar — registrada como julio 2019 (la convocatoria se aplazó después). 1 pregunta del examen original era idéntica a una del aplazado 23/01/2020 y se dedup automáticamente al importar (content_hash), por eso 75 ordinarias en BD en lugar de 76 oficiales.',
         partes: [
           {
             id: 'primera',
@@ -5296,7 +5291,6 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 'segunda', icon: '📗', title: 'Segundo ejercicio', description: 'Supuesto práctico — 35 preguntas (de 40 oficiales BOE)' },
         ],
         note: 'Examen oficial (Modelo A).',
-        internalNote: 'Preguntas importadas de repasandosinpapeles.com (Modelo A, sin reservas/anuladas).',
       },
       {
         date: '2025-09-27',
@@ -5322,7 +5316,6 @@ export const OPOSICIONES: Oposicion[] = [
           },
         ],
         note: 'Examen oficial (1.º y 2.º ejercicio).',
-        internalNote: '1er ejercicio importado de mjusticia.gob.es. 2º ejercicio (modelo A) importado y verificado por IA 19/05/2026.',
       },
     ],
   },
@@ -7133,7 +7126,6 @@ export const OPOSICIONES: Oposicion[] = [
         partes: [
           { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
         ],
-        internalNote: 'Fecha estimada por patrón histórico (último jueves agosto). Pendiente confirmación BOGC.',
       },
     ],
   },

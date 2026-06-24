@@ -791,13 +791,13 @@ genera el render → no hay forma de que dos vistas diverjan.
 - Si la parte tiene un único sub-bloque (ej. "30 preguntas Bloque II Ofimática"), usa `breakdown: [{ label: 'Bloque II Ofimática', count: 30 }]` — el helper omite paréntesis cuando hay un solo item.
 - `description` (string legacy) sigue aceptándose para entries antiguas no migradas, pero **toda convocatoria nueva debe usar el formato estructurado**.
 
-> 🚨 **`note` SE RENDERIZA AL USUARIO — `internalNote` NO. No confundirlos (incidente 24/06/2026).**
+> 🚨 **`note` SE RENDERIZA AL USUARIO y `oposiciones.ts` SE BUNDLEA AL CLIENTE (incidente 24/06/2026).**
 >
 > El campo `note` de la convocatoria lo pinta `TestHubClient` en la tarjeta del examen → **lo ve el opositor**. NUNCA metas en `note` estado de QA ni trazabilidad de import: "verificado por IA", "X/Y importadas", "pendiente importar 2º ejercicio", "N preguntas retiradas", `content_hash`/dedup, fuentes de scraping (`repasandosinpapeles.com`, `mjusticia.gob.es`…), "needs_human", fechas estimadas internas, etc. En `note` SOLO info de cara al opositor: plazas, turno, número/tipo de ejercicios.
 >
-> Todo el detalle interno (recuento real importado/verificado, pendientes, fuentes, decisiones de QA) va en **`internalNote`** — campo opcional del schema que **ninguna vista renderiza**. Sirve para trazabilidad sin exponerla.
+> **NO sirve un "campo interno" en la config.** `lib/config/oposiciones.ts` es importado por componentes `'use client'` → **todo el objeto viaja en el JS al navegador y es visible en el código fuente**, se renderice o no. Por eso NO hay campo `internalNote` ni similar: la trazabilidad interna (recuento real, pendientes, fuentes, decisiones de QA) va en **mensajes de commit + memoria + estos manuales**, NUNCA en la config.
 >
-> El 24/06/2026 había 8 convocatorias (aux-carm, Madrid, SCS Canarias, Extremadura, Auxilio Judicial, Zaragoza, admin-carm) usando `note` como bitácora interna; se añadió `internalNote` al schema y se migró todo el detalle. Antes de añadir/editar una convocatoria, relee tu `note` y pregúntate: *"¿quiero que el opositor lea esto?"* Si no → va en `internalNote`.
+> El 24/06/2026 8 convocatorias (aux-carm, Madrid, SCS Canarias, Extremadura, Auxilio Judicial, Zaragoza, admin-carm) usaban `note` como bitácora interna; se limpiaron. (Primero se intentó moverlo a un campo `internalNote` no-renderizado, pero seguía filtrándose en el bundle del cliente → se eliminó del todo.) Antes de añadir/editar una convocatoria, relee tu `note`: *"¿quiero que el opositor lea esto en la app o en ver-código-fuente?"* Si no → fuera de la config.
 
 **Test de coherencia:**
 
