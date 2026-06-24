@@ -152,6 +152,20 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
               </div>
             </div>
           )}
+          {hasProgress && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="¿Qué significan estos números?"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInfoModal(true) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowInfoModal(true) } }}
+              className="flex-shrink-0 p-1 -m-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          )}
           <svg
             className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all"
             fill="none"
