@@ -50,6 +50,14 @@ describe('GET /api/v2/share-stats', () => {
     mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
     expect((await (await SHARE_STATS(req())).json()).stats).toBeNull()
   })
+
+  test('degrada a stats:null (200) si la función SQL falla (rota en BD), sin 500', async () => {
+    mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+    mockExecute.mockRejectedValueOnce(new Error('relation "detailed_answers" does not exist'))
+    const res = await SHARE_STATS(req())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true, stats: null })
+  })
 })
 
 describe('GET /api/v2/admin/email-logs', () => {
