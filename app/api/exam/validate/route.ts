@@ -337,7 +337,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
           severity: 'warn',
           eventType: 'exam_score_divergence',
           endpoint: '/api/exam/validate',
-          deployVersion: process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 8) ?? null,
+          deployVersion: process.env.GIT_COMMIT_SHA?.slice(0, 8) ?? null,
           metadata: {
             testId,
             payloadCorrect: totalCorrect,
