@@ -2983,9 +2983,9 @@ export const OPOSICIONES: Oposicion[] = [
         oep: 'OEP 2018-2019',
         partes: [
           { id: 'primera', icon: '📘', title: 'Primer ejercicio (test)', ordinaryCount: 70 },
-          { id: 'supuesto', icon: '📋', title: 'Supuestos prácticos', ordinaryCount: 26 },
+          { id: 'supuesto', icon: '📋', title: 'Supuestos prácticos', ordinaryCount: 29 },
         ],
-        note: '7 plazas — turno libre. Primer ejercicio: parte de test (70) + supuestos prácticos (26).',
+        note: '7 plazas — turno libre. Primer ejercicio: parte de test (70) + supuestos prácticos (29).',
       },
     ],
     emoji: '🍋',
