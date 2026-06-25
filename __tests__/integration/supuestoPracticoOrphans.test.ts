@@ -110,6 +110,49 @@ describe('Supuesto práctico orphans — preguntas que necesitan exam_case_id y 
     expect(rows).toEqual([])
   }, 20000)
 
+  // Dirección INVERSA (añadido 25/06/2026): detecta el caso que las dos pruebas
+  // anteriores NO cazan — un supuesto EMBEBIDO en el 1er ejercicio cuyas preguntas
+  // están etiquetadas "Primera parte" (no "Supuesto práctico") y referencian el
+  // caso por nombre (no con frases genéricas). Esas pruebas dependen de la etiqueta
+  // o de frases; ésta no: un exam_case activo SIN preguntas activas vinculadas es,
+  // por construcción, un supuesto no jugable (cabecera sin cuestiones) o un caso
+  // esbozado y nunca cableado. Cero falsos positivos. Habría cazado CARM C1 CGX00L19
+  // (2 casos con 0 preguntas) al instante. Ver manual §7.4.quater.
+  test('Ningún exam_case activo debe quedar sin preguntas activas vinculadas', async () => {
+    const params = [
+      'select=id,case_title,oposicion_type,questions(count)',
+      'is_active=eq.true',
+      'questions.is_active=eq.true',
+    ].join('&')
+
+    const rows = await supabaseGet<{
+      id: string
+      case_title: string | null
+      oposicion_type: string | null
+      questions: { count: number }[]
+    }>('exam_cases', params)
+
+    const dead = rows.filter((r) => (r.questions?.[0]?.count ?? 0) === 0)
+
+    if (dead.length > 0) {
+      console.error('\n❌ exam_cases HUÉRFANOS (0 preguntas activas vinculadas):')
+      dead.forEach((r) =>
+        console.error(`   - ${r.oposicion_type} | ${r.case_title} | ${r.id}`)
+      )
+      console.error(
+        '\n   Un exam_case sin preguntas = supuesto no jugable o caso esbozado y nunca cableado.'
+      )
+      console.error(
+        '   Fix: vincular las preguntas (UPDATE exam_case_id) o retirar el case.'
+      )
+      console.error(
+        '   Manual: docs/maintenance/importar-examen-oficial-completo.md §7.4.quater\n'
+      )
+    }
+
+    expect(dead.map((r) => `${r.oposicion_type}: ${r.case_title}`)).toEqual([])
+  }, 20000)
+
   test('Heurística de texto: preguntas con frases que requieren contexto deben tener exam_case_id', async () => {
     // Patrones con alta especificidad: estas frases SOLO tienen sentido si hay
     // un supuesto narrativo adjunto que define personajes/situación.

@@ -591,6 +591,33 @@ El mensaje del error incluye `id`, `exam_source` y un HINT con la solución. Smo
 
 Si el trigger rechaza una transición legítima (falso positivo: `exam_source` contiene literalmente "Supuesto práctico" pero la pregunta NO depende de contexto), la solución es **cambiar el `exam_source`** para que no contenga ese literal — no relajar el trigger. La etiqueta es la fuente de verdad del criterio.
 
+### 7.4.quater Supuesto EMBEBIDO en el 1er ejercicio — re-vincular preguntas ya importadas (25/06/2026)
+
+§7.4 asume importar un **2º ejercicio** nuevo desde cero. Pero hay un caso distinto: el supuesto práctico está **embebido dentro del primer ejercicio** (p. ej. CARM C1 CGX00L19: el test de 100 preguntas incluye 2 supuestos en las preguntas 71-100). Ahí las preguntas **ya están importadas y activas** pero con `exam_case_id` NULL → se sirven **huérfanas** en tests aislados (bug §7.4.ter) y el supuesto no es jugable.
+
+**Síntoma:** `exam_cases` con texto pero **0 preguntas vinculadas** + preguntas activas del mismo examen que citan "el supuesto". El trabajo es **re-vincular**, no importar.
+
+**Flujo de re-vinculación:**
+
+1. **Delimitar los supuestos por el ENCABEZADO del cuestionario, NO por keywords.** `grep -n "SUPUESTO PRÁCTICO" cuestionario.txt` → cada supuesto abarca desde su header hasta el siguiente. Toda pregunta del rango es del supuesto, **aunque cite una ley aplicada al caso** (art. 81 Ley 39/2015…) sin nombrar el escenario. El keyword-matching (nombres del caso) **falla**: se deja fuera la mitad.
+2. **Mapear nº oficial → id de BD por texto normalizado** (lowercase, sin acentos ni signos, primeros ~55 chars). Asignar `exam_case_id` por el **número oficial** (no por contenido).
+3. **⚠️ TRAMPA `created_at` (la más importante).** El endpoint ordena por `questions.createdAt` (= "orden de inserción"). Eso **solo vale si se insertó secuencialmente**; si la import original fue en paralelo/lotes (lo normal), `createdAt` NO es monótono con el nº de examen → `orderBy(createdAt)` **entremezcla las cabeceras de los casos** (sale `1111 2222 111 2222…`). **Re-sellar `created_at` de las preguntas del supuesto en orden de examen** (base = max(createdAt de teoría)+margen, + nº de pregunta), de modo que cada caso quede contiguo.
+4. **Config:** dividir la parte existente — `primera` baja su `ordinaryCount` por las que pasan a `supuesto`, y se añade la parte `{ id: 'supuesto', … }`. El test de coherencia **NO filtra is_active** → la suma de `ordinaryCount` de todas las partes debe seguir = **total de filas** del examen en BD (no las activas). Solo cambiar `exam_case_id` no altera el total.
+5. **Cache invalidate** `'questions'` (las re-vinculadas salen de tests aislados por el filtro §7.4.bis — fix 2-en-1 del bug de huérfanas).
+
+**Batería de verificación contra la FUENTE (obligatoria — no fiarse del parse intermedio):**
+
+| Verificación | Cómo | Criterio |
+|---|---|---|
+| Respuestas | `correct_option` BD vs **plantilla oficial** (`plantilla.txt`), por nº | 100% coincide |
+| Enunciados + opciones | texto BD vs **cuestionario oficial** (`cuestionario.txt`), no solo vs tu `examen.json` | idénticos (un agente puede haber alterado un enunciado al importar — caso Q99 CARM) |
+| Mapeo pregunta→caso | nº oficial dentro del rango del header correcto | cada una a su supuesto |
+| Orden de agrupación | secuencia de `exam_case_id` por `created_at` | `^1+2+$` (sin entremezclar) |
+| Endpoint `parte=supuesto` | `GET /api/v2/official-exams/questions?...&parte=supuesto` | sirve N con `examCaseText` presente y **0 leak** de `correct_option` |
+| **Completitud** | N servidas vs **N oficiales del supuesto** (rango del header) | documentar el hueco si N<oficial; NO dar por "completo" lo que no lo está |
+
+**Incidente que motiva la sección (CARM C1 CGX00L19, 25/06/2026):** los 2 supuestos (q71-100) estaban en `exam_cases` con 0 preguntas; las 26 activas se servían huérfanas. Al re-vincular: `created_at` salió entremezclado (hubo que re-sellar), config `primera` 96→70 + `supuesto` 26 (suma 96 = total BD), y la verificación confirmó 26/26 respuestas = plantilla y enunciados intactos. **Pero completitud 26/30**: faltan q94/98/99/100, excluidas en la import original por no cumplir el gate del artículo literal (código de partida, plazo sin art, enunciado alterado, plan sin articulado). Servir 26/30 fieles es correcto, pero **avisar del hueco** — no prometer "examen completo".
+
 ---
 
 ## 8. Verificación con agentes Sonnet (workflow §14.3)
