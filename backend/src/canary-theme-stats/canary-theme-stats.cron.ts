@@ -76,10 +76,18 @@ export class CanaryThemeStatsCron {
           },
         });
       } else {
+        // Separar LATENCIA de CORRECTITUD: un timeout (cold-start de Vercel /
+        // red) NO es "el endpoint devuelve datos malos" → es señal de latencia,
+        // se emite como warn y NO dispara el RULE_CANARY_THEME_STATS_FAILED
+        // (critical). Solo las regresiones de correctitud (http/response/semantic)
+        // son críticas. Evita spam de críticos por flakiness de red.
+        const isLatency = result.step === 'timeout';
         this.observability.emitFireAndForget({
           source: 'fargate',
-          severity: 'critical',
-          eventType: 'canary_theme_stats_failed',
+          severity: isLatency ? 'warn' : 'critical',
+          eventType: isLatency
+            ? 'canary_theme_stats_slow'
+            : 'canary_theme_stats_failed',
           endpoint: 'canary-theme-stats',
           durationMs: result.durationMs,
           errorMessage: result.errorMessage,

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { signCanaryToken } from '../canary-shared/canary-token';
 
 /**
  * Canary del ENDPOINT de estadísticas por tema (`/api/v2/topic-progress/theme-stats`).
@@ -28,7 +29,10 @@ import { DRIZZLE, type DrizzleDB } from '../db/database.module';
  */
 
 const BASE_URL = 'https://www.vence.es';
-const HTTP_TIMEOUT_MS = 8_000;
+// 10s como los canaries hermanos (answer-save/stats-pipeline): el endpoint añade
+// verifyAuth (round-trip extra) y un cold-start de Vercel puede rozar 8s. Un
+// timeout NO es "endpoint roto" → el cron lo emite como warn (latencia), no critical.
+const HTTP_TIMEOUT_MS = 10_000;
 // Suelo: el endpoint (cacheado ≤5min) debe reflejar al menos el 70% del progreso
 // en-scope calculado fresco. La V4 devolvía ~3% → se caza sobradamente. El margen
 // tolera staleness de caché + respuestas nuevas entre las dos lecturas.
@@ -145,13 +149,27 @@ export class CanaryThemeStatsService {
       }
 
       // 3. Endpoint REAL en vivo (incluye caché, deploy, red).
+      // El endpoint usa el user del TOKEN (ignora ?userId=), así que firmamos
+      // PARA el usuario pesado seleccionado → el endpoint computa SUS stats.
+      // (Tras la migración C1 el endpoint exige verifyAuth; sin token = 401.)
+      const token = signCanaryToken(userId);
+      if (!token) {
+        return { skipped: true, reason: 'jwt_secret_not_configured', durationMs: Date.now() - startedAt };
+      }
       const slug = positionType.replace(/_/g, '-');
       const url = `${BASE_URL}/api/v2/topic-progress/theme-stats?userId=${userId}&oposicionId=${slug}`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
       let json: { success?: boolean; stats?: CanaryThemeStatRow[] };
       try {
-        const resp = await fetch(url, { signal: controller.signal });
+        const resp = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'User-Agent': 'Vence-Canary-ThemeStats/1.0',
+            'x-vence-canary': '1',
+          },
+        });
         if (!resp.ok) {
           return {
             ok: false, step: 'http', positionType, expected,
