@@ -3,6 +3,7 @@
 // Ver docs/maintenance/despliegue-articulos-problematicos.md
 
 import { sql } from 'drizzle-orm'
+import { pgTextArray } from '@/lib/api/sqlArrays'
 import { getAdminDb } from '@/db/client'
 
 export type RolloutLogPath = 'new' | 'old'
@@ -44,7 +45,7 @@ export function logRolloutEvent(input: LogRolloutEventInput): void {
            ${input.positionType ?? null},
            ${input.path},
            ${input.articlesCount},
-           ${lawNames}::text[],
+           ${pgTextArray(lawNames)},
            ${input.durationMs ?? null})
       `)
       await Promise.race([

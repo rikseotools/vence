@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
+import { pgTextArray } from '@/lib/api/sqlArrays'
 
 export const maxDuration = 15
 
@@ -52,7 +53,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     const artRes = await db.execute(sql`
       SELECT id FROM articles
       WHERE law_id = ${scope.law_id}::uuid
-        AND article_number = ANY(${scope.article_numbers}::text[])
+        AND article_number = ANY(${pgTextArray(scope.article_numbers)})
     `)
     for (const a of rowsOf(artRes) as Array<{ id: string }>) articleIds.push(a.id)
   }

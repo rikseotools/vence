@@ -3,6 +3,7 @@
 // AGNÓSTICO (Fase C1): porta loadScripts server-side (queries Drizzle + agregación verbatim).
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
@@ -26,7 +27,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   const usageUserIds = [...new Set(recentUsage.map(u => u.user_id))]
   const deviceUsers = rows(await db.execute(sql`
-    SELECT user_id FROM user_devices WHERE user_id = ANY(${usageUserIds}::uuid[])
+    SELECT user_id FROM user_devices WHERE user_id = ANY(${pgUuidArray(usageUserIds)})
   `))
   const usersWithDevices = new Set<string>(deviceUsers.map(d => d.user_id))
 
@@ -43,7 +44,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const profiles = rows(await db.execute(sql`
-    SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${suspectIds}::uuid[])
+    SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${pgUuidArray(suspectIds)})
   `))
   const profileMap = new Map<string, any>(profiles.map(p => [p.id, p]))
 

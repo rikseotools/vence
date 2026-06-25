@@ -7,6 +7,7 @@
 // agregación-en-cliente del original) y devuelve los usuarios ya enriquecidos.
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
@@ -29,7 +30,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   const profiles = ids.length ? rowsOf(await db.execute(sql`
     SELECT id, email, created_at, plan_type, registration_source, requires_payment, stripe_customer_id
-    FROM user_profiles WHERE id = ANY(${ids}::uuid[])
+    FROM user_profiles WHERE id = ANY(${pgUuidArray(ids)})
   `)) : []
   const profileMap = new Map(profiles.map(p => [p.id, p]))
 

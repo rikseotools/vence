@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod/v3'
 import { sql } from 'drizzle-orm'
+import { pgTextArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
@@ -29,7 +30,7 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
   const res = await getAdminDb().execute(sql`
     SELECT id, email, full_name
     FROM user_profiles
-    WHERE email = ANY(${parsed.data.emails}::text[]) AND email IS NOT NULL
+    WHERE email = ANY(${pgTextArray(parsed.data.emails)}) AND email IS NOT NULL
   `)
   const users = Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []
 

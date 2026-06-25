@@ -25,6 +25,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod/v3'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
@@ -88,7 +89,7 @@ async function _POST(request: NextRequest) {
       WHERE question_id = q.id AND coalesce(discarded, false) = false
       ORDER BY verified_at DESC LIMIT 1
     ) av ON true
-    WHERE q.id = ANY(${questionIds}::uuid[])
+    WHERE q.id = ANY(${pgUuidArray(questionIds)})
   `) as unknown as QuestionWithAi[]
 
   const found = new Map(rows.map(r => [r.id, r]))

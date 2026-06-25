@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { fraudAlerts } from '@/db/schema'
 import { eq, and, desc, sql, count, gte } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import type {
   CreateFraudAlertRequest,
   CreateFraudAlertResponse,
@@ -32,7 +33,7 @@ export async function createFraudAlert(
       .where(and(
         eq(fraudAlerts.alertType, params.alertType),
         eq(fraudAlerts.status, 'new'),
-        sql`${fraudAlerts.userIds} @> ${params.userIds}::uuid[]`
+        sql`${fraudAlerts.userIds} @> ${pgUuidArray(params.userIds)}`
       ))
       .limit(1)
 
@@ -258,7 +259,7 @@ export async function hasActiveAlert(
       .where(and(
         eq(fraudAlerts.alertType, alertType),
         eq(fraudAlerts.status, 'new'),
-        sql`${fraudAlerts.userIds} && ${userIds}::uuid[]`
+        sql`${fraudAlerts.userIds} && ${pgUuidArray(userIds)}`
       ))
       .limit(1)
 

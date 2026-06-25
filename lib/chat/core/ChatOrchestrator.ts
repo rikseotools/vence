@@ -28,6 +28,7 @@ import { searchArticlesBySimilarity } from '../domains/search/queries'
 import { getPoolerDb } from '@/db/client'
 import { oposiciones, topicScope, topics } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
 
 // Formatea un embedding (number[]) como literal pgvector para ::vector
@@ -842,7 +843,7 @@ export class ChatOrchestrator {
             15,
             0.4,
             0.6,
-            ${priorityLawIds}::uuid[]
+            ${pgUuidArray(priorityLawIds)}
           )
         `)) as any[]
       } catch (err) {

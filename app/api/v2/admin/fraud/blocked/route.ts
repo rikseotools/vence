@@ -3,6 +3,7 @@
 // AGNÓSTICO (Fase C1): porta loadBlocked server-side (queries Drizzle + agregación verbatim).
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
@@ -40,7 +41,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   const userIds = [...byUser.keys()]
   const profiles = rows(await db.execute(sql`
-    SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${userIds}::uuid[])
+    SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${pgUuidArray(userIds)})
   `))
   const profileMap = new Map<string, any>(profiles.map(p => [p.id, p]))
 

@@ -8,6 +8,7 @@ function getTopicProgressUserAnswersDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 
 // ============================================
 // TIPOS
@@ -197,7 +198,7 @@ export async function getUserAnswersForArticles(
     INNER JOIN questions q ON tq.question_id = q.id
     INNER JOIN articles a ON q.primary_article_id = a.id
     WHERE tq.user_id = ${userId}
-      AND q.primary_article_id = ANY(${sortedIds}::uuid[])
+      AND q.primary_article_id = ANY(${pgUuidArray(sortedIds)})
       AND a.is_active = true
   `)
 

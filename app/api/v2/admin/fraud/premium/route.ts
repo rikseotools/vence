@@ -5,6 +5,7 @@
 // detección. Datos de todos los usuarios → requireAdmin.
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
+import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
@@ -39,7 +40,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   const userDevices = rows(await db.execute(sql`
     SELECT user_id, device_id, device_label FROM user_devices
-    WHERE user_id = ANY(${premiumUserIds}::uuid[])
+    WHERE user_id = ANY(${pgUuidArray(premiumUserIds)})
   `))
 
   const deviceLabelMap = new Map<string, string>(
