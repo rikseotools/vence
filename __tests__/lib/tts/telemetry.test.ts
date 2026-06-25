@@ -169,7 +169,10 @@ describe('ttsTelemetry', () => {
     expect(call.metadata?.fromSessionId).toBe('sess-A')
   })
 
-  it('error emite error severity con tipo y mensaje', () => {
+  it('error emite warn severity con tipo y mensaje', () => {
+    // Recalibración 25/06: severity 'warn' (no 'error'). El caso dominante es
+    // synthesis-failed en Chrome móvil al backgroundear — limitación esperada del
+    // navegador, no un bug de la app (el engine además agrega a 1 por sesión).
     ttsTelemetry.error({
       sessionId: 'sess-1',
       atChunkIdx: 7,
@@ -177,7 +180,7 @@ describe('ttsTelemetry', () => {
       message: 'Custom message',
     })
     const call = mockEmit.mock.calls[0][0]
-    expect(call.severity).toBe('error')
+    expect(call.severity).toBe('warn')
     expect(call.eventType).toBe('tts_error')
     expect(call.errorMessage).toBe('Custom message')
     expect(call.metadata?.errorType).toBe('synthesis-failed')
