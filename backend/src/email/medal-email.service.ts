@@ -128,20 +128,20 @@ export class MedalEmailService {
 
   /**
    * Obtiene email + display_name + opt-out del user en UNA query.
-   * Prioriza user_profiles.email (tabla aplicación); si está vacío cae
-   * a auth.users.email (tabla auth — pero leída como SQL puro, no API
-   * Supabase). Si el day migremos auth a Auth.js / Better Auth, esas
-   * crean tablas equivalentes (`users.email`) y la query sigue igual.
+   * Usa user_profiles.email (columna NOT NULL, siempre poblada; verificado:
+   * 0 vacíos en 8700 filas). AGNÓSTICO: se eliminó el JOIN a `auth.users`
+   * (tabla del proveedor de auth, inexistente en Neon/RDS) — era un fallback
+   * redundante dado el NOT NULL. Los pocos huérfanos en auth.users sin perfil
+   * no reciben medallas (las medallas cuelgan de user_profiles/tests).
    */
   private async getUserContact(userId: string): Promise<UserContactRow | null> {
     const rows = (await this.db.execute(
       sql`SELECT
-            COALESCE(up.email, au.email) AS email,
+            up.email                      AS email,
             pup.display_name              AS display_name,
             ep.unsubscribed_all           AS unsubscribed_all
           FROM (SELECT ${userId}::uuid AS uid) target
           LEFT JOIN user_profiles up         ON up.id  = target.uid
-          LEFT JOIN auth.users au            ON au.id  = target.uid
           LEFT JOIN public_user_profiles pup ON pup.id = target.uid
           LEFT JOIN email_preferences ep     ON ep.user_id = target.uid
           LIMIT 1`,
