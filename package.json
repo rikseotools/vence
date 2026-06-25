@@ -14,6 +14,7 @@
     "audit:estados": "node scripts/audit-estados-convocatoria.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:served": "npx tsx --env-file=.env.local scripts/audit-served-questions.ts",
+    "audit:scraped-reconcile": "node scripts/audit-scraped-reconcile.cjs",
     "audit:oposicion-contenido": "npx tsx --env-file=.env.local scripts/audit-oposicion-contenido-prep.ts",
     "ads:auth": "npx tsx --env-file=.env.local scripts/google-ads/get-refresh-token.ts",
     "ads:report": "npx tsx --env-file=.env.local scripts/google-ads/report.ts",

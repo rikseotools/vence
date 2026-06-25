@@ -124,6 +124,7 @@ const oposicionToExamSourcePattern: Record<string, string> = {
   'auxiliar-administrativo-andalucia': '%Auxiliar Administrativo Andalucía%',
   'tramitacion-procesal': '%Tramitación Procesal%',
   'auxilio-judicial': '%Auxilio Judicial%',
+  'ayudante-instituciones-penitenciarias': '%Ayudantes II.PP%',
   'administrativo-estado': 'Examen Administrativo Estado%',
   'gestion-procesal': '%Gestión%',
   'auxiliar-administrativo-valencia': '%Auxiliar Administrativo GVA%',

@@ -23,18 +23,45 @@ const LAW = {
   RD840_2011: 'aaf20539-a975-4032-8945-ac8cd9fd8ecd', LO6_1984: '2e7fb717-4d5b-4b00-b2ba-47497b527842',
   RD122_2015: 'c5d15786-2c35-434e-9188-63f0e5b10d89', TFUE: 'eba370d3-73d9-44a9-9865-48d2effabaf4',
   TUE: 'ddc2ffa9-d99b-4abc-b149-ab47916ab9da',
+  // recuperación: leyes ya en BD que faltaban en el resolutor
+  LGP: 'effe3259-8168-43a0-9730-9923452205c4', LEY_GOBIERNO: '1ed89e01-ace0-4894-8bd4-fa00db74d34a',
+  LO3_1981: '0425df52-bf4f-4220-a27d-63a9cbaac1c4', LO3_2007: '6e59eacd-9298-4164-9d78-9e9343d9a900',
+  LO1_2004: 'f5c17b23-2547-43d2-800c-39f5ea925c2f', INCOMPAT: 'f6f4da4d-845f-45d0-b69f-3554524e23e7',
+  DEPENDENCIA: '02a0a8db-af96-45d0-8fd4-4d24b825cb13', LOTC: '2bc32b1a-9b5f-4e11-ba0b-3b014293882c',
+  EOMF: '8f8cb31f-c8ca-4967-9fa6-6fc94d77a932', LEC: '14b4b825-2078-44cb-bff8-53d332c4f473',
+  CC: '899e61d1-e168-482b-9e86-4e7787eab6fc', LBRL: '06784434-f549-4ea2-894f-e2e400881545',
+  RD364_1995: 'f96071d8-a2bb-403b-b695-576067210590',
 };
-function canonLaw(ley) {
-  let l = ley.trim().split(/\s*\+\s*|,/)[0].trim();
+// limpia caracteres invisibles que rompían el parseo del título
+function cleanTitle(t) { return (t || '').replace(/[​-‏‪-‮⁠﻿­]/g, '').trim(); }
+// resuelve la ley buscando su firma EN CUALQUIER PARTE del título (multi-artículo, "+art", etc.)
+function canonLaw(rest) {
   const map = [
-    [/^RP\s*1996$|^RP\s*96$|^RP$|^RP de 1996$/i, 'RP_190_1996'], [/^CP\b/i, 'CODIGO_PENAL'], [/^CE\b/i, 'CE'],
-    [/^LOGP/i, 'LOGP'], [/^LECR?IM/i, 'LECRIM'], [/^LOPJ/i, 'LOPJ'], [/^TREBEP/i, 'TREBEP'],
-    [/^Ley 39\/2015/i, 'L39_2015'], [/^Ley 40\/2015/i, 'L40_2015'], [/^Ley 19\/2013/i, 'L19_2013'],
-    [/^Ley 9\/2017/i, 'LCSP'], [/^Ley 45\/2015/i, 'L45_2015'], [/^Ley 23\/2014/i, 'L23_2014'],
-    [/^RD 782\/2001/i, 'RD782_2001'], [/^RD 840\/2011/i, 'RD840_2011'], [/^LO 6\/1984/i, 'LO6_1984'],
-    [/^RD 122\/2015/i, 'RD122_2015'], [/^TFUE/i, 'TFUE'], [/^TUE/i, 'TUE'],
+    [/RP\s*1996|RP\s*96|RD\s*190\/1996|Reglamento Penitenciario/i, 'RP_190_1996'],
+    [/LECR?IM|Enjuiciamiento Criminal/i, 'LECRIM'], // antes que LEC y CP
+    [/\bLEC\b|Enjuiciamiento Civil|Ley 1\/2000/i, 'LEC'],
+    [/LOTC|LO\s*2\/1979|Tribunal Constitucional/i, 'LOTC'],
+    [/LOGP|LO\s*1\/1979/i, 'LOGP'], [/LOPJ|LO\s*6\/1985/i, 'LOPJ'],
+    [/\bCP\b|Código Penal|LO\s*10\/1995/i, 'CODIGO_PENAL'],
+    [/\bCC\b|Código Civil/i, 'CC'], [/\bCE\b|Constitución/i, 'CE'],
+    [/TREBEP|RDL?\s*5\/2015/i, 'TREBEP'],
+    [/Ley 39\/2015/i, 'L39_2015'], [/Ley 40\/2015/i, 'L40_2015'], [/Ley 19\/2013/i, 'L19_2013'],
+    [/Ley 9\/2017|LCSP/i, 'LCSP'], [/Ley 45\/2015|Voluntariado/i, 'L45_2015'], [/Ley 23\/2014/i, 'L23_2014'],
+    [/RD\s*782\/2001/i, 'RD782_2001'], [/RD\s*840\/2011/i, 'RD840_2011'],
+    [/LO\s*6\/1984|Habeas/i, 'LO6_1984'], [/RD\s*122\/2015/i, 'RD122_2015'],
+    [/TFUE/i, 'TFUE'], [/\bTUE\b/i, 'TUE'],
+    [/Ley 47\/2003|\bLGP\b|General Presupuestaria/i, 'LGP'],
+    [/Ley 50\/1997|Ley del Gobierno/i, 'LEY_GOBIERNO'],
+    [/LO\s*3\/1981|Defensor del Pueblo/i, 'LO3_1981'],
+    [/LO\s*3\/2007|igualdad efectiva/i, 'LO3_2007'],
+    [/LO\s*1\/2004|Violencia de Género/i, 'LO1_2004'],
+    [/Ley 53\/1984|incompatibilidad/i, 'INCOMPAT'],
+    [/Ley 39\/2006|dependencia/i, 'DEPENDENCIA'],
+    [/EOMF|50\/1981|Estatuto.*Ministerio Fiscal/i, 'EOMF'],
+    [/LBRL|Ley 7\/1985|Bases.*Régimen Local/i, 'LBRL'],
+    [/RD\s*364\/1995/i, 'RD364_1995'],
   ];
-  for (const [re, k] of map) if (re.test(l)) return k;
+  for (const [re, k] of map) if (re.test(rest)) return k;
   return null;
 }
 function normalize(t) {
@@ -96,10 +123,11 @@ function isStructural(t) { return STRUCT.some(re => re.test(t || '')); }
       const topicNum = bb.base + Number(tm[1]);
       if (!topicId.has(topicNum)) { stats.noTopic++; continue; }
 
-      const title = (q.explanationTitle || '').trim();
-      const am = title.match(/^\*?\s*Art\.?(?:[íi]culo)?\s*(\d+)(?:\s*(bis|ter|quater))?(?:\.\d+)?\s+(.+)$/i);
+      const title = cleanTitle(q.explanationTitle);
+      // primer artículo: tolera ordinales (4º), decimales múltiples (149.1.6), bis/ter
+      const am = title.match(/^\*?\s*Art[íi]?\.?(?:culo)?\s*(\d+)\s*(bis|ter|quater|quinquies)?/i);
       if (!am) { stats.noTitle++; continue; }
-      const lk = canonLaw(am[3]);
+      const lk = canonLaw(title); // busca la ley en TODO el título (multi-artículo, +art)
       if (!lk || !LAW[lk]) { stats.noLaw++; continue; }
       const lawId = LAW[lk];
       const m = artMap.get(lawId);
@@ -109,7 +137,7 @@ function isStructural(t) { return STRUCT.some(re => re.test(t || '')); }
       let artId = null;
       if (isStructural(qtext) && m.has('0')) { artId = m.get('0'); stats.struct++; }
       else {
-        const artN = am[1] + (am[2] ? ' ' + am[2] : '');
+        const artN = am[1] + (am[2] ? ' ' + am[2].toLowerCase() : '');
         artId = m.get(artN) || m.get(am[1]) || null;
       }
       if (!artId) { stats.noArt++; continue; }
