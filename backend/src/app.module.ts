@@ -24,6 +24,7 @@ import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { AdvanceEstadoModule } from './advance-estado/advance-estado.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { DetectBoletinesModule } from './detect-boletines/detect-boletines.module';
+import { DetectPagEmpleoModule } from './detect-pag-empleo/detect-pag-empleo.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { TestConfigModule } from './test-config/test-config.module';
@@ -186,6 +187,11 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     // sumarios de boletines oficiales (BOCYL/BOE). Cubre el punto ciego del
     // retiro de detect-regional-oeps (01/06/2026) — caso ULE Escala Administrativa.
     DetectBoletinesModule,
+    // Sensor detect-pag-empleo: descubre convocatorias C1/C2 de plazo abierto en
+    // TODA España (Estado/autonómico/LOCAL) vía el Buscador del Punto de Acceso
+    // General (administracion.gob.es). Cierra el gap de descubrimiento que
+    // detect-boletines (solo BOCYL+BOE) no cubre. 06:00 UTC.
+    DetectPagEmpleoModule,
     // Cron de higiene: avanza estado_proceso según fechas vencidas (06:30 UTC)
     AdvanceEstadoModule,
     // HTTP endpoints — Bloque 3 canary (Etapa 2)

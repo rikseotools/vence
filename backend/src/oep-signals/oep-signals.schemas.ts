@@ -19,6 +19,7 @@ export const sensorTypeOptions = [
   'google_cse',
   'manual',
   'generic_source',
+  'pag_empleo',
 ] as const;
 
 export const signalStatusOptions = [
@@ -174,6 +175,10 @@ export function baseScoreBySensor(sensor: SensorType): number {
       return 100;
     case 'generic_source':
       return 45;
+    // Agregador nacional oficial (administracion.gob.es): dato ya estructurado y
+    // filtrado por plazo abierto + grupo → señal fuerte, por encima de boletines.
+    case 'pag_empleo':
+      return 50;
   }
 }
 

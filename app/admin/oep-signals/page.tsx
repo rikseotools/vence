@@ -21,6 +21,8 @@ const SENSOR_LABELS: Record<string, { label: string; emoji: string; color: strin
   boe_api: { label: 'BOE API', emoji: '📄', color: 'bg-gray-100 text-gray-800' },
   google_cse: { label: 'Google', emoji: '🔎', color: 'bg-green-100 text-green-800' },
   manual: { label: 'Manual', emoji: '✍️', color: 'bg-slate-100 text-slate-800' },
+  generic_source: { label: 'Fuente estatal', emoji: '🏛️', color: 'bg-indigo-100 text-indigo-800' },
+  pag_empleo: { label: 'PAG Empleo', emoji: '🇪🇸', color: 'bg-red-100 text-red-800' },
 }
 
 function scoreColor(score: number): string {
