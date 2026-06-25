@@ -1,108 +1,84 @@
-// __tests__/services/conversionTracker.test.js
-// Tests unitarios para el servicio de tracking de conversiones
+// __tests__/services/conversionTracker.test.ts
+// Tests unitarios del servicio de tracking de conversiones.
+//
+// AGNÓSTICO (Fase C1, commit 0bfd09d6): el servicio ya NO recibe el cliente
+// supabase ni hace supabase.rpc. Hace POST a /api/v2/conversion-event (Drizzle +
+// verifyAuth; user_id del token). Este test se reescribió (25/06) para mockear
+// `fetch` + `getAuthHeaders` en vez del viejo `supabase.rpc` — estaba stale tras
+// la migración y rompía CI (unit) con "Number of calls: 0".
 
 import {
   trackConversionEvent,
   trackLimitReached,
   trackUpgradeModalView,
   trackUpgradeButtonClick,
-  CONVERSION_EVENTS
+  CONVERSION_EVENTS,
 } from '../../lib/services/conversionTracker'
 
-describe('conversionTracker Service', () => {
-  let mockSupabase
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
+}))
 
+const ENDPOINT = '/api/v2/conversion-event'
+
+function mockFetchOk(id: string | null = 'event-uuid-123') {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ id }),
+  })
+}
+
+function bodyOfCall(idx = 0): { eventType: string; eventData: Record<string, unknown> } {
+  const opts = (global.fetch as jest.Mock).mock.calls[idx][1]
+  return JSON.parse(opts.body)
+}
+
+describe('conversionTracker Service', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     console.warn = jest.fn()
     console.error = jest.fn()
     console.log = jest.fn()
-
-    mockSupabase = {
-      rpc: jest.fn()
-    }
+    global.fetch = jest.fn() as unknown as typeof fetch
   })
 
   describe('trackConversionEvent', () => {
-    test('debe llamar RPC con parámetros correctos', async () => {
-      mockSupabase.rpc.mockResolvedValue({
-        data: 'event-uuid-123',
-        error: null
-      })
+    test('llama a POST /api/v2/conversion-event con eventType y eventData', async () => {
+      mockFetchOk('event-uuid-123')
 
-      const result = await trackConversionEvent(
-        mockSupabase,
-        'user-123',
-        'limit_reached',
-        { questions_today: 25 }
+      const result = await trackConversionEvent('user-123', 'limit_reached', { questions_today: 25 })
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        ENDPOINT,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ eventType: 'limit_reached', eventData: { questions_today: 25 } }),
+        }),
       )
-
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('track_conversion_event', {
-        p_user_id: 'user-123',
-        p_event_type: 'limit_reached',
-        p_event_data: { questions_today: 25 }
-      })
-
       expect(result).toBe('event-uuid-123')
     })
 
-    test('debe retornar null si faltan parámetros', async () => {
-      const result1 = await trackConversionEvent(null, 'user-123', 'event')
-      expect(result1).toBeNull()
-      expect(console.warn).toHaveBeenCalled()
-
-      const result2 = await trackConversionEvent(mockSupabase, null, 'event')
-      expect(result2).toBeNull()
-
-      const result3 = await trackConversionEvent(mockSupabase, 'user', null)
-      expect(result3).toBeNull()
-    })
-
-    test('debe manejar error de tabla no existente graciosamente', async () => {
-      mockSupabase.rpc.mockResolvedValue({
-        data: null,
-        error: { code: '42P01', message: 'relation does not exist' }
-      })
-
-      const result = await trackConversionEvent(
-        mockSupabase,
-        'user-123',
-        'limit_reached',
-        {}
-      )
-
+    test('retorna null y no llama al endpoint si falta eventType', async () => {
+      const result = await trackConversionEvent('user-123', '')
       expect(result).toBeNull()
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Tabla conversion_events no existe')
-      )
+      expect(console.warn).toHaveBeenCalled()
+      expect(global.fetch).not.toHaveBeenCalled()
     })
 
-    test('debe manejar otros errores graciosamente', async () => {
-      mockSupabase.rpc.mockResolvedValue({
-        data: null,
-        error: { code: 'OTHER', message: 'Some error' }
-      })
+    test('retorna null si la respuesta no es ok (sin romper la app)', async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500, json: async () => ({}) })
 
-      const result = await trackConversionEvent(
-        mockSupabase,
-        'user-123',
-        'limit_reached',
-        {}
-      )
+      const result = await trackConversionEvent('user-123', 'limit_reached', {})
 
       expect(result).toBeNull()
       expect(console.error).toHaveBeenCalled()
     })
 
-    test('debe manejar excepciones sin romper la app', async () => {
-      mockSupabase.rpc.mockRejectedValue(new Error('Network error'))
+    test('maneja excepciones (red) sin romper la app', async () => {
+      ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
 
-      const result = await trackConversionEvent(
-        mockSupabase,
-        'user-123',
-        'limit_reached',
-        {}
-      )
+      const result = await trackConversionEvent('user-123', 'limit_reached', {})
 
       expect(result).toBeNull()
       expect(console.error).toHaveBeenCalled()
@@ -110,82 +86,55 @@ describe('conversionTracker Service', () => {
   })
 
   describe('trackLimitReached', () => {
-    test('debe llamar trackConversionEvent con evento correcto', async () => {
-      mockSupabase.rpc.mockResolvedValue({
-        data: 'event-uuid-456',
-        error: null
-      })
+    test('envía limit_reached con questions_today y timestamp', async () => {
+      mockFetchOk('event-uuid-456')
 
-      const result = await trackLimitReached(mockSupabase, 'user-123', 25)
+      const result = await trackLimitReached('user-123', 25)
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('track_conversion_event', {
-        p_user_id: 'user-123',
-        p_event_type: 'limit_reached',
-        p_event_data: expect.objectContaining({
-          questions_today: 25,
-          timestamp: expect.any(String)
-        })
-      })
-
+      const body = bodyOfCall()
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(ENDPOINT)
+      expect(body.eventType).toBe('limit_reached')
+      expect(body.eventData).toMatchObject({ questions_today: 25 })
+      expect(body.eventData.timestamp).toBeDefined()
+      expect(new Date(body.eventData.timestamp as string)).toBeInstanceOf(Date)
       expect(result).toBe('event-uuid-456')
-    })
-
-    test('debe incluir timestamp en event_data', async () => {
-      mockSupabase.rpc.mockResolvedValue({ data: 'id', error: null })
-
-      await trackLimitReached(mockSupabase, 'user-123', 25)
-
-      const call = mockSupabase.rpc.mock.calls[0]
-      const eventData = call[1].p_event_data
-
-      expect(eventData.timestamp).toBeDefined()
-      expect(new Date(eventData.timestamp)).toBeInstanceOf(Date)
     })
   })
 
   describe('trackUpgradeModalView', () => {
-    test('debe trackear vista del modal con source', async () => {
-      mockSupabase.rpc.mockResolvedValue({ data: 'id', error: null })
+    test('envía upgrade_modal_viewed con source', async () => {
+      mockFetchOk()
 
-      await trackUpgradeModalView(mockSupabase, 'user-123', 'limit')
+      await trackUpgradeModalView('user-123', 'limit')
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('track_conversion_event', {
-        p_user_id: 'user-123',
-        p_event_type: 'upgrade_modal_viewed',
-        p_event_data: expect.objectContaining({
-          source: 'limit'
-        })
-      })
+      const body = bodyOfCall()
+      expect(body.eventType).toBe('upgrade_modal_viewed')
+      expect(body.eventData).toMatchObject({ source: 'limit' })
     })
 
-    test('debe usar source por defecto si no se proporciona', async () => {
-      mockSupabase.rpc.mockResolvedValue({ data: 'id', error: null })
+    test('usa source por defecto (limit) si no se proporciona', async () => {
+      mockFetchOk()
 
-      await trackUpgradeModalView(mockSupabase, 'user-123')
+      await trackUpgradeModalView('user-123')
 
-      const call = mockSupabase.rpc.mock.calls[0]
-      expect(call[1].p_event_data.source).toBe('limit')
+      expect(bodyOfCall().eventData.source).toBe('limit')
     })
   })
 
   describe('trackUpgradeButtonClick', () => {
-    test('debe trackear clic en botón de upgrade', async () => {
-      mockSupabase.rpc.mockResolvedValue({ data: 'id', error: null })
+    test('envía upgrade_button_clicked con source', async () => {
+      mockFetchOk()
 
-      await trackUpgradeButtonClick(mockSupabase, 'user-123', 'banner')
+      await trackUpgradeButtonClick('user-123', 'banner')
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('track_conversion_event', {
-        p_user_id: 'user-123',
-        p_event_type: 'upgrade_button_clicked',
-        p_event_data: expect.objectContaining({
-          source: 'banner'
-        })
-      })
+      const body = bodyOfCall()
+      expect(body.eventType).toBe('upgrade_button_clicked')
+      expect(body.eventData).toMatchObject({ source: 'banner' })
     })
   })
 
   describe('CONVERSION_EVENTS constantes', () => {
-    test('debe tener todos los eventos definidos', () => {
+    test('tiene todos los eventos definidos', () => {
       expect(CONVERSION_EVENTS.LIMIT_REACHED).toBe('limit_reached')
       expect(CONVERSION_EVENTS.UPGRADE_MODAL_VIEWED).toBe('upgrade_modal_viewed')
       expect(CONVERSION_EVENTS.UPGRADE_BUTTON_CLICKED).toBe('upgrade_button_clicked')
