@@ -122,6 +122,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxilio_judicial',
     'auxilio judicial',
   ],
+  'ayudante_instituciones_penitenciarias': [
+    'ayudante_instituciones_penitenciarias',
+    'ayudantes de instituciones penitenciarias',
+    'ayudantes instituciones penitenciarias',
+    'cuerpo de ayudantes de instituciones penitenciarias',
+  ],
   'gestion_procesal': [
     'gestion_procesal',
     'gestión procesal',
@@ -229,6 +235,7 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'tramitacion_procesal': ['tramitacion-procesal'],
   'auxilio-judicial': ['auxilio-judicial'],
   'auxilio_judicial': ['auxilio-judicial'],
+  'ayudante_instituciones_penitenciarias': ['ayudante-instituciones-penitenciarias'],
   'gestion-estado': ['gestion-estado'],
   'gestion_estado': ['gestion-estado'],
   'gestion-procesal': ['gestion-estado'],

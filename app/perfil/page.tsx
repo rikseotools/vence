@@ -443,6 +443,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'ayudante_instituciones_penitenciarias',
+      label: 'Ayudante de Instituciones Penitenciarias',
+      data: {
+        name: 'Ayudante de Instituciones Penitenciarias',
+        slug: 'ayudante-instituciones-penitenciarias',
+        categoria: 'C1',
+        administracion: 'Estado'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_zaragoza',
       label: 'Auxiliar Administrativo Dip. Zaragoza',
       data: {

@@ -155,6 +155,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-sms': 'murcia',
     'guardia-civil': 'estado',
     'policia-nacional': 'estado',
+    'ayudante-instituciones-penitenciarias': 'estado',
     'policia-municipal-madrid': 'madrid',
   }
   return map[opoSlug] ?? null

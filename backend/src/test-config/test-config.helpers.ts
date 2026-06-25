@@ -119,6 +119,7 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo auxiliar administracion publica comunidad autonoma canarias',
   ],
   auxilio_judicial: ['auxilio_judicial', 'auxilio judicial'],
+  ayudante_instituciones_penitenciarias: ['ayudante_instituciones_penitenciarias', 'ayudantes de instituciones penitenciarias', 'cuerpo de ayudantes de instituciones penitenciarias'],
   gestion_procesal: ['gestion_procesal', 'gestión procesal'],
   auxiliar_administrativo_andalucia: [
     'auxiliar_administrativo_andalucia',
