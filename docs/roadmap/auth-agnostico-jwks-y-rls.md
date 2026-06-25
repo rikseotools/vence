@@ -91,6 +91,8 @@ Hoy `sub` = `auth.users.id` = `user_profiles.id`, y TODA la data del usuario cue
 
 ## FASE B — Cutover del emisor (Supabase Auth → Auth.js RS256/JWKS), riesgo más alto
 
+> 📋 **Plan de ejecución paso-a-paso** (comandos SSM, diffs, tests, secuencia de flags, rollback y precondiciones): [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md). Esta sección es el QUÉ; ese doc es el CÓMO. Fase B desbloquea §3.1 de [`migracion-vercel-a-aws.md`](./migracion-vercel-a-aws.md) (BD→RDS/Neon) y cierra el SPOF del 503.
+
 - **B1.** Auth.js v5 + Google con `jwt` callback (claims del contrato) y `jwt.encode/decode` custom que firman **RS256 con la privada de SSM** + `kid`. Mapear `sub = user_profiles.id` (lookup por email). Endpoints `GET /.well-known/jwks.json` y `GET /api/auth/token` (protegido por cookie) que devuelve el access token RS256 para el Bearer.
 - **B2.** Adapter `lib/auth/adapters/authjsAdapter.ts` (implementa `AuthClientPort`). `getAccessToken()` lee de `/api/auth/token` preservando singleflight de `authHeaders.ts`. `completeOAuthCallback()` se simplifica → **borrar** la maquinaria PKCE/tres-canales/localStorage de `supabaseAdapter`. `onAuthStateChange` emulado desde `useSession()`.
 - **B3.** Ampliar `verifyJwtLocal.ts` y `backend/src/auth/jwt-verifier.ts` a RS256/JWKS por `kid` + doble-aceptación HS256 en la ventana. Tests: token Auth.js pasa ambos verificadores.

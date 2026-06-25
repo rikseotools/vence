@@ -110,9 +110,11 @@ Aporta a esta migración: **independencia total del proveedor**, porque el worke
 
 ### 3.1 Migrar DB de Supabase a Postgres gestionado portable
 
+> 🔗 **Prerrequisito = el roadmap auth-agnóstico** [`auth-agnostico-jwks-y-rls.md`](./auth-agnostico-jwks-y-rls.md). Los dos puntos de abajo (RLS `auth.uid()` + `auth.users`) son exactamente sus **Fase C4** (drop RLS — draft en [`c4-drop-rls.draft.sql`](./c4-drop-rls.draft.sql), pendiente reposo) y **Fase B** (migrar el emisor a Auth.js — plan en [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md)). Estado al 25/06: C1+C2+C3 ✅ en prod; C4 ⏳ reposo; Fase B 🔴 no iniciada. **Hasta cerrar B+C4 no se puede mover la BD** → este §3.1 está bloqueado por ellas. Es además el fix estructural del SPOF del 503 ([`incidente-answer-save-503-01-06.md`](./incidente-answer-save-503-01-06.md)).
+
 Hoy el SQL es **ya estándar** (usamos Drizzle + postgres-js, no `@supabase/supabase-js` en el path crítico tras [[project_stats_v2_cutover_done]]). Pero quedan:
-- RLS policies con `auth.uid()` (Supabase-only). Migrar a JWT validado en backend.
-- `auth.users` table → migrar a tabla propia + servicio de auth (NextAuth, Cognito, o backend custom).
+- RLS policies con `auth.uid()` (Supabase-only). Migrar a JWT validado en backend. → **Fase C4** (draft listo).
+- `auth.users` table → migrar a tabla propia + servicio de auth (NextAuth, Cognito, o backend custom). → **Fase B** (Auth.js, plan listo).
 - Funciones SQL `SECURITY DEFINER` (transition_question_state, etc.) — ya están en PL/pgSQL estándar, sirven igual en RDS.
 - Realtime subscriptions (si se usan) — sustituir por SSE/WebSocket propio.
 
