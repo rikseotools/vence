@@ -2371,6 +2371,74 @@ export const RULE_STATS_PARIDAD_DIVERGENCE: AlertRule<{ divergent: number }> = {
 };
 
 /**
+ * Materialized-stats CORRECTNESS para `user_daily_stats` — hermana de
+ * RULE_STATS_PARIDAD_DIVERGENCE (que cubre uqh_v2). Añadida 25/06/2026 al migrar
+ * `refresh_ranking_cache()` a leer de `user_daily_stats` en vez de escanear
+ * test_questions: el leaderboard ahora DEPENDE de esta tabla, así que su
+ * correctitud de VALOR debe vigilarse (la frescura ya la cubre
+ * RULE_MATERIALIZED_STATS_STALE). Cierra el hueco detectado el 25/06: la paridad
+ * en vivo solo miraba uqh_v2, no user_daily_stats.
+ *
+ * Para usuarios que respondieron hace 5-20 min (margen de propagación async), su
+ * `user_daily_stats.total_questions` de HOY (día Europe/Madrid, igual que la
+ * tabla) debe igualar el conteo real en test_questions de hoy. Tolerancia ±2
+ * para absorber lag de borrados/timing puntual; >2 de diferencia en ≥5 usuarios
+ * = el handler del outbox escribe mal y el ranking se corrompe.
+ */
+export const RULE_USER_DAILY_STATS_PARIDAD: AlertRule<{ divergent: number }> = {
+  name: 'user_daily_stats_paridad_divergence',
+  severity: 'error',
+  query: sql`
+    WITH madrid_today AS (
+      SELECT (NOW() AT TIME ZONE 'Europe/Madrid')::date AS d
+    ),
+    recent_users AS (
+      SELECT DISTINCT user_id
+      FROM test_questions
+      WHERE created_at BETWEEN NOW() - INTERVAL '20 minutes' AND NOW() - INTERVAL '5 minutes'
+        AND user_id IS NOT NULL
+    ),
+    expected AS (
+      SELECT r.user_id, COUNT(*)::int AS real_total
+      FROM recent_users r
+      JOIN test_questions tq ON tq.user_id = r.user_id
+      WHERE (tq.created_at AT TIME ZONE 'Europe/Madrid')::date = (SELECT d FROM madrid_today)
+      GROUP BY r.user_id
+    )
+    SELECT COUNT(*) FILTER (
+             WHERE ABS(COALESCE(u.total_questions, 0) - e.real_total) > 2
+           )::int AS divergent
+    FROM expected e
+    LEFT JOIN user_daily_stats u
+      ON u.user_id = e.user_id AND u.day = (SELECT d FROM madrid_today)
+  `,
+  shouldFire: (rows) => (rows[0]?.divergent ?? 0) >= 5,
+  buildNotification: (rows) => {
+    const n = rows[0]?.divergent ?? 0;
+    return {
+      title: `${n} divergencias user_daily_stats vs test_questions — el rollup del ranking escribe MAL`,
+      body:
+        `Hay ${n} usuarios activos hace 5-20 min cuyo user_daily_stats.total_questions\n` +
+        `de hoy (día Europe/Madrid) difiere en >2 del conteo real en test_questions.\n` +
+        `El leaderboard lee de esta tabla (refresh_ranking_cache, migración 25/06),\n` +
+        `así que un fallo aquí corrompe el ranking.\n\n` +
+        `Diagnóstico:\n` +
+        `  - test_questions_outbox: ¿DLQ o errores del handler user-daily-stats?\n` +
+        `  - Comparar un user: COUNT(test_questions hoy, día Madrid) vs su fila en\n` +
+        `    user_daily_stats (day = hoy Madrid).\n` +
+        `  - Revisar deploys recientes del outbox-processor / user-daily-stats.handler.`,
+      metadata: {
+        divergent: n,
+        windowMin: '5-20',
+        table: 'user_daily_stats',
+      },
+      fingerprint: 'user_daily_stats_paridad_divergence',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Integridad de exámenes — disparada por el cron check-exam-integrity
  * (/api/cron/check-exam-integrity, 04:30 UTC diario). Emite
  * 'exam_integrity_drift' cuando hay exámenes is_completed (test_type='exam')
@@ -2512,6 +2580,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_MATERIALIZED_STATS_STALE as AlertRule,
   // Pipeline de stats escribe valores incorrectos (paridad en vivo uqh_v2 vs test_questions)
   RULE_STATS_PARIDAD_DIVERGENCE as AlertRule,
+  // Paridad de user_daily_stats (del que ahora depende el leaderboard, migración 25/06)
+  RULE_USER_DAILY_STATS_PARIDAD as AlertRule,
   // Integridad de exámenes (08/06/2026 post-caso Rosa) — exámenes is_completed
   // con filas test_questions perdidas (pérdida silenciosa de datos por-pregunta).
   RULE_EXAM_INTEGRITY_DRIFT as AlertRule,
