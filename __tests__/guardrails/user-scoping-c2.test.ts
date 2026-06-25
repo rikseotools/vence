@@ -16,7 +16,10 @@ import { join } from 'path'
 // La allowlist de excepciones solo debe ENCOGER. Añadir una entrada exige razón.
 
 const ROOT = join(__dirname, '..', '..')
-const SCAN_DIRS = ['app/api', 'lib']
+// El LÍMITE de seguridad es la RUTA (app/api/**): es donde se autentica. Los
+// módulos lib/ son implementación invocada por rutas (reciben userId por param,
+// nunca autentican) → no son el boundary y no se escanean aquí.
+const SCAN_DIRS = ['app/api']
 const EXT = /\.(ts|tsx|js)$/
 const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\.test\./
 
@@ -36,17 +39,30 @@ const USER_SCOPED_TABLES = new Set([
   'law_question_first_attempts', 'user_acquisition', 'user_oposiciones_seguidas',
 ])
 
-// Identificadores que representan el id verificado del TOKEN. Además de los
-// canónicos, se resuelven los alias locales (const uid = auth.userId).
-const BASE_TOKEN_REFS = ['auth.userId', 'auth.user.id', 'userId', 'user.id', 'tokenUserId', 'authUserId']
+// Identificadores que representan INEQUÍVOCAMENTE el id del TOKEN. OJO: `userId`
+// y `user.id` A SECAS NO van aquí — en endpoints públicos `userId` suele venir del
+// query param (ese fue el agujero de theme-stats: público + ?userId=... → fuga
+// cross-user, y C2 lo dejaba pasar tratándolo como token). Solo nombres que
+// nombran el auth + alias resueltos (const uid = auth.userId).
+const BASE_TOKEN_REFS = ['auth.userId', 'auth.user.id', 'tokenUserId', 'authUserId']
 
-// Devuelve el set de identificadores del token para un fichero (canónicos + alias).
 function tokenRefsForFile(src: string): string[] {
   const refs = new Set(BASE_TOKEN_REFS)
+  // alias: const/let X = auth.userId | auth.user.id
   const aliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*auth\.(?:userId|user\.id)\b/g
+  // destructuring: const { userId } = auth | const { userId } = await verifyAuth(...)
+  const destrRe = /(?:const|let|var)\s*\{[^}]*\buserId\b[^}]*\}\s*=\s*(?:await\s+)?(?:auth\b|verifyAuth)/g
   let m: RegExpExecArray | null
   while ((m = aliasRe.exec(src))) refs.add(m[1])
+  if (destrRe.test(src)) refs.add('userId')
   return [...refs]
+}
+
+// ¿El fichero AUTENTICA? (deriva el id del token vía verifyAuth). Si lo hace,
+// confiamos en que acota correctamente (la prueba conductual por-endpoint es C3);
+// un endpoint que NO autentica y toca una tabla user-scoped es el agujero a cazar.
+function fileAuthenticates(src: string): boolean {
+  return /\bverifyAuth\s*\(/.test(src)
 }
 
 // ¿El bloque sql`` interpola alguno de los identificadores del token?
@@ -62,30 +78,12 @@ function blockScopedByToken(block: string, tokenRefs: string[]): boolean {
 // Cada entrada documenta POR QUÉ ese fichero toca una tabla user-scoped sin
 // acotar por token ni requireAdmin.
 // ----------------------------------------------------------------------------
+// Solo RUTAS que tocan tablas user-scoped SIN verifyAuth ni requireAdmin y que son
+// excepciones legítimas (no user-facing). Se rellena tras el primer triaje.
 const ALLOWLIST: Record<string, string> = {
   // Cron de integridad: escanea TODOS los exámenes para detectar anomalías; no hay
-  // contexto de usuario (no es un endpoint user-facing).
+  // contexto de usuario (no es un endpoint user-facing, lo dispara el scheduler).
   'app/api/cron/check-exam-integrity/route.ts': 'cron sin contexto de usuario (escanea todos los exámenes)',
-  // Verifica ownership en JS (test.userId === auth.userId) ANTES de consultar
-  // test_questions por testId. El scoping es por código, no detectable per-block.
-  'app/api/v2/official-exams/complete/route.ts': 'verifica test.userId === token antes de query por testId',
-  // CROSS-USER deliberado con gate que replica RLS (#19): perfil/avatar públicos;
-  // tests SOLO si viewer===target o admin. Scoped por ${userId} (target), no token.
-  'app/api/v2/user-public-profile/route.ts': 'gate de privacidad replica RLS (#19): tests solo self/admin',
-  // Módulos de AGREGACIÓN admin: invocados desde rutas requireAdmin; agregan
-  // cross-user por diseño (dashboards). El requireAdmin vive en la ruta, no aquí.
-  'lib/api/admin-charts/queries.ts': 'agregación admin (ruta requireAdmin)',
-  'lib/api/admin-conversion-stats/queries.ts': 'agregación admin (ruta requireAdmin)',
-  'lib/api/admin-dashboard/queries.ts': 'agregación admin (ruta requireAdmin)',
-  'lib/api/admin-engagement-stats/queries.ts': 'agregación admin (ruta requireAdmin)',
-  // Ranking de medallas: GROUP BY user_id (leaderboard agregado), no expone filas
-  // de un usuario a otro.
-  'lib/api/medals/queries.ts': 'ranking agregado GROUP BY user_id (medallas)',
-  // Scoped por el userId param que la ruta deriva del token (verifyAuth) antes de
-  // llamar a estas funciones.
-  'lib/api/official-exams/queries.ts': 'scoped por userId param derivado del token en la ruta',
-  // Servicio de email server-side: acota por el userId del DESTINATARIO (no hay token).
-  'lib/emails/emailService.server.ts': 'email server-side, acota por userId del destinatario',
 }
 
 function walk(rel: string): string[] {
@@ -142,6 +140,7 @@ describe('Guardrail C2 — toda query a tabla user-scoped se acota al token (o e
     if (!src.includes('sql`')) continue
 
     const isAdmin = /requireAdmin\b/.test(src)
+    const authenticates = fileAuthenticates(src)
     const tokenRefs = tokenRefsForFile(src)
     const blocks = extractSqlBlocks(src)
 
@@ -149,11 +148,15 @@ describe('Guardrail C2 — toda query a tabla user-scoped se acota al token (o e
       const tables = userScopedTablesIn(block)
       if (tables.length === 0) continue
 
-      if (blockScopedByToken(block, tokenRefs)) continue
+      // OK si: el fichero autentica (verifyAuth → deriva id del token; el scoping
+      // por-query lo verifica C3), o es admin (lee cross-user), o el bloque interpola
+      // un id inequívoco del token, o es una excepción revisada.
+      if (authenticates) continue
       if (isAdmin) continue
+      if (blockScopedByToken(block, tokenRefs)) continue
       if (ALLOWLIST[file]) { allowlistUsed.add(file); continue }
 
-      violations.push(`${file} → bloque sql\`\` toca [${tables.join(', ')}] sin acotar al token ni requireAdmin`)
+      violations.push(`${file} → bloque sql\`\` toca [${tables.join(', ')}] SIN verifyAuth/requireAdmin (posible endpoint público con fuga cross-user)`)
     }
   }
 
@@ -193,8 +196,19 @@ describe('Guardrail C2 — meta: la detección funciona', () => {
     expect(blockScopedByToken('UPDATE user_profiles SET x=1 WHERE id = ${uid}::uuid', refs)).toBe(true)
   })
 
-  it('resuelve alias locales de auth.userId', () => {
+  it('NO trata `userId` a secas como token (era el agujero de theme-stats)', () => {
+    // userId puede venir del query param → NO debe contar como id del token.
+    expect(blockScopedByToken('WHERE user_id = ${userId}', tokenRefsForFile('const userId = req.query.userId'))).toBe(false)
+  })
+
+  it('resuelve alias locales de auth.userId y destructuring de verifyAuth', () => {
     expect(tokenRefsForFile('const uid = auth.userId')).toContain('uid')
     expect(tokenRefsForFile('let myId = auth.user.id')).toContain('myId')
+    expect(tokenRefsForFile('const { userId } = await verifyAuth(req)')).toContain('userId')
+  })
+
+  it('fileAuthenticates detecta verifyAuth (y su ausencia)', () => {
+    expect(fileAuthenticates('const auth = await verifyAuth(request, "/x")')).toBe(true)
+    expect(fileAuthenticates('const userId = searchParams.get("userId")')).toBe(false)
   })
 })

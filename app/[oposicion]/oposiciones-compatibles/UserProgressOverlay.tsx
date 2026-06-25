@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useEffect, useState } from 'react'
 import type { UserOverlapProgress } from '@/lib/api/oposiciones-compatibles/types'
 
@@ -28,7 +29,8 @@ export default function UserProgressOverlay({
       setLoading(true)
       try {
         const res = await fetch(
-          `/api/v2/oposiciones-compatibles/progress?userId=${user.id}&sourcePositionType=${sourcePositionType}`
+          `/api/v2/oposiciones-compatibles/progress?sourcePositionType=${sourcePositionType}`,
+          { headers: await getAuthHeaders() }
         )
         if (res.ok) {
           const data = await res.json()

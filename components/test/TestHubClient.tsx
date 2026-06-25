@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import CcaaFlag, { hasCcaaFlag } from '@/components/CcaaFlag'
@@ -208,7 +209,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
       // caía en la rama legacy que mezclaba B2 de oposiciones distintas (T101 AAE
       // "Atención al ciudadano" se confundía con T101 SS "SS en la CE" porque
       // tema_number es solo un int sin contexto).
-      const response = await fetch(`/api/v2/topic-progress/theme-stats?userId=${userId}&oposicionId=${encodeURIComponent(oposicion)}`)
+      const response = await fetch(`/api/v2/topic-progress/theme-stats?oposicionId=${encodeURIComponent(oposicion)}`, { headers: await getAuthHeaders() })
       const data = await response.json()
 
       if (data.success && data.stats) {

@@ -33,6 +33,7 @@ import { getReadDb } from '@/db/client'
 import { topicScope, topics } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getCached, setCached } from '@/lib/cache/redis'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
@@ -65,10 +66,15 @@ const paramsSchema = z.object({
  * to articles in the scope of each target oposición.
  */
 async function _GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get('userId')
+  // SEGURIDAD (Fase C): userId del TOKEN, nunca del query param (antes era público
+  // + ?userId=... → fuga cross-user del progreso de otro usuario).
+  const auth = await verifyAuth(request, '/api/v2/oposiciones-compatibles/progress')
+  if (!auth.success) {
+    return NextResponse.json({ success: false, error: 'unauthorized' }, { status: auth.status })
+  }
   const sourcePositionType = request.nextUrl.searchParams.get('sourcePositionType')
 
-  const parsed = paramsSchema.safeParse({ userId, sourcePositionType })
+  const parsed = paramsSchema.safeParse({ userId: auth.userId, sourcePositionType })
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Params inválidos', details: parsed.error.flatten() },

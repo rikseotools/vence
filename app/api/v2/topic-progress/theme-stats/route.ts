@@ -24,6 +24,7 @@ import { z } from 'zod'
 import { getReadDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { getCached, setCached } from '@/lib/cache/redis'
 import { getUserThemeStatsByOposicion } from '@/lib/api/theme-stats/queries'
 import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
@@ -58,10 +59,14 @@ const STALE_TTL_S = 24 * 60 * 60        // 24h: cuánto retiene Redis (para fall
 const BD_TIMEOUT_MS = 10_000            // 10s: tope query BD; si excede, fallback a stale
 
 async function _GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get('userId')
-  if (!userId || !userIdSchema.safeParse(userId).success) {
-    return NextResponse.json({ success: false, error: 'userId inválido o faltante (debe ser UUID)' }, { status: 400 })
+  // SEGURIDAD (Fase C): el userId sale SIEMPRE del TOKEN, nunca del query param
+  // (antes era público + ?userId=... → cualquiera leía las stats de otro usuario).
+  const auth = await verifyAuth(request, '/api/v2/topic-progress/theme-stats')
+  if (!auth.success) {
+    return NextResponse.json({ success: false, error: 'unauthorized' }, { status: auth.status })
   }
+  const userId = auth.userId
+  void userIdSchema // (el id del token ya es un UUID válido; schema conservado por compat)
 
   const oposicionIdRaw = request.nextUrl.searchParams.get('oposicionId')
   // Validar contra el enum de oposiciones conocidas. Si llega un valor que no

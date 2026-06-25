@@ -75,7 +75,7 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
         const themeStatsUrl = oposicionSlug
           ? `/api/v2/topic-progress/theme-stats?userId=${user.id}&oposicionId=${oposicionSlug}`
           : `/api/v2/topic-progress/theme-stats?userId=${user.id}`
-        const res = await fetch(themeStatsUrl, { signal: controller.signal })
+        const res = await fetch(themeStatsUrl, { signal: controller.signal, headers: await getAuthHeaders() })
         clearTimeout(timeoutId)
 
         if (res.ok) {
