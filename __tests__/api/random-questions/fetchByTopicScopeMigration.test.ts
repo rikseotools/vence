@@ -28,6 +28,19 @@ jest.mock('@/lib/supabase', () => ({
   }),
 }))
 
+// Auth agnóstica (Fase 4 C1): el fetcher usa `auth` de @/lib/auth (port). Refs LAZY
+// (en funciones) para evitar el TDZ del hoisting de jest.mock.
+const mockAuthPort = {
+  getUser: jest.fn(),
+  getSession: jest.fn(),
+}
+jest.mock('@/lib/auth', () => ({
+  auth: {
+    getUser: (...args: unknown[]) => mockAuthPort.getUser(...args),
+    getSession: (...args: unknown[]) => mockAuthPort.getSession(...args),
+  },
+}))
+
 jest.mock('@/lib/lawSlugSync', () => ({
   mapSlugToShortName: jest.fn((s: string) => s),
 }))
@@ -119,10 +132,10 @@ beforeEach(() => {
   // del primero y nunca consume el mock de fetch para /api/user/question-history,
   // resultando en catalog.answered vacío.
   invalidateHistoryCache(mockUser.id)
-  mockAuthFns.getUser.mockResolvedValue({ data: { user: mockUser }, error: null })
-  mockAuthFns.getSession.mockResolvedValue({
-    data: { session: { access_token: mockToken } },
-    error: null,
+  mockAuthPort.getUser.mockResolvedValue({ id: mockUser.id, email: mockUser.email })
+  mockAuthPort.getSession.mockResolvedValue({
+    user: { id: mockUser.id, email: mockUser.email },
+    accessToken: mockToken,
   })
 })
 
@@ -178,8 +191,8 @@ describe('fetchQuestionsByTopicScope — flujo normal', () => {
   })
 
   test('funciona sin usuario autenticado (anónimo)', async () => {
-    mockAuthFns.getUser.mockResolvedValue({ data: { user: null }, error: null })
-    mockAuthFns.getSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockAuthPort.getUser.mockResolvedValue(null)
+    mockAuthPort.getSession.mockResolvedValue(null)
     global.fetch = jest.fn().mockResolvedValue(makeSuccessResponse(10))
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10' }, { positionType: 'auxiliar_administrativo_estado' })
@@ -777,7 +790,7 @@ describe('fetchQuestionsByTopicScope — params edge cases', () => {
   })
 
   test('getUser falla → error se propaga (no llama a la API)', async () => {
-    mockAuthFns.getUser.mockRejectedValue(new Error('Auth error'))
+    mockAuthPort.getUser.mockRejectedValue(new Error('Auth error'))
     const mockFetch = jest.fn()
     global.fetch = mockFetch
 
@@ -815,7 +828,7 @@ describe('fetchQuestionsByTopicScope — edge cases', () => {
   })
 
   test('getSession falla pero funciona sin Bearer', async () => {
-    mockAuthFns.getSession.mockRejectedValue(new Error('Session expired'))
+    mockAuthPort.getSession.mockRejectedValue(new Error('Session expired'))
     const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(10))
     global.fetch = mockFetch
 

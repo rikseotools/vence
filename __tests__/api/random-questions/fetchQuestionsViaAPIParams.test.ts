@@ -20,6 +20,19 @@ jest.mock('@/lib/supabase', () => ({
   }),
 }))
 
+// Auth agnóstica (Fase 4 C1): el fetcher usa `auth` de @/lib/auth (port). Refs LAZY
+// (en funciones) para evitar el TDZ del hoisting de jest.mock.
+const mockAuthPort = {
+  getUser: jest.fn(),
+  getSession: jest.fn(),
+}
+jest.mock('@/lib/auth', () => ({
+  auth: {
+    getUser: (...args: unknown[]) => mockAuthPort.getUser(...args),
+    getSession: (...args: unknown[]) => mockAuthPort.getSession(...args),
+  },
+}))
+
 jest.mock('@/lib/lawSlugSync', () => ({ mapSlugToShortName: jest.fn((s: string) => s) }))
 jest.mock('@/lib/config/exam-positions', () => ({ getValidExamPositions: jest.fn(() => []), applyExamPositionFilter: jest.fn((q: unknown[]) => q) }))
 jest.mock('@/lib/boe-extractor', () => ({ isDisposicionArticle: jest.fn(() => false) }))
@@ -34,8 +47,8 @@ const originalFetch = global.fetch
 
 beforeEach(() => {
   jest.clearAllMocks()
-  mockAuthFns.getUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null })
-  mockAuthFns.getSession.mockResolvedValue({ data: { session: { access_token: 'tok123' } }, error: null })
+  mockAuthPort.getUser.mockResolvedValue({ id: 'u1', email: null })
+  mockAuthPort.getSession.mockResolvedValue({ user: { id: 'u1', email: null }, accessToken: 'tok123' })
 })
 afterAll(() => { global.fetch = originalFetch })
 
@@ -101,7 +114,7 @@ describe('fetchQuestionsViaAPI — parámetros completos', () => {
   })
 
   test('funciona sin token (sesión expirada)', async () => {
-    mockAuthFns.getSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockAuthPort.getSession.mockResolvedValue(null)
     const mockFetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, questions: [makeQ('1')], totalAvailable: 1 }) })
     global.fetch = mockFetch
 
