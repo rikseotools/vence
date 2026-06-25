@@ -105,10 +105,12 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
   const diffMap = new Map<string, number>()
   if (ids.length) {
     try {
-      // ids ya validados como UUID; se pasan como array parametrizado (no interpolado).
+      // ids ya validados como UUID. Lista parametrizada con sql.join (drizzle hace
+      // SPREAD de un array JS, no lo bindea como array Postgres → `${ids}::uuid[]` falla).
+      const idList = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)
       const diffRows = rows(await db.execute(sql`
         SELECT t.id, d.effective_difficulty::float8 AS eff
-        FROM unnest(${ids}::uuid[]) AS t(id)
+        FROM unnest(ARRAY[${idList}]) AS t(id)
         CROSS JOIN LATERAL get_effective_psychometric_difficulty(t.id, ${auth.userId}::uuid) d
       `)) as { id: string; eff: number }[]
       for (const r of diffRows) diffMap.set(r.id, Number(r.eff))

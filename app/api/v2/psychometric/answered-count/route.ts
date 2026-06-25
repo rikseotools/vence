@@ -27,11 +27,14 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: true, count: 0 })
   }
 
+  // Lista parametrizada (drizzle hace spread de arrays JS, no los bindea como
+  // array Postgres → `${questionIds}::uuid[]` NO funciona).
+  const idList = sql.join(questionIds.map((id) => sql`${id}::uuid`), sql`, `)
   const res = await getAdminDb().execute(sql`
     SELECT COUNT(DISTINCT question_id)::int AS n
     FROM psychometric_test_answers
     WHERE user_id = ${auth.userId}::uuid
-      AND question_id = ANY(${questionIds}::uuid[])
+      AND question_id IN (${idList})
   `)
   const rows = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as { n: number }[]
 

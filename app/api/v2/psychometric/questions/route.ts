@@ -37,8 +37,12 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'Parámetro "categories" requerido' }, { status: 400 })
   }
 
+  // Listas parametrizadas con sql.join → IN ($1,$2,...). OJO: drizzle hace SPREAD
+  // de un array JS interpolado (no lo bindea como array Postgres), así que
+  // `${categories}::text[]` NO funciona; hay que construir la lista explícitamente.
+  const catList = sql.join(categories.map((c) => sql`${c}`), sql`, `)
   const sectionFilter = sections.length > 0
-    ? sql` AND s.section_key = ANY(${sections}::text[])`
+    ? sql` AND s.section_key IN (${sql.join(sections.map((s) => sql`${s}`), sql`, `)})`
     : sql``
 
   const res = await getAdminDb().execute(sql`
@@ -51,7 +55,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     JOIN psychometric_categories c ON c.id = q.category_id
     JOIN psychometric_sections s ON s.id = q.section_id
     WHERE q.is_active = true
-      AND c.category_key = ANY(${categories}::text[])${sectionFilter}
+      AND c.category_key IN (${catList})${sectionFilter}
     ORDER BY q.created_at DESC
   `)
   const rows = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as { question: unknown }[]
