@@ -1,10 +1,11 @@
 name: Deploy frontend (Bloque 5 Fase E)
 
-# Construye la imagen Docker de Next.js (output:'standalone') y la sube
-# al repo ECR `vence-frontend` en eu-west-2.
-#
-# Este workflow NO actualiza ningún ECS service todavía (E.2 lo añade).
-# Solo deja la imagen en ECR para que la próxima etapa pueda referenciarla.
+# Construye la imagen Docker de Next.js (output:'standalone'), la sube al
+# repo ECR `vence-frontend` en eu-west-2, registra una nueva task definition
+# pineada por digest y actualiza el ECS service `vence-frontend` (cluster
+# `vence-backend`) con rolling deploy + wait services-stable + smoke HTTP.
+# Es decir: este workflow despliega de extremo a extremo (E.2 ya integrada
+# en el step "Registrar nueva task definition + update-service", abajo).
 #
 # Triggers:
 #   - workflow_dispatch (manual): cualquier rama.

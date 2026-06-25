@@ -12,31 +12,33 @@
 > 5. **IaC con Terraform** — recursos descritos como código, portables entre clouds.
 > 6. **Cero APIs proprietary** en el path crítico (sin `@vercel/functions`, sin `@vercel/kv`, sin `next/og` específico de Vercel runtime).
 >
-> **Última actualización**: 2026-05-28 ~20:30 UTC.
+> **Última actualización**: 2026-06-25 (revisión en vivo: AWS CLI profile `vence` + curl prod + grep repo).
 
 ---
 
-## 0. Estado actual (a ciencia cierta, 28/05/2026)
+## 0. Estado actual (verificado en vivo, 25/06/2026)
 
-| Pieza | Estado | Comentario |
+> ⚠️ **La tabla del 28/05 estaba desactualizada.** Lo verificado el 25/06 contra AWS/prod/repo invalida varias filas: OpenNext **ya no existe** (el frontend migró a Docker `standalone` + ECS Fargate), Vercel está **erradicado** (sin deps, sin `vercel.json`, sin `VERCEL_*`), y el cap de 10 s **dejó de existir** porque las rutas Next ya no corren en Lambda. El detonante original del roadmap está, por tanto, resuelto estructuralmente.
+
+| Pieza | Estado | Comentario (verificado 25/06) |
 |---|---|---|
-| **DNS `www.vence.es`** | ✅ AWS | apunta a `d25xcm3wrnxoty.cloudfront.net` |
-| **CDN edge** | ✅ AWS CloudFront | `x-amz-cf-pop: MAD53-P2`, `via: 1.1 cloudfront.net` |
-| **Next.js SSR + pages** | ✅ AWS OpenNext | carpeta `.open-next/` con `image-optimization-function`, `dynamodb-provider` |
-| **API `/api/*` (Next.js routes)** | ⚠️ MIXTO | la mayoría en AWS Lambda (OpenNext); `source=vercel` en observable_events es **etiqueta legacy** del código |
-| **`/api/v2/answer-and-save`** | ⚠️ AWS Lambda con cap 10 s | sufre el incidente actual: cualquier INSERT >10 s lo mata el cap |
-| **`/api/medals`** | ✅ Backend Fargate (api.vence.es) | ya en cutover desde 24/05 ([[project_bloque3_canary_medals_live]]) |
+| **DNS `www.vence.es`** | ✅ AWS | servido por CloudFront (`via: 1.1 …cloudfront.net`, `x-amz-cf-pop: MAD53-P2`) |
+| **CDN edge** | ✅ AWS CloudFront | distribución `E1EH4WF1H7ZGLA`; invalidación `/*` en cada deploy |
+| **Next.js SSR + pages** | ✅ AWS ECS Fargate | **ya NO OpenNext**: Docker multi-stage `.next/standalone` (`Dockerfile`), service `vence-frontend` 2/2 running, task def rev **287**, rollout COMPLETED. `.open-next/` local = artefacto gitignored stale, no se usa |
+| **API `/api/*` (Next.js routes)** | ✅ Contenedor Fargate | corren dentro del contenedor `vence-frontend` (server.js standalone), **sin cap de Lambda**. La etiqueta `source=vercel` en observable_events es legacy del código |
+| **`/api/v2/answer-and-save`** | ✅ Contenedor Fargate (sin cap) | `route.ts` corre en el contenedor (NO hay rewrite a backend) → el cap 10 s que motivó el roadmap **ya no aplica**. El módulo `backend/src/answer-save/` queda como cutover opcional, no urgente |
+| **`/api/medals`** | ✅ Backend Fargate (api.vence.es) | cutover desde 24/05 ([[project_bloque3_canary_medals_live]]) |
 | **Crons Grupo A (12)** | ✅ Fargate eu-west-2 | cutover completado 24/05 ([[project_backend_dedicado_fargate]]) |
-| **Crons Grupo B (4 triviales)** | ⚠️ Vercel (intencional) | `close-inactive-feedback`, `renewal-reminders`, `daily-registration-summary`, `detect-fraud` |
+| **Crons Grupo B (4 triviales)** | ⚠️ GitHub Actions | `close-inactive-feedback.yml` + `renewal-reminders.yml` activos; `daily-registration-summary`, `detect-fraud` (rutas presentes). **NO en Vercel** — son workflows GHA que pegan al endpoint. Pendiente verificar historial de runs (requiere `gh auth`) y decidir si migrar a Fargate |
 | **Canarys / heartbeat** | ✅ Fargate */5min | ([[project_sistema_canary_completo]]) 6 piezas + dashboard |
-| **Self-hosted pooler** | ✅ AWS Lightsail London ($7/mes) | PgBouncer, 50+ endpoints usándolo ([`self-hosted-pooler.md`](./self-hosted-pooler.md)) |
-| **DB primaria** | ⚠️ Supabase (Postgres 17.4) | el SQL es estándar; portable a Neon/RDS sin reescribir |
-| **Redis** | ⚠️ Upstash | API es estándar; portable a ElastiCache |
-| **Frontend deploy pipeline** | ❓ verificar | ¿GHA build + sync a S3 + invalidate CloudFront? o aún Vercel build? |
-| **Suscripción Vercel** | ❓ "desactivada Pro" (28/05) | desconocido qué quedó tras downgrade — ver §1 |
-| **`vercel.json`** | ⚠️ existe con `regions:["lhr1"]` | candidato a eliminar |
+| **Self-hosted pooler** | ✅ AWS Lightsail London ($7/mes) | PgBouncer ([`self-hosted-pooler.md`](./self-hosted-pooler.md)); enrutado vía flag `USE_SELF_HOSTED_POOLER` en SSM (re-aplicado en cada task def) |
+| **DB primaria** | ⚠️ Supabase (Postgres 17.4) | SQL estándar; portable a Neon/RDS. Bloqueado por Fase B (Auth.js) + C4 (drop RLS) — ver §3.1 |
+| **Redis** | ⚠️ Upstash | API estándar; portable a ElastiCache |
+| **Frontend deploy pipeline** | ✅ GHA → ECR → ECS | `frontend-deploy.yml`: build Docker → push ECR `vence-frontend` → register task def (pin por digest) → `update-service` → `wait services-stable` → smoke HTTP + invalidación CloudFront. `backend-deploy.yml` análogo para el backend |
+| **Backend deploy pipeline** | ✅ GHA → ECR → ECS | `backend-deploy.yml` → service `vence-backend` (1/1 running, task def rev 24) |
+| **Dependencias Vercel** | ✅ Erradicadas | sin `@vercel/*` en `package.json`, sin imports `@vercel/functions`/`@vercel/kv`, sin `process.env.VERCEL_*`, sin `vercel.json`, sin OpenNext en deps |
 
-**Conclusión**: la migración está **~75% hecha**. Faltan piezas concretas + limpieza de dependencias Vercel.
+**Conclusión**: la migración del **path crítico está prácticamente completa**. El frontend ya corre en contenedores ECS Fargate (no Lambda/OpenNext), Vercel está erradicado y el incidente del cap 10 s quedó resuelto por construcción. Lo que queda son **piezas no-críticas**: 4 crons triviales en GHA (§1.3) y las migraciones de largo plazo de DB (§3.1, bloqueada por Fase B + C4) y Redis (§3.2).
 
 ---
 
@@ -44,7 +46,9 @@
 
 ### 1.1 Identificar qué exactamente quedó tras "desactivar Pro Vercel"
 
-> 🟡 **Pendiente humano (Manuel)**: aclarar qué se desactivó en Vercel exactamente:
+> ✅ **RESUELTO (25/06)**: el frontend migró de OpenNext/Lambda a **Docker `standalone` + ECS Fargate** (ver §0), por lo que el cap de 10 s desapareció con la propia arquitectura — no era un toggle de Vercel sino el runtime Lambda de OpenNext. Vercel quedó **erradicado** del repo (sin deps, sin `vercel.json`, sin `VERCEL_*`). El análisis original se conserva abajo por contexto histórico.
+
+> 🟡 ~~Pendiente humano (Manuel)~~: aclarar qué se desactivó en Vercel exactamente:
 > - ¿La suscripción completa? ¿Solo el plan Pro → Hobby?
 > - ¿Qué features perdimos? (preview deployments, edge functions, image optimization)
 > - ¿El timeout 10s viene del Hobby de Vercel o de la config de AWS Lambda en OpenNext?
@@ -58,6 +62,8 @@ Hipótesis a verificar (en orden de probabilidad):
 **Acción**: comprobar `open-next.config.ts` + `infra/terraform/**/lambda*.tf` + Vercel Settings.
 
 ### 1.2 Cutover answer-save Vercel/OpenNext → backend Fargate
+
+> ✅ **Ya no es urgente (25/06)**: `/api/v2/answer-and-save` corre ahora dentro del contenedor `vence-frontend` (Fargate, server.js standalone), **sin el cap de 10 s de Lambda** que motivaba este cutover. El módulo `backend/src/answer-save/` sigue listo y el cutover a un servicio Fargate dedicado queda como **opción** (aislar el path hot del resto del frontend), no como fix de incidente.
 
 Módulo ya listo en `backend/src/answer-save/answer-save.controller.ts`. Patrón ya probado con `/api/medals`.
 
