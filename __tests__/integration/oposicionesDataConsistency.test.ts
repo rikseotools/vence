@@ -62,6 +62,7 @@ interface OposicionRow {
   slug: string
   nombre: string
   tipo_acceso: string | null
+  estado_proceso: string | null
   exam_date: string | null
   exam_date_approximate: boolean | null
   inscription_start: string | null
@@ -164,7 +165,7 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
   beforeAll(async () => {
     oposiciones = await supabaseGet<OposicionRow>(
       'oposiciones',
-      'select=id,slug,nombre,tipo_acceso,exam_date,exam_date_approximate,inscription_start,inscription_deadline,boe_publication_date,boe_reference,plazas_libres,plazas_discapacidad,plazas_promocion_interna,landing_description,seo_description,convocatoria_fecha,convocatoria_numero,convocatoria_dogv,programa_url&is_active=eq.true'
+      'select=id,slug,nombre,tipo_acceso,estado_proceso,exam_date,exam_date_approximate,inscription_start,inscription_deadline,boe_publication_date,boe_reference,plazas_libres,plazas_discapacidad,plazas_promocion_interna,landing_description,seo_description,convocatoria_fecha,convocatoria_numero,convocatoria_dogv,programa_url&is_active=eq.true'
     )
     hitos = await supabaseGet<HitoRow>(
       'convocatoria_hitos',
@@ -177,8 +178,15 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
   // ============================================================
   test('exam_date es coherente con el mes/año mencionado en landing_description', () => {
     const conflicts: string[] = []
+    // Estados post-examen: el landing narra un HISTORIAL de fechas pasadas
+    // (1er ejercicio, 2º ejercicio, plantilla…), no una predicción. Forzar
+    // que alguna cuadre con exam_date (que es el 1er ejercicio) es un falso
+    // positivo. Este check es para landings forward-looking ("examen previsto
+    // septiembre 2026"), no para procesos ya celebrados. (Caso navarra, 25/06/2026.)
+    const ESTADOS_POST_EXAMEN = new Set(['examen_realizado', 'resultados', 'nombramientos'])
     for (const o of oposiciones) {
       if (!o.exam_date || !o.landing_description) continue
+      if (o.estado_proceso && ESTADOS_POST_EXAMEN.has(o.estado_proceso)) continue
       const mesesEnTexto = extraerMesAñoDeTexto(o.landing_description)
       if (mesesEnTexto.length === 0) continue
 
