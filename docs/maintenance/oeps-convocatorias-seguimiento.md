@@ -83,6 +83,27 @@ supabase
   .eq('seguimiento_change_status', 'changed')
 ```
 
+### ⚠️ Gotchas al CONTAR las señales (aprendizaje 25/06/2026 — leer antes de decir "0 señales")
+
+Tres trampas que hicieron declarar "0 señales / sesión cerrada" cuando el badge **🎯 OEPs** marcaba **99+** (había 552 `pending` reales):
+
+1. **El badge NO cuenta `oposiciones.seguimiento_change_status`.** Cuenta `oep_detection_signals.status='pending'` **+** `discovered_processes` con `manuel_status IN ('new','watching')` (endpoint `/api/admin/oep-signals/pending-count` → `getPendingSignalsCount()` en `lib/api/oep-signals/queries.ts`). El "99+" sale si **cualquiera** de los dos supera 99 (`app/admin/layout.tsx`).
+2. **`oep_detection_signals` tiene RLS (solo admin).** Consultarla con la **clave ANON devuelve 0 filas en silencio** — NO es que no haya señales, es que RLS las oculta. Para contar bien: **`DATABASE_URL` (pg directo)** o `SUPABASE_SERVICE_ROLE_KEY`. Y **OJO**: PostgREST/supabase-js **corta a 1000 filas** por defecto, así que `.select().length` infra-cuenta — usar `count: 'exact', head: true` o `SELECT count(*)` en SQL.
+3. **Limpiar `seguimiento_change_status='ok'` NO baja el badge.** Son trackings distintos: ese campo es del sensor `hash_change` antiguo sobre `oposiciones`; el badge vive en `oep_detection_signals.status`. Para que el badge baje hay que poner `status` a `'applied'`/`'dismissed'` en `oep_detection_signals` (ver §6).
+
+**Triar por sensor + confianza, no por volumen bruto.** Reparto típico de las pending: la gran mayoría son `hash_change` de **confianza <40** (ruido coarse "la página cambió", a menudo re-baseline del cron — ver §16); el VALOR está en `llm_semantic` **≥60** (extrae año/plazas/estado OEP) y en los **descubrimientos** (`regional_scan`/`boe_api` con `oposicion_id IS NULL` = cuerpo nuevo fuera de catálogo). Empezar por esos:
+
+```sql
+-- Señales de valor (ignora el ruido hash_change). Vía DATABASE_URL, no anon.
+SELECT s.sensor_type, s.confidence_score, COALESCE(o.slug,'[NUEVO] '||s.detected_oposicion_name) opo,
+       s.detected_estado, s.detected_plazas_libre, s.signal_summary
+FROM oep_detection_signals s LEFT JOIN oposiciones o ON o.id=s.oposicion_id
+WHERE s.status='pending' AND s.sensor_type<>'hash_change'
+ORDER BY s.confidence_score DESC;
+```
+
+**Y verificar antes de aplicar (lección SAS, ver §9):** el `llm_semantic` a veces extrae datos de un **ciclo distinto** al que modela nuestra fila (p. ej. promoción interna vs libre, u OEP vieja ya examinada). Cotejar el `detected_*` con el ciclo real de la oposición antes de modificar; si la señal es de otro turno/ciclo → `dismissed` con nota, no aplicar.
+
 ## 2. Leer la pagina de seguimiento
 
 Para cada oposicion con cambio, usar WebFetch en la `seguimiento_url` para extraer:
@@ -499,6 +520,8 @@ Si una oposicion tiene `seguimiento_url` pero 0 hitos:
 **IMPORTANTE:** Solo incluir hitos que tengan fecha oficial publicada. No crear hitos con fechas estimadas o inventadas (ver seccion 4e).
 
 ## 6. Marcar como revisado
+
+> **⚠️ Esto es lo ÚNICO que baja el badge 🎯 OEPs.** El contador lee `oep_detection_signals.status='pending'` (ver §1). Mientras una señal siga `pending`, suma al badge **aunque ya hayas actualizado la oposición o limpiado `seguimiento_change_status='ok'`** (campo distinto). Por eso, tras aplicar/descartar el cambio en BD, **hay que cerrar también la señal** poniendo su `status` a `'applied'`/`'dismissed'`. El ruido `hash_change` <40 que sea cosmético/re-baseline se puede cerrar en bloque a `'dismissed'` con `admin_notes` explicando el motivo.
 
 ### Opción A — Desde panel admin (recomendado)
 En `/admin/oep-signals` pulsar **Aplicar** (si se han aplicado los cambios a BD) o **Descartar** (si es falso positivo). El botón actualiza el `status` de la señal — pero **NO aplica cambios a BD automáticamente**, los cambios los haces TÚ siguiendo este manual.
