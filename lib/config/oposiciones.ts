@@ -2982,9 +2982,10 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria CGX00L19 ej.1 (turno libre)',
         oep: 'OEP 2018-2019',
         partes: [
-          { id: 'primera', icon: '📘', title: 'Primer ejercicio', ordinaryCount: 96 },
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio (test)', ordinaryCount: 70 },
+          { id: 'supuesto', icon: '📋', title: 'Supuestos prácticos', ordinaryCount: 26 },
         ],
-        note: '7 plazas — turno libre. Primer ejercicio (examen tipo test).',
+        note: '7 plazas — turno libre. Primer ejercicio: parte de test (70) + supuestos prácticos (26).',
       },
     ],
     emoji: '🍋',
