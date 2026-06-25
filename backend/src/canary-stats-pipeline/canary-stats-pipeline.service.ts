@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
-import jwt from 'jsonwebtoken';
+import { signCanaryToken } from '../canary-shared/canary-token';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 
 /**
@@ -67,12 +67,13 @@ export class CanaryStatsPipelineService {
     // ─── 2. Firmar JWT smoke ───
     let token: string;
     try {
-      const now = Math.floor(Date.now() / 1000);
-      token = jwt.sign(
-        { sub: userId, aud: 'authenticated', role: 'authenticated', email: 'smoke@vence.es', iat: now, exp: now + this.TOKEN_TTL_SECONDS },
-        jwtSecret,
-        { algorithm: 'HS256' },
-      );
+      const signed = signCanaryToken(userId, {
+        ttlSeconds: this.TOKEN_TTL_SECONDS,
+        email: 'smoke@vence.es',
+        secret: jwtSecret,
+      });
+      if (!signed) throw new Error('SUPABASE_JWT_SECRET no configurado');
+      token = signed;
     } catch (err) {
       return { ok: false, step: 'sign_token', errorMessage: `Firma JWT falló: ${err instanceof Error ? err.message : String(err)}`, durationMs: Date.now() - startedAt };
     }

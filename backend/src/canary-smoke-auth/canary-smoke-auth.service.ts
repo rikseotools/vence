@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import jwt from 'jsonwebtoken';
+import { signCanaryToken } from '../canary-shared/canary-token';
 
 /**
  * Canary HTTP autenticado — Nivel 3 del roadmap canary-y-simulaciones.
@@ -76,19 +76,13 @@ export class CanarySmokeAuthService {
     // ─── Paso 1: firmar JWT smoke localmente (mismo formato que el SDK) ───
     let token: string;
     try {
-      const now = Math.floor(Date.now() / 1000);
-      token = jwt.sign(
-        {
-          sub: userId,
-          aud: 'authenticated',
-          role: 'authenticated',
-          email: 'smoke@vence.es',
-          iat: now,
-          exp: now + this.TOKEN_TTL_SECONDS,
-        },
-        jwtSecret,
-        { algorithm: 'HS256' },
-      );
+      const signed = signCanaryToken(userId, {
+        ttlSeconds: this.TOKEN_TTL_SECONDS,
+        email: 'smoke@vence.es',
+        secret: jwtSecret,
+      });
+      if (!signed) throw new Error('SUPABASE_JWT_SECRET no configurado');
+      token = signed;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return {
