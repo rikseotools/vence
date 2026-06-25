@@ -145,6 +145,11 @@ export class TTSEngine {
   /** Errores consecutivos sin un onend exitoso intermedio — alimenta
    *  el circuit breaker. Reset en cada onend OK y en cada play() limpio. */
   private consecutiveChunkErrors = 0
+
+  /** Recalibración 25/06: agregar a 1 tts_error por sesión, no por chunk. El
+   *  synthesis-failed móvil tras background dispara en cascada (o intermitente);
+   *  emitir por chunk inflaba el ruido. Reset al iniciar cada sesión (play). */
+  private sessionErrorEmitted = false
   /** Último error fatal expuesto al UI. Null si no hay error en curso. */
   private lastError: TTSLastError | null = null
 
@@ -288,6 +293,7 @@ export class TTSEngine {
       this.chunksCompleted = 0
       this.chunksSkipped = 0
       this.sessionId = newSessionId()
+      this.sessionErrorEmitted = false
       this.sessionStartTime = Date.now()
 
       const voices = window.speechSynthesis.getVoices()
@@ -321,6 +327,7 @@ export class TTSEngine {
     this.chunksCompleted = 0
     this.chunksSkipped = 0
     this.sessionId = newSessionId()
+    this.sessionErrorEmitted = false
     this.sessionStartTime = Date.now()
 
     const voices = window.speechSynthesis.getVoices()
@@ -632,7 +639,10 @@ export class TTSEngine {
         return
       }
 
-      if (this.sessionId) {
+      // Solo el PRIMER error de la sesión se emite (warn). Los siguientes
+      // chunks fallidos en cascada son ruido de la misma causa → suprimidos.
+      if (this.sessionId && !this.sessionErrorEmitted) {
+        this.sessionErrorEmitted = true
         ttsTelemetry.error({
           sessionId: this.sessionId,
           atChunkIdx: index,

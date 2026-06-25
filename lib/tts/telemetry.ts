@@ -215,8 +215,13 @@ export const ttsTelemetry = {
   },
 
   error(meta: TTSErrorMeta): void {
+    // severity 'warn' (no 'error'): el caso dominante es `synthesis-failed` en
+    // Chrome móvil al backgroundear — una limitación ESPERADA del navegador (la
+    // Web Speech API se suspende en background), no un bug de la app. Emitirlo
+    // como 'error' inflaba el conteo de errores con ruido no accionable
+    // (recalibración 25/06; el engine además agrega a 1 por sesión).
     emitClientEvent({
-      severity: 'error',
+      severity: 'warn',
       eventType: 'tts_error',
       errorMessage: meta.message ?? `TTS error in chunk ${meta.atChunkIdx}: ${meta.errorType}`,
       metadata: enrichMeta({ ...meta }),
