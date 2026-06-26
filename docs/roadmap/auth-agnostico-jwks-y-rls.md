@@ -131,13 +131,18 @@ Hoy `sub` = `auth.users.id` = `user_profiles.id`, y TODA la data del usuario cue
 
 ## Qué seguiría rompiendo el swap a Neon/RDS si se deja sin hacer
 
-1. ~32 `pgPolicy(auth.uid())` en `db/schema.ts` → C4 (y C1 antes para no exponer).
-2. `backend/src/email/medal-email.service.ts` `JOIN auth.users` → C4.
-3. `is_current_user_admin`/`is_user_admin` → A3 + drop en C4.
+> 🔎 **Verificable y re-ejecutable:** `node scripts/neon-readiness-audit.cjs` (solo lectura) audita la BD viva y reporta los blockers de ESQUEMA (puntos 1-3 + 8-10). Estado **2026-06-26**: 125 RLS auth.uid() · 3 fns auth.* · **51 FKs→auth.users** · 1 vista auth · 3 ext no-portables. (Cifras de `db/schema.ts` quedan desfasadas por lag de introspección — la BD viva manda.)
+
+1. **125** políticas `pgPolicy(auth.uid())` sobre 57 tablas (no las ~32 de `db/schema.ts`, stale) → C4 (y C1 antes para no exponer). Regenerar con `gen-c4-drop-rls.cjs`.
+2. `backend/src/email/medal-email.service.ts` `JOIN auth.users` → C4. ✅ eliminado (commit `e70cf3f6`).
+3. **3 funciones SQL public** que invocan `auth.uid()/jwt()/role()`: `is_current_user_admin`, `assign_role`, `get_current_user_roles`. **Ya no se LLAMAN** (A3, allowlist email) pero **siguen EXISTIENDO en BD** → en RDS son inválidas. **DROP** junto con C4 (o verificar 0 callers de `assign_role`/`get_current_user_roles` antes).
 4. `lib/security/adminApiGuard.ts` remote `supabase.auth.getUser` → B4 paso 6.
 5. `lib/auth/server.ts` `authAdmin.*` → B4 paso 7.
-6. Cualquier `supabase.from()/rpc()` restante → A2/A3 + C1 + barrido de crons/admin.
+6. Cualquier `supabase.from()/rpc()` restante → A2/A3 + C1 + barrido de crons/admin. Barrera anti-regresión: guardrail `createclient-service-role-ratchet`.
 7. Renombrar envs `SUPABASE_*` → `DATABASE_URL`/`JWT_SECRET` (cosmético, último).
+8. **🚨 51 FKs de tablas de APP → `auth.users`** (`user_profiles`, `user_medals`, `detailed_answers`-family, `psychometric_*`, `user_feedback`, …). **`auth.users` NO existe en Neon/RDS** (es el schema de GoTrue) → cada FK rompe el swap. **Blocker de esquema mayor y NO documentado antes.** Fix: re-apuntar el FK a `user_profiles.id` (mismo UUID; `user_profiles` ya vive en nuestra Postgres) o dropar el FK, en una migración previa al swap. Coherente con la sección "Dos capas distintas": la identidad se queda en `user_profiles`, no en `auth.users`. Listar exacto con el audit.
+9. **Vista `v_attribution_coverage`** referencia el schema `auth` → reescribir contra `user_profiles`/`user_acquisition` antes del swap.
+10. **3 extensiones no portables por defecto a Neon/RDS:** `supabase_vault`, `pg_net`, `http` → verificar uso real (crons que hacen `http`/`pg_net` deben moverse a Fargate; `supabase_vault` para secretos → sustituir por SSM/Secrets Manager). Las demás (`vector`, `pg_trgm`, `uuid-ossp`, `pgcrypto`, `unaccent`, `pg_stat_statements`) sí están disponibles.
 
 ## Secuencia de PRs
 Fase A: 3 PRs (A1 refactor; A2 endpoints tras flag; A3 admin-check). Fase B: 1 PR (Auth.js dormido + adapter RS256/JWKS + verificadores) + flips por env. Fase C: PR C1 (endpoints), PR C2/C3 (tests), PR C4 (migración). Cada PR desplegable y revertible.
