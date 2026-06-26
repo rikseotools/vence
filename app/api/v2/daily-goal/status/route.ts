@@ -41,12 +41,16 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   }
   const uid = auth.userId
 
-  // "Hoy": replica el filtro original (test_questions vía JOIN tests.user_id +
-  // user_answer no vacío; psychometric por user_id directo).
+  // "Hoy": cuenta legales (test_questions) + psicotécnicas del día.
+  // PERF: usa tq.user_id DIRECTO (no JOIN tests) → el índice idx_tq_user_created_correct
+  // (user_id, created_at) sirve el count con index scan (~240ms) en vez del JOIN que
+  // spike-aba a 25s en usuarios pesados (48k calls/día → saturación-503). Patrón
+  // "JOIN tests eliminado" ya usado en user-answers/theme-stats; tq.user_id es fiable
+  // (backfill; paridad verificada). user_answer no vacío; psychometric por user_id.
   const todayRow = firstRow<CountRow>(await db().execute(sql`
     SELECT
-      (SELECT count(*)::int FROM test_questions tq JOIN tests t ON t.id = tq.test_id
-        WHERE t.user_id = ${uid}::uuid AND tq.created_at >= ${today}::timestamptz AND tq.user_answer <> '') AS leg,
+      (SELECT count(*)::int FROM test_questions tq
+        WHERE tq.user_id = ${uid}::uuid AND tq.created_at >= ${today}::timestamptz AND tq.user_answer <> '') AS leg,
       (SELECT count(*)::int FROM psychometric_test_answers
         WHERE user_id = ${uid}::uuid AND created_at >= ${today}::timestamptz) AS psycho
   `))
@@ -56,8 +60,8 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   if (weekAgo && !Number.isNaN(Date.parse(weekAgo))) {
     const weekRow = firstRow<CountRow>(await db().execute(sql`
       SELECT
-        (SELECT count(*)::int FROM test_questions tq JOIN tests t ON t.id = tq.test_id
-          WHERE t.user_id = ${uid}::uuid AND tq.created_at >= ${weekAgo}::timestamptz
+        (SELECT count(*)::int FROM test_questions tq
+          WHERE tq.user_id = ${uid}::uuid AND tq.created_at >= ${weekAgo}::timestamptz
             AND tq.created_at < ${today}::timestamptz AND tq.user_answer <> '') AS leg,
         (SELECT count(*)::int FROM psychometric_test_answers
           WHERE user_id = ${uid}::uuid AND created_at >= ${weekAgo}::timestamptz
