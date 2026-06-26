@@ -17,6 +17,7 @@
 import { sql } from 'drizzle-orm'
 import type { getDb } from '@/db/client'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { pgIntArray, pgTextArray } from '@/lib/api/sqlArrays'
 import type {
   ArticlesByLaw,
   DifficultyStats,
@@ -152,6 +153,63 @@ export async function getTopicAggregatesFromMV(
     articlesByLaw,
     staleSinceMs,
   }
+}
+
+export interface ThemeCount {
+  topicNumber: number
+  total: number
+  official: number
+}
+
+/**
+ * Versión MULTI-TOPIC para los conteos por tema del configurador
+ * (`lib/api/random-test/queries.ts`). Lee `total` (todas) + `official` (solo las
+ * oficiales de la PROPIA oposición, por `exam_position`) de las MVs, en vez del
+ * join 4-tablas `topics→topic_scope→articles→questions` + `count(DISTINCT)` en
+ * vivo (~2s/llamada, mayor consumidor de BD del sistema → ~5ms por lookup índice).
+ *
+ * Devuelve la MISMA forma que el `countsResult` de la query viva
+ * (`{ topicNumber, total, official }[]`), solo temas activos de `positionType`
+ * cuyo `topic_number ∈ topicNumbers`, para que el caller no cambie su mapeo.
+ *
+ * ⚠️ PARIDAD: la MV cuenta con los mismos filtros (`is_active` + `exam_case_id IS
+ * NULL`) — verificado 27/28 exacto vs la query viva (la única diferencia es un
+ * doble-conteo pre-existente por `topic_scope` solapado, que la MV ya tiene y el
+ * temario ya muestra). **NO aplica filtro por tags** → válido para callers SIN
+ * `tagFilter` (random-test sí; random-test-data NO, ese conserva la vía viva).
+ */
+export async function getThemeCountsFromMV(
+  db: ReturnType<typeof getDb>,
+  positionType: string,
+  topicNumbers: number[],
+  validPositions: string[],
+): Promise<ThemeCount[]> {
+  if (topicNumbers.length === 0) return []
+
+  // La MV `topic_official_by_position` guarda `lower(exam_position)`.
+  const lowerPositions = validPositions.map((p) => p.toLowerCase())
+  const officialExpr =
+    lowerPositions.length > 0
+      ? sql`COALESCE((SELECT sum(o.official_questions) FROM topic_official_by_position o
+              WHERE o.topic_id = t.id AND o.exam_position = ANY(${pgTextArray(lowerPositions)})), 0)`
+      : sql`0`
+
+  const result = await db.execute<{ topic_number: number; total: number; official: number } & Record<string, unknown>>(sql`
+    SELECT t.topic_number AS topic_number,
+           COALESCE((SELECT sum(s.total_questions) FROM topic_law_question_summary s WHERE s.topic_id = t.id), 0)::int AS total,
+           ${officialExpr}::int AS official
+    FROM topics t
+    WHERE t.position_type = ${positionType}
+      AND t.is_active = true
+      AND t.topic_number = ANY(${pgIntArray(topicNumbers)})
+  `)
+
+  const rows = (result as unknown as Array<{ topic_number: number; total: number; official: number }>) ?? []
+  return rows.map((r) => ({
+    topicNumber: Number(r.topic_number),
+    total: Number(r.total),
+    official: Number(r.official),
+  }))
 }
 
 /**

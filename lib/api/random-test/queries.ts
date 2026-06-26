@@ -18,6 +18,7 @@ import type {
   GenerateTestRequest,
 } from './schemas'
 import { getPositionType, getOposicionConfig } from './schemas'
+import { getThemeCountsFromMV, isTopicMvEnabled } from '@/lib/api/topic-data/mv-queries'
 
 // ============================================
 // QUERIES DE CONFIGURACIÓN
@@ -39,37 +40,42 @@ async function getThemeQuestionCountsInternal(
   const { getValidExamPositions } = await import('@/lib/config/exam-positions')
   const validPositions = getValidExamPositions(positionType)
 
-  // UNA SOLA QUERY: Obtener conteos agrupados por tema
-  // officialCount: solo cuenta oficiales de esta oposición (por exam_position),
-  // NO de otras oposiciones que comparten leyes — para no confundir al usuario.
-  const countsResult = await db
-    .select({
-      topicNumber: topics.topicNumber,
-      total: sql<number>`count(DISTINCT ${questions.id})::int`,
-      official: validPositions.length > 0
-        ? sql<number>`count(DISTINCT CASE WHEN ${questions.isOfficialExam} = true AND ${questions.examPosition} IN (${sql.join(validPositions.map(p => sql`${p}`), sql`, `)}) THEN ${questions.id} END)::int`
-        : sql<number>`0`,
-    })
-    .from(topics)
-    .innerJoin(topicScope, eq(topicScope.topicId, topics.id))
-    .innerJoin(articles, and(
-      eq(articles.lawId, topicScope.lawId),
-      sql`(${topicScope.articleNumbers} IS NULL OR ${articles.articleNumber} = ANY(${topicScope.articleNumbers}))`
-    ))
-    .innerJoin(questions, and(
-      eq(questions.primaryArticleId, articles.id),
-      eq(questions.isActive, true),
-      // Excluir preguntas de casos prácticos: requieren el contexto narrativo
-      // del exam_case que solo se renderiza en OfficialExamLayout/ExamReview.
-      // En tests aislados aparecerían sin contexto → incomprensibles.
-      isNull(questions.examCaseId)
-    ))
-    .where(and(
-      eq(topics.positionType, positionType),
-      eq(topics.isActive, true),
-      inArray(topics.topicNumber, allThemeIds)
-    ))
-    .groupBy(topics.topicNumber)
+  // Conteos por tema (total + oficiales de la PROPIA oposición por exam_position).
+  // FAST PATH (TOPIC_MV_ENABLED): lee las MVs pre-agregadas (~5ms) en vez del join
+  // 4-tablas + count(DISTINCT) en vivo (~2s, mayor consumidor de BD del sistema).
+  // Mismo flag/patrón que topic-data; query viva como fallback rollback-safe.
+  // Paridad verificada 27/28 exacta vs la vía viva (sin filtro de tags — esta
+  // función NO usa tagFilter, a diferencia de random-test-data).
+  const countsResult = isTopicMvEnabled()
+    ? await getThemeCountsFromMV(db, positionType, allThemeIds, validPositions)
+    : await db
+        .select({
+          topicNumber: topics.topicNumber,
+          total: sql<number>`count(DISTINCT ${questions.id})::int`,
+          official: validPositions.length > 0
+            ? sql<number>`count(DISTINCT CASE WHEN ${questions.isOfficialExam} = true AND ${questions.examPosition} IN (${sql.join(validPositions.map(p => sql`${p}`), sql`, `)}) THEN ${questions.id} END)::int`
+            : sql<number>`0`,
+        })
+        .from(topics)
+        .innerJoin(topicScope, eq(topicScope.topicId, topics.id))
+        .innerJoin(articles, and(
+          eq(articles.lawId, topicScope.lawId),
+          sql`(${topicScope.articleNumbers} IS NULL OR ${articles.articleNumber} = ANY(${topicScope.articleNumbers}))`
+        ))
+        .innerJoin(questions, and(
+          eq(questions.primaryArticleId, articles.id),
+          eq(questions.isActive, true),
+          // Excluir preguntas de casos prácticos: requieren el contexto narrativo
+          // del exam_case que solo se renderiza en OfficialExamLayout/ExamReview.
+          // En tests aislados aparecerían sin contexto → incomprensibles.
+          isNull(questions.examCaseId)
+        ))
+        .where(and(
+          eq(topics.positionType, positionType),
+          eq(topics.isActive, true),
+          inArray(topics.topicNumber, allThemeIds)
+        ))
+        .groupBy(topics.topicNumber)
 
   // Convertir a mapa para acceso rápido
   const countsMap = new Map(
