@@ -21,8 +21,8 @@
 > - **SÍ son queries lentas** (pg_stat_statements): `count(DISTINCT questions.id)` sobre topics → **mean 1.6-4.0s, max 23-34s**; `FROM user_article_stats` (oposiciones-compatibles/progress) → **mean 6.7s, max 29s**; `tq.id FROM test_questions` (difficulty/historial) → max 43s. Cuando superan `withDbTimeout(8000)` → 503. **El pooler NO acelera una query de 30s.**
 >
 > **EL FIX REAL = optimización de esas queries de agregación**, no routing de pool:
-> - Revisar por qué el `count(DISTINCT questions.id)` por topic corre en vivo (mean 2-4s) en vez de leer las MV `topic_law_question_summary`/`topic_official_by_position` (¿hay un path que no usa la MV?).
-> - `user_article_stats` (mean 6.7s) en oposiciones-compatibles/progress: índice / pre-agregado / MV por usuario.
+> - ✅ **HECHO (commit `45076c43`):** el `count(DISTINCT questions.id)` por topic (el MAYOR consumidor, ~18.000s) corría en vivo en `lib/api/random-test/queries.ts` (configurador + páginas SEO) en vez de leer las MV. Ahora `getThemeCountsFromMV` lee `topic_law_question_summary`/`topic_official_by_position` gated por `TOPIC_MV_ENABLED` (ya ON), fallback rollback-safe. Paridad verificada 0-diffs en 4 oposiciones + 5 tests. ~2s→~5ms. (`random-test-data/queries.ts` NO migrado: usa tagFilter que la MV no conoce — pendiente aparte.)
+> - ⏳ `user_article_stats` (mean 6.7s) en oposiciones-compatibles/progress: índice / pre-agregado / MV por usuario.
 > - Plan B inmediato si urge: stale-while-error en estos endpoints (servir cache viejo en vez de 503) + subir `withDbTimeout` para las agregaciones conocidas-lentas.
 >
 > NOTA: la HA del pooler (2 VMs AZs + NLB failover testeado, Fase 6 ✅) está bien y NO hace falta pooler nuevo — pero es ortogonal a esta saturación.
