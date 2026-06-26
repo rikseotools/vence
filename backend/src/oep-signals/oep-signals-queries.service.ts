@@ -154,6 +154,7 @@ export class OepSignalsQueriesService {
           signalSummary: input.signalSummary,
           rawExtraction: (input.rawExtraction ?? {}) as Record<string, unknown>,
           dedupeKey: input.dedupeKey ?? null,
+          adminNotes: input.adminNotes ?? null,
         })
         .onConflictDoNothing({ target: oepDetectionSignals.dedupeKey })
         .returning({ id: oepDetectionSignals.id });
@@ -185,11 +186,22 @@ export class OepSignalsQueriesService {
     /** Órgano convocante (Ayuntamiento/Universidad/Consejería…). */
     organismo?: string | null;
     bocRef?: string | null;
-  }): Promise<{ matched: boolean; oposicionId: string | null; oposicionNombre: string | null }> {
+  }): Promise<{
+    matched: boolean;
+    oposicionId: string | null;
+    oposicionNombre: string | null;
+    /** `inscription_deadline` ('YYYY-MM-DD') de la oposición casada, para el
+     *  veredicto de frescura. null si no casó o no tiene fecha. */
+    inscriptionDeadline: string | null;
+  }> {
     // 1) Match exacto por convocatoria_numero si hay BOC ref (máxima confianza).
     if (params.bocRef) {
       const byBoc = await this.db
-        .select({ id: oposiciones.id, nombre: oposiciones.nombre })
+        .select({
+          id: oposiciones.id,
+          nombre: oposiciones.nombre,
+          inscriptionDeadline: oposiciones.inscriptionDeadline,
+        })
         .from(oposiciones)
         .where(eq(oposiciones.convocatoriaNumero, params.bocRef))
         .limit(1);
@@ -198,6 +210,9 @@ export class OepSignalsQueriesService {
           matched: true,
           oposicionId: byBoc[0].id,
           oposicionNombre: byBoc[0].nombre,
+          inscriptionDeadline: byBoc[0].inscriptionDeadline
+            ? String(byBoc[0].inscriptionDeadline)
+            : null,
         };
       }
     }
@@ -212,6 +227,7 @@ export class OepSignalsQueriesService {
         shortName: oposiciones.shortName,
         subgrupo: oposiciones.subgrupo,
         administracion: oposiciones.administracion,
+        inscriptionDeadline: oposiciones.inscriptionDeadline,
       })
       .from(oposiciones)
       .where(eq(oposiciones.isActive, true));
@@ -227,10 +243,17 @@ export class OepSignalsQueriesService {
       all,
     );
 
+    const matchedRow = best.oposicionId
+      ? all.find((o) => o.id === best.oposicionId)
+      : null;
+
     return {
       matched: best.matched,
       oposicionId: best.oposicionId,
       oposicionNombre: best.oposicionNombre,
+      inscriptionDeadline: matchedRow?.inscriptionDeadline
+        ? String(matchedRow.inscriptionDeadline)
+        : null,
     };
   }
 

@@ -49,6 +49,8 @@ export interface CreateSignalInput {
   signalSummary: string;
   rawExtraction?: Record<string, unknown>;
   dedupeKey?: string | null;
+  /** Nota de triaje (p.ej. veredicto de frescura de inscripción). */
+  adminNotes?: string | null;
 }
 
 export interface DetectionSourceForScan {

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OepSignalsQueriesService } from '../oep-signals/oep-signals-queries.service';
 import { baseScoreBySensor } from '../oep-signals/oep-signals.schemas';
+import { classifyInscriptionFreshness } from '../oep-signals/inscription-reconcile';
 import {
   fetchPagGrupo,
   isRelevantPagConvocatoria,
@@ -13,6 +14,8 @@ export interface DetectPagEmpleoStats {
   relevant: number;
   signals: number;
   matched: number;
+  /** matches cuya inscripción contradice/falta en el catálogo (triaje humano). */
+  actionable: number;
   errors: number;
 }
 
@@ -47,6 +50,7 @@ export class DetectPagEmpleoService {
       relevant: 0,
       signals: 0,
       matched: 0,
+      actionable: 0,
       errors: 0,
     };
 
@@ -72,6 +76,7 @@ export class DetectPagEmpleoService {
         // con el organismo daba falsos positivos: "Consejería de ...
         // Administración ..." disparaba la familia "administrativo").
         let oposicionId: string | null = null;
+        let catalogDeadline: string | null = null;
         try {
           const match = await this.queries.matchDetectedOepToOposicion({
             cuerpo: c.cuerpo,
@@ -82,11 +87,21 @@ export class DetectPagEmpleoService {
           });
           if (match.matched) {
             oposicionId = match.oposicionId;
+            catalogDeadline = match.inscriptionDeadline;
             stats.matched++;
           }
         } catch {
           /* el match es best-effort; si falla, va como descubrimiento */
         }
+
+        // Veredicto de frescura: comparar la fecha de inscripción de la señal con
+        // la del catálogo. NO se escribe el catálogo (riesgo de falso match tipo
+        // Canarias + NORMA FIJA de verificar fuente); se anota en la señal para
+        // que el triaje humano vea las accionables. Ver inscription-reconcile.ts.
+        const freshness = oposicionId
+          ? classifyInscriptionFreshness(catalogDeadline, c.plazoHasta)
+          : null;
+        if (freshness?.actionable) stats.actionable++;
 
         const score = Math.min(
           100,
@@ -113,6 +128,7 @@ export class DetectPagEmpleoService {
             rawExtraction: { pag: c },
             // dedupe estable por convocatoria: una señal por convocatoria, jamás duplica.
             dedupeKey: `pag:${c.id}`,
+            adminNotes: freshness?.note ?? null,
           });
           if (inserted) {
             stats.signals++;
@@ -130,7 +146,7 @@ export class DetectPagEmpleoService {
     }
 
     this.logger.log(
-      `detect-pag-empleo: ${stats.signals} señales nuevas (${stats.relevant} relevantes de ${stats.fetched} leídas, ${stats.matched} casadas con catálogo)`,
+      `detect-pag-empleo: ${stats.signals} señales nuevas (${stats.relevant} relevantes de ${stats.fetched} leídas, ${stats.matched} casadas, ${stats.actionable} con inscripción a revisar)`,
     );
     return stats;
   }
