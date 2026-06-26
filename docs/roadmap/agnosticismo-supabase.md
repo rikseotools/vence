@@ -51,6 +51,8 @@ Los `createClient(url, service_role)` aparecieron porque eran la forma más dire
 
 Este roadmap arregla los síntomas Y monta la barrera para que el patrón **no vuelva a colarse**.
 
+> ✅ **Barrera montada (2026-06-26):** guardrail `__tests__/guardrails/createclient-service-role-ratchet.test.ts` (corre en `test:unit`/CI). Falla si un fichero NUEVO fuera de la allowlist crea un `createClient(SERVICE_ROLE)` (strip de comentarios para no auto-cazarse; con self-tests). Allowlist baseline = 8 ficheros server-side legítimos/pendientes de barrido (`lib/api/shared/auth.ts` es infra de verificación; el resto admin/cron/storage) → **solo encoge**. La vía agnóstica es `getAdminDb()`/`getReadDb()` (Drizzle, portable a Neon/RDS).
+
 ### El requisito agnóstico — recordatorio
 
 Memoria del proyecto, prioridad #2: *"Agnóstico de proveedor. Poder cambiar de base de datos (Supabase → Neon / RDS / …) y de cloud (Vercel → AWS → Azure → …) fácilmente, sin reescribir código."*
