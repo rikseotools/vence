@@ -67,12 +67,18 @@ export class DetectPagEmpleoService {
         if (!isRelevantPagConvocatoria(c)) continue;
         stats.relevant++;
 
-        // Intento de casado con el catálogo (región = CCAA del PAG).
+        // Casado estructural con el catálogo: familia (SOLO del cuerpo) + nivel
+        // de administración + grupo. El organismo va aparte (clasificar familia
+        // con el organismo daba falsos positivos: "Consejería de ...
+        // Administración ..." disparaba la familia "administrativo").
         let oposicionId: string | null = null;
         try {
           const match = await this.queries.matchDetectedOepToOposicion({
-            detectedName: `${c.cuerpo} ${c.organismo}`,
+            cuerpo: c.cuerpo,
             regionName: c.ccaa,
+            grupo: c.grupo,
+            admin: c.admin,
+            organismo: c.organismo,
           });
           if (match.matched) {
             oposicionId = match.oposicionId;
@@ -93,6 +99,8 @@ export class DetectPagEmpleoService {
             sensorType: 'pag_empleo',
             sourceUrl: PAG_ADV_URL,
             regionName: c.ccaa,
+            // Grupo C1/C2 del PAG → categoría de la señal (antes se perdía).
+            positionCategory: c.grupo || null,
             detectedOposicionName: `${c.cuerpo} (${c.organismo})`,
             detectedPlazasLibre: c.plazas,
             detectedFechaInscripcionFin: c.plazoHasta,

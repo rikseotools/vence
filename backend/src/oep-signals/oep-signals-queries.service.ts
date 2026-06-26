@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { pickBestMatch } from './oep-match';
 import {
   convocatoriaHitos,
   detectionSources,
@@ -174,11 +175,18 @@ export class OepSignalsQueriesService {
   // ============================================
 
   async matchDetectedOepToOposicion(params: {
-    detectedName: string;
+    /** Nombre del cuerpo SOLO (sin organismo — el organismo va aparte). */
+    cuerpo: string;
     regionName: string;
+    /** 'C1' | 'C2' del PAG. */
+    grupo?: string | null;
+    /** Estatal | Autonómica | Local | Universidad | Otra. */
+    admin?: string | null;
+    /** Órgano convocante (Ayuntamiento/Universidad/Consejería…). */
+    organismo?: string | null;
     bocRef?: string | null;
   }): Promise<{ matched: boolean; oposicionId: string | null; oposicionNombre: string | null }> {
-    // 1) Match exacto por convocatoria_numero si hay BOC ref
+    // 1) Match exacto por convocatoria_numero si hay BOC ref (máxima confianza).
     if (params.bocRef) {
       const byBoc = await this.db
         .select({ id: oposiciones.id, nombre: oposiciones.nombre })
@@ -194,60 +202,36 @@ export class OepSignalsQueriesService {
       }
     }
 
-    // 2) Match fuzzy por nombre + región
-    const normalize = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/[^a-z0-9ñ]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const detected = normalize(params.detectedName);
-    const region = normalize(params.regionName);
-
-    const hasAuxAdmin = /auxiliar\s*admin/.test(detected);
-    const hasAdmin = /administrativ/.test(detected) && !hasAuxAdmin;
-
+    // 2) Match estructural por familia + nivel de administración + grupo
+    //    (módulo puro `oep-match`, precisión > recall). Ver oep-match.ts.
     const all = await this.db
       .select({
         id: oposiciones.id,
         nombre: oposiciones.nombre,
         slug: oposiciones.slug,
+        shortName: oposiciones.shortName,
         subgrupo: oposiciones.subgrupo,
+        administracion: oposiciones.administracion,
       })
       .from(oposiciones)
       .where(eq(oposiciones.isActive, true));
 
-    for (const o of all) {
-      const nomNorm = normalize(o.nombre);
-      const slugNorm = normalize(o.slug ?? '');
-      const regionInSlug =
-        slugNorm.includes(region) || nomNorm.includes(region);
-      if (!regionInSlug) continue;
+    const best = pickBestMatch(
+      {
+        cuerpo: params.cuerpo,
+        grupo: params.grupo,
+        admin: params.admin,
+        ccaa: params.regionName,
+        organismo: params.organismo,
+      },
+      all,
+    );
 
-      if (
-        hasAuxAdmin &&
-        /auxiliar|c2/.test(nomNorm + ' ' + (o.subgrupo ?? ''))
-      ) {
-        return {
-          matched: true,
-          oposicionId: o.id,
-          oposicionNombre: o.nombre,
-        };
-      }
-      if (
-        hasAdmin &&
-        /administrativ|c1/.test(nomNorm + ' ' + (o.subgrupo ?? ''))
-      ) {
-        return {
-          matched: true,
-          oposicionId: o.id,
-          oposicionNombre: o.nombre,
-        };
-      }
-    }
-
-    return { matched: false, oposicionId: null, oposicionNombre: null };
+    return {
+      matched: best.matched,
+      oposicionId: best.oposicionId,
+      oposicionNombre: best.oposicionNombre,
+    };
   }
 
   // ============================================

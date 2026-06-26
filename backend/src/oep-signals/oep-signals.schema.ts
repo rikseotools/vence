@@ -24,6 +24,7 @@ export const oposiciones = pgTable('oposiciones', {
   slug: text('slug'),
   shortName: text('short_name'),
   subgrupo: text('subgrupo'),
+  administracion: text('administracion'),
   isActive: boolean('is_active').default(true),
   seguimientoUrl: text('seguimiento_url'),
   estadoProceso: text('estado_proceso'),
