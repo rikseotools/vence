@@ -37,8 +37,8 @@ Pre-flight contra prod del riesgo nº1 (mismatch de `sub` → un usuario hereda 
 - ✅ **Piezas de soporte ya existen:** `create_organic_user` (función canónica, usuarios nuevos), `app/api/v2/auth/ensure-profile/route.ts`, y el check `userid_mismatch` en `lib/api/auth/verifyAuth.ts` (validación en shadow mode).
 - 🔁 **Re-verificar el día del cutover** (los emails únicos pueden cambiar): `SELECT lower(email), count(*) FROM user_profiles WHERE email IS NOT NULL GROUP BY 1 HAVING count(*)>1` debe dar 0 filas.
 
-**Precondiciones OPERATIVAS que faltan validar (no de datos):**
-- ⏳ **Deploys estables** (precondición 1): confirmar 2-3 deploys seguidos a `services-stable` sin revert por `db-ready` 503 antes de tocar auth.
+**Precondiciones OPERATIVAS:**
+- ❌ **Deploys estables (precondición 1) NO SE CUMPLE — verificado 2026-06-26.** El sistema sigue lanzando **503 "Servicio saturado momentáneamente"** (circuit-breaker por saturación de pool / `db-ready`): **36 en 24h sobre 6 endpoints** (`oposiciones-compatibles/progress`, `answer-and-save`, `topics/[numero]`…), patrón bursty (pico de 33 hace 12-24h, 3 en las últimas 3h). El health-check da **🔴 ROJO** por esto (NO por bugs de endpoint — son todos el mismo 503 de saturación). **Arrancar el cutover de auth sobre esto es lo que el plan llama "temerario".** **GATE REAL antes de Fase B: resolver la saturación de pool** (roadmaps `self-hosted-pooler.md` / `pool-segregation.md`). Es además dolor user-facing por sí solo (requests fallidos a usuarios reales).
 - ⏳ **Sin sesión paralela en `main`** (precondición 2): hay actividad de otra sesión en el working tree → coordinar antes (Fase B toca `package-lock.json` con `jose` + ficheros de auth).
 
 ---
