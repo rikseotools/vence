@@ -29,6 +29,20 @@
 
 ---
 
+## Readiness verificado (2026-06-26)
+
+Pre-flight contra prod del riesgo nº1 (mismatch de `sub` → un usuario hereda datos de otro). **Lo crítico, VERDE:**
+- ✅ **`user_profiles`: 0 emails duplicados** (case-insensitive) y **0 emails NULL/vacíos** → el lookup `email → user_profiles.id` para fijar `token.sub` es **inequívoco** para los 8782 perfiles.
+- ✅ **`auth.users`: 0 emails duplicados** + **0 mismatches solo-de-casing** entre `auth.users.email` y `user_profiles.email` del mismo id → sin fallos de lookup por casing.
+- ✅ **Piezas de soporte ya existen:** `create_organic_user` (función canónica, usuarios nuevos), `app/api/v2/auth/ensure-profile/route.ts`, y el check `userid_mismatch` en `lib/api/auth/verifyAuth.ts` (validación en shadow mode).
+- 🔁 **Re-verificar el día del cutover** (los emails únicos pueden cambiar): `SELECT lower(email), count(*) FROM user_profiles WHERE email IS NOT NULL GROUP BY 1 HAVING count(*)>1` debe dar 0 filas.
+
+**Precondiciones OPERATIVAS que faltan validar (no de datos):**
+- ⏳ **Deploys estables** (precondición 1): confirmar 2-3 deploys seguidos a `services-stable` sin revert por `db-ready` 503 antes de tocar auth.
+- ⏳ **Sin sesión paralela en `main`** (precondición 2): hay actividad de otra sesión en el working tree → coordinar antes (Fase B toca `package-lock.json` con `jose` + ficheros de auth).
+
+---
+
 ## Contrato del token (lo que el verificador debe aceptar tras el cutover)
 
 ```
