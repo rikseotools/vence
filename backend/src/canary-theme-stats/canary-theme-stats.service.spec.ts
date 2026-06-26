@@ -1,5 +1,6 @@
 import {
   evaluateThemeStatsCanary,
+  isPickedUserFresh,
   type CanaryThemeStatRow,
 } from './canary-theme-stats.service';
 
@@ -61,5 +62,24 @@ describe('evaluateThemeStatsCanary (lógica pura del veredicto)', () => {
     const v = evaluateThemeStatsCanary(50, []);
     expect(v.ok).toBe(true);
     expect(v.reason).toBe('expected_below_floor');
+  });
+});
+
+describe('isPickedUserFresh (cache del usuario pesado, evita el full-scan de 6.7s)', () => {
+  const TTL = 60 * 60 * 1000; // 1h
+  it('null (nunca elegido) → no fresco', () => {
+    expect(isPickedUserFresh(null, 1_000_000, TTL)).toBe(false);
+  });
+  it('dentro del TTL → fresco (reutiliza, NO full-scan)', () => {
+    const now = 10_000_000;
+    expect(isPickedUserFresh(now - 30 * 60 * 1000, now, TTL)).toBe(true); // 30min < 1h
+  });
+  it('justo en el borde del TTL → expirado (re-elige)', () => {
+    const now = 10_000_000;
+    expect(isPickedUserFresh(now - TTL, now, TTL)).toBe(false);
+  });
+  it('pasado el TTL → expirado (re-elige)', () => {
+    const now = 10_000_000;
+    expect(isPickedUserFresh(now - 2 * TTL, now, TTL)).toBe(false);
   });
 });

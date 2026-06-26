@@ -40,6 +40,23 @@ const MIN_RATIO = 0.7;
 // Por debajo de este volumen no se afirma nada (el usuario más pesado siempre lo
 // supera; es una salvaguarda).
 const MIN_EXPECTED = 200;
+// El "usuario más pesado" se elige con un full-scan + GROUP BY de TODA
+// user_article_stats (~6.7s, 126MB): era el 2º mayor consumidor de BD del sistema
+// y, corriendo cada 10min, presionaba endpoints user-facing (saturación-503 en
+// oposiciones-compatibles/progress, cuya propia query es rápida pero se colgaba
+// bajo esa presión). El usuario más pesado es ESTABLE → lo cacheamos 1h. El
+// `expected` se recalcula fresco cada run (barato, per-user) para no dar falsos
+// mismatch si el usuario sigue respondiendo.
+const PICK_USER_TTL_MS = 60 * 60 * 1000;
+
+/** Pure: ¿el usuario pesado cacheado sigue fresco? (TTL desde su selección). */
+export function isPickedUserFresh(
+  pickedAt: number | null,
+  now: number,
+  ttlMs: number = PICK_USER_TTL_MS,
+): boolean {
+  return pickedAt !== null && now - pickedAt < ttlMs;
+}
 
 export interface CanaryThemeStatRow {
   tema_number: number;
@@ -97,6 +114,8 @@ export function evaluateThemeStatsCanary(
 @Injectable()
 export class CanaryThemeStatsService {
   private readonly logger = new Logger(CanaryThemeStatsService.name);
+  // Cache in-memory del usuario más pesado (evita el full-scan de ~6.7s cada run).
+  private pickedUser: { userId: string; positionType: string; pickedAt: number } | null = null;
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
@@ -104,23 +123,35 @@ export class CanaryThemeStatsService {
     const startedAt = Date.now();
     try {
       // 1. Usuario más pesado cuyo target es una oposición ACTIVA (con topics).
-      const userRows = (await this.db.execute(sql`
-        SELECT uas.user_id::text AS user_id, up.target_oposicion AS position_type
-        FROM user_article_stats uas
-        INNER JOIN user_profiles up ON up.id = uas.user_id
-        WHERE up.target_oposicion IN (
-          SELECT DISTINCT position_type FROM topics WHERE is_active = true
-        )
-        GROUP BY uas.user_id, up.target_oposicion
-        ORDER BY COUNT(*) DESC
-        LIMIT 1
-      `)) as unknown as Array<{ user_id: string; position_type: string }>;
+      //    CACHEADO 1h: el full-scan + GROUP BY de toda user_article_stats cuesta
+      //    ~6.7s; recomputarlo cada 10min era el 2º mayor consumidor de BD. El
+      //    usuario más pesado es estable, así que solo se re-elige al expirar.
+      let userId: string;
+      let positionType: string;
+      if (isPickedUserFresh(this.pickedUser?.pickedAt ?? null, Date.now())) {
+        userId = this.pickedUser!.userId;
+        positionType = this.pickedUser!.positionType;
+      } else {
+        const userRows = (await this.db.execute(sql`
+          SELECT uas.user_id::text AS user_id, up.target_oposicion AS position_type
+          FROM user_article_stats uas
+          INNER JOIN user_profiles up ON up.id = uas.user_id
+          WHERE up.target_oposicion IN (
+            SELECT DISTINCT position_type FROM topics WHERE is_active = true
+          )
+          GROUP BY uas.user_id, up.target_oposicion
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        `)) as unknown as Array<{ user_id: string; position_type: string }>;
 
-      const picked = userRows?.[0];
-      if (!picked) {
-        return { skipped: true, reason: 'no_eligible_user', durationMs: Date.now() - startedAt };
+        const picked = userRows?.[0];
+        if (!picked) {
+          return { skipped: true, reason: 'no_eligible_user', durationMs: Date.now() - startedAt };
+        }
+        userId = picked.user_id;
+        positionType = picked.position_type;
+        this.pickedUser = { userId, positionType, pickedAt: Date.now() };
       }
-      const { user_id: userId, position_type: positionType } = picked;
 
       // 2. Total ESPERADO de respuestas en el scope de su oposición (artículo→topic_scope).
       const expRows = (await this.db.execute(sql`
@@ -145,6 +176,9 @@ export class CanaryThemeStatsService {
 
       const expected = Number(expRows?.[0]?.expected ?? 0);
       if (expected < MIN_EXPECTED) {
+        // El usuario cacheado ya no califica (borrado / cambió de oposición) →
+        // invalidar para re-elegir en el próximo run en vez de quedarnos pegados.
+        this.pickedUser = null;
         return { skipped: true, reason: 'expected_below_floor', durationMs: Date.now() - startedAt };
       }
 
