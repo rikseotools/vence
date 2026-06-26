@@ -1,9 +1,30 @@
 # Roadmap — Pool Segregation + Diagnóstico de saturación 503 en horas pico
 
-> **Estado**: 🟢 **FASE 1 APLICADA EN PRODUCCIÓN (01/06/2026 ~09:00 UTC)** — Hipótesis D resuelta. Frontend Fargate ahora usa self-hosted pooler PgBouncer en Lightsail London. Latencia DB 3-18ms vs 1606-2000ms previo. 0 errores 5xx en 15+ min post-aplicación. MinCapacity: 2. HealthCheckPath: `/api/health/db-ready`. Pendiente HA del pooler (Fase 6 self-hosted-pooler.md) para eliminar SPOF.
+> **Estado**: 🟡 **FASE 1 SOLO PARCIAL (corregido 2026-06-26)** — ver corrección abajo. Self-hosted pooler PgBouncer (Lightsail London) operativo y validado, PERO el path principal `getDb()`/`getReadDb()` **NO** se migró a él: sigue en Supabase Supavisor `max:1`. Por eso persiste la saturación. Pendiente además HA del pooler (Fase 6 self-hosted-pooler.md) para eliminar SPOF.
 > **Propietario**: equipo Vence
 > **Coste esperado de la implementación**: 0€ (cambios de config sobre infra ya existente)
-> **Última actualización**: 2026-06-01 ~06:30 UTC — Fase 0 ejecutada gracias a burst en vivo capturado, Hipótesis D añadida, plan reordenado.
+> **Última actualización**: 2026-06-26 — corrección del estado tras verificar prod (la saturación 503 NO está resuelta).
+
+> ## ⚠️ CORRECCIÓN 2026-06-26 — "Fase 1 APLICADA" era inexacto
+>
+> Verificado contra **prod** (`vence-frontend:290` + SSM, perfil `vence`) y código:
+> - `USE_SELF_HOSTED_POOLER=true` ✅, pero **`DATABASE_URL` → `aws-0-eu-west-2.pooler.supabase.com:6543` (Supavisor)** y `USE_READ_REPLICA` vacío.
+> - `getDb()` → `createDbClient()` → `DATABASE_URL` = **Supavisor `max:1`**; `getReadDb()` → `return getDb()`. **NINGUNO usa el pooler.** El pooler solo lo usan `getPoolerDb()` (opt-in) y `getAdminDb()`.
+> - Lo que realmente se construyó en "Fase 1" fue la función **paralela** `getPoolerDb()` (`max:8`, apunta a `pooler.vence.es`), con **adopción PARCIAL**. `getDb()` (path principal) **nunca se reconectó**.
+> - **Consecuencia (verificada):** los 6 endpoints que saturan (109 saturación-503 en 7d) corren queries por `getDb`/`getReadDb` = Supavisor max:1, fuera del pooler → Hipótesis D sigue viva para ellos.
+>
+> **WORKLIST para cerrar de verdad (9 llamadas residuales `getDb`/`getReadDb` → `getPoolerDb` en los hot-paths):**
+>
+> | Helper / route | a migrar |
+> |---|---|
+> | `lib/api/topic-data/queries.ts` (`/api/topics/[numero]`, 54 sat/7d) | 1 `getDb` |
+> | `app/api/v2/oposiciones-compatibles/progress/route.ts` (22) | 2 `getReadDb` |
+> | `lib/api/difficulty-insights/queries.ts` (16) | 1 `getDb` + 1 `getReadDb` |
+> | `lib/api/v2/answer-and-save/queries.ts` (12, ⚠️ tiene WRITES) | 2 `getDb` |
+> | `lib/api/random-test/queries.ts` (4) | 1 `getDb` |
+> | `lib/api/filtered-questions/queries.ts` (1) | 1 `getReadDb` |
+>
+> `getPoolerDb()` es drop-in (si el pooler no está, hace fallback a `getDb()`). **Trade-off:** llevar más tráfico al PgBouncer de **1 instancia** acerca el SPOF → idealmente Fase 6 (HA del pooler) en paralelo. Alternativa más agresiva: repuntar `DATABASE_URL`→`pooler.vence.es` (un cambio SSM, mueve TODO de golpe) — NO sin HA del pooler.
 
 ---
 
