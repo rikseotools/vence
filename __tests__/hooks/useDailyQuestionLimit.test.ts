@@ -23,7 +23,20 @@ jest.mock('../../lib/services/conversionTracker', () => ({
   trackLimitReached: (...args) => mockTrackLimitReached(...args)
 }))
 
-// Mock de Supabase
+// Auth agnóstica (Fase 4 C1): el hook migró de useAuth().supabase.rpc a
+// getAuthHeaders + fetch a /api/v2/daily-question/{status,increment} (Drizzle) y
+// auth.getSession para /api/daily-limit. Mockeamos esa capa; `mockRpc` se reutiliza
+// como configurador del estado que devuelven los endpoints status/increment.
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
+}))
+jest.mock('@/lib/auth', () => ({
+  auth: {
+    getSession: jest.fn().mockResolvedValue({ accessToken: 'test-token', user: { id: 'test-user-abc123' } }),
+  },
+}))
+
+// Mock de Supabase (legacy — el hook ya no lo usa, pero useAuth lo expone)
 const mockRpc = jest.fn()
 const mockSupabase = { rpc: mockRpc }
 
@@ -58,6 +71,27 @@ describe('useDailyQuestionLimit Hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     localStorageMock.clear()
+
+    // El hook migrado fetch-ea endpoints Drizzle: status/increment devuelven
+    // { status: <estado> } (lo configura cada test vía mockRpc, reutilizado);
+    // /api/daily-limit devuelve el límite dinámico (25 por defecto en estos tests).
+    global.fetch = jest.fn(async (url: unknown) => {
+      const u = String(url)
+      // Pasamos el nombre del RPC legacy como discriminador para que sigan
+      // valiendo los setups que distinguen por rpcName (mockImplementation).
+      if (u.includes('daily-question/status')) {
+        const r = (await mockRpc('get_daily_question_status')) as { data?: unknown } | null
+        return { ok: true, status: 200, json: async () => ({ status: r?.data ?? null }) }
+      }
+      if (u.includes('daily-question/increment')) {
+        const r = (await mockRpc('increment_daily_questions')) as { data?: unknown } | null
+        return { ok: true, status: 200, json: async () => ({ status: r?.data ?? null }) }
+      }
+      if (u.includes('/api/daily-limit')) {
+        return { ok: true, status: 200, json: async () => ({ dailyLimit: 25 }) }
+      }
+      return { ok: true, status: 200, json: async () => ({}) }
+    }) as unknown as typeof fetch
 
     // Mock por defecto: usuario con 20 preguntas
     mockRpc.mockResolvedValue({
@@ -102,8 +136,8 @@ describe('useDailyQuestionLimit Hook', () => {
 
       // Verificar que se llamó trackLimitReached
       expect(mockTrackLimitReached).toHaveBeenCalledTimes(1)
+      // Firma agnóstica C1: trackLimitReached(userId, questionsToday, extra) — sin supabase.
       expect(mockTrackLimitReached).toHaveBeenCalledWith(
-        mockSupabase,
         mockUser.id,
         25,
         { daily_limit: 25, is_graduated: false }
