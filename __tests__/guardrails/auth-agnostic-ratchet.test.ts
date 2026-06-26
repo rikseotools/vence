@@ -43,7 +43,6 @@ const AUTH_ALLOWLIST = new Set<string>([
   'lib/api/auth/verifyAuth.ts',
   'lib/api/auth/verifyJwtLocal.ts',
   'lib/security/adminApiGuard.ts',
-  'lib/api/admin-delete-user/queries.ts',
   'lib/api/authHeaders.ts',
   'app/api/send-support-email/route.ts',
   // Funnel de login C2 (diferido) + callback (Fase B):
