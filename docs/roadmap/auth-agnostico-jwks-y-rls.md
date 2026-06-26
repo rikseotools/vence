@@ -141,7 +141,21 @@ Hoy `sub` = `auth.users.id` = `user_profiles.id`, y TODA la data del usuario cue
 6. Cualquier `supabase.from()/rpc()` restante → A2/A3 + C1 + barrido de crons/admin. Barrera anti-regresión: guardrail `createclient-service-role-ratchet`.
 7. Renombrar envs `SUPABASE_*` → `DATABASE_URL`/`JWT_SECRET` (cosmético, último).
 8. **🚨 53 FKs de tablas de APP → `auth.users`** (`user_profiles`, `user_medals`, `psychometric_*`, `user_feedback`, + columnas admin `reviewed_by`/`admin_user_id`/`resolved_by`…). **`auth.users` NO existe en Neon/RDS** (schema de GoTrue) → cada FK rompe el swap. **Blocker de esquema mayor y NO documentado antes.** **DRAFT regenerable** `docs/roadmap/fk-auth-users-to-profiles.draft.sql` vía `scripts/gen-fk-auth-to-profiles.cjs`: dropa `user_profiles.id → auth.users` (la identidad pasa a ser raíz) + **re-apunta 52 FKs a `user_profiles(id)`** preservando ON DELETE (38 CASCADE/10 NO ACTION/5 SET NULL). Coherente con "Dos capas distintas": la identidad se queda en `user_profiles`. **⚠️ PRECONDICIÓN DE DATOS (verificada 26/06): 18 columnas con 504 filas huérfanas** (user-ref en `auth.users` pero NO en `user_profiles` = usuarios sin perfil; las peores `*_pre_outbox`=143 c/u archivo, `pwa_sessions`=109, `pwa_events`=41) → el `ADD CONSTRAINT` FALLA hasta limpiarlas (DELETE de la huérfana o backfill del perfil). El draft trae el orphan-check baked-in; re-ejecutar el generador antes de aplicar.
-9. **Vista `v_attribution_coverage`** referencia el schema `auth` → reescribir contra `user_profiles`/`user_acquisition` antes del swap.
+9. **Vista `v_attribution_coverage`** hace `FROM auth.users u LEFT JOIN user_acquisition ua` (usa `u.created_at::date` = día de alta + `u.id`). Reescritura directa contra `user_profiles` (tiene `id` + `created_at`), **aplicable ya** (quita el blocker temprano, sin esperar al swap). Único delta verificado 26/06: `auth.users`=8790 vs `user_profiles`=8782 → **8 usuarios sin perfil** desaparecen del conteo `altas` (0.09%, despreciable para un dashboard de cobertura). SQL listo:
+   ```sql
+   CREATE OR REPLACE VIEW public.v_attribution_coverage AS
+   SELECT up.created_at::date AS dia, count(*) AS altas,
+          count(ua.user_id) AS con_canal,
+          round(100.0 * count(ua.user_id)::numeric / NULLIF(count(*),0)::numeric, 1) AS pct_cobertura,
+          count(*) FILTER (WHERE ua.channel='google_ads') AS google_ads,
+          count(*) FILTER (WHERE ua.channel='meta_ads') AS meta_ads,
+          count(*) FILTER (WHERE ua.channel='organic') AS organic,
+          count(*) FILTER (WHERE ua.channel='direct') AS direct,
+          count(*) FILTER (WHERE ua.user_id IS NULL) AS sin_atribucion
+   FROM public.user_profiles up
+   LEFT JOIN user_acquisition ua ON ua.user_id = up.id
+   GROUP BY (up.created_at::date);
+   ```
 10. **Extensiones no portables por defecto a Neon/RDS** (verificado uso real 26/06): **`pg_net` + `supabase_vault` SÍ se usan** — la función viva `notify_temario_change` hace `net.http_post(...)` leyendo el secreto de `vault.decrypted_secrets` (webhook que revalida el temario en Vercel, `supabase/migrations/20260406_webhook_revalidate_temario.sql`). En RDS hay que reescribir ese trigger→HTTP (mover la revalidación a la app/Fargate; secreto → SSM/Secrets Manager). **`http` (standalone): 0 funciones la usan → DROPPABLE** (un blocker menos). Las demás (`vector`, `pg_trgm`, `uuid-ossp`, `pgcrypto`, `unaccent`, `pg_stat_statements`) sí están disponibles.
 
 ## Secuencia de PRs
