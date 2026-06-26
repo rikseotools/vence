@@ -170,12 +170,15 @@ describe('Prevención de bug .or() en exam_position', () => {
     expect(code).toContain('applyExamPositionFilter')
   })
 
-  test('lawFetchers usa applyExamPositionFilter (no .or ni buildExamPositionFilter)', () => {
+  test('lawFetchers NO filtra exam_position en cliente (migrado C1: lo hace el endpoint server-side)', () => {
     const fs = require('fs')
     const code = fs.readFileSync('lib/lawFetchers.ts', 'utf-8')
+    // Tras la migración C1, lawFetchers delega en /api/questions/law-stats (server-side):
+    // ya NO hace filtrado de exam_position en cliente (antes vía applyExamPositionFilter).
+    // El guard sigue previniendo la reintroducción del bug `.or(examPosition)` y del viejo
+    // buildExamPositionFilter — esa es la regresión que importa.
     expect(code).not.toContain('.or(examPosition')
     expect(code).not.toContain('buildExamPositionFilter')
-    expect(code).toContain('applyExamPositionFilter')
   })
 
   test('applyExamPositionFilter existe y es una función', () => {
