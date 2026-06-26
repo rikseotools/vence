@@ -52,6 +52,16 @@ const NON_PORTABLE_EXT = new Set(['supabase_vault', 'pg_net', 'http'])
     WHERE schemaname = 'public'
       AND (qual ILIKE '%auth.uid()%' OR with_check ILIKE '%auth.uid()%')`
 
+  // 2b. Políticas RLS con acoplamiento auth INDIRECTO (vía las funciones admin) —
+  // C4 NO las caza (su match es auth.uid() literal). Deben dropearse con el cluster de funciones.
+  const polIndirect = await sql`
+    SELECT tablename, policyname FROM pg_policies
+    WHERE schemaname = 'public'
+      AND (qual ~* '(is_current_user_admin|get_current_user_roles|assign_role)'
+        OR with_check ~* '(is_current_user_admin|get_current_user_roles|assign_role)')
+      AND NOT (COALESCE(qual,'') ILIKE '%auth.uid()%' OR COALESCE(with_check,'') ILIKE '%auth.uid()%')
+    ORDER BY tablename, policyname`
+
   // 3. FKs de tablas de APP (public) → auth.users (las internas auth.*→auth.* no cuentan)
   const fks = await sql`
     SELECT DISTINCT conrelid::regclass::text AS tabla
@@ -84,6 +94,9 @@ const NON_PORTABLE_EXT = new Set(['supabase_vault', 'pg_net', 'http'])
   console.log('')
   console.log(`2) Políticas RLS con auth.uid(): ${pol[0].n} sobre ${pol[0].t} tablas`)
   console.log(`   → las dropa C4 (scripts/gen-c4-drop-rls.cjs). Aquí solo control.`)
+  console.log(`2b) Políticas con acoplamiento auth INDIRECTO (vía is_current_user_admin/...): ${polIndirect.length}`)
+  polIndirect.forEach((p) => console.log(`     - ${p.tablename} / ${p.policyname}`))
+  if (polIndirect.length) console.log(`   → C4 (auth.uid() literal) NO las caza. Dropear con el cluster de funciones admin.`)
   console.log('')
   console.log(`3) FKs de tablas de APP → auth.users: ${fks.length} tablas`)
   fks.forEach((f) => console.log(`     - ${f.tabla}`))
