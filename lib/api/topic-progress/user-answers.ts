@@ -15,7 +15,6 @@ import { pgUuidArray } from '@/lib/api/sqlArrays'
 // ============================================
 
 export interface UserAnswer {
-  answerId: string
   questionId: string
   isCorrect: boolean
   createdAt: Date
@@ -75,7 +74,6 @@ export async function getUserAnswersWithArticles(
     : sql``
 
   const result = await db.execute<{
-    answer_id: string
     question_id: string
     is_correct: boolean
     created_at: string
@@ -87,7 +85,6 @@ export async function getUserAnswersWithArticles(
     law_name: string | null
   }>(sql`
     SELECT
-      tq.id as answer_id,
       tq.question_id,
       tq.is_correct,
       tq.created_at::text,
@@ -110,7 +107,6 @@ export async function getUserAnswersWithArticles(
   const rows = Array.isArray(result) ? result : (result as any).rows || []
 
   const answers: UserAnswer[] = rows.map((row: any) => ({
-    answerId: row.answer_id,
     questionId: row.question_id,
     isCorrect: row.is_correct,
     createdAt: new Date(row.created_at),
@@ -172,7 +168,6 @@ export async function getUserAnswersForArticles(
   const db = getTopicProgressUserAnswersDb()
 
   const result = await db.execute<{
-    answer_id: string
     question_id: string
     is_correct: boolean
     created_at: string
@@ -184,7 +179,6 @@ export async function getUserAnswersForArticles(
     law_name: string | null
   }>(sql`
     SELECT
-      tq.id as answer_id,
       tq.question_id,
       tq.is_correct,
       tq.created_at::text,
@@ -205,7 +199,6 @@ export async function getUserAnswersForArticles(
   const rows = Array.isArray(result) ? result : (result as any).rows || []
 
   const answers: UserAnswer[] = rows.map((row: any) => ({
-    answerId: row.answer_id,
     questionId: row.question_id,
     isCorrect: row.is_correct,
     createdAt: new Date(row.created_at),
