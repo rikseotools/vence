@@ -4,15 +4,17 @@
  *
  * Las operaciones sobre `oposiciones` con columnas `seguimiento_*` usan
  * la tabla definida en `check-seguimiento.schema.ts` (las columnas no están
- * en el schema principal del backend). Las operaciones que necesitan INSERT
- * en `convocatoria_seguimiento_checks` y `oep_detection_signals` usan sql``
- * porque la tabla de checks no tiene mapping Drizzle, y para OEP signals se
- * usa la tabla local definida en el schema de este módulo.
+ * en el schema principal del backend). El INSERT en
+ * `convocatoria_seguimiento_checks` usa sql`` porque esa tabla no tiene
+ * mapping Drizzle. El cambio de hash se refleja en
+ * `oposiciones.seguimiento_change_status` (revisado en el panel de
+ * seguimiento); NO se emite señal en `oep_detection_signals` (ver nota en
+ * saveSeguimientoCheck).
  */
 
 import { eq, isNotNull, sql } from 'drizzle-orm';
 import type { DrizzleDB } from '../db/database.module';
-import { oepDetectionSignals, oposiciones } from './check-seguimiento.schema';
+import { oposiciones } from './check-seguimiento.schema';
 import {
   fetchSeguimientoPage,
   getContentPreview,
@@ -202,8 +204,13 @@ export async function saveSeguimientoCheck(
       })
       .where(eq(oposiciones.id, result.oposicionId));
 
-    // Fusión con oep-signals: generar señal hash_change
-    await insertHashChangeSignal(db, result);
+    // NO se emite señal `hash_change` en oep_detection_signals (recalibrado
+    // 26/06): el cambio ya queda en `seguimiento_change_status='changed'` y se
+    // revisa en /admin/seguimiento-convocatorias (su propio badge "X cambios").
+    // La señal era REDUNDANTE y RUIDOSA: el hash difiere por contenido dinámico
+    // (timestamps/banners) → 130+ señales por re-baseline, 0 con dato extraído,
+    // todas descartadas, y NADA aguas abajo la consumía (solo inflaba el badge
+    // OEP). La capa semántica de cambios la cubre `llm_semantic`.
   } else {
     await db
       .update(oposiciones)
@@ -214,30 +221,4 @@ export async function saveSeguimientoCheck(
       })
       .where(eq(oposiciones.id, result.oposicionId));
   }
-}
-
-/** Inserta señal `hash_change` en `oep_detection_signals`, ignorando duplicados. */
-async function insertHashChangeSignal(db: DrizzleDB, result: CheckResult): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  const dedupeKey = `hash_change:${result.oposicionId}:0:${today}`;
-
-  await db
-    .insert(oepDetectionSignals)
-    .values({
-      oposicionId: result.oposicionId,
-      sensorType: 'hash_change',
-      sourceUrl: null,
-      confidenceScore: 30, // baseScoreBySensor('hash_change')
-      isNovel: false,
-      signalSummary: `Hash de página oficial cambió (${result.contentLength} bytes). Revisar manualmente vs BD. Preview: ${result.contentPreview.slice(0, 200)}`,
-      rawExtraction: {
-        oldHash: result.oldHash,
-        newHash: result.newHash,
-        contentLength: result.contentLength,
-        contentPreview: result.contentPreview.slice(0, 500),
-        httpStatus: result.httpStatus,
-      } as Record<string, unknown>,
-      dedupeKey,
-    })
-    .onConflictDoNothing({ target: oepDetectionSignals.dedupeKey });
 }

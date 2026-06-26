@@ -21,7 +21,8 @@ const DELAY_PER_DOMAIN_MS = 1000; // pausa entre requests al mismo servidor
  *  3. Compara con el hash previo almacenado
  *  4. Guarda el resultado en `convocatoria_seguimiento_checks`
  *  5. Si hay cambio, actualiza `oposiciones.seguimiento_change_status = 'changed'`
- *     y genera una señal `hash_change` en `oep_detection_signals`
+ *     (se revisa en /admin/seguimiento-convocatorias). NO emite señal en
+ *     `oep_detection_signals` — era redundante y ruidosa (recalibrado 26/06).
  *
  * Paralelización: dominios distintos se procesan en paralelo (concurrency=5)
  * pero dentro de un mismo dominio se procesan en secuencial con pausa 1s para
