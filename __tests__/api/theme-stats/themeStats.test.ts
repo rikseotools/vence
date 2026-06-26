@@ -65,8 +65,12 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
   })
 
   describe('VALID_OPOSICIONES constant', () => {
-    test('debe tener exactamente 20 oposiciones', () => {
-      expect(VALID_OPOSICIONES).toHaveLength(93)
+    test('está en paridad con OPOSICION_TO_POSITION_TYPE (crece con el catálogo, sin hardcodear)', () => {
+      // El catálogo de oposiciones crece (campaña OEP) → hardcodear el count rompía
+      // en cada alta (20→93→94…). Verificamos el INVARIANTE real: VALID_OPOSICIONES y
+      // OPOSICION_TO_POSITION_TYPE (ambos de @/lib/config/oposiciones) en paridad + mínimo.
+      expect(VALID_OPOSICIONES.length).toBe(Object.keys(OPOSICION_TO_POSITION_TYPE).length)
+      expect(VALID_OPOSICIONES.length).toBeGreaterThan(20)
     })
 
     test('debe incluir todas las oposiciones esperadas', () => {
@@ -101,8 +105,11 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
       expect(OPOSICION_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
     })
 
-    test('debe tener exactamente 20 mappings', () => {
-      expect(Object.keys(OPOSICION_TO_POSITION_TYPE)).toHaveLength(93)
+    test('tiene un mapping por oposición del catálogo (sin hardcodear count)', () => {
+      // Mismo motivo que arriba: el catálogo crece. Verificamos que CADA slug de
+      // VALID_OPOSICIONES tiene su mapping (cobertura total) + mínimo de sanidad.
+      expect(Object.keys(OPOSICION_TO_POSITION_TYPE).length).toBe(VALID_OPOSICIONES.length)
+      expect(Object.keys(OPOSICION_TO_POSITION_TYPE).length).toBeGreaterThan(20)
     })
 
     test('cada oposición válida debe tener un mapping', () => {
@@ -1004,7 +1011,9 @@ describe('Theme Stats V2 - Tests de Regresión', () => {
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-la-rioja')
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-diputacion-leon')
     expect(VALID_OPOSICIONES).toContain('guardia-civil')
-    expect(VALID_OPOSICIONES).toHaveLength(93)
+    // Sin hardcodear el count (crece con la campaña): basta el mínimo de sanidad +
+    // los toContain de arriba garantizan las oposiciones clave soportadas.
+    expect(VALID_OPOSICIONES.length).toBeGreaterThan(20)
   })
 
   test('CRÍTICO: OPOSICION_TO_POSITION_TYPE mapea slugs URL a position_type DB', () => {

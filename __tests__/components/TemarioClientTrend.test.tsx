@@ -68,7 +68,9 @@ describe('TemarioClient — métrica de tendencia', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText(/¿Qué significan estos números\?/i))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText(/Tus datos en esta oposición/i)).toBeInTheDocument()
+    // El heading es dinámico: "Tus datos en {oposicionName}" si hay oposición, o
+    // "Tus datos en esta oposición" si no. Matcheamos el prefijo común.
+    expect(screen.getByText(/Tus datos en/i)).toBeInTheDocument()
   })
 
   it('usuario no logueado: ni botón de info ni flechitas', () => {
