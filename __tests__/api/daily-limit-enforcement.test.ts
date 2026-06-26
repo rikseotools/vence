@@ -6,16 +6,58 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key'
 
-const mockRpc = jest.fn()
-const mockGetUser = jest.fn()
+const mockRpc = jest.fn()      // contrato legacy {data,error}; lo configuran los tests
+const mockGetUser = jest.fn()  // legacy supabase auth.getUser shape {data:{user},error}
+const mockExecute = jest.fn()  // getAdminDb().execute(sql`...`)
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn((_url: string, key: string) => {
-    if (key === process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return { rpc: mockRpc }
+// AGNÓSTICO (Fase C1): dailyLimit.ts dejó de usar supabase.rpc/createClient.
+//  - las RPC plpgsql se invocan vía Drizzle: getAdminDb().execute(sql`SELECT * FROM fn(...)`)
+//  - el userId del token sale de verifyAuthOptional (no de supabase.auth.getUser)
+//  - getDailyLimitStatus/checkDeviceDailyUsage envuelven la lectura en cache Redis (getOrSet)
+// Para NO reescribir los ~50 escenarios, un adaptador (ver beforeEach) traduce cada
+// execute(sql) al viejo contrato mockRpc(rpcName, params): así los setups {data,error}
+// y las aserciones toHaveBeenCalledWith('fn',{...}) siguen valiendo intactos.
+
+// Extrae los params interpolados del objeto SQL de Drizzle: los chunks escalares en
+// orden (los StringChunk del texto son objetos {value:[...]}, no escalares).
+function sqlParams(sqlObj: unknown): unknown[] {
+  try {
+    const chunks = (JSON.parse(JSON.stringify(sqlObj)).queryChunks || []) as unknown[]
+    return chunks.filter((c) => typeof c === 'string' || typeof c === 'number')
+  } catch {
+    return []
+  }
+}
+function sqlText(sqlObj: unknown): string {
+  try { return JSON.stringify(sqlObj) } catch { return '' }
+}
+
+jest.mock('@/db/client', () => ({
+  getAdminDb: () => ({ execute: (...a: unknown[]) => mockExecute(...a) }),
+}))
+
+// verifyAuthOptional: lee el Bearer del request y delega en el shim mockGetUser
+// (mantiene los setups {data:{user},error} de los escenarios de token/ataque).
+jest.mock('@/lib/api/auth/verifyAuth', () => ({
+  verifyAuthOptional: async (request: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    try {
+      const authz = request?.headers?.get?.('authorization')
+      if (!authz || !authz.startsWith('Bearer ')) return null
+      const res = await mockGetUser()
+      const user = res?.data?.user
+      if (res?.error || !user?.id) return null
+      return { userId: user.id }
+    } catch {
+      return null
     }
-    return { auth: { getUser: mockGetUser } }
-  }),
+  },
+}))
+
+// Cache Redis: en test ejecuta SIEMPRE la función (sin cachear) para que cada llamada
+// lea "de BD" (mockExecute), igual que el contrato original sin caché.
+jest.mock('@/lib/cache/redis', () => ({
+  getOrSet: (_k: string, _ttl: number, fn: () => unknown) => fn(),
+  invalidate: jest.fn(),
 }))
 
 // Mock the graduated limit module to always return default limit (25)
@@ -46,6 +88,44 @@ function fakeRequest(headers: Record<string, string> = {}) {
 beforeEach(() => {
   mockRpc.mockReset()
   mockGetUser.mockReset()
+  mockExecute.mockReset()
+  // Adaptador SQL→RPC: enruta por nombre de función y reconstruye los params legacy
+  // para que mockRpc reciba exactamente ('fn', {p_user_id/p_limit/p_device_id}).
+  // Un {error} del setup => execute lanza (Drizzle lanza ante error de query); un
+  // {data} => se moldea a la forma que devuelve execute ({rows:[...]}). Así el código
+  // real (try/catch fail-open/degraded/null) reacciona igual que con supabase.
+  mockExecute.mockImplementation(async (sqlObj: unknown) => {
+    const s = sqlText(sqlObj)
+    const params = sqlParams(sqlObj)
+    let name = 'unknown'
+    let args: Record<string, unknown> = {}
+    if (s.includes('increment_daily_questions')) {
+      name = 'increment_daily_questions'
+      args = { p_user_id: params[0], p_limit: params[1] }
+    } else if (s.includes('get_device_daily_usage')) {
+      name = 'get_device_daily_usage'
+      args = { p_device_id: params[0] }
+    } else if (s.includes('get_daily_question_status')) {
+      name = 'get_daily_question_status'
+      args = { p_user_id: params[0] }
+    }
+    const res = (await mockRpc(name, args)) as
+      | { data?: unknown; error?: { message?: string; code?: string } }
+      | undefined
+    if (res?.error) {
+      const e = new Error(res.error.message || 'db error') as Error & { code?: string }
+      e.code = res.error.code
+      throw e
+    }
+    const data = res?.data
+    if (name === 'get_device_daily_usage') {
+      // El código lee rowsOf(res)[0]?.total (escalar AS total).
+      return { rows: data == null ? [] : [{ total: data }] }
+    }
+    // increment / status devuelven TABLE → rowsOf(res)[0].
+    if (data == null) return { rows: [] }
+    return { rows: Array.isArray(data) ? data : [data] }
+  })
 })
 
 // ============================================
