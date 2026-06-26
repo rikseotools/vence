@@ -95,199 +95,60 @@ describe('Admin Delete User - Queries', () => {
     jest.resetModules()
   })
 
-  // Helper para mockear drizzle-orm con sql.raw + sql template tag
-  function mockDrizzle(executeMock: jest.Mock) {
-    // sql is both a function (template tag) and has .raw method
-    const sqlFn: any = (strings: TemplateStringsArray, ...values: unknown[]) => {
-      // Return a placeholder that can be passed to execute()
-      return { strings, values, _type: 'sql' }
-    }
+  // 🆕 2026-06-26: el borrado de datos lo hace la función SQL
+  // public.delete_user_account(uuid) en UNA transacción (migración
+  // 20260626_delete_user_account_fn.sql). deleteUserData es un wrapper fino
+  // que la invoca por Drizzle/getAdminDb en 1 round-trip. La atomicidad, el
+  // orden anti-trigger y la completitud (barrido information_schema) viven
+  // AHORA en la función SQL — se validan con una verificación de integración
+  // contra BD real (ver docs/maintenance/eliminacion-cuentas.md §6, "barrido
+  // final hasta 0 filas"), no con mocks.
+  function mockAdminDb(executeMock: jest.Mock) {
+    const sqlFn: any = (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values, _type: 'sql' })
     sqlFn.raw = (str: string) => str
-
-    jest.doMock('@/db/client', () => ({
-      getDb: () => ({ execute: executeMock }),
-    }))
+    jest.doMock('@/db/client', () => ({ getAdminDb: () => ({ execute: executeMock }) }))
     jest.doMock('drizzle-orm', () => ({ sql: sqlFn }))
   }
 
-  it('should archive payment_settlements before deleting', async () => {
-    // SELECT devuelve filas, todas las demás queries tienen éxito
-    const paymentsRows = [
-      { id: 'p1', user_id: 'user-1', amount_gross: 2000, stripe_invoice_id: 'inv_1' },
-      { id: 'p2', user_id: 'user-1', amount_gross: 2000, stripe_invoice_id: 'inv_2' },
-    ]
-    const executeMock = jest.fn().mockImplementation((sqlArg: any) => {
-      // SELECT para archivado devuelve rows
-      const sqlStr = typeof sqlArg === 'string' ? sqlArg : JSON.stringify(sqlArg)
-      if (sqlStr.includes('SELECT') && sqlStr.includes('payment_settlements')) {
-        return Promise.resolve({ rows: paymentsRows })
-      }
-      return Promise.resolve(undefined)
-    })
-
-    mockDrizzle(executeMock)
+  it('calls delete_user_account exactly once and reports deleted', async () => {
+    const executeMock = jest.fn().mockResolvedValue({ rows: [{ ok: true }] })
+    mockAdminDb(executeMock)
 
     const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
     const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
 
-    // Debe haber una entrada _archive con conteo positivo
-    const archiveEntry = result.find((r: any) => r.table === '_archive')
-    expect(archiveEntry).toBeDefined()
-    expect(archiveEntry?.status).toBe('deleted')
-    expect(archiveEntry?.reason).toContain('payment_settlements')
+    // 1 sola llamada (no ~52) → mata el 504 por round-trips
+    expect(executeMock).toHaveBeenCalledTimes(1)
+    const sqlArg = JSON.stringify(executeMock.mock.calls[0][0])
+    expect(sqlArg).toContain('delete_user_account')
 
-    // Debe haber entrada _archive_persist
-    const persistEntry = result.find((r: any) => r.table === '_archive_persist')
-    expect(persistEntry).toBeDefined()
-    expect(persistEntry?.status).toBe('deleted')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ table: '_delete_user_account', status: 'deleted' })
   })
 
-  it('should DELETE user_profiles at the end', async () => {
-    const executeMock = jest.fn().mockResolvedValue({ rows: [] })
-    mockDrizzle(executeMock)
-
-    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
-    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
-
-    const profilesEntry = result.find((r: any) => r.table === 'user_profiles')
-    expect(profilesEntry).toBeDefined()
-    expect(profilesEntry?.status).toBe('deleted')
-
-    // Debe ser una de las últimas operaciones ejecutadas
-    const profilesIdx = result.findIndex((r: any) => r.table === 'user_profiles')
-    expect(profilesIdx).toBeGreaterThan(result.length - 3)
-  })
-
-  it('should execute deletes for tables in all three lists', async () => {
-    const executeMock = jest.fn().mockResolvedValue({ rows: [] })
-    mockDrizzle(executeMock)
-
-    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
-    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
-
-    // Tablas que DEBEN aparecer en el resultado (de cada categoría):
-    const expectedTables = [
-      'payment_settlements',  // legal retention
-      'feedback_conversations', // no cascade
-      'feedback_messages',      // no cascade
-      'user_interactions',      // gdpr (no FK)
-      'custom_oposiciones',     // gdpr (no FK)
-      'user_streaks',           // gdpr (no FK)
-      'user_profiles',          // final
-    ]
-
-    for (const table of expectedTables) {
-      const entry = result.find((r: any) => r.table === table)
-      expect(entry).toBeDefined()
-      expect(entry?.status).toBe('deleted')
-    }
-  })
-
-  // ============================================
-  // REGRESSION: triggers materializadores RGPD
-  // ============================================
-  //
-  // 2026-05-25: la migración `20260523_materialized_stats_triggers.sql`
-  // introdujo 15 triggers AFTER DELETE en test_questions que UPSERT en
-  // 5 stats tables con FK CASCADE a user_profiles. Sin borrado explícito
-  // de esas tablas ANTES de user_profiles, la cascade re-pueblan los
-  // stats vía trigger y provocan FK violation → DELETE de user_profiles
-  // hace ROLLBACK silencioso. Casos B y C de RGPD fallaron así.
-  //
-  // Invariante de este test:
-  //   1) test_questions, tests y las 5 stats tables se borran ANTES
-  //      de user_profiles.
-  //   2) test_questions y tests se borran ANTES de las 5 stats tables
-  //      (los triggers AFTER DELETE en test_questions repueblan stats,
-  //      así que limpiar test_questions primero deja las stats sin
-  //      tocar al final).
-  //
-  // Si alguien añade una nueva tabla materializada sin actualizar
-  // TABLES_TO_CLEAN_NO_CASCADE, este test falla.
-  it('should delete test_questions, tests, and 5 stats tables before user_profiles (RGPD regression)', async () => {
-    const executeMock = jest.fn().mockResolvedValue({ rows: [] })
-    mockDrizzle(executeMock)
-
-    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
-    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
-
-    const profilesIdx = result.findIndex((r: any) => r.table === 'user_profiles')
-    expect(profilesIdx).toBeGreaterThan(-1)
-
-    const mustBeBeforeProfiles = [
-      'test_questions',
-      'tests',
-      'user_stats_summary',
-      'user_article_stats',
-      'user_daily_stats',
-      'user_difficulty_stats',
-      'user_hourly_stats',
-    ]
-    for (const table of mustBeBeforeProfiles) {
-      const idx = result.findIndex((r: any) => r.table === table)
-      expect(idx).toBeGreaterThan(-1)
-      expect(idx).toBeLessThan(profilesIdx)
-    }
-  })
-
-  it('should delete test_questions and tests before the 5 stats tables (trigger order)', async () => {
-    const executeMock = jest.fn().mockResolvedValue({ rows: [] })
-    mockDrizzle(executeMock)
-
-    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
-    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
-
-    const tqIdx = result.findIndex((r: any) => r.table === 'test_questions')
-    const testsIdx = result.findIndex((r: any) => r.table === 'tests')
-    const statsTables = [
-      'user_stats_summary',
-      'user_article_stats',
-      'user_daily_stats',
-      'user_difficulty_stats',
-      'user_hourly_stats',
-    ]
-    const minStatsIdx = Math.min(
-      ...statsTables.map(t => result.findIndex((r: any) => r.table === t))
+  it('reports error (not throw) when the SQL function fails, so the route returns 500', async () => {
+    const executeMock = jest.fn().mockRejectedValue(
+      new Error('deleted_users_log row for 550e8400 is missing')
     )
-
-    expect(tqIdx).toBeGreaterThan(-1)
-    expect(testsIdx).toBeGreaterThan(-1)
-    expect(tqIdx).toBeLessThan(minStatsIdx)
-    expect(testsIdx).toBeLessThan(minStatsIdx)
-  })
-
-  it('should handle table not found errors gracefully', async () => {
-    const executeMock = jest.fn()
-      .mockResolvedValueOnce({ rows: [] })  // SELECT archive
-      .mockResolvedValueOnce(undefined)     // UPDATE archive_persist
-      .mockRejectedValueOnce(new Error('relation "payment_settlements" does not exist')) // DELETE legal
-      .mockResolvedValue(undefined)         // resto OK
-
-    mockDrizzle(executeMock)
+    mockAdminDb(executeMock)
 
     const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
     const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
 
-    const paymentsEntry = result.find((r: any) => r.table === 'payment_settlements')
-    expect(paymentsEntry?.status).toBe('skipped')
-    expect(paymentsEntry?.reason).toContain('does not exist')
+    expect(result).toHaveLength(1)
+    expect(result[0].status).toBe('error')
+    expect(result[0].error).toContain('missing')
   })
 
-  it('should report archive errors without crashing', async () => {
-    // SELECT de archivado falla
-    const executeMock = jest.fn()
-      .mockRejectedValueOnce(new Error('SELECT failed'))  // SELECT archive payment_settlements
-      .mockResolvedValue({ rows: [] })                    // resto OK
+  it('persistArchivedData (fallback manual) only writes when archived_data IS NULL — idempotente', async () => {
+    const executeMock = jest.fn().mockResolvedValue(undefined)
+    mockAdminDb(executeMock)
 
-    mockDrizzle(executeMock)
+    const { persistArchivedData } = require('@/lib/api/admin-delete-user/queries')
+    await persistArchivedData('user-1', { archived_at: '2026-06-26T00:00:00.000Z', tables: {} })
 
-    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
-    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
-
-    // _archive entry debería existir aunque hubo fallo interno
-    // (el código captura y sigue con objeto archived vacío)
-    const archiveEntry = result.find((r: any) => r.table === '_archive')
-    expect(archiveEntry).toBeDefined()
+    const sqlArg = JSON.stringify(executeMock.mock.calls[0][0])
+    expect(sqlArg).toContain('archived_data IS NULL')
   })
 })
 

@@ -343,6 +343,55 @@ curl https://www.vence.es/api/version
 ```
 Si el hash no coincide con HEAD, esperar al deploy de Vercel.
 
+### 🔴 504 Gateway Timeout → borrado PARCIAL y no atómico (incidente 2026-06-25)
+
+**Síntoma:** `DELETE /api/admin/delete-user` devuelve **504 (CloudFront)** a los ~30s. Al verificar, `tests`/`test_questions`/`user_interactions` están a 0 pero **`user_profiles` y `auth.users` siguen vivos**. El borrado quedó a medias.
+
+**Causa raíz:** `deleteUserData` hace **~52 `DELETE` secuenciales** (un round-trip por tabla) + SELECT de archivado + UPDATE + lecturas de perfil + auth + email, todo en serie sobre el pooler remoto. Se pasa del **límite de 30s del edge/CloudFront**. Como **no hay transacción global** (cada `safeDelete` autocommitea), cuando el edge corta a los 30s la **función sigue corriendo y comitea lo que alcanza** → borrado parcial. La verificación interna del endpoint (`profileStillExists` → 500) es correcta pero **inútil aquí**: el 504 se devuelve antes de que la función termine, el llamante nunca ve el 500.
+
+**🚨 NO REINTENTES LA API A CIEGAS.** `archiveUserLegalData` re-lee `payment_settlements`; si un run parcial ya los borró, el reintento archiva **0 filas** y `persistArchivedData` **SOBRESCRIBE `archived_data`** → **destruye el archivo legal del pago**. Verifica el estado en BD antes de tocar nada.
+
+**Cómo terminar a mano de forma segura (sin re-archivar):**
+
+1. **Verifica qué se borró y qué no:**
+   ```js
+   // ¿perfil y auth siguen? ¿el pago ya está archivado?
+   const { data: p } = await admin.from('user_profiles').select('id').eq('id', userId)
+   const { data: au } = await admin.auth.admin.getUserById(userId)
+   const { data: log } = await admin.from('deleted_users_log')
+     .select('archived_data').eq('original_user_id', userId).maybeSingle()
+   // archived_data.tables.payment_settlements.length > 0 → el pago YA está a salvo
+   ```
+2. **Si el pago ya está archivado**, NO repitas las fases 1-3 (archivar/persistir/borrar pago). Ejecuta **solo las fases 4-6** vía `pg` (sin pasar por la API): los DELETE de `TABLES_TO_CLEAN_NO_CASCADE` + `TABLES_TO_CLEAN_GDPR` + `DELETE user_profiles`, luego `auth.admin.deleteUser`. Las tablas CASCADE se limpian con `user_profiles`.
+3. **Limpia los residuos que las listas de `queries.ts` NO cubren** (ver gotcha siguiente).
+4. **Barrido final** hasta 0 filas en toda tabla con `user_id`:
+   ```js
+   const cols = await sql`SELECT table_name FROM information_schema.columns
+     WHERE table_schema='public' AND column_name='user_id'`
+   for (const c of cols) { /* SELECT count(*) WHERE user_id = userId; debe ser 0 */ }
+   ```
+
+### Gotcha: las listas de `queries.ts` están incompletas → residuos de datos personales
+
+Incluso en un borrado **exitoso**, estas tablas con `user_id` NO están en ninguna lista y quedan con datos personales del usuario:
+
+- `test_questions_outbox` (y además **repuebla las stats materializadas** tras el borrado vía el pipeline async, hasta que el guard `EXISTS user_profiles` de los triggers actúa una vez `user_profiles` ya no existe)
+- `user_question_history_v2_pre_outbox`, `law_question_first_attempts_pre_outbox`, `question_first_attempts_pre_outbox` (snapshots `_pre_outbox` no-stats)
+- `problematic_articles_rollout_logs`
+- `observable_events`
+- `backfill_materialized_stats_progress`
+
+Bórralas explícitamente en el barrido manual (el orden importa: **`test_questions_outbox` PRIMERO** para cortar la repoblación de stats, luego las stats, luego el resto). Pendiente: añadirlas a `TABLES_TO_CLEAN_GDPR` en `queries.ts`.
+
+### Fix de fondo recomendado (pendiente de implementar)
+
+El endpoint necesita dejar de ser lento y no atómico. Opciones, de menor a mayor robustez:
+
+1. **Idempotencia del archivado (mínimo imprescindible, bug legal):** `persistArchivedData` solo debe escribir si `archived_data IS NULL` (o hacer merge, nunca sobrescribir con vacío). Evita destruir el archivo de pagos en un reintento.
+2. **Una sola transacción:** envolver `deleteUserData` en `db.transaction(...)` → atómico (todo o nada), retries seguros, sin estado parcial.
+3. **Función SQL `delete_user_cascade(uuid)` `SECURITY DEFINER`:** mueve todo el borrado a una sola llamada server-side dentro de una transacción. 1 round-trip en vez de ~52 → sub-segundo, atómico, sin 504. Es el fix correcto para timeout + atomicidad + idempotencia a la vez.
+4. **Completar las listas** (tablas del gotcha anterior) y `export const maxDuration` adecuado.
+
 ---
 
 ## 7. Ejemplos Reales
