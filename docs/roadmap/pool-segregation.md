@@ -1,6 +1,6 @@
 # Roadmap — Pool Segregation + Diagnóstico de saturación 503 en horas pico
 
-> **Estado**: 🟡 **FASE 1 SOLO PARCIAL (corregido 2026-06-26)** — ver corrección abajo. Self-hosted pooler PgBouncer (Lightsail London) operativo y validado, PERO el path principal `getDb()`/`getReadDb()` **NO** se migró a él: sigue en Supabase Supavisor `max:1`. Por eso persiste la saturación. Pendiente además HA del pooler (Fase 6 self-hosted-pooler.md) para eliminar SPOF.
+> **Estado**: 🟡 **FASE 1 SOLO PARCIAL (corregido 2026-06-26)** — ver corrección abajo. Self-hosted pooler PgBouncer **en HA** (2 VMs Lightsail, AZs distintas, NLB con failover testeado — Fase 6 self-hosted-pooler.md ✅ aplicada 01/jun) operativo y validado, PERO el path principal `getDb()`/`getReadDb()` **NO** se migró a él: sigue en Supabase Supavisor `max:1`. Por eso persiste la saturación.
 > **Propietario**: equipo Vence
 > **Coste esperado de la implementación**: 0€ (cambios de config sobre infra ya existente)
 > **Última actualización**: 2026-06-26 — corrección del estado tras verificar prod (la saturación 503 NO está resuelta).
@@ -24,7 +24,7 @@
 > | `lib/api/random-test/queries.ts` (4) | 1 `getDb` |
 > | `lib/api/filtered-questions/queries.ts` (1) | 1 `getReadDb` |
 >
-> `getPoolerDb()` es drop-in (si el pooler no está, hace fallback a `getDb()`). **Trade-off:** llevar más tráfico al PgBouncer de **1 instancia** acerca el SPOF → idealmente Fase 6 (HA del pooler) en paralelo. Alternativa más agresiva: repuntar `DATABASE_URL`→`pooler.vence.es` (un cambio SSM, mueve TODO de golpe) — NO sin HA del pooler.
+> `getPoolerDb()` es drop-in (si `DATABASE_URL_SELF_POOLER` no está set, fallback a `getDb()`; OJO: NO hace fallback si el pooler está **caído en runtime** — pero la HA del NLB lo cubre). **Riesgo evaluado 2026-06-26: BAJO.** (1) **SPOF ya cubierto** — el pooler está en HA (2 VMs en AZs distintas + NLB con failover ~37s testeado; Fase 6 ✅). (2) **Capacidad OK** — PgBouncer modo *transaction* MULTIPLEXA: 9 call-sites más NO añaden 9 conexiones, comparten el pool acotado (`default_pool_size=30`, `max_client_conn=1000`, dimensionado para 10k DAU); upstream actual 57/90 con headroom; mover queries de Supavisor→pooler es ~neutral en conexiones y ALIVIA Supavisor. (3) `answer-and-save` (writes) — transaction-mode + `prepare:false` ya soporta writes (`getAdminDb` ya escribe por el pooler); revisar que no use estado de sesión. **CREAR UN POOLER NUEVO = innecesario** (ya hay 2 en HA; un 3º añade coste + ops + Terraform sin ganar disponibilidad). Repuntar `DATABASE_URL`→pooler movería TODO de golpe pero quita el fallback-a-Supavisor de getDb → preferir la migración quirúrgica de las 9.
 
 ---
 
