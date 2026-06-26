@@ -5,17 +5,82 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key'
 
-const mockRpc = jest.fn()
+const mockRpc = jest.fn()      // contrato legacy {data,error}; lo configuran los tests
+const mockExecute = jest.fn()  // getAdminDb().execute(sql`...`)
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({ rpc: mockRpc })),
+// AGNÓSTICO (Fase C1): deviceLimit.ts dejó de usar supabase.rpc/createClient.
+//  - register_device / get_accounts_on_device se invocan vía Drizzle:
+//    getAdminDb().execute(sql`SELECT * FROM fn(...)`)
+//  - las lecturas se envuelven en cache Redis (getOrSet) + cache L1 in-memory.
+// Para NO reescribir los ~40 escenarios, un adaptador (ver beforeEach) traduce cada
+// execute(sql) al viejo contrato mockRpc(rpcName, params): así los setups {data,error}
+// y las aserciones toHaveBeenCalledWith('register_device',{...}) siguen valiendo.
+
+// Extrae los params interpolados del objeto SQL de Drizzle, EN ORDEN y preservando
+// null (los StringChunk del texto son objetos {value:[...]}; todo lo demás es param,
+// incluido un ${null} que Drizzle serializa como chunk null crudo).
+function sqlParams(sqlObj: unknown): unknown[] {
+  try {
+    const chunks = (JSON.parse(JSON.stringify(sqlObj)).queryChunks || []) as unknown[]
+    return chunks.filter((c) => !(c && typeof c === 'object' && Array.isArray((c as { value?: unknown }).value)))
+  } catch {
+    return []
+  }
+}
+function sqlText(sqlObj: unknown): string {
+  try { return JSON.stringify(sqlObj) } catch { return '' }
+}
+
+jest.mock('@/db/client', () => ({
+  getAdminDb: () => ({ execute: (...a: unknown[]) => mockExecute(...a) }),
+}))
+
+// Cache Redis: en test ejecuta SIEMPRE la función (la caché efectiva de estos tests es
+// la L1 in-memory del módulo, que clearDeviceCheckCache() vacía en beforeEach).
+jest.mock('@/lib/cache/redis', () => ({
+  getOrSet: (_k: string, _ttl: number, fn: () => unknown) => fn(),
+  invalidate: jest.fn(),
 }))
 
 import { registerAndCheckDevice, getAccountsOnDevice, getDeviceIdFromRequest, clearDeviceCheckCache } from '@/lib/api/deviceLimit'
 
 beforeEach(() => {
   mockRpc.mockReset()
+  mockExecute.mockReset()
   clearDeviceCheckCache()
+  // Adaptador SQL→RPC: enruta por nombre de función y reconstruye los params legacy
+  // (incl. nulls de device_label/hw_fingerprint) para mockRpc('fn', {...}). Un {error}
+  // del setup => execute lanza (Drizzle lanza ante error de query) => el código real
+  // hace fail-open; un {data} => se moldea a {rows:[...]} como devuelve execute.
+  mockExecute.mockImplementation(async (sqlObj: unknown) => {
+    const s = sqlText(sqlObj)
+    const params = sqlParams(sqlObj)
+    let name = 'unknown'
+    let args: Record<string, unknown> = {}
+    if (s.includes('register_device')) {
+      name = 'register_device'
+      args = {
+        p_user_id: params[0],
+        p_device_id: params[1],
+        p_device_label: params[2],
+        p_hw_fingerprint: params[3],
+      }
+    } else if (s.includes('get_accounts_on_device')) {
+      name = 'get_accounts_on_device'
+      args = { p_device_id: params[0] }
+    }
+    const res = (await mockRpc(name, args)) as
+      | { data?: unknown; error?: { message?: string; code?: string } }
+      | undefined
+    if (res?.error) {
+      const e = new Error(res.error.message || 'db error') as Error & { code?: string }
+      e.code = res.error.code
+      throw e
+    }
+    const data = res?.data
+    if (data == null) return { rows: [] }
+    return { rows: Array.isArray(data) ? data : [data] }
+  })
 })
 
 // ============================================
