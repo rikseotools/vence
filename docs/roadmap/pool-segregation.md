@@ -13,18 +13,19 @@
 > - Lo que realmente se construyó en "Fase 1" fue la función **paralela** `getPoolerDb()` (`max:8`, apunta a `pooler.vence.es`), con **adopción PARCIAL**. `getDb()` (path principal) **nunca se reconectó**.
 > - **Consecuencia (verificada):** los 6 endpoints que saturan (109 saturación-503 en 7d) corren queries por `getDb`/`getReadDb` = Supavisor max:1, fuera del pooler → Hipótesis D sigue viva para ellos.
 >
-> **WORKLIST para cerrar de verdad (9 llamadas residuales `getDb`/`getReadDb` → `getPoolerDb` en los hot-paths):**
+> **⚠️ ACTUALIZACIÓN 2026-06-26 (segunda vuelta) — la causa NO es el pool, son QUERIES LENTAS. Migración a getPoolerDb CANCELADA.**
 >
-> | Helper / route | a migrar |
-> |---|---|
-> | `lib/api/topic-data/queries.ts` (`/api/topics/[numero]`, 54 sat/7d) | 1 `getDb` |
-> | `app/api/v2/oposiciones-compatibles/progress/route.ts` (22) | 2 `getReadDb` |
-> | `lib/api/difficulty-insights/queries.ts` (16) | 1 `getDb` + 1 `getReadDb` |
-> | `lib/api/v2/answer-and-save/queries.ts` (12, ⚠️ tiene WRITES) | 2 `getDb` |
-> | `lib/api/random-test/queries.ts` (4) | 1 `getDb` |
-> | `lib/api/filtered-questions/queries.ts` (1) | 1 `getReadDb` |
+> Al investigar a fondo antes de migrar (timestamps + pg_stat_statements):
+> - **NO es Hipótesis D / deploy-starvation.** Los 109 saturación-503/7d están **dispersos en 92 minutos distintos sobre 17 deploys** (~15/día, todas horas), 1-2 por ventana — NO el patrón de cascada (37/min) de Hipótesis D. No correlacionan con deploys.
+> - **NO es path-específico.** `topics/[numero]` (el que MÁS satura, 54/7d) **YA está en el pooler** (`getTopicDataDb()` → `getPoolerDb()` con el flag ON). 3 de los 5 helpers ya enrutan al pooler; el `getDb` era solo el fallback del ternario + el tipo. Mi conteo inicial de "9 llamadas" fue superficial.
+> - **SÍ son queries lentas** (pg_stat_statements): `count(DISTINCT questions.id)` sobre topics → **mean 1.6-4.0s, max 23-34s**; `FROM user_article_stats` (oposiciones-compatibles/progress) → **mean 6.7s, max 29s**; `tq.id FROM test_questions` (difficulty/historial) → max 43s. Cuando superan `withDbTimeout(8000)` → 503. **El pooler NO acelera una query de 30s.**
 >
-> `getPoolerDb()` es drop-in (si `DATABASE_URL_SELF_POOLER` no está set, fallback a `getDb()`; OJO: NO hace fallback si el pooler está **caído en runtime** — pero la HA del NLB lo cubre). **Riesgo evaluado 2026-06-26: BAJO.** (1) **SPOF ya cubierto** — el pooler está en HA (2 VMs en AZs distintas + NLB con failover ~37s testeado; Fase 6 ✅). (2) **Capacidad OK** — PgBouncer modo *transaction* MULTIPLEXA: 9 call-sites más NO añaden 9 conexiones, comparten el pool acotado (`default_pool_size=30`, `max_client_conn=1000`, dimensionado para 10k DAU); upstream actual 57/90 con headroom; mover queries de Supavisor→pooler es ~neutral en conexiones y ALIVIA Supavisor. (3) `answer-and-save` (writes) — transaction-mode + `prepare:false` ya soporta writes (`getAdminDb` ya escribe por el pooler); revisar que no use estado de sesión. **CREAR UN POOLER NUEVO = innecesario** (ya hay 2 en HA; un 3º añade coste + ops + Terraform sin ganar disponibilidad). Repuntar `DATABASE_URL`→pooler movería TODO de golpe pero quita el fallback-a-Supavisor de getDb → preferir la migración quirúrgica de las 9.
+> **EL FIX REAL = optimización de esas queries de agregación**, no routing de pool:
+> - Revisar por qué el `count(DISTINCT questions.id)` por topic corre en vivo (mean 2-4s) en vez de leer las MV `topic_law_question_summary`/`topic_official_by_position` (¿hay un path que no usa la MV?).
+> - `user_article_stats` (mean 6.7s) en oposiciones-compatibles/progress: índice / pre-agregado / MV por usuario.
+> - Plan B inmediato si urge: stale-while-error en estos endpoints (servir cache viejo en vez de 503) + subir `withDbTimeout` para las agregaciones conocidas-lentas.
+>
+> NOTA: la HA del pooler (2 VMs AZs + NLB failover testeado, Fase 6 ✅) está bien y NO hace falta pooler nuevo — pero es ortogonal a esta saturación.
 
 ---
 
