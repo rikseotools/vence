@@ -43,6 +43,9 @@ export class OepSignalsQueriesService {
         plazasDiscapacidad: oposiciones.plazasDiscapacidad,
         oepFecha: oposiciones.oepFecha,
         convocatoriaNumero: oposiciones.convocatoriaNumero,
+        // Detector "seguimiento ciego" (27/06)
+        isActive: oposiciones.isActive,
+        examDate: oposiciones.examDate,
         // Sprint 2: dispatch a Lambda Playwright si fetcher_type='headless'
         fetcherType: oposiciones.fetcherType,
       })

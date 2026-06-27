@@ -11,6 +11,10 @@ export interface OposicionToScan {
   plazasDiscapacidad: number | null;
   oepFecha: string | null;
   convocatoriaNumero: string | null;
+  // Detector "seguimiento ciego" (27/06): isActive gatea la señal de URL genérica;
+  // examDate permite el cross-check con la fecha que extraiga la página.
+  isActive: boolean;
+  examDate: string | null;
   // Sprint 2 Lambda backend integration: tipo de fetcher según audit.
   // - 'http' (default): fetch nativo Node, rápido (~200ms).
   // - 'headless': Lambda Playwright + Chromium para JS-rendered (~3-10s).

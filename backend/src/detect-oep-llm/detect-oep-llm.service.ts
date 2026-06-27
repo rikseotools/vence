@@ -73,7 +73,35 @@ export class DetectOepLlmService {
         knownContext,
       );
       if (!extraction || !extraction.hasOepInfo) {
-        this.logger.debug(`Sin OEP clara en ${label}`);
+        // Punto ciego (incidente Extremadura 27/06): si la página NO contiene la
+        // convocatoria del cuerpo de una oposición ACTIVA, el seguimiento_url
+        // probablemente es genérico (portal/listado) y NUNCA dará señales → en vez
+        // de saltarla en silencio (que es como se nos escapó un examen ya celebrado),
+        // emitimos una señal de baja prioridad para revisar/corregir la URL.
+        if (detectGenericSeguimiento(extraction, opo)) {
+          const dedupeKey = buildDedupeKey({
+            sensorType: 'llm_semantic',
+            oposicionId: opo.id,
+            year: null,
+            bocRef: '__seguimiento_generico__',
+          });
+          const { inserted } = await this.queries.insertSignal({
+            oposicionId: opo.id,
+            sensorType: 'llm_semantic',
+            sourceUrl: opo.seguimientoUrl,
+            confidenceScore: 25,
+            isNovel: true,
+            signalSummary: `⚠️ Seguimiento posiblemente genérico: la página no contiene la convocatoria del cuerpo de "${opo.nombre}". Revisar/corregir el seguimiento_url a la página específica de la convocatoria.`,
+            rawExtraction: { kind: 'seguimiento_generico' } as Record<string, unknown>,
+            dedupeKey,
+          });
+          if (inserted) {
+            signals++;
+            this.logger.warn(`SEÑAL seguimiento_generico: ${label}`);
+          }
+        } else {
+          this.logger.debug(`Sin OEP clara en ${label}`);
+        }
         continue;
       }
 
@@ -200,8 +228,41 @@ function computeNovelty(
       `plazas ${extraction.plazasLibre} ≠ BD ${opo.plazasLibres}`,
     );
   }
+  // Cross-check de fecha de examen (incidente Extremadura 27/06): si la página
+  // declara una fecha de examen distinta de la guardada, es novedad accionable
+  // (corregir BD / pivotar landing). Conservador: solo si se puede normalizar la
+  // fecha de la página, para no generar señales por diferencias de formato.
+  const fechaPagina = extraction.fechaExamen
+    ? normalizeDate(extraction.fechaExamen)
+    : null;
+  if (fechaPagina && opo.examDate && fechaPagina !== opo.examDate.slice(0, 10)) {
+    reasons.push(`fecha examen ${fechaPagina} ≠ BD ${opo.examDate.slice(0, 10)}`);
+  }
 
   return { isNovel: reasons.length > 0, reasons };
+}
+
+/**
+ * Detecta "seguimiento ciego": la página no contiene la convocatoria del cuerpo
+ * (hasOepInfo=false, lo decide el prompt de extractOepFromHtml). Solo accionable
+ * para oposiciones ACTIVAS — las catalogadas con URL de portal genérico son
+ * esperables. Exportada para test.
+ */
+export function detectGenericSeguimiento(
+  extraction: LlmExtraction | null,
+  opo: { isActive: boolean },
+): boolean {
+  return opo.isActive && (!extraction || !extraction.hasOepInfo);
+}
+
+/** Normaliza una fecha a 'YYYY-MM-DD' desde ISO o DD/MM/AAAA; null si no se reconoce. */
+export function normalizeDate(s: string): string | null {
+  const iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = s.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dmy)
+    return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  return null;
 }
 
 function adjustScore(
