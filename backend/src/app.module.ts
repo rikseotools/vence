@@ -21,6 +21,7 @@ import { ConversionDrainModule } from './conversion-drain/conversion-drain.modul
 import { AnthropicModule } from './anthropic/anthropic.module';
 import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
+import { DetectNotasConvocatoriaModule } from './detect-notas-convocatoria/detect-notas-convocatoria.module';
 import { AdvanceEstadoModule } from './advance-estado/advance-estado.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { DetectBoletinesModule } from './detect-boletines/detect-boletines.module';
@@ -179,6 +180,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     AnthropicModule,
     DetectTimelineSilenceModule,
     DetectOepLlmModule,
+    DetectNotasConvocatoriaModule,
     // detect-regional-oeps RETIRADO (01/06/2026): scraper autónomo de 167 fuentes
     // con 56% de tasa de error + falsos positivos. Descubrimiento de oposiciones
     // nuevas pasa a ser on-demand por Claude. Ver docs/roadmap/deteccion-convocatorias-oeps-completo.md
