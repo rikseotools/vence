@@ -4584,6 +4584,25 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/administrativo-extremadura/temario', label: 'Temario', icon: '📚' },
       { href: '/administrativo-extremadura/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2022-11-06',
+        title: 'Convocatoria OEP 2018-2020 (1er ejercicio)',
+        oep: 'OEP 2018-2020',
+        note: 'Examen oficial del Cuerpo Administrativo (Administración General). Se incluyen las preguntas cuya normativa sigue vigente, verificadas contra el artículo en vigor.',
+        partes: [
+          {
+            id: 'primera',
+            icon: '📘',
+            title: '1er ejercicio (test)',
+            ordinaryCount: 44,
+            reserveCount: 4,
+            durationMin: 110,
+            breakdown: [{ label: 'tipo test (legislativa)', count: 44 }],
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================
