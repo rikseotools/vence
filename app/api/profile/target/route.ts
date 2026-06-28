@@ -22,6 +22,7 @@ import { eq } from 'drizzle-orm'
 import { getOposicion } from '@/lib/config/oposiciones'
 import { withDbTimeout } from '@/lib/db/timeout'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateProfileCache } from '@/lib/api/profile/queries'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -82,6 +83,13 @@ async function _PUT(request: NextRequest) {
         .where(eq(userProfiles.id, auth.user.id)),
     TARGET_UPDATE_TIMEOUT_MS,
   )
+
+  // Invalidar el cache server-side de /api/profile (tag 'profile', TTL 60s).
+  // Sin esto, tras cambiar la oposición el GET cacheado seguía sirviendo el
+  // perfil viejo (target_oposicion stale) hasta 60s → contribuía a que el
+  // contexto leyera una oposición desactualizada. updateProfile() ya lo hace;
+  // este write-path (target) faltaba por hacerlo.
+  invalidateProfileCache()
 
   return NextResponse.json({ success: true, data })
 }

@@ -8,6 +8,7 @@ import { getAuthHeaders } from '../lib/api/authHeaders'
 import { useAuth } from './AuthContext'
 import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, type NavLink } from '@/lib/config/oposiciones'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
+import { decideOposicionLoad } from '@/lib/oposicion/decideLoad'
 
 // ============================================
 // TIPOS
@@ -117,66 +118,98 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
 
   // Cargar oposición del usuario cuando cambie el user del AuthContext
   useEffect(() => {
-    async function loadUserOposicion() {
-      try {
-        setLoading(true)
+    let cancelled = false
 
-        if (!user) {
-          setUserOposicion(null)
-          setOposicionId(null)
-          setOposicionMenu(DEFAULT_MENU)
-          setLoading(false)
-          return
-        }
+    async function loadUserOposicion(retry = 0): Promise<void> {
+      if (!user) {
+        if (cancelled) return
+        setUserOposicion(null)
+        setOposicionId(null)
+        setOposicionMenu(DEFAULT_MENU)
+        setLoading(false)
+        return
+      }
+
+      try {
+        if (retry === 0) setLoading(true)
 
         // Fase C1: vía endpoint Drizzle (user_id del token), no PostgREST/RLS.
         const headers = await getAuthHeaders()
         const res = await fetch('/api/v2/oposicion/target', { headers })
-        const profile = res.ok ? await res.json() : null
 
-        if (!profile?.target_oposicion) {
+        // ⚠️ ROBUSTEZ (fix bug Nila, heavy user móvil): el endpoint SIEMPRE
+        // devuelve 200 con target_oposicion:null para un usuario sin oposición.
+        // Un no-2xx (401 por race del token al reanudar en móvil, 5xx por
+        // saturación) NO significa "sin oposición": significa que la consulta
+        // falló. NUNCA borrar la oposición conocida ante un fallo transitorio
+        // —eso rompía tests en curso y mostraba "Selecciona tu oposición" en
+        // falso—. Reintentar con backoff y, si se agota, MANTENER el estado
+        // actual (mismo criterio que AuthContext con su perfil cacheado).
+        if (!res.ok) {
+          if (retry < 2 && !cancelled) {
+            await new Promise(r => setTimeout(r, 600 * 2 ** retry))
+            if (cancelled) return
+            return loadUserOposicion(retry + 1)
+          }
+          console.warn(`⚠️ [OposicionContext] target fetch ${res.status} tras reintentos — mantengo oposición actual`)
+          if (!cancelled) setLoading(false)
+          return
+        }
+
+        const profile = await res.json()
+        if (cancelled) return
+
+        const opoId: string | null = profile?.target_oposicion ?? null
+        const isValidOposicion = !!opoId && ALL_OPOSICION_IDS.includes(opoId)
+        // res.ok es true aquí (el !res.ok se trató arriba con retry). El helper
+        // PURO decide la acción; aquí solo la aplicamos. Ver lib/oposicion/decideLoad.
+        const action = decideOposicionLoad(true, opoId, isValidOposicion)
+
+        if (action === 'clear') {
+          // 200 OK con target null = el usuario genuinamente no tiene oposición.
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
           setNeedsOposicionFix(false)
-        } else {
-          const opoId = profile.target_oposicion
-
+        } else if (action === 'invalid') {
           // Detectar datos sucios: UUIDs, JSON, slugs desconocidos
-          const isValidOposicion = ALL_OPOSICION_IDS.includes(opoId)
+          console.warn('⚠️ [OposicionContext] target_oposicion inválido:', opoId)
+          setNeedsOposicionFix(true)
+          setUserOposicion(null)
+          setOposicionId(null)
+          setOposicionMenu(DEFAULT_MENU)
+        } else {
+          // 'set'
+          setNeedsOposicionFix(false)
+          // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
+          const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
 
-          if (!isValidOposicion) {
-            console.warn('⚠️ [OposicionContext] target_oposicion inválido:', opoId)
-            setNeedsOposicionFix(true)
-            setUserOposicion(null)
-            setOposicionId(null)
-            setOposicionMenu(DEFAULT_MENU)
-          } else {
-            setNeedsOposicionFix(false)
-            // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
-            const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
+          setUserOposicion(oposicionData)
+          setOposicionId(opoId as string)
 
-            setUserOposicion(oposicionData)
-            setOposicionId(opoId)
-
-            const menuConfig = OPOSICION_MENUS[opoId] || DEFAULT_MENU
-            setOposicionMenu(menuConfig)
-          }
+          const menuConfig = OPOSICION_MENUS[opoId as string] || DEFAULT_MENU
+          setOposicionMenu(menuConfig)
         }
+        if (!cancelled) setLoading(false)
 
       } catch (error) {
-        console.error('❌ Error cargando oposición de usuario:', error)
-        setUserOposicion(null)
-        setOposicionId(null)
-        setOposicionMenu(DEFAULT_MENU)
-      } finally {
-        setLoading(false)
+        // Error de red/excepción: mismo criterio — reintentar y, si se agota,
+        // MANTENER el estado actual (NO nullear la oposición conocida).
+        if (retry < 2 && !cancelled) {
+          await new Promise(r => setTimeout(r, 600 * 2 ** retry))
+          if (cancelled) return
+          return loadUserOposicion(retry + 1)
+        }
+        console.error('❌ [OposicionContext] error cargando oposición tras reintentos — mantengo estado:', error)
+        if (!cancelled) setLoading(false)
       }
     }
 
     if (!authLoading) {
       loadUserOposicion()
     }
+
+    return () => { cancelled = true }
   }, [user, authLoading, pathname])
 
   // Recargar oposición cuando se cambia desde perfil u otro componente
