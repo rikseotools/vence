@@ -4515,6 +4515,78 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO (ADMINISTRACIÓN GENERAL) JUNTA DE EXTREMADURA (C1)
+  // ========================================
+  {
+    id: 'administrativo_extremadura',
+    slug: 'administrativo-extremadura',
+    positionType: 'administrativo_extremadura',
+    examScoring: { penaltyDivisor: 4, source: 'DOE nº81 29/04/2026 (Orden 22/04/2026): cada 4 erroneas resta 1 correcta (1/4); en blanco no puntuan. confidence:alta' },
+    name: 'Administrativo Junta de Extremadura',
+    shortName: 'Administrativo Extremadura',
+    emoji: '🌿',
+    badge: 'C1',
+    color: 'emerald',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Organización y Empleo Público de Extremadura',
+        subtitle: 'Gobierno y Administración CAE, TREBEP, Función Pública Extremadura, Personal Laboral',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'El Gobierno y la Administración de la CAE (I)' },
+          { id: 2, name: 'El Gobierno y la Administración de la CAE (II)' },
+          { id: 3, name: 'El Gobierno y la Administración de la CAE (III)' },
+          { id: 4, name: 'El Gobierno y la Administración de la CAE (IV)' },
+          { id: 5, name: 'Estatuto Básico del Empleado Público (TREBEP)' },
+          { id: 6, name: 'La Función Pública de Extremadura (I)' },
+          { id: 7, name: 'La Función Pública de Extremadura (II)' },
+          { id: 8, name: 'La Función Pública de Extremadura (III)' },
+          { id: 9, name: 'La Función Pública de Extremadura (IV)' },
+          { id: 10, name: 'La Función Pública de Extremadura (V)' },
+          { id: 11, name: 'Personal Laboral - Convenio Colectivo (I)' },
+          { id: 12, name: 'Personal Laboral - Convenio Colectivo (II)' },
+          { id: 13, name: 'Personal Laboral - Convenio Colectivo (III)' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Derecho Administrativo, Contratación y Hacienda',
+        subtitle: 'RJSP, LPAC, Contratación del Sector Público, Admin electrónica, Hacienda, PRL, Igualdad',
+        icon: '⚖️',
+        themes: [
+          { id: 14, name: 'Régimen Jurídico del Sector Público (I)' },
+          { id: 15, name: 'Régimen Jurídico del Sector Público (II)' },
+          { id: 16, name: 'El Procedimiento Administrativo Común (I)' },
+          { id: 17, name: 'El Procedimiento Administrativo Común (II)' },
+          { id: 18, name: 'El Procedimiento Administrativo Común (III)' },
+          { id: 19, name: 'La contratación del sector público (I)' },
+          { id: 20, name: 'La contratación del sector público (II)' },
+          { id: 21, name: 'La contratación del sector público (III)' },
+          { id: 22, name: 'La contratación del sector público (IV)' },
+          { id: 23, name: 'La contratación del sector público (V)' },
+          { id: 24, name: 'La contratación del sector público (VI)' },
+          { id: 25, name: 'Administración Electrónica de Extremadura' },
+          { id: 26, name: 'La Hacienda Pública de la Comunidad Autónoma (I)' },
+          { id: 27, name: 'La Hacienda Pública de la Comunidad Autónoma (II)' },
+          { id: 28, name: 'Procedimiento de ejecución del gasto público' },
+          { id: 29, name: 'Ley de Prevención de Riesgos Laborales' },
+          { id: 30, name: 'Igualdad entre Mujeres y Hombres y Violencia de Género en Extremadura' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    aliases: ['junta extremadura', 'extremadura', 'administrativo extremadura', 'cuerpo administrativo extremadura', 'caceres', 'badajoz'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-extremadura', label: 'Mi Oposicion', icon: '🌿', featured: true },
+      { href: '/administrativo-extremadura/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-extremadura/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO GENERALITAT VALENCIANA (C2)
   // ========================================
   {

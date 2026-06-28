@@ -1013,6 +1013,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏰'
   },
   {
+    id: 'administrativo_extremadura',
+    nombre: 'Administrativo Junta de Extremadura',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🌿'
+  },
+  {
     id: 'auxiliar_administrativo_valencia',
     nombre: 'Auxiliar Administrativo Generalitat Valenciana',
     categoria: 'C2',
@@ -1671,7 +1678,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'administrativo_castilla_la_mancha', 'auxiliar_administrativo_estado'],
-  'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
+  'Extremadura': ['auxiliar_administrativo_extremadura', 'administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
   'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
   'Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'auxiliar_administrativo_estado'],

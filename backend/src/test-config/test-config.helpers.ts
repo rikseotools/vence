@@ -112,6 +112,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo junta de extremadura',
     'cuerpo auxiliar administracion comunidad autonoma extremadura',
   ],
+  administrativo_extremadura: [
+    'administrativo_extremadura',
+    'administrativo extremadura',
+    'administrativo junta de extremadura',
+    'cuerpo administrativo administracion general extremadura',
+  ],
   auxiliar_administrativo_canarias: [
     'auxiliar_administrativo_canarias',
     'auxiliar administrativo canarias',

@@ -883,6 +883,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_extremadura',
+      label: 'Administrativo Junta de Extremadura',
+      data: {
+        name: 'Administrativo Junta de Extremadura',
+        slug: 'administrativo-extremadura',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_valencia',
       label: 'Auxiliar Administrativo Generalitat Valenciana',
       data: {

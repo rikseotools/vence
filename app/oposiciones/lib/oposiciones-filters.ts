@@ -116,6 +116,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-aragon': 'aragon',
     'auxiliar-administrativo-diputacion-huesca': 'aragon',
     'auxiliar-administrativo-extremadura': 'extremadura',
+    'administrativo-extremadura': 'extremadura',
     'auxiliar-administrativo-galicia': 'galicia',
     'auxiliar-administrativo-diputacion-ourense': 'galicia',
     'administrativo-galicia': 'galicia',
