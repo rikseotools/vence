@@ -64,6 +64,12 @@ interface FilteredQuestionResponse {
   correct_option: number
   primary_article_id: string
   tema: number | null
+  // 🖼️ Contenido visual de la pregunta (iconos LibreOffice, capturas, tablas).
+  // El API /api/questions/filtered los envía a nivel top (queries.ts), pero el
+  // transform de abajo los descartaba → preguntas con imagen salían SIN imagen
+  // en tests de ley (bug Sandra 29/06).
+  image_url: string | null
+  content_data: Record<string, unknown> | null
   article: {
     id: string
     number: string
@@ -113,6 +119,11 @@ function transformApiResponse(apiQuestions: FilteredQuestionResponse[]): Questio
     difficulty: q.metadata.difficulty,
     question_type: q.metadata.question_type,
     tags: q.metadata.tags,
+    // 🖼️ Contenido visual: ContentDataRenderer (TestLayout) lo necesita para
+    // pintar la imagen base64 / image_url. Sin esto, las preguntas con icono
+    // (LibreOffice, etc.) se servían sin imagen y eran irresolubles.
+    image_url: q.image_url ?? null,
+    content_data: q.content_data ?? null,
     // 📄 Estructura 'article' (singular) para testAnswers.js
     article: {
       id: q.article.id,
