@@ -430,6 +430,31 @@ hacer tras validar Fase 1 con datos. Hardening aparte: cerrar el 6543 público d
 
 ---
 
+## Incidente 2026-07-01 — el health check probaba el pool EQUIVOCADO (deploys en churn)
+
+**Síntoma:** los deploys de frontend fallaban en bucle (circuit breaker rollback), a veces horas. Tareas nuevas iban a `unhealthy` una tras otra pese a que **producción servía perfectamente** (home 200, 2/2 tasks). Subir el `grace period` del servicio (90→300s) y el `startPeriod` del contenedor (60→180s) NO lo arreglaba del todo: el health check seguía flapeando.
+
+**Causa raíz (el eslabón que faltaba):** el readiness probe **`/api/health/db-ready` usaba `getDb()` → Supavisor** (el pooler regional COMPARTIDO), pero el tráfico user-facing ya va por el **pooler propio HA** (`getPoolerDb`, ~57 ficheros). Cuando el Supavisor blipea **por carga de OTROS clientes de Supabase** (ajena a la nuestra), `db-ready` devuelve 503 (`SELECT 1` > 2s) **aunque la app sirva bien por el pooler propio** → el ELB marca el contenedor unhealthy → ECS lo mata → churn infinito. **El health check estaba comprobando un pool que la app ya casi no usa para servir.**
+
+**Diagnóstico (medir ANTES de parchear — dónde está la contención):**
+```
+# 1) Salud del pooler propio (el cron pooler-instance-sampler conecta por IP privada a cada VM):
+SELECT * FROM v_pgbouncer_instances_last_15min;   -- max_select1_ms, max_cl_waiting, unreachable_samples
+# 2) Saturación del backend Postgres:
+SELECT count(*) total, count(*) FILTER (WHERE state='active') activas,
+       count(*) FILTER (WHERE state='idle in transaction') idle_tx,
+       count(*) FILTER (WHERE wait_event_type='Lock') locked FROM pg_stat_activity;  -- límite Pro=90
+```
+Resultado 01/07: pooler propio `SELECT 1` = **6-79ms, 0 esperando**; backend **44/90 conexiones, 0 locks**; Supavisor flapeando >2s. → **La contención es del Supavisor compartido, NO nuestra.** (Si el backend estuviera saturado —conexiones a 90, locks—, ningún swap de pool ayudaría: sería el worklist de materializar agregaciones lentas.)
+
+**Fix (commit `51c98f22`):** `db-ready` prueba el pool que REALMENTE sirve → `getPoolerDb()` en vez de `getDb()`. `getPoolerDb()` cae a `getDb()` si `USE_SELF_HOSTED_POOLER!=true`, así que es un swap seguro. **Self-healing:** el contenedor nuevo corre el check arreglado (prueba el pooler propio sano) → pasa → el deploy completa solo, rompiendo el chicken-and-egg. **Además elimina la fragilidad del deploy por completo:** ya no depende del `startPeriod`/`grace` porque el health check deja de flapear.
+
+**Regla:** un readiness probe debe verificar **el pool por el que sirve el tráfico**, no otro. Con la migración parcial (user-facing en pooler propio, `getDb` en Supavisor por diseño), comprobar el Supavisor daba **falsos negativos** ante blips ajenos.
+
+**GOTCHA de IaC pendiente (recurrente):** el pipeline GHA `frontend-deploy.yml` regenera la task-def con `startPeriod=60` y el servicio se recreaba a `grace=90` → cada deploy volvía a ser frágil hasta este fix. Los valores 180/300 que se pusieron a mano se pierden en el siguiente deploy. Persistir `healthCheck.startPeriod` (task-def) + `healthCheckGracePeriodSeconds` (servicio) en la plantilla/Terraform. Con el fix de `db-ready` deja de ser urgente (el check ya no flapea), pero conviene cerrarlo.
+
+---
+
 ## Análisis de costes
 
 ### Coste mensual recurrente
