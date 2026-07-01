@@ -36,6 +36,7 @@ import type {
 } from './schemas'
 import { ALL_OPOSICION_SLUGS, SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 import type { OposicionSlug } from '@/lib/api/theme-stats/schemas'
+import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 
 const oposicionSlugSet = new Set<string>(ALL_OPOSICION_SLUGS)
 
@@ -336,24 +337,72 @@ async function getTimePatterns(
 }
 
 // ─── getArticleStats ───
-// Lee user_article_stats con filtro total_questions >= 2 (igual que v1).
+// Lee user_article_stats con filtro total_questions >= 2, ACOTADO al topic_scope
+// de la oposición activa del usuario.
+//
+// Modelo nuclear: user_article_stats cuelga del artículo (article_id) y NO guarda
+// position_type — un mismo artículo escopa legítimamente en varias oposiciones.
+// Por eso NO se denormaliza position_type en la tabla; se acota la LECTURA
+// cruzando con el topic_scope de la oposición activa vía el primitivo canónico
+// articleInPositionScopeExists (fuente única, respeta article_numbers IS NULL =
+// "toda la ley"). Mismo patrón de resolución de oposición que getThemePerformance
+// (V4): target_oposicion → slug → position_type.
+//
+// Sin este scope, un usuario que cambió de oposición (o hizo tests de leyes
+// sueltas / globales, que quedan como position_type NULL) veía en "artículos
+// débiles/fuertes" artículos fuera de su temario actual — bug 2026-07-01
+// (caso Mar Vázquez: 317/1458 = 22% de sus stats eran de artículos fuera del
+// scope de Administrativo). Convergemos sobre la misma fuente de verdad que ya
+// usan theme-stats V2 y /api/v2/topic-progress/weak-articles, sin crear una
+// tercera implementación del scope.
+//
+// Fallback: si el usuario no tiene target_oposicion reconocida (null o slug
+// obsoleto), se mantiene la lectura global sin scope — backward compat, sin
+// regresión para usuarios sin oposición activa.
 
 async function getArticleStats(
   db: ReturnType<typeof getDb>,
   userId: string,
 ): Promise<ArticlePerformance[]> {
+  const profileRow = await db
+    .select({ targetOposicion: userProfiles.targetOposicion })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1)
+  const targetOposicion = profileRow[0]?.targetOposicion
+  const oposicionSlug = targetOposicion ? targetOposicion.replace(/_/g, '-') : null
+  const positionType =
+    oposicionSlug && oposicionSlugSet.has(oposicionSlug)
+      ? SLUG_TO_POSITION_TYPE[oposicionSlug as OposicionSlug]
+      : null
+
+  // Con oposición activa: INNER JOIN a articles para exponer law_id +
+  // article_number al EXISTS de scope. Sin ella: lectura global legacy.
+  const scopedFrom = positionType
+    ? sql`FROM user_article_stats uas INNER JOIN articles a ON a.id = uas.article_id`
+    : sql`FROM user_article_stats uas`
+
+  const scopeCondition = positionType
+    ? sql`AND uas.article_id IS NOT NULL AND ${articleInPositionScopeExists({
+        lawId: sql`a.law_id`,
+        articleNumber: sql`a.article_number`,
+        positionType,
+      })}`
+    : sql``
+
   const result = await db.execute(sql`
     SELECT
-      article_id            AS "articleId",
-      article_number        AS "articleNumber",
-      law_name              AS "lawName",
-      tema_number           AS "temaNumber",
-      total_questions::int  AS "totalQuestions",
-      correct_answers::int  AS "correctAnswers"
-    FROM user_article_stats
-    WHERE user_id = ${userId}::uuid
-      AND total_questions >= 2
-    ORDER BY (correct_answers::float / total_questions) ASC
+      uas.article_id            AS "articleId",
+      uas.article_number        AS "articleNumber",
+      uas.law_name              AS "lawName",
+      uas.tema_number           AS "temaNumber",
+      uas.total_questions::int  AS "totalQuestions",
+      uas.correct_answers::int  AS "correctAnswers"
+    ${scopedFrom}
+    WHERE uas.user_id = ${userId}::uuid
+      AND uas.total_questions >= 2
+      ${scopeCondition}
+    ORDER BY (uas.correct_answers::float / uas.total_questions) ASC
   `) as unknown as Array<{
     articleId: string | null
     articleNumber: string | null
