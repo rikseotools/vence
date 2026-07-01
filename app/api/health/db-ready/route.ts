@@ -44,11 +44,19 @@ async function _GET() {
 
   try {
     // Import dinámico para no bloquear cold-start del módulo si la BD está fría.
-    const { getDb } = await import('@/db/client')
+    // 🔀 Probar el POOLER PROPIO (getPoolerDb), NO el Supavisor (getDb): el
+    // tráfico user-facing va por el pooler propio HA (aislado). El readiness
+    // debe verificar el pool que REALMENTE sirve. Bug (01/07): db-ready usaba
+    // getDb→Supavisor compartido; un blip del Supavisor (carga de OTROS clientes
+    // de Supabase, no la nuestra) daba 503 aunque la app sirviera bien por el
+    // pooler propio → ECS mataba contenedores sanos → deploys en churn infinito.
+    // Medido: pooler propio SELECT 1 = 6-79ms sano; Supavisor flapeando >2s.
+    // getPoolerDb() cae a getDb() si USE_SELF_HOSTED_POOLER!=true → swap seguro.
+    const { getPoolerDb } = await import('@/db/client')
     const { sql } = await import('drizzle-orm')
 
     await Promise.race([
-      getDb().execute(sql`SELECT 1`),
+      getPoolerDb().execute(sql`SELECT 1`),
       new Promise<never>((_, reject) =>
         setTimeout(
           () => reject(new Error(`SELECT 1 timeout after ${READINESS_TIMEOUT_MS}ms`)),
