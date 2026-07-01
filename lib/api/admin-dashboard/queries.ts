@@ -5,6 +5,12 @@ import { userProfiles, tests, testQuestions, emailLogs, conversionEvents } from 
 import { eq, sql, gte, lt, lte, and, isNotNull, desc } from 'drizzle-orm'
 import type { DashboardResponse } from './schemas'
 
+// excluir canary (internal_canary): predicados reutilizables para no inflar
+// las métricas del dashboard con la cuenta sintética de smoke-test.
+// IS DISTINCT FROM conserva las filas con registration_source NULL.
+const notCanaryTests = sql`${tests.userId} NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')`
+const notCanaryProfile = sql`${userProfiles.registrationSource} IS DISTINCT FROM 'internal_canary'`
+
 // -- Helpers de fechas (zona horaria Madrid) --
 
 function getMadridDates() {
@@ -77,7 +83,7 @@ async function queryUserStats(dates: ReturnType<typeof getMadridDates>) {
   const [counts] = await db
     .select({
       totalUsers: sql<number>`count(*)::int`,
-      activeUsers: sql<number>`(select count(distinct ${tests.userId})::int from ${tests})`,
+      activeUsers: sql<number>`(select count(distinct ${tests.userId})::int from ${tests} where ${notCanaryTests})`,
       newUsersToday: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.startOfToday})::int`,
       newUsersYesterday: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.startOfYesterday} and ${userProfiles.createdAt} < ${dates.startOfToday})::int`,
       newUsersThisWeek: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.thisMonday})::int`,
@@ -87,6 +93,8 @@ async function queryUserStats(dates: ReturnType<typeof getMadridDates>) {
       newUsersLastWeekAtThisHour: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.startOfLastWeekSameDay} and ${userProfiles.createdAt} <= ${dates.lastWeekAtThisHour})::int`,
     })
     .from(userProfiles)
+    // excluir canary (internal_canary)
+    .where(notCanaryProfile)
 
   return counts
 }
@@ -103,7 +111,8 @@ async function queryRegistrationBySource(dates: ReturnType<typeof getMadridDates
       thisWeek: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.thisMonday})::int`,
     })
     .from(userProfiles)
-    .where(gte(userProfiles.createdAt, dates.thisMonday))
+    // excluir canary (internal_canary)
+    .where(and(gte(userProfiles.createdAt, dates.thisMonday), notCanaryProfile))
     .groupBy(sql`coalesce(${userProfiles.registrationSource}, 'unknown')`)
 
   const todayBySource: Record<string, number> = {}
@@ -150,6 +159,8 @@ async function queryTestStats(dates: ReturnType<typeof getMadridDates>) {
       count(distinct user_id) filter (where is_completed and completed_at is not null) as active_users_last_30_days
     from tests
     where created_at >= ${dates.thirtyDaysAgo}
+      -- excluir canary (internal_canary)
+      and ${notCanaryTests}
   `)
 
   const s = (result[0] ?? {}) as Record<string, number>
@@ -202,6 +213,8 @@ async function queryTodayActivity(dates: ReturnType<typeof getMadridDates>) {
     .where(and(
       isNotNull(tests.startedAt),
       gte(tests.startedAt, dates.startOfToday),
+      // excluir canary (internal_canary)
+      notCanaryTests,
     ))
     .orderBy(desc(tests.startedAt))
 
@@ -236,6 +249,8 @@ async function queryActiveUsersComparison(dates: ReturnType<typeof getMadridDate
     .where(and(
       isNotNull(tests.startedAt),
       gte(tests.startedAt, dates.startOfLastWeekSameDay),
+      // excluir canary (internal_canary)
+      notCanaryTests,
     ))
 
   return result
@@ -257,7 +272,8 @@ async function queryOnlineUsers(dates: ReturnType<typeof getMadridDates>) {
     .from(testQuestions)
     .innerJoin(tests, eq(tests.id, testQuestions.testId))
     .leftJoin(userProfiles, eq(userProfiles.id, tests.userId))
-    .where(gte(testQuestions.createdAt, dates.fifteenMinAgo))
+    // excluir canary (internal_canary): martillea test_questions y saldría siempre "online"
+    .where(and(gte(testQuestions.createdAt, dates.fifteenMinAgo), notCanaryTests))
     .groupBy(tests.userId, userProfiles.fullName, userProfiles.email, userProfiles.planType)
 
   return rows
@@ -336,6 +352,8 @@ async function queryDauHistory(dates: ReturnType<typeof getMadridDates>) {
       eq(tests.isCompleted, true),
       isNotNull(tests.completedAt),
       gte(tests.completedAt, dates.thirtyDaysAgo),
+      // excluir canary (internal_canary)
+      notCanaryTests,
     ))
     .groupBy(sql`(${tests.completedAt}::timestamptz AT TIME ZONE 'Europe/Madrid')::date`)
     .orderBy(sql`(${tests.completedAt}::timestamptz AT TIME ZONE 'Europe/Madrid')::date`)
@@ -365,6 +383,8 @@ async function queryRecentUsers() {
       userCreatedAt: userProfiles.createdAt,
     })
     .from(userProfiles)
+    // excluir canary (internal_canary)
+    .where(notCanaryProfile)
     .orderBy(desc(userProfiles.createdAt))
     .limit(5)
 }
@@ -378,11 +398,14 @@ async function queryEngagement() {
   const [totalResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(userProfiles)
+    // excluir canary (internal_canary)
+    .where(notCanaryProfile)
 
   const [withTestsResult] = await db
     .select({ count: sql<number>`count(distinct ${tests.userId})::int` })
     .from(tests)
-    .where(eq(tests.isCompleted, true))
+    // excluir canary (internal_canary)
+    .where(and(eq(tests.isCompleted, true), notCanaryTests))
 
   const total = totalResult?.count ?? 0
   const withTests = withTestsResult?.count ?? 0

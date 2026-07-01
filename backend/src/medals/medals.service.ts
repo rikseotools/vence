@@ -510,6 +510,9 @@ export class MedalsService {
           WHERE tq.user_id IS NOT NULL
             AND tq.created_at >= ${startISO}::timestamptz
             AND tq.created_at <= ${endISO}::timestamptz
+            -- Excluir cuentas canary/smoke (100% sintético): no deben ganar
+            -- medallas ni desplazar a usuarios reales del 1er puesto.
+            AND tq.user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
           GROUP BY tq.user_id
           HAVING COUNT(*) >= 5
           ORDER BY accuracy DESC, total_questions DESC

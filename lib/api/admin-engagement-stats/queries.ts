@@ -7,6 +7,12 @@ import type { EngagementStatsResponse } from './schemas'
 // This avoids GROUP BY mismatches where Postgres sees $1 vs $2 for the same value.
 const TZ = sql.raw("'Europe/Madrid'")
 
+// excluir canary (internal_canary): predicado reutilizable. `col` es la columna
+// de user id (user_id, t.user_id, id, up.id) que NO debe ser la cuenta canary,
+// para que la cuenta sintética no infle usuarios/DAU/MAU/engagement/retención.
+const notCanary = (col: string) =>
+  sql.raw(`${col} NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')`)
+
 // ============================================
 // 1. CORE METRICS
 // ============================================
@@ -16,7 +22,7 @@ async function getCoreMetrics() {
 
   const result = await db.execute(sql`
     SELECT
-      (SELECT COUNT(*)::int FROM user_profiles) AS total_users,
+      (SELECT COUNT(*)::int FROM user_profiles WHERE ${notCanary('id')}) AS total_users,
       COALESCE((
         SELECT ROUND(AVG(dau))::int
         FROM (
@@ -24,6 +30,7 @@ async function getCoreMetrics() {
           FROM tests
           WHERE started_at IS NOT NULL
             AND started_at >= NOW() - INTERVAL '7 days'
+            AND ${notCanary('user_id')}
           GROUP BY (started_at AT TIME ZONE ${TZ})::date
         ) daily
       ), 0) AS average_dau,
@@ -32,6 +39,7 @@ async function getCoreMetrics() {
         FROM tests
         WHERE started_at IS NOT NULL
           AND started_at >= NOW() - INTERVAL '30 days'
+          AND ${notCanary('user_id')}
       ) AS mau
   `)
 
@@ -62,6 +70,7 @@ async function getDauMauHistory() {
       FROM tests
       WHERE started_at IS NOT NULL
         AND started_at >= NOW() - INTERVAL '30 days'
+        AND ${notCanary('user_id')}
     ),
     days AS (
       SELECT d::date AS day
@@ -78,6 +87,7 @@ async function getDauMauHistory() {
       FROM tests
       WHERE started_at IS NOT NULL
         AND started_at >= NOW() - INTERVAL '14 days'
+        AND ${notCanary('user_id')}
       GROUP BY (started_at AT TIME ZONE ${TZ})::date
     )
     SELECT
@@ -128,6 +138,7 @@ async function getActivationData() {
       FROM user_profiles
       WHERE first_test_completed_at IS NOT NULL
         AND (created_at AT TIME ZONE ${TZ})::date = (first_test_completed_at AT TIME ZONE ${TZ})::date
+        AND ${notCanary('id')}
     )
     SELECT
       d.day::text AS date,
@@ -160,6 +171,8 @@ async function getActivationData() {
       SELECT
         COALESCE(registration_source, 'organic') AS source
       FROM user_profiles
+      -- excluir canary (internal_canary)
+      WHERE ${notCanary('id')}
     ),
     activated_users AS (
       SELECT
@@ -167,6 +180,7 @@ async function getActivationData() {
       FROM user_profiles
       WHERE first_test_completed_at IS NOT NULL
         AND (created_at AT TIME ZONE ${TZ})::date = (first_test_completed_at AT TIME ZONE ${TZ})::date
+        AND ${notCanary('id')}
     )
     SELECT
       (SELECT COUNT(*)::int FROM all_users WHERE source IN ('organic', '')) AS total_organic,
@@ -209,6 +223,7 @@ async function getEngagementDepthData() {
       FROM tests
       WHERE started_at IS NOT NULL
         AND started_at >= NOW() - INTERVAL '30 days'
+        AND ${notCanary('user_id')}
       GROUP BY user_id
     ),
     streaks AS (
@@ -231,6 +246,7 @@ async function getEngagementDepthData() {
             FROM tests
             WHERE started_at IS NOT NULL
               AND started_at >= NOW() - INTERVAL '90 days'
+              AND ${notCanary('user_id')}
           ) unique_days
         ) grouped
         GROUP BY user_id, grp
@@ -267,6 +283,7 @@ async function getEngagementDepthData() {
       FROM tests
       WHERE started_at IS NOT NULL
         AND started_at >= NOW() - INTERVAL '30 days'
+        AND ${notCanary('user_id')}
       GROUP BY user_id
     ) per_user
     GROUP BY days_active
@@ -312,6 +329,7 @@ async function getEngagementDepthData() {
         ON t.started_at IS NOT NULL
         AND (t.started_at AT TIME ZONE ${TZ})::date >= m.month_start
         AND (t.started_at AT TIME ZONE ${TZ})::date <= m.month_end
+        AND ${notCanary('t.user_id')}
       GROUP BY m.month_start
     ),
     monthly_days AS (
@@ -327,6 +345,7 @@ async function getEngagementDepthData() {
         FROM tests
         WHERE started_at IS NOT NULL
           AND started_at >= NOW() - INTERVAL '6 months'
+          AND ${notCanary('user_id')}
         GROUP BY date_trunc('month', (started_at AT TIME ZONE ${TZ})::date)::date, user_id
       ) sub ON sub.month_start = m.month_start
       GROUP BY m.month_start
@@ -370,6 +389,7 @@ async function getHabitFormationData() {
       FROM tests
       WHERE started_at IS NOT NULL
         AND started_at >= NOW() - INTERVAL '30 days'
+        AND ${notCanary('user_id')}
       GROUP BY user_id
     ),
     mau AS (
@@ -428,6 +448,7 @@ async function getHabitFormationData() {
         ON t.started_at IS NOT NULL
         AND (t.started_at AT TIME ZONE ${TZ})::date >= m.month_start
         AND (t.started_at AT TIME ZONE ${TZ})::date <= m.month_end
+        AND ${notCanary('t.user_id')}
       GROUP BY m.month_start, m.days_in_month, t.user_id
     )
     SELECT
@@ -474,6 +495,7 @@ async function getRetentionData() {
       JOIN user_profiles up
         ON (up.created_at AT TIME ZONE ${TZ})::date >= (NOW() AT TIME ZONE ${TZ})::date - (w.week_offset * 7)
         AND (up.created_at AT TIME ZONE ${TZ})::date < (NOW() AT TIME ZONE ${TZ})::date - ((w.week_offset - 1) * 7)
+        AND ${notCanary('up.id')}
     )
     SELECT
       c.week_offset,
@@ -545,6 +567,7 @@ async function getRetentionData() {
       JOIN user_profiles up
         ON (up.created_at AT TIME ZONE ${TZ})::date >= (NOW() AT TIME ZONE ${TZ})::date - ((p.period_offset + 1) * 7)
         AND (up.created_at AT TIME ZONE ${TZ})::date < (NOW() AT TIME ZONE ${TZ})::date - (p.period_offset * 7)
+        AND ${notCanary('up.id')}
     )
     SELECT
       pu.period_offset,
@@ -616,6 +639,7 @@ async function getRetentionData() {
       JOIN user_profiles up
         ON (up.created_at AT TIME ZONE ${TZ})::date >= (NOW() AT TIME ZONE ${TZ})::date - ((w.week_offset + 1) * 7)
         AND (up.created_at AT TIME ZONE ${TZ})::date < (NOW() AT TIME ZONE ${TZ})::date - (w.week_offset * 7)
+        AND ${notCanary('up.id')}
     )
     SELECT
       wu.week_offset,

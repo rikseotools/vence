@@ -76,6 +76,8 @@ export async function getActivityChartData(days = 14): Promise<ActivityChartResp
     where started_at >= ${queryStart.toISOString()}::timestamptz
       and started_at < ${new Date(nowMadrid.getFullYear(), nowMadrid.getMonth(), nowMadrid.getDate() + 1).toISOString()}::timestamptz
       and user_id is not null
+      -- excluir canary (internal_canary)
+      and user_id not in (select id from user_profiles where registration_source = 'internal_canary')
     group by (started_at at time zone 'Europe/Madrid')::date
     order by day
   `)
@@ -141,6 +143,8 @@ export async function getRegistrationsChartData(days = 14): Promise<Registration
       count(*) filter (where registration_source is null or registration_source = 'unknown')::int as other
     from user_profiles
     where created_at >= ${startDate.toISOString()}::timestamptz
+      -- excluir canary (internal_canary)
+      and registration_source is distinct from 'internal_canary'
     group by (created_at at time zone 'Europe/Madrid')::date
     order by day
   `)

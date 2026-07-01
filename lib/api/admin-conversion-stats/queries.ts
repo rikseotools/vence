@@ -4,6 +4,10 @@ import { userProfiles, conversionEvents, cancellationFeedback } from '@/db/schem
 import { sql, gte, lt, and, eq, isNotNull } from 'drizzle-orm'
 import type { ConversionStatsResponse } from './schemas'
 
+// excluir canary (internal_canary): la cuenta sintética de smoke-test no debe
+// contar como registro/usuario activo. IS DISTINCT FROM conserva NULLs.
+const notCanaryProfile = sql`${userProfiles.registrationSource} IS DISTINCT FROM 'internal_canary'`
+
 // -- Helpers --
 
 function daysAgoISO(days: number): string {
@@ -43,12 +47,16 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
         coalesce(registration_source, 'organic') as source
       FROM user_profiles
       WHERE created_at >= ${periodFrom}
+        -- excluir canary (internal_canary)
+        AND registration_source IS DISTINCT FROM 'internal_canary'
       GROUP BY coalesce(registration_source, 'organic')
     `),
 
     // 2: Total usuarios all-time
     db.select({ count: sql<number>`count(*)::int` })
-    .from(userProfiles),
+    .from(userProfiles)
+    // excluir canary (internal_canary)
+    .where(notCanaryProfile),
 
     // 3: Primer test completado en período (solo count)
     db.select({ count: sql<number>`count(*)::int` })
@@ -56,6 +64,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     .where(and(
       isNotNull(userProfiles.firstTestCompletedAt),
       gte(userProfiles.firstTestCompletedAt, periodFrom),
+      // excluir canary (internal_canary)
+      notCanaryProfile,
     )),
 
     // 4: Eventos agrupados por día + tipo (para dailyStats)
@@ -66,6 +76,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
         count(*)::int as cnt
       FROM conversion_events
       WHERE created_at >= ${periodFrom}
+        -- excluir canary (internal_canary)
+        AND user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
       GROUP BY to_char(created_at, 'DD/MM/YYYY'), event_type
       ORDER BY min(created_at) DESC
     `),
@@ -79,6 +91,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       FROM tests t
       JOIN user_profiles up ON t.user_id = up.id
       WHERE t.created_at >= ${periodFrom}
+        -- excluir canary (internal_canary)
+        AND up.registration_source IS DISTINCT FROM 'internal_canary'
     `),
 
     // 6: DAU 7 días
@@ -90,6 +104,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       FROM tests t
       JOIN user_profiles up ON t.user_id = up.id
       WHERE t.created_at >= ${sevenDaysAgoStr}
+        -- excluir canary (internal_canary)
+        AND up.registration_source IS DISTINCT FROM 'internal_canary'
     `),
   ])
 
@@ -108,6 +124,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       FROM tests t
       JOIN user_profiles up ON t.user_id = up.id
       WHERE up.created_at >= ${periodFrom}
+        -- excluir canary (internal_canary)
+        AND up.registration_source IS DISTINCT FROM 'internal_canary'
     `),
 
     // 8: Pagos del período
@@ -153,6 +171,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       SELECT event_type, count(DISTINCT user_id)::int as cnt
       FROM conversion_events
       WHERE created_at >= ${periodFrom}
+        -- excluir canary (internal_canary)
+        AND user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
       GROUP BY event_type
     `),
   ])
@@ -170,6 +190,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     .where(and(
       gte(userProfiles.createdAt, prevFrom),
       lt(userProfiles.createdAt, periodFrom),
+      // excluir canary (internal_canary)
+      notCanaryProfile,
     )),
 
     // 14: Primer test período anterior
@@ -179,6 +201,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       isNotNull(userProfiles.firstTestCompletedAt),
       gte(userProfiles.firstTestCompletedAt, prevFrom),
       lt(userProfiles.firstTestCompletedAt, periodFrom),
+      // excluir canary (internal_canary)
+      notCanaryProfile,
     )),
 
     // 15: Funnel anterior (count distinct users por event_type)
@@ -186,6 +210,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       SELECT event_type, count(DISTINCT user_id)::int as cnt
       FROM conversion_events
       WHERE created_at >= ${prevFrom} AND created_at < ${periodFrom}
+        -- excluir canary (internal_canary)
+        AND user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
       GROUP BY event_type
     `),
 

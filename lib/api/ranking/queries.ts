@@ -429,7 +429,9 @@ export async function getStreakRanking(params: GetStreakRankingRequest): Promise
         currentStreak: userStreaks.currentStreak,
       })
       .from(userStreaks)
-      .where(sql`${userStreaks.lastActivityDate} >= ${minDate} AND ${userStreaks.currentStreak} >= 2`)
+      // Excluir cuentas canary/smoke (internal_canary): corren a diario y
+      // podrían colarse en el ranking de rachas si su streak sube a ≥2.
+      .where(sql`${userStreaks.lastActivityDate} >= ${minDate} AND ${userStreaks.currentStreak} >= 2 AND ${userStreaks.userId} NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')`)
 
     // Cap streak por maxDays del periodo
     let streakData = rows.map(r => ({
