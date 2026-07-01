@@ -308,7 +308,14 @@ export default function UserAvatar() {
 
   // ── Render: loading ──
 
-  if (authLoading) {
+  // Solo mostrar el placeholder gris (no clicable) cuando NO sabemos aún quién
+  // es el usuario. Si `user` ya está (pre-hidratado de localStorage en
+  // AuthContext), renderizamos el botón CLICABLE aunque `authLoading` siga true
+  // esperando al perfil. Bug real (Mediagen, 30/06): en heavy users el
+  // /api/profile tarda 6.8s+/timeout → authLoading se quedaba true → el icono
+  // era un círculo gris muerto = "no puedo acceder a mi icono de la cuenta".
+  // El menú funciona con `user`; los stats/Premium rellenan al llegar el perfil.
+  if (authLoading && !user) {
     return (
       <div className="animate-pulse">
         <div className="w-10 h-10 bg-gray-300 rounded-full"></div>

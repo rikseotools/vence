@@ -233,6 +233,13 @@ function AuthConsumer({ onRender }: { onRender: (value: Record<string, unknown>)
 
 // --- Tests ---
 
+// Aislar localStorage entre tests: AuthContext ahora cachea el perfil ahí
+// (pre-hidratación). Sin esto, un perfil premium cacheado por un test se
+// filtra al siguiente (falso isPremium=true).
+beforeEach(() => {
+  try { localStorage.clear() } catch {}
+})
+
 describe('AuthContext — INITIAL_SESSION refactor', () => {
   beforeEach(() => {
     jest.useFakeTimers()
@@ -277,6 +284,53 @@ describe('AuthContext — INITIAL_SESSION refactor', () => {
     // After profile loads, loading should be false
     const finalRender = renders[renders.length - 1]
     expect(finalRender.loading).toBe(false)
+  })
+
+  // 🐛 DESACOPLE / regresión Mediagen (30/06): heavy user con /api/profile a
+  // 6.8s+/timeout por saturación del pool. ANTES loading se quedaba true todo
+  // ese rato (UI congelada). AHORA, con perfil pre-hidratado de localStorage,
+  // loading resuelve YA y el fetch solo refresca en background.
+  test('DESACOPLE: con perfil cacheado, loading resuelve SIN esperar el /api/profile lento', async () => {
+    const renders: Array<{ loading: boolean; isPremium: boolean; userProfile: Record<string, unknown> | null }> = []
+
+    // Usuario que vuelve: sesión + perfil premium cacheados en localStorage.
+    localStorage.setItem('sb-test-auth', JSON.stringify({ user: { id: 'u1', email: 'heavy@test.com' } }))
+    localStorage.setItem('sb-test-profile', JSON.stringify({
+      profile: { id: 'u1', plan_type: 'premium', email: 'heavy@test.com' },
+      cachedAt: Date.now(),
+    }))
+
+    // /api/profile MUY lento (5s) — simula la saturación del pool (Mediagen: 6.8s).
+    configureProfileFetch({
+      data: { id: 'u1', planType: 'premium', email: 'heavy@test.com' },
+      delay: 5000,
+    })
+    mockSupabase = createMockSupabase({ user: { id: 'u1', email: 'heavy@test.com' } })
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={(v) => renders.push({ loading: v.loading as boolean, isPremium: v.isPremium as boolean, userProfile: v.userProfile })} />
+        </AuthProvider>
+      )
+    })
+
+    // Disparar INITIAL_SESSION (setTimeout 0) + microtasks, SIN llegar a los 5s del fetch.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(50)
+    })
+
+    const finalRender = renders[renders.length - 1]
+    // ✅ loading resolvió SIN esperar los 5s del fetch lento (antes: se quedaba true).
+    expect(finalRender.loading).toBe(false)
+    // ✅ isPremium correcto desde el cache (sin flicker a no-premium).
+    expect(finalRender.isPremium).toBe(true)
+    expect(finalRender.userProfile?.id).toBe('u1')
+    // ✅ el fetch de refresco SÍ se disparó (background, no bloqueante).
+    expect(profileFetchCallCount).toBeGreaterThan(0)
+
+    localStorage.removeItem('sb-test-auth')
+    localStorage.removeItem('sb-test-profile')
   })
 
   test('isPremium es true cuando perfil premium carga via INITIAL_SESSION', async () => {

@@ -97,10 +97,34 @@ beforeEach(() => {
 // ============================================
 
 describe('UserAvatar', () => {
-  test('shows skeleton when authLoading=true', () => {
-    mockAuthReturn = { ...mockAuthReturn, loading: true }
+  test('shows skeleton when authLoading=true AND no user yet (estado desconocido)', () => {
+    mockAuthReturn = { ...mockAuthReturn, loading: true, user: null }
     const { container } = render(<UserAvatar />)
     expect(container.querySelector('.animate-pulse')).toBeInTheDocument()
+    // No debe renderizar el botón de cuenta si no sabemos quién es.
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  // 🐛 Regresión Mediagen (30/06): en heavy users el /api/profile tarda 6.8s+/
+  // timeout → AuthContext deja loading=true todo ese rato → ANTES UserAvatar
+  // mostraba un círculo gris NO clicable = "no puedo acceder a mi icono de la
+  // cuenta". Con user ya pre-hidratado, el botón debe ser clicable aunque
+  // authLoading siga true (el perfil/stats rellenan luego).
+  test('renderiza avatar CLICABLE cuando authLoading=true pero user ya conocido', async () => {
+    mockAuthReturn = { ...mockAuthReturn, loading: true, user: mockUser }
+    render(<UserAvatar />)
+
+    // El render del skeleton gris NO tiene <button>. Que exista el botón de
+    // cuenta prueba que NO estamos en el placeholder muerto.
+    const button = screen.getByRole('button')
+    expect(button).toBeInTheDocument()
+    // Muestra la inicial del usuario (no un círculo gris vacío).
+    expect(screen.getAllByText('M').length).toBeGreaterThan(0)
+    // Y es clicable → abre el menú de cuenta.
+    await act(async () => { fireEvent.click(button) })
+    await waitFor(() => {
+      expect(screen.getByText('Mi Perfil')).toBeInTheDocument()
+    })
   })
 
   test('shows login button when no user', () => {

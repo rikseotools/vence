@@ -470,8 +470,12 @@ export default function HeaderES() {
     return 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm'
   }
 
-  // Mostrar loading mientras se verifica auth
-  if (authLoading) {
+  // Mostrar header de loading SOLO cuando aún no sabemos quién es el usuario.
+  // Si `user` ya está (pre-hidratado de localStorage), renderizamos el header
+  // COMPLETO (con el icono de cuenta clicable) aunque el PERFIL siga cargando
+  // — evita que un /api/profile lento por saturación (caso Mediagen 30/06)
+  // esconda toda la cabecera. El header ya guarda userProfile/isPremium null.
+  if (authLoading && !user) {
     return (
       <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 h-16">
         <div className="container mx-auto px-4 py-6">

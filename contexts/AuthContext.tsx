@@ -71,6 +71,54 @@ interface AuthProviderProps {
   initialUser?: User | null
 }
 
+// 💾 Cache de perfil en localStorage — desacopla la UI del fetch de /api/profile.
+// Motivo (caso Mediagen, 30/06/2026): en heavy users el /api/profile (un simple
+// PK lookup) tarda 6.8s+/timeout por SATURACIÓN del pool → AuthContext dejaba
+// `loading=true` todo ese rato → toda la UI congelada (icono de cuenta muerto,
+// tests sin cargar). Persistiendo el perfil y pre-hidratándolo al montar, el
+// usuario que vuelve tiene su perfil AL INSTANTE; el fetch de red solo refresca
+// en background. Escalable: la lentitud del pool ya no bloquea el render.
+const PROFILE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 días
+
+function profileCacheKey(): string | null {
+  if (typeof window === 'undefined') return null
+  const ref = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('://')[1]?.split('.')[0]
+  return ref ? `sb-${ref}-profile` : null
+}
+
+function readCachedProfile(expectedUserId: string): UserProfileRow | null {
+  try {
+    const key = profileCacheKey()
+    if (!key) return null
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // Solo aceptar si es del MISMO usuario y no está caducado.
+    if (parsed?.profile?.id !== expectedUserId) return null
+    if (typeof parsed.cachedAt === 'number' && Date.now() - parsed.cachedAt > PROFILE_CACHE_TTL_MS) return null
+    return parsed.profile as UserProfileRow
+  } catch {
+    return null
+  }
+}
+
+function writeCachedProfile(profile: UserProfileRow): void {
+  try {
+    const key = profileCacheKey()
+    if (!key) return
+    localStorage.setItem(key, JSON.stringify({ profile, cachedAt: Date.now() }))
+  } catch {
+    // localStorage lleno/no disponible — el cache es un optimizador, no crítico.
+  }
+}
+
+function clearCachedProfile(): void {
+  try {
+    const key = profileCacheKey()
+    if (key) localStorage.removeItem(key)
+  } catch {}
+}
+
 export function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser)
   const [userProfile, setUserProfile] = useState<UserProfileRow | null>(null)
@@ -91,6 +139,10 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   const updateUserProfile = (profile: UserProfileRow | null) => {
     userProfileRef.current = profile
     setUserProfile(profile)
+    // Persistir SOLO perfiles reales para pre-hidratar la próxima carga. Un
+    // `null` puede ser transitorio (timeout del fetch por saturación, línea del
+    // AbortError) → NO borrar el cache aquí; solo el logout real lo limpia.
+    if (profile) writeCachedProfile(profile)
   }
 
   const updateProfileLoading = (val: boolean) => {
@@ -215,7 +267,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   // Motivo: el SDK de Supabase deadlockeaba cuando había token refresh simultáneo —
   // la query PostgREST se quedaba colgada sin respetar el AbortController.
   // fetch() estándar SÍ respeta AbortController correctamente.
-  const loadUserProfile = useCallback(async (userId: string, retryCount = 0): Promise<UserProfileRow | null> => {
+  const loadUserProfile = useCallback(async (userId: string, retryCount = 0, forceRefresh = false): Promise<UserProfileRow | null> => {
     const MAX_RETRIES = 3
 
     // 🎯 Singleflight: si ya hay una carga en curso para este userId, devolver
@@ -239,8 +291,10 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       }
     }
 
-    // Si ya tenemos el perfil del usuario correcto, no recargar
-    if (userProfileRef.current && userProfileRef.current.id === userId && retryCount === 0) {
+    // Si ya tenemos el perfil del usuario correcto, no recargar — SALVO
+    // forceRefresh (refresco en background tras pre-hidratar de cache: queremos
+    // datos frescos aunque ya mostremos los cacheados).
+    if (userProfileRef.current && userProfileRef.current.id === userId && retryCount === 0 && !forceRefresh) {
       console.log('✅ Perfil ya cargado para este usuario, reutilizando')
       return userProfileRef.current
     }
@@ -347,12 +401,21 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           await new Promise(resolve => setTimeout(resolve, delay))
           return loadUserProfile(userId, retryCount + 1)
         }
-        console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
         logClientError('auth/load-user-profile', new Error('profile load timeout after retries'), {
           component: 'AuthContext.loadUserProfile',
           userId,
           severity: 'warning',
         })
+        // 🛡️ Resiliencia: si tenemos perfil cacheado del MISMO usuario (p.ej.
+        // pre-hidratado de localStorage), un timeout transitorio NO debe borrarlo
+        // — mantenemos el cacheado y refrescará en el próximo intento. Igual que
+        // el manejo del 404. Evita que un heavy user con pool saturado vea la UI
+        // degradar a "sin perfil" (isPremium=false) por un fetch lento.
+        if (userProfileRef.current && userProfileRef.current.id === userId) {
+          console.warn('⏱️ Timeout de perfil pero hay cache del mismo user — manteniéndolo')
+          return userProfileRef.current
+        }
+        console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
         updateUserProfile(null)
         return null
       }
@@ -557,7 +620,11 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             const parsed = JSON.parse(raw)
             if (parsed?.user?.id) {
               setUser(parsed.user)
-              console.log('🚀 Pre-hydrate: usuario de localStorage:', parsed.user.email)
+              // 💾 Pre-hidratar TAMBIÉN el perfil cacheado → UI funcional al
+              // instante aunque /api/profile vaya lento (saturación).
+              const cachedProfile = readCachedProfile(parsed.user.id)
+              if (cachedProfile) updateUserProfile(cachedProfile)
+              console.log('🚀 Pre-hydrate: usuario de localStorage:', parsed.user.email, cachedProfile ? '(+perfil cacheado)' : '')
             }
           }
         }
@@ -566,6 +633,8 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       }
     } else {
       setUser(initialUser)
+      const cachedProfile = readCachedProfile(initialUser.id)
+      if (cachedProfile) updateUserProfile(cachedProfile)
     }
 
     // 🎯 FUENTE DE VERDAD: onAuthStateChange con INITIAL_SESSION
@@ -598,8 +667,11 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         if (event === 'INITIAL_SESSION') {
           // === CARGA INICIAL (token ya refrescado por _initialize) ===
           if (newUser) {
-            console.log('🔐 INITIAL_SESSION: cargando perfil con token válido...')
-            await loadUserProfile(newUser.id).then(loadedProfile => {
+            const hasCachedProfile = userProfileRef.current?.id === newUser.id
+            console.log('🔐 INITIAL_SESSION: cargando perfil con token válido...', hasCachedProfile ? '(cacheado → refresco en background, sin bloquear UI)' : '')
+            // forceRefresh=true: aunque haya perfil cacheado pre-hidratado,
+            // traemos datos frescos del servidor (en background si hay cache).
+            const profilePromise = loadUserProfile(newUser.id, 0, true).then(loadedProfile => {
               if (!loadedProfile) {
                 console.log('🆕 Perfil no encontrado en INITIAL_SESSION, creando...')
                 return ensureUserProfile(newUser)
@@ -608,6 +680,14 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             }).catch((err: any) => {
               console.warn('⚠️ Error cargando perfil en INITIAL_SESSION:', err)
             })
+            // 🔓 DESACOPLE (fix Mediagen): con perfil cacheado pre-hidratado NO
+            // bloqueamos `loading` en el fetch (que puede tardar 6.8s+ por
+            // saturación) — refresca en background. Sin cache (usuario fresco /
+            // primer login) SÍ esperamos: onboarding y decisiones iniciales
+            // necesitan el perfil real antes de soltar la UI.
+            if (!hasCachedProfile) {
+              await profilePromise
+            }
           } else {
             console.log('👤 INITIAL_SESSION: sin usuario')
             // 🛡️ Resiliencia ante Supabase saturado: si teníamos un perfil cacheado,
@@ -640,6 +720,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
                           // Sesión realmente perdida — limpiar
                           console.log('👋 Sesión perdida tras 2 reintentos — limpiando')
                           updateUserProfile(null)
+                          clearCachedProfile()
                           setUser(null)
                         }
                       } catch {
@@ -668,6 +749,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
                   if (supabaseUrl) {
                     const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
                     localStorage.removeItem(storageKey)
+                    clearCachedProfile() // también el perfil cacheado (logout genuino)
                     console.log('🧹 localStorage limpiado (token expirado)')
                   }
                 } catch {}
@@ -733,6 +815,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           console.log('👋 SIGNED_OUT')
           setUser(null)
           updateUserProfile(null)
+          clearCachedProfile() // logout real → tirar el perfil cacheado
           setLoading(false)
         }
 
