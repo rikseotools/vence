@@ -121,24 +121,49 @@ describe('Admin Sales Prediction - Queries', () => {
     jest.resetModules()
   })
 
-  it('getRegistrationData should return users', async () => {
+  it('getRegistrationData should return users and exclude canary via where()', async () => {
+    const whereMock = jest.fn(() => Promise.resolve([
+      { id: 'user1', createdAt: '2025-01-01', planType: 'free' },
+      { id: 'user2', createdAt: '2025-01-02', planType: 'premium' },
+    ]))
     jest.doMock('@/db/client', () => ({
       getDb: () => ({
         select: () => ({
-          from: () => Promise.resolve([
-            { id: 'user1', createdAt: '2025-01-01', planType: 'free' },
-            { id: 'user2', createdAt: '2025-01-02', planType: 'premium' },
-          ]),
+          from: () => ({ where: whereMock }),
         }),
       }),
     }))
     jest.doMock('@/db/schema', () => ({
-      userProfiles: {},
+      userProfiles: { registrationSource: 'registration_source', id: 'id', createdAt: 'created_at', planType: 'plan_type' },
     }))
 
     const { getRegistrationData } = require('@/lib/api/admin-sales-prediction/queries')
     const result = await getRegistrationData()
     expect(result).toHaveLength(2)
+    // Se aplica un filtro (excluye internal_canary) — antes no había where()
+    expect(whereMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('getConversionData filters payment_completed and excludes canary', async () => {
+    const orderByMock = jest.fn(() => Promise.resolve([{ userId: 'u1', createdAt: '2025-01-01', eventData: { amount: 10 } }]))
+    const whereMock = jest.fn(() => ({ orderBy: orderByMock }))
+    jest.doMock('@/db/client', () => ({
+      getDb: () => ({
+        select: () => ({
+          from: () => ({ where: whereMock }),
+        }),
+      }),
+    }))
+    jest.doMock('@/db/schema', () => ({
+      conversionEvents: { eventType: 'event_type', userId: 'user_id', createdAt: 'created_at', eventData: 'event_data' },
+    }))
+
+    const { getConversionData } = require('@/lib/api/admin-sales-prediction/queries')
+    const result = await getConversionData()
+    expect(result).toHaveLength(1)
+    // where() combina payment_completed + exclusion de canary; orderBy por fecha
+    expect(whereMock).toHaveBeenCalledTimes(1)
+    expect(orderByMock).toHaveBeenCalledTimes(1)
   })
 
   it('getPredictionAccuracy should return null on error', async () => {

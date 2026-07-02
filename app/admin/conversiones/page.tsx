@@ -948,9 +948,10 @@ export default function ConversionesPage() {
                     ? (((activeUserMetrics.paidNetInPeriod || totals.paidInPeriod) / totals.registrations) * 100).toFixed(2)
                     : '0.00'}%
                 </div>
-                <div className="text-sm opacity-90">Conversion neta ultimos {dateRange} dias</div>
+                <div className="text-sm opacity-90">Ventas netas ÷ registros ({dateRange === '1' ? 'hoy' : `${dateRange}d`})</div>
                 <div className="text-xs opacity-75 mt-1">
-                  {activeUserMetrics.paidNetInPeriod || totals.paidInPeriod} pagos netos / {totals.registrations} registros
+                  Ratio de velocidad, no conversión por cohorte: las ventas provienen de registros anteriores.<br />
+                  {activeUserMetrics.paidNetInPeriod || totals.paidInPeriod} compradores netos / {totals.registrations} registros
                   {activeUserMetrics.refundsInPeriod > 0 && (
                     <span className="ml-1">({activeUserMetrics.refundsInPeriod} refunds)</span>
                   )}
@@ -965,7 +966,7 @@ export default function ConversionesPage() {
                 </div>
                 <div className="text-sm opacity-90">Conversion historica total</div>
                 <div className="text-xs opacity-75 mt-1">
-                  {paidAllTime} pagos / {registrationStats.totalAllTime || 0} usuarios
+                  {paidAllTime} pagadores / {registrationStats.totalAllTime || 0} usuarios
                 </div>
               </div>
             </div>

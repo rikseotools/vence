@@ -25,6 +25,9 @@ export async function getRegistrationData() {
       planType: userProfiles.planType,
     })
     .from(userProfiles)
+    // excluir canary (internal_canary): cuenta sintetica de smoke-test, no cuenta
+    // como usuario/registro real. Consistente con admin-conversion-stats.
+    .where(sql`${userProfiles.registrationSource} IS DISTINCT FROM 'internal_canary'`)
 }
 
 // ============================================
@@ -40,7 +43,11 @@ export async function getConversionData() {
       eventData: conversionEvents.eventData,
     })
     .from(conversionEvents)
-    .where(eq(conversionEvents.eventType, 'payment_completed'))
+    .where(and(
+      eq(conversionEvents.eventType, 'payment_completed'),
+      // excluir pagos del canary (consistencia con registros y conversion-stats)
+      sql`${conversionEvents.userId} NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')`,
+    ))
     .orderBy(sql`${conversionEvents.createdAt} DESC`)
 }
 

@@ -1,7 +1,7 @@
 // lib/api/admin-conversion-stats/queries.ts - Drizzle queries para conversion stats
 import { getAdminDb as getDb } from '@/db/client'
-import { userProfiles, conversionEvents, cancellationFeedback } from '@/db/schema'
-import { sql, gte, lt, and, eq, isNotNull } from 'drizzle-orm'
+import { userProfiles, cancellationFeedback } from '@/db/schema'
+import { sql, gte, lt, and, isNotNull } from 'drizzle-orm'
 import type { ConversionStatsResponse } from './schemas'
 
 // excluir canary (internal_canary): la cuenta sintética de smoke-test no debe
@@ -128,21 +128,25 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
         AND up.registration_source IS DISTINCT FROM 'internal_canary'
     `),
 
-    // 8: Pagos del período
-    db.select({ count: sql<number>`count(*)::int` })
-    .from(conversionEvents)
-    .where(and(
-      eq(conversionEvents.eventType, 'payment_completed'),
-      gte(conversionEvents.createdAt, periodFrom),
-    )),
+    // 8: Pagos del período — PAGADORES DISTINTOS (no count(*) de eventos: una
+    // renovación / 2º pago del mismo usuario NO es una conversión nueva) y sin
+    // canary (consistencia con el funnel, que ya usa count(DISTINCT user_id)).
+    db.execute(sql`
+      SELECT count(DISTINCT user_id)::int as count
+      FROM conversion_events
+      WHERE event_type = 'payment_completed'
+        AND created_at >= ${periodFrom}
+        AND user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
+    `),
 
-    // 9: Pagos 7 días
-    db.select({ count: sql<number>`count(*)::int` })
-    .from(conversionEvents)
-    .where(and(
-      eq(conversionEvents.eventType, 'payment_completed'),
-      gte(conversionEvents.createdAt, sevenDaysAgoStr),
-    )),
+    // 9: Pagos 7 días — pagadores distintos, sin canary
+    db.execute(sql`
+      SELECT count(DISTINCT user_id)::int as count
+      FROM conversion_events
+      WHERE event_type = 'payment_completed'
+        AND created_at >= ${sevenDaysAgoStr}
+        AND user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
+    `),
 
     // 10: Refunds período
     db.select({
@@ -215,10 +219,13 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       GROUP BY event_type
     `),
 
-    // 16: Pagos all-time
-    db.select({ count: sql<number>`count(*)::int` })
-    .from(conversionEvents)
-    .where(eq(conversionEvents.eventType, 'payment_completed')),
+    // 16: Pagos all-time — pagadores distintos, sin canary
+    db.execute(sql`
+      SELECT count(DISTINCT user_id)::int as count
+      FROM conversion_events
+      WHERE event_type = 'payment_completed'
+        AND user_id NOT IN (SELECT id FROM user_profiles WHERE registration_source = 'internal_canary')
+    `),
   ])
 
   const t1 = Date.now()
@@ -229,8 +236,9 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
   // ============================================
 
   const totalUsersAllTime = totalUsersRows[0]?.count || 0
-  const paidInPeriod = paidPeriodRows[0]?.count || 0
-  const paidIn7Days = paid7Rows[0]?.count || 0
+  // paidPeriod/paid7 vienen de db.execute → shape {rows:[...]} o array segun driver
+  const paidInPeriod = (((paidPeriodRows as any).rows?.[0] || (paidPeriodRows as any)[0] || {}).count) || 0
+  const paidIn7Days = (((paid7Rows as any).rows?.[0] || (paid7Rows as any)[0] || {}).count) || 0
   const refundsInPeriod = refundsPeriodRows[0]?.count || 0
   const refundsIn7Days = refunds7Rows[0]?.count || 0
   const refundAmountPeriod = refundsPeriodRows[0]?.totalAmount || 0
@@ -333,7 +341,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     },
     dailyStats,
     funnelCounts,
-    paidAllTime: paidAllTimeRows[0]?.count || 0,
+    paidAllTime: (((paidAllTimeRows as any).rows?.[0] || (paidAllTimeRows as any)[0] || {}).count) || 0,
     previousPeriod: {
       registrations: prevRegRows[0]?.count || 0,
       firstTestCompleted: prevFirstTestRows[0]?.count || 0,

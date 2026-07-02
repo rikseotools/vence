@@ -214,6 +214,9 @@ async function _GET() {
 
     // 1. Obtener todos los usuarios con su fecha de registro
     const users = await getRegistrationData()
+    // Indice por id: los lookups user-por-pago eran O(n²) (users.find dentro de
+    // bucles sobre payments). Con este Map pasan a O(1) y el endpoint escala.
+    const usersById = new Map<string | null, typeof users[number]>(users.map(u => [u.id, u]))
 
     // 2. Obtener todos los eventos de pago (incluyendo importe)
     const payments = await getConversionData()
@@ -283,21 +286,21 @@ async function _GET() {
 
     // 3c. Análisis de tipo de conversión
     const sameDayConversions = payments.filter(p => {
-      const user = users.find(u => u.id === p.userId)
+      const user = usersById.get(p.userId)
       if (!user) return false
       const daysDiff = Math.round((new Date(p.createdAt!).getTime() - new Date(user.createdAt!).getTime()) / (1000 * 60 * 60 * 24))
       return daysDiff === 0
     })
 
     const delayedConversions = payments.filter(p => {
-      const user = users.find(u => u.id === p.userId)
+      const user = usersById.get(p.userId)
       if (!user) return false
       const daysDiff = Math.round((new Date(p.createdAt!).getTime() - new Date(user.createdAt!).getTime()) / (1000 * 60 * 60 * 24))
       return daysDiff >= 1
     })
 
     const weeklyActiveFree = [...weeklyActiveUsers].filter(uid => {
-      const user = users.find(u => u.id === uid)
+      const user = usersById.get(uid)
       return user && user.planType !== 'premium' && user.planType !== 'legacy_free'
     })
 
@@ -305,7 +308,7 @@ async function _GET() {
     let avgDaysToConvert = 0
     const conversionTimes: number[] = []
     for (const payment of payments) {
-      const user = users.find(u => u.id === payment.userId)
+      const user = usersById.get(payment.userId)
       if (user) {
         const days = Math.round((new Date(payment.createdAt!).getTime() - new Date(user.createdAt!).getTime()) / (1000 * 60 * 60 * 24))
         conversionTimes.push(days)
