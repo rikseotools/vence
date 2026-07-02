@@ -920,6 +920,15 @@ await s.from('oposiciones')
   .eq('slug', 'auxiliar-administrativo-ayuntamiento-madrid');
 ```
 
+**Asignación EN LOTE tras catalogar descubrimientos (obligatorio — no dejar catalogadas sin `seguimiento_url`).** Cuando se catalogan de golpe varios cuerpos nuevos (p. ej. la tanda de descubrimientos `pag_empleo`/`boe_api`), **cada fila nueva debe salir con `seguimiento_url`** o el radar no la vigila (§892: el cron lee `seguimiento_url`; sin ella, la catalogada es invisible). Herramienta reutilizable e idempotente:
+
+```bash
+npm run oep:seguimiento-urls -- --dry-run   # reporta qué asignaría
+npm run oep:seguimiento-urls                 # aplica a TODAS las catalogadas sin seguimiento_url
+```
+
+`scripts/assign-seguimiento-urls.cjs` rellena toda `catalogada` con `seguimiento_url IS NULL` en dos pasadas: (1) **donante** — reutiliza la URL ya validada de otra oposición del mismo organismo, con `administracion` normalizada (sin acentos, guiones→espacio, `universidade`→`universidad`, así casa "Universidade de Vigo"↔"Universidad de Vigo" y "Servicio Navarro de Salud-Osasunbidea" con/sin espacios); (2) **fallback por CCAA** — portal de empleo público autonómico oficial (mapa `CCAA_FALLBACK` en el script, ampliable), tomado de la CCAA de la señal que la descubrió. Las que no casan ninguna se **reportan** (no se inventa URL — mejor `null` explícito que un enlace que no vigila el proceso real). Correrlo **después de cada tanda de "Aplicar" descubrimientos**. Sigue vigente la regla server-rendered del caveat JS de arriba (los donantes ya lo son; revisar los fallback nuevos que se añadan al mapa).
+
 **Caso secundario — fuente agregadora que NO es un cuerpo concreto** (DGFP, INAP, Moncloa, un BOP entero): va en `generic_source_checks` (RLS admin → `SUPABASE_SERVICE_ROLE_KEY`), la vigila el cron `detect-generic-sources`:
 
 ```javascript

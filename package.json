@@ -12,6 +12,7 @@
     "db:pull": "drizzle-kit introspect",
     "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
     "audit:estados": "node scripts/audit-estados-convocatoria.cjs",
+    "oep:seguimiento-urls": "node scripts/assign-seguimiento-urls.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:served": "npx tsx --env-file=.env.local scripts/audit-served-questions.ts",
     "audit:scraped-reconcile": "node scripts/audit-scraped-reconcile.cjs",
