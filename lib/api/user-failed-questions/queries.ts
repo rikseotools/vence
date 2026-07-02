@@ -135,7 +135,16 @@ export async function getUserFailedQuestions(
       isNull(questions.examCaseId),
     ]
 
-    if (topicNumber) {
+    // El tema se acota por ARTÍCULO vía topic_scope (scopeArticleIds, derivado
+    // arriba del topic_number solicitado): es cross-oposición-correcto y no
+    // depende del tema. El `tema_number` GUARDADO queda congelado a la oposición
+    // activa al responder, así que usarlo como filtro da FALSOS NEGATIVOS cuando
+    // el usuario estudia contenido compartido bajo otra oposición (bug María
+    // 30/06/2026: fallos de la UE guardados como T10-Estado no salían al repasar
+    // "falladas del T1" de Cantabria, pese a que el artículo SÍ está en su T1).
+    // Por eso solo se usa como fallback cuando NO hay filtro de scope por
+    // artículo (oposición sin topic_scope o sin target_oposicion).
+    if (topicNumber && !scopeArticleIds) {
       conditions.push(eq(testQuestions.temaNumber, topicNumber))
     }
 

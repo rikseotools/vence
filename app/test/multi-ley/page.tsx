@@ -121,10 +121,20 @@ function transformApiResponse(apiQuestions: FilteredQuestionResponse[]): Questio
 }
 
 function MultiLeyTestContent() {
-  const { user, loading: authLoading } = useAuth() as {
+  const { user, userProfile, loading: authLoading } = useAuth() as {
     user: { id: string; email?: string } | null
+    userProfile: { target_oposicion?: string | null } | null
     loading: boolean
   }
+  // La oposición del usuario (no un valor fijo): el tema es relativo a la
+  // oposición y se resuelve/muestra según SU temario. Antes se clavaba
+  // 'auxiliar_administrativo_estado', lo que etiquetaba las preguntas con el
+  // nº de tema de Estado para todos (bug María 30/06/2026: la UE salía como
+  // "Tema 10" —Transparencia en Cantabria— en vez de su "Tema 1"). En modo
+  // ley-only la selección NO depende del positionType (solo filtra por las
+  // leyes elegidas), así que esto solo corrige la etiqueta de tema, no qué
+  // preguntas aparecen. Fallback a Estado para anónimos / sin oposición.
+  const userPositionType = userProfile?.target_oposicion || 'auxiliar_administrativo_estado'
   const searchParams = useSearchParams()
 
   // Estados
@@ -232,7 +242,7 @@ function MultiLeyTestContent() {
           headers,
           body: JSON.stringify({
             topicNumber: 0,
-            positionType: 'auxiliar_administrativo_estado',
+            positionType: userPositionType,
             selectedLaws,
             selectedArticlesByLaw: Object.keys(articlesAsNumbers).length > 0
               ? articlesAsNumbers
@@ -279,7 +289,7 @@ function MultiLeyTestContent() {
       loadQuestions()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user?.id, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
+  }, [authLoading, user?.id, userPositionType, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
 
   // Estado de carga
   if (loading || authLoading) {
