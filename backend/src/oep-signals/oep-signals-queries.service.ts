@@ -222,6 +222,10 @@ export class OepSignalsQueriesService {
 
     // 2) Match estructural por familia + nivel de administración + grupo
     //    (módulo puro `oep-match`, precisión > recall). Ver oep-match.ts.
+    //    NO se filtra por is_active: las CATALOGADAS (is_active=false, ~83% del
+    //    catálogo) también se vigilan (norma §10). Excluirlas hacía que toda
+    //    señal de descubrimiento sobre una catalogada existente saliera novel →
+    //    duplicados (caso UAM Escala Especial Básica, 02/07/2026).
     const all = await this.db
       .select({
         id: oposiciones.id,
@@ -232,8 +236,7 @@ export class OepSignalsQueriesService {
         administracion: oposiciones.administracion,
         inscriptionDeadline: oposiciones.inscriptionDeadline,
       })
-      .from(oposiciones)
-      .where(eq(oposiciones.isActive, true));
+      .from(oposiciones);
 
     const best = pickBestMatch(
       {
