@@ -12,6 +12,8 @@ Sesión investigando "por qué no se detectó IIPP" (convocatoria viva de 1.050 
 2. **El cron usa `fetch` plano (NO navegador).** Una URL solo se monitoriza si es **(a) server-rendered** (curl plano devuelve el contenido, no un shell SPA), **(b) TLS válido o el host está en `INSECURE_TLS_HOSTS`**, y **(c) el UA no la bloquea** (el fetcher se identifica como navegador, no como bot). **Antes de dar de alta cualquier `seguimiento_url`, verificar con `curl -sL` plano** que el contenido real está en el HTML. Playwright sirve para *investigar* una SPA, nunca como fuente (el cron no renderiza JS).
 3. **Todas las C1/C2 y Agrupaciones Profesionales al radar, indep. de administración/cuerpo/ministerio** (IIPP, Justicia, Hacienda… no solo "administrativo"). Y **no filtrar `is_active`** — las catalogadas también se vigilan (§10). El descubridor de boletines no debe sesgar el regex a cuerpos administrativos (§10 detect-boletines). **Ampliación 02/07/2026 — Agrupaciones Profesionales (AP, antiguo Grupo E):** el radar tiraba las AP porque el guardarraíl de grupo era `['C1','C2','C']` (`detect-boletines.service.ts`) y el sensor PAG solo escaneaba `idGrupo` 4/5. Se destapó porque una usuaria pidió la *Agrupación Profesional de Servicios Públicos* CARM y el sistema decía "no existe". Fix: guardarraíl `['C1','C2','C','AP','E']` + prompt LLM incluye AP + PAG añade `idGrupo=6` (Agrupaciones Profesionales, "Personal de Servicios") + tests en `boletines.spec.ts`/`pag-empleo.spec.ts`. La AP es un grupo por debajo de C2, sin requisito de titulación.
 
+4. **Descartar es la EXCEPCIÓN, con criterio OBJETIVO (02/07/2026).** El objetivo es la BD más completa y fresca de España. Solo se descarta si (a) degradaría la fila (info más vieja/superada) o (b) no hay ningún campo nuevo (mirar campo a campo el `raw_extraction`). **Cualquier otra razón es un juicio subjetivo mío ("no vendible", "solo una bolsa", "promoción interna", "sin runway") y provoca descartes sin querer → PROHIBIDA.** Si tiene fila se enriquece; si no la tiene se cataloga (`is_active=false`), sea del tipo que sea. Y antes de descartar un `oposicion_id IS NULL` o crear fila nueva, **buscar la fila existente por slug/nombre** (el matcher falla). Regla completa + casos reales en §1 ("⛔ Regla de descarte").
+
 **Método para fuentes que no leen:** clasificar el fallo con `curl` (estricto vs `-k` vs UA) → cert-chain roto = `INSECURE_TLS_HOSTS`; WAF por UA = UA navegador; SPA/WAF por IP = migrar a boletín oficial server-rendered (BOP/BOJA/BOE/CIDO-Diba/sede-STA). Cuando dos diagnósticos discrepan (cert vs IP-reset), **decidir empíricamente re-corriendo el baseline real**, no a ojo. Detalle de los 3 patrones en §16.bis.
 
 ## Arquitectura actual (desde 06/04/2026): sistema multi-sensor
@@ -103,6 +105,33 @@ ORDER BY s.confidence_score DESC;
 ```
 
 **Y verificar antes de aplicar (lección SAS, ver §9):** el `llm_semantic` a veces extrae datos de un **ciclo distinto** al que modela nuestra fila (p. ej. promoción interna vs libre, u OEP vieja ya examinada). Cotejar el `detected_*` con el ciclo real de la oposición antes de modificar; si la señal es de otro turno/ciclo → `dismissed` con nota, no aplicar.
+
+### ⛔ REGLA DE DESCARTE — descartar es la EXCEPCIÓN, no el default (aprendizaje 02/07/2026)
+
+> Objetivo del radar: **la BD de oposiciones más completa y fresca de España.** Descartar una señal tira dato. Por eso, ante cada `pending`, la pregunta NO es "¿esto es vendible / lo vamos a construir?" — es **"¿qué campo puedo escribir con esto?"**. Solo se descarta tras confirmar que NO hay ninguno.
+
+**El criterio de descarte es OBJETIVO, nunca un juicio.** Descartar SOLO por una de estas dos razones **verificables** (y decirlo en `admin_notes`):
+1. **Degradaría la fila** — la señal trae info de un ciclo **más viejo / ya superado** que el que rastrea la BD (p. ej. OEP 2016 examinada en 2019 cuando la fila ya va por la OEP 21/22/23; estabilización 2019 cuando la fila modela la OEP 2025). No sobrescribir un estado nuevo con uno viejo.
+2. **No hay ningún campo nuevo** — todo lo que trae la señal ya está reflejado igual en la BD (mirar **campo a campo** el `raw_extraction`, no a ojo).
+
+**Cualquier otra razón es un JUICIO SUBJETIVO y produce descartes sin querer → PROHIBIDO descartar por ellas.** Palabras que delatan que estás a punto de equivocarte: *"no vendible", "no lo vamos a construir", "es solo una bolsa temporal", "es promoción interna", "sin runway", "poco relevante", "niche"*. Todas son opiniones, no hechos de la BD. Ante una señal así:
+- Si tiene fila → **enriquecer** (las catalogadas `is_active=false` se actualizan igual, norma §10: `estado_proceso` solo hacia delante, `plazas_*`, fechas, `boe_reference`/`diario_referencia`, `convocatoria_numero`).
+- Si NO tiene fila → **catalogar** una fila nueva (`is_active=false`, `coverage_level='catalogada'`) aunque sea bolsa temporal / promoción interna / cuerpo raro. Si falta un `seguimiento_url` fiable, catalogar igual con los campos que haya y anotar que falta la URL — NUNCA inventarla, NUNCA descartar por eso.
+
+Casos reales 02/07/2026 (los tres empezaron mal, como descarte, y se corrigieron):
+- **Consell de Mallorca** — estaba `inscripcion_cerrada` (correcto) pero `boe_reference = NULL`; la señal traía BOIB nº46 + código OPO03/24 → enriquecimiento real casi tirado por "ya está cerrada, no aporta". Mirar campo a campo lo salva.
+- **Subinspector Pol. Municipal Valladolid** y **Bolsa Aux. Admin. estatutario temporal CyL** — casi descartadas por "promoción interna / bolsa temporal, no vendible". Se **catalogaron** como filas de radar. Lo subjetivo NO es motivo.
+
+**Antes de descartar una señal con `oposicion_id IS NULL` como "cuerpo nuevo/ruido" O antes de crear una fila nueva: BUSCAR la fila existente por slug/nombre.** El matcher (`oep-match.ts` + `oep-signals-queries.service.ts`) puede dejar `oposicion_id=NULL` en cuerpos que SÍ están catalogados, por dos razones:
+> - **Gap 1 — CORREGIDO 02/07/2026:** el pool de candidatos filtraba `is_active=true`, excluyendo las ~459 catalogadas (83% del catálogo). Toda señal de descubrimiento (PAG/regional/BOE) sobre una catalogada existente salía novel. Fix: se quitó el filtro (`oep-signals-queries.service.ts`, el `.from(oposiciones)` ya no lleva `.where(isActive)`).
+> - **Gap 2 — ABIERTO (30% del catálogo):** `classifyFamily` solo modela 12 familias; **165 oposiciones** (bomberos, escalas universitarias, técnicos, agentes forestales, catastro, bibliotecarios…) no tienen familia → siguen saliendo novel aunque estén en el pool. Mientras no haya fallback por nombre, esos cuerpos hay que **buscarlos y enlazarlos/catalogarlos a mano** (por eso esta regla existe). Caso 02/07: *Escala Especial Básica UAM* (sin familia + era catalogada) casi se duplica.
+
+Comprobar siempre:
+```sql
+SELECT id, slug, estado_proceso FROM oposiciones
+WHERE slug ILIKE '%<palabra-clave>%' OR nombre ILIKE '%<cuerpo>%';
+```
+Si existe → enlazar (`UPDATE oep_detection_signals SET oposicion_id=…`) + enriquecer, y anotar el gap del matcher. Si de verdad no existe → catalogar (§10), sea del tipo que sea. **Nunca** se descarta un proceso nuevo real por su tipo (bolsa/PI/cuerpo raro): eso es scope subjetivo (ver arriba).
 
 ## 2. Leer la pagina de seguimiento
 
