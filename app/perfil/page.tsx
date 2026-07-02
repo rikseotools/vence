@@ -793,6 +793,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'agrupacion_profesional_servicios_publicos_carm',
+      label: 'Agrupación Profesional Servicios Públicos (CARM, AP)',
+      data: {
+        name: 'Agrupación Profesional de Servicios Públicos (CARM)',
+        slug: 'agrupacion-profesional-servicios-publicos-carm',
+        categoria: 'AP',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_cyl',
       label: 'Auxiliar Administrativo de Castilla y León',
       data: {

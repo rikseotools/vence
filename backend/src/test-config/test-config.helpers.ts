@@ -106,6 +106,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'administrativo region de murcia',
     'cuerpo administrativo de murcia',
   ],
+  agrupacion_profesional_servicios_publicos_carm: [
+    'agrupacion_profesional_servicios_publicos_carm',
+    'agrupacion profesional de servicios publicos',
+    'agrupacion profesional servicios publicos murcia',
+  ],
   auxiliar_administrativo_extremadura: [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',

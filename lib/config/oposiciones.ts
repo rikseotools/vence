@@ -3057,6 +3057,60 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AGRUPACIÓN PROFESIONAL SERVICIOS PÚBLICOS (CARM) — grupo AP (antiguo Grupo E)
+  // ========================================
+  {
+    id: 'agrupacion_profesional_servicios_publicos_carm',
+    slug: 'agrupacion-profesional-servicios-publicos-carm',
+    positionType: 'agrupacion_profesional_servicios_publicos_carm',
+    examScoring: { penaltyDivisor: 3, source: 'Convocatoria ASP00L24 (BORM 12/03/2025). Fase de oposición (20 puntos); divisor pendiente de extracción literal de las bases. confidence:baja' },
+    name: 'Agrupación Profesional de Servicios Públicos (CARM)',
+    shortName: 'Agrup. Prof. Servicios Públicos CARM',
+    emoji: '🧹',
+    badge: 'AP',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'parte-general',
+        title: 'Parte General (7 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española y el Estatuto de Autonomía de Murcia' },
+          { id: 2, name: 'La Administración de la Región de Murcia' },
+          { id: 3, name: 'Empleo público: EBEP y Función Pública de Murcia' },
+          { id: 4, name: 'Procedimiento administrativo, transparencia y protección de datos' },
+          { id: 5, name: 'Prevención de Riesgos Laborales' },
+          { id: 6, name: 'Seguridad y salud en los lugares de trabajo (RD 486/1997)' },
+          { id: 7, name: 'Información y atención al ciudadano. Habilidades sociales' },
+        ],
+      },
+      {
+        id: 'funciones-servicios-publicos',
+        title: 'Funciones de Servicios Públicos (5 temas)',
+        subtitle: null,
+        icon: '🧰',
+        themes: [
+          { id: 8, name: 'Ofimática, máquinas de oficina y servicios postales' },
+          { id: 9, name: 'Vigilancia y custodia. Movilización de enfermos' },
+          { id: 10, name: 'Técnicas de limpieza' },
+          { id: 11, name: 'Manipulación de alimentos e higiene alimentaria' },
+          { id: 12, name: 'Mantenimiento básico de edificios e instalaciones' },
+        ],
+      },
+    ],
+    totalTopics: 12,
+    aliases: ['agrupacion profesional', 'agrupacion profesional servicios publicos', 'servicios publicos murcia', 'grupo e murcia', 'ap murcia', 'subalterno murcia', 'agrupacion profesional carm'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/agrupacion-profesional-servicios-publicos-carm', label: 'Mi Oposición', icon: '🧹', featured: true },
+      { href: '/agrupacion-profesional-servicios-publicos-carm/temario', label: 'Temario', icon: '📚' },
+      { href: '/agrupacion-profesional-servicios-publicos-carm/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ZAMORA (C2)
   // ========================================
   {

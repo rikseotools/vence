@@ -100,6 +100,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'administrativo region de murcia',
     'cuerpo administrativo de murcia',
   ],
+  'agrupacion_profesional_servicios_publicos_carm': [
+    'agrupacion_profesional_servicios_publicos_carm',
+    'agrupacion profesional de servicios publicos',
+    'agrupacion profesional servicios publicos murcia',
+  ],
   'auxiliar_administrativo_extremadura': [
     'auxiliar_administrativo_extremadura',
     'auxiliar administrativo extremadura',
@@ -233,6 +238,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'administrativo_canarias': ['administrativo-canarias'],
   'administrativo-carm': ['administrativo-carm'],
   'administrativo_carm': ['administrativo-carm'],
+  'agrupacion-profesional-servicios-publicos-carm': ['agrupacion-profesional-servicios-publicos-carm'],
+  'agrupacion_profesional_servicios_publicos_carm': ['agrupacion-profesional-servicios-publicos-carm'],
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],
   'cuerpo-general-administrativo': ['administrativo-estado'],

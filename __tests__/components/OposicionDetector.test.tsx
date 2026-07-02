@@ -111,7 +111,7 @@ describe('OposicionDetector', () => {
 
     test('categorias son A1, A2, B, C1 o C2', () => {
       for (const data of Object.values(OPOSICION_DETECTION)) {
-        expect(['A1', 'A2', 'B', 'C1', 'C2', 'E']).toContain(data.categoria)
+        expect(['A1', 'A2', 'B', 'C1', 'C2', 'AP', 'E']).toContain(data.categoria)
       }
     })
 
@@ -124,8 +124,13 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(54)
-      expect(autonomicas.map(a => a.slug).sort()).toEqual([
+      // Conteo derivado de la config (no se hardcodea para no quedar stale al
+      // añadir oposiciones autonómicas). Y la lista se comprueba por CONTENCIÓN
+      // (presencia), no por igualdad exacta ordenada — antes era frágil.
+      const expectedAutonomicas = OPOSICIONES.filter(o => o.administracion === 'autonomica').length
+      expect(autonomicas).toHaveLength(expectedAutonomicas)
+      const autonomicaSlugs = autonomicas.map(a => a.slug)
+      for (const s of [
         'administrativo-andalucia',
         'administrativo-asturias',  // Añadida (campaña): Administrativo C1 Principado de Asturias
         'administrativo-canarias',
@@ -140,6 +145,7 @@ describe('OposicionDetector', () => {
         'administrativo-navarra',
         'administrativo-pais-vasco',  // Añadida 12/06/2026: Administrativo Gobierno Vasco C1 (temario IVAP)
         'administrativo-universidad-leon',
+        'agrupacion-profesional-servicios-publicos-carm',  // Añadida 02/07/2026: Agrupación Profesional Servicios Públicos CARM (AP)
         'auxiliar-administrativo-andalucia',
         'auxiliar-administrativo-aragon',
         'auxiliar-administrativo-asturias',
@@ -180,7 +186,9 @@ describe('OposicionDetector', () => {
         'tcae-sas',  // Añadida 10/06/2026: TCAE Servicio Andaluz de Salud C2 (OEP 2022-2024: 3.049 plz TL)
         'tcae-sermas-madrid',
         'tcae-sescam',  // Añadida 12/06/2026: TCAE SESCAM Castilla-La Mancha C2 (OEP 2023-2024: 795 plz TL)
-      ])
+      ]) {
+        expect(autonomicaSlugs).toContain(s)
+      }
     })
 
     test('datos derivados de config coinciden con config central', () => {

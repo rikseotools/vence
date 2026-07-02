@@ -113,6 +113,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-diputacion-cuenca': 'castilla-la-mancha',
     'auxiliar-administrativo-carm': 'murcia',
     'administrativo-carm': 'murcia',
+    'agrupacion-profesional-servicios-publicos-carm': 'murcia',
     'auxiliar-administrativo-aragon': 'aragon',
     'auxiliar-administrativo-diputacion-huesca': 'aragon',
     'auxiliar-administrativo-extremadura': 'extremadura',
