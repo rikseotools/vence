@@ -5276,6 +5276,112 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO JUNTA GENERAL DEL PRINCIPADO DE ASTURIAS (C1) — Parlamento
+  // ========================================
+  {
+    id: 'administrativo_junta_general_asturias',
+    slug: 'administrativo-junta-general-asturias',
+    positionType: 'administrativo_junta_general_asturias',
+    examScoring: { penaltyDivisor: 3, source: 'Convocatoria BOPA nº36 23/02/2026 (Acuerdo Mesa 10/02/2026). Fase de oposición; divisor pendiente de extracción literal de las bases. confidence:baja' },
+    name: 'Administrativo (Cuerpo Administrativo) de la Junta General del Principado de Asturias',
+    shortName: 'Administrativo Junta General Asturias',
+    emoji: '🏛️',
+    badge: 'C1',
+    color: 'teal',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Derecho Constitucional y Organización',
+        subtitle: 'CE, fuentes, igualdad, UE, Estatuto de Asturias, Gobierno de Asturias',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978 (I)' },
+          { id: 2, name: 'La Constitución Española de 1978 (II)' },
+          { id: 3, name: 'La jerarquía normativa y las fuentes del Derecho' },
+          { id: 4, name: 'Igualdad y no discriminación' },
+          { id: 5, name: 'La Unión Europea' },
+          { id: 6, name: 'El Estatuto de Autonomía del Principado de Asturias' },
+          { id: 7, name: 'El Presidente y el Consejo de Gobierno de Asturias' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: La Junta General del Principado',
+        subtitle: 'Reglamento, Diputados, procedimiento parlamentario, Estatuto de Personal',
+        icon: '⚖️',
+        themes: [
+          { id: 8, name: 'La Junta General y su Reglamento' },
+          { id: 9, name: 'El estatuto de los Diputados' },
+          { id: 10, name: 'Los órganos de la Junta General' },
+          { id: 11, name: 'Grupos parlamentarios y funcionamiento' },
+          { id: 12, name: 'El procedimiento legislativo' },
+          { id: 13, name: 'Control e impulso de la acción del Gobierno' },
+          { id: 14, name: 'Relaciones Junta General - Consejo de Gobierno' },
+          { id: 15, name: 'La administración de la Junta General' },
+          { id: 16, name: 'El presupuesto de la Junta General' },
+          { id: 17, name: 'El Estatuto de Personal de la Junta General (I)' },
+          { id: 18, name: 'El Estatuto de Personal de la Junta General (II)' },
+          { id: 19, name: 'Funciones, incompatibilidades y régimen disciplinario' },
+        ],
+      },
+      {
+        id: 'bloque3',
+        title: 'Bloque III: Lengua Española y Documentación',
+        subtitle: 'Ortografía, gramática, comunicación, archivos y documentación parlamentaria',
+        icon: '📚',
+        themes: [
+          { id: 20, name: 'Ortografía: letras y puntuación' },
+          { id: 21, name: 'Acentuación, mayúsculas y abreviaturas' },
+          { id: 22, name: 'Corrección gramatical y léxica' },
+          { id: 23, name: 'Comunicación institucional y lenguaje administrativo' },
+          { id: 24, name: 'El archivo y la gestión documental' },
+          { id: 25, name: 'La biblioteca y documentación parlamentaria' },
+          { id: 26, name: 'Publicaciones oficiales de la Junta General' },
+        ],
+      },
+      {
+        id: 'bloque4',
+        title: 'Bloque IV: Derecho Administrativo y Laboral',
+        subtitle: 'LPAC, LRJSP, Contratos, Subvenciones, Transparencia, Seguridad Social, PRL',
+        icon: '📋',
+        themes: [
+          { id: 27, name: 'La Ley 39/2015 del Procedimiento Administrativo Común' },
+          { id: 28, name: 'La Ley 40/2015 de Régimen Jurídico del Sector Público' },
+          { id: 29, name: 'Actos administrativos y recursos' },
+          { id: 30, name: 'Contratos del Sector Público (I)' },
+          { id: 31, name: 'Contratos del Sector Público (II)' },
+          { id: 32, name: 'Subvenciones' },
+          { id: 33, name: 'Transparencia y protección de datos' },
+          { id: 34, name: 'La Seguridad Social (I)' },
+          { id: 35, name: 'La Seguridad Social (II)' },
+          { id: 36, name: 'Prevención de Riesgos Laborales' },
+        ],
+      },
+      {
+        id: 'bloque5',
+        title: 'Bloque V: Ofimática',
+        subtitle: 'Word, Excel, Access y Outlook 365',
+        icon: '💻',
+        themes: [
+          { id: 37, name: 'Procesador de textos: Word 365' },
+          { id: 38, name: 'Hoja de cálculo: Excel 365' },
+          { id: 39, name: 'Bases de datos: Access 365' },
+          { id: 40, name: 'Correo electrónico: Outlook 365' },
+        ],
+      },
+    ],
+    totalTopics: 40,
+    aliases: ['administrativo junta general asturias', 'junta general asturias', 'junta general principado', 'administrativo parlamento asturias', 'jgpa', 'administrativo junta asturias'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-junta-general-asturias', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/administrativo-junta-general-asturias/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-junta-general-asturias/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO ILLES BALEARS (C2)
   // ========================================
   {

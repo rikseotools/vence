@@ -125,6 +125,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-consell-formentera': 'baleares',
     'auxiliar-administrativo-asturias': 'asturias',
     'administrativo-asturias': 'asturias',
+    'administrativo-junta-general-asturias': 'asturias',
     'auxiliar-administrativo-cantabria': 'cantabria',
     'administrativo-cantabria': 'cantabria',
     'administrativo-navarra': 'navarra',
