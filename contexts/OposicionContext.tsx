@@ -210,7 +210,14 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     }
 
     return () => { cancelled = true }
-  }, [user, authLoading, pathname])
+    // NO incluir `pathname`: la oposición activa es user_profiles.target_oposicion
+    // (estable, NO deriva de la URL). Tenerlo aquí re-fetcheaba /oposicion/target y
+    // hacía setLoading(true) en CADA navegación → el Header parpadeaba a la
+    // oposición por defecto del catálogo (bug "se me cambia la oposición al hacer
+    // test", Raquel 02/07/2026). Los cambios REALES de oposición se propagan por el
+    // evento `oposicionAssigned` (efecto de abajo) + setOposicionId directo; no
+    // dependen de la navegación.
+  }, [user, authLoading])
 
   // Recargar oposición cuando se cambia desde perfil u otro componente
   useEffect(() => {
