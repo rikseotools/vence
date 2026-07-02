@@ -1,4 +1,5 @@
 import {
+  GRUPOS,
   isRelevantPagConvocatoria,
   parsePagItems,
   parsePagMeta,
@@ -62,6 +63,12 @@ describe('pag-empleo parser', () => {
   it('acepta turno libre C1/C2 y descarta promoción interna', () => {
     expect(isRelevantPagConvocatoria(items[0])).toBe(true); // IIPP libre
     expect(isRelevantPagConvocatoria(items[1])).toBe(false); // promoción interna
+  });
+
+  it('mapea idGrupo del PAG a etiqueta de grupo, incl. AP (ampliación 02/07/2026)', () => {
+    expect(GRUPOS['4']).toBe('C1');
+    expect(GRUPOS['5']).toBe('C2');
+    expect(GRUPOS['6']).toBe('AP'); // Agrupaciones Profesionales (antiguo Grupo E)
   });
 
   it('devuelve [] con HTML sin resultados', () => {

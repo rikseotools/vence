@@ -90,8 +90,13 @@ export class DetectBoletinesService {
 
         for (const oep of extraction.oeps) {
           // Guardarraíl extra: el LLM ya filtra, pero descartamos grupos altos.
+          // Aceptamos C1/C2 y Agrupaciones Profesionales (AP, antiguo Grupo E);
+          // descartamos A1/A2/B. Ampliado 02/07/2026: antes la lista era
+          // ['C1','C2','C'] y tiraba las AP (caso Agrupación Profesional de
+          // Servicios Públicos CARM, que tuvo que encontrar una usuaria).
           const grp = (oep.positionGroup ?? '').toUpperCase().trim();
-          if (grp && !['C1', 'C2', 'C'].includes(grp)) continue;
+          const ALLOWED_GROUPS = ['C1', 'C2', 'C', 'AP', 'E'];
+          if (grp && !ALLOWED_GROUPS.includes(grp)) continue;
 
           const nameKey = oep.name
             .toLowerCase()

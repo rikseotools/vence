@@ -9,7 +9,7 @@
  *
  * API (reverse-engineering 25/06/2026):
  *   POST .../buscadorEmpleoAvanzado.htm  (form-urlencoded, HTML server-rendered)
- *   idGrupo: 4=C1 5=C2 | idPlazo: 1=abierto 3=últimas72h 2=cerrado
+ *   idGrupo: 4=C1 5=C2 6=AP (Agrupaciones Profesionales) | idPlazo: 1=abierto 3=últimas72h 2=cerrado
  *   tipoVista=Avanzado (hidden) | busquedaRealizada=true
  *   GOTCHA: enviar campos de fecha (fechaPublicacion*) o tipoVista=0 vacíos
  *           provoca HTTP 400 → mandar SOLO selects con valor.
@@ -26,7 +26,7 @@ export const PAG_ADV_URL =
 const UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-export const GRUPOS: Record<string, string> = { '4': 'C1', '5': 'C2' };
+export const GRUPOS: Record<string, string> = { '4': 'C1', '5': 'C2', '6': 'AP' };
 
 const CCAA: Record<string, string> = {
   '00': 'Nacional', '01': 'Andalucía', '02': 'Aragón', '03': 'Asturias',

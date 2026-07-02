@@ -363,10 +363,11 @@ Devuelve JSON con esta forma exacta:
 }`;
 }
 
-const REGIONAL_SYSTEM_PROMPT = `Eres un extractor de listados de convocatorias de empleo público en España. Analizas páginas oficiales con listas de procesos selectivos y extraes SOLO las convocatorias de subgrupos C1 o C2 (auxiliares administrativos, administrativos, subalternos, oficiales, técnicos administrativos, gestión tributaria, archivo, etc.).
+const REGIONAL_SYSTEM_PROMPT = `Eres un extractor de listados de convocatorias de empleo público en España. Analizas páginas oficiales con listas de procesos selectivos y extraes SOLO las convocatorias de subgrupos C1, C2 o Agrupaciones Profesionales (auxiliares administrativos, administrativos, subalternos, ordenanzas, personal de servicios, agrupación profesional, oficiales, técnicos administrativos, gestión tributaria, archivo, etc.).
 
 CRITERIOS DE INCLUSIÓN:
 - Grupo C1 o C2 (funcionarios)
+- Agrupaciones Profesionales (AP), antiguo Grupo E: sin requisito de titulación (subalternos, ordenanzas, personal de servicios, "agrupación profesional de servicios públicos") → devuelve positionGroup "AP"
 - O que mencionen "auxiliar administrativo", "administrativo", "administrativa", "oficial administrativo" sin grupo
 - Procesos ACTIVOS o RECIENTES (no convocatorias cerradas hace años)
 
@@ -384,7 +385,7 @@ function regionalUserPrompt(text: string, regionName: string): string {
 ${text}
 </pagina>
 
-Extrae TODAS las convocatorias de C1/C2 activas. JSON esperado:
+Extrae TODAS las convocatorias de C1/C2 y Agrupaciones Profesionales (AP) activas. JSON esperado:
 {
   "oeps": [
     {
@@ -400,7 +401,7 @@ Extrae TODAS las convocatorias de C1/C2 activas. JSON esperado:
   ]
 }
 
-Si no hay ninguna convocatoria C1/C2, devuelve {"oeps": []}.`;
+Si no hay ninguna convocatoria C1/C2/AP, devuelve {"oeps": []}.`;
 }
 
 const GENERIC_SYSTEM_PROMPT = `Eres auditor de fuentes normativas del Estado (Dirección General de Función Pública, Secretaría de Estado de FP, Portal de Transparencia). Tu trabajo: leer el contenido actual de una página y determinar si contiene PUBLICACIONES NORMATIVAS NUEVAS que afecten al temario de oposiciones estatales (Aux/Admin Estado, Tramitación Procesal, Auxilio Judicial, Gestión Estado, Admin. Seguridad Social).

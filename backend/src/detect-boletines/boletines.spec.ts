@@ -63,6 +63,14 @@ describe('looksLikeC1C2Convocatoria', () => {
     ).toBe(false);
   });
 
+  it('detecta Agrupación Profesional / antiguo Grupo E (AP entra al radar, ampliación 02/07/2026)', () => {
+    expect(
+      looksLikeC1C2Convocatoria(
+        'Orden por la que se convocan pruebas selectivas para ingreso en el Cuerpo de la Agrupación Profesional de Servicios Públicos de la Administración Pública Regional.',
+      ),
+    ).toBe(true);
+  });
+
   it('descarta provisión por libre designación (no es ingreso)', () => {
     expect(
       looksLikeC1C2Convocatoria(
