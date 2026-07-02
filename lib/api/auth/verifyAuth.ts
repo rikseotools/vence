@@ -23,8 +23,31 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
-import { verifyJwtLocal, extractBearerToken } from './verifyJwtLocal'
+import { decodeProtectedHeader } from 'jose'
+import { verifyJwtLocal, extractBearerToken, type JwtVerifyResult } from './verifyJwtLocal'
+import { verifyJwtRs256 } from './verifyJwtRs256'
 import { logValidationError } from '@/lib/api/validation-error-log'
+
+/**
+ * Verificación local enrutada por el `alg` del header (doble-aceptación de Fase B):
+ *   - RS256 → verificador asimétrico JWKS (tokens nuevos de Auth.js)
+ *   - HS256 → verificador simétrico Supabase (tokens legacy, intacto)
+ *   - cualquier otro / 'none' → rechazado sin intentar (anti algorithm confusion)
+ *
+ * Mientras no se emitan RS256 (flip de Fase B no hecho), la rama RS256 nunca se
+ * ejerce en prod → el path HS256 vivo queda byte-idéntico.
+ */
+async function verifyLocalToken(token: string): Promise<JwtVerifyResult> {
+  let alg: string | undefined
+  try {
+    alg = decodeProtectedHeader(token).alg
+  } catch {
+    return { success: false, error: 'malformed' }
+  }
+  if (alg === 'RS256') return verifyJwtRs256(token)
+  if (alg === 'HS256') return verifyJwtLocal(token)
+  return { success: false, error: 'unsupported_alg' }
+}
 
 export type AuthVerifyResult =
   | {
@@ -97,9 +120,9 @@ export async function verifyAuth(
     }
   }
 
-  // Modo on: solo local (latencia <5ms)
+  // Modo on: solo local (latencia <5ms; RS256/JWKS cachea la clave)
   if (mode === 'on') {
-    const local = verifyJwtLocal(token)
+    const local = await verifyLocalToken(token)
     if (!local.success) {
       // Log details para diagnóstico (sin token completo por seguridad)
       console.warn(`🔒 [auth/local] ${endpoint} rejected: ${local.error}`)
@@ -115,7 +138,7 @@ export async function verifyAuth(
 
   // Modo shadow: AMBAS verificaciones en paralelo, log diff, sirve remoto
   const [localResult, remoteResult] = await Promise.all([
-    Promise.resolve(verifyJwtLocal(token)),
+    verifyLocalToken(token),
     verifyRemote(token),
   ])
 

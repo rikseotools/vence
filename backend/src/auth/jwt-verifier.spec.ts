@@ -23,7 +23,9 @@ describe('JwtVerifier', () => {
   describe('configuración', () => {
     it('si no hay SUPABASE_JWT_SECRET, devuelve no_secret_configured', () => {
       const v = new JwtVerifier(makeConfig(undefined));
-      const result = v.verify('cualquier-token');
+      // Un HS256 real (enruta a la rama HS) sin secreto → no_secret_configured.
+      const token = signTestJwt({ sub: TEST_USER_ID, aud: 'authenticated' });
+      const result = v.verify(token);
       expect(result.success).toBe(false);
       if (!result.success) expect(result.error).toBe('no_secret_configured');
     });

@@ -18,6 +18,9 @@ export default {
     '^@supabase/realtime-js$': '<rootDir>/__mocks__/@supabase/realtime-js.js',
     '^@upstash/redis$': '<rootDir>/__mocks__/@upstash/redis.js',
   },
+  // jose v6 es ESM puro (sin build CJS) → dejar que babel-jest lo transforme
+  // en vez de tratarlo como CJS. Necesario para verifyJwtRs256/mintAccessToken.
+  transformIgnorePatterns: ['/node_modules/(?!(jose)/)'],
   setupFiles: ['<rootDir>/jest.setup.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.afterEnv.js'],
   collectCoverageFrom: [

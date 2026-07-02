@@ -213,6 +213,8 @@ describe('withErrorLogging — cobertura de endpoints', () => {
       'app/api/validation-error-log/route.ts',
       'app/api/debug/psico-images/route.ts',
       'app/api/version/route.ts',
+      // Auth.js (Fase B) es dueño de sus handlers GET/POST — no se pueden envolver.
+      'app/api/auth/[...nextauth]/route.ts',
     ]
     let wrappedCount = 0
     for (const relPath of routeFiles) {

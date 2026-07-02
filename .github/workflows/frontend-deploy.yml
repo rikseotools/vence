@@ -211,6 +211,14 @@ jobs:
               | ensure_secret("GA4_API_SECRET")
               | ensure_secret("GA4_MEASUREMENT_ID")
               | ensure_secret("GA4_UPLOAD_ENABLED")
+              # Auth.js RS256/JWKS (Fase B — emisor agnóstico). Params SSM creados
+              # 2026-07-02. DORMIDOS: el hub sigue en supabaseAdapter hasta el flip
+              # (AUTH_PROVIDER=authjs). El JWKS público y los verificadores RS256
+              # los usan; AUTH_SECRET cifra la cookie de sesión de Auth.js.
+              | ensure_secret("AUTH_JWT_PRIVATE_KEY")
+              | ensure_secret("AUTH_JWT_PUBLIC_KEY")
+              | ensure_secret("AUTH_JWT_KID")
+              | ensure_secret("AUTH_SECRET")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
