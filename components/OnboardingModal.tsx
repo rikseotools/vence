@@ -1262,6 +1262,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏥'
   },
   {
+    id: 'celador_sescam_clm',
+    nombre: 'Celador/a SESCAM (Castilla-La Mancha)',
+    categoria: 'E',
+    administracion: 'Sanitaria',
+    icon: '🏥'
+  },
+  {
     id: 'celador_sas',
     nombre: 'Celador/a SAS (Andalucía)',
     categoria: 'E',

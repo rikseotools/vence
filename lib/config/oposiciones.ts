@@ -6951,6 +6951,7 @@ export const OPOSICIONES: Oposicion[] = [
     id: 'celador_sescam_clm',
     slug: 'celador-sescam-clm',
     positionType: 'celador_sescam_clm',
+    aliases: ['celador', 'celador sescam', 'celador castilla la mancha', 'celador clm', 'sescam', 'celador sanidad clm', 'agrupacion profesional celador'],
     examScoring: { penaltyDivisor: 4, source: 'DOCM nº123 30/06/2025 (SESCAM): aciertos - (errores/4) = 1/4, 4 alternativas. confidence:alta' },
     name: 'Celador/a del SESCAM (Castilla-La Mancha)',
     shortName: 'Celador SESCAM',
