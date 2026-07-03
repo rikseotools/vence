@@ -54,6 +54,11 @@ ARG NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY
 # Fase B: proveedor de auth del cliente ('supabase' | 'authjs'). Se inlina en el
 # bundle (lib/auth/client.ts). Default 'supabase'; 'authjs' = flip a Auth.js.
 ARG NEXT_PUBLIC_AUTH_PROVIDER
+# Fase A2/B: ciclo de vida (crear perfil/check acceso/activar premium) por
+# endpoints Drizzle agnósticos en vez de supabase.rpc(). Se inlina en el bundle
+# (lib/auth/lifecycleFlag.ts). Default false (legacy); 'true' cierra el último
+# PostgREST de cliente de AuthContext → precondición de C4 y del flip Auth.js.
+ARG NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API
 
 # Build args server-side: Next.js Vence ejecuta queries a Postgres en
 # `generateStaticParams` y durante prerender de ~500 páginas SSG (Vercel
@@ -89,6 +94,7 @@ ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
 ENV NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL}
 ENV NEXT_PUBLIC_USE_CHAT_V2=${NEXT_PUBLIC_USE_CHAT_V2}
 ENV NEXT_PUBLIC_AUTH_PROVIDER=${NEXT_PUBLIC_AUTH_PROVIDER}
+ENV NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API=${NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API}
 # Cloudflare Turnstile site key (pública). Sin este ENV, next build NO la hornea
 # y `isCaptchaEnabled()` server-side da false → el gate anti-scraping queda OFF
 # aunque CAPTCHA_ENABLED esté en SSM. Bug detectado 03/06/2026.

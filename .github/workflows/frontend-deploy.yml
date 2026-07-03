@@ -110,6 +110,10 @@ jobs:
             NEXT_PUBLIC_APP_NAME=Vence
             NEXT_PUBLIC_SUPPORT_EMAIL=info@vence.es
             NEXT_PUBLIC_USE_CHAT_V2=true
+            # Fase B: flags de auth inlinados en el bundle. Vacío = default seguro
+            # (supabase / legacy). Flip = poner el secret/var a 'authjs' / 'true'.
+            NEXT_PUBLIC_AUTH_PROVIDER=${{ secrets.NEXT_PUBLIC_AUTH_PROVIDER }}
+            NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API=${{ secrets.NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API }}
             # Cloudflare Turnstile: site key es PÚBLICA (va en el bundle), literal.
             NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=0x4AAAAAADd5nFRd3Kqg6rn7
             DATABASE_URL=${{ secrets.DATABASE_URL }}
