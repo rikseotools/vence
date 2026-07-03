@@ -71,8 +71,11 @@ const RPC = /\.rpc\(/g
 //     scope por oposición arregla el bug cross-oposición; se elimina el canary y el fallback legacy).
 //     Cierra el ÚLTIMO .from de cliente user-scoped de este hook → desbloquea C4 (drop RLS) sin fuga.
 //     → from 3/2 → 1/1 (solo AuthContext, dual-path flag-gated), rpc 7→6.
-const BASELINE_SITES = 1
-const BASELINE_FILES = 1
+//   C1#45 (2026-07-03, prep C4): cerrado el .from('user_profiles') de AuthContext.ensureUserProfile
+//     (existencia de perfil → GET /api/profile 200/404/5xx en vez de supabase.from().single()).
+//     Era el ÚLTIMO .from de cliente user-scoped → precondición #2 de C4 CUMPLIDA. → 1/1 → 0/0.
+const BASELINE_SITES = 0
+const BASELINE_FILES = 0
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
 // -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
 const BASELINE_RPC = 6
