@@ -219,6 +219,10 @@ jobs:
               | ensure_secret("AUTH_JWT_PUBLIC_KEY")
               | ensure_secret("AUTH_JWT_KID")
               | ensure_secret("AUTH_SECRET")
+              # AUTH_URL: detrás de CloudFront/ALB, Auth.js infiere mal el host
+              # (0.0.0.0:3000) → hay que fijar la URL pública para el callback OAuth.
+              | ensure_secret("AUTH_URL")
+              | ensure_secret("AUTH_TRUST_HOST")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
