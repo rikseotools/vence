@@ -130,3 +130,63 @@ describe('authjsAdapter — onAuthStateChange (polling)', () => {
     jest.useRealTimers()
   })
 })
+
+describe('authjsAdapter — bootstrap silencioso del cutover (Fase B)', () => {
+  const LEGACY_KEY = 'sb-abcdef-auth-token'
+  const FLAG = 'authjs_legacy_bootstrap_attempted'
+
+  beforeEach(() => {
+    window.localStorage.clear()
+    window.sessionStorage.clear()
+    // pathname no-/api/auth por defecto
+    window.history.replaceState({}, '', '/test/algo')
+  })
+
+  it('sin sesión Auth.js + sesión Supabase residual → dispara signIn(google) y devuelve null', async () => {
+    mockGetSession.mockResolvedValue(null)
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
+    const adapter = createAuthjsAuthAdapter()
+
+    const session = await adapter.getSession()
+
+    expect(session).toBeNull()
+    expect(mockSignIn).toHaveBeenCalledTimes(1)
+    expect(mockSignIn).toHaveBeenCalledWith('google', expect.objectContaining({ callbackUrl: expect.any(String) }))
+    expect(window.sessionStorage.getItem(FLAG)).toBe('1') // marcado anti-bucle
+  })
+
+  it('sin sesión Supabase residual → NO dispara bootstrap', async () => {
+    mockGetSession.mockResolvedValue(null)
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getSession()
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
+
+  it('idempotente: si ya se intentó (flag), NO vuelve a disparar', async () => {
+    mockGetSession.mockResolvedValue(null)
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
+    window.sessionStorage.setItem(FLAG, '1')
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getSession()
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
+
+  it('con sesión Auth.js válida → NO bootstrap aunque haya sesión Supabase residual', async () => {
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'a@b.com' } })
+    mockTokenResponse(true, { accessToken: 'rs256', expiresAt: 1 })
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
+    const adapter = createAuthjsAuthAdapter()
+    const session = await adapter.getSession()
+    expect(session).not.toBeNull()
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
+
+  it('en ruta /api/auth/* → NO bootstrap (no interferir con el callback)', async () => {
+    window.history.replaceState({}, '', '/api/auth/callback/google')
+    mockGetSession.mockResolvedValue(null)
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getSession()
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
+})

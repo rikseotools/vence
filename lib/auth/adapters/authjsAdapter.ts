@@ -80,9 +80,61 @@ async function buildSession(): Promise<AuthSession | null> {
   }
 }
 
+// ─── Bootstrap silencioso del cutover (Fase B) ──────────────────────────────
+// Al flipear a Auth.js, los usuarios con sesión Supabase (cookie/localStorage) NO
+// tienen sesión Auth.js → /api/auth/token daría 401 y aparecerían "deslogueados".
+// Si detectamos su sesión Supabase residual y aún no hay sesión Auth.js, disparamos
+// signIn('google') UNA vez: como el usuario ya autorizó Google, normalmente vuelve
+// sin pantalla de consentimiento (bootstrap transparente). Transitorio y removible
+// pasada la ventana de cutover (cuando ya nadie tenga sesión Supabase vieja).
+const LEGACY_BOOTSTRAP_FLAG = 'authjs_legacy_bootstrap_attempted'
+
+function hasLegacySupabaseSession(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i)
+      if (k && /^sb-.*-auth-token$/.test(k) && window.localStorage.getItem(k)) return true
+    }
+  } catch {
+    /* localStorage inaccesible (SSR/privacy) → no bootstrap */
+  }
+  return false
+}
+
+/**
+ * Dispara el bootstrap si procede. Idempotente (flag en sessionStorage) para no
+ * entrar en bucle si Google vuelve sin crear sesión. No interfiere con las propias
+ * rutas de Auth.js (/api/auth/*). Devuelve true si disparó el redirect.
+ */
+function maybeBootstrapFromLegacySession(): boolean {
+  if (typeof window === 'undefined') return false
+  if (window.location.pathname.startsWith('/api/auth')) return false
+  try {
+    if (window.sessionStorage.getItem(LEGACY_BOOTSTRAP_FLAG)) return false
+  } catch {
+    return false
+  }
+  if (!hasLegacySupabaseSession()) return false
+  try {
+    window.sessionStorage.setItem(LEGACY_BOOTSTRAP_FLAG, '1')
+  } catch {
+    /* si no podemos marcar el intento, no disparamos (evita bucle) */
+    return false
+  }
+  void nextSignIn('google', { callbackUrl: window.location.href })
+  return true
+}
+
 export function createAuthjsAuthAdapter(): AuthClientPort {
   return {
     async getSession() {
+      const nextSession = await nextGetSession()
+      if (!mapUser(nextSession?.user)) {
+        // Sin sesión Auth.js → bootstrap silencioso desde sesión Supabase vieja (cutover).
+        maybeBootstrapFromLegacySession()
+        return null
+      }
       return buildSession()
     },
 
@@ -152,6 +204,9 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
         const first = lastUserId === undefined
         lastUserId = uid
         const session = uid ? await buildSession() : null
+        // Cutover Fase B: en el primer tick sin sesión Auth.js, intentar bootstrap
+        // desde la sesión Supabase vieja (idempotente por el flag de sessionStorage).
+        if (!uid && first) maybeBootstrapFromLegacySession()
         const event = first ? 'INITIAL_SESSION' : uid ? 'SIGNED_IN' : 'SIGNED_OUT'
         cb({ event, session, isNewUser: false })
       }
