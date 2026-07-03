@@ -12,9 +12,27 @@
 > (drop RLS) = la BD pasa a ser un `DATABASE_URL` cambiable → **cierra el SPOF del
 > 503** documentado en [`incidente-answer-save-503-01-06.md`](./incidente-answer-save-503-01-06.md).
 >
-> **Estado:** 🟠 INTENTADA Y REVERTIDA (2026-07-03). El flip se hizo **antes de re-apuntar los FKs a `auth.users`** (no estaba en las precondiciones de abajo — ERROR) → `create_organic_user` de usuarios nuevos violaba `user_profiles_id_fkey` (`23503`) → login/registro rotos → **rollback a `vence-frontend:309`**. **Fase 1 (limpieza huérfanas + re-point de 52 FKs) YA aplicada a prod** (ver `auth-agnostico-jwks-y-rls.md` §Incidente). **NO re-flipear** hasta cumplir TODAS las precondiciones nuevas de abajo (§0). Prueba obligatoria antes del flip: el **harness E2E de usuario NUEVO** (`scratchpad/authjs-e2e-validate.cjs`) en verde sobre preview.
+> **Estado:** 🔴 3 INTENTOS FALLIDOS Y REVERTIDOS (2026-07-03) — ver §POST-MORTEM abajo. Prod estable en supabase. El bloqueador vivo es el **session-gap** (el AuthProvider borra la sesión Supabase durante el cutover); NO re-intentar hasta rediseñarlo (bridge server-side en `/api/auth/token`) + desactivar el auto-deploy de GHA. Historia previa: El flip se hizo **antes de re-apuntar los FKs a `auth.users`** (no estaba en las precondiciones de abajo — ERROR) → `create_organic_user` de usuarios nuevos violaba `user_profiles_id_fkey` (`23503`) → login/registro rotos → **rollback a `vence-frontend:309`**. **Fase 1 (limpieza huérfanas + re-point de 52 FKs) YA aplicada a prod** (ver `auth-agnostico-jwks-y-rls.md` §Incidente). **NO re-flipear** hasta cumplir TODAS las precondiciones nuevas de abajo (§0). Prueba obligatoria antes del flip: el **harness E2E de usuario NUEVO** (`scratchpad/authjs-e2e-validate.cjs`) en verde sobre preview.
 
 ---
+
+## 🔴 POST-MORTEM: por qué falló el flip (3 intentos, 2026-07-03)
+
+**NO re-intentar el flip hasta resolver el §"session-gap" de abajo.** Tres despliegues del flip, tres incidentes en prod (flood de 401 + rollback):
+
+1. **1er intento (`:312`, mañana):** flip hecho **ANTES de re-apuntar los FKs a `auth.users`** → `create_organic_user` de usuario nuevo violaba `user_profiles_id_fkey` (23503) → sin `session.user.id` → `/api/auth/token` 401 → cascada. **Resuelto** con el re-point de 52 FKs (Fase 1). NO era el "iss missing" (ruido).
+
+2. **2º intento (`:314`):** con el FK arreglado, **volvió el flood** — pero la maquinaria funciona (0 CallbackRouteError/RS256/resolveAppUser). Causa = **SESSION-GAP**: los usuarios ACTIVOS tienen sesión Supabase pero NO sesión Auth.js. Al flipear el cliente a authjs, `getAccessToken()`→`/api/auth/token` da 401 (no hay sesión Auth.js) → sus hooks bombardean `/api/v2` con 401 ANTES de que el bootstrap los redirija. El bootstrap-redirect actuaba demasiado tarde y era disruptivo.
+
+3. **3er intento (`:316`):** implementé un **fallback**: `authjsAdapter` cae al token Supabase de localStorage (verificado por mode=on HS256). Verificado en local con sesión sintética inyectada (16 unit + integración 13/200). **Y AUN ASÍ FLOODEÓ EN PROD.** El log del navegador reveló por qué: **el propio `AuthProvider` (contexts/AuthContext) pre-hidrata de localStorage y BORRA la sesión Supabase** cuando el primer `INITIAL_SESSION` llega sin usuario Auth.js (`🧹 localStorage limpiado (token expirado)`) → destruye la fuente del fallback antes de que el adapter la use. Además `getLegacySupabaseSession` no parseaba el formato real de supabase-js. **El test local dio falsa confianza (3ª vez) porque inyectaba una sesión sintética y no ejercía la lógica de borrado del AuthProvider.**
+
+**RAÍZ del session-gap:** el cutover de IdP toca MÁS que el adapter. El `AuthProvider` tiene su propia gestión de sesión (pre-hydrate + clear-on-no-user) que pelea con cualquier fallback de cliente. **Opciones a diseñar (con calma, no en caliente):**
+- (a) **Bridge server-side:** `/api/auth/token`, si no hay sesión Auth.js pero llega un Bearer Supabase HS256 válido, acuña RS256 desde él (resolviendo email→user_profiles.id). Los usuarios existentes siguen sin re-login; NO depende de localStorage ni pelea con el AuthProvider. **Probablemente la vía correcta.**
+- (b) Que el AuthProvider NO borre la sesión Supabase durante la ventana de cutover (flag).
+- (c) Aceptar re-login forzado, pero SIN flood: no montar los hooks/no llamar `/api/v2` hasta tener sesión.
+- **Verificar SIEMPRE contra el escenario REAL** (sesión Supabase de verdad + AuthProvider vivo), no una inyección sintética.
+
+**GOTCHA que agravó todo: GHA auto-despliega en cada push.** "GHA no despliega" era FALSO. `frontend-deploy.yml` construye+despliega en push a main (paths NO-ignorados), con los build-args `NEXT_PUBLIC_AUTH_*` **sin setear** → build supabase/lifecycle-false. Metió `:315` (push 87222dc) y `:317` (push f234b80) por sorpresa, revirtiendo deploys manuales y complicando rollbacks (3 deployments concurrentes → hubo que parar tareas a mano). **Desactivar el push-trigger de GHA antes de retomar** (editar solo el workflow NO auto-dispara: está en `paths-ignore`). GOTCHA rollback: `:313` no arrancaba por 2 deployments compitiendo → rollback real fue a `:315` (GHA supabase, probado-corriendo). El fix buggy además **borró la sesión Supabase** de los usuarios que tocaron `:316` → re-login (molestia real).
 
 ## ⚠️ Precondiciones (NO empezar si falta una)
 
