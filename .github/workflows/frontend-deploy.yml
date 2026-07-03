@@ -8,27 +8,21 @@ name: Deploy frontend (Bloque 5 Fase E)
 # en el step "Registrar nueva task definition + update-service", abajo).
 #
 # Triggers:
-#   - workflow_dispatch (manual): cualquier rama.
-#   - push a main: solo si cambia código que afecte al build del frontend.
-#     paths-ignore excluye backend/, scripts/, docs/, data/ (mantienen
-#     ciclos de despliegue independientes).
+#   - workflow_dispatch (manual): cualquier rama. ÚNICO trigger.
+#
+# ⚠️ AUTO-DEPLOY EN PUSH DESACTIVADO (2026-07-03, decisión Manuel).
+# Motivo: el trigger `push` construía con los build-args `NEXT_PUBLIC_AUTH_*`
+# SIN setear (secrets vacíos → supabase/lifecycle-false) y desplegaba a prod,
+# PISANDO los deploys manuales cuidados (metió task defs :315/:317 por sorpresa
+# durante los intentos de flip de Fase B y complicó los rollbacks). El frontend
+# se despliega A MANO (build podman + push ECR + register-task-def + update-service;
+# ver scratchpad de la sesión o docs/roadmap). Para desplegar por CI: workflow_dispatch
+# manual — y ANTES setear los secrets NEXT_PUBLIC_AUTH_PROVIDER / _LIFECYCLE_VIA_API
+# a los valores deseados, o el build saldrá supabase/legacy.
+# Para RE-ACTIVAR el push-trigger: restaurar el bloque `push:` con su paths-ignore
+# (backend/docs/scripts/data/__tests__/.github/workflows/*.md) del historial git.
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'backend/**'
-      - 'docs/**'
-      - 'scripts/**'
-      - 'data/**'
-      - '__tests__/**'
-      # Workflows GHA propios — modificar un YAML de CI/CD no implica
-      # redeploy del frontend. Descubierto 27/05/2026 al pushear el
-      # workflow e2e-smoke.yml: disparó frontend-deploy idle gastando
-      # ~10 min CI por cambio. Si alguien quiere forzar redeploy tras
-      # tocar un workflow, usar workflow_dispatch.
-      - '.github/workflows/**'
-      - '*.md'
   workflow_dispatch:
 
 # Serializa los deploys: si llegan varios pushes seguidos (incl. de sesiones
