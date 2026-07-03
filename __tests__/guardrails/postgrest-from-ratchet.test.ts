@@ -65,11 +65,17 @@ const RPC = /\.rpc\(/g
 //   C1#37: hooks/useIntelligentNotifications.ts (8 .from NO-canary: achievements→reusa recent-tests, study-reminders dead-delete, system→notifications/system, avatar×2→avatar/rotation, avatar mark-read→avatar/rotation/mark-read, dispute→/api/dispute/mark-read, system mark-read→notifications/mark-read). Quedan 2 .from + 1 rpc en loadProblematicArticles (BLOQUEADO por canary FASE 4/5). → 8/6.
 //   C1#38: analytics psicotécnicas (historial del propio usuario, NO anti-scraping): app/mis-estadisticas/psicotecnicos/page.js (1 .from psychometric_test_sessions → GET /api/v2/psychometric/sessions) + components/Statistics/PsychometricWeakAreasAnalysis.js (1 .from psychometric_test_answers embed → GET /api/v2/psychometric/weak-areas, JOINs+json_build_object). Fix: el embed original pedía difficulty_level/estimated_time_seconds/question_type/score INEXISTENTES (análisis salía vacío) → mapeo a difficulty/time_limit_seconds/question_subtype, score omitido; filtro categoría de sessions usaba embed-path inexistente → omitido (cliente agrupa). → 6/4.
 //   C1#43: test-pages psicotécnicas (carga de preguntas). app/auxiliar-administrativo-estado/test/psicotecnicos/page.js (1 .from multi-categoría) + [categoria]/page.js (2 .from: questions + answered-count) → GET /api/v2/psychometric/questions (público + rate-limit; to_jsonb(q.*)+embeds categories/sections, shape IDÉNTICO al !inner) + POST /api/v2/psychometric/answered-count (verifyAuth, user del token, UUID-validado). DECISIÓN PRODUCTO: se conserva correct_option en la carga para preservar el feedback INSTANTÁNEO client-side (migración 1:1, no se cierra la fuga — requeriría mover validación a /api/answer/psychometric). → 3/2. Los 3 .from restantes TODOS bloqueados: AuthContext (dual-path flag-gated) + loadProblematicArticles (canary FASE 4/5).
-const BASELINE_SITES = 3
-const BASELINE_FILES = 2
+//   C1#44 (2026-07-03, Fase 2): hooks/useIntelligentNotifications.ts loadProblematicArticles
+//     (2 .from('tests') + 1 .rpc get_user_problematic_articles_weekly) → SIEMPRE el endpoint
+//     /api/notifications/problematic-articles (verifyAuth; devuelve articles + totalTestsCompleted;
+//     scope por oposición arregla el bug cross-oposición; se elimina el canary y el fallback legacy).
+//     Cierra el ÚLTIMO .from de cliente user-scoped de este hook → desbloquea C4 (drop RLS) sin fuga.
+//     → from 3/2 → 1/1 (solo AuthContext, dual-path flag-gated), rpc 7→6.
+const BASELINE_SITES = 1
+const BASELINE_FILES = 1
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
 // -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
-const BASELINE_RPC = 7
+const BASELINE_RPC = 6
 
 function walk(rel: string): string[] {
   let out: string[] = []

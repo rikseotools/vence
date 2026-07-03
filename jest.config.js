@@ -20,7 +20,10 @@ export default {
   },
   // jose v6 es ESM puro (sin build CJS) → dejar que babel-jest lo transforme
   // en vez de tratarlo como CJS. Necesario para verifyJwtRs256/mintAccessToken.
-  transformIgnorePatterns: ['/node_modules/(?!(jose)/)'],
+  // jose + cadena ESM de next-auth v5 (Auth.js) — sin esto, cualquier test cuyo
+  // grafo de imports llegue a lib/auth/client.ts → authjsAdapter → next-auth/react
+  // peta con "Cannot use import statement outside a module" (Fase B, adapter dormido).
+  transformIgnorePatterns: ['/node_modules/(?!(jose|next-auth|@auth/core|oauth4webapi|preact|preact-render-to-string|@panva/hkdf)/)'],
   setupFiles: ['<rootDir>/jest.setup.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.afterEnv.js'],
   collectCoverageFrom: [

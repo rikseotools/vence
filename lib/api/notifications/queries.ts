@@ -46,6 +46,21 @@ function derivRecommendation(accuracy: number): string {
   return '👍 Casi dominado'
 }
 
+/**
+ * Nº de tests COMPLETADOS del usuario. Alimenta el cooldown de las notificaciones
+ * de artículos problemáticos (`shouldShowProblematicArticle`). Server-side (id del
+ * token) — cierra el `.from('tests')` de cliente de `loadProblematicArticles`.
+ * Usa el índice `idx_tests_user_completed`.
+ */
+export async function getUserCompletedTestsCount(userId: string): Promise<number> {
+  const db = getProblematicArticlesDb()
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(tests)
+    .where(and(eq(tests.userId, userId), eq(tests.isCompleted, true)))
+  return rows[0]?.n ?? 0
+}
+
 export async function getUserProblematicArticlesWeekly(
   params: GetUserProblematicArticlesWeeklyParams
 ): Promise<ProblematicArticle[]> {

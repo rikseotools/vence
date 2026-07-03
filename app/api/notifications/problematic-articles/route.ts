@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
 import {
   getUserProblematicArticlesWeekly,
+  getUserCompletedTestsCount,
   type ProblematicArticle,
 } from '@/lib/api/notifications/queries'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -30,6 +31,7 @@ export const dynamic = 'force-dynamic'
 
 interface CachedProblematic {
   data: ProblematicArticle[]
+  totalTestsCompleted: number  // para el cooldown client-side (cierra su .from('tests'))
   ts: number  // ms epoch — usado para freshness check, NO Redis TTL
 }
 
@@ -47,12 +49,19 @@ async function _GET(request: NextRequest) {
 
   // Fast path: cache fresco (<5min) → devolver sin tocar BD
   if (cached && Date.now() - cached.ts < FRESH_WINDOW_MS) {
-    return NextResponse.json({ success: true, articles: cached.data })
+    return NextResponse.json({
+      success: true,
+      articles: cached.data,
+      totalTestsCompleted: cached.totalTestsCompleted ?? 0,
+    })
   }
 
   try {
-    const queryPromise = getUserProblematicArticlesWeekly({ userId: auth.user.id })
-    const articles = await Promise.race([
+    const queryPromise = Promise.all([
+      getUserProblematicArticlesWeekly({ userId: auth.user.id }),
+      getUserCompletedTestsCount(auth.user.id),
+    ])
+    const [articles, totalTestsCompleted] = await Promise.race([
       queryPromise,
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('problematic-articles timeout')), BD_TIMEOUT_MS)
@@ -60,7 +69,7 @@ async function _GET(request: NextRequest) {
     ])
 
     // Guardar en Redis con TTL 24h y timestamp para freshness check
-    setCached(cacheKey, { data: articles, ts: Date.now() }, STALE_TTL_S)
+    setCached(cacheKey, { data: articles, totalTestsCompleted, ts: Date.now() }, STALE_TTL_S)
 
     // Log fire-and-forget para el panel admin de rollout
     const scope = await getAllowedLawIds({ userId: auth.user.id }).catch(() => null)
@@ -73,17 +82,17 @@ async function _GET(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     })
 
-    return NextResponse.json({ success: true, articles })
+    return NextResponse.json({ success: true, articles, totalTestsCompleted })
   } catch (err) {
     // Timeout o error BD: devolver cache stale si existe (mejor que pantalla vacía).
     if (cached) {
       const ageS = Math.floor((Date.now() - cached.ts) / 1000)
       console.warn(`⏱️ [problematic-articles] timeout for ${auth.user.id.slice(0, 8)}, returning stale cache (${ageS}s old)`)
-      return NextResponse.json({ success: true, articles: cached.data })
+      return NextResponse.json({ success: true, articles: cached.data, totalTestsCompleted: cached.totalTestsCompleted ?? 0 })
     }
 
     console.warn(`⏱️ [problematic-articles] timeout for ${auth.user.id.slice(0, 8)}, returning empty`)
-    return NextResponse.json({ success: true, articles: [] })
+    return NextResponse.json({ success: true, articles: [], totalTestsCompleted: 0 })
   }
 }
 

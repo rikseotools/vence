@@ -926,103 +926,35 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       // ✅ Obtener notificaciones descartadas
       const dismissedNotifications = getDismissedNotifications()
       
-      // 🆕 Obtener número total de tests completados del usuario
+      // 🆕 Artículos problemáticos + nº de tests completados — TODO server-side.
+      // Vía /api/notifications/problematic-articles (verifyAuth): scope por oposición
+      // (arregla el bug cross-oposición del RPC legacy) + devuelve totalTestsCompleted.
+      // loadProblematicArticles ya NO toca PostgREST de cliente → habilita el drop de RLS.
+      let articles = []
       let totalTestsCompleted = 0
       try {
-        const { data: userTestsCount, error: testsError } = await supabase
-          .from('tests')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('is_completed', true)
-        
-        if (!testsError && userTestsCount) {
-          totalTestsCompleted = userTestsCount.length
-          console.log(`📊 Usuario ha completado ${totalTestsCompleted} tests en total`)
+        const authHeaders = await getAuthHeaders()
+        if (!authHeaders['Authorization']) {
+          console.warn('⚠️ Sin token de sesión — no se cargan artículos problemáticos')
+          setProblematicArticles([])
+          return []
         }
-      } catch (error) {
-        console.warn('⚠️ No se pudo obtener el conteo de tests, usando 0 como fallback')
-        totalTestsCompleted = 0
-      }
-      
-      // ✅ Artículos problemáticos — FASE 4/5 refactor oposicion-scope.
-      // Si NEXT_PUBLIC_NEW_PROBLEMATIC_ARTICLES_API=true → endpoint Drizzle con scope.
-      // Si no → RPC legacy (aún con bug cross-oposición, pendiente de DROP en FASE 5).
-      let articles = []
-      let error = null
-
-      try {
-        // Canary rollout: hash(userId) % 100 < PCT → nuevo path.
-        // Ver docs/maintenance/despliegue-articulos-problematicos.md
-        const { isInProblematicArticlesRollout } = await import('@/lib/api/rollout/problematic-articles')
-        const useNewApi = isInProblematicArticlesRollout(user.id)
-
-        let rpcArticles: unknown = null
-        let rpcError: unknown = null
-
-        if (useNewApi) {
-          const authHeaders = await getAuthHeaders()
-          if (!authHeaders['Authorization']) {
-            rpcError = new Error('No session token')
-          } else {
-            const resp = await fetch('/api/notifications/problematic-articles', {
-              headers: { ...authHeaders },
-            })
-            const body = await resp.json().catch(() => null)
-            if (!resp.ok || !body?.success) {
-              rpcError = new Error(body?.error || `HTTP ${resp.status}`)
-            } else {
-              rpcArticles = body.articles
-            }
-          }
-        } else {
-          const r = await supabase.rpc('get_user_problematic_articles_weekly', {
-            user_uuid: user.id,
-          })
-          rpcArticles = r.data
-          rpcError = r.error
+        const resp = await fetch('/api/notifications/problematic-articles', {
+          headers: { ...authHeaders },
+        })
+        const body = await resp.json().catch(() => null)
+        if (!resp.ok || !body?.success) {
+          console.warn(`⚠️ problematic-articles: ${body?.error || `HTTP ${resp.status}`}`)
+          setProblematicArticles([])
+          return []
         }
-
-        {
-        
-        if (rpcError) {
-          console.log('⚠️ Función RPC no disponible, usando consulta directa alternativa')
-          
-          // Fallback: usar datos disponibles para simular artículos problemáticos
-          const { data: testData, error: testError } = await supabase
-            .from('tests')
-            .select('score, total_questions, created_at')
-            .eq('user_id', user.id)
-            .eq('is_completed', true)
-            .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-            .order('score', { ascending: true })
-            .limit(5)
-
-          if (!testError && testData && testData.length > 0) {
-            // Crear artículos problemáticos simulados basados en scores bajos
-            // score = COUNT de aciertos, derivar porcentaje
-            articles = testData
-              .map(test => {
-                const total = Number(test.total_questions) || 1
-                const pct = Math.round((Number(test.score) / total) * 100)
-                return { ...test, accuracy: pct }
-              })
-              .filter(test => test.accuracy < 70)
-              .map((test, index) => ({
-                article_number: `Art. ${10 + index}`, // Simulado
-                law_name: 'Ley 19/2013', // Simulado
-                law_short_name: 'Ley 19/2013',
-                accuracy_percentage: test.accuracy,
-                attempts_count: 1,
-                difficulty_level: test.accuracy < 30 ? 'extreme' : test.accuracy < 50 ? 'hard' : 'medium'
-              }))
-          }
-        } else {
-          articles = rpcArticles
-        }
-        }
+        articles = body.articles || []
+        totalTestsCompleted = body.totalTestsCompleted ?? 0
+        console.log(`📊 ${articles.length} artículos problemáticos; ${totalTestsCompleted} tests completados`)
       } catch (err) {
         console.error('❌ Error en carga de artículos problemáticos:', err)
-        articles = []
+        setProblematicArticles([])
+        return []
       }
 
       if (!articles || articles.length === 0) {

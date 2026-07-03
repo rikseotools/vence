@@ -63,6 +63,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
     const setCachedFn = jest.fn()
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: queryFn,
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: jest.fn().mockResolvedValue({ data: sample(3), ts: Date.now() - 60_000 }), // 60s
@@ -85,6 +86,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
     const setCachedFn = jest.fn()
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: queryFn,
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: jest.fn().mockResolvedValue({ data: sample(5), ts: Date.now() - 10 * 60_000 }), // 10min
@@ -105,6 +107,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
     const staleData = sample(7)
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: () => new Promise(() => {}), // pending forever
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: jest.fn().mockResolvedValue({ data: staleData, ts: Date.now() - 10 * 60_000 }),
@@ -128,6 +131,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
   it('cache vacío + BD timeout → 200 con [] (NO 503)', async () => {
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: () => new Promise(() => {}),
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: jest.fn().mockResolvedValue(null),
@@ -154,6 +158,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
     const setCachedFn = jest.fn()
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: queryFn,
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: jest.fn().mockResolvedValue(null),
@@ -177,6 +182,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
     const staleData = sample(2)
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: jest.fn().mockRejectedValue(new Error('connection refused')),
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: jest.fn().mockResolvedValue({ data: staleData, ts: Date.now() - 10 * 60_000 }),
@@ -202,6 +208,7 @@ describe('/api/notifications/problematic-articles — stale-while-error', () => 
     }))
     jest.doMock('@/lib/api/notifications/queries', () => ({
       getUserProblematicArticlesWeekly: queryFn,
+      getUserCompletedTestsCount: jest.fn().mockResolvedValue(0),
     }))
     jest.doMock('@/lib/cache/redis', () => ({
       getCached: getCachedFn,
