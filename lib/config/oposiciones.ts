@@ -6671,6 +6671,7 @@ export const OPOSICIONES: Oposicion[] = [
     id: 'celador_sermas_madrid',
     slug: 'celador-sermas-madrid',
     positionType: 'celador_sermas_madrid',
+    aliases: ['celador', 'celador sermas', 'celador madrid', 'sermas', 'celador servicio madrileño de salud', 'celador sanidad madrid', 'celador comunidad de madrid'],
     examScoring: { penaltyDivisor: 4, source: 'BOCM nº158 04/07/2025: un cuarto del valor de la correcta = 1/4, 4 alternativas. confidence:alta' },
     name: 'Celador del Servicio Madrileño de Salud (SERMAS)',
     shortName: 'Celador SERMAS',

@@ -318,6 +318,11 @@ function PerfilPageContent() {
       data: { name: 'Celador/a del SESCAM (Castilla-La Mancha)', slug: 'celador-sescam-clm', categoria: 'E', administracion: 'Sanitaria' }
     },
     {
+      value: 'celador_sermas_madrid',
+      label: 'Celador/a SERMAS (Madrid)',
+      data: { name: 'Celador del Servicio Madrileño de Salud (SERMAS)', slug: 'celador-sermas-madrid', categoria: 'E', administracion: 'Sanitaria' }
+    },
+    {
       value: 'auxiliar_administrativo_scs_canarias',
       label: 'Aux. Admin. SCS (Canarias)',
       data: { name: 'Auxiliar Administrativo del Servicio Canario de la Salud (SCS)', slug: 'auxiliar-administrativo-scs-canarias', categoria: 'C2', administracion: 'Sanitaria' }
