@@ -53,35 +53,24 @@ function mapUser(u: NextSessionUser): AuthUser | null {
   }
 }
 
-/** Pide a /api/auth/token un access token RS256 fresco. null si no hay sesión. */
-async function fetchMintedToken(): Promise<{ accessToken: string; expiresAt: number } | null> {
-  try {
-    const res = await fetch(TOKEN_ENDPOINT, { credentials: 'include' })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (typeof data?.accessToken !== 'string') return null
-    return { accessToken: data.accessToken, expiresAt: data.expiresAt ?? null }
-  } catch {
-    return null
-  }
-}
-
-// ─── Fallback de sesión del cutover (Fase B) ────────────────────────────────
-// Al flipear a Auth.js, los usuarios ACTIVOS con sesión Supabase (localStorage) aún
-// NO tienen sesión Auth.js → /api/auth/token daría 401 y sus /api/v2 caerían en masa
-// (el flood del 2º intento del 03/07). En vez de forzar re-login (redirect disruptivo
-// = el bootstrap anterior), leemos su sesión Supabase existente y la usamos como
-// fallback: el token HS256 lo verifica igual `mode=on` (rama HS256 de verifyAuth), así
-// que el usuario NO pierde acceso. Migra a Auth.js de forma natural al re-loguear o
-// cuando su sesión Supabase caduque (~1h). Transitorio y removible cuando ya no queden
-// sesiones Supabase vivas.
-interface LegacySupabaseSession {
-  user: AuthUser
+interface MintedToken {
   accessToken: string
-  expiresAt: number | null
+  expiresAt: number
+  /** Identidad devuelta por el bridge (cuando no hay sesión Auth.js todavía). */
+  user: { id: string; email: string | null } | null
 }
 
-function getLegacySupabaseSession(): LegacySupabaseSession | null {
+// ─── Bridge de sesión del cutover (Fase B) ──────────────────────────────────
+// Al flipear a Auth.js, los usuarios ACTIVOS con sesión Supabase aún NO tienen
+// sesión Auth.js → /api/auth/token daría 401 → sus /api/v2 caerían en masa (el flood
+// de los intentos 2/3 del 03/07). Solución: leer el access_token Supabase de
+// localStorage y ADJUNTARLO a /api/auth/token; el servidor (bridge) lo verifica
+// (mode=on, HS256) y acuña un RS256 con sub=user_profiles.id, devolviendo también la
+// identidad. Así buildSession devuelve una sesión CON usuario → el AuthProvider NO
+// entra en su rama "sin usuario" (que borra localStorage) → cero flood, cero re-login.
+// No parsea la sesión entera (solo el token), no pelea con el AuthProvider. Migra a
+// Auth.js al re-loguear. Transitorio/removible cuando no queden sesiones Supabase.
+function getLegacySupabaseAccessToken(): string | null {
   if (typeof window === 'undefined') return null
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
@@ -90,7 +79,6 @@ function getLegacySupabaseSession(): LegacySupabaseSession | null {
       const raw = window.localStorage.getItem(k)
       if (!raw) continue
       const parsed = JSON.parse(raw)
-      // supabase-js guarda la sesión directa {access_token,...} o anidada.
       const sess =
         parsed?.access_token ? parsed
         : parsed?.currentSession?.access_token ? parsed.currentSession
@@ -99,45 +87,52 @@ function getLegacySupabaseSession(): LegacySupabaseSession | null {
       const token = sess?.access_token
       if (typeof token !== 'string' || !token) continue
       const expiresAt: number | null = typeof sess?.expires_at === 'number' ? sess.expires_at : null
-      // Descartar si expirado (10s de margen) → sin fallback → getSession null → login.
+      // Descartar expirado (10s margen): el servidor lo rechazaría igual → sin bridge → login.
       if (expiresAt !== null && expiresAt * 1000 < Date.now() + 10_000) continue
-      const su = sess?.user
-      if (!su?.id) continue
-      return {
-        user: {
-          id: su.id, // = user_profiles.id (mismo UUID en Supabase)
-          email: su.email ?? null,
-          metadata: {
-            fullName: su.user_metadata?.full_name ?? su.user_metadata?.name ?? null,
-            avatarUrl: su.user_metadata?.avatar_url ?? null,
-          },
-          raw: su,
-        },
-        accessToken: token,
-        expiresAt,
-      }
+      return token
     }
   } catch {
-    /* localStorage inaccesible / JSON malo → sin fallback */
+    /* localStorage inaccesible / JSON malo → sin bridge */
   }
   return null
 }
 
 /**
- * Construye una AuthSession normalizada. Preferencia: sesión Auth.js (RS256). Si aún
- * no la hay (usuario existente en el cutover), cae a la sesión Supabase (HS256).
+ * Pide a /api/auth/token un access token RS256 fresco. En el cutover adjunta el Bearer
+ * Supabase (si existe) para que el servidor haga el bridge. Devuelve token + identidad.
+ */
+async function fetchMintedToken(): Promise<MintedToken | null> {
+  try {
+    const legacy = getLegacySupabaseAccessToken()
+    const headers: Record<string, string> = legacy ? { Authorization: `Bearer ${legacy}` } : {}
+    const res = await fetch(TOKEN_ENDPOINT, { credentials: 'include', headers })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (typeof data?.accessToken !== 'string') return null
+    return {
+      accessToken: data.accessToken,
+      expiresAt: data.expiresAt ?? null,
+      user: data.user?.id ? { id: data.user.id, email: data.user.email ?? null } : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Construye una AuthSession normalizada. Identidad: sesión Auth.js si la hay; si no
+ * (usuario existente en el cutover), la que devuelve el bridge de /api/auth/token.
  */
 async function buildSession(): Promise<AuthSession | null> {
   const [nextSession, minted] = await Promise.all([nextGetSession(), fetchMintedToken()])
-  const user = mapUser(nextSession?.user)
-  if (user && minted) {
-    return { user, accessToken: minted.accessToken, expiresAt: minted.expiresAt, refreshToken: null, raw: nextSession }
-  }
-  const legacy = getLegacySupabaseSession()
-  if (legacy) {
-    return { user: legacy.user, accessToken: legacy.accessToken, expiresAt: legacy.expiresAt, refreshToken: null, raw: { legacy: true } }
-  }
-  return null
+  if (!minted) return null
+  const user =
+    mapUser(nextSession?.user) ??
+    (minted.user
+      ? { id: minted.user.id, email: minted.user.email, metadata: { fullName: null, avatarUrl: null }, raw: minted.user }
+      : null)
+  if (!user) return null
+  return { user, accessToken: minted.accessToken, expiresAt: minted.expiresAt, refreshToken: null, raw: nextSession ?? { bridge: true } }
 }
 
 export function createAuthjsAuthAdapter(): AuthClientPort {
@@ -148,15 +143,16 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
     },
 
     async getUser() {
-      const nextSession = await nextGetSession()
-      return mapUser(nextSession?.user) ?? getLegacySupabaseSession()?.user ?? null
+      // buildSession ya resuelve la identidad por Auth.js o por el bridge (cutover).
+      const s = await buildSession()
+      return s?.user ?? null
     },
 
     async getAccessToken() {
+      // fetchMintedToken adjunta el Bearer Supabase → el servidor hace el bridge si
+      // aún no hay sesión Auth.js. Devuelve RS256 en ambos casos.
       const minted = await fetchMintedToken()
-      if (minted?.accessToken) return minted.accessToken
-      // Cutover: sin token Auth.js todavía → usar el token Supabase (verificado por mode=on).
-      return getLegacySupabaseSession()?.accessToken ?? undefined
+      return minted?.accessToken ?? undefined
     },
 
     async signInWithGoogle(options?: SignInOptions): Promise<SignInResult> {
