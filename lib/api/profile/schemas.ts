@@ -36,9 +36,10 @@ export const selfProfileDataSchema = z.object({
   email: z.string().email(),
   fullName: z.string().nullable().optional(),
   avatarUrl: z.string().nullable().optional(),
-  // Avatar de display (emoji de user_avatar_settings + color de avatar_profiles, vía
-  // leftJoin). Antes vivía en el user_metadata de Supabase; ahora la BD es la fuente
-  // y AuthContext sintetiza el user_metadata desde aquí.
+  // Avatar de display MANUAL (public_user_profiles.avatar_*, vía leftJoin). Antes vivía
+  // en el user_metadata de Supabase; ahora la BD es la fuente y AuthContext sintetiza el
+  // user_metadata desde aquí. avatarColor = clase Tailwind ("from-x to-y").
+  avatarType: z.string().nullable().optional(),
   avatarEmoji: z.string().nullable().optional(),
   avatarColor: z.string().nullable().optional(),
   preferredLanguage: z.enum(languageOptions).nullable().optional(),

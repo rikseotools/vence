@@ -422,8 +422,15 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: A
 
     // Avatar predefinido (emoji)
     if (currentAvatar?.type === 'predefined' && currentAvatar.emoji) {
+      // El color puede ser clase Tailwind ("from-x to-y", avatares manuales) o hex
+      // ("#94a3b8", avatares de rotación de avatar_profiles.color). El hex no pinta en
+      // `bg-gradient-to-r ${color}` → se aplica como estilo inline.
+      const rawColor = currentAvatar.color
+      const isHex = typeof rawColor === 'string' && rawColor.trim().startsWith('#')
+      const bgClass = isHex ? '' : `bg-gradient-to-r ${rawColor || 'from-blue-500 to-indigo-500'}`
+      const bgStyle = isHex ? { background: rawColor } : undefined
       return (
-        <div className={`w-24 h-24 bg-gradient-to-r ${currentAvatar.color} rounded-full flex items-center justify-center text-white text-4xl`}>
+        <div className={`w-24 h-24 ${bgClass} rounded-full flex items-center justify-center text-white text-4xl`} style={bgStyle}>
           {currentAvatar.emoji}
         </div>
       )

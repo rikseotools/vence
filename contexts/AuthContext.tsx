@@ -124,9 +124,9 @@ function clearCachedProfile(): void {
 // del perfil de BD (/api/profile). IMPRESCINDIBLE con el emisor agnóstico (Auth.js /
 // bridge): el objeto `user` ya NO trae el user_metadata que Supabase poblaba, así que
 // sin esto el avatar cae a la inicial del email y los avatares (emoji/animales) no salen.
-// La BD (user_profiles.nickname/avatar_url + user_avatar_settings.current_emoji +
-// avatar_profiles.color) es la fuente única de verdad; esto solo la refleja en la forma
-// que espera la UI. Helper puro.
+// La BD (user_profiles.nickname/avatar_url + public_user_profiles.avatar_type/emoji/color)
+// es la fuente única de verdad; esto solo la refleja en la forma que espera la UI.
+// Helper puro.
 function mergeProfileMetadata(
   prev: Record<string, unknown> | undefined,
   data: Record<string, unknown>,
@@ -138,8 +138,8 @@ function mergeProfileMetadata(
     full_name: g('nickname') || g('fullName') || (prev?.full_name as string | undefined) || null,
     avatar_url: g('avatarUrl') ?? (prev?.avatar_url as string | undefined) ?? null,
     picture: g('avatarUrl') ?? (prev?.picture as string | undefined) ?? null,
-    // El avatar de emoji (rotación/manual) se renderiza cuando avatar_type='predefined'.
-    avatar_type: g('avatarEmoji') ? 'predefined' : null,
+    // Avatar de emoji manual (se renderiza cuando avatar_type='predefined').
+    avatar_type: g('avatarType') ?? null,
     avatar_emoji: g('avatarEmoji') ?? null,
     avatar_color: g('avatarColor') ?? null,
   }
@@ -411,11 +411,18 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         const profile = apiProfileToRow(json.data)
         console.log('✅ Perfil cargado:', profile.email, 'Tipo:', profile.plan_type)
         updateUserProfile(profile)
-        // Reflejar el avatar/nombre de la BD en user_metadata (forma que lee la UI).
-        // Agnóstico de proveedor: con Auth.js/bridge el `user` no lo trae; lo derivamos
-        // de la fuente de verdad (la respuesta de /api/profile, ya con avatar_* del join).
+        // Reflejar avatar/nombre/fecha-de-alta de la BD en el `user` (forma que lee la UI).
+        // Agnóstico de proveedor: con Auth.js/bridge el `user` NO trae user_metadata NI
+        // created_at → sin esto, avatar cae a inicial del email y componentes que leen
+        // user.created_at (tarjetas "Tu Progreso", fecha "Registrado") se rompen. Se
+        // derivan de la fuente de verdad (/api/profile). Solo se rellena si falta (el
+        // path Supabase ya los trae).
         setUser(prev => prev
-          ? ({ ...prev, user_metadata: mergeProfileMetadata(prev.user_metadata as Record<string, unknown> | undefined, json.data) } as User)
+          ? ({
+              ...prev,
+              created_at: (prev.created_at as string | undefined) || (json.data.createdAt as string | undefined) || prev.created_at,
+              user_metadata: mergeProfileMetadata(prev.user_metadata as Record<string, unknown> | undefined, json.data),
+            } as User)
           : prev)
         return profile
       }

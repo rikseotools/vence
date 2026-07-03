@@ -5,7 +5,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getProfileDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { userProfiles, userAvatarSettings, avatarProfiles } from '@/db/schema'
+import { userProfiles, publicUserProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { unstable_cache, revalidateTag } from 'next/cache'
 import type {
@@ -178,23 +178,24 @@ export async function getProfileForSelf(
   try {
     const db = getProfileDb()
 
-    // Avatar de display (emoji + color) desde el sistema de avatares. Antes vivía en
-    // el user_metadata de Supabase; con el emisor agnóstico (Auth.js) la BD es la fuente
-    // única y AuthContext sintetiza el user_metadata a partir de aquí.
-    //   - user_avatar_settings.current_emoji = emoji mostrado (rotación automática O
-    //     elección manual; ~todos los usuarios tienen fila).
-    //   - avatar_profiles.color = gradiente del avatar (FK current_profile → avatar_profiles.id).
-    // leftJoin (no inner): usuario sin avatar sigue devolviendo perfil, avatar_* = null
-    // (fallback a inicial del nickname).
+    // Avatar de display (type/emoji/color) desde public_user_profiles — el avatar MANUAL
+    // que el usuario eligió. Antes vivía en el user_metadata de Supabase (que reflejaba
+    // ESTA tabla, no la rotación); con el emisor agnóstico (Auth.js) la BD es la fuente
+    // única y AuthContext sintetiza el user_metadata a partir de aquí. El color es una
+    // clase Tailwind ("from-brown-400 to-brown-500"), no hex.
+    // OJO: la rotación (user_avatar_settings) NUNCA escribió user_metadata → el header
+    // siempre mostró la elección manual. Fuente correcta = public_user_profiles.
+    // leftJoin (no inner): usuario sin avatar manual sigue devolviendo perfil, avatar_* =
+    // null (fallback a foto de Google o inicial del nickname).
     const [profile] = await db
       .select({
         ...SELF_PROFILE_COLUMNS,
-        avatarEmoji: userAvatarSettings.currentEmoji,
-        avatarColor: avatarProfiles.color,
+        avatarType: publicUserProfiles.avatarType,
+        avatarEmoji: publicUserProfiles.avatarEmoji,
+        avatarColor: publicUserProfiles.avatarColor,
       })
       .from(userProfiles)
-      .leftJoin(userAvatarSettings, eq(userAvatarSettings.userId, userProfiles.id))
-      .leftJoin(avatarProfiles, eq(avatarProfiles.id, userAvatarSettings.currentProfile))
+      .leftJoin(publicUserProfiles, eq(publicUserProfiles.id, userProfiles.id))
       .where(eq(userProfiles.id, params.userId))
       .limit(1)
 

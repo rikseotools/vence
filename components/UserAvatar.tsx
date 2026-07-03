@@ -39,6 +39,7 @@ interface V2StatsResponse {
   globalAccuracy?: number
   currentStreak?: number
   questionsThisWeek?: number
+  userCreatedAt?: string
   error?: string
 }
 
@@ -121,9 +122,11 @@ export default function UserAvatar() {
     let cancelled = false
 
     async function load() {
-      if (!user || !user.created_at) return
-
-      const userCreatedAt = new Date(user.created_at)
+      // NO gatear por user.created_at: el emisor agnóstico (Auth.js/bridge) no lo
+      // incluye en `user` → antes hacía return temprano dejando statsLoading=true para
+      // siempre y las tarjetas de "Tu Progreso" quedaban en skeleton. La fecha de alta
+      // sale de la propia respuesta (userCreatedAt), con fallback a user.created_at.
+      if (!user) return
 
       try {
         setStatsLoading(true)
@@ -138,12 +141,16 @@ export default function UserAvatar() {
           return
         }
 
+        const registeredDate = data.userCreatedAt
+          ? new Date(data.userCreatedAt)
+          : (user.created_at ? new Date(user.created_at) : new Date())
+
         setUserStats({
           streak: data.currentStreak ?? 0,
           accuracy: data.globalAccuracy ?? 0,
           weeklyQuestions: data.questionsThisWeek ?? 0,
           totalQuestions: data.totalQuestions ?? 0,
-          userRegisteredDate: userCreatedAt,
+          userRegisteredDate: registeredDate,
         })
       } catch (error) {
         if (cancelled) return
@@ -161,21 +168,23 @@ export default function UserAvatar() {
 
   useEffect(() => {
     const handleExamCompleted = () => {
-      if (!user?.id || !user.created_at) return
+      if (!user?.id) return
       console.log('UserAvatar: Refrescando stats despues de examen completado')
       loadPendingExams()
 
-      const userCreatedAt = new Date(user.created_at)
       fetch(`/api/v2/user-stats?userId=${user.id}`)
         .then(res => res.json())
         .then((data: V2StatsResponse) => {
           if (!data.success) return
+          const registeredDate = data.userCreatedAt
+            ? new Date(data.userCreatedAt)
+            : (user.created_at ? new Date(user.created_at) : new Date())
           setUserStats({
             streak: data.currentStreak ?? 0,
             accuracy: data.globalAccuracy ?? 0,
             weeklyQuestions: data.questionsThisWeek ?? 0,
             totalQuestions: data.totalQuestions ?? 0,
-            userRegisteredDate: userCreatedAt,
+            userRegisteredDate: registeredDate,
           })
         })
         .catch(() => {})
@@ -233,15 +242,23 @@ export default function UserAvatar() {
   const avatarDisplay = useMemo<AvatarDisplay>(() => {
     // 1. Custom avatar (icons from AvatarChanger)
     if (user?.user_metadata?.avatar_type === 'predefined' && user?.user_metadata?.avatar_emoji) {
+      // El color viene en DOS formatos: clase Tailwind ("from-x to-y", avatares
+      // manuales de public_user_profiles) o hex ("#94a3b8", avatares de rotación de
+      // avatar_profiles.color). El hex NO funciona en `bg-gradient-to-r ${color}` →
+      // fondo transparente/blanco. Se detecta y se aplica como estilo inline.
+      const rawColor = user.user_metadata.avatar_color as string | undefined
+      const isHex = typeof rawColor === 'string' && rawColor.trim().startsWith('#')
+      const bgClass = isHex ? '' : `bg-gradient-to-r ${rawColor || 'from-green-500 to-blue-500'}`
+      const bgStyle = isHex ? { background: rawColor } : undefined
       return {
         type: 'custom',
         element: (
-          <div className={`w-10 h-10 bg-gradient-to-r ${user.user_metadata.avatar_color} rounded-full flex items-center justify-center text-white text-xl border-2 border-green-500`}>
+          <div className={`w-10 h-10 ${bgClass} rounded-full flex items-center justify-center text-white text-xl border-2 border-green-500`} style={bgStyle}>
             {user.user_metadata.avatar_emoji}
           </div>
         ),
         elementLarge: (
-          <div className={`w-12 h-12 bg-gradient-to-r ${user.user_metadata.avatar_color} rounded-full flex items-center justify-center text-white text-2xl`}>
+          <div className={`w-12 h-12 ${bgClass} rounded-full flex items-center justify-center text-white text-2xl`} style={bgStyle}>
             {user.user_metadata.avatar_emoji}
           </div>
         ),
