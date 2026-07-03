@@ -19,8 +19,22 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ auth: { getUser: (...a: unknown[]) => mockGetUser(...a) } }),
 }))
 
+// Verificador RS256 (tokens del flip Auth.js). El guard lo usa cuando el alg del
+// header es RS256; para HS256/otros cae al getUser remoto de Supabase.
+const mockVerifyRs256 = jest.fn()
+jest.mock('@/lib/api/auth/verifyJwtRs256', () => ({
+  verifyJwtRs256: (...a: unknown[]) => mockVerifyRs256(...a),
+}))
+
 import { guardAdminApi } from '@/lib/security/adminApiGuard'
 import { NextRequest } from 'next/server'
+
+/** Construye un JWT con un header `alg` real (payload/firma ficticios: el
+ *  verificador está mockeado; solo importa que decodeProtectedHeader lea el alg). */
+function jwtWithAlg(alg: string): string {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url')
+  return `${b64({ alg, typ: 'JWT' })}.${b64({ sub: 'u' })}.sig`
+}
 
 const OLD_ENV = process.env
 beforeEach(() => {
@@ -92,6 +106,36 @@ describe('guardAdminApi — rutas con auth propia (SELF_AUTHENTICATED_PREFIXES)'
   test('lookalike (stripe-fees-summary-X) NO se exime → 401 sin token', async () => {
     const res = await guardAdminApi(req({}, 'GET', '/api/admin/stripe-fees-summary-fake'))
     expect(res?.status).toBe(401)
+  })
+})
+
+// REGRESIÓN del flip (03/07): el guard solo hacía getUser remoto → Supabase no
+// reconoce los RS256 de Auth.js → TODO el panel admin daba 401. Ahora enruta por alg.
+describe('guardAdminApi — tokens RS256 del flip (enrutado por alg)', () => {
+  test('RS256 de admin whitelist → permite (null) SIN tocar Supabase remoto', async () => {
+    mockVerifyRs256.mockResolvedValue({ success: true, userId: 'u', email: 'manueltrader@gmail.com' })
+    const res = await guardAdminApi(req({ authorization: `Bearer ${jwtWithAlg('RS256')}` }, 'GET', '/api/v2/admin/dashboard'))
+    expect(res).toBeNull()
+    expect(mockVerifyRs256).toHaveBeenCalledTimes(1)
+    expect(mockGetUser).not.toHaveBeenCalled() // RS256 NO va por el path remoto legacy
+  })
+
+  test('RS256 de usuario NO admin → 403', async () => {
+    mockVerifyRs256.mockResolvedValue({ success: true, userId: 'u', email: 'random@gmail.com' })
+    expect((await guardAdminApi(req({ authorization: `Bearer ${jwtWithAlg('RS256')}` })))?.status).toBe(403)
+  })
+
+  test('RS256 inválido (firma/exp) → 401', async () => {
+    mockVerifyRs256.mockResolvedValue({ success: false, error: 'invalid_signature' })
+    expect((await guardAdminApi(req({ authorization: `Bearer ${jwtWithAlg('RS256')}` })))?.status).toBe(401)
+  })
+
+  test('HS256 sigue yendo por Supabase remoto (legacy intacto)', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { email: 'manueltrader@gmail.com' } }, error: null })
+    const res = await guardAdminApi(req({ authorization: `Bearer ${jwtWithAlg('HS256')}` }))
+    expect(res).toBeNull()
+    expect(mockGetUser).toHaveBeenCalledTimes(1)
+    expect(mockVerifyRs256).not.toHaveBeenCalled()
   })
 })
 
