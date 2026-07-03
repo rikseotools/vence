@@ -2,7 +2,7 @@
 'use client'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getSupabaseClient } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
 import { useGoogleAds } from '../../../utils/googleAds'
 import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoogleParams } from '../../../lib/metaPixelCapture'
 
@@ -21,12 +21,6 @@ function AuthCallbackContent() {
         console.log('🔐 [CALLBACK] Procesando callback de autenticacion...')
         setStatus('loading')
         setMessage('Verificando tu cuenta de Google...')
-
-        const supabase = getSupabaseClient()
-
-        if (!supabase) {
-          throw new Error('No se pudo obtener cliente de Supabase')
-        }
 
         // 1. Determinar URL de retorno
         const determineReturnUrl = (): string => {
@@ -73,160 +67,13 @@ function AuthCallbackContent() {
           }
         }
 
-        // 2. Esperar sesion via polling de localStorage
-        // El singleton (detectSessionInUrl: true) hace el exchange PKCE
-        // automaticamente en _initialize(). Pero sus metodos (getSession,
-        // exchangeCodeForSession) usan _acquireLock que causa cascadas con
-        // AuthContext via pendingInLock (puede superar 15s).
-        // Solucion: leer localStorage directamente — sin locks.
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-
-        // 🔧 FIX: Limpiar sesión expirada de localStorage antes de esperar la nueva.
-        // Si hay una sesión vieja con token expirado, _initialize() intenta refrescarla
-        // A LA VEZ que intercambia el código OAuth nuevo → bloqueo de navigator.locks → timeout 30s.
-        // Eliminándola, _initialize() solo hace el exchange del código nuevo.
-        try {
-          const existingRaw = localStorage.getItem(storageKey)
-          if (existingRaw) {
-            const existing = JSON.parse(existingRaw)
-            if (existing?.expires_at && existing.expires_at < Math.floor(Date.now() / 1000)) {
-              console.log('🧹 [CALLBACK] Sesión expirada en localStorage, limpiando para evitar lock contention')
-              localStorage.removeItem(storageKey)
-            }
-          }
-        } catch {
-          // ignorar errores de parsing
-        }
-
-        console.log('🔑 [CALLBACK] Esperando sesion via localStorage polling + onAuthStateChange + PKCE directo...')
-
-        const SESSION_TIMEOUT_MS = 15000
-        const POLL_INTERVAL_MS = 150
-        const DIRECT_PKCE_DELAY_MS = 3000 // Intentar exchange directo tras 3s si _initialize() se cuelga
-
-        const session = await new Promise<any>((resolve, reject) => {
-          let resolved = false
-          let authSubscription: { unsubscribe: () => void } | null = null
-
-          const finish = (sess: any, source: string) => {
-            if (resolved) return
-            resolved = true
-            clearInterval(interval)
-            clearTimeout(timeout)
-            clearTimeout(directPkceTimeout)
-            authSubscription?.unsubscribe()
-            console.log(`✅ [CALLBACK] Sesion encontrada via ${source}:`, sess?.user?.email)
-            resolve(sess)
-          }
-
-          // Canal 1: onAuthStateChange
-          try {
-            const { data } = supabase.auth.onAuthStateChange((event: string, authSession: any) => {
-              if (authSession?.access_token && authSession.user) {
-                finish(authSession, `onAuthStateChange-${event}`)
-              }
-            })
-            authSubscription = data.subscription
-          } catch (e) {
-            console.warn('⚠️ [CALLBACK] Error suscribiendo onAuthStateChange:', e)
-          }
-
-          // 🔧 Canal 3: Exchange PKCE DIRECTO via HTTP (bypass navigator.locks)
-          // Si _initialize() se cuelga en locks, hacemos el exchange nosotros a los 3s
-          const urlCode = new URLSearchParams(window.location.search).get('code')
-          const directPkceTimeout = setTimeout(async () => {
-            if (resolved || !urlCode) return
-            console.log('🔄 [CALLBACK] _initialize() lento, intentando exchange PKCE directo...')
-            try {
-              // Leer code_verifier de localStorage (Supabase lo guarda con sufijo -code-verifier)
-              const codeVerifierKey = `${storageKey}-code-verifier`
-              const codeVerifier = localStorage.getItem(codeVerifierKey)
-              if (!codeVerifier) {
-                console.warn('⚠️ [CALLBACK] No se encontró code_verifier en localStorage')
-                return
-              }
-
-              // Exchange directo via HTTP — sin locks, sin SDK
-              const tokenUrl = `${supabaseUrl}/auth/v1/token?grant_type=pkce`
-              const response = await fetch(tokenUrl, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                },
-                body: JSON.stringify({
-                  auth_code: urlCode,
-                  code_verifier: codeVerifier,
-                }),
-              })
-
-              if (!response.ok) {
-                const errBody = await response.text()
-                console.warn('⚠️ [CALLBACK] Exchange PKCE directo falló:', response.status, errBody)
-                return
-              }
-
-              const tokenData = await response.json()
-              if (tokenData?.access_token && tokenData?.user) {
-                console.log('✅ [CALLBACK] Exchange PKCE directo exitoso!')
-                // Guardar en localStorage para que Supabase lo detecte
-                localStorage.setItem(storageKey, JSON.stringify(tokenData))
-                localStorage.removeItem(codeVerifierKey)
-                finish(tokenData, 'direct-pkce-exchange')
-              }
-            } catch (e) {
-              console.warn('⚠️ [CALLBACK] Error en exchange PKCE directo:', e)
-            }
-          }, DIRECT_PKCE_DELAY_MS)
-
-          const timeout = setTimeout(async () => {
-            if (resolved) return
-            clearInterval(interval)
-            authSubscription?.unsubscribe()
-            // Fallback final: intentar getSession()
-            console.log('⏳ [CALLBACK] Polling agotado, intentando getSession() como fallback...')
-            try {
-              const { data, error: sessError } = await supabase.auth.getSession()
-              if (data?.session?.access_token && data.session.user) {
-                finish(data.session, 'getSession-fallback')
-                return
-              }
-              if (sessError) console.warn('⚠️ [CALLBACK] getSession fallback error:', sessError.message)
-            } catch (e) {
-              console.warn('⚠️ [CALLBACK] getSession fallback exception:', e)
-            }
-            reject(new Error('Timeout: no se recibio sesion en 15s'))
-          }, SESSION_TIMEOUT_MS)
-
-          // Canal 2: localStorage polling
-          const interval = setInterval(() => {
-            try {
-              const raw = localStorage.getItem(storageKey)
-              if (raw) {
-                const parsed = JSON.parse(raw)
-                if (parsed?.access_token && parsed?.user) {
-                  finish(parsed, 'localStorage-polling')
-                }
-              }
-            } catch {
-              // JSON parse error — ignorar, seguir polling
-            }
-          }, POLL_INTERVAL_MS)
-
-          // Check inmediato (por si ya esta)
-          try {
-            const raw = localStorage.getItem(storageKey)
-            if (raw) {
-              const parsed = JSON.parse(raw)
-              if (parsed?.access_token && parsed?.user) {
-                finish(parsed, 'localStorage-immediate')
-              }
-            }
-          } catch {
-            // ignorar
-          }
-        })
+        // 2. Obtener la sesión vía el puerto de auth AGNÓSTICO.
+        // Bajo Auth.js el callback ya lo resolvió el servidor (/api/auth/callback/google)
+        // → completeOAuthCallback() solo relee la sesión ya establecida (sin polling, sin
+        // timeout). Bajo Supabase hace el intercambio PKCE (esta misma lógica está portada
+        // 1:1 en supabaseAdapter). ANTES esta página era Supabase-only y bajo Auth.js
+        // esperaba una sesión Supabase que nunca llegaba → "Timeout: no se recibió sesión en 15s".
+        const session = await auth.completeOAuthCallback()
 
         if (!session?.user) {
           throw new Error('No se estableció sesión tras la autenticación')
@@ -262,13 +109,13 @@ function AuthCallbackContent() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
+              'Authorization': `Bearer ${session.accessToken}`,
             },
             body: JSON.stringify({
               userId: session.user.id,
               userEmail: session.user.email,
-              fullName: session.user.user_metadata?.full_name || null,
-              avatarUrl: session.user.user_metadata?.avatar_url || null,
+              fullName: session.user.metadata?.fullName || null,
+              avatarUrl: session.user.metadata?.avatarUrl || null,
               returnUrl: finalReturnUrl,
               oposicion: oposicionParam,
               funnel: funnelParam,
@@ -303,7 +150,7 @@ function AuthCallbackContent() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
+                'Authorization': `Bearer ${session.accessToken}`,
               },
               body: JSON.stringify({ deviceId, gaClientId }),
               keepalive: true,
@@ -319,7 +166,7 @@ function AuthCallbackContent() {
         } else if (isMetaAds) {
           events.SIGNUP('meta')
           try {
-            const metaResult = await trackMetaRegistration(session.user.id, session.user.email)
+            const metaResult = await trackMetaRegistration(session.user.id, session.user.email ?? '')
             if (metaResult?.success) {
               console.log('✅ [META CAPI] Evento CompleteRegistration enviado:', metaResult.eventId)
             }
