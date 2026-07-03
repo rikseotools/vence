@@ -5,7 +5,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getProfileDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { userProfiles } from '@/db/schema'
+import { userProfiles, userAvatarSettings, avatarProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { unstable_cache, revalidateTag } from 'next/cache'
 import type {
@@ -178,9 +178,23 @@ export async function getProfileForSelf(
   try {
     const db = getProfileDb()
 
+    // Avatar de display (emoji + color) desde el sistema de avatares. Antes vivía en
+    // el user_metadata de Supabase; con el emisor agnóstico (Auth.js) la BD es la fuente
+    // única y AuthContext sintetiza el user_metadata a partir de aquí.
+    //   - user_avatar_settings.current_emoji = emoji mostrado (rotación automática O
+    //     elección manual; ~todos los usuarios tienen fila).
+    //   - avatar_profiles.color = gradiente del avatar (FK current_profile → avatar_profiles.id).
+    // leftJoin (no inner): usuario sin avatar sigue devolviendo perfil, avatar_* = null
+    // (fallback a inicial del nickname).
     const [profile] = await db
-      .select(SELF_PROFILE_COLUMNS)
+      .select({
+        ...SELF_PROFILE_COLUMNS,
+        avatarEmoji: userAvatarSettings.currentEmoji,
+        avatarColor: avatarProfiles.color,
+      })
       .from(userProfiles)
+      .leftJoin(userAvatarSettings, eq(userAvatarSettings.userId, userProfiles.id))
+      .leftJoin(avatarProfiles, eq(avatarProfiles.id, userAvatarSettings.currentProfile))
       .where(eq(userProfiles.id, params.userId))
       .limit(1)
 

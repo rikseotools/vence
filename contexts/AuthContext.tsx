@@ -119,6 +119,32 @@ function clearCachedProfile(): void {
   } catch {}
 }
 
+// Sintetiza el `user_metadata` (forma Supabase) que ~20 componentes de UI leen para
+// mostrar avatar y nombre (UserAvatar, headers, etc.), a partir de los datos FRESCOS
+// del perfil de BD (/api/profile). IMPRESCINDIBLE con el emisor agnóstico (Auth.js /
+// bridge): el objeto `user` ya NO trae el user_metadata que Supabase poblaba, así que
+// sin esto el avatar cae a la inicial del email y los avatares (emoji/animales) no salen.
+// La BD (user_profiles.nickname/avatar_url + user_avatar_settings.current_emoji +
+// avatar_profiles.color) es la fuente única de verdad; esto solo la refleja en la forma
+// que espera la UI. Helper puro.
+function mergeProfileMetadata(
+  prev: Record<string, unknown> | undefined,
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const g = (k: string) => data[k] as string | null | undefined
+  return {
+    ...prev,
+    // La inicial/nombre usan `full_name`; priorizar el nickname elegido por el usuario.
+    full_name: g('nickname') || g('fullName') || (prev?.full_name as string | undefined) || null,
+    avatar_url: g('avatarUrl') ?? (prev?.avatar_url as string | undefined) ?? null,
+    picture: g('avatarUrl') ?? (prev?.picture as string | undefined) ?? null,
+    // El avatar de emoji (rotación/manual) se renderiza cuando avatar_type='predefined'.
+    avatar_type: g('avatarEmoji') ? 'predefined' : null,
+    avatar_emoji: g('avatarEmoji') ?? null,
+    avatar_color: g('avatarColor') ?? null,
+  }
+}
+
 export function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser)
   const [userProfile, setUserProfile] = useState<UserProfileRow | null>(null)
@@ -385,6 +411,12 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         const profile = apiProfileToRow(json.data)
         console.log('✅ Perfil cargado:', profile.email, 'Tipo:', profile.plan_type)
         updateUserProfile(profile)
+        // Reflejar el avatar/nombre de la BD en user_metadata (forma que lee la UI).
+        // Agnóstico de proveedor: con Auth.js/bridge el `user` no lo trae; lo derivamos
+        // de la fuente de verdad (la respuesta de /api/profile, ya con avatar_* del join).
+        setUser(prev => prev
+          ? ({ ...prev, user_metadata: mergeProfileMetadata(prev.user_metadata as Record<string, unknown> | undefined, json.data) } as User)
+          : prev)
         return profile
       }
 
