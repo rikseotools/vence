@@ -18,6 +18,7 @@ import { auth } from '@/lib/auth/authjs'
 import { mintAccessToken } from '@/lib/auth/mintAccessToken'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,6 +28,11 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
   let userId = (session?.user as { id?: string } | undefined)?.id
   let email = session?.user?.email ?? null
+  // Instrumentación de DRENAJE (Fase B soak): por qué vía se acuña el token.
+  // 'authjs_session' = usuario ya migrado (cookie Auth.js). 'bridge' = aún depende
+  // de su sesión Supabase legacy. Cuando 'bridge' → ~0, retirar la doble-aceptación
+  // HS256 + el bridge (paso 5 de B4, punto de no retorno). Ver docs §"Siguiente paso".
+  let via: 'authjs_session' | 'bridge' = 'authjs_session'
 
   // 2. Bridge del cutover: sin sesión Auth.js → aceptar Bearer Supabase HS256 válido.
   //    verifyAuth (mode=on) lo valida por la rama HS256 de la doble-aceptación.
@@ -35,6 +41,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     if (bridged.success) {
       userId = bridged.userId
       email = bridged.email
+      via = 'bridge'
     }
   }
 
@@ -47,6 +54,18 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     // Emisor dormido (claves no configuradas) → no romper, señalar indisponible.
     return NextResponse.json({ error: 'issuer_not_configured' }, { status: 503 })
   }
+
+  // Métrica de drenaje — fire-and-forget (no añade latencia al hot path; pérdida
+  // ocasional es aceptable, cada usuario acuña muchas veces al día). Query:
+  // scripts/… (o scratchpad/fase-b-drenaje.cjs): distinct user_id por `via` y día.
+  emitFireAndForget({
+    source: 'vercel',
+    severity: 'info',
+    eventType: 'auth_token_minted',
+    endpoint: '/api/auth/token',
+    userId,
+    metadata: { via },
+  })
 
   return NextResponse.json(
     {
