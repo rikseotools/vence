@@ -18,7 +18,13 @@
 - `20260703_fase_b_fk_repoint.sql`: **52 FKs re-apuntados** a `user_profiles(id)` (ON DELETE preservado) + drop de `user_profiles_id_fkey`.
 - Verificado en prod: 0 FKs→auth.users, 76→user_profiles, 0 sin validar, `user_interactions`(8.6M) validado 37.6s con lock débil, escrituras vivas OK, 0 errores `23503`, y **`create_organic_user` con UUID nuevo ya funciona** (root cause resuelto).
 
-**FALTA para re-flipear** (en este orden): (a) cerrar los `.from` de cliente user-scoped (`loadProblematicArticles` canary) → habilita C4 sin fuga; (b) C4 drop RLS (125 policies); (c) fix `resolveAppUser` (reusar id de `auth.users` para user existente-en-auth-sin-perfil) + manejo del session-gap (usuarios con sesión Supabase, sin sesión Auth.js); (d) verificar el flip en `preview-aws.vence.es` con el harness E2E; (e) flip con rollback de oro a `:309`.
+**FASE 2 (03/07, commits `e46ea475` + `4ade858a`, sin pushear):**
+- ✅ **Cerrado el último `.from` de cliente user-scoped** (`loadProblematicArticles`): siempre vía endpoint `/api/notifications/problematic-articles` (scope por oposición + devuelve `totalTestsCompleted`); eliminados canary + RPC legacy + fallback. Ratchet 3/2→1/1, rpc 7→6. Único cliente PostgREST restante = `AuthContext` (dual-path `AUTH_LIFECYCLE_VIA_API`, se cierra al poner el flag `true`, que el propio flip requiere). `useTopicUnlock` era falso positivo (comentario). **→ C4 desbloqueado en cuanto `AUTH_LIFECYCLE_VIA_API=true`.**
+- ✅ **`resolveAppUser` verificado correcto — NO necesita fix** (tras el re-point, `create_organic_user` con UUID nuevo funciona; existente se resuelve por email). Descartado a propósito "reusar id de auth.users" (re-acoplaría a auth.users).
+- ✅ **Session-gap = bootstrap silencioso** (decisión Manuel): `authjsAdapter` detecta sesión Supabase residual sin sesión Auth.js → `signIn('google')` una vez (flag anti-bucle, no interfiere `/api/auth/*`) → cutover sin logout visible. 5 tests.
+- Bonus: `jest.transformIgnorePatterns` extendido a la cadena ESM de next-auth (destrababa tests que importan `lib/auth`).
+
+**FALTA para re-flipear** (Fase 3, en orden): (a) `AUTH_LIFECYCLE_VIA_API=true` (cierra AuthContext, rebuild) + soak; (b) C4 drop RLS (125 policies); (c) verificar en `preview-aws.vence.es` con el harness E2E (usuario nuevo + bootstrap + endpoints); (d) chequear el gate `if (user && supabase)` bajo Auth.js; (e) flip con rollback de oro a `:309`.
 
 ## Progreso
 
