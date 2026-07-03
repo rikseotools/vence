@@ -46,6 +46,14 @@ export type Unsubscribe = () => void
 
 export interface SignInOptions {
   funnel?: string
+  /**
+   * URL de retorno tras el OAuth (normalmente `${origin}/auth/callback?return_to=…`
+   * con oposición/campaña/funnel ya embebidos por el caller). Si se omite, el adapter
+   * usa un default sensato (`window.location.href` en Auth.js; callback+return_to en
+   * Supabase). Lo usan las páginas de login para preservar su routing/tracking al
+   * migrar de `supabase.auth.signInWithOAuth` al port agnóstico.
+   */
+  callbackUrl?: string
 }
 
 export interface SignInResult {

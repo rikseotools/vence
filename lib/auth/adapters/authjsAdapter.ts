@@ -185,12 +185,12 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
 
     async signInWithGoogle(options?: SignInOptions): Promise<SignInResult> {
       try {
-        // El callbackUrl (retorno post-login) sale de la página actual. El funnel
-        // premium (return_to con start_checkout + campaign) es la deuda C2 —
-        // se honra al cablear los callers, no aquí.
+        // callbackUrl explícito del caller (páginas de login: lleva return_to +
+        // oposición + campaña + funnel embebidos) → preserva el routing/tracking.
+        // Si no lo pasan, la página actual como default.
         const callbackUrl =
-          typeof window !== 'undefined' ? window.location.href : '/'
-        void options // funnel (C2) se honra al cablear los callers, no aquí
+          options?.callbackUrl ??
+          (typeof window !== 'undefined' ? window.location.href : '/')
         await nextSignIn('google', { callbackUrl })
         return { success: true }
       } catch (err) {

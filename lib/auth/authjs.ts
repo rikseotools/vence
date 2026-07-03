@@ -25,7 +25,15 @@ const googleSecret = process.env.GOOGLE_CLIENT_SECRET
 
 const providers =
   googleId && googleSecret
-    ? [Google({ clientId: googleId, clientSecret: googleSecret })]
+    ? [
+        Google({
+          clientId: googleId,
+          clientSecret: googleSecret,
+          // `prompt=select_account`: paridad con el flujo Supabase previo — deja
+          // elegir cuenta en vez de reusar la sesión Google silenciosamente.
+          authorization: { params: { prompt: 'select_account' } },
+        }),
+      ]
     : []
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

@@ -78,21 +78,13 @@ function PremiumPageContent() {
     try {
       console.log('🔄 Paso 1: Iniciando registro con Google...')
 
-      const { error: authError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?return_to=${encodeURIComponent('/premium?start_checkout=true')}`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account',
-            include_granted_scopes: 'true',
-            scope: 'openid email profile'
-          }
-        }
+      // Port agnóstico (Auth.js bajo el flip; supabaseAdapter si se revierte).
+      const { success, error: authError } = await auth.signInWithGoogle({
+        callbackUrl: `${window.location.origin}/auth/callback?return_to=${encodeURIComponent('/premium?start_checkout=true')}`,
       })
 
-      if (authError) {
-        throw new Error('Error en el registro: ' + authError.message)
+      if (!success) {
+        throw new Error('Error en el registro: ' + (authError || 'sign_in_failed'))
       }
 
     } catch (err) {

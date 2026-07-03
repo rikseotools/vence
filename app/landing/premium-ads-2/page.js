@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,20 +31,11 @@ function PremiumAdsContent() {
     try {
       console.log('🔄 Iniciando registro desde Google Ads (agresivo)...')
       
-      const { error: authError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(`/premium-ads?start_checkout=true&campaign=${campaignId}`)}`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account',
-            include_granted_scopes: 'true',
-            scope: 'openid email profile'
-          }
-        }
+      const { success, error: authError } = await auth.signInWithGoogle({
+        callbackUrl: `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(`/premium-ads?start_checkout=true&campaign=${campaignId}`)}`,
       })
-      
-      if (authError) throw new Error('Error en el registro: ' + authError.message)
+
+      if (!success) throw new Error('Error en el registro: ' + (authError || 'sign_in_failed'))
       
     } catch (err) {
       console.error('Error:', err)

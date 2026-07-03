@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { auth } from '@/lib/auth'
 import { detectCampaignSource, shouldForceCheckout, forceCampaignCheckout } from '@/lib/campaignTracker'
 
 function LoginPageContent() {
@@ -83,21 +84,12 @@ function LoginPageContent() {
         }
       }
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account',
-            include_granted_scopes: 'true',
-            scope: 'openid email profile'
-          }
-        }
-      })
-      
-      if (error) throw error
-      
+      // Port agnóstico: bajo el flip usa Auth.js (nextSignIn google); si se revierte,
+      // el supabaseAdapter honra el mismo callbackUrl → cero cambio de comportamiento.
+      // El redirectUrl lleva return_to + oposición + campaña/funnel embebidos.
+      const { success, error } = await auth.signInWithGoogle({ callbackUrl: redirectUrl })
+      if (!success) throw new Error(error || 'sign_in_failed')
+
     } catch (error) {
       console.error('❌ Error en login:', error)
       setError('Error al conectar con Google. Intenta de nuevo.')

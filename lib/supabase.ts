@@ -223,8 +223,11 @@ export const getSupabaseClient = (): any => {
 }
 
 // ✅ LOGIN CON MÉTODO OFICIAL RECOMENDADO
-// options: { funnel?: string } - opcional para trackear el origen del registro
-export const signInWithGoogle = async (options: { funnel?: string } = {}): Promise<{ success: boolean; data?: unknown; error?: string }> => {
+// options.funnel  - opcional, trackea el origen del registro
+// options.callbackUrl - opcional; si el caller ya construyó la URL de retorno
+//   (return_to + oposición + campaña embebidos, como las páginas de login), se usa
+//   tal cual como redirectTo. Si no, se construye la default (return_to + funnel).
+export const signInWithGoogle = async (options: { funnel?: string; callbackUrl?: string } = {}): Promise<{ success: boolean; data?: unknown; error?: string }> => {
   const client = getSupabaseClient()
 
   try {
@@ -248,10 +251,12 @@ export const signInWithGoogle = async (options: { funnel?: string } = {}): Promi
 
     // 🔧 USAR EL MISMO MÉTODO QUE FUNCIONA EN LOGIN PAGE
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : getURL()
-    let callbackUrl = `${baseUrl}/auth/callback?return_to=${encodeURIComponent(relativeUrl)}`
+    // Si el caller ya trae una URL de retorno completa, respetarla; si no, construir la default.
+    let callbackUrl = options.callbackUrl ?? `${baseUrl}/auth/callback?return_to=${encodeURIComponent(relativeUrl)}`
 
-    // 🎯 AÑADIR FUNNEL DE REGISTRO SI SE ESPECIFICA
-    if (options.funnel) {
+    // 🎯 AÑADIR FUNNEL DE REGISTRO SI SE ESPECIFICA (solo en la URL construida por defecto;
+    // si el caller trajo callbackUrl, el funnel ya va embebido → no duplicar).
+    if (options.funnel && !options.callbackUrl) {
       callbackUrl += `&funnel=${encodeURIComponent(options.funnel)}`
       console.log('📋 Funnel de registro:', options.funnel)
     }
