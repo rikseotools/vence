@@ -140,7 +140,17 @@ Hoy el SQL es **ya estándar** (usamos Drizzle + postgres-js, no `@supabase/supa
 
 **Volumen**: BD **26 GB** (~20GB app; `audit_log_entries` 1.5GB + `refresh_tokens` 769MB son de GoTrue, NO se migran). Mayores: `user_interactions` 7.8GB/8.7M, `test_questions` 4.9GB. Dump/restore en frío = **multi-hora** → para downtime casi-cero usar **replicación lógica (CDC)**, no dump/restore. Dump de esquema de referencia guardado en scratchpad de la sesión.
 
-**Veredicto**: migración **muy factible, sin incógnitas grandes**, pero NO es un cutover exprés — requiere los 6 puntos + una ventana con CDC. Orden sugerido: desacoplar login → C4 + funciones → mover webhook pg_net → provisionar target + roles/ext → CDC + cutover + verificar.
+**🧪🧪 DRY-RUN 2 — RESTORE COMPLETO POST-PREP+C4 PROBADO (2026-07-03 noche):** re-dump del esquema (tras los drops de hoy) → simulé C4 (quité las 132 `CREATE POLICY` con `auth.uid()`/`is_current_user_admin`) → restauré a **`pgvector/pgvector:pg17`** (= Neon/RDS con pgvector) con roles + extensiones. **Errores 665 → 193 → 62 → 4**, y los 4 son triviales/entendidos:
+- `schema "public" already exists` → inofensivo.
+- `extensions.pg_stat_statements does not exist` → faltaba instalar esa extensión (una vista la usa) → cascada a `v_insert_test_questions_latency`.
+- `public.gin_trgm_ops does not exist` → `pg_trgm` debe ir en **`public`** (no en `extensions`) para que el operator class del índice GIN resuelva.
+
+**Receta exacta de setup del target (0 errores reales):**
+1. Roles: `anon`, `authenticated`, `service_role`.
+2. Extensiones: `uuid-ossp`+`pgcrypto` en schema `extensions`; **`pg_trgm` en `public`**; `unaccent`; `vector`+`pg_stat_statements` en `extensions`.
+3. Aplicar el esquema post-C4 (con las 132 policies `auth.uid()` ya dropeadas).
+
+**Conclusión: el esquema de Vence es PORTABLE a Postgres gestionado, PROBADO end-to-end.** Ya no hay incógnita de esquema. Lo que resta es operativo: C4 en prod (tras soak) + provisionar target + migración de DATOS con CDC (para downtime casi-cero, 26GB) + cutover + verificar. Orden: (soak) → C4 → provisionar+setup target (receta arriba) → CDC → cutover.
 
 ### 3.2 Migrar Redis de Upstash a ElastiCache (o autohospedado)
 
