@@ -75,7 +75,9 @@ function getLegacySupabaseAccessToken(): string | null {
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i)
-      if (!k || !/^sb-.*-auth-token$/.test(k)) continue
+      // La app usa un storageKey PERSONALIZADO `sb-<ref>-auth` (SIN sufijo -token,
+      // ver lib/supabase.ts). Aceptamos también el `-token` por defecto de supabase-js.
+      if (!k || !/^sb-.*-auth(-token)?$/.test(k)) continue
       const raw = window.localStorage.getItem(k)
       if (!raw) continue
       const parsed = JSON.parse(raw)

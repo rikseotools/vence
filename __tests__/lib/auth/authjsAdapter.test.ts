@@ -120,7 +120,7 @@ describe('authjsAdapter — onAuthStateChange (polling)', () => {
 })
 
 describe('authjsAdapter — BRIDGE del cutover (Fase B)', () => {
-  const SB_KEY = 'sb-yqbpstxowvgipqspqrgo-auth-token'
+  const SB_KEY = 'sb-yqbpstxowvgipqspqrgo-auth'
   const future = Math.floor(Date.now() / 1000) + 3600
   const sbSession = { access_token: 'supabase.hs256', expires_at: future, user: { id: APP_USER_ID, email: 'u@test.com' } }
 
