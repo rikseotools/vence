@@ -104,10 +104,15 @@ jobs:
             NEXT_PUBLIC_APP_NAME=Vence
             NEXT_PUBLIC_SUPPORT_EMAIL=info@vence.es
             NEXT_PUBLIC_USE_CHAT_V2=true
-            # Fase B: flags de auth inlinados en el bundle. Vacío = default seguro
-            # (supabase / legacy). Flip = poner el secret/var a 'authjs' / 'true'.
-            NEXT_PUBLIC_AUTH_PROVIDER=${{ secrets.NEXT_PUBLIC_AUTH_PROVIDER }}
-            NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API=${{ secrets.NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API }}
+            # Fase B: flags de auth inlinados en el bundle. NO son secretos (son
+            # NEXT_PUBLIC_*), y el flip YA está hecho en prod (:320) → se fijan
+            # LITERALES a los valores del flip. Así un `workflow_dispatch` (o un
+            # push si se re-activa) SIEMPRE construye el bundle authjs correcto,
+            # sin depender de que los GH secrets estén puestos (si estaban vacíos,
+            # un dispatch manual construía supabase y des-flipeaba prod — landmine
+            # del 03/07). Para revertir el flip: cambiar estos literales, no un secret.
+            NEXT_PUBLIC_AUTH_PROVIDER=authjs
+            NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API=true
             # Cloudflare Turnstile: site key es PÚBLICA (va en el bundle), literal.
             NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=0x4AAAAAADd5nFRd3Kqg6rn7
             DATABASE_URL=${{ secrets.DATABASE_URL }}
