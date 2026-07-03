@@ -6996,6 +6996,58 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // CELADOR/A ICS - CATALUÑA (E / Agrupació Professional)
+  // ========================================
+  {
+    id: 'celador_ics',
+    slug: 'celador-ics',
+    positionType: 'celador_ics',
+    aliases: ['celador', 'zelador', 'celador ics', 'celador cataluña', 'celador catalunya', 'ics', 'institut catala de la salut', 'celador sanidad cataluña'],
+    examScoring: { penaltyDivisor: 4, source: 'DOGC nº9441 26/06/2025 (Resolució SLT/2380/2025, ICS): un quart del valor per resposta incorrecta = 1/4, 4 alternatives. confidence:alta' },
+    name: 'Zelador/a de l\'Institut Català de la Salut (ICS)',
+    shortName: 'Celador ICS',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Temari transversal comú', subtitle: 'Legislació general', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Llei d\'ordenació sanitària de Catalunya. El SISCAT' },
+          { id: 2, name: 'L\'Institut Català de la Salut' },
+          { id: 3, name: 'Drets i deures de la ciutadania. Protecció de dades (LO 3/2018 i RGPD)' },
+          { id: 4, name: 'L\'Estatut marc del personal estatutari' },
+          { id: 5, name: 'L\'Estatut bàsic de l\'empleat públic' },
+          { id: 6, name: 'Incentivació i promoció professional' },
+          { id: 7, name: 'Llei de prevenció de riscos laborals' },
+          { id: 8, name: 'Igualtat efectiva de dones i homes i violència masclista' },
+          { id: 9, name: 'Bioètica i secret professional' },
+          { id: 10, name: 'Qualitat i millora contínua' },
+          { id: 11, name: 'Ofimàtica, Internet i administració electrònica' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Temari específic de Zelador/a', subtitle: 'Funcions del zelador', icon: '🏥',
+        themes: [
+          { id: 12, name: 'Funcions del zelador/a en centres hospitalaris' },
+          { id: 13, name: 'Atenció a la ciutadania i comunicació' },
+          { id: 14, name: 'Trasllat i mobilització de pacients' },
+          { id: 15, name: 'Higiene, neteja i prevenció d\'infeccions' },
+          { id: 16, name: 'Prevenció de riscos laborals a l\'àmbit sanitari' },
+          { id: 17, name: 'Gestió ambiental i residus sanitaris' },
+        ],
+      },
+    ],
+    totalTopics: 17,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-ics', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-ics/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-ics/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // AUXILIAR DE ENFERMERÍA OSAKIDETZA (TCAE) - PAÍS VASCO (C2)
   // ========================================
   {
