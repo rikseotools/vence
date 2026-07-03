@@ -127,6 +127,21 @@ Hoy el SQL es **ya estándar** (usamos Drizzle + postgres-js, no `@supabase/supa
 
 **Candidatos de destino**: RDS Postgres (AWS), Neon (multi-cloud), Crunchy Data, autohospedado. Coste estimado AWS RDS db.t4g.medium Multi-AZ: ~$120/mes (vs Supabase Pro ~$25/mes hoy).
 
+#### 🧪 DRY-RUN de la migración (2026-07-03, prod INTACTO)
+
+`pg_dump --schema-only` de Supabase → restore a un **Postgres 17 vanilla** local (podman) para medir portabilidad real. Resultado: **el esquema es ~87% portable tal cual — 167/191 tablas restauran solo con crear roles + extensiones. Sin ningún blocker profundo sorpresa.** Errores 665→193 tras crear roles+extensiones; los 193 restantes son 130× `schema "auth"` (RLS+funciones, los resuelve C4) + cascada. **Checklist EXACTO de la migración (verificado):**
+
+1. ✅ **FKs → auth.users**: 0 (re-apuntados a `user_profiles` el 03/07).
+2. **Roles**: `CREATE ROLE anon, authenticated, service_role` en el target (trivial; 51 GRANTs los referencian).
+3. **Extensiones**: crear schema `extensions` + instalar `uuid-ossp, pgcrypto, pg_trgm, unaccent, pgvector` — **todas soportadas en RDS/Neon** (trivial).
+4. **C4 (drop RLS 125 policies) + reescribir 3 funciones `auth.*`** (`assign_role`, `get_current_user_roles`, `is_current_user_admin`) → elimina las 130 refs a `schema auth`.
+5. **1 función DB con `pg_net`** (`net.http_post` al webhook `revalidate-temario` de ISR) → mover el HTTP al lado app (RDS/Neon no tienen `pg_net` ni `supabase_vault`). Pequeño pero real.
+6. **Desacoplar login** (⚠️ NO en el checklist de esquema pero es BLOQUEADOR de negocio): las páginas de login (`app/login/page.js:86`, `premium`, landings) aún llaman `supabase.auth.signInWithOAuth` directo → el login sigue en Supabase GoTrue. El flip movió la EMISIÓN de tokens (bridge), no la entrada. Migrar a `nextSignIn('google')` de Auth.js (ya vivo en prod: `/api/auth/signin/google`→302) antes del cutover, o login se rompe.
+
+**Volumen**: BD **26 GB** (~20GB app; `audit_log_entries` 1.5GB + `refresh_tokens` 769MB son de GoTrue, NO se migran). Mayores: `user_interactions` 7.8GB/8.7M, `test_questions` 4.9GB. Dump/restore en frío = **multi-hora** → para downtime casi-cero usar **replicación lógica (CDC)**, no dump/restore. Dump de esquema de referencia guardado en scratchpad de la sesión.
+
+**Veredicto**: migración **muy factible, sin incógnitas grandes**, pero NO es un cutover exprés — requiere los 6 puntos + una ventana con CDC. Orden sugerido: desacoplar login → C4 + funciones → mover webhook pg_net → provisionar target + roles/ext → CDC + cutover + verificar.
+
 ### 3.2 Migrar Redis de Upstash a ElastiCache (o autohospedado)
 
 Hoy ya usamos API Redis estándar (no `@vercel/kv` ni `@upstash/redis` semantic-specific en path crítico). Migración = cambiar DSN + adaptar TLS. Coste ElastiCache t4g.micro: ~$13/mes.
