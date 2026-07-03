@@ -7048,6 +7048,61 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // CELADOR/A IB-SALUT - ISLAS BALEARES (E / Agrupació Professional)
+  // ========================================
+  {
+    id: 'celador_ibsalut',
+    slug: 'celador-ibsalut',
+    positionType: 'celador_ibsalut',
+    aliases: ['celador', 'zelador', 'celador ibsalut', 'celador baleares', 'celador illes balears', 'ibsalut', 'ib-salut', 'celador sanidad baleares'],
+    examScoring: { penaltyDivisor: 4, source: 'BOIB nº115 30/08/2025 (IB-Salut): qüestionari test 4 opcions; penalització segons bases. confidence:media' },
+    name: 'Celador/a del Servei de Salut de les Illes Balears (IB-Salut)',
+    shortName: 'Celador IB-Salut',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Contenido jurídico común', subtitle: 'Legislación general', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución española de 1978' },
+          { id: 2, name: 'El Estatuto de autonomía de las Islas Baleares' },
+          { id: 3, name: 'La Ley 14/1986 general de sanidad' },
+          { id: 4, name: 'La Ley 16/2003 de cohesión y calidad del SNS' },
+          { id: 5, name: 'La Ley 41/2002 de autonomía del paciente' },
+          { id: 6, name: 'El Estatuto básico del empleado público (TREBEP)' },
+          { id: 7, name: 'La Ley 55/2003 del estatuto marco del personal estatutario' },
+          { id: 8, name: 'Igualdad de mujeres y hombres y violencia de género' },
+          { id: 9, name: 'La Ley 31/1995 de prevención de riesgos laborales' },
+          { id: 10, name: 'La Ley orgánica 3/2018 de protección de datos' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Contenido específico (funciones del celador/a)', subtitle: 'Funciones del celador', icon: '🏥',
+        themes: [
+          { id: 11, name: 'El trabajo de celador/a: funciones, UVI/UCI y aseo' },
+          { id: 12, name: 'El celador/a en quirófanos y urgencias' },
+          { id: 13, name: 'El celador/a en hospitalización y psiquiatría' },
+          { id: 14, name: 'Atención a los familiares y comunicación' },
+          { id: 15, name: 'Fase terminal, autopsias y mortuorio' },
+          { id: 16, name: 'Movilización y traslado de pacientes' },
+          { id: 17, name: 'Traslado de documentos y objetos. Suministros' },
+          { id: 18, name: 'Infección intrahospitalaria, residuos y RCP' },
+          { id: 19, name: 'Atención al usuario y derechos de prestación' },
+          { id: 20, name: 'Informática de nivel de usuario' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-ibsalut', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-ibsalut/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-ibsalut/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // AUXILIAR DE ENFERMERÍA OSAKIDETZA (TCAE) - PAÍS VASCO (C2)
   // ========================================
   {

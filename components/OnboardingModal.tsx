@@ -1276,6 +1276,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏥'
   },
   {
+    id: 'celador_ibsalut',
+    nombre: 'Celador/a IB-Salut (Baleares)',
+    categoria: 'E',
+    administracion: 'Sanitaria',
+    icon: '🏥'
+  },
+  {
     id: 'celador_sas',
     nombre: 'Celador/a SAS (Andalucía)',
     categoria: 'E',

@@ -328,6 +328,11 @@ function PerfilPageContent() {
       data: { name: 'Zelador/a de l\'Institut Català de la Salut (ICS)', slug: 'celador-ics', categoria: 'E', administracion: 'Sanitaria' }
     },
     {
+      value: 'celador_ibsalut',
+      label: 'Celador/a IB-Salut (Baleares)',
+      data: { name: 'Celador/a del Servei de Salut de les Illes Balears (IB-Salut)', slug: 'celador-ibsalut', categoria: 'E', administracion: 'Sanitaria' }
+    },
+    {
       value: 'auxiliar_administrativo_scs_canarias',
       label: 'Aux. Admin. SCS (Canarias)',
       data: { name: 'Auxiliar Administrativo del Servicio Canario de la Salud (SCS)', slug: 'auxiliar-administrativo-scs-canarias', categoria: 'C2', administracion: 'Sanitaria' }
