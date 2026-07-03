@@ -12,7 +12,7 @@
 > 5. **IaC con Terraform** — recursos descritos como código, portables entre clouds.
 > 6. **Cero APIs proprietary** en el path crítico (sin `@vercel/functions`, sin `@vercel/kv`, sin `next/og` específico de Vercel runtime).
 >
-> **Última actualización**: 2026-06-25 (revisión en vivo: AWS CLI profile `vence` + curl prod + grep repo).
+> **Última actualización**: 2026-07-03 — 🟢 **Fase B HECHA** (emisor de tokens Supabase Auth → **Auth.js RS256/JWKS**, prod estable `vence-frontend:320`). Desbloquea parcialmente §3.1 (migrar DB): ya solo falta el soak + retirar la doble-aceptación HS256/bridge (pasos 5-8) + **Fase C4** (drop RLS `auth.uid()`) para que la BD sea un `DATABASE_URL` cambiable. Detalle: [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md) §"Siguiente paso". Entrada previa: 2026-06-25 (revisión en vivo AWS CLI + curl prod + grep repo).
 
 ---
 
@@ -32,13 +32,14 @@
 | **Crons Grupo B (4 triviales)** | ⚠️ GitHub Actions | `close-inactive-feedback.yml` + `renewal-reminders.yml` activos; `daily-registration-summary`, `detect-fraud` (rutas presentes). **NO en Vercel** — son workflows GHA que pegan al endpoint. Pendiente verificar historial de runs (requiere `gh auth`) y decidir si migrar a Fargate |
 | **Canarys / heartbeat** | ✅ Fargate */5min | ([[project_sistema_canary_completo]]) 6 piezas + dashboard |
 | **Self-hosted pooler** | ✅ AWS Lightsail London ($7/mes) | PgBouncer ([`self-hosted-pooler.md`](./self-hosted-pooler.md)); enrutado vía flag `USE_SELF_HOSTED_POOLER` en SSM (re-aplicado en cada task def) |
-| **DB primaria** | ⚠️ Supabase (Postgres 17.4) | SQL estándar; portable a Neon/RDS. Bloqueado por Fase B (Auth.js) + C4 (drop RLS) — ver §3.1 |
+| **DB primaria** | ⚠️ Supabase (Postgres 17.4) | SQL estándar; portable a Neon/RDS. **Fase B ✅ hecha (03/07)**; ahora bloqueado solo por soak+retirar HS256/bridge + C4 (drop RLS) — ver §3.1 |
+| **Emisor de tokens (auth)** | ✅ Auth.js RS256/JWKS (03/07) | Fase B hecha (`:320`). Doble-aceptación HS256 transitoria durante el soak; se retira en el paso 5 de B4. `auth.users` ya desacoplado (52 FKs → `user_profiles`) |
 | **Redis** | ⚠️ Upstash | API estándar; portable a ElastiCache |
 | **Frontend deploy pipeline** | ✅ GHA → ECR → ECS | `frontend-deploy.yml`: build Docker → push ECR `vence-frontend` → register task def (pin por digest) → `update-service` → `wait services-stable` → smoke HTTP + invalidación CloudFront. `backend-deploy.yml` análogo para el backend |
 | **Backend deploy pipeline** | ✅ GHA → ECR → ECS | `backend-deploy.yml` → service `vence-backend` (1/1 running, task def rev 24) |
 | **Dependencias Vercel** | ✅ Erradicadas | sin `@vercel/*` en `package.json`, sin imports `@vercel/functions`/`@vercel/kv`, sin `process.env.VERCEL_*`, sin `vercel.json`, sin OpenNext en deps |
 
-**Conclusión**: la migración del **path crítico está prácticamente completa**. El frontend ya corre en contenedores ECS Fargate (no Lambda/OpenNext), Vercel está erradicado y el incidente del cap 10 s quedó resuelto por construcción. Lo que queda son **piezas no-críticas**: 4 crons triviales en GHA (§1.3) y las migraciones de largo plazo de DB (§3.1, bloqueada por Fase B + C4) y Redis (§3.2).
+**Conclusión**: la migración del **path crítico está prácticamente completa**. El frontend ya corre en contenedores ECS Fargate (no Lambda/OpenNext), Vercel está erradicado y el incidente del cap 10 s quedó resuelto por construcción. **Con Fase B hecha (03/07), el emisor de tokens ya es agnóstico (Auth.js RS256).** Lo que queda: 4 crons triviales en GHA (§1.3) y las migraciones de largo plazo de DB (§3.1, ahora bloqueada solo por soak+C4) y Redis (§3.2).
 
 ---
 
@@ -116,11 +117,11 @@ Aporta a esta migración: **independencia total del proveedor**, porque el worke
 
 ### 3.1 Migrar DB de Supabase a Postgres gestionado portable
 
-> 🔗 **Prerrequisito = el roadmap auth-agnóstico** [`auth-agnostico-jwks-y-rls.md`](./auth-agnostico-jwks-y-rls.md). Los dos puntos de abajo (RLS `auth.uid()` + `auth.users`) son exactamente sus **Fase C4** (drop RLS — draft en [`c4-drop-rls.draft.sql`](./c4-drop-rls.draft.sql), pendiente reposo) y **Fase B** (migrar el emisor a Auth.js — plan en [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md)). Estado al 25/06: C1+C2+C3 ✅ en prod; C4 ⏳ reposo; Fase B 🔴 no iniciada. **Hasta cerrar B+C4 no se puede mover la BD** → este §3.1 está bloqueado por ellas. Es además el fix estructural del SPOF del 503 ([`incidente-answer-save-503-01-06.md`](./incidente-answer-save-503-01-06.md)).
+> 🔗 **Prerrequisito = el roadmap auth-agnóstico** [`auth-agnostico-jwks-y-rls.md`](./auth-agnostico-jwks-y-rls.md). Los dos puntos de abajo (RLS `auth.uid()` + `auth.users`) son sus **Fase C4** (drop RLS — draft en [`c4-drop-rls.draft.sql`](./c4-drop-rls.draft.sql)) y **Fase B** (emisor → Auth.js — [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md)). **Estado al 03/07: C1+C2+C3 ✅ · Fase B ✅ HECHA (`:320`, `auth.users` ya desacoplado, 52 FKs → `user_profiles`) · falta: soak ~1 sem + retirar HS256/bridge (pasos 5-8) · C4 ⏳ reposo.** **El único bloqueador VIVO de §3.1 es ya C4 (drop RLS) + cerrar el soak de Fase B.** Cerrados esos, la BD es un `DATABASE_URL` cambiable. Es además el fix estructural del SPOF del 503 ([`incidente-answer-save-503-01-06.md`](./incidente-answer-save-503-01-06.md)).
 
 Hoy el SQL es **ya estándar** (usamos Drizzle + postgres-js, no `@supabase/supabase-js` en el path crítico tras [[project_stats_v2_cutover_done]]). Pero quedan:
 - RLS policies con `auth.uid()` (Supabase-only). Migrar a JWT validado en backend. → **Fase C4** (draft listo).
-- `auth.users` table → migrar a tabla propia + servicio de auth (NextAuth, Cognito, o backend custom). → **Fase B** (Auth.js, plan listo).
+- ~~`auth.users` table → migrar a tabla propia + servicio de auth~~ → **✅ Fase B HECHA (03/07)**: emisor = Auth.js RS256; `auth.users` desacoplado (52 FKs re-apuntados a `user_profiles`). La identidad ya no depende de GoTrue. (Queda retirar la doble-aceptación HS256 tras el soak.)
 - Funciones SQL `SECURITY DEFINER` (transition_question_state, etc.) — ya están en PL/pgSQL estándar, sirven igual en RDS.
 - Realtime subscriptions (si se usan) — sustituir por SSE/WebSocket propio.
 
