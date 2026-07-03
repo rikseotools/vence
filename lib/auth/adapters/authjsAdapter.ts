@@ -66,86 +66,97 @@ async function fetchMintedToken(): Promise<{ accessToken: string; expiresAt: num
   }
 }
 
-/** Construye una AuthSession normalizada = identidad (Auth.js) + token (mint). */
-async function buildSession(): Promise<AuthSession | null> {
-  const [nextSession, minted] = await Promise.all([nextGetSession(), fetchMintedToken()])
-  const user = mapUser(nextSession?.user)
-  if (!user || !minted) return null
-  return {
-    user,
-    accessToken: minted.accessToken,
-    expiresAt: minted.expiresAt,
-    refreshToken: null,
-    raw: nextSession,
-  }
+// ─── Fallback de sesión del cutover (Fase B) ────────────────────────────────
+// Al flipear a Auth.js, los usuarios ACTIVOS con sesión Supabase (localStorage) aún
+// NO tienen sesión Auth.js → /api/auth/token daría 401 y sus /api/v2 caerían en masa
+// (el flood del 2º intento del 03/07). En vez de forzar re-login (redirect disruptivo
+// = el bootstrap anterior), leemos su sesión Supabase existente y la usamos como
+// fallback: el token HS256 lo verifica igual `mode=on` (rama HS256 de verifyAuth), así
+// que el usuario NO pierde acceso. Migra a Auth.js de forma natural al re-loguear o
+// cuando su sesión Supabase caduque (~1h). Transitorio y removible cuando ya no queden
+// sesiones Supabase vivas.
+interface LegacySupabaseSession {
+  user: AuthUser
+  accessToken: string
+  expiresAt: number | null
 }
 
-// ─── Bootstrap silencioso del cutover (Fase B) ──────────────────────────────
-// Al flipear a Auth.js, los usuarios con sesión Supabase (cookie/localStorage) NO
-// tienen sesión Auth.js → /api/auth/token daría 401 y aparecerían "deslogueados".
-// Si detectamos su sesión Supabase residual y aún no hay sesión Auth.js, disparamos
-// signIn('google') UNA vez: como el usuario ya autorizó Google, normalmente vuelve
-// sin pantalla de consentimiento (bootstrap transparente). Transitorio y removible
-// pasada la ventana de cutover (cuando ya nadie tenga sesión Supabase vieja).
-const LEGACY_BOOTSTRAP_FLAG = 'authjs_legacy_bootstrap_attempted'
-
-function hasLegacySupabaseSession(): boolean {
-  if (typeof window === 'undefined') return false
+function getLegacySupabaseSession(): LegacySupabaseSession | null {
+  if (typeof window === 'undefined') return null
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i)
-      if (k && /^sb-.*-auth-token$/.test(k) && window.localStorage.getItem(k)) return true
+      if (!k || !/^sb-.*-auth-token$/.test(k)) continue
+      const raw = window.localStorage.getItem(k)
+      if (!raw) continue
+      const parsed = JSON.parse(raw)
+      // supabase-js guarda la sesión directa {access_token,...} o anidada.
+      const sess =
+        parsed?.access_token ? parsed
+        : parsed?.currentSession?.access_token ? parsed.currentSession
+        : parsed?.session?.access_token ? parsed.session
+        : null
+      const token = sess?.access_token
+      if (typeof token !== 'string' || !token) continue
+      const expiresAt: number | null = typeof sess?.expires_at === 'number' ? sess.expires_at : null
+      // Descartar si expirado (10s de margen) → sin fallback → getSession null → login.
+      if (expiresAt !== null && expiresAt * 1000 < Date.now() + 10_000) continue
+      const su = sess?.user
+      if (!su?.id) continue
+      return {
+        user: {
+          id: su.id, // = user_profiles.id (mismo UUID en Supabase)
+          email: su.email ?? null,
+          metadata: {
+            fullName: su.user_metadata?.full_name ?? su.user_metadata?.name ?? null,
+            avatarUrl: su.user_metadata?.avatar_url ?? null,
+          },
+          raw: su,
+        },
+        accessToken: token,
+        expiresAt,
+      }
     }
   } catch {
-    /* localStorage inaccesible (SSR/privacy) → no bootstrap */
+    /* localStorage inaccesible / JSON malo → sin fallback */
   }
-  return false
+  return null
 }
 
 /**
- * Dispara el bootstrap si procede. Idempotente (flag en sessionStorage) para no
- * entrar en bucle si Google vuelve sin crear sesión. No interfiere con las propias
- * rutas de Auth.js (/api/auth/*). Devuelve true si disparó el redirect.
+ * Construye una AuthSession normalizada. Preferencia: sesión Auth.js (RS256). Si aún
+ * no la hay (usuario existente en el cutover), cae a la sesión Supabase (HS256).
  */
-function maybeBootstrapFromLegacySession(): boolean {
-  if (typeof window === 'undefined') return false
-  if (window.location.pathname.startsWith('/api/auth')) return false
-  try {
-    if (window.sessionStorage.getItem(LEGACY_BOOTSTRAP_FLAG)) return false
-  } catch {
-    return false
+async function buildSession(): Promise<AuthSession | null> {
+  const [nextSession, minted] = await Promise.all([nextGetSession(), fetchMintedToken()])
+  const user = mapUser(nextSession?.user)
+  if (user && minted) {
+    return { user, accessToken: minted.accessToken, expiresAt: minted.expiresAt, refreshToken: null, raw: nextSession }
   }
-  if (!hasLegacySupabaseSession()) return false
-  try {
-    window.sessionStorage.setItem(LEGACY_BOOTSTRAP_FLAG, '1')
-  } catch {
-    /* si no podemos marcar el intento, no disparamos (evita bucle) */
-    return false
+  const legacy = getLegacySupabaseSession()
+  if (legacy) {
+    return { user: legacy.user, accessToken: legacy.accessToken, expiresAt: legacy.expiresAt, refreshToken: null, raw: { legacy: true } }
   }
-  void nextSignIn('google', { callbackUrl: window.location.href })
-  return true
+  return null
 }
 
 export function createAuthjsAuthAdapter(): AuthClientPort {
   return {
     async getSession() {
-      const nextSession = await nextGetSession()
-      if (!mapUser(nextSession?.user)) {
-        // Sin sesión Auth.js → bootstrap silencioso desde sesión Supabase vieja (cutover).
-        maybeBootstrapFromLegacySession()
-        return null
-      }
+      // buildSession ya cae a la sesión Supabase existente si no hay Auth.js (cutover).
       return buildSession()
     },
 
     async getUser() {
       const nextSession = await nextGetSession()
-      return mapUser(nextSession?.user)
+      return mapUser(nextSession?.user) ?? getLegacySupabaseSession()?.user ?? null
     },
 
     async getAccessToken() {
       const minted = await fetchMintedToken()
-      return minted?.accessToken
+      if (minted?.accessToken) return minted.accessToken
+      // Cutover: sin token Auth.js todavía → usar el token Supabase (verificado por mode=on).
+      return getLegacySupabaseSession()?.accessToken ?? undefined
     },
 
     async signInWithGoogle(options?: SignInOptions): Promise<SignInResult> {
@@ -198,15 +209,12 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
 
       const tick = async () => {
         if (stopped) return
-        const nextSession = await nextGetSession()
-        const uid = nextSession?.user?.id ?? null
+        // buildSession cae a la sesión Supabase existente si no hay Auth.js (cutover).
+        const session = await buildSession()
+        const uid = session?.user?.id ?? null
         if (uid === lastUserId) return
         const first = lastUserId === undefined
         lastUserId = uid
-        const session = uid ? await buildSession() : null
-        // Cutover Fase B: en el primer tick sin sesión Auth.js, intentar bootstrap
-        // desde la sesión Supabase vieja (idempotente por el flag de sessionStorage).
-        if (!uid && first) maybeBootstrapFromLegacySession()
         const event = first ? 'INITIAL_SESSION' : uid ? 'SIGNED_IN' : 'SIGNED_OUT'
         cb({ event, session, isNewUser: false })
       }

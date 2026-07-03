@@ -131,62 +131,70 @@ describe('authjsAdapter — onAuthStateChange (polling)', () => {
   })
 })
 
-describe('authjsAdapter — bootstrap silencioso del cutover (Fase B)', () => {
-  const LEGACY_KEY = 'sb-abcdef-auth-token'
-  const FLAG = 'authjs_legacy_bootstrap_attempted'
+describe('authjsAdapter — fallback de sesión Supabase en el cutover (Fase B)', () => {
+  const LEGACY_KEY = 'sb-yqbpstxowvgipqspqrgo-auth-token'
+  const future = Math.floor(Date.now() / 1000) + 3600
+  const legacySession = {
+    access_token: 'supabase.hs256.token',
+    expires_at: future,
+    user: { id: APP_USER_ID, email: 'a@b.com', user_metadata: { full_name: 'A B' } },
+  }
 
   beforeEach(() => {
     window.localStorage.clear()
-    window.sessionStorage.clear()
-    // pathname no-/api/auth por defecto
-    window.history.replaceState({}, '', '/test/algo')
   })
 
-  it('sin sesión Auth.js + sesión Supabase residual → dispara signIn(google) y devuelve null', async () => {
-    mockGetSession.mockResolvedValue(null)
-    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
+  it('sin sesión Auth.js pero con sesión Supabase → getSession devuelve la sesión Supabase (user + token HS256)', async () => {
+    mockGetSession.mockResolvedValue(null) // no Auth.js
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({}) }) // /api/auth/token 401
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify(legacySession))
     const adapter = createAuthjsAuthAdapter()
 
-    const session = await adapter.getSession()
-
-    expect(session).toBeNull()
-    expect(mockSignIn).toHaveBeenCalledTimes(1)
-    expect(mockSignIn).toHaveBeenCalledWith('google', expect.objectContaining({ callbackUrl: expect.any(String) }))
-    expect(window.sessionStorage.getItem(FLAG)).toBe('1') // marcado anti-bucle
-  })
-
-  it('sin sesión Supabase residual → NO dispara bootstrap', async () => {
-    mockGetSession.mockResolvedValue(null)
-    const adapter = createAuthjsAuthAdapter()
-    await adapter.getSession()
-    expect(mockSignIn).not.toHaveBeenCalled()
-  })
-
-  it('idempotente: si ya se intentó (flag), NO vuelve a disparar', async () => {
-    mockGetSession.mockResolvedValue(null)
-    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
-    window.sessionStorage.setItem(FLAG, '1')
-    const adapter = createAuthjsAuthAdapter()
-    await adapter.getSession()
-    expect(mockSignIn).not.toHaveBeenCalled()
-  })
-
-  it('con sesión Auth.js válida → NO bootstrap aunque haya sesión Supabase residual', async () => {
-    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'a@b.com' } })
-    mockTokenResponse(true, { accessToken: 'rs256', expiresAt: 1 })
-    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
-    const adapter = createAuthjsAuthAdapter()
     const session = await adapter.getSession()
     expect(session).not.toBeNull()
-    expect(mockSignIn).not.toHaveBeenCalled()
+    expect(session!.user.id).toBe(APP_USER_ID)
+    expect(session!.accessToken).toBe('supabase.hs256.token')
+    expect(mockSignIn).not.toHaveBeenCalled() // NO redirect disruptivo
   })
 
-  it('en ruta /api/auth/* → NO bootstrap (no interferir con el callback)', async () => {
-    window.history.replaceState({}, '', '/api/auth/callback/google')
+  it('getAccessToken sin token Auth.js → cae al token Supabase', async () => {
     mockGetSession.mockResolvedValue(null)
-    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ access_token: 'x' }))
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify(legacySession))
     const adapter = createAuthjsAuthAdapter()
-    await adapter.getSession()
-    expect(mockSignIn).not.toHaveBeenCalled()
+    expect(await adapter.getAccessToken()).toBe('supabase.hs256.token')
+  })
+
+  it('con sesión Auth.js → prevalece RS256 (NO usa la Supabase aunque exista)', async () => {
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'a@b.com' } })
+    mockTokenResponse(true, { accessToken: 'rs256.jwt', expiresAt: 1 })
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify(legacySession))
+    const adapter = createAuthjsAuthAdapter()
+    const session = await adapter.getSession()
+    expect(session!.accessToken).toBe('rs256.jwt')
+  })
+
+  it('sesión Supabase EXPIRADA → no fallback → getSession null (→ login)', async () => {
+    mockGetSession.mockResolvedValue(null)
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ ...legacySession, expires_at: Math.floor(Date.now() / 1000) - 100 }))
+    const adapter = createAuthjsAuthAdapter()
+    expect(await adapter.getSession()).toBeNull()
+  })
+
+  it('sin sesión de ningún tipo → getSession null', async () => {
+    mockGetSession.mockResolvedValue(null)
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
+    const adapter = createAuthjsAuthAdapter()
+    expect(await adapter.getSession()).toBeNull()
+  })
+
+  it('getUser sin Auth.js → devuelve el user de la sesión Supabase', async () => {
+    mockGetSession.mockResolvedValue(null)
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify(legacySession))
+    const adapter = createAuthjsAuthAdapter()
+    const u = await adapter.getUser()
+    expect(u!.id).toBe(APP_USER_ID)
+    expect(u!.email).toBe('a@b.com')
   })
 })
