@@ -10,6 +10,8 @@
 // token con supabase.auth.getUser (1 roundtrip; el panel es de bajo tráfico).
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { decodeProtectedHeader } from 'jose'
+import { verifyJwtRs256 } from '../api/auth/verifyJwtRs256'
 
 const ADMIN_EMAILS = [
   'admin@vencemitfg.es',
@@ -54,17 +56,38 @@ export async function guardAdminApi(request: NextRequest): Promise<NextResponse 
     return NextResponse.json({ error: 'No autorizado (falta token admin)' }, { status: 401 })
   }
 
+  // Verificación del token admin, ENRUTADA POR alg (doble-aceptación de Fase B):
+  //   - RS256 (tokens Auth.js del flip) → verificación local jose/JWKS (edge-safe).
+  //   - HS256 (tokens Supabase legacy)  → supabase.auth.getUser remoto (intacto).
+  // El guard SOLO hacía getUser remoto, y Supabase NO reconoce los RS256 → tras el
+  // flip TODO el panel admin daba 401 (dashboard, pending-counts, unread-sales…).
+  // Este routing lo arregla sin tocar el path legacy. (Adelanta el paso 6 de B4.)
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    )
-    const { data, error } = await supabase.auth.getUser(token)
-    if (error || !data?.user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+    let alg: string | undefined
+    try { alg = decodeProtectedHeader(token).alg } catch { alg = undefined }
+
+    let email: string | null = null
+    if (alg === 'RS256') {
+      const r = await verifyJwtRs256(token)
+      if (!r.success) {
+        return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+      }
+      email = r.email ?? null
+    } else {
+      // HS256 o desconocido → verificación remota Supabase (legacy, sin cambios).
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } },
+      )
+      const { data, error } = await supabase.auth.getUser(token)
+      if (error || !data?.user) {
+        return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+      }
+      email = data.user.email ?? null
     }
-    if (!isAdminEmail(data.user.email)) {
+
+    if (!isAdminEmail(email)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
     return null
