@@ -223,6 +223,12 @@ jobs:
               # (0.0.0.0:3000) → hay que fijar la URL pública para el callback OAuth.
               | ensure_secret("AUTH_URL")
               | ensure_secret("AUTH_TRUST_HOST")
+              # SUPABASE_JWT_SECRET: verificación LOCAL de JWT (verifyJwtLocal).
+              # Faltaba en el frontend → verifyJwtLocal daba no_secret_configured
+              # (destapado por shadow 2026-07-03). JWT_LOCAL_VERIFY_MODE=on sirve
+              # local (<5ms) en vez del round-trip remoto a Supabase getUser.
+              | ensure_secret("SUPABASE_JWT_SECRET")
+              | ensure_secret("JWT_LOCAL_VERIFY_MODE")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
