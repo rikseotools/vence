@@ -87,6 +87,23 @@ describe('authjsAdapter — signOut / signInWithIdToken', () => {
     expect(mockSignOut).toHaveBeenCalledWith({ redirect: false })
   })
 
+  it('signOut borra la sesión Supabase legacy → el bridge NO re-loguea (auto-relogin)', async () => {
+    mockSignOut.mockResolvedValue(undefined)
+    const SB_KEY = 'sb-yqbpstxowvgipqspqrgo-auth'
+    window.localStorage.setItem(
+      SB_KEY,
+      JSON.stringify({ access_token: 'supabase.hs256', expires_at: Math.floor(Date.now() / 1000) + 3600, user: { id: 'u' } }),
+    )
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.signOut()
+    // La sesión legacy debe quedar limpia: sin ella el bridge no tiene de qué re-hidratar.
+    expect(window.localStorage.getItem(SB_KEY)).toBeNull()
+    // Y en efecto: sin sesión Auth.js ni token Supabase → getSession null (no re-login).
+    mockGetSession.mockResolvedValue(null)
+    setTokenEndpoint(() => ({ ok: false }))
+    expect(await adapter.getSession()).toBeNull()
+  })
+
   it('signInWithIdToken (One Tap) → dormido con error explícito', async () => {
     const adapter = createAuthjsAuthAdapter()
     const res = await adapter.signInWithIdToken({ provider: 'google', token: 'x' })
