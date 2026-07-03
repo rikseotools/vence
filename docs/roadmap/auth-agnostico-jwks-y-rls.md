@@ -24,7 +24,11 @@
 - ✅ **Session-gap = bootstrap silencioso** (decisión Manuel): `authjsAdapter` detecta sesión Supabase residual sin sesión Auth.js → `signIn('google')` una vez (flag anti-bucle, no interfiere `/api/auth/*`) → cutover sin logout visible. 5 tests.
 - Bonus: `jest.transformIgnorePatterns` extendido a la cadena ESM de next-auth (destrababa tests que importan `lib/auth`).
 
-**FALTA para re-flipear** (Fase 3, en orden): (a) `AUTH_LIFECYCLE_VIA_API=true` (cierra AuthContext, rebuild) + soak; (b) C4 drop RLS (125 policies); (c) verificar en `preview-aws.vence.es` con el harness E2E (usuario nuevo + bootstrap + endpoints); (d) chequear el gate `if (user && supabase)` bajo Auth.js; (e) flip con rollback de oro a `:309`.
+**FASE 3 paso 1 (03/07, commit `90af419f`):**
+- ✅ **Build-arg `NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API` cableado** (Dockerfile + workflow). Endpoints lifecycle (ensure-profile/access-check/premium-activate) verificados: 5 funciones SQL con firmas exactas + dual-path de AuthContext correcto (`{access:{...}}`).
+- ✅ **FLIP VERIFICADO END-TO-END EN LOCAL** con login Google real (harness `scratchpad/authjs-e2e-validate.cjs` contra `next dev` con authjs+lifecycle+mode=on): callback OK (**`iss` presente** → el "iss missing" de prod era el FK, no Google), `/api/auth/token` 200 RS256, **todos los `/api/v2/*` 200 con Bearer** (incl. `oposicion/target`, el del selector), `sub` = perfil real por email. 0 errores 500. **NO hay entorno preview** (`preview-aws.vence.es` es alias del mismo prod) → se verificó en local.
+
+**FALTA para re-flipear** (Fase 3, en orden): (a) **`AUTH_LIFECYCLE_VIA_API=true` en PROD** (rebuild+deploy manual) → soak bajo Supabase (transparente, los endpoints verifican el token HS256); (b) C4 drop RLS (125 policies), con los `.from` ya cerrados; (c) chequear el gate `if (user && supabase)` bajo Auth.js (varios hooks); (d) flip `AUTH_PROVIDER=authjs` (rebuild), franja de bajo tráfico, rollback de oro a `:309`. Pendiente de probar en local (opcional): path usuario-nuevo-crea-perfil (create_organic_user ya OK aparte) + bootstrap silencioso (5 unit tests).
 
 ## Progreso
 
