@@ -456,32 +456,43 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     try {
       console.log('👤 Verificando perfil existente para:', authUser.email)
 
-      // 🔧 PRIMERO: Verificar si el perfil ya existe en la BD.
+      // 🔧 PRIMERO: ¿existe ya el perfil? Vía /api/profile (Drizzle) — NO client PostgREST.
       //
-      // ⚠️ Estratégicamente NO migrado (Fase 3 strangler fig agnosticismo-supabase):
-      // este sitio necesita distinguir entre "perfil no existe" (PGRST116) y
-      // "error HTTP sostenido" (perfil existe pero no se pudo cargar). El
-      // supabase.from().single() devuelve { error.code: 'PGRST116' } en el
-      // primer caso y { error.code: ... } distinto en el segundo. Sin esa
-      // discriminación, un fallo transitorio del endpoint causaría que
-      // ensureUserProfile cree un perfil duplicado (resetea plan_type).
+      // ✅ MIGRADO (Fase B / prep C4, 2026-07-03): era el ÚLTIMO supabase.from() de
+      // cliente sobre tabla user-scoped; cerrarlo habilita el drop de RLS de C4
+      // (precondición #2 de c4-drop-rls.draft.sql). El endpoint deriva el userId del
+      // TOKEN (no del query param) y devuelve 200=existe / 404=no existe / 5xx=error.
       //
-      // Para migrar este caso a Drizzle hay que:
-      //   1. Cambiar loadUserProfile() para devolver discriminated union
-      //      ({ type: 'found' | 'not_found' | 'error' }), o
-      //   2. Crear endpoint específico GET /api/profile/exists?userId=...
-      //      que devuelva 200 / 404 con shape mínimo.
-      // Pendiente en próximo PR de Fase 3.
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('user_profiles')
-        .select('id, plan_type, registration_source')
-        .eq('id', authUser.id)
-        .single()
+      // Distinguir "no existe" (404) de "error transitorio" (5xx/red) es CRÍTICO: si
+      // tratáramos un error como "no existe" crearíamos perfil (aunque `create_organic_user`
+      // es idempotente y NO resetea plan_type, evitamos la escritura y la re-atribución
+      // espuria). Ante duda → NO crear, devolver la carga normal (respeta cache/retry) y
+      // reintentar en el siguiente evento de auth.
+      let profileExists: boolean
+      try {
+        const session = await auth.getSession()
+        const resp = await fetch(`/api/profile?userId=${encodeURIComponent(authUser.id)}`, {
+          headers: {
+            Accept: 'application/json',
+            ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}),
+          },
+        })
+        if (resp.status === 200) {
+          profileExists = true
+        } else if (resp.status === 404) {
+          profileExists = false
+        } else {
+          console.warn(`⚠️ ensureUserProfile: /api/profile devolvió ${resp.status} — no se crea (protege plan_type)`)
+          return await loadUserProfile(authUser.id)
+        }
+      } catch (err) {
+        console.warn('⚠️ ensureUserProfile: fallo de red comprobando perfil — no se crea', err)
+        return await loadUserProfile(authUser.id)
+      }
 
-      if (existingProfile) {
-        // El perfil ya existe - NO llamar a ningún RPC para no resetear plan_type
-        console.log('✅ Perfil ya existe:', existingProfile.plan_type, '| Fuente:', existingProfile.registration_source)
-        console.log('🛡️ Saltando RPCs para preservar plan_type actual')
+      if (profileExists) {
+        // El perfil ya existe — NO crear para no re-atribuir ni tocar plan_type.
+        console.log('✅ Perfil ya existe — saltando creación para preservar plan_type')
         return await loadUserProfile(authUser.id)
       }
 
