@@ -12,11 +12,19 @@
 > (drop RLS) = la BD pasa a ser un `DATABASE_URL` cambiable → **cierra el SPOF del
 > 503** documentado en [`incidente-answer-save-503-01-06.md`](./incidente-answer-save-503-01-06.md).
 >
-> **Estado:** 🔴 NO INICIADA. Plan listo para una **ventana limpia**.
+> **Estado:** 🟠 INTENTADA Y REVERTIDA (2026-07-03). El flip se hizo **antes de re-apuntar los FKs a `auth.users`** (no estaba en las precondiciones de abajo — ERROR) → `create_organic_user` de usuarios nuevos violaba `user_profiles_id_fkey` (`23503`) → login/registro rotos → **rollback a `vence-frontend:309`**. **Fase 1 (limpieza huérfanas + re-point de 52 FKs) YA aplicada a prod** (ver `auth-agnostico-jwks-y-rls.md` §Incidente). **NO re-flipear** hasta cumplir TODAS las precondiciones nuevas de abajo (§0). Prueba obligatoria antes del flip: el **harness E2E de usuario NUEVO** (`scratchpad/authjs-e2e-validate.cjs`) en verde sobre preview.
 
 ---
 
 ## ⚠️ Precondiciones (NO empezar si falta una)
+
+**§0 — Precondiciones de ESQUEMA y VERIFICACIÓN (las que faltaron el 03/07 y rompieron prod):**
+- ✅ **Re-point de los 53 FKs `auth.users`→`user_profiles`** (Fase 1, aplicada 03/07). Sin esto, `create_organic_user` de un usuario nuevo viola `user_profiles_id_fkey` → registro roto. Verificar: `SELECT count(*) FROM pg_constraint WHERE contype='f' AND confrelid='auth.users'::regclass AND connamespace='public'::regnamespace` = 0.
+- ⏳ **Cerrar los `.from` de cliente user-scoped** (`loadProblematicArticles` canary) — si no, al dropar RLS (C4) hay fuga cross-user. C4 es parte del cierre de Fase B/C.
+- ⏳ **Fix `resolveAppUser`**: para un usuario que está en `auth.users` sin perfil, hoy genera un UUID NUEVO en vez de reusar el suyo (tras el backfill del 03/07 no hay ninguno, pero conviene por robustez).
+- ⏳ **Manejo del session-gap**: al flipear, los usuarios con sesión Supabase NO tienen sesión Auth.js → `/api/auth/token` 401 hasta re-login. Decidir: bootstrap silencioso vs re-login forzado en franja de bajo tráfico.
+- 🚨 **GATE OBLIGATORIO — harness E2E de usuario NUEVO en verde sobre preview** (`scratchpad/authjs-e2e-validate.cjs`): signin→callback→`/api/auth/session` con `user.id`→`/api/auth/token` RS256→Bearer `/api/v2/*` 200. La validación "en dormido" NO vale (no crea usuario real). Este gate es lo que habría evitado el incidente del 03/07.
+
 
 1. **Deploys estables.** Hoy (25/06) los deploys del frontend **revierten** bajo
    `db-ready` 503 (circuit-breaker). Meter cambios de auth en esa situación es
