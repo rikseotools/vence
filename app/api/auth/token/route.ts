@@ -36,7 +36,15 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   // 2. Bridge del cutover: sin sesión Auth.js → aceptar Bearer Supabase HS256 válido.
   //    verifyAuth (mode=on) lo valida por la rama HS256 de la doble-aceptación.
-  if (!userId) {
+  //
+  // KILL-SWITCH del drenaje (soak Fase B): con AUTH_BRIDGE_ENABLED='false' el bridge
+  // se APAGA → los usuarios con solo sesión Supabase legacy reciben 401 → el cliente
+  // los desloguea limpio → re-login nativo Auth.js (un clic Google). Fuerza el drenaje
+  // en horas en vez de semanas. Reversible al instante (env de task def, sin rebuild):
+  // volver a 'true' (o quitarlo) reactiva el bridge. Cuando el drenaje llegue a ~0, se
+  // retira el bridge por código (paso de no retorno). Default = activado.
+  const bridgeEnabled = process.env.AUTH_BRIDGE_ENABLED !== 'false'
+  if (!userId && bridgeEnabled) {
     const bridged = await verifyAuth(request, '/api/auth/token#bridge')
     if (bridged.success) {
       userId = bridged.userId
