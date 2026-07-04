@@ -52,11 +52,16 @@ function createDbClient() {
     : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
   const conn = postgres(urlWithTimeout, {
-    max: 1,  // 1 conexión por instancia serverless (recomendado por Supabase)
+    // max:5 — post-cutover a RDS dedicado (04/07): el max:1 histórico era un workaround del
+    // pooler COMPARTIDO de Supabase (Supavisor), que se saturaba (max:8→3→1, 261 events 27/04).
+    // En RDS dedicado hay 400 max_connections y ~19 en uso → margen de sobra. max:1 causaba
+    // contención de cola (503 "saturado" en answer-and-save/medals cuando la única conexión
+    // estaba ocupada). Con desired=2 front + 1 back × max:5 = ~15 conns, muy por debajo de 400.
+    max: 5,
     idle_timeout: 20,
     connect_timeout: 5,
     max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
-    prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
+    prepare: false, // Compatible con pooler transaction-mode y con RDS directo
   })
 
   // Warmup: establecer conexión al crear el cliente (no bloquea, se ejecuta en background)
@@ -279,11 +284,11 @@ function createReadDbClient() {
     : `${replicaUrl}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
   const conn = postgres(urlWithTimeout, {
-    max: 1,             // Igual que primary — replica también tiene Supavisor max
+    max: 5,             // igual que primary — post-cutover a RDS dedicado (400 max_connections)
     idle_timeout: 20,
     connect_timeout: 5,
     max_lifetime: POOL_MAX_LIFETIME_S, // acota zombis de pooler — ver bloque arriba
-    prepare: false,     // Requerido por Supavisor Transaction Pooler
+    prepare: false,     // compatible con pooler transaction-mode y con RDS directo
   })
 
   // Warmup en background (no bloquea)
