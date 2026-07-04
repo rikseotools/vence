@@ -18,7 +18,10 @@ import { join } from 'path'
 // Mismo trinquete: el recuento de `.rpc(` SOLO puede BAJAR.
 
 const ROOT = join(__dirname, '..', '..')
-const SCAN_DIRS = ['app', 'components', 'contexts', 'hooks']
+// 'utils' añadido 04/07: testSession/testAnswers/testAnalytics se colaron aquí
+// (usaban supabase.from directo) porque utils/ NO se escaneaba. Migrados a v2/RDS
+// y bloqueados para que no regrese ninguna escritura directa a Supabase.
+const SCAN_DIRS = ['app', 'components', 'contexts', 'hooks', 'utils']
 const EXT = /\.(ts|tsx|js)$/
 const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\/api\/|\.test\./
 const FROM = /\.from\(['"]/g
