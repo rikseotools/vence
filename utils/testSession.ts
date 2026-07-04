@@ -4,36 +4,11 @@
 // ========================================
 
 import { z } from 'zod'
-import { getSupabaseClient } from '../lib/supabase'
 import { auth } from '../lib/auth'
+import { createTestSessionOnServer } from '../lib/api/v2/tests/client'
+import { createUserSessionOnServer } from '../lib/api/v2/user-sessions/client'
 import { getClientVersion } from '@/hooks/useVersionCheck'
 import { logClientError } from '@/lib/logClientError'
-import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
-
-// Set para validación O(1) en el INSERT — evita escribir position_type
-// con slugs que no son oposiciones (p. ej. 'test', 'leyes').
-const KNOWN_OPOSICION_SLUGS = new Set<string>(ALL_OPOSICION_SLUGS)
-
-/**
- * Deriva el position_type (con underscores) a partir de un pathname tipo
- * '/<slug>/test/tema/X/...'. Devuelve null si:
- *   - El pathname es null o vacío.
- *   - No empieza por '/<slug>/...' (p. ej. '/test/rapido', '/leyes/...').
- *   - El slug no está en ALL_OPOSICION_SLUGS (oposición desconocida).
- *
- * Mantiene posibilidad de mover position_type a un SOT (única fuente de verdad)
- * sin depender de regex sobre URL en cada query downstream.
- */
-function derivePositionTypeFromPathname(pathname: string | null): string | null {
-  if (!pathname) return null
-  const match = pathname.match(/^\/([a-z][a-z0-9-]*)\//)
-  if (!match) return null
-  const slug = match[1]
-  if (!KNOWN_OPOSICION_SLUGS.has(slug)) return null
-  return slug.replace(/-/g, '_')
-}
-
-const supabase = getSupabaseClient()
 
 // ============================================
 // TIPOS E INTERFACES
@@ -294,59 +269,43 @@ export function getDeviceInfo(): Partial<DeviceInfo> {
  */
 export async function getOrCreateUserSession(userId: string): Promise<UserSession | null> {
   try {
-    console.log('🔍 Verificando sesión existente para usuario:', userId)
-
     if (!userId) {
       console.error('❌ userId es requerido')
       return null
     }
 
-    // Verificar cache primero
+    // Cache cliente: evita crear una fila user_sessions por cada montaje del test.
     const cacheKey = `user_session_${userId}`
     const cached = sessionCache.get(cacheKey)
     if (cached && 'session_start' in cached) {
-      console.log('✅ Usando sesión de cache:', cached.id)
       return cached as UserSession
     }
 
-    // Buscar sesión activa en la base de datos (últimas 24 horas)
-    const yesterday = new Date()
-    yesterday.setHours(yesterday.getHours() - 24)
-
-    const { data: existingSessions, error: searchError } = await supabase
-      .from('user_sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('session_start', yesterday.toISOString())
-      .is('session_end', null)
-      .order('session_start', { ascending: false })
-      .limit(1)
-
-    if (searchError) {
-      console.error('❌ Error buscando sesiones:', searchError)
-    }
-
-    // Si existe sesión activa, actualizarla y usarla
-    if (existingSessions && existingSessions.length > 0) {
-      const existingSession = existingSessions[0] as UserSession
-      console.log('✅ Reutilizando sesión existente:', existingSession.id)
-
-      await supabase
-        .from('user_sessions')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', existingSession.id)
-
-      sessionCache.set(cacheKey, existingSession)
-      return existingSession
-    }
-
-    // Crear nueva sesión
-    console.log('🆕 Creando nueva sesión de usuario...')
-
+    // Crear en el servidor (RDS/Drizzle, agnóstico de proveedor). El userId lo
+    // impone el token verificado en el endpoint — nunca se envía desde el cliente.
     const deviceInfo = getDeviceInfo()
-    const insertData = {
+    const res = await createUserSessionOnServer({
+      userAgent: deviceInfo.user_agent,
+      screenResolution: deviceInfo.screen_resolution,
+      viewportSize: deviceInfo.viewport_size,
+      deviceModel: deviceInfo.device_model,
+      browserLanguage: deviceInfo.browser_language,
+      timezone: deviceInfo.timezone,
+      colorDepth: deviceInfo.color_depth,
+      pixelRatio: deviceInfo.pixel_ratio,
+      connectionType: deviceInfo.connection_type,
+    })
+
+    if (!res.success || !res.id) {
+      console.warn('⚠️ [testSession] No se pudo crear user_session:', res.error)
+      return null
+    }
+
+    const session: UserSession = {
+      id: res.id,
       user_id: userId,
       session_start: new Date().toISOString(),
+      session_end: null,
       user_agent: deviceInfo.user_agent || 'unknown',
       screen_resolution: deviceInfo.screen_resolution || 'unknown',
       viewport_size: deviceInfo.viewport_size || 'unknown',
@@ -363,21 +322,8 @@ export async function getOrCreateUserSession(userId: string): Promise<UserSessio
       content_consumption_rate: 0,
       bounce_indicator: false,
     }
-
-    const { data, error } = await supabase
-      .from('user_sessions')
-      .insert(insertData)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('❌ Error creando sesión:', error)
-      return null
-    }
-
-    console.log('✅ Nueva sesión creada:', data.id)
-    sessionCache.set(cacheKey, data as UserSession)
-    return data as UserSession
+    sessionCache.set(cacheKey, session)
+    return session
 
   } catch (error) {
     console.error('❌ Error en getOrCreateUserSession:', error)
@@ -486,28 +432,9 @@ export async function createDetailedTestSession(
         return cached as TestSession
       }
 
-      // Buscar test activo reciente (últimos 30 minutos)
-      const thirtyMinutesAgo = new Date()
-      thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30)
-
-      const { data: activeTests } = await supabase
-        .from('tests')
-        .select('*')
-        .eq('user_id', validatedParams.userId)
-        .eq('tema_number', validatedParams.tema)
-        .eq('test_number', validatedParams.testNumber)
-        .eq('test_type', validatedParams.testType)
-        .eq('is_completed', false)
-        .gte('started_at', thirtyMinutesAgo.toISOString())
-        .order('started_at', { ascending: false })
-        .limit(1)
-
-      if (activeTests && activeTests.length > 0) {
-        const activeTest = activeTests[0] as TestSession
-        console.log('✅ Reutilizando test activo de práctica:', activeTest.id)
-        sessionCache.set(practiceCacheKey, activeTest)
-        return activeTest
-      }
+      // La reutilización de un test de práctica activo (<30 min, no completado)
+      // la hace ahora el servidor (createTestSession en RDS) de forma atómica —
+      // sin consulta Supabase desde el cliente.
     }
 
     // Crear título seguro
@@ -525,99 +452,68 @@ export async function createDetailedTestSession(
     }
 
     const testUrl = typeof window !== 'undefined' ? window.location.pathname : null
-    // position_type del test = oposición en cuya URL se está creando.
-    // Capturarlo AQUÍ (al INSERT) es la única forma robusta de anclarlo:
-    // tema_number es un int sin contexto y colisiona entre B2 de distintas
-    // oposiciones (T101 AAE "Atención al ciudadano" vs T101 SS "SS en CE").
-    // Si el user después cambia su target_oposicion, este test sigue
-    // sabiendo de dónde vino.
-    // Null para tests globales (/test/rapido, /leyes/...) o cuando el SSR
-    // no tiene window.
-    const positionType = derivePositionTypeFromPathname(testUrl)
 
-    const insertData = {
+    // Crear la sesión de test en el SERVIDOR (RDS/Drizzle, agnóstico de proveedor).
+    // El userId lo impone el token verificado en el endpoint; la reutilización de
+    // test activo (<30 min) es atómica en el servidor.
+    const res = await createTestSessionOnServer({
+      tema: validatedParams.tema,
+      testNumber: validatedParams.testNumber,
+      totalQuestions: validatedParams.questions.length,
+      testType: validatedParams.testType,
+      title: safeTitle,
+      testUrl,
+      timeLimitMinutes: validatedParams.config?.timeLimit ?? null,
+      deployVersion: getClientVersion() || null,
+      questionsMetadata,
+      performanceMetrics: {
+        start_time: validatedParams.startTime,
+        expected_duration_minutes: validatedParams.questions.length * 2,
+        load_time: Date.now() - validatedParams.pageLoadTime,
+      },
+      userSessionData: getDeviceInfo() as Record<string, unknown>,
+    })
+
+    if (res.error === 'SESSION_EXPIRED') {
+      console.error('🔒 [testSession] Sesión expirada — no se puede crear test')
+      logClientError('createDetailedTestSession', new Error('Session expired (no access_token)'), {
+        component: 'testSession',
+        userId: validatedParams.userId,
+      })
+      return null
+    }
+
+    if (!res.success || !res.id) {
+      console.error('❌ ERROR creando sesión de test:', res.error)
+      logClientError('createDetailedTestSession', new Error(`create test failed: ${res.error}`), {
+        component: 'testSession',
+        userId: validatedParams.userId,
+      })
+      return null
+    }
+
+    console.log('✅ Sesión de test creada (RDS):', res.id, res.reused ? '(reutilizada)' : '')
+
+    const session: TestSession = {
+      id: res.id,
       user_id: validatedParams.userId,
       title: safeTitle,
       test_type: validatedParams.testType,
       test_url: testUrl,
-      position_type: positionType,
       total_questions: validatedParams.questions.length,
       score: 0,
       tema_number: validatedParams.tema,
       test_number: validatedParams.testNumber,
-      time_limit_minutes: validatedParams.config?.timeLimit || null,
+      time_limit_minutes: validatedParams.config?.timeLimit ?? null,
       started_at: new Date().toISOString(),
       completed_at: null,
       is_completed: false,
       questions_metadata: JSON.stringify(questionsMetadata),
       user_session_data: JSON.stringify(getDeviceInfo()),
-      performance_metrics: JSON.stringify({
-        start_time: validatedParams.startTime,
-        expected_duration_minutes: validatedParams.questions.length * 2,
-        load_time: Date.now() - validatedParams.pageLoadTime,
-      }),
-      deploy_version: getClientVersion() || null,
+      performance_metrics: JSON.stringify({}),
     }
-
-    // Verificar sesión antes de insertar (evita fallos silenciosos por RLS)
-    const currentSession = await auth.getSession()
-    if (!currentSession?.accessToken) {
-      console.error('🔒 [testSession] Sesión expirada — no se puede crear test')
-      logClientError('createDetailedTestSession', new Error('Supabase session expired (no access_token)'), {
-        component: 'testSession',
-        userId: validatedParams.userId,
-      })
-      return null
-    }
-
-    console.log('📤 Intentando INSERT en tabla tests...')
-    console.log('   Datos a insertar:', {
-      user_id: insertData.user_id,
-      title: insertData.title,
-      test_type: insertData.test_type,
-      total_questions: insertData.total_questions,
-      tema_number: insertData.tema_number,
-      test_number: insertData.test_number,
-    })
-
-    const { data, error } = await supabase
-      .from('tests')
-      .insert(insertData)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('❌ ERROR CRÍTICO creando sesión de test:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      })
-      logClientError('createDetailedTestSession', new Error(`Supabase INSERT error ${error.code}: ${error.message}`), {
-        component: 'testSession',
-        userId: validatedParams.userId,
-      })
-      return null
-    }
-
-    if (!data?.id) {
-      console.error('❌ ERROR: INSERT no devolvió data válida')
-      logClientError('createDetailedTestSession', new Error('Supabase INSERT returned empty data'), {
-        component: 'testSession',
-        userId: validatedParams.userId,
-      })
-      return null
-    }
-
-    console.log('✅ Sesión de test creada exitosamente:', {
-      id: data.id,
-      title: data.title,
-      type: data.test_type,
-      total_questions: data.total_questions,
-    })
-
-    sessionCache.set(cacheKey, data as TestSession)
-    return data as TestSession
+    sessionCache.set(cacheKey, session)
+    return session
 
   } catch (error) {
     console.error('❌ Error en createDetailedTestSession:', error)
@@ -638,43 +534,19 @@ export function closeTestSession(userId: string, tema: number, testNumber: numbe
  * Cierra una sesión de usuario
  */
 export async function closeUserSession(sessionId: string): Promise<void> {
-  try {
-    if (sessionId) {
-      await supabase
-        .from('user_sessions')
-        .update({
-          session_end: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId)
-
-      console.log('✅ Sesión de usuario cerrada:', sessionId)
-    }
-
-    sessionCache.clear()
-  } catch (error) {
-    console.error('❌ Error cerrando sesión:', error)
-  }
+  // session_end es analítica best-effort; limpiamos la cache cliente. Cero Supabase.
+  void sessionId
+  sessionCache.clear()
 }
 
 /**
  * Actualiza la puntuación de un test
  */
-export async function updateTestScore(sessionId: string, currentScore: number): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('tests')
-      .update({ score: currentScore })
-      .eq('id', sessionId)
-
-    if (error) throw error
-
-    console.log('✅ Puntuación actualizada:', currentScore)
-    return true
-  } catch (error) {
-    console.error('❌ Error actualizando puntuación:', error)
-    return false
-  }
+export async function updateTestScore(_sessionId: string, _currentScore: number): Promise<boolean> {
+  // El score se actualiza en el SERVIDOR en cada respuesta (/api/v2/answer-and-save
+  // hace UPDATE tests.score) y al completar (/api/v2/complete-test). Este write
+  // cliente queda como no-op para no duplicarlo ni depender de Supabase.
+  return true
 }
 
 /**

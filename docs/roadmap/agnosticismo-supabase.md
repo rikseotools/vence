@@ -5,7 +5,52 @@
 > **Estado**: 🟢 Fase 1 ✅ + Fase 3 (Drizzle `.from()`) ✅ AGOTADA (63 migrados + 5 borrados; quedan solo 4 rotos decididos + client-side acoplado a Auth) + Fase 5 (Realtime) 2/3 ✅. 🟡 **Fase 4 (Auth) MUY AVANZADA** — A (facade) ✅ + **B (hub authHeaders+AuthContext) ✅ EN PROD** (commit `3f26fa41`, sesión paralela 03/06; SOAK 24-48h en curso) + **D (server admin→authAdmin) ✅** + **C4 port `completeOAuthCallback` ✅ build-only** (falta cablear la página) + **C1 iniciado** (banner). Pendiente: cablear C4, C1 hot-paths, **C2 (login funnel, no drop-in)**, C3/C5, E (ESLint lock), F (POC). Es el bloqueador real de RDS.
 > **Propietario**: equipo Vence.
 > **Coste recurrente añadido**: 0 € (todas las fases reutilizan infra existente Postgres / Drizzle / SSM / ECS / Lightsail pooler).
-> **Última actualización**: 2026-06-03 (madrugada: Fase 4 D + C4 port build-only + C1 banner sobre la B ya pusheada por sesión paralela; todo sin downtime).
+> **Última actualización**: 2026-07-04 (tarde) — ver bloque 🚨 justo debajo: **el cliente TODAVÍA escribía a Supabase** (hueco del ratchet C1 en `utils/`); migrado `testSession.ts` a RDS y verificado E2E. NO borrar aún el CNAME `auth.vence.es` ni el proyecto Supabase.
+
+---
+
+## 🚨 2026-07-04 (tarde) — El cliente SEGUÍA escribiendo a Supabase (hueco C1) + inventario para retirar DNS/Supabase
+
+**Contexto:** aunque los docs decían *"Supabase congelado, la app escribe en RDS"* (cutover 04/07), se verificó **en vivo** que el **cliente sigue escribiendo a Supabase** y por tanto **NO se puede apagar Supabase ni borrar su DNS todavía**.
+
+### Hallazgos (verificados contra prod, 04/07)
+1. **`auth.vence.es` es un CNAME (Namecheap) → `yqbpstxowvgipqspqrgo.supabase.co`** (el proyecto Supabase real, tras Cloudflare). El cliente Supabase (`NEXT_PUBLIC_SUPABASE_URL=https://auth.vence.es`) escribe ahí, NO a RDS. En vivo: **95–837 `tests`/día siguen cayendo en Supabase**.
+2. **Split-brain SIN pérdida (5 días verificados):** Supabase y RDS **cuadran exacto** día a día (782=782, 837=837, 826=826, 574=574) y **0 tests solo-en-Supabase**. Hay una sincronización Supabase↔RDS cuyo **mecanismo NO se ha identificado** (`pg_subscription` y `pg_replication_slots` vacíos en RDS, sin AWS DMS). RDS tiene ~11 extra/día (server-side: official-exams). **Ahora mismo no se pierde nada**, pero es frágil: apagar Supabase/la sync = pérdida. **INVESTIGAR el mecanismo de sync antes de retirar Supabase.**
+3. **Causa del hueco:** el ratchet C1 (`__tests__/guardrails/postgrest-from-ratchet.test.ts`, BASELINE 0) **NO escanea `utils/`** → `testSession.ts` (5 writes), `testAnswers.ts` (1), `testAnalytics.ts` (6) se colaron y siguen usando `getSupabaseClient()`. Por eso "Supabase congelado" era falso para el path del cliente. **TODO: extender el ratchet para escanear `utils/`.**
+
+### ✅ Migrado (04/07) — `utils/testSession.ts` → 0 Supabase (Drizzle/RDS, agnóstico)
+- Nuevos endpoints v2 (Drizzle + `verifyAuth` + `WHERE user_id`, agnósticos de proveedor):
+  - **`POST /api/v2/tests`** — crea/reutiliza sesión de test (reuse <30 min atómico server-side). `lib/api/v2/tests/{schemas,queries,client,index}.ts`.
+  - **`POST /api/v2/user-sessions`** — crea fila `user_sessions`. `lib/api/v2/user-sessions/{schemas,queries,client,index}.ts`.
+- `createDetailedTestSession`/`getOrCreateUserSession` → `fetch` a esos endpoints. `updateTestScore`/`closeUserSession` → **no-op** (el score lo actualiza `answer-and-save`/`complete-test`; `session_end` es analítica best-effort).
+- **Verificado E2E en local apuntando a RDS**: `POST /api/v2/tests 200`, `user-sessions 200`, `answer-and-save 200` → test `38a8d57c` + 4 `test_questions` + 2 `user_question_history_v2` en RDS. Typecheck limpio.
+- **GOTCHA build:** el `client.ts` NO debe importar del `index.ts` del dominio si éste re-exporta `queries.ts` (arrastra `getDb`→`postgres`→`fs` al bundle del navegador → `Module not found: Can't resolve 'fs'`). Separar `schemas.ts` (cliente-safe) de `queries.ts` (servidor); el `client.ts` importa de `./schemas`.
+
+### 🚫 NO borrar aún el CNAME `auth.vence.es` (Namecheap) ni el proyecto Supabase
+Siguen usando `auth.vence.es` (cliente Supabase) y romperían si se retira ahora:
+- `contexts/AuthContext.tsx`, `utils/testAnswers.ts`, `utils/testAnalytics.ts`, `components/test/ExamAleatorioClient.tsx`
+- Endpoints: `app/api/admin/newsletters/audience`, `admin/email-events`, `ai/verify-answer`, `v2/admin/broadcast`, `v2/admin/feedback/{find-user-by-email,list,mark-viewed}`, `dispute/mark-read`, `app/premium/success/page.tsx`, …
+- **Retirar DNS + Supabase SOLO cuando todo esto esté migrado y verificado**, y tras entender la sync (punto 2).
+
+### Config local para probar en modo AWS (fiel a prod) — `.env.development.local`
+`NEXT_PUBLIC_AUTH_PROVIDER=authjs` + `JWT_LOCAL_VERIFY_MODE=on` + `DATABASE_URL`→**RDS**. **GOTCHAS:**
+- El `.env.local` tenía `DATABASE_URL`→**pooler de Supabase** (stale, pre-cutover) → sin overridear, los v2 escribían a Supabase también en local.
+- Sin `JWT_LOCAL_VERIFY_MODE=on`, `verifyAuth` cae a modo `off` → verifica con `supabase.auth.getUser()` remoto → **rechaza el token RS256 → 401 en TODOS los `/api/v2`** (artefacto de dev, NO bug de prod).
+- `.env.development.local` contiene secretos (AUTH_JWT_PRIVATE_KEY) → gitignored, **borrar tras depurar**.
+
+### Cosas que fallaron / se aclararon esta sesión (para no repetirlas)
+- **Falso diagnóstico inicial:** se creyó que había un bug de guardado **sistémico en prod**. FALSO — prod sano (102 practice tests hoy, 781 history, 0 huérfanos; la cohorte registrada **post-flip** guarda igual, 44/91). Los 401 vistos eran del **local mal configurado** (los dos gotchas de arriba).
+- Casi se revierte el local a `provider=supabase` (deshecho — el objetivo es **fuera** Supabase).
+- El mecanismo de sync Supabase↔RDS sigue **sin identificar** (ver punto 2) — importa para el apagado.
+
+### Siguiente
+1. Migrar `utils/testAnswers.ts` + `utils/testAnalytics.ts` (mismo patrón: `fetch` a endpoint v2 Drizzle).
+2. Migrar `contexts/AuthContext.tsx` + endpoints admin restantes.
+3. Extender el ratchet C1 para escanear `utils/` (evitar regresión).
+4. Identificar/parar la sync Supabase↔RDS.
+5. Retirar CNAME `auth.vence.es` + decomisionar proyecto Supabase.
+
+---
 
 ## ⏯️ RESUME RÁPIDO (post-clear) — estado a 2026-06-02
 
