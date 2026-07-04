@@ -6,7 +6,6 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
 import TestLayout from '@/components/TestLayout'
-import { getSupabaseClient } from '@/lib/supabase'
 
 function TestDesdeChatContent() {
   const searchParams = useSearchParams()

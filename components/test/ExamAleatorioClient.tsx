@@ -6,12 +6,10 @@
 import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { getSupabaseClient } from '@/lib/supabase'
 import ExamLayout from '@/components/ExamLayout'
 import ExamLoadingIndicator from '@/components/ExamLoadingIndicator'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 
-const supabase = getSupabaseClient()
 
 interface LoadingProgress {
   currentPhase: string
