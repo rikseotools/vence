@@ -11,6 +11,7 @@ import { pagEmpleoAdapter } from './pag-empleo';
 
 export const PAG_WRAPPED: SourceAdapter = pagEmpleoAdapter;
 
-export const AGGREGATOR_ADAPTERS: SourceAdapter[] = [
-  // pagEmpleoAdapter,   ← activar al retirar detect-pag-empleo.cron
-];
+// Activado 04/07/2026: PAG usa dedupeKey `pag:${id}` (misma clave que el cron
+// legacy) → migración sin duplicar señales. El cron `detect-pag-empleo` se
+// retira a la vez (quitado de app.module) para que no corra dos veces.
+export const AGGREGATOR_ADAPTERS: SourceAdapter[] = [pagEmpleoAdapter];

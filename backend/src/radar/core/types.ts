@@ -45,6 +45,12 @@ export interface RawCandidate {
    * directamente en vez de llamar al LLM sobre `text`.
    */
   preExtracted?: RegionalOep[];
+  /**
+   * Clave de dedup EXPLÍCITA. Si se omite, el orquestador la deriva de la ref
+   * oficial. La usa PAG para conservar la misma clave que su cron legacy
+   * (`pag:${id}`) → migración sin duplicar señales.
+   */
+  dedupeKey?: string;
   /** Nombre/cuerpo tal cual lo da la fuente (opcional; el LLM afina). */
   rawName?: string | null;
   /** Región/CCAA si la fuente la conoce. */

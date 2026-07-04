@@ -153,7 +153,7 @@ export class RadarOrchestrator {
       for (const oep of oeps) {
         // Fase 0: catalogar TODO → sin guardarraíl de grupo excluyente.
         // Solo se registra el grupo para poder priorizar/triar por él.
-        const dedupeKey = buildDedupeKey(adapter, c, oep);
+        const dedupeKey = c.dedupeKey ?? buildDedupeKey(adapter, c, oep);
         try {
           const { inserted } = await this.queries.insertSignal({
             oposicionId: null,

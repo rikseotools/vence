@@ -25,7 +25,8 @@ import { DetectNotasConvocatoriaModule } from './detect-notas-convocatoria/detec
 import { AdvanceEstadoModule } from './advance-estado/advance-estado.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { DetectBoletinesModule } from './detect-boletines/detect-boletines.module';
-import { DetectPagEmpleoModule } from './detect-pag-empleo/detect-pag-empleo.module';
+// DetectPagEmpleoModule retirado 04/07/2026 (migrado al orquestador del radar):
+// import { DetectPagEmpleoModule } from './detect-pag-empleo/detect-pag-empleo.module';
 import { RadarModule } from './radar/radar.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
@@ -194,7 +195,9 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     // TODA España (Estado/autonómico/LOCAL) vía el Buscador del Punto de Acceso
     // General (administracion.gob.es). Cierra el gap de descubrimiento que
     // detect-boletines (solo BOCYL+BOE) no cubre. 06:00 UTC.
-    DetectPagEmpleoModule,
+    // DetectPagEmpleoModule,  ← RETIRADO 04/07/2026: PAG migrado al orquestador
+    //   (radar/layers/aggregators/pag-empleo). El cron viejo se quita para no
+    //   correr dos veces; las funciones puras de pag-empleo.ts se reutilizan.
     RadarModule,
     // Cron de higiene: avanza estado_proceso según fechas vencidas (06:30 UTC)
     AdvanceEstadoModule,

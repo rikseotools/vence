@@ -52,6 +52,7 @@ export const pagEmpleoAdapter: SourceAdapter = {
           rawName: c.cuerpo,
           regionName: c.ccaa,
           preExtracted: [oep],
+          dedupeKey: `pag:${c.id}`, // misma clave que el cron legacy → sin duplicar
         });
       }
     }
