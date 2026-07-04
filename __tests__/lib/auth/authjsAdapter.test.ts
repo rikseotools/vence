@@ -17,11 +17,15 @@ import { createAuthjsAuthAdapter } from '@/lib/auth/adapters/authjsAdapter'
 
 const APP_USER_ID = '550e8400-e29b-41d4-a716-446655440000'
 
-/** Configura la respuesta de /api/auth/token en función del request (headers). */
-function setTokenEndpoint(fn: (url: string, init?: RequestInit) => { ok: boolean; body?: unknown }) {
+/** Configura la respuesta de /api/auth/token en función del request (headers).
+ * `status` modela el código HTTP: por defecto 200 si ok, 401 si no (sesión inválida).
+ * Para simular un fallo TRANSITORIO del servidor, devolver `{ ok: false, status: 503 }`. */
+function setTokenEndpoint(
+  fn: (url: string, init?: RequestInit) => { ok: boolean; body?: unknown; status?: number },
+) {
   ;(global.fetch as jest.Mock).mockImplementation(async (url: string, init?: RequestInit) => {
-    const { ok, body } = fn(url, init)
-    return { ok, json: async () => body }
+    const { ok, body, status } = fn(url, init)
+    return { ok, status: status ?? (ok ? 200 : 401), json: async () => body }
   })
 }
 
@@ -130,6 +134,38 @@ describe('authjsAdapter — onAuthStateChange (polling)', () => {
     hasSession = false
     await jest.advanceTimersByTimeAsync(5000)
     expect(events).toContain('SIGNED_OUT')
+
+    unsub()
+    jest.useRealTimers()
+  })
+
+  it('un fallo TRANSITORIO (5xx/red) NO emite SIGNED_OUT — conserva la sesión y reintenta', async () => {
+    jest.useFakeTimers()
+    // La cookie Auth.js sigue válida todo el tiempo; solo el mint tiene un hipo.
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+    let transient = false
+    setTokenEndpoint(() =>
+      transient ? { ok: false, status: 503 } : { ok: true, body: { accessToken: 'tok', expiresAt: 1 } },
+    )
+
+    const adapter = createAuthjsAuthAdapter()
+    const events: string[] = []
+    const unsub = adapter.onAuthStateChange((c) => events.push(c.event))
+
+    await jest.advanceTimersByTimeAsync(0)
+    expect(events).toContain('INITIAL_SESSION')
+
+    // El servidor tiene un hipo (503) — NO debe desloguear (bug del auto-logout espurio).
+    transient = true
+    await jest.advanceTimersByTimeAsync(5000)
+    await jest.advanceTimersByTimeAsync(5000)
+    expect(events).not.toContain('SIGNED_OUT')
+
+    // Al recuperarse el servidor sigue logueado (uid no cambió → sin evento nuevo).
+    transient = false
+    await jest.advanceTimersByTimeAsync(5000)
+    expect(events).not.toContain('SIGNED_OUT')
+    expect(events.filter((e) => e === 'INITIAL_SESSION')).toHaveLength(1)
 
     unsub()
     jest.useRealTimers()

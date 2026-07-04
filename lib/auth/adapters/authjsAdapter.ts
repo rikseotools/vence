@@ -126,41 +126,95 @@ function clearLegacySupabaseSession(): void {
 }
 
 /**
- * Pide a /api/auth/token un access token RS256 fresco. En el cutover adjunta el Bearer
- * Supabase (si existe) para que el servidor haga el bridge. Devuelve token + identidad.
+ * Resultado DISCRIMINADO de acuñar el token. Distinguir estos casos es lo que evita
+ * los deslogueos espurios: un 401 (sesión genuinamente inválida) SÍ debe desloguear,
+ * pero un 5xx/red/timeout es un fallo TRANSITORIO del servidor y NUNCA debe hacerlo.
  */
-async function fetchMintedToken(): Promise<MintedToken | null> {
+type MintOutcome =
+  | { status: 'ok'; token: MintedToken }
+  | { status: 'unauthenticated' } // 401 — sesión inválida/caducada → logout legítimo
+  | { status: 'transient' }       // 5xx / 429 / 503 / red / timeout → conservar sesión
+
+/**
+ * Pide a /api/auth/token un access token RS256 fresco. En el cutover adjunta el Bearer
+ * Supabase (si existe) para que el servidor haga el bridge. Devuelve un resultado
+ * discriminado: SOLO un 401 se considera "sin sesión"; cualquier otro fallo es
+ * transitorio y el cliente debe mantener la sesión y reintentar en el próximo tick.
+ */
+async function fetchMintedToken(): Promise<MintOutcome> {
   try {
     const legacy = getLegacySupabaseAccessToken()
     const headers: Record<string, string> = legacy ? { Authorization: `Bearer ${legacy}` } : {}
     const res = await fetch(TOKEN_ENDPOINT, { credentials: 'include', headers })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (typeof data?.accessToken !== 'string') return null
+    if (res.status === 401) return { status: 'unauthenticated' }
+    // 5xx / 429 / 503 (emisor no configurado) / cualquier otro no-ok → transitorio.
+    if (!res.ok) return { status: 'transient' }
+    const data = await res.json().catch(() => null)
+    // Respuesta malformada = hipo del servidor, NO ausencia de sesión → transitorio.
+    if (!data || typeof data.accessToken !== 'string') return { status: 'transient' }
     return {
-      accessToken: data.accessToken,
-      expiresAt: data.expiresAt ?? null,
-      user: data.user?.id ? { id: data.user.id, email: data.user.email ?? null } : null,
+      status: 'ok',
+      token: {
+        accessToken: data.accessToken,
+        expiresAt: data.expiresAt ?? null,
+        user: data.user?.id ? { id: data.user.id, email: data.user.email ?? null } : null,
+      },
     }
+  } catch {
+    // Error de red / timeout → transitorio (no desloguear).
+    return { status: 'transient' }
+  }
+}
+
+/** nextGetSession() puede fallar transitoriamente (red/servidor); tratarlo como
+ * "no lo sé" (null) y dejar que el resultado del mint sea la autoridad, en vez de
+ * romper el poll. */
+async function nextGetSessionSafe() {
+  try {
+    return await nextGetSession()
   } catch {
     return null
   }
 }
 
+/** Estado de sesión discriminado, base del poll y de buildSession. */
+type SessionPoll =
+  | { status: 'ok'; session: AuthSession }
+  | { status: 'unauthenticated' }
+  | { status: 'transient' }
+
 /**
- * Construye una AuthSession normalizada. Identidad: sesión Auth.js si la hay; si no
- * (usuario existente en el cutover), la que devuelve el bridge de /api/auth/token.
+ * Resuelve el estado de sesión combinando la sesión Auth.js (cookie, 30d) con el token
+ * acuñado. Propaga la distinción transitorio/401: SOLO 'unauthenticated' significa
+ * "no hay sesión"; 'transient' significa "no se pudo comprobar ahora, reintenta".
  */
-async function buildSession(): Promise<AuthSession | null> {
-  const [nextSession, minted] = await Promise.all([nextGetSession(), fetchMintedToken()])
-  if (!minted) return null
+async function pollSession(): Promise<SessionPoll> {
+  const [nextSession, mint] = await Promise.all([nextGetSessionSafe(), fetchMintedToken()])
+  if (mint.status === 'transient') return { status: 'transient' }
+  if (mint.status === 'unauthenticated') return { status: 'unauthenticated' }
+  const minted = mint.token
   const user =
     mapUser(nextSession?.user) ??
     (minted.user
       ? { id: minted.user.id, email: minted.user.email, metadata: { fullName: null, avatarUrl: null }, raw: minted.user }
       : null)
-  if (!user) return null
-  return { user, accessToken: minted.accessToken, expiresAt: minted.expiresAt, refreshToken: null, raw: nextSession ?? { bridge: true } }
+  // Token válido pero sin identidad resoluble = sesión inservible → sign out.
+  if (!user) return { status: 'unauthenticated' }
+  return {
+    status: 'ok',
+    session: { user, accessToken: minted.accessToken, expiresAt: minted.expiresAt, refreshToken: null, raw: nextSession ?? { bridge: true } },
+  }
+}
+
+/**
+ * Construye una AuthSession normalizada (AuthSession | null) para los callers one-shot
+ * (getSession/getUser/completeOAuthCallback). Un fallo transitorio o un 401 devuelven
+ * null; el poll (onAuthStateChange) usa pollSession directamente para NO desloguear ante
+ * transitorios.
+ */
+async function buildSession(): Promise<AuthSession | null> {
+  const res = await pollSession()
+  return res.status === 'ok' ? res.session : null
 }
 
 export function createAuthjsAuthAdapter(): AuthClientPort {
@@ -178,9 +232,10 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
 
     async getAccessToken() {
       // fetchMintedToken adjunta el Bearer Supabase → el servidor hace el bridge si
-      // aún no hay sesión Auth.js. Devuelve RS256 en ambos casos.
-      const minted = await fetchMintedToken()
-      return minted?.accessToken ?? undefined
+      // aún no hay sesión Auth.js. Devuelve RS256 en ambos casos. Ante 401/transitorio
+      // → undefined (el caller reintenta o el fetch cae en su manejo de 401).
+      const mint = await fetchMintedToken()
+      return mint.status === 'ok' ? mint.token.accessToken : undefined
     },
 
     async signInWithGoogle(options?: SignInOptions): Promise<SignInResult> {
@@ -237,12 +292,18 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
 
       const tick = async () => {
         if (stopped) return
-        // buildSession cae a la sesión Supabase existente si no hay Auth.js (cutover).
-        const session = await buildSession()
+        const res = await pollSession()
+        // Fallo TRANSITORIO (5xx/red/timeout): NO tocar el estado — conservar la última
+        // sesión conocida y reintentar en el siguiente tick. Esto elimina el auto-logout
+        // espurio por hipos del servidor / saturación de BD / token caducado tras
+        // inactividad (la cookie Auth.js de 30d sigue válida y re-acuña al reintentar).
+        if (res.status === 'transient') return
+        const session = res.status === 'ok' ? res.session : null
         const uid = session?.user?.id ?? null
         if (uid === lastUserId) return
         const first = lastUserId === undefined
         lastUserId = uid
+        // Solo se llega aquí con 'ok' (uid) o 'unauthenticated' (uid=null, 401 real).
         const event = first ? 'INITIAL_SESSION' : uid ? 'SIGNED_IN' : 'SIGNED_OUT'
         cb({ event, session, isNewUser: false })
       }

@@ -123,7 +123,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckExamIntegri
         AND t.completed_at >= ${sinceIso}
         AND t.total_questions > 0
       GROUP BY t.id
-      HAVING count(tq.id) < t.total_questions * ${COMPLETENESS_THRESHOLD}
+      HAVING count(tq.id) < t.total_questions * ${COMPLETENESS_THRESHOLD}::float8
       ORDER BY (t.total_questions - count(tq.id)) DESC
       LIMIT 100
     `)) as any[]
