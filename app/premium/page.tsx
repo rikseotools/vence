@@ -23,10 +23,9 @@ interface AuthUser {
 }
 
 function PremiumPageContent() {
-  const { user, loading: authLoading, supabase } = useAuth() as {
+  const { user, loading: authLoading } = useAuth() as {
     user: AuthUser | null
     loading: boolean
-    supabase: any
   }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -44,13 +43,13 @@ function PremiumPageContent() {
 
   // Trackear vista de pagina premium
   useEffect(() => {
-    if (user && supabase && !hasTrackedPageView.current && !authLoading) {
+    if (user && !hasTrackedPageView.current && !authLoading) {
       const referrer = document.referrer || null
       const fromSource = searchParams.get('from')
       trackPremiumPageView(user.id, referrer, fromSource)
       hasTrackedPageView.current = true
     }
-  }, [user, supabase, authLoading, searchParams])
+  }, [user, authLoading, searchParams])
 
   // Auto-iniciar checkout después de login exitoso
   const hasTriedAutoCheckout = useRef(false)
@@ -115,7 +114,7 @@ function PremiumPageContent() {
       console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', selectedPlan)
 
       // Trackear inicio de checkout
-      if (supabase && user.id) {
+      if (user.id) {
         trackCheckoutStarted(user.id, selectedPlan)
       }
 
@@ -240,7 +239,7 @@ function PremiumPageContent() {
     try {
       console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', plan)
 
-      if (supabase && user.id) {
+      if (user.id) {
         trackCheckoutStarted(user.id, plan)
       }
 

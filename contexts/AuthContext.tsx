@@ -799,9 +799,9 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             }
 
             // 🆕 Campaign checkout
-            if (shouldForceCheckout(newUser, supabase)) {
+            if (shouldForceCheckout(newUser)) {
               setTimeout(() => {
-                forceCampaignCheckout(newUser, supabase).catch(() => {})
+                forceCampaignCheckout(newUser).catch(() => {})
               }, 1000)
             }
 

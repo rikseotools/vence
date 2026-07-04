@@ -4,7 +4,6 @@ import type { User } from '@supabase/supabase-js'
 import { auth } from './auth'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClientAny = any
 
 export interface CampaignInfo {
   source: string
@@ -77,7 +76,7 @@ export function detectCampaignSource(): CampaignInfo | null {
   return null
 }
 
-export async function forceCampaignCheckout(user: User, supabase: SupabaseClientAny): Promise<void> {
+export async function forceCampaignCheckout(user: User): Promise<void> {
   const campaignInfo = detectCampaignSource()
 
   if (!campaignInfo || !user) {
@@ -137,7 +136,7 @@ export async function forceCampaignCheckout(user: User, supabase: SupabaseClient
   }
 }
 
-export function shouldForceCheckout(user: User | null, supabase: SupabaseClientAny): boolean {
+export function shouldForceCheckout(user: User | null): boolean {
   const campaignInfo = detectCampaignSource()
 
   if (!campaignInfo || !user) {

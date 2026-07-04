@@ -8,12 +8,12 @@ import { auth } from '@/lib/auth'
 import { detectCampaignSource, shouldForceCheckout, forceCampaignCheckout } from '@/lib/campaignTracker'
 
 function LoginPageContent() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string>('')
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   
   // URL de retorno después del login
   const returnToParam = searchParams.get('return_to')
@@ -30,10 +30,10 @@ function LoginPageContent() {
       console.log('✅ Usuario ya autenticado')
       
       // 🆕 VERIFICAR SI DEBE FORZAR CHECKOUT ANTES DE REDIRIGIR
-      if (shouldForceCheckout(user, supabase)) {
+      if (shouldForceCheckout(user)) {
         console.log('💰 Usuario ya logueado - forzando checkout por cookies de campaña')
         setLoading(true)
-        forceCampaignCheckout(user, supabase).catch(err => {
+        forceCampaignCheckout(user).catch(err => {
           console.error('❌ Error forzando checkout:', err)
           setError('Error procesando pago. Intenta de nuevo.')
           setLoading(false)
@@ -45,9 +45,9 @@ function LoginPageContent() {
       console.log('🔄 Redirigiendo a:', returnTo)
       router.push(returnTo)
     }
-  }, [user, authLoading, router, returnTo, supabase])
+  }, [user, authLoading, router, returnTo])
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (): Promise<void> => {
     try {
       setLoading(true)
       setError('')
