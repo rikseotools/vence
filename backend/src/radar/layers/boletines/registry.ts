@@ -11,9 +11,9 @@
 import { SourceAdapter } from '../../core/types';
 import { BOLETIN_ADAPTERS as LEGACY_BOLETINES } from '../../../detect-boletines/boletines';
 import { wrapBoletin } from './_wrap';
-// import { dogcAdapter } from './dogc';   // Fase 1 — hueco CAT
-// import { boibAdapter } from './boib';   // Fase 1 — hueco BAL
-// import { bormAdapter } from './borm';   // Fase 1 — hueco MUR
+import { bonAdapter } from './bon'; // Navarra — 1er CCAA nuevo (§16bis)
+// import { dogcAdapter } from './dogc';   // CAT: SPA, requiere §16bis/Playwright
+// import { bopvAdapter } from './bopv';   // PV: viable (Ultimo.shtml, 178 hits)
 
 // ⚠️ TRANSICIÓN: mientras el cron `detect-boletines` siga vivo, NO registrar
 // aquí BOE/BOCYL — se ejecutarían dos veces (con dedupe keys distintos) →
@@ -24,6 +24,6 @@ export const LEGACY_BOLETINES_WRAPPED: SourceAdapter[] = LEGACY_BOLETINES.map(
 );
 
 export const BOLETIN_ADAPTERS: SourceAdapter[] = [
+  bonAdapter, // Navarra — nuevo, NO duplica (detect-boletines solo hace BOCYL+BOE)
   // ...LEGACY_BOLETINES_WRAPPED,   // ← activar al retirar detect-boletines.cron
-  // dogcAdapter, boibAdapter, bormAdapter,   // ← nuevos CCAA (§16bis: no fetch-plano)
 ];
