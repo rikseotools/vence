@@ -474,26 +474,9 @@ async function handleCheckoutSessionCompleted(
         console.error('Error marking A/B conversion:', abErr)
       }
 
-      // Email admin
-      try {
-        const userProfile = data?.[0]
-        await sendAdminPurchaseEmail({
-          userEmail: userProfile?.email || session.customer_email || '',
-          userName: userProfile?.full_name || 'Sin nombre',
-          amount: (session.amount_total || 0) / 100,
-          currency: session.currency?.toUpperCase() || 'EUR',
-          stripeCustomerId: session.customer as string,
-          userId,
-          targetOposicion: userProfile?.target_oposicion,
-          registrationSource: userProfile?.registration_source,
-          registrationUrl: userProfile?.registration_url,
-          registrationFunnel: userProfile?.registration_funnel,
-          registrationDate: userProfile?.created_at,
-        })
-        console.log('📧 Email de nueva compra enviado')
-      } catch (emailErr) {
-        console.error('Error enviando email admin:', emailErr)
-      }
+      // Email admin de nueva venta DESACTIVADO 04/07/2026 (a petición): no notificar
+      // por email cada venta; el dinero de hoy se ve EN VIVO en /admin (card
+      // "Usuarios Activos Hoy"). Fn sendAdminPurchaseEmail conservada por si se re-activa.
 
       // Settlement
       try {
@@ -643,23 +626,7 @@ async function handleCheckoutSessionCompleted(
           }
         }
 
-        try {
-          await sendAdminPurchaseEmail({
-            userEmail: customer.email,
-            userName: existingUser.full_name || 'Usuario encontrado por email',
-            amount: (session.amount_total || 0) / 100,
-            currency: session.currency?.toUpperCase() || 'EUR',
-            stripeCustomerId: session.customer as string,
-            userId: existingUser.id,
-            targetOposicion: existingUser.target_oposicion,
-            registrationSource: existingUser.registration_source,
-            registrationUrl: existingUser.registration_url,
-            registrationFunnel: existingUser.registration_funnel,
-            registrationDate: existingUser.created_at,
-          })
-        } catch (emailErr) {
-          console.error('Error enviando email admin (CASO 2):', emailErr)
-        }
+        // Email admin de nueva venta DESACTIVADO 04/07/2026 (a petición) — ver CASO 1 arriba.
 
         try {
           await recordPaymentSettlement({

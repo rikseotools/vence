@@ -1,7 +1,8 @@
 // app/admin/page.tsx - Dashboard con API v2 Drizzle
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
+import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import dynamic from 'next/dynamic'
 import type { DashboardResponse } from '@/lib/api/admin-dashboard/schemas'
 import type { ActivityChartResponse, RegistrationsChartResponse } from '@/lib/api/admin-charts/schemas'
@@ -20,6 +21,8 @@ type ActivityStats = NonNullable<ActivityChartResponse['stats']>
 type RegistrationDay = RegistrationsChartResponse['data'][number]
 
 export default function AdminDashboard() {
+  // Dinero de HOY en vivo: se poll-ea cada 30s mientras la pestaña admin esté abierta.
+  const adminNotif = useAdminNotifications(true)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [emailStats, setEmailStats] = useState<EmailStats | null>(null)
   const [users, setUsers] = useState<RecentUser[]>([])
@@ -35,6 +38,23 @@ export default function AdminDashboard() {
   const [activityData, setActivityData] = useState<ActivityDay[] | null>(null)
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null)
   const [registrationsData, setRegistrationsData] = useState<RegistrationDay[] | null>(null)
+
+  // Dinero de HOY en vivo (ventasImporte, poll 30s) con fallback al dashboard, y
+  // FLASH de 10s cuando cambia — solo si la pestaña está visible (así lo ves si
+  // estás mirando; si el importe no cambia, se queda normal).
+  const revToday = adminNotif.ventasImporte > 0 ? adminNotif.ventasImporte : (stats?.revenueToday ?? 0)
+  const [revFlash, setRevFlash] = useState(false)
+  const prevRevRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (stats == null) return // dashboard aún cargando: no fijar baseline ni flashear
+    const prev = prevRevRef.current
+    prevRevRef.current = revToday
+    if (prev === null || revToday === prev) return // baseline o sin cambio: no flash
+    if (typeof document !== 'undefined' && document.hidden) return // pestaña no activa: no flashear
+    setRevFlash(true)
+    const t = setTimeout(() => setRevFlash(false), 10000)
+    return () => clearTimeout(t)
+  }, [revToday, stats])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -256,18 +276,25 @@ export default function AdminDashboard() {
                   })()}
                 </div>
                 <div className="text-xs mt-1 space-y-0.5">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-green-600 dark:text-green-400 font-semibold">💰 {stats.revenueToday}€ hoy</span>
-                    <span className="text-gray-400">vs</span>
-                    <span className="text-gray-500">{stats.revenueSameDayLastWeek}€ hace 7d</span>
-                    {(() => {
-                      const prev = stats.revenueSameDayLastWeek
-                      if (prev === 0 && stats.revenueToday === 0) return null
-                      if (prev === 0) return <span className="text-green-600 font-medium">+100%</span>
-                      const pct = Math.round(((stats.revenueToday - prev) / prev) * 100)
-                      return <span className={`font-medium ${pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{pct >= 0 ? '+' : ''}{pct}%</span>
-                    })()}
-                  </div>
+                  {(() => {
+                    const prev = stats.revenueSameDayLastWeek
+                    return (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span
+                          className={`text-green-600 dark:text-green-400 font-semibold rounded px-0.5 transition-colors duration-500 ${revFlash ? 'animate-pulse bg-green-200 dark:bg-green-800/60' : ''}`}
+                          title="Dinero de hoy · en vivo (parpadea ~10s al cambiar si la pestaña está activa)"
+                        >💰 {revToday}€ hoy</span>
+                        <span className="text-gray-400">vs</span>
+                        <span className="text-gray-500">{prev}€ hace 7d</span>
+                        {(() => {
+                          if (prev === 0 && revToday === 0) return null
+                          if (prev === 0) return <span className="text-green-600 font-medium">+100%</span>
+                          const pct = Math.round(((revToday - prev) / prev) * 100)
+                          return <span className={`font-medium ${pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{pct >= 0 ? '+' : ''}{pct}%</span>
+                        })()}
+                      </div>
+                    )
+                  })()}
                   <div className="flex items-center gap-1 text-gray-500 flex-wrap">
                     <span>media 7d: {Math.round(stats.revenueLast7Days / 7)}€/día</span>
                     <span className="text-gray-400">vs</span>
