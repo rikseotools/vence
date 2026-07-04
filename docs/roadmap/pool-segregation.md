@@ -1,5 +1,17 @@
 # Roadmap — Pool Segregation + Diagnóstico de saturación 503 en horas pico
 
+> ## ⚠️⚠️ SUPERSEDED POST-CUTOVER A RDS (2026-07-04)
+> Este doc describe la **era Supabase/Supavisor** y ya NO refleja la realidad. Tras el cutover:
+> - La BD de prod es **RDS dedicado** (`vence-prod`, Multi-AZ, **400 max_connections**, ~19 en uso).
+> - `getDb()` y la réplica se subieron a **`max:5`** (commit `c3514bcb`) — el `max:1` histórico era un
+>   *workaround del pooler COMPARTIDO de Supabase* (Supavisor se saturaba). En RDS dedicado sobra margen.
+> - El **pooler self-hosted `pooler.vence.es` está BYPASSED** (`DATABASE_URL_SELF_POOLER` → RDS directo) → infra a decomisionar.
+> - La **saturación 503 residual se atajó** con: RDS + pool `max:5` + `ANALYZE` post-carga (sin stats el
+>   planificador hacía seq scans). El endpoint `/api/medals` resultó SANO (query 0.1ms); el 503 era
+>   contención de la cola `max:1`, no query lenta → NO necesitaba materialización.
+> Detalle vigente: `migracion-datos-supabase-a-rds.md` + memoria `project_cutover_rds_prod`.
+
+
 > **Estado**: 🟢 **SATURACIÓN-503 RESUELTA EN ORIGEN (2026-06-26)** — ver §"ACTUALIZACIÓN 2026-06-26". **La causa NO era el pool, sino 4 queries pesadas evitables** (count-por-topic en vivo en vez de MV, canary full-scan cada 10min, dato muerto `answerId` rompiendo un covering index, JOIN innecesario en daily-goal). Las 4 arregladas + desplegadas + **verificadas live** (~42.500s de tiempo de BD eliminados; MV corre a 28ms, canary plateauó, saturación 0 en las ~3h post-deploy). NOTA aparte (NO era la causa): `getDb()`/`getReadDb()` siguen en Supavisor `max:1` —la "Fase 1" solo construyó `getPoolerDb()` opt-in—; el pooler self-hosted en HA (2 VMs+NLB, Fase 6 ✅) está bien.
 > **Propietario**: equipo Vence
 > **Coste esperado de la implementación**: 0€ (cambios de config sobre infra ya existente)

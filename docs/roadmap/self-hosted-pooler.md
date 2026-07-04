@@ -1,5 +1,13 @@
 # Roadmap — Self-hosted Pooler
 
+> ## ⚠️⚠️ BYPASSED POST-CUTOVER A RDS (2026-07-04)
+> El pooler self-hosted (`pooler.vence.es`, PgBouncer en Lightsail) quedó **fuera del camino** tras el
+> cutover a RDS: `DATABASE_URL_SELF_POOLER` (SSM, ambos servicios) apunta **directo a RDS** — la app ya no
+> pasa por PgBouncer. **Infra a decomisionar** (junto con Supabase, tras 48-72h estables). Con RDS dedicado
+> (400 max_connections) + pool `max:5`, el pooling intermedio ya no es necesario a la escala actual (si en
+> el futuro hace falta pooling delante de RDS, la opción AWS-native es **RDS Proxy**). Ver `project_cutover_rds_prod`.
+
+
 > **Implementación elegida (mayo 2026)**: PgBouncer en AWS Lightsail London. Alternativas evaluadas (PgCat, Supabase Dedicated Pooler, Coolify) en sección "Comparación de opciones".
 
 > **Estado**: 🟢 Fase 5 COMPLETA (2026-05-10) — ~50+ endpoints user-facing en pooler tras 5 oleadas en una sesión. Único restante: admin/Stripe/cron (intencional). Pico real lunes mañana = prueba final.

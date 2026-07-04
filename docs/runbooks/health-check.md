@@ -4,6 +4,22 @@ Manual operativo para diagnosticar errores o salud del sistema Vence. Cuando el 
 
 Mantenedor: `docs/runbooks/health-check.md`. Referenciado desde `CLAUDE.md`.
 
+> ## ⚠️⚠️ POST-CUTOVER A RDS (2026-07-04) — leer antes de diagnosticar
+> La BD de prod migró a **AWS RDS** (`vence-prod`, Multi-AZ). **`observable_events` y todos los datos vivos
+> están en RDS, NO en Supabase (congelado como backup).**
+> - **Las queries de este runbook usan `DATABASE_URL`, que en `.env.local` AÚN apunta a Supabase (congelado)**
+>   → correrlas en local mira la BD EQUIVOCADA. Usar la URL de RDS (en `prod` la tiene ECS vía SSM
+>   `/vence-frontend/DATABASE_URL`; para diagnósticos manuales, la conexión RDS está en la memoria
+>   `project_cutover_rds_prod`). Conectar con `ssl:{rejectUnauthorized:false}` + `?sslmode=require`.
+> - **Ya NO hay Supavisor ni PgBouncer** en el camino: `getDb()`/réplica van directo a RDS con **`max:5`**
+>   (era `max:1`, workaround del pooler compartido de Supabase). El self-hosted `pooler.vence.es` está bypassed.
+>   → Los fingerprints históricos con `application_name='Supavisor'` (abajo, §incidentes) ya no aplican; en RDS
+>   mirar `pg_stat_activity WHERE datname='app'` sin filtro de Supavisor. Panel `/admin/infraestructura`
+>   (stats PgBouncer) queda obsoleto.
+> - **Gotcha de migración**: tras una carga masiva, `ANALYZE;` es obligatorio (sin stats → seq scans → 503
+>   "saturado"). Si reaparecen 503 de saturación tras cualquier recarga, ejecutar `ANALYZE` primero.
+> Detalle: memoria `project_cutover_rds_prod` + `docs/roadmap/migracion-datos-supabase-a-rds.md`.
+
 ---
 
 ## 1. Comprobación rápida (30 segundos)
