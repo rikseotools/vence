@@ -13,6 +13,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 import { OepSignalsQueriesService } from '../oep-signals/oep-signals-queries.service';
+import type { SensorType } from '../oep-signals/oep-signals.schemas';
 import { RadarTelemetry } from './core/telemetry';
 import { BOLETIN_ADAPTERS } from './layers/boletines/registry';
 import { AGGREGATOR_ADAPTERS } from './layers/aggregators/registry';
@@ -154,24 +155,46 @@ export class RadarOrchestrator {
         // Fase 0: catalogar TODO → sin guardarraíl de grupo excluyente.
         // Solo se registra el grupo para poder priorizar/triar por él.
         const dedupeKey = c.dedupeKey ?? buildDedupeKey(adapter, c, oep);
+        const region = c.regionName ?? adapter.regionName ?? 'España';
+        // MATCH contra catálogo ANTES de insertar (paridad con el cron legacy de
+        // PAG): setea oposicion_id / is_novel / position_category. Hace BOC-ref
+        // exacto + estructural (oep-match, precisión>recall). Sin esto, TODA señal
+        // salía novel (regresión). Carga el catálogo por llamada — aceptable en un
+        // cron diario en background (no bajo el timeout del adapter).
+        const match = await this.queries.matchDetectedOepToOposicion({
+          cuerpo: oep.name,
+          regionName: region,
+          grupo: oep.positionGroup ?? null,
+          admin: c.admin ?? null,
+          organismo: c.organismo ?? null,
+          bocRef: oep.bocRef ?? null,
+        });
         try {
           const { inserted } = await this.queries.insertSignal({
-            oposicionId: null,
-            sensorType: sensorTypeFor(adapter),
+            oposicionId: match.oposicionId,
+            sensorType: sensorTypeFor(adapter) as SensorType,
             sourceUrl: c.officialUrl ?? c.sourceUrl,
-            regionName: c.regionName ?? adapter.regionName ?? null,
+            regionName: region,
+            positionCategory: oep.positionGroup ?? null,
             detectedOposicionName: oep.name,
             detectedYear: oep.year ?? null,
             detectedPlazasLibre: oep.plazas ?? null,
             detectedBocRef: oep.bocRef ?? null,
             detectedFechaInscripcionFin: oep.fechaInscripcionFin ?? null,
             detectedEstado: oep.estado ?? null,
-            confidenceScore: 50,
-            isNovel: true,
+            confidenceScore: match.matched ? 70 : 50,
+            isNovel: !match.matched,
             signalSummary: `[${adapter.key}] ${oep.name}${oep.plazas ? ` (${oep.plazas} plazas)` : ''}`,
-            rawExtraction: { adapter: adapter.key, layer: adapter.layer, officialUrl: c.officialUrl, oep },
+            // preserva los inputs del matcher (clave `match`) para re-match/backfill
+            rawExtraction: {
+              adapter: adapter.key,
+              layer: adapter.layer,
+              officialUrl: c.officialUrl,
+              oep,
+              match: { cuerpo: oep.name, grupo: oep.positionGroup ?? null, admin: c.admin ?? null, organismo: c.organismo ?? null, ccaa: region },
+            },
             dedupeKey,
-          } as never);
+          });
           if (inserted) {
             signalsNew++;
             await this.telemetry.signalNew(runId, adapter.layer, adapter.key, oep.name, oep.bocRef ?? null);

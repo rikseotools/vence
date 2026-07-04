@@ -51,6 +51,8 @@ export const pagEmpleoAdapter: SourceAdapter = {
           text: `${c.cuerpo} — ${c.organismo} (${c.ccaa})`,
           rawName: c.cuerpo,
           regionName: c.ccaa,
+          admin: c.admin, // inputs del matcher (paridad con el cron legacy)
+          organismo: c.organismo,
           preExtracted: [oep],
           dedupeKey: `pag:${c.id}`, // misma clave que el cron legacy → sin duplicar
         });

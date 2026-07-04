@@ -55,6 +55,11 @@ export interface RawCandidate {
   rawName?: string | null;
   /** Región/CCAA si la fuente la conoce. */
   regionName?: string | null;
+  /** Nivel de administración (Estatal/Autonómica/Local/Universidad) si se conoce
+   *  — input del matcher. Lo aporta PAG (jsonDetalle); boletines/competidores no. */
+  admin?: string | null;
+  /** Órgano convocante (Ayuntamiento/Universidad/Consejería…) — input del matcher. */
+  organismo?: string | null;
   /** Fecha del boletín/publicación (para dedup y trazabilidad). */
   publishedDate?: Date | null;
 }
