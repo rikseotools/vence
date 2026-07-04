@@ -1,5 +1,21 @@
 # Guion — Migración de DATOS Supabase → RDS (Postgres gestionado)
 
+> ## ✅✅ CUTOVER EJECUTADO EN PROD (2026-07-04) — la app escribe en `vence-prod` (RDS Multi-AZ)
+> Método B (snapshot + delta) usado. Downtime real **~15 min**. 0 tablas incompletas verificado. Detalle
+> operativo + credenciales en memoria `project_cutover_rds_prod`. **Gotchas que aparecieron en la ejecución
+> real y que este guion ahora incorpora (§6):**
+> 1. **Matviews NO se copian** con `pg_dump --data-only` → quedan vacías → app ve 0 preguntas/tema → TODO
+>    "En desarrollo". **REFRESH MATERIALIZED VIEW obligatorio post-cutover** (3: `mv_oposiciones_activas`,
+>    `topic_law_question_summary`, `topic_official_by_position`).
+> 2. **NUNCA otra sesión escribiendo/migrando la BD en paralelo** — una lo hizo y vació 3 tablas en RDS tras
+>    el delta (recuperadas por backfill aditivo desde Supabase congelado).
+> 3. Copiar tabla grande con `SELECT` gigante → **statement_timeout de Supabase** → usar `pg_dump` streaming.
+> 4. `-c "SET ..."` antes de `\copy TO STDOUT` en el ORIGEN ensucia el pipe → usar `PGOPTIONS` env.
+> 5. Config de BD en **SSM** (5 params), no en el task def directo → actualizar SSM + `--force-new-deployment`.
+> 6. **`ANALYZE;` database-wide obligatorio** tras la carga — sin stats frescas el planificador hace seq scans
+>    → queries lentas → 503 "saturado" en /api/medals y /api/v2/answer-and-save. El ANALYZE los tumbó.
+
+
 > **Estado previo (prerequisitos ya cubiertos):** el **esquema** post-C4 está probado end-to-end en el
 > target real (AWS RDS 17.6) — ver `migracion-vercel-a-aws.md` §3.1 DRY-RUN 3. Fase B (auth agnóstico)
 > hecha. Lo único que resta para tener la BD en AWS es **mover los datos** + **cutover**. Este documento
@@ -165,9 +181,18 @@ podman run --rm --net=host pgvector/pgvector:pg17 \
    Generar el conjunto de `setval` desde `pg_sequences` + su tabla/columna dueña (join por `pg_depend`).
    En Vence hoy son **4 secuencias** (`stats_drift_log`, `test_questions_outbox`, `trigger_logs`,
    `user_article_stats_pre_outbox`) — validado que tras el sync `nextval > max` (sin colisión de PK).
-6. **Cutover**: cambiar `DATABASE_URL` (y `DATABASE_URL_REPLICA`) del backend/Vercel→ECS al endpoint RDS,
-   redeploy/rolling del backend. **Fase B ya desacopló auth** → no hay que tocar el emisor de tokens.
-7. **Reabrir escrituras.**
+6. **`ANALYZE;` database-wide** (OBLIGATORIO — tras una carga masiva las estadísticas del planificador
+   están vacías → planes malos (seq scans) → queries lentas → **503 "Servicio saturado"** en `/api/medals`,
+   `/api/v2/answer-and-save`, etc.). ~90s. Cazado en la ejecución real: los 503 cayeron en picado tras el
+   ANALYZE. (El autovacuum lo haría solo con el tiempo, pero deja una ventana de saturación al arrancar.)
+6b. **REFRESH de las vistas materializadas** (OBLIGATORIO — no se copian con `--data-only`, quedan
+   `relispopulated=f` → app ve 0 preguntas → todo "En desarrollo"): `REFRESH MATERIALIZED VIEW
+   public.mv_oposiciones_activas; ... topic_law_question_summary; ... topic_official_by_position;`.
+7. **Cutover**: actualizar los **5 params SSM** de BD → RDS (`/vence-frontend/{DATABASE_URL,
+   DATABASE_URL_REPLICA,DATABASE_URL_SELF_POOLER}` + `/vence-backend/{DATABASE_URL,DATABASE_URL_SELF_POOLER}`)
+   y **`aws ecs update-service --force-new-deployment`** en ambos servicios (los secrets se leen al arrancar
+   la task). **Fase B ya desacopló auth** → no hay que tocar el emisor de tokens.
+8. **Escalar ECS de vuelta** (frontend→2, backend→1) y **reabrir escrituras.**
 
 ### Fase 4 — Verificación (antes de dar por bueno el cutover)
 - **Recuento por tabla** origen vs destino (`SELECT count(*)`), tolerancia 0 en mutables, `>=` en
