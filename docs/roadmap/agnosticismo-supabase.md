@@ -467,3 +467,20 @@ return () => {
 - [`self-hosted-pooler.md`](./self-hosted-pooler.md) — Fase 5 completada del pool propio. Pre-requisito para agnosticismo de BD.
 - [`materialized-stats-aggregates.md`](./materialized-stats-aggregates.md) — patrón counter-table + triggers Postgres puro, agnóstico de Supabase.
 - [`docs/runbooks/observability.md`](../runbooks/observability.md) — patrón Sink interface (AWS-native by default, agnóstico by contract) aplicado a observabilidad. Mismo patrón mental que aquí.
+
+---
+
+## ✅ 2026-07-05 — CLIENTE 100% AGNÓSTICO (cero SDK de Supabase en el navegador)
+
+**Hecho y verificado** (13 commits en `main` local, `b4ef6fc9`..`6c104270`; **1100 tests verdes** en 38 suites + typecheck limpio):
+- `utils/` (testSession, testAnswers, testAnalytics) → RDS/Drizzle vía v2 (`/api/v2/tests`, `/api/v2/user-sessions`, `/api/test/save-answer`, `/api/v2/complete-test`, `/api/v2/oposicion/target`).
+- **AuthContext ya NO crea ni expone el cliente Supabase**; los 28 consumidores de `useAuth().supabase` migrados/limpiados (la mayoría eran binding/guards muertos; login/premium/campaignTracker/useSessionControl tenían params vestigiales; soporte mark-read→`/api/dispute/mark-read`; feedback realtime→**polling 15s**).
+- `warmCache` → `/api/v2/law-slugs` (relativo cliente / `NEXT_PUBLIC_SITE_URL` en SSR). ExamAleatorioClient + desde-chat: getSupabaseClient vestigial quitado.
+- **Ratchet C1 escanea `utils/`** (anti-regresión). **`getSupabaseClient()` alcanzable desde cliente = 0.**
+
+**Queda SOLO server-side (no toca el navegador):**
+1. **Endpoints admin/AI con `createClient(SERVICE_ROLE)` → Drizzle:** `admin/email-events`, `admin/conversions/user-journey`, `admin/users/subscriptions`, `v2/admin/broadcast` (DIFERIDO por decisión: unificar-newsletters), `ai/verify-answer` (DIFERIDO: necesita RPC pgvector + tabla question_verifications), `v2/admin/feedback/{list,mark-viewed,find-user-by-email}`, `dispute/mark-read`.
+2. **Storage (SUB-PROYECTO S3):** `lib/storage/supabase-adapter.ts` + `lib/api/video-courses/queries.ts` (`videos-premium`). Necesita bucket S3 + credenciales.
+3. **Auth-infra (provider-gated, se retira con el bridge):** `verifyAuth` (verifyRemote modo `off`), `supabaseAdapter`, `shared/auth`, `adminApiGuard`, `armando/supabaseAdmin`. Bajo Auth.js (`mode=on`) están dormidos en prod.
+
+**Para apagar Supabase del todo:** migrar (1), decidir/hacer (2) S3, retirar (3) con el bridge, + identificar/parar la sync Supabase↔RDS + retirar CNAME `auth.vence.es`.
