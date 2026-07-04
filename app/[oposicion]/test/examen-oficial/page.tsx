@@ -24,7 +24,7 @@ function OfficialExamContent() {
   const searchParams = useSearchParams()
   const params = useParams<{ oposicion: string }>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { supabase, loading: authLoading } = useAuth() as any
+  const { loading: authLoading } = useAuth() as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [questions, setQuestions] = useState<any[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,7 +195,7 @@ function OfficialExamContent() {
     if (!authLoading) {
       loadOfficialExam()
     }
-  }, [examDate, parte, resumeParam, oposicion, authLoading, supabase])
+  }, [examDate, parte, resumeParam, oposicion, authLoading])
 
   if (authLoading || loading) {
     return (

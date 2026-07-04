@@ -405,7 +405,7 @@ export default function EstadisticasRevolucionarias() {
 
 function EstadisticasContent() {
   // ✅ USAR CONTEXTO GLOBAL EN LUGAR DE ESTADO LOCAL
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { oposicionId } = useOposicion() // ✅ Para obtener oposición del usuario
 
   // Obtener slug de oposición del usuario (formato con guiones para formatThemeName)
@@ -1245,7 +1245,7 @@ function EstadisticasContent() {
     }
 
     loadUserStats()
-  }, [user, authLoading, supabase])
+  }, [user, authLoading])
 
   // Componente de loading
   const LoadingSection = ({ title }: { title?: string }) => (

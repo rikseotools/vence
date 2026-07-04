@@ -69,10 +69,9 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
 
 function RepasoFallosContent() {
   const searchParams = useSearchParams()
-  const { user, loading: authLoading, supabase } = useAuth() as {
+  const { user, loading: authLoading } = useAuth() as {
     user: { id: string } | null
     loading: boolean
-    supabase: { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } }
   }
   const [error, setError] = useState<string | null>(null)
   const [questions, setQuestions] = useState<TestLayoutQuestion[]>([])

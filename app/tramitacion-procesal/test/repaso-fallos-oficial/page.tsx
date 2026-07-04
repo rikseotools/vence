@@ -54,7 +54,7 @@ function transformFailedQuestions(failedQuestions: any[]) {
 function RepasoFallosOficialContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [questions, setQuestions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -124,7 +124,7 @@ function RepasoFallosOficialContent() {
     }
 
     loadFailedQuestions()
-  }, [user, authLoading, examDate, parte, router, supabase])
+  }, [user, authLoading, examDate, parte, router])
 
   // Loading state
   if (authLoading || loading) {

@@ -135,7 +135,7 @@ export default function PsychometricTestLayout({
   questions,
   resumeData,
 }: PsychometricTestLayoutProps) {
-  const { user, supabase } = useAuth() as { user: { id: string; user_metadata?: Record<string, unknown> } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
+  const { user } = useAuth() as { user: { id: string; user_metadata?: Record<string, unknown> } | null }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
 
   // 📊 Meta diaria (registrar respuestas psicotécnicas)
@@ -239,12 +239,12 @@ export default function PsychometricTestLayout({
       sessionCreated.current = true
       createTestSession()
     }
-  }, [user, questions?.length, supabase, resumeData]) // Usar questions.length en lugar de questions completo
+  }, [user, questions?.length, resumeData]) // Usar questions.length en lugar de questions completo
 
   // Cargar información de dificultad cuando cambie la pregunta
   useEffect(() => {
     async function loadDifficultyInfo() {
-      if (!currentQ || !user || !supabase) return
+      if (!currentQ || !user) return
 
       try {
         console.log('🎯 Loading difficulty info for question:', currentQ.id)
@@ -265,7 +265,7 @@ export default function PsychometricTestLayout({
     }
 
     loadDifficultyInfo()
-  }, [currentQuestion, currentQ, user, supabase])
+  }, [currentQuestion, currentQ, user])
 
   // 💬 Actualizar contexto de pregunta para el chat AI (psicotécnicos)
   useEffect(() => {

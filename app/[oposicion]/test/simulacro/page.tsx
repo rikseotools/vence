@@ -68,8 +68,7 @@ function SimulacroContent() {
   const params = useParams<{ oposicion: string }>()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { supabase, loading: authLoading } = useAuth() as {
-    supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
+  const { loading: authLoading } = useAuth() as {
     loading: boolean
   }
 
@@ -278,7 +277,7 @@ function SimulacroContent() {
     if (!authLoading) {
       loadOrResumeSimulacro()
     }
-  }, [oposicion, authLoading, forceNew, resumeParam, router, supabase])
+  }, [oposicion, authLoading, forceNew, resumeParam, router])
 
   if (authLoading || loading) {
     const loadingMsg =

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
-import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface InfraStats {
@@ -56,7 +55,6 @@ export default function InfraStatsTab() {
   const [stats, setStats] = useState<InfraStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { supabase } = useAuth()
 
   const fetchStats = useCallback(async () => {
     try {
@@ -93,7 +91,7 @@ export default function InfraStatsTab() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     fetchStats()

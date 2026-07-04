@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function AutoAssignOposicion({ slug }: { slug: string }) {
-  const { user, supabase, userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
   const calledRef = useRef(false)
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function AutoAssignOposicion({ slug }: { slug: string }) {
         console.warn('[auto-assign-target] fetch falló:', err)
       }
     })()
-  }, [user, userProfile, supabase, slug])
+  }, [user, userProfile, slug])
 
   return null
 }

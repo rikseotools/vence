@@ -61,7 +61,7 @@ const EMPTY_STATS: UserStats = {
 // ── Component ────────────────────────────────────────────────────
 
 export default function UserAvatar() {
-  const { user, loading: authLoading, signOut, supabase, isPremium, userProfile } = useAuth()
+  const { user, loading: authLoading, signOut, isPremium, userProfile } = useAuth()
   const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -210,7 +210,7 @@ export default function UserAvatar() {
     if (authLoading) return
 
     async function checkAdminStatus() {
-      if (!user || !supabase) {
+      if (!user) {
         setIsAdmin(false)
         setAdminLoading(false)
         return
@@ -223,7 +223,7 @@ export default function UserAvatar() {
     }
 
     checkAdminStatus()
-  }, [user, supabase, authLoading])
+  }, [user, authLoading])
 
   // ── Handlers ──
 

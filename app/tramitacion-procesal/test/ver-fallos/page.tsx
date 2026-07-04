@@ -343,14 +343,13 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
 
 interface AuthContextValue {
   user: { id: string } | null
-  supabase: { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } }
   loading: boolean
 }
 
 function VerFallosContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth() as AuthContextValue
+  const { user, loading: authLoading } = useAuth() as AuthContextValue
   const [questions, setQuestions] = useState<OfficialExamFailedQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -411,7 +410,7 @@ function VerFallosContent() {
     }
 
     loadFailedQuestions()
-  }, [user, authLoading, examDate, parte, router, supabase])
+  }, [user, authLoading, examDate, parte, router])
 
   // Loading state
   if (authLoading || loading) {

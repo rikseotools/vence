@@ -35,7 +35,6 @@ interface AuthContextValue {
     current_streak_days?: number
   } | null
   loading: boolean
-  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
 }
 import ArticleModal from './ArticleModal'
 import QuestionDispute from './QuestionDispute'
@@ -354,7 +353,7 @@ export default function ExamLayout({
   initialAnswers = null,
   positionType
 }: ExamLayoutProps) {
-  const { user, userProfile, loading: authLoading, supabase } = useAuth() as AuthContextValue
+  const { user, userProfile, loading: authLoading } = useAuth() as AuthContextValue
   const {
     hasLimit,
     isLimitReached,

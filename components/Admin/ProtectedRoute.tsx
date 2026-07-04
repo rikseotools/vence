@@ -12,9 +12,8 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requireRole = 'admin' }: ProtectedRouteProps) {
-  const { user, supabase, loading: authLoading } = useAuth() as {
+  const { user, loading: authLoading } = useAuth() as {
     user: { id: string; email?: string } | null
-    supabase: { rpc: (fn: string) => Promise<{ data: boolean | null; error: unknown }> } | null
     loading: boolean
   }
   const { homeUrl } = useOposicionPaths()
@@ -26,7 +25,7 @@ export default function ProtectedRoute({ children, requireRole = 'admin' }: Prot
     async function checkAdminStatus() {
       if (authLoading) return
 
-      if (!user || !supabase) {
+      if (!user) {
         setIsAdmin(false)
         setIsLoading(false)
         return
@@ -39,7 +38,7 @@ export default function ProtectedRoute({ children, requireRole = 'admin' }: Prot
     }
 
     checkAdminStatus()
-  }, [user?.id, authLoading, supabase])
+  }, [user?.id, authLoading])
 
   if (authLoading || isLoading) {
     return (

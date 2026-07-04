@@ -16,7 +16,6 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
   user: { id: string; email?: string } | null
-  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
 }
 import OptionContent from './OptionContent'
 import ArticleModal from './ArticleModal'
@@ -351,7 +350,7 @@ export default function OfficialExamLayout({
   resumeTestId,
   initialAnswers
 }: OfficialExamLayoutProps) {
-  const { user, supabase } = useAuth() as AuthContextValue
+  const { user } = useAuth() as AuthContextValue
   const pathname = usePathname()
 
   // Penalización oficial del examen para esta oposición (1/N por fallo, 0 si no
@@ -940,7 +939,7 @@ export default function OfficialExamLayout({
       console.log(`✅ Examen corregido: ${totalCorrect}/${questions.length} (${percentage}%)`)
 
       // Guardar sesion de test para estadisticas (solo usuarios logueados)
-      if (user && supabase) {
+      if (user) {
         try {
           const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000)
           const examDateFormatted = metadata?.examDate || config?.examDate || ''
