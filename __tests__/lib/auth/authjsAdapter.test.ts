@@ -170,6 +170,71 @@ describe('authjsAdapter — onAuthStateChange (polling)', () => {
     unsub()
     jest.useRealTimers()
   })
+
+  it('SIMULACIÓN: servidor flaky (ok→503→500→504→red→ok→401) — cero deslogueos espurios, 1 SIGNED_OUT solo al 401', async () => {
+    jest.useFakeTimers()
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+
+    const OK = { ok: true, status: 200, body: { accessToken: 'tok', expiresAt: 1 } as unknown }
+    // Guion de respuestas de /api/auth/token: un paso por tick (5s).
+    const script: Array<{ ok: boolean; status?: number; body?: unknown; throws?: boolean }> = [
+      OK, // t0 → INITIAL_SESSION
+      { ok: false, status: 503 }, // t1 → hipo servidor
+      { ok: false, status: 500 }, // t2 → hipo servidor
+      { ok: false, status: 504 }, // t3 → gateway timeout (BD saturada)
+      { ok: false, throws: true }, // t4 → error de red (fetch lanza)
+      OK, // t5 → recupera (mismo uid → sin evento)
+      { ok: false, status: 401 }, // t6 → sesión caducada DE VERDAD → SIGNED_OUT
+    ]
+    let step = 0
+    ;(global.fetch as jest.Mock).mockImplementation(async () => {
+      const s = script[Math.min(step, script.length - 1)]
+      if (s.throws) throw new Error('network down')
+      return { ok: s.ok, status: s.status ?? (s.ok ? 200 : 401), json: async () => s.body }
+    })
+
+    const adapter = createAuthjsAuthAdapter()
+    const events: string[] = []
+    const unsub = adapter.onAuthStateChange((c) => events.push(c.event))
+
+    await jest.advanceTimersByTimeAsync(0)
+    expect(events).toEqual(['INITIAL_SESSION'])
+
+    for (let t = 1; t <= 6; t++) {
+      step = t
+      await jest.advanceTimersByTimeAsync(5000)
+    }
+
+    // Los 5 fallos transitorios (t1..t5) NO deslogean; solo el 401 (t6) emite SIGNED_OUT.
+    expect(events).toEqual(['INITIAL_SESSION', 'SIGNED_OUT'])
+
+    unsub()
+    jest.useRealTimers()
+  })
+
+  it('respuesta malformada (200 sin accessToken) → transitorio, NO desloguea', async () => {
+    jest.useFakeTimers()
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+    let malformed = false
+    setTokenEndpoint(() =>
+      malformed ? { ok: true, body: {} } : { ok: true, body: { accessToken: 'tok', expiresAt: 1 } },
+    )
+
+    const adapter = createAuthjsAuthAdapter()
+    const events: string[] = []
+    const unsub = adapter.onAuthStateChange((c) => events.push(c.event))
+
+    await jest.advanceTimersByTimeAsync(0)
+    expect(events).toContain('INITIAL_SESSION')
+
+    // 200 OK pero cuerpo sin accessToken = hipo del servidor, NO ausencia de sesión.
+    malformed = true
+    await jest.advanceTimersByTimeAsync(5000)
+    expect(events).not.toContain('SIGNED_OUT')
+
+    unsub()
+    jest.useRealTimers()
+  })
 })
 
 describe('authjsAdapter — BRIDGE del cutover (Fase B)', () => {
