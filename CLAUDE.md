@@ -188,7 +188,15 @@ git push origin main
 
 **Columnas legacy** (`topic_review_status`, `verification_status`, `deactivation_reason`) se siguen escribiendo por compatibilidad pero `lifecycle_state` es la fuente de verdad. Eliminación pendiente cuando todos los readers (admin UI, funciones SQL `get_topic_questions_*`, tests) migren.
 
-## Base de Datos (Supabase)
+## Base de Datos (~~Supabase~~ → AWS RDS desde 2026-07-04)
+
+> ⚠️ **CUTOVER A RDS (04/07):** la BD de prod es **AWS RDS** (`vence-prod`, PostgreSQL 17.6 Multi-AZ, eu-west-2).
+> **Todos los datos vivos están en RDS; Supabase quedó CONGELADO como backup** (a decomisionar tras 48-72h).
+> - **La sección "Consultas a Base de Datos desde Claude Code" (abajo) usa el cliente Supabase (ANON key) →
+>   apunta a Supabase CONGELADO → datos desactualizados.** Para consultar la BD VIVA, conectar a RDS con
+>   `postgres`/`pg` usando la URL de RDS (memoria `project_cutover_rds_prod`; `ssl:{rejectUnauthorized:false}`).
+> - El pool de la app es `max:5` (era `max:1`, workaround de Supabase); pooler self-hosted bypassed.
+> - Detalle + gotchas: memoria `project_cutover_rds_prod`, `docs/roadmap/migracion-datos-supabase-a-rds.md`.
 
 ### 🧩 Modelo NUCLEAR: preguntas ↔ artículos ↔ temas (FUENTE DE VERDAD)
 
