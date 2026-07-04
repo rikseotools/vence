@@ -1,4 +1,4 @@
-import { parseListado, parseOfficialLink } from './oposiciones-es';
+import { parseListado, parseOfficialLink, parseCard } from './oposiciones-es';
 
 describe('oposiciones-es adapter', () => {
   it('parseListado extrae solo tarjetas de convocatoria (por slug con nº de plazas)', () => {
@@ -21,6 +21,23 @@ describe('oposiciones-es adapter', () => {
     const url =
       'href="https://oposiciones.es/convocatorias/20-plazas-de-administrativo-en-vic/"';
     expect(parseListado(`${url} ${url}`)).toHaveLength(1);
+  });
+
+  it('parseCard extrae nombre + plazas del título (incl. miles "1 050")', () => {
+    expect(parseCard('20 plazas de administrativo en el ayuntamiento de vic barcelona')).toEqual({
+      name: 'Administrativo en el ayuntamiento de vic barcelona',
+      plazas: 20,
+    });
+    expect(parseCard('1 050 plazas al cuerpo de ayudantes de instituciones penitenciarias').plazas).toBe(1050);
+    expect(parseCard('sin numero de plazas').plazas).toBeNull();
+  });
+
+  it('parseListado rellena preExtracted (salta el LLM)', () => {
+    const html = 'x <a href="https://oposiciones.es/convocatorias/35-plazas-de-administrativo-en-la-diputacion-provincial-de-jaen/">j</a>';
+    const [c] = parseListado(html);
+    expect(c.preExtracted).toHaveLength(1);
+    expect(c.preExtracted![0].plazas).toBe(35);
+    expect(c.preExtracted![0].estado).toBe('inscripcion_abierta');
   });
 
   it('parseOfficialLink saca el enlace al boletín oficial (DOGC/BOE…)', () => {

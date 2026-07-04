@@ -12,12 +12,24 @@
 // el agregador. Sus números mienten (Jaén 31 vs 35) → jamás fiarse de ellos.
 
 import { SourceAdapter, RawCandidate, ScanContext } from '../../core/types';
+import type { RegionalOep } from '../../../oep-signals/oep-signals.schemas';
 
 const ABIERTAS_URL =
   'https://oposiciones.es/convocatorias/?fwp_convocatorias_estado=convocatorias-abiertas';
 
 const UA =
   'VenceRadar/1.0 (+https://www.vence.es; radar de convocatorias) Mozilla/5.0';
+
+/** PURA: parsea el título de una tarjeta ("20 plazas de X en Y") a nombre + plazas. */
+export function parseCard(rawName: string): { name: string; plazas: number | null } {
+  const m = rawName.match(/^([\d.\s]+?)\s*plazas?\s+(?:de |al |para (?:el |la )?|del |a )?(.+)$/i);
+  if (!m) return { name: cap(rawName), plazas: null };
+  const plazas = parseInt(m[1].replace(/[.\s]/g, ''), 10);
+  return { name: cap(m[2].trim()), plazas: Number.isFinite(plazas) ? plazas : null };
+}
+function cap(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
 
 /** PURA y testeable: extrae las tarjetas de convocatoria del HTML del listado. */
 export function parseListado(html: string): RawCandidate[] {
@@ -34,7 +46,20 @@ export function parseListado(html: string): RawCandidate[] {
     if (seen.has(url)) continue;
     seen.add(url);
     const rawName = slugToName(m[2]);
-    out.push({ sourceUrl: url, officialUrl: null, text: rawName, rawName });
+    const { name, plazas } = parseCard(rawName);
+    // La tarjeta ya trae nombre + plazas → preExtracted (salta el LLM).
+    // El enlace oficial se resuelve del detalle en scan() y se inyecta aquí.
+    const oep: RegionalOep = {
+      name,
+      positionGroup: null,
+      year: null,
+      plazas,
+      bocRef: null,
+      fechaInscripcionFin: null,
+      estado: 'inscripcion_abierta', // la lista es "convocatorias abiertas"
+      url,
+    };
+    out.push({ sourceUrl: url, officialUrl: null, text: rawName, rawName, preExtracted: [oep] });
   }
   return out;
 }
@@ -75,6 +100,8 @@ export const oposicionesEsAdapter: SourceAdapter = {
       } catch {
         c.officialUrl = null;
       }
+      // el enlace oficial (DOGC/BOE…) es la fuente real de la señal
+      if (c.officialUrl && c.preExtracted?.[0]) c.preExtracted[0].url = c.officialUrl;
     }
     return cards;
   },
