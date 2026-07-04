@@ -2,12 +2,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
-import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 
 export default function ImpugnacionesPage() {
-  const { supabase } = useAuth()
   const [impugnaciones, setImpugnaciones] = useState([])
   const [psychometricDisputes, setPsychometricDisputes] = useState([])
   const [premiumUsers, setPremiumUsers] = useState(new Set())
@@ -18,7 +16,7 @@ export default function ImpugnacionesPage() {
   const [groupByUser, setGroupByUser] = useState(true) // Agrupar por usuario por defecto
   useEffect(() => {
     loadImpugnaciones()
-  }, [supabase])
+  }, [])
 
   const loadImpugnaciones = async () => {
     try {
@@ -418,7 +416,6 @@ export default function ImpugnacionesPage() {
               getPriorityBadge={getPriorityBadge}
               getCorrectOptionLetter={getCorrectOptionLetter}
               onCloseDispute={closeDispute}
-              supabase={supabase}
             />
           ))
         ) : (
@@ -432,7 +429,6 @@ export default function ImpugnacionesPage() {
               getPriorityBadge={getPriorityBadge}
               getCorrectOptionLetter={getCorrectOptionLetter}
               onCloseDispute={closeDispute}
-              supabase={supabase}
               isPremium={premiumUsers.has(dispute.user_id)}
             />
           ))
@@ -444,7 +440,7 @@ export default function ImpugnacionesPage() {
 }
 
 // Componente separado para cada tarjeta de impugnación (solo lectura)
-function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase, isPremium, compact = false }) {
+function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, isPremium, compact = false }) {
   const [showFullQuestion, setShowFullQuestion] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
 
@@ -652,7 +648,7 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
 }
 
 // Componente para agrupar impugnaciones por usuario
-function UserDisputeGroup({ group, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase }) {
+function UserDisputeGroup({ group, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute }) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
@@ -711,7 +707,6 @@ function UserDisputeGroup({ group, getStatusBadge, getPriorityBadge, getCorrectO
               getPriorityBadge={getPriorityBadge}
               getCorrectOptionLetter={getCorrectOptionLetter}
               onCloseDispute={onCloseDispute}
-              supabase={supabase}
               isPremium={group.isPremium}
               compact={true}
             />

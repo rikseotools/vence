@@ -42,10 +42,9 @@ interface CachedVideoData {
 const CACHE_DURATION = 50 * 60 * 1000
 
 export default function VideoCoursePage({ course, lessons }: VideoCoursePageProps) {
-  const { user, isPremium, supabase, loading: authLoading } = useAuth() as {
+  const { user, isPremium, loading: authLoading } = useAuth() as {
     user: any
     isPremium: boolean
-    supabase: any
     loading: boolean
   }
 
@@ -134,7 +133,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
   // Load video URL when lesson changes (optimized with cache and parallel requests)
   const loadVideo = useCallback(async (lesson: Lesson) => {
-    if (!user || !supabase) {
+    if (!user) {
       setError('Inicia sesión para ver los videos')
       return
     }
@@ -205,7 +204,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       setIsLoading(false)
       setIsTransitioning(false)
     }
-  }, [user, supabase, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
+  }, [user, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
 
   // Load video when lesson changes and auth is ready
   useEffect(() => {
@@ -243,7 +242,6 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
   // Save progress periodically
   const saveProgress = useCallback(async (lessonId: string, currentTime: number, completed: boolean = false) => {
-    if (!supabase) return
 
     const authHeaders = await getAuthHeaders()
     if (!authHeaders['Authorization']) return
@@ -264,7 +262,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     } catch (err) {
       console.error('Error saving progress:', err)
     }
-  }, [supabase])
+  }, [])
 
   // Handle time update
   const handleTimeUpdate = () => {

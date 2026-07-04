@@ -118,7 +118,7 @@ const linkifyText = (text: string | null | undefined, isAdminMessage = false): R
  * Ver docs/procedures/gestionar-feedback-bug.md §10.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function respondViaFeedbackEndpoint(supabase: any, params: {
+async function respondViaFeedbackEndpoint(params: {
   feedbackId: string
   adminUserId: string
   message?: string
@@ -156,7 +156,7 @@ async function respondViaFeedbackEndpoint(supabase: any, params: {
 }
 
 export default function AdminFeedbackPage() {
-  const { user, supabase } = useAuth() as AuthContextType
+  const { user } = useAuth() as AuthContextType
   const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [stats, setStats] = useState<FeedbackStats>({
@@ -315,41 +315,18 @@ export default function AdminFeedbackPage() {
       loadFeedbacks()
       loadConversations()
 
-      // 🔄 Suscripción real-time para cambios en feedback y mensajes
-      console.log('🔔 Configurando suscripciones real-time...')
-      const feedbackSubscription = supabase
-        .channel('feedback_changes')
-        .on('postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'user_feedback'
-          },
-          (payload) => {
-            console.log('🔄 Feedback actualizado en tiempo real:', payload.new)
-            loadFeedbacks()
-          }
-        )
-        .on('postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'feedback_messages'
-          },
-          (payload) => {
-            console.log('🔄 Nuevo mensaje en tiempo real:', payload.new)
-            loadConversations()
-          }
-        )
-        .subscribe()
+      // Polling (agnóstico) — reemplaza la suscripción realtime de Supabase
+      // (Supabase Realtime muere al decomisionar Supabase). Refresca feedbacks
+      // + conversaciones cada 15s mientras el panel admin está abierto.
+      const pollId = setInterval(() => {
+        loadFeedbacks()
+        loadConversations()
+      }, 15000)
 
-      return () => {
-        console.log('🧹 Limpiando suscripciones real-time...')
-        feedbackSubscription.unsubscribe()
-      }
+      return () => clearInterval(pollId)
     }
     return undefined
-  }, [user, supabase])
+  }, [user])
 
   // Scroll automático al final cuando cambian los mensajes
   useEffect(() => {
@@ -477,7 +454,7 @@ export default function AdminFeedbackPage() {
 
       // Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
       // Semántica post-14/04/2026: admin reply = feedback 'resolved'.
-      const result = await respondViaFeedbackEndpoint(supabase, {
+      const result = await respondViaFeedbackEndpoint({
         feedbackId: selectedFeedback.id,
         adminUserId: user.id,
         message: inlineNewMessage.trim(),
@@ -571,7 +548,7 @@ export default function AdminFeedbackPage() {
       // 3. Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
       //    Semántica post-14/04/2026: admin reply = feedback 'resolved'.
       //    Si el usuario responde, el endpoint /api/feedback/message lo reabrirá a 'pending'.
-      const result = await respondViaFeedbackEndpoint(supabase, {
+      const result = await respondViaFeedbackEndpoint({
         feedbackId: feedback.id,
         adminUserId: user.id,
         message: newConvMessage.trim(),
@@ -1007,7 +984,7 @@ export default function AdminFeedbackPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   const loadConversations = async () => {
     try {
@@ -1062,7 +1039,7 @@ export default function AdminFeedbackPage() {
       // Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
       // Semántica post-14/04/2026: admin reply = feedback cerrado ('resolved').
       // Si el user responde después, el endpoint /api/feedback/message reabre a 'pending'.
-      const result = await respondViaFeedbackEndpoint(supabase, {
+      const result = await respondViaFeedbackEndpoint({
         feedbackId: conv.feedbackId,
         adminUserId: user.id,
         message: message.trim(),

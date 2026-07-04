@@ -132,7 +132,7 @@ interface UploadedImage {
 // ============================================
 
 function SoporteContent() {
-  const { user, supabase } = useAuth() as { user: any; supabase: any }
+  const { user } = useAuth() as { user: any }
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'conversations' | 'disputes'>('conversations')
   const [feedbacks, setFeedbacks] = useState<FeedbackWithConversation[]>([])
@@ -167,7 +167,6 @@ function SoporteContent() {
   // ============================================
 
   const loadUserData = useCallback(async () => {
-    if (!supabase) return
     try {
       setLoading(true)
       const authHeaders = await getAuthHeaders()
@@ -185,7 +184,7 @@ function SoporteContent() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -200,7 +199,6 @@ function SoporteContent() {
   // ============================================
 
   const loadInlineChatMessages = useCallback(async (conversationId: string) => {
-    if (!supabase) return
     try {
       setInlineChatLoading(true)
       const authHeaders = await getAuthHeaders()
@@ -221,7 +219,7 @@ function SoporteContent() {
     } finally {
       setInlineChatLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   // Auto-scroll al final de mensajes
   useEffect(() => {
@@ -364,7 +362,7 @@ function SoporteContent() {
   useEffect(() => {
     if (urlConversationHandled.current) return
     const conversationId = searchParams.get('conversation_id')
-    if (conversationId && supabase && user) {
+    if (conversationId && user) {
       urlConversationHandled.current = true
       setInlineChatConversationId(conversationId)
       loadInlineChatMessages(conversationId)
@@ -383,7 +381,7 @@ function SoporteContent() {
         } catch { /* best-effort */ }
       })()
     }
-  }, [searchParams, user, supabase, loadInlineChatMessages])
+  }, [searchParams, user, loadInlineChatMessages])
 
   // ============================================
   // IMPUGNACIONES: desde URL
@@ -409,19 +407,20 @@ function SoporteContent() {
         }
 
         if (dispute && !dispute.isRead) {
-          const tableName = dispute.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
-          supabase
-            .from(tableName)
-            .update({ is_read: true })
-            .eq('id', disputeId)
-            .eq('user_id', user.id)
-            .then(({ error }: { error: any }) => {
-              if (!error) {
+          // Marcar leída vía endpoint server-side (agnóstico, sin SDK de Supabase).
+          fetch('/api/dispute/mark-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ disputeId, userId: user.id, isPsychometric: dispute.isPsychometric }),
+          })
+            .then((res) => {
+              if (res.ok) {
                 setDisputes(prev => prev.map(d =>
                   d.id === disputeId ? { ...d, isRead: true } : d
                 ))
               }
             })
+            .catch(() => {})
         }
 
         setTimeout(() => {
@@ -436,7 +435,7 @@ function SoporteContent() {
         }, 500)
       }
     }
-  }, [searchParams, disputes, user, supabase])
+  }, [searchParams, disputes, user])
 
   // ============================================
   // AUTO-DETECTAR TAB POR DEFECTO
