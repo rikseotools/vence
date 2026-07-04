@@ -824,17 +824,8 @@ async function handleSubscriptionUpdated(
 
         const userProfile = profileData?.[0]
         if (userProfile) {
-          try {
-            await sendAdminPaymentIssueEmail({
-              userEmail: userProfile.email,
-              userName: userProfile.full_name ?? 'Sin nombre',
-              status: subscription.status,
-              subscriptionId: subscription.id
-            })
-            console.log('📧 Email de problema de pago enviado')
-          } catch (emailErr) {
-            console.error('Error enviando email:', emailErr)
-          }
+          // Email admin de problema de pago DESACTIVADO 04/07/2026 (a petición):
+          // no notificar por email los pagos atrasados/fallidos al admin.
         }
       }
     }
@@ -1047,16 +1038,8 @@ async function handlePaymentFailed(
           .limit(1)
 
         if (userProfile) {
-          await sendAdminPaymentIssueEmail({
-            userEmail: userProfile.email,
-            userName: userProfile.full_name || 'Sin nombre',
-            status: 'payment_failed',
-            subscriptionId: subscription.id,
-            invoiceId: invoice.id,
-            amount: (invoice.amount_due || 0) / 100,
-            currency: invoice.currency?.toUpperCase() || 'EUR'
-          })
-          console.log('📧 Email de pago fallido enviado al admin')
+          // Email admin de pago fallido DESACTIVADO 04/07/2026 (a petición) — ver arriba.
+          // (El email al USUARIO 'pago_fallido' de abajo SE MANTIENE.)
 
           // Email al usuario
           try {
