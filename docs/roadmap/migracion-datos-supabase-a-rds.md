@@ -202,6 +202,10 @@ podman run --rm --net=host pgvector/pgvector:pg17 \
   de similitud de prueba.
 - **Smoke funcional**: login, hacer un test, guardar respuesta, ver progreso, panel admin.
 - **Secuencias**: insertar 1 fila de prueba en una tabla con secuencia y confirmar que no colisiona.
+- **🔴 Conectividad del BACKEND a RDS (no solo `psql`):** un smoke con `psql` desde una IP whitelisteada
+  puede pasar mientras el **backend (otro Security Group) NO conecta**. Verificar en los **logs del backend**
+  (`/ecs/vence-backend`) que NO hay `CONNECT_TIMEOUT` y que corre un cron/INSERT real contra RDS. Ver el
+  gotcha del Security Group en §6 — fue un incidente real el 04/07/2026.
 
 ### Fase 5 — Post-cutover
 - Migrar `user_interactions_archive` (2.5 GB) en diferido si no se hizo.
@@ -244,6 +248,19 @@ escrituras que tuviera hasta t1:
 - **Triggers de materialización** (contadores, streaks) en las tablas destino: al cargar en bulk se
   dispararían si no se usa `session_replication_role=replica`. Con él, NO se disparan → tras la carga,
   **re-materializar** los agregados que dependían de ellos (o confiar en que los datos ya traen el estado).
+- **🔴 Security Group de RDS: whitelistear el SG del BACKEND, no solo el del frontend (incidente 04/07/2026):**
+  la RDS (`vence-prod`, SG `sg-04628bd6a17efdd20`) tenía ingress `5432` desde `vence-frontend-sg`
+  (`sg-024a64a5807ff6e9f`) + una IP pública, pero **faltaba `vence-backend-sg`** (`sg-0663f77e0d44ca693`).
+  Resultado: el frontend y `psql` desde la IP whitelisteada conectan, pero el **backend (radar, outbox,
+  rankings) da `CONNECT_TIMEOUT` continuo** — degradación silenciosa (HTTP responde; las ops de BD fallan)
+  que un smoke con `psql` NO detecta. Mismo VPC, RDS `PubliclyAccessible=true`; el fallo era solo la regla.
+  Fix (reversible): `aws ec2 authorize-security-group-ingress --group-id sg-04628bd6a17efdd20 --protocol tcp
+  --port 5432 --source-group sg-0663f77e0d44ca693 --profile vence --region eu-west-2`.
+  **⚠️ La RDS y su SG NO están en `backend/infra/*.tf`** (el Terraform gestiona ECS/ALB/SGs de la app, no la
+  RDS ni su SG — no hay `aws_db_instance` ni en el tfstate). → Esta regla es **manual / fuera de IaC**:
+  persistirla donde se gestione la RDS (o meter la RDS en Terraform) o quedará como drift a re-añadir tras
+  cualquier recreación. Regla general: RDS debe permitir 5432 desde **TODOS** los SG que conectan (frontend
+  **y** backend), no solo el primero que se probó.
 
 ---
 
