@@ -12,7 +12,13 @@
 > 5. **IaC con Terraform** — recursos descritos como código, portables entre clouds.
 > 6. **Cero APIs proprietary** en el path crítico (sin `@vercel/functions`, sin `@vercel/kv`, sin `next/og` específico de Vercel runtime).
 >
-> **Última actualización**: 2026-07-03 — 🟢 **Fase B HECHA** (emisor de tokens Supabase Auth → **Auth.js RS256/JWKS**, prod estable `vence-frontend:320`). Desbloquea parcialmente §3.1 (migrar DB): ya solo falta el soak + retirar la doble-aceptación HS256/bridge (pasos 5-8) + **Fase C4** (drop RLS `auth.uid()`) para que la BD sea un `DATABASE_URL` cambiable. Detalle: [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md) §"Siguiente paso". Entrada previa: 2026-06-25 (revisión en vivo AWS CLI + curl prod + grep repo).
+> **Última actualización**: 2026-07-04 — 🟢 **Fase B HECHA + login nativo REPARADO + drenaje del bridge EN CURSO** (prod `vence-frontend:329`, `AUTH_BRIDGE_ENABLED=false`).
+> - **Bug oculto cazado y arreglado (04/07)**: el login **nativo** Auth.js NUNCA funcionó de verdad tras el flip — `app/auth/callback/page.tsx` era 100% Supabase (polling de sesión Supabase + PKCE, timeout 15s) y bajo Auth.js esperaba una sesión que nunca llegaba → "Timeout: no se recibió sesión en 15s". Solo las sesiones vivas tiraban del bridge; cualquier re-login fallaba (era también lo que rompía a usuarios como Alba al caducar su sesión). **Fix `cb69790e`**: el callback usa el puerto agnóstico `auth.completeOAuthCallback()` (bajo Auth.js relee la sesión ya establecida por el servidor; bajo Supabase hace el PKCE de siempre). **Verificado E2E en prod** (re-login real de Manuel → mints `via='authjs_session'` + redirect limpio a `/`, 0 errores, monitor `errRuntime=0`).
+> - **Kill-switch del bridge (`b539b1d8`)**: env `AUTH_BRIDGE_ENABLED` (default `true`). A `false` el bridge HS256 se apaga → los usuarios legacy reciben 401 → re-login nativo. Reversible al instante por task-def env (script `scripts/bridge-flip.sh <on|off>`), sin rebuild.
+> - **Drenaje disparado (04/07 ~00:00)**: `AUTH_BRIDGE_ENABLED=false` (`:329`). Mints por bridge → **0** en ~2 min; solo quedan mints nativos; 0 errores 5xx; usuarios re-entran con un clic. **Pendiente: soak ~1 día del estado bridge-OFF → retirar el bridge por código (paso sin retorno) → C4 (drop RLS) → migración de datos.**
+> - Además (04/07): fix de regresiones del flip en avatar+nombre y tarjetas "Tu Progreso" (`AuthContext` sintetiza `user_metadata` + `created_at` desde `/api/profile`, `:324`); migración `app/login/page.js`→`.tsx` (`7d7e9b0a`).
+>
+> Entradas previas: 2026-07-03 (Fase B flip `:320`), 2026-06-25 (revisión en vivo AWS CLI + curl prod + grep repo). Detalle Fase B: [`fase-b-ejecucion-authjs-rs256.md`](./fase-b-ejecucion-authjs-rs256.md) §"Siguiente paso".
 
 ---
 
@@ -121,7 +127,9 @@ Aporta a esta migración: **independencia total del proveedor**, porque el worke
 
 Hoy el SQL es **ya estándar** (usamos Drizzle + postgres-js, no `@supabase/supabase-js` en el path crítico tras [[project_stats_v2_cutover_done]]). Pero quedan:
 - RLS policies con `auth.uid()` (Supabase-only). Migrar a JWT validado en backend. → **Fase C4** (draft listo).
-- ~~`auth.users` table → migrar a tabla propia + servicio de auth~~ → **✅ Fase B HECHA (03/07)**: emisor = Auth.js RS256; `auth.users` desacoplado (52 FKs re-apuntados a `user_profiles`). La identidad ya no depende de GoTrue. (Queda retirar la doble-aceptación HS256 tras el soak.)
+- ~~`auth.users` table → migrar a tabla propia + servicio de auth~~ → **✅ Fase B HECHA (03/07)**: emisor = Auth.js RS256; `auth.users` desacoplado (52 FKs re-apuntados a `user_profiles`). La identidad ya no depende de GoTrue.
+  - **✅ Login nativo REPARADO (04/07)**: `app/auth/callback/page.tsx` era Supabase-only (timeout 15s bajo Auth.js) → ahora usa `auth.completeOAuthCallback()` (puerto agnóstico). Verificado E2E en prod (`cb69790e`). Sin esto, ningún re-login nativo funcionaba (bug oculto: solo el bridge mantenía sesiones vivas).
+  - **🔄 Drenaje del bridge EN CURSO (04/07)**: `AUTH_BRIDGE_ENABLED=false` (`:329`) → mints por bridge = 0, solo nativos. Falta: soak ~1 día → **retirar la doble-aceptación HS256 + el bridge por código** (paso sin retorno; borra la rama HS256 de `verifyAuth` + el bloque bridge de `/api/auth/token`). Reversible mientras tanto con `scripts/bridge-flip.sh on`.
 - Funciones SQL `SECURITY DEFINER` (transition_question_state, etc.) — ya están en PL/pgSQL estándar, sirven igual en RDS.
 - Realtime subscriptions (si se usan) — sustituir por SSE/WebSocket propio.
 
