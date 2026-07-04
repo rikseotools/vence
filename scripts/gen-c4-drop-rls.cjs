@@ -48,13 +48,20 @@ function recreate(p) {
 
 ;(async () => {
   const sql = postgres(loadDbUrl(), { ssl: 'require', max: 1 })
-  // TODAS las políticas que referencian auth.uid() — en USING (qual) O en WITH CHECK.
-  // El bug del draft a mano era mirar solo `qual`.
+  // TODAS las políticas que referencian funciones del schema `auth` de Supabase —
+  // `auth.uid()` (user-scoped) O `auth.role()` (p.ej. service_role) — en USING (qual)
+  // O en WITH CHECK. Ambas funciones son Supabase-only: en RDS/Neon no existen, así que
+  // CUALQUIER política que las use rompe el esquema y hay que dropearla. El draft a mano
+  // del 25/06 miraba solo `qual`; el generador miraba solo `auth.uid()` y se dejaba 4
+  // políticas `auth.role() = 'service_role'` (pwa_events/sessions, user_subscriptions,
+  // psychometric_question_disputes) — service_role bypassa RLS igual, así que dropearlas
+  // no cambia el acceso (la app no depende de RLS: C1/C2/C3).
   const rows = await sql`
     SELECT tablename, policyname, permissive, roles, cmd, qual, with_check
     FROM pg_policies
     WHERE schemaname = 'public'
-      AND (qual ILIKE '%auth.uid()%' OR with_check ILIKE '%auth.uid()%')
+      AND (qual ILIKE '%auth.uid()%' OR with_check ILIKE '%auth.uid()%'
+        OR qual ILIKE '%auth.role()%' OR with_check ILIKE '%auth.role()%')
     ORDER BY tablename, policyname`
   await sql.end()
 

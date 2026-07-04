@@ -22,7 +22,7 @@
 --   4. RE-GENERAR el draft (este script) inmediatamente antes, y probar contra copia de staging.
 --
 -- ROLLBACK: ejecutar el bloque "DOWN" (recrea las políticas verbatim). Reversible.
--- Nº de políticas auth.uid() afectadas: 125 (sobre 57 tablas user-scoped).
+-- Nº de políticas auth.uid() afectadas: 129 (sobre 57 tablas user-scoped).
 -- (Incluye INSERT/UPDATE con auth.uid() SOLO en WITH CHECK — el draft a mano del 25/06 las omitía.)
 --
 -- ============================================================================
@@ -83,6 +83,7 @@ DROP POLICY IF EXISTS "Users can insert own first attempts" ON public.psychometr
 DROP POLICY IF EXISTS "Users can update own first attempts" ON public.psychometric_first_attempts;
 DROP POLICY IF EXISTS "Users can view own first attempts" ON public.psychometric_first_attempts;
 
+DROP POLICY IF EXISTS "Service role full access" ON public.psychometric_question_disputes;
 DROP POLICY IF EXISTS "Users can create disputes" ON public.psychometric_question_disputes;
 DROP POLICY IF EXISTS "Users can view own disputes" ON public.psychometric_question_disputes;
 
@@ -100,10 +101,12 @@ DROP POLICY IF EXISTS "Users can view their own question history" ON public.psyc
 DROP POLICY IF EXISTS "Users can update own public profile" ON public.public_user_profiles;
 
 DROP POLICY IF EXISTS "Admin can view all pwa events" ON public.pwa_events;
+DROP POLICY IF EXISTS "Service role can manage all PWA events" ON public.pwa_events;
 DROP POLICY IF EXISTS "Users can insert own PWA events" ON public.pwa_events;
 DROP POLICY IF EXISTS "Users can view own PWA events" ON public.pwa_events;
 
 DROP POLICY IF EXISTS "Admin can view all pwa sessions" ON public.pwa_sessions;
+DROP POLICY IF EXISTS "Service role can manage all PWA sessions" ON public.pwa_sessions;
 DROP POLICY IF EXISTS "Users can insert own PWA sessions" ON public.pwa_sessions;
 DROP POLICY IF EXISTS "Users can update own PWA sessions" ON public.pwa_sessions;
 DROP POLICY IF EXISTS "Users can view own PWA sessions" ON public.pwa_sessions;
@@ -200,6 +203,7 @@ DROP POLICY IF EXISTS "Users can update own streak only" ON public.user_streaks;
 DROP POLICY IF EXISTS "Users can update own streaks" ON public.user_streaks;
 DROP POLICY IF EXISTS "Users can view own streaks" ON public.user_streaks;
 
+DROP POLICY IF EXISTS "Service role can manage subscriptions" ON public.user_subscriptions;
 DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.user_subscriptions;
 
 DROP POLICY IF EXISTS "users_manage_own_test_favorites" ON public.user_test_favorites;
@@ -270,6 +274,7 @@ COMMIT;
 -- CREATE POLICY "Users can update own first attempts" ON public.psychometric_first_attempts AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id));
 -- CREATE POLICY "Users can view own first attempts" ON public.psychometric_first_attempts AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));
 --
+-- CREATE POLICY "Service role full access" ON public.psychometric_question_disputes AS PERMISSIVE FOR ALL TO public USING ((auth.role() = 'service_role'::text));
 -- CREATE POLICY "Users can create disputes" ON public.psychometric_question_disputes AS PERMISSIVE FOR INSERT TO public WITH CHECK (((auth.uid() = user_id) OR (user_id IS NULL)));
 -- CREATE POLICY "Users can view own disputes" ON public.psychometric_question_disputes AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));
 --
@@ -287,10 +292,12 @@ COMMIT;
 -- CREATE POLICY "Users can update own public profile" ON public.public_user_profiles AS PERMISSIVE FOR UPDATE TO authenticated USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
 --
 -- CREATE POLICY "Admin can view all pwa events" ON public.pwa_events AS PERMISSIVE FOR SELECT TO public USING ((EXISTS ( SELECT 1 FROM user_profiles WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text) OR (user_profiles.email = 'manueltrader@gmail.com'::text))))));
+-- CREATE POLICY "Service role can manage all PWA events" ON public.pwa_events AS PERMISSIVE FOR ALL TO public USING ((auth.role() = 'service_role'::text));
 -- CREATE POLICY "Users can insert own PWA events" ON public.pwa_events AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));
 -- CREATE POLICY "Users can view own PWA events" ON public.pwa_events AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));
 --
 -- CREATE POLICY "Admin can view all pwa sessions" ON public.pwa_sessions AS PERMISSIVE FOR SELECT TO public USING ((EXISTS ( SELECT 1 FROM user_profiles WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text) OR (user_profiles.email = 'manueltrader@gmail.com'::text))))));
+-- CREATE POLICY "Service role can manage all PWA sessions" ON public.pwa_sessions AS PERMISSIVE FOR ALL TO public USING ((auth.role() = 'service_role'::text));
 -- CREATE POLICY "Users can insert own PWA sessions" ON public.pwa_sessions AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));
 -- CREATE POLICY "Users can update own PWA sessions" ON public.pwa_sessions AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id));
 -- CREATE POLICY "Users can view own PWA sessions" ON public.pwa_sessions AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));
@@ -387,6 +394,7 @@ COMMIT;
 -- CREATE POLICY "Users can update own streaks" ON public.user_streaks AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id));
 -- CREATE POLICY "Users can view own streaks" ON public.user_streaks AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));
 --
+-- CREATE POLICY "Service role can manage subscriptions" ON public.user_subscriptions AS PERMISSIVE FOR ALL TO public USING ((auth.role() = 'service_role'::text));
 -- CREATE POLICY "Users can view own subscriptions" ON public.user_subscriptions AS PERMISSIVE FOR SELECT TO public USING ((user_id = auth.uid()));
 --
 -- CREATE POLICY "users_manage_own_test_favorites" ON public.user_test_favorites AS PERMISSIVE FOR ALL TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
