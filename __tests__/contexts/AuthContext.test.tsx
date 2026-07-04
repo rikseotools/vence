@@ -698,6 +698,42 @@ describe('AuthContext — INITIAL_SESSION refactor', () => {
     expect(finalRender.isAuthenticated).toBe(false)
   })
 
+  test('supabaseAuthSync con sesión vacía (visibility_change) NO desloguea a un usuario válido', async () => {
+    // Regresión del auto-logout: al volver a la pestaña, el sync basado en la sesión de
+    // Supabase llega vacío (bajo Auth.js SIEMPRE) y antes limpiaba el usuario. Ahora el
+    // token poll es la única autoridad de logout; este sync nunca quita un usuario válido.
+    const renders: Array<{ isAuthenticated: boolean }> = []
+
+    configureProfileFetch({ data: { id: 'u1', planType: 'premium', email: 'sync@test.com' } })
+    mockSupabase = createMockSupabase({ user: { id: 'u1', email: 'sync@test.com' } })
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={(v) => renders.push({ isAuthenticated: v.isAuthenticated as boolean })} />
+        </AuthProvider>,
+      )
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(50)
+    })
+    expect(renders[renders.length - 1].isAuthenticated).toBe(true)
+
+    // Retorno a la pestaña: sync reporta sesión vacía → NO debe desloguear.
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent('supabaseAuthSync', {
+          detail: { session: null, source: 'visibility_change', isIOSSafari: false },
+        }),
+      )
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(10)
+    })
+
+    expect(renders[renders.length - 1].isAuthenticated).toBe(true) // sigue logueado
+  })
+
   test('perfil con delay largo: loading=true durante carga, false despues', async () => {
     const renders: Array<{ loading: boolean; isPremium: boolean }> = []
 

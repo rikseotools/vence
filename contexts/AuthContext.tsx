@@ -902,21 +902,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           loadUserProfile(session.user.id)
         }
       } else {
-        // No hay sesión según el evento
-        // 🐛 FIX iOS Safari ONLY: No limpiar sesión en visibility_change si ya tenemos usuario
-        // Safari iOS puede devolver sesión vacía por errores temporales de localStorage
-        if (source === 'visibility_change' && user && isIOSSafari) {
-          console.log('⚠️ [iOS Safari] Ignorando sesión vacía desde visibility_change')
-          // El fix en lib/supabase.js ya verificó con getUser() antes de llegar aquí
-          // Si llegó aquí con session null, probablemente es un error real, pero mejor mantener
-          // la sesión y dejar que el usuario la cierre manualmente si hay problema real
-          return
-        }
-
+        // No hay sesión según el evento. OJO: `supabaseAuthSync` se basa en la sesión de
+        // SUPABASE (lib/supabase.getSession). Bajo el emisor agnóstico Auth.js NO existe
+        // sesión Supabase → este sync SIEMPRE llega vacío y desloguearía EN FALSO al
+        // reactivar la pestaña (visibility_change), aunque la sesión Auth.js siga perfecta.
+        // Era la causa real del auto-logout por inactividad (el guard previo solo cubría
+        // iOS Safari; en Chrome/desktop limpiaba).
+        //
+        // REGLA ROBUSTA: este handler NUNCA limpia un usuario válido. La ÚNICA autoridad
+        // de logout es el token poll del adapter (solo desloguea ante un 401 real y capta
+        // un logout genuino de otra pestaña en <5s). El sync solo puede AÑADIR/actualizar
+        // usuario (rama de arriba), jamás quitarlo.
         if (user) {
-          console.log('👋 Limpiando usuario desde sync')
-          setUser(null)
-          updateUserProfile(null)
+          console.log('🛡️ Sync con sesión vacía ignorado — el token poll es la única autoridad de logout (evita auto-logout espurio por visibility_change)')
+          return
         }
       }
     }
