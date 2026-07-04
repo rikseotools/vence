@@ -1,9 +1,6 @@
 // utils/testAnswers.ts - ACTUALIZADO CON FIX ANTI-DUPLICADOS Y SISTEMA DE REINTENTOS
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { getSupabaseClient } from '../lib/supabase'
 import { auth } from '../lib/auth'
 import type { AuthUser } from '../lib/auth/types'
-import { getDeviceInfo } from './testSession'
 import { TestBackupSystem } from './testBackup'
 import type { BackupAnswerData, SyncResults } from './testBackup'
 
@@ -76,8 +73,6 @@ type ConfidenceLevel = 'very_sure' | 'sure' | 'unsure' | 'guessing'
 
 // --- Module state ---
 
-const supabase: SupabaseClient = getSupabaseClient()
-
 // 🛡️ CACHE DE USUARIO (evitar múltiples llamadas a getUser)
 let cachedUser: AuthUser | null = null
 let userCacheTime: number = 0
@@ -108,318 +103,60 @@ async function getCachedUserProfile(userId: string): Promise<UserProfile | null>
     return cachedUserProfile
   }
 
-  const { data: profile, error } = await supabase
-    .from('user_profiles')
-    .select('id, target_oposicion')
-    .eq('id', userId)
-    .single()
-
-  if (!error && profile) {
-    cachedUserProfile = profile as UserProfile
-    userProfileCacheTime = now
-  }
-  return profile as UserProfile | null
-}
-
-// 🆕 RESOLVER TEMA VIA API CENTRALIZADA (lib/api/tema-resolver)
-async function resolveTemaViaAPI(questionData: QuestionDataInput, oposicionId: string): Promise<number | null> {
+  // Lee la oposición objetivo vía endpoint server-side (RDS/Drizzle, agnóstico).
+  // El userId lo impone el token en el servidor; el arg sirve solo para la cache.
   try {
-    const params = new URLSearchParams()
-
-    // Añadir parámetros disponibles
-    if (questionData?.id) {
-      params.set('questionId', questionData.id)
-    }
-    if (questionData?.article?.id) {
-      params.set('articleId', questionData.article.id)
-    }
-    if (questionData?.article?.number) {
-      params.set('articleNumber', questionData.article.number)
-    }
-    if (questionData?.article?.law_id) {
-      params.set('lawId', questionData.article.law_id)
-    }
-    if (questionData?.article?.law_short_name) {
-      params.set('lawShortName', questionData.article.law_short_name)
-    }
-    params.set('oposicionId', oposicionId || 'auxiliar_administrativo_estado')
-
-    const response = await fetch(`/api/tema-resolver?${params.toString()}`)
-    const result = await response.json()
-
-    if (result.success && result.temaNumber) {
-      console.log('🎯 [TemaResolver API] Tema resuelto:', result.temaNumber, 'via', result.resolvedVia)
-      return result.temaNumber
-    }
-
-    console.log('⚠️ [TemaResolver API] No se pudo resolver tema:', result.reason || result.error)
-    return null
-  } catch (error: unknown) {
-    console.warn('⚠️ [TemaResolver API] Error:', error instanceof Error ? error.message : String(error))
-    return null
-  }
-}
-
-// 🔧 FUNCIÓN PARA GENERAR question_id CONSISTENTE
-const generateQuestionId = (questionData: QuestionDataInput, tema: number | string, questionOrder: number): string => {
-  // Si ya tiene ID en metadata, usarlo
-  if (questionData.metadata?.id) {
-    return questionData.metadata.id as string
-  }
-
-  // ✅ GENERAR ID CONSISTENTE basado en contenido (sin timestamp ni random)
-  // Esto asegura que la misma pregunta siempre tenga el mismo ID
-
-  // Hash del texto completo para identificar la pregunta específica
-  const fullText = (questionData.question || '').trim() +
-                  (questionData.options?.join('') || '') +
-                  (questionData.article?.number || '') +
-                  (questionData.article?.law_short_name || '')
-
-  // Crear hash simple pero consistente del contenido
-  let hash = 0
-  for (let i = 0; i < fullText.length; i++) {
-    const char = fullText.charCodeAt(i)
-    hash = ((hash << 5) - hash + char) & 0xffffffff
-  }
-
-  // Convertir a string positivo
-  const contentHash = Math.abs(hash).toString(36)
-
-  // ID consistente basado en contenido + tema + artículo
-  const baseId = `tema-${tema}-art-${questionData.article?.number || 'unknown'}-${questionData.article?.law_short_name || 'unknown'}`
-
-  return `${baseId}-${contentHash}`
-}
-
-// 🔧 FUNCIÓN PARA GENERAR article_id ÚNICO
-const generateArticleId = (questionData: QuestionDataInput, tema: number | string): string => {
-  // Si ya tiene ID en article, usarlo
-  if (questionData.article?.id) {
-    return questionData.article.id
-  }
-
-  // Si no, generar basado en datos del artículo
-  if (questionData.article?.number && questionData.article?.law_short_name) {
-    return `${questionData.article.law_short_name}-art-${questionData.article.number}`
-  }
-
-  // Fallback: usar tema
-  return `tema-${tema}-article-unknown`
-}
-
-// 🛡️ GUARDAR RESPUESTA (SIMPLIFICADO Y PROFESIONAL)
-export const saveDetailedAnswer = async (sessionId: string, questionData: QuestionDataInput, answerData: AnswerDataInput, tema: number | string, confidenceLevel: string, interactionCount: number, questionStartTime: number | null, firstInteractionTime: number | null, interactionEvents: unknown[], mouseEvents: unknown[], scrollEvents: unknown[]): Promise<SaveResult> => {
-  try {
-    console.log('💾 Guardando respuesta...', {
-      sessionId,
-      questionIndex: answerData.questionIndex,
-      questionOrder: (answerData.questionIndex || 0) + 1,
-      isCorrect: answerData.isCorrect
+    const session = await auth.getSession()
+    const accessToken = session?.accessToken
+    if (!accessToken) return null
+    const res = await fetch('/api/v2/oposicion/target', {
+      headers: { Authorization: `Bearer ${accessToken}` },
     })
-
-    if (!sessionId || !questionData || !answerData) {
-      console.error('❌ No se puede guardar: datos faltantes')
-      return { success: false, error: 'Datos faltantes', action: 'error' }
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data?.success) {
+      const profile: UserProfile = { id: userId, target_oposicion: data.target_oposicion ?? null }
+      cachedUserProfile = profile
+      userProfileCacheTime = now
+      return profile
     }
-
-    // 🎯 CALCULAR TEMA ANTES DE USAR
-    let calculatedTema = parseInt(String(questionData?.tema || tema)) || 0
-
-    // 🆕 Si el tema es 0, intentar resolverlo via API centralizada
-    if (calculatedTema === 0 && questionData) {
-      try {
-        const user = await getCachedUser()
-        if (user) {
-          const profile = await getCachedUserProfile(user.id)
-          const oposicionId = profile?.target_oposicion || 'auxiliar_administrativo_estado'
-          const foundTema = await resolveTemaViaAPI(questionData, oposicionId)
-          if (foundTema) {
-            calculatedTema = foundTema
-            console.log('🎯 [TemaFix] Tema asignado automáticamente:', calculatedTema)
-          }
-        }
-      } catch (error: unknown) {
-        console.warn('⚠️ [TemaFix] Error resolviendo tema:', error instanceof Error ? error.message : String(error))
-      }
-    }
-
-    const hesitationTime = firstInteractionTime ?
-      Math.max(0, firstInteractionTime - (questionStartTime || 0)) : 0
-
-    // ✅ USAR ID REAL DE LA BASE DE DATOS O GENERAR COMO FALLBACK
-    const questionId = questionData.id || generateQuestionId(questionData, tema, answerData.questionIndex)
-    // For article_id, only use valid UUIDs (from question data or null for psychometric questions)
-    const articleId = questionData.article?.id || null
-
-    // ✅ OBTENER USUARIO (CON CACHE)
-    const user = await getCachedUser()
-    if (!user) {
-      console.error('❌ No se puede obtener usuario autenticado')
-      throw new Error('Usuario no autenticado')
-    }
-
-    // ✅ OBTENER INFO DE DISPOSITIVO CORRECTAMENTE
-    const deviceInfo = getDeviceInfo()
-
-    // Detectar si es pregunta psicotécnica
-    const isPsychometric = questionData.question_type === 'psychometric'
-
-    // ✅ DATOS CON NOMBRES EXACTOS DE LA BD Y CORRECCIONES
-    const insertData: Record<string, unknown> = {
-          // Campos obligatorios
-          test_id: sessionId,
-          question_order: (answerData.questionIndex || 0) + 1,
-          question_text: questionData.question || 'Pregunta sin texto',
-          user_answer: answerData.selectedAnswer === -1
-            ? String.fromCharCode(65 + ((answerData.correctAnswer + 1) % 4)) // 🆕 Respuesta incorrecta para no respondidas
-            : String.fromCharCode(65 + (answerData.selectedAnswer || 0)),
-          correct_answer: String.fromCharCode(65 + (answerData.correctAnswer || 0)),
-          is_correct: answerData.isCorrect || false,
-
-          // ✅ CAMPOS DE IDENTIFICACIÓN - Usar columna correcta según tipo
-          question_id: isPsychometric ? null : questionId,
-          psychometric_question_id: isPsychometric ? questionId : null,
-          article_id: articleId,
-          article_number: questionData.article?.number || 'unknown',
-          law_name: questionData.article?.law_short_name || 'unknown',
-          tema_number: calculatedTema,
-
-          // Campos de respuesta y tiempo
-          confidence_level: confidenceLevel || 'unknown',
-          time_spent_seconds: answerData.timeSpent || 0,
-          time_to_first_interaction: hesitationTime,
-          time_hesitation: Math.max(0, (answerData.timeSpent || 0) - hesitationTime),
-          interaction_count: interactionCount || 1,
-
-          // Metadatos de pregunta
-          difficulty: questionData.metadata?.difficulty === 'auto' ? 'medium' :
-             (questionData.metadata?.difficulty || 'medium'),
-          question_type: questionData.metadata?.question_type || 'single',
-          tags: questionData.metadata?.tags || [],
-
-          // Campos de aprendizaje (opcionales por ahora)
-          previous_attempts_this_article: 0,
-          historical_accuracy_this_article: 0,
-          knowledge_retention_score: null,
-          learning_efficiency_score: null,
-
-          // ✅ DATOS DE DISPOSITIVO - CORREGIDOS
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-          screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
-          device_type: deviceInfo?.device_model || 'unknown',
-          browser_language: 'es',
-          timezone: typeof Intl !== 'undefined' ?
-            Intl.DateTimeFormat().resolvedOptions().timeZone : 'Europe/Madrid',
-
-          // ✅ DATOS JSON (JSONB)
-          full_question_context: {
-            options: questionData.options || [],
-            explanation: questionData.explanation || '',
-            article_full: questionData.article || {},
-            difficulty_meta: questionData.metadata || {},
-            generated_ids: {
-              question_id: questionId,
-              article_id: articleId,
-              generation_method: questionData.metadata?.id ? 'metadata' : 'generated'
-            }
-          },
-
-          user_behavior_data: {
-            interaction_events: (interactionEvents as unknown[] || []).slice(-10),
-            mouse_activity: (mouseEvents as unknown[] || []).length,
-            scroll_activity: (scrollEvents as unknown[] || []).length,
-            confidence_evolution: confidenceLevel || 'unknown',
-            answer_changes: Math.max(0, (interactionCount || 1) - 1)
-          },
-
-          learning_analytics: {
-            response_pattern: answerData.isCorrect ? 'correct' : 'incorrect',
-            time_efficiency: (answerData.timeSpent || 0) <= 30 ? 'fast' :
-                            (answerData.timeSpent || 0) <= 60 ? 'normal' : 'slow',
-            confidence_accuracy_match: ((confidenceLevel === 'very_sure' || confidenceLevel === 'sure') === answerData.isCorrect),
-            hesitation_pattern: hesitationTime > 10 ? 'high' : hesitationTime > 5 ? 'medium' : 'low',
-            interaction_pattern: (interactionCount || 1) > 2 ? 'hesitant' :
-                                (interactionCount || 1) === 1 ? 'decisive' : 'normal'
-          }
-    }
-
-    const { error } = await supabase
-      .from('test_questions')
-      .insert(insertData)
-
-    if (error) {
-      // ✅ MANEJAR ERROR DE CONSTRAINT ÚNICO
-      if (error.code === '23505') { // unique constraint violation
-        console.warn('⚠️ Respuesta duplicada (ya guardada):', {
-          test_id: sessionId,
-          question_order: insertData.question_order,
-          constraint: error.message
-        })
-        // Devolver success=true porque la respuesta YA está guardada
-        return {
-          success: true,
-          question_id: questionId,
-          action: 'already_saved'
-        }
-      }
-
-      console.error('❌ Error guardando respuesta:', {
-        error_code: error.code,
-        error_message: error.message,
-        error_details: error.details,
-        error_hint: error.hint,
-        test_id: sessionId,
-        question_order: insertData.question_order,
-        full_error: error
-      })
-
-      // 🔍 LOG DETALLADO DE LOS DATOS QUE INTENTAMOS INSERTAR
-      console.error('📋 Datos que intentamos insertar:', {
-        question_id: insertData.question_id,
-        article_id: insertData.article_id,
-        user_answer: insertData.user_answer,
-        correct_answer: insertData.correct_answer,
-        confidence_level: insertData.confidence_level,
-        device_type: insertData.device_type,
-        full_question_context_keys: Object.keys(insertData.full_question_context as object || {}),
-        user_behavior_data_keys: Object.keys(insertData.user_behavior_data as object || {}),
-        learning_analytics_keys: Object.keys(insertData.learning_analytics as object || {})
-      })
-
-      // Guardar en localStorage para retry posterior
-      try {
-        const backupKey = `failed_save_${sessionId}_${insertData.question_order}`
-        localStorage.setItem(backupKey, JSON.stringify(insertData))
-        console.log('💾 Respuesta guardada en localStorage para retry')
-      } catch (e) {
-        console.warn('⚠️ No se pudo guardar backup en localStorage')
-      }
-
-      throw error
-    }
-
-    console.log('✅ Respuesta guardada exitosamente')
-
-    // 🔥 Notificar al Header para refrescar la racha
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('refreshUserStreak'))
-    }
-
-    return {
-      success: true,
-      question_id: questionId,
-      action: 'saved_new'
-    }
-
-  } catch (error: unknown) {
-    console.error('❌ Error en saveDetailedAnswer:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      action: 'error'
-    }
+  } catch {
+    // best-effort — si falla, el servidor resuelve el tema igualmente
   }
+  return null
+}
+
+// 🛡️ GUARDAR RESPUESTA — delega en el endpoint server-side (saveDetailedAnswerV2 →
+// POST /api/test/save-answer, RDS/Drizzle, agnóstico de proveedor). ANTES hacía un
+// INSERT directo a Supabase (test_questions); ahora es un wrapper para que NADA del
+// cliente toque Supabase. La firma posicional se conserva (la usan
+// saveDetailedAnswerWithRetry y syncPendingAnswers).
+export const saveDetailedAnswer = async (
+  sessionId: string,
+  questionData: QuestionDataInput,
+  answerData: AnswerDataInput,
+  tema: number | string,
+  confidenceLevel: string,
+  interactionCount: number,
+  questionStartTime: number | null,
+  firstInteractionTime: number | null,
+  interactionEvents: unknown[],
+  mouseEvents: unknown[],
+  scrollEvents: unknown[],
+): Promise<SaveResult> => {
+  return saveDetailedAnswerV2({
+    sessionId,
+    questionData,
+    answerData,
+    tema,
+    confidenceLevel,
+    interactionCount,
+    questionStartTime,
+    firstInteractionTime,
+    interactionEvents,
+    mouseEvents,
+    scrollEvents,
+  })
 }
 
 // Calcular confianza basada en tiempo e interacciones
@@ -657,7 +394,7 @@ export const saveDetailedAnswerWithRetry = async (params: SaveAnswerParams, maxR
 
   while (attempts < maxRetries) {
     try {
-      // Intentar V2 (API server-side) primero, fallback a V1 (Supabase directo)
+      // Intentar V2 (API server-side) primero, fallback a V1 (ya server-side, RDS)
       const useV2 = attempts === 0; // Primer intento siempre V2
       let result: SaveResult;
 
@@ -671,9 +408,9 @@ export const saveDetailedAnswerWithRetry = async (params: SaveAnswerParams, maxR
           return result;
         }
 
-        // Si V2 falla por error de red, fallback a V1 (Supabase directo)
+        // Si V2 falla por error de red, fallback a V1 (ya server-side, RDS)
         if (!result.success && result.action === 'error') {
-          console.warn('⚠️ V2 falló por error de red, intentando V1 (Supabase directo)...');
+          console.warn('⚠️ V2 falló por error de red, intentando V1 (ya server-side, RDS)...');
           result = await saveDetailedAnswer(
             sessionId, questionData, answerData, tema,
             confidenceLevel, interactionCount, questionStartTime,

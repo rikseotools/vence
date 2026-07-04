@@ -139,72 +139,60 @@ describe('saveDetailedAnswerWithRetry - sesión expirada', () => {
 })
 
 // ============================================
-// TESTS: createDetailedTestSession
+// TESTS: createDetailedTestSession (migrado a POST /api/v2/tests, RDS — sin Supabase)
 // ============================================
 
-describe('createDetailedTestSession - sesión expirada', () => {
+describe('createDetailedTestSession - sesión expirada (endpoint RDS agnóstico)', () => {
   let createDetailedTestSession: Function
+
+  const questions = [{ id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', question_text: 'T?', option_a: 'A', option_b: 'B', option_c: 'C', option_d: 'D' }]
+  const calledCreateEndpoint = () =>
+    (global.fetch as jest.Mock).mock.calls.some((c: unknown[]) => String(c[0]).includes('/api/v2/tests'))
 
   beforeEach(() => {
     jest.clearAllMocks()
     jest.resetModules()
 
-    mockInsert.mockReturnValue({ select: mockSelect })
-    mockSelect.mockReturnValue({ single: mockSingle, eq: mockEq })
-    mockEq.mockReturnValue({ eq: mockEq, gte: mockGte, is: jest.fn().mockReturnValue({ order: mockOrder }), order: mockOrder })
-    mockGte.mockReturnValue({ order: mockOrder })
-    mockOrder.mockReturnValue({ limit: mockLimit })
-    mockLimit.mockResolvedValue({ data: [], error: null })
-    mockSupabase.from.mockReturnValue({
-      insert: mockInsert,
-      select: mockSelect,
-      eq: mockEq,
-    })
+    // Por defecto SIN token (cada test lo ajusta). Reseteo explícito para que no
+    // se filtre el mockResolvedValue de un test anterior (clearAllMocks no lo borra).
+    mockRefreshSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    ;(global.fetch as jest.Mock) = jest.fn()
 
     const mod = require('@/utils/testSession')
     createDetailedTestSession = mod.createDetailedTestSession
   })
 
-  it('devuelve null si getSession no tiene token', async () => {
-    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
-
+  it('devuelve null si no hay token y NO llama al endpoint de creación', async () => {
     const result = await createDetailedTestSession(
-      'user-id-123',
-      1,    // tema
-      99,   // testNumber
-      [{ id: 'q1', question_text: 'Test?', option_a: 'A', option_b: 'B', option_c: 'C', option_d: 'D' }],
-      {},   // config
-      Date.now(),
-      Date.now()
+      'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 1, 99, questions, {}, Date.now(), Date.now(),
     )
-
     expect(result).toBeNull()
-    // NO debe haber intentado insertar en BD
+    expect(calledCreateEndpoint()).toBe(false)
+    // Y jamás toca Supabase
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it('NO devuelve null inmediatamente si getSession tiene token válido', async () => {
-    mockGetSession.mockResolvedValue({
+  it('con token válido crea el test vía /api/v2/tests (RDS) y devuelve la sesión', async () => {
+    mockRefreshSession.mockResolvedValue({
       data: { session: { access_token: 'valid-token', user: { id: 'u1', email: 'a@b.com' } } },
       error: null,
     })
-    // El insert puede fallar por otros motivos (mock incompleto),
-    // pero lo importante es que NO retornó null por sesión expirada
-    mockSingle.mockResolvedValue({
-      data: { id: 'test-123', title: 'Test', total_questions: 1, test_type: 'practice' },
-      error: null,
+    const newId = '11111111-1111-4111-8111-111111111111'
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, id: newId }),
     })
 
-    // El hecho de que getSession devuelva token válido significa que
-    // la función NO aborta en el check de sesión (línea "Sesión expirada")
-    // Verificamos que getSession fue llamado
-    await createDetailedTestSession(
-      'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      1, 99,
-      [{ id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', question_text: 'T?', option_a: 'A', option_b: 'B', option_c: 'C', option_d: 'D' }],
-      {}, Date.now(), Date.now()
+    const result = await createDetailedTestSession(
+      'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 1, 99, questions, {}, Date.now(), Date.now(),
     )
 
-    expect(mockGetSession).toHaveBeenCalled()
+    expect(result).not.toBeNull()
+    expect(result.id).toBe(newId)
+    expect(calledCreateEndpoint()).toBe(true)
+    // Cero Supabase
+    expect(mockInsert).not.toHaveBeenCalled()
   })
 })
