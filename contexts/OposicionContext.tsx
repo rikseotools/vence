@@ -2,13 +2,14 @@
 // Context Provider para gestionar la oposición del usuario globalmente
 
 'use client'
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useLayoutEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { useAuth } from './AuthContext'
 import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, type NavLink } from '@/lib/config/oposiciones'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import { decideOposicionLoad } from '@/lib/oposicion/decideLoad'
+import { readOposicionCache, writeOposicionCache, clearOposicionCache } from '@/lib/oposicion/oposicionCache'
 
 // ============================================
 // TIPOS
@@ -83,6 +84,13 @@ const DEFAULT_MENU: OposicionMenu = {
   ]
 }
 
+// Pre-hidratación anti-race (bug Raquel 02-04/07/2026): la caché de oposición
+// (lib/oposicion/oposicionCache) se restaura ANTES del paint para no mostrar el
+// DEFAULT_MENU (Estado) durante la ventana de carga del perfil. useLayoutEffect corre
+// antes del paint (elimina el flash); en SSR React no ejecuta ninguno de los dos, así
+// que caemos a useEffect para evitar el warning.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 // ============================================
 // CONTEXT
 // ============================================
@@ -116,6 +124,21 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
   const [needsOposicionFix, setNeedsOposicionFix] = useState(false)
 
+  // 🚀 PRE-HIDRATACIÓN anti-race (bug Raquel): ANTES del paint, restaurar la última
+  // oposición cacheada para que un usuario logueado NO vea el DEFAULT_MENU (Estado)
+  // durante la ventana de carga del perfil. Solo con user presente. El fetch async de
+  // abajo es la autoridad y corrige si la caché está stale / es de otro usuario.
+  useIsomorphicLayoutEffect(() => {
+    if (!user) return
+    const cached = readOposicionCache()
+    if (cached) {
+      setOposicionId(cached.id)
+      setUserOposicion(cached.data as OposicionData | null)
+      setOposicionMenu(OPOSICION_MENUS[cached.id] || DEFAULT_MENU)
+      // NO tocar `loading`: el fetch autoritativo lo gestiona y valida.
+    }
+  }, [user])
+
   // Cargar oposición del usuario cuando cambie el user del AuthContext
   useEffect(() => {
     let cancelled = false
@@ -123,6 +146,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     async function loadUserOposicion(retry = 0): Promise<void> {
       if (!user) {
         if (cancelled) return
+        clearOposicionCache() // logout: no dejar la oposición para el siguiente usuario
         setUserOposicion(null)
         setOposicionId(null)
         setOposicionMenu(DEFAULT_MENU)
@@ -167,6 +191,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
 
         if (action === 'clear') {
           // 200 OK con target null = el usuario genuinamente no tiene oposición.
+          clearOposicionCache()
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
@@ -174,6 +199,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         } else if (action === 'invalid') {
           // Detectar datos sucios: UUIDs, JSON, slugs desconocidos
           console.warn('⚠️ [OposicionContext] target_oposicion inválido:', opoId)
+          clearOposicionCache()
           setNeedsOposicionFix(true)
           setUserOposicion(null)
           setOposicionId(null)
@@ -189,6 +215,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
 
           const menuConfig = OPOSICION_MENUS[opoId as string] || DEFAULT_MENU
           setOposicionMenu(menuConfig)
+          writeOposicionCache(opoId as string, oposicionData) // pre-hidratación futura
         }
         if (!cancelled) setLoading(false)
 
@@ -232,7 +259,9 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
           setNeedsOposicionFix(false)
           setOposicionId(newOpoId)
           setOposicionMenu(OPOSICION_MENUS[newOpoId] || DEFAULT_MENU)
+          writeOposicionCache(newOpoId, null) // data se refresca en el próximo load
         } else {
+          clearOposicionCache()
           setNeedsOposicionFix(true)
           setUserOposicion(null)
           setOposicionId(null)
@@ -254,6 +283,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
               const isValid = ALL_OPOSICION_IDS.includes(opoId)
 
               if (!isValid) {
+                clearOposicionCache()
                 setNeedsOposicionFix(true)
                 setUserOposicion(null)
                 setOposicionId(null)
@@ -264,6 +294,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
                 setUserOposicion(oposicionData)
                 setOposicionId(opoId)
                 setOposicionMenu(OPOSICION_MENUS[opoId] || DEFAULT_MENU)
+                writeOposicionCache(opoId, oposicionData)
               }
             }
           } catch (error) {
