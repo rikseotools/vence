@@ -43,12 +43,19 @@ Siguen usando `auth.vence.es` (cliente Supabase) y romperían si se retira ahora
 - Casi se revierte el local a `provider=supabase` (deshecho — el objetivo es **fuera** Supabase).
 - El mecanismo de sync Supabase↔RDS sigue **sin identificar** (ver punto 2) — importa para el apagado.
 
-### Siguiente
-1. Migrar `utils/testAnswers.ts` + `utils/testAnalytics.ts` (mismo patrón: `fetch` a endpoint v2 Drizzle).
-2. Migrar `contexts/AuthContext.tsx` + endpoints admin restantes.
-3. Extender el ratchet C1 para escanear `utils/` (evitar regresión).
-4. Identificar/parar la sync Supabase↔RDS.
-5. Retirar CNAME `auth.vence.es` + decomisionar proyecto Supabase.
+### Progreso (04-05/07) — commits en `main` local (sin push)
+- ✅ **`utils/` 100% sin Supabase** (3 ficheros → RDS/Drizzle): `testSession.ts` (`b4ef6fc9`, nuevos `POST /api/v2/tests` + `/api/v2/user-sessions`), `testAnswers.ts` (`82a706e0`), `testAnalytics.ts` (`acda37d5`, `completeDetailedTest`→`/api/v2/complete-test`; borradas 2 funciones muertas). Verificado E2E local→RDS + tests (testSaveSessionExpired 5/5, ExamLayout 57/57, guardrails, typecheck).
+- ✅ **Ratchet C1 escanea `utils/`** (`a7f6baaf`) — cierra el hueco.
+- ✅ **AuthContext consumidores 28→20**: quitados 8 usos MUERTOS de `useAuth().supabase` (tanda 1 `8dbf1e39`: 6 destructuring sin uso; tanda 2 `0f9560ef`: 2 hooks con `supabase` solo como guard truthy).
+
+### Siguiente — los 20 consumidores que SÍ usan `useAuth().supabase` (migración real, incremental)
+Cada uno hace `.from`/`.select`/`.rpc`/`.storage` multi-línea → necesita endpoint v2 Drizzle. Grupos:
+- **Test/repaso/examen (hot path):** `app/test/repaso-fallos{,-v2}/page.tsx`, `app/tramitacion-procesal/test/{repaso-fallos-oficial,ver-fallos}/page.tsx`, `app/[oposicion]/test/{examen-oficial,simulacro}/page.tsx`, `components/{ExamLayout,OfficialExamLayout,PsychometricTestLayout}.tsx`, `app/mis-estadisticas/page.tsx`.
+- **Admin:** `app/admin/{feedback,impugnaciones}/page`, `components/Admin/{InfraStatsTab,ProtectedRoute}.tsx`.
+- **Auth/perfil/premium:** `app/login/page.tsx`, `app/premium/page.tsx`, `app/soporte/page.tsx`, `components/{AutoAssignOposicion,UserAvatar}.tsx`.
+- **Storage (SUB-PROYECTO aparte, NO es query):** `app/cursos/[slug]/VideoCoursePage.tsx` + `components/UserAvatar.tsx` (`supabase.storage`) → mover a S3/blob store.
+
+Luego: (a) quitar la exposición `supabase` del `AuthContext` (trivial una vez migrados los 20); (b) migrar los ~40 `getSupabaseClient()` DIRECTOS de otros ficheros (no vía useAuth); (c) identificar/parar la sync Supabase↔RDS; (d) retirar CNAME `auth.vence.es` + decomisionar Supabase.
 
 ---
 
