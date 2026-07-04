@@ -48,20 +48,26 @@ function recreate(p) {
 
 ;(async () => {
   const sql = postgres(loadDbUrl(), { ssl: 'require', max: 1 })
-  // TODAS las políticas que referencian funciones del schema `auth` de Supabase —
-  // `auth.uid()` (user-scoped) O `auth.role()` (p.ej. service_role) — en USING (qual)
-  // O en WITH CHECK. Ambas funciones son Supabase-only: en RDS/Neon no existen, así que
-  // CUALQUIER política que las use rompe el esquema y hay que dropearla. El draft a mano
-  // del 25/06 miraba solo `qual`; el generador miraba solo `auth.uid()` y se dejaba 4
-  // políticas `auth.role() = 'service_role'` (pwa_events/sessions, user_subscriptions,
-  // psychometric_question_disputes) — service_role bypassa RLS igual, así que dropearlas
-  // no cambia el acceso (la app no depende de RLS: C1/C2/C3).
+  // TODAS las políticas cuyo USING (qual) o WITH CHECK invoque CUALQUIER función del schema
+  // `auth` de Supabase: `auth.uid()` (user-scoped), `auth.role()`, `auth.jwt()`,
+  // `auth.email()`, o cualquier helper que Supabase añada en el futuro. Ese schema es
+  // Supabase-only: en RDS/Neon no existe, así que cualquier política que lo use rompe el
+  // esquema y hay que dropearla (la app NO depende de RLS: C1/C2/C3 la sustituyen).
+  //
+  // Criterio ROBUSTO por regex `auth\.<ident>(` en vez de listar funciones a mano: matchea
+  // la LLAMADA a función (identificador del schema auth + paréntesis), así NO matchea
+  // literales de cadena como 'service_role' ni columnas. Historia del footgun (por qué NO
+  // volver a enumerar a mano): el draft del 25/06 solo miraba `qual`; una primera versión del
+  // generador solo `auth.uid()` (se dejaba 4 de `auth.role()`); tras añadir `auth.role()`
+  // seguía dejándose `auth.jwt()` (user_avatar_settings "Service role full access") — cazado
+  // por el piloto RDS al restaurar el esquema post-C4 y ver que la policy sobrevivía. El match
+  // por familia cierra la clase entera de una vez.
+  const AUTH_FN = 'auth\\.[a-z_]+\\s*\\('
   const rows = await sql`
     SELECT tablename, policyname, permissive, roles, cmd, qual, with_check
     FROM pg_policies
     WHERE schemaname = 'public'
-      AND (qual ILIKE '%auth.uid()%' OR with_check ILIKE '%auth.uid()%'
-        OR qual ILIKE '%auth.role()%' OR with_check ILIKE '%auth.role()%')
+      AND (qual ~ ${AUTH_FN} OR with_check ~ ${AUTH_FN})
     ORDER BY tablename, policyname`
   await sql.end()
 
@@ -70,7 +76,7 @@ function recreate(p) {
 
   const out = []
   out.push('-- ============================================================================')
-  out.push('-- C4 — DROP de políticas RLS auth.uid() (DRAFT — ⚠️ NO APLICAR TODAVÍA)')
+  out.push('-- C4 — DROP de políticas RLS que usan el schema auth.* de Supabase (DRAFT — ⚠️ NO APLICAR TODAVÍA)')
   out.push('-- ============================================================================')
   out.push('-- docs/roadmap/auth-agnostico-jwks-y-rls.md')
   out.push('-- GENERADO por scripts/gen-c4-drop-rls.cjs desde pg_policies (regenerable, NO editar a mano).')
@@ -89,12 +95,12 @@ function recreate(p) {
   out.push('--        - hooks/useIntelligentNotifications.ts loadProblematicArticles (×2) →')
   out.push('--          canary FASE 4/5 (user_problematic_articles / problematic_articles_logs).')
   out.push('--   3. Revisadas las políticas public-read (qual=true, inocuas) y lockdown — este')
-  out.push('--      script SOLO dropa las políticas con auth.uid() (USING y/o WITH CHECK); las demás se quedan.')
+  out.push('--      script SOLO dropa las políticas que llaman a auth.* (uid/role/jwt/…, en USING y/o WITH CHECK); las demás se quedan.')
   out.push('--   4. RE-GENERAR el draft (este script) inmediatamente antes, y probar contra copia de staging.')
   out.push('--')
   out.push('-- ROLLBACK: ejecutar el bloque "DOWN" (recrea las políticas verbatim). Reversible.')
-  out.push(`-- Nº de políticas auth.uid() afectadas: ${n} (sobre ${nTablas} tablas user-scoped).`)
-  out.push('-- (Incluye INSERT/UPDATE con auth.uid() SOLO en WITH CHECK — el draft a mano del 25/06 las omitía.)')
+  out.push(`-- Nº de políticas auth.* afectadas: ${n} (sobre ${nTablas} tablas).`)
+  out.push('-- (Incluye WITH CHECK-only (uid) y auth.jwt()/auth.role() service-role — todo lo que el match a mano omitía.)')
   out.push('--')
   out.push('-- ============================================================================')
   out.push('-- UP — DROP de las políticas auth.uid() (ejecutar tras precondiciones)')

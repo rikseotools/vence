@@ -1,5 +1,5 @@
 -- ============================================================================
--- C4 — DROP de políticas RLS auth.uid() (DRAFT — ⚠️ NO APLICAR TODAVÍA)
+-- C4 — DROP de políticas RLS que usan el schema auth.* de Supabase (DRAFT — ⚠️ NO APLICAR TODAVÍA)
 -- ============================================================================
 -- docs/roadmap/auth-agnostico-jwks-y-rls.md
 -- GENERADO por scripts/gen-c4-drop-rls.cjs desde pg_policies (regenerable, NO editar a mano).
@@ -18,12 +18,12 @@
 --        - hooks/useIntelligentNotifications.ts loadProblematicArticles (×2) →
 --          canary FASE 4/5 (user_problematic_articles / problematic_articles_logs).
 --   3. Revisadas las políticas public-read (qual=true, inocuas) y lockdown — este
---      script SOLO dropa las políticas con auth.uid() (USING y/o WITH CHECK); las demás se quedan.
+--      script SOLO dropa las políticas que llaman a auth.* (uid/role/jwt/…, en USING y/o WITH CHECK); las demás se quedan.
 --   4. RE-GENERAR el draft (este script) inmediatamente antes, y probar contra copia de staging.
 --
 -- ROLLBACK: ejecutar el bloque "DOWN" (recrea las políticas verbatim). Reversible.
--- Nº de políticas auth.uid() afectadas: 129 (sobre 57 tablas user-scoped).
--- (Incluye INSERT/UPDATE con auth.uid() SOLO en WITH CHECK — el draft a mano del 25/06 las omitía.)
+-- Nº de políticas auth.* afectadas: 130 (sobre 57 tablas).
+-- (Incluye WITH CHECK-only (uid) y auth.jwt()/auth.role() service-role — todo lo que el match a mano omitía.)
 --
 -- ============================================================================
 -- UP — DROP de las políticas auth.uid() (ejecutar tras precondiciones)
@@ -138,6 +138,7 @@ DROP POLICY IF EXISTS "Users can view own tests" ON public.tests;
 DROP POLICY IF EXISTS "Admin can read impressions" ON public.upgrade_message_impressions;
 DROP POLICY IF EXISTS "Authenticated can insert impressions" ON public.upgrade_message_impressions;
 
+DROP POLICY IF EXISTS "Service role full access to user_avatar_settings" ON public.user_avatar_settings;
 DROP POLICY IF EXISTS "Users can insert own avatar settings" ON public.user_avatar_settings;
 DROP POLICY IF EXISTS "Users can update own avatar settings" ON public.user_avatar_settings;
 DROP POLICY IF EXISTS "Users can view own avatar settings" ON public.user_avatar_settings;
@@ -329,6 +330,7 @@ COMMIT;
 -- CREATE POLICY "Admin can read impressions" ON public.upgrade_message_impressions AS PERMISSIVE FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1 FROM user_profiles WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = ANY (ARRAY['manueltrader@gmail.com'::text, 'ilovetestpro@gmail.com'::text])))))));
 -- CREATE POLICY "Authenticated can insert impressions" ON public.upgrade_message_impressions AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((user_id = auth.uid()));
 --
+-- CREATE POLICY "Service role full access to user_avatar_settings" ON public.user_avatar_settings AS PERMISSIVE FOR ALL TO public USING (((auth.jwt() ->> 'role'::text) = 'service_role'::text));
 -- CREATE POLICY "Users can insert own avatar settings" ON public.user_avatar_settings AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));
 -- CREATE POLICY "Users can update own avatar settings" ON public.user_avatar_settings AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id));
 -- CREATE POLICY "Users can view own avatar settings" ON public.user_avatar_settings AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));

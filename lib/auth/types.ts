@@ -51,7 +51,7 @@ export interface SignInOptions {
    * con oposición/campaña/funnel ya embebidos por el caller). Si se omite, el adapter
    * usa un default sensato (`window.location.href` en Auth.js; callback+return_to en
    * Supabase). Lo usan las páginas de login para preservar su routing/tracking al
-   * migrar de `supabase.auth.signInWithOAuth` al port agnóstico.
+   * migrar de `signInWithOAuth` (Supabase Auth) al port agnóstico.
    */
   callbackUrl?: string
 }

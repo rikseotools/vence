@@ -77,8 +77,11 @@ const RPC = /\.rpc\(/g
 const BASELINE_SITES = 0
 const BASELINE_FILES = 0
 // Trinquete .rpc( de cliente (17 al añadirlo; -2 useDailyQuestionLimit; -1 MotivationalMessage;
-// -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7).
-const BASELINE_RPC = 6
+// -1 comentario UserProfileModal; -1 SharePrompt; -1 premium-edu; -4 UpgradeLimitModal → 7 → 6.
+// 2026-07-04 (prep cutover): AuthContext (create_google/meta/organic + check_user_access +
+// activate_premium_user) y campaignTracker (create_google_ads_user) migrados a endpoints v2 +
+// flag LIFECYCLE_VIA_API eliminado → 6→1. Solo queda hooks/useTopicUnlock.ts.
+const BASELINE_RPC = 1
 
 function walk(rel: string): string[] {
   let out: string[] = []

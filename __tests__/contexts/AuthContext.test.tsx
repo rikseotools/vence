@@ -1215,7 +1215,7 @@ describe('AuthContext — loadUserProfile edge cases', () => {
       )
     })
 
-    // Advance enough time for: INITIAL_SESSION → loadUserProfile (404 + retry 300ms + 404) → ensureUserProfile → rpc
+    // Advance enough time for: INITIAL_SESSION → loadUserProfile (404 + retry 300ms + 404) → ensureUserProfile → endpoint agnóstico
     for (let i = 0; i < 5; i++) {
       await act(async () => {
         jest.advanceTimersByTime(500)
@@ -1225,8 +1225,12 @@ describe('AuthContext — loadUserProfile edge cases', () => {
     // Loading should finish (not stuck)
     expect(renders[renders.length - 1].loading).toBe(false)
 
-    // rpc should have been called (ensureUserProfile calls rpc for creating profile)
-    expect(mockSupabase.rpc).toHaveBeenCalled()
+    // ensureUserProfile crea el perfil vía endpoint Drizzle agnóstico (ya NO supabase.rpc:
+    // path único tras la limpieza C4/cutover 2026-07-04).
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/v2/auth/ensure-profile',
+      expect.objectContaining({ method: 'POST' })
+    )
   })
 
   test('perfil se carga correctamente con campos reales completos', async () => {

@@ -34,24 +34,17 @@ function walk(rel: string): string[] {
 const ALL_FILES = SCAN_DIRS.flatMap(walk)
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8')
 
-// Ficheros que LEGÍTIMAMENTE referencian supabase.auth.* (a fecha 2026-06-20):
-// infra del puerto / verificación server-side, comentarios, y el funnel de
-// login C2 (signInWithOAuth) + callback, ambos diferidos a Fase B/C2.
-// Esta lista solo debe ENCOGER. Si aparece un fichero nuevo aquí, el test falla
-// → o lo migras al puerto, o (si es legítimo) lo añades conscientemente.
+// Ficheros que LEGÍTIMAMENTE referencian supabase.auth.* (actualizado 2026-07-04):
+// solo infra del puerto / verificación server-side. El funnel de login (C2) y el
+// callback (Fase B) YA se migraron al puerto agnóstico `lib/auth` → sus 6 entradas
+// se retiraron de esta allowlist (el ratchet ENCOGIÓ, como debe). Si aparece un
+// fichero nuevo aquí, el test falla → o lo migras al puerto, o (si es legítimo) lo añades.
 const AUTH_ALLOWLIST = new Set<string>([
   'lib/api/auth/verifyAuth.ts',
   'lib/api/auth/verifyJwtLocal.ts',
   'lib/security/adminApiGuard.ts',
   'lib/api/authHeaders.ts',
   'app/api/send-support-email/route.ts',
-  // Funnel de login C2 (diferido) + callback (Fase B):
-  'app/login/page.js',
-  'app/landing/premium-ads-1/page.js',
-  'app/landing/premium-ads-2/page.js',
-  'app/landing/premium-edu/page.js',
-  'app/premium/page.tsx',
-  'app/auth/callback/page.tsx',
 ])
 
 describe('GUARDRAIL: auth de cliente agnóstico (Fase A)', () => {

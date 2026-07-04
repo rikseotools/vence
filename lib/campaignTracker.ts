@@ -2,7 +2,6 @@
 
 import type { User } from '@supabase/supabase-js'
 import { auth } from './auth'
-import { LIFECYCLE_VIA_API } from './auth/lifecycleFlag'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClientAny = any
@@ -96,22 +95,14 @@ export async function forceCampaignCheckout(user: User, supabase: SupabaseClient
     // Crear usuario premium en BD (igual que en las landing pages)
     const userName = user.user_metadata?.full_name || user.email?.split('@')[0]
     const campaignId = campaignInfo.utm_campaign || campaignInfo.landing
-    if (LIFECYCLE_VIA_API) {
-      // Vía endpoint Drizzle agnóstico (user_id/email del token server-side).
-      const token = await auth.getAccessToken()
-      await fetch('/api/v2/auth/ensure-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ registrationSource: 'google_ads', campaignId, userName }),
-      })
-    } else {
-      await supabase.rpc('create_google_ads_user', {
-        user_id: user.id,
-        user_email: user.email,
-        user_name: userName,
-        campaign_id: campaignId
-      })
-    }
+    // Path único vía endpoint Drizzle agnóstico (antes: la RPC create_google_ads_user de cliente).
+    // user_id/email se derivan del token server-side.
+    const token = await auth.getAccessToken()
+    await fetch('/api/v2/auth/ensure-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ registrationSource: 'google_ads', campaignId, userName }),
+    })
 
     // Crear sesión de Stripe
     const response = await fetch('/api/stripe/create-checkout', {
