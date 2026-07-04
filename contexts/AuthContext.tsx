@@ -4,7 +4,6 @@ import { createContext, useState, useEffect, useContext, useCallback, useRef } f
 import type { User } from '@supabase/supabase-js'
 import type { UserProfileRow } from '@/types/database.types'
 
-import { getSupabaseClient } from '../lib/supabase'
 import { auth } from '@/lib/auth'
 import { shouldForceCheckout, forceCampaignCheckout, detectCampaignSource, getCookie } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
@@ -32,7 +31,6 @@ export interface AuthContextValue {
   isLegacy: boolean
   requiresPayment: boolean
   registrationSource: string
-  supabase: ReturnType<typeof getSupabaseClient>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -175,7 +173,6 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     setProfileLoading(val)
   }
 
-  const supabase = getSupabaseClient()
 
   // 🎯 NUEVA FUNCIÓN: Detectar fuente de registro
   const detectRegistrationSource = (): string => {
@@ -1074,7 +1071,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     sessions: conflictingSessions,
     isClosingOthers,
     closeOtherSessions
-  } = useSessionControl(user, supabase)
+  } = useSessionControl(user)
 
   const [isLoggingOutFromWarning, setIsLoggingOutFromWarning] = useState(false)
 
@@ -1098,7 +1095,6 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     isLegacy: userProfile?.plan_type === 'legacy_free',
     requiresPayment: userProfile?.requires_payment || false,
     registrationSource: userProfile?.registration_source || 'unknown',
-    supabase
   }
 
   return (

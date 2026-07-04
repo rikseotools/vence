@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import type { SupabaseClient, User } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
 export const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
@@ -37,8 +37,7 @@ interface UseSessionControlReturn {
 }
 
 export function useSessionControl(
-  user: User | null,
-  supabase: SupabaseClient | null
+  user: User | null
 ): UseSessionControlReturn {
   const [showWarning, setShowWarning] = useState(false)
   const [sessions, setSessions] = useState<SessionInfo[]>([])
@@ -49,7 +48,7 @@ export function useSessionControl(
   const isControlled = Boolean(user?.email && CONTROLLED_EMAILS.includes(user.email))
 
   const checkActiveSessions = useCallback(async () => {
-    if (!user || !supabase || !isControlled) return
+    if (!user || !isControlled) return
 
     try {
       setIsChecking(true)
@@ -102,10 +101,10 @@ export function useSessionControl(
     } finally {
       setIsChecking(false)
     }
-  }, [user, supabase, isControlled])
+  }, [user, isControlled])
 
   const closeOtherSessions = useCallback(async () => {
-    if (!user || !supabase || !currentSessionId) return
+    if (!user || !currentSessionId) return
 
     try {
       setIsClosingOthers(true)
@@ -134,7 +133,7 @@ export function useSessionControl(
     } finally {
       setIsClosingOthers(false)
     }
-  }, [user, supabase, currentSessionId, checkActiveSessions])
+  }, [user, currentSessionId, checkActiveSessions])
 
   useEffect(() => {
     if (user && isControlled) {
