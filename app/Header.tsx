@@ -327,46 +327,45 @@ export default function HeaderES() {
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = (): NavLink[] => {
     const defaultSlug = ALL_OPOSICION_SLUGS[0]
-    if (!hasOposicion || loading) {
+    // Enlaces que NO dependen de la oposición (siempre visibles).
+    const commonLinks: NavLink[] = [
+      { href: '/leyes', label: 'Leyes', icon: '⚖️' },
+      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
+      { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
+      { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
+    ]
+
+    // Slug de la oposición del usuario desde oposicionId (FUENTE DE VERDAD). Con la
+    // pre-hidratación de OposicionContext, oposicionId ya está disponible durante
+    // `loading` para usuarios recurrentes → Test/Temario apuntan a SU oposición.
+    const oposicionId = oposicionContext?.oposicionId
+    const opoSlug = oposicionId ? getOposicion(oposicionId)?.slug : null
+    const opoResolved = !!opoSlug && ALL_OPOSICION_SLUGS.includes(opoSlug)
+
+    // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
+    if (opoResolved) {
       return [
-        { href: `/${defaultSlug}/test`, label: 'Test', icon: '🎯' },
-        { href: `/${defaultSlug}/temario`, label: 'Temario', icon: '📚' },
-        { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-        { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
-        { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-        { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
+        { href: `/${opoSlug}/test`, label: 'Test', icon: '🎯' },
+        { href: `/${opoSlug}/temario`, label: 'Temario', icon: '📚' },
+        ...commonLinks
       ]
     }
 
-    try {
-      const featuredLink = oposicionMenu?.navLinks?.find(link => link?.featured)
-      let basePath = featuredLink?.href || `/${defaultSlug}`
-      // Si el basePath no resuelve a un slug de oposición real (p.ej. 'explorador'
-      // usa DEFAULT_MENU con featured='/oposiciones'), Test/Temario darían 404.
-      const basePathSlug = basePath.replace(/^\//, '').split('/')[0]
-      if (!ALL_OPOSICION_SLUGS.includes(basePathSlug)) {
-        basePath = `/${defaultSlug}`
-      }
-
-      return [
-        { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
-        { href: `${basePath}/temario`, label: 'Temario', icon: '📚' },
-        { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-        { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
-        { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-        { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
-      ]
-    } catch (error) {
-      console.warn('Error generando enlaces:', error)
-      return [
-        { href: `/${defaultSlug}/test`, label: 'Test', icon: '🎯' },
-        { href: `/${defaultSlug}/temario`, label: 'Temario', icon: '📚' },
-        { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-        { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
-        { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-        { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
-      ]
+    // 2) Autenticado con la oposición AÚN sin resolver (1er load sin caché): NO apuntar
+    //    Test/Temario a la oposición por defecto (Estado) — era el bug "se me cambia la
+    //    oposición al practicar" (Raquel). Se omiten hasta que resuelva (sub-segundo); el
+    //    resto de enlaces se muestran. Nunca se navega a la oposición equivocada.
+    if (loading) {
+      return commonLinks
     }
+
+    // 3) Usuario logueado SIN oposición configurada (no loading) → flagship por defecto,
+    //    como antes (para usuarios genuinamente sin oposición; slug real, no 404).
+    return [
+      { href: `/${defaultSlug}/test`, label: 'Test', icon: '🎯' },
+      { href: `/${defaultSlug}/temario`, label: 'Temario', icon: '📚' },
+      ...commonLinks
+    ]
   }
 
   // Enlaces para usuarios NO logueados
