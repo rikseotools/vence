@@ -28,13 +28,13 @@ interface UseTopicUnlockOptions {
 }
 
 export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
-  const { user, supabase } = useAuth() as any
+  const { user } = useAuth() as any
   const [topicProgress, setTopicProgress] = useState<Record<number, TopicProgress>>({})
   const [weakArticlesByTopic, setWeakArticlesByTopic] = useState<Record<number, WeakArticle[]>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user && supabase) {
+    if (user) {
       loadUserProgress()
       // Solo cargar weak articles si hay positionType definido
       // Esto evita llamadas duplicadas desde componentes que no necesitan filtrar por oposición
@@ -46,10 +46,10 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
       setWeakArticlesByTopic({})
       setLoading(false)
     }
-  }, [user, supabase, positionType])
+  }, [user, positionType])
 
   // Cargar progreso del usuario desde la base de datos
-  // Antes usaba supabase.rpc('get_user_theme_stats') que hacía count(*) sobre
+  // Antes usaba el RPC get_user_theme_stats de Supabase que hacía count sobre
   // test_questions (16s para Nila con 55k respuestas → 504 en Vercel).
   // Ahora usa fetch con AbortController (8s timeout) + fallback a vacío.
   const loadUserProgress = async () => {
@@ -150,7 +150,7 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
 
   // Cargar artículos débiles del usuario via API v2 (Drizzle + Zod)
   const loadWeakArticles = async () => {
-    if (!user || !supabase) return
+    if (!user) return
 
     try {
       // Obtener token de sesión

@@ -17,13 +17,12 @@ import type {
   NotificationEmailPayload,
   UseIntelligentNotificationsReturn
 } from './useIntelligentNotifications.types'
-import type { User, SupabaseClient } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
 // Tipo para el contexto de autenticación (AuthContext.js no está tipado)
 interface AuthContextValue {
   user: User | null
   userProfile: { id: string; [key: string]: unknown } | null
-  supabase: SupabaseClient
   loading: boolean
 }
 
@@ -597,7 +596,7 @@ function validateAndMapLawShortName(lawShortName: string | null | undefined, law
 }
 
 export function useIntelligentNotifications(): UseIntelligentNotificationsReturn {
-  const { user, userProfile, supabase, loading: authLoading } = useAuth() as AuthContextValue
+  const { user, userProfile, loading: authLoading } = useAuth() as AuthContextValue
   const { getSlug: generateLawSlug, getShortName: mapLawSlugToShortName, getLawInfo } = useLawSlugs()
   
   // Estados principales
@@ -821,19 +820,19 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       return
     }
 
-    if (user && userProfile && supabase && !loading) {
+    if (user && userProfile && !loading) {
       loadAllNotifications()
     } else if (!user) {
       resetNotifications()
     }
-  }, [user, userProfile, authLoading, supabase])
+  }, [user, userProfile, authLoading])
 
   // Refrescar notificaciones cuando otra parte de la app marca algunas como leídas
   useEffect(() => {
     const handler = () => loadAllNotifications()
     window.addEventListener('notifications-updated', handler)
     return () => window.removeEventListener('notifications-updated', handler)
-  }, [user, supabase])
+  }, [user])
 
   // Función auxiliar para filtrar notificaciones leídas (OPCIÓN B: desaparecen)
   const filterUnreadNotifications = (notifications: Notification[]) => {
