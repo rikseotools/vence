@@ -27,6 +27,8 @@ Un feedback con `status='pending'` **NO significa que esté sin atender** — pu
 - **`feedback_messages`** (si hay hilo): columnas `is_admin` + `sender_id` + `message` — **NO `sender_type`** (consultar con una columna inexistente puede devolver vacío sin error y hacerte creer que no hay respuesta). El `conversation_id` del mensaje puede no coincidir con el de `feedback_conversations`; cruza por `user_id`/`feedback_id`, no asumas el link.
 - Si ya está respondido y atendido, **no mandes otra respuesta**: cierra con `finalStatus:'resolved'` sin `message` (cierre silencioso, §Paso 10 caso B).
 
+> **⚠️ Síntoma "No puedo leer vuestras respuestas" (visto 03/07/2026 — José Andrés, CARM):** el usuario abre un 2º feedback quejándose de que no ve nuestra respuesta. **Causa típica:** la respuesta al feedback anterior se guardó **solo en `user_feedback.admin_response`** (vía legacy) y **nunca se insertó en `feedback_messages`**, así que su conversación en la app aparece **vacía** (0 mensajes) — el chat lee de `feedback_messages`, no de `admin_response`. El email de aviso (`soporte_respuesta`) puede haberse enviado, pero si el usuario no lo abre (`email_events.open_count = 0`) se queda a ciegas. **Fix:** reponer esa respuesta llamando a `/api/v2/feedback/respond` (que sí inserta en `feedback_messages`), reconociendo al usuario que tenía razón. No basta con tener el texto en `admin_response`.
+
 ## Paso 1: Identificar al usuario y contexto
 
 ```js
@@ -296,6 +298,10 @@ body: JSON.stringify({
   - El caller pasó `sendEmail: false` (`send_email_false_flag`).
 - **Fallos de email NO revierten el feedback:** la respuesta incluye `emailError` con el motivo. El feedback queda resuelto y el email puede reintentarse manualmente si hace falta.
 - **Contactos externos con email:** el endpoint nuevo skippea automáticamente (emailSkipReason='no_user_email'). Para mandarles email, llamar también a `/api/send-support-email` con el email del payload — ese endpoint sigue vivo para ese caso concreto.
+
+> **⚠️ Gotcha 504/502 de CloudFront (visto 03/07/2026 — José Andrés):** igual que en `/api/v2/dispute/resolve` (impugnaciones §15.7), a veces `/api/v2/feedback/respond` devuelve **HTML de error 504/502** en lugar del JSON porque el proxy corta por timeout **durante `sendEmailV2`**, que va **fuera** de la TX. Cuando pasa: la transacción **ya hizo commit** → el mensaje **sí quedó en `feedback_messages`**, el feedback quedó `resolved`, la conversación cerrada y la campana enviada; **solo falta el email** (0 filas nuevas en `email_events`). Síntoma desde script: `res.json()` peta con "Unexpected token '<'".
+>
+> **NO reintentes a ciegas.** El workaround de disputas (reabrir + reenviar) **aquí DUPLICA el mensaje**, porque el INSERT en `feedback_messages` ya se aplicó (en disputas se reabre poniendo `admin_response=null`, no hay INSERT que duplicar). **Verifica SIEMPRE en BD** (no en el HTTP): si el mensaje ya está en `feedback_messages`, el usuario **ya puede leer la respuesta en la app + campana** — que es lo que resuelve su queja. El email de aviso es secundario; solo fuérzalo (asumiendo el mensaje duplicado, o vía `/api/send-support-email`) si de verdad hace falta.
 
 ### Email threading (post-14/04/2026 — caso Isabel/Galicia)
 
