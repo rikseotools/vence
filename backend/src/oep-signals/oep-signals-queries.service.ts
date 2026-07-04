@@ -178,6 +178,23 @@ export class OepSignalsQueriesService {
   // MATCH DETECTED OEP vs existing oposiciones
   // ============================================
 
+  /** Carga el catálogo (todas las oposiciones) para el matcher estructural.
+   *  Público para poder precargarlo UNA vez por pasada (radar) y no recargarlo
+   *  por señal. NO filtra is_active (las catalogadas también se vigilan, §10). */
+  async loadOposicionesForMatch() {
+    return this.db
+      .select({
+        id: oposiciones.id,
+        nombre: oposiciones.nombre,
+        slug: oposiciones.slug,
+        shortName: oposiciones.shortName,
+        subgrupo: oposiciones.subgrupo,
+        administracion: oposiciones.administracion,
+        inscriptionDeadline: oposiciones.inscriptionDeadline,
+      })
+      .from(oposiciones);
+  }
+
   async matchDetectedOepToOposicion(params: {
     /** Nombre del cuerpo SOLO (sin organismo — el organismo va aparte). */
     cuerpo: string;
@@ -189,7 +206,11 @@ export class OepSignalsQueriesService {
     /** Órgano convocante (Ayuntamiento/Universidad/Consejería…). */
     organismo?: string | null;
     bocRef?: string | null;
-  }): Promise<{
+  },
+  /** Catálogo precargado (opcional): evita recargar la tabla por señal cuando
+   *  se matchean muchas en una misma pasada. Si se omite, se carga aquí. */
+  catalog?: Awaited<ReturnType<OepSignalsQueriesService['loadOposicionesForMatch']>>,
+  ): Promise<{
     matched: boolean;
     oposicionId: string | null;
     oposicionNombre: string | null;
@@ -226,17 +247,7 @@ export class OepSignalsQueriesService {
     //    catálogo) también se vigilan (norma §10). Excluirlas hacía que toda
     //    señal de descubrimiento sobre una catalogada existente saliera novel →
     //    duplicados (caso UAM Escala Especial Básica, 02/07/2026).
-    const all = await this.db
-      .select({
-        id: oposiciones.id,
-        nombre: oposiciones.nombre,
-        slug: oposiciones.slug,
-        shortName: oposiciones.shortName,
-        subgrupo: oposiciones.subgrupo,
-        administracion: oposiciones.administracion,
-        inscriptionDeadline: oposiciones.inscriptionDeadline,
-      })
-      .from(oposiciones);
+    const all = catalog ?? (await this.loadOposicionesForMatch());
 
     const best = pickBestMatch(
       {

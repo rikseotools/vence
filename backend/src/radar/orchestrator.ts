@@ -53,6 +53,9 @@ export class RadarOrchestrator {
   async run(daysBack = 4, today: Date = new Date()): Promise<{ runId: string }> {
     const runId = randomUUID();
     const adapters = this.adapters();
+    // Catálogo precargado UNA vez por pasada → el matcher no recarga la tabla
+    // por señal (antes: N cargas completas; ahora: 1).
+    const catalog = await this.queries.loadOposicionesForMatch();
     await this.telemetry.runStarted(runId, adapters.length);
 
     const totals = { candidates: 0, signalsNew: 0, failed: 0, gaps: 0 };
@@ -72,6 +75,7 @@ export class RadarOrchestrator {
           runId,
           adapter,
           candidates,
+          catalog,
         );
         totals.signalsNew += signalsNew;
 
@@ -136,6 +140,7 @@ export class RadarOrchestrator {
     runId: string,
     adapter: SourceAdapter,
     candidates: RawCandidate[],
+    catalog: Awaited<ReturnType<OepSignalsQueriesService['loadOposicionesForMatch']>>,
   ): Promise<{ signalsNew: number; signalsDupe: number }> {
     let signalsNew = 0;
     let signalsDupe = 0;
@@ -161,14 +166,17 @@ export class RadarOrchestrator {
         // exacto + estructural (oep-match, precisión>recall). Sin esto, TODA señal
         // salía novel (regresión). Carga el catálogo por llamada — aceptable en un
         // cron diario en background (no bajo el timeout del adapter).
-        const match = await this.queries.matchDetectedOepToOposicion({
-          cuerpo: oep.name,
-          regionName: region,
-          grupo: oep.positionGroup ?? null,
-          admin: c.admin ?? null,
-          organismo: c.organismo ?? null,
-          bocRef: oep.bocRef ?? null,
-        });
+        const match = await this.queries.matchDetectedOepToOposicion(
+          {
+            cuerpo: oep.name,
+            regionName: region,
+            grupo: oep.positionGroup ?? null,
+            admin: c.admin ?? null,
+            organismo: c.organismo ?? null,
+            bocRef: oep.bocRef ?? null,
+          },
+          catalog, // precargado 1 vez por pasada
+        );
         try {
           const { inserted } = await this.queries.insertSignal({
             oposicionId: match.oposicionId,
