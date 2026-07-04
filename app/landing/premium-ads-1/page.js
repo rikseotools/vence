@@ -8,7 +8,7 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 function PremiumAdsContent() {
-  const { user, supabase, userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [checkoutInitiated, setCheckoutInitiated] = useState(false)

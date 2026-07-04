@@ -210,7 +210,7 @@ export default function TestLayout({
   questions,
   children
 }: TestLayoutProps) {
-  const { user, loading: authLoading, supabase, isPremium } = useAuth()
+  const { user, loading: authLoading, isPremium } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const { openChatWith } = useAIChat()
   const { notifyTestCompletion } = useTestCompletion()

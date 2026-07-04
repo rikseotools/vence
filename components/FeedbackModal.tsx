@@ -67,7 +67,7 @@ export default function FeedbackModal({
   onFeedbackSent = null,
 }: FeedbackModalProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { user, supabase } = useAuth() as { user: any; supabase: any }
+  const { user } = useAuth() as { user: any }
   const [formData, setFormData] = useState<FormData>({
     type: '',
     message: '',

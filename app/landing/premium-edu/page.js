@@ -8,7 +8,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 export const dynamic = 'force-dynamic'
 
 function PremiumEducationalContent() {
-  const { user, supabase, userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('features')

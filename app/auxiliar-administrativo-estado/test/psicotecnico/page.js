@@ -21,7 +21,7 @@ const PsychometricTestLayout = dynamic(() => import('@/components/PsychometricTe
 function PsychometricTestContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
