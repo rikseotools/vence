@@ -26,7 +26,15 @@ export const PAG_ADV_URL =
 const UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-export const GRUPOS: Record<string, string> = { '4': 'C1', '5': 'C2', '6': 'AP' };
+// Fase 0 "catalogar TODO": idGrupo 1=A1 2=A2 3=B además de 4=C1 5=C2 6=AP.
+export const GRUPOS: Record<string, string> = {
+  '1': 'A1',
+  '2': 'A2',
+  '3': 'B',
+  '4': 'C1',
+  '5': 'C2',
+  '6': 'AP',
+};
 
 const CCAA: Record<string, string> = {
   '00': 'Nacional', '01': 'Andalucía', '02': 'Aragón', '03': 'Asturias',

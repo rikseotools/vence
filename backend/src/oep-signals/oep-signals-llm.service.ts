@@ -363,18 +363,21 @@ Devuelve JSON con esta forma exacta:
 }`;
 }
 
-const REGIONAL_SYSTEM_PROMPT = `Eres un extractor de listados de convocatorias de empleo público en España. Analizas páginas oficiales con listas de procesos selectivos y extraes SOLO las convocatorias de subgrupos C1, C2 o Agrupaciones Profesionales (auxiliares administrativos, administrativos, subalternos, ordenanzas, personal de servicios, agrupación profesional, oficiales, técnicos administrativos, gestión tributaria, archivo, etc.).
+const REGIONAL_SYSTEM_PROMPT = `Eres un extractor de listados de convocatorias de empleo público en España. Analizas páginas oficiales con listas de procesos selectivos y extraes TODAS las convocatorias de ingreso de funcionario, de CUALQUIER grupo (A1, A2, B, C1, C2, Agrupaciones Profesionales/AP).
 
-CRITERIOS DE INCLUSIÓN:
-- Grupo C1 o C2 (funcionarios)
-- Agrupaciones Profesionales (AP), antiguo Grupo E: sin requisito de titulación (subalternos, ordenanzas, personal de servicios, "agrupación profesional de servicios públicos") → devuelve positionGroup "AP"
-- O que mencionen "auxiliar administrativo", "administrativo", "administrativa", "oficial administrativo" sin grupo
-- Procesos ACTIVOS o RECIENTES (no convocatorias cerradas hace años)
+Misión: catalogar TODO sin gaps. NO descartes por grupo. Etiqueta el grupo en "positionGroup".
 
-CRITERIOS DE EXCLUSIÓN:
-- Grupos A1, A2, B (escala superior, técnicos superiores)
-- Personal laboral (si se identifica claramente)
-- Procesos finalizados con nombramientos
+CRITERIOS DE INCLUSIÓN (cualquier convocatoria de ingreso):
+- Grupo A1, A2, B, C1, C2 (funcionarios) → positionGroup "A1"/"A2"/"B"/"C1"/"C2"
+- Agrupaciones Profesionales (AP), antiguo Grupo E: sin requisito de titulación (subalternos, ordenanzas, personal de servicios, "agrupación profesional de servicios públicos") → positionGroup "AP"
+- Cuerpos de cualquier ámbito: administrativo, técnico, docente (profesores), sanitario, superior, gestión, inspección, etc.
+- Si el grupo no aparece explícito, deja positionGroup null.
+- Procesos ACTIVOS o RECIENTES (no convocatorias cerradas hace años).
+
+CRITERIOS DE EXCLUSIÓN (solo lo que NO es una convocatoria de ingreso):
+- Personal laboral (régimen laboral, no funcionario), si se identifica claramente
+- Libre designación (no es proceso selectivo de ingreso)
+- Hitos de un proceso ya convocado: listas de admitidos/aprobados, nombramientos, adjudicación de plazas
 
 Responde EXCLUSIVAMENTE con JSON válido sin markdown.`;
 
@@ -385,7 +388,7 @@ function regionalUserPrompt(text: string, regionName: string): string {
 ${text}
 </pagina>
 
-Extrae TODAS las convocatorias de C1/C2 y Agrupaciones Profesionales (AP) activas. JSON esperado:
+Extrae TODAS las convocatorias de ingreso activas de CUALQUIER grupo (A1/A2/B/C1/C2/AP). JSON esperado:
 {
   "oeps": [
     {
@@ -401,7 +404,7 @@ Extrae TODAS las convocatorias de C1/C2 y Agrupaciones Profesionales (AP) activa
   ]
 }
 
-Si no hay ninguna convocatoria C1/C2/AP, devuelve {"oeps": []}.`;
+Si no hay ninguna convocatoria de ingreso, devuelve {"oeps": []}.`;
 }
 
 const GENERIC_SYSTEM_PROMPT = `Eres auditor de fuentes normativas del Estado (Dirección General de Función Pública, Secretaría de Estado de FP, Portal de Transparencia). Tu trabajo: leer el contenido actual de una página y determinar si contiene PUBLICACIONES NORMATIVAS NUEVAS que afecten al temario de oposiciones estatales (Aux/Admin Estado, Tramitación Procesal, Auxilio Judicial, Gestión Estado, Admin. Seguridad Social).

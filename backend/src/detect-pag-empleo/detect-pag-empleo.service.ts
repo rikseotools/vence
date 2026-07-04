@@ -37,11 +37,12 @@ export interface DetectPagEmpleoStats {
 export class DetectPagEmpleoService {
   private readonly logger = new Logger(DetectPagEmpleoService.name);
 
-  // idGrupo del PAG: 4=C1, 5=C2, 6=AP (Agrupaciones Profesionales, antiguo
-  // Grupo E — verificado 02/07/2026: idGrupo=6 devuelve "Personal de Servicios").
+  // idGrupo del PAG: 1=A1 2=A2 3=B 4=C1 5=C2 6=AP (Agrupaciones Profesionales,
+  // antiguo Grupo E — verificado 02/07/2026: idGrupo=6 = "Personal de Servicios").
+  // Fase 0 "catalogar TODO" (04/07/2026): se añaden A1/A2/B (1/2/3).
   // idPlazo=1 = Plazo Abierto (barrido completo + dedupe → autosanador; no
   // dependemos de la ventana de 72h).
-  private readonly GRUPOS = [4, 5, 6];
+  private readonly GRUPOS = [1, 2, 3, 4, 5, 6];
   private readonly PLAZO_ABIERTO = 1;
 
   constructor(private readonly queries: OepSignalsQueriesService) {}

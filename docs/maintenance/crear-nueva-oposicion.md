@@ -22,6 +22,8 @@ Antes de crear nada hay que entender esta distinción. **Todo el resto del manua
 3. **`user_profiles.target_oposicion` puede apuntar a cualquiera de las dos.** Cuando apunta a una aspiracional, eso **es** la captura de demanda: podemos consultar `GROUP BY target_oposicion` para saber qué oposiciones priorizar.
 4. **No hay tabla aparte de "demanda"**. La demanda vive directamente en `user_profiles.target_oposicion`.
 
+> **Regla de siglas al crear contenido de la oposición (autocontención):** toda pregunta que crees o importes para la nueva oposición debe entenderse por sí sola (los tests salen barajados). Al usar una sigla de ley en el enunciado, desarrolla el nombre en su 1ª aparición con la sigla entre paréntesis ("…de la **Ley 7/1985, Reguladora de las Bases del Régimen Local (LBRL)**…"). Allowlist cruda: `CE`, `UE`, `TREBEP`, `LOPJ`, `TUE`, `TFUE`. Excepción: si la pregunta pide identificar la ley, no la desarrolles (cantaría la respuesta). Detalle en `generar-preguntas-con-ia.md` §2.2-quater e `importar-preguntas-scrapeadas.md`.
+
 ### 0.3 UX diferenciada (post-16/04/2026)
 
 Ambas aparecen mezcladas en el onboarding y el selector de cambio. Se distinguen visualmente:

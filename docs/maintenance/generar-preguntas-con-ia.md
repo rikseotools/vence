@@ -165,6 +165,20 @@ Segundo tell estructural, independiente del de longitud y de mayor impacto. **Me
 
 **Remediación de la cohorte histórica (04/06/2026):** 437 preguntas re-permutadas (transposición mínima B/A→C/D con relabel determinista del header + bullets + validación per-pregunta + skip-on-fail). Distribución post: A 25,2 / B 25,7 / C 24,6 / D 24,5% (χ²=0,58 vs uniforme, indistinguible). 13 saltadas (9 sin header parseable + 4 con header≠`correct_option`, posible bug de clave a revisar). Backup `/tmp/ia_position_backup.json`.
 
+### 2.2-quater Cada pregunta debe ser autocontenida — desarrolla las siglas de ley
+
+Los tests salen **barajados y sueltos**, así que una pregunta **no puede depender de que la sigla se haya definido en otra**. Al usar una sigla de ley en el enunciado, **desarrolla el nombre en su primera aparición y deja la sigla entre paréntesis**:
+
+> "…según el artículo 179 de la **Ley Orgánica 5/1985, del Régimen Electoral General (LOREG)**…"
+
+A partir de ahí, dentro de esa misma pregunta/explicación, ya puedes usar la sigla a secas.
+
+**Allowlist (pueden ir crudas por universales):** `CE`, `UE`, y las ultraconocidas `TREBEP`, `LOPJ`, `TUE`, `TFUE`. Todo lo demás (`LBRL`, `LGP`, `LPAC`, `LRJSP`, `LOPDGDD`, `EBEP`, `LOREG`…) se desarrolla.
+
+**Excepción:** si la pregunta **pide identificar la ley** (la respuesta es la propia norma), NO desarrolles el nombre en el enunciado — cantaría la solución.
+
+Origen: impugnación de Laura García (02/07/2026) — vio "LBRL" en una pregunta cuando el nombre completo solo aparecía en la anterior. Barrido de normalización aplicado a ~174 preguntas activas de 7 siglas.
+
 ### 2.3 Tag obligatorio: `'ia_generada' + '<batch_id>'`
 
 Sin estos tags es imposible:

@@ -107,6 +107,8 @@ Ver `docs/scraping/tutestdigital-api-manual.md`:
 - "Basura SIN paréntesis al final del enunciado" (`stripInlineJunk`)
 - "Contextualización de ley tras la limpieza" (`ensureLawContext`)
 
+**Regla de siglas — cada pregunta autocontenida:** los tests salen barajados y sueltos, así que una pregunta no puede depender de que la sigla se definiera en otra. Al usar una sigla de ley en el enunciado, **desarrolla el nombre en su 1ª aparición con la sigla entre paréntesis** ("…artículo 44.5 de la **Ley 7/1985, Reguladora de las Bases del Régimen Local (LBRL)**…"); luego ya puedes usar la sigla a secas. **Allowlist cruda:** `CE`, `UE`, `TREBEP`, `LOPJ`, `TUE`, `TFUE`. Todo lo demás se desarrolla. **Excepción:** si la pregunta pide identificar la ley, no desarrolles el nombre (cantaría la respuesta). `ensureLawContext` ya cubre el caso "Según el artículo N" sin ley; esta regla lo extiende a las siglas. Origen: impugnación Laura García 02/07/2026.
+
 ## Parseo de Referencia a Artículo (OpositaTest)
 
 El endpoint `/questions/{id}/reason` de OpositaTest devuelve dos campos:

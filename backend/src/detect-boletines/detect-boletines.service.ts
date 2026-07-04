@@ -89,14 +89,10 @@ export class DetectBoletinesService {
         ).padStart(2, '0')}`;
 
         for (const oep of extraction.oeps) {
-          // Guardarraíl extra: el LLM ya filtra, pero descartamos grupos altos.
-          // Aceptamos C1/C2 y Agrupaciones Profesionales (AP, antiguo Grupo E);
-          // descartamos A1/A2/B. Ampliado 02/07/2026: antes la lista era
-          // ['C1','C2','C'] y tiraba las AP (caso Agrupación Profesional de
-          // Servicios Públicos CARM, que tuvo que encontrar una usuaria).
-          const grp = (oep.positionGroup ?? '').toUpperCase().trim();
-          const ALLOWED_GROUPS = ['C1', 'C2', 'C', 'AP', 'E'];
-          if (grp && !ALLOWED_GROUPS.includes(grp)) continue;
+          // Fase 0 "catalogar TODO" (04/07/2026): SIN guardarraíl de grupo
+          // excluyente. Se catalogan todos los grupos (A1/A2/B/C1/C2/AP); el
+          // grupo solo se REGISTRA para priorizar/triar, no para descartar.
+          // (Antes se descartaban A1/A2/B; misión = BD más grande sin gaps.)
 
           const nameKey = oep.name
             .toLowerCase()

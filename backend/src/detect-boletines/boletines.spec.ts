@@ -50,17 +50,18 @@ describe('looksLikeC1C2Convocatoria', () => {
     ).toBe(false);
   });
 
-  it('descarta cuerpos A1/A2 y docentes (catedráticos, titulado superior)', () => {
+  it('ADMITE cuerpos A1/A2 y docentes (Fase 0 "catalogar TODO", 04/07/2026)', () => {
+    // Antes se descartaban por grupo; ahora se catalogan igual (misión: BD sin gaps).
     expect(
       looksLikeC1C2Convocatoria(
         'Resolución por la que se convoca proceso selectivo para ingreso en el Cuerpo de Catedráticos de Universidad.',
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       looksLikeC1C2Convocatoria(
         'Resolución por la que se convocan pruebas selectivas de Titulado Superior, subgrupo A1.',
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('detecta Agrupación Profesional / antiguo Grupo E (AP entra al radar, ampliación 02/07/2026)', () => {
@@ -94,7 +95,7 @@ describe('looksLikeC1C2Convocatoria', () => {
 });
 
 describe('extractCandidatesFromSumarioText', () => {
-  it('separa disposiciones y deja solo las convocatorias C1/C2', () => {
+  it('separa disposiciones y deja las convocatorias de ingreso de cualquier grupo', () => {
     const sumario = [
       ULE_ADMIN,
       'RESOLUCIÓN por la que se publica la relación de aspirantes que han superado el proceso selectivo.',
@@ -104,9 +105,9 @@ describe('extractCandidatesFromSumarioText', () => {
     const hits = extractCandidatesFromSumarioText(sumario);
     expect(hits.some((h) => /Escala Administrativa de la Universidad de León/.test(h))).toBe(true);
     expect(hits.some((h) => /Cuerpo de Gestión Económico-Financiera/.test(h))).toBe(true);
-    // ni resultados ni catedráticos
+    // Fase 0: los catedráticos (A1) AHORA entran; solo se descartan los hitos de resultado.
     expect(hits.some((h) => /aspirantes que han superado/.test(h))).toBe(false);
-    expect(hits.some((h) => /Catedráticos/.test(h))).toBe(false);
+    expect(hits.some((h) => /Catedráticos/.test(h))).toBe(true);
   });
 });
 

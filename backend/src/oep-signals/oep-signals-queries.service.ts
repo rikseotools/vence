@@ -366,6 +366,52 @@ export class OepSignalsQueriesService {
       .from(oposiciones)
       .where(eq(oposiciones.isActive, true));
   }
+
+  // ============================================
+  // RADAR multi-capa — observabilidad (radar_adapter_runs)
+  // ============================================
+
+  /** Registra el resultado de UN adapter en una pasada del orquestador. */
+  async insertRadarAdapterRun(r: {
+    runId: string;
+    layer: string;
+    adapterKey: string;
+    status: string;
+    startedAt: Date;
+    durationMs: number;
+    itemsScanned: number;
+    candidates: number;
+    signalsNew: number;
+    signalsDupe: number;
+    httpStatus?: number | null;
+    errorMessage?: string | null;
+  }): Promise<void> {
+    await this.db.execute(sql`
+      INSERT INTO radar_adapter_runs
+        (run_id, layer, adapter_key, status, started_at, duration_ms,
+         items_scanned, candidates, signals_new, signals_dupe, http_status, error_message)
+      VALUES (${r.runId}, ${r.layer}, ${r.adapterKey}, ${r.status},
+              ${r.startedAt.toISOString()}, ${r.durationMs}, ${r.itemsScanned},
+              ${r.candidates}, ${r.signalsNew}, ${r.signalsDupe},
+              ${r.httpStatus ?? null}, ${r.errorMessage ?? null})
+    `);
+  }
+
+  /** Nº de fallos consecutivos más recientes de un adapter (para degraded). */
+  async radarAdapterFailStreak(adapterKey: string): Promise<number> {
+    const rows = (await this.db.execute(sql`
+      SELECT status FROM radar_adapter_runs
+      WHERE adapter_key = ${adapterKey}
+      ORDER BY created_at DESC
+      LIMIT 10
+    `)) as unknown as { status: string }[];
+    let streak = 0;
+    for (const row of rows) {
+      if (row.status === 'failed' || row.status === 'timeout') streak++;
+      else break;
+    }
+    return streak;
+  }
 }
 
 // ============================================
