@@ -51,6 +51,13 @@ async function bootstrap(): Promise<void> {
   // enableShutdownHooks permite cerrar el scheduler y el pool de BD limpiamente.
   app.enableShutdownHooks();
 
+  // keepAliveTimeout > idle_timeout del ALB (60s) para evitar 502 por
+  // reutilización de conexiones que Node cierra a los 5s (default). headersTimeout
+  // debe ser mayor aún. Ver docs/runbooks/deploy.md (§502 keep-alive).
+  const httpServer = app.getHttpServer();
+  httpServer.keepAliveTimeout = 65_000;
+  httpServer.headersTimeout = 66_000;
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
   Logger.log(`Vence backend escuchando en :${port}`, 'Bootstrap');

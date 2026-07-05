@@ -143,6 +143,8 @@ RUN mkdir -p .next && chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Wrapper que fija keepAliveTimeout > idle del ALB (evita 502 keep-alive).
+COPY --chown=nextjs:nodejs docker/server-keepalive.cjs ./server-keepalive.cjs
 
 USER nextjs
 
@@ -150,5 +152,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# server.js es el entry generado por output:'standalone'
-CMD ["node", "server.js"]
+# Arranca server.js (standalone) con keepAliveTimeout=65s (> ALB idle 60s).
+CMD ["node", "server-keepalive.cjs"]
