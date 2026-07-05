@@ -26,7 +26,7 @@ Mantenedor: `docs/runbooks/health-check.md`. Referenciado desde `CLAUDE.md`.
 
 Por humano:
 
-Abrir en navegador `https://www.vence.es/admin/salud-sistema` (alias `/admin/infraestructura`). Seis indicadores con semáforo:
+Abrir en navegador `https://www.vence.es/admin/infraestructura` (alias `/admin/salud-sistema`). Bloque CRÍTICOS (semáforo) + OBSERVABILIDAD (incluye errores de cliente + catch-all) + SANITY:
 
 1. **Errores 5xx servidor últimas 24h** (`http_status >= 500`) — verde 0, ámbar ≥1, rojo ≥5.
 2. **UI congelada cliente** (Watchdog hook `useAnswerWatchdog`, threshold 12s) — verde 0, ámbar ≥3, rojo ≥10. Cada evento = un user con UI bloqueada en ExamLayout/TestLayout. Suele correlar con saturación BD/antifraud, no con un fallo del servidor.
@@ -43,7 +43,12 @@ Abrir en navegador `https://www.vence.es/admin/salud-sistema` (alias `/admin/inf
 
 > Nota — Hasta 31/05/2026 los indicadores (1) y (2) estaban fusionados en un único card "Errores 5xx" que filtraba sólo por `severity=critical`. Eso metía los Watchdog (`http_status=null` pero `severity=critical`) en el mismo bucket que los 5xx servidor, distorsionando el verdict. La acción ante ámbar/rojo es distinta en cada caso (logs Fargate/Vercel vs pool BD + antifraud + topic-progress cold path), así que viven separados.
 
-Si los cinco están en verde, no hay fuego activo. Tarea cerrada en 30 segundos.
+Además del bloque CRÍTICOS, mirar SIEMPRE (añadidos 05/07/2026 — cerraron un gap grande: el panel era **server-céntrico** y no veía el dolor real del usuario):
+
+7. **🖥️ Errores de cliente** (sección OBSERVABILIDAD) — errores capturados IN-HOUSE en el navegador (Sentry se retiró): `unhandled_error`, `unhandled_rejection`, `react_error_boundary`, `client_error`, `http_5xx`/`http_4xx`/`http_network_error` (fetch del navegador), `chunk_load_error`. Verde <100, ámbar ≥100, rojo ≥500. **CLAVE:** el servidor puede decir 0 5xx y el panel/monitor "verde" mientras los clientes sufren (p.ej. **502 de `/api/auth/token`** = error de EDGE que el servidor no registra). Mirar el breakdown por `event_type` + `topEndpoint`.
+8. **🧯 Todas las señales error/warn (catch-all, sin gaps)** — tabla con TODA señal error/warn de `observable_events` agrupada. Garantía por diseño: **nada capturado queda oculto**, ni tipos futuros. Las filas **benignas** (auth, forbidden, scraping, request_completed…) van en gris y no cuentan; las **accionables** (coloreadas por volumen) son las que investigar. Si aparece una accionable con volumen alto que no reconoces → sección 2.
+
+Si CRÍTICOS + errores de cliente + catch-all están en verde, no hay fuego activo. Tarea cerrada en 30 segundos.
 
 Si alguno está ámbar o rojo, ir a la sección 2 con esa pista.
 
@@ -51,17 +56,20 @@ Si alguno está ámbar o rojo, ir a la sección 2 con esa pista.
 
 **Cuándo:** SIEMPRE que se pida la salud ("dame la salud de la última hora", "busca errores", "hay fuego"). Si Manuel recibe **muchos** `[Vence CRITICAL]` en el correo, eso ES un síntoma: las alertas ruidosas ahogan las reales (alert-fatigue). Revisar **qué se está emitiendo y con qué frecuencia**, no solo si hay errores.
 
+> ⚠️ **Contra RDS, NO Supabase.** El cliente `@supabase/supabase-js` apunta al Supabase CONGELADO (backup, datos viejos) tras el cutover a RDS del 04/07. Usar SIEMPRE `postgres`/`pg` con `DATABASE_URL` (que ya es RDS en `.env.local`).
+
 ```bash
 node -e "
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({path:'.env.local'});
-const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const pgMod = require('/home/manuel/Documentos/github/vence/node_modules/postgres');
+const postgres = pgMod.default || pgMod;
+require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({path:'/home/manuel/Documentos/github/vence/.env.local'});
+const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 (async()=>{
-  const since = new Date(Date.now()-24*3600*1000).toISOString();
-  const { data } = await s.from('observable_events').select('event_type,severity').gte('ts',since).in('severity',['critical','error','warning']);
-  const by={}; (data||[]).forEach(x=>{const k=x.severity+' | '+x.event_type; by[k]=(by[k]||0)+1;});
-  console.log('alertas 24h:', data?.length);
-  Object.entries(by).sort((a,b)=>b[1]-a[1]).forEach(([k,n])=>console.log('  '+String(n).padStart(4)+'  '+k));
+  const rows = await sql\`SELECT severity, event_type, count(*)::int n FROM observable_events WHERE ts >= NOW()-INTERVAL '24 hours' AND severity IN ('critical','error','warn') GROUP BY 1,2 ORDER BY 3 DESC\`;
+  const total = rows.reduce((a,r)=>a+r.n,0);
+  console.log('alertas 24h:', total);
+  rows.forEach(r=>console.log('  '+String(r.n).padStart(4)+'  '+r.severity+' | '+r.event_type));
+  await sql.end();
 })();
 "
 ```
@@ -204,6 +212,38 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 
 Reportar el output al usuario. Si veredicto es rojo o ámbar, ir a sección 2.
 
+### 1.ter — Errores de CLIENTE + catch-all (RDS) — OBLIGATORIO (añadido 05/07/2026)
+
+El bloque anterior solo ve **5xx de servidor**. Desde que la captura de errores de cliente es 100% in-house (Sentry retirado), hay que mirar SIEMPRE el **dolor real del usuario** — el servidor puede decir "0 5xx" mientras los clientes sufren (p.ej. **502 de edge** que el servidor no registra). Ejecutar y reportar:
+
+```bash
+node -e "
+const pgMod = require('/home/manuel/Documentos/github/vence/node_modules/postgres');
+const postgres = pgMod.default || pgMod;
+require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({path:'/home/manuel/Documentos/github/vence/.env.local'});
+const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
+const BENIGN = new Set(['request_completed','auth','forbidden','rate_limit','scraping_challenge_shown','scraping_force_challenge_set','react_hydration_mismatch','external_heartbeat_skipped','console_warn','tts_session_end','custom','test_size_shortfall','browser_extension_error']);
+(async () => {
+  const cli = await sql\`SELECT event_type, count(*)::int n, mode() WITHIN GROUP (ORDER BY COALESCE(endpoint,'')) top FROM observable_events WHERE source='frontend' AND severity IN ('error','warn') AND ts >= NOW()-INTERVAL '1 hour' GROUP BY 1 ORDER BY 2 DESC\`;
+  console.log('=== Errores de CLIENTE (1h) — capturados in-house ===');
+  cli.forEach(r=>console.log('  '+String(r.n).padStart(4)+' '+r.event_type+' ['+r.top+']'));
+  const all = await sql\`SELECT source, event_type, count(*)::int n, mode() WITHIN GROUP (ORDER BY COALESCE(endpoint,'')) top FROM observable_events WHERE severity IN ('error','warn') AND ts >= NOW()-INTERVAL '1 hour' GROUP BY 1,2 ORDER BY 3 DESC LIMIT 40\`;
+  const action = all.filter(r=>!BENIGN.has(r.event_type));
+  console.log('\\n=== Señales ACCIONABLES (catch-all, no benignas, 1h) ===');
+  action.forEach(r=>console.log('  '+String(r.n).padStart(4)+' '+r.source+' '+r.event_type+' ['+r.top+']'));
+  const edge = await sql\`SELECT endpoint, metadata->>'status' st, count(*)::int n FROM observable_events WHERE source='frontend' AND event_type='http_5xx' AND ts>=NOW()-INTERVAL '1 hour' GROUP BY 1,2 ORDER BY 3 DESC LIMIT 8\`;
+  if (edge.length) { console.log('\\n=== http_5xx de cliente por endpoint+status ==='); edge.forEach(r=>console.log('  '+String(r.n).padStart(4)+' status='+r.st+' '+r.endpoint)); }
+  await sql.end();
+})();
+"
+```
+
+**Interpretación:**
+- Si dominan **502 en `/api/auth/*`** (o cualquier endpoint) → es el **502 keep-alive del ALB** (ver §3), NO un bug de la app. Verificar que los contenedores tienen el fix (`keepAliveTimeout=65s`).
+- `console_error` alto pero con `topEndpoint` de auth/callback → suele ser ruido de 401 pre-login + Google GSI (ya filtrado a `debug` desde 05/07; si reaparece en `error`, revisar el filtro en `lib/observability/client.ts`).
+- `chunk_load_error` → usuarios en bundle viejo tras deploy (el auto-reload los recupera; si sube mucho, revisar el sync a S3 — ver `docs/runbooks/deploy.md`).
+- Cualquier `unhandled_error` / `react_error_boundary` con volumen → **bug real de cliente**, ir a sección 2 (mirar `error_message` + `metadata.stack`).
+
 **Notas sobre los filtros del verdict** (introducidos 2026-05-23 tras detectar dos falsos positivos; sub-categorización admin/user-facing añadida 2026-06-01):
 
 - Los **errores 5xx** se separan por `deploy_version`. Solo los del deploy actual cuentan para el verdict; los de deploys anteriores son informativos. Sin esto, un incidente histórico (ej. cascada 22/05) infla el indicador durante 24h aunque ya esté resuelto.
@@ -308,6 +348,12 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 ---
 
 ## 3. Incidentes conocidos (referencias rápidas)
+
+**502 keep-alive ALB↔Node (2026-07-05, FIX aplicado)** — 502 Bad Gateway intermitentes y **continuos** (no solo en deploys), peor en `/api/auth/token` (el más polleado). El **servidor registra 0 5xx** (la app responde en ~4ms) → error de EDGE, invisible en el panel server-céntrico hasta que la captura de cliente in-house lo destapó (`http_5xx` status=502, source=frontend). **Causa:** ALB `idle_timeout=60s` pero Node cierra las conexiones keep-alive ociosas a los **5s** (default) → el ALB reutiliza una conexión que Node ya cerró → 502. **Fix:** `keepAliveTimeout=65s` (> 60s) + `headersTimeout=66s` — frontend vía `docker/server-keepalive.cjs`, backend vía `main.ts`. **Diagnóstico:** mirar el bloque 1.ter → si `http_5xx` de cliente = status 502 → esto. **Detalle:** `docs/runbooks/deploy.md` §502.
+
+**pooler_instance_unreachable (2026-07-04 16:35–19:56, resuelto)** — 202 eventos `error` de la pooler no alcanzable en una ventana de ~3.3h la tarde del 04/07. NO reapareció después. Si vuelve: mirar salud de la(s) VM(s) del pooler self-hosted (HA 2 AZs + NLB) y la conectividad Fargate→pooler. No confundir con el pool de la app.
+
+**App CONGELADA al desplegar / ChunkLoadError (2026-07-05, FIX aplicado)** — usuarios (Nila) con la app congelada tras un deploy. Chunks `_next/static` servidos del contenedor efímero → 404 tras deploy → ChunkLoadError sin manejo. **Fix:** assets en S3 con retención + CloudFront origin-group + auto-reload de cliente. Señal en el panel: `chunk_load_error`. Detalle: memoria `project_deploy_freeze_chunks_s3` + `docs/runbooks/deploy.md`.
 
 **Cascada statement_timeout (2026-05-22)** — afectó `/api/stats`, `/api/v2/difficulty-insights`, theme counts, `/teoria`. Pool sano pero queries lentas saturando lambdas. Mitigado con cache Redis + stale-if-error + `withDbTimeout`. Fix de fondo: materializar agregaciones — ver `docs/ARCHITECTURE_ROADMAP.md` sección "Tech debt CRÍTICO: queries no-escalables".
 
