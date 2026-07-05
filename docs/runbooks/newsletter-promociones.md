@@ -51,6 +51,8 @@ Dos fuentes se unen:
 
 Filtrar SIEMPRE por consentimiento: `email_preferences.unsubscribed_all = false` y `email_newsletter_disabled = false`, y `email` no vacío.
 
+> **🔒 Garantía anti-desuscritos (por diseño):** el filtro de consentimiento va **hardcoded en el `WHERE`** de la query de audiencia del script `send-promo-inscripcion.cjs` — **NO es un parámetro del config**, así que **ninguna ejecución puede saltárselo** aunque el `promo.json` esté mal. Excluye tanto la **baja total** (`unsubscribed_all`) como la **baja solo de newsletter** (`email_newsletter_disabled`). Quien se da de baja desaparece automáticamente del siguiente envío (verificado E2E). Nota: quien **no tiene fila** en `email_preferences` SÍ recibe — es correcto: "sin fila" = nunca se dio de baja (`COALESCE(...,false)` lo trata como suscrito). **Es imposible enviar a un desuscrito con este script.**
+
 ### 2.0 ELEGIR EL ALCANCE correcto (¡decisión previa, no acotar de menos!)
 > **Aprendizaje 05/07 (fallo real en León):** acoté el envío a la **provincia** de León cuando el puesto (Universidad de León) lo puede opositar **toda la comunidad autónoma** → se quedó fuera medio Castilla y León y hubo que hacer un envío make-up. **Regla:** el alcance por defecto de una oposición es **su comunidad autónoma completa**, no solo la provincia.
 - **Autonómico / universidad / estatal en una CCAA** → toda la **comunidad autónoma** (todas sus provincias).
