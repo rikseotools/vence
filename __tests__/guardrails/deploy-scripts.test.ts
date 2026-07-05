@@ -1,0 +1,70 @@
+/**
+ * Guardrail: los scripts de deploy no deben perder los pasos críticos que
+ * evitan romper producción. En concreto, el sync de assets a S3 con RETENCIÓN
+ * (sin --delete) es lo que impide el congelamiento de la app tras un deploy
+ * (ChunkLoadError por chunks viejos 404). Ver memoria project_deploy_freeze_chunks_s3.
+ *
+ * Si alguien edita el deploy y quita el sync a S3, este test falla ANTES de que
+ * un deploy vuelva a congelar usuarios.
+ */
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+const ROOT = join(__dirname, '..', '..')
+const frontend = readFileSync(join(ROOT, 'scripts/deploy-frontend.sh'), 'utf-8')
+const backend = readFileSync(join(ROOT, 'scripts/deploy-backend.sh'), 'utf-8')
+
+describe('deploy-frontend.sh — no perder el fix del congelamiento (assets en S3)', () => {
+  it('sincroniza _next/static a S3', () => {
+    expect(frontend).toMatch(/aws s3 sync/)
+    expect(frontend).toMatch(/_next\/static/)
+    expect(frontend).toMatch(/vence-frontend-static/)
+  })
+
+  it('los assets son inmutables (cache-control de 1 año)', () => {
+    expect(frontend).toMatch(/cache-control\s+["']?public,\s*max-age=31536000,\s*immutable/)
+  })
+
+  it('NUNCA usa --delete en el sync (retención: los chunks viejos deben persistir)', () => {
+    // Buscamos --delete SOLO en las líneas del sync a S3 (no en otras).
+    const syncLines = frontend
+      .split('\n')
+      .filter((l) => l.includes('s3 sync') || (l.includes('--') && l.includes('cache-control')))
+    for (const l of syncLines) expect(l).not.toMatch(/--delete/)
+    // Doble check: el bucket de assets nunca aparece junto a --delete.
+    expect(frontend).not.toMatch(/vence-frontend-static[\s\S]{0,200}--delete/)
+  })
+
+  it('verifica que el chunk llegó a S3 (self-check que aborta si el sync falla)', () => {
+    expect(frontend).toMatch(/head-object/)
+    expect(frontend).toMatch(/ABORTO el deploy/)
+  })
+
+  it('el smoke comprueba que un chunk carga vía CloudFront', () => {
+    expect(frontend).toMatch(/_next\/static\/chunks/)
+    expect(frontend).toMatch(/CHUNK_CODE/)
+  })
+})
+
+describe('deploy-backend.sh — deploy repetible y verificado (no ad-hoc)', () => {
+  it('existe y hace build + push + update-service', () => {
+    expect(backend).toMatch(/podman build/)
+    expect(backend).toMatch(/ecr get-login-password/)
+    expect(backend).toMatch(/ecs update-service/)
+  })
+
+  it('pinea la imagen por digest (inmutable, no :latest a ciegas)', () => {
+    expect(backend).toMatch(/imageDigest/)
+    expect(backend).toMatch(/REG.*@.*DIGEST|IMG_DIGEST/)
+  })
+
+  it('espera estabilidad y hace smoke a /health', () => {
+    expect(backend).toMatch(/wait services-stable/)
+    expect(backend).toMatch(/\/health/)
+    expect(backend).toMatch(/HEALTH_CODE.*200|"200"/)
+  })
+
+  it('documenta el rollback', () => {
+    expect(backend).toMatch(/[Rr]ollback/)
+  })
+})

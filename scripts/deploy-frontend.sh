@@ -30,7 +30,6 @@ echo "→ [1/6] build ${IMG} (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)"
 podman build \
   --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-  --build-arg NEXT_PUBLIC_SENTRY_DSN="${NEXT_PUBLIC_SENTRY_DSN:-}" \
   --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID="$NEXT_PUBLIC_GOOGLE_CLIENT_ID" \
   --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" \
   --build-arg NEXT_PUBLIC_STRIPE_PRICE_MONTHLY="$NEXT_PUBLIC_STRIPE_PRICE_MONTHLY" \
@@ -70,8 +69,15 @@ aws s3 sync "${_staticdir}/static" "s3://${S3_STATIC_BUCKET}/_next/static" \
   --profile $P --region $R \
   --cache-control "public,max-age=31536000,immutable" \
   --no-progress | tail -2
+# GUARDRAIL: un chunk de ESTE build DEBE estar en S3. Si el sync falló, ABORTAR
+# el deploy (mejor no desplegar que congelar usuarios con chunks 404 después).
+_probe=$(find "${_staticdir}/static/chunks" -name '*.js' 2>/dev/null | head -1)
+_probekey="_next/static/${_probe#${_staticdir}/static/}"
+if ! aws s3api head-object --bucket "$S3_STATIC_BUCKET" --key "$_probekey" --profile $P --region $R >/dev/null 2>&1; then
+  echo "   ❌ chunk NO llegó a S3 (sync roto) — ABORTO el deploy"; rm -rf "$_staticdir"; exit 1
+fi
 rm -rf "$_staticdir"
-echo "   ✅ assets en S3 (retención)"
+echo "   ✅ assets en S3 (retención) + verificado"
 
 echo "→ [3/6] resolver digest (imagen pineada, inmutable)"
 DIGEST=$(aws ecr describe-images --repository-name vence-frontend --image-ids imageTag="$TAG" --profile $P --region $R --query 'imageDetails[0].imageDigest' --output text)
@@ -104,6 +110,14 @@ HOME_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/)
 TOKEN_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/api/auth/token)
 echo "   home=$HOME_CODE  /api/auth/token(sin sesión)=$TOKEN_CODE"
 [ "$HOME_CODE" = "200" ] && [ "$TOKEN_CODE" = "401" ] || { echo "   ⚠️ smoke inesperado — revisar"; exit 1; }
+# Assets: un chunk referenciado por la home viva debe cargar 200 vía CloudFront
+# (detecta rotura del origin group S3/ALB o del pipeline de assets).
+CHUNK=$(curl -s https://www.vence.es/ | grep -oE '/_next/static/chunks/[^"]+\.js' | head -1)
+if [ -n "$CHUNK" ]; then
+  CHUNK_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://www.vence.es${CHUNK}")
+  echo "   asset ${CHUNK}=$CHUNK_CODE"
+  [ "$CHUNK_CODE" = "200" ] || { echo "   ⚠️ chunk no carga vía CloudFront — revisar origin group / assets"; exit 1; }
+fi
 echo ""
 echo "✅ DEPLOY OK — $NEWTD"
 echo "   Gate de auth (recomendado): node scripts/fase-b-auth-surfaces-check.cjs"
