@@ -247,13 +247,13 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
 
       console.log('🔍 Marcando como leída:', { notificationId, userId: user.id, isPsychometric })
 
-      // Usar API con service role para bypasear RLS
+      // Endpoint server-side agnóstico (Drizzle/RDS); el userId lo deriva del token.
+      const authHeaders = await getAuthHeaders()
       const response = await fetch('/api/dispute/mark-read', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           disputeId: notificationId,
-          userId: user.id,
           isPsychometric
         })
       })

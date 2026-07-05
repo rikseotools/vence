@@ -408,19 +408,20 @@ function SoporteContent() {
 
         if (dispute && !dispute.isRead) {
           // Marcar leída vía endpoint server-side (agnóstico, sin SDK de Supabase).
-          fetch('/api/dispute/mark-read', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ disputeId, userId: user.id, isPsychometric: dispute.isPsychometric }),
-          })
-            .then((res) => {
-              if (res.ok) {
-                setDisputes(prev => prev.map(d =>
-                  d.id === disputeId ? { ...d, isRead: true } : d
-                ))
-              }
+          // El userId lo deriva el endpoint del token → no se envía en el body.
+          ;(async () => {
+            const authHeaders = await getAuthHeaders()
+            const res = await fetch('/api/dispute/mark-read', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...authHeaders },
+              body: JSON.stringify({ disputeId, isPsychometric: dispute.isPsychometric }),
             })
-            .catch(() => {})
+            if (res.ok) {
+              setDisputes(prev => prev.map(d =>
+                d.id === disputeId ? { ...d, isRead: true } : d
+              ))
+            }
+          })().catch(() => {})
         }
 
         setTimeout(() => {

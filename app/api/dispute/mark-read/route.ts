@@ -1,70 +1,60 @@
+// app/api/dispute/mark-read/route.ts
+// Marca una impugnación como leída por su dueño.
+//
+// AGNÓSTICO (05/07): antes usaba `createClient(SERVICE_ROLE)` de Supabase y
+// tomaba el `userId` del BODY (hueco C3). Ahora usa Drizzle/RDS y deriva el
+// userId del TOKEN → imposible marcar como leída la impugnación de otro usuario.
+// El nombre de tabla sale de un ternario fijo (nunca interpolación de input).
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
+import { sql } from 'drizzle-orm'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { getAdminDb } from '@/db/client'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-function getSupabase() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Variables de entorno de Supabase no configuradas')
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
 
 async function _POST(request: NextRequest) {
+  const auth = await verifyAuth(request, '/api/dispute/mark-read')
+  if (!auth.success) {
+    return NextResponse.json({ success: false, error: 'unauthorized' }, { status: auth.status })
+  }
+  const uid = auth.userId
+
+  const body = await request.json().catch(() => ({}))
+  const disputeId = body?.disputeId
+  const isPsychometric = Boolean(body?.isPsychometric)
+
+  if (!disputeId) {
+    return NextResponse.json(
+      { success: false, error: 'disputeId es requerido' },
+      { status: 400 },
+    )
+  }
+
   try {
-    const body = await request.json()
-    const { disputeId, userId, isPsychometric } = body
+    // Ternario con nombres de tabla fijos; el WHERE acota SIEMPRE al token.
+    const res = isPsychometric
+      ? await getAdminDb().execute(sql`
+          UPDATE psychometric_question_disputes SET is_read = true
+          WHERE id = ${disputeId}::uuid AND user_id = ${uid}::uuid
+          RETURNING id`)
+      : await getAdminDb().execute(sql`
+          UPDATE question_disputes SET is_read = true
+          WHERE id = ${disputeId}::uuid AND user_id = ${uid}::uuid
+          RETURNING id`)
 
-    if (!disputeId || !userId) {
-      return NextResponse.json(
-        { success: false, error: 'disputeId y userId son requeridos' },
-        { status: 400 }
-      )
-    }
-
-    const supabase = getSupabase()
-    const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
-
-    console.log(`📖 Marcando disputa como leída:`, { disputeId, userId, isPsychometric, tableName })
-
-    const { data, error } = await supabase
-      .from(tableName)
-      .update({ is_read: true })
-      .eq('id', disputeId)
-      .eq('user_id', userId)
-      .select()
-
-    if (error) {
-      console.error('❌ Error marcando como leída:', error)
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      )
-    }
-
-    if (!data || data.length === 0) {
-      console.warn('⚠️ No se encontró la disputa:', { disputeId, userId, tableName })
+    const rows = Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []
+    if (rows.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Disputa no encontrada' },
-        { status: 404 }
+        { status: 404 },
       )
     }
 
-    console.log(`✅ Disputa marcada como leída:`, disputeId)
-
-    return NextResponse.json({
-      success: true,
-      disputeId,
-      is_read: true
-    })
-
+    return NextResponse.json({ success: true, disputeId, is_read: true })
   } catch (error) {
-    console.error('❌ Error en mark-read:', error)
+    console.error('❌ [dispute/mark-read] Error:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
