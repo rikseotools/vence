@@ -65,13 +65,16 @@ _tmpc=$(podman create "$IMG")
 _staticdir=$(mktemp -d)
 podman cp "${_tmpc}:/app/.next/static" "${_staticdir}/static"
 podman rm "$_tmpc" >/dev/null
+# A fichero (no pipe a tail: con pipefail, tail cerrando el pipe da SIGPIPE/141).
 aws s3 sync "${_staticdir}/static" "s3://${S3_STATIC_BUCKET}/_next/static" \
   --profile $P --region $R \
   --cache-control "public,max-age=31536000,immutable" \
-  --no-progress | tail -2
+  --no-progress > /tmp/vence-s3sync.log 2>&1
+tail -2 /tmp/vence-s3sync.log || true
 # GUARDRAIL: un chunk de ESTE build DEBE estar en S3. Si el sync falló, ABORTAR
 # el deploy (mejor no desplegar que congelar usuarios con chunks 404 después).
-_probe=$(find "${_staticdir}/static/chunks" -name '*.js' 2>/dev/null | head -1)
+# find -print -quit (no pipe a head → sin SIGPIPE bajo pipefail).
+_probe=$(find "${_staticdir}/static/chunks" -name '*.js' -print -quit 2>/dev/null)
 _probekey="_next/static/${_probe#${_staticdir}/static/}"
 if ! aws s3api head-object --bucket "$S3_STATIC_BUCKET" --key "$_probekey" --profile $P --region $R >/dev/null 2>&1; then
   echo "   ❌ chunk NO llegó a S3 (sync roto) — ABORTO el deploy"; rm -rf "$_staticdir"; exit 1
@@ -112,7 +115,7 @@ echo "   home=$HOME_CODE  /api/auth/token(sin sesión)=$TOKEN_CODE"
 [ "$HOME_CODE" = "200" ] && [ "$TOKEN_CODE" = "401" ] || { echo "   ⚠️ smoke inesperado — revisar"; exit 1; }
 # Assets: un chunk referenciado por la home viva debe cargar 200 vía CloudFront
 # (detecta rotura del origin group S3/ALB o del pipeline de assets).
-CHUNK=$(curl -s https://www.vence.es/ | grep -oE '/_next/static/chunks/[^"]+\.js' | head -1)
+CHUNK=$(curl -s https://www.vence.es/ | grep -oE '/_next/static/chunks/[^"]+\.js' | head -1 || true)
 if [ -n "$CHUNK" ]; then
   CHUNK_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://www.vence.es${CHUNK}")
   echo "   asset ${CHUNK}=$CHUNK_CODE"
