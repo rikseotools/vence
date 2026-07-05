@@ -1206,6 +1206,40 @@ export const RULE_CANARY_ANSWER_SAVE_FAILED: AlertRule<{
 };
 
 /**
+ * Canary sintético EXTERNO fallido — 2026-07-05. Check desde fuera (home por
+ * CloudFront + chunk de assets + backend health). Caza lo que los canarios
+ * internos no ven: assets/S3/CloudFront rotos (clase ChunkLoadError/app congelada),
+ * home no renderiza, o edge caído — pase lo que pase el tráfico (proactivo).
+ */
+export const RULE_CANARY_SYNTHETIC_EXTERNAL_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+}> = {
+  name: 'canary_synthetic_external_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'canary_synthetic_external_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary sintético EXTERNO FALLÓ (${r.n} en 10 min) — la app puede estar rota para usuarios reales`,
+      body: `El check externo (desde fuera, por CloudFront) falló. Esto ve lo que los canarios internos NO: assets/CDN, render de la home, edge.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES SEGÚN STEP:\n  - home / home_no_chunk: la home no carga o no renderiza (SSR/contenedor frontend roto). Ver /admin/infraestructura + logs ECS vence-frontend.\n  - assets: un chunk _next/static da != 200 → S3/CloudFront/origin-group roto = CLASE "app congelada / ChunkLoadError". Ver docs/runbooks/deploy.md (assets en S3).\n  - backend_health: api.vence.es/health != 200 → backend caído. Ver ECS vence-backend.\n  - exception: el propio egress falló (NAT/DNS) o timeout.`,
+      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: 10 },
+      fingerprint: 'canary_synthetic_external_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Canary database pool failed — `SELECT 1` con timeout 1s falla.
  * Significa saturación PgBouncer / max_connections agotados / BD caída.
  * Imposible cubrir en CI (es runtime puro bajo carga real).
@@ -2698,6 +2732,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CANARY_WEBHOOK_FAILED as AlertRule,
   // Canary endpoint más caliente (2026-05-27, POST /api/v2/answer-and-save)
   RULE_CANARY_ANSWER_SAVE_FAILED as AlertRule,
+  RULE_CANARY_SYNTHETIC_EXTERNAL_FAILED as AlertRule,
   // Canarios de INFRA externa (Sprint 5, 27/05/2026) — únicos no duplicados con CI
   RULE_CANARY_DB_POOL_FAILED as AlertRule,
   RULE_CANARY_REDIS_FAILED as AlertRule,
