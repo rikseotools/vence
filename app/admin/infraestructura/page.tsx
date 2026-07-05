@@ -39,6 +39,8 @@ interface SystemHealth {
     hydration_mismatch: { status: Status; count: number | null; samples: Array<{ endpoint: string; created_at: string }>; thresholds: { amber: number; red: number } }
     request_latency: { status: Status; p50_ms: number | null; p95_ms: number | null; p99_ms: number | null; sampleCount: number; thresholds: { amber: number; red: number } }
     traffic_volume: { status: Status; count: number | null; thresholds: { amber: string; red: string }; note: string }
+    client_errors: { status: Status; count: number; breakdown: Array<{ source: string; eventType: string; severity: string; count: number; topEndpoint: string | null }>; thresholds: { amber: string; red: string }; note: string }
+    error_signals: { status: Status; signals: Array<{ source: string; eventType: string; severity: string; count: number; topEndpoint: string | null; benign: boolean }>; actionableCount: number; thresholds: { amber: string; red: string }; note: string }
   }
 }
 
@@ -176,6 +178,8 @@ export default function InfraestructuraOverviewPage() {
       ind.hydration_mismatch.status,
       ind.request_latency.status,
       ind.traffic_volume.status,
+      ind.client_errors.status,
+      ind.error_signals.status,
     ]
     if (all.includes('red')) return 'red'
     if (all.includes('amber')) return 'amber'
@@ -364,6 +368,74 @@ export default function InfraestructuraOverviewPage() {
                 </span>
               }
             />
+          </div>
+
+          {/* ─── Errores de CLIENTE (in-house) ─── */}
+          <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2 mt-4">
+            🖥️ Errores de cliente (in-house)
+          </h2>
+          <div className="grid grid-cols-1 gap-3 mb-6">
+            <Card
+              title={`Errores de cliente (window ${windowKey})`}
+              status={ind.client_errors.status}
+              value={String(ind.client_errors.count)}
+              hint={`Ámbar ${ind.client_errors.thresholds.amber} · rojo ${ind.client_errors.thresholds.red} — ${ind.client_errors.note}`}
+              detail={
+                ind.client_errors.breakdown.length > 0 ? (
+                  <span className="text-xs">
+                    {ind.client_errors.breakdown
+                      .sort((a, b) => b.count - a.count)
+                      .map((b) => `${b.eventType}:${b.count}${b.topEndpoint ? ` (${b.topEndpoint})` : ''}`)
+                      .join(' · ')}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-500">Sin errores de cliente en la ventana ✅</span>
+                )
+              }
+            />
+          </div>
+
+          {/* ─── CATCH-ALL: todas las señales error/warn (sin gaps por diseño) ─── */}
+          <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2 mt-4">
+            🧯 Todas las señales error/warn — sin gaps ({ind.error_signals.actionableCount} accionables)
+          </h2>
+          <div className="mb-6 overflow-x-auto rounded border border-gray-200">
+            <table className="min-w-full text-xs">
+              <thead className="bg-gray-50 text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 text-left">source</th>
+                  <th className="px-3 py-2 text-left">event_type</th>
+                  <th className="px-3 py-2 text-left">sev</th>
+                  <th className="px-3 py-2 text-right">count</th>
+                  <th className="px-3 py-2 text-left">top endpoint</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ind.error_signals.signals.map((s, i) => (
+                  <tr
+                    key={i}
+                    className={
+                      s.benign
+                        ? 'text-gray-400'
+                        : s.count >= 100
+                          ? 'bg-red-50 text-red-800 font-medium'
+                          : s.count >= 20
+                            ? 'bg-amber-50 text-amber-800'
+                            : 'text-gray-700'
+                    }
+                  >
+                    <td className="px-3 py-1.5">{s.source}</td>
+                    <td className="px-3 py-1.5 font-mono">
+                      {s.eventType}
+                      {s.benign && <span className="ml-1 text-[10px] text-gray-400">(benigno)</span>}
+                    </td>
+                    <td className="px-3 py-1.5">{s.severity}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{s.count}</td>
+                    <td className="px-3 py-1.5 truncate max-w-[220px]">{s.topEndpoint ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* ─── Volumen tráfico (full width) ─── */}

@@ -234,6 +234,7 @@ async function _GET(request: NextRequest) {
     examIntegrityResult,
     examIntegrityCronErrorResult,
     cacheCanaryResult,
+    errorSignalsResult,
   ] = await Promise.all([
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
@@ -446,6 +447,26 @@ async function _GET(request: NextRequest) {
       `)) as any[]
       return { data: rows, count: rows.length }
     }),
+
+    // 14) CATCH-ALL: TODA señal error/warn de observable_events, agrupada por
+    // source+event_type. Garantía "sin gaps por diseño": cualquier evento
+    // capturado se muestra en el panel, incluidos tipos FUTUROS (no hay que
+    // añadir una tarjeta por cada uno). Los benignos conocidos se marcan aparte
+    // (no ensucian el semáforo). Cierra el gap 2026-07-05: la captura in-house
+    // de cliente (unhandled_error, http_5xx, http_network_error, chunk_load_error…)
+    // se capturaba pero NO se mostraba.
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT source, event_type, severity, count(*)::int AS n,
+               mode() WITHIN GROUP (ORDER BY COALESCE(endpoint, '')) AS top_endpoint
+        FROM observable_events
+        WHERE severity IN ('error', 'warn') AND created_at >= ${since}
+        GROUP BY source, event_type, severity
+        ORDER BY n DESC
+        LIMIT 100
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
@@ -620,6 +641,47 @@ async function _GET(request: NextRequest) {
     ? (examIntegrityEvents[0] as { metadata?: Record<string, unknown>; created_at?: string })
     : null
 
+  // ─── Catch-all: TODA señal error/warn (garantía "sin gaps por diseño") ───
+  // Benignos conocidos = esperados/ruido → se LISTAN igual (nada oculto) pero NO
+  // cuentan para el semáforo. Los que ya tienen tarjeta propia también se marcan.
+  const BENIGN_SIGNALS = new Set<string>([
+    'request_completed', 'auth', 'forbidden', 'rate_limit',
+    'scraping_challenge_shown', 'scraping_force_challenge_set',
+    'react_hydration_mismatch', 'external_heartbeat_skipped',
+    'console_warn', 'tts_session_end', 'custom', 'test_size_shortfall',
+    'browser_extension_error',
+  ])
+  const errorSignalsRows = (errorSignalsResult.error ? [] : (errorSignalsResult.data ?? [])) as Array<{
+    source: string; event_type: string; severity: string; n: number; top_endpoint: string | null
+  }>
+  const errorSignals = errorSignalsRows.map((r) => ({
+    source: r.source,
+    eventType: r.event_type,
+    severity: r.severity,
+    count: Number(r.n),
+    topEndpoint: r.top_endpoint || null,
+    benign: BENIGN_SIGNALS.has(r.event_type),
+  }))
+  const actionableSignals = errorSignals.filter((s) => !s.benign)
+  const worstSignalCount = actionableSignals.reduce((m, s) => Math.max(m, s.count), 0)
+  const errorSignalsStatus = errorSignalsResult.error
+    ? 'unknown'
+    : worstSignalCount >= 100 ? 'red' : worstSignalCount >= 20 ? 'amber' : 'green'
+
+  // Errores de CLIENTE (subconjunto frontend) — el gap que motivó esto: la
+  // captura in-house se emitía pero el panel no la mostraba.
+  const CLIENT_ERROR_TYPES = new Set<string>([
+    'unhandled_error', 'unhandled_rejection', 'react_error_boundary', 'client_error',
+    'http_5xx', 'http_4xx', 'http_network_error', 'chunk_load_error',
+  ])
+  const clientErrorRows = errorSignals.filter(
+    (s) => s.source === 'frontend' && CLIENT_ERROR_TYPES.has(s.eventType),
+  )
+  const clientErrorTotal = clientErrorRows.reduce((a, s) => a + s.count, 0)
+  const clientErrorsStatus = errorSignalsResult.error
+    ? 'unknown'
+    : clientErrorTotal >= 500 ? 'red' : clientErrorTotal >= 100 ? 'amber' : 'green'
+
   return NextResponse.json({
     success: true,
     generatedAt: new Date().toISOString(),
@@ -770,6 +832,24 @@ async function _GET(request: NextRequest) {
         count: trafficCount,
         thresholds: { amber: `≤${TRAFFIC_MIN_AMBER} eventos`, red: `≤${TRAFFIC_MIN_RED} eventos` },
         note: 'Sanity check del sink de observability. Caída drástica vs baseline = sink roto, no caída de tráfico real.',
+      },
+
+      // ─── ERRORES DE CLIENTE (in-house, 2026-07-05 — antes iban a Sentry muerto) ───
+      client_errors: {
+        status: clientErrorsStatus,
+        count: clientErrorTotal,
+        breakdown: clientErrorRows,
+        thresholds: { amber: '≥100', red: '≥500' },
+        note: 'Errores de CLIENTE capturados in-house: JS no capturado, promesas rechazadas, error boundaries, fetch 5xx/4xx/red del navegador, chunk load. El panel es server-céntrico; esto surface el dolor real del usuario.',
+      },
+
+      // ─── CATCH-ALL: TODA señal error/warn (sin gaps por diseño) ───
+      error_signals: {
+        status: errorSignalsStatus,
+        signals: errorSignals,
+        actionableCount: actionableSignals.length,
+        thresholds: { amber: '≥20 de un tipo no-benigno', red: '≥100' },
+        note: 'Toda señal error/warn de observable_events, agrupada. Garantía por diseño: cualquier evento capturado (incl. tipos futuros) se muestra aquí. Los benignos (esperados: auth, forbidden, scraping…) se marcan y no cuentan.',
       },
     },
   })

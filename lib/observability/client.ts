@@ -295,8 +295,13 @@ function installConsoleCapture(): void {
         const msg = args
           .map((a) => (a instanceof Error ? a.stack || a.message : typeof a === 'string' ? a : safeStringify(a)))
           .join(' ')
+        // Ruido conocido (se SIGUE trackeando en debug, pero no cuenta como error):
+        //  - Google Sign-In FedCM (widget de terceros, no es bug nuestro)
+        //  - 401 esperados pre-login (componentes que fetchean antes de auth;
+        //    coherente con isExpectedStatus del wrapper de fetch)
+        const isNoise = /\[GSI_LOGGER\]|FedCM|\b401\b|HTTP 401/i.test(msg)
         pushEvent({
-          severity: level === 'error' ? 'error' : 'warn',
+          severity: isNoise ? 'debug' : level === 'error' ? 'error' : 'warn',
           eventType: level === 'error' ? 'console_error' : 'console_warn',
           errorMessage: msg,
         })
