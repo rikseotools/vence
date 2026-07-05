@@ -252,6 +252,40 @@ export function ccaaAliases(ccaa?: string | null): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Organismo: agencia/entidad instrumental vs administración general
+// ---------------------------------------------------------------------------
+
+// Un organismo INSTRUMENTAL (agencia, instituto, consorcio, servicio autónomo…)
+// suele tener su PROPIO cuerpo/escala, distinto del cuerpo general de la CCAA.
+// P.ej. "Agencia Tributaria Canaria" ≠ Cuerpo General Administrativo de Canarias.
+const AGENCY_MARKER =
+  /\b(agencia|instituto|consorci|consorcio|ente publico|organismo autonomo|fundacion|cartografic|geologic|servicio (murciano|canario|balear|gallego|vasco|andaluz|riojano|extremeno|aragones|madrileno|catalan|navarro))\b/;
+
+// Palabras de administración GENÉRICA: no distinguen un organismo de otro.
+const GENERIC_ADMIN = new Set([
+  'administracion', 'general', 'gobierno', 'comunidad', 'autonoma', 'autonomica',
+  'consejeria', 'conselleria', 'departamento', 'direccion', 'funcion', 'publica',
+  'publico', 'presidencia', 'gabinete', 'portavocia', 'digital', 'region',
+  'provincial', 'excmo', 'excma', 'govern', 'junta', 'principado',
+]);
+
+function isAgencyOrg(organismo?: string | null): boolean {
+  return AGENCY_MARKER.test(normalize(organismo ?? ''));
+}
+
+/** Tokens DISTINTIVOS del organismo (sin CCAA ni palabras genéricas de admin). */
+function orgContentTokens(organismo?: string | null, ccaa?: string | null): string[] {
+  const ccaaToks = new Set(ccaaAliases(ccaa).flatMap((a) => a.split(' ')));
+  return normalize(organismo ?? '')
+    .split(' ')
+    .filter((t) => t.length > 3 && !GENERIC_ADMIN.has(t) && !ccaaToks.has(t) && !STOP.has(t));
+}
+
+function candTokenSet(o: OposicionCandidate): Set<string> {
+  return new Set(normalize(`${o.slug ?? ''} ${o.nombre ?? ''} ${o.administracion ?? ''}`).split(' '));
+}
+
+// ---------------------------------------------------------------------------
 // Scoring
 // ---------------------------------------------------------------------------
 
@@ -272,6 +306,75 @@ function placesIntersect(a: string[], b: string[]): boolean {
   return a.some((t) => setB.has(t));
 }
 
+/** Tokens de un texto sin stopwords (para comparar el cuerpo con el slug). */
+function tokensNoStop(s: string): string[] {
+  return normalize(s).split(' ').filter((t) => t && !STOP.has(t));
+}
+
+/** ¿`needle` aparece como subsecuencia CONTIGUA de tokens dentro de `hay`? */
+function isContiguousSubseq(hay: string[], needle: string[]): boolean {
+  if (needle.length === 0) return false;
+  for (let i = 0; i + needle.length <= hay.length; i++) {
+    let ok = true;
+    for (let j = 0; j < needle.length; j++) {
+      if (hay[i + j] !== needle[j]) { ok = false; break; }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
+/**
+ * FALLBACK sin familia (gap2): el cuerpo detectado casa una oposición si su
+ * nombre aparece literal (tokens contiguos) en el slug/nombre de la candidata.
+ * Alta precisión: exige que el cuerpo no sea trivialmente corto y que aparezca
+ * como bloque contiguo → "Escala Básica de Apoyo a la Docencia" casa su fila,
+ * "Escala Técnica" NO casa la de "Escala Básica".
+ */
+function cuerpoNameMatch(cuerpo: string, o: OposicionCandidate): boolean {
+  const needle = tokensNoStop(cuerpo);
+  if (needle.length === 0 || needle.join('').length < 8) return false; // demasiado corto/ambiguo
+  const hay = tokensNoStop(`${o.slug ?? ''} ${o.nombre ?? ''}`);
+  return isContiguousSubseq(hay, needle);
+}
+
+/**
+ * ¿Casan la entidad y el nivel de administración de `d` y `o`? Comparte lógica
+ * entre el camino por-familia y el fallback por-nombre.
+ *
+ * Autonómico: casa si la CCAA aparece en el slug **o** los tokens del organismo
+ * solapan (≥2) con la candidata (cubre catalogadas nombradas por su consejería,
+ * cuyo slug no lleva la región). Si el organismo es una AGENCIA instrumental,
+ * solo casa la candidata que refleja esa agencia (evita clavar el cuerpo general).
+ */
+function entityMatches(
+  d: DetectedOep,
+  o: OposicionCandidate,
+  sd: { scope: AdminScope; place: string[] },
+  so: { scope: AdminScope; place: string[] },
+): boolean {
+  if (sd.scope !== so.scope) return false;
+  switch (sd.scope) {
+    case 'national':
+      return true;
+    case 'autonomic': {
+      const slugN = normalize(o.slug ?? '');
+      const ccaaInSlug = ccaaAliases(d.ccaa).some((al) => slugN.includes(al));
+      const cand = candTokenSet(o);
+      const shared = orgContentTokens(d.organismo, d.ccaa).filter((t) => cand.has(t));
+      if (isAgencyOrg(d.organismo)) return shared.length >= 1; // solo la fila de esa agencia
+      return ccaaInSlug || shared.length >= 2;
+    }
+    case 'local-ayto':
+    case 'local-dip':
+    case 'local-consell':
+    case 'university':
+      return placesIntersect(sd.place, so.place);
+    default:
+      return false;
+  }
+}
+
 /**
  * ¿Casa la convocatoria detectada `d` con la oposición `o`? Pura.
  */
@@ -283,52 +386,40 @@ export function scoreMatch(d: DetectedOep, o: OposicionCandidate): MatchResult {
     reason,
   });
 
-  // 1) Familia (clasificada SOLO desde el cuerpo, nunca el organismo).
-  const famD = classifyFamily(d.cuerpo);
-  if (!famD) return no(`cuerpo "${d.cuerpo}" sin familia modelada`);
-  const famO = classifyFamily(`${o.slug ?? ''} ${o.shortName ?? ''}`);
-  if (!famO) return no(`oposicion ${o.slug} sin familia`);
-  if (famD !== famO) return no(`familia distinta (${famD} vs ${famO})`);
-
-  // 2) Grupo C1/C2 compatible.
+  // 1) Grupo C1/C2 compatible.
   if (!groupCompatible(d.grupo, o.subgrupo))
     return no(`grupo incompatible (${d.grupo} vs ${o.subgrupo})`);
 
-  // 3) Nivel de administración + entidad.
+  // 2) Nivel de administración + entidad (organismo/región).
   const sd = detectedScope(d.admin, d.organismo);
   const so = oposicionScope(o.slug, o.administracion);
-  if (sd.scope !== so.scope)
-    return no(`scope distinto (${sd.scope} vs ${so.scope})`);
+  if (!entityMatches(d, o, sd, so))
+    return no(`entidad/scope distinta (${sd.scope} vs ${so.scope})`);
 
-  switch (sd.scope) {
-    case 'national':
-      break; // familia + nacional basta
-    case 'autonomic': {
-      const aliases = ccaaAliases(d.ccaa);
-      const slugN = normalize(o.slug ?? '');
-      if (!aliases.some((al) => slugN.includes(al)))
-        return no(`region ${d.ccaa} no aparece en slug ${o.slug}`);
-      break;
-    }
-    case 'local-ayto':
-    case 'local-dip':
-    case 'local-consell':
-    case 'university':
-      if (!placesIntersect(sd.place, so.place))
-        return no(
-          `entidad distinta (${sd.place.join('+') || '∅'} vs ${so.place.join('+') || '∅'})`,
-        );
-      break;
-    default:
-      return no(`scope no casable (${sd.scope})`);
+  // 3) Cuerpo: por FAMILIA modelada, o FALLBACK por nombre (gap2).
+  const famD = classifyFamily(d.cuerpo);
+  if (famD) {
+    const famO = classifyFamily(`${o.slug ?? ''} ${o.shortName ?? ''}`);
+    if (!famO) return no(`oposicion ${o.slug} sin familia`);
+    if (famD !== famO) return no(`familia distinta (${famD} vs ${famO})`);
+    return {
+      matched: true,
+      oposicionId: o.id,
+      oposicionNombre: o.nombre,
+      reason: `familia ${famD} · ${sd.scope}${sd.place.length ? ' ' + sd.place.join('+') : ''}`,
+    };
   }
 
-  return {
-    matched: true,
-    oposicionId: o.id,
-    oposicionNombre: o.nombre,
-    reason: `${famD} · ${sd.scope}${sd.place.length ? ' ' + sd.place.join('+') : ''}`,
-  };
+  // Sin familia modelada → intentar casar por nombre del cuerpo.
+  if (cuerpoNameMatch(d.cuerpo, o)) {
+    return {
+      matched: true,
+      oposicionId: o.id,
+      oposicionNombre: o.nombre,
+      reason: `nombre "${d.cuerpo}" · ${sd.scope}${sd.place.length ? ' ' + sd.place.join('+') : ''}`,
+    };
+  }
+  return no(`cuerpo "${d.cuerpo}" sin familia y no casa el nombre de ${o.slug}`);
 }
 
 /**

@@ -26,6 +26,14 @@ const CATALOG: OposicionCandidate[] = [
   { id: 'gva-c1', nombre: 'Generalitat Valenciana', slug: 'administrativo-gva', shortName: 'Admin. GVA', subgrupo: 'C1', administracion: 'autonomica' },
   { id: 'valencia-aux', nombre: 'Comunitat Valenciana', slug: 'auxiliar-administrativo-valencia', shortName: 'Aux. Valencia', subgrupo: 'C2', administracion: 'autonomica' },
   { id: 'guardia-civil', nombre: 'Ministerio del Interior - Guardia Civil', slug: 'guardia-civil', shortName: 'Guardia Civil', subgrupo: 'C1', administracion: 'Ministerio del Interior - Guardia Civil' },
+  // Fila específica de la Agencia Tributaria Canaria (escala propia ≠ Cuerpo General).
+  { id: 'canarias-atc', nombre: 'Agencia Tributaria Canaria', slug: 'administrativo-agencia-tributaria-canaria', shortName: '', subgrupo: 'C1', administracion: 'Agencia Tributaria Canaria' },
+  // Catalogadas SIN familia modelada (gap2) — deben auto-enlazarse por nombre.
+  { id: 'granada-escala', nombre: 'Universidad de Granada', slug: 'escala-basica-de-apoyo-a-la-docencia-y-a-la-investigacion-universidad-de-granada', shortName: '', subgrupo: 'C1', administracion: 'Universidad de Granada' },
+  { id: 'granada-aux-sg', nombre: 'Universidad de Granada', slug: 'auxiliar-de-servicios-generales-universidad-de-granada', shortName: '', subgrupo: 'C2', administracion: 'Universidad de Granada' },
+  { id: 'toledo-archivos', nombre: 'Ayuntamiento de Toledo', slug: 'auxiliar-de-archivos-ayuntamiento-de-toledo', shortName: '', subgrupo: 'C1', administracion: 'local' },
+  // Catalogada nombrada por su consejería (el slug NO lleva la región).
+  { id: 'tecaux-madrid', nombre: 'Técnicos Auxiliares - Consejería de Economía, Hacienda y Empleo', slug: 'tecnicos-auxiliares-consejeria-de-economia-hacienda-y-empleo', shortName: '', subgrupo: 'C1', administracion: 'Consejería de Economía, Hacienda y Empleo' },
 ];
 
 const find = (id: string) => CATALOG.find((o) => o.id === id)!;
@@ -98,9 +106,12 @@ describe('scoreMatch — los 23 casos reales del 26/06', () => {
     expect(pickBestMatch(d, CATALOG).oposicionId).toBe('rioja-c1');
   });
 
-  it('Administrativo Agencia Tributaria Canaria (Autonómica) → administrativo-canarias', () => {
+  it('Administrativo Agencia Tributaria Canaria → administrativo-agencia-tributaria-canaria (NO el Cuerpo General)', () => {
+    // La señal dice cuerpo "ADMINISTRATIVO" pero el organismo es una AGENCIA
+    // instrumental con escala propia → debe casar su fila, jamás el general.
     const d: DetectedOep = { cuerpo: 'ADMINISTRATIVO', grupo: 'C1', admin: 'Autonómica', ccaa: 'Canarias', organismo: 'Agencia Tributaria Canaria' };
-    expect(pickBestMatch(d, CATALOG).oposicionId).toBe('canarias-c1');
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBe('canarias-atc');
+    expect(scoreMatch(d, find('canarias-c1')).matched).toBe(false);
   });
 
   it('Administrativo Universidad de León → administrativo-universidad-leon (no la autonómica) [era doblemente erróneo]', () => {
@@ -161,8 +172,41 @@ describe('guardas anti-falso-positivo', () => {
     expect(pickBestMatch(d, CATALOG).oposicionId).toBe('gva-c1');
   });
 
-  it('detección sin familia nunca casa aunque scope/region coincidan', () => {
+  it('detección sin familia y sin candidata (organismo desconocido) → NOVEL', () => {
     const d: DetectedOep = { cuerpo: 'BOMBERO', grupo: 'C1', admin: 'Autonómica', ccaa: 'La Rioja', organismo: 'x' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBeNull();
+  });
+});
+
+describe('gap2 — fallback por nombre para cuerpos sin familia (05/07)', () => {
+  it('Escala Básica de Apoyo a la Docencia @ Univ. Granada → su fila (auto-enlace)', () => {
+    const d: DetectedOep = { cuerpo: 'ESCALA BÁSICA DE APOYO A LA DOCENCIA Y A LA INVESTIGACIÓN', grupo: 'C1', admin: 'Universidad', ccaa: 'Andalucía', organismo: 'Universidad de Granada' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBe('granada-escala');
+  });
+
+  it('Auxiliar de Servicios Generales @ Univ. Granada → su fila', () => {
+    const d: DetectedOep = { cuerpo: 'AUXILIAR DE SERVICIOS GENERALES', grupo: 'C2', admin: 'Universidad', ccaa: 'Andalucía', organismo: 'Universidad de Granada' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBe('granada-aux-sg');
+  });
+
+  it('Auxiliar de Archivos @ Ayto. Toledo → su fila (local)', () => {
+    const d: DetectedOep = { cuerpo: 'AUXILIAR DE ARCHIVOS', grupo: 'C1', admin: 'Local', ccaa: 'Castilla-La Mancha', organismo: 'Ayuntamiento de Toledo' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBe('toledo-archivos');
+  });
+
+  it('Técnicos Auxiliares @ Consejería (slug sin región) → casa por organismo', () => {
+    const d: DetectedOep = { cuerpo: 'TÉCNICOS AUXILIARES', grupo: 'C1', admin: 'Autonómica', ccaa: 'Madrid', organismo: 'Consejería de Economía, Hacienda y Empleo' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBe('tecaux-madrid');
+  });
+
+  it('Escala Técnica @ Univ. Las Palmas → NOVEL (no sobre-casa la Escala Básica de Granada)', () => {
+    const d: DetectedOep = { cuerpo: 'ESCALA TÉCNICA', grupo: 'C1', admin: 'Universidad', ccaa: 'Canarias', organismo: 'Universidad de Las Palmas de Gran Canaria' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBeNull();
+    expect(scoreMatch(d, find('granada-escala')).matched).toBe(false);
+  });
+
+  it('Técnico Superior @ Instituto Cartográfico (agencia) sin fila propia → NOVEL', () => {
+    const d: DetectedOep = { cuerpo: 'TÉCNICO SUPERIOR', grupo: 'C1', admin: 'Autonómica', ccaa: 'Cataluña', organismo: 'Instituto Cartográfico y Geológico de Cataluña' };
     expect(pickBestMatch(d, CATALOG).oposicionId).toBeNull();
   });
 });
