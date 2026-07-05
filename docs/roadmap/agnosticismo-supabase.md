@@ -502,5 +502,11 @@ return () => {
 ### 👉 SIGUIENTE PASO — seguir con item (1): endpoints admin con `createClient(SERVICE_ROLE)` → Drizzle
 Incremental, un endpoint por vez con el ritual C1 (verificar SQL contra RDS, typecheck, aislamiento por token/admin). Al migrarlos todos → se puede quitar `SUPABASE_SERVICE_ROLE_KEY` del frontend.
 - ✅ `dispute/mark-read` (05/07, `be39d474`, desplegado `:339`).
-- Pendientes no-diferidos: `admin/users/subscriptions` (RPC `get_all_users_with_subscriptions` vía `admin.supabase.rpc` → `getAdminDb().execute`), `admin/email-events`, `admin/conversions/user-journey`, `v2/admin/feedback/{list,mark-viewed,find-user-by-email}`.
+- ✅ **RECONCILIADO 05/07 (tarde):** `v2/admin/feedback/list` y `v2/admin/feedback/find-user-by-email` ya son Drizzle (el doc los listaba como pendientes por error).
+- **Pendientes REALES no-diferidos (grep `createClient`+`SERVICE_ROLE` en `app/api`, 05/07):**
+  - `app/api/admin/email-events/route.ts`
+  - `app/api/admin/newsletters/audience/route.ts` ← **no estaba listado antes (drift cazado 05/07)**
+  - `app/api/v2/admin/feedback/mark-viewed/route.ts`
+  - `admin/conversions/user-journey` y `admin/users/subscriptions` → **verificar**: no usan `createClient(SERVICE_ROLE)` directo (posible `admin.supabase` compartido); mirar antes de darlos por hechos.
 - Diferidos (no tocar aún): `v2/admin/broadcast` (unificar-newsletters), `ai/verify-answer` (pgvector + question_verifications).
+- 🧹 **Cruft a borrar** (contienen código Supabase viejo, NO son alcanzables): `app/auxiliar-administrativo-estado/test/page.js.backup`, `utils/testAnswers.js.backup-20251212-201450`. El grep de `getSupabaseClient()` solo los caza a ellos → el "0 alcanzable cliente" del doc es correcto.
