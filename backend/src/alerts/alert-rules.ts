@@ -1240,6 +1240,42 @@ export const RULE_CANARY_SYNTHETIC_EXTERNAL_FAILED: AlertRule<{
 };
 
 /**
+ * Canary SAVE-CONTRACT fallido — 2026-07-05. Replica el flujo del cliente
+ * (crear test → guardar respuesta) y VERIFICA en RDS que la fila llegó. Caza la
+ * clase del hueco C1 (07-04): endpoint responde OK pero nada se guarda. P1: si
+ * dispara, los usuarios no pueden guardar progreso (app inutilizable de facto).
+ */
+export const RULE_CANARY_SAVE_CONTRACT_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_save_contract_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(http_status ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_save_contract_failed'
+      AND created_at > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary save-contract FALLÓ (${r.n} en 10 min) — el guardado de respuestas está ROTO`,
+      body: `El canary replicó el flujo del cliente (crear test + guardar respuesta) y verificó en RDS. Falló → los usuarios NO pueden guardar progreso. P1.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES SEGÚN STEP:\n  - create_test: POST /api/v2/tests roto (creación de sesión — camino que rompió en C1). Ver lib/api/v2/tests + logs.\n  - save_answer: POST /api/test/save-answer roto (422 schema, 5xx handler, 503 saturación).\n  - db_verify: el endpoint respondió 200 pero la fila NO llegó a test_questions = GUARDADO SILENCIOSO ROTO (el PEOR caso, clase hueco C1). Investigar el handler de save-answer y los triggers.\n\nMemoria: project_hueco_c1_perdida_tests_recuperacion.`,
+      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, lastStatus: r.lastStatus, windowMin: 10 },
+      fingerprint: 'canary_save_contract_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Canary database pool failed — `SELECT 1` con timeout 1s falla.
  * Significa saturación PgBouncer / max_connections agotados / BD caída.
  * Imposible cubrir en CI (es runtime puro bajo carga real).
@@ -2733,6 +2769,7 @@ export const ALERT_RULES: AlertRule[] = [
   // Canary endpoint más caliente (2026-05-27, POST /api/v2/answer-and-save)
   RULE_CANARY_ANSWER_SAVE_FAILED as AlertRule,
   RULE_CANARY_SYNTHETIC_EXTERNAL_FAILED as AlertRule,
+  RULE_CANARY_SAVE_CONTRACT_FAILED as AlertRule,
   // Canarios de INFRA externa (Sprint 5, 27/05/2026) — únicos no duplicados con CI
   RULE_CANARY_DB_POOL_FAILED as AlertRule,
   RULE_CANARY_REDIS_FAILED as AlertRule,

@@ -63,6 +63,7 @@ import { CanaryStripeWebhookModule } from './canary-stripe-webhook/canary-stripe
 // son irrelevantes vs miles de users reales.
 import { CanaryAnswerSaveModule } from './canary-answer-save/canary-answer-save.module';
 import { CanarySyntheticExternalModule } from './canary-synthetic-external/canary-synthetic-external.module';
+import { CanarySaveContractModule } from './canary-save-contract/canary-save-contract.module';
 // Canarios de INFRA externa (Sprint 5, 27/05/2026). Únicos canarios
 // adicionales que pasan la regla anti-duplicación: NO existe test CI
 // que cubra saturación PgBouncer ni caída Upstash en runtime real.
@@ -159,6 +160,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CanaryStripeWebhookModule, // cada 5min — evento sintético firmado a /api/stripe/webhook
     CanaryAnswerSaveModule, // cada 5min — POST sintético al endpoint más caliente
     CanarySyntheticExternalModule, // cada 5min — check EXTERNO home+assets+health (edge)
+    CanarySaveContractModule, // cada 5min — flujo cliente crear-test+guardar+VERIFICAR en RDS
     CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
     CanaryThemeStatsModule, // cada 10min — endpoint theme-stats refleja progreso real (regresión semántica tipo V4)
