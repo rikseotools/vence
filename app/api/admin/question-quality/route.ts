@@ -367,8 +367,10 @@ async function runCountsOnly(): Promise<number> {
 async function runChecks(): Promise<QualityResponse> {
   const db = getDb()
 
-  // Run all data queries with count(*) OVER() to get totals without separate count queries
-  const results = await Promise.all([
+  // Run all data queries with count(*) OVER() to get totals without separate count queries.
+  // allSettled (no Promise.all): un check que falle/timeout NO tumba el panel entero;
+  // degrada ese check a vacío y se loguea. Antes, una sola query lenta (57014) → 500 global.
+  const settled = await Promise.allSettled([
     // 1. Empty options
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
@@ -506,22 +508,28 @@ async function runChecks(): Promise<QualityResponse> {
     `),
 
     // 8. Copied explanation (similarity)
-    // Optimización: pre-filtro de longitudes + comparación sobre primeros 500 chars
-    // para evitar timeout (similarity de pg_trgm es O(n*m) sobre textos completos).
+    // Optimización: pre-filtro de longitudes + comparación sobre primeros 500 chars.
+    // similarity() de pg_trgm es cara (O(n*m)); se computa UNA sola vez en la
+    // subquery y se filtra/ordena por el alias. Antes se llamaba 3× por fila
+    // (SELECT+WHERE+ORDER BY) sobre 11k candidatas → >30s y statement timeout
+    // (57014), que tumbaba TODO el panel. Con 1× baja a ~8s.
     db.execute(sql`
-      SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
-             ROUND(similarity(LEFT(q.explanation, 500), LEFT(a.content, 500))::numeric, 2) as sim,
+      SELECT id, question_text, ROUND(sim::numeric, 2) as sim,
              count(*) OVER()::int as total_count
-      FROM questions q
-      JOIN articles a ON q.primary_article_id = a.id
-      WHERE q.is_active = true
-        AND a.content IS NOT NULL
-        AND LENGTH(a.content) > 50
-        AND LENGTH(q.explanation) > 50
-        AND LEAST(LENGTH(a.content), LENGTH(q.explanation))::float
-            / GREATEST(LENGTH(a.content), LENGTH(q.explanation)) >= 0.75
-        AND similarity(LEFT(q.explanation, 500), LEFT(a.content, 500)) >= ${SIMILARITY_THRESHOLD}
-      ORDER BY similarity(LEFT(q.explanation, 500), LEFT(a.content, 500)) DESC
+      FROM (
+        SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+               similarity(LEFT(q.explanation, 500), LEFT(a.content, 500)) as sim
+        FROM questions q
+        JOIN articles a ON q.primary_article_id = a.id
+        WHERE q.is_active = true
+          AND a.content IS NOT NULL
+          AND LENGTH(a.content) > 50
+          AND LENGTH(q.explanation) > 50
+          AND LEAST(LENGTH(a.content), LENGTH(q.explanation))::float
+              / GREATEST(LENGTH(a.content), LENGTH(q.explanation)) >= 0.75
+      ) s
+      WHERE sim >= ${SIMILARITY_THRESHOLD}
+      ORDER BY sim DESC
       LIMIT ${MAX_ITEMS}
     `),
 
@@ -793,6 +801,14 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
   ])
+
+  // Degradar checks que fallen a resultado vacío (no tumbar el panel) y loguearlos.
+  const results = settled.map((s, i) => {
+    if (s.status === 'fulfilled') return s.value
+    const reason = s.reason instanceof Error ? s.reason.message : String(s.reason)
+    console.error(`❌ [API/admin/question-quality] check #${i} falló (se muestra vacío):`, reason)
+    return { rows: [] as unknown[] }
+  })
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
