@@ -61,6 +61,7 @@ const SAMPLE_RATES: Record<string, number> = {
   http_4xx: 1.0,
   http_network_error: 1.0,
   react_error_boundary: 1.0,
+  chunk_load_error: 1.0,
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -142,6 +143,7 @@ export type ClientEventType =
   | 'http_network_error' // fetch que revienta (offline/DNS/CORS)
   | 'react_error_boundary' // app/error.tsx + global-error.tsx
   | 'client_error' // logClientError() — errores manejados en componentes
+  | 'chunk_load_error' // chunk viejo 404 tras deploy → auto-reload de recuperación
 
 interface ClientEvent {
   ts: string
@@ -245,6 +247,8 @@ function installNativeCaptures(): void {
     const err = event.error as Error | undefined
     const stack = err?.stack
     const msg = event.message || err?.message || 'unhandled error'
+    // Chunk viejo 404 tras deploy → recuperar con reload (ver recoverFromChunkError).
+    if (recoverFromChunkError(err?.name, msg)) return
     // Extensiones del navegador = causa #1 de ruido → debug, no error.
     if (stack && /chrome-extension:\/\/|moz-extension:\/\/|safari-extension:\/\//.test(stack)) {
       pushEvent({ severity: 'debug', eventType: 'browser_extension_error', errorMessage: msg, metadata: { stack } })
@@ -263,6 +267,8 @@ function installNativeCaptures(): void {
     const reason = event.reason
     const isErr = reason instanceof Error
     const msg = isErr ? reason.message : typeof reason === 'string' ? reason : safeStringify(reason)
+    // import() dinámico que falla (chunk viejo 404 tras deploy) llega como rejection.
+    if (recoverFromChunkError(isErr ? reason.name : undefined, msg)) return
     pushEvent({
       severity: 'error',
       eventType: 'unhandled_rejection',
@@ -369,6 +375,54 @@ function safeStringify(v: unknown): string {
   } catch {
     return String(v)
   }
+}
+
+/**
+ * Recuperación de `ChunkLoadError`: cuando el usuario está en un bundle viejo y
+ * tras un deploy pide un chunk que ya no existe en el origen (404), Next.js tira
+ * un ChunkLoadError → sin manejo, la app se CONGELA. Aquí lo detectamos y forzamos
+ * un reload (que trae el index.html + bundle nuevos, con chunks que sí existen).
+ *
+ * Anti-bucle: guardamos el timestamp del último reload en sessionStorage; si el
+ * chunk vuelve a fallar en <30s NO recargamos otra vez (evita loop si el problema
+ * persistiera). Devuelve true si era un chunk error (ya manejado → el caller
+ * NO debe emitir un error genérico encima).
+ */
+/** Predicado puro: ¿es un fallo de carga de chunk (bundle viejo tras deploy)? */
+export function isChunkLoadError(errName: string | undefined, msg: string): boolean {
+  return (
+    errName === 'ChunkLoadError' ||
+    /Loading chunk [\w-]+ failed|Loading CSS chunk|Failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed/i.test(msg || '')
+  )
+}
+
+const CHUNK_RELOAD_KEY = 'vence_chunk_reload_at'
+function recoverFromChunkError(errName: string | undefined, msg: string): boolean {
+  if (!isChunkLoadError(errName, msg)) return false
+
+  pushEvent({
+    severity: 'warn',
+    eventType: 'chunk_load_error',
+    errorMessage: msg,
+    metadata: { recovered: true },
+  })
+
+  try {
+    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0)
+    const now = Date.now()
+    if (now - last < 30_000) return true // ya recargamos hace poco → no re-loop
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(now))
+    flush(true) // enviar el evento (beacon) ANTES de recargar
+    window.location.reload()
+  } catch {
+    // sessionStorage bloqueado / SSR → intento de reload de todos modos
+    try {
+      window.location.reload()
+    } catch {
+      /* noop */
+    }
+  }
+  return true
 }
 
 export function setObservabilityUserId(userId: string | null): void {

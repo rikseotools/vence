@@ -5,7 +5,7 @@
  * (lib/observability/client.ts), que reemplaza a Sentry httpClientIntegration.
  * Cubre las exclusiones (para no meter ruido ni falsas alertas) y el anti-bucle.
  */
-import { observeUrl, isExpectedStatus } from '@/lib/observability/client'
+import { observeUrl, isExpectedStatus, isChunkLoadError } from '@/lib/observability/client'
 
 describe('observeUrl — qué peticiones observa el wrapper', () => {
   it('observa API same-origin', () => {
@@ -56,5 +56,24 @@ describe('isExpectedStatus — 4xx que son flujo normal (no señal de bug)', () 
     for (const s of [500, 502, 503, 504]) {
       expect(isExpectedStatus(s, '/api/x')).toBe(false)
     }
+  })
+})
+
+describe('isChunkLoadError — detecta chunk viejo 404 tras deploy (para auto-reload)', () => {
+  it('detecta por nombre ChunkLoadError', () => {
+    expect(isChunkLoadError('ChunkLoadError', 'whatever')).toBe(true)
+  })
+
+  it('detecta por mensaje (webpack + import dinámico ESM)', () => {
+    expect(isChunkLoadError(undefined, 'Loading chunk 4823 failed.')).toBe(true)
+    expect(isChunkLoadError(undefined, 'Loading CSS chunk 12 failed')).toBe(true)
+    expect(isChunkLoadError('TypeError', 'Failed to fetch dynamically imported module: https://vence.es/_next/static/chunks/x.js')).toBe(true)
+    expect(isChunkLoadError('TypeError', 'error loading dynamically imported module')).toBe(true)
+  })
+
+  it('NO confunde errores normales con chunk errors', () => {
+    expect(isChunkLoadError('TypeError', 'undefined is not a function')).toBe(false)
+    expect(isChunkLoadError(undefined, 'Network request failed')).toBe(false)
+    expect(isChunkLoadError(undefined, '')).toBe(false)
   })
 })
