@@ -479,8 +479,24 @@ return () => {
 - **Ratchet C1 escanea `utils/`** (anti-regresión). **`getSupabaseClient()` alcanzable desde cliente = 0.**
 
 **Queda SOLO server-side (no toca el navegador):**
-1. **Endpoints admin/AI con `createClient(SERVICE_ROLE)` → Drizzle:** `admin/email-events`, `admin/conversions/user-journey`, `admin/users/subscriptions`, `v2/admin/broadcast` (DIFERIDO por decisión: unificar-newsletters), `ai/verify-answer` (DIFERIDO: necesita RPC pgvector + tabla question_verifications), `v2/admin/feedback/{list,mark-viewed,find-user-by-email}`, `dispute/mark-read`.
+1. **Endpoints admin/AI con `createClient(SERVICE_ROLE)` → Drizzle:** `admin/email-events`, `admin/conversions/user-journey`, `admin/users/subscriptions`, `v2/admin/broadcast` (DIFERIDO por decisión: unificar-newsletters), `ai/verify-answer` (DIFERIDO: necesita RPC pgvector + tabla question_verifications), `v2/admin/feedback/{list,mark-viewed,find-user-by-email}`. ~~`dispute/mark-read`~~ ✅ **migrado 05/07 (commit `be39d474`)** — Drizzle + userId del token (cierra C3).
 2. **Storage (SUB-PROYECTO S3):** `lib/storage/supabase-adapter.ts` + `lib/api/video-courses/queries.ts` (`videos-premium`). Necesita bucket S3 + credenciales.
 3. **Auth-infra (provider-gated, se retira con el bridge):** `verifyAuth` (verifyRemote modo `off`), `supabaseAdapter`, `shared/auth`, `adminApiGuard`, `armando/supabaseAdmin`. Bajo Auth.js (`mode=on`) están dormidos en prod.
 
 **Para apagar Supabase del todo:** migrar (1), decidir/hacer (2) S3, retirar (3) con el bridge, + identificar/parar la sync Supabase↔RDS + retirar CNAME `auth.vence.es`.
+
+## ✅ 2026-07-05 (tarde) — Mina local cerrada + webhook secret fuera + bug rachas (fósil de migración)
+
+**Contexto:** revisando variables tras el cliente agnóstico.
+
+- **`.env.local` reapuntado a RDS** (commit N/A — fichero gitignored; backup `.env.local.bak-presupabase`). Antes `DATABASE_URL`/`DATABASE_URL_REPLICA` apuntaban al **pooler de Supabase CONGELADO**; estaba tapado por `.env.development.local` (RDS gana en Next.js dev), pero borrar ese override habría revivido Supabase en local sin avisar. Ahora local ya no tiene ninguna conexión de datos a Supabase. `pooler.supabase.com` en `.env.local` = 0.
+- **`SUPABASE_WEBHOOK_SECRET` eliminado del código** (commit `845bef6a`): `app/api/admin/revalidate-temario/route.ts` ya no lee la env (la rama de webhook estaba muerta desde que se quitaron los triggers PG el 16/04/2026). **Pendiente acoplado al próximo deploy de frontend:** quitar `SUPABASE_WEBHOOK_SECRET` de los `secrets` del task def `vence-frontend` (el script de deploy clona el task def vivo y lo arrastraría) → y DESPUÉS borrar el param SSM `/vence-frontend/SUPABASE_WEBHOOK_SECRET`. En ese orden (borrar el param antes rompe el arranque de la task).
+- **Bug rachas (NO agnosticismo, fósil de migración, commit `534f895b` desplegado a Fargate):** el cron nocturno `backend/src/update-streaks` leía `user_test_sessions` (tabla legacy MUERTA desde jun-2025; la actividad vive en `tests`+`test_questions`) → reseteaba a 0 casi todas las rachas cada 03:00 UTC. Fix: delega en la función SQL canónica `batch_update_user_streaks()`. Detalle en memoria `project_rachas_cron_tabla_muerta`. **LEAD abierto:** auditar otros crons/lectores que puedan seguir leyendo tablas legacy muertas tras la normalización a `tests`/`test_questions`.
+
+**Config prod (SSM) confirmada 05/07:** todos los `DATABASE_URL*` (backend+frontend) → RDS. Supabase server-side restante en SSM: `SUPABASE_JWT_SECRET` (bridge), `SUPABASE_SERVICE_ROLE_KEY` (frontend, ~10 endpoints sin migrar), `SUPABASE_WEBHOOK_SECRET` (a retirar, ver arriba). `NEXT_PUBLIC_SUPABASE_*` = build-args, no runtime.
+
+### 👉 SIGUIENTE PASO — seguir con item (1): endpoints admin con `createClient(SERVICE_ROLE)` → Drizzle
+Incremental, un endpoint por vez con el ritual C1 (verificar SQL contra RDS, typecheck, aislamiento por token/admin). Al migrarlos todos → se puede quitar `SUPABASE_SERVICE_ROLE_KEY` del frontend.
+- ✅ `dispute/mark-read` (05/07, `be39d474`).
+- Pendientes no-diferidos: `admin/users/subscriptions` (RPC `get_all_users_with_subscriptions` vía `admin.supabase.rpc` → `getAdminDb().execute`), `admin/email-events`, `admin/conversions/user-journey`, `v2/admin/feedback/{list,mark-viewed,find-user-by-email}`.
+- Diferidos (no tocar aún): `v2/admin/broadcast` (unificar-newsletters), `ai/verify-answer` (pgvector + question_verifications).
