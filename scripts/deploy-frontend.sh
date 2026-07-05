@@ -55,6 +55,24 @@ echo "→ [2/6] push ECR"
 aws ecr get-login-password --profile $P --region $R | podman login --username AWS --password-stdin "${ACC}.dkr.ecr.${R}.amazonaws.com" >/dev/null 2>&1
 podman push "$IMG" >/dev/null
 
+echo "→ [2b] sync _next/static → S3 (assets inmutables, RETENCIÓN: sin --delete)"
+# POR QUÉ: los chunks se sirven vía CloudFront desde S3 (behavior /_next/static/*
+# = origin group S3-primario + ALB-fallback). Al NO borrar los viejos, un usuario
+# en un bundle anterior sigue encontrando sus chunks tras un deploy → no más
+# ChunkLoadError / app congelada (caso Nila). Extraemos .next/static de la imagen
+# recién construida (el build vive dentro de podman).
+S3_STATIC_BUCKET="vence-frontend-static"
+_tmpc=$(podman create "$IMG")
+_staticdir=$(mktemp -d)
+podman cp "${_tmpc}:/app/.next/static" "${_staticdir}/static"
+podman rm "$_tmpc" >/dev/null
+aws s3 sync "${_staticdir}/static" "s3://${S3_STATIC_BUCKET}/_next/static" \
+  --profile $P --region $R \
+  --cache-control "public,max-age=31536000,immutable" \
+  --no-progress | tail -2
+rm -rf "$_staticdir"
+echo "   ✅ assets en S3 (retención)"
+
 echo "→ [3/6] resolver digest (imagen pineada, inmutable)"
 DIGEST=$(aws ecr describe-images --repository-name vence-frontend --image-ids imageTag="$TAG" --profile $P --region $R --query 'imageDetails[0].imageDigest' --output text)
 IMG_DIGEST="${REG}@${DIGEST}"
