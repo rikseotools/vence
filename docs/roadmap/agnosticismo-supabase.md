@@ -495,8 +495,12 @@ return () => {
 
 **Config prod (SSM) confirmada 05/07:** todos los `DATABASE_URL*` (backend+frontend) → RDS. Supabase server-side restante en SSM: `SUPABASE_JWT_SECRET` (bridge), `SUPABASE_SERVICE_ROLE_KEY` (frontend, ~10 endpoints sin migrar), `SUPABASE_WEBHOOK_SECRET` (a retirar, ver arriba). `NEXT_PUBLIC_SUPABASE_*` = build-args, no runtime.
 
+## ✅ 2026-07-05 (deploy) — Sentry eliminado (vendor-lock-out) + dispute/webhook/calidad vivos
+- **Desplegado front `:339` + backend** (commit `706b2dde` obs + los previos): `dispute/mark-read` agnóstico YA vivo; fix `/admin/calidad`; observabilidad de errores **100% in-house** (se retiró la dependencia SaaS de Sentry — otro proveedor menos). Detalle: `roadmap` de arquitectura nota 05/07 + memoria `project_sentry_eliminado_observabilidad_inhouse`.
+- ⚠️ **`SUPABASE_WEBHOOK_SECRET` sigue en el task def `vence-frontend:339`** (el deploy clonó el task def vivo, que aún lo lista). El código ya no lo lee → inerte, pero para limpiarlo del todo: registrar un task def sin ese `secret` + borrar el param SSM. Pendiente.
+
 ### 👉 SIGUIENTE PASO — seguir con item (1): endpoints admin con `createClient(SERVICE_ROLE)` → Drizzle
 Incremental, un endpoint por vez con el ritual C1 (verificar SQL contra RDS, typecheck, aislamiento por token/admin). Al migrarlos todos → se puede quitar `SUPABASE_SERVICE_ROLE_KEY` del frontend.
-- ✅ `dispute/mark-read` (05/07, `be39d474`).
+- ✅ `dispute/mark-read` (05/07, `be39d474`, desplegado `:339`).
 - Pendientes no-diferidos: `admin/users/subscriptions` (RPC `get_all_users_with_subscriptions` vía `admin.supabase.rpc` → `getAdminDb().execute`), `admin/email-events`, `admin/conversions/user-journey`, `v2/admin/feedback/{list,mark-viewed,find-user-by-email}`.
 - Diferidos (no tocar aún): `v2/admin/broadcast` (unificar-newsletters), `ai/verify-answer` (pgvector + question_verifications).
