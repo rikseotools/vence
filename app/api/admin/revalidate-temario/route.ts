@@ -11,28 +11,16 @@
 // Tras cambios manuales en BD, invocar: curl -X POST https://www.vence.es/api/admin/revalidate-temario
 // Ver docs/maintenance/cache-revalidation.md.
 //
-// La verificación SUPABASE_WEBHOOK_SECRET se mantiene por compatibilidad
-// retroactiva (por si en el futuro se restablece algún trigger filtrado).
+// AGNÓSTICO (05/07): eliminada la verificación SUPABASE_WEBHOOK_SECRET. Los
+// triggers PG que invocaban este endpoint como webhook de Supabase se quitaron
+// el 16/04/2026, así que la rama de secret estaba muerta. Queda como disparador
+// de revalidación manual (mismo comportamiento que ya tenía el path sin body).
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-const WEBHOOK_SECRET = process.env.SUPABASE_WEBHOOK_SECRET
-
-async function _POST(request: NextRequest) {
-  // Si viene con body (webhook de Supabase), verificar secret
-  const authHeader = request.headers.get('x-webhook-secret') || request.headers.get('authorization')
-  const contentType = request.headers.get('content-type') || ''
-  const isWebhook = contentType.includes('application/json')
-
-  if (isWebhook && WEBHOOK_SECRET) {
-    const secret = authHeader?.replace('Bearer ', '')
-    if (secret !== WEBHOOK_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
-
+async function _POST() {
   // Next.js 16 requiere segundo argumento con el profile de cacheLife
   revalidateTag('temario', 'max')
 
