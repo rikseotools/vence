@@ -2588,11 +2588,78 @@ export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
   cooldownMin: 60,
 };
 
+/**
+ * GUARDADO DE RESPUESTAS ROTO (reconciliación) — 2026-07-05. El hueco C1 (07-04):
+ * el cliente respondía pero los tests NO se creaban (PostgREST roto tras el flip)
+ * → 168 respondidas / 0 guardadas, INVISIBLE para el canary answer-save (que pega
+ * al endpoint de servidor sano, no al camino del cliente). Este detector compara
+ * respuestas de CLIENTE (`test_answer_selected`) vs GUARDADAS (`test_questions`):
+ * si hay volumen y <50% se guarda, el pipeline de guardado está roto. Cazaría el
+ * C1 de inmediato. Ver memoria project_hueco_c1_perdida_tests_recuperacion.
+ */
+export const RULE_SAVE_RECONCILIATION: AlertRule<{ answered: number; saved: number }> = {
+  name: 'save_reconciliation',
+  severity: 'critical',
+  query: sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM user_interactions WHERE event_type='test_answer_selected' AND created_at > NOW() - INTERVAL '15 minutes') AS answered,
+      (SELECT COUNT(*)::int FROM test_questions WHERE created_at > NOW() - INTERVAL '15 minutes') AS saved
+  `,
+  shouldFire: (rows) => {
+    const a = rows[0]?.answered ?? 0;
+    const s = rows[0]?.saved ?? 0;
+    return a > 30 && s < a * 0.5;
+  },
+  buildNotification: (rows) => {
+    const a = rows[0]?.answered ?? 0;
+    const s = rows[0]?.saved ?? 0;
+    return {
+      title: `⚠️ Las respuestas NO se guardan — ${a} respondidas, solo ${s} guardadas (15 min)`,
+      body: `Pipeline de guardado ROTO: los clientes responden (${a} eventos test_answer_selected) pero solo ${s} filas llegaron a test_questions. Clase de bug del hueco C1 (07-04, tests no creados). Investigar creación de tests (client → /api/v2/tests) y /api/test/save-answer. Verificar que el cliente NO usa supabase.from directo. Memoria: project_hueco_c1_perdida_tests_recuperacion.`,
+      metadata: { answered: a, saved: s },
+      fingerprint: 'save_reconciliation',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * ERRORES DE CLIENTE SOSTENIDOS (edge) — 2026-07-05. El 502 keep-alive de hoy era
+ * ~3/5min CONTINUO → por debajo del umbral de spike (>20/5min) de RULE_HTTP_5XX_SPIKE
+ * → NO alertaba. Esta mira volumen SOSTENIDO a 1h de http_5xx + http_network_error
+ * de CLIENTE (errores de EDGE que el servidor no registra). Umbral tunable.
+ */
+export const RULE_CLIENT_EDGE_SUSTAINED: AlertRule<{ n: number; topEndpoint: string | null }> = {
+  name: 'client_edge_sustained',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n, MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    FROM observable_events
+    WHERE source='frontend' AND event_type IN ('http_5xx', 'http_network_error', 'http_timeout')
+      AND ts > NOW() - INTERVAL '1 hour'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 80,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const top = rows[0]?.topEndpoint ?? '(varios)';
+    return {
+      title: `Errores de cliente sostenidos — ${n}/h (5xx/red) en ${top}`,
+      body: `El cliente sufre fallos de red/5xx SOSTENIDOS (${n} en 1h) que el servidor NO registra (error de EDGE: ALB/CloudFront). Si es 502 en /api/auth/* → el 502 keep-alive (runbook §502): verificar keepAliveTimeout=65s en los contenedores. El panel /admin/infraestructura → "Errores de cliente" tiene el breakdown.`,
+      metadata: { count: n, topEndpoint: top, windowMin: 60 },
+      fingerprint: `client_edge_sustained_${top}`,
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
   RULE_CLIENT_ERROR_SPIKE as AlertRule,
   RULE_CLIENT_HTTP_4XX_SPIKE as AlertRule,
+  // Guardado roto (reconciliación) + edge sostenido (2026-07-05, huecos del día)
+  RULE_SAVE_RECONCILIATION as AlertRule,
+  RULE_CLIENT_EDGE_SUSTAINED as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
