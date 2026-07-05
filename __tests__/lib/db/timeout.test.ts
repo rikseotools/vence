@@ -1,10 +1,12 @@
 // __tests__/lib/db/timeout.test.ts
 // Tests del helper withDbTimeout + DbTimeoutError (Phase 3 — quick-fail).
 
-// Mock @sentry/nextjs antes de importar el módulo bajo test.
-const mockSentryCapture = jest.fn()
-jest.mock('@sentry/nextjs', () => ({
-  captureException: (...args: unknown[]) => mockSentryCapture(...args),
+// Mock del emit in-house antes de importar el módulo bajo test.
+// (Sentry retirado 05/07/2026 → el timeout emite a observable_events.)
+const mockEmit = jest.fn()
+jest.mock('@/lib/observability/emit', () => ({
+  emitFireAndForget: (...args: unknown[]) => mockEmit(...args),
+  emit: (...args: unknown[]) => mockEmit(...args),
 }))
 
 import {
@@ -154,12 +156,12 @@ describe('isDbTimeoutError', () => {
   })
 })
 
-describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
+describe('withDbTimeout — emit in-house (Bug #3 fix)', () => {
   beforeEach(() => {
-    mockSentryCapture.mockReset()
+    mockEmit.mockReset()
   })
 
-  test('Sentry.captureException se llama cuando dispara el timeout', async () => {
+  test('emite http_timeout a observabilidad cuando dispara el timeout', async () => {
     const d = deferred<string>()
     jest.useFakeTimers()
     try {
@@ -168,13 +170,13 @@ describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
       const err = await promise
 
       expect(err).toBeInstanceOf(DbTimeoutError)
-      expect(mockSentryCapture).toHaveBeenCalledTimes(1)
-      const [capturedErr, ctx] = mockSentryCapture.mock.calls[0] as [unknown, Record<string, unknown>]
-      expect(capturedErr).toBe(err)
-      expect(ctx).toMatchObject({
-        level: 'warning',
-        tags: { quick_fail: 'db_timeout', component: 'db_timeout' },
-        extra: { timeoutMs: 100 },
+      expect(mockEmit).toHaveBeenCalledTimes(1)
+      const [event] = mockEmit.mock.calls[0] as [Record<string, unknown>]
+      expect(event).toMatchObject({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'http_timeout',
+        metadata: { quick_fail: 'db_timeout', component: 'db_timeout', timeoutMs: 100 },
       })
     } finally {
       jest.useRealTimers()
@@ -182,23 +184,23 @@ describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
     }
   })
 
-  test('Sentry NO se llama si fn resuelve antes del timeout', async () => {
+  test('NO emite si fn resuelve antes del timeout', async () => {
     await withDbTimeout(async () => 'fast', 5000)
-    expect(mockSentryCapture).not.toHaveBeenCalled()
+    expect(mockEmit).not.toHaveBeenCalled()
   })
 
-  test('Sentry NO se llama si fn rechaza antes del timeout', async () => {
+  test('NO emite si fn rechaza antes del timeout', async () => {
     await expect(
       withDbTimeout(async () => {
         throw new Error('connection refused')
       }, 5000),
     ).rejects.toThrow('connection refused')
-    expect(mockSentryCapture).not.toHaveBeenCalled()
+    expect(mockEmit).not.toHaveBeenCalled()
   })
 
-  test('Si Sentry.captureException lanza, el reject sigue propagando (no rompe el flow)', async () => {
-    mockSentryCapture.mockImplementation(() => {
-      throw new Error('Sentry init failed')
+  test('Si el emit lanza, el reject sigue propagando (no rompe el flow)', async () => {
+    mockEmit.mockImplementation(() => {
+      throw new Error('emit failed')
     })
     const d = deferred<string>()
     jest.useFakeTimers()
@@ -216,7 +218,7 @@ describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
     }
   })
 
-  test('timeoutMs específico llega correctamente al extra de Sentry', async () => {
+  test('timeoutMs específico llega correctamente al metadata del evento', async () => {
     const d = deferred<string>()
     jest.useFakeTimers()
     try {
@@ -224,8 +226,8 @@ describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
       await jest.advanceTimersByTimeAsync(12346)
       await promise
 
-      const ctx = mockSentryCapture.mock.calls[0]?.[1] as Record<string, unknown>
-      expect((ctx?.extra as Record<string, unknown>)?.timeoutMs).toBe(12345)
+      const event = mockEmit.mock.calls[0]?.[0] as Record<string, unknown>
+      expect((event?.metadata as Record<string, unknown>)?.timeoutMs).toBe(12345)
     } finally {
       jest.useRealTimers()
       d.resolve('late')

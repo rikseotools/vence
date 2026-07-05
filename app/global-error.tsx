@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -11,7 +10,41 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    // El root layout ha reventado → el SDK de observabilidad puede no estar
+    // activo aquí. Enviamos DIRECTO a /api/observability/ingest por sendBeacon
+    // (sobrevive a la navegación y no depende del SDK). Último recurso.
+    try {
+      const payload = JSON.stringify({
+        events: [
+          {
+            ts: new Date().toISOString(),
+            source: "frontend",
+            severity: "error",
+            eventType: "react_error_boundary",
+            endpoint:
+              typeof window !== "undefined" ? window.location.pathname : null,
+            errorMessage: (error?.message || "global error").slice(0, 500),
+            metadata: {
+              boundary: "global_error_tsx",
+              digest: error?.digest ?? null,
+              stack: (error?.stack || "").slice(0, 2000),
+            },
+          },
+        ],
+      });
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        navigator.sendBeacon("/api/observability/ingest", payload);
+      } else {
+        fetch("/api/observability/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // nunca romper el boundary
+    }
   }, [error]);
 
   return (

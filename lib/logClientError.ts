@@ -1,11 +1,10 @@
-// lib/logClientError.ts — Helper centralizado para logar errores client-side
-// Estrategia mixta: errores client-side → Sentry (no satura BD),
-// errores server-side → validation_error_logs (panel admin).
-// Cambio 23/04/2026: los inserts a validation_error_logs saturaban el pool
-// de conexiones (max:1 en traceDb) con ~1000 errores/día client-side.
+// lib/logClientError.ts — Helper centralizado para logar errores client-side.
+// Va a observabilidad in-house (observable_events vía /api/observability/ingest),
+// NO a validation_error_logs (los inserts directos saturaban el pool, cambio
+// 23/04/2026). Antes iba a Sentry; retirado Sentry (05/07/2026) → emit propio.
 // Fire-and-forget: nunca lanza, nunca bloquea.
 
-import * as Sentry from '@sentry/nextjs'
+import { emitClientEvent } from '@/lib/observability/client'
 import { getClientVersion } from '@/hooks/useVersionCheck'
 
 export type ClientErrorSeverity = 'critical' | 'warning' | 'info'
@@ -26,29 +25,27 @@ export function logClientError(
   const clientVersion = getClientVersion()
   const message = `${prefix}${err.message}${clientVersion ? ` [v:${clientVersion}]` : ''}`
 
-  // Send to Sentry (no DB insert, no pool saturation)
+  // Emit a observabilidad in-house (buffer + flush, sin insert directo a BD).
   try {
-    Sentry.withScope(scope => {
-      scope.setTag('endpoint', endpoint)
-      scope.setTag('source', 'client')
-      scope.setLevel(
-        context?.severity === 'info' ? 'info'
-          : context?.severity === 'warning' ? 'warning'
-          : 'error'
-      )
-      if (context?.component) scope.setTag('component', context.component)
-      if (context?.questionId) scope.setTag('questionId', context.questionId)
-      if (context?.userId) scope.setTag('userId', context.userId)
-      if (clientVersion) scope.setTag('deploy', clientVersion)
-      if (context?.extra) {
-        for (const [key, value] of Object.entries(context.extra)) {
-          scope.setExtra(key, value)
-        }
-      }
-
-      Sentry.captureException(new Error(message), { originalException: err })
+    emitClientEvent({
+      severity:
+        context?.severity === 'info'
+          ? 'info'
+          : context?.severity === 'warning'
+            ? 'warn'
+            : 'error',
+      eventType: 'client_error',
+      endpoint,
+      errorMessage: message,
+      metadata: {
+        component: context?.component ?? null,
+        questionId: context?.questionId ?? null,
+        deploy: clientVersion ?? null,
+        stack: err.stack,
+        ...(context?.extra ?? {}),
+      },
     })
   } catch {
-    // Sentry not available — silent fail
+    // observabilidad caída jamás rompe el flujo
   }
 }

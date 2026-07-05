@@ -2,16 +2,17 @@
 // Tests del helper safeServerFetch usado en SSR pages para evitar lambdas
 // colgadas a 300s en blips de pool.
 
-const mockSentryCapture = jest.fn()
-jest.mock('@sentry/nextjs', () => ({
-  captureException: (...args: unknown[]) => mockSentryCapture(...args),
+const mockEmit = jest.fn()
+jest.mock('@/lib/observability/emit', () => ({
+  emitFireAndForget: (...args: unknown[]) => mockEmit(...args),
+  emit: (...args: unknown[]) => mockEmit(...args),
 }))
 
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
 
 describe('safeServerFetch', () => {
   beforeEach(() => {
-    mockSentryCapture.mockReset()
+    mockEmit.mockReset()
   })
 
   it('devuelve el valor cuando la query termina antes del timeout', async () => {
@@ -88,7 +89,7 @@ describe('safeServerFetch', () => {
     expect(result).toBeNull()
   })
 
-  it('Sentry captureException sí se llama (vía withDbTimeout en timeout)', async () => {
+  it('emite a observabilidad in-house (vía withDbTimeout en timeout)', async () => {
     jest.useFakeTimers()
     try {
       const promise = safeServerFetch(
@@ -98,8 +99,8 @@ describe('safeServerFetch', () => {
       )
       await jest.advanceTimersByTimeAsync(101)
       await promise
-      // withDbTimeout captura a Sentry; safeServerFetch lo deja pasar
-      expect(mockSentryCapture).toHaveBeenCalled()
+      // withDbTimeout emite http_timeout; safeServerFetch lo deja pasar
+      expect(mockEmit).toHaveBeenCalled()
     } finally {
       jest.useRealTimers()
     }

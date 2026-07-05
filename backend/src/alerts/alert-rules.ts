@@ -2513,8 +2513,86 @@ export const RULE_EXAM_INTEGRITY_DRIFT: AlertRule<{
   cooldownMin: 1440,
 };
 
+/**
+ * Spike de errores JS de CLIENTE (2026-07-05, tras retirar Sentry → captura
+ * in-house en lib/observability/client.ts). Antes estos errores iban a Sentry;
+ * ahora `unhandled_error` / `unhandled_rejection` / `react_error_boundary` /
+ * `client_error` (source='frontend') caen en observable_events. Un spike por
+ * ruta+deploy suele ser una regresión del último deploy (componente que revienta
+ * en cliente). El 5xx de cliente ya lo cubre RULE_HTTP_5XX_SPIKE.
+ */
+export const RULE_CLIENT_ERROR_SPIKE: AlertRule<{
+  endpoint: string | null;
+  deployVersion: string | null;
+  n: number;
+}> = {
+  name: 'client_error_spike',
+  severity: 'error',
+  query: sql`
+    SELECT endpoint,
+           deploy_version AS "deployVersion",
+           COUNT(*)::int AS n
+    FROM observable_events
+    WHERE source = 'frontend'
+      AND event_type IN ('unhandled_error', 'unhandled_rejection', 'react_error_boundary', 'client_error')
+      AND ts > NOW() - INTERVAL '15 minutes'
+    GROUP BY endpoint, deploy_version
+    HAVING COUNT(*) >= 10
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map(
+      (r) => `  - ${r.endpoint ?? '(unknown)'} [${r.deployVersion ?? '?'}]: ${r.n} errores`,
+    );
+    return {
+      title: `${rows.length} ruta(s) con spike de errores JS de cliente`,
+      body: `Errores de cliente no capturados (excepción JS / promesa rechazada / error boundary) en 15 min:\n\n${lines.join('\n')}\n\nInvestigar:\n  SELECT event_type, error_message, COUNT(*) FROM observable_events\n  WHERE source='frontend' AND event_type IN ('unhandled_error','unhandled_rejection','react_error_boundary','client_error')\n    AND ts > NOW() - INTERVAL '15 minutes'\n  GROUP BY 1,2 ORDER BY 3 DESC;\n\nSuele ser una regresión del último deploy en la ruta afectada.`,
+      metadata: { routesAffected: rows.length },
+      fingerprint: `client_error_spike_${rows[0]?.deployVersion ?? 'unknown'}`,
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
+ * Spike de 4xx INESPERADOS de cliente (2026-07-05). `http_4xx` excluye ya los
+ * esperados (401/403/404/409/429) en el wrapper de fetch, así que un pico
+ * indica al cliente mandando peticiones mal formadas (400/422) — normalmente
+ * un bug de front. Ruidoso por naturaleza → umbral alto y severity warn.
+ */
+export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
+  endpoint: string | null;
+  n: number;
+}> = {
+  name: 'client_http_4xx_spike',
+  severity: 'warn',
+  query: sql`
+    SELECT endpoint, COUNT(*)::int AS n
+    FROM observable_events
+    WHERE source = 'frontend'
+      AND event_type = 'http_4xx'
+      AND ts > NOW() - INTERVAL '15 minutes'
+    GROUP BY endpoint
+    HAVING COUNT(*) >= 30
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map((r) => `  - ${r.endpoint ?? '(unknown)'}: ${r.n} respuestas 4xx`);
+    return {
+      title: `${rows.length} endpoint(s) con spike de 4xx inesperados de cliente`,
+      body: `El cliente recibe 4xx inesperados (400/422…, ya excluidos 401/403/404/409/429) en 15 min:\n\n${lines.join('\n')}\n\nSuele ser el front mandando payloads/params mal formados. Investigar el fetcher del endpoint.`,
+      metadata: { endpointsAffected: rows.length },
+      fingerprint: `client_http_4xx_spike_${rows[0]?.endpoint ?? 'unknown'}`,
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
+  RULE_CLIENT_ERROR_SPIKE as AlertRule,
+  RULE_CLIENT_HTTP_4XX_SPIKE as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,

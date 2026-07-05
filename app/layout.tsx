@@ -34,18 +34,18 @@ export default async function SpanishLayout({ children }: { children: React.Reac
         {/* Google Consent Mode v2 — estado por defecto (denied). DEBE ir antes
             que cualquier etiqueta de Google. beforeInteractive lo garantiza. */}
         <ConsentModeDefault />
-        {/* Bloque 4 Gap 1 — captura errores ANTES de hydration. Debe
-            ir lo más arriba posible en <head> para que pille errores
-            de otros scripts inline (GTM, polyfills, Sentry init, ...). */}
+        {/* Captura errores ANTES de hydration. Debe ir lo más arriba posible
+            en <head> para pillar errores de otros scripts inline (GTM,
+            polyfills, ...). Los procesa el SDK in-house al hidratar. */}
         <EarlyErrorsBridge />
       </head>
       <body className="min-h-screen">
         <CookieConsentProvider>
           <AuthProvider initialUser={null}>
-            {/* Bloque 4 Gap 1 — instala hooks observability cliente.
-                Sentry (sentry.client.config.ts) cubre window.onerror,
-                console.error, fetch 5xx via integrations. Este componente
-                solo procesa errores pre-hydration + intent tracking. */}
+            {/* Instala los hooks de observabilidad in-house (única captura de
+                errores de cliente tras retirar Sentry): window.onerror,
+                unhandledrejection, console, wrapper de fetch, pre-hydration,
+                intent tracking. Ver lib/observability/client.ts. */}
             <ClientObservabilityInstaller />
             <OposicionProvider>
               <LawSlugProvider initialMappings={lawMappings}>

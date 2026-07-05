@@ -913,7 +913,7 @@ export default function HeaderES() {
                       </span>
                     )}
                     {link.sentryBadge && (
-                      <span className="bg-orange-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold" title="Errores en Sentry">
+                      <span className="bg-orange-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold" title="Errores API">
                         {link.sentryBadge > 9 ? '9+' : link.sentryBadge}
                       </span>
                     )}

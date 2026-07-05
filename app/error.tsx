@@ -1,7 +1,10 @@
 'use client'
 
-import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
+import {
+  emitClientEvent,
+  flushClientObservability,
+} from '@/lib/observability/client'
 
 /**
  * Route-level error boundary (Next.js App Router).
@@ -28,16 +31,20 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    // Reportar a Sentry. El digest de Next.js correlaciona client con
-    // server logs (el mismo digest aparecerá en los logs del runtime).
-    Sentry.withScope((scope) => {
-      if (error.digest) {
-        scope.setTag('next_digest', error.digest)
-      }
-      scope.setTag('error_boundary', 'app_error_tsx')
-      scope.setLevel('error')
-      Sentry.captureException(error)
+    // Reportar a observabilidad in-house. El digest de Next.js correlaciona
+    // client con server logs (el mismo digest aparece en los logs del runtime).
+    emitClientEvent({
+      severity: 'error',
+      eventType: 'react_error_boundary',
+      errorMessage: error.message,
+      metadata: {
+        boundary: 'app_error_tsx',
+        digest: error.digest ?? null,
+        stack: error.stack,
+      },
     })
+    // El boundary suele acompañar a un crash → enviar ya (beacon), no esperar al flush.
+    flushClientObservability(true)
   }, [error])
 
   return (

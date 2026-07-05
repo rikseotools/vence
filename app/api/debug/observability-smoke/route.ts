@@ -1,28 +1,22 @@
 // app/api/debug/observability-smoke/route.ts
 //
-// Endpoint de validación end-to-end del stack de observabilidad.
+// Endpoint de validación end-to-end del stack de observabilidad IN-HOUSE.
 //
 // Llamar `GET /api/debug/observability-smoke?secret=<CRON_SECRET>` dispara
-// un evento controlado en cada uno de los 3 canales:
+// un evento controlado en cada canal:
 //
-//   1. observable_events directo (vía emit interna desde Vercel function)
-//   2. Sentry server-side (Sentry.captureException — el server config tiene
-//      el SDK; verá el evento en Sentry dashboard)
-//   3. validation_error_logs (vía withErrorLogging que captura el 500 de
-//      respuesta — espejado a observable_events automáticamente)
+//   1. observable_events directo (vía emit() desde la Vercel function)
+//   2. validation_error_logs (vía withErrorLogging que captura el 500 de
+//      respuesta con ?mode=throw — espejado a observable_events automáticamente)
 //
 // Tras llamarlo, verificar en:
 //   - psql: SELECT * FROM observable_events WHERE event_type = 'smoke_test'
 //                 OR error_message LIKE '%smoke-test-%' ORDER BY ts DESC LIMIT 5;
-//   - Sentry dashboard: filtrar por tag environment + buscar "smoke-test"
 //
-// Auth: requiere CRON_SECRET para evitar abuso (cada llamada genera 3
-// eventos de tipo "error" — útil testing, malo para spam).
-//
-// Bloque 4 Gap 7 del manual de observabilidad (§3).
+// Auth: requiere CRON_SECRET para evitar abuso.
+// (Sentry retirado 05/07/2026 — observabilidad 100% in-house.)
 
 import { NextRequest, NextResponse } from 'next/server'
-import * as Sentry from '@sentry/nextjs'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { emit } from '@/lib/observability/emit'
 
@@ -58,19 +52,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // 2. Sentry.captureException → dashboard Sentry
-  if (mode === 'all' || mode === 'sentry') {
-    try {
-      Sentry.captureException(new Error(`${smokeId} (canal: sentry server)`), {
-        tags: { smoke: 'true', smokeId },
-      })
-      results.sentry = '✅ enviado a Sentry (verificar en dashboard)'
-    } catch (err) {
-      results.sentry = `❌ ${err instanceof Error ? err.message : String(err)}`
-    }
-  }
-
-  // 3. withErrorLogging captura — provocar 500 con throw
+  // 2. withErrorLogging captura — provocar 500 con throw
   // (solo si mode=throw, porque DEVUELVE 500 al caller)
   if (mode === 'throw') {
     throw new Error(`${smokeId} (canal: withErrorLogging via throw)`)
@@ -82,7 +64,6 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     results,
     nextSteps: [
       'Verifica observable_events: SELECT * FROM observable_events WHERE error_message LIKE \'%' + smokeId + '%\' ORDER BY ts DESC;',
-      'Verifica Sentry dashboard: busca "' + smokeId + '" (tag smoke=true)',
       'Para validar withErrorLogging + espejo, llama con ?mode=throw (devuelve 500)',
     ],
   })

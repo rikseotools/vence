@@ -6,7 +6,6 @@
 
 import { NextResponse, after } from 'next/server'
 import { randomUUID } from 'crypto'
-import * as Sentry from '@sentry/nextjs'
 import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
 import { emit } from '@/lib/observability/emit'
 import { extractUserIdFromRequest } from '@/lib/api/extractUserId'
@@ -23,56 +22,6 @@ const SUCCESS_TIMING_SAMPLE_RATE = 0.1
 const DEPLOY_VERSION =
   process.env.GIT_COMMIT_SHA?.slice(0, 8)
   || (process.env.NODE_ENV === 'production' ? 'unknown' : 'local')
-
-/**
- * Enriquece eventos Sentry con tags + user context. Bloque 4 — completa
- * la integración Sentry. Captura explícitamente respuestas 5xx que NO
- * lanzan excepción (Sentry no las pillaría sin esto) y enriquece eventos
- * con userId/endpoint/deployVersion para filtrado en dashboard.
- *
- * Se llama:
- *   - Cuando el handler DEVUELVE Response 5xx (no throw)
- *   - Cuando el handler LANZA (Sentry ya capturó via instrumentation,
- *     enriquecemos el evento más reciente con el scope correcto)
- */
-function enrichSentryEvent(opts: {
-  endpoint: string
-  httpStatus: number
-  errorMessage: string
-  userId?: string
-  errorRef?: string
-  capturedFromThrow?: boolean
-  originalError?: unknown
-}): void {
-  try {
-    Sentry.withScope((scope) => {
-      scope.setTag('endpoint', opts.endpoint)
-      scope.setTag('http_status', String(opts.httpStatus))
-      scope.setTag('deploy_version', DEPLOY_VERSION)
-      if (opts.userId) {
-        scope.setUser({ id: opts.userId })
-      }
-      if (opts.errorRef) {
-        scope.setTag('error_ref', opts.errorRef)
-      }
-      // Si fue capturado vía return Response (no throw), capture explícito
-      // — Sentry no lo vería de otro modo
-      if (!opts.capturedFromThrow) {
-        Sentry.captureMessage(
-          `[${opts.httpStatus}] ${opts.endpoint} — ${opts.errorMessage}`,
-          'error',
-        )
-      } else if (opts.originalError instanceof Error) {
-        // Si el handler lanzó, Sentry YA capturó via instrumentation.
-        // captureException aquí dispara un segundo evento — mejor evitarlo
-        // y solo enriquecer el scope para el próximo evento del thread.
-        // (NO captureException aquí — duplicaría)
-      }
-    })
-  } catch {
-    // Sentry caído jamás rompe el flujo
-  }
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RouteHandler = (...args: any[]) => Promise<Response> | Response
@@ -353,19 +302,6 @@ export function withErrorLogging(
           logValidationError(logInput)
         }
 
-        // Bloque 4 — enriquecer Sentry con tags + userId. Solo para 5xx
-        // (4xx típicamente son comportamiento esperado: 401/403/404/429).
-        if (response.status >= 500) {
-          enrichSentryEvent({
-            endpoint,
-            httpStatus: response.status,
-            errorMessage,
-            userId: resolvedUserId,
-            errorRef,
-            capturedFromThrow: false,
-          })
-        }
-
         // Para 5xx: inyectar errorRef en el body y devolver una respuesta nueva.
         // Preservamos headers/status del response original.
         if (errorRef && responseBody) {
@@ -425,19 +361,6 @@ export function withErrorLogging(
             capturedFromThrow: true,
           },
         })
-      })
-
-      // Sentry ya capturó vía instrumentation.onRequestError, pero el scope
-      // global puede no tener nuestro userId/endpoint. Enriquecer ahora —
-      // útil para próximo error en el mismo request thread.
-      enrichSentryEvent({
-        endpoint,
-        httpStatus: 500,
-        errorMessage: throwErrorMessage,
-        userId: throwUserId,
-        errorRef,
-        capturedFromThrow: true,
-        originalError: error,
       })
 
       return NextResponse.json(

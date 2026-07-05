@@ -255,14 +255,15 @@ describe('logClientError — source code', () => {
     expect(content).toMatch(/export function logClientError/)
   })
 
-  it('sends to Sentry (not DB fetch)', () => {
-    expect(content).toMatch(/Sentry\.captureException/)
-    expect(content).toMatch(/Sentry\.withScope/)
+  it('emite a observabilidad in-house (no Sentry, no DB fetch directo)', () => {
+    expect(content).toMatch(/emitClientEvent/)
+    expect(content).toMatch(/eventType: 'client_error'/)
+    expect(content).not.toMatch(/@sentry/)
   })
 
-  it('sets endpoint and source tags', () => {
-    expect(content).toMatch(/scope\.setTag\('endpoint'/)
-    expect(content).toMatch(/scope\.setTag\('source', 'client'/)
+  it('pasa endpoint y component en el evento', () => {
+    expect(content).toMatch(/endpoint,/)
+    expect(content).toMatch(/component: context\?\.component/)
   })
 
   it('incluye component como prefijo en errorMessage', () => {

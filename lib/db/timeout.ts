@@ -27,7 +27,7 @@
 // devuelven 503 retornado (no throw) no llegan a Sentry vía withErrorLogging.
 // El tag quick_fail=db_timeout permite filtrar en panel y medir saturación.
 
-import * as Sentry from '@sentry/nextjs'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 /**
  * Error específico que indica que una operación de BD excedió el timeout
@@ -148,23 +148,20 @@ export async function withDbTimeout<T>(
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       const err = new DbTimeoutError(timeoutMs)
-      // Capturar a Sentry como warning ANTES de propagar el reject.
-      // Sin esto, los handlers de routes catchean DbTimeoutError y
-      // retornan NextResponse(503) — no throw → withErrorLogging no
-      // captura → Sentry ciego. Tags coherentes con sentry-hooks.ts:
-      // tagDbTimeoutEvent (defensa en profundidad: si en el futuro
-      // alguien throws el error, beforeSend también lo etiqueta).
+      // Emitir a observabilidad in-house ANTES de propagar el reject.
+      // Sin esto, los handlers de routes catchean DbTimeoutError y retornan
+      // NextResponse(503) — no throw → withErrorLogging no lo captura → ciego.
+      // eventType 'http_timeout' alimenta la regla de alerta RULE_HTTP_5XX_SPIKE.
       try {
-        Sentry.captureException(err, {
-          level: 'warning',
-          tags: {
-            quick_fail: 'db_timeout',
-            component: 'db_timeout',
-          },
-          extra: { timeoutMs },
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'http_timeout',
+          errorMessage: `DB quick-fail timeout (${timeoutMs}ms)`,
+          metadata: { quick_fail: 'db_timeout', component: 'db_timeout', timeoutMs },
         })
       } catch {
-        // Sentry init issues / no DSN en dev — nunca romper el flow del timeout
+        // observabilidad caída jamás rompe el flow del timeout
       }
       reject(err)
     }, timeoutMs)

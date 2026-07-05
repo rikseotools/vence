@@ -1,24 +1,20 @@
 // lib/observability/client.ts
 //
-// Captura activa client-side COMPLEMENTARIA a Sentry. Bloque 4 Gap 1.
+// Observabilidad client-side 100% IN-HOUSE (Sentry retirado 05/07/2026).
+// Este SDK es ahora la ÚNICA captura de errores de cliente.
 //
-// Sentry (sentry.client.config.ts) cubre:
-//   - window.onerror, unhandledrejection (auto)
-//   - console.error/warn (vía captureConsoleIntegration)
-//   - fetch 5xx (vía httpClientIntegration)
-//   - React Error Boundary (vía app/error.tsx + boundaries explícitos)
-//   - Session Replay + breadcrumbs + grouping
-//   - beforeSend hook espeja TODO a observable_events automáticamente
+// installClientObservability() instala:
+//   - window 'error'        → 'unhandled_error' (excepción JS no capturada)
+//   - 'unhandledrejection'  → 'unhandled_rejection'
+//   - console.error/warn    → 'console_error' / 'console_warn'
+//   - wrapper de fetch      → 'http_5xx' / 'http_4xx' / 'http_network_error'
+//   - EarlyErrorsBridge     → 'pre_hydration_error' (errores pre-hydration)
+//   - Intent tracking       → 'intent_unfulfilled' (clic sin efecto visible)
+//   - Eventos custom de UX (tts, banners, imágenes…) para análisis SQL
 //
-// Lo que Sentry NO cubre y CAPTURAMOS aquí:
-//   - Errores pre-hydration (los pilla EarlyErrorsBridge inline script)
-//   - Intent tracking — bug silencioso "clic sin efecto" donde el usuario
-//     hace algo pero nada visible pasa (no es un Error como tal, no llega
-//     a Sentry)
-//   - Eventos custom de UX que queramos analizar con SQL
-//
-// El emit va a /api/observability/ingest directo (no por beforeSend Sentry,
-// porque estos eventos no pasan por Sentry).
+// Los React Error Boundaries (app/error.tsx, global-error.tsx) emiten aparte
+// ('react_error_boundary'). Todo va a /api/observability/ingest → observable_events.
+// Cada evento pasa por pushEvent(): sampling + rate-limit (5/msg/60s) + scrubPII.
 
 'use client'
 
@@ -55,6 +51,16 @@ const SAMPLE_RATES: Record<string, number> = {
   oposicion_alert_shown: 1.0,
   oposicion_alert_clicked: 1.0,
   oposicion_alert_dismissed: 1.0,
+  // Captura nativa: errores al 100% (señal accionable); console.warn muestreado
+  // (alto volumen). El rate-limit por fingerprint (5/msg/60s) es el segundo cerco.
+  unhandled_error: 1.0,
+  unhandled_rejection: 1.0,
+  console_error: 1.0,
+  console_warn: 0.3,
+  http_5xx: 1.0,
+  http_4xx: 1.0,
+  http_network_error: 1.0,
+  react_error_boundary: 1.0,
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -123,6 +129,19 @@ export type ClientEventType =
   // probados devuelven el total → la merma es client-runtime. Captura el punto
   // exacto: fetcher, pedido, devueltas-server, mostradas-final + selección.
   | 'test_size_shortfall'
+  // ── Captura nativa in-house (2026-07-05, retirada de Sentry) ──────────────
+  // Reemplazan lo que antes delegábamos a Sentry (window.onerror,
+  // unhandledrejection, console, httpClientIntegration). Documentado en
+  // docs/runbooks/observability.md §Captura nativa cliente.
+  | 'unhandled_error' // window 'error' (excepción JS no capturada)
+  | 'unhandled_rejection' // promesa rechazada sin catch
+  | 'console_error' // console.error() del código de la app
+  | 'console_warn' // console.warn()
+  | 'http_5xx' // fetch cliente → respuesta 5xx (alimenta RULE_HTTP_5XX_SPIKE)
+  | 'http_4xx' // fetch cliente → 4xx inesperado (excluye 401/403/404/409/429)
+  | 'http_network_error' // fetch que revienta (offline/DNS/CORS)
+  | 'react_error_boundary' // app/error.tsx + global-error.tsx
+  | 'client_error' // logClientError() — errores manejados en componentes
 
 interface ClientEvent {
   ts: string
@@ -147,8 +166,7 @@ const rateLimitMap = new Map<string, number[]>()
 const pendingIntents = new Map<string, { startedAt: number; description: string }>()
 
 /**
- * Instala UNA vez. Hooks redundantes con Sentry NO se instalan —
- * delegamos a Sentry (sentry.client.config.ts).
+ * Instala UNA vez todos los hooks de captura in-house (ver cabecera del fichero).
  */
 export function installClientObservability(options?: {
   userId?: string | null
@@ -198,9 +216,159 @@ export function installClientObservability(options?: {
     earlyErrors.length = 0
   }
 
+  // Captura nativa in-house (reemplaza las integraciones de Sentry, ya retirado).
+  installNativeCaptures()
+
   setInterval(() => flush(false), BUFFER_FLUSH_MS)
   window.addEventListener('beforeunload', () => flush(true))
   window.addEventListener('pagehide', () => flush(true))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Captura nativa: window.onerror, unhandledrejection, console, fetch.
+// Antes lo hacía Sentry (httpClientIntegration + captureConsoleIntegration +
+// auto onerror/unhandledrejection). Retirado Sentry → lo hacemos in-house.
+// Todo va por pushEvent() → sampling + rate-limit + scrubPII + buffer/flush.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** fetch original, guardado antes de envolver (para uso interno seguro). */
+let origFetch: typeof fetch | null = null
+/** Anti-recursión del wrapper de console (nuestro propio código no se re-captura). */
+let inConsoleCapture = false
+
+function installNativeCaptures(): void {
+  // 1. Excepciones JS no capturadas (antes: Sentry auto onerror).
+  window.addEventListener('error', (event: ErrorEvent) => {
+    // Errores de carga de recurso (img/script) llegan aquí sin event.error;
+    // los de imágenes ya se cubren con question_image_error → ignorar ruido.
+    if (event.target && event.target !== window) return
+    const err = event.error as Error | undefined
+    const stack = err?.stack
+    const msg = event.message || err?.message || 'unhandled error'
+    // Extensiones del navegador = causa #1 de ruido → debug, no error.
+    if (stack && /chrome-extension:\/\/|moz-extension:\/\/|safari-extension:\/\//.test(stack)) {
+      pushEvent({ severity: 'debug', eventType: 'browser_extension_error', errorMessage: msg, metadata: { stack } })
+      return
+    }
+    pushEvent({
+      severity: 'error',
+      eventType: 'unhandled_error',
+      errorMessage: msg,
+      metadata: { stack, filename: event.filename, lineno: event.lineno, colno: event.colno },
+    })
+  })
+
+  // 2. Promesas rechazadas sin catch (antes: Sentry auto unhandledrejection).
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    const reason = event.reason
+    const isErr = reason instanceof Error
+    const msg = isErr ? reason.message : typeof reason === 'string' ? reason : safeStringify(reason)
+    pushEvent({
+      severity: 'error',
+      eventType: 'unhandled_rejection',
+      errorMessage: msg || 'unhandled rejection',
+      metadata: { stack: isErr ? reason.stack : undefined },
+    })
+  })
+
+  // 3. console.error / console.warn (antes: captureConsoleIntegration).
+  installConsoleCapture()
+
+  // 4. fetch cliente 4xx/5xx/red (antes: httpClientIntegration, solo 5xx).
+  installFetchCapture()
+}
+
+function installConsoleCapture(): void {
+  for (const level of ['error', 'warn'] as const) {
+    const original = console[level].bind(console)
+    console[level] = (...args: unknown[]) => {
+      original(...args) // preservar comportamiento nativo SIEMPRE
+      if (inConsoleCapture) return // no re-capturar nuestro propio ruido
+      inConsoleCapture = true
+      try {
+        const msg = args
+          .map((a) => (a instanceof Error ? a.stack || a.message : typeof a === 'string' ? a : safeStringify(a)))
+          .join(' ')
+        pushEvent({
+          severity: level === 'error' ? 'error' : 'warn',
+          eventType: level === 'error' ? 'console_error' : 'console_warn',
+          errorMessage: msg,
+        })
+      } catch {
+        // nunca romper console
+      } finally {
+        inConsoleCapture = false
+      }
+    }
+  }
+}
+
+function installFetchCapture(): void {
+  if (typeof window.fetch !== 'function') return
+  origFetch = window.fetch.bind(window)
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const method = (init?.method || (input instanceof Request ? input.method : 'GET') || 'GET').toUpperCase()
+    try {
+      const res = await origFetch!(input as RequestInfo, init)
+      if (observeUrl(url) && !isExpectedStatus(res.status, url)) {
+        if (res.status >= 500) {
+          pushEvent({ severity: 'error', eventType: 'http_5xx', endpoint: pathOf(url), errorMessage: `${method} ${res.status} ${res.statusText}`, metadata: { method, status: res.status } })
+        } else if (res.status >= 400) {
+          pushEvent({ severity: 'warn', eventType: 'http_4xx', endpoint: pathOf(url), errorMessage: `${method} ${res.status} ${res.statusText}`, metadata: { method, status: res.status } })
+        }
+      }
+      return res
+    } catch (err) {
+      // fetch que revienta: offline, DNS, CORS, abort. Abort = navegación del
+      // usuario, no un fallo → no reportar.
+      const name = err instanceof Error ? err.name : ''
+      if (observeUrl(url) && name !== 'AbortError') {
+        pushEvent({ severity: 'warn', eventType: 'http_network_error', endpoint: pathOf(url), errorMessage: err instanceof Error ? err.message : String(err), metadata: { method } })
+      }
+      throw err // NUNCA alterar el comportamiento del fetch original
+    }
+  }
+}
+
+/** Solo observamos API same-origin; excluye el propio /ingest (anti-bucle) y hosts externos. */
+export function observeUrl(url: string): boolean {
+  try {
+    const u = new URL(url, window.location.origin)
+    if (u.origin !== window.location.origin) return false
+    if (u.pathname.startsWith('/api/observability')) return false
+    return u.pathname.startsWith('/api/')
+  } catch {
+    return false
+  }
+}
+
+/** Estados 4xx que son parte del flujo normal → NO son señal de bug. */
+export function isExpectedStatus(status: number, url: string): boolean {
+  if (status < 400) return true
+  if (status === 401) return true // pre-login / refresh de token
+  if (status === 403) return true // reto anti-scraping (/api/answer, /questions/filtered) + permisos
+  if (status === 404) return true // recurso opcional; demasiado ruidoso
+  if (status === 409) return true // conflicto manejado (anti-duplicado)
+  if (status === 429) return true // rate-limit esperado
+  void url
+  return false
+}
+
+function pathOf(url: string): string {
+  try {
+    return new URL(url, window.location.origin).pathname
+  } catch {
+    return url.slice(0, 200)
+  }
+}
+
+function safeStringify(v: unknown): string {
+  try {
+    return typeof v === 'object' ? JSON.stringify(v) : String(v)
+  } catch {
+    return String(v)
+  }
 }
 
 export function setObservabilityUserId(userId: string | null): void {

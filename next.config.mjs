@@ -1,5 +1,3 @@
-import { withSentryConfig } from '@sentry/nextjs';
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Bloque 5 Fase E (ECS Fargate path, no SST/OpenNext): build standalone
@@ -197,41 +195,5 @@ const nextConfig = {
   },
 };
 
-// Sentry configuration options
-const sentryWebpackPluginOptions = {
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-webpack-plugin#options
-
-  org: "vence-x2",
-  project: "javascript-nextjs",
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  tunnelRoute: "/monitoring",
-
-  // Hides source maps from generated client bundles
-  hideSourceMaps: true,
-
-  // Webpack-specific options (nueva API de Sentry)
-  webpack: {
-    // Automatically annotate React components
-    reactComponentAnnotation: {
-      enabled: true,
-    },
-    // Tree-shake Sentry logger statements
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
-};
-
-// Make sure adding Sentry options is the last code to run before exporting
-export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+// Observabilidad 100% in-house (Sentry retirado 05/07/2026).
+export default nextConfig;
