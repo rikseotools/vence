@@ -78,6 +78,12 @@ const BASE_VARS = {
     ? 'AND (up.target_oposicion=$' + (muni.length + 1) + ' OR NOT (' +
       excl.map((_, i) => 'up.ciudad ILIKE $' + (muni.length + 2 + i)).join(' OR ') + '))'
     : '';
+  // Envío incremental / make-up: no re-enviar a quien ya recibió una campaña previa.
+  const skipCampaign = cfg.excludeSentCampaignId || null;
+  const skipParamIdx = muni.length + 2 + excl.length;
+  const skipSql = skipCampaign
+    ? `AND up.id NOT IN (SELECT user_id FROM email_events WHERE campaign_id=$${skipParamIdx} AND event_type='sent' AND user_id IS NOT NULL)`
+    : '';
   const users = (await c.query(`
     SELECT up.id, up.email, up.full_name AS "fullName"
     FROM user_profiles up
@@ -86,7 +92,8 @@ const BASE_VARS = {
       AND COALESCE(ep.unsubscribed_all,false)=false AND COALESCE(ep.email_newsletter_disabled,false)=false
       AND (up.target_oposicion=$${muni.length + 1} OR ${like})
       ${exclSql}
-    ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%')])).rows;
+      ${skipSql}
+    ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaign ? [skipCampaign] : [])])).rows;
 
   console.log(`👥 Audiencia: ${users.length} enviables | plantilla=${templateSlug} | MODO=${MODE}`);
 
