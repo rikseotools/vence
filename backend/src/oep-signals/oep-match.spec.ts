@@ -34,6 +34,9 @@ const CATALOG: OposicionCandidate[] = [
   { id: 'toledo-archivos', nombre: 'Ayuntamiento de Toledo', slug: 'auxiliar-de-archivos-ayuntamiento-de-toledo', shortName: '', subgrupo: 'C1', administracion: 'local' },
   // Catalogada nombrada por su consejería (el slug NO lleva la región).
   { id: 'tecaux-madrid', nombre: 'Técnicos Auxiliares - Consejería de Economía, Hacienda y Empleo', slug: 'tecnicos-auxiliares-consejeria-de-economia-hacienda-y-empleo', shortName: '', subgrupo: 'C1', administracion: 'Consejería de Economía, Hacienda y Empleo' },
+  // Catalogada de un servicio de salud (slug sin región) — para probar que "servicio/salud"
+  // no cruza regiones por el fallback de organismo.
+  { id: 'aux-salud-madrid', nombre: 'Auxiliar Administrativo - Servicio Madrileño de Salud', slug: 'auxiliar-administrativo-servicio-salud', shortName: '', subgrupo: 'C2', administracion: 'Servicio Madrileño de Salud' },
 ];
 
 const find = (id: string) => CATALOG.find((o) => o.id === id)!;
@@ -207,6 +210,14 @@ describe('gap2 — fallback por nombre para cuerpos sin familia (05/07)', () => 
 
   it('Técnico Superior @ Instituto Cartográfico (agencia) sin fila propia → NOVEL', () => {
     const d: DetectedOep = { cuerpo: 'TÉCNICO SUPERIOR', grupo: 'C1', admin: 'Autonómica', ccaa: 'Cataluña', organismo: 'Instituto Cartográfico y Geológico de Cataluña' };
+    expect(pickBestMatch(d, CATALOG).oposicionId).toBeNull();
+  });
+
+  it('"servicio/salud" NO cruza regiones: Aux @ Servicio Cántabro de Salud ≠ fila de Madrid', () => {
+    // Slug de la candidata sin región → el match cae al fallback por organismo; los
+    // tokens genéricos servicio+salud NO deben bastar para casar otra región.
+    const d: DetectedOep = { cuerpo: 'AUXILIAR ADMINISTRATIVO', grupo: 'C2', admin: 'Autonómica', ccaa: 'Cantabria', organismo: 'Servicio Cántabro de Salud' };
+    expect(scoreMatch(d, find('aux-salud-madrid')).matched).toBe(false);
     expect(pickBestMatch(d, CATALOG).oposicionId).toBeNull();
   });
 });

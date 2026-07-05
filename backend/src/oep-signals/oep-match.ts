@@ -262,11 +262,15 @@ const AGENCY_MARKER =
   /\b(agencia|instituto|consorci|consorcio|ente publico|organismo autonomo|fundacion|cartografic|geologic|servicio (murciano|canario|balear|gallego|vasco|andaluz|riojano|extremeno|aragones|madrileno|catalan|navarro))\b/;
 
 // Palabras de administración GENÉRICA: no distinguen un organismo de otro.
+// Incluye tokens de SECTOR genéricos (servicio/salud/sanidad…) que, si contaran
+// para el solape de organismo, cruzarían regiones distintas (p.ej. "Servicio
+// Andaluz de Salud" ↔ "Servicio Cántabro de Salud" comparten servicio+salud).
 const GENERIC_ADMIN = new Set([
   'administracion', 'general', 'gobierno', 'comunidad', 'autonoma', 'autonomica',
   'consejeria', 'conselleria', 'departamento', 'direccion', 'funcion', 'publica',
   'publico', 'presidencia', 'gabinete', 'portavocia', 'digital', 'region',
   'provincial', 'excmo', 'excma', 'govern', 'junta', 'principado',
+  'servicio', 'servicios', 'salud', 'sanidad', 'sanitario', 'sanitaria',
 ]);
 
 function isAgencyOrg(organismo?: string | null): boolean {
