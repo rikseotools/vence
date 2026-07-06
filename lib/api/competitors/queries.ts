@@ -20,10 +20,15 @@ export interface CompetitorChangesCount {
 /** Contador para el badge del nav: cambios detectados en los últimos 7 días. */
 export async function getCompetitorChangesCount(): Promise<CompetitorChangesCount> {
   const db = getDb()
+  // Excluye url_added: en el backfill inicial se registran miles (posts/páginas)
+  // que son ruido de una vez. El badge muestra novedades accionables: cursos
+  // nuevos, cambios de precio, landings editadas o bajas. (Un curso nuevo emite
+  // course_added además de url_added, así que no se pierde.)
   const res = await db.execute(sql`
     SELECT count(*)::int AS count
     FROM competitor_changes
     WHERE detected_at > now() - interval '7 days'
+      AND change_type <> 'url_added'
   `)
   return { success: true, changesCount: Number(rows<{ count: number }>(res)[0]?.count ?? 0) }
 }
@@ -90,7 +95,7 @@ export async function getCompetitorsOverview(): Promise<CompetitorsOverview> {
         (SELECT count(*)::int FROM competitor_courses WHERE is_active) AS courses,
         (SELECT count(*)::int FROM competitor_urls WHERE is_active) AS urls,
         (SELECT count(*)::int FROM competitor_courses WHERE is_active AND oposicion_id IS NULL) AS gaps,
-        (SELECT count(*)::int FROM competitor_changes WHERE detected_at > now() - interval '7 days') AS recent_changes
+        (SELECT count(*)::int FROM competitor_changes WHERE detected_at > now() - interval '7 days' AND change_type <> 'url_added') AS recent_changes
     `),
     // Pivote por oposición: quién prepara cada oposición nuestra + rango de cuota.
     db.execute(sql`
