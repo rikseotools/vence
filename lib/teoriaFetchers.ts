@@ -7,6 +7,7 @@ import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } f
 import { isDisposicionArticle } from './boe-extractor'
 import { normalizeArticleNumber } from './boeScrapingUtils'
 import { compareArticleNumbers } from '@/lib/utils/articleOrder'
+import { isVariantContainerLaw } from '@/lib/isVariantContainerLaw'
 
 /**
  * Helper: carga el cache de slugs de BD (Drizzle) y devuelve una función sync para resolver slugs.
@@ -215,6 +216,8 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
         }
       })
       .filter((law: LawWithStats) => law.articleCount > 0)
+      // Excluir leyes-contenedor de variante (solo web / solo escritorio) del catálogo.
+      .filter((law: LawWithStats) => !isVariantContainerLaw(law.slug))
       .sort((a: LawWithStats, b: LawWithStats) => b.articleCount - a.articleCount)
 
     console.timeEnd('⏱️ fetchLawsList')

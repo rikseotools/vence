@@ -10,6 +10,7 @@ function getLawsDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { laws, articles, questions } from '@/db/schema'
+import { isVariantContainerLaw } from '@/lib/isVariantContainerLaw'
 import { eq, and, sql, count, isNotNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import {
@@ -410,6 +411,7 @@ async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
       id: laws.id,
       name: laws.name,
       short_name: laws.shortName,
+      slug: laws.slug,
       description: laws.description,
       year: laws.year,
       type: laws.type,
@@ -426,7 +428,7 @@ async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
       )
     )
     .where(eq(laws.isActive, true))
-    .groupBy(laws.id, laws.name, laws.shortName, laws.description, laws.year, laws.type)
+    .groupBy(laws.id, laws.name, laws.shortName, laws.slug, laws.description, laws.year, laws.type)
     .orderBy(sql`COUNT(${questions.id}) DESC`)
 
   const result = await Promise.race([
@@ -440,6 +442,9 @@ async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
 
   const lawsWithCounts: LawWithCounts[] = result
     .filter(law => Number(law.questionCount) >= 1)
+    // Excluir leyes-contenedor de variante (solo web / solo escritorio): activas para
+    // topic_scope/teoría, pero no se muestran como leyes sueltas en el catálogo.
+    .filter(law => !isVariantContainerLaw(law.slug))
     .map(law => {
       const parsed = LawWithCountsSchema.safeParse({
         id: law.id,
