@@ -23,7 +23,14 @@ import type { ParsedPrice } from './adapters/types';
 function cleanName(s: string): string {
   return normalize(s)
     .replace(/[^a-z0-9]+/g, ' ')
+    // Expandir abreviaturas de organismo/CCAA (verificadas) antes de nada, para
+    // que "Subalterno GVA" ≈ "Subalterno de la Generalitat Valenciana".
+    .replace(/\bgva\b/g, 'generalitat valenciana')
+    .replace(/\bcam\b/g, 'comunidad madrid')
     .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
+    // Singularizar tokens largos (simétrico en ambos lados → solo aumenta matches):
+    // "Subalternos Generalitat Valenciana" ≈ "Subalterno …".
+    .replace(/\b([a-z]{5,}?)s\b/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -296,10 +303,14 @@ export class CompetitorQueriesService {
   // ── match curso → oposición ──────────────────────────────────────────────
 
   async loadOposicionesForMatch(): Promise<OposicionForMatch[]> {
+    // Matchear contra TODAS las oposiciones catalogadas, NO solo las activas
+    // (vendibles). El valor del analizador es "quién prepara la oposición X", y el
+    // 83% de nuestro catálogo son `coverage_level='catalogada'` (is_active=false):
+    // filtrarlas dejaba sus cursos como gaps eternos (p.ej. Subalterno GVA). El
+    // matcher conservador (contención inequívoca + ≥2 tokens) mantiene la precisión.
     return this.db
       .select({ id: oposiciones.id, nombre: oposiciones.nombre, shortName: oposiciones.shortName })
-      .from(oposiciones)
-      .where(eq(oposiciones.isActive, true));
+      .from(oposiciones);
   }
 
   /**

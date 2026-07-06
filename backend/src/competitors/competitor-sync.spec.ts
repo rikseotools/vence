@@ -24,6 +24,11 @@ describe('matchCourseToOposicion (conectores)', () => {
   it('genérico que encaja en varias oposiciones → ambiguo → gap', () => {
     expect(svc.matchCourseToOposicion('Auxiliar Administrativo', catalog)).toBeNull();
   });
+  it('empareja abreviatura GVA y plural con la oposición catalogada', () => {
+    const cat = [{ id: 'op-sub-gva', nombre: 'Subalterno/a de la Generalitat Valenciana', shortName: null }];
+    expect(svc.matchCourseToOposicion('Subalternos Generalitat Valenciana', cat)).toBe('op-sub-gva'); // plural
+    expect(svc.matchCourseToOposicion('Subalterno GVA', cat)).toBe('op-sub-gva'); // abreviatura
+  });
 });
 
 describe('lastmodDiffers (regresión: gateo de re-descarga)', () => {
