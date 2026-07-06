@@ -11,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const adminNotifications = useAdminNotifications(true)
   const { hasUnreviewedChanges } = useLawChanges()
   const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0, discovered: 0 })
+  const [competidorChanges, setCompetidorChanges] = useState(0)
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -31,6 +32,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkOepSignals, 300000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkOepSignals])
+
+  const checkCompetidorChanges = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/admin/competidores/changes-count', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setCompetidorChanges(json.changesCount ?? 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    const delay = setTimeout(checkCompetidorChanges, 12000)
+    const interval = setInterval(checkCompetidorChanges, 300000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkCompetidorChanges])
 
   return (
     <ProtectedRoute>
@@ -209,6 +226,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <span>📡</span>
                     <span>Radar</span>
+                  </a>
+                  <a
+                    href="/admin/competidores"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      competidorChanges > 0 ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>🏫</span>
+                    <span>Competidores</span>
+                    {competidorChanges > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
+                        title="Cambios detectados en competidores (últimos 7 días)"
+                      >
+                        {competidorChanges > 99 ? '99+' : competidorChanges}
+                      </span>
+                    )}
                   </a>
                   <a
                     href="/admin/revision-temas"
