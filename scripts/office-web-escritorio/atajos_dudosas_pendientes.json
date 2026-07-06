@@ -1,0 +1,172 @@
+[
+ {
+  "id": "765aec6e-6cd7-4802-80ad-16bd8205e53c",
+  "verdict": "dudosa",
+  "reason": "Alt+Mayus+Flecha arriba (mover parrafo) no es Fn ni Alt+letra; su soporte en Word web es indeterminable."
+ },
+ {
+  "id": "babd2407-3a0e-46b9-9580-4db3ba57ab0e",
+  "verdict": "dudosa",
+  "reason": "No es atajo; combinación de correspondencia es función de escritorio (no existe/limitada en web)."
+ },
+ {
+  "id": "3f475196-daff-4c49-b7f2-a2899d1d8c97",
+  "verdict": "dudosa",
+  "reason": "No es atajo; el panel de navegación difiere en la versión web."
+ },
+ {
+  "id": "dfe28323-35c9-4b74-800f-b897d2d9bef1",
+  "verdict": "dudosa",
+  "reason": "Ctrl+U (nuevo documento en español) es operación a nivel documento, poco fiable en web."
+ },
+ {
+  "id": "584e0108-11cf-45f5-804b-e3c4eef1827a",
+  "verdict": "dudosa",
+  "reason": "No es atajo; comportamiento de configurar página/secciones limitado en web."
+ },
+ {
+  "id": "95e61a61-f39a-4d90-8183-55342e46cfb0",
+  "verdict": "dudosa",
+  "reason": "No es atajo claro; métodos de vista previa/menús propios de escritorio."
+ },
+ {
+  "id": "7ba89db5-01b5-4375-91f0-f1f59b496bfa",
+  "verdict": "dudosa",
+  "reason": "No es atajo; pregunta conceptual sobre marcas de párrafo."
+ },
+ {
+  "id": "93b06c0f-a6d3-435c-bcd6-3e6f0ce3bd84",
+  "verdict": "dudosa",
+  "reason": "No es atajo; pregunta de característica (Leer en voz alta), existe en web también."
+ },
+ {
+  "id": "13478361-0386-477a-b271-dccfc56513c7",
+  "verdict": "dudosa",
+  "reason": "No es atajo; pregunta sobre pestaña de la cinta (Revisar)."
+ },
+ {
+  "id": "2dc60e97-428d-4a49-8f3b-43234ec3c24e",
+  "verdict": "dudosa",
+  "reason": "No es atajo; saltos de sección limitados en la versión web."
+ },
+ {
+  "id": "79812276-15e8-4b38-b778-4b17320291a0",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Alt+D (nota al final); combinación Ctrl+Alt+letra de fiabilidad incierta en web."
+ },
+ {
+  "id": "59d72410-f7cb-4b01-9837-9f4d6ee00159",
+  "verdict": "dudosa",
+  "reason": "No es atajo; función de hoja de cálculo (EXTRAE), pregunta mal ubicada."
+ },
+ {
+  "id": "f2915bcf-d376-4c40-990a-7086b7cd401e",
+  "verdict": "dudosa",
+  "reason": "Pregunta trampa; respuesta correcta es 'ninguna', Ctrl+AA no hace lo listado."
+ },
+ {
+  "id": "6af7ed83-1196-43bb-9b67-1897123afd6d",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Mayus+D (doble subrayado) es formato Ctrl+Shift+letra no confirmado en web; comportamiento incierto."
+ },
+ {
+  "id": "3f6d9aa8-3877-4fb1-be4f-1c5f9e412719",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Q (alinear izquierda, atajo localizado ES) NO esta en la lista de Ctrl+letra identicos; en web las alineaciones usan mapeo ingles."
+ },
+ {
+  "id": "8112c038-f1c7-4af7-a2c0-e00d21c76985",
+  "verdict": "dudosa",
+  "reason": "Ctrl+< (reducir fuente) es atajo de simbolo poco confirmado en web."
+ },
+ {
+  "id": "d0d47c35-b593-40b2-8e77-c951bd8437dd",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Shift+Enter (salto de columna): soporte de columnas limitado y no confirmado en web."
+ },
+ {
+  "id": "a87e0aba-79af-4bba-82d9-6b074063b67e",
+  "verdict": "dudosa",
+  "reason": "Ctrl+J (justificar, atajo localizado ES) no esta en la lista de identicos; alineaciones difieren en web."
+ },
+ {
+  "id": "faf16271-81e8-49a5-8f4a-b7560d68a232",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Alt+C: las combinaciones Ctrl+Alt+letra son inciertas en web."
+ },
+ {
+  "id": "c117124f-6c5d-4c49-b1c3-3838b1127c66",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Mayus+N (estilo Normal) choca con atajo del navegador (incognito); comportamiento incierto en web."
+ },
+ {
+  "id": "9a0bfc1a-acbb-4c51-ad99-b649cc46922e",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Mayus+N (Estilo Normal) es Ctrl+Shift+letra, no es del set estandar; comportamiento incierto en web."
+ },
+ {
+  "id": "f6339f7f-dc7b-4a24-abc9-3a38c40d89d0",
+  "verdict": "dudosa",
+  "reason": "Ctrl+D (alinear derecha en Word ES) es atajo especifico de idioma; en web la alineacion usa Ctrl+R. Incierto."
+ },
+ {
+  "id": "97b236e6-093e-4e6e-8756-9f6df2686bf9",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Mayus+A (todo mayusculas) es Ctrl+Shift+letra fuera del set estandar; incierto en web."
+ },
+ {
+  "id": "1a5e8107-2a58-4418-a782-26f028f7ee36",
+  "verdict": "dudosa",
+  "reason": "Ctrl+U (nuevo documento en blanco): crear documento nuevo no aplica igual en la web; navegador intercepta Ctrl+U."
+ },
+ {
+  "id": "dbb23c3b-73b4-412d-b48d-5fdc7b92b3b0",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Q (alinear izquierda en Word ES) es atajo especifico de idioma; en web es Ctrl+L. Incierto."
+ },
+ {
+  "id": "0cc7bdf3-4b83-4def-9450-d1e14deb7535",
+  "verdict": "dudosa",
+  "reason": "El portapapeles de Office de 24 elementos es funcion de escritorio; no existe igual en la web."
+ },
+ {
+  "id": "df5e6b1b-c207-4c5f-94ac-5588ec563ec4",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Mayus+F (menu Formato Fuente): cuadro de dialogo Fuente no existe en la web; Ctrl+Shift+letra incierto."
+ },
+ {
+  "id": "54ea2e54-8809-453e-9a25-38375bfad259",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Mayus+Espacio (espacio de no separacion): soporte incierto en la web."
+ },
+ {
+  "id": "f1338231-1cab-4838-b718-8865f1339cba",
+  "verdict": "dudosa",
+  "reason": "Alt+Re Pag (desplazar pantalla izquierda) es combo Alt de navegacion que en navegador suele estar interceptado; incierto en web."
+ },
+ {
+  "id": "17921bab-f043-41d7-8402-36419c23d47a",
+  "verdict": "dudosa",
+  "reason": "Ctrl+Av Pag (ir a hoja siguiente) choca con el cambio de pestana del navegador; incierto en Excel web."
+ },
+ {
+  "id": "66be41e2-712e-4d8b-9036-e77f60aac4ef",
+  "verdict": "dudosa",
+  "reason": "Alt+Av Pag (desplazar pantalla derecha) combo Alt de navegacion normalmente interceptado por el navegador; incierto en web."
+ },
+ {
+  "id": "c22c31d5-960f-40f2-974a-85e3eae043bd",
+  "verdict": "dudosa",
+  "reason": "Ctrl+AvPag cambia de hoja; el navegador suele interceptar Ctrl+PgDn (conflicto en web)."
+ },
+ {
+  "id": "ded6cfb0-0666-49fc-a13b-deea73455c0d",
+  "verdict": "dudosa",
+  "reason": "Ctrl+RePag hoja anterior; el navegador suele interceptar Ctrl+PgUp (conflicto en web)."
+ },
+ {
+  "id": "10940018-c480-4b86-b96e-00c6c0dffc99",
+  "verdict": "dudosa",
+  "reason": "Dividir tabla: herramienta de tabla con disponibilidad incierta en Word web (juego de layout de tabla reducido)."
+ }
+]

@@ -4,6 +4,10 @@
 
 **Principio: recopilar datos primero, diagnosticar después.** Ejecuta TODOS los pasos antes de sacar conclusiones.
 
+> ⚠️ **OBLIGATORIO SIEMPRE: analizar el JOURNEY del usuario antes de responder.** Para CUALQUIER feedback (bug, contenido, duda, sugerencia), reconstruye primero su recorrido y su **historial de feedbacks/impugnaciones** (Paso 3) — no te quedes con el texto literal del mensaje. El journey revela lo que el usuario **de verdad** quiere y da el contexto que cambia el diagnóstico.
+>
+> **Caso de referencia (Isabel B, Aragón, 04/07/2026):** preguntó "¿habéis hecho un inciso de las diferencias de Word/Excel 365 Web vs escritorio?". Leído literal parecía "añadid un extra". Pero su **historial** (había cazado antes que la versión estaba mal —Office 2016 en vez de 365— y había enlazado la nota oficial del IAAP) mostró que su verdadera intención era **verificar que el contenido coincide con la versión exacta que le examinan**. El journey convirtió "sugerencia menor" en "el contenido está en la variante equivocada según el spec oficial". Sin analizar el journey, la respuesta habría sido incorrecta.
+
 ## Triaje por `type` antes de empezar
 
 Antes de aplicar la metodología, mira el campo `user_feedback.type`. No todos los feedbacks son bugs — algunos tienen su propio runbook:
