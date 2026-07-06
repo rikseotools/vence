@@ -347,8 +347,7 @@ git push origin main
 - Para regenerar el schema: `DATABASE_URL="..." npx drizzle-kit introspect`
 
 #### Documentación Adicional
-- **docs/database/tablas.md:** Documentación detallada de todas las tablas
-- Para verificar estructura de tablas, consultar primero `db/schema.ts` (fuente de verdad)
+- **La estructura de tablas es `db/schema.ts` (Drizzle, FUENTE DE VERDAD).** No se documentan tablas a mano en markdown (se desincroniza). Para regenerar: `npx drizzle-kit introspect`.
 
 ### Consultas a Base de Datos desde Claude Code
 Claude puede consultar la base de datos Supabase directamente usando Node.js con `@supabase/supabase-js`:
