@@ -131,10 +131,17 @@ Patrones de captura por competidor:
 - **Robots.txt**: respetar `Disallow` (p.ej. `/api/`, `/checkout/`); no scrapear precios tras rutas bloqueadas.
 - **PERF (follow-up):** el sync inserta URLs **una a una** → competidores con miles de URLs (mad 5.577, adams) tardan ~15 min. Optimizar con **batch inserts**.
 - **NO inventar contenido** (nombres/precios). Si no está, es gap / precio vacío / follow-up headless.
+- **⚠️ Falsos negativos de cobertura (clasificación + descubrimiento):** el analizador puede reportar "0 competidores" cuando SÍ la preparan (ver §6). Dos causas: **(a) orden de `classifyUrl`** — en MAD el `.html → page` iba ANTES que `/oposiciones/`, tragándose los productos de oposición `/oposiciones/<id>_slug.html` (arreglado 07/07: mirar `/oposiciones/` primero); **(b) descubrimiento limitado al sitemap** → oposiciones vendidas como página fuera del sitemap se pierden. Al escribir un adapter: revisar el ORDEN de `classifyUrl` (lo específico antes que lo genérico) y hacer spot-check contra Google de si el sitemap cubre TODAS las oposiciones.
 
 ---
 
 ## 6. Responder "¿quién prepara la oposición X?" / comparar precios
+
+> ⚠️ **"0 competidores la tiene" es un FALSO NEGATIVO frecuente en oposiciones NICHO — NO te fíes del panel.** El analizador **SUBCUENTA** la cobertura: solo descubre lo que hay en el **sitemap** de cada competidor y respeta el tope `MAX_COURSES_PER_RUN=150`/pasada. Una oposición que un competidor vende como **producto/página suelta fuera del sitemap** (o más allá del tope) NO se captura.
+>
+> **Caso 07/07/2026 (Aux. Servicios Universidad de Murcia):** el panel decía "0 competidores" y "MAD solo tiene Limpiador/Lavandería" → **falso**. MAD la vende (`mad.es/oposiciones/244196_auxiliar-de-servicios.html`), pero (1) esa URL **no está en su sitemap** (no se descubre) y (2) `classifyMadUrl` clasificaba los `/oposiciones/<id>_slug.html` como libro (`.html → page`) **antes** de mirar `/oposiciones/` → se perdían. La capa (2) está **corregida** en `mad.ts`; la (1) (descubrimiento) sigue: para nicho el sitemap no basta.
+>
+> **Regla:** antes de concluir "no la prepara nadie" para una oposición nicho, **verifícalo en Google** ("preparación oposición X academia/curso"). Los competidores que encuentres y no tengamos → regístralos (§1). Nunca decidas un build (o su descarte) solo con el "0 competidores" del panel.
 
 - **Panel:** `/admin/competidores` → pestaña "Por oposición" → buscar → competidores + coste de cada uno.
 - **SQL directo:**
