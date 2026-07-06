@@ -412,29 +412,48 @@ export const questionArticles = pgTable("question_articles", {
 	check("question_articles_relevance_check", sql`relevance = ANY (ARRAY['primary'::text, 'secondary'::text, 'reference'::text])`),
 ]);
 
+// SSOT del PROCESO (Sprint G). Una fila por año; `is_current` marca la vigente.
+// La leen los lectores vía la vista `oposiciones_ssot` (db/oposicionesSsot.ts).
 export const convocatorias = pgTable("convocatorias", {
-	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-	oposicionId: uuid("oposicion_id"),
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
 	"año": integer("año").notNull(),
-	fechaExamen: date("fecha_examen"),
-	tipoExamen: text("tipo_examen").default('ordinaria'),
-	boeNumero: text("boe_numero"),
-	boeFecha: date("boe_fecha"),
-	plazasConvocadas: integer("plazas_convocadas"),
-	observaciones: text(),
-	boletinOficialUrl: text("boletin_oficial_url"),
-	paginaInformacionUrl: text("pagina_informacion_url"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	convocatoriaNumero: text("convocatoria_numero"),
+	convocatoriaFecha: date("convocatoria_fecha"),
+	convocatoriaDogv: text("convocatoria_dogv"),
+	isCurrent: boolean("is_current").default(false).notNull(),
+	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
+	estadoProceso: text("estado_proceso"),
+	oepDecreto: text("oep_decreto"),
+	oepFecha: date("oep_fecha"),
+	plazasLibres: integer("plazas_libres"),
+	plazasPromocionInterna: integer("plazas_promocion_interna"),
+	plazasDiscapacidad: integer("plazas_discapacidad"),
+	boePublicationDate: date("boe_publication_date"),
+	boeReference: text("boe_reference"),
+	inscriptionStart: date("inscription_start"),
+	inscriptionDeadline: date("inscription_deadline"),
+	examDate: date("exam_date"),
+	examDateApproximate: boolean("exam_date_approximate").default(false),
+	programaUrl: text("programa_url"),
+	examenConfig: jsonb("examen_config"),
+	landingFaqs: jsonb("landing_faqs"),
+	landingEstadisticas: jsonb("landing_estadisticas"),
+	landingDescription: text("landing_description"),
+	requisitosEspeciales: jsonb("requisitos_especiales"),
+	seguimientoLastChecked: timestamp("seguimiento_last_checked", { withTimezone: true, mode: 'string' }),
+	seguimientoLastHash: text("seguimiento_last_hash"),
+	seguimientoChangeStatus: text("seguimiento_change_status"),
+	seguimientoChangeDetectedAt: timestamp("seguimiento_change_detected_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("idx_convocatorias_oposicion_año").using("btree", table.oposicionId.asc().nullsLast().op("int4_ops"), table["año"].asc().nullsLast().op("int4_ops")),
 	foreignKey({
 			columns: [table.oposicionId],
 			foreignColumns: [oposiciones.id],
 			name: "convocatorias_oposicion_id_fkey"
 		}).onDelete("cascade"),
-	unique("convocatorias_oposicion_id_año_tipo_examen_key").on(table.oposicionId, table["año"], table.tipoExamen),
-	check("convocatorias_año_check", sql`("año" >= 2000) AND ("año" <= 2030)`),
-	check("convocatorias_tipo_examen_check", sql`tipo_examen = ANY (ARRAY['ordinaria'::text, 'extraordinaria'::text, 'estabilizacion'::text])`),
+	unique("convocatorias_oposicion_id_año_key").on(table.oposicionId, table["año"]),
 ]);
 
 export const userRoles = pgTable("user_roles", {
@@ -507,31 +526,8 @@ export const userFeedback = pgTable("user_feedback", {
 		}),
 ]);
 
-export const articulosExamenes = pgTable("articulos_examenes", {
-	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-	convocatoriaId: uuid("convocatoria_id"),
-	articleId: uuid("article_id"),
-	frecuenciaAparicion: integer("frecuencia_aparicion").default(1),
-	tipoPregunta: text("tipo_pregunta"),
-	puntosPregunta: numeric("puntos_pregunta", { precision: 4, scale:  2 }),
-	observaciones: text(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_articulos_examenes_article").using("btree", table.articleId.asc().nullsLast().op("uuid_ops")),
-	index("idx_articulos_examenes_convocatoria").using("btree", table.convocatoriaId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.articleId],
-			foreignColumns: [articles.id],
-			name: "articulos_examenes_article_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.convocatoriaId],
-			foreignColumns: [convocatorias.id],
-			name: "articulos_examenes_convocatoria_id_fkey"
-		}).onDelete("cascade"),
-	unique("articulos_examenes_convocatoria_id_article_id_key").on(table.convocatoriaId, table.articleId),
-	check("articulos_examenes_tipo_pregunta_check", sql`tipo_pregunta = ANY (ARRAY['teorica'::text, 'practica'::text, 'caso'::text, 'test'::text])`),
-]);
+// [Retirada 06/07/2026, Fase 4] `articulos_examenes` DROPPED (código muerto, 0 lectores).
+// Backup: docs/roadmap/fase4-backup-tablas-retiradas.json
 
 export const oposicionTopics = pgTable("oposicion_topics", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
@@ -660,42 +656,8 @@ export const oposicionArticles = pgTable("oposicion_articles", {
 	check("oposicion_articles_importancia_check", sql`importancia = ANY (ARRAY['baja'::text, 'media'::text, 'alta'::text, 'critica'::text])`),
 ]);
 
-export const preguntasExamenesOficiales = pgTable("preguntas_examenes_oficiales", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	convocatoriaId: uuid("convocatoria_id"),
-	numeroPregunta: integer("numero_pregunta").notNull(),
-	parteExamen: text("parte_examen").notNull(),
-	preguntaText: text("pregunta_text").notNull(),
-	opcionA: text("opcion_a").notNull(),
-	opcionB: text("opcion_b").notNull(),
-	opcionC: text("opcion_c").notNull(),
-	opcionD: text("opcion_d").notNull(),
-	respuestaCorrecta: text("respuesta_correcta").notNull(),
-	articleId: uuid("article_id"),
-	topicEstimado: text("topic_estimado"),
-	explicacion: text(),
-	fueAnulada: boolean("fue_anulada").default(false),
-	observaciones: text(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_preguntas_oficiales_article").using("btree", table.articleId.asc().nullsLast().op("uuid_ops")),
-	index("idx_preguntas_oficiales_convocatoria").using("btree", table.convocatoriaId.asc().nullsLast().op("uuid_ops")),
-	index("idx_preguntas_oficiales_parte").using("btree", table.parteExamen.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.articleId],
-			foreignColumns: [articles.id],
-			name: "preguntas_examenes_oficiales_article_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.convocatoriaId],
-			foreignColumns: [convocatorias.id],
-			name: "preguntas_examenes_oficiales_convocatoria_id_fkey"
-		}).onDelete("cascade"),
-	unique("preguntas_examenes_oficiales_convocatoria_id_parte_examen_n_key").on(table.convocatoriaId, table.numeroPregunta, table.parteExamen),
-	check("preguntas_examenes_oficiales_parte_examen_check", sql`parte_examen = ANY (ARRAY['organizacion_publica'::text, 'ofimatica'::text, 'psicotecnico'::text])`),
-	check("preguntas_examenes_oficiales_respuesta_correcta_check", sql`respuesta_correcta = ANY (ARRAY['a'::text, 'b'::text, 'c'::text, 'd'::text])`),
-]);
+// [Retirada 06/07/2026, Fase 4] `preguntas_examenes_oficiales` DROPPED (código muerto, 0 lectores).
+// Backup: docs/roadmap/fase4-backup-tablas-retiradas.json
 
 export const lawVersions = pgTable("law_versions", {
 	id: uuid().defaultRandom().primaryKey().notNull(),

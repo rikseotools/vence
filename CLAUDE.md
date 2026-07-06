@@ -216,7 +216,9 @@ git push origin main
 - `detailed_answers` - Respuestas detalladas con analytics
 - `user_profiles` - Perfiles de usuario
 - `articles` - Artículos de legislación
-- `oposiciones` - Datos de convocatorias (plazas, fechas, BOE, URLs seguimiento)
+- `oposiciones` - El **CUERPO** estable (identidad, temario, SEO). Sus columnas de convocatoria (plazas/fechas/estado/BOE) son **LEGACY** en deprecación (Sprint G)
+- `convocatorias` - **SSOT del PROCESO** (plazas, fechas, estado, BOE por año; `is_current`). Fuente única que alimenta landing/catálogo/banner
+- `oposiciones_ssot` (**VISTA**) - drop-in de `oposiciones` con los campos temporales resueltos desde la convocatoria vigente + fallback. **Los lectores leen de aquí**, no de `oposiciones` directo. Objeto Drizzle en `db/oposicionesSsot.ts`. Detalle: `docs/roadmap/consolidacion-convocatorias-radar-ssot.md`
 - `convocatoria_hitos` - Hitos del proceso selectivo (timeline en landings)
 - `convocatoria_seguimiento_checks` - Historial de checks de páginas de seguimiento
 
@@ -315,6 +317,11 @@ git push origin main
 - **Runbook:** `docs/runbooks/seo-oportunidades.md`
 - **Cuándo consultarlo:** cuando el usuario diga *"oportunidades SEO"*, *"qué mejoro de SEO"*, *"subir en Google"*, *"posiciones orgánicas"* o similar.
 - **Resumen:** datos de Google Search Console (conectado por API, `lib/services/googleSearchConsole/`). Comandos `npm run gsc:seo` (oportunidades con tendencia ↑/↓) y `gsc:keywords -- <slug>`. Panel `/admin/ads` tiene columna "Orgánico". Bucle: identificar (gsc:seo) → estudiar competidor (Google la query / Semrush) → mejorar contenido → medir a 3-4 semanas. **Ads NO sube el orgánico**; SEO se sube con contenido + enlaces. Mayor demanda: tests de leyes (39/2015, 40/2015, CE) + "examen auxiliar administrativo estado".
+
+### 🏫 Analizador de Competidores (runbook)
+- **Runbook:** `docs/runbooks/analizador-competidores.md`
+- **Cuándo consultarlo:** cuando el usuario diga *"añade el competidor X"*, *"quién prepara la oposición Y"*, *"compara precios de competidores"*, *"re-sincroniza/actualiza competidores"*, *"qué oposiciones no cubrimos que ellos sí"* (gaps) o similar. Seguir el runbook ANTES de improvisar.
+- **Resumen:** subsistema (BD durable `competitor_*` en RDS) que cataloga por competidor **qué oposiciones prepara, a qué precio, y qué cambia**; la **oposición es el nexo** con el radar. **1 fichero adapter por competidor** en `backend/src/competitors/adapters/`. Panel `/admin/competidores` (oposición-céntrico + badge). El runbook cubre: recon paralelo → adapter → seed → aplicar a RDS → sync → re-match → verificar; captura de precios (JSON-LD/plan-includes); y los gotchas (CDATA en `<loc>`, JSON-LD con Offer anidado, lastmod string vs timestamptz, matcher precisión>recall, JS/Firebase/Cloudflare → headless, sesiones git paralelas → commit atómico, NUNCA inventar nombres/precios). Estado: 13 competidores, 29 oposiciones cubiertas. Detalle diseño: `docs/roadmap/analizador-competidores.md`; memoria `project_analizador_competidores`.
 
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado

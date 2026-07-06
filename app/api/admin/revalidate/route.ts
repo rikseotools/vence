@@ -24,6 +24,7 @@ const VALID_TAGS = [
   'teoria',
   'laws',
   'landing',
+  'oposiciones-catalog', // catálogo/selector de oposiciones (SSOT convocatoria vigente)
   'test-counts',
   'medals',
   'profile',

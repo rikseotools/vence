@@ -1,5 +1,7 @@
 # Sprint G — Separación `oposiciones` (cuerpo) vs `convocatorias` (proceso)
 
+> ⚠️ **SUPERADO / EN EJECUCIÓN (06/07/2026).** El estado y el plan VIVOS están en el roadmap ampliado [`consolidacion-convocatorias-radar-ssot.md`](./consolidacion-convocatorias-radar-ssot.md), que incluye el radar y los retiros. Fases 1-4 ya hechas allí. Este documento es el **diseño original** — útil para el detalle del schema objetivo, pero no para el estado.
+
 > **Detonante:** 2026-06-01 sesión catálogo. Manuel preguntó por qué `auxiliar-administrativo-madrid-2025` apuntaba a una convocatoria vieja. La investigación descubrió que el modelo actual mezcla dos conceptos ortogonales en la misma tabla:
 >
 > 1. **Cuerpo de oposición** (estable en el tiempo): "Auxiliar Administrativo Comunidad de Madrid". Nombre, slug, categoría, administración, coverage_level, seguimiento_url del organismo. NO cambia entre años.
