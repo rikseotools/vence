@@ -8,6 +8,15 @@
 >
 > **Caso de referencia (Isabel B, Aragón, 04/07/2026):** preguntó "¿habéis hecho un inciso de las diferencias de Word/Excel 365 Web vs escritorio?". Leído literal parecía "añadid un extra". Pero su **historial** (había cazado antes que la versión estaba mal —Office 2016 en vez de 365— y había enlazado la nota oficial del IAAP) mostró que su verdadera intención era **verificar que el contenido coincide con la versión exacta que le examinan**. El journey convirtió "sugerencia menor" en "el contenido está en la variante equivocada según el spec oficial". Sin analizar el journey, la respuesta habría sido incorrecta.
 
+## ⚠️ Orden de prioridad de la cola
+
+**Prioriza los feedbacks con valor de RETENCIÓN/AYUDA primero; las eliminaciones de cuenta van SIEMPRE las ÚLTIMAS.**
+
+1. **Bugs** (sobre todo de premium: se cierra la app, no se guarda, no encuentra algo) → churn/reembolso inminente, actuar ya.
+2. **Facturación / confusión de premium recién pagado** → riesgo de reembolso, alto valor de retención.
+3. **Contenido / dudas / demandas de oposición** → ayudar, aclarar, o valorar montar.
+4. **`account_deletion` — SIEMPRE lo ÚLTIMO.** El usuario ya decidió irse: no hay retención que salvar y la eliminación tiene ventana RGPD (no es instantánea), así que se procesa al final, cuando no queda nada con valor de retención por atender. (Sigue teniendo su propio runbook obligatorio, ver abajo — pero NO se prioriza sobre lo demás.)
+
 ## Triaje por `type` antes de empezar
 
 Antes de aplicar la metodología, mira el campo `user_feedback.type`. No todos los feedbacks son bugs — algunos tienen su propio runbook:
