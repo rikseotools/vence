@@ -24,9 +24,10 @@ const BLOCK_RE = /<(url|sitemap)\b[^>]*>([\s\S]*?)<\/\1>/gi;
 const LOC_RE = /<loc>\s*([\s\S]*?)\s*<\/loc>/i;
 const LASTMOD_RE = /<lastmod>\s*([\s\S]*?)\s*<\/lastmod>/i;
 
-/** Decodifica las entidades XML que aparecen en un <loc> (& → &amp; etc.). */
+/** Decodifica un <loc>: desenvuelve CDATA (mad.es) y las entidades XML. */
 function decodeXml(s: string): string {
   return s
+    .replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')

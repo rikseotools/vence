@@ -10,6 +10,13 @@ import { opositatestAdapter } from './opositatest';
 import { avaoposicionesAdapter } from './avaoposiciones';
 import { lideropositorAdapter } from './lideropositor';
 import { opomasterAdapter } from './opomaster';
+import { temariosehsAdapter } from './temariosehs';
+import { oposicionesflouAdapter } from './oposicionesflou';
+import { superaoposicionesAdapter } from './superaoposiciones';
+import { madAdapter } from './mad';
+import { opositasAdapter } from './opositas';
+import { adamsAdapter } from './adams';
+import { gokoanAdapter } from './gokoan';
 
 export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
   tecnoszubiaAdapter,
@@ -17,6 +24,13 @@ export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
   avaoposicionesAdapter,
   lideropositorAdapter,
   opomasterAdapter,
+  temariosehsAdapter,
+  oposicionesflouAdapter,
+  superaoposicionesAdapter,
+  madAdapter,
+  opositasAdapter,
+  adamsAdapter,
+  gokoanAdapter,
 ];
 
 /** Busca el adapter por su key (== competitors.slug). */

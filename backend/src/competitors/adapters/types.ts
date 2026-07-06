@@ -14,6 +14,7 @@ export type PriceKind =
   | 'intensivo'
   | 'tasa'
   | 'material'
+  | 'curso' // curso completo a precio único (adams/opositas)
   | 'otro';
 
 export type PriceAudience = 'nuevo' | 'antiguo' | 'general';
