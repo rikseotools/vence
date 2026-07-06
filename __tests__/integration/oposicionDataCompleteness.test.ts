@@ -1,4 +1,6 @@
 /**
+ * @jest-environment node
+ *
  * Test de integridad: verifica que las oposiciones activas tienen los datos
  * necesarios para landings, seguimiento y breadcrumbs.
  *
@@ -8,36 +10,20 @@
  * - Sin temas_count → predicciones incorrectas
  * - Sin boe_reference → landing incompleta
  *
- * Requiere .env.local con credenciales reales de Supabase.
+ * Agnóstico a la BD: lee la BD VIVA (DATABASE_URL → RDS), la MISMA capa que la app,
+ * NO el cliente Supabase (que apuntaba al backup CONGELADO post-cutover y daba falsos
+ * negativos de oposiciones creadas en RDS). Requiere DATABASE_URL en .env.local.
+ * (`@jest-environment node` es obligatorio: postgres-js no funciona en jsdom.)
  */
-import https from 'https'
+import postgres from 'postgres'
 import dotenv from 'dotenv'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 
 dotenv.config({ path: '.env.local', override: true })
 
-const REAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const REAL_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const hasRealDb = !!(REAL_URL && REAL_KEY && !REAL_URL.includes('test.supabase.co'))
-
-function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
-  const url = `${REAL_URL}/rest/v1/${table}?${params}`
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        apikey: REAL_KEY!,
-        Authorization: `Bearer ${REAL_KEY}`,
-      },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) }
-        catch { reject(new Error(`Failed to parse: ${data.substring(0, 200)}`)) }
-      })
-    }).on('error', reject)
-  })
-}
+const DB_URL = process.env.DATABASE_URL
+const hasRealDb = !!DB_URL
+const sql = hasRealDb ? postgres(DB_URL!, { prepare: false, ssl: 'require', onnotice: () => {}, max: 2 }) : null
 
 const describeIfDb = hasRealDb ? describe : describe.skip
 
@@ -62,11 +48,13 @@ describeIfDb('Oposición data completeness', () => {
   let oposiciones: OposicionRow[]
 
   beforeAll(async () => {
-    oposiciones = await supabaseGet<OposicionRow>(
-      'oposiciones',
-      'select=slug,nombre,is_convocatoria_activa,seguimiento_url,programa_url,boe_reference,plazas_libres,temas_count,bloques_count&is_active=eq.true'
-    )
+    oposiciones = (await sql!`
+      SELECT slug, nombre, is_convocatoria_activa, seguimiento_url, programa_url,
+             boe_reference, plazas_libres, temas_count, bloques_count
+      FROM oposiciones WHERE is_active = true`) as unknown as OposicionRow[]
   }, 30000)
+
+  afterAll(async () => { if (sql) await sql.end({ timeout: 5 }) })
 
   test('all active oposiciones have nombre, temas_count, bloques_count', () => {
     const missing: string[] = []
@@ -132,6 +120,8 @@ describeIfDb('Oposición data completeness', () => {
       'auxiliar-administrativo-diputacion-segovia', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-huelva', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-ayuntamiento-salamanca', // en preparación: BD lista (is_active=false hasta go-live)
+      'celador-ics', // en preparación (otra sesión): config sin fila activa en RDS
+      'celador-ibsalut', // en preparación (otra sesión): config sin fila activa en RDS
     ])
     const dbSlugs = new Set(oposiciones.map(o => o.slug))
     const missing = OPOSICIONES.filter(o => !dbSlugs.has(o.slug) && !KNOWN_PENDING.has(o.slug))
