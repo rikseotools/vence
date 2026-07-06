@@ -17,6 +17,7 @@ import { madAdapter } from './mad';
 import { opositasAdapter } from './opositas';
 import { adamsAdapter } from './adams';
 import { gokoanAdapter } from './gokoan';
+import { GENERIC_ACADEMY_ADAPTERS } from './generic-academy';
 
 export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
   tecnoszubiaAdapter,
@@ -31,6 +32,8 @@ export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
   opositasAdapter,
   adamsAdapter,
   gokoanAdapter,
+  // Academias con estructura estándar (config-driven, 1 config/competidor).
+  ...GENERIC_ACADEMY_ADAPTERS,
 ];
 
 /** Busca el adapter por su key (== competitors.slug). */
