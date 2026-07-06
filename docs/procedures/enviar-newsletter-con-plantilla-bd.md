@@ -7,6 +7,12 @@ Cuando el usuario dice cosas como:
 - "Manda el email de oposicion cruzada a usuarios de Estado que viven en CyL"
 - "Haz un broadcast con la plantilla X a la audiencia Y"
 
+> ⚠️ **BD = AWS RDS, agnóstica vía Drizzle. Las queries usan `postgres`/`DATABASE_URL`, NUNCA el cliente Supabase** (`@supabase/supabase-js` apunta a la BD **congelada** → datos stale, y capaba a 1000 filas). Los scripts de abajo usan el patrón heredoc `.cjs` (evita que bash interprete los backticks del tagged template de postgres) con esta cabecera:
+> ```js
+> require('dotenv').config({ path: '.env.local' });
+> const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
+> ```
+
 ## Paso 1: Identificar plantilla y audiencia
 
 Preguntar al usuario si no queda claro:
@@ -17,36 +23,36 @@ Preguntar al usuario si no queda claro:
 ### Consultar plantillas disponibles
 
 ```bash
-node -e "
-const { createClient } = require('@supabase/supabase-js');
+cat > /tmp/nl.cjs <<'EOF'
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 (async () => {
-  const { data } = await supabase.from('email_templates').select('slug, name, variables').eq('is_active', true);
-  for (const t of data || []) {
+  const data = await sql`SELECT slug, name, variables FROM email_templates WHERE is_active = true`;
+  for (const t of data) {
     const vars = (t.variables || []).map(v => v.key).join(', ');
     console.log(t.slug, '-', t.name, '| Variables:', vars);
   }
+  await sql.end();
 })();
-"
+EOF
+node /tmp/nl.cjs
 ```
 
 ### Consultar audiencias por oposicion
 
 ```bash
-node -e "
-const { createClient } = require('@supabase/supabase-js');
+cat > /tmp/nl.cjs <<'EOF'
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 (async () => {
-  const { data } = await supabase.from('user_profiles').select('target_oposicion').not('email', 'is', null);
-  const counts = {};
-  for (const u of data || []) {
-    if (u.target_oposicion) counts[u.target_oposicion] = (counts[u.target_oposicion] || 0) + 1;
-  }
-  Object.entries(counts).sort((a,b) => b[1] - a[1]).forEach(([k,v]) => console.log(v, 'usuarios -', k));
+  // GROUP BY en la BD (postgres no capa a 1000 filas como el viejo cliente Supabase)
+  const data = await sql`SELECT target_oposicion, count(*)::int AS n FROM user_profiles
+    WHERE email IS NOT NULL AND target_oposicion IS NOT NULL GROUP BY target_oposicion ORDER BY n DESC`;
+  data.forEach(r => console.log(r.n, 'usuarios -', r.target_oposicion));
+  await sql.end();
 })();
-"
+EOF
+node /tmp/nl.cjs
 ```
 
 ### Consultar audiencia por region/IP (tabla user_sessions)
@@ -54,35 +60,29 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 Cuando el usuario pide enviar a usuarios de una comunidad autonoma, buscar por IP:
 
 ```bash
-node -e "
-const { createClient } = require('@supabase/supabase-js');
+cat > /tmp/nl.cjs <<'EOF'
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 
 const REGION = 'Castille and León'; // Nombre en inglés como lo guarda ip-api.com
 
 (async () => {
-  const { data: sessions } = await supabase
-    .from('user_sessions')
-    .select('user_id')
-    .ilike('region', '%' + REGION + '%');
+  const profiles = await sql`
+    SELECT DISTINCT p.id, p.email, p.full_name, p.target_oposicion, p.ciudad
+    FROM user_profiles p
+    WHERE p.email IS NOT NULL
+      AND p.id IN (SELECT user_id FROM user_sessions WHERE region ILIKE ${'%' + REGION + '%'})
+    ORDER BY p.target_oposicion`;
 
-  const userIds = [...new Set((sessions || []).map(s => s.user_id).filter(Boolean))];
-
-  const { data: profiles } = await supabase
-    .from('user_profiles')
-    .select('id, email, full_name, target_oposicion, ciudad')
-    .in('id', userIds)
-    .not('email', 'is', null)
-    .order('target_oposicion');
-
-  console.log('Usuarios con IP en', REGION + ':', profiles?.length);
+  console.log('Usuarios con IP en', REGION + ':', profiles.length);
   // Filtrar por oposicion si es necesario
-  for (const u of profiles || []) {
+  for (const u of profiles) {
     console.log(u.email, '|', u.ciudad || '?', '|', u.target_oposicion);
   }
+  await sql.end();
 })();
-"
+EOF
+node /tmp/nl.cjs
 ```
 
 Regiones en user_sessions (en ingles): Madrid, Andalusia, Castille and León, Valencia, Catalonia, Principality of Asturias, etc.
@@ -93,36 +93,32 @@ Verificar cuantos usuarios recibirán el email y cuantos están bloqueados.
 Se excluyen usuarios con `unsubscribed_all = true` O `email_newsletter_disabled = true`.
 
 ```bash
-node -e "
-const { createClient } = require('@supabase/supabase-js');
+cat > /tmp/nl.cjs <<'EOF'
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 
 const USER_IDS = []; // <-- Rellenar con IDs de usuarios a enviar
 
 (async () => {
-  const { data: blocked } = await supabase
-    .from('email_preferences')
-    .select('user_id, unsubscribed_all, email_newsletter_disabled')
-    .or('unsubscribed_all.eq.true,email_newsletter_disabled.eq.true');
-  const blockedIds = new Set((blocked || []).map(b => b.user_id));
+  const users = await sql`
+    SELECT p.id, p.email, p.full_name, p.target_oposicion,
+      (COALESCE(e.unsubscribed_all, false) OR COALESCE(e.email_newsletter_disabled, false)) AS blocked
+    FROM user_profiles p
+    LEFT JOIN email_preferences e ON e.user_id = p.id
+    WHERE p.id = ANY(${USER_IDS}) AND p.email IS NOT NULL`;
 
-  const { data: users } = await supabase
-    .from('user_profiles')
-    .select('id, email, full_name, target_oposicion')
-    .in('id', USER_IDS)
-    .not('email', 'is', null);
+  const eligible = users.filter(u => !u.blocked);
+  const blockedList = users.filter(u => u.blocked);
 
-  const eligible = (users || []).filter(u => !blockedIds.has(u.id));
-  const blockedList = (users || []).filter(u => blockedIds.has(u.id));
-
-  console.log('Total:', users?.length);
+  console.log('Total:', users.length);
   console.log('Bloqueados:', blockedList.length);
   if (blockedList.length) blockedList.forEach(u => console.log('  BLOQUEADO:', u.email));
   console.log('Elegibles:', eligible.length);
   eligible.forEach((u, i) => console.log((i+1) + '.', u.email, '-', u.full_name || '', '-', u.target_oposicion));
+  await sql.end();
 })();
-"
+EOF
+node /tmp/nl.cjs
 ```
 
 **Reportar al usuario** antes de enviar:
@@ -136,13 +132,12 @@ const USER_IDS = []; // <-- Rellenar con IDs de usuarios a enviar
 Enviar a 1 usuario (el admin) para verificar que se ve bien.
 
 ```bash
-node -e "
-const { createClient } = require('@supabase/supabase-js');
+cat > /tmp/nl.cjs <<'EOF'
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 
 (async () => {
-  const { data: p } = await supabase.from('user_profiles').select('id').eq('email', 'manueltrader@gmail.com').single();
+  const [p] = await sql`SELECT id FROM user_profiles WHERE email = 'manueltrader@gmail.com'`;
 
   const res = await fetch('http://localhost:3000/api/admin/newsletters/send', {
     method: 'POST',
@@ -158,8 +153,10 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
   });
 
   console.log(JSON.stringify(await res.json(), null, 2));
+  await sql.end();
 })();
-"
+EOF
+node /tmp/nl.cjs
 ```
 
 ## Paso 4: Enviar a todos (solo con aprobacion del usuario)
@@ -169,21 +166,19 @@ Si ya se envio a algunos (ej: test previo), excluirlos consultando email_events.
 
 ```bash
 # Verificar a quienes ya se envio
-node -e "
-const { createClient } = require('@supabase/supabase-js');
+cat > /tmp/nl.cjs <<'EOF'
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 (async () => {
   const today = new Date().toISOString().split('T')[0];
-  const { data } = await supabase.from('email_events')
-    .select('email_address')
-    .eq('event_type', 'sent')
-    .eq('template_id', 'SLUG_PLANTILLA')
-    .gte('created_at', today + 'T00:00:00Z');
-  console.log('Ya enviados hoy:', data?.length);
-  (data || []).forEach(e => console.log(' -', e.email_address));
+  const data = await sql`SELECT email_address FROM email_events
+    WHERE event_type = 'sent' AND template_id = 'SLUG_PLANTILLA' AND created_at >= ${today + 'T00:00:00Z'}`;
+  console.log('Ya enviados hoy:', data.length);
+  data.forEach(e => console.log(' -', e.email_address));
+  await sql.end();
 })();
-"
+EOF
+node /tmp/nl.cjs
 ```
 
 El endpoint al enviar:
@@ -263,29 +258,11 @@ Para audiencias por region/IP, usar `selectedUserIds` con IDs obtenidos de `user
 
 Problemas reales que han costado un incidente y no son obvios del código. Ignorarlos causa envíos incompletos, emails rotos o mensajes contradictorios.
 
-### 1. Supabase trunca queries a 1000 filas por defecto
+### 1. Audiencias grandes: postgres NO capa filas (histórico: el cliente Supabase capaba a 1000)
 
-`supabase.from('user_profiles').select(...).eq(...)` devuelve como máximo **1000 filas** aunque haya más. No emite error, silenciosamente trunca.
+Con RDS/`postgres` una query devuelve **todas** las filas — no hay tope. **El antiguo cliente Supabase sí capaba silenciosamente a 1000 filas** y causó un incidente: en el cross-sell a Aux Admin Estado (abril 2026) había 1221 usuarios con target=`auxiliar_administrativo_estado`; la query devolvió solo 1000 → al filtrar por ciudad gallega salieron 40 en vez de 49 → **9 usuarios no recibieron el email** en el primer envío.
 
-**Impacto real**: en el envío cross-sell a Aux Admin Estado (abril 2026) la tabla tenía 1221 usuarios con target=`auxiliar_administrativo_estado`. La query devolvió solo 1000 → al filtrar por ciudad gallega salieron 40, no 49. **9 usuarios no recibieron el email** en el primer envío.
-
-**Fix obligatorio** para audiencias grandes:
-
-```javascript
-let all = [];
-for (let from = 0;; from += 1000) {
-  const { data } = await supabase
-    .from('user_profiles')
-    .select('id, email, target_oposicion, ciudad')
-    .eq('target_oposicion', 'auxiliar_administrativo_estado')
-    .range(from, from + 999);
-  if (!data || data.length === 0) break;
-  all.push(...data);
-  if (data.length < 1000) break;
-}
-```
-
-**Señal de alarma**: si tu query puede superar 1000 filas en algún momento (tabla con >1000 registros del dominio que consultas), siempre paginar con `.range()` en loop.
+**Regla actual**: usa `postgres`/`DATABASE_URL` (nunca el cliente Supabase, que apunta a la BD congelada). No añadas `LIMIT`/`.limit()` salvo que lo quieras de verdad. Si portas código viejo con `.range()` en bucle, elimínalo: ya no hace falta paginar.
 
 ### 2. `previewData` con valores dinámicos rompe el render personalizado
 
@@ -412,7 +389,7 @@ Aunque ambos temarios tienen un "bloque de ofimática", son incompatibles:
 
 Antes de lanzar cualquier envío masivo, verifica:
 
-- [ ] ¿La audiencia puede superar 1000 filas? → paginar con `.range()` en loop
+- [ ] ¿Usas `postgres`/`DATABASE_URL` (no el cliente Supabase, que capa a 1000 y apunta a BD congelada)?
 - [ ] ¿El `previewData` del template contiene valores dinámicos? → sacarlos
 - [ ] ¿El `subject_template` contiene `{{userName}}`? → quitarlo
 - [ ] ¿`fromEmail` es `info@vence.es` (no `noreply`)?
