@@ -247,6 +247,8 @@ export class CompetitorQueriesService {
       audience: p.audience,
       amountCents: p.amountCents,
       period: p.period,
+      plan: p.plan ?? null,
+      includes: p.includes ?? [],
       raw: p.raw,
     });
   }

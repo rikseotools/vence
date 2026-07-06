@@ -28,6 +28,14 @@ export interface ParsedPrice {
   /** Importe en céntimos. Null si no parseable (raw se conserva igualmente). */
   amountCents: number | null;
   period: PricePeriod | null;
+  /**
+   * Paquete/tier: un mismo curso puede tener varios precios según lo que incluye
+   * (solo tests · tests+temario · tests+temario+casos…). Null si el competidor no
+   * desglosa por paquete (p.ej. una academia con un único precio de curso).
+   */
+  plan?: string | null;
+  /** Qué incluye el paquete, estructurado: ['tests','temario','casos_practicos',…]. */
+  includes?: string[];
   /** Literal tal cual se vio (trazabilidad + debug del parser). */
   raw: string;
 }

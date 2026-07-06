@@ -115,6 +115,8 @@ export const competitorPrices = pgTable(
     audience: text('audience'), // nuevo | antiguo | general
     amountCents: integer('amount_cents'),
     period: text('period'), // mensual | trimestral | unico | curso
+    plan: text('plan'), // paquete/tier: solo tests | tests+temario | …
+    includes: jsonb('includes').default(sql`'[]'::jsonb`).notNull(), // ['tests','temario',…]
     currency: text('currency').default('EUR').notNull(),
     raw: text('raw'),
     isCurrent: boolean('is_current').default(true).notNull(),

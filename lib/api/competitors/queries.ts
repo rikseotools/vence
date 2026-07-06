@@ -151,6 +151,8 @@ export interface CompetitorPriceLine {
   audience: string | null
   amount_cents: number | null
   period: string | null
+  plan: string | null
+  includes: string[]
 }
 
 export interface CompetitorForOposicionRow {
@@ -187,8 +189,9 @@ export async function getCompetitorsForOposicion(
         COALESCE(
           json_agg(
             json_build_object('kind', cp.price_kind, 'audience', cp.audience,
-                              'amount_cents', cp.amount_cents, 'period', cp.period)
-            ORDER BY cp.price_kind
+                              'amount_cents', cp.amount_cents, 'period', cp.period,
+                              'plan', cp.plan, 'includes', cp.includes)
+            ORDER BY cp.plan NULLS FIRST, cp.price_kind
           ) FILTER (WHERE cp.id IS NOT NULL), '[]'
         ) AS prices
       FROM competitor_courses cc

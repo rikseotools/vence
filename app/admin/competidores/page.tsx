@@ -23,7 +23,7 @@ interface Overview {
   }[]
 }
 
-interface PriceLine { kind: string; audience: string | null; amount_cents: number | null; period: string | null }
+interface PriceLine { kind: string; audience: string | null; amount_cents: number | null; period: string | null; plan: string | null; includes: string[] }
 interface OpoDetail {
   oposicion: { id: string; nombre: string; slug: string | null } | null
   competitors: {
@@ -209,8 +209,10 @@ export default function CompetidoresPage() {
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {c.prices.length === 0 && <span className="text-xs text-gray-400">sin precio detectado</span>}
                         {c.prices.map((p, i) => (
-                          <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-                            {p.kind}{p.audience ? ` (${p.audience})` : ''}: <b>{eur(p.amount_cents)}</b>{p.period === 'mensual' ? '/mes' : ''}
+                          <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200" title={p.includes?.length ? `incluye: ${p.includes.join(', ')}` : undefined}>
+                            {p.plan ? <b className="text-blue-600 dark:text-blue-400">{p.plan}</b> : p.kind}
+                            {p.audience ? ` (${p.audience})` : ''}: <b>{eur(p.amount_cents)}</b>{p.period === 'mensual' ? '/mes' : ''}
+                            {p.includes?.length ? <span className="text-gray-400"> · {p.includes.join('+')}</span> : null}
                           </span>
                         ))}
                       </div>

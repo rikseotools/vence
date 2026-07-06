@@ -37,9 +37,12 @@ export interface CompetitorSyncSummary {
   errors: number;
 }
 
-/** Identidad de una línea de precio (para reconciliar histórico). */
-function priceKey(p: { kind?: string; priceKind?: string; audience: string | null; period: string | null }): string {
-  return `${p.kind ?? p.priceKind}|${p.audience ?? ''}|${p.period ?? ''}`;
+/** Identidad de una línea de precio (para reconciliar histórico). Incluye el
+ *  plan/paquete: dos precios del mismo kind pero distinto paquete son distintos. */
+function priceKey(p: {
+  kind?: string; priceKind?: string; audience: string | null; period: string | null; plan?: string | null
+}): string {
+  return `${p.kind ?? p.priceKind}|${p.audience ?? ''}|${p.period ?? ''}|${p.plan ?? ''}`;
 }
 
 /**

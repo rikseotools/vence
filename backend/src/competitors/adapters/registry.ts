@@ -6,8 +6,12 @@
 
 import { CompetitorAdapter } from './types';
 import { tecnoszubiaAdapter } from './tecnoszubia';
+import { opositatestAdapter } from './opositatest';
 
-export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [tecnoszubiaAdapter];
+export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
+  tecnoszubiaAdapter,
+  opositatestAdapter,
+];
 
 /** Busca el adapter por su key (== competitors.slug). */
 export function adapterByKey(key: string): CompetitorAdapter | undefined {
