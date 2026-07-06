@@ -71,6 +71,10 @@ describe('adams', () => {
     expect(c.rawName).toBe('Oposiciones de Ayudante de Instituciones Penitenciarias');
     expect(c.prices[0]).toMatchObject({ kind: 'curso', amountCents: 135900, period: 'unico' });
   });
+  it('extrae el precio anidado en hasCourseInstance[].offers (estructura real ADAMS)', () => {
+    const html = `<script type="application/ld+json">{"@type":"Course","name":"Cuerpo de Ayudantes de IIPP","hasCourseInstance":[{"@type":"CourseInstance","offers":{"@type":"Offer","price":"1359","priceCurrency":"EUR"}}]}</script>`;
+    expect(parseAdamsJsonLd(html)).toEqual({ name: 'Cuerpo de Ayudantes de IIPP', priceCents: 135900 });
+  });
   it('parseAdamsJsonLd tolera JSON malformado', () => {
     expect(parseAdamsJsonLd('<script type="application/ld+json">{roto</script>')).toEqual({ name: '', priceCents: null });
   });

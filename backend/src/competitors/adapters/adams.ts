@@ -24,7 +24,17 @@ export function classifyAdamsUrl(url: string): UrlType {
   return 'page';
 }
 
-/** Extrae name + price del JSON-LD Course/Product (PURA). */
+/** Precio (céntimos) de un `offers` (objeto o array). */
+function offerPriceCents(offersRaw: unknown): number | null {
+  const offer = Array.isArray(offersRaw) ? offersRaw[0] : (offersRaw as Record<string, unknown> | undefined);
+  const price = offer?.['price'];
+  if (price == null) return null;
+  const v = parseFloat(String(price));
+  return Number.isFinite(v) ? Math.round(v * 100) : null;
+}
+
+/** Extrae name + price del JSON-LD Course/Product (PURA). ADAMS anida el precio
+ *  en `hasCourseInstance[].offers`, no siempre en `offers` de nivel superior. */
 export function parseAdamsJsonLd(html: string): { name: string; priceCents: number | null } {
   let name = '';
   let priceCents: number | null = null;
@@ -41,12 +51,12 @@ export function parseAdamsJsonLd(html: string): { name: string; priceCents: numb
       const type = node?.['@type'];
       if (type !== 'Course' && type !== 'Product') continue;
       if (!name && typeof node.name === 'string') name = node.name.trim();
-      const offersRaw = node.offers as Record<string, unknown> | Record<string, unknown>[] | undefined;
-      const offer = Array.isArray(offersRaw) ? offersRaw[0] : offersRaw;
-      const price = offer?.['price'];
-      if (priceCents == null && price != null) {
-        const v = parseFloat(String(price));
-        if (Number.isFinite(v)) priceCents = Math.round(v * 100);
+      if (priceCents == null) priceCents = offerPriceCents(node.offers);
+      // ADAMS: offer dentro de hasCourseInstance[]
+      const instances = node.hasCourseInstance;
+      const instArr = Array.isArray(instances) ? instances : instances ? [instances] : [];
+      for (const inst of instArr as Record<string, unknown>[]) {
+        if (priceCents == null) priceCents = offerPriceCents(inst?.offers);
       }
     }
   }
