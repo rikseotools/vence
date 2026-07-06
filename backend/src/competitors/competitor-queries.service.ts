@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { normalize } from '../oep-signals/oep-match';
+import { Ambito, OposicionIdentity, deriveIdentity, identityCompatible } from './oposicion-identity';
 import {
   competitorChanges,
   competitorCourses,
@@ -28,9 +29,10 @@ function cleanName(s: string): string {
     .replace(/\bgva\b/g, 'generalitat valenciana')
     .replace(/\bcam\b/g, 'comunidad madrid')
     .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
-    // Singularizar tokens largos (simétrico en ambos lados → solo aumenta matches):
-    // "Subalternos Generalitat Valenciana" ≈ "Subalterno …".
-    .replace(/\b([a-z]{5,}?)s\b/g, '$1')
+    // Singularizar tokens largos (simétrico → solo aumenta matches). Maneja plural
+    // de vocal (-s: "subalternos"→"subalterno") y de consonante (-es:
+    // "auxiliares"→"auxiliar", "generales"→"general").
+    .replace(/\b([a-z]{4,}?)(es|s)\b/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -49,6 +51,42 @@ export interface OposicionForMatch {
   id: string;
   nombre: string;
   shortName: string | null;
+  administracion: string | null;
+  /** Identidad canónica (ámbito+región) precomputada al cargar. */
+  identity: OposicionIdentity;
+  /** Tokens significativos (≥4) del nombre y shortName, precomputados. */
+  nameTokens: string[];
+  shortTokens: string[] | null;
+}
+
+export type MatchMethod = 'auto_structured' | 'auto_name' | 'needs_review' | 'none';
+
+export interface MatchResult {
+  /** Oposición enlazada (solo si auto_* con confianza suficiente). */
+  oposicionId: string | null;
+  /** Mejor apuesta cuando queda para revisión humana. */
+  candidateId: string | null;
+  ambito: Ambito;
+  region: string | null;
+  method: MatchMethod;
+  confidence: number | null;
+}
+
+const sigTokens = (clean: string): string[] => clean.split(' ').filter((t) => t.length >= 4);
+
+/** Enriquece una fila de oposición con su identidad y tokens (para el matcher). */
+export function buildOposicionMatch(row: {
+  id: string;
+  nombre: string;
+  shortName: string | null;
+  administracion: string | null;
+}): OposicionForMatch {
+  return {
+    ...row,
+    identity: deriveIdentity(`${row.administracion ?? ''} ${row.nombre}`),
+    nameTokens: sigTokens(cleanName(row.nombre)),
+    shortTokens: row.shortName ? sigTokens(cleanName(row.shortName)) : null,
+  };
 }
 
 export interface CompetitorForOposicion {
@@ -214,27 +252,40 @@ export class CompetitorQueriesService {
   async upsertCourse(input: {
     competitorId: string;
     urlId: string;
-    oposicionId: string | null;
     rawName: string;
     modalidad: string | null;
     region: string | null;
+    match: MatchResult;
   }): Promise<{ id: string; isNew: boolean }> {
+    const m = input.match;
+    const matchFields = {
+      oposicionId: m.oposicionId,
+      ambito: m.ambito,
+      regionSlug: m.region,
+      matchMethod: m.method,
+      matchConfidence: m.confidence,
+      matchCandidateId: m.candidateId,
+      matchedAt: m.oposicionId ? sql`now()` : null,
+    };
     const existing = await this.db
-      .select({ id: competitorCourses.id })
+      .select({ id: competitorCourses.id, matchMethod: competitorCourses.matchMethod })
       .from(competitorCourses)
       .where(eq(competitorCourses.competitorUrlId, input.urlId))
       .limit(1);
     if (existing[0]) {
+      // STICKY: los enlaces manuales/confirmados por un humano NO se pisan por el
+      // re-match automático (solo se refresca nombre/modalidad/visto).
+      const sticky = existing[0].matchMethod === 'manual' || existing[0].matchMethod === 'confirmed';
       await this.db
         .update(competitorCourses)
         .set({
-          oposicionId: input.oposicionId,
           rawName: input.rawName,
           modalidad: input.modalidad,
           region: input.region,
           isActive: true,
           lastSeenAt: sql`now()`,
           updatedAt: sql`now()`,
+          ...(sticky ? {} : matchFields),
         })
         .where(eq(competitorCourses.id, existing[0].id));
       return { id: existing[0].id, isNew: false };
@@ -244,13 +295,51 @@ export class CompetitorQueriesService {
       .values({
         competitorId: input.competitorId,
         competitorUrlId: input.urlId,
-        oposicionId: input.oposicionId,
         rawName: input.rawName,
         modalidad: input.modalidad,
         region: input.region,
+        ...matchFields,
       })
       .returning({ id: competitorCourses.id });
     return { id: rows[0].id, isNew: true };
+  }
+
+  /** Cola de revisión: cursos con candidato pero sin enlace automático seguro. */
+  async getReviewQueue(limit = 200) {
+    return this.db
+      .select({
+        courseId: competitorCourses.id,
+        competitorName: competitors.name,
+        rawName: competitorCourses.rawName,
+        courseUrl: competitorUrls.url,
+        ambito: competitorCourses.ambito,
+        regionSlug: competitorCourses.regionSlug,
+        confidence: competitorCourses.matchConfidence,
+        candidateId: competitorCourses.matchCandidateId,
+        candidateNombre: oposiciones.nombre,
+        candidateSlug: oposiciones.slug,
+      })
+      .from(competitorCourses)
+      .innerJoin(competitors, eq(competitors.id, competitorCourses.competitorId))
+      .leftJoin(competitorUrls, eq(competitorUrls.id, competitorCourses.competitorUrlId))
+      .leftJoin(oposiciones, eq(oposiciones.id, competitorCourses.matchCandidateId))
+      .where(and(eq(competitorCourses.matchMethod, 'needs_review'), eq(competitorCourses.isActive, true)))
+      .orderBy(desc(competitorCourses.matchConfidence))
+      .limit(limit);
+  }
+
+  /** Confirma (o corrige) manualmente un enlace curso→oposición. Queda STICKY. */
+  async confirmMatch(courseId: string, oposicionId: string | null): Promise<void> {
+    await this.db
+      .update(competitorCourses)
+      .set({
+        oposicionId,
+        matchMethod: oposicionId ? 'confirmed' : 'manual',
+        matchCandidateId: null,
+        matchedAt: sql`now()`,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(competitorCourses.id, courseId));
   }
 
   // ── competitor_prices (histórico via is_current) ─────────────────────────
@@ -306,11 +395,16 @@ export class CompetitorQueriesService {
     // Matchear contra TODAS las oposiciones catalogadas, NO solo las activas
     // (vendibles). El valor del analizador es "quién prepara la oposición X", y el
     // 83% de nuestro catálogo son `coverage_level='catalogada'` (is_active=false):
-    // filtrarlas dejaba sus cursos como gaps eternos (p.ej. Subalterno GVA). El
-    // matcher conservador (contención inequívoca + ≥2 tokens) mantiene la precisión.
-    return this.db
-      .select({ id: oposiciones.id, nombre: oposiciones.nombre, shortName: oposiciones.shortName })
+    // filtrarlas dejaba sus cursos como gaps eternos (p.ej. Subalterno GVA).
+    const rows = await this.db
+      .select({
+        id: oposiciones.id,
+        nombre: oposiciones.nombre,
+        shortName: oposiciones.shortName,
+        administracion: oposiciones.administracion,
+      })
       .from(oposiciones);
+    return rows.map(buildOposicionMatch);
   }
 
   /**
@@ -319,33 +413,81 @@ export class CompetitorQueriesService {
    * con longitud suficiente. Si duda, devuelve null (= gap). El match fino
    * estructural (oep-match) queda para una fase posterior si hace falta.
    */
-  matchCourseToOposicion(rawName: string, catalog: OposicionForMatch[]): string | null {
+  /**
+   * Empareja un curso de competidor con una oposición del catálogo por IDENTIDAD
+   * ESTRUCTURADA + nombre. Primero deriva la identidad del curso (ámbito+región) de
+   * `courseText` (url + rawName — la URL suele traer la administración) y descarta
+   * las oposiciones de ámbito/región incompatibles (guarda dura: un curso de
+   * "Ayuntamiento de Zaragoza" NUNCA empareja una opo de ámbito Estado). Solo dentro
+   * de las compatibles compara el cuerpo/materia por solapamiento de tokens (gana la
+   * más específica; a igualdad, la reforzada por identidad). Devuelve el método y la
+   * confianza: enlaza en auto solo si la confianza es alta; si es dudoso o ambiguo lo
+   * deja en `needs_review` con la mejor apuesta para que un humano lo confirme.
+   */
+  matchCourse(rawName: string, courseText: string, catalog: OposicionForMatch[]): MatchResult {
+    const identity = deriveIdentity(courseText);
+    const base: MatchResult = {
+      oposicionId: null,
+      candidateId: null,
+      ambito: identity.ambito,
+      region: identity.region,
+      method: 'none',
+      confidence: null,
+    };
     const n = cleanName(rawName);
-    if (n.length < 8) return null;
-    const exact = new Set<string>();
-    const contains = new Set<string>();
+    if (n.length < 8) return base;
+    const nTokens = new Set(sigTokens(n));
+    // Guarda 1: el curso debe tener ≥2 tokens significativos (un genérico de una
+    // palabra no empareja cuerpos específicos).
+    if (nTokens.size < 2) return base;
+
+    let bestId: string | null = null;
+    let bestSize = 0;
+    let bestReinforced = false;
+    let tie = false;
     for (const o of catalog) {
-      for (const raw of [o.shortName, o.nombre]) {
-        if (!raw) continue;
-        const c = cleanName(raw);
-        if (c.length < 8) continue;
-        if (n === c) {
-          exact.add(o.id);
-          continue;
+      const compat = identityCompatible(identity, o.identity);
+      if (!compat.compatible) continue; // guarda dura ámbito/región
+      for (const toks of [o.nameTokens, o.shortTokens]) {
+        if (!toks || toks.length < 2) continue;
+        // La oposición (la más corta) debe estar contenida por tokens en el curso.
+        if (!toks.every((t) => nTokens.has(t))) continue;
+        const size = toks.length;
+        if (size > bestSize || (size === bestSize && compat.reinforced && !bestReinforced)) {
+          bestId = o.id;
+          bestSize = size;
+          bestReinforced = compat.reinforced;
+          tie = false;
+        } else if (size === bestSize && o.id !== bestId && compat.reinforced === bestReinforced) {
+          tie = true;
         }
-        // Guarda 1: el nombre CONTENIDO (el más corto) debe tener ≥2 tokens
-        // significativos → un genérico de una palabra ("administrativo") NO
-        // empareja cuerpos específicos ("Administrativo de Castilla-La Mancha").
-        const inner = n.length <= c.length ? n : c;
-        if (inner.split(' ').filter((t) => t.length >= 4).length < 2) continue;
-        if (n.includes(c) || c.includes(n)) contains.add(o.id);
       }
     }
-    // Igualdad exacta = match fuerte. Si empata con varias, es ambiguo → gap.
-    if (exact.size >= 1) return exact.size === 1 ? [...exact][0] : null;
-    // Guarda 2: contención solo si es INEQUÍVOCA (una sola oposición). Si varias,
-    // el nombre del curso es demasiado genérico → gap (precisión > recall).
-    return contains.size === 1 ? [...contains][0] : null;
+    if (!bestId) return base;
+
+    // Confianza según cuánta identidad respalda el match.
+    let confidence: number;
+    if (bestReinforced) confidence = 0.95; // ámbito+región conocidos y coincidentes
+    else if (identity.ambito !== 'desconocido') confidence = 0.8; // ámbito compatible
+    else if (bestSize >= 3) confidence = 0.65; // sin ámbito pero nombre muy específico
+    else confidence = 0.45;
+
+    // Empate no resuelto ni por especificidad ni por identidad → revisión humana.
+    if (tie) {
+      return { ...base, candidateId: bestId, method: 'needs_review', confidence: Math.min(confidence, 0.4) };
+    }
+    // Bajo umbral de auto-enlace → revisión (nunca un match silencioso dudoso).
+    if (confidence < 0.6) {
+      return { ...base, candidateId: bestId, method: 'needs_review', confidence };
+    }
+    return {
+      oposicionId: bestId,
+      candidateId: null,
+      ambito: identity.ambito,
+      region: identity.region,
+      method: bestReinforced ? 'auto_structured' : 'auto_name',
+      confidence,
+    };
   }
 
   // ── alimentación del radar (Capa 3 lee del competitor-DB) ─────────────────

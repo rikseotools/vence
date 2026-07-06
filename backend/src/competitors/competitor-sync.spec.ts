@@ -1,33 +1,43 @@
 import { lastmodDiffers } from './competitor-sync.service';
-import { CompetitorQueriesService } from './competitor-queries.service';
+import { CompetitorQueriesService, buildOposicionMatch } from './competitor-queries.service';
 
-describe('matchCourseToOposicion (conectores)', () => {
-  // Instancia sin BD: matchCourseToOposicion es puro (no toca this.db).
+describe('matchCourse (identidad estructurada + nombre)', () => {
+  // Instancia sin BD: matchCourse es puro (no toca this.db).
   const svc = new CompetitorQueriesService({} as never);
   const catalog = [
-    { id: 'op-cordoba', nombre: 'Auxiliar Administrativo del Ayuntamiento de Córdoba', shortName: null },
-    { id: 'op-estado', nombre: 'Auxiliar Administrativo del Estado', shortName: null },
+    buildOposicionMatch({ id: 'op-cordoba', nombre: 'Auxiliar Administrativo del Ayuntamiento de Córdoba', shortName: null, administracion: 'Ayuntamiento de Córdoba' }),
+    buildOposicionMatch({ id: 'op-estado', nombre: 'Auxiliar Administrativo del Estado', shortName: null, administracion: 'Estado' }),
   ];
+  const match = (name: string, text = name) => svc.matchCourse(name, text, catalog).oposicionId;
+
   it('empareja pese al conector "de" vs "del"', () => {
-    expect(svc.matchCourseToOposicion('Auxiliar Administrativo Ayuntamiento de Cordoba', catalog)).toBe('op-cordoba');
+    expect(match('Auxiliar Administrativo Ayuntamiento de Cordoba')).toBe('op-cordoba');
   });
   it('no empareja cuerpos distintos', () => {
-    expect(svc.matchCourseToOposicion('Guardia Civil', catalog)).toBeNull();
+    expect(match('Guardia Civil')).toBeNull();
   });
   it('genérico de una palabra ("Administrativo") NO matchea un cuerpo específico', () => {
-    expect(
-      svc.matchCourseToOposicion('Administrativo', [
-        { id: 'x', nombre: 'Administrativo de Castilla-La Mancha', shortName: null },
-      ]),
-    ).toBeNull();
+    const cat = [buildOposicionMatch({ id: 'x', nombre: 'Administrativo de Castilla-La Mancha', shortName: null, administracion: 'Autonómica' })];
+    expect(svc.matchCourse('Administrativo', 'Administrativo', cat).oposicionId).toBeNull();
   });
   it('genérico que encaja en varias oposiciones → ambiguo → gap', () => {
-    expect(svc.matchCourseToOposicion('Auxiliar Administrativo', catalog)).toBeNull();
+    expect(match('Auxiliar Administrativo')).toBeNull();
   });
   it('empareja abreviatura GVA y plural con la oposición catalogada', () => {
-    const cat = [{ id: 'op-sub-gva', nombre: 'Subalterno/a de la Generalitat Valenciana', shortName: null }];
-    expect(svc.matchCourseToOposicion('Subalternos Generalitat Valenciana', cat)).toBe('op-sub-gva'); // plural
-    expect(svc.matchCourseToOposicion('Subalterno GVA', cat)).toBe('op-sub-gva'); // abreviatura
+    const cat = [buildOposicionMatch({ id: 'op-sub-gva', nombre: 'Subalterno/a de la Generalitat Valenciana', shortName: null, administracion: 'Generalitat Valenciana' })];
+    expect(svc.matchCourse('Subalternos Generalitat Valenciana', 'Subalternos Generalitat Valenciana', cat).oposicionId).toBe('op-sub-gva'); // plural
+    expect(svc.matchCourse('Subalterno GVA', 'https://x.com/oposiciones/generalitat-valenciana/subalterno Subalterno GVA', cat).oposicionId).toBe('op-sub-gva'); // abreviatura
+  });
+
+  // La guarda de ámbito: el fallo Estado↔local que motivó todo esto.
+  it('un curso LOCAL no empareja una oposición de Estado (guarda de ámbito)', () => {
+    const cat = [buildOposicionMatch({ id: 'tai-estado', nombre: 'Técnico Auxiliar de Informática', shortName: null, administracion: 'Estado' })];
+    // curso del Ayuntamiento de Zaragoza: mismo cuerpo, ámbito distinto → NO estado.
+    const r = svc.matchCourse('Técnico Auxiliar de Informática', 'https://adams.es/oposiciones/ayuntamiento-de-zaragoza/tai Técnico Auxiliar Informática Ayuntamiento de Zaragoza', cat);
+    expect(r.oposicionId).toBeNull();
+    // curso de Estado: sí empareja.
+    const ok = svc.matchCourse('Técnicos Auxiliares de Informática de Estado (TAI)', 'https://adams.es/oposiciones/estado/tai Técnicos Auxiliares de Informática de Estado (TAI)', cat);
+    expect(ok.oposicionId).toBe('tai-estado');
   });
 });
 

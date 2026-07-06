@@ -241,14 +241,15 @@ export class CompetitorSyncService {
 
         const parsed = adapter.parseCourse(course.url, html);
         if (!parsed) continue;
-        const oposicionId = this.queries.matchCourseToOposicion(parsed.rawName, catalog);
+        // La identidad se deriva de url + nombre (la URL suele traer la administración).
+        const match = this.queries.matchCourse(parsed.rawName, `${course.url} ${parsed.rawName}`, catalog);
         const { id: courseId, isNew } = await this.queries.upsertCourse({
           competitorId: competitor.id,
           urlId: course.id,
-          oposicionId,
           rawName: parsed.rawName,
           modalidad: parsed.modalidad,
           region: parsed.region,
+          match,
         });
         if (isNew) {
           summary.coursesNew++;
@@ -257,7 +258,13 @@ export class CompetitorSyncService {
             changeType: 'course_added',
             url: course.url,
             courseId,
-            detail: { rawName: parsed.rawName, oposicionId, matched: !!oposicionId },
+            detail: {
+              rawName: parsed.rawName,
+              oposicionId: match.oposicionId,
+              matched: !!match.oposicionId,
+              method: match.method,
+              ambito: match.ambito,
+            },
           });
         }
         summary.priceChanges += await this.reconcilePrices(

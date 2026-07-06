@@ -78,6 +78,7 @@ export interface CompetitorsOverview {
     courses: number
     urls: number
     gaps: number
+    needs_review: number
     recent_changes: number
   }
   oposiciones: OposicionCompetitorsRow[]
@@ -95,6 +96,7 @@ export async function getCompetitorsOverview(): Promise<CompetitorsOverview> {
         (SELECT count(*)::int FROM competitor_courses WHERE is_active) AS courses,
         (SELECT count(*)::int FROM competitor_urls WHERE is_active) AS urls,
         (SELECT count(*)::int FROM competitor_courses WHERE is_active AND oposicion_id IS NULL) AS gaps,
+        (SELECT count(*)::int FROM competitor_courses WHERE is_active AND match_method = 'needs_review') AS needs_review,
         (SELECT count(*)::int FROM competitor_changes WHERE detected_at > now() - interval '7 days' AND change_type <> 'url_added') AS recent_changes
     `),
     // Pivote por oposición: quién prepara cada oposición nuestra + rango de cuota.
@@ -131,7 +133,7 @@ export async function getCompetitorsOverview(): Promise<CompetitorsOverview> {
   ])
 
   const totals = rows<CompetitorsOverview['totals']>(totalsRes)[0] ?? {
-    competitors: 0, courses: 0, urls: 0, gaps: 0, recent_changes: 0,
+    competitors: 0, courses: 0, urls: 0, gaps: 0, needs_review: 0, recent_changes: 0,
   }
   return {
     success: true,
@@ -208,4 +210,65 @@ export async function getCompetitorsForOposicion(
     oposicion: rows<{ id: string; nombre: string; slug: string | null }>(opoRes)[0] ?? null,
     competitors: rows<CompetitorForOposicionRow>(compRes),
   }
+}
+
+// ============================================
+// COLA DE REVISIÓN: matches dudosos que un humano confirma con 1 clic
+// ============================================
+
+export interface ReviewQueueRow {
+  course_id: string
+  competitor: string
+  raw_name: string
+  course_url: string | null
+  ambito: string | null
+  region_slug: string | null
+  confidence: number | null
+  candidate_id: string | null
+  candidate_nombre: string | null
+  candidate_slug: string | null
+}
+
+export interface ReviewQueue {
+  success: true
+  items: ReviewQueueRow[]
+}
+
+/**
+ * Cursos en `needs_review`: el matcher tiene una mejor apuesta (candidato) pero no
+ * la confianza suficiente para auto-enlazar (ambigüedad o falta de identidad). Un
+ * humano confirma o descarta. Orden: mayor confianza primero.
+ */
+export async function getCompetitorReviewQueue(): Promise<ReviewQueue> {
+  const db = getDb()
+  const res = await db.execute(sql`
+    SELECT cc.id AS course_id, c.name AS competitor, cc.raw_name,
+      u.url AS course_url, cc.ambito, cc.region_slug, cc.match_confidence AS confidence,
+      cc.match_candidate_id AS candidate_id, o.nombre AS candidate_nombre, o.slug AS candidate_slug
+    FROM competitor_courses cc
+    JOIN competitors c ON c.id = cc.competitor_id
+    LEFT JOIN competitor_urls u ON u.id = cc.competitor_url_id
+    LEFT JOIN oposiciones o ON o.id = cc.match_candidate_id
+    WHERE cc.is_active AND cc.match_method = 'needs_review'
+    ORDER BY cc.match_confidence DESC NULLS LAST, c.name
+    LIMIT 300
+  `)
+  return { success: true, items: rows<ReviewQueueRow>(res) }
+}
+
+/**
+ * Confirma (o corrige/descarta) manualmente el enlace curso→oposición. Queda STICKY:
+ * el re-match automático nunca lo pisa. `oposicionId=null` → descartar (gap manual).
+ */
+export async function confirmCompetitorMatch(courseId: string, oposicionId: string | null): Promise<void> {
+  const db = getDb()
+  await db.execute(sql`
+    UPDATE competitor_courses
+    SET oposicion_id = ${oposicionId},
+        match_method = ${oposicionId ? 'confirmed' : 'manual'},
+        match_candidate_id = NULL,
+        matched_at = now(),
+        updated_at = now()
+    WHERE id = ${courseId}
+  `)
 }

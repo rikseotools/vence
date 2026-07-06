@@ -4,10 +4,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
-type Tab = 'oposiciones' | 'competidores' | 'cambios'
+type Tab = 'oposiciones' | 'competidores' | 'cambios' | 'revision'
+
+interface ReviewItem {
+  course_id: string; competitor: string; raw_name: string; course_url: string | null
+  ambito: string | null; region_slug: string | null; confidence: number | null
+  candidate_id: string | null; candidate_nombre: string | null; candidate_slug: string | null
+}
 
 interface Overview {
-  totals: { competitors: number; courses: number; urls: number; gaps: number; recent_changes: number }
+  totals: { competitors: number; courses: number; urls: number; gaps: number; needs_review: number; recent_changes: number }
   oposiciones: {
     oposicion_id: string; nombre: string; slug: string | null
     n_competidores: number; competidores: string[]; cuota_min: number | null; cuota_max: number | null
@@ -78,6 +84,33 @@ export default function CompetidoresPage() {
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<OpoDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [review, setReview] = useState<ReviewItem[] | null>(null)
+  const [busyCourse, setBusyCourse] = useState<string | null>(null)
+
+  const loadReview = useCallback(async () => {
+    const headers = await getAuthHeaders()
+    const res = await adminFetch('/api/admin/competidores/review', { headers })
+    const json = await res.json()
+    if (json.success) setReview(json.items)
+  }, [])
+
+  const resolveReview = useCallback(
+    async (courseId: string, oposicionId: string | null) => {
+      setBusyCourse(courseId)
+      try {
+        const headers = await getAuthHeaders()
+        await adminFetch('/api/admin/competidores/review', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ courseId, oposicionId }),
+        })
+        setReview((r) => (r ? r.filter((x) => x.course_id !== courseId) : r))
+      } finally {
+        setBusyCourse(null)
+      }
+    },
+    [],
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,6 +125,7 @@ export default function CompetidoresPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { if (tab === 'revision' && review === null) loadReview() }, [tab, review, loadReview])
 
   const openOposicion = useCallback(async (id: string) => {
     setDetailLoading(true)
@@ -118,17 +152,18 @@ export default function CompetidoresPage() {
       </p>
 
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-6">
           <Stat label="Competidores" value={data.totals.competitors} />
           <Stat label="Cursos" value={data.totals.courses} />
           <Stat label="URLs vigiladas" value={data.totals.urls} />
           <Stat label="Gaps (sin catalogar)" value={data.totals.gaps} accent="text-purple-600 dark:text-purple-400" />
+          <Stat label="A revisar" value={data.totals.needs_review} accent="text-amber-600 dark:text-amber-400" />
           <Stat label="Cambios (7d)" value={data.totals.recent_changes} accent="text-orange-600 dark:text-orange-400" />
         </div>
       )}
 
       <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
-        {([['oposiciones', 'Por oposición'], ['competidores', 'Competidores'], ['cambios', 'Cambios']] as [Tab, string][]).map(
+        {([['oposiciones', 'Por oposición'], ['competidores', 'Competidores'], ['revision', 'Revisión'], ['cambios', 'Cambios']] as [Tab, string][]).map(
           ([id, label]) => (
             <button
               key={id}
@@ -142,6 +177,9 @@ export default function CompetidoresPage() {
               {label}
               {id === 'cambios' && data && data.totals.recent_changes > 0 && (
                 <span className="ml-1.5 bg-orange-500 text-white text-xs rounded-full px-1.5">{data.totals.recent_changes}</span>
+              )}
+              {id === 'revision' && data && data.totals.needs_review > 0 && (
+                <span className="ml-1.5 bg-amber-500 text-white text-xs rounded-full px-1.5">{data.totals.needs_review}</span>
               )}
             </button>
           ),
@@ -263,6 +301,59 @@ export default function CompetidoresPage() {
                 </a>
               )}
               <span className="text-xs text-gray-400 whitespace-nowrap">{new Date(ch.detected_at).toLocaleString('es-ES')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* REVISIÓN — matches dudosos: el humano confirma con 1 clic (queda sticky) */}
+      {!loading && tab === 'revision' && (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            El matcher tiene una apuesta pero sin confianza suficiente para enlazar solo (ambigüedad o
+            falta de ámbito/región). Confirma o descarta — tu decisión es <b>definitiva</b> y el re-match
+            automático nunca la pisa.
+          </p>
+          {review === null && <p className="text-gray-500">Cargando…</p>}
+          {review && review.length === 0 && (
+            <p className="text-sm text-gray-500">Nada pendiente de revisión. 🎉</p>
+          )}
+          {review?.map((r) => (
+            <div key={r.course_id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm">
+                    <span className="text-gray-500">{r.competitor}:</span>{' '}
+                    <a href={r.course_url ?? '#'} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                      {r.raw_name}
+                    </a>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    ámbito: {r.ambito ?? '—'}{r.region_slug ? ` · ${r.region_slug}` : ''} · confianza {r.confidence != null ? Math.round(r.confidence * 100) + '%' : '—'}
+                  </div>
+                  <div className="text-sm mt-1">
+                    ¿Es <b className="text-gray-900 dark:text-white">{r.candidate_nombre ?? '(sin candidato)'}</b>?
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  {r.candidate_id && (
+                    <button
+                      disabled={busyCourse === r.course_id}
+                      onClick={() => resolveReview(r.course_id, r.candidate_id)}
+                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      ✓ Sí, es esta
+                    </button>
+                  )}
+                  <button
+                    disabled={busyCourse === r.course_id}
+                    onClick={() => resolveReview(r.course_id, null)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    ✗ No / gap
+                  </button>
+                </div>
+              </div>
             </div>
           ))}
         </div>

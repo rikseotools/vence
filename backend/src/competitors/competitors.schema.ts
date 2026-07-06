@@ -3,6 +3,7 @@ import {
   index,
   integer,
   jsonb,
+  real,
   pgTable,
   text,
   timestamp,
@@ -92,6 +93,13 @@ export const competitorCourses = pgTable(
     rawName: text('raw_name').notNull(),
     modalidad: text('modalidad'), // online | presencial | mixta
     region: text('region'),
+    // Identidad canónica del curso (derivada de url+nombre) + trazabilidad del match.
+    ambito: text('ambito'), // estado|autonomica|local|universidad|desconocido
+    regionSlug: text('region_slug'), // CCAA/municipio/universidad canónico
+    matchMethod: text('match_method').default('none').notNull(), // auto_structured|auto_name|needs_review|manual|confirmed|none
+    matchConfidence: real('match_confidence'), // 0..1
+    matchCandidateId: uuid('match_candidate_id'), // mejor apuesta cuando needs_review
+    matchedAt: timestamp('matched_at', { withTimezone: true, mode: 'string' }),
     isActive: boolean('is_active').default(true).notNull(),
     firstSeenAt: timestamp('first_seen_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
