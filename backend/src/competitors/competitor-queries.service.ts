@@ -68,6 +68,13 @@ export class CompetitorQueriesService {
     return rows[0] ?? null;
   }
 
+  async updateCompetitorTech(id: string, tech: Record<string, unknown>): Promise<void> {
+    await this.db
+      .update(competitors)
+      .set({ tech, updatedAt: sql`now()` })
+      .where(eq(competitors.id, id));
+  }
+
   async markCompetitorSynced(id: string): Promise<void> {
     await this.db
       .update(competitors)

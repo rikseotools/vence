@@ -4,6 +4,7 @@ import { CompetitorQueriesService, type OposicionForMatch } from './competitor-q
 import { COMPETITOR_ADAPTERS } from './adapters/registry';
 import type { CompetitorAdapter, ParsedPrice } from './adapters/types';
 import { parseSitemapXml, type SitemapEntry } from './sitemap';
+import { detectTech } from './tech-detect';
 
 const UA =
   'VenceCompetitorBot/1.0 (+https://www.vence.es; analizador de competidores) Mozilla/5.0';
@@ -87,6 +88,18 @@ export class CompetitorSyncService {
       urlsTotal: 0, urlsNew: 0, urlsRemoved: 0, coursesFetched: 0,
       coursesNew: 0, priceChanges: 0, coursesPending: 0, errors: 0,
     };
+
+    // 0) Detección de stack (best-effort; nunca bloquea el sync). Decide la
+    //    estrategia de scraping (rendering=js → headless-fetcher, etc.).
+    try {
+      const { text, headers } = await this.fetchHtmlAndHeaders(competitor.baseUrl);
+      const tech = { ...detectTech(text, headers), ...(adapter.techHints ?? {}) };
+      await this.queries.updateCompetitorTech(competitor.id, tech);
+    } catch (err) {
+      this.logger.warn(
+        `[${adapter.key}] tech-detect: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     // 1) Fuentes del competidor (N sitemaps/listados). Cada fuente: fetch + hash
     //    (observabilidad + "cambió algo" como en el radar) y parseo a URLs. La
@@ -337,6 +350,23 @@ export class CompetitorSyncService {
       const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status} en ${url}`);
       return await res.text();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Como fetchText pero devuelve también las cabeceras (para detección de stack). */
+  private async fetchHtmlAndHeaders(
+    url: string,
+  ): Promise<{ text: string; headers: Record<string, string> }> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status} en ${url}`);
+      const headers: Record<string, string> = {};
+      res.headers.forEach((v, k) => (headers[k.toLowerCase()] = v));
+      return { text: await res.text(), headers };
     } finally {
       clearTimeout(timer);
     }

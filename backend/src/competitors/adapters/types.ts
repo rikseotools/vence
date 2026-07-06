@@ -47,6 +47,13 @@ export interface CompetitorAdapter {
   readonly tipo: 'academia_presencial' | 'plataforma_online' | 'hibrida';
   readonly region: string;
 
+  /**
+   * OPCIONAL: pistas de stack que NO se pueden auto-detectar de la home
+   * (p.ej. `rendering:'js'`, `has_public_api:true`, `lms:'moodle'`). Se mezclan
+   * ENCIMA de lo auto-detectado. tecnoszubia no lo necesita (WordPress SSR).
+   */
+  readonly techHints?: Record<string, unknown>;
+
   /** Clasifica una URL del sitemap por su esquema (PURA). */
   classifyUrl(url: string): UrlType;
 

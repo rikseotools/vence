@@ -26,6 +26,7 @@ export const competitors = pgTable('competitors', {
   baseUrl: text('base_url').notNull(),
   tipo: text('tipo'), // academia_presencial | plataforma_online | hibrida
   region: text('region'),
+  tech: jsonb('tech').default(sql`'{}'::jsonb`).notNull(), // stack detectado
   isActive: boolean('is_active').default(true).notNull(),
   notes: text('notes'),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true, mode: 'string' }),
