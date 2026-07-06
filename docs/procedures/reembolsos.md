@@ -1,7 +1,16 @@
 # Procedimiento de Reembolsos
 
-> **Fecha:** 2026-02-08 (actualizado 2026-05-09)
+> **Fecha:** 2026-02-08 (actualizado 2026-07-06)
 > **Autor:** Manual creado tras caso Damarys Gómez. Sección "TRAMPAS" y "Reembolso como compensación" añadidas tras caso Lucía Ortega 2026-05-09.
+
+> 🚨 **BD: usar RDS con `pg` + `DATABASE_URL`, NO el cliente Supabase.** Supabase quedó **CONGELADO** (backup) tras el cutover a AWS RDS (04/07/2026); la BD viva es RDS. Los ejemplos de este manual que usan `createClient(SUPABASE...)` + `supabase.from()` apuntan al Supabase congelado → **datos obsoletos y escrituras que no cuentan**. Para leer/escribir datos vivos, usar el patrón:
+> ```js
+> const { Pool } = require('pg'); const fs = require('fs');
+> const url = fs.readFileSync('.env.development.local','utf8').match(/DATABASE_URL=(\S+)/)[1].replace('?sslmode=require','');
+> const pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 1 });
+> // await pool.query('UPDATE user_profiles SET plan_type=$1 WHERE id=$2', ['free', userId])
+> ```
+> (con `NODE_TLS_REJECT_UNAUTHORIZED=0`). Detalle: memoria `project_cutover_rds_prod`. **Stripe SÍ sigue igual** (el `STRIPE_SECRET_KEY` es real). El token admin para `/api/v2/feedback/respond` se acuña con `generateLink`/`verifyOtp` (bridge HS256, sigue funcionando).
 
 ## Decision tree — qué tipo de reembolso es
 
@@ -194,38 +203,26 @@ Ejecutar este script en la terminal del proyecto:
 
 ```bash
 node -e "
-require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const { Pool } = require('pg'); const fs = require('fs');
+const url = fs.readFileSync('.env.development.local','utf8').match(/DATABASE_URL=(\S+)/)[1].replace('?sslmode=require','');
+const pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 1 });
 
 const EMAIL = 'email@del-usuario.com';  // <-- CAMBIAR
 const SUBSCRIPTION_ID = 'sub_xxxxx';     // <-- CAMBIAR (obtener de Stripe)
 
 (async () => {
   // Degradar a free
-  const { data: user, error: e1 } = await supabase
-    .from('user_profiles')
-    .update({ plan_type: 'free' })
-    .eq('email', EMAIL)
-    .select('id, email, plan_type');
-
-  if (e1) console.error('Error:', e1.message);
-  else console.log('user_profiles:', user);
+  const u = await pool.query('UPDATE user_profiles SET plan_type=\$1 WHERE email=\$2 RETURNING id, email, plan_type', ['free', EMAIL]);
+  console.log('user_profiles:', u.rows[0]);
 
   // Actualizar suscripción
-  const { error: e2 } = await supabase
-    .from('user_subscriptions')
-    .update({ status: 'canceled' })
-    .eq('stripe_subscription_id', SUBSCRIPTION_ID);
-
-  if (e2) console.error('Error:', e2.message);
-  else console.log('user_subscriptions: canceled');
+  const s = await pool.query('UPDATE user_subscriptions SET status=\$1 WHERE stripe_subscription_id=\$2', ['canceled', SUBSCRIPTION_ID]);
+  console.log('user_subscriptions: canceled (' + s.rowCount + ' fila)');
+  await pool.end();
 })();
 "
 ```
+(Ejecutar con `NODE_TLS_REJECT_UNAUTHORIZED=0 node -e "..."`. Los `\$1`/`\$2` van escapados para el contexto `node -e "..."`.)
 
 ### 4. Registrar Reembolso en Base de Datos (Claude Code)
 
@@ -233,49 +230,31 @@ const SUBSCRIPTION_ID = 'sub_xxxxx';     // <-- CAMBIAR (obtener de Stripe)
 
 ```bash
 node -e "
-require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const { Pool } = require('pg'); const fs = require('fs');
+const url = fs.readFileSync('.env.development.local','utf8').match(/DATABASE_URL=(\S+)/)[1].replace('?sslmode=require','');
+const pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 1 });
 
 const EMAIL = 'email@del-usuario.com';           // <-- CAMBIAR
 const SUBSCRIPTION_ID = 'sub_xxxxx';              // <-- CAMBIAR
 const STRIPE_CUSTOMER_ID = 'cus_xxxxx';           // <-- CAMBIAR
-const REFUND_AMOUNT_CENTS = 2900;                 // <-- CAMBIAR (en céntimos)
+const STRIPE_CHARGE_ID = 'py_xxxxx';              // <-- CAMBIAR (charge reembolsado)
+const STRIPE_REFUND_ID = 'pyr_xxxxx';            // <-- CAMBIAR (id del refund)
+const REFUND_AMOUNT_CENTS = 3500;                 // <-- CAMBIAR (en céntimos)
 const REASON = 'Usuario solicitó devolución';    // <-- CAMBIAR si es necesario
 
 (async () => {
-  // Obtener user_id
-  const { data: user } = await supabase
-    .from('user_profiles')
-    .select('id')
-    .eq('email', EMAIL)
-    .single();
-
-  if (!user) { console.error('Usuario no encontrado'); return; }
-
-  // Insertar registro de reembolso
-  const { data, error } = await supabase
-    .from('cancellation_feedback')
-    .insert({
-      user_id: user.id,
-      user_email: EMAIL,
-      stripe_customer_id: STRIPE_CUSTOMER_ID,
-      subscription_id: SUBSCRIPTION_ID,
-      reason: 'guarantee_refund',
-      reason_details: REASON,
-      cancellation_type: 'manual_refund',  // <-- IMPORTANTE: debe ser 'manual_refund'
-      refund_amount_cents: REFUND_AMOUNT_CENTS,
-      requested_via: 'support_ticket',
-      admin_notes: 'Reembolso procesado vía Stripe Dashboard',
-      processed_by: 'manuel'
-    })
-    .select();
-
-  if (error) console.error('Error:', error.message);
-  else console.log('✅ Registro creado:', data[0]?.id);
+  const uid = (await pool.query('SELECT id FROM user_profiles WHERE email=\$1', [EMAIL])).rows[0]?.id;
+  if (!uid) { console.error('Usuario no encontrado'); return; }
+  // reason 'guarantee_refund' + cancellation_type 'manual_refund' (IMPRESCINDIBLE para el badge)
+  const r = await pool.query(
+    `INSERT INTO cancellation_feedback
+       (user_id, user_email, stripe_customer_id, subscription_id, stripe_charge_id, stripe_refund_id,
+        reason, reason_details, cancellation_type, refund_amount_cents, requested_via, processed_by)
+     VALUES (\$1,\$2,\$3,\$4,\$5,\$6,'guarantee_refund',\$7,'manual_refund',\$8,'feedback','admin') RETURNING id`,
+    [uid, EMAIL, STRIPE_CUSTOMER_ID, SUBSCRIPTION_ID, STRIPE_CHARGE_ID, STRIPE_REFUND_ID, REASON, REFUND_AMOUNT_CENTS]
+  );
+  console.log('✅ Registro creado:', r.rows[0].id);
+  await pool.end();
 })();
 "
 ```

@@ -68,6 +68,23 @@ Gate extra de auth recomendado tras deploy front: `node scripts/fase-b-auth-surf
 - `SUPABASE_WEBHOOK_SECRET` sigue en los `secrets` del task def frontend (inerte, el código ya no lo lee) — pendiente de limpiar registrando un task def sin él + borrar el param SSM.
 - CloudFront tarda minutos en propagar cambios de config; el origin group con ALB-fallback hace que el cambio sea seguro durante la propagación.
 
+## ⚠️ Aprendizaje: verificar si un fix concreto está DESPLEGADO (no fiarse de notas)
+
+**Episodio real (06/07/2026, bug "se me cambia la oposición" de Raquel):** un fix (`cd7a31cb`, "resolver tema por la oposición del usuario, no por Estado fijo") figuraba en una nota de memoria como *"SIN pushear/desplegar"*. Casi se re-preparó su despliegue basándose en esa nota — **pero estaba desactualizada**: el commit ya se había mergeado a `main` Y estaba en el deploy vivo de prod. Se perdió tiempo por confiar en la nota en vez de en el estado real.
+
+**Regla: antes de asumir que un fix está o no desplegado, VERIFÍCALO contra el deploy vivo.** Método:
+```bash
+# 1. Commit que corre AHORA en prod (campo "deploy"):
+curl -s https://www.vence.es/api/health | grep -oE '"deploy":"[a-f0-9]+"'
+# 2. ¿El deploy vivo incluye el fix? (¿es el fix ancestro del commit desplegado?)
+git merge-base --is-ancestor <commit-del-fix> <commit-desplegado> && echo "DESPLEGADO" || echo "NO desplegado"
+# 3. ¿El fix está en main?
+git merge-base --is-ancestor <commit-del-fix> main && echo "en main"
+```
+Las notas de memoria sobre estado de despliegue **envejecen**; el `/api/health` (`deploy`) + `git merge-base` es la fuente de verdad. El backend expone lo mismo en `https://api.vence.es/health`.
+
+**Aprendizaje de contenido (el bug en sí):** hardcodear una oposición por defecto (`auxiliar_administrativo_estado`) en vez de usar el `target_oposicion` del usuario mal-etiqueta el nº de tema para usuarios de OTRA oposición (el tema es relativo a la oposición). Es un bug **silencioso**: solo lo notan los no-Estado y solo en los artículos cuyo tema difiere. **Al probar flujos de test/tema, usar una oposición NO-Estado** (Madrid, Cantabria…), no la de por defecto, o estos bugs pasan desapercibidos.
+
 ## Relacionados
 - `project_deploy_freeze_chunks_s3` (memoria) — causa raíz + fix del congelamiento.
 - `docs/ARCHITECTURE_ROADMAP.md` — contexto de la migración a AWS/Fargate.
