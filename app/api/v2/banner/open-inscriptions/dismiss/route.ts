@@ -13,7 +13,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminDb } from '@/db/client'
-import { oposiciones } from '@/db/schema'
+// Lectura de oposiciones vía vista SSOT (convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'

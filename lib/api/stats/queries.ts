@@ -21,7 +21,9 @@
 //     lookup PK, cache write-through, o tabla pequeña).
 
 import { getDb, getPoolerDb } from '@/db/client'
-import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions, topics } from '@/db/schema'
+import { tests, testQuestions, userStreaks, userProfiles, userSessions, topics } from '@/db/schema'
+// Lectura de oposiciones vía vista SSOT (convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, desc, sql, isNotNull } from 'drizzle-orm'
 import type {
   GetUserStatsResponse,

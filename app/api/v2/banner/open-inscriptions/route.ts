@@ -22,7 +22,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { getReadDb } from '@/db/client'
-import { oposiciones, userProfiles } from '@/db/schema'
+import { userProfiles } from '@/db/schema'
+// Lee de la vista SSOT (proceso de la convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, lte, gte, sql } from 'drizzle-orm'
 import { todayMadrid } from '@/lib/oposiciones/inscripcion'
 

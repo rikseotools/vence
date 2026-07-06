@@ -3,7 +3,9 @@
 
 // Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
 import { getPoolerDb, getAdminDb } from '@/db/client'
-import { oposiciones, userFeedback } from '@/db/schema'
+import { userFeedback } from '@/db/schema'
+// Lee de la vista SSOT (proceso de la convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, ilike, gte } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 

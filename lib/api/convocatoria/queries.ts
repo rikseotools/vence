@@ -9,7 +9,7 @@ function getConvocatoriaDb() {
 }
 import { sql } from 'drizzle-orm'
 import { eq } from 'drizzle-orm'
-import { oposiciones, topics } from '@/db/schema'
+import { topics } from '@/db/schema'
 import { asc, and } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 
@@ -57,52 +57,94 @@ export async function getOposicionLandingData(
   try {
     const db = getConvocatoriaDb()
 
-    const rows = await db
-      .select({
-        nombre: oposiciones.nombre,
-        plazasLibres: oposiciones.plazasLibres,
-        plazasPromocionInterna: oposiciones.plazasPromocionInterna,
-        plazasDiscapacidad: oposiciones.plazasDiscapacidad,
-        examDate: oposiciones.examDate,
-        examDateApproximate: oposiciones.examDateApproximate,
-        inscriptionStart: oposiciones.inscriptionStart,
-        inscriptionDeadline: oposiciones.inscriptionDeadline,
-        boePublicationDate: oposiciones.boePublicationDate,
-        boeReference: oposiciones.boeReference,
-        temasCount: oposiciones.temasCount,
-        bloquesCount: oposiciones.bloquesCount,
-        tituloRequerido: oposiciones.tituloRequerido,
-        salarioMin: oposiciones.salarioMin,
-        salarioMax: oposiciones.salarioMax,
-        programaUrl: oposiciones.programaUrl,
-        diarioOficial: oposiciones.diarioOficial,
-        diarioReferencia: oposiciones.diarioReferencia,
-        seguimientoUrl: oposiciones.seguimientoUrl,
-        isConvocatoriaActiva: oposiciones.isConvocatoriaActiva,
-        oepDecreto: oposiciones.oepDecreto,
-        oepFecha: oposiciones.oepFecha,
-        estadoProceso: oposiciones.estadoProceso,
-        colorPrimario: oposiciones.colorPrimario,
-        seoTitle: oposiciones.seoTitle,
-        seoDescription: oposiciones.seoDescription,
-        landingFaqs: oposiciones.landingFaqs,
-        examenConfig: oposiciones.examenConfig,
-        requisitosEspeciales: oposiciones.requisitosEspeciales,
-        landingEstadisticas: oposiciones.landingEstadisticas,
-      })
-      .from(oposiciones)
-      .where(eq(oposiciones.slug, slug))
-      .limit(1)
+    // Lee de la VISTA `oposiciones_ssot` (fuente única): drop-in de `oposiciones` cuyos
+    // campos temporales (plazas/fechas/estado/BOE/OEP/landing_*) ya vienen COALESCE'd de
+    // la convocatoria vigente (`convocatorias` is_current) con fallback a las columnas
+    // legacy de `oposiciones`. El merge vive SOLO en la vista (migración Sprint G:
+    // docs/roadmap/consolidacion-convocatorias-radar-ssot.md). Así landing y catálogo
+    // leen la MISMA fuente. SQL crudo porque no hay modelo Drizzle del `convocatorias` vivo.
+    const rows = await db.execute<{
+      nombre: string
+      plazas_libres: number | null
+      plazas_promocion_interna: number | null
+      plazas_discapacidad: number | null
+      exam_date: string | null
+      exam_date_approximate: boolean | null
+      inscription_start: string | null
+      inscription_deadline: string | null
+      boe_publication_date: string | null
+      boe_reference: string | null
+      temas_count: number | null
+      bloques_count: number | null
+      titulo_requerido: string | null
+      salario_min: number | null
+      salario_max: number | null
+      programa_url: string | null
+      diario_oficial: string | null
+      diario_referencia: string | null
+      seguimiento_url: string | null
+      is_convocatoria_activa: boolean | null
+      oep_decreto: string | null
+      oep_fecha: string | null
+      estado_proceso: string | null
+      color_primario: string | null
+      seo_title: string | null
+      seo_description: string | null
+      landing_faqs: unknown
+      examen_config: unknown
+      requisitos_especiales: unknown
+      landing_estadisticas: unknown
+    }>(sql`
+      SELECT
+        nombre,
+        plazas_libres, plazas_promocion_interna, plazas_discapacidad,
+        exam_date::text AS exam_date, exam_date_approximate,
+        inscription_start::text AS inscription_start, inscription_deadline::text AS inscription_deadline,
+        boe_publication_date::text AS boe_publication_date, boe_reference,
+        temas_count, bloques_count, titulo_requerido, salario_min, salario_max,
+        programa_url, diario_oficial, diario_referencia, seguimiento_url,
+        is_convocatoria_activa, oep_decreto, oep_fecha::text AS oep_fecha, estado_proceso,
+        color_primario, seo_title, seo_description,
+        landing_faqs, examen_config, requisitos_especiales, landing_estadisticas
+      FROM oposiciones_ssot
+      WHERE slug = ${slug}
+      LIMIT 1
+    `)
 
-    if (rows.length === 0) return null
-    // Cast JSONB fields (Drizzle los tipa como unknown)
-    const row = rows[0]
+    const results = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []
+    if (results.length === 0) return null
+    const r = results[0] as Record<string, unknown>
     return {
-      ...row,
-      landingFaqs: row.landingFaqs as OposicionLandingData['landingFaqs'],
-      examenConfig: row.examenConfig as OposicionLandingData['examenConfig'],
-      requisitosEspeciales: row.requisitosEspeciales as OposicionLandingData['requisitosEspeciales'],
-      landingEstadisticas: row.landingEstadisticas as OposicionLandingData['landingEstadisticas'],
+      nombre: r.nombre as string,
+      plazasLibres: r.plazas_libres as number | null,
+      plazasPromocionInterna: r.plazas_promocion_interna as number | null,
+      plazasDiscapacidad: r.plazas_discapacidad as number | null,
+      examDate: r.exam_date as string | null,
+      examDateApproximate: r.exam_date_approximate as boolean | null,
+      inscriptionStart: r.inscription_start as string | null,
+      inscriptionDeadline: r.inscription_deadline as string | null,
+      boePublicationDate: r.boe_publication_date as string | null,
+      boeReference: r.boe_reference as string | null,
+      temasCount: r.temas_count as number | null,
+      bloquesCount: r.bloques_count as number | null,
+      tituloRequerido: r.titulo_requerido as string | null,
+      salarioMin: r.salario_min as number | null,
+      salarioMax: r.salario_max as number | null,
+      programaUrl: r.programa_url as string | null,
+      diarioOficial: r.diario_oficial as string | null,
+      diarioReferencia: r.diario_referencia as string | null,
+      seguimientoUrl: r.seguimiento_url as string | null,
+      isConvocatoriaActiva: r.is_convocatoria_activa as boolean | null,
+      oepDecreto: r.oep_decreto as string | null,
+      oepFecha: r.oep_fecha as string | null,
+      estadoProceso: r.estado_proceso as string | null,
+      colorPrimario: r.color_primario as string | null,
+      seoTitle: r.seo_title as string | null,
+      seoDescription: r.seo_description as string | null,
+      landingFaqs: r.landing_faqs as OposicionLandingData['landingFaqs'],
+      examenConfig: r.examen_config as OposicionLandingData['examenConfig'],
+      requisitosEspeciales: r.requisitos_especiales as OposicionLandingData['requisitosEspeciales'],
+      landingEstadisticas: r.landing_estadisticas as OposicionLandingData['landingEstadisticas'],
     }
   } catch (error) {
     console.warn(`⚠️ [convocatoria] Error obteniendo datos landing para ${slug}:`, (error as Error).message)
@@ -240,7 +282,7 @@ export async function getAllOposicionesCardData(): Promise<Map<string, Oposicion
              is_convocatoria_activa,
              landing_description, landing_features, landing_requirements,
              landing_difficulty, landing_duration
-      FROM oposiciones
+      FROM oposiciones_ssot
       WHERE is_active = true AND slug IS NOT NULL
       ORDER BY nombre
     `)

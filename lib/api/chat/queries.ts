@@ -8,7 +8,6 @@ function getChatDb() {
 import {
   topics,
   topicScope,
-  oposiciones,
   questions,
   articles,
   laws,
@@ -16,6 +15,8 @@ import {
   userProfiles,
   aiApiConfig
 } from '@/db/schema'
+// Lectura de oposiciones vía vista SSOT (convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, inArray, ilike, desc, sql, isNotNull } from 'drizzle-orm'
 
 // Mapeo de oposición del usuario (id) a position_type de topics (desde config central)

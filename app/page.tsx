@@ -156,7 +156,7 @@ const getOpenConvocatorias = unstable_cache(
                inscription_start::text AS inscription_start,
                inscription_deadline::text AS inscription_deadline,
                plazas_libres, is_active, seguimiento_url
-        FROM oposiciones
+        FROM oposiciones_ssot
         ORDER BY inscription_deadline ASC NULLS LAST
       `)
     } catch (e) {

@@ -563,28 +563,39 @@ AWS_PROFILE=vence aws cloudfront create-invalidation --distribution-id E1EH4WF1H
 
 > 📌 El flujo completo bloques+topics+disponible también está en FASE 5 (§temario); este aviso lo adelanta a FASE 2 porque **es donde se crean los topics y donde se olvida** (bug real 10/06/2026: TCAE SAS nació sin `oposicion_bloques` → `/tcae-sas/temario` 404 en producción).
 
-### 2c. Insertar convocatoria con enlaces oficiales
+### 2c. Insertar la convocatoria vigente (`convocatorias`) — **SSOT del proceso**
+
+> ⚠️ **La fila `is_current=true` de `convocatorias` es la FUENTE que lee el CATÁLOGO** (`/api/oposiciones/catalog`, selector de "cambiar oposición") **y el banner de inscripción abierta**. Si le faltan `inscription_start` / `inscription_deadline`, `estado_proceso` o `plazas_libres`, **la tarjeta del catálogo sale en blanco** (bug real León 06/07/2026: la plantilla escribía la fila pero OMITÍA las fechas de inscripción). Estos campos deben **cuadrar con los de `oposiciones`** (dual-write mientras dure la migración Sprint G; ver `sprint-g-oposiciones-vs-convocatorias.md`).
+
+Usar el **esquema VIVO** (no el antiguo `fecha_examen`/`plazas_convocadas`/`boletin_oficial_url`, que ya no existe en la tabla):
 
 ```sql
 INSERT INTO convocatorias (
-  oposicion_id, año, fecha_examen, tipo_examen,
-  plazas_convocadas, boe_fecha,
-  boletin_oficial_url, pagina_informacion_url,
-  observaciones
+  oposicion_id, año, is_current,
+  convocatoria_numero, convocatoria_fecha, convocatoria_dogv,
+  estado_proceso,                                  -- §2a.1 (badge en catálogo)
+  plazas_libres, plazas_promocion_interna, plazas_discapacidad,
+  inscription_start, inscription_deadline,         -- ⚠️ el catálogo LEE las fechas de AQUÍ
+  exam_date, exam_date_approximate,
+  boe_publication_date, boe_reference,
+  oep_decreto, oep_fecha,
+  programa_url,                                    -- PDF de las bases del proceso
+  examen_config, landing_faqs, landing_estadisticas, landing_description, requisitos_especiales
 ) VALUES (
-  '<uuid-oposicion>',
-  2026,
-  '2026-10-01',        -- fecha estimada del examen
-  'ordinaria',
-  645,
-  '2026-02-18',        -- fecha de publicacion en el boletin
-  'https://www.bocm.es/...',      -- PDF del boletin oficial (BOE, BOCM, BORM, BOJA...)
-  'https://www.comunidad.madrid/...', -- pagina oficial de seguimiento del proceso
-  'Orden 264/2026, de 4 de febrero. BOCM num. 41, 18/02/2026.'
+  '<uuid-oposicion>', 2026, true,
+  'Orden 264/2026', '2026-02-04', 'BOCM núm. 41, 18/02/2026',
+  'inscripcion_abierta',
+  645, 0, 32,
+  '2026-02-19', '2026-03-11',
+  NULL, false,
+  '2026-02-18', 'Orden 264/2026, de 4 de febrero. BOCM núm. 41, 18/02/2026.',
+  NULL, NULL,
+  'https://www.bocm.es/...',
+  '{}'::jsonb, '[]'::jsonb, '[]'::jsonb, NULL, NULL
 );
 ```
 
-Estos enlaces se muestran automaticamente en la landing via el componente `<ConvocatoriaLinks>`.
+El flujo de alta `_*_fase23.cjs` hace este INSERT (con `DELETE` previo de la vigente + `is_current=true`) además del UPDATE a `oposiciones`. El gate `npm run audit:oposicion` (FASE 2c) verifica que la fila `is_current` traiga `estado_proceso`, `plazas_libres` y las `inscription_*` consistentes con el cuerpo.
 
 ---
 

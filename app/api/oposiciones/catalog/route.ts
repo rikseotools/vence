@@ -44,10 +44,12 @@ async function fetchFromDb(): Promise<OposicionCatalogEntry[]> {
   const rows = (await getReadDb().execute(sql`
     SELECT o.id, o.slug, o.nombre, o.short_name, o.categoria, o.administracion,
            o.coverage_level, o.is_active, o.demand_score,
-           c."año" AS conv_anio, c.estado_proceso AS conv_estado,
-           c.plazas_libres AS conv_plazas, c.exam_date::text AS conv_exam_date,
-           c.inscription_start::text AS conv_ins_start,
-           c.inscription_deadline::text AS conv_ins_deadline
+           c."año" AS conv_anio,
+           COALESCE(c.estado_proceso, o.estado_proceso) AS conv_estado,
+           COALESCE(c.plazas_libres, o.plazas_libres) AS conv_plazas,
+           COALESCE(c.exam_date, o.exam_date)::text AS conv_exam_date,
+           COALESCE(c.inscription_start, o.inscription_start)::text AS conv_ins_start,
+           COALESCE(c.inscription_deadline, o.inscription_deadline)::text AS conv_ins_deadline
     FROM oposiciones o
     LEFT JOIN LATERAL (
       SELECT "año", estado_proceso, plazas_libres, exam_date, inscription_start, inscription_deadline

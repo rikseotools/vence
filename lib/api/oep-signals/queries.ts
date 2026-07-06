@@ -1,8 +1,12 @@
 // lib/api/oep-signals/queries.ts
 // Queries tipadas para señales de detección de OEPs
 import { getDb } from '@/db/client'
-import { oepDetectionSignals, oposiciones, convocatoriaHitos } from '@/db/schema'
+import { oepDetectionSignals, convocatoriaHitos } from '@/db/schema'
+// El matcher LEE oposiciones desde la vista SSOT (convocatoria vigente + fallback),
+// así reconcilia señales contra estado/plazas frescos. Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, desc, sql, gte, lt, isNotNull } from 'drizzle-orm'
+import { revalidateTag } from 'next/cache'
 import type {
   CreateSignalInput,
   SignalRow,
@@ -175,7 +179,7 @@ export async function listSignals(filters: { status?: SignalStatus; limit?: numb
 
 export async function getPendingSignalsCount(): Promise<PendingSignalsCountResponse> {
   const db = getDb()
-  const [total, critical, discovered] = await Promise.all([
+  const [total, critical] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(oepDetectionSignals)
@@ -187,20 +191,15 @@ export async function getPendingSignalsCount(): Promise<PendingSignalsCountRespo
         eq(oepDetectionSignals.status, 'pending'),
         gte(oepDetectionSignals.confidenceScore, 60),
       )),
-    // Procesos descubiertos fuera de catálogo (sensor regional_scan).
-    // Tabla nueva sin modelo Drizzle todavía → SQL crudo. Solo activos.
-    db.execute(sql`
-      SELECT count(*)::int AS count
-      FROM discovered_processes
-      WHERE manuel_status IN ('new', 'watching')
-    `),
   ])
 
   return {
     success: true,
     pendingCount: total[0]?.count ?? 0,
     criticalCount: critical[0]?.count ?? 0,
-    discoveredCount: Number((discovered as unknown as Array<{ count: number }>)[0]?.count ?? 0),
+    // Fase 4: `discovered_processes` retirada (experimento muerto, badge siempre 0).
+    // Se mantiene el campo por compat del schema; sin lectura a la tabla.
+    discoveredCount: 0,
   }
 }
 
@@ -208,9 +207,125 @@ export async function getPendingSignalsCount(): Promise<PendingSignalsCountRespo
 // REVIEW SIGNAL (apply | dismiss)
 // ============================================
 
-export async function reviewSignal(input: ReviewSignalInput): Promise<{ success: boolean; error?: string }> {
+/**
+ * Fase 3 — Puente radar → SSOT (docs/roadmap/consolidacion-convocatorias-radar-ssot.md).
+ * Al APLICAR una señal matcheada (con `oposicion_id`), promueve sus `detected_*` a la
+ * convocatoria VIGENTE de esa oposición (el SSOT que lee toda la app) + dual-write a
+ * `oposiciones.*` (que aún leen advance-estado y los auditores durante la transición).
+ * Reglas de seguridad:
+ *  - COALESCE: solo escribe los campos que la señal DETECTÓ; nunca pisa un valor curado con NULL.
+ *  - Si `detected_year` abre un CICLO nuevo (> año vigente), archiva la vigente e inserta otra.
+ *  - Escribe primero el SSOT (`convocatorias`) y luego el legacy → si algo falla, los lectores
+ *    (que van por la vista) ya ven el dato correcto.
+ *  - El admin VE los `detected_*` en el panel antes de Aplicar → es acción verificada (§4e).
+ * SQL crudo porque `convocatorias` no está en el schema Drizzle (y así escribe la tabla real,
+ * no la vista aliased). Devuelve el tipo de operación o null si no había nada que promover.
+ */
+async function promoteSignalToConvocatoria(
+  db: ReturnType<typeof getDb>,
+  signalId: string,
+): Promise<{ oposicionId: string; result: 'updated' | 'inserted' | 'new_cycle' } | null> {
+  const rows = (await db.execute<Record<string, unknown>>(sql`
+    SELECT oposicion_id, detected_year, detected_plazas_libre, detected_plazas_discapacidad,
+           detected_plazas_promocion_interna, detected_boc_ref,
+           detected_fecha_publicacion::text  AS detected_fecha_publicacion,
+           detected_fecha_inscripcion_fin::text AS detected_fecha_inscripcion_fin,
+           detected_fecha_examen::text       AS detected_fecha_examen,
+           detected_estado
+    FROM oep_detection_signals WHERE id = ${signalId} LIMIT 1`)) as unknown
+  const s = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || [])[0] as Record<string, unknown> | undefined
+  if (!s || !s.oposicion_id) return null
+
+  const oposicionId = s.oposicion_id as string
+  const yr = (s.detected_year ?? null) as number | null
+  const pl = (s.detected_plazas_libre ?? null) as number | null
+  const pd = (s.detected_plazas_discapacidad ?? null) as number | null
+  const ppi = (s.detected_plazas_promocion_interna ?? null) as number | null
+  const boc = (s.detected_boc_ref ?? null) as string | null
+  const fpub = (s.detected_fecha_publicacion ?? null) as string | null
+  const fins = (s.detected_fecha_inscripcion_fin ?? null) as string | null
+  const fex = (s.detected_fecha_examen ?? null) as string | null
+  const est = (s.detected_estado ?? null) as string | null
+
+  // ¿algo que promover?
+  if ([yr, pl, pd, ppi, boc, fpub, fins, fex, est].every((v) => v === null)) return null
+
+  const curRows = (await db.execute<{ id: string; anio: number | null }>(sql`
+    SELECT id, "año" AS anio FROM convocatorias WHERE oposicion_id = ${oposicionId} AND is_current = true LIMIT 1`)) as unknown
+  const cur = (Array.isArray(curRows) ? curRows : (curRows as { rows?: unknown[] }).rows || [])[0] as { id: string; anio: number | null } | undefined
+
+  let result: 'updated' | 'inserted' | 'new_cycle'
+  if (cur && !(yr !== null && cur.anio !== null && yr > cur.anio)) {
+    // Mismo ciclo → UPDATE de la vigente (COALESCE, sin pisar con NULL).
+    await db.execute(sql`
+      UPDATE convocatorias SET
+        plazas_libres            = COALESCE(${pl},   plazas_libres),
+        plazas_discapacidad      = COALESCE(${pd},   plazas_discapacidad),
+        plazas_promocion_interna = COALESCE(${ppi},  plazas_promocion_interna),
+        convocatoria_numero      = COALESCE(${boc},  convocatoria_numero),
+        boe_publication_date     = COALESCE(${fpub}::date, boe_publication_date),
+        inscription_deadline     = COALESCE(${fins}::date, inscription_deadline),
+        exam_date                = COALESCE(${fex}::date,  exam_date),
+        estado_proceso           = COALESCE(${est},  estado_proceso),
+        updated_at = now()
+      WHERE id = ${cur.id}`)
+    result = 'updated'
+  } else {
+    // Ciclo nuevo (o sin convocatoria vigente) → archivar la vigente (si la hay) + INSERT.
+    if (cur) {
+      await db.execute(sql`UPDATE convocatorias SET is_current = false, archived_at = now(), updated_at = now() WHERE id = ${cur.id}`)
+    }
+    await db.execute(sql`
+      INSERT INTO convocatorias (oposicion_id, "año", is_current, plazas_libres, plazas_discapacidad,
+        plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso)
+      VALUES (${oposicionId}, COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int), true,
+        ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${est})
+      ON CONFLICT (oposicion_id, "año") DO UPDATE SET
+        is_current = true, archived_at = NULL,
+        plazas_libres            = COALESCE(EXCLUDED.plazas_libres,            convocatorias.plazas_libres),
+        plazas_discapacidad      = COALESCE(EXCLUDED.plazas_discapacidad,      convocatorias.plazas_discapacidad),
+        plazas_promocion_interna = COALESCE(EXCLUDED.plazas_promocion_interna, convocatorias.plazas_promocion_interna),
+        convocatoria_numero      = COALESCE(EXCLUDED.convocatoria_numero,      convocatorias.convocatoria_numero),
+        boe_publication_date     = COALESCE(EXCLUDED.boe_publication_date,     convocatorias.boe_publication_date),
+        inscription_deadline     = COALESCE(EXCLUDED.inscription_deadline,     convocatorias.inscription_deadline),
+        exam_date                = COALESCE(EXCLUDED.exam_date,                convocatorias.exam_date),
+        estado_proceso           = COALESCE(EXCLUDED.estado_proceso,           convocatorias.estado_proceso),
+        updated_at = now()`)
+    result = cur ? 'new_cycle' : 'inserted'
+  }
+
+  // Dual-write legacy a oposiciones.* (advance-estado lee fechas de aquí; auditores). Sin updated_at (no existe).
+  await db.execute(sql`
+    UPDATE oposiciones SET
+      plazas_libres            = COALESCE(${pl},   plazas_libres),
+      plazas_discapacidad      = COALESCE(${pd},   plazas_discapacidad),
+      plazas_promocion_interna = COALESCE(${ppi},  plazas_promocion_interna),
+      convocatoria_numero      = COALESCE(${boc},  convocatoria_numero),
+      boe_publication_date     = COALESCE(${fpub}::date, boe_publication_date),
+      inscription_deadline     = COALESCE(${fins}::date, inscription_deadline),
+      exam_date                = COALESCE(${fex}::date,  exam_date),
+      estado_proceso           = COALESCE(${est},  estado_proceso)
+    WHERE id = ${oposicionId}`)
+
+  return { oposicionId, result }
+}
+
+export async function reviewSignal(input: ReviewSignalInput): Promise<{ success: boolean; error?: string; promoted?: string }> {
   const db = getDb()
   const newStatus: SignalStatus = input.action === 'apply' ? 'applied' : 'dismissed'
+
+  // Fase 3 — puente radar → SSOT: al APLICAR, promover los detected_* a la convocatoria
+  // vigente ANTES de marcar la señal aplicada. Si la promoción falla, no la marcamos
+  // (el admin ve el error y reintenta). "Descartar" no promueve nada.
+  let promoted: string | undefined
+  if (input.action === 'apply') {
+    try {
+      const p = await promoteSignalToConvocatoria(db, input.signalId)
+      promoted = p?.result
+    } catch (e) {
+      return { success: false, error: 'Error promoviendo a convocatoria: ' + (e as Error).message }
+    }
+  }
 
   const result = await db
     .update(oepDetectionSignals)
@@ -226,7 +341,12 @@ export async function reviewSignal(input: ReviewSignalInput): Promise<{ success:
   if (result.length === 0) {
     return { success: false, error: 'Señal no encontrada' }
   }
-  return { success: true }
+
+  // Se tocó convocatorias/oposiciones → refrescar landing (el catálogo caduca solo).
+  if (promoted) {
+    try { revalidateTag('landing', 'max') } catch { /* fuera de request scope: no-op */ }
+  }
+  return { success: true, promoted }
 }
 
 // ============================================

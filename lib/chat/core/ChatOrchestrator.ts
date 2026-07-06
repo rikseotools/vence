@@ -26,7 +26,9 @@ import { searchArticlesBySimilarity } from '../domains/search/queries'
 // → getDb (Supavisor primary max:1) que satura el pool y causa 504. Ver
 // ARCHITECTURE_ROADMAP línea 17.
 import { getPoolerDb } from '@/db/client'
-import { oposiciones, topicScope, topics } from '@/db/schema'
+import { topicScope, topics } from '@/db/schema'
+// Lectura de oposiciones vía vista SSOT (convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, sql } from 'drizzle-orm'
 import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'

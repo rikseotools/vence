@@ -63,7 +63,7 @@ async function getOposiciones(): Promise<OposicionRow[]> {
              inscription_start::text AS inscription_start,
              inscription_deadline::text AS inscription_deadline,
              subgrupo
-      FROM oposiciones
+      FROM oposiciones_ssot
       WHERE is_active = true
       ORDER BY plazas_libres DESC NULLS LAST
     `)

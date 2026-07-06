@@ -123,10 +123,24 @@ async function main() {
   if (sinScope === 0) ok('todos los topics tienen topic_scope') ; else warn(`${sinScope} topics sin topic_scope`)
   if (dispSinPreg === 0) ok('ningún topic disponible=true sin preguntas') ; else bad(`${dispSinPreg} topics disponibles sin preguntas (no activar)`)
 
-  // ── FASE 2c: tabla convocatorias ──
+  // ── FASE 2c: tabla convocatorias (SSOT del proceso que lee el catálogo/banner) ──
   console.log('\nFASE 2c — tabla convocatorias')
-  const convN = Number((await rows(sql`SELECT COUNT(*)::int AS c FROM convocatorias WHERE oposicion_id = ${o.id}`))[0]?.c || 0)
-  if (convN > 0) ok(`${convN} fila(s) en convocatorias`) ; else bad('0 filas en tabla convocatorias (FASE 2c, alimenta <ConvocatoriaLinks>)')
+  const convAll = Number((await rows(sql`SELECT COUNT(*)::int AS c FROM convocatorias WHERE oposicion_id = ${o.id}`))[0]?.c || 0)
+  const conv = (await rows(sql`SELECT estado_proceso, plazas_libres, inscription_start, inscription_deadline FROM convocatorias WHERE oposicion_id = ${o.id} AND is_current = true LIMIT 1`))[0] as { estado_proceso?: string | null; plazas_libres?: number | null; inscription_start?: unknown; inscription_deadline?: unknown } | undefined
+  if (!conv) {
+    bad('0 filas is_current en convocatorias (FASE 2c: es el SSOT que lee /api/oposiciones/catalog y el banner)')
+  } else {
+    ok(`${convAll} fila(s) en convocatorias (1 is_current)`)
+    // La convocatoria vigente DEBE traer los campos que el catálogo pinta, y cuadrar con oposiciones.
+    // Bug real (León, 06/07/2026): la plantilla _*_fase23 escribía la fila pero OMITÍA inscription_*
+    // → el catálogo mostraba la tarjeta sin fechas de inscripción.
+    const op = (await rows(sql`SELECT estado_proceso, inscription_start, inscription_deadline FROM oposiciones WHERE id = ${o.id}`))[0] as { estado_proceso?: string | null; inscription_start?: unknown; inscription_deadline?: unknown } | undefined
+    if (!conv.estado_proceso) bad('convocatoria vigente sin estado_proceso (badge de estado vacío en el catálogo)')
+    if (conv.plazas_libres == null) warn('convocatoria vigente sin plazas_libres')
+    if (op?.inscription_deadline && !conv.inscription_deadline) bad('convocatoria vigente SIN inscription_deadline pero oposiciones SÍ la tiene → catálogo con fechas en blanco (copiar a convocatorias)')
+    if (op?.inscription_start && !conv.inscription_start) bad('convocatoria vigente SIN inscription_start pero oposiciones SÍ la tiene → copiar a convocatorias')
+    if (op?.estado_proceso && conv.estado_proceso && op.estado_proceso !== conv.estado_proceso) warn(`estado_proceso divergente: oposiciones='${op.estado_proceso}' vs convocatoria vigente='${conv.estado_proceso}' (sincronizar)`)
+  }
 
   // ── FASE 5b: convocatoria_hitos ──
   console.log('\nFASE 5b — convocatoria_hitos')

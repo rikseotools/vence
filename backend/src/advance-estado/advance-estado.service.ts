@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq, isNotNull, or } from 'drizzle-orm';
+import { eq, isNotNull, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { oposiciones } from '../oep-signals/oep-signals.schema';
 
@@ -151,6 +151,14 @@ export class AdvanceEstadoService {
         .update(oposiciones)
         .set({ estadoProceso: derived })
         .where(eq(oposiciones.id, o.id));
+      // Dual-write al SSOT del proceso: reflejar el estado en la convocatoria
+      // vigente para que el catálogo (que lee `convocatorias`) no se congele.
+      // Consolidación en curso: docs/roadmap/consolidacion-convocatorias-radar-ssot.md.
+      // No hay modelo Drizzle de `convocatorias` en el backend (schema stale) → SQL crudo.
+      await this.db.execute(
+        sql`UPDATE convocatorias SET estado_proceso = ${derived}, updated_at = now()
+            WHERE oposicion_id = ${o.id} AND is_current = true`,
+      );
       changes.push({ slug: o.slug, from: o.estadoProceso, to: derived });
       this.logger.log(`${o.slug}: ${o.estadoProceso} → ${derived}`);
     }

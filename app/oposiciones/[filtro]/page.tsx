@@ -94,7 +94,7 @@ async function getFilteredOposiciones(filter: OposicionFilter): Promise<Oposicio
              inscription_start::text AS inscription_start,
              inscription_deadline::text AS inscription_deadline,
              subgrupo
-      FROM oposiciones
+      FROM oposiciones_ssot
       WHERE is_active = true
       ORDER BY plazas_libres DESC NULLS LAST
     `)
@@ -143,7 +143,7 @@ async function getCatalogadasAbiertas(): Promise<CatalogadaAbierta[]> {
              inscription_start::text AS inscription_start,
              inscription_deadline::text AS inscription_deadline,
              seguimiento_url
-      FROM oposiciones
+      FROM oposiciones_ssot
       WHERE is_active = false
       ORDER BY inscription_deadline ASC NULLS LAST
     `)

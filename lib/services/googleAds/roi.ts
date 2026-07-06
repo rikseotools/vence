@@ -15,7 +15,9 @@
 import { and, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
 import type { Customer } from 'google-ads-api'
 import { getReadDb } from '@/db/client'
-import { userAcquisition, conversionEvents, oposiciones } from '@/db/schema'
+import { userAcquisition, conversionEvents } from '@/db/schema'
+// exam_date desde la vista SSOT (convocatoria vigente + fallback). Solo lectura.
+import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { getGoogleAdsCustomer } from './client'
 import { getCampaignPerformance, type DateRange } from './reports'
 import { getOrganicByOposicion } from '@/lib/services/googleSearchConsole/reports'
