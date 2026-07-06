@@ -409,6 +409,15 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
 
+  // === AYUNTAMIENTO DE CÓRDOBA ===
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_cordoba',
+    nombre: 'Auxiliar Administrativo Ayto. Córdoba',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
   // === DIPUTACIÓN DE LEÓN ===
   {
     id: 'auxiliar_administrativo_diputacion_leon',

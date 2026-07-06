@@ -533,6 +533,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_cordoba',
+      label: 'Auxiliar Administrativo Ayto. Córdoba',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Córdoba',
+        slug: 'auxiliar-administrativo-ayuntamiento-cordoba',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_sevilla',
       label: 'Auxiliar Administrativo Ayto. Sevilla',
       data: {

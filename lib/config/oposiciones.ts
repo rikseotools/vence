@@ -1066,6 +1066,68 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE CÓRDOBA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_cordoba',
+    slug: 'auxiliar-administrativo-ayuntamiento-cordoba',
+    positionType: 'auxiliar_administrativo_ayuntamiento_cordoba',
+    examScoring: { penaltyDivisor: null, source: 'BOP Córdoba nº199 15/10/2024 (BOP-A-2024-4049), base calificación: 60 preguntas; 36 aciertos (65%) = 5 puntos, máximo 10; no se establece penalización por respuesta incorrecta. confidence:media' },
+    name: 'Auxiliar Administrativo del Ayuntamiento de Córdoba',
+    shortName: 'Aux. Ayto. Córdoba',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'emerald',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comunes',
+        title: 'Bloque I: Materias Comunes',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'El Estatuto de Autonomía de Andalucía' },
+          { id: 3, name: 'La Administración Local. El Municipio' },
+          { id: 4, name: 'Prevención de riesgos laborales' },
+          { id: 5, name: 'Igualdad efectiva de mujeres y hombres' },
+        ],
+      },
+      {
+        id: 'especificas',
+        title: 'Bloque II: Materias Específicas',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 6, name: 'Organización del Ayuntamiento de Córdoba (I): Pleno, Alcalde y Junta de Gobierno Local' },
+          { id: 7, name: 'Organización del Ayuntamiento de Córdoba (II): Áreas de gobierno y órganos directivos' },
+          { id: 8, name: 'Organización del Ayuntamiento de Córdoba (III): Asesoría Jurídica, Intervención y órganos económicos' },
+          { id: 9, name: 'El Estatuto Básico del Empleado Público' },
+          { id: 10, name: 'El personal al servicio de las Entidades Locales' },
+          { id: 11, name: 'Los recursos de las Haciendas Locales' },
+          { id: 12, name: 'El Presupuesto de las Entidades Locales' },
+          { id: 13, name: 'La Ley 39/2015 (I): actos e interesados' },
+          { id: 14, name: 'La Ley 39/2015 (II): procedimiento y recursos' },
+          { id: 15, name: 'La potestad reglamentaria de las Entidades Locales' },
+          { id: 16, name: 'El acceso electrónico de la ciudadanía a los servicios públicos' },
+          { id: 17, name: 'El funcionamiento electrónico del sector público' },
+          { id: 18, name: 'Protección de datos personales' },
+          { id: 19, name: 'Ofimática: LibreOffice Writer y Calc' },
+          { id: 20, name: 'El explorador de Windows y el correo electrónico' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['ayuntamiento cordoba', 'ayto cordoba', 'aux ayto cordoba', 'auxiliar ayuntamiento cordoba', 'ayuntamiento de cordoba', 'cordoba ayuntamiento'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-cordoba', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-cordoba/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-cordoba/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE SEVILLA (C2)
   // ========================================
   {
