@@ -11,7 +11,7 @@
 // Complementa (no sustituye) a `npm run audit:epigrafe <position_type>` (coherencia
 // epígrafe↔scope) — ese se sigue corriendo aparte (FASE 3g).
 
-import { createClient } from '@supabase/supabase-js'
+import postgres from 'postgres'
 import * as fs from 'fs'
 import * as path from 'path'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
@@ -21,7 +21,12 @@ import { oposicionToCcaa } from '@/app/oposiciones/lib/oposiciones-filters'
 const slug = process.argv[2]
 if (!slug) { console.error('Uso: ... audit-oposicion-completa.ts <slug>'); process.exit(2) }
 
-const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+// Agnóstico a la BD: postgres-js sobre DATABASE_URL (RDS/Neon/…), el MISMO driver
+// que usa la app (db/client.ts). NO usa el cliente Supabase.
+const DB_URL = process.env.DATABASE_URL
+if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2) }
+const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} })
+async function rows(q: any): Promise<any[]> { return await q }
 const PT = slug.replace(/-/g, '_')
 
 let fails = 0, warns = 0
@@ -30,21 +35,18 @@ const bad = (m: string) => { console.log('  ❌ ' + m); fails++ }
 const warn = (m: string) => { console.log('  🟡 ' + m); warns++ }
 
 async function countQuestionsForTopic(topicId: string): Promise<number> {
-  const { data: sc } = await s.from('topic_scope').select('law_id,article_numbers,include_full_title').eq('topic_id', topicId)
+  const sc = await rows(sql`SELECT law_id, article_numbers, include_full_title FROM topic_scope WHERE topic_id = ${topicId}`)
   let ids: string[] = []
-  for (const e of sc || []) {
-    let q = s.from('articles').select('id').eq('law_id', e.law_id)
-    if (!e.include_full_title && e.article_numbers) q = q.in('article_number', e.article_numbers)
-    const { data: a } = await q
-    ids.push(...(a || []).map((x: any) => x.id))
+  for (const e of sc) {
+    const a = (!e.include_full_title && e.article_numbers)
+      ? await rows(sql`SELECT id FROM articles WHERE law_id = ${e.law_id} AND article_number = ANY(${e.article_numbers}::text[])`)
+      : await rows(sql`SELECT id FROM articles WHERE law_id = ${e.law_id}`)
+    ids.push(...a.map((x: any) => x.id))
   }
-  let c = 0
-  for (let i = 0; i < ids.length; i += 200) {
-    const { count } = await s.from('questions').select('id', { count: 'exact', head: true })
-      .in('primary_article_id', ids.slice(i, i + 200)).eq('is_active', true)
-    c += count || 0
-  }
-  return c
+  if (!ids.length) return 0
+  // RDS acepta el array como parámetro (sin el límite de URL del PostgREST) → una sola query.
+  const r = (await rows(sql`SELECT COUNT(*)::int AS c FROM questions WHERE primary_article_id = ANY(${ids}::uuid[]) AND is_active = true`))[0]
+  return r?.c || 0
 }
 
 async function main() {
@@ -71,7 +73,7 @@ async function main() {
 
   // ── FASE 2a: fila oposiciones ──
   console.log('\nFASE 2a — fila oposiciones')
-  const { data: o } = await s.from('oposiciones').select('*').eq('slug', slug).single()
+  const o = (await rows(sql`SELECT * FROM oposiciones WHERE slug = ${slug}`))[0]
   if (!o) { bad('fila oposiciones NO existe'); finish(); return }
   ok('fila oposiciones existe')
   const REQ = ['nombre','categoria','grupo','subgrupo','administracion','titulo_requerido','temas_count','bloques_count','plazas_libres','estado_proceso','programa_url','seguimiento_url','diario_oficial','diario_referencia','seo_title','seo_description','landing_description','color_primario']
@@ -88,7 +90,7 @@ async function main() {
 
   // ── FASE 2b: topics ──
   console.log('\nFASE 2b — topics')
-  const { data: topics } = await s.from('topics').select('id,topic_number,title,epigrafe,descripcion_corta,bloque_number,disponible').eq('position_type', PT).order('topic_number')
+  const topics = await rows(sql`SELECT id, topic_number, title, epigrafe, descripcion_corta, bloque_number, disponible FROM topics WHERE position_type = ${PT} ORDER BY topic_number`)
   if (!topics || !topics.length) { bad('0 topics'); }
   else {
     if (topics.length === o.temas_count) ok(`${topics.length} topics == temas_count`) ; else bad(`${topics.length} topics ≠ temas_count ${o.temas_count}`)
@@ -98,7 +100,7 @@ async function main() {
 
   // ── FASE 2b.2: oposicion_bloques ──
   console.log('\nFASE 2b.2 — oposicion_bloques')
-  const { data: bloques } = await s.from('oposicion_bloques').select('bloque_number').eq('position_type', PT)
+  const bloques = await rows(sql`SELECT bloque_number FROM oposicion_bloques WHERE position_type = ${PT}`)
   if (bloques && bloques.length) {
     if (bloques.length === o.bloques_count) ok(`${bloques.length} bloques == bloques_count`) ; else bad(`${bloques.length} bloques ≠ bloques_count ${o.bloques_count}`)
     const tb = new Set((topics || []).map((t: any) => t.bloque_number))
@@ -111,8 +113,8 @@ async function main() {
   console.log('\nFASE 3 — topic_scope (cobertura)')
   let sinScope = 0, dispSinPreg = 0
   for (const t of topics || []) {
-    const { count } = await s.from('topic_scope').select('id', { count: 'exact', head: true }).eq('topic_id', t.id)
-    if (!count) { sinScope++; if (t.disponible) dispSinPreg++ ; continue }
+    const scn = Number((await rows(sql`SELECT COUNT(*)::int AS c FROM topic_scope WHERE topic_id = ${t.id}`))[0]?.c || 0)
+    if (!scn) { sinScope++; if (t.disponible) dispSinPreg++ ; continue }
     if (t.disponible) {
       const q = await countQuestionsForTopic(t.id)
       if (q === 0) { dispSinPreg++; warn(`T${t.topic_number} disponible=true pero 0 preguntas`) }
@@ -123,13 +125,13 @@ async function main() {
 
   // ── FASE 2c: tabla convocatorias ──
   console.log('\nFASE 2c — tabla convocatorias')
-  const { count: convN } = await s.from('convocatorias').select('id', { count: 'exact', head: true }).eq('oposicion_id', o.id)
-  if (convN && convN > 0) ok(`${convN} fila(s) en convocatorias`) ; else bad('0 filas en tabla convocatorias (FASE 2c, alimenta <ConvocatoriaLinks>)')
+  const convN = Number((await rows(sql`SELECT COUNT(*)::int AS c FROM convocatorias WHERE oposicion_id = ${o.id}`))[0]?.c || 0)
+  if (convN > 0) ok(`${convN} fila(s) en convocatorias`) ; else bad('0 filas en tabla convocatorias (FASE 2c, alimenta <ConvocatoriaLinks>)')
 
   // ── FASE 5b: convocatoria_hitos ──
   console.log('\nFASE 5b — convocatoria_hitos')
-  const { count: hitosN } = await s.from('convocatoria_hitos').select('id', { count: 'exact', head: true }).eq('oposicion_id', o.id)
-  if (hitosN && hitosN > 0) ok(`${hitosN} hitos`) ; else warn('0 hitos (timeline vacío)')
+  const hitosN = Number((await rows(sql`SELECT COUNT(*)::int AS c FROM convocatoria_hitos WHERE oposicion_id = ${o.id}`))[0]?.c || 0)
+  if (hitosN > 0) ok(`${hitosN} hitos`) ; else warn('0 hitos (timeline vacío)')
 
   // ── FASE 5: rutas frontend ──
   console.log('\nFASE 5 — rutas frontend')

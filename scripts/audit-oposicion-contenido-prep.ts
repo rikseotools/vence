@@ -12,52 +12,63 @@
 // Reusable: cualquier oposición. Determinista (solo lee BD). La pasada de agentes
 // se lanza aparte (Workflow / Agent en paralelo) leyendo el JSON.
 
-import { createClient } from '@supabase/supabase-js'
+import postgres from 'postgres'
 import * as fs from 'fs'
 
 const slug = process.argv[2]
 const SAMPLE = parseInt(process.argv[3] || '4', 10)
 if (!slug) { console.error('Uso: ... <slug> [muestra_por_tema]'); process.exit(2) }
 const PT = slug.replace(/-/g, '_')
-const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+// Agnóstico a la BD: postgres-js sobre DATABASE_URL (RDS/Neon/…), NO Supabase.
+const DB_URL = process.env.DATABASE_URL
+if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2) }
+const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} })
+async function rows(q: any): Promise<any[]> { return await q }
 const LETTER = ['A', 'B', 'C', 'D']
 
 async function main() {
-  const { data: opo } = await s.from('oposiciones').select('programa_url, diario_referencia').eq('slug', slug).single()
-  const { data: topics } = await s.from('topics').select('id,topic_number,title,epigrafe,disponible').eq('position_type', PT).eq('disponible', true).order('topic_number')
+  const opo = (await rows(sql`SELECT programa_url, diario_referencia FROM oposiciones WHERE slug = ${slug}`))[0]
+  const topics = await rows(sql`SELECT id, topic_number, title, epigrafe, disponible FROM topics WHERE position_type = ${PT} AND disponible = true ORDER BY topic_number`)
   if (!topics?.length) { console.error('Sin topics disponibles'); process.exit(2) }
 
   const out: any = { slug, position_type: PT, programa_url: opo?.programa_url, diario: opo?.diario_referencia, topics: [] }
 
   for (const t of topics) {
-    const { data: sc } = await s.from('topic_scope').select('law_id,article_numbers,include_full_title,laws:law_id(short_name)').eq('topic_id', t.id)
-    const scopeDesc = (sc || []).map((x: any) => `${x.laws?.short_name}${x.include_full_title ? ' (ley completa)' : ': arts ' + (x.article_numbers || []).join(',')}`)
+    const sc = await rows(sql`
+      SELECT ts.law_id, ts.article_numbers, ts.include_full_title, l.short_name AS law_short_name
+      FROM topic_scope ts LEFT JOIN laws l ON l.id = ts.law_id
+      WHERE ts.topic_id = ${t.id}`)
+    const scopeDesc = sc.map((x: any) => `${x.law_short_name}${x.include_full_title ? ' (ley completa)' : ': arts ' + (x.article_numbers || []).join(',')}`)
 
     // resolver artículos del scope → muestrear preguntas
     let artIds: string[] = []
-    for (const e of sc || []) {
-      let q = s.from('articles').select('id').eq('law_id', e.law_id)
-      if (!e.include_full_title && e.article_numbers) q = q.in('article_number', e.article_numbers)
-      const { data: a } = await q
-      artIds.push(...(a || []).map((x: any) => x.id))
+    for (const e of sc) {
+      const a = (!e.include_full_title && e.article_numbers)
+        ? await rows(sql`SELECT id FROM articles WHERE law_id = ${e.law_id} AND article_number = ANY(${e.article_numbers}::text[])`)
+        : await rows(sql`SELECT id FROM articles WHERE law_id = ${e.law_id}`)
+      artIds.push(...a.map((x: any) => x.id))
     }
     // muestra de preguntas (las primeras SAMPLE activas del scope)
     const sample: any[] = []
     if (artIds.length) {
-      const { data: qs } = await s.from('questions')
-        .select('id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,primary_article_id,articles:primary_article_id(article_number,content,laws:law_id(short_name))')
-        .in('primary_article_id', artIds.slice(0, 500)).eq('is_active', true).limit(SAMPLE)
-      for (const q of qs || []) {
-        const art: any = q.articles
+      const qs = await rows(sql`
+        SELECT q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_option, q.explanation,
+               a.article_number AS art_number, a.content AS art_content, l.short_name AS law_short_name
+        FROM questions q
+        JOIN articles a ON a.id = q.primary_article_id
+        LEFT JOIN laws l ON l.id = a.law_id
+        WHERE q.primary_article_id = ANY(${artIds.slice(0, 500)}::uuid[]) AND q.is_active = true
+        LIMIT ${SAMPLE}`)
+      for (const q of qs) {
         sample.push({
           id: q.id,
           enunciado: q.question_text,
           opciones: { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d },
           correcta: LETTER[q.correct_option],
           explicacion: q.explanation,
-          ley: art?.laws?.short_name,
-          articulo: art?.article_number,
-          articulo_contenido: (art?.content || '').slice(0, 1800),
+          ley: q.law_short_name,
+          articulo: q.art_number,
+          articulo_contenido: (q.art_content || '').slice(0, 1800),
         })
       }
     }
@@ -75,4 +86,4 @@ Eres auditor de contenido de oposiciones. Lee ${file}. Para los temas {RANGO}, e
 Devuelve por tema: veredicto OK | REVISAR + motivo conciso. Sé estricto pero no inventes problemas.
 ---`)
 }
-main().catch(e => { console.error(e?.message || e); process.exit(2) })
+main().then(() => process.exit(0)).catch(e => { console.error(e?.message || e); process.exit(2) })

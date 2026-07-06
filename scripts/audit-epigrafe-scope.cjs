@@ -23,13 +23,14 @@
  *
  * Exit code 1 si hay algún hallazgo 🔴 (apto como gate de CI).
  */
-const { createClient } = require('@supabase/supabase-js');
+const postgres = require('postgres');
 require('dotenv').config({ path: '.env.local' });
 
-const s = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+// Agnóstico a la BD: postgres-js sobre DATABASE_URL (RDS/Neon/…), la MISMA capa
+// que la app (db/client.ts). NO usa el cliente Supabase.
+const DB_URL = process.env.DATABASE_URL;
+if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2); }
+const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
 
 // Extrae identificadores de norma con número del texto libre.
 // Normaliza a forma canónica "N/AAAA" (ej. "39/2015", "2016/679", "3/2018").
@@ -76,26 +77,23 @@ function nameReferenced(lawName, shortName, epigrafe) {
 }
 
 async function auditPositionType(pt) {
-  const { data: topics } = await s
-    .from('topics')
-    .select('id, topic_number, title, epigrafe')
-    .eq('position_type', pt)
-    .order('topic_number');
+  const topics = await sql`
+    SELECT id, topic_number, title, epigrafe
+    FROM topics WHERE position_type = ${pt} ORDER BY topic_number`;
   if (!topics || !topics.length) return null;
 
   const findings = [];
   for (const t of topics) {
     if (!t.epigrafe) continue;
     const epiRefs = extractLawRefs(t.epigrafe);
-    const { data: scope } = await s
-      .from('topic_scope')
-      .select('law_id, article_numbers, include_full_title')
-      .eq('topic_id', t.id);
+    const scope = await sql`
+      SELECT law_id, article_numbers, include_full_title
+      FROM topic_scope WHERE topic_id = ${t.id}`;
 
     const rows = [];
     let topicTotal = 0;
     for (const r of scope || []) {
-      const { data: l } = await s.from('laws').select('short_name, name, slug').eq('id', r.law_id).single();
+      const l = (await sql`SELECT short_name, name, slug FROM laws WHERE id = ${r.law_id}`)[0];
       // Semántica de scope IDÉNTICA al fetcher de producción (lib/api/topic-data/queries.ts:230):
       //   article_numbers = null  → ley virtual: TODA la ley está en scope.
       //   article_numbers = []    → fila inerte: no aporta nada (EMPTY_ROW real).
@@ -109,21 +107,17 @@ async function auditPositionType(pt) {
       let artCount = arts.length;
       let articleIds = [];
       if (fullTitle) {
-        const { data: as } = await s.from('articles').select('id').eq('law_id', r.law_id);
-        articleIds = (as || []).map(x => x.id);
+        const as = await sql`SELECT id FROM articles WHERE law_id = ${r.law_id}`;
+        articleIds = as.map(x => x.id);
         artCount = articleIds.length;
       } else if (arts.length) {
-        const { data: as } = await s.from('articles').select('id').eq('law_id', r.law_id).in('article_number', arts);
-        articleIds = (as || []).map(x => x.id);
+        const as = await sql`SELECT id FROM articles WHERE law_id = ${r.law_id} AND article_number = ANY(${arts}::text[])`;
+        articleIds = as.map(x => x.id);
       }
       if (articleIds.length) {
-        // contar preguntas en lotes (evita límite de URL de .in con leyes grandes)
-        for (let i = 0; i < articleIds.length; i += 150) {
-          const { count } = await s.from('questions')
-            .select('id', { count: 'exact', head: true })
-            .eq('is_active', true).in('primary_article_id', articleIds.slice(i, i + 150));
-          q += count || 0;
-        }
+        // RDS acepta el array como parámetro (sin el límite de URL del PostgREST) → una sola query.
+        const cr = await sql`SELECT COUNT(*)::int AS c FROM questions WHERE is_active = true AND primary_article_id = ANY(${articleIds}::uuid[])`;
+        q += cr[0]?.c || 0;
       }
       // refs por número (short_name + name) + reconocimiento descriptivo por nombre
       const refs = new Set([...extractLawRefs(l ? l.short_name : ''), ...extractLawRefs(l ? l.name : '')]);
@@ -162,16 +156,9 @@ async function auditPositionType(pt) {
 (async () => {
   let targets = process.argv.slice(2);
   if (!targets.length) {
-    // Paginar: Supabase capa a 1000 filas. Sin paginar, con >1000 topics se
-    // enumeraban solo ~33 de las 92 oposiciones (las demás quedaban sin auditar).
-    const rows = [];
-    for (let from = 0; ; from += 1000) {
-      const { data } = await s.from('topics').select('position_type').eq('is_active', true).range(from, from + 999);
-      if (!data || !data.length) break;
-      rows.push(...data);
-      if (data.length < 1000) break;
-    }
-    targets = [...new Set(rows.map(x => x.position_type).filter(Boolean))];
+    // RDS no tiene el cap de 1000 filas del PostgREST → DISTINCT directo.
+    const data = await sql`SELECT DISTINCT position_type FROM topics WHERE is_active = true AND position_type IS NOT NULL`;
+    targets = data.map(x => x.position_type).filter(Boolean);
   }
   let red = 0, yellow = 0;
   for (const pt of targets.sort()) {

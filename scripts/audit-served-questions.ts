@@ -15,12 +15,16 @@
 //
 // Exit 1 si algún topic disponible=true sirve 0 preguntas → apto como gate de CI.
 
-import { createClient } from '@supabase/supabase-js'
+import { getDb } from '@/db/client'
+import { sql } from 'drizzle-orm'
 import { getTopicFullData } from '@/lib/api/topic-data/queries'
 
 const LOW = 10 // umbral 🟡 (alineado con LOW_COVERAGE de audit:epigrafe)
 
-const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+// Agnóstico a la BD: usa la MISMA capa que la app (getDb() → DATABASE_URL → RDS),
+// no el cliente Supabase. getTopicFullData ya lee de aquí.
+const db = getDb()
+async function rows(q: any): Promise<any[]> { const r: any = await db.execute(q); return Array.isArray(r) ? r : (r?.rows ?? []) }
 const slugArg = process.argv[2]
 
 let fails = 0
@@ -28,17 +32,16 @@ let warns = 0
 
 async function activeSlugs(): Promise<string[]> {
   if (slugArg) return [slugArg]
-  const { data } = await s.from('oposiciones').select('slug').eq('is_active', true).order('slug')
-  return (data || []).map((o: any) => o.slug)
+  const data = await rows(sql`SELECT slug FROM oposiciones WHERE is_active = true ORDER BY slug`)
+  return data.map((o: any) => o.slug)
 }
 
 async function auditOposicion(slug: string): Promise<void> {
-  const { data: topics } = await s
-    .from('topics')
-    .select('topic_number, title, disponible, position_type')
-    .eq('position_type', slug.replace(/-/g, '_'))
-    .eq('is_active', true)
-    .order('topic_number')
+  const topics = await rows(sql`
+    SELECT topic_number, title, disponible, position_type
+    FROM topics
+    WHERE position_type = ${slug.replace(/-/g, '_')} AND is_active = true
+    ORDER BY topic_number`)
 
   if (!topics || !topics.length) {
     console.log(`\n━━━ ${slug} ━━━`)
