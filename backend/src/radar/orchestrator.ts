@@ -9,15 +9,17 @@
 //
 // Diseño: docs/roadmap/radar-multicapa.md
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 import { OepSignalsQueriesService } from '../oep-signals/oep-signals-queries.service';
 import type { SensorType } from '../oep-signals/oep-signals.schemas';
+import { CompetitorQueriesService } from '../competitors/competitor-queries.service';
 import { RadarTelemetry } from './core/telemetry';
 import { BOLETIN_ADAPTERS } from './layers/boletines/registry';
 import { AGGREGATOR_ADAPTERS } from './layers/aggregators/registry';
 import { COMPETITOR_ADAPTERS } from './layers/competitors/registry';
+import { makeCompetitorDbAdapter } from './layers/competitors/from-competitor-db';
 import {
   AdapterRunResult,
   RawCandidate,
@@ -35,14 +37,21 @@ export class RadarOrchestrator {
     private readonly llm: OepSignalsLlmService,
     private readonly queries: OepSignalsQueriesService,
     private readonly telemetry: RadarTelemetry,
+    // Capa 3 dinámica: lee del subsistema "Analizador de Competidores". Opcional
+    // para no acoplar el radar a ese módulo en tests que instancian el orquestador.
+    @Optional() private readonly competitorQueries?: CompetitorQueriesService,
   ) {}
 
   /** Todos los adapters de las 3 capas, ordenados por prioridad (cascada). */
   private adapters(): SourceAdapter[] {
+    const dynamic: SourceAdapter[] = this.competitorQueries
+      ? [makeCompetitorDbAdapter(this.competitorQueries)]
+      : [];
     return [
       ...BOLETIN_ADAPTERS,
       ...AGGREGATOR_ADAPTERS,
       ...COMPETITOR_ADAPTERS,
+      ...dynamic,
     ].sort((a, b) => a.priority - b.priority);
   }
 

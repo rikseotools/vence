@@ -20,6 +20,10 @@ export const sensorTypeOptions = [
   'manual',
   'generic_source',
   'pag_empleo',
+  // Capa 3 del radar (competidores). La BD ya lo permite desde la migración
+  // radar-multicapa-fase0; se añade aquí para cerrar el drift de tipos y que el
+  // orquestador no tenga que castear `sensorTypeFor(adapter) as SensorType`.
+  'competitor',
 ] as const;
 
 export const signalStatusOptions = [
@@ -178,6 +182,10 @@ export function baseScoreBySensor(sensor: SensorType): number {
     // Agregador nacional oficial (administracion.gob.es): dato ya estructurado y
     // filtrado por plazo abierto + grupo → señal fuerte, por encima de boletines.
     case 'pag_empleo':
+      return 50;
+    // Competidores (Capa 3): PISTA, no dato oficial. El orquestador usa 70/50
+    // según match; este base solo aplica si alguien lo llama directamente.
+    case 'competitor':
       return 50;
   }
 }

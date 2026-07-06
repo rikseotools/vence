@@ -28,6 +28,7 @@ import { DetectBoletinesModule } from './detect-boletines/detect-boletines.modul
 // DetectPagEmpleoModule retirado 04/07/2026 (migrado al orquestador del radar):
 // import { DetectPagEmpleoModule } from './detect-pag-empleo/detect-pag-empleo.module';
 import { RadarModule } from './radar/radar.module';
+import { CompetitorsModule } from './competitors/competitors.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { TestConfigModule } from './test-config/test-config.module';
@@ -203,6 +204,10 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     //   (radar/layers/aggregators/pag-empleo). El cron viejo se quita para no
     //   correr dos veces; las funciones puras de pag-empleo.ts se reutilizan.
     RadarModule,
+    // Analizador de Competidores: catálogo duradero de academias competidoras
+    // (oposiciones/precios/URLs) con detección de cambios. Cron 05:00 UTC (antes
+    // del radar, que lee de sus tablas). docs/roadmap/analizador-competidores.md
+    CompetitorsModule,
     // Cron de higiene: avanza estado_proceso según fechas vencidas (06:30 UTC)
     AdvanceEstadoModule,
     // HTTP endpoints — Bloque 3 canary (Etapa 2)
