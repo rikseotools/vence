@@ -157,7 +157,7 @@ export class CompetitorSyncService {
         if (urlType === 'oposicion') {
           const needsFetch =
             known.contentHash === null ||
-            e.lastmod !== known.lastmod ||
+            lastmodDiffers(e.lastmod, known.lastmod) ||
             isStale(known.contentCheckedAt, STALE_RECHECK_DAYS);
           if (needsFetch) {
             knownCourseUrls.push({ id: known.id, url: e.loc, hash: known.contentHash });
@@ -201,6 +201,9 @@ export class CompetitorSyncService {
 
     // 4) Descarga incremental de cursos: primero los nuevos, luego los conocidos
     //    (para detectar cambios de precio). Con tope por pasada + educado.
+    // Prioriza los NUNCA descargados (hash null) para que el backfill inicial
+    // avance sí o sí; los re-chequeos (lastmod/stale) van después.
+    knownCourseUrls.sort((a, b) => (a.hash === null ? 0 : 1) - (b.hash === null ? 0 : 1));
     const toFetch = [
       ...newCourseUrls.map((c) => ({ ...c, hash: null as string | null, isNew: true })),
       ...knownCourseUrls.map((c) => ({ ...c, isNew: false })),
@@ -384,6 +387,20 @@ function sha256(s: string): string {
 function isStale(checkedAt: string | null, days: number): boolean {
   if (!checkedAt) return true;
   return new Date(checkedAt).getTime() < Date.now() - days * 86_400_000;
+}
+
+/**
+ * ¿Cambió el lastmod? Compara por TIEMPO parseado, no por string: el del sitemap
+ * viene crudo ("2025-05-06T10:18:38+00:00") pero al releerlo de la columna
+ * timestamptz vuelve normalizado ("2025-05-06 10:18:38+00") → comparar strings
+ * daría siempre distinto y rompería el gateo (re-fetch infinito).
+ */
+export function lastmodDiffers(a: string | null, b: string | null): boolean {
+  if (a == null || b == null) return a !== b;
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  if (Number.isNaN(ta) || Number.isNaN(tb)) return a !== b;
+  return ta !== tb;
 }
 
 function sleep(ms: number): Promise<void> {
