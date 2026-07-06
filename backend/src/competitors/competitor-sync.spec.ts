@@ -14,6 +14,16 @@ describe('matchCourseToOposicion (conectores)', () => {
   it('no empareja cuerpos distintos', () => {
     expect(svc.matchCourseToOposicion('Guardia Civil', catalog)).toBeNull();
   });
+  it('genérico de una palabra ("Administrativo") NO matchea un cuerpo específico', () => {
+    expect(
+      svc.matchCourseToOposicion('Administrativo', [
+        { id: 'x', nombre: 'Administrativo de Castilla-La Mancha', shortName: null },
+      ]),
+    ).toBeNull();
+  });
+  it('genérico que encaja en varias oposiciones → ambiguo → gap', () => {
+    expect(svc.matchCourseToOposicion('Auxiliar Administrativo', catalog)).toBeNull();
+  });
 });
 
 describe('lastmodDiffers (regresión: gateo de re-descarga)', () => {

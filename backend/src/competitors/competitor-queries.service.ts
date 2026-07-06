@@ -311,18 +311,30 @@ export class CompetitorQueriesService {
   matchCourseToOposicion(rawName: string, catalog: OposicionForMatch[]): string | null {
     const n = cleanName(rawName);
     if (n.length < 8) return null;
-    let best: { id: string; len: number } | null = null;
+    const exact = new Set<string>();
+    const contains = new Set<string>();
     for (const o of catalog) {
       for (const raw of [o.shortName, o.nombre]) {
         if (!raw) continue;
         const c = cleanName(raw);
         if (c.length < 8) continue;
-        if (n.includes(c) || c.includes(n)) {
-          if (!best || c.length > best.len) best = { id: o.id, len: c.length };
+        if (n === c) {
+          exact.add(o.id);
+          continue;
         }
+        // Guarda 1: el nombre CONTENIDO (el más corto) debe tener ≥2 tokens
+        // significativos → un genérico de una palabra ("administrativo") NO
+        // empareja cuerpos específicos ("Administrativo de Castilla-La Mancha").
+        const inner = n.length <= c.length ? n : c;
+        if (inner.split(' ').filter((t) => t.length >= 4).length < 2) continue;
+        if (n.includes(c) || c.includes(n)) contains.add(o.id);
       }
     }
-    return best?.id ?? null;
+    // Igualdad exacta = match fuerte. Si empata con varias, es ambiguo → gap.
+    if (exact.size >= 1) return exact.size === 1 ? [...exact][0] : null;
+    // Guarda 2: contención solo si es INEQUÍVOCA (una sola oposición). Si varias,
+    // el nombre del curso es demasiado genérico → gap (precisión > recall).
+    return contains.size === 1 ? [...contains][0] : null;
   }
 
   // ── alimentación del radar (Capa 3 lee del competitor-DB) ─────────────────
