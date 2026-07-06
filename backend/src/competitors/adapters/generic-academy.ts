@@ -9,7 +9,7 @@
 // adapter). Runbook: docs/runbooks/analizador-competidores.md
 
 import { CompetitorAdapter, Modalidad, ParsedCourse, ParsedPrice, UrlType } from './types';
-import { jsonLdPrice, nameFromSlug, nameFromTitle } from './_shared';
+import { jsonLdPrice, nameFromH1, nameFromSlug, nameFromTitle } from './_shared';
 
 export interface AcademyConfig {
   key: string;
@@ -23,6 +23,10 @@ export interface AcademyConfig {
   categoria?: RegExp;
   /** Extraer precio del JSON-LD Product/Course (WooCommerce). */
   jsonLdPrice?: boolean;
+  /** Competidor JS/SPA → renderizar la página de curso por el headless-fetcher. */
+  jsRender?: boolean;
+  /** Sacar el nombre del <h1> antes que del <title> (sitios con title stale). */
+  nameFromH1?: boolean;
   modalidad?: Modalidad;
 }
 
@@ -33,6 +37,7 @@ export function makeAcademyAdapter(cfg: AcademyConfig): CompetitorAdapter {
     baseUrl: cfg.baseUrl,
     tipo: cfg.tipo,
     region: cfg.region,
+    ...(cfg.jsRender ? { techHints: { rendering: 'js' } } : {}),
     classifyUrl(url: string): UrlType {
       let path: string;
       try {
@@ -45,7 +50,8 @@ export function makeAcademyAdapter(cfg: AcademyConfig): CompetitorAdapter {
       return 'page';
     },
     parseCourse(url: string, html: string): ParsedCourse | null {
-      const name = nameFromTitle(html) || nameFromSlug(url);
+      const name =
+        (cfg.nameFromH1 ? nameFromH1(html) : '') || nameFromTitle(html) || nameFromSlug(url);
       if (!name) return null;
       const prices: ParsedPrice[] = [];
       if (cfg.jsonLdPrice) {
@@ -83,6 +89,25 @@ export const ACADEMY_CONFIGS: AcademyConfig[] = [
     oposicion: /^\/project\/[^/]+\/?$/ },
   { key: 'cetoposiciones', name: 'CET Oposiciones', baseUrl: 'https://www.cetoposiciones.com', tipo: 'academia_presencial', region: 'España',
     oposicion: /^\/oposiciones\/[^/]+\/[^/]+\/?$/, categoria: /^\/oposiciones\/[^/]+\/?$/ },
+  // — Lote register-only reconvertido a adapter (07/07) —
+  { key: 'oposicionesestadistica', name: 'Oposiciones Estadística', baseUrl: 'https://oposicionesestadistica.es', tipo: 'plataforma_online', region: 'España',
+    oposicion: /^\/oposiciones-ine\/?$/ },
+  { key: 'fernandomiro', name: 'Academia Fernando Miró', baseUrl: 'https://www.fernandomiro.com', tipo: 'academia_presencial', region: 'Murcia',
+    oposicion: /^\/academia-policia-local-murcia\/?$/ },
+  { key: 'age360academia', name: 'AGE360 (Forvide)', baseUrl: 'https://www.academiaforvide.es', tipo: 'academia_presencial', region: 'España',
+    oposicion: /^\/cursos\/instituciones-penitenciarias\/[^/]+\/?$/, categoria: /^\/cursos\/?$/ },
+  // aprendeoposiciones: React SPA → render por headless-fetcher (jsRender).
+  { key: 'aprendeoposiciones', name: 'Academia Aprende', baseUrl: 'https://www.aprendeoposiciones.com', tipo: 'plataforma_online', region: 'Murcia',
+    oposicion: /^\/(primaria|secundaria)\/[^/]+\/?$/, jsRender: true },
+  // docencia y reverte: slugs planos mezclados con páginas legales → ALLOWLIST explícita.
+  { key: 'oposicionesdocencia', name: 'Oposiciones Docencia', baseUrl: 'https://oposicionesdocencia.es', tipo: 'academia_presencial', region: 'España',
+    oposicion: /^\/(geografia-e-historia|lengua-castellana-y-literatura|matematicas|fisica-y-quimica|economia|tecnologia|biologia-y-geologia|educacion-fisica(-2)?|educacion-musical|ingles|latin|musica|orientacion-educativa|pedagogia-terapeutica|educacion-infantil|magisterio-de-(ingles|frances)|oposiciones-(maestros|secundaria-2|rtve))\/?$/ },
+  { key: 'oposicionesmurcia', name: 'Oposiciones Murcia', baseUrl: 'https://oposicionesmurcia.com', tipo: 'academia_presencial', region: 'Murcia',
+    oposicion: /^\/cuerpo-[a-z-]*penitenciari[a-z-]*\/?$/ },
+  { key: 'academiamurcia', name: 'Academia Murcia (Alba)', baseUrl: 'https://academia-murcia.es', tipo: 'academia_presencial', region: 'Murcia',
+    oposicion: /^\/oposiciones-educacion-[a-z-]+\/?$/ },
+  { key: 'reverte', name: 'Academia José Luis Reverte', baseUrl: 'https://laacademiadejoseluisreverte.es', tipo: 'academia_presencial', region: 'Murcia', nameFromH1: true,
+    oposicion: /^\/(guardia-civil|policia-local|fuerzas-y-cuerpos-de-seguridad|fuerzas-armadas|tropa-y-marineria|tropa-permanente|oficiales-y-suboficiales-de-las-fuerzas-armadas|cuerpo-de-(ingenieros|intendencia)-de-los-ejercitos|cuerpo-militar-de-sanidad-especialidad-enfermeria(-presencial|-online)?|oposiciones-auxilio-judicial|tramitacion-judicial|estado|aux-adm-ccaa|administracion-local-y-ccaa|agrupacionesprofesionales|personal-laboral-fijo|vigilancia-aduanera|tecnicofarmacia|tcae|cel|auxsms|teclab|servicio-murciano-de-salud)\/?$/ },
 ];
 
 export const GENERIC_ACADEMY_ADAPTERS: CompetitorAdapter[] = ACADEMY_CONFIGS.map(makeAcademyAdapter);

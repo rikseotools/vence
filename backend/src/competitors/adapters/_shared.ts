@@ -85,6 +85,16 @@ export function jsonLdPrice(html: string): number | null {
   return null;
 }
 
+/** Nombre desde el primer <h1> (para sitios con <title> stale/genérico). */
+export function nameFromH1(html: string): string {
+  const m = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (!m) return '';
+  return stripTags(m[1])
+    .replace(/^(Oposici[oó]n(?:es)?\s+(?:a\s+|de\s+|al\s+)?|Academia\s+(?:de\s+)?(?:Oposiciones\s+(?:de\s+)?)?)/i, '')
+    .replace(/\s+en\s+[A-ZÁÉÍÓÚ][a-záéíóú]+\s*$/, '')
+    .trim();
+}
+
 /** Nombre desde el <title> quitando prefijos/sufijos comerciales comunes. */
 export function nameFromTitle(html: string): string {
   const m = html.match(/<title>([\s\S]*?)<\/title>/i);

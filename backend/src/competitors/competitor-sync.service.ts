@@ -15,7 +15,7 @@ const FETCH_TIMEOUT_MS = 20_000;
  * estado estacionario apenas se descarga nada: el gateo por `lastmod` salta las
  * landings que no cambiaron.
  */
-const MAX_COURSES_PER_RUN = 150;
+const MAX_COURSES_PER_RUN = 400;
 /** Pausa entre fetches de detalle (no martillear al competidor). */
 const POLITE_DELAY_MS = 500;
 /**
@@ -217,7 +217,10 @@ export class CompetitorSyncService {
 
     for (const course of toFetch.slice(0, MAX_COURSES_PER_RUN)) {
       try {
-        const html = await this.fetchText(course.url);
+        const html =
+          adapter.techHints?.['rendering'] === 'js'
+            ? await this.fetchRendered(course.url)
+            : await this.fetchText(course.url);
         summary.coursesFetched++;
         const hash = sha256(html);
         const changed = course.isNew || course.hash !== hash;
@@ -359,6 +362,29 @@ export class CompetitorSyncService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /**
+   * Fetch RENDERIZADO por el headless-fetcher (Lambda Playwright) para
+   * competidores JS/SPA (`techHints.rendering==='js'`). El sitemap y la home van
+   * por fetch plano (server-served); solo la PÁGINA DE CURSO necesita render.
+   */
+  private async fetchRendered(url: string): Promise<string> {
+    const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda');
+    const client = new LambdaClient({ region: process.env.AWS_REGION ?? 'eu-west-2' });
+    const fn = process.env.HEADLESS_FETCHER_FUNCTION_NAME ?? 'vence-backend-headless-fetcher';
+    const cmd = new InvokeCommand({
+      FunctionName: fn,
+      InvocationType: 'RequestResponse',
+      Payload: Buffer.from(JSON.stringify({ url, timeout_ms: 45_000 })),
+    });
+    const resp = await client.send(cmd);
+    if (!resp.Payload) throw new Error('headless: payload vacío');
+    const parsed = JSON.parse(Buffer.from(resp.Payload).toString('utf-8')) as {
+      ok: boolean; status: number; html: string | null; error?: string;
+    };
+    if (!parsed.ok || parsed.html == null) throw new Error(`headless: ${parsed.error ?? 'sin html'}`);
+    return parsed.html;
   }
 
   /** Como fetchText pero devuelve también las cabeceras (para detección de stack). */
