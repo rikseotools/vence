@@ -43,6 +43,27 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect x="8.2" y="4.5" width="1.2" height="1.2" fill="#C60B1E"/>
     </>
   ),
+  // Córdoba ciudad (Ayuntamiento): campo MORADO (pendón real castellano desde la
+  // reconquista de 1236) con el escudo municipal al centro — paisaje del Puente
+  // Romano sobre el Guadalquivir con la torre de la Mezquita-Catedral.
+  'cordoba-ciudad': (
+    <>
+      <rect width="20" height="14" fill="#6a2585"/>
+      {/* escudo: cielo (celeste) con borde de oro */}
+      <rect x="6.3" y="2.3" width="7.4" height="9.4" rx="0.6" fill="#c3e2f2" stroke="#e8c84a" strokeWidth="0.5"/>
+      {/* río Guadalquivir */}
+      <rect x="6.3" y="9.2" width="7.4" height="2.5" fill="#2b7cb3"/>
+      {/* torre de la Mezquita-Catedral */}
+      <rect x="9.4" y="3.4" width="1.2" height="5" fill="#d8b26a"/>
+      <rect x="9.15" y="2.8" width="1.7" height="0.8" fill="#d8b26a"/>
+      {/* Puente Romano sobre el río, con sus arcos */}
+      <rect x="6.6" y="8.4" width="6.8" height="1" fill="#a9743f"/>
+      <circle cx="7.6" cy="9.4" r="0.7" fill="#c3e2f2"/>
+      <circle cx="9.1" cy="9.4" r="0.7" fill="#c3e2f2"/>
+      <circle cx="10.6" cy="9.4" r="0.7" fill="#c3e2f2"/>
+      <circle cx="12.1" cy="9.4" r="0.7" fill="#c3e2f2"/>
+    </>
+  ),
   // Región de Murcia: fondo carmesí, 4 castillos dorados arriba-izq, 7 coronas abajo-der
   murcia: (
     <>
@@ -298,6 +319,7 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
 const PLACE_KEYWORDS: Array<[string[], string]> = [
   [['ayuntamiento-zaragoza'], 'zaragoza-ciudad'],
   [['diputacion-zaragoza'], 'zaragoza-provincia'],
+  [['ayuntamiento-cordoba'], 'cordoba-ciudad'],
 ]
 
 // Cuerpos con ESCUDO/LOGO oficial propio (no una bandera): se renderiza el
