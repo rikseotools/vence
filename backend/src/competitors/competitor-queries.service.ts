@@ -13,6 +13,21 @@ import {
 } from './competitors.schema';
 import type { ParsedPrice } from './adapters/types';
 
+/**
+ * Normaliza un nombre para matchear: pasa por `normalize`, convierte cualquier
+ * separador a espacio y ELIMINA conectores (de/del/la…) como palabras completas.
+ * Así "Auxiliar Administrativo de Córdoba" ≈ "Auxiliar Administrativo del
+ * Ayuntamiento de Córdoba" no se rompen por un conector. Sigue exigiendo
+ * contención completa de un nombre en el otro (precisión > recall).
+ */
+function cleanName(s: string): string {
+  return normalize(s)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export interface UrlIndexRow {
   id: string;
   url: string;
@@ -294,13 +309,13 @@ export class CompetitorQueriesService {
    * estructural (oep-match) queda para una fase posterior si hace falta.
    */
   matchCourseToOposicion(rawName: string, catalog: OposicionForMatch[]): string | null {
-    const n = normalize(rawName);
+    const n = cleanName(rawName);
     if (n.length < 8) return null;
     let best: { id: string; len: number } | null = null;
     for (const o of catalog) {
       for (const raw of [o.shortName, o.nombre]) {
         if (!raw) continue;
-        const c = normalize(raw);
+        const c = cleanName(raw);
         if (c.length < 8) continue;
         if (n.includes(c) || c.includes(n)) {
           if (!best || c.length > best.len) best = { id: o.id, len: c.length };
