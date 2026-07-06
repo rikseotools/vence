@@ -78,11 +78,14 @@ const BASE_VARS = {
     ? 'AND (up.target_oposicion=$' + (muni.length + 1) + ' OR NOT (' +
       excl.map((_, i) => 'up.ciudad ILIKE $' + (muni.length + 2 + i)).join(' OR ') + '))'
     : '';
-  // Envío incremental / make-up: no re-enviar a quien ya recibió una campaña previa.
-  const skipCampaign = cfg.excludeSentCampaignId || null;
+  // Envío incremental / make-up: no re-enviar a quien ya recibió campañas previas.
+  // Acepta un id (string) o varios (array) → excluye a quien recibió CUALQUIERA de ellas.
+  const skipCampaigns = cfg.excludeSentCampaignId
+    ? (Array.isArray(cfg.excludeSentCampaignId) ? cfg.excludeSentCampaignId : [cfg.excludeSentCampaignId])
+    : [];
   const skipParamIdx = muni.length + 2 + excl.length;
-  const skipSql = skipCampaign
-    ? `AND up.id NOT IN (SELECT user_id FROM email_events WHERE campaign_id=$${skipParamIdx} AND event_type='sent' AND user_id IS NOT NULL)`
+  const skipSql = skipCampaigns.length
+    ? `AND up.id NOT IN (SELECT user_id FROM email_events WHERE campaign_id = ANY($${skipParamIdx}) AND event_type='sent' AND user_id IS NOT NULL)`
     : '';
   const users = (await c.query(`
     SELECT up.id, up.email, up.full_name AS "fullName"
@@ -93,7 +96,7 @@ const BASE_VARS = {
       AND (up.target_oposicion=$${muni.length + 1} OR ${like})
       ${exclSql}
       ${skipSql}
-    ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaign ? [skipCampaign] : [])])).rows;
+    ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaigns.length ? [skipCampaigns] : [])])).rows;
 
   console.log(`👥 Audiencia: ${users.length} enviables | plantilla=${templateSlug} | MODO=${MODE}`);
 
