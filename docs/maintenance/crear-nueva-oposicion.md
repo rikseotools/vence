@@ -205,6 +205,14 @@ Crear `data/temarios/<slug>.json` con los datos de la convocatoria y los epigraf
 
 ## FASE 2: Base de datos
 
+> ⚠️ **BD = AWS RDS (`vence-prod`), agnóstica vía Drizzle. NUNCA el cliente Supabase** (`@supabase/supabase-js` apunta a la BD **congelada** → datos stale). Todas las lecturas/escrituras de este manual usan `postgres`/`DATABASE_URL` o `getDb()`:
+> ```js
+> require('dotenv').config({ path: '.env.local' });
+> const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
+> // const data = await sql`SELECT ... FROM ...`;  await sql.end();
+> ```
+> Estructura de tablas: `db/schema.ts` (Drizzle, fuente de verdad). Detalle del cutover: memoria `project_cutover_rds_prod`.
+
 ### 2a. Insertar en tabla `oposiciones`
 
 ```sql
@@ -651,11 +659,13 @@ NO meter toda la Ley 39/2015 (133 articulos). Solo los que corresponden al epigr
 Antes de inventar, consultar como tienen el scope oposiciones similares:
 
 ```javascript
-// Ver scope de un tema similar en otra oposicion
-const { data } = await supabase
-  .from('topic_scope')
-  .select('law_id, article_numbers, laws(short_name)')
-  .eq('topic_id', '<uuid-tema-similar-otra-oposicion>');
+// Ver scope de un tema similar en otra oposicion.
+// ⚠️ RDS/postgres (BD VIVA). NUNCA el cliente Supabase: apunta a la BD CONGELADA (datos stale).
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
+const scope = await sql`
+  SELECT ts.law_id, ts.article_numbers, l.short_name
+  FROM topic_scope ts JOIN laws l ON l.id = ts.law_id
+  WHERE ts.topic_id = '<uuid-tema-similar-otra-oposicion>'`;
 ```
 
 Los topic_scope de temas compartidos (CE, LPAC, TREBEP, LCSP, igualdad, ofimatica) suelen ser identicos o muy similares entre oposiciones.
@@ -694,7 +704,7 @@ Muchos temas son comunes entre oposiciones. La regla:
 
 > ⚠️ **HAY VIRTUALES POR VERSIÓN — usa la que pida el epígrafe, NO siempre la 365.** Si el programa dice "Word 2016" o "Excel 2019", existe el contenedor de esa versión exacta (su preámbulo y preguntas son version-specific). Versiones existentes en BD a fecha 2026-06: Word **2016** (`4197a28f`, 93 preg), Word **2019** (`9e48c8d9`), Word 365; Excel **2016** (`b49380e5`, 92 preg), Excel **2019** (`30dd450e`), Excel 365; PowerPoint **2016** (`06b8d513`); Outlook **2016**/**2019**/365; además LibreOffice Writer/Calc. **Antes de enganchar, lista TODAS las versiones y elige por epígrafe:**
 > ```bash
-> node -e "require('dotenv').config({path:'.env.local'});const {createClient}=require('@supabase/supabase-js');const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);(async()=>{const {data}=await s.from('laws').select('id,short_name').or('short_name.ilike.%word%,short_name.ilike.%excel%,short_name.ilike.%windows%,short_name.ilike.%outlook%');data.forEach(l=>console.log(l.short_name,l.id))})()"
+> node -e "require('dotenv').config({path:'.env.local'});const sql=require('postgres')(process.env.DATABASE_URL,{prepare:false,max:1,ssl:{rejectUnauthorized:false}});(async()=>{const r=await sql\`SELECT id,short_name FROM laws WHERE short_name ILIKE ANY(ARRAY['%word%','%excel%','%windows%','%outlook%'])\`;r.forEach(l=>console.log(l.short_name,l.id));await sql.end()})()"
 > ```
 
 **Contenedores virtuales SANITARIOS** (para oposiciones de salud — SERMAS, SCS, SAS, Osakidetza, SMS, etc.). Son "leyes virtuales" temáticas (no normas del BOE) con banco propio de preguntas, igual que la ofimática. **Plantilla de referencia: `tcae_sermas_madrid`** (la oposición sanitaria hermana ya los tiene cableados). Enganchar con `include_full_title: true`. Algunos con banco grande (preg a 2026-06):
@@ -968,11 +978,9 @@ La variante deshabilitada existe porque ocultar el botón confunde al usuario
    ```bash
    node -e "
    require('dotenv').config({path: '.env.local'});
-   const { createClient } = require('@supabase/supabase-js');
-   const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-   s.from('psychometric_questions').select('exam_source', { count:'exact' })
-     .ilike('exam_source', '%<patrón oposición>%')
-     .eq('is_official_exam', true).then(r => console.log(r.count));
+   const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
+   sql\`SELECT count(*) FROM psychometric_questions WHERE exam_source ILIKE '%<patrón oposición>%' AND is_official_exam = true\`
+     .then(r => { console.log(r[0].count); return sql.end(); });
    "
    ```
 3. **¿Hay ≥3 convocatorias distintas?** Con menos de 3, no aparecerá ningún badge `'frequent'` (solo `'appears'`).
@@ -1093,28 +1101,24 @@ Labels, banderas, links y secciones se derivan dinámicamente. No hay código ha
 
 ## FASE 5: Frontend
 
-Copiar estructura de una oposicion existente (ej: `app/tramitacion-procesal/`):
+> ⚠️ **La MAYORÍA de rutas las sirve el catch-all compartido `app/[oposicion]/`** (landing, `test/aleatorio`, `test/test-personalizado`, `test/simulacro`, `test/examen-oficial`, `test/test-aleatorio-examen`…). **NO se crean por oposición.** Prueba: `enfermero-sas-andalucia` y `policia-municipal-madrid` funcionan **sin ningún fichero de ruta propio**, solo con el catch-all.
 
+**Solo se copian los 8 ficheros con metadata/SEO propia, desde una oposición RECIENTE** (`app/administrativo-universidad-leon/` o Córdoba). **NO copies de una vieja** (Aux. Estado arrastra rutas legacy: `repaso-fallos-oficial`, `ver-fallos`, `psicotecnico`… que hoy no se replican).
+
+```bash
+cp -r app/administrativo-universidad-leon app/<slug>
+# 1) sustituir slug, positionType y nombre en los 8 ficheros (sed)
+# 2) adaptar getBlockInfo() en temario/[slug]/TopicContentView.tsx a TUS bloques/displayNumber
 ```
-app/<slug-con-guiones>/
-  (NO crear page.tsx — la landing se genera automaticamente desde app/[oposicion]/page.tsx)
-  test/
-    page.tsx                            -- <TestHubPage oposicion="slug" />
-    layout.tsx                          -- Metadata
-    aleatorio/page.tsx                  -- <RandomTestPage oposicion="slug" />
-    test-personalizado/page.tsx         -- Config con positionType
-    test-aleatorio-examen/page.tsx      -- Modo examen
-    tema/[numero]/
-      page.tsx                          -- Pagina de detalle del tema
-      test-personalizado/page.js        -- Test personalizado por tema
-      test-examen/page.js              -- Test examen por tema
-  temario/
-    layout.js                           -- Metadata
-    page.tsx                            -- Thin wrapper (20 lineas, ver abajo)
-    [slug]/
-      page.tsx                          -- getTopicContent + generateStaticParams
-      TopicContentView.tsx              -- Copiar y adaptar getBlockInfo
+
+Los 8 ficheros por-oposición (los únicos):
 ```
+app/<slug>/
+  test/{layout.tsx, page.tsx, tema/[numero]/{page.tsx, test-examen/page.tsx}}
+  temario/{layout.js, page.tsx, [slug]/{page.tsx, TopicContentView.tsx}}
+```
+
+La landing NO lleva `page.tsx` (la genera `app/[oposicion]/page.tsx`). **`npm run audit:oposicion <slug>` verifica que las rutas existen — es la FUENTE DE VERDAD; no te fíes de este árbol si el código evoluciona.** Guardarraíl en CI: `__tests__/config/oposicionRoutesIntegrity.test.ts` (falla si una oposición queda con las rutas a medias).
 
 ### 5.1 Temario dinamico (desde 05/04/2026)
 
@@ -1374,13 +1378,13 @@ Los titulos de los temas en la landing DEBEN coincidir con `topics.title` en BD.
 
 ```bash
 node -e "
-const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const sql = require('postgres')(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } });
 (async () => {
-  const { data } = await supabase.from('topics').select('topic_number, title')
-    .eq('position_type', 'slug_con_underscores').eq('is_active', true).order('topic_number');
+  const data = await sql`SELECT topic_number, title FROM topics
+    WHERE position_type = 'slug_con_underscores' AND is_active = true ORDER BY topic_number`;
   data.forEach(d => console.log('T' + d.topic_number + ': ' + d.title));
+  await sql.end();
 })();
 "
 ```

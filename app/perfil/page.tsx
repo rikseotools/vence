@@ -633,6 +633,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'tecnico_auxiliar_universidad_de_murcia',
+      label: 'Téc. Aux. Servicios UMU',
+      data: {
+        name: 'Técnico Auxiliar (Auxiliar de Servicios) de la Universidad de Murcia',
+        slug: 'tecnico-auxiliar-universidad-de-murcia',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_consell_formentera',
       label: 'Auxiliar Administrativo Formentera',
       data: {

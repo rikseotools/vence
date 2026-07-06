@@ -1611,6 +1611,66 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // TÉCNICO AUXILIAR (AUXILIAR DE SERVICIOS) UNIVERSIDAD DE MURCIA (C2)
+  // ========================================
+  {
+    id: 'tecnico_auxiliar_universidad_de_murcia',
+    slug: 'tecnico-auxiliar-universidad-de-murcia',
+    positionType: 'tecnico_auxiliar_universidad_de_murcia',
+    examScoring: { penaltyDivisor: 5, source: 'BORM nº146, 27/06/2026 (Resolución R-838/2026, bases): cada errónea resta valor/(n+1), n=nº de opciones; con 4 opciones = 1/5. confidence:alta' },
+    name: 'Técnico Auxiliar (Auxiliar de Servicios) de la Universidad de Murcia',
+    shortName: 'Téc. Aux. Servicios U. Murcia',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'general',
+        title: 'Parte General Común (7 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 3, name: 'Procedimiento Administrativo Común (Ley 39/2015): interesados, términos y plazos' },
+          { id: 4, name: 'TREBEP: personal y derechos y deberes' },
+          { id: 5, name: 'TREBEP: régimen disciplinario' },
+          { id: 6, name: 'Sistema Universitario (LOSU, LO 2/2023)' },
+          { id: 7, name: 'Estatutos de la Universidad de Murcia' },
+        ],
+      },
+      {
+        id: 'especifica',
+        title: 'Parte Específica (11 temas)',
+        subtitle: null,
+        icon: '🛠️',
+        themes: [
+          { id: 8,  displayNumber: 1,  name: 'La comunicación y habilidades sociales' },
+          { id: 9,  displayNumber: 2,  name: 'Funciones generales de la especialidad de Auxiliares de Servicio' },
+          { id: 10, displayNumber: 3,  name: 'Atención al público: acogida e información al ciudadano' },
+          { id: 11, displayNumber: 4,  name: 'Máquinas reproductoras' },
+          { id: 12, displayNumber: 5,  name: 'Envíos y servicios postales (RD 437/2024)' },
+          { id: 13, displayNumber: 6,  name: 'Control de accesos' },
+          { id: 14, displayNumber: 7,  name: 'Seguridad en edificios públicos. El incendio' },
+          { id: 15, displayNumber: 8,  name: 'Prevención de Riesgos Laborales (Ley 31/1995): protección y acción preventiva' },
+          { id: 16, displayNumber: 9,  name: 'Prevención de Riesgos Laborales (Ley 31/1995): obligaciones y delegados' },
+          { id: 17, displayNumber: 10, name: 'Manejo manual de cargas (RD 487/1997)' },
+          { id: 18, displayNumber: 11, name: 'Mantenimiento de primer nivel de recursos TIC' },
+        ],
+      },
+    ],
+    totalTopics: 18,
+    aliases: ['murcia universidad', 'universidad de murcia', 'umu', 'auxiliar de servicios murcia', 'tecnico auxiliar murcia', 'auxiliar servicios umu'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/tecnico-auxiliar-universidad-de-murcia', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/tecnico-auxiliar-universidad-de-murcia/temario', label: 'Temario', icon: '📚' },
+      { href: '/tecnico-auxiliar-universidad-de-murcia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO CONSELL INSULAR DE FORMENTERA (C2)
   // ========================================
   {
