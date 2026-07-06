@@ -87,10 +87,13 @@ export default function FooterES() {
     <footer className="bg-gray-900 text-white mt-auto">
       {/* Sección principal del footer */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          
+        {/* Móvil: 2 columnas (antes grid-cols-1 apilaba todo → footer de ~1300px,
+            "pantalla muy larga"). md/lg SIN CAMBIOS (2 y 5 columnas). */}
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-x-4 gap-y-6 md:gap-8">
+
           {/* Información de la empresa */}
-          <div className="lg:col-span-2">
+          {/* Móvil: ocupa las 2 columnas (ancho completo). md:col-span-1 y lg:col-span-2 = como antes. */}
+          <div className="col-span-2 md:col-span-1 lg:col-span-2">
             {/* Logo integrado */}
             <div className="mb-4">
               <LogoFooter />
