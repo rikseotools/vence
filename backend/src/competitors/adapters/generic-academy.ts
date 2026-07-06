@@ -108,6 +108,13 @@ export const ACADEMY_CONFIGS: AcademyConfig[] = [
     oposicion: /^\/oposiciones-educacion-[a-z-]+\/?$/ },
   { key: 'reverte', name: 'Academia José Luis Reverte', baseUrl: 'https://laacademiadejoseluisreverte.es', tipo: 'academia_presencial', region: 'Murcia', nameFromH1: true,
     oposicion: /^\/(guardia-civil|policia-local|fuerzas-y-cuerpos-de-seguridad|fuerzas-armadas|tropa-y-marineria|tropa-permanente|oficiales-y-suboficiales-de-las-fuerzas-armadas|cuerpo-de-(ingenieros|intendencia)-de-los-ejercitos|cuerpo-militar-de-sanidad-especialidad-enfermeria(-presencial|-online)?|oposiciones-auxilio-judicial|tramitacion-judicial|estado|aux-adm-ccaa|administracion-local-y-ccaa|agrupacionesprofesionales|personal-laboral-fijo|vigilancia-aduanera|tecnicofarmacia|tcae|cel|auxsms|teclab|servicio-murciano-de-salud)\/?$/ },
+  // — Hallados vía "Subalterno GVA" (07/07) —
+  { key: 'preparaopos', name: 'PrepáraOpos', baseUrl: 'https://www.preparaopos.es', tipo: 'plataforma_online', region: 'España', jsonLdPrice: true,
+    oposicion: /^\/(administrativo-gva|auxiliar-gva|subalterno-gva|correos|auxilio-judicial|auxiliar-administrativo|auxiliar-cam|auxiliar-castilla-leon|administrativo-junta-andalucia|oposiciones-comunitat-valenciana)\/?$/ },
+  { key: 'betaformacion', name: 'Beta Formación', baseUrl: 'https://betaformacion.com', tipo: 'hibrida', region: 'Valencia (Torrent)',
+    oposicion: /^\/oposiciones-torrent-valencia\/(justicia|sanidad|funcion-publica)\/[^/]+\/?$/ },
+  // codex: register-only — sitemap 2.201 URLs (98% blog /noticias/) para solo 4
+  // oposiciones → lastraría el cron; adapter pendiente hasta el fix de perf.
 ];
 
 export const GENERIC_ACADEMY_ADAPTERS: CompetitorAdapter[] = ACADEMY_CONFIGS.map(makeAcademyAdapter);
