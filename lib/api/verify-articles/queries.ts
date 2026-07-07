@@ -15,6 +15,7 @@ import {
 } from '@/db/schema'
 import { eq, and, inArray, desc, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
 import { invalidateVerifyStatsCache } from '@/lib/cache/verify-stats'
 
@@ -77,11 +78,10 @@ export async function getAllLawsWithVerification() {
 
 const TTL_VERIFY_STATS = 21600 // 6h
 
-const _cachedAllLawsWithVerification = unstable_cache(
+const _cachedAllLawsWithVerification = versionedCache(
   getAllLawsWithVerification,
-  ['verify-stats-all-laws-v1'],
-  { revalidate: TTL_VERIFY_STATS, tags: ['verify-stats'] },
-)
+  { tag: 'verify-stats', keyParts: ['verify-stats-all-laws-v1'], revalidate: TTL_VERIFY_STATS }
+  )
 
 export async function getAllLawsWithVerificationCached() {
   if (process.env.CACHE_VERIFY_STATS === 'false') {

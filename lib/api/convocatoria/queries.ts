@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm'
 import { topics } from '@/db/schema'
 import { asc, and } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 
 export interface OposicionLandingData {
   nombre: string
@@ -337,17 +338,15 @@ export async function getAllOposicionesCardData(): Promise<Map<string, Oposicion
 // Invalidar con: revalidateTag('landing') — tag ya whitelisted en
 // /api/admin/revalidate y disparado por /api/admin/revalidate-temario.
 
-export const getOposicionLandingDataCached = unstable_cache(
+export const getOposicionLandingDataCached = versionedCache(
   getOposicionLandingData,
-  ['oposicion-landing-data-v1'],
-  { revalidate: false, tags: ['landing'] }
-)
+  { tag: 'landing', keyParts: ['oposicion-landing-data-v1'] }
+  )
 
-export const getHitosConvocatoriaCached = unstable_cache(
+export const getHitosConvocatoriaCached = versionedCache(
   getHitosConvocatoria,
-  ['hitos-convocatoria-v1'],
-  { revalidate: false, tags: ['landing'] }
-)
+  { tag: 'landing', keyParts: ['hitos-convocatoria-v1'] }
+  )
 
 // Map<number, string> no es serializable a JSON; cacheamos como array de tuplas
 // y reconstruimos el Map en el caller con `new Map(result)`.
@@ -356,11 +355,10 @@ async function getTopicNamesForLandingEntries(positionType: string): Promise<[nu
   return Array.from(map.entries())
 }
 
-export const getTopicNamesForLandingCached = unstable_cache(
+export const getTopicNamesForLandingCached = versionedCache(
   getTopicNamesForLandingEntries,
-  ['topic-names-for-landing-v1'],
-  { revalidate: false, tags: ['landing'] }
-)
+  { tag: 'landing', keyParts: ['topic-names-for-landing-v1'] }
+  )
 
 // [Retirado 06/07/2026, Fase 4] `getConvocatoriaActiva` + `ConvocatoriaActiva` eliminados:
 // consultaban el esquema ANTIGUO de `convocatorias` (fecha_examen/plazas_convocadas/…),

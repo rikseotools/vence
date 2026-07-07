@@ -10,6 +10,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 import { questions, articles, laws } from '@/db/schema'
 import { eq, and, sql, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 
 export interface LawStatsResult {
   success: boolean
@@ -106,11 +107,10 @@ async function queryLawStatsOrThrow(lawShortName: string): Promise<LawStatsResul
   return result
 }
 
-const _cachedQueryLawStats = unstable_cache(
+const _cachedQueryLawStats = versionedCache(
   queryLawStatsOrThrow,
-  ['law-stats-v1'],
-  { revalidate: TTL_LAW_STATS, tags: ['law-stats'] },
-)
+  { tag: 'law-stats', keyParts: ['law-stats-v1'], revalidate: TTL_LAW_STATS }
+  )
 
 export async function queryLawStatsCached(lawShortName: string): Promise<LawStatsResult> {
   if (process.env.CACHE_LAW_STATS === 'false') {

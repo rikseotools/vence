@@ -7,6 +7,7 @@ function getHotArticlesDb() {
 import { hotArticles, questions } from '@/db/schema'
 import { eq, and, ne, inArray } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { normalizeOposicionSlug, type ArticleOfficialExamData, type CheckHotArticleRequest, type CheckHotArticleResponse } from './schemas'
 
 /**
@@ -273,11 +274,10 @@ export async function checkHotArticle(
 
 const TTL_HOT_ARTICLES = 86400 // 24h
 
-const _cachedCheckHotArticle = unstable_cache(
+const _cachedCheckHotArticle = versionedCache(
   checkHotArticle,
-  ['hot-articles-check-v1'],
-  { revalidate: TTL_HOT_ARTICLES, tags: ['hot-articles'] },
-)
+  { tag: 'hot-articles', keyParts: ['hot-articles-check-v1'], revalidate: TTL_HOT_ARTICLES }
+  )
 
 export async function checkHotArticleCached(
   params: CheckHotArticleRequest,

@@ -11,6 +11,7 @@ function getTopicNamesDb() {
 import { topics } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 
 /**
  * Implementación interna — query ligera pero se ejecuta 35× durante build
@@ -40,10 +41,9 @@ async function getTopicNamesMapInternal(positionType: string): Promise<Record<nu
  * Cacheado permanentemente (mismo patrón que temario/teoría).
  * Invalidar con: revalidateTag('test-counts')
  */
-export const getTopicNamesMap = unstable_cache(
+export const getTopicNamesMap = versionedCache(
   getTopicNamesMapInternal,
-  ['topic-names-map-v1'],
-  { revalidate: false, tags: ['test-counts'] }
+  { tag: 'test-counts', keyParts: ['topic-names-map-v1'] }
 )
 
 /**

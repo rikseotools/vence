@@ -14,6 +14,7 @@ function getAnswerSaveDb() {
 import { tests, userProfiles, questions, articles, laws, psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { insertTestAnswer } from '@/lib/api/test-answers'
 import { invalidateProfileCache } from '@/lib/api/profile'
 import type { SaveAnswerRequest } from '@/lib/api/test-answers'
@@ -114,10 +115,9 @@ async function getQuestionValidationInternal(
 
 // v2 (2026-05-27): añadido articleId al shape — bump key para que las
 // entradas v1 cached (sin articleId) no se entreguen tras el deploy.
-const getQuestionValidationCached = unstable_cache(
+const getQuestionValidationCached = versionedCache(
   getQuestionValidationInternal,
-  ['question-validation-v2'],
-  { revalidate: 3600, tags: ['questions'] }, // 1 hora — red de seguridad
+  { tag: 'questions', keyParts: ['question-validation-v2'], revalidate: 3600 } // 1 hora — red de seguridad
 )
 
 // ============================================

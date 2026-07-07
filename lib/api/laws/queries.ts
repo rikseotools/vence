@@ -13,6 +13,7 @@ import { laws, articles, questions } from '@/db/schema'
 import { isVariantContainerLaw } from '@/lib/isVariantContainerLaw'
 import { eq, and, sql, count, isNotNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import {
   LawWithCountsSchema,
   LawResolvedSchema,
@@ -470,11 +471,10 @@ async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
 }
 
 // Cacheado 30 días. Al lanzar errores la función interna, unstable_cache no los cachea.
-const getLawsWithQuestionCountsCached = unstable_cache(
+const getLawsWithQuestionCountsCached = versionedCache(
   getLawsWithQuestionCountsInternal,
-  ['laws-with-question-counts'],
-  { revalidate: 2592000, tags: ['laws'] }
-)
+  { tag: 'laws', keyParts: ['laws-with-question-counts'], revalidate: 2592000 }
+  )
 
 // API pública — captura errores del caché/query y devuelve respuesta estructurada.
 export async function getLawsWithQuestionCounts(): Promise<GetLawsWithCountsResponse> {

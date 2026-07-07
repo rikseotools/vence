@@ -9,6 +9,7 @@ import { topics, topicScope, laws, questions, articles, testQuestions, userQuest
 import { eq, and, sql, inArray, desc, gte, isNotNull, isNull } from 'drizzle-orm'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import type {
   OposicionSlug,
   ThemeQuestionCount,
@@ -95,10 +96,9 @@ async function getThemeQuestionCountsInternal(
  * Cacheado permanentemente (mismo patrón que temario/teoría).
  * Invalidar con: revalidateTag('test-counts')
  */
-export const getThemeQuestionCounts = unstable_cache(
+export const getThemeQuestionCounts = versionedCache(
   getThemeQuestionCountsInternal,
-  ['theme-question-counts-v1'],
-  { revalidate: false, tags: ['test-counts'] }
+  { tag: 'test-counts', keyParts: ['theme-question-counts-v1'] }
 )
 
 /**

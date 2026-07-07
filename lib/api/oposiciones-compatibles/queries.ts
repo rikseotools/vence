@@ -9,6 +9,7 @@ function getOposicionesCompatiblesDb() {
 import { topics, topicScope, articles, laws } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import type { OposicionOverlap, LawOverlap } from './types'
 
@@ -217,11 +218,10 @@ async function computeOposicionesCompatiblesInternal(
 // CACHED VERSION
 // ============================================
 
-export const getOposicionesCompatiblesCached = unstable_cache(
+export const getOposicionesCompatiblesCached = versionedCache(
   computeOposicionesCompatiblesInternal,
-  ['oposiciones-compatibles-v1'],
-  { revalidate: false, tags: ['temario'] }
-)
+  { tag: 'temario', keyParts: ['oposiciones-compatibles-v1'] }
+  )
 
 // Direct version (no cache) for testing
 export { computeOposicionesCompatiblesInternal as computeOposicionesCompatibles }
@@ -333,8 +333,7 @@ async function compareTemariosBilateralInternal(
   }
 }
 
-export const compareTemariosCached = unstable_cache(
+export const compareTemariosCached = versionedCache(
   compareTemariosBilateralInternal,
-  ['compare-temarios-v1'],
-  { revalidate: false, tags: ['temario'] }
-)
+  { tag: 'temario', keyParts: ['compare-temarios-v1'] }
+  )

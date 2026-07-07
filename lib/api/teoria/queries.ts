@@ -9,6 +9,7 @@ function getTeoriaDb() {
 import { articles, laws } from '@/db/schema'
 import { eq, and, ne, isNotNull, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } from '@/lib/api/laws'
 import type {
   ArticleDetail,
@@ -154,11 +155,10 @@ async function getArticleContentInternal(
 
 // 🚀 VERSIÓN CACHEADA (permanente - el contenido de artículos no cambia)
 // Para invalidar: revalidateTag('teoria')
-export const getArticleContent = unstable_cache(
+export const getArticleContent = versionedCache(
   getArticleContentInternal,
-  ['teoria-article-content'],
-  { revalidate: false, tags: ['teoria'] }
-)
+  { tag: 'teoria', keyParts: ['teoria-article-content'] }
+  )
 
 // ============================================
 // QUERY: NAVEGACIÓN DE ARTÍCULOS (MUY LIGERA)
@@ -206,11 +206,10 @@ async function getArticleNavigationInternal(
 
 // 🚀 VERSIÓN CACHEADA (permanente - la estructura de artículos no cambia)
 // Para invalidar: revalidateTag('teoria')
-export const getArticleNavigation = unstable_cache(
+export const getArticleNavigation = versionedCache(
   getArticleNavigationInternal,
-  ['teoria-article-navigation'],
-  { revalidate: false, tags: ['teoria'] }
-)
+  { tag: 'teoria', keyParts: ['teoria-article-navigation'] }
+  )
 
 // ============================================
 // QUERY: ARTÍCULOS RELACIONADOS
@@ -266,11 +265,10 @@ async function getRelatedArticlesInternal(
 
 // 🚀 VERSIÓN CACHEADA (permanente - artículos relacionados no cambian)
 // Para invalidar: revalidateTag('teoria')
-export const getRelatedArticles = unstable_cache(
+export const getRelatedArticles = versionedCache(
   getRelatedArticlesInternal,
-  ['teoria-related-articles'],
-  { revalidate: false, tags: ['teoria'] }
-)
+  { tag: 'teoria', keyParts: ['teoria-related-articles'] }
+  )
 
 // ============================================
 // QUERY: INFO BÁSICA DE LEY (para metadata)
@@ -311,8 +309,7 @@ async function getLawBasicInfoInternal(
 
 // 🚀 VERSIÓN CACHEADA (permanente - info de leyes no cambia)
 // Para invalidar: revalidateTag('teoria')
-export const getLawBasicInfo = unstable_cache(
+export const getLawBasicInfo = versionedCache(
   getLawBasicInfoInternal,
-  ['teoria-law-basic-info'],
-  { revalidate: false, tags: ['teoria'] }
-)
+  { tag: 'teoria', keyParts: ['teoria-law-basic-info'] }
+  )

@@ -7,14 +7,14 @@
 // Ver docs/maintenance/cache-revalidation.md
 import { NextRequest, NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { fetchLawArticles } from '@/lib/teoriaFetchers'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-const getCachedArticles = unstable_cache(
+const getCachedArticles = versionedCache(
   async (lawSlug: string) => fetchLawArticles(lawSlug),
-  ['teoria-articles-list'],
-  { revalidate: false, tags: ['teoria'] },
-)
+  { tag: 'teoria', keyParts: ['teoria-articles-list'] }
+  )
 
 // CDN cache: 24h fresh, 7 días stale-while-revalidate.
 // El contenido de artículos cambia solo cuando se sincroniza una ley desde el BOE

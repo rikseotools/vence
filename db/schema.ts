@@ -4033,3 +4033,10 @@ export const seoActions = pgTable("seo_actions", {
 	index("idx_seo_actions_scope").using("btree", table.scopeValue.asc().nullsLast().op("text_ops")),
 	index("idx_seo_actions_done").using("btree", table.doneOn.asc().nullsLast().op("date_ops")),
 ]).enableRLS();
+// Cache versioning agnóstico (Postgres) para invalidación cross-instancia del
+// unstable_cache. Ver lib/cache/versionStore.ts + migración 20260707_cache_versions.sql.
+export const cacheVersions = pgTable("cache_versions", {
+	tag: text().primaryKey().notNull(),
+	version: bigint({ mode: 'number' }).default(1).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});

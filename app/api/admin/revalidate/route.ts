@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateTestConfigCache } from '@/lib/cache/test-config'
+import { bumpCacheVersion } from '@/lib/cache/versionStore'
 
 const VALID_TAGS = [
   'temario',
@@ -68,8 +69,21 @@ async function _POST(request: NextRequest) {
     )
   }
 
-  // Dispatch: si el tag tiene invalidador específico cross-runtime, usarlo.
-  // Si no, fallback al revalidateTag genérico (solo runtime web).
+  // Plano CROSS-INSTANCIA (agnóstico, Postgres): bump del contador de versión del
+  // tag. Es lo que hace que TODAS las instancias ECS invaliden el unstable_cache
+  // versionado (lib/cache/versionedCache), no solo la que atiende esta petición.
+  // `revalidateTag` de Next.js standalone es per-instancia y por sí solo no basta.
+  let cacheVersion: number | null = null
+  try {
+    cacheVersion = await bumpCacheVersion(tag)
+  } catch (err) {
+    // No romper la revalidación por un blip del store de versiones; se registra.
+    console.warn(`[revalidate] bumpCacheVersion("${tag}") failed:`, err instanceof Error ? err.message : err)
+  }
+
+  // Dispatch legacy: si el tag tiene invalidador específico cross-runtime
+  // (backend NestJS canary), usarlo; si no, revalidateTag genérico (per-instancia,
+  // best-effort — el bump de arriba es el mecanismo fiable cross-instancia).
   const specificInvalidator = TAG_INVALIDATORS[tag as ValidTag]
   let crossRuntime = false
   if (specificInvalidator) {
@@ -82,7 +96,8 @@ async function _POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     revalidated: tag,
-    crossRuntime, // true = invalidó también backend canary, false = solo runtime web
+    cacheVersion,   // nueva versión del tag en Postgres (invalidación cross-instancia)
+    crossRuntime,   // true = invalidó también backend canary
     timestamp: new Date().toISOString(),
   })
 }

@@ -9,6 +9,7 @@ function getTemarioDb() {
 import { topics, topicScope, articles, laws, questions, videoCourses } from '@/db/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
 import type {
   TopicContent,
@@ -306,11 +307,10 @@ async function getTopicContentBaseInternal(
 // 🚀 VERSIÓN CACHEADA del contenido base (cache permanente)
 // El contenido de leyes/artículos casi nunca cambia
 // Para invalidar manualmente: revalidateTag('temario')
-const getTopicContentBaseCached = unstable_cache(
+const getTopicContentBaseCached = versionedCache(
   getTopicContentBaseInternal,
-  ['topic-content-base-v2'], // v2: fix filtro exam_position
-  { revalidate: false, tags: ['temario'] }
-)
+  { tag: 'temario', keyParts: ['topic-content-base-v2'] } // v2: fix filtro exam_position
+  )
 
 // Temas con scope que excede el límite hard de 2MB del Vercel Data Cache
 // (verificado en producción 2026-05-06: warning "items over 2MB can not
@@ -488,11 +488,10 @@ async function getTemarioByPositionTypeInternal(
 }
 
 // 🚀 Cacheado permanente (invalidar con revalidateTag('temario'))
-const getTemarioByPositionTypeCached = unstable_cache(
+const getTemarioByPositionTypeCached = versionedCache(
   getTemarioByPositionTypeInternal,
-  ['temario-by-position-type-v1'],
-  { revalidate: false, tags: ['temario'] }
-)
+  { tag: 'temario', keyParts: ['temario-by-position-type-v1'] }
+  )
 
 /**
  * Obtiene el temario completo (bloques + temas) de una oposición.

@@ -10,6 +10,7 @@ import { topics, topicScope, laws, questions, articles, tests, testQuestions } f
 import { eq, and, sql, inArray, gte, isNull } from 'drizzle-orm'
 import { articleInScope } from '@/lib/api/_shared/topicScopeSql'
 import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import type {
   GetRandomTestDataResponse,
@@ -180,10 +181,9 @@ async function getThemeQuestionCountsInternal(
  * a ambos cachés — comportamiento correcto: si añaden preguntas, ambos
  * deben refrescarse.
  */
-const getThemeQuestionCountsCached = unstable_cache(
+const getThemeQuestionCountsCached = versionedCache(
   getThemeQuestionCountsInternal,
-  ['rtd-theme-question-counts-v1'],
-  { revalidate: 3600, tags: ['test-counts'] }
+  { tag: 'test-counts', keyParts: ['rtd-theme-question-counts-v1'], revalidate: 3600 }
 )
 
 /**
