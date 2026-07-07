@@ -7959,6 +7959,7 @@ export const OPOSICIONES: Oposicion[] = [
     slug: 'policia-municipal-madrid',
     positionType: 'policia_municipal_madrid',
     examScoring: { penaltyDivisor: 3, source: 'BOAM nº9829 (Decreto 27/02/2025): 1/3 del valor de la correcta, 3 alternativas. confidence:media' },
+    hasPsychometricTest: true, // Selección de policía local incluye prueba psicotécnica/aptitudinal + personalidad (estándar en policía local).
     name: 'Policía Municipal del Ayuntamiento de Madrid',
     shortName: 'Policía Municipal Madrid',
     emoji: '🚔',
