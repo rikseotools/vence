@@ -2,7 +2,8 @@
 import { getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
-import { stripe } from '@/lib/stripe'
+import { getStripeFor, resolveAccount } from '@/lib/stripe'
+import type Stripe from 'stripe'
 import { randomUUID } from 'crypto'
 import { emit } from '@/lib/observability/emit'
 import type {
@@ -53,6 +54,7 @@ export async function getSubscription(
     const [profile] = await db
       .select({
         stripeCustomerId: userProfiles.stripeCustomerId,
+        paymentAccount: userProfiles.paymentAccount,
         planType: userProfiles.planType
       })
       .from(userProfiles)
@@ -71,8 +73,11 @@ export async function getSubscription(
       }
     }
 
+    // Cliente Stripe de la cuenta donde vive la suscripción del usuario.
+    const sc = getStripeFor(resolveAccount(profile.paymentAccount))
+
     // Obtener suscripciones activas de Stripe
-    const subscriptions = await stripe().subscriptions.list({
+    const subscriptions = await sc.subscriptions.list({
       customer: profile.stripeCustomerId,
       status: 'all',
       limit: 1,
@@ -239,10 +244,11 @@ export async function createPortalSession(
   try {
     const db = getDb()
 
-    // Obtener stripe_customer_id
+    // Obtener stripe_customer_id + cuenta
     const [profile] = await db
       .select({
-        stripeCustomerId: userProfiles.stripeCustomerId
+        stripeCustomerId: userProfiles.stripeCustomerId,
+        paymentAccount: userProfiles.paymentAccount
       })
       .from(userProfiles)
       .where(eq(userProfiles.id, params.userId))
@@ -252,8 +258,9 @@ export async function createPortalSession(
       return { error: 'No subscription found' }
     }
 
-    // Crear sesión del portal de Stripe
-    const portalSession = await stripe().billingPortal.sessions.create({
+    // Crear sesión del portal en la cuenta del usuario (el portal es por-cuenta)
+    const sc = getStripeFor(resolveAccount(profile.paymentAccount))
+    const portalSession = await sc.billingPortal.sessions.create({
       customer: profile.stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/perfil?tab=suscripcion`
     })
@@ -309,9 +316,10 @@ const KEEP_ACCESS_UNTIL_PERIOD_END = new Set(['active', 'trialing'])
  */
 async function findCancellableSubscription(
   customerId: string,
+  sc: Stripe,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any | null> {
-  const list = await stripe().subscriptions.list({
+  const list = await sc.subscriptions.list({
     customer: customerId,
     status: 'all',
     limit: 20,
@@ -356,11 +364,12 @@ async function voidOpenInvoicesForSubscription(
   subscriptionId: string,
   idempotencyKeyBase: string,
   context: { userId: string; stripeCustomerId: string },
+  sc: Stripe,
 ): Promise<{ voided: number; failed: number }> {
   let voided = 0
   let failed = 0
   try {
-    const invoices = await stripe().invoices.list({
+    const invoices = await sc.invoices.list({
       subscription: subscriptionId,
       status: 'open',
       limit: 50,
@@ -368,7 +377,7 @@ async function voidOpenInvoicesForSubscription(
     for (const inv of invoices.data) {
       if (!inv.id) continue
       try {
-        await stripe().invoices.voidInvoice(
+        await sc.invoices.voidInvoice(
           inv.id,
           undefined,
           { idempotencyKey: `${idempotencyKeyBase}-void-${inv.id}` },
@@ -431,7 +440,7 @@ export async function reactivateSubscription(
     const db = getDb()
 
     const [profile] = await db
-      .select({ stripeCustomerId: userProfiles.stripeCustomerId })
+      .select({ stripeCustomerId: userProfiles.stripeCustomerId, paymentAccount: userProfiles.paymentAccount })
       .from(userProfiles)
       .where(eq(userProfiles.id, params.userId))
       .limit(1)
@@ -440,9 +449,11 @@ export async function reactivateSubscription(
       return { success: false, error: 'No se encontró suscripción' }
     }
 
+    const sc = getStripeFor(resolveAccount(profile.paymentAccount))
+
     // Buscar suscripción reactivable (debe estar cancel_at_period_end=true y
     // todavía en active/trialing — no se puede "reactivar" una past_due/unpaid).
-    const list = await stripe().subscriptions.list({
+    const list = await sc.subscriptions.list({
       customer: profile.stripeCustomerId,
       status: 'all',
       limit: 20,
@@ -462,7 +473,7 @@ export async function reactivateSubscription(
 
     // Reactivar en Stripe (con idempotency key — protege retries de red).
     const idempotencyKey = `reactivate-${subscription.id}-${randomUUID()}`
-    await stripe().subscriptions.update(
+    await sc.subscriptions.update(
       subscription.id,
       { cancel_at_period_end: false },
       { idempotencyKey },
@@ -528,6 +539,7 @@ export async function cancelSubscription(
     const [profile] = await db
       .select({
         stripeCustomerId: userProfiles.stripeCustomerId,
+        paymentAccount: userProfiles.paymentAccount,
         planType: userProfiles.planType,
         email: userProfiles.email,
         fullName: userProfiles.fullName
@@ -554,12 +566,13 @@ export async function cancelSubscription(
     //    en customers con pago fallido; ver memoria
     //    project_pending_stripe_cancel_bug.md, caso Mariangeles 21/05/2026,
     //    7 errores 404 al intentar cancelar).
-    const subscription = await findCancellableSubscription(profile.stripeCustomerId)
+    const sc = getStripeFor(resolveAccount(profile.paymentAccount))
+    const subscription = await findCancellableSubscription(profile.stripeCustomerId, sc)
 
     if (!subscription) {
       // Idempotencia: si todas las subs están canceled (no hay cancelable),
       // tratamos como éxito silencioso. El usuario ya consiguió su objetivo.
-      const all = await stripe().subscriptions.list({
+      const all = await sc.subscriptions.list({
         customer: profile.stripeCustomerId,
         status: 'all',
         limit: 5,
@@ -634,7 +647,7 @@ export async function cancelSubscription(
     } else if (cancelMode === 'at_period_end') {
       // 3a. active/trialing → cancelación programada al final del período
       //     (mantiene acceso pagado). Idempotency key por sub.
-      await stripe().subscriptions.update(
+      await sc.subscriptions.update(
         subscription.id,
         { cancel_at_period_end: true },
         { idempotencyKey: `${idempotencyKeyBase}-schedule` },
@@ -661,7 +674,7 @@ export async function cancelSubscription(
       //     qué void invoices: si las dejamos abiertas, Stripe sigue
       //     reintentando charge_automatically en background (caso Mariangeles
       //     21/05/2026, ver project_pending_stripe_cancel_bug.md).
-      await stripe().subscriptions.cancel(
+      await sc.subscriptions.cancel(
         subscription.id,
         undefined,
         { idempotencyKey: `${idempotencyKeyBase}-immediate` },
@@ -670,6 +683,7 @@ export async function cancelSubscription(
         subscription.id,
         idempotencyKeyBase,
         { userId: params.userId, stripeCustomerId: profile.stripeCustomerId },
+        sc,
       )
       voidedCount = voidResult.voided
       voidedFailed = voidResult.failed

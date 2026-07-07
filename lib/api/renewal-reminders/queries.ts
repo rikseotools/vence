@@ -5,7 +5,8 @@ import { eq, and, gte, lte, sql } from 'drizzle-orm'
 import { Resend } from 'resend'
 import { emailTemplates } from '@/lib/emails/templates'
 import { generateUnsubscribeToken, getUnsubscribeUrl } from '@/lib/api/emails'
-import { stripe } from '@/lib/stripe'
+import { getStripeFor, resolveAccount } from '@/lib/stripe'
+import type Stripe from 'stripe'
 import type {
   GetSubscriptionsForReminderResponse,
   UserWithSubscription,
@@ -42,9 +43,9 @@ interface UpcomingInvoiceInfo {
  * Obtiene el importe real de la próxima factura desde Stripe.
  * Incluye descuentos de fidelidad y cualquier cupón aplicado.
  */
-async function getUpcomingInvoiceInfo(stripeCustomerId: string): Promise<UpcomingInvoiceInfo | null> {
+async function getUpcomingInvoiceInfo(stripeCustomerId: string, sc: Stripe): Promise<UpcomingInvoiceInfo | null> {
   try {
-    const invoice = await stripe().invoices.createPreview({ customer: stripeCustomerId })
+    const invoice = await sc.invoices.createPreview({ customer: stripeCustomerId })
     if (invoice.amount_due == null) return null
 
     const amount = Math.round(invoice.amount_due / 100)
@@ -111,6 +112,7 @@ export async function getSubscriptionsForReminder(
         // Datos del usuario
         email: userProfiles.email,
         fullName: userProfiles.fullName,
+        paymentAccount: userProfiles.paymentAccount,
       })
       .from(userSubscriptions)
       .innerJoin(userProfiles, eq(userSubscriptions.userId, userProfiles.id))
@@ -129,8 +131,12 @@ export async function getSubscriptionsForReminder(
       const periodEnd = new Date(sub.currentPeriodEnd!)
       const daysUntil = Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-      // Intentar obtener precio real de Stripe (incluye descuento fidelidad)
-      const invoiceInfo = await getUpcomingInvoiceInfo(sub.stripeCustomerId!)
+      // Intentar obtener precio real de Stripe (incluye descuento fidelidad),
+      // en la cuenta donde vive la suscripción del usuario.
+      const invoiceInfo = await getUpcomingInvoiceInfo(
+        sub.stripeCustomerId!,
+        getStripeFor(resolveAccount(sub.paymentAccount)),
+      )
       const fallbackAmount = PLAN_PRICES[sub.planType || 'premium'] || 59
 
       if (invoiceInfo) {

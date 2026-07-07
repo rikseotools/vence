@@ -1,6 +1,6 @@
 // app/api/stripe/create-checkout/route.js - CORREGIDO PARA SISTEMA DUAL
 import { NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { getStripeFor, newSignupAccount, priceBelongsToAccount, resolveAccount } from '@/lib/stripe'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -34,6 +34,24 @@ async function _POST(request) {
 
     console.log('👤 Creando checkout para usuario:', userId)
 
+    // 🏦 Cuenta destino de las ALTAS NUEVAS (flag STRIPE_NEW_SIGNUPS_ACCOUNT).
+    // Default 'manuel' = comportamiento histórico. 'nila' desvía las altas.
+    const targetAccount = newSignupAccount()
+    const sc = getStripeFor(targetAccount)
+    console.log('🏦 Cuenta destino del checkout:', targetAccount)
+
+    // 🛡️ Guardrail anti "half-flip": el priceId entrante DEBE pertenecer a la
+    // cuenta destino. Si el flag y los NEXT_PUBLIC_* quedaran desalineados en
+    // un deploy, esto aborta en vez de crear la suscripción en la cuenta
+    // equivocada (cobraría en la cuenta que no toca).
+    if (!priceBelongsToAccount(priceId, targetAccount)) {
+      console.error(`❌ priceId ${priceId} no pertenece a la cuenta destino '${targetAccount}'`)
+      return NextResponse.json(
+        { error: 'price_account_mismatch', message: 'Configuración de precio inválida para la cuenta activa.' },
+        { status: 400 }
+      )
+    }
+
     // 🔄 BUSCAR USUARIO CON RETRY (para evitar problemas de timing)
     let user = null
     let attempts = 0
@@ -53,6 +71,7 @@ async function _POST(request) {
             email: userProfiles.email,
             full_name: userProfiles.fullName,
             stripe_customer_id: userProfiles.stripeCustomerId,
+            payment_account: userProfiles.paymentAccount,
             plan_type: userProfiles.planType,
             registration_source: userProfiles.registrationSource,
             requires_payment: userProfiles.requiresPayment,
@@ -104,14 +123,19 @@ async function _POST(request) {
       )
     }
 
-    // Crear o obtener customer de Stripe
-    let customerId = user.stripe_customer_id
+    // Crear o obtener customer de Stripe.
+    // Los customers son POR-CUENTA: un cus_ de Manuel no existe en Nila. Solo
+    // reutilizamos el customer guardado si vive en la cuenta destino; si el
+    // perfil apunta a otra cuenta (p.ej. usuario que en su día pagó en Manuel
+    // y ahora se da de alta en Nila), creamos uno nuevo en la cuenta destino.
+    const profileAccount = resolveAccount(user.payment_account)
+    let customerId = profileAccount === targetAccount ? user.stripe_customer_id : null
     const customerExisted = !!customerId
 
     if (!customerId) {
-      console.log('🆕 Creando nuevo customer en Stripe...')
+      console.log(`🆕 Creando nuevo customer en Stripe (cuenta ${targetAccount})...`)
       try {
-        const customer = await stripe().customers.create({
+        const customer = await sc.customers.create({
           email: user.email,
           name: user.full_name,
           metadata: {
@@ -120,14 +144,16 @@ async function _POST(request) {
             plan_type: user.plan_type
           }
         })
-        
+
         customerId = customer.id
-        
-        // Guardar customer ID en BD (best-effort, igual que antes)
+
+        // Guardar customer ID + cuenta destino en BD (best-effort). Fijar
+        // payment_account aquí es lo que luego enruta cancelar/portal/webhook
+        // a la cuenta correcta.
         try {
           await getAdminDb()
             .update(userProfiles)
-            .set({ stripeCustomerId: customerId })
+            .set({ stripeCustomerId: customerId, paymentAccount: targetAccount })
             .where(eq(userProfiles.id, userId))
         } catch (updErr) {
           console.error('⚠️ Error guardando stripe_customer_id:', updErr)
@@ -156,7 +182,7 @@ async function _POST(request) {
     // sigue cubriendo el doble-clic concurrente.
     if (customerExisted) {
       try {
-        const existingSubs = await stripe().subscriptions.list({
+        const existingSubs = await sc.subscriptions.list({
           customer: customerId,
           status: 'all',
           limit: 10,
@@ -195,7 +221,8 @@ async function _POST(request) {
           metadata: {
             supabase_user_id: userId,
             registration_source: user.registration_source,
-            plan_type: user.plan_type
+            plan_type: user.plan_type,
+            payment_account: targetAccount
           }
         },
         success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/premium/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -211,7 +238,7 @@ async function _POST(request) {
       // Idempotency key (bucket 1 min): dos submits del mismo (usuario, precio)
       // en el mismo minuto reusan la MISMA session en vez de crear dos.
       const idempotencyKey = buildCheckoutIdempotencyKey(userId, priceId, Date.now())
-      const session = await stripe().checkout.sessions.create(sessionData, { idempotencyKey })
+      const session = await sc.checkout.sessions.create(sessionData, { idempotencyKey })
 
       console.log('✅ Checkout session creada:', session.id)
       console.log('📊 Usuario:', user.email, '| Fuente:', user.registration_source, '| Plan:', user.plan_type)

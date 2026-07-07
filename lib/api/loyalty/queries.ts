@@ -1,5 +1,12 @@
 // lib/api/loyalty/queries.ts - Lógica core de descuentos de fidelidad
+//
+// MULTI-CUENTA: todas las funciones aceptan un cliente Stripe `sc` de la cuenta
+// donde vive la suscripción. Default = cuenta Manuel (stripe()) para no romper
+// llamadores que no lo pasen. IMPORTANTE: los cupones de fidelidad
+// (LOYALTY_CONFIG.tier*CouponId) son POR-CUENTA — deben existir con el MISMO id
+// en cada cuenta (replicados en Nila con el mismo id que en Manuel).
 import { stripe } from '@/lib/stripe'
+import type Stripe from 'stripe'
 import { LOYALTY_CONFIG } from './schemas'
 import type { LoyaltyTier, LoyaltyStatus, ApplyLoyaltyResult } from './schemas'
 
@@ -7,8 +14,8 @@ import type { LoyaltyTier, LoyaltyStatus, ApplyLoyaltyResult } from './schemas'
 // CONTAR RENOVACIONES PAGADAS
 // ============================================
 
-export async function countPaidRenewals(subscriptionId: string): Promise<number> {
-  const invoices = await stripe().invoices.list({
+export async function countPaidRenewals(subscriptionId: string, sc: Stripe = stripe()): Promise<number> {
+  const invoices = await sc.invoices.list({
     subscription: subscriptionId,
     status: 'paid',
     limit: 100,
@@ -51,9 +58,9 @@ export function couponForTier(tier: LoyaltyTier): string | null {
 // OBTENER CUPÓN ACTUAL DE UNA SUSCRIPCIÓN
 // ============================================
 
-async function getCurrentCouponId(subscriptionId: string): Promise<string | null> {
+async function getCurrentCouponId(subscriptionId: string, sc: Stripe = stripe()): Promise<string | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sub = await stripe().subscriptions.retrieve(subscriptionId) as any
+  const sub = await sc.subscriptions.retrieve(subscriptionId) as any
   return sub.discount?.coupon?.id || null
 }
 
@@ -61,10 +68,10 @@ async function getCurrentCouponId(subscriptionId: string): Promise<string | null
 // DIAGNÓSTICO: ESTADO DE FIDELIDAD
 // ============================================
 
-export async function getLoyaltyStatus(subscriptionId: string): Promise<LoyaltyStatus> {
+export async function getLoyaltyStatus(subscriptionId: string, sc: Stripe = stripe()): Promise<LoyaltyStatus> {
   const [renewalCount, currentCouponId] = await Promise.all([
-    countPaidRenewals(subscriptionId),
-    getCurrentCouponId(subscriptionId),
+    countPaidRenewals(subscriptionId, sc),
+    getCurrentCouponId(subscriptionId, sc),
   ])
 
   // La próxima renovación será renewalCount + 1
@@ -93,8 +100,8 @@ export async function getLoyaltyStatus(subscriptionId: string): Promise<LoyaltyS
 // APLICAR CUPÓN DE FIDELIDAD (idempotente)
 // ============================================
 
-export async function ensureLoyaltyCoupon(subscriptionId: string): Promise<ApplyLoyaltyResult> {
-  const status = await getLoyaltyStatus(subscriptionId)
+export async function ensureLoyaltyCoupon(subscriptionId: string, sc: Stripe = stripe()): Promise<ApplyLoyaltyResult> {
+  const status = await getLoyaltyStatus(subscriptionId, sc)
 
   if (!status.needsUpdate) {
     return {
@@ -108,13 +115,13 @@ export async function ensureLoyaltyCoupon(subscriptionId: string): Promise<Apply
 
   // Aplicar cupón correcto usando campo `coupon` (compatible con API 2024-06-20)
   if (status.expectedCouponId) {
-    await stripe().subscriptions.update(subscriptionId, {
+    await sc.subscriptions.update(subscriptionId, {
       coupon: status.expectedCouponId,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
   } else {
     // Quitar cupón si expectedTier es 'none' (no debería pasar en flujo normal)
-    await stripe().subscriptions.update(subscriptionId, {
+    await sc.subscriptions.update(subscriptionId, {
       coupon: '',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
@@ -140,8 +147,8 @@ export async function ensureLoyaltyCoupon(subscriptionId: string): Promise<Apply
  * Se llama desde handleCheckoutSessionCompleted para que la 1a renovación
  * ya tenga descuento automáticamente.
  */
-export async function applyInitialLoyaltyCoupon(subscriptionId: string): Promise<ApplyLoyaltyResult> {
-  const currentCouponId = await getCurrentCouponId(subscriptionId)
+export async function applyInitialLoyaltyCoupon(subscriptionId: string, sc: Stripe = stripe()): Promise<ApplyLoyaltyResult> {
+  const currentCouponId = await getCurrentCouponId(subscriptionId, sc)
 
   // Si ya tiene algún cupón de loyalty, no tocar
   if (currentCouponId === LOYALTY_CONFIG.tier1CouponId || currentCouponId === LOYALTY_CONFIG.tier2CouponId) {
@@ -154,7 +161,7 @@ export async function applyInitialLoyaltyCoupon(subscriptionId: string): Promise
     }
   }
 
-  await stripe().subscriptions.update(subscriptionId, {
+  await sc.subscriptions.update(subscriptionId, {
     coupon: LOYALTY_CONFIG.tier1CouponId,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)

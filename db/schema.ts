@@ -109,6 +109,7 @@ export const userProfiles = pgTable("user_profiles", {
 	registrationDate: timestamp("registration_date", { withTimezone: true, mode: 'string' }).defaultNow(),
 	trialEndDate: timestamp("trial_end_date", { withTimezone: true, mode: 'string' }),
 	stripeCustomerId: text("stripe_customer_id"),
+	paymentAccount: text("payment_account").default('manuel').notNull(),
 	registrationSource: text("registration_source").default('organic'),
 	requiresPayment: boolean("requires_payment").default(false),
 	nickname: text(),

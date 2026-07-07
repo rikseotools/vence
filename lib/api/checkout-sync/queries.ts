@@ -22,6 +22,7 @@ import { getAdminDb } from '@/db/client'
 import { userProfiles, userSubscriptions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { emit } from '@/lib/observability/emit'
+import { getStripeFor, resolveAccount } from '@/lib/stripe'
 import {
   determinePlanType,
   type Subscription,
@@ -36,11 +37,10 @@ import type {
 // HELPERS
 // ────────────────────────────────────────────────────────────────
 
-function getStripe(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error('STRIPE_SECRET_KEY no configurada')
-  return new Stripe(key, { apiVersion: '2024-06-20' as Stripe.LatestApiVersion })
-}
+// Multi-cuenta: el cliente Stripe se resuelve por la cuenta del usuario
+// (user_profiles.payment_account) vía getStripeFor. La session/subscription a
+// sincronizar vive en la cuenta donde se hizo el checkout, que es justo lo que
+// create-checkout dejó escrito en payment_account.
 
 // getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
 // service_role). Agnóstico de proveedor.
@@ -98,6 +98,7 @@ export async function syncCheckoutSession(
           id: userProfiles.id,
           email: userProfiles.email,
           stripe_customer_id: userProfiles.stripeCustomerId,
+          payment_account: userProfiles.paymentAccount,
           plan_type: userProfiles.planType,
         })
         .from(userProfiles)
@@ -120,8 +121,8 @@ export async function syncCheckoutSession(
       }
     }
 
-    // ─── 2. retrieve Checkout Session de Stripe ───
-    const stripe = getStripe()
+    // ─── 2. retrieve Checkout Session de Stripe (cuenta del usuario) ───
+    const stripe = getStripeFor(resolveAccount(profile.payment_account))
     let session: Stripe.Checkout.Session
     try {
       session = await stripe.checkout.sessions.retrieve(params.sessionId, {
@@ -440,6 +441,7 @@ export async function reconcileUserPremium(userId: string): Promise<{
       .select({
         id: userProfiles.id,
         stripe_customer_id: userProfiles.stripeCustomerId,
+        payment_account: userProfiles.paymentAccount,
         plan_type: userProfiles.planType,
       })
       .from(userProfiles)
@@ -455,8 +457,9 @@ export async function reconcileUserPremium(userId: string): Promise<{
       return { drift: false, fixed: false, reason: 'already_premium' }
     }
 
-    // Drift potencial: tiene customer pero plan free. Consultar Stripe.
-    const stripe = getStripe()
+    // Drift potencial: tiene customer pero plan free. Consultar Stripe en la
+    // cuenta donde vive el customer del usuario.
+    const stripe = getStripeFor(resolveAccount(profile.payment_account))
     const subs = await stripe.subscriptions.list({
       customer: profile.stripe_customer_id,
       status: 'active',

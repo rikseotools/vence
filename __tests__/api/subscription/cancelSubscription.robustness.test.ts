@@ -21,8 +21,10 @@ const mockStripeList = jest.fn()
 const mockInvoiceList = jest.fn()
 const mockInvoiceVoid = jest.fn()
 
-jest.mock('@/lib/stripe', () => ({
-  stripe: () => ({
+jest.mock('@/lib/stripe', () => {
+  // Lazy: el factory se hoista por encima de las const mock; construir el
+  // cliente al invocar evita el ReferenceError de acceso anticipado.
+  const makeClient = () => ({
     subscriptions: {
       list: mockStripeList,
       update: mockStripeUpdate,
@@ -32,8 +34,14 @@ jest.mock('@/lib/stripe', () => ({
       list: mockInvoiceList,
       voidInvoice: mockInvoiceVoid,
     },
-  }),
-}))
+  })
+  // Multi-cuenta: el código resuelve el cliente con getStripeFor(resolveAccount(...)).
+  return {
+    stripe: () => makeClient(),
+    getStripeFor: () => makeClient(),
+    resolveAccount: (v: string | null | undefined) => v || 'manuel',
+  }
+})
 
 // Mock DB con las dos cadenas que usa cancelSubscription:
 //   db.select(...).from(...).where(...).limit(1) → [profile]

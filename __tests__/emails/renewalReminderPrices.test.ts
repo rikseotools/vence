@@ -13,14 +13,22 @@
 
 // Mock Stripe
 const mockRetrieveUpcoming = jest.fn()
-jest.mock('@/lib/stripe', () => ({
-  stripe: () => ({
+jest.mock('@/lib/stripe', () => {
+  // Lazy: el factory de jest.mock se hoista por encima de las const mock, así
+  // que el cliente se construye al invocar (no en la definición del mock).
+  const makeClient = () => ({
     invoices: {
       retrieveUpcoming: mockRetrieveUpcoming,
       createPreview: mockRetrieveUpcoming,
     },
-  }),
-}))
+  })
+  // Multi-cuenta: getUpcomingInvoiceInfo recibe getStripeFor(resolveAccount(...)).
+  return {
+    stripe: () => makeClient(),
+    getStripeFor: () => makeClient(),
+    resolveAccount: (v: string | null | undefined) => v || 'manuel',
+  }
+})
 
 // Mock DB
 const mockDbSelect = jest.fn()

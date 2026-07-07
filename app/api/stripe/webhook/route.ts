@@ -1,7 +1,7 @@
 // app/api/stripe/webhook/route.ts
 import { NextResponse, NextRequest } from 'next/server'
 import { headers } from 'next/headers'
-import { stripe } from '@/lib/stripe'
+import { getWebhookAccounts, getStripeFor, type StripeAccount } from '@/lib/stripe'
 import { Resend } from 'resend'
 import type Stripe from 'stripe'
 import { getAdminDb } from '@/db/client'
@@ -27,9 +27,9 @@ type StripeInvoice = any
 type StripeCheckoutSession = Stripe.Checkout.Session
 type StripeCustomer = Stripe.Customer
 
-// Helper to retrieve subscription
-async function getSubscription(subscriptionId: string): Promise<StripeSubscription> {
-  return await stripe().subscriptions.retrieve(subscriptionId)
+// Helper to retrieve subscription (en la cuenta de la que vino el evento)
+async function getSubscription(subscriptionId: string, sc: Stripe): Promise<StripeSubscription> {
+  return await sc.subscriptions.retrieve(subscriptionId)
 }
 
 /**
@@ -108,8 +108,6 @@ function normalizeStripeStatus(status: string): string {
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
-
 // Types
 interface PurchaseEmailData {
   userEmail: string
@@ -147,6 +145,7 @@ interface SettlementData {
   currency: string
   paymentDate: string
   db: Db
+  sc: Stripe
 }
 
 async function _POST(request: NextRequest) {
@@ -155,25 +154,41 @@ async function _POST(request: NextRequest) {
     const headersList = await headers()
     const signature = headersList.get('stripe-signature')
 
-    if (!signature || !webhookSecret) {
-      console.error('Missing signature or webhook secret')
+    if (!signature) {
+      console.error('Missing signature')
       return NextResponse.json({ error: 'Webhook signature missing' }, { status: 400 })
     }
 
-    let event: Stripe.Event
-    try {
-      event = stripe().webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err) {
-      const error = err as Error
-      console.error('Webhook signature verification failed:', error.message)
+    // MULTI-CUENTA: el mismo endpoint recibe eventos de Manuel (renovaciones) y
+    // de Nila (altas nuevas). Probamos la firma contra el secret de cada cuenta
+    // configurada; la que valida determina de qué cuenta viene el evento, y con
+    // ella resolvemos el cliente Stripe (sc) que se inyecta a los handlers para
+    // cualquier retrieve/settlement/cupón posterior.
+    const accounts = getWebhookAccounts()
+    let event: Stripe.Event | null = null
+    let account: StripeAccount | null = null
+    for (const acc of accounts) {
+      try {
+        event = getStripeFor(acc.account).webhooks.constructEvent(body, signature, acc.secret)
+        account = acc.account
+        break
+      } catch {
+        // Firma no válida para esta cuenta — probar la siguiente.
+      }
+    }
+
+    if (!event || !account) {
+      console.error('Webhook signature verification failed for all accounts')
       return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
     }
 
+    const sc = getStripeFor(account)
     const db = getAdminDb()
+    console.log(`🪝 Webhook ${event.type} verificado en cuenta '${account}'`)
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object as StripeCheckoutSession, db)
+        await handleCheckoutSessionCompleted(event.data.object as StripeCheckoutSession, db, sc, account)
         break
 
       case 'customer.subscription.created':
@@ -189,15 +204,15 @@ async function _POST(request: NextRequest) {
         break
 
       case 'invoice.created':
-        await handleInvoiceCreated(event.data.object as StripeInvoice)
+        await handleInvoiceCreated(event.data.object as StripeInvoice, sc)
         break
 
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object as StripeInvoice, db)
+        await handlePaymentSucceeded(event.data.object as StripeInvoice, db, sc)
         break
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as StripeInvoice, db)
+        await handlePaymentFailed(event.data.object as StripeInvoice, db, sc)
         break
 
       case 'charge.refunded':
@@ -318,7 +333,9 @@ async function enqueueAdsPurchaseConversion(
 
 async function handleCheckoutSessionCompleted(
   session: StripeCheckoutSession,
-  db: Db
+  db: Db,
+  sc: Stripe,
+  account: StripeAccount
 ): Promise<void> {
   console.log('🎯 Checkout completado:', session.id)
 
@@ -327,7 +344,7 @@ async function handleCheckoutSessionCompleted(
   // Si hay subscription, recuperarla para obtener metadata
   if (session.subscription) {
     try {
-      const subscription = await getSubscription(session.subscription as string)
+      const subscription = await getSubscription(session.subscription as string, sc)
       userId = subscription.metadata?.supabase_user_id || null
       console.log('📋 userId desde subscription metadata:', userId)
     } catch (err) {
@@ -378,7 +395,8 @@ async function handleCheckoutSessionCompleted(
         .update(userProfiles)
         .set({
           planType: 'premium',
-          stripeCustomerId: session.customer as string
+          stripeCustomerId: session.customer as string,
+          paymentAccount: account
         })
         .where(eq(userProfiles.id, userId))
         .returning({
@@ -404,7 +422,7 @@ async function handleCheckoutSessionCompleted(
 
       if (session.subscription) {
         try {
-          const subscription = await getSubscription(session.subscription as string)
+          const subscription = await getSubscription(session.subscription as string, sc)
           planType = determinePlanType(subscription)
 
           let subError: unknown = null
@@ -439,7 +457,7 @@ async function handleCheckoutSessionCompleted(
           // Aplicar cupón de fidelidad inicial para que la 1a renovación tenga descuento
           try {
             const { applyInitialLoyaltyCoupon } = await import('@/lib/api/loyalty')
-            const loyaltyResult = await applyInitialLoyaltyCoupon(subscription.id)
+            const loyaltyResult = await applyInitialLoyaltyCoupon(subscription.id, sc)
             if (loyaltyResult.applied) {
               console.log(`🎁 [Loyalty] Cupón inicial ${loyaltyResult.couponId} aplicado en checkout para ${subscription.id}`)
             }
@@ -490,7 +508,8 @@ async function handleCheckoutSessionCompleted(
           amountGross: session.amount_total || 0,
           currency: session.currency || 'eur',
           paymentDate: new Date((session.created || 0) * 1000).toISOString(),
-          db
+          db,
+          sc
         })
       } catch (settlementErr) {
         console.error('Error registrando settlement:', settlementErr)
@@ -513,7 +532,7 @@ async function handleCheckoutSessionCompleted(
   // CASO 2: Buscar por email
   console.log('🔍 Buscando usuario por email del customer...')
   try {
-    const customer = await stripe().customers.retrieve(session.customer as string) as StripeCustomer
+    const customer = await sc.customers.retrieve(session.customer as string) as StripeCustomer
 
     if (customer.email) {
       const [existingUser] = await db
@@ -600,7 +619,7 @@ async function handleCheckoutSessionCompleted(
 
         if (session.subscription) {
           try {
-            const subscription = await getSubscription(session.subscription as string)
+            const subscription = await getSubscription(session.subscription as string, sc)
             const planType = determinePlanType(subscription)
 
             const subValues = {
@@ -639,7 +658,8 @@ async function handleCheckoutSessionCompleted(
             amountGross: session.amount_total || 0,
             currency: session.currency || 'eur',
             paymentDate: new Date((session.created || 0) * 1000).toISOString(),
-            db
+            db,
+            sc
           })
         } catch (settlementErr) {
           console.error('Error registrando settlement (CASO 2):', settlementErr)
@@ -902,7 +922,7 @@ async function handleSubscriptionDeleted(
 // INVOICE CREATED (draft) - Descuentos de fidelidad
 // ============================================
 
-async function handleInvoiceCreated(invoice: StripeInvoice): Promise<void> {
+async function handleInvoiceCreated(invoice: StripeInvoice, sc: Stripe): Promise<void> {
   // Solo actuar en renovaciones (no en la factura inicial)
   if (invoice.billing_reason !== 'subscription_cycle') return
   // Solo modificar facturas en borrador
@@ -915,7 +935,7 @@ async function handleInvoiceCreated(invoice: StripeInvoice): Promise<void> {
 
   try {
     const { ensureLoyaltyCoupon } = await import('@/lib/api/loyalty')
-    const result = await ensureLoyaltyCoupon(subscriptionId)
+    const result = await ensureLoyaltyCoupon(subscriptionId, sc)
 
     if (result.applied) {
       console.log(`🎁 [Loyalty] invoice.created: ${result.reason} para ${subscriptionId} (renovación #${result.renewalCount + 1}, tier: ${result.tier})`)
@@ -933,13 +953,14 @@ async function handleInvoiceCreated(invoice: StripeInvoice): Promise<void> {
 
 async function handlePaymentSucceeded(
   invoice: StripeInvoice,
-  db: Db
+  db: Db,
+  sc: Stripe
 ): Promise<void> {
   console.log('💳 handlePaymentSucceeded:', invoice.id, 'billing_reason:', invoice.billing_reason)
 
   if (invoice.subscription) {
     try {
-      const subscription = await getSubscription(invoice.subscription as string)
+      const subscription = await getSubscription(invoice.subscription as string, sc)
 
       let userId = subscription.metadata?.supabase_user_id
       let userEmail: string | null = null
@@ -996,7 +1017,8 @@ async function handlePaymentSucceeded(
             amountGross: invoice.amount_paid || 0,
             currency: invoice.currency || 'eur',
             paymentDate: new Date((invoice.created || 0) * 1000).toISOString(),
-            db
+            db,
+            sc
           })
         } catch (settlementErr) {
           console.error('Error registrando settlement:', settlementErr)
@@ -1010,13 +1032,14 @@ async function handlePaymentSucceeded(
 
 async function handlePaymentFailed(
   invoice: StripeInvoice,
-  db: Db
+  db: Db,
+  sc: Stripe
 ): Promise<void> {
   console.log(`⚠️ Payment failed for invoice ${invoice.id}`)
 
   if (invoice.subscription) {
     try {
-      const subscription = await getSubscription(invoice.subscription as string)
+      const subscription = await getSubscription(invoice.subscription as string, sc)
 
       let userId = subscription.metadata?.supabase_user_id
 
@@ -1158,7 +1181,7 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
 
     if (!actualChargeId && data.paymentIntentId) {
       try {
-        const paymentIntent = await stripe().paymentIntents.retrieve(data.paymentIntentId)
+        const paymentIntent = await data.sc.paymentIntents.retrieve(data.paymentIntentId)
         if (paymentIntent.latest_charge) {
           actualChargeId = paymentIntent.latest_charge as string
         }
@@ -1170,9 +1193,9 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
 
     if (actualChargeId) {
       try {
-        const charge = await stripe().charges.retrieve(actualChargeId)
+        const charge = await data.sc.charges.retrieve(actualChargeId)
         if (charge.balance_transaction) {
-          const balanceTransaction = await stripe().balanceTransactions.retrieve(
+          const balanceTransaction = await data.sc.balanceTransactions.retrieve(
             charge.balance_transaction as string
           )
           stripeFee = balanceTransaction.fee
