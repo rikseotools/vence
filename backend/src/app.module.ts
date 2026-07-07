@@ -99,6 +99,7 @@ import { OutboxProcessorModule } from './outbox-processor/outbox-processor.modul
 // endpoint admin POST /api/v2/admin/topic-summary/refresh para on-demand.
 import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic-summary.module';
 import { ServedCoverageModule } from './served-coverage/served-coverage.module';
+import { InternalCronTriggersModule } from './internal-cron-triggers/internal-cron-triggers.module';
 // Snapshot diario de pg_stat_statements para cálculo de deltas 24h vía
 // vista `v_pg_stat_statements_delta`. Cierra el gap "queries lentas HOY vs
 // ruido histórico acumulado" del incidente 31/05. Ver
@@ -178,6 +179,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     // topic_law_question_summary + topic_official_by_position.
     RefreshTopicSummaryModule,
     ServedCoverageModule,
+    InternalCronTriggersModule,
     // Acción 3 observability-capacity (01/06/2026) — snapshot diario 00:05 UTC
     // de pg_stat_statements + poda 30d. Habilita v_pg_stat_statements_delta.
     PgStatSnapshotModule,
