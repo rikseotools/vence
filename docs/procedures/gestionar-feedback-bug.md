@@ -42,6 +42,13 @@ Cuando un usuario **free** pregunta qué incluye el pago, si merece la pena, qu�
 4. **Comprueba qué features APLICAN a SU oposición vs a las cruzadas — no mientas.** Ej.: los *cursos de informática* NO aplican a Subalterno GVA (su temario de informática es solo "Seguridad digital", sin ofimática), pero SÍ a Auxiliar GVA (Windows/Word/Excel) → nómbralos ahí, no como si fueran de su temario. Igual con cualquier feature: mira su temario real (`topics.epigrafe`) antes de prometer.
 5. **Responde su pregunta literal primero** (si pregunta "¿hay temario o solo tests?": sí, ambos — el temario/teoría se lee gratis, los tests son lo que premium hace ilimitado) y luego el pitch personalizado. Cierre estándar Manuel: *"Para cualquier asunto estamos a tu disposición."*
 
+### En CUALQUIER pregunta sobre el temario, recomienda siempre esto (engagement/retención)
+
+Cuando pregunten por el temario —¿está completo?, ¿se amplía según estudio?, dudas de contenido— (sea free o premium), **no te quedes en responder: convierte la duda en un empujón para que empiece/siga** (aprendizaje 07/07/2026, caso Lú Henao — premium recién pagada con 0 actividad):
+- **Tranquiliza:** el temario está **completo y disponible desde ya** (todos los temas con teoría + tests); no se desbloquea según avanza. Lo que sí hacemos es **mantenerlo al día** (reformas legales + preguntas de exámenes oficiales recientes).
+- **Recomienda la lectura por voz:** además de leerlo, puede **escucharlo** — ideal para repasar **haciendo deporte o en transporte público**, sin perder tiempo.
+- **Foco + ánimo:** ir tema a tema con constancia, apoyarse en los tests para fijar, y un **ánimo** final ("lo tienes a tu alcance").
+
 ## Paso 0: ¿YA está respondido / resuelto? (mirar ANTES de redactar nada)
 
 Un feedback con `status='pending'` **NO significa que esté sin atender** — puede estar respondido y resuelto pero sin cerrar. Antes de redactar, busca la respuesta en la tabla correcta:
