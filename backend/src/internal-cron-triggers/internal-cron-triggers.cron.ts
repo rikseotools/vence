@@ -26,6 +26,7 @@ export class InternalCronTriggersCron {
   public examIntegrityTickMs: number | null = null;
   public auditEstadosTickMs: number | null = null;
   public closeInactiveFeedbackTickMs: number | null = null;
+  public renewalRemindersTickMs: number | null = null;
 
   constructor(
     private readonly service: InternalCronTriggersService,
@@ -37,6 +38,7 @@ export class InternalCronTriggersCron {
     heartbeatRegistry.register('trigger-check-exam-integrity', () => getLastTickMsAgo(this, 'examIntegrityTickMs'), daily);
     heartbeatRegistry.register('trigger-audit-estados', () => getLastTickMsAgo(this, 'auditEstadosTickMs'), daily);
     heartbeatRegistry.register('trigger-close-inactive-feedback', () => getLastTickMsAgo(this, 'closeInactiveFeedbackTickMs'), daily);
+    heartbeatRegistry.register('trigger-renewal-reminders', () => getLastTickMsAgo(this, 'renewalRemindersTickMs'), daily);
   }
 
   // 04:00 UTC — antes: .github/workflows/check-stats-drift.yml
@@ -73,6 +75,20 @@ export class InternalCronTriggersCron {
   async closeInactiveFeedback(): Promise<void> {
     await runWithHeartbeat(this, 'closeInactiveFeedbackTickMs', () => this.run('/api/cron/close-inactive-feedback', 'close-inactive-feedback'), {
       name: 'trigger-close-inactive-feedback',
+      observability: this.observability,
+    });
+  }
+
+  // 09:00 UTC — antes: .github/workflows/renewal-reminders.yml
+  // ENVÍA EMAILS (Resend, vía el endpoint). Idempotente entre días: el endpoint
+  // guarda emailLogs y salta ('already_sent') si envió en los últimos 5 días.
+  // Doble-envío solo posible por race si GHA+Fargate disparan el MISMO día → se
+  // evita con swap atómico (GHA .DISABLED al activar esto). El backend NO
+  // necesita RESEND_API_KEY: solo dispara el endpoint (que envía con su Resend).
+  @Cron('0 9 * * *', { name: 'trigger-renewal-reminders', timeZone: 'UTC' })
+  async renewalReminders(): Promise<void> {
+    await runWithHeartbeat(this, 'renewalRemindersTickMs', () => this.run('/api/cron/renewal-reminders', 'renewal-reminders'), {
+      name: 'trigger-renewal-reminders',
       observability: this.observability,
     });
   }
