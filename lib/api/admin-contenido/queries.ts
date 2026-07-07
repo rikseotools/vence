@@ -28,6 +28,8 @@ export interface ContenidoRow {
   finos: number
   ok: number
   total_preguntas: number
+  usuarios: number
+  premium: number
 }
 
 export interface ContenidoOverview {
@@ -55,18 +57,30 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       JOIN topics t
         ON t.position_type = replace(o.slug, '-', '_') AND t.is_active = true
       WHERE o.is_active = true
+    ),
+    user_counts AS (
+      SELECT
+        up.target_oposicion AS pt,
+        count(*)::int                                          AS usuarios,
+        count(*) FILTER (WHERE up.plan_type = 'premium')::int  AS premium
+      FROM user_profiles up
+      WHERE up.target_oposicion IS NOT NULL
+      GROUP BY up.target_oposicion
     )
     SELECT
-      slug, nombre, short_name,
-      count(*) FILTER (WHERE disponible)::int                                AS disponibles,
-      count(*) FILTER (WHERE disponible AND q = 0)::int                      AS en_desarrollo,
-      count(*) FILTER (WHERE disponible AND q BETWEEN 1 AND ${FINO_MAX - 1})::int AS finos,
-      count(*) FILTER (WHERE disponible AND q >= ${FINO_MAX})::int           AS ok,
-      COALESCE(sum(q) FILTER (WHERE disponible), 0)::int                     AS total_preguntas
-    FROM tema_counts
-    GROUP BY slug, nombre, short_name
-    HAVING count(*) FILTER (WHERE disponible) > 0
-    ORDER BY en_desarrollo DESC, finos DESC, disponibles DESC
+      tc.slug, tc.nombre, tc.short_name,
+      count(*) FILTER (WHERE tc.disponible)::int                                 AS disponibles,
+      count(*) FILTER (WHERE tc.disponible AND tc.q = 0)::int                    AS en_desarrollo,
+      count(*) FILTER (WHERE tc.disponible AND tc.q BETWEEN 1 AND ${FINO_MAX - 1})::int AS finos,
+      count(*) FILTER (WHERE tc.disponible AND tc.q >= ${FINO_MAX})::int         AS ok,
+      COALESCE(sum(tc.q) FILTER (WHERE tc.disponible), 0)::int                   AS total_preguntas,
+      COALESCE(max(uc.usuarios), 0)::int                                         AS usuarios,
+      COALESCE(max(uc.premium), 0)::int                                          AS premium
+    FROM tema_counts tc
+    LEFT JOIN user_counts uc ON uc.pt = replace(tc.slug, '-', '_')
+    GROUP BY tc.slug, tc.nombre, tc.short_name
+    HAVING count(*) FILTER (WHERE tc.disponible) > 0
+    ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC
   `)
   const oposiciones = rows<ContenidoRow>(res)
   return {
