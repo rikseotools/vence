@@ -333,6 +333,11 @@ git push origin main
 - **Cuándo consultarlo:** cuando el usuario diga *"añade el competidor X"*, *"quién prepara la oposición Y"*, *"compara precios de competidores"*, *"re-sincroniza/actualiza competidores"*, *"qué oposiciones no cubrimos que ellos sí"* (gaps) o similar. Seguir el runbook ANTES de improvisar.
 - **Resumen:** subsistema (BD durable `competitor_*` en RDS) que cataloga por competidor **qué oposiciones prepara, a qué precio, y qué cambia**; la **oposición es el nexo** con el radar. **1 fichero adapter por competidor** en `backend/src/competitors/adapters/`. Panel `/admin/competidores` (oposición-céntrico + badge). El runbook cubre: recon paralelo → adapter → seed → aplicar a RDS → sync → re-match → verificar; captura de precios (JSON-LD/plan-includes); y los gotchas (CDATA en `<loc>`, JSON-LD con Offer anidado, lastmod string vs timestamptz, matcher precisión>recall, JS/Firebase/Cloudflare → headless, sesiones git paralelas → commit atómico, NUNCA inventar nombres/precios). Estado: 13 competidores, 29 oposiciones cubiertas. Detalle diseño: `docs/roadmap/analizador-competidores.md`; memoria `project_analizador_competidores`.
 
+### 🔄 Rollover de oposiciones (runbook)
+- **Runbook:** `docs/runbooks/rollover-oposiciones.md`
+- **Cuándo consultarlo:** cuando Manuel diga *"haz rollover"*, *"revisa rollover"*, *"oposiciones con examen pasado/hecho"*, *"actualiza las landings viejas"*, o cuando vea el **badge ámbar del nav "Oposiciones"** y lo indique. Seguir el runbook ANTES de improvisar.
+- **Resumen:** una landing no muere cuando pasa su examen (las oposiciones son recurrentes) → hay que **pivotarla hacia delante** (próxima OEP/convocatoria, `exam_date=null`/futura, plazas, hitos `upcoming`, SEO forward), **verificado con fuente oficial, nunca inventar**. El **badge ámbar** en el nav "Oposiciones" cuenta las que preparamos con `exam_date` pasada; la **pestaña "Rollover"** (`/admin/oposiciones?tab=rollover`) las lista por demanda de usuarios. Triaje: examen reciente + `examen_realizado` = correcto (ciclo vivo); examen antiguo/`nombramientos` = pivotar YA. NO tocar temario/epígrafes/tests (solo datos de convocatoria). Detalle del pivote: `crear-nueva-oposicion.md` §2a.1-bis.
+
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado
 - Prefijo `💾` para operaciones de guardado
