@@ -78,6 +78,16 @@ export interface MatchResult {
 
 const sigTokens = (clean: string): string[] => clean.split(' ').filter((t) => t.length >= 4);
 
+// Palabras de ROL demasiado comunes para identificar un cuerpo por sí solas (forma
+// ya singularizada por cleanName). Un solape parcial que SOLO comparta estas es
+// ruido (p.ej. TCAE vs Auxiliar Administrativo comparten "auxiliar"). Exigimos ≥1
+// token compartido FUERA de esta lista para proponer revisión.
+const GENERIC_TOKENS = new Set([
+  'auxiliar', 'administrativo', 'administrativa', 'administracion', 'tecnico', 'tecnica',
+  'superior', 'personal', 'oposicion', 'curso', 'academia', 'online', 'turno', 'libre',
+  'promocion', 'interna', 'cuerpo', 'escala', 'grupo', 'laboral', 'funcionario', 'gestion',
+]);
+
 /** Enriquece una fila de oposición con su identidad y tokens (para el matcher). */
 export function buildOposicionMatch(row: {
   id: string;
@@ -467,7 +477,43 @@ export class CompetitorQueriesService {
         }
       }
     }
-    if (!bestId) return base;
+    if (!bestId) {
+      // ROBUSTEZ: sin subset completo, en vez de gap silencioso buscamos el mejor
+      // SOLAPE PARCIAL dentro del ámbito compatible → REVISIÓN humana. Cubre el caso
+      // "la opo tiene una palabra-cualificador que el competidor no escribe"
+      // (p.ej. 'Agente de la Hacienda *Pública*' vs 'Agentes de Hacienda'). Estricto:
+      // ≥2 tokens compartidos, ≥60% del nombre de la oposición presente, y ganador
+      // único (si empata, gap). Nunca auto-enlaza: siempre lo confirma un humano.
+      let partId: string | null = null;
+      let partShared = 0;
+      let partRatio = 0;
+      let partTie = false;
+      for (const o of catalog) {
+        if (!identityCompatible(identity, o.identity).compatible) continue;
+        for (const toks of [o.nameTokens, o.shortTokens]) {
+          if (!toks || toks.length < 2) continue;
+          const sharedTokens = toks.filter((t) => nTokens.has(t));
+          const shared = sharedTokens.length;
+          const ratio = shared / toks.length;
+          if (shared < 2 || ratio < 0.6) continue;
+          // Debe compartir ≥1 palabra DISTINTIVA (no solo genéricas de rol) → evita
+          // emparejar cuerpos distintos que solo coinciden en "auxiliar/administrativo".
+          if (!sharedTokens.some((t) => !GENERIC_TOKENS.has(t))) continue;
+          if (shared > partShared || (shared === partShared && ratio > partRatio)) {
+            partId = o.id;
+            partShared = shared;
+            partRatio = ratio;
+            partTie = false;
+          } else if (shared === partShared && ratio === partRatio && o.id !== partId) {
+            partTie = true;
+          }
+        }
+      }
+      if (partId && !partTie) {
+        return { ...base, candidateId: partId, method: 'needs_review', confidence: Math.min(0.55, 0.4 + 0.15 * partRatio) };
+      }
+      return base;
+    }
 
     // Confianza según cuánta identidad respalda el match.
     let confidence: number;

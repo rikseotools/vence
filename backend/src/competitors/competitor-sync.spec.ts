@@ -29,6 +29,14 @@ describe('matchCourse (identidad estructurada + nombre)', () => {
     expect(svc.matchCourse('Subalterno GVA', 'https://x.com/oposiciones/generalitat-valenciana/subalterno Subalterno GVA', cat).oposicionId).toBe('op-sub-gva'); // abreviatura
   });
 
+  it('sin subset completo → revisión con la mejor apuesta (no gap silencioso)', () => {
+    const cat = [buildOposicionMatch({ id: 'ah', nombre: 'Agente de la Hacienda Pública', shortName: null, administracion: 'Estado' })];
+    const r = svc.matchCourse('Agentes de Hacienda Turno Libre', 'Agentes de Hacienda Turno Libre', cat);
+    expect(r.oposicionId).toBeNull(); // no auto-enlace
+    expect(r.method).toBe('needs_review'); // pero no gap silencioso…
+    expect(r.candidateId).toBe('ah'); // …sino con la mejor apuesta para el humano
+  });
+
   it('plural de vocal+s no rompe el stem (ayudantes ≈ ayudante)', () => {
     const cat = [buildOposicionMatch({ id: 'iipp', nombre: 'Ayudante de Instituciones Penitenciarias', shortName: null, administracion: 'Estado' })];
     expect(svc.matchCourse('Ayudantes de Instituciones Penitenciarias', 'Ayudantes de Instituciones Penitenciarias', cat).oposicionId).toBe('iipp');
