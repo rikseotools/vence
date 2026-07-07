@@ -512,6 +512,7 @@ Equipo de Vence
 - Firmar siempre con "Equipo de Vence" al final.
 - **NO usar fórmulas tipo "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. Un simple "Muchas gracias." es suficiente.
 - Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
+- **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tenías razón" sin listar todo lo que estaba mal.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
 Una vez aprobado, **llamar al endpoint `/api/v2/dispute/resolve`** (NO hacer UPDATE directo en BD):
