@@ -99,6 +99,16 @@ jobs:
             NEXT_PUBLIC_STRIPE_PRICE_MONTHLY=${{ secrets.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY }}
             NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY=${{ secrets.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY }}
             NEXT_PUBLIC_STRIPE_PRICE_SEMESTER=${{ secrets.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER }}
+            # Stripe cuenta Nila (altas nuevas). publishable + price IDs son
+            # PÚBLICOS (van en el bundle) → literales, como la Turnstile site key.
+            # El desvío de altas lo decide STRIPE_NEW_SIGNUPS_ACCOUNT (SSM, runtime);
+            # hasta el flip estas quedan inertes. Para FLIPear: además de poner
+            # STRIPE_NEW_SIGNUPS_ACCOUNT=nila en SSM, cambiar las 4 NEXT_PUBLIC_STRIPE_*
+            # activas de arriba a estos mismos valores _NILA y redeploy.
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_NILA=pk_live_51TogG60lMFwxldqjmLLugM5JDwofbgLMpwYZjCzFG7xC7Meq4kvo0ZFQYtZ09paZkqEL7x794hBUXoPsTo2Lj0Rl00fmV8SVBv
+            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA=price_1TqSPq0lMFwxldqjrrnma6dl
+            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA=price_1TqSPr0lMFwxldqjEnCjVVHE
+            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA=price_1TqSPr0lMFwxldqjEHvGxF9k
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
             NEXT_PUBLIC_SITE_URL=https://www.vence.es
             NEXT_PUBLIC_APP_NAME=Vence
@@ -196,6 +206,11 @@ jobs:
               # Turnstile (anti-scraping). Params SSM creados 03/06; ECS los inyecta.
               | ensure_secret("CLOUDFLARE_TURNSTILE_SECRET_KEY")
               | ensure_secret("CAPTCHA_ENABLED")
+              # Stripe cuenta Nila (altas nuevas) — secrets de runtime. Params SSM
+              # creados 07/07. Inertes hasta STRIPE_NEW_SIGNUPS_ACCOUNT=nila.
+              | ensure_secret("STRIPE_SECRET_KEY_NILA")
+              | ensure_secret("STRIPE_WEBHOOK_SECRET_NILA")
+              | ensure_secret("STRIPE_NEW_SIGNUPS_ACCOUNT")
               # Google Ads — credenciales + flag de subida de conversiones de venta
               # (F1 trackeo-conversiones-ventas). Params SSM creados 03/06. El cron
               # /api/cron/conversion-outbox y el adapter los necesitan para subir

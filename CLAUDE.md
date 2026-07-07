@@ -32,6 +32,15 @@
 
 ## Funcionalidades Recientes
 
+### Stripe MULTI-CUENTA (Manuel renovaciones + Nila altas) (Implementado: 07/07/2026)
+- **Objetivo:** operar N cuentas Stripe a la vez SIN que los usuarios lo sufran. Cuenta **Manuel** (`acct_1SnGoj…`) cobra las **renovaciones** de lo existente; cuenta **Nila** (`acct_1TogG60lMFwxldqj`) cobra las **altas nuevas**. Las suscripciones NO se mueven entre cuentas; `price_id`, `cus_`, webhooks, portal y cupones son POR-CUENTA.
+- **Registro multi-cuenta:** `lib/stripe.ts` → `getStripeFor(account)`, `newSignupAccount()`, `priceBelongsToAccount()`, `getWebhookAccounts()`, `resolveAccount()`, `getPricesFor()`. `stripe()` = cuenta por defecto (Manuel), back-compat. **Escalable:** añadir cuenta = 1 fila en `ACCOUNT_ENV` + su bloque de env.
+- **Atribución por usuario:** columna `user_profiles.payment_account` (`NOT NULL DEFAULT 'manuel'`, nombre NEUTRO por si entra otro proveedor). El alta nueva la marca; cancelar/portal/consultar/reactivar/cupones/recordatorios resuelven el cliente por esa columna. Migración `supabase/migrations/20260707_stripe_multi_cuenta_payment_account.sql`.
+- **Webhook doble cuenta:** `app/api/stripe/webhook` verifica la firma contra AMBOS secrets; el que valida fija la cuenta y se inyecta ese cliente (`sc`) a todos los handlers. Un solo endpoint para las dos cuentas.
+- **Flip controlado:** flag `STRIPE_NEW_SIGNUPS_ACCOUNT` (SSM runtime, default `manuel` = comportamiento histórico). Ponerlo en `nila` desvía las altas; hay que mover a la vez las 4 `NEXT_PUBLIC_STRIPE_*` a los valores `_NILA` (build-args, ver deploy) y redeploy. Reversible. Guardrail anti "half-flip" en create-checkout (el price debe ser de la cuenta destino).
+- **Cupones de fidelidad:** `loyalty_10`/`loyalty_20` clonados en Nila con el MISMO id (los cupones son por-cuenta).
+- **Tests:** `__tests__/stripe/multiAccount.test.ts` (12). Detalle/estado go-live en memoria `project_stripe_dual_cuenta_nila`.
+
 ### Barra de Meta Diaria movible + ocultable (Implementado: 04/06/2026)
 - **Componente:** `components/DailyGoalBanner.tsx` (pill premium "X/Y (%)" en el Header)
 - **Problema:** en móvil vive en la fila flotante `absolute top-full` del Header y tapaba contenido.
@@ -46,7 +55,7 @@
 - **Datos dinámicos de tabla `oposiciones`:** plazas, fechas, BOE reference, salario, título requerido
 - **Timeline del proceso selectivo:** tabla `convocatoria_hitos` con hitos (completed/current/upcoming)
 - **Links oficiales:** convocatoria BOE (`programa_url`) y seguimiento INAP (`seguimiento_url`)
-- **ISR:** `revalidate = 86400` (24h) en Vercel
+- **ISR:** `revalidate = 86400` (24h) — se sirve desde el contenedor Next.js en AWS ECS
 - **SEO:** JSON-LD FAQPage + Event (fecha examen), epígrafes oficiales BOE
 - **Función compartida:** `getOposicionLandingData(slug)` en `lib/api/convocatoria/queries.ts`
 - **Hitos:** `getHitosConvocatoria(slug)` - timeline visual en la landing
@@ -116,10 +125,11 @@
 
 ### Características Técnicas
 - **Framework:** Next.js 15.3.3
-- **Base de datos:** Supabase
+- **Base de datos:** AWS RDS PostgreSQL (ver sección BD; Supabase congelado como backup)
 - **Autenticación:** Context-based con Supabase Auth
 - **Estilos:** Tailwind CSS con dark mode
 - **Tracking:** Sistema completo de analíticas de usuario
+- **Hosting/Deploy:** **AWS ECS/Fargate** (contenedor Docker en ECR, NO Vercel). Deploy por GitHub Actions `.github/workflows/frontend-deploy.yml` (+ `backend-deploy.yml`). Variables: las `NEXT_PUBLIC_*` se inyectan como **build-args** (se inlinean en el bundle al construir la imagen); los secrets de **runtime** viven en **SSM Parameter Store** bajo `/vence-frontend/<NAME>` y el task def de ECS los referencia (helper `ensure_secret` en el workflow). AWS CLI: `aws --profile vence --region eu-west-2` (cuenta 349744179687).
 
 ## Estructura de Tests
 
