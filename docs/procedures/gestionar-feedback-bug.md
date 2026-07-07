@@ -32,6 +32,16 @@ Si el feedback es `account_deletion`, **detente y abre el manual de eliminación
 
 Si el feedback es de **facturación**, el estado real está en **Stripe**, no en la BD: `user_subscriptions`/`payment_settlements` pueden estar desincronizadas (p.ej. la BD marca la suscripción activa hasta fin de periodo cuando en Stripe ya está cerrada, o no refleja un cargo ya reembolsado). Verifica SIEMPRE facturas + charges + refunds en Stripe (`docs/procedures/reembolsos.md` §0 y TRAMPA #5) antes de prometer o diagnosticar nada.
 
+## Feedback de PRE-VENTA / conversión (usuario free preguntando por premium) — PERSONALIZAR
+
+Cuando un usuario **free** pregunta qué incluye el pago, si merece la pena, qué diferencia hay con el gratis, o dice que "está pensando en pagar" (suele venir como `other`/`suggestion`), **NO es una consulta de soporte: es una oportunidad de conversión.** No respondas genérico — **personaliza a esa persona y sus circunstancias** (aprendizaje 07/07/2026, caso Sonia González, preventa Subalterno GVA):
+
+1. **Investiga su ciudad** para proponerle **oposiciones cruzadas** de su zona: `SELECT ciudad, registration_ip, target_oposicion FROM user_profiles WHERE id=…` (si `ciudad` es null, geolocaliza la `registration_ip`). Ej.: Valencia + Subalterno GVA → sugerir Auxiliar Administrativo de la Generalitat Valenciana (C2, un nivel por encima) y del Ayuntamiento de Valencia.
+2. **Gancho estrella (lo MÁS valorado por los alumnos): estadísticas compartidas.** Buena parte del temario es **común** entre oposiciones (Constitución, Ley 39/2015, Ley 40/2015, Estatuto/Consell autonómicos, Función Pública, igualdad…). Con premium, **al practicar ese contenido común avanzas a la vez en varias oposiciones con las mismas estadísticas**: estudias una vez y progresas en varias convocatorias, multiplicando oportunidades. Enfatízalo.
+3. **Beneficios premium a nombrar** (`app/premium/page.tsx` es la fuente): preguntas/tests **ilimitados** (vs 25/día free), **lectura por voz del temario** (TTS — véndelo para estudiar en paseos/transporte público/tareas), **chat con IA ilimitado**, **acceso a todas las oposiciones a la vez**, **cursos de informática**.
+4. **Comprueba qué features APLICAN a SU oposición vs a las cruzadas — no mientas.** Ej.: los *cursos de informática* NO aplican a Subalterno GVA (su temario de informática es solo "Seguridad digital", sin ofimática), pero SÍ a Auxiliar GVA (Windows/Word/Excel) → nómbralos ahí, no como si fueran de su temario. Igual con cualquier feature: mira su temario real (`topics.epigrafe`) antes de prometer.
+5. **Responde su pregunta literal primero** (si pregunta "¿hay temario o solo tests?": sí, ambos — el temario/teoría se lee gratis, los tests son lo que premium hace ilimitado) y luego el pitch personalizado. Cierre estándar Manuel: *"Para cualquier asunto estamos a tu disposición."*
+
 ## Paso 0: ¿YA está respondido / resuelto? (mirar ANTES de redactar nada)
 
 Un feedback con `status='pending'` **NO significa que esté sin atender** — puede estar respondido y resuelto pero sin cerrar. Antes de redactar, busca la respuesta en la tabla correcta:
