@@ -86,6 +86,7 @@ export default function CompetidoresPage() {
   const [tab, setTab] = useState<Tab>('oposiciones')
   const [data, setData] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<OpoDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -118,16 +119,24 @@ export default function CompetidoresPage() {
     [],
   )
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (retry = 0) => {
+    setError(null)
+    if (retry === 0) setLoading(true)
     try {
       const headers = await getAuthHeaders()
+      // Auth aún no hidratada en el primer render → reintentar (manteniendo spinner) en vez de blanco.
+      if (!headers['Authorization']) {
+        if (retry < 3) { setTimeout(() => load(retry + 1), 1000); return }
+        setError('Sesión no lista. Pulsa Reintentar.'); setLoading(false); return
+      }
       const res = await adminFetch('/api/admin/competidores', { headers })
       const json = await res.json()
       if (json.success) setData(json)
-    } finally {
-      setLoading(false)
+      else setError(json.error || `El servidor devolvió ${res.status}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error de red')
     }
+    setLoading(false)
   }, [])
 
   // Marca señales como revisadas (id concreto, o todas si no se pasa) → recarga.
@@ -218,6 +227,18 @@ export default function CompetidoresPage() {
       </div>
 
       {loading && <p className="text-gray-500">Cargando…</p>}
+
+      {!loading && !data && (
+        <div className="text-center py-10">
+          <p className="text-red-600 dark:text-red-400 mb-3">No se pudo cargar: {error || 'sin datos'}</p>
+          <button
+            onClick={() => load()}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* POR OPOSICIÓN — el pivote */}
       {!loading && tab === 'oposiciones' && data && (
