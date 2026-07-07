@@ -63,6 +63,7 @@ import { CanaryStripeWebhookModule } from './canary-stripe-webhook/canary-stripe
 // (premium) responde 1 pregunta hardcodeada cada 5min — 288 inserts/día
 // son irrelevantes vs miles de users reales.
 import { CanaryAnswerSaveModule } from './canary-answer-save/canary-answer-save.module';
+import { CanaryAnswerPremiumModule } from './canary-answer-premium/canary-answer-premium.module';
 import { CanarySyntheticExternalModule } from './canary-synthetic-external/canary-synthetic-external.module';
 import { CanarySaveContractModule } from './canary-save-contract/canary-save-contract.module';
 // Canarios de INFRA externa (Sprint 5, 27/05/2026). Únicos canarios
@@ -162,6 +163,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CanarySmokeAuthModule, // cada 5min — login + GET /api/profile contra prod (Nivel 3)
     CanaryStripeWebhookModule, // cada 5min — evento sintético firmado a /api/stripe/webhook
     CanaryAnswerSaveModule, // cada 5min — POST sintético al endpoint más caliente
+    CanaryAnswerPremiumModule, // cada 5min — premium NUNCA bloqueado por límite (incidente 07/07)
     CanarySyntheticExternalModule, // cada 5min — check EXTERNO home+assets+health (edge)
     CanarySaveContractModule, // cada 5min — flujo cliente crear-test+guardar+VERIFICAR en RDS
     CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)

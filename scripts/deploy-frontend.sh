@@ -147,6 +147,21 @@ if [ -n "$CHUNK" ]; then
   echo "   asset ${CHUNK}=$CHUNK_CODE"
   [ "$CHUNK_CODE" = "200" ] || { echo "   ⚠️ chunk no carga vía CloudFront — revisar origin group / assets"; exit 1; }
 fi
+# Canary premium: NINGÚN endpoint de respuesta debe bloquear a un premium por el
+# límite diario. Nació del incidente 07/07/2026 — /api/answer/psychometric y
+# /api/exam/answer quedaron stale devolviendo 403 a premium, y el smoke
+# home/asset/auth no lo cazó porque no ejercía los endpoints con identidad premium.
+# Firma un token premium real y hace POST a cada endpoint aseverando NO-403-límite.
+echo "→ canary premium (403 de límite a un premium = regresión)"
+CANARY_SECRET=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-frontend/SUPABASE_JWT_SECRET" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
+if [ -n "$CANARY_SECRET" ]; then
+  SUPABASE_JWT_SECRET="$CANARY_SECRET" \
+  SMOKE_PREMIUM_USER_ID="${SMOKE_PREMIUM_USER_ID:-127063e1-1137-40ff-804d-d974818f338f}" \
+  BASE_URL=https://www.vence.es node scripts/canary-answer-premium.cjs \
+    || { echo "   ⚠️⚠️ CANARY PREMIUM ROJO — un premium está bloqueado por el límite diario. Revisar/rollback YA."; exit 1; }
+else
+  echo "   (canary premium omitido: SUPABASE_JWT_SECRET no accesible en SSM)"
+fi
 echo ""
 echo "✅ DEPLOY OK — $NEWTD"
 echo "   Gate de auth (recomendado): node scripts/fase-b-auth-surfaces-check.cjs"
