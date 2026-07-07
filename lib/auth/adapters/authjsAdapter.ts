@@ -253,10 +253,24 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
       }
     },
 
-    async signInWithIdToken(_args: SignInWithIdTokenArgs): Promise<IdTokenSignInResult> {
-      // Google One Tap (id_token) con Auth.js exige un provider Credentials/id_token
-      // dedicado → se resuelve al cablear GoogleOneTap en el flip. DORMIDO.
-      return { session: null, user: null, error: 'id_token_sign_in_not_enabled' }
+    async signInWithIdToken(args: SignInWithIdTokenArgs): Promise<IdTokenSignInResult> {
+      // Google One Tap (id_token) portado al flip Auth.js: `nextSignIn` con el
+      // provider Credentials `google-one-tap` verifica el id_token server-side
+      // (firma JWKS + aud + iss + exp + nonce + email_verified) y establece la
+      // sesión Auth.js; luego se relee. El RS256 lo acuña `/api/auth/token`.
+      try {
+        const res = await nextSignIn('google-one-tap', {
+          id_token: args.token,
+          nonce: args.nonce ?? '',
+          redirect: false,
+        })
+        if (res?.error) return { session: null, user: null, error: res.error }
+        const session = await buildSession()
+        if (!session?.user) return { session: null, user: null, error: 'no_session' }
+        return { session, user: session.user }
+      } catch (e) {
+        return { session: null, user: null, error: (e as Error)?.message || 'one_tap_failed' }
+      }
     },
 
     async completeOAuthCallback() {

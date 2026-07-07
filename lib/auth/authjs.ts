@@ -15,7 +15,9 @@
 
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
+import Credentials from 'next-auth/providers/credentials'
 import { resolveAppUserId } from './resolveAppUser'
+import { verifyGoogleIdToken } from './verifyGoogleIdToken'
 
 // En prod el client id llega inlineado como NEXT_PUBLIC_GOOGLE_CLIENT_ID
 // (build-arg); en local existe GOOGLE_CLIENT_ID. Mismo valor, no secreto.
@@ -23,18 +25,45 @@ const googleId =
   process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 const googleSecret = process.env.GOOGLE_CLIENT_SECRET
 
-const providers =
-  googleId && googleSecret
-    ? [
-        Google({
-          clientId: googleId,
-          clientSecret: googleSecret,
-          // `prompt=select_account`: paridad con el flujo Supabase previo — deja
-          // elegir cuenta en vez de reusar la sesión Google silenciosamente.
-          authorization: { params: { prompt: 'select_account' } },
-        }),
-      ]
-    : []
+const providers = []
+
+// Google redirect (OAuth code flow) — el botón "Iniciar sesión con Google".
+if (googleId && googleSecret) {
+  providers.push(
+    Google({
+      clientId: googleId,
+      clientSecret: googleSecret,
+      // `prompt=select_account`: paridad con el flujo Supabase previo — deja
+      // elegir cuenta en vez de reusar la sesión Google silenciosamente.
+      authorization: { params: { prompt: 'select_account' } },
+    }),
+  )
+}
+
+// Google One Tap / FedCM (id_token flow) — el popup automático. Auth.js NO acepta
+// un id_token en el provider Google (solo redirect), así que se porta como un
+// provider Credentials que verifica el id_token SERVER-SIDE (firma JWKS + aud + iss
+// + exp + nonce + email_verified) y devuelve el email → los MISMOS callbacks jwt/
+// session de abajo resuelven `user_profiles.id` e igualan al flujo redirect. Sin
+// esto, One Tap quedaba muerto tras el flip a Auth.js (Supabase deshabilitó
+// signInWithIdToken). Solo necesita el client id (para `aud`), no el secret.
+if (googleId) {
+  providers.push(
+    Credentials({
+      id: 'google-one-tap',
+      name: 'Google One Tap',
+      credentials: { id_token: {}, nonce: {} },
+      async authorize(creds) {
+        const idToken = typeof creds?.id_token === 'string' ? creds.id_token : ''
+        const rawNonce = typeof creds?.nonce === 'string' ? creds.nonce : undefined
+        const gUser = await verifyGoogleIdToken(idToken, rawNonce, googleId)
+        if (!gUser) return null
+        // `email` es lo único que consume el callback jwt (→ resolveAppUserId).
+        return { id: gUser.sub, email: gUser.email, name: gUser.name }
+      },
+    }),
+  )
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
