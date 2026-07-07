@@ -220,3 +220,50 @@ describe('getOrSet — singleflight (Fase 2)', () => {
     expect(mockSet).toHaveBeenCalledWith('set-key', { stats: 42 }, { ex: 120 })
   })
 })
+
+// ============================================
+// TESTS — validate guard (defensa contra colisión de clave / esquema viejo)
+// Incidente 07/07/2026: dos componentes compartían `daily_limit:${userId}` con
+// formas incompatibles; getOrSet servía el wrapper {data,ts} como si fuera el
+// DailyLimitResult → `.allowed=undefined` → 403 a premium. El guard lo impide.
+// ============================================
+
+describe('getOrSet — validate (guard de forma)', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockSet.mockClear()
+    flight.clear()
+    setEnvForTest(true)
+  })
+
+  test('cache con forma VÁLIDA → se sirve (no llama fetcher)', async () => {
+    mockGet.mockResolvedValue({ allowed: true, questionsToday: 0 })
+    const fetcher = jest.fn(async () => ({ allowed: false, questionsToday: 99 }))
+    const r = await getOrSet('k-valid', 30, fetcher, {
+      validate: (v: any) => typeof v?.allowed === 'boolean',
+    })
+    expect(r).toEqual({ allowed: true, questionsToday: 0 })
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  test('cache con forma INVÁLIDA (wrapper {data,ts}) → se descarta y recomputa', async () => {
+    // Exactamente el bug: la clave tenía {data, ts} en vez de DailyLimitResult.
+    mockGet.mockResolvedValue({ data: { allowed: true }, ts: 123 })
+    const fresh = { allowed: true, questionsToday: 0, isPremium: true }
+    const fetcher = jest.fn(async () => fresh)
+    const r = await getOrSet('k-poisoned', 30, fetcher, {
+      validate: (v: any) => typeof v?.allowed === 'boolean',
+    })
+    expect(r).toEqual(fresh) // recomputó, NO propagó el wrapper
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect((r as any).allowed).toBe(true) // nunca undefined
+  })
+
+  test('sin validate → comportamiento previo (sirve lo que haya)', async () => {
+    mockGet.mockResolvedValue({ data: { allowed: true }, ts: 123 })
+    const fetcher = jest.fn(async () => ({ allowed: true }))
+    const r = await getOrSet('k-noguard', 30, fetcher)
+    expect(r).toEqual({ data: { allowed: true }, ts: 123 })
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+})

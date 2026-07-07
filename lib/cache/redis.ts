@@ -108,6 +108,18 @@ export async function getOrSet<T>(
   key: string,
   ttlSeconds: number,
   fetcher: () => Promise<T>,
+  opts?: {
+    /**
+     * Valida la FORMA del valor cacheado antes de servirlo. Si devuelve false,
+     * la entrada se trata como MISS (se recomputa con el fetcher) en vez de
+     * propagar basura. Defensa en profundidad contra colisiones de clave /
+     * esquemas viejos (incidente 07/07/2026: dos componentes compartían la clave
+     * `daily_limit:${userId}` con formas incompatibles `{data,ts}` vs el objeto
+     * crudo; getOrSet servía el wrapper → `dailyLimit.allowed=undefined` → 403 a
+     * premium). Con validate, una forma equivocada NUNCA se propaga.
+     */
+    validate?: (value: T) => boolean
+  },
 ): Promise<T> {
   const sink = getSink()
 
@@ -121,8 +133,18 @@ export async function getOrSet<T>(
   try {
     const cached = await raceTimeout(sink.get<T>(key), REDIS_TIMEOUT_MS)
     if (cached !== TIMEOUT_SYMBOL && cached !== null && cached !== undefined) {
-      recordCacheEvent(sink, key, 'hit')
-      return cached
+      // Guard de forma: una entrada que no valida (colisión de clave / esquema
+      // viejo) se trata como miss → recomputa, no propaga basura.
+      if (!opts?.validate || opts.validate(cached as T)) {
+        recordCacheEvent(sink, key, 'hit')
+        return cached
+      }
+      // Forma inválida servida por la caché (colisión de clave / esquema viejo /
+      // drift). OBSERVABLE: lo dejamos en logs para cazarlo proactivamente en vez
+      // de esperar a que un usuario se queje (incidente 07/07/2026). Se trata como
+      // miss → recomputa.
+      console.warn(`🔴 [cache] valor con forma inválida en key "${key}" — descartado (colisión de clave o esquema viejo). Recomputando.`)
+      recordCacheEvent(sink, key, 'miss')
     }
   } catch {
     // Error de caché (network, parse) → fetcher

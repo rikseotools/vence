@@ -284,6 +284,12 @@ export async function getDailyLimitStatus(
       console.error('❌ [DailyLimit] Unexpected error:', err)
       return degradedFallback()
     }
+  }, {
+    // Defensa en profundidad: si la caché devuelve algo que NO es un
+    // DailyLimitResult (colisión de clave, esquema viejo), tratarlo como miss y
+    // recomputar — nunca propagar un objeto sin `.allowed` que bloquearía a un
+    // premium. Ver incidente 07/07/2026.
+    validate: (v) => !!v && typeof (v as DailyLimitResult).allowed === 'boolean',
   })
 }
 
