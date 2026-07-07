@@ -359,6 +359,10 @@ const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   // Estado en las convocatorias del BOE), en vez de la bandera tricolor genérica.
   // Va al final: los organismos con logo propio (AEAT, SEPE, IIPP…) se añadirán
   // ANTES con su keyword específica para tener prioridad sobre este genérico.
+  // TAI del Estado (Cuerpo Técnicos Auxiliares de Informática AGE): su slug/id no
+  // contiene 'estado', así que se mapea por su keyword específica (evita pisar las
+  // oposiciones de informática autonómicas/universitarias, que NO son del Estado).
+  [['tecnico-informatica', 'tecnico_informatica'], { src: '/escudos/escudo-espana.svg', alt: 'Escudo de España' }],
   [['estado', 'estatal', 'soivre'], { src: '/escudos/escudo-espana.svg', alt: 'Escudo de España' }],
 ]
 

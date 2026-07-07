@@ -1,0 +1,105 @@
+{
+  "slug": "tecnico-informatica",
+  "position_type": "tecnico_informatica",
+  "nombre": "Técnico Auxiliar de Informática (TAI) - Administración del Estado",
+  "subgrupo": "C1",
+  "administracion": "Estado",
+  "fuente_programa": "Resolución de 18 de diciembre de 2025, Secretaría de Estado de Función Pública. BOE-A-2025-26262 (BOE núm. 306, 22/12/2025). ANEXO V (TAI ingreso libre), punto 3 'Programa'.",
+  "convocatoria": {
+    "diario_oficial": "BOE",
+    "diario_referencia": "BOE-A-2025-26262",
+    "convocatoria_fecha": "2025-12-22",
+    "inscripcion_inicio": "2025-12-23",
+    "inscripcion_fin": "2026-01-22",
+    "exam_date": "2026-05-23",
+    "tasa_examen_libre": "15.57",
+    "plazas_libres": 1030,
+    "plazas_discapacidad": 186,
+    "plazas_promocion_interna": 340,
+    "oep_decreto": "RD 625/2023 (OEP 2023), RD 656/2024 (OEP 2024) y RD 651/2025 (OEP 2025)",
+    "oep_fecha": "2025-07-15",
+    "titulo_requerido": "Título de Bachiller o Técnico",
+    "organo": "Comisión Permanente de Selección (INAP)"
+  },
+  "examen": {
+    "ejercicio_unico": true,
+    "partes": [
+      { "nombre": "Test teórico", "preguntas": 80, "reserva": 5, "puntuacion_max": 50, "puntuacion_min": 25 },
+      { "nombre": "Supuesto práctico (elige 1 de 2, bloques III/IV)", "preguntas": 20, "reserva": 5, "puntuacion_max": 50, "puntuacion_min": 25 }
+    ],
+    "duracion_total_minutos": 120,
+    "penalizacion": "1/3 del valor del acierto; blancos no penalizan",
+    "total_puntos": 100
+  },
+  "clasificacion_0bis": {
+    "normativos_puros": 5,
+    "mixtos": 4,
+    "editorial_tecnico_puros": 24,
+    "total": 33,
+    "pct_editorial_puro": 72.7,
+    "nota": "Solo el Bloque I (9 temas, 27%) es normativo/reutilizable. Bloques II-IV (24 temas) son informática pura sin ley de respaldo. Fase 1 construye solo Bloque I; II-IV quedan disponible:false pendientes de generación IA + auditoría."
+  },
+  "bloques": [
+    {
+      "bloque": 1,
+      "titulo": "Organización del Estado y Administración electrónica",
+      "tipo": "normativo",
+      "temas": [
+        { "n": 1, "epigrafe": "La Constitución Española de 1978. Derechos y deberes fundamentales. Su garantía y suspensión. La Corona: funciones constitucionales del Rey.", "clasif": "NORMATIVO: CE 1978 (Título Preliminar, Título I, Título II)" },
+        { "n": 2, "epigrafe": "Las Cortes Generales: atribuciones del Congreso de los Diputados y del Senado. El Tribunal Constitucional: composición y atribuciones. El Defensor del Pueblo.", "clasif": "NORMATIVO: CE Título III; LO 2/1979 TC; LO 3/1981 Defensor del Pueblo" },
+        { "n": 3, "epigrafe": "El Gobierno: composición, nombramiento y cese. Las funciones del Gobierno. Relaciones entre el Gobierno y las Cortes Generales.", "clasif": "NORMATIVO: CE Títulos IV-V; Ley 50/1997 del Gobierno" },
+        { "n": 4, "epigrafe": "El texto refundido del Estatuto Básico del Empleo Público y demás normativa de aplicación: derechos y deberes, formas de provisión de puestos, promoción interna y carrera profesional; situaciones administrativas, incompatibilidades y régimen sancionador. La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno. La Agenda 2030 y los Objetivos de Desarrollo Sostenible.", "clasif": "MIXTO: TREBEP (RDLeg 5/2015) + Ley 19/2013; Agenda 2030 programática" },
+        { "n": 5, "epigrafe": "Políticas de igualdad y contra la violencia de género. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Discapacidad y dependencia: régimen jurídico.", "clasif": "NORMATIVO: LO 3/2007; LO 1/2004; Ley 4/2023; RDLeg 1/2013; Ley 39/2006" },
+        { "n": 6, "epigrafe": "La sociedad de la información. Identidad y firma electrónica: régimen jurídico. El DNI electrónico. La Agenda Digital para España.", "clasif": "MIXTO: Ley 6/2020 y Reglamento eIDAS UE 910/2014 + parte técnica/programática" },
+        { "n": 7, "epigrafe": "La protección de datos personales y su régimen jurídico: principios, derechos y obligaciones. Derechos digitales.", "clasif": "NORMATIVO: LO 3/2018 (LOPDGDD) + RGPD (UE) 2016/679" },
+        { "n": 8, "epigrafe": "Acceso electrónico de los ciudadanos a los servicios públicos y normativa de desarrollo. La gestión electrónica de los procedimientos administrativos: registros, notificaciones y uso de medios electrónicos. Esquema Nacional de Seguridad y de Interoperabilidad. Normas técnicas de Interoperabilidad.", "clasif": "MIXTO: Ley 39/2015, Ley 40/2015, RD 203/2021, ENS (RD 311/2022), ENI (RD 4/2010) + carga técnica" },
+        { "n": 9, "epigrafe": "Instrumentos para el acceso electrónico a las Administraciones públicas: sedes electrónicas, canales y puntos de acceso, identificación y autenticación. Infraestructuras y servicios comunes en materia de administración electrónica.", "clasif": "MIXTO: Ley 40/2015 arts. 38-46, RD 203/2021 + detalle técnico-administrativo" }
+      ]
+    },
+    {
+      "bloque": 2,
+      "titulo": "Tecnología básica",
+      "tipo": "editorial_tecnico",
+      "temas": [
+        { "n": 1, "epigrafe": "Informática básica. Representación y comunicación de la información: elementos constitutivos de un sistema de información. Características y funciones. Arquitectura de ordenadores. Componentes internos de los equipos microinformáticos." },
+        { "n": 2, "epigrafe": "Periféricos: conectividad y administración. Elementos de impresión. Elementos de almacenamiento. Elementos de visualización y digitalización." },
+        { "n": 3, "epigrafe": "Tipos abstractos y Estructuras de datos. Organizaciones de ficheros. Algoritmos. Formatos de información y ficheros." },
+        { "n": 4, "epigrafe": "Sistemas operativos. Características y elementos constitutivos. Sistemas Windows. Sistemas Unix y Linux. Sistemas operativos para dispositivos móviles." },
+        { "n": 5, "epigrafe": "Sistemas de gestión de bases de datos relacionales, orientados a objetos y NoSQL: características y componentes." }
+      ]
+    },
+    {
+      "bloque": 3,
+      "titulo": "Desarrollo de sistemas",
+      "tipo": "editorial_tecnico",
+      "temas": [
+        { "n": 1, "epigrafe": "Modelado de datos, metodologías y reglas. Entidades, atributos y relaciones. Diseño de bases de datos. Diseño lógico y físico. El modelo lógico relacional. Normalización." },
+        { "n": 2, "epigrafe": "Lenguajes de programación. Representación de tipos de datos. Operadores. Instrucciones condicionales. Bucles y recursividad. Procedimientos, funciones y parámetros. Vectores y registros. Estructura de un programa." },
+        { "n": 3, "epigrafe": "Lenguajes de interrogación de bases de datos. Estándar ANSI SQL. Procedimientos almacenados. Eventos y disparadores." },
+        { "n": 4, "epigrafe": "Diseño y programación orientada a objetos. Elementos y componentes software: objetos, clases, herencia, métodos, sobrecarga. Ventajas e inconvenientes. Patrones de diseño y lenguaje de modelado unificado (UML)." },
+        { "n": 5, "epigrafe": "Arquitectura Java EE/Jakarta EE y plataforma .NET: componentes, persistencia y seguridad. Características, elementos, lenguajes y funciones en ambos entornos. Desarrollo de interfaces." },
+        { "n": 6, "epigrafe": "Arquitectura de sistemas cliente/servidor y multicapas: componentes y operación. Arquitecturas de servicios web y protocolos asociados." },
+        { "n": 7, "epigrafe": "Aplicaciones web. Desarrollo web front-end y en servidor, multiplataforma y multidispositivo. Lenguajes: HTML, XML y sus derivaciones. Navegadores y lenguajes de programación web. Lenguajes de script." },
+        { "n": 8, "epigrafe": "Accesibilidad, diseño universal y usabilidad. Acceso y usabilidad de las tecnologías, productos y servicios relacionados con la sociedad de la información. Confidencialidad y disponibilidad de la información en puestos de usuario final. Conceptos de seguridad en el desarrollo de los sistemas." },
+        { "n": 9, "epigrafe": "Repositorios: estructura y actualización. Generación de código y documentación. Metodologías de desarrollo. Pruebas. Programas para control de versiones. Plataformas de desarrollo colaborativo de software." }
+      ]
+    },
+    {
+      "bloque": 4,
+      "titulo": "Sistemas y comunicaciones",
+      "tipo": "editorial_tecnico",
+      "temas": [
+        { "n": 1, "epigrafe": "Administración del Sistema operativo y software de base. Actualización, mantenimiento y reparación del sistema operativo." },
+        { "n": 2, "epigrafe": "Administración de bases de datos. Sistemas de almacenamiento y su virtualización. Políticas, sistemas y procedimientos de backup y su recuperación. Backup de sistemas físicos y virtuales. Virtualización de sistemas y virtualización de puestos de usuario." },
+        { "n": 3, "epigrafe": "Administración de servidores de correo electrónico sus protocolos. Administración de contenedores y microservicios." },
+        { "n": 4, "epigrafe": "Administración de redes de área local. Gestión de usuarios. Gestión de dispositivos. Monitorización y control de tráfico." },
+        { "n": 5, "epigrafe": "Conceptos de seguridad de los sistemas de información. Seguridad física. Seguridad lógica. Amenazas y vulnerabilidades. Técnicas criptográficas y protocolos seguros. Mecanismos de firma digital. Infraestructura física de un CPD: acondicionamiento y equipamiento. Sistemas de gestión de incidencias. Control remoto de puestos de usuario." },
+        { "n": 6, "epigrafe": "Comunicaciones. Medios de transmisión. Modos de comunicación. Equipos terminales y equipos de interconexión y conmutación. Redes de comunicaciones. Redes de conmutación y redes de difusión. Comunicaciones móviles e inalámbricas." },
+        { "n": 7, "epigrafe": "El modelo TCP/IP y el modelo de referencia de interconexión de sistemas abiertos (OSI) de ISO. Protocolos TCP/IP." },
+        { "n": 8, "epigrafe": "Internet: arquitectura de red. Origen, evolución y estado actual. Principales servicios. Protocolos HTTP, HTTPS y SSL/TLS." },
+        { "n": 9, "epigrafe": "Seguridad y protección en redes de comunicaciones. Seguridad perimetral. Acceso remoto seguro a redes. Redes privadas virtuales (VPN). Seguridad en el puesto del usuario." },
+        { "n": 10, "epigrafe": "Redes locales. Tipología. Técnicas de transmisión. Métodos de acceso. Dispositivos de interconexión." }
+      ]
+    }
+  ]
+}

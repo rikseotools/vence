@@ -373,6 +373,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'tecnico_informatica',
+      label: 'Técnico Auxiliar de Informática (TAI) del Estado',
+      data: {
+        name: 'Técnico Auxiliar de Informática (TAI) del Estado',
+        slug: 'tecnico-informatica',
+        categoria: 'C1',
+        administracion: 'Estado'
+      }
+    },
+    {
       value: 'administrativo_seguridad_social',
       label: 'Administrativo de la Seguridad Social',
       data: {

@@ -152,6 +152,97 @@ export type Oposicion = z.infer<typeof OposicionSchema>
 
 export const OPOSICIONES: Oposicion[] = [
   // ========================================
+  // TÉCNICO AUXILIAR DE INFORMÁTICA (TAI) DEL ESTADO (C1)
+  // ========================================
+  {
+    id: 'tecnico_informatica',
+    slug: 'tecnico-informatica',
+    positionType: 'tecnico_informatica',
+    examScoring: { penaltyDivisor: 3, source: 'BOE-A-2025-26262 (Cuerpo Técnicos Auxiliares de Informática AGE, ANEXO V): 1/3 del valor de una respuesta correcta; en blanco no penaliza. confidence:alta' },
+    name: 'Técnico Auxiliar de Informática (TAI) del Estado',
+    shortName: 'TAI Estado',
+    emoji: '💻',
+    badge: 'C1',
+    color: 'cyan',
+    administracion: 'estado',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Organización del Estado y Administración electrónica',
+        subtitle: 'Derecho Constitucional, empleado público y administración electrónica',
+        icon: '🏛️',
+        themes: [
+          { id: 101, name: 'La Constitución Española de 1978. La Corona', displayNumber: 1 },
+          { id: 102, name: 'Cortes Generales. Tribunal Constitucional. Defensor del Pueblo', displayNumber: 2 },
+          { id: 103, name: 'El Gobierno. Relaciones con las Cortes Generales', displayNumber: 3 },
+          { id: 104, name: 'El empleado público (TREBEP). Transparencia. Agenda 2030', displayNumber: 4 },
+          { id: 105, name: 'Igualdad, violencia de género, LGTBI, discapacidad y dependencia', displayNumber: 5 },
+          { id: 106, name: 'Sociedad de la información. Identidad y firma electrónica. DNI-e', displayNumber: 6 },
+          { id: 107, name: 'Protección de datos personales. Derechos digitales', displayNumber: 7 },
+          { id: 108, name: 'Administración electrónica: procedimiento, ENS y ENI', displayNumber: 8 },
+          { id: 109, name: 'Instrumentos de acceso electrónico. Servicios comunes', displayNumber: 9 },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Tecnología básica',
+        subtitle: 'Arquitectura, periféricos, sistemas operativos y bases de datos',
+        icon: '🖥️',
+        themes: [
+          { id: 201, name: 'Informática básica. Arquitectura de ordenadores', displayNumber: 1 },
+          { id: 202, name: 'Periféricos: impresión, almacenamiento y visualización', displayNumber: 2 },
+          { id: 203, name: 'Estructuras de datos. Ficheros. Algoritmos', displayNumber: 3 },
+          { id: 204, name: 'Sistemas operativos: Windows, Unix/Linux y móviles', displayNumber: 4 },
+          { id: 205, name: 'Sistemas de gestión de bases de datos (relacionales, OO, NoSQL)', displayNumber: 5 },
+        ],
+      },
+      {
+        id: 'bloque3',
+        title: 'Bloque III: Desarrollo de sistemas',
+        subtitle: 'Bases de datos, programación, web y metodologías',
+        icon: '💻',
+        themes: [
+          { id: 301, name: 'Modelado y diseño de bases de datos. Normalización', displayNumber: 1 },
+          { id: 302, name: 'Lenguajes de programación', displayNumber: 2 },
+          { id: 303, name: 'SQL. Procedimientos almacenados y disparadores', displayNumber: 3 },
+          { id: 304, name: 'Programación orientada a objetos. UML', displayNumber: 4 },
+          { id: 305, name: 'Java EE/Jakarta EE y plataforma .NET', displayNumber: 5 },
+          { id: 306, name: 'Arquitectura cliente/servidor y servicios web', displayNumber: 6 },
+          { id: 307, name: 'Aplicaciones web. HTML, XML y lenguajes de script', displayNumber: 7 },
+          { id: 308, name: 'Accesibilidad, usabilidad y seguridad en el desarrollo', displayNumber: 8 },
+          { id: 309, name: 'Repositorios, control de versiones y metodologías', displayNumber: 9 },
+        ],
+      },
+      {
+        id: 'bloque4',
+        title: 'Bloque IV: Sistemas y comunicaciones',
+        subtitle: 'Administración de sistemas, seguridad y redes',
+        icon: '🌐',
+        themes: [
+          { id: 401, name: 'Administración del sistema operativo y software de base', displayNumber: 1 },
+          { id: 402, name: 'Administración de bases de datos. Backup y virtualización', displayNumber: 2 },
+          { id: 403, name: 'Servidores de correo. Contenedores y microservicios', displayNumber: 3 },
+          { id: 404, name: 'Administración de redes de área local', displayNumber: 4 },
+          { id: 405, name: 'Seguridad de los sistemas. Criptografía. CPD', displayNumber: 5 },
+          { id: 406, name: 'Comunicaciones. Medios y equipos', displayNumber: 6 },
+          { id: 407, name: 'El modelo TCP/IP y el modelo OSI', displayNumber: 7 },
+          { id: 408, name: 'Internet: arquitectura, servicios y protocolos', displayNumber: 8 },
+          { id: 409, name: 'Seguridad en redes de comunicaciones. VPN', displayNumber: 9 },
+          { id: 410, name: 'Redes locales: topología y dispositivos', displayNumber: 10 },
+        ],
+      },
+    ],
+    totalTopics: 33,
+    aliases: ['tai', 'tai estado', 'tecnico auxiliar de informatica', 'tecnico informatica', 'informatica estado', 'tai age', 'c1 informatica', 'auxiliar informatica estado'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/tecnico-informatica', label: 'Mi Oposición', icon: '💻', featured: true },
+      { href: '/tecnico-informatica/temario', label: 'Temario', icon: '📚' },
+      { href: '/tecnico-informatica/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DEL ESTADO (C2)
   // ========================================
   {
