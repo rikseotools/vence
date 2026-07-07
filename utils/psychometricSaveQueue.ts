@@ -1,6 +1,8 @@
 // utils/psychometricSaveQueue.ts — Cola offline para guardar respuestas psicotécnicas
 // Mismo patrón que answerSaveQueue pero usa /api/answer/psychometric
 
+import { logClientError } from '@/lib/logClientError'
+
 const QUEUE_KEY = 'vence_psychometric_queue'
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 2000
@@ -82,9 +84,29 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
     })
 
     clearTimeout(timeoutId)
-    if (response.status === 401) return false
-    return response.ok
-  } catch {
+    if (response.ok) return true
+
+    // No-OK: leer el body para diagnóstico. AGUJERO CERRADO 07/07/2026: antes esta
+    // cola se tragaba el 403 sin loguearlo (a diferencia de answerSaveQueue) → un
+    // premium bloqueado por límite quedaba INVISIBLE en observabilidad; costó horas
+    // diagnosticarlo. Ahora se loguea con el body (sin questionsToday/dailyLimit el
+    // endpoint no los devolvía → señal de que el 403 no venía del gate esperado).
+    const errorBody = await response.text().catch(() => '')
+    if (response.status === 401) return false // token caducado → se reintenta
+    logClientError(
+      '/api/answer/psychometric',
+      new Error(`${response.status} ${response.statusText} retry #${answer.retries}: ${errorBody.slice(0, 200)}`),
+      { component: `psychometricSaveQueue syncOne ${response.status}` },
+    )
+    return false
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    // "browsing context is going away" / abort = pestaña cerrada, no es error real.
+    if (!/going away|aborted|AbortError/i.test(msg)) {
+      logClientError('/api/answer/psychometric', err instanceof Error ? err : new Error(msg), {
+        component: 'psychometricSaveQueue syncOne network',
+      })
+    }
     return false
   }
 }

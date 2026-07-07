@@ -26,6 +26,22 @@ SHA=$(git rev-parse --short HEAD)          # capturado UNA vez → sin ventana d
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
 
+# GUARDARRAÍL árbol sucio (incidente 07/07/2026): el build usa el WORKING TREE
+# (podman COPY . .), NO el commit. Si hay ficheros TRACKED modificados, la imagen
+# deploy-${SHA} NO se corresponde con el commit ${SHA} → se puede desplegar código
+# stale/WIP sin que el SHA lo delate. Justo así se colaron rutas de respuesta que
+# bloqueaban a premium y tardamos horas en verlo. Untracked (scripts sueltos) = OK.
+DIRTY=$(git status --porcelain --untracked-files=no)
+if [ -n "$DIRTY" ]; then
+  echo "⚠️  ÁRBOL SUCIO — ficheros TRACKED modificados; la imagen NO será igual al commit ${SHA}:"
+  echo "$DIRTY" | sed 's/^/     /'
+  if [ "${ALLOW_DIRTY:-0}" != "1" ]; then
+    echo "   ABORTADO. Commitea/descarta esos cambios, o repite con ALLOW_DIRTY=1 si es intencional."
+    exit 1
+  fi
+  echo "   ALLOW_DIRTY=1 → continúo pese al árbol sucio."
+fi
+
 echo "→ [1/6] build ${IMG} (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)"
 podman build \
   --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
