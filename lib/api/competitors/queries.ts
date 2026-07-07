@@ -17,18 +17,20 @@ export interface CompetitorChangesCount {
   changesCount: number
 }
 
-/** Contador para el badge del nav: cambios detectados en los últimos 7 días. */
+// Tipos de cambio ACCIONABLES (movimiento comercial). Excluye url_added y
+// url_modified: son ruido de contenido/hash (miles en backfill, refrescos de
+// plantilla). Un precio o curso nuevo emite su propio tipo, así que no se pierde.
+const BADGE_CHANGE_TYPES = ['course_added', 'course_removed', 'price_changed', 'url_removed'] as const
+
+/** Contador del badge: señales accionables SIN revisar de los últimos 7 días. */
 export async function getCompetitorChangesCount(): Promise<CompetitorChangesCount> {
   const db = getDb()
-  // Excluye url_added: en el backfill inicial se registran miles (posts/páginas)
-  // que son ruido de una vez. El badge muestra novedades accionables: cursos
-  // nuevos, cambios de precio, landings editadas o bajas. (Un curso nuevo emite
-  // course_added además de url_added, así que no se pierde.)
   const res = await db.execute(sql`
     SELECT count(*)::int AS count
     FROM competitor_changes
-    WHERE detected_at > now() - interval '7 days'
-      AND change_type <> 'url_added'
+    WHERE reviewed_at IS NULL
+      AND detected_at > now() - interval '7 days'
+      AND change_type = ANY(${BADGE_CHANGE_TYPES as unknown as string[]})
   `)
   return { success: true, changesCount: Number(rows<{ count: number }>(res)[0]?.count ?? 0) }
 }
@@ -53,6 +55,7 @@ export interface CompetitorChangeRow {
   url: string | null
   detail: Record<string, unknown> | null
   detected_at: string
+  reviewed_at: string | null
   competitor: string
 }
 
@@ -97,7 +100,9 @@ export async function getCompetitorsOverview(): Promise<CompetitorsOverview> {
         (SELECT count(*)::int FROM competitor_urls WHERE is_active) AS urls,
         (SELECT count(*)::int FROM competitor_courses WHERE is_active AND oposicion_id IS NULL) AS gaps,
         (SELECT count(*)::int FROM competitor_courses WHERE is_active AND match_method = 'needs_review') AS needs_review,
-        (SELECT count(*)::int FROM competitor_changes WHERE detected_at > now() - interval '7 days' AND change_type <> 'url_added') AS recent_changes
+        (SELECT count(*)::int FROM competitor_changes
+           WHERE reviewed_at IS NULL AND detected_at > now() - interval '7 days'
+             AND change_type = ANY(${BADGE_CHANGE_TYPES as unknown as string[]})) AS recent_changes
     `),
     // Pivote por oposición: quién prepara cada oposición nuestra + rango de cuota.
     db.execute(sql`
@@ -124,10 +129,10 @@ export async function getCompetitorsOverview(): Promise<CompetitorsOverview> {
       ORDER BY c.name
     `),
     db.execute(sql`
-      SELECT ch.id, ch.change_type, ch.url, ch.detail, ch.detected_at, c.name AS competitor
+      SELECT ch.id, ch.change_type, ch.url, ch.detail, ch.detected_at, ch.reviewed_at, c.name AS competitor
       FROM competitor_changes ch
       JOIN competitors c ON c.id = ch.competitor_id
-      ORDER BY ch.detected_at DESC
+      ORDER BY (ch.reviewed_at IS NULL) DESC, ch.detected_at DESC
       LIMIT 100
     `),
   ])
@@ -326,4 +331,26 @@ export async function searchCatalogAndGaps(q: string): Promise<CatalogSearchResu
     oposiciones: rows<CatalogSearchResult['oposiciones'][number]>(opoRes),
     gaps: rows<CatalogSearchResult['gaps'][number]>(gapRes),
   }
+}
+
+// ============================================
+// TRIAJE de señales: marcar revisadas (conserva histórico, saca del badge)
+// ============================================
+
+/**
+ * Marca señales como revisadas (`reviewed_at`). `id` marca una; sin `id` marca TODAS
+ * las accionables sin revisar (bulk). No borra: la fila queda en el log para auditoría.
+ */
+export async function acknowledgeCompetitorChanges(id?: string): Promise<number> {
+  const db = getDb()
+  if (id) {
+    await db.execute(sql`UPDATE competitor_changes SET reviewed_at = now() WHERE id = ${id} AND reviewed_at IS NULL`)
+    return 1
+  }
+  const res = await db.execute(sql`
+    UPDATE competitor_changes SET reviewed_at = now()
+    WHERE reviewed_at IS NULL
+      AND change_type = ANY(${BADGE_CHANGE_TYPES as unknown as string[]})
+  `)
+  return (res as unknown as { rowCount?: number }).rowCount ?? 0
 }

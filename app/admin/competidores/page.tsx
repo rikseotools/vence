@@ -30,7 +30,7 @@ interface Overview {
   }[]
   changes: {
     id: string; change_type: string; url: string | null
-    detail: Record<string, unknown> | null; detected_at: string; competitor: string
+    detail: Record<string, unknown> | null; detected_at: string; reviewed_at: string | null; competitor: string
   }[]
 }
 
@@ -129,6 +129,17 @@ export default function CompetidoresPage() {
       setLoading(false)
     }
   }, [])
+
+  // Marca señales como revisadas (id concreto, o todas si no se pasa) → recarga.
+  const ackChanges = useCallback(async (id?: string) => {
+    const headers = await getAuthHeaders()
+    await adminFetch('/api/admin/competidores/changes', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(id ? { id } : {}),
+    })
+    await load()
+  }, [load])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { if (tab === 'revision' && review === null) loadReview() }, [tab, review, loadReview])
@@ -352,9 +363,23 @@ export default function CompetidoresPage() {
       {/* CAMBIOS */}
       {!loading && tab === 'cambios' && data && (
         <div className="space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              El badge cuenta solo señales <b>accionables sin revisar</b> (curso/precio/baja). Marcar
+              revisado las conserva en el histórico pero las saca del badge.
+            </p>
+            {data.totals.recent_changes > 0 && (
+              <button
+                onClick={() => ackChanges()}
+                className="shrink-0 px-2.5 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              >
+                ✓ Marcar todo revisado ({data.totals.recent_changes})
+              </button>
+            )}
+          </div>
           {data.changes.length === 0 && <p className="text-sm text-gray-500">Sin cambios registrados aún.</p>}
           {data.changes.map((ch) => (
-            <div key={ch.id} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 px-3 py-1.5">
+            <div key={ch.id} className={`flex items-center gap-2 text-sm rounded border px-3 py-1.5 ${ch.reviewed_at ? 'bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 opacity-60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
               <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${CHANGE_STYLE[ch.change_type] ?? 'bg-gray-100 text-gray-700'}`}>
                 {ch.change_type}
               </span>
@@ -365,6 +390,17 @@ export default function CompetidoresPage() {
                 </a>
               )}
               <span className="text-xs text-gray-400 whitespace-nowrap">{new Date(ch.detected_at).toLocaleString('es-ES')}</span>
+              {ch.reviewed_at ? (
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 whitespace-nowrap">✓ revisado</span>
+              ) : (
+                <button
+                  onClick={() => ackChanges(ch.id)}
+                  className="shrink-0 text-xs text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                  title="Marcar revisado"
+                >
+                  ✓
+                </button>
+              )}
             </div>
           ))}
         </div>
