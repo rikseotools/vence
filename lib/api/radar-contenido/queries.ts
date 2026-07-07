@@ -45,6 +45,7 @@ export async function getRadarContenido(): Promise<RadarContenidoData> {
            media_type, like_count, comments_count, engagement, engagement_rate,
            posted_at, rank_kind, seen, fetched_at
     FROM content_radar_posts
+    WHERE posted_at > now() - interval '21 days'
     ORDER BY engagement DESC
     LIMIT 60
   `)
@@ -66,7 +67,8 @@ export interface RadarContenidoCount {
 export async function getRadarContenidoCount(): Promise<RadarContenidoCount> {
   const db = getDb()
   const res = await db.execute(sql`
-    SELECT count(*)::int AS count FROM content_radar_posts WHERE seen = false
+    SELECT count(*)::int AS count FROM content_radar_posts
+    WHERE seen = false AND posted_at > now() - interval '21 days'
   `)
   return { success: true, count: Number(rows<{ count: number }>(res)[0]?.count ?? 0) }
 }
