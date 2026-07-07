@@ -13,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0, discovered: 0 })
   const [competidorChanges, setCompetidorChanges] = useState(0)
   const [rolloverCount, setRolloverCount] = useState(0)
+  const [radarContenido, setRadarContenido] = useState(0)
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -49,6 +50,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkCompetidorChanges, 300000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkCompetidorChanges])
+
+  const checkRadarContenido = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/admin/radar-contenido/count', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setRadarContenido(json.count ?? 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    const delay = setTimeout(checkRadarContenido, 14000)
+    const interval = setInterval(checkRadarContenido, 300000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkRadarContenido])
 
   const checkRollover = useCallback(async () => {
     try {
@@ -258,6 +275,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         title="Cambios detectados en competidores (últimos 7 días)"
                       >
                         {competidorChanges > 99 ? '99+' : competidorChanges}
+                      </span>
+                    )}
+                  </a>
+                  <a
+                    href="/admin/radar-contenido"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      radarContenido > 0 ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>📡</span>
+                    <span>Radar Contenido</span>
+                    {radarContenido > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
+                        title="Recomendaciones de contenido nuevas sin ver"
+                      >
+                        {radarContenido > 99 ? '99+' : radarContenido}
                       </span>
                     )}
                   </a>
