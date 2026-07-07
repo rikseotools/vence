@@ -499,6 +499,25 @@ return () => {
 - **Desplegado front `:339` + backend** (commit `706b2dde` obs + los previos): `dispute/mark-read` agnóstico YA vivo; fix `/admin/calidad`; observabilidad de errores **100% in-house** (se retiró la dependencia SaaS de Sentry — otro proveedor menos). Detalle: `roadmap` de arquitectura nota 05/07 + memoria `project_sentry_eliminado_observabilidad_inhouse`.
 - ⚠️ **`SUPABASE_WEBHOOK_SECRET` sigue en el task def `vence-frontend:339`** (el deploy clonó el task def vivo, que aún lo lista). El código ya no lo lee → inerte, pero para limpiarlo del todo: registrar un task def sin ese `secret` + borrar el param SSM. Pendiente.
 
+## ⏳ PENDIENTE — Retirar el self-hosted pooler (`getPoolerDb`), fósil del Supavisor de Supabase
+
+**Descubierto 07/07/2026** investigando un falso incidente de límite diario (ver abajo). Es deuda de agnosticismo pura.
+
+**Qué es y por qué existía:** `db/client.ts` tiene un SEGUNDO pool, `getPoolerDb()`, gateado por `USE_SELF_HOSTED_POOLER` y apuntando a `DATABASE_URL_SELF_POOLER`. Se creó como **bypass del Supavisor de Supabase** — un PgBouncer self-hosted (Lightsail London, comentario `db/client.ts:322`) para reenrutar lecturas cuando el pooler gestionado de Supabase daba blips/503. `getDailyLimitDb()` (en `lib/api/daily-limit/queries.ts`) y ~80 ficheros de la capa de lectura ramifican por este flag.
+
+**Estado real POST-CUTOVER (verificado en SSM 07/07):**
+- `USE_SELF_HOSTED_POOLER = true`
+- `DATABASE_URL_SELF_POOLER` → **MISMO host que `DATABASE_URL`** (`vence-prod…rds.amazonaws.com`).
+- O sea: `getPoolerDb()` abre un **pool duplicado al MISMO RDS**. No hay BD distinta ni datos stale — solo maquinaria redundante (2 pools + 1 flag + 1 env var) heredada de Supabase.
+
+**Por qué importa (aprendizaje del 07/07):** al diagnosticar por qué unos premium "recibían 403 de límite", una hipótesis fue que `getDynamicLimit` (que usa `getPoolerDb`) leyera un plan_type stale de otro pool y viera al premium como free. **Falsada:** ambos pools = mismo RDS → `getDynamicLimit` lee premium igual que `get_daily_question_status` (`getAdminDb`). El pooler NO era la causa (la causa real era atribución de `user_id` por `body.userId`, ver `withErrorLogging`). Pero dejó claro que este pooler es un **punto ciego arquitectural**: dos rutas de datos que "deberían" ser equivalentes y que nadie garantiza que lo sean.
+
+**Cómo retirarlo bien (NO en caliente):**
+1. **Paso reversible inmediato:** `USE_SELF_HOSTED_POOLER=false` en SSM → `getPoolerDb()` devuelve `getDb()` de forma transparente (ya cableado, `db/client.ts`). Colapsa los 2 pools en 1 sin tocar código.
+2. **OJO CAPACIDAD (bloqueante):** hoy las ~80 lecturas van por el pool pooler; al colapsar caen todas al pool principal (`max:5`, era `max:1` workaround Supabase). Hay que **subir `max` y/o medir presión de conexiones** (`pg_stat_activity`) ANTES de flipar, o se arriesga saturación 503 (ver memoria `project_saturacion_503_pooler_parcial`).
+3. **Después (limpieza de código muerto):** borrar `getPoolerDb`/`createPoolerDbClient`/`getDailyLimitDb`/`globalForPoolerDb` + los flags `USE_SELF_HOSTED_POOLER` y `DATABASE_URL_SELF_POOLER` de SSM (backend+frontend) + el path PgBouncer en `probeDbPaths()`. Reemplazar los ~80 `getPoolerDb()` por `getDb()`.
+4. **Principio:** una sola ruta de datos = agnóstico por contrato de verdad. Dos pools "equivalentes" sin garantía es la clase de punto ciego que este proyecto quiere eliminar.
+
 ### 👉 SIGUIENTE PASO — seguir con item (1): endpoints admin con `createClient(SERVICE_ROLE)` → Drizzle
 Incremental, un endpoint por vez con el ritual C1 (verificar SQL contra RDS, typecheck, aislamiento por token/admin). Al migrarlos todos → se puede quitar `SUPABASE_SERVICE_ROLE_KEY` del frontend.
 - ✅ `dispute/mark-read` (05/07, `be39d474`, desplegado `:339`).

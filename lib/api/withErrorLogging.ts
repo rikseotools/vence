@@ -4,11 +4,12 @@
 // Para respuestas 5xx: genera un errorRef (UUID) que queda loggeado en BD y se inyecta
 // en el body de la respuesta para que el usuario lo pueda citar al soporte.
 
-import { NextResponse, after } from 'next/server'
+import { NextResponse, after, type NextRequest } from 'next/server'
 import { randomUUID } from 'crypto'
 import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
 import { emit } from '@/lib/observability/emit'
 import { extractUserIdFromRequest } from '@/lib/api/extractUserId'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 
 /**
  * Sampling rate para eventos `request_completed` 2xx/3xx (Bloque 5
@@ -72,6 +73,62 @@ export function extractTraceIds(body: Record<string, unknown> | undefined): {
 }
 
 /**
+ * Identidad para atribuir un log/evento de observabilidad.
+ *
+ * PROBLEMA que resuelve (incidente 07/07/2026): la columna `user_id` de
+ * observable_events/VLE se rellenaba con `body.userId` — lo que el CLIENTE dice
+ * ser, sin verificar. Cuando la cola offline `answerSaveQueue` reintenta
+ * respuestas viejas con un token caducado/de otra sesión, el body sigue llevando
+ * el id premium del dueño de la cola pero el servidor autentica otra identidad
+ * (free/anónima). Resultado: 403 de límite diario atribuidos a cuentas premium
+ * que en realidad NUNCA se bloquearon → falsa alarma imposible de alertar.
+ *
+ * Regla:
+ *   - `userId` autoritativo = identidad VERIFICADA del token (la misma que usó
+ *     el handler para decidir). Si no hay token válido, cae al `claimed` para no
+ *     perder la traza de GETs con `?userId=` (incidente 31/05: user_id=NULL
+ *     ocultó 478 users reales), pero marcado `userIdVerified=false`.
+ *   - `identityMismatch=true` cuando hay token verificado Y difiere del `claimed`
+ *     → señal de cola-replay / multi-cuenta / token robado, alertar sobre esto.
+ *
+ * Pura → unit-testeable sin request real.
+ */
+export interface LogIdentity {
+  userId: string | undefined
+  userIdVerified: boolean
+  claimedUserId: string | undefined
+  identityMismatch: boolean
+}
+
+export function buildLogIdentity(
+  verifiedUserId: string | null | undefined,
+  claimedUserId: string | null | undefined,
+): LogIdentity {
+  const verified = typeof verifiedUserId === 'string' && verifiedUserId.length > 0 ? verifiedUserId : undefined
+  const claimed = typeof claimedUserId === 'string' && claimedUserId.length > 0 ? claimedUserId : undefined
+  return {
+    userId: verified ?? claimed,
+    userIdVerified: verified != null,
+    claimedUserId: claimed,
+    identityMismatch: verified != null && claimed != null && verified !== claimed,
+  }
+}
+
+/**
+ * Construye la metadata de identidad que se añade a los eventos, evitando
+ * ensuciar la columna JSON cuando no hay nada que reportar (caso común:
+ * identidad verificada == claimed, o request anónima legítima).
+ */
+function identityMetadata(id: LogIdentity): Record<string, unknown> {
+  const meta: Record<string, unknown> = { userIdVerified: id.userIdVerified }
+  if (id.identityMismatch) {
+    meta.identityMismatch = true
+    if (id.claimedUserId) meta.claimedUserId = id.claimedUserId
+  }
+  return meta
+}
+
+/**
  * Envuelve un route handler para capturar y logar errores automáticamente.
  *
  * - Errores no manejados (throw sin catch): logea como critical + devuelve 500 genérico
@@ -121,6 +178,25 @@ export function withErrorLogging(
     let body: Record<string, unknown> | undefined
 
     const userAgent = request?.headers?.get?.('user-agent') ?? null
+
+    // Identidad VERIFICADA del token, resuelta perezosamente y memoizada por
+    // request. En prod (JWT_LOCAL_VERIFY_MODE=on) verifyAuthOptional verifica el
+    // JWT localmente (<5ms, sin BD, sin round-trip) → mismo id que usó el handler
+    // para decidir el límite. Sin token válido → null (actor anónimo, verdad).
+    // Defensivo: el logger es fire-and-forget, nunca debe romper por auth.
+    let _authResolved = false
+    let _authUserId: string | null = null
+    const resolveVerifiedUserId = async (): Promise<string | null> => {
+      if (_authResolved) return _authUserId
+      _authResolved = true
+      try {
+        const r = await verifyAuthOptional(request as NextRequest, endpoint)
+        _authUserId = r?.userId ?? null
+      } catch {
+        _authUserId = null
+      }
+      return _authUserId
+    }
 
     // Parsear body para POST/PUT/PATCH (contexto para logs)
     //
@@ -215,12 +291,17 @@ export function withErrorLogging(
         // user_id; testId/questionId a metadata (forense de incidentes).
         const traceIds = extractTraceIds(body)
         after(async () => {
+          // Identidad autoritativa = token verificado; `body.userId` es solo lo
+          // que el cliente CLAIMED (ver buildLogIdentity). La resolución de auth
+          // corre aquí, post-response, para no añadir latencia al happy-path.
+          const verifiedUserId = await resolveVerifiedUserId()
+          const identity = buildLogIdentity(verifiedUserId, extractUserIdFromRequest(request, body, responseBody))
           await emit({
             source: 'vercel',
             severity: timingSeverity,
             eventType: 'request_completed',
             endpoint,
-            userId: traceIds.userId,
+            userId: identity.userId,
             httpStatus: response.status,
             durationMs,
             deployVersion: DEPLOY_VERSION,
@@ -230,6 +311,7 @@ export function withErrorLogging(
               method: request?.method ?? 'GET',
               sampled: isError ? 'false' : 'true',
               errorRef: errorRef || null,
+              ...identityMetadata(identity),
               ...(traceIds.testId ? { testId: traceIds.testId } : {}),
               ...(traceIds.questionId ? { questionId: traceIds.questionId } : {}),
               ...(traceIds.questionOrder != null ? { questionOrder: traceIds.questionOrder } : {}),
@@ -271,12 +353,16 @@ export function withErrorLogging(
         // request_completed → cross-referenciable con VLE).
         const sanitizedBody = body ? sanitizeRequestBody(body) : undefined
 
-        // userId: cascada body → responseBody → query param (ver extractUserId.ts).
-        // El último paso (query param) es crítico para GETs como /api/profile —
-        // sin él el log queda con user_id=NULL y los incidentes se diagnostican
-        // a ciegas (incidente 31/05/2026: 477 errores aparentemente "anónimos"
-        // eran 478 users reales).
-        const resolvedUserId = extractUserIdFromRequest(request, body, responseBody)
+        // userId: identidad VERIFICADA del token primero (la que el handler usó
+        // para decidir), con fallback a la cascada claimed body → responseBody →
+        // query param (ver extractUserId.ts). El fallback query param es crítico
+        // para GETs como /api/profile — sin él el log queda con user_id=NULL y los
+        // incidentes se diagnostican a ciegas (incidente 31/05/2026: 477 errores
+        // aparentemente "anónimos" eran 478 users reales). El flag identityMismatch
+        // en metadata distingue actor real de identidad reclamada por el cliente
+        // (incidente 07/07: 403 de límite atribuidos a premium que nunca se bloqueó).
+        const claimedUserId = extractUserIdFromRequest(request, body, responseBody)
+        const identity = buildLogIdentity(await resolveVerifiedUserId(), claimedUserId)
 
         const logInput = {
           id: errorRef,
@@ -284,8 +370,10 @@ export function withErrorLogging(
           errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),
           errorMessage,
           questionId: (body?.questionId as string) || undefined,
-          userId: resolvedUserId,
-          requestBody: sanitizedBody,
+          userId: identity.userId,
+          requestBody: identity.identityMismatch
+            ? { ...(sanitizedBody ?? {}), _claimedUserId: identity.claimedUserId, _userIdVerified: identity.userIdVerified }
+            : sanitizedBody,
           severity: getSeverity(response.status),
           httpStatus: response.status,
           durationMs: Date.now() - startTime,
@@ -317,7 +405,7 @@ export function withErrorLogging(
     } catch (error) {
       // Error no manejado — logar como critical y devolver 500 genérico
       const errorRef = randomUUID()
-      const throwUserId = extractUserIdFromRequest(request, body, null)
+      const throwIdentity = buildLogIdentity(await resolveVerifiedUserId(), extractUserIdFromRequest(request, body, null))
       const throwErrorMessage = error instanceof Error ? error.message : String(error)
       const throwErrorStack = error instanceof Error ? error.stack : undefined
       const durationMs = Date.now() - startTime
@@ -330,8 +418,10 @@ export function withErrorLogging(
         errorMessage: throwErrorMessage,
         errorStack: throwErrorStack,
         questionId: (body?.questionId as string) || undefined,
-        userId: throwUserId,
-        requestBody: body ? sanitizeRequestBody(body) : undefined,
+        userId: throwIdentity.userId,
+        requestBody: throwIdentity.identityMismatch
+          ? { ...(body ? sanitizeRequestBody(body) : {}), _claimedUserId: throwIdentity.claimedUserId, _userIdVerified: throwIdentity.userIdVerified }
+          : (body ? sanitizeRequestBody(body) : undefined),
         severity: 'critical',
         httpStatus: 500,
         durationMs,
@@ -348,6 +438,7 @@ export function withErrorLogging(
           severity: 'error',
           eventType: 'request_completed',
           endpoint,
+          userId: throwIdentity.userId,
           httpStatus: 500,
           durationMs,
           deployVersion: DEPLOY_VERSION,
@@ -359,6 +450,7 @@ export function withErrorLogging(
             errorRef,
             errorStack: throwErrorStack?.slice(0, 2000) || null,
             capturedFromThrow: true,
+            ...identityMetadata(throwIdentity),
           },
         })
       })

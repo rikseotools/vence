@@ -188,6 +188,34 @@ export async function incrementDailyCount(
  * user excede entre miss y miss, BD bloqueará en próximo cache miss.
  * `incrementDailyCount` invalida explícitamente el cache tras cada save.
  */
+/**
+ * Decisión de límite (pura, testeable sin BD).
+ *
+ * INVARIANTE (incidente 07/07/2026): premium NUNCA se bloquea, sea cual sea el
+ * conteo. La fuente de verdad del premium es `isPremium` (que en getDailyLimitStatus
+ * viene de get_daily_question_status → getAdminDb → misma fuente que
+ * increment_daily_questions). NO se deriva de `dailyLimit`/getDynamicLimit, que lee
+ * de otro pool (getPoolerDb) y puede divergir dejando a un premium bloqueado en un
+ * flujo (psicotécnicos) mientras otro (tests normales) lo exime.
+ */
+export function computeAllowance(
+  isPremium: boolean,
+  questionsToday: number,
+  dailyLimit: number,
+): { allowed: boolean; isLimitReached: boolean; questionsRemaining: number; dailyLimit: number; isPremium: boolean } {
+  if (isPremium) {
+    return { allowed: true, isLimitReached: false, questionsRemaining: 999, dailyLimit: 999, isPremium: true }
+  }
+  const isLimitReached = questionsToday >= dailyLimit
+  return {
+    allowed: !isLimitReached,
+    isLimitReached,
+    questionsRemaining: Math.max(0, dailyLimit - questionsToday),
+    dailyLimit,
+    isPremium: false,
+  }
+}
+
 export async function getDailyLimitStatus(
   userId: string | null | undefined,
 ): Promise<DailyLimitResult> {
@@ -227,15 +255,14 @@ export async function getDailyLimitStatus(
       }
 
       const questionsToday = result.questions_today || 0
-      const remaining = Math.max(0, dynamicLimit.dailyLimit - questionsToday)
-      const isLimitReached = questionsToday >= dynamicLimit.dailyLimit
+      const allowance = computeAllowance(result.is_premium === true, questionsToday, dynamicLimit.dailyLimit)
 
       const returnValue: DailyLimitResult = {
-        allowed: !isLimitReached,
+        allowed: allowance.allowed,
         questionsToday,
-        questionsRemaining: remaining,
-        dailyLimit: dynamicLimit.dailyLimit,
-        isPremium: result.is_premium,
+        questionsRemaining: allowance.questionsRemaining,
+        dailyLimit: allowance.dailyLimit,
+        isPremium: allowance.isPremium,
         isGraduated: dynamicLimit.isGraduated,
         tierLabel: dynamicLimit.tierLabel,
       }
