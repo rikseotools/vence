@@ -1,6 +1,6 @@
 // app/api/stripe/create-checkout/route.js - CORREGIDO PARA SISTEMA DUAL
 import { NextResponse } from 'next/server'
-import { getStripeFor, newSignupAccount, priceBelongsToAccount, resolveAccount } from '@/lib/stripe'
+import { getStripeFor, newSignupAccount, priceBelongsToAccount, resolvePriceForAccount, resolveAccount } from '@/lib/stripe'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -40,16 +40,27 @@ async function _POST(request) {
     const sc = getStripeFor(targetAccount)
     console.log('🏦 Cuenta destino del checkout:', targetAccount)
 
-    // 🛡️ Guardrail anti "half-flip": el priceId entrante DEBE pertenecer a la
-    // cuenta destino. Si el flag y los NEXT_PUBLIC_* quedaran desalineados en
-    // un deploy, esto aborta en vez de crear la suscripción en la cuenta
-    // equivocada (cobraría en la cuenta que no toca).
+    // 🔀 Normalización de precio a la cuenta destino.
+    // El frontend hornea los NEXT_PUBLIC_STRIPE_PRICE_* en build-time, así que
+    // puede enviar el precio de una cuenta distinta a la que enruta el flag
+    // STRIPE_NEW_SIGNUPS_ACCOUNT en runtime (caso real 07/07: flip a 'nila' con
+    // el frontend aún horneado con precios de 'manuel' → 400 en todas las altas).
+    // En vez de rechazar (half-flip), traducimos el precio al equivalente del
+    // MISMO tier en la cuenta activa. Solo se aborta si el precio no se reconoce
+    // en NINGUNA cuenta (config realmente inválida), nunca por cobrar en la
+    // cuenta equivocada: siempre se cobra en `targetAccount`.
+    let effectivePriceId = priceId
     if (!priceBelongsToAccount(priceId, targetAccount)) {
-      console.error(`❌ priceId ${priceId} no pertenece a la cuenta destino '${targetAccount}'`)
-      return NextResponse.json(
-        { error: 'price_account_mismatch', message: 'Configuración de precio inválida para la cuenta activa.' },
-        { status: 400 }
-      )
+      const translated = resolvePriceForAccount(priceId, targetAccount)
+      if (!translated) {
+        console.error(`❌ priceId ${priceId} no reconocido en ninguna cuenta configurada`)
+        return NextResponse.json(
+          { error: 'price_account_mismatch', message: 'Configuración de precio inválida para la cuenta activa.' },
+          { status: 400 }
+        )
+      }
+      console.log(`🔀 priceId ${priceId} traducido a ${translated} para la cuenta destino '${targetAccount}'`)
+      effectivePriceId = translated
     }
 
     // 🔄 BUSCAR USUARIO CON RETRY (para evitar problemas de timing)
@@ -213,7 +224,7 @@ async function _POST(request) {
         mode: 'subscription',
         line_items: [
           {
-            price: priceId,
+            price: effectivePriceId,
             quantity: 1,
           },
         ],
@@ -237,7 +248,7 @@ async function _POST(request) {
       console.log('🔄 Creando session de Stripe (pago inmediato)...')
       // Idempotency key (bucket 1 min): dos submits del mismo (usuario, precio)
       // en el mismo minuto reusan la MISMA session en vez de crear dos.
-      const idempotencyKey = buildCheckoutIdempotencyKey(userId, priceId, Date.now())
+      const idempotencyKey = buildCheckoutIdempotencyKey(userId, effectivePriceId, Date.now())
       const session = await sc.checkout.sessions.create(sessionData, { idempotencyKey })
 
       console.log('✅ Checkout session creada:', session.id)

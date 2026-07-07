@@ -146,6 +146,40 @@ export function priceBelongsToAccount(priceId: string, account: StripeAccount): 
     || priceId === prices.semester
 }
 
+export type PriceTier = 'monthly' | 'quarterly' | 'semester'
+
+/**
+ * Devuelve el tier (mensual/trimestral/semestral) de un priceId buscándolo en
+ * TODAS las cuentas configuradas. `null` si no se reconoce en ninguna.
+ * Permite normalizar un precio sin importar de qué cuenta venga.
+ */
+export function getPriceTier(priceId: string): PriceTier | null {
+  for (const account of ALL_ACCOUNTS) {
+    const p = getPricesFor(account)
+    if (priceId === p.monthly) return 'monthly'
+    if (priceId === p.quarterly) return 'quarterly'
+    if (priceId === p.semester) return 'semester'
+  }
+  return null
+}
+
+/**
+ * Traduce un priceId al precio equivalente (mismo tier) de la cuenta indicada.
+ * Devuelve el priceId de destino, o `null` si el precio de origen no se
+ * reconoce o la cuenta destino no tiene ese tier configurado.
+ *
+ * Robustez: el frontend hornea los `NEXT_PUBLIC_STRIPE_PRICE_*` en build-time,
+ * así que puede enviar el precio de una cuenta distinta a la que enruta el flag
+ * `STRIPE_NEW_SIGNUPS_ACCOUNT` en runtime. En vez de rechazar (half-flip → 400),
+ * el checkout normaliza el precio a la cuenta activa por su tier. Escala a N
+ * cuentas y sobrevive a flips en ambos sentidos sin rebuild del frontend.
+ */
+export function resolvePriceForAccount(priceId: string, account: StripeAccount): string | null {
+  const tier = getPriceTier(priceId)
+  if (!tier) return null
+  return getPricesFor(account)[tier] ?? null
+}
+
 /**
  * Todas las cuentas que tienen webhook secret configurado, con su secret.
  * El endpoint de webhook prueba cada una para verificar la firma: la que
