@@ -3052,6 +3052,15 @@ export default function NewslettersPage() {
                         Abiertos
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Open Rate
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Clics
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        CTR
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         <div className="flex items-center justify-center gap-1">
                           <span>Muy Activos</span>
                           <div className="group relative">
@@ -3084,12 +3093,6 @@ export default function NewslettersPage() {
                             </div>
                           </div>
                         </div>
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Open Rate
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        CTR
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Acciones
@@ -3134,6 +3137,33 @@ export default function NewslettersPage() {
                           </button>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <span className={`font-semibold ${
+                            parseFloat(newsletter.stats.openRate) > 20 ? 'text-green-600 dark:text-green-400' :
+                            parseFloat(newsletter.stats.openRate) > 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-red-600 dark:text-red-400'
+                          }`}>
+                            {newsletter.stats.openRate}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <button
+                            onClick={() => loadCampaignUsers(newsletter, 'clicked', 'Clics')}
+                            className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 hover:underline font-medium"
+                            disabled={!newsletter.stats.clicked || newsletter.stats.clicked === 0}
+                          >
+                            {newsletter.stats.clicked || 0}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <span className={`font-semibold ${
+                            parseFloat(newsletter.stats.clickRate) > 5 ? 'text-green-600 dark:text-green-400' :
+                            parseFloat(newsletter.stats.clickRate) > 2 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-gray-600 dark:text-gray-400'
+                          }`}>
+                            {newsletter.stats.clickRate}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
                           <button
                             onClick={() => loadCampaignUsers(newsletter, 'opened', 'Muy activos', 'very_active')}
                             className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:underline font-medium"
@@ -3150,24 +3180,6 @@ export default function NewslettersPage() {
                           >
                             {newsletter.stats.activeOpened || 0}
                           </button>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                          <span className={`font-semibold ${
-                            parseFloat(newsletter.stats.openRate) > 20 ? 'text-green-600 dark:text-green-400' :
-                            parseFloat(newsletter.stats.openRate) > 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-red-600 dark:text-red-400'
-                          }`}>
-                            {newsletter.stats.openRate}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                          <span className={`font-semibold ${
-                            parseFloat(newsletter.stats.clickRate) > 5 ? 'text-green-600 dark:text-green-400' :
-                            parseFloat(newsletter.stats.clickRate) > 2 ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-gray-600 dark:text-gray-400'
-                          }`}>
-                            {newsletter.stats.clickRate}%
-                          </span>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
                           <button

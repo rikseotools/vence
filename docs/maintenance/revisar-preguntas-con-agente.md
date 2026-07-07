@@ -58,6 +58,19 @@ Este manual documenta cómo usar el agente de Claude Code para verificar pregunt
 
 **Una pregunta está perfecta cuando:** la respuesta correcta lo es de verdad + el artículo vinculado es el que regula la pregunta + las opciones dicen lo que dice la ley + la explicación es exacta y no afirma nada falso. **NO se exige cita byte-perfecta:** una condensación que dice lo mismo es válida (§3.2). Lo que se corrige es el error real (texto inventado, derogado, de otro artículo, verbo/plazo cambiado), no la coma de menos.
 
+> **Autocontención de siglas (mejora, no defecto que oculta):** si el enunciado usa una sigla de ley cruda (LBRL, LGP, LPAC, LRJSP, LOPDGDD, EBEP, LOREG…) sin desarrollar el nombre, **desarróllala** en su 1ª aparición con la sigla entre paréntesis ("…de la **Ley 7/1985, Reguladora de las Bases del Régimen Local (LBRL)**…") — la pregunta debe entenderse sola porque los tests salen barajados. Allowlist cruda: `CE`, `UE`, `TREBEP`, `LOPJ`, `TUE`, `TFUE`. **Excepción:** si la pregunta pide identificar la ley, no la desarrolles (cantaría la respuesta). Esto es una **mejora de calidad** (no un defecto que oculte la pregunta): aplícala al reparar, pero no bloquea la visibilidad. Regla completa en `generar-preguntas-con-ia.md` §2.2-quater. Origen: impugnación Laura García 02/07/2026.
+
+> **▶ Barrido masivo automatizado (junio 2026) — pipeline reutilizable.** El barrido de las
+> ~5.605 preguntas activas `answer_ok=false` está scriptado en `scripts/answer-review/`
+> (ver su `README.md`): `wave_extract.cjs` (extrae olas de 200, auto-avanza) → 8 agentes deep →
+> `wave_apply.cjs` (reglas: re-sellar answer-correct, needs_human dudosas, **nunca flip de clave
+> automático**). Hallazgos calibrados: banco LEGAL ≈0% clave-mala-limpia; banco CLÍNICO TCAE
+> **≈21% defectuoso** (clave contradice su artículo-fuente) → exige **DOBLE PASADA**
+> (verify + auditoría adversarial independiente + adjudicación: solo se oculta lo que AMBAS
+> confirmen). Cerrar la entrada (que el pipeline persista `options_ok` + re-endurecer el gate
+> §19): spec en `docs/roadmap/cerrar-entrada-options-ok-gate.md`. Memoria:
+> `project-answer-false-active-sweep.md`.
+
 ---
 
 ## 1. Mapeo de Oposiciones y Topics
@@ -364,6 +377,18 @@ Para esas opciones-presentadas-como-correctas, verificar que reproducen fielment
 **Por qué la calibración:** la primera versión de esta regla decía "cada opción A/B/C/D". La simulación §16.4 demostró que eso genera ~37% de falsos positivos — el agente flaggeaba distractores legítimos por no aparecer en el artículo. Un verificador que oculta preguntas buenas es peor que inútil (ver §15.8).
 
 **Cómo reportarlo:** mientras `ai_verification_results` no tenga columna propia `options_ok` (mejora de esquema **pendiente**), si una opción-presentada-como-correcta falla, la pregunta **NO es `perfect`**: el agente la enruta a `needs_review` y detalla en el campo `explanation` del INSERT qué opción y qué palabra concreta falla. En preguntas no oficiales se corrige la opción; en oficiales NO se toca el enunciado (ver manual de impugnaciones §7.3).
+
+### 3.3 ⚠️ `option_d` vacío (D=null) NO es defecto — preguntas de 3 opciones (Policía Nacional / Guardia Civil)
+
+**Regla:** una pregunta con `option_d` nula/vacía y A/B/C completas **es una pregunta válida de 3 opciones**, formato habitual del banco de Policía Nacional y Guardia Civil. **NO marcar `options_ok=false` por ello.** El único caso roto es `correct_option = 3` (la respuesta apunta a la D vacía → sin respuesta válida) → ese sí es defecto estructural.
+
+**Test correcto de `options_ok` respecto a la cuarta opción:**
+- `option_d` vacío **y** `correct_option ∈ {0,1,2}` (A/B/C) → **válida** (`options_ok=true`).
+- `option_d` vacío **y** `correct_option = 3` (D) → **rota** → `needs_review` (estructural; `approved→quarantine` es transición ILEGAL, ir vía `needs_review`).
+
+**Dato (17/06/2026):** **11,4% de todo el banco activo (10.585 de 93.013 preguntas) tiene D=null, el 100% con la respuesta en A/B/C.** Es un formato masivo y legítimo, no un error de import.
+
+**Incidente que motiva la regla:** en la QA de la estructura Min Interior/Defensa (17/06), los agentes verificadores marcaron `options_ok=false` por "D=null" y se desactivaron 81 preguntas; 80 eran preguntas válidas de 3 opciones (hubo que revertirlas a `approved`) y solo 1 estaba realmente rota (`correct_option=D`). Un verificador que oculta preguntas buenas es peor que inútil (§15.8).
 
 ## 4. Cómo Usar el Agente
 

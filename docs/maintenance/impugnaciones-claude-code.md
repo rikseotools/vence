@@ -806,6 +806,18 @@ Cuando una impugnación destapa un defecto que **puede ser sistémico** (clave i
 
 **Incidente que motiva la regla (02/06/2026 — Pilar, Galicia):** impugnación `respuesta_incorrecta` (control de la Xunta: Presidente vs Parlamento) → barrido de 48 preguntas Presidente/Parlamento del Estatuto de Galicia (limpias salvo esa) → auditoría workflow del lote completo "Aula Plus - Legislación autonómica" (2.220 preguntas, 74 agentes) → 28 hallazgos confirmados (4 clave equivocada) + descubrimiento de que 1.822/2.220 cuelgan de artículos-placeholder vacíos → gate estructural anti "false-perfect". Dos patrones sistémicos recurrentes que conviene vigilar al barrer: pregunta regional colgada de ley nacional (se cuela en bancos de otras CCAA) y cifras legales volátiles (§7.3.bis).
 
+## 7.8 ⚠️ Formato de la pregunta (nº de opciones) según la oposición — NO "arreglar" una opción D vacía sin comprobarlo (post-29/06/2026)
+
+**Regla:** una opción `D` (o `E`) **vacía/null NO es un defecto por sí sola**. Algunas oposiciones usan preguntas de **3 alternativas (A/B/C)** por diseño — sobre todo **Policía Nacional (CNP) Escala Básica**, cuyo examen oficial es de 3 opciones. Antes de añadir una 4ª opción para "completar" una pregunta, **comprueba el formato del banco/oposición**:
+
+- **Verifica el `exam_position`/`tags` de la pregunta y el formato de su oposición.** Tags tipo `["InnoTest","PN",...]` = banco de Policía Nacional = **3 opciones**. Dato real (29/06): preguntas oficiales de policía **989/991 con D vacía (99,8%)**; banco InnoTest PN **10.464/10.664 con D vacía (98%)** → 3-opciones por diseño.
+- **Si la oposición es de 3 opciones, una D null es CORRECTA.** Añadir una 4ª opción **rompe** el realismo del examen. El front ya renderiza solo las opciones no-nulas (`lib/testFetchers.ts` ~391: `[a,b,c,d,e].filter(non-null)`), así que la pregunta se muestra bien con 3.
+- **Solo añade/repara la opción D si la oposición es de 4 opciones Y la pregunta debería tenerla** (p.ej. una pregunta de auxiliar/administrativo a la que de verdad le falta una opción).
+
+**Espejismo del "leak de 3-opciones a oposiciones de 4":** una pregunta de 3-opc cuelga de un artículo compartido (CE, TUE…) y por el modelo nuclear aparece en el **pool** de muchas oposiciones (incl. de 4-opc) — eso asusta al contarlo (vi "7% del pool de aux. admin. estado son de 3-opc"). **PERO la capa de selección filtra por `exam_position` (`EXAM_POSITION_MAP` + `applyExamPositionFilter` en `testFetchers`), así que en la PRÁCTICA NO se sirven** (verificado empíricamente: usuarios de aux. admin. estado, 8.678 servidas/7d → **1 de 3-opc = 0,01%**). **Lección doble: (1) mide lo SERVIDO (`test_questions` reales por oposición), no el pool bruto por artículo; (2) no confundas "scopeada en el pool" con "mostrada al usuario".**
+
+**Incidente que motiva la regla (29/06/2026 — alba heredia, CNP):** impugnación `desacuerdo_correcta` sobre "¿órgano ejecutivo de la UE?" (clave B=Comisión, correcta; ella eligió A=Consejo Europeo, falso positivo). La pregunta tenía `D=null` y, creyéndola rota, **se le añadió una 4ª opción** ("Consejo de la UE") — ERROR: era una pregunta CNP de 3 opciones. Revertido. Journey confirmó que estaba en `/policia-nacional/test` (su oposición, 3-opc correcto). Manuel cazó el error.
+
 ## 8. Columnas de `question_disputes`
 
 | Columna | Descripción |
@@ -1419,6 +1431,8 @@ Si un email no se envía:
 > **⚠️ Gotcha recurrente — respuesta HTML 502/504 del proxy (visto 2× el 01/06/2026):** a veces `/api/v2/dispute/resolve` devuelve **HTML de error (504/502)** en lugar del JSON, porque el proxy/CDN corta por timeout **después** de que el UPDATE de la disputa ya se aplicó pero **antes** (o durante) del `sendEmailV2`. Resultado: la disputa queda `resolved`/`rejected` con `admin_response` correcto y campana enviada, **pero el email NO sale** (no hay fila en `email_events`). Síntoma desde script: `res.json()` peta con "Unexpected token '<'".
 >
 > **Workaround probado (mientras no exista el endpoint de solo-email de Fase 5):** **reabrir la disputa a `pending`** (`UPDATE question_disputes SET status='pending', admin_response=null, resolved_at=null WHERE id=...`) y **volver a llamar** a `/api/v2/dispute/resolve` con el mismo `adminResponse`. El segundo intento hace UPDATE+email limpios. Verificar SIEMPRE el resultado mirando `email_events` por el email del usuario (no fiarse del HTTP), porque el endpoint puede haber cortado aunque el cierre se aplicara. Patrón de script: si `result.emailSent !== true`, reabrir y reintentar una vez.
+>
+> **⚠️ El mismo 504 pasa en `/api/v2/feedback/respond` (feedbacks), pero el workaround NO es el mismo:** reintentar allí **DUPLICA el mensaje**, porque ese endpoint hace INSERT en `feedback_messages` (que ya commiteó) — no un UPDATE reabrible como aquí. Ver el matiz completo en `docs/procedures/gestionar-feedback-bug.md` §Paso 10 Notas.
 
 ### 15.8 Histórico: trigger de feedbacks (eliminado 14/04/2026)
 

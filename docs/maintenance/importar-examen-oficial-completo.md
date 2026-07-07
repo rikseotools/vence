@@ -43,6 +43,8 @@ Pipeline de transición automática:
 >
 > **NUNCA auto-generes la fila de verificación en el import.** La autoridad de la plantilla oficial cubre **solo** la respuesta del examen original; NO cubre: (a) errores de TU extracción del PDF (opciones cortadas/garbled, letra correcta mal leída, artefactos OCR como "CTRL+AA", imágenes no importadas), (b) **desfase por reformas** posteriores (la respuesta correcta del año del examen pudo cambiar), (c) preguntas que dependen de una imagen no importada. Todo eso solo lo caza una **auditoría independiente real** (agentes ciegos + revisión humana), que es lo único que debe escribir la fila `ai_verification_results`.
 
+> **Siglas en exámenes oficiales — NO aplica la regla de desarrollar el nombre.** La regla de autocontención de siglas (desarrollar "LBRL" → "Ley 7/1985…") de `generar-preguntas-con-ia.md` §2.2-quater e `importar-preguntas-scrapeadas.md` **NO se aplica aquí**: el enunciado oficial se conserva **literal** (misma razón que no se tocan opciones/enunciado de preguntas `is_official_exam=true`). Si el examen oficial usa una sigla cruda, se respeta tal cual. Solo se limpia basura de extracción del PDF (artefactos OCR, coletillas), nunca se reescribe el texto legal del examen.
+
 ## 0.1 Resumen de fases
 
 ```
@@ -617,6 +619,8 @@ Si el trigger rechaza una transición legítima (falso positivo: `exam_source` c
 | **Completitud** | N servidas vs **N oficiales del supuesto** (rango del header) | documentar el hueco si N<oficial; NO dar por "completo" lo que no lo está |
 
 **Incidente que motiva la sección (CARM C1 CGX00L19, 25/06/2026):** los 2 supuestos (q71-100) estaban en `exam_cases` con 0 preguntas; las 26 activas se servían huérfanas. Al re-vincular: `created_at` salió entremezclado (hubo que re-sellar), config `primera` 96→70 + `supuesto` 26 (suma 96 = total BD), y la verificación confirmó 26/26 respuestas = plantilla y enunciados intactos. **Pero completitud 26/30**: faltaban q94/98/99/100, excluidas en la import original por no cumplir el gate del artículo literal.
+
+> **⚠️ Regla — "cuestionario sin plantilla = desarrollo escrito = NO importable" (25/06/2026).** Antes de importar un 2º/3er ejercicio, comprobar si tiene **plantilla de respuestas correctas** publicada. Si solo hay "**criterios de valoración del tribunal**" (y no plantilla A/B/C/D), es un **supuesto práctico de desarrollo escrito** (redactar documentos/dictamen), corregido por el tribunal según criterios → **no es auto-corregible → no encaja en el sistema** (que necesita opciones + clave objetiva). **Caso CGX00L19 2º ejercicio** (`empleopublico.carm.es/publicaciones/35155.pdf`, 25/01/2025): "las personas opositoras realizaron los **documentos administrativos** correspondientes a los supuestos 1 y 3" — desarrollo puro, sin plantilla. **No confundir** con el supuesto-práctico-**tipo-test** embebido en el 1er ejercicio (q71-100 de CGX00L19), que SÍ tiene plantilla y SÍ es importable. La firma a buscar en el repositorio: *"plantilla de respuestas" → importable; "criterios de valoración" → no*.
 
 #### 7.4.quater.1 Recuperar las que faltan: el artículo SIEMPRE debe responder la pregunta + apoyo legal real
 
