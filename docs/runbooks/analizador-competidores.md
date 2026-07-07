@@ -15,8 +15,8 @@ Subsistema que cataloga, por cada competidor, **qué oposiciones prepara, a qué
 - **Backend:** `backend/src/competitors/` — `competitors.schema.ts`, `competitor-queries.service.ts`, `competitor-sync.service.ts` (motor), `competitors.cron.ts` (@Cron 05:00 UTC, antes del radar), `adapters/` (**1 fichero por competidor**), `sitemap.ts`, `tech-detect.ts`.
 - **Radar:** `backend/src/radar/layers/competitors/from-competitor-db.ts` (la Capa 3 lee del competitor-DB).
 - **Tablas:** `competitors`, `competitor_sources` (N fuentes/competidor + last_hash), `competitor_urls` (todas las URLs + content_hash), `competitor_courses` (1 por oposición; `oposicion_id` NULL = **gap**), `competitor_prices` (kind×audience×period×**plan** + histórico via is_current), `competitor_changes` (log).
-- **Panel:** `/admin/competidores` (oposición-céntrico, badge de cambios en el nav). Endpoints `app/api/admin/competidores/{,/oposicion,/changes-count}`. Queries `lib/api/competitors/queries.ts`.
-- **Deploy:** push a `backend/**` → GHA `backend-deploy.yml` auto-despliega ECS. **Frontend (panel) = deploy manual.**
+- **Panel:** `/admin/competidores` con pestañas **Por oposición** (buscador global + gaps), **Competidores**, **Revisión** (confirmar matches dudosos), **Cambios** (triaje de señales). Endpoints `app/api/admin/competidores/{,/oposicion,/changes-count,/search,/review,/changes}`. Queries `lib/api/competitors/queries.ts`.
+- **Deploy (⚠️ MANUAL, GHA auto-deploy DESACTIVADO — ver `docs/runbooks/deploy.md`):** backend `scripts/deploy-backend.sh` (build podman → ECR → ECS `:NN` → smoke `api.vence.es/health`); frontend `scripts/deploy-frontend.sh` (build → ECS + assets a S3). Ambos con `AWS_PROFILE=vence AWS_REGION=eu-west-2`. El matcher/sync/cron viven en el backend; el panel/badge/triaje en frontend (Next.js).
 
 ---
 
@@ -55,8 +55,8 @@ Un competidor puede tener **varias fuentes** (adams = 5 product-sitemaps → 5 f
 ```bash
 cd backend && npx tsc --noEmit -p tsconfig.json && npx jest src/competitors   # tsc + tests
 ```
-Commit **atómico** (`git add <mis-ficheros> && git commit --no-verify && git push` en UNA invocación — hay sesiones paralelas en el mismo worktree que borran lo no-commiteado; ver GOTCHA §5). Push a `backend/**` auto-despliega.
-Aplicar migración a RDS (§3) → correr sync (§2) → re-match (§2b) → verificar (§2c).
+Commit **atómico** (`git add <mis-ficheros> && git commit --no-verify && git push` en UNA invocación — hay sesiones paralelas en el mismo worktree que borran lo no-commiteado; ver GOTCHA §5).
+Aplicar migración a RDS (§3) → correr sync (§2) → re-match (§2b) → verificar (§2c) → **`scripts/deploy-backend.sh`** para que el cron use el adapter/matcher nuevos (no hay auto-deploy).
 
 ---
 
@@ -79,18 +79,27 @@ const url = fs.readFileSync('<repo>/.env.local','utf8').match(/^DATABASE_URL=(.*
 cd backend && TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node","esModuleInterop":true,"experimentalDecorators":true,"emitDecoratorMetadata":true}' \
   npx ts-node --transpile-only --skip-project scratchpad/run_sync.ts
 ```
-- `runAll()` hace TODOS los competidores; es **idempotente**. Backfill inicial capado a `MAX_COURSES_PER_RUN=150` cursos/pasada → competidores grandes (tecnoszubia 654, mad 197) necesitan varias pasadas (o el cron los completa).
+- `runAll()` hace TODOS los competidores; es **idempotente**. Backfill inicial capado a `MAX_COURSES_PER_RUN=400` cursos/pasada → competidores grandes (tecnoszubia 654, mad 197) necesitan varias pasadas (o el cron los completa).
 - **Correrlo en background** (mad/adams con miles de URLs tardan ~15 min — ver PERF §5).
 
 ### 2b. Re-match (tras añadir competidor o tocar el matcher)
-El match curso→oposición solo se recalcula al re-fetchear un curso. Para aplicar a los gaps/cursos existentes, re-match one-off: cargar `loadOposicionesForMatch()`, iterar `competitor_courses` activos, `matchCourseToOposicion(raw_name, catalog)` y `UPDATE oposicion_id`. (Ver `scratchpad/rematch_all.ts` de la sesión 06/07.)
+El match curso→oposición solo se recalcula al re-fetchear un curso. Para aplicarlo a los cursos existentes, re-match one-off: `loadOposicionesForMatch()`, iterar `competitor_courses` activos y llamar **`matchCourse(rawName, url+' '+rawName, catalog)`** → `UPDATE oposicion_id, ambito, region_slug, match_method, match_confidence, match_candidate_id`. **RESPETAR STICKY:** saltar filas con `match_method IN ('manual','confirmed')` (curación humana, nunca pisarlas). Ver `scratchpad/rematch_struct.ts`.
 
 ### 2c. Verificar
 ```sql
-SELECT c.slug, count(cc.id) cursos, count(cc.id) FILTER (WHERE cc.oposicion_id IS NOT NULL) matched
-FROM competitors c LEFT JOIN competitor_courses cc ON cc.competitor_id=c.id AND cc.is_active GROUP BY c.slug;
+SELECT match_method, count(*) FROM competitor_courses WHERE is_active GROUP BY match_method;  -- auto_structured|auto_name|needs_review|manual|confirmed|none
 SELECT count(DISTINCT oposicion_id) FROM competitor_courses WHERE oposicion_id IS NOT NULL AND is_active;
 ```
+
+### 2d. Matcher ESTRUCTURADO + revisión + triaje (07/07)
+
+**El match NO se hace por parecido de nombre** — una oposición es única por **(ámbito, región)**: "Técnico Auxiliar de Informática" del Estado ≠ de un Ayuntamiento ≠ de una Universidad.
+- **`oposicion-identity.ts`** (puro, testeado): `deriveIdentity(texto)→{ambito: estado|autonomica|local|universidad|desconocido, region}` (ruleset CCAA/local/universidad) + `identityCompatible` (**GUARDA DURA**: ámbito/región incompatibles → nunca emparejan). La identidad del curso se saca de **`url + rawName`** — la URL del competidor suele traer la administración (ADAMS `/oposiciones/generalitat-valenciana/…`).
+- **`matchCourse`** filtra por identidad ANTES del nombre; dentro compara cuerpo por tokens. Devuelve `method` + `confidence`:
+  - `auto_structured` (ámbito+región coinciden) / `auto_name` (solo ámbito) → **auto-enlaza**.
+  - `needs_review` → **NO enlaza**: candidato dudoso/ambiguo o **solape parcial** (la opo tiene una palabra que el competidor no escribe, p.ej. "Agente de la Hacienda **Pública**"). Prioridad **"no perder nada"**: nunca gap silencioso de algo plausible, nunca auto-enlace erróneo.
+- **Revisión humana:** pestaña **Revisión** del panel (o `getReviewQueue`/`confirmMatch`) → confirmar/descartar a 1 clic. Queda `confirmed`/`manual` = **STICKY**.
+- **Triaje de señales (badge):** el badge = `competitor_changes` **sin revisar** (`reviewed_at IS NULL`) y de tipo **accionable** (`course_added|course_removed|price_changed|url_removed`); `url_added`/`url_modified` (refresco de contenido) NO cuentan. Marcar revisado (`acknowledgeCompetitorChanges`, botón en pestaña Cambios) las conserva en el log pero las saca del badge. Así el badge = novedades comerciales pendientes, sin ruido recurrente.
 
 ---
 
@@ -125,7 +134,8 @@ Patrones de captura por competidor:
 - **Sesiones git paralelas en el mismo worktree** borran cambios NO commiteados (ha pasado 2×). → Commitear **atómico** (add+commit+push en una invocación); nunca dejar trabajo a medias entre pasos. Commitear **solo mis ficheros por pathspec** (nunca `git add -A`; hay mucho ajeno untracked). Usar `--no-verify` (el pre-commit corre la suite raíz que tiene fallos ajenos preexistentes).
 - **`<loc>` en CDATA** (mad/PrestaShop) → `sitemap.ts` los desenvuelve; si un competidor nuevo trae CDATA y no parsea, revisar ahí.
 - **`lastmod` string vs timestamptz**: comparar por tiempo parseado (`lastmodDiffers`), no por string, o el gateo de re-descarga se rompe (re-fetch infinito).
-- **Matcher precisión>recall**: `matchCourseToOposicion` ignora conectores (de/del/la), exige contención **inequívoca** y ≥2 tokens significativos en el nombre contenido → un genérico ("Administrativo") es **gap**, no un match falso. Un match erróneo es peor que un gap.
+- **Matcher (`matchCourse`, estructurado — ver §2d)**: identidad (ámbito/región) como guarda dura + tokens del nombre. GOTCHAS internos de `cleanName`: **singularizar en 2 pasos (-s luego -e)**, NUNCA una regla `-es` ingenua (rompía `ayudant**es**`→`ayudant`≠`ayudante`); región por **prefijo de tokens** ("cordoba-auxiliar"≈"cordoba"); expandir abreviaturas de organismo (`gva`→"generalitat valenciana"). El fallback de **solape parcial** exige ≥1 palabra **distintiva** (fuera de `GENERIC_TOKENS`: auxiliar/administrativo/tecnico…) para no proponer por solo coincidir en el rol. Precisión>recall se mantiene: dudoso → `needs_review`, nunca auto-enlace falso.
+- **Página genérica servida por producto retirado** (ADAMS sirve su "Buscador De Oposiciones" cuando un producto ya no existe) → el parser cogía ese título. Guarda en `parseAdamsCourse` (`return null` si nombre = "buscador de oposiciones"). Si un competidor nuevo hace lo mismo, añadir guarda análoga.
 - **Cloudflare** suele estar en modo CDN (el UA-bot pasa). Solo si hay challenge/403 real → headless. Si un competidor bloqueara el UA-bot, añadir UA de navegador por-competidor.
 - **gzip/brotli** (gokoan): `fetch` de Node descomprime solo; si el HTML sale binario, revisar.
 - **Robots.txt**: respetar `Disallow` (p.ej. `/api/`, `/checkout/`); no scrapear precios tras rutas bloqueadas.
@@ -137,13 +147,13 @@ Patrones de captura por competidor:
 
 ## 6. Responder "¿quién prepara la oposición X?" / comparar precios
 
-> ⚠️ **"0 competidores la tiene" es un FALSO NEGATIVO frecuente en oposiciones NICHO — NO te fíes del panel.** El analizador **SUBCUENTA** la cobertura: solo descubre lo que hay en el **sitemap** de cada competidor y respeta el tope `MAX_COURSES_PER_RUN=150`/pasada. Una oposición que un competidor vende como **producto/página suelta fuera del sitemap** (o más allá del tope) NO se captura.
+> ⚠️ **"0 competidores la tiene" es un FALSO NEGATIVO frecuente en oposiciones NICHO — NO te fíes del panel.** El analizador **SUBCUENTA** la cobertura: solo descubre lo que hay en el **sitemap** de cada competidor y respeta el tope `MAX_COURSES_PER_RUN=400`/pasada. Una oposición que un competidor vende como **producto/página suelta fuera del sitemap** (o más allá del tope) NO se captura.
 >
 > **Caso 07/07/2026 (Aux. Servicios Universidad de Murcia):** el panel decía "0 competidores" y "MAD solo tiene Limpiador/Lavandería" → **falso**. MAD la vende (`mad.es/oposiciones/244196_auxiliar-de-servicios.html`), pero (1) esa URL **no está en su sitemap** (no se descubre) y (2) `classifyMadUrl` clasificaba los `/oposiciones/<id>_slug.html` como libro (`.html → page`) **antes** de mirar `/oposiciones/` → se perdían. La capa (2) está **corregida** en `mad.ts`; la (1) (descubrimiento) sigue: para nicho el sitemap no basta.
 >
 > **Regla:** antes de concluir "no la prepara nadie" para una oposición nicho, **verifícalo en Google** ("preparación oposición X academia/curso"). Los competidores que encuentres y no tengamos → regístralos (§1). Nunca decidas un build (o su descarte) solo con el "0 competidores" del panel.
 
-- **Panel:** `/admin/competidores` → pestaña "Por oposición" → buscar → competidores + coste de cada uno.
+- **Panel:** `/admin/competidores` → "Por oposición" → buscar (insensible a acentos, cubre **TODAS** las catalogadas —con o sin competidor— **y los cursos-gap sin catalogar**, endpoint `/search` con `unaccent`) → competidores + coste. Los matches dudosos están en la pestaña **Revisión** (no se pierden como gap).
 - **SQL directo:**
 ```sql
 SELECT c.name, cc.modalidad, cc.raw_name,
