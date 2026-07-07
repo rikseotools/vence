@@ -109,6 +109,20 @@ const secrets=(td.containerDefinitions[0].secrets ||= []);
 for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT']) {
   if (!secrets.some(s=>s.name===name)) secrets.push({name, valueFrom:'arn:aws:ssm:'+REGION+':'+ACC+':parameter/vence-frontend/'+name});
 }
+// Precios Stripe en RUNTIME (server-side). getPricesFor()/priceBelongsToAccount()
+// en lib/stripe.ts los leen con acceso DINÁMICO process.env[nombre], que Next NO
+// inlinea → deben estar en el entorno de EJECUCIÓN, no solo en build (donde el
+// Dockerfile los pone en el stage builder para hornear el bundle CLIENTE, sin
+// propagarlos al runner). Sin esto, el server ve undefined y create-checkout
+// rechaza toda alta (incidente half-flip Nila 07/07). Son IDs públicos (van en el
+// bundle cliente) → environment plano, no secreto. Guarda anti-vacío.
+const env=(td.containerDefinitions[0].environment ||= []);
+for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY','NEXT_PUBLIC_STRIPE_PRICE_SEMESTER','NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA','NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA','NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA']) {
+  const val=process.env[name];
+  if (!val) { console.error('❌ falta '+name+' en el entorno del deploy (¿.env.local?)'); process.exit(1); }
+  const ex=env.find(e=>e.name===name);
+  if (ex) ex.value=val; else env.push({name, value:val});
+}
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
 fs.writeFileSync('/tmp/vence-td-new.json', JSON.stringify(td));
 "
