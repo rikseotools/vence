@@ -1,0 +1,20 @@
+# Tarea Fargate programada: pregunta del día en Instagram.
+# python:3.12-slim (Debian) + deps + fuentes por apt (fiable, no descarga) + el
+# script tal cual. Secrets como env desde SSM (task def); boto3(S3) usa task role.
+# Build context = marketing/social-content/
+FROM python:3.12-slim
+
+# Fuentes por apt (binarios reales) + colocarlas en la ruta EXACTA que espera
+# instagram_daily.py (/usr/share/fonts/open-sans/); DejaVu queda de fallback.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      fonts-open-sans fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /usr/share/fonts/open-sans \
+    && cp /usr/share/fonts/truetype/open-sans/*.ttf /usr/share/fonts/open-sans/ 2>/dev/null || true \
+    && ls -la /usr/share/fonts/open-sans/
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY instagram_daily.py .
+CMD ["python", "instagram_daily.py"]
