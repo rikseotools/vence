@@ -140,9 +140,9 @@ export default function CompetidoresPage() {
     }
   }, [])
 
-  const filtered = (data?.oposiciones ?? []).filter((o) =>
-    o.nombre.toLowerCase().includes(q.toLowerCase()),
-  )
+  // Búsqueda insensible a acentos y mayúsculas ("informatica" encuentra "Informática").
+  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const filtered = (data?.oposiciones ?? []).filter((o) => norm(o.nombre).includes(norm(q)))
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
