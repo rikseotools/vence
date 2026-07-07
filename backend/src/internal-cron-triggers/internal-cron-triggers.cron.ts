@@ -25,6 +25,7 @@ export class InternalCronTriggersCron {
   public statsDriftTickMs: number | null = null;
   public examIntegrityTickMs: number | null = null;
   public auditEstadosTickMs: number | null = null;
+  public closeInactiveFeedbackTickMs: number | null = null;
 
   constructor(
     private readonly service: InternalCronTriggersService,
@@ -35,6 +36,7 @@ export class InternalCronTriggersCron {
     heartbeatRegistry.register('trigger-check-stats-drift', () => getLastTickMsAgo(this, 'statsDriftTickMs'), daily);
     heartbeatRegistry.register('trigger-check-exam-integrity', () => getLastTickMsAgo(this, 'examIntegrityTickMs'), daily);
     heartbeatRegistry.register('trigger-audit-estados', () => getLastTickMsAgo(this, 'auditEstadosTickMs'), daily);
+    heartbeatRegistry.register('trigger-close-inactive-feedback', () => getLastTickMsAgo(this, 'closeInactiveFeedbackTickMs'), daily);
   }
 
   // 04:00 UTC — antes: .github/workflows/check-stats-drift.yml
@@ -60,6 +62,17 @@ export class InternalCronTriggersCron {
   async auditEstados(): Promise<void> {
     await runWithHeartbeat(this, 'auditEstadosTickMs', () => this.run('/api/cron/audit-estados', 'audit-estados'), {
       name: 'trigger-audit-estados',
+      observability: this.observability,
+    });
+  }
+
+  // 04:00 UTC — antes: .github/workflows/close-inactive-feedback.yml
+  // Idempotente: solo cierra conversaciones inactivas (waiting_user/open/
+  // waiting_admin); una 2ª pasada no re-cierra (ya no matchean). Sin emails.
+  @Cron('0 4 * * *', { name: 'trigger-close-inactive-feedback', timeZone: 'UTC' })
+  async closeInactiveFeedback(): Promise<void> {
+    await runWithHeartbeat(this, 'closeInactiveFeedbackTickMs', () => this.run('/api/cron/close-inactive-feedback', 'close-inactive-feedback'), {
+      name: 'trigger-close-inactive-feedback',
       observability: this.observability,
     });
   }
