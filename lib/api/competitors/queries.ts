@@ -199,7 +199,7 @@ export async function getCompetitorsForOposicion(
       FROM competitor_courses cc
       JOIN competitors c ON c.id = cc.competitor_id
       LEFT JOIN competitor_urls u ON u.id = cc.competitor_url_id
-      LEFT JOIN competitor_prices cp ON cp.competitor_course_id = cc.id AND cp.is_current
+      LEFT JOIN competitor_prices cp ON cp.competitor_course_id = cc.id AND cp.is_current AND cp.amount_cents > 0
       WHERE cc.oposicion_id = ${oposicionId} AND cc.is_active
       GROUP BY c.id, c.name, c.tipo, c.region, cc.modalidad, cc.raw_name, u.url
       ORDER BY c.name
@@ -271,4 +271,59 @@ export async function confirmCompetitorMatch(courseId: string, oposicionId: stri
         updated_at = now()
     WHERE id = ${courseId}
   `)
+}
+
+// ============================================
+// BÚSQUEDA GLOBAL: todas las catalogadas (con o sin competidor) + cursos-gap
+// ============================================
+
+export interface CatalogSearchResult {
+  success: true
+  oposiciones: {
+    oposicion_id: string; nombre: string; slug: string | null
+    coverage_level: string | null; n_competidores: number
+  }[]
+  gaps: {
+    course_id: string; competitor: string; raw_name: string
+    course_url: string | null; ambito: string | null
+  }[]
+}
+
+/**
+ * Búsqueda que NO deja gaps: matchea (insensible a acentos vía unaccent) TODAS las
+ * oposiciones catalogadas —tengan o no competidor— y además los cursos de
+ * competidores SIN catalogar (oposicion_id NULL), para que nada quede oculto. La
+ * usa el buscador del panel cuando hay término; sin término se muestra la lista
+ * corta de oposiciones-con-competidor.
+ */
+export async function searchCatalogAndGaps(q: string): Promise<CatalogSearchResult> {
+  const db = getDb()
+  const term = `%${q}%`
+  const [opoRes, gapRes] = await Promise.all([
+    db.execute(sql`
+      SELECT o.id AS oposicion_id, o.nombre, o.slug, o.coverage_level,
+        (SELECT count(DISTINCT cc.competitor_id)::int
+           FROM competitor_courses cc WHERE cc.oposicion_id = o.id AND cc.is_active) AS n_competidores
+      FROM oposiciones o
+      WHERE unaccent(lower(o.nombre)) LIKE unaccent(lower(${term}))
+      ORDER BY n_competidores DESC, o.nombre
+      LIMIT 100
+    `),
+    db.execute(sql`
+      SELECT cc.id AS course_id, c.name AS competitor, cc.raw_name,
+        u.url AS course_url, cc.ambito
+      FROM competitor_courses cc
+      JOIN competitors c ON c.id = cc.competitor_id
+      LEFT JOIN competitor_urls u ON u.id = cc.competitor_url_id
+      WHERE cc.is_active AND cc.oposicion_id IS NULL
+        AND unaccent(lower(cc.raw_name)) LIKE unaccent(lower(${term}))
+      ORDER BY c.name, cc.raw_name
+      LIMIT 100
+    `),
+  ])
+  return {
+    success: true,
+    oposiciones: rows<CatalogSearchResult['oposiciones'][number]>(opoRes),
+    gaps: rows<CatalogSearchResult['gaps'][number]>(gapRes),
+  }
 }

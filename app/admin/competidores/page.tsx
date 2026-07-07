@@ -12,6 +12,11 @@ interface ReviewItem {
   candidate_id: string | null; candidate_nombre: string | null; candidate_slug: string | null
 }
 
+interface SearchResult {
+  oposiciones: { oposicion_id: string; nombre: string; slug: string | null; coverage_level: string | null; n_competidores: number }[]
+  gaps: { course_id: string; competitor: string; raw_name: string; course_url: string | null; ambito: string | null }[]
+}
+
 interface Overview {
   totals: { competitors: number; courses: number; urls: number; gaps: number; needs_review: number; recent_changes: number }
   oposiciones: {
@@ -86,6 +91,7 @@ export default function CompetidoresPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [review, setReview] = useState<ReviewItem[] | null>(null)
   const [busyCourse, setBusyCourse] = useState<string | null>(null)
+  const [searchRes, setSearchRes] = useState<SearchResult | null>(null)
 
   const loadReview = useCallback(async () => {
     const headers = await getAuthHeaders()
@@ -126,6 +132,20 @@ export default function CompetidoresPage() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => { if (tab === 'revision' && review === null) loadReview() }, [tab, review, loadReview])
+
+  // Búsqueda global (todas las catalogadas + gaps) cuando hay término. Debounce 250ms.
+  useEffect(() => {
+    const term = q.trim()
+    if (term.length < 2) { setSearchRes(null); return }
+    let cancelled = false
+    const t = setTimeout(async () => {
+      const headers = await getAuthHeaders()
+      const res = await adminFetch(`/api/admin/competidores/search?q=${encodeURIComponent(term)}`, { headers })
+      const json = await res.json()
+      if (!cancelled && json.success) setSearchRes({ oposiciones: json.oposiciones, gaps: json.gaps })
+    }, 250)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [q])
 
   const openOposicion = useCallback(async (id: string) => {
     setDetailLoading(true)
@@ -195,33 +215,76 @@ export default function CompetidoresPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar oposición (p.ej. auxiliar administrativo Huelva)…"
+              placeholder="Buscar cualquier oposición o curso de competidor (p.ej. informatica, subalterno)…"
               className="w-full mb-3 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm"
             />
             <div className="space-y-2 max-h-[70vh] overflow-y-auto">
-              {filtered.length === 0 && (
-                <p className="text-sm text-gray-500">
-                  Ninguna oposición con competidores emparejados todavía (el matcher es conservador;
-                  los cursos sin match cuentan como <b>gaps</b>).
-                </p>
+              {/* Con término → búsqueda GLOBAL (todas las catalogadas + gaps). Sin término → lista de las que tienen competidor. */}
+              {searchRes ? (
+                <>
+                  {searchRes.oposiciones.length === 0 && searchRes.gaps.length === 0 && (
+                    <p className="text-sm text-gray-500">Nada encontrado para “{q}”.</p>
+                  )}
+                  {searchRes.oposiciones.map((o) => (
+                    <button
+                      key={o.oposicion_id}
+                      onClick={() => openOposicion(o.oposicion_id)}
+                      className={`w-full text-left px-3 py-2 rounded-md border text-sm ${
+                        selected?.oposicion?.id === o.oposicion_id
+                          ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="font-medium text-gray-900 dark:text-white">{o.nombre}</div>
+                      <div className="text-xs text-gray-500">
+                        {o.n_competidores > 0
+                          ? `${o.n_competidores} competidor${o.n_competidores === 1 ? '' : 'es'}`
+                          : 'sin competidor'}
+                        {o.coverage_level ? ` · ${o.coverage_level}` : ''}
+                      </div>
+                    </button>
+                  ))}
+                  {searchRes.gaps.length > 0 && (
+                    <div className="pt-2">
+                      <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
+                        Sin catalogar ({searchRes.gaps.length}) — lo preparan y no lo tenemos
+                      </div>
+                      {searchRes.gaps.map((g) => (
+                        <div key={g.course_id} className="px-3 py-1.5 rounded-md border border-dashed border-purple-200 dark:border-purple-900/50 bg-purple-50/40 dark:bg-purple-900/10 text-sm mb-1">
+                          <a href={g.course_url ?? '#'} target="_blank" rel="noreferrer" className="text-purple-700 dark:text-purple-300 hover:underline">{g.raw_name}</a>
+                          <span className="text-xs text-gray-500"> · {g.competitor}{g.ambito && g.ambito !== 'desconocido' ? ` · ${g.ambito}` : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {filtered.length === 0 && (
+                    <p className="text-sm text-gray-500">
+                      Escribe ≥2 letras para buscar <b>cualquier</b> oposición (catalogada o no) y también
+                      los cursos de competidores <b>sin catalogar</b>.
+                    </p>
+                  )}
+                  {filtered.map((o) => (
+                    <button
+                      key={o.oposicion_id}
+                      onClick={() => openOposicion(o.oposicion_id)}
+                      className={`w-full text-left px-3 py-2 rounded-md border text-sm ${
+                        selected?.oposicion?.id === o.oposicion_id
+                          ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="font-medium text-gray-900 dark:text-white">{o.nombre}</div>
+                      <div className="text-xs text-gray-500">
+                        {o.n_competidores} competidor{o.n_competidores === 1 ? '' : 'es'} · cuota{' '}
+                        {eur(o.cuota_min)}{o.cuota_min !== o.cuota_max ? `–${eur(o.cuota_max)}` : ''}/mes
+                      </div>
+                    </button>
+                  ))}
+                </>
               )}
-              {filtered.map((o) => (
-                <button
-                  key={o.oposicion_id}
-                  onClick={() => openOposicion(o.oposicion_id)}
-                  className={`w-full text-left px-3 py-2 rounded-md border text-sm ${
-                    selected?.oposicion?.id === o.oposicion_id
-                      ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'
-                  }`}
-                >
-                  <div className="font-medium text-gray-900 dark:text-white">{o.nombre}</div>
-                  <div className="text-xs text-gray-500">
-                    {o.n_competidores} competidor{o.n_competidores === 1 ? '' : 'es'} · cuota{' '}
-                    {eur(o.cuota_min)}{o.cuota_min !== o.cuota_max ? `–${eur(o.cuota_max)}` : ''}/mes
-                  </div>
-                </button>
-              ))}
             </div>
           </div>
 
@@ -236,14 +299,15 @@ export default function CompetidoresPage() {
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-3">{selected.oposicion?.nombre}</h3>
                 {selected.competitors.length === 0 && <p className="text-sm text-gray-500">Sin competidores emparejados.</p>}
                 <div className="space-y-3">
-                  {selected.competitors.map((c) => (
-                    <div key={c.competitor_id} className="border-b border-gray-100 dark:border-gray-700 pb-2 last:border-0">
+                  {selected.competitors.map((c, ci) => (
+                    <div key={c.course_url ?? `${c.competitor_id}-${ci}`} className="border-b border-gray-100 dark:border-gray-700 pb-2 last:border-0">
                       <div className="flex items-center justify-between">
                         <a href={c.course_url ?? '#'} target="_blank" rel="noreferrer" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
                           {c.competitor}
                         </a>
                         <span className="text-xs text-gray-400">{c.modalidad ?? ''}{c.region ? ` · ${c.region}` : ''}</span>
                       </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={c.raw_name}>{c.raw_name}</div>
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {c.prices.length === 0 && <span className="text-xs text-gray-400">sin precio detectado</span>}
                         {c.prices.map((p, i) => (
