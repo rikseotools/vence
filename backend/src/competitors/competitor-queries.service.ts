@@ -548,27 +548,44 @@ export class CompetitorQueriesService {
    * radar. Devuelve solo lo que se movió, no el catálogo entero (que sería ruido).
    */
   async getRadarCandidates(sinceDays = 7): Promise<
-    { rawName: string; url: string | null; region: string | null }[]
+    { rawName: string; url: string | null; region: string | null; nCompetitors: number }[]
   > {
-    const since = sql`now() - make_interval(days => ${sinceDays})`;
-    return this.db
-      .select({
-        rawName: competitorCourses.rawName,
-        url: competitorUrls.url,
-        region: competitors.region,
-      })
-      .from(competitorCourses)
-      .innerJoin(competitors, eq(competitorCourses.competitorId, competitors.id))
-      .leftJoin(competitorUrls, eq(competitorCourses.competitorUrlId, competitorUrls.id))
-      .where(
-        and(
-          eq(competitorCourses.isActive, true),
-          or(
-            gte(competitorCourses.firstSeenAt, since),
-            gte(competitorUrls.lastChangedAt, since),
-          ),
-        ),
-      );
+    // Candidatas a CATALOGAR = solo GAPS (oposiciones que competidores imparten y
+    // NO catalogamos). Deduplicadas por identidad (ámbito, región, nombre
+    // normalizado) con nº de competidores distintos (fuerza de la demanda), y
+    // filtrando basura de marketing (títulos de categoría/tagline mal parseados:
+    // "… Online", "…| Academia X - 93% Aprobados"). Antes emitía 1 señal por CURSO
+    // (2022 de golpe, duplicando el competitor-DB); ahora 1 por HUECO real → no se
+    // pierde ninguna señal de catalogación, pero sin ruido ni duplicación.
+    const rows = await this.db.execute(sql`
+      SELECT
+        (array_agg(cc.raw_name ORDER BY length(cc.raw_name)))[1] AS raw_name,
+        (array_agg(u.url) FILTER (WHERE u.url IS NOT NULL))[1] AS url,
+        (array_agg(c.region) FILTER (WHERE c.region IS NOT NULL))[1] AS region,
+        count(DISTINCT cc.competitor_id)::int AS n_competitors
+      FROM competitor_courses cc
+      JOIN competitors c ON c.id = cc.competitor_id
+      LEFT JOIN competitor_urls u ON u.id = cc.competitor_url_id
+      WHERE cc.is_active
+        AND cc.oposicion_id IS NULL
+        AND cc.match_method = 'none'   -- excluye needs_review (tienen candidato → no es opo nueva)
+        AND (cc.first_seen_at >= now() - make_interval(days => ${sinceDays})
+             OR u.last_changed_at >= now() - make_interval(days => ${sinceDays}))
+        AND length(cc.raw_name) BETWEEN 8 AND 90
+        AND cc.raw_name !~* '(online|aprobad|black friday|matr[ií]cula|descuento|\\||%)'
+      GROUP BY cc.ambito, cc.region_slug,
+               unaccent(lower(regexp_replace(cc.raw_name, '[^a-zA-Z0-9]+', ' ', 'g')))
+      HAVING count(DISTINCT cc.competitor_id) >= 2   -- demanda REAL (≥2 competidores)
+      ORDER BY count(DISTINCT cc.competitor_id) DESC, raw_name
+    `);
+    return (
+      rows as unknown as {
+        raw_name: string;
+        url: string | null;
+        region: string | null;
+        n_competitors: number;
+      }[]
+    ).map((r) => ({ rawName: r.raw_name, url: r.url, region: r.region, nCompetitors: r.n_competitors }));
   }
 
   // ── consulta de negocio: ¿quién prepara la oposición X? ───────────────────

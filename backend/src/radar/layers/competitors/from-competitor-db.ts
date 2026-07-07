@@ -36,8 +36,11 @@ export function makeCompetitorDbAdapter(
     regionName: 'España (competidores)',
 
     async scan(_ctx: ScanContext): Promise<RawCandidate[]> {
+      // Solo huecos (gaps) únicos a catalogar, con nº de competidores que los imparten.
       const rows = await queries.getRadarCandidates(7);
       return rows.map((r) => {
+        const demanda =
+          r.nCompetitors > 1 ? ` (${r.nCompetitors} competidores la imparten)` : ' (1 competidor la imparte)';
         const oep: RegionalOep = {
           name: r.rawName,
           positionGroup: null,
@@ -51,11 +54,11 @@ export function makeCompetitorDbAdapter(
         return {
           sourceUrl: r.url ?? 'https://www.vence.es',
           officialUrl: null,
-          text: r.rawName,
+          text: `${r.rawName}${demanda}`,
           rawName: r.rawName,
           regionName: r.region ?? null,
           preExtracted: [oep],
-          // Estable por curso → una señal por curso, dedup en pasadas siguientes.
+          // Dedup por identidad de hueco (getRadarCandidates ya agrupa) → 1 señal por oposición-gap.
           dedupeKey: `competitor:${slug(r.rawName)}`,
         };
       });
