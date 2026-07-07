@@ -95,7 +95,7 @@ export default function RadarContenidoPage() {
       {loading && <p className="text-gray-500">Cargando…</p>}
       {!loading && posts.length === 0 && (
         <p className="text-gray-500">
-          Sin datos todavía. El radar se refresca semanalmente (lunes).
+          Sin datos todavía. El radar se refresca L/X/V.
         </p>
       )}
 

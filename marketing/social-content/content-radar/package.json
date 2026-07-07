@@ -1,0 +1,6 @@
+{
+  "name": "vence-content-radar",
+  "private": true,
+  "type": "module",
+  "dependencies": { "postgres": "3.4.5" }
+}

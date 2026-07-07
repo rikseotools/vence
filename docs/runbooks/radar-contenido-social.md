@@ -31,7 +31,7 @@ Se coge **el concepto/gancho/formato**, no el asset. Siempre original.
   pregunta diaria ya hay presencia diaria; estos añaden variedad (reels, carruseles, tips,
   storytelling) sin saturar ni bajar la calidad. **Empezar en 2/semana y subir a 3-4** cuando el
   pipeline madure. El reconocimiento se construye con **constancia y estilo consistente**, no con volumen.
-- **El radar se refresca semanalmente** (lunes) — es para planificar la semana.
+- **El radar se refresca cada 2-3 días** (L/X/V) — es para planificar la semana.
 
 ## Patrones que funcionan (aprendizajes reales, 07/07/2026)
 
@@ -71,7 +71,7 @@ Muestra de 134 posts / 29 competidores en 14 días:
   fuente son los competidores de la BD, no el "siguiendo" de la cuenta.
 - **Ranking:** engagement absoluto (`likes + comments`) y **engagement rate** (`eng / followers`,
   para no premiar solo a las cuentas grandes). Ventana: últimos 7-14 días.
-- **Refresco:** tarea Fargate semanal (lunes) por EventBridge Scheduler → escribe `content_radar_posts`.
+- **Refresco:** tarea Fargate L/X/V (06:00 Madrid) por EventBridge Scheduler → escribe `content_radar_posts`.
   Mismo patrón que la pregunta del día (ver README de social-content). Token Meta en SSM `/vence-social/`.
 - **Panel:** pestaña `/admin/radar-contenido` (badge = recomendaciones nuevas sin ver).
 
@@ -81,7 +81,7 @@ Muestra de 134 posts / 29 competidores en 14 días:
 |---|---|
 | Handles competidores | `competitors.instagram` (RDS) |
 | Datos del radar | tabla `content_radar_posts` (RDS) |
-| Refresco semanal | tarea Fargate `vence-content-radar` + EventBridge (lunes) |
+| Refresco L/X/V | tarea Fargate `vence-content-radar` + EventBridge (L/X/V 06:00 Madrid) |
 | Token Meta | SSM `/vence-social/META_ADS_ACCESS_TOKEN`, `/vence-social/META_IG_USER_ID` |
 | Panel | `/admin/radar-contenido` |
 | Publicación propia | `marketing/social-content/` (pregunta del día = plantilla del pipeline) |
