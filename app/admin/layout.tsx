@@ -14,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [competidorChanges, setCompetidorChanges] = useState(0)
   const [rolloverCount, setRolloverCount] = useState(0)
   const [radarContenido, setRadarContenido] = useState(0)
+  const [contenidoAlerts, setContenidoAlerts] = useState(0)
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -66,6 +67,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkRadarContenido, 300000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkRadarContenido])
+
+  const checkContenido = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/admin/contenido/count', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setContenidoAlerts(json.count ?? 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    const delay = setTimeout(checkContenido, 16000)
+    const interval = setInterval(checkContenido, 300000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkContenido])
 
   const checkRollover = useCallback(async () => {
     try {
@@ -292,6 +309,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         title="Recomendaciones de contenido nuevas sin ver"
                       >
                         {radarContenido > 99 ? '99+' : radarContenido}
+                      </span>
+                    )}
+                  </a>
+                  <a
+                    href="/admin/contenido"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      contenidoAlerts > 0 ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>📊</span>
+                    <span>Contenido</span>
+                    {contenidoAlerts > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
+                        title="Oposiciones con temas en desarrollo (0 preguntas)"
+                      >
+                        {contenidoAlerts > 99 ? '99+' : contenidoAlerts}
                       </span>
                     )}
                   </a>
