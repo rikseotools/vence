@@ -150,7 +150,8 @@ FASE 4: Config y schemas       → oposiciones.ts, archivos manuales, logo/bande
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
 FASE 6: Verificacion           → Build, tests, funcional, revalidar caches
         └─ 6.0: npm run audit:oposicion <slug>  → REEVALUACIÓN INDEPENDIENTE de completitud (obligatoria, gate)
-        └─ 6.1: npm run audit:served <slug>     → cobertura REAL vía fetcher de producción (obligatoria, gate; exit 1 si un tema disponible sirve 0q)
+        └─ 6.05: REFRESCAR MATERIALIZED VIEWS   → SELECT public.refresh_topic_question_summary(); (OBLIGATORIO — ver §6.bis)
+        └─ 6.1: npm run audit:served <slug>     → cobertura REAL vía fetcher de producción (obligatoria, gate; exit 1 si un tema disponible sirve 0q o si la MV está stale)
 FASE 7: Examenes oficiales     → exam_position, hot_articles, mapas (si aplica)
 FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook google-ads-analisis §Crear campaña
 ```
@@ -168,6 +169,20 @@ FASE 8: Campaña Google Ads     → captación (tras is_active=true); runbook go
 > #   → lanzar N agentes en paralelo (un subconjunto de temas c/u) que juzgan: (1) fidelidad scope↔epígrafe, (2) corrección de cada pregunta vs su artículo. El prompt lo imprime el prep.
 > ```
 > **El script NO sustituye a los agentes ni viceversa**: el script confirma que TODO está presente y bien cableado (determinista, no olvida); los agentes detectan lo que un script no puede leer — p.ej. que un tema con scope+preguntas (✅ para el script) NO cubre una sub-materia del epígrafe (caso real Córdoba T10 Agenda 2030 / T11 derecho de petición / T13 archivos). Completitud→script, corrección→agentes. Scripts: `scripts/audit-oposicion-completa.ts`, `scripts/audit-oposicion-contenido-prep.ts`.
+
+> ### 🔴 §6.bis — REFRESCAR LAS MATERIALIZED VIEWS antes del go-live (OBLIGATORIO)
+>
+> **En prod `TOPIC_MV_ENABLED=true`**: el **hub de tests** (`getThemeQuestionCounts` → `/[slug]/test`) lee el conteo por tema de la **materialized view** `topic_law_question_summary`, NO en vivo. Una oposición **recién creada NO está en la MV** hasta que se refresque (el cron `RefreshTopicSummaryCron` lo hace a las 03:30 UTC). Hasta entonces, **todos sus temas salen "En desarrollo"** en el hub aunque tengan miles de preguntas y `getTopicFullData` las sirva.
+>
+> **Por eso, tras crear/modificar el scope de una oposición, ejecutar SIEMPRE:**
+> ```bash
+> node -e "require('dotenv').config({path:'.env.local'});const s=require('postgres')(process.env.DATABASE_URL,{prepare:false,max:1,ssl:{rejectUnauthorized:false}});s\`SELECT public.refresh_topic_question_summary()\`.then(()=>{console.log('MV refrescada');return s.end()})"
+> ```
+> Luego invalidar el tag: `curl -X POST .../api/admin/revalidate -d '{"tag":"test-counts"}'` (ya es cross-instancia, ver `cache-revalidation.md`).
+>
+> **`npm run audit:served` es GATE de esto** (post-07/07): con `TOPIC_MV_ENABLED=true`, si un tema `disponible=true` sirve preguntas por `getTopicFullData` pero la MV le da 0 → **exit 1** con el mensaje "saldría En desarrollo — ejecuta refresh_topic_question_summary()". Corre `TOPIC_MV_ENABLED=true npm run audit:served <slug>` antes de `is_active=true`.
+>
+> **Incidente que motiva la regla (07/07/2026 — TAI del Estado):** TAI (Bloque I, 7.385 preguntas) salió "En desarrollo" en el hub tras el go-live. `audit:served` daba verde (usa `getTopicFullData`, no la MV). Causa: la MV no incluía a TAI (creada ese día). Fix: refresh MV + el gate MV de arriba. Detalle: `cache-revalidation.md §Materialized views`.
 
 ---
 

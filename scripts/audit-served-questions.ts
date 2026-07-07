@@ -36,9 +36,28 @@ async function activeSlugs(): Promise<string[]> {
   return data.map((o: any) => o.slug)
 }
 
+// ¿Está el fast-path de materialized views activo en producción? El hub de tests
+// (getThemeQuestionCounts) lee de la MV topic_law_question_summary cuando
+// TOPIC_MV_ENABLED=true. Si la MV está desactualizada (p.ej. oposición recién
+// creada, MV no refrescada), un tema con preguntas sale "En desarrollo" en el hub
+// aunque getTopicFullData sí las sirva. Este gate lo caza. Ver incidente TAI 07/07.
+const MV_ENABLED = process.env.TOPIC_MV_ENABLED === 'true'
+
+// total de preguntas que la MV atribuye a un topic (igual que getThemeCountsFromMV).
+async function mvTotalForTopic(topicId: string): Promise<number | null> {
+  try {
+    const r = await rows(sql`
+      SELECT COALESCE(sum(total_questions), 0)::int AS total
+      FROM topic_law_question_summary WHERE topic_id = ${topicId}`)
+    return r[0]?.total ?? 0
+  } catch {
+    return null // MV inexistente en este entorno → no bloquear por ella
+  }
+}
+
 async function auditOposicion(slug: string): Promise<void> {
   const topics = await rows(sql`
-    SELECT topic_number, title, disponible, position_type
+    SELECT id, topic_number, title, disponible, position_type
     FROM topics
     WHERE position_type = ${slug.replace(/-/g, '_')} AND is_active = true
     ORDER BY topic_number`)
@@ -65,6 +84,16 @@ async function auditOposicion(slug: string): Promise<void> {
       findings.push(`  ❌ T${t.topic_number}: getTopicFullData THREW — ${e?.message || e}`)
       fails++
       continue
+    }
+
+    // Gate MV: si el hub lee de la MV (prod) y ésta está stale, el tema saldría
+    // "En desarrollo" aunque getTopicFullData sí sirva. Cazarlo antes del go-live.
+    if (MV_ENABLED && t.disponible && served > 0) {
+      const mvTotal = await mvTotalForTopic(t.id)
+      if (mvTotal === 0) {
+        findings.push(`  ❌ T${t.topic_number} sirve ${served}q pero la MV da 0 → saldría "En desarrollo" en el hub. Ejecuta: SELECT public.refresh_topic_question_summary();`)
+        fails++
+      }
     }
 
     if (served === 0 && t.disponible) {
