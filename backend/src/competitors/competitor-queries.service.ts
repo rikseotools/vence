@@ -29,10 +29,14 @@ function cleanName(s: string): string {
     .replace(/\bgva\b/g, 'generalitat valenciana')
     .replace(/\bcam\b/g, 'comunidad madrid')
     .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
-    // Singularizar tokens largos (simétrico → solo aumenta matches). Maneja plural
-    // de vocal (-s: "subalternos"→"subalterno") y de consonante (-es:
-    // "auxiliares"→"auxiliar", "generales"→"general").
-    .replace(/\b([a-z]{4,}?)(es|s)\b/g, '$1')
+    // Singularizar de forma simétrica en dos pasos: quitar '-s' y luego '-e'. Así
+    // ambos tipos de plural español convergen al MISMO stem sin ambigüedad:
+    //   auxiliar/auxiliares → auxiliar (·s→auxiliare ·e→auxiliar)
+    //   ayudante/ayudantes  → ayudant  (·s→ayudante  ·e→ayudant)
+    //   institucion/instituciones, subalterno/subalternos, agente/agentes…
+    // (una regla '-es' ingenua rompía "ayudantes"→"ayudant"≠"ayudante".)
+    .replace(/\b([a-z]{4,})s\b/g, '$1')
+    .replace(/\b([a-z]{4,})e\b/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
 }

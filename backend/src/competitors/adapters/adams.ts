@@ -67,6 +67,9 @@ export function parseAdamsCourse(url: string, html: string): ParsedCourse | null
   const ld = parseAdamsJsonLd(html);
   const name = ld.name || nameFromTitle(html) || nameFromSlug(url);
   if (!name) return null;
+  // Producto retirado → ADAMS sirve su página de buscador (título genérico). No es
+  // un curso real: descartar para no ensuciar el catálogo.
+  if (/^buscador de oposiciones$/i.test(name.trim())) return null;
   const prices: ParsedPrice[] =
     ld.priceCents != null
       ? [{ kind: 'curso', audience: null, amountCents: ld.priceCents, period: 'unico', raw: `${ld.priceCents / 100}€` }]

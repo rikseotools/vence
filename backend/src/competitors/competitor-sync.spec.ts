@@ -29,6 +29,11 @@ describe('matchCourse (identidad estructurada + nombre)', () => {
     expect(svc.matchCourse('Subalterno GVA', 'https://x.com/oposiciones/generalitat-valenciana/subalterno Subalterno GVA', cat).oposicionId).toBe('op-sub-gva'); // abreviatura
   });
 
+  it('plural de vocal+s no rompe el stem (ayudantes ≈ ayudante)', () => {
+    const cat = [buildOposicionMatch({ id: 'iipp', nombre: 'Ayudante de Instituciones Penitenciarias', shortName: null, administracion: 'Estado' })];
+    expect(svc.matchCourse('Ayudantes de Instituciones Penitenciarias', 'Ayudantes de Instituciones Penitenciarias', cat).oposicionId).toBe('iipp');
+  });
+
   // La guarda de ámbito: el fallo Estado↔local que motivó todo esto.
   it('un curso LOCAL no empareja una oposición de Estado (guarda de ámbito)', () => {
     const cat = [buildOposicionMatch({ id: 'tai-estado', nombre: 'Técnico Auxiliar de Informática', shortName: null, administracion: 'Estado' })];
