@@ -95,10 +95,17 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY=${{ secrets.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY }}
-            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY=${{ secrets.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY }}
-            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER=${{ secrets.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER }}
+            # FLIP HECHO 07/07: las VENTAS (altas nuevas) van a la cuenta Nila.
+            # Estos NEXT_PUBLIC (publishable + price IDs) son PÚBLICOS → literales
+            # de Nila, como los flags de auth/Turnstile (no dependen de GH secrets;
+            # un dispatch manual siempre construye el bundle correcto). El server
+            # enruta con STRIPE_NEW_SIGNUPS_ACCOUNT=nila (SSM). Manuel = SOLO
+            # renovaciones (Stripe las cobra solo; STRIPE_SECRET_KEY sigue Manuel).
+            # REVERTIR: volver a los valores de Manuel + SSM flag=manuel + redeploy.
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51TogG60lMFwxldqjmLLugM5JDwofbgLMpwYZjCzFG7xC7Meq4kvo0ZFQYtZ09paZkqEL7x794hBUXoPsTo2Lj0Rl00fmV8SVBv
+            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY=price_1TqSPq0lMFwxldqjrrnma6dl
+            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY=price_1TqSPr0lMFwxldqjEnCjVVHE
+            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER=price_1TqSPr0lMFwxldqjEHvGxF9k
             # Stripe cuenta Nila (altas nuevas). publishable + price IDs son
             # PÚBLICOS (van en el bundle) → literales, como la Turnstile site key.
             # El desvío de altas lo decide STRIPE_NEW_SIGNUPS_ACCOUNT (SSM, runtime);

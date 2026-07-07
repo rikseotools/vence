@@ -37,6 +37,13 @@ interface AccountEnv {
 
 // Mapa cuenta → nombres de variables de entorno. Es el ÚNICO sitio que sabe
 // qué env pertenece a qué cuenta. Añadir una cuenta = añadir una fila aquí.
+//
+// NOTA POST-FLIP (07/07): las VENTAS van a 'nila'. Las 4 NEXT_PUBLIC_STRIPE_*
+// sin sufijo (publishable + prices) apuntan ahora a los VALORES de Nila (=la
+// cuenta de checkout ACTIVA del cliente). Por eso 'manuel' abajo las mapea pero
+// esos campos quedan LEGACY/no usados: Manuel ya no recibe altas nuevas, solo
+// renueva. getStripeFor('manuel') solo depende de su secretKey/webhookSecret
+// (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET), que SIGUEN siendo de Manuel.
 const ACCOUNT_ENV: Record<StripeAccount, AccountEnv> = {
   manuel: {
     secretKey: 'STRIPE_SECRET_KEY',
