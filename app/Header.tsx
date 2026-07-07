@@ -327,13 +327,6 @@ export default function HeaderES() {
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = (): NavLink[] => {
     const defaultSlug = ALL_OPOSICION_SLUGS[0]
-    // Enlaces que NO dependen de la oposición (siempre visibles).
-    const commonLinks: NavLink[] = [
-      { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
-      { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-      { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
-    ]
 
     // Slug de la oposición del usuario desde oposicionId (FUENTE DE VERDAD). Con la
     // pre-hidratación de OposicionContext, oposicionId ya está disponible durante
@@ -341,6 +334,21 @@ export default function HeaderES() {
     const oposicionId = oposicionContext?.oposicionId
     const opoSlug = oposicionId ? getOposicion(oposicionId)?.slug : null
     const opoResolved = !!opoSlug && ALL_OPOSICION_SLUGS.includes(opoSlug)
+
+    // Psicotécnicos: SOLO si el examen de la oposición del usuario lo incluye
+    // (flag `hasPsychometricTest` del config, verificado por oposición). Oposición
+    // efectiva: la resuelta; si aún carga, ninguna (se omite hasta resolver, como
+    // Test/Temario); si no hay oposición, la flagship por defecto.
+    const effectiveSlug = opoResolved ? opoSlug : (loading ? null : defaultSlug)
+    const hasPsico = !!(effectiveSlug && getOposicion(effectiveSlug)?.hasPsychometricTest)
+
+    // Enlaces que NO dependen de la oposición (siempre visibles), + psicotécnicos condicional.
+    const commonLinks: NavLink[] = [
+      { href: '/leyes', label: 'Leyes', icon: '⚖️' },
+      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
+      ...(hasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
+      { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
+    ]
 
     // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
     if (opoResolved) {
@@ -371,12 +379,13 @@ export default function HeaderES() {
   // Enlaces para usuarios NO logueados
   const getGuestNavLinks = (): NavLink[] => {
     const guestSlug = ALL_OPOSICION_SLUGS[0]
+    const hasPsico = !!getOposicion(guestSlug)?.hasPsychometricTest
     return [
       { href: `/${guestSlug}/test`, label: 'Test', icon: '🎯' },
       { href: `/${guestSlug}/temario`, label: 'Temario', icon: '📚' },
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
-      { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
+      ...(hasPsico ? [{ href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
   }

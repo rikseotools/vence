@@ -250,6 +250,7 @@ export const OPOSICIONES: Oposicion[] = [
     slug: 'auxiliar-administrativo-estado',
     positionType: 'auxiliar_administrativo_estado',
     examScoring: { penaltyDivisor: 3, source: 'BOE-A-2024-14098 (Cuerpo Auxiliar AGE): 1/3 del valor de una respuesta correcta; en blanco no penaliza. confidence:alta' },
+    hasPsychometricTest: true, // 1ª parte del examen oficial: aptitudinales (series, tablas de datos, cálculo, analogías, sinónimos/antónimos…). Verificado en question_official_exams.
     name: 'Auxiliar Administrativo del Estado',
     shortName: 'Auxiliar Admin.',
     emoji: '👤',
@@ -4212,6 +4213,7 @@ export const OPOSICIONES: Oposicion[] = [
     slug: 'auxiliar-administrativo-madrid',
     positionType: 'auxiliar_administrativo_madrid',
     examScoring: { penaltyDivisor: 3, source: 'BOCM nº41 18/02/2026 (Orden 264/2026): 1/3 del valor de una correcta; en blanco no penaliza. confidence:media (PDF firmado no extraible verbatim)' },
+    hasPsychometricTest: true, // Examen oficial incluye prueba psicotécnica/aptitudinal. Verificado en question_official_exams.
     name: 'Auxiliar Administrativo Comunidad de Madrid',
     shortName: 'Aux. Madrid',
     emoji: '🏛️',
