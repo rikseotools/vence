@@ -203,11 +203,11 @@ Implementación reusable en `backend/src/cache/cache-versioning.service.ts` (com
 
 **Contexto (bug real TAI):** en AWS el frontend NO es Vercel — corre como **N contenedores Next.js standalone**, cada uno con su propio `unstable_cache` **EN MEMORIA**. `revalidateTag()` en standalone solo invalida **el proceso que lo ejecuta** → al llamar `/api/admin/revalidate`, solo se limpia la instancia que atendió esa petición; las demás siguen sirviendo lo viejo. Es un **no-op efectivo cross-instancia**. Síntoma: TAI (contenido nuevo) mostraba el Bloque I "En desarrollo" pese a tener 7.385 preguntas — su `getThemeQuestionCounts` quedó cacheado a 0 y `revalidateTag('test-counts')` no lo limpiaba. El `ARCHITECTURE_ROADMAP` ya lo preveía: *"en AWS la invalidación por tag requiere hook propio ... versioned cache pattern"*.
 
-**Solución (agnóstica — Postgres/Drizzle, sin Redis ni Supabase):**
+**Solución (patrón "versioned cache keys", agnóstico de proveedor):**
 
-- Tabla `cache_versions(tag, version)` + función SQL atómica `bump_cache_version(tag)` (migración `20260707_cache_versions.sql`).
-- **`lib/cache/versionStore.ts`**: `getCacheVersion(tag)` (lee por `getDb` con micro-caché local de 3s; degrada a 0 si la BD falla, nunca rompe el render) y `bumpCacheVersion(tag)` (incrementa por `getAdminDb`).
+- **`lib/cache/versionStore.ts`**: `getCacheVersion(tag)` = `getCounter('cache_version:'+tag)` (con micro-caché local 3s); `bumpCacheVersion(tag)` = `incrementCounter('cache_version:'+tag)`. Ambas del **sink agnóstico** de `lib/cache/redis.ts` (Upstash hoy → ElastiCache/Koigrid mañana, por env — se cambia de proveedor sin tocar el código, igual que la BD con Drizzle). Degrada a 0 si el KV cae (nunca rompe el render).
 - **`lib/cache/versionedCache.ts`**: wrapper `versionedCache(fn, {tag, keyParts, revalidate?})` que mete `v${version}` en la **clave** del `unstable_cache`. Al subir la versión, la clave cambia para **TODAS** las instancias → todas fallan el caché y recomputan. Cross-instancia, O(1), self-healing.
+- **Coherencia cross-runtime:** usa la MISMA key `cache_version:${tag}` que el backend NestJS (`CacheVersioningService`) sobre la MISMA instancia Upstash → invalidar un tag afecta a front Y back a la vez.
 
 ```ts
 // Definir un cache invalidable cross-instancia:

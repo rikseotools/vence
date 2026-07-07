@@ -1,34 +1,40 @@
 // lib/cache/versionStore.ts
 //
-// Contador de versión por tag, agnóstico (Postgres/Drizzle), para invalidación
-// CROSS-INSTANCIA del cache del frontend.
+// Contador de versión por tag para invalidación CROSS-INSTANCIA del cache del
+// frontend. AGNÓSTICO de proveedor: usa el "sink" de lib/cache/redis.ts, que
+// abstrae el KV (Upstash hoy → ElastiCache / Koigrid / lo que sea mañana, por
+// env). Cambiar de proveedor = cambiar el sink, sin tocar este código ni los
+// call-sites — igual que la BD es agnóstica vía Drizzle + DATABASE_URL.
 //
 // PROBLEMA QUE RESUELVE:
 // En AWS el frontend corre como N contenedores Next.js standalone, cada uno con
 // su propio `unstable_cache` EN MEMORIA. `revalidateTag()` solo invalida la
-// instancia que atiende la petición del endpoint de revalidación → las demás
-// siguen sirviendo lo viejo. (El ARCHITECTURE_ROADMAP lo preveía: en AWS la
-// invalidación por tag necesita "hook propio ... versioned cache pattern".)
+// instancia que atiende la petición del endpoint → las demás siguen sirviendo lo
+// viejo. (El ARCHITECTURE_ROADMAP lo preveía: en AWS la invalidación por tag
+// necesita "hook propio ... versioned cache pattern".)
 //
-// SOLUCIÓN:
-// Todas las instancias LEEN la misma versión de un tag desde Postgres. Invalidar
-// = incrementar la versión (atómico). El wrapper `versionedCache` incorpora la
+// SOLUCIÓN (patrón "versioned cache keys", el MISMO que el backend NestJS):
+// todas las instancias LEEN la misma versión de un tag desde el KV compartido.
+// Invalidar = INCR (atómico, O(1)). El wrapper `versionedCache` incorpora la
 // versión a la clave del `unstable_cache`, así que al subir la versión TODAS las
-// instancias fallan el caché y recomputan. Cero dependencia de Redis/Supabase.
+// instancias fallan el caché y recomputan.
 //
-// AGNÓSTICO: solo Drizzle + DATABASE_URL (portable a Neon/RDS/Aurora). Es el
-// mismo patrón "versioned cache keys" del backend NestJS (cache_version:${tag}
-// en Upstash), pero con el store en nuestra Postgres — sin depender de que Redis
-// esté arriba en el camino crítico de lectura del cache.
+// COHERENCIA CROSS-RUNTIME: usamos la MISMA convención de key `cache_version:${tag}`
+// que el backend (backend/src/cache/cache-versioning.service.ts) sobre la MISMA
+// instancia Upstash → invalidar un tag afecta a front Y back a la vez.
+//
+// DEGRADACIÓN GRACEFUL: si el KV está caído, getCounter/incrementCounter
+// devuelven 0 (nunca lanzan). El cache sigue sirviendo con versión estable; solo
+// se pierde la capacidad de invalidar hasta que el KV vuelva.
 
-import { getDb, getAdminDb } from '@/db/client'
-import { cacheVersions } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { getCounter, incrementCounter } from '@/lib/cache/redis'
 import { createGlobalCache } from '@/lib/cache/globalCache'
 
-// Micro-caché local de la versión (por instancia) para no leer Postgres en cada
-// request. TTL corto: tras un bump, las demás instancias ven la versión nueva en
-// ≤ este tiempo. Coherente con el "cache local 1s" del patrón del backend.
+const VERSION_KEY_PREFIX = 'cache_version:'
+
+// Micro-caché local (por instancia) de la versión, para no hacer un GET al KV en
+// CADA render. TTL corto: tras un INCR, las demás instancias ven la versión nueva
+// en ≤ este tiempo. Mismo criterio que el "cache local 1s" del backend.
 const VERSION_LOCAL_TTL_MS = 3_000
 
 // Un slot de globalThis por tag (compartido cross-bundle vía createGlobalCache).
@@ -37,42 +43,21 @@ function localVersionCache(tag: string) {
 }
 
 /**
- * Devuelve la versión actual del tag (0 si nunca se ha invalidado o si la BD
- * falla — degradación graceful: el cache sigue funcionando con versión estable).
- * Cacheada localmente VERSION_LOCAL_TTL_MS para amortizar el read.
+ * Versión actual del tag (0 si nunca se ha invalidado o si el KV falla —
+ * degradación graceful). Cacheada localmente VERSION_LOCAL_TTL_MS.
  */
 export async function getCacheVersion(tag: string): Promise<number> {
-  return localVersionCache(tag).getOrLoad(async () => {
-    try {
-      const rows = await getDb()
-        .select({ version: cacheVersions.version })
-        .from(cacheVersions)
-        .where(eq(cacheVersions.tag, tag))
-        .limit(1)
-      return rows[0]?.version ?? 0
-    } catch (err) {
-      // Nunca romper el render por el store de versiones. Sin versión → 0
-      // (equivale a "sin invalidaciones"): el cache sirve, solo pierde la
-      // capacidad de invalidar hasta que la BD vuelva.
-      console.warn(`[getCacheVersion] read failed for tag "${tag}", using 0:`, err instanceof Error ? err.message : err)
-      return 0
-    }
-  })
+  return localVersionCache(tag).getOrLoad(() => getCounter(VERSION_KEY_PREFIX + tag))
 }
 
 /**
- * Incrementa (o crea) la versión del tag de forma atómica en Postgres e invalida
- * la micro-caché local de esta instancia (para que vea la versión nueva ya).
- * Devuelve la nueva versión. Fire-and-forget seguro: propaga el error para que
- * el caller decida, pero los callers de invalidación suelen ignorarlo (best-effort).
+ * Incrementa (INCR atómico) la versión del tag en el KV compartido e invalida la
+ * micro-caché local de esta instancia (para que vea la versión nueva ya). Las
+ * demás instancias la ven en ≤VERSION_LOCAL_TTL_MS. Devuelve la nueva versión
+ * (0 si el KV está caído — best-effort, no lanza).
  */
 export async function bumpCacheVersion(tag: string): Promise<number> {
-  const res = await getAdminDb().execute(
-    sql`SELECT public.bump_cache_version(${tag}) AS version`
-  )
-  const rows = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as Array<{ version: number | string }>
-  const version = Number(rows[0]?.version ?? 0)
-  // Esta instancia ve la versión nueva inmediatamente; las demás en ≤TTL.
+  const version = await incrementCounter(VERSION_KEY_PREFIX + tag)
   localVersionCache(tag).invalidate()
   return version
 }
