@@ -100,6 +100,12 @@ async function getRecentTests(
     .where(and(
       eq(psychometricTestSessions.userId, userId),
       eq(psychometricTestSessions.isCompleted, true),
+      // Solo sesiones CON respuestas guardadas: si un test se completó pero sus
+      // respuestas no llegaron a persistir (p.ej. un fallo de guardado), mostraría
+      // una nota-fantasma que al pinchar "revisar" abre una página en blanco —
+      // "a medias vuelve locos al usuario" (incidente 07/07/2026). Con este EXISTS
+      // un test sin detalle simplemente no aparece, nunca una nota sin datos detrás.
+      sql`EXISTS (SELECT 1 FROM psychometric_test_answers a WHERE a.test_session_id = ${psychometricTestSessions.id})`,
     ))
     .orderBy(desc(psychometricTestSessions.completedAt))
     .limit(10)
