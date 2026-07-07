@@ -90,6 +90,18 @@ export default function HeaderES() {
   const dismissNotification = oposicionContext?.dismissNotification || (() => {})
   const needsOposicionFix = oposicionContext?.needsOposicionFix || false
 
+  // 🧩 Psicotécnicos SOLO si el examen de la oposición del usuario lo incluye
+  // (flag `hasPsychometricTest` del config, verificado por oposición). Se calcula
+  // una vez aquí y lo comparten los navLinks de desktop y el icono de móvil.
+  // Oposición efectiva: la resuelta; si carga, ninguna; si no hay, la flagship.
+  const _psicoOpoSlug = (() => {
+    const id = oposicionContext?.oposicionId
+    const slug = id ? getOposicion(id)?.slug : null
+    const resolved = !!slug && ALL_OPOSICION_SLUGS.includes(slug)
+    return resolved ? slug : (loading ? null : ALL_OPOSICION_SLUGS[0])
+  })()
+  const userHasPsico = !!(_psicoOpoSlug && getOposicion(_psicoOpoSlug)?.hasPsychometricTest)
+
   // 🆕 CARGAR RACHA DEL USUARIO
   useEffect(() => {
     async function loadUserStreak() {
@@ -335,18 +347,12 @@ export default function HeaderES() {
     const opoSlug = oposicionId ? getOposicion(oposicionId)?.slug : null
     const opoResolved = !!opoSlug && ALL_OPOSICION_SLUGS.includes(opoSlug)
 
-    // Psicotécnicos: SOLO si el examen de la oposición del usuario lo incluye
-    // (flag `hasPsychometricTest` del config, verificado por oposición). Oposición
-    // efectiva: la resuelta; si aún carga, ninguna (se omite hasta resolver, como
-    // Test/Temario); si no hay oposición, la flagship por defecto.
-    const effectiveSlug = opoResolved ? opoSlug : (loading ? null : defaultSlug)
-    const hasPsico = !!(effectiveSlug && getOposicion(effectiveSlug)?.hasPsychometricTest)
-
-    // Enlaces que NO dependen de la oposición (siempre visibles), + psicotécnicos condicional.
+    // Enlaces que NO dependen de la oposición (siempre visibles), + psicotécnicos
+    // condicional (userHasPsico, calculado a nivel de componente y compartido con el móvil).
     const commonLinks: NavLink[] = [
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
-      ...(hasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
+      ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
 
@@ -800,8 +806,8 @@ export default function HeaderES() {
                 </Link>
               )}
 
-              {/* 🧩 ICONO DE PSICOTÉCNICOS - Solo en móvil */}
-              {user && (
+              {/* 🧩 ICONO DE PSICOTÉCNICOS - Solo en móvil, y solo si la oposición lo lleva */}
+              {user && userHasPsico && (
                 <Link
                   href="/psicotecnicos/test"
                   className="tap-feedback xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
