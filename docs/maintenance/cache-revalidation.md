@@ -199,6 +199,31 @@ Implementación reusable en `backend/src/cache/cache-versioning.service.ts` (com
 
 ---
 
+## ⚠️ Invalidación CROSS-INSTANCIA del frontend (versioned cache en Postgres) — 2026-07-07
+
+**Contexto (bug real TAI):** en AWS el frontend NO es Vercel — corre como **N contenedores Next.js standalone**, cada uno con su propio `unstable_cache` **EN MEMORIA**. `revalidateTag()` en standalone solo invalida **el proceso que lo ejecuta** → al llamar `/api/admin/revalidate`, solo se limpia la instancia que atendió esa petición; las demás siguen sirviendo lo viejo. Es un **no-op efectivo cross-instancia**. Síntoma: TAI (contenido nuevo) mostraba el Bloque I "En desarrollo" pese a tener 7.385 preguntas — su `getThemeQuestionCounts` quedó cacheado a 0 y `revalidateTag('test-counts')` no lo limpiaba. El `ARCHITECTURE_ROADMAP` ya lo preveía: *"en AWS la invalidación por tag requiere hook propio ... versioned cache pattern"*.
+
+**Solución (agnóstica — Postgres/Drizzle, sin Redis ni Supabase):**
+
+- Tabla `cache_versions(tag, version)` + función SQL atómica `bump_cache_version(tag)` (migración `20260707_cache_versions.sql`).
+- **`lib/cache/versionStore.ts`**: `getCacheVersion(tag)` (lee por `getDb` con micro-caché local de 3s; degrada a 0 si la BD falla, nunca rompe el render) y `bumpCacheVersion(tag)` (incrementa por `getAdminDb`).
+- **`lib/cache/versionedCache.ts`**: wrapper `versionedCache(fn, {tag, keyParts, revalidate?})` que mete `v${version}` en la **clave** del `unstable_cache`. Al subir la versión, la clave cambia para **TODAS** las instancias → todas fallan el caché y recomputan. Cross-instancia, O(1), self-healing.
+
+```ts
+// Definir un cache invalidable cross-instancia:
+export const getX = versionedCache(getXInternal, { tag: 'test-counts', keyParts: ['x-v1'] })
+
+// Invalidarlo desde cualquier sitio (afecta a TODAS las instancias):
+import { bumpCacheVersion } from '@/lib/cache/versionStore'
+await bumpCacheVersion('test-counts')
+```
+
+**`/api/admin/revalidate` ya hace `bumpCacheVersion(tag)`** por cada tag (además del `revalidateTag` legacy per-instancia). La respuesta incluye `cacheVersion` con la nueva versión. **Todos los caches permanentes** (`test-counts`, `temario`, `teoria`, `laws`, `landing`, `questions`, `hot-articles`, `law-stats`, `verify-stats`) usan ya `versionedCache` → invalidar por tag YA funciona cross-instancia.
+
+> Relación con el patrón del backend NestJS (`cache_version:${tag}` en Upstash): es la MISMA idea (versioned cache keys) pero con el store en **nuestra Postgres** (agnóstico, sin depender de que Redis esté arriba en el camino crítico de lectura). El backend sigue con su contador en Redis; el frontend con el suyo en Postgres. Ambos O(1).
+
+---
+
 ## Cache server-side compartido (Redis Upstash) — Fase 1 escalabilidad
 
 Capa adicional al `unstable_cache` de Next.js. **Diferencias clave:**
