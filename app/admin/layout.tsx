@@ -12,6 +12,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { hasUnreviewedChanges } = useLawChanges()
   const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0, discovered: 0 })
   const [competidorChanges, setCompetidorChanges] = useState(0)
+  const [rolloverCount, setRolloverCount] = useState(0)
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -48,6 +49,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkCompetidorChanges, 300000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkCompetidorChanges])
+
+  const checkRollover = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/admin/oposiciones/rollover-pending', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setRolloverCount(json.count ?? 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    const delay = setTimeout(checkRollover, 14000)
+    const interval = setInterval(checkRollover, 600000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkRollover])
 
   return (
     <ProtectedRoute>
@@ -306,11 +323,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span>Cobros</span>
                   </a>
                   <a
-                    href="/admin/oposiciones"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                    href="/admin/oposiciones?tab=rollover"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      rolloverCount > 0 ? 'animate-pulse' : ''
+                    }`}
                   >
                     <span>🎓</span>
                     <span>Oposiciones</span>
+                    {rolloverCount > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
+                        title="Oposiciones con examen pasado — hacer rollover (pivotar landing hacia delante)"
+                      >
+                        {rolloverCount > 99 ? '99+' : rolloverCount}
+                      </span>
+                    )}
                   </a>
                   <a
                     href="/admin/ayuda"

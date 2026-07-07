@@ -49,9 +49,10 @@ interface CrossReference {
   administracion: string | null
 }
 
-type TabId = 'cruzada' | 'custom' | 'onboarding' | 'config' | 'bd'
+type TabId = 'cruzada' | 'custom' | 'onboarding' | 'config' | 'bd' | 'rollover'
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: 'rollover', label: 'Rollover' },
   { id: 'cruzada', label: 'Vista cruzada' },
   { id: 'custom', label: 'Custom (usuarios)' },
   { id: 'onboarding', label: 'Onboarding (72)' },
@@ -59,8 +60,51 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'bd', label: 'BD (convocatoria)' },
 ]
 
+interface RolloverItem {
+  slug: string; nombre: string; estado_proceso: string | null
+  exam_date: string | null; dias_desde_examen: number; usuarios: number
+}
+
+function RolloverTab() {
+  const [items, setItems] = useState<RolloverItem[] | null>(null)
+  useEffect(() => {
+    (async () => {
+      const res = await adminFetch('/api/admin/oposiciones/rollover-pending')
+      const json = await res.json()
+      if (json.success) setItems(json.items)
+    })()
+  }, [])
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        Oposiciones que <b>preparamos</b> con el examen ya pasado → su landing sigue mirando al ciclo viejo.
+        Hay que <b>hacer rollover</b>: pivotarla hacia delante (próxima OEP/convocatoria, fecha de examen, SEO forward)
+        con datos oficiales. Dímelo y la actualizo. Cuando su fecha se pone al día, sale de esta lista y el badge baja.
+      </p>
+      {items === null && <p className="text-gray-500">Cargando…</p>}
+      {items && items.length === 0 && <p className="text-sm text-emerald-600">Nada pendiente de rollover. 🎉</p>}
+      {items?.map((r) => (
+        <div key={r.slug} className="flex items-center gap-3 text-sm bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
+          <span className="text-xs font-bold text-gray-400 w-14 text-right">{r.usuarios} usr</span>
+          <a href={`https://www.vence.es/${r.slug}`} target="_blank" rel="noreferrer" className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex-1 truncate">
+            {r.nombre}
+          </a>
+          <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">{r.estado_proceso}</span>
+          <span className="text-xs text-gray-500 whitespace-nowrap">examen {r.exam_date} · hace {r.dias_desde_examen}d</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AdminOposicionesPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('cruzada')
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    if (typeof window !== 'undefined') {
+      const t = new URLSearchParams(window.location.search).get('tab')
+      if (t && ['rollover', 'cruzada', 'custom', 'onboarding', 'config', 'bd'].includes(t)) return t as TabId
+    }
+    return 'cruzada'
+  })
   const [loading, setLoading] = useState(true)
   const [oposicionesBD, setOposicionesBD] = useState<OposicionBD[]>([])
   const [oposicionesConfig, setOposicionesConfig] = useState<OposicionConfig[]>([])
@@ -252,6 +296,7 @@ export default function AdminOposicionesPage() {
       </div>
 
       {/* Content */}
+      {activeTab === 'rollover' && <RolloverTab />}
       {activeTab === 'cruzada' && <CrossTab data={crossData} />}
       {activeTab === 'custom' && <CustomTab data={userOposiciones} onMigrated={loadData} />}
       {activeTab === 'onboarding' && <OnboardingTab />}
