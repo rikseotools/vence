@@ -42,8 +42,12 @@ if [ -n "$DIRTY" ]; then
   echo "   ALLOW_DIRTY=1 → continúo pese al árbol sucio."
 fi
 
-echo "→ [1/6] build ${IMG} (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)"
-podman build \
+echo "→ [1/6] build ${IMG} (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)${NO_CACHE:+ [--no-cache]}"
+# NO_CACHE=1 → build desde cero (bustea capas cacheadas de podman). Incidente
+# 07/07/2026: la capa `RUN npm run build` quedó envenenada (compilación stale de
+# una ruta) y se reusaba en cada deploy → ni el commit correcto lo arreglaba.
+# El canary del smoke lo detecta; NO_CACHE=1 es el martillo para recompilar limpio.
+podman build ${NO_CACHE:+--no-cache} \
   --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
   --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID="$NEXT_PUBLIC_GOOGLE_CLIENT_ID" \
