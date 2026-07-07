@@ -3847,6 +3847,7 @@ export const OPOSICIONES: Oposicion[] = [
     slug: 'auxiliar-administrativo-cyl',
     positionType: 'auxiliar_administrativo_cyl',
     examScoring: { penaltyDivisor: 4, source: 'BOCYL nº7 13/01/2026: contestaciones erroneas penalizan 1/4 del valor de la correcta. confidence:alta' },
+    hasPsychometricTest: true, // Examen incluye preguntas psicotécnicas/aptitudinales. Verificado en psychometric_questions (exam_source CyL).
     name: 'Auxiliar Administrativo de Castilla y León',
     shortName: 'Aux. CyL',
     emoji: '🏛️',

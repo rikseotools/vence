@@ -949,6 +949,22 @@ no es `null` ni un número positivo. No hay default silencioso: el helper
 El backend (`/api/v2/official-exams/complete`) guarda el acierto crudo; la
 penalización es solo cálculo de nota en cliente, así que basta con el config.
 
+### 4a.quater `hasPsychometricTest` / `hasSpellingTest` — pruebas del examen (verificar en la convocatoria)
+
+Flags booleanos del config que controlan **qué se le ofrece al usuario** según SU
+oposición. Se ponen `true` **solo si el examen oficial incluye esa prueba**,
+verificado en las bases (no asumir).
+
+```typescript
+hasPsychometricTest: true,  // El examen incluye prueba psicotécnica/aptitudinal
+                            // (series, tablas de datos, cálculo, analogías, razonamiento…).
+hasSpellingTest: true,      // El examen incluye prueba de ortografía.
+```
+
+- **`hasPsychometricTest`** decide si aparece el **icono 🧩 de Psicotécnicos en el Header** (desktop + móvil) y la **sección de psicotécnicos en el Test Hub** (`TestHubClient`). Si es `false`/ausente, esa oposición **no** ve psicotécnicos (correcto: no todos los exámenes lo llevan). **Default (ausente) = false** → nunca falso positivo.
+- **Cómo verificar:** leer las bases (¿hay ejercicio/parte psicotécnica o aptitudinal?). Familias que SIEMPRE lo llevan: **policía (nacional/local/autonómica), guardia civil, y algunos aux. administrativos** (Estado y Madrid llevan aptitudinales en la 1ª parte; CyL también). Familias que NO: la mayoría de admin/auxiliar, celadores, docentes, sanitario, justicia (tramitación/auxilio NO), IIPP (psico eliminada en 2014).
+- **Enforcement:** `__tests__/config/psychometricFlagCoherence.test.ts` **falla** si una oposición tiene preguntas psicotécnicas reales en BD (`psychometric_questions` por `exam_source`) pero su config NO marca `hasPsychometricTest: true`. Es el invariante que evita el bug de "oculta de más". Al añadir psico a una oposición, añade su patrón `exam_source` al mapa del test y marca el flag.
+
 ### 4a.bis Patrones de matching en queries (OBLIGATORIO si hay `officialExams`)
 
 Sin esto, los exámenes oficiales **no aparecen** aunque la entry esté en
