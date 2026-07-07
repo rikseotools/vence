@@ -76,12 +76,6 @@ return NextResponse.json(
 
     const dailyLimit = await getDailyLimitStatus(tokenUserId)
 
-    // DIAG TEMPORAL 07/07 (gated por header, cero impacto a usuarios): dump del
-    // objeto de límite real en runtime para diagnosticar el 403 a premium.
-    if (request.headers.get('x-vence-diag') === 'psico-403') {
-      return NextResponse.json({ _diag: true, tokenUserId, dailyLimit }, { status: 200 })
-    }
-
     // Shared device daily limit (solo free users — premium bypass)
     if (!dailyLimit.isPremium) {
       const deviceUsage = await checkDeviceDailyUsage(deviceId)

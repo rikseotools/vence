@@ -243,7 +243,14 @@ export async function getDailyLimitStatus(
 
   // L2 Redis cross-lambda. TTL 30s para free (conservador), pero la lógica
   // interna sube a 60s si detecta isPremium (no hay límite que enforce).
-  return getOrSet<DailyLimitResult>(`daily_limit:${userId}`, 30, async () => {
+  //
+  // CLAVE PROPIA `daily_limit_status:` — NO reutilizar `daily_limit:${userId}`.
+  // Incidente 07/07/2026: esa clave la escribe /api/daily-limit con un wrapper
+  // `{data, ts}` (CachedDailyLimit) y el backend con otro formato. getOrSet leía
+  // ese wrapper y devolvía `{data, ts}` como si fuera el DailyLimitResult →
+  // `dailyLimit.allowed` = undefined → los endpoints de respuesta (psico/examen)
+  // daban 403 a premium con body de 3 campos. Namespace separado = sin colisión.
+  return getOrSet<DailyLimitResult>(`daily_limit_status:${userId}`, 30, async () => {
     try {
       const dynamicLimit = await getDynamicLimit(userId)
 
