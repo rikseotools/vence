@@ -35,6 +35,9 @@ podman build \
   --build-arg NEXT_PUBLIC_STRIPE_PRICE_MONTHLY="$NEXT_PUBLIC_STRIPE_PRICE_MONTHLY" \
   --build-arg NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY="$NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY" \
   --build-arg NEXT_PUBLIC_STRIPE_PRICE_SEMESTER="$NEXT_PUBLIC_STRIPE_PRICE_SEMESTER" \
+  --build-arg NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA="${NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA:-}" \
+  --build-arg NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA="${NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA:-}" \
+  --build-arg NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA="${NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA:-}" \
   --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY="$NEXT_PUBLIC_VAPID_PUBLIC_KEY" \
   --build-arg NEXT_PUBLIC_SITE_URL="https://www.vence.es" \
   --build-arg NEXT_PUBLIC_APP_NAME="Vence" \
@@ -97,6 +100,15 @@ node -e "
 const fs=require('fs');
 const td=JSON.parse(fs.readFileSync('/tmp/vence-td-live.json','utf8'));
 td.containerDefinitions[0].image='${IMG_DIGEST}';
+// Multi-cuenta Stripe (Nila): la task def viva no los tiene y aquí solo se
+// swapea imagen, así que los añadimos idempotentemente (secretos runtime en
+// SSM /vence-frontend/*). Sin esto newSignupAccount()→'manuel' (flip no ocurre)
+// y getStripeFor('nila')/webhook Nila no tendrían credenciales.
+const REGION='eu-west-2', ACC='349744179687';
+const secrets=(td.containerDefinitions[0].secrets ||= []);
+for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT']) {
+  if (!secrets.some(s=>s.name===name)) secrets.push({name, valueFrom:'arn:aws:ssm:'+REGION+':'+ACC+':parameter/vence-frontend/'+name});
+}
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
 fs.writeFileSync('/tmp/vence-td-new.json', JSON.stringify(td));
 "
