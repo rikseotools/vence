@@ -18,11 +18,34 @@ export class InternalCronTriggersService {
   async trigger(
     path: string,
   ): Promise<{ ok: boolean; status: number; body: string }> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${this.cronSecret}` },
-    });
-    const body = await res.text();
-    return { ok: res.ok, status: res.status, body: body.slice(0, 500) };
+    // Reintento único ante 5xx: algunos endpoints son lentos (~16s, p.ej.
+    // check-stats-drift) y ocasionalmente cortan por timeout del gateway → 5xx
+    // transitorio. Un segundo intento evita falsas alarmas. Es un cron nocturno,
+    // no hay usuario esperando; el coste de reintentar es irrelevante.
+    let last: { ok: boolean; status: number; body: string } = {
+      ok: false,
+      status: 0,
+      body: '',
+    };
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetch(`${this.baseUrl}${path}`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${this.cronSecret}` },
+        });
+        const body = await res.text();
+        last = { ok: res.ok, status: res.status, body: body.slice(0, 500) };
+      } catch (err) {
+        last = {
+          ok: false,
+          status: 0,
+          body: err instanceof Error ? err.message : String(err),
+        };
+      }
+      // 2xx → done. 4xx (auth/config) → no reintentar (no es transitorio).
+      if (last.ok || (last.status >= 400 && last.status < 500)) break;
+      if (attempt === 1) this.logger.warn(`${path} → ${last.status}, reintentando…`);
+    }
+    return last;
   }
 }
