@@ -1,6 +1,6 @@
 # Runbook — Rollover de oposiciones (examen pasado → pivotar landing hacia delante)
 
-**Cuándo seguir este runbook:** cuando Manuel diga *"haz rollover"*, *"revisa rollover"*, *"oposiciones con examen pasado/hecho"*, *"actualiza las landings viejas"*, o cuando vea el **badge ámbar en el nav "Oposiciones"** (`/admin/oposiciones?tab=rollover`) y me lo indique. Seguir esto ANTES de improvisar.
+**Cuándo seguir este runbook (CUALQUIERA de estas frases → este runbook):** *"haz rollover"*, *"revisa rollover"*, *"revisa los rollover"*, *"revisa exámenes hechos"*, *"revisa exámenes pasados/realizados"*, *"oposiciones con examen pasado/hecho"*, *"actualiza las landings viejas/caducadas"*, o cuando vea el **badge ámbar en el nav "Oposiciones"** (`/admin/oposiciones?tab=rollover`) y me lo indique. **Todas apuntan aquí.** Seguir esto ANTES de improvisar. (OJO: *"revisa OEPs"* es OTRA cosa — seguimiento de convocatorias, `oep_detection_signals`, badge 🎯; no confundir.)
 
 > 🎯 **Principio (runbook `crear-nueva-oposicion.md` §2a.1-bis):** una landing es un **activo de captación que NUNCA debe quedar en un callejón sin salida.** Una oposición **no muere cuando pasa su examen** — casi todas son recurrentes (nueva OEP/convocatoria cada 1-2 años) y el opositor que llega tras el examen se prepara para el **siguiente ciclo**. Cuando el examen pasa, hay que **pivotar la landing hacia delante**.
 

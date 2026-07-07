@@ -335,7 +335,7 @@ git push origin main
 
 ### 🔄 Rollover de oposiciones (runbook)
 - **Runbook:** `docs/runbooks/rollover-oposiciones.md`
-- **Cuándo consultarlo:** cuando Manuel diga *"haz rollover"*, *"revisa rollover"*, *"oposiciones con examen pasado/hecho"*, *"actualiza las landings viejas"*, o cuando vea el **badge ámbar del nav "Oposiciones"** y lo indique. Seguir el runbook ANTES de improvisar.
+- **Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"haz rollover"*, *"revisa rollover"*, *"revisa los rollover"*, *"revisa exámenes hechos"*, *"revisa exámenes pasados/realizados"*, *"oposiciones con examen pasado/hecho"*, *"actualiza las landings viejas/caducadas"*, o cuando vea el **badge ámbar del nav "Oposiciones"** y lo indique. Todas apuntan aquí. (NO confundir con *"revisa OEPs"* = seguimiento de convocatorias, badge 🎯.) Seguir el runbook ANTES de improvisar.
 - **Resumen:** una landing no muere cuando pasa su examen (las oposiciones son recurrentes) → hay que **pivotarla hacia delante** (próxima OEP/convocatoria, `exam_date=null`/futura, plazas, hitos `upcoming`, SEO forward), **verificado con fuente oficial, nunca inventar**. El **badge ámbar** en el nav "Oposiciones" cuenta las que preparamos con `exam_date` pasada; la **pestaña "Rollover"** (`/admin/oposiciones?tab=rollover`) las lista por demanda de usuarios. Triaje: examen reciente + `examen_realizado` = correcto (ciclo vivo); examen antiguo/`nombramientos` = pivotar YA. NO tocar temario/epígrafes/tests (solo datos de convocatoria). Detalle del pivote: `crear-nueva-oposicion.md` §2a.1-bis.
 
 ### Logs Importantes
