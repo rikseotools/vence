@@ -12,6 +12,8 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 5. VERIFICAR      → Confirmar user_profiles=0, auth.users=0, archived_data OK
 ```
 
+> 🏦 **Si tiene suscripción Stripe activa (premium): STRIPE ES MULTI-CUENTA (desde 07/07/2026).** Antes de cancelar/reembolsar hay que saber en qué cuenta vive la sub — **Manuel** (`STRIPE_SECRET_KEY`, renovaciones + altas < 07/07) o **Nila** (`STRIPE_SECRET_KEY_NILA`, altas ≥ 07/07). Mira `user_profiles.payment_account` (null ⇒ manuel); los customers/subs son por-cuenta (clave equivocada → `resource_missing`). Regla completa + flujo de cancelación/reembolso en **`docs/procedures/reembolsos.md`** (banner 🏦). Recuerda además: una **premium de pago NO se borra hasta fin de periodo** (memoria `premium_deletion_no_borrar_hasta_fin_periodo`).
+
 ---
 
 ## 1. Investigar al Usuario (IMPORTANTE)

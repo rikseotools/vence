@@ -10,7 +10,18 @@
 > const pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 1 });
 > // await pool.query('UPDATE user_profiles SET plan_type=$1 WHERE id=$2', ['free', userId])
 > ```
-> (con `NODE_TLS_REJECT_UNAUTHORIZED=0`). Detalle: memoria `project_cutover_rds_prod`. **Stripe SÍ sigue igual** (el `STRIPE_SECRET_KEY` es real). El token admin para `/api/v2/feedback/respond` se acuña con `generateLink`/`verifyOtp` (bridge HS256, sigue funcionando).
+> (con `NODE_TLS_REJECT_UNAUTHORIZED=0`). Detalle: memoria `project_cutover_rds_prod`. El token admin para `/api/v2/feedback/respond` se acuña con `generateLink`/`verifyOtp` (bridge HS256, sigue funcionando).
+
+> 🏦 **STRIPE MULTI-CUENTA (desde 07/07/2026) — ¡DETERMINA LA CUENTA ANTES DE TOCAR NADA!** Ya NO hay una sola cuenta Stripe. Hay **dos**:
+> - **Manuel** (`STRIPE_SECRET_KEY`) → **renovaciones** de lo existente **y todas las altas anteriores al 07/07/2026**.
+> - **Nila** (`STRIPE_SECRET_KEY_NILA`) → **altas nuevas desde el 07/07/2026** (flag `STRIPE_NEW_SIGNUPS_ACCOUNT=nila`).
+>
+> **Antes de reembolsar / cancelar / consultar una sub, mira en qué cuenta vive:**
+> 1. `SELECT payment_account, stripe_customer_id FROM user_profiles WHERE id=…` → `payment_account` ∈ {`manuel`,`nila`} (null ⇒ `manuel`). Es el campo que enruta cancelar/portal/webhook.
+> 2. **Los customers y subs son POR-CUENTA:** un `cus_…`/`sub_…` de Manuel **NO existe** en Nila y viceversa. Si usas la clave equivocada → `resource_missing` (o, peor, operas en la cuenta que no toca).
+> 3. Usa la clave correcta: a mano `new Stripe(process.env.STRIPE_SECRET_KEY)` (manuel) o `..._NILA` (nila); en código `getStripeFor(resolveAccount(user.payment_account))` (`lib/stripe.ts`). Para verificar dónde está: intenta `customers.retrieve(cus_…)` en cada cuenta — la que no da `resource_missing` es la buena.
+>
+> **Caso real (07/07, "sempre galegos"):** sub de abril → `payment_account='manuel'`, customer solo existe en la cuenta de Manuel; se verificó en Stripe (BD decía `cancel_at_period_end=true` y Stripe lo confirmó). Detalle multi-cuenta: memoria `project_stripe_halfflip_nila_incidente` + `lib/stripe.ts`.
 
 ## Decision tree — qué tipo de reembolso es
 
