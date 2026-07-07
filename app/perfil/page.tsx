@@ -953,6 +953,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'subalterno_gva',
+      label: 'Subalterno/a de la Generalitat Valenciana',
+      data: {
+        name: 'Subalterno/a de la Generalitat Valenciana',
+        slug: 'subalterno-gva',
+        categoria: 'AP',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'administrativo_diputacion_valencia',
       label: 'Administrativo Diputación de Valencia',
       data: {

@@ -4882,6 +4882,64 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // SUBALTERNO/A GENERALITAT VALENCIANA (AP / APF)
+  // ========================================
+  {
+    id: 'subalterno_gva',
+    slug: 'subalterno-gva',
+    positionType: 'subalterno_gva',
+    examScoring: { penaltyDivisor: 3, source: 'DOGV-C-2026-8075 (DOGV nº10330 26/03/2026, convocatoria 80/26 APF subalternos GVA): 80 preguntas; 1/3 del valor de cada correcta; en blanco no penaliza. confidence:alta' },
+    name: 'Subalterno/a de la Generalitat Valenciana',
+    shortName: 'Subalterno GVA',
+    emoji: '🍊',
+    badge: 'AP',
+    color: 'emerald',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Parte General',
+        subtitle: 'CE, Estatuto CV, Consell, Igualdad, Transparencia',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978 (I): Título Preliminar y Título I' },
+          { id: 2, name: 'La Constitución Española de 1978 (II): Cortes Generales, Gobierno y sus relaciones' },
+          { id: 3, name: 'El Estatuto de Autonomía de la Comunitat Valenciana (Títulos I-III)' },
+          { id: 4, name: 'La Ley 5/1983 del Consell (I): President y Consell' },
+          { id: 5, name: 'La Ley 5/1983 del Consell (II): relaciones con Les Corts y Administración' },
+          { id: 6, name: 'Igualdad y violencia de género: LO 3/2007, Ley 9/2003 GVA, Ley 4/2023 LGTBI, LO 1/2004' },
+          { id: 7, name: 'Transparencia y acceso a la información pública (Ley 19/2013)' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Parte Especial',
+        subtitle: 'LPAC, LRJSP, Función Pública, Atención a la ciudadanía, PRL, Seguridad digital',
+        icon: '⚖️',
+        themes: [
+          { id: 8, name: 'La Ley 39/2015 (I): disposiciones generales, interesados y actividad de las AAPP' },
+          { id: 9, name: 'La Ley 39/2015 (II) y la Ley 40/2015: actos administrativos y órganos' },
+          { id: 10, name: 'La Función Pública Valenciana (Ley 4/2021): objeto, derechos y régimen disciplinario' },
+          { id: 11, name: 'Condiciones de trabajo (Decreto 42/2019)' },
+          { id: 12, name: 'Atención a la ciudadanía (Decreto 30/2025)' },
+          { id: 13, name: 'Control de acceso y protección de datos (RGPD)' },
+          { id: 14, name: 'Prevención de riesgos laborales: Ley 31/1995 y RD 486/1997' },
+          { id: 15, name: 'Seguridad digital: Orden 19/2013 uso seguro de medios tecnológicos GVA' },
+        ],
+      },
+    ],
+    totalTopics: 15,
+    aliases: ['subalterno valencia', 'subalterno gva', 'subalterna generalitat', 'subalternos valencia', 'apf subalterno', 'ordenanza generalitat valenciana', 'agrupacion profesional valencia'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/subalterno-gva', label: 'Mi Oposicion', icon: '🍊', featured: true },
+      { href: '/subalterno-gva/temario', label: 'Temario', icon: '📚' },
+      { href: '/subalterno-gva/test', label: 'Tests', icon: '🎯' },
+    ],
+    officialExams: [],
+  },
+
+  // ========================================
   // ADMINISTRATIVO DIPUTACIÓN DE VALENCIA (C1)
   // ========================================
   {

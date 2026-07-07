@@ -1064,6 +1064,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
   {
+    id: 'subalterno_gva',
+    nombre: 'Subalterno/a de la Generalitat Valenciana',
+    categoria: 'AP',
+    administracion: 'Autonómica',
+    icon: '🍊'
+  },
+  {
     id: 'auxiliar_administrativo_galicia',
     nombre: 'Auxiliar Administrativo Xunta de Galicia',
     categoria: 'C2',
@@ -1746,9 +1753,9 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Basque Country': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Euskadi': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'tcae_galicia', 'auxiliar_administrativo_estado'],
-  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
-  'Valencian Community': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
-  'Valencia': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'subalterno_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencian Community': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'subalterno_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencia': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'subalterno_gva', 'administrativo_diputacion_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
 }
 
 // Oposiciones con contenido disponible, ordenadas por demanda real de usuarios
@@ -1784,6 +1791,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'administrativo_galicia',              // nueva C1
   'auxiliar_administrativo_valencia',    // 2+
   'administrativo_gva',                  // nueva C1
+  'subalterno_gva',                      // nueva AP (Subalterno/a GVA, conv. 80/26)
   'administrativo_diputacion_valencia',  // nueva C1 (Diputación Valencia, feedback Mª José)
   'auxiliar_administrativo_clm',         // 1+
   'auxiliar_administrativo_extremadura', // 1+

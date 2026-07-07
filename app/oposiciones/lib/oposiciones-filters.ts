@@ -152,6 +152,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-diputacion-barcelona': 'cataluna',
     'administrativo-gva': 'valencia',
     'auxiliar-enfermeria-gva': 'valencia',
+    'subalterno-gva': 'valencia',
     'tcae-aragon': 'aragon',
     'tcae-sas': 'andalucia',
     'tcae-canarias': 'canarias',
