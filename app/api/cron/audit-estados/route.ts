@@ -123,10 +123,12 @@ async function _GET(request: NextRequest) {
           : !dl ? 'sin deadline' : `plazo vencido (${dl})`
         errors.push(`${tag} → estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`)
       } else if (e === 'convocada' && !o.inscription_start && !dl) {
-        // 'convocada' SIN fechas (patrón Cádiz): ni sale en el front (filtra por
-        // fechas) ni es vendible. Una 'convocada' con start FUTURO sí es legítima
-        // (inscripción por abrir) → solo error si NO hay ninguna fecha.
-        errors.push(`${tag} → estado 'convocada' SIN fechas de inscripción → invisible/no vendible en el front (falta backfill de fechas verificadas)`)
+        // 'convocada' SIN fechas = LEGÍTIMO pre-inscripción: bases publicadas pero
+        // el plazo aún no ha abierto (p.ej. Cádiz 44plz, "NO ABREN PLAZO", extracto
+        // BOE pendiente). No es error — su estado es correcto; solo aún no es
+        // visible/vendible. WARN para vigilar que el radar capte la apertura del
+        // plazo (→ fechas → advance-estado deriva 'inscripcion_abierta').
+        warns.push(`${tag} → 'convocada' sin fechas (pre-inscripción): vigilar apertura del plazo para que salga en el front`)
       } else if (abiertaPorFechas && e !== 'inscripcion_abierta') {
         // Sale en el front (fechas mandan) aunque el ciclo diga otra cosa → reconciliar estado.
         warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
