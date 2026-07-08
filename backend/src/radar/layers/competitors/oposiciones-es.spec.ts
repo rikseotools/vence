@@ -37,7 +37,9 @@ describe('oposiciones-es adapter', () => {
     const [c] = parseListado(html);
     expect(c.preExtracted).toHaveLength(1);
     expect(c.preExtracted![0].plazas).toBe(35);
-    expect(c.preExtracted![0].estado).toBe('inscripcion_abierta');
+    // NO se afirma estado sin fecha de cierre: la lista no trae el plazo, así que
+    // estado=null (se deriva de las fechas oficiales en el triaje). Ver fix 08/07.
+    expect(c.preExtracted![0].estado).toBeNull();
   });
 
   it('parseOfficialLink saca el enlace al boletín oficial (DOGC/BOE…)', () => {

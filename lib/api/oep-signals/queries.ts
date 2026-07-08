@@ -247,8 +247,16 @@ async function promoteSignalToConvocatoria(
   const fex = (s.detected_fecha_examen ?? null) as string | null
   const est = (s.detected_estado ?? null) as string | null
 
+  // GUARDRAIL (08/07): NO afirmar 'inscripcion_abierta'/'convocada' SIN fecha de
+  // cierre. Sin `inscription_deadline` no se puede saber si el plazo está abierto
+  // → escribir ese estado deja la tarjeta invisible en la home (filtra por fechas)
+  // y es el patrón exacto de las 83 stale. Se neutraliza el estado; `advance-estado`
+  // lo DERIVARÁ desde las fechas cuando existan (SSOT del estado = fechas, no señal).
+  const estToWrite =
+    (est === 'inscripcion_abierta' || est === 'convocada') && !fins ? null : est
+
   // ¿algo que promover?
-  if ([yr, pl, pd, ppi, boc, fpub, fins, fex, est].every((v) => v === null)) return null
+  if ([yr, pl, pd, ppi, boc, fpub, fins, fex, estToWrite].every((v) => v === null)) return null
 
   const curRows = (await db.execute<{ id: string; anio: number | null }>(sql`
     SELECT id, "año" AS anio FROM convocatorias WHERE oposicion_id = ${oposicionId} AND is_current = true LIMIT 1`)) as unknown
@@ -266,7 +274,7 @@ async function promoteSignalToConvocatoria(
         boe_publication_date     = COALESCE(${fpub}::date, boe_publication_date),
         inscription_deadline     = COALESCE(${fins}::date, inscription_deadline),
         exam_date                = COALESCE(${fex}::date,  exam_date),
-        estado_proceso           = COALESCE(${est},  estado_proceso),
+        estado_proceso           = COALESCE(${estToWrite},  estado_proceso),
         updated_at = now()
       WHERE id = ${cur.id}`)
     result = 'updated'
@@ -279,7 +287,7 @@ async function promoteSignalToConvocatoria(
       INSERT INTO convocatorias (oposicion_id, "año", is_current, plazas_libres, plazas_discapacidad,
         plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso)
       VALUES (${oposicionId}, COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int), true,
-        ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${est})
+        ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite})
       ON CONFLICT (oposicion_id, "año") DO UPDATE SET
         is_current = true, archived_at = NULL,
         plazas_libres            = COALESCE(EXCLUDED.plazas_libres,            convocatorias.plazas_libres),
