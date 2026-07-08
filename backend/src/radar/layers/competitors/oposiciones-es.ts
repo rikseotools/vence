@@ -56,7 +56,11 @@ export function parseListado(html: string): RawCandidate[] {
       plazas,
       bocRef: null,
       fechaInscripcionFin: null,
-      estado: 'inscripcion_abierta', // la lista es "convocatorias abiertas"
+      // NO afirmar estado sin fecha de cierre: la lista dice "convocatorias
+      // abiertas" pero no trae el plazo → asegurarlo aquí produce estado sin
+      // fecha (patrón de las 83, tarjeta invisible). El estado se DERIVA de las
+      // fechas verificadas del boletín oficial en el triaje (advance-estado).
+      estado: null,
       url,
     };
     out.push({ sourceUrl: url, officialUrl: null, text: rawName, rawName, preExtracted: [oep] });

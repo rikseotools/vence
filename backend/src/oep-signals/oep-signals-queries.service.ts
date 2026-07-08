@@ -181,18 +181,37 @@ export class OepSignalsQueriesService {
   /** Carga el catálogo (todas las oposiciones) para el matcher estructural.
    *  Público para poder precargarlo UNA vez por pasada (radar) y no recargarlo
    *  por señal. NO filtra is_active (las catalogadas también se vigilan, §10). */
-  async loadOposicionesForMatch() {
-    return this.db
-      .select({
-        id: oposiciones.id,
-        nombre: oposiciones.nombre,
-        slug: oposiciones.slug,
-        shortName: oposiciones.shortName,
-        subgrupo: oposiciones.subgrupo,
-        administracion: oposiciones.administracion,
-        inscriptionDeadline: oposiciones.inscriptionDeadline,
-      })
-      .from(oposiciones);
+  async loadOposicionesForMatch(): Promise<
+    Array<{
+      id: string;
+      nombre: string;
+      slug: string | null;
+      shortName: string | null;
+      subgrupo: string | null;
+      administracion: string | null;
+      inscriptionDeadline: string | null;
+    }>
+  > {
+    // Lee la VISTA SSOT `oposiciones_ssot` (deadline resuelto COALESCE(conv,opos)),
+    // NO la tabla `oposiciones` legacy — igual que el matcher de Next.js. Si no,
+    // `inscription-reconcile` compara la frescura del plazo contra una fecha stale.
+    // (Sin modelo Drizzle de la vista → SQL crudo, como advance-estado.)
+    const res = (await this.db.execute(sql`
+      SELECT id, nombre, slug, short_name AS "shortName", subgrupo, administracion,
+             inscription_deadline::text AS "inscriptionDeadline"
+      FROM oposiciones_ssot
+    `)) as unknown;
+    return (Array.isArray(res)
+      ? res
+      : ((res as { rows?: unknown[] }).rows ?? [])) as Array<{
+      id: string;
+      nombre: string;
+      slug: string | null;
+      shortName: string | null;
+      subgrupo: string | null;
+      administracion: string | null;
+      inscriptionDeadline: string | null;
+    }>;
   }
 
   async matchDetectedOepToOposicion(params: {
@@ -220,15 +239,20 @@ export class OepSignalsQueriesService {
   }> {
     // 1) Match exacto por convocatoria_numero si hay BOC ref (máxima confianza).
     if (params.bocRef) {
-      const byBoc = await this.db
-        .select({
-          id: oposiciones.id,
-          nombre: oposiciones.nombre,
-          inscriptionDeadline: oposiciones.inscriptionDeadline,
-        })
-        .from(oposiciones)
-        .where(eq(oposiciones.convocatoriaNumero, params.bocRef))
-        .limit(1);
+      // Vista SSOT: convocatoria_numero + deadline resueltos (COALESCE conv,opos).
+      const bocRes = (await this.db.execute(sql`
+        SELECT id, nombre, inscription_deadline::text AS "inscriptionDeadline"
+        FROM oposiciones_ssot
+        WHERE convocatoria_numero = ${params.bocRef}
+        LIMIT 1
+      `)) as unknown;
+      const byBoc = (Array.isArray(bocRes)
+        ? bocRes
+        : ((bocRes as { rows?: unknown[] }).rows ?? [])) as Array<{
+        id: string;
+        nombre: string | null;
+        inscriptionDeadline: string | null;
+      }>;
       if (byBoc.length > 0) {
         return {
           matched: true,

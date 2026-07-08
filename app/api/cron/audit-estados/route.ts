@@ -122,6 +122,11 @@ async function _GET(request: NextRequest) {
         const motivo = !o.inscription_start ? 'sin inscription_start'
           : !dl ? 'sin deadline' : `plazo vencido (${dl})`
         errors.push(`${tag} → estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`)
+      } else if (e === 'convocada' && !o.inscription_start && !dl) {
+        // 'convocada' SIN fechas (patrón Cádiz): ni sale en el front (filtra por
+        // fechas) ni es vendible. Una 'convocada' con start FUTURO sí es legítima
+        // (inscripción por abrir) → solo error si NO hay ninguna fecha.
+        errors.push(`${tag} → estado 'convocada' SIN fechas de inscripción → invisible/no vendible en el front (falta backfill de fechas verificadas)`)
       } else if (abiertaPorFechas && e !== 'inscripcion_abierta') {
         // Sale en el front (fechas mandan) aunque el ciclo diga otra cosa → reconciliar estado.
         warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
