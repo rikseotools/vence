@@ -141,7 +141,7 @@ Cambios (commits `7d749437`, `94d6a60d`):
 Auditoría de cierre — qué está HECHO y qué queda DE VERDAD:
 
 **HECHO y verificado:**
-- **Fase 1 — SSOT poblada 100%** (2.500/2.500 con fila `is_current`; era 92). Backfill transparente (vista sin cambios). Migración `20260708_..._backfill_convocatorias_ssot.sql`.
+- **Fase 1 — SSOT poblada** (era 92). Backfill **conforme al §G.2.1** (año=convocatoria/examen no OEP, is_current CASE -YYYY, archived_at en cerradas). CORRECCIÓN 08/07: la 1ª pasada desvió en año/archived_at → corregida in situ (25 años + 74 archived_at). Migración `20260708_..._backfill_convocatorias_ssot.sql`.
 - **Fase 1b — hitos al 100%** (`convocatoria_hitos.convocatoria_id` 943/943; era 17%). Desbloqueado por Fase 1. UPDATE de FK. Migración `20260708_..._backfill_hitos_convocatoria_id.sql`. Cierra §3.10.
 - **Fase 2 — lectores** ✅ (06/07, verificado 08/07: usan alias `oposicionesSsot`/LATERAL COALESCE; mi audit inicial de "leen legacy" fue FALSA ALARMA por el alias).
 - **Fase 3 — puente** código + guardrail (`estadoParaPromover`, testeado) + **DESPLEGADO** (`f4f351a8`).
