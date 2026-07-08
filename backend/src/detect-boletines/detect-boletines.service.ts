@@ -86,22 +86,6 @@ export class DetectBoletinesService {
     }
     const normaIndex = buildNormaIndex(normas);
 
-    // Catálogo para el matcher (1× por pasada). ANTES este servicio insertaba
-    // SIEMPRE oposicionId=null → todo novel → señales huérfanas que no se
-    // auto-vinculan. Ahora corre el matcher (como el orchestrator del radar):
-    // boe_api → Estatal, regional → Autonómica. El matcher tiene guardas de
-    // región/nivel, así que no casa cross-región.
-    let matchCatalog: Awaited<
-      ReturnType<typeof this.queries.loadOposicionesForMatch>
-    > = [];
-    try {
-      matchCatalog = await this.queries.loadOposicionesForMatch();
-    } catch (err) {
-      this.logger.warn(
-        `No se pudo cargar catálogo para matcher: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-
     for (const adapter of ALL_BOLETIN_ADAPTERS) {
       for (let di = 0; di < dates.length; di++) {
         const date = dates[di];
@@ -154,38 +138,14 @@ export class DetectBoletinesService {
             .replace(/[^a-z0-9]+/g, '-')
             .slice(0, 80);
           const dedupeKey = `boletin:${adapter.key}:${ymd}:${nameKey}`;
-
-          // Auto-vinculación: correr el matcher (antes: oposicionId=null siempre).
-          let match: { matched: boolean; oposicionId: string | null } = {
-            matched: false,
-            oposicionId: null,
-          };
-          try {
-            match = await this.queries.matchDetectedOepToOposicion(
-              {
-                cuerpo: oep.name,
-                regionName: adapter.regionName,
-                grupo: oep.positionGroup ?? null,
-                admin:
-                  adapter.sensorType === 'boe_api' ? 'Estatal' : 'Autonómica',
-                organismo: null,
-                bocRef: oep.bocRef ?? null,
-              },
-              matchCatalog,
-            );
-          } catch {
-            // matcher best-effort: si falla, cae a novel (comportamiento previo)
-          }
           const score = Math.min(
             100,
-            baseScoreBySensor(adapter.sensorType) +
-              (oep.plazas ? 10 : 0) +
-              (match.matched ? 10 : 0),
+            baseScoreBySensor(adapter.sensorType) + (oep.plazas ? 10 : 0),
           );
 
           try {
             const { inserted } = await this.queries.insertSignal({
-              oposicionId: match.oposicionId,
+              oposicionId: null,
               sensorType: adapter.sensorType,
               sourceUrl: oep.url ?? hit.url,
               regionName: adapter.regionName,
@@ -196,7 +156,7 @@ export class DetectBoletinesService {
               detectedFechaInscripcionFin: oep.fechaInscripcionFin ?? null,
               detectedEstado: oep.estado ?? null,
               confidenceScore: score,
-              isNovel: !match.matched,
+              isNovel: true,
               signalSummary: `[${adapter.regionName}] ${oep.name}${
                 oep.plazas ? ` (${oep.plazas} plazas)` : ''
               }`,
