@@ -44,4 +44,20 @@ describe('rolloverStatus (guardrail de rollover)', () => {
       motivo: null,
     })
   })
+
+  it('proceso ACTIVO (estado forward, sin fecha de examen aún) → NO pendiente (evita crying-wolf)', () => {
+    // inscripcion_cerrada / oep_aprobada / lista_admitidos = proceso en marcha,
+    // examen pendiente de fecha. NO es callejón sin salida.
+    for (const estado of ['oep_aprobada', 'inscripcion_cerrada', 'lista_admitidos', 'convocada']) {
+      expect(
+        rolloverStatus({ examDate: null, hasUpcomingHito: false, estadoProceso: estado, now }),
+      ).toEqual({ pending: false, motivo: null })
+    }
+  })
+
+  it('estado TERMINAL (examen_realizado) sin horizonte → sí pendiente', () => {
+    expect(
+      rolloverStatus({ examDate: null, hasUpcomingHito: false, estadoProceso: 'examen_realizado', now }),
+    ).toEqual({ pending: true, motivo: 'sin_horizonte' })
+  })
 })

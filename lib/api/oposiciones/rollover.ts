@@ -20,20 +20,42 @@ function rows<T>(res: unknown): T[] {
 }
 
 /**
+ * Estados de proceso que YA miran hacia delante (proceso activo/próximo): la
+ * landing no es un callejón sin salida aunque no tenga fecha de examen fijada.
+ * Solo los estados TERMINALES (examen_realizado, resultados, nombramientos,
+ * sin_oep, null) sin examen futuro ni hito forward son "dead-end".
+ * Mantener en sync con la lista inline de la query SQL de abajo.
+ */
+export const ESTADOS_FORWARD = new Set([
+  'oep_aprobada',
+  'convocada',
+  'convocatoria_publicada',
+  'inscripcion_abierta',
+  'inscripcion_cerrada',
+  'lista_admitidos',
+  'pendiente_examen',
+  'examen_proximo',
+])
+
+/**
  * Regla PURA (testeable) de si una oposición necesita rollover, espejo de la
- * lógica SQL de abajo (mantener en sync). Una oposición tiene HORIZONTE (rollover
- * hecho) si tiene examen futuro O un hito `upcoming` (fecha futura o sin fecha).
- * Sin horizonte → pendiente. Esto impide que un "pivote a medias" (poner
- * exam_date=null sin añadir el hito forward) esconda la oposición del radar.
+ * lógica SQL de abajo (mantener en sync). Tiene HORIZONTE (rollover hecho) si:
+ * examen futuro, O hito `upcoming`, O su estado_proceso es de proceso activo
+ * (ESTADOS_FORWARD). Sin horizonte → pendiente. Impide que un "pivote a medias"
+ * (exam_date=null sin hito forward) esconda la oposición; y evita crying-wolf
+ * con procesos activos sin fecha de examen aún.
  */
 export function rolloverStatus(input: {
   examDate: Date | null
   hasUpcomingHito: boolean
+  estadoProceso?: string | null
   now?: Date
 }): { pending: boolean; motivo: 'examen_pasado' | 'sin_horizonte' | null } {
   const now = input.now ?? new Date()
   const examFuturo = input.examDate !== null && input.examDate >= now
-  const tieneHorizonte = examFuturo || input.hasUpcomingHito
+  const estadoForward =
+    input.estadoProceso != null && ESTADOS_FORWARD.has(input.estadoProceso)
+  const tieneHorizonte = examFuturo || input.hasUpcomingHito || estadoForward
   if (tieneHorizonte) return { pending: false, motivo: null }
   const examenPasado = input.examDate !== null && input.examDate < now
   return { pending: true, motivo: examenPasado ? 'examen_pasado' : 'sin_horizonte' }
@@ -51,10 +73,17 @@ export interface RolloverItem {
 
 // Una oposición TIENE HORIZONTE (rollover hecho, NO pendiente) si:
 //   - su exam_date resuelto (SSOT) es futuro, O
-//   - tiene un hito `upcoming` con fecha futura o sin fecha (pointer al próximo ciclo).
-// Sin ninguna de las dos → dead-end → pendiente.
+//   - tiene un hito `upcoming` con fecha futura o sin fecha, O
+//   - su estado_proceso es de proceso ACTIVO/próximo (ESTADOS_FORWARD: no es un
+//     callejón sin salida aunque no haya fecha de examen aún).
+// Sin ninguna → dead-end (estado terminal + sin pointer) → pendiente.
+// (Lista inline en sync con ESTADOS_FORWARD del helper de arriba.)
 const SIN_HORIZONTE = sql`
   COALESCE(v.exam_date >= now(), false) = false
+  AND COALESCE(v.estado_proceso, '') NOT IN (
+    'oep_aprobada','convocada','convocatoria_publicada','inscripcion_abierta',
+    'inscripcion_cerrada','lista_admitidos','pendiente_examen','examen_proximo'
+  )
   AND NOT EXISTS (
     SELECT 1 FROM convocatoria_hitos h
     WHERE h.oposicion_id = o.id
