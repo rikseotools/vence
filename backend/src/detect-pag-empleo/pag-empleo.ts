@@ -119,7 +119,11 @@ export function parsePagItems(html: string): PagConvocatoria[] {
       admin: ADMIN[jdField(jd, 'idsAdmiconvocante')] || '?',
       ccaa: CCAA[jdField(jd, 'idsCcaa')] || jdField(jd, 'idsCcaa'),
       plazas: Number.isFinite(plazasNum) ? plazasNum : null,
-      plazoHasta: fechaM ? `${fechaM[3]}-${fechaM[2]}-${fechaM[1]}` : plazoTxt || null,
+      // Solo una fecha real (YYYY-MM-DD) o null. NUNCA el texto crudo ("Hasta el
+      // Sin Asignar", etc.): iba a `detected_fecha_inscripcion_fin` (columna DATE)
+      // → el INSERT de la señal fallaba y la convocatoria se PERDÍA. (Bug destapado
+      // al correr el radar en local, 08/07.)
+      plazoHasta: fechaM ? `${fechaM[3]}-${fechaM[2]}-${fechaM[1]}` : null,
       titulacion: field('Titulaci[oó]n:'),
     });
   }
