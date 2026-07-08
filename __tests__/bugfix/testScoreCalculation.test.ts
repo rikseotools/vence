@@ -8,37 +8,14 @@
  * pero la capa de stats asume score = count. Resultado: accuracy > 100%.
  */
 
-import { updateTestScore } from '@/utils/testSession'
-
-// Mock de Supabase
-const mockUpdate = jest.fn().mockReturnValue({
-  eq: jest.fn().mockResolvedValue({ error: null })
-})
-
-jest.mock('@/lib/supabase', () => ({
-  getSupabaseClient: jest.fn(() => ({
-    from: jest.fn(() => ({
-      update: mockUpdate
-    }))
-  }))
-}))
+// NOTA (07/07/2026): el write cliente de score (utils/testSession.updateTestScore)
+// es NO-OP desde la migración a RDS — el score lo escribe el SERVIDOR
+// (answer-and-save: UPDATE tests.score). El invariante score=COUNT (bug Bego Saiz)
+// está guardado en __tests__/bugfix/scoreIsCount.test.ts + backend
+// answer-and-save.service.spec.ts ("UPDATE tests.score"). Aquí quedan solo los tests
+// de la SEMÁNTICA pura (count, NO porcentaje), independientes del path de guardado.
 
 describe('Bug Prevention: Test Score = COUNT', () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
-  describe('updateTestScore - debe guardar COUNT de aciertos', () => {
-    it('debe guardar el count directamente', async () => {
-      await updateTestScore('test-id-1', 15) // 15 correctas
-      await updateTestScore('test-id-2', 0)  // 0 correctas
-      await updateTestScore('test-id-3', 25) // 25 correctas
-
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 15 })
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 0 })
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 25 })
-    })
-  })
 
   describe('Score semantica - count NO porcentaje', () => {
     it('6 correctas de 6 preguntas → score=6 (NO 100)', () => {
@@ -127,24 +104,13 @@ describe('Bug Prevention: Test Score = COUNT', () => {
     })
   })
 
-  describe('Flujo completo: contador → updateTestScore', () => {
-    it('debe pasar COUNT al guardar, no porcentaje', async () => {
+  describe('Flujo completo: contador de aciertos = score (pura)', () => {
+    it('6 correctas de 10 → score=6 (count), NO 60 (porcentaje)', () => {
       let score = 0
       const totalQuestions = 10
-
-      // Simular responder 6 correctas de 10
-      for (let i = 0; i < 6; i++) score++
-
-      expect(score).toBe(6)
-
-      // CORRECTO: guardar count
-      await updateTestScore('test-id', score)
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 6 })
-
-      // INCORRECTO seria guardar porcentaje
-      expect(mockUpdate).not.toHaveBeenCalledWith({
-        score: Math.round((score / totalQuestions) * 100),
-      })
+      for (let i = 0; i < 6; i++) score++ // 6 correctas
+      expect(score).toBe(6) // CORRECTO: count
+      expect(score).not.toBe(Math.round((score / totalQuestions) * 100)) // NO porcentaje (60)
     })
   })
 
