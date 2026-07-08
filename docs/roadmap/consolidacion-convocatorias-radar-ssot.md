@@ -132,3 +132,5 @@ Cambios (commits `7d749437`, `94d6a60d`):
 4. **Data (prod):** 33 catalogadas date-less con estado abierto → `sin_oep`. Las convocadas reales (bases publicadas, plazo pendiente de BOE: Cádiz 44plz, Badajoz 9plz…) NO se tocaron — su estado es correcto; el seguimiento las auto-avanzará al abrir el plazo.
 
 **Sigue pendiente el sprint** (Fases 3-5): E2E del puente `promoteSignalToConvocatoria`, re-introspectar `db/schema.ts` (modela el legacy), drop de columnas legacy de `oposiciones`, y verificar despliegue del dual-write de `advance-estado`.
+
+**Plan de ejecución paso a paso (con OK por fase):** `docs/roadmap/consolidacion-sprint-ejecucion.md`.
