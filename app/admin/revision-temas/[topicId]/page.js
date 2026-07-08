@@ -784,7 +784,7 @@ export default function TopicDetailPage() {
             <div className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
               <span>⚠️</span>
               <span>No hay proveedores de IA configurados.</span>
-              <a href="/admin/ai" className="text-blue-600 hover:underline">Configurar →</a>
+              <Link href="/admin/ai" className="text-blue-600 hover:underline">Configurar →</Link>
             </div>
           ) : (
             <>

@@ -1,6 +1,7 @@
 // app/admin/oep-signals/page.tsx
 // Panel admin de señales de detección de OEPs (multi-sensor)
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -129,13 +130,13 @@ export default function OepSignalsPage() {
             ⏰ Check timeline
           </button>
           {/* 🌍 Scan regional RETIRADO 01/06/2026 — scraper autónomo descartado, descubrimiento on-demand por Claude */}
-          <a
+          <Link
             href="/admin/seguimiento-convocatorias"
             className="text-xs text-gray-500 hover:text-gray-700 underline"
             title="Histórico técnico de hashes (debug)"
           >
             Histórico hashes →
-          </a>
+          </Link>
         </div>
       </div>
 

@@ -318,13 +318,13 @@ export default function CancelacionDevolucionesPage() {
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Esta política está sujeta a nuestros{' '}
-            <a href="/terminos" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href="/terminos" className="text-blue-600 dark:text-blue-400 hover:underline">
               Términos y Condiciones
-            </a>{' '}
+            </Link>{' '}
             y{' '}
-            <a href="/privacidad" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href="/privacidad" className="text-blue-600 dark:text-blue-400 hover:underline">
               Política de Privacidad
-            </a>.
+            </Link>.
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
             Última actualización: 21 de enero de 2026

@@ -1,6 +1,7 @@
 // components/LawTestPageWrapper.tsx - WRAPPER ESPECÍFICO PARA TESTS POR LEY
 // 🚀 v2: Usa API /api/questions/filtered (Drizzle ORM) en lugar de lawFetchers
 'use client'
+import Link from 'next/link'
 import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -476,12 +477,12 @@ export default function LawTestPageWrapper({
                 )}
               </div>
 
-              <a
+              <Link
                 href="/leyes"
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
               >
                 📚 Ver Todas las Leyes
-              </a>
+              </Link>
 
               <a
                 href={`/leyes/${lawSlug}`}

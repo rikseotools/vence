@@ -1,3 +1,4 @@
+import Link from 'next/link'
 export const metadata = {
   title: 'Política de Privacidad | Vence',
   description: 'Política de privacidad de Vence - Preparación de oposiciones',
@@ -160,12 +161,12 @@ export default function PrivacidadPage() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <a
+          <Link
             href="/"
             className="text-blue-600 dark:text-blue-400 hover:underline"
           >
             ← Volver al inicio
-          </a>
+          </Link>
         </div>
       </div>
     </div>

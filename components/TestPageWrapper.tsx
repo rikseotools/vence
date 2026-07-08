@@ -1,5 +1,6 @@
 // components/TestPageWrapper.tsx
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
@@ -643,12 +644,12 @@ export default function TestPageWrapper({
 
               {/* Solo mostrar test rápido general si no es un test de tema específico */}
               {!tema && (
-                <a
+                <Link
                   href="/test/rapido"
                   className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
                 >
                   🎲 Test rápido general
-                </a>
+                </Link>
               )}
 
               <a

@@ -994,12 +994,12 @@ export default function HeaderES() {
             <span className="font-medium">
               La oposición que tienes seleccionada aún no está disponible en Vence. Elige una de las disponibles.
             </span>
-            <a
+            <Link
               href="/perfil"
               className="inline-flex items-center gap-1 bg-white text-orange-600 font-semibold px-4 py-1.5 rounded-full text-sm hover:bg-orange-50 transition-colors"
             >
               Cambiar oposición
-            </a>
+            </Link>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 // app/admin/seguimiento-convocatorias/page.tsx
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 
@@ -105,7 +106,7 @@ export default function SeguimientoConvocatoriasPage() {
             </div>
             <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
               Las alertas de cambios detectados por hash ahora aparecen en{' '}
-              <a href="/admin/oep-signals" className="font-medium underline">🎯 OEPs</a>{' '}
+              <Link href="/admin/oep-signals" className="font-medium underline">🎯 OEPs</Link>{' '}
               junto a las señales del LLM semántico y detector de silencio. Esta página muestra solo el histórico técnico de hashes para debugging.
             </p>
           </div>
@@ -118,7 +119,7 @@ export default function SeguimientoConvocatoriasPage() {
             Seguimiento de Convocatorias (Histórico)
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Monitoreo técnico de hashes. Alertas en <a href="/admin/oep-signals" className="underline">🎯 OEPs</a>.
+            Monitoreo técnico de hashes. Alertas en <Link href="/admin/oep-signals" className="underline">🎯 OEPs</Link>.
           </p>
         </div>
         <div className="flex items-center gap-3">
