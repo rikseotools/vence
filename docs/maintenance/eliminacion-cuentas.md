@@ -23,6 +23,7 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 - Perfil completo (email, plan, días activo, oposición, ciudad, fuente)
 - **Cómo entró (captación):** canal real, anuncio/campaña y landing — de la tabla `user_acquisition`, **NO** de `registration_source` (que casi siempre vale `organic` y engaña). Ver §2bis. Sirve para detectar **campañas de pago mal configuradas** (gente que se da de baja a los minutos de llegar por un anuncio = dinero tirado).
 - Actividad cuantificada (tests, respuestas, chat IA, disputas, errores)
+- **Comunicaciones que le enviamos (emails/newsletters + push):** cuántas, de qué tipo y si las abrió — de `email_events` y `notification_events`. Ver §2ter. **Imprescindible cuando el motivo declarado alude a "no quiero recibir más" / "darme de baja" / "no me interesa estar al día":** valida si de verdad le saturamos (muchos envíos → señal para bajar frecuencia) o si apenas le escribimos y la baja es por otra cosa (el "darme de baja" es genérico, no fatiga de emails).
 - Subscripción y ciclo de pago
 - **Journey completo del día de la solicitud** reconstruido de `user_interactions` minuto a minuto
 - Hallazgos UX (bugs descubiertos, patrones de frustración, clicks repetidos, etc.)
@@ -123,6 +124,51 @@ Bloque a incluir SIEMPRE en el `deletion_reason`:
 (Si no hay fila en `user_acquisition` o no es de pago, anótalo igual: "sin fila / channel organic / sin click-IDs".)
 
 **Para el panorama de canales en vivo** (no solo bajas), ver el método de análisis de captación→conversión por canal (memoria `reference_analisis_captacion_canales`): agrupar `user_acquisition` por `channel`/`utm_campaign` y cruzar con `tests` (activó) y `payment_settlements` (pagó), ventana 7/15 días, separando captación nueva de re-engagement.
+
+---
+
+## 2ter. Qué comunicaciones le enviamos (emails/newsletters + push)
+
+**Objetivo:** cuantificar cuántos emails y push recibió el usuario, **de qué tipo**, y si los abrió. Es clave para interpretar el motivo de baja: si eligió *"no me interesa estar al día"* / *"darme de baja"* / *"no quiero recibir más"*, hay que ver si de verdad le saturamos o si apenas le escribimos (en cuyo caso el "darme de baja" es genérico, no fatiga de emails).
+
+**Emails** — tabla `email_events` (1 fila por evento). Columnas útiles: `email_type` (p.ej. `bienvenida_inmediato`, newsletters, `soporte_respuesta`…), `event_type` (`sent`/`delivered`/`opened`/`clicked`), `subject`, `open_count`, `click_count`, `email_address`, `created_at`. **No existe `recipient_email`** (usar `email_address`).
+
+```js
+// Emails enviados al usuario, agrupados por tipo (y si los abrió)
+const emails = await sql`
+  SELECT email_type,
+         count(*)::int AS enviados,
+         sum(open_count)::int  AS aperturas,
+         sum(click_count)::int AS clicks,
+         min(created_at) AS primero, max(created_at) AS ultimo
+  FROM email_events
+  WHERE user_id = ${userId}
+  GROUP BY email_type
+  ORDER BY enviados DESC`;
+// Detalle uno a uno si hace falta:
+//   SELECT email_type, event_type, subject, open_count, created_at
+//   FROM email_events WHERE user_id = ${userId} ORDER BY created_at;
+```
+
+**Push** — tabla `notification_events` (`notification_type`, `event_type`, `created_at`):
+
+```js
+const push = await sql`
+  SELECT notification_type, count(*)::int n
+  FROM notification_events WHERE user_id = ${userId}
+  GROUP BY notification_type`;
+```
+
+**Bloque a incluir SIEMPRE en el `deletion_reason`:**
+
+```
+=== COMUNICACIONES ENVIADAS ===
+- Emails: 1 (bienvenida_inmediato, sin abrir) | Newsletters: 0 | Push: 0
+- Interpretación: el motivo "darme de baja" NO es por saturación de emails —
+  apenas se le escribió (1 email de bienvenida, open_count=0).
+```
+
+(Si recibió muchas newsletters y ninguna abierta, o justo antes de la baja, anótalo: puede ser señal para revisar la frecuencia/segmentación de envíos.)
 
 ---
 
