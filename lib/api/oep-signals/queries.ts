@@ -221,6 +221,27 @@ export async function getPendingSignalsCount(): Promise<PendingSignalsCountRespo
  * SQL crudo porque `convocatorias` no está en el schema Drizzle (y así escribe la tabla real,
  * no la vista aliased). Devuelve el tipo de operación o null si no había nada que promover.
  */
+/**
+ * GUARDRAIL puro (testeable): el estado a escribir al promover una señal a la
+ * SSOT. NO se puede afirmar 'inscripcion_abierta'/'convocada' sin fecha de cierre
+ * (`inscription_deadline`) — sin ella la tarjeta queda invisible en la home (que
+ * filtra por fechas) y es el patrón de las catalogadas stale. `advance-estado`
+ * derivará el estado correcto desde las fechas cuando existan. Otros estados
+ * (resultados, nombramientos…) pasan tal cual.
+ */
+export function estadoParaPromover(
+  detectedEstado: string | null,
+  tieneDeadline: boolean,
+): string | null {
+  if (
+    (detectedEstado === 'inscripcion_abierta' || detectedEstado === 'convocada') &&
+    !tieneDeadline
+  ) {
+    return null
+  }
+  return detectedEstado
+}
+
 async function promoteSignalToConvocatoria(
   db: ReturnType<typeof getDb>,
   signalId: string,
@@ -248,12 +269,9 @@ async function promoteSignalToConvocatoria(
   const est = (s.detected_estado ?? null) as string | null
 
   // GUARDRAIL (08/07): NO afirmar 'inscripcion_abierta'/'convocada' SIN fecha de
-  // cierre. Sin `inscription_deadline` no se puede saber si el plazo está abierto
-  // → escribir ese estado deja la tarjeta invisible en la home (filtra por fechas)
-  // y es el patrón exacto de las 83 stale. Se neutraliza el estado; `advance-estado`
-  // lo DERIVARÁ desde las fechas cuando existan (SSOT del estado = fechas, no señal).
-  const estToWrite =
-    (est === 'inscripcion_abierta' || est === 'convocada') && !fins ? null : est
+  // cierre (ver estadoParaPromover). Sin deadline no se sabe si el plazo está
+  // abierto → dejar que advance-estado derive el estado desde fechas.
+  const estToWrite = estadoParaPromover(est, fins != null)
 
   // ¿algo que promover?
   if ([yr, pl, pd, ppi, boc, fpub, fins, fex, estToWrite].every((v) => v === null)) return null
