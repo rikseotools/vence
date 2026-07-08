@@ -18,53 +18,18 @@
  * Si NIVEL A se salta: faltan credenciales Supabase en .env.local.
  */
 
-import https from 'https'
 import fs from 'fs'
 import dotenv from 'dotenv'
+import { Client } from 'pg'
 
 dotenv.config({ path: '.env.local', override: true })
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const hasRealDb = !!(URL && SERVICE_KEY && !URL.includes('test.supabase.co'))
-
-const LAW_SHORT_NAME = 'Ley 9/2017'
-
-function restGet<T = unknown>(pathAndQuery: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    https
-      .get(
-        `${URL}/rest/v1/${pathAndQuery}`,
-        { headers: { apikey: SERVICE_KEY!, Authorization: `Bearer ${SERVICE_KEY}` } },
-        (res) => {
-          let body = ''
-          res.on('data', (c) => (body += c))
-          res.on('end', () => {
-            const status = res.statusCode ?? 0
-            if (status < 200 || status >= 300) {
-              reject(new Error(`HTTP ${status}: ${body.slice(0, 300)}`))
-              return
-            }
-            try {
-              const parsed = JSON.parse(body)
-              if (!Array.isArray(parsed)) {
-                reject(new Error(`respuesta no-array (${status}): ${body.slice(0, 300)}`))
-                return
-              }
-              resolve(parsed as T)
-            } catch {
-              reject(new Error(`parse fail (${status}): ${body.slice(0, 200)}`))
-            }
-          })
-        },
-      )
-      .on('error', reject)
-  })
-}
-
-async function chunked<T>(items: T[], size: number, fn: (chunk: T[]) => Promise<void>) {
-  for (let i = 0; i < items.length; i += size) await fn(items.slice(i, i + size))
-}
+// Lee de la BD VIVA (RDS) vía pg. NO Supabase (congelado desde 04/07). En lugar
+// de hardcodear una ley (que podía quedarse sin ningún usuario con falladas), el
+// beforeAll busca dinámicamente un par (usuario, ley) con ≥3 falladas y ≥1
+// solo-acertada → test auto-mantenido, no se rompe cuando cambian los datos.
+const DB_URL = process.env.DATABASE_URL
+const hasDb = !!DB_URL
 
 interface Ctx {
   lawId: string
@@ -83,77 +48,74 @@ const ctx: Ctx = {
 }
 
 describe('INTEGRACIÓN — repaso de fallos scope=law (BD real)', () => {
-  if (!hasRealDb) {
-    test.skip('Skipped: faltan credenciales Supabase en .env.local', () => {})
+  if (!hasDb) {
+    test.skip('Skipped: falta DATABASE_URL en el entorno', () => {})
     return
   }
 
+  let client: Client
+
   beforeAll(async () => {
-    // 1. Ley + preguntas activas de la ley
-    const laws = await restGet<{ id: string }[]>(
-      `laws?short_name=eq.${encodeURIComponent(LAW_SHORT_NAME)}&select=id`,
+    client = new Client({ connectionString: DB_URL })
+    await client.connect()
+
+    // 1. Par (usuario, ley) con material real: ≥3 falladas y ≥1 solo-acertada.
+    //    La ley se deriva del artículo (fuente de verdad), NO del law_name
+    //    denormalizado. "ever_failed" = alguna respuesta incorrecta; "solo
+    //    acertada" = nunca fallada → conjuntos disjuntos.
+    //    PERF: acotamos a los usuarios más pesados (user_stats_summary, tabla
+    //    pequeña) en vez de agregar TODO test_questions — así no revienta el
+    //    timeout bajo la concurrencia del run completo.
+    const pair = await client.query<{ user_id: string; law_id: string }>(`
+      WITH heavy AS (
+        SELECT user_id FROM user_stats_summary ORDER BY total_questions DESC LIMIT 20
+      ),
+      per_q AS (
+        SELECT tq.user_id, a.law_id, tq.question_id,
+               bool_or(NOT tq.is_correct) AS ever_failed
+        FROM test_questions tq
+        JOIN heavy h ON h.user_id = tq.user_id
+        JOIN questions q ON q.id = tq.question_id AND q.is_active = true
+        JOIN articles a ON a.id = q.primary_article_id
+        GROUP BY tq.user_id, a.law_id, tq.question_id
+      )
+      SELECT user_id::text, law_id::text
+      FROM per_q
+      GROUP BY user_id, law_id
+      HAVING count(*) FILTER (WHERE ever_failed) >= 3
+         AND count(*) FILTER (WHERE NOT ever_failed) >= 1
+      ORDER BY count(*) FILTER (WHERE ever_failed) DESC
+      LIMIT 1
+    `)
+    if (!pair.rows.length) return
+    ctx.lawId = pair.rows[0].law_id
+    ctx.userId = pair.rows[0].user_id
+
+    // 2. Preguntas activas de la ley (por artículo).
+    const lawQs = await client.query<{ id: string }>(
+      `SELECT q.id::text FROM questions q JOIN articles a ON a.id = q.primary_article_id
+       WHERE q.is_active = true AND a.law_id = $1`,
+      [ctx.lawId],
     )
-    if (!laws.length) return
-    ctx.lawId = laws[0].id
+    for (const r of lawQs.rows) ctx.lawQuestionIds.add(r.id)
 
-    const arts = await restGet<{ id: string }[]>(`articles?law_id=eq.${ctx.lawId}&select=id`)
-    const artIds = arts.map((a) => a.id)
-    await chunked(artIds, 50, async (chunk) => {
-      const qs = await restGet<{ id: string }[]>(
-        `questions?primary_article_id=in.(${chunk.join(',')})&is_active=eq.true&select=id`,
-      )
-      for (const q of qs) ctx.lawQuestionIds.add(q.id)
-    })
-
-    // 2. Candidatos: usuarios con falladas en la ley (law_name denormalizado
-    //    solo para localizarlos; el cruce real se valida contra lawQuestionIds).
-    const recentFails = await restGet<{ user_id: string; question_id: string }[]>(
-      `test_questions?law_name=eq.${encodeURIComponent(LAW_SHORT_NAME)}` +
-        `&is_correct=eq.false&select=user_id,question_id&limit=1000`,
+    // 3. Historial del usuario en la ley: partición falladas vs solo-acertadas.
+    const hist = await client.query<{ question_id: string; ever_failed: boolean }>(
+      `SELECT tq.question_id::text, bool_or(NOT tq.is_correct) AS ever_failed
+       FROM test_questions tq
+       JOIN questions q ON q.id = tq.question_id
+       JOIN articles a ON a.id = q.primary_article_id
+       WHERE tq.user_id = $1 AND a.law_id = $2 AND q.is_active = true
+       GROUP BY tq.question_id`,
+      [ctx.userId, ctx.lawId],
     )
-    const failsByUser = new Map<string, Set<string>>()
-    for (const r of recentFails) {
-      if (!r.user_id || !r.question_id || !ctx.lawQuestionIds.has(r.question_id)) continue
-      if (!failsByUser.has(r.user_id)) failsByUser.set(r.user_id, new Set())
-      failsByUser.get(r.user_id)!.add(r.question_id)
-    }
-    const candidates = [...failsByUser.entries()]
-      .filter(([, s]) => s.size >= 3)
-      .sort((a, b) => b[1].size - a[1].size)
-      .slice(0, 8)
-      .map(([uid]) => uid)
-
-    // 3. Por cada candidato, su historial en la ley (falladas vs solo-acertadas).
-    //    Preferimos un usuario que tenga AMBOS tipos: así el test de regresión
-    //    demuestra de verdad que el repaso excluye las solo-acertadas.
-    const enc = encodeURIComponent(LAW_SHORT_NAME)
-    for (const uid of candidates) {
-      const [failedRows, correctRows] = await Promise.all([
-        restGet<{ question_id: string }[]>(
-          `test_questions?user_id=eq.${uid}&law_name=eq.${enc}&is_correct=eq.false&select=question_id&limit=2000`,
-        ),
-        restGet<{ question_id: string }[]>(
-          `test_questions?user_id=eq.${uid}&law_name=eq.${enc}&is_correct=eq.true&select=question_id&limit=2000`,
-        ),
-      ])
-      const failed = new Set(
-        failedRows.map((r) => r.question_id).filter((q) => ctx.lawQuestionIds.has(q)),
-      )
-      const correct = new Set(
-        correctRows.map((r) => r.question_id).filter((q) => ctx.lawQuestionIds.has(q)),
-      )
-      const onlyCorrect = new Set([...correct].filter((q) => !failed.has(q)))
-      if (failed.size < 3) continue
-      // Primer candidato válido como fallback; nos quedamos con el primero que
-      // además tenga solo-acertadas (material para el test de regresión).
-      if (!ctx.userId || (onlyCorrect.size > 0 && ctx.userOnlyCorrectInLaw.size === 0)) {
-        ctx.userId = uid
-        ctx.userFailedInLaw = failed
-        ctx.userOnlyCorrectInLaw = onlyCorrect
-      }
-      if (onlyCorrect.size > 0) break
+    for (const r of hist.rows) {
+      if (r.ever_failed) ctx.userFailedInLaw.add(r.question_id)
+      else ctx.userOnlyCorrectInLaw.add(r.question_id)
     }
   }, 90000)
+
+  afterAll(async () => { await client?.end() })
 
   test('NIVEL A — setup: existe la ley y un usuario con falladas en ella', () => {
     expect(ctx.lawId).not.toBe('')

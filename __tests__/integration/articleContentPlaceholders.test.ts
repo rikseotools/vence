@@ -36,11 +36,17 @@ describe('Article content — no placeholders', () => {
     // Placeholder = el contenido es la mera REFERENCIA al artículo ("Artículo 3
     // del Decreto...") en lugar del texto legal. Se detecta por el patrón al
     // inicio del contenido.
+    // PERF: el prefiltro LIKE 'Artículo %' (barato) recorta el conjunto antes de
+    // evaluar el regex — sin él, el regex se aplica a los ~54k artículos y bajo
+    // la concurrencia del run completo supera el timeout. Todo placeholder
+    // ("Artículo N del …") empieza por "Artículo ", así que el LIKE no descarta
+    // ninguno.
     const { rows } = await client.query<{ article_number: string; ley: string }>(`
       SELECT a.article_number, l.short_name AS ley
       FROM articles a
       JOIN laws l ON l.id = a.law_id
       WHERE a.is_active = true
+        AND a.content LIKE 'Art_culo %'
         AND a.content ~ '^Art[íi]culo\\s+[0-9]+\\s+(del|de la|de)\\b'
       ORDER BY l.short_name, a.article_number
       LIMIT 100
@@ -52,5 +58,5 @@ describe('Article content — no placeholders', () => {
     }
 
     expect(rows).toHaveLength(0)
-  }, 30000)
+  }, 45000)
 })

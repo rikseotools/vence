@@ -16,32 +16,30 @@
  * Se salta solo si faltan credenciales (CI sin secrets).
  */
 import { Client } from 'pg'
-import https from 'https'
 import dotenv from 'dotenv'
+import { getUserThemeStatsByOposicion } from '@/lib/api/theme-stats/queries'
+import type { OposicionSlug } from '@/lib/api/theme-stats/schemas'
 
 dotenv.config({ path: '.env.local' })
 
 const DB_URL = process.env.DATABASE_URL
-const BASE = 'https://www.vence.es'
 
 const maybe = DB_URL ? describe : describe.skip
 
-// `fetch` está mockeado en el setup global de jest → usamos https nativo
-// (mismo patrón que oposicionesDataConsistency).
-function httpGetJson(url: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      let data = ''
-      res.on('data', (c) => (data += c))
-      res.on('end', () => { try { resolve(JSON.parse(data)) } catch (e) { reject(e) } })
-    }).on('error', reject)
-  })
-}
-
-async function endpointSum(userId: string, slug: string): Promise<{ ok: boolean; count: number; sum: number }> {
-  const j: any = await httpGetJson(`${BASE}/api/v2/topic-progress/theme-stats?userId=${userId}&oposicionId=${slug}`)
-  const stats: any[] = Array.isArray(j?.stats) ? j.stats : []
-  return { ok: !!j?.success, count: stats.length, sum: stats.reduce((a, s) => a + (Number(s.total) || 0), 0) }
+// Redesign (08/07): antes pegaba a https://www.vence.es (prod) — frágil y ahora
+// el endpoint exige auth (401). Testeamos la MISMA función que usa el endpoint
+// (getUserThemeStatsByOposicion) contra la BD readonly: es donde vivía el bug V4
+// y no depende de red/deploy/auth. El endpoint es un wrapper con auth+cache.
+async function modelSum(userId: string, slug: string): Promise<{ ok: boolean; count: number; sum: number }> {
+  const j = await getUserThemeStatsByOposicion(userId, slug as OposicionSlug)
+  // La función devuelve `stats` como Record<topicNum, ThemeStat> (el endpoint es
+  // un wrapper con auth+cache que reempaqueta). Sumamos el `total` de cada tema.
+  const stats = j?.stats ? Object.values(j.stats) : []
+  return {
+    ok: !!j?.success,
+    count: stats.length,
+    sum: stats.reduce((a, s) => a + (Number(s.total) || 0), 0),
+  }
 }
 
 maybe('Modelo de theme-stats (artículo→topic_scope) — invariantes anti-V4', () => {
@@ -81,14 +79,14 @@ maybe('Modelo de theme-stats (artículo→topic_scope) — invariantes anti-V4',
       FROM per_article pa JOIN scope s ON s.article_id = pa.article_id
     `, [userId, positionType])
     expectedInScope = Number(e.rows[0].expected)
-  }, 30000)
+  }, 60000) // queries analíticas pesadas — margen bajo la concurrencia del run completo
 
   afterAll(async () => { if (client) await client.end() })
 
   it('1. el endpoint refleja el progreso COMPLETO en-scope (no oculta los tests globales)', async () => {
     expect(expectedInScope).toBeGreaterThan(200) // el user más pesado tiene mucho
     const slug = positionType.replace(/_/g, '-')
-    const res = await endpointSum(userId, slug)
+    const res = await modelSum(userId, slug)
     expect(res.ok).toBe(true)
     expect(res.count).toBeGreaterThan(0)
     // V4 devolvía << esperado; V5 debe reflejar ≥70% (margen para staleness de caché).
@@ -111,7 +109,7 @@ maybe('Modelo de theme-stats (artículo→topic_scope) — invariantes anti-V4',
     `, [userId, positionType])
     if (other.rows.length === 0) { return } // sin solape (raro) → nada que afirmar
     const otherSlug = other.rows[0].position_type.replace(/_/g, '-')
-    const res = await endpointSum(userId, otherSlug)
+    const res = await modelSum(userId, otherSlug)
     expect(res.ok).toBe(true)
     // Sus respuestas en leyes comunes deben aparecer también en la otra oposición.
     expect(res.count).toBeGreaterThan(0)

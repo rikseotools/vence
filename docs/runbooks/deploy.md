@@ -16,6 +16,41 @@ Ambos: build (podman) → push ECR → task def pineada por **digest** clonando 
 - **Infra:** cuenta AWS `349744179687`, perfil `vence`, región `eu-west-2`. Cluster ECS `vence-backend`, servicios `vence-frontend` y `vence-backend`. Front y back detrás del **ALB** `vence-backend-alb`, con **CloudFront** (`E1EH4WF1H7ZGLA`, `www.vence.es`) delante del front y `api.vence.es` para el back.
 - **GHA auto-deploy DESACTIVADO** (metía builds Supabase por sorpresa). Deploy manual con estos scripts.
 
+## Pre-deploy: árbol limpio + commit pusheado + CI verde (guardarraíles del script)
+
+Desde 07-08/07/2026 los scripts NO despliegan a ciegas. Antes del build comprueban dos cosas y **abortan** si no se cumplen:
+
+1. **Árbol de trabajo LIMPIO** (`git status --porcelain`). El build usa el **WORKING TREE** (podman `COPY . .`), así que un árbol sucio desplegaría cambios a medias — **muy peligroso con sesiones paralelas editando** (ver abajo). Override deliberado: `ALLOW_DIRTY=1`.
+2. **CI VERDE en GHA para el SHA de HEAD** (`[gate CI]`). Consulta los check-runs de GitHub Actions del commit y aborta si:
+   - **no hay runs** → el commit NO está pusheado (el CI corre en push a `main`; mensaje *"¿Has hecho git push?"*).
+   - **algún check en ROJO** (unit / typecheck / lint / **integration**).
+   - **CI aún EN CURSO** → espera a que acabe y reintenta.
+   Override: `SKIP_CI_GATE=1` (necesita `GITHUB_PAT` en `.env.local` + `jq`).
+
+**Flujo canónico, por tanto:**
+```bash
+git add -A && git commit -m "..."     # TODO lo que quieras desplegar (build = working tree)
+git push origin main                  # dispara el CI en GHA
+# esperar a que el CI (unit+typecheck+lint+integration) esté VERDE
+scripts/deploy-frontend.sh            # el gate confirma verde y despliega
+```
+Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs). Es intencional: no desplegar código que no pasó CI.
+
+> ⚠️ **El gate exige TODO el CI verde, incluida `integration`.** Los tests de integración pegan a la BD real (readonly) y pueden estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión) — cosas ajenas al código que despliegas. Si eso te bloquea un hotfix legítimo: o se arregla/estabiliza integración primero, o `SKIP_CI_GATE=1` de forma consciente. **Decisión pendiente (Manuel):** ¿el gate debe exigir `integration` (fuerza higiene de datos antes de desplegar) o solo los checks de CÓDIGO (unit+typecheck+lint) tratando integración como señal aparte? Hoy exige todo.
+
+## Sesiones paralelas (varias sesiones de Claude a la vez)
+
+Varias sesiones trabajan el MISMO repo a la vez y **commitean a `main` local SIN pushear** (checkpoints tipo `chore: checkpoint trabajo pendiente (sesiones paralelas), sin push`). Consecuencias para el deploy:
+
+- **`main` va por delante de `origin`** con trabajo mezclado de varias sesiones. Un `git push` sube TODO ese trabajo acumulado, no solo el de una sesión.
+- **El deploy es CUMULATIVO**: build desde working tree/HEAD = el trabajo de TODAS las sesiones. No hay aislamiento por sesión en el momento del deploy.
+- Un `git add -A` de una sesión puede **barrer ficheros sin commitear de otra** hacia su checkpoint (pasó el 08/07: un checkpoint paralelo se llevó 4 ficheros de otra sesión). **Commitea tu trabajo de forma atómica** (`git add -u` de tus ficheros, no `-A` a ciegas) para que no se mezcle ni te barran.
+
+**Antes de desplegar con sesiones paralelas activas:**
+1. Coordina un **momento de release**: que ninguna sesión esté a media edición → árbol limpio (el guardarraíl te frena si no).
+2. Confirma que TODO lo intencional está commiteado y que `main` contiene solo lo que quieres soltar.
+3. UN `git push origin main` → esperar CI verde → deploy. **No** pushear/desplegar por sesión de forma descoordinada.
+
 ## Frontend — arquitectura de assets (CRÍTICO: por qué no se congela al desplegar)
 
 **Problema histórico (05/07/2026):** los chunks `_next/static/*` se servían desde el **contenedor efímero**. Cada deploy reemplazaba el contenedor → chunks viejos 404 → `ChunkLoadError` → **app congelada** para usuarios en el bundle anterior (caso Nila). Ver memoria `project_deploy_freeze_chunks_s3`.

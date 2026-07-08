@@ -38,7 +38,7 @@
     "test:critical": "jest --testPathPattern='criticalValidations' --coverage",
     "test:full": "node scripts/validate-critical-paths.js",
     "test:hooks": "jest --testPathPattern='__tests__/hooks' --coverage",
-    "test:integration": "jest --watchAll=false --passWithNoTests --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)'",
+    "test:integration": "jest --watchAll=false --passWithNoTests --maxWorkers=2 --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)'",
     "test:precommit": "jest --testPathPattern='precommit/criticalValidations' --passWithNoTests",
     "test:system": "node scripts/check-system.js",
     "test:unit": "jest --watchAll=false --passWithNoTests --testPathIgnorePatterns='/node_modules/' --testPathIgnorePatterns='__tests__/integration' --testPathIgnorePatterns='__tests__/perf' --testPathIgnorePatterns='__tests__/security' --testPathIgnorePatterns='__tests__/scraping' --testPathIgnorePatterns='__tests__/api/user-stats'",

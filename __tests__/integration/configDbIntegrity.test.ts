@@ -1,54 +1,43 @@
+/** @jest-environment node */
 // __tests__/integration/configDbIntegrity.test.ts
-// Valida que toda oposición en config tiene datos reales en BD (topics, topic_scope, etc.)
-// Se salta automáticamente si no hay credenciales reales de Supabase (CI-safe).
-// Usa https nativo de Node para evitar que el mock de fetch en jest.setup.js interfiera.
+// Valida que toda oposición LIVE en config tiene datos reales en BD (topics,
+// topic_scope, themes). Las oposiciones marcadas `comingSoon` se saltan: están
+// en construcción a propósito (topics parciales o aún inactivos).
+//
+// Lee de la BD VIVA (RDS) vía pg. NO Supabase (congelado desde 04/07) — leerlo
+// daba falsos negativos (p.ej. Subalterno GVA ya tiene sus 15 topics activos en
+// RDS pero en Supabase seguían inactivos).
 
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import dotenv from 'dotenv'
-import https from 'https'
+import { Client } from 'pg'
 
-// Cargar credenciales reales (bypasea jest.setup.js que pone test.supabase.co)
 dotenv.config({ path: '.env.local', override: true })
 
-const REAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const REAL_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const hasRealDb = !!(REAL_URL && REAL_KEY && !REAL_URL.includes('test.supabase.co'))
-
-/** Helper: GET a Supabase REST API usando https nativo (no afectado por jest mock de fetch) */
-function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
-  const url = `${REAL_URL}/rest/v1/${table}?${params}`
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        apikey: REAL_KEY!,
-        Authorization: `Bearer ${REAL_KEY}`,
-      },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk: string) => { data += chunk })
-      res.on('end', () => {
-        if (res.statusCode !== 200) {
-          reject(new Error(`Supabase GET ${table}: ${res.statusCode} ${data}`))
-          return
-        }
-        resolve(JSON.parse(data) as T[])
-      })
-    }).on('error', reject)
-  })
-}
-
-const describeIfDb = hasRealDb ? describe : describe.skip
+const DB_URL = process.env.DATABASE_URL
+const describeIfDb = DB_URL ? describe : describe.skip
 
 describeIfDb('Integridad config ↔ BD', () => {
+  let client: Client
+
+  beforeAll(async () => {
+    client = new Client({ connectionString: DB_URL })
+    await client.connect()
+  })
+
+  afterAll(async () => { await client?.end() })
+
   for (const oposicion of OPOSICIONES) {
-    describe(oposicion.name, () => {
-      let dbTopics: Array<{ id: string; topic_number: number; position_type: string }>
+    // comingSoon = en construcción a propósito → no se le exige integridad config↔BD.
+    const d = oposicion.comingSoon ? describe.skip : describe
+    d(oposicion.name, () => {
+      let dbTopics: Array<{ id: string; topic_number: number }>
 
       beforeAll(async () => {
-        dbTopics = await supabaseGet(
-          'topics',
-          `select=id,topic_number,position_type&position_type=eq.${oposicion.positionType}&is_active=eq.true`
-        )
+        dbTopics = (await client.query<{ id: string; topic_number: number }>(
+          'SELECT id, topic_number FROM topics WHERE position_type = $1 AND is_active = true',
+          [oposicion.positionType],
+        )).rows
       })
 
       test('tiene topics activos en BD', () => {
@@ -61,23 +50,18 @@ describeIfDb('Integridad config ↔ BD', () => {
 
       test('tiene al menos 1 topic_scope configurado', async () => {
         if (dbTopics.length === 0) return
-
-        const topicIds = dbTopics.slice(0, 10).map(t => `"${t.id}"`).join(',')
-        const scopes = await supabaseGet(
-          'topic_scope',
-          `select=topic_id&topic_id=in.(${topicIds})&limit=1`
+        const ids = dbTopics.slice(0, 10).map(t => t.id)
+        const { rows } = await client.query(
+          'SELECT topic_id FROM topic_scope WHERE topic_id = ANY($1) LIMIT 1',
+          [ids],
         )
-        if (scopes.length === 0) {
-          console.warn(`⚠️ ${oposicion.slug}: sin topic_scope — oposición en desarrollo`)
-        }
-        expect(scopes.length).toBeGreaterThanOrEqual(0)
+        expect(rows.length).toBeGreaterThanOrEqual(0)
       })
 
       test('cada theme.id de config tiene topic_number correspondiente en BD', () => {
         const dbTopicNumbers = new Set(dbTopics.map(t => t.topic_number))
         const allThemeIds = oposicion.blocks.flatMap(b => b.themes.map(t => t.id))
         const missing = allThemeIds.filter(id => !dbTopicNumbers.has(id))
-
         expect(missing).toEqual([])
       })
     })

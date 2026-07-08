@@ -74,30 +74,26 @@ describeIfDb('Guardarraíl: cobertura de scope con NULL (toda la ley)', () => {
   }, 30000)
 
   it('el guard NULL aporta preguntas extra frente al = ANY suelto (la condición vieja serviría menos)', async () => {
-    // Confirma que la guarda IS NULL NO es decorativa: hay temas cuyo scope es
-    // NULL (toda la ley) y que con el `= ANY` suelto darían 0/menos.
-    const { rows } = await client.query<{ buggy: number; canonical: number }>(`
-      SELECT
-        count(*) FILTER (WHERE buggy = 0 AND canonical > 0)::int AS buggy,
-        count(*)::int AS canonical
-      FROM (
-        SELECT t.id,
-          count(DISTINCT q.id) FILTER (
-            WHERE a.article_number = ANY(ts.article_numbers)
-          ) AS buggy,
-          count(DISTINCT q.id) FILTER (
-            WHERE ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers)
-          ) AS canonical
-        FROM topics t
-        JOIN topic_scope ts ON ts.topic_id = t.id
-        JOIN articles a ON a.law_id = ts.law_id
-        JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
-        WHERE t.is_active = true AND t.disponible = true
-        GROUP BY t.id
-      ) s
+    // Confirma que la guarda IS NULL NO es decorativa: existe ≥1 tema
+    // activo+disponible cuyo scope es NULL (toda la ley) y cuya ley TIENE
+    // preguntas — con el `= ANY(NULL)` suelto ese tema serviría 0.
+    //
+    // PERF: se prueba con EXISTS (corta en cuanto encuentra 1) en vez de agregar
+    // el producto topics×(todos los artículos de la ley)×preguntas, que explota
+    // y supera el timeout.
+    const { rows } = await client.query<{ buggy: number }>(`
+      SELECT count(*)::int AS buggy
+      FROM topics t
+      JOIN topic_scope ts ON ts.topic_id = t.id AND ts.article_numbers IS NULL
+      WHERE t.is_active = true AND t.disponible = true
+        AND EXISTS (
+          SELECT 1 FROM articles a
+          JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+          WHERE a.law_id = ts.law_id
+        )
     `)
     // Debe haber al menos un tema rescatado por la guarda (si no, el escenario
-    // del bug ya no existe en datos y el test pierde sentido — lo avisamos).
+    // del bug ya no existe en datos y el test pierde sentido).
     expect(rows[0].buggy).toBeGreaterThan(0)
   }, 30000)
 })

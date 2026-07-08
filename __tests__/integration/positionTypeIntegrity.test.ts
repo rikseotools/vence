@@ -5,63 +5,32 @@
  * Detecta bugs como usar 'administrativo' en vez de 'administrativo_estado'.
  * Requiere .env.local con credenciales reales de Supabase.
  */
-import https from 'https'
 import dotenv from 'dotenv'
+import { Client } from 'pg'
 import { SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
 dotenv.config({ path: '.env.local', override: true })
 
-const REAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const REAL_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const hasRealDb = !!(REAL_URL && REAL_KEY && !REAL_URL.includes('test.supabase.co'))
-
-function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
-  const url = `${REAL_URL}/rest/v1/${table}?${params}`
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        apikey: REAL_KEY!,
-        Authorization: `Bearer ${REAL_KEY}`,
-      },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data))
-        } catch {
-          reject(new Error(`Failed to parse: ${data.substring(0, 200)}`))
-        }
-      })
-    }).on('error', reject)
-  })
-}
-
-const describeIfDb = hasRealDb ? describe : describe.skip
+// Lee de la BD VIVA (RDS) vía pg. NO Supabase (congelado desde 04/07): las
+// oposiciones nuevas (GVA, TAI…) tienen sus position_types en RDS pero no en el
+// snapshot congelado → daba falsos negativos.
+const DB_URL = process.env.DATABASE_URL
+const describeIfDb = DB_URL ? describe : describe.skip
 
 describeIfDb('position_type integrity', () => {
+  let client: Client
   let dbPositionTypes: string[]
 
   beforeAll(async () => {
-    // PostgREST aplica un cap de 1000 filas por defecto. La tabla topics tiene
-    // ~1200 filas (07-may-2026), por lo que un solo GET pierde los últimos
-    // position_types y produce falsos negativos. Paginamos con offset hasta
-    // que la página devuelva menos de 1000 filas.
-    const PAGE_SIZE = 1000
-    const allRows: { position_type: string }[] = []
-    let offset = 0
-    while (true) {
-      const page = await supabaseGet<{ position_type: string }>(
-        'topics',
-        `select=position_type&offset=${offset}&limit=${PAGE_SIZE}`
-      )
-      allRows.push(...page)
-      if (page.length < PAGE_SIZE) break
-      offset += PAGE_SIZE
-      if (offset > 50000) break  // safety
-    }
-    dbPositionTypes = [...new Set(allRows.map(r => r.position_type))]
+    client = new Client({ connectionString: DB_URL })
+    await client.connect()
+    const { rows } = await client.query<{ position_type: string }>(
+      'SELECT DISTINCT position_type FROM topics WHERE position_type IS NOT NULL',
+    )
+    dbPositionTypes = rows.map(r => r.position_type)
   }, 30000)
+
+  afterAll(async () => { await client?.end() })
 
   test('all SLUG_TO_POSITION_TYPE values exist in DB topics', () => {
     const missing: string[] = []
