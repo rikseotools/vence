@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq, isNotNull, or, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { oposiciones } from '../oep-signals/oep-signals.schema';
 
@@ -121,23 +121,30 @@ export class AdvanceEstadoService {
   async run(today?: string): Promise<AdvanceEstadoStats> {
     const t = today ?? new Date().toISOString().slice(0, 10);
 
-    const rows = await this.db
-      .select({
-        id: oposiciones.id,
-        slug: oposiciones.slug,
-        estadoProceso: oposiciones.estadoProceso,
-        inscriptionStart: oposiciones.inscriptionStart,
-        inscriptionDeadline: oposiciones.inscriptionDeadline,
-        examDate: oposiciones.examDate,
-        examDateApproximate: oposiciones.examDateApproximate,
-      })
-      .from(oposiciones)
-      .where(
-        or(
-          isNotNull(oposiciones.inscriptionDeadline),
-          isNotNull(oposiciones.examDate),
-        ),
-      );
+    // Lee la VISTA SSOT `oposiciones_ssot` (fechas resueltas COALESCE(conv,opos)),
+    // NO la tabla `oposiciones` legacy: si un writer futuro toca `convocatorias`
+    // sin tocar `oposiciones`, derivaríamos sobre fechas stale. (Sin modelo Drizzle
+    // de la vista → SQL crudo; el dual-write de abajo mantiene ambas tablas.)
+    const res = (await this.db.execute(sql`
+      SELECT id, slug, estado_proceso AS "estadoProceso",
+             inscription_start::text  AS "inscriptionStart",
+             inscription_deadline::text AS "inscriptionDeadline",
+             exam_date::text          AS "examDate",
+             exam_date_approximate    AS "examDateApproximate"
+      FROM oposiciones_ssot
+      WHERE inscription_deadline IS NOT NULL OR exam_date IS NOT NULL
+    `)) as unknown;
+    const rows = (Array.isArray(res)
+      ? res
+      : ((res as { rows?: unknown[] }).rows ?? [])) as Array<{
+      id: string;
+      slug: string;
+      estadoProceso: string | null;
+      inscriptionStart: string | null;
+      inscriptionDeadline: string | null;
+      examDate: string | null;
+      examDateApproximate: boolean | null;
+    }>;
 
     const changes: AdvanceEstadoStats['changes'] = [];
 
