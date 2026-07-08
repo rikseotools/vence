@@ -7,6 +7,8 @@ Antes de revisar a mano, ejecuta el detector mecánico — caza la mayoría de i
 ```bash
 npm run audit:epigrafe                                              # todas las oposiciones
 npm run audit:epigrafe auxiliar_administrativo_clm auxiliar_administrativo_sms   # filtrado
+npm run audit:display-drift                                         # drift título ↔ descripcion_corta/epigrafe (versiones)
+npm run audit:display-drift auxiliar_administrativo_cantabria       # filtrado
 ```
 
 Marca con exit code 1 (apto como gate de CI) cuando hay un hallazgo 🔴:
@@ -62,6 +64,8 @@ questions (preguntas vinculadas a artículos)
 > **Todo lo que el usuario ve en un tema debe poder trazarse al boletín oficial de la convocatoria.**
 > Epígrafe literal → scope que refleja esos conceptos → artículos existentes → preguntas verificadas.
 
+> 🖥️🌐 **Al scopear un tema de OFIMÁTICA (Word/Excel), elige la variante correcta — no solo la versión.** Existen 3 leyes por versión: `Word/Excel 365` (común), `· 365 Escritorio` y `· 365 Web`. Exige **web** (caso Aragón) → común solo; exige **escritorio** → común + `· Escritorio`; no dice nada → común. La variante la fija la fuente oficial (programa o nota del tribunal), nunca se asume. Detalle: `crear-nueva-oposicion.md` §3c + memoria `project_office_web_escritorio_split`.
+
 ### Páginas involucradas
 
 - **Temario listado** (`/[oposicion]/temario`) → Muestra `title` + `descripcion_corta`. Usa `DynamicTemarioPage`.
@@ -109,6 +113,16 @@ console.log('Description:', topic.description);
 - **`topics.epigrafe`** es el texto literal del boletín oficial (fuente de verdad).
 - **`topics.description`** se usa como subtítulo en la página individual del tema; normalmente es igual al epigrafe.
 - **`topics.descripcion_corta`** es una versión reducida (1-2 oraciones) para el listado del temario.
+
+> ⚠️ **AL MODIFICAR UN TEMA, ACTUALIZA LOS 4 CAMPOS DE DISPLAY JUNTOS: `title` + `epigrafe` + `description` + `descripcion_corta`.** Es fácil cambiar el título y el scope y olvidar `descripcion_corta` — y ES el campo que renderiza el **listado** del temario. Peor aún si **desplazas temas** (p.ej. fusionar 2 temas de Word en 1 corre todos los siguientes): la `descripcion_corta` vieja queda **desalineada** (un tema de Excel mostrando "Word 2016…"). **En BD parece correcto** (las preguntas servidas son las buenas); el fallo **solo se ve en la página LIVE**.
+>
+> **Fallo real (08/07/2026 — re-scope Cantabria a Windows 11 / Office 365):** se actualizó title/epigrafe/description de los 7 temas de informática pero se olvidó `descripcion_corta`, que además quedó desalineada por el desplazamiento. El listado en producción mostraba "Windows 10 / Word 2016 / La Red Internet" mientras el resto ya era 365.
+>
+> **Checklist obligatoria tras tocar un tema:**
+> 1. Actualizar los 4 campos (`title`, `epigrafe`, `description`, `descripcion_corta`).
+> 2. `POST /api/admin/revalidate-temario` (+ CloudFront si aplica, ver `crear-nueva-oposicion.md` §2b.2).
+> 3. **`npm run audit:display-drift <position_type>`** — caza mecánicamente drift de versión título↔display (Windows 10/11, Office 2016/365, app equivocada). Gate de CI.
+> 4. **Verificar en la página LIVE**, no solo en BD: `curl https://www.vence.es/<slug>/temario` y comprobar que el listado visible no tiene keywords de versión obsoleta.
 
 ### Paso 1b: Verificar contra el boletín oficial
 

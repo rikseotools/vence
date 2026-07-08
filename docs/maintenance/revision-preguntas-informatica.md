@@ -46,6 +46,8 @@ const { data } = await supabase
 
 ## Tipos de Errores a Buscar
 
+> 🖥️🌐 **ANTES DE JUZGAR UN ATAJO/FUNCIÓN: mira la variante (escritorio vs web).** La respuesta correcta **puede diferir** entre la app de escritorio y Office para la Web (en la Web las teclas F NO funcionan salvo Excel F2/F4 y Word F3; los KeyTips Alt+letra cambian; Ctrl+letra estándar es idéntico). Una misma pregunta puede ser correcta en escritorio e incorrecta en web. Mira a qué **ley virtual** cuelga (`Word 365` común / `Word 365 Escritorio` / `Word 365 Web`) y a qué **oposición** sirve, y verifica contra la fuente de Microsoft **de esa variante**. No "corrijas" una pregunta de escritorio con la regla de la web ni viceversa. Modelo completo: `crear-nueva-oposicion.md` §3c + memoria `project_office_web_escritorio_split`.
+
 ### 1. Atajos de teclado incorrectos
 - **Verificar SIEMPRE** con la fuente oficial de Microsoft en español
 - Fuente Outlook: `https://support.microsoft.com/es-es/office/métodos-abreviados-de-teclado-en-outlook-3cdeb221-7ae5-4c1d-8c1d-9e63216c1efd`

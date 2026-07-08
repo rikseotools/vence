@@ -722,6 +722,22 @@ Muchos temas son comunes entre oposiciones. La regla:
 > node -e "require('dotenv').config({path:'.env.local'});const sql=require('postgres')(process.env.DATABASE_URL,{prepare:false,max:1,ssl:{rejectUnauthorized:false}});(async()=>{const r=await sql\`SELECT id,short_name FROM laws WHERE short_name ILIKE ANY(ARRAY['%word%','%excel%','%windows%','%outlook%'])\`;r.forEach(l=>console.log(l.short_name,l.id));await sql.end()})()"
 > ```
 
+> 🖥️🌐 **TERCERA DIMENSIÓN — ESCRITORIO / WEB / COMÚN (además de programa+versión).** Word/Excel tienen **tres** contenedores por versión, porque la respuesta correcta de muchos atajos/funciones **difiere entre la app de escritorio y la de la Web** (p.ej. en Office para la Web las teclas de función F no operan salvo Excel F2/F4 y Word F3; los KeyTips Alt+letra cambian). Modelo (proyecto `office_web_escritorio_split`): **la variante es propiedad de la LEY**, no del artículo.
+> - `Word 365` (común, `86f671a9`) / `Excel 365` (común, `c7475712`) = preguntas válidas para **ambas** (web y escritorio).
+> - `Word 365 Escritorio` (`d18e3a6f`) / `Excel 365 Escritorio` (`e5a8010e`) = solo-escritorio (atajos/funciones que NO existen en web).
+> - `Word 365 Web` (`ae7b0980`) / `Excel 365 Web` (`917841a8`) = solo-web (aún vacías — contenido pendiente).
+> - Outlook 365, Windows 11, Teams, Access… hoy **solo tienen común** (sin split web/escritorio todavía).
+>
+> **Cómo elegir la variante al crear el scope (OBLIGATORIO mirarlo, no asumir):**
+> 1. Mira qué versión fija la **fuente oficial**: el programa del boletín, y si el programa NO indica versión, la **nota informativa del tribunal/órgano de selección** (caso Aragón: el IAAP fijó por nota firmada "Word/Excel para Microsoft 365 **en la Web** + Windows 11"). Cada tribunal decide; **no propagar la variante de una oposición a otra sin su propia fuente.**
+> 2. Aplica el scope:
+>    - Exige **WEB** (caso Aragón) → scope = **común solo** (no añadir `solo Escritorio`; así no ve atajos que en web no van).
+>    - Exige **ESCRITORIO** → scope = común **+** `solo Escritorio`.
+>    - **No dice nada** → por defecto **común**; si el tribunal publica nota, seguirla.
+> 3. **Nunca** enganches directamente `solo Escritorio`/`solo Web` sin la común: la común es la base compartida.
+>
+> Detalle del modelo, migración con paridad set-a-set y gotchas (full_title vs article_numbers) en memoria `project_office_web_escritorio_split`.
+
 **Contenedores virtuales SANITARIOS** (para oposiciones de salud — SERMAS, SCS, SAS, Osakidetza, SMS, etc.). Son "leyes virtuales" temáticas (no normas del BOE) con banco propio de preguntas, igual que la ofimática. **Plantilla de referencia: `tcae_sermas_madrid`** (la oposición sanitaria hermana ya los tiene cableados). Enganchar con `include_full_title: true`. Algunos con banco grande (preg a 2026-06):
 
 | Contenido | law_id | Preg | Para temas tipo… |

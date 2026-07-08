@@ -399,14 +399,19 @@ export const CCAA_BOLETIN_ADAPTERS: BoletinAdapter[] =
   CCAA_BOLETINES.map(makeCcaaTemarioAdapter)
 
 // ============================================================
-// PENDIENTES (NO son cabos silenciosos — quedan documentados y logueados).
-// Requieren un fetch especial que este cron HTML-plano no cubre todavía:
-//   - DOGC (Cataluña) y DOGV (C. Valenciana): SPA Angular → navegador headless
-//     (Lambda `vence-backend-headless-fetcher`, ya existe). Incremento 2b.
-//   - BORM (Murcia) y BOCCE (Ceuta): el sumario solo se publica en PDF →
-//     requiere parseo de PDF + resolver el número del día. Incremento 2b.
+// PENDIENTES (NO son cabos silenciosos — documentados y logueados en cada run).
+// Cobertura actual: 16/17 CCAA + Melilla + Estado (BOE). Faltan:
+//
+//   - La Rioja (BOR): LÍMITE EXTERNO REAL, no una carencia nuestra. Se agotaron
+//     todas las vías (08/07/2026): web.larioja.org tiene WAF (403 a fetch plano,
+//     a navegador headless —timeout del reto JS—, a los PDF y al RSS);
+//     ias1.larioja.org exige login CAS con JavaScript; no hay dataset del BOR en
+//     datos.gob.es ni CKAN accesible. Requeriría un feed licenciado/proxy de pago
+//     o monitoreo manual. Respaldado por el diseño multi-detector (competitor-diff
+//     + feedback-as-sensor cazarían un cambio de temario riojano por otra vía).
+//   - Ceuta (BOCCE): ciudad autónoma (no CCAA); sumario PDF vía jdownloads (2 pasos).
 // ============================================================
 export const CCAA_BOLETINES_PENDING: Array<{ key: string; region: string; motivo: string }> = [
-  { key: 'bor', region: 'La Rioja (BOR)', motivo: 'WAF Liferay bloquea fetch+headless; sin API abierta localizada' },
+  { key: 'bor', region: 'La Rioja (BOR)', motivo: 'WAF + CAS + sin API abierta (todas las vías agotadas 08/07)' },
   { key: 'bocce', region: 'Ceuta (BOCCE)', motivo: 'ciudad autónoma; sumario PDF vía jdownloads (2 pasos)' },
 ]

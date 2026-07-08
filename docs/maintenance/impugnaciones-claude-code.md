@@ -230,6 +230,8 @@ Según el artículo Y de la Ley Z:
 
 ### 5.1.1 Preguntas de Informática (Word, Excel, Access, Windows, Outlook, Internet)
 
+> 🖥️🌐 **Antes de dar/quitar la razón en una impugnación de atajo o función: comprueba la variante ESCRITORIO vs WEB de la oposición del impugnante.** La clave puede diferir (en Office para la Web las teclas F no operan salvo Excel F2/F4 y Word F3; KeyTips Alt+letra cambian). Si la pregunta cuelga de `Word/Excel 365 Escritorio` y sirve a una oposición de escritorio, verifícala con la app de escritorio; si es una oposición de versión web (p.ej. Aragón), con Office para la Web. No cierres una impugnación aplicando la regla de la variante equivocada. Modelo: `crear-nueva-oposicion.md` §3c + memoria `project_office_web_escritorio_split`.
+
 Para preguntas de temas técnicos/informáticos, la explicación **SIEMPRE** debe:
 
 1. **Ser didáctica con markdown:** negrita, listas, análisis por opción (A, B, C, D)

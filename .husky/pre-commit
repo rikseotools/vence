@@ -27,6 +27,30 @@ else
 fi
 
 echo ""
+# 1b. Drift de display del temario (título ↔ descripcion_corta/epigrafe/description).
+#     Caza el fallo del 08/07/2026 (re-scope Cantabria a Win11/365 que dejó la
+#     descripcion_corta stale/desalineada). El self-test es puro (sin BD, rápido);
+#     el audit contra BD solo si DATABASE_URL está disponible. BLOQUEA en 🔴.
+echo "🔎 Verificando drift de display del temario (audit:display-drift)..."
+npm run audit:display-drift -- --selftest
+if [ $? -ne 0 ]; then
+  echo "❌ audit:display-drift: el self-test del detector falló (lógica rota). Commit cancelado."
+  exit 1
+fi
+if [ -n "$DATABASE_URL" ]; then
+  npm run audit:display-drift
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Drift título ↔ descripcion_corta/epigrafe en el temario (ver 🔴 arriba)."
+    echo "   Al modificar un tema, actualiza los 4 campos: title + epigrafe + description + descripcion_corta."
+    echo "   Detalle: docs/maintenance/verificar-epigrafe-topic-scope.md"
+    exit 1
+  fi
+else
+  echo "⏭️  Saltando audit:display-drift contra BD (DATABASE_URL no configurada)"
+fi
+
+echo ""
 echo "🧪 Tests críticos + unit..."
 npm run test:precommit && npm run test:unit
 TEST_EXIT_CODE=$?
