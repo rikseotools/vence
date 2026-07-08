@@ -100,10 +100,9 @@ describe('db/client.ts — pool self-hosted robusto', () => {
     expect(content).toMatch(/console\.warn\(\s*[`'"]\[poolerDb\] warmup parcial/)
   })
 
-  it('createDbClient (path principal) sigue con max:1 hasta migración completa', () => {
-    // Cambiar max:1 → max:8 también aquí sería arriesgado SIN haber probado primero
-    // en el pool self-hosted. La Fase 1 es activar self-hosted; cambiar primary
-    // queda para Fase 1.5 o posterior cuando self-hosted esté probado en prod.
+  it('createDbClient (path principal) usa max:5 tras el cutover a RDS dedicado', () => {
+    // Post-cutover a RDS (04/07/2026): max:1 era workaround del pooler compartido
+    // de Supabase; en RDS dedicado (400 max_connections) max:5 da margen de sobra.
     // Buscamos el bloque acotado para no matchear max:N de otras funciones.
     const block = content.match(
       /function createDbClient[\s\S]*?return drizzle\(conn/,
@@ -111,7 +110,9 @@ describe('db/client.ts — pool self-hosted robusto', () => {
     expect(block).not.toBeNull()
     const maxMatch = block![0].match(/max:\s*(\d+)/)
     expect(maxMatch).not.toBeNull()
-    expect(Number(maxMatch![1])).toBe(1)
+    // max:5 post-cutover a RDS dedicado (04/07/2026): el max:1 histórico era un
+    // workaround del pooler COMPARTIDO de Supabase (Supavisor). Ver db/client.ts.
+    expect(Number(maxMatch![1])).toBe(5)
   })
 
   it('createPoolerDbClient SIGUE con prepare:false (compat PgBouncer transaction mode)', () => {

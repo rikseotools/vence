@@ -31,7 +31,6 @@ const ALLOWLIST = new Set<string>([
   'app/api/admin/email-events/route.ts',
   'app/api/admin/newsletters/audience/route.ts',
   'app/api/ai/verify-answer/route.ts',
-  'app/api/dispute/mark-read/route.ts',
   'app/api/v2/admin/broadcast/route.ts',
   'lib/api/shared/auth.ts',
   'lib/api/video-courses/queries.ts',

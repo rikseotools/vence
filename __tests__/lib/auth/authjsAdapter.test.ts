@@ -108,11 +108,28 @@ describe('authjsAdapter — signOut / signInWithIdToken', () => {
     expect(await adapter.getSession()).toBeNull()
   })
 
-  it('signInWithIdToken (One Tap) → dormido con error explícito', async () => {
+  it('signInWithIdToken (One Tap) → HABILITADO: llama a nextSignIn(google-one-tap) con el id_token', async () => {
+    // One Tap portado al flip Auth.js (commit 1966bf8f): ya NO es el stub
+    // 'id_token_sign_in_not_enabled'. Delega en nextSignIn con el provider
+    // Credentials 'google-one-tap' (verifica id_token server-side).
     const adapter = createAuthjsAuthAdapter()
+    mockSignIn.mockResolvedValue({ error: null })
+    mockGetSession.mockResolvedValue(null) // sin sesión tras el sign-in → 'no_session'
+    setTokenEndpoint(() => ({ ok: false }))
+    const res = await adapter.signInWithIdToken({ provider: 'google', token: 'idtok', nonce: 'n' })
+    expect(mockSignIn).toHaveBeenCalledWith(
+      'google-one-tap',
+      expect.objectContaining({ id_token: 'idtok', nonce: 'n', redirect: false }),
+    )
+    expect(res.error).not.toBe('id_token_sign_in_not_enabled')
+  })
+
+  it('signInWithIdToken → propaga el error de nextSignIn', async () => {
+    const adapter = createAuthjsAuthAdapter()
+    mockSignIn.mockResolvedValue({ error: 'CredentialsSignin' })
     const res = await adapter.signInWithIdToken({ provider: 'google', token: 'x' })
     expect(res.session).toBeNull()
-    expect(res.error).toBe('id_token_sign_in_not_enabled')
+    expect(res.error).toBe('CredentialsSignin')
   })
 })
 

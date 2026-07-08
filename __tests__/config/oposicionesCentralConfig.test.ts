@@ -79,18 +79,24 @@ const KNOWN_POSITION_TYPES = [
 ]
 
 describe('Config central de oposiciones', () => {
-  test('ALL_OPOSICION_SLUGS contiene las 11 oposiciones conocidas', () => {
+  test('ALL_OPOSICION_SLUGS contiene las oposiciones conocidas y es consistente', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(102)
+    // Integridad SIN contador mágico (evita red-by-default cada vez que se añade
+    // una oposición legítima): sin duplicados, 1:1 con positionTypes, y al menos
+    // las conocidas. Caza dupes/borrados accidentales/desajuste slug↔positionType.
+    expect(new Set(ALL_OPOSICION_SLUGS).size).toBe(ALL_OPOSICION_SLUGS.length)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(ALL_POSITION_TYPES.length)
+    expect(ALL_OPOSICION_SLUGS.length).toBeGreaterThanOrEqual(KNOWN_SLUGS.length)
   })
 
-  test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
+  test('ALL_POSITION_TYPES contiene los positionTypes conocidos y sin duplicados', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(102)
+    expect(new Set(ALL_POSITION_TYPES).size).toBe(ALL_POSITION_TYPES.length)
+    expect(ALL_POSITION_TYPES.length).toBeGreaterThanOrEqual(KNOWN_POSITION_TYPES.length)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -148,12 +154,12 @@ describe('Config central de oposiciones', () => {
     for (const oposicion of OPOSICIONES) {
       expect(VALID_ADMINISTRACIONES).toContain(oposicion.administracion)
     }
-    // Verificar distribución conocida
+    // Consistencia SIN contadores mágicos (driftan al añadir oposiciones): cada
+    // oposición cae en exactamente UNA administración válida → la suma por admin
+    // cubre el total. Caza cualquier administracion nula/rara sin fallar por crecer.
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
-    expect(byAdmin('estado').length).toBe(8)
-    expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin("autonomica").length).toBe(61)
-    expect(byAdmin('empresa_publica').length).toBe(1)
+    const totalPorAdmin = VALID_ADMINISTRACIONES.reduce((n, a) => n + byAdmin(a).length, 0)
+    expect(totalPorAdmin).toBe(OPOSICIONES.length)
   })
 
   test('getOposicionBySlug() devuelve datos correctos', () => {
