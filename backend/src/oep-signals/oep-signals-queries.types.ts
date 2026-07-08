@@ -48,6 +48,7 @@ export interface CreateSignalInput {
   detectedFechaInscripcionFin?: string | null;
   detectedFechaExamen?: string | null;
   detectedEstado?: string | null;
+  detectedSistema?: string | null;
   confidenceScore: number;
   isNovel: boolean;
   signalSummary: string;

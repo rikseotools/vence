@@ -143,6 +143,7 @@ export class DetectOepLlmService {
         detectedFechaInscripcionFin: extraction.fechaInscripcionFin,
         detectedFechaExamen: extraction.fechaExamen,
         detectedEstado: extraction.estado,
+        detectedSistema: extraction.sistema,
         confidenceScore: score,
         isNovel,
         signalSummary: summary,

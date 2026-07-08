@@ -1383,3 +1383,10 @@ Se auditaron todas las `seguimiento_url` de las 464 oposiciones `catalogada` (in
 **La home/catálogo filtra por FECHAS, no por estado** (a propósito: `estado` quedaba desfasado). Una oposición sin `inscription_start`+`deadline` NO sale en la sección "inscripción abierta" aunque su estado diga `inscripcion_abierta`/`convocada`. Por eso `estado` sin fechas es inútil para el front.
 
 **Chapuza a vigilar (catalogadas aspiracionales):** el discovery llegó a crear oposiciones catalogadas con `estado='inscripcion_abierta'` y CERO fechas (descubiertas de listas de competidores). Se limpiaron 33 a `sin_oep` el 08/07. Si el badge/`audit-estados` vuelve a mostrar muchas `inscripcion_abierta`/`convocada` sin fechas, es que el guardrail no está desplegado o un alta manual las metió mal. Detalle: `docs/roadmap/consolidacion-convocatorias-radar-ssot.md` §Quick wins 08/07.
+
+---
+## Captura de ACCESO y SISTEMA SELECTIVO (08/07/2026)
+Cada oportunidad tiene dos ejes ortogonales que hay que capturar (campos completos):
+- **ACCESO** (libre / promoción interna / discapacidad): via el desglose `plazas_libres` / `plazas_promocion_interna` / `plazas_discapacidad` (señal: `detected_plazas_*`). **Capturar PI también** (mercado futuro; §16 ya lo exige), `vendible`=false hasta activar venta PI. `vendible` hoy = oportunidad viva con `plazas_libres`.
+- **SISTEMA SELECTIVO** (oposición / concurso-oposición / concurso): señal `detected_sistema` → al Aplicar se promueve a `convocatorias.sistema_selectivo` + `oposiciones.sistema_selectivo`. La extracción LLM ya lo pide. `null` = no consta. Ambos con examen son preparables; un concurso PURO (solo méritos) no.
+Modelo completo: memoria `project_modelo_oportunidad_vendibilidad`.

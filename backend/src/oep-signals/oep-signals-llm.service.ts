@@ -331,6 +331,7 @@ IMPORTANTE:
 - Plazas: números enteros. Si no se menciona, null
 - bocRef: formato exacto "BOC-A-2026-057-948" o equivalente para otros boletines
 - estado: infiere en qué fase está el proceso
+- sistema: sistema selectivo — "oposicion" (solo pruebas), "concurso-oposicion" (méritos + pruebas) o "concurso" (solo méritos). Si no consta, null
 - summary: UNA frase en español explicando qué detectaste
 
 Responde EXCLUSIVAMENTE con un objeto JSON válido (sin markdown, sin explicaciones).`;
@@ -358,6 +359,7 @@ Devuelve JSON con esta forma exacta:
   "fechaInscripcionFin": string | null,
   "fechaExamen": string | null,
   "estado": "oep_aprobada" | "convocada" | "inscripcion_abierta" | "inscripcion_cerrada" | "lista_admitidos" | "pendiente_examen" | "examen_realizado" | "resultados" | null,
+  "sistema": "oposicion" | "concurso-oposicion" | "concurso" | null,
   "cuerpoDetectado": string | null,
   "summary": string
 }`;

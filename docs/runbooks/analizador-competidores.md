@@ -166,3 +166,7 @@ GROUP BY c.name, cc.modalidad, cc.raw_name;
 ```
 - **Gaps (demanda / candidatas a catalogar):** `competitor_courses WHERE oposicion_id IS NULL` = oposiciones que ELLOS preparan y nosotros no.
 - **Blue ocean:** nuestras `oposiciones` sin ningún competidor.
+
+---
+## Acceso y sistema selectivo (08/07/2026)
+Competidores es una **PISTA**, no fuente oficial → `competitor_courses` **NO** captura acceso (libre/PI) ni sistema selectivo (oposición/concurso-oposición): esos datos se toman del **boletín oficial al verificar**, no del competidor. Si en el futuro se quisieran, irían como enriquecimiento de baja confianza, nunca como verdad.

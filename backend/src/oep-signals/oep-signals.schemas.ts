@@ -62,6 +62,12 @@ export const llmExtractionSchema = z.object({
       'resultados',
     ])
     .nullable(),
+  // Sistema selectivo: oposición (solo pruebas) / concurso-oposición (méritos +
+  // pruebas) / concurso (solo méritos). null = no consta en el texto.
+  sistema: z
+    .enum(['oposicion', 'concurso-oposicion', 'concurso'])
+    .nullable()
+    .default(null),
   // Cuerpo/puesto de la convocatoria extraída — para verificar que coincide con
   // el cuerpo de la oposición y no es otro proceso de una página multi-convocatoria.
   cuerpoDetectado: z.string().nullable().default(null),
@@ -90,6 +96,7 @@ export interface CreateSignalInput {
   detectedFechaInscripcionFin?: string | null;
   detectedFechaExamen?: string | null;
   detectedEstado?: string | null;
+  detectedSistema?: string | null;
   confidenceScore: number;
   isNovel: boolean;
   signalSummary: string;

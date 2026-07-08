@@ -152,6 +152,7 @@ export class OepSignalsQueriesService {
           detectedFechaInscripcionFin: input.detectedFechaInscripcionFin ?? null,
           detectedFechaExamen: input.detectedFechaExamen ?? null,
           detectedEstado: input.detectedEstado ?? null,
+          detectedSistema: input.detectedSistema ?? null,
           confidenceScore: input.confidenceScore,
           isNovel: input.isNovel,
           signalSummary: input.signalSummary,
