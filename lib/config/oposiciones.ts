@@ -8417,6 +8417,16 @@ export const ALL_OPOSICION_IDS = OPOSICIONES.map(o => o.id)
 /** Todos los slugs de oposición (para URLs) */
 export const ALL_OPOSICION_SLUGS = OPOSICIONES.map(o => o.slug)
 
+/**
+ * FLAGSHIP: oposición por defecto para usuarios SIN selección (nav destacado,
+ * fallbacks del Header). NO usar `ALL_OPOSICION_SLUGS[0]` — es frágil: añadir una
+ * oposición al principio del config cambiaba el default sin querer (regresión
+ * 07/07/2026: `tecnico-informatica` desplazó a Auxiliar del Estado como flagship).
+ * Designado explícito + fallback a [0] por robustez si algún día no existiera.
+ */
+export const FLAGSHIP_OPOSICION_SLUG =
+  ALL_OPOSICION_SLUGS.find(s => s === 'auxiliar-administrativo-estado') ?? ALL_OPOSICION_SLUGS[0]
+
 /** Tupla de slugs compatible con z.enum() */
 export const OPOSICION_SLUGS_ENUM = ALL_OPOSICION_SLUGS as [string, ...string[]]
 

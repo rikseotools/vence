@@ -18,7 +18,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useAIChat } from '../contexts/AIChatContext'
-import { getOposicion, ALL_OPOSICION_SLUGS, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
+import { getOposicion, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
@@ -98,7 +98,7 @@ export default function HeaderES() {
     const id = oposicionContext?.oposicionId
     const slug = id ? getOposicion(id)?.slug : null
     const resolved = !!slug && ALL_OPOSICION_SLUGS.includes(slug)
-    return resolved ? slug : (loading ? null : ALL_OPOSICION_SLUGS[0])
+    return resolved ? slug : (loading ? null : FLAGSHIP_OPOSICION_SLUG)
   })()
   const userHasPsico = !!(_psicoOpoSlug && getOposicion(_psicoOpoSlug)?.hasPsychometricTest)
 
@@ -338,7 +338,7 @@ export default function HeaderES() {
 
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = (): NavLink[] => {
-    const defaultSlug = ALL_OPOSICION_SLUGS[0]
+    const defaultSlug = FLAGSHIP_OPOSICION_SLUG
 
     // Slug de la oposición del usuario desde oposicionId (FUENTE DE VERDAD). Con la
     // pre-hidratación de OposicionContext, oposicionId ya está disponible durante
@@ -384,7 +384,7 @@ export default function HeaderES() {
 
   // Enlaces para usuarios NO logueados
   const getGuestNavLinks = (): NavLink[] => {
-    const guestSlug = ALL_OPOSICION_SLUGS[0]
+    const guestSlug = FLAGSHIP_OPOSICION_SLUG
     const hasPsico = !!getOposicion(guestSlug)?.hasPsychometricTest
     return [
       { href: `/${guestSlug}/test`, label: 'Test', icon: '🎯' },
@@ -461,7 +461,7 @@ export default function HeaderES() {
     if (opoId) return configGetTestsLink(opoId)
     const segments = pathname?.split('/').filter(Boolean) ?? []
     const slugFromPath = segments.find(seg => ALL_OPOSICION_SLUGS.includes(seg))
-    return `/${slugFromPath || ALL_OPOSICION_SLUGS[0]}/test`
+    return `/${slugFromPath || FLAGSHIP_OPOSICION_SLUG}/test`
   }
 
   // Obtener color dinamico
@@ -1040,7 +1040,7 @@ export default function HeaderES() {
                 const featuredSlug = oposicionMenu?.navLinks?.find(l => l.featured)?.href?.replace('/', '')
                 const contextOpoSlug = (featuredSlug && ALL_OPOSICION_SLUGS.includes(featuredSlug))
                   ? featuredSlug
-                  : ALL_OPOSICION_SLUGS[0]
+                  : FLAGSHIP_OPOSICION_SLUG
                 const titleLc = exam.title?.toLowerCase() || ''
                 // Para simulacro y examen oficial el slug está embebido en el title:
                 // "Simulacro de Examen - {slug}" / "Examen Oficial 2024-07-09 - {slug}".

@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect, useLayoutEffect, type R
 import { usePathname } from 'next/navigation'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { useAuth } from './AuthContext'
-import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, type NavLink } from '@/lib/config/oposiciones'
+import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, type NavLink } from '@/lib/config/oposiciones'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import { decideOposicionLoad } from '@/lib/oposicion/decideLoad'
 import { readOposicionCache, writeOposicionCache, clearOposicionCache } from '@/lib/oposicion/oposicionCache'
@@ -65,10 +65,13 @@ const OPOSICION_MENUS: Record<string, OposicionMenu> = Object.fromEntries(
 )
 
 // Para usuarios sin oposición elegida (target_oposicion = null), el menú destacado
-// (featured) debe apuntar a un slug de oposición REAL — no a /oposiciones (página de
-// listado). Si apuntara a /oposiciones, el Header construiría '/oposiciones/test' →
-// 404. Usar el primer slug oficial garantiza que Test/Temario carguen siempre.
-const DEFAULT_FEATURED_SLUG = ALL_OPOSICION_SLUGS[0]
+// (featured) apunta al FLAGSHIP designado (auxiliar-administrativo-estado), NO a
+// ALL_OPOSICION_SLUGS[0]. Ese `[0]` era FRÁGIL: al añadir una oposición nueva al
+// principio del config (p.ej. tecnico-informatica el 07/07/2026) el default saltaba
+// a ella → regresión del flagship ("bug Raquel"). Fallback a [0] si el flagship no
+// existiera. (Debe apuntar a un slug REAL, no a /oposiciones → si no, Header genera
+// '/oposiciones/test' → 404.)
+const DEFAULT_FEATURED_SLUG = FLAGSHIP_OPOSICION_SLUG
 const DEFAULT_MENU: OposicionMenu = {
   name: 'Explorar Oposiciones',
   shortName: 'Explorar',

@@ -11,11 +11,14 @@
 // FIX: pre-hidratar la oposición cacheada ANTES del paint (useLayoutEffect) → el usuario
 // recurrente ve SU oposición al instante. Aquí se SIMULA la lógica real (init null →
 // DEFAULT featured Estado; hidratación con caché → oposición correcta).
-import { ALL_OPOSICION_SLUGS, OPOSICIONES } from '@/lib/config/oposiciones'
+import { ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, OPOSICIONES } from '@/lib/config/oposiciones'
 import { readOposicionCache, writeOposicionCache, clearOposicionCache } from '@/lib/oposicion/oposicionCache'
 
 const MADRID_ID = 'auxiliar_administrativo_madrid'
-const DEFAULT_FEATURED_SLUG = ALL_OPOSICION_SLUGS[0]
+// Fix 07/07/2026: el DEFAULT featured usa el FLAGSHIP designado, NO
+// ALL_OPOSICION_SLUGS[0] (que se volvió tecnico-informatica al meter la TAI primera
+// en el config → habría cambiado el default sin querer).
+const DEFAULT_FEATURED_SLUG = FLAGSHIP_OPOSICION_SLUG
 const slugFor = (id: string): string | undefined => OPOSICIONES.find(o => o.id === id)?.slug
 
 // Réplica EXACTA de la resolución del slug "activo" en el PRIMER paint de OposicionContext:
@@ -35,9 +38,10 @@ function activeSlugAtFirstPaint(user: { id: string } | null): string {
 beforeEach(() => window.localStorage.clear())
 
 describe('SIMULACIÓN: race del DEFAULT_MENU → Estado (bug Raquel) y fix de pre-hidratación', () => {
-  it('CONFIRMA la causa: ALL_OPOSICION_SLUGS[0] es Estado → DEFAULT featured cae en Estado', () => {
+  it('el DEFAULT featured usa el flagship designado (Estado), robusto ante reordenar el config', () => {
+    // El default ya NO depende del orden del config (antes: OPOSICIONES[0]) — por eso
+    // ya no aseveramos qué oposición va primera; solo que el flagship resuelve a Estado.
     expect(DEFAULT_FEATURED_SLUG).toBe('auxiliar-administrativo-estado')
-    expect(OPOSICIONES[0].id).toBe('auxiliar_administrativo_estado')
   })
 
   it('SIN caché (primer acceso de un usuario): "practicar" cae a Estado (race residual documentada)', () => {

@@ -7,9 +7,9 @@
 //  2) en la ventana sin-caché (loading + sin oposicionId) → se OMITEN Test/Temario en vez
 //     de apuntar a Estado (nunca se navega a la oposición equivocada).
 //  3) usuario genuinamente sin oposición (no loading) → flagship por defecto (slug real).
-import { ALL_OPOSICION_SLUGS, getOposicion } from '@/lib/config/oposiciones'
+import { ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, getOposicion } from '@/lib/config/oposiciones'
 
-const DEFAULT_SLUG = ALL_OPOSICION_SLUGS[0]
+const DEFAULT_SLUG = FLAGSHIP_OPOSICION_SLUG
 const COMMON = ['/leyes', '/test/por-leyes', '/psicotecnicos/test', '/oposiciones']
 
 function loggedInNavHrefs(oposicionId: string | null, loading: boolean): string[] {
