@@ -191,9 +191,9 @@ export function adminFromOrganismo(org?: string | null): string | null {
   if (/universidad|universitat|universidade|politecnica|uned/.test(n)) return 'Universidad';
   if (/ayuntamiento|ajuntament|concello|cabildo|consell insular|diputacion|diputacio|mancomunidad|consorci/.test(n))
     return 'Local';
-  if (/ministerio|administracion general del estado|guardia civil|policia nacional|correos|agencia estatal|ingesa|seguridad social/.test(n))
+  if (/ministerio|administracion general del estado|guardia civil|policia nacional|correos|agencia estatal|ingesa|seguridad social|consejo general del poder judicial|escuela judicial|centro de estudios juridicos|carrera judicial|carrera fiscal/.test(n))
     return 'Estatal';
-  if (/junta de|gobierno de|generalitat|xunta|principado|consejeria|conselleria|departamento de|gobierno vasco|govern de|comunidad autonoma|comunidad de madrid|servicio.*salud/.test(n))
+  if (/junta de|gobierno de|generalitat|xunta|principado|consejeria|conselleria|departamento de|gobierno vasco|govern de|comunidad autonoma|comunidad de madrid|servicio.*salud|agencia tributaria|instituto cartografic|instituto geologic|escuela (balear|vasca)|escuela.*administracion publica|direccion general de funcion publica|servicio.*empleo/.test(n))
     return 'Autonómica';
   return null;
 }
