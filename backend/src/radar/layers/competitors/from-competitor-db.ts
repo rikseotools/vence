@@ -43,6 +43,7 @@ export function makeCompetitorDbAdapter(
           r.nCompetitors > 1 ? ` (${r.nCompetitors} competidores la imparten)` : ' (1 competidor la imparte)';
         const oep: RegionalOep = {
           name: r.rawName,
+          organismo: null,
           positionGroup: null,
           year: null,
           plazas: null,
