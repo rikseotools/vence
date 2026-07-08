@@ -134,3 +134,22 @@ Cambios (commits `7d749437`, `94d6a60d`):
 **Sigue pendiente el sprint** (Fases 3-5): E2E del puente `promoteSignalToConvocatoria`, re-introspectar `db/schema.ts` (modela el legacy), drop de columnas legacy de `oposiciones`, y verificar despliegue del dual-write de `advance-estado`.
 
 **Plan de ejecución paso a paso (con OK por fase):** `docs/roadmap/consolidacion-sprint-ejecucion.md`.
+
+---
+## Estado reconciliado (08/07/2026, tras Fase 0-1 en prod)
+
+Auditoría de cierre — qué está HECHO y qué queda DE VERDAD:
+
+**HECHO y verificado:**
+- **Fase 1 — SSOT poblada 100%** (2.500/2.500 con fila `is_current`; era 92). Backfill transparente (vista sin cambios). Migración `20260708_..._backfill_convocatorias_ssot.sql`.
+- **Fase 1b — hitos al 100%** (`convocatoria_hitos.convocatoria_id` 943/943; era 17%). Desbloqueado por Fase 1. UPDATE de FK. Migración `20260708_..._backfill_hitos_convocatoria_id.sql`. Cierra §3.10.
+- **Fase 2 — lectores** ✅ (06/07, verificado 08/07: usan alias `oposicionesSsot`/LATERAL COALESCE; mi audit inicial de "leen legacy" fue FALSA ALARMA por el alias).
+- **Fase 3 — puente** código + guardrail (`estadoParaPromover`, testeado) + **DESPLEGADO** (`f4f351a8`).
+- **Fase 4 — retiros** ✅. Código muerto (`getConvocatoriaActiva`, `ConvocatoriaLinks`) ya retirado (solo queda comentario-lápida). Tag `oposiciones-catalog` ya en el whitelist de revalidate.
+- **Pipeline centralizado desplegado**: radar no hand-set estado, guardrail apply, matcher+advance-estado leen SSOT, audit escala.
+
+**QUEDA (dos items, ninguno urgente — el sistema es estable y coherente):**
+1. **Re-introspectar `db/schema.ts`** (higiene): sigue modelando el `convocatorias` legacy + tablas de examen dropeadas. **0 consumidores runtime** de lo stale → no rompe nada. Regenera 85 tablas → revisar diff con lupa (drift de otras tablas). Opcional para Fase 5 (el drop se puede hacer por SQL crudo).
+2. **Fase 5 — DROP de columnas legacy de `oposiciones`** (IRREVERSIBLE): ahora **desbloqueado** (SSOT poblada + lectores migrados + hitos 100%). Requiere: **snapshot RDS** + confirmar 0 lectores de las columnas legacy + cortar el dual-write de `advance-estado` a solo-SSOT + drop en transacción + tests de consistencia. **Sesión dedicada off-peak.**
+
+Nada más. Fase 3 E2E en `/admin/oep-signals` = validación recomendada pero no bloqueante (está desplegado + el guardrail está testeado).
