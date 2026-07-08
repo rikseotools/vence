@@ -140,9 +140,14 @@ async function _POST(request: NextRequest) {
 
     if (!result.success) {
       console.error('❌ [API/exam/answer] Save failed:', result.error)
+      // Fallo por input insuficiente del cliente (p.ej. pregunta nueva sin
+      // questionId → no se puede derivar correctAnswer) = 422 (culpa del
+      // cliente), no 500 (fallo del servidor). Evita contaminar la métrica de
+      // 5xx y el veredicto de salud con requests malformadas.
+      const status = result.reason === 'invalid_input' ? 422 : 500
       return NextResponse.json(
         { success: false, error: result.error || 'Error guardando respuesta' },
-        { status: 500 }
+        { status }
       )
     }
 

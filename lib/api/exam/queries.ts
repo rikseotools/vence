@@ -216,6 +216,10 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         return {
           success: false,
           error: 'correctAnswer es requerido para nuevas preguntas',
+          // Fallo por input INSUFICIENTE del cliente (pregunta nueva sin
+          // questionId ni correctAnswer derivable) → el route lo mapea a 422,
+          // no a 500. No es una caída del servidor.
+          reason: 'invalid_input',
         }
       }
 

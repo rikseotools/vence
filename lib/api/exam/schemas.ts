@@ -34,6 +34,13 @@ export const saveAnswerResponseSchema = z.object({
   isCorrect: z.boolean().optional(),
   message: z.string().optional(),
   error: z.string().optional(),
+  // Discrimina la CAUSA del fallo para que el route handler mapee el status
+  // HTTP correcto. `invalid_input` = la request del cliente es insuficiente
+  // (p.ej. pregunta nueva sin questionId → no se puede derivar correctAnswer):
+  // eso es 4xx (culpa del cliente), NO un 5xx (fallo del servidor). Sin este
+  // discriminador todo `success:false` caía en 500 y contaminaba la métrica de
+  // 5xx y el veredicto de salud user-facing (incidente 08/07/2026).
+  reason: z.enum(['invalid_input']).optional(),
 })
 
 export type SaveAnswerResponse = z.infer<typeof saveAnswerResponseSchema>

@@ -10,6 +10,7 @@ import { logValidationError, logValidationErrorAwait, classifyError } from '@/li
 import { emit } from '@/lib/observability/emit'
 import { extractUserIdFromRequest } from '@/lib/api/extractUserId'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
+import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
 
 /**
  * Sampling rate para eventos `request_completed` 2xx/3xx (Bloque 5
@@ -179,6 +180,14 @@ export function withErrorLogging(
 
     const userAgent = request?.headers?.get?.('user-agent') ?? null
 
+    // Tráfico sintético de canaries (header canónico `x-vence-canary`). Sus
+    // errores NO se escriben en validation_error_logs — tienen su propio canal
+    // de alerta (`canary_*_failed`) y contaminarían el veredicto de salud
+    // user-facing (incidente 08/07/2026). Sí seguimos emitiendo
+    // request_completed (marcado `synthetic`, severity 'info') para conservar
+    // timing/volumen y poder auditar el comportamiento del canary.
+    const synthetic = isSyntheticRequest(request as NextRequest)
+
     // Identidad VERIFICADA del token, resuelta perezosamente y memoizada por
     // request. En prod (JWT_LOCAL_VERIFY_MODE=on) verifyAuthOptional verifica el
     // JWT localmente (<5ms, sin BD, sin round-trip) → mismo id que usó el handler
@@ -262,6 +271,7 @@ export function withErrorLogging(
         const durationMs = Date.now() - startTime
         const host = request?.headers?.get?.('host') ?? null
         const timingSeverity: 'critical' | 'error' | 'warn' | 'info' =
+          synthetic ? 'info' :
           isExpectedStatus(response.status) ? 'info' :
           response.status >= 500 ? 'error' :
           response.status >= 400 ? 'warn' :
@@ -311,6 +321,7 @@ export function withErrorLogging(
               method: request?.method ?? 'GET',
               sampled: isError ? 'false' : 'true',
               errorRef: errorRef || null,
+              ...(synthetic ? { synthetic: true } : {}),
               ...identityMetadata(identity),
               ...(traceIds.testId ? { testId: traceIds.testId } : {}),
               ...(traceIds.questionId ? { questionId: traceIds.questionId } : {}),
@@ -329,6 +340,13 @@ export function withErrorLogging(
         // solo evitamos ensuciar validation_error_logs y Sentry con lo que
         // no es un fallo. Ver opts.expectedStatuses.
         if (isExpectedStatus(response.status)) {
+          return response
+        }
+
+        // Tráfico sintético de canaries: no ensuciar validation_error_logs. El
+        // request_completed ya se emitió arriba marcado `synthetic`. Los fallos
+        // reales de un canary los cubre su propio evento `canary_*_failed`.
+        if (synthetic) {
           return response
         }
 
@@ -411,22 +429,27 @@ export function withErrorLogging(
       const durationMs = Date.now() - startTime
 
       // 5xx por throw: awaitar (ver justificación arriba en bloque 4xx/5xx).
-      await logValidationErrorAwait({
-        id: errorRef,
-        endpoint,
-        errorType: classifyError(error),
-        errorMessage: throwErrorMessage,
-        errorStack: throwErrorStack,
-        questionId: (body?.questionId as string) || undefined,
-        userId: throwIdentity.userId,
-        requestBody: throwIdentity.identityMismatch
-          ? { ...(body ? sanitizeRequestBody(body) : {}), _claimedUserId: throwIdentity.claimedUserId, _userIdVerified: throwIdentity.userIdVerified }
-          : (body ? sanitizeRequestBody(body) : undefined),
-        severity: 'critical',
-        httpStatus: 500,
-        durationMs,
-        userAgent,
-      })
+      // Tráfico sintético (canary): saltamos VLE — no debe contar como error
+      // user-facing; el emit request_completed de abajo (marcado synthetic)
+      // conserva la traza.
+      if (!synthetic) {
+        await logValidationErrorAwait({
+          id: errorRef,
+          endpoint,
+          errorType: classifyError(error),
+          errorMessage: throwErrorMessage,
+          errorStack: throwErrorStack,
+          questionId: (body?.questionId as string) || undefined,
+          userId: throwIdentity.userId,
+          requestBody: throwIdentity.identityMismatch
+            ? { ...(body ? sanitizeRequestBody(body) : {}), _claimedUserId: throwIdentity.claimedUserId, _userIdVerified: throwIdentity.userIdVerified }
+            : (body ? sanitizeRequestBody(body) : undefined),
+          severity: 'critical',
+          httpStatus: 500,
+          durationMs,
+          userAgent,
+        })
+      }
 
       // Emit request_completed también en el catch (antes solo se emitía
       // en el path try → 5xx por throw nunca llegaban a obs_events,
@@ -435,7 +458,7 @@ export function withErrorLogging(
       after(async () => {
         await emit({
           source: 'vercel',
-          severity: 'error',
+          severity: synthetic ? 'info' : 'error',
           eventType: 'request_completed',
           endpoint,
           userId: throwIdentity.userId,
@@ -450,6 +473,7 @@ export function withErrorLogging(
             errorRef,
             errorStack: throwErrorStack?.slice(0, 2000) || null,
             capturedFromThrow: true,
+            ...(synthetic ? { synthetic: true } : {}),
             ...identityMetadata(throwIdentity),
           },
         })
