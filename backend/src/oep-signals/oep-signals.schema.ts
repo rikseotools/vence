@@ -116,6 +116,7 @@ export const oepDetectionSignals = pgTable(
     detectedFechaInscripcionFin: date('detected_fecha_inscripcion_fin'),
     detectedFechaExamen: date('detected_fecha_examen'),
     detectedEstado: text('detected_estado'),
+    detectedSistema: text('detected_sistema'),
     confidenceScore: integer('confidence_score').notNull(),
     isNovel: boolean('is_novel').default(false).notNull(),
     signalSummary: text('signal_summary').notNull(),

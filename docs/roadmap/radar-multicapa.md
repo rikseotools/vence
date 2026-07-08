@@ -174,3 +174,7 @@ CREATE INDEX idx_radar_adapter_runs_status ON radar_adapter_runs (status, create
 | Retiro de crons legacy | ⬜ | Al validar el orquestador en prod: retirar `detect-boletines.cron` + `detect-pag-empleo.cron` y activar `LEGACY_BOLETINES_WRAPPED` + `PAG_WRAPPED` (evita el doble-run que hoy se previene no registrándolos). |
 
 **Transición (importante):** mientras convivan los crons legacy y el orquestador, boletines y PAG **NO se registran** en los registries (evita señales duplicadas por dedupe keys distintos). El orquestador solo añade hoy la **Capa 3 (competidores)**, que es capability nueva sin solape. El dedup definitivo es por **ref oficial**.
+
+---
+## Sistema selectivo en la extracción (08/07/2026)
+El extractor LLM (`oep-signals-llm.service.ts` prompt + `llmExtractionSchema`) ahora captura **`sistema`** (`oposicion`/`concurso-oposicion`/`concurso`, null si no consta) además de `estado`/plazas/fechas. Se guarda en `oep_detection_signals.detected_sistema` y se promueve al Aplicar. Los sensores de boletines/pag-empleo que no lo extraigan lo dejan null (se completa al verificar).

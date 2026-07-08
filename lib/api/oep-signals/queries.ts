@@ -136,6 +136,7 @@ export async function listSignals(filters: { status?: SignalStatus; limit?: numb
       detectedFechaInscripcionFin: oepDetectionSignals.detectedFechaInscripcionFin,
       detectedFechaExamen: oepDetectionSignals.detectedFechaExamen,
       detectedEstado: oepDetectionSignals.detectedEstado,
+      detectedSistema: oepDetectionSignals.detectedSistema,
       confidenceScore: oepDetectionSignals.confidenceScore,
       isNovel: oepDetectionSignals.isNovel,
       signalSummary: oepDetectionSignals.signalSummary,
@@ -252,7 +253,7 @@ async function promoteSignalToConvocatoria(
            detected_fecha_publicacion::text  AS detected_fecha_publicacion,
            detected_fecha_inscripcion_fin::text AS detected_fecha_inscripcion_fin,
            detected_fecha_examen::text       AS detected_fecha_examen,
-           detected_estado
+           detected_estado, detected_sistema
     FROM oep_detection_signals WHERE id = ${signalId} LIMIT 1`)) as unknown
   const s = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || [])[0] as Record<string, unknown> | undefined
   if (!s || !s.oposicion_id) return null
@@ -267,6 +268,7 @@ async function promoteSignalToConvocatoria(
   const fins = (s.detected_fecha_inscripcion_fin ?? null) as string | null
   const fex = (s.detected_fecha_examen ?? null) as string | null
   const est = (s.detected_estado ?? null) as string | null
+  const sis = (s.detected_sistema ?? null) as string | null
 
   // GUARDRAIL (08/07): NO afirmar 'inscripcion_abierta'/'convocada' SIN fecha de
   // cierre (ver estadoParaPromover). Sin deadline no se sabe si el plazo está
@@ -274,7 +276,7 @@ async function promoteSignalToConvocatoria(
   const estToWrite = estadoParaPromover(est, fins != null)
 
   // ¿algo que promover?
-  if ([yr, pl, pd, ppi, boc, fpub, fins, fex, estToWrite].every((v) => v === null)) return null
+  if ([yr, pl, pd, ppi, boc, fpub, fins, fex, estToWrite, sis].every((v) => v === null)) return null
 
   const curRows = (await db.execute<{ id: string; anio: number | null }>(sql`
     SELECT id, "año" AS anio FROM convocatorias WHERE oposicion_id = ${oposicionId} AND is_current = true LIMIT 1`)) as unknown
@@ -293,6 +295,7 @@ async function promoteSignalToConvocatoria(
         inscription_deadline     = COALESCE(${fins}::date, inscription_deadline),
         exam_date                = COALESCE(${fex}::date,  exam_date),
         estado_proceso           = COALESCE(${estToWrite},  estado_proceso),
+        sistema_selectivo        = COALESCE(${sis},  sistema_selectivo),
         updated_at = now()
       WHERE id = ${cur.id}`)
     result = 'updated'
@@ -303,11 +306,12 @@ async function promoteSignalToConvocatoria(
     }
     await db.execute(sql`
       INSERT INTO convocatorias (oposicion_id, "año", is_current, plazas_libres, plazas_discapacidad,
-        plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso)
+        plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso, sistema_selectivo)
       VALUES (${oposicionId}, COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int), true,
-        ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite})
+        ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite}, ${sis})
       ON CONFLICT (oposicion_id, "año") DO UPDATE SET
         is_current = true, archived_at = NULL,
+        sistema_selectivo        = COALESCE(EXCLUDED.sistema_selectivo,        convocatorias.sistema_selectivo),
         plazas_libres            = COALESCE(EXCLUDED.plazas_libres,            convocatorias.plazas_libres),
         plazas_discapacidad      = COALESCE(EXCLUDED.plazas_discapacidad,      convocatorias.plazas_discapacidad),
         plazas_promocion_interna = COALESCE(EXCLUDED.plazas_promocion_interna, convocatorias.plazas_promocion_interna),
@@ -330,7 +334,8 @@ async function promoteSignalToConvocatoria(
       boe_publication_date     = COALESCE(${fpub}::date, boe_publication_date),
       inscription_deadline     = COALESCE(${fins}::date, inscription_deadline),
       exam_date                = COALESCE(${fex}::date,  exam_date),
-      estado_proceso           = COALESCE(${est},  estado_proceso)
+      estado_proceso           = COALESCE(${est},  estado_proceso),
+      sistema_selectivo        = COALESCE(${sis},  sistema_selectivo)
     WHERE id = ${oposicionId}`)
 
   return { oposicionId, result }
