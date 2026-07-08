@@ -62,6 +62,7 @@ export class DetectBoletinesCron {
           daysScanned: result.daysScanned,
           candidatesDays: result.candidatesDays,
           signals: result.signals,
+          temarioSignals: result.temarioSignals,
           errors: result.errors,
         },
       });

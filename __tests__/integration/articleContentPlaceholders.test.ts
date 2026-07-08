@@ -1,57 +1,56 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Detecta artículos con contenido placeholder (texto genérico tipo
  * "Artículo X del Decreto..." en vez del contenido legal real).
  * Bug reportado por tatianacedenozamora@gmail.com (22/04/2026) —
  * 6 artículos del Decreto 69/2017 CM tenían placeholder desde su creación.
+ *
+ * Lee de la BD VIVA (RDS) vía pg. NO Supabase (congelado desde 04/07).
  */
 
 import dotenv from 'dotenv'
-import https from 'https'
+import { Client } from 'pg'
 
 dotenv.config({ path: '.env.local', override: true })
 
-const REAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const REAL_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const hasRealDb = !!(REAL_URL && REAL_KEY && !REAL_URL.includes('test.supabase.co'))
-
-function queryArticles(filter: string): Promise<{ article_number: string; law_id: string }[]> {
-  const restUrl = `${REAL_URL}/rest/v1/articles?select=article_number,law_id&is_active=eq.true&${filter}&limit=50`
-  return new Promise((resolve, reject) => {
-    https.get(restUrl, {
-      headers: {
-        apikey: REAL_KEY!,
-        Authorization: `Bearer ${REAL_KEY}`,
-      },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) }
-        catch { reject(new Error(`Failed to parse: ${data.substring(0, 200)}`)) }
-      })
-    }).on('error', reject)
-  })
-}
+const DB_URL = process.env.DATABASE_URL
+const hasDb = !!DB_URL
 
 describe('Article content — no placeholders', () => {
-  const runIf = hasRealDb ? it : it.skip
+  const runIf = hasDb ? it : it.skip
+  let client: Client
+
+  beforeAll(async () => {
+    if (!hasDb) return
+    client = new Client({ connectionString: DB_URL })
+    await client.connect()
+  })
+
+  afterAll(async () => {
+    await client?.end()
+  })
 
   runIf('no articles start with "Artículo N del" (placeholder pattern)', async () => {
-    const placeholders: string[] = []
+    // Placeholder = el contenido es la mera REFERENCIA al artículo ("Artículo 3
+    // del Decreto...") en lugar del texto legal. Se detecta por el patrón al
+    // inicio del contenido.
+    const { rows } = await client.query<{ article_number: string; ley: string }>(`
+      SELECT a.article_number, l.short_name AS ley
+      FROM articles a
+      JOIN laws l ON l.id = a.law_id
+      WHERE a.is_active = true
+        AND a.content ~ '^Art[íi]culo\\s+[0-9]+\\s+(del|de la|de)\\b'
+      ORDER BY l.short_name, a.article_number
+      LIMIT 100
+    `)
 
-    for (let i = 1; i <= 20; i++) {
-      const filter = `content=like.Art%C3%ADculo+${i}+del*`
-      const rows = await queryArticles(filter)
-      for (const r of rows) {
-        placeholders.push(`Art. ${r.article_number} (law: ${r.law_id.substring(0, 8)})`)
-      }
+    if (rows.length > 0) {
+      console.error(`\n❌ ${rows.length} artículos con contenido placeholder:`)
+      for (const r of rows) console.error(`  Art. ${r.article_number} (${r.ley})`)
     }
 
-    if (placeholders.length > 0) {
-      console.error(`\n❌ ${placeholders.length} artículos con contenido placeholder:`)
-      for (const p of placeholders) console.error(`  ${p}`)
-    }
-
-    expect(placeholders).toHaveLength(0)
-  })
+    expect(rows).toHaveLength(0)
+  }, 30000)
 })

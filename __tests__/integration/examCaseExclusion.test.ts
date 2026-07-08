@@ -22,115 +22,73 @@
  * test_questions del usuario), filtered-questions, simulacro.
  */
 
-import https from 'https'
 import dotenv from 'dotenv'
+import { Client } from 'pg'
 
 dotenv.config({ path: '.env.local', override: true })
 
-const REAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const REAL_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const hasRealDb = !!(REAL_URL && REAL_KEY && !REAL_URL.includes('test.supabase.co'))
-
-function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
-  const url = `${REAL_URL}/rest/v1/${table}?${params}`
-  return new Promise((resolve, reject) => {
-    https
-      .get(
-        url,
-        {
-          headers: {
-            apikey: REAL_KEY!,
-            Authorization: `Bearer ${REAL_KEY}`,
-          },
-        },
-        (res) => {
-          let data = ''
-          res.on('data', (chunk) => (data += chunk))
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(data))
-            } catch {
-              reject(new Error(`Failed to parse: ${data.substring(0, 200)}`))
-            }
-          })
-        }
-      )
-      .on('error', reject)
-  })
-}
+const DB_URL = process.env.DATABASE_URL
+const hasDb = !!DB_URL
 
 describe('exam_case_id exclusion in isolated tests', () => {
-  if (!hasRealDb) {
-    test.skip('Skipped: NEXT_PUBLIC_SUPABASE_URL no configurado', () => {})
+  if (!hasDb) {
+    test.skip('Skipped: DATABASE_URL no configurado', () => {})
     return
   }
 
+  let client: Client
+  beforeAll(async () => {
+    client = new Client({ connectionString: DB_URL })
+    await client.connect()
+  })
+  afterAll(async () => { await client?.end() })
+
   test('Setup: hay preguntas con exam_case_id IS NOT NULL en BD', async () => {
-    const rows = await supabaseGet('questions', 'select=id&exam_case_id=not.is.null&limit=1')
-    expect(Array.isArray(rows)).toBe(true)
+    const { rows } = await client.query('SELECT id FROM questions WHERE exam_case_id IS NOT NULL LIMIT 1')
     expect(rows.length).toBeGreaterThan(0)
   }, 15000)
 
   test('Setup: tabla exam_cases tiene al menos 1 fila', async () => {
-    const rows = await supabaseGet('exam_cases', 'select=id&limit=1')
-    expect(Array.isArray(rows)).toBe(true)
+    const { rows } = await client.query('SELECT id FROM exam_cases LIMIT 1')
     expect(rows.length).toBeGreaterThan(0)
   }, 15000)
 
-  test('Las preguntas con exam_case_id pertenecen a oposiciones con supuestos prácticos importados', async () => {
-    // Añadir aquí nuevas oposiciones cuando se importen sus supuestos prácticos.
-    // Última actualización: 19/05/2026 — CARM (74 preg de 3 convocatorias 2020/2023/2024).
-    const validPositions = new Set([
-      'auxilio_judicial',
-      'tramitacion_procesal',
-      'auxiliar_administrativo_carm',
-    ])
-    const rows = await supabaseGet<{ exam_position: string }>(
-      'questions',
-      'select=exam_position&exam_case_id=not.is.null&limit=500'
-    )
-    expect(rows.length).toBeGreaterThan(0)
-    const invalid = rows.filter((r) => !validPositions.has(r.exam_position))
-    expect(invalid).toEqual([])
+  // Invariante AUTO-MANTENIDA (sustituye a un allowlist hardcodeado que se
+  // quedaba stale con cada oposición nueva que importa supuestos): toda pregunta
+  // con exam_case_id DEBE referenciar una fila real de exam_cases. Así el
+  // OfficialExamLayout siempre puede renderizar el caso; una pregunta con
+  // exam_case_id colgando (sin caso) aparecería sin contexto → incomprensible.
+  test('todo exam_case_id referencia una fila real de exam_cases (0 huérfanos)', async () => {
+    const { rows } = await client.query<{ id: string; exam_position: string | null }>(`
+      SELECT q.id, q.exam_position
+      FROM questions q
+      WHERE q.exam_case_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM exam_cases e WHERE e.id = q.exam_case_id)
+      LIMIT 20
+    `)
+    if (rows.length > 0) {
+      console.error(`${rows.length} preguntas con exam_case_id huérfano:`)
+      rows.forEach(r => console.error(`  ${r.id} (${r.exam_position})`))
+    }
+    expect(rows).toHaveLength(0)
   }, 15000)
 
   test('OfficialExamLayout query SÍ devuelve preguntas con exam_case_id (debe mostrarlas con caso)', async () => {
-    // Simulacion: query getOfficialExamQuestions filtra por parte. Cuando
-    // parte=supuesto se INCLUYEN preguntas con exam_case_id (es el modo correcto).
-    const rows = await supabaseGet<{ exam_case_id: string | null }>(
-      'questions',
-      'select=exam_case_id&exam_position=eq.auxilio_judicial&is_official_exam=eq.true&exam_source=ilike.%25Segunda%20parte%25&exam_case_id=not.is.null&limit=50'
-    )
+    // getOfficialExamQuestions filtra por parte. Cuando parte=supuesto se
+    // INCLUYEN preguntas con exam_case_id (es el modo correcto).
+    const { rows } = await client.query(`
+      SELECT exam_case_id FROM questions
+      WHERE exam_position = 'auxilio_judicial' AND is_official_exam = true
+        AND exam_source ILIKE '%Segunda parte%' AND exam_case_id IS NOT NULL
+      LIMIT 50
+    `)
     expect(rows.length).toBeGreaterThan(0)
     rows.forEach((r) => expect(r.exam_case_id).not.toBeNull())
   }, 15000)
 
-  test('Conteo total preguntas con exam_case_id (debe ser ≥ las 9 TP 2025 + 42 AJ 2025 + 35 AJ 2024 = 86)', async () => {
-    const url = `${REAL_URL}/rest/v1/questions?select=id&exam_case_id=not.is.null`
-    const data = await new Promise<number>((resolve, reject) => {
-      https
-        .get(
-          url,
-          {
-            headers: {
-              apikey: REAL_KEY!,
-              Authorization: `Bearer ${REAL_KEY}`,
-              Prefer: 'count=exact',
-              'Range-Unit': 'items',
-              Range: '0-0',
-            },
-          },
-          (res) => {
-            const cr = res.headers['content-range'] as string | undefined
-            const total = cr?.split('/')[1]
-            resolve(total && total !== '*' ? Number(total) : 0)
-            res.on('data', () => {})
-            res.on('end', () => {})
-          }
-        )
-        .on('error', reject)
-    })
-    expect(data).toBeGreaterThanOrEqual(86)
+  test('Conteo total preguntas con exam_case_id (≥ 86)', async () => {
+    const { rows } = await client.query('SELECT count(*)::int AS n FROM questions WHERE exam_case_id IS NOT NULL')
+    expect(rows[0].n).toBeGreaterThanOrEqual(86)
   }, 15000)
 })
 

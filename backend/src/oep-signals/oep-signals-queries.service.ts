@@ -310,6 +310,26 @@ export class OepSignalsQueriesService {
   // GENERIC SOURCE CHECKS (Sensor detect-generic-sources)
   // ============================================
 
+  // ============================================
+  // PROGRAMA NORMAS (Sensor temario_change)
+  // ============================================
+
+  /**
+   * Lee el registro de norma-fuente del temario por oposición
+   * (`oposicion_programa_normas`, sin mapping Drizzle → sql raw). El sensor
+   * `temario_change` lo usa para auto-vincular una señal a la oposición cuya
+   * Orden de programas ha sido modificada.
+   */
+  async getProgramaNormas(): Promise<ProgramaNormaRow[]> {
+    const result = await this.db.execute(sql`
+      SELECT n.oposicion_id, n.norma_ref, n.cuerpo, n.ambito, o.nombre AS oposicion_nombre
+      FROM oposicion_programa_normas n
+      JOIN oposiciones o ON o.id = n.oposicion_id
+      WHERE n.is_active = true
+    `);
+    return result as unknown as ProgramaNormaRow[];
+  }
+
   /** Lee filas activas de `generic_source_checks` (tabla sin mapping Drizzle → sql raw). */
   async getActiveGenericSources(): Promise<GenericSourceRow[]> {
     const result = await this.db.execute(sql`
@@ -436,4 +456,16 @@ export interface GenericSourceRow {
   source_url: string;
   last_hash: string | null;
   last_checked_at: string | null;
+}
+
+// ============================================
+// TIPO raw para oposicion_programa_normas (sensor temario_change)
+// ============================================
+
+export interface ProgramaNormaRow {
+  oposicion_id: string;
+  norma_ref: string;
+  cuerpo: string | null;
+  ambito: string | null;
+  oposicion_nombre: string;
 }

@@ -1,14 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
-import { OepSignalsQueriesService } from '../oep-signals/oep-signals-queries.service';
+import {
+  OepSignalsQueriesService,
+  type ProgramaNormaRow,
+} from '../oep-signals/oep-signals-queries.service';
 import { baseScoreBySensor } from '../oep-signals/oep-signals.schemas';
-import { BOLETIN_ADAPTERS } from './boletines';
+import { BOLETIN_ADAPTERS, type BoletinAdapter, type BoletinHit } from './boletines';
+import { CCAA_BOLETIN_ADAPTERS, CCAA_BOLETINES_PENDING } from './ccaa-boletines';
+
+// BOE + BOCYL (por fecha, con convocatoria+temario) + los 17 boletines CCAA
+// (temario-only, sumario vigente). Un único cron cubre todo.
+const ALL_BOLETIN_ADAPTERS: BoletinAdapter[] = [
+  ...BOLETIN_ADAPTERS,
+  ...CCAA_BOLETIN_ADAPTERS,
+];
 
 export interface DetectBoletinesStats {
   boletines: number;
   daysScanned: number;
   candidatesDays: number;
   signals: number;
+  /** Señales del sensor temario_change (2ª pasada sobre el mismo sumario). */
+  temarioSignals: number;
   errors: number;
 }
 
@@ -53,15 +66,31 @@ export class DetectBoletinesService {
   async run(daysBack = 4, today: Date = new Date()): Promise<DetectBoletinesStats> {
     const dates = this.lastDays(daysBack, today);
     const stats: DetectBoletinesStats = {
-      boletines: BOLETIN_ADAPTERS.length,
+      boletines: ALL_BOLETIN_ADAPTERS.length,
       daysScanned: 0,
       candidatesDays: 0,
       signals: 0,
+      temarioSignals: 0,
       errors: 0,
     };
 
-    for (const adapter of BOLETIN_ADAPTERS) {
-      for (const date of dates) {
+    // Registro de norma-fuente del temario (para auto-vincular señales temario_change
+    // a la oposición cuya Orden de programas se modifica). Se carga 1× por pasada.
+    let normas: ProgramaNormaRow[] = [];
+    try {
+      normas = await this.queries.getProgramaNormas();
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo cargar oposicion_programa_normas: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    const normaIndex = buildNormaIndex(normas);
+
+    for (const adapter of ALL_BOLETIN_ADAPTERS) {
+      for (let di = 0; di < dates.length; di++) {
+        const date = dates[di];
+        // Adapters sin fecha (sumario vigente): se leen 1× por pasada (día 0).
+        if (adapter.dateless && di > 0) break;
         stats.daysScanned++;
         let hit;
         try {
@@ -75,7 +104,19 @@ export class DetectBoletinesService {
           );
           continue;
         }
-        if (!hit || !hit.candidatesText.trim()) continue;
+        if (!hit) continue;
+
+        const ymd = `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(
+          date.getUTCDate(),
+        ).padStart(2, '0')}`;
+
+        // --- 2ª pasada: cambios de temario/programa (independiente de convocatorias) ---
+        if (hit.temarioText.trim()) {
+          await this.processTemario(hit, adapter, ymd, normaIndex, stats);
+        }
+
+        // --- 1ª pasada: convocatorias de ingreso ---
+        if (!hit.candidatesText.trim()) continue;
         stats.candidatesDays++;
 
         const extraction = await this.llm.extractRegionalOeps(
@@ -83,10 +124,6 @@ export class DetectBoletinesService {
           adapter.regionName,
         );
         if (!extraction || extraction.oeps.length === 0) continue;
-
-        const ymd = `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(
-          date.getUTCDate(),
-        ).padStart(2, '0')}`;
 
         for (const oep of extraction.oeps) {
           // Fase 0 "catalogar TODO" (04/07/2026): SIN guardarraíl de grupo
@@ -141,8 +178,111 @@ export class DetectBoletinesService {
     }
 
     this.logger.log(
-      `detect-boletines: ${stats.signals} señales (${stats.candidatesDays} días con candidatos de ${stats.daysScanned} escaneados)`,
+      `detect-boletines: ${stats.signals} señales convocatoria + ${stats.temarioSignals} temario ` +
+        `(${stats.candidatesDays} días con candidatos de ${stats.daysScanned} escaneados). ` +
+        `Boletines temario pendientes (headless/PDF, no cubiertos aún): ` +
+        CCAA_BOLETINES_PENDING.map((p) => p.key).join(', '),
     );
     return stats;
   }
+
+  /**
+   * 2ª pasada: sobre el `temarioText` ya pre-filtrado del sumario, extrae con LLM
+   * las Ordenes que modifican/aprueban un temario y emite señales `temario_change`.
+   * Si la Orden modifica una norma-fuente registrada, auto-vincula la oposición.
+   */
+  private async processTemario(
+    hit: BoletinHit,
+    adapter: BoletinAdapter,
+    ymd: string,
+    normaIndex: Map<string, { oposicionId: string; nombre: string }>,
+    stats: DetectBoletinesStats,
+  ): Promise<void> {
+    const extraction = await this.llm.extractTemarioChanges(
+      hit.temarioText,
+      adapter.regionName,
+    );
+    if (!extraction || extraction.changes.length === 0) return;
+
+    for (const change of extraction.changes) {
+      // Auto-vinculación: ¿la Orden modificada (o la propia) es una norma-fuente nuestra?
+      const match =
+        normaIndex.get(normaCore(change.modificaNorma)) ??
+        normaIndex.get(normaCore(change.normaRef));
+      const oposicionId = match?.oposicionId ?? null;
+      const score = Math.min(100, baseScoreBySensor('temario_change') + (match ? 10 : 0));
+
+      const refSlug = (change.normaRef ?? change.cuerpo ?? 'temario')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .slice(0, 60);
+      // Dedup por (boletín, norma) SIN fecha: una Orden = una señal, aunque el
+      // sumario "vigente" se relea varios días de la ventana (adapters dateless).
+      const dedupeKey = `temario:${adapter.key}:${refSlug}`;
+
+      try {
+        const { inserted } = await this.queries.insertSignal({
+          oposicionId,
+          sensorType: 'temario_change',
+          sourceUrl: change.url ?? hit.url,
+          regionName: change.ambito ?? adapter.regionName,
+          detectedOposicionName: match?.nombre ?? change.cuerpo,
+          detectedBocRef: change.normaRef ?? change.modificaNorma ?? null,
+          detectedFechaPublicacion: change.fecha ?? null,
+          confidenceScore: score,
+          isNovel: true,
+          signalSummary: `[TEMARIO ${change.ambito ?? adapter.regionName}] ${change.cuerpo}: ${change.resumen}`.slice(
+            0,
+            500,
+          ),
+          rawExtraction: {
+            boletin: adapter.key,
+            fecha: ymd,
+            change,
+            matchedOposicionId: oposicionId,
+          },
+          dedupeKey,
+        });
+        if (inserted) {
+          stats.temarioSignals++;
+          this.logger.warn(`SEÑAL temario ${adapter.key} ${ymd}: ${change.cuerpo} (${change.normaRef ?? '—'})`);
+        }
+      } catch (err) {
+        stats.errors++;
+        this.logger.error(
+          `insertSignal (temario) falló: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Núcleo canónico de una referencia normativa: `TIPO NN/AAAA` → `pre-76-2024`.
+ * Permite emparejar "Orden PRE/76/2024" con "la Orden PRE/76/2024, de 29 de agosto".
+ * Devuelve '' si no encuentra el patrón (nunca hace match espurio con '').
+ */
+export function normaCore(ref: string | null | undefined): string {
+  if (!ref) return '';
+  const m = ref.match(/([A-Za-zÁÉÍÓÚÑ]{2,5})?\s*[\/-]?\s*(\d{1,4})\s*\/\s*(\d{4})/);
+  if (!m) return '';
+  const prefix = (m[1] ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+  return `${prefix}-${m[2]}-${m[3]}`;
+}
+
+/** Índice normalizado norma-core → oposición, para auto-vincular señales de temario. */
+export function buildNormaIndex(
+  normas: ProgramaNormaRow[],
+): Map<string, { oposicionId: string; nombre: string }> {
+  const idx = new Map<string, { oposicionId: string; nombre: string }>();
+  for (const n of normas) {
+    const key = normaCore(n.norma_ref);
+    if (key) idx.set(key, { oposicionId: n.oposicion_id, nombre: n.oposicion_nombre });
+  }
+  return idx;
 }

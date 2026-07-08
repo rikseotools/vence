@@ -4,9 +4,11 @@ import {
   genericSourceExtractionSchema,
   llmExtractionSchema,
   regionalExtractionSchema,
+  temarioChangeExtractionSchema,
   type GenericSourceExtraction,
   type LlmExtraction,
   type RegionalExtraction,
+  type TemarioChangeExtraction,
 } from './oep-signals.schemas';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
@@ -228,6 +230,60 @@ export class OepSignalsLlmService {
   }
 
   // ============================================
+  // TEMARIO CHANGE — Sensor temario_change (detect-boletines, 2ª pasada)
+  // ============================================
+
+  /**
+   * De un texto pre-filtrado de disposiciones candidatas a cambio de
+   * temario/programa (una por línea, del sumario del boletín), extrae las que
+   * realmente MODIFICAN o APRUEBAN el programa de materias de un cuerpo. El
+   * pre-filtro (looksLikeTemarioChange) es amplio; aquí se descarta el ruido.
+   */
+  async extractTemarioChanges(
+    candidatesText: string,
+    regionName: string,
+  ): Promise<TemarioChangeExtraction | null> {
+    const clean = candidatesText.trim();
+    if (clean.length < 20) return null;
+
+    const client = await this.anthropic.getClient();
+    try {
+      const response = await client.messages.create({
+        model: HAIKU_MODEL,
+        max_tokens: 2000,
+        system: TEMARIO_SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: temarioUserPrompt(clean, regionName) },
+        ],
+      });
+
+      const textBlock = response.content.find((b) => b.type === 'text');
+      if (!textBlock || textBlock.type !== 'text') return null;
+
+      let raw = textBlock.text.trim();
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return null;
+
+      const parsed = temarioChangeExtractionSchema.safeParse(
+        JSON.parse(jsonMatch[0]),
+      );
+      if (!parsed.success) {
+        this.logger.warn(
+          `TemarioExtractor validación fallida: ${JSON.stringify(parsed.error.issues.slice(0, 2))}`,
+        );
+        return null;
+      }
+      return parsed.data;
+    } catch (err) {
+      this.logger.error(
+        `TemarioExtractor error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  }
+
+  // ============================================
   // GENERIC SOURCE — Sensor 4 (detect-generic-sources)
   // ============================================
 
@@ -405,6 +461,47 @@ Extrae TODAS las convocatorias de ingreso activas de CUALQUIER grupo (A1/A2/B/C1
 }
 
 Si no hay ninguna convocatoria de ingreso, devuelve {"oeps": []}.`;
+}
+
+const TEMARIO_SYSTEM_PROMPT = `Eres un extractor de disposiciones oficiales que APRUEBAN o MODIFICAN el TEMARIO/PROGRAMA de materias de procesos selectivos de empleo público en España.
+
+Qué SÍ es relevante (extraer):
+- Ordenes/Resoluciones que hacen públicos los "programas exigibles" / "programa de materias" / "temario" de uno o varios cuerpos/escalas.
+- Ordenes/Resoluciones que MODIFICAN una Orden de programas anterior (ej. "por la que se modifica la Orden PRE/76/2024 ... programas exigibles").
+- Cambios que afectan al contenido del temario (nuevos temas, nueva versión de ofimática, leyes añadidas/quitadas).
+
+Qué NO es relevante (ignorar):
+- Convocatorias de plazas (esas las captura otro sensor).
+- Listas de admitidos, tribunales, nombramientos, resultados.
+- Programas de ayudas/subvenciones/fomento (no son temarios de oposición).
+
+Por cada disposición relevante extrae: el cuerpo/escala afectado, la administración/ámbito, la referencia de la Orden (normaRef), la Orden de programas que modifica si aplica (modificaNorma), la fecha, y un resumen de una frase.
+
+Responde EXCLUSIVAMENTE con JSON válido, sin markdown.`;
+
+function temarioUserPrompt(text: string, regionName: string): string {
+  return `Disposiciones candidatas del boletín de ${regionName} (una por línea, ya pre-filtradas):
+
+<disposiciones>
+${text}
+</disposiciones>
+
+Extrae SOLO las que aprueban o modifican el temario/programa de materias de un cuerpo. JSON esperado:
+{
+  "changes": [
+    {
+      "cuerpo": "Cuerpo General Auxiliar",
+      "ambito": "Cantabria",
+      "normaRef": "Orden PRE/12/2026",
+      "modificaNorma": "Orden PRE/76/2024",
+      "fecha": "2026-02-10",
+      "resumen": "Modifica el programa de materias del Cuerpo General Auxiliar (tema 16 y parte específica).",
+      "url": null
+    }
+  ]
+}
+
+Si ninguna disposición cambia un temario, devuelve {"changes": []}.`;
 }
 
 const GENERIC_SYSTEM_PROMPT = `Eres auditor de fuentes normativas del Estado (Dirección General de Función Pública, Secretaría de Estado de FP, Portal de Transparencia). Tu trabajo: leer el contenido actual de una página y determinar si contiene PUBLICACIONES NORMATIVAS NUEVAS que afecten al temario de oposiciones estatales (Aux/Admin Estado, Tramitación Procesal, Auxilio Judicial, Gestión Estado, Admin. Seguridad Social).

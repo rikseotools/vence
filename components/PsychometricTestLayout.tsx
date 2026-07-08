@@ -625,6 +625,10 @@ export default function PsychometricTestLayout({
               {['A', 'B', 'C', 'D'].map((letter, index) => {
                 const optionKey = `option_${letter.toLowerCase()}` as keyof PsychometricQuestion
                 const optionText = currentQ[optionKey] as string
+                // Preguntas válidas de 3 opciones (option_d = null): NO renderizar
+                // un botón vacío clicable. Solo aplica a huecos finales — los
+                // huecos intermedios los prohíbe psychometricDataQuality.test.ts.
+                if (!optionText || !optionText.trim()) return null
                 const isSelected = selectedAnswer === index
                 // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API, no currentQ.correct_option
                 const isCorrectOption = showResult && verifiedCorrectAnswer !== null

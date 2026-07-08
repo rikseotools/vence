@@ -71,46 +71,38 @@ describe('Fetchers sin cache cargado', () => {
 // 2. warmCache.ts con lawMappingUtils eliminado
 // ============================================
 
-describe('warmCache.ts sin lawMappingUtils', () => {
-  // Mock de Supabase
-  const mockNot = jest.fn()
-  const mockEq = jest.fn(() => ({ not: mockNot }))
-  const mockSelect = jest.fn(() => ({ eq: mockEq }))
-  const mockSupabase = { from: jest.fn(() => ({ select: mockSelect })) }
-
-  jest.mock('@/lib/supabase', () => ({
-    getSupabaseClient: jest.fn(() => mockSupabase),
-  }))
+describe('warmCache.ts (endpoint /api/v2/law-slugs)', () => {
+  // warmSlugCache migró (04/07, cutover RDS) de query directa a Supabase a
+  // fetch('/api/v2/law-slugs'), que devuelve { mappings: [{ slug, shortName }] }.
+  // Los modos de fallo se simulan mockeando fetch (global.fetch = jest.fn() en
+  // jest.setup.js), no Supabase.
+  const mockFetch = global.fetch as jest.Mock
 
   const { warmSlugCache, invalidateAllSlugCaches } = require('@/lib/api/laws/warmCache')
-  const { isSyncCacheLoaded, mapSlugToShortName, invalidateSyncCache } = require('@/lib/lawSlugSync')
+  const { isSyncCacheLoaded, mapSlugToShortName } = require('@/lib/lawSlugSync')
 
   beforeEach(() => {
     jest.clearAllMocks()
     invalidateAllSlugCaches()
-    mockSelect.mockReturnValue({ eq: mockEq })
-    mockEq.mockReturnValue({ not: mockNot })
-    mockSupabase.from.mockReturnValue({ select: mockSelect })
   })
 
-  it('warmSlugCache no lanza error aunque lawMappingUtils no exista', async () => {
-    mockNot.mockResolvedValue({
-      data: [{ short_name: 'CE', slug: 'constitucion-espanola' }],
-      error: null,
+  it('warmSlugCache no lanza y devuelve true con respuesta OK', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ mappings: [{ shortName: 'CE', slug: 'constitucion-espanola' }] }),
     })
 
-    // Esto NO debe lanzar — el require de lawMappingUtils tiene try/catch
     await expect(warmSlugCache()).resolves.not.toThrow()
     expect(await warmSlugCache()).toBe(true)
   })
 
   it('warmSlugCache puebla lawSlugSync correctamente', async () => {
-    mockNot.mockResolvedValue({
-      data: [
-        { short_name: 'CE', slug: 'constitucion-espanola' },
-        { short_name: 'Ley 39/2015', slug: 'ley-39-2015' },
-      ],
-      error: null,
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ mappings: [
+        { shortName: 'CE', slug: 'constitucion-espanola' },
+        { shortName: 'Ley 39/2015', slug: 'ley-39-2015' },
+      ] }),
     })
 
     await warmSlugCache()
@@ -120,8 +112,8 @@ describe('warmCache.ts sin lawMappingUtils', () => {
     expect(mapSlugToShortName('ley-39-2015')).toBe('Ley 39/2015')
   })
 
-  it('warmSlugCache con BD caída: devuelve false, no rompe', async () => {
-    mockNot.mockResolvedValue({ data: null, error: { message: 'Connection refused' } })
+  it('warmSlugCache con endpoint caído (HTTP error): devuelve false, no rompe', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) })
 
     const result = await warmSlugCache()
 
@@ -129,8 +121,8 @@ describe('warmCache.ts sin lawMappingUtils', () => {
     expect(isSyncCacheLoaded()).toBe(false)
   })
 
-  it('warmSlugCache con excepción: no lanza, devuelve false', async () => {
-    mockNot.mockRejectedValue(new Error('Network timeout'))
+  it('warmSlugCache con excepción de red: no lanza, devuelve false', async () => {
+    mockFetch.mockRejectedValue(new Error('Network timeout'))
 
     await expect(warmSlugCache()).resolves.not.toThrow()
     expect(await warmSlugCache()).toBe(false)
