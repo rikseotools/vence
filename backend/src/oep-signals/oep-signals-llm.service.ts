@@ -457,11 +457,16 @@ Extrae TODAS las convocatorias de ingreso activas de CUALQUIER grupo (A1/A2/B/C1
       "bocRef": "BOC-A-2026-057-948",
       "fechaInscripcionFin": "2026-04-23",
       "estado": "inscripcion_abierta",
+      "organismo": "Universidad de Murcia",
       "url": "https://..."
     }
   ]
 }
 
+"organismo" = la entidad convocante EXACTA y literal (p.ej. "Universidad de Murcia",
+"Ayuntamiento de Huesca", "Ministerio de Hacienda", "Junta de Castilla y León").
+Es CLAVE para no confundir cuerpos homónimos de distinto nivel (una "Escala Auxiliar
+Administrativa" de universidad NO es la del Estado). Si no consta, null.
 Si no hay ninguna convocatoria de ingreso, devuelve {"oeps": []}.`;
 }
 

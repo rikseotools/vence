@@ -178,6 +178,26 @@ export function detectedScope(
   return { scope: 'other', place: placeTokens(org) };
 }
 
+/**
+ * Deriva el NIVEL de administración a partir del ORGANISMO literal (entidad
+ * convocante). Devuelve `null` si no se puede determinar con seguridad → el
+ * llamador NO debe matchear (evita falsos positivos por scope inventado, p.ej.
+ * tratar toda entrada del BOE como estatal y casar una escala de universidad con
+ * la del Estado). Solo se afirma un nivel cuando el organismo lo dice claramente.
+ */
+export function adminFromOrganismo(org?: string | null): string | null {
+  const n = normalize(org ?? '');
+  if (!n) return null;
+  if (/universidad|universitat|universidade|politecnica|uned/.test(n)) return 'Universidad';
+  if (/ayuntamiento|ajuntament|concello|cabildo|consell insular|diputacion|diputacio|mancomunidad|consorci/.test(n))
+    return 'Local';
+  if (/ministerio|administracion general del estado|guardia civil|policia nacional|correos|agencia estatal|ingesa|seguridad social/.test(n))
+    return 'Estatal';
+  if (/junta de|gobierno de|generalitat|xunta|principado|consejeria|conselleria|departamento de|gobierno vasco|govern de|comunidad autonoma|comunidad de madrid|servicio.*salud/.test(n))
+    return 'Autonómica';
+  return null;
+}
+
 // Oposiciones estatales cuyo slug no lleva sufijo de región.
 const NATIONAL_SLUGS = new Set([
   'administrativo-estado',

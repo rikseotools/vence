@@ -119,6 +119,11 @@ export const regionalOepSchema = z.object({
   bocRef: z.string().nullable(),
   fechaInscripcionFin: z.string().nullable(),
   estado: z.string().nullable(),
+  // Organismo/entidad convocante EXACTO (p.ej. "Universidad de Murcia",
+  // "Ayuntamiento de Huesca", "Ministerio de Hacienda"). Clave para derivar el
+  // NIVEL de administración y matchear sin falsos positivos (una "Escala Auxiliar
+  // Administrativa" de universidad NO es la del Estado). null si no consta.
+  organismo: z.string().nullable().default(null),
   url: z.string().nullable(),
 });
 export type RegionalOep = z.infer<typeof regionalOepSchema>;
