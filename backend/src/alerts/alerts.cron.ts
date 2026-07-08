@@ -53,7 +53,7 @@ export class AlertsCron {
     private readonly notifier: NotificationAdapter,
     private readonly observability: ObservabilityService,
     private readonly cronSchedule: CronScheduleService,
-    heartbeatRegistry: HeartbeatRegistry,
+    private readonly heartbeatRegistry: HeartbeatRegistry,
   ) {
     heartbeatRegistry.register(
       'alerts-engine',
@@ -98,6 +98,7 @@ export class AlertsCron {
     const ctx: AlertRuleContext = {
       cronSchedule: this.cronSchedule,
       deployWindow,
+      processStartedAtMs: this.heartbeatRegistry.getProcessStartedAtMs(),
     };
 
     for (const rule of ALERT_RULES) {

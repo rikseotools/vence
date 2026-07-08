@@ -40,6 +40,13 @@ export class HeartbeatRegistry {
     return Date.now() - this.processStartedAtMs;
   }
 
+  /** Timestamp (ms epoch) del arranque del proceso. Lo usa la regla
+   * `cron_overdue` para NO marcar overdue un cron por un tick esperado
+   * anterior a su propio despliegue (falso positivo de migración). */
+  getProcessStartedAtMs(): number {
+    return this.processStartedAtMs;
+  }
+
   /**
    * Registra un cron en el registro. Llamado por `CronWithHeartbeat`
    * en su constructor.

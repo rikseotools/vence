@@ -138,6 +138,34 @@ describe('RULE_CRON_OVERDUE', () => {
     expect(RULE_CRON_OVERDUE.shouldFire(rows, ctx)).toBe(true);
   });
 
+  // ── Cron recién desplegado: tick esperado ANTES del arranque ─────
+
+  it('cron RECIÉN DESPLEGADO (proceso arrancó tras su último tick) → NO overdue (fix migración)', () => {
+    freeze('2026-05-31T20:00:00Z');
+    // '0 4 * * *' → prev = hoy 04:00. El proceso arrancó a las 18:00 (después),
+    // así que el cron no pudo dispararse en ese tick → falso positivo evitado.
+    setCrons({ 'trigger-check-stats-drift': '0 4 * * *' });
+    const rows: Array<{ endpoint: string; lastTs: string | null }> = [];
+    const ctxDeployed: AlertRuleContext = {
+      cronSchedule: svc,
+      processStartedAtMs: new Date('2026-05-31T18:00:00Z').getTime(),
+    };
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctxDeployed)).toBe(false);
+  });
+
+  it('cron nunca observado con proceso vivo DESDE ANTES de su tick → SÍ overdue (roto real, no migración)', () => {
+    freeze('2026-05-31T20:00:00Z');
+    // '0 4 * * *' → prev = hoy 04:00. El proceso lleva vivo desde ayer, así que
+    // el cron SÍ debió dispararse a las 04:00 y no lo hizo → overdue legítimo.
+    setCrons({ 'trigger-check-stats-drift': '0 4 * * *' });
+    const rows: Array<{ endpoint: string; lastTs: string | null }> = [];
+    const ctxOld: AlertRuleContext = {
+      cronSchedule: svc,
+      processStartedAtMs: new Date('2026-05-30T00:00:00Z').getTime(),
+    };
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctxOld)).toBe(true);
+  });
+
   // ── Endpoint legacy fuera del SchedulerRegistry ──────────────────
 
   it('endpoint observado pero sin @Cron asociado → fuera de la vigilancia', () => {

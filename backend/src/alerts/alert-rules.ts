@@ -29,6 +29,16 @@ export interface AlertRuleContext {
    * silencio). NUNCA la consume `cron_overdue` — ver deploy-window.ts.
    */
   deployWindow?: DeployWindow;
+
+  /**
+   * Timestamp (ms epoch) del arranque del proceso backend. Lo usa
+   * `cron_overdue` para NO marcar overdue un cron que NUNCA emitió cuyo
+   * último tick esperado es ANTERIOR al arranque: un cron recién desplegado
+   * (p.ej. migrado de GitHub Actions) no pudo dispararse en un tick que
+   * precede a su propia existencia → falso positivo que inundaba el inbox
+   * tras cada migración. Opcional (tests/legacy = sin este filtro).
+   */
+  processStartedAtMs?: number;
 }
 
 /**
@@ -208,9 +218,16 @@ function findOverdueCrons(
 
     const lastRun = lastByEndpoint.get(job.name) ?? null;
     if (lastRun === null) {
-      // Nunca observado en la ventana de la query. Silenciar hasta que el
-      // primer tick esperado quede lo bastante atrás como para descartar
-      // un bootstrap post-deploy.
+      // Nunca observado en la ventana de la query.
+      // (a) Un cron no puede estar overdue por un tick esperado ANTERIOR al
+      //     arranque del proceso: recién desplegado (p.ej. migrado de GitHub
+      //     Actions) no existía en ese tick. Silenciar hasta que ocurra un
+      //     tick esperado ESTANDO el proceso vivo. Sin esto, cada migración
+      //     inundaba el inbox toda la noche hasta el primer disparo real.
+      const startMs = ctx.processStartedAtMs ?? 0;
+      if (startMs > 0 && prevMs < startMs) continue;
+      // (b) Silenciar hasta que el primer tick esperado quede lo bastante
+      //     atrás como para descartar un bootstrap post-deploy.
       if (nowMs - prevMs < CRON_NEVER_OBSERVED_GRACE_MS) continue;
       overdue.push({
         name: job.name,
