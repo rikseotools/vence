@@ -1372,3 +1372,14 @@ Se auditaron todas las `seguimiento_url` de las 464 oposiciones `catalogada` (in
 - `docs/maintenance/impugnaciones-claude-code.md` — manual de impugnaciones: muchas relacionadas con contenido de oposiciones.
 - `docs/maintenance/verificar-epigrafe-topic-scope.md` — mapeo de leyes a temas por oposición.
 - `__tests__/integration/oposicionesDataConsistency.test.ts` — test que detecta automáticamente inconsistencias `exam_date` ↔ `landing_description` ↔ hitos (§4g) + hitos con títulos que mencionan "promoción interna" en oposiciones `tipo_acceso=libre` (§4f).
+
+---
+## Aprendizajes de triaje (08/07/2026)
+
+**`estado_proceso` = DERIVADO de fechas, no afirmado.** El estado del catálogo lo deriva `advance-estado` desde `inscription_start`/`deadline`/`exam_date` verificadas. Los sensores del radar NO deben afirmar `inscripcion_abierta` sin traer el `deadline` — se corrigió el hardcode en `radar/layers/competitors/oposiciones-es.ts` (ahora `estado=null`). Al **Aplicar** una señal, `promoteSignalToConvocatoria` **bloquea** escribir `inscripcion_abierta`/`convocada` sin `deadline` (guardrail).
+
+**`convocada` sin fechas ≠ bug.** Es el estado LEGÍTIMO de una oposición con **bases publicadas pero el plazo de inscripción aún sin abrir** (típico: extracto BOE pendiente, "NO ABREN PLAZO"). Ejemplos verificados 08/07: Aux. Admin. Diputación Cádiz (44 plz), Ayto. Badajoz (9 plz). NO backfillear fechas que no existen todavía; NO neutralizar el estado. El `seguimiento` las vigila a diario → cuando abra el plazo, detecta el cambio → señal → Aplicar (con fechas) → `advance-estado` deriva `inscripcion_abierta` → salen solas en la home.
+
+**La home/catálogo filtra por FECHAS, no por estado** (a propósito: `estado` quedaba desfasado). Una oposición sin `inscription_start`+`deadline` NO sale en la sección "inscripción abierta" aunque su estado diga `inscripcion_abierta`/`convocada`. Por eso `estado` sin fechas es inútil para el front.
+
+**Chapuza a vigilar (catalogadas aspiracionales):** el discovery llegó a crear oposiciones catalogadas con `estado='inscripcion_abierta'` y CERO fechas (descubiertas de listas de competidores). Se limpiaron 33 a `sin_oep` el 08/07. Si el badge/`audit-estados` vuelve a mostrar muchas `inscripcion_abierta`/`convocada` sin fechas, es que el guardrail no está desplegado o un alta manual las metió mal. Detalle: `docs/roadmap/consolidacion-convocatorias-radar-ssot.md` §Quick wins 08/07.

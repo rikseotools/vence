@@ -117,3 +117,18 @@ De la auditoría — cada funcionalidad tiene destino; ninguna se elimina:
 ## 6. Acción inmediata pendiente (no bloqueante)
 - **Newsletter León** (`administrativo-universidad-leon`, inscripción cierra 13/07) — la tarjeta del catálogo ya muestra fechas tras el backfill.
 - Verificar a Estela (usuaria que la pidió; su target sigue siendo la Auxiliar).
+
+---
+## Quick wins ejecutados (08/07/2026)
+
+Sin esperar al esquema completo, se atacó la chapuza raíz (**`estado_proceso` fijado a mano sin fechas → tarjetas invisibles en la home**). Auditoría del radar/OEP-signals confirmó: la consolidación estaba al **~4% (92/2.500 con fila en `convocatorias`)**; el resto vive en `oposiciones` legacy y el discovery escribía estado a ciegas.
+
+**Principio reforzado:** **`estado_proceso` se DERIVA de las fechas verificadas (`advance-estado`), NUNCA se afirma a mano.** Sin `inscription_deadline` no se puede saber si un plazo está abierto.
+
+Cambios (commits `7d749437`, `94d6a60d`):
+1. **Radar no afirma estado** — `radar/layers/competitors/oposiciones-es.ts` pone `estado=null` (era `'inscripcion_abierta'` a ciegas). **Guardrail central en el apply** (`lib/api/oep-signals/queries.ts` `promoteSignalToConvocatoria`): nunca escribe `inscripcion_abierta`/`convocada` sin `deadline`.
+2. **Matcher del backend → vista SSOT** (`oep-signals-queries.service.ts` `loadOposicionesForMatch` + byBoc leen `oposiciones_ssot`, no `oposiciones` legacy). Cierra el gap de Fase 2 (el gemelo backend quedó fuera del barrido).
+3. **`audit-estados`** escala incoherencias de estado↔fechas; `convocada` sin fechas = **warn** (pre-inscripción legítimo, no error — bases publicadas, plazo por abrir).
+4. **Data (prod):** 33 catalogadas date-less con estado abierto → `sin_oep`. Las convocadas reales (bases publicadas, plazo pendiente de BOE: Cádiz 44plz, Badajoz 9plz…) NO se tocaron — su estado es correcto; el seguimiento las auto-avanzará al abrir el plazo.
+
+**Sigue pendiente el sprint** (Fases 3-5): E2E del puente `promoteSignalToConvocatoria`, re-introspectar `db/schema.ts` (modela el legacy), drop de columnas legacy de `oposiciones`, y verificar despliegue del dual-write de `advance-estado`.
