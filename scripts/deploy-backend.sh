@@ -22,6 +22,28 @@ SHA=$(git rev-parse --short HEAD)          # capturado UNA vez → sin ventana d
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
 
+# GATE CI (Fase 2, 08/07/2026): no desplegar código que no pasó CI. Mismo gate que
+# deploy-frontend.sh — check-runs de GHA para el SHA. Override: SKIP_CI_GATE=1.
+[ -f ./.env.local ] && { set -a; . ./.env.local; set +a; }
+FULL_SHA=$(git rev-parse HEAD)
+if [ "${SKIP_CI_GATE:-0}" = "1" ]; then
+  echo "→ [gate CI] OMITIDO (SKIP_CI_GATE=1)."
+elif [ -z "${GITHUB_PAT:-}" ] || ! command -v jq >/dev/null 2>&1; then
+  echo "⚠️  [gate CI] sin GITHUB_PAT o sin jq → no puedo verificar CI. Abortado (SKIP_CI_GATE=1 para forzar)."; exit 1
+else
+  echo "→ [gate CI] verificando check-runs de GHA para ${SHA}…"
+  CR=$(curl -s -H "Authorization: Bearer $GITHUB_PAT" -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/rikseotools/vence/commits/${FULL_SHA}/check-runs?per_page=100")
+  TOTAL=$(echo "$CR" | jq -r '.total_count // 0')
+  FAILED=$(echo "$CR" | jq -r '[.check_runs[]? | select(.conclusion=="failure" or .conclusion=="cancelled" or .conclusion=="timed_out")] | length')
+  PENDING=$(echo "$CR" | jq -r '[.check_runs[]? | select(.status!="completed")] | length')
+  if [ "$TOTAL" = "0" ]; then echo "   ❌ sin runs de CI para ${SHA} (¿git push?). SKIP_CI_GATE=1 para forzar."; exit 1
+  elif [ "${FAILED:-0}" -gt 0 ]; then echo "   ❌ CI en ROJO: ${FAILED} check(s) fallando. SKIP_CI_GATE=1 para forzar."; exit 1
+  elif [ "${PENDING:-0}" -gt 0 ]; then echo "   ⏳ CI EN CURSO: ${PENDING} check(s). Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
+  fi
+  echo "   ✅ CI verde (${TOTAL} checks) para ${SHA}."
+fi
+
 echo "→ [1/6] build ${IMG} (contexto backend/)"
 podman build -t "$IMG" ./backend
 
