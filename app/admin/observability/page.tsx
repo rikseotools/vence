@@ -14,6 +14,7 @@
 
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -119,11 +120,11 @@ export default function ObservabilityDashboard() {
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Vista panorámica de eventos del sistema (Bloque 4 Gap 9).{' '}
-              <a href="/admin/salud-sistema" className="text-blue-600 hover:underline">
+              <Link href="/admin/salud-sistema" className="text-blue-600 hover:underline">
                 ¿Está roto?
-              </a>{' '}
+              </Link>{' '}
               ·{' '}
-              <a href="/admin/slos" className="text-blue-600 hover:underline">SLOs</a>
+              <Link href="/admin/slos" className="text-blue-600 hover:underline">SLOs</Link>
             </p>
           </div>
           <div className="flex gap-2 items-center">

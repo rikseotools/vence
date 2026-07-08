@@ -1,3 +1,4 @@
+import Link from 'next/link'
 // app/policia-nacional/test/ortografia/page.tsx
 // Página server-side para tests de ortografía y gramática de Policía Nacional
 import { sql } from 'drizzle-orm'
@@ -86,12 +87,12 @@ export default async function OrtografiaTestPage({ searchParams }: PageProps) {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Aún no se han importado preguntas de ortografía. Vuelve pronto.
           </p>
-          <a
+          <Link
             href="/policia-nacional/test"
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
           >
             Volver a tests
-          </a>
+          </Link>
         </div>
       </div>
     )

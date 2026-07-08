@@ -1,5 +1,6 @@
 // app/admin/layout.tsx - Layout base para área administrativa
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import ProtectedRoute from '@/components/Admin/ProtectedRoute'
@@ -137,39 +138,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <nav className="py-2">
                 {/* Primera fila */}
                 <div className="flex items-center justify-center flex-wrap gap-1 mb-2">
-                  <a 
+                  <Link 
                     href="/admin" 
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📊</span>
                     <span>Dashboard</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/engagement" 
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>🎯</span>
                     <span>Engagement</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/notificaciones"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>🔔</span>
                     <span>Notificaciones</span>
-                  </a>
+                  </Link>
                 </div>
                 
                 {/* Segunda fila */}
                 <div className="flex items-center justify-center flex-wrap gap-1">
-                  <a
+                  <Link
                     href="/admin/notificaciones/email"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📧</span>
                     <span>Emails</span>
-                  </a>
-                  <a 
+                  </Link>
+                  <Link 
                     href="/admin/feedback" 
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       adminNotifications?.feedback > 0 ? 'animate-pulse' : ''
@@ -201,8 +202,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         )}
                       </span>
                     )}
-                  </a>
-                  <a 
+                  </Link>
+                  <Link 
                     href="/admin/impugnaciones" 
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       adminNotifications?.impugnaciones > 0 ? 'animate-pulse' : ''
@@ -224,15 +225,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         )}
                       </span>
                     )}
-                  </a>
-                  <a 
+                  </Link>
+                  <Link 
                     href="/admin/newsletters" 
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📧</span>
                     <span>Newsletters</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/monitoreo"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       hasUnreviewedChanges ? 'animate-pulse' : ''
@@ -245,8 +246,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         !
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/oep-signals"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       oepSignals.pending > 0 || oepSignals.discovered > 0 ? 'animate-pulse' : ''
@@ -270,15 +271,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         )}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/radar-salud"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📡</span>
                     <span>Radar</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/competidores"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       competidorChanges > 0 ? 'animate-pulse' : ''
@@ -294,8 +295,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {competidorChanges > 99 ? '99+' : competidorChanges}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/radar-contenido"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       radarContenido > 0 ? 'animate-pulse' : ''
@@ -311,8 +312,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {radarContenido > 99 ? '99+' : radarContenido}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/contenido"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       contenidoAlerts > 0 ? 'animate-pulse' : ''
@@ -328,15 +329,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {contenidoAlerts > 99 ? '99+' : contenidoAlerts}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/revision-temas"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📚</span>
                     <span>Revisión Temas</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/calidad"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       adminNotifications?.calidad > 0 ? 'animate-pulse' : ''
@@ -349,29 +350,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {adminNotifications.calidad > 99 ? '99+' : adminNotifications.calidad}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/ai"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>🤖</span>
                     <span>IA</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/conversiones"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>💰</span>
                     <span>Conversiones</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/ads"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📣</span>
                     <span>Google Ads</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/fraudes"
                     className="relative text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
@@ -382,15 +383,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {adminNotifications.rateLimitHits}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/cobros"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>💳</span>
                     <span>Cobros</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/oposiciones?tab=rollover"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       rolloverCount > 0 ? 'animate-pulse' : ''
@@ -406,22 +407,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {rolloverCount > 99 ? '99+' : rolloverCount}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/ayuda"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📖</span>
                     <span>Ayuda</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/infraestructura"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>🖥️</span>
                     <span>Infra</span>
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/errores-validacion"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       adminNotifications?.erroresApi > 0 ? 'animate-pulse' : ''
@@ -434,14 +435,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {adminNotifications.erroresApi > 99 ? '99+' : adminNotifications.erroresApi}
                       </span>
                     )}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/admin/despliegues/articulos-problematicos"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>🚀</span>
                     <span>Despliegue</span>
-                  </a>
+                  </Link>
                 </div>
               </nav>
             </div>

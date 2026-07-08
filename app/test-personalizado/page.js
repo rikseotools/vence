@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
@@ -78,12 +79,12 @@ function TestPersonalizadoContent() {
           <p className="text-gray-600 mb-6">
             {error}
           </p>
-          <a 
+          <Link 
             href="/test-oposiciones/procedimiento-administrativo"
             className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
           >
             ← Volver a Procedimiento Administrativo
-          </a>
+          </Link>
         </div>
       </div>
     )

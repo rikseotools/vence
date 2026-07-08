@@ -1,5 +1,6 @@
 // app/ClientLayoutContent.tsx - COMPONENTE CLIENTE SEPARADO
 'use client'
+import Link from 'next/link'
 import { ReactNode, useEffect } from 'react'
 import HeaderES from './Header'
 import FooterES from './Footer'
@@ -64,12 +65,12 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
           <span className="text-blue-800 dark:text-blue-200">
             Tu oposición no tiene temario específico, pero puedes practicar con leyes comunes a todas las oposiciones
           </span>
-          <a
+          <Link
             href="/leyes"
             className="ml-3 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors inline-block"
           >
             Ver leyes
-          </a>
+          </Link>
         </div>
       )}
       {/* Banner "Inscripción abierta" — ángulo boca-oreja (familiares/amigos).

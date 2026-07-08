@@ -1,6 +1,7 @@
 
 // app/premium/page.tsx - PÁGINA DE PAGO PREMIUM
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { auth } from '@/lib/auth'
@@ -452,12 +453,12 @@ function PremiumPageContent() {
                 </button>
 
                 <div className="text-center">
-                  <a
+                  <Link
                     href="/login?return_to=/premium"
                     className="text-amber-600 hover:text-amber-800 font-medium text-sm"
                   >
                     ¿Ya tienes cuenta? Iniciar Sesión
-                  </a>
+                  </Link>
                 </div>
               </div>
             )}
@@ -471,12 +472,12 @@ function PremiumPageContent() {
                       <span className="text-lg font-bold">¡Usuario VIP!</span><br/>
                       Tienes acceso gratuito de por vida
                     </div>
-                    <a
+                    <Link
                       href="/auxiliar-administrativo-estado/test"
                       className="inline-block bg-green-600 text-white py-3 px-6 rounded-lg font-bold hover:bg-green-700 transition-colors"
                     >
                       Ir a Tests
-                    </a>
+                    </Link>
                   </div>
                 )}
 
@@ -486,12 +487,12 @@ function PremiumPageContent() {
                       <span className="text-lg font-bold">Ya eres Premium</span><br/>
                       Disfruta de acceso ilimitado
                     </div>
-                    <a
+                    <Link
                       href="/auxiliar-administrativo-estado/test"
                       className="inline-block bg-amber-600 text-white py-3 px-6 rounded-lg font-bold hover:bg-amber-700 transition-colors"
                     >
                       Ir a Tests
-                    </a>
+                    </Link>
                   </div>
                 )}
 

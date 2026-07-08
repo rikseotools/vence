@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import BarChartQuestion from '@/components/BarChartQuestion'
@@ -399,12 +400,12 @@ export default function QuestionDebugPage() {
               >
                 🔄 Reset
               </button>
-              <a
+              <Link
                 href="/auxiliar-administrativo-estado/test"
                 className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
               >
                 🏠 Tests
-              </a>
+              </Link>
             </div>
           </div>
         </div>

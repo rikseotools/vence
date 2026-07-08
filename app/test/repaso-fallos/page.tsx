@@ -1,6 +1,7 @@
 // app/test/repaso-fallos/page.tsx
 // Test de repaso de preguntas falladas
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -207,19 +208,19 @@ function RepasoFallosContent() {
           </p>
           <div className="flex gap-3 justify-center">
             {error.includes('sesión') ? (
-              <a
+              <Link
                 href="/login"
                 className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 Iniciar sesión
-              </a>
+              </Link>
             ) : (
-              <a
+              <Link
                 href="/"
                 className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 Volver al inicio
-              </a>
+              </Link>
             )}
           </div>
         </div>

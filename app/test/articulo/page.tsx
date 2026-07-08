@@ -1,6 +1,7 @@
 // app/test/articulo/page.tsx
 // Test de preguntas de un artículo específico
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -177,13 +178,13 @@ function TestArticuloContent() {
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="flex gap-3 justify-center">
             {error.includes('sesión') ? (
-              <a href="/login" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <Link href="/login" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 Iniciar sesión
-              </a>
+              </Link>
             ) : (
-              <a href="/" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <Link href="/" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 Volver al inicio
-              </a>
+              </Link>
             )}
           </div>
         </div>

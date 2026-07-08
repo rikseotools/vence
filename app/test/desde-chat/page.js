@@ -1,6 +1,7 @@
 // app/test/desde-chat/page.js
 // Test iniciado desde el chat de IA - soporta tests de leyes y tests de preguntas falladas
 'use client'
+import Link from 'next/link'
 import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -159,12 +160,12 @@ function TestDesdeChatContent() {
             Para crear un test desde el chat, primero pregunta sobre algún tema
             y usa la opción del test correspondiente.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Volver al inicio
-          </a>
+          </Link>
         </div>
       </div>
     )

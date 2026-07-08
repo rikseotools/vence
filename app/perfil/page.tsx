@@ -2453,13 +2453,13 @@ function PerfilPageContent() {
               )}
             </p>
             {subscriptionData?.planType !== 'premium' && subscriptionData?.planType !== 'legacy_free' && (
-              <a
+              <Link
                 href="/premium"
                 className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:opacity-90 transition-all"
               >
                 <span>👑</span>
                 <span>Ver Planes Premium</span>
-              </a>
+              </Link>
             )}
           </div>
         )}

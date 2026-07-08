@@ -1,5 +1,6 @@
 // app/test/personalizado/page.js - Ruta genérica para test personalizado (modo práctica)
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
@@ -66,12 +67,12 @@ function TestPersonalizadoContent() {
           <p className="text-gray-600 mb-6">
             No se han seleccionado temas para el test.
           </p>
-          <a
+          <Link
             href="/test/aleatorio"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             ← Volver a configurar test
-          </a>
+          </Link>
         </div>
       </div>
     )

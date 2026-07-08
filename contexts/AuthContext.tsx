@@ -1,5 +1,6 @@
 // contexts/AuthContext.tsx - CONTEXTO GLOBAL CON SISTEMA DUAL
 'use client'
+import Link from 'next/link'
 import { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { UserProfileRow } from '@/types/database.types'
@@ -1135,9 +1136,9 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
           <div className="text-center">
             <h2 className="text-xl font-bold mb-4">Acceso Requerido</h2>
             <p className="mb-4">Necesitas iniciar sesión para acceder a esta página</p>
-            <a href="/login" className="bg-blue-600 text-white px-4 py-2 rounded">
+            <Link href="/login" className="bg-blue-600 text-white px-4 py-2 rounded">
               Iniciar Sesión
-            </a>
+            </Link>
           </div>
         </div>
       )
@@ -1187,9 +1188,9 @@ export function withPremium<P extends object>(Component: React.ComponentType<P>)
           <div className="text-center">
             <h2 className="text-xl font-bold mb-4">Registro Requerido</h2>
             <p className="mb-4">Necesitas una cuenta para acceder</p>
-            <a href="/login" className="bg-blue-600 text-white px-4 py-2 rounded">
+            <Link href="/login" className="bg-blue-600 text-white px-4 py-2 rounded">
               Crear Cuenta
-            </a>
+            </Link>
           </div>
         </div>
       )

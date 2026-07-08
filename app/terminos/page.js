@@ -1,3 +1,4 @@
+import Link from 'next/link'
 export const metadata = {
   title: 'Términos y Condiciones | Vence',
   description: 'Términos y condiciones de uso de Vence - Preparación de oposiciones',
@@ -20,7 +21,7 @@ export default function TerminosPage() {
             Bienvenido a Vence. Al acceder y utilizar nuestra plataforma, aceptas estos
             términos y condiciones en su totalidad. Los datos del responsable están
             disponibles en nuestra{' '}
-            <a href="/privacidad" className="text-blue-600 dark:text-blue-400">Política de Privacidad</a>.
+            <Link href="/privacidad" className="text-blue-600 dark:text-blue-400">Política de Privacidad</Link>.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -84,9 +85,9 @@ export default function TerminosPage() {
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Para más información sobre cancelaciones y nuestra política de devoluciones, consulta
             nuestra página de{' '}
-            <a href="/cancelacion-y-devoluciones" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href="/cancelacion-y-devoluciones" className="text-blue-600 dark:text-blue-400 hover:underline">
               Cancelación y Garantía de Devolución
-            </a>.
+            </Link>.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -164,17 +165,17 @@ export default function TerminosPage() {
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Si tienes preguntas sobre estos términos, puedes abrir un chat de soporte
             dentro de la plataforma o consultar los datos de contacto en nuestra{' '}
-            <a href="/privacidad" className="text-blue-600 dark:text-blue-400">Política de Privacidad</a>.
+            <Link href="/privacidad" className="text-blue-600 dark:text-blue-400">Política de Privacidad</Link>.
           </p>
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <a
+          <Link
             href="/"
             className="text-blue-600 dark:text-blue-400 hover:underline"
           >
             ← Volver al inicio
-          </a>
+          </Link>
         </div>
       </div>
     </div>
