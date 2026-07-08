@@ -2353,6 +2353,10 @@ export const oposiciones = pgTable("oposiciones", {
 	seoDescription: text("seo_description"),
 	requisitosEspeciales: jsonb("requisitos_especiales").default([]),
 	landingEstadisticas: jsonb("landing_estadisticas").default([]),
+	// Modelo OPORTUNIDAD: conocimiento anclado en el cuerpo (no en la convocatoria,
+	// que puede no existir). null = próxima oportunidad NUNCA verificada = cola.
+	forwardVerifiedAt: timestamp("forward_verified_at", { withTimezone: true, mode: 'string' }),
+	forwardVerifiedSource: text("forward_verified_source"),
 }, (table) => [
 	check("oposiciones_tipo_acceso_check", sql`tipo_acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'discapacidad'::text])`),
 	check("oposiciones_estado_proceso_check", sql`estado_proceso = ANY (ARRAY['sin_oep'::text, 'oep_aprobada'::text, 'convocada'::text, 'inscripcion_abierta'::text, 'inscripcion_cerrada'::text, 'lista_admitidos'::text, 'pendiente_examen'::text, 'examen_realizado'::text, 'resultados'::text, 'nombramientos'::text])`),
