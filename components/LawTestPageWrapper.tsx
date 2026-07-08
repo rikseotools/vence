@@ -540,7 +540,6 @@ export default function LawTestPageWrapper({
           }
         }}
         questions={questions}
-        children={null}
       />
     </>
   )

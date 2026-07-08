@@ -17,6 +17,7 @@ import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { adminFetch } from '@/lib/api/adminFetch'
 import { useAIChat } from '../contexts/AIChatContext'
 import { getOposicion, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
@@ -309,8 +310,8 @@ export default function HeaderES() {
 
       try {
         // Endpoint admin (requireAdmin + Drizzle): conversaciones abiertas no vistas.
-        const headers = await getAuthHeaders()
-        const res = await fetch('/api/v2/admin/feedback/open-count', { headers })
+        // adminFetch inyecta el Bearer admin (fetch crudo → 401 del guard).
+        const res = await adminFetch('/api/v2/admin/feedback/open-count')
         if (!res.ok) {
           console.error('Error verificando feedbacks pendientes:', res.status)
           setPendingFeedbacks(0)

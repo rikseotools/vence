@@ -395,7 +395,6 @@ function MultiLeyTestContent() {
       testNumber={1}
       config={config}
       questions={questions}
-      children={null}
     />
   )
 }

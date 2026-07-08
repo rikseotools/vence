@@ -6,7 +6,9 @@ import '@testing-library/jest-dom'
 
 // Mock de Next.js
 jest.mock('next/link', () => {
-  return ({ children }) => <div>{children}</div>
+  const MockLink = ({ children }) => <div>{children}</div>
+  MockLink.displayName = 'MockLink'
+  return MockLink
 })
 
 // Mock de useRouter
