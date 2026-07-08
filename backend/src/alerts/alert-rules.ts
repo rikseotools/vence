@@ -2711,29 +2711,64 @@ export const RULE_SAVE_RECONCILIATION: AlertRule<{ answered: number; saved: numb
 };
 
 /**
- * ERRORES DE CLIENTE SOSTENIDOS (edge) — 2026-07-05. El 502 keep-alive de hoy era
- * ~3/5min CONTINUO → por debajo del umbral de spike (>20/5min) de RULE_HTTP_5XX_SPIKE
- * → NO alertaba. Esta mira volumen SOSTENIDO a 1h de http_5xx + http_network_error
- * de CLIENTE (errores de EDGE que el servidor no registra). Umbral tunable.
+ * ERRORES DE CLIENTE SOSTENIDOS (edge) — 2026-07-05, RECALIBRADO 2026-07-08.
+ *
+ * El 502 keep-alive era ~3/5min CONTINUO → por debajo del umbral de spike
+ * (>20/5min) de RULE_HTTP_5XX_SPIKE → NO alertaba. Esta mira volumen SOSTENIDO
+ * a 1h de errores de EDGE de cliente (que el servidor no registra).
+ *
+ * RECALIBRACIÓN 08/07: la versión original sumaba `http_5xx + http_network_error
+ * + http_timeout` con un único umbral de 80/h. Problema: `http_network_error`
+ * tiene un baseline BENIGNO alto (~100-120/h) de móviles que cierran pestaña o
+ * pasan a background — el fetch en vuelo revienta con "Failed to fetch" (no es
+ * AbortError). Ese ruido cruzaba solo el umbral de 80 y disparaba la alerta
+ * CADA HORA (cooldown 60m), ahogando el signal real y llenando la bandeja de
+ * Manuel (alert-fatigue, runbook §1.bis). El 502 accionable (~8/h residual)
+ * quedaba enterrado.
+ *
+ * Diseño nuevo — separar el signal accionable del ruido de conectividad:
+ *   - edge5xx (http_5xx + http_timeout): respuestas de EDGE con status ≥500 /
+ *     timeout. Es el signal ACCIONABLE (keep-alive 502, saturación). Umbral
+ *     bajo (30/h) — el incidente keep-alive era ~36/h; el residual post-fix ~8/h
+ *     no dispara.
+ *   - netErr (http_network_error): conectividad de cliente, ruidoso. Solo
+ *     dispara ante una AVALANCHA (500/h) muy por encima del baseline benigno =
+ *     outage real de red/edge (ALB caído → todo revienta). (La raíz del ruido
+ *     se ataca además en el cliente: lib/observability/client.ts suprime el
+ *     network_error durante unload/background.)
  */
-export const RULE_CLIENT_EDGE_SUSTAINED: AlertRule<{ n: number; topEndpoint: string | null }> = {
+export const RULE_CLIENT_EDGE_SUSTAINED: AlertRule<{
+  edge5xx: number;
+  netErr: number;
+  topEndpoint: string | null;
+}> = {
   name: 'client_edge_sustained',
   severity: 'error',
   query: sql`
-    SELECT COUNT(*)::int AS n, MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    SELECT
+      COUNT(*) FILTER (WHERE event_type IN ('http_5xx', 'http_timeout'))::int AS "edge5xx",
+      COUNT(*) FILTER (WHERE event_type = 'http_network_error')::int AS "netErr",
+      MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
     FROM observable_events
     WHERE source='frontend' AND event_type IN ('http_5xx', 'http_network_error', 'http_timeout')
       AND ts > NOW() - INTERVAL '1 hour'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 80,
+  shouldFire: (rows) =>
+    (rows[0]?.edge5xx ?? 0) >= 30 || (rows[0]?.netErr ?? 0) >= 500,
   buildNotification: (rows) => {
-    const n = rows[0]?.n ?? 0;
+    const edge5xx = rows[0]?.edge5xx ?? 0;
+    const netErr = rows[0]?.netErr ?? 0;
     const top = rows[0]?.topEndpoint ?? '(varios)';
+    const byEdge = edge5xx >= 30;
+    const n = byEdge ? edge5xx : netErr;
+    const kind = byEdge ? 'edge 5xx/timeout' : 'errores de red';
     return {
-      title: `Errores de cliente sostenidos — ${n}/h (5xx/red) en ${top}`,
-      body: `El cliente sufre fallos de red/5xx SOSTENIDOS (${n} en 1h) que el servidor NO registra (error de EDGE: ALB/CloudFront). Si es 502 en /api/auth/* → el 502 keep-alive (runbook §502): verificar keepAliveTimeout=65s en los contenedores. El panel /admin/infraestructura → "Errores de cliente" tiene el breakdown.`,
-      metadata: { count: n, topEndpoint: top, windowMin: 60 },
-      fingerprint: `client_edge_sustained_${top}`,
+      title: `Errores de cliente sostenidos — ${n}/h (${kind}) en ${top}`,
+      body: byEdge
+        ? `El cliente ve respuestas de EDGE 5xx/timeout SOSTENIDAS (${edge5xx} en 1h) que el servidor NO registra. Si es 502 en /api/auth/* → el 502 keep-alive (runbook §502): verificar keepAliveTimeout=65s en los contenedores. Breakdown en /admin/infraestructura → "Errores de cliente".`
+        : `AVALANCHA de errores de red de cliente (${netErr} en 1h, muy por encima del baseline benigno ~100/h) — probable outage de red/edge (ALB/CloudFront). Verificar salud del ALB y de los contenedores. Breakdown en /admin/infraestructura → "Errores de cliente".`,
+      metadata: { edge5xx, netErr, topEndpoint: top, windowMin: 60, trigger: byEdge ? 'edge5xx' : 'netErr' },
+      fingerprint: `client_edge_sustained_${byEdge ? 'edge' : 'net'}_${top}`,
     };
   },
   cooldownMin: 60,

@@ -31,6 +31,7 @@ import {
   RULE_SCRAPING_SWEEP,
   RULE_CANARY_QUESTIONS_GATE_FAILED,
   RULE_EXAM_INTEGRITY_DRIFT,
+  RULE_CLIENT_EDGE_SUSTAINED,
 } from './alert-rules';
 
 describe('RULE_RUNTIME_KILL', () => {
@@ -1418,4 +1419,59 @@ describe('ALERT_RULES — registro de las 4 nuevas reglas del pool', () => {
       expect(ALERT_RULES.map((r) => r.name)).toContain(name);
     });
   }
+});
+
+describe('RULE_CLIENT_EDGE_SUSTAINED (recalibrado 08/07)', () => {
+  const rows = (edge5xx: number, netErr: number, topEndpoint = '/api/auth/session') => [
+    { edge5xx, netErr, topEndpoint },
+  ];
+
+  it('dispara por edge 5xx/timeout sostenido a partir de 30/h', () => {
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(30, 0))).toBe(true);
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(36, 0))).toBe(true);
+  });
+
+  it('NO dispara con el residual de edge 5xx post-fix keep-alive (~8/h)', () => {
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(8, 0))).toBe(false);
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(29, 0))).toBe(false);
+  });
+
+  it('NO dispara con el baseline BENIGNO de network_error (~100-120/h)', () => {
+    // Este era el bug: ~117/h de móviles en background cruzaba el viejo umbral
+    // de 80 y disparaba cada hora. Ahora network_error solo cuenta a partir de
+    // una avalancha (500/h).
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(0, 120))).toBe(false);
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(0, 300))).toBe(false);
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(0, 499))).toBe(false);
+  });
+
+  it('dispara ante una AVALANCHA de network_error (>=500/h) = outage real', () => {
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(0, 500))).toBe(true);
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(0, 2000))).toBe(true);
+  });
+
+  it('rows vacío → no dispara (defensivo)', () => {
+    expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire([])).toBe(false);
+  });
+
+  it('mensaje por edge 5xx apunta al keep-alive 502', () => {
+    const notif = RULE_CLIENT_EDGE_SUSTAINED.buildNotification(rows(36, 10));
+    expect(notif.title).toContain('edge 5xx/timeout');
+    expect(notif.title).toContain('/api/auth/session');
+    expect(notif.body).toContain('keep-alive');
+    expect(notif.metadata?.trigger).toBe('edge5xx');
+    expect(notif.fingerprint).toContain('edge');
+  });
+
+  it('mensaje por avalancha de red apunta a outage', () => {
+    const notif = RULE_CLIENT_EDGE_SUSTAINED.buildNotification(rows(0, 800));
+    expect(notif.title).toContain('errores de red');
+    expect(notif.body.toLowerCase()).toContain('outage');
+    expect(notif.metadata?.trigger).toBe('netErr');
+    expect(notif.fingerprint).toContain('net');
+  });
+
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('client_edge_sustained');
+  });
 });

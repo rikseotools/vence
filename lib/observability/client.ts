@@ -222,8 +222,11 @@ export function installClientObservability(options?: {
   installNativeCaptures()
 
   setInterval(() => flush(false), BUFFER_FLUSH_MS)
-  window.addEventListener('beforeunload', () => flush(true))
-  window.addEventListener('pagehide', () => flush(true))
+  window.addEventListener('beforeunload', () => { pageLeaving = true; flush(true) })
+  window.addEventListener('pagehide', () => { pageLeaving = true; flush(true) })
+  // Restaurada de bfcache → la página vuelve a estar viva; los fetch ya no se
+  // están abortando por navegación.
+  window.addEventListener('pageshow', () => { pageLeaving = false })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -235,6 +238,16 @@ export function installClientObservability(options?: {
 
 /** fetch original, guardado antes de envolver (para uso interno seguro). */
 let origFetch: typeof fetch | null = null
+/**
+ * `true` mientras la página se está descargando/navegando (beforeunload/pagehide).
+ * Los fetch en vuelo que revientan en ese momento lo hacen porque el navegador
+ * está cancelando la request (a menudo "Failed to fetch", que NO es AbortError),
+ * no por un fallo de red real → no se reportan como http_network_error. Es la
+ * misma semántica que la exclusión de AbortError, extendida al cierre de pestaña
+ * y al background en móvil (visibility hidden), que era la fuente dominante de
+ * ruido en /api/auth/* (diagnóstico 08/07/2026).
+ */
+let pageLeaving = false
 /** Anti-recursión del wrapper de console (nuestro propio código no se re-captura). */
 let inConsoleCapture = false
 
@@ -331,10 +344,16 @@ function installFetchCapture(): void {
       }
       return res
     } catch (err) {
-      // fetch que revienta: offline, DNS, CORS, abort. Abort = navegación del
-      // usuario, no un fallo → no reportar.
+      // fetch que revienta: offline, DNS, CORS, abort. NO reportar cuando:
+      //  - Es AbortError (navegación/cancelación explícita del usuario).
+      //  - La página se está descargando (pageLeaving) o está en background
+      //    (visibility hidden). En esos casos el navegador cancela las requests
+      //    en vuelo con "Failed to fetch" — que no es AbortError — y era el
+      //    grueso del ruido benigno en /api/auth/* desde móviles (08/07/2026).
       const name = err instanceof Error ? err.name : ''
-      if (observeUrl(url) && name !== 'AbortError') {
+      const leaving = pageLeaving
+        || (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+      if (observeUrl(url) && name !== 'AbortError' && !leaving) {
         pushEvent({ severity: 'warn', eventType: 'http_network_error', endpoint: pathOf(url), errorMessage: err instanceof Error ? err.message : String(err), metadata: { method } })
       }
       throw err // NUNCA alterar el comportamiento del fetch original
