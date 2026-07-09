@@ -19,6 +19,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; . ./.env.local; set +a
+# Precios Stripe: fuente de verdad COMMITEADA, sourceada DESPUÉS de .env.local
+# para SOBREESCRIBIR cualquier price ID viejo que traiga el .env.local per-worktree
+# (incidente 09/07 task def :386: un .env.local stale tumbó create-checkout en 3
+# de 4 planes). Así todos los worktrees despliegan los mismos precios.
+set -a; . ./scripts/stripe-prices.sh; set +a
+# Guardrail: los 8 price IDs deben estar presentes tras sourcear (si el fichero
+# faltara o se vaciara, abortar antes de construir un bundle sin precios).
+for _v in NEXT_PUBLIC_STRIPE_PRICE_MONTHLY NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY NEXT_PUBLIC_STRIPE_PRICE_SEMESTER NEXT_PUBLIC_STRIPE_PRICE_ANNUAL \
+          NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA; do
+  if [ -z "${!_v:-}" ]; then echo "❌ abort: $_v vacío tras sourcear scripts/stripe-prices.sh"; exit 1; fi
+done
 
 P=vence; R=eu-west-2; ACC=349744179687
 REG="${ACC}.dkr.ecr.${R}.amazonaws.com/vence-frontend"
