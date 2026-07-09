@@ -23,20 +23,22 @@ Desde 07-08/07/2026 los scripts NO despliegan a ciegas. Antes del build comprueb
 1. **Árbol de trabajo LIMPIO** (`git status --porcelain`). El build usa el **WORKING TREE** (podman `COPY . .`), así que un árbol sucio desplegaría cambios a medias — **muy peligroso con sesiones paralelas editando** (ver abajo). Override deliberado: `ALLOW_DIRTY=1`.
 2. **CI VERDE en GHA para el SHA de HEAD** (`[gate CI]`). Consulta los check-runs de GitHub Actions del commit y aborta si:
    - **no hay runs** → el commit NO está pusheado (el CI corre en push a `main`; mensaje *"¿Has hecho git push?"*).
-   - **algún check en ROJO** (unit / typecheck / lint / **integration**).
-   - **CI aún EN CURSO** → espera a que acabe y reintenta.
+   - **algún check de CÓDIGO en ROJO** (unit / typecheck / lint). `integration` **NO** bloquea (señal aparte, ver abajo).
+   - **algún check de CÓDIGO aún EN CURSO** → espera a que acabe y reintenta.
    Override: `SKIP_CI_GATE=1` (necesita `GITHUB_PAT` en `.env.local` + `jq`).
 
 **Flujo canónico, por tanto:**
 ```bash
 git add -A && git commit -m "..."     # TODO lo que quieras desplegar (build = working tree)
 git push origin main                  # dispara el CI en GHA
-# esperar a que el CI (unit+typecheck+lint+integration) esté VERDE
+# esperar a que el CI de CÓDIGO (unit+typecheck+lint) esté VERDE
 scripts/deploy-frontend.sh            # el gate confirma verde y despliega
 ```
 Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs). Es intencional: no desplegar código que no pasó CI.
 
-> ⚠️ **El gate exige TODO el CI verde, incluida `integration`.** Los tests de integración pegan a la BD real (readonly) y pueden estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión) — cosas ajenas al código que despliegas. Si eso te bloquea un hotfix legítimo: o se arregla/estabiliza integración primero, o `SKIP_CI_GATE=1` de forma consciente. **Decisión pendiente (Manuel):** ¿el gate debe exigir `integration` (fuerza higiene de datos antes de desplegar) o solo los checks de CÓDIGO (unit+typecheck+lint) tratando integración como señal aparte? Hoy exige todo.
+> ⚠️ **El gate exige solo los checks de CÓDIGO verdes (unit+typecheck+lint).** `integration` es una **señal aparte que NO bloquea**: pega a la BD real (readonly) y puede estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión, un test de otra feature a medias) — cosas ajenas al código que despliegas. **Decisión tomada (Manuel, 08/07):** el gate del script trata `integration` como informativa (la reporta pero no aborta). Aun así, míralo antes de soltar: si el rojo SÍ es de tu código, arréglalo primero.
+>
+> ⚠️ **Sincronía script ↔ origin (gotcha real 09/07):** el gate solo-código vive en el **script** `deploy-{frontend,backend}.sh`. Si despliegas desde un checkout de `origin/main` cuyo script sea una versión ANTERIOR (gate "exige todo"), toparás con `integration` roja y el deploy abortará. En ese caso: verifica a mano que unit+typecheck+lint están verdes (GH API del SHA) y usa `SKIP_CI_GATE=1` de forma consciente. Y sincroniza script+manual en origin para que no vuelva a pasar.
 
 ## Sesiones paralelas (varias sesiones de Claude a la vez)
 
