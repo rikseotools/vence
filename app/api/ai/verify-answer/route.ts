@@ -2,76 +2,83 @@
 // API para verificar respuestas de forma independiente (sin conocer la respuesta de antemano)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
+import { and, or, eq, ilike } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getAiApiKey } from '@/lib/api/admin-ai-config/getAiApiKey'
+import { searchArticlesBySimilarity } from '@/lib/chat/domains/search/queries'
+import { getDb } from '@/db/client'
+import { articles as articlesTable, laws as lawsTable } from '@/db/schema'
 
-// Buscar artículos relevantes por embedding
-async function searchRelevantArticles(openai: OpenAI, searchText: string, lawName?: string | null) {
+// Forma unificada de artículo para el contexto del prompt (agnóstica de proveedor).
+type CtxArticle = { lawShortName: string; lawName: string; articleNumber: string | null; content: string | null }
+
+// Buscar artículos relevantes por embedding — RDS (pgvector `match_articles`, vía
+// el mismo camino que el chat). AGNÓSTICO: sin Supabase (migrado 09/07/2026).
+async function searchRelevantArticles(openai: OpenAI, searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
   try {
-    // Generar embedding para búsqueda
     const embeddingResponse = await openai.embeddings.create({
       model: 'text-embedding-3-small',
-      input: searchText
+      input: searchText,
     })
     const embedding = embeddingResponse.data[0].embedding
 
-    // Buscar artículos similares
-    const { data: articles, error } = await getSupabase().rpc('match_articles_by_embedding', {
-      query_embedding: embedding,
-      match_threshold: 0.5,
-      match_count: 10
+    const matches = await searchArticlesBySimilarity(embedding, {
+      limit: 5,
+      minSimilarity: 0.5,
+      mentionedLawNames: lawName ? [lawName] : [],
     })
-
-    if (error) {
-      console.error('Error buscando artículos:', error)
-      // Fallback: búsqueda por keywords
-      return await searchArticlesByKeywords(searchText, lawName)
+    if (matches.length > 0) {
+      return matches.map(a => ({
+        lawShortName: a.lawShortName,
+        lawName: a.lawName,
+        articleNumber: a.articleNumber,
+        content: a.content,
+      }))
     }
-
-    // Si hay ley específica, priorizar artículos de esa ley
-    if (lawName && articles) {
-      const lawArticles = articles.filter((a: any) =>
-        a.law_name?.toLowerCase().includes(lawName.toLowerCase()) ||
-        a.law_short_name?.toLowerCase().includes(lawName.toLowerCase())
-      )
-      if (lawArticles.length > 0) {
-        return lawArticles.slice(0, 5)
-      }
-    }
-
-    return articles?.slice(0, 5) || []
+    // Sin resultados semánticos → fallback por keywords.
+    return await searchArticlesByKeywords(searchText, lawName)
   } catch (error) {
     console.error('Error en búsqueda semántica:', error)
     return await searchArticlesByKeywords(searchText, lawName)
   }
 }
 
-// Fallback: búsqueda por keywords
-async function searchArticlesByKeywords(searchText: string, lawName?: string | null) {
-  const keywords = searchText.split(/\s+/).filter(w => w.length > 3).slice(0, 5)
-
-  let query = getSupabase()
-    .from('articles')
-    .select('id, article_number, content, law_name, law_short_name')
-    .limit(10)
-
-  if (lawName) {
-    query = query.or(`law_name.ilike.%${lawName}%,law_short_name.ilike.%${lawName}%`)
+// Fallback por keywords — RDS/Drizzle (articles + laws), sin Supabase.
+async function searchArticlesByKeywords(searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
+  const keyword = searchText.split(/\s+/).filter(w => w.length > 3)[0]
+  if (!keyword) return []
+  try {
+    const rows = await getDb()
+      .select({
+        articleNumber: articlesTable.articleNumber,
+        content: articlesTable.content,
+        lawShortName: lawsTable.shortName,
+        lawName: lawsTable.name,
+      })
+      .from(articlesTable)
+      .leftJoin(lawsTable, eq(lawsTable.id, articlesTable.lawId))
+      .where(
+        and(
+          eq(articlesTable.isActive, true),
+          ilike(articlesTable.content, `%${keyword}%`),
+          lawName
+            ? or(ilike(lawsTable.name, `%${lawName}%`), ilike(lawsTable.shortName, `%${lawName}%`))
+            : undefined,
+        ),
+      )
+      .limit(5)
+    return rows.map(r => ({
+      lawShortName: r.lawShortName ?? '',
+      lawName: r.lawName ?? '',
+      articleNumber: r.articleNumber,
+      content: r.content,
+    }))
+  } catch (error) {
+    console.error('Error en fallback por keywords:', error)
+    return []
   }
-
-  // Buscar por contenido
-  for (const keyword of keywords) {
-    query = query.ilike('content', `%${keyword}%`)
-  }
-
-  const { data } = await query
-  return data || []
 }
 
 async function _POST(request: NextRequest) {
@@ -92,19 +99,12 @@ async function _POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan datos de la pregunta' }, { status: 400 })
     }
 
-    // Obtener API key de OpenAI
-    const { data: apiConfig } = await getSupabase()
-      .from('ai_api_config')
-      .select('api_key_encrypted')
-      .eq('provider', 'openai')
-      .eq('is_active', true)
-      .single()
-
-    if (!apiConfig?.api_key_encrypted) {
+    // Obtener API key de OpenAI (RDS `ai_api_config` + fallback env, vía helper
+    // agnóstico — sin Supabase).
+    const apiKey = await getAiApiKey('openai')
+    if (!apiKey) {
       return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
     }
-
-    const apiKey = Buffer.from(apiConfig.api_key_encrypted, 'base64').toString('utf-8')
     const openai = new OpenAI({ apiKey })
 
     // 1. Buscar artículos relevantes
@@ -116,8 +116,8 @@ async function _POST(request: NextRequest) {
 
     // Formatear contexto de artículos
     const articlesContext = articles.length > 0
-      ? articles.map((a: any) =>
-          `--- ${a.law_short_name || a.law_name} - Artículo ${a.article_number} ---\n${a.content}`
+      ? articles.map(a =>
+          `--- ${a.lawShortName || a.lawName} - Artículo ${a.articleNumber} ---\n${a.content}`
         ).join('\n\n')
       : 'No se encontraron artículos específicos en la base de datos.'
 
