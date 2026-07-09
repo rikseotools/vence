@@ -111,18 +111,20 @@ jobs:
 
       # Si falla en cron contra prod, dejar trail en observable_events
       # para que aparezca en /admin/salud-sistema y alimente alertas.
-      # NOTE: requiere CRON_SECRET válido + endpoint /api/observability/ingest.
+      # NOTE: el endpoint /api/observability/ingest autentica server-to-server
+      # con el header `x-ingest-secret: $OBSERVABILITY_INGEST_SECRET` (ver
+      # route.ts:67-72). NO usa Authorization: Bearer ni CRON_SECRET.
       - name: Notify failure to observability sink
         if: failure() && github.event_name == 'schedule'
         env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
         run: |
-          if [ -z "$CRON_SECRET" ]; then
-            echo "::warning::CRON_SECRET no configurado — skipping observability notify"
+          if [ -z "$INGEST_SECRET" ]; then
+            echo "::warning::OBSERVABILITY_INGEST_SECRET no configurado — skipping observability notify"
             exit 0
           fi
           curl -fsS -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-ingest-secret: $INGEST_SECRET" \
             -H "Content-Type: application/json" \
             -d "{
               \"events\": [{
