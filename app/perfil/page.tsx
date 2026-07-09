@@ -683,6 +683,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'escala_administrativa_universidad_de_granada',
+      label: 'Administrativa UGR',
+      data: {
+        name: 'Escala Administrativa - Universidad de Granada',
+        slug: 'escala-administrativa-universidad-de-granada',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'administrativa_universidad_de_murcia',
       label: 'Administrativa UMU',
       data: {

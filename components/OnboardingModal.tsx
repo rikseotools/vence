@@ -864,6 +864,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'escala_administrativa_universidad_de_granada',
+    nombre: 'Escala Administrativa - Universidad de Granada (UGR)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'administrativa_universidad_de_murcia',
     nombre: 'Administrativa - Universidad de Murcia (UMU)',
     categoria: 'C1',
