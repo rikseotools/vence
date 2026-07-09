@@ -99,6 +99,12 @@ Gestionar plantillas en `/admin/newsletters` → tab **Plantillas BD**, o vía `
 
 SIEMPRE mandar el borrador a **manueltrader@gmail.com** y esperar visto bueno antes del envío masivo. (Nota: Gmail colapsa el pie repetido en "..." cuando recibes varios borradores seguidos; el usuario que lo recibe una vez NO lo ve.)
 
+> **🔒 El preview DEBE ser EXACTO al envío real (regla de Manuel, 09/07):** el correo de vista previa tiene que ser **idéntico** al que recibirán los destinatarios — **mismo asunto y mismo HTML**. **PROHIBIDO** poner "preview", "[PRUEBA]", "TEST" o cualquier marca en el asunto o el cuerpo; si el asunto no es exactamente el que verá el destinatario, el preview no vale. Usar el modo del script:
+> ```bash
+> node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --preview manueltrader@gmail.com
+> ```
+> `--preview <email>` renderiza con el MISMO template + userVars que el envío real (asunto `{{nombreOposicion}}: {{subtitulo}}`, sin marcas), manda a UN solo correo, y **NO registra en `email_events` ni crea tokens** → no ensucia la campaña ni las stats. Es la única forma correcta de mandar la vista previa.
+
 ---
 
 ## 5. Envío real
@@ -108,8 +114,9 @@ Script permanente: **`scripts/newsletters/send-promo-inscripcion.cjs`** (réplic
 ```bash
 export PROD_DATABASE_URL="postgresql://venceadmin:<PASS>@vence-prod...:5432/app"
 # 1) config JSON (ver cabecera del script para el esquema)
-node scripts/newsletters/send-promo-inscripcion.cjs /tmp/promo.json --dry    # prueba en seco
-node scripts/newsletters/send-promo-inscripcion.cjs /tmp/promo.json --send   # envío real
+node scripts/newsletters/send-promo-inscripcion.cjs /tmp/promo.json --dry                     # prueba en seco (cuenta audiencia; OJO: rate-limita 1/seg también)
+node scripts/newsletters/send-promo-inscripcion.cjs /tmp/promo.json --preview manueltrader@gmail.com   # vista previa IDÉNTICA (§4)
+node scripts/newsletters/send-promo-inscripcion.cjs /tmp/promo.json --send                    # envío real
 ```
 
 Ejemplo `promo.json`:
