@@ -1814,6 +1814,10 @@ export const tests = pgTable("tests", {
 	userSessionData: jsonb("user_session_data").default({}),
 	testUrl: varchar("test_url", { length: 500 }),
 	deployVersion: text("deploy_version"),
+	// Atribución por-oposición del test (desambigua tema_number entre oposiciones,
+	// alimenta user_theme_stats). La columna existía en BD pero faltaba en el schema
+	// Drizzle → el path v2 no podía escribirla (regresión 05/07/2026, b4ef6fc9).
+	positionType: text("position_type"),
 }, (table) => [
 	index("idx_tests_analytics").using("gin", table.detailedAnalytics.asc().nullsLast().op("jsonb_ops")),
 	index("idx_tests_completion_time").using("btree", table.completedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(is_completed = true)`),

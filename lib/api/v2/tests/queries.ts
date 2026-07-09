@@ -5,11 +5,26 @@
 import { getDb, getPoolerDb } from '@/db/client'
 import { tests } from '@/db/schema'
 import { and, eq, gte, desc } from 'drizzle-orm'
+import { derivePositionTypeFromPathname } from '@/lib/config/oposiciones'
 import type { CreateTestRequest } from './schemas'
 
 // Mismo criterio que el resto de writes v2: pooler self-hosted opt-in, si no getDb.
 function dbForWrites() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
+
+/**
+ * Resuelve la atribución por-oposición de un test (`tests.position_type`).
+ * Prioridad: (1) el que manda el cliente explícito; (2) derivado de `testUrl`.
+ * Puro y sin dependencias de BD → testeado en aislamiento (blinda el invariante
+ * "un test de oposición NUNCA se guarda con position_type NULL"). La regresión
+ * de 05/07 (commit b4ef6fc9) fue exactamente NO ejecutar este paso al migrar la
+ * creación al endpoint v2 — de ahí que sea una función explícita y verificada.
+ */
+export function resolveTestPositionType(
+  params: Pick<CreateTestRequest, 'positionType' | 'testUrl'>,
+): string | null {
+  return params.positionType ?? derivePositionTypeFromPathname(params.testUrl ?? null)
 }
 
 export interface CreateTestResult {
@@ -63,6 +78,7 @@ export async function createTestSession(
         title: params.title.substring(0, 100),
         testType: params.testType,
         testUrl: params.testUrl ?? null,
+        positionType: resolveTestPositionType(params),
         totalQuestions: params.totalQuestions,
         score: '0',
         temaNumber: params.tema,

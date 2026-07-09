@@ -8745,6 +8745,33 @@ export function getOposicionSlugFromPathname(pathname: string | null): string {
   return ALL_OPOSICION_SLUGS[0]
 }
 
+/**
+ * Deriva el `positionType` de una oposición a partir de un pathname
+ * (p.ej. "/administrativo-gva/test/tema/106/test-personalizado" → "administrativo_gva").
+ *
+ * Devuelve `null` para URLs NO ligadas a una oposición concreta ("/test/rapido",
+ * "/test/por-leyes", "/leyes", "/") — esos tests son deliberadamente "globales" y
+ * su `tests.position_type` es legítimamente NULL.
+ *
+ * FUENTE ÚNICA de la atribución por-oposición de un test (`tests.position_type`),
+ * que desambigua `tema_number` entre oposiciones (T106 de GVA ≠ T106 de SS). Se
+ * apoya en `SLUG_TO_POSITION_TYPE` (config real) en vez de `slug.replace('-','_')`
+ * para que el positionType coincida SIEMPRE con el del catálogo. Lo consumen
+ * `lib/api/stats/queries.ts`, la ruta `theme-stats` V4 y el trigger
+ * `user_theme_stats`. A diferencia de `getOposicionSlugFromPathname`, aquí un
+ * pathname no-oposición devuelve `null` (nunca el flagship): un test global no
+ * debe atribuirse a ninguna oposición.
+ */
+export function derivePositionTypeFromPathname(pathname: string | null): string | null {
+  if (!pathname) return null
+  // Primer segmento del path (donde SIEMPRE va el slug en las URLs de test:
+  // "/<slug>/test/..."). Regex estricta: minúsculas, sin doble-slash, con slash
+  // inicial — rechaza URLs degeneradas/spoofeadas en vez de mandar basura a BD.
+  const match = pathname.match(/^\/([a-z][a-z0-9-]*)(?:\/|$)/)
+  if (!match) return null
+  return SLUG_TO_POSITION_TYPE[match[1]] ?? null
+}
+
 /** Obtiene todos los temas de una oposición como lista plana */
 export function getAllThemes(identifier: string): Theme[] {
   const oposicion = getOposicion(identifier)

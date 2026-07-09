@@ -37,6 +37,12 @@ export class CanarySaveContractService {
     id: 'b419f803-274a-4c44-8df8-1192c57ff614',
     articleId: '2c15266e-8c06-456a-a062-a5a5a0f15579',
   };
+  // URL de oposición REAL para el POST de creación: reproduce el flujo del
+  // cliente (window.location.pathname) y permite verificar que tests.position_type
+  // se persiste. Regresión 05/07/2026 (b4ef6fc9): la migración a /api/v2/tests
+  // dejó de escribir position_type y ningún canary lo cazó porque mandaban sin URL.
+  private readonly TEST_URL = '/auxiliar-administrativo-estado/test/tema/1/test-personalizado';
+  private readonly EXPECTED_POSITION_TYPE = 'auxiliar_administrativo_estado';
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
@@ -73,7 +79,7 @@ export class CanarySaveContractService {
       const res = await fetch(`${this.SITE}/api/v2/tests`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ tema: 0, testNumber: 999, totalQuestions: 1, testType: 'practice', title: 'Canary save-contract' }),
+        body: JSON.stringify({ tema: 1, testNumber: 999, totalQuestions: 1, testType: 'practice', title: 'Canary save-contract', testUrl: this.TEST_URL }),
         signal: AbortSignal.timeout(10_000),
       });
       const j = (await res.json().catch(() => ({}))) as { success?: boolean; id?: string; error?: string };
@@ -113,9 +119,14 @@ export class CanarySaveContractService {
 
     // ─── 4. VERIFICAR EN RDS que la fila llegó (la prueba real) ───
     let verified = false;
+    let savedPositionType: string | null | undefined;
     try {
       const rows = (await this.db.execute(sql`SELECT COUNT(*)::int AS n FROM test_questions WHERE test_id = ${testId}::uuid`)) as unknown as Array<{ n: number }>;
       verified = (rows[0]?.n ?? 0) >= 1;
+      // Invariante de atribución: un test creado en URL de oposición DEBE persistir
+      // position_type (regresión 05/07/2026, b4ef6fc9). undefined = fila no leída.
+      const ptRows = (await this.db.execute(sql`SELECT position_type FROM tests WHERE id = ${testId}::uuid`)) as unknown as Array<{ position_type: string | null }>;
+      savedPositionType = ptRows.length ? ptRows[0]?.position_type ?? null : undefined;
     } catch {
       // si la verificación falla por BD, se reporta abajo; limpiamos igual.
     }
@@ -125,6 +136,9 @@ export class CanarySaveContractService {
 
     if (!verified) {
       return { ok: false, step: 'db_verify', errorMessage: `El endpoint respondió OK pero la fila NO llegó a test_questions (test ${testId}) — GUARDADO ROTO (clase hueco C1)`, durationMs: dur() };
+    }
+    if (savedPositionType !== this.EXPECTED_POSITION_TYPE) {
+      return { ok: false, step: 'db_verify_position_type', errorMessage: `El test se creó en ${this.TEST_URL} pero tests.position_type=${savedPositionType === null ? 'NULL' : savedPositionType === undefined ? '(fila no leída)' : savedPositionType} (esperado ${this.EXPECTED_POSITION_TYPE}) — ATRIBUCIÓN POR-OPOSICIÓN ROTA (regresión b4ef6fc9)`, durationMs: dur() };
     }
     return { ok: true, durationMs: dur() };
   }
