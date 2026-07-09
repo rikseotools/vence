@@ -9,6 +9,7 @@ import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { ID_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
+import { buildBackToArticleLink } from '@/lib/navigation/backToArticleLink'
 
 // Tipos
 type TestType = 'rapido' | 'avanzado' | 'oficial' | 'aleatorio'
@@ -497,6 +498,14 @@ export default function LawTestPageWrapper({
     )
   }
 
+  // 📖 "Volver al artículo que estabas leyendo": datos que YA vienen en la URL
+  // del test (selected_articles + lawSlug), sin sessionStorage ni state extra.
+  // Lógica pura y testeada en lib/navigation/backToArticleLink.ts.
+  const backToArticleLink = buildBackToArticleLink(
+    searchParams?.get('selected_articles'),
+    lawSlug
+  )
+
   // ✅ Renderizar test exitoso
   return (
     <>
@@ -521,6 +530,9 @@ export default function LawTestPageWrapper({
           isLawTest: true,
           lawShortName: lawShortName,
           customNavigationLinks: {
+            // Si el test se lanzó desde un artículo concreto, "Volver al artículo"
+            // como opción destacada (fix del bug de navegación).
+            ...(backToArticleLink && { backToArticle: backToArticleLink }),
             backToLaw: {
               href: `/leyes/${lawSlug}`,
               label: `📚 Volver a ${lawShortName}`,

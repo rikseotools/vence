@@ -2486,6 +2486,18 @@ export default function TestLayout({
                             {(config?.isLawTest || tema === 0) ? (
                               // 🏛️ NAVEGACIÓN PARA TESTS DE LEY
                               <>
+                                {/* Botón destacado: Volver al artículo que estaba leyendo
+                                    (solo si el test se lanzó desde un artículo concreto) */}
+                                {config.customNavigationLinks?.backToArticle && (
+                                  <Link
+                                    href={config.customNavigationLinks.backToArticle.href}
+                                    className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto`}
+                                  >
+                                    <span>📖</span>
+                                    <span className="text-center">{config.customNavigationLinks.backToArticle.label}</span>
+                                  </Link>
+                                )}
+
                                 {/* Botón principal: Volver a la ley específica */}
                                 {config.customNavigationLinks?.backToLaw && (
                                   <Link
