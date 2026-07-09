@@ -189,14 +189,16 @@ export default function ContenidoPage() {
                       >
                         {displayName(o)}
                       </a>
-                      {o.oficiales === 0 && (
-                        <span className="ml-2 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 whitespace-nowrap">
-                          ⚠️ falta examen oficial
-                        </span>
-                      )}
                     </td>
                     <td className="px-2 py-2 text-center">
-                      <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${e.cls}`}>{e.label}</span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${e.cls}`}>{e.label}</span>
+                        {o.oficiales === 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
+                            ⚠️ Sin examen oficial
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-2 py-2 text-right font-medium text-gray-900 dark:text-white">{fmt(o.usuarios)}</td>
                     <td
