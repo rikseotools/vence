@@ -10,6 +10,11 @@ export const createTestRequestSchema = z.object({
   testType: z.enum(['practice', 'exam']).default('practice'),
   title: z.string().min(1).max(120),
   testUrl: z.string().max(500).nullable().optional(),
+  // Atribución por-oposición. Si el cliente lo manda, gana; si no, el servidor
+  // lo DERIVA de testUrl (derivePositionTypeFromPathname). NUNCA debe quedar NULL
+  // para un test hecho dentro de una oposición — desambigua tema_number entre
+  // oposiciones y alimenta user_theme_stats. Ver lib/api/v2/tests/queries.ts.
+  positionType: z.string().max(100).nullable().optional(),
   timeLimitMinutes: z.number().int().min(0).nullable().optional(),
   deployVersion: z.string().max(100).nullable().optional(),
   // JSON opacos (analytics) — se guardan tal cual en jsonb.
