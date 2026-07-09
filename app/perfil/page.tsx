@@ -443,6 +443,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'enfermero_sas_andalucia',
+      label: 'Enfermero/a del SAS (Andalucía)',
+      data: {
+        name: 'Enfermero/a del Servicio Andaluz de Salud (SAS)',
+        slug: 'enfermero-sas-andalucia',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
       value: 'tramitacion_procesal',
       label: 'Tramitación Procesal y Administrativa',
       data: {

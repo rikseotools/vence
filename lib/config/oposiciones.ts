@@ -6328,6 +6328,7 @@ export const OPOSICIONES: Oposicion[] = [
     badge: 'A2',
     color: 'green',
     administracion: 'autonomica',
+    aliases: ['enfermero sas', 'enfermera sas', 'enfermero andalucia', 'enfermeria andalucia', 'enfermero servicio andaluz de salud', 'sas enfermeria', 'enfermero a2 andalucia'],
     blocks: [
       {
         id: 'bloque1',
