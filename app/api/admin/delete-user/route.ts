@@ -50,24 +50,36 @@ async function _DELETE(request: NextRequest) {
       console.warn('⚠️ No se pudo leer perfil antes de delete:', err)
     }
 
-    // Eliminar datos de todas las tablas
+    // Eliminar datos de todas las tablas (SSOT de la cuenta: user_profiles + cascada, RDS)
     const deletionResults = await deleteUserData(userId)
 
-    // Eliminar de auth.users (requiere Supabase Admin API)
-    let authDeleted = false
+    // Revocar identidad en el store de auth LEGACY (Supabase GoTrue). Tras el flip
+    // a Auth.js (Fase B) el SSOT de la cuenta es user_profiles (RDS, por email) y
+    // los usuarios NUEVOS no tienen fila GoTrue → este paso es limpieza best-effort:
+    //   - 'not_present' (post-flip / ya ausente) = ESPERADO, no es fallo.
+    //   - 'error' (fallo real: red/permisos) = crítico, el registro legacy pervive.
+    // ANTES se gateaba el éxito y el email RGPD por el borrado en Supabase, así que
+    // todo usuario post-flip reportaba 500 y NUNCA recibía el email (bug 09/07/2026).
+    let authOutcome: 'deleted' | 'not_present' | 'error' | 'exception' = 'exception'
     try {
-      const { error: authError } = await authAdmin.deleteUser(userId)
-
-      if (authError) {
-        console.error('❌ Error eliminando de auth.users:', authError)
-        deletionResults.push({ table: 'auth.users', status: 'error', error: authError.message })
-      } else {
-        console.log('✅ Usuario eliminado de auth.users')
+      const authRes = await authAdmin.deleteUser(userId)
+      authOutcome = authRes.outcome
+      if (authRes.outcome === 'deleted') {
+        console.log('✅ Identidad legacy (Supabase) eliminada')
         deletionResults.push({ table: 'auth.users', status: 'deleted' })
-        authDeleted = true
+      } else if (authRes.outcome === 'not_present') {
+        console.log('ℹ️ Sin identidad en el store legacy (usuario post-flip / ya ausente) — nada que revocar')
+        deletionResults.push({
+          table: 'auth.users',
+          status: 'skipped',
+          reason: 'sin registro en el store de auth legacy (Supabase): usuario post-flip o ya ausente',
+        })
+      } else {
+        console.error('❌ Error REAL eliminando identidad legacy (Supabase):', authRes.error)
+        deletionResults.push({ table: 'auth.users', status: 'error', error: authRes.error?.message })
       }
     } catch (authErr) {
-      console.error('❌ Excepción eliminando de auth.users:', authErr)
+      console.error('❌ Excepción eliminando identidad legacy:', authErr)
       deletionResults.push({
         table: 'auth.users',
         status: 'exception',
@@ -75,36 +87,10 @@ async function _DELETE(request: NextRequest) {
       })
     }
 
-    // Enviar email de confirmación RGPD (Art. 12.3 RGPD).
-    // Sólo si el DELETE fue exitoso y tenemos un email capturado previo.
-    // No rompe el flujo si falla: log + continúa.
-    if (authDeleted && userEmail) {
-      const emailResult = await sendDeletionConfirmationEmail({
-        email: userEmail,
-        fullName: userFullName,
-      })
-      deletionResults.push({
-        table: '_deletion_email',
-        status: emailResult.sent ? 'deleted' : 'error',
-        reason: emailResult.sent ? `emailId: ${emailResult.emailId}` : undefined,
-        error: emailResult.error,
-      })
-    } else if (authDeleted && !userEmail) {
-      console.warn('⚠️ Usuario eliminado pero no se pudo enviar email RGPD — email no disponible')
-      deletionResults.push({
-        table: '_deletion_email',
-        status: 'skipped',
-        reason: 'email no disponible antes del borrado',
-      })
-    }
-
-    // Verificación final: el éxito se determina por el estado REAL en BD,
-    // no por la ausencia de excepciones. Los triggers materializadores
-    // (`20260523_materialized_stats_triggers.sql`) pueden re-poblar stats
-    // tables durante la cascada del DELETE de user_profiles, causando
-    // FK violation silenciosa que safeDelete captura como `status: 'error'`.
-    // Sin esta verificación el endpoint reportaba success=true aunque
-    // user_profiles y auth.users siguieran existiendo.
+    // Verificación por SSOT: la cuenta está borrada cuando user_profiles ya no
+    // existe. Los triggers materializadores (`20260523_materialized_stats_triggers.sql`)
+    // pueden re-poblar stats durante la cascada → esta comprobación es la FUENTE DE
+    // VERDAD del éxito, no la ausencia de excepciones ni el store de auth legacy.
     let profileStillExists = false
     try {
       const [profileAfter] = await getAdminDb()
@@ -116,17 +102,45 @@ async function _DELETE(request: NextRequest) {
     } catch (err) {
       console.error('❌ Error verificando user_profiles post-delete:', err)
     }
+    const accountDeleted = !profileStillExists
 
+    // Email RGPD (Art. 12.3) — OBLIGATORIO. Se envía cuando la CUENTA está borrada
+    // (user_profiles ya no existe), con independencia del store de auth legacy: un
+    // usuario post-flip no tiene fila GoTrue y aun así su cuenta (sus datos) SÍ se
+    // ha eliminado. No rompe el flujo si falla: log + continúa.
+    if (accountDeleted && userEmail) {
+      const emailResult = await sendDeletionConfirmationEmail({
+        email: userEmail,
+        fullName: userFullName,
+      })
+      deletionResults.push({
+        table: '_deletion_email',
+        status: emailResult.sent ? 'deleted' : 'error',
+        reason: emailResult.sent ? `emailId: ${emailResult.emailId}` : undefined,
+        error: emailResult.error,
+      })
+    } else if (accountDeleted && !userEmail) {
+      console.warn('⚠️ Cuenta eliminada pero sin email disponible para el RGPD')
+      deletionResults.push({
+        table: '_deletion_email',
+        status: 'skipped',
+        reason: 'email no disponible antes del borrado',
+      })
+    }
+
+    // Éxito = la cuenta ya no existe en el SSOT + sin errores CRÍTICOS. Un fallo
+    // real del store legacy o de una tabla cuenta como crítico; 'skipped'/'deleted'
+    // no. Un email RGPD fallido (status 'error') también marca 500 → se reintenta.
     const criticalErrors = deletionResults.filter(
       r => r.status === 'error' || r.status === 'exception'
     )
-    const success = !profileStillExists && authDeleted && criticalErrors.length === 0
+    const success = accountDeleted && criticalErrors.length === 0
     const httpStatus = success ? 200 : 500
 
     console.log(
       success
-        ? `🗑️ Eliminación completada para usuario: ${userId}`
-        : `❌ Eliminación incompleta para ${userId} — profile=${profileStillExists ? 'EXISTE' : 'borrado'} auth=${authDeleted ? 'borrado' : 'EXISTE'} errors=${criticalErrors.length}`
+        ? `🗑️ Eliminación completada para usuario: ${userId} (auth legacy: ${authOutcome})`
+        : `❌ Eliminación incompleta para ${userId} — profile=${profileStillExists ? 'EXISTE' : 'borrado'} errors=${criticalErrors.length} authLegacy=${authOutcome}`
     )
 
     return NextResponse.json(
@@ -135,8 +149,8 @@ async function _DELETE(request: NextRequest) {
         message: success
           ? 'Usuario eliminado correctamente'
           : 'Eliminación incompleta: revisa details y aplica fallback manual',
-        profileDeleted: !profileStillExists,
-        authDeleted,
+        profileDeleted: accountDeleted,
+        authLegacy: authOutcome,
         criticalErrors: criticalErrors.length,
         details: deletionResults,
       },

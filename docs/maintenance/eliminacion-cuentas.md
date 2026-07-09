@@ -202,9 +202,17 @@ El módulo `lib/api/admin-delete-user/` implementa el flujo:
 │    → DELETE TABLES_TO_CLEAN_GDPR               │
 │    → DELETE user_profiles (CASCADE las demás)  │
 │                                                │
-│ 4. supabase.auth.admin.deleteUser              │
+│ 4. authAdmin.deleteUser (store auth legacy)    │
 └────────────────────────────────────────────────┘
 ```
+
+> ⚠️ **Auth post-flip (Auth.js) — `not_present` es NORMAL, no un fallo (fix 09/07/2026).**
+> Tras el flip a Auth.js (Fase B), el **SSOT de la cuenta es `user_profiles` (RDS, por email)**; los usuarios registrados DESPUÉS del flip **no tienen fila en el store de auth legacy (Supabase GoTrue)** ni en `auth.users` de RDS (Auth.js es JWT stateless, sin tabla de usuarios). Por eso `authAdmin.deleteUser` (paso 4, `lib/auth/server.ts`) devuelve **`not_present`** para ellos — es **esperado**.
+> - El **éxito** del borrado se ancla a que **`user_profiles` ya no existe** (SSOT), NO al store legacy.
+> - El **email RGPD (Art. 12.3) se envía siempre que la cuenta esté borrada**, aunque el store legacy diera `not_present`.
+> - Solo un fallo **REAL** de Supabase (`outcome: 'error'`: red/permisos) marca 500 (registro legacy pervive → revisar).
+> - Un usuario borrado que vuelve a entrar con Google → `resolveAppUser` no lo halla por email → **cuenta nueva y vacía** (UUID nuevo). No resucita nada.
+> **Bug que corrige** (visto con Arelis 09/07): antes se gateaba éxito+email por el borrado en Supabase → todo usuario post-flip reportaba 500 y NUNCA recibía el email legal. Tests: `__tests__/api/admin/deleteUserAuthOutcome.test.ts`.
 
 ### Tres categorías de tablas
 

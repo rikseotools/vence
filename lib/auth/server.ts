@@ -35,8 +35,30 @@ export const authAdmin = {
     return { id: data.user.id, email: data.user.email ?? null }
   },
 
-  async deleteUser(userId: string): Promise<{ error: Error | null }> {
+  /**
+   * Revoca la identidad en el store de auth LEGACY (Supabase GoTrue).
+   *
+   * Tras el flip a Auth.js (Fase B), el SSOT de la cuenta es `user_profiles`
+   * (RDS, indexado por email); los usuarios NUEVOS no tienen fila GoTrue. Por eso
+   * hay que distinguir 3 desenlaces, no un booleano:
+   *   - 'deleted'      → existía en el store legacy y se borró.
+   *   - 'not_present'  → no existe en el store legacy (usuario post-flip o ya
+   *                      ausente). NO es fallo: no hay nada que revocar aquí →
+   *                      idempotente. El caller NO debe tratarlo como error.
+   *   - 'error'        → fallo REAL (red, permisos): el registro legacy podría
+   *                      seguir vivo → el caller lo marca crítico.
+   */
+  async deleteUser(
+    userId: string,
+  ): Promise<{ outcome: 'deleted' | 'not_present' | 'error'; error: Error | null }> {
     const { error } = await getServiceClient().auth.admin.deleteUser(userId)
-    return { error: error ?? null }
+    if (!error) return { outcome: 'deleted', error: null }
+    const status = (error as { status?: number }).status
+    const code = (error as { code?: string }).code
+    const msg = (error.message || '').toLowerCase()
+    if (status === 404 || code === 'user_not_found' || msg.includes('not found')) {
+      return { outcome: 'not_present', error: null }
+    }
+    return { outcome: 'error', error }
   },
 }
