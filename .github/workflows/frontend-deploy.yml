@@ -103,9 +103,13 @@ jobs:
             # renovaciones (Stripe las cobra solo; STRIPE_SECRET_KEY sigue Manuel).
             # REVERTIR: volver a los valores de Manuel + SSM flag=manuel + redeploy.
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51TogG60lMFwxldqjmLLugM5JDwofbgLMpwYZjCzFG7xC7Meq4kvo0ZFQYtZ09paZkqEL7x794hBUXoPsTo2Lj0Rl00fmV8SVBv
-            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY=price_1TqSPq0lMFwxldqjrrnma6dl
-            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY=price_1TqSPr0lMFwxldqjEnCjVVHE
-            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER=price_1TqSPr0lMFwxldqjEHvGxF9k
+            # PRECIOS v2 (2026-07): Mensual 29 · Trim 39 · Sem 69 · Anual 99 (nuevo).
+            # Precios anteriores (20/35/59) siguen VIVOS en Stripe para grandfathering
+            # de las subs existentes; estos son los que se cobran a las ALTAS NUEVAS.
+            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY=price_1TrNBi0lMFwxldqjhNOtibLf
+            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY=price_1TrNBi0lMFwxldqjX6Z6EAIl
+            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER=price_1TrNBi0lMFwxldqjWYAVd93S
+            NEXT_PUBLIC_STRIPE_PRICE_ANNUAL=price_1TrNBj0lMFwxldqjyc7TGHMa
             # Stripe cuenta Nila (altas nuevas). publishable + price IDs son
             # PÚBLICOS (van en el bundle) → literales, como la Turnstile site key.
             # El desvío de altas lo decide STRIPE_NEW_SIGNUPS_ACCOUNT (SSM, runtime);
@@ -113,9 +117,10 @@ jobs:
             # STRIPE_NEW_SIGNUPS_ACCOUNT=nila en SSM, cambiar las 4 NEXT_PUBLIC_STRIPE_*
             # activas de arriba a estos mismos valores _NILA y redeploy.
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_NILA=pk_live_51TogG60lMFwxldqjmLLugM5JDwofbgLMpwYZjCzFG7xC7Meq4kvo0ZFQYtZ09paZkqEL7x794hBUXoPsTo2Lj0Rl00fmV8SVBv
-            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA=price_1TqSPq0lMFwxldqjrrnma6dl
-            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA=price_1TqSPr0lMFwxldqjEnCjVVHE
-            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA=price_1TqSPr0lMFwxldqjEHvGxF9k
+            NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA=price_1TrNBi0lMFwxldqjhNOtibLf
+            NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA=price_1TrNBi0lMFwxldqjX6Z6EAIl
+            NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA=price_1TrNBi0lMFwxldqjWYAVd93S
+            NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA=price_1TrNBj0lMFwxldqjyc7TGHMa
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
             NEXT_PUBLIC_SITE_URL=https://www.vence.es
             NEXT_PUBLIC_APP_NAME=Vence

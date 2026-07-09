@@ -9,12 +9,13 @@ import { useSearchParams } from 'next/navigation'
 import { trackPremiumPageView, trackCheckoutStarted } from '@/lib/services/conversionTracker'
 import { trackIntent, confirmIntent } from '@/lib/observability/client'
 
-type PlanType = 'monthly' | 'quarterly' | 'semester'
+type PlanType = 'monthly' | 'quarterly' | 'semester' | 'annual'
 
 interface PriceIds {
   monthly: string
   quarterly: string
   semester: string
+  annual: string
 }
 
 interface AuthUser {
@@ -37,7 +38,7 @@ function PremiumPageContent() {
   // Preseleccionar plan desde URL (ej: /premium?plan=monthly)
   useEffect(() => {
     const planParam = searchParams.get('plan')
-    if (planParam === 'monthly' || planParam === 'quarterly' || planParam === 'semester') {
+    if (planParam === 'monthly' || planParam === 'quarterly' || planParam === 'semester' || planParam === 'annual') {
       setSelectedPlan(planParam)
     }
   }, [searchParams])
@@ -124,6 +125,7 @@ function PremiumPageContent() {
         monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY!,
         quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY!,
         semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER!,
+        annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL!,
       }
       const priceId = priceIds[selectedPlan]
 
@@ -204,9 +206,10 @@ function PremiumPageContent() {
 
   const getPlanDisplayText = (plan: PlanType): string => {
     switch (plan) {
-      case 'semester': return '59€ cada 6 meses'
-      case 'quarterly': return '35€ cada 3 meses'
-      case 'monthly': return '20€ cada mes'
+      case 'annual': return '99€ al año'
+      case 'semester': return '69€ cada 6 meses'
+      case 'quarterly': return '39€ cada 3 meses'
+      case 'monthly': return '29€ cada mes'
     }
   }
 
@@ -248,6 +251,7 @@ function PremiumPageContent() {
         monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY!,
         quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY!,
         semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER!,
+        annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL!,
       }
       const priceId = priceIds[plan]
 
@@ -326,7 +330,7 @@ function PremiumPageContent() {
 
         {/* Plan Cards */}
         <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
 
             {/* Plan Mensual */}
             <div
@@ -340,7 +344,7 @@ function PremiumPageContent() {
               <div className="text-center">
                 <div className="h-6 mb-4"></div>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Mensual</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-1">20€</div>
+                <div className="text-4xl font-bold text-gray-900 mb-1">29€</div>
                 <div className="text-gray-500 text-sm mb-4">al mes</div>
                 <div className="text-gray-400 text-sm">
                   Flexibilidad total
@@ -360,10 +364,10 @@ function PremiumPageContent() {
               <div className="text-center">
                 <div className="h-6 mb-4"></div>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Trimestral</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-1">35€</div>
+                <div className="text-4xl font-bold text-gray-900 mb-1">39€</div>
                 <div className="text-gray-500 text-sm mb-4">cada 3 meses</div>
                 <div className="text-green-600 text-sm font-medium">
-                  Ahorras 100€ al año
+                  Ahorras 192€ al año
                 </div>
               </div>
             </div>
@@ -382,10 +386,32 @@ function PremiumPageContent() {
                   MAS POPULAR
                 </span>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Semestral</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-1">59€</div>
+                <div className="text-4xl font-bold text-gray-900 mb-1">69€</div>
                 <div className="text-gray-500 text-sm mb-4">cada 6 meses</div>
                 <div className="text-green-600 text-sm font-medium">
-                  Ahorras 122€ al año
+                  Ahorras 210€ al año
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Anual - MEJOR VALOR */}
+            <div
+              onClick={() => handlePlanClick('annual')}
+              className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
+                selectedPlan === 'annual'
+                  ? 'border-amber-500 ring-2 ring-amber-200'
+                  : 'border-gray-200 hover:border-amber-300'
+              } ${loading ? 'pointer-events-none opacity-50' : ''}`}
+            >
+              <div className="text-center">
+                <span className="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold mb-4 inline-block">
+                  MEJOR VALOR
+                </span>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Anual</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-1">99€</div>
+                <div className="text-gray-500 text-sm mb-4">al año</div>
+                <div className="text-green-600 text-sm font-medium">
+                  Ahorras 249€ al año
                 </div>
               </div>
             </div>

@@ -345,7 +345,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
               onClick={() => handleUpgradeWithPlan('monthly')}
               className="rounded-lg p-2 sm:p-3 text-center border-2 transition-all cursor-pointer bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-500 hover:bg-blue-100 hover:scale-105"
             >
-              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">20€</div>
+              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">29€</div>
               <div className="text-[10px] sm:text-xs text-blue-600/70 dark:text-blue-400/70">al mes</div>
             </button>
             <button
@@ -354,9 +354,9 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
               className="rounded-lg p-2 sm:p-3 text-center border-2 relative transition-all cursor-pointer bg-green-50 dark:bg-green-900/20 border-green-500 hover:bg-green-100 hover:scale-105"
             >
               <div className="absolute -top-1.5 sm:-top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[9px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
-                -50%
+                -60%
               </div>
-              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">59€</div>
+              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">69€</div>
               <div className="text-[10px] sm:text-xs text-green-600/70 dark:text-green-400/70">6 meses</div>
             </button>
           </div>
