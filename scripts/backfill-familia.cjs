@@ -5,41 +5,28 @@
 // (lib/oposiciones/familia.ts) — no duplica lógica: transpila el TS al vuelo con babel.
 // Idempotente: recomputa y sobrescribe. Imprime INFORME (distribución + residuo 'otros').
 //
-// Uso:  node scripts/backfill-familia.cjs
+// Uso:  node scripts/backfill-familia.cjs            → re-clasifica TODO (idempotente)
+//       node scripts/backfill-familia.cjs --only-null → solo filas SIN familia (RECONCILE
+//         del ingest: clasifica lo nuevo del feed SIN pisar correcciones manuales).
+//         Llamar tras cada pasada del feed pag-empleo (cron) = "nace con familia".
 // Requiere DATABASE_URL en .env.local (RDS).
 
-const fs = require('fs')
-const path = require('path')
 const { Client } = require('pg')
 require('dotenv').config({ path: '.env.local' })
-
-// --- cargar el clasificador TS sin ts-node: babel transform → CJS en memoria ---
-function loadFamiliaModule() {
-  const file = path.resolve(__dirname, '../lib/oposiciones/familia.ts')
-  const src = fs.readFileSync(file, 'utf8')
-  const { code } = require('@babel/core').transformSync(src, {
-    filename: file,
-    presets: [
-      ['@babel/preset-env', { targets: { node: 'current' } }],
-      '@babel/preset-typescript',
-    ],
-    babelrc: false,
-    configFile: false,
-  })
-  const mod = { exports: {} }
-  // eslint-disable-next-line no-new-func
-  new Function('module', 'exports', 'require', code)(mod, mod.exports, require)
-  return mod.exports
-}
+const loadFamiliaModule = require('./_load-familia.cjs')
 
 async function main() {
   const { classifyFamilia, FAMILIA_KEYS } = loadFamiliaModule()
   if (typeof classifyFamilia !== 'function') throw new Error('classifyFamilia no cargó')
 
+  const onlyNull = process.argv.includes('--only-null')
   const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
   await c.connect()
   try {
-    const { rows } = await c.query('SELECT id, nombre, administracion FROM oposiciones')
+    const { rows } = await c.query(
+      `SELECT id, nombre, administracion FROM oposiciones${onlyNull ? ' WHERE familia IS NULL' : ''}`,
+    )
+    if (onlyNull) console.log(`[reconcile] ${rows.length} fila(s) sin familia`)
     // agrupar ids por familia → 1 UPDATE por familia (eficiente)
     const byFam = new Map(FAMILIA_KEYS.map((k) => [k, []]))
     for (const r of rows) byFam.get(classifyFamilia(r.nombre, r.administracion)).push(r.id)
@@ -54,8 +41,8 @@ async function main() {
     const rep = await c.query(
       "SELECT COALESCE(familia,'(null)') familia, COUNT(*)::int n FROM oposiciones GROUP BY 1 ORDER BY n DESC",
     )
-    const total = rows.length
-    console.log(`\n=== BACKFILL FAMILIA · ${total} filas ===`)
+    const total = rep.rows.reduce((s, r) => s + r.n, 0) // total real de la tabla (no el nº actualizado)
+    console.log(`\n=== FAMILIA · ${rows.length} clasificada(s), ${total} en tabla ===`)
     rep.rows.forEach((r) =>
       console.log(String(r.n).padStart(5), `${((r.n / total) * 100).toFixed(1)}%`.padStart(7), r.familia),
     )

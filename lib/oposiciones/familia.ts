@@ -61,7 +61,7 @@ const PROFESION_RULES: { familia: Familia; kws: string[] }[] = [
     kws: [
       'procesal', 'processal', 'judicial', 'forense', 'auxilio judicial',
       'auxili judicial', 'gestion procesal', 'tramitacion procesal', 'ministerio fiscal',
-      'administracion de justicia', 'administracio de justicia',
+      'administracion de justicia', 'administracio de justicia', 'letrado', 'lletrat',
     ],
   },
   {
@@ -99,7 +99,7 @@ const PROFESION_RULES: { familia: Familia; kws: string[] }[] = [
       'ensenanza secundaria', 'ensenyament', 'educacion secundaria',
       'educacion infantil', 'educacion primaria', 'educacion fisica',
       'artes plasticas', 'arts plastiques', 'conservatorio', 'conservatori',
-      'inspector de educacion', 'formacion profesional',
+      'inspector de educacion', 'formacion profesional', 'docencia', 'docent',
     ],
   },
   {
@@ -121,6 +121,8 @@ const PROFESION_RULES: { familia: Familia; kws: string[] }[] = [
       'tecnico de sistemas', 'tecnic de sistemes', 'laboratorio', 'laboratori',
       'medio ambiente', 'medi ambient', 'medio natural', 'medi natural',
       'agente forestal', 'agent forestal', 'medioambiental', 'agente medioambiental',
+      'cientific', 'instrumentacion', 'investigacion', 'enolog', 'escala tecnica',
+      'escala mitjana', 'instrumentacio',
     ],
   },
   {
@@ -138,6 +140,7 @@ const PROFESION_RULES: { familia: Familia; kws: string[] }[] = [
       'subinspector laboral', 'subinspectores laborales', 'inspeccion de trabajo',
       'inspector de trabajo', 'cuerpo auxiliar de la administracion', 'cuerpo auxiliar',
       'cos auxiliar', 'cos de gestio', 'cos de diplomatura', 'cos superior',
+      'desarrollo local', 'agente de desarrollo',
     ],
   },
   {
