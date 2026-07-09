@@ -7,6 +7,15 @@ import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas
 const QUEUE_KEY = 'vence_answer_queue'
 const MAX_RETRIES = 5 // Subido de 3 a 5 para dar más oportunidades
 const BASE_DELAY_MS = 2000
+// Timeout de aborto del fetch de sync. Antes 8s, PERO el endpoint tiene
+// maxDuration=30s: si un save tardaba >8s (p99 real ≈10.7s, cold-start / pool
+// frío), el cliente abortaba y reintentaba AUNQUE el servidor lo completaba →
+// "Timeout 8s" espurio + trabajo duplicado en el pool (el save es idempotente,
+// `already_saved`, así que no había pérdida ni duplicados, solo churn). 15s
+// cubre el p99 con margen sin bloquear la cola (es background) ni acercarse al
+// tope de 30s del servidor. La latencia de cola (p99 alto) es un tema de perf
+// aparte; esto solo elimina el retry espurio.
+const SYNC_TIMEOUT_MS = 15000
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 días (antes 24h) — alineado con JWT expiry
 
 interface QueuedAnswer {
@@ -65,7 +74,7 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
   // navegación). El flag nos permite filtrar ruido en logClientError.
   let timedOut = false
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => { timedOut = true; controller.abort() }, 8000)
+  const timeoutId = setTimeout(() => { timedOut = true; controller.abort() }, SYNC_TIMEOUT_MS)
 
   try {
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
@@ -144,7 +153,7 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
     // Clasificar severity para distinguir ruido esperado de errores reales:
     //  - abort externo (tab cerrada, navegación, red cortada): 'info' (visibilidad sin alarma)
-    //  - timeout de 8s de nuestro setTimeout: 'warning' (servidor lento, investigar)
+    //  - timeout de nuestro setTimeout (SYNC_TIMEOUT_MS): 'warning' (servidor lento, investigar)
     //  - cualquier otro error de red: 'critical' (default)
     let severity: 'critical' | 'warning' | 'info' = 'critical'
     let component = 'answerSaveQueue syncOne network'
@@ -155,8 +164,8 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
       console.warn(`⚠️ [answerSaveQueue] Fetch abortado por cliente/navegador (retry #${answer.retries}) — reintentará`)
     } else if (isAbort && timedOut) {
       severity = 'warning'
-      component = 'answerSaveQueue syncOne timeout_8s'
-      console.error(`⏱️ [answerSaveQueue] Timeout 8s del servidor retry #${answer.retries}`)
+      component = 'answerSaveQueue syncOne timeout'
+      console.error(`⏱️ [answerSaveQueue] Timeout ${SYNC_TIMEOUT_MS / 1000}s del servidor retry #${answer.retries}`)
     } else {
       console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)
     }
