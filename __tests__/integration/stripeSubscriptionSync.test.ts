@@ -124,7 +124,7 @@ describeIfCredentials('Stripe ↔ user_subscriptions sync', () => {
         )
         .join('\n')
 
-      fail(
+      throw new Error(
         `${missing.length} active Stripe subscription(s) not tracked in user_subscriptions:\n${details}\n\n` +
           'Fix: update user_subscriptions with correct stripe_subscription_id, status=active, and period dates.'
       )
@@ -165,7 +165,7 @@ describeIfCredentials('Stripe ↔ user_subscriptions sync', () => {
         .map((s) => `  - ${s.stripe_subscription_id} | user: ${s.user_id}`)
         .join('\n')
 
-      fail(
+      throw new Error(
         `${stale.length} user_subscriptions row(s) marked active but not active in Stripe:\n${details}\n\n` +
           'Fix: update status in user_subscriptions to match Stripe.'
       )
