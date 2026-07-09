@@ -42,7 +42,14 @@ function isIOSDevice(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-// Genera un nonce + su hash SHA-256 (Google requiere el hash, el proveedor el raw)
+// Genera un nonce + su hash SHA-256 (Google requiere el hash, el proveedor el raw).
+//
+// ⚠️ CONTRATO cliente↔servidor: el hash se codifica en HEX. El servidor
+// (lib/auth/verifyGoogleIdToken.ts → hashNonce) recomputa hex(SHA-256(raw)) y lo
+// compara con este valor (que Google devuelve verbatim en el claim `nonce`). Si aquí
+// se cambia la codificación (p.ej. a base64url), One Tap se rompe SIEMPRE con
+// CredentialsSignin. El test __tests__/lib/verifyGoogleIdToken.test.ts hace el
+// round-trip y cazaría cualquier divergencia.
 async function generateNonce(): Promise<{ nonce: string; hashedNonce: string }> {
   const nonce = crypto.randomUUID()
   const encoder = new TextEncoder()

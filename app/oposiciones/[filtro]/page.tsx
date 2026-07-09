@@ -7,12 +7,12 @@
  */
 import { Metadata } from 'next'
 import { sql } from 'drizzle-orm'
-import { getDb, getPoolerDb, getAdminDb } from '@/db/client'
+import { getDb, getPoolerDb } from '@/db/client'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import OposicionCard from '../components/OposicionCard'
-import CatalogadaCard from '../components/CatalogadaCard'
-import { isInscripcionAbierta, isShowableCatalogada } from '@/lib/oposiciones/inscripcion'
+import FilteredResults, { type InitialFilters } from './FilteredResults'
+import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
+import { getCatalogadasAbiertas } from '../lib/catalogadas'
 import {
   detectFilter,
   oposicionToCcaa,
@@ -20,7 +20,6 @@ import {
   CCAA_FILTERS,
   SUBGRUPO_FILTERS,
   TIPO_FILTERS,
-  ESTADO_FILTERS,
   type OposicionFilter,
 } from '../lib/oposiciones-filters'
 
@@ -84,8 +83,11 @@ function db() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 
-async function getFilteredOposiciones(filter: OposicionFilter): Promise<OposicionRow[]> {
-  let all: OposicionRow[] = []
+// TODAS las oposiciones activas. El filtrado ya NO se hace en servidor: la página
+// pasa TODAS al componente cliente (modelo unificado — /oposiciones/<filtro> = base
+// con un chip pre-activado y quitable). `applyFilter` se conserva SOLO para el
+// recuento del H1/SEO (server-rendered).
+async function getAllActiveOposiciones(): Promise<OposicionRow[]> {
   try {
     const rows = await db().execute(sql`
       SELECT slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso,
@@ -98,13 +100,17 @@ async function getFilteredOposiciones(filter: OposicionFilter): Promise<Oposicio
       WHERE is_active = true
       ORDER BY plazas_libres DESC NULLS LAST
     `)
-    all = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as OposicionRow[]
+    return (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as OposicionRow[]
   } catch (e) {
-    console.warn('[oposiciones/filtro] getFilteredOposiciones falló:', (e as Error).message)
+    console.warn('[oposiciones/filtro] getAllActiveOposiciones falló:', (e as Error).message)
     return []
   }
+}
 
-  // Filtrar según tipo
+// PURA: aplica el filtro de la URL. Solo para el recuento del H1/SEO — el componente
+// cliente aplica los mismos criterios vía initialFilters (mismas funciones puras →
+// mismos números; el chip pre-activado hace que el SSR ya venga filtrado).
+function applyFilter(all: OposicionRow[], filter: OposicionFilter): OposicionRow[] {
   switch (filter.type) {
     case 'ccaa':
       return all.filter(o => oposicionToCcaa(o.slug) === filter.slug)
@@ -122,38 +128,26 @@ async function getFilteredOposiciones(filter: OposicionFilter): Promise<Oposicio
   }
 }
 
-// Catalogadas (is_active=false, sin landing/tests) con inscripción abierta HOY y
-// convocatoria oficial. Se muestran solo en /oposiciones/inscripcion-abierta, como
-// sección "sin test todavía" enlazando a la fuente oficial (nunca a una landing
-// inexistente). Service-role: las catalogadas no son visibles por el camino anon
-// (RLS); alineado con la retirada de RLS (Fase P). Decisión producto 20/06.
-interface CatalogadaAbierta {
-  slug: string
-  nombre: string
-  plazas_libres: number | null
-  inscription_deadline: string | null
-  seguimiento_url: string | null
-}
-
-async function getCatalogadasAbiertas(): Promise<CatalogadaAbierta[]> {
-  try {
-    // is_active=false → no visible por anon/RLS; getAdminDb bypasea RLS (= service_role).
-    const rows = await getAdminDb().execute(sql`
-      SELECT slug, nombre, plazas_libres,
-             inscription_start::text AS inscription_start,
-             inscription_deadline::text AS inscription_deadline,
-             seguimiento_url
-      FROM oposiciones_ssot
-      WHERE is_active = false
-      ORDER BY inscription_deadline ASC NULLS LAST
-    `)
-    const results = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as (CatalogadaAbierta & { inscription_start: string | null })[]
-    return results.filter(o => isShowableCatalogada({ ...o, is_active: false }))
-  } catch (e) {
-    console.warn('[oposiciones/filtro] getCatalogadasAbiertas falló:', (e as Error).message)
-    return []
+// Traduce el filtro de la URL al chip PRE-ACTIVADO del componente cliente.
+function filterToInitial(filter: OposicionFilter): InitialFilters {
+  switch (filter.type) {
+    case 'ccaa':
+      return { comunidad: [filter.slug] }
+    case 'subgrupo':
+      return { subgrupo: [filter.value] }
+    case 'tipo':
+      return { tipo: [filter.value] }
+    case 'inscripcion_abierta':
+      return { abierta: true }
+    case 'estado':
+      // El único filtro de estado expuesto ('proximos-examenes') = examen próximo.
+      return filter.value === 'pendiente_examen' ? { examen: true } : {}
+    default:
+      return {}
   }
 }
+
+// Catalogadas abiertas (sin test todavía) → helper compartido con /oposiciones.
 
 // ============================================
 // PAGE
@@ -164,11 +158,15 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
   const filter = detectFilter(filtro)
   if (!filter) notFound()
 
-  const oposiciones = await getFilteredOposiciones(filter)
+  // TODAS las oposiciones → al componente (que pre-activa el chip del filtro). El
+  // set filtrado (applyFilter) es solo para el recuento del H1/SEO.
+  const oposicionesAll = await getAllActiveOposiciones()
+  const filtradas = applyFilter(oposicionesAll, filter)
+  const initialFilters = filterToInitial(filter)
   // Solo en la página de inscripción abierta añadimos las catalogadas (sin test todavía).
   const catalogadas = filter.type === 'inscripcion_abierta' ? await getCatalogadasAbiertas() : []
 
-  const totalPlazas = oposiciones.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
+  const totalPlazas = filtradas.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -197,7 +195,7 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
             {filter.seoTitle}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {oposiciones.length} oposiciones con{' '}
+            {filtradas.length} oposiciones con{' '}
             <span className="font-semibold text-blue-600 dark:text-blue-400">
               {totalPlazas.toLocaleString('es-ES')} plazas
             </span>
@@ -206,120 +204,43 @@ export default async function FiltroOposicionesPage({ params }: { params: Promis
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <Link href="/oposiciones" className="text-sm text-blue-600 hover:underline">
+          ← Todas las oposiciones
+        </Link>
 
-          {/* Sidebar: otros filtros */}
-          <aside className="lg:col-span-1">
-            <div className="sticky top-4 space-y-6">
-              <Link href="/oposiciones" className="text-sm text-blue-600 hover:underline">
-                ← Todas las oposiciones
-              </Link>
-
-              {filter.type !== 'tipo' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por tipo</h3>
-                  <div className="space-y-1">
-                    {Object.values(TIPO_FILTERS).map(f => (
-                      <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                        className={`block px-3 py-1.5 text-sm rounded-md ${f.slug === filtro ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                        {f.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {filter.type !== 'subgrupo' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por subgrupo</h3>
-                  <div className="space-y-1">
-                    {Object.values(SUBGRUPO_FILTERS).map(f => (
-                      <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                        className={`block px-3 py-1.5 text-sm rounded-md ${f.slug === filtro ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                        {f.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {filter.type !== 'ccaa' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por comunidad</h3>
-                  <div className="space-y-1">
-                    {Object.values(CCAA_FILTERS).map(f => (
-                      <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                        className={`block px-3 py-1.5 text-sm rounded-md ${f.slug === filtro ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                        {f.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </aside>
-
-          {/* Main: cards */}
-          <main className="lg:col-span-3">
-            {oposiciones.length === 0 && catalogadas.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400">
-                  No hay oposiciones activas con este filtro.
-                </p>
-                <Link href="/oposiciones" className="mt-4 inline-block text-blue-600 hover:underline">
-                  Ver todas las oposiciones
-                </Link>
-              </div>
-            ) : (
-              <>
-                {oposiciones.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {oposiciones.map(o => (
-                      <OposicionCard
-                        key={o.slug}
-                        slug={o.slug}
-                        nombre={o.nombre}
-                        plazasLibres={o.plazas_libres}
-                        plazasDiscapacidad={o.plazas_discapacidad}
-                        estadoProceso={o.estado_proceso}
-                        isConvocatoriaActiva={o.is_convocatoria_activa}
-                        examDate={o.exam_date}
-                        inscriptionStart={o.inscription_start}
-                        inscriptionDeadline={o.inscription_deadline}
-                        subgrupo={o.subgrupo}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Catalogadas: inscripción abierta pero aún sin tests en Vence.
-                    Enlazan a la convocatoria oficial (no a una landing inexistente). */}
-                {catalogadas.length > 0 && (
-                  <div className={oposiciones.length > 0 ? 'mt-10' : ''}>
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                      Otras convocatorias abiertas <span className="font-normal text-gray-500 dark:text-gray-400">(sin test todavía en Vence)</span>
-                    </h2>
-                    <p className="mt-1 mb-4 text-sm text-gray-600 dark:text-gray-400">
-                      Tienen el plazo de inscripción abierto. Aún no hemos preparado tests, pero puedes ir a la convocatoria oficial.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {catalogadas.map(c => (
-                        <CatalogadaCard
-                          key={c.slug}
-                          slug={c.slug}
-                          nombre={c.nombre}
-                          plazasLibres={c.plazas_libres}
-                          inscriptionDeadline={c.inscription_deadline}
-                          seguimientoUrl={c.seguimiento_url}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </main>
+        <div className="mt-4">
+          {/* Filtrado facetado en cliente (chips + panel colapsable, mobile-first).
+              Refina el set ya cargado; la página sigue SSR para SEO (H1/JSON-LD/canónica). */}
+          <FilteredResults oposiciones={oposicionesAll} catalogadas={catalogadas} initialFilters={initialFilters} />
         </div>
+
+        {/* Pie de enlaces internos: descubrimiento + SEO (cada filtro es una URL
+            canónica indexable). El filtro interactivo de arriba refina client-side;
+            estos enlaces navegan a las páginas base. */}
+        <nav className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            Explorar por categoría
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {[...Object.values(TIPO_FILTERS), ...Object.values(SUBGRUPO_FILTERS)].map(f => (
+              <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                className={`px-3 py-1.5 text-sm rounded-full border ${f.slug === filtro ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-400'}`}>
+                {f.label}
+              </Link>
+            ))}
+          </div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mt-6 mb-3">
+            Por comunidad
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {Object.values(CCAA_FILTERS).map(f => (
+              <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                className={`px-3 py-1.5 text-sm rounded-full border ${f.slug === filtro ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-400'}`}>
+                {f.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
       </div>
     </div>
   )

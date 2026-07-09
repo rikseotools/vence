@@ -6,13 +6,31 @@ import { createHash } from 'node:crypto'
 import { hashNonce, extractVerifiedGoogleUser } from '@/lib/auth/verifyGoogleIdToken'
 
 const RAW = 'a-random-uuid-nonce'
-const HASH = createHash('sha256').update(RAW).digest('base64url')
+// HEX: debe casar con el hashedNonce que GoogleOneTap.tsx envía a Google (hex de
+// SHA-256). Si no casan, el nonce del id_token nunca valida y One Tap falla.
+const HASH = createHash('sha256').update(RAW).digest('hex')
+
+// Reproduce EXACTAMENTE el algoritmo del cliente (GoogleOneTap.tsx):
+//   Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('')
+// El digest se computa con node en vez de crypto.subtle, pero los bytes de SHA-256 son
+// los mismos → la ÚNICA variable es la codificación. Si cliente o servidor cambian de
+// codificación, el round-trip de abajo se rompe → One Tap protegido contra re-divergencia.
+function clientHashedNonce(raw: string): string {
+  return Array.from(createHash('sha256').update(raw).digest())
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
 
 describe('hashNonce', () => {
-  it('base64url(SHA-256(raw)) — el formato que Google pone en el claim nonce', () => {
+  it('hex(SHA-256(raw)) — misma codificación que el hashedNonce del cliente', () => {
     expect(hashNonce(RAW)).toBe(HASH)
-    expect(hashNonce(RAW)).not.toContain('=') // base64url, sin padding
-    expect(hashNonce(RAW)).not.toContain('+')
+    expect(hashNonce(RAW)).toMatch(/^[0-9a-f]{64}$/) // hex de 32 bytes, sin base64url
+  })
+
+  // GUARDA del contrato cliente↔servidor: si divergen, One Tap muere con
+  // CredentialsSignin (regresión del flip Auth.js). Este test lo caza en CI.
+  it('round-trip: hashNonce (servidor) === hashedNonce (cliente) para el mismo raw', () => {
+    expect(hashNonce(RAW)).toBe(clientHashedNonce(RAW))
   })
 })
 

@@ -24,12 +24,16 @@ export interface VerifiedGoogleUser {
 }
 
 /**
- * Hash que Google pone en el claim `nonce` del id_token: base64url(SHA-256(nonceRaw)).
- * El cliente (GoogleOneTap) genera el nonce raw y envía su hash a Google; aquí
- * recomputamos desde el raw para compararlo. Pura y testeable.
+ * Hash que Google pone en el claim `nonce` del id_token: hex(SHA-256(nonceRaw)).
+ * DEBE usar la MISMA codificación que el cliente: GoogleOneTap.tsx genera el
+ * hashedNonce en HEX (convención canónica de Google One Tap / Supabase) y se lo pasa
+ * a `google.accounts.id.initialize`, que lo devuelve verbatim en el claim `nonce`.
+ * Si aquí se hashea en otra codificación (p.ej. base64url), la comparación falla
+ * SIEMPRE → One Tap muere con CredentialsSignin (regresión del flip Auth.js).
+ * Pura y testeable.
  */
 export function hashNonce(rawNonce: string): string {
-  return createHash('sha256').update(rawNonce).digest('base64url')
+  return createHash('sha256').update(rawNonce).digest('hex')
 }
 
 /**

@@ -45,8 +45,10 @@ describe('GUARDRAIL: "inscripción abierta" deriva de fechas, no de estado_proce
   })
 
   it('catalogadas (sin test) enlazan a la convocatoria oficial, no a una landing interna', () => {
-    // la SEO pasa seguimiento_url a la card...
-    expect(read('app/oposiciones/[filtro]/page.tsx')).toMatch(/seguimientoUrl=\{c\.seguimiento_url\}/)
+    // la lista de resultados pasa seguimiento_url a la card (el render de
+    // catalogadas se movió de [filtro]/page.tsx a FilteredResults.tsx en el
+    // refactor de filtros facetados; page.tsx delega en <FilteredResults>).
+    expect(read('app/oposiciones/[filtro]/FilteredResults.tsx')).toMatch(/seguimientoUrl=\{c\.seguimiento_url\}/)
     // ...y la card lo usa como href externo (target=_blank), nunca interno.
     const card = read('app/oposiciones/components/CatalogadaCard.tsx')
     expect(card).toMatch(/href=\{props\.seguimientoUrl/)
