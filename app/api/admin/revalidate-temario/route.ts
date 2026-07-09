@@ -19,6 +19,7 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { refreshTeoriaCatalog } from '@/lib/api/laws/teoriaCatalog'
 
 async function _POST() {
   // Next.js 16 requiere segundo argumento con el profile de cacheLife
@@ -30,9 +31,24 @@ async function _POST() {
   // Leyes (getLawsWithQuestionCounts, 30 días de caché)
   revalidateTag('laws', 'max')
 
+  // Catálogo de teoría (/teoria): totales cacheados (tag 'teoria').
+  revalidateTag('teoria', 'max')
+
+  // Refrescar la matview del catálogo de teoría (SSOT del listado + buscador).
+  // Best-effort: un fallo aquí (p.ej. matview aún no migrada) NO debe abortar
+  // la revalidación de cache, que es lo principal de este endpoint.
+  let teoriaCatalogRefreshed = true
+  try {
+    await refreshTeoriaCatalog()
+  } catch (err) {
+    teoriaCatalogRefreshed = false
+    console.error('⚠️ refreshTeoriaCatalog falló (no bloqueante):', (err as Error).message)
+  }
+
   return NextResponse.json({
     success: true,
-    message: 'Cache temario + landing + laws invalidada.',
+    message: 'Cache temario + landing + laws + teoria invalidada.',
+    teoriaCatalogRefreshed,
     timestamp: new Date().toISOString(),
   })
 }

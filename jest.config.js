@@ -13,6 +13,9 @@ export default {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // `server-only` es un guard de build; no-op en tests (permite importar
+    // fetchers/queries de servidor como oráculos de paridad).
+    '^server-only$': '<rootDir>/__mocks__/server-only.js',
     // Mock de módulos ESM que Jest no puede importar
     '^react-markdown$': '<rootDir>/__mocks__/react-markdown.js',
     '^@supabase/realtime-js$': '<rootDir>/__mocks__/@supabase/realtime-js.js',

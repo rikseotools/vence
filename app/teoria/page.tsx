@@ -1,84 +1,98 @@
-// app/teoria/page.tsx - PÁGINA PRINCIPAL DE TEORÍA CON SEO
+// app/teoria/page.tsx - PÁGINA PRINCIPAL DE TEORÍA CON SEO + BUSCADOR
 //
-// Edge caching con stale-while-revalidate (2026-05-17):
-// - revalidate=3600: la página se cachea 1h en CDN edge (CloudFront) (y en
-//   cualquier CDN si migráramos a otro hosting — `Cache-Control` es
-//   estándar HTTP).
-// - Cuando expira, el CDN sirve la versión stale al usuario instantáneo
-//   y regenera en background. Si la regeneración falla (statement
-//   timeout, BD saturada), sigue sirviendo stale.
-// - Resultado: el usuario nunca paga los ~4s de fetchLawsList ni ve
-//   "Error cargando leyes", independientemente de a qué lambda Fluid
-//   le toque la regeneración.
+// Listado del catálogo de leyes ("textos legales") con BÚSQUEDA y PAGINACIÓN
+// resueltas en SERVIDOR sobre la matview `mv_teoria_law_catalog`
+// (lib/api/laws/teoriaCatalog.ts). Escalable: cada render son 1-2 lookups
+// indexados (GIN pg_trgm + unaccent) + LIMIT/OFFSET, no un scan laws×articles.
 //
-// El unstable_cache interno con revalidate:false se mantiene como capa
-// adicional de Data Cache, complementaria al edge cache.
-export const revalidate = 3600
-
+// NOTA sobre caching: la página es dinámica porque depende de `searchParams`
+// (?q=, ?page=). Ya NO aplica el edge-cache estático anterior, pero tampoco
+// hace falta: la matview convirtió el antiguo fetchLawsList de ~4s en consultas
+// de milisegundos. Los totales de las stat cards se cachean aparte (Data Cache,
+// tag 'teoria') porque son estables entre búsquedas.
 import { unstable_cache } from 'next/cache'
-import { fetchLawsList } from '@/lib/teoriaFetchers'
 import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+import TeoriaSearch from '@/components/TeoriaSearch'
+import {
+  searchTeoriaCatalog,
+  getTeoriaCatalogTotals,
+  normalizeQuery,
+  parsePage,
+} from '@/lib/api/laws/teoriaCatalog'
 import type { Metadata } from 'next'
 
-// Cache permanente - revalidar manualmente con revalidateTag('teoria')
-const getCachedLaws = unstable_cache(
-  async () => {
-    console.log('🚀 Cargando leyes (sin cache)...')
-    return await fetchLawsList()
-  },
-  ['teoria-laws-list'],
-  {
-    revalidate: false,
-    tags: ['teoria'],
-  }
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
+
+// Totales para las stat cards, cacheados (estables entre búsquedas).
+// Se invalidan tras cambios de contenido vía revalidateTag('teoria') +
+// refreshTeoriaCatalog() en /api/admin/revalidate-temario.
+const getCachedTotals = unstable_cache(
+  async () => getTeoriaCatalogTotals(),
+  ['teoria-catalog-totals'],
+  { revalidate: false, tags: ['teoria'] }
 )
 
-export const metadata: Metadata = {
-  title: 'Teoria Legal - Estudia Legislacion Española',
-  description: 'Accede a todos los articulos de las principales leyes españolas. Constitucion, Ley 39/2015, Ley 40/2015 y mas. Teoria completa para oposiciones.',
-  keywords: 'teoria legal, legislacion española, constitucion, ley 39/2015, ley 40/2015, articulos, oposiciones, estudio',
-  openGraph: {
-    title: 'Teoria Legal - Estudia Legislacion Española',
-    description: 'Accede a todos los articulos de las principales leyes españolas. Constitucion, Ley 39/2015, Ley 40/2015 y mas. Teoria completa para oposiciones.',
-    url: 'https://www.vence.es/teoria',
-    type: 'website',
-    siteName: 'Vence - Preparacion de Oposiciones'
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Teoria Legal - Estudia Legislacion Española',
-    description: 'Accede a todos los articulos de las principales leyes españolas. Teoria completa para oposiciones.'
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  alternates: {
-    canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/teoria`
+type SearchParams = { q?: string; page?: string }
+
+export async function generateMetadata(
+  { searchParams }: { searchParams: Promise<SearchParams> }
+): Promise<Metadata> {
+  const sp = await searchParams
+  const q = normalizeQuery(sp.q)
+  const page = parsePage(sp.page)
+  const isFiltered = q.length > 0 || page > 1
+
+  return {
+    title: q
+      ? `Buscar "${q}" en Teoria Legal | Vence`
+      : 'Teoria Legal - Estudia Legislacion Española',
+    description:
+      'Accede a todos los articulos de las principales leyes españolas. Constitucion, Ley 39/2015, Ley 40/2015 y mas. Teoria completa para oposiciones.',
+    alternates: { canonical: `${SITE_URL}/teoria` },
+    // Las variantes filtradas/paginadas no se indexan: se consolidan en /teoria.
+    robots: isFiltered
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
   }
 }
 
-export default async function TeoriaMainPage() {
-  let laws: Array<{ id: string; short_name: string; name: string; description: string | null; slug: string; articleCount: number }> = []
+// Construye el href de paginación preservando la query activa.
+function buildPageHref(q: string, page: number): string {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  if (page > 1) params.set('page', String(page))
+  const qs = params.toString()
+  return qs ? `/teoria?${qs}` : '/teoria'
+}
+
+export default async function TeoriaMainPage(
+  { searchParams }: { searchParams: Promise<SearchParams> }
+) {
+  const sp = await searchParams
+  const q = normalizeQuery(sp.q)
+  const requestedPage = parsePage(sp.page)
+
+  let totals = { totalLaws: 0, totalArticles: 0 }
+  let result = { laws: [], total: 0, page: 1, pageSize: 48, totalPages: 1, q } as Awaited<
+    ReturnType<typeof searchTeoriaCatalog>
+  >
   let error: string | null = null
 
   try {
-    laws = await getCachedLaws()
+    ;[totals, result] = await Promise.all([
+      getCachedTotals(),
+      searchTeoriaCatalog({ q, page: requestedPage }),
+    ])
   } catch (err) {
-    console.error('Error cargando leyes:', err)
+    console.error('Error cargando catálogo de teoría:', err)
     error = (err as Error).message
   }
 
-  const totalArticles = laws.reduce((sum, law) => sum + law.articleCount, 0)
+  const { laws, total, page, totalPages, pageSize } = result
+  const firstIdx = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const lastIdx = Math.min(page * pageSize, total)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -109,7 +123,7 @@ export default async function TeoriaMainPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-600">Leyes Disponibles</p>
-                <p className="text-2xl font-bold text-gray-900">{laws.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{totals.totalLaws}</p>
               </div>
             </div>
           </div>
@@ -121,7 +135,7 @@ export default async function TeoriaMainPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-600">Articulos Totales</p>
-                <p className="text-2xl font-bold text-gray-900">{totalArticles}</p>
+                <p className="text-2xl font-bold text-gray-900">{totals.totalArticles}</p>
               </div>
             </div>
           </div>
@@ -138,6 +152,22 @@ export default async function TeoriaMainPage() {
             </div>
           </div>
         </div>
+
+        {/* Buscador (sincroniza ?q= en la URL → búsqueda en servidor) */}
+        <TeoriaSearch initialQuery={q} />
+
+        {/* Línea de resultados */}
+        {!error && (
+          <p className="text-sm text-gray-600 mb-4" aria-live="polite">
+            {total === 0
+              ? q
+                ? <>No hay leyes que coincidan con <strong>&ldquo;{q}&rdquo;</strong>.</>
+                : 'No hay leyes disponibles.'
+              : q
+                ? <>Mostrando <strong>{firstIdx}-{lastIdx}</strong> de <strong>{total}</strong> leyes para <strong>&ldquo;{q}&rdquo;</strong></>
+                : <>Mostrando <strong>{firstIdx}-{lastIdx}</strong> de <strong>{total}</strong> leyes</>}
+          </p>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
@@ -158,35 +188,24 @@ export default async function TeoriaMainPage() {
         {laws.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {laws.map((law) => (
-              <Link
-                key={law.id}
-                href={`/teoria/${law.slug}`}
-                className="group"
-              >
-                <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border hover:border-blue-200 p-6">
+              <Link key={law.id} href={`/teoria/${law.slug}`} className="group">
+                <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border hover:border-blue-200 p-6 h-full">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
                         {law.short_name}
                       </h3>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                        {law.name}
-                      </p>
-
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{law.name}</p>
                       {law.description && (
-                        <p className="text-xs text-gray-500 mt-2 line-clamp-3">
-                          {law.description}
-                        </p>
+                        <p className="text-xs text-gray-500 mt-2 line-clamp-3">{law.description}</p>
                       )}
                     </div>
                   </div>
-
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center text-sm text-gray-500">
                       <DocumentTextIcon className="h-4 w-4 mr-1" />
                       <span>{law.articleCount} articulos</span>
                     </div>
-
                     <div className="text-blue-600 group-hover:text-blue-700">
                       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -197,14 +216,57 @@ export default async function TeoriaMainPage() {
               </Link>
             ))}
           </div>
-        ) : !error && (
+        ) : !error && q ? (
+          <div className="text-center py-12">
+            <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Sin resultados</h3>
+            <p className="text-gray-600">
+              Prueba con otro término (por nombre de la ley o sus siglas).
+            </p>
+          </div>
+        ) : !error ? (
           <div className="text-center py-12">
             <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay contenido disponible</h3>
-            <p className="text-gray-600">
-              No se encontraron leyes con contenido de teoria disponible.
-            </p>
+            <p className="text-gray-600">No se encontraron leyes con contenido de teoria disponible.</p>
           </div>
+        ) : null}
+
+        {/* Paginación (enlaces server-side → funciona sin JS) */}
+        {totalPages > 1 && (
+          <nav className="mt-10 flex items-center justify-center gap-2" aria-label="Paginación">
+            {page > 1 ? (
+              <Link
+                href={buildPageHref(q, page - 1)}
+                rel="prev"
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              >
+                ← Anterior
+              </Link>
+            ) : (
+              <span className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed">
+                ← Anterior
+              </span>
+            )}
+
+            <span className="px-4 py-2 text-sm text-gray-600">
+              Pagina <strong>{page}</strong> de <strong>{totalPages}</strong>
+            </span>
+
+            {page < totalPages ? (
+              <Link
+                href={buildPageHref(q, page + 1)}
+                rel="next"
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              >
+                Siguiente →
+              </Link>
+            ) : (
+              <span className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed">
+                Siguiente →
+              </span>
+            )}
+          </nav>
         )}
 
         <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
