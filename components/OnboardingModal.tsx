@@ -1736,8 +1736,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_ayuntamiento_salamanca', 'auxiliar_administrativo_estado'],
-  'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
+  'Castilla y León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_ayuntamiento_salamanca', 'auxiliar_administrativo_estado'],
+  'Castile and León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
@@ -1810,6 +1810,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_ayuntamiento_valladolid', // C2 Valladolid (OEP 2026, 23 plz)
   'auxiliar_administrativo_ayuntamiento_salamanca', // C2 Salamanca (OEP 2026, 17 plz)
   'enfermero_sas_andalucia',          // sanitaria
+  'enfermero_sacyl',                  // sanitaria Castilla y León
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid

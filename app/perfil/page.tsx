@@ -453,6 +453,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'enfermero_sacyl',
+      label: 'Enfermero/a del SACYL (Castilla y León)',
+      data: {
+        name: 'Enfermero/a del Servicio de Salud de Castilla y León (SACYL)',
+        slug: 'enfermero-sacyl',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
       value: 'tramitacion_procesal',
       label: 'Tramitación Procesal y Administrativa',
       data: {

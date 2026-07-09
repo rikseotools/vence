@@ -1,0 +1,6 @@
+// app/enfermero-sacyl/test/tema/[numero]/page.tsx
+import TemaTestPage from '@/components/test/TemaTestPage'
+
+export default function Page({ params }: { params: Promise<{ numero: string }> }) {
+  return <TemaTestPage oposicionSlug="enfermero-sacyl" params={params} />
+}
