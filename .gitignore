@@ -79,3 +79,9 @@ backend/infra/.terraform.lock.hcl
 
 # Backups locales de datos (pre-DROP, etc.) — nunca commitear (contienen user_ids)
 backups/
+
+# OpofimáticaEstado scraper — datos de sesión sensibles (NO commitear)
+scripts/.opofimatica-session/
+scripts/opofimatica-cookies.json
+scripts/opofimatica-capture.json
+scripts/opofimatica-drive-capture.json

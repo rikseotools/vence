@@ -324,6 +324,8 @@ El agente determina uno de estos 12 estados:
 > ⚠️ **ACTUALIZADO (02/06/2026): las leyes virtuales/técnicas YA TIENEN contenido y `article_ok` SÍ aplica.**
 > Las leyes virtuales de ofimática/informática (`Excel 365` —27 arts—, `Word 365`, `Informática Básica`, `La Red Internet`, `Outlook 365`, `Access 365`) tienen **artículos contenedores granulares con contenido real** (13k–23k caracteres: atajos, funciones, hardware, protocolos…). Por tanto la pregunta técnica se verifica **igual que una legislativa**: hay que comprobar que el **artículo contenedor cubre literalmente** el supuesto (`article_ok`, criterio §3.1), además de `answer_ok` y `explanation_ok`.
 >
+> 🖥️🌐 **Variante ESCRITORIO vs WEB al verificar `answer_ok` de Word/Excel:** hay 3 contenedores por versión (`Word/Excel 365` común, `· Escritorio`, `· Web`). La respuesta de un atajo/función puede diferir entre escritorio y web (en la Web las teclas F no van salvo Excel F2/F4 y Word F3). Verifica `answer_ok` contra la fuente de Microsoft **de la variante a la que cuelga la pregunta**, no asumas escritorio. Modelo: `crear-nueva-oposicion.md` §3c + memoria `project_office_web_escritorio_split`.
+>
 > La diferencia con una ley normal es **solo el estado visible final** (`tech_approved` en vez de `approved`) y la **fuente** (Microsoft Support en español, §8.1 fuentes), NO que se salte `article_ok`.
 
 Matriz vigente (igual que «leyes normales», pero el estado verde es `tech_*`):

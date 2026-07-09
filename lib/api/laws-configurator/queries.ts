@@ -7,15 +7,25 @@ function getLawsConfDb() {
 }
 import { questions, articles, laws } from '@/db/schema'
 import { eq, sql, and, isNotNull } from 'drizzle-orm'
+import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import type { GetAllLawsResponse, LawData } from './schemas'
 
 // ============================================
 // OBTENER TODAS LAS LEYES CON ESTADÍSTICAS
 // ============================================
 
-export async function getAllLawsWithStats(): Promise<GetAllLawsResponse> {
+export async function getAllLawsWithStats(positionType?: string | null): Promise<GetAllLawsResponse> {
   try {
     const db = getLawsConfDb()
+
+    // 🎯 Filtro por oposición: si se pasa positionType, solo cuenta preguntas de
+    // ARTÍCULOS que están en su topic_scope (su temario), no la ley entera. Así el
+    // conteo que ve el usuario coincide con el test acotado que recibe, y una ley
+    // sin artículos en su temario desaparece de la lista. Sin positionType → todas
+    // (descubrimiento/anónimo). Misma semántica de scope que isLawOnlyMode/modo tema.
+    const positionFilter = positionType
+      ? articleInPositionScopeExists({ lawId: articles.lawId, articleNumber: articles.articleNumber, positionType })
+      : undefined
 
     // Query con joins: questions -> articles -> laws
     // Cuenta preguntas activas por ley
@@ -32,7 +42,8 @@ export async function getAllLawsWithStats(): Promise<GetAllLawsResponse> {
       .where(and(
         eq(questions.isActive, true),
         eq(laws.isActive, true),
-        isNotNull(laws.shortName)
+        isNotNull(laws.shortName),
+        positionFilter
       ))
       .groupBy(laws.shortName, laws.name)
       .orderBy(sql`count(distinct ${questions.id}) desc`)

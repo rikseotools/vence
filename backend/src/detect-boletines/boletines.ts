@@ -21,6 +21,13 @@ export interface BoletinHit {
   url: string
   /** Texto pre-filtrado: una línea por disposición candidata a convocatoria C1/C2. */
   candidatesText: string
+  /**
+   * Texto pre-filtrado: una línea por disposición candidata a MODIFICACIÓN DE
+   * TEMARIO/PROGRAMA (Ordenes de programas exigibles / materias). Se extrae del
+   * MISMO sumario ya descargado, sin fetch extra. Alimenta el sensor
+   * `temario_change` (cierra el gap del caso Cantabria PRE/12/2026).
+   */
+  temarioText: string
 }
 
 export interface BoletinAdapter {
@@ -28,7 +35,14 @@ export interface BoletinAdapter {
   regionName: string
   /** sensor_type para la señal — debe estar en el CHECK de oep_detection_signals. */
   sensorType: 'regional_scan' | 'boe_api'
-  /** Devuelve candidatos de convocatoria para esa fecha, o null si no hay boletín. */
+  /**
+   * `true` si el boletín NO expone el sumario por fecha (solo "boletín vigente"):
+   * el sumario es el mismo para cualquier `date`. El servicio lo escanea UNA sola
+   * vez por pasada (no por cada día de la ventana) y confía en el dedup por norma.
+   * Patrón "leer lo último + dedup" (igual que bonAdapter en el radar).
+   */
+  dateless?: boolean
+  /** Devuelve candidatos (convocatoria + temario) para esa fecha, o null si no hay boletín. */
   scan(date: Date): Promise<BoletinHit | null>
 }
 
@@ -46,6 +60,43 @@ const NOISE_RE = /(relaci[oó]n de aspirantes|lista de admitidos|lista provision
 /** ¿Esta línea/disposición huele a convocatoria de ingreso C1/C2 (de cualquier cuerpo)? */
 export function looksLikeC1C2Convocatoria(text: string): boolean {
   return INGRESO_RE.test(text) && !NOISE_RE.test(text)
+}
+
+// --- Heurística de MODIFICACIÓN DE TEMARIO / PROGRAMA (sensor temario_change) ---
+//
+// Ancla robusta: las Ordenes que definen o modifican el temario de un cuerpo
+// hablan de "programas exigibles" / "programa de materias" / "temario". Ej. real
+// que se nos escapó: Orden PRE/12/2026 "…por la que se modifica la Orden PRE/76/2024
+// …por la que se hacen públicos los PROGRAMAS EXIGIBLES en los procesos selectivos…".
+// El pre-filtro es amplio a propósito (recall); el LLM (extractTemarioChanges) afina.
+const PROGRAMA_RE =
+  /(programas?\s+exigibles|programas?\s+de\s+materias|materias\s+exigibles|relaci[oó]n\s+de\s+materias|cuestionario\s+de\s+materias|temario\s+(?:de|para|del|exigible)|programa\s+de\s+la\s+(?:fase|oposici[oó]n))/i
+// Descarta lo que menciona "programa" pero NO es temario de oposición (ej. programas
+// de subvenciones/ayudas/formación no reglada).
+const PROGRAMA_NOISE_RE =
+  /(programa\s+de\s+(?:ayudas|subvenciones|fomento|desarrollo\s+rural|cooperaci[oó]n|inversiones))/i
+
+/** ¿Esta disposición huele a aprobación/modificación del TEMARIO/PROGRAMA de un cuerpo? */
+export function looksLikeTemarioChange(text: string): boolean {
+  return PROGRAMA_RE.test(text) && !PROGRAMA_NOISE_RE.test(text)
+}
+
+/**
+ * Extrae de un sumario en texto las disposiciones candidatas a MODIFICACIÓN DE
+ * TEMARIO/PROGRAMA. PURA: testeable con fixture. Misma mecánica que
+ * extractCandidatesFromSumarioText pero con la heurística de temario.
+ */
+export function extractTemarioCandidatesFromSumarioText(text: string, maxPerDay = 20): string[] {
+  const parts = text.split(DISPOSICION_SPLIT_RE)
+  const hits: string[] = []
+  for (const p of parts) {
+    if (looksLikeTemarioChange(p)) {
+      const title = p.slice(0, 300).replace(/\s+(BOCYL|BOE|BOJA|BOCM|BOC)-.*$/i, '').trim()
+      if (title) hits.push(title)
+    }
+    if (hits.length >= maxPerDay) break
+  }
+  return hits
 }
 
 export function htmlToText(html: string): string {
@@ -71,8 +122,17 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * C1/C2. PURA: se testea con una fixture. Parte por los encabezados de
  * disposición (RESOLUCIÓN/ORDEN/ACUERDO/EXTRACTO) y filtra por heurística.
  */
+// Lookahead que trocea un sumario en disposiciones. Cubre MAYÚSCULAS (BOE, BOCYL)
+// y Title Case (BOJA, BOPA, BOC-Cantabria… "Orden"/"Resolución"). NO matchea el
+// "orden" en minúscula de la prosa (cabecera = primera letra mayúscula o todo caps).
+// El negative lookbehind evita partir en referencias INTERNAS a otra norma dentro
+// del mismo título ("…por la que se modifica la Orden PRE/76/2024…"): así el título
+// completo (que puede citar la Orden que modifica) queda en un solo trozo.
+const DISPOSICION_SPLIT_RE =
+  /(?<!\b(?:la|el|de|del|las|los|una?|dicha|misma|citada|referida|mencionada)\s)(?=Resoluci[óo]n |RESOLUCI[ÓO]N |Orden |ORDEN |Acuerdo |ACUERDO |Decreto |DECRETO |Extracto |EXTRACTO )/
+
 export function extractCandidatesFromSumarioText(text: string, maxPerDay = 40): string[] {
-  const parts = text.split(/(?=RESOLUCI[ÓO]N|ORDEN |ACUERDO |EXTRACTO )/)
+  const parts = text.split(DISPOSICION_SPLIT_RE)
   const hits: string[] = []
   for (const p of parts) {
     if (looksLikeC1C2Convocatoria(p)) {
@@ -106,8 +166,14 @@ export const bocylAdapter: BoletinAdapter = {
     }
     // Sin sumario real (días sin boletín devuelven una página corta)
     if (html.length < 2000) return null
-    const candidates = extractCandidatesFromSumarioText(htmlToText(html))
-    return { url, candidatesText: candidates.join('\n') }
+    const text = htmlToText(html)
+    const candidates = extractCandidatesFromSumarioText(text)
+    const temario = extractTemarioCandidatesFromSumarioText(text)
+    return {
+      url,
+      candidatesText: candidates.join('\n'),
+      temarioText: temario.join('\n'),
+    }
   },
 }
 
@@ -145,7 +211,12 @@ export const boeAdapter: BoletinAdapter = {
     }
     const titulos = collectBoeTitulos(json)
     const candidates = titulos.filter((t) => looksLikeC1C2Convocatoria(t)).map((t) => t.slice(0, 260))
-    return { url, candidatesText: candidates.join('\n') }
+    const temario = titulos.filter((t) => looksLikeTemarioChange(t)).map((t) => t.slice(0, 300))
+    return {
+      url,
+      candidatesText: candidates.join('\n'),
+      temarioText: temario.join('\n'),
+    }
   },
 }
 

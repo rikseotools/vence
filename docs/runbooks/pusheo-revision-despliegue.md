@@ -16,6 +16,48 @@ Ambos: build (podman) → push ECR → task def pineada por **digest** clonando 
 - **Infra:** cuenta AWS `349744179687`, perfil `vence`, región `eu-west-2`. Cluster ECS `vence-backend`, servicios `vence-frontend` y `vence-backend`. Front y back detrás del **ALB** `vence-backend-alb`, con **CloudFront** (`E1EH4WF1H7ZGLA`, `www.vence.es`) delante del front y `api.vence.es` para el back.
 - **GHA auto-deploy DESACTIVADO** (metía builds Supabase por sorpresa). Deploy manual con estos scripts.
 
+## Pre-deploy: árbol limpio + commit pusheado + CI verde (guardarraíles del script)
+
+Desde 07-08/07/2026 los scripts NO despliegan a ciegas. Antes del build comprueban dos cosas y **abortan** si no se cumplen:
+
+1. **Árbol de trabajo LIMPIO** (`git status --porcelain`). El build usa el **WORKING TREE** (podman `COPY . .`), así que un árbol sucio desplegaría cambios a medias — **muy peligroso con sesiones paralelas editando** (ver abajo). Override deliberado: `ALLOW_DIRTY=1`.
+2. **CI VERDE en GHA para el SHA de HEAD** (`[gate CI]`). Consulta los check-runs de GitHub Actions del commit y aborta si:
+   - **no hay runs** → el commit NO está pusheado (el CI corre en push a `main`; mensaje *"¿Has hecho git push?"*).
+   - **algún check de CÓDIGO en ROJO** (unit / typecheck / lint). `integration` **NO** bloquea (señal aparte, ver abajo).
+   - **algún check de CÓDIGO aún EN CURSO** → espera a que acabe y reintenta.
+   Override: `SKIP_CI_GATE=1` (necesita `GITHUB_PAT` en `.env.local` + `jq`).
+
+**Flujo canónico, por tanto:**
+```bash
+git add -A && git commit -m "..."     # TODO lo que quieras desplegar (build = working tree)
+git push origin main                  # dispara el CI en GHA
+# esperar a que el CI de CÓDIGO (unit+typecheck+lint) esté VERDE
+scripts/deploy-frontend.sh            # el gate confirma verde y despliega
+```
+Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs). Es intencional: no desplegar código que no pasó CI.
+
+> **CI — dónde corre:** el workflow (`.github/workflows/test.yml`) dispara en **`pull_request` y push a `main`**, NO en push de una rama suelta. Para tener CI sobre una feature-branch (worktree, ver abajo) hay que **abrir un PR** — aunque seas solo tú: el PR es el mecanismo que dispara el CI, no una ceremonia de aprobación.
+
+> ⚠️ **El gate exige solo los checks de CÓDIGO verdes (unit+typecheck+lint).** `integration` es una **señal aparte que NO bloquea**: pega a la BD real (readonly) y puede estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión, un test de otra feature a medias) — cosas ajenas al código que despliegas. **Decisión tomada (Manuel, 08/07):** el gate del script trata `integration` como informativa (la reporta pero no aborta). Aun así, míralo antes de soltar: si el rojo SÍ es de tu código, arréglalo primero.
+>
+> ⚠️ **Sincronía script ↔ origin (gotcha real 09/07):** el gate solo-código vive en el **script** `deploy-{frontend,backend}.sh`. Si despliegas desde un checkout de `origin/main` cuyo script sea una versión ANTERIOR (gate "exige todo"), toparás con `integration` roja y el deploy abortará. En ese caso: verifica a mano que unit+typecheck+lint están verdes (GH API del SHA) y usa `SKIP_CI_GATE=1` de forma consciente. Y sincroniza script+manual en origin para que no vuelva a pasar.
+
+## Sesiones paralelas (varias sesiones de Claude a la vez)
+
+**Convención (desde 09/07): un git worktree + rama por sesión** — directorio propio, misma `.git`. Ninguna sesión toca los ficheros de otra. Es la solución al lío de compartir el mismo directorio (stash / merge / colisiones / barrer WIP ajeno). Detalle: memoria `feedback_worktree_por_sesion_paralela`.
+
+```bash
+git fetch origin
+git worktree add -b feat/<tarea> <ruta-fuera-del-repo> origin/main   # rama desde origin limpio
+cp  <repo>/.env.local  <wt>/.env.local        # un worktree NO trae gitignored (o symlink)
+ln -s <repo>/node_modules <wt>/node_modules   # deps compartidas; QUITAR antes de `podman build`
+```
+- **Cierre de tarea:** cherry-pick del commit sobre `origin/main` (en un worktree) o merge del branch; **NUNCA** pushear el `main` local divergente (arrastra duplicados de otras sesiones).
+- **Deploy:** SIEMPRE desde un checkout **LIMPIO de `origin/main`** (worktree con `.env.local`), no desde el dir compartido con WIP a medias — el build es `COPY . .` del working tree, así que un árbol sucio mete trabajo ajeno en la imagen.
+- **RDS desde tsx/jest en el worktree:** `NODE_TLS_REJECT_UNAUTHORIZED=0` al ARRANCAR el proceso + URL con `sslmode=no-verify` (Node cachea el flag; postgres.js valida el cert self-signed).
+
+**Modelo VIEJO (compartir el mismo directorio — EVITAR):** commitear a `main` local sin push y trabajar todos en `/home/manuel/Documentos/github/vence` provoca que cambiar de rama / `git add -A` / stash intercambie o barra ficheros de otras sesiones (08/07: un checkpoint se llevó 4 ficheros ajenos). Si por lo que sea trabajas ahí: **commit atómico** (`git add -u` de TUS ficheros, nunca `-A`) y **árbol limpio** antes de desplegar (el guardarraíl te frena si no).
+
 ## Frontend — arquitectura de assets (CRÍTICO: por qué no se congela al desplegar)
 
 **Problema histórico (05/07/2026):** los chunks `_next/static/*` se servían desde el **contenedor efímero**. Cada deploy reemplazaba el contenedor → chunks viejos 404 → `ChunkLoadError` → **app congelada** para usuarios en el bundle anterior (caso Nila). Ver memoria `project_deploy_freeze_chunks_s3`.

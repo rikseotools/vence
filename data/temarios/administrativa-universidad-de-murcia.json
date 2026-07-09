@@ -1,0 +1,248 @@
+{
+  "slug": "administrativa-universidad-de-murcia",
+  "position_type": "administrativa_universidad_de_murcia",
+  "categoria": "C1",
+  "convocatoria": "BORM núm. 146, 27/06/2026 (Anexo II) — BOE-A-2026-14469",
+  "programa_url": "https://www.borm.es/services/boletin/ano/2026/numero/146/pdf",
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "I. Organización del Estado"
+    },
+    {
+      "numero": 2,
+      "titulo": "II. Derecho Administrativo"
+    },
+    {
+      "numero": 3,
+      "titulo": "III. Administración de Recursos Humanos"
+    },
+    {
+      "numero": 4,
+      "titulo": "IV. Gestión Económico-Financiera"
+    },
+    {
+      "numero": 5,
+      "titulo": "V. Organización Universitaria"
+    }
+  ],
+  "temas": [
+    {
+      "topic_number": 101,
+      "bloque": 1,
+      "display": 1,
+      "title": "La Constitución Española: Título I. Derechos y deberes fundamentales + LO 3/2007 Igualdad",
+      "epigrafe": "La Constitución Española de 1978: Título I. Derechos y deberes fundamentales. La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres: Título I. El principio de igualdad y la tutela contra la discriminación. Título V: Capítulo I. Criterios de actuación de las Administraciones Públicas."
+    },
+    {
+      "topic_number": 102,
+      "bloque": 1,
+      "display": 2,
+      "title": "La Constitución Española: Título III. Las Cortes Generales",
+      "epigrafe": "La Constitución Española de 1978: Título III. Las Cortes Generales."
+    },
+    {
+      "topic_number": 103,
+      "bloque": 1,
+      "display": 3,
+      "title": "La Constitución Española: Título IV. El Gobierno y la Administración",
+      "epigrafe": "La Constitución Española de 1978: Título IV. El Gobierno y la Administración."
+    },
+    {
+      "topic_number": 201,
+      "bloque": 2,
+      "display": 1,
+      "title": "Ley 40/2015 (LRJSP): órganos, competencias, funcionamiento electrónico y convenios",
+      "epigrafe": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público: Título Preliminar: Capítulo II.- De los órganos de las Administraciones Públicas: Sección 1.ª: De los órganos administrativos. Sección 2.ª: Competencias; Sección 4.ª: Abstención y recusación. Título Preliminar, Capítulo V.- Funcionamiento electrónico del sector público. Título Preliminar, Capítulo VI.- De los convenios."
+    },
+    {
+      "topic_number": 202,
+      "bloque": 2,
+      "display": 2,
+      "title": "Ley 39/2015 (LPAC): interesados y actividad de las Administraciones Públicas",
+      "epigrafe": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: Título I.- De los interesados en el procedimiento. Título II.- De la actividad de las Administraciones Públicas."
+    },
+    {
+      "topic_number": 203,
+      "bloque": 2,
+      "display": 3,
+      "title": "Ley 39/2015 (LPAC): actos administrativos, procedimiento común y potestad reglamentaria",
+      "epigrafe": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: Título III.- De los actos administrativos. Título IV.- De las disposiciones sobre el procedimiento administrativo común. Título VI. De la iniciativa legislativa y de la potestad para dictar reglamentos y otras disposiciones."
+    },
+    {
+      "topic_number": 204,
+      "bloque": 2,
+      "display": 4,
+      "title": "Ley 39/2015 (LPAC): revisión de los actos en vía administrativa",
+      "epigrafe": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: Título V.- De la revisión de los actos en vía administrativa."
+    },
+    {
+      "topic_number": 205,
+      "bloque": 2,
+      "display": 5,
+      "title": "LO 3/2018 de Protección de Datos: principios y derechos",
+      "epigrafe": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales: Título II. Principios de protección de datos. Título III. Derechos de las personas."
+    },
+    {
+      "topic_number": 206,
+      "bloque": 2,
+      "display": 6,
+      "title": "Ley 9/2017 de Contratos del Sector Público: disposiciones generales y tipos de contratos",
+      "epigrafe": "Ley 9/2017, de Contratos del Sector Público: Título Preliminar: Capítulo I, Sección 1.ª: Objeto y ámbito de aplicación. Capítulo II: Sección 1.ª Delimitación de los tipos contractuales. Sección 2.ª Contratos sujetos a regulación armonizada: Delimitación general. Umbrales. Sección 3.ª Contratos administrativos y contratos privados. Libro Primero, Título I, Capítulo III: Perfección y forma del contrato. Libro Primero, Título II, Capítulo I: Órgano de contratación. Artículo 118 y Disposición adicional quincuagésima cuarta: contratos menores."
+    },
+    {
+      "topic_number": 207,
+      "bloque": 2,
+      "display": 7,
+      "title": "Ley 19/2013 de Transparencia: ámbito y derecho de acceso a la información pública",
+      "epigrafe": "Ley 19/2013, de Transparencia, acceso a la información pública, y buen gobierno: Título Preliminar. Título I: Capítulo I: Ámbito subjetivo de aplicación. Capítulo III Derecho de acceso a la información pública: Sección 1.ª Régimen general, Sección 2.ª Ejercicio del derecho de acceso a la información pública."
+    },
+    {
+      "topic_number": 301,
+      "bloque": 3,
+      "display": 1,
+      "title": "TREBEP (RDL 5/2015): objeto y ámbito de aplicación",
+      "epigrafe": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Título I: Objeto, ámbito de aplicación. Disposición final cuarta: Entrada en vigor."
+    },
+    {
+      "topic_number": 302,
+      "bloque": 3,
+      "display": 2,
+      "title": "TREBEP (RDL 5/2015): clases de personal",
+      "epigrafe": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Título II: Clases de personal."
+    },
+    {
+      "topic_number": 303,
+      "bloque": 3,
+      "display": 3,
+      "title": "TREBEP (RDL 5/2015): derechos y deberes. Código de Conducta",
+      "epigrafe": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Título III: Derechos y deberes. Código de Conducta de los empleados públicos: Capítulos I, II, III, V y VI."
+    },
+    {
+      "topic_number": 304,
+      "bloque": 3,
+      "display": 4,
+      "title": "TREBEP (RDL 5/2015): adquisición/pérdida de la relación de servicio, situaciones y régimen disciplinario",
+      "epigrafe": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Título IV: Adquisición y pérdida de la relación de servicio. Título VI: Situaciones administrativas. Título VII: Régimen disciplinario."
+    },
+    {
+      "topic_number": 305,
+      "bloque": 3,
+      "display": 5,
+      "title": "Incompatibilidades: Ley 53/1984 y RD 598/1985",
+      "epigrafe": "Ley 53/1984, de Incompatibilidades del personal al servicio de las Administraciones Públicas y Real Decreto 598/1985, de 30 de abril sobre incompatibilidades del personal al servicio de la Administración del Estado, de la Seguridad Social y de los Entes, Organismos y Empresas dependientes."
+    },
+    {
+      "topic_number": 306,
+      "bloque": 3,
+      "display": 6,
+      "title": "LOSU (LO 2/2023): personal de las universidades públicas (PDI y PTGAS)",
+      "epigrafe": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario: Título IX. Régimen específico de las universidades públicas: Capítulo IV. Personal docente e investigador de las universidades públicas. Capítulo V. Personal técnico, de gestión y de administración y servicios de las universidades públicas."
+    },
+    {
+      "topic_number": 307,
+      "bloque": 3,
+      "display": 7,
+      "title": "Seguridad Social (RDL 8/2015): Régimen General, cotización y acción protectora",
+      "epigrafe": "Real Decreto Legislativo 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social: Régimen General de la Seguridad Social. Campo de aplicación. Afiliación de trabajadores. Altas y Bajas. Bases y tipos de cotización. Acción Protectora: Alcance y conceptos de accidente de trabajo, enfermedad profesional, accidentes no laborales y enfermedades comunes. Prestaciones: Incapacidad temporal, nacimiento y cuidado de menor, riesgo durante el embarazo, riesgo durante la lactancia natural. Incapacidad permanente en su modalidad contributiva. Jubilación en su modalidad contributiva."
+    },
+    {
+      "topic_number": 308,
+      "bloque": 3,
+      "display": 8,
+      "title": "Prevención de Riesgos Laborales (Ley 31/1995): objeto, derechos y obligaciones",
+      "epigrafe": "Ley 31/1995, de prevención de Riesgos Laborales: Capítulo I: Objeto, ámbito de aplicación y definiciones. Capítulo III: Derechos y obligaciones."
+    },
+    {
+      "topic_number": 401,
+      "bloque": 4,
+      "display": 1,
+      "title": "LOSU (LO 2/2023): régimen económico y financiero de las universidades públicas",
+      "epigrafe": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario: Título IX. Régimen específico de las universidades públicas: Capítulo III. Régimen económico y financiero de las universidades públicas."
+    },
+    {
+      "topic_number": 402,
+      "bloque": 4,
+      "display": 2,
+      "title": "El presupuesto de la Universidad de Murcia: características, estructura, créditos y modificaciones",
+      "epigrafe": "El presupuesto de la Universidad de Murcia: Características y estructura. Créditos. Modificaciones presupuestarias."
+    },
+    {
+      "topic_number": 403,
+      "bloque": 4,
+      "display": 3,
+      "title": "Ordenación del gasto y del pago en la Universidad de Murcia. Documentos contables. Control interno",
+      "epigrafe": "Ordenación del gasto y ordenación del pago. Órganos competentes en la Universidad de Murcia. Fases del procedimiento. Documentos contables que intervienen en la ejecución de los gastos y de los pagos. Control Interno."
+    },
+    {
+      "topic_number": 404,
+      "bloque": 4,
+      "display": 4,
+      "title": "Retribuciones de los empleados públicos. Nóminas: altas, bajas y modificaciones",
+      "epigrafe": "Retribuciones de los empleados públicos. Nóminas: altas, bajas y modificaciones: su justificación. Devengo, liquidación y pago de derechos económicos."
+    },
+    {
+      "topic_number": 405,
+      "bloque": 4,
+      "display": 5,
+      "title": "Gestión del gasto: bienes y servicios, inversión, transferencias",
+      "epigrafe": "Gestión del gasto: Gastos en bienes y servicios. Gastos de inversión. Transferencias corrientes y de capital."
+    },
+    {
+      "topic_number": 406,
+      "bloque": 4,
+      "display": 6,
+      "title": "Pagos: concepto y clasificación. Anticipos de caja fija. Pagos a justificar",
+      "epigrafe": "Pagos: concepto y clasificación. Pagos por obligaciones presupuestarias. Pagos por ejercicios cerrados. Anticipos de caja fija. Pagos \"a justificar\". Justificación de libramientos."
+    },
+    {
+      "topic_number": 501,
+      "bloque": 5,
+      "display": 1,
+      "title": "LOSU (LO 2/2023): funciones y autonomía, cooperación e internacionalización del sistema universitario",
+      "epigrafe": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario: Título I. Funciones del sistema universitario y autonomía de las universidades. Título V. Cooperación, coordinación y participación en el sistema universitario. Título VII. Internacionalización del sistema universitario: Alianzas interuniversitarias. Títulos y programas conjuntos. Movilidad internacional de la comunidad universitaria."
+    },
+    {
+      "topic_number": 502,
+      "bloque": 5,
+      "display": 2,
+      "title": "Los Estatutos de la Universidad de Murcia: organización, gobierno y estructuras académicas",
+      "epigrafe": "Los Estatutos de la Universidad de Murcia: Título I. Organización, gobierno, representación y participación en la Universidad de Murcia: Capítulo I. Estructura y órganos. Capítulo II. Órganos generales de representación, participación y gobierno. Capítulo III. Centros, departamentos, institutos y otras estructuras académicas. Título V: Artículo 167. Resoluciones de órganos de gobierno y su impugnación."
+    },
+    {
+      "topic_number": 503,
+      "bloque": 5,
+      "display": 3,
+      "title": "Organización de las enseñanzas universitarias: RD 822/2021 y RD 99/2011 (doctorado)",
+      "epigrafe": "Real Decreto 822/2021, de 28 de septiembre, por el que se establece la organización de las enseñanzas universitarias y del procedimiento de aseguramiento de su calidad. Real Decreto 99/2011, de 28 de enero, por el que se regulan las enseñanzas oficiales de doctorado."
+    },
+    {
+      "topic_number": 504,
+      "bloque": 5,
+      "display": 4,
+      "title": "Régimen de acceso y admisión: RD 534/2024, normativa UMU y Estatutos (estudiantado)",
+      "epigrafe": "Régimen de acceso y admisión: R.D. 534/2024, de 11 de junio, por el que se regulan los requisitos de acceso a las enseñanzas universitarias oficiales de Grado, las características básicas de la prueba de acceso y la normativa básica de los procedimientos de admisión. Resolución de Rector de la Universidad de Murcia (R-753/2025, de 27 de mayo) por la que se ordena la publicación del Reglamento por el que se establecen los criterios de adjudicación de plazas, cupos de reserva, materias y parámetros de ponderación aplicables al procedimiento de admisión a las enseñanzas universitarias oficiales de Grado ofertadas por la Universidad de Murcia en el Boletín Oficial de la Región de Murcia. Resolución del Rector de la Universidad de Murcia, (R-296/2026, de 9 de marzo) por la que se dictan normas de instrucciones de admisión en estudios oficiales de Máster para el curso académico 2026/2027. Estatutos de la Universidad de Murcia: Título III. Capítulo III: El estudiantado."
+    },
+    {
+      "topic_number": 505,
+      "bloque": 5,
+      "display": 5,
+      "title": "Sistema europeo de créditos (ECTS) y Suplemento Europeo al Título: RD 1125/2003 y RD 22/2015",
+      "epigrafe": "Real Decreto 1125/2003, de 5 de septiembre, por el que se establece el sistema europeo de créditos y el sistema de calificaciones en las titulaciones universitarias de carácter oficial y validez en todo el territorio nacional. Real Decreto 22/2015, de 23 de enero, por el que se establecen los requisitos de expedición del Suplemento Europeo a los títulos regulados en el Real Decreto 1393/2007, de 29 de octubre, por el que se establece la ordenación de las enseñanzas universitarias oficiales y se modifica el Real Decreto 1027/2011, de 15 de julio, por el que se establece el Marco Español de Cualificaciones para la Educación Superior."
+    },
+    {
+      "topic_number": 506,
+      "bloque": 5,
+      "display": 6,
+      "title": "Normas e instrucciones de matrícula de la Universidad de Murcia (curso 2026/2027)",
+      "epigrafe": "Resolución del Rector de la Universidad de Murcia (R-569/2026), de 7 de mayo, por la que se dictan las normas e instrucciones de matrícula para estudios oficiales de Grado, Máster Universitario y Doctorado de la Universidad de Murcia para el curso académico 2026/2027: Artículos del 1-40."
+    },
+    {
+      "topic_number": 507,
+      "bloque": 5,
+      "display": 7,
+      "title": "Precios públicos por servicios académicos universitarios en la Región de Murcia (Decreto 152/2021)",
+      "epigrafe": "Decreto n.º 152/2021, de 29 de julio, por el que se establece la regulación de los precios públicos a satisfacer por la prestación de servicios académicos universitarios en la Comunidad Autónoma de la Región de Murcia y su modificación por el Decreto n.º 8/2024, de 1 de febrero."
+    }
+  ]
+}

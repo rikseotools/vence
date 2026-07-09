@@ -37,6 +37,7 @@ export const pagEmpleoAdapter: SourceAdapter = {
         const url = detailUrl(c.id);
         const oep: RegionalOep = {
           name: c.cuerpo,
+          organismo: c.organismo ?? null,
           positionGroup: c.grupo || null,
           year: null,
           plazas: c.plazas,

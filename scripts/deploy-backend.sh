@@ -31,17 +31,23 @@ if [ "${SKIP_CI_GATE:-0}" = "1" ]; then
 elif [ -z "${GITHUB_PAT:-}" ] || ! command -v jq >/dev/null 2>&1; then
   echo "⚠️  [gate CI] sin GITHUB_PAT o sin jq → no puedo verificar CI. Abortado (SKIP_CI_GATE=1 para forzar)."; exit 1
 else
-  echo "→ [gate CI] verificando check-runs de GHA para ${SHA}…"
+  echo "→ [gate CI] verificando checks de CÓDIGO (unit+typecheck+lint) de GHA para ${SHA}…"
   CR=$(curl -s -H "Authorization: Bearer $GITHUB_PAT" -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/rikseotools/vence/commits/${FULL_SHA}/check-runs?per_page=100")
   TOTAL=$(echo "$CR" | jq -r '.total_count // 0')
-  FAILED=$(echo "$CR" | jq -r '[.check_runs[]? | select(.conclusion=="failure" or .conclusion=="cancelled" or .conclusion=="timed_out")] | length')
-  PENDING=$(echo "$CR" | jq -r '[.check_runs[]? | select(.status!="completed")] | length')
-  if [ "$TOTAL" = "0" ]; then echo "   ❌ sin runs de CI para ${SHA} (¿git push?). SKIP_CI_GATE=1 para forzar."; exit 1
-  elif [ "${FAILED:-0}" -gt 0 ]; then echo "   ❌ CI en ROJO: ${FAILED} check(s) fallando. SKIP_CI_GATE=1 para forzar."; exit 1
-  elif [ "${PENDING:-0}" -gt 0 ]; then echo "   ⏳ CI EN CURSO: ${PENDING} check(s). Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
+  # SOLO gatean unit+typecheck+lint. `integration` (BD real) = señal aparte, no bloquea. Ver docs/runbooks/deploy.md.
+  CODE=$(echo "$CR" | jq -c '["unit","typecheck","lint"] as $req
+    | [ $req[] as $k | ([ .check_runs[]? | select(.name|ascii_downcase|contains($k)) ]|last)
+        | { k:$k, status:(.status // "missing"), conclusion:(.conclusion // "missing") } ]')
+  MISSING=$(echo "$CODE" | jq -r '[.[]|select(.status=="missing")]|length')
+  FAILED=$(echo "$CODE" | jq -r '[.[]|select(.conclusion=="failure" or .conclusion=="cancelled" or .conclusion=="timed_out")]|length')
+  PENDING=$(echo "$CODE" | jq -r '[.[]|select(.status!="completed" and .status!="missing")]|length')
+  INTEG=$(echo "$CR" | jq -r '[.check_runs[]?|select(.name|ascii_downcase|contains("integration"))]|last|.conclusion // "n/a"')
+  if [ "$TOTAL" = "0" ] || [ "${MISSING:-0}" -gt 0 ]; then echo "   ❌ faltan checks de código para ${SHA} (¿git push?). SKIP_CI_GATE=1 para forzar."; exit 1
+  elif [ "${FAILED:-0}" -gt 0 ]; then echo "   ❌ CI de CÓDIGO en ROJO: ${FAILED} check(s) fallando. SKIP_CI_GATE=1 para forzar."; exit 1
+  elif [ "${PENDING:-0}" -gt 0 ]; then echo "   ⏳ CI de CÓDIGO EN CURSO: ${PENDING} check(s). Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
   fi
-  echo "   ✅ CI verde (${TOTAL} checks) para ${SHA}."
+  echo "   ✅ CI de código verde (unit+typecheck+lint) para ${SHA}. [integration=${INTEG} — informativo]"
 fi
 
 echo "→ [1/6] build ${IMG} (contexto backend/)"

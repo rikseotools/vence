@@ -51,6 +51,7 @@ export function parseListado(html: string): RawCandidate[] {
     // El enlace oficial se resuelve del detalle en scan() y se inyecta aquí.
     const oep: RegionalOep = {
       name,
+      organismo: null,
       positionGroup: null,
       year: null,
       plazas,

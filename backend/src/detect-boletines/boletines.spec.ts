@@ -1,9 +1,16 @@
 import {
   looksLikeC1C2Convocatoria,
   extractCandidatesFromSumarioText,
+  looksLikeTemarioChange,
+  extractTemarioCandidatesFromSumarioText,
   collectBoeTitulos,
   htmlToText,
 } from './boletines';
+
+// Caso real que motivó el sensor `temario_change` (Cantabria, 08/07/2026):
+// la Orden PRE/12/2026 modificó el programa de materias y ningún sensor lo cazó.
+const CANTABRIA_PRE12 =
+  'ORDEN PRE/12/2026, de 10 de febrero, por la que se modifica la Orden PRE/76/2024, de 29 de agosto, por la que se hacen públicos los programas exigibles en los procesos selectivos para el acceso a cuerpos, escalas y, en su caso, especialidades de la Administración de la Comunidad Autónoma de Cantabria.';
 
 // Caso real que motivó el sensor (BOCYL 17/06/2026, BOCYL-D-17062026-115-10).
 const ULE_ADMIN =
@@ -108,6 +115,61 @@ describe('extractCandidatesFromSumarioText', () => {
     // Fase 0: los catedráticos (A1) AHORA entran; solo se descartan los hitos de resultado.
     expect(hits.some((h) => /aspirantes que han superado/.test(h))).toBe(false);
     expect(hits.some((h) => /Catedráticos/.test(h))).toBe(true);
+  });
+});
+
+describe('looksLikeTemarioChange', () => {
+  it('detecta la modificación de temario que se nos escapó (Cantabria PRE/12/2026)', () => {
+    expect(looksLikeTemarioChange(CANTABRIA_PRE12)).toBe(true);
+  });
+
+  it('detecta la Orden que hace públicos los programas exigibles', () => {
+    expect(
+      looksLikeTemarioChange(
+        'ORDEN PRE/76/2024, de 29 de agosto, por la que se hacen públicos los programas exigibles en los procesos selectivos.',
+      ),
+    ).toBe(true);
+  });
+
+  it('detecta actualización de temario/materias de un cuerpo', () => {
+    expect(
+      looksLikeTemarioChange(
+        'Resolución por la que se actualiza el programa de materias del Cuerpo Auxiliar Administrativo.',
+      ),
+    ).toBe(true);
+  });
+
+  it('NO confunde una convocatoria de plazas con un cambio de temario', () => {
+    // El sensor de convocatorias ya cubre esto; aquí NO debe dispararse.
+    expect(looksLikeTemarioChange(ULE_ADMIN)).toBe(false);
+  });
+
+  it('descarta ruido (programas de ayudas/subvenciones, no temarios)', () => {
+    expect(
+      looksLikeTemarioChange(
+        'ORDEN por la que se aprueba el programa de ayudas al desarrollo rural para 2026.',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('extractTemarioCandidatesFromSumarioText', () => {
+  it('extrae la Orden de temario y NO la convocatoria (sin cross-contamination)', () => {
+    const sumario = [
+      ULE_ADMIN,
+      CANTABRIA_PRE12,
+      'ORDEN por la que se aprueba el programa de ayudas al desarrollo rural.',
+    ].join(' ');
+
+    const temario = extractTemarioCandidatesFromSumarioText(sumario);
+    expect(temario.some((h) => /PRE\/12\/2026/.test(h))).toBe(true);
+    expect(temario.some((h) => /Escala Administrativa de la Universidad de León/.test(h))).toBe(false);
+    expect(temario.some((h) => /ayudas al desarrollo rural/.test(h))).toBe(false);
+
+    // Y el sensor de convocatorias NO debe capturar la Orden de temario.
+    const convocatorias = extractCandidatesFromSumarioText(sumario);
+    expect(convocatorias.some((h) => /PRE\/12\/2026/.test(h))).toBe(false);
+    expect(convocatorias.some((h) => /Escala Administrativa/.test(h))).toBe(true);
   });
 });
 

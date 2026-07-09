@@ -653,6 +653,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativa_universidad_de_murcia',
+      label: 'Administrativa UMU',
+      data: {
+        name: 'Administrativa - Universidad de Murcia',
+        slug: 'administrativa-universidad-de-murcia',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_consell_formentera',
       label: 'Auxiliar Administrativo Formentera',
       data: {

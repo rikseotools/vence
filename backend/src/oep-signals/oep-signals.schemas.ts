@@ -24,6 +24,9 @@ export const sensorTypeOptions = [
   // radar-multicapa-fase0; se añade aquí para cerrar el drift de tipos y que el
   // orquestador no tenga que castear `sensorTypeFor(adapter) as SensorType`.
   'competitor',
+  // Cambio de TEMARIO/PROGRAMA (Orden de programas exigibles/materias). Cierra el
+  // gap del caso Cantabria (PRE/12/2026). BD: migración 20260708_temario_change_sensor.
+  'temario_change',
 ] as const;
 
 export const signalStatusOptions = [
@@ -116,6 +119,11 @@ export const regionalOepSchema = z.object({
   bocRef: z.string().nullable(),
   fechaInscripcionFin: z.string().nullable(),
   estado: z.string().nullable(),
+  // Organismo/entidad convocante EXACTO (p.ej. "Universidad de Murcia",
+  // "Ayuntamiento de Huesca", "Ministerio de Hacienda"). Clave para derivar el
+  // NIVEL de administración y matchear sin falsos positivos (una "Escala Auxiliar
+  // Administrativa" de universidad NO es la del Estado). null si no consta.
+  organismo: z.string().nullable().default(null),
   url: z.string().nullable(),
 });
 export type RegionalOep = z.infer<typeof regionalOepSchema>;
@@ -124,6 +132,33 @@ export const regionalExtractionSchema = z.object({
   oeps: z.array(regionalOepSchema),
 });
 export type RegionalExtraction = z.infer<typeof regionalExtractionSchema>;
+
+// ============================================
+// TEMARIO CHANGE (sensor temario_change)
+// ============================================
+
+export const temarioChangeSchema = z.object({
+  /** Cuerpo/escala cuyo temario cambia (tal como aparece en la Orden). */
+  cuerpo: z.string(),
+  /** Administración/ámbito (Estado, Cantabria, Castilla y León…). */
+  ambito: z.string().nullable(),
+  /** La Orden que publica o modifica el programa (ej. "Orden PRE/12/2026"). */
+  normaRef: z.string().nullable(),
+  /** La Orden de programas que MODIFICA, si aplica (ej. "Orden PRE/76/2024"). */
+  modificaNorma: z.string().nullable(),
+  fecha: z.string().nullable(),
+  /** Qué cambia, en una frase (ej. "modifica el temario del Cuerpo General Auxiliar"). */
+  resumen: z.string(),
+  url: z.string().nullable(),
+});
+export type TemarioChange = z.infer<typeof temarioChangeSchema>;
+
+export const temarioChangeExtractionSchema = z.object({
+  changes: z.array(temarioChangeSchema),
+});
+export type TemarioChangeExtraction = z.infer<
+  typeof temarioChangeExtractionSchema
+>;
 
 // ============================================
 // GENERIC SOURCE
@@ -194,6 +229,11 @@ export function baseScoreBySensor(sensor: SensorType): number {
     // según match; este base solo aplica si alguien lo llama directamente.
     case 'competitor':
       return 50;
+    // Cambio de temario: viene de una Orden oficial en el boletín → señal fuerte
+    // (es un dato normativo, no una pista). El servicio suma +10 si auto-vincula
+    // a una oposición por su norma-fuente registrada.
+    case 'temario_change':
+      return 65;
   }
 }
 
