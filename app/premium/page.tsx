@@ -365,7 +365,8 @@ function PremiumPageContent() {
                 <div className="h-6 mb-4"></div>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Trimestral</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-1">39€</div>
-                <div className="text-gray-500 text-sm mb-4">cada 3 meses</div>
+                <div className="text-gray-500 text-sm mb-1">cada 3 meses</div>
+                <div className="text-gray-800 text-sm font-semibold mb-4">= 13€/mes</div>
                 <div className="text-green-600 text-sm font-medium">
                   Ahorras 192€ al año
                 </div>
@@ -387,7 +388,8 @@ function PremiumPageContent() {
                 </span>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Semestral</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-1">69€</div>
-                <div className="text-gray-500 text-sm mb-4">cada 6 meses</div>
+                <div className="text-gray-500 text-sm mb-1">cada 6 meses</div>
+                <div className="text-gray-800 text-sm font-semibold mb-4">= 11,50€/mes</div>
                 <div className="text-green-600 text-sm font-medium">
                   Ahorras 210€ al año
                 </div>
@@ -409,7 +411,8 @@ function PremiumPageContent() {
                 </span>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Anual</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-1">99€</div>
-                <div className="text-gray-500 text-sm mb-4">al año</div>
+                <div className="text-gray-500 text-sm mb-1">al año</div>
+                <div className="text-gray-800 text-sm font-semibold mb-4">= 8,25€/mes</div>
                 <div className="text-green-600 text-sm font-medium">
                   Ahorras 249€ al año
                 </div>
