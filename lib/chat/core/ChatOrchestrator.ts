@@ -4,7 +4,7 @@
 import type { ChatContext, ChatDomain, ChatResponse, ChatResponseMetadata } from './types'
 import { ChatResponseBuilder, createChatStream, StreamEncoder } from './ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../shared/openai'
-import { getAnthropic, ANTHROPIC_MODEL } from '../shared/anthropic'
+import { getAnthropic, getAnthropicModel } from '../shared/anthropic'
 import { logger } from '../shared/logger'
 import { ChatError, handleError } from '../shared/errors'
 import { AITracer, createTracer } from './AITracer'
@@ -618,7 +618,7 @@ export class ChatOrchestrator {
     if (isLegalConceptual) {
       // Sonnet para preguntas conceptuales de derecho
       const anthropic = await getAnthropic()
-      usedModel = ANTHROPIC_MODEL
+      usedModel = await getAnthropicModel()
       logger.info(`Fallback using Anthropic (legal conceptual query)`, { domain: 'orchestrator' })
 
       const anthropicMessages = messages

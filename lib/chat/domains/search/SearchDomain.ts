@@ -4,7 +4,7 @@
 import type { ChatDomain, ChatContext, ChatResponse, ArticleSource, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
-import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
+import { getAnthropic, getAnthropicModel } from '../../shared/anthropic'
 import { logger } from '../../shared/logger'
 import { DOMAIN_PRIORITIES } from '../../core/types'
 import {
@@ -667,8 +667,9 @@ Puedo ayudarte con:
     tracer?: AITracerInterface
   ): Promise<{ content: string; tokensUsed?: number; modelProvider?: string; modelId?: string }> {
     const useAnthropic = !context.questionContext
+    const anthropicModel = await getAnthropicModel()
     const model = useAnthropic
-      ? ANTHROPIC_MODEL
+      ? anthropicModel
       : (context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL)
 
     // Detectar si el usuario quiere el texto literal/completo
@@ -767,7 +768,7 @@ ${articlesContext}`
         // problemas de alternancia user/assistant si el history está sucio.
         const anthropic = await getAnthropic()
         const completion = await anthropic.messages.create({
-          model: ANTHROPIC_MODEL,
+          model: anthropicModel,
           max_tokens: 1500,
           system: systemPrompt,
           messages: [{ role: 'user', content: userMessageWithContext }],

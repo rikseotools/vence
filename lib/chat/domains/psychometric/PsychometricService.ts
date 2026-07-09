@@ -4,7 +4,7 @@
 import type { ChatContext, ChatResponse, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
-import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
+import { getAnthropic, getAnthropicModel } from '../../shared/anthropic'
 import { selectModel } from '../../shared/modelRouter'
 import { logger } from '../../shared/logger'
 import { stripLatex } from '../../shared/formatting'
@@ -177,7 +177,7 @@ export async function processPsychometricQuestion(
   if (modelSelection.provider === 'anthropic') {
     // Claude Sonnet para subtypes que requieren razonamiento avanzado
     const anthropic = await getAnthropic()
-    model = ANTHROPIC_MODEL
+    model = await getAnthropicModel()
 
     const llmSpan = tracer?.spanLLM({
       model,

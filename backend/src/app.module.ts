@@ -74,6 +74,7 @@ import { CanaryDatabasePoolModule } from './canary-database-pool/canary-database
 import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-upstash.module';
 import { CanaryThemeStatsModule } from './canary-theme-stats/canary-theme-stats.module';
 import { CanaryPorLeyesScopeModule } from './canary-por-leyes-scope/canary-por-leyes-scope.module';
+import { CanaryAiModelModule } from './canary-ai-model/canary-ai-model.module';
 // Canary GET /api/topics/[numero] sintético (31/05/2026, post Fase D-bis Iter 1.5).
 // Detecta caída del path Next.js + Redis + BD + flag TOPIC_MV_ENABLED en
 // runtime real. Regla de oro PASS: ningún test CI cubre el endpoint vivo.
@@ -174,6 +175,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CanaryThemeStatsModule, // cada 10min — endpoint theme-stats refleja progreso real (regresión semántica tipo V4)
     CanaryTopicDataModule, // cada 5min — GET /api/topics/5 con shape assertions
     CanaryPorLeyesScopeModule, // cada 5min — test por-leyes ACOTADO no trae arts fuera del temario (GVA/LCSP)
+    CanaryAiModelModule, // cada 10min — el default_model del chat sigue VIVO en el proveedor (bug 09/07: modelo retirado → 404)
     CanaryStatsPipelineModule, // cada 5min — respuesta sintética → verifica propagación e2e a uqh_v2
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
     CanaryQuestionsGateModule, // POST /api/v2/canary/run-questions-gate — gate post-deploy

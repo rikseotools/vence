@@ -2,7 +2,7 @@
 // Servicio para re-analizar preguntas psicotécnicas con modelo superior
 
 import { getOpenAI } from '../../shared/openai'
-import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
+import { getAnthropic, getAnthropicModel } from '../../shared/anthropic'
 import { usesClaude } from '../../shared/modelRouter'
 import { logger } from '../../shared/logger'
 
@@ -35,7 +35,7 @@ export async function reanalyzeWithSuperiorModel(
 
   // Usar Claude para psicotécnicos de cálculo/series (mejor razonamiento)
   const shouldUseClaude = usesClaude(input.questionSubtype)
-  const reanalysisModel = shouldUseClaude ? ANTHROPIC_MODEL : REANALYSIS_MODEL_OPENAI
+  const reanalysisModel = shouldUseClaude ? await getAnthropicModel() : REANALYSIS_MODEL_OPENAI
 
   logger.info('Starting reanalysis with superior model', {
     domain: 'verification',
@@ -90,7 +90,7 @@ Por favor, analiza paso a paso esta pregunta y explica cuál es la respuesta cor
     if (shouldUseClaude) {
       const anthropic = await getAnthropic()
       const response = await anthropic.messages.create({
-        model: ANTHROPIC_MODEL,
+        model: reanalysisModel,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
         temperature: 0.2,
