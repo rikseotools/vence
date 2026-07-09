@@ -1,0 +1,59 @@
+// __tests__/guardrails/por-leyes-target-scope.test.ts
+//
+// GUARDRAIL de la feature "test por leyes acotado a la oposición" (target scope).
+// Diseño: un usuario CON oposición seleccionada ve por defecto SOLO sus leyes + su
+// temario; un usuario SIN target (o /leyes/[law] explícito) sigue viendo la ley
+// completa. El flag es opt-in (`scopeToPosition`) — NO debe filtrarse a los otros
+// ~30 call-sites de isLawOnlyMode. Este guardrail blinda el cableado por lectura de
+// código (corre en CI, sin BD). El comportamiento real se prueba en el test de
+// integración (porLeyesScopeToPosition.integration).
+
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
+
+describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosition)', () => {
+  it('el schema declara scopeToPosition con default false (opt-in)', () => {
+    const src = read('lib/api/filtered-questions/schemas.ts')
+    expect(src).toMatch(/scopeToPosition:\s*z\.boolean\(\)\.default\(false\)/)
+  })
+
+  it('isLawOnlyMode aplica el topic_scope SOLO cuando scopeToPosition (si no, ley completa)', () => {
+    const src = read('lib/api/filtered-questions/queries.ts')
+    // la rama acotada existe y usa topic_scope del positionType
+    expect(src).toMatch(/else if \(scopeToPosition\)/)
+    expect(src).toMatch(/\.from\(topicScope\)/)
+    // y sigue existiendo el fallback "ley completa" (default)
+    expect(src).toMatch(/LEY COMPLETA/i)
+  })
+
+  it('por-leyes: usa el target del usuario (no hardcodea Estado) y propaga scoped=1', () => {
+    const src = read('app/test/por-leyes/page.tsx')
+    expect(src).toMatch(/target_oposicion/)
+    expect(src).toMatch(/positionType=\{targetPositionType \|\| 'auxiliar_administrativo_estado'\}/)
+    expect(src).toMatch(/params\.set\('scoped', '1'\)/)
+    // el hardcode viejo NO debe volver
+    expect(src).not.toMatch(/positionType="auxiliar_administrativo_estado"/)
+  })
+
+  it('multi-ley: pasa scopeToPosition al API, gated por target real', () => {
+    const src = read('app/test/multi-ley/page.tsx')
+    expect(src).toMatch(/scoped'\)\s*===\s*'1'\s*&&\s*!!userProfile\?\.target_oposicion/)
+    expect(src).toMatch(/scopeToPosition,/)
+  })
+
+  it('laws-configurator filtra la lista de leyes por positionType (topic_scope)', () => {
+    const q = read('lib/api/laws-configurator/queries.ts')
+    expect(q).toMatch(/getAllLawsWithStats\(positionType\?/)
+    expect(q).toMatch(/topic_scope ts JOIN topics t/)
+    const route = read('app/api/laws-configurator/route.ts')
+    expect(route).toMatch(/searchParams\.get\('positionType'\)/)
+  })
+
+  it('ANTI-REGRESIÓN: /leyes/[law] NO usa scoped (el poweruser sigue con ley completa)', () => {
+    const cfg = read('app/leyes/[law]/LawTestConfigurator.tsx')
+    expect(cfg).not.toMatch(/scoped/)
+    expect(cfg).not.toMatch(/scopeToPosition/)
+  })
+})

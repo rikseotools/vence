@@ -36,6 +36,12 @@ export const getFilteredQuestionsRequestSchema = z.object({
   // Filtros de leyes (array de short_names)
   selectedLaws: z.array(z.string()).default([]),
 
+  // 🎯 Modo ley-only ACOTADO a la oposición: cuando true, el test "por leyes" de un
+  // usuario con oposición seleccionada sirve SOLO los artículos de esas leyes que
+  // están en el topic_scope de su positionType (su temario), no la ley entera.
+  // Default false = ley completa (comportamiento de /leyes/[law], SEO, etc. — intacto).
+  scopeToPosition: z.boolean().default(false),
+
   // Filtros de artículos por ley: { "CE": [1, 2, 3], "Ley 39/2015": [5, 10] }
   selectedArticlesByLaw: z.record(z.string(), z.array(z.union([z.number().int(), z.string()]))).default({}),
 

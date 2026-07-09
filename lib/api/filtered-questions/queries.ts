@@ -693,6 +693,7 @@ export async function getFilteredQuestions(
       onlyFailedQuestions,
       failedQuestionIds,
       primaryArticleIds,
+      scopeToPosition,
     } = params
 
     // 🏷️ Tag de oposición: filtra preguntas por tag cuando la oposición lo define.
@@ -1120,8 +1121,40 @@ export async function getFilteredQuestions(
             lawName: law.lawName,
             topicNumber: null,
           })
+        } else if (scopeToPosition) {
+          // 🎯 ACOTADO a la oposición (test "por leyes" de un usuario con target):
+          // usar los article_numbers del topic_scope del positionType para esta ley
+          // (unión de TODOS sus temas), no la ley entera. Misma semántica que el
+          // modo tema: si algún scope de la ley tiene article_numbers NULL = ley
+          // virtual → toda la ley; si no, solo esos artículos; sin scope = 0 (esa
+          // ley no está en su temario → no aporta preguntas).
+          const scopeRows = await db
+            .select({ articleNumbers: topicScope.articleNumbers })
+            .from(topicScope)
+            .innerJoin(topics, eq(topics.id, topicScope.topicId))
+            .where(and(eq(topics.positionType, positionType), eq(topicScope.lawId, law.lawId!)))
+
+          const hasWholeLaw = scopeRows.some(r => r.articleNumbers === null)
+          let scopedNumbers: string[]
+          if (hasWholeLaw) {
+            const allArticles = await db
+              .select({ articleNumber: articles.articleNumber })
+              .from(articles)
+              .where(eq(articles.lawId, law.lawId!))
+            scopedNumbers = allArticles.map(a => a.articleNumber)
+          } else {
+            scopedNumbers = [...new Set(scopeRows.flatMap(r => r.articleNumbers ?? []))]
+          }
+          filteredMappings.push({
+            articleNumbers: scopedNumbers,
+            lawId: law.lawId,
+            lawShortName: law.lawShortName,
+            lawName: law.lawName,
+            topicNumber: null,
+          })
         } else {
-          // Obtener todos los artículos de la ley
+          // Obtener todos los artículos de la ley (LEY COMPLETA — default: /leyes/[law],
+          // SEO, multi-ley sin target… comportamiento intacto)
           const allArticles = await db
             .select({ articleNumber: articles.articleNumber })
             .from(articles)

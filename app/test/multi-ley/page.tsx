@@ -158,6 +158,11 @@ function MultiLeyTestContent() {
   const lawsParam = searchParams?.get('laws')
   const selectedLaws = lawsParam ? lawsParam.split(',') : []
 
+  // 🎯 Modo acotado a la oposición: el test "por leyes" de un usuario con target
+  // (scoped=1) sirve solo los artículos de su temario, no la ley entera. Solo tiene
+  // efecto si el usuario tiene target real (positionType válido); si no, ley completa.
+  const scopeToPosition = searchParams?.get('scoped') === '1' && !!userProfile?.target_oposicion
+
   // Parsear artículos por ley (formato: "CE:1|2|3;Ley 39/2015:4|5")
   const articlesParam = searchParams?.get('articles')
   const selectedArticlesByLaw: Record<string, string[]> = {}
@@ -255,6 +260,7 @@ function MultiLeyTestContent() {
             onlyFailedQuestions,
             failedQuestionIds,
             selectedSectionFilters,
+            scopeToPosition,
           })
         })
 
@@ -289,7 +295,7 @@ function MultiLeyTestContent() {
       loadQuestions()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user?.id, userPositionType, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
+  }, [authLoading, user?.id, userPositionType, scopeToPosition, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
 
   // Estado de carga
   if (loading || authLoading) {

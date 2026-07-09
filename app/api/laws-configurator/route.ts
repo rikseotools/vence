@@ -10,9 +10,11 @@ export const revalidate = 0
 // GET: Obtener todas las leyes con estadísticas
 // ============================================
 
-async function _GET() {
+async function _GET(request: Request) {
   try {
-    const result = await getAllLawsWithStats()
+    // 🎯 Filtro opcional por oposición: ?positionType=administrativo_gva → solo sus leyes.
+    const positionType = new URL(request.url).searchParams.get('positionType')
+    const result = await getAllLawsWithStats(positionType)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })

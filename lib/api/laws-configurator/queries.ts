@@ -13,9 +13,15 @@ import type { GetAllLawsResponse, LawData } from './schemas'
 // OBTENER TODAS LAS LEYES CON ESTADÍSTICAS
 // ============================================
 
-export async function getAllLawsWithStats(): Promise<GetAllLawsResponse> {
+export async function getAllLawsWithStats(positionType?: string | null): Promise<GetAllLawsResponse> {
   try {
     const db = getLawsConfDb()
+
+    // 🎯 Filtro por oposición: si se pasa positionType, solo las leyes que están en
+    // su topic_scope (su temario). Sin positionType → todas (descubrimiento/anónimo).
+    const positionFilter = positionType
+      ? sql`EXISTS (SELECT 1 FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id WHERE t.position_type = ${positionType} AND ts.law_id = ${laws.id})`
+      : undefined
 
     // Query con joins: questions -> articles -> laws
     // Cuenta preguntas activas por ley
@@ -32,7 +38,8 @@ export async function getAllLawsWithStats(): Promise<GetAllLawsResponse> {
       .where(and(
         eq(questions.isActive, true),
         eq(laws.isActive, true),
-        isNotNull(laws.shortName)
+        isNotNull(laws.shortName),
+        positionFilter
       ))
       .groupBy(laws.shortName, laws.name)
       .orderBy(sql`count(distinct ${questions.id}) desc`)
