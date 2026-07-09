@@ -36,13 +36,25 @@ describe('lib/auth/server — authAdmin', () => {
     expect(await authAdmin.getUserById('u2')).toEqual({ id: 'u2', email: null })
   })
 
-  test('deleteUser() propaga error normalizado', async () => {
+  test('deleteUser() → outcome "deleted" cuando el store legacy lo borra', async () => {
     mockAdmin.deleteUser.mockResolvedValue({ error: null })
-    expect(await authAdmin.deleteUser('u1')).toEqual({ error: null })
+    expect(await authAdmin.deleteUser('u1')).toEqual({ outcome: 'deleted', error: null })
     expect(mockAdmin.deleteUser).toHaveBeenCalledWith('u1')
+  })
 
-    const err = new Error('boom')
+  test('deleteUser() → outcome "not_present" para "User not found" (post-flip, no es fallo)', async () => {
+    // Supabase devuelve el error con status 404 / message "User not found".
+    mockAdmin.deleteUser.mockResolvedValue({ error: Object.assign(new Error('User not found'), { status: 404 }) })
+    expect(await authAdmin.deleteUser('u1')).toEqual({ outcome: 'not_present', error: null })
+
+    // También por code, sin status.
+    mockAdmin.deleteUser.mockResolvedValue({ error: Object.assign(new Error('nope'), { code: 'user_not_found' }) })
+    expect(await authAdmin.deleteUser('u1')).toEqual({ outcome: 'not_present', error: null })
+  })
+
+  test('deleteUser() → outcome "error" en fallo REAL (red/permisos)', async () => {
+    const err = Object.assign(new Error('boom'), { status: 500 })
     mockAdmin.deleteUser.mockResolvedValue({ error: err })
-    expect(await authAdmin.deleteUser('u1')).toEqual({ error: err })
+    expect(await authAdmin.deleteUser('u1')).toEqual({ outcome: 'error', error: err })
   })
 })
