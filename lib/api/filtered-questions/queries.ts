@@ -1107,67 +1107,59 @@ export async function getFilteredQuestions(
         .from(laws)
         .where(inArray(laws.shortName, selectedLaws))
 
-      // Construir mappings con todos los artículos de cada ley
+      // Números de artículo del topic_scope del positionType para una ley (unión de
+      // sus temas; NULL en algún scope = ley virtual → toda la ley). Fuente única del
+      // "temario de esta ley" para el modo acotado.
+      const scopedNumbersFor = async (lawId: string): Promise<string[]> => {
+        const scopeRows = await db
+          .select({ articleNumbers: topicScope.articleNumbers })
+          .from(topicScope)
+          .innerJoin(topics, eq(topics.id, topicScope.topicId))
+          .where(and(eq(topics.positionType, positionType), eq(topicScope.lawId, lawId)))
+        if (scopeRows.some(r => r.articleNumbers === null)) {
+          const allArticles = await db
+            .select({ articleNumber: articles.articleNumber })
+            .from(articles)
+            .where(eq(articles.lawId, lawId))
+          return allArticles.map(a => a.articleNumber)
+        }
+        return [...new Set(scopeRows.flatMap(r => r.articleNumbers ?? []))]
+      }
+
+      // Construir mappings de artículos por ley
       for (const law of lawResults) {
-        // Obtener artículos específicos si se proporcionaron, sino usar todos
-        const specificArticles = selectedArticlesByLaw?.[law.lawShortName || ''] || []
+        const specificArticles = (selectedArticlesByLaw?.[law.lawShortName || ''] || []).map(String)
 
-        if (specificArticles.length > 0) {
-          // Usar artículos específicos
-          filteredMappings.push({
-            articleNumbers: specificArticles.map(String),
-            lawId: law.lawId,
-            lawShortName: law.lawShortName,
-            lawName: law.lawName,
-            topicNumber: null,
-          })
+        let articleNumbers: string[]
+        if (specificArticles.length > 0 && scopeToPosition) {
+          // 🎯 Manual + ACOTADO → INTERSECCIÓN: la selección manual del usuario nunca
+          // puede colar artículos fuera de su temario (ni por el selector ni por URL
+          // ?articles=…&scoped=1). Defensa en profundidad.
+          const scoped = new Set(await scopedNumbersFor(law.lawId!))
+          articleNumbers = specificArticles.filter(a => scoped.has(a))
+        } else if (specificArticles.length > 0) {
+          // Manual sin acotar → tal cual (ley completa / poweruser).
+          articleNumbers = specificArticles
         } else if (scopeToPosition) {
-          // 🎯 ACOTADO a la oposición (test "por leyes" de un usuario con target):
-          // usar los article_numbers del topic_scope del positionType para esta ley
-          // (unión de TODOS sus temas), no la ley entera. Misma semántica que el
-          // modo tema: si algún scope de la ley tiene article_numbers NULL = ley
-          // virtual → toda la ley; si no, solo esos artículos; sin scope = 0 (esa
-          // ley no está en su temario → no aporta preguntas).
-          const scopeRows = await db
-            .select({ articleNumbers: topicScope.articleNumbers })
-            .from(topicScope)
-            .innerJoin(topics, eq(topics.id, topicScope.topicId))
-            .where(and(eq(topics.positionType, positionType), eq(topicScope.lawId, law.lawId!)))
-
-          const hasWholeLaw = scopeRows.some(r => r.articleNumbers === null)
-          let scopedNumbers: string[]
-          if (hasWholeLaw) {
-            const allArticles = await db
-              .select({ articleNumber: articles.articleNumber })
-              .from(articles)
-              .where(eq(articles.lawId, law.lawId!))
-            scopedNumbers = allArticles.map(a => a.articleNumber)
-          } else {
-            scopedNumbers = [...new Set(scopeRows.flatMap(r => r.articleNumbers ?? []))]
-          }
-          filteredMappings.push({
-            articleNumbers: scopedNumbers,
-            lawId: law.lawId,
-            lawShortName: law.lawShortName,
-            lawName: law.lawName,
-            topicNumber: null,
-          })
+          // 🎯 ACOTADO a la oposición: el temario de esa ley (unión de sus temas).
+          // Sin scope para esa ley = [] → 0 preguntas (no está en su temario).
+          articleNumbers = await scopedNumbersFor(law.lawId!)
         } else {
-          // Obtener todos los artículos de la ley (LEY COMPLETA — default: /leyes/[law],
-          // SEO, multi-ley sin target… comportamiento intacto)
+          // LEY COMPLETA (default: /leyes/[law], SEO, multi-ley sin target — intacto).
           const allArticles = await db
             .select({ articleNumber: articles.articleNumber })
             .from(articles)
             .where(eq(articles.lawId, law.lawId!))
-
-          filteredMappings.push({
-            articleNumbers: allArticles.map(a => a.articleNumber),
-            lawId: law.lawId,
-            lawShortName: law.lawShortName,
-            lawName: law.lawName,
-            topicNumber: null,
-          })
+          articleNumbers = allArticles.map(a => a.articleNumber)
         }
+
+        filteredMappings.push({
+          articleNumbers,
+          lawId: law.lawId,
+          lawShortName: law.lawShortName,
+          lawName: law.lawName,
+          topicNumber: null,
+        })
       }
     } else {
       // 2️⃣ MODO TEMA: Obtener topic_scope para todos los temas solicitados

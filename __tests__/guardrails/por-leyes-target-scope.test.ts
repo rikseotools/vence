@@ -39,14 +39,14 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
 
   it('multi-ley: pasa scopeToPosition al API, gated por target real', () => {
     const src = read('app/test/multi-ley/page.tsx')
-    expect(src).toMatch(/scoped'\)\s*===\s*'1'\s*&&\s*!!userProfile\?\.target_oposicion/)
+    expect(src).toMatch(/scopedRequested && !!userProfile\?\.target_oposicion/)
     expect(src).toMatch(/scopeToPosition,/)
   })
 
-  it('laws-configurator filtra la lista de leyes por positionType (topic_scope)', () => {
+  it('laws-configurator filtra la lista de leyes por positionType', () => {
     const q = read('lib/api/laws-configurator/queries.ts')
     expect(q).toMatch(/getAllLawsWithStats\(positionType\?/)
-    expect(q).toMatch(/topic_scope ts JOIN topics t/)
+    expect(q).toMatch(/articleInPositionScopeExists/)
     const route = read('app/api/laws-configurator/route.ts')
     expect(route).toMatch(/searchParams\.get\('positionType'\)/)
   })
@@ -55,5 +55,39 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
     const cfg = read('app/leyes/[law]/LawTestConfigurator.tsx')
     expect(cfg).not.toMatch(/scoped/)
     expect(cfg).not.toMatch(/scopeToPosition/)
+  })
+
+  // ── Fixes de la auditoría independiente (la PANTALLA, no solo el test servido) ──
+
+  it('FIX auditoría: el conteo de leyes se acota por artículo (no por ley entera)', () => {
+    const q = read('lib/api/laws-configurator/queries.ts')
+    expect(q).toMatch(/articleInPositionScopeExists/)
+  })
+
+  it('FIX auditoría: el selector de artículos aplica scopeToPosition sin topicNumber', () => {
+    const q = read('lib/api/test-config/queries.ts')
+    expect(q).toMatch(/scopeToPosition && !topicNumber/)
+    expect(q).toMatch(/articleInPositionScopeExists/)
+    const schema = read('lib/api/test-config/schemas.ts')
+    expect(schema).toMatch(/scopeToPosition:\s*z\.boolean\(\)\.default\(false\)/)
+  })
+
+  it('FIX auditoría: TestConfigurator recibe y propaga scopeToPosition; por-leyes lo pasa', () => {
+    const cfg = read('components/TestConfigurator.tsx')
+    expect(cfg).toMatch(/scopeToPosition = false/)          // prop con default
+    expect(cfg).toMatch(/params\.set\('scopeToPosition', 'true'\)/) // al fetch de artículos
+    const page = read('app/test/por-leyes/page.tsx')
+    expect(page).toMatch(/scopeToPosition=\{effectiveScoped\}/)
+  })
+
+  it('FIX auditoría: isLawOnlyMode intersecta selección manual con el scope', () => {
+    const q = read('lib/api/filtered-questions/queries.ts')
+    expect(q).toMatch(/specificArticles\.length > 0 && scopeToPosition/)
+    expect(q).toMatch(/specificArticles\.filter\(a => scoped\.has\(a\)\)/)
+  })
+
+  it('FIX auditoría: multi-ley espera a userProfile cuando la URL pide scoped=1', () => {
+    const src = read('app/test/multi-ley/page.tsx')
+    expect(src).toMatch(/!scopedRequested \|\| userProfile !== null/)
   })
 })

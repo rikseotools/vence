@@ -64,6 +64,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   officialQuestionsCount = 0,
   testMode = 'practica',
   positionType = 'auxiliar_administrativo_estado',
+  scopeToPosition = false,
   autoOpenFailed = false
 }) => {
   // Límite diario de preguntas
@@ -703,6 +704,10 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       });
       if (tema) {
         params.set('topicNumber', String(tema));
+      }
+      // 🎯 Modo "por leyes" acotado: pedir solo los artículos del temario del user.
+      if (scopeToPosition) {
+        params.set('scopeToPosition', 'true');
       }
 
       const res = await fetch(`/api/v2/test-config/articles?${params}`);

@@ -346,6 +346,7 @@ function TestConfiguradorContent() {
                 hideEssentialArticles={true}
                 testMode="practica"
                 positionType={targetPositionType || 'auxiliar_administrativo_estado'}
+                scopeToPosition={effectiveScoped}
                 onStartTest={handleStartTest}
               />
             </div>

@@ -7,6 +7,7 @@ function getLawsConfDb() {
 }
 import { questions, articles, laws } from '@/db/schema'
 import { eq, sql, and, isNotNull } from 'drizzle-orm'
+import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import type { GetAllLawsResponse, LawData } from './schemas'
 
 // ============================================
@@ -17,10 +18,13 @@ export async function getAllLawsWithStats(positionType?: string | null): Promise
   try {
     const db = getLawsConfDb()
 
-    // 🎯 Filtro por oposición: si se pasa positionType, solo las leyes que están en
-    // su topic_scope (su temario). Sin positionType → todas (descubrimiento/anónimo).
+    // 🎯 Filtro por oposición: si se pasa positionType, solo cuenta preguntas de
+    // ARTÍCULOS que están en su topic_scope (su temario), no la ley entera. Así el
+    // conteo que ve el usuario coincide con el test acotado que recibe, y una ley
+    // sin artículos en su temario desaparece de la lista. Sin positionType → todas
+    // (descubrimiento/anónimo). Misma semántica de scope que isLawOnlyMode/modo tema.
     const positionFilter = positionType
-      ? sql`EXISTS (SELECT 1 FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id WHERE t.position_type = ${positionType} AND ts.law_id = ${laws.id})`
+      ? articleInPositionScopeExists({ lawId: articles.lawId, articleNumber: articles.articleNumber, positionType })
       : undefined
 
     // Query con joins: questions -> articles -> laws
