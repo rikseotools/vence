@@ -50,6 +50,15 @@ function isAllowedClientOrigin(originHeader: string | null): boolean {
   if ((ALLOWED_ORIGINS as readonly string[]).includes(originHeader)) return true
   // Preview deploys Vercel: *.vercel.app
   if (/^https:\/\/[\w-]+\.vercel\.app$/.test(originHeader)) return true
+  // Dev local: localhost / 127.0.0.1 (cualquier puerto) SÓLO fuera de producción.
+  // Permite ver la observabilidad cliente al depurar con `npm run dev`. En prod
+  // (NODE_ENV==='production') nunca se acepta → sin superficie de abuso.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(originHeader)
+  ) {
+    return true
+  }
   return false
 }
 
