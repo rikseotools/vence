@@ -128,6 +128,7 @@ interface OpenConvocatoria {
   plazas_libres: number | null
   is_active: boolean
   seguimiento_url: string | null
+  subgrupo: string | null
 }
 
 // Convocatorias con inscripción abierta. FUENTE DE VERDAD = fechas (isInscripcionAbierta),
@@ -155,7 +156,7 @@ const getOpenConvocatorias = unstable_cache(
         SELECT slug, nombre,
                inscription_start::text AS inscription_start,
                inscription_deadline::text AS inscription_deadline,
-               plazas_libres, is_active, seguimiento_url
+               plazas_libres, is_active, seguimiento_url, subgrupo
         FROM oposiciones_ssot
         ORDER BY inscription_deadline ASC NULLS LAST
       `)
@@ -187,6 +188,46 @@ function formatDeadline(d: string | null): string {
   return `${day} ${months[m - 1]} ${y}`
 }
 
+// Agrupación por subgrupo para la caja de "inscripción abierta" de la home: así no
+// queda todo apelotonado y se distingue de un vistazo. Orden: C2 y C1 PRIMERO (son
+// las mayoritarias de la plataforma — auxiliar/administrativo); luego el resto por
+// jerarquía; lo desconocido, al final. Cada grupo con su COLOR para separarlos.
+interface SubgrupoMeta {
+  key: string
+  label: string
+  header: string // color del texto de la cabecera
+  border: string // color de la línea inferior de la cabecera
+  badge: string // color del contador
+}
+const SUBGRUPO_META: SubgrupoMeta[] = [
+  { key: 'C2', label: 'C2 · Auxiliar Administrativo', header: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300 dark:border-blue-700', badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' },
+  { key: 'C1', label: 'C1 · Administrativo', header: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-300 dark:border-indigo-700', badge: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300' },
+  { key: 'A1', label: 'Grupo A1', header: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300 dark:border-amber-700', badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' },
+  { key: 'A2', label: 'Grupo A2', header: 'text-orange-700 dark:text-orange-300', border: 'border-orange-300 dark:border-orange-700', badge: 'bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-300' },
+  { key: 'B', label: 'Grupo B', header: 'text-teal-700 dark:text-teal-300', border: 'border-teal-300 dark:border-teal-700', badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300' },
+  { key: 'AP', label: 'Agrupaciones Profesionales', header: 'text-rose-700 dark:text-rose-300', border: 'border-rose-300 dark:border-rose-700', badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300' },
+  { key: 'E', label: 'Agrupación Profesional (E)', header: 'text-slate-700 dark:text-slate-300', border: 'border-slate-300 dark:border-slate-700', badge: 'bg-slate-100 text-slate-800 dark:bg-slate-800/60 dark:text-slate-300' },
+  { key: '_', label: 'Otros', header: 'text-gray-700 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-700', badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300' },
+]
+const SUBGRUPO_KEYS = new Set(SUBGRUPO_META.map((m) => m.key))
+
+function groupBySubgrupo(
+  list: OpenConvocatoria[],
+): (SubgrupoMeta & { items: OpenConvocatoria[] })[] {
+  const groups = new Map<string, OpenConvocatoria[]>()
+  for (const c of list) {
+    const k = c.subgrupo && SUBGRUPO_KEYS.has(c.subgrupo) ? c.subgrupo : '_'
+    if (!groups.has(k)) groups.set(k, [])
+    groups.get(k)!.push(c)
+  }
+  // Respeta el orden de SUBGRUPO_META; dentro de cada grupo conserva el orden global
+  // (publicadas primero, luego por plazas/cierre — ya viene ordenado de la query).
+  return SUBGRUPO_META.filter((m) => groups.has(m.key)).map((m) => ({
+    ...m,
+    items: groups.get(m.key)!,
+  }))
+}
+
 function getFormattedDate(): string {
   const now = new Date()
   const day = now.getDate()
@@ -197,6 +238,7 @@ function getFormattedDate(): string {
 
 export default async function HomePage() {
   const [topLaws, openConvocatorias] = await Promise.all([getTopLaws(), getOpenConvocatorias()])
+  const openBySubgrupo = groupBySubgrupo(openConvocatorias)
 
   // Group oposiciones by category, preserving config order
   const categoryOrder = ['estado', 'autonomica', 'local', 'justicia', 'sanidad', 'seguridad']
@@ -247,25 +289,40 @@ export default async function HomePage() {
                   : `${openConvocatorias.length} convocatorias con inscripción abierta`}
               </h2>
             </div>
-            <ul className="space-y-1 mb-2">
-              {openConvocatorias.map(c => (
-                <li key={c.slug} className="text-sm text-green-900 dark:text-green-200 flex items-center justify-between gap-3">
-                  <span className="truncate flex items-center gap-1.5 min-w-0">
-                    <span className="truncate">{c.nombre}</span>
-                    {!c.is_active && (
-                      <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-200/70 dark:bg-green-800/60 text-green-800 dark:text-green-300">
-                        sin test
-                      </span>
-                    )}
-                  </span>
-                  {c.inscription_deadline && (
-                    <span className="shrink-0 text-xs text-green-700 dark:text-green-400 whitespace-nowrap">
-                      cierra {formatDeadline(c.inscription_deadline)}
+            <div className="space-y-3 mb-3">
+              {openBySubgrupo.map(g => (
+                <div key={g.key}>
+                  {/* Cabecera del subgrupo — color propio para separar de un vistazo */}
+                  <div className={`flex items-center gap-2 mb-1 pb-1 border-b ${g.border}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wide ${g.header}`}>
+                      {g.label}
                     </span>
-                  )}
-                </li>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${g.badge}`}>
+                      {g.items.length}
+                    </span>
+                  </div>
+                  <ul className="space-y-1">
+                    {g.items.map(c => (
+                      <li key={c.slug} className="text-sm text-green-900 dark:text-green-200 flex items-center justify-between gap-3">
+                        <span className="truncate flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{c.nombre}</span>
+                          {!c.is_active && (
+                            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-200/70 dark:bg-green-800/60 text-green-800 dark:text-green-300">
+                              sin test
+                            </span>
+                          )}
+                        </span>
+                        {c.inscription_deadline && (
+                          <span className="shrink-0 text-xs text-green-700 dark:text-green-400 whitespace-nowrap">
+                            cierra {formatDeadline(c.inscription_deadline)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
             <span className="text-sm font-medium text-green-700 dark:text-green-400">
               Ver convocatorias abiertas →
             </span>
