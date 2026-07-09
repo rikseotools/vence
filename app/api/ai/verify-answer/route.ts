@@ -2,11 +2,16 @@
 // API para verificar respuestas de forma independiente (sin conocer la respuesta de antemano)
 
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 import { and, or, eq, ilike } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { getAiApiKey } from '@/lib/api/admin-ai-config/getAiApiKey'
+// Proveedor de IA detrás de puertos COMPARTIDOS (agnóstico por contrato): el
+// cliente y los modelos viven en `lib/chat/shared/openai.ts`, los embeddings en
+// `EmbeddingService` (cacheado). Si se cambia de proveedor de IA, se toca ahí, no
+// aquí. La BD es Drizzle/Postgres (getDb → DATABASE_URL) → portable a cualquier
+// host Postgres (RDS, KoiGrid, Neon…) sin reescribir código.
+import { getOpenAI } from '@/lib/chat/shared/openai'
+import { generateEmbedding } from '@/lib/chat/domains/search/EmbeddingService'
 import { searchArticlesBySimilarity } from '@/lib/chat/domains/search/queries'
 import { getDb } from '@/db/client'
 import { articles as articlesTable, laws as lawsTable } from '@/db/schema'
@@ -14,15 +19,11 @@ import { articles as articlesTable, laws as lawsTable } from '@/db/schema'
 // Forma unificada de artículo para el contexto del prompt (agnóstica de proveedor).
 type CtxArticle = { lawShortName: string; lawName: string; articleNumber: string | null; content: string | null }
 
-// Buscar artículos relevantes por embedding — RDS (pgvector `match_articles`, vía
-// el mismo camino que el chat). AGNÓSTICO: sin Supabase (migrado 09/07/2026).
-async function searchRelevantArticles(openai: OpenAI, searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
+// Buscar artículos relevantes por embedding — pgvector `match_articles` (mismo
+// camino que el chat), vía puertos compartidos (EmbeddingService + Drizzle).
+async function searchRelevantArticles(searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
   try {
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: searchText,
-    })
-    const embedding = embeddingResponse.data[0].embedding
+    const { embedding } = await generateEmbedding(searchText)
 
     const matches = await searchArticlesBySimilarity(embedding, {
       limit: 5,
@@ -45,7 +46,7 @@ async function searchRelevantArticles(openai: OpenAI, searchText: string, lawNam
   }
 }
 
-// Fallback por keywords — RDS/Drizzle (articles + laws), sin Supabase.
+// Fallback por keywords — Drizzle/Postgres (articles + laws), agnóstico de host.
 async function searchArticlesByKeywords(searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
   const keyword = searchText.split(/\s+/).filter(w => w.length > 3)[0]
   if (!keyword) return []
@@ -99,20 +100,16 @@ async function _POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan datos de la pregunta' }, { status: 400 })
     }
 
-    // Obtener API key de OpenAI (RDS `ai_api_config` + fallback env, vía helper
-    // agnóstico — sin Supabase).
-    const apiKey = await getAiApiKey('openai')
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
-    }
-    const openai = new OpenAI({ apiKey })
+    // Cliente de IA desde el puerto compartido (singleton + key cacheada desde
+    // ai_api_config vía Drizzle). Lanza si no hay key → lo captura el catch → 500.
+    const openai = await getOpenAI()
 
     // 1. Buscar artículos relevantes
     const searchQuery = lawName
       ? `${questionText} ${lawName} ${articleNumber || ''}`
       : questionText
 
-    const articles = await searchRelevantArticles(openai, searchQuery, lawName)
+    const articles = await searchRelevantArticles(searchQuery, lawName)
 
     // Formatear contexto de artículos
     const articlesContext = articles.length > 0
