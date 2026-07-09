@@ -1,4 +1,4 @@
-# Runbook — Deploy (frontend + backend)
+# Runbook — Pusheo, revisión y despliegue (frontend + backend)
 
 > **Fuente única del deploy.** Antes el conocimiento estaba disperso (ARCHITECTURE_ROADMAP + comentarios de scripts + memorias). Aquí está el procedimiento canónico, la arquitectura de assets y el rollback, para front y backend.
 >
@@ -57,6 +57,26 @@ ln -s <repo>/node_modules <wt>/node_modules   # deps compartidas; QUITAR antes d
 - **RDS desde tsx/jest en el worktree:** `NODE_TLS_REJECT_UNAUTHORIZED=0` al ARRANCAR el proceso + URL con `sslmode=no-verify` (Node cachea el flag; postgres.js valida el cert self-signed).
 
 **Modelo VIEJO (compartir el mismo directorio — EVITAR):** commitear a `main` local sin push y trabajar todos en `/home/manuel/Documentos/github/vence` provoca que cambiar de rama / `git add -A` / stash intercambie o barra ficheros de otras sesiones (08/07: un checkpoint se llevó 4 ficheros ajenos). Si por lo que sea trabajas ahí: **commit atómico** (`git add -u` de TUS ficheros, nunca `-A`) y **árbol limpio** antes de desplegar (el guardarraíl te frena si no).
+
+## Capas de seguridad obligatorias (toda feature / fix)
+
+Por defecto, TODA feature o fix lleva estas capas; **saltarse una se JUSTIFICA**, no al revés (un fix de una línea de copy no necesita canary; una feature sí todo):
+1. **Unit** — lógica pura, importando la función **REAL** de producción (nunca una copia: una copia da falso verde cuando el código real cambia o desaparece).
+2. **Integración** — el camino real contra la BD (INSERT/SELECT reales), gated si el entorno lo exige (`INTEGRATION_DB_WRITABLE=1`; el CI de integración es read-only).
+3. **Simulación con datos reales** — replayear el caso del usuario/incidente por la lógica arreglada y verificar end-to-end (read-only), no solo casos sintéticos.
+4. **Canary** — sintético contra infra viva que **VERIFICA en BD el invariante** (no solo que el endpoint responde 200). Si el fixture no ejercita el invariante, el canary es ciego → arreglarlo.
+5. **Guardrail** — contrato/esquema (p.ej. afirmar que una columna está mapeada en Drizzle — caza el schema-drift que el typecheck no ve; o el cableado de una feature por lectura de código, sin BD → corre en CI).
+
+**Clave (lección 09/07):** las capas solo valen si cubren **superficies DISTINTAS**, no el mismo slice 5 veces — la capa que tocas **+ las de al lado que ve el usuario** (conteos, selectores) + las **combinaciones** + el **timing de cliente**. Detalle: memoria `feedback_feature_multiples_capas_seguridad`.
+
+## Antes de mergear: revisión independiente (features/fixes no triviales)
+
+Los tests que escribe el autor se agrupan alrededor de lo que el autor cambió y de su modelo mental → **heredan sus puntos ciegos**. Por eso, antes de mergear a `main`, una **revisión adversarial por un agente FRESCO** (sin contexto de autor) sobre el diff, con el mandato de **romperlo**:
+- Testear la **superficie que ve el USUARIO**, no solo la capa que tocaste (endpoints de al lado, conteos, selectores).
+- Las **combinaciones** (flag + selección manual…), el **timing de cliente**, y los casos límite (datos vacíos/virtuales, inyección).
+- **Regla:** si el auditor encuentra algo que tus tests no vieron, **añade el test que lo habría cazado** antes de mergear.
+
+Con **solo-dev + Claude**, el PR-con-aprobación es teatro (yo aprobando lo mío no es independiente). Lo que aporta valor real: **CI sobre la rama** (vía PR) + **auditoría independiente** (agente fresco) + tu **vistazo de producto (UX)**. Caso real 09/07 (feature "por leyes"): la auditoría cazó que la feature acotaba el *test servido* pero **no la pantalla** que confundía al usuario (conteos + selector) — las 3 capas del autor cubrían el mismo slice. Ver `feedback_worktree_por_sesion_paralela`.
 
 ## Frontend — arquitectura de assets (CRÍTICO: por qué no se congela al desplegar)
 

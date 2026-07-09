@@ -16,7 +16,7 @@ Subsistema que cataloga, por cada competidor, **qué oposiciones prepara, a qué
 - **Radar:** `backend/src/radar/layers/competitors/from-competitor-db.ts` (la Capa 3 lee del competitor-DB).
 - **Tablas:** `competitors`, `competitor_sources` (N fuentes/competidor + last_hash), `competitor_urls` (todas las URLs + content_hash), `competitor_courses` (1 por oposición; `oposicion_id` NULL = **gap**), `competitor_prices` (kind×audience×period×**plan** + histórico via is_current), `competitor_changes` (log).
 - **Panel:** `/admin/competidores` con pestañas **Por oposición** (buscador global + gaps), **Competidores**, **Revisión** (confirmar matches dudosos), **Cambios** (triaje de señales). Endpoints `app/api/admin/competidores/{,/oposicion,/changes-count,/search,/review,/changes}`. Queries `lib/api/competitors/queries.ts`.
-- **Deploy (⚠️ MANUAL, GHA auto-deploy DESACTIVADO — ver `docs/runbooks/deploy.md`):** backend `scripts/deploy-backend.sh` (build podman → ECR → ECS `:NN` → smoke `api.vence.es/health`); frontend `scripts/deploy-frontend.sh` (build → ECS + assets a S3). Ambos con `AWS_PROFILE=vence AWS_REGION=eu-west-2`. El matcher/sync/cron viven en el backend; el panel/badge/triaje en frontend (Next.js).
+- **Deploy (⚠️ MANUAL, GHA auto-deploy DESACTIVADO — ver `docs/runbooks/pusheo-revision-despliegue.md`):** backend `scripts/deploy-backend.sh` (build podman → ECR → ECS `:NN` → smoke `api.vence.es/health`); frontend `scripts/deploy-frontend.sh` (build → ECS + assets a S3). Ambos con `AWS_PROFILE=vence AWS_REGION=eu-west-2`. El matcher/sync/cron viven en el backend; el panel/badge/triaje en frontend (Next.js).
 
 ---
 
