@@ -140,6 +140,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-sermas': 'madrid',
     'celador-sescam-clm': 'castilla-la-mancha',
     'celador-scs-canarias': 'canarias',
+    'enfermero-scs-canarias': 'canarias',
     'celador-galicia': 'galicia',
     'celador-sas': 'andalucia',
     'celador-ics': 'cataluna',
