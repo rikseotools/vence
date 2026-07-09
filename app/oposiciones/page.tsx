@@ -6,8 +6,9 @@ import { Metadata } from 'next'
 import { sql } from 'drizzle-orm'
 import { getDb, getPoolerDb } from '@/db/client'
 import Link from 'next/link'
-import OposicionCard from './components/OposicionCard'
-import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS, ESTADO_FILTERS, oposicionToCcaa, oposicionToTipo } from './lib/oposiciones-filters'
+import FilteredResults from './[filtro]/FilteredResults'
+import { getCatalogadasAbiertas } from './lib/catalogadas'
+import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS } from './lib/oposiciones-filters'
 import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
 
 export const metadata: Metadata = {
@@ -75,48 +76,26 @@ async function getOposiciones(): Promise<OposicionRow[]> {
   }
 }
 
-function estadoOrder(estado: string | null): number {
-  const order: Record<string, number> = {
-    inscripcion_abierta: 0,
-    convocada: 1,
-    inscripcion_cerrada: 2,
-    lista_admitidos: 3,
-    pendiente_examen: 4,
-    examen_realizado: 5,
-    oep_aprobada: 6,
-    resultados: 7,
-    nombramientos: 8,
-    sin_oep: 9,
-  }
-  return order[estado ?? ''] ?? 10
-}
-
 export default async function OposicionesPage() {
   const oposiciones = await getOposiciones()
+  // Catalogadas (sin test todavía): solo se muestran si el usuario activa el tag
+  // "Inscripción abierta" en el filtro. El orden (destacados/plazas/cierra) lo maneja
+  // el componente cliente.
+  const catalogadas = await getCatalogadasAbiertas()
 
   // "Inscripción abierta" se deriva de FECHAS (fuente de verdad, igual que home/SEO/banner/
   // card), no de estado_proceso (que puede estar desfasado) — incidente 20/06.
   const conInscripcion = oposiciones.filter(o => isInscripcionAbierta(o))
-  const abiertaSet = new Set(conInscripcion.map(o => o.slug))
-
-  // Ordenar: inscripción abierta (por fechas) primero, luego por fase del estado, luego plazas
-  const sorted = [...oposiciones].sort((a, b) => {
-    const abiertaDiff = (abiertaSet.has(b.slug) ? 1 : 0) - (abiertaSet.has(a.slug) ? 1 : 0)
-    if (abiertaDiff !== 0) return abiertaDiff
-    const estadoDiff = estadoOrder(a.estado_proceso) - estadoOrder(b.estado_proceso)
-    if (estadoDiff !== 0) return estadoDiff
-    return (b.plazas_libres ?? 0) - (a.plazas_libres ?? 0)
-  })
 
   const totalPlazas = oposiciones.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
 
-  // JSON-LD
+  // JSON-LD (orden de fetch: plazas desc — irrelevante para ItemList).
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: 'Oposiciones C1 y C2 en España',
     numberOfItems: oposiciones.length,
-    itemListElement: sorted.map((o, i) => ({
+    itemListElement: oposiciones.map((o, i) => ({
       '@type': 'ListItem',
       position: i + 1,
       url: `https://www.vence.es/${o.slug}`,
@@ -165,86 +144,38 @@ export default async function OposicionesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Filtrado facetado en cliente (chips + panel colapsable, mobile-first).
+            Mismo componente que /oposiciones/[filtro]; aquí sin filtros pre-activados
+            (base = todas). Activar el tag "Inscripción abierta" reproduce
+            /oposiciones/inscripcion-abierta. */}
+        <FilteredResults oposiciones={oposiciones} catalogadas={catalogadas} />
 
-          {/* Sidebar: filtros */}
-          <aside className="lg:col-span-1">
-            <div className="sticky top-4 space-y-6">
-              {/* Por tipo */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por tipo</h3>
-                <div className="space-y-1">
-                  {Object.values(TIPO_FILTERS).map(f => (
-                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
-                      {f.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Por subgrupo */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por subgrupo</h3>
-                <div className="space-y-1">
-                  {Object.values(SUBGRUPO_FILTERS).map(f => (
-                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
-                      {f.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Por CCAA */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por comunidad</h3>
-                <div className="space-y-1">
-                  {Object.values(CCAA_FILTERS).map(f => (
-                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
-                      {f.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Por estado */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por estado</h3>
-                <div className="space-y-1">
-                  {Object.values(ESTADO_FILTERS).map(f => (
-                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
-                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
-                      {f.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* Main: cards */}
-          <main className="lg:col-span-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {sorted.map(o => (
-                <OposicionCard
-                  key={o.slug}
-                  slug={o.slug}
-                  nombre={o.nombre}
-                  plazasLibres={o.plazas_libres}
-                  plazasDiscapacidad={o.plazas_discapacidad}
-                  estadoProceso={o.estado_proceso}
-                  isConvocatoriaActiva={o.is_convocatoria_activa}
-                  examDate={o.exam_date}
-                  inscriptionStart={o.inscription_start}
-                  inscriptionDeadline={o.inscription_deadline}
-                  subgrupo={o.subgrupo}
-                />
-              ))}
-            </div>
-          </main>
-        </div>
+        {/* Pie de enlaces internos: descubrimiento + SEO (cada filtro es una URL
+            canónica indexable). El filtro interactivo de arriba refina client-side. */}
+        <nav className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            Explorar por categoría
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {[...Object.values(TIPO_FILTERS), ...Object.values(SUBGRUPO_FILTERS)].map(f => (
+              <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                className="px-3 py-1.5 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-400">
+                {f.label}
+              </Link>
+            ))}
+          </div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mt-6 mb-3">
+            Por comunidad
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {Object.values(CCAA_FILTERS).map(f => (
+              <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                className="px-3 py-1.5 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-400">
+                {f.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
       </div>
     </div>
   )
