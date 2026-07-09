@@ -176,6 +176,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 ### 2. Cancelar Suscripción en Stripe
 
+> ⚠️ **La API cruda de Stripe se salta las capas del flujo de la app — úsalo con cuidado.**
+> El flujo de la app `cancelSubscription` (`lib/api/subscription/queries.ts`, endpoint `/api/stripe/cancel`) además de cancelar: guarda `cancellation_feedback`, notifica al admin, y **envía al usuario el email de confirmación** (`sendCancellationConfirmationToUser`, asunto _"Tu suscripción Premium ha sido cancelada"_). La API cruda de abajo (`stripe.subscriptions.cancel/update`) **NO hace nada de eso** → el usuario no se entera y no queda registro de baja. Además `.cancel()` es **INMEDIATA**; para "no renovar pero mantener acceso hasta fin de periodo" usa `.update(sub, { cancel_at_period_end: true })`.
+> - **Preferente:** cancelar por el **flujo de la app** (tiene además todas las capas de test: `stripeCancel.live.test.ts`, `cancellationEmail.test.ts`, `cancelSubscription.robustness.test.ts`).
+> - **Si cancelas por API cruda** (como el snippet de abajo), **replica manualmente** los pasos que faltan: el email `sendCancellationConfirmationToUser` + el INSERT en `cancellation_feedback`. (Incidente 09/07/2026: se canceló a Nuria por API cruda → hubo que enviar el email de confirmación + registrar el feedback a mano.)
+
 #### Opción A: Desde Claude Code (recomendado)
 
 ```bash

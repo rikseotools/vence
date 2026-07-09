@@ -21,7 +21,10 @@ const mockSendEmail = jest.fn()
 const mockAuthDelete = jest.fn()
 
 let selectCall = 0
+let preReadRows: Array<{ email: string; full_name: string }> = [{ email: 'arel@x.c', full_name: 'Arelis Morales' }]
 let afterRows: Array<{ id: string }> = []
+let afterThrows = false // simula un blip transitorio en la verificación post-delete
+let logRow: { email: string; full_name: string | null } | null = null // deleted_users_log durable (F3)
 const chain: Record<string, unknown> = {
   select: () => chain,
   from: () => chain,
@@ -29,9 +32,12 @@ const chain: Record<string, unknown> = {
   limit: () => {
     selectCall++
     // 1ª lectura: pre-delete (email/nombre). 2ª: post-delete (profileStillExists).
-    if (selectCall === 1) return Promise.resolve([{ email: 'arel@x.c', full_name: 'Arelis Morales' }])
+    if (selectCall === 1) return Promise.resolve(preReadRows)
+    if (afterThrows) return Promise.reject(new Error('db blip (pool/timeout)'))
     return Promise.resolve(afterRows)
   },
+  // F3: lectura durable del email desde deleted_users_log (getAdminDb().execute(sql`...`)).
+  execute: () => Promise.resolve(logRow ? [logRow] : []),
 }
 
 jest.mock('@/lib/api/shared/auth', () => ({
@@ -59,7 +65,10 @@ function req(userId = '11111111-1111-4111-8111-111111111111') {
 beforeEach(() => {
   jest.clearAllMocks()
   selectCall = 0
+  preReadRows = [{ email: 'arel@x.c', full_name: 'Arelis Morales' }]
   afterRows = [] // por defecto: perfil borrado (cuenta eliminada)
+  afterThrows = false
+  logRow = null
   mockRequireAdmin.mockResolvedValue({ ok: true, user: { id: 'admin', email: 'a@vencemitfg.es' } })
   mockDeleteUserData.mockResolvedValue([{ table: '_delete_user_account', status: 'deleted' }])
   mockSendEmail.mockResolvedValue({ sent: true, emailId: 'e1' })
@@ -101,4 +110,40 @@ test('perfil AÚN existe (borrado falló) → 500 y NO se envía email', async (
   expect(res.status).toBe(500)
   expect(body.success).toBe(false)
   expect(mockSendEmail).not.toHaveBeenCalled()
+})
+
+test('F3: reintento (pre-read vacío) recupera el email DURABLE de deleted_users_log y lo envía', async () => {
+  // Escenario de reintento tras un envío fallido: user_profiles ya no existe → el
+  // pre-read viene vacío. El email debe recuperarse de deleted_users_log (durable).
+  preReadRows = [] // user_profiles ya borrado
+  logRow = { email: 'durable@x.c', full_name: 'Durable Name' }
+  afterRows = [] // perfil borrado (cuenta eliminada)
+  mockAuthDelete.mockResolvedValue({ outcome: 'not_present', error: null })
+  const res = await DELETE(req())
+  const body = await res.json()
+  expect(res.status).toBe(200)
+  expect(body.success).toBe(true)
+  expect(mockSendEmail).toHaveBeenCalledWith({ email: 'durable@x.c', fullName: 'Durable Name' })
+})
+
+test('F3: sin email en NINGUNA fuente (ni user_profiles ni deleted_users_log) → 500, marcado error', async () => {
+  preReadRows = []
+  logRow = null // deleted_users_log tampoco tiene email
+  afterRows = []
+  mockAuthDelete.mockResolvedValue({ outcome: 'not_present', error: null })
+  const res = await DELETE(req())
+  expect(res.status).toBe(500) // no se pudo cumplir la obligación legal → se surface
+  expect(mockSendEmail).not.toHaveBeenCalled()
+})
+
+test('F2: la verificación post-delete LANZA → falla CERRADO (500, sin email)', async () => {
+  // Blip transitorio (pool/timeout) al leer user_profiles tras el borrado. NO se
+  // puede confirmar la eliminación → NO reportar éxito ni mandar el email RGPD.
+  afterThrows = true
+  mockAuthDelete.mockResolvedValue({ outcome: 'not_present', error: null })
+  const res = await DELETE(req())
+  const body = await res.json()
+  expect(res.status).toBe(500)
+  expect(body.success).toBe(false)
+  expect(mockSendEmail).not.toHaveBeenCalled() // ← el bug F2: antes fallaba abierto y mandaba el email
 })

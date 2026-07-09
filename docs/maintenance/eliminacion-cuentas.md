@@ -23,11 +23,15 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 - Perfil completo (email, plan, días activo, oposición, ciudad, fuente)
 - **Cómo entró (captación):** canal real, anuncio/campaña y landing — de la tabla `user_acquisition`, **NO** de `registration_source` (que casi siempre vale `organic` y engaña). Ver §2bis. Sirve para detectar **campañas de pago mal configuradas** (gente que se da de baja a los minutos de llegar por un anuncio = dinero tirado).
 - Actividad cuantificada (tests, respuestas, chat IA, disputas, errores)
-- **Comunicaciones que le enviamos (emails/newsletters + push):** cuántas, de qué tipo y si las abrió — de `email_events` y `notification_events`. Ver §2ter. **Imprescindible cuando el motivo declarado alude a "no quiero recibir más" / "darme de baja" / "no me interesa estar al día":** valida si de verdad le saturamos (muchos envíos → señal para bajar frecuencia) o si apenas le escribimos y la baja es por otra cosa (el "darme de baja" es genérico, no fatiga de emails).
+- **Comunicaciones que le enviamos (emails/newsletters + push):** cuántas, de qué tipo y si las abrió — de `email_events` y `notification_events`. Ver §2ter. Útil para ver si le saturamos (muchos envíos → señal para bajar frecuencia) o si apenas le escribimos.
 - Subscripción y ciclo de pago
 - **Journey completo del día de la solicitud** reconstruido de `user_interactions` minuto a minuto
 - Hallazgos UX (bugs descubiertos, patrones de frustración, clicks repetidos, etc.)
-- Motivo probable (natural vs frustración técnica)
+- Motivo probable (natural vs frustración técnica) — **inferido del COMPORTAMIENTO, nunca del texto del botón (ver aviso abajo)**
+
+> ⚠️ **La app NO captura un motivo de baja — no lo leas de la UI.** El flujo de `/perfil` tiene 2 pasos (`deleteStep: 'retention' | 'confirm'`, `app/perfil/page.tsx`): un gate de retención "Antes de irte…" con 2 botones — **"Mantener mi cuenta"** y **"No me interesa estar al día, darme de baja"** — y luego escribir ELIMINAR. Ese segundo texto es la **etiqueta del botón de "continuar con el borrado"**, lo clica **TODO** el que se da de baja → **NO es el motivo declarado del usuario.** El `user_feedback` solo guarda `[Solicitud de eliminación de cuenta desde perfil]`, sin razón. Deduce el motivo real del **comportamiento** (journey, actividad, comunicaciones, suscripción), **nunca** de ese texto (verlo en el journey solo significa "pasó el gate de retención").
+>
+> 💳 **Ojo PREMIUM — "darse de baja" ≠ borrar cuenta.** En lenguaje común "darse de baja" = **cancelar la suscripción / no pagar más**, pero el botón lleva al **borrado total de datos**. Un premium puede clicarlo queriendo solo **parar la renovación**. Antes de borrar a un premium — sobre todo si la solicitud llega poco después de un `renewal_reminder` o cerca del fin de periodo — asume que lo que quiere es **no renovar**: cancela `cancel_at_period_end` (ver `docs/procedures/reembolsos.md`), **conserva la cuenta** y confirma con el usuario si de verdad quiere borrar sus datos. Borrar por defecto puede destruir la cuenta de alguien que solo quería cancelar el cobro.
 
 ### Ejemplo de deletion_reason exhaustivo
 

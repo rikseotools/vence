@@ -53,10 +53,14 @@ export const authAdmin = {
   ): Promise<{ outcome: 'deleted' | 'not_present' | 'error'; error: Error | null }> {
     const { error } = await getServiceClient().auth.admin.deleteUser(userId)
     if (!error) return { outcome: 'deleted', error: null }
+    // SOLO señales ESTRUCTURADAS de "no existe" cuentan como not_present. Un match
+    // por substring del message ('not found') sería laxo: un fallo REAL (5xx de
+    // gateway, permisos, DNS) cuyo texto contenga "not found" se clasificaría como
+    // benigno y ocultaría una fila de auth legacy VIVA (PII + credencial de login)
+    // → brecha RGPD. Ante la duda: 'error' (el caller lo marca crítico → 500).
     const status = (error as { status?: number }).status
     const code = (error as { code?: string }).code
-    const msg = (error.message || '').toLowerCase()
-    if (status === 404 || code === 'user_not_found' || msg.includes('not found')) {
+    if (status === 404 || code === 'user_not_found') {
       return { outcome: 'not_present', error: null }
     }
     return { outcome: 'error', error }

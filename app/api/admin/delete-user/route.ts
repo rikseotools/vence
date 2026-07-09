@@ -6,7 +6,7 @@ import { authAdmin } from '@/lib/auth/server'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _DELETE(request: NextRequest) {
@@ -91,7 +91,12 @@ async function _DELETE(request: NextRequest) {
     // existe. Los triggers materializadores (`20260523_materialized_stats_triggers.sql`)
     // pueden re-poblar stats durante la cascada → esta comprobación es la FUENTE DE
     // VERDAD del éxito, no la ausencia de excepciones ni el store de auth legacy.
-    let profileStillExists = false
+    // Falla CERRADO: si la verificación NO se puede leer (blip de pool, timeout,
+    // failover), "desconocido" ≠ "borrado" → asumimos que el perfil PODRÍA seguir
+    // vivo (profileStillExists=true) para NO reportar éxito ni mandar el email RGPD
+    // sin haber confirmado el borrado. Es la fuente de verdad del éxito; no puede
+    // fallar abierto sobre el eje que precisamente vigila.
+    let profileStillExists = true
     try {
       const [profileAfter] = await getAdminDb()
         .select({ id: userProfiles.id })
@@ -100,18 +105,42 @@ async function _DELETE(request: NextRequest) {
         .limit(1)
       profileStillExists = !!profileAfter
     } catch (err) {
-      console.error('❌ Error verificando user_profiles post-delete:', err)
+      console.error('❌ Error verificando user_profiles post-delete (fail-closed → no éxito):', err)
+      // profileStillExists queda true → success=false, sin email prematuro.
     }
     const accountDeleted = !profileStillExists
 
     // Email RGPD (Art. 12.3) — OBLIGATORIO. Se envía cuando la CUENTA está borrada
-    // (user_profiles ya no existe), con independencia del store de auth legacy: un
-    // usuario post-flip no tiene fila GoTrue y aun así su cuenta (sus datos) SÍ se
-    // ha eliminado. No rompe el flujo si falla: log + continúa.
-    if (accountDeleted && userEmail) {
+    // (user_profiles ya no existe), con independencia del store de auth legacy.
+    //
+    // DURABILIDAD (F3): el pre-read de user_profiles captura el email en el 1er
+    // intento, pero si el envío falla y el admin REINTENTA, user_profiles ya no
+    // existe → userEmail=null → el email legal se perdería para siempre. Como la
+    // fn SQL exige que `deleted_users_log` (con el email) exista ANTES de borrar,
+    // ese email es DURABLE → lo usamos de fuente cuando el pre-read viene vacío.
+    let recipientEmail = userEmail
+    let recipientName = userFullName
+    if (accountDeleted && !recipientEmail) {
+      try {
+        const res = await getAdminDb().execute(
+          sql`SELECT email, full_name FROM deleted_users_log WHERE original_user_id = ${userId}::uuid ORDER BY deleted_at DESC LIMIT 1`,
+        )
+        const row = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || [])[0] as
+          | { email: string | null; full_name: string | null }
+          | undefined
+        if (row?.email) {
+          recipientEmail = row.email
+          recipientName = row.full_name ?? recipientName
+        }
+      } catch (err) {
+        console.error('❌ Error leyendo email durable de deleted_users_log:', err)
+      }
+    }
+
+    if (accountDeleted && recipientEmail) {
       const emailResult = await sendDeletionConfirmationEmail({
-        email: userEmail,
-        fullName: userFullName,
+        email: recipientEmail,
+        fullName: recipientName,
       })
       deletionResults.push({
         table: '_deletion_email',
@@ -119,12 +148,12 @@ async function _DELETE(request: NextRequest) {
         reason: emailResult.sent ? `emailId: ${emailResult.emailId}` : undefined,
         error: emailResult.error,
       })
-    } else if (accountDeleted && !userEmail) {
-      console.warn('⚠️ Cuenta eliminada pero sin email disponible para el RGPD')
+    } else if (accountDeleted && !recipientEmail) {
+      console.warn('⚠️ Cuenta eliminada pero sin email disponible (ni user_profiles ni deleted_users_log) para el RGPD')
       deletionResults.push({
         table: '_deletion_email',
-        status: 'skipped',
-        reason: 'email no disponible antes del borrado',
+        status: 'error',
+        reason: 'email no disponible en user_profiles ni deleted_users_log',
       })
     }
 

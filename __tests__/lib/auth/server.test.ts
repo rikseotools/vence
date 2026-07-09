@@ -57,4 +57,17 @@ describe('lib/auth/server — authAdmin', () => {
     mockAdmin.deleteUser.mockResolvedValue({ error: err })
     expect(await authAdmin.deleteUser('u1')).toEqual({ outcome: 'error', error: err })
   })
+
+  test('deleteUser() → un fallo REAL cuyo MENSAJE contiene "not found" NO es not_present (F1)', async () => {
+    // Un 5xx de gateway / error de esquema / DNS puede llevar "not found" en el
+    // texto. Clasificarlo como not_present ocultaría una fila de auth legacy VIVA
+    // (PII + credencial) → brecha RGPD. Solo status 404 / code cuentan como ausencia.
+    const err = Object.assign(new Error('relation "auth.users" not found'), { status: 500 })
+    mockAdmin.deleteUser.mockResolvedValue({ error: err })
+    expect(await authAdmin.deleteUser('u1')).toEqual({ outcome: 'error', error: err })
+
+    const gw = Object.assign(new Error('502 Bad Gateway: endpoint not found'), { status: 502 })
+    mockAdmin.deleteUser.mockResolvedValue({ error: gw })
+    expect((await authAdmin.deleteUser('u1')).outcome).toBe('error')
+  })
 })
