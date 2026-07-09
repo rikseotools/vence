@@ -13,6 +13,10 @@ export function stripTags(html: string): string {
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
+    // Guiones tipográficos como entidad: necesarios para que el corte del sufijo
+    // de marca (" – Marca") funcione cuando el <title> usa &ndash;/&mdash;.
+    .replace(/&#8211;|&ndash;/g, '–')
+    .replace(/&#8212;|&mdash;/g, '—')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -42,7 +46,9 @@ export function nameFromSlug(url: string, drop = 0): string {
 /** Precio (céntimos) de un `offers` (objeto o array) JSON-LD. */
 function offerCents(offersRaw: unknown): number | null {
   const offer = Array.isArray(offersRaw) ? offersRaw[0] : (offersRaw as Record<string, unknown> | undefined);
-  const price = offer?.['price'];
+  // `Offer` expone `price`; `AggregateOffer` (Shopify y otros e-commerce con
+  // variantes) NO trae `price` sino `lowPrice`/`highPrice` → usamos el más bajo.
+  const price = offer?.['price'] ?? offer?.['lowPrice'];
   if (price == null) return null;
   const v = parseFloat(String(price));
   return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : null;

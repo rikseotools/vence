@@ -17,6 +17,9 @@ import { madAdapter } from './mad';
 import { opositasAdapter } from './opositas';
 import { adamsAdapter } from './adams';
 import { gokoanAdapter } from './gokoan';
+import { examinatestAdapter } from './examinatest';
+import { opomurAdapter } from './opomur';
+import { temariosenpdfAdapter } from './temariosenpdf';
 import { GENERIC_ACADEMY_ADAPTERS } from './generic-academy';
 
 export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
@@ -32,6 +35,9 @@ export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
   opositasAdapter,
   adamsAdapter,
   gokoanAdapter,
+  examinatestAdapter,
+  opomurAdapter,
+  temariosenpdfAdapter,
   // Academias con estructura estándar (config-driven, 1 config/competidor).
   ...GENERIC_ACADEMY_ADAPTERS,
 ];
