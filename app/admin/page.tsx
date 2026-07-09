@@ -39,10 +39,12 @@ export default function AdminDashboard() {
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null)
   const [registrationsData, setRegistrationsData] = useState<RegistrationDay[] | null>(null)
 
-  // Dinero de HOY en vivo (ventasImporte, poll 30s) con fallback al dashboard, y
-  // FLASH de 10s cuando cambia — solo si la pestaña está visible (así lo ves si
-  // estás mirando; si el importe no cambia, se queda normal).
-  const revToday = adminNotif.ventasImporte > 0 ? adminNotif.ventasImporte : (stats?.revenueToday ?? 0)
+  // Dinero de HOY = ventas de HOY (revenueToday, tabla conversion_events). Antes
+  // usaba adminNotif.ventasImporte, pero ESO es el total de ventas NO LEÍDAS
+  // (acumulado de varios días) → mostraba p.ej. 212€ etiquetado "hoy" cuando hoy
+  // eran 118€ (y parpadeaba 118↔212 al cargar). El acumulado no-leído sigue en el
+  // badge de ventas, no aquí. FLASH de 10s cuando cambia (si la pestaña está visible).
+  const revToday = stats?.revenueToday ?? 0
   const [revFlash, setRevFlash] = useState(false)
   const prevRevRef = useRef<number | null>(null)
   useEffect(() => {
