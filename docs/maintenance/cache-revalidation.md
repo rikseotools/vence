@@ -66,16 +66,30 @@ El contenido de leyes y artículos **casi nunca cambia**, así que no tiene sent
 | **Qué cachea** | Tema + topic_scope + leyes + artículos + conteo preguntas oficiales |
 | **Queries** | 5-8 queries por tema (~500ms sin caché) |
 
-#### 2. Teoría - Lista de Leyes
+#### 2. Teoría - Catálogo de Leyes (/teoria) + buscador
+
+Desde **2026-07-09**, `/teoria` tiene **buscador + paginación server-side** sobre la
+**matview `mv_teoria_law_catalog`** (SSOT del catálogo; ver migración
+`20260709_teoria_law_catalog_matview.sql`). El antiguo `getCachedLaws`
+(`teoria-laws-list`, que derivaba la lista con `fetchLawsList` en ~4s) fue
+**eliminado**. Ahora hay dos caches, ambos `versionedCache` (cross-instancia):
 
 | Propiedad | Valor |
 |-----------|-------|
-| **Archivo** | `app/teoria/page.js` |
-| **Función** | `getCachedLaws` |
-| **Cache Key** | `teoria-laws-list` |
-| **Revalidate** | `false` (permanente) |
-| **Tag** | `teoria` |
-| **Qué cachea** | Lista de todas las leyes para página /teoria |
+| **Archivo** | `app/teoria/page.tsx` + `lib/api/laws/teoriaCatalog.ts` |
+| **Funciones** | `getCachedTotals` (stat cards) · `getCachedListingPage(page)` (listado por defecto, sin `q`) |
+| **Cache Keys** | `teoria-catalog-totals-v1` · `teoria-listing-page-v1` (por página) |
+| **Tipo** | `versionedCache` (tag `teoria`) — invalidable cross-instancia |
+| **Revalidate** | `false` (permanente; invalida el bump de versión) |
+| **Qué cachea** | Totales (nº leyes/artículos) + cada página del listado navegado SIN búsqueda |
+| **NO cacheado** | Las **búsquedas** (`?q=`) van en vivo a la matview (indexada GIN pg_trgm, ~5ms) |
+
+> ⚠️ **La matview `mv_teoria_law_catalog` es una capa de datos aparte** (como las MVs de
+> `/api/topics/[numero]`): `revalidateTag`/`bumpCacheVersion` **NO la refrescan**. Se
+> refresca con `refreshTeoriaCatalog()` (`REFRESH MATERIALIZED VIEW CONCURRENTLY`),
+> **ya cableado en `/api/admin/revalidate-temario`**. Tras cambios de contenido legal,
+> ese endpoint hace las 3 cosas: bump de versión (invalida el Data Cache cross-instancia)
+> + refresh de la matview + `revalidateTag` legacy.
 
 #### 3. Teoría - Contenido de Artículo
 
@@ -522,7 +536,11 @@ curl -X POST https://www.vence.es/api/admin/revalidate \
 
 ### Opción 3: Endpoint especializado `/api/admin/revalidate-temario`
 
-Revalida tags `temario` + `landing` de golpe. No requiere body.
+Revalida tags `temario` + `landing` + `laws` + `teoria` de golpe. No requiere body.
+Además, para `teoria` hace la invalidación **completa** del apartado: `bumpCacheVersion('teoria')`
+(cross-instancia) + `refreshTeoriaCatalog()` (`REFRESH MATERIALIZED VIEW CONCURRENTLY` de
+`mv_teoria_law_catalog`). Es el endpoint canónico tras cambios de contenido legal.
+La respuesta incluye `teoriaCatalogRefreshed: true/false`.
 
 ```bash
 curl -X POST https://www.vence.es/api/admin/revalidate-temario
@@ -732,6 +750,7 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-07-09 | **Buscador + paginación server-side en `/teoria`** (commit teoria). Nueva matview `mv_teoria_law_catalog` (SSOT del catálogo, GIN pg_trgm + unaccent) reemplaza el `fetchLawsList` de ~4s. `getCachedLaws`/`teoria-laws-list` eliminado; nuevos caches `getCachedTotals` + `getCachedListingPage` como **`versionedCache`** (cross-instancia). Búsquedas (`?q=`) van en vivo (no cacheadas). `/api/admin/revalidate-temario` ahora hace invalidación completa de teoría: bump versión + `REFRESH MATERIALIZED VIEW CONCURRENTLY` + revalidateTag. Sección #2 reescrita. |
 | 2026-06-01 | **Sección «Materialized views Postgres (`/api/topics/[numero]`) — Fase D-bis Iter 1.5» añadida.** Documenta las 3 capas de cache (MV + Redis + Next.js ISR) que afectan a este endpoint y el procedimiento obligatorio (refresh MV + invalidateMany Redis + revalidateTag) tras INSERT/UPDATE masivo de `questions`. Origen: caso real con 160 preguntas IA Cat+PV añadidas, BD raw=50q pero API devolvía 10-28q porque las MVs no se refrescan con `revalidateTag` y nadie había documentado que hay que hacerlo a mano. Añadido `/api/topics/[numero]` a la tabla de endpoints Redis. |
 | 2026-05-25 | **Fix bug `/api/admin/revalidate` cross-runtime** (commit `3980cf87`). Antes del fix: invocar el endpoint con `{tag:'test-config'}` solo invalidaba `unstable_cache` de Next.js — el backend NestJS canary `test-config` (activo desde commit `93fedcf5`) seguía sirviendo cache versionado viejo 6-24h. Fix: mapping `TAG_INVALIDATORS` que llama el invalidador específico (`invalidateTestConfigCache()`) cuando el tag tiene counterpart cross-runtime. Response añade `crossRuntime: true/false` para confirmación. Nueva sección «Cross-runtime cache (Bloque 3)» añadida al manual documentando el patrón versioned cache keys + warning explícito en «Opción 1: revalidateTag desde código» para no caer otra vez en el mismo bug. |
 | 2026-05-25 | **Patrón versioned cache keys agnóstico a proveedor** (commit `9133eef8`). `CacheVersioningService` en backend usa solo GET+INCR estándar (portable a Redis/Memcached/DynamoDB/etcd/KeyDB/DragonflyDB). Cross-runtime coherente con Vercel via misma key `cache_version:${tag}` en Upstash compartido. |

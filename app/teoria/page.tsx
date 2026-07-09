@@ -10,7 +10,7 @@
 // hace falta: la matview convirtió el antiguo fetchLawsList de ~4s en consultas
 // de milisegundos. Los totales de las stat cards se cachean aparte (Data Cache,
 // tag 'teoria') porque son estables entre búsquedas.
-import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
@@ -20,18 +20,33 @@ import {
   getTeoriaCatalogTotals,
   normalizeQuery,
   parsePage,
+  computeTotalPages,
+  clampPage,
+  TEORIA_PAGE_SIZE,
 } from '@/lib/api/laws/teoriaCatalog'
 import type { Metadata } from 'next'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 // Totales para las stat cards, cacheados (estables entre búsquedas).
-// Se invalidan tras cambios de contenido vía revalidateTag('teoria') +
-// refreshTeoriaCatalog() en /api/admin/revalidate-temario.
-const getCachedTotals = unstable_cache(
+// `versionedCache` (no `unstable_cache` plano) → invalidable CROSS-INSTANCIA en
+// AWS: un bumpCacheVersion('teoria') limpia el cache en TODAS las instancias ECS.
+// Se invalida tras cambios de contenido vía /api/admin/revalidate-temario
+// (refresh matview + bumpCacheVersion) o /api/admin/revalidate {tag:'teoria'}.
+const getCachedTotals = versionedCache(
   async () => getTeoriaCatalogTotals(),
-  ['teoria-catalog-totals'],
-  { revalidate: false, tags: ['teoria'] }
+  { tag: 'teoria', keyParts: ['teoria-catalog-totals-v1'] }
+)
+
+// Listado SIN búsqueda (navegación por defecto), cacheado por página en el Data
+// Cache. La página es dinámica (por ?q=/?page=), pero el caso común —abrir
+// /teoria y paginar sin buscar— se sirve desde caché sin tocar la BD, así que
+// carga casi instantáneo. Las BÚSQUEDAS (?q=) NO pasan por aquí: van en vivo a
+// la matview (indexada, ms). La clave de caché incluye la página (nº de páginas
+// acotado → conjunto de claves pequeño). Se invalida con revalidateTag('teoria').
+const getCachedListingPage = versionedCache(
+  async (page: number) => searchTeoriaCatalog({ q: '', page }),
+  { tag: 'teoria', keyParts: ['teoria-listing-page-v1'] }
 )
 
 type SearchParams = { q?: string; page?: string }
@@ -81,10 +96,17 @@ export default async function TeoriaMainPage(
   let error: string | null = null
 
   try {
-    ;[totals, result] = await Promise.all([
-      getCachedTotals(),
-      searchTeoriaCatalog({ q, page: requestedPage }),
-    ])
+    totals = await getCachedTotals()
+    if (q) {
+      // Búsqueda: en vivo (indexada, ms). No se cachea (claves ilimitadas).
+      result = await searchTeoriaCatalog({ q, page: requestedPage })
+    } else {
+      // Listado por defecto: cacheado por página. Clampamos la página con los
+      // totales YA cacheados → la clave de caché queda acotada a [1, totalPages].
+      const totalPages = computeTotalPages(totals.totalLaws, TEORIA_PAGE_SIZE)
+      const safePage = clampPage(requestedPage, totalPages)
+      result = await getCachedListingPage(safePage)
+    }
   } catch (err) {
     console.error('Error cargando catálogo de teoría:', err)
     error = (err as Error).message

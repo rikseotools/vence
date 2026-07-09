@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { refreshTeoriaCatalog } from '@/lib/api/laws/teoriaCatalog'
+import { bumpCacheVersion } from '@/lib/cache/versionStore'
 
 async function _POST() {
   // Next.js 16 requiere segundo argumento con el profile de cacheLife
@@ -31,18 +32,21 @@ async function _POST() {
   // Leyes (getLawsWithQuestionCounts, 30 días de caché)
   revalidateTag('laws', 'max')
 
-  // Catálogo de teoría (/teoria): totales cacheados (tag 'teoria').
+  // Catálogo de teoría (/teoria): invalidación completa del apartado.
+  // 1) revalidateTag legacy (per-instancia). 2) bumpCacheVersion → invalida los
+  // caches versionados (getCachedTotals/getCachedListingPage) en TODAS las
+  // instancias ECS. 3) refresh de la matview (SSOT del listado + buscador).
   revalidateTag('teoria', 'max')
 
-  // Refrescar la matview del catálogo de teoría (SSOT del listado + buscador).
-  // Best-effort: un fallo aquí (p.ej. matview aún no migrada) NO debe abortar
-  // la revalidación de cache, que es lo principal de este endpoint.
   let teoriaCatalogRefreshed = true
   try {
+    await bumpCacheVersion('teoria')
+    // Refrescar la matview (source of truth). Best-effort: un fallo aquí (p.ej.
+    // matview aún no migrada) NO debe abortar la revalidación de cache.
     await refreshTeoriaCatalog()
   } catch (err) {
     teoriaCatalogRefreshed = false
-    console.error('⚠️ refreshTeoriaCatalog falló (no bloqueante):', (err as Error).message)
+    console.error('⚠️ refresh/bump teoría falló (no bloqueante):', (err as Error).message)
   }
 
   return NextResponse.json({

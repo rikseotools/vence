@@ -352,7 +352,8 @@ export default function HeaderES() {
     // condicional (userHasPsico, calculado a nivel de componente y compartido con el móvil).
     const commonLinks: NavLink[] = [
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
+      { href: '/teoria', label: 'Teoría', icon: '📖' },
+      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
@@ -391,7 +392,8 @@ export default function HeaderES() {
       { href: `/${guestSlug}/test`, label: 'Test', icon: '🎯' },
       { href: `/${guestSlug}/temario`, label: 'Temario', icon: '📚' },
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
+      { href: '/teoria', label: 'Teoría', icon: '📖' },
+      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
       ...(hasPsico ? [{ href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
