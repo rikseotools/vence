@@ -17,14 +17,28 @@ import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 import TeoriaSearch from '@/components/TeoriaSearch'
 import {
   searchTeoriaCatalog,
+  searchTeoriaContent,
   getTeoriaCatalogTotals,
   normalizeQuery,
   parsePage,
   computeTotalPages,
   clampPage,
   TEORIA_PAGE_SIZE,
+  HL_START,
+  HL_END,
 } from '@/lib/api/laws/teoriaCatalog'
 import type { Metadata } from 'next'
+
+// Pinta el snippet de ts_headline resaltando los términos entre HL_START/HL_END
+// como <mark>, SIN dangerouslySetInnerHTML (React auto-escapa → sin XSS).
+function renderSnippet(snippet: string) {
+  const parts = snippet.split(new RegExp(`${HL_START}|${HL_END}`))
+  return parts.map((p, i) =>
+    i % 2 === 1
+      ? <mark key={i} className="rounded bg-yellow-200 px-0.5 text-gray-900 dark:bg-yellow-600/70 dark:text-white">{p}</mark>
+      : <span key={i}>{p}</span>
+  )
+}
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -93,13 +107,18 @@ export default async function TeoriaMainPage(
   let result = { laws: [], total: 0, page: 1, pageSize: 48, totalPages: 1, q } as Awaited<
     ReturnType<typeof searchTeoriaCatalog>
   >
+  let content = { hits: [], total: 0 } as Awaited<ReturnType<typeof searchTeoriaContent>>
   let error: string | null = null
 
   try {
     totals = await getCachedTotals()
     if (q) {
-      // Búsqueda: en vivo (indexada, ms). No se cachea (claves ilimitadas).
-      result = await searchTeoriaCatalog({ q, page: requestedPage })
+      // Búsqueda: por NOMBRE de ley (matview) + por CONTENIDO (FTS), en paralelo.
+      // Ambas en vivo (indexadas, ms). No se cachean (claves ilimitadas).
+      ;[result, content] = await Promise.all([
+        searchTeoriaCatalog({ q, page: requestedPage }),
+        searchTeoriaContent({ q, limit: 20 }),
+      ])
     } else {
       // Listado por defecto: cacheado por página. Clampamos la página con los
       // totales YA cacheados → la clave de caché queda acotada a [1, totalPages].
@@ -128,7 +147,9 @@ export default async function TeoriaMainPage(
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Teoria Legal</h1>
               <p className="text-gray-600 mt-1">
-                Accede al contenido completo de la legislacion española
+                Lee el texto oficial completo de todas las leyes y encuentra lo que
+                buscas: por <strong>nombre de la ley</strong> o por una{' '}
+                <strong>palabra dentro del texto</strong>.
               </p>
             </div>
           </div>
@@ -178,15 +199,21 @@ export default async function TeoriaMainPage(
         {/* Buscador (sincroniza ?q= en la URL → búsqueda en servidor) */}
         <TeoriaSearch initialQuery={q} />
 
+        {/* Sección de leyes por NOMBRE */}
+        {!error && q && (
+          <h2 className="text-lg font-bold text-gray-900 mb-2">
+            Leyes <span className="font-normal text-gray-500">por nombre</span>
+          </h2>
+        )}
         {/* Línea de resultados */}
         {!error && (
           <p className="text-sm text-gray-600 mb-4" aria-live="polite">
             {total === 0
               ? q
-                ? <>No hay leyes que coincidan con <strong>&ldquo;{q}&rdquo;</strong>.</>
+                ? <>Ninguna ley se llama así. {content.total > 0 && <>Mira las <strong>menciones en el texto</strong> abajo.</>}</>
                 : 'No hay leyes disponibles.'
               : q
-                ? <>Mostrando <strong>{firstIdx}-{lastIdx}</strong> de <strong>{total}</strong> leyes para <strong>&ldquo;{q}&rdquo;</strong></>
+                ? <>Mostrando <strong>{firstIdx}-{lastIdx}</strong> de <strong>{total}</strong> leyes cuyo nombre coincide con <strong>&ldquo;{q}&rdquo;</strong></>
                 : <>Mostrando <strong>{firstIdx}-{lastIdx}</strong> de <strong>{total}</strong> leyes</>}
           </p>
         )}
@@ -238,15 +265,16 @@ export default async function TeoriaMainPage(
               </Link>
             ))}
           </div>
-        ) : !error && q ? (
+        ) : !error && q && content.total === 0 ? (
           <div className="text-center py-12">
             <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Sin resultados</h3>
             <p className="text-gray-600">
-              Prueba con otro término (por nombre de la ley o sus siglas).
+              No encontramos ninguna ley ni mención en el texto para{' '}
+              <strong>&ldquo;{q}&rdquo;</strong>. Prueba con otro término.
             </p>
           </div>
-        ) : !error ? (
+        ) : !error && !q ? (
           <div className="text-center py-12">
             <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay contenido disponible</h3>
@@ -289,6 +317,42 @@ export default async function TeoriaMainPage(
               </span>
             )}
           </nav>
+        )}
+
+        {/* Menciones en el TEXTO (búsqueda de contenido — FTS sobre artículos) */}
+        {!error && q && content.hits.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">
+              Menciones en el texto{' '}
+              <span className="font-normal text-gray-500">
+                ({content.total}{content.total > content.hits.length ? `, mostrando ${content.hits.length}` : ''})
+              </span>
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Artículos cuyo texto menciona <strong>&ldquo;{q}&rdquo;</strong>.
+            </p>
+            <div className="space-y-3">
+              {content.hits.map((hit, i) => (
+                <Link
+                  key={`${hit.lawSlug}-${hit.articleNumber}-${i}`}
+                  href={hit.href}
+                  className="block bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border hover:border-blue-200 p-4"
+                >
+                  <div className="flex items-baseline justify-between gap-3 mb-1">
+                    <span className="text-sm font-semibold text-blue-700">
+                      {hit.lawShortName}
+                    </span>
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                      {/^\s*\d/.test(hit.articleNumber) ? `Artículo ${hit.articleNumber}` : hit.articleNumber}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    …{renderSnippet(hit.snippet)}…
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">

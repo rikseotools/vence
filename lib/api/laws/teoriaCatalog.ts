@@ -192,3 +192,84 @@ export async function refreshTeoriaCatalog(): Promise<void> {
   const db = getDb()
   await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_teoria_law_catalog`)
 }
+
+// ---------------------------------------------------------------------------
+// Búsqueda de CONTENIDO (full-text sobre el texto de los artículos)
+// ---------------------------------------------------------------------------
+
+/** Sentinelas de resaltado (no-HTML) → se pintan como <mark> en React SIN
+ *  dangerouslySetInnerHTML (evita XSS del contenido del artículo). */
+export const HL_START = '⟦' // ⟦
+export const HL_END = '⟧' // ⟧
+
+export interface TeoriaContentHit {
+  lawShortName: string
+  lawSlug: string
+  articleNumber: string
+  /** Ruta al artículo (o a la ley si el nº no es numérico, p.ej. disposiciones). */
+  href: string
+  /** Fragmento con los términos entre HL_START/HL_END. */
+  snippet: string
+}
+
+/** Enlace al artículo: numérico → /teoria/slug/articulo-N; si no, a la ley. */
+function articleHref(slug: string, articleNumber: string): string {
+  const m = String(articleNumber ?? '').match(/^\s*(\d+)/)
+  return m ? `/teoria/${slug}/articulo-${m[1]}` : `/teoria/${slug}`
+}
+
+/**
+ * Busca un término dentro del TEXTO de los artículos (FTS español + unaccent),
+ * devolviendo los artículos más relevantes con un fragmento resaltado. Es el
+ * "buscar un concepto en toda la legislación" (complementa la búsqueda por
+ * nombre de ley). Excluye leyes-contenedor de variante, igual que el catálogo.
+ */
+export async function searchTeoriaContent(opts: {
+  q?: string | null
+  limit?: number
+}): Promise<{ hits: TeoriaContentHit[]; total: number }> {
+  const q = normalizeQuery(opts.q)
+  if (!q) return { hits: [], total: 0 }
+  const limit = opts.limit && opts.limit > 0 ? Math.min(opts.limit, 50) : 20
+  const db = getReadDb()
+
+  const totalRes = (await db.execute(sql`
+    SELECT count(*)::int AS c
+    FROM articles a JOIN laws l ON l.id = a.law_id
+    WHERE a.is_active AND a.content IS NOT NULL AND l.is_active
+      AND (l.slug IS NULL OR (l.slug NOT LIKE '%-solo-escritorio' AND l.slug NOT LIKE '%-solo-web'))
+      AND a.teoria_content_tsv @@ websearch_to_tsquery('public.spanish_unaccent', ${q})
+  `)) as unknown as Array<{ c: number }>
+  const total = Number(totalRes[0]?.c ?? 0)
+  if (total === 0) return { hits: [], total: 0 }
+
+  const headlineOpts = `MaxWords=26,MinWords=12,MaxFragments=1,StartSel=${HL_START},StopSel=${HL_END}`
+  const rows = (await db.execute(sql`
+    SELECT l.short_name, l.slug, a.article_number,
+      ts_headline('public.spanish_unaccent', a.content,
+        websearch_to_tsquery('public.spanish_unaccent', ${q}), ${headlineOpts}) AS snippet
+    FROM articles a JOIN laws l ON l.id = a.law_id
+    WHERE a.is_active AND a.content IS NOT NULL AND l.is_active
+      AND (l.slug IS NULL OR (l.slug NOT LIKE '%-solo-escritorio' AND l.slug NOT LIKE '%-solo-web'))
+      AND a.teoria_content_tsv @@ websearch_to_tsquery('public.spanish_unaccent', ${q})
+    ORDER BY ts_rank(a.teoria_content_tsv, websearch_to_tsquery('public.spanish_unaccent', ${q})) DESC,
+             l.short_name ASC
+    LIMIT ${limit}
+  `)) as unknown as Array<{
+    short_name: string
+    slug: string
+    article_number: string
+    snippet: string
+  }>
+
+  return {
+    total,
+    hits: rows.map((r) => ({
+      lawShortName: r.short_name,
+      lawSlug: r.slug,
+      articleNumber: r.article_number,
+      href: articleHref(r.slug, r.article_number),
+      snippet: r.snippet ?? '',
+    })),
+  }
+}

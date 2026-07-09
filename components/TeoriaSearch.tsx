@@ -76,8 +76,9 @@ export default function TeoriaSearch({ initialQuery = '' }: { initialQuery?: str
           enterKeyHint="search"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Buscar ley… (ej: Constitución, LPAC, Código Civil)"
+          placeholder="Busca una ley por nombre… o una palabra del texto"
           aria-busy={isPending}
+          aria-describedby="teoria-search-help"
           className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-10 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
         />
         {value && (
@@ -93,6 +94,10 @@ export default function TeoriaSearch({ initialQuery = '' }: { initialQuery?: str
           </button>
         )}
       </div>
+      <p id="teoria-search-help" className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Escribe el nombre de una ley (ej. <em>Constitución</em>, <em>LPAC</em>) o cualquier
+        término que aparezca en su articulado (ej. <em>excedencia voluntaria</em>).
+      </p>
     </form>
   )
 }
