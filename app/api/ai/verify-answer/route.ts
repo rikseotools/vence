@@ -201,26 +201,14 @@ RAZONAMIENTO: [Explica brevemente por qué esa es la respuesta correcta]`
       responseTimeMs: Date.now() - startTime
     }
 
-    // 6. Si hay discrepancia, loguear para revisión
+    // 6. Si hay discrepancia, loguear para revisión.
+    // (Se eliminó el INSERT a `question_verifications`: tabla inexistente —no está
+    //  en RDS ni tenía datos en Supabase—, envuelto en try/catch que lo tragaba.
+    //  Era el único WRITE residual a Supabase, y muerto. 09/07/2026.)
     if (verificationResult.discrepancy) {
       console.log(`⚠️ DISCREPANCIA DETECTADA en pregunta ${questionId}:`)
       console.log(`   BD dice: ${dbAnswerLetter}`)
       console.log(`   AI dice: ${aiAnswer} (confianza: ${confidence})`)
-
-      // Opcional: guardar en tabla de revisión
-      try {
-        await getSupabase().from('question_verifications').insert({
-          question_id: questionId,
-          db_answer: dbAnswerLetter,
-          ai_answer: aiAnswer,
-          ai_confidence: confidence,
-          ai_reasoning: reasoning,
-          legal_basis: legalBasis,
-          status: 'pending_review'
-        })
-      } catch (e) {
-        // Tabla puede no existir, ignorar
-      }
     }
 
     return NextResponse.json(verificationResult)

@@ -9,6 +9,21 @@
 
 ---
 
+## ✅ 2026-07-09 — VERIFICADO EN VIVO: el cliente YA NO escribe a Supabase (blocker de datos RESUELTO)
+
+Revisión empírica del estado (contra prod, hoy):
+
+1. **Supabase DEJÓ de recibir writes de `tests` el 2026-07-04** — último `tests` en Supabase: `2026-07-04T14:41:42Z`. HOY: Supabase `tests`=**0**, RDS `tests`=**647**. La migración de `utils/testSession.ts`→RDS (04/07, `b4ef6fc9`) **funcionó**: el path de escritura del cliente que causaba el split-brain ya es **RDS-only**. → **el riesgo de pérdida de datos que bloqueaba el apagado (punto 2 de abajo) está RESUELTO para el path de tests**, y la "sync misteriosa Supabase↔RDS" es **moot** hacia delante (el cliente escribe directo a RDS; no hay nada nuevo que sincronizar desde Supabase).
+2. **Cliente `useAuth().supabase`: efectivamente 100% migrado** — los únicos usos que quedan son **2 ficheros `.backup`** (muertos). El doc de abajo decía "20 consumidores" → ya no.
+3. **Coupling residual (server-side + auth):**
+   - 🔴 1 supuesto WRITE: `app/api/ai/verify-answer/route.ts` → `.from('question_verifications').insert`. Pero `question_verifications` **NO existe en RDS** y en Supabase está **vacía/null** → path **muerto/vestigial** (caller `components/AIChatWidget.js`). Confirmar y quitar/migrar; no es un blocker real de datos.
+   - ~15 **reads** desde Supabase: endpoints admin (`newsletters/audience`, `email-events`, `broadcast`, `feedback/*`, `dispute/mark-read`) + páginas cliente (`premium/success`, `guardia-civil/policia-nacional test/ortografia`, `TestHubPage`) + plumbing de auth (`lib/supabase.ts`, `verifyAuth`, `shared/auth`, `armando/supabaseAdmin`, `cron/runWithLogging`, `security/adminApiGuard`). Migrar incrementalmente; los reads que rompen al apagar son recuperables (no hay pérdida).
+   - 🔑 **La coupling MÁS PROFUNDA es AUTH:** `auth.users` (identidad de los usuarios PRE-flip) sigue VIVA en Supabase, y `getServiceClient()`/`authAdmin.deleteUser`/el fallback remoto de `verifyAuth` (modo `off`) la usan. Es el plan `auth-agnostico-jwks-y-rls.md`. **Mientras `auth.users` viva ahí, el borrado de cuenta DEBE seguir llamando a `authAdmin.deleteUser`** (borra la fila de auth de los pre-flip); su fix `not_present`/best-effort del 09/07 es correcto para este estado.
+
+**SIGUIENTE PASO (revisado 09/07):** el blocker gordo (writes de cliente) ya no existe. Orden recomendado: (a) confirmar+eliminar el path muerto `ai/verify-answer`/`question_verifications`; (b) migrar los ~15 reads server/cliente a Drizzle/endpoints; (c) cerrar la coupling de AUTH (`auth-agnostico-jwks-y-rls.md`: retirar el fallback remoto de `verifyAuth` + decidir el destino de `auth.users`); (d) SOLO entonces retirar CNAME `auth.vence.es` + decomisionar. La "sync misteriosa" ya no bloquea (era el dual-path de tests, ahora cerrado).
+
+---
+
 ## 🚨 2026-07-04 (tarde) — El cliente SEGUÍA escribiendo a Supabase (hueco C1) + inventario para retirar DNS/Supabase
 
 **Contexto:** aunque los docs decían *"Supabase congelado, la app escribe en RDS"* (cutover 04/07), se verificó **en vivo** que el **cliente sigue escribiendo a Supabase** y por tanto **NO se puede apagar Supabase ni borrar su DNS todavía**.
