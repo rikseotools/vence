@@ -76,22 +76,34 @@ async function getUpcomingInvoiceInfo(stripeCustomerId: string, sc: Stripe): Pro
 // OBTENER SUSCRIPCIONES PRÓXIMAS A RENOVAR
 // ============================================
 
+/**
+ * PURA y testeable: ventana [00:00, 23:59:59.999] del día que cae a `daysBeforeRenewal`
+ * de `now`. La selección de la campaña casa `current_period_end` dentro de esta ventana
+ * → si esta lógica se rompe (off-by-one, salto de mes), NADIE recibe el aviso. Se aísla
+ * para poder testearla sin BD (era inline y sin cobertura).
+ */
+export function renewalReminderWindow(
+  now: Date,
+  daysBeforeRenewal: number,
+): { start: Date; end: Date } {
+  const target = new Date(now)
+  target.setDate(now.getDate() + daysBeforeRenewal)
+  const start = new Date(target)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(target)
+  end.setHours(23, 59, 59, 999)
+  return { start, end }
+}
+
 export async function getSubscriptionsForReminder(
   daysBeforeRenewal: number = 7
 ): Promise<GetSubscriptionsForReminderResponse> {
   try {
     const db = getDb()
 
-    // Calcular el rango de fechas
+    // Ventana del día objetivo (pura y testeada — ver renewalReminderWindow).
     const now = new Date()
-    const targetDate = new Date()
-    targetDate.setDate(now.getDate() + daysBeforeRenewal)
-
-    // Rango: desde hoy + días - 1 hasta hoy + días + 1 (para capturar el día exacto)
-    const startDate = new Date(targetDate)
-    startDate.setHours(0, 0, 0, 0)
-    const endDate = new Date(targetDate)
-    endDate.setHours(23, 59, 59, 999)
+    const { start: startDate, end: endDate } = renewalReminderWindow(now, daysBeforeRenewal)
 
     console.log(`🔍 Buscando suscripciones que renuevan entre ${startDate.toISOString()} y ${endDate.toISOString()}`)
 
