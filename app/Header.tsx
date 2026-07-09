@@ -31,6 +31,8 @@ interface NavLink {
   label: string
   icon: string
   featured?: boolean
+  /** Tooltip (title) para explicar para qué sirve el enlace. */
+  title?: string
 }
 
 interface MobileNavLink extends NavLink {
@@ -352,7 +354,7 @@ export default function HeaderES() {
     // condicional (userHasPsico, calculado a nivel de componente y compartido con el móvil).
     const commonLinks: NavLink[] = [
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-      { href: '/teoria', label: 'Teoría', icon: '📖' },
+      { href: '/teoria', label: 'Teoría Legal', icon: '📖', title: 'Lee el texto de las leyes y búscalas por nombre' },
       { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
@@ -392,7 +394,7 @@ export default function HeaderES() {
       { href: `/${guestSlug}/test`, label: 'Test', icon: '🎯' },
       { href: `/${guestSlug}/temario`, label: 'Temario', icon: '📚' },
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-      { href: '/teoria', label: 'Teoría', icon: '📖' },
+      { href: '/teoria', label: 'Teoría Legal', icon: '📖', title: 'Lee el texto de las leyes y búscalas por nombre' },
       { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
       ...(hasPsico ? [{ href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
@@ -643,9 +645,10 @@ export default function HeaderES() {
             <nav className="hidden xl:flex items-center justify-center flex-1 mx-8">
               <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-800 rounded-full p-1">
                 {(user ? getLoggedInNavLinks() : getGuestNavLinks()).map((link) => (
-                  <Link 
+                  <Link
                     key={link.href}
-                    href={link.href} 
+                    href={link.href}
+                    title={link.title}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-full font-medium transition-all duration-200 ${
                       getColorClasses(pathname === link.href)
                     }`}
