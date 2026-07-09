@@ -463,6 +463,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'enfermero_ics',
+      label: 'Enfermero/a del ICS (Cataluña)',
+      data: {
+        name: 'Enfermero/a del Institut Català de la Salut (ICS)',
+        slug: 'enfermero-ics',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
       value: 'tramitacion_procesal',
       label: 'Tramitación Procesal y Administrativa',
       data: {

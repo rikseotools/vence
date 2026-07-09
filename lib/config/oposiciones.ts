@@ -6530,6 +6530,66 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // ENFERMERO/A ICS CATALUÑA (A2)
+  // ========================================
+  {
+    id: 'enfermero_ics',
+    slug: 'enfermero-ics',
+    positionType: 'enfermero_ics',
+    examScoring: { penaltyDivisor: 3, source: 'Bases ICS Convocatòria 100-2025 (Resolució SLT/2380/2025, DOGC 9441 26/06/2025): concurs oposició, test amb penalització d\'errors. penaltyDivisor estimado 1/3. confidence:media — confirmar en bases' },
+    name: 'Enfermero/a del Institut Català de la Salut (ICS)',
+    shortName: 'Enfermero ICS',
+    emoji: '🏥',
+    badge: 'A2',
+    color: 'green',
+    administracion: 'autonomica',
+    aliases: ['enfermero ics', 'infermer ics', 'enfermera ics', 'enfermero cataluña', 'infermeria ics', 'enfermero institut catala de la salut', 'enfermero a2 cataluña'],
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Temario Transversal',
+        subtitle: 'Sistema sanitario catalán, ICS, legislación y calidad',
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'Ley de Ordenación Sanitaria de Cataluña (LOSC); SISCAT y Plan de Salud de Cataluña' },
+          { id: 2, name: 'El Instituto Catalán de la Salud (ICS): régimen jurídico, organización, Estatutos y competencias' },
+          { id: 3, name: 'Derechos y deberes de la ciudadanía en salud; protección de datos (LO 3/2018 y RGPD)' },
+          { id: 4, name: 'El Estatuto Marco del personal estatutario de los servicios de salud' },
+          { id: 5, name: 'El Estatuto Básico del Empleado Público; III Acuerdo de la Mesa Sectorial de Sanidad del ICS' },
+          { id: 6, name: 'Sistemas de incentivación y promoción: carrera profesional, dirección por objetivos y retribución variable' },
+          { id: 7, name: 'Ley de Prevención de Riesgos Laborales; reglamento de los servicios de prevención; protocolo de acoso' },
+          { id: 8, name: 'Igualdad efectiva de mujeres y hombres (Ley 17/2015) y violencia machista (Ley 5/2008)' },
+          { id: 9, name: 'Principios generales de la bioética; el secreto profesional' },
+          { id: 10, name: 'Calidad: concepto, calidad técnica y percibida; ciclo de mejora continua (PDCA); diagrama causa-efecto' },
+          { id: 11, name: 'Ofimática; intranet, internet, correo electrónico; administración electrónica' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Temario Específico de Enfermería',
+        subtitle: 'Proceso de cuidados por competencias clínicas',
+        icon: '💉',
+        themes: [
+          { id: 12, name: 'Cuidado de la persona, familia y comunidad: ética, deontología, metodología enfermera, comunicación e investigación' },
+          { id: 13, name: 'Promoción de la salud y prevención; cronicidad; ciclo vital; salud familiar' },
+          { id: 14, name: 'Proceso de cuidados: urgencias/emergencias, embarazo-parto-puerperio, cardiocirculatorio/respiratorio, nefrourinario/reproductor' },
+          { id: 15, name: 'Proceso de cuidados: nutricional-metabólico-endocrino, neurológico/musculoesquelético, infeccioso, digestivo' },
+          { id: 16, name: 'Proceso de cuidados: cutáneo, hematológico/inmune, ORL/oftalmológico, multisistémico, salud mental/adicciones, terminal' },
+          { id: 17, name: 'Cumplimiento terapéutico y educación sanitaria; farmacología clínica; administración de medicamentos; nutrición y dietética' },
+          { id: 18, name: 'Seguridad del paciente y gestión del proceso asistencial: asepsia/esterilización, infección nosocomial, aislamientos, seguridad clínica' },
+          { id: 19, name: 'Adaptación y afrontamiento; estrés; atención a familia/cuidador; cronicidad y fragilidad; duelo' },
+        ],
+      },
+    ],
+    totalTopics: 19,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/enfermero-ics', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/enfermero-ics/temario', label: 'Temario', icon: '📚' },
+      { href: '/enfermero-ics/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // ENFERMERO/A SCS CANARIAS (A2)
   // ========================================
   {

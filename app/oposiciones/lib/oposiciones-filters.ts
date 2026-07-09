@@ -146,6 +146,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'celador-galicia': 'galicia',
     'celador-sas': 'andalucia',
     'celador-ics': 'cataluna',
+    'enfermero-ics': 'cataluna',
     'celador-ibsalut': 'baleares',
     'auxiliar-administrativo-scs-canarias': 'canarias',
     'auxiliar-enfermeria-osakidetza': 'pais-vasco',

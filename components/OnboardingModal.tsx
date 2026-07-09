@@ -1811,6 +1811,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_ayuntamiento_salamanca', // C2 Salamanca (OEP 2026, 17 plz)
   'enfermero_sas_andalucia',          // sanitaria
   'enfermero_sacyl',                  // sanitaria Castilla y León
+  'enfermero_ics',                    // sanitaria Cataluña
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid
