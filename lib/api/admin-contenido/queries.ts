@@ -30,6 +30,8 @@ export interface ContenidoRow {
   total_preguntas: number
   usuarios: number
   premium: number
+  /** preguntas de exámenes OFICIALES scopeadas a la oposición (0 = sin examen oficial). */
+  oficiales: number
 }
 
 export interface ContenidoOverview {
@@ -66,6 +68,18 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       FROM user_profiles up
       WHERE up.target_oposicion IS NOT NULL
       GROUP BY up.target_oposicion
+    ),
+    official_counts AS (
+      -- Preguntas de EXÁMENES OFICIALES (is_official_exam) scopeadas a cada oposición
+      -- vía el modelo nuclear (pregunta→artículo→topic_scope→topic.position_type).
+      -- 0 = la oposición no tiene preguntas oficiales de años anteriores (incompleta).
+      SELECT tp.position_type AS pt, COUNT(DISTINCT q.id)::int AS oficiales
+      FROM questions q
+      JOIN articles a ON a.id = q.primary_article_id
+      JOIN topic_scope ts ON ts.law_id = a.law_id AND a.article_number = ANY(ts.article_numbers)
+      JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active = true
+      WHERE q.is_active = true AND q.is_official_exam = true
+      GROUP BY tp.position_type
     )
     SELECT
       tc.slug, tc.nombre, tc.short_name,
@@ -75,9 +89,11 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       count(*) FILTER (WHERE tc.disponible AND tc.q >= ${FINO_MAX})::int         AS ok,
       COALESCE(sum(tc.q) FILTER (WHERE tc.disponible), 0)::int                   AS total_preguntas,
       COALESCE(max(uc.usuarios), 0)::int                                         AS usuarios,
-      COALESCE(max(uc.premium), 0)::int                                          AS premium
+      COALESCE(max(uc.premium), 0)::int                                          AS premium,
+      COALESCE(max(oc.oficiales), 0)::int                                        AS oficiales
     FROM tema_counts tc
     LEFT JOIN user_counts uc ON uc.pt = replace(tc.slug, '-', '_')
+    LEFT JOIN official_counts oc ON oc.pt = replace(tc.slug, '-', '_')
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC

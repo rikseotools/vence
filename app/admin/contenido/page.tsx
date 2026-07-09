@@ -15,6 +15,7 @@ interface ContenidoRow {
   total_preguntas: number
   usuarios: number
   premium: number
+  oficiales: number
 }
 
 interface Overview {
@@ -23,7 +24,7 @@ interface Overview {
   summary: { total: number; conEnDesarrollo: number; conFinos: number; completas: number }
 }
 
-type Filter = 'todas' | 'en_desarrollo' | 'finos' | 'completas'
+type Filter = 'todas' | 'en_desarrollo' | 'finos' | 'completas' | 'sin_oficiales'
 type SortKey =
   | 'nombre'
   | 'disponibles'
@@ -31,6 +32,7 @@ type SortKey =
   | 'finos'
   | 'ok'
   | 'total_preguntas'
+  | 'oficiales'
   | 'usuarios'
   | 'premium_pct'
 
@@ -45,8 +47,13 @@ function estado(o: ContenidoRow): { label: string; cls: string } {
 const fmt = (n: number) => new Intl.NumberFormat('es-ES').format(n)
 const pct = (o: ContenidoRow) => (o.usuarios > 0 ? o.premium / o.usuarios : 0)
 
+// Nombre COMPLETO primero (short_name suele ser ambiguo: "Auxiliar C2" no dice cuál).
+function displayName(o: ContenidoRow): string {
+  return o.nombre || o.short_name || o.slug
+}
+
 function sortVal(o: ContenidoRow, k: SortKey): number | string {
-  if (k === 'nombre') return (o.short_name || o.nombre || o.slug).toLowerCase()
+  if (k === 'nombre') return displayName(o).toLowerCase()
   if (k === 'premium_pct') return pct(o)
   return o[k]
 }
@@ -88,6 +95,7 @@ export default function ContenidoPage() {
     if (filter === 'en_desarrollo') all = all.filter((o) => o.en_desarrollo > 0)
     else if (filter === 'finos') all = all.filter((o) => o.finos > 0 && o.en_desarrollo === 0)
     else if (filter === 'completas') all = all.filter((o) => o.en_desarrollo === 0 && o.finos === 0)
+    else if (filter === 'sin_oficiales') all = all.filter((o) => o.oficiales === 0)
     const sorted = [...all].sort((a, b) => {
       const va = sortVal(a, sortKey)
       const vb = sortVal(b, sortKey)
@@ -98,11 +106,14 @@ export default function ContenidoPage() {
   }, [data, filter, sortKey, sortDir])
 
   const s = data?.summary
+  // Sin exámenes oficiales se cuenta en cliente (no viene en summary).
+  const sinOficiales = (data?.oposiciones ?? []).filter((o) => o.oficiales === 0).length
   const chips: { key: Filter; label: string; n: number | undefined }[] = [
     { key: 'todas', label: 'Todas', n: s?.total },
     { key: 'en_desarrollo', label: '🔴 En desarrollo', n: s?.conEnDesarrollo },
     { key: 'finos', label: '🟡 Temas finos', n: s?.conFinos },
     { key: 'completas', label: '🟢 Completas', n: s?.completas },
+    { key: 'sin_oficiales', label: '⚠️ Sin examen oficial', n: sinOficiales },
   ]
 
   const arrow = (k: SortKey) => (sortKey === k ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '')
@@ -159,6 +170,7 @@ export default function ContenidoPage() {
                 <Th k="en_desarrollo" label="🔴" cls="text-right" title="temas con 0 preguntas" />
                 <Th k="finos" label="🟡" cls="text-right" title="temas con <20 preguntas" />
                 <Th k="ok" label="🟢" cls="text-right" title="temas con ≥20 preguntas" />
+                <Th k="oficiales" label="Oficiales" cls="text-right" title="preguntas de exámenes oficiales (0 = falta examen oficial de años anteriores)" />
                 <Th k="total_preguntas" label="Preguntas" cls="text-right" />
               </tr>
             </thead>
@@ -175,8 +187,13 @@ export default function ContenidoPage() {
                         rel="noopener noreferrer"
                         className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                       >
-                        {o.short_name || o.nombre || o.slug}
+                        {displayName(o)}
                       </a>
+                      {o.oficiales === 0 && (
+                        <span className="ml-2 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 whitespace-nowrap">
+                          ⚠️ falta examen oficial
+                        </span>
+                      )}
                     </td>
                     <td className="px-2 py-2 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${e.cls}`}>{e.label}</span>
@@ -197,6 +214,13 @@ export default function ContenidoPage() {
                       {o.finos || '·'}
                     </td>
                     <td className="px-2 py-2 text-right text-green-600 dark:text-green-400">{o.ok || '·'}</td>
+                    <td
+                      className={`px-2 py-2 text-right font-medium ${
+                        o.oficiales === 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      {o.oficiales === 0 ? '0 ⚠️' : fmt(o.oficiales)}
+                    </td>
                     <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{fmt(o.total_preguntas)}</td>
                   </tr>
                 )
