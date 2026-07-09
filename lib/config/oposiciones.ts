@@ -1763,6 +1763,103 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVA - UNIVERSIDAD DE MURCIA (C1)
+  // ========================================
+  {
+    id: 'administrativa_universidad_de_murcia',
+    slug: 'administrativa-universidad-de-murcia',
+    positionType: 'administrativa_universidad_de_murcia',
+    examScoring: { penaltyDivisor: 5, source: 'BORM nº146, 27/06/2026 (bases, Anexo I): valor a deducir por errónea = valor pregunta / (n+1), n=nº opciones; con 4 opciones = 1/5. confidence:alta' },
+    name: 'Administrativa - Universidad de Murcia',
+    shortName: 'Administrativa U. Murcia',
+    emoji: '🎓',
+    badge: 'C1',
+    color: 'amber',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'materia1',
+        title: 'I. Organización del Estado (3 temas)',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 101, displayNumber: 1, name: 'La Constitución Española: Título I. Derechos y deberes fundamentales + LO 3/2007 Igualdad' },
+          { id: 102, displayNumber: 2, name: 'La Constitución Española: Título III. Las Cortes Generales' },
+          { id: 103, displayNumber: 3, name: 'La Constitución Española: Título IV. El Gobierno y la Administración' },
+        ],
+      },
+      {
+        id: 'materia2',
+        title: 'II. Derecho Administrativo (7 temas)',
+        subtitle: null,
+        icon: '📋',
+        themes: [
+          { id: 201, displayNumber: 1, name: 'Ley 40/2015 (LRJSP): órganos, competencias, funcionamiento electrónico y convenios' },
+          { id: 202, displayNumber: 2, name: 'Ley 39/2015 (LPAC): interesados y actividad de las Administraciones Públicas' },
+          { id: 203, displayNumber: 3, name: 'Ley 39/2015 (LPAC): actos administrativos, procedimiento común y potestad reglamentaria' },
+          { id: 204, displayNumber: 4, name: 'Ley 39/2015 (LPAC): revisión de los actos en vía administrativa' },
+          { id: 205, displayNumber: 5, name: 'LO 3/2018 de Protección de Datos: principios y derechos' },
+          { id: 206, displayNumber: 6, name: 'Ley 9/2017 de Contratos del Sector Público: disposiciones generales y tipos de contratos' },
+          { id: 207, displayNumber: 7, name: 'Ley 19/2013 de Transparencia: ámbito y derecho de acceso a la información pública' },
+        ],
+      },
+      {
+        id: 'materia3',
+        title: 'III. Administración de Recursos Humanos (8 temas)',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 301, displayNumber: 1, name: 'TREBEP (RDL 5/2015): objeto y ámbito de aplicación' },
+          { id: 302, displayNumber: 2, name: 'TREBEP (RDL 5/2015): clases de personal' },
+          { id: 303, displayNumber: 3, name: 'TREBEP (RDL 5/2015): derechos y deberes. Código de Conducta' },
+          { id: 304, displayNumber: 4, name: 'TREBEP (RDL 5/2015): situaciones administrativas y régimen disciplinario' },
+          { id: 305, displayNumber: 5, name: 'Incompatibilidades: Ley 53/1984 y RD 598/1985' },
+          { id: 306, displayNumber: 6, name: 'LOSU (LO 2/2023): personal de las universidades públicas (PDI y PTGAS)' },
+          { id: 307, displayNumber: 7, name: 'Seguridad Social (RDL 8/2015): Régimen General, cotización y acción protectora' },
+          { id: 308, displayNumber: 8, name: 'Prevención de Riesgos Laborales (Ley 31/1995): objeto, derechos y obligaciones' },
+        ],
+      },
+      {
+        id: 'materia4',
+        title: 'IV. Gestión Económico-Financiera (6 temas)',
+        subtitle: null,
+        icon: '💶',
+        themes: [
+          { id: 401, displayNumber: 1, name: 'LOSU (LO 2/2023): régimen económico y financiero de las universidades públicas' },
+          { id: 402, displayNumber: 2, name: 'El presupuesto de la Universidad de Murcia: características, estructura, créditos y modificaciones' },
+          { id: 403, displayNumber: 3, name: 'Ordenación del gasto y del pago en la Universidad de Murcia. Documentos contables. Control interno' },
+          { id: 404, displayNumber: 4, name: 'Retribuciones de los empleados públicos. Nóminas: altas, bajas y modificaciones' },
+          { id: 405, displayNumber: 5, name: 'Gestión del gasto: bienes y servicios, inversión, transferencias' },
+          { id: 406, displayNumber: 6, name: 'Pagos: concepto y clasificación. Anticipos de caja fija. Pagos a justificar' },
+        ],
+      },
+      {
+        id: 'materia5',
+        title: 'V. Organización Universitaria (7 temas)',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 501, displayNumber: 1, name: 'LOSU (LO 2/2023): funciones y autonomía, cooperación e internacionalización del sistema universitario' },
+          { id: 502, displayNumber: 2, name: 'Los Estatutos de la Universidad de Murcia: organización, gobierno y estructuras académicas' },
+          { id: 503, displayNumber: 3, name: 'Organización de las enseñanzas universitarias: RD 822/2021 y RD 99/2011 (doctorado)' },
+          { id: 504, displayNumber: 4, name: 'Régimen de acceso y admisión: RD 534/2024, normativa UMU y Estatutos (estudiantado)' },
+          { id: 505, displayNumber: 5, name: 'Sistema europeo de créditos (ECTS) y Suplemento Europeo al Título: RD 1125/2003 y RD 22/2015' },
+          { id: 506, displayNumber: 6, name: 'Normas e instrucciones de matrícula de la Universidad de Murcia (curso 2026/2027)' },
+          { id: 507, displayNumber: 7, name: 'Precios públicos por servicios académicos universitarios en la Región de Murcia (Decreto 152/2021)' },
+        ],
+      },
+    ],
+    totalTopics: 31,
+    aliases: ['universidad de murcia', 'umu', 'administrativa murcia', 'administrativo universidad murcia', 'escala administrativa umu', 'administrativa umu'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativa-universidad-de-murcia', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/administrativa-universidad-de-murcia/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativa-universidad-de-murcia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO CONSELL INSULAR DE FORMENTERA (C2)
   // ========================================
   {

@@ -864,6 +864,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'administrativa_universidad_de_murcia',
+    nombre: 'Administrativa - Universidad de Murcia (UMU)',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_ayuntamiento_barcelona',
     nombre: 'Auxiliar Administrativo Ayuntamiento de Barcelona',
     categoria: 'C2',

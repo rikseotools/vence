@@ -117,6 +117,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-carm': 'murcia',
     'agrupacion-profesional-servicios-publicos-carm': 'murcia',
     'tecnico-auxiliar-universidad-de-murcia': 'murcia',
+    'administrativa-universidad-de-murcia': 'murcia',
     'auxiliar-administrativo-aragon': 'aragon',
     'auxiliar-administrativo-diputacion-huesca': 'aragon',
     'auxiliar-administrativo-extremadura': 'extremadura',
