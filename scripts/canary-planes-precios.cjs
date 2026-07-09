@@ -21,15 +21,20 @@
 require('dotenv').config({ path: '.env.local' })
 const Stripe = require('stripe')
 const { Client } = require('pg')
+const { execSync } = require('child_process')
 
-// Precios canónicos v2 (2026-07). Fuente de verdad del canary: si Manuel cambia
-// los precios, actualizar aquí y en los build-args (Dockerfile/workflow).
+// Precios canónicos v2 (2026-07). FUENTE DE VERDAD del canary (no el .env.local,
+// que es per-worktree y puede driftar). Si Manuel cambia los precios, actualizar
+// el `id` aquí + build-args (Dockerfile/workflow) + .env.local.
 const EXPECTED = {
-  monthly:   { amount: 2900, interval: 'month', count: 1 },
-  quarterly: { amount: 3900, interval: 'month', count: 3 },
-  semester:  { amount: 6900, interval: 'month', count: 6 },
-  annual:    { amount: 9900, interval: 'year',  count: 1 },
+  monthly:   { id: 'price_1TrNBi0lMFwxldqjhNOtibLf', amount: 2900, interval: 'month', count: 1 },
+  quarterly: { id: 'price_1TrNBi0lMFwxldqjX6Z6EAIl', amount: 3900, interval: 'month', count: 3 },
+  semester:  { id: 'price_1TrNBi0lMFwxldqjWYAVd93S', amount: 6900, interval: 'month', count: 6 },
+  annual:    { id: 'price_1TrNBj0lMFwxldqjyc7TGHMa', amount: 9900, interval: 'year',  count: 1 },
 }
+
+// Servicio ECS del front en prod (el runtime real que usa create-checkout).
+const ECS = { cluster: 'vence-backend', service: 'vence-frontend', profile: 'vence', region: 'eu-west-2' }
 
 // Cuenta de altas nuevas: la que cobra los precios nuevos. Si el flip cambia,
 // cambia también qué secret/env verificar.
@@ -76,8 +81,33 @@ async function main() {
     if (rec.interval !== exp.interval) problems.push(`interval ${rec.interval} ≠ ${exp.interval}`)
     if ((rec.interval_count || 1) !== exp.count) problems.push(`interval_count ${rec.interval_count} ≠ ${exp.count}`)
 
+    // Además, el env local debe coincidir con la fuente de verdad del canary.
+    if (priceId !== exp.id) fails.push(`${tier}: env local ${priceId} ≠ esperado ${exp.id} (.env.local driftado)`)
+
     if (problems.length) fails.push(`${tier} (${priceId}): ${problems.join(', ')}`)
     else console.log(`  ✅ ${tier.padEnd(10)} ${priceId}  ${exp.amount / 100}€ ${exp.count}${exp.interval}`)
+  }
+
+  // ─── PRODUCCIÓN: el task def VIVO de ECS debe tener los IDs esperados ─────────
+  // Esto es lo que create-checkout lee en runtime (acceso dinámico process.env[]).
+  // Un deploy de otra sesión con .env.local viejo puede pisar estos valores y
+  // dejar el checkout cobrando/reventando con IDs que no existen → 400 en las
+  // altas (incidente real 09/07: task def :386 con monthly/quarterly/semester
+  // viejos y solo annual nuevo → 3 de 4 planes caídos). El canary local no lo veía.
+  try {
+    const liveTd = execSync(`aws ecs describe-services --cluster ${ECS.cluster} --services ${ECS.service} --profile ${ECS.profile} --region ${ECS.region} --query 'services[0].taskDefinition' --output text`).toString().trim()
+    const envJson = execSync(`aws ecs describe-task-definition --task-definition ${liveTd} --profile ${ECS.profile} --region ${ECS.region} --query 'taskDefinition.containerDefinitions[0].environment' --output json`).toString()
+    const liveEnv = Object.fromEntries(JSON.parse(envJson).map(e => [e.name, e.value]))
+    let prodOk = true
+    for (const [tier, exp] of Object.entries(EXPECTED)) {
+      for (const suffix of ['', '_NILA']) {
+        const name = `NEXT_PUBLIC_STRIPE_PRICE_${tier.toUpperCase()}${suffix}`
+        if (liveEnv[name] !== exp.id) { fails.push(`PROD task def ${liveTd}: ${name}=${liveEnv[name]} ≠ esperado ${exp.id}`); prodOk = false }
+      }
+    }
+    if (prodOk) console.log(`  ✅ PROD: task def vivo ${liveTd} tiene los 8 price IDs correctos`)
+  } catch (e) {
+    console.log(`  ⏭️  no se pudo verificar el task def de ECS (¿sin AWS CLI?): ${e.message.split('\n')[0]}`)
   }
 
   // Coherencia: los 4 tiers deben ser price IDs DISTINTOS (evita copy-paste que
