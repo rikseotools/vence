@@ -2,14 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import {
-  safeParseGetProfileRequest,
   safeParseUpdateProfileRequest,
   getProfileForSelfCached,
   updateProfile
 } from '@/lib/api/profile'
-import { isAdminEmail } from '@/lib/api/shared/auth'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { reconcileUserPremium } from '@/lib/api/checkout-sync'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
@@ -24,78 +23,18 @@ const PROFILE_GET_TIMEOUT_MS = 8000
 const PROFILE_PUT_TIMEOUT_MS = 8000
 
 // ============================================
-// SHADOW-MODE AUTH CHECK (paso 3/7)
+// IDENTIDAD = TOKEN VERIFICADO (enforcement real)
 // ============================================
-// Sólo loguea. NO bloquea. Permite identificar callers sin Bearer y posibles
-// IDOR antes de activar el enforcement (paso 5). Envuelto en try/catch para
-// que ningún fallo del auth pueda romper el endpoint.
-//
-// IMPORTANTE: hacemos decode local del JWT (NO verificamos firma) para evitar
-// añadir un round-trip a Supabase Auth en cada request a /api/profile. La
-// verificación real (con firma) la hará paso 5 cuando active el enforcement.
-// Si un atacante envía un JWT manipulado, el peor caso aquí es un log
-// inexacto; ningún acceso a datos depende de este check.
-
-interface DecodedJwt {
-  sub?: string
-  email?: string
-  exp?: number
-}
-
-function decodeJwtPayloadUnsafe(token: string): DecodedJwt | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    // base64url → utf-8
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
-    return payload
-  } catch {
-    return null
-  }
-}
-
-function shadowAuthCheck(
-  request: NextRequest,
-  requestedUserId: string,
-  opType: 'GET' | 'PUT'
-): void {
-  try {
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-
-    if (!token) {
-      console.warn(`🔍 [shadow] /api/profile ${opType} sin Bearer token`, {
-        requestedUserId,
-        ua: request.headers.get('user-agent')?.slice(0, 100) ?? 'unknown',
-      })
-      return
-    }
-
-    const payload = decodeJwtPayloadUnsafe(token)
-    if (!payload?.sub) {
-      console.warn(`🔍 [shadow] /api/profile ${opType} JWT sin sub`, {
-        requestedUserId,
-        ua: request.headers.get('user-agent')?.slice(0, 100) ?? 'unknown',
-      })
-      return
-    }
-
-    const sessionUserId = payload.sub
-    const sessionEmail = payload.email
-
-    if (sessionUserId !== requestedUserId && !isAdminEmail(sessionEmail)) {
-      console.warn(`🔍 [shadow] /api/profile ${opType} IDOR potencial`, {
-        sessionUserId,
-        sessionEmail,
-        requestedUserId,
-      })
-    }
-    // Caso correcto: caller autenticado y dueño (o admin) — silencio.
-  } catch (err) {
-    // Nunca dejar que el shadow check rompa el endpoint
-    console.warn('🔍 [shadow] excepción en auth check:', err)
-  }
-}
+// La identidad del perfil SIEMPRE se deriva del token verificado (verifyAuth,
+// local <5ms con JWT_LOCAL_VERIFY_MODE=on), NUNCA del `?userId=`/`body.userId`
+// que manda el cliente. Esto cierra dos defectos que coexistían con el antiguo
+// `shadowAuthCheck` (que sólo logueaba, nunca bloqueaba — "paso 3/7" que jamás
+// llegó al enforcement):
+//   1. IDOR de lectura/escritura: cualquiera (incluso sin token) podía leer o
+//      modificar el perfil de otro usuario pasando su uuid.
+//   2. 404 "Perfil no encontrado" espurio: clientes que arrastran un id
+//      stale/fantasma en el query → con el id del token resolvemos el perfil real.
+// Sin token válido → 401 (antes: se servía igual / 404).
 
 // ============================================
 // GET: Obtener perfil de usuario
@@ -103,26 +42,32 @@ function shadowAuthCheck(
 
 async function _GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-
-    // Validar request con Zod
-    const parseResult = safeParseGetProfileRequest({ userId })
-    if (!parseResult.success) {
+    // 🔒 Identidad SIEMPRE del token verificado (nunca del `?userId=`).
+    const auth = await verifyAuth(request, '/api/profile')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'userId inválido o faltante' },
-        { status: 400 }
+        { success: false, error: 'No autenticado' },
+        { status: 401 }
       )
     }
+    const userId = auth.userId
 
-    // Shadow-mode auth check (paso 3/7) — sólo loguea, no bloquea (sync, 0 ms)
-    shadowAuthCheck(request, parseResult.data.userId, 'GET')
+    // Señal de observabilidad (no fatal): el cliente pidió un id distinto al del
+    // token — id stale/fantasma (causa del 404) o intento de IDOR. Servimos el
+    // del token igualmente. Se limita al mismatch para no ensuciar el log común.
+    const claimed = new URL(request.url).searchParams.get('userId')
+    if (claimed && claimed !== userId) {
+      console.warn('🔒 [API/profile] GET userId del query ignorado (≠ token)', {
+        claimed,
+        tokenUserId: userId,
+      })
+    }
 
-    // Obtener perfil (cache 60s, tag 'profile').
+    // Obtener perfil (cache 60s, tag 'profile', key por userId del token).
     // Proyección "self": excluye stripeCustomerId, registrationIp,
     // registrationUrl, adminNotes (sensibles, no necesarios al cliente).
     const result = await withDbTimeout(
-      () => getProfileForSelfCached(parseResult.data),
+      () => getProfileForSelfCached({ userId }),
       PROFILE_GET_TIMEOUT_MS,
     )
 
@@ -143,7 +88,6 @@ async function _GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profileData = (result as any).data
     if (profileData?.planType === 'free') {
-      const userId = parseResult.data.userId
       after(async () => {
         try {
           const recon = await reconcileUserPremium(userId)
@@ -186,10 +130,23 @@ async function _GET(request: NextRequest) {
 
 async function _PUT(request: NextRequest) {
   try {
+    // 🔒 Identidad SIEMPRE del token verificado. El `userId` del body se IGNORA
+    // (se sobreescribe con el del token) → imposible modificar el perfil de otro.
+    const auth = await verifyAuth(request, '/api/profile')
+    if (!auth.success) {
+      return NextResponse.json(
+        { success: false, error: 'No autenticado' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
 
-    // Validar request con Zod
-    const parseResult = safeParseUpdateProfileRequest(body)
+    // Validar request con Zod, forzando userId = token ANTES de validar/escribir.
+    const parseResult = safeParseUpdateProfileRequest({
+      ...(body as Record<string, unknown>),
+      userId: auth.userId,
+    })
     if (!parseResult.success) {
       console.warn('⚠️ [API/profile] Validación fallida:', parseResult.error.issues)
       return NextResponse.json(
@@ -197,9 +154,6 @@ async function _PUT(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    // Shadow-mode auth check (paso 3/7) — sólo loguea, no bloquea (sync, 0 ms)
-    shadowAuthCheck(request, parseResult.data.userId, 'PUT')
 
     // Actualizar perfil (write path)
     const result = await withDbTimeout(
