@@ -451,24 +451,26 @@ export default function FeedbackModal({
       const feedbackResult = feedbackApiResult.data
       console.log('✅ Feedback insertado correctamente:', feedbackResult?.id)
 
-      // Enviar email de notificación al admin
-      if (feedbackResult) {
-        try {
-          const { sendAdminFeedbackNotification } = await import('../lib/notifications/adminEmailNotifications')
-          await sendAdminFeedbackNotification({
-            id: feedbackResult.id,
-            user_id: user?.id || null,
-            user_email: formData.email || 'Usuario anónimo',
-            user_name: user?.user_metadata?.full_name || 'Sin nombre',
-            feedback_type: feedbackType,
-            message: formData.message,
-            rating: null,
-            created_at: feedbackResult.createdAt
-          })
-        } catch (emailError) {
-          console.error('Error enviando email admin:', emailError)
-        }
-      }
+      // Email admin en creación de feedback DESHABILITADO - saturaba el correo
+      // (mismo criterio que las impugnaciones, arriba). El feedback sigue llegando
+      // por la campana in-app y el panel /admin/feedback. Para reactivar, descomentar.
+      // if (feedbackResult) {
+      //   try {
+      //     const { sendAdminFeedbackNotification } = await import('../lib/notifications/adminEmailNotifications')
+      //     await sendAdminFeedbackNotification({
+      //       id: feedbackResult.id,
+      //       user_id: user?.id || null,
+      //       user_email: formData.email || 'Usuario anónimo',
+      //       user_name: user?.user_metadata?.full_name || 'Sin nombre',
+      //       feedback_type: feedbackType,
+      //       message: formData.message,
+      //       rating: null,
+      //       created_at: feedbackResult.createdAt
+      //     })
+      //   } catch (emailError) {
+      //     console.error('Error enviando email admin:', emailError)
+      //   }
+      // }
 
       setSuccess(true)
 

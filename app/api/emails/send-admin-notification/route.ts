@@ -18,6 +18,14 @@ async function _POST(request: Request) {
       )
     }
 
+    // Notificación de CREACIÓN de feedback por email DESHABILITADA a petición de
+    // Manuel (saturaba el correo). Se corta aquí como red de seguridad server-side:
+    // aunque un caller (cliente/futuro) la pida, no se envía. El feedback sigue
+    // visible en la campana in-app y en /admin/feedback. Reactivar = quitar este guard.
+    if (type === 'feedback') {
+      return NextResponse.json({ success: true, skipped: true, reason: 'feedback_email_disabled' })
+    }
+
     let emailContent: { subject: string; html: string }
 
     switch (type) {
