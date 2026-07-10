@@ -19,6 +19,17 @@ function rows<T>(res: unknown): T[] {
 // Umbral: por debajo de esto un tema se considera "fino" (pocas preguntas).
 export const FINO_MAX = 20
 
+/**
+ * Vendibilidad = eje ORTOGONAL al de contenido. Derivado (no a mano) de la
+ * oportunidad viva (OEP × cuerpo) resuelta en oposiciones_ssot. Hoy vendemos
+ * solo ingreso LIBRE → mira plazas_libres. "null nunca mudo": plazas_libres
+ * NULL = desconocido (nunca verificado), NO se colapsa a "no vendible".
+ *   - vendible:      plazas_libres > 0 y examen no pasado (exam_date nula/futura)
+ *   - no_vendible:   examen pasado, o plazas_libres = 0
+ *   - sin_verificar: plazas_libres NULL
+ */
+export type Vendibilidad = 'vendible' | 'no_vendible' | 'sin_verificar'
+
 export interface ContenidoRow {
   slug: string
   nombre: string | null
@@ -30,6 +41,9 @@ export interface ContenidoRow {
   total_preguntas: number
   usuarios: number
   premium: number
+  vendibilidad: Vendibilidad
+  plazas_libres: number | null
+  exam_date: string | null
 }
 
 export interface ContenidoOverview {
@@ -66,6 +80,10 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       FROM user_profiles up
       WHERE up.target_oposicion IS NOT NULL
       GROUP BY up.target_oposicion
+    ),
+    -- Vendibilidad: campos temporales resueltos desde la convocatoria vigente.
+    vend AS (
+      SELECT slug, plazas_libres, exam_date FROM oposiciones_ssot
     )
     SELECT
       tc.slug, tc.nombre, tc.short_name,
@@ -75,9 +93,18 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       count(*) FILTER (WHERE tc.disponible AND tc.q >= ${FINO_MAX})::int         AS ok,
       COALESCE(sum(tc.q) FILTER (WHERE tc.disponible), 0)::int                   AS total_preguntas,
       COALESCE(max(uc.usuarios), 0)::int                                         AS usuarios,
-      COALESCE(max(uc.premium), 0)::int                                          AS premium
+      COALESCE(max(uc.premium), 0)::int                                          AS premium,
+      max(v.plazas_libres)::int                                                  AS plazas_libres,
+      max(v.exam_date)::text                                                     AS exam_date,
+      CASE
+        WHEN max(v.plazas_libres) IS NULL THEN 'sin_verificar'
+        WHEN max(v.plazas_libres) > 0
+             AND (max(v.exam_date) IS NULL OR max(v.exam_date) >= CURRENT_DATE) THEN 'vendible'
+        ELSE 'no_vendible'
+      END                                                                        AS vendibilidad
     FROM tema_counts tc
     LEFT JOIN user_counts uc ON uc.pt = replace(tc.slug, '-', '_')
+    LEFT JOIN vend v ON v.slug = tc.slug
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC
