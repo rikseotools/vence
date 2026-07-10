@@ -1,4 +1,4 @@
-# Runbook — Deploy (frontend + backend)
+# Runbook — Pusheo, revisión y despliegue (frontend + backend)
 
 > **Fuente única del deploy.** Antes el conocimiento estaba disperso (ARCHITECTURE_ROADMAP + comentarios de scripts + memorias). Aquí está el procedimiento canónico, la arquitectura de assets y el rollback, para front y backend.
 >
@@ -36,22 +36,52 @@ scripts/deploy-frontend.sh            # el gate confirma verde y despliega
 ```
 Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs). Es intencional: no desplegar código que no pasó CI.
 
+> **CI — dónde corre:** el workflow (`.github/workflows/test.yml`) dispara en **`pull_request` y push a `main`**, NO en push de una rama suelta. Para tener CI sobre una feature-branch (worktree, ver abajo) hay que **abrir un PR** — aunque seas solo tú: el PR es el mecanismo que dispara el CI, no una ceremonia de aprobación.
+
 > ⚠️ **El gate exige solo los checks de CÓDIGO verdes (unit+typecheck+lint).** `integration` es una **señal aparte que NO bloquea**: pega a la BD real (readonly) y puede estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión, un test de otra feature a medias) — cosas ajenas al código que despliegas. **Decisión tomada (Manuel, 08/07):** el gate del script trata `integration` como informativa (la reporta pero no aborta). Aun así, míralo antes de soltar: si el rojo SÍ es de tu código, arréglalo primero.
 >
 > ⚠️ **Sincronía script ↔ origin (gotcha real 09/07):** el gate solo-código vive en el **script** `deploy-{frontend,backend}.sh`. Si despliegas desde un checkout de `origin/main` cuyo script sea una versión ANTERIOR (gate "exige todo"), toparás con `integration` roja y el deploy abortará. En ese caso: verifica a mano que unit+typecheck+lint están verdes (GH API del SHA) y usa `SKIP_CI_GATE=1` de forma consciente. Y sincroniza script+manual en origin para que no vuelva a pasar.
 
 ## Sesiones paralelas (varias sesiones de Claude a la vez)
 
-Varias sesiones trabajan el MISMO repo a la vez y **commitean a `main` local SIN pushear** (checkpoints tipo `chore: checkpoint trabajo pendiente (sesiones paralelas), sin push`). Consecuencias para el deploy:
+> 🔑 **Distinción clave — pushear a `main` ≠ desplegar** (causa de confusión 09/07, dos sesiones lo leían opuesto):
+> - **Pushear a `main`** = estacionar + disparar el CI. Es **reversible** (revert) y **seguro**. Se hace **cuando TU tarea está COMPLETA** (integrada + testeada), sin esperar a nadie. `main` es el punto de integración; que varias sesiones metan cosas es normal. **No hace falta PR** (el CI también corre en push a `main`; el PR solo sirve para tener CI en una rama ANTES de mergear).
+> - **Desplegar** = coger el estado ACTUAL de `main` y mandarlo a prod. **Es el ÚNICO acto que se coordina**: se despliega cuando `main` tiene solo lo que quieres soltar y ninguna sesión está a media integración. El deploy es cumulativo (sube TODO lo de `main`), por eso solo se sube trabajo COMPLETO a `main`.
+> - **Regla:** "mete X en main" (por sesión, al cerrar tarea) es libre; "despliega todo" (coordinado) es aparte. No encadenes el deploy al merge de UNA feature si hay otras sesiones activas.
 
-- **`main` va por delante de `origin`** con trabajo mezclado de varias sesiones. Un `git push` sube TODO ese trabajo acumulado, no solo el de una sesión.
-- **El deploy es CUMULATIVO**: build desde working tree/HEAD = el trabajo de TODAS las sesiones. No hay aislamiento por sesión en el momento del deploy.
-- Un `git add -A` de una sesión puede **barrer ficheros sin commitear de otra** hacia su checkpoint (pasó el 08/07: un checkpoint paralelo se llevó 4 ficheros de otra sesión). **Commitea tu trabajo de forma atómica** (`git add -u` de tus ficheros, no `-A` a ciegas) para que no se mezcle ni te barran.
+**Convención (desde 09/07): un git worktree + rama por sesión** — directorio propio, misma `.git`. Ninguna sesión toca los ficheros de otra. Es la solución al lío de compartir el mismo directorio (stash / merge / colisiones / barrer WIP ajeno). Detalle: memoria `feedback_worktree_por_sesion_paralela`.
 
-**Antes de desplegar con sesiones paralelas activas:**
-1. Coordina un **momento de release**: que ninguna sesión esté a media edición → árbol limpio (el guardarraíl te frena si no).
-2. Confirma que TODO lo intencional está commiteado y que `main` contiene solo lo que quieres soltar.
-3. UN `git push origin main` → esperar CI verde → deploy. **No** pushear/desplegar por sesión de forma descoordinada.
+```bash
+git fetch origin
+git worktree add -b feat/<tarea> <ruta-fuera-del-repo> origin/main   # rama desde origin limpio
+cp  <repo>/.env.local  <wt>/.env.local        # un worktree NO trae gitignored (o symlink)
+ln -s <repo>/node_modules <wt>/node_modules   # deps compartidas; QUITAR antes de `podman build`
+```
+- **Cierre de tarea:** cherry-pick del commit sobre `origin/main` (en un worktree) o merge del branch; **NUNCA** pushear el `main` local divergente (arrastra duplicados de otras sesiones).
+- **Deploy:** SIEMPRE desde un checkout **LIMPIO de `origin/main`** (worktree con `.env.local`), no desde el dir compartido con WIP a medias — el build es `COPY . .` del working tree, así que un árbol sucio mete trabajo ajeno en la imagen.
+- **RDS desde tsx/jest en el worktree:** `NODE_TLS_REJECT_UNAUTHORIZED=0` al ARRANCAR el proceso + URL con `sslmode=no-verify` (Node cachea el flag; postgres.js valida el cert self-signed).
+
+**Modelo VIEJO (compartir el mismo directorio — EVITAR):** commitear a `main` local sin push y trabajar todos en `/home/manuel/Documentos/github/vence` provoca que cambiar de rama / `git add -A` / stash intercambie o barra ficheros de otras sesiones (08/07: un checkpoint se llevó 4 ficheros ajenos). Si por lo que sea trabajas ahí: **commit atómico** (`git add -u` de TUS ficheros, nunca `-A`) y **árbol limpio** antes de desplegar (el guardarraíl te frena si no).
+
+## Capas de seguridad obligatorias (toda feature / fix)
+
+Por defecto, TODA feature o fix lleva estas capas; **saltarse una se JUSTIFICA**, no al revés (un fix de una línea de copy no necesita canary; una feature sí todo):
+1. **Unit** — lógica pura, importando la función **REAL** de producción (nunca una copia: una copia da falso verde cuando el código real cambia o desaparece).
+2. **Integración** — el camino real contra la BD (INSERT/SELECT reales), gated si el entorno lo exige (`INTEGRATION_DB_WRITABLE=1`; el CI de integración es read-only).
+3. **Simulación con datos reales** — replayear el caso del usuario/incidente por la lógica arreglada y verificar end-to-end (read-only), no solo casos sintéticos.
+4. **Canary** — sintético contra infra viva que **VERIFICA en BD el invariante** (no solo que el endpoint responde 200). Si el fixture no ejercita el invariante, el canary es ciego → arreglarlo.
+5. **Guardrail** — contrato/esquema (p.ej. afirmar que una columna está mapeada en Drizzle — caza el schema-drift que el typecheck no ve; o el cableado de una feature por lectura de código, sin BD → corre en CI).
+
+**Clave (lección 09/07):** las capas solo valen si cubren **superficies DISTINTAS**, no el mismo slice 5 veces — la capa que tocas **+ las de al lado que ve el usuario** (conteos, selectores) + las **combinaciones** + el **timing de cliente**. Detalle: memoria `feedback_feature_multiples_capas_seguridad`.
+
+## Antes de mergear: revisión independiente (features/fixes no triviales)
+
+Los tests que escribe el autor se agrupan alrededor de lo que el autor cambió y de su modelo mental → **heredan sus puntos ciegos**. Por eso, antes de mergear a `main`, una **revisión adversarial por un agente FRESCO** (sin contexto de autor) sobre el diff, con el mandato de **romperlo**:
+- Testear la **superficie que ve el USUARIO**, no solo la capa que tocaste (endpoints de al lado, conteos, selectores).
+- Las **combinaciones** (flag + selección manual…), el **timing de cliente**, y los casos límite (datos vacíos/virtuales, inyección).
+- **Regla:** si el auditor encuentra algo que tus tests no vieron, **añade el test que lo habría cazado** antes de mergear.
+
+Con **solo-dev + Claude**, el PR-con-aprobación es teatro (yo aprobando lo mío no es independiente). Lo que aporta valor real: **CI sobre la rama** (vía PR) + **auditoría independiente** (agente fresco) + tu **vistazo de producto (UX)**. Caso real 09/07 (feature "por leyes"): la auditoría cazó que la feature acotaba el *test servido* pero **no la pantalla** que confundía al usuario (conteos + selector) — las 3 capas del autor cubrían el mismo slice. Ver `feedback_worktree_por_sesion_paralela`.
 
 ## Frontend — arquitectura de assets (CRÍTICO: por qué no se congela al desplegar)
 
@@ -100,6 +130,8 @@ Gate extra de auth recomendado tras deploy front: `node scripts/fase-b-auth-surf
 
 ## Gotchas
 
+- ⚠️ **Páginas SSG (prerenderizadas) NO se refrescan solas en CloudFront tras un deploy** (incidente 09/07, `/premium`). El deploy sincroniza `_next/static` a S3, pero las **páginas HTML prerenderizadas** (p.ej. `/premium`) se sirven con `cache-control: s-maxage=31536000` y CloudFront las cachea → los visitantes ven el HTML VIEJO (apuntando al chunk viejo) hasta que caduque (1 año). Al cambiar una página SSG hay que **invalidar CloudFront a mano**: `aws cloudfront create-invalidation --distribution-id E1EH4WF1H7ZGLA --paths "/premium" "/premium/" --profile vence`. (Con `?cb=<n>` se fuerza render fresco de origin para verificar.) Rutas dinámicas/SSR no tienen este problema; SSG sí.
+- ⚠️ **Los precios de Stripe NO salen del `.env.local`** (que es per-worktree y gitignored → driftaba y tumbaba pagos: incidente 09/07 task def `:386`, un `.env.local` viejo desplegó IDs antiguos y dejó `create-checkout` en 400 en 3 de 4 planes). Salen de `scripts/stripe-prices.sh` (**commiteado**, fuente de verdad), que el deploy sourcea DESPUÉS de `.env.local` para sobreescribirlo. Cambiar precios = editar ese fichero + crear los precios en Stripe + `EXPECTED` de `scripts/canary-planes-precios.cjs` + build-args de `frontend-deploy.yml`. El canary de precios verifica además el **task def vivo de ECS** (no solo el env local), que es lo que caza este modo de fallo.
 - El deploy **construye desde el working tree**, no desde git HEAD (podman `COPY . .`). Commitea lo que quieras desplegar; ojo con cambios ajenos sin commitear en el árbol.
 - La task def se clona de la **VIVA** (hereda `AUTH_JWT_*`, `JWT_LOCAL_VERIFY_MODE=on`, pooler, secretos) — no hardcodear.
 - `SUPABASE_WEBHOOK_SECRET` sigue en los `secrets` del task def frontend (inerte, el código ya no lo lee) — pendiente de limpiar registrando un task def sin él + borrar el param SSM.
@@ -132,7 +164,9 @@ Las notas de memoria sobre estado de despliegue **envejecen**; el `/api/health` 
 
 **Y en nuestro Docker multi-stage:** `ENV NEXT_PUBLIC_*` está en el stage **builder** (para que `next build` hornee el bundle **cliente** y resuelva los accesos estáticos). **Esos ENV NO se propagan al stage `runner`.** Por tanto el entorno de **runtime** del server = **el task def de ECS** (`environment` + `secrets` SSM), NO el ENV del builder. (Comprobar lo horneado en una imagen: `podman image inspect <img> --format '{{range .Config.Env}}{{println .}}{{end}}'`.)
 
-**Regla operativa:** si añades (o un refactor introduce) una dependencia **server-side** de una `NEXT_PUBLIC_*` vía **acceso dinámico**, esa var **debe** ir al `environment` del task def — cablearla en el bloque de construcción del task def de `scripts/deploy-frontend.sh` (como se hace con los secretos SSM de Nila y con los 6 `NEXT_PUBLIC_STRIPE_PRICE_*`). Los IDs de precio son públicos → `environment` plano; algo secreto → SSM `secrets`. Grep rápido de riesgo: `grep -rE "process\.env\[" app lib` en código que corre en server.
+**Regla operativa:** si añades (o un refactor introduce) una dependencia **server-side** de una `NEXT_PUBLIC_*` vía **acceso dinámico**, esa var **debe** ir al `environment` del task def — cablearla en el bloque de construcción del task def de `scripts/deploy-frontend.sh` (como se hace con los secretos SSM de Nila y con los **8** `NEXT_PUBLIC_STRIPE_PRICE_*`: monthly/quarterly/semester/**annual** × base+_NILA). Los IDs de precio son públicos → `environment` plano; algo secreto → SSM `secrets`. Grep rápido de riesgo: `grep -rE "process\.env\[" app lib` en código que corre en server.
+
+> **Refuerzo (incidente 09/07, task def `:386`):** además de estar en el task def, los price IDs se sourcean de `scripts/stripe-prices.sh` (**commiteado**), NO del `.env.local` per-worktree. Motivo: un deploy desde un worktree con `.env.local` de precios viejo clonó el task def bueno pero **sobreescribió** monthly/quarterly/semester con los IDs antiguos (annual sobrevivió por herencia) → el cliente enviaba IDs nuevos y el server los rechazaba → `create-checkout` 400 en 3 de 4 planes, altas caídas. El canary local no lo veía (miraba `.env.local`); ahora `scripts/canary-planes-precios.cjs` verifica el **task def VIVO de ECS**.
 
 **Deploy solo-de-runtime-config (env del task def, sin cambiar imagen):** es legítimo registrar una nueva revisión del task def (clonando la viva + añadiendo el env) y `update-service`, sin rebuild — es más rápido que el script y AWS-native. PERO te saltas el **smoke** del script: ejecútalo a mano (`home=200`, `/api/auth/token=401`, un chunk 200) y deja el cambio **también** en el deploy script para que persista en el próximo deploy canónico. La regla "usar siempre el script" sigue valiendo para cambios de **código/imagen**.
 

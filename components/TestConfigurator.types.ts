@@ -53,6 +53,9 @@ export interface TestConfiguratorProps {
   officialQuestionsCount?: number
   testMode?: TestMode
   positionType?: string
+  /** Configurador "por leyes" acotado al temario del positionType (sin topicNumber):
+   *  filtra las leyes y los artículos al temario del usuario. Default false. */
+  scopeToPosition?: boolean
   /** Abrir automáticamente el modal de preguntas falladas al montar */
   autoOpenFailed?: boolean
 }

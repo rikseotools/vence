@@ -166,9 +166,14 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
   // ============================================
 
   it('title y epigrafe no son contradictorios (mismo dominio temático)', () => {
+    // Oposiciones bilingües: title en castellano (UI) + epigrafe LITERAL en otra lengua
+    // cooficial (el manual exige el epígrafe literal del boletín). La heurística palabra-a-palabra
+    // no cruza idiomas, así que estas se excluyen (p.ej. enfermero_ics: título ES / epígrafe català del DOGC).
+    const BILINGUE_TITLE_EPIGRAFE = new Set(['enfermero_ics'])
     // Heurística: el title debe compartir palabras clave con el epigrafe
     const incoherentes = topics.filter(t => {
       if (!t.epigrafe || !t.title) return false
+      if (BILINGUE_TITLE_EPIGRAFE.has(t.position_type)) return false
       const titleWords = t.title.toLowerCase().split(/\s+/).filter(w => w.length >= 5)
       const epigrafeLower = t.epigrafe.toLowerCase()
       // Al menos 1 palabra de 5+ letras del title debe estar en el epigrafe

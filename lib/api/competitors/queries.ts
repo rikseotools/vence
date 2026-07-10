@@ -30,7 +30,7 @@ export async function getCompetitorChangesCount(): Promise<CompetitorChangesCoun
     FROM competitor_changes
     WHERE reviewed_at IS NULL
       AND detected_at > now() - interval '7 days'
-      AND change_type = ANY(${BADGE_CHANGE_TYPES as unknown as string[]})
+      AND change_type IN (${sql.join(BADGE_CHANGE_TYPES.map((t) => sql`${t}`), sql`, `)})
   `)
   return { success: true, changesCount: Number(rows<{ count: number }>(res)[0]?.count ?? 0) }
 }
@@ -102,7 +102,7 @@ export async function getCompetitorsOverview(): Promise<CompetitorsOverview> {
         (SELECT count(*)::int FROM competitor_courses WHERE is_active AND match_method = 'needs_review') AS needs_review,
         (SELECT count(*)::int FROM competitor_changes
            WHERE reviewed_at IS NULL AND detected_at > now() - interval '7 days'
-             AND change_type = ANY(${BADGE_CHANGE_TYPES as unknown as string[]})) AS recent_changes
+             AND change_type IN (${sql.join(BADGE_CHANGE_TYPES.map((t) => sql`${t}`), sql`, `)})) AS recent_changes
     `),
     // Pivote por oposición: quién prepara cada oposición nuestra + rango de cuota.
     db.execute(sql`
@@ -350,7 +350,7 @@ export async function acknowledgeCompetitorChanges(id?: string): Promise<number>
   const res = await db.execute(sql`
     UPDATE competitor_changes SET reviewed_at = now()
     WHERE reviewed_at IS NULL
-      AND change_type = ANY(${BADGE_CHANGE_TYPES as unknown as string[]})
+      AND change_type IN (${sql.join(BADGE_CHANGE_TYPES.map((t) => sql`${t}`), sql`, `)})
   `)
   return (res as unknown as { rowCount?: number }).rowCount ?? 0
 }

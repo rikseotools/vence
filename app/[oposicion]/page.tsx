@@ -176,7 +176,9 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   // Filtramos entries que no respeten el esquema {numero,texto,color} —
   // pueden venir snapshots viejos con {label,value} u otros campos.
   const rawStats = data?.landingEstadisticas as Array<{ numero?: unknown; texto?: unknown; color?: unknown }> | null
-  const estadisticas = rawStats && rawStats.length > 0
+  // Array.isArray (no `.length`): un snapshot viejo puede venir como STRING doble-codificado,
+  // que tiene `.length` pero no `.filter` → 500. Si no es array, caemos a las stats por defecto.
+  const estadisticas = Array.isArray(rawStats) && rawStats.length > 0
     ? rawStats
         .filter((s) => s && typeof s.numero === 'string')
         .map((s) => ({
@@ -198,7 +200,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
 
   // FAQs (de BD con variables resueltas, o genéricas). Mismo filtro defensivo.
   const rawFaqs = data?.landingFaqs as Array<{ pregunta?: unknown; respuesta?: unknown }> | null
-  const faqs = rawFaqs && rawFaqs.length > 0
+  const faqs = Array.isArray(rawFaqs) && rawFaqs.length > 0
     ? rawFaqs
         .filter((f) => f && typeof f.pregunta === 'string' && typeof f.respuesta === 'string')
         .map((f) => ({ pregunta: resolveVars(f.pregunta), respuesta: resolveVars(f.respuesta) }))

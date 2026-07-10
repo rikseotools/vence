@@ -358,6 +358,11 @@ function PerfilPageContent() {
       data: { name: 'TCAE del Servicio Murciano de Salud', slug: 'tcae-murcia', categoria: 'C2', administracion: 'Sanitaria' }
     },
     {
+      value: 'enfermero_sms',
+      label: 'Enfermero/a del SMS (Murcia)',
+      data: { name: 'Enfermero/a del Servicio Murciano de Salud (SMS)', slug: 'enfermero-sms', categoria: 'A2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'tcae_extremadura',
       label: 'TCAE SES (Extremadura)',
       data: { name: 'TCAE del Servicio Extremeño de Salud', slug: 'tcae-extremadura', categoria: 'C2', administracion: 'Sanitaria' }
@@ -438,6 +443,56 @@ function PerfilPageContent() {
       data: {
         name: 'Enfermero/a',
         slug: 'enfermero',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'enfermero_sas_andalucia',
+      label: 'Enfermero/a del SAS (Andalucía)',
+      data: {
+        name: 'Enfermero/a del Servicio Andaluz de Salud (SAS)',
+        slug: 'enfermero-sas-andalucia',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'enfermero_sacyl',
+      label: 'Enfermero/a del SACYL (Castilla y León)',
+      data: {
+        name: 'Enfermero/a del Servicio de Salud de Castilla y León (SACYL)',
+        slug: 'enfermero-sacyl',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'enfermero_ics',
+      label: 'Enfermero/a del ICS (Cataluña)',
+      data: {
+        name: 'Enfermero/a del Institut Català de la Salut (ICS)',
+        slug: 'enfermero-ics',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'enfermero_scs_canarias',
+      label: 'Enfermero/a del SCS (Canarias)',
+      data: {
+        name: 'Enfermero/a del Servicio Canario de la Salud (SCS)',
+        slug: 'enfermero-scs-canarias',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'enfermero_scs_cantabria',
+      label: 'Enfermero/a del SCS (Cantabria)',
+      data: {
+        name: 'Enfermero/a del Servicio Cántabro de Salud (SCS)',
+        slug: 'enfermero-scs-cantabria',
         categoria: 'A2',
         administracion: 'Sanitaria'
       }
@@ -649,6 +704,16 @@ function PerfilPageContent() {
         name: 'Técnico Auxiliar (Auxiliar de Servicios) de la Universidad de Murcia',
         slug: 'tecnico-auxiliar-universidad-de-murcia',
         categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'escala_administrativa_universidad_de_granada',
+      label: 'Administrativa UGR',
+      data: {
+        name: 'Escala Administrativa - Universidad de Granada',
+        slug: 'escala-administrativa-universidad-de-granada',
+        categoria: 'C1',
         administracion: 'Autonómica'
       }
     },

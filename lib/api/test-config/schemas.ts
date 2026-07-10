@@ -12,6 +12,10 @@ export const getArticlesRequestSchema = z.object({
   topicNumber: z.number().int().min(1).nullish(), // null = configurador standalone
   positionType: z.enum(POSITION_TYPES_ENUM),
   includeOfficialCount: z.boolean().default(false),
+  // 🎯 Configurador "por leyes" acotado: sin topicNumber pero acotando los artículos
+  // al temario del positionType (unión de sus temas). Default false = todos los
+  // artículos de la ley (comportamiento standalone / poweruser).
+  scopeToPosition: z.boolean().default(false),
 })
 
 export type GetArticlesRequest = z.infer<typeof getArticlesRequestSchema>

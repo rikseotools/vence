@@ -8,7 +8,8 @@ import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
-import { getOposicionSlugFromPathname, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, resolveOposicionSlugForNav, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
+import { useOposicion } from '@/contexts/OposicionContext'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
@@ -429,6 +430,11 @@ export default function ExamLayout({
   const examScoringId = positionType || getOposicionSlugFromPathname(pathname)
   const penaltyPerWrong = getExamPenaltyPerWrong(examScoringId)
   const penaltyLabel = getExamPenaltyLabel(examScoringId)
+
+  // Slug para navegación (enlaces "volver a tests"): URL con slug gana; si es una
+  // ruta global sin slug, la oposición del test/usuario, nunca ALL_OPOSICION_SLUGS[0].
+  const { oposicionId } = useOposicion()
+  const navSlug = resolveOposicionSlugForNav(pathname, positionType || oposicionId)
 
   // Refs para tracking
   const pageLoadTime = useRef(Date.now())
@@ -1160,8 +1166,8 @@ export default function ExamLayout({
                 <div className="text-center">
                   <Link
                     href={tema && tema !== 0
-                      ? `/${getOposicionSlugFromPathname(pathname)}/test/tema/${tema}`
-                      : `/${getOposicionSlugFromPathname(pathname)}/test`
+                      ? `/${navSlug}/test/tema/${tema}`
+                      : `/${navSlug}/test`
                     }
                     className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
@@ -1410,8 +1416,8 @@ export default function ExamLayout({
           <div className="mt-8 mb-28 text-center">
             <Link
               href={tema && tema !== 0
-                ? `/${getOposicionSlugFromPathname(pathname)}/test/tema/${tema}`
-                : `/${getOposicionSlugFromPathname(pathname)}/test`
+                ? `/${navSlug}/test/tema/${tema}`
+                : `/${navSlug}/test`
               }
               className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md"
             >

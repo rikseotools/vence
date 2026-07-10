@@ -1,6 +1,6 @@
 # Manual: Despliegues sin congelar a los usuarios
 
-> **Para futuras sesiones.** Explica POR QUÉ un deploy puede congelar la app, las CAPAS de protección que hay, cómo verificar que NO congela, y los aprendizajes. Complementa `docs/runbooks/deploy.md` (procedimiento operativo).
+> **Para futuras sesiones.** Explica POR QUÉ un deploy puede congelar la app, las CAPAS de protección que hay, cómo verificar que NO congela, y los aprendizajes. Complementa `docs/runbooks/pusheo-revision-despliegue.md` (procedimiento operativo).
 >
 > Memorias: `project_deploy_freeze_chunks_s3` · `project_deteccion_alertas_completa`.
 
@@ -54,7 +54,7 @@ curl -s -o /dev/null -w "%{http_code}" "https://www.vence.es/_next/static/chunks
 
 ## 4. El flujo del deploy (resumen)
 
-`scripts/deploy-frontend.sh`: build (podman) → push ECR → **[2b] sync `.next/static` a S3 (retención)** + self-check → task def por digest → rolling → estable → smoke (home + auth + **un chunk carga vía CloudFront**). Guardrail `__tests__/guardrails/deploy-scripts.test.ts` impide quitar el sync a S3. Detalle: `docs/runbooks/deploy.md`.
+`scripts/deploy-frontend.sh`: build (podman) → push ECR → **[2b] sync `.next/static` a S3 (retención)** + self-check → task def por digest → rolling → estable → smoke (home + auth + **un chunk carga vía CloudFront**). Guardrail `__tests__/guardrails/deploy-scripts.test.ts` impide quitar el sync a S3. Detalle: `docs/runbooks/pusheo-revision-despliegue.md`.
 
 ## 5. Aprendizajes (para no tropezar dos veces)
 

@@ -494,15 +494,17 @@ async function _GET() {
     const manualSubsData = await getManualSubscriptions()
 
     const PRICES: Record<string, number> = {
-      premium_monthly: 20,
-      premium_quarterly: 35,
-      premium_semester: 59,
+      premium_monthly: 29,
+      premium_quarterly: 39,
+      premium_semester: 69,
+      premium_annual: 99,
     }
 
     const MRR_RATES: Record<string, number> = {
-      premium_monthly: 20,
-      premium_quarterly: 35 / 3,
-      premium_semester: 59 / 6,
+      premium_monthly: 29,
+      premium_quarterly: 39 / 3,
+      premium_semester: 69 / 6,
+      premium_annual: 99 / 12,
     }
 
     // Unificar subs
@@ -526,7 +528,8 @@ async function _GET() {
       const periodEnd = item?.current_period_end || sub.current_period_end
 
       let planType: string
-      if (interval === 'month' && intervalCount === 1) planType = 'premium_monthly'
+      if (interval === 'year') planType = 'premium_annual'
+      else if (interval === 'month' && intervalCount === 1) planType = 'premium_monthly'
       else if (interval === 'month' && intervalCount === 3) planType = 'premium_quarterly'
       else planType = 'premium_semester'
 
@@ -549,7 +552,8 @@ async function _GET() {
       let planType: string
       if (days <= 35) planType = 'premium_monthly'
       else if (days <= 100) planType = 'premium_quarterly'
-      else planType = 'premium_semester'
+      else if (days <= 200) planType = 'premium_semester'
+      else planType = 'premium_annual'
 
       activeSubscriptions.push({
         plan_type: planType,

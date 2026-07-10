@@ -12,10 +12,17 @@ import type { TestStartConfig } from '@/components/TestConfigurator.types'
 
 function TestConfiguradorContent() {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth() as {
+  const { user, userProfile, loading: authLoading } = useAuth() as {
     user: { id: string; email?: string } | null
+    userProfile: { target_oposicion?: string | null } | null
     loading: boolean
   }
+  // Oposición seleccionada del usuario (positionType, con underscores). Si la tiene,
+  // por defecto el test "por leyes" muestra SOLO sus leyes + su temario (su interés);
+  // puede ampliar a todas las leyes / ley completa con el toggle.
+  const targetPositionType = userProfile?.target_oposicion || null
+  const [scopedToTarget, setScopedToTarget] = useState(true)
+  const effectiveScoped = !!targetPositionType && scopedToTarget
   const [lawsData, setLawsData] = useState<Array<{
     law_short_name: string
     display_name: string
@@ -26,14 +33,19 @@ function TestConfiguradorContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Cargar todas las leyes disponibles
+  // Cargar leyes: si el usuario tiene oposición y está acotado, SOLO las suyas
+  // (?positionType=…); si no, todas. Refetch al cambiar el toggle.
   useEffect(() => {
-    async function loadAllLaws() {
+    if (authLoading) return
+    async function loadLaws() {
       try {
         setLoading(true)
         setError(null)
 
-        const response = await fetch('/api/laws-configurator')
+        const url = effectiveScoped && targetPositionType
+          ? `/api/laws-configurator?positionType=${encodeURIComponent(targetPositionType)}`
+          : '/api/laws-configurator'
+        const response = await fetch(url)
         const result = await response.json()
 
         if (!result.success) {
@@ -60,8 +72,9 @@ function TestConfiguradorContent() {
       }
     }
 
-    loadAllLaws()
-  }, [])
+    loadLaws()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, effectiveScoped, targetPositionType])
 
   // Calcular total de preguntas disponibles
   const totalQuestionsAvailable = lawsData.reduce((sum, law) => sum + law.questions_count, 0)
@@ -120,6 +133,11 @@ function TestConfiguradorContent() {
     // Leyes seleccionadas
     if (config.selectedLaws && config.selectedLaws.length > 0) {
       params.set('laws', config.selectedLaws.join(','))
+    }
+
+    // 🎯 Acotar a la oposición del usuario (su temario), si está activo el modo acotado.
+    if (effectiveScoped) {
+      params.set('scoped', '1')
     }
 
     // Artículos específicos por ley (formato: "CE:1|2|3;Ley 39/2015:4|5")
@@ -270,6 +288,41 @@ function TestConfiguradorContent() {
           </div>
         </div>
 
+        {/* 🎯 Alcance: solo para usuarios con oposición seleccionada.
+            Por defecto SOLO su temario (su interés); puede ampliar a todas las leyes. */}
+        {targetPositionType && (
+          <div className="max-w-4xl mx-auto mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Alcance del test</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    {scopedToTarget
+                      ? 'Solo tus leyes y los artículos de tu temario.'
+                      : 'Todas las leyes y todos los artículos (ley completa).'}
+                  </div>
+                </div>
+                <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setScopedToTarget(true)}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${scopedToTarget ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    Mi temario
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScopedToTarget(false)}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!scopedToTarget ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    Todas las leyes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Configurador */}
         <div className="max-w-4xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
@@ -292,7 +345,8 @@ function TestConfiguradorContent() {
                 hideOfficialQuestions={false}
                 hideEssentialArticles={true}
                 testMode="practica"
-                positionType="auxiliar_administrativo_estado"
+                positionType={targetPositionType || 'auxiliar_administrativo_estado'}
+                scopeToPosition={effectiveScoped}
                 onStartTest={handleStartTest}
               />
             </div>

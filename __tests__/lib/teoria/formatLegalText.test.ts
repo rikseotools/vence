@@ -52,6 +52,16 @@ describe('formatLegalText', () => {
     expect(formatLegalText(once)).toBe(once)
   })
 
+  it('table-aware: preserva una tabla Markdown contigua (filas con salto SIMPLE, renderizable)', () => {
+    const raw = 'Retribuciones por grupo:\n| Grupo | Sueldo |\n|---|---|\n| A1 | 818,82 |\n| A2 | 707,00 |\nSegún la tabla anterior.'
+    const out = formatLegalText(raw)
+    // la tabla queda en UN bloque con saltos simples (no dobles) → remark-gfm la pinta
+    expect(out).toContain('| Grupo | Sueldo |\n|---|---|\n| A1 | 818,82 |\n| A2 | 707,00 |')
+    // el texto de alrededor sí se separa
+    expect(out).toContain('Retribuciones por grupo:\n\n| Grupo')
+    expect(out).toContain('| A2 | 707,00 |\n\nSegún la tabla anterior.')
+  })
+
   it('caso real art 100 Ley 39/2015: 1. + a) b) c) d) todos separados', () => {
     const raw =
       '1. La ejecución forzosa se efectuará por los siguientes\nmedios:\na) Apremio sobre el patrimonio.\nb) Ejecución subsidiaria.\nc) Multa coercitiva.\nd) Compulsión sobre las\npersonas.\n2. Si fueran varios los medios.'

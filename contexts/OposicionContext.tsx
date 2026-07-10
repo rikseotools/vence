@@ -9,6 +9,7 @@ import { useAuth } from './AuthContext'
 import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, type NavLink } from '@/lib/config/oposiciones'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import { decideOposicionLoad } from '@/lib/oposicion/decideLoad'
+import { resolveUserOposicion, extractOposicionId } from '@/lib/oposicion/resolveUserOposicion'
 import { readOposicionCache, writeOposicionCache, clearOposicionCache } from '@/lib/oposicion/oposicionCache'
 
 // ============================================
@@ -210,13 +211,18 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         } else {
           // 'set'
           setNeedsOposicionFix(false)
-          // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
-          const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
+          const menuConfig = OPOSICION_MENUS[opoId as string] || DEFAULT_MENU
+          // Identidad AGNÓSTICA al blob: si target_oposicion_data es NULL (428
+          // perfiles), derivamos el nombre del config. Antes → userOposicion=null
+          // → hasOposicion=false → selector fantasma en /test pese a tener oposición.
+          const oposicionData = resolveUserOposicion(
+            opoId as string,
+            menuConfig.name,
+            profile.target_oposicion_data as { name?: string | null } | null,
+          )
 
           setUserOposicion(oposicionData)
           setOposicionId(opoId as string)
-
-          const menuConfig = OPOSICION_MENUS[opoId as string] || DEFAULT_MENU
           setOposicionMenu(menuConfig)
           writeOposicionCache(opoId as string, oposicionData) // pre-hidratación futura
         }
@@ -253,16 +259,20 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleOposicionAssigned = (e: Event) => {
       const detail = (e as CustomEvent).detail
-      const newOpoId = detail?.oposicionId || detail?.oposicion
+      // `detail.oposicion` puede venir como OBJETO (OposicionDetector) → extraer el id.
+      const newOpoId = extractOposicionId(detail?.oposicionId ?? detail?.oposicion)
 
       // Si el evento trae el ID, actualizar inmediatamente sin esperar fetch
       if (newOpoId) {
         const isValid = ALL_OPOSICION_IDS.includes(newOpoId)
         if (isValid) {
           setNeedsOposicionFix(false)
+          const menuConfig = OPOSICION_MENUS[newOpoId] || DEFAULT_MENU
+          const identity = resolveUserOposicion(newOpoId, menuConfig.name)
+          setUserOposicion(identity)
           setOposicionId(newOpoId)
-          setOposicionMenu(OPOSICION_MENUS[newOpoId] || DEFAULT_MENU)
-          writeOposicionCache(newOpoId, null) // data se refresca en el próximo load
+          setOposicionMenu(menuConfig)
+          writeOposicionCache(newOpoId, identity) // identidad derivada del config
         } else {
           clearOposicionCache()
           setNeedsOposicionFix(true)
@@ -293,10 +303,15 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
                 setOposicionMenu(DEFAULT_MENU)
               } else {
                 setNeedsOposicionFix(false)
-                const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
+                const menuConfig = OPOSICION_MENUS[opoId] || DEFAULT_MENU
+                const oposicionData = resolveUserOposicion(
+                  opoId,
+                  menuConfig.name,
+                  profile.target_oposicion_data as { name?: string | null } | null,
+                )
                 setUserOposicion(oposicionData)
                 setOposicionId(opoId)
-                setOposicionMenu(OPOSICION_MENUS[opoId] || DEFAULT_MENU)
+                setOposicionMenu(menuConfig)
                 writeOposicionCache(opoId, oposicionData)
               }
             }
@@ -416,7 +431,10 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     oposicionId,
     oposicionMenu,
     loading,
-    hasOposicion: !!userOposicion,
+    // Deriva de oposicionId (identificador FIABLE), NO de userOposicion (el blob
+    // de datos, NULL en 428 perfiles + en la ventana del evento oposicionAssigned).
+    // Antes: !!userOposicion → selector "elige oposición" fantasma en /test.
+    hasOposicion: !!oposicionId,
     showNotification,
     notificationData,
     dismissNotification,
