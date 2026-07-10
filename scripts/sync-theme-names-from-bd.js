@@ -21,7 +21,12 @@ async function main() {
   // Usar la URL encontrada
   process.env.DATABASE_URL = dbUrl
 
-  const client = new Client({ connectionString: process.env.DATABASE_URL })
+  // RDS presenta una cadena de certificados que Node ve como self-signed. Hay que
+  // (1) quitar `sslmode=require` de la URL (si no, pg ignora la opción `ssl`) y
+  // (2) pasar rejectUnauthorized:false. Mismo patrón que el resto del repo. Si no,
+  // este sync falla en el build con SELF_SIGNED_CERT_IN_CHAIN (no fatal pero ruidoso).
+  const sslUrl = process.env.DATABASE_URL.replace(/[?&]sslmode=[^&]+/, '')
+  const client = new Client({ connectionString: sslUrl, ssl: { rejectUnauthorized: false } })
   await client.connect()
 
   // Obtener TODOS los topics activos agrupados por position_type

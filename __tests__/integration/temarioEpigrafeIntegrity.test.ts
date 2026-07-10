@@ -47,7 +47,9 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
   let scopes: TopicScope[] = []
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    // Quitar sslmode de la URL (si no, pg ignora la opción ssl) + rejectUnauthorized:false:
+    // RDS presenta cadena self-signed. Sin esto el test falla con SELF_SIGNED_CERT_IN_CHAIN.
+    client = new Client({ connectionString: (DB_URL || '').replace(/[?&]sslmode=[^&]+/, ''), ssl: { rejectUnauthorized: false } })
     await client.connect()
     topics = (await client.query<Topic>('SELECT * FROM topics WHERE is_active = true')).rows
     bloques = (await client.query<Bloque>('SELECT * FROM oposicion_bloques')).rows
