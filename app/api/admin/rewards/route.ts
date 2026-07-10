@@ -7,6 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getPendingRewardSubmissions, createRewardSubmission, findUserIdByEmail } from '@/lib/referrals/queries'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 import type { RewardType } from '@/lib/referrals/logic'
 
 async function _GET(request: NextRequest) {
@@ -37,6 +38,11 @@ async function _POST(request: NextRequest) {
     screenshotUrl: typeof body?.screenshotUrl === 'string' ? body.screenshotUrl : undefined,
     feedbackId: typeof body?.feedbackId === 'string' ? body.feedbackId : undefined,
   })
+  if (result.ok) {
+    emitReferralEvent('reward_created', { userId, endpoint: '/api/admin/rewards', metadata: { type } })
+  } else if (result.reason === 'monthly_cap') {
+    emitReferralEvent('reward_cap_hit', { userId, endpoint: '/api/admin/rewards', severity: 'warn', metadata: { type } })
+  }
   return NextResponse.json(result, { status: result.ok ? 200 : 409 })
 }
 

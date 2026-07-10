@@ -9,6 +9,7 @@ import { userProfiles, userSubscriptions, cancellationFeedback, paymentSettlemen
 import { and, eq, desc, sql, or } from 'drizzle-orm'
 import { recordConversion } from '@/lib/conversions/recordConversion'
 import { emit } from '@/lib/observability/emit'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 import { computeSettlementAfterRefund } from '@/lib/stripe-settlement-helpers'
 import { hashEmail } from '@/lib/services/googleAds'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
@@ -478,6 +479,7 @@ async function handleCheckoutSessionCompleted(
             })
             if (q.qualified) {
               console.log(`🏅 [Referral] Referido ${userId} CALIFICADO — el embajador cobra tras el hold`)
+              emitReferralEvent('referral_qualified', { userId, endpoint: '/api/stripe/webhook', metadata: { planType } })
             }
           } catch (refErr) {
             console.error('⚠️ [Referral] Error calificando referido:', (refErr as Error).message)
@@ -1328,7 +1330,10 @@ async function handleChargeRefunded(charge: Stripe.Charge, db: Db): Promise<void
       if (u) {
         const { rejectReferralOnRefund } = await import('@/lib/referrals/queries')
         const r = await rejectReferralOnRefund(u.id)
-        if (r.rejected) console.log(`🏅 [Referral] Reembolso → referido de ${u.id} RECHAZADO (${r.rejected})`)
+        if (r.rejected) {
+          console.log(`🏅 [Referral] Reembolso → referido de ${u.id} RECHAZADO (${r.rejected})`)
+          emitReferralEvent('referral_refund_clawback', { userId: u.id, endpoint: '/api/stripe/webhook', severity: 'warn', metadata: { alreadyPaid: r.alreadyPaid } })
+        }
         if (r.alreadyPaid) console.warn(`🏅 [Referral] Reembolso de ${u.id} con recompensa YA pagada — clawback MANUAL`)
       }
     }

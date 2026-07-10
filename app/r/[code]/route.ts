@@ -8,6 +8,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { resolveActiveReferralCode } from '@/lib/referrals/queries'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 
 const REF_COOKIE = 'vence_ref'
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60 // 60 días
@@ -15,6 +16,14 @@ const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60 // 60 días
 async function _GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const valid = code ? await resolveActiveReferralCode(code) : null
+
+  // Observabilidad: click en el enlace (userId = embajador dueño del código).
+  emitReferralEvent('referral_link_click', {
+    userId: valid?.ownerUserId ?? null,
+    endpoint: '/r/[code]',
+    severity: valid ? 'info' : 'warn',
+    metadata: { code, valid: !!valid },
+  })
 
   // Destino: landing /embajadores con ?ref para atribución cookie-less. Código inválido → /embajadores sin ref.
   const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(code)}` : '/embajadores', request.url)

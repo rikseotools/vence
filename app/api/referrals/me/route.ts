@@ -5,7 +5,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
-import { getUserPlanType, getOrCreateReferralCode, getReferralStats, getReferralDetails } from '@/lib/referrals/queries'
+import { getUserPlanType, getOrCreateReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts } from '@/lib/referrals/queries'
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 
@@ -21,9 +21,10 @@ async function _GET(request: NextRequest) {
   }
 
   const code = await getOrCreateReferralCode(userId)
-  const [stats, details] = await Promise.all([
+  const [stats, details, funnel] = await Promise.all([
     getReferralStats(userId),
     getReferralDetails(userId),
+    getReferralFunnelCounts(userId),
   ])
   return NextResponse.json({
     isAmbassador: true,
@@ -31,6 +32,7 @@ async function _GET(request: NextRequest) {
     link: `${SITE}/r/${code}`,
     stats,   // { registros, compradores, conversion }
     details, // [{ name, city, oposicion, status, date }]
+    funnel,  // { copies, clicks }
   })
 }
 

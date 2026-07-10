@@ -226,6 +226,8 @@ async function _POST(request) {
         const { ensureReferralCoupon } = await import('@/lib/referrals/coupon')
         referralCouponId = await ensureReferralCoupon(sc)
         console.log(`🏅 [Referral] Cupón 5 € aplicado en checkout para referido ${userId}`)
+        const { emitReferralEvent } = await import('@/lib/referrals/observability')
+        emitReferralEvent('referral_coupon_applied', { userId, endpoint: '/api/stripe/create-checkout', metadata: { coupon: referralCouponId } })
       }
     } catch (refCouponErr) {
       console.error('⚠️ [Referral] No se pudo aplicar el cupón de referido (fail-open):', refCouponErr.message)

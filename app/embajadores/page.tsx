@@ -21,6 +21,7 @@ interface MeResponse {
   link?: string
   stats?: { registros: number; compradores: number; conversion: number }
   details?: ReferralDetail[]
+  funnel?: { copies: number; clicks: number }
 }
 
 // Estado del referido → etiqueta amistosa + color.
@@ -132,6 +133,8 @@ export default function EmbajadoresPage() {
       await navigator.clipboard.writeText(me.link)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+      // Observabilidad: registrar la copia (top del embudo). Fire-and-forget.
+      getAuthHeaders().then((headers) => fetch('/api/referrals/track-copy', { method: 'POST', headers })).catch(() => {})
     } catch { /* noop */ }
   }
 
@@ -142,7 +145,7 @@ export default function EmbajadoresPage() {
         {/* HERO — cambia según estado */}
         <section className="text-center mb-10 sm:mb-14">
           <span className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
-            🏅 PROGRAMA DE EMBAJADORES
+            🎁 PROGRAMA DE EMBAJADORES
           </span>
 
           {loading ? (
@@ -206,22 +209,30 @@ export default function EmbajadoresPage() {
             </div>
 
             {me?.stats && (
-              <div className="grid grid-cols-3 gap-4 mt-6 text-center">
-                <div>
-                  <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{me.stats.registros}</div>
-                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Registros</div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{me.stats.compradores}</div>
-                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Han comprado</div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {Math.round((me.stats.conversion || 0) * 100)}%
+              <>
+                {/* Embudo completo: copias → clicks → registros → han comprado */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-center">
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-600 dark:text-gray-300">{me.funnel?.copies ?? 0}</div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Copias del enlace</div>
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Conversión</div>
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-600 dark:text-gray-300">{me.funnel?.clicks ?? 0}</div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Clicks</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{me.stats.registros}</div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Registros</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{me.stats.compradores}</div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Han comprado</div>
+                  </div>
                 </div>
-              </div>
+                <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
+                  Conversión registro→compra: <strong>{Math.round((me.stats.conversion || 0) * 100)}%</strong>
+                </div>
+              </>
             )}
 
             {/* Detalle de referidos: nombre, ciudad, oposición, estado */}

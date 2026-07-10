@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { payRewardSubmission } from '@/lib/referrals/queries'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 
 async function _POST(request: NextRequest) {
   const auth = await requireAdmin(request)
@@ -22,6 +23,9 @@ async function _POST(request: NextRequest) {
     giftcardRef: typeof body?.giftcardRef === 'string' ? body.giftcardRef : undefined,
     purchasedVia: typeof body?.purchasedVia === 'string' ? body.purchasedVia : undefined,
   })
+  if (result.ok) {
+    emitReferralEvent('reward_paid', { userId: auth.user.id, endpoint: '/api/admin/rewards/pay', metadata: { submissionId, payoutId: result.payoutId } })
+  }
   return NextResponse.json(result, { status: result.ok ? 200 : 409 })
 }
 

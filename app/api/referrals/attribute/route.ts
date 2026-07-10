@@ -14,6 +14,9 @@ import {
   getUserPlanType,
   hasUserEverPaid,
 } from '@/lib/referrals/queries'
+import { emitReferralEvent } from '@/lib/referrals/observability'
+
+const EP = '/api/referrals/attribute'
 
 const REF_COOKIE = 'vence_ref'
 
@@ -26,7 +29,10 @@ async function _POST(request: NextRequest) {
   if (!code) return NextResponse.json({ attributed: false, reason: 'no_ref' })
 
   const resolved = await resolveActiveReferralCode(code)
-  if (!resolved) return NextResponse.json({ attributed: false, reason: 'code_invalid' })
+  if (!resolved) {
+    emitReferralEvent('referral_attribute_rejected', { userId: referredUserId, endpoint: EP, severity: 'warn', metadata: { reason: 'code_invalid' } })
+    return NextResponse.json({ attributed: false, reason: 'code_invalid' })
+  }
 
   const [referrerPlan, referredPaid] = await Promise.all([
     getUserPlanType(resolved.ownerUserId),
@@ -40,11 +46,14 @@ async function _POST(request: NextRequest) {
     referredHasEverPaid: referredPaid,
   })
 
-  return NextResponse.json(
-    result.ok
-      ? { attributed: true, alreadyAttributed: !!result.alreadyAttributed }
-      : { attributed: false, reason: result.reason },
-  )
+  if (result.ok) {
+    if (!result.alreadyAttributed) {
+      emitReferralEvent('referral_attributed', { userId: referredUserId, endpoint: EP, metadata: { referrerUserId: result.referrerUserId } })
+    }
+    return NextResponse.json({ attributed: true, alreadyAttributed: !!result.alreadyAttributed })
+  }
+  emitReferralEvent('referral_attribute_rejected', { userId: referredUserId, endpoint: EP, severity: 'warn', metadata: { reason: result.reason } })
+  return NextResponse.json({ attributed: false, reason: result.reason })
 }
 
 export const POST = withErrorLogging('/api/referrals/attribute', _POST)

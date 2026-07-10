@@ -6,6 +6,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 
 jest.mock('@/lib/api/shared/auth', () => ({ requireAdmin: jest.fn() }))
+jest.mock('@/lib/referrals/observability', () => ({ emitReferralEvent: jest.fn() }))
 jest.mock('@/lib/referrals/queries', () => ({
   getPayableReferrals: jest.fn(),
   payReferral: jest.fn(),

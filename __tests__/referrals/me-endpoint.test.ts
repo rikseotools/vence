@@ -12,11 +12,12 @@ jest.mock('@/lib/referrals/queries', () => ({
   getOrCreateReferralCode: jest.fn(),
   getReferralStats: jest.fn(),
   getReferralDetails: jest.fn(),
+  getReferralFunnelCounts: jest.fn(),
 }))
 
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
 import {
-  getUserPlanType, getOrCreateReferralCode, getReferralStats, getReferralDetails,
+  getUserPlanType, getOrCreateReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts,
 } from '@/lib/referrals/queries'
 import { _GET } from '@/app/api/referrals/me/route'
 
@@ -25,6 +26,7 @@ const mPlan = getUserPlanType as unknown as jest.Mock
 const mCode = getOrCreateReferralCode as unknown as jest.Mock
 const mStats = getReferralStats as unknown as jest.Mock
 const mDetails = getReferralDetails as unknown as jest.Mock
+const mFunnel = getReferralFunnelCounts as unknown as jest.Mock
 
 const req = () => new NextRequest('https://www.vence.es/api/referrals/me')
 
@@ -53,6 +55,7 @@ describe('GET /api/referrals/me', () => {
     mCode.mockResolvedValue('abc123def456')
     mStats.mockResolvedValue({ registros: 3, compradores: 1, conversion: 1 / 3 })
     mDetails.mockResolvedValue([{ name: 'Ana', city: 'Madrid', oposicion: 'auxiliar_administrativo_estado', status: 'pending', date: '2026-07-10' }])
+    mFunnel.mockResolvedValue({ copies: 5, clicks: 12 })
     const res = await _GET(req())
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -61,5 +64,6 @@ describe('GET /api/referrals/me', () => {
     expect(body.link).toContain('/r/abc123def456')
     expect(body.stats).toMatchObject({ registros: 3, compradores: 1 })
     expect(body.details).toHaveLength(1)
+    expect(body.funnel).toEqual({ copies: 5, clicks: 12 })
   })
 })

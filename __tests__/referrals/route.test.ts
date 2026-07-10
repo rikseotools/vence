@@ -5,6 +5,7 @@
 
 import { NextRequest } from 'next/server'
 
+jest.mock('@/lib/referrals/observability', () => ({ emitReferralEvent: jest.fn() }))
 jest.mock('@/lib/referrals/queries', () => ({
   resolveActiveReferralCode: jest.fn(),
 }))

@@ -383,7 +383,7 @@ export default function HeaderES() {
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' },
       // Embajadores: SOLO premium/legacy (el programa es solo-premium).
-      ...((isPremium || isLegacy) ? [{ href: '/embajadores', label: 'Embajadores', icon: '🏅', title: 'Gana recompensas recomendando Vence' }] : [])
+      ...((isPremium || isLegacy) ? [{ href: '/embajadores', label: 'Embajadores', icon: '🎁', title: 'Gana recompensas recomendando Vence' }] : [])
     ]
 
     // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
@@ -615,7 +615,7 @@ export default function HeaderES() {
                   <span className="text-lg">💬</span>
                 </Link>
 
-                {/* 🏅 ICONO DE EMBAJADORES - Solo premium/legacy (programa solo-premium) */}
+                {/* 🎁 ICONO DE EMBAJADORES - Solo premium/legacy (programa solo-premium) */}
                 {(isPremium || isLegacy) && (
                   <Link
                     href="/embajadores"
@@ -623,7 +623,7 @@ export default function HeaderES() {
                     aria-label="Programa de Embajadores"
                     title="Embajadores — gana recompensas recomendando Vence"
                   >
-                    <span className="text-lg">🏅</span>
+                    <span className="text-lg">🎁</span>
                   </Link>
                 )}
 

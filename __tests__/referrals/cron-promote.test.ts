@@ -5,6 +5,7 @@
 
 import { NextRequest } from 'next/server'
 
+jest.mock('@/lib/referrals/observability', () => ({ emitReferralEvent: jest.fn() }))
 jest.mock('@/lib/referrals/queries', () => ({ promoteEligibleToPayable: jest.fn() }))
 import { promoteEligibleToPayable } from '@/lib/referrals/queries'
 import { _GET } from '@/app/api/cron/referrals-promote/route'

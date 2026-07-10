@@ -416,6 +416,29 @@ export async function payRewardSubmission(
   return getAdminDb().transaction(run)
 }
 
+/** Top del embudo por embajador: nº de copias del enlace y de clicks (desde observable_events). */
+export async function getReferralFunnelCounts(
+  ownerUserId: string, exec?: Executor,
+): Promise<{ copies: number; clicks: number }> {
+  const db = exec ?? getReadDb()
+  const res = await db.execute(sql`
+    select event_type, count(*)::int as n
+    from observable_events
+    where user_id = ${ownerUserId}
+      and event_type in ('referral_link_click', 'referral_link_copy')
+    group by event_type`)
+  // db.execute devuelve array (postgres-js) o { rows } (node-postgres): soportar ambos.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: any[] = Array.isArray(res) ? res : ((res as any)?.rows ?? [])
+  let copies = 0
+  let clicks = 0
+  for (const r of rows) {
+    if (r.event_type === 'referral_link_copy') copies = Number(r.n)
+    else if (r.event_type === 'referral_link_click') clicks = Number(r.n)
+  }
+  return { copies, clicks }
+}
+
 /** Métrica núcleo: registros vs compradores + conversión, por embajador. */
 export async function getReferralStats(
   referrerUserId: string, exec?: Executor,

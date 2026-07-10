@@ -6,6 +6,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { promoteEligibleToPayable } from '@/lib/referrals/queries'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 
 export const maxDuration = 60
 
@@ -17,6 +18,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   const promoted = await promoteEligibleToPayable(new Date().toISOString())
   console.log(`🏅 [Cron/referrals] Promovidos qualified→payable: ${promoted}`)
+  emitReferralEvent('referral_promoted_payable', { endpoint: '/api/cron/referrals-promote', metadata: { promoted } })
   return NextResponse.json({ success: true, promoted })
 }
 
