@@ -188,6 +188,29 @@ async function cmdAudit(asJson) {
   } finally { await c.end() }
 }
 
+// GUARDARRAÍL (gate CI): detecta incoherencias que sólo pueden existir si un
+// trigger de invalidación NO disparó — un tema marcado verificado cuyo hash actual
+// ya no coincide con el verificado (debería estar 'stale'). Exit 1 si hay alguna.
+async function cmdGate() {
+  const c = db(); await c.connect()
+  try {
+    const s1 = (await c.query(`
+      SELECT count(*)::int n FROM topic_scope_verification v
+      WHERE v.state IN ('verified_correct','verified_issues')
+        AND v.verified_scope_hash IS DISTINCT FROM compute_topic_scope_hash(v.topic_id)`)).rows[0].n
+    const s2 = (await c.query(`
+      SELECT count(*)::int n FROM topic_epigrafe_verification v JOIN topics t ON t.id=v.topic_id
+      WHERE v.state IN ('verified_literal','drift_detected','provisional_anterior')
+        AND v.verified_epigrafe_hash IS DISTINCT FROM md5(coalesce(t.epigrafe,''))`)).rows[0].n
+    if (s1 === 0 && s2 === 0) {
+      console.log('✅ GATE OK — sin incoherencias (todos los verificados cuadran con su hash actual)')
+    } else {
+      console.error(`❌ GATE FALLÓ — S1 incoherentes: ${s1}, S2 incoherentes: ${s2} (el trigger de invalidación no disparó — deberían estar 'stale')`)
+      process.exit(1)
+    }
+  } finally { await c.end() }
+}
+
 async function main() {
   const [cmd, ...args] = process.argv.slice(2)
   try {
@@ -195,8 +218,9 @@ async function main() {
     else if (cmd === 'record') await cmdRecord(args[0], args[1], args[2])
     else if (cmd === 'status') await cmdStatus(args[0])
     else if (cmd === 'audit') await cmdAudit(args.includes('--json'))
+    else if (cmd === 'gate') await cmdGate()
     else {
-      console.log('Uso: node scripts/verify-topic-scope.cjs <dump|record|status|audit> ...')
+      console.log('Uso: node scripts/verify-topic-scope.cjs <dump|record|status|audit|gate> ...')
       process.exit(1)
     }
   } catch (e) {
