@@ -473,6 +473,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'enfermero_scs_canarias',
+      label: 'Enfermero/a del SCS (Canarias)',
+      data: {
+        name: 'Enfermero/a del Servicio Canario de la Salud (SCS)',
+        slug: 'enfermero-scs-canarias',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
       value: 'tramitacion_procesal',
       label: 'Tramitación Procesal y Administrativa',
       data: {

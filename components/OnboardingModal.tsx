@@ -1747,8 +1747,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Castile and León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
-  'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
-  'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
+  'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'enfermero_scs_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
+  'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'enfermero_scs_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'administrativo_castilla_la_mancha', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
@@ -1819,6 +1819,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'enfermero_sas_andalucia',          // sanitaria
   'enfermero_sacyl',                  // sanitaria Castilla y León
   'enfermero_ics',                    // sanitaria Cataluña
+  'enfermero_scs_canarias',           // sanitaria Canarias
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid
