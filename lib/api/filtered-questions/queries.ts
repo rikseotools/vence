@@ -27,8 +27,7 @@ import type {
 } from './schemas'
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
-import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
-import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
+import { buildOfficialExamFilter, buildQuestionTagFilter } from '@/lib/api/oposicion-scope/queries'
 import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import { logValidationError } from '@/lib/api/validation-error-log'
 
@@ -696,18 +695,8 @@ export async function getFilteredQuestions(
       scopeToPosition,
     } = params
 
-    // 🏷️ Tag de oposición: filtra preguntas por tag cuando la oposición lo define.
-    // - Con questionTag (ej: PN): solo preguntas con ese tag
-    // - Sin questionTag: excluir preguntas de oposiciones exclusivas (ej: excluir tag PN)
-    const opoConfig = getOposicionByPositionType(positionType)
-    const questionTag = opoConfig?.questionTag ?? null
-    // NULL-safe: `NOT (NULL && ARRAY[...])` es NULL (falsy) en PostgreSQL,
-    // lo que excluiría silenciosamente todas las preguntas con tags IS NULL.
-    const tagFilter = questionTag
-      ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
-      : EXCLUSIVE_QUESTION_TAGS.length > 0
-        ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
-        : sql`true`
+    // 🏷️ Tag de oposición (fuente única: buildQuestionTagFilter).
+    const tagFilter = buildQuestionTagFilter(positionType)
 
     // 📋 CASO: Filtro por article UUIDs (content_scope)
     if (primaryArticleIds && primaryArticleIds.length > 0) {
@@ -1440,14 +1429,8 @@ export async function countFilteredQuestions(
       includeSharedOfficials,
     } = params
 
-    // 🏷️ Tag filter (same logic as getFilteredQuestions)
-    const opoConfigCount = getOposicionByPositionType(positionType)
-    const questionTagCount = opoConfigCount?.questionTag ?? null
-    const tagFilterCount = questionTagCount
-      ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTagCount}'`)}]::text[]`
-      : EXCLUSIVE_QUESTION_TAGS.length > 0
-        ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
-        : sql`true`
+    // 🏷️ Tag filter (fuente única: buildQuestionTagFilter)
+    const tagFilterCount = buildQuestionTagFilter(positionType)
 
     // 1️⃣ Obtener topic_scope para este tema
     const topicScopeResults = await db
@@ -1562,4 +1545,46 @@ export async function countFilteredQuestions(
       error: error instanceof Error ? error.message : 'Error desconocido',
     }
   }
+}
+
+/**
+ * Nº de preguntas que el TEST de UN artículo concreto SERVIRÍA para una
+ * oposición dada (path law-only: /leyes/[law]?selected_articles=N&source=teoria).
+ *
+ * SSOT: reusa el MISMO núcleo que sirve el test (queryQuestionsForMappingsLightweight)
+ * + los filtros compartidos (buildOfficialExamFilter, buildQuestionTagFilter,
+ * exam_case_id IS NULL). Por eso NO puede desincronizarse con lo que el usuario
+ * recibe → si devuelve >0, el test nunca sale vacío; si 0, no ofrecemos el CTA.
+ * Es la fuente del CTA "Hacer test de este artículo" del lector de teoría, que
+ * es AGNÓSTICO de oposición sólo en el server: la oposición real la aporta el
+ * cliente (positionType), igual que LawTestPageWrapper.
+ */
+export async function countLawArticleServedQuestions(
+  lawShortName: string,
+  articleNumber: number,
+  positionType: string,
+): Promise<number> {
+  if (!Number.isInteger(articleNumber) || articleNumber <= 0) return 0
+
+  const db = getFilteredCountDb()
+
+  const [law] = await db
+    .select({ id: laws.id })
+    .from(laws)
+    .where(and(eq(laws.shortName, lawShortName), eq(laws.isActive, true)))
+    .limit(1)
+  if (!law) return 0
+
+  const served = await queryQuestionsForMappingsLightweight(
+    db,
+    [{ articleNumbers: [String(articleNumber)], lawId: law.id, lawShortName, lawName: null, topicNumber: null }],
+    {
+      positionType,
+      onlyOfficialQuestions: false,
+      includeSharedOfficials: false,
+      difficultyMode: 'random',
+      tagFilter: buildQuestionTagFilter(positionType),
+    },
+  )
+  return served.length
 }

@@ -160,6 +160,11 @@ export const getArticleContent = versionedCache(
   { tag: 'teoria', keyParts: ['teoria-article-content'] }
   )
 
+// NOTA: el nº de preguntas del CTA "Hacer test de este artículo" NO se calcula
+// aquí. Depende de la OPOSICIÓN del usuario (filtro de oficiales + tag), que solo
+// se conoce en cliente → lo resuelve el endpoint /api/teoria/[law]/[articleNumber]/
+// test-count vía countLawArticleServedQuestions (SSOT con lo que sirve el test).
+
 // ============================================
 // QUERY: NAVEGACIÓN DE ARTÍCULOS (MUY LIGERA)
 // ============================================

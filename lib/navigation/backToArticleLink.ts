@@ -14,6 +14,24 @@ export interface BackToArticleLink {
 }
 
 /**
+ * Enlace "Hacer test de este artículo" que se muestra al leer UN artículo
+ * (lector individual /teoria/[law]/articulo-N). Lanza el test de ley acotado a
+ * ese único artículo vía `?selected_articles=N`, de forma que al terminar el
+ * test `buildBackToArticleLink` reconstruye "Volver al artículo N" y cierra el
+ * bucle en el mismo lector. Ambos helpers comparten el contrato del parámetro
+ * `selected_articles` → se testean juntos (round-trip).
+ *
+ * @param lawSlug slug de la ley (mismo en /teoria y /leyes)
+ * @param articleNumber número de artículo (numérico)
+ */
+export function buildArticleTestLink(
+  lawSlug: string,
+  articleNumber: number
+): string {
+  return `/leyes/${lawSlug}?selected_articles=${articleNumber}&source=teoria`
+}
+
+/**
  * Devuelve el enlace "Volver al artículo N" SOLO cuando el test se lanzó desde
  * un ÚNICO artículo numérico (caso "Hacer test Art. N"). En cualquier otro caso
  * (varios artículos, disposición no numérica, vacío, sin slug) devuelve null y

@@ -27,4 +27,5 @@ export {
 export {
   getFilteredQuestions,
   countFilteredQuestions,
+  countLawArticleServedQuestions,
 } from './queries'

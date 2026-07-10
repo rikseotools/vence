@@ -139,7 +139,10 @@ describe('Tag filter NULL-safety', () => {
   describe('código fuente — patrón NULL-safe presente', () => {
     const fs = require('fs')
     const files = [
-      'lib/api/filtered-questions/queries.ts',
+      // Fuente única del tag filter de filtered-questions (getFilteredQuestions,
+      // countFilteredQuestions y el conteo del CTA de teoría lo consumen desde
+      // aquí — antes estaba duplicado inline en filtered-questions/queries.ts).
+      'lib/api/oposicion-scope/queries.ts',
       'lib/api/random-test-data/queries.ts',
       'lib/api/random-test/queries.ts',
     ]

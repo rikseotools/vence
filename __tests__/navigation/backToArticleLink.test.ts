@@ -1,7 +1,10 @@
 // __tests__/navigation/backToArticleLink.test.ts
 // Unit test de la lógica REAL del "Volver al artículo" (la misma fn que usa
 // LawTestPageWrapper → sin falso verde de test-copia).
-import { buildBackToArticleLink } from '@/lib/navigation/backToArticleLink'
+import {
+  buildBackToArticleLink,
+  buildArticleTestLink,
+} from '@/lib/navigation/backToArticleLink'
 
 describe('buildBackToArticleLink', () => {
   it('artículo único numérico → enlace al artículo (fix del bug)', () => {
@@ -42,5 +45,27 @@ describe('buildBackToArticleLink', () => {
   it('mezcla de válido + basura → toma el único válido', () => {
     // "3,abc" → solo 3 es válido → sigue siendo un único artículo
     expect(buildBackToArticleLink('3,abc', 'ce')?.href).toBe('/teoria/ce/articulo-3')
+  })
+})
+
+describe('buildArticleTestLink', () => {
+  it('genera el enlace al test acotado a un único artículo (con source=teoria)', () => {
+    expect(buildArticleTestLink('decreto-42-2019', 10)).toBe(
+      '/leyes/decreto-42-2019?selected_articles=10&source=teoria'
+    )
+  })
+
+  it('ROUND-TRIP: el test lanzado desde el lector vuelve al MISMO artículo', () => {
+    // Invariante clave del fix (bug manuel izquierdo): el CTA del lector debe
+    // cerrar el bucle con "Volver al artículo" sin perder el artículo. Se prueban
+    // juntos porque comparten el contrato del parámetro `selected_articles`.
+    const lawSlug = 'decreto-42-2019-condiciones-trabajo-gva'
+    for (const n of [1, 9, 10, 54]) {
+      const testHref = buildArticleTestLink(lawSlug, n)
+      // Extraer selected_articles tal como lo leería LawTestPageWrapper.
+      const selected = new URL(testHref, 'https://x').searchParams.get('selected_articles')
+      const back = buildBackToArticleLink(selected, lawSlug)
+      expect(back?.href).toBe(`/teoria/${lawSlug}/articulo-${n}`)
+    }
   })
 })

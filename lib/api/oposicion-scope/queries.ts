@@ -17,7 +17,7 @@ function getOposicionScopeDb() {
 import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs } from '@/db/schema'
 import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'
 import { getValidExamPositions, isExamPositionRegistered } from '@/lib/config/exam-positions'
-import { ALL_POSITION_TYPES } from '@/lib/config/oposiciones'
+import { ALL_POSITION_TYPES, getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { logValidationError } from '@/lib/api/validation-error-log'
 
 // Dedupe intra-proceso del aviso "oposición sin mapeo de exam_position":
@@ -243,6 +243,28 @@ export function buildOfficialExamFilter(positionType: string) {
       inArray(questions.examPosition, validPositions),
     ),
   )
+}
+
+/**
+ * FILTRO DE TAG DE OPOSICIÓN (fuente ÚNICA). Antes estaba duplicado inline en 3
+ * sitios de filtered-questions (getFilteredQuestions, countFilteredQuestions y el
+ * conteo del CTA de teoría) → la desincronización era un riesgo real de dead-ends.
+ *
+ * Semántica (idéntica a la que servía el test):
+ * - Oposición CON questionTag (ej. Policía Nacional → 'PN'): SOLO preguntas con
+ *   ese tag.
+ * - Oposición SIN questionTag: EXCLUIR las preguntas de oposiciones exclusivas
+ *   (tags en EXCLUSIVE_QUESTION_TAGS). NULL-safe: `tags IS NULL OR NOT (...)`.
+ */
+export function buildQuestionTagFilter(positionType: string) {
+  const questionTag = getOposicionByPositionType(positionType)?.questionTag ?? null
+  if (questionTag) {
+    return sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
+  }
+  if (EXCLUSIVE_QUESTION_TAGS.length > 0) {
+    return sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
+  }
+  return sql`true`
 }
 
 /**

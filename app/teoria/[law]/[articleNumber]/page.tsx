@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { Metadata } from 'next'
 import MarkdownArticleContent from './MarkdownArticleContent'
+import ArticleTestCTA from './ArticleTestCTA'
 
 type PageProps = {
   params: Promise<{ law: string; articleNumber: string }>
@@ -236,6 +237,12 @@ export default async function ArticleIndividualPage({ params }: PageProps) {
             )}
           </div>
         </div>
+
+        {/* CTA: Hacer test de este artículo — aparece en CADA artículo con
+            preguntas activas (no solo en el primero) y cierra el bucle con
+            "📖 Volver al artículo" tras el test. Superficie del bug (manuel
+            izquierdo): extraído a componente para tener test de render. */}
+        <ArticleTestCTA lawSlug={lawSlug} articleNumber={articleNumber} />
 
         {/* Navegación anterior/siguiente */}
         <div className="flex items-center justify-between gap-2 py-4 mb-6">
