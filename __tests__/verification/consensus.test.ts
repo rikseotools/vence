@@ -8,13 +8,9 @@ describe('scopeConsensus (S1)', () => {
   it('ambos ISSUES → issues', () => {
     expect(scopeConsensus('ISSUES', 'ISSUES')).toBe('issues')
   })
-  it('discrepancia sin juez → issues (conservador)', () => {
-    expect(scopeConsensus('CORRECT', 'ISSUES')).toBe('issues')
-    expect(scopeConsensus('ISSUES', 'CORRECT')).toBe('issues')
-  })
-  it('discrepancia con juez → mayoría', () => {
-    expect(scopeConsensus('CORRECT', 'ISSUES', 'CORRECT')).toBe('correct') // 2 correct
-    expect(scopeConsensus('CORRECT', 'ISSUES', 'ISSUES')).toBe('issues')   // 2 issues
+  it('discrepancia → needs_human (alerta al humano, no issues silencioso)', () => {
+    expect(scopeConsensus('CORRECT', 'ISSUES')).toBe('needs_human')
+    expect(scopeConsensus('ISSUES', 'CORRECT')).toBe('needs_human')
   })
 })
 

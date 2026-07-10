@@ -120,7 +120,7 @@ async function cmdRecord(pt, jsonPath, runId) {
     for (const [n, v] of Object.entries(consensus)) {
       const tid = byN[n]
       if (!tid) { skipped.push(n); continue }
-      if (!['correct', 'issues'].includes(v.verdict)) { skipped.push(`${n}(verdict inválido)`); continue }
+      if (!['correct', 'issues', 'needs_human'].includes(v.verdict)) { skipped.push(`${n}(verdict inválido)`); continue }
       const findings = JSON.stringify(v.findings || { note: v.note || null })
       await c.query(`SELECT record_topic_verification($1,$2,$3::jsonb,$4,$5)`,
         [tid, v.verdict, findings, run, v.verified_by || 'multi_agent'])
@@ -148,10 +148,11 @@ async function cmdStatus(pt) {
     const issues = (await c.query(
       `SELECT t.topic_number, v.state, v.findings->>'note' note
        FROM topics t JOIN topic_scope_verification v ON v.topic_id=t.id
-       WHERE t.position_type=$1 AND v.state IN ('verified_issues','stale') ORDER BY t.topic_number`, [pt]
+       WHERE t.position_type=$1 AND v.state IN ('verified_issues','needs_human','stale')
+       ORDER BY (v.state='needs_human') DESC, t.topic_number`, [pt]
     )).rows
     if (issues.length) {
-      console.log(`\n  temas a revisar:`)
+      console.log(`\n  temas a revisar (⚠️ needs_human = DUDA, decide un humano):`)
       issues.forEach(r => console.log(`    T${r.topic_number} [${r.state}] ${r.note || ''}`))
     }
   } finally { await c.end() }
@@ -164,6 +165,7 @@ async function cmdAudit(asJson) {
       SELECT t.position_type,
         count(*) FILTER (WHERE v.state='verified_correct') AS ok,
         count(*) FILTER (WHERE v.state='verified_issues') AS issues,
+        count(*) FILTER (WHERE v.state='needs_human') AS needs_human,
         count(*) FILTER (WHERE v.state='stale') AS stale,
         count(*) FILTER (WHERE v.state IS NULL OR v.state='never_verified') AS never,
         count(*) total
@@ -171,9 +173,9 @@ async function cmdAudit(asJson) {
       WHERE t.is_active GROUP BY t.position_type`)).rows
     const needing = rows.map(r => ({
       position_type: r.position_type,
-      ok: +r.ok, issues: +r.issues, stale: +r.stale, never: +r.never, total: +r.total,
-      pendientes: +r.issues + +r.stale + +r.never,
-    })).sort((a, b) => b.pendientes - a.pendientes)
+      ok: +r.ok, issues: +r.issues, needs_human: +r.needs_human, stale: +r.stale, never: +r.never, total: +r.total,
+      pendientes: +r.issues + +r.needs_human + +r.stale + +r.never,
+    })).sort((a, b) => (b.needs_human - a.needs_human) || (b.pendientes - a.pendientes))
     const totalPend = needing.reduce((a, r) => a + r.pendientes, 0)
     if (asJson) {
       console.log(JSON.stringify({ total_pendientes: totalPend, oposiciones: needing }, null, 1))
@@ -181,7 +183,7 @@ async function cmdAudit(asJson) {
       console.log(`=== cobertura de verificación (badge = ${totalPend} temas pendientes) ===`)
       for (const r of needing) {
         if (r.pendientes === 0) continue
-        console.log(`  ${r.position_type}: ✅${r.ok} ⚠️issues:${r.issues} 🟡stale:${r.stale} ⬜never:${r.never} / ${r.total}`)
+        console.log(`  ${r.position_type}: ✅${r.ok}${r.needs_human ? ` 🚨needs_human:${r.needs_human}` : ''} ⚠️issues:${r.issues} 🟡stale:${r.stale} ⬜never:${r.never} / ${r.total}`)
       }
       console.log(`\n  oposiciones 100% verified_correct: ${needing.filter(r => r.pendientes === 0).length}/${needing.length}`)
     }

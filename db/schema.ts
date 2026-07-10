@@ -344,7 +344,7 @@ export const topicScopeVerification = pgTable("topic_scope_verification", {
 			foreignColumns: [topics.id],
 			name: "topic_scope_verification_topic_id_fkey"
 		}).onDelete("cascade"),
-	check("topic_scope_verification_state_check", sql`state = ANY (ARRAY['never_verified'::text, 'verifying'::text, 'verified_correct'::text, 'verified_issues'::text, 'stale'::text])`),
+	check("topic_scope_verification_state_check", sql`state = ANY (ARRAY['never_verified'::text, 'verifying'::text, 'verified_correct'::text, 'verified_issues'::text, 'needs_human'::text, 'stale'::text])`),
 ]);
 
 export const topicScopeVerificationHistory = pgTable("topic_scope_verification_history", {
@@ -392,7 +392,7 @@ export const topicEpigrafeVerification = pgTable("topic_epigrafe_verification", 
 			foreignColumns: [convocatorias.id],
 			name: "topic_epigrafe_verification_source_convocatoria_id_fkey"
 		}).onDelete("set null"),
-	check("topic_epigrafe_verification_state_check", sql`state = ANY (ARRAY['never_sourced'::text, 'verified_literal'::text, 'drift_detected'::text, 'provisional_anterior'::text, 'stale'::text])`),
+	check("topic_epigrafe_verification_state_check", sql`state = ANY (ARRAY['never_sourced'::text, 'verified_literal'::text, 'drift_detected'::text, 'provisional_anterior'::text, 'needs_human'::text, 'stale'::text])`),
 ]);
 
 export const topicEpigrafeVerificationHistory = pgTable("topic_epigrafe_verification_history", {

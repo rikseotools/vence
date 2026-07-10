@@ -10,22 +10,21 @@ export type ScopeVerdict = 'CORRECT' | 'ISSUES'
 export type EpigrafeVerdict = 'literal' | 'drift' | 'no_verificable'
 
 /**
- * Consenso de scope (S1). `tiebreaker` opcional = 3er agente juez en discrepancia.
- * Devuelve el verdict a persistir: 'correct' | 'issues'.
+ * Consenso de scope (S1). Devuelve el verdict a persistir:
+ * 'correct' | 'issues' | 'needs_human'.
+ *
+ * Regla clave (petición Manuel): solo hay veredicto automático cuando los dos
+ * agentes independientes ACUERDAN. Cualquier DUDA (discrepancia) → 'needs_human'
+ * para ALERTAR a un humano que decida — NO cae en 'issues' silencioso. El humano
+ * es el árbitro, no un tercer agente.
  */
 export function scopeConsensus(
   analyst: ScopeVerdict,
-  skeptic: ScopeVerdict,
-  tiebreaker?: ScopeVerdict
-): 'correct' | 'issues' {
+  skeptic: ScopeVerdict
+): 'correct' | 'issues' | 'needs_human' {
   if (analyst === 'CORRECT' && skeptic === 'CORRECT') return 'correct'
   if (analyst === 'ISSUES' && skeptic === 'ISSUES') return 'issues'
-  // discrepancia
-  if (tiebreaker) {
-    const votes = [analyst, skeptic, tiebreaker].filter((v) => v === 'CORRECT').length
-    return votes >= 2 ? 'correct' : 'issues'
-  }
-  return 'issues' // sin juez → conservador (fuerza revisión)
+  return 'needs_human' // discrepancia = duda → alerta humano
 }
 
 /**

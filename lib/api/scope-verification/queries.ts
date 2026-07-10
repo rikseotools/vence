@@ -17,11 +17,11 @@ export async function getScopeVerificationCount(): Promise<ScopeVerificationCoun
     const rows = (await db.execute(sql`
       SELECT
         count(*) FILTER (
-          WHERE coalesce(sv.state, 'never_verified') IN ('never_verified', 'stale', 'verified_issues')
+          WHERE coalesce(sv.state, 'never_verified') IN ('never_verified', 'stale', 'verified_issues', 'needs_human')
              OR coalesce(ev.effective_state, 'never_sourced') <> 'verified_literal'
         )::int AS count,
         count(*) FILTER (
-          WHERE coalesce(sv.state, 'never_verified') IN ('never_verified', 'stale', 'verified_issues')
+          WHERE coalesce(sv.state, 'never_verified') IN ('never_verified', 'stale', 'verified_issues', 'needs_human')
         )::int AS scope,
         count(*) FILTER (
           WHERE coalesce(ev.effective_state, 'never_sourced') <> 'verified_literal'
