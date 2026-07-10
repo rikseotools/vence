@@ -54,7 +54,9 @@
     "test:e2e:install": "playwright install chromium",
     "gsc:keywords": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts",
     "gsc:seo": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts seo",
-    "audit:display-drift": "node scripts/audit-temario-display-drift.cjs"
+    "audit:display-drift": "node scripts/audit-temario-display-drift.cjs",
+    "audit:coherencia": "node scripts/audit-oposiciones-coherencia.cjs",
+    "canary:oposiciones": "node scripts/canary-oposiciones-live.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -97,6 +97,13 @@ Gestionar plantillas en `/admin/newsletters` → tab **Plantillas BD**, o vía `
 
 ## 4. Vista previa a Manuel → OK
 
+> **🔒 GATE PRE-ENVÍO OBLIGATORIO (antes de la preview):** la newsletter manda tráfico a la landing, así que la landing y sus datos deben estar **perfectos y verificados contra el boletín oficial**. Corre los tres controles y arréglalo TODO antes de mandar la preview:
+> ```bash
+> npm run canary:oposiciones -- <slug>     # CAPA 1: landing/temario/test=200, temas sirven preguntas
+> npm run audit:coherencia -- <slug>       # CAPA 2: cifras de tarjetas cuadran con la BD
+> ```
+> y la **CAPA 3** (verificación dato-vs-boletín, `crear-nueva-oposicion.md` §6g): re-confirmar plazas, plazo exacto, titulación y estructura del examen contra el BOE. Si la oposición ya pasó §6g al crearse y la convocatoria no ha cambiado, basta re-confirmar; si cambió, re-verificar. Incidente Granada (09/07): la FAQ del examen estaba incompleta y solo lo cazó esta verificación — **no la saltes**.
+
 SIEMPRE mandar el borrador a **manueltrader@gmail.com** y esperar visto bueno antes del envío masivo. (Nota: Gmail colapsa el pie repetido en "..." cuando recibes varios borradores seguidos; el usuario que lo recibe una vez NO lo ve.)
 
 > **🔒 El preview DEBE ser EXACTO al envío real (regla de Manuel, 09/07):** el correo de vista previa tiene que ser **idéntico** al que recibirán los destinatarios — **mismo asunto y mismo HTML**. **PROHIBIDO** poner "preview", "[PRUEBA]", "TEST" o cualquier marca en el asunto o el cuerpo; si el asunto no es exactamente el que verá el destinatario, el preview no vale. Usar el modo del script:
