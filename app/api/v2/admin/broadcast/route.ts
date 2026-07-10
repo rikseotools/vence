@@ -82,12 +82,26 @@ async function _POST(request: NextRequest) {
     if (o) filters.push(o)
   }
 
+  // GUARDARRAÍL (F4): si NO se produjo ningún filtro (p.ej. región desconocida sin
+  // oposición), NO seleccionar TODOS los usuarios — en un endpoint de email masivo
+  // eso enviaría a toda la base. El Zod .refine exige oposicion||region, pero una
+  // región no reconocida (fuera de REGION_CITIES) pasaba el refine y vaciaba el
+  // filtro → where(undefined) = todos. Aquí se corta a 0.
+  if (filters.length === 0) {
+    return NextResponse.json({
+      success: true,
+      sent: { email: 0 },
+      total: 0,
+      message: `Sin destinatarios: filtro vacío (oposición=${oposicion || 'ninguna'}, región=${region || 'ninguna'} no reconocida)`,
+    })
+  }
+
   let allUsers: Array<{ id: string; email: string | null }> = []
   try {
     allUsers = await db
       .select({ id: userProfiles.id, email: userProfiles.email })
       .from(userProfiles)
-      .where(filters.length ? and(...filters) : undefined)
+      .where(and(...filters))
   } catch (e) {
     console.error('Error buscando usuarios:', e)
     return NextResponse.json({ error: 'Error buscando usuarios' }, { status: 500 })

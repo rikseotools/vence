@@ -2,85 +2,14 @@
 // API para verificar respuestas de forma independiente (sin conocer la respuesta de antemano)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { and, or, eq, ilike } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Proveedor de IA detrás de puertos COMPARTIDOS (agnóstico por contrato): el
-// cliente y los modelos viven en `lib/chat/shared/openai.ts`, los embeddings en
-// `EmbeddingService` (cacheado). Si se cambia de proveedor de IA, se toca ahí, no
-// aquí. La BD es Drizzle/Postgres (getDb → DATABASE_URL) → portable a cualquier
-// host Postgres (RDS, KoiGrid, Neon…) sin reescribir código.
+// Proveedor de IA detrás de puertos COMPARTIDOS (agnóstico por contrato): cliente
+// y modelos viven en `lib/chat/shared/openai.ts`. La búsqueda de artículos vive en
+// un módulo testeable propio (`ai-verify/articleSearch`). BD = Drizzle/Postgres
+// (getDb → DATABASE_URL) → portable a cualquier host Postgres (RDS/KoiGrid/Neon).
 import { getOpenAI } from '@/lib/chat/shared/openai'
-import { generateEmbedding } from '@/lib/chat/domains/search/EmbeddingService'
-import { searchArticlesBySimilarity } from '@/lib/chat/domains/search/queries'
-import { getDb } from '@/db/client'
-import { articles as articlesTable, laws as lawsTable } from '@/db/schema'
-
-// Forma unificada de artículo para el contexto del prompt (agnóstica de proveedor).
-type CtxArticle = { lawShortName: string; lawName: string; articleNumber: string | null; content: string | null }
-
-// Buscar artículos relevantes por embedding — pgvector `match_articles` (mismo
-// camino que el chat), vía puertos compartidos (EmbeddingService + Drizzle).
-async function searchRelevantArticles(searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
-  try {
-    const { embedding } = await generateEmbedding(searchText)
-
-    const matches = await searchArticlesBySimilarity(embedding, {
-      limit: 5,
-      minSimilarity: 0.5,
-      mentionedLawNames: lawName ? [lawName] : [],
-    })
-    if (matches.length > 0) {
-      return matches.map(a => ({
-        lawShortName: a.lawShortName,
-        lawName: a.lawName,
-        articleNumber: a.articleNumber,
-        content: a.content,
-      }))
-    }
-    // Sin resultados semánticos → fallback por keywords.
-    return await searchArticlesByKeywords(searchText, lawName)
-  } catch (error) {
-    console.error('Error en búsqueda semántica:', error)
-    return await searchArticlesByKeywords(searchText, lawName)
-  }
-}
-
-// Fallback por keywords — Drizzle/Postgres (articles + laws), agnóstico de host.
-async function searchArticlesByKeywords(searchText: string, lawName?: string | null): Promise<CtxArticle[]> {
-  const keyword = searchText.split(/\s+/).filter(w => w.length > 3)[0]
-  if (!keyword) return []
-  try {
-    const rows = await getDb()
-      .select({
-        articleNumber: articlesTable.articleNumber,
-        content: articlesTable.content,
-        lawShortName: lawsTable.shortName,
-        lawName: lawsTable.name,
-      })
-      .from(articlesTable)
-      .leftJoin(lawsTable, eq(lawsTable.id, articlesTable.lawId))
-      .where(
-        and(
-          eq(articlesTable.isActive, true),
-          ilike(articlesTable.content, `%${keyword}%`),
-          lawName
-            ? or(ilike(lawsTable.name, `%${lawName}%`), ilike(lawsTable.shortName, `%${lawName}%`))
-            : undefined,
-        ),
-      )
-      .limit(5)
-    return rows.map(r => ({
-      lawShortName: r.lawShortName ?? '',
-      lawName: r.lawName ?? '',
-      articleNumber: r.articleNumber,
-      content: r.content,
-    }))
-  } catch (error) {
-    console.error('Error en fallback por keywords:', error)
-    return []
-  }
-}
+import { searchRelevantArticles } from '@/lib/api/ai-verify/articleSearch'
 
 async function _POST(request: NextRequest) {
   const startTime = Date.now()
