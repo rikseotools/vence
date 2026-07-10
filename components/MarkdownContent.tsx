@@ -2,6 +2,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
+import { formatLegalText } from '@/lib/teoria/formatLegalText'
 
 const components: Components = {
   // H2 — sección principal con línea de acento azul
@@ -122,10 +123,13 @@ interface MarkdownContentProps {
 
 export default function MarkdownContent({ content, className }: MarkdownContentProps) {
   if (!content) return null
+  // Renderiza el CONTENIDO de artículos legales del temario (única usuaria hoy).
+  // Reconstruye la estructura del texto plano importado de PDF (fix "apelotonado")
+  // — idempotente sobre el Markdown ya bien formado, no daña tablas ni listas.
   return (
     <div className={className ?? 'text-sm leading-relaxed'}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
+        {formatLegalText(content)}
       </ReactMarkdown>
     </div>
   )
