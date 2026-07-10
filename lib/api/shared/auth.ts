@@ -25,12 +25,16 @@ import { isAdminEmail } from '@/lib/auth/adminEmails'
 // Tipos
 // ============================================
 
+// NOTA (10/07): se retiró el campo `supabase` de los resultados de auth — ningún
+// caller lo usaba (los datos ya son agnósticos vía Drizzle) y creaba un cliente
+// Supabase en CADA request autenticado. `getServiceClient` sigue existiendo solo
+// para `authAdmin` (auth.users legacy, pre-flip).
 export type AuthResult =
-  | { ok: true; user: User; supabase: SupabaseClient }
+  | { ok: true; user: User }
   | { ok: false; response: NextResponse }
 
 export type AdminResult =
-  | { ok: true; user: User; supabase: SupabaseClient }
+  | { ok: true; user: User }
   | { ok: false; response: NextResponse }
 
 // ============================================
@@ -81,7 +85,7 @@ export async function getAuthenticatedUser(
     created_at: '',
   } as unknown as User
 
-  return { ok: true, user, supabase: getServiceClient() }
+  return { ok: true, user }
 }
 
 // ============================================
@@ -91,7 +95,7 @@ export async function getAuthenticatedUser(
 // positionType que venga del cliente; derivarlo de la sesión autenticada.
 
 export type AuthWithOposicionResult =
-  | { ok: true; user: User; supabase: SupabaseClient; targetOposicion: string | null }
+  | { ok: true; user: User; targetOposicion: string | null }
   | { ok: false; response: NextResponse }
 
 export async function getAuthenticatedUserWithOposicion(
@@ -114,7 +118,7 @@ export async function getAuthenticatedUserWithOposicion(
 
   const targetOposicion = raw && raw.trim().length > 0 ? raw : null
 
-  return { ok: true, user: auth.user, supabase: auth.supabase, targetOposicion }
+  return { ok: true, user: auth.user, targetOposicion }
 }
 
 // ============================================

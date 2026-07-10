@@ -32,6 +32,8 @@ Ejecutados (a)+(b): el **último write** (dead insert `question_verifications`, 
 - 🔴 **AUTH (5)** = la coupling profunda, todos son PORTOS (se reescribe la impl, no los callers): `lib/api/shared/auth.ts` (`getServiceClient`), `lib/api/auth/verifyAuth.ts` (fallback remoto `getUser()` en modo `off`/`shadow`), `lib/security/adminApiGuard.ts` (`.auth.get`), `lib/supabase.ts` (cliente auth browser: `.auth.on/.get`), `lib/armando/supabaseAdmin.ts`. → plan `auth-agnostico-jwks-y-rls.md`.
 - 🟡 **Storage (1)**: `lib/api/video-courses/queries.ts` (`.storage`) → sub-proyecto S3.
 
+**Capas de seguridad de la migración de datos (10/07):** simulación con datos reales + integración de paridad (`__tests__/integration/agnosticismoQueries.integration.test.ts`) + **revisión independiente adversarial** (cazó 2 regresiones en verify-answer) + unit del código REAL (`__tests__/lib/api/ai-verify/articleSearch.test.ts`). Regresiones corregidas (commit `3430ed45`): **F1** (la búsqueda semántica forzaba fallback por match EXACTO de short_name → ley como preferencia SUAVE, extraída a `lib/api/ai-verify/articleSearch.ts`), **F2** (fallback keyword de 1→N palabras AND), **F4** (broadcast región desconocida→email masivo, guardarraíl añadido). Aprendizaje: un test que re-implementa el SQL es **falso verde** — hay que importar la función REAL.
+
 **SIGUIENTE (revisado 10/07):** solo queda AUTH + storage. El data-layer ya no bloquea el apagado; el bloqueador REAL es ahora **exclusivamente la identidad** (`auth.users` viva en Supabase para los pre-flip + el fallback remoto de `verifyAuth`). Cerrar eso = plan de auth agnóstico. Storage = mover a S3 (independiente).
 
 ---

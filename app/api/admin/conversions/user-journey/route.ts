@@ -6,12 +6,18 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { sql } from 'drizzle-orm'
 import { requireAdmin } from '@/lib/api/shared/auth'
+import { getAdminDb } from '@/db/client'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 const querySchema = z.object({
   userId: z.string().uuid(),
 })
+
+function rowsOf(res: unknown): unknown[] {
+  return Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []
+}
 
 async function _GET(request: NextRequest) {
   const admin = await requireAdmin(request)
@@ -23,14 +29,16 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ error: 'userId UUID requerido' }, { status: 400 })
   }
 
-  const { data, error } = await admin.supabase.rpc('get_user_conversion_journey', {
-    p_user_id: parsed.data.userId,
-  })
-  if (error) {
-    console.error('❌ [admin/conversions/user-journey] DB error:', error.message)
+  // RPC contra RDS vía Drizzle (agnóstico — sin Supabase). La fn no toca auth.users.
+  try {
+    const res = await getAdminDb().execute(
+      sql`SELECT * FROM public.get_user_conversion_journey(${parsed.data.userId}::uuid)`,
+    )
+    return NextResponse.json({ journey: rowsOf(res) })
+  } catch (error) {
+    console.error('❌ [admin/conversions/user-journey] DB error:', error instanceof Error ? error.message : error)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
-  return NextResponse.json({ journey: data ?? [] })
 }
 
 export const GET = withErrorLogging('/api/admin/conversions/user-journey', _GET)

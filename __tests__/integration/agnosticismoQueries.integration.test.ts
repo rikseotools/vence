@@ -86,6 +86,21 @@ describeIfDb('agnosticismo — paridad de queries migradas (RDS, read-only)', ()
     if (rows.length) expect(typeof rows[0].unsubscribed_all === 'boolean' || rows[0].unsubscribed_all === null).toBe(true)
   })
 
+  // ── admin RPCs migrados a Drizzle (getAdminDb().execute) — no tocan auth.users
+  test('get_user_conversion_journey(uuid) ejecutable en RDS (no depende de auth.users)', async () => {
+    // uuid inexistente → 0 filas pero SIN error (guarda contra schema-drift tipo landmine).
+    await expect(
+      client.query('SELECT * FROM public.get_user_conversion_journey($1::uuid)', [
+        '00000000-0000-4000-8000-000000000000',
+      ]),
+    ).resolves.toBeDefined()
+  })
+
+  test('get_all_users_with_subscriptions() ejecutable en RDS', async () => {
+    const { rows } = await client.query('SELECT count(*)::int n FROM public.get_all_users_with_subscriptions()')
+    expect(rows[0].n).toBeGreaterThanOrEqual(0)
+  })
+
   // ── verify-answer: fallback keyword migrado a Drizzle (articles + laws, ilike content, is_active)
   test('verify-answer fallback: articles+laws join por keyword devuelve la forma esperada', async () => {
     const { rows } = await client.query(`
