@@ -558,6 +558,16 @@ export default function HeaderES() {
                   <span className="text-lg">⚖️</span>
                 </Link>
 
+                {/* 📖 ICONO DE TEORÍA LEGAL */}
+                <Link
+                  href="/teoria"
+                  className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+                  aria-label="Ir a Teoría Legal"
+                  title="Teoría Legal — leer el texto de las leyes"
+                >
+                  <span className="text-lg">📖</span>
+                </Link>
+
                 {/* 💬 ICONO DE SOPORTE */}
                 <Link
                   href="/soporte"

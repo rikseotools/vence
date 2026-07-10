@@ -261,11 +261,11 @@ export default function TestLeyesEspana() {
               📚 TEST DE LEYES ESPAÑA
             </span>
           </div>
-          <h1 className="text-5xl font-bold text-gray-800 mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 mb-6">
             Test de Leyes España<br/>
             <span className="text-blue-600">en Vence 2026</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
             Practica con los <strong>tests de leyes</strong> más completos de España en <strong>Vence</strong>. 
             Prepárate para oposiciones o estudia legislación española con nuestros
             <strong> tests gratuitos actualizados</strong> de todas las leyes disponibles en nuestra base de datos.
@@ -280,10 +280,10 @@ export default function TestLeyesEspana() {
         {/* Beneficios */}
         <section className="mb-20">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
               ✨ ¿Por qué elegir nuestros Test de Leyes?
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg sm:text-xl text-gray-600">
               La forma más efectiva de estudiar legislación española online
             </p>
           </div>
@@ -305,7 +305,7 @@ export default function TestLeyesEspana() {
 
         {/* Información SEO */}
         <section className="bg-white rounded-xl shadow-lg p-8 mb-16">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">
             📖 Todo sobre los Test de Leyes en España
           </h2>
           <div className="grid md:grid-cols-2 gap-8">

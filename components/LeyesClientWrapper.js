@@ -65,10 +65,10 @@ export default function LeyesClientWrapper({ laws }) {
   return (
     <section className="mb-16">
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
           Test de Leyes Disponibles
         </h2>
-        <p className="text-xl text-gray-600">
+        <p className="text-lg sm:text-xl text-gray-600">
           Elige la ley que quieres estudiar y comienza a practicar
         </p>
       </div>
@@ -291,7 +291,7 @@ export default function LeyesClientWrapper({ laws }) {
 
       {/* Información SEO adicional */}
       <div className="mt-16 bg-white rounded-xl shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">
           Todo sobre los Test de Leyes en España
         </h2>
         <div className="grid md:grid-cols-2 gap-8">
