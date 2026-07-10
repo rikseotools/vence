@@ -25,7 +25,11 @@ async function _GET(request: NextRequest) {
     const data = await getValidationErrors(parsed.data)
     return NextResponse.json(data)
   } catch (error) {
-    console.error('[API/v2/admin/validation-errors] Error:', error)
+    // Log la CAUSA pg real (postgres-js/drizzle la esconde en .cause): sin esto el
+    // error prod-only se ve como "Failed query" sin detalle y es indiagnosticable.
+    const err = error as { message?: string; cause?: { message?: string; code?: string; detail?: string }; query?: string }
+    console.error('[API/v2/admin/validation-errors] Error:', err?.message,
+      '| pg.code:', err?.cause?.code, '| pg.msg:', err?.cause?.message, '| pg.detail:', err?.cause?.detail)
     return NextResponse.json(
       { error: 'Error cargando errores de validación' },
       { status: 500 },
