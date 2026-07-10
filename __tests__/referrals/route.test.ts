@@ -10,9 +10,11 @@ jest.mock('@/lib/referrals/queries', () => ({
   resolveActiveReferralCode: jest.fn(),
 }))
 import { resolveActiveReferralCode } from '@/lib/referrals/queries'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 import { _GET } from '@/app/r/[code]/route'
 
 const mockResolve = resolveActiveReferralCode as unknown as jest.Mock
+const mockEmit = emitReferralEvent as unknown as jest.Mock
 const req = (url: string) => new NextRequest(url)
 const params = (code: string) => Promise.resolve({ code })
 
@@ -52,5 +54,19 @@ describe('GET /r/[code]', () => {
     const sc = res.headers.get('set-cookie') || ''
     expect(sc.toLowerCase()).toContain('httponly')
     expect(sc.toLowerCase()).toContain('samesite=lax')
+  })
+
+  it('petición normal → emite referral_link_click (cuenta en el embudo)', async () => {
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
+    await _GET(req('https://www.vence.es/r/abc'), { params: params('abc') })
+    expect(mockEmit).toHaveBeenCalledWith('referral_link_click', expect.objectContaining({ metadata: expect.objectContaining({ code: 'abc' }) }))
+  })
+
+  it('petición SINTÉTICA (x-vence-canary) → NO emite (no infla el embudo)', async () => {
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
+    const r = new NextRequest('https://www.vence.es/r/abc', { headers: { 'x-vence-canary': '1' } })
+    const res = await _GET(r, { params: params('abc') })
+    expect(res.status).toBe(302)   // el redirect + cookie SÍ siguen (el canary valida eso)
+    expect(mockEmit).not.toHaveBeenCalled()
   })
 })

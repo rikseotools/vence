@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { resolveActiveReferralCode } from '@/lib/referrals/queries'
 import { emitReferralEvent } from '@/lib/referrals/observability'
+import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
 
 const REF_COOKIE = 'vence_ref'
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60 // 60 días
@@ -17,17 +18,20 @@ const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60 // 60 días
 // site público (build-arg NEXT_PUBLIC_SITE_URL, inlineado; fallback seguro). Cazado por el canary 10/07.
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 
-async function _GET(_request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
+async function _GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const valid = code ? await resolveActiveReferralCode(code) : null
 
   // Observabilidad: click en el enlace (userId = embajador dueño del código).
-  emitReferralEvent('referral_link_click', {
-    userId: valid?.ownerUserId ?? null,
-    endpoint: '/r/[code]',
-    severity: valid ? 'info' : 'warn',
-    metadata: { code, valid: !!valid },
-  })
+  // Los canaries (header x-vence-canary) NO cuentan: inflarían el embudo con clicks sintéticos.
+  if (!isSyntheticRequest(request)) {
+    emitReferralEvent('referral_link_click', {
+      userId: valid?.ownerUserId ?? null,
+      endpoint: '/r/[code]',
+      severity: valid ? 'info' : 'warn',
+      metadata: { code, valid: !!valid },
+    })
+  }
 
   // Destino: landing /embajadores con ?ref para atribución cookie-less. Código inválido → /embajadores sin ref.
   const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(code)}` : '/embajadores', SITE)

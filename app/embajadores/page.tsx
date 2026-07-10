@@ -287,7 +287,7 @@ export default function EmbajadoresPage() {
               <button
                 onClick={copyLink}
                 disabled={!me?.link}
-                className="px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
+                className={`px-6 py-3 rounded-lg font-semibold text-white disabled:opacity-50 transition ${copied ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {copied ? '¡Copiado! ✓' : 'Copiar'}
               </button>

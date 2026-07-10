@@ -9,6 +9,10 @@ require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
 
 const BASE = (process.env.BASE_URL || 'https://www.vence.es').replace(/\/$/, '')
+// Marca TODO el tráfico del canary como sintético (x-vence-canary) → los endpoints con
+// isSyntheticRequest() no lo cuentan en observabilidad (p.ej. /r/[code] no infla el embudo).
+const _origFetch = fetch
+globalThis.fetch = (url, opts = {}) => _origFetch(url, { ...opts, headers: { 'x-vence-canary': '1', ...(opts.headers || {}) } })
 // Código real de referido en prod (Manuel). Cambiar si se retira.
 const CODE = process.env.CANARY_REF_CODE || '035fa1606e2a'
 
