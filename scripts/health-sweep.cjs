@@ -134,6 +134,32 @@ async function main() {
       { count: flat.length, laws: leyes.length, sample: flat.slice(0, 15) });
   }
 
+  // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
+  // Mirror INLINE de lib/laws/staleDatedLaw.ts — MANTENER EN SYNC (guardado por
+  // __tests__/lib/laws/staleDatedLaw.test.ts). Una ley "para el año XXXX" ya
+  // pasado que sigue escopada = temario desactualizado (presupuestos anuales, que
+  // se sustituyen por una ley NUEVA con otro número → invisible al monitor BOE, y
+  // "correcta" para el radar de epígrafes porque encaja en la materia). ACTUALIZAR
+  // a la vigente + generar preguntas, NUNCA quitar si el epígrafe la pide.
+  const TARGET_YEAR_RE = /\bpara\s+(?:el\s+a[ñn]o\s+)?(\d{4})\b|\bdel\s+(?:a[ñn]o|ejercicio)\s+(\d{4})\b/i;
+  const CURR_YEAR = now.getFullYear();
+  const scopedLaws = (await c.query(`
+    SELECT l.id, l.short_name, l.name,
+      (SELECT array_agg(DISTINCT t.position_type ORDER BY t.position_type)
+         FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id WHERE ts.law_id = l.id) AS oposiciones
+    FROM laws l
+    WHERE l.is_active = true AND EXISTS (SELECT 1 FROM topic_scope ts WHERE ts.law_id = l.id)`)).rows;
+  for (const l of scopedLaws) {
+    const m = (l.name || '').match(TARGET_YEAR_RE);
+    const yr = m ? Number(m[1] || m[2]) : null;
+    if (yr != null && yr < CURR_YEAR) {
+      const opos = (l.oposiciones || []).filter(Boolean);
+      add('content', 'warn', null, 'stale_dated_law',
+        `${l.short_name || l.name} es del año ${yr} (caducada) y sigue en el temario de ${opos.length} oposición(es) — actualizar a la vigente y generar preguntas`,
+        { law_id: l.id, year: yr, oposiciones: opos });
+    }
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

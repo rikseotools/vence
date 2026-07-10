@@ -315,6 +315,7 @@ git push origin main
   - *"revisa los hitos de convocatoria"* → inscripción abierta con timeline vacío → `rollover-oposiciones.md`.
   - *"revisa la cobertura de temas"* → temas con <6 preguntas → `salud-contenido.md`.
   - *"revisa las tablas de artículos"* → tablas aplanadas (import PDF sin rejilla) → `tablas-articulos.md`. Detección: `lib/teoria/detectFlattenedTable.ts`; render table-aware: `lib/teoria/formatLegalText.ts`. NUNCA inventar cifras; reconstruir con verificación humana.
+  - *"revisa las leyes anuales caducadas"* → ley "para el año XXXX" ya pasado que sigue en un `topic_scope` (presupuestos anuales; gap que ni el radar de epígrafes ni el monitor BOE cazan) → `leyes-anuales-caducadas.md`. Detección: `lib/laws/staleDatedLaw.ts`. ACTUALIZAR a la vigente + generar preguntas, NUNCA quitar si el epígrafe la pide.
 
 ### 📡 Observabilidad (manual completo)
 - **Manual:** `docs/runbooks/observability.md`

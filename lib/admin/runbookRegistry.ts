@@ -86,6 +86,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/tablas-articulos.md',
     claudeHace: 'reconstruye la tabla Markdown a partir de las celdas existentes (2 vs 3 columnas según cabecera), con verificación humana de las cifras, y la escribe en el content.',
   },
+  stale_dated_law: {
+    title: 'Ley anual caducada en el temario',
+    triggerPhrase: 'revisa las leyes anuales caducadas',
+    runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
+    claudeHace: 'localiza la ley "para el año XXXX" ya pasado que sigue escopada, la actualiza a la versión vigente (importándola si falta) y genera las preguntas que falten — NUNCA la quita si el epígrafe la pide.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */
