@@ -36,6 +36,28 @@ Ejecutados (a)+(b): el **último write** (dead insert `question_verifications`, 
 
 **SIGUIENTE (revisado 10/07):** solo queda AUTH + storage. El data-layer ya no bloquea el apagado; el bloqueador REAL es ahora **exclusivamente la identidad** (`auth.users` viva en Supabase para los pre-flip + el fallback remoto de `verifyAuth`). Cerrar eso = plan de auth agnóstico. Storage = mover a S3 (independiente).
 
+### 🔐 2026-07-10 — AUTH: parte segura HECHA + login programado para las 15:00 (sin usuarios)
+
+**Hecho (commit `cf746c66`, en `origin/main`):**
+- `AuthResult`/`AdminResult`/`AuthWithOposicionResult`: retirado el campo `supabase` (creaba `getServiceClient()` en CADA request; 0 callers lo usaban salvo 2 que el typecheck cazó). `getServiceClient` se queda SOLO para `authAdmin`.
+- `admin/conversions/user-journey` + `admin/users/subscriptions`: `admin.supabase.rpc(...)` → `getAdminDb().execute(sql\`SELECT * FROM fn\`)`. Verificado en RDS (1954/9654 filas); ninguna fn toca `auth.users`.
+- `lib/armando/supabaseAdmin.ts`: eliminado (muerto).
+
+**Inventario final PRECISO del runtime restante (real, no comentarios/tipos):**
+- 🔴 **`lib/supabase.ts`** (uso_real=8: `signInWithOAuth`/`getSession`/`onAuthStateChange`/`refreshSession`/`getUser`) = **el cliente de LOGIN del navegador**. Es EL bloqueador y el path de login de usuarios reales.
+- 🟡 `lib/api/auth/verifyAuth.ts` — fallback remoto `getUser()` de los modos `off`/`shadow` (MUERTO en `mode=on` de prod; quitar = comprometerse a local-only).
+- 🟡 `lib/security/adminApiGuard.ts` — HS256 → `getUser` remoto en el PROXY (ojo runtime: `verifyJwtLocal` usa jsonwebtoken+`SUPABASE_JWT_SECRET`, verificar que va en ese runtime antes de migrar).
+- 🟡 `lib/api/video-courses/queries.ts` — `.storage` → sub-proyecto S3 (independiente).
+- 🟢 `lib/api/shared/auth.ts` — `getServiceClient` SOLO para `authAdmin` (auth.users legacy). Se queda hasta apagar auth.
+- ⚪ `app/perfil/page.tsx`, `lib/campaignTracker.ts`, `lib/cron/runWithLogging.ts` — `import type` (solo el TIPO del SDK, sin runtime) → cosmético al desinstalar el npm.
+
+**PLAN 15:00 (Manuel, sin usuarios online) — el path de login (ALTO riesgo, deslogueo masivo):**
+Misma clase que el flip de Fase B (3 intentos + verificación con usuarios reales). Ventana de bajo tráfico. Orden despacio-y-fiable:
+1. Leer `auth-agnostico-jwks-y-rls.md` + `contexts/AuthContext.tsx` (cómo consume hoy `lib/supabase.ts`: sesión, onAuthStateChange, signInWithOAuth Google).
+2. Migrar el login/sesión del cliente a Auth.js del todo (getSession/onAuthStateChange/signInWithOAuth → Auth.js), con `resolveAppUser` por email (ya existe).
+3. Capas: canary de login real + verificación con usuario real + soak; rollback listo (flag `NEXT_PUBLIC_AUTH_PROVIDER`).
+4. Luego: retirar `verifyAuth` fallback + `adminApiGuard` remoto (con check de runtime) + `authAdmin`/`auth.users` + CNAME `auth.vence.es` + decomisionar Supabase. Storage→S3 aparte.
+
 ---
 
 ## 🚨 2026-07-04 (tarde) — El cliente SEGUÍA escribiendo a Supabase (hueco C1) + inventario para retirar DNS/Supabase
