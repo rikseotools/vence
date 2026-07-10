@@ -304,6 +304,18 @@ git push origin main
 - **Indicadores:** errores 5xx 24h, drift de contadores materializados, latencia INSERT a test_questions, salud del cron de drift.
 - **Comando CLI rápido** (30s para veredicto verde/ámbar/rojo) en la sección 1 del runbook.
 
+### 🗺️ Salud del contenido — hallazgos → runbook (frases-gatillo)
+- **Fuente única del mapa:** `lib/admin/runbookRegistry.ts` (kind → frase → runbook → qué hace Claude). El panel `/admin/salud-sistema` y `/admin/contenido` muestran un chip *"→ dile a Claude: «…»"* por hallazgo + una "Guía de runbooks". Sweep nocturno `scripts/health-sweep.cjs` → `content_health_findings`.
+- **Cuándo:** cuando el usuario diga una de estas frases (o toque el badge de Salud del contenido), Claude sigue el runbook indicado ANTES de improvisar. Guardarraíl: `__tests__/lib/admin/runbookRegistry.test.ts` verifica que registro ↔ CLAUDE.md no divergen.
+- **Mapa (frase → qué mira):**
+  - *"busca errores"* → fallos de app (5xx, páginas caídas, webhook, render) → `health-check.md`.
+  - *"revisa los temas vacíos"* → temas publicados con 0 preguntas → `salud-contenido.md`.
+  - *"revisa la coherencia de las tarjetas"* → tarjetas de plazas/temas que no cuadran con la convocatoria → `salud-contenido.md`.
+  - *"revisa el dual-write de convocatorias"* → campos de convocatoria sin propagar → `salud-contenido.md`.
+  - *"revisa los hitos de convocatoria"* → inscripción abierta con timeline vacío → `rollover-oposiciones.md`.
+  - *"revisa la cobertura de temas"* → temas con <6 preguntas → `salud-contenido.md`.
+  - *"revisa las tablas de artículos"* → tablas aplanadas (import PDF sin rejilla) → `tablas-articulos.md`. Detección: `lib/teoria/detectFlattenedTable.ts`; render table-aware: `lib/teoria/formatLegalText.ts`. NUNCA inventar cifras; reconstruir con verificación humana.
+
 ### 📡 Observabilidad (manual completo)
 - **Manual:** `docs/runbooks/observability.md`
 - **Cuándo consultarlo:** al añadir un nuevo writer (cron, endpoint, handler), al diseñar dashboards/alertas, al investigar incidente, o cuando se pregunte sobre client-side errors / SLOs / tracing.

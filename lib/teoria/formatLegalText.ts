@@ -42,12 +42,33 @@ export function formatLegalText(raw: string | null | undefined): string {
     }
   }
 
+  const lastLineOf = (s: string) => s.slice(s.lastIndexOf('\n') + 1)
+  const isTableRow = (l: string) => /^\|.*\|\s*$/.test(l)
+
   for (const line of lines) {
     if (line === '') {
       flush()
       continue
     }
     if (!current) {
+      current = line
+      continue
+    }
+    // Tablas Markdown: mantener las filas `| … |` contiguas (salto SIMPLE) para que
+    // remark-gfm las renderice como tabla; nunca partirlas con doble salto. Esto deja
+    // pasar intactas las tablas ya reconstruidas por datos (runbook tablas-articulos).
+    const currentIsTable = isTableRow(lastLineOf(current))
+    if (isTableRow(line)) {
+      if (currentIsTable) current += '\n' + line
+      else {
+        flush()
+        current = line
+      }
+      continue
+    }
+    if (currentIsTable) {
+      // fin de la tabla → la siguiente línea abre bloque nuevo
+      flush()
       current = line
       continue
     }

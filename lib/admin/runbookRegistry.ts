@@ -1,0 +1,108 @@
+// lib/admin/runbookRegistry.ts
+//
+// FUENTE ÚNICA que mapea cada `kind` de content_health_findings (lo que detecta el
+// sweep nocturno, scripts/health-sweep.cjs) → el RUNBOOK que lo arregla + la
+// FRASE-GATILLO exacta que el operador (Manuel) le dice a Claude Code para que lo
+// siga. Resuelve la "confluencia": el panel de salud acumula muchos kinds, cada uno
+// con su remediación distinta.
+//
+// Lo consume:
+//   - /admin/salud-sistema (y /admin/contenido): un chip "→ dile a Claude: «…»" por
+//     finding + la "Guía de runbooks" completa. Data-driven → añadir un kind = 1 fila.
+//   - El guardarraíl __tests__/lib/admin/runbookRegistry.test.ts: verifica que NO hay
+//     kind huérfano (todo finding tiene guía), que cada runbook existe como fichero, y
+//     que cada frase-gatillo está registrada en CLAUDE.md (donde Claude la lee).
+//
+// Client-safe: sin imports de servidor.
+
+export interface RunbookEntry {
+  /** título humano del tipo de hallazgo */
+  title: string
+  /** frase EXACTA a decirle a Claude Code para que siga el runbook */
+  triggerPhrase: string
+  /** ruta del runbook en el repo (null = sin runbook dedicado, ad-hoc) */
+  runbook: string | null
+  /** qué hace Claude al seguir el runbook (resumen para la guía) */
+  claudeHace: string
+}
+
+// Varias señales de FALLO de app comparten un único runbook y frase (health-check).
+const HEALTH_CHECK: Omit<RunbookEntry, 'title'> = {
+  triggerPhrase: 'busca errores',
+  runbook: 'docs/runbooks/health-check.md',
+  claudeHace: 'sigue el runbook de salud: mira 5xx, drift, latencia y endpoints caídos, y propone el arreglo.',
+}
+
+// Mapa kind → entrada. Cubre TODOS los kinds que emite el sweep (ver migración
+// 20260710_content_health_findings.sql + scripts/health-sweep.cjs).
+export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
+  // ── APP (fallos: usuario topa con error) → runbook health-check ──
+  http_down: { title: 'Página caída (HTTP≠200)', ...HEALTH_CHECK },
+  http_5xx: { title: 'Errores 5xx', ...HEALTH_CHECK },
+  server_render_error: { title: 'Error de render en servidor', ...HEALTH_CHECK },
+  render_error: { title: 'Error de render', ...HEALTH_CHECK },
+  webhook_unhealthy: { title: 'Webhook roto', ...HEALTH_CHECK },
+  empty_topic: {
+    title: 'Tema publicado sin preguntas',
+    triggerPhrase: 'revisa los temas vacíos',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza el/los temas disponibles con 0 preguntas y decide despublicar o generar preguntas.',
+  },
+
+  // ── CONTENIDO (calidad: dato mal, app funciona) ──
+  plaza_card: {
+    title: 'Tarjeta de plazas incoherente',
+    triggerPhrase: 'revisa la coherencia de las tarjetas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'cruza las tarjetas de landing con la convocatoria vigente y corrige el número que no cuadra (verificando contra el boletín).',
+  },
+  temas_card: {
+    title: 'Tarjeta/contador de temas incoherente',
+    triggerPhrase: 'revisa la coherencia de las tarjetas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'cuadra temas_count y las tarjetas de "temas" con los topics reales de la oposición.',
+  },
+  dual_write: {
+    title: 'Dual-write de convocatoria incompleto',
+    triggerPhrase: 'revisa el dual-write de convocatorias',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'completa los campos de convocatoria que faltan (boe, programa, faqs, estadísticas…) desde la fuente oficial.',
+  },
+  no_hitos: {
+    title: 'Inscripción abierta sin hitos (timeline vacío)',
+    triggerPhrase: 'revisa los hitos de convocatoria',
+    runbook: 'docs/runbooks/rollover-oposiciones.md',
+    claudeHace: 'reconstruye el timeline de hitos de la convocatoria vigente contra la fuente oficial.',
+  },
+  low_coverage: {
+    title: 'Tema con cobertura fina (<6 preguntas)',
+    triggerPhrase: 'revisa la cobertura de temas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'lista los temas con pocas preguntas y decide importar/generar más para esa oposición.',
+  },
+  flattened_table: {
+    title: 'Tabla aplanada (import PDF sin rejilla)',
+    triggerPhrase: 'revisa las tablas de artículos',
+    runbook: 'docs/runbooks/tablas-articulos.md',
+    claudeHace: 'reconstruye la tabla Markdown a partir de las celdas existentes (2 vs 3 columnas según cabecera), con verificación humana de las cifras, y la escribe en el content.',
+  },
+}
+
+/** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */
+export const KNOWN_KINDS = Object.keys(RUNBOOK_BY_KIND)
+
+/** Entrada para un kind, o undefined si es un kind nuevo sin registrar (bug a cerrar). */
+export function runbookForKind(kind: string | null | undefined): RunbookEntry | undefined {
+  return kind ? RUNBOOK_BY_KIND[kind] : undefined
+}
+
+/** Filas únicas por frase-gatillo, para la "Guía de runbooks" (agrupa health-check). */
+export function runbookGuideRows(): Array<RunbookEntry & { kinds: string[] }> {
+  const byPhrase = new Map<string, RunbookEntry & { kinds: string[] }>()
+  for (const [kind, entry] of Object.entries(RUNBOOK_BY_KIND)) {
+    const existing = byPhrase.get(entry.triggerPhrase)
+    if (existing) existing.kinds.push(kind)
+    else byPhrase.set(entry.triggerPhrase, { ...entry, kinds: [kind] })
+  }
+  return [...byPhrase.values()]
+}
