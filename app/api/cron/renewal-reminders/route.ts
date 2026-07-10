@@ -8,7 +8,6 @@ import {
 } from '@/lib/api/renewal-reminders'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { emitFireAndForget } from '@/lib/observability/emit'
 // GET: Ejecutar campaña de recordatorios (llamado por GitHub Actions)
 async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampaignResponse>> {
   try {
@@ -43,21 +42,6 @@ async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampa
     }
 
     console.log(`✅ Campañas completadas: ${result.sent} enviados, ${result.skipped} omitidos, ${result.failed} fallidos`)
-
-    // GUARDRAIL del punto ciego "el cron ticó (2xx) pero envió 0": había renovaciones
-    // próximas y NO salió NINGÚN recordatorio → fallo silencioso (query mala / dedup roto
-    // / Resend caído). El heartbeat NO lo ve (el cron sí disparó). Emitir error a
-    // observabilidad para que no pase inadvertido hasta que un usuario pida reembolso.
-    if (result.total > 0 && result.sent === 0) {
-      emitFireAndForget({
-        source: 'vercel',
-        severity: 'error',
-        eventType: 'renewal_reminders_zero_sent',
-        endpoint: '/api/cron/renewal-reminders',
-        errorMessage: `${result.total} renovación(es) próxima(s) pero 0 recordatorios enviados (skipped:${result.skipped}, failed:${result.failed})`,
-        metadata: { total: result.total, sent: result.sent, skipped: result.skipped, failed: result.failed },
-      })
-    }
 
     return NextResponse.json(result)
 

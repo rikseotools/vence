@@ -33,7 +33,6 @@ interface AccountEnv {
   priceMonthly: string
   priceQuarterly: string
   priceSemester: string
-  priceAnnual: string
 }
 
 // Mapa cuenta → nombres de variables de entorno. Es el ÚNICO sitio que sabe
@@ -53,7 +52,6 @@ const ACCOUNT_ENV: Record<StripeAccount, AccountEnv> = {
     priceMonthly: 'NEXT_PUBLIC_STRIPE_PRICE_MONTHLY',
     priceQuarterly: 'NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY',
     priceSemester: 'NEXT_PUBLIC_STRIPE_PRICE_SEMESTER',
-    priceAnnual: 'NEXT_PUBLIC_STRIPE_PRICE_ANNUAL',
   },
   nila: {
     secretKey: 'STRIPE_SECRET_KEY_NILA',
@@ -62,7 +60,6 @@ const ACCOUNT_ENV: Record<StripeAccount, AccountEnv> = {
     priceMonthly: 'NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA',
     priceQuarterly: 'NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA',
     priceSemester: 'NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA',
-    priceAnnual: 'NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA',
   },
 }
 
@@ -132,14 +129,12 @@ export function getPricesFor(account: StripeAccount): {
   monthly: string | undefined
   quarterly: string | undefined
   semester: string | undefined
-  annual: string | undefined
 } {
   const env = ACCOUNT_ENV[account]
   return {
     monthly: process.env[env.priceMonthly],
     quarterly: process.env[env.priceQuarterly],
     semester: process.env[env.priceSemester],
-    annual: process.env[env.priceAnnual],
   }
 }
 
@@ -149,10 +144,9 @@ export function priceBelongsToAccount(priceId: string, account: StripeAccount): 
   return priceId === prices.monthly
     || priceId === prices.quarterly
     || priceId === prices.semester
-    || priceId === prices.annual
 }
 
-export type PriceTier = 'monthly' | 'quarterly' | 'semester' | 'annual'
+export type PriceTier = 'monthly' | 'quarterly' | 'semester'
 
 /**
  * Devuelve el tier (mensual/trimestral/semestral) de un priceId buscándolo en
@@ -165,7 +159,6 @@ export function getPriceTier(priceId: string): PriceTier | null {
     if (priceId === p.monthly) return 'monthly'
     if (priceId === p.quarterly) return 'quarterly'
     if (priceId === p.semester) return 'semester'
-    if (priceId === p.annual) return 'annual'
   }
   return null
 }

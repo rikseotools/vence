@@ -13,8 +13,6 @@ import {
   priceBelongsToAccount,
   getWebhookAccounts,
   getPricesFor,
-  getPriceTier,
-  resolvePriceForAccount,
   DEFAULT_ACCOUNT,
 } from '@/lib/stripe'
 
@@ -69,49 +67,31 @@ describe('priceBelongsToAccount (guardrail anti half-flip)', () => {
     process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY = 'price_manuel_m'
     process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY = 'price_manuel_q'
     process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER = 'price_manuel_s'
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL = 'price_manuel_a'
     process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA = 'price_nila_m'
     process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA = 'price_nila_q'
     process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA = 'price_nila_s'
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA = 'price_nila_a'
   })
 
   it('acepta precios de la propia cuenta', () => {
     expect(priceBelongsToAccount('price_manuel_q', 'manuel')).toBe(true)
     expect(priceBelongsToAccount('price_nila_s', 'nila')).toBe(true)
-    expect(priceBelongsToAccount('price_nila_a', 'nila')).toBe(true) // anual
   })
 
   it('rechaza un precio de la OTRA cuenta (cobraría en la equivocada)', () => {
     expect(priceBelongsToAccount('price_manuel_q', 'nila')).toBe(false)
     expect(priceBelongsToAccount('price_nila_m', 'manuel')).toBe(false)
-    expect(priceBelongsToAccount('price_manuel_a', 'nila')).toBe(false) // anual
   })
 
   it('rechaza un priceId inventado', () => {
     expect(priceBelongsToAccount('price_desconocido', 'manuel')).toBe(false)
   })
 
-  it('getPricesFor devuelve los 4 precios de la cuenta (incl. anual)', () => {
+  it('getPricesFor devuelve los 3 precios de la cuenta', () => {
     expect(getPricesFor('nila')).toEqual({
       monthly: 'price_nila_m',
       quarterly: 'price_nila_q',
       semester: 'price_nila_s',
-      annual: 'price_nila_a',
     })
-  })
-
-  it('getPriceTier reconoce el anual en cualquier cuenta', () => {
-    expect(getPriceTier('price_manuel_a')).toBe('annual')
-    expect(getPriceTier('price_nila_a')).toBe('annual')
-    expect(getPriceTier('price_nila_m')).toBe('monthly')
-  })
-
-  it('resolvePriceForAccount traduce el anual entre cuentas por su tier (lo que hace el checkout tras el flip)', () => {
-    // Frontend horneado con precio anual de Manuel, flip activo a Nila →
-    // el checkout debe cobrar el anual EQUIVALENTE de Nila, no rechazar.
-    expect(resolvePriceForAccount('price_manuel_a', 'nila')).toBe('price_nila_a')
-    expect(resolvePriceForAccount('price_nila_a', 'manuel')).toBe('price_manuel_a')
   })
 })
 

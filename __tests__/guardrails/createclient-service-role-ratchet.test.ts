@@ -23,16 +23,18 @@ const SCAN_DIRS = ['app', 'lib', 'components', 'contexts', 'hooks']
 const EXT = /\.(ts|tsx|js)$/
 const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\.test\./
 
-// Ficheros que crean legítimamente un cliente service-role.
+// Ficheros que a fecha 2026-06-26 crean legítimamente un cliente service-role.
 // `lib/api/shared/auth.ts` es infra de verificación de tokens (se queda hasta Fase B);
 // el resto es server-side pendiente del barrido de Fase C (admin/cron/storage).
 // Esta lista SOLO debe ENCOGER.
-// 2026-07-10: encogida — email-events/newsletters-audience/broadcast migrados a
-// getAdminDb() (agnosticismo, data layer 100% fuera de Supabase) y lib/armando/
-// supabaseAdmin.ts eliminado. El ratchet exigía retirarlos.
 const ALLOWLIST = new Set<string>([
+  'app/api/admin/email-events/route.ts',
+  'app/api/admin/newsletters/audience/route.ts',
+  'app/api/ai/verify-answer/route.ts',
+  'app/api/v2/admin/broadcast/route.ts',
   'lib/api/shared/auth.ts',
   'lib/api/video-courses/queries.ts',
+  'lib/armando/supabaseAdmin.ts',
 ])
 
 function walk(rel: string): string[] {

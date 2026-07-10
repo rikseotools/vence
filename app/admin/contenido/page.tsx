@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
-type Vendibilidad = 'vendible' | 'no_vendible' | 'sin_verificar'
-
 interface ContenidoRow {
   slug: string
   nombre: string | null
@@ -17,9 +15,6 @@ interface ContenidoRow {
   total_preguntas: number
   usuarios: number
   premium: number
-  vendibilidad: Vendibilidad
-  plazas_libres: number | null
-  exam_date: string | null
 }
 
 interface Overview {
@@ -45,32 +40,6 @@ function estado(o: ContenidoRow): { label: string; cls: string } {
   if (o.finos > 0)
     return { label: '🟡 Temas finos', cls: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' }
   return { label: '🟢 Completa', cls: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' }
-}
-
-// Eje ORTOGONAL al de contenido: ¿hay oportunidad viva con ingreso libre?
-// Derivado en la API desde oposiciones_ssot (plazas_libres + examen). Ver
-// project_modelo_oportunidad_vendibilidad.
-function vendible(o: ContenidoRow): { label: string; cls: string; title: string } {
-  switch (o.vendibilidad) {
-    case 'vendible':
-      return {
-        label: `🟢 Vendible${o.plazas_libres ? ` (${o.plazas_libres})` : ''}`,
-        cls: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
-        title: `Oportunidad viva con ${o.plazas_libres} plazas libres${o.exam_date ? ` · examen ${o.exam_date.slice(0, 10)}` : ' · sin convocatoria formal aún'}`,
-      }
-    case 'no_vendible':
-      return {
-        label: '⛔ No vendible',
-        cls: 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
-        title: o.exam_date ? `Examen pasado (${o.exam_date.slice(0, 10)}) sin OEP nueva` : 'Sin plazas de ingreso libre',
-      }
-    default:
-      return {
-        label: '⚪ Sin verificar',
-        cls: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700',
-        title: 'plazas_libres desconocido — nunca verificado contra fuente oficial',
-      }
-  }
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES').format(n)
@@ -183,8 +152,7 @@ export default function ContenidoPage() {
             <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
               <tr>
                 <Th k="nombre" label="Oposición" cls="text-left" />
-                <th className="text-center px-2 py-2" title="¿contenido/tests listos?">Contenido</th>
-                <th className="text-center px-2 py-2" title="¿hay oportunidad viva con ingreso libre? (derivado)">Vendible</th>
+                <th className="text-center px-2 py-2">Estado</th>
                 <Th k="usuarios" label="Usuarios" cls="text-right" title="usuarios con esta oposición" />
                 <Th k="premium_pct" label="% Prem." cls="text-right" title="% de usuarios premium" />
                 <Th k="disponibles" label="Temas" cls="text-right" title="temas disponibles" />
@@ -197,7 +165,6 @@ export default function ContenidoPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {rows.map((o) => {
                 const e = estado(o)
-                const v = vendible(o)
                 const p = pct(o)
                 return (
                   <tr key={o.slug} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -213,9 +180,6 @@ export default function ContenidoPage() {
                     </td>
                     <td className="px-2 py-2 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${e.cls}`}>{e.label}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span title={v.title} className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${v.cls}`}>{v.label}</span>
                     </td>
                     <td className="px-2 py-2 text-right font-medium text-gray-900 dark:text-white">{fmt(o.usuarios)}</td>
                     <td

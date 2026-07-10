@@ -39,8 +39,6 @@ interface NavLink {
 interface MobileNavLink extends NavLink {
   isAdmin?: boolean
   badge?: number | null
-  /** Color del badge: 'red' = urgente (❌), 'amber' = revisar (🟡). Default rojo. */
-  badgeStatus?: 'red' | 'amber'
   sentryBadge?: number | null
 }
 
@@ -63,10 +61,6 @@ export default function HeaderES() {
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
-  // Badge de salud de contenido (snapshot del sweep nocturno; endpoint solo lee la tabla).
-  // El COLOR transmite la urgencia: rojo si hay incoherencia (❌), ámbar si solo calidad (🟡).
-  const [contentHealthBadge, setContentHealthBadge] = useState(0)
-  const [contentHealthStatus, setContentHealthStatus] = useState<'red' | 'amber' | 'green'>('green')
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [pendingPsychometric, setPendingPsychometric] = useState<{ id: string; categoryName: string | null; totalQuestions: number; questionsAnswered: number }[]>([])
   const [activeTestId, setActiveTestId] = useState<string | null>(null)
@@ -336,24 +330,6 @@ export default function HeaderES() {
         console.error('Error en verificación de feedbacks:', err)
         setPendingFeedbacks(0)
       }
-
-      // Salud de contenido: color por severidad (rojo=❌, ámbar=🟡) y número = conteo de
-      // esa severidad. El endpoint solo LEE la tabla content_health_findings (no recalcula).
-      try {
-        const chRes = await adminFetch('/api/admin/content-health')
-        if (chRes.ok) {
-          const ch = (await chRes.json()) as { status?: string; counts?: { contentError?: number; contentWarn?: number } }
-          const st = ch.status === 'red' ? 'red' : ch.status === 'amber' ? 'amber' : 'green'
-          setContentHealthStatus(st)
-          setContentHealthBadge(st === 'red' ? (ch.counts?.contentError || 0) : st === 'amber' ? (ch.counts?.contentWarn || 0) : 0)
-        } else {
-          setContentHealthStatus('green')
-          setContentHealthBadge(0)
-        }
-      } catch {
-        setContentHealthStatus('green')
-        setContentHealthBadge(0)
-      }
     }
 
     if (!authLoading && isAdmin && !isOnAdminPage) {
@@ -458,17 +434,6 @@ export default function HeaderES() {
         icon: '👨‍💼',
         isAdmin: true,
         badge: pendingFeedbacks > 0 ? pendingFeedbacks : null,
-        sentryBadge: null,
-      })
-      // Item propio de Salud del sistema con el badge de salud de CONTENIDO (❌+🟡).
-      // Badge separado del de impugnaciones (Panel Admin) para no mezclar conceptos.
-      extraLinks.push({
-        href: '/admin/salud-sistema',
-        label: 'Salud',
-        icon: '🩺',
-        isAdmin: true,
-        badge: contentHealthBadge > 0 ? contentHealthBadge : null,
-        badgeStatus: contentHealthStatus === 'amber' ? 'amber' : 'red',
         sentryBadge: null,
       })
     }
@@ -996,7 +961,7 @@ export default function HeaderES() {
                       )}
                     </div>
                     {link.badge && (
-                      <span className={`${link.badgeStatus === 'amber' ? 'bg-amber-500' : 'bg-red-500 animate-bounce'} text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold`}>
+                      <span className="bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-bounce">
                         {link.badge > 9 ? '9+' : link.badge}
                       </span>
                     )}

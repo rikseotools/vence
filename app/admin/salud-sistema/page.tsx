@@ -12,7 +12,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { runbookForKind, runbookGuideRows } from '@/lib/admin/runbookRegistry'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -22,17 +21,6 @@ type Status = 'green' | 'amber' | 'red' | 'unknown'
 // Leading indicator: la tabla pool_capacity_samples se llena cada 1 min con
 // el estado del pool postgres. Si vemos saturación SOSTENIDA antes del 5xx,
 // el sistema avisa por aquí (y por las 4 alertas asociadas en alert-rules.ts).
-interface ContentHealthFinding { severity: string; oposicion_slug: string | null; kind: string; message: string }
-interface ContentHealthResponse {
-  counts: { appError: number; contentError: number; contentWarn: number }
-  status: 'green' | 'amber' | 'red'
-  badge: number
-  computedAt: string | null
-  stale: boolean
-  content: ContentHealthFinding[]
-  app: ContentHealthFinding[]
-}
-
 interface OepConsistencyResponse {
   status: 'green' | 'amber' | 'red'
   generatedAt: string
@@ -166,7 +154,6 @@ export default function SaludSistemaPage() {
   const [data, setData] = useState<SystemHealthResponse | null>(null)
   const [pool, setPool] = useState<PoolCapacityResponse | null>(null)
   const [oep, setOep] = useState<OepConsistencyResponse | null>(null)
-  const [content, setContent] = useState<ContentHealthResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -178,11 +165,10 @@ export default function SaludSistemaPage() {
       // Paralelo: system-health (4 indicadores existentes) + pool-capacity
       // (5º indicador). Si pool-capacity falla, el panel sigue mostrando los
       // 4 primeros — degradación elegante.
-      const [healthRes, poolRes, oepRes, contentRes] = await Promise.allSettled([
+      const [healthRes, poolRes, oepRes] = await Promise.allSettled([
         adminFetch('/api/admin/system-health', { headers }),
         adminFetch('/api/admin/pool-capacity?window=1h', { headers }),
         adminFetch('/api/admin/oep-consistency', { headers }),
-        adminFetch('/api/admin/content-health', { headers }),
       ])
 
       if (healthRes.status === 'fulfilled') {
@@ -210,13 +196,6 @@ export default function SaludSistemaPage() {
       } else {
         setOep(null)
       }
-
-      // Salud de contenido (indicador nuevo) — lee el snapshot del sweep nocturno.
-      if (contentRes.status === 'fulfilled' && contentRes.value.ok) {
-        setContent((await contentRes.value.json()) as ContentHealthResponse)
-      } else {
-        setContent(null)
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error desconocido')
     } finally {
@@ -240,7 +219,7 @@ export default function SaludSistemaPage() {
             Salud del sistema
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            8 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
+            7 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
               docs/runbooks/health-check.md
             </code>
@@ -418,9 +397,6 @@ export default function SaludSistemaPage() {
 
             {/* 6) Coherencia OEP — estados stale, señales pending añejas, activas sin hitos (16/06/2026) */}
             <OepConsistencyCard oep={oep} />
-
-            {/* 7) Salud de CONTENIDO — snapshot del sweep nocturno (tarjetas de plazas/temas, dual-write, cobertura). Calidad, no fallos de app. */}
-            <ContentHealthCard content={content} />
           </div>
         </>
       )}
@@ -580,101 +556,6 @@ function OepConsistencyCard({ oep }: { oep: OepConsistencyResponse | null }) {
         Gestión: <code>/admin/oep-signals</code>. Cron <code>advance-estado</code> 06:30 UTC.
       </p>
     </IndicatorCard>
-  )
-}
-
-/**
- * Card de Salud de CONTENIDO (endpoint /api/admin/content-health, snapshot del sweep
- * nocturno). Calidad de datos (tarjetas de plazas/temas, dual-write, cobertura), NO
- * fallos de app. Rojo = incoherencia (❌), ámbar = menores (🟡), verde = limpio.
- */
-function ContentHealthCard({ content }: { content: ContentHealthResponse | null }) {
-  if (!content) {
-    return (
-      <IndicatorCard title="Salud del contenido" status="unknown" metric="—" hint="Endpoint /api/admin/content-health no responde (¿sweep aún no corrió?)">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">Sin datos del sweep nocturno.</p>
-      </IndicatorCard>
-    )
-  }
-  const { counts } = content
-  const metric = content.badge === 0 ? 'Sin incidencias' : `${counts.contentError} ❌ / ${counts.contentWarn} 🟡`
-  const when = content.computedAt ? new Date(content.computedAt).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
-  return (
-    <IndicatorCard title="Salud del contenido" status={content.status} metric={metric} hint={`Sweep: ${when}${content.stale ? ' · ⚠️ stale (>36h)' : ''} · calidad, no fallos de app`}>
-      {content.content.length > 0 ? (
-        <ul className="text-xs space-y-1 mt-2 max-h-56 overflow-y-auto">
-          {content.content.map((f, i) => {
-            const rb = runbookForKind(f.kind)
-            return (
-              <li key={i} className={f.severity === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
-                {f.severity === 'error' ? '❌' : '🟡'}{' '}
-                {f.oposicion_slug && <span className="font-mono">{f.oposicion_slug}</span>} · {f.message}
-                {rb && (
-                  <span
-                    className="ml-1 inline-block px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[11px] whitespace-nowrap"
-                    title={`Runbook: ${rb.runbook ?? '—'} · ${rb.claudeHace}`}
-                  >
-                    → dile a Claude: «{rb.triggerPhrase}»
-                  </span>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      ) : (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Contenido coherente (0 incoherencias).</p>
-      )}
-      <RunbookGuide />
-    </IndicatorCard>
-  )
-}
-
-/**
- * Guía de runbooks: mapa finding → frase-gatillo → qué hace Claude → runbook.
- * Data-driven desde lib/admin/runbookRegistry.ts (fuente única). Resuelve la
- * "confluencia": muchos kinds de salud, cada uno con su remediación distinta.
- */
-function RunbookGuide() {
-  const [open, setOpen] = useState(false)
-  const rows = runbookGuideRows()
-  return (
-    <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-2">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-      >
-        {open ? '▾' : '▸'} Guía de runbooks ({rows.length}) — qué frase decirle a Claude por cada hallazgo
-      </button>
-      {open && (
-        <div className="mt-2 overflow-x-auto">
-          <table className="min-w-full text-[11px]">
-            <thead>
-              <tr className="text-left text-gray-500 dark:text-gray-400">
-                <th className="pr-3 py-1 font-medium">Hallazgo</th>
-                <th className="pr-3 py-1 font-medium">Dile a Claude</th>
-                <th className="pr-3 py-1 font-medium">Qué hace</th>
-                <th className="py-1 font-medium">Runbook</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.triggerPhrase} className="border-t border-gray-100 dark:border-gray-800 align-top">
-                  <td className="pr-3 py-1 text-gray-700 dark:text-gray-300">{r.title}</td>
-                  <td className="pr-3 py-1 font-mono text-blue-700 dark:text-blue-300 whitespace-nowrap">«{r.triggerPhrase}»</td>
-                  <td className="pr-3 py-1 text-gray-600 dark:text-gray-400">{r.claudeHace}</td>
-                  <td className="py-1 text-gray-500 dark:text-gray-400">
-                    {r.runbook ? <code>{r.runbook.replace('docs/runbooks/', '')}</code> : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 italic">
-            Verificar siempre contra boletín oficial. Fuente: <code>lib/admin/runbookRegistry.ts</code>.
-          </p>
-        </div>
-      )}
-    </div>
   )
 }
 

@@ -9,7 +9,6 @@ import { questions, articles, laws, topicScope, topics, lawSections } from '@/db
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
-import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import type {
   GetArticlesRequest,
   GetArticlesResponse,
@@ -93,7 +92,7 @@ export async function getArticlesForLaw(
 ): Promise<GetArticlesResponse> {
   try {
     const db = getTestConfigDb()
-    const { lawShortName, topicNumber, positionType, includeOfficialCount, scopeToPosition } = params
+    const { lawShortName, topicNumber, positionType, includeOfficialCount } = params
 
     // Buscar law_id
     const lawResult = await db
@@ -129,16 +128,6 @@ export async function getArticlesForLaw(
 
     if (validArticleNumbers && validArticleNumbers.length > 0) {
       articleConditions.push(inArray(articles.articleNumber, validArticleNumbers))
-    }
-
-    // 🎯 Configurador "por leyes" acotado (sin topicNumber): solo ofrecer los
-    // artículos del temario del positionType (unión de sus temas), no la ley entera.
-    // Así el selector no muestra artículos fuera del temario (la confusión de Ana).
-    // Con topicNumber, el scope ya lo aplica validArticleNumbers arriba.
-    if (scopeToPosition && !topicNumber) {
-      articleConditions.push(
-        articleInPositionScopeExists({ lawId: articles.lawId, articleNumber: articles.articleNumber, positionType }),
-      )
     }
 
     const articleData = await db

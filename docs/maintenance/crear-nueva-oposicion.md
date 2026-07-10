@@ -1384,22 +1384,6 @@ npx jest __tests__/integration/oposicionDataCompleteness --no-coverage
 
 Estos tests detectan el tipo de bug del caso Extremadura (§2a.3.1): cifras de plazas desincronizadas entre `plazas_libres` y los campos de texto (`seo_description`, hito #1 descripción), y `programa_url` apuntando a un PDF de boletín distinto al hito principal.
 
-**Gates cross-oposición (CAPA 1 + CAPA 2 — obligatorios antes de `is_active`, cazan lo que los tests unitarios no ven):**
-
-```bash
-# CAPA 2 — coherencia interna: los números de las TARJETAS de estadística (temas, plazas)
-# cuadran con la BD (nº real de topics; plazas_libres/discapacidad/promoción de la convocatoria).
-# Determinista, sin red. Recorre TODAS las is_active (o un slug concreto).
-npm run audit:coherencia -- <slug>
-
-# CAPA 1 — canary live en producción: landing + /temario + /test = 200, y TODOS los temas
-# disponibles sirven preguntas (lee la MV topic_law_question_summary, la fuente real de la app).
-# Caza el bug "publicado pero vacío" (disponible=false → todo "en elaboración") que pasó los
-# gates deterministas en Granada, y los 500/404 de landing que un test de BD no ve.
-npm run canary:oposiciones -- <slug>
-```
-
-> **Por qué existen (incidente Granada, 09/07):** `disponible=false` en los 28 topics dejaba la landing publicada pero con TODO "en elaboración", y **ningún gate determinista lo detectaba** (solo comprobaban la condición inversa). El canary lo caza recorriendo prod. En su primera pasada sobre el catálogo encontró además 2 landings con **500 persistente** y 1 `/temario` con **404**. Detalle de las 3 capas: al final de esta FASE (§6g).
 ### 6a-bis. Verificar el CONTENIDO (scope + epígrafe) — no basta con crearlo
 
 Crear la oposición deja los `topic_scope` y `topics.epigrafe` **cableados pero sin verificar**. Antes de darla por buena, pasar los **dos sistemas de verificación de contenido** (provenance durable + auto-invalidación; runbook `docs/runbooks/verificar-epigrafes-scope.md`):
@@ -1517,21 +1501,6 @@ done
 **Otras situaciones que requieren revalidar:** sincronización BOE (`teoria` + `temario`), cambios de hitos/plazas (`landing` + ruta específica via `purge-cache`), añadir leyes (`laws`). Tabla completa en el manual de cache-revalidation.
 
 **Workflow automático:** el push a `main` dispara `warm-cache-post-deploy.yml` que calienta ~963 URLs. Pero ese workflow **no invalida tags** — solo precarga páginas con cache existente. Por eso los 3 `revalidateTag` de arriba son obligatorios además del deploy.
-
-### 6g. Verificación de datos de la landing contra el BOLETÍN OFICIAL (CAPA 3 — ÚLTIMA FASE, obligatoria antes de `is_active=true`)
-
-> **Es el paso final de crear una oposición.** Las CAPAS 1 y 2 (canary + coherencia) cazan fallos **estructurales** (publicado-vacío, 404/500, cifras que no cuadran entre sí). Pero **no** cazan que un dato sea semánticamente **incorrecto o incompleto respecto a la fuente oficial** — porque no leen el BOE. Ese fallo solo lo caza un agente que **lea el boletín y lo compare con la landing**. Incidente Granada (09/07): la FAQ "¿Cómo es el examen?" describía solo el test de 100 preguntas y omitía el 2º ejercicio (Google/Office) y los supuestos prácticos; pasó todos los gates y solo se detectó con esta verificación manual contra el BOE.
-
-**Procedimiento (hazlo con un agente independiente, no de memoria):**
-
-1. Descarga/lee la fuente OFICIAL: `oposiciones.programa_url` (PDF del BOE/boletín) y, si aplica, `seguimiento_url`. Para boletines grandes usar la **API de datos abiertos del BOE** (`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/<ID>/texto/bloque/<bloque>` con `Accept: application/xml`) — el WebFetch del consolidado se trunca.
-2. Extrae del boletín, LITERALMENTE: nº de plazas y **desglose** (turno libre / discapacidad / promoción interna / por campus si lo hay), subgrupo, **plazo exacto** de solicitudes (cuenta los días hábiles desde el día siguiente a la publicación; ojo festivos), titulación exigida y **estructura completa del examen** (ejercicios, nº de preguntas de cada parte, tiempo, penalización).
-3. Compara CADA dato con lo que muestra la landing viva y con la BD (`convocatorias`/`oposiciones`: `landing_faqs`, `landing_estadisticas`, `examen_config`, hitos, plazas). Marca toda discrepancia u **omisión** (un dato correcto pero incompleto también cuenta).
-4. Corrige en BD (dual-write `oposiciones` + `convocatorias`), revalida (`landing`) e invalida CloudFront. Repite hasta que landing == boletín.
-
-**Nunca inventar ni deducir de la BD un dato que debe salir del boletín** (ver `feedback_verificar_existencia_oposicion_metodo`). Este mismo procedimiento es el **gate pre-newsletter** del runbook `docs/runbooks/newsletter-promociones.md` §4: si la oposición ya pasó 6g al crearse y no ha cambiado la convocatoria, basta re-confirmar; si cambió, re-verificar.
-
-**Solo cuando 6a–6g están en verde → `is_active=true`** (+ `topics.disponible=true`, que el canary vigila).
 
 ---
 

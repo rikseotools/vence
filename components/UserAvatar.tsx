@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { resolveOposicionSlugForNav, getOposicion } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, getOposicion } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
@@ -582,10 +582,7 @@ export default function UserAvatar() {
                         const progress = exam.totalQuestions > 0
                           ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                           : 0
-                        // Reanudar bajo la oposición del USUARIO (target_oposicion),
-                        // no la del pathname del header (que suele no traer slug →
-                        // antes botaba a ALL_OPOSICION_SLUGS[0] = Técnico Informática).
-                        const resumeUrl = `/${resolveOposicionSlugForNav(pathname, userProfile?.target_oposicion)}/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+                        const resumeUrl = `/${getOposicionSlugFromPathname(pathname)}/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
 
                         return (
                           <Link

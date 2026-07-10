@@ -298,7 +298,7 @@ export default function AdminOposicionesPage() {
       {/* Content */}
       {activeTab === 'rollover' && <RolloverTab />}
       {activeTab === 'cruzada' && <CrossTab data={crossData} />}
-      {activeTab === 'custom' && <CustomTab data={userOposiciones} />}
+      {activeTab === 'custom' && <CustomTab data={userOposiciones} onMigrated={loadData} />}
       {activeTab === 'onboarding' && <OnboardingTab />}
       {activeTab === 'config' && <ConfigTab data={oposicionesConfig} userCounts={userCounts} />}
       {activeTab === 'bd' && <BDTab data={oposicionesBD} userCounts={userCounts} />}
@@ -437,39 +437,182 @@ function CrossTab({ data }: { data: CrossReference[] }) {
 // TAB: Custom (usuarios)
 // ============================================
 
-function CustomTab({ data }: { data: UserOposicion[] }) {
-  // Panel de SOLO LECTURA: lista las oposiciones inventadas por usuarios (nombre
-  // libre, no oficial). La reubicación a oposiciones reales se hace desde backend
-  // bajo demanda, no self-service desde aquí.
+function findBestMatch(nombre: string): string | null {
+  const norm = nombre.toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, ' ').trim()
+  const words = norm.split(/\s+/).filter(w => w.length > 2)
+  if (words.length === 0) return null
+
+  let bestId: string | null = null
+  let bestScore = 0
+
+  OFFICIAL_OPOSICIONES.forEach(official => {
+    const officialNorm = official.nombre.toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, ' ').trim()
+    const matchCount = words.filter(w => officialNorm.includes(w)).length
+    const score = matchCount / words.length
+    if (score > bestScore && score >= 0.5) {
+      bestScore = score
+      bestId = official.id
+    }
+  })
+
+  return bestId
+}
+
+function CustomTab({ data, onMigrated }: { data: UserOposicion[]; onMigrated: () => void }) {
+  const [selections, setSelections] = useState<Record<string, string>>({})
+  const [migrating, setMigrating] = useState<string | null>(null)
+  const [migratedIds, setMigratedIds] = useState<Set<string>>(new Set())
+  const [message, setMessage] = useState<{ uuid: string; text: string; ok: boolean } | null>(null)
+
+  // Preseleccionar matches automaticos
+  useEffect(() => {
+    const initial: Record<string, string> = {}
+    data.forEach(o => {
+      if (o.nombre) {
+        const match = findBestMatch(o.nombre)
+        if (match) initial[o.target_oposicion] = match
+      }
+    })
+    setSelections(initial)
+  }, [data])
+
+  const handleMigrate = async (uuid: string, count: number) => {
+    const targetSlug = selections[uuid]
+    if (!targetSlug) return
+
+    const official = OFFICIAL_OPOSICIONES.find(o => o.id === targetSlug)
+    if (!official) return
+
+    const confirmed = window.confirm(
+      `Migrar ${count} usuario(s) de "${data.find(d => d.target_oposicion === uuid)?.nombre}" a "${official.nombre}"?`
+    )
+    if (!confirmed) return
+
+    setMigrating(uuid)
+    setMessage(null)
+
+    try {
+      const res = await adminFetch('/api/admin/oposiciones-migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromUUID: uuid,
+          toSlug: targetSlug,
+          toData: {
+            id: official.id,
+            nombre: official.nombre,
+            categoria: official.categoria,
+            administracion: official.administracion,
+            tipo: 'oficial',
+          },
+        }),
+      })
+      const result = await res.json()
+
+      if (result.success) {
+        setMigratedIds(prev => new Set([...prev, uuid]))
+        setMessage({ uuid, text: `${result.migratedCount} usuarios migrados`, ok: true })
+        onMigrated()
+      } else {
+        setMessage({ uuid, text: result.error || 'Error', ok: false })
+      }
+    } catch (err) {
+      setMessage({ uuid, text: 'Error de conexion', ok: false })
+    } finally {
+      setMigrating(null)
+    }
+  }
+
+  const pending = data.filter(o => !migratedIds.has(o.target_oposicion))
+
   return (
     <div className="space-y-4">
       <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3">
         <p className="text-sm text-orange-800 dark:text-orange-200">
-          <strong>{data.length}</strong> oposiciones inventadas por usuarios (nombre libre, no oficial).
-          Panel de solo lectura para diagnóstico.
+          <strong>{pending.length}</strong> oposiciones inventadas por usuarios.
+          Selecciona a cual oficial corresponde cada una y pulsa "Migrar" para traspasar los usuarios.
+          {migratedIds.size > 0 && (
+            <span className="ml-2 font-bold text-green-700 dark:text-green-300">
+              ({migratedIds.size} migradas)
+            </span>
+          )}
         </p>
       </div>
 
       <div className="space-y-3">
-        {data.map(o => (
-          <div
-            key={o.target_oposicion}
-            className="border rounded-lg p-3 border-gray-200 dark:border-gray-700"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {o.nombre || 'Sin nombre'}
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
-                {o.count} usuario{o.count !== 1 ? 's' : ''}
-              </span>
+        {pending.map(o => {
+          const selected = selections[o.target_oposicion] || ''
+          const selectedOfficial = OFFICIAL_OPOSICIONES.find(off => off.id === selected)
+          const isMigrating = migrating === o.target_oposicion
+          const msg = message?.uuid === o.target_oposicion ? message : null
+
+          return (
+            <div
+              key={o.target_oposicion}
+              className={`border rounded-lg p-3 ${
+                selected
+                  ? 'border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                {/* Info de la custom */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {o.nombre || 'Sin nombre'}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
+                      {o.count} usuario{o.count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {[o.categoria, o.administracion].filter(Boolean).join(' - ') || 'Sin categoria'}
+                    <span className="ml-2 font-mono text-gray-400">{o.target_oposicion.slice(0, 8)}...</span>
+                  </div>
+                </div>
+
+                {/* Selector de oficial */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selected}
+                    onChange={e => setSelections({ ...selections, [o.target_oposicion]: e.target.value })}
+                    className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 max-w-[220px]"
+                  >
+                    <option value="">-- Mapear a oficial --</option>
+                    {OFFICIAL_OPOSICIONES.map(off => (
+                      <option key={off.id} value={off.id}>
+                        {off.nombre} ({off.categoria})
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => handleMigrate(o.target_oposicion, o.count)}
+                    disabled={!selected || isMigrating}
+                    className="px-3 py-1.5 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {isMigrating ? 'Migrando...' : 'Migrar'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Match sugerido */}
+              {selected && selectedOfficial && (
+                <div className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">
+                  Destino: <strong>{selectedOfficial.nombre}</strong> ({selectedOfficial.categoria} - {selectedOfficial.administracion})
+                </div>
+              )}
+
+              {/* Resultado */}
+              {msg && (
+                <div className={`mt-2 text-xs font-medium ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {msg.text}
+                </div>
+              )}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {[o.categoria, o.administracion].filter(Boolean).join(' - ') || 'Sin categoria'}
-              <span className="ml-2 font-mono text-gray-400">{o.target_oposicion.slice(0, 8)}...</span>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

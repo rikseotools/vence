@@ -45,13 +45,17 @@ describe('notifyEarning', () => {
     expect(mockSend).not.toHaveBeenCalled()
   })
 
-  it('OK → envía email con importe y destinatario correctos', async () => {
+  it('OK → envía email al destinatario correcto, SIN spoiler de importe/fuente', async () => {
     await notifyEarning('u1', { source: 'referido', amount: 10 })
     expect(mockSend).toHaveBeenCalledTimes(1)
     const arg = mockSend.mock.calls[0][0]
     expect(arg.to).toBe('emb@example.com')
-    expect(arg.subject).toContain('10 €')
-    expect(arg.html).toContain('Ana') // primer nombre
+    expect(arg.html).toContain('Ana') // primer nombre (no es spoiler)
+    // NO revela importe ni fuente (el gancho es entrar a /embajadores a descubrirlo)
+    expect(arg.subject).not.toContain('10')
+    expect(arg.subject).not.toContain('€')
+    expect(arg.html).not.toContain('10 €')
+    expect(arg.html).toContain('/embajadores') // botón directo
   })
 
   it('nunca lanza aunque falle el envío', async () => {

@@ -52,7 +52,7 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:preview": "playwright test --project=preview-aws",
-    "test:e2e:prod": "playwright test --project=prod",
+    "test:e2e:prod": "playwright test --project=prod-vercel",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
@@ -60,9 +60,7 @@
     "test:e2e:install": "playwright install chromium",
     "gsc:keywords": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts",
     "gsc:seo": "npx tsx --env-file=.env.local scripts/google-ads/gsc.ts seo",
-    "audit:display-drift": "node scripts/audit-temario-display-drift.cjs",
-    "audit:coherencia": "node scripts/audit-oposiciones-coherencia.cjs",
-    "canary:oposiciones": "node scripts/canary-oposiciones-live.cjs"
+    "audit:display-drift": "node scripts/audit-temario-display-drift.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

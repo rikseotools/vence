@@ -689,12 +689,12 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
           <h3 style="color: #92400e; margin-top: 0; font-size: 20px;">🎁 SOLO HOY</h3>
           <div style="display: flex; justify-content: center; gap: 30px; margin: 20px 0; flex-wrap: wrap;">
             <div style="background: white; padding: 20px 30px; border-radius: 10px; border: 2px solid #f59e0b;">
-              <p style="margin: 0; color: #92400e; font-size: 36px; font-weight: bold;">69€</p>
+              <p style="margin: 0; color: #92400e; font-size: 36px; font-weight: bold;">59€</p>
               <p style="margin: 5px 0 0 0; color: #b45309; font-size: 16px; font-weight: bold;">6 MESES</p>
-              <p style="margin: 5px 0 0 0; color: #065f46; font-size: 13px;">= 11,50€/mes</p>
+              <p style="margin: 5px 0 0 0; color: #065f46; font-size: 13px;">= 9,83€/mes</p>
             </div>
             <div style="background: white; padding: 20px 30px; border-radius: 10px; border: 2px solid #e5e7eb;">
-              <p style="margin: 0; color: #374151; font-size: 36px; font-weight: bold;">29€</p>
+              <p style="margin: 0; color: #374151; font-size: 36px; font-weight: bold;">20€</p>
               <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 16px; font-weight: bold;">MENSUAL</p>
               <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">sin compromiso</p>
             </div>
@@ -744,7 +744,7 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
 
         <div style="text-align: center; margin: 35px 0;">
           <a href="https://www.vence.es/premium" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: white; padding: 22px 50px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);">
-            🚀 Quiero Premium por 69€
+            🚀 Quiero Premium por 59€
           </a>
           <p style="margin: 15px 0 0 0; color: #dc2626; font-size: 14px; font-weight: bold;">
             ⏰ Solo hoy a este precio

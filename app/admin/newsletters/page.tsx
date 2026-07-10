@@ -183,9 +183,7 @@ export default function NewslettersPage() {
   })
 
   // 📑 Tab state
-  // Envío de newsletters: ya NO se hace desde el panel (queda solo-lectura: historial + plantillas).
-  // Los envíos se ejecutan desde backend/script bajo demanda. Default = historial.
-  const [activeTab, setActiveTab] = useState<'enviar' | 'historial' | 'plantillas'>('historial')
+  const [activeTab, setActiveTab] = useState<'enviar' | 'historial' | 'plantillas'>('enviar')
 
   // 📊 History state
   const [history, setHistory] = useState<Newsletter[]>([])
@@ -786,6 +784,16 @@ export default function NewslettersPage() {
         <div className="mb-8">
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('enviar')}
+                className={`${
+                  activeTab === 'enviar'
+                    ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+              >
+                📤 Enviar Newsletter
+              </button>
               <button
                 onClick={() => setActiveTab('historial')}
                 className={`${
@@ -2649,12 +2657,12 @@ export default function NewslettersPage() {
     <h3 style="color: #92400e; margin-top: 0; font-size: 20px;">🎁 SOLO HOY</h3>
     <div style="display: flex; justify-content: center; gap: 30px; margin: 20px 0; flex-wrap: wrap;">
       <div style="background: white; padding: 20px 30px; border-radius: 10px; border: 2px solid #f59e0b;">
-        <p style="margin: 0; color: #92400e; font-size: 36px; font-weight: bold;">69€</p>
+        <p style="margin: 0; color: #92400e; font-size: 36px; font-weight: bold;">59€</p>
         <p style="margin: 5px 0 0 0; color: #b45309; font-size: 16px; font-weight: bold;">6 MESES</p>
-        <p style="margin: 5px 0 0 0; color: #065f46; font-size: 13px;">= 11,50€/mes</p>
+        <p style="margin: 5px 0 0 0; color: #065f46; font-size: 13px;">= 9,83€/mes</p>
       </div>
       <div style="background: white; padding: 20px 30px; border-radius: 10px; border: 2px solid #e5e7eb;">
-        <p style="margin: 0; color: #374151; font-size: 36px; font-weight: bold;">29€</p>
+        <p style="margin: 0; color: #374151; font-size: 36px; font-weight: bold;">20€</p>
         <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 16px; font-weight: bold;">MENSUAL</p>
         <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">sin compromiso</p>
       </div>
@@ -2704,7 +2712,7 @@ export default function NewslettersPage() {
 
   <div style="text-align: center; margin: 35px 0;">
     <a href="https://www.vence.es/premium" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: white; padding: 22px 50px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);">
-      🚀 Quiero Premium por 69€
+      🚀 Quiero Premium por 59€
     </a>
     <p style="margin: 15px 0 0 0; color: #dc2626; font-size: 14px; font-weight: bold;">
       ⏰ Solo hoy a este precio

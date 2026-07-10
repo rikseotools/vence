@@ -35,6 +35,15 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 const sourceText = (s: string) => SOURCE_LABEL[s] || s
 
+// Confeti celebratorio al revelar una recompensa nueva (dos ráfagas laterales). SSR-safe.
+function fireConfetti() {
+  if (typeof window === 'undefined') return
+  import('canvas-confetti').then(({ default: confetti }) => {
+    confetti({ particleCount: 90, spread: 80, startVelocity: 35, ticks: 120, zIndex: 9999, origin: { x: 0.2, y: 0.3 } })
+    setTimeout(() => confetti({ particleCount: 90, spread: 80, startVelocity: 35, ticks: 120, zIndex: 9999, origin: { x: 0.8, y: 0.3 } }), 200)
+  }).catch(() => {})
+}
+
 // Estado del referido → etiqueta amistosa + color.
 function statusLabel(s: string): { text: string; cls: string } {
   switch (s) {
@@ -136,9 +145,10 @@ export default function EmbajadoresPage() {
         const data: MeResponse = await res.json()
         if (cancel) return
         setMe(data)
-        // Novedades sin ver → revelación celebratoria + marcar visto (apaga el badge del Header).
+        // Novedades sin ver → revelación celebratoria + confeti + marcar visto (apaga el badge).
         if ((data.unseen ?? 0) > 0) {
           setReveal(data.recent ?? [])
+          fireConfetti()
           getAuthHeaders()
             .then((h) => fetch('/api/referrals/badge', { method: 'POST', headers: h }))
             .then(() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('referral-earnings-seen')) })

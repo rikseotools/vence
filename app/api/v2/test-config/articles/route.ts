@@ -45,7 +45,6 @@ async function _GET(request: NextRequest) {
       topicNumber: searchParams.get('topicNumber') ? Number(searchParams.get('topicNumber')) : null,
       positionType: searchParams.get('positionType') || undefined,
       includeOfficialCount: searchParams.get('includeOfficialCount') === 'true',
-      scopeToPosition: searchParams.get('scopeToPosition') === 'true',
     }
 
     const parseResult = safeParseGetArticles(rawData)

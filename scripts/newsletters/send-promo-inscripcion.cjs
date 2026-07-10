@@ -9,13 +9,8 @@
  *
  * Uso:
  *   export PROD_DATABASE_URL="postgresql://venceadmin:<pass>@vence-prod...:5432/app"
- *   node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --dry              # prueba en seco
- *   node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --preview <email>  # 1 correo IDÉNTICO al real (vista previa a Manuel, sin log)
- *   node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --send             # envío real
- *
- * --preview: manda EXACTAMENTE el mismo email (mismo asunto y HTML) que recibirán los
- * destinatarios, a un solo correo, para revisión. NO añade "preview/[PRUEBA]" al asunto
- * y NO registra en email_events ni email_unsubscribe_tokens (no ensucia campaña ni stats).
+ *   node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --dry     # prueba en seco
+ *   node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --send    # envío real
  *
  * config.json (ver docs/runbooks/newsletter-promociones.md):
  * {
@@ -35,11 +30,9 @@ const crypto = require('crypto');
 const fs = require('fs');
 
 const configPath = process.argv[2];
-const previewIdx = process.argv.indexOf('--preview');
-const PREVIEW_TO = previewIdx >= 0 ? process.argv[previewIdx + 1] : null;
-const MODE = PREVIEW_TO ? 'preview' : (process.argv.includes('--send') ? 'send' : (process.argv.includes('--dry') ? 'dry' : null));
-if (!configPath || !MODE || (previewIdx >= 0 && !PREVIEW_TO)) {
-  console.error('Uso: node send-promo-inscripcion.cjs <config.json> --dry | --preview <email> | --send');
+const MODE = process.argv.includes('--send') ? 'send' : (process.argv.includes('--dry') ? 'dry' : null);
+if (!configPath || !MODE) {
+  console.error('Uso: node send-promo-inscripcion.cjs <config.json> --dry|--send');
   process.exit(1);
 }
 const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -94,24 +87,16 @@ const BASE_VARS = {
   const skipSql = skipCampaigns.length
     ? `AND up.id NOT IN (SELECT user_id FROM email_events WHERE campaign_id = ANY($${skipParamIdx}) AND event_type='sent' AND user_id IS NOT NULL)`
     : '';
-  let users;
-  if (MODE === 'preview') {
-    // 1 solo destinatario, contenido IDÉNTICO al envío real (mismo template + userVars).
-    const r = await c.query(`SELECT id, email, full_name AS "fullName" FROM user_profiles WHERE email=$1 LIMIT 1`, [PREVIEW_TO]);
-    users = r.rows.length ? r.rows : [{ id: null, email: PREVIEW_TO, fullName: null }];
-    console.log(`🔎 PREVIEW → ${PREVIEW_TO} (idéntico al envío real; sin registro en email_events ni tokens)`);
-  } else {
-    users = (await c.query(`
-      SELECT up.id, up.email, up.full_name AS "fullName"
-      FROM user_profiles up
-      LEFT JOIN email_preferences ep ON ep.user_id = up.id
-      WHERE up.email IS NOT NULL AND up.email <> ''
-        AND COALESCE(ep.unsubscribed_all,false)=false AND COALESCE(ep.email_newsletter_disabled,false)=false
-        AND (up.target_oposicion=$${muni.length + 1} OR ${like})
-        ${exclSql}
-        ${skipSql}
-      ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaigns.length ? [skipCampaigns] : [])])).rows;
-  }
+  const users = (await c.query(`
+    SELECT up.id, up.email, up.full_name AS "fullName"
+    FROM user_profiles up
+    LEFT JOIN email_preferences ep ON ep.user_id = up.id
+    WHERE up.email IS NOT NULL AND up.email <> ''
+      AND COALESCE(ep.unsubscribed_all,false)=false AND COALESCE(ep.email_newsletter_disabled,false)=false
+      AND (up.target_oposicion=$${muni.length + 1} OR ${like})
+      ${exclSql}
+      ${skipSql}
+    ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaigns.length ? [skipCampaigns] : [])])).rows;
 
   console.log(`👥 Audiencia: ${users.length} enviables | plantilla=${templateSlug} | MODO=${MODE}`);
 
@@ -134,7 +119,7 @@ const BASE_VARS = {
 
       if (MODE === 'dry') { console.log(`  [DRY] ${u.email} | ${personalizedSubject} | ${userVars.userName}`); sent++; continue; }
 
-      if (MODE !== 'preview') await c.query(`INSERT INTO email_unsubscribe_tokens (user_id, token, email, email_type) VALUES ($1,$2,$3,'newsletter')`, [u.id, token, u.email]);
+      await c.query(`INSERT INTO email_unsubscribe_tokens (user_id, token, email, email_type) VALUES ($1,$2,$3,'newsletter')`, [u.id, token, u.email]);
 
       let retries = 0, ok = false;
       while (!ok && retries < 3) {
@@ -146,9 +131,9 @@ const BASE_VARS = {
         const result = await resp.json();
         if (resp.ok) {
           ok = true; sent++;
-          if (MODE !== 'preview') await c.query(`INSERT INTO email_events (user_id, event_type, email_type, email_address, subject, template_id, campaign_id, email_content_preview)
+          await c.query(`INSERT INTO email_events (user_id, event_type, email_type, email_address, subject, template_id, campaign_id, email_content_preview)
              VALUES ($1,'sent','newsletter',$2,$3,$4,$5,$6)`, [u.id, u.email, personalizedSubject, templateSlug, campaignId, html]);
-          console.log(`  ${MODE === 'preview' ? '🔎 PREVIEW enviado a' : '✅ ' + (i + 1) + '/' + users.length} ${u.email} (${result.id})`);
+          console.log(`  ✅ ${i + 1}/${users.length} ${u.email} (${result.id})`);
         } else if (resp.status === 429) {
           retries++; if (retries < 3) await new Promise(r => setTimeout(r, 3000)); else { failed++; errors.push({ email: u.email, error: 'rate limit' }); }
         } else { failed++; errors.push({ email: u.email, error: result.message || 'error' }); console.log(`  ❌ ${u.email}: ${result.message || 'error'}`); break; }

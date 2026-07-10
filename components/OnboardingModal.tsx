@@ -864,13 +864,6 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
-    id: 'escala_administrativa_universidad_de_granada',
-    nombre: 'Escala Administrativa - Universidad de Granada (UGR)',
-    categoria: 'C1',
-    administracion: 'Autonómica',
-    icon: '🎓'
-  },
-  {
     id: 'administrativa_universidad_de_murcia',
     nombre: 'Administrativa - Universidad de Murcia (UMU)',
     categoria: 'C1',
@@ -1741,14 +1734,14 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_universidad_uned', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
-  'Murcia': ['enfermero_sms', 'auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Region of Murcia': ['enfermero_sms', 'auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Castilla y León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_ayuntamiento_salamanca', 'auxiliar_administrativo_estado'],
-  'Castile and León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
+  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Castilla y León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_ayuntamiento_salamanca', 'auxiliar_administrativo_estado'],
+  'Castile and León': ['auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'auxiliar_administrativo_estado'],
-  'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'enfermero_scs_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
-  'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'enfermero_scs_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
+  'Canarias': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
+  'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'administrativo_castilla_la_mancha', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
@@ -1757,7 +1750,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Principality of Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'administrativo_junta_general_asturias', 'auxiliar_administrativo_estado'],
   'Islas Baleares': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
   'Balearic Islands': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
-  'Cantabria': ['enfermero_scs_cantabria', 'auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
+  'Cantabria': ['auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'La Rioja': ['auxiliar_administrativo_la_rioja', 'administrativo_la_rioja', 'auxiliar_administrativo_estado'],
@@ -1817,11 +1810,6 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_ayuntamiento_valladolid', // C2 Valladolid (OEP 2026, 23 plz)
   'auxiliar_administrativo_ayuntamiento_salamanca', // C2 Salamanca (OEP 2026, 17 plz)
   'enfermero_sas_andalucia',          // sanitaria
-  'enfermero_sacyl',                  // sanitaria Castilla y León
-  'enfermero_ics',                    // sanitaria Cataluña
-  'enfermero_scs_canarias',           // sanitaria Canarias
-  'enfermero_sms',                    // sanitaria Murcia
-  'enfermero_scs_cantabria',           // sanitaria Cantabria
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid

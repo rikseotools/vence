@@ -6,13 +6,12 @@
 import { getReadDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
-const REASON: Record<string, string> = {
-  referido: 'un usuario al que recomendaste Vence se ha hecho premium',
-  bug: 'tu aviso de un fallo nos ha ayudado a mejorar la plataforma',
-  ugc: 'tu opinión sobre Vence',
-}
-
-/** Envía al embajador un email avisando de que ha ganado dinero. Best-effort. */
+/**
+ * Envía al embajador un email avisando de que TIENE UNA RECOMPENSA NUEVA. Best-effort.
+ * SIN spoiler a propósito (decisión Manuel 10/07): no revela importe ni fuente en el email —
+ * el gancho es que entre a /embajadores a descubrirlo (la revelación celebratoria vive ahí).
+ * Mantiene `source`/`amount` para el guardarraíl (amount>0) y el log, no para el texto.
+ */
 export async function notifyEarning(
   userId: string | undefined | null,
   opts: { source: string; amount: number },
@@ -27,22 +26,20 @@ export async function notifyEarning(
     if (!email) return
     const name = String(rows[0]?.full_name || '').trim().split(' ')[0] || 'Embajador'
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
-    const reason = REASON[opts.source] || 'tu participación en el programa de embajadores'
     const { Resend } = await import('resend')
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
       from: `${process.env.EMAIL_FROM_NAME || 'Vence'} <${process.env.EMAIL_FROM_ADDRESS || 'info@vence.es'}>`,
       to: email,
-      subject: `🎁 ¡Has ganado ${opts.amount} € con Vence!`,
+      subject: '🎁 ¡Tienes una recompensa nueva en Vence!',
       html: `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;line-height:1.5">
   <h2 style="color:#2563eb;margin:0 0 12px">¡Enhorabuena, ${name}! 🎉</h2>
-  <p style="margin:0 0 12px">Has ganado <strong>${opts.amount} €</strong> porque ${reason}.</p>
-  <p style="margin:0 0 16px">Tu saldo se acumula y lo cobras cuando quieras en una <strong>tarjeta regalo de Amazon.es</strong>.</p>
-  <p style="margin:0 0 20px"><a href="${site}/embajadores" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Ver mis recompensas</a></p>
+  <p style="margin:0 0 16px">Has conseguido una <strong>recompensa nueva</strong> en el Programa de Embajadores. Entra para ver cuánto has ganado y tu saldo.</p>
+  <p style="margin:0 0 20px"><a href="${site}/embajadores" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Ver mi recompensa</a></p>
   <p style="color:#6b7280;font-size:13px;margin:0">Gracias por ayudar a que más gente apruebe su oposición. 💙</p>
 </div>`,
     })
-    console.log(`🎁 [referrals] email de ganancia enviado (${opts.source} ${opts.amount}€)`)
+    console.log(`🎁 [referrals] email de recompensa enviado (${opts.source} ${opts.amount}€, sin spoiler)`)
   } catch (e) {
     console.warn('⚠️ [referrals] notifyEarning falló (best-effort):', (e as Error)?.message)
   }

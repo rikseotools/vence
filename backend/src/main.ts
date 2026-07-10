@@ -53,7 +53,7 @@ async function bootstrap(): Promise<void> {
 
   // keepAliveTimeout > idle_timeout del ALB (60s) para evitar 502 por
   // reutilización de conexiones que Node cierra a los 5s (default). headersTimeout
-  // debe ser mayor aún. Ver docs/runbooks/pusheo-revision-despliegue.md (§502 keep-alive).
+  // debe ser mayor aún. Ver docs/runbooks/deploy.md (§502 keep-alive).
   const httpServer = app.getHttpServer();
   httpServer.keepAliveTimeout = 65_000;
   httpServer.headersTimeout = 66_000;
