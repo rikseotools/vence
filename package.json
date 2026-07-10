@@ -16,6 +16,7 @@
     "verify:gate": "node scripts/verify-topic-scope.cjs gate",
     "canary:verificacion-contenido": "node scripts/canary-verificacion-contenido.cjs",
     "audit:scope-verification": "node scripts/verify-topic-scope.cjs audit",
+    "digest:calidad": "node scripts/content-quality-digest.cjs",
     "audit:estados": "node scripts/audit-estados-convocatoria.cjs",
     "oep:seguimiento-urls": "node scripts/assign-seguimiento-urls.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",

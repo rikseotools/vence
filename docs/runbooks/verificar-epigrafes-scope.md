@@ -68,6 +68,17 @@ node scripts/verify-topic-scope.cjs audit --json   # datos del badge de /admin/c
 ```
 El badge cuenta temas **pendientes** = `never_verified` + `stale` + `verified_issues`. "Todas perfectas" = 100% `verified_correct` fresco.
 
+## Canales de entrega (badge PULL + digest PUSH) — y por qué NO va en la alerta roja
+
+Dos preguntas DISTINTAS, dos canales:
+- **`health-digest.cjs`** (EventBridge→ECS **diario**, email-on-**ROJO**) = *"¿está VIVO y sirviendo?"* — canary HTTP 200 + temas disponibles sirven preguntas + errores 5xx. **NO** consulta verificación: un scope sobre-escopado no es una caída.
+- **`content-quality-digest.cjs`** (`npm run digest:calidad`, EventBridge→ECS **semanal**, email **informativo azul**) = *"¿el CONTENIDO es CORRECTO?"* — deuda de verificación scope↔epígrafe por oposición (issues + needs_human), misma fuente que el badge (S1+S2). **Anti-fatiga:** solo manda si hay deuda accionable (issues/needs_human > 0); `never_verified`/`stale` no disparan (son cobertura, no bug). `DRY_RUN=1` imprime sin enviar. Función pura `buildQualityReport` testeada en `__tests__/verification/qualityDigest.test.js`.
+- **Badge** en `/admin/contenido` (PULL) = el canal natural del día a día: lo miras cuando entras a curar.
+
+Por qué separados: meter la deuda de calidad en el email rojo de caídas generaría **rojo permanente** (fatiga) — la deuda de scope no urge como una caída. El único caso que SÍ es rojo de verdad (comodín-NULL que fuga una ley entera, tipo T101) lo pilla el canary indirectamente (temas incoherentes) y el pipeline por-oposición.
+
+**Despliegue del digest semanal** (infra, mismo patrón que health-digest): regla EventBridge Scheduler semanal → task ECS Fargate que corre `node scripts/content-quality-digest.cjs` con `DATABASE_URL`+`RESEND_API_KEY` desde SSM. Mientras no esté programado, corre a mano: `npm run digest:calidad` (o `DRY_RUN=1 npm run digest:calidad`).
+
 ## Sistema 2 — Literalidad del epígrafe vs convocatoria (integrado en convocatorias/OEP)
 
 Sistema **independiente pero relacionado** con el de scope. Pregunta: *"¿`topics.epigrafe` es el texto LITERAL del temario de la convocatoria vigente?"* (el fallo T17: epígrafe paráfrasis). Fuente = `convocatorias.programa_url` (por-convocatoria); detección = el seguimiento OEP existente, extendido al programa (`convocatorias.programa_last_hash`).
