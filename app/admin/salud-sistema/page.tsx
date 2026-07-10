@@ -21,6 +21,17 @@ type Status = 'green' | 'amber' | 'red' | 'unknown'
 // Leading indicator: la tabla pool_capacity_samples se llena cada 1 min con
 // el estado del pool postgres. Si vemos saturación SOSTENIDA antes del 5xx,
 // el sistema avisa por aquí (y por las 4 alertas asociadas en alert-rules.ts).
+interface ContentHealthFinding { severity: string; oposicion_slug: string | null; kind: string; message: string }
+interface ContentHealthResponse {
+  counts: { appError: number; contentError: number; contentWarn: number }
+  status: 'green' | 'amber' | 'red'
+  badge: number
+  computedAt: string | null
+  stale: boolean
+  content: ContentHealthFinding[]
+  app: ContentHealthFinding[]
+}
+
 interface OepConsistencyResponse {
   status: 'green' | 'amber' | 'red'
   generatedAt: string
@@ -154,6 +165,7 @@ export default function SaludSistemaPage() {
   const [data, setData] = useState<SystemHealthResponse | null>(null)
   const [pool, setPool] = useState<PoolCapacityResponse | null>(null)
   const [oep, setOep] = useState<OepConsistencyResponse | null>(null)
+  const [content, setContent] = useState<ContentHealthResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -165,10 +177,11 @@ export default function SaludSistemaPage() {
       // Paralelo: system-health (4 indicadores existentes) + pool-capacity
       // (5º indicador). Si pool-capacity falla, el panel sigue mostrando los
       // 4 primeros — degradación elegante.
-      const [healthRes, poolRes, oepRes] = await Promise.allSettled([
+      const [healthRes, poolRes, oepRes, contentRes] = await Promise.allSettled([
         adminFetch('/api/admin/system-health', { headers }),
         adminFetch('/api/admin/pool-capacity?window=1h', { headers }),
         adminFetch('/api/admin/oep-consistency', { headers }),
+        adminFetch('/api/admin/content-health', { headers }),
       ])
 
       if (healthRes.status === 'fulfilled') {
@@ -196,6 +209,13 @@ export default function SaludSistemaPage() {
       } else {
         setOep(null)
       }
+
+      // Salud de contenido (indicador nuevo) — lee el snapshot del sweep nocturno.
+      if (contentRes.status === 'fulfilled' && contentRes.value.ok) {
+        setContent((await contentRes.value.json()) as ContentHealthResponse)
+      } else {
+        setContent(null)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error desconocido')
     } finally {
@@ -219,7 +239,7 @@ export default function SaludSistemaPage() {
             Salud del sistema
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            7 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
+            8 indicadores en tiempo real. Auto-refresh cada 60s. Runbook:{' '}
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
               docs/runbooks/health-check.md
             </code>
@@ -397,6 +417,9 @@ export default function SaludSistemaPage() {
 
             {/* 6) Coherencia OEP — estados stale, señales pending añejas, activas sin hitos (16/06/2026) */}
             <OepConsistencyCard oep={oep} />
+
+            {/* 7) Salud de CONTENIDO — snapshot del sweep nocturno (tarjetas de plazas/temas, dual-write, cobertura). Calidad, no fallos de app. */}
+            <ContentHealthCard content={content} />
           </div>
         </>
       )}
@@ -554,6 +577,43 @@ function OepConsistencyCard({ oep }: { oep: OepConsistencyResponse | null }) {
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
         Gestión: <code>/admin/oep-signals</code>. Cron <code>advance-estado</code> 06:30 UTC.
+      </p>
+    </IndicatorCard>
+  )
+}
+
+/**
+ * Card de Salud de CONTENIDO (endpoint /api/admin/content-health, snapshot del sweep
+ * nocturno). Calidad de datos (tarjetas de plazas/temas, dual-write, cobertura), NO
+ * fallos de app. Rojo = incoherencia (❌), ámbar = menores (🟡), verde = limpio.
+ */
+function ContentHealthCard({ content }: { content: ContentHealthResponse | null }) {
+  if (!content) {
+    return (
+      <IndicatorCard title="Salud del contenido" status="unknown" metric="—" hint="Endpoint /api/admin/content-health no responde (¿sweep aún no corrió?)">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">Sin datos del sweep nocturno.</p>
+      </IndicatorCard>
+    )
+  }
+  const { counts } = content
+  const metric = content.badge === 0 ? 'Sin incidencias' : `${counts.contentError} ❌ / ${counts.contentWarn} 🟡`
+  const when = content.computedAt ? new Date(content.computedAt).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
+  return (
+    <IndicatorCard title="Salud del contenido" status={content.status} metric={metric} hint={`Sweep: ${when}${content.stale ? ' · ⚠️ stale (>36h)' : ''} · calidad, no fallos de app`}>
+      {content.content.length > 0 ? (
+        <ul className="text-xs space-y-1 mt-2 max-h-56 overflow-y-auto">
+          {content.content.map((f, i) => (
+            <li key={i} className={f.severity === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
+              {f.severity === 'error' ? '❌' : '🟡'}{' '}
+              {f.oposicion_slug && <span className="font-mono">{f.oposicion_slug}</span>} · {f.message}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Contenido coherente (0 incoherencias).</p>
+      )}
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+        Verificar contra boletín oficial. Runbook <code>salud-contenido.md</code>.
       </p>
     </IndicatorCard>
   )
