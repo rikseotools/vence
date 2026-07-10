@@ -37,6 +37,15 @@ describe('GET /r/[code]', () => {
     expect(res.headers.get('set-cookie') || '').not.toContain('vence_ref')
   })
 
+  it('el redirect usa el dominio público, NO el host de la request (regresión bug 0.0.0.0 del contenedor)', async () => {
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
+    // Simula el host interno del contenedor detrás del ALB.
+    const res = await _GET(req('http://0.0.0.0:3000/r/abc'), { params: params('abc') })
+    const loc = res.headers.get('location') || ''
+    expect(loc).not.toContain('0.0.0.0')
+    expect(loc).toContain('/embajadores?ref=abc')
+  })
+
   it('la cookie es httpOnly + lax (funcional, resiste al banner de consentimiento)', async () => {
     mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
     const res = await _GET(req('https://www.vence.es/r/xyz'), { params: params('xyz') })

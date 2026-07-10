@@ -12,8 +12,12 @@ import { emitReferralEvent } from '@/lib/referrals/observability'
 
 const REF_COOKIE = 'vence_ref'
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60 // 60 días
+// El redirect DEBE ir al dominio público. `request.url` detrás del ALB/CloudFront es el host interno
+// del contenedor (0.0.0.0:3000) → un Location con ese host rompe el enlace para el usuario. Usamos el
+// site público (build-arg NEXT_PUBLIC_SITE_URL, inlineado; fallback seguro). Cazado por el canary 10/07.
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 
-async function _GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
+async function _GET(_request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const valid = code ? await resolveActiveReferralCode(code) : null
 
@@ -26,7 +30,7 @@ async function _GET(request: NextRequest, { params }: { params: Promise<{ code: 
   })
 
   // Destino: landing /embajadores con ?ref para atribución cookie-less. Código inválido → /embajadores sin ref.
-  const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(code)}` : '/embajadores', request.url)
+  const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(code)}` : '/embajadores', SITE)
   const res = NextResponse.redirect(dest, { status: 302 })
 
   if (valid) {
