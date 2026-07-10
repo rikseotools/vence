@@ -16,8 +16,9 @@ Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cript
 
 **Modelo ACUMULADO:** las recompensas se **acumulan por usuario** y se pagan en gift cards de **denominación fija** de Amazon.es (5/10/20/50/100…€). Amazon.es no baja de 5 € ni admite importe libre → por eso los 3 € se acumulan hasta llegar a una denominación pagable. Al pagar una tarjeta de N €, el resto del saldo **se queda acumulado** para la siguiente.
 
-- Referido: nuevo usuario recibe **5 € de descuento** (cupón Stripe `referral_5eur` en la cuenta **Nila**). Hold 5 días (= ventana de reembolso) + clawback si hay chargeback.
-- UGC: tope **3/mes**, requiere link + captura, hold hasta comprobar que el post sigue vivo.
+- **Hold = solo referido** (VENTA). El hold (5 días = ventana de reembolso + clawback si hay chargeback) tiene sentido únicamente cuando hay una compra que se puede reembolsar. **bug/ugc NO tienen hold** (decisión Manuel 11/07): no hay venta ni reembolso posible → el saldo es elegible al crearse. El post de UGC se verifica al **pagar el vale**, no con un hold.
+- Referido: el nuevo usuario recibe **5 € de descuento** (cupón Stripe `referral_5eur` en la cuenta **Nila**).
+- UGC: tope **3/mes**, requiere link + captura.
 
 ## Notificación al embajador
 
@@ -65,13 +66,17 @@ GET /api/admin/rewards/accumulated
 ```
 `suggested` = mayor denominación ≤ saldo.
 
-### 4. Pagar una gift card (contra el saldo)
-1. Comprar la gift card de Amazon.es en **Bitrefill** por el importe `amount` (una denominación válida ≤ saldo). Token en SSM `/vence-frontend/BITREFILL_API_TOKEN`.
-2. Registrar el pago (baja el saldo ese importe; el resto se acumula):
+### 4. Emitir un vale (gift card) — automático vía Bitrefill
+**Una sola llamada admin** compra la gift card de Amazon.es en Bitrefill y registra el payout contra el saldo:
 ```
-POST /api/admin/rewards/accumulated
-body: { userId, amount, giftcardRef?: "<ref/redemption>", purchasedVia?: "bitrefill" }
+POST /api/admin/rewards/issue-giftcard
+body: { userId, amount }   // amount = denominación válida (5/10/20…) ≤ saldo pagable
+→ { ok, dryRun, code, payoutId, amount }
 ```
+- **El usuario ve su vale** (código Amazon, importe, fecha) en su panel **/embajadores → "Mis vales"** (endpoint `GET /api/referrals/vouchers`, identidad del token).
+- **🔒 GUARDARRAÍL DE DINERO:** la compra REAL solo ocurre con **`BITREFILL_LIVE=1`** (env de runtime). Por defecto es **dry-run** (NO gasta, devuelve código `DRYRUN-…`, `purchased_via='bitrefill_dryrun'` y NO se muestra al usuario). Para ir a real: setear `BITREFILL_LIVE=1` en SSM + hacer una **primera compra controlada** y verificar el código antes de operar en serie. Token en SSM `/vence-frontend/BITREFILL_API_TOKEN`.
+- Orden seguro anti-descuadre: valida denominación + saldo ANTES de comprar; si la compra falla NO registra el payout. Idempotencia: 1 payout por llamada.
+- **Alternativa manual** (comprar a mano + registrar): `POST /api/admin/rewards/accumulated` con `{ userId, amount, giftcardRef, purchasedVia:'bitrefill' }`.
 
 ## Observabilidad
 

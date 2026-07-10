@@ -15,7 +15,6 @@ import {
   isWithinAttributionWindow,
   rewardAmount,
   withinRewardMonthlyCap,
-  UGC_HOLD_DAYS,
   MIN_PAYOUT_EUR,
   isValidDenomination,
   type EligibilityReason,
@@ -364,9 +363,10 @@ export async function createRewardSubmission(
   if (!withinRewardMonthlyCap(params.type, count)) return { ok: false, reason: 'monthly_cap' }
 
   const amount = String(rewardAmount(params.type))
-  const holdUntil = params.type === 'ugc'
-    ? computeHoldUntil(new Date().toISOString(), UGC_HOLD_DAYS).toISOString()
-    : null
+  // Sin hold en bug/ugc: el hold (ventana de reembolso + clawback) SOLO tiene sentido en una VENTA
+  // (referido). En bug/ugc no hay venta ni reembolso posible → el saldo es elegible al crearse. El
+  // post de UGC se verifica igualmente al pagar el vale (decisión Manuel 11/07).
+  const holdUntil = null
 
   const [row] = await db.insert(rewardSubmissions).values({
     userId: params.userId,

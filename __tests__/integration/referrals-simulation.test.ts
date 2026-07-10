@@ -153,16 +153,11 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
     })
   })
 
-  it('recompensa UGC: hold impide pagar; tras vencer, paga (5 €)', async () => {
+  it('recompensa UGC: SIN hold (solo referido = venta tiene hold) → paga al momento (5 €)', async () => {
     await withTx(async (tx, [user, , admin]) => {
       const c = await createRewardSubmission({ userId: user, type: 'ugc', url: 'https://t.me/post' }, tx)
       const sid = (c as { ok: true; id: string }).id
-
-      // el hold (post vivo N días) impide el pago
-      expect(await payRewardSubmission({ submissionId: sid, adminUserId: admin }, tx)).toMatchObject({ ok: false, reason: 'in_hold' })
-
-      // forzar hold vencido → ahora sí paga
-      await tx.update(rewardSubmissions).set({ holdUntil: sql`now() - interval '1 day'` }).where(eq(rewardSubmissions.id, sid))
+      // ya no hay hold en ugc → paga directamente (el post se verifica al pagar el vale)
       const pay = await payRewardSubmission({ submissionId: sid, adminUserId: admin, giftcardRef: 'AMZN-UGC' }, tx)
       expect(pay).toMatchObject({ ok: true })
       const [po2] = await tx.select().from(rewardPayouts).where(eq(rewardPayouts.beneficiaryUserId, user)).limit(1)

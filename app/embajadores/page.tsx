@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import MisVales from '@/components/embajadores/MisVales'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface ReferralDetail {
@@ -273,6 +274,9 @@ export default function EmbajadoresPage() {
             </p>
           </section>
         )}
+
+        {/* MIS VALES — gift cards conseguidas (solo premium con vales) */}
+        {user && isPremium && <MisVales />}
 
         {/* ENLACE DEL EMBAJADOR + MÉTRICA (solo premium) */}
         {user && isPremium && (
