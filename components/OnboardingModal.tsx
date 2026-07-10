@@ -1741,8 +1741,8 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_universidad_uned', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
-  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
-  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Murcia': ['enfermero_sms', 'auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Region of Murcia': ['enfermero_sms', 'auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_ayuntamiento_valladolid', 'auxiliar_administrativo_ayuntamiento_salamanca', 'auxiliar_administrativo_estado'],
   'Castile and León': ['enfermero_sacyl', 'auxiliar_administrativo_cyl', 'administrativo_castilla_leon', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'tcae_sas', 'administrativo_diputacion_jaen', 'auxiliar_administrativo_ayuntamiento_marbella', 'auxiliar_administrativo_estado'],
@@ -1820,6 +1820,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'enfermero_sacyl',                  // sanitaria Castilla y León
   'enfermero_ics',                    // sanitaria Cataluña
   'enfermero_scs_canarias',           // sanitaria Canarias
+  'enfermero_sms',                    // sanitaria Murcia
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid

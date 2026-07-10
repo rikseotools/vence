@@ -164,6 +164,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'tcae-canarias': 'canarias',
     'tcae-galicia': 'galicia',
     'tcae-murcia': 'murcia',
+    'enfermero-sms': 'murcia',
     'tcae-sescam': 'castilla-la-mancha',
     'tcae-extremadura': 'extremadura',
     'auxiliar-administrativo-sms': 'murcia',
