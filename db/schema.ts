@@ -324,6 +324,48 @@ export const topicScope = pgTable("topic_scope", {
 	pgPolicy("Enable read access for topic_scope", { as: "permissive", for: "select", to: ["public"] }),
 ]);
 
+// Verificación + provenance de topic_scope contra el epígrafe (20260710 migration).
+// Estado por tema, invalidado por trigger cuando cambia epígrafe/scope (hash).
+export const topicScopeVerification = pgTable("topic_scope_verification", {
+	topicId: uuid("topic_id").primaryKey().notNull(),
+	state: text().default('never_verified').notNull(),
+	verifiedScopeHash: text("verified_scope_hash"),
+	verdict: text(),
+	findings: jsonb(),
+	agentRunId: text("agent_run_id"),
+	verifiedBy: text("verified_by"),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_tsv_state").using("btree", table.state.asc().nullsLast()),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [topics.id],
+			name: "topic_scope_verification_topic_id_fkey"
+		}).onDelete("cascade"),
+	check("topic_scope_verification_state_check", sql`state = ANY (ARRAY['never_verified'::text, 'verifying'::text, 'verified_correct'::text, 'verified_issues'::text, 'stale'::text])`),
+]);
+
+export const topicScopeVerificationHistory = pgTable("topic_scope_verification_history", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	topicId: uuid("topic_id").notNull(),
+	state: text().notNull(),
+	scopeHash: text("scope_hash"),
+	verdict: text(),
+	findings: jsonb(),
+	agentRunId: text("agent_run_id"),
+	verifiedBy: text("verified_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_tsv_hist_topic").using("btree", table.topicId.asc().nullsLast(), table.createdAt.desc().nullsFirst()),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [topics.id],
+			name: "topic_scope_verification_history_topic_id_fkey"
+		}).onDelete("cascade"),
+]);
+
 export const aiVerificationResults = pgTable("ai_verification_results", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	questionId: uuid("question_id"),

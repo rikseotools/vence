@@ -16,6 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [rolloverCount, setRolloverCount] = useState(0)
   const [radarContenido, setRadarContenido] = useState(0)
   const [contenidoAlerts, setContenidoAlerts] = useState(0)
+  const [scopeVerifyAlerts, setScopeVerifyAlerts] = useState(0)
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -84,6 +85,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkContenido, 300000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkContenido])
+
+  const checkScopeVerify = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/admin/scope-verification/count', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setScopeVerifyAlerts(json.count ?? 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    const delay = setTimeout(checkScopeVerify, 18000)
+    const interval = setInterval(checkScopeVerify, 300000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkScopeVerify])
 
   const checkRollover = useCallback(async () => {
     try {
@@ -327,6 +344,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         title="Oposiciones con temas en desarrollo (0 preguntas)"
                       >
                         {contenidoAlerts > 99 ? '99+' : contenidoAlerts}
+                      </span>
+                    )}
+                    {scopeVerifyAlerts > 0 && (
+                      <span
+                        className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold"
+                        title="Temas con topic_scope sin verificar / cambiado / con issues (verificar epígrafes)"
+                      >
+                        {scopeVerifyAlerts > 99 ? '99+' : scopeVerifyAlerts}
                       </span>
                     )}
                   </Link>
