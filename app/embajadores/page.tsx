@@ -102,15 +102,8 @@ export default function EmbajadoresPage() {
   const fullName = (userProfile?.full_name || (user?.user_metadata?.full_name as string | undefined) || '').trim()
   const firstName = fullName ? fullName.split(/\s+/)[0] : ''
 
-  // Atribución: si el usuario llega con la cookie `vence_ref` (puesta por /r/[code]), la reclama al
-  // autenticarse. Idempotente (first-touch) y no-op si no hay cookie. Cubre registro nuevo aquí + free
-  // existente que clica el enlace. La identidad la pone el token; el código lo lee el server de la cookie.
-  useEffect(() => {
-    if (loading || !user) return
-    getAuthHeaders()
-      .then((headers) => fetch('/api/referrals/attribute', { method: 'POST', headers }))
-      .catch(() => { /* silencioso */ })
-  }, [loading, user])
+  // (La atribución se dispara globalmente en components/ReferralAttributionOnLogin, montado en el
+  //  layout, para cubrir a los referidos que pagan sin volver a esta página.)
 
   useEffect(() => {
     if (loading || !user || !isPremium) return

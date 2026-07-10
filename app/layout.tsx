@@ -17,6 +17,7 @@ import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent
 import ConsentModeDefault from '../components/ConsentModeDefault'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
 import { ClientObservabilityInstaller } from '../components/observability/ClientObservabilityInstaller'
+import ReferralAttributionOnLogin from '../components/ReferralAttributionOnLogin'
 import { EarlyErrorsBridge } from '../components/observability/EarlyErrorsBridge'
 
 export default async function SpanishLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,7 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                 unhandledrejection, console, wrapper de fetch, pre-hydration,
                 intent tracking. Ver lib/observability/client.ts. */}
             <ClientObservabilityInstaller />
+            <ReferralAttributionOnLogin />
             <OposicionProvider>
               <LawSlugProvider initialMappings={lawMappings}>
               <QuestionProvider>
