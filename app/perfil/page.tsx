@@ -488,6 +488,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'enfermero_scs_cantabria',
+      label: 'Enfermero/a del SCS (Cantabria)',
+      data: {
+        name: 'Enfermero/a del Servicio Cántabro de Salud (SCS)',
+        slug: 'enfermero-scs-cantabria',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
       value: 'tramitacion_procesal',
       label: 'Tramitación Procesal y Administrativa',
       data: {

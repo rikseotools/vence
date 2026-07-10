@@ -1757,7 +1757,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Principality of Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'administrativo_junta_general_asturias', 'auxiliar_administrativo_estado'],
   'Islas Baleares': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
   'Balearic Islands': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
-  'Cantabria': ['auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
+  'Cantabria': ['enfermero_scs_cantabria', 'auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'La Rioja': ['auxiliar_administrativo_la_rioja', 'administrativo_la_rioja', 'auxiliar_administrativo_estado'],
@@ -1821,6 +1821,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'enfermero_ics',                    // sanitaria Cataluña
   'enfermero_scs_canarias',           // sanitaria Canarias
   'enfermero_sms',                    // sanitaria Murcia
+  'enfermero_scs_cantabria',           // sanitaria Cantabria
   'auxiliar_administrativo_sermas',   // administrativo sanitaria Madrid
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid

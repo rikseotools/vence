@@ -134,6 +134,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-junta-general-asturias': 'asturias',
     'auxiliar-administrativo-cantabria': 'cantabria',
     'administrativo-cantabria': 'cantabria',
+    'enfermero-scs-cantabria': 'cantabria',
     'administrativo-navarra': 'navarra',
     'auxiliar-administrativo-la-rioja': 'la-rioja',
     'administrativo-la-rioja': 'la-rioja',
