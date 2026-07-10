@@ -1460,6 +1460,84 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD CARLOS III DE MADRID (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_carlos_iii',
+    slug: 'auxiliar-administrativo-universidad-carlos-iii',
+    positionType: 'auxiliar_administrativo_universidad_carlos_iii',
+    examScoring: { penaltyDivisor: 3, source: 'Resolución de 30/06/2026 UC3M, Anexo II: respuesta errónea penaliza 1/3 del valor de un acierto; en blanco no penaliza. 70 preguntas, 4 alternativas, 60 min, mínimo 35 puntos. confidence:alta' },
+    name: 'Auxiliar Administrativo de la Universidad Carlos III de Madrid',
+    shortName: 'Aux. Admin. UC3M',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'teal',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'generales',
+        title: 'Temas Generales',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Ley 39/2015 (I): disposiciones generales, interesados, actividad y actos' },
+          { id: 3, name: 'Ley 39/2015 (II): procedimiento común y revisión de actos' },
+          { id: 4, name: 'Ley 40/2015 (I): órganos de las Administraciones Públicas' },
+          { id: 5, name: 'Ley 40/2015 (II): funcionamiento electrónico del sector público' },
+          { id: 6, name: 'Protección de Datos Personales (LOPDGDD, LO 3/2018)' },
+          { id: 7, name: 'Transparencia (Ley 10/2019 CM y UC3M)' },
+          { id: 8, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 9, name: 'Ofimática: Word y Excel 2019, herramientas Google y correo' },
+        ],
+      },
+      {
+        id: 'rrhh',
+        title: 'Gestión de Recursos Humanos',
+        subtitle: null,
+        icon: '👥',
+        themes: [
+          { id: 10, name: 'El Estatuto Básico del Empleado Público (TREBEP)' },
+          { id: 11, name: 'Ingreso, provisión de puestos e incompatibilidades' },
+          { id: 12, name: 'Prevención de Riesgos Laborales (Ley 31/1995)' },
+        ],
+      },
+      {
+        id: 'universitaria',
+        title: 'Gestión Universitaria',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 13, name: 'La Ley Orgánica del Sistema Universitario (LOSU) I' },
+          { id: 14, name: 'La Ley Orgánica del Sistema Universitario (LOSU) II' },
+          { id: 15, name: 'Estatutos de la Universidad Carlos III de Madrid' },
+          { id: 16, name: 'Organización de las enseñanzas universitarias (RD 822/2021)' },
+          { id: 17, name: 'Acceso y admisión a las enseñanzas universitarias (RD 534/2024)' },
+        ],
+      },
+      {
+        id: 'economica',
+        title: 'Gestión Económico-Financiera',
+        subtitle: null,
+        icon: '💶',
+        themes: [
+          { id: 18, name: 'El presupuesto de la Universidad Carlos III de Madrid (I)' },
+          { id: 19, name: 'El presupuesto de la Universidad Carlos III de Madrid (II)' },
+          { id: 20, name: 'Ley de Contratos del Sector Público (Ley 9/2017)' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    aliases: ['uc3m', 'carlos iii', 'universidad carlos iii', 'aux carlos iii', 'auxiliar carlos iii', 'auxiliar uc3m'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-carlos-iii', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-carlos-iii/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-carlos-iii/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE ALCALÁ (C2)
   // ========================================
   {

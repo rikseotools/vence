@@ -822,6 +822,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'auxiliar_administrativo_universidad_carlos_iii',
+    nombre: 'Auxiliar Administrativo Universidad Carlos III (UC3M)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_universidad_alcala',
     nombre: 'Auxiliar Administrativo Universidad de Alcalá (UAH)',
     categoria: 'C2',
@@ -1739,7 +1746,7 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 // Mapa de regiones (ipapi.co) → oposiciones prioritarias de esa comunidad autónoma
 // Las oposiciones estatales (Estado, Justicia) siempre se incluyen como relevantes
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
-  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_universidad_uned', 'auxiliar_administrativo_estado', 'administrativo_estado'],
+  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_sermas', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_universidad_uned', 'auxiliar_administrativo_universidad_complutense', 'auxiliar_administrativo_universidad_carlos_iii', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['enfermero_sms', 'auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['enfermero_sms', 'auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'administrativo_carm', 'agrupacion_profesional_servicios_publicos_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],

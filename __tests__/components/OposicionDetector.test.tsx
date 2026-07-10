@@ -166,6 +166,7 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-sms',
         'auxiliar-administrativo-universidad-alcala',  // Añadida 15/06/2026: Aux Admin UAH C2 (OEP 2022-25: 54 plz)
         'auxiliar-administrativo-universidad-cadiz',  // Añadida 16/06/2026: Aux Admin UCA C2 (BOE-A-2026-9563: 12 plz)
+        'auxiliar-administrativo-universidad-carlos-iii',  // Añadida 10/07/2026: Aux Admin UC3M C2 (BOE-A-2026-14624: 34 plz)
         'auxiliar-administrativo-universidad-complutense',  // Añadida 15/06/2026: Aux Admin UCM C2 (OEP 2022: 53 plz TL)
         'auxiliar-administrativo-universidad-huelva',  // Añadida 16/06/2026: Aux Admin UHU C2 (BOJA 228/2025: 45 plz)
         'auxiliar-administrativo-universidad-leon',  // Añadida 16/06/2026: Aux Admin ULE C2 (BOE-A-2026-4150: 9 plz)

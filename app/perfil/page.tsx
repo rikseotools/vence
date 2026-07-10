@@ -658,6 +658,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_carlos_iii',
+      label: 'Auxiliar Administrativo UC3M',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad Carlos III de Madrid',
+        slug: 'auxiliar-administrativo-universidad-carlos-iii',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_universidad_huelva',
       label: 'Auxiliar Administrativo UHU',
       data: {
