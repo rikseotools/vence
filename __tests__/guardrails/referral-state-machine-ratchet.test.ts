@@ -10,7 +10,10 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { REFERRAL_STATES, isLegalTransition, type ReferralState } from '@/lib/referrals/logic'
+import {
+  REFERRAL_STATES, isLegalTransition, type ReferralState,
+  REWARD_SUBMISSION_STATES, isLegalRewardTransition, type RewardSubmissionState,
+} from '@/lib/referrals/logic'
 
 const EXPECTED_STATES = ['pending', 'qualified', 'payable', 'paid', 'rejected', 'expired']
 
@@ -61,5 +64,46 @@ describe('GUARDRAIL: state machine de referidos (ratchet)', () => {
     // Una de las listas del CHECK del SQL debe coincidir EXACTO con los estados del código.
     const match = lists.some((l) => JSON.stringify(l) === JSON.stringify(codeStates))
     expect(match).toBe(true)
+  })
+})
+
+describe('GUARDRAIL: state machine de recompensas bug/UGC (ratchet)', () => {
+  const EXPECTED = ['pending', 'approved', 'rejected', 'paid']
+  const EXPECTED_TX: Record<string, string[]> = {
+    pending: ['approved', 'rejected'],
+    approved: ['paid', 'rejected'],
+    rejected: [],
+    paid: ['rejected'],
+  }
+
+  it('estados válidos congelados', () => {
+    expect([...REWARD_SUBMISSION_STATES].sort()).toEqual([...EXPECTED].sort())
+  })
+
+  it('transiciones legales congeladas', () => {
+    for (const from of REWARD_SUBMISSION_STATES) {
+      for (const to of REWARD_SUBMISSION_STATES) {
+        expect({ from, to, legal: isLegalRewardTransition(from, to) })
+          .toEqual({ from, to, legal: EXPECTED_TX[from].includes(to) })
+      }
+    }
+  })
+
+  it('la migración enforce los mismos estados de reward_submissions (sin drift)', () => {
+    const sql = readFileSync(
+      join(__dirname, '..', '..', 'supabase', 'migrations', '20260710_rewards_generalize.sql'),
+      'utf8',
+    )
+    const lists = [...sql.matchAll(/status\s+IN\s*\(([^)]+)\)/gi)].map((m) =>
+      m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).sort(),
+    )
+    const codeStates = [...REWARD_SUBMISSION_STATES].sort() as string[]
+    expect(lists.some((l) => JSON.stringify(l) === JSON.stringify(codeStates))).toBe(true)
+  })
+
+  // referencia de tipo (evita import sin usar)
+  it('meta: RewardSubmissionState cubre todos', () => {
+    const all: RewardSubmissionState[] = [...REWARD_SUBMISSION_STATES]
+    expect(all.length).toBe(4)
   })
 })

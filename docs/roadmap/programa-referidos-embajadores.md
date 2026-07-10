@@ -1,7 +1,9 @@
 # Roadmap — Programa de Recompensas (Referidos + Bug Bounty + Recomendación genuina)
 
-> Estado: **PROPUESTA / diseño** (2026-07-10). Capa de datos del referido ya construida (ver §11/§12).
-> Este doc recoge las decisiones + arquitectura + fases. Actualizar a medida que se decida.
+> Estado: **CONSTRUIDO al 100% a nivel código (2026-07-10)** — las 3 formas de ganar (referido/bug/ugc),
+> circuito completo, payout operativo (cron + panel admin), 76 tests verdes (4/5 capas; canary=script
+> listo post-deploy). En `main` hasta `132f5c15`; bloque bug/UGC pendiente de commit. **Sin desplegar aún.**
+> Proveedor gift card decidido: Bitrefill. Este doc recoge decisiones + arquitectura + fases.
 
 ## 1. Objetivo
 

@@ -88,3 +88,35 @@ const LEGAL_TRANSITIONS: Record<ReferralState, ReferralState[]> = {
 export function isLegalTransition(from: ReferralState, to: ReferralState): boolean {
   return LEGAL_TRANSITIONS[from]?.includes(to) ?? false
 }
+
+// ============================================================================
+// Recompensas por BUG / UGC (las otras 2 formas de ganar, tabla reward_submissions)
+// ============================================================================
+export const REWARD_AMOUNTS = { bug: 3, ugc: 5 } as const
+export type RewardType = keyof typeof REWARD_AMOUNTS
+export const UGC_MONTHLY_CAP = 3          // UGC: máximo 3 al mes por usuario
+export const UGC_HOLD_DAYS = REFERRAL_HOLD_DAYS // UGC: se paga tras comprobar que el post sigue vivo
+
+export function rewardAmount(type: RewardType): number {
+  return REWARD_AMOUNTS[type]
+}
+
+/** ¿puede el usuario recibir otra recompensa de este tipo este mes? (solo UGC tiene tope duro). */
+export function withinRewardMonthlyCap(type: RewardType, countThisMonth: number): boolean {
+  if (type === 'ugc') return countThisMonth < UGC_MONTHLY_CAP
+  return true // bug: sin tope duro; se controla por aprobación manual
+}
+
+export const REWARD_SUBMISSION_STATES = ['pending', 'approved', 'rejected', 'paid'] as const
+export type RewardSubmissionState = (typeof REWARD_SUBMISSION_STATES)[number]
+
+const REWARD_LEGAL_TRANSITIONS: Record<RewardSubmissionState, RewardSubmissionState[]> = {
+  pending: ['approved', 'rejected'],
+  approved: ['paid', 'rejected'],
+  rejected: [],
+  paid: ['rejected'], // clawback (p.ej. post borrado tras cobrar)
+}
+
+export function isLegalRewardTransition(from: RewardSubmissionState, to: RewardSubmissionState): boolean {
+  return REWARD_LEGAL_TRANSITIONS[from]?.includes(to) ?? false
+}

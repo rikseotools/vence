@@ -6,14 +6,18 @@
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { getAdminDb, getReadDb } from '@/db/client'
-import { referralCodes, referrals, rewardPayouts } from '@/db/referralSchema'
+import { referralCodes, referrals, rewardPayouts, rewardSubmissions } from '@/db/referralSchema'
 import { userProfiles, userSubscriptions } from '@/db/schema'
 import {
   generateReferralCode,
   refereeEligibility,
   computeHoldUntil,
   isWithinAttributionWindow,
+  rewardAmount,
+  withinRewardMonthlyCap,
+  UGC_HOLD_DAYS,
   type EligibilityReason,
+  type RewardType,
 } from './logic'
 
 // Drizzle db o tx; `any` para no pelear con los genéricos de transacción.
@@ -280,6 +284,132 @@ export async function payReferral(
     await tx.update(referrals)
       .set({ status: 'paid', payoutId: payout.id, updatedAt: sql`now()` })
       .where(and(eq(referrals.id, ref.id), eq(referrals.status, 'payable')))
+    return { ok: true as const, payoutId: payout.id }
+  }
+  if (exec) return run(exec)
+  return getAdminDb().transaction(run)
+}
+
+// ============================================================================
+// Recompensas por BUG / UGC (tabla reward_submissions)
+// ============================================================================
+
+/** Resuelve un email → userId (case-insensitive), o null. Para crear recompensas desde el admin. */
+export async function findUserIdByEmail(email: string, exec?: Executor): Promise<string | null> {
+  const db = exec ?? getReadDb()
+  const [row] = await db.select({ id: userProfiles.id }).from(userProfiles)
+    .where(sql`lower(${userProfiles.email}) = ${email.trim().toLowerCase()}`).limit(1)
+  return (row?.id as string | undefined) ?? null
+}
+
+/** Nº de recompensas de este tipo que cuentan para el tope del mes en curso (no rechazadas). */
+export async function countRewardSubmissionsThisMonth(
+  userId: string, type: RewardType, exec?: Executor,
+): Promise<number> {
+  const db = exec ?? getReadDb()
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(rewardSubmissions)
+    .where(and(
+      eq(rewardSubmissions.userId, userId),
+      eq(rewardSubmissions.type, type),
+      sql`${rewardSubmissions.status} <> 'rejected'`,
+      sql`${rewardSubmissions.createdAt} >= date_trunc('month', now())`,
+    ))
+  return Number(row?.n ?? 0)
+}
+
+/**
+ * Crea una recompensa (bug 3€ / ugc 5€) para un usuario, ya APROBADA por el admin (que la validó en
+ * el chat de soporte). Aplica el tope mensual (ugc 3/mes) y el hold del UGC (post vivo N días).
+ */
+export async function createRewardSubmission(
+  params: { userId: string; type: RewardType; url?: string; screenshotUrl?: string; feedbackId?: string },
+  exec?: Executor,
+): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
+  const db = exec ?? getAdminDb()
+  const count = await countRewardSubmissionsThisMonth(params.userId, params.type, db)
+  if (!withinRewardMonthlyCap(params.type, count)) return { ok: false, reason: 'monthly_cap' }
+
+  const amount = String(rewardAmount(params.type))
+  const holdUntil = params.type === 'ugc'
+    ? computeHoldUntil(new Date().toISOString(), UGC_HOLD_DAYS).toISOString()
+    : null
+
+  const [row] = await db.insert(rewardSubmissions).values({
+    userId: params.userId,
+    type: params.type,
+    status: 'approved',
+    url: params.url ?? null,
+    screenshotUrl: params.screenshotUrl ?? null,
+    feedbackId: params.feedbackId ?? null,
+    amount,
+    holdUntil,
+  }).returning({ id: rewardSubmissions.id })
+  return { ok: true, id: row.id }
+}
+
+export interface PendingReward {
+  id: string
+  type: string
+  amount: string
+  url: string | null
+  holdUntil: string | null
+  userId: string
+  userName: string | null
+  userEmail: string | null
+  createdAt: string
+}
+
+/** Recompensas `approved` (bug/ugc) con datos del usuario, para el panel admin. */
+export async function getPendingRewardSubmissions(exec?: Executor): Promise<PendingReward[]> {
+  const db = exec ?? getReadDb()
+  const rows = await db.select({
+    id: rewardSubmissions.id,
+    type: rewardSubmissions.type,
+    amount: rewardSubmissions.amount,
+    url: rewardSubmissions.url,
+    holdUntil: rewardSubmissions.holdUntil,
+    userId: rewardSubmissions.userId,
+    userName: userProfiles.fullName,
+    userEmail: userProfiles.email,
+    createdAt: rewardSubmissions.createdAt,
+  }).from(rewardSubmissions)
+    .innerJoin(userProfiles, eq(rewardSubmissions.userId, userProfiles.id))
+    .where(eq(rewardSubmissions.status, 'approved'))
+    .orderBy(rewardSubmissions.createdAt)
+  return rows as PendingReward[]
+}
+
+/**
+ * Marca una recompensa `approved` como PAGADA: crea el reward_payout (reason bug/ugc) y la pasa a `paid`.
+ * Atómico + optimista. Rechaza si sigue en hold (UGC no vencido).
+ */
+export async function payRewardSubmission(
+  params: { submissionId: string; adminUserId: string; giftcardRef?: string; purchasedVia?: string },
+  exec?: Executor,
+): Promise<{ ok: true; payoutId: string } | { ok: false; reason: string }> {
+  const run = async (tx: Executor) => {
+    const [s] = await tx.select().from(rewardSubmissions)
+      .where(eq(rewardSubmissions.id, params.submissionId)).limit(1)
+    if (!s) return { ok: false as const, reason: 'not_found' }
+    if (s.status !== 'approved') return { ok: false as const, reason: `not_approved(${s.status})` }
+    if (s.holdUntil && new Date(s.holdUntil).getTime() > Date.now()) return { ok: false as const, reason: 'in_hold' }
+
+    const [payout] = await tx.insert(rewardPayouts).values({
+      beneficiaryUserId: s.userId,
+      reason: s.type,
+      sourceId: s.id,
+      amount: s.amount,
+      method: 'amazon_giftcard',
+      purchasedVia: params.purchasedVia ?? null,
+      giftcardRef: params.giftcardRef ?? null,
+      status: 'paid',
+      approvedBy: params.adminUserId,
+      paidAt: sql`now()`,
+    }).returning({ id: rewardPayouts.id })
+
+    await tx.update(rewardSubmissions)
+      .set({ status: 'paid', payoutId: payout.id, updatedAt: sql`now()` })
+      .where(and(eq(rewardSubmissions.id, s.id), eq(rewardSubmissions.status, 'approved')))
     return { ok: true as const, payoutId: payout.id }
   }
   if (exec) return run(exec)

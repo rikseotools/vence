@@ -7,9 +7,9 @@
 //   atribución → cupón aplicable → calificación por pago → hold → payable, y la rama de clawback.
 // A diferencia de la integración por-función, aquí importa que la SECUENCIA entera encaje.
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
-import { referrals, rewardPayouts } from '@/db/referralSchema'
+import { referrals, rewardPayouts, rewardSubmissions } from '@/db/referralSchema'
 import { userProfiles } from '@/db/schema'
 import {
   getOrCreateReferralCode,
@@ -21,6 +21,9 @@ import {
   getReferralStats,
   getPayableReferrals,
   payReferral,
+  createRewardSubmission,
+  getPendingRewardSubmissions,
+  payRewardSubmission,
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
@@ -121,6 +124,52 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
 
       // pagar otra vez → rechazado (ya no es payable) → sin doble gift card
       expect(await payReferral({ referralId: row.id, adminUserId: admin }, tx)).toMatchObject({ ok: false })
+    })
+  })
+
+  it('recompensa BUG: crear (3 €, sin hold) → aparece → pagar → paid + reward_payout', async () => {
+    await withTx(async (tx, [user, , admin]) => {
+      const c = await createRewardSubmission({ userId: user, type: 'bug', feedbackId: undefined }, tx)
+      expect(c).toMatchObject({ ok: true })
+      const sid = (c as { ok: true; id: string }).id
+
+      const pending = await getPendingRewardSubmissions(tx)
+      expect(pending.find((p) => p.id === sid)).toBeTruthy()
+
+      const pay = await payRewardSubmission({ submissionId: sid, adminUserId: admin, giftcardRef: 'AMZN-BUG' }, tx)
+      expect(pay).toMatchObject({ ok: true })
+      const [s] = await tx.select().from(rewardSubmissions).where(eq(rewardSubmissions.id, sid)).limit(1)
+      expect(s.status).toBe('paid')
+      const [po] = await tx.select().from(rewardPayouts).where(eq(rewardPayouts.id, s.payoutId)).limit(1)
+      expect(po).toMatchObject({ reason: 'bug', beneficiaryUserId: user, status: 'paid' })
+      expect(Number(po.amount)).toBe(3)
+    })
+  })
+
+  it('recompensa UGC: hold impide pagar; tras vencer, paga (5 €)', async () => {
+    await withTx(async (tx, [user, , admin]) => {
+      const c = await createRewardSubmission({ userId: user, type: 'ugc', url: 'https://t.me/post' }, tx)
+      const sid = (c as { ok: true; id: string }).id
+
+      // el hold (post vivo N días) impide el pago
+      expect(await payRewardSubmission({ submissionId: sid, adminUserId: admin }, tx)).toMatchObject({ ok: false, reason: 'in_hold' })
+
+      // forzar hold vencido → ahora sí paga
+      await tx.update(rewardSubmissions).set({ holdUntil: sql`now() - interval '1 day'` }).where(eq(rewardSubmissions.id, sid))
+      const pay = await payRewardSubmission({ submissionId: sid, adminUserId: admin, giftcardRef: 'AMZN-UGC' }, tx)
+      expect(pay).toMatchObject({ ok: true })
+      const [po2] = await tx.select().from(rewardPayouts).where(eq(rewardPayouts.beneficiaryUserId, user)).limit(1)
+      expect(po2).toMatchObject({ reason: 'ugc' })
+      expect(Number(po2.amount)).toBe(5)
+    })
+  })
+
+  it('recompensa UGC: tope 3/mes → la 4ª se rechaza', async () => {
+    await withTx(async (tx, [user]) => {
+      for (let i = 0; i < 3; i++) {
+        expect(await createRewardSubmission({ userId: user, type: 'ugc', url: `https://t.me/${i}` }, tx)).toMatchObject({ ok: true })
+      }
+      expect(await createRewardSubmission({ userId: user, type: 'ugc', url: 'https://t.me/4' }, tx)).toMatchObject({ ok: false, reason: 'monthly_cap' })
     })
   })
 })

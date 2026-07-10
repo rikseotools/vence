@@ -11,6 +11,10 @@ import {
   isLegalTransition,
   REFERRAL_ATTRIBUTION_WINDOW_DAYS,
   REFERRAL_HOLD_DAYS,
+  rewardAmount,
+  withinRewardMonthlyCap,
+  isLegalRewardTransition,
+  UGC_MONTHLY_CAP,
   type ReferralState,
 } from '@/lib/referrals/logic'
 
@@ -116,5 +120,25 @@ describe('isLegalTransition (state machine)', () => {
       expect(isLegalTransition('rejected', to)).toBe(false)
       expect(isLegalTransition('expired', to)).toBe(false)
     }
+  })
+})
+
+describe('recompensas bug/UGC', () => {
+  it('importes: bug 3 €, ugc 5 €', () => {
+    expect(rewardAmount('bug')).toBe(3)
+    expect(rewardAmount('ugc')).toBe(5)
+  })
+  it('tope mensual: ugc corta en 3, bug sin tope duro', () => {
+    expect(UGC_MONTHLY_CAP).toBe(3)
+    expect(withinRewardMonthlyCap('ugc', 2)).toBe(true)
+    expect(withinRewardMonthlyCap('ugc', 3)).toBe(false)
+    expect(withinRewardMonthlyCap('bug', 100)).toBe(true)
+  })
+  it('state machine de recompensa: legales e ilegales', () => {
+    expect(isLegalRewardTransition('pending', 'approved')).toBe(true)
+    expect(isLegalRewardTransition('approved', 'paid')).toBe(true)
+    expect(isLegalRewardTransition('paid', 'rejected')).toBe(true) // clawback
+    expect(isLegalRewardTransition('pending', 'paid')).toBe(false)
+    expect(isLegalRewardTransition('rejected', 'approved')).toBe(false)
   })
 })
