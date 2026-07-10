@@ -161,7 +161,7 @@ export default function AdminEmbajadoresPage() {
           {!stats?.topEmbajadores?.length ? <p className="text-sm text-gray-400 dark:text-gray-500">Aún no hay ingresos.</p>
             : <ol className="space-y-1.5">{stats.topEmbajadores.map((t, i) => (
                 <li key={t.userId} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate text-gray-700 dark:text-gray-200">{i + 1}. {t.name || t.email || 'Embajador'}</span>
+                  <a href={`/admin/embajadores/${t.userId}`} target="_blank" rel="noopener noreferrer" title="Ver su panel como lo ve el usuario (nueva pestaña)" className="truncate text-blue-600 dark:text-blue-400 hover:underline">{i + 1}. {t.name || t.email || 'Embajador'}</a>
                   <span className="shrink-0 text-blue-600 dark:text-blue-400 font-semibold">{eur(t.earned)} · {t.count}</span>
                 </li>
               ))}</ol>}

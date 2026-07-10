@@ -49,6 +49,14 @@ export async function getOrCreateReferralCode(ownerUserId: string, exec?: Execut
   throw new Error('no se pudo generar un código de referido único')
 }
 
+/** Código del embajador SIN crearlo (READ-ONLY). null si aún no tiene. Para vistas admin de solo lectura. */
+export async function getReferralCode(ownerUserId: string, exec?: Executor): Promise<string | null> {
+  const db = exec ?? getReadDb()
+  const rows = await db.select({ code: referralCodes.code })
+    .from(referralCodes).where(eq(referralCodes.ownerUserId, ownerUserId)).limit(1)
+  return rows.length ? rows[0].code : null
+}
+
 /** plan_type del usuario (para el gate de embajador = 'premium'). */
 export async function getUserPlanType(userId: string, exec?: Executor): Promise<string | null> {
   const db = exec ?? getReadDb()

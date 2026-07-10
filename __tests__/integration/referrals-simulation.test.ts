@@ -13,6 +13,7 @@ import { referrals, rewardPayouts, rewardSubmissions } from '@/db/referralSchema
 import { userProfiles } from '@/db/schema'
 import {
   getOrCreateReferralCode,
+  getReferralCode,
   attributeReferral,
   hasPendingReferral,
   qualifyReferralOnPayment,
@@ -192,6 +193,13 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
       const url = 'https://t.me/dup-post'
       expect(await createRewardSubmission({ userId: user, type: 'ugc', url }, tx)).toMatchObject({ ok: true })
       expect(await createRewardSubmission({ userId: user, type: 'ugc', url }, tx)).toMatchObject({ ok: false, reason: 'duplicate' })
+    })
+  })
+
+  it('getReferralCode (READ-ONLY) devuelve el mismo código que getOrCreateReferralCode (vista admin)', async () => {
+    await withTx(async (tx, [user]) => {
+      const created = await getOrCreateReferralCode(user, tx)   // asegura que existe
+      expect(await getReferralCode(user, tx)).toBe(created)     // lo lee sin crear nada
     })
   })
 
