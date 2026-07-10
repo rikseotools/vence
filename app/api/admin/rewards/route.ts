@@ -46,6 +46,9 @@ async function _POST(request: NextRequest) {
     // El email SÍ se manda en el caso `referido` (webhook Stripe), donde no hay hilo de soporte.
   } else if (result.reason === 'monthly_cap') {
     emitReferralEvent('reward_cap_hit', { userId, endpoint: '/api/admin/rewards', severity: 'warn', metadata: { type } })
+  } else if (result.reason === 'duplicate') {
+    // Ya existe recompensa para este mismo motivo (bug=feedback / ugc=post) → no duplicar.
+    emitReferralEvent('reward_duplicate', { userId, endpoint: '/api/admin/rewards', severity: 'warn', metadata: { type } })
   }
   return NextResponse.json(result, { status: result.ok ? 200 : 409 })
 }

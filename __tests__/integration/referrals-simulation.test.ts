@@ -179,6 +179,22 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
     })
   })
 
+  it('ANTI-DUPLICADO bug: el mismo feedback_id no se recompensa dos veces', async () => {
+    await withTx(async (tx, [user]) => {
+      const fb = '00000000-0000-4000-8000-000000000abc'
+      expect(await createRewardSubmission({ userId: user, type: 'bug', feedbackId: fb }, tx)).toMatchObject({ ok: true })
+      expect(await createRewardSubmission({ userId: user, type: 'bug', feedbackId: fb }, tx)).toMatchObject({ ok: false, reason: 'duplicate' })
+    })
+  })
+
+  it('ANTI-DUPLICADO ugc: la misma url no se recompensa dos veces', async () => {
+    await withTx(async (tx, [user]) => {
+      const url = 'https://t.me/dup-post'
+      expect(await createRewardSubmission({ userId: user, type: 'ugc', url }, tx)).toMatchObject({ ok: true })
+      expect(await createRewardSubmission({ userId: user, type: 'ugc', url }, tx)).toMatchObject({ ok: false, reason: 'duplicate' })
+    })
+  })
+
   it('SALDO ACUMULADO: referido(10) + ugc(5) = 15 → pagar 10 → sobran 5', async () => {
     await withTx(async (tx, [embajador, referido, admin]) => {
       // referido payable (10 €) para el embajador

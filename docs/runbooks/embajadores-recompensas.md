@@ -41,12 +41,22 @@ GET /api/admin/referrals/stats
 Usar cuando **resolvemos un bug reportado por el usuario** o **validamos una opinión (UGC)** real.
 ```
 POST /api/admin/rewards
-body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la opinión>" }
+body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la opinión>", feedbackId?: "<uuid del feedback>" }
 → crea reward_submission (bug 3 € / ugc 5 €), estado approved, entra en hold.
 ```
 - `bug` = 3 €, `ugc` = 5 €. El importe lo pone el sistema, no se envía.
+- **Pasa SIEMPRE `feedbackId` en las de `bug`** (traza del motivo + anti-duplicado, ver abajo).
 - UGC exige `url` (link a la opinión) y respeta el tope 3/mes (devuelve `reward_cap_hit`).
 - Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). Avísale tú por su hilo de feedback.
+
+**Anti-duplicado por MOTIVO (guardarraíl por construcción):** `createRewardSubmission` rechaza (`{ok:false, reason:'duplicate'}` → HTTP 409 + evento `reward_duplicate`) si ya existe una recompensa **no-rejected** con el mismo motivo: `feedback_id` en `bug`, `url` en `ugc` (el referido es idempotente aparte, por la fila `referrals`). Así el motivo no solo queda **registrado**, sino que **físicamente no se puede pagar dos veces lo mismo**. Tests: `__tests__/referrals/rewards-endpoints.test.ts` (unit) + `__tests__/integration/referrals-simulation.test.ts` (RDS).
+
+### 2.bis Procedimiento para recompensar un bug resuelto — UNO A UNO
+Cuando resolvemos un bug reportado y merece recompensa, procede **usuario a usuario** (nunca en lote):
+1. **Verifica** que el bug es real y resuelto, y que el usuario **no tiene ya** recompensa por ese feedback (el guardarraíl lo impide, pero míralo).
+2. **Emite la recompensa** (`POST /api/admin/rewards`, `type:'bug'` + `feedbackId`). El badge 🎁 empieza a **parpadear** en su header hasta que lo pinche (server-side, automático). **No se envía email.**
+3. **Redacta el borrador** de la respuesta a su feedback y **espera aprobación** (nunca envíes sin OK). En el mensaje llámalo **"Programa de Recompensas"** (no "de Embajadores") y anúnciale el bonus.
+4. **Envía** por `POST /api/v2/feedback/respond` (email + campana) y cierra ese feedback **antes** de pasar al siguiente.
 
 ### 3. Consultar saldos por pagar
 ```

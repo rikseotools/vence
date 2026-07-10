@@ -24,6 +24,7 @@ export type ReferralEventType =
   // recompensas bug/ugc
   | 'reward_created'
   | 'reward_cap_hit'
+  | 'reward_duplicate'
   | 'reward_paid'
 
 export interface ReferralEmitOpts {

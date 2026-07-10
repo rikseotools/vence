@@ -15,6 +15,7 @@ jest.mock('@/lib/referrals/queries', () => ({
 }))
 
 import { requireAdmin } from '@/lib/api/shared/auth'
+import { emitReferralEvent } from '@/lib/referrals/observability'
 import {
   getPendingRewardSubmissions, createRewardSubmission, findUserIdByEmail, payRewardSubmission,
 } from '@/lib/referrals/queries'
@@ -26,6 +27,7 @@ const mList = getPendingRewardSubmissions as unknown as jest.Mock
 const mCreate = createRewardSubmission as unknown as jest.Mock
 const mFind = findUserIdByEmail as unknown as jest.Mock
 const mPay = payRewardSubmission as unknown as jest.Mock
+const mEmit = emitReferralEvent as unknown as jest.Mock
 
 const post = (url: string, body: unknown) =>
   new NextRequest(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
@@ -69,6 +71,13 @@ describe('admin bug/UGC rewards', () => {
   it('POST create supera el tope → 409', async () => {
     asAdmin(); mFind.mockResolvedValue('u1'); mCreate.mockResolvedValue({ ok: false, reason: 'monthly_cap' })
     expect((await _POST(post(RURL, { email: 'a@b.c', type: 'ugc' }))).status).toBe(409)
+  })
+
+  it('POST create motivo DUPLICADO → 409 + evento reward_duplicate', async () => {
+    asAdmin(); mFind.mockResolvedValue('u1'); mCreate.mockResolvedValue({ ok: false, reason: 'duplicate' })
+    const res = await _POST(post(RURL, { email: 'a@b.c', type: 'bug', feedbackId: 'fb1' }))
+    expect(res.status).toBe(409)
+    expect(mEmit).toHaveBeenCalledWith('reward_duplicate', expect.objectContaining({ userId: 'u1' }))
   })
 
   it('PAY sin submissionId → 400', async () => {

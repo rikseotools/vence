@@ -321,13 +321,37 @@ export async function countRewardSubmissionsThisMonth(
 
 /**
  * Crea una recompensa (bug 3€ / ugc 5€) para un usuario, ya APROBADA por el admin (que la validó en
- * el chat de soporte). Aplica el tope mensual (ugc 3/mes) y el hold del UGC (post vivo N días).
+ * el chat de soporte). Rechaza DUPLICADOS por motivo (bug=feedback_id, ugc=url; reason 'duplicate'),
+ * aplica el tope mensual (ugc 3/mes) y el hold del UGC (post vivo N días).
  */
 export async function createRewardSubmission(
   params: { userId: string; type: RewardType; url?: string; screenshotUrl?: string; feedbackId?: string },
   exec?: Executor,
 ): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
   const db = exec ?? getAdminDb()
+
+  // Guardarraíl anti-duplicado por MOTIVO (control robusto): nunca 2 recompensas del mismo motivo.
+  // bug → mismo feedback_id; ugc → misma url. Solo cuentan las no-rejected. El referido es idempotente
+  // por su cuenta (fila `referrals`). Ver docs/runbooks/embajadores-recompensas.md §"Anti-duplicado".
+  if (params.type === 'bug' && params.feedbackId) {
+    const [dup] = await db.select({ id: rewardSubmissions.id }).from(rewardSubmissions)
+      .where(and(
+        eq(rewardSubmissions.type, 'bug'),
+        eq(rewardSubmissions.feedbackId, params.feedbackId),
+        sql`${rewardSubmissions.status} <> 'rejected'`,
+      )).limit(1)
+    if (dup) return { ok: false, reason: 'duplicate' }
+  }
+  if (params.type === 'ugc' && params.url) {
+    const [dup] = await db.select({ id: rewardSubmissions.id }).from(rewardSubmissions)
+      .where(and(
+        eq(rewardSubmissions.type, 'ugc'),
+        eq(rewardSubmissions.url, params.url),
+        sql`${rewardSubmissions.status} <> 'rejected'`,
+      )).limit(1)
+    if (dup) return { ok: false, reason: 'duplicate' }
+  }
+
   const count = await countRewardSubmissionsThisMonth(params.userId, params.type, db)
   if (!withinRewardMonthlyCap(params.type, count)) return { ok: false, reason: 'monthly_cap' }
 
