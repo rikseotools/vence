@@ -1,7 +1,9 @@
 // lib/referrals/notify.ts — Notificación al embajador de que ha GANADO dinero (email transaccional).
-// El "badge" del icono 🎁 es server-side (getUnseenEarningsCount, vía reward_earnings). Este módulo es
-// el empujón PROACTIVO por email. Vale para las 3 fuentes (referido/bug/ugc) — la MISMA vía, porque un
-// bonus por feedback también es un ingreso nuevo. Best-effort: NUNCA lanza (no rompe pago ni creación).
+// El "badge" del icono 🎁 es server-side (getUnseenEarningsCount, vía reward_earnings) y se enciende
+// para las 3 fuentes. Este módulo es el empujón PROACTIVO por email, que SOLO se usa en el caso
+// `referido` (webhook Stripe): ahí no hay hilo de soporte por el que avisar. En bug/ugc NO se llama
+// (decisión Manuel 10/07): esas recompensas nacen de un feedback que ya respondemos por su hilo, así
+// que el email sería redundante. Best-effort: NUNCA lanza (no rompe pago ni creación).
 
 import { getReadDb } from '@/db/client'
 import { sql } from 'drizzle-orm'

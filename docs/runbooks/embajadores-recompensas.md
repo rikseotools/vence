@@ -19,13 +19,13 @@ Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cript
 - Referido: nuevo usuario recibe **5 € de descuento** (cupón Stripe `referral_5eur` en la cuenta **Nila**). Hold 5 días (= ventana de reembolso) + clawback si hay chargeback.
 - UGC: tope **3/mes**, requiere link + captura, hold hasta comprobar que el post sigue vivo.
 
-## Notificación al embajador (automática)
+## Notificación al embajador
 
-Cualquier **ingreso nuevo** (un referido que compra **o** un bonus bug/ugc que creamos) le:
-1. **enciende el badge** en el icono 🎁 del header (parpadea hasta que lo pincha), y
-2. le **envía un email** avisándole de que ha ganado dinero.
+Cualquier **ingreso nuevo** (referido que compra, o bonus bug/ugc que creamos) **enciende el badge** en el icono 🎁 del header (parpadea hasta que lo pincha) — es server-side vía la vista `reward_earnings`, común a las 3 fuentes.
 
-Es la MISMA vía para las 3 fuentes (se apoya en la vista `reward_earnings`). Por eso **cuando resolvemos el feedback de un usuario y le damos un bonus, se entera solo** — no hay que avisar a mano.
+El **email** proactivo, en cambio, **solo se manda en el caso `referido`** (webhook Stripe): ahí no hay hilo de soporte por el que avisar. El email va **SIN spoiler** — dice "tienes una recompensa nueva, entra a verla", no revela importe ni fuente (decisión Manuel 10/07; la revelación celebratoria con confeti vive en `/embajadores`).
+
+En **bug/ugc NO se envía email** (decisión Manuel 10/07): esas recompensas nacen de un feedback que **ya le respondemos por su hilo**, así que el email sería redundante. El usuario se entera por el badge 🎁 + tu respuesta en el chat de soporte.
 
 ## Operaciones (API)
 
@@ -46,7 +46,7 @@ body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la op
 ```
 - `bug` = 3 €, `ugc` = 5 €. El importe lo pone el sistema, no se envía.
 - UGC exige `url` (link a la opinión) y respeta el tope 3/mes (devuelve `reward_cap_hit`).
-- Al crearse, el usuario recibe **badge + email** automáticamente.
+- Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). Avísale tú por su hilo de feedback.
 
 ### 3. Consultar saldos por pagar
 ```
