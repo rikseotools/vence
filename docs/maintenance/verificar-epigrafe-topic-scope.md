@@ -74,6 +74,8 @@ questions (preguntas vinculadas a artículos)
 > Epígrafe literal → scope que refleja esos conceptos → artículos existentes → preguntas verificadas.
 
 > 🖥️🌐 **Al scopear un tema de OFIMÁTICA (Word/Excel), elige la variante correcta — no solo la versión.** Existen 3 leyes por versión: `Word/Excel 365` (común), `· 365 Escritorio` y `· 365 Web`. Exige **web** (caso Aragón) → común solo; exige **escritorio** → común + `· Escritorio`; no dice nada → común. La variante la fija la fuente oficial (programa o nota del tribunal), nunca se asume. Detalle: `crear-nueva-oposicion.md` §3c + memoria `project_office_web_escritorio_split`.
+>
+> ⏳ **Si el temario NO especifica la variante y no hay nota del tribunal → NO la adivines: déjalo `needs_human` y SIGUE la oposición.** El tribunal suele publicar una **nota informativa** posterior que aclara la variante (y otras dudas de contenido); el **seguimiento OEP** la detecta (badge 🎯). Al aparecer, se decide contra la nota. Runbook: `docs/runbooks/verificar-epigrafes-scope.md` §5-bis.
 
 ### Páginas involucradas
 

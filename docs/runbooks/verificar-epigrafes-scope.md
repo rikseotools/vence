@@ -53,6 +53,14 @@ Para cada tema en issues, aplicar el manual de epígrafes:
 4. **Re-verificar** ese tema (repetir 1-4) → vuelve a `verified_correct`.
 5. Revalidar caché (`purge-cache` de la ruta del tema, ver `verificar-epigrafe-topic-scope.md` §"revalidar cache").
 
+### 5-bis. Casos genuinamente ambiguos → `needs_human` + SEGUIMIENTO (nota informativa)
+Cuando la decisión de scope/epígrafe **no se resuelve con la ley + el programa oficial** porque el temario es ambiguo — típico: **variante de Office no especificada** (Word/Excel escritorio vs web), versión de software, o el alcance de un concepto ("principios generales" Cap I vs Título I) — **NO fuerces la decisión**:
+1. Marca el tema **`needs_human`** (no `issues`) para que alerte.
+2. **Sigue el seguimiento de la oposición**: el tribunal muy a menudo publica una **NOTA INFORMATIVA / aclaración** posterior a la convocatoria que resuelve justo estas dudas (variante Office, versión, contenido exacto). Ese cambio lo **detecta el seguimiento OEP** (`convocatorias.seguimiento_*` / `oep_detection_signals`, badge 🎯) — al aparecer, revisar la nota y decidir el scope contra ella.
+3. Solo cuando haya fuente que lo aclare (nota informativa, o Manuel decide con conocimiento del examen real) → aplicar y re-verificar. Mientras tanto, `needs_human` es el estado honesto: "duda pendiente de aclaración oficial".
+
+Ejemplo real (SMS T24, 10/07): el temario no dice si Word/Excel es de escritorio o web → `needs_human`, a la espera de nota informativa del SMS o decisión de Manuel, en vez de adivinar la variante.
+
 ## Cobertura global (badge)
 ```bash
 node scripts/verify-topic-scope.cjs audit          # legible
