@@ -114,12 +114,21 @@ async function main() {
   const contWarn = F.filter(x => x.category === 'content' && x.severity === 'warn');
   const line = (l, col) => `<div style="font-family:monospace;font-size:13px;color:${col}">${esc(l)}</div>`;
 
-  // Email APP (nightly, si hay fallos)
-  if (appErr.length) {
+  // ANTI-FATIGA del email de app: dispara con fallos DEFINITIVOS (canary: endpoint
+  // caído o tema publicado vacío) SIEMPRE; los 5xx/render de observable_events solo si
+  // un endpoint supera el umbral (un 502/503 puntual es un blip de capacidad, no un bug).
+  // TODOS los hallazgos están igualmente en la tabla → el panel/badge los ven; el filtro
+  // es solo para decidir si merece EMAIL.
+  const APP_OBS_MIN = Number(process.env.APP_OBS_MIN || 10);
+  const appFire = appErr.filter(f => ['http_down', 'empty_topic'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
+
+  // Email APP (nightly, si hay fallos que merecen alerta)
+  if (appFire.length) {
     const html = `<div style="font-family:sans-serif;max-width:640px"><h2 style="color:#b91c1c">🔴 Salud de la APP — ${esc(stamp)}</h2>
-      <p>Fallos donde un usuario topa con un error (actúa):</p>${appErr.map(f => line(f.message, '#b91c1c')).join('')}
+      <p>Fallos donde un usuario topa con un error (actúa):</p>${appFire.map(f => line(f.message, '#b91c1c')).join('')}
+      ${appErr.length > appFire.length ? `<p style="color:#6b7280;font-size:12px">(+${appErr.length - appFire.length} incidencia(s) de bajo volumen — blips — solo en el panel, no alertan.)</p>` : ''}
       <p style="color:#6b7280;font-size:12px;margin-top:20px">Panel: <a href="https://www.vence.es/admin/salud-sistema">/admin/salud-sistema</a> · Contenido (calidad) va en el resumen semanal.</p></div>`;
-    await sendEmail(`🔴 Vence APP: ${appErr.length} fallo(s)`, html);
+    await sendEmail(`🔴 Vence APP: ${appFire.length} fallo(s)`, html);
   }
   // Email CONTENIDO (semanal, lunes)
   if (isMonday && (contErr.length || contWarn.length)) {
@@ -130,7 +139,7 @@ async function main() {
       <p style="color:#6b7280;font-size:12px;margin-top:20px">Pestaña Contenido: <a href="https://www.vence.es/admin/salud-sistema">/admin/salud-sistema</a></p></div>`;
     await sendEmail(`🟡 Vence contenido semanal: ${contErr.length} ❌ / ${contWarn.length} 🟡`, html);
   }
-  if (!appErr.length && !(isMonday && (contErr.length || contWarn.length))) console.log(`✅ ${stamp} — sin email (app sin fallos${isMonday ? ', contenido limpio' : ', contenido va el lunes'}).`);
+  if (!appFire.length && !(isMonday && (contErr.length || contWarn.length))) console.log(`✅ ${stamp} — sin email (app sin fallos que alerten${isMonday ? ', contenido limpio' : ', contenido va el lunes'}).`);
   process.exit(0);
 
   async function sendEmail(subject, html) {

@@ -60,6 +60,8 @@ export default function HeaderES() {
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
+  // Badge de salud de contenido (snapshot del sweep nocturno; endpoint solo lee la tabla).
+  const [contentHealthBadge, setContentHealthBadge] = useState(0)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [pendingPsychometric, setPendingPsychometric] = useState<{ id: string; categoryName: string | null; totalQuestions: number; questionsAnswered: number }[]>([])
   const [activeTestId, setActiveTestId] = useState<string | null>(null)
@@ -328,6 +330,15 @@ export default function HeaderES() {
         console.error('Error en verificación de feedbacks:', err)
         setPendingFeedbacks(0)
       }
+
+      // Salud de contenido: badge = ❌+🟡 de contenido del snapshot del sweep nocturno.
+      // El endpoint solo LEE la tabla content_health_findings (no recalcula) → barato.
+      try {
+        const chRes = await adminFetch('/api/admin/content-health')
+        setContentHealthBadge(chRes.ok ? (((await chRes.json()) as { badge?: number }).badge || 0) : 0)
+      } catch {
+        setContentHealthBadge(0)
+      }
     }
 
     if (!authLoading && isAdmin && !isOnAdminPage) {
@@ -430,6 +441,16 @@ export default function HeaderES() {
         icon: '👨‍💼',
         isAdmin: true,
         badge: pendingFeedbacks > 0 ? pendingFeedbacks : null,
+        sentryBadge: null,
+      })
+      // Item propio de Salud del sistema con el badge de salud de CONTENIDO (❌+🟡).
+      // Badge separado del de impugnaciones (Panel Admin) para no mezclar conceptos.
+      extraLinks.push({
+        href: '/admin/salud-sistema',
+        label: 'Salud',
+        icon: '🩺',
+        isAdmin: true,
+        badge: contentHealthBadge > 0 ? contentHealthBadge : null,
         sentryBadge: null,
       })
     }
