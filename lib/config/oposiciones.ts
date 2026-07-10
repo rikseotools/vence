@@ -9286,15 +9286,47 @@ export function positionTypeToSlug(positionType: string): string | null {
  * Busca el primer segmento que coincida con un slug registrado.
  * Escalable: al añadir una oposición nueva, funciona automáticamente.
  */
-export function getOposicionSlugFromPathname(pathname: string | null): string {
-  if (!pathname) return ALL_OPOSICION_SLUGS[0]
-  const segments = pathname.split('/').filter(Boolean)
-  for (const segment of segments) {
-    if (ALL_OPOSICION_SLUGS.includes(segment)) {
-      return segment
+/**
+ * Resuelve el slug de oposición para CONSTRUIR NAVEGACIÓN alrededor de un test
+ * ("Volver a Tests", enlaces de la pantalla de resultados, reanudar examen…).
+ *
+ * Prioridad:
+ *  1. Slug explícito en la URL → gana (el usuario está en el contexto de esa
+ *     oposición; p.ej. "/auxiliar-administrativo-madrid/test/...").
+ *  2. Oposición del USUARIO logueado (`userOposicion` = su `target_oposicion`,
+ *     admite id o slug). IMPRESCINDIBLE para tests GLOBALES sin slug en la URL
+ *     ("/test/rapido" de la campana, "/test/mantener-racha", práctica IA): antes
+ *     caían al fallback y BOTABAN al usuario a otra oposición (Técnico Informática,
+ *     la 1ª del config) al terminar el test.
+ *  3. FLAGSHIP estable — NUNCA `ALL_OPOSICION_SLUGS[0]`, que es frágil: reordenar
+ *     el config cambia el [0] sin querer ("bug Raquel", regresión 07/07/2026).
+ *
+ * NO usar para scoring/atribución de un test (esa es la oposición del TEST, no la
+ * del usuario): para eso están `derivePositionTypeFromPathname` / su `positionType`.
+ */
+export function resolveOposicionSlugForNav(
+  pathname: string | null,
+  userOposicion?: string | null,
+): string {
+  if (pathname) {
+    for (const segment of pathname.split('/').filter(Boolean)) {
+      if (ALL_OPOSICION_SLUGS.includes(segment)) return segment
     }
   }
-  return ALL_OPOSICION_SLUGS[0]
+  if (userOposicion) {
+    if (ALL_OPOSICION_SLUGS.includes(userOposicion)) return userOposicion    // ya es slug
+    if (ID_TO_SLUG[userOposicion]) return ID_TO_SLUG[userOposicion]           // es id
+    if (POSITION_TYPE_TO_SLUG[userOposicion]) return POSITION_TYPE_TO_SLUG[userOposicion] // positionType
+  }
+  return FLAGSHIP_OPOSICION_SLUG
+}
+
+// Slug de oposición desde el pathname, con fallback al FLAGSHIP estable (no [0]).
+// Delega en `resolveOposicionSlugForNav` sin oposición de usuario (back-compat:
+// scoring/atribución que solo miran la URL). Para navegación de un usuario
+// logueado, usar `resolveOposicionSlugForNav(pathname, userOposicion)` directamente.
+export function getOposicionSlugFromPathname(pathname: string | null): string {
+  return resolveOposicionSlugForNav(pathname)
 }
 
 /**

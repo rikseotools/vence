@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getOposicionSlugFromPathname, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, resolveOposicionSlugForNav, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
+import { useOposicion } from '@/contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
 import { useAIChat } from '../contexts/AIChatContext'
@@ -356,6 +357,10 @@ export default function OfficialExamLayout({
   // Penalización oficial del examen para esta oposición (1/N por fallo, 0 si no
   // penaliza). Verificada por oposición en lib/config/oposiciones.ts (examScoring).
   const examScoringId = oposicion || getOposicionSlugFromPathname(pathname)
+  // Slug para navegación (enlaces "volver a tests"): oposición del examen/usuario
+  // cuando la URL es global sin slug; nunca ALL_OPOSICION_SLUGS[0].
+  const { oposicionId } = useOposicion()
+  const navSlug = resolveOposicionSlugForNav(pathname, oposicion || oposicionId)
   const penaltyPerWrong = getExamPenaltyPerWrong(examScoringId)
   const penaltyLabel = getExamPenaltyLabel(examScoringId)
 
@@ -1561,7 +1566,7 @@ export default function OfficialExamLayout({
                 {/* Boton volver */}
                 <div className="text-center">
                   <Link
-                    href={config?.backUrl || `/${getOposicionSlugFromPathname(pathname)}/test`}
+                    href={config?.backUrl || `/${navSlug}/test`}
                     className="inline-block px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
                   >
                     ← {config?.backText || 'Volver a Tests'}
@@ -1866,7 +1871,7 @@ export default function OfficialExamLayout({
         {isSubmitted && (
           <div className="mt-8 mb-28 text-center">
             <Link
-              href={config?.backUrl || `/${getOposicionSlugFromPathname(pathname)}/test`}
+              href={config?.backUrl || `/${navSlug}/test`}
               className="inline-block px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-semibold shadow-md"
             >
               ← {config?.backText || 'Volver a Tests'}
