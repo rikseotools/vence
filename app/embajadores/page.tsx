@@ -295,8 +295,10 @@ export default function EmbajadoresPage() {
             })}
           </div>
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6 max-w-2xl mx-auto">
-            Todas las recompensas se pagan en <strong>tarjeta regalo de Amazon</strong> tras una verificación
-            manual. Recomienda siempre de forma honesta y respetando las normas de cada grupo o foro. 🙌
+            Tus recompensas se <strong>acumulan en tu saldo</strong>. Cuando llegas a <strong>5 €</strong>, te
+            pagamos en <strong>tarjetas regalo de Amazon</strong> (5, 10, 20 €…) y lo que sobre se guarda para
+            la próxima, tras una verificación manual. Recomienda siempre de forma honesta y respetando las
+            normas de cada grupo o foro. 🙌
           </p>
         </section>
       </div>

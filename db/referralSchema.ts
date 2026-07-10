@@ -47,7 +47,7 @@ export const rewardPayouts = pgTable("reward_payouts", {
 	index("idx_referral_payouts_status").on(table.status),
 	foreignKey({ columns: [table.beneficiaryUserId], foreignColumns: [userProfiles.id], name: "referral_payouts_referrer_fk" }).onDelete("cascade"),
 	foreignKey({ columns: [table.approvedBy], foreignColumns: [userProfiles.id], name: "referral_payouts_approved_by_fk" }),
-	check("reward_payouts_reason_chk", sql`${table.reason} IN ('referral','bug','ugc')`),
+	check("reward_payouts_reason_chk", sql`${table.reason} IN ('referral','bug','ugc','accumulated')`),
 	check("referral_payouts_status_check", sql`${table.status} IN ('pending','paid','void')`),
 ])
 

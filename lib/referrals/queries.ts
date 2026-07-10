@@ -16,6 +16,8 @@ import {
   rewardAmount,
   withinRewardMonthlyCap,
   UGC_HOLD_DAYS,
+  MIN_PAYOUT_EUR,
+  isValidDenomination,
   type EligibilityReason,
   type RewardType,
 } from './logic'
@@ -437,6 +439,84 @@ export async function getReferralFunnelCounts(
     else if (r.event_type === 'referral_link_click') clicks = Number(r.n)
   }
   return { copies, clicks }
+}
+
+// ============================================================================
+// Pago ACUMULADO — saldo por usuario (referido + bug + ugc) pagado en denominaciones fijas
+// ============================================================================
+
+/** Saldo pendiente del usuario (€): ganado listo (referidos payable + recompensas approved tras hold) − pagado. */
+export async function getUserOwedBalance(userId: string, exec?: Executor): Promise<number> {
+  const db = exec ?? getReadDb()
+  const res = await db.execute(sql`
+    select (
+      coalesce((select sum(bounty_amount) from referrals where referrer_user_id = ${userId} and status = 'payable'), 0)
+      + coalesce((select sum(amount) from reward_submissions where user_id = ${userId} and status = 'approved' and (hold_until is null or hold_until <= now())), 0)
+      - coalesce((select sum(amount) from reward_payouts where beneficiary_user_id = ${userId}), 0)
+    )::float as balance`)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: any[] = Array.isArray(res) ? res : ((res as any)?.rows ?? [])
+  return Number(rows[0]?.balance ?? 0)
+}
+
+export interface AccumBalance {
+  userId: string
+  name: string | null
+  email: string | null
+  balance: number
+}
+
+/** Embajadores con saldo acumulado >= mínimo pagable, listos para cobrar en gift card. */
+export async function getEmbajadoresWithBalance(exec?: Executor): Promise<AccumBalance[]> {
+  const db = exec ?? getReadDb()
+  const res = await db.execute(sql`
+    with earned as (
+      select referrer_user_id as uid, sum(bounty_amount) as amt from referrals where status='payable' group by referrer_user_id
+      union all
+      select user_id as uid, sum(amount) as amt from reward_submissions where status='approved' and (hold_until is null or hold_until <= now()) group by user_id
+    ),
+    e2 as (select uid, sum(amt) as earned from earned group by uid),
+    paid as (select beneficiary_user_id as uid, sum(amount) as amt from reward_payouts group by beneficiary_user_id)
+    select e2.uid as user_id, up.full_name as name, up.email as email,
+           (e2.earned - coalesce(p.amt, 0))::float as balance
+    from e2
+    join user_profiles up on up.id = e2.uid
+    left join paid p on p.uid = e2.uid
+    where (e2.earned - coalesce(p.amt, 0)) >= ${MIN_PAYOUT_EUR}
+    order by balance desc`)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: any[] = Array.isArray(res) ? res : ((res as any)?.rows ?? [])
+  return rows.map((r) => ({ userId: r.user_id, name: r.name, email: r.email, balance: Number(r.balance) }))
+}
+
+/**
+ * Paga una gift card de denominación fija contra el saldo acumulado del usuario. Atómico + valida
+ * (denominación válida + no supera el saldo). Crea un reward_payout reason='accumulated'.
+ */
+export async function payAccumulated(
+  params: { userId: string; adminUserId: string; amount: number; giftcardRef?: string; purchasedVia?: string },
+  exec?: Executor,
+): Promise<{ ok: true; payoutId: string } | { ok: false; reason: string }> {
+  const run = async (tx: Executor) => {
+    if (!isValidDenomination(params.amount)) return { ok: false as const, reason: 'invalid_denomination' }
+    const balance = await getUserOwedBalance(params.userId, tx)
+    if (params.amount > balance) return { ok: false as const, reason: `amount_exceeds_balance(${balance})` }
+
+    const [payout] = await tx.insert(rewardPayouts).values({
+      beneficiaryUserId: params.userId,
+      reason: 'accumulated',
+      amount: String(params.amount),
+      method: 'amazon_giftcard',
+      purchasedVia: params.purchasedVia ?? null,
+      giftcardRef: params.giftcardRef ?? null,
+      status: 'paid',
+      approvedBy: params.adminUserId,
+      paidAt: sql`now()`,
+    }).returning({ id: rewardPayouts.id })
+    return { ok: true as const, payoutId: payout.id }
+  }
+  if (exec) return run(exec)
+  return getAdminDb().transaction(run)
 }
 
 /** Métrica núcleo: registros vs compradores + conversión, por embajador. */

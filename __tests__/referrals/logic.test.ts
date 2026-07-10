@@ -15,6 +15,10 @@ import {
   withinRewardMonthlyCap,
   isLegalRewardTransition,
   UGC_MONTHLY_CAP,
+  payoutDenomination,
+  isValidDenomination,
+  AMAZON_ES_DENOMINATIONS,
+  MIN_PAYOUT_EUR,
   type ReferralState,
 } from '@/lib/referrals/logic'
 
@@ -140,5 +144,29 @@ describe('recompensas bug/UGC', () => {
     expect(isLegalRewardTransition('paid', 'rejected')).toBe(true) // clawback
     expect(isLegalRewardTransition('pending', 'paid')).toBe(false)
     expect(isLegalRewardTransition('rejected', 'approved')).toBe(false)
+  })
+})
+
+describe('pago acumulado (denominaciones Amazon.es)', () => {
+  it('mayor denominación <= saldo; el resto se acumula', () => {
+    expect(payoutDenomination(13)).toBe(10) // sobran 3
+    expect(payoutDenomination(5)).toBe(5)
+    expect(payoutDenomination(9)).toBe(5)
+    expect(payoutDenomination(23)).toBe(20)
+    expect(payoutDenomination(1500)).toBe(1500)
+    expect(payoutDenomination(9999)).toBe(1500) // tope superior de la denominación
+  })
+  it('por debajo del mínimo (5€) no se paga', () => {
+    expect(payoutDenomination(4.99)).toBe(0)
+    expect(payoutDenomination(3)).toBe(0)
+    expect(payoutDenomination(0)).toBe(0)
+    expect(MIN_PAYOUT_EUR).toBe(5)
+  })
+  it('valida denominaciones', () => {
+    expect(isValidDenomination(5)).toBe(true)
+    expect(isValidDenomination(10)).toBe(true)
+    expect(isValidDenomination(3)).toBe(false)
+    expect(isValidDenomination(7)).toBe(false)
+    expect(AMAZON_ES_DENOMINATIONS[0]).toBe(5)
   })
 })

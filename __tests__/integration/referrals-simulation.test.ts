@@ -24,6 +24,9 @@ import {
   createRewardSubmission,
   getPendingRewardSubmissions,
   payRewardSubmission,
+  getUserOwedBalance,
+  getEmbajadoresWithBalance,
+  payAccumulated,
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
@@ -170,6 +173,36 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
         expect(await createRewardSubmission({ userId: user, type: 'ugc', url: `https://t.me/${i}` }, tx)).toMatchObject({ ok: true })
       }
       expect(await createRewardSubmission({ userId: user, type: 'ugc', url: 'https://t.me/4' }, tx)).toMatchObject({ ok: false, reason: 'monthly_cap' })
+    })
+  })
+
+  it('SALDO ACUMULADO: referido(10) + ugc(5) = 15 → pagar 10 → sobran 5', async () => {
+    await withTx(async (tx, [embajador, referido, admin]) => {
+      // referido payable (10 €) para el embajador
+      const code = await getOrCreateReferralCode(embajador, tx)
+      await attributeReferral({ code, referredUserId: referido, referrerIsActivePremium: true, referredHasEverPaid: false }, tx)
+      const [row] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      const paidAt = new Date(new Date(row.attributedAt).getTime() + 1 * DAY).toISOString()
+      await qualifyReferralOnPayment({ referredUserId: referido, planType: 'monthly', paymentRef: 'sub_a', paidAt }, tx)
+      const [q] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      await promoteEligibleToPayable(new Date(new Date(q.holdUntil).getTime()).toISOString(), tx)
+
+      // ugc (5 €) para el MISMO embajador, hold vencido
+      const c = await createRewardSubmission({ userId: embajador, type: 'ugc', url: 'https://t.me/x' }, tx)
+      await tx.update(rewardSubmissions).set({ holdUntil: sql`now() - interval '1 day'` }).where(eq(rewardSubmissions.id, (c as { ok: true; id: string }).id))
+
+      // saldo = 10 + 5 = 15
+      expect(await getUserOwedBalance(embajador, tx)).toBe(15)
+      expect((await getEmbajadoresWithBalance(tx)).find((e) => e.userId === embajador)?.balance).toBe(15)
+
+      // pagar la mayor denominación <= 15 = 10 €
+      expect(await payAccumulated({ userId: embajador, adminUserId: admin, amount: 10, giftcardRef: 'AMZN' }, tx)).toMatchObject({ ok: true })
+      // saldo restante = 5 (se acumula)
+      expect(await getUserOwedBalance(embajador, tx)).toBe(5)
+
+      // pagar 10 de nuevo → excede el saldo; y 7 → denominación inválida
+      expect(await payAccumulated({ userId: embajador, adminUserId: admin, amount: 10 }, tx)).toMatchObject({ ok: false })
+      expect(await payAccumulated({ userId: embajador, adminUserId: admin, amount: 7 }, tx)).toMatchObject({ ok: false, reason: 'invalid_denomination' })
     })
   })
 })

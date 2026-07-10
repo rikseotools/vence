@@ -120,3 +120,27 @@ const REWARD_LEGAL_TRANSITIONS: Record<RewardSubmissionState, RewardSubmissionSt
 export function isLegalRewardTransition(from: RewardSubmissionState, to: RewardSubmissionState): boolean {
   return REWARD_LEGAL_TRANSITIONS[from]?.includes(to) ?? false
 }
+
+// ============================================================================
+// Pago ACUMULADO en gift cards de Amazon.es (denominaciones FIJAS de Bitrefill)
+// ============================================================================
+// Las recompensas se acumulan en el saldo del usuario y se pagan en tarjetas de Amazon.es de
+// importes fijos. Regla: cuando el saldo llega al mínimo, se paga la mayor denominación <= saldo
+// y el resto se acumula para la siguiente.
+export const AMAZON_ES_DENOMINATIONS = [5, 10, 20, 50, 100, 200, 400, 500, 1000, 1500] as const
+export const MIN_PAYOUT_EUR = 5
+
+/** Mayor denominación de Amazon.es que se puede pagar con este saldo, o 0 si no llega al mínimo. */
+export function payoutDenomination(balanceEur: number): number {
+  if (!(balanceEur >= MIN_PAYOUT_EUR)) return 0
+  let best = 0
+  for (const d of AMAZON_ES_DENOMINATIONS) {
+    if (d <= balanceEur && d > best) best = d
+  }
+  return best
+}
+
+/** ¿es `amount` una denominación válida de Amazon.es? */
+export function isValidDenomination(amount: number): boolean {
+  return (AMAZON_ES_DENOMINATIONS as readonly number[]).includes(amount)
+}
