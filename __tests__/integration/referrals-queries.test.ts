@@ -16,6 +16,7 @@ import {
   qualifyReferralOnPayment,
   promoteEligibleToPayable,
   getReferralStats,
+  getReferralDetails,
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
@@ -126,6 +127,20 @@ describe('referrals queries — integración RDS (tx rollback)', () => {
       await qualifyReferralOnPayment({ referredUserId: u2, planType: 'monthly', paymentRef: 'pi_m', paidAt }, tx)
       stats = await getReferralStats(u1, tx)
       expect(stats).toMatchObject({ registros: 1, compradores: 1, conversion: 1 })
+    })
+  })
+
+  it('detalle de referidos (join user_profiles: nombre/ciudad/oposición/estado)', async () => {
+    await withTx(async (tx, [u1, u2]) => {
+      const code = await getOrCreateReferralCode(u1, tx)
+      await attributeReferral({ code, referredUserId: u2, referrerIsActivePremium: true, referredHasEverPaid: false }, tx)
+      const details = await getReferralDetails(u1, tx)
+      expect(details).toHaveLength(1)
+      // el referido u2 existe (join innerJoin funciona); status inicial pending; campos presentes.
+      expect(details[0]).toEqual(expect.objectContaining({ status: 'pending' }))
+      expect(details[0]).toHaveProperty('name')
+      expect(details[0]).toHaveProperty('city')
+      expect(details[0]).toHaveProperty('oposicion')
     })
   })
 })

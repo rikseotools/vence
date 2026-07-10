@@ -464,6 +464,24 @@ async function handleCheckoutSessionCompleted(
           } catch (loyaltyErr) {
             console.error('⚠️ [Loyalty] Error aplicando cupón inicial:', loyaltyErr)
           }
+
+          // Programa de embajadores: si este pagador venía de un referido pendiente, calificarlo
+          // (paga en ≤10 días desde la atribución → qualified + hold). Best-effort: NO rompe el pago.
+          // qualifyReferralOnPayment es no-op si no hay referido pendiente.
+          try {
+            const { qualifyReferralOnPayment } = await import('@/lib/referrals/queries')
+            const q = await qualifyReferralOnPayment({
+              referredUserId: userId,
+              planType,
+              paymentRef: subscription.id,
+              paidAt: new Date().toISOString(),
+            })
+            if (q.qualified) {
+              console.log(`🏅 [Referral] Referido ${userId} CALIFICADO — el embajador cobra tras el hold`)
+            }
+          } catch (refErr) {
+            console.error('⚠️ [Referral] Error calificando referido:', (refErr as Error).message)
+          }
         } catch (subErr) {
           const e = subErr as Error
           console.error('⚠️ Error procesando subscription:', e.message)
@@ -1300,6 +1318,23 @@ async function findSettlementForCharge(
 async function handleChargeRefunded(charge: Stripe.Charge, db: Db): Promise<void> {
   const refundedAmount = charge.amount_refunded ?? 0
   const refundReason = charge.refunds?.data?.[0]?.reason ?? null
+
+  // Programa de embajadores: reembolso → rechazar el referido (clawback) para que el cron no lo
+  // promueva a payable. Best-effort; no rompe el flujo de settlement. No-op si no era referido.
+  try {
+    if (charge.customer) {
+      const [u] = await db.select({ id: userProfiles.id }).from(userProfiles)
+        .where(eq(userProfiles.stripeCustomerId, charge.customer as string)).limit(1)
+      if (u) {
+        const { rejectReferralOnRefund } = await import('@/lib/referrals/queries')
+        const r = await rejectReferralOnRefund(u.id)
+        if (r.rejected) console.log(`🏅 [Referral] Reembolso → referido de ${u.id} RECHAZADO (${r.rejected})`)
+        if (r.alreadyPaid) console.warn(`🏅 [Referral] Reembolso de ${u.id} con recompensa YA pagada — clawback MANUAL`)
+      }
+    }
+  } catch (e) {
+    console.error('⚠️ [Referral] Error en clawback por reembolso:', (e as Error).message)
+  }
 
   const settlement = await findSettlementForCharge(charge, db)
   if (!settlement) {

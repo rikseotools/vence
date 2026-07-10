@@ -368,7 +368,9 @@ export default function HeaderES() {
       { href: '/teoria', label: 'Teoría Legal', icon: '📖', title: 'Lee el texto de las leyes y búscalas por nombre' },
       { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
-      { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
+      { href: '/oposiciones', label: 'Oposiciones', icon: '📋' },
+      // Embajadores: SOLO premium/legacy (el programa es solo-premium).
+      ...((isPremium || isLegacy) ? [{ href: '/embajadores', label: 'Embajadores', icon: '🏅', title: 'Gana recompensas recomendando Vence' }] : [])
     ]
 
     // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
@@ -598,6 +600,18 @@ export default function HeaderES() {
                 >
                   <span className="text-lg">💬</span>
                 </Link>
+
+                {/* 🏅 ICONO DE EMBAJADORES - Solo premium/legacy (programa solo-premium) */}
+                {(isPremium || isLegacy) && (
+                  <Link
+                    href="/embajadores"
+                    className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+                    aria-label="Programa de Embajadores"
+                    title="Embajadores — gana recompensas recomendando Vence"
+                  >
+                    <span className="text-lg">🏅</span>
+                  </Link>
+                )}
 
                 {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE */}
                 {userProfile && !isPremium && !isLegacy && userProfile.plan_type !== 'trial' && (

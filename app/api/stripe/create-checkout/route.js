@@ -216,6 +216,21 @@ async function _POST(request) {
       }
     }
 
+    // Programa de embajadores: si el usuario tiene un referido PENDING (atribución válida),
+    // aplicar el cupón de 5 € en el checkout. Guardarraíl: nunca sin atribución.
+    // NOTA Stripe: `discounts` y `allow_promotion_codes` NO pueden coexistir → alternamos.
+    let referralCouponId = null
+    try {
+      const { hasPendingReferral } = await import('@/lib/referrals/queries')
+      if (await hasPendingReferral(userId)) {
+        const { ensureReferralCoupon } = await import('@/lib/referrals/coupon')
+        referralCouponId = await ensureReferralCoupon(sc)
+        console.log(`🏅 [Referral] Cupón 5 € aplicado en checkout para referido ${userId}`)
+      }
+    } catch (refCouponErr) {
+      console.error('⚠️ [Referral] No se pudo aplicar el cupón de referido (fail-open):', refCouponErr.message)
+    }
+
     // Crear checkout session con trial
     try {
       const sessionData = {
@@ -242,7 +257,10 @@ async function _POST(request) {
         customer_update: {
           address: 'auto',
         },
-        allow_promotion_codes: true,
+        // Referido → cupón 5 €; resto → códigos promocionales (no pueden ir juntos en Stripe).
+        ...(referralCouponId
+          ? { discounts: [{ coupon: referralCouponId }] }
+          : { allow_promotion_codes: true }),
       }
 
       console.log('🔄 Creando session de Stripe (pago inmediato)...')

@@ -328,8 +328,10 @@ wrapper `withErrorLogging`. Migración **additiva** (no toca tablas vivas).
 - `observable_events`: `referral_attributed`, `referral_qualified`, `referral_payable`, `referral_paid`,
   `referral_rejected`, `referral_fraud_flag`. Dashboard sobre esos + la métrica registros/compradores.
 
-### A.6 Página pública "Gana dinero con Vence" (con icono en el Header)
-- **Ruta:** p.ej. `/gana-dinero` (o `/recompensas`). **Icono en el Header** (nav) que lleva a ella,
+### A.6 Página pública "Embajadores" (con icono en el Header)
+- **Nombre/ruta: `/embajadores`** (decisión 2026-07-10 — NO "gana dinero", suena spam; "referidos" se
+  queda corto ahora que hay 3 vías). Alternativa considerada: "Colaboradores". Título aspiracional
+  ("Hazte embajador de Vence"), no transaccional. **Icono en el Header** (nav) que lleva a ella,
   visible para usuarios logueados (al menos premium para el referido).
 - **Explica las 3 formas de ganar** de forma clara y honesta, **con énfasis en el boca a boca /
   recomendación genuina** (qué cuenta, qué no, cómo enviar link+captura, topes, cuándo se cobra).
@@ -340,7 +342,7 @@ wrapper `withErrorLogging`. Migración **additiva** (no toca tablas vivas).
 ### A.5 Orden de construcción sugerido
 1. Migración + tablas + state machine (referral ✅ hecho; falta generalizar payouts + `reward_submissions`).
 2. `/r/[code]` + captura (cookie + URL + server-side logueado). 3. Cupón 5 € en checkout Nila + guard.
-4. Calificación por webhook + hold. 5. **Página pública `/gana-dinero` + icono Header** + panel embajador
+4. Calificación por webhook + hold. 5. **Página pública `/embajadores` + icono Header** + panel embajador
 + métrica. 6. Bug/UX reward sobre el feedback existente. 7. UGC reward (link+captura+hold+tope).
 8. Panel admin payout manual + email + integración Bitrefill API. 9. Antifraude + observabilidad. 10. Términos.
 
@@ -353,13 +355,21 @@ Cada capa = un modo de fallo distinto. Estado:
    en tx con ROLLBACK (atribución + first-touch, elegibilidad, qualify dentro/fuera de ventana, hold,
    promoción a payable, métrica registros/compradores). ✅ **HECHO (7 tests verdes).** Requiere
    `@jest-environment node` (postgres.js necesita globals de node). Código: `lib/referrals/queries.ts`.
-3. **Simulación (E2E)** — flujo completo simulado: premium genera código → nuevo clica `/r/` → registra
-   → paga en Nila con cupón 5 € → webhook califica → hold → payable → payout. ⏳ PEND.
-4. **Canary (verifica en BD)** — post-deploy: un referido sintético recorre los estados en prod; y guard
-   en create-checkout de que el cupón 5 € SOLO se aplica a un referido atribuido (no se filtra). ⏳ PEND.
-5. **Guardarraíl (ratchet)** — invariantes que bloquean regresión: (a) cupón 5 € nunca se emite sin
-   atribución válida; (b) ningún payout con `hold_until` en el futuro; (c) state machine sin saltos
-   ilegales (mismo patrón que el lifecycle de preguntas); (d) `unique(referred_user_id)`. ⏳ PEND.
+3. **Simulación (E2E)** — `__tests__/integration/referrals-simulation.test.ts`: circuito completo en tx
+   RDS (atribuir → cupón aplicable → pagar → calificar → hold → payable, + rama clawback). ✅ **HECHO (2).**
+4. **Canary (verifica en BD)** — post-deploy: un referido sintético recorre los estados en prod. ⏳ PEND
+   (necesita deploy). El guard "cupón 5 € SOLO con atribución" ya está en código (gate `hasPendingReferral`).
+5. **Guardarraíl (ratchet)** — PARCIAL:
+   - ✅ **HECHO** `__tests__/guardrails/referral-state-machine-ratchet.test.ts` (4): congela estados +
+     matriz de transiciones + terminales + **detección de drift código↔BD** (lee la migración y compara
+     los `CHECK` de status con `REFERRAL_STATES`). Además los invariantes están enforced en Postgres
+     (`CHECK` status, `unique(referred_user_id)`, `no_self`).
+   - ⏳ PEND (dependen de piezas aún no construidas): guard "cupón 5 € nunca sin atribución válida" y
+     "ningún payout con `hold_until` futuro".
+
+**Cerrado 2026-07-10:** capas 1, 2 y 5(parcial) + test del endpoint `/api/referrals/me`. 38 tests verdes.
+Faltan **Simulación (3)** — necesita cerrar el circuito (cupón Nila + webhook + captura en registro) —
+y **Canary (4)** — necesita deploy.
 
 ## 10. Relacionados
 - `lib/stripe.ts` (multi-cuenta Manuel/Nila), memoria `project_stripe_dual_cuenta_nila`.

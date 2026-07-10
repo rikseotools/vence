@@ -3,9 +3,10 @@
 // Cada función acepta un `exec` opcional (db o tx de Drizzle) para poder testear dentro de una
 // transacción con ROLLBACK (integración contra RDS real sin persistir). Diseño: Anexo A del roadmap.
 
-import { and, eq, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { getAdminDb, getReadDb } from '@/db/client'
 import { referralCodes, referrals } from '@/db/referralSchema'
+import { userProfiles, userSubscriptions } from '@/db/schema'
 import {
   generateReferralCode,
   refereeEligibility,
@@ -39,6 +40,42 @@ export async function getOrCreateReferralCode(ownerUserId: string, exec?: Execut
     }
   }
   throw new Error('no se pudo generar un código de referido único')
+}
+
+/** plan_type del usuario (para el gate de embajador = 'premium'). */
+export async function getUserPlanType(userId: string, exec?: Executor): Promise<string | null> {
+  const db = exec ?? getReadDb()
+  const [row] = await db.select({ plan: userProfiles.planType })
+    .from(userProfiles).where(eq(userProfiles.id, userId)).limit(1)
+  return (row?.plan as string | null) ?? null
+}
+
+/** ¿el usuario ha pagado ALGUNA vez? (tiene alguna fila en user_subscriptions → excluye ex-premium). */
+export async function hasUserEverPaid(userId: string, exec?: Executor): Promise<boolean> {
+  const db = exec ?? getReadDb()
+  const [row] = await db.select({ id: userSubscriptions.id })
+    .from(userSubscriptions).where(eq(userSubscriptions.userId, userId)).limit(1)
+  return !!row
+}
+
+/** ¿el usuario tiene un referido en estado `pending`? (atribución válida → puede llevar el cupón 5 €). */
+export async function hasPendingReferral(userId: string, exec?: Executor): Promise<boolean> {
+  const db = exec ?? getReadDb()
+  const [row] = await db.select({ id: referrals.id }).from(referrals)
+    .where(and(eq(referrals.referredUserId, userId), eq(referrals.status, 'pending'))).limit(1)
+  return !!row
+}
+
+/** Resuelve un código de referido ACTIVO → owner, o null si no existe/está inactivo. */
+export async function resolveActiveReferralCode(
+  code: string, exec?: Executor,
+): Promise<{ ownerUserId: string } | null> {
+  const db = exec ?? getReadDb()
+  const [row] = await db.select({ owner: referralCodes.ownerUserId })
+    .from(referralCodes)
+    .where(and(eq(referralCodes.code, code), eq(referralCodes.active, true)))
+    .limit(1)
+  return row ? { ownerUserId: row.owner as string } : null
 }
 
 export interface AttributeInput {
@@ -120,6 +157,26 @@ export async function qualifyReferralOnPayment(
   return { qualified: true }
 }
 
+/**
+ * Clawback: si el referido reembolsa/hace chargeback, rechaza su referido para que NO se pague.
+ * Rechaza estados no-terminales (pending/qualified/payable). Si ya estaba `paid`, avisa (clawback manual).
+ */
+export async function rejectReferralOnRefund(
+  referredUserId: string, exec?: Executor,
+): Promise<{ rejected: number; alreadyPaid: boolean }> {
+  const db = exec ?? getAdminDb()
+  const [paid] = await db.select({ id: referrals.id }).from(referrals)
+    .where(and(eq(referrals.referredUserId, referredUserId), eq(referrals.status, 'paid'))).limit(1)
+  const res = await db.update(referrals)
+    .set({ status: 'rejected', updatedAt: sql`now()` })
+    .where(and(
+      eq(referrals.referredUserId, referredUserId),
+      inArray(referrals.status, ['pending', 'qualified', 'payable']),
+    ))
+    .returning({ id: referrals.id })
+  return { rejected: res.length, alreadyPaid: !!paid }
+}
+
 /** Promueve `qualified` → `payable` cuando el hold ya venció (para el cron). Devuelve nº promovidos. */
 export async function promoteEligibleToPayable(nowIso: string, exec?: Executor): Promise<number> {
   const db = exec ?? getAdminDb()
@@ -128,6 +185,34 @@ export async function promoteEligibleToPayable(nowIso: string, exec?: Executor):
     .where(and(eq(referrals.status, 'qualified'), lte(referrals.holdUntil, nowIso)))
     .returning({ id: referrals.id })
   return res.length
+}
+
+export interface ReferralDetail {
+  name: string | null
+  city: string | null
+  oposicion: string | null
+  status: string
+  date: string
+}
+
+/** Detalle por referido (nombre, ciudad, oposición, estado, fecha) para el panel del embajador. */
+export async function getReferralDetails(
+  referrerUserId: string, exec?: Executor,
+): Promise<ReferralDetail[]> {
+  const db = exec ?? getReadDb()
+  const rows = await db.select({
+    name: userProfiles.fullName,
+    city: userProfiles.ciudad,
+    oposicion: userProfiles.targetOposicion,
+    status: referrals.status,
+    date: referrals.attributedAt,
+  })
+    .from(referrals)
+    .innerJoin(userProfiles, eq(referrals.referredUserId, userProfiles.id))
+    .where(eq(referrals.referrerUserId, referrerUserId))
+    .orderBy(desc(referrals.attributedAt))
+    .limit(200)
+  return rows as ReferralDetail[]
 }
 
 /** Métrica núcleo: registros vs compradores + conversión, por embajador. */
