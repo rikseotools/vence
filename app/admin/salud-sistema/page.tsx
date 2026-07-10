@@ -12,6 +12,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { runbookForKind, runbookGuideRows } from '@/lib/admin/runbookRegistry'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -602,20 +603,78 @@ function ContentHealthCard({ content }: { content: ContentHealthResponse | null 
     <IndicatorCard title="Salud del contenido" status={content.status} metric={metric} hint={`Sweep: ${when}${content.stale ? ' · ⚠️ stale (>36h)' : ''} · calidad, no fallos de app`}>
       {content.content.length > 0 ? (
         <ul className="text-xs space-y-1 mt-2 max-h-56 overflow-y-auto">
-          {content.content.map((f, i) => (
-            <li key={i} className={f.severity === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
-              {f.severity === 'error' ? '❌' : '🟡'}{' '}
-              {f.oposicion_slug && <span className="font-mono">{f.oposicion_slug}</span>} · {f.message}
-            </li>
-          ))}
+          {content.content.map((f, i) => {
+            const rb = runbookForKind(f.kind)
+            return (
+              <li key={i} className={f.severity === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>
+                {f.severity === 'error' ? '❌' : '🟡'}{' '}
+                {f.oposicion_slug && <span className="font-mono">{f.oposicion_slug}</span>} · {f.message}
+                {rb && (
+                  <span
+                    className="ml-1 inline-block px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[11px] whitespace-nowrap"
+                    title={`Runbook: ${rb.runbook ?? '—'} · ${rb.claudeHace}`}
+                  >
+                    → dile a Claude: «{rb.triggerPhrase}»
+                  </span>
+                )}
+              </li>
+            )
+          })}
         </ul>
       ) : (
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Contenido coherente (0 incoherencias).</p>
       )}
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
-        Verificar contra boletín oficial. Runbook <code>salud-contenido.md</code>.
-      </p>
+      <RunbookGuide />
     </IndicatorCard>
+  )
+}
+
+/**
+ * Guía de runbooks: mapa finding → frase-gatillo → qué hace Claude → runbook.
+ * Data-driven desde lib/admin/runbookRegistry.ts (fuente única). Resuelve la
+ * "confluencia": muchos kinds de salud, cada uno con su remediación distinta.
+ */
+function RunbookGuide() {
+  const [open, setOpen] = useState(false)
+  const rows = runbookGuideRows()
+  return (
+    <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+      >
+        {open ? '▾' : '▸'} Guía de runbooks ({rows.length}) — qué frase decirle a Claude por cada hallazgo
+      </button>
+      {open && (
+        <div className="mt-2 overflow-x-auto">
+          <table className="min-w-full text-[11px]">
+            <thead>
+              <tr className="text-left text-gray-500 dark:text-gray-400">
+                <th className="pr-3 py-1 font-medium">Hallazgo</th>
+                <th className="pr-3 py-1 font-medium">Dile a Claude</th>
+                <th className="pr-3 py-1 font-medium">Qué hace</th>
+                <th className="py-1 font-medium">Runbook</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.triggerPhrase} className="border-t border-gray-100 dark:border-gray-800 align-top">
+                  <td className="pr-3 py-1 text-gray-700 dark:text-gray-300">{r.title}</td>
+                  <td className="pr-3 py-1 font-mono text-blue-700 dark:text-blue-300 whitespace-nowrap">«{r.triggerPhrase}»</td>
+                  <td className="pr-3 py-1 text-gray-600 dark:text-gray-400">{r.claudeHace}</td>
+                  <td className="py-1 text-gray-500 dark:text-gray-400">
+                    {r.runbook ? <code>{r.runbook.replace('docs/runbooks/', '')}</code> : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 italic">
+            Verificar siempre contra boletín oficial. Fuente: <code>lib/admin/runbookRegistry.ts</code>.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 

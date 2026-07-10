@@ -100,6 +100,40 @@ async function main() {
     WHERE severity='error' AND event_type = ANY($1) AND ts > now() - interval '24 hours' GROUP BY event_type, endpoint ORDER BY n DESC LIMIT 25`, [CRIT])).rows;
   for (const o of obs) add('app', 'error', null, o.event_type, `${o.n}× ${o.event_type} @ ${o.endpoint}${o.sample ? ' — ' + o.sample.slice(0, 80) : ''}`, { n: o.n });
 
+  // ── CONTENIDO: tablas APLANADAS (importadas de PDF sin rejilla) ──
+  // Mirror INLINE de lib/teoria/detectFlattenedTable.ts (el sweep es self-contained;
+  // la imagen standalone no incluye lib/*.ts) — MANTENER EN SYNC (guardado por
+  // __tests__/lib/teoria/detectFlattenedTable.test.ts). El render no puede
+  // reconstruir tablas con seguridad → se detectan aquí y se arreglan por datos.
+  const isCellLine = (l) => l.length > 0 && l.length <= 30 && !/[.:;]$/.test(l) && !/^([a-zñ]\)|\d{1,3}\.)/.test(l) && /[A-Za-z0-9]/.test(l);
+  const STRUCTURE_RE = /\b(T[IÍ]TULO|CAP[IÍ]TULO|SECCI[OÓ]N|SUBSECCI[OÓ]N|ANEXO|DISPOSICI[OÓ]N|LIBRO)\b/i;
+  const detectFlattenedTable = (content) => {
+    if (!content || !content.trim()) return null;
+    const lines = content.replace(/\r\n?/g, '\n').split('\n').map((l) => l.trim()).filter(Boolean);
+    let best = [], run = [];
+    for (const l of lines) { if (isCellLine(l)) { run.push(l); if (run.length > best.length) best = run.slice(); } else run = []; }
+    if (best.length < 4) return null;
+    if (STRUCTURE_RE.test(best.join(' '))) return null; // índice de estructura → no es tabla
+    return best;
+  };
+  const flat = [];
+  for (let off = 0; off <= 60000; off += 4000) {
+    const rows = (await c.query(`SELECT l.slug, a.id aid, a.article_number an, a.content
+      FROM articles a JOIN laws l ON a.law_id = l.id
+      WHERE a.is_active AND l.is_active AND position('<' in a.content) = 0 AND length(a.content) > 200 AND a.article_number ~ '^[0-9]+$'
+      ORDER BY a.id LIMIT 4000 OFFSET ${off}`)).rows;
+    if (!rows.length) break;
+    for (const r of rows) { const cells = detectFlattenedTable(r.content); if (cells) flat.push({ slug: r.slug, an: r.an, aid: r.aid, n: cells.length, cells: cells.slice(0, 6) }); }
+  }
+  if (flat.length) {
+    const leyes = [...new Set(flat.map((f) => f.slug))];
+    // UN finding agregado (no inundar el snapshot/email con ~140 filas). El detalle
+    // por-artículo lo regenera bajo demanda la herramienta de arreglo (Fase 3).
+    add('content', 'warn', null, 'flattened_table',
+      `${flat.length} artículo(s) con tabla aplanada (import PDF sin rejilla) en ${leyes.length} leyes — arreglo por datos con verificación`,
+      { count: flat.length, laws: leyes.length, sample: flat.slice(0, 15) });
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');
