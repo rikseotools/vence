@@ -14,6 +14,7 @@ import { isTopicTrendVisible, nextTopicTrendVisible } from '@/lib/utils/topicTre
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
+import SubscriptionHistory from '@/components/perfil/SubscriptionHistory'
 import type { User } from '@supabase/supabase-js'
 
 // ============================================
@@ -2252,6 +2253,9 @@ function PerfilPageContent() {
             💳 Mi Suscripción
           </h3>
         </div>
+
+        {/* Historial de hitos — visible para TODOS (premium, cancelado o free). */}
+        <SubscriptionHistory />
 
         {subscriptionData?.hasSubscription && subscriptionData?.subscription ? (
           <div className="space-y-6">
