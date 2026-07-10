@@ -4,8 +4,9 @@
 // transacción con ROLLBACK (integración contra RDS real sin persistir). Diseño: Anexo A del roadmap.
 
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { getAdminDb, getReadDb } from '@/db/client'
-import { referralCodes, referrals } from '@/db/referralSchema'
+import { referralCodes, referrals, rewardPayouts } from '@/db/referralSchema'
 import { userProfiles, userSubscriptions } from '@/db/schema'
 import {
   generateReferralCode,
@@ -213,6 +214,76 @@ export async function getReferralDetails(
     .orderBy(desc(referrals.attributedAt))
     .limit(200)
   return rows as ReferralDetail[]
+}
+
+export interface PayableReferral {
+  referralId: string
+  referrerUserId: string
+  referrerName: string | null
+  referrerEmail: string | null
+  referredName: string | null
+  amount: string
+  qualifiedAt: string | null
+}
+
+/** Referidos listos para pagar (status `payable`) con datos del embajador y del referido. */
+export async function getPayableReferrals(exec?: Executor): Promise<PayableReferral[]> {
+  const db = exec ?? getReadDb()
+  const refUp = alias(userProfiles, 'ref_up')
+  const rdUp = alias(userProfiles, 'rd_up')
+  const rows = await db.select({
+    referralId: referrals.id,
+    referrerUserId: referrals.referrerUserId,
+    referrerName: refUp.fullName,
+    referrerEmail: refUp.email,
+    referredName: rdUp.fullName,
+    amount: referrals.bountyAmount,
+    qualifiedAt: referrals.qualifiedAt,
+  })
+    .from(referrals)
+    .innerJoin(refUp, eq(referrals.referrerUserId, refUp.id))
+    .leftJoin(rdUp, eq(referrals.referredUserId, rdUp.id))
+    .where(eq(referrals.status, 'payable'))
+    .orderBy(referrals.qualifiedAt)
+  return rows as PayableReferral[]
+}
+
+/**
+ * Marca un referido `payable` como PAGADO: crea el reward_payout y pasa el referido a `paid`.
+ * Atómico (tx) + optimista (solo si sigue `payable`). Devuelve el id del payout.
+ */
+export async function payReferral(
+  params: { referralId: string; adminUserId: string; giftcardRef?: string; purchasedVia?: string },
+  exec?: Executor,
+): Promise<{ ok: true; payoutId: string } | { ok: false; reason: string }> {
+  const run = async (tx: Executor) => {
+    const [ref] = await tx.select({
+      id: referrals.id, referrer: referrals.referrerUserId,
+      amount: referrals.bountyAmount, status: referrals.status,
+    }).from(referrals).where(eq(referrals.id, params.referralId)).limit(1)
+    if (!ref) return { ok: false as const, reason: 'not_found' }
+    if (ref.status !== 'payable') return { ok: false as const, reason: `not_payable(${ref.status})` }
+
+    const [payout] = await tx.insert(rewardPayouts).values({
+      beneficiaryUserId: ref.referrer,
+      reason: 'referral',
+      sourceId: ref.id,
+      amount: ref.amount,
+      method: 'amazon_giftcard',
+      purchasedVia: params.purchasedVia ?? null,
+      giftcardRef: params.giftcardRef ?? null,
+      status: 'paid',
+      approvedBy: params.adminUserId,
+      paidAt: sql`now()`,
+    }).returning({ id: rewardPayouts.id })
+
+    await tx.update(referrals)
+      .set({ status: 'paid', payoutId: payout.id, updatedAt: sql`now()` })
+      .where(and(eq(referrals.id, ref.id), eq(referrals.status, 'payable')))
+    return { ok: true as const, payoutId: payout.id }
+  }
+  if (exec) return run(exec)
+  return getAdminDb().transaction(run)
 }
 
 /** Métrica núcleo: registros vs compradores + conversión, por embajador. */

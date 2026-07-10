@@ -9,7 +9,7 @@
 
 import { eq } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
-import { referrals } from '@/db/referralSchema'
+import { referrals, rewardPayouts } from '@/db/referralSchema'
 import { userProfiles } from '@/db/schema'
 import {
   getOrCreateReferralCode,
@@ -19,6 +19,8 @@ import {
   promoteEligibleToPayable,
   rejectReferralOnRefund,
   getReferralStats,
+  getPayableReferrals,
+  payReferral,
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
@@ -85,6 +87,40 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
       // el cron ya NO lo promueve (no está qualified) y no cuenta como comprador
       expect(await promoteEligibleToPayable(new Date(Date.now() + 30 * DAY).toISOString(), tx)).toBe(0)
       expect(await getReferralStats(embajador, tx)).toMatchObject({ compradores: 0 })
+    })
+  })
+
+  it('payout admin: payable → payReferral → paid + reward_payout (10 €), doble pago rechazado', async () => {
+    await withTx(async (tx, [embajador, referido, admin]) => {
+      const code = await getOrCreateReferralCode(embajador, tx)
+      await attributeReferral(
+        { code, referredUserId: referido, referrerIsActivePremium: true, referredHasEverPaid: false }, tx)
+      const [row] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      const paidAt = new Date(new Date(row.attributedAt).getTime() + 1 * DAY).toISOString()
+      await qualifyReferralOnPayment({ referredUserId: referido, planType: 'monthly', paymentRef: 'sub_z', paidAt }, tx)
+      const [q] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      await promoteEligibleToPayable(new Date(new Date(q.holdUntil).getTime()).toISOString(), tx)
+
+      // aparece en la lista de payables con el embajador correcto
+      const mine = (await getPayableReferrals(tx)).find((p) => p.referralId === row.id)
+      expect(mine).toBeTruthy()
+      expect(mine!.referrerUserId).toBe(embajador)
+
+      // el admin lo paga
+      const pay = await payReferral(
+        { referralId: row.id, adminUserId: admin, giftcardRef: 'AMZN-TEST', purchasedVia: 'bitrefill' }, tx)
+      expect(pay).toMatchObject({ ok: true })
+
+      // referido → paid + reward_payout creado (reason referral, beneficiario embajador, 10 €)
+      const [after] = await tx.select().from(referrals).where(eq(referrals.id, row.id)).limit(1)
+      expect(after.status).toBe('paid')
+      expect(after.payoutId).toBeTruthy()
+      const [po] = await tx.select().from(rewardPayouts).where(eq(rewardPayouts.id, after.payoutId)).limit(1)
+      expect(po).toMatchObject({ reason: 'referral', beneficiaryUserId: embajador, status: 'paid' })
+      expect(Number(po.amount)).toBe(10)
+
+      // pagar otra vez → rechazado (ya no es payable) → sin doble gift card
+      expect(await payReferral({ referralId: row.id, adminUserId: admin }, tx)).toMatchObject({ ok: false })
     })
   })
 })

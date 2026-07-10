@@ -1,0 +1,34 @@
+name: Referrals Promote
+
+# Programa de embajadores: promueve los referidos `qualified` → `payable` cuando su hold
+# (pago + 5 días) ya venció, para que aparezcan en el panel de payout del admin.
+# Idempotente. Diseño: docs/roadmap/programa-referidos-embajadores.md (Anexo A.4).
+
+on:
+  schedule:
+    - cron: '30 6 * * *' # cada día a las 06:30 UTC
+  workflow_dispatch:
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call referrals-promote endpoint
+        run: |
+          URL="https://www.vence.es/api/cron/referrals-promote"
+
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${URL}")
+
+          echo "Response: $RESPONSE"
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+          PROMOTED=$(echo "$RESPONSE" | jq -r '.promoted // 0')
+          echo "🏅 Referrals promote - $(date) → promoted=$PROMOTED"
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ Cron endpoint failed"
+            exit 1
+          fi
