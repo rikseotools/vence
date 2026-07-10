@@ -231,6 +231,10 @@ async function _POST(request) {
       }
     } catch (refCouponErr) {
       console.error('⚠️ [Referral] No se pudo aplicar el cupón de referido (fail-open):', refCouponErr.message)
+      try {
+        const { emitReferralEvent } = await import('@/lib/referrals/observability')
+        emitReferralEvent('referral_error', { userId, endpoint: '/api/stripe/create-checkout', severity: 'warn', metadata: { step: 'coupon', message: refCouponErr.message } })
+      } catch { /* la observabilidad nunca rompe el checkout */ }
     }
 
     // Crear checkout session con trial

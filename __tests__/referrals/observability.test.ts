@@ -12,6 +12,7 @@ import { emitFireAndForget } from '@/lib/observability/emit'
 import { emitReferralEvent } from '@/lib/referrals/observability'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
 import { _POST as trackCopy } from '@/app/api/referrals/track-copy/route'
+import { _POST as trackView } from '@/app/api/referrals/track-view/route'
 
 const mEmit = emitFireAndForget as unknown as jest.Mock
 const mAuth = getAuthenticatedUser as unknown as jest.Mock
@@ -48,5 +49,24 @@ describe('POST /api/referrals/track-copy', () => {
     const res = await trackCopy(req())
     expect(res.status).toBe(200)
     expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'referral_link_copy', userId: 'embajador1' }))
+  })
+})
+
+describe('POST /api/referrals/track-view', () => {
+  afterEach(() => jest.clearAllMocks())
+  const req = () => new NextRequest('https://www.vence.es/api/referrals/track-view', { method: 'POST' })
+
+  it('anónimo → emite referral_page_view con userId null + 200 (NO 401)', async () => {
+    mAuth.mockResolvedValue({ ok: false, response: NextResponse.json({}, { status: 401 }) })
+    const res = await trackView(req())
+    expect(res.status).toBe(200)
+    expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'referral_page_view', userId: null }))
+  })
+
+  it('logueado → captura el userId del visitante (trazabilidad)', async () => {
+    mAuth.mockResolvedValue({ ok: true, user: { id: 'visitante1' } })
+    const res = await trackView(req())
+    expect(res.status).toBe(200)
+    expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'referral_page_view', userId: 'visitante1' }))
   })
 })

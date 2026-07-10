@@ -480,9 +480,13 @@ async function handleCheckoutSessionCompleted(
             if (q.qualified) {
               console.log(`🏅 [Referral] Referido ${userId} CALIFICADO — el embajador cobra tras el hold`)
               emitReferralEvent('referral_qualified', { userId, endpoint: '/api/stripe/webhook', metadata: { planType } })
+            } else if (q.reason === 'outside_window') {
+              console.log(`🏅 [Referral] Referido ${userId} pagó FUERA de la ventana → expired`)
+              emitReferralEvent('referral_expired', { userId, endpoint: '/api/stripe/webhook', severity: 'warn', metadata: { planType } })
             }
           } catch (refErr) {
             console.error('⚠️ [Referral] Error calificando referido:', (refErr as Error).message)
+            emitReferralEvent('referral_error', { userId, endpoint: '/api/stripe/webhook', severity: 'warn', metadata: { step: 'qualify', message: (refErr as Error).message } })
           }
         } catch (subErr) {
           const e = subErr as Error
@@ -1339,6 +1343,7 @@ async function handleChargeRefunded(charge: Stripe.Charge, db: Db): Promise<void
     }
   } catch (e) {
     console.error('⚠️ [Referral] Error en clawback por reembolso:', (e as Error).message)
+    emitReferralEvent('referral_error', { endpoint: '/api/stripe/webhook', severity: 'warn', metadata: { step: 'clawback', message: (e as Error).message } })
   }
 
   const settlement = await findSettlementForCharge(charge, db)

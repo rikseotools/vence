@@ -102,6 +102,14 @@ export default function EmbajadoresPage() {
   const fullName = (userProfile?.full_name || (user?.user_metadata?.full_name as string | undefined) || '').trim()
   const firstName = fullName ? fullName.split(/\s+/)[0] : ''
 
+  // Observabilidad: registra la visita a la página (top del embudo), una vez por carga, para todos.
+  // Manda el token si lo hay → captura el userId del visitante (trazabilidad); anónimo cuenta igual.
+  useEffect(() => {
+    getAuthHeaders()
+      .then((headers) => fetch('/api/referrals/track-view', { method: 'POST', headers }))
+      .catch(() => { /* silencioso */ })
+  }, [])
+
   // (La atribución se dispara globalmente en components/ReferralAttributionOnLogin, montado en el
   //  layout, para cubrir a los referidos que pagan sin volver a esta página.)
 

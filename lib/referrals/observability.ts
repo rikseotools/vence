@@ -7,6 +7,7 @@ import { emitFireAndForget } from '@/lib/observability/emit'
 
 export type ReferralEventType =
   // top de embudo
+  | 'referral_page_view'           // carga de /embajadores (visita, logueado o no)
   | 'referral_link_click'          // /r/<code> visitado
   | 'referral_link_copy'           // botón Copiar en /embajadores
   // atribución
@@ -15,9 +16,11 @@ export type ReferralEventType =
   // conversión
   | 'referral_coupon_applied'      // cupón 5 € aplicado en checkout
   | 'referral_qualified'           // pago dentro de ventana → qualified
+  | 'referral_expired'             // pago FUERA de la ventana (10d) → expired
   | 'referral_refund_clawback'     // reembolso → rechazado
   | 'referral_promoted_payable'    // cron: qualified → payable
   | 'referral_paid'                // admin pagó la gift card
+  | 'referral_error'              // FALLO capturado en el flujo (metadata.step: qualify|clawback|coupon)
   // recompensas bug/ugc
   | 'reward_created'
   | 'reward_cap_hit'
