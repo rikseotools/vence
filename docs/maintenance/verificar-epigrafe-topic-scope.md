@@ -25,6 +25,15 @@ El detector reconoce leyes por **número** (`Ley 39/2015`), por **nombre complet
 
 Script: `scripts/audit-epigrafe-scope.cjs`.
 
+## 🔎 Sistemas de verificación con provenance (automatizan y RASTREAN esta metodología)
+
+`audit:epigrafe` es un heurístico mecánico de una sola pasada. Además existen **dos sistemas que aplican esta metodología con agentes y dejan estado durable + auto-invalidación** (runbook operativo: `docs/runbooks/verificar-epigrafes-scope.md`):
+
+- **Sistema 1 — scope↔epígrafe** (`topic_scope_verification`, `npm run verify:scope`): 2 agentes independientes verifican que el scope refleja el epígrafe (lo de este manual). Estado por tema (`verified_correct`/`verified_issues`), invalidado por trigger al editar el scope.
+- **Sistema 2 — literalidad del epígrafe** (`topic_epigrafe_verification`, `npm run verify:epigrafe`): verifica que `topics.epigrafe` es el texto LITERAL del temario de la convocatoria vigente (integrado en convocatorias/OEP: fuente = `programa_url`, detección = el seguimiento). Cierra el punto ciego de que el epígrafe de BD **no está garantizado literal** (bug T17: "Presupuestos Generales" vs el oficial "Concepto, elaboración y aprobación de los Presupuestos Generales").
+
+Los dos se ven en el **badge de `/admin/contenido`** y se cazan con `npm run verify:gate`. Cuando toques un scope o un epígrafe siguiendo este manual, esos temas pasan a `stale`/`outdated` → re-verificar. Un `verified_issues`/`drift_detected` NO significa "seguro mal": es "revisión humana con esta metodología".
+
 ## ⚠️ Principio fundamental
 
 **El epígrafe DEBE ser el texto LITERAL del boletín oficial** (BOE, BOP, BOCYL, BOJA, DOG, DOGV, BORM, etc.) que publicó la convocatoria. NUNCA:

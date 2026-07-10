@@ -1400,6 +1400,14 @@ npm run canary:oposiciones -- <slug>
 ```
 
 > **Por qué existen (incidente Granada, 09/07):** `disponible=false` en los 28 topics dejaba la landing publicada pero con TODO "en elaboración", y **ningún gate determinista lo detectaba** (solo comprobaban la condición inversa). El canary lo caza recorriendo prod. En su primera pasada sobre el catálogo encontró además 2 landings con **500 persistente** y 1 `/temario` con **404**. Detalle de las 3 capas: al final de esta FASE (§6g).
+### 6a-bis. Verificar el CONTENIDO (scope + epígrafe) — no basta con crearlo
+
+Crear la oposición deja los `topic_scope` y `topics.epigrafe` **cableados pero sin verificar**. Antes de darla por buena, pasar los **dos sistemas de verificación de contenido** (provenance durable + auto-invalidación; runbook `docs/runbooks/verificar-epigrafes-scope.md`):
+
+- **Sistema 1 — scope↔epígrafe** (`npm run verify:scope`): 2 agentes independientes juzgan si el `topic_scope` refleja el epígrafe. Deja cada tema en `verified_correct` / `verified_issues`.
+- **Sistema 2 — literalidad del epígrafe** (`npm run verify:epigrafe`): compara `topics.epigrafe` contra el temario oficial de la convocatoria (`programa_url`). **Cierra la fase crítica de FASE 1**: garantiza que el epígrafe copiado del boletín es LITERAL, no una paráfrasis (el bug T17). Deja cada tema en `verified_literal` / `drift_detected`.
+
+Objetivo: la oposición nueva sale con sus temas **`verified_correct` + `verified_literal`** (el badge de `/admin/contenido` en 0 para ella). Si S2 marca `drift_detected`, corregir `topics.epigrafe` al literal oficial (el cambio re-invalida el scope de S1 → re-verificar). Guardarraíl de que no queda a medias: `npm run verify:gate`.
 
 **Test de integridad de landings** (`__tests__/config/landingDataIntegrity.test.ts`):
 
