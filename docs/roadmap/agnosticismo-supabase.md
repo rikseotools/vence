@@ -22,6 +22,18 @@ Revisión empírica del estado (contra prod, hoy):
 
 **SIGUIENTE PASO (revisado 09/07):** el blocker gordo (writes de cliente) ya no existe. Orden recomendado: (a) confirmar+eliminar el path muerto `ai/verify-answer`/`question_verifications`; (b) migrar los ~15 reads server/cliente a Drizzle/endpoints; (c) cerrar la coupling de AUTH (`auth-agnostico-jwks-y-rls.md`: retirar el fallback remoto de `verifyAuth` + decidir el destino de `auth.users`); (d) SOLO entonces retirar CNAME `auth.vence.es` + decomisionar. La "sync misteriosa" ya no bloquea (era el dual-path de tests, ahora cerrado).
 
+### ✅ 2026-07-10 — DATA LAYER 100% FUERA DE SUPABASE (solo queda AUTH + storage)
+
+Ejecutados (a)+(b): el **último write** (dead insert `question_verifications`, commit `7bd5edb5`) y **todos los reads de DATOS**. Migrados a Drizzle/RDS + puertos compartidos:
+- `ai/verify-answer` (`0fc94427`+`716a9b1d`): key OpenAI→`getAiApiKey`/`getOpenAI`, búsqueda→`searchArticlesBySimilarity` (pgvector), fallback→Drizzle. **Enrutado por puertos IA compartidos** (cambiar de proveedor IA = tocar `lib/chat/shared/openai.ts`, no el endpoint).
+- 3 endpoints admin (`7717914f`): `newsletters/audience` (createClient muerto quitado), `email-events` (subscriptionCount reescrito nativo sobre `user_profiles`+`email_preferences` — la fn `get_subscription_count()` es Supabase-específica y **falla en RDS**: cuenta desde `auth.users.email_confirmed_at`, tabla vacía en RDS), `broadcast` (user_profiles+email_preferences→Drizzle).
+
+**Inventario preciso del resto (real, no comentarios) — SOLO 6 ficheros:**
+- 🔴 **AUTH (5)** = la coupling profunda, todos son PORTOS (se reescribe la impl, no los callers): `lib/api/shared/auth.ts` (`getServiceClient`), `lib/api/auth/verifyAuth.ts` (fallback remoto `getUser()` en modo `off`/`shadow`), `lib/security/adminApiGuard.ts` (`.auth.get`), `lib/supabase.ts` (cliente auth browser: `.auth.on/.get`), `lib/armando/supabaseAdmin.ts`. → plan `auth-agnostico-jwks-y-rls.md`.
+- 🟡 **Storage (1)**: `lib/api/video-courses/queries.ts` (`.storage`) → sub-proyecto S3.
+
+**SIGUIENTE (revisado 10/07):** solo queda AUTH + storage. El data-layer ya no bloquea el apagado; el bloqueador REAL es ahora **exclusivamente la identidad** (`auth.users` viva en Supabase para los pre-flip + el fallback remoto de `verifyAuth`). Cerrar eso = plan de auth agnóstico. Storage = mover a S3 (independiente).
+
 ---
 
 ## 🚨 2026-07-04 (tarde) — El cliente SEGUÍA escribiendo a Supabase (hueco C1) + inventario para retirar DNS/Supabase
