@@ -1,21 +1,34 @@
 'use client'
 
 // components/TeoriaSearch.tsx
-// Buscador del catálogo de teoría. Sincroniza el término con la URL (?q=), de
-// modo que la búsqueda la resuelve el SERVIDOR (searchTeoriaCatalog sobre la
-// matview): funciona sin JS, es enlazable/compartible y escala con el catálogo.
-// Este componente sólo añade la mejora de tecleo (debounce) sobre esa base.
+// Buscador del catálogo de teoría. Sincroniza el término con la URL (?q=): la
+// búsqueda la resuelve el SERVIDOR (searchTeoriaCatalog sobre la matview), es
+// enlazable/compartible y escala con el catálogo.
+//
+// GATE DE CUOTA (2026-07): antes de navegar a una nueva búsqueda, consulta
+// /api/teoria/search (server-side: Redis + premium + device/IP). Free+anónimos
+// tienen 5 búsquedas/día; premium ilimitado. Si el gate devuelve 429, se muestra
+// el CTA (registro para anónimos, premium para logueados) y NO se navega. Ver
+// lib/api/featureLimits.ts. Fail-open: si el gate falla (red), se navega igual.
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 const DEBOUNCE_MS = 300
+
+interface Blocked {
+  loggedIn: boolean
+  limit: number
+}
 
 export default function TeoriaSearch({ initialQuery = '' }: { initialQuery?: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [value, setValue] = useState(initialQuery)
   const [isPending, startTransition] = useTransition()
+  const [blocked, setBlocked] = useState<Blocked | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Mantener el input sincronizado si la URL cambia por navegación externa
@@ -24,35 +37,57 @@ export default function TeoriaSearch({ initialQuery = '' }: { initialQuery?: str
     setValue(searchParams.get('q') ?? '')
   }, [searchParams])
 
-  const pushQuery = (raw: string) => {
-    const q = raw.trim()
+  const navigate = (q: string) => {
     const params = new URLSearchParams(searchParams.toString())
     if (q) params.set('q', q)
     else params.delete('q')
-    // Cualquier búsqueda nueva vuelve a la página 1.
-    params.delete('page')
+    params.delete('page') // cualquier búsqueda nueva vuelve a la página 1
     const qs = params.toString()
     startTransition(() => {
       router.replace(qs ? `/teoria?${qs}` : '/teoria', { scroll: false })
     })
   }
 
+  const pushQuery = async (raw: string) => {
+    const q = raw.trim()
+    // Limpiar / volver al catálogo no consume cuota ni se gatea.
+    if (!q) {
+      setBlocked(null)
+      navigate('')
+      return
+    }
+    // Gate de cuota ANTES de navegar. Fail-open ante error de red.
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/teoria/search?q=${encodeURIComponent(q)}`, { headers })
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}))
+        setBlocked({ loggedIn: !!body.loggedIn, limit: Number(body.limit) || 5 })
+        return
+      }
+    } catch {
+      // Fail-open: no bloquear al usuario por un fallo nuestro.
+    }
+    setBlocked(null)
+    navigate(q)
+  }
+
   const onChange = (raw: string) => {
     setValue(raw)
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => pushQuery(raw), DEBOUNCE_MS)
+    timer.current = setTimeout(() => { void pushQuery(raw) }, DEBOUNCE_MS)
   }
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (timer.current) clearTimeout(timer.current)
-    pushQuery(value)
+    void pushQuery(value)
   }
 
   const clear = () => {
     setValue('')
     if (timer.current) clearTimeout(timer.current)
-    pushQuery('')
+    void pushQuery('')
   }
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
@@ -98,6 +133,29 @@ export default function TeoriaSearch({ initialQuery = '' }: { initialQuery?: str
         Escribe el nombre de una ley (ej. <em>Constitución</em>, <em>LPAC</em>) o cualquier
         término que aparezca en su articulado (ej. <em>excedencia voluntaria</em>).
       </p>
+
+      {blocked && (
+        <div
+          role="alert"
+          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/30"
+        >
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+            Has agotado tus {blocked.limit} búsquedas de hoy
+          </p>
+          <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+            {blocked.loggedIn
+              ? 'Hazte premium para tener búsquedas ilimitadas en toda la teoría legal.'
+              : 'Regístrate gratis para seguir buscando (y desbloquea mucho más).'}{' '}
+            Leer cualquier ley sigue siendo gratis e ilimitado.
+          </p>
+          <Link
+            href={blocked.loggedIn ? '/premium' : '/login'}
+            className="mt-3 inline-block rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            {blocked.loggedIn ? 'Hazte premium' : 'Registrarme gratis'}
+          </Link>
+        </div>
+      )}
     </form>
   )
 }
