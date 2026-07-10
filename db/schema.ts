@@ -366,6 +366,54 @@ export const topicScopeVerificationHistory = pgTable("topic_scope_verification_h
 		}).onDelete("cascade"),
 ]);
 
+// Sistema 2: verificación de LITERALIDAD del epígrafe vs convocatoria (20260710 migration).
+// Integrado en convocatorias (source = programa_url por-convocatoria; invalida por
+// programa_last_hash / is_current). Vista topic_epigrafe_verification_effective deriva outdated.
+export const topicEpigrafeVerification = pgTable("topic_epigrafe_verification", {
+	topicId: uuid("topic_id").primaryKey().notNull(),
+	state: text().default('never_sourced').notNull(),
+	sourceConvocatoriaId: uuid("source_convocatoria_id"),
+	verifiedEpigrafeHash: text("verified_epigrafe_hash"),
+	verifiedProgramaHash: text("verified_programa_hash"),
+	findings: jsonb(),
+	verifiedBy: text("verified_by"),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_tev_state").using("btree", table.state.asc().nullsLast()),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [topics.id],
+			name: "topic_epigrafe_verification_topic_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.sourceConvocatoriaId],
+			foreignColumns: [convocatorias.id],
+			name: "topic_epigrafe_verification_source_convocatoria_id_fkey"
+		}).onDelete("set null"),
+	check("topic_epigrafe_verification_state_check", sql`state = ANY (ARRAY['never_sourced'::text, 'verified_literal'::text, 'drift_detected'::text, 'provisional_anterior'::text, 'stale'::text])`),
+]);
+
+export const topicEpigrafeVerificationHistory = pgTable("topic_epigrafe_verification_history", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	topicId: uuid("topic_id").notNull(),
+	state: text().notNull(),
+	sourceConvocatoriaId: uuid("source_convocatoria_id"),
+	epigrafeHash: text("epigrafe_hash"),
+	programaHash: text("programa_hash"),
+	findings: jsonb(),
+	verifiedBy: text("verified_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_tev_hist_topic").using("btree", table.topicId.asc().nullsLast(), table.createdAt.desc().nullsFirst()),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [topics.id],
+			name: "topic_epigrafe_verification_history_topic_id_fkey"
+		}).onDelete("cascade"),
+]);
+
 export const aiVerificationResults = pgTable("ai_verification_results", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	questionId: uuid("question_id"),
@@ -489,6 +537,9 @@ export const convocatorias = pgTable("convocatorias", {
 	seguimientoLastHash: text("seguimiento_last_hash"),
 	seguimientoChangeStatus: text("seguimiento_change_status"),
 	seguimientoChangeDetectedAt: timestamp("seguimiento_change_detected_at", { withTimezone: true, mode: 'string' }),
+	// Hash del temario oficial (programa_url) — Sistema 2 verificación de literalidad de epígrafe.
+	programaLastHash: text("programa_last_hash"),
+	programaLastChecked: timestamp("programa_last_checked", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [

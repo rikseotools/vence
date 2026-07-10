@@ -349,7 +349,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {scopeVerifyAlerts > 0 && (
                       <span
                         className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold"
-                        title="Temas con topic_scope sin verificar / cambiado / con issues (verificar epígrafes)"
+                        title="Contenido a verificar: topic_scope (S1) + literalidad del epígrafe vs convocatoria (S2) sin verificar / cambiado / con issues"
                       >
                         {scopeVerifyAlerts > 99 ? '99+' : scopeVerifyAlerts}
                       </span>

@@ -12,6 +12,7 @@
     "db:pull": "drizzle-kit introspect",
     "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
     "verify:scope": "node scripts/verify-topic-scope.cjs",
+    "verify:epigrafe": "node scripts/verify-epigrafe-literality.cjs",
     "audit:scope-verification": "node scripts/verify-topic-scope.cjs audit",
     "audit:estados": "node scripts/audit-estados-convocatoria.cjs",
     "oep:seguimiento-urls": "node scripts/assign-seguimiento-urls.cjs",

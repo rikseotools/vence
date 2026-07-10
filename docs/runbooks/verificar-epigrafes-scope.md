@@ -58,6 +58,29 @@ node scripts/verify-topic-scope.cjs audit --json   # datos del badge de /admin/c
 ```
 El badge cuenta temas **pendientes** = `never_verified` + `stale` + `verified_issues`. "Todas perfectas" = 100% `verified_correct` fresco.
 
+## Sistema 2 — Literalidad del epígrafe vs convocatoria (integrado en convocatorias/OEP)
+
+Sistema **independiente pero relacionado** con el de scope. Pregunta: *"¿`topics.epigrafe` es el texto LITERAL del temario de la convocatoria vigente?"* (el fallo T17: epígrafe paráfrasis). Fuente = `convocatorias.programa_url` (por-convocatoria); detección = el seguimiento OEP existente, extendido al programa (`convocatorias.programa_last_hash`).
+
+**Estados** (`topic_epigrafe_verification` + vista `topic_epigrafe_verification_effective`): `never_sourced` / `verified_literal` / `drift_detected` / `provisional_anterior` / `stale` / `outdated_convocatoria` (derivado: la convocatoria vigente o su programa cambió).
+
+**Cascada a S1:** cuando corriges un epígrafe en `drift_detected`, el trigger de S1 pone su scope `stale` → re-verificar scope. Una dirección.
+
+**Procedimiento:**
+```bash
+node scripts/verify-epigrafe-literality.cjs dump <position_type>
+#   fetch programa_url de la convocatoria vigente → hash a convocatorias.programa_last_hash
+#   → parsea el temario oficial → vuelca {tema, epigrafe_bd, oficial}
+#   ⚠️ si el boletín no parsea (temario_parseado < 3): literalidad NO verificable automáticamente
+#      para esa oposición (los 42 boletines son heterogéneos, ~30% no parsean).
+```
+Luego agente(s) juzgan `epigrafe_bd` vs `oficial` por tema → veredicto `literal` (permite abreviaturas/erratas/formato) o `drift` (difiere materialmente / cambia el alcance) → consenso →
+```bash
+node scripts/verify-epigrafe-literality.cjs record <position_type> /ruta/consensus.json
+node scripts/verify-epigrafe-literality.cjs status <position_type>
+```
+Tratar los `drift_detected`: coger el texto oficial literal del temario → **actualizar `topics.epigrafe`** (cambiarlo dispara el trigger → re-verificar S1 scope) → revalidar caché. Cuando **el radar/seguimiento detecta convocatoria nueva** (badge 🎯 OEPs), los epígrafes pasan a `outdated_convocatoria` → re-sourcing.
+
 ## Gotchas
 - El `dump` lee `topic_scope` en vivo — corre siempre `dump` justo antes de los agentes.
 - Un `programa_url` puede estar stale/apuntar mal (Vector 3 del manual) — si el temario oficial no cuadra por número, es otro sabor de bug (numeración/versión), no lo fuerces.
