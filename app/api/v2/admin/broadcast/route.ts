@@ -8,19 +8,14 @@
 // solo acepta 'email'.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@supabase/supabase-js'
+import { and, or, eq, ilike } from 'drizzle-orm'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { getDb } from '@/db/client'
+import { userProfiles, emailPreferences } from '@/db/schema'
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'rikseotools@gmail.com').split(',')
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
 
 // Ciudades por comunidad autónoma para filtro por región
 const REGION_CITIES: Record<string, string[]> = {
@@ -58,9 +53,9 @@ async function _POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  // supabase client se mantiene para queries BD posteriores (user_profiles
-  // listing bypaseando RLS).
-  const supabase = getServiceClient()
+  // BD agnóstica (Drizzle/Postgres → getDb/DATABASE_URL). Solo se usan id+email
+  // aguas abajo; display_name/plan_type del select antiguo no se usaban.
+  const db = getDb()
 
   // 2. Validar request
   const body = await request.json()
@@ -71,50 +66,44 @@ async function _POST(request: NextRequest) {
 
   const { oposicion, region, subject, message, channels, testMode } = parsed.data
 
+  // OR de ciudades de una región (ilike), equivalente al `.or('ciudad.ilike...')`.
+  const cityOr = (r: string) => {
+    const cities = REGION_CITIES[r]
+    return cities && cities.length > 0
+      ? or(...cities.map(c => ilike(userProfiles.ciudad, `%${c}%`)))
+      : undefined
+  }
+
   // 3. Buscar usuarios según filtros
-  let query = supabase
-    .from('user_profiles')
-    .select('id, email, display_name, plan_type, target_oposicion, ciudad')
-
-  // Filtro por oposición
-  if (oposicion) {
-    const targetOposicion = oposicion.replace(/-/g, '_')
-    query = query.eq('target_oposicion', targetOposicion)
-  }
-
-  // Filtro por región (usuarios que viven en esa comunidad autónoma)
+  const filters = []
+  if (oposicion) filters.push(eq(userProfiles.targetOposicion, oposicion.replace(/-/g, '_')))
   if (region && !oposicion) {
-    const cities = REGION_CITIES[region]
-    if (cities && cities.length > 0) {
-      // Buscar usuarios cuya ciudad contenga alguna de las ciudades de la región
-      const cityFilters = cities.map(c => `ciudad.ilike.%${c}%`).join(',')
-      query = query.or(cityFilters)
-    }
+    const o = cityOr(region)
+    if (o) filters.push(o)
   }
 
-  const { data: users, error: usersError } = await query
-
-  if (usersError) {
+  let allUsers: Array<{ id: string; email: string | null }> = []
+  try {
+    allUsers = await db
+      .select({ id: userProfiles.id, email: userProfiles.email })
+      .from(userProfiles)
+      .where(filters.length ? and(...filters) : undefined)
+  } catch (e) {
+    console.error('Error buscando usuarios:', e)
     return NextResponse.json({ error: 'Error buscando usuarios' }, { status: 500 })
   }
 
-  // Si se pidió región Y oposición, combinar: usuarios de la oposición + usuarios de la región
-  let allUsers = users || []
+  // Si se pidió región Y oposición, combinar con los usuarios de la región (dedup)
   if (region && oposicion) {
-    const cities = REGION_CITIES[region]
-    if (cities && cities.length > 0) {
-      const cityFilters = cities.map(c => `ciudad.ilike.%${c}%`).join(',')
-      const { data: regionUsers } = await supabase
-        .from('user_profiles')
-        .select('id, email, display_name, plan_type, target_oposicion, ciudad')
-        .or(cityFilters)
-
-      // Merge y deduplicar
+    const o = cityOr(region)
+    if (o) {
+      const regionUsers = await db
+        .select({ id: userProfiles.id, email: userProfiles.email })
+        .from(userProfiles)
+        .where(o)
       const existingIds = new Set(allUsers.map(u => u.id))
-      for (const u of regionUsers || []) {
-        if (!existingIds.has(u.id)) {
-          allUsers.push(u)
-        }
+      for (const u of regionUsers) {
+        if (!existingIds.has(u.id)) allUsers.push(u)
       }
     }
   }
@@ -143,14 +132,14 @@ async function _POST(request: NextRequest) {
   if (channels.includes('email')) {
     for (const targetUser of targetUsers) {
       try {
-        // Verificar preferencias de email
-        const { data: prefs } = await supabase
-          .from('email_preferences')
-          .select('unsubscribed_all')
-          .eq('user_id', targetUser.id)
-          .maybeSingle()
+        // Verificar preferencias de email (Drizzle/RDS)
+        const [prefs] = await db
+          .select({ unsubscribedAll: emailPreferences.unsubscribedAll })
+          .from(emailPreferences)
+          .where(eq(emailPreferences.userId, targetUser.id))
+          .limit(1)
 
-        if (prefs?.unsubscribed_all) {
+        if (prefs?.unsubscribedAll) {
           console.log(`⏭️ ${targetUser.email} — email desuscrito`)
           continue
         }

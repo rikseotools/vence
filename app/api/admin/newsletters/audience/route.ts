@@ -1,16 +1,11 @@
 // app/api/admin/newsletters/audience/route.ts - Estadísticas de audiencia para newsletters
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   getAudienceStats,
   getUnsubscribedCount,
 } from '@/lib/api/newsletters'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 async function _GET() {
   try {
