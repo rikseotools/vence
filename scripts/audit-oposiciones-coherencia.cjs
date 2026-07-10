@@ -97,8 +97,9 @@ async function main() {
                             FROM convocatorias WHERE oposicion_id = ${o.id} AND is_current = true LIMIT 1`)[0];
     if (conv) {
       const L = Number(conv.plazas_libres || 0), D = Number(conv.plazas_discapacidad || 0), P = Number(conv.plazas_promocion_interna || 0);
-      // combinaciones legítimas que una tarjeta puede mostrar (turno libre, con discapacidad, con PI, total…)
-      const validos = new Set([L, L + D, L + P, L + D + P].filter(x => x > 0));
+      // combinaciones legítimas que una tarjeta puede mostrar: turno libre (L), reserva
+      // discapacidad sola (D), promoción interna sola (P), o cualquier suma hasta el total.
+      const validos = new Set([L, D, P, L + D, L + P, D + P, L + D + P].filter(x => x > 0));
       for (const card of cardsAbout(o.landing_estadisticas, 'plaza')) {
         const n = cardInt(card.numero);
         if (n != null && !validos.has(n))
