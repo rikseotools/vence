@@ -27,6 +27,9 @@ import {
   getUserOwedBalance,
   getEmbajadoresWithBalance,
   payAccumulated,
+  getEmbajadorEarnings,
+  getUnseenEarningsCount,
+  getReferralAdminStats,
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
@@ -203,6 +206,41 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
       // pagar 10 de nuevo → excede el saldo; y 7 → denominación inválida
       expect(await payAccumulated({ userId: embajador, adminUserId: admin, amount: 10 }, tx)).toMatchObject({ ok: false })
       expect(await payAccumulated({ userId: embajador, adminUserId: admin, amount: 7 }, tx)).toMatchObject({ ok: false, reason: 'invalid_denomination' })
+    })
+  })
+
+  it('PANEL/BADGE: earnings por fuente (reward_earnings), saldo, novedades sin ver y escaparate admin', async () => {
+    await withTx(async (tx, [embajador, referido]) => {
+      // Referido → payable (10 €)
+      const code = await getOrCreateReferralCode(embajador, tx)
+      await attributeReferral({ code, referredUserId: referido, referrerIsActivePremium: true, referredHasEverPaid: false }, tx)
+      const [row] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      const paidAt = new Date(new Date(row.attributedAt).getTime() + 1 * DAY).toISOString()
+      await qualifyReferralOnPayment({ referredUserId: referido, planType: 'monthly', paymentRef: 'sub_e', paidAt }, tx)
+      const [q] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      await promoteEligibleToPayable(new Date(new Date(q.holdUntil).getTime()).toISOString(), tx)
+
+      // Bonus UGC (5 €) para el mismo embajador, EN HOLD (no disponible aún)
+      await createRewardSubmission({ userId: embajador, type: 'ugc', url: 'https://t.me/x' }, tx)
+
+      // Earnings: ganado 15; disponible 10 (referido payable; ugc en hold NO); en proceso 5
+      const earn = await getEmbajadorEarnings(embajador, tx)
+      expect(earn.earnedLifetime).toBe(15)
+      expect(earn.balance).toBe(10)
+      expect(earn.pending).toBe(5)
+      const bySrc = Object.fromEntries(earn.bySource.map((s) => [s.source, s.earned]))
+      expect(bySrc).toEqual({ referido: 10, ugc: 5 })
+
+      // Badge: sin marcar visto → 2 novedades; marcado en el futuro → 0
+      expect(await getUnseenEarningsCount(embajador, tx)).toBe(2)
+      await tx.execute(sql`update user_profiles set referral_earnings_seen_at = now() + interval '10 days' where id = ${embajador}`)
+      expect(await getUnseenEarningsCount(embajador, tx)).toBe(0)
+
+      // Escaparate admin refleja el ingreso (global; ≥ lo de este embajador)
+      const stats = await getReferralAdminStats(tx)
+      expect(stats.totalEarned).toBeGreaterThanOrEqual(15)
+      expect(stats.bySource.find((s) => s.source === 'referido')).toBeTruthy()
+      expect(stats.bySource.find((s) => s.source === 'ugc')).toBeTruthy()
     })
   })
 })

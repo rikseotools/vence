@@ -30,6 +30,10 @@ Antes de aplicar la metodología, mira el campo `user_feedback.type`. No todos l
 
 Si el feedback es `account_deletion`, **detente y abre el manual de eliminación**. El flujo es distinto (RGPD Art. 17 + retención contable) y exige `deletion_reason` con journey completo antes de ejecutar nada.
 
+### 🎁 Recompensar al usuario tras resolver su aviso
+
+Si el usuario reportó un **bug real / mejora de usabilidad** y **lo resolvemos** (o compartió una **opinión genuina** de Vence), tiene derecho a una recompensa del **Programa de Embajadores** (bug 3 € / opinión 5 €, acumuladas y pagadas en gift card de Amazon.es). **No hay que avisarle a mano:** al crear la recompensa, el usuario recibe automáticamente el **badge del icono 🎁 + un email**. Cómo crearla por API (y pagar): **`docs/runbooks/embajadores-recompensas.md`** (§2). Solo para bugs/usabilidad genuinos que nos sirven — NO para impugnaciones de preguntas (esas tienen su propio proceso).
+
 Si el feedback es de **facturación**, el estado real está en **Stripe**, no en la BD: `user_subscriptions`/`payment_settlements` pueden estar desincronizadas (p.ej. la BD marca la suscripción activa hasta fin de periodo cuando en Stripe ya está cerrada, o no refleja un cargo ya reembolsado). Verifica SIEMPRE facturas + charges + refunds en Stripe (`docs/procedures/reembolsos.md` §0 y TRAMPA #5) antes de prometer o diagnosticar nada.
 
 ## Feedback de PRE-VENTA / conversión (usuario free preguntando por premium) — PERSONALIZAR

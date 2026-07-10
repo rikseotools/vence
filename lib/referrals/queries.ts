@@ -141,7 +141,7 @@ export interface QualifyInput {
 /** Al pagar el referido: si hay `pending` y paga dentro de la ventana → `qualified` + hold. */
 export async function qualifyReferralOnPayment(
   input: QualifyInput, exec?: Executor,
-): Promise<{ qualified: boolean; reason?: 'no_pending_referral' | 'outside_window' }> {
+): Promise<{ qualified: boolean; reason?: 'no_pending_referral' | 'outside_window'; referrerUserId?: string; bounty?: number }> {
   const db = exec ?? getAdminDb()
   const [ref] = await db.select().from(referrals)
     .where(and(eq(referrals.referredUserId, input.referredUserId), eq(referrals.status, 'pending'))).limit(1)
@@ -161,7 +161,7 @@ export async function qualifyReferralOnPayment(
     holdUntil,
     updatedAt: sql`now()`,
   }).where(eq(referrals.id, ref.id))
-  return { qualified: true }
+  return { qualified: true, referrerUserId: ref.referrerUserId, bounty: Number(ref.bountyAmount) }
 }
 
 /**
@@ -457,6 +457,113 @@ export async function getUserOwedBalance(userId: string, exec?: Executor): Promi
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = Array.isArray(res) ? res : ((res as any)?.rows ?? [])
   return Number(rows[0]?.balance ?? 0)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowsOf(res: any): any[] { return Array.isArray(res) ? res : (res?.rows ?? []) }
+
+export interface EarningsBySource { source: string; earned: number; count: number }
+export interface EmbajadorEarnings {
+  balance: number         // disponible para cobrar (payable/approved-tras-hold − pagado)
+  earnedLifetime: number  // total ganado (todas las fuentes)
+  paidLifetime: number    // total cobrado
+  pending: number         // en proceso (en hold): ganado − pagado − disponible
+  bySource: EarningsBySource[]
+}
+
+/** Panel del embajador: saldo + total ganado/cobrado + desglose por FUENTE (escalable vía reward_earnings). */
+export async function getEmbajadorEarnings(userId: string, exec?: Executor): Promise<EmbajadorEarnings> {
+  const db = exec ?? getReadDb()
+  const [earnedRes, paidRes, bySourceRes, balance] = await Promise.all([
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_earnings where user_id = ${userId}`),
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where beneficiary_user_id = ${userId}`),
+    db.execute(sql`select source, sum(amount)::float as earned, count(*)::int as count from reward_earnings where user_id = ${userId} group by source order by earned desc`),
+    getUserOwedBalance(userId, db),
+  ])
+  const earnedLifetime = Number(rowsOf(earnedRes)[0]?.t ?? 0)
+  const paidLifetime = Number(rowsOf(paidRes)[0]?.t ?? 0)
+  const bySource = rowsOf(bySourceRes).map((r) => ({ source: r.source, earned: Number(r.earned), count: Number(r.count) }))
+  const pending = Math.max(0, earnedLifetime - paidLifetime - (balance as number))
+  return { balance: balance as number, earnedLifetime, paidLifetime, pending, bySource }
+}
+
+/** Nº de ingresos nuevos SIN VER por el embajador (cualquier fuente) — para el badge de novedades. */
+export async function getUnseenEarningsCount(userId: string, exec?: Executor): Promise<number> {
+  const db = exec ?? getReadDb()
+  const res = await db.execute(sql`
+    select count(*)::int as n from reward_earnings
+    where user_id = ${userId}
+      and earned_at is not null
+      and earned_at > coalesce((select referral_earnings_seen_at from user_profiles where id = ${userId}), 'epoch'::timestamptz)`)
+  return Number(rowsOf(res)[0]?.n ?? 0)
+}
+
+/** Marca las ganancias como vistas (apaga el badge). Preferencia de cuenta. */
+export async function markEarningsSeen(userId: string, exec?: Executor): Promise<void> {
+  const db = exec ?? getAdminDb()
+  await db.execute(sql`update user_profiles set referral_earnings_seen_at = now() where id = ${userId}`)
+}
+
+export interface RecentEarning { source: string; amount: number; date: string }
+/** Ingresos recientes (cualquier fuente) para el bloque celebratorio de novedades. */
+export async function getRecentEarnings(userId: string, limit = 10, exec?: Executor): Promise<RecentEarning[]> {
+  const db = exec ?? getReadDb()
+  const res = await db.execute(sql`
+    select source, amount::float as amount, earned_at as date from reward_earnings
+    where user_id = ${userId} and earned_at is not null
+    order by earned_at desc limit ${limit}`)
+  return rowsOf(res).map((r) => ({ source: r.source, amount: Number(r.amount), date: String(r.date) }))
+}
+
+export interface AdminTopEmbajador { userId: string; name: string | null; email: string | null; earned: number; count: number }
+export interface AdminReferralStats {
+  totalEarned: number   // ganado por TODOS los embajadores (todas las fuentes)
+  totalPaid: number     // pagado en gift cards
+  outstanding: number   // lo que debemos (ganado − pagado)
+  earners: number       // usuarios con ≥1 ingreso
+  bySource: EarningsBySource[]                 // desglose global por fuente
+  referralStatus: Record<string, number>       // pending/qualified/payable/paid/rejected/expired
+  funnel: { views: number; copies: number; clicks: number; signups: number; buyers: number }
+  topEmbajadores: AdminTopEmbajador[]
+}
+
+/** Escaparate de estadísticas del programa (read-only, para el panel admin). Todo desde reward_earnings + observable_events. */
+export async function getReferralAdminStats(exec?: Executor): Promise<AdminReferralStats> {
+  const db = exec ?? getReadDb()
+  const [earnedRes, paidRes, bySrcRes, earnersRes, statusRes, funnelRes, topRes] = await Promise.all([
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_earnings`),
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts`),
+    db.execute(sql`select source, sum(amount)::float as earned, count(*)::int as count from reward_earnings group by source order by earned desc`),
+    db.execute(sql`select count(distinct user_id)::int as n from reward_earnings`),
+    db.execute(sql`select status, count(*)::int as n from referrals group by status`),
+    db.execute(sql`select event_type, count(*)::int as n from observable_events
+      where event_type in ('referral_page_view','referral_link_copy','referral_link_click','referral_attributed','referral_qualified')
+      group by event_type`),
+    db.execute(sql`
+      select e.user_id, up.full_name as name, up.email as email, sum(e.amount)::float as earned, count(*)::int as count
+      from reward_earnings e left join user_profiles up on up.id = e.user_id
+      group by e.user_id, up.full_name, up.email order by earned desc limit 10`),
+  ])
+  const bySource = rowsOf(bySrcRes).map((r) => ({ source: r.source, earned: Number(r.earned), count: Number(r.count) }))
+  const referralStatus: Record<string, number> = {}
+  for (const r of rowsOf(statusRes)) referralStatus[r.status] = Number(r.n)
+  const fmap: Record<string, number> = {}
+  for (const r of rowsOf(funnelRes)) fmap[r.event_type] = Number(r.n)
+  const totalEarned = Number(rowsOf(earnedRes)[0]?.t ?? 0)
+  const totalPaid = Number(rowsOf(paidRes)[0]?.t ?? 0)
+  return {
+    totalEarned, totalPaid, outstanding: Math.max(0, totalEarned - totalPaid),
+    earners: Number(rowsOf(earnersRes)[0]?.n ?? 0),
+    bySource, referralStatus,
+    funnel: {
+      views: fmap['referral_page_view'] ?? 0,
+      copies: fmap['referral_link_copy'] ?? 0,
+      clicks: fmap['referral_link_click'] ?? 0,
+      signups: fmap['referral_attributed'] ?? 0,
+      buyers: fmap['referral_qualified'] ?? 0,
+    },
+    topEmbajadores: rowsOf(topRes).map((r) => ({ userId: r.user_id, name: r.name, email: r.email, earned: Number(r.earned), count: Number(r.count) })),
+  }
 }
 
 export interface AccumBalance {

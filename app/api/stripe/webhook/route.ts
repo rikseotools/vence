@@ -480,6 +480,9 @@ async function handleCheckoutSessionCompleted(
             if (q.qualified) {
               console.log(`🏅 [Referral] Referido ${userId} CALIFICADO — el embajador cobra tras el hold`)
               emitReferralEvent('referral_qualified', { userId, endpoint: '/api/stripe/webhook', metadata: { planType } })
+              // Notifica al embajador (badge + email). Best-effort.
+              const { notifyEarning } = await import('@/lib/referrals/notify')
+              await notifyEarning(q.referrerUserId, { source: 'referido', amount: q.bounty ?? 10 })
             } else if (q.reason === 'outside_window') {
               console.log(`🏅 [Referral] Referido ${userId} pagó FUERA de la ventana → expired`)
               emitReferralEvent('referral_expired', { userId, endpoint: '/api/stripe/webhook', severity: 'warn', metadata: { planType } })

@@ -11,6 +11,7 @@ import RankingModal from '@/components/RankingModal'
 import FeedbackButton from '@/components/FeedbackButton'
 import QuestionDispute from '@/components/QuestionDispute'
 import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
+import { useReferralEarningsBadge } from '@/hooks/useReferralEarningsBadge'
 
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
@@ -73,6 +74,7 @@ export default function HeaderES() {
   const [discardingExamId, setDiscardingExamId] = useState<string | null>(null)
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
+  const { hasUnseen: hasReferralEarnings } = useReferralEarningsBadge()
   const pathname = usePathname()
 
   const { user, loading: authLoading, isPremium, isLegacy, userProfile } = useAuth()
@@ -619,11 +621,17 @@ export default function HeaderES() {
                 {(isPremium || isLegacy) && (
                   <Link
                     href="/embajadores"
-                    className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
-                    aria-label="Programa de Embajadores"
-                    title="Embajadores — gana recompensas recomendando Vence"
+                    className="tap-feedback relative flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+                    aria-label={hasReferralEarnings ? 'Programa de Embajadores — ¡has ganado dinero!' : 'Programa de Embajadores'}
+                    title={hasReferralEarnings ? '🎉 ¡Has ganado dinero! Toca para ver' : 'Embajadores — gana recompensas recomendando Vence'}
                   >
-                    <span className="text-lg">🎁</span>
+                    <span className={`text-lg ${hasReferralEarnings ? 'animate-bounce' : ''}`}>🎁</span>
+                    {hasReferralEarnings && (
+                      <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                      </span>
+                    )}
                   </Link>
                 )}
 

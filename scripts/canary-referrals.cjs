@@ -43,7 +43,15 @@ async function httpChecks() {
   const adm = await fetch(`${BASE}/api/admin/referrals/payouts`)
   ;[401, 403].includes(adm.status) ? ok(`/api/admin/referrals/payouts sin admin = ${adm.status}`) : bad(`admin payouts = ${adm.status} (esperaba 401/403)`)
 
-  // 6) página /embajadores responde
+  // 6) /api/referrals/badge sin auth → 401 (badge de ganancias)
+  const bdg = await fetch(`${BASE}/api/referrals/badge`)
+  bdg.status === 401 ? ok('/api/referrals/badge sin sesión = 401') : bad(`/api/referrals/badge = ${bdg.status} (esperaba 401)`)
+
+  // 7) /api/admin/referrals/stats sin admin → 401/403 (escaparate)
+  const st = await fetch(`${BASE}/api/admin/referrals/stats`)
+  ;[401, 403].includes(st.status) ? ok(`/api/admin/referrals/stats sin admin = ${st.status}`) : bad(`admin stats = ${st.status} (esperaba 401/403)`)
+
+  // 8) página /embajadores responde
   const pg = await fetch(`${BASE}/embajadores`)
   pg.ok ? ok('/embajadores = 200') : bad(`/embajadores = ${pg.status}`)
 }
@@ -55,6 +63,12 @@ async function dbChecks() {
   try {
     const t = await c.query(`select table_name from information_schema.tables where table_schema='public' and table_name in ('referral_codes','referrals','reward_payouts','reward_submissions')`)
     t.rows.length === 4 ? ok('4 tablas del programa presentes') : bad(`solo ${t.rows.length}/4 tablas`)
+
+    // vista escalable de ingresos + columna del badge
+    const v = await c.query(`select 1 from information_schema.views where table_schema='public' and table_name='reward_earnings'`)
+    v.rows.length === 1 ? ok('vista reward_earnings presente') : bad('falta la vista reward_earnings')
+    const col = await c.query(`select 1 from information_schema.columns where table_name='user_profiles' and column_name='referral_earnings_seen_at'`)
+    col.rows.length === 1 ? ok('columna referral_earnings_seen_at presente') : bad('falta user_profiles.referral_earnings_seen_at')
 
     const bad_status = await c.query(`select count(*) n from referrals where status not in ('pending','qualified','payable','paid','rejected','expired')`)
     Number(bad_status.rows[0].n) === 0 ? ok('sin referidos en estado inválido') : bad(`${bad_status.rows[0].n} referidos con status inválido`)

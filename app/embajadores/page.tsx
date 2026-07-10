@@ -15,6 +15,9 @@ interface ReferralDetail {
   status: string
   date: string
 }
+interface EarningsBySource { source: string; earned: number; count: number }
+interface Earnings { balance: number; earnedLifetime: number; paidLifetime: number; pending: number; bySource: EarningsBySource[] }
+interface RecentEarning { source: string; amount: number; date: string }
 interface MeResponse {
   isAmbassador: boolean
   code?: string
@@ -22,7 +25,15 @@ interface MeResponse {
   stats?: { registros: number; compradores: number; conversion: number }
   details?: ReferralDetail[]
   funnel?: { copies: number; clicks: number }
+  earnings?: Earnings
+  unseen?: number
+  recent?: RecentEarning[]
 }
+
+const SOURCE_LABEL: Record<string, string> = {
+  referido: '💛 Recomendaciones', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
+}
+const sourceText = (s: string) => SOURCE_LABEL[s] || s
 
 // Estado del referido → etiqueta amistosa + color.
 function statusLabel(s: string): { text: string; cls: string } {
@@ -97,6 +108,7 @@ export default function EmbajadoresPage() {
   const [me, setMe] = useState<MeResponse | null>(null)
   const [copied, setCopied] = useState(false)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [reveal, setReveal] = useState<RecentEarning[] | null>(null)
 
   // Primer nombre para personalizar la enhorabuena (de perfil o metadata de auth).
   const fullName = (userProfile?.full_name || (user?.user_metadata?.full_name as string | undefined) || '').trim()
@@ -122,7 +134,16 @@ export default function EmbajadoresPage() {
         const res = await fetch('/api/referrals/me', { headers })
         if (!res.ok) return
         const data: MeResponse = await res.json()
-        if (!cancel) setMe(data)
+        if (cancel) return
+        setMe(data)
+        // Novedades sin ver → revelación celebratoria + marcar visto (apaga el badge del Header).
+        if ((data.unseen ?? 0) > 0) {
+          setReveal(data.recent ?? [])
+          getAuthHeaders()
+            .then((h) => fetch('/api/referrals/badge', { method: 'POST', headers: h }))
+            .then(() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('referral-earnings-seen')) })
+            .catch(() => {})
+        }
       } catch { /* silencioso */ }
     })()
     return () => { cancel = true }
@@ -189,6 +210,59 @@ export default function EmbajadoresPage() {
             </>
           )}
         </section>
+
+        {/* NOVEDADES: alguien te ha hecho ganar dinero (revelación al abrir tras el badge) */}
+        {user && isPremium && reveal && reveal.length > 0 && (
+          <section className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-lg p-6 sm:p-8 mb-8 text-center animate-[fadeIn_0.4s_ease]">
+            <div className="text-4xl mb-2">🎉</div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-1">¡Has ganado dinero!</h2>
+            <p className="text-white/90 mb-4">Se ha sumado a tu saldo de embajador:</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {reveal.slice(0, 6).map((r, i) => (
+                <span key={i} className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-semibold">
+                  +{r.amount} € · {sourceText(r.source)}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* SALDO + DESGLOSE POR FUENTE (solo premium) */}
+        {user && isPremium && me?.earnings && (
+          <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 mb-8 border border-blue-100 dark:border-gray-700">
+            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Tu saldo</h2>
+            <div className="grid grid-cols-3 gap-3 text-center mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl py-4">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{me.earnings.balance} €</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Disponible</div>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl py-4">
+                <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">{me.earnings.pending} €</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">En proceso</div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl py-4">
+                <div className="text-2xl sm:text-3xl font-bold text-gray-700 dark:text-gray-200">{me.earnings.paidLifetime} €</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ya cobrado</div>
+              </div>
+            </div>
+            {me.earnings.bySource.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen tus ingresos</h3>
+                <div className="space-y-2">
+                  {me.earnings.bySource.map((s) => (
+                    <div key={s.source} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-2.5">
+                      <span className="text-sm text-gray-700 dark:text-gray-200">{sourceText(s.source)}</span>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{s.earned} € · {s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+              Cuando tu saldo disponible llega a 5 €, te pagamos en tarjeta regalo de Amazon. Lo que sobre se acumula para la próxima.
+            </p>
+          </section>
+        )}
 
         {/* ENLACE DEL EMBAJADOR + MÉTRICA (solo premium) */}
         {user && isPremium && (

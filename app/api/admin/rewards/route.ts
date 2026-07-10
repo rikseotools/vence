@@ -8,7 +8,8 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getPendingRewardSubmissions, createRewardSubmission, findUserIdByEmail } from '@/lib/referrals/queries'
 import { emitReferralEvent } from '@/lib/referrals/observability'
-import type { RewardType } from '@/lib/referrals/logic'
+import { notifyEarning } from '@/lib/referrals/notify'
+import { REWARD_AMOUNTS, type RewardType } from '@/lib/referrals/logic'
 
 async function _GET(request: NextRequest) {
   const auth = await requireAdmin(request)
@@ -40,6 +41,8 @@ async function _POST(request: NextRequest) {
   })
   if (result.ok) {
     emitReferralEvent('reward_created', { userId, endpoint: '/api/admin/rewards', metadata: { type } })
+    // Notifica al usuario del bonus (badge + email) — misma vía que un referido. Best-effort.
+    await notifyEarning(userId, { source: type, amount: REWARD_AMOUNTS[type as RewardType] })
   } else if (result.reason === 'monthly_cap') {
     emitReferralEvent('reward_cap_hit', { userId, endpoint: '/api/admin/rewards', severity: 'warn', metadata: { type } })
   }
