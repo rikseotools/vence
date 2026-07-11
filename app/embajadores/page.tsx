@@ -50,15 +50,12 @@ function statusLabel(s: string): { text: string; cls: string } {
   switch (s) {
     case 'qualified':
     case 'payable':
-      return { text: 'Ha comprado ✓', cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' }
     case 'paid':
-      return { text: 'Recompensa pagada 🎁', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' }
-    case 'expired':
-      return { text: 'No compró a tiempo', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' }
+      return { text: 'Premium', cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' }
     case 'rejected':
       return { text: 'No válido', cls: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' }
-    default: // pending
-      return { text: 'Registrado', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
+    default: // pending / expired → registrado pero aún NO premium
+      return { text: 'Registrado · No premium', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
   }
 }
 
@@ -253,7 +250,7 @@ export default function EmbajadoresPage() {
               </div>
               <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl py-4">
                 <div className="text-2xl sm:text-3xl font-bold text-gray-700 dark:text-gray-200">{me.earnings.paidLifetime} €</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ya cobrado</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Vales emitidos</div>
               </div>
             </div>
             {me.earnings.bySource.length > 0 && (

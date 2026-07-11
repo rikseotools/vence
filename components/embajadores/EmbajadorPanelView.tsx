@@ -13,16 +13,17 @@ function statusLabel(s: string): { text: string; cls: string } {
   switch (s) {
     case 'qualified':
     case 'payable':
-      return { text: 'Ha comprado ✓', cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' }
     case 'paid':
-      return { text: 'Recompensa pagada 🎁', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' }
-    case 'expired':
-      return { text: 'No compró a tiempo', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' }
+      return { text: 'Premium', cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' }
     case 'rejected':
       return { text: 'No válido', cls: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' }
-    default:
-      return { text: 'Registrado', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
+    default: // pending / expired → registrado pero aún NO premium
+      return { text: 'Registrado · No premium', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
   }
+}
+
+function fmtVoucherDate(d: string | null): string {
+  return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
 }
 
 export interface EmbajadorPanelData {
@@ -39,6 +40,7 @@ export interface EmbajadorPanelData {
     bySource: Array<{ source: string; earned: number; count: number }>
   }
   recent: Array<{ source: string; amount: number }>
+  vouchers?: Array<{ amount: number; code: string; via: string | null; date: string | null }>
 }
 
 export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData }) {
@@ -81,7 +83,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           </div>
           <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl py-4">
             <div className="text-2xl font-bold text-gray-700 dark:text-gray-200">{e.paidLifetime} €</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ya cobrado</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Vales emitidos</div>
           </div>
         </div>
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen sus ingresos</h3>
@@ -96,6 +98,25 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           ))}
         </div>
       </section>
+
+      {/* SUS VALES — gift cards emitidas (código para canjear) */}
+      {data.vouchers && data.vouchers.length > 0 && (
+        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Sus vales 🎁</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tarjetas regalo de Amazon.es emitidas. El código (y PIN si lo trae) se canjea en Amazon.</p>
+          <div className="space-y-2">
+            {data.vouchers.map((v, i) => (
+              <div key={i} className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
+                <div className="min-w-0">
+                  <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{fmtVoucherDate(v.date)}</div>
+                </div>
+                <code className="text-sm font-mono bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-1.5 select-all break-all">{v.code}</code>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ENLACE + EMBUDO + REFERIDOS */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">

@@ -56,6 +56,19 @@ async function _GET(
     getRecentEarnings(userId),
   ])
 
+  // Vales (gift cards) emitidos al usuario — mismo criterio que /api/referrals/vouchers (excluye dry-run).
+  const vRes = await db.execute(sql`
+    SELECT amount, giftcard_ref, purchased_via, paid_at FROM reward_payouts
+    WHERE beneficiary_user_id = ${userId} AND status = 'paid' AND giftcard_ref IS NOT NULL
+      AND coalesce(purchased_via, '') <> 'bitrefill_dryrun'
+    ORDER BY paid_at DESC`)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const vRows: any[] = Array.isArray(vRes) ? vRes : ((vRes as any)?.rows ?? [])
+  const vouchers = vRows.map((r) => ({
+    amount: Number(r.amount), code: String(r.giftcard_ref),
+    via: r.purchased_via || null, date: r.paid_at ? new Date(r.paid_at).toISOString() : null,
+  }))
+
   return NextResponse.json({
     isAmbassador: true,
     firstName,
@@ -67,6 +80,7 @@ async function _GET(
     earnings,
     unseen,
     recent,
+    vouchers,
   })
 }
 

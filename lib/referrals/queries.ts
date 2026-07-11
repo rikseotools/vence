@@ -10,6 +10,7 @@ import { referralCodes, referrals, rewardPayouts, rewardSubmissions } from '@/db
 import { userProfiles, userSubscriptions } from '@/db/schema'
 import {
   generateReferralCode,
+  abbreviateReferredName,
   refereeEligibility,
   computeHoldUntil,
   isWithinAttributionWindow,
@@ -226,7 +227,8 @@ export async function getReferralDetails(
     .where(eq(referrals.referrerUserId, referrerUserId))
     .orderBy(desc(referrals.attributedAt))
     .limit(200)
-  return rows as ReferralDetail[]
+  // Privacidad: el embajador no ve el apellido completo del referido → "Nombre A. B.".
+  return (rows as ReferralDetail[]).map((r) => ({ ...r, name: abbreviateReferredName(r.name) }))
 }
 
 export interface PayableReferral {

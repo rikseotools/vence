@@ -107,6 +107,18 @@ export function withinRewardMonthlyCap(type: RewardType, countThisMonth: number)
   return true // bug: sin tope duro; se controla por aprobación manual
 }
 
+/**
+ * Abrevia el nombre de un REFERIDO para no exponer su apellido completo al embajador:
+ * "Rubén Martínez López" → "Rubén M. L." (nombre + iniciales de apellidos). Privacidad.
+ */
+export function abbreviateReferredName(name: string | null | undefined): string | null {
+  if (!name) return null
+  const parts = String(name).trim().split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return parts[0] ?? null
+  const initials = parts.slice(1).map((p) => (p[0] ? p[0].toUpperCase() + '.' : '')).filter(Boolean).join(' ')
+  return initials ? `${parts[0]} ${initials}` : parts[0]
+}
+
 export const REWARD_SUBMISSION_STATES = ['pending', 'approved', 'rejected', 'paid'] as const
 export type RewardSubmissionState = (typeof REWARD_SUBMISSION_STATES)[number]
 
