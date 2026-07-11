@@ -101,6 +101,28 @@ SELECT count(DISTINCT oposicion_id) FROM competitor_courses WHERE oposicion_id I
 - **Revisión humana:** pestaña **Revisión** del panel (o `getReviewQueue`/`confirmMatch`) → confirmar/descartar a 1 clic. Queda `confirmed`/`manual` = **STICKY**.
 - **Triaje de señales (badge):** el badge = `competitor_changes` **sin revisar** (`reviewed_at IS NULL`) y de tipo **accionable** (`course_added|course_removed|price_changed|url_removed`); `url_added`/`url_modified` (refresco de contenido) NO cuentan. Marcar revisado (`acknowledgeCompetitorChanges`, botón en pestaña Cambios) las conserva en el log pero las saca del badge. Así el badge = novedades comerciales pendientes, sin ruido recurrente.
 
+> **⚠️ DOS colas/badges DISTINTOS (no confundir, aprendizaje 11/07):** (a) **"Cambios"** = `competitor_changes` sin revisar (novedad comercial: curso/precio) → se limpia con `acknowledgeCompetitorChanges` (`UPDATE reviewed_at=now()`). (b) **"Revisión"** = `competitor_courses.match_method='needs_review'` (matches curso↔oposición dudosos) → se limpia confirmando/descartando cada uno. Son tablas y flujos separados.
+
+### 2e. Enriquecer el matching a escala: RECALL, dedup y triaje (sesión 11/07)
+
+**Diagnóstico previo — `oposicion_id IS NULL` NO es siempre un gap.** La mayoría de los "sin match" son **fallos de RECALL**: la oposición SÍ está catalogada (`loadOposicionesForMatch` matchea contra TODO el catálogo, no solo lo vendible), pero el **nombre comercial del competidor** despista al matcher determinista (acrónimos, plurales, prefijos de marketing). **Antes de tratar un `none` como "oposición que no cubrimos", comprueba si YA está en `oposiciones`** (recall) vs genuinamente ausente (gap real).
+
+**(1) Subir RECALL con acrónimos inequívocos (`cleanName`).** El competidor escribe "Aux. Administrativos del **SAS**" y la oposición "…del **Servicio Andaluz de Salud** (SAS)" → los tokens región+salud no alinean. Fix: expandir el acrónimo en `cleanName` (se aplica a curso Y a oposición → alinean). Reglas:
+- **ADITIVO, no reemplazo:** `\bsas\b → 'sas servicio andaluz salud'`. Reemplazar borra el token que quizá ya matcheaba por shortName → **regresión**.
+- **Solo INEQUÍVOCOS** (uno por acrónimo): SAS/SERGAS/SESCAM/SACYL/SESPA/SMS/Osakidetza/Osasunbidea/AGE/SERMAS/CARM/TCAE/IIPP/ICS. **EXCLUIR ambiguos**: SCS (Canario/Cántabro), UPV (València/País Vasco), y cualquiera con variantes DUPLICADAS en el catálogo (SES empataba).
+- **Metodología obligatoria (0 regresiones):** dry-run que corre `matchCourse` sobre todos los no-sticky, cuenta **rescatados (none→match)** y **PERDIDOS (match→none)**, + **eyeball de la muestra de rescatados**. Aplicar SOLO si perdidos=0. (11/07: 15 acrónimos → +72, 0 regresiones; guardarraíl `competitor-sync.spec.ts`.)
+- Tras tocar `cleanName`: re-match (write) + **`scripts/deploy-backend.sh`** (el cron usa el matcher nuevo).
+
+**(2) Deduplicar el catálogo (el pipeline 07/07 dejó variantes).** Síntoma: dos entradas del MISMO cuerpo — "X **-** Servicio Y de Salud" (07/07, `catalogada`, 0 cursos) vs "X **del** Servicio Y de Salud" (rica). Al expandir acrónimos quedan token-idénticas → **empate → `none`**. Dedup:
+- Agrupar por nombre normalizado (quitar conectores/"-"/paréntesis). **`E ≡ AP`** (grupo E = Agrupación Profesional = MISMO nivel; trátalos igual o pierdes dups — pero **mantén C1≠C2**). También nombre-acrónimo (**TCAE ≡ "Técnico en Cuidados Auxiliares de Enfermería"**).
+- **Keeper = el rico** (cursos > con_tests > con_landing > catalogada; a igualdad, el más antiguo). **FK-safe**: reasignar `user_oposiciones_seguidas` al keeper (saltar si ya lo sigue), **borrar** filas derivadas del loser (OJO `convocatorias` tiene UNIQUE `(oposicion_id, año)` → la del loser choca al reasignar → **bórrala**), todo en **transacción con rollback**. Dry-run SIEMPRE (memoria: un dedup fuzzy dio 915 falsos positivos).
+
+**(3) Triaje MASIVO de `needs_review`.** La cola tiene **~50% de candidatos MALOS** (el matcher acierta ~la mitad) → **NUNCA auto-confirmar en bloque**. Dos vías:
+- **Auto-confirm SEGURO por regla (materia específica):** confirmar solo si los tokens **distintivos** del candidato (quitando genéricos + organismo + región + adjetivos de región) están TODOS en el curso. Endurecer iterando por las **clases de FALSO POSITIVO** (11/07): (a) "administrativo-solo" → confusión **ayuntamiento↔diputación** (expande "dip."→"diputación" para separarlos); (b) "salud/servicio" genérico → cuerpo específico; (c) **adjetivos de región** (murciano/madrileño) sobreviven al strip de nombres de región → añádelos; (d) **"Personal de Servicios Generales"** = cuerpo-cajón que atrapa cursos de salud → excluir; (e) **acentos en los regex** ("Té**c**nicos"≠"Tecnicos") → normaliza. Dry-run + spot-check SIEMPRE.
+- **Revisión manual, curso por curso** (Claude como revisor): lotes numerados → **CONFIRMAR** (correcto, `match_method='confirmed'` sticky) / **DESCARTAR** (candidato mal → `match_method='none'`, limpia la cola) / **DEJAR** (ambiguo). Los **irreducibles** (marketing sin región, DUE↔TCAE) se DEJAN, no se fuerzan. (11/07: 25%→38%, +346; cola 480→25.)
+
+**Gotchas del script re-match one-off (ts-node):** vive en `backend/`, no en la raíz (resolución de módulos). Invocar con `TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node","esModuleInterop":true,...}' node_modules/.bin/ts-node --transpile-only --skip-project`, `import 'reflect-metadata'`, symlink `node_modules`, leer `../.env.local`. **El re-match es DETERMINISTA** — re-correrlo con el mismo catálogo+matcher da el MISMO resultado (solo suma matches de oposiciones nuevas del catálogo). La palanca es mejorar el MATCHER (recall) o deduplicar, no re-matchear.
+
 ---
 
 ## 3. Aplicar una migración a RDS
@@ -164,7 +186,7 @@ LEFT JOIN competitor_prices cp ON cp.competitor_course_id=cc.id AND cp.is_curren
 WHERE cc.oposicion_id = (SELECT id FROM oposiciones WHERE nombre ILIKE '%<oposición>%' LIMIT 1) AND cc.is_active
 GROUP BY c.name, cc.modalidad, cc.raw_name;
 ```
-- **Gaps (demanda / candidatas a catalogar):** `competitor_courses WHERE oposicion_id IS NULL` = oposiciones que ELLOS preparan y nosotros no.
+- **Gaps (demanda / candidatas a catalogar):** `competitor_courses WHERE oposicion_id IS NULL`. **⚠️ OJO (aprendizaje 11/07): NO todo `oposicion_id IS NULL` es un gap** — la mayoría son fallos de **RECALL** (la oposición SÍ está catalogada; el matcher falla por el nombre comercial). Verifica en `oposiciones` antes de tratarlo como "no cubierto". Sube recall / deduplica antes (§2e); lo que quede `none` de verdad = gap real.
 - **Blue ocean:** nuestras `oposiciones` sin ningún competidor.
 
 ---
