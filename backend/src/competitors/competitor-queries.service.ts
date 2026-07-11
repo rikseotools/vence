@@ -55,6 +55,18 @@ function cleanName(s: string): string {
     .replace(/\btcae\b/g, 'tcae tecnico cuidados auxiliares enfermeria')
     .replace(/\biipp\b/g, 'iipp instituciones penitenciarias')
     .replace(/\bics\b/g, 'ics institut catala salut')
+    .replace(/\bjccm\b/g, 'jccm junta comunidades castilla mancha')
+    .replace(/\bjcyl\b/g, 'jcyl junta castilla leon')
+    .replace(/\baeat\b/g, 'aeat agencia estatal administracion tributaria')
+    .replace(/\binss\b/g, 'inss instituto nacional seguridad social')
+    .replace(/\btgss\b/g, 'tgss tesoreria general seguridad social')
+    .replace(/\bsepe\b/g, 'sepe servicio publico empleo estatal')
+    .replace(/\bdgt\b/g, 'dgt direccion general trafico')
+    .replace(/\badif\b/g, 'adif administrador infraestructuras ferroviarias')
+    .replace(/\buned\b/g, 'uned universidad nacional educacion distancia')
+    .replace(/\bucm\b/g, 'ucm universidad complutense madrid')
+    .replace(/\bugr\b/g, 'ugr universidad granada')
+    .replace(/\buhu\b/g, 'uhu universidad huelva')
     .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
     // Singularizar de forma simétrica en dos pasos: quitar '-s' y luego '-e'. Así
     // ambos tipos de plural español convergen al MISMO stem sin ambigüedad:
