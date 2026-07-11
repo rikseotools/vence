@@ -122,7 +122,13 @@ podman build ${NO_CACHE:+--no-cache} \
 
 echo "→ [2/6] push ECR"
 aws ecr get-login-password --profile $P --region $R | podman login --username AWS --password-stdin "${ACC}.dkr.ecr.${R}.amazonaws.com" >/dev/null 2>&1
-podman push "$IMG" >/dev/null
+# Digest capturado DIRECTO del push (--digestfile), NO re-resuelto por tag después.
+# Re-resolver con `describe-images imageTag=$TAG` devolvía el digest EQUIVOCADO de
+# forma intermitente (consistencia eventual de ECR / carrera con deploys concurrentes)
+# → la task def se pineaba a una imagen VIEJA y el fix no llegaba a prod aunque el
+# deploy dijera OK (incidente 11/07). mktemp = seguro ante deploys concurrentes.
+DIGESTFILE=$(mktemp)
+podman push "$IMG" --digestfile "$DIGESTFILE" >/dev/null
 
 echo "→ [2b] sync _next/static → S3 (assets inmutables, RETENCIÓN: sin --delete)"
 # POR QUÉ: los chunks se sirven vía CloudFront desde S3 (behavior /_next/static/*
@@ -153,7 +159,9 @@ rm -rf "$_staticdir"
 echo "   ✅ assets en S3 (retención) + verificado"
 
 echo "→ [3/6] resolver digest (imagen pineada, inmutable)"
-DIGEST=$(aws ecr describe-images --repository-name vence-frontend --image-ids imageTag="$TAG" --profile $P --region $R --query 'imageDetails[0].imageDigest' --output text)
+# Digest del push (paso 2), determinista. NO re-resolver por tag (ver comentario allí).
+DIGEST=$(cat "$DIGESTFILE"); rm -f "$DIGESTFILE"
+if [ -z "$DIGEST" ]; then echo "   ❌ push no devolvió digest — ABORTO (no pinear a ciegas)"; exit 1; fi
 IMG_DIGEST="${REG}@${DIGEST}"
 echo "   $IMG_DIGEST"
 

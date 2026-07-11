@@ -13,6 +13,17 @@ scripts/deploy-backend.sh    # NestJS → ECS Fargate
 
 Ambos: build (podman) → push ECR → task def pineada por **digest** clonando la viva (hereda secretos) → `update-service` rolling → `wait services-stable` → **smoke** (falla el deploy si el smoke no pasa).
 
+> **Digest determinista (fix 11/07/2026):** el digest para pinear la task def se captura DIRECTO del push
+> (`podman push --digestfile`), NO re-resolviendo por tag (`describe-images --image-ids imageTag=$TAG`) después.
+> El re-lookup devolvía el digest EQUIVOCADO de forma intermitente (consistencia eventual de ECR / carrera entre
+> deploys concurrentes) → prod quedaba con la imagen VIEJA aunque el deploy dijera "OK" y `/api/health` reportaba
+> el SHA viejo. Guardarraíl: `__tests__/guardrails/deploy-scripts.test.ts`.
+>
+> **Circuit breaker (fix 11/07/2026):** ambos servicios ECS tienen `deploymentCircuitBreaker={enable,rollback}=true`
+> → un deploy que no estabiliza AUTO-REVIERTE al task def anterior (antes `vence-backend` lo tenía OFF y una
+> deployment rota se quedaba atascada dejando el servicio frágil). `update-service --task-definition` (sin
+> `--deployment-configuration`) preserva este ajuste, así que persiste entre deploys.
+
 - **Infra:** cuenta AWS `349744179687`, perfil `vence`, región `eu-west-2`. Cluster ECS `vence-backend`, servicios `vence-frontend` y `vence-backend`. Front y back detrás del **ALB** `vence-backend-alb`, con **CloudFront** (`E1EH4WF1H7ZGLA`, `www.vence.es`) delante del front y `api.vence.es` para el back.
 - **GHA auto-deploy DESACTIVADO** (metía builds Supabase por sorpresa). Deploy manual con estos scripts.
   - ⚠️ **`backend-deploy.yml` seguía con trigger `push` vivo hasta el 11/07/2026** (pese a este párrafo) y además **pinaba el task def a un digest equivocado** (distinto de la imagen que construía) → al pushear `backend/**` a `main`, ECS intentaba arrancar un task cuya imagen no existía en ECR → **deployment atascada + backend frágil** (el task vivo corría una imagen ya borrada de ECR; una muerte del task = caída no auto-curable; circuit breaker OFF). Recuperación: registrar task def clon apuntando a la imagen REAL (`...@sha256:<digest_existente>`) + `update-service` + esperar estable + smoke. **Fix:** el workflow se pasó a `workflow_dispatch` (sin `push`). No re-activar el `push` sin arreglar antes el pinning por digest.

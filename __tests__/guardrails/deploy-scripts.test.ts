@@ -54,7 +54,7 @@ describe('deploy-backend.sh — deploy repetible y verificado (no ad-hoc)', () =
   })
 
   it('pinea la imagen por digest (inmutable, no :latest a ciegas)', () => {
-    expect(backend).toMatch(/imageDigest/)
+    expect(backend).toMatch(/--digestfile/)
     expect(backend).toMatch(/REG.*@.*DIGEST|IMG_DIGEST/)
   })
 
@@ -67,4 +67,25 @@ describe('deploy-backend.sh — deploy repetible y verificado (no ad-hoc)', () =
   it('documenta el rollback', () => {
     expect(backend).toMatch(/[Rr]ollback/)
   })
+})
+
+// Anti-regresión del incidente 11/07/2026: el digest del task def se re-resolvía por
+// tag (`describe-images --image-ids imageTag=$TAG`) DESPUÉS del push, lo que devolvía
+// el digest EQUIVOCADO de forma intermitente (consistencia eventual de ECR / carrera
+// entre deploys concurrentes) → prod quedaba con la imagen VIEJA aunque el deploy
+// dijera OK. El digest debe capturarse DIRECTO del push (--digestfile), determinista.
+describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 11/07)', () => {
+  for (const [name, s] of [['frontend', frontend], ['backend', backend]] as const) {
+    it(`${name}: captura el digest con --digestfile`, () => {
+      expect(s).toMatch(/podman push[^\n]*--digestfile/)
+      expect(s).toMatch(/DIGEST=\$\(cat "\$DIGESTFILE"\)/)
+    })
+    it(`${name}: NO re-resuelve el digest con describe-images imageTag`, () => {
+      // Flag CLI real (no la prosa del comentario que documenta el bug).
+      expect(s).not.toMatch(/--image-ids imageTag=/)
+    })
+    it(`${name}: aborta si el push no devuelve digest (no pinea a ciegas)`, () => {
+      expect(s).toMatch(/-z "\$DIGEST"[\s\S]{0,80}(ABORTO|exit 1)/)
+    })
+  }
 })
