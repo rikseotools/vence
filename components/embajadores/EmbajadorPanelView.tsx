@@ -26,16 +26,33 @@ function statusLabel(s: string): { text: string; cls: string } {
   }
 }
 
+// Palabra según el género del embajador (BD: male/female/other/prefer_not_say). Femenino → "Embajadora".
+const embajadorWord = (g?: string | null) => (g === 'female' ? 'Embajadora' : 'Embajador')
+
+interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; testsDone: number; testsNeeded: number }
+
+// Badge transparente del bonus "registro activo": lo ganado (verde) o el progreso hacia los N tests.
+function activeRewardBadge(ar?: ActiveReward): { text: string; cls: string; title: string } | null {
+  if (!ar || ar.state === 'none') return null
+  if (ar.state === 'earned') {
+    return { text: `🎉 +${ar.amount} € ganados`, cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+      title: `Bonus de ${ar.amount} € porque este referido ya está activo` }
+  }
+  return { text: `⏳ ${ar.amount} € · ${ar.testsDone}/${ar.testsNeeded} tests`, cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    title: `Ganarás ${ar.amount} € cuando este referido complete ${ar.testsNeeded} tests (lleva ${ar.testsDone})` }
+}
+
 function fmtVoucherDate(d: string | null): string {
   return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
 }
 
 export interface EmbajadorPanelData {
   firstName: string | null
+  gender?: string | null
   code: string | null
   link: string | null
   stats: { registros: number; compradores: number; conversion: number }
-  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string }>
+  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward }>
   funnel: { copies: number; clicks: number }
   earnings: {
     balance: number
@@ -49,7 +66,8 @@ export interface EmbajadorPanelData {
 
 export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData }) {
   const e = data.earnings
-  const name = data.firstName || 'Embajador'
+  const emb = embajadorWord(data.gender)
+  const name = data.firstName || emb
   const [copied, setCopied] = useState(false)
   const copyLink = async () => {
     if (!data.link) return
@@ -59,9 +77,9 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
     <div className="container mx-auto px-4 py-6 max-w-5xl">
       {/* HERO */}
       <section className="text-center mb-8">
-        <span className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">🎁 PROGRAMA DE EMBAJADORES</span>
+        <span className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">🎁 PROGRAMA DE REFERIDOS</span>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
-          🎉 ¡Enhorabuena, {name}! Ya eres <span className="text-blue-600 dark:text-blue-400">Embajador de Vence</span>
+          🎉 ¡Enhorabuena, {name}! Ya eres <span className="text-blue-600 dark:text-blue-400">{emb} de Vence</span>
         </h1>
       </section>
 
@@ -115,15 +133,15 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tarjetas regalo de Amazon.es que has conseguido. Copia el código y canjéalo en Amazon (el PIN si lo trae).</p>
           <div className="space-y-2">
             {data.vouchers.map((v, i) => (
-              <div key={i} className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
-                <div className="min-w-0">
+              <div key={i} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3 mb-3">
                   <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">{fmtVoucherDate(v.date)}</div>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <CopyCode code={v.code} />
-                  {v.pin ? <span className="text-xs text-gray-500 dark:text-gray-400">PIN: <span className="font-mono select-all">{v.pin}</span></span> : null}
-                  {v.serial ? <span className="text-xs text-gray-400 dark:text-gray-500">Serial: <span className="font-mono select-all">{v.serial}</span></span> : null}
+                <div className="flex flex-col gap-2">
+                  <CopyCode label="Código" value={v.code} />
+                  {v.pin ? <CopyCode label="PIN" value={v.pin} /> : null}
+                  {v.serial ? <CopyCode label="Serial" value={v.serial} /> : null}
                 </div>
               </div>
             ))}
@@ -150,19 +168,29 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           <span>Registro→compra: <strong>{Math.round((data.stats.conversion || 0) * 100)}%</strong></span>
         </div>
         <div className="mt-8">
-          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Tus referidos</h3>
+          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Tus referidos</h3>
+          {data.details.some((d) => d.activeReward && d.activeReward.state !== 'none') && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Ganas <strong>2 €</strong> por cada referido que se registre y complete sus primeros{' '}
+              {data.details.find((d) => d.activeReward)?.activeReward?.testsNeeded ?? 5} tests.
+            </p>
+          )}
           <div className="space-y-2">
             {data.details.length === 0 ? (
               <p className="text-sm text-gray-400 dark:text-gray-500">Todavía no tienes referidos.</p>
             ) : data.details.map((d, i) => {
               const st = statusLabel(d.status)
+              const ar = activeRewardBadge(d.activeReward)
               return (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
                   <div className="min-w-0">
                     <div className="font-medium text-gray-800 dark:text-gray-100 truncate">{d.name || '—'}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{[d.city, d.oposicion].filter(Boolean).join(' · ')}</div>
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
+                    {ar && <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>}
+                  </div>
                 </div>
               )
             })}

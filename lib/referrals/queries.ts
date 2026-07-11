@@ -18,6 +18,9 @@ import {
   withinRewardMonthlyCap,
   MIN_PAYOUT_EUR,
   isValidDenomination,
+  activeSignupEnabled,
+  deriveActiveReward,
+  type ActiveRewardView,
   type EligibilityReason,
   type RewardType,
 } from './logic'
@@ -202,15 +205,24 @@ export async function promoteEligibleToPayable(nowIso: string, exec?: Executor):
   return res.length
 }
 
+/**
+ * Recompensa "registro activo" (2€ al embajador cuando el referido llega a N tests) tal y como
+ * se le muestra al embajador, con total transparencia:
+ *  - `earned`  → ya concedida (columna active_reward_amount rellena); cuenta en su saldo.
+ *  - `pending` → aún no: mostramos el progreso REAL de tests (misma fuente que la concesión:
+ *                tabla `tests`) para que "N/N" coincida con cuándo se paga de verdad.
+ *  - `none`    → el programa está apagado o el referido quedó descartado → no se promete nada.
+ */
 export interface ReferralDetail {
   name: string | null
   city: string | null
   oposicion: string | null
   status: string
   date: string
+  activeReward: ActiveRewardView
 }
 
-/** Detalle por referido (nombre, ciudad, oposición, estado, fecha) para el panel del embajador. */
+/** Detalle por referido (nombre, ciudad, oposición, estado, fecha, bonus de registro activo). */
 export async function getReferralDetails(
   referrerUserId: string, exec?: Executor,
 ): Promise<ReferralDetail[]> {
@@ -221,14 +233,29 @@ export async function getReferralDetails(
     oposicion: userProfiles.targetOposicion,
     status: referrals.status,
     date: referrals.attributedAt,
+    // Columnas añadidas por migración 20260711 (aún no en el schema Drizzle) → SQL literal.
+    activeRewardAmount: sql<string | null>`referrals.active_reward_amount`,
+    // MISMA fuente de conteo que grantActiveSignupRewards (tabla `tests`, por referido) → coherencia.
+    testsDone: sql<number>`(select count(*)::int from tests t where t.user_id = referrals.referred_user_id)`,
   })
     .from(referrals)
     .innerJoin(userProfiles, eq(referrals.referredUserId, userProfiles.id))
     .where(eq(referrals.referrerUserId, referrerUserId))
     .orderBy(desc(referrals.attributedAt))
     .limit(200)
-  // Privacidad: el embajador no ve el apellido completo del referido → "Nombre A. B.".
-  return (rows as ReferralDetail[]).map((r) => ({ ...r, name: abbreviateReferredName(r.name) }))
+
+  const enabled = activeSignupEnabled()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (rows as any[]).map((r) => {
+    const activeReward = deriveActiveReward({
+      grantedAmount: r.activeRewardAmount != null ? Number(r.activeRewardAmount) : null,
+      testsDone: Number(r.testsDone) || 0,
+      status: r.status,
+      enabled,
+    })
+    // Privacidad: el embajador no ve el apellido completo del referido → "Nombre A. B.".
+    return { name: abbreviateReferredName(r.name), city: r.city, oposicion: r.oposicion, status: r.status, date: r.date, activeReward }
+  })
 }
 
 export interface PayableReferral {

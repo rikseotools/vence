@@ -35,15 +35,15 @@ export default function MisVales() {
       </p>
       <div className="space-y-2">
         {vouchers.map((v, i) => (
-          <div key={i} className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
-            <div className="min-w-0">
+          <div key={i} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
+            <div className="flex items-baseline justify-between gap-3 mb-3">
               <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{fmtDate(v.date)}</div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <CopyCode code={v.code} />
-              {v.pin ? <span className="text-xs text-gray-500 dark:text-gray-400">PIN: <span className="font-mono select-all">{v.pin}</span></span> : null}
-              {v.serial ? <span className="text-xs text-gray-400 dark:text-gray-500">Serial: <span className="font-mono select-all">{v.serial}</span></span> : null}
+            <div className="flex flex-col gap-2">
+              <CopyCode label="Código" value={v.code} />
+              {v.pin ? <CopyCode label="PIN" value={v.pin} /> : null}
+              {v.serial ? <CopyCode label="Serial" value={v.serial} /> : null}
             </div>
           </div>
         ))}

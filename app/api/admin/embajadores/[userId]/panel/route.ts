@@ -35,11 +35,12 @@ async function _GET(
 
   // Perfil (existencia + nombre + plan) en una sola lectura.
   const db = getReadDb()
-  const prof = await db.execute(sql`select full_name, plan_type from user_profiles where id = ${userId} limit 1`)
+  const prof = await db.execute(sql`select full_name, plan_type, gender from user_profiles where id = ${userId} limit 1`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = Array.isArray(prof) ? prof : ((prof as any)?.rows ?? [])
   if (!rows.length) return NextResponse.json({ error: 'usuario no encontrado' }, { status: 404 })
   const firstName = String(rows[0]?.full_name || '').trim().split(' ')[0] || null
+  const gender = rows[0]?.gender ?? null
 
   // Solo premium es embajador (Fase 1) — mismo gate que /api/referrals/me.
   if (rows[0]?.plan_type !== 'premium') {
@@ -77,6 +78,7 @@ async function _GET(
   return NextResponse.json({
     isAmbassador: true,
     firstName,
+    gender,
     code,
     link: code ? `${SITE}/r/${code}` : null,
     stats,

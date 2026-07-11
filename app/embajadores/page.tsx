@@ -9,12 +9,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import MisVales from '@/components/embajadores/MisVales'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
+interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; testsDone: number; testsNeeded: number }
 interface ReferralDetail {
   name: string | null
   city: string | null
   oposicion: string | null
   status: string
   date: string
+  activeReward?: ActiveReward
 }
 interface EarningsBySource { source: string; earned: number; count: number }
 interface Earnings { balance: number; earnedLifetime: number; paidLifetime: number; pending: number; bySource: EarningsBySource[] }
@@ -43,6 +45,20 @@ function fireConfetti() {
     confetti({ particleCount: 90, spread: 80, startVelocity: 35, ticks: 120, zIndex: 9999, origin: { x: 0.2, y: 0.3 } })
     setTimeout(() => confetti({ particleCount: 90, spread: 80, startVelocity: 35, ticks: 120, zIndex: 9999, origin: { x: 0.8, y: 0.3 } }), 200)
   }).catch(() => {})
+}
+
+// Palabra según el género del embajador (BD: male/female/other/prefer_not_say). Femenino → "Embajadora".
+const embajadorWord = (g?: string | null) => (g === 'female' ? 'Embajadora' : 'Embajador')
+
+// Badge transparente del bonus "registro activo": lo ganado (verde) o el progreso hacia los N tests.
+function activeRewardBadge(ar?: ActiveReward): { text: string; cls: string; title: string } | null {
+  if (!ar || ar.state === 'none') return null
+  if (ar.state === 'earned') {
+    return { text: `🎉 +${ar.amount} € ganados`, cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+      title: `Bonus de ${ar.amount} € porque este referido ya está activo` }
+  }
+  return { text: `⏳ ${ar.amount} € · ${ar.testsDone}/${ar.testsNeeded} tests`, cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    title: `Ganarás ${ar.amount} € cuando complete ${ar.testsNeeded} tests (lleva ${ar.testsDone})` }
 }
 
 // Estado del referido → etiqueta amistosa + color.
@@ -78,6 +94,19 @@ const PROGRAMAS = [
       'Además, esa persona recibe 5 € de descuento en su primer pago — ganáis los dos.',
       'El importe se abona tras un breve periodo de seguridad (por si hubiera reembolsos).',
       'Sin límite: cuantos más opositores traigas, más recompensas acumulas.',
+    ],
+  },
+  {
+    icon: '✅',
+    titulo: 'Trae opositores activos',
+    premio: '2 €',
+    desc: 'Por cada persona nueva que se registre con tu enlace y empiece a estudiar de verdad (sus primeros 5 tests). No hace falta que pague: solo con que se registre y practique, ganas 2 €.',
+    detalle: [
+      'Cuando alguien que nunca ha estado en Vence se registra con tu enlace y completa sus primeros 5 tests, ganas 2 €.',
+      'No necesita hacerse Premium — basta con que se registre gratis y empiece a hacer tests.',
+      'Debe ser una persona real y distinta a ti: nada de auto-registros ni segundas cuentas (lo detectamos y no cuentan).',
+      'Se abona automáticamente en cuanto el opositor llega a sus 5 tests. Puedes seguir el progreso en «Tus referidos».',
+      'Es un programa de impulso: lo mantenemos de forma temporal mientras hacemos crecer Vence. 🚀',
     ],
   },
   {
@@ -120,6 +149,8 @@ export default function EmbajadoresPage() {
   // Primer nombre para personalizar la enhorabuena (de perfil o metadata de auth).
   const fullName = (userProfile?.full_name || (user?.user_metadata?.full_name as string | undefined) || '').trim()
   const firstName = fullName ? fullName.split(/\s+/)[0] : ''
+  // Género de BD → "Embajador"/"Embajadora" (no asumir masculino si es mujer).
+  const emb = embajadorWord((userProfile as { gender?: string | null } | null)?.gender)
 
   // Observabilidad: registra la visita a la página (top del embudo), una vez por carga, para todos.
   // Manda el token si lo hay → captura el userId del visitante (trazabilidad); anónimo cuenta igual.
@@ -175,7 +206,7 @@ export default function EmbajadoresPage() {
         {/* HERO — cambia según estado */}
         <section className="text-center mb-10 sm:mb-14">
           <span className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
-            🎁 PROGRAMA DE EMBAJADORES
+            🎁 PROGRAMA DE REFERIDOS
           </span>
 
           {loading ? (
@@ -183,7 +214,7 @@ export default function EmbajadoresPage() {
           ) : user && isPremium ? (
             <>
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100 mb-4">
-                🎉 ¡Enhorabuena{firstName ? `, ${firstName}` : ''}! Ya eres <span className="text-blue-600 dark:text-blue-400">Embajador de Vence</span>
+                🎉 ¡Enhorabuena{firstName ? `, ${firstName}` : ''}! Ya eres <span className="text-blue-600 dark:text-blue-400">{emb} de Vence</span>
               </h1>
               <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
                 No solo eres <strong>Premium</strong> — ahora formas parte de nuestro círculo de embajadores.
@@ -194,7 +225,7 @@ export default function EmbajadoresPage() {
           ) : user ? (
             <>
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100 mb-4">
-                Hazte <span className="text-blue-600 dark:text-blue-400">Embajador de Vence</span> y gana recompensas
+                Hazte <span className="text-blue-600 dark:text-blue-400">{emb} de Vence</span> y gana recompensas
               </h1>
               <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed mb-6">
                 El programa de embajadores es para usuarios <strong>Premium</strong>. Hazte Premium y empieza a
@@ -321,10 +352,17 @@ export default function EmbajadoresPage() {
             {/* Detalle de referidos: nombre, ciudad, oposición, estado */}
             {me?.details && me.details.length > 0 && (
               <div className="mt-8">
-                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Tus referidos</h3>
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Tus referidos</h3>
+                {me.details.some((d) => d.activeReward && d.activeReward.state !== 'none') && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Ganas <strong>2 €</strong> por cada referido que se registre y complete sus primeros{' '}
+                    {me.details.find((d) => d.activeReward)?.activeReward?.testsNeeded ?? 5} tests.
+                  </p>
+                )}
                 <div className="space-y-2">
                   {me.details.map((d, i) => {
                     const st = statusLabel(d.status)
+                    const ar = activeRewardBadge(d.activeReward)
                     const sub = [d.city, prettyOpo(d.oposicion)].filter(Boolean).join(' · ')
                     return (
                       <div key={i} className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
@@ -332,7 +370,10 @@ export default function EmbajadoresPage() {
                           <div className="font-medium text-gray-800 dark:text-gray-100 truncate">{d.name || 'Opositor/a'}</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">{sub || '—'}</div>
                         </div>
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
+                          {ar && <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>}
+                        </div>
                       </div>
                     )
                   })}
@@ -345,9 +386,9 @@ export default function EmbajadoresPage() {
         {/* LAS 3 FORMAS DE GANAR */}
         <section>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 text-center mb-6">
-            3 formas de ganar recompensas
+            4 formas de ganar recompensas
           </h2>
-          <div className="grid md:grid-cols-3 gap-5 items-start">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
             {PROGRAMAS.map((p, i) => {
               const open = openIndex === i
               return (
@@ -359,9 +400,9 @@ export default function EmbajadoresPage() {
                     className="w-full text-left p-6 hover:bg-blue-50/50 dark:hover:bg-gray-700/40 transition"
                   >
                     <div className="text-4xl mb-3">{p.icon}</div>
-                    <div className="flex items-baseline gap-2 mb-2">
+                    <div className="flex items-baseline justify-between gap-2 mb-2">
                       <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{p.titulo}</h3>
-                      <span className="text-blue-600 dark:text-blue-400 font-bold">{p.premio}</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-bold whitespace-nowrap shrink-0">{p.premio}</span>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{p.desc}</p>
                     <span className="mt-3 inline-block text-sm text-blue-600 dark:text-blue-400 font-medium">

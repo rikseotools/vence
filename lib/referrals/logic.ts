@@ -132,6 +132,37 @@ export function activeSignupEnabled(): boolean {
   return process.env.ACTIVE_SIGNUP_REWARD === '1'
 }
 
+/**
+ * Cómo se le muestra al embajador el bonus de "registro activo" de UN referido (pura, sin BD).
+ *  - `earned`  → ya concedido (grantedAmount no nulo) — cuenta en su saldo.
+ *  - `pending` → aún no, pero el programa está activo y el referido no está descartado → mostramos
+ *                el progreso REAL de tests hacia el umbral (transparencia).
+ *  - `none`    → programa apagado o referido rechazado → no se promete nada.
+ * Extraída para poder testear el mapeo aislado (dinero → un modo de fallo = un test).
+ */
+export interface ActiveRewardView {
+  state: 'earned' | 'pending' | 'none'
+  amount: number
+  testsDone: number
+  testsNeeded: number
+}
+export function deriveActiveReward(input: {
+  grantedAmount: number | null
+  testsDone: number
+  status: string
+  enabled: boolean
+}): ActiveRewardView {
+  const testsNeeded = ACTIVE_SIGNUP_MIN_TESTS
+  const done = Math.max(0, Math.trunc(input.testsDone || 0))
+  if (input.grantedAmount != null) {
+    return { state: 'earned', amount: input.grantedAmount, testsDone: done, testsNeeded }
+  }
+  if (input.enabled && input.status !== 'rejected') {
+    return { state: 'pending', amount: ACTIVE_SIGNUP_REWARD_EUR, testsDone: done, testsNeeded }
+  }
+  return { state: 'none', amount: 0, testsDone: done, testsNeeded }
+}
+
 export const REWARD_SUBMISSION_STATES = ['pending', 'approved', 'rejected', 'paid'] as const
 export type RewardSubmissionState = (typeof REWARD_SUBMISSION_STATES)[number]
 
