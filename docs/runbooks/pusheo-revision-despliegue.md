@@ -19,6 +19,15 @@ Ambos: build (podman) → push ECR → task def pineada por **digest** clonando 
 > deploys concurrentes) → prod quedaba con la imagen VIEJA aunque el deploy dijera "OK" y `/api/health` reportaba
 > el SHA viejo. Guardarraíl: `__tests__/guardrails/deploy-scripts.test.ts`.
 >
+> **Ficheros temporales por-deploy con `mktemp` (fix 11/07/2026 — RAÍZ del clobber concurrente):** los scripts
+> escribían el task-def en paths **`/tmp` FIJOS** (`/tmp/vence-td-new.json`). Con dos deploys concurrentes (sesiones
+> paralelas), uno **sobreescribía el JSON del otro** entre `writeFileSync` y `register-task-definition` → se
+> registraba la imagen del OTRO deploy (SHA equivocado) → prod servía código viejo aunque `--digestfile` hubiera
+> resuelto el digest correcto (prueba: deploy resolvió `0dfcbb34` pero registró `:429` con `f46f31c4`). Fix: `mktemp`
+> por-deploy (`TDLIVE`/`TDNEW`). Este era el mecanismo REAL de la "guerra de deploys" del 11/07, NO una sesión
+> desplegando a mala idea: CUALQUIER par de deploys concurrentes se corrompía. Con `--digestfile` + `mktemp` +
+> circuit breaker, el deploy es robusto ante concurrencia. Guardarraíl prohíbe `--cli-input-json file:///tmp/vence-*.json`.
+>
 > **Circuit breaker (fix 11/07/2026):** ambos servicios ECS tienen `deploymentCircuitBreaker={enable,rollback}=true`
 > → un deploy que no estabiliza AUTO-REVIERTE al task def anterior (antes `vence-backend` lo tenía OFF y una
 > deployment rota se quedaba atascada dejando el servicio frágil). `update-service --task-definition` (sin
