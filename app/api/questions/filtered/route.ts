@@ -206,6 +206,28 @@ async function _POST(request: NextRequest) {
     if (!validation.success) {
       const issues = validation.error?.issues || []
       console.error('❌ Validación fallida:', issues)
+      // 🔭 OBSERVABILIDAD del rechazo CON detalle de campo. Antes esto se persistía
+      // como un "Parámetros inválidos" pelado (sin decir QUÉ campo falló), lo que
+      // mantuvo INVISIBLE durante semanas el incidente Alfonso (positionType de una
+      // oposición sin construir → 400 para 726 usuarios). Con esto, cualquier futuro
+      // rechazo de schema es diagnosticable al instante: se ve el campo, el código y
+      // un eco acotado del valor (positionType/numQuestions, no PII). Fire-and-forget.
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'filtered_questions_validation_rejected',
+        endpoint: '/api/questions/filtered',
+        httpStatus: 400,
+        errorMessage: issues.map(e => `${(e.path ?? []).join('.')}: ${e.code}`).join('; ').slice(0, 300),
+        metadata: {
+          fields: issues.map(e => (e.path ?? []).map(String).join('.')),
+          positionType: typeof safeBody?.positionType === 'string'
+            ? safeBody.positionType.slice(0, 80)
+            : typeof safeBody?.positionType,
+          numQuestions: safeBody?.numQuestions ?? null,
+          selectedLawsCount: Array.isArray(safeBody?.selectedLaws) ? safeBody.selectedLaws.length : null,
+        },
+      })
       return NextResponse.json(
         {
           success: false,

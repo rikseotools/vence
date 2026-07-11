@@ -83,7 +83,17 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
   it('FIX auditoría: isLawOnlyMode intersecta selección manual con el scope', () => {
     const q = read('lib/api/filtered-questions/queries.ts')
     expect(q).toMatch(/specificArticles\.length > 0 && scopeToPosition/)
-    expect(q).toMatch(/specificArticles\.filter\(a => scoped\.has\(a\)\)/)
+    // Oposición CON temario → intersección (defensa en profundidad, sin regresión).
+    expect(q).toMatch(/specificArticles\.filter\(a => scopedSet\.has\(a\)\)/)
+  })
+
+  it('FIX incidente Alfonso: sin temario (scoped===null) degrada a la selección del usuario, NO test vacío', () => {
+    const q = read('lib/api/filtered-questions/queries.ts')
+    // scopedNumbersFor distingue "sin temario" (null) de "temario vacío".
+    expect(q).toMatch(/Promise<string\[\] \| null>/)
+    // En degradación se sirve la selección explícita del usuario (no intersección vacía).
+    expect(q).toMatch(/scoped === null/)
+    expect(q).toMatch(/filtered_questions_unbuilt_oposicion_degrade/)
   })
 
   it('FIX auditoría: multi-ley espera a userProfile cuando la URL pide scoped=1', () => {

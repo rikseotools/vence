@@ -166,12 +166,18 @@ describe('API Request Validation', () => {
     expect(typeof validRequest.topicNumber).toBe('number')
   })
 
-  test('positionType debe ser uno de los valores permitidos', () => {
-    const validTypes = ['auxiliar_administrativo_estado', 'administrativo', 'administrativo_estado']
-
-    validTypes.forEach(type => {
-      expect(['auxiliar_administrativo_estado', 'administrativo', 'administrativo_estado']).toContain(type)
-    })
+  // positionType es TOLERANTE (no z.enum) desde el incidente Alfonso (11/07):
+  // un target_oposicion de una oposición sin construir ('bibliotecario' y ~726
+  // usuarios) NO debe dar 400 y romper todo test multi-ley. Guardarraíl real:
+  // llama al schema, no a un array literal. Ver positionTypeTolerant.test.ts para
+  // la matriz completa. Si alguien vuelve a poner z.enum(POSITION_TYPES_ENUM),
+  // este test FALLA.
+  test('positionType desconocido NO da 400 (tolerante — incidente Alfonso)', () => {
+    const { safeParseGetFilteredQuestions } = require('@/lib/api/filtered-questions/schemas')
+    const base = { topicNumber: 0, selectedLaws: ['Ley 39/2015'], numQuestions: 50 }
+    expect(safeParseGetFilteredQuestions({ ...base, positionType: 'bibliotecario' }).success).toBe(true)
+    expect(safeParseGetFilteredQuestions({ ...base, positionType: 'auxiliar_administrativo_estado' }).success).toBe(true)
+    expect(safeParseGetFilteredQuestions({ ...base, positionType: '' }).success).toBe(false)
   })
 
   test('selectedSectionFilters debe tener estructura correcta', () => {

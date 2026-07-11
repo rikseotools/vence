@@ -32,7 +32,30 @@ import {
   RULE_CANARY_QUESTIONS_GATE_FAILED,
   RULE_EXAM_INTEGRITY_DRIFT,
   RULE_CLIENT_EDGE_SUSTAINED,
+  RULE_FILTERED_VALIDATION_REJECTED_SPIKE,
 } from './alert-rules';
+
+describe('RULE_FILTERED_VALIDATION_REJECTED_SPIKE (incidente Alfonso)', () => {
+  it('dispara con un pico sistémico (>30 rechazos/h)', () => {
+    expect(RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([{ n: 45, topReason: 'positionType: invalid_type' }])).toBe(true);
+  });
+
+  it('NO dispara con ruido bajo (un usuario reintentando)', () => {
+    expect(RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([{ n: 5, topReason: 'positionType: invalid_type' }])).toBe(false);
+    expect(RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([])).toBe(false);
+  });
+
+  it('la notificación nombra el campo/causa más frecuente', () => {
+    const notif = RULE_FILTERED_VALIDATION_REJECTED_SPIKE.buildNotification([{ n: 40, topReason: 'positionType: invalid_type' }]);
+    expect(notif.title).toContain('40');
+    expect(notif.body).toContain('positionType');
+    expect(notif.fingerprint).toBe('filtered_validation_rejected');
+  });
+
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.some(r => r.name === 'filtered_validation_rejected_spike')).toBe(true);
+  });
+});
 
 describe('RULE_RUNTIME_KILL', () => {
   it('dispara con cualquier runtime_kill (n>0)', () => {

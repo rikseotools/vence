@@ -30,6 +30,7 @@ import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { buildOfficialExamFilter, buildQuestionTagFilter } from '@/lib/api/oposicion-scope/queries'
 import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import { logValidationError } from '@/lib/api/validation-error-log'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // ============================================
 // COLUMNAS COMPARTIDAS: Usado por todos los selects de preguntas
@@ -1096,24 +1097,40 @@ export async function getFilteredQuestions(
         .from(laws)
         .where(inArray(laws.shortName, selectedLaws))
 
+      // Todos los números de artículo de una ley (ley completa).
+      const allArticleNumbersFor = async (lawId: string): Promise<string[]> => {
+        const allArticles = await db
+          .select({ articleNumber: articles.articleNumber })
+          .from(articles)
+          .where(eq(articles.lawId, lawId))
+        return allArticles.map(a => a.articleNumber)
+      }
+
       // Números de artículo del topic_scope del positionType para una ley (unión de
       // sus temas; NULL en algún scope = ley virtual → toda la ley). Fuente única del
       // "temario de esta ley" para el modo acotado.
-      const scopedNumbersFor = async (lawId: string): Promise<string[]> => {
+      //
+      // Devuelve `null` cuando la oposición NO tiene NINGUNA fila de topic_scope para
+      // esta ley (oposición sin temario construido: 'bibliotecario' y ~726 usuarios,
+      // o valores legacy/corruptos). Ese `null` distingue "sin temario" de "temario
+      // que resuelve a 0 artículos", para poder DEGRADAR con gracia en vez de servir
+      // un test vacío que frustra al usuario (incidente Alfonso, premium, 11/07).
+      const scopedNumbersFor = async (lawId: string): Promise<string[] | null> => {
         const scopeRows = await db
           .select({ articleNumbers: topicScope.articleNumbers })
           .from(topicScope)
           .innerJoin(topics, eq(topics.id, topicScope.topicId))
           .where(and(eq(topics.positionType, positionType), eq(topicScope.lawId, lawId)))
+        if (scopeRows.length === 0) return null // ← sin temario para esta ley/oposición
         if (scopeRows.some(r => r.articleNumbers === null)) {
-          const allArticles = await db
-            .select({ articleNumber: articles.articleNumber })
-            .from(articles)
-            .where(eq(articles.lawId, lawId))
-          return allArticles.map(a => a.articleNumber)
+          return allArticleNumbersFor(lawId) // ley virtual → toda la ley
         }
         return [...new Set(scopeRows.flatMap(r => r.articleNumbers ?? []))]
       }
+
+      // Leyes en las que hubo que DEGRADAR (scopeToPosition pedido pero la oposición
+      // no tiene temario para esa ley) — se observa 1 vez por request más abajo.
+      const degradedLaws: string[] = []
 
       // Construir mappings de artículos por ley
       for (const law of lawResults) {
@@ -1124,22 +1141,33 @@ export async function getFilteredQuestions(
           // 🎯 Manual + ACOTADO → INTERSECCIÓN: la selección manual del usuario nunca
           // puede colar artículos fuera de su temario (ni por el selector ni por URL
           // ?articles=…&scoped=1). Defensa en profundidad.
-          const scoped = new Set(await scopedNumbersFor(law.lawId!))
-          articleNumbers = specificArticles.filter(a => scoped.has(a))
+          const scoped = await scopedNumbersFor(law.lawId!)
+          if (scoped === null) {
+            // DEGRADACIÓN: oposición sin temario para esta ley → NO intersecar contra
+            // vacío (daría 0 preguntas). Respetar la selección EXPLÍCITA del usuario:
+            // pidió estos artículos de esta ley, se los servimos (ley acotada a lo suyo).
+            articleNumbers = specificArticles
+            degradedLaws.push(law.lawShortName || law.lawId || '?')
+          } else {
+            const scopedSet = new Set(scoped)
+            articleNumbers = specificArticles.filter(a => scopedSet.has(a))
+          }
         } else if (specificArticles.length > 0) {
           // Manual sin acotar → tal cual (ley completa / poweruser).
           articleNumbers = specificArticles
         } else if (scopeToPosition) {
           // 🎯 ACOTADO a la oposición: el temario de esa ley (unión de sus temas).
-          // Sin scope para esa ley = [] → 0 preguntas (no está en su temario).
-          articleNumbers = await scopedNumbersFor(law.lawId!)
+          const scoped = await scopedNumbersFor(law.lawId!)
+          // DEGRADACIÓN: sin temario para esta ley → ley completa (no un test vacío).
+          if (scoped === null) {
+            articleNumbers = await allArticleNumbersFor(law.lawId!)
+            degradedLaws.push(law.lawShortName || law.lawId || '?')
+          } else {
+            articleNumbers = scoped
+          }
         } else {
           // LEY COMPLETA (default: /leyes/[law], SEO, multi-ley sin target — intacto).
-          const allArticles = await db
-            .select({ articleNumber: articles.articleNumber })
-            .from(articles)
-            .where(eq(articles.lawId, law.lawId!))
-          articleNumbers = allArticles.map(a => a.articleNumber)
+          articleNumbers = await allArticleNumbersFor(law.lawId!)
         }
 
         filteredMappings.push({
@@ -1148,6 +1176,26 @@ export async function getFilteredQuestions(
           lawShortName: law.lawShortName,
           lawName: law.lawName,
           topicNumber: null,
+        })
+      }
+
+      // 🔭 OBSERVABILIDAD de la DEGRADACIÓN (incidente Alfonso, 11/07). El usuario pidió
+      // acotar a su oposición pero ésta NO tiene temario construido para esas leyes, así
+      // que servimos su selección/ley completa en vez de un test vacío. Emitirlo hace
+      // VISIBLE qué oposiciones sin construir usa la gente (prioriza construirlas) y qué
+      // target_oposicion son legacy/corruptos (higiene de datos). Fire-and-forget.
+      if (degradedLaws.length > 0) {
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'info',
+          eventType: 'filtered_questions_unbuilt_oposicion_degrade',
+          endpoint: '/api/questions/filtered',
+          userId: userId ?? undefined,
+          metadata: {
+            positionType: String(positionType).slice(0, 80),
+            degradedLaws: degradedLaws.slice(0, 20),
+            mode: 'law-only',
+          },
         })
       }
     } else {

@@ -2880,8 +2880,46 @@ export const RULE_AUTH_MINT_DROP: AlertRule<{ now: number; base: number }> = {
   cooldownMin: 30,
 };
 
+/**
+ * Pico de rechazos de validación en /api/questions/filtered (incidente Alfonso,
+ * 11/07/2026). Un schema demasiado estricto (positionType z.enum) devolvía 400 a
+ * 726 usuarios y NADIE lo veía: el 400 se persistía como "Parámetros inválidos"
+ * pelado. Ahora el endpoint emite `filtered_questions_validation_rejected` con el
+ * campo que falló; esta regla convierte un pico SISTÉMICO en aviso en <1h. Un
+ * usuario reintentando no llega a 30/h; 30+/h = un contrato roto que afecta a
+ * muchos (regresión de schema, cliente que manda un campo nuevo mal, etc.).
+ */
+export const RULE_FILTERED_VALIDATION_REJECTED_SPIKE: AlertRule<{
+  n: number;
+  topReason: string | null;
+}> = {
+  name: 'filtered_validation_rejected_spike',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY error_message) AS "topReason"
+    FROM observable_events
+    WHERE event_type = 'filtered_questions_validation_rejected'
+      AND ts > NOW() - INTERVAL '60 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 30,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const reason = rows[0]?.topReason ?? '(varios)';
+    return {
+      title: `Tests bloqueados por validación — ${n} rechazos en 1h`,
+      body: `Muchos usuarios NO pueden crear tests en /api/questions/filtered (400 de schema).\nCampo/causa más frecuente: ${reason}\n\nProbable contrato de schema roto (regresión o campo nuevo mal). Investigar:\n\n  SELECT metadata->>'positionType' pt, metadata->'fields' fields, COUNT(*)\n  FROM observable_events\n  WHERE event_type='filtered_questions_validation_rejected'\n    AND ts > NOW() - INTERVAL '60 minutes'\n  GROUP BY 1,2 ORDER BY COUNT(*) DESC;`,
+      metadata: { count: n, topReason: reason, windowMin: 60 },
+      fingerprint: `filtered_validation_rejected`,
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Tests bloqueados por rechazo de validación (2026-07-11, incidente Alfonso)
+  RULE_FILTERED_VALIDATION_REJECTED_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
   RULE_CLIENT_ERROR_SPIKE as AlertRule,
   RULE_CLIENT_HTTP_4XX_SPIKE as AlertRule,
