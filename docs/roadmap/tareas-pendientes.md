@@ -61,3 +61,9 @@
 - **Por qué:** cierra el hueco de doble recompensa por el mismo motivo (control robusto). No bloquea nada (creación manual ya se verifica), pero conviene que esté vivo.
 - **Cómo:** `docs/runbooks/deploy.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
 - **Estado:** commiteado + pusheado, pendiente de deploy.
+
+### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (6 €)
+- **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **6 € pagables** = 2 recompensas de bug aprobadas (3 €+3 €), sin hold, 0 pagado. Emitir vale Amazon.es.
+- **Por qué:** dinero ganado y disponible sin cobrar; es el primero que dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 1 € de saldo) o esperar a que acumule 10 €.
+- **Cómo:** `docs/runbooks/embajadores-recompensas.md` (POST `/api/admin/rewards/pay` o `payAccumulated`). Panel `/admin/embajadores/7c6612bd`.
+- **Estado:** detectado 11/07, pendiente de decisión de Manuel (no pagar aún).
