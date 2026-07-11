@@ -62,7 +62,12 @@ export async function grantActiveSignupRewards(exec?: Executor): Promise<ActiveS
       JOIN user_profiles refd ON refd.id = r.referred_user_id
       JOIN user_profiles amb ON amb.id = r.referrer_user_id
       WHERE r.active_reward_at IS NULL
-        AND (r.fraud_flags IS NULL OR r.fraud_flags = '{}'::jsonb OR jsonb_typeof(r.fraud_flags) = 'null')
+        -- "sin fraude" = flags vacíos. El DEFAULT de la columna es '[]'::jsonb (array
+        -- vacío), así que hay que aceptarlo explícitamente: sin esto NINGUNA referral
+        -- real (todas nacen con []) pasaba el filtro y el bono nunca se concedía (bug
+        -- detectado 2026-07-11: 0 concesiones en toda la historia pese a elegibles).
+        AND (r.fraud_flags IS NULL OR jsonb_typeof(r.fraud_flags) = 'null'
+             OR r.fraud_flags = '{}'::jsonb OR r.fraud_flags = '[]'::jsonb)
         AND refd.registration_ip IS DISTINCT FROM amb.registration_ip
         AND (SELECT count(*) FROM tests t WHERE t.user_id = r.referred_user_id) >= ${ACTIVE_SIGNUP_MIN_TESTS}
     ),

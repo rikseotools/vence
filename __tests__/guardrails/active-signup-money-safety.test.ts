@@ -31,6 +31,14 @@ describe('guardarraíl — registro activo (dinero real)', () => {
     expect(src).toMatch(/fraud_flags/) // no fraud-flagged
   })
 
+  it('el filtro anti-fraude acepta el DEFAULT real de fraud_flags ([] array vacío)', () => {
+    // Regresión (bug 2026-07-11): la columna nace con '[]'::jsonb, no '{}'. Si el filtro
+    // solo aceptaba NULL/{}/'null' JSON, NINGUNA referral real pasaba y el bono nunca se
+    // concedía (0 en toda la historia pese a elegibles). El filtro DEBE aceptar '[]'::jsonb.
+    const src = readFileSync(join(ROOT, 'lib/referrals/activeSignup.ts'), 'utf8')
+    expect(src).toMatch(/fraud_flags\s*=\s*'\[\]'::jsonb/)
+  })
+
   it('el cron de referidos invoca grantActiveSignupRewards', () => {
     const src = readFileSync(join(ROOT, 'app/api/cron/referrals-promote/route.ts'), 'utf8')
     expect(src).toMatch(/grantActiveSignupRewards/)

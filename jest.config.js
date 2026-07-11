@@ -53,6 +53,10 @@ export default {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/scripts/',
+    // Sesiones paralelas crean git worktrees bajo .claude/worktrees/ con COPIAS de
+    // los tests → jest los recogía y duplicaba/ensuciaba la suite (versiones stale de
+    // otras ramas). Ignorarlos: cada worktree corre sus tests desde su propio cwd.
+    '<rootDir>/.claude/worktrees/',
   ],
   // Timeout para tests async
   testTimeout: 10000,
