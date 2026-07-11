@@ -17,6 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [radarContenido, setRadarContenido] = useState(0)
   const [contenidoAlerts, setContenidoAlerts] = useState(0)
   const [scopeVerifyAlerts, setScopeVerifyAlerts] = useState(0)
+  const [payoutsPending, setPayoutsPending] = useState(0)
 
   const checkOepSignals = useCallback(async () => {
     try {
@@ -117,6 +118,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkRollover, 600000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkRollover])
+
+  // Badge "toca pagar": nº de embajadores con saldo pagable (>= mínimo, hold vencido).
+  const checkPayouts = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/admin/referrals/payouts-pending-count', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setPayoutsPending(json.count ?? 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    const delay = setTimeout(checkPayouts, 16000)
+    const interval = setInterval(checkPayouts, 600000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkPayouts])
 
   return (
     <ProtectedRoute>
@@ -392,10 +410,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </Link>
                   <Link
                     href="/admin/embajadores"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      payoutsPending > 0 ? 'animate-pulse' : ''
+                    }`}
                   >
                     <span>🎁</span>
                     <span>Embajadores</span>
+                    {payoutsPending > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
+                        title={`${payoutsPending} embajador(es) con saldo pagable → revisa los referidos y paga`}
+                      >
+                        {payoutsPending > 99 ? '99+' : payoutsPending}
+                      </span>
+                    )}
                   </Link>
                   <Link
                     href="/admin/ads"

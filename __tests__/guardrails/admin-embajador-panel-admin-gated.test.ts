@@ -21,6 +21,16 @@ describe('guardarraíl — vista admin del panel de embajador', () => {
     expect(src).not.toMatch(/getOrCreateReferralCode/)
   })
 
+  it('el badge "toca pagar" exige admin y cuenta SOLO saldo pagable (respeta hold)', () => {
+    const src = readFileSync(join(ROOT, 'app/api/admin/referrals/payouts-pending-count/route.ts'), 'utf8')
+    // gate admin
+    expect(src).toMatch(/requireAdmin\s*\(/)
+    // DEBE usar la query que respeta el hold (payable + submissions tras hold − pagado);
+    // NUNCA un sum crudo de reward_earnings, que incluiría dinero aún retenido → avisos falsos.
+    expect(src).toMatch(/getEmbajadoresWithBalance/)
+    expect(src).not.toMatch(/reward_earnings/)
+  })
+
   it('/api/referrals/me sigue resolviendo la identidad del TOKEN (no del cliente)', () => {
     const src = readFileSync(join(ROOT, 'app/api/referrals/me/route.ts'), 'utf8')
     expect(src).toMatch(/getAuthenticatedUser\s*\(/)
