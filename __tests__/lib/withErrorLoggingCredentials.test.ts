@@ -59,3 +59,13 @@ describe('withErrorLogging — filtro 401 solo anónimo (source)', () => {
     expect(content).toMatch(/límite diario/)
   })
 })
+
+// /api/auth/token: su 401 es contrato SIEMPRE (el cliente manda credenciales y hace
+// polling → la regla central del 401 anónimo NO basta). Debe marcarlo expectedStatuses.
+describe('/api/auth/token — 401 esperado por contrato (source)', () => {
+  const route = fs.readFileSync(path.join(ROOT, 'app/api/auth/token/route.ts'), 'utf-8')
+
+  it('marca expectedStatuses:[401] para no re-inundar validation_error_logs', () => {
+    expect(route).toMatch(/withErrorLogging\(\s*['"]\/api\/auth\/token['"]\s*,\s*_GET\s*,\s*\{\s*expectedStatuses:\s*\[\s*401\s*\]\s*\}\s*\)/)
+  })
+})

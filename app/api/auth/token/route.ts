@@ -87,4 +87,14 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   )
 }
 
-export const GET = withErrorLogging('/api/auth/token', _GET)
+// El 401 de ESTE endpoint es contrato SIEMPRE — su trabajo es "acuñar token o 401".
+// A diferencia de otros endpoints, aquí el 401 con credenciales NO es señal de bug:
+// el cliente (authjsAdapter.fetchMintedToken) manda credenciales en cada tick de
+// sesión (`credentials:'include'` envía la cookie de sesión authjs; más un Bearer
+// puente transitorio en clientes que aún arrastran sesión antigua durante el drenaje)
+// y hace polling. Un cliente sin sesión authjs válida → 401 en cada poll → ~340k/día.
+// La regla central de withErrorLogging solo filtra el 401 ANÓNIMO (sin credenciales);
+// estos van credencializados, así que hace falta marcar el 401 como esperado POR
+// CONTRATO aquí. Un fallo de mint real aflora por caída de `auth_token_minted`, no por
+// logs de 401. El 503 (issuer_not_configured) NO está en la lista → sí se registra.
+export const GET = withErrorLogging('/api/auth/token', _GET, { expectedStatuses: [401] })
