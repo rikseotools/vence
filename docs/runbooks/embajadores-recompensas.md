@@ -67,7 +67,7 @@ body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la op
 Cuando resolvemos un bug reportado y merece recompensa, procede **usuario a usuario** (nunca en lote):
 1. **Verifica** que el bug es real y resuelto, y que el usuario **no tiene ya** recompensa por ese feedback (el guardarraíl lo impide, pero míralo).
 2. **Emite la recompensa** (`POST /api/admin/rewards`, `type:'bug'` + `feedbackId`). El badge 🎁 empieza a **parpadear** en su header hasta que lo pinche (server-side, automático). **No se envía email.**
-3. **Redacta el borrador** de la respuesta a su feedback y **espera aprobación** (nunca envíes sin OK). En el mensaje llámalo **"Programa de Recompensas"** (no "de Embajadores") y anúnciale el bonus.
+3. **Redacta el borrador** de la respuesta a su feedback y **espera aprobación** (nunca envíes sin OK). En el mensaje llámalo **"Programa de Recompensas"** (no "de Embajadores") y anúnciale el bonus. **Personalízalo con SUS datos, no plantilla genérica** (aprendizaje 11/07, Mari — Manuel rechazó un "cuando quieras canjear, dínoslo" boilerplate): mira su actividad en `tests` (`SELECT count(*), count(distinct date(created_at)) FROM tests WHERE user_id=<uid>` → nº de tests y días activos), los **bugs suyos que hemos arreglado**, y su **oposición + fecha de examen**, y menciónalos con naturalidad. NO cites datos que desmotiven (p.ej. % de aciertos bajo).
 4. **Envía** por `POST /api/v2/feedback/respond` (email + campana) y cierra ese feedback **antes** de pasar al siguiente.
 
 ### 3. Consultar saldos por pagar
@@ -77,18 +77,30 @@ GET /api/admin/rewards/accumulated
 ```
 `suggested` = mayor denominación ≤ saldo.
 
+> **⚠️ ANTES de responder o de pagar, comprueba en BD el estado REAL de saldo y vales del embajador** (gotcha 11/07, caso Mari — Manuel tuvo que corregir dos veces). El endpoint da el `suggested`, pero para redactar el mensaje o decidir un canje mira los datos directamente:
+> - **Vales ya emitidos:** `SELECT amount, status, giftcard_ref, created_at FROM reward_payouts WHERE beneficiary_user_id = '<uid>'`. ⚠️ La columna es **`beneficiary_user_id`, NO `user_id`** — una query por `user_id` **no filtra y devuelve 0 en silencio**, y creerás que nunca ha cobrado (me pasó: dije "nunca canjeado" cuando ya tenía un vale de 5€ emitido esa mañana).
+> - **El saldo PAGABLE NO se calcula a mano — usa `GET /api/admin/rewards/accumulated` (campo `balance`) o la función `getUserOwedBalance(uid)`.** (Gotcha 11/07, caso Mari: hilé una SQL solo de `reward_submissions` y me perdí el **referido de 10€** y el **registro activo de 2€**, que viven en la tabla `referrals`, NO en `reward_submissions`.) La fórmula real (`getUserOwedBalance`) es:
+>   ```
+>   SUM(bounty_amount) FROM referrals        WHERE referrer_user_id=<uid> AND status='payable'   -- ⚠️ SOLO 'payable', NO 'qualified' (los qualified están en HOLD de 15 días, no pagables aún)
+>   + SUM(amount) FROM reward_submissions     WHERE user_id=<uid> AND status='approved' AND (hold_until IS NULL OR hold_until <= now())
+>   − SUM(amount) FROM reward_payouts         WHERE beneficiary_user_id=<uid>
+>   ```
+> - **El canjeable = ese `balance` pagable, nunca el "ganado" bruto del panel.** El panel muestra `earnedLifetime` (todas las fuentes, incluidas las en hold); el pagable excluye lo retenido. Error real: dije "13€ → vale de 10€" contando mal; lo pagable eran 3€ (+5€ del UGC nuevo = 8€ → vale de 5€), y el referido de 10€ seguía en hold.
+> - **Denominación canjeable** = mayor denominación fija de Amazon.es (5/10/20/50…€) **≤ balance pagable**.
+
 ### 4. Pagar un vale (gift card) — SUPERVISADO, lo compra Claude (NO automático)
 
 **MODELO (decisión Manuel):** el **cash-out es supervisado**. Los saldos se **acumulan solos** (contabilidad, cero dinero); **comprar el vale sí gasta dinero real → siempre lo pide Manuel** ("a fulano, vale de X€") **y lo ejecuta Claude con una compra DIRECTA controlada**. Nada de pagos automáticos. Por eso **`BITREFILL_LIVE` se queda OFF en prod** a propósito (el endpoint `/api/admin/rewards/issue-giftcard` existe como fallback pero en dry-run — red de seguridad anti-gasto accidental).
 
 **Procedimiento de compra directa (patrón validado en la 1ª compra real, 11/07):**
-1. **Pre-check:** el **saldo pagable** del embajador (`getUserOwedBalance`) debe ser **≥ importe**. Saldo de la cuenta Bitrefill: `GET https://api.bitrefill.com/v2/accounts/balance` (Bearer `BITREFILL_API_TOKEN`) — está en **BTC/sats** (un vale de 5€ ≈ **8.934 sats ≈ 5€**; se paga en cripto aunque el vale sea en EUR).
+1. **Pre-check OBLIGATORIO (STOP si falla), ANTES de comprar nada:** el **saldo PAGABLE** del embajador (`getUserOwedBalance` / `balance` del endpoint `accumulated`, que **ya excluye los referidos en hold** — ver §3) debe ser **≥ importe**. **Hazlo antes de la compra Bitrefill**, porque la compra gasta dinero real e **irreversible**: si compras primero y luego `payAccumulated` rechaza por saldo (backstop atómico, línea `if (amount > balance)`), te queda un **vale comprado sin dueño** = dinero perdido. (Aprendizaje 11/07: yo compré antes de pre-chequear el saldo del usuario; salió bien por suerte, pero el orden correcto es pre-check → compra → registro.) **NUNCA restes tú a mano los referidos: los `qualified` están en hold de 15 días y NO son pagables** — por eso se usa `getUserOwedBalance`, que solo cuenta `payable`. También comprueba el saldo de la cuenta Bitrefill: `GET https://api.bitrefill.com/v2/accounts/balance` (Bearer `BITREFILL_API_TOKEN`) — está en **BTC/sats** (un vale de 5€ ≈ **8.934 sats ≈ 5€**; se paga en cripto aunque el vale sea en EUR).
 2. **Comprar:** `POST /v2/invoices` con `{ products:[{ product_id:'amazon_es-spain', value, quantity:1 }], payment_method:'balance', auto_pay:true }`.
    - ⚠️ **GOTCHA:** el product_id es **`amazon_es-spain`** (NO `amazon_es` → 404 `product_not_found`). Denominaciones válidas 5/10/20/50/100/…€.
    - `auto_pay:true` **paga desde el saldo** (si vuelves a llamar /pay da `already_paid`). Verifica que el saldo Bitrefill **baja** (~8.934 sats por 5€).
-3. **Leer el código:** viene en `orders[0].redemption_info` = `{ code, pin, extra_fields."Serial Number" }`. Si no está al instante (`status` != `all_delivered`), **poll** `GET /v2/invoices/{id}` unas veces.
+3. **Leer el código:** viene en `orders[0].redemption_info`. Si no está al instante (`status` != `all_delivered`), **poll** `GET /v2/invoices/{id}` unas veces. ⚠️ **El formato varía por vale:** unos traen `{ code, pin, extra_fields."Serial Number" }`; otros Amazon.es solo traen **`{ code, extra_fields."Fallback link" }` (sin `pin` ni serial)** (caso 11/07). Guarda `{ code, pin: pin||'', serial: serial||'' }` — **el código basta para canjear** y la UI de "Tus vales" tolera pin/serial vacíos. No abortes si faltan pin/serial.
 4. **Registrar el pago:** `payAccumulated({ userId, adminUserId, amount, giftcardRef: JSON.stringify({code,pin,serial}), purchasedVia:'bitrefill' })` → baja el saldo del embajador (re-valida denominación + saldo, atómico).
    - El vale se guarda como **JSON `{code,pin,serial}`** en `reward_payouts.giftcard_ref`. El usuario lo ve en **/embajadores → "Tus vales"** (endpoint `GET /api/referrals/vouchers`, identidad del token) con **botón Copiar** (copia solo el código) + **PIN/serial**, y **le parpadea el 🎁** (el badge cuenta vales nuevos sin ver, no solo ingresos).
+   - **TRAZABILIDAD (añadir SIEMPRE, aprendizaje 11/07):** guarda en el mismo `giftcard_ref` claves internas con prefijo `_` — `_invoice_id`, `_order_id`, `_fallback_link` (el `redemption_info.extra_fields."Fallback link"` de revealyourgift.com), `_purchased_at`. **El endpoint de vales solo lee `code`/`pin`/`serial`** (línea `{code:p.code, pin:p.pin, serial:p.serial}`), así que las claves `_*` **NO se exponen al usuario** pero quedan para soporte/seguimiento/reclamación a Bitrefill. La hora exacta ya está en `reward_payouts.paid_at` (el panel muestra solo la fecha — decisión de UI).
 
 **Endpoint fallback:** `POST /api/admin/rewards/issue-giftcard { userId, amount }` hace todo lo anterior en una llamada, pero **solo compra real con `BITREFILL_LIVE=1`** (si no, dry-run con código `DRYRUN-…` que no se muestra al usuario). No se usa mientras el cash-out sea supervisado.
 
