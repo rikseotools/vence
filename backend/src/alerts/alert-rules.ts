@@ -2822,6 +2822,51 @@ export const RULE_VALIDATION_LOG_FLOOD: AlertRule<{
   cooldownMin: 180,
 };
 
+/**
+ * Salud del minteo de tokens (señal POSITIVA de auth) — hace SEGURO silenciar el
+ * 401 de `/api/auth/token`.
+ *
+ * Contexto (11/07/2026): el 401 de ese endpoint se marcó `expectedStatuses:[401]`
+ * (deja de ensuciar validation_error_logs; su 401 es contrato). Riesgo: sin una señal
+ * positiva, una regresión REAL ("sesiones válidas reciben 401, nadie mintea") quedaría
+ * ciega. Esta regla la cubre SIN falsos positivos: compara los `auth_token_minted`
+ * (emitido SOLO en mint OK) de la última hora contra la MISMA hora hace 7 días
+ * (baseline robusto a estacionalidad diaria/semanal). Si el baseline era significativo
+ * (≥500) y ahora cae por debajo del 20 %, el minteo está roto → crítico. El volumen
+ * normal es ~7-10k/hora, así que un baseline-relativo no gatea por variación de tráfico.
+ */
+export const RULE_AUTH_MINT_DROP: AlertRule<{ now: number; base: number }> = {
+  name: 'auth_mint_drop',
+  severity: 'critical',
+  query: sql`
+    WITH now_w AS (
+      SELECT COUNT(*)::int AS n FROM observable_events
+      WHERE event_type = 'auth_token_minted' AND ts > NOW() - INTERVAL '1 hour'
+    ),
+    base_w AS (
+      SELECT COUNT(*)::int AS n FROM observable_events
+      WHERE event_type = 'auth_token_minted'
+        AND ts > NOW() - INTERVAL '1 hour' - INTERVAL '7 days'
+        AND ts <= NOW() - INTERVAL '7 days'
+    )
+    SELECT now_w.n AS now, base_w.n AS base FROM now_w, base_w
+  `,
+  shouldFire: (rows) => {
+    const r = rows[0];
+    return !!r && r.base >= 500 && r.now < r.base * 0.2;
+  },
+  buildNotification: (rows) => {
+    const r = rows[0]!;
+    const pct = r.base > 0 ? Math.round((r.now / r.base) * 100) : 0;
+    return {
+      title: `Minteo de tokens caído: ${r.now}/h (era ${r.base}/h hace 7d, ${pct}%)`,
+      body: `auth_token_minted (mint OK de /api/auth/token) se desplomó vs la misma hora hace 7 días. Como el 401 de ese endpoint está silenciado por contrato, ESTA es la señal de que el minteo real está roto — sesiones válidas que no obtienen token → la app autenticada cae en cascada (todas las /api/v2 sin Bearer):\n\n  ahora:   ${r.now} mints/h\n  hace 7d: ${r.base} mints/h  (${pct}%)\n\nInvestigar:\n  - /api/auth/token: ¿503 issuer_not_configured (claves RS256)? ¿auth() no resuelve sesión?\n  - ¿Deploy reciente rompió el mint o la verificación de sesión Auth.js?\n  - Cruce: SELECT http_status, COUNT(*) FROM observable_events WHERE endpoint='/api/auth/token' AND ts>NOW()-INTERVAL '15 min' GROUP BY 1;`,
+      metadata: { mintsNow: r.now, mintsBaseline: r.base, pctOfBaseline: pct },
+    };
+  },
+  cooldownMin: 30,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
@@ -2911,4 +2956,7 @@ export const ALERT_RULES: AlertRule[] = [
   // tras el flood de 401 anónimos que tumbó el panel admin). Auto-detecta el
   // próximo bucket que inunde validation_error_logs antes de que sea un problema.
   RULE_VALIDATION_LOG_FLOOD as AlertRule,
+  // Señal POSITIVA de auth (11/07/2026): hace seguro silenciar el 401 de
+  // /api/auth/token — si el minteo real se cae (nadie obtiene token), gatea aquí.
+  RULE_AUTH_MINT_DROP as AlertRule,
 ];
