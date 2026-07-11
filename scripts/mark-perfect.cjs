@@ -2,7 +2,7 @@
 // status: perfect, tech_perfect, wrong_article
 // Ejemplo: node scripts/mark-perfect.cjs abc123 perfect "Art 15 RGPD confirmado"
 
-const { createClient } = require("@supabase/supabase-js");
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 require("dotenv").config({ path: ".env.local" });
 
 const supabase = createClient(

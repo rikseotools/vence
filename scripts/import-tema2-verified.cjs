@@ -2,7 +2,7 @@
 // Tema 2: Igualdad efectiva y no discriminación
 // Leyes: LO 3/2007, LO 1/2004, Ley 15/2022, Ley 4/2023
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 require('dotenv').config({ path: '.env.local' });
 

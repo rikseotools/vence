@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 
 const supabase = createClient(
   'https://yqbpstxowvgipqspqrgo.supabase.co',

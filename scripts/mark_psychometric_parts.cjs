@@ -2,7 +2,7 @@
  * Script para marcar preguntas psicotécnicas con su parte (segunda)
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 require('dotenv').config({ path: '.env.local' });
 
 const supabase = createClient(

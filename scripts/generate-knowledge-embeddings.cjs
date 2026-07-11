@@ -2,7 +2,7 @@
 // Genera embeddings para ai_knowledge_base usando OpenAI
 // Uso: node scripts/generate-knowledge-embeddings.cjs
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const { Pool } = require('pg');
 const OpenAI = require('openai');
 require('dotenv').config({ path: '.env.local' });

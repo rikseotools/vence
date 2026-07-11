@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '/home/manuel/Documentos/github/vence/.env.local' });
 const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const LAWS = {

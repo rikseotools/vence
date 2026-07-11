@@ -2,7 +2,7 @@
 // Usa IA (OpenAI) para encontrar el artículo correcto y generar explicación didáctica
 // para las preguntas de Tramitación Procesal
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const OpenAI = require('openai').default;
 const path = require('path');
 

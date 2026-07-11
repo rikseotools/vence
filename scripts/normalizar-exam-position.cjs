@@ -8,7 +8,7 @@
  * 2. Poblar exam_position en preguntas que lo tienen NULL basándose en exam_source
  */
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,

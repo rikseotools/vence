@@ -17,7 +17,7 @@
  * Uso: node scripts/sim-seguimiento-ciego.cjs <slug> [<slug> ...]
  */
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const { execFileSync } = require('child_process');
 const Anthropic = require('@anthropic-ai/sdk');
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 require('dotenv').config({ path: '.env.local' })
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,

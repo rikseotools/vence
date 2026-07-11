@@ -6,7 +6,7 @@
 // Reglas aplicadas: §2.2 (correcta = cita literal), §2.2-bis (distractores de
 // longitud comparable), §2.2-ter (posición uniforme: A4/B4/C4/D3).
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const TAG = 'piloto_ley_5_2021_aragon_b9';

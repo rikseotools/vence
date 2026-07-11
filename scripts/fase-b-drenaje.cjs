@@ -13,7 +13,7 @@
 // Requiere NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY en el entorno
 // (cargar .env.local:  set -a; source .env.local; set +a).
 
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 
 const DAYS = parseInt(process.argv[2] || '10', 10)
 

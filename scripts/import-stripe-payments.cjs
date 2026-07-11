@@ -6,7 +6,7 @@
 require('dotenv').config({ path: '.env.local' })
 
 const Stripe = require('stripe')
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const supabase = createClient(

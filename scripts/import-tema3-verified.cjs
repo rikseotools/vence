@@ -1,7 +1,7 @@
 // Importar preguntas Tema 3 Tramitación Procesal con artículos verificados por IA
 // Tema 3: El Gobierno y la Administración
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 require('dotenv').config({ path: '.env.local' });
 

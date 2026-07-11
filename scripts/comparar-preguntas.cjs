@@ -1,7 +1,7 @@
 // scripts/comparar-preguntas.cjs
 // Compara preguntas scrapeadas con la BD - interactivo por tema
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');

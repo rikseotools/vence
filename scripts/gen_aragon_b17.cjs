@@ -2,7 +2,7 @@
 // 11,17,19,20,21,22,24,28,32,37,47,48,148,156,152. 15 preguntas DRAFT.
 // article_id por número. Manual v2.5.
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const LAW = '0f9c58e5-e9af-4380-b374-7d599ac4fb62';

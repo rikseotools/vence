@@ -1,7 +1,7 @@
 // scripts/enrich-questions-with-ai.cjs
 // Usa IA para encontrar el artículo correcto y generar explicación didáctica
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const path = require('path');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });

@@ -146,7 +146,7 @@ async function fetchGrupo(grupo, plazo) {
 function norm(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() }
 
 async function loadCatalog() {
-  const { createClient } = require('@supabase/supabase-js')
+  const { createClient } = require('./lib/pg-agnostic-client.cjs')
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) { console.error('⚠️ sin credenciales Supabase, salto cruce'); return [] }

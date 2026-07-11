@@ -1,7 +1,7 @@
 // Batch b10 — Ley 5/2021 Aragón, arts 23-34 (órganos colegiados, abstención, recusación)
 // Bloque T7. 15 preguntas DRAFT. Manual: docs/maintenance/generar-preguntas-con-ia.md (v2.5).
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const TAG = 'piloto_ley_5_2021_aragon_b10';

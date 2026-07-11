@@ -4,7 +4,7 @@
  * Añade primary_article_id y explicaciones didácticas
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 
 require('dotenv').config({ path: '.env.local' });
 

@@ -1,7 +1,7 @@
 // scripts/update-hot-articles-tramitacion.cjs
 // Actualiza hot_articles para Tramitación Procesal
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const path = require('path');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });

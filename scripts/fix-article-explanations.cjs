@@ -9,7 +9,7 @@
  *   node scripts/fix-article-explanations.cjs [--limit N] [--dry-run]
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const OpenAI = require('openai').default;
 require('dotenv').config({ path: '.env.local' });
 
