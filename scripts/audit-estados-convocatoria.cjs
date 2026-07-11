@@ -17,15 +17,22 @@
 // Ninguna de las otras auditorías mira esto. Esta es determinista (solo fechas),
 // no necesita el boletín, y sirve de gate de CI / cron (exit 1 = hay ❌).
 //
+// Fuente de datos: RDS (BD viva desde el cutover 04/07/2026) vía DATABASE_URL,
+// leyendo de la VISTA `oposiciones_ssot` — el drop-in de `oposiciones` con los
+// campos temporales resueltos desde la convocatoria vigente, que es EXACTAMENTE
+// lo que ve el front. Agnóstico (RDS/Neon), NUNCA Supabase (congelado → stale).
+//
 // Uso: node scripts/audit-estados-convocatoria.cjs   (o npm run audit:estados)
 
 require('dotenv').config({ path: '.env.local' })
-const { createClient } = require('@supabase/supabase-js')
+const postgres = require('postgres')
 
-const s = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-)
+const DB_URL = process.env.DATABASE_URL
+if (!DB_URL) {
+  console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts')
+  process.exit(2)
+}
+const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} })
 // Madrid, NO UTC: el front deriva "abierta hoy" en Europa/Madrid; auditar en UTC
 // compararía con el día equivocado en madrugada. Espejo de todayMadrid() de
 // lib/oposiciones/inscripcion.ts (fuente de verdad; aquí inline porque es .cjs).
@@ -45,11 +52,23 @@ const catalogadaVisible = (o) => !o.is_active && abiertaPorFechas(o) && !!o.segu
 const CATALOGADA_STALE_DAYS = 30
 
 async function main() {
-  const { data: ops, error } = await s
-    .from('oposiciones')
-    .select('slug, is_active, coverage_level, estado_proceso, inscription_deadline, inscription_start, exam_date, exam_date_approximate, seguimiento_url, seguimiento_last_checked')
-  if (error) {
-    console.error('ERROR leyendo oposiciones:', error.message)
+  // Fechas a ::text para preservar 'YYYY-MM-DD' y evitar el footgun de pg con
+  // DATE (Date JS interpretado como medianoche UTC → -1 día en Madrid). La lógica
+  // de abajo usa .slice(0, 10) sobre strings, igual que antes.
+  let ops
+  try {
+    ops = await sql`
+      SELECT slug, is_active, coverage_level, estado_proceso,
+             inscription_deadline::text     AS inscription_deadline,
+             inscription_start::text        AS inscription_start,
+             exam_date::text                AS exam_date,
+             exam_date_approximate,
+             seguimiento_url,
+             seguimiento_last_checked::text AS seguimiento_last_checked
+      FROM oposiciones_ssot`
+  } catch (err) {
+    console.error('ERROR leyendo oposiciones_ssot:', err.message)
+    await sql.end({ timeout: 5 })
     process.exit(2)
   }
 
@@ -143,10 +162,12 @@ async function main() {
   console.log(`━━━ ${errs.length} ❌  /  ${warns.length} 🟡 ━━━`)
   if (!errs.length && !warns.length) console.log('✅ Estados coherentes con las fechas.')
 
+  await sql.end({ timeout: 5 })
   process.exit(errs.length ? 1 : 0)
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
   console.error('FALLO:', e.message)
+  try { await sql.end({ timeout: 5 }) } catch {}
   process.exit(2)
 })
