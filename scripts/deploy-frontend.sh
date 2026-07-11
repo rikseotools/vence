@@ -142,11 +142,15 @@ _staticdir=$(mktemp -d)
 podman cp "${_tmpc}:/app/.next/static" "${_staticdir}/static"
 podman rm "$_tmpc" >/dev/null
 # A fichero (no pipe a tail: con pipefail, tail cerrando el pipe da SIGPIPE/141).
+# mktemp (NO paths fijos): dos deploys concurrentes con /tmp/vence-*.json FIJOS se
+# pisaban el fichero entre write y register-task-definition → uno registraba la
+# imagen del OTRO (task def con SHA equivocado → prod con código viejo, incidente 11/07).
+S3LOG=$(mktemp)
 aws s3 sync "${_staticdir}/static" "s3://${S3_STATIC_BUCKET}/_next/static" \
   --profile $P --region $R \
   --cache-control "public,max-age=31536000,immutable" \
-  --no-progress > /tmp/vence-s3sync.log 2>&1
-tail -2 /tmp/vence-s3sync.log || true
+  --no-progress > "$S3LOG" 2>&1
+tail -2 "$S3LOG" || true; rm -f "$S3LOG"
 # GUARDRAIL: un chunk de ESTE build DEBE estar en S3. Si el sync falló, ABORTAR
 # el deploy (mejor no desplegar que congelar usuarios con chunks 404 después).
 # find -print -quit (no pipe a head → sin SIGPIPE bajo pipefail).
@@ -170,10 +174,12 @@ echo "→ [4/6] clonar la task def VIVA (hereda secretos/config) + swap imagen"
 # JWT_LOCAL_VERIFY_MODE=on, pooler, etc. sin poder olvidarlos.
 LIVE_TD=$(aws ecs describe-services --cluster vence-backend --services vence-frontend --profile $P --region $R --query 'services[0].taskDefinition' --output text)
 echo "   base viva: $LIVE_TD"
-aws ecs describe-task-definition --task-definition "$LIVE_TD" --profile $P --region $R --query 'taskDefinition' --output json > /tmp/vence-td-live.json
+# mktemp por-deploy → seguro ante deploys concurrentes (ver comentario en [2b]).
+TDLIVE=$(mktemp); TDNEW=$(mktemp)
+aws ecs describe-task-definition --task-definition "$LIVE_TD" --profile $P --region $R --query 'taskDefinition' --output json > "$TDLIVE"
 node -e "
 const fs=require('fs');
-const td=JSON.parse(fs.readFileSync('/tmp/vence-td-live.json','utf8'));
+const td=JSON.parse(fs.readFileSync('${TDLIVE}','utf8'));
 td.containerDefinitions[0].image='${IMG_DIGEST}';
 // Multi-cuenta Stripe (Nila): la task def viva no los tiene y aquí solo se
 // swapea imagen, así que los añadimos idempotentemente (secretos runtime en
@@ -203,9 +209,10 @@ for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE
 // campaña: cambiar a '0' aquí (o quitar la línea) y redeploy. Ver docs/runbooks/embajadores-recompensas.md.
 { const e=env.find(x=>x.name==='ACTIVE_SIGNUP_REWARD'); if (e) e.value='1'; else env.push({name:'ACTIVE_SIGNUP_REWARD', value:'1'}); }
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
-fs.writeFileSync('/tmp/vence-td-new.json', JSON.stringify(td));
+fs.writeFileSync('${TDNEW}', JSON.stringify(td));
 "
-NEWTD=$(aws ecs register-task-definition --cli-input-json file:///tmp/vence-td-new.json --profile $P --region $R --query 'taskDefinition.taskDefinitionArn' --output text)
+NEWTD=$(aws ecs register-task-definition --cli-input-json "file://${TDNEW}" --profile $P --region $R --query 'taskDefinition.taskDefinitionArn' --output text)
+rm -f "$TDLIVE" "$TDNEW"
 echo "   registrada: $NEWTD"
 
 echo "→ [5/6] update-service (rolling) + esperar estable"

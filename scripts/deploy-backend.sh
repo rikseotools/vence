@@ -73,15 +73,20 @@ echo "   $IMG_DIGEST"
 echo "→ [4/6] clonar la task def VIVA (hereda secretos/config) + swap imagen"
 LIVE_TD=$(aws ecs describe-services --cluster vence-backend --services vence-backend --profile $P --region $R --query 'services[0].taskDefinition' --output text)
 echo "   base viva: $LIVE_TD"
-aws ecs describe-task-definition --task-definition "$LIVE_TD" --profile $P --region $R --query 'taskDefinition' --output json > /tmp/vence-be-td-live.json
+# mktemp por-deploy (NO paths fijos): dos deploys concurrentes con /tmp/*.json FIJOS se
+# pisaban el fichero entre write y register → uno registraba la imagen del OTRO (SHA
+# equivocado en prod, incidente 11/07). mktemp = cada deploy con su fichero único.
+TDLIVE=$(mktemp); TDNEW=$(mktemp)
+aws ecs describe-task-definition --task-definition "$LIVE_TD" --profile $P --region $R --query 'taskDefinition' --output json > "$TDLIVE"
 node -e "
 const fs=require('fs');
-const td=JSON.parse(fs.readFileSync('/tmp/vence-be-td-live.json','utf8'));
+const td=JSON.parse(fs.readFileSync('${TDLIVE}','utf8'));
 td.containerDefinitions[0].image='${IMG_DIGEST}';
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
-fs.writeFileSync('/tmp/vence-be-td-new.json', JSON.stringify(td));
+fs.writeFileSync('${TDNEW}', JSON.stringify(td));
 "
-NEWTD=$(aws ecs register-task-definition --cli-input-json file:///tmp/vence-be-td-new.json --profile $P --region $R --query 'taskDefinition.taskDefinitionArn' --output text)
+NEWTD=$(aws ecs register-task-definition --cli-input-json "file://${TDNEW}" --profile $P --region $R --query 'taskDefinition.taskDefinitionArn' --output text)
+rm -f "$TDLIVE" "$TDNEW"
 echo "   registrada: $NEWTD"
 
 echo "→ [5/6] update-service (rolling) + esperar estable"

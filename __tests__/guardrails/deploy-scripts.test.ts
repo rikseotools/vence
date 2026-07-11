@@ -87,5 +87,15 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
     it(`${name}: aborta si el push no devuelve digest (no pinea a ciegas)`, () => {
       expect(s).toMatch(/-z "\$DIGEST"[\s\S]{0,80}(ABORTO|exit 1)/)
     })
+    // Concurrencia (incidente 11/07): los ficheros temporales del task-def eran paths
+    // FIJOS (/tmp/vence-td-new.json) → dos deploys concurrentes se pisaban el JSON entre
+    // write y register → uno registraba la imagen del OTRO (SHA equivocado en prod).
+    it(`${name}: usa mktemp para el task-def json (no path /tmp fijo)`, () => {
+      expect(s).toMatch(/TDNEW=\$\(mktemp\)/)
+      expect(s).toMatch(/register-task-definition --cli-input-json "file:\/\/\$\{TDNEW\}"/)
+    })
+    it(`${name}: NO registra desde un /tmp/vence-*.json FIJO`, () => {
+      expect(s).not.toMatch(/--cli-input-json file:\/\/\/tmp\/vence-/)
+    })
   }
 })
