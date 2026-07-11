@@ -10,7 +10,7 @@
 // queda PENDIENTE de verificación en la primera compra real (por eso arranca OFF).
 
 const BASE = process.env.BITREFILL_API_BASE || 'https://api.bitrefill.com/v2'
-const PRODUCT_ID = process.env.BITREFILL_AMAZON_ES_PRODUCT || 'amazon_es'
+const PRODUCT_ID = process.env.BITREFILL_AMAZON_ES_PRODUCT || 'amazon_es-spain'
 
 export interface GiftCardPurchase {
   ok: boolean
@@ -35,7 +35,7 @@ async function readCode(base: string, token: string, invoiceId: string): Promise
     const info = order?.redemption_info
     if (info && (order?.redemption_available ?? true)) {
       const code = info.code || info.link || info.url || null
-      if (code) return String(code)
+      if (code) return info.pin ? `${code} (PIN ${info.pin})` : String(code)
     }
     await new Promise((res) => setTimeout(res, 1500))
   }
@@ -69,7 +69,8 @@ export async function purchaseAmazonGiftCard(amountEur: number): Promise<GiftCar
     if (!res.ok) return { ok: false, dryRun: false, code: null, ref: data?.id ?? null, error: `http_${res.status}` }
     const invoiceId = data?.id ?? data?.orders?.[0]?.id ?? null
     const order = Array.isArray(data?.orders) ? data.orders[0] : null
-    let code: string | null = order?.redemption_info?.code || order?.redemption_info?.link || null
+    const ri0 = order?.redemption_info
+    let code: string | null = ri0 ? (ri0.pin ? `${ri0.code || ri0.link} (PIN ${ri0.pin})` : (ri0.code || ri0.link)) : null
     if (!code && invoiceId) code = await readCode(BASE, token, String(invoiceId))
     return { ok: !!code, dryRun: false, code, ref: invoiceId ? String(invoiceId) : null, error: code ? undefined : 'no_code_yet' }
   } catch (e) {
