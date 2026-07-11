@@ -124,3 +124,32 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
     })
   }
 })
+
+// Coordinación de N sesiones simultáneas (incidente 11/07: dos sesiones desplegando
+// vence-frontend a la vez). El fix de raíz: serializar con flock + no desplegar código
+// stale + convertir el fallo críptico env/secret de ECS en un error claro.
+describe('ambos scripts — coordinación de sesiones paralelas (incidente 11/07)', () => {
+  for (const [name, s] of [['frontend', frontend], ['backend', backend]] as const) {
+    // flock SERIALIZA deploys concurrentes al mismo servicio ECS. Se libera solo al
+    // morir el proceso (fd) → sin locks zombi. Sin esto, dos update-service se pisan.
+    it(`${name}: serializa con flock sobre un lock compartido (no deploys concurrentes)`, () => {
+      expect(s).toMatch(/\/tmp\/vence-deploy\.lock/)
+      expect(s).toMatch(/exec 9>/)
+      expect(s).toMatch(/flock -n 9/)
+      expect(s).toMatch(/flock -w \d+ 9/)
+    })
+    // Anti-stale: el build sale del working tree; si tu rama no contiene origin/main,
+    // desplegar dejaría caer trabajo de otra sesión (clobber). Exigir ancestría.
+    it(`${name}: aborta si HEAD no contiene origin/main (anti clobber stale)`, () => {
+      expect(s).toMatch(/git fetch origin main/)
+      expect(s).toMatch(/merge-base --is-ancestor origin\/main HEAD/)
+      expect(s).toMatch(/SKIP_MAIN_SYNC/)
+    })
+    // Dedupe env/secret: ECS rechaza un name presente en environment Y secrets.
+    // Detectarlo en el transform con mensaje claro > el error críptico de register.
+    it(`${name}: detecta colisión env↔secret antes de registrar el task def`, () => {
+      expect(s).toMatch(/COLISION env/)
+      expect(s).toMatch(/secrets\|\|\[\]/)
+    })
+  }
+})

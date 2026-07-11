@@ -37,6 +37,26 @@ SHA=$(git rev-parse --short HEAD)          # capturado UNA vez → sin ventana d
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
 
+# ── CERROJO DE CONCURRENCIA (flock) ──────────────────────────────────────────
+# Varias sesiones de Claude en el MISMO repo pueden lanzar deploys a la vez → dos
+# update-service sobre el MISMO servicio ECS se pisan (carrera real 11/07: la sesión
+# referral-hold desplegaba a la vez que ésta). flock SERIALIZA: la 2ª ESPERA a que la
+# 1ª termine. Se libera SOLO al morir el proceso (fd 9) → sin locks zombi aunque una
+# sesión se caiga. Lock ÚNICO front+back (comparten ECR / cluster / infra de task def).
+LOCK=/tmp/vence-deploy.lock
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK"
+  if ! flock -n 9; then
+    echo "⏳ Otra sesión está desplegando (lock $LOCK). Esperando a que termine…"
+    H=$(cat "$LOCK" 2>/dev/null || true); [ -n "$H" ] && echo "   en curso: $H"
+    flock -w 1800 9 || { echo "❌ el lock sigue tomado tras 30 min — abortado."; exit 1; }
+  fi
+  : >&9; echo "frontend $SHA pid=$$ $(date -u +%FT%TZ)" >&9   # quién tiene el lock (informativo)
+  echo "🔒 lock de deploy adquirido ($LOCK)."
+else
+  echo "⚠️  flock no disponible — sin serialización de deploy; coordina a mano con otras sesiones."
+fi
+
 # GUARDARRAÍL árbol sucio (incidente 07/07/2026): el build usa el WORKING TREE
 # (podman COPY . .), NO el commit. Si hay ficheros TRACKED modificados, la imagen
 # deploy-${SHA} NO se corresponde con el commit ${SHA} → se puede desplegar código
@@ -85,6 +105,21 @@ else
     echo "   ⏳ CI de CÓDIGO aún EN CURSO: ${PENDING} check(s) en ${SHA}. Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
   fi
   echo "   ✅ CI de código verde (unit+typecheck+lint) para ${SHA}. [integration=${INTEG} — informativo, no gatea]"
+fi
+
+# ── GUARDA ANTI-STALE (reconciliar sobre origin/main) ────────────────────────
+# El build sale del WORKING TREE de ESTA rama/worktree. Si tu rama NO contiene los
+# últimos commits de origin/main (otra sesión avanzó main), desplegar DEJARÍA CAER
+# ese trabajo — clobber stale. Casi pasó 11/07: feat/uc3m-golive no contenía el
+# dashboard cache que ya estaba en main → desde ahí se habría revertido. Exigimos que
+# HEAD contenga TODO origin/main. main = única verdad. Override: SKIP_MAIN_SYNC=1.
+git fetch origin main --quiet 2>/dev/null || true
+if [ "${SKIP_MAIN_SYNC:-0}" != "1" ] && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+  echo "❌ origin/main tiene commits que tu rama NO incluye → desplegar los perdería (clobber stale)."
+  echo "   Reconcilia primero:  git fetch origin && git rebase origin/main"
+  echo "   (o cherry-pickea tu trabajo sobre un worktree nuevo desde origin/main y pushea a main)."
+  echo "   Override consciente: SKIP_MAIN_SYNC=1"
+  exit 1
 fi
 
 echo "→ [1/6] build ${IMG} (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)${NO_CACHE:+ [--no-cache]}"
@@ -211,6 +246,13 @@ for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE
 // El bonus (2€ por referido con >=5 tests) solo se concede con este flag en '1'. Para SUNSETEAR la
 // campaña: cambiar a '0' aquí (o quitar la línea) y redeploy. Ver docs/runbooks/embajadores-recompensas.md.
 { const e=env.find(x=>x.name==='ACTIVE_SIGNUP_REWARD'); if (e) e.value='1'; else env.push({name:'ACTIVE_SIGNUP_REWARD', value:'1'}); }
+// Guardarrail anti-colision env/secret (incidente 11/07 referral-hold): ECS RECHAZA
+// registrar un task def donde un mismo name este a la vez en environment y en secrets
+// (error criptico 'The secret name must be unique and not shared...'). Lo detectamos
+// AQUI con mensaje claro y accionable, antes de register-task-definition.
+{ const en=new Set((td.containerDefinitions[0].environment||[]).map(e=>e.name));
+  const clash=(td.containerDefinitions[0].secrets||[]).map(s=>s.name).filter(n=>en.has(n));
+  if (clash.length) { console.error('COLISION env<->secret en el task def: '+clash.join(', ')+' — un name no puede estar en environment Y en secrets. Arregla el origen (deja el nombre en uno solo).'); process.exit(1); } }
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
 fs.writeFileSync(process.env.TDNEW, JSON.stringify(td));
 "

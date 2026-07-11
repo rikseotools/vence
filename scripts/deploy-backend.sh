@@ -22,6 +22,23 @@ SHA=$(git rev-parse --short HEAD)          # capturado UNA vez → sin ventana d
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
 
+# ── CERROJO DE CONCURRENCIA (flock) — mismo lock que frontend ────────────────
+# Serializa deploys entre sesiones paralelas. Lock ÚNICO front+back (comparten ECR /
+# cluster / infra de task def). Se libera solo al morir el proceso → sin locks zombi.
+LOCK=/tmp/vence-deploy.lock
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK"
+  if ! flock -n 9; then
+    echo "⏳ Otra sesión está desplegando (lock $LOCK). Esperando…"
+    H=$(cat "$LOCK" 2>/dev/null || true); [ -n "$H" ] && echo "   en curso: $H"
+    flock -w 1800 9 || { echo "❌ el lock sigue tomado tras 30 min — abortado."; exit 1; }
+  fi
+  : >&9; echo "backend $SHA pid=$$ $(date -u +%FT%TZ)" >&9
+  echo "🔒 lock de deploy adquirido ($LOCK)."
+else
+  echo "⚠️  flock no disponible — sin serialización de deploy; coordina a mano."
+fi
+
 # GATE CI (Fase 2, 08/07/2026): no desplegar código que no pasó CI. Mismo gate que
 # deploy-frontend.sh — check-runs de GHA para el SHA. Override: SKIP_CI_GATE=1.
 [ -f ./.env.local ] && { set -a; . ./.env.local; set +a; }
@@ -48,6 +65,15 @@ else
   elif [ "${PENDING:-0}" -gt 0 ]; then echo "   ⏳ CI de CÓDIGO EN CURSO: ${PENDING} check(s). Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
   fi
   echo "   ✅ CI de código verde (unit+typecheck+lint) para ${SHA}. [integration=${INTEG} — informativo]"
+fi
+
+# ── GUARDA ANTI-STALE (reconciliar sobre origin/main) — mismo criterio que front ──
+# HEAD debe contener TODO origin/main, o desplegar dejaría caer trabajo de otra sesión.
+git fetch origin main --quiet 2>/dev/null || true
+if [ "${SKIP_MAIN_SYNC:-0}" != "1" ] && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+  echo "❌ origin/main tiene commits que tu rama NO incluye → desplegar los perdería (clobber stale)."
+  echo "   Reconcilia:  git fetch origin && git rebase origin/main   (override: SKIP_MAIN_SYNC=1)"
+  exit 1
 fi
 
 echo "→ [1/6] build ${IMG} (contexto backend/)"
@@ -82,6 +108,11 @@ TDLIVE="$TDLIVE" TDNEW="$TDNEW" IMG_DIGEST="$IMG_DIGEST" node -e "
 const fs=require('fs');
 const td=JSON.parse(fs.readFileSync(process.env.TDLIVE,'utf8'));
 td.containerDefinitions[0].image=process.env.IMG_DIGEST;
+// Guardarrail anti-colision env/secret (incidente 11/07): ECS rechaza un name que
+// este a la vez en environment y secrets. Detectarlo aqui con mensaje claro.
+{ const en=new Set((td.containerDefinitions[0].environment||[]).map(e=>e.name));
+  const clash=(td.containerDefinitions[0].secrets||[]).map(s=>s.name).filter(n=>en.has(n));
+  if (clash.length) { console.error('COLISION env<->secret en el task def: '+clash.join(', ')+' — un name no puede estar en ambos.'); process.exit(1); } }
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
 fs.writeFileSync(process.env.TDNEW, JSON.stringify(td));
 "
