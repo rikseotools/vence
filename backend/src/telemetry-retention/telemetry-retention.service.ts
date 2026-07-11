@@ -52,9 +52,13 @@ export class TelemetryRetentionService {
       batches: 0,
     };
 
+    // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
+    // por la hora del evento: `observable_events.ts` puede venir corrupta (visto un
+    // `ts`=2067 de un cliente) y esas filas con fecha futura nunca cumplirían
+    // `ts < now()-30d` → crecerían para siempre. `created_at` no tiene ese agujero.
     result.observableEventsDeleted = await this.purgeTable(
       'observable_events',
-      'ts',
+      'created_at',
       (n) => (result.batches += n),
     );
     result.validationErrorLogsDeleted = await this.purgeTable(
