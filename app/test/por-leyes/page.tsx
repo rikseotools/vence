@@ -32,37 +32,54 @@ function TestConfiguradorContent() {
   }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Anti-callejón: si acotar a SU oposición no da leyes (oposición catalogada sin
+  // contenido / valor stale), caemos a TODAS las leyes y avisamos por qué + cómo cambiar.
+  const [scopeFallback, setScopeFallback] = useState(false)
 
   // Cargar leyes: si el usuario tiene oposición y está acotado, SOLO las suyas
   // (?positionType=…); si no, todas. Refetch al cambiar el toggle.
   useEffect(() => {
     if (authLoading) return
+
+    // Trae leyes del configurador (acotadas o todas). Lanza si la API falla.
+    const fetchLaws = async (withScope: boolean) => {
+      const url = withScope && targetPositionType
+        ? `/api/laws-configurator?positionType=${encodeURIComponent(targetPositionType)}`
+        : '/api/laws-configurator'
+      const response = await fetch(url)
+      const result = await response.json()
+      if (!result.success) {
+        throw new Error(result.error || 'Error cargando leyes')
+      }
+      // Transformar datos de camelCase a snake_case para TestConfigurator
+      return (result.data as LawData[]).map(law => ({
+        law_short_name: law.lawShortName,
+        display_name: law.lawName,
+        total_articles: law.articlesWithQuestions,
+        questions_count: law.totalQuestions,
+        articles_with_questions: law.articlesWithQuestions
+      }))
+    }
+
     async function loadLaws() {
       try {
         setLoading(true)
         setError(null)
+        setScopeFallback(false)
 
-        const url = effectiveScoped && targetPositionType
-          ? `/api/laws-configurator?positionType=${encodeURIComponent(targetPositionType)}`
-          : '/api/laws-configurator'
-        const response = await fetch(url)
-        const result = await response.json()
+        const scoped = !!(effectiveScoped && targetPositionType)
+        let data = await fetchLaws(scoped)
 
-        if (!result.success) {
-          throw new Error(result.error || 'Error cargando leyes')
+        // 🛟 Anti-dead-end: acotado a su oposición pero SIN ninguna ley → en vez de
+        // dejar el callejón "Sin leyes disponibles", mostramos TODAS las leyes y
+        // señalamos el fallback (el banner explica el porqué y cómo cambiar de oposición).
+        if (scoped && data.length === 0) {
+          data = await fetchLaws(false)
+          setScopeFallback(true)
         }
 
-        // Transformar datos de camelCase a snake_case para TestConfigurator
-        const transformedData = (result.data as LawData[]).map(law => ({
-          law_short_name: law.lawShortName,
-          display_name: law.lawName,
-          total_articles: law.articlesWithQuestions,
-          questions_count: law.totalQuestions,
-          articles_with_questions: law.articlesWithQuestions
-        }))
-
-        console.log('📚 [Configurar] Leyes cargadas:', transformedData.length)
-        setLawsData(transformedData)
+        console.log('📚 [Configurar] Leyes cargadas:', data.length, scoped && data.length === 0 ? '(sin scope → fallback a todas)' : '')
+        setLawsData(data)
 
       } catch (err) {
         console.error('❌ [Configurar] Error:', err)
@@ -220,6 +237,27 @@ function TestConfiguradorContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
+        {/* Aviso: tu oposición no tiene leyes → mostramos todas + cómo cambiarla */}
+        {scopeFallback && (
+          <div className="max-w-4xl mx-auto mb-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
+              <div className="text-2xl flex-shrink-0">ℹ️</div>
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="font-semibold mb-1">Te mostramos todas las leyes</p>
+                <p>
+                  Tu oposición seleccionada todavía no tiene leyes disponibles en Vence, así que
+                  te mostramos <strong>todas las leyes</strong> para que puedas practicar igualmente.
+                  Si prefieres estudiar solo las de tu oposición, cámbiala desde el icono de tests
+                  (arriba) → <strong>«Cambiar oposición»</strong>, o desde{' '}
+                  <Link href="/perfil" className="underline font-semibold hover:text-blue-600 dark:hover:text-blue-300">
+                    tu perfil
+                  </Link>.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mb-4">

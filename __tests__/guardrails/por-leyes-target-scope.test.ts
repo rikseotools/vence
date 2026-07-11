@@ -90,4 +90,23 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
     const src = read('app/test/multi-ley/page.tsx')
     expect(src).toMatch(/!scopedRequested \|\| userProfile !== null/)
   })
+
+  // ── Anti-dead-end "Sin leyes disponibles" (caso Alfonso, 11/07) ──
+
+  it('FIX anti-dead-end: por-leyes cae a TODAS las leyes si el scope de su oposición da 0, con aviso + cómo cambiar', () => {
+    const page = read('app/test/por-leyes/page.tsx')
+    expect(page).toMatch(/scopeFallback/)                    // estado del fallback
+    expect(page).toMatch(/scoped && data\.length === 0/)     // condición: acotado + vacío
+    expect(page).toMatch(/fetchLaws\(false\)/)               // refetch sin scope (todas)
+    // el banner explica y da la salida (cambiar oposición)
+    expect(page).toMatch(/Cambiar oposición/)
+    expect(page).toMatch(/href="\/perfil"/)
+  })
+
+  it('FIX detección: laws-configurator emite laws_configurator_empty_scope cuando el scope da 0', () => {
+    const q = read('lib/api/laws-configurator/queries.ts')
+    expect(q).toMatch(/emitFireAndForget/)
+    expect(q).toMatch(/laws_configurator_empty_scope/)
+    expect(q).toMatch(/positionType && lawsData\.length === 0/)
+  })
 })

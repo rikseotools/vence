@@ -8,6 +8,7 @@ function getLawsConfDb() {
 import { questions, articles, laws } from '@/db/schema'
 import { eq, sql, and, isNotNull } from 'drizzle-orm'
 import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import type { GetAllLawsResponse, LawData } from './schemas'
 
 // ============================================
@@ -60,6 +61,20 @@ export async function getAllLawsWithStats(positionType?: string | null): Promise
 
     // Calcular totales
     const totalQuestions = lawsData.reduce((sum, law) => sum + law.totalQuestions, 0)
+
+    // 🔭 Detección: se pidió acotado a una oposición y NO hay NINGUNA ley con preguntas
+    // en su temario. Es el caso que deja al usuario en el callejón "Sin leyes disponibles"
+    // (oposición catalogada sin contenido / valor stale). Lo emitimos para cazarlo
+    // proactivamente y saber CON QUÉ oposición pasa, sin depender de que el usuario avise.
+    if (positionType && lawsData.length === 0) {
+      emitFireAndForget({
+        source: 'fargate',
+        severity: 'warn',
+        eventType: 'laws_configurator_empty_scope',
+        endpoint: '/api/laws-configurator',
+        metadata: { positionType },
+      })
+    }
 
     console.log(`📚 [LawsConfigurator] Leyes cargadas: ${lawsData.length}, Total preguntas: ${totalQuestions}`)
 
