@@ -20,7 +20,7 @@
  */
 
 require('dotenv').config({ path: '.env.local' })
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 const Anthropic = require('@anthropic-ai/sdk').default
 
 const supabase = createClient(

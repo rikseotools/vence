@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 require('dotenv').config({ path: '.env.local' });
 

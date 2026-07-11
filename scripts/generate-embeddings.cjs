@@ -2,7 +2,7 @@
 // Genera embeddings para todos los artículos usando OpenAI
 // Uso: node scripts/generate-embeddings.cjs
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const OpenAI = require('openai');
 require('dotenv').config({ path: '.env.local' });
 

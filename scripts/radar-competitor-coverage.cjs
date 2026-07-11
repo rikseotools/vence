@@ -9,7 +9,7 @@
 // Diseño: docs/roadmap/radar-multicapa.md (Capa 3a). Uso: node scripts/radar-competitor-coverage.cjs
 
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0';
 

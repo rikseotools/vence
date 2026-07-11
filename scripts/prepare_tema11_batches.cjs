@@ -2,7 +2,7 @@
  * Prepara batches del Tema 11 para verificación IA
  */
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 const path = require('path');
 

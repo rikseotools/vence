@@ -4,7 +4,7 @@
  */
 
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const OpenAI = require('openai');
 
 const supabase = createClient(

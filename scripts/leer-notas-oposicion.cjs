@@ -19,16 +19,15 @@
  * Para producción (cron Fargate) habría que portar la extracción de PDF.
  */
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const postgres = require('postgres');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const DB_URL = process.env.DATABASE_URL;
+if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2); }
+const sql = postgres(DB_URL, { prepare: false, max: 2, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
 
 // Palabras clave que disparan revisión (lo que suele aclararse en notas).
 const KEYWORDS = {
@@ -132,12 +131,21 @@ async function procesar(opo) {
 
 (async () => {
   const slug = process.argv[2];
-  let q = supabase.from('oposiciones').select('slug, nombre, exam_date, estado_proceso, seguimiento_url, is_active');
-  if (slug) q = q.eq('slug', slug);
-  else q = q.eq('is_active', true).gte('exam_date', new Date().toISOString().slice(0, 10)).order('exam_date');
-  const { data, error } = await q;
-  if (error) { console.error('Error BD:', error.message); process.exit(1); }
-  if (!data || !data.length) { console.log('Sin oposiciones que procesar.'); return; }
+  const today = new Date().toISOString().slice(0, 10);
+  let data;
+  try {
+    data = slug
+      ? await sql`SELECT slug, nombre, exam_date::text AS exam_date, estado_proceso, seguimiento_url, is_active
+                  FROM oposiciones WHERE slug = ${slug}`
+      : await sql`SELECT slug, nombre, exam_date::text AS exam_date, estado_proceso, seguimiento_url, is_active
+                  FROM oposiciones WHERE is_active = true AND exam_date >= ${today} ORDER BY exam_date`;
+  } catch (err) {
+    console.error('Error BD:', err.message);
+    await sql.end({ timeout: 5 });
+    process.exit(1);
+  }
+  if (!data || !data.length) { console.log('Sin oposiciones que procesar.'); await sql.end({ timeout: 5 }); return; }
   console.log(`Procesando ${data.length} oposici${data.length === 1 ? 'ón' : 'ones'}…`);
   for (const opo of data) await procesar(opo);
+  await sql.end({ timeout: 5 });
 })();

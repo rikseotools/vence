@@ -1,7 +1,7 @@
 // Preparar preguntas Tema 10 Tramitación Procesal para verificación con IA
 // Tema 10: Modernización de la Oficina judicial
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: '.env.local' });

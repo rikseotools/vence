@@ -1,7 +1,7 @@
 // Preparar preguntas del Tema 1 para análisis con IA
 // Genera un archivo JSON con preguntas + artículos candidatos
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: '.env.local' });

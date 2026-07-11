@@ -3,7 +3,7 @@
  * Basado en el patrón observado donde el algoritmo de keywords genera
  * muchos falsos positivos
  */
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 require('dotenv').config({ path: '.env.local' });
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 

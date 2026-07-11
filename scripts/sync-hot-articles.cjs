@@ -8,7 +8,7 @@
  *   DRY_RUN=1 node scripts/sync-hot-articles.cjs
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 require('dotenv').config({ path: '.env.local' });
 
 const supabase = createClient(

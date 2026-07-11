@@ -4,7 +4,7 @@
  * necesitan tener la parte correcta marcada
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 require('dotenv').config({ path: '.env.local' });
 
 const supabase = createClient(

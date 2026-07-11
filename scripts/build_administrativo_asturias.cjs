@@ -4,7 +4,7 @@
 // Fuente del programa: BOPA núm. 248, 24-XII-2024 (ref 2024-11213), Anexo I.
 // Idempotente: borra topics/scope/bloques previos de la oposición y reinserta.
 require('dotenv').config({ path: '.env.local' })
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 const reuse = require('/tmp/asturias_c1_reuse.json')
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 

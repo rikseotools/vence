@@ -2,7 +2,7 @@
 // administración electrónica, dato único, colaboración). 15 preguntas DRAFT.
 // Resuelve article_id por número (evita transcripción de UUID). Manual v2.5.
 require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const LAW = '0f9c58e5-e9af-4380-b374-7d599ac4fb62';

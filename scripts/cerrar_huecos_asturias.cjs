@@ -1,7 +1,7 @@
 // Cierra los 5 temas "En elaboración" de administrativo_asturias repartiendo
 // leyes que YA están en BD con preguntas (sin IA), fiel al epígrafe.
 require('dotenv').config({ path: '.env.local' })
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 
 const POS = 'administrativo_asturias'

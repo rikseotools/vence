@@ -1,7 +1,7 @@
 // scripts/parse-auxilio-judicial-exams.cjs
 // Parsea exámenes oficiales de Auxilio Judicial desde PDFs
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
