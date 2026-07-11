@@ -43,5 +43,18 @@ Fuente de verdad de qué canaries existen → un patrón de alerta, un dashboard
 - **P2 — Migrar todos** los canary a la base, uno a uno y testeado.
 - **P3 — Enforce:** guardarraíl CI (todo canary extiende base + write-canary acotado + sintético excluido) + runbook `canaries.md` + registro.
 
+## Observabilidad del pipeline de materialización (incidente 11/07 — falso CRITICAL)
+
+Un falso positivo del canary gritó *"materialización no propaga"* (CRITICAL) mientras los usuarios reales materializaban perfectamente; costó ~1h diagnosticar. Endurecido:
+
+- **HECHO (quick wins):**
+  1. **SLI directo** de frescura (`RULE_MATERIALIZED_STATS_STALE`, ya existía) = fuente de verdad. Correctamente NO disparó.
+  2. **Cross-check del canary:** `RULE_CANARY_STATS_PIPELINE_FAILED` ahora **solo dispara si el canary falla Y ningún usuario real materializó en 5 min** → mata el falso CRITICAL. Mensaje sin overclaim, remite al SLI directo.
+  3. **Vista `v_materialization_health`** + runbook `docs/runbooks/materialization-health.md` + fija la **columna canónica `updated_at`** (NO `last_attempt_at`, que solo se pone en INSERT — la trampa que costó el tiempo).
+- **PENDIENTE (estructural, P1):**
+  4. **Observabilidad negativa:** los handlers que hacen early-return (guard/disabled) deben **emitir un evento skip con motivo** → "procesado pero no materializado" deja de ser invisible.
+  5. **Aislar el usuario sintético del `emit_outbox`** (además de las analíticas): hoy el DELETE del fixture dispara eventos outbox = auto-flood (la causa del falso positivo). Con `SYNTHETIC_USER_IDS` excluido del trigger, el canary no puede autoenvenenarse.
+  6. **Correlation-id / tracing** end-to-end (respuesta→outbox→handler→tabla) — ata con `observability.md` Fase 5.
+
 ## Estado
-- **P0: HECHO** (11/07). **P1-P3: pendientes** (backlog: `docs/roadmap/tareas-pendientes.md`).
+- **P0: HECHO** (11/07) + **quick wins de observabilidad HECHOS** (11/07). **P1-P3 + observabilidad negativa/tracing: pendientes** (backlog: `docs/roadmap/tareas-pendientes.md`).

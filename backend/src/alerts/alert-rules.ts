@@ -2266,6 +2266,15 @@ export const RULE_CANARY_STATS_PIPELINE_FAILED: AlertRule<{
 }> = {
   name: 'canary_stats_pipeline_failed',
   severity: 'critical',
+  // CROSS-CHECK con la señal REAL (incidente 11/07): el canary usa un fixture
+  // sintético (smoke user) que puede fallar por sí mismo (backlog del propio
+  // fixture, reset, flood de eventos) SIN que el pipeline real esté roto. Esa
+  // noche gritó CRITICAL "materialización no propaga" cuando los usuarios reales
+  // materializaban perfectamente (uqh_v2.updated_at fresco). Fix: la regla SOLO
+  // dispara si el canary falla Y NO hay materialización real reciente. Si un
+  // usuario real materializó en los últimos 5 min, el pipeline está PROBADAMENTE
+  // vivo → el fallo del canary es un artefacto del fixture, NO un incidente →
+  // no paginar. RULE_MATERIALIZED_STATS_STALE (SLI directo) cubre el fallo real.
   query: sql`
     SELECT COUNT(*)::int AS n,
            (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
@@ -2273,23 +2282,28 @@ export const RULE_CANARY_STATS_PIPELINE_FAILED: AlertRule<{
     FROM observable_events
     WHERE event_type = 'canary_stats_pipeline_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
+      AND NOT EXISTS (
+        SELECT 1 FROM user_question_history_v2
+        WHERE updated_at > NOW() - INTERVAL '5 minutes'
+      )
   `,
   shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
   buildNotification: (rows) => {
     const r = rows[0];
     return {
-      title: `🚨 Canary stats-pipeline FALLÓ — la materialización no propaga`,
+      title: `🚨 Canary stats-pipeline FALLÓ y NO hay materialización real reciente`,
       body:
-        `El canary inyectó una respuesta sintética pero NO llegó a las tablas\n` +
-        `materializadas en el tiempo esperado. Significa que el pipeline\n` +
-        `outbox→handler→uqh_v2 está roto o parado (mismo modo de fallo que el\n` +
-        `incidente 03/06: flags del cutover sin desplegar, handlers no-op, DLQ...).\n\n` +
+        `El canary sintético NO materializó Y ningún usuario real ha materializado\n` +
+        `en los últimos 5 min → señal fuerte de que el pipeline outbox→handler→uqh_v2\n` +
+        `está roto o parado (la regla ya excluye el caso "solo falla el fixture").\n\n` +
         `Último step: ${r?.lastStep ?? '(n/a)'}\n` +
         `Último error: ${r?.lastError ?? '(n/a)'}\n\n` +
-        `Acciones:\n` +
-        `  - Verificar flags en el task def vence-backend (CUTOVER_DONE / SHADOW_HANDLERS_ENABLED).\n` +
-        `  - test_questions_outbox: pending / DLQ / error_message.\n` +
-        `  - MAX(updated_at) de las 5 tablas materializadas.`,
+        `Verifica en este orden:\n` +
+        `  1. SLI directo: ¿disparó RULE_MATERIALIZED_STATS_STALE? (fuente de verdad).\n` +
+        `  2. Frescura real: SELECT MAX(updated_at) FROM user_question_history_v2;\n` +
+        `  3. Flags del task def vence-backend (CUTOVER_DONE / SHADOW_HANDLERS_ENABLED).\n` +
+        `  4. test_questions_outbox: pending / DLQ / error_message.\n` +
+        `  (Runbook: docs/runbooks/materialization-health.md.)`,
       metadata: {
         count: r?.n ?? 0,
         lastStep: r?.lastStep,

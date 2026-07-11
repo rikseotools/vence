@@ -118,4 +118,18 @@ describe('RULE_CANARY_STATS_PIPELINE_FAILED', () => {
     expect(RULE_CANARY_STATS_PIPELINE_FAILED.severity).toBe('critical');
     expect(ALERT_RULES.some((r) => r.name === 'canary_stats_pipeline_failed')).toBe(true);
   });
+
+  // Cross-check con la señal REAL (incidente 11/07): la alerta ya NO afirma en seco
+  // "la materialización no propaga" (overclaim que causó el falso CRITICAL cuando los
+  // usuarios reales materializaban bien). Su mensaje debe reflejar que solo es señal
+  // fuerte cuando NO hay materialización real reciente, y remitir al SLI directo.
+  // El gate SQL (NOT EXISTS uqh_v2 fresco) se valida contra la BD viva, no aquí.
+  it('la notificación no hace overclaim: cruza con la señal real + remite al SLI directo', () => {
+    const notif = RULE_CANARY_STATS_PIPELINE_FAILED.buildNotification([
+      { n: 2, lastStep: 'propagation', lastError: 'uqh_v2 NO propagó' },
+    ]);
+    expect(notif.title).toContain('NO hay materialización real reciente');
+    expect(notif.body).toMatch(/RULE_MATERIALIZED_STATS_STALE/);
+    expect(notif.body).toMatch(/materialization-health/);
+  });
 });
