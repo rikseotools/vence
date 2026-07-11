@@ -41,3 +41,18 @@ describe('process-outbox — poda las filas procesadas (anti-bloat)', () => {
     expect(svc).toMatch(/Poda de outbox falló/)
   })
 })
+
+// El ts del evento viene del reloj del CLIENTE en eventos frontend; un navegador
+// con reloj roto metió ts=2067 (04/06). Ambos writers de observable_events deben
+// clampar el ts a rango sano ([-7d, +1h]) → si no, ensucia queries por hora de evento.
+describe('observable_events — clamp del ts del evento (anti reloj-roto)', () => {
+  const backendSvc = readFileSync(join(ROOT, 'backend/src/observability/observability.service.ts'), 'utf-8')
+  const frontendSink = readFileSync(join(ROOT, 'lib/observability/sink.ts'), 'utf-8')
+
+  for (const [name, s] of [['backend service', backendSvc], ['frontend sink', frontendSink]] as const) {
+    it(`${name}: clampa el ts fuera de rango a NOW()`, () => {
+      expect(s).toMatch(/CASE WHEN[\s\S]{0,120}BETWEEN NOW\(\) - INTERVAL '7 days' AND NOW\(\) \+ INTERVAL '1 hour'/)
+      expect(s).toMatch(/ELSE NOW\(\) END/)
+    })
+  }
+})

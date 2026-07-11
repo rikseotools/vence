@@ -95,7 +95,11 @@ class PostgresSink implements ObservableSink {
           ts, source, severity, event_type, endpoint, user_id,
           deploy_version, duration_ms, http_status, error_message, metadata
         ) VALUES (
-          COALESCE(${event.ts ?? null}, NOW()),
+          -- Clamp defensivo del ts del EVENTO: viene del reloj del cliente (un
+          -- navegador con reloj roto metió ts=2067 el 04/06). Fuera de
+          -- [NOW()-7d, NOW()+1h] → NOW(). created_at (inserción) es siempre fiable.
+          CASE WHEN ${event.ts ?? null}::timestamptz BETWEEN NOW() - INTERVAL '7 days' AND NOW() + INTERVAL '1 hour'
+               THEN ${event.ts ?? null}::timestamptz ELSE NOW() END,
           ${event.source},
           ${severity},
           ${event.eventType},
