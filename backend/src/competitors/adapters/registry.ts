@@ -20,6 +20,7 @@ import { gokoanAdapter } from './gokoan';
 import { examinatestAdapter } from './examinatest';
 import { opomurAdapter } from './opomur';
 import { temariosenpdfAdapter } from './temariosenpdf';
+import { temariosoficialesAdapter } from './temariosoficiales';
 import { GENERIC_ACADEMY_ADAPTERS } from './generic-academy';
 
 export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
@@ -38,6 +39,7 @@ export const COMPETITOR_ADAPTERS: CompetitorAdapter[] = [
   examinatestAdapter,
   opomurAdapter,
   temariosenpdfAdapter,
+  temariosoficialesAdapter,
   // Academias con estructura estándar (config-driven, 1 config/competidor).
   ...GENERIC_ACADEMY_ADAPTERS,
 ];
