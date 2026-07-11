@@ -325,22 +325,9 @@ function SoporteContent() {
         // Recargar mensajes
         await loadInlineChatMessages(inlineChatConversationId)
 
-        // Notificar admin
-        try {
-          const feedback = feedbacks.find(f => f.conversation?.id === inlineChatConversationId)
-          const { sendAdminChatResponseNotification } = await import('../../lib/notifications/adminEmailNotifications')
-          await sendAdminChatResponseNotification({
-            conversation_id: inlineChatConversationId,
-            user_id: user.id,
-            user_email: user.email,
-            user_name: (user as any).user_metadata?.full_name || 'Usuario',
-            message: finalMessage,
-            feedback_id: feedback?.id,
-            created_at: new Date().toISOString()
-          })
-        } catch {
-          // No fallar si la notificación falla
-        }
+        // (11/07/2026) Se retiró el email al admin por CADA mensaje de soporte
+        // (spam a manueltrader). El feedback pendiente se ve por el badge del nav
+        // admin (pending-feedback-counts) → /admin/feedback. Ver adminEmailNotifications.
 
         // Recargar datos generales
         loadUserData()
