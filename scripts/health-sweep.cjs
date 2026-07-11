@@ -134,6 +134,22 @@ async function main() {
       { count: flat.length, laws: leyes.length, sample: flat.slice(0, 15) });
   }
 
+  // ── CONTENIDO: explicaciones que son NOTAS DE AUDITORÍA (defecto de pipeline) ──
+  // Un pase IA anterior guardó su crítica ("La explicación debería…", "posible errata",
+  // "Nota técnica:", "Esta pregunta debería anularse") COMO explicación en vez de
+  // arreglarla. Se remediaron ~46 el 10/07 (36 reescritas + 10 needs_human); este
+  // detector evita que reaparezcan en silencio. Patrones ALTA PRECISIÓN (se omite
+  // "la explicación anterior", propenso a FP en explicaciones ya corregidas).
+  const AUDIT_NOTE_PATS = ['La explicación omite', 'La explicación debería', 'La explicación actual',
+    'Esta pregunta debería', 'posible errata', 'Nota técnica:', 'respuesta oficial del examen',
+    'debería ser impugnada', 'debería haberse ANULADO', 'debería haber especificado'];
+  const anOrs = AUDIT_NOTE_PATS.map((_, i) => `explanation ILIKE $${i + 1}`).join(' OR ');
+  const anRows = (await c.query(`SELECT id FROM questions WHERE is_active = true AND (${anOrs}) LIMIT 50`,
+    AUDIT_NOTE_PATS.map(p => '%' + p + '%'))).rows;
+  if (anRows.length) add('content', 'warn', null, 'audit_note_explanation',
+    `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
+    { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
+
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
   // Mirror INLINE de lib/laws/staleDatedLaw.ts — MANTENER EN SYNC (guardado por
   // __tests__/lib/laws/staleDatedLaw.test.ts). Una ley "para el año XXXX" ya

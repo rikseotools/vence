@@ -59,6 +59,7 @@ scripts/health-sweep.cjs  (EventBridge → ECS Fargate, ~05:00 Madrid)
    - **`no_hitos`:** la convocatoria está con inscripción abierta sin timeline → poblar `convocatoria_hitos` con las fechas oficiales.
    - **`temas_card`:** usar `{temasCount}` para que se auto-resuelva.
 3. **Contenido ámbar** (dual-write, cobertura fina): no urgente. Dual-write = completar los campos NULL de la fila `convocatorias`. Cobertura fina = generar más preguntas (§ generar-preguntas-con-ia.md).
+4. **`audit_note_explanation`** (*"revisa las explicaciones rotas"*): preguntas visibles cuya `explanation` es en realidad la **crítica de un pase IA anterior** guardada por error (*"La explicación debería…"*, *"posible errata"*, *"Nota técnica:"*, *"Esta pregunta debería anularse"*) — defecto de pipeline (se remediaron ~46 el 10/07). Para cada una: **verificar la clave contra la ley/fuente** (leer otros artículos si hace falta) → si la clave es correcta, **reescribir la explicación** didáctica (cita literal + análisis A/B/C/D); si hay defecto de fondo (clave/artículo/opciones), **`needs_human`**. NUNCA auto-flip de clave. Flujo con agentes: `docs/maintenance/revisar-preguntas-con-agente.md` (generar/reparar → auditoría ciega → aplicar). Memoria `project_explicaciones_nota_auditoria`.
 
 ## GOTCHAS
 

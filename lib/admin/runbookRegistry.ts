@@ -92,6 +92,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
     claudeHace: 'localiza la ley "para el año XXXX" ya pasado que sigue escopada, la actualiza a la versión vigente (importándola si falta) y genera las preguntas que falten — NUNCA la quita si el epígrafe la pide.',
   },
+  audit_note_explanation: {
+    title: 'Explicación = nota de auditoría (defecto de pipeline)',
+    triggerPhrase: 'revisa las explicaciones rotas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza las preguntas visibles cuya "explicación" es en realidad la crítica de un pase IA anterior ("La explicación debería…", "posible errata", "Nota técnica:", "Esta pregunta debería anularse"), verifica la clave contra la ley/fuente y reescribe la explicación (o la manda a needs_human si hay defecto de fondo) con el flujo de `docs/maintenance/revisar-preguntas-con-agente.md`.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */

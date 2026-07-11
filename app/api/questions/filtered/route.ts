@@ -305,6 +305,31 @@ async function _POST(request: NextRequest) {
         )
       }
 
+      // 🔄 Observabilidad del filtro "excluir preguntas recientes" (toggle nuevo del
+      // TestConfigurator, 11/07). Antes NO se observaba: en prod no sabíamos si esta
+      // opción dejaba un test corto o exigía mucha repesca. Solo se emite cuando el
+      // toggle está activo (excludeRecentDays>0), fire-and-forget (nunca rompe la
+      // respuesta). severity 'warn' si el test sale corto → salta a la vista.
+      if ((validation.data.excludeRecentDays ?? 0) > 0) {
+        const delivered = result.questions?.length ?? 0
+        const requested = result.requestedCount ?? validation.data.numQuestions ?? delivered
+        const shortfall = Math.max(0, requested - delivered)
+        emitFireAndForget({
+          source: 'vercel',
+          severity: shortfall > 0 ? 'warn' : 'info',
+          eventType: 'exclude_recent_applied',
+          endpoint: '/api/questions/filtered',
+          userId: authUserId ?? undefined,
+          metadata: {
+            excludeRecentDays: validation.data.excludeRecentDays,
+            requested,
+            delivered,
+            backfilledRecentCount: result.backfilledRecentCount ?? 0,
+            shortfall,
+          },
+        })
+      }
+
       const response = {
         success: true,
         questions: result.questions,

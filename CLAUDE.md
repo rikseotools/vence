@@ -316,6 +316,7 @@ git push origin main
   - *"revisa la cobertura de temas"* → temas con <6 preguntas → `salud-contenido.md`.
   - *"revisa las tablas de artículos"* → tablas aplanadas (import PDF sin rejilla) → `tablas-articulos.md`. Detección: `lib/teoria/detectFlattenedTable.ts`; render table-aware: `lib/teoria/formatLegalText.ts`. NUNCA inventar cifras; reconstruir con verificación humana.
   - *"revisa las leyes anuales caducadas"* → ley "para el año XXXX" ya pasado que sigue en un `topic_scope` (presupuestos anuales; gap que ni el radar de epígrafes ni el monitor BOE cazan) → `leyes-anuales-caducadas.md`. Detección: `lib/laws/staleDatedLaw.ts`. ACTUALIZAR a la vigente + generar preguntas, NUNCA quitar si el epígrafe la pide.
+  - *"revisa las explicaciones rotas"* → preguntas visibles cuya "explicación" es en realidad la nota de un pase IA anterior (*"La explicación debería…"*, *"posible errata"*, *"Nota técnica:"*, *"Esta pregunta debería anularse"*) — defecto de pipeline → `salud-contenido.md`. Detección: grep de patrones en `health-sweep.cjs` (kind `audit_note_explanation`). Verificar clave contra la ley/fuente → reescribir explicación o `needs_human` (flujo `revisar-preguntas-con-agente.md`). NUNCA auto-flip de clave.
 
 ### 📡 Observabilidad (manual completo)
 - **Manual:** `docs/runbooks/observability.md`
