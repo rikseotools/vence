@@ -255,7 +255,7 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
   // provinciales: SEPEI Albacete/Cáceres) → se usa 'auxiliar-sepe' para no pisarlos
   // (esos caen a su CCAA por albacete/caceres). Igual, estado/estatal/ceuta/melilla/
   // estadistica-ine ya tienen su escudo (prioritario) — quedan aquí solo de fallback.
-  [['estado', 'estatal', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'auxiliar-sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
+  [['estado', 'estatal', 'etgoa', 'organismos-autonomos', 'tramitacion-procesal', 'auxilio-judicial', 'gestion-procesal', 'justicia', 'correos', 'uned', 'ceuta', 'melilla', 'seguridad-social', 'agente-hacienda', 'aduanera', 'soivre', 'estadistica-ine', 'auxiliar-sepe', 'penitenciaria', 'catastro', 'ingesa'], 'espana'],
   // Castilla-La Mancha (antes que "castilla")
   [['castilla-la-mancha', 'clm', 'sescam', 'albacete', 'ciudad-real', 'cuenca', 'guadalajara', 'toledo'], 'clm'],
   // Castilla y León
@@ -363,7 +363,7 @@ const ESCUDO_KEYWORDS: Array<[string[], { src: string; alt: string }]> = [
   // contiene 'estado', así que se mapea por su keyword específica (evita pisar las
   // oposiciones de informática autonómicas/universitarias, que NO son del Estado).
   [['tecnico-informatica', 'tecnico_informatica'], { src: '/escudos/escudo-espana.svg', alt: 'Escudo de España' }],
-  [['estado', 'estatal', 'soivre'], { src: '/escudos/escudo-espana.svg', alt: 'Escudo de España' }],
+  [['estado', 'estatal', 'etgoa', 'soivre'], { src: '/escudos/escudo-espana.svg', alt: 'Escudo de España' }],
 ]
 
 export function resolveEscudo(oposicionId: string): { src: string; alt: string } | null {

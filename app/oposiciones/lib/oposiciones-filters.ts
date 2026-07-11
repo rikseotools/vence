@@ -75,6 +75,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
   const map: Record<string, string> = {
     'administrativo-estado': 'estado',
     'auxiliar-administrativo-estado': 'estado',
+    'etgoa-sanidad-consumo': 'estado',
     'tecnico-informatica': 'estado',
     'auxiliar-administrativo-universidad-uned': 'estado',
     'auxiliar-administrativo-universidad-complutense': 'madrid',

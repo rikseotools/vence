@@ -138,6 +138,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏢'
   },
   {
+    id: 'etgoa_sanidad_consumo',
+    nombre: 'ETGOA Sanidad y Consumo (Organismos Autónomos)',
+    categoria: 'A1',
+    administracion: 'Estado',
+    icon: '🔬'
+  },
+  {
     id: 'auxiliar_administrativo_universidad_uned',
     nombre: 'Auxiliar Administrativo de la UNED',
     categoria: 'C2',

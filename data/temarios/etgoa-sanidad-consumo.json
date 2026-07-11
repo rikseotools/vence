@@ -1,0 +1,543 @@
+{
+  "oposicion": {
+    "nombre": "Escala Técnica de Gestión de Organismos Autónomos (ETGOA) - Sanidad y Consumo",
+    "short_name": "ETGOA Sanidad y Consumo",
+    "slug": "etgoa-sanidad-consumo",
+    "position_type": "etgoa_sanidad_consumo",
+    "grupo": "A",
+    "subgrupo": "A1",
+    "categoria": "A1",
+    "tipo_acceso": "libre",
+    "administracion": "Estado",
+    "titulo_requerido": "Título universitario (Licenciatura, Grado, Ingeniería o Arquitectura)",
+    "diario_oficial": "BOE",
+    "diario_referencia": "BOE-A-2025-26903",
+    "programa_url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26903",
+    "seguimiento_url": "https://www.sanidad.gob.es/servCiudadanos/oposicionesConcursos/ofertasEmpleo/personalFuncionario/2025/etgoa.htm",
+    "estado_proceso": "inscripcion_cerrada",
+    "oep_decreto": "OEP 2023 + OEP 2024 + OEP 2025 (acumuladas)",
+    "convocatoria": {
+      "numero": "Resolución de 22/12/2025 (Subsecretaría)",
+      "fecha": "2025-12-22",
+      "diario": "BOE núm. 313, de 29/12/2025",
+      "inscription_start": "2025-12-30",
+      "inscription_deadline": "2026-01-28",
+      "exam_date": null
+    },
+    "plazas": {
+      "libre": 87,
+      "libre_2023": 29,
+      "libre_2024": 24,
+      "libre_2025": 34,
+      "discapacidad": 11,
+      "promocion_interna": 31,
+      "promocion_interna_discapacidad": 2
+    },
+    "examen": {
+      "turno_libre_ejercicios": 4,
+      "ej1": "Test 120 preguntas (+10 reserva), 150 min. Acierto +1, error -0,25, en blanco 0.",
+      "ej2": "Inglés (traducción 45 min o acreditación B2+)",
+      "ej3": "Desarrollo de 3 temas (3h)",
+      "ej4": "Supuesto práctico (2h)",
+      "nota": "Basado en la convocatoria BOE-A-2025-26903. Vence cubre el Ejercicio 1 (test)."
+    }
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Parte común",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Área de Consumo (parte específica)",
+      "icon": "🔬"
+    }
+  ],
+  "temario": {
+    "comun": [
+      {
+        "n": 1,
+        "epigrafe": "La Constitución Española de 1978. Características, estructura, principios constitucionales y valores superiores. Los derechos y deberes fundamentales y su especial protección."
+      },
+      {
+        "n": 2,
+        "epigrafe": "El Poder Judicial. El Tribunal Constitucional. El Tribunal de Cuentas. El Defensor del Pueblo. El Consejo de Estado."
+      },
+      {
+        "n": 3,
+        "epigrafe": "La Corona: Funciones constitucionales del Rey. Sucesión y Regencia. El refrendo. Las Cortes Generales: Composición y atribuciones del Congreso de los Diputados y del Senado."
+      },
+      {
+        "n": 4,
+        "epigrafe": "El Gobierno: Composición, designación y funciones. La Ley del Gobierno. Los Presupuestos Generales del Estado. Estructura. El ciclo presupuestario."
+      },
+      {
+        "n": 5,
+        "epigrafe": "La Administración Pública en la Constitución Española: Principios Constitucionales. La organización territorial del Estado. La Administración General del Estado y su organización periférica. La Administración Local y las Comunidades Autónomas. Las Ciudades Autónomas. Distribución competencial. Los conflictos de competencias. La coordinación entre las distintas Administraciones Públicas."
+      },
+      {
+        "n": 6,
+        "epigrafe": "Las fuentes del Derecho Administrativo. La jerarquía de fuentes. La Ley. Las disposiciones del Ejecutivo con fuerza de Ley: Decreto-ley y Decreto Legislativo. El Reglamento: Concepto, clases y límites. Otras fuentes del Derecho Administrativo."
+      },
+      {
+        "n": 7,
+        "epigrafe": "La Ley 39/2015, de 1 de octubre, de Procedimiento Administrativo Común de las Administraciones Públicas: Disposiciones generales. De las personas interesadas en el procedimiento. De la actividad de las Administraciones Públicas. De los actos administrativos. De las disposiciones sobre el procedimiento administrativo común. De la revisión de los actos en vía administrativa."
+      },
+      {
+        "n": 8,
+        "epigrafe": "La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público (I). Disposiciones generales. La Administración General del Estado. Los ministerios y su estructura interna. Órganos territoriales. La Administración General del Estado en el exterior. Organización y funcionamiento del sector público institucional. Los organismos públicos estatales. Las autoridades administrativas independientes del ámbito estatal. Las sociedades mercantiles estatales. Los consorcios. Las fundaciones del sector público estatal. Los fondos carentes de personalidad jurídica del sector público estatal."
+      },
+      {
+        "n": 9,
+        "epigrafe": "La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público (II). Relaciones interadministrativas. Principios generales. Deber de colaboración. Relaciones de cooperación. Relaciones electrónicas entre las Administraciones. Principios de la potestad sancionadora. Responsabilidad patrimonial de las Administraciones públicas. Funcionamiento electrónico del sector público. Los convenios."
+      },
+      {
+        "n": 10,
+        "epigrafe": "La Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público. Los contratos en el sector público: concepto, tipos, principios, características y elementos. Adjudicación y ejecución."
+      },
+      {
+        "n": 11,
+        "epigrafe": "Régimen jurídico del personal al servicio de las Administraciones Públicas. El Real Decreto legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. Derechos y deberes del personal al servicio de la Administración Pública. Incompatibilidades."
+      },
+      {
+        "n": 12,
+        "epigrafe": "Políticas de igualdad, protección y no discriminación en la Administración General del Estado. Igualdad de género. Políticas contra la violencia de género. Políticas de integración de las personas con discapacidad. Igualdad de trato y no discriminación de las personas LGTBI. Normativa vigente."
+      },
+      {
+        "n": 13,
+        "epigrafe": "Política de integración de las personas con discapacidad. Normativa vigente. La Ley 39/2006, de 14 de diciembre, de Promoción de la Autonomía Personal y Atención a las personas en situación de dependencia."
+      },
+      {
+        "n": 14,
+        "epigrafe": "Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales. Los servicios de prevención. La participación del trabajador. El Reglamento de los servicios de prevención. La vigilancia de la salud de los trabajadores en relación con los riesgos derivados del trabajo. Los reconocimientos de admisión y periódicos."
+      },
+      {
+        "n": 15,
+        "epigrafe": "El Ministerio de Sanidad. Estructura y competencias. La Organización Nacional de Trasplantes. Estructura y funciones. La Agencia Española de Medicamentos y Productos Sanitarios. Estructura, funciones y normativa básica. La Agencia Estatal de Salud Pública. Ley 7/2025, de 28 de julio, por la que se crea la Agencia Estatal de Salud Pública y se modifica la Ley 33/2011, de 4 de octubre, General de Salud Pública."
+      },
+      {
+        "n": 16,
+        "epigrafe": "El Ministerio de Derechos Sociales, Consumo y Agenda 2030. Estructura y competencias. La Agencia Española de Seguridad Alimentaria y Nutrición. Estructura, funciones y normativa básica."
+      },
+      {
+        "n": 17,
+        "epigrafe": "La Organización de Naciones Unidas y otros organismos internacionales en materia sanitaria. La Organización de las Naciones Unidas para la Alimentación y la Agricultura (FAO). La Organización Mundial del Comercio. El Programa de Cooperación de Inspección Farmacéutica (PIC/S). Agenda 2030 para el Desarrollo Sostenible."
+      },
+      {
+        "n": 18,
+        "epigrafe": "La Organización Mundial de la Salud: Estructura y funciones. Oficinas Regionales. La Organización Panamericana de la Salud. Principales programas y actividades relacionadas. La contribución de la Organización Mundial de la Salud a la promoción de la salud y la asistencia sanitaria. Principales programas y actividades relacionadas con medicamentos."
+      },
+      {
+        "n": 19,
+        "epigrafe": "La Unión Europea. Antecedentes, tratados originarios y modificativos. Objetivos y naturaleza jurídica. Las instituciones de la Unión Europea. El Consejo de la Unión Europea y el Consejo Europeo, el Parlamento Europeo, la Comisión Europea, el Tribunal de Justicia y el Tribunal de Cuentas. Funcionamiento y relaciones institucionales. Fuentes del Derecho Comunitario. La eficacia directa y la primacía del Derecho Comunitario. Relaciones entre el Derecho Comunitario y el ordenamiento jurídico de los Estados Miembros. El procedimiento por incumplimiento del Derecho Comunitario. Actos delegados y de ejecución."
+      },
+      {
+        "n": 20,
+        "epigrafe": "La gobernanza pública y el gobierno abierto. Concepto y principios informadores del gobierno abierto: colaboración, participación, transparencia y rendición de cuentas. Datos abiertos y reutilización. El marco jurídico y los planes de gobierno abierto en España. Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno. El Consejo de Transparencia y Buen Gobierno: Real Decreto 615/2024, de 2 de julio, por el que se aprueba el Estatuto del Consejo de Transparencia y Buen Gobierno, A.A.I. Funciones."
+      }
+    ],
+    "consumo": [
+      {
+        "n": 1,
+        "epigrafe": "La configuración constitucional de la sanidad en España: el derecho a la protección de la salud. Las competencias sanitarias del Estado y de las Comunidades Autónomas. Las transferencias sanitarias. Coordinación general sanitaria. El Consejo Interterritorial del Sistema Nacional de Salud."
+      },
+      {
+        "n": 2,
+        "epigrafe": "Normativa básica en materia de Sanidad (I). Ley 14/1986, de 25 de abril, General de Sanidad. Estructura. Fundamentos básicos. Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud."
+      },
+      {
+        "n": 3,
+        "epigrafe": "Normativa básica en materia de Sanidad (II). Ley 33/2011, de 4 de octubre, General de Salud Pública. Ley 44/2003, de 21 de noviembre, de ordenación de las profesiones sanitarias. Ley 41/2002, de 14 de noviembre, básica reguladora de la autonomía del paciente y de derechos y obligaciones en materia de información y documentación clínica. Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales."
+      },
+      {
+        "n": 4,
+        "epigrafe": "El Sistema Nacional de Salud español. Organización y financiación. Modelos sanitarios. Estudio comparativo con sistemas sanitarios de otros países. La asistencia sanitaria en el Sistema Nacional de Salud. El aseguramiento sanitario. La ordenación de las prestaciones sanitarias. Los niveles asistenciales en el Sistema Nacional de Salud: Asistencia primaria y asistencia especializada."
+      },
+      {
+        "n": 5,
+        "epigrafe": "Real Decreto Legislativo 1/2015, de 24 de julio, por el que se aprueba el texto refundido de la Ley de garantías y uso racional de los medicamentos y productos sanitarios."
+      },
+      {
+        "n": 6,
+        "epigrafe": "Texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios y otras leyes complementarias, aprobado por Real Decreto Legislativo 1/2007, de 16 de noviembre. Competencias de las administraciones públicas en materia de consumo."
+      },
+      {
+        "n": 7,
+        "epigrafe": "El derecho de los consumidores a la información."
+      },
+      {
+        "n": 8,
+        "epigrafe": "Ley 28/2015, de 30 de julio, para la defensa de la calidad alimentaria."
+      },
+      {
+        "n": 9,
+        "epigrafe": "La libre circulación de mercancías. La libre circulación de trabajadores. La libertad de establecimiento y la libre prestación de servicios. La libre circulación de capitales. Prevención de barreras técnicas al comercio. Directiva (UE) 2015/1535. La proyección exterior de la Unión Europea. Política exterior y de seguridad común de la Unión Europea. Cooperación en los ámbitos de justicia e interior."
+      },
+      {
+        "n": 10,
+        "epigrafe": "La salud pública en los Tratados de la Unión Europea. Las Normas Comunitarias y la libre circulación de medicamentos, productos sanitarios y cosméticos en la Unión Europea. Programa de salud de la Unión Europea."
+      },
+      {
+        "n": 11,
+        "epigrafe": "El Consejo de Europa: Estructura y funciones. Su implicación en la evaluación y control de medicamentos, productos sanitarios y cosméticos. La Farmacopea Europea. Laboratorios Oficiales de Control de Medicamentos (OMCL). El Convenio sobre falsificación de productos médicos. El Convenio de Bioética."
+      },
+      {
+        "n": 12,
+        "epigrafe": "Economía de la salud. Conceptos, tipos de estudios y su aplicación en las intervenciones de Salud Pública. Plan de Recuperación, Transformación y Resiliencia: Componente 18."
+      },
+      {
+        "n": 13,
+        "epigrafe": "La Agencia Europea de Medicamentos. Base jurídica, estructura y funciones. Coordinación con las autoridades de los Estados miembros. Bases de datos de la Agencia Europea de Medicamentos. Comités y grupos de trabajo de la Comisión Europea relacionados con medicamentos."
+      },
+      {
+        "n": 14,
+        "epigrafe": "La lucha contra las resistencias a los antibióticos: el Plan Nacional frente a la Resistencia a los Antibióticos (PRAN): consideraciones generales, objetivos, líneas estratégicas. Otros planes de acción frente a la resistencia a los antimicrobianos (Europa y Global Action Plan de la OMS)."
+      },
+      {
+        "n": 15,
+        "epigrafe": "La Dirección General de Consumo del Ministerio de Derechos Sociales, Consumo y Agenda 2030. Organización: Estructura y funciones. Competencias de las administraciones públicas en materia de consumo."
+      },
+      {
+        "n": 16,
+        "epigrafe": "El Sistema arbitral de consumo. Especial referencia al Real Decreto 713/2024, de 23 de julio, por el que se aprueba el Reglamento que regula el Sistema Arbitral de Consumo."
+      },
+      {
+        "n": 17,
+        "epigrafe": "El Registro Estatal de Asociaciones de Consumidores y Usuarios. Especial referencia al Real Decreto 448/2023, de 13 de junio, por el que se aprueba el Reglamento del Registro Estatal de Asociaciones de Consumidores y Usuarios."
+      },
+      {
+        "n": 18,
+        "epigrafe": "Régimen jurídico de las subvenciones públicas concedidas a las Asociaciones de Consumidores y Usuarios de ámbito estatal."
+      },
+      {
+        "n": 19,
+        "epigrafe": "Condiciones Generales de Contratación y Cláusulas Abusivas: Regulación, interpretación y control."
+      },
+      {
+        "n": 20,
+        "epigrafe": "Régimen legal de la competencia desleal para la mejora de la protección de las personas consumidoras: prácticas comerciales desleales con las personas consumidoras. Acciones derivadas de la competencia desleal."
+      },
+      {
+        "n": 21,
+        "epigrafe": "Las medidas europeas en el marco de la protección de las personas consumidoras. La legislación y normas de aplicación general y específica. Base jurídica del Tratado de funcionamiento de la Unión Europea que aplica a la protección de las personas consumidoras."
+      },
+      {
+        "n": 22,
+        "epigrafe": "La protección de las personas consumidoras en la Unión Europea: políticas de protección. La Nueva Agenda de Consumo: ámbitos prioritarios de actuación."
+      },
+      {
+        "n": 23,
+        "epigrafe": "La Cooperación Institucional entre las administraciones de consumo: Regulación de la Conferencia Sectorial de Consumo y de la Comisión Sectorial de Consumo."
+      },
+      {
+        "n": 24,
+        "epigrafe": "Garantías en relación con los bienes de naturaleza duradera, y en la prestación de servicios y servicio postventa. El derecho de las personas consumidoras a la reparación por daños y perjuicios."
+      },
+      {
+        "n": 25,
+        "epigrafe": "Regulación de la Unión Europea sobre la protección de los usuarios del transporte aéreo, ferroviario y los pasajeros que viajan por mar y por vías navegables."
+      },
+      {
+        "n": 26,
+        "epigrafe": "La potestad sancionadora en materia de consumo prevista en texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios y otras leyes complementarias, aprobado por el Real Decreto Legislativo 1/2007, de 16 de noviembre. Inspección y procedimiento sancionador."
+      },
+      {
+        "n": 27,
+        "epigrafe": "Reglamento (UE) 2017/2394 del Parlamento Europeo y del Consejo, de 12 de diciembre de 2017, sobre la cooperación entre las autoridades nacionales responsables de la aplicación de la legislación en materia de protección de las personas consumidoras: autoridades competentes y sus facultades. Mecanismos de investigación y ejecución coordinados para las infracciones generalizadas y las infracciones generalizadas con dimensión en la Unión."
+      },
+      {
+        "n": 28,
+        "epigrafe": "Reglamento (UE) 2016/425 del Parlamento Europeo y del Consejo, de 9 de marzo de 2016, relativo a los equipos de protección individual. Requisitos esenciales de salud y seguridad. Documentación técnica presentada por el fabricante para garantizar su conformidad."
+      },
+      {
+        "n": 29,
+        "epigrafe": "Reglamento (UE) 2019/1020 del Parlamento Europeo y del Consejo, de 20 de junio de 2019, relativo a la vigilancia del mercado y la conformidad de los productos y por el que se modifican la Directiva 2004/42/CE y los Reglamentos (CE) número 765/2008 y (UE) número 305/2011: actividades y obligaciones de las autoridades de vigilancia del mercado y de la oficina de enlace única. Poderes de las autoridades de vigilancia del mercado. Asistencia mutua transfronteriza."
+      },
+      {
+        "n": 30,
+        "epigrafe": "Reglamento (UE) 2023/988 del Parlamento Europeo y del Consejo, de 10 de mayo de 2023, relativo a la seguridad general de los productos, por el que se modifican el Reglamento (UE) n.º 1025/2012 del Parlamento Europeo y del Consejo y la Directiva (UE) 2020/1828 del Parlamento Europeo y del Consejo, y se derogan la Directiva 2001/95/CE del Parlamento Europeo y del Consejo y la Directiva 87/357/CEE del Consejo. Ámbito de aplicación. Aspectos considerados en la evaluación de la seguridad de los productos, presunción de conformidad y elementos adicionales, obligaciones de los operadores económicos y mercados en línea, aviso y soluciones en caso de recuperación."
+      },
+      {
+        "n": 31,
+        "epigrafe": "Sistema Safety Gate: Base legal. Elementos que lo componen. Notificación de productos peligrosos. Funciones y tareas de los puntos de contacto nacionales únicos."
+      },
+      {
+        "n": 32,
+        "epigrafe": "Control a la importación de determinados productos respecto a las normas aplicables en materia de seguridad de los productos: Tipo de controles realizados por el Servicio de Inspección SOIVRE. Productos de importación procedentes de terceros países sometidos a control de seguridad previo a su despacho aduanero."
+      },
+      {
+        "n": 33,
+        "epigrafe": "Seguridad de los juguetes: Regulación. Autoridades de vigilancia del mercado. Obligaciones de los agentes económicos. Cláusula de salvaguardia. Régimen sancionador. Ensayos más significativos."
+      },
+      {
+        "n": 34,
+        "epigrafe": "Regulación de los contratos de créditos al consumo: Información y actuaciones previas a la celebración del contrato de crédito. Contratos de crédito vinculados. Derechos ejercitables. Régimen sancionador."
+      },
+      {
+        "n": 35,
+        "epigrafe": "Real Decreto 562/2025 de 1 de julio, relativo a los controles y otras actividades oficiales realizadas sobre la cadena agroalimentaria y operaciones relacionadas."
+      },
+      {
+        "n": 36,
+        "epigrafe": "El Registro de intermediarios financieros. Normativa y funcionamiento. Régimen sancionador."
+      },
+      {
+        "n": 37,
+        "epigrafe": "La posición de las personas consumidoras en el ordenamiento jurídico español. Real Decreto Legislativo 1/2007, de 16 de noviembre, por el que se aprueba el texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios y otras leyes complementarias: principios generales y ámbito de aplicación. Derechos básicos de las personas consumidoras."
+      },
+      {
+        "n": 38,
+        "epigrafe": "Organismos internacionales con competencia en seguridad alimentaria: La Organización de las Naciones Unidas para la Alimentación y la Agricultura (FAO), La Organización Mundial de la Salud (OMS), Codex Alimentarius. Estructura. Funciones. Estatus de la Unión Europea en el marco del Codex. CCFL Comité del Codex sobre Etiquetado de los Alimentos. Asesoramiento científico."
+      },
+      {
+        "n": 39,
+        "epigrafe": "Organismos internacionales relacionados con las políticas de protección de los consumidores y la seguridad de los productos: La Conferencia de Naciones Unidas sobre el Comercio y el Desarrollo (UNCTAD), la OCDE (Organización para la Cooperación y el Desarrollo Económico) y su Comité sobre Políticas de los Consumidores (CCP). Funciones y estructura."
+      },
+      {
+        "n": 40,
+        "epigrafe": "Norma UNE-EN ISO/IEC 17025: Requisitos generales para la competencia de los laboratorios de ensayo y calibración. Objeto y campo de aplicación. Términos y definiciones. Requisitos: generales, relativos a la estructura, relativos a los recursos, del proceso y del sistema de gestión."
+      },
+      {
+        "n": 41,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos a la documentación del sistema de gestión, al control de documentos del sistema de gestión y al control de registros. Procedimientos normalizados de trabajo: elaboración y gestión en el laboratorio de ensayos."
+      },
+      {
+        "n": 42,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos a la revisión de solicitudes, ofertas y contratos en un laboratorio de ensayos, así como a la selección, verificación y validación de métodos apropiados para las actividades del laboratorio. Criterios de la Entidad Nacional de Acreditación (ENAC) sobre la selección de métodos de ensayo y demostración de su validez (CGA-ENAC-LEC)."
+      },
+      {
+        "n": 43,
+        "epigrafe": "Requisitos y criterios de la Norma UNE-EN ISO/IEC 17025 relativos a la validación de los métodos de ensayo y a los registros de validación correspondientes (estrategia de validación). Evaluación de la incertidumbre de la medición. Guía ILAC-G17:01/2021 para la medición de la incertidumbre en ensayos."
+      },
+      {
+        "n": 44,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos al aseguramiento de la validez de los resultados. Estrategias planificadas para el aseguramiento de la validez de los resultados de los ensayos y categorías de ensayos en un laboratorio de análisis de alimentos (concepto, descripción criterios de aceptación y rechazo, acciones correctivas, etc.). Gráficos de control."
+      },
+      {
+        "n": 45,
+        "epigrafe": "Ensayos de intercomparación: tipos y finalidad. Requisitos y criterios de la Norma UNE-EN ISO/IEC 17025, Nota Técnica NT-03 de ENAC y Guía G-ENAC-14 relativos a la participación en ensayos de intercomparación para evaluar la validez de los resultados del laboratorio de ensayos."
+      },
+      {
+        "n": 46,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos al equipamiento del laboratorio y a la trazabilidad metrológica de los resultados de sus mediciones. Calibración, verificación y mantenimiento de aparatos de medida del laboratorio. Criterios internacionalmente aceptados (ILAC) sobre los Materiales de referencia: tipos, selección y uso."
+      },
+      {
+        "n": 47,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos al informe de resultados de ensayo en un laboratorio de ensayos (comunes, específicos, declaraciones de conformidad, opiniones e interpretaciones, modificaciones, etc.)."
+      },
+      {
+        "n": 48,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos a los Trabajos No Conformes, Acciones para abordar riesgos y oportunidades, mejora y acciones correctivas. Criterios y requisitos de la Nota NO-11 de ENAC sobre No Conformidades y toma de decisión: concepto de No Conformidad, Acción correctiva, Acción de contención y Acción reparadora. Clasificación de No Conformidades. Tratamiento de las No Conformidades."
+      },
+      {
+        "n": 49,
+        "epigrafe": "Requisitos de la Norma UNE-EN ISO/IEC 17025 relativos a las auditorías internas y a las revisiones por la dirección de un laboratorio de ensayos."
+      },
+      {
+        "n": 50,
+        "epigrafe": "Alcances de acreditación cerrados y flexibles (Categorías de ensayos). Acreditación de categorías de ensayos: Notas Técnicas NT-18 y NT-19 de ENAC (objeto, campo de aplicación, definiciones, alcance de acreditación, requisitos del sistema de gestión, proceso de evaluación)."
+      },
+      {
+        "n": 51,
+        "epigrafe": "Errores en el análisis cuantitativo. Tipos de errores. Consideraciones sobre el manejo de errores sistemáticos y aleatorios en el diseño de un procedimiento analítico."
+      },
+      {
+        "n": 52,
+        "epigrafe": "Parámetros fundamentales de la estadística descriptiva. Población y muestra. Frecuencias. Medidas de centralización y dispersión. La distribución de resultados de medidas repetidas. Intervalos de confianza. Representación gráfica."
+      },
+      {
+        "n": 53,
+        "epigrafe": "Estadística aplicada a los resultados analíticos. Tipos de distribuciones. Análisis de resultados. Contraste de hipótesis y toma de decisiones. Análisis de la varianza."
+      },
+      {
+        "n": 54,
+        "epigrafe": "Tipos de errores en análisis instrumental. Regresión y correlación. Recta de regresión. Error de la pendiente y ordenada en el origen de la recta de regresión."
+      },
+      {
+        "n": 55,
+        "epigrafe": "Métodos de calibración en el análisis instrumental. Patrón interno. Patrón externo. Método de las adiciones estándar. Materiales de referencia."
+      },
+      {
+        "n": 56,
+        "epigrafe": "Técnicas para la preparación de muestras en análisis físico-químicos de alimentos. Objeto y fundamentos. Representatividad. Homogeneidad. Instrumental y aplicaciones."
+      },
+      {
+        "n": 57,
+        "epigrafe": "Sistemas de extracción: principios generales. Extracción en fase sólida, líquido-líquido, con soxhlet, con microondas, con fluidos supercríticos, destilación. Objeto y aplicaciones."
+      },
+      {
+        "n": 58,
+        "epigrafe": "Análisis gravimétrico y volumétrico. Fundamentos, instrumental y aplicaciones. Errores. Calibración de equipos y material."
+      },
+      {
+        "n": 59,
+        "epigrafe": "Separaciones cromatográficas. Consideraciones generales. Principios fundamentales de los equilibrios cromatográficos. Tipos de cromatografías. Parámetros cromatográficos. Resolución, eficacia, selectividad."
+      },
+      {
+        "n": 60,
+        "epigrafe": "Cromatografía en fase gaseosa. Principios y parámetros fundamentales. Componentes básicos del sistema cromatográfico. Mantenimiento y verificación del sistema cromatográfico."
+      },
+      {
+        "n": 61,
+        "epigrafe": "Cromatografía de líquidos de alta resolución. Componentes básicos del sistema cromatográfico. Mecanismos básicos de separación y parámetros fundamentales. Mantenimiento y verificación del sistema cromatográfico."
+      },
+      {
+        "n": 62,
+        "epigrafe": "Cromatografía iónica. Fundamentos, características diferenciales y mecanismos de separación. Componentes básicos del sistema cromatográfico. Mantenimiento y verificación del sistema cromatográfico."
+      },
+      {
+        "n": 63,
+        "epigrafe": "Espectrometría de absorción molecular ultravioleta y visible. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis cuantitativo. Mantenimiento y verificación."
+      },
+      {
+        "n": 64,
+        "epigrafe": "Espectrometría de fluorescencia molecular. Fosforescencia. Quimioluminiscencia. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis cuantitativo. Mantenimiento y verificación."
+      },
+      {
+        "n": 65,
+        "epigrafe": "Espectrometría de Infrarrojo. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis cuantitativo. Mantenimiento y verificación."
+      },
+      {
+        "n": 66,
+        "epigrafe": "Espectrometría de emisión de plasma. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis cuantitativo. Mantenimiento y verificación."
+      },
+      {
+        "n": 67,
+        "epigrafe": "Espectrometría de absorción atómica de llama. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis cuantitativo. Mantenimiento y verificación."
+      },
+      {
+        "n": 68,
+        "epigrafe": "Espectrometría de absorción atómica con atomización electrotérmica. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis cuantitativo. Mantenimiento y verificación."
+      },
+      {
+        "n": 69,
+        "epigrafe": "Espectrometría de resonancia magnética nuclear. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis. Espectrometría de resonancia de spin electrónico. Fundamentos. Componentes básicos de los equipos. Metodología para el análisis."
+      },
+      {
+        "n": 70,
+        "epigrafe": "Espectrometría de masas. Fundamentos. Componentes de los equipos. Espectro de masas. Análisis cualitativo y cuantitativo."
+      },
+      {
+        "n": 71,
+        "epigrafe": "Espectrometría de masas en acoplamiento con otras técnicas: cromatografía de gases, cromatografía de líquidos, espectrometría de emisión de plasma. Fundamentos. Componentes básicos de los equipos. Análisis cualitativo y cuantitativo."
+      },
+      {
+        "n": 72,
+        "epigrafe": "Técnicas analíticas de electroforesis. Fundamentos. Componentes básicos del equipo. Mantenimiento y verificación. Aplicaciones en el control de alimentos."
+      },
+      {
+        "n": 73,
+        "epigrafe": "Técnicas automáticas de análisis. Tipos y fundamentos. Análisis por Inyección de flujo. Mantenimiento y verificación."
+      },
+      {
+        "n": 74,
+        "epigrafe": "Microscopía óptica y electrónica. Fundamentos. Aplicaciones en el laboratorio de análisis de productos alimenticios y otros productos no alimenticios destinados a los consumidores."
+      },
+      {
+        "n": 75,
+        "epigrafe": "Análisis sensorial. Definición y aplicaciones. Paneles de cata. Evaluación organoléptica de los aceites de oliva vírgenes. Atributos para la clasificación de los aceites de oliva vírgenes."
+      },
+      {
+        "n": 76,
+        "epigrafe": "El laboratorio de microbiología. Organización del laboratorio. Preparación de medios de cultivo y reactivos. Control de calidad de medios de cultivo."
+      },
+      {
+        "n": 77,
+        "epigrafe": "Estructura del ADN. Reacción en cadena de la polimerasa (PCR). Técnicas de PCR y su aplicación en el control de alimentos."
+      },
+      {
+        "n": 78,
+        "epigrafe": "Inmunoquímica. Antígenos y anticuerpos. Técnicas y aplicaciones en el control de alimentos."
+      },
+      {
+        "n": 79,
+        "epigrafe": "Detección de materias extrañas en alimentos. Métodos de detección. Identificación y clasificación de estas."
+      },
+      {
+        "n": 80,
+        "epigrafe": "Agentes de mejora de alimentos: aditivos alimentarios. Regulación normativa. Condiciones para su empleo."
+      },
+      {
+        "n": 81,
+        "epigrafe": "Agentes de mejora de alimentos: Edulcorantes, colorantes, reguladores pH, antioxidantes. Descripción. Técnicas analíticas de detección y valoración."
+      },
+      {
+        "n": 82,
+        "epigrafe": "Otros agentes de mejora de alimentos. Conservadores. Estabilizantes. Potenciadores del sabor. Técnicas analíticas de detección y valoración."
+      },
+      {
+        "n": 83,
+        "epigrafe": "Materiales destinados a entrar en contacto con los alimentos. Plásticos de uso en la industria alimentaria. Implicaciones en seguridad alimentaria. Estudios de migración en alimentos. Disposiciones aplicables."
+      },
+      {
+        "n": 84,
+        "epigrafe": "Preparados para lactantes y preparados de continuación. Alimentos elaborados a base de cereales y alimentos infantiles para lactantes y niños de corta edad. Legislación aplicable."
+      },
+      {
+        "n": 85,
+        "epigrafe": "Contaminantes presentes en los productos alimenticios: Metales pesados, hidrocarburos aromáticos policíclicos, 3-monocloropropanodiol (3-MCPD) y acrilamida. Legislación aplicable. Métodos de muestreo y análisis."
+      },
+      {
+        "n": 86,
+        "epigrafe": "Productos eléctricos: Normativa aplicable al material eléctrico. Residuos de aparatos eléctricos y electrónicos: Legislación aplicable."
+      },
+      {
+        "n": 87,
+        "epigrafe": "Marcado CE en productos de consumo: significado, requisitos, productos y colocación. Legislación de nuevo enfoque. Proceso de marcado, evaluación de la conformidad, autocertificación, documentación técnica y declaración de conformidad."
+      },
+      {
+        "n": 88,
+        "epigrafe": "La red de alerta nacional: Gestión del Sistema Coordinado de Intercambio rápido de Información (SCIRI). Descripción. Niveles de gestión. Relación con otros sistemas de redes de alerta. La red de alerta comunitaria: Gestión del Rapid Alert System for Food and Feed (RASFF). Base legal. Descripción. Niveles de gestión. Relación con otros sistemas de redes de alerta."
+      },
+      {
+        "n": 89,
+        "epigrafe": "Reglamento (UE) 1169/2011 del Parlamento Europeo y del Consejo, 25 de octubre de 2011, sobre la información facilitada al consumidor en materia de etiquetado."
+      },
+      {
+        "n": 90,
+        "epigrafe": "Información obligatoria que debe figurar en el etiquetado de los productos no alimenticios destinados al consumidor. El Real Decreto 1468/1988, de 2 de diciembre, por el que se aprueba el Reglamento de etiquetado, presentación y publicidad de los productos industriales destinados a su venta directa a los consumidores y usuarios. Productos sujetos a este real decreto."
+      },
+      {
+        "n": 91,
+        "epigrafe": "Marco general de principios y normas en materia de acreditación y vigilancia del mercado de los productos de consumo no alimenticios. Reglamento (CE) n.º 765/2008 del Parlamento Europeo y del Consejo, de 9 de julio de 2008, por el que se establecen los requisitos de acreditación y vigilancia del mercado relativos a la comercialización de los productos."
+      },
+      {
+        "n": 92,
+        "epigrafe": "Real Decreto 579/2017, de 9 de junio, por el que se regulan determinados aspectos relativos a la fabricación, presentación y comercialización de los productos del tabaco y los productos relacionados. Aspectos generales. Productos del tabaco: etiquetado y envasado. Productos del tabaco novedosos y tabaco de uso oral: requisitos aplicables. Dispositivos susceptibles de liberación de nicotina y envases de recarga: disposiciones relativas a la comercialización."
+      },
+      {
+        "n": 93,
+        "epigrafe": "Reglamento (CE) n.º 648/2004 del Parlamento Europeo y del Consejo, de 31 de marzo de 2004, sobre detergentes. Comercialización, uso y etiquetado de detergentes."
+      },
+      {
+        "n": 94,
+        "epigrafe": "Real Decreto 1718/1995, de 27 de octubre, por el que se regula el etiquetado de los materiales utilizados en los componentes principales del calzado."
+      },
+      {
+        "n": 95,
+        "epigrafe": "Regulación de los controles oficiales realizados sobre productos alimenticios. Reglamento (UE) 2017/625 del Parlamento Europeo y del Consejo, de 15 de marzo de 2017, relativo a los controles y otras actividades oficiales realizados para garantizar la aplicación de la legislación sobre alimentos y piensos, y de las normas sobre salud y bienestar de los animales, sanidad vegetal y productos fitosanitarios."
+      },
+      {
+        "n": 96,
+        "epigrafe": "Plan Nacional de Control Oficial de la Cadena Alimentaria. Estructura y marco legal. Participación de las autoridades de consumo en el plan."
+      },
+      {
+        "n": 97,
+        "epigrafe": "Reglamento (UE) n.º 1007/2011 del Parlamento Europeo y del Consejo, de 27 de septiembre de 2011, relativo a las denominaciones de las fibras textiles y al etiquetado y marcado de la composición en fibras de los productos textiles."
+      },
+      {
+        "n": 98,
+        "epigrafe": "Reglamento (UE) 2022/2065 del Parlamento Europeo y del Consejo de 19 de octubre de 2022 relativo a un mercado único de servicios digitales y por el que se modifica la Directiva 2000/31/CE (Reglamento de Servicios Digitales)."
+      },
+      {
+        "n": 99,
+        "epigrafe": "Directiva (UE) 2024/1799 del Parlamento Europeo y del Consejo, de 13 de junio de 2024, por la que se establecen normas comunes para promover la reparación de bienes y se modifican el Reglamento (UE) 2017/2394 y las Directivas (UE) 2019/771 y (UE) 2020/1828."
+      },
+      {
+        "n": 100,
+        "epigrafe": "Directiva (UE) 2024/2853 del Parlamento Europeo y del Consejo, de 23 de octubre de 2024, sobre responsabilidad por los daños causados por productos defectuosos y por la que se deroga la Directiva 85/374/CEE del Consejo."
+      }
+    ]
+  }
+}

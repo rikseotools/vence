@@ -259,6 +259,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'etgoa_sanidad_consumo',
+      label: 'ETGOA Sanidad y Consumo (Organismos Autónomos)',
+      data: {
+        name: 'Escala Técnica de Gestión de Organismos Autónomos (ETGOA) - Sanidad y Consumo',
+        slug: 'etgoa-sanidad-consumo',
+        categoria: 'A1',
+        administracion: 'Estado'
+      }
+    },
+    {
       value: 'auxiliar_enfermeria',
       label: 'Auxiliar de Enfermería (TCAE)',
       data: {

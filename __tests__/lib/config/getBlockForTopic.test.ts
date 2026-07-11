@@ -66,8 +66,11 @@ describe('getBlockForTopic', () => {
               const r = getBlockForTopic(opo.slug, theme.id)
               expect(r).not.toBeNull()
               expect(r!.displayNum).toBeGreaterThan(0)
-              // displayNum nunca debería ser > 100 (es para mostrar al usuario)
-              expect(r!.displayNum).toBeLessThan(100)
+              // displayNum nunca debería ser > 100 (es para mostrar al usuario).
+              // Un bloque puede tener hasta 100 temas (ETGOA Área Consumo: 100 temas
+              // del BOE → displayNum 1..100), que es el máximo que admite el encoding
+              // offset-based (firstId = bloque*100 + 1).
+              expect(r!.displayNum).toBeLessThanOrEqual(100)
             })
           }
         }
