@@ -63,17 +63,24 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'issuer_not_configured' }, { status: 503 })
   }
 
-  // Métrica de drenaje — fire-and-forget (no añade latencia al hot path; pérdida
-  // ocasional es aceptable, cada usuario acuña muchas veces al día). Query:
-  // scripts/… (o scratchpad/fase-b-drenaje.cjs): distinct user_id por `via` y día.
-  emitFireAndForget({
-    source: 'vercel',
-    severity: 'info',
-    eventType: 'auth_token_minted',
-    endpoint: '/api/auth/token',
-    userId,
-    metadata: { via },
-  })
+  // Métrica de drenaje — fire-and-forget (no añade latencia al hot path).
+  // MUESTREADA: cada usuario acuña en CADA tick de sesión → ~675k/día, era el mayor
+  // contribuyente a observable_events (firehose). `via='bridge'` es la señal que de
+  // verdad importa (cuándo llega a 0 se retira el bridge) → se emite SIEMPRE;
+  // `authjs_session` es el grueso → se muestrea al 10%. El health del minteo NO
+  // depende de este conteo: lo cubre la alerta `auth_mint_drop` vía request_completed
+  // http_status=200 (muestreo consistente 10%, sin falso positivo de transición).
+  const MINT_SAMPLE_RATE = 0.1
+  if (via === 'bridge' || Math.random() < MINT_SAMPLE_RATE) {
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'info',
+      eventType: 'auth_token_minted',
+      endpoint: '/api/auth/token',
+      userId,
+      metadata: { via, sampleRate: via === 'bridge' ? 1 : MINT_SAMPLE_RATE },
+    })
+  }
 
   return NextResponse.json(
     {

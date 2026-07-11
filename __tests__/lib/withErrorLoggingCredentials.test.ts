@@ -58,6 +58,21 @@ describe('withErrorLogging — filtro 401 solo anónimo (source)', () => {
   it('el 403 de límite diario sigue filtrado (no se rompió)', () => {
     expect(content).toMatch(/límite diario/)
   })
+
+  it('los statuses ESPERADOS se muestrean (no fuerzan el 100% de request_completed)', () => {
+    // El 401 del token (polling constante) inflaba observable_events a ~525k/día.
+    // forceEmit debe excluir los expectedStatuses → se muestrean como los 2xx (10%).
+    expect(content).toMatch(/const forceEmit = isError && !isExpectedStatus\(response\.status\)/)
+    expect(content).toMatch(/shouldEmitTiming = forceEmit \|\| Math\.random\(\) < SUCCESS_TIMING_SAMPLE_RATE/)
+  })
+})
+
+describe('/api/auth/token — auth_token_minted muestreado (anti-firehose)', () => {
+  const route = fs.readFileSync(path.join(ROOT, 'app/api/auth/token/route.ts'), 'utf-8')
+
+  it('muestrea el mint (via=bridge siempre, authjs_session al 10%)', () => {
+    expect(route).toMatch(/via === 'bridge' \|\| Math\.random\(\) < MINT_SAMPLE_RATE/)
+  })
 })
 
 // /api/auth/token: su 401 es contrato SIEMPRE (el cliente manda credenciales y hace

@@ -296,7 +296,13 @@ export function withErrorLogging(
       // crítico para comparativa apples-to-apples del cutover.
       // ============================================================
       const isError = response.status >= 400
-      const shouldEmitTiming = isError || Math.random() < SUCCESS_TIMING_SAMPLE_RATE
+      // Los statuses ESPERADOS por contrato (401 del token, 503 del readiness probe)
+      // NO son errores → se muestrean como los 2xx (10%) en vez de emitir el 100%.
+      // Sin esto, el 401 de /api/auth/token (polling constante del cliente) metía
+      // ~525k request_completed/día en observable_events (el firehose). El resto de
+      // 4xx/5xx (errores reales) sigue al 100%.
+      const forceEmit = isError && !isExpectedStatus(response.status)
+      const shouldEmitTiming = forceEmit || Math.random() < SUCCESS_TIMING_SAMPLE_RATE
       if (shouldEmitTiming) {
         const durationMs = Date.now() - startTime
         const host = request?.headers?.get?.('host') ?? null

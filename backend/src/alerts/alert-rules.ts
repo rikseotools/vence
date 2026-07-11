@@ -2829,23 +2829,32 @@ export const RULE_VALIDATION_LOG_FLOOD: AlertRule<{
  * Contexto (11/07/2026): el 401 de ese endpoint se marcó `expectedStatuses:[401]`
  * (deja de ensuciar validation_error_logs; su 401 es contrato). Riesgo: sin una señal
  * positiva, una regresión REAL ("sesiones válidas reciben 401, nadie mintea") quedaría
- * ciega. Esta regla la cubre SIN falsos positivos: compara los `auth_token_minted`
- * (emitido SOLO en mint OK) de la última hora contra la MISMA hora hace 7 días
- * (baseline robusto a estacionalidad diaria/semanal). Si el baseline era significativo
- * (≥500) y ahora cae por debajo del 20 %, el minteo está roto → crítico. El volumen
- * normal es ~7-10k/hora, así que un baseline-relativo no gatea por variación de tráfico.
+ * ciega. Esta regla la cubre SIN falsos positivos: compara el mint OK (request_completed
+ * http_status=200 de /api/auth/token, muestreado 10% de forma consistente en ambas
+ * ventanas → sin falso positivo de transición) de la última hora contra la MISMA hora
+ * hace 7 días (baseline robusto a estacionalidad). Si el baseline era significativo
+ * (≥500 sampled ≈ 5k reales/h) y ahora cae por debajo del 20 %, el minteo está roto →
+ * crítico. Baseline-relativo → no gatea por variación normal de tráfico. (Antes usaba
+ * auth_token_minted, pero ese evento se muestrea → distinto sampling entre ventanas.)
  */
 export const RULE_AUTH_MINT_DROP: AlertRule<{ now: number; base: number }> = {
   name: 'auth_mint_drop',
   severity: 'critical',
+  // Basada en request_completed http_status=200 de /api/auth/token (= mint OK), NO en
+  // auth_token_minted: este último se muestrea (10%) y en distintas ventanas tendría
+  // sampling distinto → falso positivo de transición. request_completed 2xx SIEMPRE
+  // se muestrea al 10% (SUCCESS_TIMING_SAMPLE_RATE), consistente en ambas ventanas →
+  // la comparación semana-sobre-semana es limpia.
   query: sql`
     WITH now_w AS (
       SELECT COUNT(*)::int AS n FROM observable_events
-      WHERE event_type = 'auth_token_minted' AND ts > NOW() - INTERVAL '1 hour'
+      WHERE event_type = 'request_completed' AND endpoint = '/api/auth/token'
+        AND http_status = 200 AND ts > NOW() - INTERVAL '1 hour'
     ),
     base_w AS (
       SELECT COUNT(*)::int AS n FROM observable_events
-      WHERE event_type = 'auth_token_minted'
+      WHERE event_type = 'request_completed' AND endpoint = '/api/auth/token'
+        AND http_status = 200
         AND ts > NOW() - INTERVAL '1 hour' - INTERVAL '7 days'
         AND ts <= NOW() - INTERVAL '7 days'
     )
@@ -2860,7 +2869,7 @@ export const RULE_AUTH_MINT_DROP: AlertRule<{ now: number; base: number }> = {
     const pct = r.base > 0 ? Math.round((r.now / r.base) * 100) : 0;
     return {
       title: `Minteo de tokens caído: ${r.now}/h (era ${r.base}/h hace 7d, ${pct}%)`,
-      body: `auth_token_minted (mint OK de /api/auth/token) se desplomó vs la misma hora hace 7 días. Como el 401 de ese endpoint está silenciado por contrato, ESTA es la señal de que el minteo real está roto — sesiones válidas que no obtienen token → la app autenticada cae en cascada (todas las /api/v2 sin Bearer):\n\n  ahora:   ${r.now} mints/h\n  hace 7d: ${r.base} mints/h  (${pct}%)\n\nInvestigar:\n  - /api/auth/token: ¿503 issuer_not_configured (claves RS256)? ¿auth() no resuelve sesión?\n  - ¿Deploy reciente rompió el mint o la verificación de sesión Auth.js?\n  - Cruce: SELECT http_status, COUNT(*) FROM observable_events WHERE endpoint='/api/auth/token' AND ts>NOW()-INTERVAL '15 min' GROUP BY 1;`,
+      body: `El minteo OK de /api/auth/token (request_completed http_status=200, muestreado 10%) se desplomó vs la misma hora hace 7 días. Como el 401 de ese endpoint está silenciado por contrato, ESTA es la señal de que el minteo real está roto — sesiones válidas que no obtienen token → la app autenticada cae en cascada (todas las /api/v2 sin Bearer):\n\n  ahora:   ${r.now} (10%)/h\n  hace 7d: ${r.base} (10%)/h  (${pct}%)\n\nInvestigar:\n  - /api/auth/token: ¿503 issuer_not_configured (claves RS256)? ¿auth() no resuelve sesión?\n  - ¿Deploy reciente rompió el mint o la verificación de sesión Auth.js?\n  - Cruce: SELECT http_status, COUNT(*) FROM observable_events WHERE endpoint='/api/auth/token' AND ts>NOW()-INTERVAL '15 min' GROUP BY 1;`,
       metadata: { mintsNow: r.now, mintsBaseline: r.base, pctOfBaseline: pct },
     };
   },
