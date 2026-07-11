@@ -73,6 +73,7 @@ export function getAllFilterSlugs(): string[] {
 // Mapear oposición a CCAA slug para filtrado
 export function oposicionToCcaa(opoSlug: string): string | null {
   const map: Record<string, string> = {
+    'ayudantes-ejecucion-penal-pais-vasco': 'pais-vasco',
     'administrativo-estado': 'estado',
     'auxiliar-administrativo-estado': 'estado',
     'etgoa-sanidad-consumo': 'estado',

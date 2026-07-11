@@ -208,7 +208,9 @@ async function main() {
         position_type: PT, topic_number: t.topic_number, display_number: t.numero ?? t.topic_number, bloque_number: t.bloque,
         title, descripcion_corta: t.descripcion_corta || title, epigrafe: t.epigrafe,
         difficulty: t.difficulty || 'medium', estimated_hours: t.estimated_hours ?? 12,
-        is_active: t.disponible === true, disponible: false, // disponible se decide tras scope (abajo)
+        // is_active = el tema es parte REAL del temario (default true; spec puede ponerlo false si el tema está pendiente de editor).
+        // disponible = tiene banco para servir tests; lo decide FASE 3 (scope+preguntas), por eso arranca en false salvo que el spec lo fuerce.
+        is_active: t.is_active !== false, disponible: t.disponible === true,
       });
       if (tIns.missing.length) throw new Error(`schema-drift topics: ${tIns.missing.join(', ')}`);
       await c.query(tIns.text, tIns.params);

@@ -131,6 +131,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '💉'
   },
   {
+    id: 'ayudantes_ejecucion_penal_pais_vasco',
+    nombre: 'Ayudantes en Ejecución Penal (Euskadi)',
+    categoria: 'C1',
+    administracion: 'País Vasco',
+    icon: '🔒'
+  },
+  {
     id: 'administrativo_estado',
     nombre: 'Administrativo del Estado',
     categoria: 'C1',

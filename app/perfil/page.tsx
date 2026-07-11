@@ -249,6 +249,16 @@ function PerfilPageContent() {
     { value: '', label: 'Ninguna seleccionada' },
     // TOP MÁS POPULARES
     {
+      value: 'ayudantes_ejecucion_penal_pais_vasco',
+      label: 'Ayudantes en Ejecución Penal (Euskadi)',
+      data: {
+        name: 'Escala de Ayudantes en Ejecución Penal - Administración Penitenciaria de Euskadi',
+        slug: 'ayudantes-ejecucion-penal-pais-vasco',
+        categoria: 'C1',
+        administracion: 'País Vasco'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_estado',
       label: 'Auxiliar Administrativo del Estado',
       data: {

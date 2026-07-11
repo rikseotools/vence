@@ -1,0 +1,621 @@
+{
+  "identity": {
+    "nombre": "Escala de Ayudantes en Ejecución Penal - Administración Penitenciaria de Euskadi",
+    "short_name": "Ayudantes Ejecución Penal (Euskadi)",
+    "slug": "ayudantes-ejecucion-penal-pais-vasco",
+    "position_type": "ayudantes_ejecucion_penal_pais_vasco",
+    "grupo": "C",
+    "subgrupo": "C1",
+    "categoria": "C1",
+    "tipo_acceso": "libre",
+    "administracion": "autonomica",
+    "titulo_requerido": "Título de Bachiller o Técnico",
+    "coverage_level": "con_tests",
+    "fetcher_type": "http",
+    "headless_required": false,
+    "familia": "seguridad",
+    "color_primario": "blue",
+    "sistema_selectivo": "concurso-oposicion",
+    "emoji": "🔒",
+    "badge": "C1",
+    "hasPsychometricTest": false,
+    "aliases": [
+      "ayudantes ejecucion penal",
+      "ejecucion penal euskadi",
+      "prisiones pais vasco",
+      "ayudantes prisiones euskadi",
+      "penitenciaria vasca",
+      "ayudante ejecucion penal c1",
+      "carcel pais vasco",
+      "funcionario prisiones euskadi"
+    ]
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "Provisional: test de conocimientos (concurso-oposición BOPV nº80, 04/05/2026). Penalización exacta pendiente de bases específicas del IVAP. confidence:baja"
+  },
+  "examen_config": {
+    "tipo": "concurso-oposicion",
+    "turno": "libre",
+    "nota": "Concurso-oposición con pruebas físicas y prueba tipo test sobre el temario. Vence cubre la prueba de conocimientos (test). Estructura exacta pendiente de bases específicas.",
+    "pruebas": [
+      "Test de conocimientos (temario general + específico)",
+      "Prueba de valoración de aptitudes / física",
+      "Fase de concurso (méritos)"
+    ]
+  },
+  "landing": {
+    "estadisticas": [
+      {
+        "numero": "380",
+        "texto": "Plazas previstas (OPE)",
+        "color": "text-green-600"
+      },
+      {
+        "numero": "53",
+        "texto": "Temas del programa (general + específico)",
+        "color": "text-blue-600"
+      },
+      {
+        "numero": "C1",
+        "texto": "Subgrupo (Bachiller/Técnico)",
+        "color": "text-purple-600"
+      },
+      {
+        "numero": "Euskadi",
+        "texto": "Administración Penitenciaria Vasca",
+        "color": "text-orange-600"
+      }
+    ],
+    "faqs": [
+      {
+        "pregunta": "¿Cuántas plazas hay?",
+        "respuesta": "La previsión de la OPE del Gobierno Vasco para el Cuerpo de Ayudantes en Ejecución Penal ronda las 380 plazas (subgrupo C1). La cifra y el turno definitivos se fijarán en las bases específicas de cada convocatoria."
+      },
+      {
+        "pregunta": "¿Qué titulación necesito?",
+        "respuesta": "Título de Bachiller o Técnico (subgrupo C1)."
+      },
+      {
+        "pregunta": "¿Cómo es el examen?",
+        "respuesta": "Es un concurso-oposición: incluye una prueba tipo test sobre el temario (general + específico), pruebas de aptitud/físicas y una fase de concurso de méritos. En Vence practicas la prueba de conocimientos (test)."
+      },
+      {
+        "pregunta": "¿Qué temario cubre Vence?",
+        "respuesta": "El programa oficial del IVAP: 25 temas de parte general (Constitución, Unión Europea, organización de Euskadi, procedimiento administrativo, protección de datos, PRL…) y 28 de parte específica (Derecho Penal, proceso penal, Derecho Penitenciario, régimen, seguridad y tratamiento penitenciario)."
+      },
+      {
+        "pregunta": "¿Se parece a la de Instituciones Penitenciarias del Estado?",
+        "respuesta": "Mucho: la parte penal y penitenciaria (Código Penal, Ley de Enjuiciamiento Criminal, Ley Orgánica General Penitenciaria y Reglamento Penitenciario) es común. La diferencia está en la organización penitenciaria vasca (competencias de la CAPV, Aukerak, estructura del Departamento de Justicia)."
+      }
+    ],
+    "description": "Escala de Ayudantes en Ejecución Penal de la Administración Penitenciaria de Euskadi (subgrupo C1). Prepara el temario oficial del IVAP con tests: 25 temas de parte general y 28 de parte específica (Derecho Penal y Penitenciario). Gran parte comparte temario con la de Instituciones Penitenciarias del Estado.",
+    "seo_title": "Ayudantes en Ejecución Penal Euskadi (C1) | Temario y tests | Vence",
+    "seo_description": "Prepara la Escala de Ayudantes en Ejecución Penal de la Administración Penitenciaria de Euskadi (C1). Temario oficial del IVAP (general + específico penal y penitenciario) con tests. Previsión ~380 plazas."
+  },
+  "convocatoria": {
+    "año": 2026,
+    "estado_proceso": "oep_aprobada",
+    "diario_oficial": "BOPV",
+    "diario_referencia": "BOPV nº80, de 4 de mayo de 2026 (Orden de 23/04/2026, bases generales)",
+    "numero": "Bases generales (Orden 23/04/2026)",
+    "fecha": "2026-05-04",
+    "diario": "BOPV nº80, 04/05/2026",
+    "programa_url": "https://www.ivap.euskadi.eus/temarios-de-las-escalas-del-cuerpo-de-ayudantes-en-ejecucion-penal-de-la-administracion-penitenciaria/webivap00-a3gaizerr/es/",
+    "seguimiento_url": "https://www.ivap.euskadi.eus/empleo_publico/bolsa-de-trabajo-de-ayudantes-de-ejecucion-penal-de-administracion-penitenciaria-de-euskadi/webivap00-a2enpleg/es/",
+    "plazas_libres": 380,
+    "boe_publication_date": "2026-05-04",
+    "boe_reference": "BOPV-2026-1804",
+    "oep_decreto": "OEP Gobierno Vasco 2026 (previsión ~380 plazas)",
+    "oep_fecha": "2026-05-04"
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Parte general",
+      "subtitulo": "Derecho constitucional y administrativo, organización de Euskadi",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Parte específica",
+      "subtitulo": "Derecho Penal, proceso penal y Derecho Penitenciario",
+      "icon": "🔒"
+    }
+  ],
+  "temario": [
+    {
+      "bloque": 1,
+      "numero": 1,
+      "topic_number": 1,
+      "titulo": "Constitución",
+      "epigrafe": "Constitución. Estructura y contenido. Derechos y deberes fundamentales. La Corona. Las Cortes Generales. La elaboración de las leyes. El Defensor del Pueblo.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 2,
+      "topic_number": 2,
+      "titulo": "El Poder Judicial",
+      "epigrafe": "El Poder Judicial. La organización judicial. Actuaciones judiciales. El Consejo General del Poder Judicial. El Tribunal Constitucional: Composición y atribuciones. El Ministerio Fiscal.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 3,
+      "topic_number": 3,
+      "titulo": "Derecho de la Unión Europea",
+      "epigrafe": "Derecho de la Unión Europea. Nociones básicas de las instituciones: Consejo Europeo, Consejo de la Unión Europea, Comisión, Parlamento y Tribunal. Actos jurídicos: reglamentos y directivas.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 4,
+      "topic_number": 4,
+      "titulo": "La organización territorial del Estado",
+      "epigrafe": "La organización territorial del Estado. Aspectos generales. Las comunidades autónomas; su organización y competencia. Los Estatutos de Autonomía.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 5,
+      "topic_number": 5,
+      "titulo": "Organización política y administrativa de la CAE",
+      "epigrafe": "Organización política y administrativa de la CAE. Principios generales. Aspectos Generales de la distribución de competencias entre el Estado y la CAE. El Parlamento Vasco. El Gobierno Vasco y el Lehendakari. Ararteko. Estructura orgánica del Departamento de Justicia. Aspectos generales de la distribución de competencias entre las Instituciones Comunes de la CAE y los Territorios Históricos. El concierto económico. Competencias de las Instituciones Locales.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 6,
+      "topic_number": 6,
+      "titulo": "El Gobierno abierto",
+      "epigrafe": "El Gobierno abierto: Especial referencia a la transparencia y el acceso a la información pública, a la participación en la rendición de cuentas y al buen gobierno.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 7,
+      "topic_number": 7,
+      "titulo": "Normativa autonómica para la igualdad de mujeres y hombres y vidas libres de violencia m…",
+      "epigrafe": "Normativa autonómica para la igualdad de mujeres y hombres y vidas libres de violencia machista contra las mujeres con relación a la Administración General de la CAE: objeto; principios generales; competencias y funciones; organismos de igualdad y unidades para la igualdad; medidas para la integración de la perspectiva de género en la actuación de los poderes y las administraciones públicas vascas; medidas para promover la igualdad en la normativa y actividad administrativa.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 8,
+      "topic_number": 8,
+      "titulo": "Normalización lingüística del uso del euskera en la administración general",
+      "epigrafe": "Normalización lingüística del uso del euskera en la administración general. Principios generales. El perfil lingüístico. La preceptividad de los perfiles lingüísticos. Los planes de normalización lingüística.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 9,
+      "topic_number": 9,
+      "titulo": "Personal al servicio de las administraciones públicas vascas",
+      "epigrafe": "Personal al servicio de las administraciones públicas vascas: clases de personal empleado público, derechos de este personal, principios que inspiran el código ético y de conducta del mismo, y régimen disciplinario.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 10,
+      "topic_number": 10,
+      "titulo": "Estructura y organización del empleo en las Administraciones Públicas vascas",
+      "epigrafe": "Estructura y organización del empleo en las Administraciones Públicas vascas. Relación de puestos de trabajo. Clasificación en cuerpos y escalas conforme a la Ley de Cuerpos y Escalas de la Administración de la Comunidad Autónoma de Euskadi. Acceso al empleo público y provisión de puestos de trabajo en las Administraciones Públicas vascas. Principios rectores y requisitos generales. Sistemas selectivos. La adquisición y pérdida de la condición de funcionario público. La provisión de los puestos de trabajo. Las situaciones administrativas de los funcionarios/as.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 11,
+      "topic_number": 11,
+      "titulo": "Prevención de riesgos laborales",
+      "epigrafe": "Prevención de riesgos laborales. Objeto. Derechos y obligaciones: derecho de protección frente a los riesgos laborales. Principios de la actividad preventiva. Plan de prevención, evaluación de riesgos y planificación de la actividad preventiva. Formación de los trabajadores/as. Nociones básicas de primeros auxilios. Pantallas de visualización de datos.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 12,
+      "topic_number": 12,
+      "titulo": "Aspectos básicos de la protección de datos personales",
+      "epigrafe": "Aspectos básicos de la protección de datos personales: conceptos, principios y bases de legitimación del tratamiento de datos, derechos de las personas. Categorías especiales de datos.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 13,
+      "topic_number": 13,
+      "titulo": "La actividad de las Administraciones Públicas",
+      "epigrafe": "La actividad de las Administraciones Públicas. Normas generales de actuación: Derechos y obligaciones de las personas en sus relaciones con la Administración Pública. Registro y archivos. Obligación de resolver. El silencio administrativo.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 14,
+      "topic_number": 14,
+      "titulo": "Administración Electrónica",
+      "epigrafe": "Administración Electrónica. El acceso electrónico de los ciudadanos/as a los servicios públicos. El funcionamiento electrónico del sector público: sede electrónica y portal de internet, sistemas de identificación y firma electrónica. El archivo electrónico.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 15,
+      "topic_number": 15,
+      "titulo": "El expediente administrativo",
+      "epigrafe": "El expediente administrativo. Documentos administrativos, La expedición de copias y certificaciones de documentos. Legalizaciones de firmas. La validación en la administración electrónica: la identificación y firma electrónica, el certificado electrónico.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 16,
+      "topic_number": 16,
+      "titulo": "Fuentes del derecho administrativo",
+      "epigrafe": "Fuentes del derecho administrativo: Ley y reglamento. Jerarquía normativa. Principio de legalidad de la administración pública. La organización administrativa: los órganos administrativos. Órganos colegiados.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 17,
+      "topic_number": 17,
+      "titulo": "El acto administrativo",
+      "epigrafe": "El acto administrativo: concepto, producción, contenido, motivación y forma. La eficacia del acto administrativo. Silencio administrativo. Nulidad y anulabilidad.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 18,
+      "topic_number": 18,
+      "titulo": "Procedimiento administrativo",
+      "epigrafe": "Procedimiento administrativo: principios generales. Interesados. Abstención y recusación. Fases del procedimiento administrativo. Recursos administrativos. Revisión, anulación y revocación. El procedimiento administrativo sancionador.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 19,
+      "topic_number": 19,
+      "titulo": "Revisión de los actos",
+      "epigrafe": "Revisión de los actos: recursos administrativos, revisión de oficio y revocación. Rectificación de errores materiales.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 20,
+      "topic_number": 20,
+      "titulo": "La responsabilidad de las Administraciones Públicas y sus autoridades y demás Personal",
+      "epigrafe": "La responsabilidad de las Administraciones Públicas y sus autoridades y demás Personal.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 21,
+      "topic_number": 21,
+      "titulo": "Derechos de la ciudadanía en sus relaciones con las Administraciones Públicas",
+      "epigrafe": "Derechos de la ciudadanía en sus relaciones con las Administraciones Públicas. Derecho de acceso a archivos y registros públicos. La comunicación en la Administración. Uso correcto del lenguaje administrativo. Comunicación escrita. Lenguaje administrativo no sexista. Contenido y presentación de documentos escritos: correspondencia, comunicaciones, autorizaciones, notificaciones, instancias, certificaciones, compulsas, etc.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 22,
+      "topic_number": 22,
+      "titulo": "Comunicación oral",
+      "epigrafe": "Comunicación oral. Comunicación y atención en persona y por teléfono: avisos, información, peticiones, acompañamiento, desvío de llamadas, etc. Criterios generales. La comunicación no verbal. Atención ante quejas y reclamaciones. Personas con discapacidad. Atención intercultural en la Administración vasca.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 23,
+      "topic_number": 23,
+      "titulo": "Elementos de la conducta humana",
+      "epigrafe": "Elementos de la conducta humana. Estímulos y respuestas. Refuerzo y castigo. Técnicas de evaluación de la conducta humana. La observación, la autoobservación, el autorregistro, los autoinformes y los registros psicofisiológicos. La integración de los datos de la evaluación y realización de informes.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 24,
+      "topic_number": 24,
+      "titulo": "Organización social de la prisión",
+      "epigrafe": "Organización social de la prisión: Control formal e informal. Código del recluso, jerga y lenguaje. Subculturas carcelarias. Fenómenos de hacinamiento y conducta del recluso. Efectos psicológicos de la reclusión. Factores determinantes. Consecuencias físicas y psicosociales. Prisionización y socialización.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 1,
+      "numero": 25,
+      "topic_number": 25,
+      "titulo": "El comportamiento social",
+      "epigrafe": "El comportamiento social. El concepto de asertividad. Habilidades sociales. Evaluación y medida de las habilidades sociales y sus déficits. Programas de entrenamiento en habilidades sociales y su aplicación al ámbito penitenciario. La conducta adictiva en prisión.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 2,
+      "numero": 1,
+      "topic_number": 101,
+      "titulo": "Marco general del Derecho Penal",
+      "epigrafe": "Marco general del Derecho Penal. Concepto y fuentes. Principios generales, estructura y contenido. Límites al ius puniendi: legalidad, culpabilidad e intervención mínima.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 2,
+      "topic_number": 102,
+      "titulo": "El delito",
+      "epigrafe": "El delito. La infracción penal: concepto y clases (doloso/imprudente; acción/omisión). Grados de ejecución del delito. Autoría y participación. Causas de exclusión de la responsabilidad penal y circunstancias modificativas.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 3,
+      "topic_number": 103,
+      "titulo": "Principales delitos",
+      "epigrafe": "Principales delitos: el homicidio y sus formas; las lesiones; delitos vinculados a la violencia de género y violencia doméstica; delitos contra el patrimonio; el hurto y los robos; delitos contra la salud pública. Delitos contra la libertad: amenazas y coacciones. Torturas y otros delitos contra la integridad moral. Delitos contra la libertad sexual. Calumnia e injuria. Falsificación de documentos públicos y oficiales. Usurpación de funciones públicas e intrusismo. Delitos contra la Administración de Justicia; quebrantamiento de condena. Delitos relativos al ejercicio de derechos fundamentales y libertades públicas. Delitos cometidos por personal funcionario público contra las garantías constitucionales (especial referencia al ámbito penitenciario).",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 4,
+      "topic_number": 104,
+      "titulo": "Las penas",
+      "epigrafe": "Las penas: clases, duración y efectos. Referencia a la prisión permanente revisable. Reglas generales y especiales de aplicación de las penas. Extinción de la responsabilidad penal.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 5,
+      "topic_number": 105,
+      "titulo": "El proceso penal",
+      "epigrafe": "El proceso penal: concepto, objeto y tipos. La jurisdicción penal: juzgados y tribunales. Partes y actos procesales. Derecho de defensa y presunción de inocencia.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 6,
+      "topic_number": 106,
+      "titulo": "Fases del procedimiento penal",
+      "epigrafe": "Fases del procedimiento penal. Procedimientos: ordinario, tribunal del jurado, abreviado, delitos leves. Recursos: concepto, clases y efectos. Procedimiento de habeas corpus.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 7,
+      "topic_number": 107,
+      "titulo": "Medidas cautelares",
+      "epigrafe": "Medidas cautelares. Detención. Prisión preventiva y libertad provisional. Órdenes de alejamiento y protección.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 8,
+      "topic_number": 108,
+      "titulo": "Concepto, contenido y fuentes del Derecho Penitenciario",
+      "epigrafe": "Concepto, contenido y fuentes del Derecho Penitenciario. Normativa penitenciaria estatal. Marco internacional y europeo; Reglas Penitenciarias Europeas.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 9,
+      "topic_number": 109,
+      "titulo": "Actividad penitenciaria en CAPV",
+      "epigrafe": "Actividad penitenciaria en CAPV. Distribución competencial Estado–CAPV. Estructura orgánica en Euskadi: Centro Directivo; Centros Penitenciarios; Servicio Vasco de Gestión de Penas y Medidas Alternativas. Instrucciones y Resoluciones de la Dirección de Justicia aplicables.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 10,
+      "topic_number": 110,
+      "titulo": "Naturaleza, fines y principios de la actividad penitenciaria",
+      "epigrafe": "Naturaleza, fines y principios de la actividad penitenciaria. Derechos de las personas internas: clases, límites, protección y garantías. Deberes de las personas internas. Protección de datos de carácter personal en ficheros penitenciarios.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 11,
+      "topic_number": 111,
+      "titulo": "Establecimientos penitenciarios",
+      "epigrafe": "Establecimientos penitenciarios: concepto. Dependencias y servicios. Establecimientos polivalentes. Centros de inserción social. Principio celular y condiciones de habitabilidad.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 12,
+      "topic_number": 112,
+      "titulo": "Organización penitenciaria",
+      "epigrafe": "Organización penitenciaria. Órganos colegiados: composición y funciones; eficacia de acuerdos y régimen jurídico. Órganos unipersonales: funciones y atribuciones. Puestos de la Administración Penitenciaria Vasca: objetivos y funciones.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 13,
+      "topic_number": 113,
+      "titulo": "Régimen penitenciario",
+      "epigrafe": "Régimen penitenciario: concepto y principios inspiradores. Ingresos, libertades, conducciones y traslados; comunicación y ejecución material; supuestos específicos (discapacidad, gestantes, madres con hijos, enfermedad mental).",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 14,
+      "topic_number": 114,
+      "titulo": "Seguridad penitenciaria",
+      "epigrafe": "Seguridad penitenciaria. Seguridad exterior: competencia y fines. Seguridad interior: medidas preventivas y de control; registros, cacheos, requisas; control de objetos prohibidos; videovigilancia; incautación de drogas; control del peculio y pertenencias; zonas de riesgo. Medios coercitivos; limitaciones regimentales; procedimientos ante incidentes muy graves: evasiones, motines, custodias de llaves, agresiones a personal.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 15,
+      "topic_number": 115,
+      "titulo": "Régimen disciplinario",
+      "epigrafe": "Régimen disciplinario. Fundamento, ámbito de aplicación y principios de la potestad disciplinaria. Clasificación de las faltas y determinación de las sanciones. Prescripción y cancelación. Procedimiento sancionador. Ejecución y cumplimiento de las sanciones. Las recompensas.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 16,
+      "topic_number": 116,
+      "titulo": "Tipología del régimen",
+      "epigrafe": "Tipología del régimen. Régimen ordinario: principios y características. Régimen cerrado: criterios de aplicación, modalidades y características. Régimen abierto: criterios, objetivos, modalidades. Régimen de preventivos.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 17,
+      "topic_number": 117,
+      "titulo": "Tratamiento penitenciario",
+      "epigrafe": "Tratamiento penitenciario: concepto, fines y principios inspiradores; separación interior. Clasificación en grados y principio de individualización científica. Observación penitenciaria y papel de la Central Penitenciaria de Observación; rol del personal de servicio interior en la observación.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 18,
+      "topic_number": 118,
+      "titulo": "Programas y actividades",
+      "epigrafe": "Programas y actividades: criterios generales. Métodos, actividades y elementos del tratamiento. Formación, cultura y deporte: enseñanzas obligatorias y otras; medios personales y materiales; coordinación régimen–tratamiento. La participación del Tercer sector. La participación de las personas internas en la programación de las actividades tratamentales.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 19,
+      "topic_number": 119,
+      "titulo": "Trabajo penitenciario",
+      "epigrafe": "Trabajo penitenciario. Relación laboral en el medio penitenciario: características, tipos de trabajo, suspensión y extinción. Aukerak (Agencia Vasca de Reinserción Social): estatuto, funciones; gestión de nóminas y Seguridad Social de personas internas trabajadoras.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 20,
+      "topic_number": 120,
+      "titulo": "Permisos y salidas programadas",
+      "epigrafe": "Permisos y salidas programadas: Concepto y naturaleza. Clases, duración y requisitos. Procedimiento de concesión.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 21,
+      "topic_number": 121,
+      "titulo": "Libertad y excarcelación",
+      "epigrafe": "Libertad y excarcelación. Personas detenidas, presas y penadas: certificación y ayudas a la excarcelación. Libertad condicional: modalidades, requisitos, tramitación, revocación y control. Beneficios penitenciarios y su incidencia en la ejecución de la pena.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 22,
+      "topic_number": 122,
+      "titulo": "Formas Especiales de Ejecución",
+      "epigrafe": "Formas Especiales de Ejecución. Modalidades de internamiento: CIS, unidades dependientes, departamentos mixtos, jóvenes, unidades de madres, extrapenitenciarias y unidades psiquiátricas penitenciarias. Trabajo en beneficio de la comunidad (TBC). Suspensión de condenas y libertad vigilada. Instalación y desinstalación de dispositivos telemáticos.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 23,
+      "topic_number": 123,
+      "titulo": "Prestaciones y servicios",
+      "epigrafe": "Prestaciones y servicios: asistencia sanitaria; higiene y alimentación; educación. Acción social penitenciaria. Asistencia religiosa. Comunicaciones y visitas. Deporte, ocio y cultura.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 24,
+      "topic_number": 124,
+      "titulo": "Oficina Única de Gestión",
+      "epigrafe": "Oficina Única de Gestión: composición, distribución de tareas y funciones (unificación régimen-tratamiento). Expediente administrativo / protocolo de personas internas: estructura y documentación. Gestión de la información, identificación y documentación.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 25,
+      "topic_number": 125,
+      "titulo": "Gestión de penas de prisión",
+      "epigrafe": "Gestión de penas de prisión. Cómputo de tiempos y fechas de cumplimiento con repercusión penitenciaria. Refundición y acumulación jurídica; abono de prisión provisional. Responsabilidad civil derivada del delito: trascendencia en el cumplimiento. Personas extranjeras: cooperación internacional; comunicaciones con consulados; sustitución de pena por expulsión; extradición/entrega temporal.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 26,
+      "topic_number": 126,
+      "titulo": "Gestión económica y patrimonial",
+      "epigrafe": "Gestión económica y patrimonial. Principios generales del régimen económico. Régimen patrimonial. Gestión de economatos, cafeterías y cocina. Gestión económico-administrativa de gastos de alimentación; vestuario, equipo y utensilios. Custodia de objetos de valor y peculio.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 27,
+      "topic_number": 127,
+      "titulo": "El control de la actividad penitenciaria",
+      "epigrafe": "El control de la actividad penitenciaria: el juez de vigilancia penitenciaria. Principales funciones y atribuciones según la Ley Orgánica General Penitenciaria y el Código Penal. Los recursos contra sus resoluciones.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 28,
+      "topic_number": 128,
+      "titulo": "Igualdad de trato en el contexto penitenciario",
+      "epigrafe": "Igualdad de trato en el contexto penitenciario. Principios de igualdad en la Constitución, LOGP y normativa europea. No discriminación por género, origen, orientación sexual, identidad de género, religión, discapacidad u otras condiciones. Perspectiva interseccional. Tratamiento específico de mujeres internas. Protocolos contra la discriminación: prevención, detección y actuación; mecanismos de denuncia y protección; procedimientos de intervención; coordinación con servicios especializados. Medidas de igualdad del personal penitenciario. Prevención de violencias machistas.",
+      "difficulty": "hard",
+      "estimated_hours": 14
+    }
+  ],
+  "hitos": [
+    {
+      "fecha": "2026-05-04",
+      "titulo": "Bases generales publicadas (BOPV)",
+      "descripcion": "Orden de 23/04/2026 (BOPV nº80). Parte general del temario aprobada; la escala se rige por sus bases específicas.",
+      "status": "completed",
+      "order_index": 1
+    },
+    {
+      "fecha": "2026-12-01",
+      "titulo": "Convocatoria específica (previsión)",
+      "descripcion": "Prevista en 2026 con la distribución de plazas (~380) y las bases específicas del proceso. Fecha pendiente.",
+      "status": "upcoming",
+      "order_index": 2
+    }
+  ]
+}
