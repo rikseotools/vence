@@ -32,7 +32,7 @@ interface MeResponse {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
-  referido: '💛 Recomendaciones', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
+  referido: '💛 Recomendaciones', registro_activo: '📝 Registros activos', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
 }
 const sourceText = (s: string) => SOURCE_LABEL[s] || s
 

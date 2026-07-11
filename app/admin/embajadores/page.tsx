@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 
 const DENOMS = [5, 10, 20, 50, 100, 200, 400, 500, 1000, 1500]
-const SOURCE_LABEL: Record<string, string> = { referido: '💛 Referidos', bug: '🐛 Bugs/UX', ugc: '📣 Opiniones (UGC)' }
+const SOURCE_LABEL: Record<string, string> = { referido: '💛 Referidos', registro_activo: '📝 Registros activos', bug: '🐛 Bugs/UX', ugc: '📣 Opiniones (UGC)' }
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Atribuidos', qualified: 'Compraron', payable: 'Por pagar', paid: 'Pagados', rejected: 'Rechazados', expired: 'Caducados',
 }

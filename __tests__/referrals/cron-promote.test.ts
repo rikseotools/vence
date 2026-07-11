@@ -37,6 +37,6 @@ describe('GET /api/cron/referrals-promote', () => {
     mPromote.mockResolvedValue(3)
     const res = await _GET(req('Bearer sekret'))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ success: true, promoted: 3 })
+    expect(await res.json()).toMatchObject({ success: true, promoted: 3 })
   })
 })

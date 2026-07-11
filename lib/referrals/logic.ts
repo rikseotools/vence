@@ -119,6 +119,19 @@ export function abbreviateReferredName(name: string | null | undefined): string 
   return initials ? `${parts[0]} ${initials}` : parts[0]
 }
 
+// ===== Recompensa "REGISTRO ACTIVO" (bonus por referido que llega a >=5 tests) =====
+// Decisión Manuel 11/07: 2€ por referido activo, como inversión temporal de captación/marca.
+// DINERO REAL → detrás del flag ACTIVE_SIGNUP_REWARD=1 (OFF por defecto). Todo parametrizable por env.
+export const ACTIVE_SIGNUP_REWARD_EUR = Number(process.env.ACTIVE_SIGNUP_REWARD_EUR || 2)
+export const ACTIVE_SIGNUP_MIN_TESTS = Number(process.env.ACTIVE_SIGNUP_MIN_TESTS || 5)
+export const ACTIVE_SIGNUP_MONTHLY_CAP = Number(process.env.ACTIVE_SIGNUP_MONTHLY_CAP || 30) // por embajador/mes (anti-abuso)
+export const ACTIVE_SIGNUP_MONTHLY_BUDGET_EUR = Number(process.env.ACTIVE_SIGNUP_MONTHLY_BUDGET_EUR || 500) // presupuesto global/mes (tipo Ads)
+
+/** La recompensa de registro activo solo se concede si el flag está EXACTAMENTE en '1'. */
+export function activeSignupEnabled(): boolean {
+  return process.env.ACTIVE_SIGNUP_REWARD === '1'
+}
+
 export const REWARD_SUBMISSION_STATES = ['pending', 'approved', 'rejected', 'paid'] as const
 export type RewardSubmissionState = (typeof REWARD_SUBMISSION_STATES)[number]
 
