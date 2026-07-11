@@ -171,6 +171,21 @@ export class OutboxProcessorCron {
           });
         }
       }
+
+      // Retención cada ~60s (incidente 11/07): poda acotada de filas YA procesadas
+      // antiguas para que el outbox no crezca sin límite (era 74.540 filas / 1,68 GB
+      // → getStats seq-scan → timeout → cron fallido). Best-effort: su propio try/catch
+      // para que un fallo de la poda NUNCA marque el tick como fallido.
+      if (this.tickCounter % this.HEARTBEAT_EVERY_TICKS === 0) {
+        try {
+          const pruned = await this.service.pruneProcessed();
+          if (pruned > 0) this.logger.log(`Outbox retención: ${pruned} filas procesadas podadas.`);
+        } catch (pruneErr) {
+          this.logger.warn(
+            `Poda de retención del outbox falló (no crítico): ${pruneErr instanceof Error ? pruneErr.message : String(pruneErr)}`,
+          );
+        }
+      }
     } catch (error) {
       // runWithHeartbeat marca el tick (finally) aunque el batch falle.
       // El worker SIGUE VIVO — distinguir "vivo con errores" de "muerto silencioso".

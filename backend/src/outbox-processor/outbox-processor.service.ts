@@ -37,6 +37,11 @@ export class OutboxProcessorService {
   private readonly logger = new Logger(OutboxProcessorService.name);
   private readonly config: OutboxProcessorConfig = DEFAULT_CONFIG;
 
+  // Retención del outbox (incidente 11/07): días que se conservan las filas YA
+  // procesadas antes de podarlas, y tamaño de lote de la poda. Ver pruneProcessed().
+  private static readonly RETENTION_DAYS = 2;
+  private static readonly PRUNE_BATCH = 5000;
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly userArticleStatsHandler: UserArticleStatsHandler,
@@ -206,26 +211,50 @@ export class OutboxProcessorService {
     oldestPendingAgeSeconds: number | null;
     dlq: number;
   }> {
-    const rows = await this.db.execute<{
-      pending: bigint;
-      oldest_age: number | null;
-      dlq: bigint;
-    }>(sql`
-      SELECT
-        COUNT(*) FILTER (WHERE processed_at IS NULL AND retry_count < ${this.config.maxRetries})::bigint AS pending,
-        EXTRACT(EPOCH FROM (NOW() - MIN(created_at) FILTER (WHERE processed_at IS NULL AND retry_count < ${this.config.maxRetries}))) AS oldest_age,
-        COUNT(*) FILTER (WHERE processed_at IS NULL AND retry_count >= ${this.config.maxRetries})::bigint AS dlq
+    // Index-friendly (incidente 11/07): la versión anterior hacía un ÚNICO agregado con
+    // FILTER sobre TODA la tabla → seq-scan de 1,68 GB (74.540 filas procesadas sin
+    // podar) → en frío superaba el statement_timeout → getStats (cada 10s) fallaba →
+    // el cron se marcaba fallido y alertaba. Ahora cada agregado usa un ÍNDICE PARCIAL
+    // (`WHERE processed_at IS NULL`), así escala O(no-procesadas) y NO relee las filas
+    // ya procesadas por muchas que se acumulen. Complementa la retención (pruneProcessed).
+    const pendingRows = await this.db.execute<{ pending: bigint; oldest_age: number | null }>(sql`
+      SELECT COUNT(*)::bigint AS pending,
+             EXTRACT(EPOCH FROM (NOW() - MIN(created_at))) AS oldest_age
       FROM public.test_questions_outbox
+      WHERE processed_at IS NULL AND retry_count < ${this.config.maxRetries}
     `);
-    const row = (rows as unknown as Array<{
-      pending: string | number;
-      oldest_age: number | null;
-      dlq: string | number;
-    }>)[0];
+    const dlqRows = await this.db.execute<{ dlq: bigint }>(sql`
+      SELECT COUNT(*)::bigint AS dlq
+      FROM public.test_questions_outbox
+      WHERE processed_at IS NULL AND retry_count >= ${this.config.maxRetries}
+    `);
+    const p = (pendingRows as unknown as Array<{ pending: string | number; oldest_age: number | null }>)[0];
+    const d = (dlqRows as unknown as Array<{ dlq: string | number }>)[0];
     return {
-      pending: Number(row?.pending ?? 0),
-      oldestPendingAgeSeconds: row?.oldest_age != null ? Number(row.oldest_age) : null,
-      dlq: Number(row?.dlq ?? 0),
+      pending: Number(p?.pending ?? 0),
+      oldestPendingAgeSeconds: p?.oldest_age != null ? Number(p.oldest_age) : null,
+      dlq: Number(d?.dlq ?? 0),
     };
+  }
+
+  /**
+   * Retención del outbox: borra en lotes acotados las filas YA PROCESADAS más antiguas
+   * que la ventana de retención. Sin esto el outbox crece SIN LÍMITE (incidente 11/07:
+   * 74.540 filas procesadas / 1,68 GB). Una fila procesada ya materializó su efecto en
+   * uqh_v2 → es segura de borrar; se conservan RETENTION_DAYS por si hace falta replay o
+   * debug. Bounded (LIMIT) para no bloquear ni generar WAL masivo. Best-effort: devuelve
+   * el nº borrado; el caller la invoca sin dejar que rompa el tick.
+   */
+  async pruneProcessed(): Promise<number> {
+    const res = await this.db.execute(sql`
+      DELETE FROM public.test_questions_outbox
+      WHERE id IN (
+        SELECT id FROM public.test_questions_outbox
+        WHERE processed_at IS NOT NULL
+          AND processed_at < NOW() - (${OutboxProcessorService.RETENTION_DAYS}::int * INTERVAL '1 day')
+        LIMIT ${OutboxProcessorService.PRUNE_BATCH}
+      )
+    `);
+    return (res as unknown as { count?: number }).count ?? 0;
   }
 }
