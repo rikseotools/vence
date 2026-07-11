@@ -14,6 +14,10 @@ RUN npm run build
 # ---- runtime ----
 FROM node:22-slim AS runtime
 ENV NODE_ENV=production
+# SHA del commit horneado en la imagen → /health lo expone para que el deploy
+# verifique que prod sirve lo que construyó (anti-clobber, incidente 11/07).
+ARG GIT_COMMIT_SHA=
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force

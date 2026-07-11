@@ -51,7 +51,7 @@ else
 fi
 
 echo "→ [1/6] build ${IMG} (contexto backend/)"
-podman build -t "$IMG" ./backend
+podman build --build-arg GIT_COMMIT_SHA="$SHA" -t "$IMG" ./backend
 
 echo "→ [2/6] push ECR"
 aws ecr get-login-password --profile $P --region $R | podman login --username AWS --password-stdin "${ACC}.dkr.ecr.${R}.amazonaws.com" >/dev/null 2>&1
@@ -98,6 +98,23 @@ echo "→ [6/6] smoke post-deploy"
 HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://api.vence.es/health)
 echo "   /health=$HEALTH_CODE"
 [ "$HEALTH_CODE" = "200" ] || { echo "   ⚠️ smoke inesperado (/health != 200) — revisar"; exit 1; }
+
+# VERIFICAR QUE LO DESPLEGADO ES LO QUE CONSTRUIMOS (anti-clobber, incidente 11/07).
+# /health.deploy = SHA horneado en la imagen. Si no coincide con $SHA tras reintentos,
+# otro deploy pisó éste o no propagó → prod corre código EQUIVOCADO aunque diga "OK".
+echo "→ verificando que el SHA vivo == $SHA (anti-clobber)"
+DEPLOYED_SHA=""
+for _i in 1 2 3 4 5 6; do
+  DEPLOYED_SHA=$(curl -s --max-time 8 https://api.vence.es/health | python3 -c "import sys,json;print(json.load(sys.stdin).get('deploy',''))" 2>/dev/null || true)
+  [ "$DEPLOYED_SHA" = "$SHA" ] && break
+  sleep 5
+done
+if [ "$DEPLOYED_SHA" = "$SHA" ]; then
+  echo "   ✅ SHA vivo = $SHA"
+else
+  echo "   ❌ SHA vivo = '$DEPLOYED_SHA' ≠ '$SHA' — deploy CLOBBEREADO o no propagó. Coordina y reintenta."
+  exit 1
+fi
 echo ""
 echo "✅ DEPLOY BACKEND OK — $NEWTD"
 echo "   Rollback: aws ecs update-service --cluster vence-backend --service vence-backend --task-definition $LIVE_TD --profile vence --region eu-west-2"

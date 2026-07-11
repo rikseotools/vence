@@ -225,6 +225,27 @@ HOME_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/)
 TOKEN_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/api/auth/token)
 echo "   home=$HOME_CODE  /api/auth/token(sin sesión)=$TOKEN_CODE"
 [ "$HOME_CODE" = "200" ] && [ "$TOKEN_CODE" = "401" ] || { echo "   ⚠️ smoke inesperado — revisar"; exit 1; }
+
+# VERIFICAR QUE LO DESPLEGADO ES LO QUE CONSTRUIMOS (anti-clobber, incidente 11/07).
+# /api/health.deploy = el SHA horneado en la imagen (build-arg GIT_COMMIT_SHA). Si NO
+# coincide con $SHA tras reintentos (deja drenar el rollout), otro deploy concurrente
+# pisó éste o no propagó → prod corre código EQUIVOCADO aunque el deploy diga "OK".
+# Ésta es la comprobación que faltaba: el deploy podía "triunfar" sirviendo la imagen
+# de otra sesión (paths /tmp compartidos, ya arreglados) o quedar clobbereado.
+echo "→ verificando que el SHA vivo == $SHA (anti-clobber)"
+DEPLOYED_SHA=""
+for _i in 1 2 3 4 5 6; do
+  DEPLOYED_SHA=$(curl -s --max-time 8 https://www.vence.es/api/health | python3 -c "import sys,json;print(json.load(sys.stdin).get('deploy',''))" 2>/dev/null || true)
+  [ "$DEPLOYED_SHA" = "$SHA" ] && break
+  sleep 5
+done
+if [ "$DEPLOYED_SHA" = "$SHA" ]; then
+  echo "   ✅ SHA vivo = $SHA"
+else
+  echo "   ❌ SHA vivo = '$DEPLOYED_SHA' ≠ '$SHA' — el deploy fue CLOBBEREADO por otra sesión o no propagó."
+  echo "      Prod NO está sirviendo tu código. Coordina el deploy (que nadie más despliegue) y reintenta."
+  exit 1
+fi
 # Assets: un chunk referenciado por la home viva debe cargar 200 vía CloudFront
 # (detecta rotura del origin group S3/ALB o del pipeline de assets).
 CHUNK=$(curl -s https://www.vence.es/ | grep -oE '/_next/static/chunks/[^"]+\.js' | head -1 || true)

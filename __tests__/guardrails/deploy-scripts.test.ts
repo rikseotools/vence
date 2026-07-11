@@ -87,6 +87,14 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
     it(`${name}: aborta si el push no devuelve digest (no pinea a ciegas)`, () => {
       expect(s).toMatch(/-z "\$DIGEST"[\s\S]{0,80}(ABORTO|exit 1)/)
     })
+    // Anti-clobber (incidente 11/07): el smoke DEBE verificar que /health.deploy ==
+    // el SHA construido → prod sirve lo que este deploy embarcó, no la imagen de otra
+    // sesión. Sin esto, un deploy podía "triunfar" sirviendo código viejo.
+    it(`${name}: verifica que el SHA vivo == el construido (anti-clobber)`, () => {
+      expect(s).toMatch(/DEPLOYED_SHA=\$\(curl[\s\S]{0,120}\.get\('deploy'/)
+      expect(s).toMatch(/DEPLOYED_SHA" = "\$SHA"/)
+      expect(s).toMatch(/CLOBBEREADO/)
+    })
     // Concurrencia (incidente 11/07): los ficheros temporales del task-def eran paths
     // FIJOS (/tmp/vence-td-new.json) → dos deploys concurrentes se pisaban el JSON entre
     // write y register → uno registraba la imagen del OTRO (SHA equivocado en prod).

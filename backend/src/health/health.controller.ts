@@ -7,6 +7,9 @@ interface HealthResponse {
   status: 'ok';
   service: string;
   timestamp: string;
+  // SHA horneado en la imagen (build-arg GIT_COMMIT_SHA). Permite que el deploy
+  // VERIFIQUE que prod sirve la imagen que construyó (anti-clobber, incidente 11/07).
+  deploy: string | null;
 }
 
 interface OutboxHealthResponse {
@@ -62,6 +65,7 @@ export class HealthController {
       status: 'ok',
       service: 'vence-backend',
       timestamp: new Date().toISOString(),
+      deploy: (process.env.GIT_COMMIT_SHA || '').slice(0, 8) || null,
     };
   }
 
