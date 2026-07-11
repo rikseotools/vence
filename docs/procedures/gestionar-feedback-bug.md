@@ -57,6 +57,15 @@ Cuando un usuario **free** pregunta qué incluye el pago, si merece la pena, qu�
 4. **Comprueba qué features APLICAN a SU oposición vs a las cruzadas — no mientas.** Ej.: los *cursos de informática* NO aplican a Subalterno GVA (su temario de informática es solo "Seguridad digital", sin ofimática), pero SÍ a Auxiliar GVA (Windows/Word/Excel) → nómbralos ahí, no como si fueran de su temario. Igual con cualquier feature: mira su temario real (`topics.epigrafe`) antes de prometer.
 5. **Responde su pregunta literal primero** (si pregunta "¿hay temario o solo tests?": sí, ambos — el temario/teoría se lee gratis, los tests son lo que premium hace ilimitado) y luego el pitch personalizado. Cierre estándar Manuel: *"Para cualquier asunto estamos a tu disposición."*
 
+#### Playbook: «¿tenéis código de promoción / descuento / cupón?» (caso Eva Malo, Córdoba, 11/07) — para ir rápido
+
+Es el sub-tipo de pre-venta más común. Estructura que funcionó (en este orden):
+
+1. **NO hay códigos.** Vence **no da cupones** (ver [[feedback_vence_nunca_cupones]]). Díselo claro: *"los códigos de referido solo los tienen los usuarios que ya son Premium (nuestros embajadores); nosotros no damos códigos de promoción para nuevos alumnos."* El ahorro va **en la duración del plan** (más largo = menos €/mes). Precios actuales en [[project_pricing_v2_planes]] (hoy: mensual 29 · trimestral 39 · semestral 69 · **anual 99 €, ≈8,25 €/mes**) — verifícalos, cambian.
+2. **Su oposición + VARIEDAD concreta de su zona** (que vea que tendrá dónde elegir). Query para nombrar oposiciones REALES construidas de su nivel/zona: `SELECT nombre FROM oposiciones WHERE is_active=true AND nombre ILIKE '%administrativ%' ORDER BY nombre;` → filtra por su comunidad y nombra 3-5. Ej. Córdoba: Aux. Admin. del Ayuntamiento de Córdoba (su ciudad), de la Junta de Andalucía, del Estado, diputaciones de Cádiz/Huelva, ayuntamientos de Sevilla/Granada. **Solo las `is_active=true`** (construidas), nunca prometas una catalogada-sin-contenido.
+3. **Cierra con el plan ANUAL, y ponlo el ÚLTIMO párrafo.** A quien tiene claro que quiere ser funcionaria y va a largo plazo: el anual es **lo más económico y rentable**, porque **puede cambiar de oposición sin límite y presentarse a varias a la vez hasta que apruebe** (acceso a todas, con **estadísticas independientes por oposición**), + tests ilimitados, chat IA sin límite, lectura por voz.
+4. **Estilo (correcciones de Manuel):** paréntesis, **no** guiones largos (—…—); no listes features que no apliquen a su oposición (los *vídeos de informática* confunden si no es seguro que su temario los tenga → mejor omitirlos); no prometas descuentos.
+
 ### En CUALQUIER pregunta sobre el temario, recomienda siempre esto (engagement/retención)
 
 Cuando pregunten por el temario —¿está completo?, ¿se amplía según estudio?, dudas de contenido— (sea free o premium), **no te quedes en responder: convierte la duda en un empujón para que empiece/siga** (aprendizaje 07/07/2026, caso Lú Henao — premium recién pagada con 0 actividad):
