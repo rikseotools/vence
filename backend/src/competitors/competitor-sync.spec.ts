@@ -40,6 +40,15 @@ describe('matchCourse (identidad estructurada + nombre)', () => {
     expect(svc.matchCourse('Celadores SAS', 'Celadores SAS', cat).oposicionId).not.toBe('sergas-cel');
   });
 
+  it('expande TCAE e IIPP (acrónimos de cuerpo) → matchea la oposición', () => {
+    const cat = [
+      buildOposicionMatch({ id: 'tcae', nombre: 'Técnico en Cuidados Auxiliares de Enfermería (TCAE)', shortName: null, administracion: 'Sanidad' }),
+      buildOposicionMatch({ id: 'iipp', nombre: 'Ayudante de Instituciones Penitenciarias', shortName: null, administracion: 'Estado' }),
+    ];
+    expect(svc.matchCourse('TCAE a distancia', 'TCAE a distancia', cat).oposicionId).toBe('tcae');
+    expect(svc.matchCourse('Ayudantes de IIPP', 'Ayudantes de IIPP', cat).oposicionId).toBe('iipp');
+  });
+
   it('SERMAS (Madrid salud) matchea tras deduplicar el catálogo (E≡AP)', () => {
     const cat = [buildOposicionMatch({ id: 'sermas-cel', nombre: 'Celador del Servicio Madrileño de Salud (SERMAS)', shortName: null, administracion: 'Servicio Madrileño de Salud' })];
     expect(svc.matchCourse('Celadores SERMAS', 'Celadores SERMAS', cat).oposicionId).toBe('sermas-cel');

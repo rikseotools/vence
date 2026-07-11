@@ -50,6 +50,11 @@ function cleanName(s: string): string {
     .replace(/\bosakidetza\b/g, 'osakidetza servicio vasco salud')
     .replace(/\bosasunbidea\b/g, 'osasunbidea servicio navarro salud')
     .replace(/\bage\b/g, 'age administracion general estado')
+    .replace(/\bcarm\b/g, 'carm comunidad autonoma region murcia')
+    .replace(/\bdga\b/g, 'dga diputacion general aragon')
+    .replace(/\btcae\b/g, 'tcae tecnico cuidados auxiliares enfermeria')
+    .replace(/\biipp\b/g, 'iipp instituciones penitenciarias')
+    .replace(/\bics\b/g, 'ics institut catala salut')
     .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
     // Singularizar de forma simétrica en dos pasos: quitar '-s' y luego '-e'. Así
     // ambos tipos de plural español convergen al MISMO stem sin ambigüedad:
