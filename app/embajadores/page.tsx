@@ -94,6 +94,7 @@ const PROGRAMAS = [
       'Además, esa persona recibe 5 € de descuento en su primer pago — ganáis los dos.',
       'El importe se abona tras un breve periodo de seguridad (por si hubiera reembolsos).',
       'Sin límite: cuantos más opositores traigas, más recompensas acumulas.',
+      'Esto es CON tu enlace de referido. Si solo dejas una opinión nombrando Vence SIN tu enlace, eso va por «Comparte tu opinión» (5 €) — son cosas distintas.',
     ],
   },
   {
@@ -113,9 +114,10 @@ const PROGRAMAS = [
     icon: '📣',
     titulo: 'Comparte tu opinión',
     premio: '5 €',
-    desc: 'Por una recomendación genuina de Vence en grupos de estudio, redes o foros de opositores. Hasta 3 al mes. Nos lo envías por el chat de soporte con el enlace y una captura.',
+    desc: 'Por una opinión genuina en la que nombras Vence (SIN tu enlace de referido) en grupos de estudio, redes o foros de opositores. Hasta 3 al mes. Nos lo envías por el chat de soporte con el enlace y una captura.',
     detalle: [
-      'Escribe una opinión REAL y honesta sobre algo que de verdad te guste de Vence.',
+      'Escribe una opinión REAL y honesta sobre algo que de verdad te guste de Vence, mencionando Vence por su nombre.',
+      'Importante: es una reseña donde hablas de Vence, SIN poner tu enlace de referido. Si lo que compartes es tu enlace, eso va por «Recomienda Vence» (10 € por venta), no por aquí — no se paga dos veces por lo mismo.',
       'Vale en grupos de Facebook/Telegram de opositores, un post en Instagram, o un comentario o hilo en un foro.',
       'Debe ser tu experiencia genuina — nada inventado ni copiado.',
       'Para cobrar, crea un chat de soporte y envíanos el enlace público a tu publicación + una captura de pantalla.',
