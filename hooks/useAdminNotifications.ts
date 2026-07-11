@@ -11,7 +11,6 @@ interface AdminNotificationState {
   ventas: number
   ventasImporte: number
   calidad: number
-  erroresApi: number
   rateLimitHits: number
   loading: boolean
 }
@@ -25,7 +24,6 @@ const EMPTY_STATE: AdminNotificationState = {
   ventasImporte: 0,
   calidad: 0,
   rateLimitHits: 0,
-  erroresApi: 0,
   loading: false
 }
 
@@ -51,7 +49,7 @@ export function useAdminNotifications(enabled = false) {
       originalTitle.current = document.title || 'Vence Admin'
     }
 
-    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas + notifications.calidad + notifications.erroresApi
+    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas + notifications.calidad
 
     if (totalPending > 0) {
       document.title = `(${totalPending}) ${originalTitle.current}`
@@ -88,11 +86,9 @@ export function useAdminNotifications(enabled = false) {
         withTimeout(adminFetch('/api/v2/admin/unread-sales').then(r => r.json())),
         // 4. Calidad de preguntas — desactivado del polling (solo en /admin/calidad)
         Promise.resolve({ success: true, totalIssues: 0, skipped: true }),
-        // 5. Errores de validación API (últimas 24h)
-        withTimeout(adminFetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json())),
       ])
 
-      const [feedbackCountsResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult] = results
+      const [feedbackCountsResult, impugnacionesApiResult, salesResult, calidadResult] = results
 
       let pendingFeedback = 0
       let feedbackTypeCounts = { deletion: 0, bug: 0, email: 0, other: 0 }
@@ -100,7 +96,6 @@ export function useAdminNotifications(enabled = false) {
       const impugnacionesTypeCounts = { legislativas: 0, psicotecnicas: 0 }
       let pendingVentas = 0
       let pendingCalidad = 0
-      let pendingErroresApi = 0
       let pendingRateLimitHits = 0
 
       // Feedback pendiente + rate-limit (calculados server-side)
@@ -139,12 +134,6 @@ export function useAdminNotifications(enabled = false) {
         }
       }
 
-      // Obtener errores de validación API no revisados (últimas 24h)
-      if (erroresApiResult.status === 'fulfilled') {
-        const err = erroresApiResult.value as any
-        pendingErroresApi = err?.unreviewedCount ?? err?.summary?.totalErrors ?? 0
-      }
-
       // (rate-limit hits ya viene de feedbackCountsResult arriba)
 
       setNotifications({
@@ -155,7 +144,6 @@ export function useAdminNotifications(enabled = false) {
         ventas: pendingVentas,
         ventasImporte,
         calidad: pendingCalidad,
-        erroresApi: pendingErroresApi,
         rateLimitHits: pendingRateLimitHits,
         loading: false
       })

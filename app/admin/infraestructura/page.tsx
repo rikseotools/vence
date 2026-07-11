@@ -250,9 +250,7 @@ export default function InfraestructuraOverviewPage() {
               title="Errores 5xx servidor"
               status={ind.errors_5xx.status}
               value={String(ind.errors_5xx.count ?? '—')}
-              hint={`Umbrales: ámbar ≥${ind.errors_5xx.thresholds.amber}, rojo ≥${ind.errors_5xx.thresholds.red}`}
-              href="/admin/errores-validacion"
-              detail={
+              hint={`Umbrales: ámbar ≥${ind.errors_5xx.thresholds.amber}, rojo ≥${ind.errors_5xx.thresholds.red}`}              detail={
                 ind.errors_5xx.samples.length > 0 ? (
                   <div className="font-mono text-xs truncate">
                     {ind.errors_5xx.samples[0].endpoint.slice(0, 30)}
@@ -266,9 +264,7 @@ export default function InfraestructuraOverviewPage() {
               title="UI congelada"
               status={ind.ui_frozen.status}
               value={String(ind.ui_frozen.count ?? '—')}
-              hint={`Watchdog 12s · ámbar ≥${ind.ui_frozen.thresholds.amber}, rojo ≥${ind.ui_frozen.thresholds.red}`}
-              href="/admin/errores-validacion"
-              detail={
+              hint={`Watchdog 12s · ámbar ≥${ind.ui_frozen.thresholds.amber}, rojo ≥${ind.ui_frozen.thresholds.red}`}              detail={
                 ind.ui_frozen.count && ind.ui_frozen.count > 0 ? (
                   <div className="text-xs">
                     {ind.ui_frozen.uniqueUsers} user{ind.ui_frozen.uniqueUsers !== 1 ? 's' : ''}
@@ -332,9 +328,7 @@ export default function InfraestructuraOverviewPage() {
               title="Errores 4xx"
               status={ind.errors_4xx.status}
               value={String(ind.errors_4xx.count ?? '—')}
-              hint={`Ámbar ≥${ind.errors_4xx.thresholds.amber} · rojo ≥${ind.errors_4xx.thresholds.red}`}
-              href="/admin/errores-validacion"
-              detail={
+              hint={`Ámbar ≥${ind.errors_4xx.thresholds.amber} · rojo ≥${ind.errors_4xx.thresholds.red}`}              detail={
                 ind.errors_4xx.topEndpoints.length > 0 && (
                   <div className="font-mono text-xs truncate">
                     {ind.errors_4xx.topEndpoints[0].endpoint.slice(0, 30)} ({ind.errors_4xx.topEndpoints[0].count})
@@ -346,9 +340,7 @@ export default function InfraestructuraOverviewPage() {
               title="Hydration mismatch"
               status={ind.hydration_mismatch.status}
               value={String(ind.hydration_mismatch.count ?? '—')}
-              hint={`Ámbar ≥${ind.hydration_mismatch.thresholds.amber} · rojo ≥${ind.hydration_mismatch.thresholds.red}`}
-              href="/admin/errores-validacion"
-              detail={
+              hint={`Ámbar ≥${ind.hydration_mismatch.thresholds.amber} · rojo ≥${ind.hydration_mismatch.thresholds.red}`}              detail={
                 ind.hydration_mismatch.samples.length > 0 && (
                   <div className="font-mono text-xs truncate">
                     {ind.hydration_mismatch.samples[0].endpoint.slice(0, 30)}
@@ -465,9 +457,6 @@ export default function InfraestructuraOverviewPage() {
             </Link>
             <Link href="/admin/salud-sistema" className="px-3 py-2 rounded border border-gray-300 hover:bg-gray-50 text-center">
               Salud sistema (legacy)
-            </Link>
-            <Link href="/admin/errores-validacion" className="px-3 py-2 rounded border border-gray-300 hover:bg-gray-50 text-center">
-              Errores validación
             </Link>
           </div>
         </>
