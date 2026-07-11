@@ -12,6 +12,20 @@ import { getDashboardData } from '@/lib/api/admin-dashboard'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { getCached, setCached } from '@/lib/cache/redis'
+
+// Cache SERVIDOR (Redis, 11/07/2026 — fix del 503 recurrente del panel bajo
+// contención de RDS). Dos efectos:
+//  1) FAST-PATH: si hay un resultado < FRESH_MS, se sirve SIN correr las 11 queries
+//     → quita el dashboard de la contención del primario (antes cada visita tras 300s
+//     de browser-cache disparaba las 11 queries y daba 503 si el RDS estaba cargado).
+//  2) STALE-ON-TIMEOUT: si el cómputo da timeout, se sirve el ÚLTIMO bueno (hasta
+//     STALE_TTL_S) en vez de 503. El usuario nunca ve el error; el dato es de analítica,
+//     unos minutos de staleness es aceptable. Compartido entre todos los admins/pestañas.
+const DASH_CACHE_KEY = 'admin_dashboard_v2'
+const DASH_FRESH_MS = 60_000 // sirve cacheado sin tocar BD si es más nuevo que esto
+const DASH_STALE_TTL_S = 900 // 15 min: ventana para servir stale en timeout
+type DashCache = { data: unknown; ts: number }
 
 // 2026-05-25: 504 observado (Vercel runtime kill a 300s, default sin
 // maxDuration explícito) que el wrapper withErrorLogging NO pudo
@@ -28,16 +42,34 @@ export const maxDuration = 25
 const DASHBOARD_QUERY_TIMEOUT_MS = 20000
 
 async function _GET() {
+  const cached = await getCached<DashCache>(DASH_CACHE_KEY)
+
+  // 1) FAST-PATH: cacheado fresco → sin tocar la BD (quita el dashboard de la contención).
+  if (cached && Date.now() - cached.ts < DASH_FRESH_MS) {
+    return NextResponse.json(cached.data, {
+      headers: { 'Cache-Control': 'private, max-age=60', 'X-Cache': 'fresh' },
+    })
+  }
+
   try {
     const data = await withDbTimeout(() => getDashboardData(), DASHBOARD_QUERY_TIMEOUT_MS)
+    // Cachear en servidor (fire-and-forget) para el fast-path + stale de otros.
+    setCached(DASH_CACHE_KEY, { data, ts: Date.now() }, DASH_STALE_TTL_S)
     return NextResponse.json(data, {
       headers: {
         'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
+        'X-Cache': 'miss',
       },
     })
   } catch (error) {
     console.error('[API/v2/admin/dashboard] Error:', error)
     if (isDbTimeoutError(error)) {
+      // 2) STALE-ON-TIMEOUT: en vez de 503, servir el último bueno si existe.
+      if (cached) {
+        return NextResponse.json(cached.data, {
+          headers: { 'Cache-Control': 'private, max-age=30', 'X-Cache': 'stale' },
+        })
+      }
       return NextResponse.json(
         { error: 'Dashboard saturado, reintenta en unos segundos' },
         { status: 503, headers: { 'Retry-After': '15' } },
