@@ -114,5 +114,13 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
       expect(s).toMatch(/process\.env\.TDNEW/)
       expect(s).toMatch(/\[ -s "\$TDNEW" \][\s\S]{0,200}exit 1/)
     })
+    // El cuerpo del `node -e "..."` NO puede tener comillas dobles: cierran la cadena
+    // shell antes de tiempo y truncan el JS EN SILENCIO (incidente 11/07: un comentario
+    // con "..." cortó el transform antes del writeFileSync → TDNEW vacío → deploy roto).
+    it(`${name}: el bloque node -e no contiene comillas dobles (truncan el JS)`, () => {
+      const m = s.match(/node -e "\n([\s\S]*?)\n"\n/)
+      expect(m).toBeTruthy()
+      expect(m![1]).not.toMatch(/"/)
+    })
   }
 })
