@@ -36,6 +36,13 @@ export class CanaryStatsPipelineService {
   private readonly PROPAGATION_TIMEOUT_MS = 12_000;
   private readonly POLL_INTERVAL_MS = 1_500;
 
+  // Cota del fixture (incidente 11/07): el canary escribe 1 fila real por pasada
+  // (288/día) y NO limpia. Sin cota acumula sin fin y su propia drift-query
+  // (COUNT + MAX(question_order), heap scan) se ahoga: 10.737 filas → 13,6s →
+  // statement_timeout → el cron falla y alerta. Auto-acotado: si el montón supera
+  // esto, se pruna a un baseline limpio antes de la pasada. Ver docs/roadmap/canary-framework.md.
+  private readonly SMOKE_FIXTURE_CAP = 500;
+
   private readonly SMOKE_SESSION_ID = '00000000-0000-4000-8000-000000000001';
   private readonly SMOKE_QUESTION = {
     id: 'b419f803-274a-4c44-8df8-1192c57ff614',
@@ -60,6 +67,9 @@ export class CanaryStatsPipelineService {
       this.logger.warn('SMOKE_USER_ID o SUPABASE_JWT_SECRET no configurados — canary inactivo.');
       return { skipped: true, reason: 'credentials_not_configured', durationMs: Date.now() - startedAt };
     }
+
+    // ─── 0. Auto-acotado del fixture (evita el crecimiento sin límite, incidente 11/07) ───
+    await this.pruneFixtureIfNeeded(userId);
 
     // ─── 1. Estado previo ───
     const before = await this.readState(userId);
@@ -169,6 +179,41 @@ export class CanaryStatsPipelineService {
       WHERE user_id = ${userId}::uuid AND question_id = ${this.SMOKE_QUESTION.id}::uuid
     `)) as unknown as Array<{ t: number }>;
     return rows[0]?.t ?? 0;
+  }
+
+  /**
+   * Auto-acotado del fixture. El canary escribe 1 fila real en test_questions por
+   * pasada y no limpia; sin cota, la drift-query se degrada hasta timeout (incidente
+   * 11/07: 10.737 filas → 13,6s). Si el montón del smoke user para la SMOKE_QUESTION
+   * supera SMOKE_FIXTURE_CAP, lo purga a un baseline limpio (borra sus test_questions
+   * + resetea el contador materializado) → la query queda en ms. Solo toca el fixture
+   * sintético (smoke user); NUNCA datos de usuarios reales. Best-effort: si falla, no
+   * rompe la pasada. La solución de fondo (framework de fixtures) en docs/roadmap/canary-framework.md.
+   */
+  private async pruneFixtureIfNeeded(userId: string): Promise<void> {
+    try {
+      const rows = (await this.db.execute(sql`
+        SELECT COUNT(*)::int AS n FROM test_questions
+        WHERE user_id = ${userId}::uuid AND question_id = ${this.SMOKE_QUESTION.id}::uuid
+      `)) as unknown as Array<{ n: number }>;
+      const n = rows[0]?.n ?? 0;
+      if (n <= this.SMOKE_FIXTURE_CAP) return;
+      await this.db.execute(sql`
+        DELETE FROM test_questions
+        WHERE user_id = ${userId}::uuid AND question_id = ${this.SMOKE_QUESTION.id}::uuid
+      `);
+      await this.db.execute(sql`
+        UPDATE user_question_history_v2 SET total_attempts = 0, correct_attempts = 0
+        WHERE user_id = ${userId}::uuid AND question_id = ${this.SMOKE_QUESTION.id}::uuid
+      `);
+      this.logger.warn(
+        `Fixture del smoke user acotado: ${n} filas > cap ${this.SMOKE_FIXTURE_CAP} → purgado a baseline limpio.`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `pruneFixtureIfNeeded falló (no crítico): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }
 
