@@ -3,6 +3,9 @@
 > **Para Claude Code.** El panel `/admin/embajadores` es un **escaparate de estadísticas (solo lectura)**.
 > Las **operaciones** (crear recompensa/bonus, consultar saldos, pagar gift card) se ejecutan por **API**
 > siguiendo este runbook. Este documento es la fuente única de "cómo se opera el programa".
+>
+> **Vista admin "ver como el usuario":** en `/admin/embajadores`, pinchar un nombre de "Top embajadores"/"Saldos" abre **`/admin/embajadores/[userId]`** en pestaña nueva = el panel del embajador **tal cual lo ve él** (saldo, vales, enlace, embudo, referidos), read-only (endpoint `/api/admin/embajadores/[userId]/panel`, requireAdmin).
+> **Naming user-facing:** en los MENSAJES al usuario, el programa se llama **"Programa de Recompensas"** (no "de Embajadores"). Los referidos se muestran con nombre abreviado ("Nombre A. B.") y estado premium ("Registrado · No premium" / "Premium").
 
 ## Qué es
 
@@ -69,17 +72,20 @@ GET /api/admin/rewards/accumulated
 ```
 `suggested` = mayor denominación ≤ saldo.
 
-### 4. Emitir un vale (gift card) — automático vía Bitrefill
-**Una sola llamada admin** compra la gift card de Amazon.es en Bitrefill y registra el payout contra el saldo:
-```
-POST /api/admin/rewards/issue-giftcard
-body: { userId, amount }   // amount = denominación válida (5/10/20…) ≤ saldo pagable
-→ { ok, dryRun, code, payoutId, amount }
-```
-- **El usuario ve su vale** (código Amazon, importe, fecha) en su panel **/embajadores → "Mis vales"** (endpoint `GET /api/referrals/vouchers`, identidad del token).
-- **🔒 GUARDARRAÍL DE DINERO:** la compra REAL solo ocurre con **`BITREFILL_LIVE=1`** (env de runtime). Por defecto es **dry-run** (NO gasta, devuelve código `DRYRUN-…`, `purchased_via='bitrefill_dryrun'` y NO se muestra al usuario). Para ir a real: setear `BITREFILL_LIVE=1` en SSM + hacer una **primera compra controlada** y verificar el código antes de operar en serie. Token en SSM `/vence-frontend/BITREFILL_API_TOKEN`.
-- Orden seguro anti-descuadre: valida denominación + saldo ANTES de comprar; si la compra falla NO registra el payout. Idempotencia: 1 payout por llamada.
-- **Alternativa manual** (comprar a mano + registrar): `POST /api/admin/rewards/accumulated` con `{ userId, amount, giftcardRef, purchasedVia:'bitrefill' }`.
+### 4. Pagar un vale (gift card) — SUPERVISADO, lo compra Claude (NO automático)
+
+**MODELO (decisión Manuel):** el **cash-out es supervisado**. Los saldos se **acumulan solos** (contabilidad, cero dinero); **comprar el vale sí gasta dinero real → siempre lo pide Manuel** ("a fulano, vale de X€") **y lo ejecuta Claude con una compra DIRECTA controlada**. Nada de pagos automáticos. Por eso **`BITREFILL_LIVE` se queda OFF en prod** a propósito (el endpoint `/api/admin/rewards/issue-giftcard` existe como fallback pero en dry-run — red de seguridad anti-gasto accidental).
+
+**Procedimiento de compra directa (patrón validado en la 1ª compra real, 11/07):**
+1. **Pre-check:** el **saldo pagable** del embajador (`getUserOwedBalance`) debe ser **≥ importe**. Saldo de la cuenta Bitrefill: `GET https://api.bitrefill.com/v2/accounts/balance` (Bearer `BITREFILL_API_TOKEN`) — está en **BTC/sats** (un vale de 5€ ≈ **8.934 sats ≈ 5€**; se paga en cripto aunque el vale sea en EUR).
+2. **Comprar:** `POST /v2/invoices` con `{ products:[{ product_id:'amazon_es-spain', value, quantity:1 }], payment_method:'balance', auto_pay:true }`.
+   - ⚠️ **GOTCHA:** el product_id es **`amazon_es-spain`** (NO `amazon_es` → 404 `product_not_found`). Denominaciones válidas 5/10/20/50/100/…€.
+   - `auto_pay:true` **paga desde el saldo** (si vuelves a llamar /pay da `already_paid`). Verifica que el saldo Bitrefill **baja** (~8.934 sats por 5€).
+3. **Leer el código:** viene en `orders[0].redemption_info` = `{ code, pin, extra_fields."Serial Number" }`. Si no está al instante (`status` != `all_delivered`), **poll** `GET /v2/invoices/{id}` unas veces.
+4. **Registrar el pago:** `payAccumulated({ userId, adminUserId, amount, giftcardRef: JSON.stringify({code,pin,serial}), purchasedVia:'bitrefill' })` → baja el saldo del embajador (re-valida denominación + saldo, atómico).
+   - El vale se guarda como **JSON `{code,pin,serial}`** en `reward_payouts.giftcard_ref`. El usuario lo ve en **/embajadores → "Tus vales"** (endpoint `GET /api/referrals/vouchers`, identidad del token) con **botón Copiar** (copia solo el código) + **PIN/serial**, y **le parpadea el 🎁** (el badge cuenta vales nuevos sin ver, no solo ingresos).
+
+**Endpoint fallback:** `POST /api/admin/rewards/issue-giftcard { userId, amount }` hace todo lo anterior en una llamada, pero **solo compra real con `BITREFILL_LIVE=1`** (si no, dry-run con código `DRYRUN-…` que no se muestra al usuario). No se usa mientras el cash-out sea supervisado.
 
 ## Observabilidad
 
