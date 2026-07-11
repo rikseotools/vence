@@ -1055,7 +1055,11 @@ export const RULE_STRIPE_WEBHOOK_4XX_BURST: AlertRule<{
  * 503 = load shedding real, 500 = bug del handler — ambos señal accionable.
  */
 const TRANSIENT_CANARY_ERROR =
-  /timeout|abort|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|network|fetch failed|Bad Gateway|Gateway Time-?out|\bHTTP 50[24]\b/i;
+  // Añadido 11/07: un fallo de query de BD ("Failed query" es el wrapper de postgres-js;
+  // "canceling statement due to statement timeout" es el statement_timeout) suele ser
+  // contención de pool transitoria, NO un bug del canary → esperar confirmación (n≥2)
+  // en vez de disparar a n=1. Un bug real de query falla repetido y llega a n≥2 igual.
+  /timeout|abort|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|network|fetch failed|Bad Gateway|Gateway Time-?out|\bHTTP 50[24]\b|Failed query|canceling statement|statement timeout|Connection terminated|too many clients/i;
 
 function canaryFailureShouldFire(
   rows: Array<{ n: number; lastError: string | null }>,

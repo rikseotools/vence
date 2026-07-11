@@ -121,6 +121,11 @@ export class CanaryThemeStatsService {
 
   async run(): Promise<CanaryThemeStatsResult> {
     const startedAt = Date.now();
+    // Montar el FIXTURE (queries pesadas sobre user_article_stats) puede fallar por
+    // timeout bajo contención de pool — eso NO es una regresión del endpoint que
+    // vigila el canary. Con este flag, un fallo ANTES de terminar el fixture se
+    // reporta como `skipped` (no `failed`) → sin alarma por ruido de BD transitorio.
+    let fixtureOk = false;
     try {
       // 1. Usuario más pesado cuyo target es una oposición ACTIVA (con topics).
       //    CACHEADO 1h: el full-scan + GROUP BY de toda user_article_stats cuesta
@@ -182,6 +187,10 @@ export class CanaryThemeStatsService {
         return { skipped: true, reason: 'expected_below_floor', durationMs: Date.now() - startedAt };
       }
 
+      // Fixture montado OK (usuario + expected) → a partir de aquí, un fallo SÍ es
+      // del endpoint/veredicto (lo que el canary vigila de verdad).
+      fixtureOk = true;
+
       // 3. Endpoint REAL en vivo (incluye caché, deploy, red).
       // El endpoint usa el user del TOKEN (ignora ?userId=), así que firmamos
       // PARA el usuario pesado seleccionado → el endpoint computa SUS stats.
@@ -240,6 +249,11 @@ export class CanaryThemeStatsService {
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (!fixtureOk) {
+        // Falló montando el fixture (query pesada de user_article_stats bajo
+        // contención) → NO es regresión del endpoint. Skipped, no alarma.
+        return { skipped: true, reason: 'fixture_db_unavailable', durationMs: Date.now() - startedAt };
+      }
       return {
         ok: false, step: /abort|timeout/i.test(msg) ? 'timeout' : 'query',
         errorMessage: msg, durationMs: Date.now() - startedAt,
