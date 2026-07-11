@@ -55,6 +55,7 @@ import {
   recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
 import { anyForcedChallenge } from '@/lib/security/challengePolicy/forceChallenge'
+import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
 import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 import { emitFireAndForget } from '@/lib/observability/emit'
 
@@ -241,7 +242,12 @@ async function _POST(request: NextRequest) {
     // IP o cuentas en la misma máquina. El deviceId solo si el cliente lo envió.
     const deviceId = getDeviceIdFromRequest(request)
     const gateSubs = gateSubjects(authUserId, deviceId, ip)
-    if (isCaptchaEnabled()) {
+    // Eximir tráfico sintético de canaries (header canónico `x-vence-canary`): el
+    // canary `canary-por-leyes-scope` pega aquí cada 5 min (288/día) con SMOKE_USER_ID
+    // → supera su propia cuota diaria del gate → 403 → NO puede verificar el scope
+    // (su cometido real). Es monitorización interna legítima, no scraping. Mismo
+    // criterio que withErrorLogging/answer-save con los canaries.
+    if (isCaptchaEnabled() && !isSyntheticRequest(request)) {
       // Volumen (Capa A) + señal de bot (Capa C-fácil), en paralelo.
       const [gateEval, botFlag] = await Promise.all([
         evaluateLoadGate(gateSubs),
