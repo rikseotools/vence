@@ -73,7 +73,7 @@ const PROGRAMAS = [
     premio: '10 €',
     desc: 'Por cada amigo nuevo que se suscriba con tu enlace y pague en sus primeros 10 días. Y tu amigo se lleva 5 € de descuento en su primer pago.',
     detalle: [
-      'Comparte tu enlace de embajador donde haya opositores: grupos de WhatsApp y Telegram, foros, Instagram, Facebook, tu academia, compañeros de estudio… donde tú quieras.',
+      'Comparte tu enlace de referido donde haya opositores: grupos de WhatsApp y Telegram, foros, Instagram, Facebook, tu academia, compañeros de estudio… donde tú quieras.',
       'Cuando alguien que nunca ha pagado se registra con tu enlace y se hace Premium en sus primeros 10 días, ganas 10 €.',
       'Además, esa persona recibe 5 € de descuento en su primer pago — ganáis los dos.',
       'El importe se abona tras un breve periodo de seguridad (por si hubiera reembolsos).',
@@ -278,7 +278,7 @@ export default function EmbajadoresPage() {
         {/* ENLACE DEL EMBAJADOR + MÉTRICA (solo premium) */}
         {user && isPremium && (
           <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 mb-10 border border-blue-100 dark:border-gray-700">
-            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Tu enlace de embajador</h2>
+            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Tu enlace de referido</h2>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 readOnly
@@ -296,15 +296,11 @@ export default function EmbajadoresPage() {
 
             {me?.stats && (
               <>
-                {/* Embudo completo: copias → clicks → registros → han comprado */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-center">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-gray-600 dark:text-gray-300">{me.funnel?.copies ?? 0}</div>
-                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Copias del enlace</div>
-                  </div>
+                {/* Embudo: clicks → registros → han comprado */}
+                <div className="grid grid-cols-3 gap-4 mt-6 text-center">
                   <div>
                     <div className="text-2xl sm:text-3xl font-bold text-gray-600 dark:text-gray-300">{me.funnel?.clicks ?? 0}</div>
-                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Clicks</div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Clicks en tu enlace</div>
                   </div>
                   <div>
                     <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{me.stats.registros}</div>
@@ -315,8 +311,9 @@ export default function EmbajadoresPage() {
                     <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Han comprado</div>
                   </div>
                 </div>
-                <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
-                  Conversión registro→compra: <strong>{Math.round((me.stats.conversion || 0) * 100)}%</strong>
+                <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3 space-x-3">
+                  <span>Clics→registros: <strong>{(me.funnel?.clicks ?? 0) > 0 ? Math.round((me.stats.registros / (me.funnel!.clicks)) * 100) : 0}%</strong></span>
+                  <span>Registro→compra: <strong>{Math.round((me.stats.conversion || 0) * 100)}%</strong></span>
                 </div>
               </>
             )}

@@ -1,8 +1,11 @@
+'use client'
 // components/embajadores/EmbajadorPanelView.tsx
 // Vista presentacional del panel del embajador (saldo, ingresos por fuente, enlace, embudo, referidos).
 // Se alimenta por PROPS con el mismo shape que /api/referrals/me. SIN auth, SIN fetch, SIN efectos:
 // solo pinta lo que recibe. La usa la vista admin /admin/embajadores/[userId] (read-only, datos reales
 // de otro usuario). Réplica visual de app/embajadores/page.tsx, sin la parte celebratoria/confeti.
+
+import { useState } from 'react'
 
 const SOURCE_LABEL: Record<string, string> = {
   referido: '💛 Recomendaciones', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
@@ -46,6 +49,11 @@ export interface EmbajadorPanelData {
 export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData }) {
   const e = data.earnings
   const name = data.firstName || 'Embajador'
+  const [copied, setCopied] = useState(false)
+  const copyLink = async () => {
+    if (!data.link) return
+    try { await navigator.clipboard.writeText(data.link); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* noop */ }
+  }
   return (
     <div className="container mx-auto px-4 py-6 max-w-5xl">
       {/* HERO */}
@@ -120,16 +128,21 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
 
       {/* ENLACE + EMBUDO + REFERIDOS */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Su enlace de embajador</h2>
-        <input readOnly value={data.link || '(sin enlace generado todavía)'} className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 text-sm" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-center">
-          <div><div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{data.funnel.copies}</div><div className="text-xs text-gray-500 dark:text-gray-400">Copias del enlace</div></div>
-          <div><div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{data.funnel.clicks}</div><div className="text-xs text-gray-500 dark:text-gray-400">Clicks</div></div>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Su enlace de referido</h2>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input readOnly value={data.link || '(sin enlace generado todavía)'} className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 text-sm" />
+          <button onClick={copyLink} disabled={!data.link} className={`px-6 py-3 rounded-lg font-semibold text-white disabled:opacity-50 transition ${copied ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            {copied ? '¡Copiado! ✓' : 'Copiar'}
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mt-6 text-center">
+          <div><div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{data.funnel.clicks}</div><div className="text-xs text-gray-500 dark:text-gray-400">Clicks en su enlace</div></div>
           <div><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.registros}</div><div className="text-xs text-gray-500 dark:text-gray-400">Registros</div></div>
           <div><div className="text-2xl font-bold text-green-600 dark:text-green-400">{data.stats.compradores}</div><div className="text-xs text-gray-500 dark:text-gray-400">Han comprado</div></div>
         </div>
-        <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Conversión registro→compra: <strong>{Math.round((data.stats.conversion || 0) * 100)}%</strong>
+        <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3 space-x-3">
+          <span>Clics→registros: <strong>{data.funnel.clicks > 0 ? Math.round((data.stats.registros / data.funnel.clicks) * 100) : 0}%</strong></span>
+          <span>Registro→compra: <strong>{Math.round((data.stats.conversion || 0) * 100)}%</strong></span>
         </div>
         <div className="mt-8">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Sus referidos</h3>
