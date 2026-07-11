@@ -9,7 +9,7 @@
 
 ## Qué es
 
-Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cripto de wallets viejas de Manuel) de **4 formas**:
+Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cripto de wallets viejas de Manuel) de **4 formas**. **Solo usuarios PREMIUM son candidatos** — el programa es exclusivo de embajadores (premium); un usuario **free NO recibe recompensa** aunque su bug/opinión sea válido. La creación manual (`/api/admin/rewards`, bug/ugc) **no** valida el plan → lo aplica quien la crea; el referido/registro-activo ya parten de un premium.
 
 | Fuente | Importe | Cuándo | Quién lo dispara |
 |---|---|---|---|
