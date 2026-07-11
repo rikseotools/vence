@@ -43,4 +43,15 @@ describe('guardarraíl — registro activo (dinero real)', () => {
     const src = readFileSync(join(ROOT, 'app/api/cron/referrals-promote/route.ts'), 'utf8')
     expect(src).toMatch(/grantActiveSignupRewards/)
   })
+
+  it('el bono activo GANADO es también PAGABLE (simetría earnings↔payout, gated por hold)', () => {
+    // Regresión (bug 2026-07-11): la vista reward_earnings cuenta 'registro_activo' como ganado,
+    // pero las queries de saldo pagable NO miraban active_reward_amount → el bono quedaba atascado
+    // en "en proceso" para siempre, impagable. Ambas queries de pago DEBEN contarlo, y SOLO cuando
+    // el referido sobrevivió su hold (status payable/paid) — nunca si reembolsó (rejected).
+    const src = readFileSync(join(ROOT, 'lib/referrals/queries.ts'), 'utf8')
+    // aparece en getUserOwedBalance Y en getEmbajadoresWithBalance (2 ocurrencias)
+    const hits = src.match(/sum\(active_reward_amount\)[\s\S]*?status in \('payable','paid'\)/g) || []
+    expect(hits.length).toBeGreaterThanOrEqual(2)
+  })
 })

@@ -512,6 +512,10 @@ export async function getUserOwedBalance(userId: string, exec?: Executor): Promi
   const res = await db.execute(sql`
     select (
       coalesce((select sum(bounty_amount) from referrals where referrer_user_id = ${userId} and status = 'payable'), 0)
+      -- bono de registro activo (2€): pagable SOLO cuando el referido sobrevivió su hold sin
+      -- reembolsar (status payable/paid). Sin esto el bono se GANA (vista reward_earnings) pero
+      -- ninguna query lo hacía pagable → quedaba atascado en "en proceso" para siempre (bug 11/07).
+      + coalesce((select sum(active_reward_amount) from referrals where referrer_user_id = ${userId} and active_reward_at is not null and status in ('payable','paid')), 0)
       + coalesce((select sum(amount) from reward_submissions where user_id = ${userId} and status = 'approved' and (hold_until is null or hold_until <= now())), 0)
       - coalesce((select sum(amount) from reward_payouts where beneficiary_user_id = ${userId}), 0)
     )::float as balance`)
@@ -645,6 +649,11 @@ export async function getEmbajadoresWithBalance(exec?: Executor): Promise<AccumB
   const res = await db.execute(sql`
     with earned as (
       select referrer_user_id as uid, sum(bounty_amount) as amt from referrals where status='payable' group by referrer_user_id
+      union all
+      -- bono de registro activo: pagable solo tras superar el hold del referido (payable/paid).
+      -- Debe ser SIMÉTRICO con getUserOwedBalance (si no, un saldo aparecería pagable en un sitio
+      -- y no en el otro). Ver bug 11/07 (bono atascado en "en proceso").
+      select referrer_user_id as uid, sum(active_reward_amount) as amt from referrals where active_reward_at is not null and status in ('payable','paid') group by referrer_user_id
       union all
       select user_id as uid, sum(amount) as amt from reward_submissions where status='approved' and (hold_until is null or hold_until <= now()) group by user_id
     ),
