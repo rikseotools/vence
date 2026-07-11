@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ArchiveInteractionsModule } from './archive-interactions/archive-interactions.module';
+import { TelemetryRetentionModule } from './telemetry-retention/telemetry-retention.module';
 import { BoeChangesModule } from './boe-changes/boe-changes.module';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './db/database.module';
@@ -145,6 +146,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     BoeChangesModule,
     // Crons — sub-etapa 1b tanda 1 (mantenimiento)
     ArchiveInteractionsModule,
+    TelemetryRetentionModule, // diario 04:10 UTC — poda observable_events + validation_error_logs > 30d (evita crecimiento sin techo)
     RefreshThemeCacheModule,
     RefreshRankingsModule,
     UpdateStreaksModule,

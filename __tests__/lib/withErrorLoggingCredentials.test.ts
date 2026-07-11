@@ -1,0 +1,61 @@
+// __tests__/lib/withErrorLoggingCredentials.test.ts
+// requestHadCredentials: distingue el 401 anónimo (benigno, contrato del endpoint)
+// del 401 con credenciales rechazadas (señal de regresión de auth). Raíz del flood
+// de `/api/auth/token` (~340k/día tras el cutover a RDS del 04/07) que infló
+// validation_error_logs a ~1 GB y tumbó su propio panel admin (GROUP BY a 112s → 500).
+import { requestHadCredentials } from '@/lib/api/withErrorLogging'
+import * as fs from 'fs'
+import * as path from 'path'
+
+const ROOT = path.resolve(__dirname, '../..')
+
+function req(headers: Record<string, string>): Request {
+  return new Request('https://www.vence.es/api/auth/token', { headers })
+}
+
+describe('requestHadCredentials', () => {
+  it('anónimo (sin auth header ni cookie de sesión) → false', () => {
+    expect(requestHadCredentials(req({}))).toBe(false)
+    expect(requestHadCredentials(req({ 'user-agent': 'bot' }))).toBe(false)
+  })
+
+  it('cookies no-auth (analytics, consent) NO cuentan como credenciales → false', () => {
+    expect(requestHadCredentials(req({ cookie: '_ga=GA1.2.3; cookie_consent=yes' }))).toBe(false)
+  })
+
+  it('Authorization Bearer (RS256/HS256) → true', () => {
+    expect(requestHadCredentials(req({ authorization: 'Bearer eyJhbGci...' }))).toBe(true)
+  })
+
+  it('cookie de sesión Auth.js (dev y prod __Secure) → true', () => {
+    expect(requestHadCredentials(req({ cookie: 'authjs.session-token=abc' }))).toBe(true)
+    expect(requestHadCredentials(req({ cookie: '__Secure-authjs.session-token=abc' }))).toBe(true)
+  })
+
+  it('cookie legacy Supabase (sb-<ref>-auth-token) → true', () => {
+    expect(requestHadCredentials(req({ cookie: 'sb-abcdef-auth-token=xyz' }))).toBe(true)
+  })
+
+  it('defensivo: request sin headers no rompe → false', () => {
+    expect(requestHadCredentials({} as unknown as Request)).toBe(false)
+    expect(requestHadCredentials(null as unknown as Request)).toBe(false)
+  })
+})
+
+// Guardarraíl a nivel de fuente: el corte de VLE y la severidad del timing deben
+// aplicarse SOLO al 401 anónimo, no a todo 401 (para no perder la señal de auth).
+describe('withErrorLogging — filtro 401 solo anónimo (source)', () => {
+  const content = fs.readFileSync(path.join(ROOT, 'lib/api/withErrorLogging.ts'), 'utf-8')
+
+  it('corta VLE solo para 401 sin credenciales', () => {
+    expect(content).toMatch(/response\.status === 401 && !credentialed/)
+  })
+
+  it('degrada timing a info solo para 401 sin credenciales (no todo 401)', () => {
+    expect(content).toMatch(/\(response\.status === 401 && !credentialed\) \? 'info'/)
+  })
+
+  it('el 403 de límite diario sigue filtrado (no se rompió)', () => {
+    expect(content).toMatch(/límite diario/)
+  })
+})

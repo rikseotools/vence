@@ -58,6 +58,31 @@ function getSeverity(status: number): 'critical' | 'warning' | 'info' {
  * forma (no asumimos schema). Devuelve solo lo que existe y tiene el tipo
  * esperado para no ensuciar la columna user_id ni la metadata.
  */
+/**
+ * ¿La request presentó credenciales de sesión (aunque sean inválidas)?
+ *
+ * Sirve para distinguir dos 401 muy distintos:
+ *   - SIN credenciales → visitante anónimo / bot / sesión ya expirada y borrada.
+ *     El 401 es el CONTRATO del endpoint, no un fallo. No se registra en VLE
+ *     (era el 96% del flood de `/api/auth/token` tras el cutover a RDS del 04/07).
+ *   - CON credenciales pero rechazadas → token roto, clave rotada, bridge Fase B
+ *     caído. Eso SÍ es señal de regresión de auth real → se sigue registrando
+ *     (warn + VLE) para poder diagnosticar bugs/revisiones.
+ *
+ * Detecta: header `Authorization` (Bearer RS256/HS256) o cookie de sesión Auth.js
+ * (`authjs.session-token` / `__Secure-authjs.session-token`) o token legacy
+ * Supabase (`sb-<ref>-auth-token`). Pura y defensiva (nunca rompe el logger).
+ */
+export function requestHadCredentials(request: Request): boolean {
+  try {
+    if (request?.headers?.get?.('authorization')) return true
+    const cookie = request?.headers?.get?.('cookie') ?? ''
+    return /authjs\.session-token|-auth-token/.test(cookie)
+  } catch {
+    return false
+  }
+}
+
 export function extractTraceIds(body: Record<string, unknown> | undefined): {
   userId?: string | null
   testId?: string
@@ -180,6 +205,11 @@ export function withErrorLogging(
 
     const userAgent = request?.headers?.get?.('user-agent') ?? null
 
+    // ¿Trae credenciales de sesión? Distingue el 401 anónimo (benigno, contrato)
+    // del 401 con credenciales rechazadas (señal de regresión de auth). Se usa en
+    // la severidad del timing y en el corte de VLE, más abajo.
+    const credentialed = requestHadCredentials(request)
+
     // Tráfico sintético de canaries (header canónico `x-vence-canary`). Sus
     // errores NO se escriben en validation_error_logs — tienen su propio canal
     // de alerta (`canary_*_failed`) y contaminarían el veredicto de salud
@@ -274,6 +304,11 @@ export function withErrorLogging(
           synthetic ? 'info' :
           isExpectedStatus(response.status) ? 'info' :
           response.status >= 500 ? 'error' :
+          // 401 anónimo (sin credenciales) = reto de autenticación, contrato del
+          // endpoint, no un fallo → 'info' (conserva timing/volumen sin contar como
+          // warn). 401 con credenciales rechazadas se queda en 'warn' (señal de
+          // regresión de auth). Ver el corte de VLE más abajo.
+          (response.status === 401 && !credentialed) ? 'info' :
           response.status >= 400 ? 'warn' :
           'info'
         // CRÍTICO: usar `after()` de Next.js, NO `emitFireAndForget` directo.
@@ -347,6 +382,18 @@ export function withErrorLogging(
         // request_completed ya se emitió arriba marcado `synthetic`. Los fallos
         // reales de un canary los cubre su propio evento `canary_*_failed`.
         if (synthetic) {
+          return response
+        }
+
+        // 401 anónimo (sin credenciales presentadas): reto de autenticación, no un
+        // fallo. Todo endpoint con sesión responde 401 a visitantes anónimos/bots/
+        // sesión ya expirada — es contrato. El request_completed ya se emitió arriba
+        // ('info'), conservando timing/volumen consultables en observable_events;
+        // aquí NO se escribe en validation_error_logs (era el 96% del flood de
+        // `/api/auth/token`: ~340k/día tras el cutover a RDS del 04/07, que tumbó el
+        // panel admin y ahogó las alertas reales). El 401 CON credenciales rechazadas
+        // (token roto, bridge Fase B caído) SÍ se registra: es señal de bug de auth.
+        if (response.status === 401 && !credentialed) {
           return response
         }
 

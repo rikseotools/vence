@@ -19,6 +19,18 @@ Mantenedor: `docs/runbooks/health-check.md`. Referenciado desde `CLAUDE.md`.
 > - **Gotcha de migración**: tras una carga masiva, `ANALYZE;` es obligatorio (sin stats → seq scans → 503
 >   "saturado"). Si reaparecen 503 de saturación tras cualquier recarga, ejecutar `ANALYZE` primero.
 > Detalle: memoria `project_cutover_rds_prod` + `docs/roadmap/migracion-datos-supabase-a-rds.md`.
+>
+> **Incidente 11/07 — flood de logs benignos (503 en `/admin` + inbox de CRITICAL):** el 401
+> "unauthenticated" de `/api/auth/token` (contrato: todo visitante SIN sesión lo recibe) se
+> registraba como error en `validation_error_logs` (~340k/día, 96% anónimos) desde el cutover.
+> Cascada: la tabla creció a ~1 GB / 2,3 M filas → el GROUP BY de su panel `/api/v2/admin/validation-errors`
+> tardaba **112 s → 500**; y `observable_events` se llenó de 348k `auth` warns/día ahogando las alertas.
+> Fix en 3 capas: (1) `withErrorLogging` ya NO loguea el 401 ANÓNIMO en VLE (solo el 401 con
+> credenciales rechazadas = señal de auth real); (2) cron `telemetry-retention` (04:10 UTC) poda
+> ambas tablas > 30d; (3) alert-rule `validation_log_flood` (≥5000/h por bucket) auto-detecta el
+> próximo flood. Purga puntual del backlog: 2,08 M filas anónimas → GROUP BY 112s→3,3s. **Si
+> reaparece un 503 en un panel admin, sospecha primero de una tabla de log inflada** (mira
+> `pg_total_relation_size` + ritmo de inserción por endpoint/error_type).
 
 ---
 

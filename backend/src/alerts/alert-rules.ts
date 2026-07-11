@@ -2774,6 +2774,54 @@ export const RULE_CLIENT_EDGE_SUSTAINED: AlertRule<{
   cooldownMin: 60,
 };
 
+/**
+ * Guardarraíl anti-flood del log de errores (meta-observabilidad).
+ *
+ * Caza la CLASE de problema que tumbó el panel admin el 11/07/2026: un único
+ * (endpoint, error_type) escribiéndose en `validation_error_logs` a un ritmo
+ * absurdo (el 401 anónimo de `/api/auth/token` iba a ~14k/hora → 2,3 M filas /
+ * ~1 GB → su GROUP BY tardaba 112 s → 500). La causa concreta se arregló en
+ * origen (`withErrorLogging` ya no loguea el 401 anónimo) + retención diaria,
+ * pero esto cierra el bucle: si MAÑANA otro endpoint empieza a inundar el log
+ * (benigno mal-clasificado o error real en masa), se detecta en la hora, no
+ * cuando un humano nota el inbox lleno. Un solo bucket a ≥5000/hora (=120k/día)
+ * es inequívocamente anómalo; el ruido normal de 4xx/5xx por bucket son cientos.
+ */
+export const RULE_VALIDATION_LOG_FLOOD: AlertRule<{
+  endpoint: string | null;
+  errorType: string | null;
+  n: number;
+}> = {
+  name: 'validation_log_flood',
+  severity: 'warn',
+  query: sql`
+    SELECT endpoint,
+           error_type AS "errorType",
+           COUNT(*)::int AS n
+    FROM validation_error_logs
+    WHERE created_at > NOW() - INTERVAL '1 hour'
+    GROUP BY endpoint, error_type
+    HAVING COUNT(*) >= 5000
+    ORDER BY COUNT(*) DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows
+      .slice(0, 10)
+      .map((r) => `  - ${r.n}/h  ${r.endpoint ?? '(unknown)'} / ${r.errorType ?? '?'}`);
+    return {
+      title: `${rows.length} bucket(s) inundando validation_error_logs (≥5000/h)`,
+      body: `Un (endpoint, error_type) se está escribiendo en el log de errores a un ritmo anómalo (≥5000/hora). Esto infla la tabla y ahoga las alertas reales — la clase de fallo que tumbó el panel admin el 11/07:\n\n${lines.join('\n')}\n\nInvestigar:\n  - ¿Es un 4xx BENIGNO mal-clasificado como error? → marcarlo esperado en withErrorLogging (como el 401 anónimo).\n  - ¿Es un error REAL en masa (endpoint roto, 500 storm)? → arreglar el endpoint.\n  - Query: SELECT error_message, http_status, COUNT(*) FROM validation_error_logs WHERE endpoint='…' AND created_at>NOW()-INTERVAL '1 hour' GROUP BY 1,2 ORDER BY 3 DESC;`,
+      metadata: {
+        bucketsAffected: rows.length,
+        topBucket: rows[0] ? `${rows[0].endpoint} / ${rows[0].errorType}` : null,
+        topRate: rows[0]?.n ?? 0,
+      },
+    };
+  },
+  cooldownMin: 180,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
@@ -2859,4 +2907,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SCRAPING_SWEEP as AlertRule,
   // Canary post-deploy del gate anti-scraping: que NO bloquee a usuarios normales.
   RULE_CANARY_QUESTIONS_GATE_FAILED as AlertRule,
+  // Meta-observabilidad: guardarraíl anti-flood del log de errores (11/07/2026,
+  // tras el flood de 401 anónimos que tumbó el panel admin). Auto-detecta el
+  // próximo bucket que inunde validation_error_logs antes de que sea un problema.
+  RULE_VALIDATION_LOG_FLOOD as AlertRule,
 ];
