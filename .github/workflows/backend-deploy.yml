@@ -2,11 +2,15 @@ name: Deploy backend
 
 # Despliega el backend NestJS (carpeta backend/) a AWS ECS Fargate.
 # Auth vía OIDC — sin claves AWS de larga vida (ver backend/infra/README.md).
-
+#
+# SOLO workflow_dispatch (manual). El trigger `push` se RETIRÓ el 11/07/2026: se
+# auto-disparaba en cada push a backend/** (contra lo que dice el runbook de deploy,
+# que lo daba por desactivado) y además pinaba el task def a un digest equivocado
+# → deployment atascada + backend frágil (imagen viva borrada de ECR). El deploy
+# canónico es `scripts/deploy-backend.sh` (pina por digest de la imagen construida,
+# espera estable y hace smoke). Para RE-activar el auto-deploy hay que arreglar antes
+# el pinning. Ver docs/runbooks/pusheo-revision-despliegue.md.
 on:
-  push:
-    branches: [main]
-    paths: ['backend/**']
   workflow_dispatch:
 
 permissions:
