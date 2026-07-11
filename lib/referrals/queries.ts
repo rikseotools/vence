@@ -524,11 +524,16 @@ export async function getEmbajadorEarnings(userId: string, exec?: Executor): Pro
 /** Nº de ingresos nuevos SIN VER por el embajador (cualquier fuente) — para el badge de novedades. */
 export async function getUnseenEarningsCount(userId: string, exec?: Executor): Promise<number> {
   const db = exec ?? getReadDb()
+  // "Sin ver" = ingresos nuevos (reward_earnings) O vales nuevos (reward_payouts) desde la última vez
+  // que pinchó el 🎁 (referral_earnings_seen_at). Así un VALE emitido también hace parpadear el badge.
   const res = await db.execute(sql`
-    select count(*)::int as n from reward_earnings
-    where user_id = ${userId}
-      and earned_at is not null
-      and earned_at > coalesce((select referral_earnings_seen_at from user_profiles where id = ${userId}), 'epoch'::timestamptz)`)
+    with seen as (select coalesce(referral_earnings_seen_at, 'epoch'::timestamptz) ts from user_profiles where id = ${userId})
+    select (
+      (select count(*) from reward_earnings where user_id = ${userId} and earned_at is not null and earned_at > (select ts from seen))
+      +
+      (select count(*) from reward_payouts where beneficiary_user_id = ${userId} and status = 'paid' and giftcard_ref is not null
+         and coalesce(purchased_via,'') <> 'bitrefill_dryrun' and paid_at > (select ts from seen))
+    )::int as n`)
   return Number(rowsOf(res)[0]?.n ?? 0)
 }
 

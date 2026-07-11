@@ -5,8 +5,9 @@
 
 import { useEffect, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import CopyCode from './CopyCode'
 
-interface Voucher { amount: number; code: string; via: string | null; date: string | null }
+interface Voucher { amount: number; code: string; pin?: string | null; serial?: string | null; via: string | null; date: string | null }
 
 export default function MisVales() {
   const [vouchers, setVouchers] = useState<Voucher[] | null>(null)
@@ -39,9 +40,11 @@ export default function MisVales() {
               <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{fmtDate(v.date)}</div>
             </div>
-            <code className="text-sm font-mono bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-1.5 select-all break-all">
-              {v.code}
-            </code>
+            <div className="flex flex-col items-end gap-1">
+              <CopyCode code={v.code} />
+              {v.pin ? <span className="text-xs text-gray-500 dark:text-gray-400">PIN: <span className="font-mono select-all">{v.pin}</span></span> : null}
+              {v.serial ? <span className="text-xs text-gray-400 dark:text-gray-500">Serial: <span className="font-mono select-all">{v.serial}</span></span> : null}
+            </div>
           </div>
         ))}
       </div>

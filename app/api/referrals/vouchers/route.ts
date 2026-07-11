@@ -28,12 +28,15 @@ async function _GET(request: NextRequest) {
     ORDER BY paid_at DESC`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = Array.isArray(res) ? res : ((res as any)?.rows ?? [])
-  const vouchers = rows.map((r) => ({
-    amount: Number(r.amount),
-    code: String(r.giftcard_ref),
-    via: r.purchased_via || null,
-    date: r.paid_at ? new Date(r.paid_at).toISOString() : null,
-  }))
+  // El giftcard_ref puede ser JSON {code,pin,serial} (compras nuevas) o texto plano (código, legacy).
+  const parse = (raw: string): { code: string; pin: string | null; serial: string | null } => {
+    try { const j = JSON.parse(raw); if (j && typeof j === 'object' && j.code) return { code: String(j.code), pin: j.pin ?? null, serial: j.serial ?? null } } catch { /* plano */ }
+    return { code: raw, pin: null, serial: null }
+  }
+  const vouchers = rows.map((r) => {
+    const p = parse(String(r.giftcard_ref))
+    return { amount: Number(r.amount), code: p.code, pin: p.pin, serial: p.serial, via: r.purchased_via || null, date: r.paid_at ? new Date(r.paid_at).toISOString() : null }
+  })
   return NextResponse.json({ vouchers })
 }
 

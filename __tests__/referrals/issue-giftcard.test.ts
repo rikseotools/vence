@@ -60,13 +60,13 @@ describe('POST /api/admin/rewards/issue-giftcard', () => {
 
   it('éxito (dry-run) → 200 y registra el payout con el código y purchasedVia', async () => {
     asAdmin(); mBal.mockResolvedValue(10)
-    mBuy.mockResolvedValue({ ok: true, code: 'DRYRUN-AMZ-5EUR', dryRun: true, ref: 'x' })
+    mBuy.mockResolvedValue({ ok: true, code: 'DRYRUN-AMZ-5EUR', pin: null, serial: null, dryRun: true, ref: 'x' })
     mPay.mockResolvedValue({ ok: true, payoutId: 'p1' })
     const res = await _POST(post({ userId: UID, amount: 5 }))
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ ok: true, dryRun: true, code: 'DRYRUN-AMZ-5EUR' })
     expect(mPay).toHaveBeenCalledWith(expect.objectContaining({
-      userId: UID, amount: 5, giftcardRef: 'DRYRUN-AMZ-5EUR', purchasedVia: 'bitrefill_dryrun',
+      userId: UID, amount: 5, giftcardRef: expect.stringContaining('DRYRUN-AMZ-5EUR'), purchasedVia: 'bitrefill_dryrun',
     }))
   })
 })

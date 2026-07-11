@@ -46,7 +46,7 @@ async function _POST(request: NextRequest) {
   // 3. Registrar el payout contra el saldo (re-valida saldo + denominación en la TX).
   const pay = await payAccumulated({
     userId, adminUserId: auth.user.id, amount,
-    giftcardRef: buy.code, purchasedVia: buy.dryRun ? 'bitrefill_dryrun' : 'bitrefill',
+    giftcardRef: JSON.stringify({ code: buy.code, pin: buy.pin, serial: buy.serial }), purchasedVia: buy.dryRun ? 'bitrefill_dryrun' : 'bitrefill',
   })
   if (!pay.ok) {
     // Solo relevante en LIVE: dinero gastado pero no registrado → alerta para reconciliar a mano.

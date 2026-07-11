@@ -16,6 +16,8 @@ export interface GiftCardPurchase {
   ok: boolean
   dryRun: boolean
   code: string | null // código/enlace de canje de Amazon.es
+  pin: string | null // PIN si el vale lo trae (algunos lo exigen)
+  serial: string | null
   ref: string | null // id de invoice/order (trazabilidad)
   error?: string
 }
@@ -25,21 +27,28 @@ export function bitrefillLive(): boolean {
   return process.env.BITREFILL_LIVE === '1'
 }
 
-async function readCode(base: string, token: string, invoiceId: string): Promise<string | null> {
+interface Redemption { code: string | null; pin: string | null; serial: string | null }
+const EMPTY_RED: Redemption = { code: null, pin: null, serial: null }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractRedemption(info: any): Redemption {
+  const code = info?.code || info?.link || info?.url || null
+  if (!code) return EMPTY_RED
+  return { code: String(code), pin: info.pin ? String(info.pin) : null, serial: info.extra_fields?.['Serial Number'] || info.serial || null }
+}
+async function readRedemption(base: string, token: string, invoiceId: string): Promise<Redemption> {
   // Tras crear+pagar, el código puede tardar un instante → poll corto de la invoice.
   for (let i = 0; i < 5; i++) {
     const r = await fetch(`${base}/invoices/${invoiceId}`, { headers: { Authorization: `Bearer ${token}` } })
     const d = await r.json().catch(() => ({}))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const order = Array.isArray((d as any)?.orders) ? (d as any).orders[0] : null
-    const info = order?.redemption_info
-    if (info && (order?.redemption_available ?? true)) {
-      const code = info.code || info.link || info.url || null
-      if (code) return info.pin ? `${code} (PIN ${info.pin})` : String(code)
+    if (order?.redemption_info && (order?.redemption_available ?? true)) {
+      const red = extractRedemption(order.redemption_info)
+      if (red.code) return red
     }
     await new Promise((res) => setTimeout(res, 1500))
   }
-  return null
+  return EMPTY_RED
 }
 
 /**
@@ -50,10 +59,10 @@ async function readCode(base: string, token: string, invoiceId: string): Promise
 export async function purchaseAmazonGiftCard(amountEur: number): Promise<GiftCardPurchase> {
   // Guardarraíl: sin el flag, JAMÁS toca la API ni gasta dinero.
   if (!bitrefillLive()) {
-    return { ok: true, dryRun: true, code: `DRYRUN-AMZ-${amountEur}EUR`, ref: `dryrun-${Date.now?.() ?? 'x'}` }
+    return { ok: true, dryRun: true, code: `DRYRUN-AMZ-${amountEur}EUR`, pin: null, serial: null, ref: `dryrun-${Date.now?.() ?? 'x'}` }
   }
   const token = process.env.BITREFILL_API_TOKEN
-  if (!token) return { ok: false, dryRun: false, code: null, ref: null, error: 'no_token' }
+  if (!token) return { ok: false, dryRun: false, code: null, pin: null, serial: null, ref: null, error: 'no_token' }
   try {
     const res = await fetch(`${BASE}/invoices`, {
       method: 'POST',
@@ -66,14 +75,13 @@ export async function purchaseAmazonGiftCard(amountEur: number): Promise<GiftCar
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await res.json().catch(() => ({}))
-    if (!res.ok) return { ok: false, dryRun: false, code: null, ref: data?.id ?? null, error: `http_${res.status}` }
+    if (!res.ok) return { ok: false, dryRun: false, code: null, pin: null, serial: null, ref: data?.id ?? null, error: `http_${res.status}` }
     const invoiceId = data?.id ?? data?.orders?.[0]?.id ?? null
     const order = Array.isArray(data?.orders) ? data.orders[0] : null
-    const ri0 = order?.redemption_info
-    let code: string | null = ri0 ? (ri0.pin ? `${ri0.code || ri0.link} (PIN ${ri0.pin})` : (ri0.code || ri0.link)) : null
-    if (!code && invoiceId) code = await readCode(BASE, token, String(invoiceId))
-    return { ok: !!code, dryRun: false, code, ref: invoiceId ? String(invoiceId) : null, error: code ? undefined : 'no_code_yet' }
+    let red = order?.redemption_info ? extractRedemption(order.redemption_info) : EMPTY_RED
+    if (!red.code && invoiceId) red = await readRedemption(BASE, token, String(invoiceId))
+    return { ok: !!red.code, dryRun: false, code: red.code, pin: red.pin, serial: red.serial, ref: invoiceId ? String(invoiceId) : null, error: red.code ? undefined : 'no_code_yet' }
   } catch (e) {
-    return { ok: false, dryRun: false, code: null, ref: null, error: (e as Error).message }
+    return { ok: false, dryRun: false, code: null, pin: null, serial: null, ref: null, error: (e as Error).message }
   }
 }

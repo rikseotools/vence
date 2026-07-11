@@ -6,6 +6,7 @@
 // de otro usuario). Réplica visual de app/embajadores/page.tsx, sin la parte celebratoria/confeti.
 
 import { useState } from 'react'
+import CopyCode from './CopyCode'
 
 const SOURCE_LABEL: Record<string, string> = {
   referido: '💛 Recomendaciones', registro_activo: '📝 Registros activos', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
@@ -43,7 +44,7 @@ export interface EmbajadorPanelData {
     bySource: Array<{ source: string; earned: number; count: number }>
   }
   recent: Array<{ source: string; amount: number }>
-  vouchers?: Array<{ amount: number; code: string; via: string | null; date: string | null }>
+  vouchers?: Array<{ amount: number; code: string; pin?: string | null; serial?: string | null; via: string | null; date: string | null }>
 }
 
 export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData }) {
@@ -68,7 +69,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
       {data.recent && data.recent.length > 0 && (
         <section className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-lg p-6 mb-8 text-center">
           <div className="text-3xl mb-2">🎉</div>
-          <h2 className="text-lg font-bold mb-1">¡Ha ganado dinero!</h2>
+          <h2 className="text-lg font-bold mb-1">¡Has ganado dinero!</h2>
           <div className="flex flex-wrap justify-center gap-2 mt-3">
             {data.recent.map((r, i) => (
               <span key={i} className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-semibold">+{r.amount} € · {sourceText(r.source)}</span>
@@ -79,7 +80,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
 
       {/* SALDO + DESGLOSE */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Su saldo</h2>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Tu saldo</h2>
         <div className="grid grid-cols-3 gap-3 text-center mb-6">
           <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl py-4">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{e.balance} €</div>
@@ -94,7 +95,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Vales emitidos</div>
           </div>
         </div>
-        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen sus ingresos</h3>
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen tus ingresos</h3>
         <div className="space-y-2">
           {e.bySource.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">Todavía sin ingresos.</p>
@@ -110,8 +111,8 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
       {/* SUS VALES — gift cards emitidas (código para canjear) */}
       {data.vouchers && data.vouchers.length > 0 && (
         <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Sus vales 🎁</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tarjetas regalo de Amazon.es emitidas. El código (y PIN si lo trae) se canjea en Amazon.</p>
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Tus vales 🎁</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tarjetas regalo de Amazon.es que has conseguido. Copia el código y canjéalo en Amazon (el PIN si lo trae).</p>
           <div className="space-y-2">
             {data.vouchers.map((v, i) => (
               <div key={i} className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
@@ -119,7 +120,11 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
                   <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">{fmtVoucherDate(v.date)}</div>
                 </div>
-                <code className="text-sm font-mono bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-1.5 select-all break-all">{v.code}</code>
+                <div className="flex flex-col items-end gap-1">
+                  <CopyCode code={v.code} />
+                  {v.pin ? <span className="text-xs text-gray-500 dark:text-gray-400">PIN: <span className="font-mono select-all">{v.pin}</span></span> : null}
+                  {v.serial ? <span className="text-xs text-gray-400 dark:text-gray-500">Serial: <span className="font-mono select-all">{v.serial}</span></span> : null}
+                </div>
               </div>
             ))}
           </div>
@@ -128,7 +133,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
 
       {/* ENLACE + EMBUDO + REFERIDOS */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Su enlace de referido</h2>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Tu enlace de referido</h2>
         <div className="flex flex-col sm:flex-row gap-3">
           <input readOnly value={data.link || '(sin enlace generado todavía)'} className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 text-sm" />
           <button onClick={copyLink} disabled={!data.link} className={`px-6 py-3 rounded-lg font-semibold text-white disabled:opacity-50 transition ${copied ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
@@ -136,7 +141,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           </button>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-6 text-center">
-          <div><div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{data.funnel.clicks}</div><div className="text-xs text-gray-500 dark:text-gray-400">Clicks en su enlace</div></div>
+          <div><div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{data.funnel.clicks}</div><div className="text-xs text-gray-500 dark:text-gray-400">Clicks en tu enlace</div></div>
           <div><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.stats.registros}</div><div className="text-xs text-gray-500 dark:text-gray-400">Registros</div></div>
           <div><div className="text-2xl font-bold text-green-600 dark:text-green-400">{data.stats.compradores}</div><div className="text-xs text-gray-500 dark:text-gray-400">Han comprado</div></div>
         </div>
@@ -145,10 +150,10 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           <span>Registro→compra: <strong>{Math.round((data.stats.conversion || 0) * 100)}%</strong></span>
         </div>
         <div className="mt-8">
-          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Sus referidos</h3>
+          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Tus referidos</h3>
           <div className="space-y-2">
             {data.details.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500">Todavía no tiene referidos.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">Todavía no tienes referidos.</p>
             ) : data.details.map((d, i) => {
               const st = statusLabel(d.status)
               return (
