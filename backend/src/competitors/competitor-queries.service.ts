@@ -42,6 +42,7 @@ function cleanName(s: string): string {
     // deduplique el catálogo. El resto son inequívocos y sin colisión.
     .replace(/\bsas\b/g, 'sas servicio andaluz salud')
     .replace(/\bsergas\b/g, 'sergas servicio gallego salud')
+    .replace(/\bsermas\b/g, 'sermas servicio madrileno salud')
     .replace(/\bsescam\b/g, 'sescam servicio salud castilla mancha')
     .replace(/\bsacyl\b/g, 'sacyl servicio salud castilla leon')
     .replace(/\bsespa\b/g, 'sespa servicio salud principado asturias')

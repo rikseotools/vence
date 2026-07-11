@@ -40,6 +40,11 @@ describe('matchCourse (identidad estructurada + nombre)', () => {
     expect(svc.matchCourse('Celadores SAS', 'Celadores SAS', cat).oposicionId).not.toBe('sergas-cel');
   });
 
+  it('SERMAS (Madrid salud) matchea tras deduplicar el catálogo (E≡AP)', () => {
+    const cat = [buildOposicionMatch({ id: 'sermas-cel', nombre: 'Celador del Servicio Madrileño de Salud (SERMAS)', shortName: null, administracion: 'Servicio Madrileño de Salud' })];
+    expect(svc.matchCourse('Celadores SERMAS', 'Celadores SERMAS', cat).oposicionId).toBe('sermas-cel');
+  });
+
   it('expande AGE → Administración General del Estado (desambigua un genérico)', () => {
     const cat = [buildOposicionMatch({ id: 'aux-estado', nombre: 'Auxiliar Administrativo del Estado', shortName: null, administracion: 'Estado' })];
     expect(svc.matchCourse('Auxiliares Administrativos AGE', 'Auxiliares Administrativos AGE', cat).oposicionId).toBe('aux-estado');
