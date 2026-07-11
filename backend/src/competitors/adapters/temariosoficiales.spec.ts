@@ -32,6 +32,17 @@ describe('temariosoficiales adapter', () => {
       expect(c.prices).toEqual([{ kind: 'material', audience: null, amountCents: 9500, period: 'unico', raw: '95€' }]);
     });
 
+    it('captura el precio MÍNIMO de un ProductGroup (WooCommerce variable)', () => {
+      const html =
+        '<title>Auxiliar Administrativo del Estado -</title>' +
+        // Estructura REAL de WooCommerce: Offer sin price directo → priceSpecification[].price
+        '<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"ProductGroup","name":"x","offers":null,"hasVariant":[' +
+        '{"@type":"Product","name":"casos","offers":{"@type":"Offer","priceSpecification":[{"@type":"UnitPriceSpecification","price":"260.00","priceCurrency":"EUR"}]}},' +
+        '{"@type":"Product","name":"temario","offers":{"@type":"Offer","priceSpecification":[{"@type":"UnitPriceSpecification","price":"95.00","priceCurrency":"EUR"}]}}]}]}</script>';
+      const c = parseTemariosoficialesCourse('https://temariosoficiales.com/product/auxiliar-administrativo-del-estado/', html)!;
+      expect(c.prices).toEqual([{ kind: 'material', audience: null, amountCents: 9500, period: 'unico', raw: '95€' }]);
+    });
+
     it('sin título ni JSON-LD → cae al slug y prices vacío', () => {
       const c = parseTemariosoficialesCourse('https://temariosoficiales.com/product/celador-sescam/', '<html></html>')!;
       expect(c.rawName).toBe('Celador Sescam');

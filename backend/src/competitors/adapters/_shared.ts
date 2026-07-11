@@ -48,7 +48,15 @@ function offerCents(offersRaw: unknown): number | null {
   const offer = Array.isArray(offersRaw) ? offersRaw[0] : (offersRaw as Record<string, unknown> | undefined);
   // `Offer` expone `price`; `AggregateOffer` (Shopify y otros e-commerce con
   // variantes) NO trae `price` sino `lowPrice`/`highPrice` → usamos el más bajo.
-  const price = offer?.['price'] ?? offer?.['lowPrice'];
+  let price = offer?.['price'] ?? offer?.['lowPrice'];
+  // WooCommerce (schema plugin): el Offer no trae `price` directo sino
+  // `priceSpecification[].price` (UnitPriceSpecification). Sin este fallback,
+  // los productos variables de WooCommerce daban precio null.
+  if (price == null) {
+    const ps = offer?.['priceSpecification'];
+    const spec = (Array.isArray(ps) ? ps[0] : ps) as Record<string, unknown> | undefined;
+    price = spec?.['price'];
+  }
   if (price == null) return null;
   const v = parseFloat(String(price));
   return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : null;
@@ -77,7 +85,19 @@ export function jsonLdPrice(html: string): number | null {
     for (const n of nodes as Record<string, unknown>[]) {
       if (!n) continue;
       const t = n['@type'];
-      if (t !== 'Product' && t !== 'Course') continue;
+      if (t !== 'Product' && t !== 'Course' && t !== 'ProductGroup') continue;
+      // ProductGroup (WooCommerce producto VARIABLE): `offers` es null; cada
+      // variante es un Product en `hasVariant[]` con su propio offer → tomamos el
+      // precio MÍNIMO ("desde"). Sin esto, todo producto variable daba precio null.
+      if (t === 'ProductGroup') {
+        const variants = Array.isArray(n['hasVariant']) ? (n['hasVariant'] as unknown[]) : [];
+        let min: number | null = null;
+        for (const v of variants as Record<string, unknown>[]) {
+          const c = offerCents(v?.['offers']);
+          if (c != null) min = min == null ? c : Math.min(min, c);
+        }
+        if (min != null) return min;
+      }
       const direct = offerCents(n.offers);
       if (direct != null) return direct;
       const inst = n.hasCourseInstance;
