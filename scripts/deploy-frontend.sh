@@ -190,6 +190,10 @@ for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE
   const ex=env.find(e=>e.name===name);
   if (ex) ex.value=val; else env.push({name, value:val});
 }
+// Flag "registro activo" (dinero real) — persistente mientras la campaña esté activa (Manuel 11/07).
+// El bonus (2€ por referido con >=5 tests) solo se concede con este flag en '1'. Para SUNSETEAR la
+// campaña: cambiar a '0' aquí (o quitar la línea) y redeploy. Ver docs/runbooks/embajadores-recompensas.md.
+{ const e=env.find(x=>x.name==='ACTIVE_SIGNUP_REWARD'); if (e) e.value='1'; else env.push({name:'ACTIVE_SIGNUP_REWARD', value:'1'}); }
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
 fs.writeFileSync('/tmp/vence-td-new.json', JSON.stringify(td));
 "
