@@ -29,6 +29,22 @@ describe('matchCourse (identidad estructurada + nombre)', () => {
     expect(svc.matchCourse('Subalterno GVA', 'https://x.com/oposiciones/generalitat-valenciana/subalterno Subalterno GVA', cat).oposicionId).toBe('op-sub-gva'); // abreviatura
   });
 
+  it('expande acrónimos INEQUÍVOCOS de servicios de salud (SAS/SERGAS) → matchea la oposición larga', () => {
+    const cat = [
+      buildOposicionMatch({ id: 'sas-admin', nombre: 'Administrativo/a - Servicio Andaluz de Salud (SAS)', shortName: null, administracion: 'Servicio Andaluz de Salud' }),
+      buildOposicionMatch({ id: 'sergas-cel', nombre: 'Celador/a del Servicio Gallego de Salud (SERGAS)', shortName: null, administracion: 'Servicio Gallego de Salud' }),
+    ];
+    expect(svc.matchCourse('Administrativos del SAS', 'Administrativos del SAS', cat).oposicionId).toBe('sas-admin');
+    expect(svc.matchCourse('Celadores SERGAS', 'Celadores SERGAS', cat).oposicionId).toBe('sergas-cel');
+    // precisión: un curso del SAS NO se cuela en la oposición gallega (identidad distinta).
+    expect(svc.matchCourse('Celadores SAS', 'Celadores SAS', cat).oposicionId).not.toBe('sergas-cel');
+  });
+
+  it('expande AGE → Administración General del Estado (desambigua un genérico)', () => {
+    const cat = [buildOposicionMatch({ id: 'aux-estado', nombre: 'Auxiliar Administrativo del Estado', shortName: null, administracion: 'Estado' })];
+    expect(svc.matchCourse('Auxiliares Administrativos AGE', 'Auxiliares Administrativos AGE', cat).oposicionId).toBe('aux-estado');
+  });
+
   it('sin subset completo → revisión con la mejor apuesta (no gap silencioso)', () => {
     const cat = [buildOposicionMatch({ id: 'ah', nombre: 'Agente de la Hacienda Pública', shortName: null, administracion: 'Estado' })];
     const r = svc.matchCourse('Agentes de Hacienda Turno Libre', 'Agentes de Hacienda Turno Libre', cat);

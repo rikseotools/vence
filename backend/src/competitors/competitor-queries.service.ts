@@ -28,6 +28,27 @@ function cleanName(s: string): string {
     // que "Subalterno GVA" ≈ "Subalterno de la Generalitat Valenciana".
     .replace(/\bgva\b/g, 'generalitat valenciana')
     .replace(/\bcam\b/g, 'comunidad madrid')
+    // Acrónimos INEQUÍVOCOS de servicios autonómicos de salud (un solo significado):
+    // el competidor suele escribir el acrónimo ("Aux. Administrativos del SAS") y la
+    // oposición el nombre largo ("...del Servicio Andaluz de Salud (SAS)"). Al
+    // expandir en AMBOS (cleanName se aplica a curso y a oposición) los tokens de
+    // región+salud alinean y dejan de ser un `none` de recall. Forma ASCII (normalize
+    // ya quitó acentos/ñ). Ambiguos EXCLUIDOS a propósito (SCS = Canario/Cántabro).
+    // ADITIVA (mantiene el acrónimo + añade la forma larga): NUNCA borra un token que
+    // ya matcheaba (p.ej. shortName "SERMAS") → 0 regresiones; solo suma recall.
+    // NOTA: SERMAS (Madrid-salud) y SES (Extremadura-salud) EXCLUIDOS a propósito —
+    // el catálogo tiene entradas variantes/duplicadas para ellos y expandirlas las
+    // deja con tokens idénticos → empate → `none` (regresión). Añadirlos cuando se
+    // deduplique el catálogo. El resto son inequívocos y sin colisión.
+    .replace(/\bsas\b/g, 'sas servicio andaluz salud')
+    .replace(/\bsergas\b/g, 'sergas servicio gallego salud')
+    .replace(/\bsescam\b/g, 'sescam servicio salud castilla mancha')
+    .replace(/\bsacyl\b/g, 'sacyl servicio salud castilla leon')
+    .replace(/\bsespa\b/g, 'sespa servicio salud principado asturias')
+    .replace(/\bsms\b/g, 'sms servicio murciano salud')
+    .replace(/\bosakidetza\b/g, 'osakidetza servicio vasco salud')
+    .replace(/\bosasunbidea\b/g, 'osasunbidea servicio navarro salud')
+    .replace(/\bage\b/g, 'age administracion general estado')
     .replace(/\b(de|del|la|las|el|los|y|en|a|para|por)\b/g, ' ')
     // Singularizar de forma simétrica en dos pasos: quitar '-s' y luego '-e'. Así
     // ambos tipos de plural español convergen al MISMO stem sin ambigüedad:
