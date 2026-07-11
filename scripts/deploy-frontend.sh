@@ -177,10 +177,10 @@ echo "   base viva: $LIVE_TD"
 # mktemp por-deploy → seguro ante deploys concurrentes (ver comentario en [2b]).
 TDLIVE=$(mktemp); TDNEW=$(mktemp)
 aws ecs describe-task-definition --task-definition "$LIVE_TD" --profile $P --region $R --query 'taskDefinition' --output json > "$TDLIVE"
-node -e "
+TDLIVE="$TDLIVE" TDNEW="$TDNEW" IMG_DIGEST="$IMG_DIGEST" node -e "
 const fs=require('fs');
-const td=JSON.parse(fs.readFileSync('${TDLIVE}','utf8'));
-td.containerDefinitions[0].image='${IMG_DIGEST}';
+const td=JSON.parse(fs.readFileSync(process.env.TDLIVE,'utf8'));
+td.containerDefinitions[0].image=process.env.IMG_DIGEST;
 // Multi-cuenta Stripe (Nila): la task def viva no los tiene y aquí solo se
 // swapea imagen, así que los añadimos idempotentemente (secretos runtime en
 // SSM /vence-frontend/*). Sin esto newSignupAccount()→'manuel' (flip no ocurre)
@@ -209,8 +209,12 @@ for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE
 // campaña: cambiar a '0' aquí (o quitar la línea) y redeploy. Ver docs/runbooks/embajadores-recompensas.md.
 { const e=env.find(x=>x.name==='ACTIVE_SIGNUP_REWARD'); if (e) e.value='1'; else env.push({name:'ACTIVE_SIGNUP_REWARD', value:'1'}); }
 for (const k of ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']) delete td[k];
-fs.writeFileSync('${TDNEW}', JSON.stringify(td));
+fs.writeFileSync(process.env.TDNEW, JSON.stringify(td));
 "
+# Guard: el transform DEBE producir un JSON no vacío. Sin esto, un TDNEW vacío llegaba
+# a register-task-definition como "Invalid JSON received" (críptico). Vars por ENTORNO
+# (no ${} en el node -e) → a prueba de expansión shell.
+[ -s "$TDNEW" ] || { echo "   ❌ el transform del task def produjo un fichero vacío — ABORTO"; rm -f "$TDLIVE" "$TDNEW"; exit 1; }
 NEWTD=$(aws ecs register-task-definition --cli-input-json "file://${TDNEW}" --profile $P --region $R --query 'taskDefinition.taskDefinitionArn' --output text)
 rm -f "$TDLIVE" "$TDNEW"
 echo "   registrada: $NEWTD"

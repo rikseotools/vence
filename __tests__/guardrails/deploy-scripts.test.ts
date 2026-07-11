@@ -105,5 +105,14 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
     it(`${name}: NO registra desde un /tmp/vence-*.json FIJO`, () => {
       expect(s).not.toMatch(/--cli-input-json file:\/\/\/tmp\/vence-/)
     })
+    // El transform pasa las rutas por ENTORNO (process.env.TDNEW), no por ${TDNEW}
+    // interpolado en el node -e (evita corrupción por expansión shell) + valida que
+    // el fichero no salga vacío antes de register (incidente 11/07: TDNEW vacío →
+    // "Invalid JSON received" críptico en register).
+    it(`${name}: pasa rutas al node por entorno y valida TDNEW no-vacío`, () => {
+      expect(s).toMatch(/TDLIVE="\$TDLIVE" TDNEW="\$TDNEW"[^\n]*node -e/)
+      expect(s).toMatch(/process\.env\.TDNEW/)
+      expect(s).toMatch(/\[ -s "\$TDNEW" \][\s\S]{0,200}exit 1/)
+    })
   }
 })
