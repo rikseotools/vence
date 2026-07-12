@@ -26,6 +26,13 @@ export const CONVERSION_EVENTS = {
   UPGRADE_BUTTON_CLICKED: 'upgrade_button_clicked',
   UPGRADE_BANNER_CLICKED: 'upgrade_banner_clicked',
 
+  // Premium GATE por-feature (framework de gating, lib/premium/features.ts). Cada evento
+  // lleva `feature` (id del registro) + `kind` → medible al 100%: qué gate se muestra por
+  // feature y cuál convierte. Embudo: gate_shown → gate_cta_click → checkout_started → payment.
+  PREMIUM_GATE_SHOWN: 'premium_gate_shown',
+  PREMIUM_GATE_CTA_CLICK: 'premium_gate_cta_click',
+  PREMIUM_GATE_DISMISS: 'premium_gate_dismiss',
+
   // Premium page
   PREMIUM_PAGE_VIEWED: 'premium_page_viewed',
   PLAN_SELECTED: 'plan_selected',
@@ -117,5 +124,28 @@ export async function trackPaymentCompleted(userId: string, amount: number, plan
     amount,
     plan,
     timestamp: new Date().toISOString()
+  })
+}
+
+// ── Premium GATE por-feature (framework lib/premium) ─────────────────────────
+// `feature` = id del registro (lib/premium/features.ts); `kind` = tipo; `context` = dónde
+// (p.ej. 'test_configurator', 'course_player'). Fire-and-forget, nunca rompe la UX.
+interface PremiumGatePayload { feature: string; kind: string; context?: string; extra?: Record<string, unknown> }
+
+export async function trackPremiumGateShown(userId: string, p: PremiumGatePayload): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.PREMIUM_GATE_SHOWN, {
+    feature: p.feature, kind: p.kind, context: p.context ?? null, ...p.extra, timestamp: new Date().toISOString(),
+  })
+}
+
+export async function trackPremiumGateCtaClick(userId: string, p: PremiumGatePayload): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.PREMIUM_GATE_CTA_CLICK, {
+    feature: p.feature, kind: p.kind, context: p.context ?? null, ...p.extra, timestamp: new Date().toISOString(),
+  })
+}
+
+export async function trackPremiumGateDismiss(userId: string, p: PremiumGatePayload): Promise<unknown> {
+  return trackConversionEvent(userId, CONVERSION_EVENTS.PREMIUM_GATE_DISMISS, {
+    feature: p.feature, kind: p.kind, context: p.context ?? null, ...p.extra, timestamp: new Date().toISOString(),
   })
 }
