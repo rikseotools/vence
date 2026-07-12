@@ -35,11 +35,10 @@
 - **Limpieza:** retirar la aspiracional duplicada `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (catalogada, is_active=false, 0 users).
 - **Estado:** LIVE 50/53; 3 temas con fuente creada, preguntas pendientes.
 
-### 🟡 [MEDIA] Completar la BIBLIOTECONOMÍA editorial de Auxiliar de Biblioteca del Estado
-- **Qué:** `auxiliar_biblioteca_estado` LIVE con **12/48 servidos**. Bloque I legislación COMPLETO (T1-11) + islotes normativos hechos 12/07: **T9** Min. Cultura (18 pregs Ley 16/1985), **T11** legislación bibliotecaria (20 pregs Ley 10/2007 + Ley 1/2015 BNE, importadas del BOE), **T213** depósito legal (12 pregs Ley 23/2011, importada). 32 preguntas generadas IA + doble auditoría ciega + balance de distractores corregido + re-verificación.
-- **Falta (36 temas EDITORIALES, en elaboración):** Bloque II Historia del libro (T101-104), Bloque III Biblioteconomía (T201-230 menos T213: MARC 21, CDU, ISBN/ISSN, catalogación, tipos de bibliotecas, préstamo, OPAC, OAI-PMH…), Bloque IV Práctica (T301-303).
-- **Cómo:** editorial SIN ley → anclar a fuentes reputadas verificables (convocatoria NO trae bibliografía; verificado): Library of Congress (MARC 21), UNE/Consorcio UDC (CDU), Agencia ISBN, BNE (catalogación), Ministerio de Cultura/IFLA (tipología). NUNCA inventar cifras (clases CDU, etc.). Generar contra fuente + doble auditoría (agentes que verifican contra la fuente reputada), `tech_approved`. Método como T22 comunicación oral IIPP-PV.
-- **Estado (12/07):** islotes normativos COMPLETOS; 36 temas editoriales pendientes (proyecto largo, método editorial).
+### ✅ [HECHA 12/07] Auxiliar de Biblioteca del Estado COMPLETA (48/48)
+- **Qué:** `auxiliar_biblioteca_estado` LIVE y **servible al 100% (48/48 temas)**. Bloque I Legislación 11/11, Bloque II Historia del libro 4/4, Bloque III Biblioteconomía 30/30, Bloque IV Práctica 3/3.
+- **Cómo se hizo:** Bloque I reutilizando banco legal existente + 3 islotes normativos (leyes importadas del BOE: Ley 10/2007, Ley 1/2015 BNE, Ley 23/2011). Toda la biblioteconomía (Bloques II-IV + T9/T11/T213) generada como **contenido editorial anclado a fuentes reputadas** (ley virtual `biblioteconomia-editorial` `d2cea377`, arts = temas; IFLA, BNE, Library of Congress, UNE/UDC, RAE, W3C, OAI, Ministerio de Cultura), **~191 preguntas IA + doble auditoría ciega Sonnet por lote + balance de distractores + posición uniforme + `tech_approved`**. Método replicable: ver [[reference_leyes_virtuales_editoriales]] + `docs/maintenance/generar-preguntas-con-ia.md`.
+- **Pendiente menor (opcional):** desplegar el subtítulo cosmético de bloque "en elaboración" (commit `7bdbd9e4`) ya es innecesario (todo servido); revisar si conviene quitarlo. Aviso a Alfonso ya enviado (feedback ccb41d99).
 
 ### 🟠 [ALTA] Framework profesional de canaries (P1-P3) — que no se repita el incidente 11/07
 - **Qué:** clase base `CanaryProbe` + exclusión central del usuario sintético de analíticas (`SYNTHETIC_USER_IDS`) + migrar todos los canary a la base + guardarraíl CI + runbook. Que ningún write-canary pueda acumular datos sin límite ni contaminar métricas.
