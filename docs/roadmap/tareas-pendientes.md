@@ -35,11 +35,11 @@
 - **Limpieza:** retirar la aspiracional duplicada `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (catalogada, is_active=false, 0 users).
 - **Estado:** LIVE 50/53; 3 temas con fuente creada, preguntas pendientes.
 
-### 🟡 [MEDIA] Completar la parte específica (biblioteconomía) de Auxiliar de Biblioteca del Estado
-- **Qué:** la oposición `auxiliar_biblioteca_estado` está LIVE con el Bloque I (legislación, 9 temas servibles, ~8.000 preguntas). Faltan **39 temas marcados "En elaboración"**: Bloque II (Historia del libro, T101-104), Bloque III (Biblioteconomía, T201-230: MARC 21, CDU, tipos de bibliotecas, préstamo, OPAC…), Bloque IV (Práctica, T301-303), y T9 (Ministerio de Cultura) + T11 (Ley 10/2007 y Ley 1/2015 BNE, a importar).
-- **Por qué:** creada 12/07 a raíz del bug de Alfonso Martínez (premium sin contenido). Servible ya en legislación, pero la materia propia de la profesión falta. **Comparte Bloque I con la de Archivos** (tarea de arriba).
-- **Cómo:** editorial verificado contra fuente (manuales de biblioteconomía + normas de catalogación), lifecycle `tech_approved`, luego `disponible=true`. Ley 10/2007 y 1/2015 vía `docs/maintenance/monitoreo-boe-y-crear-leyes-nuevas.md`. Metodología como la específica de ETGOA / T22 comunicación oral IIPP-PV.
-- **Estado:** esqueleto completo + Bloque I servible + go-live 12/07; 39 temas en elaboración.
+### 🟡 [MEDIA] Completar la BIBLIOTECONOMÍA editorial de Auxiliar de Biblioteca del Estado
+- **Qué:** `auxiliar_biblioteca_estado` LIVE con **12/48 servidos**. Bloque I legislación COMPLETO (T1-11) + islotes normativos hechos 12/07: **T9** Min. Cultura (18 pregs Ley 16/1985), **T11** legislación bibliotecaria (20 pregs Ley 10/2007 + Ley 1/2015 BNE, importadas del BOE), **T213** depósito legal (12 pregs Ley 23/2011, importada). 32 preguntas generadas IA + doble auditoría ciega + balance de distractores corregido + re-verificación.
+- **Falta (36 temas EDITORIALES, en elaboración):** Bloque II Historia del libro (T101-104), Bloque III Biblioteconomía (T201-230 menos T213: MARC 21, CDU, ISBN/ISSN, catalogación, tipos de bibliotecas, préstamo, OPAC, OAI-PMH…), Bloque IV Práctica (T301-303).
+- **Cómo:** editorial SIN ley → anclar a fuentes reputadas verificables (convocatoria NO trae bibliografía; verificado): Library of Congress (MARC 21), UNE/Consorcio UDC (CDU), Agencia ISBN, BNE (catalogación), Ministerio de Cultura/IFLA (tipología). NUNCA inventar cifras (clases CDU, etc.). Generar contra fuente + doble auditoría (agentes que verifican contra la fuente reputada), `tech_approved`. Método como T22 comunicación oral IIPP-PV.
+- **Estado (12/07):** islotes normativos COMPLETOS; 36 temas editoriales pendientes (proyecto largo, método editorial).
 
 ### 🟠 [ALTA] Framework profesional de canaries (P1-P3) — que no se repita el incidente 11/07
 - **Qué:** clase base `CanaryProbe` + exclusión central del usuario sintético de analíticas (`SYNTHETIC_USER_IDS`) + migrar todos los canary a la base + guardarraíl CI + runbook. Que ningún write-canary pueda acumular datos sin límite ni contaminar métricas.
