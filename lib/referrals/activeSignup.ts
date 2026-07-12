@@ -69,7 +69,14 @@ export async function grantActiveSignupRewards(exec?: Executor): Promise<ActiveS
         AND (r.fraud_flags IS NULL OR jsonb_typeof(r.fraud_flags) = 'null'
              OR r.fraud_flags = '{}'::jsonb OR r.fraud_flags = '[]'::jsonb)
         AND refd.registration_ip IS DISTINCT FROM amb.registration_ip
-        AND (SELECT count(*) FROM tests t WHERE t.user_id = r.referred_user_id) >= ${ACTIVE_SIGNUP_MIN_TESTS}
+        -- >=N tests DESDE la atribución (created_at > attributed_at), NO de por vida: el bono
+        -- premia la actividad que la REFERENCIA generó. Sin esto, referir a un free ya-activo
+        -- (que arrastra cientos de tests antiguos) concedía 2€ instantáneos sin que la referencia
+        -- activara nada → falso positivo + agujero de fraude (caso Marta, 12/07: 119 tests, 0 tras
+        -- la referencia). El referido nuevo real hace TODOS sus tests tras la atribución, así que a
+        -- él no le afecta.
+        AND (SELECT count(*) FROM tests t WHERE t.user_id = r.referred_user_id
+               AND t.created_at > r.attributed_at) >= ${ACTIVE_SIGNUP_MIN_TESTS}
     ),
     ranked AS (
       SELECT id, already,

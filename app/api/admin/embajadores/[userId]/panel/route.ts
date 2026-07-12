@@ -11,7 +11,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
-import { getReadDb } from '@/db/client'
+import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import {
   getReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts,
@@ -34,7 +34,9 @@ async function _GET(
   }
 
   // Perfil (existencia + nombre + plan) en una sola lectura.
-  const db = getReadDb()
+  // PRIMARIO (getAdminDb), no la réplica: el admin necesita el dato EN VIVO (la réplica podía ir
+  // unos segundos por detrás → el panel parecía "una copia desactualizada"). Volumen bajo (1 user).
+  const db = getAdminDb()
   const prof = await db.execute(sql`select full_name, plan_type, gender from user_profiles where id = ${userId} limit 1`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = Array.isArray(prof) ? prof : ((prof as any)?.rows ?? [])
@@ -48,13 +50,13 @@ async function _GET(
   }
 
   const [code, stats, details, funnel, earnings, unseen, recent] = await Promise.all([
-    getReferralCode(userId),
-    getReferralStats(userId),
-    getReferralDetails(userId),
-    getReferralFunnelCounts(userId),
-    getEmbajadorEarnings(userId),
-    getUnseenEarningsCount(userId),
-    getRecentEarnings(userId),
+    getReferralCode(userId, db),
+    getReferralStats(userId, db),
+    getReferralDetails(userId, db),
+    getReferralFunnelCounts(userId, db),
+    getEmbajadorEarnings(userId, db),
+    getUnseenEarningsCount(userId, db),
+    getRecentEarnings(userId, 10, db),
   ])
 
   // Vales (gift cards) emitidos al usuario — mismo criterio que /api/referrals/vouchers (excluye dry-run).

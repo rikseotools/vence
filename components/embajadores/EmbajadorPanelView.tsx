@@ -52,7 +52,7 @@ export interface EmbajadorPanelData {
   code: string | null
   link: string | null
   stats: { registros: number; compradores: number; conversion: number }
-  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward }>
+  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward; selfReferral?: boolean }>
   funnel: { copies: number; clicks: number }
   earnings: {
     balance: number
@@ -194,7 +194,11 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
-                    {ar && <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>}
+                    {d.selfReferral ? (
+                      <span title="Registrado con la MISMA IP que el embajador → autoregistro. El guardarraíl anti-fraude lo bloquea: no genera bono." className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">⚠️ Misma IP (autoregistro)</span>
+                    ) : ar && (
+                      <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>
+                    )}
                   </div>
                 </div>
               )

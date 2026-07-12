@@ -16,8 +16,10 @@ describe('guardarraíl — vista admin del panel de embajador', () => {
     expect(src).toMatch(/requireAdmin\s*\(/)
     // debe validar el UUID antes de tocar la BD
     expect(src).toMatch(/UUID_RE/)
-    // read-only: NO debe importar getAdminDb (escritura) ni crear el código (getOrCreateReferralCode)
-    expect(src).not.toMatch(/getAdminDb/)
+    // READ-ONLY de verdad = no MUTA (aunque lea del primario para datos en vivo, ver abajo): sin
+    // insert/update/delete ni crear el código. Nota: usa getAdminDb (primario) a PROPÓSITO para
+    // que el admin vea el dato EN VIVO (la réplica iba por detrás → "copia desactualizada").
+    expect(src).not.toMatch(/\.(insert|update|delete)\s*\(/)
     expect(src).not.toMatch(/getOrCreateReferralCode/)
   })
 
@@ -43,6 +45,16 @@ describe('guardarraíl — vista admin del panel de embajador', () => {
     const src = readFileSync(join(ROOT, 'app/api/admin/referrals/payout-requests/route.ts'), 'utf8')
     expect(src).toMatch(/requireAdmin\s*\(/)
     expect(src).toMatch(/fulfillPayoutRequest/)
+  })
+
+  it('SOLO USUARIOS NUEVOS: guard de cuenta nueva en atribución Y en el pago (doble capa)', () => {
+    // El bounty solo cuenta para captación NUEVA: la cuenta del referido no puede ser preexistente
+    // (creada hace > N días). Debe aplicarse al atribuir (refereeEligibility) y al cualificar el pago
+    // (qualifyReferralOnPayment) — así ni entran nuevos casos ni pagan los pending viejos (p.ej. Marta).
+    const logic = readFileSync(join(ROOT, 'lib/referrals/logic.ts'), 'utf8')
+    expect(logic).toMatch(/referredAccountAgeDays[\s\S]*?>[\s\S]*?REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS/)
+    const q = readFileSync(join(ROOT, 'lib/referrals/queries.ts'), 'utf8')
+    expect(q).toMatch(/ageDaysAtAttribution[\s\S]*?>[\s\S]*?REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS/)
   })
 
   it('/api/referrals/me sigue resolviendo la identidad del TOKEN (no del cliente)', () => {

@@ -22,6 +22,10 @@ export async function adminFetch(
 ): Promise<Response> {
   const auth = await getAuthHeaders()
   const res = await fetch(input, {
+    // Paneles admin = datos operativos EN VIVO: nunca servir una respuesta cacheada por el
+    // navegador/Next (el caller veía cifras stale de una carga anterior). El caller puede
+    // sobreescribir vía init.cache si lo necesita.
+    cache: 'no-store',
     ...init,
     // El token (auth) primero; los headers del caller (p.ej. Content-Type) después,
     // y ganan en conflicto salvo Authorization que normalmente solo aporta auth.

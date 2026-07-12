@@ -17,6 +17,12 @@ export const REFERRAL_ATTRIBUTION_WINDOW_DAYS = 10
 export const REFERRAL_HOLD_DAYS = 15
 export const REFERRAL_BOUNTY_EUR = 10        // gift card Amazon al embajador
 export const REFERRAL_DISCOUNT_EUR = 5       // descuento (cupón) al referido
+// Solo cuenta como referido un usuario NUEVO: su cuenta debe haberse creado como mucho N días
+// antes de la atribución (margen para el flujo real clic→registro→login donde se atribuye). Sin
+// esto, un free PREEXISTENTE (que ya usaba Vece por su cuenta) contaba como referido y generaba
+// bounty aunque el embajador no lo captó (caso Marta 12/07: cuenta de hace 31 días). Un referido
+// nuevo real se registra a la vez que la referencia → age ~0.
+export const REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS = 7
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -58,12 +64,15 @@ export interface EligibilityInput {
   referredHasEverPaid: boolean
   /** el embajador debe ser premium ACTIVO en el momento de atribuir */
   referrerIsActivePremium: boolean
+  /** antigüedad de la cuenta del referido, en días, al atribuir. undefined = no comprobar (back-compat) */
+  referredAccountAgeDays?: number
 }
 
 export type EligibilityReason =
   | 'referrer_not_premium'
   | 'self_referral'
   | 'referred_not_new_payer'
+  | 'referred_not_new'   // cuenta preexistente (creada hace > N días) → no es captación nueva
 
 /** Elegibilidad del referido en el momento de atribuir. */
 export function refereeEligibility(
@@ -72,6 +81,10 @@ export function refereeEligibility(
   if (!input.referrerIsActivePremium) return { eligible: false, reason: 'referrer_not_premium' }
   if (input.referrerUserId === input.referredUserId) return { eligible: false, reason: 'self_referral' }
   if (input.referredHasEverPaid) return { eligible: false, reason: 'referred_not_new_payer' }
+  // Solo usuarios NUEVOS: una cuenta preexistente (creada hace más de N días) no es captación.
+  if (input.referredAccountAgeDays !== undefined && input.referredAccountAgeDays > REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS) {
+    return { eligible: false, reason: 'referred_not_new' }
+  }
   return { eligible: true }
 }
 

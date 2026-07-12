@@ -99,6 +99,18 @@ describe('refereeEligibility', () => {
       eligible: false, reason: 'referred_not_new_payer',
     })
   })
+  it('SOLO USUARIOS NUEVOS: cuenta preexistente (creada hace >7 días) → referred_not_new', () => {
+    // Marta (cuenta de 31 días) NO cuenta como captación nueva.
+    expect(refereeEligibility({ ...ok, referredAccountAgeDays: 31 })).toEqual({
+      eligible: false, reason: 'referred_not_new',
+    })
+  })
+  it('usuario nuevo dentro del margen (2 días, como runaans) → elegible', () => {
+    expect(refereeEligibility({ ...ok, referredAccountAgeDays: 2 })).toEqual({ eligible: true })
+  })
+  it('sin dato de antigüedad (undefined) → no rompe la elegibilidad (back-compat)', () => {
+    expect(refereeEligibility({ ...ok, referredAccountAgeDays: undefined })).toEqual({ eligible: true })
+  })
 })
 
 describe('isLegalTransition (state machine)', () => {

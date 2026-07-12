@@ -8,7 +8,8 @@
 import { NextResponse, NextRequest } from 'next/server'
 
 jest.mock('@/lib/api/shared/auth', () => ({ requireAdmin: jest.fn() }))
-jest.mock('@/db/client', () => ({ getReadDb: jest.fn() }))
+// El panel admin lee del PRIMARIO (getAdminDb) para datos en vivo, no de la réplica.
+jest.mock('@/db/client', () => ({ getAdminDb: jest.fn() }))
 jest.mock('@/lib/referrals/queries', () => ({
   getReferralCode: jest.fn(),
   getReferralStats: jest.fn(),
@@ -20,7 +21,7 @@ jest.mock('@/lib/referrals/queries', () => ({
 }))
 
 import { requireAdmin } from '@/lib/api/shared/auth'
-import { getReadDb } from '@/db/client'
+import { getAdminDb } from '@/db/client'
 import {
   getReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts,
   getEmbajadorEarnings, getUnseenEarningsCount, getRecentEarnings,
@@ -28,7 +29,7 @@ import {
 import { _GET } from '@/app/api/admin/embajadores/[userId]/panel/route'
 
 const mAdmin = requireAdmin as unknown as jest.Mock
-const mDb = getReadDb as unknown as jest.Mock
+const mDb = getAdminDb as unknown as jest.Mock
 const mCode = getReferralCode as unknown as jest.Mock
 const mStats = getReferralStats as unknown as jest.Mock
 const mDetails = getReferralDetails as unknown as jest.Mock
@@ -92,8 +93,9 @@ describe('GET /api/admin/embajadores/[userId]/panel', () => {
     expect(body.firstName).toBe('Ana')
     expect(body.link).toBe('https://www.vence.es/r/abc123')
     expect(body.stats).toMatchObject({ registros: 2, compradores: 1 })
-    // el userId servido es SIEMPRE el de la ruta (validado), nunca uno del cliente
-    expect(mStats).toHaveBeenCalledWith(UID)
-    expect(mEarn).toHaveBeenCalledWith(UID)
+    // el userId servido es SIEMPRE el de la ruta (validado), nunca uno del cliente.
+    // 2º arg = el executor primario (getAdminDb) que se pasa para leer EN VIVO.
+    expect(mStats).toHaveBeenCalledWith(UID, expect.anything())
+    expect(mEarn).toHaveBeenCalledWith(UID, expect.anything())
   })
 })

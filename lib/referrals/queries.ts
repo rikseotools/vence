@@ -17,6 +17,7 @@ import {
   rewardAmount,
   withinRewardMonthlyCap,
   MIN_PAYOUT_EUR,
+  REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS,
   isValidDenomination,
   activeSignupEnabled,
   deriveActiveReward,
@@ -115,11 +116,21 @@ export async function attributeReferral(input: AttributeInput, exec?: Executor):
   if (!codeRow || !codeRow.active) return { ok: false, reason: 'code_invalid' }
   const referrerUserId = codeRow.owner as string
 
+  // Antigüedad de la cuenta del referido (para el guard "solo usuarios nuevos"): días entre su
+  // creación y AHORA (= momento de atribuir). Una cuenta preexistente (creada hace > N días) no
+  // es captación nueva → refereeEligibility la rechaza.
+  const [refdRow] = await db.select({ createdAt: userProfiles.createdAt })
+    .from(userProfiles).where(eq(userProfiles.id, input.referredUserId)).limit(1)
+  const referredAccountAgeDays = refdRow?.createdAt
+    ? (Date.now() - new Date(refdRow.createdAt as unknown as string).getTime()) / 86_400_000
+    : undefined
+
   const elig = refereeEligibility({
     referrerUserId,
     referredUserId: input.referredUserId,
     referredHasEverPaid: input.referredHasEverPaid,
     referrerIsActivePremium: input.referrerIsActivePremium,
+    referredAccountAgeDays,
   })
   if (!elig.eligible) return { ok: false, reason: elig.reason! }
 
@@ -152,11 +163,26 @@ export interface QualifyInput {
 /** Al pagar el referido: si hay `pending` y paga dentro de la ventana → `qualified` + hold. */
 export async function qualifyReferralOnPayment(
   input: QualifyInput, exec?: Executor,
-): Promise<{ qualified: boolean; reason?: 'no_pending_referral' | 'outside_window'; referrerUserId?: string; bounty?: number }> {
+): Promise<{ qualified: boolean; reason?: 'no_pending_referral' | 'outside_window' | 'referred_not_new'; referrerUserId?: string; bounty?: number }> {
   const db = exec ?? getAdminDb()
   const [ref] = await db.select().from(referrals)
     .where(and(eq(referrals.referredUserId, input.referredUserId), eq(referrals.status, 'pending'))).limit(1)
   if (!ref) return { qualified: false, reason: 'no_pending_referral' }
+
+  // Guard "solo usuarios nuevos" (defensa en profundidad): si la cuenta del referido ya existía
+  // mucho antes de la atribución (preexistente, no captación), NO paga el bounty aunque convierta.
+  // Cubre también las referencias pending creadas ANTES de que existiera el guard en la atribución
+  // (p.ej. Marta, cuenta de 31 días). El referido nuevo real tiene age ~0.
+  const [refdRow] = await db.select({ createdAt: userProfiles.createdAt })
+    .from(userProfiles).where(eq(userProfiles.id, input.referredUserId)).limit(1)
+  if (refdRow?.createdAt) {
+    const ageDaysAtAttribution = (new Date(ref.attributedAt as unknown as string).getTime()
+      - new Date(refdRow.createdAt as unknown as string).getTime()) / 86_400_000
+    if (ageDaysAtAttribution > REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS) {
+      await db.update(referrals).set({ status: 'rejected', updatedAt: sql`now()` }).where(eq(referrals.id, ref.id))
+      return { qualified: false, reason: 'referred_not_new' }
+    }
+  }
 
   if (!isWithinAttributionWindow(ref.attributedAt, input.paidAt)) {
     await db.update(referrals).set({ status: 'expired', updatedAt: sql`now()` }).where(eq(referrals.id, ref.id))
@@ -220,6 +246,7 @@ export interface ReferralDetail {
   status: string
   date: string
   activeReward: ActiveRewardView
+  selfReferral: boolean   // registrado con la MISMA IP que el embajador → autoregistro (no cobra)
 }
 
 /** Detalle por referido (nombre, ciudad, oposición, estado, fecha, bonus de registro activo). */
@@ -235,8 +262,13 @@ export async function getReferralDetails(
     date: referrals.attributedAt,
     // Columnas añadidas por migración 20260711 (aún no en el schema Drizzle) → SQL literal.
     activeRewardAmount: sql<string | null>`referrals.active_reward_amount`,
-    // MISMA fuente de conteo que grantActiveSignupRewards (tabla `tests`, por referido) → coherencia.
-    testsDone: sql<number>`(select count(*)::int from tests t where t.user_id = referrals.referred_user_id)`,
+    // MISMA fuente y criterio que grantActiveSignupRewards: tests DESDE la atribución
+    // (created_at > attributed_at), no de por vida → el badge X/5 refleja la actividad que la
+    // referencia generó (un free ya-activo muestra 0/5, no 119/5). Coherencia display↔concesión.
+    testsDone: sql<number>`(select count(*)::int from tests t where t.user_id = referrals.referred_user_id and t.created_at > referrals.attributed_at)`,
+    // Autoregistro: el referido se registró con la MISMA IP que el embajador. `=` (no `is not
+    // distinct from`) → solo marca cuando ambas IPs son CONOCIDAS e IGUALES (null no flaguea).
+    selfReferral: sql<boolean>`(user_profiles.registration_ip = (select registration_ip from user_profiles where id = ${referrerUserId}))`,
   })
     .from(referrals)
     .innerJoin(userProfiles, eq(referrals.referredUserId, userProfiles.id))
@@ -247,14 +279,19 @@ export async function getReferralDetails(
   const enabled = activeSignupEnabled()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (rows as any[]).map((r) => {
-    const activeReward = deriveActiveReward({
-      grantedAmount: r.activeRewardAmount != null ? Number(r.activeRewardAmount) : null,
-      testsDone: Number(r.testsDone) || 0,
-      status: r.status,
-      enabled,
-    })
+    const selfReferral = !!r.selfReferral
+    // Autoregistro (misma IP): nunca cobrará (guardarraíl anti-fraude lo bloquea) → no prometemos
+    // el bono, mostramos 'none' en vez de un progreso X/5 engañoso.
+    const activeReward = selfReferral
+      ? { state: 'none' as const, amount: 0, testsDone: 0, testsNeeded: 0 }
+      : deriveActiveReward({
+          grantedAmount: r.activeRewardAmount != null ? Number(r.activeRewardAmount) : null,
+          testsDone: Number(r.testsDone) || 0,
+          status: r.status,
+          enabled,
+        })
     // Privacidad: el embajador no ve el apellido completo del referido → "Nombre A. B.".
-    return { name: abbreviateReferredName(r.name), city: r.city, oposicion: r.oposicion, status: r.status, date: r.date, activeReward }
+    return { name: abbreviateReferredName(r.name), city: r.city, oposicion: r.oposicion, status: r.status, date: r.date, activeReward, selfReferral }
   })
 }
 
