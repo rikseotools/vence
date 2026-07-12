@@ -21,14 +21,28 @@ describe('guardarraíl — vista admin del panel de embajador', () => {
     expect(src).not.toMatch(/getOrCreateReferralCode/)
   })
 
-  it('el badge "toca pagar" exige admin y cuenta SOLO saldo pagable (respeta hold)', () => {
+  it('el badge "toca pagar" exige admin y cuenta SOLICITUDES pendientes (modelo pull)', () => {
     const src = readFileSync(join(ROOT, 'app/api/admin/referrals/payouts-pending-count/route.ts'), 'utf8')
     // gate admin
     expect(src).toMatch(/requireAdmin\s*\(/)
-    // DEBE usar la query que respeta el hold (payable + submissions tras hold − pagado);
-    // NUNCA un sum crudo de reward_earnings, que incluiría dinero aún retenido → avisos falsos.
-    expect(src).toMatch(/getEmbajadoresWithBalance/)
-    expect(src).not.toMatch(/reward_earnings/)
+    // Modelo pull: el badge cuenta SOLICITUDES reales (reward_payouts pending), no saldos teóricos.
+    expect(src).toMatch(/getPendingPayoutRequests/)
+  })
+
+  it('la solicitud de vale (pull) resuelve identidad del TOKEN y el importe del SERVIDOR (anti-abuso)', () => {
+    const src = readFileSync(join(ROOT, 'app/api/referrals/payout-request/route.ts'), 'utf8')
+    // identidad del token, nunca del cliente (anti-IDOR)
+    expect(src).toMatch(/getAuthenticatedUser\s*\(/)
+    expect(src).toMatch(/auth\.user\.id/)
+    // el importe lo calcula el servidor (payoutDenomination sobre el saldo), NO el cliente
+    expect(src).toMatch(/payoutDenomination/)
+    expect(src).not.toMatch(/body[.?]*\.amount/)
+  })
+
+  it('cumplir una solicitud (pull, lado admin) exige admin', () => {
+    const src = readFileSync(join(ROOT, 'app/api/admin/referrals/payout-requests/route.ts'), 'utf8')
+    expect(src).toMatch(/requireAdmin\s*\(/)
+    expect(src).toMatch(/fulfillPayoutRequest/)
   })
 
   it('/api/referrals/me sigue resolviendo la identidad del TOKEN (no del cliente)', () => {

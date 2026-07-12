@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import MisVales from '@/components/embajadores/MisVales'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { payoutDenomination } from '@/lib/referrals/logic'
 
 interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; testsDone: number; testsNeeded: number }
 interface ReferralDetail {
@@ -19,7 +20,7 @@ interface ReferralDetail {
   activeReward?: ActiveReward
 }
 interface EarningsBySource { source: string; earned: number; count: number }
-interface Earnings { balance: number; earnedLifetime: number; paidLifetime: number; pending: number; bySource: EarningsBySource[] }
+interface Earnings { balance: number; earnedLifetime: number; paidLifetime: number; requested: number; pending: number; bySource: EarningsBySource[] }
 interface RecentEarning { source: string; amount: number; date: string }
 interface MeResponse {
   isAmbassador: boolean
@@ -147,6 +148,33 @@ export default function EmbajadoresPage() {
   const [copied, setCopied] = useState(false)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [reveal, setReveal] = useState<RecentEarning[] | null>(null)
+  const [requesting, setRequesting] = useState(false)
+  const [reqMsg, setReqMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Modelo PULL: el embajador solicita cobrar su saldo disponible; nosotros generamos el vale.
+  const requestPayout = async () => {
+    setRequesting(true); setReqMsg(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/referrals/payout-request', { method: 'POST', headers })
+      const json = await res.json().catch(() => ({}))
+      if (json.ok) {
+        const meRes = await fetch('/api/referrals/me', { headers })
+        if (meRes.ok) setMe(await meRes.json())
+        setReqMsg({ ok: true, text: '¡Solicitud enviada! Te generamos la tarjeta regalo en breve.' })
+      } else {
+        const map: Record<string, string> = {
+          already_pending: 'Ya tienes una solicitud en curso. Te avisaremos cuando esté lista.',
+          below_minimum: 'Necesitas al menos 5 € de saldo disponible.',
+        }
+        setReqMsg({ ok: false, text: map[json.reason] || 'No se pudo enviar la solicitud. Inténtalo de nuevo.' })
+      }
+    } catch {
+      setReqMsg({ ok: false, text: 'Error de red. Inténtalo de nuevo.' })
+    } finally {
+      setRequesting(false)
+    }
+  }
 
   // Primer nombre para personalizar la enhorabuena (de perfil o metadata de auth).
   const fullName = (userProfile?.full_name || (user?.user_metadata?.full_name as string | undefined) || '').trim()
@@ -299,9 +327,37 @@ export default function EmbajadoresPage() {
                 </div>
               </div>
             )}
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-              Cuando tu saldo disponible llega a 5 €, te pagamos en tarjeta regalo de Amazon. Lo que sobre se acumula para la próxima.
-            </p>
+            {/* MODELO PULL: solicitar el vale cuando hay saldo disponible */}
+            <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700">
+              {me.earnings.requested > 0 ? (
+                <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-xl px-4 py-3 text-sm font-medium">
+                  <span>⏳</span>
+                  <span>Solicitud en curso: <strong>{me.earnings.requested} €</strong> — te generamos la tarjeta regalo en breve.</span>
+                </div>
+              ) : me.earnings.balance >= 5 ? (
+                <div className="text-center">
+                  <button
+                    onClick={requestPayout}
+                    disabled={requesting}
+                    className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold px-6 py-3 rounded-xl shadow transition-colors"
+                  >
+                    {requesting ? 'Enviando…' : `🎁 Solicitar tarjeta regalo de ${payoutDenomination(me.earnings.balance)} €`}
+                  </button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Cobras cuando quieras. Lo que sobre de 5/10/20 € se acumula para la próxima.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Cuando tu saldo disponible llegue a 5 € podrás solicitar tu tarjeta regalo de Amazon. Lo que sobre se acumula para la próxima.
+                </p>
+              )}
+              {reqMsg && (
+                <p className={`text-sm mt-3 text-center font-medium ${reqMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {reqMsg.text}
+                </p>
+              )}
+            </div>
           </section>
         )}
 

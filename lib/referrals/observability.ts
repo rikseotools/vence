@@ -20,6 +20,8 @@ export type ReferralEventType =
   | 'referral_refund_clawback'     // reembolso → rechazado
   | 'referral_promoted_payable'    // cron: qualified → payable
   | 'referral_paid'                // admin pagó la gift card
+  | 'payout_requested'             // el usuario SOLICITÓ cobrar su saldo (modelo pull)
+  | 'payout_fulfilled'             // admin cumplió la solicitud (pending → paid)
   | 'referral_error'              // FALLO capturado en el flujo (metadata.step: qualify|clawback|coupon)
   // recompensas bug/ugc
   | 'reward_created'

@@ -517,7 +517,9 @@ export async function getUserOwedBalance(userId: string, exec?: Executor): Promi
       -- ninguna query lo hacía pagable → quedaba atascado en "en proceso" para siempre (bug 11/07).
       + coalesce((select sum(active_reward_amount) from referrals where referrer_user_id = ${userId} and active_reward_at is not null and status in ('payable','paid')), 0)
       + coalesce((select sum(amount) from reward_submissions where user_id = ${userId} and status = 'approved' and (hold_until is null or hold_until <= now())), 0)
-      - coalesce((select sum(amount) from reward_payouts where beneficiary_user_id = ${userId}), 0)
+      -- resta pagos Y solicitudes en curso (status <> 'void'): una solicitud 'pending' RESERVA el
+      -- saldo (para que no se pida dos veces). 'void' = solicitud rechazada → no reserva. Modelo pull.
+      - coalesce((select sum(amount) from reward_payouts where beneficiary_user_id = ${userId} and status <> 'void'), 0)
     )::float as balance`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = Array.isArray(res) ? res : ((res as any)?.rows ?? [])
@@ -529,27 +531,33 @@ function rowsOf(res: any): any[] { return Array.isArray(res) ? res : (res?.rows 
 
 export interface EarningsBySource { source: string; earned: number; count: number }
 export interface EmbajadorEarnings {
-  balance: number         // disponible para cobrar (payable/approved-tras-hold − pagado)
+  balance: number         // disponible para SOLICITAR (payable/approved-tras-hold − pagado − solicitado)
   earnedLifetime: number  // total ganado (todas las fuentes)
-  paidLifetime: number    // total cobrado
-  pending: number         // en proceso (en hold): ganado − pagado − disponible
+  paidLifetime: number    // total cobrado (vales emitidos, status='paid')
+  requested: number       // solicitado en curso (status='pending'): reservado, esperando que emitamos el vale
+  pending: number         // en proceso (en hold): ganado − pagado − solicitado − disponible
   bySource: EarningsBySource[]
 }
 
-/** Panel del embajador: saldo + total ganado/cobrado + desglose por FUENTE (escalable vía reward_earnings). */
+/** Panel del embajador: saldo + total ganado/cobrado/solicitado + desglose por FUENTE (escalable vía reward_earnings). */
 export async function getEmbajadorEarnings(userId: string, exec?: Executor): Promise<EmbajadorEarnings> {
   const db = exec ?? getReadDb()
-  const [earnedRes, paidRes, bySourceRes, balance] = await Promise.all([
+  const [earnedRes, paidRes, requestedRes, bySourceRes, balance] = await Promise.all([
     db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_earnings where user_id = ${userId}`),
-    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where beneficiary_user_id = ${userId}`),
+    // vales EMITIDOS = solo status='paid' (una solicitud 'pending' aún NO es un vale emitido)
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where beneficiary_user_id = ${userId} and status = 'paid'`),
+    // SOLICITADO en curso = status='pending' (reservado, esperando que emitamos el vale)
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where beneficiary_user_id = ${userId} and status = 'pending'`),
     db.execute(sql`select source, sum(amount)::float as earned, count(*)::int as count from reward_earnings where user_id = ${userId} group by source order by earned desc`),
     getUserOwedBalance(userId, db),
   ])
   const earnedLifetime = Number(rowsOf(earnedRes)[0]?.t ?? 0)
   const paidLifetime = Number(rowsOf(paidRes)[0]?.t ?? 0)
+  const requested = Number(rowsOf(requestedRes)[0]?.t ?? 0)
   const bySource = rowsOf(bySourceRes).map((r) => ({ source: r.source, earned: Number(r.earned), count: Number(r.count) }))
-  const pending = Math.max(0, earnedLifetime - paidLifetime - (balance as number))
-  return { balance: balance as number, earnedLifetime, paidLifetime, pending, bySource }
+  // en proceso (hold) = ganado − emitido − solicitado − disponible. balance ya resta emitido+solicitado.
+  const pending = Math.max(0, earnedLifetime - paidLifetime - requested - (balance as number))
+  return { balance: balance as number, earnedLifetime, paidLifetime, requested, pending, bySource }
 }
 
 /** Nº de ingresos nuevos SIN VER por el embajador (cualquier fuente) — para el badge de novedades. */
@@ -602,7 +610,7 @@ export async function getReferralAdminStats(exec?: Executor): Promise<AdminRefer
   const db = exec ?? getReadDb()
   const [earnedRes, paidRes, bySrcRes, earnersRes, statusRes, funnelRes, topRes] = await Promise.all([
     db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_earnings`),
-    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts`),
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where status = 'paid'`),
     db.execute(sql`select source, sum(amount)::float as earned, count(*)::int as count from reward_earnings group by source order by earned desc`),
     db.execute(sql`select count(distinct user_id)::int as n from reward_earnings`),
     db.execute(sql`select status, count(*)::int as n from referrals group by status`),
@@ -658,7 +666,7 @@ export async function getEmbajadoresWithBalance(exec?: Executor): Promise<AccumB
       select user_id as uid, sum(amount) as amt from reward_submissions where status='approved' and (hold_until is null or hold_until <= now()) group by user_id
     ),
     e2 as (select uid, sum(amt) as earned from earned group by uid),
-    paid as (select beneficiary_user_id as uid, sum(amount) as amt from reward_payouts group by beneficiary_user_id)
+    paid as (select beneficiary_user_id as uid, sum(amount) as amt from reward_payouts where status <> 'void' group by beneficiary_user_id)
     select e2.uid as user_id, up.full_name as name, up.email as email,
            (e2.earned - coalesce(p.amt, 0))::float as balance
     from e2
@@ -696,6 +704,81 @@ export async function payAccumulated(
       paidAt: sql`now()`,
     }).returning({ id: rewardPayouts.id })
     return { ok: true as const, payoutId: payout.id }
+  }
+  if (exec) return run(exec)
+  return getAdminDb().transaction(run)
+}
+
+// ============================================================================
+// Solicitud de vale (modelo PULL): el usuario pide cobrar; el admin lo cumple.
+// ============================================================================
+
+/**
+ * SOLICITUD de vale: el USUARIO pide cobrar su saldo disponible. Crea un payout 'pending' que
+ * RESERVA el saldo (getUserOwedBalance resta status<>'void'). Atómico: valida denominación válida,
+ * saldo suficiente y que NO haya otra solicitud en curso (una sola por usuario). El admin la cumple
+ * luego (pending → paid). Nunca toca dinero retenido: getUserOwedBalance solo cuenta lo disponible.
+ */
+export async function createPayoutRequest(
+  params: { userId: string; amount: number },
+  exec?: Executor,
+): Promise<{ ok: true; requestId: string } | { ok: false; reason: string }> {
+  const run = async (tx: Executor) => {
+    if (!isValidDenomination(params.amount)) return { ok: false as const, reason: 'invalid_denomination' }
+    const existing = rowsOf(await tx.execute(sql`
+      select 1 from reward_payouts where beneficiary_user_id = ${params.userId} and status = 'pending' limit 1`))
+    if (existing.length > 0) return { ok: false as const, reason: 'already_pending' }
+    const balance = await getUserOwedBalance(params.userId, tx)
+    if (params.amount > balance) return { ok: false as const, reason: `amount_exceeds_balance(${balance})` }
+    const [req] = await tx.insert(rewardPayouts).values({
+      beneficiaryUserId: params.userId,
+      reason: 'accumulated',
+      amount: String(params.amount),
+      method: 'amazon_giftcard',
+      status: 'pending',
+    }).returning({ id: rewardPayouts.id })
+    return { ok: true as const, requestId: req.id }
+  }
+  if (exec) return run(exec)
+  return getAdminDb().transaction(run)
+}
+
+export interface PayoutRequest {
+  id: string
+  userId: string
+  name: string | null
+  email: string | null
+  amount: number
+  createdAt: string
+}
+
+/** Solicitudes de vale PENDIENTES (para el admin y el badge "toca pagar"). Más antiguas primero. */
+export async function getPendingPayoutRequests(exec?: Executor): Promise<PayoutRequest[]> {
+  const db = exec ?? getReadDb()
+  const res = await db.execute(sql`
+    select p.id, p.beneficiary_user_id as user_id, up.full_name as name, up.email as email,
+           p.amount::float as amount, p.created_at as created_at
+    from reward_payouts p join user_profiles up on up.id = p.beneficiary_user_id
+    where p.status = 'pending' order by p.created_at asc`)
+  return rowsOf(res).map((r) => ({
+    id: r.id, userId: r.user_id, name: r.name, email: r.email,
+    amount: Number(r.amount), createdAt: String(r.created_at),
+  }))
+}
+
+/** El admin CUMPLE una solicitud: pending → paid (emite el vale). Atómico, valida que siga 'pending'. */
+export async function fulfillPayoutRequest(
+  params: { requestId: string; adminUserId: string; giftcardRef?: string; purchasedVia?: string },
+  exec?: Executor,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const run = async (tx: Executor) => {
+    const res = rowsOf(await tx.execute(sql`
+      update reward_payouts set status = 'paid', paid_at = now(), approved_by = ${params.adminUserId},
+        giftcard_ref = ${params.giftcardRef ?? null}, purchased_via = ${params.purchasedVia ?? null}
+      where id = ${params.requestId} and status = 'pending'
+      returning id`))
+    if (res.length === 0) return { ok: false as const, reason: 'not_pending_or_not_found' }
+    return { ok: true as const }
   }
   if (exec) return run(exec)
   return getAdminDb().transaction(run)

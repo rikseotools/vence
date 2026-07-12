@@ -58,6 +58,7 @@ export interface EmbajadorPanelData {
     balance: number
     pending: number
     paidLifetime: number
+    requested?: number
     bySource: Array<{ source: string; earned: number; count: number }>
   }
   recent: Array<{ source: string; amount: number }>
@@ -99,10 +100,14 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
       {/* SALDO + DESGLOSE */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
         <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Tu saldo</h2>
-        <div className="grid grid-cols-3 gap-3 text-center mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-6">
           <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl py-4">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{e.balance} €</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Disponible</div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/30 rounded-xl py-4">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{e.requested ?? 0} €</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Solicitado</div>
           </div>
           <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl py-4">
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{e.pending} €</div>
