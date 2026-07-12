@@ -94,6 +94,12 @@ const BASE_VARS = {
   const skipSql = skipCampaigns.length
     ? `AND up.id NOT IN (SELECT user_id FROM email_events WHERE campaign_id = ANY($${skipParamIdx}) AND event_type='sent' AND user_id IS NOT NULL)`
     : '';
+  // Excluir destinatarios concretos por email (ej: usuarios a los que ya escribimos por su feedback → no duplicar el aviso).
+  const exclEmails = (cfg.excludeEmails || []).map(e => String(e).toLowerCase());
+  const exclEmailsParamIdx = muni.length + 2 + excl.length + (skipCampaigns.length ? 1 : 0);
+  const exclEmailsSql = exclEmails.length
+    ? `AND lower(up.email) <> ALL($${exclEmailsParamIdx})`
+    : '';
   let users;
   if (MODE === 'preview') {
     // 1 solo destinatario, contenido IDÉNTICO al envío real (mismo template + userVars).
@@ -110,7 +116,8 @@ const BASE_VARS = {
         AND (up.target_oposicion=$${muni.length + 1} OR ${like})
         ${exclSql}
         ${skipSql}
-      ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaigns.length ? [skipCampaigns] : [])])).rows;
+        ${exclEmailsSql}
+      ORDER BY up.email`, [...params, cfg.targetOposicion, ...excl.map(m => '%' + m + '%'), ...(skipCampaigns.length ? [skipCampaigns] : []), ...(exclEmails.length ? [exclEmails] : [])])).rows;
   }
 
   console.log(`👥 Audiencia: ${users.length} enviables | plantilla=${templateSlug} | MODO=${MODE}`);
