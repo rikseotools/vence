@@ -44,14 +44,18 @@ describe('guardarraíl — registro activo (dinero real)', () => {
     expect(src).toMatch(/grantActiveSignupRewards/)
   })
 
-  it('el bono activo GANADO es también PAGABLE (simetría earnings↔payout, gated por hold)', () => {
-    // Regresión (bug 2026-07-11): la vista reward_earnings cuenta 'registro_activo' como ganado,
-    // pero las queries de saldo pagable NO miraban active_reward_amount → el bono quedaba atascado
-    // en "en proceso" para siempre, impagable. Ambas queries de pago DEBEN contarlo, y SOLO cuando
-    // el referido sobrevivió su hold (status payable/paid) — nunca si reembolsó (rejected).
+  it('el bono activo GANADO es PAGABLE al concederse, SIMÉTRICO en ambas queries de saldo', () => {
+    // Regresión (bug 2026-11/12-07): las 2 queries de saldo (getUserOwedBalance = balance personal,
+    // getEmbajadoresWithBalance = panel admin) DEBEN contar el bono activo de forma IDÉNTICA, si no
+    // un saldo aparece en un sitio y no en el otro. Decisión Manuel 12/07: el bono de 2€ es DISPONIBLE
+    // en cuanto se concede (active_reward_at IS NOT NULL), SIN el hold del premium (es captación, no
+    // venta; ya pasó anti-fraude al concederse). Antes getEmbajadoresWithBalance lo gateaba por
+    // status in('payable','paid') → asimetría. Ambas DEBEN usar solo `active_reward_at is not null`.
     const src = readFileSync(join(ROOT, 'lib/referrals/queries.ts'), 'utf8')
-    // aparece en getUserOwedBalance Y en getEmbajadoresWithBalance (2 ocurrencias)
-    const hits = src.match(/sum\(active_reward_amount\)[\s\S]*?status in \('payable','paid'\)/g) || []
+    const hits = src.match(/sum\(active_reward_amount\)[\s\S]{0,120}?active_reward_at is not null/g) || []
     expect(hits.length).toBeGreaterThanOrEqual(2)
+    // y NINGUNA de las 2 debe volver a gatear el bono activo por el status del premium (hold)
+    const gatedByStatus = src.match(/sum\(active_reward_amount\)[\s\S]{0,120}?status in \('payable','paid'\)/g) || []
+    expect(gatedByStatus.length).toBe(0)
   })
 })

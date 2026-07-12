@@ -721,10 +721,11 @@ export async function getEmbajadoresWithBalance(exec?: Executor): Promise<AccumB
     with earned as (
       select referrer_user_id as uid, sum(bounty_amount) as amt from referrals where status='payable' group by referrer_user_id
       union all
-      -- bono de registro activo: pagable solo tras superar el hold del referido (payable/paid).
-      -- Debe ser SIMÉTRICO con getUserOwedBalance (si no, un saldo aparecería pagable en un sitio
-      -- y no en el otro). Ver bug 11/07 (bono atascado en "en proceso").
-      select referrer_user_id as uid, sum(active_reward_amount) as amt from referrals where active_reward_at is not null and status in ('payable','paid') group by referrer_user_id
+      -- bono de registro activo (2€): DISPONIBLE en cuanto se CONCEDE (active_reward_at IS NOT NULL),
+      -- SIN el hold del premium (decisión Manuel 12/07 — es ingreso por CAPTACIÓN, no por la venta;
+      -- ya pasó todas las guardas anti-fraude al concederse). DEBE ser SIMÉTRICO con getUserOwedBalance
+      -- (si no, el saldo aparece en el balance personal pero no en el panel admin). Ver bug 11-12/07.
+      select referrer_user_id as uid, sum(active_reward_amount) as amt from referrals where active_reward_at is not null group by referrer_user_id
       union all
       select user_id as uid, sum(amount) as amt from reward_submissions where status='approved' and (hold_until is null or hold_until <= now()) group by user_id
     ),
