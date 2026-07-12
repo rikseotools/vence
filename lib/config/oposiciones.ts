@@ -163,7 +163,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '📋',
     badge: 'C2',
     color: 'blue',
-    administracion: 'estatal',
+    administracion: 'estado',
     aliases: ['bibliotecario', 'auxiliar biblioteca', 'auxiliar de biblioteca', 'biblioteca estado', 'auxiliar archivos bibliotecas museos', 'bibliotecas ministerio cultura'],
     blocks: [
       {
