@@ -22,17 +22,24 @@
 - **Cómo:** memoria `project_umu_aux_servicios_parte_especifica` (plan 2 vías) + `docs/maintenance/crear-nueva-oposicion.md`. Generar editorial con fuente (nunca inventar), lifecycle `tech_approved`, luego `disponible=true`.
 - **Estado:** VÍA A (T8/T10/T12) hecha; VÍA B (estos 5) pendiente.
 
-### 🟠 [ALTA] Incorporar la oposición Técnico Auxiliar de Informática
-- **Qué:** está **catalogada** pero sin temario ni tests. Construir su contenido para hacerla vendible.
-- **Por qué:** promesa explícita al usuario — feedback `cbf5998b` (Cristina Laorden, 07/07): *"la ponemos en nuestras tareas pendientes para incorporarla y te avisaremos en breve"*. Prometido "en breve".
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. Avisar a Cristina (`cbf5998b`) al terminar.
-- **Estado:** catalogada, sin contenido.
+### 🟠 [ALTA] Completar la parte específica de Técnico Auxiliar de Informática (TAI) del Estado
+- **Qué:** `tecnico_informatica` está **LIVE** con el Bloque I (Organización del Estado + Administración electrónica, 9 temas servibles) + 2 temas del Bloque II. Faltan **22 temas marcados "En elaboración"**: Bloque II (Tecnología básica, 3 de 5), Bloque III (Desarrollo de sistemas, 9 temas), Bloque IV (Sistemas y comunicaciones, 10 temas). Esqueleto completo (33 temas, todos visibles), 22 disponible=false.
+- **Por qué:** promesa a Cristina Laorden (feedback `cbf5998b`, 07/07). Ya hay ~20 usuarios con TAI como objetivo, **todos bien asignados** a `tecnico_informatica` (verificado 12/07). Servible en organización, pero la parte técnica de informática (el núcleo) falta.
+- **Cómo:** editorial verificado contra el temario oficial (BOE de la convocatoria TAI), lifecycle `tech_approved`, luego `disponible=true`. `docs/maintenance/crear-nueva-oposicion.md`.
+- **Ojo (revisar):** `coverage_level='con_landing'` pese a tener 11 temas jugables → probablemente debería ser `con_tests` (no infravender, lección Alfonso). Confirmar tema-count vs temario oficial para dar el esqueleto por "perfecto" al 100%.
+- **Estado:** LIVE Bloque I; 22 temas en elaboración. Avisar a Cristina al completar la específica.
 
 ### 🟠 [ALTA] Construir la oposición Ayudantes en Ejecución Penal (Gobierno Vasco)
 - **Qué:** `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` está **catalogada** (⚪) pero sin temario ni tests. Es el equivalente autonómico a Ayudantes de IIPP en el País Vasco (prisiones transferidas al Gobierno Vasco).
 - **Por qué:** promesa explícita al usuario — feedback `b2c2db3f` (adriangarri17@gmail.com, premium, Bilbao, 11/07): le dijimos *"estamos elaborando la oposición… te avisaremos en cuanto esté lista"*. Aún **no hay convocatoria ni temario oficial** (previsto este año); construir cuando salga, verificando cada tema contra el programa oficial.
 - **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. El núcleo común con la estatal (que ya tenemos) se reutiliza. Avisar a `b2c2db3f` al terminar.
 - **Estado:** catalogada, sin contenido. Esperando convocatoria oficial.
+
+### 🟡 [MEDIA] Completar la parte específica (biblioteconomía) de Auxiliar de Biblioteca del Estado
+- **Qué:** la oposición `auxiliar_biblioteca_estado` está LIVE con el Bloque I (legislación, 9 temas servibles, ~8.000 preguntas). Faltan **39 temas marcados "En elaboración"**: Bloque II (Historia del libro, T101-104), Bloque III (Biblioteconomía, T201-230: MARC 21, CDU, tipos de bibliotecas, préstamo, OPAC…), Bloque IV (Práctica, T301-303), y T9 (Ministerio de Cultura) + T11 (Ley 10/2007 y Ley 1/2015 BNE, a importar).
+- **Por qué:** creada 12/07 a raíz del bug de Alfonso Martínez (premium sin contenido). Servible ya en legislación, pero la materia propia de la profesión falta. **Comparte Bloque I con la de Archivos** (tarea de arriba).
+- **Cómo:** editorial verificado contra fuente (manuales de biblioteconomía + normas de catalogación), lifecycle `tech_approved`, luego `disponible=true`. Ley 10/2007 y 1/2015 vía `docs/maintenance/monitoreo-boe-y-crear-leyes-nuevas.md`. Metodología como la específica de ETGOA / T22 comunicación oral IIPP-PV.
+- **Estado:** esqueleto completo + Bloque I servible + go-live 12/07; 39 temas en elaboración.
 
 ### 🟠 [ALTA] Framework profesional de canaries (P1-P3) — que no se repita el incidente 11/07
 - **Qué:** clase base `CanaryProbe` + exclusión central del usuario sintético de analíticas (`SYNTHETIC_USER_IDS`) + migrar todos los canary a la base + guardarraíl CI + runbook. Que ningún write-canary pueda acumular datos sin límite ni contaminar métricas.

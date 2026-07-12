@@ -188,7 +188,7 @@ export const OPOSICIONES: Oposicion[] = [
       {
         id: 'bloque2',
         title: 'Historia del libro y las bibliotecas',
-        subtitle: null,
+        subtitle: 'Temas en elaboración',
         icon: '📜',
         themes: [
           { id: 101, name: 'La imprenta y los incunables', displayNumber: 1 },
@@ -200,7 +200,7 @@ export const OPOSICIONES: Oposicion[] = [
       {
         id: 'bloque3',
         title: 'Biblioteconomía (parte específica)',
-        subtitle: null,
+        subtitle: 'Materia específica, en elaboración',
         icon: '📚',
         themes: [
           { id: 201, name: 'Concepto y clases de bibliotecas', displayNumber: 1 },
@@ -238,7 +238,7 @@ export const OPOSICIONES: Oposicion[] = [
       {
         id: 'bloque4',
         title: 'Parte práctica',
-        subtitle: null,
+        subtitle: 'Temas en elaboración',
         icon: '🧩',
         themes: [
           { id: 301, name: 'Ordenación y conservación de fondos (práctico)', displayNumber: 1 },
