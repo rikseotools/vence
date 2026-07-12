@@ -33,6 +33,10 @@ export const CONVERSION_EVENTS = {
   PREMIUM_GATE_CTA_CLICK: 'premium_gate_cta_click',
   PREMIUM_GATE_DISMISS: 'premium_gate_dismiss',
 
+  // Uso REAL de features avanzadas del configurador (medición para decidir qué gatear).
+  // 1 evento por test creado, con las features activas + plan → v_config_feature_usage.
+  CONFIG_FEATURES_USED: 'config_features_used',
+
   // Premium page
   PREMIUM_PAGE_VIEWED: 'premium_page_viewed',
   PLAN_SELECTED: 'plan_selected',
@@ -147,5 +151,17 @@ export async function trackPremiumGateCtaClick(userId: string, p: PremiumGatePay
 export async function trackPremiumGateDismiss(userId: string, p: PremiumGatePayload): Promise<unknown> {
   return trackConversionEvent(userId, CONVERSION_EVENTS.PREMIUM_GATE_DISMISS, {
     feature: p.feature, kind: p.kind, context: p.context ?? null, ...p.extra, timestamp: new Date().toISOString(),
+  })
+}
+
+// Uso real de features del configurador al crear un test. `features` = ids activos;
+// `plan` = 'free' | 'premium' (lo sabe el cliente, sin coste de BD). Fire-and-forget.
+export async function trackConfigFeaturesUsed(
+  userId: string,
+  p: { features: string[]; plan: 'free' | 'premium'; context?: string },
+): Promise<unknown> {
+  if (!p.features || p.features.length === 0) return // nada avanzado activo → no emitir ruido
+  return trackConversionEvent(userId, CONVERSION_EVENTS.CONFIG_FEATURES_USED, {
+    features: p.features, plan: p.plan, context: p.context ?? 'test_configurator', timestamp: new Date().toISOString(),
   })
 }

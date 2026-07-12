@@ -9,6 +9,8 @@ import { useInteractionTracker } from '@/hooks/useInteractionTracker';
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit';
 import { usePremiumGate } from '@/hooks/usePremiumGate';
 import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal';
+import { activeConfigFeatures } from '@/lib/premium/configFeatures';
+import { trackConfigFeaturesUsed } from '@/lib/services/conversionTracker';
 
 function getOposicionName(positionType: string): string {
   return getOposicionByPositionType(positionType)?.name || 'tu oposición'
@@ -1138,11 +1140,27 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       // El TestPageWrapper manejará este error
     }
 
+    // 📊 Medición: qué features avanzadas se USAN al crear el test, por plan (free/premium)
+    // → v_config_feature_usage. Con esto sabemos qué usan mucho los free = candidatas a gatear.
+    // Un punto único, fire-and-forget, nunca rompe el arranque del test.
+    try {
+      const feats = activeConfigFeatures({
+        excludeRecent, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions,
+        adaptiveMode, difficultyMode,
+        selectedLaws: Array.from(selectedLaws),
+        selectedArticlesByLaw: Object.fromEntries(Array.from(selectedArticlesByLaw.entries()).map(([k, v]) => [k, Array.from(v)])),
+        selectedSectionFilters,
+      })
+      if (feats.length > 0 && currentUser?.id) {
+        void trackConfigFeaturesUsed(currentUser.id, { features: feats, plan: isPremiumUser ? 'premium' : 'free', context: 'test_configurator' })
+      }
+    } catch { /* medición nunca bloquea el test */ }
+
     try {
       // ✅ Pasar configuración al componente padre
       onStartTest?.(config as TestStartConfig)
       console.log('✅ Configuración enviada al componente padre')
-      
+
     } catch (error) {
       console.error('❌ Error enviando configuración:', error)
       alert('Error al iniciar el test. Por favor, inténtalo de nuevo.')
