@@ -1,6 +1,6 @@
 // Guardrail del scaffolder create-oposicion: la validación PURA rechaza los fallos aprendidos.
 // Importa la función REAL de producción (no una copia).
-const { validateSpec, validateScope } = require('../../scripts/create-oposicion.cjs')
+const { validateSpec, validateScope, buildConfigEntry } = require('../../scripts/create-oposicion.cjs')
 
 function validSpec() {
   return {
@@ -122,5 +122,41 @@ describe('validateScope (guardrail FASE 3 — evita el fallo grueso de reuse)', 
 
   test('articles vacío → error', () => {
     expect(validateScope(specWithScope({ 1: [{ law: 'CE', articles: [] }] })).some(e => /no puede estar vacío/.test(e))).toBe(true)
+  })
+})
+
+describe('buildConfigEntry (FASE 4 — entrada oposiciones.ts desde el spec)', () => {
+  const entry = buildConfigEntry(validSpec())
+
+  test('incluye id/slug/positionType coherentes', () => {
+    expect(entry).toMatch(/id: 'ayudantes_ejecucion_penal_pais_vasco'/)
+    expect(entry).toMatch(/slug: 'ayudantes-ejecucion-penal-pais-vasco'/)
+    expect(entry).toMatch(/positionType: 'ayudantes_ejecucion_penal_pais_vasco'/)
+  })
+
+  test('totalTopics == nº de temas del temario', () => {
+    expect(entry).toMatch(/totalTopics: 2/)
+  })
+
+  test('específica lleva displayNumber (topic_number>100)', () => {
+    expect(entry).toMatch(/id: 101, name: '.*', displayNumber: 1/)
+  })
+
+  test('común NO lleva displayNumber', () => {
+    expect(entry).toMatch(/id: 1, name: 'La Constitución' \},/)
+  })
+
+  test('examScoring y administracion desde el spec', () => {
+    expect(entry).toMatch(/penaltyDivisor: 3/)
+    expect(entry).toMatch(/administracion: 'autonomica'/)
+  })
+
+  test('escapa comillas simples en nombres', () => {
+    const s = validSpec(); s.temario[0].titulo = "L'Hospitalet de prueba"
+    expect(buildConfigEntry(s)).toContain("L\\'Hospitalet de prueba")
+  })
+
+  test('genera navLinks con el slug', () => {
+    expect(entry).toMatch(/href: '\/ayudantes-ejecucion-penal-pais-vasco\/test'/)
   })
 })

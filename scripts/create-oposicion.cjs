@@ -136,6 +136,26 @@ function validateScope(spec) {
   return e;
 }
 
+/**
+ * FASE 4 — genera la entrada TS del array OPOSICIONES de `lib/config/oposiciones.ts` desde el spec (PURA).
+ * Todo sale del spec (identity + examScoring + bloques + temario) → no toca BD.
+ */
+function buildConfigEntry(spec) {
+  const id = spec.identity, T = spec.temario, B = spec.bloques;
+  const esc = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const themeLine = t => {
+    const dn = (t.topic_number > 100) ? `, displayNumber: ${t.numero ?? (t.topic_number - 100)}` : '';
+    return `          { id: ${t.topic_number}, name: '${esc(t.titulo)}'${dn} },`;
+  };
+  const blocks = B.map(b => {
+    const themes = T.filter(t => t.bloque === b.numero).map(themeLine).join('\n');
+    return `      {\n        id: 'bloque${b.numero}',\n        title: '${esc(b.titulo)}',\n        subtitle: ${b.subtitulo ? `'${esc(b.subtitulo)}'` : 'null'},\n        icon: '${esc(b.icon || '')}',\n        themes: [\n${themes}\n        ],\n      },`;
+  }).join('\n');
+  const aliases = (id.aliases || []).map(a => `'${esc(a)}'`).join(', ');
+  const emoji = id.emoji || '📋';
+  return `  // ${esc(id.nombre)}\n  {\n    id: '${id.position_type}',\n    slug: '${id.slug}',\n    positionType: '${id.position_type}',\n    examScoring: { penaltyDivisor: ${spec.examScoring.penaltyDivisor}, source: '${esc(spec.examScoring.source)}' },\n    hasPsychometricTest: ${!!id.hasPsychometricTest},\n    name: '${esc(id.nombre)}',\n    shortName: '${esc(id.short_name)}',\n    emoji: '${emoji}',\n    badge: '${esc(id.badge || id.subgrupo)}',\n    color: '${esc(id.color_primario || 'blue')}',\n    administracion: '${esc(id.administracion)}',\n    aliases: [${aliases}],\n    blocks: [\n${blocks}\n    ],\n    totalTopics: ${T.length},\n    navLinks: [\n      { href: '/es', label: 'Inicio', icon: '🏠' },\n      { href: '/${id.slug}', label: 'Mi Oposición', icon: '${emoji}', featured: true },\n      { href: '/${id.slug}/temario', label: 'Temario', icon: '📚' },\n      { href: '/${id.slug}/test', label: 'Tests', icon: '🎯' },\n    ],\n  },\n`;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers de BD
 // ────────────────────────────────────────────────────────────────────────────
@@ -173,6 +193,7 @@ async function main() {
   const specPath = args.find(a => !a.startsWith('--'));
   const dryRun = args.includes('--dry-run');
   const force = args.includes('--force');
+  const insertConfig = args.includes('--insert-config'); // FASE 4: inserta la entrada en lib/config/oposiciones.ts
   if (!specPath) { console.error('Uso: node scripts/create-oposicion.cjs <spec.json> [--dry-run] [--force]'); process.exit(2); }
 
   let spec;
@@ -310,7 +331,28 @@ async function main() {
     const nT = (await c.query('select count(*)::int n from topics where position_type=$1', [PT]).catch(() => ({ rows: [{ n: dryRun ? temario.length : 0 }] }))).rows[0].n;
     console.log(`\n✅ FASE 2${spec.scope ? '+3' : ''} ${dryRun ? '(simulada)' : 'aplicada'} — oposición ${SLUG}`);
     console.log(`   oposiciones id ${oid} (is_active=false) · ${bloques.length} bloques · ${temario.length} topics · convocatoria SSOT · ${(spec.hitos || []).length} hitos` + (spec.scope ? ` · ${scopeRows} filas topic_scope` : ''));
-    console.log(`   SIGUIENTE:${spec.scope ? '' : ' FASE 3 topic_scope (añade sección `scope` al spec o script aparte) +'} gates OBLIGATORIOS: npm run audit:oposicion ${SLUG} && audit:served && verify:scope (auditoría epígrafes con 2 agentes)`);
+    // ── FASE 4: entrada de config oposiciones.ts (siempre se emite a un sidecar; se inserta con --insert-config) ──
+    const configEntry = buildConfigEntry(spec);
+    const sidecar = specPath.replace(/\.json$/, '') + '.config-entry.txt';
+    fs.writeFileSync(sidecar, configEntry);
+    console.log(`   FASE 4: entrada de oposiciones.ts escrita en ${sidecar}`);
+    if (insertConfig && !dryRun) {
+      const OPO = 'lib/config/oposiciones.ts';
+      if (fs.existsSync(OPO)) {
+        let src = fs.readFileSync(OPO, 'utf8');
+        if (src.includes(`id: '${PT}'`)) console.log('   FASE 4: ya presente en oposiciones.ts (no inserto)');
+        else {
+          const anchor = 'export const OPOSICIONES: Oposicion[] = [\n';
+          const i = src.indexOf(anchor);
+          if (i < 0) console.warn('   ⚠️ FASE 4: no encuentro el array OPOSICIONES; inserta a mano desde el sidecar');
+          else { fs.writeFileSync(OPO, src.slice(0, i + anchor.length) + configEntry + src.slice(i + anchor.length)); console.log('   ✅ FASE 4: insertada en oposiciones.ts'); }
+        }
+      } else console.warn(`   ⚠️ FASE 4: ${OPO} no existe en este árbol`);
+    } else if (!dryRun) {
+      console.log(`   FASE 4: para insertar en oposiciones.ts → vuelve a correr con --insert-config, o pega el sidecar a mano`);
+    }
+    console.log(`   PENDIENTE MANUAL: OnboardingModal, perfil, mapeo CCAA (oposiciones-filters), CcaaFlag, rutas (FASE 5).`);
+    console.log(`   GATES OBLIGATORIOS: npm run audit:oposicion ${SLUG} && audit:served && verify:scope (auditoría epígrafes con 2 agentes)`);
     process.exit(0);
   } catch (err) {
     await c.query('ROLLBACK').catch(() => {});
@@ -320,4 +362,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { validateSpec, validateScope, buildInsert };
+module.exports = { validateSpec, validateScope, buildConfigEntry, buildInsert };
