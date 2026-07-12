@@ -36,10 +36,29 @@ function TestConfiguradorContent() {
   // contenido / valor stale), caemos a TODAS las leyes y avisamos por qué + cómo cambiar.
   const [scopeFallback, setScopeFallback] = useState(false)
 
+  // ⏳ Esperar (con spinner) a que el PERFIL resuelva antes de cargar leyes.
+  // AuthContext NO bloquea `loading` en el fetch de perfil (tarda 6.8s+, se hace en
+  // background para no congelar la UI) → `authLoading` pasa a false con `userProfile`
+  // aún null. Si cargásemos leyes ya, iríamos con targetPositionType=null (TODAS las
+  // leyes, sin acotar) y al llegar el perfil re-scope → parpadeo de lista incoherente
+  // (bug UX reportado). Gate: si hay usuario pero aún no perfil, esperamos; con TECHO
+  // de 4s para no colgar a un usuario legítimamente sin perfil.
+  const [profileSettled, setProfileSettled] = useState(false)
+  useEffect(() => {
+    if (authLoading) return
+    if (!user || userProfile) { setProfileSettled(true); return }
+    // usuario logueado pero perfil aún cargando → esperamos, con techo de 4s
+    const t = setTimeout(() => {
+      console.warn('⚠️ [Configurar] Perfil no resolvió en 4s → cargo leyes sin acotar')
+      setProfileSettled(true)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, [authLoading, user, userProfile])
+
   // Cargar leyes: si el usuario tiene oposición y está acotado, SOLO las suyas
   // (?positionType=…); si no, todas. Refetch al cambiar el toggle.
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || !profileSettled) return
 
     // Trae leyes del configurador (acotadas o todas). Lanza si la API falla.
     const fetchLaws = async (withScope: boolean) => {
@@ -91,7 +110,7 @@ function TestConfiguradorContent() {
 
     loadLaws()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, effectiveScoped, targetPositionType])
+  }, [authLoading, profileSettled, effectiveScoped, targetPositionType])
 
   // Calcular total de preguntas disponibles
   const totalQuestionsAvailable = lawsData.reduce((sum, law) => sum + law.questions_count, 0)
@@ -178,13 +197,16 @@ function TestConfiguradorContent() {
     router.push(`/test/multi-ley?${params.toString()}`)
   }
 
-  // Estado de carga
-  if (loading || authLoading) {
+  // Estado de carga — incluye la espera del perfil (`!profileSettled`) para no
+  // mostrar una lista de leyes sin acotar (o vacía) mientras el perfil aún carga.
+  if (loading || authLoading || !profileSettled) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Cargando leyes disponibles...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            {!profileSettled && user ? 'Cargando tu configuración...' : 'Cargando leyes disponibles...'}
+          </p>
         </div>
       </div>
     )
