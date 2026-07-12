@@ -70,3 +70,68 @@ describe('infra-stats — memo in-memory post-auth (anti contención RDS)', () =
     expect(ttlMs).toBeLessThanOrEqual(60_000)
   })
 })
+
+// SIMULACIÓN (capa memoria feedback_feature_multiples_capas_seguridad): réplica mínima
+// del memo real (misma forma que system-health) con reloj inyectable, para PROBAR el
+// comportamiento: hit dentro del TTL (no re-computa), miss tras expirar, aislamiento por
+// key (window), y que un cómputo que lanza NO envenena el cache (no se cachea el fallo).
+describe('simulación — comportamiento del memo (TTL + por-key + no cachea fallos)', () => {
+  type Entry = { at: number; payload: Record<string, unknown> }
+  const makeMemo = (ttlMs: number, clock: () => number) => {
+    const store = new Map<string, Entry>()
+    let computes = 0
+    const get = (k: string) => {
+      const e = store.get(k)
+      return e && clock() - e.at < ttlMs ? e.payload : null
+    }
+    const set = (k: string, p: Record<string, unknown>) => store.set(k, { at: clock(), payload: p })
+    // simula el flujo del endpoint: si hay hit lo devuelve; si no, computa+guarda
+    const serve = (k: string, compute: () => Record<string, unknown>) => {
+      const hit = get(k)
+      if (hit) return { ...hit, cached: true }
+      const p = compute() // si lanza, NO llega a set() → el fallo no se cachea
+      set(k, p)
+      computes++
+      return p
+    }
+    return { serve, computes: () => computes }
+  }
+
+  it('hit dentro del TTL: 2ª llamada NO re-computa y marca cached:true', () => {
+    let now = 1000
+    const memo = makeMemo(30_000, () => now)
+    const a = memo.serve('24h', () => ({ v: 1 }))
+    now += 10_000 // dentro de 30s
+    const b = memo.serve('24h', () => ({ v: 999 }))
+    expect(a).toEqual({ v: 1 })
+    expect(b).toEqual({ v: 1, cached: true }) // sirve el memoizado, no el compute nuevo
+    expect(memo.computes()).toBe(1) // solo computó 1 vez
+  })
+
+  it('miss tras expirar el TTL: re-computa', () => {
+    let now = 1000
+    const memo = makeMemo(30_000, () => now)
+    memo.serve('24h', () => ({ v: 1 }))
+    now += 31_000 // pasó el TTL
+    const b = memo.serve('24h', () => ({ v: 2 }))
+    expect(b).toEqual({ v: 2 })
+    expect(memo.computes()).toBe(2)
+  })
+
+  it('aislamiento por key (window): 1h y 24h no comparten cache', () => {
+    let now = 1000
+    const memo = makeMemo(30_000, () => now)
+    memo.serve('1h', () => ({ w: '1h' }))
+    const b = memo.serve('24h', () => ({ w: '24h' }))
+    expect(b).toEqual({ w: '24h' }) // no devuelve el de 1h
+    expect(memo.computes()).toBe(2)
+  })
+
+  it('un cómputo que lanza NO envenena el cache (siguiente intento re-computa)', () => {
+    let now = 1000
+    const memo = makeMemo(30_000, () => now)
+    expect(() => memo.serve('24h', () => { throw new Error('DB down') })).toThrow('DB down')
+    const b = memo.serve('24h', () => ({ ok: true })) // reintento tras recuperación
+    expect(b).toEqual({ ok: true })
+  })
+})
