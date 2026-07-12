@@ -156,6 +156,74 @@ function buildConfigEntry(spec) {
   return `  // ${esc(id.nombre)}\n  {\n    id: '${id.position_type}',\n    slug: '${id.slug}',\n    positionType: '${id.position_type}',\n    examScoring: { penaltyDivisor: ${spec.examScoring.penaltyDivisor}, source: '${esc(spec.examScoring.source)}' },\n    hasPsychometricTest: ${!!id.hasPsychometricTest},\n    name: '${esc(id.nombre)}',\n    shortName: '${esc(id.short_name)}',\n    emoji: '${emoji}',\n    badge: '${esc(id.badge || id.subgrupo)}',\n    color: '${esc(id.color_primario || 'blue')}',\n    administracion: '${esc(id.administracion)}',\n    aliases: [${aliases}],\n    blocks: [\n${blocks}\n    ],\n    totalTopics: ${T.length},\n    navLinks: [\n      { href: '/es', label: 'Inicio', icon: '🏠' },\n      { href: '/${id.slug}', label: 'Mi Oposición', icon: '${emoji}', featured: true },\n      { href: '/${id.slug}/temario', label: 'Temario', icon: '📚' },\n      { href: '/${id.slug}/test', label: 'Tests', icon: '🎯' },\n    ],\n  },\n`;
 }
 
+/**
+ * FASE 5 — genera las 8 rutas por-oposición copiando una plantilla y sustituyendo desde el spec.
+ * Robusto: regenera getBlockInfo desde los bloques, y hace un STRAGGLER CHECK que LANZA si queda
+ * cualquier literal de la plantilla (evita los stragglers de SEO que aparecían con el sed manual).
+ * Devuelve { files, warnings }. `templateSlug` por defecto una oposición reciente estable.
+ */
+function scaffoldRoutes(spec, opts = {}) {
+  const TPL = opts.templateSlug || 'administrativo-universidad-leon';
+  const TPL_PT = TPL.replace(/-/g, '_');
+  const id = spec.identity, slug = id.slug, PT = id.position_type;
+  const dst = `app/${slug}`, srcDir = `app/${TPL}`;
+  if (!fs.existsSync(srcDir)) throw new Error(`FASE 5: plantilla ${srcDir} no existe`);
+  if (fs.existsSync(dst)) return { files: [], warnings: [`${dst} ya existe (no sobreescribo)`] };
+  fs.cpSync(srcDir, dst, { recursive: true });
+
+  // getBlockInfo desde los bloques del spec (rango de topic_number y offset por bloque)
+  const byBloque = {};
+  for (const t of spec.temario) { (byBloque[t.bloque] = byBloque[t.bloque] || []).push(t); }
+  const branches = spec.bloques.map((b, i) => {
+    const ts = byBloque[b.numero] || []; if (!ts.length) return '';
+    const nums = ts.map(t => t.topic_number); const lo = Math.min(...nums), hi = Math.max(...nums);
+    const offset = ts[0].topic_number - (ts[0].numero ?? ts[0].topic_number);
+    const disp = offset ? `topicNumber - ${offset}` : 'topicNumber';
+    const cond = `topicNumber >= ${lo} && topicNumber <= ${hi}`;
+    return `${i === 0 ? '  if' : '  } else if'} (${cond}) {\n    return { block: '${b.titulo.replace(/'/g, "\\'")}', displayNum: ${disp} }`;
+  }).filter(Boolean).join('\n');
+  const getBlockInfo = `function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {\n${branches}\n  }\n  return { block: '', displayNum: topicNumber }`;
+
+  // sustituciones (orden: más específico primero). Literales de la plantilla → valores del spec.
+  const boletin = (spec.convocatoria && spec.convocatoria.diario_oficial) || 'BOE';
+  const fnName = 'Tests' + PT.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join('') + 'Page';
+  const subs = [
+    ['TestsAdministrativoUniversidadLeonPage', fnName],
+    [TPL, slug], [TPL_PT, PT],
+    ['Escala Administrativa de la Universidad de León', id.nombre],
+    ['Escala Administrativa Universidad de León', id.nombre],
+    ['Escala Administrativa ULE', id.nombre], ['Universidad de León', id.nombre], ['Escala Administrativa', id.nombre],
+    // variantes lowercase (descripciones SEO)
+    ['escala administrativa universidad de leon', id.nombre.toLowerCase()],
+    ['administrativo universidad de leon', id.short_name.toLowerCase()],
+    ['universidad de leon', id.short_name.toLowerCase()],
+    ['25 Temas Oficiales', `${spec.temario.length} Temas Oficiales`], ['25 temas', `${spec.temario.length} temas`], ['25 temas', `${spec.temario.length} temas`],
+    ['5 grupos', `${spec.bloques.length} partes`], ['5 bloques', `${spec.bloques.length} partes`],
+    ['BOCYL', boletin], ['Grupo C1', `Subgrupo ${id.subgrupo}`], ['11 plazas', 'plazas'],
+  ];
+  const files = [];
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => { const p = `${d}/${e.name}`; e.isDirectory() ? walk(p) : files.push(p); });
+  walk(dst);
+  for (const f of files) {
+    let s = fs.readFileSync(f, 'utf8');
+    // reemplazar el array de keywords SEO entero por los aliases del spec (evita enumerar keywords de la plantilla)
+    const aliasArr = (id.aliases || []).map(a => `'${String(a).replace(/'/g, "\\'")}'`).join(', ');
+    if (aliasArr) s = s.replace(/keywords:\s*\[[^\]]*\]/g, `keywords: [${aliasArr}]`);
+    for (const [from, to] of subs) s = s.split(from).join(to);
+    // getBlockInfo: reemplazar la función entera (si el fichero la tiene)
+    if (/function getBlockInfo\(topicNumber: number\)/.test(s)) {
+      s = s.replace(/\/\/[^\n]*\nfunction getBlockInfo\(topicNumber: number\)[\s\S]*?\n  return \{ block: '', displayNum: topicNumber \}/m,
+        `// Bloques de ${id.short_name} (generado por el scaffolder desde el spec)\n${getBlockInfo}`);
+    }
+    fs.writeFileSync(f, s);
+  }
+  // STRAGGLER CHECK: ningún literal de la plantilla debe sobrevivir
+  const straggler = /administrativo-universidad-leon|administrativo_universidad_leon|Universidad de Le[oó]n|Escala Administrativa|BOCYL|25 temas/i;
+  const bad = files.filter(f => straggler.test(fs.readFileSync(f, 'utf8')));
+  if (bad.length) throw new Error(`FASE 5: quedan literales de la plantilla en ${bad.length} fichero(s): ${bad.map(f => f.replace(dst + '/', '')).join(', ')} — revisa el mapa de sustituciones`);
+  return { files: files.map(f => f.replace('app/', '')), warnings: [] };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers de BD
 // ────────────────────────────────────────────────────────────────────────────
@@ -194,6 +262,7 @@ async function main() {
   const dryRun = args.includes('--dry-run');
   const force = args.includes('--force');
   const insertConfig = args.includes('--insert-config'); // FASE 4: inserta la entrada en lib/config/oposiciones.ts
+  const doRoutes = args.includes('--routes');             // FASE 5: genera las 8 rutas por-oposición
   if (!specPath) { console.error('Uso: node scripts/create-oposicion.cjs <spec.json> [--dry-run] [--force]'); process.exit(2); }
 
   let spec;
@@ -351,7 +420,17 @@ async function main() {
     } else if (!dryRun) {
       console.log(`   FASE 4: para insertar en oposiciones.ts → vuelve a correr con --insert-config, o pega el sidecar a mano`);
     }
-    console.log(`   PENDIENTE MANUAL: OnboardingModal, perfil, mapeo CCAA (oposiciones-filters), CcaaFlag, rutas (FASE 5).`);
+    // ── FASE 5: rutas por-oposición ──
+    if (doRoutes && !dryRun) {
+      try {
+        const { files, warnings } = scaffoldRoutes(spec);
+        warnings.forEach(w => console.warn('   ⚠️ FASE 5:', w));
+        if (files.length) console.log(`   ✅ FASE 5: ${files.length} rutas generadas en app/${SLUG}/ (getBlockInfo desde el spec, straggler-check OK)`);
+      } catch (e) { console.error('   ❌ FASE 5:', e.message); }
+    } else if (!dryRun) {
+      console.log(`   FASE 5: para generar las rutas → --routes`);
+    }
+    console.log(`   PENDIENTE MANUAL (registros pequeños): OnboardingModal, perfil, mapeo CCAA (oposiciones-filters), CcaaFlag.`);
     console.log(`   GATES OBLIGATORIOS: npm run audit:oposicion ${SLUG} && audit:served && verify:scope (auditoría epígrafes con 2 agentes)`);
     process.exit(0);
   } catch (err) {
@@ -362,4 +441,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { validateSpec, validateScope, buildConfigEntry, buildInsert };
+module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, buildInsert };
