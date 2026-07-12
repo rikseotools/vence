@@ -635,7 +635,7 @@ Si vuelven a aparecer errores de `CONNECT_TIMEOUT` o `statement timeout` en Verc
 
 Desde el 30/04/2026, las páginas de temario, test y landings usan `force-dynamic` en vez de generación estática (`generateStaticParams`). Esto significa que se renderizan en el servidor en la primera visita.
 
-> ⚠️ **Excepción pendiente: `/leyes/[law]` sigue en SSG masivo** (`generateStaticParams` → 1.278 leyes). Es la ÚNICA ruta de alto volumen que NO migró a on-demand, y causa la **flakiness del build** (CONNECT_TIMEOUT a RDS + OOM, observado 12/07/2026). Diseño del fix (hacerla consistente, SEO-safe): **`docs/runbooks/build-resilience-leyes-ondemand.md`**.
+> ✅ **`/leyes/[law]` migrado a on-demand (12/07/2026)** — era la ÚNICA ruta de alto volumen que quedaba en SSG masivo (`generateStaticParams` → 1.278 leyes pegando a RDS en build) y causaba la **flakiness del build** (CONNECT_TIMEOUT + OOM). Ahora: `generateStaticParams() => []` + `dynamicParams = true` + `revalidate = 86400` (ISR on-demand; la página no lee `searchParams` → ISR limpio). **Verificado 0 prerenders en el build.** Las 23 leyes top-SEO se calientan post-deploy (ver warming, `HOT_LAW_SLUGS`). SEO safe (mismo HTML, nada 404). Detalle: **`docs/runbooks/build-resilience-leyes-ondemand.md`**. Guardarraíl `__tests__/guardrails/leyes-ondemand.test.ts` (dynamicParams nunca false).
 
 ### Por qué no SSG
 
@@ -688,6 +688,7 @@ node scripts/warm-cache-post-deploy.js https://www.vence.es
 **Qué hace:**
 - Lee oposiciones activas y temas disponibles de la BD
 - Genera ~963 URLs: landing + test + temario index + cada tema + estáticas
+- **+ las 23 leyes top-SEO** (`HOT_LAW_SLUGS`, `/leyes/<slug>`): desde el 12/07 `/leyes/[law]` es on-demand → se calientan aquí para que el 1er hit de Googlebot no sea en frío. Actualizar la lista con `npm run gsc:seo` si el ranking cambia.
 - Visita todas con 8 peticiones concurrentes
 - Si no hay BD (CI sin secrets), parsea el sitemap como fallback
 - Reporta progreso y errores
@@ -752,6 +753,7 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-07-12 | **`/leyes/[law]` migrado a on-demand** (fin del SSG masivo de 1.278 leyes = raíz de la flakiness del build `CONNECT_TIMEOUT`+OOM). `generateStaticParams=>[]` + `dynamicParams=true` + `revalidate=86400`. Warming ampliado con las 23 leyes top-SEO (`HOT_LAW_SLUGS` en `warm-cache-post-deploy.js`). Nota «Excepción pendiente» de §Renderizado actualizada a ✅ HECHO. Verificado 0 prerenders en build. Runbook `build-resilience-leyes-ondemand.md`. |
 | 2026-07-09 | **Buscador + paginación server-side en `/teoria`** (commit teoria). Nueva matview `mv_teoria_law_catalog` (SSOT del catálogo, GIN pg_trgm + unaccent) reemplaza el `fetchLawsList` de ~4s. `getCachedLaws`/`teoria-laws-list` eliminado; nuevos caches `getCachedTotals` + `getCachedListingPage` como **`versionedCache`** (cross-instancia). Búsquedas (`?q=`) van en vivo (no cacheadas). `/api/admin/revalidate-temario` ahora hace invalidación completa de teoría: bump versión + `REFRESH MATERIALIZED VIEW CONCURRENTLY` + revalidateTag. Sección #2 reescrita. |
 | 2026-06-01 | **Sección «Materialized views Postgres (`/api/topics/[numero]`) — Fase D-bis Iter 1.5» añadida.** Documenta las 3 capas de cache (MV + Redis + Next.js ISR) que afectan a este endpoint y el procedimiento obligatorio (refresh MV + invalidateMany Redis + revalidateTag) tras INSERT/UPDATE masivo de `questions`. Origen: caso real con 160 preguntas IA Cat+PV añadidas, BD raw=50q pero API devolvía 10-28q porque las MVs no se refrescan con `revalidateTag` y nadie había documentado que hay que hacerlo a mano. Añadido `/api/topics/[numero]` a la tabla de endpoints Redis. |
 | 2026-05-25 | **Fix bug `/api/admin/revalidate` cross-runtime** (commit `3980cf87`). Antes del fix: invocar el endpoint con `{tag:'test-config'}` solo invalidaba `unstable_cache` de Next.js — el backend NestJS canary `test-config` (activo desde commit `93fedcf5`) seguía sirviendo cache versionado viejo 6-24h. Fix: mapping `TAG_INVALIDATORS` que llama el invalidador específico (`invalidateTestConfigCache()`) cuando el tag tiene counterpart cross-runtime. Response añade `crossRuntime: true/false` para confirmación. Nueva sección «Cross-runtime cache (Bloque 3)» añadida al manual documentando el patrón versioned cache keys + warning explícito en «Opción 1: revalidateTag desde código» para no caer otra vez en el mismo bug. |
