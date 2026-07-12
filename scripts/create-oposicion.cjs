@@ -103,6 +103,39 @@ function validateSpec(spec) {
   return e;
 }
 
+/**
+ * Valida la sección `scope` del spec (FASE 3), PURA (sin BD).
+ * `scope` = { "<topic_number>": [ {law, articles:[...]} | {law, wholeLaw:true} ] }.
+ * Codifica el fallo estrella de IIPP-PV (12/07): reutilizar scope grueso de otra oposición mete
+ * DUPLICADOS exactos entre temas hermanos (T109=T110, T124=T112, T125=T121). Aquí se cazan antes de aplicar.
+ */
+function validateScope(spec) {
+  const e = [];
+  if (!spec || !spec.scope) return e; // scope es opcional (se puede aplicar aparte)
+  const topicNums = new Set((spec.temario || []).map(t => t.topic_number));
+  const seen = new Map(); // firma normalizada -> primer tema que la usó
+  for (const [tnStr, entries] of Object.entries(spec.scope)) {
+    const tn = Number(tnStr);
+    if (!topicNums.has(tn)) e.push(`scope: tema ${tn} no existe en el temario`);
+    if (!Array.isArray(entries)) { e.push(`scope[${tn}] debe ser un array`); continue; }
+    if (entries.length === 0) continue; // vacío = tema En desarrollo (legítimo: editorial/autonómico sin ley)
+    const sig = [];
+    for (const en of entries) {
+      if (!en || !en.law) { e.push(`scope[${tn}]: cada entrada necesita 'law'`); continue; }
+      const hasArts = Array.isArray(en.articles);
+      if (!hasArts && en.wholeLaw !== true) e.push(`scope[${tn}] (${en.law}): necesita 'articles' (array) o 'wholeLaw:true'`);
+      if (hasArts && en.articles.length === 0) e.push(`scope[${tn}] (${en.law}): 'articles' no puede estar vacío (usa wholeLaw o quita la entrada)`);
+      sig.push(en.law + ':' + (hasArts ? [...en.articles].map(String).sort().join(',') : 'ALL'));
+    }
+    const signature = sig.sort().join('|');
+    if (signature) {
+      if (seen.has(signature)) e.push(`scope: tema ${tn} tiene EXACTAMENTE el mismo scope que el tema ${seen.get(signature)} (duplicado — diferéncialos por artículos, o deja uno vacío si es materia distinta sin ley propia)`);
+      else seen.set(signature, tn);
+    }
+  }
+  return e;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers de BD
 // ────────────────────────────────────────────────────────────────────────────
@@ -146,9 +179,9 @@ async function main() {
   try { spec = JSON.parse(fs.readFileSync(specPath, 'utf8')); }
   catch (e) { console.error('❌ spec ilegible:', e.message); process.exit(2); }
 
-  const errors = validateSpec(spec);
+  const errors = [...validateSpec(spec), ...validateScope(spec)];
   if (errors.length) { console.error(`❌ Spec inválido (${errors.length}):`); errors.forEach(x => console.error('  -', x)); process.exit(1); }
-  console.log('✅ Spec válido.');
+  console.log('✅ Spec válido' + (spec.scope ? ' (incluye scope FASE 3).' : '.'));
 
   const id = spec.identity, conv = spec.convocatoria, landing = spec.landing || {};
   const PT = id.position_type, SLUG = id.slug;
@@ -243,13 +276,41 @@ async function main() {
       await c.query(hIns.text, hIns.params);
     }
 
+    // ── FASE 3: topic_scope (si el spec lo trae) ──
+    let scopeRows = 0;
+    if (spec.scope) {
+      const lawCache = {};
+      const resolveLaw = async sn => (sn in lawCache) ? lawCache[sn]
+        : (lawCache[sn] = (await c.query('select id from laws where short_name=$1 and is_active is not false order by id limit 1', [sn])).rows[0]?.id || null);
+      const topicByNum = {};
+      (await c.query('select topic_number, id from topics where position_type=$1', [PT])).rows.forEach(r => topicByNum[r.topic_number] = r.id);
+      for (const [tnStr, entries] of Object.entries(spec.scope)) {
+        const topicId = topicByNum[Number(tnStr)]; if (!topicId) continue;
+        for (const en of entries) {
+          const lid = await resolveLaw(en.law);
+          if (!lid) throw new Error(`scope tema ${tnStr}: ley "${en.law}" no existe en BD (impórtala antes o corrige el short_name)`);
+          let arts = en.wholeLaw ? null : [...new Set(en.articles.map(String))].sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0) || a.localeCompare(b));
+          if (arts) { // verificar existencia real de los artículos (caza rangos/typos)
+            const found = (await c.query('select array_agg(distinct article_number) a from articles where law_id=$1 and article_number = any($2)', [lid, arts])).rows[0].a || [];
+            const missing = arts.filter(a => !found.includes(a));
+            if (missing.length) console.warn(`  ⚠️ scope T${tnStr} (${en.law}): ${missing.length} art. no existen en BD, se omiten: ${missing.slice(0, 8).join(',')}`);
+            arts = arts.filter(a => found.includes(a));
+            if (!arts.length) { console.warn(`  ⚠️ scope T${tnStr} (${en.law}): sin artículos válidos, entrada omitida`); continue; }
+          }
+          await c.query('insert into topic_scope (topic_id, law_id, article_numbers) values ($1,$2,$3) on conflict do nothing', [topicId, lid, arts]);
+          scopeRows++;
+        }
+      }
+      await c.query(`update topics t set disponible=(exists(select 1 from topic_scope ts join articles a on a.law_id=ts.law_id join questions q on q.primary_article_id=a.id where ts.topic_id=t.id and q.is_active=true and (ts.article_numbers is null or a.article_number=any(ts.article_numbers)))) where t.position_type=$1`, [PT]);
+    }
+
     if (dryRun) { await c.query('ROLLBACK'); console.log('\n🧪 --dry-run: todo OK, ROLLBACK (no persistido).'); }
     else await c.query('COMMIT');
 
     const nT = (await c.query('select count(*)::int n from topics where position_type=$1', [PT]).catch(() => ({ rows: [{ n: dryRun ? temario.length : 0 }] }))).rows[0].n;
-    console.log(`\n✅ FASE 2 ${dryRun ? '(simulada)' : 'aplicada'} — oposición ${SLUG}`);
-    console.log(`   oposiciones id ${oid} (is_active=false) · ${bloques.length} bloques · ${temario.length} topics · convocatoria SSOT · ${(spec.hitos || []).length} hitos`);
-    console.log(`   SIGUIENTE: FASE 3 topic_scope (aplicar mapeo) + gates: npm run audit:oposicion ${SLUG} && audit:served && audit:epigrafe`);
+    console.log(`\n✅ FASE 2${spec.scope ? '+3' : ''} ${dryRun ? '(simulada)' : 'aplicada'} — oposición ${SLUG}`);
+    console.log(`   oposiciones id ${oid} (is_active=false) · ${bloques.length} bloques · ${temario.length} topics · convocatoria SSOT · ${(spec.hitos || []).length} hitos` + (spec.scope ? ` · ${scopeRows} filas topic_scope` : ''));
+    console.log(`   SIGUIENTE:${spec.scope ? '' : ' FASE 3 topic_scope (añade sección `scope` al spec o script aparte) +'} gates OBLIGATORIOS: npm run audit:oposicion ${SLUG} && audit:served && verify:scope (auditoría epígrafes con 2 agentes)`);
     process.exit(0);
   } catch (err) {
     await c.query('ROLLBACK').catch(() => {});
@@ -259,4 +320,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { validateSpec, buildInsert };
+module.exports = { validateSpec, validateScope, buildInsert };

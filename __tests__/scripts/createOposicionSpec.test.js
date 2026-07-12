@@ -1,6 +1,6 @@
 // Guardrail del scaffolder create-oposicion: la validación PURA rechaza los fallos aprendidos.
 // Importa la función REAL de producción (no una copia).
-const { validateSpec } = require('../../scripts/create-oposicion.cjs')
+const { validateSpec, validateScope } = require('../../scripts/create-oposicion.cjs')
 
 function validSpec() {
   return {
@@ -82,5 +82,45 @@ describe('validateSpec (guardrail scaffolder oposiciones)', () => {
   test('bloques_count incoherente → error', () => {
     const s = validSpec(); s.identity.bloques_count = 5
     expect(validateSpec(s).some(e => /bloques_count/.test(e))).toBe(true)
+  })
+})
+
+describe('validateScope (guardrail FASE 3 — evita el fallo grueso de reuse)', () => {
+  function specWithScope(scope) { const s = validSpec(); s.scope = scope; return s }
+
+  test('sin sección scope → sin errores (opcional)', () => {
+    expect(validateScope(validSpec())).toEqual([])
+  })
+
+  test('scope válido (artículos + wholeLaw + vacío) → sin errores', () => {
+    expect(validateScope(specWithScope({
+      1: [{ law: 'CE', articles: ['1', '2', '10'] }],
+      101: [{ law: 'CP', wholeLaw: true }],
+      // un tema En desarrollo (vacío) es legítimo
+    }))).toEqual([])
+  })
+
+  test('DUPLICADO exacto de scope entre dos temas → error (caza T109=T110, T124=T112 de hoy)', () => {
+    const s = specWithScope({
+      1: [{ law: 'CE', articles: ['1', '2'] }],
+      101: [{ law: 'CE', articles: ['2', '1'] }], // mismo scope (orden distinto) → duplicado
+    })
+    expect(validateScope(s).some(e => /mismo scope que el tema/.test(e))).toBe(true)
+  })
+
+  test('entrada sin law → error', () => {
+    expect(validateScope(specWithScope({ 1: [{ articles: ['1'] }] })).some(e => /necesita 'law'/.test(e))).toBe(true)
+  })
+
+  test('entrada sin articles ni wholeLaw → error', () => {
+    expect(validateScope(specWithScope({ 1: [{ law: 'CE' }] })).some(e => /'articles'.*wholeLaw/.test(e))).toBe(true)
+  })
+
+  test('scope de un tema inexistente en el temario → error', () => {
+    expect(validateScope(specWithScope({ 999: [{ law: 'CE', articles: ['1'] }] })).some(e => /no existe en el temario/.test(e))).toBe(true)
+  })
+
+  test('articles vacío → error', () => {
+    expect(validateScope(specWithScope({ 1: [{ law: 'CE', articles: [] }] })).some(e => /no puede estar vacío/.test(e))).toBe(true)
   })
 })
