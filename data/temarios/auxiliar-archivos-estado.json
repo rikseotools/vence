@@ -1,0 +1,103 @@
+{
+  "identity": {
+    "nombre": "Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Archivos)",
+    "short_name": "Auxiliar de Archivos (Estado)",
+    "slug": "auxiliar-archivos-estado",
+    "position_type": "auxiliar_archivos_estado",
+    "grupo": "C",
+    "subgrupo": "C2",
+    "categoria": "C2",
+    "tipo_acceso": "libre",
+    "administracion": "estado",
+    "administracion_display": "Estado",
+    "ccaa": "estado",
+    "familia": "administracion_general",
+    "titulo_requerido": "Bachiller o Técnico",
+    "coverage_level": "con_tests"
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "BOE-A-2025-23564: ejercicio único, 100 preguntas (Bloques I-III) + 2 supuestos de 15 (Bloque IV); penalización -1/3 por error, en blanco no penaliza."
+  },
+  "landing": {
+    "estadisticas": [
+      { "numero": "25", "texto": "Plazas (Sección Archivos, turno libre)", "color": "text-green-600" },
+      { "numero": "C2", "texto": "Subgrupo", "color": "text-blue-600" },
+      { "numero": "48", "texto": "Temas del programa", "color": "text-purple-600" }
+    ],
+    "faqs": [
+      { "pregunta": "¿Qué titulación necesito?", "respuesta": "Título de Bachiller o Técnico (o estar en condiciones de obtenerlo al final del plazo de solicitudes)." },
+      { "pregunta": "¿Cómo es el examen?", "respuesta": "Un ejercicio único con dos partes: 100 preguntas tipo test sobre los Bloques I-III y dos supuestos prácticos de 15 preguntas cada uno (Bloque IV). Las respuestas incorrectas penalizan (-1/3); las dejadas en blanco no penalizan." },
+      { "pregunta": "¿Cuántas plazas hay?", "respuesta": "La convocatoria de 2025 ofertó 25 plazas de turno libre en la Sección Archivos de la Escala Auxiliar del Ministerio de Cultura." },
+      { "pregunta": "¿Qué diferencia hay con la Sección Bibliotecas?", "respuesta": "Comparten la parte de legislación general, pero la Sección Archivos tiene su propia legislación archivística, su bloque de historia cultural y su parte específica de archivística." }
+    ]
+  },
+  "bloques": [
+    { "numero": 1, "titulo": "Legislación", "icon": "⚖️" },
+    { "numero": 2, "titulo": "Historia cultural", "icon": "🏛️" },
+    { "numero": 3, "titulo": "Archivística (parte específica)", "icon": "🗂️" },
+    { "numero": 4, "titulo": "Parte práctica", "icon": "🧩" }
+  ],
+  "temario": [
+    { "bloque": 1, "numero": 1, "topic_number": 1, "titulo": "La Constitución Española de 1978. La Corona", "epigrafe": "La Constitución Española de 1978: estructura y contenido. Los derechos y libertades públicas. La Corona. Funciones constitucionales del Rey. Sucesión y Regencia." },
+    { "bloque": 1, "numero": 2, "topic_number": 2, "titulo": "Cortes Generales, Gobierno y Poder Judicial", "epigrafe": "Las Cortes Generales. El Congreso de los Diputados. El Senado. Funciones de las Cámaras. El Gobierno y la Administración Pública. El Poder Judicial." },
+    { "bloque": 1, "numero": 3, "topic_number": 3, "titulo": "Organización territorial del Estado", "epigrafe": "Organización territorial del Estado. Las Comunidades Autónomas. Los Estatutos de Autonomía. La distribución de competencias entre Estado y Comunidades Autónomas. La Administración local." },
+    { "bloque": 1, "numero": 4, "topic_number": 4, "titulo": "La Administración General del Estado", "epigrafe": "La Administración General del Estado. Órganos superiores. Órganos directivos. Delegados y Subdelegados del Gobierno. La administración del Estado en el exterior." },
+    { "bloque": 1, "numero": 5, "topic_number": 5, "titulo": "Disposiciones y actos administrativos. El procedimiento", "epigrafe": "Disposiciones y actos administrativos. El procedimiento administrativo. Revisión de oficio. Recursos administrativos." },
+    { "bloque": 1, "numero": 6, "topic_number": 6, "titulo": "El Estatuto Básico del Empleado Público", "epigrafe": "El Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Clases de personal. Adquisición y pérdida de la condición de funcionario. Situaciones administrativas. Régimen disciplinario." },
+    { "bloque": 1, "numero": 7, "topic_number": 7, "titulo": "Políticas de Igualdad de Género", "epigrafe": "Políticas de Igualdad de Género. La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres. La Ley 15/2022 integral para la igualdad de trato y la no discriminación. La Ley 4/2023 para la igualdad real y efectiva de las personas trans y LGTBI. Las Unidades de Igualdad. Políticas contra la Violencia de Género (LO 1/2004). Políticas de atención a personas con discapacidad y/o dependientes." },
+    { "bloque": 1, "numero": 8, "topic_number": 8, "titulo": "Transparencia y derecho de acceso en los archivos", "epigrafe": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno. El Consejo de Transparencia y Buen Gobierno. Las Unidades de Información y Transparencia (UITS). El derecho de acceso de los ciudadanos a la información pública y su aplicación en los archivos de oficina o de gestión, centrales, intermedios e históricos." },
+    { "bloque": 1, "numero": 9, "topic_number": 9, "titulo": "El Ministerio de Cultura y los archivos", "epigrafe": "El Ministerio de Cultura. Organización, competencias, organismos y políticas públicas en materia de archivos y patrimonio documental." },
+    { "bloque": 1, "numero": 10, "topic_number": 10, "titulo": "Archivos y Patrimonio Documental en la Ley 16/1985", "epigrafe": "Los Archivos y el Patrimonio Documental Español en la Ley 16/1985, de 25 de junio, del Patrimonio Histórico Español." },
+    { "bloque": 1, "numero": 11, "topic_number": 11, "titulo": "El Sistema Español de Archivos (RD 1708/2011)", "epigrafe": "El Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos y su régimen de acceso." },
+
+    { "bloque": 2, "numero": 1, "topic_number": 101, "titulo": "Los reinos de la península Ibérica en la Edad Media", "epigrafe": "Organización política, sociedad y cultura de los reinos de la península Ibérica durante la Edad Media." },
+    { "bloque": 2, "numero": 2, "topic_number": 102, "titulo": "Ciencia, técnica y cultura escrita en la Edad Media peninsular", "epigrafe": "La ciencia, la técnica y la cultura escrita de las comunidades cristiana, hebrea y musulmana de la península Ibérica durante la Edad Media." },
+    { "bloque": 2, "numero": 3, "topic_number": 103, "titulo": "El Renacimiento español", "epigrafe": "El Renacimiento español: contexto histórico y cultural." },
+    { "bloque": 2, "numero": 4, "topic_number": 104, "titulo": "El Barroco español", "epigrafe": "El Barroco español: contexto histórico y cultural." },
+    { "bloque": 2, "numero": 5, "topic_number": 105, "titulo": "El Siglo de las Luces", "epigrafe": "El Siglo de las Luces: contexto histórico y peculiaridades de la Ilustración en España y en Ultramar." },
+    { "bloque": 2, "numero": 6, "topic_number": 106, "titulo": "Cultura y sociedad en España en el siglo XIX", "epigrafe": "Cultura y sociedad en España y sus dominios durante el siglo XIX." },
+    { "bloque": 2, "numero": 7, "topic_number": 107, "titulo": "Cultura y pensamiento en España en el siglo XX", "epigrafe": "Cultura y pensamiento en España durante el siglo XX. La organización de la política cultural gubernamental y de las principales instituciones culturales del Estado: Archivos, Bibliotecas y Museos." },
+
+    { "bloque": 3, "numero": 1, "topic_number": 201, "titulo": "Concepto de Archivística, archivo y documento", "epigrafe": "Concepto y definición de Archivística. Concepto y definición de archivo y de documento. Concepto de información archivística. Valores del documento. El documento electrónico." },
+    { "bloque": 3, "numero": 2, "topic_number": 202, "titulo": "Principio de procedencia, ciclo vital y continuum", "epigrafe": "Conceptos de principio de procedencia y respeto al orden natural de los documentos, de ciclo vital de los documentos y de continuum o de continuidad de los documentos." },
+    { "bloque": 3, "numero": 3, "topic_number": 203, "titulo": "Tipos de archivos según el ciclo vital", "epigrafe": "Tipos de archivos según el ciclo vital de los documentos. El archivo de oficina, central, intermedio e histórico. Instrumentos de control, gestión y descripción de los diferentes tipos de archivo." },
+    { "bloque": 3, "numero": 4, "topic_number": 204, "titulo": "Ingreso, instalación, transferencias y préstamos", "epigrafe": "Sistemas ordinarios y extraordinarios de ingreso de documentos en los archivos. Normas básicas de instalación de documentos. Transferencias y préstamos de documentos." },
+    { "bloque": 3, "numero": 5, "topic_number": 205, "titulo": "Identificación y clasificación de fondos", "epigrafe": "La identificación y clasificación de los fondos documentales. Conceptos y definición. Sistemas de clasificación." },
+    { "bloque": 3, "numero": 6, "topic_number": 206, "titulo": "Valoración, selección y eliminación. La CSCDA", "epigrafe": "Valoración, selección y eliminación de documentos: conceptos y funciones. La Comisión Superior Calificadora de Documentos Administrativos: composición, competencias y funcionamiento." },
+    { "bloque": 3, "numero": 7, "topic_number": 207, "titulo": "La ordenación de documentos", "epigrafe": "La ordenación de documentos. Tipos de ordenación. Operaciones relacionadas con la ordenación." },
+    { "bloque": 3, "numero": 8, "topic_number": 208, "titulo": "Las agrupaciones documentales", "epigrafe": "Las agrupaciones documentales de los archivos: conceptos de grupo de fondos, fondo, sección de fondo, unidad archivística compuesta, serie documental, unidad archivística simple, expediente o unidad archivística compuesta y colección de documentos." },
+    { "bloque": 3, "numero": 9, "topic_number": 209, "titulo": "Agrupaciones, niveles e instrumentos de descripción", "epigrafe": "Relaciones existentes entre las agrupaciones documentales, los niveles de descripción y los instrumentos de descripción tradicionales." },
+    { "bloque": 3, "numero": 10, "topic_number": 210, "titulo": "La planificación descriptiva y la descripción multinivel", "epigrafe": "La planificación descriptiva: objeto. Concepto de descripción archivística multinivel. Normas de descripción e intercambio de información archivística automatizada." },
+    { "bloque": 3, "numero": 11, "topic_number": 211, "titulo": "La CNEDA y el Portal de Archivos Españoles (PARES)", "epigrafe": "La Comisión de Normas Españolas de Descripción Archivística (CNEDA): objetivos, funciones y composición. El Portal de Archivos Españoles (PARES)." },
+    { "bloque": 3, "numero": 12, "topic_number": 212, "titulo": "Soportes documentales, conservación y restauración", "epigrafe": "Los soportes documentales. Tipos y causas fisicoquímicas y biológicas de alteración. Medidas de prevención y de conservación de los documentos. La restauración, medios y procedimientos." },
+    { "bloque": 3, "numero": 13, "topic_number": 213, "titulo": "Reprografía, digitalización y preservación digital", "epigrafe": "La reprografía y la digitalización de documentos en los archivos: objetivos y funciones. Técnicas reprográficas. Principales formatos analógicos y digitales. El archivo de seguridad y la preservación digital: conceptos básicos." },
+    { "bloque": 3, "numero": 14, "topic_number": 214, "titulo": "El edificio, los depósitos y las instalaciones del archivo", "epigrafe": "El edificio, los depósitos y otras instalaciones del archivo: principales características arquitectónicas. Áreas, circuitos de circulación y mobiliario. Medidas ambientales y de seguridad." },
+    { "bloque": 3, "numero": 15, "topic_number": 215, "titulo": "La función social y cultural de los archivos", "epigrafe": "La función social y cultural de los archivos: comunicación científica, exposiciones, servicios educativos y redes sociales." },
+    { "bloque": 3, "numero": 16, "topic_number": 216, "titulo": "La atención de usuarios y el acceso a los archivos", "epigrafe": "La atención de usuarios. Condiciones de acceso a los archivos y consulta de documentos en sala. Las cartas de servicios de los archivos." },
+    { "bloque": 3, "numero": 17, "topic_number": 217, "titulo": "La Administración Española de los Archivos Estatales", "epigrafe": "La Administración Española de los Archivos Estatales: el Ministerio de Cultura y la Dirección General de Patrimonio Cultural y Bellas Artes." },
+    { "bloque": 3, "numero": 18, "topic_number": 218, "titulo": "El Sistema Español de Archivos y el Consejo de Cooperación Archivística", "epigrafe": "El Sistema Español de Archivos. El Consejo de Cooperación Archivística: composición, estructura y funciones." },
+    { "bloque": 3, "numero": 19, "topic_number": 219, "titulo": "El Sistema de Archivos de la AGE y sus Organismos Públicos", "epigrafe": "El Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos. Estructura, funciones y tipos de archivo." },
+    { "bloque": 3, "numero": 20, "topic_number": 220, "titulo": "La Subdirección General de los Archivos Estatales. CIDA", "epigrafe": "La Subdirección General de los Archivos Estatales: organización y funciones. El Centro de Información Documental de Archivos (CIDA): funciones. El Censo-Guía de Archivos de España e Iberoamérica." },
+    { "bloque": 3, "numero": 21, "topic_number": 221, "titulo": "Archivo de la Corona de Aragón y Real Chancillería de Valladolid", "epigrafe": "Historia y fondos documentales del Archivo de la Corona de Aragón y del Archivo de la Real Chancillería de Valladolid." },
+    { "bloque": 3, "numero": 22, "topic_number": 222, "titulo": "Archivo General de Simancas y Archivo General de Indias", "epigrafe": "Historia y fondos documentales del Archivo General de Simancas y del Archivo General de Indias." },
+    { "bloque": 3, "numero": 23, "topic_number": 223, "titulo": "Archivo Histórico Nacional y Archivo Histórico de la Nobleza", "epigrafe": "Historia y fondos documentales del Archivo Histórico Nacional y del Archivo Histórico de la Nobleza." },
+    { "bloque": 3, "numero": 24, "topic_number": 224, "titulo": "Archivo General de la Administración y Archivo Histórico de los Movimientos Sociales", "epigrafe": "Historia y fondos documentales del Archivo General de la Administración y del Archivo Histórico de los Movimientos Sociales." },
+    { "bloque": 3, "numero": 25, "topic_number": 225, "titulo": "Archivo de la Guerra Civil y Centro Documental de la Memoria Histórica", "epigrafe": "El Archivo General de la Guerra Civil y el Centro Documental de la Memoria Histórica. Historia, fondos documentales y bibliográficos." },
+    { "bloque": 3, "numero": 26, "topic_number": 226, "titulo": "Los Archivos Históricos Provinciales", "epigrafe": "Los Archivos Históricos Provinciales. Historia y normativa básica reguladora. Competencias y obligaciones de la Administración General del Estado. La potestad normativa y reglamentaria. Competencias subrogadas y asumidas por las Comunidades Autónomas." },
+    { "bloque": 3, "numero": 27, "topic_number": 227, "titulo": "El Sistema Archivístico de la Defensa", "epigrafe": "El Sistema Archivístico de la Defensa: organización, funcionamiento, normativa específica y tipos de archivo. Los archivos históricos militares." },
+
+    { "bloque": 4, "numero": 1, "topic_number": 301, "titulo": "Ordenación, control y conservación de fondos (práctico)", "epigrafe": "Ordenación, control y conservación de fondos documentales." },
+    { "bloque": 4, "numero": 2, "topic_number": 302, "titulo": "Atención e información a investigadores y usuarios (práctico)", "epigrafe": "Atención e información básica a investigadores y usuarios." },
+    { "bloque": 4, "numero": 3, "topic_number": 303, "titulo": "Apoyo a procesos técnicos (práctico)", "epigrafe": "Apoyo a procesos técnicos." }
+  ],
+  "convocatoria": {
+    "año": 2025,
+    "estado_proceso": "examen_realizado",
+    "diario_oficial": "BOE",
+    "boe_id": "BOE-A-2025-23564",
+    "fecha_examen": "2026-03-14",
+    "plazas": 25,
+    "notas": "Convocatoria turno libre Sección Archivos (Res. 13/11/2025, BOE-A-2025-23564). Examen 14/03/2026 (ya realizado). Oposición recurrente: pendiente de pivotar a la próxima convocatoria."
+  }
+}
