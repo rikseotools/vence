@@ -71,8 +71,24 @@ async function generateUrlsFromDB() {
   urls.push('/temarios', '/psicotecnicos', '/ayuda')
   // /nuestras-oposiciones es 308 redirect → /oposiciones (ya incluido arriba). No warmar.
 
+  // 4. Leyes top-SEO (/leyes/<slug>). Desde 12/07/2026 /leyes/[law] es on-demand
+  //    (ya NO se prerenderiza en build — ver build-resilience-leyes-ondemand.md) →
+  //    calentamos aquí las de más tráfico orgánico para que el 1er hit de Googlebot
+  //    NO sea en frío. Set curado de los códigos legales mayores (verificados en RDS).
+  //    Actualizar con `npm run gsc:seo` si el ranking de leyes cambia.
+  for (const slug of HOT_LAW_SLUGS) urls.push(`/leyes/${slug}`)
+
   return urls
 }
+
+// Leyes de más tráfico orgánico (códigos legales mayores). Verificadas activas en
+// RDS el 12/07/2026. Se calientan post-deploy porque /leyes/[law] es on-demand.
+const HOT_LAW_SLUGS = [
+  'constitucion-espanola', 'ley-39-2015', 'ley-40-2015', 'codigo-penal', 'codigo-civil',
+  'ley-1-2000', 'lo-6-1985', 'rdl-5-2015', 'lprl', 'lo-3-2018', 'lo-3-2007', 'lo-2-1986',
+  'lo-1-2004', 'ley-7-1985', 'ley-19-2013', 'ley-9-2017', 'ley-50-1997', 'ley-47-2003',
+  'ley-29-1998', 'ley-38-2003', 'estatuto-trabajadores', 'tue', 'tfue',
+]
 
 // ============================================================================
 // Fallback: parsear sitemaps de la web (sin BD)

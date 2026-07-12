@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { resolveLawBySlug, getCanonicalSlugAsync, getAllActiveSlugs } from '@/lib/api/laws'
+import { resolveLawBySlug, getCanonicalSlugAsync } from '@/lib/api/laws'
 import { queryLawStats } from '@/lib/api/law-stats/queries'
 import { fetchLawSections, fetchLawArticles } from '@/lib/teoriaFetchers'
 import { notFound } from 'next/navigation'
@@ -167,10 +167,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-// 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
+// On-demand (12/07/2026): NO prerenderizar las ~1.278 leyes en build. Era la ÚNICA
+// ruta de alto volumen que quedó en SSG masivo (`getAllActiveSlugs` → 1.278 páginas,
+// cada una pegando a RDS en build) y causaba la flakiness del build: CONNECT_TIMEOUT
+// a RDS + OOM (SIGKILL). Con `[]` el build NO pega a RDS por leyes; cada página se
+// genera on-demand en el 1er request y se cachea (ISR 24h). Google recibe el MISMO
+// HTML completo que con SSG (ver docs/maintenance/cache-revalidation.md L662).
+// `dynamicParams = true` (default de Next, aquí EXPLÍCITO) → NINGUNA ley da 404;
+// NUNCA ponerlo en false (404 masivo = desastre SEO). Las leyes top-SEO se calientan
+// tras cada deploy (scripts/warm-cache-post-deploy.js). Diseño completo:
+// docs/runbooks/build-resilience-leyes-ondemand.md.
+export const dynamicParams = true
+export const revalidate = 86400 // ISR 24h (consistente con landings/temarios)
 export async function generateStaticParams() {
-  const slugs = await getAllActiveSlugs()
-  return slugs.map(slug => ({ law: slug }))
+  return []
 }
 
 // 🔧 COMPONENTE PARA CARGAR ESTADÍSTICAS
