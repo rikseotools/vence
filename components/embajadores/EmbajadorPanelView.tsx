@@ -35,8 +35,8 @@ interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; t
 function activeRewardBadge(ar?: ActiveReward): { text: string; cls: string; title: string } | null {
   if (!ar || ar.state === 'none') return null
   if (ar.state === 'earned') {
-    return { text: `🎉 +${ar.amount} € ganados`, cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
-      title: `Bonus de ${ar.amount} € porque este referido ya está activo` }
+    return { text: `🎉 +${ar.amount} € por registro de nuevo usuario`, cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+      title: `Bonus de ${ar.amount} € porque este nuevo usuario se registró y se activó` }
   }
   return { text: `⏳ ${ar.amount} € · ${ar.testsDone}/${ar.testsNeeded} tests`, cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
     title: `Ganarás ${ar.amount} € cuando este referido complete ${ar.testsNeeded} tests (lleva ${ar.testsDone})` }
@@ -45,6 +45,29 @@ function activeRewardBadge(ar?: ActiveReward): { text: string; cls: string; titl
 function fmtVoucherDate(d: string | null): string {
   return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
 }
+function fmtMonthYear(d?: string | null): string {
+  return d ? new Date(d).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) : ''
+}
+
+function fmtDayMonth(d?: string | null): string {
+  return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+}
+
+// Ingreso del REFERIDO PREMIUM (10 €): solo si sobrevivió a `qualified` o más. Estado del hold.
+function premiumBadge(status: string, bounty?: number, holdUntil?: string | null): { text: string; cls: string; title: string } | null {
+  const amt = bounty || 10
+  if (status === 'paid') return { text: `🎉 +${amt} € premium (cobrado)`, cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300', title: 'Se hizo premium y ya cobraste este referido' }
+  if (status === 'payable') return { text: `🎉 +${amt} € premium (disponible)`, cls: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300', title: 'Se hizo premium; ya puedes cobrar este referido' }
+  if (status === 'qualified') {
+    const when = fmtDayMonth(holdUntil)
+    return {
+      text: `⏳ +${amt} € premium · se liberan el ${when || 'fin del hold'}`,
+      cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+      title: `Se hizo premium; en periodo de seguridad de 15 días (hold). Se libera a Disponible el ${when}.`,
+    }
+  }
+  return null // pending/rejected/expired → aún no generó el ingreso premium
+}
 
 export interface EmbajadorPanelData {
   firstName: string | null
@@ -52,7 +75,7 @@ export interface EmbajadorPanelData {
   code: string | null
   link: string | null
   stats: { registros: number; compradores: number; conversion: number }
-  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward; selfReferral?: boolean }>
+  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward; selfReferral?: boolean; invalidReason?: 'self_referral' | 'preexisting' | null; accountCreatedAt?: string | null; bountyAmount?: number; holdUntil?: string | null }>
   funnel: { copies: number; clicks: number }
   earnings: {
     balance: number
@@ -62,7 +85,7 @@ export interface EmbajadorPanelData {
     bySource: Array<{ source: string; earned: number; count: number }>
   }
   recent: Array<{ source: string; amount: number }>
-  vouchers?: Array<{ amount: number; code: string; pin?: string | null; serial?: string | null; via: string | null; date: string | null }>
+  vouchers?: Array<{ amount: number; code: string; pin?: string | null; serial?: string | null; fallbackLink?: string | null; via: string | null; date: string | null }>
 }
 
 export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData }) {
@@ -70,6 +93,11 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
   const emb = embajadorWord(data.gender)
   const name = data.firstName || emb
   const [copied, setCopied] = useState(false)
+  // Vales revelados (índices). Por defecto TODOS ocultan PIN/Serial tras un enlace
+  // "Revelar tarjeta completa" — patrón uniforme (decisión Manuel 12/07): el dato
+  // sensible (PIN/serial) no se enseña a la vista hasta que el embajador lo pide.
+  const [revealedVouchers, setRevealedVouchers] = useState<Set<number>>(new Set())
+  const revealVoucher = (i: number) => setRevealedVouchers((s) => new Set(s).add(i))
   const copyLink = async () => {
     if (!data.link) return
     try { await navigator.clipboard.writeText(data.link); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* noop */ }
@@ -99,25 +127,33 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
 
       {/* SALDO + DESGLOSE */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-blue-100 dark:border-gray-700">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Tu saldo</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-6">
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Tu saldo</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Total ganado: <strong>{(e.balance + (e.requested ?? 0) + e.pending + e.paidLifetime)} €</strong> = Disponible + Solicitado + En espera + Vales emitidos.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-3">
           <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl py-4">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{e.balance} €</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Disponible</div>
           </div>
-          <div className="bg-green-50 dark:bg-green-900/30 rounded-xl py-4">
+          <div className="bg-green-50 dark:bg-green-900/30 rounded-xl py-4" title="Lo que has solicitado cobrar y te estamos generando el vale.">
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">{e.requested ?? 0} €</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Solicitado</div>
           </div>
-          <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl py-4">
+          <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl py-4" title="Ganado, pero aún en periodo de seguridad (hold): pasa a Disponible cuando vence la ventana de reembolso del referido.">
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{e.pending} €</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">En proceso</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">En espera</div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl py-4">
             <div className="text-2xl font-bold text-gray-700 dark:text-gray-200">{e.paidLifetime} €</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Vales emitidos</div>
           </div>
         </div>
+        {e.pending > 0 && (
+          <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 mb-6">
+            ⏳ <strong>«En espera»</strong>: dinero que ya has ganado pero que se libera a <strong>Disponible</strong> cuando cada referido supera su <strong>garantía de reembolso de 15 días</strong> (mientras, podría caerse si pidiera el reembolso). Verás la fecha de liberación en cada referido de abajo.
+          </p>
+        )}
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen tus ingresos</h3>
         <div className="space-y-2">
           {e.bySource.length === 0 ? (
@@ -145,8 +181,39 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
                 </div>
                 <div className="flex flex-col gap-2">
                   <CopyCode label="Código" value={v.code} />
-                  {v.pin ? <CopyCode label="PIN" value={v.pin} /> : null}
-                  {v.serial ? <CopyCode label="Serial" value={v.serial} /> : null}
+                  {/* Uniforme: el código siempre visible (se necesita para canjear);
+                      PIN/Serial ocultos tras "Revelar" hasta que el embajador lo pida. */}
+                  {(() => {
+                    const revealed = revealedVouchers.has(i)
+                    const hasSecret = !!(v.pin || v.serial)
+                    // Ya revelado → muestra los campos sensibles (si los trae).
+                    if (revealed && hasSecret) {
+                      return (
+                        <>
+                          {v.pin ? <CopyCode label="PIN" value={v.pin} /> : null}
+                          {v.serial ? <CopyCode label="Serial" value={v.serial} /> : null}
+                        </>
+                      )
+                    }
+                    // Sin secreto y sin enlace → esta tarjeta se canjea solo con el código.
+                    if (!hasSecret && !v.fallbackLink) {
+                      return <p className="text-xs text-gray-500 dark:text-gray-400">Esta tarjeta se canjea solo con el código en amazon.es/redeem (no lleva PIN).</p>
+                    }
+                    // Enlace externo de Amazon (tarjeta que revela en su web) → abre el link.
+                    if (!hasSecret && v.fallbackLink) {
+                      return (
+                        <a href={v.fallbackLink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                          🔓 Revelar tarjeta completa (código, PIN si lo trae) →
+                        </a>
+                      )
+                    }
+                    // Tiene PIN/Serial inline → botón para revelarlos (no exponerlos de entrada).
+                    return (
+                      <button type="button" onClick={() => revealVoucher(i)} className="text-left text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                        🔓 Revelar tarjeta completa (código, PIN si lo trae) →
+                      </button>
+                    )
+                  })()}
                 </div>
               </div>
             ))}
@@ -186,6 +253,12 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
             ) : data.details.map((d, i) => {
               const st = statusLabel(d.status)
               const ar = activeRewardBadge(d.activeReward)
+              const pb = premiumBadge(d.status, d.bountyAmount, d.holdUntil)
+              // motivo de invalidez SIN detallar la IP (decisión Manuel): autoregistro = solo "No
+              // válido" (sin subtexto); preexistente = "No válido" + "ya era usuario desde [mes año]".
+              const invalidText = d.invalidReason === 'preexisting'
+                ? `Ya era usuario${d.accountCreatedAt ? ` desde ${fmtMonthYear(d.accountCreatedAt)}` : ''}`
+                : null
               return (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
                   <div className="min-w-0">
@@ -193,11 +266,18 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
                     <div className="text-xs text-gray-500 dark:text-gray-400">{[d.city, d.oposicion].filter(Boolean).join(' · ')}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
-                    {d.selfReferral ? (
-                      <span title="Registrado con la MISMA IP que el embajador → autoregistro. El guardarraíl anti-fraude lo bloquea: no genera bono." className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">⚠️ Misma IP (autoregistro)</span>
-                    ) : ar && (
-                      <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>
+                    {/* estado: se OCULTA cuando es inválido para no duplicar "No válido" */}
+                    {!d.invalidReason && <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>}
+                    {d.invalidReason ? (
+                      <>
+                        <span title={invalidText || ''} className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">❌ No válido</span>
+                        {invalidText && <span className="text-[11px] text-gray-500 dark:text-gray-400">{invalidText}</span>}
+                      </>
+                    ) : (
+                      <>
+                        {pb && <span title={pb.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${pb.cls}`}>{pb.text}</span>}
+                        {ar && <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>}
+                      </>
                     )}
                   </div>
                 </div>

@@ -305,9 +305,9 @@ export default function EmbajadoresPage() {
                 <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{me.earnings.balance} €</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Disponible</div>
               </div>
-              <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl py-4">
+              <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl py-4" title="Ganado, pero aún en periodo de seguridad: pasa a Disponible cuando vence la ventana de reembolso del referido.">
                 <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">{me.earnings.pending} €</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">En proceso</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">En espera</div>
               </div>
               <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl py-4">
                 <div className="text-2xl sm:text-3xl font-bold text-gray-700 dark:text-gray-200">{me.earnings.paidLifetime} €</div>

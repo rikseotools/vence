@@ -247,6 +247,11 @@ export interface ReferralDetail {
   date: string
   activeReward: ActiveRewardView
   selfReferral: boolean   // registrado con la MISMA IP que el embajador → autoregistro (no cobra)
+  /** por qué NO cuenta como captación (null = válido). No exponemos el detalle de IP al front. */
+  invalidReason: 'self_referral' | 'preexisting' | null
+  accountCreatedAt: string | null   // para "ya era usuario desde [fecha]" en los preexistentes
+  bountyAmount: number              // 10 € del referido premium (para desglosar el ingreso)
+  holdUntil: string | null          // fecha en que se libera el bounty (fin del hold de 15 días)
 }
 
 /** Detalle por referido (nombre, ciudad, oposición, estado, fecha, bonus de registro activo). */
@@ -269,6 +274,9 @@ export async function getReferralDetails(
     // Autoregistro: el referido se registró con la MISMA IP que el embajador. `=` (no `is not
     // distinct from`) → solo marca cuando ambas IPs son CONOCIDAS e IGUALES (null no flaguea).
     selfReferral: sql<boolean>`(user_profiles.registration_ip = (select registration_ip from user_profiles where id = ${referrerUserId}))`,
+    accountCreatedAt: userProfiles.createdAt,
+    bountyAmount: sql<string>`referrals.bounty_amount`,
+    holdUntil: referrals.holdUntil,
   })
     .from(referrals)
     .innerJoin(userProfiles, eq(referrals.referredUserId, userProfiles.id))
@@ -280,9 +288,16 @@ export async function getReferralDetails(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (rows as any[]).map((r) => {
     const selfReferral = !!r.selfReferral
-    // Autoregistro (misma IP): nunca cobrará (guardarraíl anti-fraude lo bloquea) → no prometemos
-    // el bono, mostramos 'none' en vez de un progreso X/5 engañoso.
-    const activeReward = selfReferral
+    // Antigüedad de la cuenta al atribuir (días): preexistente = ya era usuario mucho antes.
+    const created = r.accountCreatedAt ? new Date(r.accountCreatedAt).getTime() : null
+    const attributed = r.date ? new Date(r.date).getTime() : null
+    const ageDays = created != null && attributed != null ? (attributed - created) / 86_400_000 : null
+    const preexisting = ageDays != null && ageDays > REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS
+    // Por qué NO cuenta (prioridad: autoregistro > preexistente). null = válido.
+    const invalidReason: 'self_referral' | 'preexisting' | null =
+      selfReferral ? 'self_referral' : (preexisting ? 'preexisting' : null)
+    // Inválido → no prometemos el bono (ni progreso X/5 engañoso).
+    const activeReward = invalidReason
       ? { state: 'none' as const, amount: 0, testsDone: 0, testsNeeded: 0 }
       : deriveActiveReward({
           grantedAmount: r.activeRewardAmount != null ? Number(r.activeRewardAmount) : null,
@@ -291,7 +306,13 @@ export async function getReferralDetails(
           enabled,
         })
     // Privacidad: el embajador no ve el apellido completo del referido → "Nombre A. B.".
-    return { name: abbreviateReferredName(r.name), city: r.city, oposicion: r.oposicion, status: r.status, date: r.date, activeReward, selfReferral }
+    return {
+      name: abbreviateReferredName(r.name), city: r.city, oposicion: r.oposicion,
+      status: r.status, date: r.date, activeReward, selfReferral, invalidReason,
+      accountCreatedAt: r.accountCreatedAt ? new Date(r.accountCreatedAt).toISOString() : null,
+      bountyAmount: Number(r.bountyAmount) || 0,
+      holdUntil: r.holdUntil ? new Date(r.holdUntil).toISOString() : null,
+    }
   })
 }
 
@@ -549,10 +570,15 @@ export async function getUserOwedBalance(userId: string, exec?: Executor): Promi
   const res = await db.execute(sql`
     select (
       coalesce((select sum(bounty_amount) from referrals where referrer_user_id = ${userId} and status = 'payable'), 0)
-      -- bono de registro activo (2€): pagable SOLO cuando el referido sobrevivió su hold sin
-      -- reembolsar (status payable/paid). Sin esto el bono se GANA (vista reward_earnings) pero
-      -- ninguna query lo hacía pagable → quedaba atascado en "en proceso" para siempre (bug 11/07).
-      + coalesce((select sum(active_reward_amount) from referrals where referrer_user_id = ${userId} and active_reward_at is not null and status in ('payable','paid')), 0)
+      -- bono de registro activo (2€): DISPONIBLE en cuanto se CONCEDE (active_reward_at IS NOT NULL),
+      -- SIN esperar el hold del premium (decisión Manuel 12/07). Es un ingreso por CAPTACIÓN, no por
+      -- la venta: premia que el referido se registró y es un opositor real (>=5 tests). Su concesión
+      -- ya pasa TODAS las guardas anti-fraude por construcción (lib/referrals/activeSignup.ts: flag +
+      -- IP distinta a la del embajador + no fraud-flagged + >=5 tests DESDE la atribución + topes/
+      -- presupuesto) → no necesita el hold de reembolso del premium (ese hold protege los 10€ de la
+      -- venta, no los 2€ del registro). Antes se acoplaba a status in('payable','paid') → quedaba
+      -- "en espera" atado a un premium que podía no llegar nunca (usuario free nuevo = 2€ incobrables).
+      + coalesce((select sum(active_reward_amount) from referrals where referrer_user_id = ${userId} and active_reward_at is not null), 0)
       + coalesce((select sum(amount) from reward_submissions where user_id = ${userId} and status = 'approved' and (hold_until is null or hold_until <= now())), 0)
       -- resta pagos Y solicitudes en curso (status <> 'void'): una solicitud 'pending' RESERVA el
       -- saldo (para que no se pida dos veces). 'void' = solicitud rechazada → no reserva. Modelo pull.

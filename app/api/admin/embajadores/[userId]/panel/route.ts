@@ -67,14 +67,21 @@ async function _GET(
     ORDER BY paid_at DESC`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const vRows: any[] = Array.isArray(vRes) ? vRes : ((vRes as any)?.rows ?? [])
-  // El giftcard_ref puede ser JSON {code,pin,serial} (compras nuevas) o texto plano (código, legacy).
-  const parse = (raw: string): { code: string; pin: string | null; serial: string | null } => {
-    try { const j = JSON.parse(raw); if (j && typeof j === 'object' && j.code) return { code: String(j.code), pin: j.pin ?? null, serial: j.serial ?? null } } catch { /* plano */ }
-    return { code: raw, pin: null, serial: null }
+  // El giftcard_ref puede ser JSON {code,pin,serial,_fallback_link} (compras nuevas) o texto plano
+  // (código, legacy). Algunas tarjetas Amazon vienen SOLO con código (pin/serial vacíos) + un enlace
+  // de "revelar" del proveedor → lo exponemos para que la tarjeta code-only quede completa.
+  const parse = (raw: string): { code: string; pin: string | null; serial: string | null; fallbackLink: string | null } => {
+    try {
+      const j = JSON.parse(raw)
+      if (j && typeof j === 'object' && j.code) return {
+        code: String(j.code), pin: j.pin || null, serial: j.serial || null, fallbackLink: j._fallback_link || null,
+      }
+    } catch { /* plano */ }
+    return { code: raw, pin: null, serial: null, fallbackLink: null }
   }
   const vouchers = vRows.map((r) => {
     const p = parse(String(r.giftcard_ref))
-    return { amount: Number(r.amount), code: p.code, pin: p.pin, serial: p.serial, via: r.purchased_via || null, date: r.paid_at ? new Date(r.paid_at).toISOString() : null }
+    return { amount: Number(r.amount), code: p.code, pin: p.pin, serial: p.serial, fallbackLink: p.fallbackLink, via: r.purchased_via || null, date: r.paid_at ? new Date(r.paid_at).toISOString() : null }
   })
 
   return NextResponse.json({
