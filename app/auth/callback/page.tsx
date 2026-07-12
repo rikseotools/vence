@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { pickReturnUrl } from '@/lib/auth/pickReturnUrl'
 import { useGoogleAds } from '../../../utils/googleAds'
 import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoogleParams } from '../../../lib/metaPixelCapture'
 
@@ -23,38 +24,28 @@ function AuthCallbackContent() {
         setMessage('Verificando tu cuenta de Google...')
 
         // 1. Determinar URL de retorno
+        // Decisión de retorno via helper PURO testeable (lib/auth/pickReturnUrl):
+        // return_to > backup localStorage fresco > '/' neutro (nunca Estado). Aquí
+        // solo hacemos la I/O de localStorage; la prioridad la decide la función pura.
         const determineReturnUrl = (): string => {
-          let url = searchParams.get('return_to')
-          if (url) {
-            console.log('📍 [CALLBACK] URL de retorno desde query param:', url)
-            return url
-          }
-
+          const returnToParam = searchParams.get('return_to')
+          let backupUrl: string | null = null
+          let backupTimestamp: string | null = null
           try {
-            const backupUrl = localStorage.getItem('auth_return_url_backup')
-            const timestamp = localStorage.getItem('auth_return_timestamp')
-
-            if (backupUrl && timestamp) {
-              const age = Date.now() - parseInt(timestamp)
-              if (age < 10 * 60 * 1000) {
-                console.log('📍 [CALLBACK] URL de retorno desde localStorage:', backupUrl)
-                localStorage.removeItem('auth_return_url_backup')
-                localStorage.removeItem('auth_return_timestamp')
-                return backupUrl
-              } else {
-                localStorage.removeItem('auth_return_url_backup')
-                localStorage.removeItem('auth_return_timestamp')
-              }
-            }
+            backupUrl = localStorage.getItem('auth_return_url_backup')
+            backupTimestamp = localStorage.getItem('auth_return_timestamp')
           } catch (e) {
             console.warn('⚠️ [CALLBACK] Error accediendo localStorage:', e)
           }
-
-          // Destino neutro (no forzar Estado): home enruta según la oposición del
-          // usuario una vez cargada. Evita mandar a un usuario de otra oposición a Estado.
-          const defaultUrl = '/'
-          console.log('📍 [CALLBACK] Usando URL por defecto:', defaultUrl)
-          return defaultUrl
+          const { url, consumeBackup } = pickReturnUrl(returnToParam, backupUrl, backupTimestamp, Date.now())
+          if (consumeBackup) {
+            try {
+              localStorage.removeItem('auth_return_url_backup')
+              localStorage.removeItem('auth_return_timestamp')
+            } catch { /* noop */ }
+          }
+          console.log('📍 [CALLBACK] URL de retorno:', url)
+          return url
         }
 
         const finalReturnUrl = determineReturnUrl()
