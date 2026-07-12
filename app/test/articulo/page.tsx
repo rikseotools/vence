@@ -22,6 +22,7 @@ interface CreateTestResponse {
     law_actual_slug: string | null
     article_number: string | null
     article_title: string | null
+    primary_article_id?: string | null
     article?: {
       article_number: string | null
       number: string | null
@@ -48,7 +49,9 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
     explanation: q.explanation,
     correct_option: (q as any).correct_option ?? 0,
     difficulty: q.difficulty,
-    primary_article_id: null,
+    // Poblar con el id REAL que ya devuelve /api/ai/create-test (antes se hardcodeaba
+    // null → la sesión detallada perdía la atribución al artículo en /test/articulo).
+    primary_article_id: q.primary_article_id ?? null,
     article_number: q.article_number,
     article_title: q.article_title,
     law_name: q.law_name,

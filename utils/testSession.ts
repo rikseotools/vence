@@ -94,7 +94,7 @@ export interface QuestionInput {
   difficulty?: string
   // Campos adicionales comunes
   tema_number?: number
-  primary_article_id?: string
+  primary_article_id?: string | null
   explanation?: string
   correct_option?: number
   articles?: {
@@ -157,7 +157,12 @@ const questionSchema = z.object({
       short_name: z.string().optional(),
     }).optional(),
   }).optional(),
-  primary_article_id: z.string().optional(),
+  // .nullish() (nullable + optional): algunas rutas (/test/articulo, /test/repaso-fallos)
+  // construyen el payload con primary_article_id = null EXPLÍCITO (no lo pueblan). Con
+  // solo .optional() Zod rechazaba el null ("expected string, received null") y NO se
+  // creaba la sesión detallada → analítica perdida en silencio (38 fallos desde 07/07).
+  // El downstream (línea ~446) ya tolera null (|| null), así que aceptarlo es correcto.
+  primary_article_id: z.string().nullish(),
 }).passthrough() // Permitir campos adicionales
 
 const createTestSessionSchema = z.object({
