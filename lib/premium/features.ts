@@ -39,6 +39,20 @@ export interface PremiumFeature {
 // Las entradas 'course'/'editorial' son genéricas: el dato (is_premium en la fila) decide
 // SI se gatea; el registro aporta el copy/analítica uniformes para ese kind.
 export const PREMIUM_FEATURES = {
+  // ── UI features del configurador de tests ──────────────────────────────────
+  // Excluir preguntas recientes ("no repetir lo hecho hace poco"). Primera feature
+  // cableada del framework (prueba end-to-end). Free → 👑 + modal; premium → normal.
+  exclude_recent: {
+    id: 'exclude_recent',
+    kind: 'ui_feature',
+    label: 'Excluir preguntas recientes',
+    modalTitle: 'Repaso sin repetir',
+    modalBody:
+      'Evita que te salgan las preguntas que ya hiciste hace poco y centra el repaso en lo que te falta. Es una función Premium.',
+    benefit: 'Repaso inteligente que no repite lo reciente',
+    unlockPlan: 'premium',
+  },
+
   // Videocursos (fila video_courses.is_premium). El server ya sirve 10 min de preview;
   // este entry unifica el copy + la analítica del paywall del curso.
   course: {

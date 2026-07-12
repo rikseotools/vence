@@ -58,6 +58,8 @@ import { anyForcedChallenge } from '@/lib/security/challengePolicy/forceChalleng
 import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
 import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { getUserPlanType } from '@/lib/referrals/queries'
+import { isPremiumPlan } from '@/lib/premium/isPremiumPlan'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
 // La query analítica de getFilteredQuestions puede ser pesada; 20s da margen.
@@ -256,6 +258,18 @@ async function _POST(request: NextRequest) {
       const anonMax = Number(process.env.CAPTCHA_ANON_MAX_QUESTIONS) || 100
       if (validation.data.numQuestions > anonMax) {
         validation.data.numQuestions = anonMax
+      }
+    }
+
+    // 🔒 Gate PREMIUM de "excluir preguntas recientes" (defensa en profundidad).
+    // El toggle es premium (👑 + modal en el configurador). Un free podría FORJAR la
+    // request con excludeRecentDays>0 saltándose la UI → aquí lo neutralizamos: si el
+    // solicitante NO es premium, se ignora (=0). Comprobación solo cuando el toggle
+    // viene activo (raro) → una lectura de plan puntual, sin coste en el caso común.
+    if ((validation.data.excludeRecentDays ?? 0) > 0) {
+      const planType = authUserId ? await getUserPlanType(authUserId) : null
+      if (!isPremiumPlan(planType)) {
+        validation.data.excludeRecentDays = 0
       }
     }
 

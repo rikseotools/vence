@@ -7,6 +7,8 @@ import { useLawSlugs } from '@/contexts/LawSlugContext';
 import { getOposicionByPositionType } from '@/lib/config/oposiciones';
 import { useInteractionTracker } from '@/hooks/useInteractionTracker';
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit';
+import { usePremiumGate } from '@/hooks/usePremiumGate';
+import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal';
 
 function getOposicionName(positionType: string): string {
   return getOposicionByPositionType(positionType)?.name || 'tu oposición'
@@ -75,6 +77,10 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     isPremiumUser,
     loading: limitLoading,
   } = useDailyQuestionLimit();
+
+  // Gating premium por-feature (👑 para free + modal). Premium: gate() deja pasar
+  // sin abrir nada → no notan nada. Free: abre el modal explicativo. Ver lib/premium.
+  const { gate, activeFeature, activeContext, closeGate } = usePremiumGate();
 
   // Estados de configuración
   const [selectedQuestions, setSelectedQuestions] = useState(25);
@@ -1764,15 +1770,24 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           {/* 🔄 EXCLUIR PREGUNTAS RECIENTES */}
           {currentUser && (
             <div className="border-t border-gray-200 pt-4">
-              <label className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={excludeRecent}
-                  onChange={(e) => setExcludeRecent(e.target.checked)}
+                  onChange={(e) => {
+                    // Activar es Premium: gate() deja pasar a premium (activa) y a free
+                    // le abre el modal SIN activar. Desactivar siempre libre.
+                    if (e.target.checked) {
+                      gate('exclude_recent', () => setExcludeRecent(true), 'test_configurator')
+                    } else {
+                      setExcludeRecent(false)
+                    }
+                  }}
                   className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
                   🔄 Excluir preguntas recientes
+                  {!isPremiumUser && <span className="ml-1" title="Función Premium">👑</span>}
                   <span className="text-xs text-green-600 ml-1">(no repetir lo hecho hace poco)</span>
                 </span>
               </label>
@@ -3126,6 +3141,12 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           }
         }}
       />
+
+      {/* Modal genérico de "Función Premium" (framework lib/premium). Un free que pulsa
+          una feature gateada (👑) lo ve; un premium nunca llega aquí. */}
+      {activeFeature && (
+        <PremiumFeatureModal feature={activeFeature} context={activeContext} onClose={closeGate} />
+      )}
     </div>
   );
 };
