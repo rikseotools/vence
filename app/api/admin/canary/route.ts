@@ -8,6 +8,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb } from '@/db/client'
+import { createAdminPanelMemo } from '@/lib/cache/adminPanelMemo'
+
+// Memo post-auth (singleton, sin window) — panel de monitoreo, TTL 30s.
+// Ver runbook contencion-rds-paneles-admin.md.
+const _memo = createAdminPanelMemo(30_000)
 import { sql } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -154,6 +159,10 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
+  // Cache hit (post-auth) → payload memoizado. Ver runbook.
+  const cached = _memo.get('default')
+  if (cached) return NextResponse.json({ ...cached, cached: true })
+
   // Una sola query trae todos los eventos relevantes últimas 7d.
   // Volumen estimado: 3 canarios × 288 ticks/día × ~2 eventos/tick × 7 días ≈ 12k filas. OK.
   // observable_events NO está tipada en Drizzle → raw SQL. IN → = ANY(array).
@@ -198,11 +207,13 @@ async function _GET(request: NextRequest) {
     }
   })
 
-  return NextResponse.json({
+  const _payload: Record<string, unknown> = {
     success: true,
     generatedAt: new Date().toISOString(),
     canaries,
-  })
+  }
+  _memo.set('default', _payload)
+  return NextResponse.json(_payload)
 }
 
 export const GET = withErrorLogging('/api/admin/canary', _GET)

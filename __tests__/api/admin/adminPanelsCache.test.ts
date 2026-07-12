@@ -71,6 +71,47 @@ describe('infra-stats — memo in-memory post-auth (anti contención RDS)', () =
   })
 })
 
+// Los otros 3 paneles de monitoreo que agregan sobre observable_events y auto-refrescan
+// (observability, slos, canary) usan el helper compartido lib/cache/adminPanelMemo. Mismo
+// requisito de seguridad: el hit de cache DESPUÉS del gate de auth.
+describe.each([
+  { name: 'observability', authNeedle: 'requireAdmin(request)' },
+  { name: 'slos', authNeedle: 'isAdmin(auth.email)' },
+  { name: 'canary', authNeedle: 'isAdmin(auth.email)' },
+])('$name — memo compartido post-auth', ({ name, authNeedle }) => {
+  const src = readFileSync(join(ROOT, 'app', 'api', 'admin', name, 'route.ts'), 'utf-8')
+  it('usa el helper compartido createAdminPanelMemo', () => {
+    expect(src).toMatch(/createAdminPanelMemo/)
+    expect(src).toMatch(/_memo\.set\(/)
+  })
+  it('el hit de cache ocurre DESPUÉS del gate de auth', () => {
+    const idxAuth = src.indexOf(authNeedle)
+    const idxHit = src.indexOf('_memo.get(')
+    expect(idxAuth).toBeGreaterThan(-1)
+    expect(idxHit).toBeGreaterThan(idxAuth)
+  })
+})
+
+describe('helper compartido adminPanelMemo — comportamiento real', () => {
+  // usa la IMPLEMENTACIÓN real (no una copia) con TTL grande/0 para probar hit/miss
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createAdminPanelMemo } = require('@/lib/cache/adminPanelMemo')
+  it('hit dentro del TTL devuelve el mismo objeto; miss (TTL 0) devuelve null', () => {
+    const memo = createAdminPanelMemo(60_000)
+    expect(memo.get('k')).toBeNull()
+    memo.set('k', { v: 1 })
+    expect(memo.get('k')).toEqual({ v: 1 })
+    const expired = createAdminPanelMemo(0) // TTL 0 → siempre expirado
+    expired.set('k', { v: 1 })
+    expect(expired.get('k')).toBeNull()
+  })
+  it('aísla por key', () => {
+    const memo = createAdminPanelMemo(60_000)
+    memo.set('a', { v: 'a' })
+    expect(memo.get('b')).toBeNull()
+  })
+})
+
 // SIMULACIÓN (capa memoria feedback_feature_multiples_capas_seguridad): réplica mínima
 // del memo real (misma forma que system-health) con reloj inyectable, para PROBAR el
 // comportamiento: hit dentro del TTL (no re-computa), miss tras expirar, aislamiento por

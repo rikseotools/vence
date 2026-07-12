@@ -15,6 +15,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
+import { createAdminPanelMemo } from '@/lib/cache/adminPanelMemo'
+
+// Memo post-auth por `window` — panel de monitoreo, TTL 30s. Ver runbook
+// contencion-rds-paneles-admin.md. Agrega sobre observable_events (5,4 GB).
+const _memo = createAdminPanelMemo(30_000)
 import { sql } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +44,11 @@ async function _GET(request: NextRequest) {
 
   const window = parseWindow(request.nextUrl.searchParams.get('window'))
   const windowHours = WINDOW_HOURS[window]
+
+  // Cache hit (post-auth) → payload memoizado. Ver runbook.
+  const cached = _memo.get(window)
+  if (cached) return NextResponse.json({ ...cached, cached: true })
+
   const db = getAdminDb()
 
   // Consulta única con múltiples agregaciones via Drizzle execute
@@ -139,7 +149,7 @@ async function _GET(request: NextRequest) {
     `),
   ])
 
-  return NextResponse.json({
+  const _payload: Record<string, unknown> = {
     success: true,
     generatedAt: new Date().toISOString(),
     window,
@@ -151,7 +161,9 @@ async function _GET(request: NextRequest) {
     slowEndpoints: slowEndpoints as unknown,
     clientSideEvents: clientSideEvents as unknown,
     timeseries: timeseries as unknown,
-  })
+  }
+  _memo.set(window, _payload)
+  return NextResponse.json(_payload)
 }
 
 export const GET = withErrorLogging('/api/admin/observability', _GET as any)

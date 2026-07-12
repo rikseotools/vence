@@ -19,6 +19,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getReadDb } from '@/db/client'
+import { createAdminPanelMemo } from '@/lib/cache/adminPanelMemo'
 import { sql } from 'drizzle-orm'
 import {
   CloudWatchClient,
@@ -100,6 +101,10 @@ function fmtPct(n: number | null): string {
 // Handler
 // ============================================================
 
+// Memo post-auth (singleton, sin window) — panel de monitoreo, TTL 30s.
+// Ver runbook contencion-rds-paneles-admin.md. Agrega sobre observable_events.
+const _memo = createAdminPanelMemo<SLOResponse>(30_000)
+
 async function _GET(request: NextRequest) {
   const auth = await verifyAuth(request, '/api/admin/slos')
   if (!auth.success) {
@@ -108,6 +113,10 @@ async function _GET(request: NextRequest) {
   if (!isAdmin(auth.email)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  // Cache hit (post-auth) → payload memoizado. Ver runbook.
+  const cached = _memo.get('default')
+  if (cached) return NextResponse.json({ ...cached, cached: true })
 
   const db = getReadDb()
 
@@ -353,6 +362,7 @@ async function _GET(request: NextRequest) {
     indicators,
     rawData,
   }
+  _memo.set('default', response)
   return NextResponse.json(response)
 }
 
