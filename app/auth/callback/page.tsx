@@ -50,7 +50,9 @@ function AuthCallbackContent() {
             console.warn('⚠️ [CALLBACK] Error accediendo localStorage:', e)
           }
 
-          const defaultUrl = '/auxiliar-administrativo-estado'
+          // Destino neutro (no forzar Estado): home enruta según la oposición del
+          // usuario una vez cargada. Evita mandar a un usuario de otra oposición a Estado.
+          const defaultUrl = '/'
           console.log('📍 [CALLBACK] Usando URL por defecto:', defaultUrl)
           return defaultUrl
         }
@@ -326,7 +328,7 @@ function AuthCallbackContent() {
         <div className="mt-6">
           <button
             onClick={() => {
-              const finalUrl = returnUrl || '/auxiliar-administrativo-estado'
+              const finalUrl = returnUrl || '/'
               router.push(finalUrl)
             }}
             className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline text-sm transition-colors"

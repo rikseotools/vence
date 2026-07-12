@@ -5,7 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
-import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener oposición del usuario
+import { useOposicionPaths } from '@/hooks/useOposicionPaths' // oposición del usuario (robusto)
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 import { formatThemeName, isThemeValidForOposicion } from '@/lib/utils/themeFormatting'
 import OfficialExamAttempts from '@/components/Statistics/OfficialExamAttempts'
@@ -406,11 +406,9 @@ export default function EstadisticasRevolucionarias() {
 function EstadisticasContent() {
   // ✅ USAR CONTEXTO GLOBAL EN LUGAR DE ESTADO LOCAL
   const { user, loading: authLoading } = useAuth()
-  const { oposicionId } = useOposicion() // ✅ Para obtener oposición del usuario
-
-  // Obtener slug de oposición del usuario (formato con guiones para formatThemeName)
-  // oposicionId usa guiones bajos (administrativo_estado), formatThemeName espera guiones (administrativo-estado)
-  const userOposicionSlug = oposicionId?.replace(/_/g, '-') || 'auxiliar-administrativo-estado'
+  // Slug de oposición del usuario (robusto): useOposicionPaths cae a su target_oposicion
+  // (perfil cacheado) ANTES que a Estado, y mapea id→slug con ID_TO_SLUG (no replace naive).
+  const { slug: userOposicionSlug } = useOposicionPaths()
 
   const [loading, setLoading] = useState<boolean>(true)
   const [stats, setStats] = useState<StatsObject>(createEmptyStats())
@@ -511,7 +509,7 @@ function EstadisticasContent() {
 
           // Tests recientes - mapear al formato esperado por RecentTests.js
           recentTests: (() => {
-            const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
+            const oposicionSlug = apiStats.userOposicion?.slug || userOposicionSlug
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const legislativeTests = apiStats.recentTests.map((t: any) => {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
@@ -597,7 +595,7 @@ function EstadisticasContent() {
 
           // Rendimiento por tema - filtrado por oposición del usuario
           themePerformance: (() => {
-            const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
+            const oposicionSlug = apiStats.userOposicion?.slug || userOposicionSlug
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const filtered = apiStats.themePerformance
               .filter((t: any) => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
@@ -763,7 +761,7 @@ function EstadisticasContent() {
             const oposicion = apiStats.userOposicion
             const userName = oposicion?.userName?.split(' ')[0] || 'Opositor' // Solo primer nombre
             const oposicionNombre = oposicion?.nombre || 'tu oposición'
-            const oposicionSlug = oposicion?.slug || 'auxiliar-administrativo-estado'
+            const oposicionSlug = oposicion?.slug || userOposicionSlug
             const totalThemes = oposicion?.temasCount || 28
 
             // ✅ Filtrar temas por la oposición del usuario (igual que en themePerformance)

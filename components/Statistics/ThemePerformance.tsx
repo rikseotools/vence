@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import ArticleModal from './ArticleModal'
 import CcaaFlag from '@/components/CcaaFlag'
 
@@ -73,6 +74,7 @@ const formatThemeFallback = (num: number): string => `Tema ${num}`
 
 export default function ThemePerformance({ themePerformance, articlePerformance, userOposicion }: ThemePerformanceProps) {
   const { getSlug: generateLawSlug } = useLawSlugs()
+  const { slug: fallbackOposicionSlug } = useOposicionPaths()
   const [selectedTheme, setSelectedTheme] = useState<number | null>(null)
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
@@ -116,7 +118,8 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
     ) || []
   }
 
-  const oposicionSlug = userOposicion?.slug || 'auxiliar-administrativo-estado'
+  // fallback robusto a la oposición del usuario (no hardcode Estado) si no llega el prop
+  const oposicionSlug = userOposicion?.slug || fallbackOposicionSlug
 
   let mainContent: React.ReactNode
 

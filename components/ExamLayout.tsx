@@ -10,6 +10,7 @@ import MarkdownQuestionText from './MarkdownQuestionText'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getOposicionSlugFromPathname, resolveOposicionSlugForNav, getExamPenaltyPerWrong, getExamPenaltyLabel } from '@/lib/config/oposiciones'
 import { useOposicion } from '@/contexts/OposicionContext'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
@@ -371,6 +372,7 @@ export default function ExamLayout({
   } = useDailyQuestionLimit()
   const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
   const { getSlug: generateLawSlug } = useLawSlugs()
+  const { homeUrl } = useOposicionPaths() // oposición del usuario (robusto, no hardcode Estado)
   const { setQuestionContext } = useQuestionContext()
   const { openChatWith } = useAIChat()
 
@@ -985,7 +987,7 @@ export default function ExamLayout({
           >
             ⭐ Hazte Premium
           </button>
-          <Link href="/auxiliar-administrativo-estado" className="block mt-3 text-blue-600 hover:underline text-sm">
+          <Link href={homeUrl} className="block mt-3 text-blue-600 hover:underline text-sm">
             ← Volver al menú
           </Link>
         </div>

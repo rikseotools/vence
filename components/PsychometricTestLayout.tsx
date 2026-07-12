@@ -28,6 +28,7 @@ import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import DeviceLimitModal from './DeviceLimitModal'
 import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 
 // ============================================
 // TIPOS
@@ -159,6 +160,7 @@ export default function PsychometricTestLayout({
 
   // 📱 Límite de dispositivos
   const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
+  const { testUrl } = useOposicionPaths() // oposición del usuario (robusto, no hardcode Estado)
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(resumeData?.questionsAnswered ?? 0)
@@ -754,7 +756,7 @@ export default function PsychometricTestLayout({
             {/* Botones de navegación */}
             <div className="flex justify-center">
               <Link
-                href={(config && config.backUrl) || "/auxiliar-administrativo-estado/test"}
+                href={(config && config.backUrl) || testUrl}
                 className="px-8 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
               >
                 🏠 {(config && config.backText) || "Volver a Tests"}
@@ -819,7 +821,7 @@ export default function PsychometricTestLayout({
           <div className="flex items-center justify-between">
             <div>
               <Link 
-                href={(config && config.backUrl) || "/auxiliar-administrativo-estado/test"}
+                href={(config && config.backUrl) || testUrl}
                 className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
               >
                 ← {(config && config.backText) || "Volver a Tests"}
