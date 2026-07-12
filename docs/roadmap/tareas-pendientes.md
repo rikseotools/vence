@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🔴 [URGENTE — esta semana, prometido] Preguntas de 4 temas sin cubrir de Aux. Admvo. Diputación de Cuenca
+- **Qué:** faltan preguntas en 4 temas de `auxiliar_administrativo_diputacion_cuenca` (el resto está bien cubierto): **T5** Régimen local (TRRL RD Leg 781/1986 + ROF RD 2568/1986, hoy 9 preg), **T14** Reglamento de Bienes de las EELL (RD 1372/1986, hoy 7 preg), **T19** Informática básica + Explorador Windows 10 (0), **T20** Ofimática Word/Outlook/Excel Office 2021 (0).
+- **Por qué urge:** **compromiso con fecha** — feedback `affe9ed8` (sandradrz / "Ale", premium activa, 12/07): le dijimos que **estarán disponibles esta semana** (~antes del 19/07/2026).
+- **Cómo:** T5/T14 = editorial legal anclado al BOE de esos RD (nunca inventar). T19/T20 = familia Windows/Office (ver tareas de informática pendientes de otras oposiciones). Lifecycle `tech_approved` + doble auditoría ciega. Avisar a Ale (`sandradrz@gmail.com`, feedback `affe9ed8`) al terminar.
+- **Estado:** prometido a 1 usuaria, sin empezar.
+
 ### 🔴 [URGENTE] Construir los 5 temas de la parte específica de Téc. Auxiliar (Aux. de Servicios) UMU
 - **Qué:** faltan T9 (funciones especialidad), T11 (máquinas reproductoras), T13 (control de accesos), T14 (seguridad edificios/incendios), T18 (mantenimiento 1er nivel TIC) — `disponible=false`, 0 scope, 0 preguntas. Los 5 tienen **epígrafe oficial ya cargado**.
 - **Por qué urge:** convocatoria **R-838/2026 con inscripción ABIERTA** (18 plazas); ya **2 usuarias** lo han pedido (Laura García, María Sol). Sin la parte específica no es vendible al 100% justo en la ventana de inscripción.
