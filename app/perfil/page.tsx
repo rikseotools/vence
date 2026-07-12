@@ -247,6 +247,16 @@ function PerfilPageContent() {
   // Oposiciones disponibles - SINCRONIZADO CON ONBOARDING MODAL
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
+    {
+      value: 'auxiliar_biblioteca_estado',
+      label: 'Auxiliar de Biblioteca (Estado)',
+      data: {
+        name: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Bibliotecas)',
+        slug: 'auxiliar-biblioteca-estado',
+        categoria: 'C2',
+        administracion: 'Estado'
+      }
+    },
     // TOP MÁS POPULARES
     {
       value: 'ayudantes_ejecucion_penal_pais_vasco',

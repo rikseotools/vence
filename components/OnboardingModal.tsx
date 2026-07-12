@@ -115,6 +115,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
+  {
+    id: 'auxiliar_biblioteca_estado',
+    nombre: 'Auxiliar de Biblioteca (Estado)',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '📋'
+  },
   // === TOP 10 MÁS POPULARES ===
   {
     id: 'auxiliar_administrativo_estado',
@@ -1546,13 +1553,6 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     categoria: 'A1',
     administracion: 'Local',
     icon: '⚙️'
-  },
-  {
-    id: 'bibliotecario',
-    nombre: 'Auxiliar de Biblioteca',
-    categoria: 'C2',
-    administracion: 'Estado',
-    icon: '📚'
   },
   {
     id: 'conductor',

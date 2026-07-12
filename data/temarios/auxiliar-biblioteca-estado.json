@@ -1,0 +1,103 @@
+{
+  "identity": {
+    "nombre": "Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Bibliotecas)",
+    "short_name": "Auxiliar de Biblioteca (Estado)",
+    "slug": "auxiliar-biblioteca-estado",
+    "position_type": "auxiliar_biblioteca_estado",
+    "grupo": "C",
+    "subgrupo": "C2",
+    "categoria": "C2",
+    "tipo_acceso": "libre",
+    "administracion": "estatal",
+    "administracion_display": "Estado",
+    "ccaa": "estado",
+    "familia": "administracion_general",
+    "titulo_requerido": "Bachiller o Técnico",
+    "coverage_level": "con_tests"
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "BOE-A-2024-15769 (Res. 25/07/2024) y BOE-A-2025-23564: 100 preguntas + 2 supuestos de 15; penalizacion -1/3 por error, en blanco no penaliza."
+  },
+  "landing": {
+    "estadisticas": [
+      { "numero": "26", "texto": "Plazas (Sección Bibliotecas, acceso libre)", "color": "text-green-600" },
+      { "numero": "C2", "texto": "Subgrupo", "color": "text-blue-600" },
+      { "numero": "48", "texto": "Temas del programa", "color": "text-purple-600" }
+    ],
+    "faqs": [
+      { "pregunta": "¿Qué titulación necesito?", "respuesta": "Título de Bachiller o Técnico (o estar en condiciones de obtenerlo al final del plazo de solicitudes)." },
+      { "pregunta": "¿Cómo es el examen?", "respuesta": "Un ejercicio único con dos partes: 100 preguntas tipo test (4 opciones) sobre los Bloques I-III y 2 supuestos prácticos de 15 preguntas cada uno. Las respuestas incorrectas penalizan (-1/3); las dejadas en blanco no penalizan." },
+      { "pregunta": "¿Cuántas plazas hay?", "respuesta": "La convocatoria de 2025 ofertó 26 plazas de acceso libre en la Sección Bibliotecas de la Escala Auxiliar del Ministerio de Cultura." },
+      { "pregunta": "¿Se convoca con regularidad?", "respuesta": "Sí, es una de las oposiciones del Ministerio de Cultura que se convoca de forma recurrente en los últimos años." }
+    ]
+  },
+  "bloques": [
+    { "numero": 1, "titulo": "Legislación", "icon": "⚖️" },
+    { "numero": 2, "titulo": "Historia del libro y las bibliotecas", "icon": "📜" },
+    { "numero": 3, "titulo": "Biblioteconomía (parte específica)", "icon": "📚" },
+    { "numero": 4, "titulo": "Parte práctica", "icon": "🧩" }
+  ],
+  "temario": [
+    { "bloque": 1, "numero": 1, "topic_number": 1, "titulo": "La Constitución Española de 1978. La Corona", "epigrafe": "La Constitución Española de 1978: estructura y contenido. Los derechos y libertades públicas. La Corona. Funciones constitucionales del Rey. Sucesión y Regencia." },
+    { "bloque": 1, "numero": 2, "topic_number": 2, "titulo": "Cortes Generales, Gobierno y Poder Judicial", "epigrafe": "Las Cortes Generales. El Congreso de los Diputados. El Senado. Funciones de las Cámaras. El Gobierno y la Administración Pública. El Poder Judicial." },
+    { "bloque": 1, "numero": 3, "topic_number": 3, "titulo": "Organización territorial del Estado", "epigrafe": "Organización territorial del Estado. Las Comunidades Autónomas. Los Estatutos de Autonomía. La distribución de competencias entre Estado y Comunidades Autónomas. La Administración local." },
+    { "bloque": 1, "numero": 4, "topic_number": 4, "titulo": "La Administración General del Estado", "epigrafe": "La Administración General del Estado. Órganos superiores. Órganos directivos. Delegados y Subdelegados del Gobierno. La administración del Estado en el exterior." },
+    { "bloque": 1, "numero": 5, "topic_number": 5, "titulo": "El procedimiento administrativo", "epigrafe": "Disposiciones administrativas y actos administrativos. El procedimiento administrativo. Revisión de oficio. Recursos administrativos." },
+    { "bloque": 1, "numero": 6, "topic_number": 6, "titulo": "El Estatuto Básico del Empleado Público", "epigrafe": "El Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público." },
+    { "bloque": 1, "numero": 7, "topic_number": 7, "titulo": "Políticas de Igualdad de Género", "epigrafe": "Políticas de Igualdad de Género. La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres." },
+    { "bloque": 1, "numero": 8, "topic_number": 8, "titulo": "Transparencia y buen gobierno", "epigrafe": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno." },
+    { "bloque": 1, "numero": 9, "topic_number": 9, "titulo": "El Ministerio de Cultura", "epigrafe": "El Ministerio de Cultura. Organismos Autónomos adscritos a este Ministerio. Archivos, Bibliotecas y Museos Estatales." },
+    { "bloque": 1, "numero": 10, "topic_number": 10, "titulo": "Patrimonio Histórico y Propiedad Intelectual", "epigrafe": "La legislación española sobre el Patrimonio Histórico Español. Ley de Propiedad intelectual y su reflejo en la gestión de bibliotecas." },
+    { "bloque": 1, "numero": 11, "topic_number": 11, "titulo": "Legislación bibliotecaria española", "epigrafe": "Legislación bibliotecaria española. Ley 10/2007 de la lectura, del libro y las bibliotecas. Ley 1/2015 reguladora de la Biblioteca Nacional de España." },
+
+    { "bloque": 2, "numero": 1, "topic_number": 101, "titulo": "La imprenta y los incunables", "epigrafe": "La invención y difusión de la imprenta. Los incunables." },
+    { "bloque": 2, "numero": 2, "topic_number": 102, "titulo": "El libro y las bibliotecas en los siglos XVI y XVII", "epigrafe": "El libro y las bibliotecas durante los siglos XVI y XVII." },
+    { "bloque": 2, "numero": 3, "topic_number": 103, "titulo": "El libro y las bibliotecas en los siglos XVIII y XIX", "epigrafe": "El libro y las bibliotecas durante los siglos XVIII y XIX. Avances tecnológicos." },
+    { "bloque": 2, "numero": 4, "topic_number": 104, "titulo": "El libro y las bibliotecas en el siglo XX", "epigrafe": "El libro y las bibliotecas durante el siglo XX. La industria del libro y la edición en la actualidad." },
+
+    { "bloque": 3, "numero": 1, "topic_number": 201, "titulo": "Concepto y clases de bibliotecas", "epigrafe": "El concepto de bibliotecas. Clases de bibliotecas." },
+    { "bloque": 3, "numero": 2, "topic_number": 202, "titulo": "Bibliotecas nacionales", "epigrafe": "Bibliotecas nacionales: concepto, funciones y servicios." },
+    { "bloque": 3, "numero": 3, "topic_number": 203, "titulo": "Bibliotecas públicas", "epigrafe": "Bibliotecas públicas: concepto, funciones y servicios." },
+    { "bloque": 3, "numero": 4, "topic_number": 204, "titulo": "Bibliotecas universitarias", "epigrafe": "Bibliotecas universitarias: concepto, funciones y servicios." },
+    { "bloque": 3, "numero": 5, "topic_number": 205, "titulo": "Bibliotecas especializadas", "epigrafe": "Bibliotecas especializadas: concepto, funciones y servicios." },
+    { "bloque": 3, "numero": 6, "topic_number": 206, "titulo": "Las hemerotecas", "epigrafe": "Las hemerotecas." },
+    { "bloque": 3, "numero": 7, "topic_number": 207, "titulo": "Los documentos y sus clases", "epigrafe": "Los documentos y sus clases. Documentos primarios. Documentos secundarios. Documentos terciarios." },
+    { "bloque": 3, "numero": 8, "topic_number": 208, "titulo": "Colecciones especiales", "epigrafe": "Colecciones especiales: fondo antiguo, material gráfico, soportes audiovisuales, etc." },
+    { "bloque": 3, "numero": 9, "topic_number": 209, "titulo": "Instalaciones y equipamiento", "epigrafe": "Instalaciones y equipamiento de las bibliotecas." },
+    { "bloque": 3, "numero": 10, "topic_number": 210, "titulo": "Preservación y conservación", "epigrafe": "Preservación y conservación del fondo bibliográfico y documental." },
+    { "bloque": 3, "numero": 11, "topic_number": 211, "titulo": "Digitalización y preservación digital", "epigrafe": "Digitalización. Preservación digital." },
+    { "bloque": 3, "numero": 12, "topic_number": 212, "titulo": "Selección y adquisición de fondos", "epigrafe": "Selección y adquisición de fondos bibliográficos." },
+    { "bloque": 3, "numero": 13, "topic_number": 213, "titulo": "El depósito legal", "epigrafe": "El depósito legal. El depósito legal de publicaciones en línea." },
+    { "bloque": 3, "numero": 14, "topic_number": 214, "titulo": "Proceso técnico: registro y sellado", "epigrafe": "Proceso técnico de los fondos bibliográficos: registro, sellado, etc." },
+    { "bloque": 3, "numero": 15, "topic_number": 215, "titulo": "Proceso técnico: ordenación y depósitos", "epigrafe": "Proceso técnico: ordenación de los fondos y gestión de los depósitos. Recuentos." },
+    { "bloque": 3, "numero": 16, "topic_number": 216, "titulo": "Descripción bibliográfica y control de autoridades", "epigrafe": "La descripción bibliográfica y el control de autoridades." },
+    { "bloque": 3, "numero": 17, "topic_number": 217, "titulo": "El formato MARC 21", "epigrafe": "El formato MARC 21." },
+    { "bloque": 3, "numero": 18, "topic_number": 218, "titulo": "Números de identificación bibliográfica", "epigrafe": "Números de identificación bibliográfica: el ISBN, el ISSN y otros sistemas nacionales e internacionales." },
+    { "bloque": 3, "numero": 19, "topic_number": 219, "titulo": "Clasificación. La CDU", "epigrafe": "Clasificación. Clasificaciones sistemáticas y alfabéticas. La CDU." },
+    { "bloque": 3, "numero": 20, "topic_number": 220, "titulo": "Servicios a los lectores: referencia y ALFIN", "epigrafe": "Servicios a los lectores: referencia e información bibliográfica. Alfabetización informacional." },
+    { "bloque": 3, "numero": 21, "topic_number": 221, "titulo": "Servicios a los lectores: lectura en sala y libre acceso", "epigrafe": "Servicios a los lectores: lectura en sala y libre acceso." },
+    { "bloque": 3, "numero": 22, "topic_number": 222, "titulo": "Tipos de préstamos. Préstamo interbibliotecario", "epigrafe": "Tipos de préstamos. El préstamo interbibliotecario." },
+    { "bloque": 3, "numero": 23, "topic_number": 223, "titulo": "Bibliografías. Bibliografías nacionales", "epigrafe": "Bibliografías. Bibliografías nacionales." },
+    { "bloque": 3, "numero": 24, "topic_number": 224, "titulo": "Sistemas integrados de gestión bibliotecaria", "epigrafe": "Sistemas integrados de gestión bibliotecaria." },
+    { "bloque": 3, "numero": 25, "topic_number": 225, "titulo": "OPAC y herramientas de descubrimiento", "epigrafe": "OPAC. Herramientas de descubrimiento." },
+    { "bloque": 3, "numero": 26, "topic_number": 226, "titulo": "Internet: historia y gobernanza", "epigrafe": "Internet: historia y gobernanza de Internet, W3C." },
+    { "bloque": 3, "numero": 27, "topic_number": 227, "titulo": "Cooperación bibliotecaria", "epigrafe": "Cooperación bibliotecaria: organismos y proyectos." },
+    { "bloque": 3, "numero": 28, "topic_number": 228, "titulo": "Principales catálogos colectivos", "epigrafe": "Principales catálogos colectivos." },
+    { "bloque": 3, "numero": 29, "topic_number": 229, "titulo": "Bibliotecas digitales y OAI-PMH", "epigrafe": "Bibliotecas digitales y recolectores OAI-PMH." },
+    { "bloque": 3, "numero": 30, "topic_number": 230, "titulo": "Agentes de la producción y difusión del libro", "epigrafe": "Agentes de la producción y difusión del libro." },
+
+    { "bloque": 4, "numero": 1, "topic_number": 301, "titulo": "Ordenación y conservación de fondos (práctico)", "epigrafe": "Ordenación y conservación de fondos." },
+    { "bloque": 4, "numero": 2, "topic_number": 302, "titulo": "Atención a investigadores y usuarios (práctico)", "epigrafe": "Atención a investigadores y usuarios." },
+    { "bloque": 4, "numero": 3, "topic_number": 303, "titulo": "Apoyo a procesos técnicos (práctico)", "epigrafe": "Apoyo a procesos técnicos." }
+  ],
+  "convocatoria": {
+    "año": 2025,
+    "estado_proceso": "examen_realizado",
+    "diario_oficial": "BOE",
+    "boe_id": "BOE-A-2025-23564",
+    "fecha_examen": "2026-03-14",
+    "plazas": 26,
+    "notas": "Convocatoria acceso libre Sección Bibliotecas (Res. 13/11/2025, BOE-A-2025-23564). Examen 14/03/2026 (ya realizado). Oposición recurrente: pendiente de pivotar a la próxima convocatoria cuando se publique."
+  }
+}
