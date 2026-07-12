@@ -635,6 +635,8 @@ Si vuelven a aparecer errores de `CONNECT_TIMEOUT` o `statement timeout` en Verc
 
 Desde el 30/04/2026, las páginas de temario, test y landings usan `force-dynamic` en vez de generación estática (`generateStaticParams`). Esto significa que se renderizan en el servidor en la primera visita.
 
+> ⚠️ **Excepción pendiente: `/leyes/[law]` sigue en SSG masivo** (`generateStaticParams` → 1.278 leyes). Es la ÚNICA ruta de alto volumen que NO migró a on-demand, y causa la **flakiness del build** (CONNECT_TIMEOUT a RDS + OOM, observado 12/07/2026). Diseño del fix (hacerla consistente, SEO-safe): **`docs/runbooks/build-resilience-leyes-ondemand.md`**.
+
 ### Por qué no SSG
 
 El build intentaba generar ~3600 páginas estáticas con 3 workers. Con 90 conexiones máximas en Supabase, esto causaba:

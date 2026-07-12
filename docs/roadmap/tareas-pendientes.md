@@ -74,3 +74,9 @@
 - **Por qué:** dinero ganado y disponible sin cobrar; dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 4 € de saldo) o esperar a que acumule 10 €.
 - **Cómo:** `docs/runbooks/embajadores-recompensas.md` (POST `/api/admin/rewards/pay` o `payAccumulated`). Panel `/admin/embajadores/7c6612bd`.
 - **Estado:** 9 € acumulados (12/07), pendiente de decisión de Manuel (no pagar aún).
+
+### 🟡 [MEDIA] Migrar /leyes/[law] a on-demand (arreglar la flakiness del build)
+- **Qué:** `/leyes/[law]` es la ÚNICA ruta de alto volumen que sigue en SSG real (`generateStaticParams` → 1.278 leyes). Prerenderiza 1.278 páginas RDS-dependientes en cada build → **CONNECT_TIMEOUT a RDS + OOM** intermitentes (build falló 2 veces el 12/07 desplegando el fix de /test/articulo).
+- **Por qué:** el resto de rutas dinámicas ya usa on-demand (`return []`) desde 30/04/2026; ésta se quedó atrás. Acopla la fiabilidad/memoria del build a RDS.
+- **Cómo:** `docs/runbooks/build-resilience-leyes-ondemand.md` (diseño en 3 piezas: on-demand + hot-set SEO desde GSC + warming + revalidación por dato-BOE). SEO-safe (precedente propio, `cache-revalidation.md` §force-dynamic). Con capas de seguridad + canary.
+- **Estado:** diseñado (runbook), sin implementar.
