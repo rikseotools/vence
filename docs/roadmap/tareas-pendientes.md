@@ -26,14 +26,14 @@
 - **Qué:** `tecnico_informatica` está **LIVE** con el Bloque I (Organización del Estado + Administración electrónica, 9 temas servibles) + 2 temas del Bloque II. Faltan **22 temas marcados "En elaboración"**: Bloque II (Tecnología básica, 3 de 5), Bloque III (Desarrollo de sistemas, 9 temas), Bloque IV (Sistemas y comunicaciones, 10 temas). Esqueleto completo (33 temas, todos visibles), 22 disponible=false.
 - **Por qué:** promesa a Cristina Laorden (feedback `cbf5998b`, 07/07). Ya hay ~20 usuarios con TAI como objetivo, **todos bien asignados** a `tecnico_informatica` (verificado 12/07). Servible en organización, pero la parte técnica de informática (el núcleo) falta.
 - **Cómo:** editorial verificado contra el temario oficial (BOE de la convocatoria TAI), lifecycle `tech_approved`, luego `disponible=true`. `docs/maintenance/crear-nueva-oposicion.md`.
-- **Ojo (revisar):** `coverage_level='con_landing'` pese a tener 11 temas jugables → probablemente debería ser `con_tests` (no infravender, lección Alfonso). Confirmar tema-count vs temario oficial para dar el esqueleto por "perfecto" al 100%.
-- **Estado:** LIVE Bloque I; 22 temas en elaboración. Avisar a Cristina al completar la específica.
+- **Estado (12/07):** LIVE Bloque I; 22 temas en elaboración. `coverage_level` ya corregido a `con_tests`. Esqueleto **certificado completo contra BOE-A-2024-14098** (33 temas = oficial, 9-5-9-10). Cristina ya avisada de que está disponible (feedback cerrado); avisar de nuevo al completar la parte técnica.
 
-### 🟠 [ALTA] Construir la oposición Ayudantes en Ejecución Penal (Gobierno Vasco)
-- **Qué:** `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` está **catalogada** (⚪) pero sin temario ni tests. Es el equivalente autonómico a Ayudantes de IIPP en el País Vasco (prisiones transferidas al Gobierno Vasco).
-- **Por qué:** promesa explícita al usuario — feedback `b2c2db3f` (adriangarri17@gmail.com, premium, Bilbao, 11/07): le dijimos *"estamos elaborando la oposición… te avisaremos en cuanto esté lista"*. Aún **no hay convocatoria ni temario oficial** (previsto este año); construir cuando salga, verificando cada tema contra el programa oficial.
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. El núcleo común con la estatal (que ya tenemos) se reutiliza. Avisar a `b2c2db3f` al terminar.
-- **Estado:** catalogada, sin contenido. Esperando convocatoria oficial.
+### 🟡 [MEDIA] Completar los 3 temas específicos de Ayudantes en Ejecución Penal del País Vasco
+- **Qué:** la oposición **YA está LIVE** bajo el slug `ayudantes-ejecucion-penal-pais-vasco` (`con_tests`, **50/53 servidos**, verify:scope 53/53). Faltan **3 temas en elaboración**: T22 (Comunicación oral, editorial), T109 (Actividad penitenciaria en CAPV) y T124 (Oficina Única de Gestión). **Las 3 fuentes ya están creadas en BD** (RD 474/2021, Decreto 326/2024, Manual de Gestión Penitenciaria / Instrucción 1/2021); falta **generar las preguntas** (doble pasada, `tech_approved`).
+- **Por qué:** feedback `b2c2db3f` (runaans, premium, Bilbao) — **ya avisado el 12/07** de que está disponible (feedback cerrado). Servible casi al 100%; faltan 3 temas específicos.
+- **Cómo:** editorial verificado contra las fuentes vascas ya en BD (T22 patrón ley virtual; T109/T124 contra Decreto 326/2024 + Manual). `docs/maintenance/crear-nueva-oposicion.md`.
+- **Limpieza:** retirar la aspiracional duplicada `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (catalogada, is_active=false, 0 users).
+- **Estado:** LIVE 50/53; 3 temas con fuente creada, preguntas pendientes.
 
 ### 🟡 [MEDIA] Completar la parte específica (biblioteconomía) de Auxiliar de Biblioteca del Estado
 - **Qué:** la oposición `auxiliar_biblioteca_estado` está LIVE con el Bloque I (legislación, 9 temas servibles, ~8.000 preguntas). Faltan **39 temas marcados "En elaboración"**: Bloque II (Historia del libro, T101-104), Bloque III (Biblioteconomía, T201-230: MARC 21, CDU, tipos de bibliotecas, préstamo, OPAC…), Bloque IV (Práctica, T301-303), y T9 (Ministerio de Cultura) + T11 (Ley 10/2007 y Ley 1/2015 BNE, a importar).
@@ -69,8 +69,8 @@
 - **Cómo:** `docs/runbooks/deploy.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
 - **Estado:** commiteado + pusheado, pendiente de deploy.
 
-### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (6 €)
-- **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **6 € pagables** = 2 recompensas de bug aprobadas (3 €+3 €), sin hold, 0 pagado. Emitir vale Amazon.es.
-- **Por qué:** dinero ganado y disponible sin cobrar; es el primero que dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 1 € de saldo) o esperar a que acumule 10 €.
+### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)
+- **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **9 € pagables** = 3 recompensas de bug aprobadas (3 €×3), sin hold, 0 pagado. La 3ª es del bug de Auxiliar de Biblioteca (12/07). Emitir vale Amazon.es.
+- **Por qué:** dinero ganado y disponible sin cobrar; dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 4 € de saldo) o esperar a que acumule 10 €.
 - **Cómo:** `docs/runbooks/embajadores-recompensas.md` (POST `/api/admin/rewards/pay` o `payAccumulated`). Panel `/admin/embajadores/7c6612bd`.
-- **Estado:** detectado 11/07, pendiente de decisión de Manuel (no pagar aún).
+- **Estado:** 9 € acumulados (12/07), pendiente de decisión de Manuel (no pagar aún).
