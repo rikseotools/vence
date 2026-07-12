@@ -23,7 +23,7 @@ export default function MarkdownExplanation({ content, className = '', preserveL
   return (
     <div
       className={`
-        prose prose-sm max-w-none
+        prose prose-sm max-w-none dark:prose-invert
         prose-p:my-2 prose-p:leading-relaxed
         prose-strong:text-inherit prose-strong:font-semibold
         prose-em:text-inherit
