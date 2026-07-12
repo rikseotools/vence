@@ -187,6 +187,26 @@ function percentile(sorted: number[], p: number): number | null {
   return sorted[Math.max(0, Math.min(idx, sorted.length - 1))]
 }
 
+// ── Cache in-memory del payload (POST-auth), por `window`. ───────────────────
+// El panel auto-refresca cada 60s por admin y agrega sobre observable_events
+// (9,8M filas / 5,4 GB) + validation_error_logs. Sin cache, cada refresh de
+// cada admin dispara un escaneo completo → satura el pool RDS (era la query #1
+// en total_time del primario: ~60.000 s acumulados, max 112 s). Con TTL 30s:
+// 1 cómputo por Fargate-task cada 30s, no N_admins × refresh. La auth SIEMPRE
+// corre antes de leer el cache → nunca se sirve dato sin autorizar. Vida-larga
+// del proceso Fargate → el memo persiste entre requests del mismo task.
+type HealthCacheEntry = { at: number; payload: Record<string, unknown> }
+const HEALTH_CACHE_TTL_MS = 30_000
+const _healthCache = new Map<string, HealthCacheEntry>()
+function getHealthCache(window: string): Record<string, unknown> | null {
+  const e = _healthCache.get(window)
+  if (e && Date.now() - e.at < HEALTH_CACHE_TTL_MS) return e.payload
+  return null
+}
+function setHealthCache(window: string, payload: Record<string, unknown>): void {
+  _healthCache.set(window, { at: Date.now(), payload })
+}
+
 async function _GET(request: NextRequest) {
   const auth = await verifyAuth(request, '/api/admin/system-health')
   if (!auth.success) {
@@ -199,6 +219,13 @@ async function _GET(request: NextRequest) {
   // Parámetros
   const window = parseWindow(request.nextUrl.searchParams.get('window'))
   const windowHours = WINDOW_HOURS[window]
+
+  // Cache hit (post-auth) → devolvemos el payload memoizado. Ver nota arriba.
+  const cachedHealth = getHealthCache(window)
+  if (cachedHealth) {
+    return NextResponse.json({ ...cachedHealth, cached: true })
+  }
+
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000
   const since = new Date(sinceMs).toISOString()
 
@@ -682,7 +709,7 @@ async function _GET(request: NextRequest) {
     ? 'unknown'
     : clientErrorTotal >= 500 ? 'red' : clientErrorTotal >= 100 ? 'amber' : 'green'
 
-  return NextResponse.json({
+  const _payload: Record<string, unknown> = {
     success: true,
     generatedAt: new Date().toISOString(),
     window,
@@ -852,7 +879,9 @@ async function _GET(request: NextRequest) {
         note: 'Toda señal error/warn de observable_events, agrupada. Garantía por diseño: cualquier evento capturado (incl. tipos futuros) se muestra aquí. Los benignos (esperados: auth, forbidden, scraping…) se marcan y no cuentan.',
       },
     },
-  })
+  }
+  setHealthCache(window, _payload)
+  return NextResponse.json(_payload)
 }
 
 export const GET = withErrorLogging('/api/admin/system-health', _GET)

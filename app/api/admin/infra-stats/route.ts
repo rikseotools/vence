@@ -1,7 +1,7 @@
 // app/api/admin/infra-stats/route.ts - Estadísticas de infraestructura BD y carga
 import { NextRequest, NextResponse } from 'next/server'
 import { Client as PgClient } from 'pg'
-import { getDb } from '@/db/client'
+import { getAdminDb } from '@/db/client'
 import { sql, eq, gte, or, like, desc } from 'drizzle-orm'
 import {
   userSessions,
@@ -125,6 +125,23 @@ function isAdmin(email: string | null | undefined): boolean {
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
+// ── Cache in-memory del payload (POST-auth). ────────────────────────────────
+// Panel de infra: auto-refresca por admin y agrega sobre validation_error_logs
+// + pg_stat_activity. Corría SIN cache sobre el pool getDb() (¡el de usuarios!),
+// contribuyendo a la contención del primario RDS. TTL 20s (más corto que health
+// porque muestra conexiones live, pero suficiente para cortar el N×refresh).
+// La auth SIEMPRE corre antes de leer el cache.
+type InfraCacheEntry = { at: number; payload: Record<string, unknown> }
+const INFRA_CACHE_TTL_MS = 20_000
+let _infraCache: InfraCacheEntry | null = null
+function getInfraCache(): Record<string, unknown> | null {
+  if (_infraCache && Date.now() - _infraCache.at < INFRA_CACHE_TTL_MS) return _infraCache.payload
+  return null
+}
+function setInfraCache(payload: Record<string, unknown>): void {
+  _infraCache = { at: Date.now(), payload }
+}
+
 async function _GET(request: NextRequest) {
   try {
     // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
@@ -136,12 +153,22 @@ async function _GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
+    // Cache hit (post-auth) → payload memoizado. Ver nota arriba.
+    const cachedInfra = getInfraCache()
+    if (cachedInfra) {
+      return NextResponse.json({ ...cachedInfra, cached: true })
+    }
+
     // Migración 27/05/2026 (Fase 3 strangler fig agnosticismo-supabase):
     // antes este endpoint mantenía un cliente Supabase paralelo a Drizzle para
     // 3 queries específicas (user_sessions, daily_question_usage,
     // validation_error_logs). Ahora todo usa Drizzle (single source of truth)
     // y elimina el último uso de SERVICE_ROLE_KEY en este archivo.
-    const db = getDb()
+    // Bulkhead (12/07/2026): usa el pool ADMIN (getAdminDb, max:12), NO el de
+    // usuarios (getDb, max:5). Así una lectura pesada de infra no roba slots de
+    // conexión al hot-path de usuarios. Aísla CONEXIONES; el aislamiento de
+    // CÓMPUTO (CPU/IO del primario) requiere read replica — ver runbook.
+    const db = getAdminDb()
     const today = new Date().toISOString().split('T')[0]
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -386,7 +413,7 @@ async function _GET(request: NextRequest) {
     const poolerSummary = pgbouncerStats?.pools.find((p: any) => p.database === 'postgres' && p.user === 'postgres')
     const poolerStatsRow = pgbouncerStats?.stats.find((s: any) => s.database === 'postgres')
 
-    return NextResponse.json({
+    const _payload: Record<string, unknown> = {
       database: {
         maxConnections,
         totalConnections,
@@ -427,7 +454,9 @@ async function _GET(request: NextRequest) {
           : 0,
       } : { available: false },
       timestamp: new Date().toISOString(),
-    })
+    }
+    setInfraCache(_payload)
+    return NextResponse.json(_payload)
   } catch (error) {
     console.error('Error in infra-stats:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

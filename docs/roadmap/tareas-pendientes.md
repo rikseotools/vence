@@ -62,6 +62,13 @@
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
 - **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
 
+### 🟡 [MEDIA — decisión de coste] Provisionar RDS read replica para lecturas admin/analytics
+- **Qué:** una **RDS read replica** a la que apuntar los endpoints admin/analytics pesados (`getReadDb()` + `USE_READ_REPLICA=true` + `DATABASE_URL_REPLICA`). La fontanería en `db/client.ts` **ya existe** (patrón era-Supabase); tras el cutover a RDS (04/07) apunta al primario → hoy no aísla nada.
+- **Por qué:** aísla el **CÓMPUTO** de las lecturas analíticas del hot-path de usuarios (lo que los pools separados NO hacen — misma instancia física). Es la capa 3 del fix de contención RDS del 12/07.
+- **Gatillo:** hacerlo **solo si**, ya con la cache de paneles admin desplegada (12/07), la contención del primario persiste. No pagar infra (~coste de otra instancia RDS) por un escaneo que la cache ya eliminó. Medir 1-2 semanas primero.
+- **Cómo:** `docs/runbooks/contencion-rds-paneles-admin.md` §3. Provisionar réplica en `aws rds create-db-instance-read-replica` (perfil `vence`) → set `DATABASE_URL_REPLICA` en SSM → flip `USE_READ_REPLICA=true` → apuntar endpoints admin a `getReadDb()`.
+- **Estado:** pendiente, gatillado (no antes de medir).
+
 ### 🟡 [MEDIA] Desplegar el guardarraíl anti-duplicado de recompensas
 - **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) está en `origin/main` pero **NO desplegado** (prod = `4465d15c`).
 - **Por qué:** cierra el hueco de doble recompensa por el mismo motivo (control robusto). No bloquea nada (creación manual ya se verifica), pero conviene que esté vivo.
