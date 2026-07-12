@@ -35,9 +35,10 @@ Separar el trabajo admin del de usuarios es lo profesional, pero hay que disting
 ## Las capas de la solución (de más barata a más cara — aplicar en este orden)
 
 ### 1. No computar → cache del panel (✅ APLICADO 12/07)
-Un panel de monitoreo que auto-refresca cada 60 s **no gana nada** ejecutando un escaneo fresco por cada admin. Memo in-memory **post-auth** del payload, por Fargate-task:
-- **`system-health`**: `getHealthCache(window)` / `setHealthCache`, TTL **30 s**, keyed por `window`.
-- **`infra-stats`**: `getInfraCache()` / `setInfraCache`, TTL **20 s** (muestra conexiones live).
+Un panel de monitoreo que auto-refresca cada 60 s **no gana nada** ejecutando un escaneo fresco por cada admin. Memo in-memory **post-auth** del payload, por Fargate-task. **Los 5 paneles de monitoreo que agregan sobre `observable_events` están cubiertos:**
+- **`system-health`** (TTL 30 s, keyed por `window`) e **`infra-stats`** (TTL 20 s): memo **inline** (fueron los primeros, `getHealthCache`/`getInfraCache`).
+- **`observability`** (keyed por `window`), **`slos`** y **`canary`** (singleton): usan el **helper compartido `lib/cache/adminPanelMemo.ts`** (`createAdminPanelMemo(ttlMs)`, TTL 30 s) para no duplicar el memo. **Escalable:** un panel nuevo = 3 líneas (import + `createAdminPanelMemo` + get/set post-auth).
+- *(Cabo menor: migrar los 2 inline al helper compartido para uniformidad — opcional, ambos funcionan.)*
 - **Seguridad:** la auth (`verifyAuth` + `isAdmin`) corre SIEMPRE antes de leer el cache → nunca se sirve dato sin autorizar. El payload lleva `cached:true` cuando viene del memo (observabilidad del hit-rate).
 - **Por qué NO es "cache que enmascara la causa"** (el `ARCHITECTURE_ROADMAP` avisa de eso): aquí no tapamos un SPOF con reintentos; **eliminamos un escaneo repetido inútil** de un panel. La causa (escaneo caro) desaparece, no se esconde.
 - **Efecto:** query #1 pasa de N_admins × refresh a **~1 ejecución/30 s por task**.
