@@ -28,12 +28,9 @@
 - **Cómo:** editorial verificado contra el temario oficial (BOE de la convocatoria TAI), lifecycle `tech_approved`, luego `disponible=true`. `docs/maintenance/crear-nueva-oposicion.md`.
 - **Estado (12/07):** LIVE Bloque I; 22 temas en elaboración. `coverage_level` ya corregido a `con_tests`. Esqueleto **certificado completo contra BOE-A-2024-14098** (33 temas = oficial, 9-5-9-10). Cristina ya avisada de que está disponible (feedback cerrado); avisar de nuevo al completar la parte técnica.
 
-### 🟡 [MEDIA] Completar los 3 temas específicos de Ayudantes en Ejecución Penal del País Vasco
-- **Qué:** la oposición **YA está LIVE** bajo el slug `ayudantes-ejecucion-penal-pais-vasco` (`con_tests`, **50/53 servidos**, verify:scope 53/53). Faltan **3 temas en elaboración**: T22 (Comunicación oral, editorial), T109 (Actividad penitenciaria en CAPV) y T124 (Oficina Única de Gestión). **Las 3 fuentes ya están creadas en BD** (RD 474/2021, Decreto 326/2024, Manual de Gestión Penitenciaria / Instrucción 1/2021); falta **generar las preguntas** (doble pasada, `tech_approved`).
-- **Por qué:** feedback `b2c2db3f` (runaans, premium, Bilbao) — **ya avisado el 12/07** de que está disponible (feedback cerrado). Servible casi al 100%; faltan 3 temas específicos.
-- **Cómo:** editorial verificado contra las fuentes vascas ya en BD (T22 patrón ley virtual; T109/T124 contra Decreto 326/2024 + Manual). `docs/maintenance/crear-nueva-oposicion.md`.
-- **Limpieza:** retirar la aspiracional duplicada `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (catalogada, is_active=false, 0 users).
-- **Estado:** LIVE 50/53; 3 temas con fuente creada, preguntas pendientes.
+### ✅ [HECHA 12/07] Ayudantes en Ejecución Penal del País Vasco COMPLETA (53/53)
+- **Qué:** `ayudantes-ejecucion-penal-pais-vasco` **servible al 100% (53/53), verify:scope 53/53 verified_correct**. Los 3 últimos temas (T22 Comunicación oral, T109 Actividad penitenciaria CAPV, T124 Oficina Única) generados 12/07 contra las fuentes vascas creadas en BD (T22 ley virtual comunicación oral; T109 RD 474/2021 + Decreto 326/2024 art 9/12/13/DA2; T124 Manual/Instrucción 1/2021 C.1-C.3). 16 preguntas IA + auditoría ciega 26/26 PERFECT + tech_approved. runaans ya avisado (feedback `b2c2db3f`).
+- **Limpieza menor pendiente (opcional):** retirar del onboarding la aspiracional duplicada `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (0 usuarios; toca `OnboardingModal.tsx` + deploy).
 
 ### ✅ [HECHA 12/07] Auxiliar de Biblioteca del Estado COMPLETA (48/48)
 - **Qué:** `auxiliar_biblioteca_estado` LIVE y **servible al 100% (48/48 temas)**. Bloque I Legislación 11/11, Bloque II Historia del libro 4/4, Bloque III Biblioteconomía 30/30, Bloque IV Práctica 3/3.
