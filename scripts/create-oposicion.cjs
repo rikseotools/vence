@@ -224,6 +224,52 @@ function scaffoldRoutes(spec, opts = {}) {
   return { files: files.map(f => f.replace('app/', '')), warnings: [] };
 }
 
+/**
+ * FASE 4c — registros pequeños: OnboardingModal (OFFICIAL_OPOSICIONES), perfil (selector), mapeo CCAA
+ * (oposiciones-filters). Todos IDEMPOTENTES (saltan si ya está). CcaaFlag NO se auto-edita (es juicio de
+ * qué bandera) → se avisa. Devuelve { done, warnings }.
+ */
+function scaffoldRegistrations(spec) {
+  const id = spec.identity, PT = id.position_type, slug = id.slug;
+  const esc = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const ADM_DEFAULT = { autonomica: 'Autonómica', estado: 'Estado', local: 'Local', justicia: 'Justicia', empresa_publica: 'Empresa pública' };
+  const admDisplay = id.administracion_display || ADM_DEFAULT[id.administracion] || 'Estado';
+  const done = [], warnings = [];
+  const splice = (file, anchor, entry, presentMarker) => {
+    if (!fs.existsSync(file)) { warnings.push(`${file} no existe`); return; }
+    let s = fs.readFileSync(file, 'utf8');
+    if (s.includes(presentMarker)) { done.push(`${file} (ya presente)`); return; }
+    const i = s.indexOf(anchor);
+    if (i < 0) { warnings.push(`${file}: no encuentro el ancla — inserta a mano`); return; }
+    fs.writeFileSync(file, s.slice(0, i + anchor.length) + entry + s.slice(i + anchor.length));
+    done.push(`${file} ✅`);
+  };
+
+  // 1) OnboardingModal → OFFICIAL_OPOSICIONES
+  splice('components/OnboardingModal.tsx',
+    'export const OFFICIAL_OPOSICIONES: OposicionItem[] = [\n',
+    `  {\n    id: '${PT}',\n    nombre: '${esc(id.short_name)}',\n    categoria: '${esc(id.categoria)}',\n    administracion: '${esc(admDisplay)}',\n    icon: '${id.emoji || '📋'}'\n  },\n`,
+    `id: '${PT}'`);
+
+  // 2) perfil → selector oposiciones
+  splice('app/perfil/page.tsx',
+    "{ value: '', label: 'Ninguna seleccionada' },\n",
+    `    {\n      value: '${PT}',\n      label: '${esc(id.short_name)}',\n      data: {\n        name: '${esc(id.nombre)}',\n        slug: '${slug}',\n        categoria: '${esc(id.categoria)}',\n        administracion: '${esc(admDisplay)}'\n      }\n    },\n`,
+    `value: '${PT}'`);
+
+  // 3) mapeo CCAA (oposicionToCcaa) — requiere identity.ccaa
+  if (id.ccaa) {
+    splice('app/oposiciones/lib/oposiciones-filters.ts',
+      'const map: Record<string, string> = {\n',
+      `    '${slug}': '${esc(id.ccaa)}',\n`,
+      `'${slug}':`);
+  } else warnings.push(`mapeo CCAA omitido: falta identity.ccaa en el spec (p.ej. 'pais-vasco','estado','andalucia')`);
+
+  // 4) CcaaFlag — no se auto-edita (juicio de bandera); verificar con audit:oposicion
+  warnings.push(`CcaaFlag: verifica que resuelve bandera para '${slug}' (audit:oposicion lo comprueba; si cae a emoji, añade keyword en components/CcaaFlag.tsx)`);
+  return { done, warnings };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers de BD
 // ────────────────────────────────────────────────────────────────────────────
@@ -263,6 +309,7 @@ async function main() {
   const force = args.includes('--force');
   const insertConfig = args.includes('--insert-config'); // FASE 4: inserta la entrada en lib/config/oposiciones.ts
   const doRoutes = args.includes('--routes');             // FASE 5: genera las 8 rutas por-oposición
+  const doRegistros = args.includes('--registros');       // FASE 4c: OnboardingModal + perfil + mapeo CCAA
   if (!specPath) { console.error('Uso: node scripts/create-oposicion.cjs <spec.json> [--dry-run] [--force]'); process.exit(2); }
 
   let spec;
@@ -430,7 +477,14 @@ async function main() {
     } else if (!dryRun) {
       console.log(`   FASE 5: para generar las rutas → --routes`);
     }
-    console.log(`   PENDIENTE MANUAL (registros pequeños): OnboardingModal, perfil, mapeo CCAA (oposiciones-filters), CcaaFlag.`);
+    // ── FASE 4c: registros pequeños ──
+    if (doRegistros && !dryRun) {
+      const { done, warnings } = scaffoldRegistrations(spec);
+      done.forEach(d => console.log('   FASE 4c:', d));
+      warnings.forEach(w => console.warn('   ⚠️ FASE 4c:', w));
+    } else if (!dryRun) {
+      console.log(`   REGISTROS pequeños (OnboardingModal/perfil/CCAA): --registros (CcaaFlag siempre a mano). Requiere identity.ccaa + identity.administracion_display.`);
+    }
     console.log(`   GATES OBLIGATORIOS: npm run audit:oposicion ${SLUG} && audit:served && verify:scope (auditoría epígrafes con 2 agentes)`);
     process.exit(0);
   } catch (err) {
@@ -441,4 +495,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, buildInsert };
+module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, scaffoldRegistrations, buildInsert };

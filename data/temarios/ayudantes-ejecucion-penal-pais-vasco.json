@@ -28,7 +28,9 @@
       "ayudante ejecucion penal c1",
       "carcel pais vasco",
       "funcionario prisiones euskadi"
-    ]
+    ],
+    "administracion_display": "País Vasco",
+    "ccaa": "pais-vasco"
   },
   "examScoring": {
     "penaltyDivisor": 3,
