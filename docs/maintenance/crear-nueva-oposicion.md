@@ -2,6 +2,15 @@
 
 Manual para escalar Vence a nuevas oposiciones. Marzo 2026.
 
+> 🏗️ **FRAMEWORK (desde 12/07/2026): las FASES 2-5 las hace el scaffolder `scripts/create-oposicion.cjs` desde un `spec.json` — NO a mano.**
+> **Gatillo:** cuando el usuario dice *"haz / crea / monta / construye la oposición X"* (o *"añade la oposición X"* para implementar una aspiracional) → este manual + el scaffolder. Flujo:
+> 1. **FASE 1 + spec (JUICIO, a mano):** investiga el temario oficial del boletín (BOE/autonómico) y **autoriza `data/temarios/<slug>.json`** — `identity` (incl. `emoji`, `badge`, `color_primario`, `aliases`, `familia`, `ccaa`, `administracion_display`), `examScoring`, `convocatoria`, `bloques`, `temario` (con epígrafes **literales**), `scope` por tema (`{topic_number: [{law, articles:[...]}|{law, wholeLaw:true}]}`), `landing`, `hitos`.
+> 2. **UNA orden:** `node scripts/create-oposicion.cjs data/temarios/<slug>.json --insert-config --routes --registros` → FASE 2 (BD) + 3 (scope, anti-duplicados + verifica artículos) + 4 (config `oposiciones.ts`) + 4c (OnboardingModal/perfil/mapeo CCAA) + 5 (rutas, straggler-check). **Corre `--dry-run` primero.**
+> 3. **A mano:** CcaaFlag (bandera, solo si `audit:oposicion` avisa que no resuelve).
+> 4. **Gates OBLIGATORIOS (el framework NO los sustituye):** `npm run audit:oposicion <slug> && npm run audit:served <slug>` + **`verify:scope`** (2 agentes independientes, corrección semántica scope↔epígrafe — ver runbook `verificar-epigrafes-scope.md`). Refrescar la MV (§6.bis).
+> 5. **Go-live** (is_active=true + deploy) con OK del usuario.
+> El scaffolder **valida el spec** (schema JSONB estadísticas `{numero,texto,color}`, duplicados exactos de scope, artículos inexistentes, coherencia bloques↔topics) y es transaccional + idempotente + `--dry-run`. Detalle: memoria `project_scaffolder_crear_oposicion`. **El resto de este manual (abajo) es la referencia de cada campo/fase que va en el spec** — sigue siendo la fuente de verdad de QUÉ pide cada artefacto.
+
 ---
 
 ## 0. Dos tipos de oposiciones en Vence (CRÍTICO)
