@@ -1,6 +1,8 @@
 # Runbook — Analizador de Competidores
 
-**Cuándo seguir este runbook:** cuando Manuel diga *"añade el competidor X"*, *"quién prepara la oposición Y"*, *"compara precios de competidores"*, *"actualiza/re-sincroniza competidores"*, *"qué oposiciones no cubrimos que ellos sí"* (gaps), o similar. Seguir esto ANTES de improvisar.
+**Cuándo seguir este runbook:** cuando Manuel diga *"añade el competidor X"*, *"quién prepara la oposición Y"*, *"compara precios de competidores"*, *"actualiza/re-sincroniza competidores"*, *"qué oposiciones no cubrimos que ellos sí"* (gaps), *"revisa la señal/señales de competidores"*, o similar. Seguir esto ANTES de improvisar.
+
+> 🎯 **"Revisa la señal de competidores"** = triar las señales `sensor_type='competitor'` de `oep_detection_signals` (Capa 3 del radar: gaps con ≥2 competidores). No basta con anotar el curso: **cada gap nuevo se investiga hasta el catálogo** siguiendo el **§7 (último paso)**. Cierre en `/admin/oep-signals` (`applied`/`dismissed`), igual que el resto de sensores OEP.
 
 Diseño/arquitectura: `docs/roadmap/analizador-competidores.md`. Memoria: `project_analizador_competidores.md`.
 
@@ -101,28 +103,6 @@ SELECT count(DISTINCT oposicion_id) FROM competitor_courses WHERE oposicion_id I
 - **Revisión humana:** pestaña **Revisión** del panel (o `getReviewQueue`/`confirmMatch`) → confirmar/descartar a 1 clic. Queda `confirmed`/`manual` = **STICKY**.
 - **Triaje de señales (badge):** el badge = `competitor_changes` **sin revisar** (`reviewed_at IS NULL`) y de tipo **accionable** (`course_added|course_removed|price_changed|url_removed`); `url_added`/`url_modified` (refresco de contenido) NO cuentan. Marcar revisado (`acknowledgeCompetitorChanges`, botón en pestaña Cambios) las conserva en el log pero las saca del badge. Así el badge = novedades comerciales pendientes, sin ruido recurrente.
 
-> **⚠️ DOS colas/badges DISTINTOS (no confundir, aprendizaje 11/07):** (a) **"Cambios"** = `competitor_changes` sin revisar (novedad comercial: curso/precio) → se limpia con `acknowledgeCompetitorChanges` (`UPDATE reviewed_at=now()`). (b) **"Revisión"** = `competitor_courses.match_method='needs_review'` (matches curso↔oposición dudosos) → se limpia confirmando/descartando cada uno. Son tablas y flujos separados.
-
-### 2e. Enriquecer el matching a escala: RECALL, dedup y triaje (sesión 11/07)
-
-**Diagnóstico previo — `oposicion_id IS NULL` NO es siempre un gap.** La mayoría de los "sin match" son **fallos de RECALL**: la oposición SÍ está catalogada (`loadOposicionesForMatch` matchea contra TODO el catálogo, no solo lo vendible), pero el **nombre comercial del competidor** despista al matcher determinista (acrónimos, plurales, prefijos de marketing). **Antes de tratar un `none` como "oposición que no cubrimos", comprueba si YA está en `oposiciones`** (recall) vs genuinamente ausente (gap real).
-
-**(1) Subir RECALL con acrónimos inequívocos (`cleanName`).** El competidor escribe "Aux. Administrativos del **SAS**" y la oposición "…del **Servicio Andaluz de Salud** (SAS)" → los tokens región+salud no alinean. Fix: expandir el acrónimo en `cleanName` (se aplica a curso Y a oposición → alinean). Reglas:
-- **ADITIVO, no reemplazo:** `\bsas\b → 'sas servicio andaluz salud'`. Reemplazar borra el token que quizá ya matcheaba por shortName → **regresión**.
-- **Solo INEQUÍVOCOS** (uno por acrónimo): SAS/SERGAS/SESCAM/SACYL/SESPA/SMS/Osakidetza/Osasunbidea/AGE/SERMAS/CARM/TCAE/IIPP/ICS. **EXCLUIR ambiguos**: SCS (Canario/Cántabro), UPV (València/País Vasco), y cualquiera con variantes DUPLICADAS en el catálogo (SES empataba).
-- **Metodología obligatoria (0 regresiones):** dry-run que corre `matchCourse` sobre todos los no-sticky, cuenta **rescatados (none→match)** y **PERDIDOS (match→none)**, + **eyeball de la muestra de rescatados**. Aplicar SOLO si perdidos=0. (11/07: 15 acrónimos → +72, 0 regresiones; guardarraíl `competitor-sync.spec.ts`.)
-- Tras tocar `cleanName`: re-match (write) + **`scripts/deploy-backend.sh`** (el cron usa el matcher nuevo).
-
-**(2) Deduplicar el catálogo (el pipeline 07/07 dejó variantes).** Síntoma: dos entradas del MISMO cuerpo — "X **-** Servicio Y de Salud" (07/07, `catalogada`, 0 cursos) vs "X **del** Servicio Y de Salud" (rica). Al expandir acrónimos quedan token-idénticas → **empate → `none`**. Dedup:
-- Agrupar por nombre normalizado (quitar conectores/"-"/paréntesis). **`E ≡ AP`** (grupo E = Agrupación Profesional = MISMO nivel; trátalos igual o pierdes dups — pero **mantén C1≠C2**). También nombre-acrónimo (**TCAE ≡ "Técnico en Cuidados Auxiliares de Enfermería"**).
-- **Keeper = el rico** (cursos > con_tests > con_landing > catalogada; a igualdad, el más antiguo). **FK-safe**: reasignar `user_oposiciones_seguidas` al keeper (saltar si ya lo sigue), **borrar** filas derivadas del loser (OJO `convocatorias` tiene UNIQUE `(oposicion_id, año)` → la del loser choca al reasignar → **bórrala**), todo en **transacción con rollback**. Dry-run SIEMPRE (memoria: un dedup fuzzy dio 915 falsos positivos).
-
-**(3) Triaje MASIVO de `needs_review`.** La cola tiene **~50% de candidatos MALOS** (el matcher acierta ~la mitad) → **NUNCA auto-confirmar en bloque**. Dos vías:
-- **Auto-confirm SEGURO por regla (materia específica):** confirmar solo si los tokens **distintivos** del candidato (quitando genéricos + organismo + región + adjetivos de región) están TODOS en el curso. Endurecer iterando por las **clases de FALSO POSITIVO** (11/07): (a) "administrativo-solo" → confusión **ayuntamiento↔diputación** (expande "dip."→"diputación" para separarlos); (b) "salud/servicio" genérico → cuerpo específico; (c) **adjetivos de región** (murciano/madrileño) sobreviven al strip de nombres de región → añádelos; (d) **"Personal de Servicios Generales"** = cuerpo-cajón que atrapa cursos de salud → excluir; (e) **acentos en los regex** ("Té**c**nicos"≠"Tecnicos") → normaliza. Dry-run + spot-check SIEMPRE.
-- **Revisión manual, curso por curso** (Claude como revisor): lotes numerados → **CONFIRMAR** (correcto, `match_method='confirmed'` sticky) / **DESCARTAR** (candidato mal → `match_method='none'`, limpia la cola) / **DEJAR** (ambiguo). Los **irreducibles** (marketing sin región, DUE↔TCAE) se DEJAN, no se fuerzan. (11/07: 25%→38%, +346; cola 480→25.)
-
-**Gotchas del script re-match one-off (ts-node):** vive en `backend/`, no en la raíz (resolución de módulos). Invocar con `TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node","esModuleInterop":true,...}' node_modules/.bin/ts-node --transpile-only --skip-project`, `import 'reflect-metadata'`, symlink `node_modules`, leer `../.env.local`. **El re-match es DETERMINISTA** — re-correrlo con el mismo catálogo+matcher da el MISMO resultado (solo suma matches de oposiciones nuevas del catálogo). La palanca es mejorar el MATCHER (recall) o deduplicar, no re-matchear.
-
 ---
 
 ## 3. Aplicar una migración a RDS
@@ -162,6 +142,7 @@ Patrones de captura por competidor:
 - **gzip/brotli** (gokoan): `fetch` de Node descomprime solo; si el HTML sale binario, revisar.
 - **Robots.txt**: respetar `Disallow` (p.ej. `/api/`, `/checkout/`); no scrapear precios tras rutas bloqueadas.
 - **PERF (follow-up):** el sync inserta URLs **una a una** → competidores con miles de URLs (mad 5.577, adams) tardan ~15 min. Optimizar con **batch inserts**.
+- **⚠️ Backfill de competidor NUEVO inunda el badge de Cambios.** El **primer sync** de un competidor recién añadido registra **TODO su catálogo** como `course_added` → el badge de `/admin/competidores` (§2d) se dispara a "99+" con novedades que NO son novedades (es su baseline). Los gaps reales con demanda ya se destilan aparte a las señales OEP `sensor_type='competitor'` (≥2 competidores, §7). **Acción:** saldar el backfill (`acknowledgeCompetitorChanges` / `UPDATE competitor_changes SET reviewed_at=now() WHERE reviewed_at IS NULL AND change_type IN ('course_added','url_removed') AND competitor_id=(<el nuevo>)`) tras confirmar por competidor que es el alta inicial. **FIX (DESPLEGADO 13/07 — main `3411f3c7`, backend td:62):** columna `competitors.baseline_done`; al completar el backfill inicial (`shouldFinalizeBaseline`: fuentes OK + `coursesPending===0`, robusto ante backfill multi-pasada) el sync **auto-salda** esos cambios (`reviewed_by='system:baseline'` — siguen en el log, fuera del badge) y marca la bandera. Los 70 competidores existentes migrados a `baseline_done=true`. Caso 13/07: alta de *Temarios Oficiales* → **400 `course_added`** → badge 99+; saldado por competidor, badge → 0. (Distinto del churn de `url_removed` de posts de convocatoria caducados — feed de noticias, también ruido.)
 - **NO inventar contenido** (nombres/precios). Si no está, es gap / precio vacío / follow-up headless.
 - **⚠️ Falsos negativos de cobertura (clasificación + descubrimiento):** el analizador puede reportar "0 competidores" cuando SÍ la preparan (ver §6). Dos causas: **(a) orden de `classifyUrl`** — en MAD el `.html → page` iba ANTES que `/oposiciones/`, tragándose los productos de oposición `/oposiciones/<id>_slug.html` (arreglado 07/07: mirar `/oposiciones/` primero); **(b) descubrimiento limitado al sitemap** → oposiciones vendidas como página fuera del sitemap se pierden. Al escribir un adapter: revisar el ORDEN de `classifyUrl` (lo específico antes que lo genérico) y hacer spot-check contra Google de si el sitemap cubre TODAS las oposiciones.
 
@@ -186,8 +167,27 @@ LEFT JOIN competitor_prices cp ON cp.competitor_course_id=cc.id AND cp.is_curren
 WHERE cc.oposicion_id = (SELECT id FROM oposiciones WHERE nombre ILIKE '%<oposición>%' LIMIT 1) AND cc.is_active
 GROUP BY c.name, cc.modalidad, cc.raw_name;
 ```
-- **Gaps (demanda / candidatas a catalogar):** `competitor_courses WHERE oposicion_id IS NULL`. **⚠️ OJO (aprendizaje 11/07): NO todo `oposicion_id IS NULL` es un gap** — la mayoría son fallos de **RECALL** (la oposición SÍ está catalogada; el matcher falla por el nombre comercial). Verifica en `oposiciones` antes de tratarlo como "no cubierto". Sube recall / deduplica antes (§2e); lo que quede `none` de verdad = gap real.
+- **Gaps (demanda / candidatas a catalogar):** `competitor_courses WHERE oposicion_id IS NULL` = oposiciones que ELLOS preparan y nosotros no.
 - **Blue ocean:** nuestras `oposiciones` sin ningún competidor.
+
+---
+
+## 7. Último paso — del gap de competidor al catálogo (investigar vendibilidad + ciclo)
+
+> **§1-§6 catalogan CURSOS de competidores. Este paso los convierte en decisiones de NUESTRO catálogo.** Un gap (`competitor_courses.oposicion_id IS NULL`) con demanda real —que es justo lo que la Capa 3 del radar emite como señal `sensor_type='competitor'` (huecos únicos con ≥2 competidores)— NO es solo un dato de competidor: es una **candidata a entrar en `oposiciones`**. El competidor es una **PISTA**, nunca la verdad (ver nota de Acceso, abajo) → hay que **verificar contra fuente oficial**. Una señal de competidor no se cierra sin recorrer esto.
+
+Para **cada oposición nueva** que aflore (por señal `competitor` o al revisar gaps §6):
+
+1. **¿Ya la tenemos en la BD?** Buscar SIEMPRE por slug **y** nombre — el matcher deja `oposicion_id=NULL` en cuerpos que SÍ están catalogados (no te fíes del "0 competidores"/gap del panel). `SELECT id,slug,estado_proceso,is_active,coverage_level FROM oposiciones WHERE slug ILIKE '%…%' OR nombre ILIKE '%…%'`. **Si existe → falso gap:** enlazar la señal (`UPDATE oep_detection_signals SET oposicion_id=…, status='applied'`) + los `competitor_courses` del hueco (`match_method='manual'`, §2b) a esa fila. **NUNCA duplicar.**
+2. **¿En qué ciclo / oportunidad está?** (modelo OPORTUNIDAD = unidad de vendibilidad). Verificar contra **fuente oficial** (BOE/boletín/portal de empleo público — método de `feedback_verificar_existencia_oposicion_metodo`: WebSearch del nombre literal + web de empleo de la administración): ¿OEP nueva con plazas? ¿convocatoria publicada? ¿fechas de inscripción/examen? ¿el examen del ciclo actual ya pasó?
+3. **¿Es vendible?** Vendible = oportunidad viva con **plazas de INGRESO LIBRE** + **recorrido** (examen lejano o sin fecha aún). Examen a **<1 mes o ya pasado sin OEP nueva = NO vendible ahora**. **NUNCA** promoción interna ni estabilización. Refs: `project_modelo_oportunidad_vendibilidad`, `feedback_runway_examen_vendible`, `feedback_only_ingreso_libre`.
+4. **Resolver hacia el catálogo (descartar es la EXCEPCIÓN — manual OEPs §1):**
+   - **Vendible, sin fila** → **catalogar** (`is_active=false`, `coverage_level='catalogada'`) con los campos **verificados** (plazas libre, OEP, estado), sin inventar lo que no sepas (grupo/fechas/`seguimiento_url` → NULL antes que inventar); y si merece construirse, **anotarla en `docs/roadmap/tareas-pendientes.md`** como candidata (título + por qué/recorrido + cómo + estado).
+   - **Vendible, con fila** → **enriquecer** (estado solo hacia delante, `plazas_*`, fechas, `boe_reference`).
+   - **No vendible ahora** (examen pasado sin OEP nueva / solo PI / estabilización) → catalogar/enriquecer **igual** como catálogo (no se descarta por el tipo; norma OEPs §16 "sea del tipo que sea"), simplemente no se activa la venta.
+5. **Cerrar la señal** (`status='applied'`/`dismissed` + `admin_notes` de una línea) y **enlazar los `competitor_courses`** del gap a la fila (`manual`) → así el radar no la regenera y el panel deja de marcarla gap.
+
+El detalle del triaje de señales (regla de descarte, buscar fila antes de crear, no descartar por tipo) vive en `docs/maintenance/oeps-convocatorias-seguimiento.md §1`; **este §7 es el puente competidor → catálogo**. Caso fundacional (13/07/2026): 3 señales `competitor` → *Auxiliar Admin Diputación Alicante* (falso gap, enlazada), *Ujieres de las Cortes Generales* y *Gestión Administrativa A2 Junta de Andalucía* (catalogadas + verificadas vendibles + al backlog).
 
 ---
 ## Acceso y sistema selectivo (08/07/2026)
