@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { adminFetch } from '@/lib/api/adminFetch'
 import EmbajadorPanelView, { type EmbajadorPanelData } from '@/components/embajadores/EmbajadorPanelView'
+import AdminBreakdown from '@/components/embajadores/AdminBreakdown'
 
 type PanelResponse = (EmbajadorPanelData & { isAmbassador: boolean }) | { isAmbassador: false; firstName: string | null }
 
@@ -38,9 +39,10 @@ export default function AdminEmbajadorPreviewPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 pt-6 max-w-5xl">
-        <div className="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 rounded-lg px-4 py-2 text-sm font-semibold text-center">
+        <div className="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 rounded-lg px-4 py-2 text-sm font-semibold text-center mb-6">
           👁️ Vista de administrador (solo lectura) — así ve su panel el usuario{firstName ? ` ${firstName}` : ''}
         </div>
+        {userId && <AdminBreakdown userId={userId} />}
       </div>
       {error ? (
         <p className="text-center text-red-600 dark:text-red-400 py-10">{error}</p>

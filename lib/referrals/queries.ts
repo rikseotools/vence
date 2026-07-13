@@ -25,6 +25,7 @@ import {
   type EligibilityReason,
   type RewardType,
 } from './logic'
+import { mergeBreakdown, type BreakdownRow, type BreakdownKind } from './breakdown'
 
 // Drizzle db o tx; `any` para no pelear con los genéricos de transacción.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -654,6 +655,45 @@ export async function getRecentEarnings(userId: string, limit = 10, exec?: Execu
     where user_id = ${userId} and earned_at is not null
     order by earned_at desc limit ${limit}`)
   return rowsOf(res).map((r) => ({ source: r.source, amount: Number(r.amount), date: String(r.date) }))
+}
+
+/** Desglose ADMIN de un embajador: TODAS sus recompensas (bug/opinión/referido/
+ *  pago) con importe, estado, fecha y ASUNTO, en una línea de tiempo. El asunto
+ *  sale de la tabla de detalle (reward_earnings es solo el libro mayor, sin asunto):
+ *  bug/ugc → feedback ligado; referido → email del referido; pago → método+ref. */
+export async function getEmbajadorBreakdown(userId: string, exec?: Executor): Promise<BreakdownRow[]> {
+  const db = exec ?? getReadDb()
+  const [subsRes, refsRes, paysRes] = await Promise.all([
+    db.execute(sql`
+      select rs.type as kind, rs.amount::float as amount, rs.status, rs.created_at as date,
+             coalesce(nullif(left(uf.message, 100), ''), rs.url, '(sin asunto)') as asunto
+      from reward_submissions rs
+      left join user_feedback uf on uf.id = rs.feedback_id
+      where rs.user_id = ${userId}`),
+    db.execute(sql`
+      select coalesce(nullif(r.active_reward_amount, 0), r.bounty_amount, 0)::float as amount,
+             r.status, r.created_at as date,
+             coalesce(up.email, up.full_name, 'referido') as asunto
+      from referrals r left join user_profiles up on up.id = r.referred_user_id
+      where r.referrer_user_id = ${userId}`),
+    db.execute(sql`
+      select p.amount::float as amount, p.status, p.created_at as date,
+             nullif(concat_ws(' · ', p.method, nullif(p.giftcard_ref, ''), nullif(p.reason, '')), '') as asunto
+      from reward_payouts p where p.beneficiary_user_id = ${userId}`),
+  ])
+  const submissions: BreakdownRow[] = rowsOf(subsRes).map((r) => ({
+    kind: (r.kind === 'ugc' ? 'ugc' : 'bug') as BreakdownKind,
+    amount: Number(r.amount), status: String(r.status), date: String(r.date), asunto: String(r.asunto ?? ''),
+  }))
+  const referrals: BreakdownRow[] = rowsOf(refsRes).map((r) => ({
+    kind: 'referral' as BreakdownKind,
+    amount: Number(r.amount), status: String(r.status), date: String(r.date), asunto: String(r.asunto ?? ''),
+  }))
+  const payouts: BreakdownRow[] = rowsOf(paysRes).map((r) => ({
+    kind: 'payout' as BreakdownKind,
+    amount: Number(r.amount), status: String(r.status), date: String(r.date), asunto: String(r.asunto ?? '—'),
+  }))
+  return mergeBreakdown(submissions, referrals, payouts)
 }
 
 export interface AdminTopEmbajador { userId: string; name: string | null; email: string | null; earned: number; count: number }

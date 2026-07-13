@@ -25,10 +25,12 @@ interface Stats {
   topEmbajadores: TopEmbajador[]
 }
 interface Balance { userId: string; name: string | null; email: string | null; balance: number; suggested: number }
+interface PayoutRequest { id: string; userId: string; name: string | null; email: string | null; amount: number; createdAt: string }
 
 export default function AdminEmbajadoresPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [balances, setBalances] = useState<Balance[] | null>(null)
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([])
   const [refInput, setRefInput] = useState<Record<string, string>>({})
   const [amountInput, setAmountInput] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState<string | null>(null)
@@ -37,12 +39,14 @@ export default function AdminEmbajadoresPage() {
 
   const load = useCallback(async () => {
     try {
-      const [s, b] = await Promise.all([
+      const [s, b, pr] = await Promise.all([
         adminFetch('/api/admin/referrals/stats'),
         adminFetch('/api/admin/rewards/accumulated'),
+        adminFetch('/api/admin/referrals/payouts-pending'),
       ])
       if (s.ok) setStats((await s.json()).stats)
       if (b.ok) setBalances((await b.json()).balances || [])
+      if (pr.ok) setPayoutRequests((await pr.json()).requests || [])
       if (!s.ok && !b.ok) setError(`Error ${s.status}`)
     } catch (e) { setError((e as Error).message) }
   }, [])
@@ -168,19 +172,41 @@ export default function AdminEmbajadoresPage() {
         </section>
       </div>
 
-      {/* SALDOS POR PAGAR (lectura) */}
+      {/* SOLICITUDES DE COBRO PENDIENTES — quién HA PEDIDO el vale (lo que hace parpadear el badge) */}
+      {payoutRequests.length > 0 && (
+        <section className="mb-6">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">🔔 Solicitudes de cobro pendientes</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Embajadores que HAN PEDIDO el vale (toca pagarles). Pincha para ver su desglose.</p>
+          <div className="space-y-2">{payoutRequests.map((r) => (
+            <a key={r.id} href={`/admin/embajadores/${r.userId}`} target="_blank" rel="noopener noreferrer"
+               className={`${card} flex flex-wrap items-center justify-between gap-2 border-amber-300 dark:border-amber-700 hover:ring-2 hover:ring-amber-300 transition`}>
+              <div className="min-w-0">
+                <div className="font-semibold text-gray-800 dark:text-gray-100 truncate">{r.name || 'Embajador'} <span className="text-amber-600 dark:text-amber-400">· solicitó {eur(r.amount)}</span></div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{r.email} · pedido {r.createdAt.slice(0, 10)}</div>
+              </div>
+              <span className="text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap">ver desglose →</span>
+            </a>
+          ))}</div>
+        </section>
+      )}
+
+      {/* SALDOS POR PAGAR (lectura) — clicables para ver el desglose */}
       <section>
         <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Saldos por pagar</h2>
         {balances === null ? <p className="text-gray-500 dark:text-gray-400">Cargando…</p>
           : balances.length === 0 ? <div className={`${card} text-center text-gray-500 dark:text-gray-400`}>Nadie llega al mínimo de 5 € todavía.</div>
-          : <div className="space-y-2">{balances.map((b) => (
-              <div key={b.userId} className={`${card} flex flex-wrap items-center justify-between gap-2`}>
+          : <div className="space-y-2">{balances.map((b) => {
+              const requested = payoutRequests.some((r) => r.userId === b.userId)
+              return (
+              <a key={b.userId} href={`/admin/embajadores/${b.userId}`} target="_blank" rel="noopener noreferrer"
+                 className={`${card} flex flex-wrap items-center justify-between gap-2 hover:ring-2 hover:ring-blue-300 transition`}>
                 <div className="min-w-0">
-                  <div className="font-semibold text-gray-800 dark:text-gray-100 truncate">{b.name || 'Embajador'} <span className="text-blue-600 dark:text-blue-400">· {eur(b.balance)}</span></div>
+                  <div className="font-semibold text-gray-800 dark:text-gray-100 truncate">{b.name || 'Embajador'} <span className="text-blue-600 dark:text-blue-400">· {eur(b.balance)}</span>{requested && <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">🔔 solicitó vale</span>}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{b.email} · sugerido: tarjeta de {eur(b.suggested)}</div>
                 </div>
-              </div>
-            ))}</div>}
+                <span className="text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap">ver desglose →</span>
+              </a>
+            )})}</div>}
       </section>
 
       {/* ACCIONES MANUALES — fallback. Normalmente las hace Claude Code vía API + runbook. */}
