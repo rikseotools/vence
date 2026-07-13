@@ -33,6 +33,7 @@ Antes de aplicar la metodología, mira el campo `user_feedback.type`. No todos l
 | `account_deletion` | **`docs/maintenance/eliminacion-cuentas.md`** — investigación + `deletion_reason` exhaustivo + `/api/admin/delete-user`. NO uses este manual. |
 | **Facturación: cancelar suscripción / le han cobrado / reembolso / darse de baja** (cualquier `type`; suele venir como `other`) | **`docs/procedures/reembolsos.md`** — la metodología de investigación es la de este manual, pero el flujo de acción (Stripe + cancelar sub + degradar + audit) es el de reembolsos. La **decisión de reembolso es de Manuel**. |
 | `email` (reply a newsletter/aviso) | Este manual + sección "Email threading" más abajo para mantener el hilo en Gmail. |
+| **Temario / epígrafes / scope** (duda de qué entra en un tema, artículos de más o de menos, "esto no entra"/"falta esto"; suele venir como `other`) | **Sección "Feedback de TEMARIO / epígrafes / scope" abajo** + `docs/runbooks/verificar-epigrafes-scope.md`. NO respondas directo: primero Paso 1 (clonación epígrafe) → Paso 2 (auditar scope) → usuario. |
 | `bug`, `other`, resto | Este manual. |
 
 Si el feedback es `account_deletion`, **detente y abre el manual de eliminación**. El flujo es distinto (RGPD Art. 17 + retención contable) y exige `deletion_reason` con journey completo antes de ejecutar nada.
@@ -46,6 +47,20 @@ Si el usuario reportó un **bug real / mejora de usabilidad** y **lo resolvemos*
 > **⚠️ Opinión (UGC 5 €) ≠ compartir el enlace de referido (referido 10 €). ABRE la captura antes de crear la recompensa UGC** (aprendizaje 11/07, caso Mari). Si la "aportación" es una **reseña nombrando Vence SIN su enlace de referido** → UGC legítima (5 €). Si es soltar su **enlace `vence.es/r/<code>`** con un pitch → eso es Programa de **Referidos** (ya cobra 10 €/venta + 2 €/registro activo) → **NO crees UGC** (sería doble pago + incentivo a spamear el link); respóndele explicando la diferencia. Detalle: `docs/runbooks/embajadores-recompensas.md` §2.
 
 Si el feedback es de **facturación**, el estado real está en **Stripe**, no en la BD: `user_subscriptions`/`payment_settlements` pueden estar desincronizadas (p.ej. la BD marca la suscripción activa hasta fin de periodo cuando en Stripe ya está cerrada, o no refleja un cargo ya reembolsado). Verifica SIEMPRE facturas + charges + refunds en Stripe (`docs/procedures/reembolsos.md` §0 y TRAMPA #5) antes de prometer o diagnosticar nada.
+
+## Feedback de TEMARIO / epígrafes / scope — ORDEN OBLIGATORIO (Paso 1 → Paso 2 → usuario)
+
+Cuando el usuario pregunta algo sobre **qué entra en un tema** (epígrafes, artículos de más o de menos, "esto no entra", "falta esto", dudas de temario), **NO respondas directo a lo que dice**. Lee el runbook **`docs/runbooks/verificar-epigrafes-scope.md`** y sigue este orden — la BD es **trackeable**, mírala antes de trabajar:
+
+1. **¿Está hecha la clonación del epígrafe oficial (Paso 1)?** Mira `topic_epigrafe_verification` de esa oposición. Si NO está (`never_sourced`), **hazla primero**: clonar el temario LITERAL oficial (convocatoria / DOGV / BOE) → `topics.epigrafe`, confirmarlo y registrarlo (`verified_literal` + `source_url` del PDF exacto). Es **bloqueante**: sin epígrafe de fiar no se puede auditar el scope.
+2. **¿Está auditada toda la oposición (Paso 2)?** Mira `topic_scope_verification`. Si NO, **audita la oposición ENTERA** (workflow `verify-scope-oposicion` → `verify:scope plan` → `apply`), no solo el tema del usuario — de paso caza otros errores.
+3. **Revisa lo que dice el usuario** — SIEMPRE al final, ya sobre base firme.
+
+**Atajo:** si la BD ya dice que la oposición está auditada (Paso 1 `verified_literal` + Paso 2 `verified_correct`, frescos), **NO repitas la auditoría** — ve directo a revisar el punto concreto del usuario contra el scope/epígrafe ya verificados.
+
+> **No recompensable:** temario/epígrafes/scope es contenido, no un fallo funcional de la app → NO lleva recompensa (regla `feedback_recompensa_solo_bug_app_no_contenido`). Se corrige si procede, pero no se paga.
+
+> **Ejemplo real (subalterno_gva, 13/07):** Sonia preguntó por 2 temas; al no estar hecho el Paso 1, se clonó el epígrafe oficial (15/15 `verified_literal` contra el PDF primario del DOGV) y se auditó el scope entero (15/15 `verified_correct`) ANTES de contestarle — lo que de paso destapó 3 errores reales que ella no había visto (Ley 4/2023 sobre-scope, Ley 9/2003 ausente, Decreto 42/2019 vacío). Lo que ella señalaba ya estaba bien.
 
 ## Feedback de PRE-VENTA / conversión (usuario free preguntando por premium) — PERSONALIZAR
 
