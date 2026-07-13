@@ -59,6 +59,7 @@ import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import { logClientError } from '@/lib/logClientError'
 import ContentDataRenderer from './ContentDataRenderer'
 import { pickDiverseByArticle } from '@/lib/types/adaptive'
+import { summarizePracticeResults } from '@/lib/test/practiceResultBreakdown'
 
 import type {
   TestQuestion,
@@ -2369,6 +2370,21 @@ export default function TestLayout({
                           <div className="text-xl text-gray-600 dark:text-gray-400 mb-4">
                             {Math.round((score / effectiveQuestions.length) * 100)}% de aciertos
                           </div>
+
+                          {/* Desglose correctas / incorrectas / en blanco — TRANSPARENCIA
+                              (feedback Pablo 13/07): el blanco NO es una incorrecta, va
+                              en su propia casilla. Solo se muestra si hubo algún blanco. */}
+                          {(() => {
+                            const b = summarizePracticeResults(answeredQuestions)
+                            if (b.blank === 0) return null
+                            return (
+                              <div className="flex justify-center gap-4 text-sm mb-4">
+                                <span className="text-green-600 dark:text-green-400 font-medium">✅ {b.correct} correctas</span>
+                                <span className="text-red-600 dark:text-red-400 font-medium">❌ {b.incorrect} incorrectas</span>
+                                <span className="text-gray-500 dark:text-gray-400 font-medium">⚪ {b.blank} en blanco</span>
+                              </div>
+                            )
+                          })()}
 
                           {/* Estadísticas compactas y de valor */}
                           {(() => {
