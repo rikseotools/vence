@@ -400,13 +400,20 @@ export function normalizeLawShortName(shortName: string): string {
 
 // Lanza error en caso de fallo — unstable_cache NO cachea excepciones,
 // solo valores de retorno. Así un timeout transitorio no envenena la caché 30 días.
+// Snapshot en memoria del último resultado BUENO (por task Fargate). Permite
+// servir stale ante un timeout/error transitorio del cómputo (caché fría bajo
+// carga) en vez de vaciar /leyes con "No hay leyes disponibles" (bug Alfonso 13/07).
+let _lastGoodLaws: LawWithCounts[] | null = null
+
 async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
   const db = getLawsDb()
   console.log('🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...')
   console.time('⏱️ getLawsWithQuestionCounts')
 
-  // Timeout de 15s para no bloquear el build de Vercel (límite 60s por página).
-  const timeoutMs = 15_000
+  // 25s: la query tarda ~1,7s en operación normal; un timeout = contención severa
+  // de RDS (caché fría post-deploy + carga). Margen amplio para que el cómputo en
+  // frío no falle y deje /leyes vacía. Sigue bajo el límite de 60s/página.
+  const timeoutMs = 25_000
   const queryPromise = db
     .select({
       id: laws.id,
@@ -467,6 +474,7 @@ async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
     .filter((law): law is LawWithCounts => law !== null)
 
   console.log(`✅ ${lawsWithCounts.length} leyes con preguntas obtenidas`)
+  if (lawsWithCounts.length > 0) _lastGoodLaws = lawsWithCounts // snapshot para stale-on-error
   return lawsWithCounts
 }
 
@@ -483,6 +491,12 @@ export async function getLawsWithQuestionCounts(): Promise<GetLawsWithCountsResp
     return { success: true, laws }
   } catch (error) {
     console.error('❌ Error obteniendo leyes con conteo:', error)
+    // stale-on-error: si este task ya calculó las leyes alguna vez, servir esa
+    // copia en vez de vaciar /leyes por un timeout transitorio (bug Alfonso 13/07).
+    if (_lastGoodLaws && _lastGoodLaws.length > 0) {
+      console.warn('⚠️ Sirviendo leyes STALE (último resultado bueno) tras error transitorio')
+      return { success: true, laws: _lastGoodLaws, stale: true }
+    }
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
   }
 }
