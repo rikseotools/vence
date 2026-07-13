@@ -88,6 +88,7 @@ export type ClientEventType =
   // unhandled_rejection/react_error_boundary/client_error). Ver
   // utils/answerSaveQueue.ts + utils/psychometricSaveQueue.ts.
   | 'usage_limit_hit'
+  | 'review_oposicion_fallback'
   // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
   | 'tts_session_start'
   | 'tts_session_end'

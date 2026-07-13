@@ -3,7 +3,7 @@
 
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import QuestionDispute from './QuestionDispute'
 import MarkdownExplanation from './MarkdownExplanation'
@@ -11,6 +11,9 @@ import ContentDataRenderer from './ContentDataRenderer'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAIChat } from '@/contexts/AIChatContext'
 import { getExamPenaltyPerWrong } from '@/lib/config/oposiciones'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
+import { resolveReviewBackSlug } from '@/lib/nav/reviewBackSlug'
+import { emitClientEvent } from '@/lib/observability/client'
 import type {
   ReviewQuestion,
   TestInfo,
@@ -50,13 +53,34 @@ export default function ExamReviewLayout({
   difficultyBreakdown,
   questions,
   notaCorte,
-  oposicionSlug = 'auxiliar-administrativo-estado',
+  oposicionSlug,
   parte,
   isCaseExam = false,
   examCase,
 }: ExamReviewLayoutProps) {
   const { user } = useAuth()
   const { openChatWith } = useAIChat()
+
+  // "Volver a Tests" y afines: vuelven a la oposición del TEST (si viene) o, en su
+  // defecto, a la DEL USUARIO — NUNCA a Estado por defecto (bug flor/MariSol 13/07,
+  // global). Estado solo si el usuario genuinamente no tiene oposición.
+  const { slug: userSlug } = useOposicionPaths()
+  const { slug: backSlug, usedFlagshipFallback } = resolveReviewBackSlug(oposicionSlug, userSlug)
+
+  // Observabilidad: si ni el test ni el usuario tienen oposición, la revisión
+  // manda a la flagship (posible dead-end). Lo registramos para no volver a
+  // enterarnos por un usuario (filosofía del manual de observabilidad).
+  useEffect(() => {
+    if (usedFlagshipFallback) {
+      emitClientEvent({
+        severity: 'warn',
+        eventType: 'review_oposicion_fallback',
+        endpoint: '/revisar',
+        errorMessage: 'ExamReviewLayout sin oposición de test ni de usuario → fallback a flagship',
+        metadata: { component: 'ExamReviewLayout', propSlug: oposicionSlug ?? null, userSlug: userSlug ?? null },
+      })
+    }
+  }, [usedFlagshipFallback, oposicionSlug, userSlug])
   const [filter, setFilter] = useState<FilterType>('all')
   // Start with all questions expanded by default
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(() => {
@@ -172,7 +196,7 @@ export default function ExamReviewLayout({
         {notaCorte && (() => {
           // Puntuación neta del usuario según la penalización oficial de la
           // oposición (1/N por fallo, 0 si no penaliza). Ver lib/config/oposiciones.ts.
-          const puntuacionNeta = summary.correctCount - (summary.incorrectCount * getExamPenaltyPerWrong(oposicionSlug))
+          const puntuacionNeta = summary.correctCount - (summary.incorrectCount * getExamPenaltyPerWrong(backSlug))
 
           // Nota de corte según la parte que está viendo
           const notaCorteRelevante = parte === 'primera'
@@ -517,7 +541,7 @@ export default function ExamReviewLayout({
         {/* Acciones finales */}
         <div className="mt-8 flex flex-wrap gap-4 justify-center">
           <Link
-            href={`/${oposicionSlug}/test`}
+            href={`/${backSlug}/test`}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
             Volver a Tests
