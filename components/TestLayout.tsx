@@ -48,6 +48,9 @@ import SessionExpiredModal from './SessionExpiredModal'
 import DeviceLimitModal from './DeviceLimitModal'
 import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
+import { usePremiumGate } from '@/hooks/usePremiumGate'
+import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal'
+import { buildRepasoFallosUrl } from '@/lib/nav/repasoFallosUrl'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
 import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain } from '@/utils/answerSaveQueue'
@@ -241,7 +244,10 @@ export default function TestLayout({
   const { trackTestAction } = useInteractionTracker()
 
   // 🏛️ Oposición del usuario (para formatear exam_source correctamente)
-  const { slug: userOposicionSlug } = useOposicionPaths()
+  const { slug: userOposicionSlug, oposicionId: userOposicionId } = useOposicionPaths()
+  // Gating premium del atajo "Practicar mis fallos" (👑 para free + modal de conversión;
+  // premium → va directo al repaso). El repaso sigue gratis por el camino largo.
+  const { gate, activeFeature: premiumFeature, activeContext: premiumContext, closeGate: closePremiumGate } = usePremiumGate()
 
   // 🔒 Sesión expirada durante test
   const [showSessionExpired, setShowSessionExpired] = useState(false)
@@ -2471,6 +2477,22 @@ export default function TestLayout({
                               </Link>
                             </div>
                           )}
+                          {/* Practicar mis fallos (atajo PREMIUM por practicidad): reintenta
+                              las preguntas falladas recientes, scopeado a la oposición. El
+                              repaso sigue gratis por el camino largo (hub/estadísticas); aquí
+                              se vende el atajo sin fricción. Free → 👑 + modal de conversión. */}
+                          {currentTestSession && score < effectiveQuestions.length && saveStatus === 'saved' && (
+                            <div className="mb-4">
+                              <button
+                                onClick={() => gate('repaso_fallos', () => { window.location.href = buildRepasoFallosUrl(userOposicionId) }, 'test_completion')}
+                                className="inline-flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 shadow-lg hover:shadow-xl text-base"
+                              >
+                                <span>🔄</span>
+                                <span>Practicar mis fallos</span>
+                                {!isPremium && <span className="ml-1" title="Función Premium">👑</span>}
+                              </button>
+                            </div>
+                          )}
                           {/* Si test perfecto, mostrar repetir */}
                           {score === effectiveQuestions.length && (
                             <div className="mb-4">
@@ -2677,6 +2699,16 @@ export default function TestLayout({
         onClose={closeDeviceLimit}
         onRetry={retryAfterDeviceRemoval}
       />
+
+      {/* Paywall del atajo "Practicar mis fallos" (free). El gate ya emitió
+          premium_gate_shown (conversión) al abrirlo. */}
+      {premiumFeature && (
+        <PremiumFeatureModal
+          feature={premiumFeature}
+          context={premiumContext}
+          onClose={closePremiumGate}
+        />
+      )}
     </PersistentRegistrationManager>
   )
 }

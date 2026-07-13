@@ -48,3 +48,10 @@ El gating de contenido es **por dato en la fila** (no por registro de código): 
 - **Contenido y features que cuestan** (IA, cursos): SIEMPRE gated también en servidor.
 - No sobre-gatear: el bucle central (responder, tests básicos, leer teoría) alimenta el embudo; el límite de 25/día ya monetiza volumen. Gatear "power features" y contenido, no lo básico.
 - Guardarraíl: `__tests__/premium/premiumGateFramework.test.ts` (integridad del registro + fail-open + isPremiumPlan).
+
+## Gate de CONVENIENCIA (vender el atajo, no la capacidad) — 13/07
+
+Matiz importante (Manuel): **la practicidad convierte**. Se puede gatear un **ATAJO sin fricción** a una capacidad que sigue existiendo GRATIS por otro camino — se vende la comodidad en el momento de máxima intención, no la exclusividad. En ese caso **NO se gatea la API** (no bloqueamos la capacidad, solo el atajo), a diferencia de las features de contenido de la "regla de oro".
+
+- **Caso `repaso_fallos` (kind `experience`):** botón "Practicar mis fallos" en la **pantalla de resultados** (justo tras fallar = máxima intención) → `/test/repaso-fallos-v2` scopeado. El repaso **sigue gratis** por el camino largo (hub "Mis Debilidades" / estadísticas); Premium es el atajo de un toque. Free → 👑 + modal; premium → directo. API `/api/v2/tests/failed-questions` **queda abierta a propósito** (es conveniencia, no exclusividad). Helper puro `lib/nav/repasoFallosUrl.ts`; guardarraíl `__tests__/premium/repasoFallosGate.test.ts`.
+- **Criterio:** ¿gateo la API? Sí si vendo **exclusividad de contenido/capacidad** (curso, tema, IA). No si vendo **comodidad/atajo** de algo que dejo gratis. No castigar al free (retención) y a la vez poner el atajo donde más convierte.

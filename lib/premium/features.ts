@@ -53,6 +53,23 @@ export const PREMIUM_FEATURES = {
     unlockPlan: 'premium',
   },
 
+  // Atajo "Practicar mis fallos" en la pantalla de RESULTADOS (justo tras fallar =
+  // máxima intención). El repaso de fallos sigue GRATIS por el camino largo
+  // (hub "Mis Debilidades" / estadísticas); lo Premium es el ATAJO sin fricción en
+  // el momento perfecto → gancho de conversión por PRACTICIDAD, no por exclusividad
+  // (por eso NO se gatea la API: no vendemos la capacidad, vendemos el atajo). Free
+  // → 👑 + modal; premium → va directo al repaso scopeado a su oposición.
+  repaso_fallos: {
+    id: 'repaso_fallos',
+    kind: 'experience',
+    label: 'Practicar mis fallos',
+    modalTitle: 'Practica tus fallos al instante',
+    modalBody:
+      'Con Premium, nada más terminar un test vuelves a practicar tus preguntas falladas de un toque, sin buscar. Además tienes tests, chat con IA y lectura por voz sin límite.',
+    benefit: 'Repasa tus fallos al instante, justo cuando más te cunde',
+    unlockPlan: 'premium',
+  },
+
   // Videocursos (fila video_courses.is_premium). El server ya sirve 10 min de preview;
   // este entry unifica el copy + la analítica del paywall del curso.
   course: {
