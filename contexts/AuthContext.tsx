@@ -564,13 +564,19 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         // Las cookies google_*/meta_* las pone captureMetaParams() en CADA página
         // (ClientLayoutContent), así que cubren tráfico de anuncios a cualquier
         // página. Las campaign_* solo se ponen en /landing. Priorizar las globales.
-        const session = await auth.getSession()
-        if (session?.accessToken) {
+        // Reutiliza el token ya obtenido arriba (el mismo que valida ensure-profile).
+        // Antes se re-pedía auth.getSession() y se gateaba en session?.accessToken,
+        // que en ~17% de las altas devolvía null por una carrera post-registro →
+        // /api/acquisition se saltaba y el usuario quedaba SIN fila de canal ("Otros"
+        // en el dashboard). Con el token de arriba (presente siempre que ensure-profile
+        // funcionó) la llamada se dispara de forma fiable y su fallback 'direct'
+        // garantiza que TODA alta tenga fila → cobertura ~100%.
+        if (token) {
           await fetch('/api/acquisition', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.accessToken}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               channel: registrationSource,
