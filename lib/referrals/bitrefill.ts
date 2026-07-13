@@ -68,7 +68,10 @@ export async function purchaseAmazonGiftCard(amountEur: number): Promise<GiftCar
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
-        products: [{ product_id: PRODUCT_ID, value: amountEur, quantity: 1 }],
+        // ⚠️ `value` es un STRING en EUROS ('5','10',…), la denominación del producto.
+        // value:5 (número) o value:500 (céntimos) dan `wrong_value` (verificado 13/07,
+        // 1ª compra real). Las denominaciones válidas = packages[].value del producto.
+        products: [{ product_id: PRODUCT_ID, value: String(amountEur), quantity: 1 }],
         payment_method: 'balance',
         auto_pay: true,
       }),
