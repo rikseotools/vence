@@ -1,5 +1,6 @@
 // components/LeyesServerComponent.tsx - COMPONENTE SERVIDOR
 // Obtiene datos del servidor y los pasa al wrapper cliente para filtrado interactivo
+import Link from 'next/link'
 import { getLawsWithQuestionCounts } from '@/lib/api/laws'
 import type { LawWithCounts } from '@/lib/api/laws'
 import LeyesClientWrapper from './LeyesClientWrapper'
@@ -23,12 +24,12 @@ export default async function LeyesServerComponent() {
           <p className="text-gray-600 dark:text-gray-300 mb-6">
             Está tardando un poco más de lo normal. Recarga la página en unos segundos.
           </p>
-          <a
+          <Link
             href="/leyes"
             className="inline-block px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
           >
             Reintentar
-          </a>
+          </Link>
         </div>
       )
     }
