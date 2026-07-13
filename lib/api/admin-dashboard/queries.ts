@@ -104,23 +104,40 @@ async function queryUserStats(dates: ReturnType<typeof getMadridDates>) {
 async function queryRegistrationBySource(dates: ReturnType<typeof getMadridDates>) {
   const db = getDb()
 
-  const rows = await db
-    .select({
-      source: sql<string>`coalesce(${userProfiles.registrationSource}, 'unknown')`,
-      today: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.startOfToday})::int`,
-      thisWeek: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.thisMonday})::int`,
-    })
-    .from(userProfiles)
-    // excluir canary (internal_canary)
-    .where(and(gte(userProfiles.createdAt, dates.thisMonday), notCanaryProfile))
-    .groupBy(sql`coalesce(${userProfiles.registrationSource}, 'unknown')`)
+  // Fuente REAL del canal de captación: user_acquisition (channel derivado del
+  // referrer + click-IDs gclid/fbclid). `registration_source` NO vale aquí: es
+  // 'organic' por defecto y esconde direct/chatgpt/email/notification/etc. bajo
+  // "Orgánico" (engaña). LEFT JOIN → registros previos a user_acquisition
+  // (< 2026-06-02) o sin fila caen en 'unknown'.
+  const rows = await db.execute(sql`
+    SELECT coalesce(ua.channel, 'unknown') AS source,
+           count(*) FILTER (WHERE up.created_at >= ${dates.startOfToday})::int AS today,
+           count(*) FILTER (WHERE up.created_at >= ${dates.thisMonday})::int AS this_week
+    FROM user_profiles up
+    LEFT JOIN user_acquisition ua ON ua.user_id = up.id
+    WHERE up.created_at >= ${dates.thisMonday}
+      AND up.registration_source IS DISTINCT FROM 'internal_canary'
+    GROUP BY 1
+  `)
 
   const todayBySource: Record<string, number> = {}
   const weekBySource: Record<string, number> = {}
-  for (const row of rows) {
+  for (const row of rows as unknown as Array<{ source: string; today: number; this_week: number }>) {
     if (row.today > 0) todayBySource[row.source] = row.today
-    if (row.thisWeek > 0) weekBySource[row.source] = row.thisWeek
+    if (row.this_week > 0) weekBySource[row.source] = row.this_week
   }
+
+  // Referidos (programa de recompensas): canal ortogonal al de acquisition, se
+  // muestra como bucket propio 'referral'. Se cuenta por atribución (registro).
+  const refRows = await db.execute(sql`
+    SELECT count(*) FILTER (WHERE attributed_at >= ${dates.startOfToday})::int AS today,
+           count(*) FILTER (WHERE attributed_at >= ${dates.thisMonday})::int AS this_week
+    FROM referrals
+    WHERE attributed_at >= ${dates.thisMonday}
+  `)
+  const ref = (refRows as unknown as Array<{ today: number; this_week: number }>)[0]
+  if (ref && ref.today > 0) todayBySource['referral'] = ref.today
+  if (ref && ref.this_week > 0) weekBySource['referral'] = ref.this_week
 
   return { todayBySource, weekBySource }
 }

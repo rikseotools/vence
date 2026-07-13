@@ -20,8 +20,27 @@ type ActivityDay = ActivityChartResponse['data'][number]
 type ActivityStats = NonNullable<ActivityChartResponse['stats']>
 type RegistrationDay = RegistrationsChartResponse['data'][number]
 
+// Etiquetas legibles por canal de captación (fuente real: user_acquisition.channel).
+// Los canales no listados se muestran con su nombre crudo (🌐). Variantes del
+// mismo origen (chatgpt.com/chatgtp.com) comparten label → se agrupan al pintar.
+const CHANNEL_META: Record<string, { emoji: string; label: string }> = {
+  direct:        { emoji: '🔗', label: 'Directo' },
+  organic:       { emoji: '🌱', label: 'Orgánico' },
+  google_ads:    { emoji: '💰', label: 'Google Ads' },
+  meta_ads:      { emoji: '📘', label: 'Meta Ads' },
+  email:         { emoji: '📧', label: 'Email' },
+  notification:  { emoji: '🔔', label: 'Notificación' },
+  'chatgpt.com': { emoji: '🤖', label: 'ChatGPT' },
+  'chatgtp.com': { emoji: '🤖', label: 'ChatGPT' },
+  'copilot.com': { emoji: '🤖', label: 'Copilot' },
+  perplexity:    { emoji: '🤖', label: 'Perplexity' },
+  referral:      { emoji: '🎁', label: 'Referidos' },
+  unknown:       { emoji: '❓', label: 'Otros' },
+}
+
 export default function AdminDashboard() {
-  // Dinero de HOY en vivo: se poll-ea cada 30s mientras la pestaña admin esté abierta.
+  // Métricas de HOY (activos/registros/dinero) en vivo: el dashboard se re-fetchea
+  // cada 30s (ver useEffect abajo). Los badges los poll-ea useAdminNotifications.
   const adminNotif = useAdminNotifications(true)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [emailStats, setEmailStats] = useState<EmailStats | null>(null)
@@ -59,18 +78,22 @@ export default function AdminDashboard() {
   }, [revToday, stats])
 
   useEffect(() => {
-    const controller = new AbortController()
+    let cancelled = false
 
-    async function loadDashboardData() {
+    // isPoll=false → carga inicial (spinner + charts). isPoll=true → refresco
+    // silencioso de las métricas de HOY (activos, registros, importe) cada 30s,
+    // sin spinner y sin romper la vista si falla puntualmente.
+    async function loadDashboardData(isPoll: boolean) {
       try {
-        setLoading(true)
+        if (!isPoll) setLoading(true)
 
         // Dashboard primero, charts después (en dev, Turbopack bloquea si dos
         // API routes que comparten el pool de BD se llaman en paralelo)
-        const dashRes = await adminFetch('/api/v2/admin/dashboard', { signal: controller.signal })
-        if (controller.signal.aborted) return
+        const dashRes = await adminFetch('/api/v2/admin/dashboard')
+        if (cancelled) return
         if (!dashRes.ok) throw new Error(`Error ${dashRes.status}: ${dashRes.statusText}`)
         const data = await dashRes.json()
+        if (cancelled) return
 
         setStats(data.stats)
         setEmailStats(data.emailStats)
@@ -79,28 +102,52 @@ export default function AdminDashboard() {
         setActiveUsersLastWeekAtThisHour(data.activeUsersLastWeekAtThisHour)
         setActiveUsersYesterday(data.activeUsersYesterday)
         setOnlineUsers(data.onlineUsers || [])
-        setLoading(false)
+        if (!isPoll) setLoading(false)
 
-        // Charts se cargan después sin bloquear el dashboard
-        const chartsRes = await adminFetch('/api/v2/admin/charts?days=14', { signal: controller.signal })
-        if (controller.signal.aborted) return
-        if (chartsRes.ok) {
-          const charts = await chartsRes.json()
-          setActivityData(charts.activity?.data || null)
-          setActivityStats(charts.activity?.stats || null)
-          setRegistrationsData(charts.registrations?.data || null)
+        // Charts (14d) solo en la carga inicial: no necesitan refresco de 30s.
+        if (!isPoll) {
+          const chartsRes = await adminFetch('/api/v2/admin/charts?days=14')
+          if (cancelled) return
+          if (chartsRes.ok) {
+            const charts = await chartsRes.json()
+            setActivityData(charts.activity?.data || null)
+            setActivityStats(charts.activity?.stats || null)
+            setRegistrationsData(charts.registrations?.data || null)
+          }
         }
       } catch (err) {
-        if (controller.signal.aborted) return
-        console.error('Error cargando dashboard:', err)
-        setError(err instanceof Error ? err.message : String(err))
+        if (cancelled) return
+        // Un fallo de un refresco silencioso NO debe romper la vista ni mostrar
+        // el error de página: solo la carga inicial lo reporta.
+        if (!isPoll) {
+          console.error('Error cargando dashboard:', err)
+          setError(err instanceof Error ? err.message : String(err))
+        }
       } finally {
-        if (!controller.signal.aborted) setLoading(false)
+        if (!cancelled && !isPoll) setLoading(false)
       }
     }
 
-    loadDashboardData()
-    return () => controller.abort()
+    loadDashboardData(false)
+
+    // Refresco automático de las métricas de HOY cada 30s, solo con la pestaña
+    // visible (igual que el flash de dinero y el polling de badges). Sin spinner.
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      loadDashboardData(true)
+    }, 30000)
+
+    // Refresco inmediato al volver a la pestaña.
+    const onVisible = () => {
+      if (typeof document !== 'undefined' && !document.hidden) loadDashboardData(true)
+    }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   function formatTimeAgo(dateString: string) {
@@ -373,12 +420,23 @@ export default function AdminDashboard() {
                   })()}
                 </div>
                 <div className="text-xs text-gray-700 dark:text-gray-300 mt-1 space-y-0.5">
-                  <div>🌱 {stats.newUsersTodayBySource?.organic || 0} Orgánico</div>
-                  <div>💰 {stats.newUsersTodayBySource?.google_ads || 0} Google</div>
-                  <div>📘 {stats.newUsersTodayBySource?.meta_ads || 0} Meta</div>
-                  {stats.newUsersTodayBySource?.unknown > 0 && (
-                    <div>❓ {stats.newUsersTodayBySource.unknown} Otros</div>
-                  )}
+                  {(() => {
+                    // Desglose por canal REAL (user_acquisition.channel). Agrupa
+                    // variantes con la misma etiqueta y ordena por volumen.
+                    const bySource = stats.newUsersTodayBySource || {}
+                    const grouped = new Map<string, { emoji: string; count: number }>()
+                    for (const [channel, count] of Object.entries(bySource)) {
+                      if (!count) continue
+                      const meta = CHANNEL_META[channel] || { emoji: '🌐', label: channel }
+                      const prev = grouped.get(meta.label)
+                      grouped.set(meta.label, { emoji: meta.emoji, count: (prev?.count || 0) + count })
+                    }
+                    const items = [...grouped.entries()].sort((a, b) => b[1].count - a[1].count)
+                    if (items.length === 0) return <div className="text-gray-400">Sin registros hoy</div>
+                    return items.map(([label, { emoji, count }]) => (
+                      <div key={label}>{emoji} {count} {label}</div>
+                    ))
+                  })()}
                 </div>
                 <div className="text-xs text-gray-500 mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
                   Ayer total: {stats.newUsersYesterday}
