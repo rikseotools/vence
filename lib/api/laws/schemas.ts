@@ -68,8 +68,6 @@ export const GetLawsWithCountsResponseSchema = z.object({
   success: z.boolean(),
   laws: z.array(LawWithCountsSchema).optional(),
   error: z.string().optional(),
-  // stale: se sirvió el último resultado bueno en memoria tras un error transitorio.
-  stale: z.boolean().optional(),
 })
 
 /** Entrada individual del mapping slug ↔ shortName para el endpoint /api/v2/law-slugs */

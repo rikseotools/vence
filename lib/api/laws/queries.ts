@@ -400,44 +400,31 @@ export function normalizeLawShortName(shortName: string): string {
 
 // Lanza error en caso de fallo — unstable_cache NO cachea excepciones,
 // solo valores de retorno. Así un timeout transitorio no envenena la caché 30 días.
-// Snapshot en memoria del último resultado BUENO (por task Fargate). Permite
-// servir stale ante un timeout/error transitorio del cómputo (caché fría bajo
-// carga) en vez de vaciar /leyes con "No hay leyes disponibles" (bug Alfonso 13/07).
-let _lastGoodLaws: LawWithCounts[] | null = null
-
 async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
   const db = getLawsDb()
   console.log('🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...')
   console.time('⏱️ getLawsWithQuestionCounts')
 
-  // 25s: la query tarda ~1,7s en operación normal; un timeout = contención severa
-  // de RDS (caché fría post-deploy + carga). Margen amplio para que el cómputo en
-  // frío no falle y deje /leyes vacía. Sigue bajo el límite de 60s/página.
-  const timeoutMs = 25_000
-  const queryPromise = db
-    .select({
-      id: laws.id,
-      name: laws.name,
-      short_name: laws.shortName,
-      slug: laws.slug,
-      description: laws.description,
-      year: laws.year,
-      type: laws.type,
-      questionCount: count(questions.id),
-      officialQuestions: sql<number>`COUNT(CASE WHEN ${questions.isOfficialExam} = true THEN 1 END)`,
-    })
-    .from(laws)
-    .leftJoin(articles, eq(articles.lawId, laws.id))
-    .leftJoin(
-      questions,
-      and(
-        eq(questions.primaryArticleId, articles.id),
-        eq(questions.isActive, true)
-      )
-    )
-    .where(eq(laws.isActive, true))
-    .groupBy(laws.id, laws.name, laws.shortName, laws.slug, laws.description, laws.year, laws.type)
-    .orderBy(sql`COUNT(${questions.id}) DESC`)
+  // Lee de la MATERIALIZED VIEW `law_question_counts` (conteo precomputado por ley,
+  // refrescada por refresh_topic_question_summary() junto al resto de MVs). Antes
+  // esto era un agregado laws×articles×questions EN CADA REQUEST (~1,7s, y >15s bajo
+  // contención → timeout → /leyes vacía, bug Alfonso 13/07). Ahora es una lectura
+  // indexada de milisegundos: el timeout deja de ser un riesgo real. 10s = red de
+  // seguridad amplia (la lectura tarda ms).
+  const timeoutMs = 10_000
+  type LawCountRow = {
+    id: string; name: string | null; short_name: string | null; slug: string | null
+    description: string | null; year: number | null; type: string | null
+    questionCount: number; officialQuestions: number
+  }
+  const queryPromise = db.execute(sql`
+    SELECT l.id, l.name, l.short_name, l.slug, l.description, l.year, l.type,
+           mv.question_count AS "questionCount", mv.official_count AS "officialQuestions"
+    FROM laws l
+    JOIN law_question_counts mv ON mv.law_id = l.id
+    WHERE l.is_active = true AND mv.question_count >= 1
+    ORDER BY mv.question_count DESC
+  `) as unknown as Promise<LawCountRow[]>
 
   const result = await Promise.race([
     queryPromise,
@@ -474,7 +461,6 @@ async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
     .filter((law): law is LawWithCounts => law !== null)
 
   console.log(`✅ ${lawsWithCounts.length} leyes con preguntas obtenidas`)
-  if (lawsWithCounts.length > 0) _lastGoodLaws = lawsWithCounts // snapshot para stale-on-error
   return lawsWithCounts
 }
 
@@ -491,12 +477,6 @@ export async function getLawsWithQuestionCounts(): Promise<GetLawsWithCountsResp
     return { success: true, laws }
   } catch (error) {
     console.error('❌ Error obteniendo leyes con conteo:', error)
-    // stale-on-error: si este task ya calculó las leyes alguna vez, servir esa
-    // copia en vez de vaciar /leyes por un timeout transitorio (bug Alfonso 13/07).
-    if (_lastGoodLaws && _lastGoodLaws.length > 0) {
-      console.warn('⚠️ Sirviendo leyes STALE (último resultado bueno) tras error transitorio')
-      return { success: true, laws: _lastGoodLaws, stale: true }
-    }
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
   }
 }

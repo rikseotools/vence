@@ -25,14 +25,11 @@ describe('/leyes — error ≠ vacío + stale-on-error (anti dead-end)', () => {
     expect(comp).not.toMatch(/!result\.success\s*\|\|[^)]*length === 0/)
   })
 
-  it('getLawsWithQuestionCounts sirve STALE ante error transitorio', () => {
-    expect(queries).toMatch(/_lastGoodLaws/)
-    expect(queries).toMatch(/stale:\s*true/)
-  })
-
-  it('el timeout da margen (>15s) para el cómputo en frío bajo carga', () => {
-    const m = queries.match(/const timeoutMs\s*=\s*([\d_]+)/)
-    expect(m).toBeTruthy()
-    expect(Number(m![1].replace(/_/g, ''))).toBeGreaterThanOrEqual(20000)
+  it('getLawsWithQuestionCounts lee de la MV precomputada (no agregado pesado por request)', () => {
+    // fix robusto: el conteo por ley vive en la materialized view law_question_counts
+    // (refrescada con el resto de MVs) → lectura de ms, el timeout deja de ser un riesgo.
+    expect(queries).toMatch(/law_question_counts/)
+    // el parche en memoria _lastGoodLaws ya NO existe (lo hace innecesario la MV)
+    expect(queries).not.toMatch(/_lastGoodLaws/)
   })
 })
