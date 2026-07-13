@@ -1,4 +1,4 @@
-import { lastmodDiffers } from './competitor-sync.service';
+import { lastmodDiffers, shouldFinalizeBaseline } from './competitor-sync.service';
 import { CompetitorQueriesService, buildOposicionMatch } from './competitor-queries.service';
 
 describe('matchCourse (identidad estructurada + nombre)', () => {
@@ -97,5 +97,23 @@ describe('lastmodDiffers (regresión: gateo de re-descarga)', () => {
   it('maneja nulls (uno tiene lastmod, el otro no)', () => {
     expect(lastmodDiffers(null, null)).toBe(false)
     expect(lastmodDiffers('2025-05-06T10:18:38+00:00', null)).toBe(true)
+  })
+})
+
+describe('shouldFinalizeBaseline (baseline silencioso de competidor nuevo)', () => {
+  it('cierra el baseline cuando el backfill acaba (pending 0, fuentes OK, aún no done)', () => {
+    expect(shouldFinalizeBaseline(false, true, 0)).toBe(true)
+  })
+
+  it('NO cierra si el competidor ya tenía el baseline hecho (no re-salda cambios reales)', () => {
+    expect(shouldFinalizeBaseline(true, true, 0)).toBe(false)
+  })
+
+  it('NO cierra en pasadas intermedias del backfill (quedan cursos por el tope)', () => {
+    expect(shouldFinalizeBaseline(false, true, 254)).toBe(false)
+  })
+
+  it('NO cierra si alguna fuente falló (no hemos visto el catálogo entero)', () => {
+    expect(shouldFinalizeBaseline(false, false, 0)).toBe(false)
   })
 })

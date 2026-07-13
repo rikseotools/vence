@@ -37,6 +37,22 @@ export interface CompetitorSyncSummary {
   errors: number;
 }
 
+/**
+ * ¿Toca cerrar el baseline inicial de un competidor en esta pasada?
+ * TRUE solo si: aún no estaba cerrado, todas las fuentes se leyeron bien (si
+ * alguna falló no hemos visto el catálogo entero → no finalizar), y no quedan
+ * cursos pendientes por el tope (`coursesPending===0` = backfill al día). Puro
+ * para poder testearlo sin BD; maneja el backfill MULTI-PASADA (dispara en la
+ * última pasada, no en la primera). Ver runbook §5 (gotcha backfill).
+ */
+export function shouldFinalizeBaseline(
+  baselineDone: boolean,
+  allSourcesOk: boolean,
+  coursesPending: number,
+): boolean {
+  return !baselineDone && allSourcesOk && coursesPending === 0;
+}
+
 /** Identidad de una línea de precio (para reconciliar histórico). Incluye el
  *  plan/paquete: dos precios del mismo kind pero distinto paquete son distintos. */
 function priceKey(p: {
@@ -280,6 +296,17 @@ export class CompetitorSyncService {
         );
       }
       await sleep(POLITE_DELAY_MS);
+    }
+
+    // Cierre del baseline de un competidor NUEVO: su catálogo inicial entró como
+    // course_added, que NO es novedad comercial. Al completarse el backfill,
+    // auto-saldar esos cambios (siguen en el log, fuera del badge) y marcar done.
+    if (shouldFinalizeBaseline(competitor.baselineDone, allSourcesOk, summary.coursesPending)) {
+      const acked = await this.queries.acknowledgeBaselineChanges(competitor.id);
+      await this.queries.markBaselineDone(competitor.id);
+      if (acked > 0) {
+        this.logger.log(`[${adapter.key}] baseline inicial completo → ${acked} cambios auto-saldados`);
+      }
     }
 
     await this.queries.markCompetitorSynced(competitor.id);

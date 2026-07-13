@@ -31,6 +31,12 @@ export const competitors = pgTable('competitors', {
   isActive: boolean('is_active').default(true).notNull(),
   notes: text('notes'),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true, mode: 'string' }),
+  // Baseline inicial completado: el PRIMER sync de un competidor nuevo ingesta su
+  // catálogo entero como course_added → eso NO es novedad comercial (es que
+  // empezamos a mirarlo). Al terminar el backfill se auto-saldan esos cambios y
+  // se marca true, para no inundar el badge de /admin/competidores. Detalle:
+  // docs/runbooks/analizador-competidores.md §5 (gotcha backfill).
+  baselineDone: boolean('baseline_done').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 });
@@ -148,6 +154,9 @@ export const competitorChanges = pgTable(
     courseId: uuid('course_id'),
     detail: jsonb('detail').default(sql`'{}'::jsonb`).notNull(),
     detectedAt: timestamp('detected_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+    // Triaje del badge: un cambio sin `reviewedAt` cuenta como novedad pendiente.
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'string' }),
+    reviewedBy: text('reviewed_by'),
   },
   (t) => [
     index('idx_competitor_changes_recent').on(t.competitorId, t.detectedAt),

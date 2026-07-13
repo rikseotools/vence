@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { normalize } from '../oep-signals/oep-match';
 import { Ambito, OposicionIdentity, deriveIdentity, identityCompatible } from './oposicion-identity';
@@ -440,6 +440,29 @@ export class CompetitorQueriesService {
       courseId: input.courseId ?? null,
       detail: (input.detail ?? {}) as Record<string, unknown>,
     });
+  }
+
+  /**
+   * Auto-salda (marca revisados) los cambios pendientes de un competidor. Se usa
+   * al cerrar el backfill inicial: el catálogo entero de un competidor nuevo entró
+   * como course_added, pero no es novedad comercial → sacarlo del badge sin
+   * perderlo del log. Devuelve cuántos cambios se saldaron.
+   */
+  async acknowledgeBaselineChanges(competitorId: string): Promise<number> {
+    const rows = await this.db
+      .update(competitorChanges)
+      .set({ reviewedAt: sql`now()`, reviewedBy: 'system:baseline' })
+      .where(and(eq(competitorChanges.competitorId, competitorId), isNull(competitorChanges.reviewedAt)))
+      .returning({ id: competitorChanges.id });
+    return rows.length;
+  }
+
+  /** Marca que el competidor ya completó su baseline inicial (idempotente). */
+  async markBaselineDone(competitorId: string): Promise<void> {
+    await this.db
+      .update(competitors)
+      .set({ baselineDone: true, updatedAt: sql`now()` })
+      .where(eq(competitors.id, competitorId));
   }
 
   // ── match curso → oposición ──────────────────────────────────────────────
