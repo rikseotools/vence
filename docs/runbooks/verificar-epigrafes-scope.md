@@ -15,6 +15,27 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 
 ## Procedimiento
 
+### 0. Pipeline semi-autónomo (RECOMENDADO desde 13/07)
+En vez de ensamblar a mano cada paso (fuente de fallos: olvidar recache/record, medir mal el impacto, borrar contenido implícito), usa el pipeline. Hace **la parte mecánica sola** y **para en la parte de juicio**:
+
+```bash
+node scripts/verify-topic-scope.cjs dump  <pt>                    # 1) scope+epígrafe+arts crudos
+# 2) Workflow tool: verify-scope-oposicion con args = ese dump → propuestas (2 agentes+juez, BOE)
+node scripts/verify-topic-scope.cjs plan  <pt> <propuestas.json>  # 3) enriquece+clasifica → tabla + plan.json
+node scripts/verify-topic-scope.cjs apply <pt> --dry-run          # 4) previsualiza los AUTO-SEGUROS
+node scripts/verify-topic-scope.cjs apply <pt>                    # 5) aplica auto-seguros + recache + record (horneados)
+```
+
+**Clasificador PURO testeado** (`scripts/lib/scope-classifier.cjs`, `__tests__/verification/scopeClassifier.test.js`) — decide `auto_safe` vs `judgment_gate`. Manda a la **puerta de juicio** (NO auto-aplica) cuando detecta:
+- `reglamento_desarrolla`: se vacía un Decreto/Orden que **desarrolla** una ley nombrada en el epígrafe (caso T17 GVA: Decreto 77/2019 → **se mantiene**). Contenido IMPLÍCITO.
+- `epigrafe_tematico`: el epígrafe describe la materia por concepto, no por estructura (caso T8 GVA: Ley 4/2023 "medidas en el ámbito administrativo").
+- `impacto_alto`: el recorte afecta a > `--impact-threshold` preguntas (default 150; caso T10 GVA: 272).
+- `delta_invalido` / `epigrafe_no_localizable`: dato sospechoso → gate por cautela (protege de planes stale: si los arts a quitar ya no están, no re-aplica).
+
+`apply` sin flags aplica **solo** los `auto_safe`, refresca la MV, purga las rutas de los temas tocados, revalida el tag temario y hace `record_topic_verification` (correct si el tema queda limpio; issues si le queda algo en la puerta). Los `judgment_gate` requieren **criterio humano** y, tras decidir, `apply <pt> plan.json --include-gate` (aborta si algún delta es inválido). **Nada se borra nunca** — quitar del scope solo deja de mostrar preguntas fuera del temario oficial.
+
+Los pasos manuales de abajo (§1-§5) siguen valiendo como detalle/fallback.
+
 ### 1. Dump del input de los agentes
 ```bash
 node scripts/verify-topic-scope.cjs dump <position_type>

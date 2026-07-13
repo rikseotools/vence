@@ -17,6 +17,7 @@
 const { Client } = require('pg')
 const fs = require('fs')
 const path = require('path')
+const { classifyChange, temaVerdict, DEFAULT_IMPACT_THRESHOLD } = require('./lib/scope-classifier.cjs')
 
 // ── carga .env.local ──
 try {
@@ -58,7 +59,7 @@ async function buildDump(c, pt) {
   const out = []
   for (const t of topics) {
     const scope = (await c.query(
-      `SELECT l.id law_id, l.short_name, l.scope, ts.article_numbers, ts.include_full_title
+      `SELECT l.id law_id, l.short_name, l.name, l.scope, ts.article_numbers, ts.include_full_title
        FROM topic_scope ts JOIN laws l ON l.id=ts.law_id WHERE ts.topic_id=$1 ORDER BY l.short_name`,
       [t.id]
     )).rows
@@ -89,7 +90,7 @@ async function buildDump(c, pt) {
       const rango = nums.length
         ? (ni.length ? `${ni[0]}–${ni[ni.length - 1]} (${nums.length} arts)` : `${nums.length} arts (no num)`)
         : (s.include_full_title ? 'toda la ley' : 'NULL')
-      laws.push({ ley: s.short_name, ambito: s.scope, rango, preguntas_activas: Number(qn), articulos: arts })
+      laws.push({ ley: s.short_name, ley_nombre: s.name, ambito: s.scope, rango, arts: sortArtNums(nums.map(String)), preguntas_activas: Number(qn), articulos: arts })
     }
     out.push({ tema: t.topic_number, titulo: t.title, epigrafe: t.epigrafe, scope: laws })
   }
@@ -213,16 +214,212 @@ async function cmdGate() {
   } finally { await c.end() }
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// PIPELINE semi-autónomo (13/07): plan → apply. La parte LLM (2 agentes+juez) la
+// corre Claude con el workflow `verify-scope-oposicion` entre `dump` y `plan`.
+//
+//   plan  <pt> <propuestas.json> [--impact-threshold N]
+//         enriquece cada cambio (valida delta contra el scope real, mide impacto
+//         en preguntas) + clasifica (auto_safe vs judgment_gate, clasificador PURO
+//         testeado) → escribe verify_scope_plan_<pt>.json + tabla legible.
+//   apply <pt> [plan.json] [--dry-run] [--include-gate]
+//         aplica los auto_safe (o +gate con --include-gate) en TRANSACCIÓN +
+//         recache (MV + purga rutas + revalidate-temario) + record — todo horneado,
+//         imposible olvidar un paso. --dry-run enseña el antes/después sin tocar.
+
+const planPath = (pt) => path.join(DUMP_DIR, `verify_scope_plan_${pt}.json`)
+
+// normaliza la salida del workflow (array de {tema,title,veredicto:[{ley,quitar,anadir,razon}]}
+// o {result:{detalle:[...]}}) a: cambios planos + lista de todos los temas vistos.
+function flattenProposals(proposals) {
+  const arr = Array.isArray(proposals)
+    ? proposals
+    : (proposals.detalle || (proposals.result && proposals.result.detalle) || [])
+  const changes = []
+  const temas = new Set()
+  for (const d of arr) {
+    temas.add(d.tema)
+    for (const l of (d.veredicto || [])) {
+      const quitar = (l.quitar || []).map(String)
+      const anadir = (l.anadir || []).map(String)
+      if (!quitar.length && !anadir.length) continue
+      changes.push({ tema: d.tema, title: d.title || '', ley: l.ley, quitar, anadir, razon: l.razon || '' })
+    }
+  }
+  return { changes, temas: [...temas] }
+}
+
+async function enrichChange(c, pt, ch) {
+  const tRow = (await c.query(
+    `SELECT t.id, t.epigrafe, (SELECT count(*) FROM topic_scope ts WHERE ts.topic_id=t.id) laws
+     FROM topics t WHERE t.position_type=$1 AND t.topic_number=$2 AND t.is_active`, [pt, ch.tema])).rows[0]
+  if (!tRow) return { ...ch, error: 'tema no encontrado' }
+  const sRow = (await c.query(
+    `SELECT l.id law_id, l.name ley_nombre, ts.id scope_id, ts.article_numbers arts
+     FROM topic_scope ts JOIN laws l ON l.id=ts.law_id WHERE ts.topic_id=$1 AND l.short_name=$2`,
+    [tRow.id, ch.ley])).rows[0]
+  if (!sRow) return { ...ch, error: `ley "${ch.ley}" no está en el scope del tema ${ch.tema}` }
+  const cur = (sRow.arts || []).map(String)
+  const curSet = new Set(cur)
+  const quitarPresent = ch.quitar.filter((a) => curSet.has(a)).length
+  const anadirAbsent = ch.anadir.filter((a) => !curSet.has(a)).length
+  const deltaValid = quitarPresent === ch.quitar.length && anadirAbsent === ch.anadir.length
+  const remaining = cur.filter((a) => !ch.quitar.includes(a))
+  const emptiesLaw = cur.length > 0 && remaining.length === 0
+  let impacto = 0
+  if (ch.quitar.length) {
+    impacto = Number((await c.query(
+      `SELECT count(DISTINCT q.id) n FROM questions q JOIN articles a ON a.id=q.primary_article_id
+       WHERE a.law_id=$1 AND a.article_number = ANY($2) AND q.is_active`, [sRow.law_id, ch.quitar])).rows[0].n)
+  }
+  return {
+    ...ch, topic_id: tRow.id, epigrafe: tRow.epigrafe, lawsInTema: Number(tRow.laws),
+    leyNombre: sRow.ley_nombre, scope_id: sRow.scope_id, currentCount: cur.length,
+    quitarPresent, anadirAbsent, deltaValid, emptiesLaw, impacto, _current: cur,
+  }
+}
+
+async function cmdPlan(pt, jsonPath, threshold) {
+  const proposals = JSON.parse(fs.readFileSync(jsonPath, 'utf8'))
+  const { changes, temas } = flattenProposals(proposals)
+  const c = db(); await c.connect()
+  try {
+    const results = []
+    for (const ch of changes) {
+      const e = await enrichChange(c, pt, ch)
+      const cls = e.error ? { category: 'judgment_gate', flags: ['error:' + e.error] }
+        : classifyChange(e, { impactThreshold: threshold })
+      results.push({ ...e, category: cls.category, flags: cls.flags })
+    }
+    // veredicto por tema: un tema es 'correct' solo si NINGÚN cambio suyo va a la puerta
+    const byTema = {}
+    results.forEach((r) => { (byTema[r.tema] = byTema[r.tema] || []).push(r) })
+    const temaVerdicts = {}
+    for (const t of temas) {
+      temaVerdicts[t] = byTema[t] ? temaVerdict(byTema[t]) : 'correct' // sin cambios = correct
+    }
+    const plan = { pt, threshold: threshold != null ? threshold : DEFAULT_IMPACT_THRESHOLD, generatedAt: null, changes: results, temaVerdicts, temas }
+    fs.writeFileSync(planPath(pt), JSON.stringify(plan, null, 1))
+    // tabla legible
+    const auto = results.filter((r) => r.category === 'auto_safe')
+    const gate = results.filter((r) => r.category === 'judgment_gate')
+    console.log(`\n=== PLAN scope ${pt} (umbral impacto=${plan.threshold}) ===`)
+    console.log(`temas: ${temas.length} | cambios: ${results.length} → ✅ auto_safe ${auto.length} · 🚪 puerta ${gate.length}\n`)
+    const line = (r) => `  T${r.tema} [${r.ley}] q${r.quitar.length}/a${r.anadir.length} · ${r.impacto} preg · ${r.flags.join(',') || 'limpio'}${r.deltaValid === false ? ' ⚠️DELTA-INVÁLIDO' : ''}`
+    if (auto.length) { console.log('✅ AUTO-SEGURO (se aplican con apply):'); auto.forEach((r) => console.log(line(r))) }
+    if (gate.length) { console.log('\n🚪 PUERTA DE JUICIO (NO se aplican sin --include-gate + criterio humano):'); gate.forEach((r) => console.log(line(r))) }
+    console.log(`\n→ plan: ${planPath(pt)}`)
+    console.log(`→ aplica auto-seguros:  node scripts/verify-topic-scope.cjs apply ${pt} --dry-run   (y sin --dry-run)`)
+  } finally { await c.end() }
+}
+
+async function recache(pt, temas) {
+  const results = { mv: false, purged: 0, temario: false }
+  const c = db(); await c.connect()
+  try {
+    await c.query('REFRESH MATERIALIZED VIEW CONCURRENTLY topic_law_question_summary')
+    results.mv = true
+  } catch (e) {
+    try { await c.query('REFRESH MATERIALIZED VIEW topic_law_question_summary'); results.mv = true }
+    catch (e2) { console.error('   ⚠️ MV refresh falló:', e2.message) }
+  } finally { await c.end() }
+  const slug = pt.replace(/_/g, '-')
+  const cron = process.env.CRON_SECRET
+  if (cron && typeof fetch === 'function') {
+    for (const t of temas) {
+      try {
+        const r = await fetch('https://www.vence.es/api/purge-cache', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-cron-secret': cron },
+          body: JSON.stringify({ path: `/${slug}/temario/tema-${t}` }),
+        })
+        if (r.ok) results.purged++
+      } catch {}
+    }
+  }
+  // revalidate-temario (tag amplio) — best effort con token admin
+  try {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@supabase/supabase-js')
+      const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+      const { data } = await admin.auth.admin.generateLink({ type: 'magiclink', email: 'manueltrader@gmail.com' })
+      const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      const { data: v } = await anon.auth.verifyOtp({ token_hash: data.properties.hashed_token, type: 'magiclink' })
+      const r = await fetch('https://www.vence.es/api/admin/revalidate-temario', { method: 'POST', headers: { Authorization: 'Bearer ' + v.session.access_token } })
+      results.temario = r.ok
+    }
+  } catch (e) { console.error('   ⚠️ revalidate-temario falló (no crítico):', e.message) }
+  return results
+}
+
+async function cmdApply(pt, jsonPath, opts) {
+  const plan = JSON.parse(fs.readFileSync(jsonPath || planPath(pt), 'utf8'))
+  const toApply = plan.changes.filter((ch) => ch.category === 'auto_safe' || (opts.includeGate && ch.category === 'judgment_gate'))
+  const bad = toApply.filter((ch) => ch.error || ch.deltaValid === false)
+  if (bad.length) throw new Error(`abort: ${bad.length} cambio(s) con delta inválido/error — revisa: ${bad.map((b) => `T${b.tema}/${b.ley}`).join(', ')}`)
+  if (!toApply.length) { console.log('nada que aplicar'); return }
+
+  // computar antes/después
+  const compute = (ch) => {
+    let next = ch._current.filter((a) => !ch.quitar.includes(String(a)))
+    for (const a of ch.anadir) if (!next.includes(String(a))) next.push(String(a))
+    return sortArtNums(next)
+  }
+  console.log(`\n=== APPLY scope ${pt} ${opts.dryRun ? '(DRY-RUN)' : ''} — ${toApply.length} cambios${opts.includeGate ? ' (incluye PUERTA)' : ' (solo auto_safe)'} ===`)
+  toApply.forEach((ch) => console.log(`  T${ch.tema} [${ch.ley}] ${ch._current.length} → ${compute(ch).length} arts (q${ch.quitar.length}/a${ch.anadir.length}, ${ch.impacto} preg)`))
+  if (opts.dryRun) { console.log('\n(dry-run: nada escrito)'); return }
+
+  const c = db(); await c.connect()
+  try {
+    await c.query('BEGIN')
+    for (const ch of toApply) await c.query('UPDATE topic_scope SET article_numbers=$1 WHERE id=$2', [compute(ch), ch.scope_id])
+    await c.query('COMMIT')
+    console.log('✅ COMMIT topic_scope')
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); await c.end(); throw e }
+  await c.end()
+
+  const temas = [...new Set(toApply.map((ch) => ch.tema))]
+  console.log('→ recache…')
+  const rc = await recache(pt, temas)
+  console.log(`   MV:${rc.mv ? '✅' : '❌'} · rutas purgadas:${rc.purged}/${temas.length} · revalidate-temario:${rc.temario ? '✅' : '—'}`)
+
+  // record: cada tema tocado con su veredicto (correct si todos sus cambios se aplicaron; issues si queda puerta pendiente)
+  const c2 = db(); await c2.connect()
+  try {
+    const run = `verify_${pt}_${new Date().toISOString().slice(0, 10)}`
+    const topics = (await c2.query(`SELECT id, topic_number FROM topics WHERE position_type=$1 AND is_active`, [pt])).rows
+    const byN = {}; topics.forEach((t) => byN[t.topic_number] = t.id)
+    let rec = 0
+    for (const t of temas) {
+      const tid = byN[t]; if (!tid) continue
+      // si aplicamos solo auto_safe y el tema tenía puerta, queda 'issues'
+      const verdict = opts.includeGate ? 'correct' : plan.temaVerdicts[String(t)] || plan.temaVerdicts[t] || 'correct'
+      const note = `pipeline verify:scope apply ${new Date().toISOString().slice(0, 10)}`
+      await c2.query(`SELECT record_topic_verification($1,$2,$3::jsonb,$4,$5)`, [tid, verdict, JSON.stringify({ note }), run, 'pipeline'])
+      rec++
+    }
+    console.log(`✅ record: ${rec} temas`)
+    await printStatus(c2, pt)
+  } finally { await c2.end() }
+}
+
 async function main() {
   const [cmd, ...args] = process.argv.slice(2)
+  const flag = (name) => args.includes(name)
+  const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined }
+  const positional = args.filter((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--impact-threshold')
   try {
     if (cmd === 'dump') await cmdDump(args[0])
     else if (cmd === 'record') await cmdRecord(args[0], args[1], args[2])
     else if (cmd === 'status') await cmdStatus(args[0])
     else if (cmd === 'audit') await cmdAudit(args.includes('--json'))
     else if (cmd === 'gate') await cmdGate()
-    else {
-      console.log('Uso: node scripts/verify-topic-scope.cjs <dump|record|status|audit|gate> ...')
+    else if (cmd === 'plan') {
+      const th = opt('--impact-threshold')
+      await cmdPlan(positional[0], positional[1], th != null ? Number(th) : undefined)
+    } else if (cmd === 'apply') {
+      await cmdApply(positional[0], positional[1], { dryRun: flag('--dry-run'), includeGate: flag('--include-gate') })
+    } else {
+      console.log('Uso: node scripts/verify-topic-scope.cjs <dump|plan|apply|record|status|audit|gate> ...')
       process.exit(1)
     }
   } catch (e) {
