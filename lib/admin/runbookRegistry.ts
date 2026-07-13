@@ -80,6 +80,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'lista los temas con pocas preguntas y decide importar/generar más para esa oposición.',
   },
+  article_no_coverage: {
+    title: 'Artículos del temario sin ninguna pregunta',
+    triggerPhrase: 'revisa los artículos sin preguntas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza los artículos que están en el topic_scope y tienen contenido real pero 0 preguntas activas (al usuario nunca le salen en los tests aunque el tema en conjunto sí tenga preguntas), y genera preguntas ancladas al texto del artículo con doble auditoría ciega antes de activarlas. Excluye derogados.',
+  },
   flattened_table: {
     title: 'Tabla aplanada (import PDF sin rejilla)',
     triggerPhrase: 'revisa las tablas de artículos',

@@ -74,6 +74,33 @@ async function main() {
     if (vacios.length) add('app', 'error', o.slug, 'empty_topic', `${o.slug}: ${vacios.length} tema(s) disponible(s) SIN preguntas (T${vacios.slice(0, 5).map(v => v.topic_number).join(',T')})`);
     const finos = disp.filter(t => t.n > 0 && t.n < 6);
     if (finos.length) add('content', 'warn', o.slug, 'low_coverage', `${o.slug}: ${finos.length} tema(s) con cobertura fina (<6q)`);
+    // ── CONTENIDO: artículos EN SCOPE con contenido real pero 0 preguntas ──
+    // Grano más fino que low_coverage: un tema puede tener muchas preguntas EN
+    // TOTAL pero artículos concretos del temario a 0 → al usuario nunca le salen
+    // (caso M, SMS Tema 7, 13/07: 6 arts con contenido y 0 preguntas). Excluye
+    // derogados/vacíos. Se marca a partir de 4 en un mismo tema (cluster real,
+    // no cobertura parcial normal de 1-2 arts).
+    const sinPreg = (await c.query(`
+      SELECT tp.topic_number, count(*)::int n,
+             (array_agg(l.short_name || ' ' || a.article_number ORDER BY (a.article_number)::int))[1:6] AS ejemplos
+      FROM topic_scope ts
+      JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
+      JOIN laws l ON l.id = ts.law_id
+      JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
+      JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+      WHERE tp.position_type = $1
+        AND length(coalesce(a.content,'')) > 40
+        AND a.content NOT ILIKE '%derogado%'
+        AND NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)
+      GROUP BY tp.topic_number
+      HAVING count(*) >= 4
+      ORDER BY tp.topic_number`, [pt])).rows;
+    if (sinPreg.length) {
+      const tot = sinPreg.reduce((a2, r) => a2 + r.n, 0);
+      add('content', 'warn', o.slug, 'article_no_coverage',
+        `${o.slug}: ${sinPreg.length} tema(s) con artículos del temario SIN preguntas (${tot} arts; p.ej. T${sinPreg[0].topic_number}: ${(sinPreg[0].ejemplos || []).join(', ')})`,
+        { temas: sinPreg.map(r => ({ tema: r.topic_number, arts_sin_preguntas: r.n, ejemplos: r.ejemplos })) });
+    }
 
     // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
     const nTopics = topics.length;
