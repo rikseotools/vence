@@ -1,0 +1,886 @@
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+TEMA 2. El archivo.
+Se trata del otro de los objetos de la archivística. Ya hemos mencionado que uno de ellos
+era el documento, el otro es el archivo. El tema 3, destinado a la archivística abordará esto y la
+importancia que tiene para delimitar la archivística como ciencia o como técnica.
+A lo largo de la historia los pueblos han sentido la necesidad de guardar y conservar los
+documentos para perpetuar la memoria de los hechos e instituciones de sus antepasados. Una
+vez esta conservación se haga bajo un orden prescrito se podrá hablar de archivo. Un archivo no
+es un depósito de documentos al que van unidos conceptos como suciedad, almacén, sótanos,
+etc. La noción de archivo como depósito de documentos que han superado el estadio de la oficina
+o negociado de gestión y, por tanto, que han decaído en su valor primario y han desarrollado un
+valor secundario máximo, sirviendo como fuentes de información histórica, está cambiando; pero
+el concepto de archivo como centro de información y de la archivística como disciplina vinculada a
+las ciencias de la información y documentación, aún se debe consolidar1.
+
+2.1 Concepto.
+Sin duda el tratadista que dio pie al resto de los autores para definir el archivo fue
+Casanova (tal como opina Ruiz Rodríguez2) y lo hizo como acumulación ordenada de documentos
+que se crearon en el curso de sus actividades por una institución o por un individuo y que son
+preservados para la realización de sus propósitos culturales, legales o políticos por la institución o
+el individuo.
+Schellenberg, ya en el año 1956 definió archivo como aquellos registros (documentos) de
+cualquier institución pública o privada que hayan sido considerados ameritar (valorados) para su
+preservación permanente, con fines de investigación o para referencia y que hayan sido
+depositados o escogidos (seleccionados) para guardarse en una institución archivística3.
+Martínez Alcubilla entiende por archivo el “lugar donde se guardan escrituras,
+documento, expedientes, etc.”. “Si archivo es, como queda indicado, el lugar en que se conservan
+con separación, orden y seguridad papeles o documentos históricos de titulación o de importancia
+histórica, etc., dase también este nombre a los mismos documentos o papeles conservados
+ordenadamente”4.
+La ley francesa de archivos de 3 de enero de 1979 entiende archivos como conjuntos de
+documentos, sean cuales sean su fecha, su forma y su soporte material, producidos o recibidos por
+
+1
+
+.MARTÍN FUERTES, J. A. De la función… p. 415.
+CASANOVA, E. Archivística. 1ª ed. 1928. Turín: Boltega Erasmo, 1966, p. 25. Cifr. RUIZ
+RODRÍGUEZ, A. A. El archivo, la Archivística y el documento, p. 138.
+3
+SCHELLENBERG, T. R., Archivos Modernos: Principios y técnicas. La Habana: Imprenta del Archivo
+Nacional, 1958, p. 42.
+4
+MARTÍNEZ ALCUBILLA, M. Diccionario de la administración Española: Compilación de la
+novísima legislación de España en todos los ramos de la administración Pública. 5ª ed. Madrid, 1892. T.
+1º (A-BAU). P. 601. Dedica las páginas 601 a 649 a la entrada “Archivos: Bibliotecas y Museos:
+Archiveros, Bibliotecarios y Anticuarios”.
+2
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+toda persona física o moral y por todo servicio u organismo público o privado, en el ejercicio de su
+actividad5.
+El diccionario de terminología archivística del C.I.A. define archivo:
+1. Conjunto de documentos sean cuales sean su fecha, forma y su soporte material,
+producidos o recibidos por toda persona física o moral y por todo servicio u organismo
+público o privado, en el ejercicio de su actividad, y son, ya conservados por sus
+creadores o por sus sucesores, para sus propias necesidades, ya transmitidos a la
+institución de archivos competente en razón de su valor archivístico.
+2. Institución responsable de la acogida, tratamiento, inventariado, conservación y
+servicio de los documentos.
+3. Edificio o parte del edificio donde los documentos son conservados y servidos.
+Heredia Herrera entiende archivo como uno o más conjuntos de documentos, sea cual sea
+su fecha, su forma y soporte material, acumulados en un proceso natural por una persona o
+institución pública o privada en el transcurso de su gestión, conservados respetando aquel orden,
+para servir como testimonio e información para una persona o institución que lo produce, para los
+ciudadanos o para servir de fuentes de la historia.
+La Ley 16/1985 de Patrimonio Histórico Español, en su artículo 59.1 legisla que: Son
+archivos los conjuntos de documentos o la reunión de varios de ellos, reunidos por las personas
+jurídicas, públicas o privadas en el ejercicio de sus actividades, al servicio de su utilización para la
+investigación, la cultura, la información y la gestión administrativa. Asimismo se entienden por
+Archivos las instituciones culturales donde se reúnen, conservan, ordenan o difunden para los fines
+anteriormente mencionados dichos conjuntos orgánicos6.
+Para Lodolini resulta claro que el archivo es un conjunto, un complejo, una totalidad de
+documentos producidos en el curso de una actividad práctica, jurídica y administrativa y como
+consecuencia del desarrollo de aquella actividad, producidos naturalmente, espontáneamente,
+dispuestos de origen de una manera que refleja directamente, inmediatamente, aquella actividad,
+ligados por un vínculo originario, necesario, determinado y constituyendo, en cuanto tales, una
+universitas originaria, necesariamente determinada7.
+Rodríguez de Diego dice: el archivo no es un producto aislado, un lujo cultural que surge
+sin más. Entiende que el archivo es un conjunto orgánico generado por una institución, habría que
+estudiar el archivo como producto de la institución en la que nace, más aún como imagen de la
+misma, ya que ésta queda cristalizada en la organización de sus fondos. Aún habrá que contar con
+un tercer nivel. Los archivos no sólo son reflejo de una institución sino una manifestación más de la
+actividad humana. La institución que los genera, surge y evoluciona en medio del acontecer
+político, social, económico, cultural de una determinada sociedad y en una época con
+características especiales8.
+
+5
+
+Cfr. LODOLINI, E. Archivistica, p. 145.
+B.O.E. 155, 29 de junio de 1985.
+7
+LODOLINI, E. Archivística, p.151.
+8
+Instrucción…, p. 13 y ss.
+6
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+De todas las definiciones se desprende que:
+1) Los documentos son los que componen el archivo. Se trata de un conjunto de
+documentos, sin importar su fecha, forma o soporte material.
+2) El archivo lo genera cualquier persona física o jurídica: un individuo, una familia, un
+organismo público o privado y que administra la documentación.
+3) Un archivo se forma mediante el ejercicio de la actividad propia de esa entidad, que da
+lugar a la tramitación de asuntos diversos, cuya plasmación se materializa en forma de
+documentos. Es un proceso natural y es lo que le da su característica de conjunto
+orgánico.
+4) Se producen para el servicio de la gestión administrativa y para el servicio a los
+ciudadanos, ya sea para la investigación, la cultura y la información.
+5) Además, teniendo en cuenta la segunda parte de la definición, para que un archivo sea tal
+debe cumplir con una serie de funciones: reunir, conservar, ordenar y difundir. Vicenta
+Cortés las agrupa en tres: (recoger, conservar y servir). Estas son las funciones básicas de
+la archivística.
+RECOGER la documentación emanada de las funciones inherentes a la actividad del organismo
+originario, que sea útil para la propia administración, la investigación y los ciudadanos.
+CONSERVAR en forma segura y organizada los fondos recibidos, salvaguardando el patrimonio
+documental.
+SERVIR los fondos documentales, facilitando su uso y su conocimiento a la administración, la
+investigación y los administrados.
+Fig. 1 Funciones básicas de la Archivística.
+PARA NOSOTROS EL CONCEPTO ACTUAL CONLLEVA TRES ACEPCIONES:
+1.‐ CONJUNTO DE DOCUMENTOS. Si nos damos cuenta no se usa el término colección que
+según el Diccionario de Autoridades de la Real Academia Española significaría: acto de recoger o
+juntar alguna cosa o la misma junta que se hace de las cosas de una especie para que estén
+unidas. Si bien colección podría usarse para definir archivos hay que precisar que lo es de
+documentos reunidos en el ejercicio de una actividad práctica y necesaria. Esto ocasiona que los
+documentos se reúnan en colección, seriada, continua y organizadamente porque la función
+archivística está, como las actuaciones que la originan, regladas normalmente. Nada que ver con
+las colecciones facticias: documentos con sellos de placa, firmas autógrafas de reyes, etc. Otra
+característica es que los elementos coleccionados están vinculados en sus piezas a un expediente
+o a una serie, sección, organismo o entidad productora. Por último la unicidad y singularidad de
+las piezas, porque los actos prácticos de una administración son únicos y singulares en cada
+momento, lugar, autor y destinatario.
+2.‐ INSTITUCIÓN QUE ADMINISTRA UNA DOCUMENTACIÓN: es el sujeto productor de conjuntos
+orgánicos de documentos. Se trata tanto de organizaciones públicas como privadas; según la
+definición de la propia Ley 16/1985, incluida en las líneas precedentes, también se considera
+como institución productora a cualquier persona, empresa o asociación sancionada legalmente,
+con una función social determinada, que en el ejercicio de su función genera un volumen
+documental que la refleja y que finalmente queda recogida en el Archivo.
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+3.‐ EL LUGAR DONDE SE CONSERVA LA DOCUMENTACIÓN: hemos visto que archivo se refiere por
+igual al conjunto de documentos como al lugar donde se guarda o la institución, con equipos y
+personal responsable de su cuidado. Esta palabra tanto se puede aplicar a archivos de oficina
+(corrientes o de gestión), como archivos de depósito (administrativos o históricos). Aquí hay
+diferencias entre países, así para anglosajones y germanos archives o archiv sólo designa
+colecciones no precisas para las necesidades administrativas ordinarias de la entidad productora,
+colecciones que han adquirido valor perenne, no están sometidas a expurgo, son más accesibles y
+tienen signatura topográfica definitiva, es decir datos de localización física definitivos en la última
+etapa de archivo que es el archivo histórico.
+Los archivos corrientes y de oficina son denominados como records o registratur y la
+gestión de archivo administrativo: records management. Esta denominación no es del todo
+correcta pues el término records management sólo designa lo que es sin adjetivos, es decir:
+gestión de documentos, sin especificar si los documentos están aún en las primeras etapas o fases
+de archivo o en las finales. Un archivo, entendido como conjunto orgánico de documentos, no
+surge para la historia, surge en el desarrollo de las actividades cotidianas. Una institución no
+genera documentos pensando que van a pasar a la Historia, genera los documentos que necesita
+en el desarrollo de sus funciones, competencias y actividades, si bien esos documentos tienen
+más utilidades de las que se plantea la propia institución. El lugar de conservación de los
+documentos de archivo se diferencia en cuanto a las etapas del ciclo vital de los documentos pero
+no debe disociarse.
+
+2.1. Funciones del Archivo.
+El objetivo final es disponer de la documentación organizada, con información
+recuperable para su uso, tanto para la administración como para el ciudadano. El cumplimiento
+del objetivo último se construye sobre otros objetivos, que a su vez se desarrollan en una serie de
+funciones y actividades que corresponden a cada objetivo; y que se desarrollan muchas veces de
+forma simultánea.
+Las funciones fundamentales que constituyen un camino hacia el objetivo final son las
+siguientes:
+1.‐ RECOGER la documentación.
+2.‐ CONSERVAR la documentación recibida, de forma adecuada, segura y ordenada.
+3.‐ SERVIR los fondos documentales tanto a la institución productora como a los
+administrados y a la investigación en general (fig. 2).
+El objetivo de recoger se traduce en la función de recibir. El objetivo de conservar se
+traduce en la función de custodiar todos los fondos de archivos en condiciones óptimas, aplicando
+medidas preventivas y de restauración, siempre que se consideren necesarias. La adecuada
+conservación intelectual también es parte integrante de la función de custodiar, para que la
+documentación recogida en un archivo cumpla el objetivo final de servicio a la sociedad, debe
+estar científicamente organizada y descrita. Para terminar, el objetivo de servir se realiza en la
+función de difundir, con una adecuada comunicación que no puede olvidar los derechos e
+intereses en conflicto. El derecho de acceso a los archivos y el derecho a la protección de la
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+intimidad9. Estas funciones son comunes a todo tipo de archivo, pero en la forma de llevar a cabo
+la práctica presentaría matices dependiendo del tipo de archivo para el que estuviésemos
+planificando y, también variaría en función del ciclo vital de los documentos que integran ese
+fondo de archivo.
+Información al servicio de:
+
+Gestión Administrativa
+
+OBJETIVO
+
+Información
+
+FINAL.
+Investigación
+
+Cultura
+
+FUNCIONES EN QUE SE
+DESARROLLA
+
+Recoger
+
+Recibir la documentación
+
+Organizar: clasificar y ordenar
+OBJETIVOS
+
+Conservar
+.....
+
+Servir
+
+Conservar: instalar.
+
+Difundir.
+
+Fig. 2 Objetivos y funciones del archivo.
+
+9
+
+LEY 16/85... art. 62: La administración garantizará el acceso de todos los ciudadanos españoles a los
+Archivos, Bibliotecas y Museos de titularidad estatal...; art. 57 a) y b) establecen la consulta de los
+documentos constitutivos del Patrimonio Documental, depositados y registrados en los archivos una vez
+concluido su trámite. El punto c) legisla la otra parte en conflicto excluyendo a la consulta pública los
+documentos que contengan datos personales de carácter policial, procesal, clínico o de cualquier otra
+índole que puedan afectar a la seguridad de las personas, a su honor, a la intimidad de su vida privada y
+familiar y a su propia imagen ...
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+A cada objetivo y función le corresponden una serie de actividades que se detallan en las
+figuras que siguen a estas líneas, por considerar que resultan más didácticos y facilitan la
+comprensión (Fig. 3 ). En virtud del establecimiento y discernimiento de todos los objetivos,
+funciones y actividades un archivo se regirá por una política de conjunto que podría ser la
+propuesta más abajo (fig.4 ).
+RECOGER
+
+Participación en el proceso de creación
+Activa de
+
+Normalización de la tipología documental
+
+preparación
+
+Normativa de vigencia
+Expurgo programado
+Recogida de fondos.
+Planificación de la transferencia
+
+Pasiva de
+recepción
+
+Trámite de entrega
+Entrega de fondos con Relación
+Comprobación de Relaciones con fondos
+Registro de entrada de la Documentación
+
+CONSERVAR
+Instalación
+
+Aplicación
+de medidas
+preventivas
+y curativas
+Organización
+científica
+
+Participación en la planificación y distribución
+del edificio
+Selección del equipo y del material
+Conservación del edificio, instalaciones y
+Material
+Vigilancia
+Conservación
+Restauración
+Reprografía
+Servicio.
+Clasificación, ordenación e instalación
+Funcionamiento
+Trámite
+Manejo de fondos
+Ordenar, numerar, tejuelar, sellar, foliar.
+
+SERVIR
+Al organismo
+productor
+
+Trámite
+Búsqueda, entrega y devolución
+
+Trámite
+Al
+investigador
+
+Información documental
+Búsqueda, entrega y devolución.
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+Certificaciones
+Al público en
+general
+
+Publicaciones
+Exposiciones
+Docencia
+Reproducciones
+
+Guías
+Confección de
+instrumentos
+información
+
+Inventarios
+Catálogos
+Índices y ediciones de fuentes.
+
+Fig. 3 Objetivos y actividades de los archivos.
+ACCIÓN
+
+ACTIVIDAD
+
+Producción documental regulada
+Recogida
+
+Transferencia metódica por niveles de función
+Entrada de los documentos perdurables en cada
+etapa.
+
+Centros capaces y adecuados a la función
+Custodia
+
+Instalación, equipos y material conveniente
+Diseño de las operaciones de organización de la
+documentación.
+Censo de documentación nacional
+
+Servicio
+
+Instrumentos de información para su manejo y
+consulta.
+Documentación puesta a punto para su utilización
+por la Administración, la investigación y los
+administrados en defensa de sus derechos.
+
+Fig. 4. Planificación de una política de conjunto.
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+2.2. Tipos.
+Antes de abordar el tema de la tipología de esas unidades de información que
+son los archivos, hemos de entender que se puede producir cierta confusión entre
+sistema archivístico y sistema de gestión documental, el sistema archivístico ya se ha
+visto en el primer curso, este año abordaremos en su momento el Sistema de Gestión
+Documental.
+• Sistema archivístico según el Diccionario de Terminología archivística,
+publicado por la Subdirección General de los archivos estatales:
+Conjunto de normas e instituciones que participan en la dirección,
+seguimiento, coordinación e inspección de los programas para la
+conservación, tratamiento y difusión del Patrimonio Documental. Componen el
+sistema archivístico
+LOS ARCHIVOS
+LOS SERVICIOS ARCHIVÍSTICOS
+LA ADMINISTRACIÓN DE ARCHIVOS
+LA LEGISLACIÓN ARCHIVÍSTICA
+Y EL PERSONAL
+Estamos hablando de Metasistemas de archivos que debemos distinguir del
+sistema archivístico institucional como sistema propio de una institución, organización
+o administración para llevar a cabo la planificación, organización y gestión de sus
+fondos que sería el Sistema de Gestión Documental (S.G.D.).
+Entendemos por sistema archivístico el conjunto de normativa, órganos y
+centros cuyo objetivo es la organización, conservación y difusión del patrimonio
+documental circunscrito a un ámbito político-territorial. Bajo esta definición tan
+amplia y abstracta se incluyen los diferentes sistemas archivísticos que coexisten en el
+estado español.
+1) Sistema archivístico propio de la administración estatal, es decir el
+sistema archivístico de la Administración del Estado Español, que por
+extensión se ha venido denominando: Sistema Archivístico Español.
+2) El sistema archivístico de cada una de las administraciones autonómicas
+establecidas desde 1978.
+3) El sistema archivístico de cada una de las administraciones locales del
+país (provinciales y locales).
+Son tres sistemas relacionados y coordinados pero que funcionan con la
+independencia y la autonomía necesarias.
+Para entender un sistema archivístico hay que comprender que existen muchas
+maneras de clasificar los archivos, tantas como criterios restrictivos apliquemos.
+Además es necesario tener en cuenta otra premisa: los archivos pueden pertenecer a
+varios tipos diferentes. Es igual que cuando aplicamos un criterio restrictivo en la vida
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+cotidiana. Si el primer criterio es por el color de pelo, los empleados de una empresa
+pertenecerán cada uno a un tipo; si el criterio es por sexo variará la adscripción al
+tipo.
+ Según la adscripción del organismo que ha producido la documentación al
+derecho público o privado. Este aspecto marca las clases fundamentales:
+archivos públicos y privados.
+1) Archivos privados: los documentos producidos por entidades
+particulares o personas físicas requieren una antigüedad superior a los
+100 años para ser considerados patrimonio documental. Según María
+del Carmen Mastropierro10 existen tres tipos de archivos privados: los
+archivos personales, los archivos familiares y los archivos
+institucionales, añadiendo las siguientes categorías:
+
+
+1. Archivos personales,
+
+
+
+2. Archivos familiares,
+
+
+
+3. Archivos institucionales,
+
+
+
+4. Archivos de Asociaciones Civiles,
+
+
+
+5. Archivos Audiovisuales,
+
+
+
+6. Archivos eclesiásticos,
+
+
+
+7. Archivos de empresas,
+
+
+
+8. Archivos escolares,
+
+
+
+9. Archivos legislativos,
+
+
+
+10. Archivos médicos,
+
+
+
+11. Archivos musicales,
+
+
+
+12. Archivos policiales,
+
+
+
+13. Archivos de televisión
+
+
+
+14. Colecciones documentales,
+
+
+
+15. Papeles privados o papeles personales,
+
+
+
+16. Papeles
+
+Es el caso de archivos de empresas, colectividades, fondos nobiliarios y de
+instituciones privadas o de personas particulares. Estaríamos hablando de:
+
+
+10
+
+Archivos de entidades bancarias, empresas, medios de
+comunicación, centros docentes, instituciones científicas y de
+investigación, hospitales, centros benéficos, partidos políticos,
+sindicatos y patronales, nobiliarios, personales y familiares,
+asociaciones y colectividades (colegios profesionales,
+
+http://www.adabiac.org/investigacion_arch_civil/articulos/archivis_2007/articulos/articulo_id_849.htm
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+asociaciones profesionales, asociaciones culturales, asociaciones
+recreativas y deportivas, O.N.G.s y cámaras agrarias) archivos
+de organismos internacionales.
+
+
+Los archivos eclesiásticos forman parte de este bloque. En el
+caso de la religión católica se estructuran siguiendo la
+circunscripción geográfica en el caso de los ordinarios. Se
+estructuran en dos grupos:
+•
+
+Ordinarios: metropolitanos y arzobispales, episcopales,
+capitulares o catedralicios, diocesanos, parroquiales,
+monásticos o conventuales, universidades, seminarios,
+cofradías y asociaciones.
+
+•
+
+Especiales: Tribunal de
+Conferencia Espiscopal.
+
+la
+
+Rota,
+
+Nunciatura
+
+y
+
+2) Archivos públicos: los documentos públicos de cualquier época,
+producidos por un organismo de origen público, considerados
+patrimonio documental y están regulados por la Ley 16/1985 del
+Patrimonio Histórico Español. Como fruto de la organización
+administrativa española hay archivos de titularidad estatal, titularidad
+autonómica y el híbrido de titularidad estatal y gestión transferida.
+
+
+Archivos de titularidad y gestión estatal: nutrido por los grandes
+archivos estatales, denominados generales por que la mayoría
+contienen fondos documentales de carácter internacional,
+testimonio de los dominios españoles en Europa y Ultramar en
+uno u otro momento de la historia.
+•
+
+Archivo Histórico Nacional
+
+•
+
+Archivo General de Simancas
+
+•
+
+Archivo General de Indias
+
+•
+
+Archivo General de la Administración (Alcalá de
+Henares)
+
+•
+
+Archivo General de la Guerra Civil (Hoy Centro
+Documental de la Memoria Histórica)
+
+•
+
+Archivo de la Corona de Aragón
+
+•
+
+Sección Nobleza del Archivo Histórico Nacional
+
+•
+
+Archivos de distrito (son los archivos de las
+Chancillerías: audiencias o tribunales superiores de
+justicia, con origen a finales de la Edad Media. Había
+dos una al norte y otra al sur del Duero: Chancillería de
+Valladolid y Chancillería de Granada). Chancillería de
+Granada ha sido reclamado por la Comunidad Autónoma
+de Andalucía y ha pasado a formar parte del sistema
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+autonómico, por lo que sólo permanece en esta categoría
+el Archivo de la Chancillería de Valladolid.
+•
+
+Archivos centrales de los Ministerios.
+
+•
+
+Archivos de la Administración Central Periférica e
+Institucional del Estado.
+
+•
+
+Archivos Regionales (cuya documentación corresponde a
+circunscripciones territoriales que disfrutaron de
+personalidad política propia) en algún momento del
+pasado en su momento fueron de titularidad estatal pero
+se han reclamado por sus Comunidades Autónomas de
+los que son cabecera: Archivo del Reino de Galicia,
+Archivo del Reino de Valencia, Archivo del Reino de
+Mallorca y Archivo del Reino de Navarra y también el
+Depósito Regional de Cervera (Lérida).
+
+•
+
+Archivos con dependencia particular: archivos que
+pertenecen a instituciones superiores de la administración
+central del estado, pero dependen de los respectivos
+organismos y no del Ministerio de Educación, Cultura y
+Deportes:
+o Archivo del Patrimonio Nacional
+o Archivo de las Cortes
+o Archivo de la Real Academia de la Historia
+o Archivo General Militar
+o Archivos de Tribunales y otros organismos
+superiores del Estado
+o Archivo del Banco de España
+
+•
+
+
+
+Desde el Ministerio de Cultura se gestionan: el Archivo
+Histórico Provincial de Álava, el Archivo Histórico
+Provincial de Vizcaya y el Archivo Histórico Provincial
+de Guipúzcoa.
+
+Archivos de titularidad estatal y gestión transferida a las
+autonomías: nutrido por todos los Archivos Históricos
+Provinciales. Creados en 1931 con el fin de realizar en las
+provincias funciones similares de salvaguardia de la
+documentación histórica a la que venía haciendo para el
+conjunto de España el Archivo Histórico Nacional. Desde un
+principio son encomendados al Cuerpo Facultativo de
+Archiveros del Estado y orientan su acción a la recogida y
+custodia de los Protocolos Notariales históricos, uniéndose
+luego a éstos los Registros de la Propiedad y otros fondos
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+diversos como los archivos de los Sindicatos Verticales. En
+1969, el Decreto de fundación del A.G.A. de Alcalá de Henares
+los convirtió en intermedios para su provincia quedando a su
+cargo la documentación de la Administración Delegada. La
+Autonomías, a su vez los han convertido en centro de las redes
+provinciales en que estén incluidos, y conservarán, organizarán,
+comunicarán y difundirán la documentación transferida por los
+archivos territoriales. 11
+
+
+11
+
+Archivos de titularidad y gestión autonómica: integrado por los
+fondos producidos por los órganos centrales de las Autonomías
+y por las Diputaciones Provinciales y Municipios. Bajo la
+Denominación de Comunidades autónomas existen en España
+actualmente 17 regiones geopolíticas reconocidas oficialmente,
+cada una de ellas ha procedido, a ritmo variable, a la
+construcción de su propio sistema y red de archivos. Mención
+aparte, merecen aquellos archivos que han sido transferidos
+desde la Administración Central y actúan como archivos
+Generales de su autonomía. Son archivos de titularidad estatal
+pero cuya gestión (personal, financiación, etc.) ha sido
+transferida a su Comunidad Autónoma respectiva: Archivo del
+Reino de Galicia y Archivo de la Chancillería de Granada. Estos
+archivos los hemos citado en el sistema estatal y de nuevo en el
+autonómico, son fiel reflejo de la situación de indefinición que
+aún pasamos. El Archivo General de Navarra es un caso
+especial. Este archivo es un archivo autonómico, con más razón
+casi que ningún otro, resultado de la agregación de varios
+
+Como cabecera de las redes provinciales serán el centro de los siguientes archivos:
+Archivos de las Diputaciones Provinciales
+Archivos de Subdelegaciones de Gobierno
+Archivos de Delegaciones de los distintos Ministerios
+Archivos de Juntas de Estudio y de Gobierno
+Archivos de Mancomunidades de Municipios.
+Archivos Municipales y de las restantes entidades de ámbito local inferior al provincial.
+Archivos de la Administración Registral:
+Notariado
+Registro Civil
+Registros de la Propiedad:
+Territorial
+Intelectual
+Patentes
+Archivos privados de uso público, es decir con subvenciones de cuantía igual o superior al 50%
+de sus ingresos.
+Archivos de Colectividades:
+Económicas:
+Cámaras de comercio, de industria, de agricultura, etc.
+Cooperativas: vinícolas, cerealistas, etc.
+Asociaciones empresariales
+Profesionales: Colegios o asociaciones de médicos, arquitectos, abogados, archiveros, etc.
+De oficios o defensa de la clase obrera: Gremios y sindicatos.
+Cuantos ingresen en el sistema por convenio o concierto.
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+archivos medievales del reino de Navarra, nutrido por las
+instituciones (Diputación) privativas de Navarra12.
+ Según el ámbito de actuación de los organismos productores y la dependencia
+administrativa de los mismos se determina la categoría aspecto y los agrupará
+de los más simples a los más complejos, de acuerdo a la jurisdicción de la
+entidad productora13:
+
+
+Archivos locales
+
+
+
+Archivos Provinciales
+
+
+
+Archivos Regionales
+
+
+
+Archivos Generales (en algunos lugares llamados Nacionales)
+
+ Cada archivo será de distinto tipo atendiendo a la edad de los documentos, es
+decir según su ciclo vital. El ciclo vital del documento se determina por tres
+edades (ya vistas en el punto anterior):
+1- Primera edad de circulación y tramitación de los asuntos
+iniciales. La documentación forma parte de los archivos de gestión o de
+oficina y es de uso frecuente. Es la etapa activa del documento.
+2- Segunda edad de conservación del expediente por ser objeto de
+consulta o de uso como antecedente. Es la etapa semiactiva.
+3- Tercera edad en que la documentación adquiere valor
+permanente y de conservación definitiva. Es la etapa inactiva desde el
+punto de vista de la administración14.
+El ciclo vital del documento puede hacer que el panorama taxonómico de los archivos
+cambie totalmente y encontremos la red de centros descrita de esta manera:
+12
+
+La Ley 6/1991, de 19 de abril de Archivos y del Patrimonio Documental de Castilla y León. BOE n.
+134 de 5/6/1991 establece que el sistema de Castilla y León está integrado por:
+• El Archivo General de Castilla y León.
+• El Archivo de las Cortes de Castilla y León.
+• Los Archivos Centrales de la Presidencia y de las Consejerías de la Administración
+Autonómica.
+• Los Archivos Territoriales.
+• Los Archivos Históricos Provinciales, sin perjuicio de la normativa del Estado que les
+sea de aplicación.
+• Los Archivos de las Diputaciones Provinciales.
+• Los Archivos Municipales y de las restantes entidades locales de ámbito inferior al
+provincial.
+• Los Archivos privados de uso público a los que se refiere el artículo 39.2.
+• Los archivos de titularidad autonómica o local que se puedan crear en el futuro.
+• Aquellos otros archivos de cualquier titularidad, pública o privada, que se integren en el
+Sistema mediante convenio o concierto suscrito con la Consejería de Cultura y Turismo.
+13
+Aquí se aprecia la repetición de los archivos, en función del criterio restrictivo aplicado.
+14
+MOLINA NORTES, J.; LEYVA PALMA, V. Técnicas de archivo y tratamiento de la
+documentación administrativa. Guadalajara: ANABAD Castilla-La Mancha, 1996. ISBN 84-920905-45. P. 29-30
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+ARCHIVOS DE LAS INSTITUCIONES DE LAS ÁREAS NACIONAL Y REGIONAL
+CIVILES
+1) Archivos Generales
+Activos:
+
+-A. de las Cortes
+-A. de Palacio Real
+-A. del Tribunal Supremo de Justicia
+-A. del Tribunal Supremo de Cuentas.
+- A. del Consejo de Estado
+-A- de los Ministerios
+-A. de Organismos Autónomos del E.
+-A. del Banco de España
+- A. del Congreso
+-A. del Senado
+
+Intermedios -A.G.A.
+Históricos
+
+-Archivo Histórico Nacional
+-Archivo General de Simancas
+Archivo General de Indias
+Archivo de la Corona de Aragón
+Archivo del Patrimonio Nacional (f.h.)
+Archivo General de la Mesta
+
+2) Archivos Regionales
+Activos
+
+Archivos de las Audiencias Territ.
+Archivos de Universidades
+Depósito Regional de Cervera
+
+Históricos
+
+Archivo del Reino de Valencia
+Archivo del Reino de Mallorca
+Archivo del Reino de Navarra
+A. Chancillería de Granada
+A. Chancillería de Valladolid
+
+BLOQUE I. CONCEPTOS FUNDAMENTALES
+
+2013‐2014
+
+MILITARES
+A) Ejército de Tierra
+Activos
+
+A. Ministerio de Defensa
+A. Consejo Supremo de Justicia M.
+A. General Castrense
+A. Jefatura Serv. Geográfico
+
+Históricos
+
+A. General Militar Segovia
+Servicio Histórico Militar
+Col. Cartográfica (f.h.)
+A. Genral de Ávila
+
+B) Armada o Marina
+Activos
+
+A. Central Ministerio de Marina
+A. eclesiástico de la Armada
+Instituto español de oceanografía
+
+Históricos
+
+Archivo del museo naval
+A.-Museo Don Alvaro de Bazán
+A. Real Inst. y observatorio de S. Fernando
+
+C) Ejército del Aire
+Activos
+
+Archivo del Ejército del Aire
+
+Históricos
+
+A. Hco. del E. A.en Villaviciosa de
+Odón
+
+ Hay otras posibilidades taxonómicas. Por su finalidad preponderante los
+archivos serán administrativos o históricos.
+ Según el número de fondos pueden ser singulares o múltiples. Es necesario
+revisar el concepto de archivo para comprender a que nos referimos con un
+solo fondo, o múltiples fondos, de dónde viene esta distinción.
+ Según el alcance de sus actividades:
+o Abiertos: aquellos cuya actividad incluye las tres funciones: recoger,
+conservar y servir.
+Cerrados: la primera función se reduce a casos
+esporádicos; es decir que no recoge por no existir ya el órgano
+productor y, por el contrario a lo que pueda parecer, es la difusión el
+principal de sus activos. Por ejemplo casi todos los grandes archivos
+generales tan citados en este tema son cerrados: El Archivo General de
+Indias, que es facticio y ya no existe el colonialismo americano; el
+Archivo General de la Guerra Civil, afortunadamente cerrado, si bien
+el cambio de denominación implica matices diferentes; Archivo General
+de Simancas etc.
+o
+
+

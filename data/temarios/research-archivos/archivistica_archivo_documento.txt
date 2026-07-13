@@ -1,0 +1,1066 @@
+ARCHIVÍSTICA, ARCHIVO, DOCUMENTO DE ARCHIVO...
+
+Por : Francisco Fuster Ruiz
+Correo electrónico: ffuster@fcu.um.es
+Facultad de Ciencias de la Documentación.
+España.
+
+Universidad de Murcia -
+
+Lima, Setiembre de 2001.
+
+Resumen
+La singularidad e independencia de la Archivística dentro de las Ciencias de la
+Documentación e Información hace necesario clarificar los conceptos
+fundamentales y las definiciones, haciéndose sobre la base de la tradición
+jurídico-administrativa y a la historia de la doctrina, en una ciencia que se
+demuestra que es base imprescindible de la Democracia y del Estado de
+Derecho.
+
+The singularity and independence of Archival Science within the Information
+Sciences makes it necessary to clarify fundamental concepts and definitions,
+considering the legal and administrative tradition and the history of a Science
+which is shown to be vital for the Democracy and the Constitutional State.
+
+1. Introducción
+A lo largo de más de 25 años de profesión de archivero, antes de desembocar
+en ésta de profesor universitario en la que enseño Archivística, muchas veces
+han preguntado a mi familia sobre mi actividad. Ante la respuesta de archivero
+casi siempre devenía otra nueva pregunta, de profunda extrañeza: “-Archi...
+¿qué?”. Creo que es bien significativa la anécdota para demostrar la ignorancia
+social ante una profesión tan antigua como los documentos, tan noble y, sobre
+todo, tan necesaria. Pero veamos otra vieja anécdota, quizás más reveladora
+de esta incomprensión social, que una vez nos narró en un cursillo de prácticas
+de Archivística un ilustre archivero de entrañable recuerdo, don Luis Sánchez
+
+BIBLIOS Número 9
+
+1
+
+Belda: Cierto día pasa un señor frente a una de las muchas tertulias de una
+terraza de Córdoba.
+Uno de los tertulianos se levanta, se quita el sombrero y
+saluda: “-¡Adiós, don Jozé!”. Otro tertuliano, el Guerra, más famoso que los
+actuales de este apellido porque era torero y estamos en una de las épocas en
+que ésta era considerada la profesión más noble de España, pregunta a su
+vecino de mesa: “-Eze, ¿quien ez?”. Y ante la respuesta de el archivero,
+responde el genial matador: “- ¡Ozú, hay gente pa tó!”
+El hombre de la calle no es el único que ignora los conceptos y pregunta
+extrañado Archi... ¿qué?. El problema existe con muchas otras personas que sí
+que deberían conocerlos: políticos, profesionales, intelectuales e incluso
+profesores, que se empeñan en negar las diferencias específicas de la
+Archivística con respecto a las demás disciplinas de la Documentación. Iremos
+analizando los conceptos fundamentales, empezando por el elemento más
+simple, el documento archivístico, hasta llegar después, a través del concepto
+de archivo y de la profesión, a la delimitación específica de la Archivística en el
+contexto general de las Ciencias de la Documentación. La necesidad de
+clarificar los conceptos es fundamental y no sólo por razones científicas. Los
+documentos, los archivos e incluso la misma profesión de archivero han
+convertido a la Archivística en verdadero pilar de la Democracia y del Estado
+de Derecho. La vida del hombre en sociedad, sus derechos y deberes, no
+tendrían consistencia sin todos esos conceptos que el hombre de la calle e
+incluso muchos hombres cultos desconocen preguntándose extrañados Archi...
+¿qué?.
+
+2. Concepto de documento de archivo
+La materia prima de los archivos son los documentos. Pero es preciso delimitar
+los diferentes conceptos de documento y llegar al específico del documento de
+archivo, ya que el concepto de documento varía substancialmente según se le
+mire desde los puntos de vista de los profesionales de las distintas ciencias
+relacionadas con el mismo: historiadores, diplomatistas, juristas, archiveros,
+bibliotecarios, documentalistas, museólogos...
+En un sentido muy amplio y genérico, documento es un objeto corporal
+producto de la actividad humana, que sirve de fuente de conocimiento y que
+demuestra o prueba algo. O el testimonio de la actividad del hombre fijado en
+un soporte perdurable que contiene información 1. A partir de este concepto
+amplio podemos ir limitándolo y reduciéndolo a campos más restringidos. Por
+un lado documentos considerados como fuentes narrativas, artísticas,
+informativas y científicas, producto de la imaginación, la creación y la
+investigación:
+el material clásico de bibliotecas, museos y centros de
+documentación. Por otro, fuentes documentales reflejo de las relaciones y
+actividades del hombre y de la sociedad, siempre entendidas como testimonio,
+es decir, instrumento fehaciente, que da fe de un hecho y que prueba o justifica
+la certeza o verdad de una cosa. Son lo que consideramos documento de
+1
+
+NUÑEZ CONTRERAS, Luis: "Concepto de documento", en Archivística. Estudios básicos. Sevilla:
+Diputación Provincial, 1983, 31.
+
+BIBLIOS Número 9
+
+2
+
+archivo, generalmente identificados con los documentos administrativos,
+aunque se refieran tan sólo a la vida administrativa de una persona (p. e. carné
+de identidad o permiso de conducir.) Incluso podemos reducir aún más el
+concepto, dividiendo el documento de archivo en dos clases: de naturaleza
+exclusivamente jurídica, que engendran derechos y obligaciones, y de
+naturaleza administrativa, que no tienen naturaleza jurídica pero que sin
+embargo son documentos testimoniales, auténticos, objetivos y, por tanto,
+verídicos o fehacientes.
+En el documento de archivo es esencial su relación con la entidad productora,
+así como las demás circunstancias que condicionan sus caracteres externos e
+internos, su finalidad y el medio por el cual ha llegado al archivo. Por esto, tan
+sólo considerado como ligado a los demás documentos que forman el conjunto
+documental es como tiene sentido científico archivístico. El documento único,
+aislado, sin conocimiento de su procedencia orgánica, carece de este sentido.
+De aquí se derivan los principios fundamentales que diferencian a la
+Archivística de las demás Ciencias de la Documentación: el carácter seriado de
+los documentos, el sentido del archivo como conjunto orgánico de documentos
+y nunca como colección documental, y el principio de procedencia.
+
+2.1 Definición de documento de archivo
+El Diccionario de Terminología Archivística elaborado en 1993 por la Dirección
+de Archivos Estatales Españoles 2 lo define de esta manera: “Un documento
+de archivo es el testimonio material de un hecho o acto realizado en el ejercicio
+de sus funciones por personas físicas o jurídicas, públicas o privadas, de
+acuerdo con unas características de tipo material y formal.”
+Nuestra definición de documento de archivo se hace más amplia o extensiva,
+atendiendo a todos sus caracteres externos e internos, (que enumeramos de
+forma didáctica para que quede constancia clara de los mismos) y a su relación
+con la entidad productora:
+(Caracteres externos): "Documento archivístico es toda expresión testimonial,
+en cualquier lenguaje, forma o soporte (forma oral o escrita, textual o gráfica,
+manuscrita o impresa, en lenguaje natural o codificado, en cualquier soporte
+documental así como en cualquier otra expresión gráfica, sonora, en imagen o
+electrónica), generalmente en ejemplar único, (aunque puede ser multicopiado
+o difundido en imprenta),...
+(Caracteres internos): ... de carácter auténtico, objetivo e imparcial,
+esencialmente administrativo y /o jurídico, generado en cualquier fecha, de
+forma automática y espontánea, conservado íntegro en forma original,
+indivisible, seriado o unido a otros de su especie por un vínculo originario y
+necesario, interdependiente o interrelacionado (condicionando a los demás y
+2
+
+DICCIONARIO de Terminología Archivística. Comisión de Terminología de la Dirección de Archivos
+Estatales. (Madrid: Ministerio de Cultura, 1993).
+
+BIBLIOS Número 9
+
+3
+
+siendo por ellos condicionado), y formando parte de un fondo o conjunto
+orgánico,...
+(Relación con la entidad productora): ... producido, recibido y acumulado, como
+resultado del proceso natural de la actividad o gestión de una persona o
+entidad pública o privada, en cumplimiento de sus funciones o fines jurídicos y /
+o administrativos y conservado como prueba, información y continuidad de
+gestión”.
+
+2.2 El documento de archivo como testimonio. Fe pública. Contenido
+jurídico.
+La calificación como testimonio es su primera y fundamental característica,
+frente a los demás productos intelectuales de la mente del hombre. Si
+aceptamos la teoría de algunos que, como Lodolini 3, piensan que la finalidad
+de los primeros escritos humanos fue eminentemente práctica, administrativa, y
+no una finalidad literaria, podemos concluir que el documento testimonial, es
+decir el documento de archivo, es tan antiguo como la misma escritura. Como
+testimonio jurídico-administrativo, en el mundo clásico los documentos se crean
+y conservan por y para el Gobierno con un único motivo: el poder. La situación
+cambia en el mundo greco-romano con el concepto de documento público y por
+tanto de archivo público, ya no exclusivamente patrimonial del soberano,
+llegándose a una utilización general y común de la documentación. Los
+documentos sirven también para acreditar los derechos y obligaciones de los
+ciudadanos y el documento de archivo es accesible a todos en general, incluso
+como garantía de derechos patrimoniales privados. Una de las características
+del documento de archivo, según el Derecho Romano 4, es su condición de fe
+pública. La seguridad de la autenticidad de los textos viene acreditada por su
+custodia permanente en los archivos públicos, confiada a empleados
+especiales ligados por un especial juramento. Esta es la principal garantía
+frente a las falsificaciones, y los documentos privados deben someterse al
+procedimiento administrativo de las certificaciones de los tabelliones
+(antecedente remoto del notariado), para alcanzar valor como fe pública.
+Con la caída del Imperio Romano el descenso del nivel cultural origina la
+decadencia del documento escrito. Por otro lado desaparece la noción
+democrática de archivo público y se pasa de nuevo a un concepto patrimonial
+de la documentación. El poder, la fuerza y los intereses de la Monarquía, de los
+señores y de la Iglesia dependen de su patrimonio, para cuya defensa se
+cuenta con los documentos que atestiguan los títulos de propiedad. Los
+documentos se custodian como verdaderos tesoros. A partir del siglo XII, con la
+recuperación paulatina del Derecho Romano, se vuelve a impregnar de
+contenido jurídico a los documentos. Al concepto de archivo como tesoro,
+formado por documentos sueltos, se va llegando, paulatinamente al de archivo
+orgánico e indivisible, y no sólo de valor testimonial para el soberano y quienes
+detentan el poder, sino también de nuevo para los súbditos. Por ello, junto a los
+3
+
+LODOLINI, Elio: Archivística. Principios y problemas. Traducción de Mercedes Costa Paretas. Madrid:
+ANABAD, 1993, 257.
+4
+FUSTER RUIZ, Francisco: Proyecto docente, 1994, inédito.
+
+BIBLIOS Número 9
+
+4
+
+documentos públicos, solemnes, se da paso a los documentos privados, que
+adquieren valor legal al ser validados por un notario o escribano, depositario de
+la fe pública. A finales de la Edad Media y sobre todo en las Edades Moderna
+y Contemporánea la institución del protocolo notarial y los registros civiles y
+mercantiles constituyen el modelo de documento testimonial, que impulsa
+poderosamente la vida jurídica y social en la esfera del Derecho privado. Es
+decir, el documento testimonial o archivístico se convierte en el elemento vital
+más poderoso de la transformación pol ítica, social, económica y cultural de la
+sociedad.
+
+2.3 Valor testimonial científico / informativo:
+fehaciente, auténtico,
+imparcial.
+La doctrina archivística y jurídica, hasta finales de la Edad Moderna, considera
+siempre al documento conservado en el archivo exclusivamente desde un
+punto de vista jurídico, con valor probatorio. Tan sólo al final del período
+empiezan a tenerse en cuenta otros valores testimoniales de los documentos:
+la función científica, principalmente en relación con las ciencias históricas. Los
+documentos son testimonio e información y pueden ser utilizados como prueba
+y como fuente de datos. Pero este valor testimonial científico es algo distinto al
+valor informativo, que a simple vista parece confundirse. Todos los documentos
+dan noticia de algo, informan sobre algo. Pero sólo el documento de archivo es
+fehaciente, auténtico e imparcial. No sólo informa, sino que es garantía de que
+el hecho relatado es verdadero y, por lo tanto, constituye testimonio científico.
+Con esta ampliación del concepto del documento como testimonio científico, se
+eleva también el papel del archivo como fuente de información, al considerarlo
+más allá de la simple acumulación de documentos con valor jurídico y
+administrativo y asignarle también una primordial valoración científica,
+principalmente de carácter histórico. A fines del siglo XVIII avalan este cambio
+fundamental algunos tratadistas de la ciencia archivística así como la práctica
+de algunas instituciones creadas precisamente con esta nueva finalidad
+testim onial, como el Archivo General de Indias. En el siglo XIX el cambio hacia
+el nuevo concepto será masivo, con la institución de los Archivos Nacionales y
+otros de nivel regional o local de carácter también eminentemente histórico.
+
+2.4 Garantía de la Democracia y del Estado de Derecho.
+Con la Revolución Francesa y el advenimiento paulatino en muchos países del
+Estado de Derecho y de la soberanía nacional, el documento pasa a tener un
+valor testimonial semejante al del mundo greco-romano: garantía de derechos
+de los ciudadanos. Pero es más, con la utilización de los archivos para fines
+científicos e históricos, el documento de archivo se convierte también en
+testimonio fidedigno de la actuación del Estado, garantía de la eficacia y
+honorabilidad de la vida pública. Con la seguridad del acceso final a la
+documentación, aunque a veces haya que esperar a los imprescindibles plazos
+temporales que limitan este acceso, los documentos adquieren un valor
+testimonial aún más firme. Se convierten así en el más límpido espejo de la
+vida pública, en el testimonio más fidedigno de la vida política, social,
+
+BIBLIOS Número 9
+
+5
+
+económica y administrativa. En definitiva, los documentos archivísticos y las
+instituciones donde se custodian y se hacen accesibles, es decir, los archivos,
+son la base imprescindible de la Democracia y del Estado de Derecho.
+
+2.5 Objetividad, autenticidad, originalidad.
+Los documentos de archivo son reflejo de las funciones y actividades del
+hombre, producto y testimonio de una gestión. De ahí la nota fundamental que
+puede atribuírseles y que es la objetividad. Suelen reproducir los hechos tal
+cual, sin añadir elementos de crítica, subjetivos o de valoración (por el contrario
+de los documentos bibliográficos o de documentación científica y técnica.) Esto
+no obsta para que a veces, excepcionalmente, haya documentos
+administrativos con vicios que afecten y deformen la información, por contener
+elementos falsos e inexactos. La autenticidad es una de las características
+funda-mentales del documento de archivo, y debe ser siempre probada
+científicamente. Es posible llegar a resultados satisfactorios con la aplicación
+correcta de los principios de la Archivística, de la Diplomática y de otras
+ciencias auxiliares que tienen técnicas aplicables a la interpretación, evaluación
+y valoración de los documentos. Sin embargo, el panorama se complica en
+nuestros días con la admisión como documentos de archivo de los nuevos
+soportes documentales. Los problemas de demostración de autenticidad de
+documentos impresos, mecanografiados, sonoros, fotográficos, audiovisuales,
+electrónicos..., son incalculables. En general, muchos de estos nuevos
+soportes aún no tienen reconocido valor probatorio ante los Tribunales de
+Justicia. Pero no por ello deben dejar de ser considerados como documentos
+archivísticos, testimoniales y, por tanto, fehacientes, probatorios y de carácter
+jurídico y administrativo.
+El documento de archivo es único e irrepetible, y de ahí el peligro gravísimo de
+su pérdida. Es un original producido de forma natural a través del trabajo
+habitual de la vida administrativa, pública o privada, y se emite en folios o en
+piezas sueltas, generalmente en grafía manuscrita, aunque en raras ocasiones
+suele también realizarse por medios impresos, en originales múltiples. La
+realización actual de multitud de documentos administrativos en soportes
+electrónicos complica aún más el concepto de originalidad y de multiplicidad.
+¿Cuál es el documento original? ¿El que está en el disco duro del ordenador o
+el que ha sido pasado por la impresora a papel y ha sido validado y autenticado
+por sus autores con las correspondientes firmas, rúbricas y sellos? 5
+
+2.6 Carácter seriado: siempre parte de un conjunto orgánico.
+La doctrina elabora unas premisas ineludibles, fundamentales en la definitiva
+configuración de la Archivística como ciencia. La noción del archivo como
+conjunto orgánico de documentos es la fundamental. Esta noción está
+
+5
+
+HEREDIA HERRERA, Antonia: Archivística General. Teoría y práctica. 6ª ed. Sevilla: Diputación,
+1993, 134.
+
+BIBLIOS Número 9
+
+6
+
+plenamente explicada por el español Miguel Velasco Santos 6 en 1875 con el
+símil de "un artefacto o mecanismo" que es un conjunto armónico de piezas,
+que desmontadas y separadas carecen de sentido. Si se trastoca el "orden
+suyo natural" será muy de temer que "quede tan sólo el caos" y "que aquella
+imagen de ya pasadas épocas e instituciones olvidadas se borre por completo,
+o a lo menos se altere y desnaturalice". Esta noción de conjunto, aclara en el
+siglo XX el italiano Cencetti 7, implica que un documento "regularmente no tiene
+ningún valor cuando es separado de los precedentes y subsiguientes y
+arrancado del corpus al que pertenecía", y sólo puede ser vivificado por el
+"concepto de relación". Es lo que el inglés Jenkinson 8 denomina
+“interdependencia”, una de las características fundamentales del documento de
+archivo. El valor testimonial del documento depende de la conservación y
+mantenimiento de sus caracteres internos, principalmente del carácter seriado,
+unido a otros de su especie por un vínculo originario y necesario, condicionado
+a los demás y siendo por ellos condicionado, y formando parte de un fondo o
+conjunto orgánico. Existe, pues, un vínculo entre los documentos que
+constituyen la universitas del archivo.
+Desde el punto de vista archivístico el carácter más importante del documento
+de archivo es el hecho de estar relacionado con los que le anteceden y le
+siguen, como eslabón de una cadena. De su carácter seriado, la necesidad de
+estar unido a otros de su especie por un vínculo originario y necesario, se
+deriva también la necesidad de estar integrado en un fondo para tener valor
+científico. Aunque el documento de archivo se produce uno a uno, con el paso
+del tiempo adquieren su carácter seriado, como resultado de acciones
+repetitivas determinadas por una o muchas funciones específicas. Podríamos
+decir que hay familias de documentos, al estar producidos por un mismo
+organismo administrativo, por una misma oficina, e incluso muchas veces por
+un mismo funcionario o empleado público, y para funciones o actividades
+totalmente paralelas y semejantes, en las que tan sólo cambian algunos datos
+específicos. En este caso, a estos documentos podríamos calificarlos casi
+como hermanos gemelos: son las series documentales. Conviene advertir no
+obstante que, aunque el estado natural de los documentos de archivo es formar
+parte de un fondo documental, sin embargo pueden estar también de forma
+aislada, o integrados en colecciones, no estando siempre depositados en un
+archivo. Pero esta es forma atípica, no natural y, por lo tanto, artificial de
+algunos depósitos documentales, y no es la usual de los verdaderos archivos y,
+sobre todo, de los archivos administrativos.
+Habría que explicar, quizás, lo de que el documento de archivo generalmente
+condiciona a los demás documentos de su serie y es condicionado por ellos.
+Pongamos un ejemplo ilustrativo: los expedientes de becas de estudio en una
+Universidad y en un año académico concreto. Hay un presupuesto económico
+limitado y sólo pueden otorgarse a un número fijo de estudiantes. Todos los
+expedientes de esta serie documental están condicionando a los demás y son
+6
+
+VELASCO Y SANTOS, Miguel: “Sobre la organización de archivos”, en Revista de Archivos,
+Bibliotecas y Museos, Madrid, año V, 1875, 141.146 y 177-185.
+7
+CENCETTI, Girgio: “Sull´archivio come universitas rerum”, en Archivi, IV, 1937, 7-13; reimpreso en
+Scritti archivistici, Roma, 1970, 47-55.
+8
+JENKINSON, Hilary: The English archivist. A new profession. London: 1948.
+
+BIBLIOS Número 9
+
+7
+
+por ellos condicionados. De los datos objetivos se desprende el resultado
+definitivo de la concesión tan sólo a los alumnos que más merecen las becas.
+Si guardáramos tan sólo los expedientes de concesión, eliminando de la serie
+las demás solicitudes denegadas, nunca podríamos atestiguar fehacientemente
+si fueron concedidas de modo justo e imparcial. El documento de archivo no
+puede estar nunca aislado, fuera del fondo orgánico y de su serie documental
+de procedencia, y tan sólo tiene valor testimonial probatorio e incluso
+verazmente informativo dentro de este contexto.
+
+2.7 Origen funcional: relación necesaria con la entidad productora.
+La entidad productora se entiende en sentido activo o pasivo. La persona o
+entidad que produce el documento; o el destinatario del documento, que lo
+recibe de otra persona o entidad exterior y lo acumula o conserva junto a los
+propios por alguna obligación jurídica o administrativa o por alguna finalidad
+práctica. El origen funcional es la razón por la cual se producen los
+documentos. Igual que las instituciones documentales que los guardan y
+organizan, los archivos, los documentos de archivo se originan natural y
+fluidamente de la institución u organismo generador de actividades, y sólo
+crecen y se desarrollan en la medida que lo hacen sus actividades, en
+cumplimiento de funciones o fines jurídico y /o administrativos. La relación del
+documento de archivo con la entidad productora debe ser siempre como
+resultado del proceso natural de esta actividad o gestión, realizada con las
+atribuciones debidas para ello. Por ello, tan sólo son auténticos documentos de
+archivo aquellos que emanan de una entidad productora y que son resultado de
+su proceso natural, en cumplimiento de sus funciones o fines. Aquellos
+documentos que no procedan de esta relación natural serán considerados
+como falsos o como documentos de una procedencia distinta, que habría que
+considerar tan sólo dentro de su verdadero contexto creador.
+
+3. El concepto de archivo.
+La palabra archivo generalmente tiene tres acepciones: como contenido
+documental, como institución y como continente o lugar de conservación. El
+Diccionario de Terminología Archivística nos presenta tres definiciones de
+archivo teniendo en cuenta cada uno de estos elementos conceptuales.
+“ARCHIVO: (1) Conjunto orgánico de documentos producidos y /o recibidos en
+el ejercicio de sus funciones por las personas físicas o jurídicas, públicas y
+privadas 9. (2) La institución cultural donde se reúnen, conservan, ordenan y
+difunden los conjuntos orgánicos de documentos para la gestión administrativa,
+la información, la investigación y la cultura. (3) El archivo también es el local
+donde se conservan y consultan los conjuntos orgánicos de documentos.”
+Esta definición tripartita nos parece demasiado complicada e inexacta desde el
+punto de vista científico de la archivística, ya que estos tres elementos del
+9
+
+Siguen unas líneas explicativas de las clases de archivos, que, aunque son muy interesantes, no afectan a
+la definición.
+
+BIBLIOS Número 9
+
+8
+
+concepto, junto a otros más que veremos, son imprescindibles y tienen que
+estar integrados en la misma definición. Creemos que es posible llegar a una
+unificación terminológica, teniendo presentes al mismo tiempo los conceptos de
+institución archivística, el conjunto orgánico de documentos y el depósito
+documental. A ellos añadimos, como novedad, el elemento personal, los
+profesionales archiveros que hacen posible la actividad científica y técnica, así
+como el servicio documental, también elementos imprescindibles en el
+concepto de archivo.
+Porque antes de llegar a una definición de archivo es preciso analizar los
+elementos que configuran su concepto:
+w Institucionales: el archivo como institución administrativa, jurídica y
+científica, y las entidades productoras de los documentos que, finalmente,
+remiten éstos a los archivos;
+w Documentales: los conjuntos orgánicos de documentos, recibidos en un
+archivo, procedentes de una o varias entidades productoras;
+w Estructurales: los depósitos archivísticos, las instalaciones;
+w Personales: los profesionales archiveros y sus colaboradores técnicos,
+especialistas en conservación y difusión documental; y
+w Científicos y técnicos: la gestión y archivística y el servicio documental, las
+labores de recogida, organización, conservación y utilización de los fondos.
+
+Todos y cada uno de estos elementos son imprescindibles. Porque para que un
+archivo sea considerado como tal y no como almacén de papel viejo o como
+simple depósito documental de una institución, necesita contar con un
+contenido (el conjunto orgánico de documentos producidos por una institución),
+un continente (los depósitos documentales), un personal (los profesionales
+capacitados científica y técnicamente para las distintas labores archivísticas),
+una gestión archivística (recogida, organización, conservación) y un servicio
+documental (utilización). Es necesario, pues, tener: qué conservar y utilizar (los
+documentos, los fondos documentales producidos por las personas físicas y las
+instituciones públicas o privadas); dónde conservar y utilizar (los edificios e
+instalaciones donde se guarden y reciban tratamiento técnicos esos fondos y
+donde puedan ser puestos a disposición de los usuarios); quién debe
+conservar, dar tratamiento técnico y facilitar la utilización (los archiveros,
+aquellos profesionales que poseen las bases técnicas y científicas de la
+Archivística y de sus ciencias auxiliares, aparte de una preparación jurídicoadministrativa y una cierta sensibilidad hacia la Historia y la ciencia en general);
+y finalmente, cómo conservar y utilizar (teniendo siempre en cuenta los
+principios generales que configuran a la Archivística como ciencia).
+Con todo ello podemos dar una definición extensiva de archivo que tenga en
+cuenta todos estos elementos y en la que se sinteticen los tres significados
+clásicos del término: "Archivo es la institución donde se reúne uno o más
+conjuntos orgánicos de documentos, de cualquier fecha o soporte, producidos,
+recibidos y acumulados, como resultado del ejercicio de la función o actividad
+de una persona o entidad pública o privada, organizados y conservados
+
+BIBLIOS Número 9
+
+9
+
+científicamente, respetando su orden natural, en un depósito que reúna las
+debidas condiciones y atendido por personal capacitado, para servir al sujeto
+productor o a cualquier persona, como testimonio de la gestión de actos
+administrativos y /o jurídicos, o como información para fines científicos o
+culturales".
+Todos los elementos imprescindibles quedan reflejados fielmente en esta
+definición:
+El archivo como institución, los documentos como conjuntos
+orgánicos de una o de varias entidades productoras, la entidad o entidades
+productoras, el depósito o local del archivo, la gestión archivística acorde con
+los principios científicos de esta ciencia, el personal capacitado con formación
+científica y técnica, y el servicio o utilización documental.
+
+3.1 Evolución histórica de los elementos del concepto de archivo.
+A lo largo de la historia de los archivos la legislación, la práctica archivística y la
+doctrina científica han incorporando todos y cada uno de estos elementos del
+concepto de archivo, pasando de la acepción como lugar o depósito al conjunto
+orgánico de documentos y llegando al concepto de institución, donde los
+profesionales archiveros, provistos de fe pública, juegan un papel decisivo para
+la consideración jurídico-administrativa y en definitiva científica de los archivos.
+En el Mundo Antiguo y Medieval domina el concepto de archivo como lugar de
+conservación de los documentos, fundamentalmente a través del Derecho
+Romano. Por este contenido eminentemente jurídico el concepto de lugar se
+extiende a la institución responsable de la custodia documental: sólo tienen
+categoría de documentos los que estén depositados en un archivo público,
+gozando por ello de la fe pública que les transfiere la institución. El lugar de la
+custodia es condición sine qua non para la existencia del archivo, igual que la
+calidad del archivero, persona revestida de fe pública. En cuanto al concepto
+de archivo como contenido documental la evolución es muy lenta, desde el
+primitivo concepto de colección o tesoro en la Alta Edad Media al definitivo y
+contrapuesto de conjunto documental, que implica totalidad, globalidad,
+universitas. Por otro lado, la consolidación del principio de procedencia,
+fundamental para la consideración de la Archivística como ciencia, aporta en el
+siglo XIX el concepto de organicidad de los conjuntos documentales. Como
+conjunto orgánico el archivo es un producto natural que se va constituyendo al
+desarrollarse la vida de las entidades que lo forman. Esta concepción
+organicista del archivo será ya una constante a todo lo largo del siglo XX y no
+sólo para los teóricos de la Archivística, sino, lo que es más importante, para
+los textos legislativos sobre archivos de los diferentes países.
+A pesar de este predominio actual del concepto de archivo como conjunto
+orgánico, no hay que olvidar las otras acepciones. El retorno al concepto de
+archivo como institución, fundamental en la etapa clásica del Derecho Romano,
+también es obra española. La Archivística, según los primeros tratadistas
+españoles del siglo XIX, lleva implícita el concepto de archivo como institución:
+un conjunto orgánico de documentos con unas procedencias bien definidas y
+delimitadas, bien conservado, tratado de forma científica y dispuesto para el
+
+BIBLIOS Número 9
+
+10
+
+servicio a la comunidad. La Archivística es la ciencia que dispone las reglas
+que necesita la institución para la coordinación y clasificación de los archivos,
+que, según Troche y Zúñiga y Porras Huidobro 10 "sistematiza y reduce a
+preceptos el arte de archiveros". Y ambos autores revalorizan el elemento
+personal, pieza imprescindible de la institución archivística. Los archivos deben
+confiarse tan sólo "a sujetos inteligentes destinados a sólo este objeto", sin los
+cuales no puede practicarse en definitiva el "arte de los archivos". Los
+siguientes autores españoles del siglo XIX abundan en este concepto y la
+institución archivística está implícita también en la doctrina posterior europea,
+sobre todo en el siglo XX. La moderna teoría del "ciclo vital de los documentos"
+no hace sino adscribir los fondos, en cada una de sus subsiguientes etapas
+administrativas, a una institución archivística determinada: archivos de oficina,
+intermedios e históricos; revalorizando definitivamente, dentro del concepto
+total de archivo, los elementos imprescindibles de la institución y el depósito
+archivísticos.
+
+3.2 El archivo como institución administrativa y no “cultural”.
+En la antigüedad y posteriormente con la concepción clásica y medieval del
+Derecho Romano el archivo se considera siempre una institución jurídicoadministrativa. Nace y se desarrolla para asegurar y garantizar la vida jurídica,
+principalmente los derechos patrimoniales del Estado, de las demás
+instituciones públicas y privadas, y de las personas. También surge como
+servicio administrativo, para agilizar la burocracia facilitando constantemente la
+información documental, necesaria para la adopción de medidas políticas y
+administrativas. Tan sólo en el último tercio del siglo XVIII empieza a tenerse
+en cuenta la función científica de los archivos en relación con las ciencias
+históricas. La transformación total vendrá en el XIX al abrirse los Archivos
+Nacionales para la investigación, lo mismo que otros archivos públicos
+considerados históricos. El nuevo sistema establece una drástica distinción
+entre los archivos históricos y los administrativos, surgiendo un nuevo perfil
+científico de archivero, dotado de preparación de tipo histórico, paleográfico y
+diplomático, que sustituye al viejo funcionario público con formación
+exclusivamente administrativa y jurídica. Este cambio, que potencia
+científicamente los archivos históricos, supone la caída en picado de la función
+jurídico-administrativa, propia de los archivos al servicio de la Administración.
+Los archiveros eruditos que ocupan el lugar de los antiguos funcionarios
+burocráticos, llevan a cabo su labor vocacional tan sólo en los archivos
+históricos y se desentienden del documento contemporáneo. Como
+consecuencia, se interrumpe la organización de los archivos de las oficinas
+públicas y se ocasiona en muchos países el olvido casi sistemático de los
+
+10
+
+TROCHE Y ZÚÑIGA, Froilán: El archivo cronológico-topográfico. Instrucción de Archiveros...
+Santiago: Imp. de P. Arza, 1828; y El archivo cronológico-topográfico. Arte de Archiveros... La Coruña:
+Imp. de Iguerreta, 1835. PORRAS HUIDOBRO, Facundo de: Disertación sobre archivos y reglas de su
+coordinación, útil para todos los que los tienen o manejan... Madrid: Imp. de León Amarita, 1830. La
+síntesis de las aportaciones de estos y otros autores puede verse en mi trabajo FUSTER RUIZ, Francisco:
+“Los inicios de la archivística española y europea”. Revista General de Información y Documentación,
+Vol. 6-1. Madrid, U.C.M., 1996, 43-77.
+
+BIBLIOS Número 9
+
+11
+
+archivos de gestión o administrativos, la función que hasta entonces habían
+desempeñado los archiveros en todas las administraciones.
+Consideramos que este sistema decimonónico persiste en nuestro tiempo de
+forma negativa y por ello el concepto de archivo aún se tiñe de un excesivo
+color cultural. No olvidemos la definición de "institución cultural" que da la Ley
+del Patrimonio Histórico Español (1985), ratificada por el estatal Diccionario de
+Terminología Archivística (1993), e incluso su misma adscripción al Ministerio
+de Cultura y no al Ministerio de Administraciones Públicas, como sería lógico.
+Lo mismo sucede, generalmente en los demás sistemas archivísticos,
+autonómico y local, adscribiendo los archivos generalmente, a la Consejería o
+Concejalía de Cultura en vez de a la Consejería de Presidencia. Con ello se
+produce un funesto divorcio entre Administración (pública y privada) y Archivos.
+A los poderes públicos y privados (la clase política dirigente, la Administración
+en general, la empresa), aquellas personas que manejan los presupuestos
+económicos de los archivos, lo que les interesa es la eficacia jurídicoadministrativa de las instituciones y oficinas, y las perspectivas de información
+que pueden darles los documentos. Pero los archivos de tipo histórico no
+cumplen en absoluto esta importantísima función informativa y de gestión
+documental. Por añadidura, la clase política y la Administración nunca han
+estado excesivamente preocupadas por el fomento de la cultura. Todo ello
+origina un olvido fatal de los archivos en los presupuestos del Estado y de las
+demás Administraciones Públicas, que hace m ás agravante el problema a lo
+largo de estos dos últimos siglos.
+Robert-Henri Bautier 11 elabora una definición de archivo muy simple pero muy
+esclarecedora:
+"Definiremos un depósito de archivo, ante todo, como un
+establecimiento de carácter científico, encargado de funciones administrativas".
+Los archivos tienen un doble aspecto, científico y encargado de funciones
+administrativas, que representa las dos caras de una misma institución. El
+establecimiento tiene que ser plenamente científico, con personal capacitado
+para aplicar las técnicas de la Archivística, pero su función genuina es la
+administrativa y no la cultural-educativa. Estas actividades culturales y
+educativas son importantes, pero secundarias. En definitiva, los archiveros
+deben dejar de considerarse historiadores y entrelazar vínculos cada vez más
+estrechos con la Administración. Está claro, matizamos, que los archivos han
+de ser considerados unidades organizativas de las Administraciones Públicas y
+de las empresas privadas, y que por tanto el concepto del archivo debe ser
+muy amplio, con un abanico que vaya desde el inicio documental hasta la
+conservación definitiva en un archivo histórico, y un campo de atención hacia
+otros archivos hasta ahora un tanto olvidados: administrativos, privados, de
+empresa... Con ello la sociedad se irá concienciando del valor e interés que
+tienen los archivos como elementos de gestión para la vida administrativa,
+cultural, científica, social... Y los archivos empezarán a convertirse en un
+elemento clave de la información y la comunicación, que son dos de los
+factores que más preocupan a la sociedad de nuestro tiempo.
+
+11
+
+BAUTIER, R.-H-: “La misión de los archivos y las tareas de los archivistas”. En: La Administración
+Moderna de Archivos y el prontuario RAMP, recop. de Peter Walne. París: Unesco, 1985, 1-2.
+
+BIBLIOS Número 9
+
+12
+
+Basados en este pensamiento algunos tratadistas, ya a principios del siglo XX,
+propician una vuelta a la formación integral de los archiveros desde el punto de
+vista jurídico y administrativo, aunque sin abandonar la formación de tipo
+histórico y de las ciencias auxiliares de la Historia. Para Vittani 12 la formación
+principal tiene que ser Archivística, conectada con Letras y Jurisprudencia, con
+asignaturas como Historia del Derecho, Economía Política y Derecho
+Administrativo, fundamentales para la formación de los archiveros. Casanova13,
+también partidario de la Archivística como fundamental, añade otra disciplina
+básica: el estudio de las instituciones productoras de los documentos de los
+archivos. Y como el carácter "cultural" de los archivos tiene que ser referido
+exclusivamente a una cultura de amplia matriz jurídica, es preferible la
+Licenciatura en Derecho antes que la de Letras en cuanto a la formación del
+archivero.
+
+3.3 La entidad productora, el local y la gestión archivística profesional.
+Como hemos visto, en nuestro concepto y definición de archivo, además de los
+anteriores elementos ya analizados, son fundamentales las entidades
+productoras con su actividad documental, de la que se desprende el origen
+funcional de los documentos, la razón por la cual se producen y conservan. Los
+documentos se generan o acumulan en cumplimiento de las funciones o fines
+jurídicos y /o administrativos de la entidad productora, con las debidas
+atribuciones para ello, como resultado del proceso natural de su actividad o
+gestión. La razón última de la conservación documental en los archivos es
+siempre una razón práctica y utilitaria, ya sea con fines jurídicos (como prueba
+de derechos y obligaciones), con fines administrativos o burocráticos
+(imposición legal de mantener ciertos documentos, apoyo documental para la
+gestión de la actividad o función) o con fines exclusivamente de información e
+investigación (principalmente de tipo histórico o de recuerdo de la actividad del
+pasado).
+También son fundamentales en el concepto de archivo los elementos derivados
+de la gestión archivística: elemento estructural (depósito archivístico),
+elementos personales de la gestión (archiveros y personal de apoyo),
+elementos científicos y técnicos (organización científica, conservación
+documental), y elementos utilitarios (servicio documental).
+Los documentos deben ser conservados en un depósito que reúna las debidas
+condiciones y donde el conjunto documental pueda recibir el debido tratamiento
+técnico de los archiveros y conservadores de la documentación para,
+finalmente, ser puesto a disposición de los usuarios. Es tan importante este
+elemento estructural que, en un principio, constituyó la primera acepción de la
+palabra archivo como lugar o depósito de conservación de los documentos: en
+griego archeion, arca para conservar documentos, de donde en latín se deriva
+12
+
+VITTANI, Giovanni: “La formazione dell´archivista”. En: Annuario del R. Archivio di Stato in Milano,
+1917, p. 77-102. Véase en LODOLINI, Archivística. Principios y problemas. Traducción de Mercedes
+Costa Paretas. Madrid: ANABAD, 1993 1993, 274 y 296.
+13
+CASANOVA, Eugenuio: Archivística. Siena: Lazzeri, 1928, 2ª ed. Torino: Bottega d´Erasmo, 1968,
+468.
+
+BIBLIOS Número 9
+
+13
+
+la definitiva archivum. Ya hemos visto como para el Diccionario de
+Terminología Archivística el local constituye una de sus tres acepciones del
+concepto; pero para nosotros el depósito documental es algo más importante:
+es un elemento imprescindible del concepto total de archivo. No tiene que ser
+inmutable; puede variar circunstancialmente, cambiando incluso de edificio y
+hasta de lugar geográfico; incluso es fundamental que se adapte y renueve
+constantemente de acuerdo a las exigencias técnicas más modernas. Sin
+embargo es esencial que el contenido del archivo tenga siempre un adecuado
+continente donde sea conservado, tratado científicamente y utilizado. Y sin este
+depósito en debidas condiciones para estas finalidades no puede existir
+auténtico archivo.
+Tampoco existe auténtico archivo sin el personal adecuado para la gestión
+archivística. Unos profesionales capacitados para dar un tratamiento adecuado
+al contenido y al continente. Los archivos, para que puedan cumplir su misión,
+necesitan de un personal suficiente y variado, distinto para cada una de las
+tareas. Y no sólo especializado en las técnicas científicas de la documentación
+archivística (recogida de la documentación, organización, conservación y
+utilización), siempre respetando y cumpliendo los principios generales de la
+Archivística, sino en otras materias relacionadas con la conservación, la
+seguridad y la utilización de los centros y sus múltiples servicios técnicos.
+El personal del archivo siempre ha tenido una enorme importancia. En el
+Mundo Antiguo dado el sentido patrimonial de la documentación, instrumento
+para acrecentar el poder, el archivo sólo puede confiarse a funcionarios
+específicos de mucha confianza, ligados por juramento, a quienes se encarga
+la custodia de la documentación y la fe publica en ella inherente. Incluso
+cuando en la Alta Edad Media surge el concepto de archivo como tesoro,
+antela inseguridad de los tiempos se busca el lugar y las personas más
+sagradas para la custodia documental: iglesias y monasterios, donde
+sacerdotes y monjes guardan los documentos más preciados junto a las joyas y
+los objetos del culto. Mientras se mantiene el influjo del Código de Justiniano y
+del Derecho Romano en general, sólo pueden tener archivo aquellas
+instituciones públicas que gozan del jus archivi, el derecho o facultad para crear
+archivos y, por tanto, para conferir fe pública a los documentos en ellos
+custodiados. Los archiveros, pues, son funcionarios especialísimos, que gozan
+de uno de los atributos públicos más preciados: el de la fe pública. Este
+atributo aún lo siguen teniendo en nuestros días los archiveros públicos, ya que
+las certificaciones que realicen sobre documentos de los archivos que
+custodian constituyen prueba jurídica. Si los archivos son testimonio de la fe
+pública y soporte jurídico-administrativo de las actividades de los poderes
+públicos, quienes generan esta gestión documental, los archiveros, es lógico
+que posean estos atributos de la función que desempeñan.
+Por ello, la
+formación y actividad del archivero debe plantearse siempre con criterios
+profesionales muy estrictos, debido a la misión tan esencialmente jurídica y
+científica que desempeñan.
+
+BIBLIOS Número 9
+
+14
+
+3.4 El servicio documental.
+La utilización, el servicio documental, es el fin último y primordial del archivo,
+que es fundamentalmente un servicio de documentación e información. Este
+servicio debe prestarse en primer lugar a la entidad productora de los
+documentos y, después, si son ya totalmente accesibles, al público en general.
+Ningún servicio documental puede resultar válido sin no tiene como misión
+principal la comunicación de la información que contienen sus fondos. Esto es
+fundamental en bibliotecas, museos y centros de documentación, pero también
+lo es en archivos, aunque en éstos pueda existir documentación reservada a la
+consulta inmediata por el público en general, pero que finalmente con el tiempo
+llegará a ser accesible. El acceso a los archivos es una de las grandes
+conquistas democráticas de nuestro tiempo, dejando de ser privilegio de unos
+pocos (los que tienen el poder, los funcionarios de la Administración, los
+investigadores de la Historia), para convertirse en uso cotidiano de cualquier
+ciudadano interesado, que tiene como derecho universal reconocido el de la
+libre información.
+El archivero debe estar capacitado plenamente para desempeñar esta labor
+profesional, por completo distinta a la que tenía en el pasado, totalmente
+pasiva, tan sólo de conservación documental. Una de las cualidades que debe
+tener el moderno archivero es ésta del servicio a los usuarios, informando
+sobre los fondos documentales de su centro. Esta labor debe desarrollarla
+principalmente a través de la redacción de los medios de descripción
+documental, que es una de las grandes tareas que tiene encomendadas, pero
+también personalmente, a través de la ayuda directa a los investigadores. Sin
+esta voluntad de servicio, tanto del personal como del centro en general, nunca
+podrá cumplir el archivo su verdadera misión en la sociedad, que no es sólo de
+tipo cultural, sino de información, de auxilio, de ayuda a los ciudadanos en
+todos los aspectos de la vida humana.
+
+4. Concepto y objetivos de la archivística
+Antes de elaborar un concepto de la Archivística nos planteamos la existencia
+de dos elementos fundamentales de este mismo concepto: la consideración de
+la Archivística como ciencia y la existencia de una Archivística total, sin
+distinción entre la vocación administrativa e histórica.
+
+4.1 La archivística como ciencia. El principio de procedencia.
+Aun existe un debate teórico, en el ámbito mundial, sobre si la Archivística es
+una ciencia, una disciplina o una técnica. Nosotros creemos este debate
+superado ya desde los inicios históricos de la Archivística que, como ciencia de
+los archivos, surge a principios del siglo XIX ligada al desarrollo teórico del
+principio de procedencia. Una ciencia que surge tan sólo cuando se empieza a
+reflexionar con detenimiento sobre el conocimiento de los archivos, tratando de
+elaborar teorías y estableciendo principios sobre los métodos de clasificación
+de los documentos. Esta preocupación intelectual es la que la hace nacer como
+disciplina científica.
+BIBLIOS Número 9
+
+15
+
+Entre 1828 y 1835, con las obras de Froilán Troche y Zúñiga y Facundo Porras
+Huidobro 14 , aparece en España el concepto de la Archivística como ciencia,
+mientras ambos autores, sobre todo el primero, realizan también la que quizás
+es la primera elaboración teórica del principio de procedencia. Para estos
+autores españoles, la Archivística, que denominan sucesivamente Instrucción
+de Archiveros, Arte de Archiveros y Arte de los Archivos, surge como ciencia
+porque tiene unas reglas inalterables, aunque hasta entonces poco conocidas.
+La principal de ellas es seguir, con método, el orden que sea más análogo a la
+naturaleza de los documentos, y no mezclar nunca los diferentes archivos (o
+fondos) provenientes de organismos diferentes. Con ambos autores españoles
+el principio de procedencia ya está formulado plenamente y la Archivística
+mundial empieza a ser verdaderamente ciencia. Incluso Porras Huidobro llega
+a considerar el “arte de los archivos” como una de las principales ciencias,
+“acaso en un grado superior a las demás, pues ella nos manifiesta el camino
+por donde vinieron las otras y su progreso”. La teoría de la Archivística como
+ciencia se fundamenta aún más en otros autores españoles de mediados del
+XIX, como José Morón y Limiana (1846 y 1879), Miguel Velasco Santos (1875),
+José de Güemes y Willame (1876) y Luis Rodríguez Miguel (1877). El
+panorama archivístico español en el siglo XIX no puede ser más brillante,
+elevando a la Archivística emergente, desde un terreno de mera práctica
+profesional a un campo mucho más elevado, verdaderamente científico y
+filosófico.
+La literatura científica posterior en materia de Archivística, que consolidó
+universalmente el principio de procedencia y estableció como obligatoria la
+clasificación de los fondos de acuerdo con la estructura orgánica de la entidad
+de procedencia, no hizo sino consolidar una ciencia, que tiene sus principios
+inmutables que es necesario aplicar a los archivos. A fines del siglo será la
+maduración de la teoría en países como Francia, Italia, Alemania y Holanda, lo
+que llevará definitivamente a la Archivística a sus últimas consecuencias
+científicas. Sobre todo con el Manual de clasificación y descripción de Archivos,
+redactado por los holandeses Muller, Feith y Fruin (1898), donde se
+sistematizan los principales fundamentos científicos del concepto de archivo y,
+por tanto, los elementos sustentadores de la Archivística como ciencia. Estos
+fundamentos científicos se consolidan en nuestro siglo con las aportaciones de
+Casanova, Brenneke, Jenkinson, Schellenberg, Bautier, Lodolini, Cortés,
+Heredia... La Archivística es una ciencia, proclaman en voz de Lodolini, por
+estar basada en unos principios científicos, universalmente válidos, y por
+apoyarse, a lo largo de dos siglos, en una literatura científica muy abundante,
+escrita en multitud de lenguas.
+Así pues, nosotros consideramos, como la mayoría de los autores, que la
+Archivística es una ciencia, y que tiene un contenido práctico, experimental, y al
+mismo tiempo teórico. El aprendizaje de la misma debe realizarse a través del
+estudio de la teoría archivística y de la práctica en los archivos. Sucede igual
+que con otras ciencias, como la Medicina. Por mucha teoría que expliquen los
+14
+
+La síntesis de las aportaciones de estos y de los siguientes autores que se citan puede verse en mi
+trabajo FUSTER RUIZ, Francisco: “Los inicios de la archivística española y europea”. Revista General
+de Información y Documentación, Vol. 6-1. Madrid, U.C.M., 1996, 43-77.
+
+BIBLIOS Número 9
+
+16
+
+profesores, sin un Hospital Clínico o sin un Archivo anejo, es imposible el
+aprendizaje correcto del oficio.
+
+4.2 Archivística total: sin distinción entre la vocación administrativa e
+histórica.
+Por otro lado, nuestra concepción de la Archivística, total, sin distinción entre la
+vocación administrativa y la histórica, se desprende de la concepción total de
+los archivos, considerando que la distinción entre archivos administrativos e
+históricos es arbitraria y anti-archivística. Ya vimos cómo nuestro concepto de
+archivo es el de institución jurídico-administrativa más que institución cultural.
+Pensamos que el valor del documento como testimonio debe primar sobre
+cualquier otro. Ante todo, los archivos son unidades organizativas de las
+administraciones públicas y de las empresas privadas; nacen, prosperan y
+perviven sobre todo por esta necesidad jurídica y administrativa. Y a las
+administraciones y empresas deben servir primordialmente, sobre todo en las
+primeras etapas del ciclo vital de los documentos, y ya entonces y después en
+definitiva al resto de la sociedad. La finalidad que hace surgir los documentos
+archivísticos es eminentemente práctica, jurídica, administrativa, y no una
+finalidad literaria o científica. Sólo después podrán desprenderse de los
+documentos de archivo otros valores secundarios como los informativos o
+científicos, sobre todo en la última etapa del ciclo vital de los documentos,
+cuando pasan a un archivo permanente o histórico.
+
+4.3 Definición de la Archivística.
+El Diccionario de Terminología Archivística español daba en 1993 la siguiente
+definición:
+“Archivística: Disciplina que trata de los aspectos teóricos y
+prácticos (tipología, organización, funcionamiento, planificación, etc.) de los
+archivos y el tratamiento archivístico de sus fondos.” Nos parece una definición
+excesivamente corta para abarcar una ciencia tan amplia. Por ello,
+considerando todos los aspectos de nuestro concepto de Archivística, damos
+esta definición extensiva de la misma, abarcando, con finalidad didáctica, todos
+los elementos conceptuales que constituyen su objetivo y su campo de acción:
+“Archivística es la ciencia que se ocupa de los archivos en sus aspectos
+teóricos y prácticos, estableciendo principios inalterables y estudiando técnicas
+adecuadas de gestión de documentos, administración y tratamiento técnico de
+archivos, así como la función jurídica, administrativa y científica de los mismos,
+desde un punto de vista archivístico o de ciencias y técnicas diversas, y su
+relación con las entidades productoras de los conjuntos orgánicos de
+documentos, a fin de manejar y hacer accesible la información de los fondos
+documentales.”
+
+4.4 Objetivo y campo de acción de la Archivística.
+Si vamos desglosando los diferentes apartados de nuestra definición de la
+Archivística, comprenderemos mejor su objetivo y campo de acción.
+
+BIBLIOS Número 9
+
+17
+
+w Archivística es la ciencia que se ocupa de los archivos: Es decir,
+ciencia que se ocupa de los conjuntos orgánicos de documentos. Otras
+ciencias (Diplomática, Paleografía, Sigilografía, Historia...) también se
+ocupan de los documentos de archivos, pero de forma diversa que la
+Archivística. La Archivística es una ciencia activa y no pasiva, al mismo
+tiempo que práctica: debe acudir a solucionar los problemas de los
+documentos de archivo desde el inicio en las oficinas. Su objetivo es
+establecer la doctrina científica de formación, organización, conservación y
+utilización de los archivos. A lo largo de toda la cadena documental, del
+ciclo vital de los documentos de un archivo, el archivero debe estar presente
+e intervenir activamente desde el inicio del documento en la oficina hasta el
+depósito definitivo en un archivo permanente, pasando por la decisiva etapa
+de valoración y selección documental. Para conseguir este objetivo, las
+actividades archivísticas deben apoyarse en una eficaz y completa política
+archivística, que posibilite la acción del archivero por medio de una
+legislación o reglamentación, una planificación y programación adecuada, y
+la creación de sistemas archivísticos dotados de una estructura con los
+recursos humanos y científicos adecuados y suficientes.
+w En sus aspectos teóricos: Doctrina archivística pura o general, conceptos
+fundamentales, esencia, naturaleza y funciones de los archivos; historia de
+la Archivística, los archivos y de las instituciones productoras de
+documentación; origen orgánico y clasificación de los archivos, edades
+documentales, evolución de la práctica archivística, principios archivísticos,
+metodología, terminología, fuentes de información y bibliografía archivística.
+w Y prácticos: Derecho de los archivos, formación profesional de archiveros,
+usuarios, administración y gestión de servicios de archivos, tratamiento
+documental, mantenimiento, conservación y organización de archivos,
+recuperación de la información documental, comunicación y difusión de la
+información, aplicación de las tecnologías de la información, reprografía y
+duplicación documental...
+w Estableciendo principios inalterables: La Archivística debe basarse en
+los principios científicos que la configuran como ciencia, determinados por
+el origen jurisdiccional de los archivos: el respeto al origen y al orden
+natural, a la procedencia de los fondos. Según el Diccionario de
+Terminología Archivística el de procedencia es "principio fundamental de la
+archivística que establece que los documentos producidos por una
+institución u organismo no deben mezclarse con los de otros”. Incorpora
+además otros dos nuevos, derivados del anterior: El principio de respeto a
+la estructura, que “establece que la clasificación interna de un fondo debe
+responder a la organización y competencia de la unidad productora”. Y el
+principio de respeto al orden original, que “establece que no se debe alterar
+la organización dada al fondo por la unidad productora, cualquiera que ésta
+sea”. La sujeción a estos principios debe ser una constante de actuación en
+los archivos por todos aquellos que tienen una responsabilidad política y
+profesional sobre los mismos: los titulares de la Administración a que
+pertenece el centro y los profesionales archiveros. Sin ello, nunca se tendrá
+la seguridad de que el archivo esté organizado con un mínimo de garantías
+científicas y profesionales y de que esté cumpliendo con rigor todas sus
+finalidades testimoniales e informativas.
+
+BIBLIOS Número 9
+
+18
+
+w
+
+w
+
+w
+
+w
+
+w
+
+w
+
+Aparte del establecimiento de estos principios, la Archivística debe dictar
+también una normativa aplicable a toda clase de archivos, tanto antiguos
+como modernos. Sobre todo normas relacionadas con la organización y
+descripción de los archivos en todas las etapas del ciclo vital de los
+documentos; creación de una terminología o vocabulario internacional sobre
+archivos, totalmente necesaria para conseguir la normalización; y
+homologación de los contenidos de la formación profesional de los futuros
+archiveros.
+Y estudiando técnicas adecuadas de gestión de documentos;
+administración y tratamiento técnico de archivos: La Archivística debe
+crear una metodología necesaria para que los archivos cumplan sus fines,
+desarrollando los procedimientos e instrumentos que permitan al archivero
+conservar, custodiar y difundir los documentos.
+Así como la función jurídica, administrativa y científica de los mismos:
+La introducción del concepto de gestión documental implica el desarrollo de
+las funciones principales del archivo: la jurídica y administrativa, así como la
+función científica. El servicio e información que deben prestar los archivos
+debe estar dirigido a dos vertientes: a las entidades productoras de los
+documentos, para agilizar la gestión y la vida administrativa, y a la sociedad
+(al ciudadano en general y a los investigadores científicos).
+Desde un punto de vista archivístico: Tratamiento archivístico de la
+documentación, apoyo a las entidades productoras en cuanto a la formación
+documental;
+transferencias,
+organización,
+clasificación,
+selección,
+conservación y utilización; interpretación, descripción, tratamiento de
+documentos especiales, comunicación, difusión, servicio público...
+O de ciencias y técnicas diversas: interpretación documental (Diplomática
+clásica y contemporánea, Paleografía, Neografía, Cronología, Codicología,
+Sigilografía, Genealogía, Heráldica, Vexilología, Onomástica, Toponimia,
+Historia...); interpretación jurídica y administrativa (Historia de las
+instituciones, Derecho Administrativo, Procedimiento administrativo); nuevos
+soportes documentales (Nuevas Tecnologías); equipamiento, instalación y
+mantenimiento
+de
+archivos
+(Arquitectura,
+industrias
+aplicadas...);
+conservación,
+seguridad,
+restauración
+y
+reproducción
+documental
+(Restauración,
+Física,
+Química,
+Biología,
+Encuadernación...);
+automatización o mecanización (Nuevas Tecnologías: Documentación,
+Informática...)
+Y su relación con las entidades productoras de los conjuntos
+orgánicos de documentos:
+apoyo y asesoramiento a las entidades
+productoras de los documentos en la fase pre-archivística; formación de
+archivos administrativos; transferencias de documentación a los archivos
+del ciclo vital de los documentos; valoración, selección y expurgo
+eliminación responsable; historia de las instituciones generadoras de los
+documentos y de los archivos, estudio de los rasgos específicos de cada
+institución productora de documentos; organigrama y cuadro de
+clasificación de sus fondos.
+A fin de manejar y hacer accesible la información de los fondos
+documentales: Porque la Archivística tiene una finalidad primordialmente
+utilitaria: conseguir el máximo uso de los archivos y el acceso a la
+información que contienen los fondos documentales.
+Y no sólo la
+
+BIBLIOS Número 9
+
+19
+
+información que proporciona el mismo documento, sino también la que
+puede desprenderse del contexto del mismo, al estar generado por el
+quehacer cotidiano de las entidades productoras, relacionado espacial y
+temporalmente con el quehacer de otras múltiples instituciones y de la
+sociedad en general.
+El rescate de esta información conservada en los archivos interesa
+primordialmente a las entidades productoras de los documentos y, en
+definitiva, al resto de la sociedad. A las entidades productoras, a la
+Administración y a las empresas, por cuanto la gestión de esta información
+conservada en los archivos facilita la toma de decisiones; hasta el punto de
+que los que logran rescatar esta información, gestionándola de forma rápida
+y organizada, están en evidente ventaja sobre quienes no usan
+suficientemente sus archivos como fuente de información. La gestión
+archivística correcta moderniza la vida administrativa en todos sus
+aspectos. La información, la comunicación, son elementos fundamentales
+de la vida administrativa y estas funciones no pueden desarrollarse
+correctamente si no están bien organizados los archivos, que son la fuente
+principal interna de comunicación y de información.
+Y al resto de la sociedad, por todo lo que implica la información documental
+para facilitar la transparencia de la vida administrativa, base de la
+Democracia. El servicio y comunicación de los documentos a la sociedad en
+general es un mandato constitucional establecido en los países
+democráticos, aunque con ciertas limitaciones también establecidas
+constitucionalmente. El archivo, con ello, adquiere una misión social
+importantísima, que no es sólo de tipo cultural, de investigación, sino de
+información, de auxilio, de ayuda a los ciudadanos en todos los aspectos de
+la vida humana.
+Por esta finalidad última informativa es por lo que la Archivística está
+considerada como una más de las llamadas Ciencias de la Información,
+adoptando algunas de las herramientas y técnicas de trabajo de las
+mismas, en especial la creación de bases de datos y la aplicación de la
+Informática. El impacto de las Nuevas Tecnologías se ha hecho aún más
+evidente con la aparición de los nuevos soportes documentales y medios de
+almacenamiento, más frágiles de conservación, pero que al mismo tiempo
+propician el control y gestión de una información más abundante.
+
+BIBLIOS Número 9
+
+20
+
+SOBRE EL AUTOR
+
+Francisco Fuster Ruiz, Facultad de Ciencias de la Documentación.
+Universidad de Murcia – España.
+Publicó este artículo en “Anales de
+Documentación: Revista de Biblioteconomía y Documentación, en el Número
+1999 volumen 2, el mismo que ha sido editado por el Cuerpo editorial de
+BIBLIOS
+
+BIBLIOS Número 9
+
+21
+
+

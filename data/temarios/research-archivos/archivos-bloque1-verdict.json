@@ -1,0 +1,11 @@
+{
+  "1": { "verdict": "correct", "note": "CE 1-65 (Preliminar+derechos+Corona). Scope común reutilizado de Sección Bibliotecas (verify:scope 9/9 previo).", "verified_by": "multi_agent" },
+  "2": { "verdict": "correct", "note": "CE 66-127 (Cortes+Gobierno+PJ). Común reutilizado.", "verified_by": "multi_agent" },
+  "3": { "verdict": "correct", "note": "CE Titulo VIII (137-158) + LBRL 7/1985 (1-28). Común reutilizado.", "verified_by": "multi_agent" },
+  "4": { "verdict": "correct", "note": "Ley 40/2015 54-80 (AGE). Común reutilizado.", "verified_by": "multi_agent" },
+  "5": { "verdict": "correct", "note": "Ley 39/2015 34-126 + 128-133 (disposiciones/actos/procedimiento/revision/recursos). Común reutilizado.", "verified_by": "multi_agent" },
+  "6": { "verdict": "correct", "note": "RDL 5/2015 EBEP 1-100 (ley completa). Común reutilizado.", "verified_by": "multi_agent" },
+  "7": { "verdict": "correct", "note": "LO 3/2007 igualdad 1-78. Núcleo común reutilizado; el epigrafe amplía a Ley 15/2022, Ley 4/2023, LO 1/2004 (no todas en scope, cobertura núcleo).", "verified_by": "multi_agent" },
+  "8": { "verdict": "correct", "note": "Ley 19/2013 transparencia 1-40. Núcleo común; el epigrafe amplía a derecho de acceso en archivos (RD 1708/2011, Ley 20/2022, LOPD) pendiente de contenido específico.", "verified_by": "multi_agent" },
+  "10": { "verdict": "correct", "note": "Ley 16/1985 Patrimonio Histórico 48-66 (Patrimonio Documental + Archivos/Bibliotecas/Museos). Adecuado al epigrafe de archivos.", "verified_by": "multi_agent" }
+}

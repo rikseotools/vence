@@ -1,0 +1,447 @@
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+LA VALORACIÓN:
+Fundamento teórico de la Archivística
+
+Por : José Bernal Rivas Fernández
+Correo electrónico: brivas@ns.fcs.ucr.ac.cr
+Msc. Sección de Archivística en la Escuela de Historia de la Universidad
+de Costa Rica.
+Lima, Mayo de 2002.
+
+Resumen
+Los profesionales de la Historia necesitan acceder al mayor número de fuentes
+de información relacionadas con sus actividades de investigación. Si antaño el
+historiador se valía de fuentes de información impresas, hoy en día la situación
+está cambiando. La presencia de nuevas fuentes de información historiográfica
+en soporte electrónico y digital ha dado lugar a la creación de las primeras
+bases de datos históricas que proporcionan un mejor almacenamiento,
+recuperación y utilización de la información.
+
+1. Introducción
+La valoración junto con el principio de procedencia en sus dos dimensiones: el
+respeto de los fondos y el respeto del orden original y el ciclo de vida de los
+documentos: con las tres edades de los documentos, son considerados los
+fundamentos teóricos de la Archivística que siguen vigentes ante el embate de
+las nuevas tecnologías en la era de la información en que la que estamos
+inmersos. En esta ocasión, me ocuparé de la valoración, vista no como un
+proceso meramente mecánico, reducido a la elaboración de tablas de plazos
+de conservación sino como todo un cuerpo teórico, producto de una profunda
+reflexión.
+Por lo que se hará un análisis de los enfoques más recientes en cuanto a la
+valoración y el impacto de las nuevas tecnologías de la información, como uno
+
+Archivística
+
+1
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+de los retos que se le presenta a la Archivística en la sociedad de la
+información.
+
+2. Enfoques recientes sobre la valoración
+El término valoración se ha asociado con los de selección, descarte y expurgo,
+en distintos momentos de la evolución de la Archivística como disciplina y
+según las distintas tradiciones pero siempre han jugado un papel importante,
+las formulaciones hechas por Theodoro Schellenberg en 1956 y que han sido
+recogidas y reinterpretadas dentro de distintos contextos. En ese sentido, se
+considera a Schellenberg como uno de los teóricos más influyentes en cuanto a
+la valoración que recoge el pensamiento de Hilary Jensinkon, en el sentido de
+ver a los archivos como evidencia imparcial y de Karl Otto Muller, para quien lo
+que no merece preservarse nunca debería ser admitido en un archivo. (Kolsrud
+1992: 30).
+La formulación que hace Theodoro Schellenberg de los valores primarios y
+valores secundarios y especialmente de los valores evidenciales y los valores
+informativos, ha sido el punto de partida para la valoración dentro de muchos
+contextos y objeto de una amplia discusión en las últimas décadas. (Klep 1992:
+63).
+La valoración por lo tanto, implica un trabajo de cuidadoso análisis y de
+erudición y no un mero procedimiento como lo ven algunos; ya que implica
+entender factores como: la historia del creador de documentos, las funciones,
+las atribuciones legales, la estructura organizacional, los procesos de toma de
+decisión, los procedimientos de creación de documentos, la naturaleza,
+organización y administración de los documentos y los cambios ocurridos en el
+tiempo.
+En los últimos diez años se ha dado especialmente en el mundo anglosajón,
+una reflexión teórica sobre la valoración que busca superar las consideraciones
+prácticas en la valoración de documentos pues no sólo son importantes las
+razones de tipo financiero o de tipo cultural en la determinación de qué se
+conserva y qué se elimina sino que también es necesario controlar la
+proliferación de documentos y extraer información de ellos. Por ejemplo, es
+necesario tener conocimiento claro de la estructura organizacional para
+determinar qué organismo produjo cuáles documentos y con qué propósito, con
+el fin de encontrar los procedimientos que fueron utilizados en su creación; así
+como, investigar la historia administrativa, la genealogía de la administración, lo
+que nos permite descubrir las actividades que producen los documentos.
+Algunos plantean modelos de valores que van más allá de los valores primarios
+y secundarios enunciados por Schellenberg especialmente en cuanto al valor
+evidencial que nos informa sobre la historia de la institución y su organización y
+funciones, como es el caso de Paul Klep; quien reemplaza la distinción entre
+valores primarios y valores secundarios, por una valoración desviada de la
+práctica burocrática y de tipo administrativo, basada en un cuidado de nuestra
+cultura que permite tener la posibilidad de valorar los documentos en un
+
+Archivística
+
+2
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+sentido simbólico, en términos de estilo, mentalidad y carácter, como expresión
+de su tiempo. (Klep 1992 : 64)
+La teoría de la valoración debe buscar especificar aquellos atributos genéricos,
+interconexiones y puntos de intersección especiales o de conflicto que existen
+entre, por un lado, los creadores de documentos, llámense estructuras
+organizacionales, oficinas o el pueblo, las tendencias sociohistóricas y los
+patrones o sea las funciones, las actividades y los programas y los clientes, los
+usuarios y los ciudadanos, por otro. Porque, detrás del documento está la
+función o la actividad que lleva a su creación, en ese sentido la valoración debe
+cambiar del documento al contexto conceptual de su creación y de esa forma
+explorar la naturaleza de los agentes y de los actos y las interconexiones e
+interrelaciones que existen entre ellos. (Cook 1992:40)
+Los seguidores de esta corriente hablan de una etapa taxonómica que
+comprende la sistematización de varios valores: evidencial e informativo, legal
+y fiscal, primario o secundario y las características relacionadas con los
+documentos: originalidad, edad, autenticidad, tratamiento, periodo de tiempo e
+importancia. En la medida en que los documentos reflejen estos valores, en
+una forma codificada, deben ser considerados de valor y los que no, deben ser
+rechazados pero este enfoque no incluye conceptos de la dinámica social e
+institucional, valorando más lo relativo a la experiencia humana. (Cook 1992:
+41)
+El objetivo de este modelo es articular las estructuras y las funciones sociales,
+los creadores de documentos y los procesos de creación y su interacción, lo
+que permite tener una reflexión comprehensiva de la experiencia humana y no
+la búsqueda del valor para la investigación por sí. Pues, usualmente se han
+valorado los documentos de acuerdo con teorías de valor definidas por los
+usuarios o por las expectativas de uso futuro que descontextualizan el registro
+de la relación orgánica e interna de su creación, imponiendo en su lugar una
+norma externa, para juzgar el valor que no tiene relación con el contexto interno
+de la creación de los documentos.
+Dentro de esta corriente se ubican David Bearman, Terry Cook, Richard Cox y
+otros que plantean la valoración en dos niveles; macro y micro, dentro del
+primero se debe entender el por qué fueron creados los documentos, cómo
+fueron creados, cómo fueron utilizados por los usuarios y qué funciones y
+actividades del creador sustentan. Además, se deben ver las razones y la
+naturaleza de la comunicación entre los ciudadanos, las instituciones o el
+Estado, enfocado a través de un proceso dialéctico.
+La macrovaloración enfatiza el valor de la ubicación, el sitio y las circunstancias
+de creación de los documentos antes que el valor de los documentos en sí; es
+decir, valora la capacidad de la institución de crear documentos de valor en
+forma global antes que tratarlos uno por uno. Por que, una vez que se han
+identificado las series, se debe valorar tomando en cuenta su edad, periodo de
+tiempo, autenticidad, integridad, legibilidad y magnitud, con lo que se cae en la
+microvaloración que corresponde a la valoración tradicional.(Cook 1994: 100)
+Según el modelo antes mencionado, se debería permitir aislar aquella serie de
+documentos que revelan más claramente la naturaleza de la sociedad, la
+
+Archivística
+
+3
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+dinámica institucional, la vida de la gente común y las corrientes ideológicas.
+Este enfoque no busca explícitamente los valores en los documentos por sí,
+sean evidenciales o informativos pero sí, como éstos proyectan la dialéctica
+entre el ciudadano y el Estado pues se considera que conservar documentos
+para reflejar tendencias de investigación es antiarchivístico y distorsiona la
+valoración.
+La teoría de la macrovaloración ahoga por un curso de selección de los
+documentos intelectualmente conducido a partir de un sistema de análisis
+global de las organizaciones perceptuales -estructuralmente desde arriba hacia
+abajo y horizontalmente a través de las formaciones administrativas a través de
+vías funcionales y / o elaborados más bien, como un proceso reconstructivo del
+conocimiento archivístico desempolvado desde el fondo de la fuente de
+información donde residen actualmente los billones de documentos (Brown
+1995: 27)
+La pregunta clave bajo este punto de vista, no es qué ha sido escrito,
+fotografiado, filmado o automatizado, dónde está y qué valor investigativo tiene
+sino quién, articulando e implementando las funciones de la entidad asignadas
+por la sociedad tuvo motivo para crear un documento, su tipo y quién intervino
+en su creación. Este modelo intenta acercar la tensión entre el valor evidencial,
+basado en la estructura y el proceso y el valor informativo, basado en la
+articulación de los usuarios con las funciones más importantes,
+Dentro de este enfoque es esencial la noción de imagen de la sociedad que
+nos puede sugerir percepción, imitación, metáfora o reflexión, por lo que es
+importante la convergencia entre imagen y su reflejo en los documentos. Razón
+por la cual, se debe investigar, cómo y dónde se forma la imagen considerando
+la interacción Estado–ciudadano, estructuras más importantes y funciones
+clave, para identificar y valorar las mejores series de documentos. (Cook 1992:
+51)
+Los distintos tipos de documentos pueden aumentar o disminuir la distancia
+entre los ciudadanos y la entidad productora, lo que se vuelve significativo en la
+naturaleza de la imagen que se tenga de la interacción entre el ciudadano y el
+Estado. Por lo que le corresponde al archivista documentar la entidad y sus
+funciones mediante la investigación sobre la planificación de a
+l organización,
+los reportes periódicos, los datos sobre la administración de documentos, los
+manuales, los cuadros de clasificación y la historia interna; permitiéndole
+conocer cómo se afecta la dialéctica entre el ciudadano y el Estado para
+obtener la imagen de la sociedad.
+El modelo de la dialéctica entre el ciudadano y el Estado le permite al archivista
+enfocar una parte manejable del todo sin conocer todo el universo y
+concentrarse en ver la evidencia registrada de los documentos más
+significativos, las variaciones y distorsiones entre los objetivos y los resultados
+en las estructuras y las funciones sociales más importantes, a través de las
+cuales se define la imagen de la sociedad. Además, le permite aislar aquellas
+series de documentos que revelan más claramente la naturaleza de la
+sociedad, la dinámica institucional, la vida de la gente común y las corrientes
+ideológicas; por lo que no se buscan explícitamente valores en los documentos
+
+Archivística
+
+4
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+por sí, sean éstos evidenciales o informativos pero sí cómo proyectan y reflejan
+la dialéctica entre el ciudadano y el Estado.
+La valoración debe estar basada en una teoría científica de carácter social y
+oponerse a una intuición académica, a un determinismo ideológico y a la
+preferencia individual, por lo que adquiere una dimensión analítica que debe
+partir de los principios de procedencia y pertinencia. Los que siguen este
+enfoque entienden procedencia en el sentido de que, la trascendencia o el
+valor de los archivos está relacionada con la importancia de la persona física o
+jurídica que crea los documentos mientras que la pertinencia alude a que la
+valoración debe juzgar el valor de la información en relación a un patrón de
+uso. (Eastwood 1992: 81)
+Dentro de esta tendencia, la importancia del creador de documentos debe estar
+relacionada con un patrón de valor, donde lo usual es el valor como fuente de
+información histórica, Otros valores a considerar son: legales, administrativos y
+fiscales siendo el punto principal, el contenido o la información observable en
+los documentos.
+Algunos críticos de este enfoque señalan que la investigación sobre patrones
+de valor puede conducir al relativismo de la ideología, lo que hace de la
+valoración un ejercicio sin fundamento. Por lo que, juicios de valor sobre lo
+efímero y lo duradero deben estar basados en un conocimiento del contexto, la
+génesis y los propósitos servidos por los documentos.
+Los archivos son vistos desde el punto de vista utilitario y por lo tanto,
+requieren una valoración utilitaria basada en una valoración de uso; la que
+considera el análisis del uso por el cual los archivos fueron colocados por la
+sociedad que los creó en el continium de su existencia, determinada,
+continuada o terminada sobre la base de la utilidad. (Eastwood 1992: 83)
+Dentro de otra corriente se sitúa la llamada "estrategia de la documentación"
+articulada en la década del ochenta por Helen Samuels y que busca
+proporcionar un mecanismo para una cuidadosa y sistemática reducción de la
+masa documental mediante la utilización de un conjunto de criterios de
+selección que toma en cuenta la naturaleza específica de la información
+moderna registrada. Parte del supuesto de que, la valoración es un trabajo de
+análisis cuidadoso y de erudición y no un mero procedimiento para determinar
+qué documentos son más representativos para documentar toda la sociedad,
+como una forma de complementar los métodos tradicionales de valoración.
+Desde el punto de vista de este enfoque, tanto los creadores de documentos
+como los administradores y los usuarios, buscan retener aquella
+documentación que refleje alguna área del esfuerzo humano partiendo del
+análisis del universo a ser documentado mediante la comprensión de los
+problemas documentales inherentes y la formulación de un plan que permita
+una adecuada documentación, ya sea de un asunto, una actividad o de un área
+geográfica.
+En los últimos diez años, la valoración ha estado bajo un intenso escrutinio en
+el mundo anglosajón, resultante en un paradigma basado en una taxonomía de
+valores que se ha visto desestabilizada por la masa de información y por la
+
+Archivística
+
+5
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+redundancia; así como, por la emergente e hipercompleja fase de la
+administración burocrática, la existencia del multimedio electrónico y otras
+formas de creación de documentos y de la evolución de complicadas redes de
+transacciones de negocios y conexiones de comunicación entre los creadores,
+los usuarios y los sistemas de almacenamiento de documentos. (Turner 1994;
+75)
+Por lo que, los criterios de valoración no pueden ser desarrollados para
+satisfacer las cambiantes tendencias de investigación de un pequeño público
+de investigadores sino para preservar la evidencia documental vital de nuestra
+sociedad para todos sus componentes.(Wilson 1995: 426)
+Richard Brown critica los acercamientos estructuralistas tradicionales de la
+valoración que se basan en modelos weberianos ideales de una organización
+administrativa eficiente dentro de los que sitúa a Schellenberg, Jenkinson y
+más recientemente Duchein, porque participan de la noción de burocracia
+relacionada con una taxonomía completamente preocupada por tipos o
+características o categorías de documentos, identificados y delimitados por
+referencia a fuentes y órdenes de conocimiento basados en connotaciones
+estructuralistas weberianas de poder y autoridad, (Brown 1995: 132)
+Para Brown, el concepto de creador de documentos es concebido como una
+expresión o una declaración de mensajes que se encuentran enraizados en los
+documentos, para descubrirlos, el archivista puede apropiarse de las teorías de
+la hermenéutica de análisis de texto y de discurso, aplicados al contexto de los
+documentos producidos por las instituciones en el curso de sus actividades
+funcionales; es decir, observando al creador dentro del contexto de su
+formación de discurso. Señala que el entendimiento de Michel Foucault del
+discurso es altamente instructivo, haciendo algunas sutiles conexiones entre la
+ontología del texto y la arqueología de la información del archivo; así como, la
+potencial adaptación de la teoría hermenéutica del texto de Paul Ricoeur, en su
+conciliación de la interpretación del texto basada en la lectura de su contenido
+narrativo y la objetivación de su contexto, a través de un entendimiento de su
+estructura narrativa discursiva.(Brown 1995: 152)
+En lo que respecta a la valoración, la estructura administrativa como plataforma
+analítica es vista como una herramienta y debe ser considerada por razones
+prácticas y Brown establece tres proposiciones que le permiten sugerir una vía
+alternativa para entender, interpretar y representar el contexto institucional del
+creador en apoyo de procesos intelectuales y métodos prácticos que llevan a la
+identificación de los documentos a ser preservados; en un intento de relacionar
+el análisis del discurso, con la valoración desde una perspectiva práctica
+aplicada (Brown 1995: 125)
+
+3. Retos de las Nuevas Tecnologías de la Información
+La valoración en la época actual se ve enfrentada a la forma en que se
+planifican, crean y utilizan los documentos electrónicos y los sistemas
+automatizados, por lo que, como plantea Charles Dollar, la pregunta a
+responder es, si los documentos en soporte electrónico pueden ser valorados
+
+Archivística
+
+6
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+por las mismas razones y utilizando los mismos principios que se aplican a los
+documentos en soporte textual, Asimismo, como dice Terry Cook, los
+archivistas deben desechar su mentalidad profesional de "mente de papel", si
+aspiran a organizar los documentos electrónicos frente a las capacidades
+tecnológicas del nuevo ambiente de comunicaciones electrónicas.
+Los archivistas deben jugar un papel importante para cruzar la brecha que
+existe entre ellos y el mundo electrónico mediante la utilización de la misma
+metodología que se aplica para los documentos en soporte tradicional pero
+asegurando la conservación permanente y la continua accesibilidad de la
+información en bases de datos. Además, la valoración debe darse en el
+contexto, utilizando un acercamiento interdisciplinario, viendo a los documentos
+electrónicos y a los documentos en papel, como producto de una misma
+actividad.
+Al valorar en el contexto se permite establecer relaciones entre los documentos
+en papel, los documentos electrónicos y las aplicaciones informáticas
+explícitas, y al utilizar un acercamiento interdisciplinario, se facilita la toma de
+decisiones acerca de cómo se deben disponer los documentos y cómo se
+identifican y solucionan los problemas que genera la informática.
+Esta intrusión de los documentos electrónicos en como dice Jane Turner "en
+nuestro confortable mundo de transacciones en papel", ha forzado a un
+replanteamiento de nuestras concepciones sobre la valoración que ha
+redundado en una renovada versión de la coherencia planteada por Hilary
+Jenkinson, a través de la noción de imparcialidad del documento que reconoce
+que la naturaleza imparcial, auténtica y creíble de los archivos se deriva del
+proceso mismo de su creación y de la acumulación natural de documentos, por
+lo que debe ser preservada.(Turner 1994: 76) Pues en medio de la revolución
+electrónica en la que vivimos, las jurisdicciones se alteran, las jerarquías
+cambian y las funciones son reformadas con una gran velocidad pero las
+actividades continúan, así como, la necesidad legal, moral y cultural de probar
+que las actividades ocurrieron.
+La teoría desarrollada en el mundo del papel parece ser lógicamente válida en
+la era electrónica porque, a pesar de que la forma de la documentación ha
+cambiado dramáticamente, siempre permanece la necesidad de documentar
+una actividad como característica central de nuestra sociedad. Razón por la
+cual, el conocimiento de las relaciones contextuales y el entendimiento del
+valor de las distintas perspectivas son necesarias tanto para los creadores de
+documentos como para los especialistas en informática especialmente en
+cuanto al establecimiento de procedimientos para determinar responsabilidades
+y asegurar la preservación de la herencia documental de nuestra sociedad, no
+importa su método de producción,(Bearman 1995: 1411)
+
+4. Reflexión Final
+Ante los nuevos enfoques teóricos sobre la valoración desarrollados en el
+mundo anglosajón, es necesario replantearse si el valor primario y el valor
+secundario, en sus acepciones de valor evidencial y valor informativo,
+
+Archivística
+
+7
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+formulados por Theodore Schellenberg en la década de los cincuenta siguen
+siendo el único fundamento teórico para la selección de documentos que es el
+término más utilizado en nuestras latitudes y donde la valoración es vista, sobre
+todo, en función de la conservación o la eliminación. Así como, se le asocia con
+el término de expurgo, al definirla como la operación por la que se seleccionan
+los documentos, a fin de que sólo aquellos que reúnan las mejores condiciones
+de testimonio e información alcancen la tercera edad, es decir, pasen a los
+archivos históricos para su conservación perpetua en ellos, como piezas
+valiosas del patrimonio documental.(Cortés Alonso 1952: 28)
+Por lo tanto, en los distintos manuales, desde Antonia Heredia en Archivística
+General, Teoría y práctica, Pedro López y Olga Gallego en Introducción a la
+Archivística, Elio Lodolini en Archivística, Principios y problemas, Manuel
+Romero Tallafigo en Archivística y archivos. Soportes, edificios y organización,
+Manuel Vázquez en Manual de selección documental y más recientemente
+José Ramón Cruz Mundet en Manual de archivística, se habla indistintamente
+de valoración, selección, expurgo y evaluación, sin hacer un verdadero
+cuestionamiento teórico sobre este fundamento de la Archivística,
+reduciéndosele en muchos casos a una fase del proceso de expurgo destinada
+a descubrir, apreciar los valores inherentes a los documentos y su gradación.
+(Cruz Mundet 1994: 211). Se hace necesario conciliar la teoría con la práctica o
+como dice Terry Eastwood, "la mente sobre la materia", ya que la destrucción
+de documentos es irreversible y le corresponde al archivista desempeñar un
+papel activo en ese análisis, con un alto componente ético.
+De lo expuesto anteriormente podemos extraer algunas conclusiones respecto
+a nuestra práctica profesional especialmente en lo relativo a la valoración y a la
+forma cómo se debe abordar pero también nos debe llevar a meditar sobre los
+mismos fundamentos teóricos de la Archivística que han sido dejados de lado
+en las discusiones y en los foros a los cuales concurren los archivistas, campo
+en el cual los anglosajones nos llevan algunos años de ventaja pero que debe,
+llevarnos a una reflexión acorde con nuestra realidad inmediata.
+
+BIBLIOGRAFÍA
+
+Bearman, David. "Archival strategies", En: American Archivist, Vol. 58. Fall
+1995, S.A.A, Chicago, U.S.A.
+Brown, Richard. "Macro-appraisal theory and the context of the public
+records". En: Archivaria. N. 40, 1995, Otawa, Canadá.
+Cook, Terry. "Another brick in the wall; Terry Eastwood’s masonry and archival
+walls, history and archival appraisal". En: Archivaria. n.37 Spring 1994. A.C.A,
+Otawa, Canadá.
+
+Archivística
+
+8
+
+BIBLIOS Número 12
+
+Abril-Junio 2002
+
+Cortés Alonso, Vicenta, Manual de archivos municipales. A.N.A.B.A.D.
+Madrid, España, 1982.
+Cruz Mundet, José Ramón. Manual de archivística. Ediciones Pirámide S.A.
+Madrid, España, 1994.
+Eastwood, Terry. "Towards a social theory of appraisal". En: The archival
+imagination. Essays in honor of Hugh A. Taylor. A.C.A. Ottawa, Canadá, 1992.
+Klep, Paul M.M. "About ethics of appraisal of archival records". En: JANUS.
+1992. 1 ICA. Netherlands.
+Kolsrud, Ole. "The evolution of basic appraisal principles. Some comparative
+observations". En: American Archivist. Vol. 55. Winter 1992. S.A.A. Chicago,
+U.S.A.
+Turner, Jane. "Theoretical dialectics: a commentary on sampling methodology
+and its application. En: Archivaria. N. 38, 1994. A.C.A. Ottawa. Canadá.
+Wilson, Ian E. "Reflections on archival strategies". En: American Archivist. Vol.
+58 Fall 1995, S.A.A. Chicago, U.S.A.
+
+SOBRE EL AUTOR
+
+José Bernal Rivas Fernández, Profesor en la Universidad de Costa Rica, en
+la especialidad de Archivística. Ha participado en diferentes eventos sobre
+Archivística y con diversas publicaciones en revistas especializadas de Historia
+y Archivística, a nivel internacional. Asimismo, forma parte del Consejo
+editorial de la Revista DIALOGOS.
+
+Archivística
+
+9
+
+

@@ -1,0 +1,54 @@
+===== clasificacion =====
+CLASIFICACIÓN Operación archivística que consiste en el establecimiento de las categorías y grupos que reflejan la estructura jerárquica del fondo. Es el primer paso del proceso de organización , dentro de la fase del tratamiento archivístico denominada identificación.
+
+===== coleccion-documental =====
+COLECCIÓN DOCUMENTAL (1) Conjunto de documentos reunidos según criterios subjetivos (un tema determinado, el criterio de un coleccionista, etc.) y que, por lo tanto, no conserva una estructura orgánica ni responde al principio de procedencia. (2) Conjunto de documentos reunidos de forma facticia por motivos de conservación o por su especial interés.
+
+===== coleccion-facticia =====
+COLECCIÓN FACTICIA (V. tb. Colección Documental (2) )
+
+===== expediente =====
+EXPEDIENTE Unidad documental formada por un conjunto de documentos generado orgánica y funcionalmente por un sujeto productor en la resolución de un mismo asunto.
+
+===== foliacion =====
+FOLIACIÓN Operación incluida en los trabajos de ordenación que consiste en numerar correlativamente todos los folios de cada unidad documental. (V. Acondicionamiento ).
+
+===== fondo =====
+FONDO Conjunto de series generadas por cada uno de los sujetos productores que conforman la estructura de un organismo en el ejercicio de sus competencias .
+
+===== fondo-abierto =====
+FONDO ABIERTO Aquél que está siendo generado por un organismo productor que continúa en el ejercicio de sus competencias .
+
+===== fondo-cerrado =====
+FONDO CERRADO Aquél cuyas series han dejado de producirse por desaparición del organismo y/o las competencias que las generaban.
+
+===== fraccion-serie =====
+FRACCIÓN DE SERIE Cada una de las divisiones cronológicas de una serie, que resultan del establecimiento de plazos concretos de transferencia y eliminación y que constituyen, por tanto, la base de las operaciones de transferencia y selección. (V. tb. Valoración ).
+
+===== grupo-fondos =====
+GRUPO DE FONDOS Cada una de las agrupaciones en que pueden organizarse intelectualmente los fondos de un archivo (1) (2), generalmente con criterios en los que predomina la finalidad de unificar procedencias de ámbito superior. (V. tb. Sección , Serie ).
+
+===== ordenacion =====
+ORDENACIÓN Operación archivística realizada dentro del proceso de organización , que consiste en establecer, secuencias naturales cronológicas y/o alfabéticas, dentro de las categorías y grupos definidos en la clasificación. Se encuentra, por lo tanto, dentro de la fase del tratamiento archivístico denominada identificación.
+
+===== seccion-archivo =====
+SECCIÓN DE ARCHIVO Cada una de las divisiones primarias del cuadro de clasificación de un archivo y que puede corresponder a una parte de un fondo , a un fondo o a un conjunto de fondos .
+
+===== seccion-fondo =====
+SECCIÓN DE FONDO La subdivisión orgánico/funcional del fondo que se refiere a una o varias series que corresponden a subdivisiones administrativas en las oficinas u organismos que los originaron. Cuando el organismo productor posee una estructura jerárquica compleja, cada sub-grupo puede tener tantos sub-grupos subordinados como sean necesarios, para reflejar los niveles de la estructura orgánica hasta la unidad administrativa subordinada más pequeña.
+
+===== seccion-facticia =====
+SECCIÓN FACTICIA (V. Colacción Documental (2) ).
+
+===== serie =====
+SERIE Conjunto de documentos generados por un sujeto productor en el desarrollo de una misma actividad administrativa y regulado por la misma norma de procedimiento. (V. tb. Fondo , Fracción de Serie ).
+
+===== unidad-documental =====
+UNIDAD DOCUMENTAL Elemento indivisible de una serie documental que puede estar constituido por un solo documento o por varios que formen un expediente.
+
+===== unidad-fisica =====
+UNIDAD FÍSICA (V. Unidad de Instalación ).
+
+===== unidad-instalacion =====
+UNIDAD DE INSTALACIÓN Agrupación de unidades documentales homogéneas destinadas a su colocación en los depósitos (caja, carpeta, legajo, etc.). Debe contar con una signatura unívoca.
+
