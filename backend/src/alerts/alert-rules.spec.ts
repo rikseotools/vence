@@ -21,6 +21,8 @@ import {
   RULE_CANARY_WEBHOOK_FAILED,
   RULE_CANARY_ANSWER_SAVE_FAILED,
   RULE_CANARY_DB_POOL_FAILED,
+  RULE_SAVE_RECONCILIATION,
+  RULE_STATS_PARIDAD_DIVERGENCE,
   RULE_CANARY_REDIS_FAILED,
   RULE_CANARY_TOPIC_DATA_FAILED,
   RULE_WATCHDOG_WALLCLOCK_RESIDUAL,
@@ -886,10 +888,28 @@ describe('RULE_CANARY_ANSWER_SAVE_FAILED', () => {
 });
 
 describe('RULE_CANARY_DB_POOL_FAILED (canary infra)', () => {
-  it('dispara con ≥1 fallo (saturación pool = P0 inmediato)', () => {
+  // Recalibrado 13/07: un timeout AISLADO ya no dispara (stall breve del
+  // event-loop con la BD sana). Reusa canaryFailureShouldFire.
+  it('un timeout AISLADO (n=1) NO dispara — espera confirmación del siguiente tick', () => {
     expect(
       RULE_CANARY_DB_POOL_FAILED.shouldFire([
         { n: 1, lastStep: 'timeout', lastError: 'Query timeout >1000ms' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('timeout SOSTENIDO (n≥2 = 2 ticks) dispara', () => {
+    expect(
+      RULE_CANARY_DB_POOL_FAILED.shouldFire([
+        { n: 2, lastStep: 'timeout', lastError: 'Query timeout >1000ms' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('un error SUSTANTIVO (no-timeout, n=1) dispara ya', () => {
+    expect(
+      RULE_CANARY_DB_POOL_FAILED.shouldFire([
+        { n: 1, lastStep: 'query', lastError: 'connection refused' },
       ]),
     ).toBe(true);
   });
@@ -907,19 +927,67 @@ describe('RULE_CANARY_DB_POOL_FAILED (canary infra)', () => {
     expect(RULE_CANARY_DB_POOL_FAILED.severity).toBe('critical');
   });
 
-  it('notification incluye runbook PgBouncer + Postgres + Supabase', () => {
+  it('notification apunta a RDS (no Supabase/PgBouncer obsoletos)', () => {
     const notif = RULE_CANARY_DB_POOL_FAILED.buildNotification([
       { n: 3, lastStep: 'timeout', lastError: 'Query timeout >1000ms' },
     ]);
     expect(notif.title).toContain('DB pool');
-    expect(notif.body).toContain('PgBouncer');
-    expect(notif.body).toContain('max_connections');
-    expect(notif.body).toContain('Supabase');
+    // post-cutover a RDS: la guía NO debe mencionar el stack congelado
+    expect(notif.body).not.toContain('PgBouncer');
+    expect(notif.body).not.toContain('Supabase');
+    expect(notif.body).toContain('RDS');
+    expect(notif.body).toContain('CloudWatch');
     expect(notif.fingerprint).toBe('canary_db_pool_failed');
   });
 
   it('cooldown 10 min (más corto — P0 operativo)', () => {
     expect(RULE_CANARY_DB_POOL_FAILED.cooldownMin).toBe(10);
+  });
+});
+
+describe('RULE_SAVE_RECONCILIATION (recalibrada 13/07 anti falso-positivo)', () => {
+  const fire = (answered: number, saved: number) =>
+    RULE_SAVE_RECONCILIATION.shouldFire([{ answered, saved }]);
+
+  it('operación normal (ratio 70-100%) NO dispara', () => {
+    expect(fire(800, 700)).toBe(false); // 87%
+    expect(fire(300, 250)).toBe(false); // 83%
+  });
+
+  it('saved > answered (examen batch / duplicados) NO dispara', () => {
+    expect(fire(100, 150)).toBe(false);
+  });
+
+  it('noche, poco tráfico, ratio 30% NO dispara (por encima del 25%)', () => {
+    expect(fire(81, 24)).toBe(false); // 30%
+  });
+
+  it('hueco C1 (0 guardadas) SÍ dispara', () => {
+    expect(fire(168, 0)).toBe(true);
+  });
+
+  it('rotura real sostenida (<25% con volumen) dispara', () => {
+    expect(fire(200, 10)).toBe(true); // 5%
+  });
+
+  it('por debajo del suelo de volumen (a≤60) NO dispara aunque sea 0%', () => {
+    expect(fire(40, 0)).toBe(false);
+  });
+
+  it('severity=critical', () => {
+    expect(RULE_SAVE_RECONCILIATION.severity).toBe('critical');
+  });
+});
+
+describe('RULE_STATS_PARIDAD_DIVERGENCE (recalibrada 13/07)', () => {
+  it('umbral ≥5 divergencias (absorbe fuzz de lag)', () => {
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 5 }])).toBe(true);
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 4 }])).toBe(false);
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 0 }])).toBe(false);
+  });
+
+  it('severity=error', () => {
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.severity).toBe('error');
   });
 });
 

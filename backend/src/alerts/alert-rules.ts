@@ -1319,12 +1319,18 @@ export const RULE_CANARY_DB_POOL_FAILED: AlertRule<{
     WHERE event_type = 'canary_db_pool_failed'
       AND created_at > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  // Recalibrado 13/07: era `n > 0` (1 blip → CRITICAL). El timeout se mide con
+  // Promise.race+setTimeout EN EL PROCESO, así que un stall breve del event-loop
+  // (GC/CPU throttle de un task) lo dispara aunque la BD esté sana (visto 13/07:
+  // 1 fallo con RDS al 12% de CPU). Reusa `canaryFailureShouldFire`: un timeout
+  // aislado espera confirmación del siguiente tick; ≥2 (sostenido) o un error
+  // sustantivo (no-timeout) dispara ya.
+  shouldFire: (rows) => canaryFailureShouldFire(rows),
   buildNotification: (rows) => {
     const r = rows[0];
     return {
-      title: `🚨 Canary DB pool FALLÓ (${r.n} en 10 min) — saturación PgBouncer o BD caída`,
-      body: `SELECT 1 desde el backend Fargate NO completó en <1s. Significa una de:\n  - PgBouncer saturado (pool_size agotado, conexiones colgadas).\n  - max_connections de Postgres alcanzado.\n  - Postgres caído o sin red.\n  - Conexión Fargate→Supabase degradada.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. Verificar /admin/salud-sistema → latencia INSERT.\n  2. Supabase Dashboard → Database → Pool size + active connections.\n  3. Si pool saturado: kill connections idle largas, bajar timeout, escalar PgBouncer.\n  4. Si BD caída: status.supabase.com + escalation a soporte.\n\nNO es bug de código — es bug operativo. App entera afectada.`,
+      title: `🚨 Canary DB pool: SELECT 1 >1s SOSTENIDO (${r.n} en 10 min) — pool app / RDS / red`,
+      body: `El canary (SELECT 1 por el pool de la app, Drizzle→RDS directo) NO completó en <1s de forma SOSTENIDA (≥2 ticks o error sustantivo). Posibles causas:\n  - Pool de la app (max:5) saturado en un task: todas las conexiones ocupadas por queries lentas → SELECT 1 espera turno.\n  - Stall breve del task ECS (GC / CPU throttle) que bloquea el event-loop.\n  - RDS sobrecargada (CPU/IO) o cerca de max_connections.\n  - Blip de red task↔RDS.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. /admin/salud-sistema → latencia INSERT + 5xx.\n  2. CloudWatch RDS (vence-prod, eu-west-2): CPUUtilization, DatabaseConnections, ReadLatency en la ventana.\n  3. pg_stat_activity: conexiones 'active' + queries largas (kill idle-in-transaction).\n  4. CPU/mem de los tasks ECS por si hubo throttle.\n\nNota: un blip aislado (1 timeout) ya NO dispara; esto es sostenido → mirar en serio.`,
       metadata: {
         count: r.n,
         lastStep: r.lastStep,
@@ -2426,23 +2432,34 @@ export const RULE_MATERIALIZED_STATS_STALE: AlertRule<{
 export const RULE_STATS_PARIDAD_DIVERGENCE: AlertRule<{ divergent: number }> = {
   name: 'stats_paridad_divergence',
   severity: 'error',
+  // Recalibrado 13/07 (anti falso-positivo transitorio): el bug estaba en que
+  // real_total contaba TODAS las filas de la clave —incluidas respuestas <5min
+  // aún EN VUELO— pero solo exigía que la clave tuviera UNA respuesta de 5-20min.
+  // Un user re-respondiendo la misma pregunta en <5min inflaba real_total y uqh
+  // aún no lo había propagado → divergencia transitoria (visto 13/07: 5 divergen-
+  // cias con outbox 0 pendientes y uqh fresco 2s después). Fix: (1) real_total solo
+  // cuenta filas YA propagables (>5min); (2) solo marca cuando uqh va POR DETRÁS
+  // (u.total_attempts < real_total) — que uqh vaya adelantada (propagó una <5min
+  // rápido) NO es bug.
   query: sql`
     WITH recent_keys AS (
       SELECT DISTINCT user_id, question_id
       FROM test_questions
-      WHERE created_at BETWEEN NOW() - INTERVAL '20 minutes' AND NOW() - INTERVAL '5 minutes'
+      WHERE created_at BETWEEN NOW() - INTERVAL '30 minutes' AND NOW() - INTERVAL '5 minutes'
         AND question_id IS NOT NULL AND is_correct IS NOT NULL
     ),
     expected AS (
       SELECT k.user_id, k.question_id, COUNT(*)::int AS real_total
       FROM recent_keys k
       JOIN test_questions tq
-        ON tq.user_id = k.user_id AND tq.question_id = k.question_id AND tq.is_correct IS NOT NULL
+        ON tq.user_id = k.user_id AND tq.question_id = k.question_id
+       AND tq.is_correct IS NOT NULL
+       AND tq.created_at < NOW() - INTERVAL '5 minutes'
       WHERE EXISTS (SELECT 1 FROM questions q WHERE q.id = k.question_id)
       GROUP BY k.user_id, k.question_id
     )
     SELECT COUNT(*) FILTER (
-             WHERE u.user_id IS NULL OR u.total_attempts IS DISTINCT FROM e.real_total
+             WHERE u.user_id IS NULL OR u.total_attempts < e.real_total
            )::int AS divergent
     FROM expected e
     LEFT JOIN user_question_history_v2 u USING (user_id, question_id)
@@ -2466,7 +2483,7 @@ export const RULE_STATS_PARIDAD_DIVERGENCE: AlertRule<{ divergent: number }> = {
         `  - Revisar deploys recientes del outbox-processor / handlers.`,
       metadata: {
         divergent: n,
-        windowMin: '5-20',
+        windowMin: '5-30',
         table: 'user_question_history_v2',
       },
       fingerprint: 'stats_paridad_divergence',
@@ -2705,23 +2722,32 @@ export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
 export const RULE_SAVE_RECONCILIATION: AlertRule<{ answered: number; saved: number }> = {
   name: 'save_reconciliation',
   severity: 'critical',
+  // Recalibrado 13/07 (anti falso-positivo): era ventana 15 min + ratio <50%.
+  // En operación normal `saved` sigue a `answered` y a veces lo SUPERA (examen en
+  // batch, eventos duplicados) — el ratio hora a hora observado es 70-100%. En
+  // ventanas cortas de 15 min bajaba de 50% por lag de la cola async / 403 de
+  // límite de dispositivo (respondida pero no guardada = esperado) / horas
+  // nocturnas de poco tráfico → CRITICAL falsos que inundaban la bandeja. La
+  // ventana de 60 min promedia ese ruido; el hueco C1 (0 guardadas = 0%) sigue
+  // disparando de sobra con el umbral <25%.
   query: sql`
     SELECT
-      (SELECT COUNT(*)::int FROM user_interactions WHERE event_type='test_answer_selected' AND created_at > NOW() - INTERVAL '15 minutes') AS answered,
-      (SELECT COUNT(*)::int FROM test_questions WHERE created_at > NOW() - INTERVAL '15 minutes') AS saved
+      (SELECT COUNT(*)::int FROM user_interactions WHERE event_type='test_answer_selected' AND created_at > NOW() - INTERVAL '60 minutes') AS answered,
+      (SELECT COUNT(*)::int FROM test_questions WHERE created_at > NOW() - INTERVAL '60 minutes') AS saved
   `,
   shouldFire: (rows) => {
     const a = rows[0]?.answered ?? 0;
     const s = rows[0]?.saved ?? 0;
-    return a > 30 && s < a * 0.5;
+    return a > 60 && s < a * 0.25;
   },
   buildNotification: (rows) => {
     const a = rows[0]?.answered ?? 0;
     const s = rows[0]?.saved ?? 0;
+    const pct = a > 0 ? Math.round((s / a) * 100) : 0;
     return {
-      title: `⚠️ Las respuestas NO se guardan — ${a} respondidas, solo ${s} guardadas (15 min)`,
-      body: `Pipeline de guardado ROTO: los clientes responden (${a} eventos test_answer_selected) pero solo ${s} filas llegaron a test_questions. Clase de bug del hueco C1 (07-04, tests no creados). Investigar creación de tests (client → /api/v2/tests) y /api/test/save-answer. Verificar que el cliente NO usa supabase.from directo. Memoria: project_hueco_c1_perdida_tests_recuperacion.`,
-      metadata: { answered: a, saved: s },
+      title: `⚠️ Las respuestas NO se guardan — ${a} respondidas, solo ${s} guardadas en 60 min (${pct}%)`,
+      body: `Pipeline de guardado ROTO: en 60 min hubo ${a} eventos test_answer_selected (cliente responde) pero solo ${s} filas llegaron a test_questions (${pct}%). En operación normal ese ratio es 70-100%; un ${pct}% sostenido durante 1h es la clase de bug del hueco C1 (07-04, tests no creados) — NO ruido de ventana corta. Investigar creación de tests (client → /api/v2/tests) y /api/v2/answer-and-save. Verificar que el cliente NO usa supabase.from directo. Memoria: project_hueco_c1_perdida_tests_recuperacion.`,
+      metadata: { answered: a, saved: s, windowMin: 60 },
       fingerprint: 'save_reconciliation',
     };
   },
