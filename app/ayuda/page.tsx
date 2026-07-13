@@ -4,7 +4,11 @@ import Link from 'next/link'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
-export const revalidate = 3600 // Revalidar cada hora
+// on-demand (13/07/2026): NO prerenderizar en build — el índice hacía una query a
+// RDS en build-time (ISR) y un CONNECT_TIMEOUT tumbaba el deploy entero (mismo patrón
+// que /leyes/[law]). force-dynamic = se renderiza on-demand (SSR + cache CloudFront),
+// sin pegar a RDS en build. Coherente con /ayuda/[slug], que ya es force-dynamic.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Centro de Ayuda - Vence | Preparacion de Oposiciones',
