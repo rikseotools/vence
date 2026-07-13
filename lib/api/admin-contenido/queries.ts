@@ -14,6 +14,8 @@ import { sql } from 'drizzle-orm'
 
 export { epigrafeBadge, EPIGRAFE_TONE_CLS } from './epigrafeBadge'
 export type { EpigrafeTone, EpigrafeCounts } from './epigrafeBadge'
+export { coverageBadge, COVERAGE_TONE_CLS } from './coverageBadge'
+export type { CoverageTone, CoverageCounts } from './coverageBadge'
 
 function rows<T>(res: unknown): T[] {
   return res as unknown as T[]
@@ -57,6 +59,13 @@ export interface ContenidoRow {
   epi_provisional: number
   epi_stale: number
   epi_never: number
+  // Cobertura de artículos: artículos que están en el topic_scope con contenido
+  // real (no derogados/vacíos) pero 0 preguntas activas → al usuario nunca le
+  // salen en tests aunque el tema en conjunto sí tenga preguntas (caso M/SMS
+  // Tema 7). arts_sin_preguntas = total de esos artículos; temas_sin_cobertura =
+  // en cuántos temas distintos aparecen.
+  arts_sin_preguntas: number
+  temas_sin_cobertura: number
 }
 
 
@@ -112,6 +121,29 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
         count(*) FILTER (WHERE ev.effective_state = 'never_sourced')::int         AS epi_never
       FROM topic_epigrafe_verification_effective ev
       GROUP BY ev.position_type
+    ),
+    -- Cobertura de artículos (hueco OCULTO tipo M/SMS Tema 7): artículos en scope
+    -- con contenido real pero 0 preguntas, PERO solo en temas que están MAYORMENTE
+    -- cubiertos a nivel de artículo (≥60%) — el patrón "casi terminado, faltan un
+    -- puñado". NO cuenta oposiciones poco desarrolladas (scope de leyes enteras con
+    -- cobertura dispersa) — eso ya lo señalan las columnas 🔴/🟡. Excluye derogados.
+    cov AS (
+      SELECT pt, sum(n_content - n_cov)::int AS arts_sin_preguntas, count(*)::int AS temas_sin_cobertura
+      FROM (
+        SELECT tp.position_type AS pt, tp.id AS tid,
+               count(*)::int AS n_content,
+               count(*) FILTER (WHERE EXISTS (
+                 SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov
+        FROM topic_scope ts
+        JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
+        JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
+        JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+        WHERE length(coalesce(a.content, '')) > 40 AND a.content NOT ILIKE '%derogado%'
+          AND a.article_number ~ '^[0-9]+$'
+        GROUP BY tp.position_type, tp.id
+      ) ta
+      WHERE n_content >= 4 AND n_cov < n_content AND n_cov::float / n_content >= 0.6
+      GROUP BY pt
     )
     SELECT
       tc.slug, tc.nombre, tc.short_name,
@@ -130,6 +162,8 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       COALESCE(max(e.epi_provisional), 0)::int                                   AS epi_provisional,
       COALESCE(max(e.epi_stale), 0)::int                                         AS epi_stale,
       COALESCE(max(e.epi_never), 0)::int                                         AS epi_never,
+      COALESCE(max(cv.arts_sin_preguntas), 0)::int                               AS arts_sin_preguntas,
+      COALESCE(max(cv.temas_sin_cobertura), 0)::int                              AS temas_sin_cobertura,
       CASE
         WHEN max(v.plazas_libres) IS NULL THEN 'sin_verificar'
         WHEN max(v.plazas_libres) > 0
@@ -140,6 +174,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
     LEFT JOIN user_counts uc ON uc.pt = replace(tc.slug, '-', '_')
     LEFT JOIN vend v ON v.slug = tc.slug
     LEFT JOIN epi e ON e.pt = replace(tc.slug, '-', '_')
+    LEFT JOIN cov cv ON cv.pt = replace(tc.slug, '-', '_')
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC
@@ -206,4 +241,62 @@ export async function getEpigrafeDetail(slug: string): Promise<EpigrafeDetail> {
     ORDER BY t.topic_number
   `)
   return { success: true, slug, temas: rows<EpigrafeDetailRow>(res) }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drill-down de cobertura de artículos: qué artículos concretos están en el
+// scope con contenido pero 0 preguntas (por tema), para el modal de /admin/contenido.
+
+export interface CoverageDetailRow {
+  topic_number: number
+  title: string | null
+  ley: string
+  article_number: string
+  preview: string | null
+}
+
+export interface CoverageDetail {
+  success: true
+  slug: string
+  articulos: CoverageDetailRow[]
+}
+
+export async function getArticleCoverageDetail(slug: string): Promise<CoverageDetail> {
+  const db = getDb()
+  const pt = slug.replace(/-/g, '_')
+  const res = await db.execute(sql`
+    WITH qual AS (
+      -- temas mayormente cubiertos a nivel de artículo (≥60%) con huecos: mismo
+      -- criterio que la CTE cov de la columna.
+      SELECT tp.id AS tid
+      FROM topic_scope ts
+      JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
+      JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
+      JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+      WHERE tp.position_type = ${pt}
+        AND length(coalesce(a.content, '')) > 40 AND a.content NOT ILIKE '%derogado%'
+        AND a.article_number ~ '^[0-9]+$'
+      GROUP BY tp.id
+      HAVING count(*) >= 4
+         AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) < count(*)
+         AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::float / count(*) >= 0.6
+    )
+    SELECT
+      tp.topic_number,
+      tp.title,
+      l.short_name                       AS ley,
+      a.article_number,
+      left(regexp_replace(a.content, '\\s+', ' ', 'g'), 90) AS preview
+    FROM topic_scope ts
+    JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active AND tp.id IN (SELECT tid FROM qual)
+    JOIN laws l ON l.id = ts.law_id
+    JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
+    JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+    WHERE length(coalesce(a.content, '')) > 40
+      AND a.content NOT ILIKE '%derogado%'
+      AND a.article_number ~ '^[0-9]+$'
+      AND NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)
+    ORDER BY tp.topic_number, (a.article_number)::int
+  `)
+  return { success: true, slug, articulos: rows<CoverageDetailRow>(res) }
 }

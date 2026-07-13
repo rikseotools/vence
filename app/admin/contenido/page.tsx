@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { epigrafeBadge, EPIGRAFE_TONE_CLS } from '@/lib/api/admin-contenido/epigrafeBadge'
+import { coverageBadge, COVERAGE_TONE_CLS } from '@/lib/api/admin-contenido/coverageBadge'
 
 type Vendibilidad = 'vendible' | 'no_vendible' | 'sin_verificar'
 
@@ -27,6 +28,8 @@ interface ContenidoRow {
   epi_provisional: number
   epi_stale: number
   epi_never: number
+  arts_sin_preguntas: number
+  temas_sin_cobertura: number
 }
 
 interface EpigrafeDetailRow {
@@ -36,6 +39,14 @@ interface EpigrafeDetailRow {
   effective_state: string
   note: string | null
   verified_at: string | null
+}
+
+interface CoverageDetailRow {
+  topic_number: number
+  title: string | null
+  ley: string
+  article_number: string
+  preview: string | null
 }
 
 interface Overview {
@@ -135,6 +146,30 @@ export default function ContenidoPage() {
       setEpiDetail([])
     } finally {
       setEpiLoading(false)
+    }
+  }, [])
+
+  // Drill-down de cobertura de artículos: modal con los artículos en scope sin preguntas.
+  const [covSlug, setCovSlug] = useState<string | null>(null)
+  const [covNombre, setCovNombre] = useState<string>('')
+  const [covDetail, setCovDetail] = useState<CoverageDetailRow[] | null>(null)
+  const [covLoading, setCovLoading] = useState(false)
+
+  const openCov = useCallback(async (slug: string, nombre: string) => {
+    setCovSlug(slug)
+    setCovNombre(nombre)
+    setCovDetail(null)
+    setCovLoading(true)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await adminFetch(`/api/admin/contenido/cobertura/${slug}`, { headers })
+      const json = await res.json()
+      setCovDetail(json.success ? json.articulos : [])
+    } catch (err) {
+      console.error('coverage detail error', err)
+      setCovDetail([])
+    } finally {
+      setCovLoading(false)
     }
   }, [])
 
@@ -247,6 +282,12 @@ export default function ContenidoPage() {
                 >
                   Epígrafe
                 </th>
+                <th
+                  className="text-center px-2 py-2"
+                  title="Artículos que están en el temario (topic_scope) con contenido pero SIN ninguna pregunta → al usuario nunca le salen en los tests. Pincha para ver cuáles."
+                >
+                  Arts. s/preg.
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -298,6 +339,22 @@ export default function ContenidoPage() {
                             onClick={() => openEpi(o.slug, o.short_name || o.nombre || o.slug)}
                             title={`${b.title} — pincha para el detalle`}
                             className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap hover:ring-2 hover:ring-blue-400 ${EPIGRAFE_TONE_CLS[b.tone]}`}
+                          >
+                            {b.label}
+                          </button>
+                        )
+                      })()}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {(() => {
+                        const b = coverageBadge(o)
+                        return (
+                          <button
+                            type="button"
+                            disabled={o.arts_sin_preguntas === 0}
+                            onClick={() => openCov(o.slug, o.short_name || o.nombre || o.slug)}
+                            title={`${b.title}${o.arts_sin_preguntas ? ' — pincha para ver cuáles' : ''}`}
+                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${o.arts_sin_preguntas ? 'hover:ring-2 hover:ring-blue-400' : 'cursor-default'} ${COVERAGE_TONE_CLS[b.tone]}`}
                           >
                             {b.label}
                           </button>
@@ -376,6 +433,57 @@ export default function ContenidoPage() {
             )}
             {!epiLoading && epiDetail && epiDetail.length === 0 && (
               <p className="text-gray-500">Sin temas activos.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {covSlug && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setCovSlug(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg max-w-3xl w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">📄 Artículos sin preguntas · {covNombre}</h2>
+              <button
+                onClick={() => setCovSlug(null)}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Artículos que están en el temario (topic_scope) con contenido real pero <strong>0 preguntas activas</strong>: al usuario nunca le salen en los tests aunque el tema tenga preguntas. Excluye derogados. Solución: generar preguntas ancladas al texto del artículo con doble auditoría ciega.
+            </p>
+            {covLoading && <p className="text-gray-500">Cargando…</p>}
+            {!covLoading && covDetail && (
+              <ul className="space-y-2">
+                {covDetail.map((a) => (
+                  <li
+                    key={`${a.topic_number}-${a.ley}-${a.article_number}`}
+                    className="border border-gray-100 dark:border-gray-800 rounded p-2"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-gray-400">T{a.topic_number}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                        {a.ley} art. {a.article_number}
+                      </span>
+                      {a.title && <span className="text-xs text-gray-500 dark:text-gray-400">{a.title}</span>}
+                    </div>
+                    {a.preview && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{a.preview}…</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!covLoading && covDetail && covDetail.length === 0 && (
+              <p className="text-gray-500">Ningún artículo con contenido sin preguntas. 🎉</p>
             )}
           </div>
         </div>
