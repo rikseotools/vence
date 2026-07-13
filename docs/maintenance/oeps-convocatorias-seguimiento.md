@@ -151,6 +151,28 @@ WHERE slug ILIKE '%<palabra-clave>%' OR nombre ILIKE '%<cuerpo>%';
 ```
 Si existe → enlazar (`UPDATE oep_detection_signals SET oposicion_id=…`) + enriquecer, y anotar el gap del matcher. Si de verdad no existe → catalogar (§10), sea del tipo que sea. **Nunca** se descarta un proceso nuevo real por su tipo (bolsa/PI/cuerpo raro): eso es scope subjetivo (ver arriba).
 
+### ⚠️ La identidad real de una señal `pag_empleo`/agregador está en `raw_extraction`, NO en el label (aprendizaje 13/07/2026)
+
+El `signal_summary`/`detected_oposicion_name` de las señales del agregador (PAG/pag_empleo) trae un **rol genérico + CCAA** ("AUXILIAR DE ADMINISTRACION (Andalucía)", "SUPERIOR FACULTATIVO (Murcia)"), **sin la entidad**. Buscar/enlazar la fila por ese label lleva a **falsos enlaces** a cuerpos autonómicos/locales que NO son. La entidad exacta vive en el JSON `raw_extraction`:
+
+```sql
+SELECT raw_extraction->'oep'->>'organismo'      AS organismo,   -- p.ej. "Universidad Internacional de Andalucía"
+       raw_extraction->'oep'->>'name'           AS cuerpo,
+       raw_extraction->'oep'->>'positionGroup'  AS grupo,
+       raw_extraction->'match'->>'admin'        AS admin         -- Universidad | Autonómica | Local
+FROM oep_detection_signals WHERE id = '<sig>';
+```
+
+**Casos reales 13/07/2026** (todos habrían enlazado MAL por el label):
+- "AUXILIAR DE ADMINISTRACION (Andalucía)" → organismo = **Universidad Internacional de Andalucía** (NO la Junta).
+- "TÉCNICOS AUXILIARES DE ARCHIVOS Y BIBLIOTECAS (Andalucía)" → **Universidad de Sevilla** (NO el cuerpo de la Junta).
+- "AUXILIAR DE ARCHIVOS Y BIBLIOTECAS (Murcia)" → **Universidad de Murcia** (NO la CARM).
+- "Puesto de plantilla (promoción interna) (CyL)" → **Ayuntamiento de Santa Marta de Tormes**.
+
+**Regla:** identidad = **(cuerpo × organismo)** del `raw_extraction`, nunca el label. Enlazar solo si coincide ámbito+entidad; catalogar por el organismo real si no hay fila. Mismo principio de identidad-estructurada que el matcher de competidores (Universidad ≠ Autonómica ≠ Local nunca emparejan). Las `pag_empleo`/`regional_scan` traen además `plazas`, `estado`, `fechaInscripcionFin` y `positionGroup` estructurados (del agregador oficial / boletín) → catalogar con esos campos captura el dato sin re-fetch.
+
+> **Gotcha SQL al cerrar:** `oep_detection_signals.reviewed_by` es **UUID** (no texto) → pasar el user_id admin (falla `22P02` si le pasas `'claude:oep-review'`); la etiqueta va en `admin_notes`. Y `oposiciones` **no** tiene columnas `region` ni `updated_at` (la región se deriva de `administracion`/`nombre`).
+
 ## 2. Leer la pagina de seguimiento
 
 Para cada oposicion con cambio, usar WebFetch en la `seguimiento_url` para extraer:
