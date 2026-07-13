@@ -2,6 +2,7 @@
 // Guarda en localStorage primero, sincroniza con el servidor sin bloquear la UI.
 // NUNCA descarta respuestas por auth — las mantiene hasta que se envíen con éxito.
 import { logClientError } from '@/lib/logClientError'
+import { emitClientEvent } from '@/lib/observability/client'
 import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
 
 const QUEUE_KEY = 'vence_answer_queue'
@@ -114,11 +115,28 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
         window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
       }
 
-      logClientError('/api/v2/answer-and-save', new Error(`403 Forbidden: ${JSON.stringify(errorBody).slice(0, 200)}`), {
-        component: 'answerSaveQueue syncOne 403',
-        userId: extractUserId(answer),
-        severity: 'info',
-      })
+      // Un 403 de LÍMITE (dispositivos/diario) es una respuesta ESPERADA: el usuario
+      // ve un modal. NO es un error → se emite como `usage_limit_hit` (info) para
+      // CONSERVAR visibilidad (cuántos topan el límite) SIN disparar
+      // RULE_CLIENT_ERROR_SPIKE (que cuenta 'client_error'). Antes iba a logClientError
+      // → CRITICAL falsos recurrentes (misma clase que el flood de 401). Un 403 SIN
+      // señal de límite (raro) SÍ se loguea como error real (no lo enmascaramos).
+      const isUsageLimit = Boolean(errorBody.deviceLimitReached || errorBody.dailyLimitReached) ||
+        /(l[íi]mite|dispositivo|alcanzado)/i.test(JSON.stringify(errorBody))
+      if (isUsageLimit) {
+        emitClientEvent({
+          severity: 'info',
+          eventType: 'usage_limit_hit',
+          endpoint: '/api/v2/answer-and-save',
+          errorMessage: `403: ${JSON.stringify(errorBody).slice(0, 200)}`,
+          metadata: { component: 'answerSaveQueue syncOne 403', userId: extractUserId(answer) },
+        })
+      } else {
+        logClientError('/api/v2/answer-and-save', new Error(`403 inesperado (sin señal de límite): ${JSON.stringify(errorBody).slice(0, 200)}`), {
+          component: 'answerSaveQueue syncOne 403 unexpected',
+          userId: extractUserId(answer),
+        })
+      }
       // Marcar como éxito para que flush() la saque de la cola.
       return true
     }

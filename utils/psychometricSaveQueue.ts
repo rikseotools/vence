@@ -2,6 +2,7 @@
 // Mismo patrón que answerSaveQueue pero usa /api/answer/psychometric
 
 import { logClientError } from '@/lib/logClientError'
+import { emitClientEvent } from '@/lib/observability/client'
 
 const QUEUE_KEY = 'vence_psychometric_queue'
 const MAX_RETRIES = 3
@@ -93,6 +94,20 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
     // endpoint no los devolvía → señal de que el 403 no venía del gate esperado).
     const errorBody = await response.text().catch(() => '')
     if (response.status === 401) return false // token caducado → se reintenta
+    // 403 de LÍMITE (dispositivos/diario) = respuesta esperada (el usuario ve un
+    // modal): visibilidad como `usage_limit_hit` (info), NO como error → no dispara
+    // RULE_CLIENT_ERROR_SPIKE. Un 403 SIN señal de límite cae al logClientError de
+    // abajo (señal real, como avisaba el comentario histórico de esta cola).
+    if (response.status === 403 && /(l[íi]mite|dispositivo|alcanzado|dailyLimit|deviceLimit)/i.test(errorBody)) {
+      emitClientEvent({
+        severity: 'info',
+        eventType: 'usage_limit_hit',
+        endpoint: '/api/answer/psychometric',
+        errorMessage: `403: ${errorBody.slice(0, 200)}`,
+        metadata: { component: 'psychometricSaveQueue syncOne 403' },
+      })
+      return false
+    }
     logClientError(
       '/api/answer/psychometric',
       new Error(`${response.status} ${response.statusText} retry #${answer.retries}: ${errorBody.slice(0, 200)}`),

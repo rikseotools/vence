@@ -81,6 +81,13 @@ export type ClientEventType =
   | 'intent_unfulfilled'
   | 'web_vital_degraded'
   | 'custom'
+  // Límite de uso alcanzado (dispositivos / diario) al guardar una respuesta. Es
+  // una respuesta ESPERADA del servidor (403; el usuario ve un modal), NO un error.
+  // event_type propio para CONSERVAR visibilidad (cuántos usuarios topan el límite)
+  // SIN disparar RULE_CLIENT_ERROR_SPIKE (que solo cuenta unhandled_error/
+  // unhandled_rejection/react_error_boundary/client_error). Ver
+  // utils/answerSaveQueue.ts + utils/psychometricSaveQueue.ts.
+  | 'usage_limit_hit'
   // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
   | 'tts_session_start'
   | 'tts_session_end'
