@@ -12,6 +12,9 @@
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
+export { epigrafeBadge, EPIGRAFE_TONE_CLS } from './epigrafeBadge'
+export type { EpigrafeTone, EpigrafeCounts } from './epigrafeBadge'
+
 function rows<T>(res: unknown): T[] {
   return res as unknown as T[]
 }
@@ -44,7 +47,18 @@ export interface ContenidoRow {
   vendibilidad: Vendibilidad
   plazas_libres: number | null
   exam_date: string | null
+  // Epígrafe (Sistema 2): literalidad del epígrafe de BD vs el temario oficial
+  // de la convocatoria. Agregado por oposición desde la vista
+  // topic_epigrafe_verification_effective (cubre TODOS los temas activos; los no
+  // verificados salen never_sourced). Denominador = epi_topics (temas activos).
+  epi_topics: number
+  epi_literal: number
+  epi_drift: number
+  epi_provisional: number
+  epi_stale: number
+  epi_never: number
 }
+
 
 export interface ContenidoOverview {
   success: true
@@ -84,6 +98,20 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
     -- Vendibilidad: campos temporales resueltos desde la convocatoria vigente.
     vend AS (
       SELECT slug, plazas_libres, exam_date FROM oposiciones_ssot
+    ),
+    -- Epígrafe (S2): agrega el estado efectivo por oposición. La vista cubre
+    -- TODOS los temas activos (los no verificados = never_sourced).
+    epi AS (
+      SELECT
+        ev.position_type AS pt,
+        count(*)::int                                                       AS epi_topics,
+        count(*) FILTER (WHERE ev.effective_state = 'verified_literal')::int      AS epi_literal,
+        count(*) FILTER (WHERE ev.effective_state = 'drift_detected')::int        AS epi_drift,
+        count(*) FILTER (WHERE ev.effective_state = 'provisional_anterior')::int  AS epi_provisional,
+        count(*) FILTER (WHERE ev.effective_state = 'stale')::int                 AS epi_stale,
+        count(*) FILTER (WHERE ev.effective_state = 'never_sourced')::int         AS epi_never
+      FROM topic_epigrafe_verification_effective ev
+      GROUP BY ev.position_type
     )
     SELECT
       tc.slug, tc.nombre, tc.short_name,
@@ -96,6 +124,12 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       COALESCE(max(uc.premium), 0)::int                                          AS premium,
       max(v.plazas_libres)::int                                                  AS plazas_libres,
       max(v.exam_date)::text                                                     AS exam_date,
+      COALESCE(max(e.epi_topics), 0)::int                                        AS epi_topics,
+      COALESCE(max(e.epi_literal), 0)::int                                       AS epi_literal,
+      COALESCE(max(e.epi_drift), 0)::int                                         AS epi_drift,
+      COALESCE(max(e.epi_provisional), 0)::int                                   AS epi_provisional,
+      COALESCE(max(e.epi_stale), 0)::int                                         AS epi_stale,
+      COALESCE(max(e.epi_never), 0)::int                                         AS epi_never,
       CASE
         WHEN max(v.plazas_libres) IS NULL THEN 'sin_verificar'
         WHEN max(v.plazas_libres) > 0
@@ -105,6 +139,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
     FROM tema_counts tc
     LEFT JOIN user_counts uc ON uc.pt = replace(tc.slug, '-', '_')
     LEFT JOIN vend v ON v.slug = tc.slug
+    LEFT JOIN epi e ON e.pt = replace(tc.slug, '-', '_')
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC
@@ -131,4 +166,44 @@ export interface ContenidoCount {
 export async function getContenidoCount(): Promise<ContenidoCount> {
   const { oposiciones } = await getContenidoOverview()
   return { success: true, count: oposiciones.filter((o) => o.en_desarrollo > 0).length }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drill-down de epígrafe (S2): detalle tema a tema de una oposición para el
+// modal de /admin/contenido. Muestra el epígrafe de BD + su estado efectivo +
+// hallazgos + cuándo/contra qué convocatoria se verificó.
+
+export interface EpigrafeDetailRow {
+  topic_number: number
+  title: string | null
+  epigrafe: string | null
+  effective_state: string
+  note: string | null
+  verified_at: string | null
+}
+
+export interface EpigrafeDetail {
+  success: true
+  slug: string
+  temas: EpigrafeDetailRow[]
+}
+
+export async function getEpigrafeDetail(slug: string): Promise<EpigrafeDetail> {
+  const db = getDb()
+  const pt = slug.replace(/-/g, '_')
+  const res = await db.execute(sql`
+    SELECT
+      t.topic_number,
+      t.title,
+      t.epigrafe,
+      ev.effective_state,
+      b.findings->>'note'        AS note,
+      b.verified_at::text        AS verified_at
+    FROM topics t
+    JOIN topic_epigrafe_verification_effective ev ON ev.topic_id = t.id
+    LEFT JOIN topic_epigrafe_verification b ON b.topic_id = t.id
+    WHERE t.position_type = ${pt} AND t.is_active = true
+    ORDER BY t.topic_number
+  `)
+  return { success: true, slug, temas: rows<EpigrafeDetailRow>(res) }
 }

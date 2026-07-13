@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { epigrafeBadge, EPIGRAFE_TONE_CLS } from '@/lib/api/admin-contenido/epigrafeBadge'
 
 type Vendibilidad = 'vendible' | 'no_vendible' | 'sin_verificar'
 
@@ -20,6 +21,21 @@ interface ContenidoRow {
   vendibilidad: Vendibilidad
   plazas_libres: number | null
   exam_date: string | null
+  epi_topics: number
+  epi_literal: number
+  epi_drift: number
+  epi_provisional: number
+  epi_stale: number
+  epi_never: number
+}
+
+interface EpigrafeDetailRow {
+  topic_number: number
+  title: string | null
+  epigrafe: string | null
+  effective_state: string
+  note: string | null
+  verified_at: string | null
 }
 
 interface Overview {
@@ -73,6 +89,16 @@ function vendible(o: ContenidoRow): { label: string; cls: string; title: string 
   }
 }
 
+// Estado efectivo por tema (drill-down de epígrafe).
+const EPI_STATE_UI: Record<string, { label: string; cls: string }> = {
+  verified_literal: { label: '✓ literal', cls: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' },
+  drift_detected: { label: '⚠ drift', cls: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
+  stale: { label: '⚠ stale', cls: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' },
+  provisional_anterior: { label: '✎ editorial/prov.', cls: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' },
+  never_sourced: { label: '— sin verificar', cls: 'bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400' },
+  default: { label: '?', cls: 'bg-gray-100 dark:bg-gray-700 text-gray-500' },
+}
+
 const fmt = (n: number) => new Intl.NumberFormat('es-ES').format(n)
 const pct = (o: ContenidoRow) => (o.usuarios > 0 ? o.premium / o.usuarios : 0)
 
@@ -88,6 +114,29 @@ export default function ContenidoPage() {
   const [filter, setFilter] = useState<Filter>('todas')
   const [sortKey, setSortKey] = useState<SortKey>('usuarios')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  // Drill-down de epígrafe (S2): modal con el detalle tema a tema.
+  const [epiSlug, setEpiSlug] = useState<string | null>(null)
+  const [epiNombre, setEpiNombre] = useState<string>('')
+  const [epiDetail, setEpiDetail] = useState<EpigrafeDetailRow[] | null>(null)
+  const [epiLoading, setEpiLoading] = useState(false)
+
+  const openEpi = useCallback(async (slug: string, nombre: string) => {
+    setEpiSlug(slug)
+    setEpiNombre(nombre)
+    setEpiDetail(null)
+    setEpiLoading(true)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await adminFetch(`/api/admin/contenido/epigrafe/${slug}`, { headers })
+      const json = await res.json()
+      setEpiDetail(json.success ? json.temas : [])
+    } catch (err) {
+      console.error('epigrafe detail error', err)
+      setEpiDetail([])
+    } finally {
+      setEpiLoading(false)
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -192,6 +241,12 @@ export default function ContenidoPage() {
                 <Th k="finos" label="🟡" cls="text-right" title="temas con <20 preguntas" />
                 <Th k="ok" label="🟢" cls="text-right" title="temas con ≥20 preguntas" />
                 <Th k="total_preguntas" label="Preguntas" cls="text-right" />
+                <th
+                  className="text-center px-2 py-2"
+                  title="Literalidad del epígrafe de BD vs el temario oficial de la convocatoria (Sistema 2). Pincha para el detalle tema a tema."
+                >
+                  Epígrafe
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -234,6 +289,21 @@ export default function ContenidoPage() {
                     </td>
                     <td className="px-2 py-2 text-right text-green-600 dark:text-green-400">{o.ok || '·'}</td>
                     <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{fmt(o.total_preguntas)}</td>
+                    <td className="px-2 py-2 text-center">
+                      {(() => {
+                        const b = epigrafeBadge(o)
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => openEpi(o.slug, o.short_name || o.nombre || o.slug)}
+                            title={`${b.title} — pincha para el detalle`}
+                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap hover:ring-2 hover:ring-blue-400 ${EPIGRAFE_TONE_CLS[b.tone]}`}
+                          >
+                            {b.label}
+                          </button>
+                        )
+                      })()}
+                    </td>
                   </tr>
                 )
               })}
@@ -242,6 +312,74 @@ export default function ContenidoPage() {
         </div>
       )}
       {!loading && rows.length === 0 && <p className="text-gray-500 mt-4">Sin oposiciones en este filtro.</p>}
+
+      {epiSlug && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setEpiSlug(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg max-w-3xl w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">📑 Epígrafe · {epiNombre}</h2>
+              <button
+                onClick={() => setEpiSlug(null)}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Literalidad del epígrafe de BD vs el temario oficial de la convocatoria (Sistema 2).
+              <span className="text-green-600 dark:text-green-400"> ✓ literal</span> ·
+              <span className="text-amber-600 dark:text-amber-400"> ⚠ drift/stale</span> ·
+              <span className="text-blue-600 dark:text-blue-400"> ✎ editorial</span> ·
+              <span className="text-gray-500"> — sin verificar</span>.
+            </p>
+            {epiLoading && <p className="text-gray-500">Cargando…</p>}
+            {!epiLoading && epiDetail && (
+              <ul className="space-y-2">
+                {epiDetail.map((t) => {
+                  const st = EPI_STATE_UI[t.effective_state] ?? EPI_STATE_UI.default
+                  return (
+                    <li
+                      key={t.topic_number}
+                      className="border border-gray-100 dark:border-gray-800 rounded p-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-semibold text-gray-400 w-8 shrink-0">T{t.topic_number}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-gray-900 dark:text-white text-sm">{t.title}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${st.cls}`}>
+                              {st.label}
+                            </span>
+                            {t.verified_at && (
+                              <span className="text-xs text-gray-400">{t.verified_at.slice(0, 10)}</span>
+                            )}
+                          </div>
+                          {t.epigrafe && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t.epigrafe}</p>
+                          )}
+                          {t.note && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">↳ {t.note}</p>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {!epiLoading && epiDetail && epiDetail.length === 0 && (
+              <p className="text-gray-500">Sin temas activos.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
