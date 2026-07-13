@@ -114,7 +114,10 @@ async function cmdDump(pt) {
 }
 
 async function cmdRecord(pt, jsonPath) {
-  // consensus.json: { "<tema>": { "verdict": "literal"|"drift"|"provisional", "note": "...", "findings": {...} } }
+  // consensus.json: { "<tema>": { "verdict": "literal"|"drift"|"provisional", "note": "...",
+  //                                source_url?: "...", source_notes?: "...", "findings": {...} } }
+  // source_url = URL exacta de la fuente oficial de ese epígrafe (para re-verificación directa);
+  // source_notes = comentario libre del sourcing. Se guardan en topic_epigrafe_verification.
   const consensus = JSON.parse(fs.readFileSync(jsonPath, 'utf8'))
   const c = db(); await c.connect()
   try {
@@ -130,6 +133,12 @@ async function cmdRecord(pt, jsonPath) {
       const findings = JSON.stringify(v.findings || { note: v.note || null })
       await c.query(`SELECT record_epigrafe_verification($1,$2,$3,$4,$5::jsonb,$6)`,
         [tid, v.verdict, conv.id, programaHash, findings, v.verified_by || 'multi_agent'])
+      // Provenance de la fuente exacta (para re-verificación directa). Follow-up UPDATE
+      // para no tocar la firma de la función SQL. Solo si el consenso la aporta.
+      if (v.source_url || v.source_notes) {
+        await c.query(`UPDATE topic_epigrafe_verification SET source_url=$2, source_notes=$3 WHERE topic_id=$1`,
+          [tid, v.source_url || null, v.source_notes || null])
+      }
       ok++
     }
     console.log(`✅ registrados ${ok} temas${skipped.length ? ` | saltados: ${skipped.join(', ')}` : ''}`)

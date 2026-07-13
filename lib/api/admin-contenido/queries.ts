@@ -215,6 +215,10 @@ export interface EpigrafeDetailRow {
   effective_state: string
   note: string | null
   verified_at: string | null
+  // Provenance de la fuente exacta del epígrafe (Paso 1 / clonación) — para
+  // re-verificación directa. source_url = URL oficial; source_notes = comentario.
+  source_url: string | null
+  source_notes: string | null
 }
 
 export interface EpigrafeDetail {
@@ -233,7 +237,9 @@ export async function getEpigrafeDetail(slug: string): Promise<EpigrafeDetail> {
       t.epigrafe,
       ev.effective_state,
       b.findings->>'note'        AS note,
-      b.verified_at::text        AS verified_at
+      b.verified_at::text        AS verified_at,
+      b.source_url               AS source_url,
+      b.source_notes             AS source_notes
     FROM topics t
     JOIN topic_epigrafe_verification_effective ev ON ev.topic_id = t.id
     LEFT JOIN topic_epigrafe_verification b ON b.topic_id = t.id

@@ -39,6 +39,8 @@ interface EpigrafeDetailRow {
   effective_state: string
   note: string | null
   verified_at: string | null
+  source_url: string | null
+  source_notes: string | null
 }
 
 interface CoverageDetailRow {
@@ -423,6 +425,15 @@ export default function ContenidoPage() {
                           )}
                           {t.note && (
                             <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">↳ {t.note}</p>
+                          )}
+                          {t.source_url && (
+                            <p className="text-xs mt-1">
+                              <a href={t.source_url} target="_blank" rel="noopener noreferrer"
+                                 className="text-blue-600 dark:text-blue-400 hover:underline break-all">🔗 Fuente oficial del epígrafe</a>
+                            </p>
+                          )}
+                          {t.source_notes && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 italic">{t.source_notes}</p>
                           )}
                         </div>
                       </div>

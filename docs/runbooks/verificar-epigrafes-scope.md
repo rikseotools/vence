@@ -6,6 +6,17 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 
 > Complementa al manual `docs/maintenance/verificar-epigrafe-topic-scope.md` (la metodología de fondo). Este runbook es el **procedimiento operativo** del sistema de verificación con provenance.
 
+## Orden de los DOS pasos (DOCTRINA — no saltárselo)
+
+**Son dos pasos y van EN ESTE ORDEN. El Paso 1 es BLOQUEANTE: sin él no se hace el Paso 2.**
+
+1. **Paso 1 — Clonar el epígrafe oficial → BD (Sistema 2).** Traer el temario **LITERAL** de la fuente oficial (convocatoria / `programa_url`) a `topics.epigrafe` y dejarlo **registrado** (estado + fecha + hash de la convocatoria clonada) en `topic_epigrafe_verification`. Hasta que el epígrafe de la BD no esté confirmado como el oficial exacto (`verified_literal`), **NO se pasa al Paso 2** — comprobaríamos el scope contra una referencia posiblemente mal (el fallo T17: epígrafe paráfrasis).
+2. **Paso 2 — Comprobar BD epígrafe vs scope del tema (Sistema 1), tema a tema.** Solo cuando el epígrafe ya es de fiar.
+
+**Provenance del Paso 1** (queda anotado en BD con su fecha): si aparece **convocatoria nueva** → los epígrafes pasan a `outdated_convocatoria` → re-clonar y revisar por si cambió; si **no hay nueva** → vale el de la convocatoria anterior (`provisional_anterior`).
+
+> Gotcha: ~30% de los boletines GVA/DOGV no parsean en automático (SPA/PDF). Cuando `verify-epigrafe-literality dump` da `temario_parseado=0`, el hash SÍ se captura (drift futuro) pero la **clonación/confirmación se hace a mano** contra el DOGV oficial, tema a tema, antes del Paso 2.
+
 ## Modelo mental
 
 - Estado por tema en `topic_scope_verification`: `never_verified` → `verifying` → `verified_correct` | `verified_issues` → (`stale` si cambia el scope/epígrafe).
@@ -100,9 +111,13 @@ Por qué separados: meter la deuda de calidad en el email rojo de caídas genera
 
 **Despliegue del digest semanal** (infra, mismo patrón que health-digest): regla EventBridge Scheduler semanal → task ECS Fargate que corre `node scripts/content-quality-digest.cjs` con `DATABASE_URL`+`RESEND_API_KEY` desde SSM. Mientras no esté programado, corre a mano: `npm run digest:calidad` (o `DRY_RUN=1 npm run digest:calidad`).
 
-## Sistema 2 — Literalidad del epígrafe vs convocatoria (integrado en convocatorias/OEP)
+## Sistema 2 — Clonación del epígrafe oficial (convocatoria → BD)  *(antes «Literalidad del epígrafe»)* — integrado en convocatorias/OEP
+
+> **Es el PASO 1 (bloqueante).** Ver "Orden de los DOS pasos" arriba.
 
 Sistema **independiente pero relacionado** con el de scope. Pregunta: *"¿`topics.epigrafe` es el texto LITERAL del temario de la convocatoria vigente?"* (el fallo T17: epígrafe paráfrasis). Fuente = `convocatorias.programa_url` (por-convocatoria); detección = el seguimiento OEP existente, extendido al programa (`convocatorias.programa_last_hash`).
+
+**Provenance de la fuente exacta (columnas `topic_epigrafe_verification.source_url` + `source_notes`, desde 13/07):** al confirmar un epígrafe (Paso 1), se guarda la **URL exacta** del documento oficial del que se sacó + un comentario libre, para ir DIRECTO a la fuente en cada re-verificación (crítico para el ~30% de boletines no parseables). El `consensus.json` de `record` acepta `source_url` y `source_notes` por tema. Se muestran como enlace en el drill-down "Epígrafe" de `/admin/contenido`. Migración `20260713_epigrafe_source_url.sql`.
 
 **Estados** (`topic_epigrafe_verification` + vista `topic_epigrafe_verification_effective`): `never_sourced` / `verified_literal` / `drift_detected` / `provisional_anterior` / `stale` / `outdated_convocatoria` (derivado: la convocatoria vigente o su programa cambió).
 
@@ -122,6 +137,21 @@ node scripts/verify-epigrafe-literality.cjs record <position_type> /ruta/consens
 node scripts/verify-epigrafe-literality.cjs status <position_type>
 ```
 Tratar los `drift_detected`: coger el texto oficial literal del temario → **actualizar `topics.epigrafe`** (cambiarlo dispara el trigger → re-verificar S1 scope) → revalidar caché. Cuando **el radar/seguimiento detecta convocatoria nueva** (badge 🎯 OEPs), los epígrafes pasan a `outdated_convocatoria` → re-sourcing.
+
+### Clonación MANUAL cuando el boletín NO parsea (~30% de casos) — método probado
+
+Cuando `dump` da `temario_parseado=0` (los portales GVA/DOGV son SPA de JS y WebFetch no los lee), la clonación se hace **a mano contra el PDF PRIMARIO**. Método validado (subalterno_gva, 13/07):
+
+1. **Encuentra el PDF primario** (NO las páginas de sede/sumario, que son SPA): `WebSearch` acotado con `allowed_domains:["dogv.gva.es"]` (o `boe.es`) + la referencia de la convocatoria → devuelve la **URL directa del PDF** con patrón `dogv.gva.es/datos/AAAA/MM/DD/pdf/AAAA_NNNNN_es.pdf`. Ejemplo real: `…/2026/03/26/pdf/2026_8075_es.pdf` (conv. 80/26, DOGV núm. 10330).
+2. **Lee el PDF** (es legible, NO es SPA): `WebFetch` del PDF guarda el binario en local y devuelve la ruta → `Read` ese fichero con `pages:"1-N"`. El temario va en un **Anexo** al final (aquí, Anexo IV).
+3. **Compara VERBATIM** el temario oficial (Anexo) contra `topics.epigrafe` de la BD, tema a tema. Señal de literal correcto: mismos Títulos/Capítulos/Secciones. **Una ley nombrada SIN delimitar = ley entera** (contraste deliberado con las delimitadas del mismo tema → esto INFORMA el scope del Paso 2: p.ej. Ley 9/2003 y Decreto 42/2019 en subalterno_gva van completos).
+4. **Registra** con `record` un `consensus.json` de TODOS los temas: `verdict:"literal"` + **`source_url` = la URL EXACTA del PDF (con su nº de doc)** + `source_notes` con los identificadores (DOGV núm., fecha, convocatoria, ORDEN, Anexo, `programa_hash`) para re-verificación directa.
+
+**Gotchas del sourcing manual:**
+- `sede.gva.es/…` y `dogv.gva.es/…/sumari` = **SPA** → WebFetch devuelve solo el cascarón. Hay que ir al **PDF `/datos/…` directo** (WebSearch acotado al dominio lo encuentra).
+- `dump` captura el `programa_hash` **aunque no parsee** → el drift futuro se detecta igual (no pierdes la vigilancia).
+- Guarda SIEMPRE la URL del PDF **con su numeración** (`2026_8075`) en `source_url`: es el puntero durable para la próxima revisión — no re-buscar.
+- Es Paso 1: hasta que las N temas no queden `verified_literal`, **NO** se cierra el Paso 2 (scope).
 
 **Visibilidad (columna "Epígrafe" en `/admin/contenido`, desde 13/07):** por oposición, badge `X/Y` con color (🟢 todos literal · 🟡 drift/stale · 🔵 faltan por verificar · ⚪ `—` sin verificar) y, al pinchar, **modal tema a tema** (epígrafe BD + estado + hallazgo + fecha). Es el mapa de "qué falta": las oposiciones sin `dump`/`record` salen `—`. Helper puro `lib/api/admin-contenido/epigrafeBadge.ts`; agregación en `getContenidoOverview` (CTE `epi`); drill-down `getEpigrafeDetail` + `/api/admin/contenido/epigrafe/[slug]`. Cobertura al lanzar: 3/115 oposiciones. Detalle: memoria `project_epigrafe_verificacion_columna_admin`.
 
