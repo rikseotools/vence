@@ -276,6 +276,33 @@ El borrador debe incluir:
 - Si está arreglado o pendiente
 - Qué debe hacer el usuario (recargar, esperar, nada)
 
+### 📝 FORMATO OBLIGATORIO del mensaje (plantilla fija — no improvisar)
+
+Todo mensaje al usuario sigue SIEMPRE esta estructura:
+
+```
+Hola <Nombre>,
+
+Gracias por escribirnos.
+
+<cuerpo: 1-3 párrafos, separados por línea en blanco>
+
+<cierre cordial: "Cualquier otra duda, aquí estamos." / "Para lo que necesites, aquí estamos.">
+
+Un saludo
+Equipo de Vence
+```
+
+Reglas estrictas (de feedback de Manuel):
+- **Saludo:** `Hola <Nombre>,` — coma **DESPUÉS del nombre**, NO entre "Hola" y el nombre (es "Hola Rosa," no "Hola, Rosa" ni "Hola Rosa" sin coma). Es lo profesional. El `<Nombre>` es el **nombre real** del perfil (`user_profiles.full_name`, primer nombre) — NUNCA inventarlo ni derivarlo del email. Si el `full_name` está vacío o parece falso/derivado del email → usar `Hola,` a secas.
+- **Segunda línea SIEMPRE:** `Gracias por escribirnos.`
+- **Firma SIEMPRE:** dos líneas → `Un saludo` + `Equipo de Vence`.
+- **Sin guiones largos** (— o -) como conector; usar comas, dos puntos o frases separadas.
+- **Sin disculpas excesivas** ("perdón", "sentimos las molestias" repetido). Directo y cordial.
+- Verbo: "mejorar", nunca "pulir".
+- Párrafos separados por línea en blanco (el email respeta los saltos).
+- Un solo email por usuario aunque tenga varios feedbacks a la vez (agrupar; no enviar correos seguidos). Cerrar los demás en silencio (sin `message`).
+
 ## Paso 10: Enviar la respuesta y cerrar — `/api/v2/feedback/respond` (post-14/04/2026)
 
 > 🆕 **Post-refactor (14/04/2026):** usa el endpoint `POST /api/v2/feedback/respond`. Antes había que hacer 5 pasos manuales (INSERT message + INSERT notification_log + fetch send-support-email + cerrar conversation + cerrar feedback). Ahora **una sola llamada atómica** encapsula todo con garantías transaccionales.

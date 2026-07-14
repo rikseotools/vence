@@ -16,6 +16,25 @@
 
 ## Abiertas
 
+### 🟠 [ALTA — bug funcional] El endpoint de borrado de cuenta nunca completa (falta insertar `deleted_users_log`)
+- **Qué:** `DELETE /api/admin/delete-user` falla siempre con *"deleted_users_log row … is missing — insert it (with deletion_reason) before calling delete_user_account"*. `deleteUserData` (queries.ts:44-50) **exige** que la fila de auditoría exista antes de llamar a `public.delete_user_account(uuid)`, pero ni la ruta ni el flujo de "solicitar borrado desde perfil" la insertan → todo borrado admin requiere fallback manual por SQL.
+- **Por qué:** un usuario que pide borrar su cuenta no se borra por el panel; hay que meter mano en RDS. Rompe el derecho de supresión (RGPD) por la vía normal y obliga a intervención manual cada vez.
+- **Cómo:** insertar la fila `deleted_users_log` (original_user_id, email, plan_type, target_oposicion, registered_at, deletion_reason, requested_via='feedback') **dentro de la ruta** justo antes de `deleteUserData`, con los datos capturados del perfil. Idempotente (no duplicar si ya existe). Test que cubra el happy-path completo end-to-end. (Enlaza con memoria `feedback_delete_user_api_504_fallback`.)
+- **Estado:** detectado 14/07 al procesar feedback account_deletion `757d7f41` (anteromilan@gmail.com borrado a mano por SQL, con log de auditoría). Endpoint sin arreglar.
+
+### 🟡 [MEDIA — cobertura fina] Ampliar preguntas del Tema 8 de Aux. Administrativo SMS (Ley 4/1994 Murcia)
+- **Qué:** tras estrechar el scope del Tema 8 a los arts **9,10,11,12,25** de la Ley 4/1994 de Salud de la Región de Murcia (era 9-26, inflado), el tema queda con solo **8 preguntas activas**. Generar más ancladas a esos 5 artículos (Fines, Plan de Salud, Consejo de Salud Región, mapa sanitario, órganos del SMS).
+- **Por qué:** feedback de daluamva@gmail.com (premium, `22835b84`, 14/07) → tenía razón, el scope sobre-incluía Áreas de Salud/zona básica (materia del T7) y el régimen del SMS (T9/T12). Corregido y verificado (2 agentes + epígrafe literal). Ahora falta densidad de preguntas.
+- **Cabo de criterio (anotado):** los arts 20-21 (naturaleza/fines del SMS) se dejaron FUERA por lectura literal del epígrafe ("El SMS: **órganos**…"); si se detecta que el régimen jurídico del SMS no lo cubre ningún otro tema del programa, reconsiderar meterlos. Hoy: fuera.
+- **Cómo:** generar preguntas ancladas al texto de cada artículo (BORM/BOE-A-1994-22255) + doble auditoría ciega + `tech_approved`. Runbook `salud-contenido.md` (article_no_coverage) / `revisar-preguntas-con-agente.md`.
+- **Estado:** scope corregido y aplicado 14/07 (MV refrescada + revalidate), pendiente generar preguntas.
+
+### 🟡 [MEDIA — demanda de usuaria] Supuestos prácticos para Administrativo de la Comunidad de Madrid
+- **Qué:** crear supuestos prácticos (`exam_cases`) para `administrativo_madrid`. Hoy tiene **0** (el temario sí está: 47 temas, ~11.177 preguntas activas). Otras oposiciones ya los tienen (administrativo-seguridad-social 8, auxilio-judicial 8, auxiliar-administrativo-carm 6, administrativo_estado 2…).
+- **Por qué:** demanda directa — feedback de Raquel García Moyano (`garciamoyanoraquel7179@gmail.com`, free, usuaria activa con 26 tests hechos, opos `administrativo_madrid`, 13/07). El administrativo C1 lleva 2º ejercicio de supuesto práctico → contenido de conversión. Ya se le respondió que están "en elaboración".
+- **Cómo:** modelo `exam_cases` (`oposicion_type='administrativo_madrid'`, `case_title`, `is_active`). Anclar a fuente oficial (temario/normativa de la convocatoria de Madrid), nunca inventar. Doble auditoría antes de activar.
+- **Estado:** detectado 13/07 (triaje feedback), 0 supuestos, sin empezar.
+
 ### 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
 - **Qué:** `ujieres-cortes-generales` **catalogada** (⚪ `is_active=false`, nacional) sin temario ni tests. Construir para hacerla vendible.
 - **Por qué:** gap detectado por el radar de competidores (≥2: ADAMS, MAD, Opositatest, CET, Temarios…). **40 plazas turno libre, oposición pura** (2 tests de 100 preg: psicotécnico + temario → 100% nuestro formato). **Recorrido máximo:** convocatoria prevista ~mayo 2026, examen nov 2026–abr 2027. Requisito ESO (C2/AP). Psicotécnicos ya los tenemos; falta temario específico (17 temas, régimen de las Cortes Generales).
