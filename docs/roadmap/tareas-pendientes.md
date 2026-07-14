@@ -16,6 +16,18 @@
 
 ## Abiertas
 
+### 🔴 [URGENTE — prometido esta semana] Completar T14/T15 Aux. Admvo. Universidad de León
+- **Qué:** (1) **T15 "Estatuto del Estudiante Universitario (RD 1791/2010)"** — el temario oficial (BOE-A-2026-4150, Anexo II) lo pide **COMPLETO** (sin delimitar títulos), pero en BD solo hay **12 de ~65 artículos** con 7 preguntas → sincronizar el RD 1791/2010 entero desde el BOE + generar preguntas de los ~53 artículos que faltan. (2) **T14 "Normativa de matrícula y permanencia de la ULE"** — verificar que la normativa interna ULE está cargada al completo (hoy 5-8 arts, 7 preg).
+- **Por qué:** feedback `f326d13c` de Ana Llano (anais.llafe@gmail.com, **premium**, `auxiliar_administrativo_universidad_leon`, 14/07). Verificado contra el BOE oficial: tiene razón, están incompletos. **Se le prometió "a lo largo de esta semana" (NO se le avisa; solo cumplir el plazo).**
+- **Cómo:** sync RD 1791/2010 desde BOE (`monitoreo-boe-y-crear-leyes-nuevas.md`) → generar preguntas ancladas al texto + doble auditoría ciega + `tech_approved`. T14: localizar la normativa ULE oficial (interna, boe=null) y completarla.
+- **Estado:** detectado + verificado 14/07, sin empezar. Plazo: ~antes del 21/07.
+
+### 🔴 [URGENTE — examen ~17/07] Estrechar scope T14 Aux. Admvo. Aragón (VIII Convenio Colectivo PL Aragón)
+- **Qué:** T14 (`auxiliar_administrativo_aragon`, "Negociación laboral… convenios colectivos") escopa los **137 artículos ENTEROS** del VIII Convenio Colectivo PL Aragón (ley `28f62de0`), pero el epígrafe lo delimita a *"ámbito de aplicación **y** derechos y deberes del personal laboral"*. Resultado: **93/137 arts sin preguntas** (jubilación, pólizas, ropa de trabajo, anticipos, acción social…) que el usuario ve en gris y le generan alarma.
+- **Por qué urge:** feedback `310bb050` de Isabel B (isa91187@gmail.com, **premium**, examen en ~3 días desde 14/07). Ya respondida (que su temario no pide el convenio entero + estamos ajustando el filtro). Hay que cumplirlo YA para que no vea 93 arts vacíos.
+- **Cómo:** verify:scope contra el **BOA `BOA20230519011`** (la BD NO tiene título/capítulo del convenio → traer la estructura oficial) → identificar los artículos de "ámbito de aplicación" (art 1) + el título/capítulo de "derechos y deberes del personal laboral" → estrechar `topic_scope` a ese subconjunto (2 agentes, judgment-gate; NO quitar de más). NUNCA generar 93 preguntas de artículos fuera de programa.
+- **Estado:** detectado 14/07 (feedback Isabel), scope inflado confirmado, pendiente estrechar contra BOA. Conecta con los otros huecos de Aragón (T6/T16).
+
 ### 🟠 [ALTA — bug funcional] El endpoint de borrado de cuenta nunca completa (falta insertar `deleted_users_log`)
 - **Qué:** `DELETE /api/admin/delete-user` falla siempre con *"deleted_users_log row … is missing — insert it (with deletion_reason) before calling delete_user_account"*. `deleteUserData` (queries.ts:44-50) **exige** que la fila de auditoría exista antes de llamar a `public.delete_user_account(uuid)`, pero ni la ruta ni el flujo de "solicitar borrado desde perfil" la insertan → todo borrado admin requiere fallback manual por SQL.
 - **Por qué:** un usuario que pide borrar su cuenta no se borra por el panel; hay que meter mano en RDS. Rompe el derecho de supresión (RGPD) por la vía normal y obliga a intervención manual cada vez.
