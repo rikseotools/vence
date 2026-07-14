@@ -4,7 +4,7 @@
 //   S1 scope   → topic_scope_verification: never_verified / stale / verified_issues
 //   S2 epígrafe→ topic_epigrafe_verification_effective: distinto de verified_literal
 // El badge cuenta TEMAS DISTINTOS que necesitan verificación por cualquiera de los dos.
-import { getDb } from '@/db/client'
+import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 export type ScopeVerificationCount =
@@ -13,7 +13,7 @@ export type ScopeVerificationCount =
 
 export async function getScopeVerificationCount(): Promise<ScopeVerificationCount> {
   try {
-    const db = getDb()
+    const db = getAdminDb() // pool admin (fix contención RDS 14/07): badge admin fuera del hot path
     const rows = (await db.execute(sql`
       SELECT
         count(*) FILTER (

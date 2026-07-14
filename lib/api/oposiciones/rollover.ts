@@ -12,7 +12,7 @@
 // dead-end sigue contando (motivo='sin_horizonte'). Lee de la vista oposiciones_ssot
 // (lo que ve el usuario), no de las columnas legacy de oposiciones.
 
-import { getDb } from '@/db/client'
+import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 function rows<T>(res: unknown): T[] {
@@ -96,7 +96,7 @@ const PREPARADA = sql`(o.is_active = true OR o.coverage_level IN ('con_tests', '
 
 /** Cuenta para el badge del nav: oposiciones que preparamos SIN horizonte forward. */
 export async function getRolloverPendingCount(): Promise<{ success: true; count: number }> {
-  const db = getDb()
+  const db = getAdminDb() // pool admin (fix contención RDS 14/07): badge/lista admin fuera del hot path
   const res = await db.execute(sql`
     SELECT count(*)::int AS count
     FROM oposiciones o
@@ -108,7 +108,7 @@ export async function getRolloverPendingCount(): Promise<{ success: true; count:
 
 /** Lista para la pestaña: las que necesitan rollover, más demandadas primero. */
 export async function getRolloverPending(): Promise<{ success: true; items: RolloverItem[] }> {
-  const db = getDb()
+  const db = getAdminDb() // pool admin (fix contención RDS 14/07): badge/lista admin fuera del hot path
   const res = await db.execute(sql`
     SELECT o.slug, o.nombre, v.estado_proceso, v.exam_date::text AS exam_date,
       CASE WHEN v.exam_date IS NOT NULL THEN (now()::date - v.exam_date::date)::int END AS dias_desde_examen,

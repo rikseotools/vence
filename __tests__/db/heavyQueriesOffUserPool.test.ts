@@ -59,3 +59,18 @@ describe('queries pesadas fuera del pool de usuario (anti contención RDS)', () 
     expect(offenders).toEqual([])
   })
 })
+
+// Badges/contadores/charts admin que se movieron del pool de usuario a getAdminDb
+// (2ª ola del fix, 14/07: daban 500 bajo carga en el pool de usuario / getReadDb).
+describe('badges y charts admin en pool admin (no user pool)', () => {
+  it.each([
+    'lib/api/scope-verification/queries.ts',
+    'lib/api/oposiciones/rollover.ts',
+    'lib/api/admin-charts/queries.ts',
+  ])('%s usa getAdminDb y NO getReadDb (que cae al pool de usuario)', (rel) => {
+    const src = readFileSync(join(ROOT, rel), 'utf-8')
+    expect(src).toMatch(/getAdminDb/)
+    // no debe IMPORTAR getReadDb desde db/client (cae a getDb con la réplica off)
+    expect(src).not.toMatch(/import\s*\{[^}]*\bgetReadDb\b[^}]*\}\s*from\s*['\"]@\/db\/client/)
+  })
+})

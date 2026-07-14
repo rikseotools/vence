@@ -6,7 +6,10 @@
 // las escrituras answer-and-save que se saturaban) — y revierte el aporte de la query de
 // stats de 97 días, más pesada. Rollback-safe: si USE_READ_REPLICA!=true, getReadDb cae
 // al primario solo. Mismo patrón que difficulty-insights/topic-progress/ranking.
-import { getReadDb as getDb } from '@/db/client'
+// Pool ADMIN (fix contención RDS 14/07): estas 2 queries de charts agregan sobre
+// tests/registros y corrían en getReadDb (→ pool de usuario con réplica off) → daban
+// 500 bajo carga. En getAdminDb no compiten con el hot path de usuario.
+import { getAdminDb as getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { ActivityChartResponse, RegistrationsChartResponse } from './schemas'
 import { computeActivityStats } from './activityStats'
