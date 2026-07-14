@@ -13,7 +13,7 @@
 // ============================================================================
 import 'server-only'
 import { sql } from 'drizzle-orm'
-import { getReadDb, getDb } from '@/db/client'
+import { getReadDb, getAdminDb } from '@/db/client'
 
 export interface TeoriaCatalogLaw {
   id: string
@@ -189,7 +189,10 @@ export async function getTeoriaCatalogTotals(): Promise<{
  * artículos. Cableado en /api/admin/revalidate-temario.
  */
 export async function refreshTeoriaCatalog(): Promise<void> {
-  const db = getDb()
+  // Pool ADMIN (no el de usuario): REFRESH MATERIALIZED VIEW CONCURRENTLY puede tardar
+  // >10s en catálogos grandes; con el statement_timeout de 10s del pool de usuario se
+  // abortaría. En getAdminDb() (30s) completa (revisión adversarial 14/07).
+  const db = getAdminDb()
   await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_teoria_law_catalog`)
 }
 

@@ -5,7 +5,7 @@
 // discovered_processes en oep-signals). Fuente: subsistema backend/src/competitors.
 // Diseño: docs/roadmap/analizador-competidores.md
 
-import { getDb } from '@/db/client'
+import { getDb, getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 function rows<T>(res: unknown): T[] {
@@ -24,7 +24,11 @@ const BADGE_CHANGE_TYPES = ['course_added', 'course_removed', 'price_changed', '
 
 /** Contador del badge: señales accionables SIN revisar de los últimos 7 días. */
 export async function getCompetitorChangesCount(): Promise<CompetitorChangesCount> {
-  const db = getDb()
+  // Badge del nav polleado por cada admin. La query es barata (~55ms sobre 9k filas),
+  // pero corría en getDb() (pool de USUARIO) → se llevaba slots del hot path y daba
+  // 503 colateral bajo carga. En getAdminDb() (pool admin) ya no compite. Robusto sin
+  // cache: query barata + pool correcto (fix contención RDS 14/07).
+  const db = getAdminDb()
   const res = await db.execute(sql`
     SELECT count(*)::int AS count
     FROM competitor_changes

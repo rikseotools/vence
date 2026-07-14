@@ -9,7 +9,7 @@
 //   - ok: tema disponible con >= FINO_MAX preguntas
 // SQL crudo vía getDb().execute (mismo patrón que competitors/radar-contenido).
 
-import { getDb } from '@/db/client'
+import { getDb, getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 export { epigrafeBadge, EPIGRAFE_TONE_CLS } from './epigrafeBadge'
@@ -81,7 +81,11 @@ export interface ContenidoOverview {
 }
 
 export async function getContenidoOverview(): Promise<ContenidoOverview> {
-  const db = getDb()
+  // Pool ADMIN (no el de usuario): esta es la query PESADA (5 CTEs sobre todas las
+  // oposiciones) de la PÁGINA /admin/contenido, y NO va envuelta en withDbTimeout →
+  // con el statement_timeout de 10s del pool de usuario se abortaría bajo carga. En
+  // getAdminDb() (30s) completa y no compite con el hot path (revisión adversarial 14/07).
+  const db = getAdminDb()
   const res = await db.execute(sql`
     WITH tema_counts AS (
       SELECT
@@ -197,10 +201,32 @@ export interface ContenidoCount {
   count: number
 }
 
-/** Badge del nav: oposiciones con temas "En desarrollo" (0 preguntas) = urgente. */
+/**
+ * Badge del nav: oposiciones con temas "En desarrollo" (0 preguntas) = urgente.
+ *
+ * ROBUSTO (fix contención RDS 14/07): query DEDICADA que solo cuenta, NO el
+ * `getContenidoOverview()` entero. El overview corre 5 CTEs (usuarios, vendibilidad,
+ * epígrafe, cobertura) que el badge no necesita → reusarlo para un contador saturaba
+ * el pool. Aquí solo la lógica de `en_desarrollo`: oposiciones con ≥1 tema publicado
+ * y vacío (`disponible=true AND 0 preguntas`), con ≥1 tema disponible (mismo HAVING
+ * que el overview). Semántica IDÉNTICA a `summary.conEnDesarrollo` (verificado).
+ * Corre en `getAdminDb()` (pool admin, no el de usuario) → no compite con el hot path.
+ */
 export async function getContenidoCount(): Promise<ContenidoCount> {
-  const { oposiciones } = await getContenidoOverview()
-  return { success: true, count: oposiciones.filter((o) => o.en_desarrollo > 0).length }
+  const res = await getAdminDb().execute(sql`
+    SELECT count(*)::int AS count FROM (
+      SELECT o.slug
+      FROM oposiciones o
+      JOIN topics t ON t.position_type = replace(o.slug, '-', '_') AND t.is_active = true
+      WHERE o.is_active = true
+      GROUP BY o.slug
+      HAVING count(*) FILTER (WHERE t.disponible) > 0
+         AND count(*) FILTER (WHERE t.disponible AND COALESCE(
+           (SELECT sum(mv.total_questions) FROM topic_law_question_summary mv WHERE mv.topic_id = t.id), 0
+         ) = 0) > 0
+    ) x
+  `)
+  return { success: true, count: Number(rows<{ count: number }>(res)[0]?.count ?? 0) }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

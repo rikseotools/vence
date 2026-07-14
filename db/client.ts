@@ -46,10 +46,19 @@ function createDbClient() {
   }
 
   // Crear conexión postgres optimizada para serverless
-  // 🛡️ Agregar statement_timeout via connection string para prevenir queries infinitas
+  // 🛡️ statement_timeout via connection string para prevenir queries infinitas.
+  // POOL DE USUARIO = 10s (no 30s): withDbTimeout ya devuelve 503 a los 8s, así que
+  // una query >8s YA falló para el usuario. Con 30s el slot del pool (max:5) seguía
+  // OCUPADO 22s más tras el 503 → bajo carga agotaba el pool y disparaba 503 en
+  // cascada (contención RDS). A 10s el slot se libera ~2s tras el timeout de request.
+  // SEGURIDAD (revisión adversarial 14/07): las queries admin/pesadas SIN withDbTimeout
+  // que podían pasar de 10s (getContenidoOverview, refreshTeoriaCatalog, los badges)
+  // se movieron a getAdminDb() → el pool de usuario ya solo corre queries de usuario
+  // (acotadas a 8s por withDbTimeout). Guardarraíl: __tests__/db/heavyQueriesOffUserPool.
+  // Los pools admin/replica/pooler mantienen 30s (queries pesadas legítimas).
   const urlWithTimeout = connectionString.includes('?')
-    ? `${connectionString}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
-    : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+    ? `${connectionString}&options=-c statement_timeout=10000 -c idle_in_transaction_session_timeout=60000`
+    : `${connectionString}?options=-c statement_timeout=10000 -c idle_in_transaction_session_timeout=60000`
 
   const conn = postgres(urlWithTimeout, {
     // max:5 — post-cutover a RDS dedicado (04/07): el max:1 histórico era un workaround del
