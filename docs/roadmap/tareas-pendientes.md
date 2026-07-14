@@ -22,11 +22,17 @@
 - **Cómo:** crear artículo editorial (fuente normalizadora) para cada concepto y añadirlo al `topic_scope` del tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
 - **Estado:** resto de la oposición verificado (18/20 correct tras arreglar T12 mover II Acuerdo→T13 y T8/T7 mover reglamentos 127-133). Solo estos 2 huecos.
 
-### 🔴 [URGENTE] Construir los 5 temas de la parte específica de Téc. Auxiliar (Aux. de Servicios) UMU
-- **Qué:** faltan T9 (funciones especialidad), T11 (máquinas reproductoras), T13 (control de accesos), T14 (seguridad edificios/incendios), T18 (mantenimiento 1er nivel TIC) — `disponible=false`, 0 scope, 0 preguntas. Los 5 tienen **epígrafe oficial ya cargado**.
-- **Por qué urge:** convocatoria **R-838/2026 con inscripción ABIERTA** (18 plazas); ya **2 usuarias** lo han pedido (Laura García, María Sol). Sin la parte específica no es vendible al 100% justo en la ventana de inscripción.
-- **Cómo:** memoria `project_umu_aux_servicios_parte_especifica` (plan 2 vías) + `docs/maintenance/crear-nueva-oposicion.md`. Generar editorial con fuente (nunca inventar), lifecycle `tech_approved`, luego `disponible=true`.
-- **Estado:** VÍA A (T8/T10/T12) hecha; VÍA B (estos 5) pendiente.
+### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Junta de Extremadura (verify:scope 14/07)
+- **Qué:** tras `verify:scope` de `administrativo_extremadura` (30 temas, 2 agentes + consenso), quedan 2 `verified_issues` que son **huecos de import de norma regional** (no de scope): (1) **T15** falta el *"Reglamento sobre procedimientos sancionadores seguidos por la CA de Extremadura"*; (2) **T24** falta la *"Ley de Presupuestos Generales de la CA de Extremadura"* (normas de contratación/convenios/encargos/transferencias). Ambas normas **no están en `laws`**.
+- **Extra:** los **arts 74-79 (negociación colectiva)** de la Ley 13/2015 FP Extremadura quedan **huérfanos** (no están en el epígrafe de ningún tema 6-10) → decidir si van a algún tema o están fuera de programa.
+- **Por qué:** la ley nacional principal (Ley 40/2015 en T15, Ley 9/2017 en T24) sí está cubierta; falta el complemento regional que el epígrafe nombra. No se inventa contenido.
+- **Cómo:** crear cada ley regional desde el DOE/BOE (`monitoreo-boe-y-crear-leyes-nuevas.md` §"Crear ley nueva") y escoparla al tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
+- **Estado:** resto de la oposición **28/30 `verified_correct`** (incl. función pública 6/7/8/10 reparada: reparto correcto de la Ley 13/2015 por epígrafe, re-verificado).
+
+### ✅ [HECHA 13-14/07] Téc. Auxiliar (Aux. de Servicios) UMU — oposición COMPLETA y verificada
+- **Qué:** oposición al 100% → **18/18 temas `disponible=true`, 18/18 `verified_correct`, 3.060 preguntas, 0 temas finos** (todos ≥15).
+- **Detalle:** (1) construidos los 5 temas B2 vacíos (T9/T11/T13/T14/T18) con editorial de fuente oficial (5 leyes virtuales, doble auditoría); (2) reforzados los temas finos con +52 preguntas (incl. ley virtual Guía Técnica INSST para T17); (3) corregido T12 (faltaban arts 12-15 postales); (4) **resuelto T6 (LOSU)**: re-escopado a Tít I+II (1-6) + Tít IX Cap I (38-43) tal como pide el epígrafe, quitando 44-63 (Gobernanza+económico, no pedidos; las 15 preguntas siguen vivas en BD), + 12 preguntas nuevas sobre 38-43. Memoria `project_umu_aux_servicios_parte_especifica` (🏁 COMPLETA). Convocatoria R-838/2026 abierta → vendible al 100%.
+- **PEND opcional (no forzado):** avisar a Laura García (`a8b4792d`) y María Sol (`0720dd5f`) de que la parte específica ya está lista.
 
 ### 🟠 [ALTA] Incorporar la oposición Técnico Auxiliar de Informática
 - **Qué:** está **catalogada** pero sin temario ni tests. Construir su contenido para hacerla vendible.
