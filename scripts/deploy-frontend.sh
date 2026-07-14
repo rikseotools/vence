@@ -77,7 +77,7 @@ fi
 # check-runs de GHA para el SHA (via GITHUB_PAT de .env.local). Override: SKIP_CI_GATE=1.
 # SOLO gatean los checks de CÓDIGO (unit+typecheck+lint). `integration` pega a la BD
 # real y puede estar en rojo por dato en construcción / otra sesión paralela → es
-# señal aparte (como salud/canary), NO bloquea el deploy de código. Ver docs/runbooks/deploy.md.
+# señal aparte (como salud/canary), NO bloquea el deploy de código. Ver docs/runbooks/pusheo-revision-despliegue.md.
 FULL_SHA=$(git rev-parse HEAD)
 if [ "${SKIP_CI_GATE:-0}" = "1" ]; then
   echo "→ [gate CI] OMITIDO (SKIP_CI_GATE=1)."

@@ -52,7 +52,7 @@ else
   CR=$(curl -s -H "Authorization: Bearer $GITHUB_PAT" -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/rikseotools/vence/commits/${FULL_SHA}/check-runs?per_page=100")
   TOTAL=$(echo "$CR" | jq -r '.total_count // 0')
-  # SOLO gatean unit+typecheck+lint. `integration` (BD real) = señal aparte, no bloquea. Ver docs/runbooks/deploy.md.
+  # SOLO gatean unit+typecheck+lint. `integration` (BD real) = señal aparte, no bloquea. Ver docs/runbooks/pusheo-revision-despliegue.md.
   CODE=$(echo "$CR" | jq -c '["unit","typecheck","lint"] as $req
     | [ $req[] as $k | ([ .check_runs[]? | select(.name|ascii_downcase|contains($k)) ]|last)
         | { k:$k, status:(.status // "missing"), conclusion:(.conclusion // "missing") } ]')

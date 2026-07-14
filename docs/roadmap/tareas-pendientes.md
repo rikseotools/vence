@@ -112,7 +112,7 @@
 ### 🟡 [MEDIA] Desplegar el guardarraíl anti-duplicado de recompensas
 - **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) está en `origin/main` pero **NO desplegado** (prod = `4465d15c`).
 - **Por qué:** cierra el hueco de doble recompensa por el mismo motivo (control robusto). No bloquea nada (creación manual ya se verifica), pero conviene que esté vivo.
-- **Cómo:** `docs/runbooks/deploy.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
+- **Cómo:** `docs/runbooks/pusheo-revision-despliegue.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
 - **Estado:** commiteado + pusheado, pendiente de deploy.
 
 ### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)

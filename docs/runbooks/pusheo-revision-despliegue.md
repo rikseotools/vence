@@ -4,6 +4,28 @@
 >
 > **Regla de oro:** desplegar SIEMPRE con el script (`scripts/deploy-{frontend,backend}.sh`), NUNCA a mano. Los scripts pinean la imagen por digest, esperan estabilidad y hacen smoke — un deploy a mano se salta todo eso.
 
+## §0 — Bootstrap de sesión (LO PRIMERO al abrir una sesión de Claude)
+
+> **Si eres una sesión de Claude recién abierta, corre esto ANTES de tocar nada:**
+> ```bash
+> scripts/session-start.sh <nombre-corto-de-lo-que-vas-a-hacer>
+> ```
+> Crea tu **propio git worktree** desde `origin/main` (rama `work/<slug>`), enlaza `node_modules`/`.env.local`, te registra, y te dice qué otras sesiones hay activas y si el lock de deploy está tomado. **Trabaja SOLO en ese worktree** — nunca edites el checkout compartido.
+
+**Por qué (modelo de N sesiones simultáneas en el mismo repo):** varias sesiones de Claude a la vez se pisan si comparten checkout (editan los mismos ficheros; un `git add -A` barre lo de otra; un deploy desde una rama **stale** revierte main). La coordinación **NO recae en el humano** — la garantizan tres mecanismos automáticos:
+
+1. **Aislamiento:** 1 worktree + 1 rama por sesión (desde `origin/main`, la última verdad). Ver `feedback_worktree_por_sesion_paralela`.
+2. **Serialización de deploy:** `flock` en `/tmp/vence-deploy.lock` dentro de los scripts → dos deploys al mismo servicio ECS NO corren a la vez; el 2º espera. Se libera solo al morir el proceso (sin locks zombi). Lock único front+back.
+3. **Anti-stale:** los scripts abortan si tu rama **no contiene** `origin/main` (desplegarías perdiendo trabajo de otra sesión — el casi-clobber del 11/07 con `feat/uc3m-golive`).
+
+**Enviar a prod = 3 pasos (main = única verdad; el tooling serializa):**
+```bash
+git fetch origin && git rebase origin/main   # 1) reconciliar sobre lo último
+git push origin HEAD:main                    # 2) publicar (dispara CI); si lo rechaza por no-ff → repite el paso 1
+scripts/deploy-frontend.sh / deploy-backend.sh  # 3) el flock serializa; el gate CI + anti-stale protegen
+```
+**Regla de convergencia:** "si empujas a main, despliegas". El deploy envía `origin/main` HEAD; con el lock, el último push gana y main↔prod convergen solos.
+
 ## TL;DR
 
 ```bash
