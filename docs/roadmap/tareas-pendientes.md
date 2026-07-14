@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🔵 [CAMPAÑA] Verificación de las leyes "nunca verificadas" contra BOE (sweep 14/07)
+- **Contexto:** de las 120 leyes con `last_verification_summary IS NULL`, las **47 con `boe_url` de BOE `act.php`** (verificables) se barrieron contra el BOE. Hallazgos por tipo:
+- **✅ HECHO — problema de TÍTULO (sistemático):** (1) **strip** del prefijo redundante "Artículo N." → 1.439 títulos DB-wide (guardarraíl `scripts/check-article-title-prefix.cjs` = 0); (2) **backfill** de rúbricas faltantes desde BOE en títulos "bare" ("Artículo N" sin rúbrica) → ~264 restauradas, con **guard de `boe_url` por ley** (0 fallos → ningún Archivos oculto). FTS se re-indexa por trigger; embeddings NULLeados (no crítico: 33k/57k ya eran NULL, chat usa keyword fallback; regen = tarea infra aparte, script apunta a Supabase congelada).
+- **🔴 PENDIENTE — content drift REAL:** **526 `content_mm` en 30 leyes** aflorados (LO 2/1989 114, Decreto 315/1964 83, RD 563/2010 64, LOSCAM 61…). Es drift de contenido de verdad → **campaña por-ley** (align mismo-número a BOE + auditar preguntas), priorizada por uso (LOSCAM 63 preg, RD 2/2006 PN 164, DLeg 1/2002 26…). Parte será formato (alta similitud), parte real → triaje por-artículo. Método: memoria `project_badge_monitoreo_verificacion_boe_count_0` §método.
+- **PEND menor:** 4 leyes con title_mm residual (casos borde irregulares: sub-números, sin separador); ~87 títulos con formato irregular no stripeados; **63 leyes no-BOE + 10 doc.php** nunca verificadas (fuente regional/editorial → verificación aparte, no por API BOE).
+
 ### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Gobierno de Aragón (revisión epígrafes 13/07)
 - **Qué:** dos conceptos que el epígrafe oficial cita pero sin artículo que los cubra: (1) **T6** "fuentes del derecho administrativo" (jerarquía normativa) — no existe artículo estatal genérico para escopar; (2) **T16** "certificados y firma electrónica" — el editorial de Informática Básica/Red Internet no lo trata.
 - **Por qué:** detectado en la verificación scope↔epígrafe (2 agentes, consenso `needs_human`). No se inventa contenido → hay que crear el artículo editorial correspondiente y escoparlo.
@@ -23,7 +29,7 @@
 - **Estado:** resto de la oposición verificado (18/20 correct tras arreglar T12 mover II Acuerdo→T13 y T8/T7 mover reglamentos 127-133). Solo estos 2 huecos.
 
 ### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Junta de Extremadura (verify:scope 14/07)
-- **Qué:** tras `verify:scope` de `administrativo_extremadura` (30 temas, 2 agentes + consenso), quedan 2 `verified_issues` que son **huecos de import de norma regional** (no de scope): (1) **T15** falta el *"Reglamento sobre procedimientos sancionadores seguidos por la CA de Extremadura"*; (2) **T24** falta la *"Ley de Presupuestos Generales de la CA de Extremadura"* (normas de contratación/convenios/encargos/transferencias). Ambas normas **no están en `laws`**.
+- **Qué:** tras `verify:scope` de `administrativo_extremadura` (30 temas, 2 agentes + consenso). **T15 RESUELTO 14/07** (el Reglamento sancionador Decreto 9/1994 estaba en BD mal etiquetado "Ingreso" + FABRICADO por IA → importados los 18 arts LITERALES del DOE oficial + 2 preguntas re-vinculadas). **Queda solo T24**: falta la *"Ley de Presupuestos Generales de la CA de Extremadura"* (normas de contratación/convenios/encargos/transferencias) — es una **ley ANUAL** (decisión: no forzar import de ley anual por unos arts que se quedan `stale`; la contratación la cubre Ley 9/2017). No está en `laws`. Estado: **29/30 `verified_correct`**.
 - **Extra:** los **arts 74-79 (negociación colectiva)** de la Ley 13/2015 FP Extremadura quedan **huérfanos** (no están en el epígrafe de ningún tema 6-10) → decidir si van a algún tema o están fuera de programa.
 - **Por qué:** la ley nacional principal (Ley 40/2015 en T15, Ley 9/2017 en T24) sí está cubierta; falta el complemento regional que el epígrafe nombra. No se inventa contenido.
 - **Cómo:** crear cada ley regional desde el DOE/BOE (`monitoreo-boe-y-crear-leyes-nuevas.md` §"Crear ley nueva") y escoparla al tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
