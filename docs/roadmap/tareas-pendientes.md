@@ -16,11 +16,12 @@
 
 ## Abiertas
 
-### 🔴 [ALTA] Barrido global del bug "topic_scope con article_numbers vacío" (ley enganchada, 0 preguntas)
-- **Qué:** filas de `topic_scope` con `law_id` correcto pero `article_numbers` NULL/`{}` → esa ley aporta 0 preguntas al tema aunque su banco exista (cientos/miles sin usar). El tema parece OK (disponible + preguntas de otras leyes) y el hueco pasa desapercibido.
-- **Por qué:** detectado por un usuario (Jen, 15/07: T16 de Cádiz sin preguntas de la Ley 29/1998, con 604 en BD). **Cádiz ya arreglada y verificada (24/24)**, pero al menos **Madrid T14** (LJCA) tiene el mismo bug, y puede ser sistémico del scaffolding.
-- **Cómo:** query de detección + fix (poblar reusando set comparable, o sustituir ley si es la equivocada, o generar si banco fino) → todo en `docs/runbooks/verificar-epigrafes-scope.md` §"Regla previa OBLIGATORIA" (autocontenido).
-- **Estado:** Cádiz DONE. Barrido global PENDIENTE.
+### ✅ [CERRADO 15/07] Barrido global del bug "topic_scope con article_numbers vacío" — NO era sistémico
+- **Qué era:** filas de `topic_scope` con `law_id` correcto pero `article_numbers = '{}'` VACÍO → esa ley aporta 0 preguntas al tema aunque su banco exista. El tema parece OK (disponible + preguntas de otras leyes) y el hueco pasa desapercibido.
+- **Origen:** detectado por Jen (15/07): T16 de Cádiz sin preguntas de la Ley 29/1998, con 604 en BD. **Cádiz arreglada y verificada (24/24).**
+- **Barrido global HECHO (15/07) → 0 casos reales.** Recuento definitivo: `{}` vacío = **0** · NULL = 1.696 · con artículos = 3.557. **Cádiz eran las únicas filas `{}` y ya se poblaron.**
+- **⚠️ Falso positivo corregido:** la 1ª detección conflaba `NULL` con `{}`. **NO son lo mismo:** `article_numbers IS NULL` = **"toda la ley"** (convención válida — enfermerías, Office común, etc.: sirven su ley entera; verificado en `lib/api/filtered-questions/queries.ts:576-578`), `article_numbers = '{}'` = **inerte** (el bug). Las 1.696 NULL están **BIEN**. La supuesta "Madrid T14 mismo bug" también era falsa (ni scopea la LJCA). Query correcta (solo `{}`) documentada en `docs/runbooks/verificar-epigrafes-scope.md` §"Regla previa OBLIGATORIA".
+- **Gotcha residual (menor, no urgente):** la función SQL vieja `get_topic_questions_v2` NO respeta `NULL = toda la ley` (devuelve 0), a diferencia del API real de tests. Si algún path legacy la usa, mostraría 0 en temas con scope NULL. Verificar qué la consume aún (probablemente nada en el flujo de tests moderno).
 
 ### 🔵 [PILOT — abierto] Triaje de revisión de preguntas con modelos de pago baratos (OpenRouter) + ensemble
 - **Qué:** capa de triaje binario (¿el artículo/opción sostiene LITERAL la clave? FP vs mislink) con modelos **de pago baratos** para quitar volumen a los agentes Claude, reservando Claude para el juicio (relink/explicación/fuente/adjudicación). Idea Manuel: **consenso de 2-3 modelos** = doble-pasada barata.
