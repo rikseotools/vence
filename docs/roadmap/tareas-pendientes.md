@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🟡 [CONTENIDO/UX] Poblar títulos y capítulos (`law_sections`) en TODAS las leyes + mostrarlos en teoría
+- **Qué:** hoy la estructura de títulos/capítulos (`law_sections`: título + descripción + rango de artículos) está poblada en **solo 13 de 1.291 leyes activas** y solo se usa para el control "Filtrar por Títulos"; nunca se muestra como **cabecera inline** al leer la teoría. Objetivo: poblar `law_sections` en todas las leyes (verificado contra fuente oficial/BOE, **nunca contra el "art 0 — Estructura" sintético**, que puede estar fabricado) **y** renderizar los títulos/capítulos como cabeceras sobre los artículos que agrupan.
+- **Por qué:** (1) petición **repetida** de usuaria premium fiel (Nila, `auxiliar_administrativo_madrid`, feedbacks 26/05 y 15/07: "poner los títulos correspondientes… los artículos hacen referencia a los títulos"); (2) los **filtros por título/capítulo** solo funcionan donde hay `law_sections` → hoy fallan/no aparecen en el 99% de leyes; (3) la **teoría que imprimen los usuarios** llevaría los títulos y capítulos (mejor estudio y referencia cruzada entre artículos).
+- **Cómo:** `law_sections` (título, `article_range_start/end`, `section_type` título/capítulo, `order_position`); fuente = BOE/gaceta oficial de cada ley. Render: `app/teoria/[law]/LawArticlesClient.tsx` (hoy solo filtra vía `/api/teoria/sections` → `fetchLawSections`). Empezar por temario de oposiciones vivas (p.ej. Estatuto de Autonomía CM, LO 3/1983, hoy 0 filas).
+- **Estado:** ABIERTA. Detectado 15/07 (feedback Nila, cerrado en silencio). Sin recompensa (sugerencia, no bug funcional).
+
 ### 🔵 [PILOT — abierto] Triaje de revisión de preguntas con modelos de pago baratos (OpenRouter) + ensemble
 - **Qué:** capa de triaje binario (¿el artículo/opción sostiene LITERAL la clave? FP vs mislink) con modelos **de pago baratos** para quitar volumen a los agentes Claude, reservando Claude para el juicio (relink/explicación/fuente/adjudicación). Idea Manuel: **consenso de 2-3 modelos** = doble-pasada barata.
 - **Hecho (14/07):** $10 de crédito puestos (1.000/día). Gratis DESCARTADO (429 + rompen JSON). Bake-off de **44 modelos** de pago. **2 joyas:** `amazon/nova-lite-v1` ($0.06, 602ms) y `google/gemma-3-12b-it` ($0.05) → 12/12 JSON, **0 peligrosos, 4/6 FP-ok**. **Ganador = ensemble `nova-lite-v1 + gemma-3-12b-it`** (0 peligro, limpia 4/6). Haiku ($1) NO aporta. Coste de todo el trabajo: ~$0.17-0.76.
