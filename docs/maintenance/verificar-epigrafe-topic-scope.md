@@ -610,6 +610,12 @@ Si el `programa_url` apunta a un temario incoherente:
 2. Si la convocatoria selectiva nueva no se ha publicado aún (`estado_proceso = oep_aprobada`), validar contra la **convocatoria anterior** (a veces solo está en BOPA/DOG, sin PDF unificado)
 3. Apuntar `programa_url` al recurso correcto cuando se publique
 
+> **Caso real (Aragón Aux. Admvo., 15/07/2026):** el `programa_url` apuntaba a la **convocatoria/bases** (BOA), no al temario. El temario oficial estaba en un documento aparte (Resolución 25-nov-2025) que a su vez solo remitía a `https://mia.aragon.es/documentos` con un **CSV** — un **SPA Angular** que carga por JS: ni el BOA ni los endpoints HTTP directos (`/api/documentos/<CSV>`, etc.) devuelven el PDF (solo el shell HTML). **La solución es renderizar como un humano con Playwright** (`node_modules/playwright`, chromium ya instalado): abrir la página, rellenar el CSV, capturar el evento `download` / la respuesta `octet-stream`. El endpoint real que sirve el documento fue `https://carp-core-mia.aragon.es/rest/documentos/<CSV>/descargar`. Script reutilizable: `verify-live-scripts/fetch_temario.cjs`. Confirmado byte a byte que el epígrafe de BD SÍ era literal (la sospecha inicial "T14 = otra materia" venía de mirar el cuerpo equivocado — el temario 2025 es multi-cuerpo, un ANEXO por escala; coger el de la escala/subgrupo correcto). **Regla:** cuando el temario esté tras un portal JS/CSV (Aragón `mia.aragon.es` y similares), usa headless browser; nunca copies de academias para el texto literal.
+
+### Vector 3-bis — `verified_correct` puede ser DEMASIADO LAXO (feedback de usuario lo invalida)
+
+La verificación por 2 agentes lleva la lente "**ante duda, scope más extenso**" (para no estrechar a la ligera). Efecto secundario: puede **NO cazar un sobre-scope real**. Caso Aragón T14 (15/07): estaba `verified_correct` con el convenio colectivo entero (137 arts) pese a que el epígrafe lo delimita a "ámbito de aplicación y derechos y deberes"; lo destapó el **feedback de una usuaria** (veía ~81 artículos vacíos), no la verificación. **Regla:** un `verified_correct` **no es garantía** frente a un feedback de usuario concreto y verificable; si un usuario reporta sobre-scope, re-verifica contra el temario LITERAL aunque el estado diga correct. La lente conservadora protege contra falsos recortes, no contra excesos sutiles.
+
 ### Vector 4 — Auditoría bulk de scope sospechoso
 
 Para detectar topics con `topic_scope` problemático sin revisar uno a uno:
