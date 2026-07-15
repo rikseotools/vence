@@ -14,8 +14,11 @@ export {
 
 export {
   deleteUserData,
+  ensureDeletionLogRow,
+  buildDeletionReason,
   archiveUserLegalData,
-  persistArchivedData
+  persistArchivedData,
+  type DeletionLogProfile
 } from './queries'
 
 export {

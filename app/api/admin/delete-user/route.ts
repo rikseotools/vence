@@ -1,7 +1,7 @@
 // app/api/admin/delete-user/route.ts
 import { NextResponse, type NextRequest } from 'next/server'
 import { deleteUserRequestSchema } from '@/lib/api/admin-delete-user/schemas'
-import { deleteUserData, sendDeletionConfirmationEmail } from '@/lib/api/admin-delete-user'
+import { deleteUserData, ensureDeletionLogRow, sendDeletionConfirmationEmail } from '@/lib/api/admin-delete-user'
 import { authAdmin } from '@/lib/auth/server'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
@@ -35,9 +35,18 @@ async function _DELETE(request: NextRequest) {
     // puerto agnóstico `authAdmin` (Fase 4 D).
     let userEmail: string | null = null
     let userFullName: string | null = null
+    let userPlanType: string | null = null
+    let userTargetOposicion: string | null = null
+    let userRegisteredAt: string | null = null
     try {
       const [profile] = await getAdminDb()
-        .select({ email: userProfiles.email, full_name: userProfiles.fullName })
+        .select({
+          email: userProfiles.email,
+          full_name: userProfiles.fullName,
+          plan_type: userProfiles.planType,
+          target_oposicion: userProfiles.targetOposicion,
+          created_at: userProfiles.createdAt,
+        })
         .from(userProfiles)
         .where(eq(userProfiles.id, userId))
         .limit(1)
@@ -45,9 +54,73 @@ async function _DELETE(request: NextRequest) {
       if (profile) {
         userEmail = profile.email
         userFullName = profile.full_name
+        userPlanType = profile.plan_type
+        userTargetOposicion = profile.target_oposicion
+        userRegisteredAt = profile.created_at
       }
     } catch (err) {
       console.warn('⚠️ No se pudo leer perfil antes de delete:', err)
+    }
+
+    // 🔒 CAPA DE SEGURIDAD (RGPD + requisito de delete_user_account): la fila de
+    // auditoría `deleted_users_log` DEBE existir ANTES del borrado (la fn SQL escribe
+    // archived_data en ella y falla si no está; y el email de esa fila es la fuente
+    // DURABLE del correo RGPD en reintentos). FAIL-CLOSED: si no hay email de perfil
+    // o el insert falla, ABORTAMOS (nunca borrar sin registro de auditoría). Idempotente.
+    if (userEmail) {
+      // Perfil presente → asegurar la fila de auditoría ANTES del borrado (fail-closed).
+      try {
+        const logResult = await ensureDeletionLogRow(
+          userId,
+          {
+            email: userEmail,
+            fullName: userFullName,
+            planType: userPlanType,
+            targetOposicion: userTargetOposicion,
+            registeredAt: userRegisteredAt,
+          },
+          { requestedVia: 'admin_panel', adminEmail: auth.user.email }
+        )
+        console.log(`🧾 deleted_users_log ${logResult.inserted ? 'insertada' : 'ya existía (idempotente)'} para ${userId}`)
+      } catch (logErr) {
+        console.error('❌ No se pudo crear el registro de auditoría deleted_users_log:', logErr)
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'No se pudo crear el registro de auditoría previo al borrado. Borrado abortado (fail-closed).',
+            details: logErr instanceof Error ? logErr.message : String(logErr),
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Sin email de perfil = perfil AUSENTE (¿ya borrado en un intento previo?) o pre-read
+      // fallido. NO abortar en seco: si YA existe la fila de auditoría para este userId es un
+      // REINTENTO → procede (delete_user_account es idempotente y el email RGPD se reenvía
+      // desde el email DURABLE de deleted_users_log, líneas de abajo). Solo se aborta 409 si
+      // NO hay ni perfil ni fila de log (usuario inexistente / read fallido en 1er intento).
+      let hasLogRow = false
+      try {
+        const res = await getAdminDb().execute(
+          sql`SELECT 1 FROM public.deleted_users_log WHERE original_user_id = ${userId}::uuid LIMIT 1`
+        )
+        const rows = Array.isArray(res) ? res : ((res as { rows?: unknown[] }).rows || [])
+        hasLogRow = rows.length > 0
+      } catch (err) {
+        console.error('❌ No se pudo comprobar deleted_users_log (fail-closed → abortar):', err)
+      }
+      if (!hasLogRow) {
+        console.error('❌ delete-user abortado: sin perfil y sin fila de auditoría previa para', userId)
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'No se pudo capturar el perfil (email) y no existe registro de auditoría previo para este userId. Borrado abortado: el usuario no existe o no se pudo leer. Verifica el userId y reintenta.',
+          },
+          { status: 409 }
+        )
+      }
+      console.log(`♻️ Perfil ausente pero deleted_users_log ya existe para ${userId} → reintento idempotente, procediendo`)
     }
 
     // Eliminar datos de todas las tablas (SSOT de la cuenta: user_profiles + cascada, RDS)

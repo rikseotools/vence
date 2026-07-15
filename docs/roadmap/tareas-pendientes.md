@@ -66,12 +66,6 @@
 - **Cómo:** Paso 1 clonar epígrafe del PDF oficial (`programa_url` = madrid.es BasesEspecificas.pdf) → `verify:scope` 2 agentes → generar preguntas de T21/T22 (ofimática Word/Excel Office) + reforzar los 8 finos. Doble auditoría + `tech_approved`.
 - **Estado:** sin empezar (en curso 15/07). Conecta con los otros huecos de ofimática (Windows/Office de otras oposiciones).
 
-### 🟠 [ALTA — bug funcional] El endpoint de borrado de cuenta nunca completa (falta insertar `deleted_users_log`)
-- **Qué:** `DELETE /api/admin/delete-user` falla siempre con *"deleted_users_log row … is missing — insert it (with deletion_reason) before calling delete_user_account"*. `deleteUserData` (queries.ts:44-50) **exige** que la fila de auditoría exista antes de llamar a `public.delete_user_account(uuid)`, pero ni la ruta ni el flujo de "solicitar borrado desde perfil" la insertan → todo borrado admin requiere fallback manual por SQL.
-- **Por qué:** un usuario que pide borrar su cuenta no se borra por el panel; hay que meter mano en RDS. Rompe el derecho de supresión (RGPD) por la vía normal y obliga a intervención manual cada vez.
-- **Cómo:** insertar la fila `deleted_users_log` (original_user_id, email, plan_type, target_oposicion, registered_at, deletion_reason, requested_via='feedback') **dentro de la ruta** justo antes de `deleteUserData`, con los datos capturados del perfil. Idempotente (no duplicar si ya existe). Test que cubra el happy-path completo end-to-end. (Enlaza con memoria `feedback_delete_user_api_504_fallback`.)
-- **Estado:** detectado 14/07 al procesar feedback account_deletion `757d7f41` (anteromilan@gmail.com borrado a mano por SQL, con log de auditoría). Endpoint sin arreglar.
-
 ### 🟡 [MEDIA — cobertura fina] Ampliar preguntas del Tema 8 de Aux. Administrativo SMS (Ley 4/1994 Murcia)
 - **Qué:** tras estrechar el scope del Tema 8 a los arts **9,10,11,12,25** de la Ley 4/1994 de Salud de la Región de Murcia (era 9-26, inflado), el tema queda con solo **8 preguntas activas**. Generar más ancladas a esos 5 artículos (Fines, Plan de Salud, Consejo de Salud Región, mapa sanitario, órganos del SMS).
 - **Por qué:** feedback de daluamva@gmail.com (premium, `22835b84`, 14/07) → tenía razón, el scope sobre-incluía Áreas de Salud/zona básica (materia del T7) y el régimen del SMS (T9/T12). Corregido y verificado (2 agentes + epígrafe literal). Ahora falta densidad de preguntas.
