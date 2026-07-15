@@ -108,6 +108,16 @@ TDLIVE="$TDLIVE" TDNEW="$TDNEW" IMG_DIGEST="$IMG_DIGEST" node -e "
 const fs=require('fs');
 const td=JSON.parse(fs.readFileSync(process.env.TDLIVE,'utf8'));
 td.containerDefinitions[0].image=process.env.IMG_DIGEST;
+// Read replica (Capa 3 contención RDS, 15/07): asegurar (idempotente) el secret de la
+// réplica + el flag. Los crons ANALÍTICOS del backend usan DRIZZLE_READ → réplica.
+{ const c=td.containerDefinitions[0];
+  c.secrets = c.secrets || [];
+  if (!c.secrets.some(s=>s.name==='DATABASE_URL_REPLICA'))
+    c.secrets.push({name:'DATABASE_URL_REPLICA', valueFrom:'arn:aws:ssm:eu-west-2:349744179687:parameter/vence-backend/DATABASE_URL_REPLICA'});
+  c.environment = c.environment || [];
+  const e=c.environment.find(x=>x.name==='USE_READ_REPLICA');
+  if (e) e.value='true'; else c.environment.push({name:'USE_READ_REPLICA', value:'true'});
+}
 // Guardarrail anti-colision env/secret (incidente 11/07): ECS rechaza un name que
 // este a la vez en environment y secrets. Detectarlo aqui con mensaje claro.
 { const en=new Set((td.containerDefinitions[0].environment||[]).map(e=>e.name));

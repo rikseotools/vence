@@ -1,7 +1,22 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { CronScheduleService } from '../cron-schedule/cron-schedule.service';
-import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { DRIZZLE, DRIZZLE_READ, type DrizzleDB } from '../db/database.module';
+
+// Capa 3 contención RDS (15/07): las reglas de alerta que MONITORIZAN el pool/pooler
+// del PRIMARIO (leen pool_capacity_samples / pgbouncer_instance_samples = estado real de
+// la instancia primaria) DEBEN ejecutarse contra el primario. En un incidente el lag de
+// la réplica se dispara justo cuando estas alertas son más necesarias → leerlas de la
+// réplica dejaría ciega la detección. El RESTO de reglas (agregan observable_events /
+// validation_error_logs, toleran staleness sub-segundo) van a la réplica.
+const PRIMARY_ONLY_RULES = new Set<string>([
+  'pool_idle_in_tx_detected',
+  'pool_hung_clientread_detected',
+  'pool_frontend_saturation_high',
+  'pool_sampler_stale',
+  'pooler_instance_unreachable',
+  'pooler_instance_degraded',
+]);
 import {
   getLastTickMsAgo,
   runWithHeartbeat,
@@ -49,6 +64,7 @@ export class AlertsCron {
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    @Inject(DRIZZLE_READ) private readonly readDb: DrizzleDB,
     @Inject(NOTIFICATION_ADAPTER)
     private readonly notifier: NotificationAdapter,
     private readonly observability: ObservabilityService,
@@ -114,8 +130,10 @@ export class AlertsCron {
           }
         }
 
-        // Ejecutar query
-        const result = await this.db.execute(rule.query);
+        // Ejecutar query. Regla de pool/pooler → primario (monitoriza la instancia
+        // real); resto → réplica (agregación que tolera staleness). Capa 3.
+        const ruleDb = PRIMARY_ONLY_RULES.has(rule.name) ? this.db : this.readDb;
+        const result = await ruleDb.execute(rule.query);
         // `result` es un Array de filas en postgres-js
         const rows = Array.isArray(result) ? result : [];
 
