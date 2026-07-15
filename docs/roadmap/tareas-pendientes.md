@@ -192,11 +192,6 @@
 - **Cómo:** `docs/runbooks/pusheo-revision-despliegue.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
 - **Estado:** commiteado + pusheado, pendiente de deploy.
 
-### 🟢 [INFRA — solo decomiso] Decomisar el zombi Supabase (`auth.vence.es`) — scripts ya agnósticos
-- **Contexto:** la app ya está 100% fuera de Supabase (auth=Auth.js RS256, data=RDS). Pero el proyecto Supabase tras `auth.vence.es` sigue **físicamente vivo como snapshot CONGELADO** (verificado 15/07: 118.618 questions vs 152.880 en RDS; no ve inserts de hoy).
-- **Barrido de scripts CERRADO (15/07, commits `bc64f018`+`f81ad01f`):** de los ~124 que quedaban, ninguno era recurrente (los audits/crons/radar/canaries ya estaban repuntados). **86 one-offs muertos archivados** a `scripts/_archive/`; **10 utilidades vivas repuntadas al shim** (`scripts/lib/pg-agnostic-client.cjs`); **4 con pgvector/`.or` convertidas a RDS funcionales** (helper `scripts/lib/match-articles.cjs`, smoke-test OK); **4 de auth/storage mantenidas** (legítimas). **0 scripts vivos leen data stale en silencio.**
-- **Lo único que queda (acción de INFRA de Manuel):** retirar el CNAME `auth.vence.es` + apagar el proyecto Supabase. Único uso residual = **minteo de token admin** (varios scripts/endpoints mint via Supabase auth: `verify:scope record`, `feedback/respond`, `dispute/resolve`). Cerrar eso primero (auth agnóstico, ver [[agenda_tareas_programadas]] / `docs/roadmap/auth-agnostico-jwks-y-rls.md`), y storage→S3, antes del apagado final.
-
 ### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)
 - **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **9 € pagables** = 3 recompensas de bug aprobadas (3 €×3), sin hold, 0 pagado. La 3ª es del bug de Auxiliar de Biblioteca (12/07). Emitir vale Amazon.es.
 - **Por qué:** dinero ganado y disponible sin cobrar; dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 4 € de saldo) o esperar a que acumule 10 €.
