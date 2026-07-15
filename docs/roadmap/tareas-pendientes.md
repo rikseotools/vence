@@ -22,11 +22,11 @@
 - **Cómo:** sync RD 1791/2010 desde BOE (`monitoreo-boe-y-crear-leyes-nuevas.md`) → generar preguntas ancladas al texto + doble auditoría ciega + `tech_approved`. T14: localizar la normativa ULE oficial (interna, boe=null) y completarla.
 - **Estado:** detectado + verificado 14/07, sin empezar. Plazo: ~antes del 21/07.
 
-### 🔴 [URGENTE — examen ~17/07] Estrechar scope T14 Aux. Admvo. Aragón (VIII Convenio Colectivo PL Aragón)
+### ✅ [HECHA 15/07] Estrechar scope T14 Aux. Admvo. Aragón (VIII Convenio Colectivo PL Aragón)
 - **Qué:** T14 (`auxiliar_administrativo_aragon`, "Negociación laboral… convenios colectivos") escopa los **137 artículos ENTEROS** del VIII Convenio Colectivo PL Aragón (ley `28f62de0`), pero el epígrafe lo delimita a *"ámbito de aplicación **y** derechos y deberes del personal laboral"*. Resultado: **93/137 arts sin preguntas** (jubilación, pólizas, ropa de trabajo, anticipos, acción social…) que el usuario ve en gris y le generan alarma.
 - **Por qué urge:** feedback `310bb050` de Isabel B (isa91187@gmail.com, **premium**, examen en ~3 días desde 14/07). Ya respondida (que su temario no pide el convenio entero + estamos ajustando el filtro). Hay que cumplirlo YA para que no vea 93 arts vacíos.
 - **Cómo:** verify:scope contra el **BOA `BOA20230519011`** (la BD NO tiene título/capítulo del convenio → traer la estructura oficial) → identificar los artículos de "ámbito de aplicación" (art 1) + el título/capítulo de "derechos y deberes del personal laboral" → estrechar `topic_scope` a ese subconjunto (2 agentes, judgment-gate; NO quitar de más). NUNCA generar 93 preguntas de artículos fuera de programa.
-- **Estado:** detectado 14/07 (feedback Isabel), scope inflado confirmado, pendiente estrechar contra BOA. Conecta con los otros huecos de Aragón (T6/T16).
+- **HECHO (15/07):** verificado contra la estructura oficial del BOA (traída con Playwright del portal mia.aragon.es), consenso 2 agentes → **scope 137→69 arts** (Cap I-VI; fuera Cap VII-XI: excedencias, salud laboral, concursos, disciplinario, representación). Generadas **25 preguntas IA** (batch `gen_convenio_aragon_2026-07-15`, 25/25 PERFECT en triple auditoría) → **69/69 arts con cobertura**. Follow-up menor: `programa_url` apunta a bases/reseña, no al temario. Conecta con los otros huecos de Aragón (T6/T16, siguen abiertos).
 
 ### 🟠 [ALTA — bug funcional] El endpoint de borrado de cuenta nunca completa (falta insertar `deleted_users_log`)
 - **Qué:** `DELETE /api/admin/delete-user` falla siempre con *"deleted_users_log row … is missing — insert it (with deletion_reason) before calling delete_user_account"*. `deleteUserData` (queries.ts:44-50) **exige** que la fila de auditoría exista antes de llamar a `public.delete_user_account(uuid)`, pero ni la ruta ni el flujo de "solicitar borrado desde perfil" la insertan → todo borrado admin requiere fallback manual por SQL.
@@ -65,11 +65,11 @@
 - **Cómo:** crear artículo editorial (fuente normalizadora) para cada concepto y añadirlo al `topic_scope` del tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
 - **Estado:** resto de la oposición verificado (18/20 correct tras arreglar T12 mover II Acuerdo→T13 y T8/T7 mover reglamentos 127-133). Solo estos 2 huecos.
 
-### 🔴 [URGENTE — esta semana, prometido] Preguntas de 4 temas sin cubrir de Aux. Admvo. Diputación de Cuenca
+### ✅ [HECHA 15/07] Preguntas de temas sin cubrir de Aux. Admvo. Diputación de Cuenca
 - **Qué:** faltan preguntas en 4 temas de `auxiliar_administrativo_diputacion_cuenca` (el resto está bien cubierto): **T5** Régimen local (TRRL RD Leg 781/1986 + ROF RD 2568/1986, hoy 9 preg), **T14** Reglamento de Bienes de las EELL (RD 1372/1986, hoy 7 preg), **T19** Informática básica + Explorador Windows 10 (0), **T20** Ofimática Word/Outlook/Excel Office 2021 (0).
 - **Por qué urge:** **compromiso con fecha** — feedback `affe9ed8` (sandradrz / "Ale", premium activa, 12/07): le dijimos que **estarán disponibles esta semana** (~antes del 19/07/2026).
 - **Cómo:** T5/T14 = editorial legal anclado al BOE de esos RD (nunca inventar). T19/T20 = familia Windows/Office (ver tareas de informática pendientes de otras oposiciones). Lifecycle `tech_approved` + doble auditoría ciega. Avisar a Ale (`sandradrz@gmail.com`, feedback `affe9ed8`) al terminar.
-- **Estado:** prometido a 1 usuaria, sin empezar.
+- **HECHO (15/07):** el backlog estaba **stale** — T19/T20 ya estaban cubiertos (1052/2766 preg), no a 0. Huecos reales solo T5/T14. Verificación previa (2 agentes) cazó **sobre-scope oculto**: T5 TRRL incluía Título II (Municipio) fuera de epígrafe → corregido a {1,25-34} (Provincia); ROF −art35; T14 Bienes −Cap III. Re-verificados `verified_correct`. Generadas **16 preguntas IA** (batch `gen_cuenca_regimen_local_2026-07-15`, 16/16 PERFECT triple auditoría) → **T5 9→22, T14 7→18**. Follow-ups menores: `programa_url` a bases/reseña no temario; epígrafe no confirmado byte a byte vs BOP; TRRL con títulos de artículo vacíos. Falta: avisar a Ale (`sandradrz@gmail.com`).
 
 ### 🔴 [URGENTE] Construir los 5 temas de la parte específica de Téc. Auxiliar (Aux. de Servicios) UMU
 - **Qué:** faltan T9 (funciones especialidad), T11 (máquinas reproductoras), T13 (control de accesos), T14 (seguridad edificios/incendios), T18 (mantenimiento 1er nivel TIC) — `disponible=false`, 0 scope, 0 preguntas. Los 5 tienen **epígrafe oficial ya cargado**.
