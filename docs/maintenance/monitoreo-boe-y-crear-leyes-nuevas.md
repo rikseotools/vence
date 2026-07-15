@@ -79,6 +79,57 @@ El detector produce **falsos positivos**: la fecha `last_update_boe` en BD a vec
 
 > **Los falsos positivos no son tiempo perdido.** Revisar cada `changed` es de facto una auditoría del catálogo de leyes. El 22/05/2026, 5 falsos positivos destaparon 2 leyes derogadas que llevaban años marcadas como activas (Ley 2/2009 Aragón con 55 preguntas vivas; Ley 29/2006 Medicamentos). Trata cada `changed` como una oportunidad de auditar, no como una molestia.
 
+## 1ter. El badge de «Monitoreo» parpadea pero `change_status='changed'` = 0
+
+**El badge del nav "Monitoreo" tiene DOS fuentes, no una** (`hooks/useLawChanges.ts` → `hasUnreviewedChanges || hasOutdatedLaws || hasDiscrepancies`):
+
+1. **Cambios de leyes** — `laws.change_status='changed'` (lo de §1). Vía `/api/law-changes?readonly=true`.
+2. **Discrepancias de verificación de artículos** — `/api/verify-articles/stats-by-law` → `hasDiscrepancies`. Una ley "no OK" (`calculateIsOk` en `lib/api/verify-articles/ai-helpers.ts`) enciende el badge: hay `title_mismatch`, `content_mismatch`, `missing_in_db`, o `extra_in_db` real > 0, **o** `boe_count=0`.
+
+**Por eso, si miras solo `change_status='changed'`, ves 0 y el badge sigue parpadeando: lo enciende la segunda fuente.** Para ver qué leyes tienen discrepancia de verificación (RDS, **no** el snippet Supabase congelado de §1):
+
+```bash
+node -e '
+const fs=require("fs"),p=require("./backend/node_modules/postgres");
+const u=fs.readFileSync(".env.local","utf8").match(/^DATABASE_URL=(.*)$/m)[1].trim();
+function calcIsOk(su){ if(!su)return null; if(su.no_consolidated_text)return true;
+  const boe=(su.boe_count??su.total_boe??null); if(boe===0)return false;
+  if(su.message&&String(su.message).includes("No se encontraron artículos"))return false;
+  const extra=Math.max(0,((su.extra_in_db||0)-(su.structure_articles||0)));
+  return (su.title_mismatch||0)===0&&(su.content_mismatch||0)===0&&extra===0&&(su.missing_in_db||0)===0; }
+(async()=>{const s=p(u,{ssl:{rejectUnauthorized:false},max:1,connect_timeout:90});
+  const rows=await s`SELECT id, short_name, last_verification_summary su FROM laws WHERE last_verification_summary IS NOT NULL`;
+  rows.filter(r=>calcIsOk(r.su)===false).forEach(r=>console.log(r.short_name, JSON.stringify(r.su).slice(0,160)));
+  await s.end();})();'
+```
+
+### ⚠️ `boe_count=0` / "No se encontraron artículos" NO es benigno: RE-VERIFICA, no suprimas
+
+Un `boe_count=0` guardado suele ser un **fallo transitorio de descarga** en el momento del cron (BOE devolvió una página parcial), y **enmascara discrepancias reales** que había debajo. La tentación es "reclasificarlo" para apagar el badge — **es un error, oculta problemas de contenido reales.** El camino correcto es **re-verificar** (el endpoint re-descarga, re-extrae, compara y persiste un resumen fresco):
+
+```bash
+# El GET es público (sin auth). Contra prod re-descarga BOE y persiste el resumen en RDS.
+curl -s "https://www.vence.es/api/verify-articles?lawId=<UUID>"
+```
+
+**Antes de re-verificar, comprueba también que el `boe_url` es el correcto** — un `boe_url` que apunta a otro documento produce `boe_count=0` permanente.
+
+> **Caso real 2026-07-13.** El badge parpadeaba con `change_status='changed'`=0. La segunda fuente marcaba 5 leyes con `boe_count=0` ("No se encontraron artículos"). Parecían falsos positivos del extractor — **no lo eran**. Re-verificando: 4 leyes tenían discrepancias reales tapadas por el 0 transitorio (drift de contenido + artículos faltantes), y una (**Ley 2/2007 Archivos Ext**) tenía el **`boe_url` apuntando a otra ley** (`BOE-A-2007-9963` = una Resolución de aprobados de Agentes de Hacienda, en vez de `BOE-A-2007-10663`), con solo 3 de sus 55 artículos en BD. Si se hubiera "apagado" el badge, se habría ocultado todo eso. **El badge estaba haciendo su trabajo.** Regla: `boe_count=0` → re-verificar y arreglar `boe_url`, nunca suprimir.
+
+### Método de reconciliación ley↔BOE (por cada discrepancia)
+
+1. **Re-verificar** para tener el estado honesto (re-descarga BOE, persiste summary).
+2. **Clasificar cada `content_mismatch`** comparando el artículo BD con el BOE del **mismo número** y buscando en qué número del BOE encaja mejor el contenido BD:
+   - **Mismo-número / reforma** (el título casa en ese número) → **alinear** el contenido al texto oficial. Usar `extractArticlesFromBOE` (excluye bien las `<p class="nota_pie">`, que son notas de modificación, NO articulado — no meterlas). NO usar una re-extracción "a mano" del bloque entero: colarías el historial de modificaciones.
+   - **Renumeración** (el asunto del artículo BD ya no está en ese número del BOE) → buscar la **frase clave de cada pregunta** en el BOE vivo, localizar su artículo real, **re-alojar** `primary_article_id` + **explicación nueva** citando el artículo vigente + corregir la cita "artículo N" del enunciado. Si la reforma dejó la respuesta **no literal** → `needs_human` (`transition_question_state`, reason `ai_detected_wrong_article`), nunca falsear.
+3. **`missing_in_db`**: añadir con `POST /api/verify-articles/add-missing` (aditivo puro: inserta solo los que faltan, no desactiva ni sobrescribe). Incluir el **preámbulo** (`article_number='preámbulo'`, `title='Preámbulo'`): **204 leyes lo guardan y 161 preguntas cuelgan de preámbulos** → un "missing: preámbulo" es un HUECO real, no un quirk.
+4. **Auditar las preguntas** de todo artículo tocado contra el texto vigente (¿la clave sigue literal tras la reforma?).
+5. **Títulos = clon EXACTO del BOE.** No enriquecer con paréntesis ("Objetivos generales (Coeducación)"): en el BOE se llaman así de verdad y los distingue el número de artículo. Fuente única, sin fuzzy-match.
+
+> **NUNCA `sync-all` en modo `sync` con renumeración**: sobrescribe contenido Y **desactiva** los artículos que no están en el BOE → deja preguntas huérfanas. Usar align targeted + `add-missing`.
+>
+> **Orden/documento administrativo sin articulado parseable y sin uso** (0 scope, 0 preguntas; el extractor saca 0 por numeración ordinal no estándar) → marcar el summary con `no_consolidated_text:true` y mensaje honesto, como las normas regionales ya suprimidas. No es fabricar: es clasificar un doc no verificable.
+
 ## 2. Verificar Artículos de una Ley
 
 Compara artículo por artículo el contenido del BOE con nuestra BD.

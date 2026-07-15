@@ -6,6 +6,30 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 
 > Complementa al manual `docs/maintenance/verificar-epigrafe-topic-scope.md` (la metodología de fondo). Este runbook es el **procedimiento operativo** del sistema de verificación con provenance.
 
+## ⚠️ Regla previa OBLIGATORIA — orden de trabajo cuando lo dispara un USUARIO
+
+Siempre que un usuario (feedback, impugnación, duda) hable de **epígrafes, `topic_scope`, temario, artículos de un tema o "faltan/sobran preguntas de un tema"**, el orden es **este, y en este orden**, ANTES de responderle o tocar nada:
+
+1. **Lee primero este manual de epígrafes** (y `docs/maintenance/verificar-epigrafe-topic-scope.md`). No improvises el diagnóstico de scope de memoria.
+2. **Comprueba que la BD de SU oposición está OK y actualizada**: estado de verificación de esa `position_type` (`npm run verify:scope status <position_type>`), que los temas implicados están `disponible`, que su `topic_scope` no tiene **filas rotas** (ley enganchada con `article_numbers = '{}'` VACÍO → 0 preguntas de esa ley pese a existir banco), y que el epígrafe de BD casa con el programa oficial. Es decir: **primero pon en orden lo suyo**, no mires solo la pregunta literal.
+
+   > ⚠️ **NULL ≠ vacío (no confundir).** La semántica la fija el API real de tests (`lib/api/filtered-questions/queries.ts:576-578, 983-986`) y la de teoría (`lib/api/topic-data/queries.ts:230`):
+   > - `article_numbers IS NULL` → **"toda la ley"** (ley virtual/entera): sirve TODAS las preguntas. **VÁLIDO, NO tocar.** Es la convención de las enfermerías, Office común, etc.
+   > - `article_numbers = '{}'` (array vacío) → **fila inerte**: no matchea nada → 0 preguntas. **ESTE es el bug.**
+   > - `article_numbers = [vals]` → solo esos artículos.
+   > (Ojo: `array_length(x,1) IS NULL` es TRUE para NULL y para `{}` a la vez → NO uses eso para detectar el bug, da falsos positivos masivos sobre las filas NULL sanas.)
+
+   **Detección de filas rotas** (bug sistémico de scaffolding, cazado por Jen 15/07 en Cádiz; también p.ej. Madrid T14) — SOLO el array vacío, nunca NULL:
+   ```sql
+   SELECT t.position_type, t.topic_number, l.name
+   FROM topic_scope ts JOIN topics t ON t.id=ts.topic_id JOIN laws l ON l.id=ts.law_id
+   WHERE ts.article_numbers = '{}'::text[];   -- vacío = inerte. NULL = "toda la ley" (válido).
+   ```
+   **Fix:** poblar `article_numbers` reusando el set que una oposición comparable ya usa para esa ley (verificar encaje con el epígrafe); si la ley enganchada es la EQUIVOCADA (Cádiz T20: Ley 33/2003 patrimonio ESTATAL en un tema de "bienes de las entidades LOCALES" → la correcta era RD 1372/1986 Reglamento de Bienes EELL + LBRL 79-83), sustituirla; si el banco resultante es fino, generar (fuente oficial + doble auditoría). **Barrido global HECHO (15/07): 0 filas `{}` en toda la BD** (Cádiz eran las únicas y ya se poblaron); las 1.696 filas NULL son "toda la ley" y están BIEN.
+3. **Solo entonces analiza lo que pide el usuario** contra ese estado ya verificado, y decide (reasignar scope reusando banco existente, generar si el epígrafe lo pide y hay 0 preguntas, o explicar por qué es correcto).
+
+Motivo: el texto literal del usuario suele ser la punta del iceberg (p.ej. "no hay preguntas de la Ley 29/1998 en el T16" resultó ser una fila de `topic_scope` con la LJCA enganchada pero `article_numbers` vacío, con 604 preguntas ya en BD listas para reusar). Si respondes sin poner antes la BD de su oposición en orden, das un diagnóstico parcial o equivocado. Relacionado: [[feedback_epigrafe_manda_0_preguntas_generar]], `docs/procedures/gestionar-feedback-bug.md`.
+
 ## Orden de los DOS pasos (DOCTRINA — no saltárselo)
 
 **Son dos pasos y van EN ESTE ORDEN. El Paso 1 es BLOQUEANTE: sin él no se hace el Paso 2.**
