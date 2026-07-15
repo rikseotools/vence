@@ -19,6 +19,7 @@ const mockRequireAdmin = jest.fn()
 const mockDeleteUserData = jest.fn()
 const mockSendEmail = jest.fn()
 const mockAuthDelete = jest.fn()
+const mockEnsureLog = jest.fn()
 
 let selectCall = 0
 let preReadRows: Array<{ email: string; full_name: string }> = [{ email: 'arel@x.c', full_name: 'Arelis Morales' }]
@@ -46,6 +47,7 @@ jest.mock('@/lib/api/shared/auth', () => ({
 jest.mock('@/lib/api/admin-delete-user', () => ({
   deleteUserData: (...a: unknown[]) => mockDeleteUserData(...a),
   sendDeletionConfirmationEmail: (...a: unknown[]) => mockSendEmail(...a),
+  ensureDeletionLogRow: (...a: unknown[]) => mockEnsureLog(...a),
 }))
 jest.mock('@/lib/auth/server', () => ({
   authAdmin: { deleteUser: (...a: unknown[]) => mockAuthDelete(...a) },
@@ -72,6 +74,8 @@ beforeEach(() => {
   mockRequireAdmin.mockResolvedValue({ ok: true, user: { id: 'admin', email: 'a@vencemitfg.es' } })
   mockDeleteUserData.mockResolvedValue([{ table: '_delete_user_account', status: 'deleted' }])
   mockSendEmail.mockResolvedValue({ sent: true, emailId: 'e1' })
+  // Con perfil presente, la fila de auditoría se inserta OK antes del borrado.
+  mockEnsureLog.mockResolvedValue({ inserted: true, existed: false })
 })
 
 test('post-flip (not_present) + perfil borrado → 200 success + email RGPD enviado', async () => {
@@ -126,13 +130,32 @@ test('F3: reintento (pre-read vacío) recupera el email DURABLE de deleted_users
   expect(mockSendEmail).toHaveBeenCalledWith({ email: 'durable@x.c', fullName: 'Durable Name' })
 })
 
-test('F3: sin email en NINGUNA fuente (ni user_profiles ni deleted_users_log) → 500, marcado error', async () => {
+test('sin perfil Y sin fila de auditoría previa → 409 y NO se borra (aborta pre-delete)', async () => {
+  // Con el fix RGPD: sin email de perfil (perfil ausente) Y sin fila en
+  // deleted_users_log, no hay ni a quién notificar ni registro de auditoría → se
+  // ABORTA antes del borrado (409), no se borra "a ciegas". Así el estado
+  // "cuenta borrada sin email para el correo RGPD" es INALCANZABLE por construcción.
   preReadRows = []
-  logRow = null // deleted_users_log tampoco tiene email
+  logRow = null // deleted_users_log tampoco tiene fila
   afterRows = []
   mockAuthDelete.mockResolvedValue({ outcome: 'not_present', error: null })
   const res = await DELETE(req())
-  expect(res.status).toBe(500) // no se pudo cumplir la obligación legal → se surface
+  expect(res.status).toBe(409)
+  expect(mockDeleteUserData).not.toHaveBeenCalled() // no se llegó a borrar
+  expect(mockSendEmail).not.toHaveBeenCalled()
+})
+
+test('perfil presente pero el insert de auditoría FALLA → 500 fail-closed, NO se borra', async () => {
+  // La fila deleted_users_log es requisito de delete_user_account y fuente del
+  // email RGPD durable. Si su insert falla, NO se puede borrar de forma segura →
+  // fail-closed 500 ANTES de tocar los datos del usuario.
+  mockEnsureLog.mockRejectedValue(new Error('insert audit row falló'))
+  mockAuthDelete.mockResolvedValue({ outcome: 'not_present', error: null })
+  const res = await DELETE(req())
+  const body = await res.json()
+  expect(res.status).toBe(500)
+  expect(body.success).toBe(false)
+  expect(mockDeleteUserData).not.toHaveBeenCalled() // nunca se borró
   expect(mockSendEmail).not.toHaveBeenCalled()
 })
 
