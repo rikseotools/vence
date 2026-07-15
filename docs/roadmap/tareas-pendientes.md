@@ -78,6 +78,10 @@
 - **Defectos de extracción tiny detectados (aparte, pre-existentes):** arts del **Código de Comercio** con `title='º'` (artefacto de extracción de ordinales) y **Código Civil** con títulos-rango (`'a 324'`, arts agrupados). No urgente; corregir el título cuando se toque cada ley.
 - **Estado:** ABIERTA (sin empezar el triaje).
 
+### ✅ [HECHA 15/07] Estrechar scope T14 Aux. Admvo. Aragón (convenio colectivo) + cobertura
+- **Qué:** T14 (`auxiliar_administrativo_aragon`, "Negociación laboral, conflictos y convenios colectivos…") escopaba el VIII Convenio Colectivo PL Aragón **entero (137 arts)**, pero el epígrafe lo delimita a *"ámbito de aplicación y derechos y deberes del personal laboral"*. Usuaria premium (Isabel, feedback `310bb050`, examen ~17/07) veía ~81 arts vacíos.
+- **Resuelto:** epígrafe **confirmado literal** contra el temario oficial 2025 (Anexo XXXI) — bajado del portal Angular+CSV `mia.aragon.es` con **Playwright** (`programa_url` de BD apuntaba a las bases, no al temario; corregido a la Resolución 25-nov-2025). Consenso 2 agentes → **SOBRE-SCOPE**: scope estrechado **137→69 arts** (Cap I-VI; fuera Cap VII-XI = disciplinario/sindical/movilidad/selección/salud laboral). T14 re-verificado `verified_correct`. Cobertura del hueco interno: **44/69 → 69/69** con 25 preguntas IA generadas (doble auditoría ciega + paso 9, todas PERFECT, batch `gen_convenio_aragon_2026-07-15`). Caché revalidada. Aprendizajes en manual `verificar-epigrafe-topic-scope.md` (Vector 3 SPA/Playwright + Vector 3-bis `verified_correct` laxo).
+
 ### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Gobierno de Aragón (revisión epígrafes 13/07)
 - **Qué:** dos conceptos que el epígrafe oficial cita pero sin artículo que los cubra: (1) **T6** "fuentes del derecho administrativo" (jerarquía normativa) — no existe artículo estatal genérico para escopar; (2) **T16** "certificados y firma electrónica" — el editorial de Informática Básica/Red Internet no lo trata.
 - **Por qué:** detectado en la verificación scope↔epígrafe (2 agentes, consenso `needs_human`). No se inventa contenido → hay que crear el artículo editorial correspondiente y escoparlo.
