@@ -108,15 +108,13 @@ async function generateEmbedding(text) {
 }
 
 async function findSimilarArticles(embedding, lawId = null) {
-  // Usar la función RPC match_articles
-  const { data, error } = await supabase.rpc('match_articles', {
-    query_embedding: embedding,
-    match_threshold: 0.3, // Usar threshold bajo para obtener más resultados
-    match_count: TOP_K
-  })
-
-  if (error) {
-    console.error('Error en match_articles:', error.message)
+  // Búsqueda semántica pgvector contra RDS (helper agnóstico; el shim no cubre .rpc)
+  const { matchArticles } = require('./lib/match-articles.cjs')
+  let data
+  try {
+    data = await matchArticles(embedding, 0.3, TOP_K)
+  } catch (e) {
+    console.error('Error en match_articles:', e.message)
     return []
   }
 

@@ -147,15 +147,13 @@ async function main() {
       // Obtener embedding de la pregunta
       const embedding = await getEmbedding(textoCompleto);
 
-      // Buscar artículos similares usando match_articles
-      const { data: matches, error } = await supabase.rpc("match_articles", {
-        query_embedding: embedding,
-        match_threshold: 0.3,
-        match_count: 5
-      });
-
-      if (error) {
-        console.log(`❌ Error: ${error.message}`);
+      // Buscar artículos similares (pgvector contra RDS; helper agnóstico, el shim no cubre .rpc)
+      const { matchArticles } = require("../lib/match-articles.cjs");
+      let matches;
+      try {
+        matches = await matchArticles(embedding, 0.3, 5);
+      } catch (e) {
+        console.log(`❌ Error: ${e.message}`);
         continue;
       }
 

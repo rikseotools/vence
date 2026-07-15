@@ -138,15 +138,13 @@ async function main() {
       // Obtener embedding del epígrafe
       const embedding = await getEmbedding(tema.epigrafe);
 
-      // Buscar artículos similares
-      const { data: matches, error } = await supabase.rpc("match_articles", {
-        query_embedding: embedding,
-        match_threshold: 0.25,
-        match_count: 10
-      });
-
-      if (error) {
-        console.log(`❌ Error: ${error.message}`);
+      // Buscar artículos similares (pgvector contra RDS; helper agnóstico, el shim no cubre .rpc)
+      const { matchArticles } = require("../lib/match-articles.cjs");
+      let matches;
+      try {
+        matches = await matchArticles(embedding, 0.25, 10);
+      } catch (e) {
+        console.log(`❌ Error: ${e.message}`);
         continue;
       }
 

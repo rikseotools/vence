@@ -50,11 +50,16 @@ const [,, lawShortName, artNum, searchTerm] = process.argv;
     query = query.eq("article_number", artNum);
   }
 
-  if (searchTerm) {
-    query = query.or(`content.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%`);
-  }
+  // Nota: el shim agnóstico (RDS) no soporta .or(); el filtro por searchTerm
+  // (content/title ILIKE) se aplica en JS tras traer los artículos de la ley.
+  const { data: allArts } = await query.order("article_number");
 
-  const { data: arts } = await query.order("article_number").limit(10);
+  const term = (searchTerm || "").toLowerCase();
+  const arts = (allArts || [])
+    .filter(a => !term ||
+      (a.content || "").toLowerCase().includes(term) ||
+      (a.title || "").toLowerCase().includes(term))
+    .slice(0, 10);
 
   console.log("Ley:", law.short_name, "-", law.name);
   console.log("---");
