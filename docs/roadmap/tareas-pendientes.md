@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🟡 [MEDIA — calidad] Verificar + completar Aux. Administrativo del Ayuntamiento de Madrid
+- **Qué:** `auxiliar_administrativo_ayuntamiento_madrid` (22 temas, activa) NO está verificada ni completa: (1) **Paso 1 epígrafe 22/22 `never_sourced`** + **Paso 2 scope `never_verified`** (nunca auditada contra el PDF oficial de madrid.es); (2) **T21 Word + T22 Excel: 0 preguntas** con `disponible=true` (el usuario los ve vacíos); (3) **8 temas finos con solo 6 preguntas** (T8-T12 Ley Capitalidad/Pleno/Distritos/ROGA + T18-T20 atención ciudadanía/sugerencias). El núcleo SÍ está bien (T1 1.081, T3 1.625, T4 1.212, T15/T16/T17 cientos).
+- **Por qué:** detectado 15/07 al investigar feedback `9d7cabdd` (Esther Pimentel, free, la buscaba). Está activa y vendible pero con huecos que un usuario ve.
+- **Cómo:** Paso 1 clonar epígrafe del PDF oficial (`programa_url` = madrid.es BasesEspecificas.pdf) → `verify:scope` 2 agentes → generar preguntas de T21/T22 (ofimática Word/Excel Office) + reforzar los 8 finos. Doble auditoría + `tech_approved`.
+- **Estado:** sin empezar (en curso 15/07). Conecta con los otros huecos de ofimática (Windows/Office de otras oposiciones).
+
 ### ✅ [HECHA 15/07] Aux. Admvo. Universidad de León — OPOSICIÓN COMPLETA (21/21 temas)
 - **Qué:** (1) **T15 "Estatuto del Estudiante Universitario (RD 1791/2010)"** — el temario oficial (BOE-A-2026-4150, Anexo II) lo pide **COMPLETO** (sin delimitar títulos), pero en BD solo hay **12 de ~65 artículos** con 7 preguntas → sincronizar el RD 1791/2010 entero desde el BOE + generar preguntas de los ~53 artículos que faltan. (2) **T14 "Normativa de matrícula y permanencia de la ULE"** — verificar que la normativa interna ULE está cargada al completo (hoy 5-8 arts, 7 preg).
 - **Por qué:** feedback `f326d13c` de Ana Llano (anais.llafe@gmail.com, **premium**, `auxiliar_administrativo_universidad_leon`, 14/07). Verificado contra el BOE oficial: tiene razón, están incompletos. **Se le prometió "a lo largo de esta semana" (NO se le avisa; solo cumplir el plazo).**

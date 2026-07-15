@@ -295,6 +295,8 @@ Equipo de Vence
 
 Reglas estrictas (de feedback de Manuel):
 - **Saludo:** `Hola <Nombre>,` — coma **DESPUÉS del nombre**, NO entre "Hola" y el nombre (es "Hola Rosa," no "Hola, Rosa" ni "Hola Rosa" sin coma). Es lo profesional. El `<Nombre>` es el **nombre real** del perfil (`user_profiles.full_name`, primer nombre) — NUNCA inventarlo ni derivarlo del email. Si el `full_name` está vacío o parece falso/derivado del email → usar `Hola,` a secas.
+- **ENSEÑAR a navegar, NO pegar links** (feedback Manuel 15/07): cuando el usuario no encuentra algo en la app (una oposición, una opción, una sección), NO le pegues una URL — **explícale la RUTA en la interfaz** ("arriba, en el botón de **Test**, pulsa **Cambiar oposición**"; "en tu **perfil**…"; "en el menú de arriba…"). Enseñar a moverse por la app > darle un enlace (aprende a hacerlo solo y no depende del link). Cita los nombres EXACTOS de los botones tal como aparecen en la UI.
+- **Antes de dirigir a un usuario a una oposición/sección, VERIFÍCALA a fondo** — que no esté a medias (Paso 1 epígrafe + Paso 2 scope hechos, temas sin 0 preguntas). No prometas "está completa y al día" si no lo has comprobado (caso Esther/Ayuntamiento Madrid 15/07: activa pero con 2 temas vacíos + sin verificar → NO se le dijo "completa").
 - **Segunda línea SIEMPRE:** `Gracias por escribirnos.`
 - **Firma SIEMPRE:** dos líneas → `Un saludo` + `Equipo de Vence`.
 - **Sin guiones largos** (— o -) como conector; usar comas, dos puntos o frases separadas.
