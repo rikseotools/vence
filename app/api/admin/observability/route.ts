@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { requireAdmin } from '@/lib/api/shared/auth'
-import { getAdminDb } from '@/db/client'
+import { getReadDb } from '@/db/client'
 import { createAdminPanelMemo } from '@/lib/cache/adminPanelMemo'
 
 // Memo post-auth por `window` — panel de monitoreo, TTL 30s. Ver runbook
@@ -49,7 +49,7 @@ async function _GET(request: NextRequest) {
   const cached = _memo.get(window)
   if (cached) return NextResponse.json({ ...cached, cached: true })
 
-  const db = getAdminDb()
+  const db = getReadDb() // Capa 2 (15/07): agregación observable_events → réplica
 
   // Consulta única con múltiples agregaciones via Drizzle execute
   // (más eficiente que N queries paralelas por window).

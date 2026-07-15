@@ -26,7 +26,7 @@
 // docs/runbooks/health-check.md) cuando quiere saber si hay fuego.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminDb } from '@/db/client'
+import { getReadDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
 import { and, eq, gte, lt, desc, ilike, notInArray, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -229,7 +229,7 @@ async function _GET(request: NextRequest) {
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000
   const since = new Date(sinceMs).toISOString()
 
-  const db = getAdminDb()
+  const db = getReadDb() // Capa 2 (15/07): paneles admin sobre observable_events → réplica (aísla cómputo del primario; tolera staleness)
 
   // Wrapper que preserva la resiliencia por-indicador del endpoint original:
   // un fallo en una query (p.ej. observable_events caído) NO tumba todo el

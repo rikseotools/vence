@@ -46,10 +46,16 @@ Un panel de monitoreo que auto-refresca cada 60 s **no gana nada** ejecutando un
 ### 2. Aislar conexiones → bulkhead de pool (✅ APLICADO 12/07)
 `infra-stats` corría sobre **`getDb()` (el pool de USUARIOS)**. Movido a **`getAdminDb()`** (max:12) → sus lecturas ya no roban slots al hot-path. `system-health` ya usaba `getAdminDb()`.
 
-### 3. Aislar cómputo → read replica (⏸️ PENDIENTE — decisión de coste)
-La fontanería **ya existe**: `getReadDb()` + flag `USE_READ_REPLICA` + `DATABASE_URL_REPLICA` en `db/client.ts` (patrón validado en era-Supabase, Sprint 3/5). **Tras el cutover a RDS (04/07) NO hay réplica** — `getReadDb()` apunta al primario.
-- **Qué falta:** provisionar un **RDS read replica** (coste ≈ otra instancia RDS) → apuntar los endpoints admin/analytics a `getReadDb()` → flip `USE_READ_REPLICA=true`.
-- **Gatillo:** hacerlo **solo si**, ya con la cache (capa 1) desplegada, la contención persiste. No pagar infra por un escaneo que la cache ya mató.
+### 3. Aislar cómputo → read replica (🟢 PROVISIONADA + CAPA 1 LIVE 15/07 — gatillo cumplido)
+La fontanería **ya existía**: `getReadDb()` + flag `USE_READ_REPLICA` + `DATABASE_URL_REPLICA` en `db/client.ts`. El gatillo se cumplió el 15/07 (la contención RECURRIÓ bajo carga de mañana pese a cache+bulkhead → `pg_stat_statements` confirmó cuello de CÓMPUTO repartido: admin analytics ~117k s + escrituras telemetría ~96k s + user analytics ~60-80k s + cron outbox ~50k s).
+
+**PROVISIONADA (15/07):**
+- **Instancia:** `vence-prod-replica` (db.t4g.medium, single-AZ, misma SG `sg-04628bd6a17efdd20`). Endpoint `vence-prod-replica.c1mkcg6astb0.eu-west-2.rds.amazonaws.com`. Coste ≈ otra t4g.medium (~$40-60/mes).
+- **⚠️ GOTCHA CAZADO al simular (imprescindible):** una lectura analítica en la réplica se **cancelaba** con `ERROR: canceling statement due to conflict with recovery` (la réplica aplica WAL que borra filas que la query lee). Fix: **parameter group propio `vence-postgres17-replica` con `hot_standby_feedback=on`** (+ `max_standby_streaming_delay=30000`). ⚠️ El param group requiere **reboot de la réplica** para activarse; NO rebootar hasta que la asociación esté en `pending-reboot` (si rebooteas mientras está `applying`, no aplica → verificar con `SHOW hot_standby_feedback` = `on`). Trade-off aceptado: `hot_standby_feedback=on` puede causar algo de bloat en el primario (retiene vacuum de filas que la réplica lee); con lag sub-segundo + queries cortas es asumible.
+- **Flip (runtime-config, sin rebuild):** SSM `/vence-frontend/DATABASE_URL_REPLICA` → host de la réplica (era el primario) + `USE_READ_REPLICA=true` en el `environment` del task def (revisión `:468`). `getReadDb()` lee ambos en runtime; **rollback = flip a `false` o task def anterior**. **Persistencia:** el deploy script clona el TD VIVO → hereda `USE_READ_REPLICA=true` solo (no hay que tocar el script).
+- **Qué MOVIÓ el flip (Capa 1):** SOLO los ~20 callers de `getReadDb()` (theme-stats ~28k s = el mayor de usuario, catálogo oposiciones, analytics de usuario, disputes…). **Verificado:** `pg_stat_activity`/`pg_stat_statements` de la réplica acumulan esas queries = fuera del primario; lag 0,08-0,13s; 0 regresiones.
+- **Qué NO movió aún (capas siguientes, "vamos viendo"):** (a) **paneles admin sobre `observable_events` (~75k s, mayor bloque individual)** — están en `getAdminDb` (aísla conexiones, no cómputo); para moverlos a la réplica = cambio de código `getAdminDb`→`getReadDb`. (b) **crons backend NestJS (~50k s, `alert-rules.ts`/`canary-stats-pipeline`)** — necesitan conexión propia a la réplica (cambio backend). Hacerlas **solo si** el pico de mañana sigue dando 503 (no sobre-ingeniar; los paneles admin ya están cacheados/rate-limitados).
+- **Validación pendiente:** el mecanismo está simulado/medido; el ALIVIO real se confirma en el **pico de carga (06-07 UTC)** — no replayable en test. Vigilar `canary_db_pool_failed` + `http_5xx` 503 de `answer-and-save`/`questions/filtered` en ese pico.
 
 ### 4. (A gran escala) OLAP aparte → ETL a warehouse. Overkill hoy. (>30k DAU, Bloque 4 Fase 2 KinesisSink).
 
