@@ -16,7 +16,7 @@
 
 ## Abiertas
 
-### 🟡 [CONTENIDO/UX] Poblar títulos y capítulos (`law_sections`) en TODAS las leyes + mostrarlos en teoría
+### 🟢 [MEJORA APP — no urgente] Poblar títulos y capítulos (`law_sections`) en TODAS las leyes + mostrarlos en teoría
 - **Qué:** hoy la estructura de títulos/capítulos (`law_sections`: título + descripción + rango de artículos) está poblada en **solo 13 de 1.291 leyes activas** y solo se usa para el control "Filtrar por Títulos"; nunca se muestra como **cabecera inline** al leer la teoría. Objetivo: poblar `law_sections` en todas las leyes (verificado contra fuente oficial/BOE, **nunca contra el "art 0 — Estructura" sintético**, que puede estar fabricado) **y** renderizar los títulos/capítulos como cabeceras sobre los artículos que agrupan.
 - **Por qué:** (1) petición **repetida** de usuaria premium fiel (Nila, `auxiliar_administrativo_madrid`, feedbacks 26/05 y 15/07: "poner los títulos correspondientes… los artículos hacen referencia a los títulos"); (2) los **filtros por título/capítulo** solo funcionan donde hay `law_sections` → hoy fallan/no aparecen en el 99% de leyes; (3) la **teoría que imprimen los usuarios** llevaría los títulos y capítulos (mejor estudio y referencia cruzada entre artículos).
 - **Cómo:** `law_sections` (título, `article_range_start/end`, `section_type` título/capítulo, `order_position`); fuente = BOE/gaceta oficial de cada ley. Render: `app/teoria/[law]/LawArticlesClient.tsx` (hoy solo filtra vía `/api/teoria/sections` → `fetchLawSections`). Empezar por temario de oposiciones vivas (p.ej. Estatuto de Autonomía CM, LO 3/1983, hoy 0 filas).
