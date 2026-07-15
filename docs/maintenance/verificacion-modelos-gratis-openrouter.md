@@ -181,6 +181,7 @@ Se ejecutó el paso 2 (§8): ensemble **nova-lite + gemma-3-12b + gpt-4o-mini** 
 | **Reformateo determinista / extraer keywords / deduplicar** | 🟡 Probable | **HIPÓTESIS — sin pilot** | 0 casos-borde → debería ir bien, pero NO medido |
 | **Decidir clave / destino de relink / literalidad sin verificación** | ❌ **NUNCA** | Principio | El juicio es de Claude, siempre |
 | **Saltarse a Claude en cubo heterogéneo / verificación fina** | ❌ **NUNCA** | **PROBADO que FALLA** (§9, §9.2) | Casos-borde rompen el consenso |
+| **Pre-filtro DETERMINISTA por solape de palabras** (código, 0 LLM: ¿la opción correcta aparece en el artículo vinculado?) | ❌ **NO** | **PROBADO que FALLA** (§9.4, 15/07) | 67% de las "aparentemente bien" eran descartables. El solape de palabras NO capta si el HECHO está |
 
 ### 9.2 RESULTADOS de los 5 pilotos (15/07/2026 — TODOS HECHOS)
 
@@ -202,6 +203,18 @@ Datos y scripts en `verify-live-scripts/pilots/` (`extract_pilots`, `run_pilots`
 
 **Patrón de fondo (la lección):** el barato sirve para **clasificar/estructurar sobre entrada LIMPIA** (P3, P1-homogéneo, P5-formato) y falla en cuanto hay **juicio de calidad o casos-borde** (P2, P4, P1-mixto, verificación fina). Homogeneizar la entrada ANTES (filtrar) es lo que convierte una tarea de ❌ a ✅.
 
+### 9.4 Pilot 7 — pre-filtro DETERMINISTA por solape (código, sin LLM) sobre needs_human (15/07/2026)
+
+**Pregunta:** ¿se puede triar el cajón `needs_human` con CÓDIGO puro (sin IA) comparando si la opción correcta aparece literal en el artículo vinculado? Sería lo más barato y "con garantías" (determinista).
+
+**Método:** verdad-terreno = las **53 preguntas del piloto Orden INT/859/2023** ya adjudicadas a mano ese día (11 recuperables / 42 descartadas, memoria `project_drenaje_needs_human_piloto_ordenint`). Métrica = *recall* de la opción correcta dentro del artículo **original** vinculado (fracción de palabras significativas de la opción presentes en el artículo). Umbral "bien vinculada" = recall ≥ 0.7. Script `verify-live-scripts/` (`prefilter_val.cjs`).
+
+**Resultado: ❌ FALLA.** De las 12 que el código marcó "bien vinculada" (recall alto), **8 eran DESCARTADAS** → **67% de error** en el grupo que se auto-aceptaría. Peligrosos con recall=1.0 (2aa62ca0, 340792c9, 4aff6155, 71462f4e, 72673309, b6fb79dc, d07f2979, e15df9cc).
+
+**Por qué falla (la lección):** el solape de palabras mide *vocabulario compartido*, NO *verdad del hecho*. Ejemplo: pregunta "¿dónde está la Brigada del **Museo del Prado**?" → opción "Unidad Central de Protección"; esas palabras SÍ están en el art. 7 (recall=1.0), pero el artículo **no dice** que el Museo del Prado esté ahí. Coinciden las palabras, no el hecho. Idéntico modo de fallo que el LLM barato en cubo mixto (§9): la literalidad es *juicio*, no *coincidencia de tokens*.
+
+**Conclusión (3ª medición convergente):** ni LLM barato (§9) ni código de solape (§9.4) triar con garantías el juicio de literalidad. El recall bajo (<0.3) SÍ indica "el artículo vinculado no la responde", pero NO distingue *descartable* de *re-vinculable* (la respuesta puede estar en OTRO artículo → sigue siendo juicio). **Lo único mecánico útil y seguro es AGRUPAR el cajón por ley/banco** (código trivial, o clasificador temático barato P3 al 97%) para que los agentes Claude procesen lotes homogéneos con contexto compartido — que es de donde vino el ahorro real del piloto. El **juicio** de disposición (FP/relink/retire) es de Claude, sin atajo.
+
 ### 9.3 Implicación para tareas grandes de verificación (p.ej. biblioteca 4.381 draft)
 La verificación de un banco draft (¿bien colocada + clave/explicación correcta?) es **juicio** → el barato NO la sustituye (cae como P2/P4/P1-mixto). PERO puede meter **dos capas de ahorro medidas**: (a) **clasificar tema/colocación** (P3, 97%) para pre-escopar; (b) **pre-limpiar el sub-cubo homogéneo** (P1, opción verbatim del artículo → 0 peligro, 67%) para que los agentes Claude no gasten en las obvias-correctas. El grueso (juicio fino, casos-borde) sigue con agentes Claude. **Sin auto-aplicar nada del barato**; siempre con Claude/gate detrás. Para saber el ahorro real en biblioteca → **Pilot 6 dedicado** (mismo método) sobre ~15 draft reales de esa oposición.
 
@@ -216,7 +229,7 @@ La verificación de un banco draft (¿bien colocada + clave/explicación correct
 - Triaje de literalidad **solo en sub-cubo homogéneo** (opción larga + alto solape con el artículo) con ensemble de 2-3 (nova-lite + gemma-3-12b + gpt-4o-mini) → 0 peligrosos, ~67% de ahorro.
 - Borrador de explicación §8.1: buen esqueleto (formato), pero Claude verifica la cita y limpia el estilo.
 
-**Probado que NO funciona:** triaje de literalidad en cubo mixto/heterogéneo, priorización de cola por sospecha, detección de nota-auditoría (para esto usar grep de `health-sweep.cjs`), y cualquier verificación fina o decisión de clave/relink sin Claude.
+**Probado que NO funciona:** triaje de literalidad en cubo mixto/heterogéneo, **pre-filtro determinista por solape de palabras** (código sin LLM: 67% error, el solape no capta el hecho — §9.4), priorización de cola por sospecha, detección de nota-auditoría (para esto usar grep de `health-sweep.cjs`), y cualquier verificación fina o decisión de clave/relink sin Claude. **Regla derivada:** el juicio de literalidad NO se mecaniza con garantías (ni IA barata ni código); lo único mecánico seguro es **agrupar por ley/banco** para dar a Claude lotes homogéneos.
 
 **Modelos ganadores:** `amazon/nova-lite-v1` ($0.06, 602ms) y `google/gemma-3-12b-it` ($0.05); ensemble con `openai/gpt-4o-mini` ($0.15). Claude Haiku ($1) no aporta. Coste de procesar cientos de preguntas: céntimos.
 
