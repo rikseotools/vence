@@ -313,3 +313,85 @@ describe('authjsAdapter — BRIDGE del cutover (Fase B)', () => {
     expect(s!.accessToken).toBe('rs256.authjs')
   })
 })
+
+// ── Caché del token: fix del flood /api/auth/token (2026-07-15) ────────────────
+// Regresión del bug real: el poll de 5s re-acuñaba el token en CADA tick → ~1,4M
+// req/día a /api/auth/token (675k mints + 525k 401). Con un TTL de 1h el token debe
+// reusarse; el poll solo re-acuña al expirar. Estos tests bloquean la vuelta del flood.
+describe('authjsAdapter — caché del token (anti-flood)', () => {
+  const FUTURE = Math.floor(Date.now() / 1000) + 3600 // token válido 1h (como en prod)
+  const tokenFetches = () =>
+    (global.fetch as jest.Mock).mock.calls.filter((c) => c[0] === '/api/auth/token').length
+
+  it('SIMULACIÓN flood: token de 1h → 12 ticks de 5s (60s) NO re-acuñan (1 fetch, no 13)', async () => {
+    jest.useFakeTimers()
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+    setTokenEndpoint(() => ({ ok: true, body: { accessToken: 'tok', expiresAt: FUTURE, user: { id: APP_USER_ID, email: 'u@test.com' } } }))
+
+    const adapter = createAuthjsAuthAdapter()
+    const unsub = adapter.onAuthStateChange(() => {})
+    await jest.advanceTimersByTimeAsync(0) // tick inicial
+    for (let i = 0; i < 12; i++) await jest.advanceTimersByTimeAsync(5000) // 60s = 12 ticks
+
+    // ANTES del fix: 13 fetches (1 por tick). AHORA: 1 (el token de 1h se reusa).
+    expect(tokenFetches()).toBe(1)
+    // Y la sesión Auth.js (/api/auth/session) tampoco se re-lee en cada tick.
+    expect(mockGetSession).toHaveBeenCalledTimes(1)
+    unsub()
+    jest.useRealTimers()
+  })
+
+  it('anónimo (401): backoff → el poll NO martillea /api/auth/token cada 5s', async () => {
+    jest.useFakeTimers()
+    mockGetSession.mockResolvedValue(null)
+    setTokenEndpoint(() => ({ ok: false })) // 401 (sin sesión)
+
+    const adapter = createAuthjsAuthAdapter()
+    const unsub = adapter.onAuthStateChange(() => {})
+    await jest.advanceTimersByTimeAsync(0)
+    for (let i = 0; i < 6; i++) await jest.advanceTimersByTimeAsync(5000) // 30s
+
+    // Backoff de 60s → en 30s solo el primer intento, no 7.
+    expect(tokenFetches()).toBe(1)
+    unsub()
+    jest.useRealTimers()
+  })
+
+  it('token por expirar (dentro del margen SKEW de 5 min) → SÍ re-acuña cada tick', async () => {
+    jest.useFakeTimers()
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+    const soon = Math.floor(Date.now() / 1000) + 120 // expira en 2 min (< SKEW 5 min)
+    setTokenEndpoint(() => ({ ok: true, body: { accessToken: 'tok', expiresAt: soon, user: { id: APP_USER_ID, email: 'u@test.com' } } }))
+
+    const adapter = createAuthjsAuthAdapter()
+    const unsub = adapter.onAuthStateChange(() => {})
+    await jest.advanceTimersByTimeAsync(0)
+    await jest.advanceTimersByTimeAsync(5000)
+    await jest.advanceTimersByTimeAsync(5000)
+    // Dentro del margen de expiración no se cachea → re-acuña (no deja al usuario sin token).
+    expect(tokenFetches()).toBeGreaterThanOrEqual(3)
+    unsub()
+    jest.useRealTimers()
+  })
+
+  it('signOut invalida la caché → el siguiente getAccessToken re-acuña', async () => {
+    mockSignOut.mockResolvedValue(undefined)
+    setTokenEndpoint(() => ({ ok: true, body: { accessToken: 'tok', expiresAt: FUTURE, user: { id: APP_USER_ID, email: 'u@test.com' } } }))
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getAccessToken() // fetch 1 (cachea)
+    await adapter.getAccessToken() // cacheado → 0 fetch
+    expect(tokenFetches()).toBe(1)
+    await adapter.signOut() // invalida la caché
+    await adapter.getAccessToken() // re-acuña
+    expect(tokenFetches()).toBe(2)
+  })
+
+  it('refreshSession fuerza re-acuñación aunque el token esté cacheado (frescura para el caller)', async () => {
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+    setTokenEndpoint(() => ({ ok: true, body: { accessToken: 'tok', expiresAt: FUTURE, user: { id: APP_USER_ID, email: 'u@test.com' } } }))
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getAccessToken() // fetch 1 (cachea)
+    await adapter.refreshSession() // force → fetch 2
+    expect(tokenFetches()).toBe(2)
+  })
+})
