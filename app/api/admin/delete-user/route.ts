@@ -38,6 +38,8 @@ async function _DELETE(request: NextRequest) {
     let userPlanType: string | null = null
     let userTargetOposicion: string | null = null
     let userRegisteredAt: string | null = null
+    // Reintento de una cuenta ya borrada: se salta la llamada al borrado (idempotencia real).
+    let alreadyDeleted = false
     try {
       const [profile] = await getAdminDb()
         .select({
@@ -96,9 +98,11 @@ async function _DELETE(request: NextRequest) {
     } else {
       // Sin email de perfil = perfil AUSENTE (¿ya borrado en un intento previo?) o pre-read
       // fallido. NO abortar en seco: si YA existe la fila de auditoría para este userId es un
-      // REINTENTO → procede (delete_user_account es idempotente y el email RGPD se reenvía
-      // desde el email DURABLE de deleted_users_log, líneas de abajo). Solo se aborta 409 si
-      // NO hay ni perfil ni fila de log (usuario inexistente / read fallido en 1er intento).
+      // REINTENTO de una cuenta ya borrada → NO se re-invoca delete_user_account (LANZARÍA
+      // `no_data_found`: su primer statement exige que user_profiles exista, ver migración
+      // 20260626 líneas 45-46) → se marca `alreadyDeleted` para SALTARSE el borrado y solo
+      // confirmar + reenviar el email RGPD durable. Solo se aborta 409 si NO hay ni perfil ni
+      // fila de log (usuario inexistente / read fallido en 1er intento).
       let hasLogRow = false
       try {
         const res = await getAdminDb().execute(
@@ -120,11 +124,23 @@ async function _DELETE(request: NextRequest) {
           { status: 409 }
         )
       }
-      console.log(`♻️ Perfil ausente pero deleted_users_log ya existe para ${userId} → reintento idempotente, procediendo`)
+      alreadyDeleted = true
+      console.log(`♻️ Perfil ausente pero deleted_users_log ya existe para ${userId} → reintento idempotente (se salta el borrado, ya hecho)`)
     }
 
-    // Eliminar datos de todas las tablas (SSOT de la cuenta: user_profiles + cascada, RDS)
-    const deletionResults = await deleteUserData(userId)
+    // Eliminar datos (SSOT: user_profiles + cascada, RDS) — SALVO que sea un reintento de una
+    // cuenta ya borrada: delete_user_account() lanzaría `no_data_found` (exige user_profiles),
+    // así que en ese caso se salta (idempotencia real; el estado ya es "borrado").
+    // NOTA (follow-up, no bloqueante): en el caso raro de reintentar tras un 500 cuyo email SÍ
+    // se envió (p.ej. error del store de auth legacy), el email RGPD se reenvía → un duplicado.
+    // Un marcador durable `rgpd_email_sent_at` en deleted_users_log lo haría exactly-once (migración).
+    const deletionResults = alreadyDeleted
+      ? [{
+          table: '_delete_user_account',
+          status: 'skipped' as const,
+          reason: 'cuenta ya borrada (reintento idempotente); no se re-invoca delete_user_account',
+        }]
+      : await deleteUserData(userId)
 
     // Revocar identidad en el store de auth LEGACY (Supabase GoTrue). Tras el flip
     // a Auth.js (Fase B) el SSOT de la cuenta es user_profiles (RDS, por email) y

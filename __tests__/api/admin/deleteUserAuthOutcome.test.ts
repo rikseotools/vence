@@ -116,17 +116,22 @@ test('perfil AÚN existe (borrado falló) → 500 y NO se envía email', async (
   expect(mockSendEmail).not.toHaveBeenCalled()
 })
 
-test('F3: reintento (pre-read vacío) recupera el email DURABLE de deleted_users_log y lo envía', async () => {
-  // Escenario de reintento tras un envío fallido: user_profiles ya no existe → el
-  // pre-read viene vacío. El email debe recuperarse de deleted_users_log (durable).
+test('F3: reintento (perfil ya borrado) NO re-invoca delete_user_account, reenvía email durable y da 200', async () => {
+  // Escenario de reintento tras un fallo previo: user_profiles ya no existe → el pre-read
+  // viene vacío pero la fila de auditoría sigue. delete_user_account() LANZARÍA `no_data_found`
+  // (exige user_profiles) → la ruta DEBE saltarse el borrado, no re-invocarlo. Para blindarlo,
+  // mockeamos deleteUserData como si lanzara: si se llamara, el test fallaría por 500; como se
+  // salta, el resultado es 200 + email durable reenviado. (Regresión de la Finding HIGH.)
   preReadRows = [] // user_profiles ya borrado
   logRow = { email: 'durable@x.c', full_name: 'Durable Name' }
   afterRows = [] // perfil borrado (cuenta eliminada)
+  mockDeleteUserData.mockResolvedValue([{ table: '_delete_user_account', status: 'error', error: 'user_profiles not found' }])
   mockAuthDelete.mockResolvedValue({ outcome: 'not_present', error: null })
   const res = await DELETE(req())
   const body = await res.json()
   expect(res.status).toBe(200)
   expect(body.success).toBe(true)
+  expect(mockDeleteUserData).not.toHaveBeenCalled() // ← clave: NO se re-borra en el reintento
   expect(mockSendEmail).toHaveBeenCalledWith({ email: 'durable@x.c', fullName: 'Durable Name' })
 })
 

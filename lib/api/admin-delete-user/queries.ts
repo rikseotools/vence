@@ -115,24 +115,30 @@ export async function ensureDeletionLogRow(
   }
   const db = getAdminDb()
   const reason = opts.deletionReason ?? buildDeletionReason(profile, { adminEmail: opts.adminEmail })
-  // `pg_advisory_xact_lock` en el FROM serializa dos borrados concurrentes del MISMO
-  // userId (no hay unique index en original_user_id → sin él, dos `WHERE NOT EXISTS`
-  // simultáneos insertarían 2 filas). El lock se toma al producir la fila y se libera
-  // al terminar el statement; el 2º call bloquea, y al desbloquear ya ve la fila → 0 filas.
-  const res = await db.execute(sql`
-    INSERT INTO public.deleted_users_log
-      (original_user_id, email, full_name, plan_type, target_oposicion, registered_at, deletion_reason, requested_via)
-    SELECT ${userId}::uuid, ${profile.email}, ${profile.fullName ?? null}, ${profile.planType ?? null},
-           ${profile.targetOposicion ?? null}, ${profile.registeredAt ?? null}::timestamptz,
-           ${reason}, ${opts.requestedVia ?? 'admin_panel'}
-    FROM (SELECT pg_advisory_xact_lock(hashtext('deluser:' || ${userId}::text)::bigint)) AS _lock
-    WHERE NOT EXISTS (
-      SELECT 1 FROM public.deleted_users_log WHERE original_user_id = ${userId}::uuid
-    )
-    RETURNING id
-  `)
-  const rows = Array.isArray(res) ? res : ((res as { rows?: unknown[] }).rows || [])
-  return { inserted: rows.length > 0, existed: rows.length === 0 }
+  // Serialización concurrente robusta: NO hay unique index en original_user_id (además ya
+  // existe algún duplicado histórico en la tabla → crearlo fallaría), así que dos borrados
+  // simultáneos del MISMO userId podrían pasar ambos el `WHERE NOT EXISTS` e insertar 2 filas.
+  // Un `pg_advisory_xact_lock` en el FROM del INSERT NO basta: con un plan hash-anti-join el
+  // hash de deleted_users_log se construye ANTES de tirar de la function-scan que toma el lock
+  // → ambas sesiones ven "no existe" antes de bloquearse. Solución independiente del plan:
+  // TRANSACCIÓN EXPLÍCITA que toma el lock en su PROPIO statement (se adquiere primero y se
+  // mantiene toda la tx); la 2ª sesión bloquea ahí y, al desbloquear, el NOT EXISTS ya ve la fila.
+  return await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('deluser:' || ${userId}::text)::bigint)`)
+    const res = await tx.execute(sql`
+      INSERT INTO public.deleted_users_log
+        (original_user_id, email, full_name, plan_type, target_oposicion, registered_at, deletion_reason, requested_via)
+      SELECT ${userId}::uuid, ${profile.email}, ${profile.fullName ?? null}, ${profile.planType ?? null},
+             ${profile.targetOposicion ?? null}, ${profile.registeredAt ?? null}::timestamptz,
+             ${reason}, ${opts.requestedVia ?? 'admin_panel'}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.deleted_users_log WHERE original_user_id = ${userId}::uuid
+      )
+      RETURNING id
+    `)
+    const rows = Array.isArray(res) ? res : ((res as { rows?: unknown[] }).rows || [])
+    return { inserted: rows.length > 0, existed: rows.length === 0 }
+  })
 }
 
 // ============================================
