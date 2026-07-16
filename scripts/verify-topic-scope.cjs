@@ -7,7 +7,7 @@
  * la corre Claude siguiendo el runbook, entre `dump` y `record`.
  *
  * Subcomandos:
- *   dump   <position_type>            → escribe el input de los agentes (epígrafe + scope + títulos + counts)
+ *   dump   <position_type>            → escribe el input de los agentes (epígrafe + scope + artículos con sus subsecciones + counts)
  *   record <position_type> <json>     → registra veredictos de consenso vía record_topic_verification()
  *   status <position_type>            → resumen del estado de verificación de una oposición
  *   audit  [--json]                   → cobertura global: temas que necesitan verificación (alimenta badge/guardarraíl)
@@ -18,6 +18,40 @@ const { Client } = require('pg')
 const fs = require('fs')
 const path = require('path')
 const { classifyChange, temaVerdict, DEFAULT_IMPACT_THRESHOLD } = require('./lib/scope-classifier.cjs')
+
+// ── Subsecciones del artículo (para el dump) ──────────────────────────────────
+// El dump exponía SOLO títulos de artículo, y eso hace fallar a los agentes: marcan
+// "falta el concepto X del epígrafe" porque ningún TÍTULO lo nombra, cuando el CONTENIDO
+// sí lo cubre. Caso real (16/07/2026, T603/T107/T34 AGE): 4 agentes dieron ISSUES por
+// "falta Operaciones de búsqueda"; el contenido la cubría en el art.2 (Ctrl+E/F3) y en el
+// art.4 (sección «Búsqueda» con filtros tipo:/tamaño:/fecha:), y «Este equipo»/«Acceso
+// rápido» estaban definidos en el art.3. Es exactamente el word-matching que el runbook
+// prohíbe, inducido por el propio input.
+//
+// Se exponen los ENCABEZADOS del markdown (##/###/####): es el índice de lo que el artículo
+// cubre, mucho más informativo que el título y sin inflar el dump (algunos contenedores
+// pasan de 100k caracteres, volcarlos enteros no es viable).
+const MAX_ARTS_DUMP = 60          // techo por ley: evita dumps inmanejables en leyes largas
+const MAX_SUBSECCIONES = 12       // techo por artículo
+
+function subsecciones(content) {
+  if (!content) return ''
+  const heads = []
+  for (const line of String(content).split('\n')) {
+    // Dos convenciones conviven en el banco editorial y hay que cazar las dos:
+    //   a) encabezado markdown:  "## Restaurar sistema"
+    //   b) línea entera en negrita como epígrafe:  "**Navegación:**"  (así son los arts
+    //      2/3/4 del Explorador; con solo (a) salían SIN subsecciones y el agente volvía
+    //      a concluir "falta búsqueda" — el mismo falso ISSUES que motiva esta función).
+    const m = /^\s{0,3}#{2,4}\s+(.+?)\s*$/.exec(line)
+      || /^\s{0,3}\*\*(.{2,60}?):?\*\*\s*:?\s*$/.exec(line)
+    if (!m) continue
+    const h = m[1].replace(/[*_`#]/g, '').replace(/\s*:$/, '').trim()
+    if (h && !heads.includes(h)) heads.push(h)
+    if (heads.length >= MAX_SUBSECCIONES) break
+  }
+  return heads.length ? ` [cubre: ${heads.join(' · ')}]` : ''
+}
 
 // ── carga .env.local ──
 try {
@@ -67,10 +101,14 @@ async function buildDump(c, pt) {
     for (const s of scope) {
       const nums = s.article_numbers || []
       let arts = []
-      if (nums.length) {
+      {
+        // Se exponen los artículos escopados; si el scope es NULL ("toda la ley") también,
+        // porque si no el agente no ve NADA que auditar de esa ley.
         const r = (await c.query(
-          `SELECT article_number, title FROM articles WHERE law_id=$1 AND article_number = ANY($2)`,
-          [s.law_id, nums]
+          nums.length
+            ? `SELECT article_number, title, content FROM articles WHERE law_id=$1 AND article_number = ANY($2)`
+            : `SELECT article_number, title, content FROM articles WHERE law_id=$1`,
+          nums.length ? [s.law_id, nums] : [s.law_id]
         )).rows
         r.sort((a, b) => {
           const x = parseInt(a.article_number), y = parseInt(b.article_number)
@@ -79,7 +117,10 @@ async function buildDump(c, pt) {
           if (isNaN(y)) return -1
           return x - y
         })
-        arts = r.map(a => `${a.article_number}: ${a.title || '(sin título)'}`)
+        arts = r.slice(0, MAX_ARTS_DUMP).map(a =>
+          `${a.article_number}: ${a.title || '(sin título)'}${subsecciones(a.content)}`
+        )
+        if (r.length > MAX_ARTS_DUMP) arts.push(`… y ${r.length - MAX_ARTS_DUMP} artículos más (truncado)`)
       }
       const qn = (await c.query(
         `SELECT count(*) n FROM questions q JOIN articles a ON a.id=q.primary_article_id
@@ -427,4 +468,10 @@ async function main() {
     process.exit(1)
   }
 }
-main()
+
+// Requerido como módulo (tests) → exporta los helpers puros y NO ejecuta el CLI.
+if (require.main !== module) {
+  module.exports = { subsecciones, MAX_ARTS_DUMP, MAX_SUBSECCIONES }
+} else {
+  main()
+}
