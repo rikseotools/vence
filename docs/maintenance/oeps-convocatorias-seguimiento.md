@@ -122,6 +122,15 @@ WHERE s.status='pending' AND s.sensor_type<>'hash_change'
 ORDER BY s.confidence_score DESC;
 ```
 
+### ⚠️ La señal puede estar EQUIVOCADA — y el radar la engancha a la fila que no es (16/07/2026)
+
+Tres casos reales del mismo día. **Ninguna señal era ruido y ninguna era lo que decía:**
+
+1. **El dato de la señal puede ser FALSO.** `administrativo-navarra`: la señal daba `fechaExamen=01/02/2026`. El Aviso del Tribunal (clonado al corpus) dice *"Convocar a las personas aspirantes a las 10 horas del **día 8 de febrero de 2026**"*. **Nuestro dato era el correcto**; aplicarla a ciegas habría corrompido una fecha buena. → `dismissed` anotando que su dato era erróneo.
+2. **El radar engancha señales a otro CUERPO.** `auxiliar-administrativo-ayuntamiento-valladolid` (Auxiliar C2, OEP 2026, libre) tenía colgada una señal cuyo `cuerpoDetectado` era *"Administrativo/a por Promoción Interna"* (C1, OEP 2022-2023). Y no es hipotético: `auxiliar-administrativo-universidad-rovira-virgili` (C2) **ya tenía aplicada** (25/06) una señal de *"Escala Administrativa, subgrup C1"*. **Mira SIEMPRE `raw_extraction->'extraction'->>'cuerpoDetectado'` contra la fila** antes de aplicar. Guardarraíl: `npm run audit:convocatorias` (kind `senal_cuerpo_no_cuadra`).
+   → Si es otro cuerpo: **NO aplicar, CATALOGAR** la fila que falta y **mover `oposicion_id`** de la señal (si no, el bug del matcher queda invisible para el siguiente).
+3. **La señal puede hablar de un CICLO que no modelamos.** `auxiliar-administrativo-sermas`: la señal (convocatoria 2025, 933 plazas, examen 31/05/2026, en impugnaciones) no cuadraba con nuestra fila (OEP 2026, 474 plazas) porque **son dos procesos VIVOS a la vez** y solo teníamos uno. → Se creó el ciclo 2025 (`is_current=false` + `archived_at=NULL` = vivo no primario, §4e-ter), no se tocó el vigente.
+
 **Y verificar antes de aplicar (lección SAS, ver §9):** el `llm_semantic` a veces extrae datos de un **ciclo distinto** al que modela nuestra fila (p. ej. promoción interna vs libre, u OEP vieja ya examinada). Cotejar el `detected_*` con el ciclo real de la oposición antes de modificar; si la señal es de otro turno/ciclo → `dismissed` con nota, no aplicar.
 
 ### ⛔ REGLA DE DESCARTE — descartar es la EXCEPCIÓN, no el default (aprendizaje 02/07/2026)
