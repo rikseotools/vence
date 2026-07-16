@@ -130,6 +130,16 @@ En orden de prioridad:
    ⚠️ **CORREGIDO 15/06/2026:** el consejo anterior ("empujar aunque sea caro") está
    **REFUTADO por los datos** — ver §"Empujar caro en ventana de examen NO funciona".
 3. **¿Oposición que vende histórico pero SIN campaña?** (estado, valencia…) → **crear/financiar campaña**. Suele ser la mayor oportunidad.
+
+> ⚠️ **EN DUDA (13/07/2026, Manuel) — NO usar como hecho: "con el examen LEJANO (12-18 meses)
+> ads gasta pero no convierte / la gente solo compra cerca del examen".** NO está verificado
+> con datos. La ÚNICA regla firme es la del punto 1 (examen **PASADO** = se seca). Que el examen
+> **lejano** no convierta es una **extrapolación sin muestra** — puede haber captación temprana
+> rentable (el opositor que empieza a preparar pronto también prueba y compra premium). **Requiere
+> una muestra/experimento propio** (crear campañas de examen lejano a CPC bajo y medir ventas
+> atribuidas a N meses) antes de usarlo para descartar. **Hasta entonces, NO descartar una
+> oposición VENDIBLE solo por "examen lejano".** (Relacionado: el "pico 0-30 días" del TL;DR
+> también está CUESTIONADO desde 15/06 — la ventana de compra real no está bien medida.)
 4. **Cuando `ads:roi` muestre ingreso > 0** (atribución real fluyendo) → validar con ROI real, no solo con registros.
 
 ---
