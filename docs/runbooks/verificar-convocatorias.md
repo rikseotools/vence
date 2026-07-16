@@ -232,6 +232,20 @@ datos reales: las previsiones son previsiones"*.
 Guardarraíl: `plazas_afirmadas_sin_documento` en `audit-convocatoria-completitud.cjs`. **107 de las
 publicadas estaban así el 16/07** (afirmando plazas sin nada que las pruebe).
 
+### ¿Lo que ve el opositor coincide con la BD? — `canary-landing-vs-bd.cjs`
+
+```bash
+node scripts/canary-landing-vs-bd.cjs      # 40 landings vs oposiciones_ssot · exit 1 si algo no cuadra
+```
+
+Verificar plazas contra documentos **no vale nada si la landing enseña otra cosa**, y entre la vista y
+el opositor hay tres sitios donde el número se pierde: `landing_estadisticas` (texto libre que
+drifta), `resolveVars` (una variable que el código no conozca se renderiza **VACÍA**) y la **caché**.
+Los tres fallaron el 16/07: 537 donde el documento decía 128; dos landings sin tarjetas al
+reescribirlas; y `{plazasTotal}` escrito en la BD antes de desplegar el código que lo resuelve.
+
+Pide con `?cb=` para forzar render fresco — si no, un desfase de caché parece un bug y no lo es.
+
 ### La tarjeta de la landing NO teclea cifras
 
 `landing_estadisticas` es texto libre y ahí es donde se cuelan las mentiras: `celador-sescam-clm`
