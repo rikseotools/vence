@@ -44,6 +44,46 @@ function citaEsBasura(cita) {
   return palabrasEnProsa < 5
 }
 
+/**
+ * ¿Miente esta tarjeta de la landing? Devuelve [] si no hay contradicción DEMOSTRABLE.
+ *
+ * `row`: fila de oposiciones_ssot (l, p, d, total, exam_date). `t`: entry {numero, texto}.
+ * Pura y exportada a propósito: la regla 5b (examen inventado) solo tenía UN caso real en toda la BD
+ * —celador-sescam-clm— y al arreglarlo se quedó sin nadie a quien disparar. Una regla que nunca se
+ * ha visto disparar no es un guardarraíl, es una esperanza: se prueba aquí sin BD.
+ */
+function revisarTarjeta(row, t) {
+  const out = []
+  const numero = typeof t?.numero === 'string' ? t.numero.trim() : ''
+  const texto = typeof t?.texto === 'string' ? t.texto : ''
+  if (!numero || numero.includes('{')) return out   // {plazasTotal} y compañía no pueden mentir
+
+  // 5a. Cifra de plazas que no cuadra con NINGUNA lectura razonable de las columnas
+  if (/^[\d.]+$/.test(numero) && /plaza/i.test(texto) && row.total != null) {
+    const n = parseInt(numero.replace(/\./g, ''), 10)
+    // Number(): `plazas_total` sale de un sum() sobre jsonb → BIGINT, y node-pg entrega los bigint
+    // como STRING. Sin coerción, [264,264,51,"585"].includes(585) es false y el auditor acusa de
+    // mentir a las tarjetas HONESTAS (7 de 11 en la 1ª pasada: Navarra, La Rioja, Canarias…). Un
+    // guardarraíl que grita en falso se acaba apagando, y entonces no guarda nada.
+    const lecturas = [row.l, row.p, row.d, row.total, (row.l ?? 0) + (row.d ?? 0)]
+      .filter((x) => x != null).map(Number)
+    if (!lecturas.includes(n)) {
+      out.push({ kind: 'tarjeta_contradice_columnas',
+        msg: `la tarjeta anuncia "${numero} ${texto}" pero la BD dice L=${row.l} P=${row.p} D=${row.d} → total=${row.total}. Usar {plazasTotal}/{plazasLibres}, no teclear`,
+        detail: { tarjeta: numero, texto, plazas_total: row.total, libres: row.l } })
+    }
+  }
+
+  // 5b. Examen anunciado con una fecha que la BD no tiene
+  const pareceFecha = /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(numero) || /^(19|20)\d{2}$/.test(numero)
+  if (pareceFecha && /examen/i.test(`${texto} ${numero}`) && !row.exam_date) {
+    out.push({ kind: 'tarjeta_examen_sin_fecha_en_bd',
+      msg: `la tarjeta anuncia "${numero} ${texto}" pero exam_date está NULL — o se aplica la fecha con su cita, o la tarjeta no puede afirmarla`,
+      detail: { tarjeta: numero, texto } })
+  }
+  return out
+}
+
 // Qué campo de `convocatorias` alimenta cada tipo de hito extraído. Si el documento lo dice y la
 // convocatoria lo tiene NULL, es un olvido — no una decisión.
 const HITO_A_CAMPO = {
@@ -146,6 +186,34 @@ async function main() {
       { cuerpo_detectado: m.cuerpo, status: m.status, confianza: m.conf })
   }
 
+  // ── 5. La TARJETA de la landing afirma una cifra que la BD desmiente
+  //
+  //    CASO REAL (16/07): la landing de `celador-sescam-clm` anunciaba «537 plazas totales» y
+  //    «Examen 2026: 18/04». El DOCM nº 240 (NID 2025/9540, corpus DOCM-240-2025-9540) dice
+  //    115 libres + 4 promoción + 9 discapacidad = 128, y el 537 no aparece en el documento. La
+  //    fecha de examen era pura invención: `exam_date` NULL y `estado_proceso='oep_aprobada'` (solo
+  //    está aprobada la OEP; sin convocatoria no puede haber examen). Nuestras COLUMNAS eran
+  //    correctas: mentía solo la tarjeta, porque `landing_estadisticas` es texto libre donde alguien
+  //    teclea un número que luego no se entera de nada cuando el dato cambia.
+  //
+  //    El arreglo estructural es `{plazasTotal}` / `{plazasLibres}` (se resuelven contra la vista al
+  //    renderizar → no pueden driftar). Esta regla caza a los que aún tecleen.
+  //
+  //    ⚠️ SOLO CONTRADICCIONES, no ausencias: si la BD no tiene ninguna cifra (plazas_total NULL) no
+  //    se puede afirmar que la tarjeta mienta, y un guardarraíl que grita sin pruebas se apaga. Se
+  //    acepta cualquier lectura razonable del número (libres, promoción, discapacidad, total, o
+  //    libres+discapacidad): se denuncia el que no cuadra con NINGUNA.
+  const cards = (await c.query(`
+    SELECT slug, plazas_libres l, plazas_promocion_interna p, plazas_discapacidad d,
+           plazas_total total, exam_date, landing_estadisticas le
+      FROM oposiciones_ssot
+     WHERE is_active AND jsonb_typeof(landing_estadisticas) = 'array'`)).rows
+  for (const row of cards) {
+    for (const t of row.le || []) {
+      for (const f of revisarTarjeta(row, t)) add(row.slug, f.kind, f.msg, f.detail)
+    }
+  }
+
   await c.end()
 
   if (JSON_OUT) { console.log(JSON.stringify(F, null, 1)); }
@@ -162,5 +230,5 @@ async function main() {
   if (GATE && F.length) process.exit(1)
 }
 
-module.exports = { citaEsBasura }
+module.exports = { citaEsBasura, revisarTarjeta }
 if (require.main === module) main().catch((e) => { console.error('ERR', e.message); process.exit(1) })

@@ -108,6 +108,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const plazasLibres = data?.plazasLibres ?? null
   const plazasPromocion = data?.plazasPromocionInterna ?? null
   const plazasDiscapacidad = data?.plazasDiscapacidad ?? null
+  const plazasTotal = data?.plazasTotal ?? null
   const temasCount = data?.temasCount ?? config.totalTopics
   const boeRef = data?.boeReference ?? data?.diarioReferencia ?? null
   const boeFechaLarga = data?.boePublicationDate ? formatDateLarga(data.boePublicationDate) : null
@@ -146,6 +147,10 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
     plazasLibres: plazasLibres ? formatNumber(plazasLibres) : '—',
     plazasPromocion: plazasPromocion ? formatNumber(plazasPromocion) : '—',
     plazasDiscapacidad: plazasDiscapacidad ? formatNumber(plazasDiscapacidad) : '—',
+    // Total del proceso. DERIVADO en `oposiciones_ssot` (los 3 turnos + plazas_otros_turnos), nunca
+    // tecleado: una tarjeta que escribe el total a mano no se entera cuando el dato cambia — así
+    // celador-sescam-clm llegó a anunciar 537 plazas donde el DOCM dice 128.
+    plazasTotal: plazasTotal ? formatNumber(plazasTotal) : '—',
     temasCount: String(temasCount),
     bloquesCount: String(config.blocks.length),
     tituloRequerido,
