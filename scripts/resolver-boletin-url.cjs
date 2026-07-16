@@ -113,9 +113,15 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
 /**
  * MAPA MEDIDO (16/07/2026) — qué boletín responde a fetch plano y cuál necesita headless.
  *
- * 🔑 LECCIÓN: **no juzgues un boletín por su PORTADA.** Di por inviables el BOA y el BOC porque sus
- * portadas son Angular/SPA… y sus SUMARIOS por fecha responden a `curl` sin más — que es justo como
- * los lee el radar. Probar el sumario ANTES de montar Playwright.
+ * 🔑 LECCIÓN 1: **no juzgues un boletín por su PORTADA.** Di por inviables el BOA, el BOC, el BOJA y el
+ * BOPV porque sus portadas son SPA… y los CUATRO se resuelven con `curl` en dos pasos. Ninguno ha
+ * necesitado headless. Probar el sumario ANTES de montar Playwright.
+ *
+ * 🔑 LECCIÓN 2 (me mordió TRES veces): **el nº de disposición del sumario va DELANTE del título
+ * SIGUIENTE.** En el BOCYL cogí el id pegado al título de la Viceconsejería y era una resolución de
+ * profesorado de la Univ. de León. En el BOPV, el 1236 que aparece junto a «RESOLUCIÓN 466/2026» es en
+ * realidad la 465/2026 — la 466 es la 1237. **Descarga y comprueba el TÍTULO del documento antes de
+ * darlo por bueno**: la posición en el HTML miente, el contenido no.
  *
  *   BOA   ✅ 2 pasos (sumario por fecha → MLKOB → PDF).  ⚠️ iso-8859-1
  *   BOC   ✅ 2 pasos (sumario año/nº → BOC-A-id → PDF en la sede)
@@ -137,9 +143,10 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
  *           uno (p.ej. de convocatoria_hitos), los vecinos -0001/-0002/… son las demás categorías.
  *   BOC-Cantabria ✅ /boces/verAnuncioAction.do?idAnuBlob=<id> (106k). El id NO es deducible: sale de
  *           convocatoria_hitos.url — mira SIEMPRE ahí antes de darte por vencido.
- *   BOPV  ⚠️ el SUMARIO responde (/bopv2/datos/YYYY/MM/sYY_NNNN.pdf) pero las DISPOSICIONES son JS
- *           (la .shtml devuelve 1.3k de chrome, sin PDF) → PENDIENTE de probar la vía "href en el
- *           HTML" que resolvió el BOJA.
+ *   BOPV  ✅ 2 pasos (tampoco necesita headless): sumario en PDF /bopv2/datos/AÑO/MM/sYY_NNNN.pdf →
+ *           sacar el nº de DISPOSICIÓN (4 cifras: 1225, 1236…) → /bopv2/datos/AÑO/MM/26NNNNNa.pdf
+ *           (ojo a la 'a' final; sin ella da 404). Las .shtml SÍ son chrome (1.3k, sin PDF): no las
+ *           uses.
  */
 module.exports = { resolverUrl, fecha, BOA_SUMARIO, BOA_DOC, BOC_SUMARIO, BOC_DOC }
 
