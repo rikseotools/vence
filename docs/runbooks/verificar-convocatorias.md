@@ -111,11 +111,37 @@ SELECT oposicion_slug, kind, severity, message, detail
 - Si hay documento nuevo → **asciende** el hito a `registro` con su cita.
 - Si no → re-estima con criterio y **deja claro que es previsión**, o retíralo.
 
-### 3. Herramientas
+### 3. ⚠️ ANTES DE DAR POR CERRADO: el guardarraíl de completitud
+
+```bash
+npm run audit:convocatorias        # ¿me he olvidado algún campo?
+```
+
+> **Por qué existe:** las capas 2-4 las hace Claude con criterio, y **un humano olvida cosas**. En el
+> PRIMER uso real (SERMAS, 16/07) se quedaron sin aplicar `inscription_start`/`inscription_deadline` y
+> `sistema_selectivo` —datos que el documento YA daba y que el LLM YA había extraído—, se perdieron 3
+> hitos extraídos con cita, y la verificación se registró apoyada en el **membrete del boletín**
+> (*"VIERNES 4 DE JULIO DE 2025 B.O.C.M. Núm. 158 Pág. 171"*) en vez de en una cláusula.
+>
+> **No se puede comprobar que "seguiste el manual". Sí se puede comprobar el RASTRO que deja:**
+> - `campo_extraido_sin_aplicar` — el `llm_extraction` del documento da un dato y la convocatoria lo
+>   tiene NULL. **La propia extracción es la lista de comprobación.**
+> - `hito_extraido_sin_guardar` — un hito salió del documento con cita y no está en el timeline.
+> - `cita_no_prueba_nada` — la verificación se apoya en algo sin prosa (membrete, numeración).
+> - `senal_aplicada_sin_documento` — señal `applied` sin ningún documento curado: ¿se verificó de verdad?
+>
+> **Y todo se arregla SIN volver a la red**: el texto está clonado letra a letra, así que la cláusula
+> buena se busca en el corpus. Eso es exactamente para lo que se guarda.
+
+### 4. Herramientas
 
 ```bash
 # Validar la extracción+reconciliación contra un documento real (NO escribe nada):
 cd backend && NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sim-reconciliacion-convocatoria.ts <slug> [--url=<pdf>]
+
+# Completitud (¿olvidé campos?):
+npm run audit:convocatorias
+npm run audit:convocatorias:gate   # exit 1 si hay fallos → CI
 
 # Re-clasificar tipo/origen de los hitos (dry-run por defecto):
 node scripts/clasificar-hitos.cjs            # mide
