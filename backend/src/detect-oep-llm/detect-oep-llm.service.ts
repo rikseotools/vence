@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
+import { classifyFamily } from '../oep-signals/oep-match';
 import { OepSignalsQueriesService } from '../oep-signals/oep-signals-queries.service';
 import {
   baseScoreBySensor,
@@ -124,6 +125,42 @@ export class DetectOepLlmService {
         year: extraction.year,
         bocRef: extraction.bocRef,
       });
+
+      // ── ¿La señal es REALMENTE de esta oposición? (corregido 16/07/2026)
+      //
+      // Este sensor recorre las oposiciones y atribuye lo que extrae a la oposición cuyo
+      // `seguimiento_url` estaba leyendo. Pero MUCHOS seguimiento_url son el TABLÓN GENERAL de la
+      // entidad, que lista varios cuerpos: el LLM extrae uno cualquiera y se lo endosaba a esa
+      // oposición. `cuerpoDetectado` se usaba solo como DECORACIÓN en el resumen — se sabía qué
+      // cuerpo era y no se comparaba con nada.
+      //
+      // Casos reales del 16/07: una señal de "Administrativo/a por Promoción Interna" (C1) colgada de
+      // `auxiliar-administrativo-ayuntamiento-valladolid` (C2); y "Administratiu/va - Escala
+      // Administrativa, subgrup C1" colgada de la fila de Auxiliar de la URV — esta última APLICADA
+      // el 25/06, con lo que se cambió el estado de una fila con datos de otro cuerpo.
+      //
+      // Se reutiliza `classifyFamily` del matcher del radar, cuya doctrina ya es la correcta:
+      // "un falso match corrompe la BD; ante la duda, novel".
+      //
+      // ⚠️ REGLA DELIBERADAMENTE ESTRECHA: solo se rechaza cuando AMBAS familias se conocen y
+      // DIFIEREN. Medido sobre las 129 señales llm_semantic con cuerpo: la regla amplia ("rechazar
+      // también si alguna familia es null") tumbaría 56 (43%) — todos los cuerpos legítimos que no
+      // modelamos como familia (ujier, veterinario, bombero…). Eso rompe atribuciones correctas y
+      // convierte el inbox en ruido. Lo que esta regla NO caza (misma familia, otra escala: Inspector
+      // vs agente; genérica vs especialidad) queda cubierto por el guardarraíl
+      // `senal_cuerpo_no_cuadra` de `npm run audit:convocatorias` + criterio humano.
+      if (extraction.cuerpoDetectado) {
+        const famDetectada = classifyFamily(extraction.cuerpoDetectado);
+        const famOposicion = classifyFamily((opo.slug ?? '').replace(/-/g, ' '));
+        if (famDetectada && famOposicion && famDetectada !== famOposicion) {
+          this.logger.warn(
+            `${label}: la página habla de "${extraction.cuerpoDetectado}" (familia ${famDetectada}) ` +
+              `pero la oposición es familia ${famOposicion} → NO se atribuye (sería corromper la fila). ` +
+              `Probable tablón general con varios cuerpos.`,
+          );
+          continue;
+        }
+      }
 
       const cuerpoNota = extraction.cuerpoDetectado
         ? ` · Cuerpo detectado: ${extraction.cuerpoDetectado}`
