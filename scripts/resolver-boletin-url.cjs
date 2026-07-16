@@ -34,8 +34,14 @@ function resolverUrl(boletin, ref) {
   const f = fecha(ref)
 
   // BORM: el nº de anuncio va en la referencia → endpoint estable de servicios.
+  //
+  // ⚠️ El MISMO número se escribe de tres formas y mi 1ª versión solo entendía una («anuncio 6133»),
+  // así que daba "no deducible" a referencias que SÍ traían el dato: «disposición 5341» y el NPE
+  // «A-121125-5341» (donde la cola del NPE ES el nº de anuncio). Mismo error que con las cifras en
+  // letra: el dato estaba, el ciego era yo.
   if (b.includes('BORM')) {
-    const m = ref.match(/anuncio\s*n?[ºo.]?\s*(\d{3,5})/i)
+    const m = ref.match(/(?:anuncio|disposici[óo]n)\s*n?[ºo.]?\s*(\d{3,5})/i)
+      || ref.match(/NPE\s*[:\s]*A-\d{6}-(\d{3,5})/i)
     const y = f?.y || (ref.match(/\b(20\d{2})\b/) || [])[1]
     if (m && y) return `https://www.borm.es/services/anuncio/ano/${y}/numero/${m[1]}/pdf`
   }

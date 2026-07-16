@@ -36,6 +36,28 @@ const MAX_BYTES = 8 * 1024 * 1024
 const arg = (n: string): string | undefined =>
   process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3)
 
+/**
+ * ¿Esto es una pared del portal disfrazada de documento?
+ *
+ * ⚠️ CASO REAL (16/07): tras varias descargas seguidas, el BORM empezó a devolver **HTTP 200** con una
+ * «Radware Captcha Page» («your activity and behavior on this site made us think that you are a bot»).
+ * 711 caracteres → pasaba de sobra el único filtro que había (`< 200 chars`) y se habría clonado como
+ * si fuera la convocatoria, con su `curado`, su hash y su cita. Un corpus con captchas dentro es peor
+ * que un corpus vacío: mentiría con pinta de prueba.
+ *
+ * Mismo patrón que el DOCM redirigiendo a los menús del portal: **200 no significa documento**.
+ */
+export function esParedDelPortal(texto: string): string | null {
+  const t = texto.slice(0, 4000).toLowerCase()
+  if (/captcha|are you a robot|you are a bot|verifique que no es un robot/.test(t)) return 'captcha / anti-bot'
+  if (/acceso denegado|access denied|forbidden|403 error/.test(t)) return 'acceso denegado'
+  if (/demasiadas (peticiones|solicitudes)|too many requests|rate limit/.test(t)) return 'rate limit'
+  // El chrome de un portal: mucho menú y nada de norma (el DOCM sin /portaldocm/ daba justo esto).
+  if (texto.length < 4000 && /b[úu]squeda avanzada|mapa web|pol[íi]tica de cookies/.test(t)
+      && !/resoluci[óo]n|decreto|orden|convoca|plazas/.test(t)) return 'chrome del portal (sin norma)'
+  return null
+}
+
 /** Descarga y extrae texto: PDF o HTML. Devuelve null y DICE POR QUÉ si no puede (nunca en silencio). */
 export async function extraerTexto(url: string): Promise<{ texto: string; formato: 'pdf' | 'html' } | null> {
   const res = await fetch(url, { headers: { 'User-Agent': 'VenceBot/1.0' } })
@@ -92,6 +114,12 @@ async function main() {
   const r = await extraerTexto(url)
   if (!r) process.exit(1)
   if (r.texto.trim().length < 200) { console.error(`✗ solo ${r.texto.length} chars: ¿PDF escaneado o página vacía?`); process.exit(1) }
+  const pared = esParedDelPortal(r.texto)
+  if (pared) {
+    console.error(`✗ esto NO es el documento, es ${pared}. El portal devolvió 200 con una pared.`)
+    console.error(`  Clonarlo metería basura con pinta de prueba en el corpus. Espera y reintenta, o busca otra vía.`)
+    process.exit(1)
+  }
 
   const hash = crypto.createHash('sha256').update(r.texto).digest('hex')
   const ins = await c.query(
