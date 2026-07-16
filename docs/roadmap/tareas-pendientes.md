@@ -110,10 +110,6 @@
 - **Cómo:** crear cada ley regional desde el DOE/BOE (`monitoreo-boe-y-crear-leyes-nuevas.md` §"Crear ley nueva") y escoparla al tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
 - **Estado:** resto de la oposición **28/30 `verified_correct`** (incl. función pública 6/7/8/10 reparada: reparto correcto de la Ley 13/2015 por epígrafe, re-verificado).
 
-### 🟢 [SEGUIMIENTO — outward] Avisar a los interesados de que TAI está completa
-- **Qué:** TAI (`tecnico_informatica`) está **COMPLETA y verificada** (33 temas, ~11k preguntas, S1 scope 33/33 correct + S2 literalidad 33/33 literal, T106 DNI-e cerrado con RD 255/2025). Ver memoria `project_tai_estado_construccion`. Queda solo la acción *outward*: avisar a Cristina Laorden (`cbf5998b`) y a los ~20 usuarios con TAI como objetivo (newsletter `novedad-convocatoria`).
-- **Por qué:** promesa a Cristina + demanda real. Ojo: el examen 2025 ya se celebró (23/05/2026); enfocar el aviso a la preparación / próxima OEP, no a una convocatoria abierta.
-- **Estado:** contenido 100% listo; **confirmar con Manuel antes de enviar** (acción outward).
 
 ### 🟠 [ALTA] Framework profesional de canaries (P1-P3) — que no se repita el incidente 11/07
 - **Qué:** clase base `CanaryProbe` + exclusión central del usuario sintético de analíticas (`SYNTHETIC_USER_IDS`) + migrar todos los canary a la base + guardarraíl CI + runbook. Que ningún write-canary pueda acumular datos sin límite ni contaminar métricas.
@@ -121,16 +117,7 @@
 - **Cómo:** `docs/roadmap/canary-framework.md` (diseño + fases). P1 incluye **verificar/blindar** que `smoke@vence.es` no sesga rankings/dificultad.
 - **Estado:** P0 hecho y desplegado. P1-P3 pendientes.
 
-### 🟠 [DECISIÓN Manuel] Aux. Archivos del Estado: el C2 está LIVE — ¿Raquel necesita un C1 aparte?
-- **Qué:** ya hay una oposición de **Archivos del Estado (Sección Archivos) construida y LIVE**: `auxiliar-archivos-estado` (**C2, 48 temas, con_tests, active**; memoria `project_auxiliar_archivos_estado_construccion`, 8.598 preg). El backlog pedía una **C1** ("Escala de Auxiliares… Ministerio de Cultura", BOE-A-2023-11435).
-- **La pregunta abierta (para Manuel):** ¿el C2 construido satisface la promesa a Raquel Hermoso (`1a698b2f`, `raquel.hermoso.lindoso@gmail.com`), o pidió una **C1 genuinamente distinta**? Verificar el **subgrupo real** de la oposición que ella busca (nuestra BD la etiqueta C2; la Escala de Auxiliares de la AGE suele ser C1 → posible mislabel o dos cuerpos distintos).
-- **Según la respuesta:** si el C2 vale → avisar a Raquel (outward, con OK Manuel). Si necesita C1 → construir (temario Anexo II BOE-A-2023-11435; parte general reusa Aux. Admvo. Estado; específica editorial con fuente, nunca inventar).
-- **Estado:** C2 LIVE; C1-vs-C2 pendiente de decisión de Manuel.
 
-### 🟢 [SEGUIMIENTO — outward + higiene] Ayudantes Ejecución Penal Euskadi YA construida (avisar + limpiar duplicado)
-- **Qué:** la oposición **YA está construida y LIVE** bajo el slug `ayudantes-ejecucion-penal-pais-vasco` (C1, **53 temas, active, con_landing**; memoria `project_ayudantes_ejecucion_penal_euskadi`, scope 52/53). El slug `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (catalogada, vacío) es un **DUPLICADO** de catálogo → retirar/mergear.
-- **Pendiente real:** (1) avisar a `b2c2db3f` (adriangarri17@gmail.com) de que está lista (outward, **confirmar con Manuel antes**); (2) retirar el slug duplicado vacío.
-- **Estado:** contenido construido; queda aviso + higiene de catálogo.
 
 ### 🟢 [DEMANDA — valorar, no comprometido] Oposiciones pedidas por usuarios (aún no en plataforma)
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
