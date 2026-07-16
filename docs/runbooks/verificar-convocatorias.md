@@ -170,6 +170,31 @@ no veía sus 6 plazas.
 **Antes de "corregir" una tarjeta de plazas hacia abajo, comprueba si falta un turno.** Puede que la
 tarjeta tenga razón y el corto sea el esquema.
 
+### 📐 Qué guarda cada columna (la convención, y por qué importa)
+
+> **`plazas_libres` = la cifra LITERAL que el documento da al turno libre.** Nunca una resta nuestra.
+> **`plazas_discapacidad` = la reserva.** **`plazas_discapacidad_incluidas`** dice si esa reserva está
+> DENTRO de `plazas_libres` (y por tanto no suma al total).
+
+Sin esta convención escrita, el 16/07 rellené seis filas con cifras **derivadas** que no aparecían en
+ningún documento: Cádiz con `L=9` cuando su Resolución dice «**once plazas**», Huelva con `38` cuando
+dice «cubrir **45 plazas**», Granada con `42` cuando su tabla dice `GR 40 + ME 4 + CE 2 = **46**`. Los
+totales salían bien —9+2=11, 38+7=45— pero `plazas_libres` guardaba un número inventado por mí, y eso
+es exactamente lo que este sistema existe para impedir. **Si tu cifra no se puede señalar con el dedo
+en el documento, está mal, aunque el total cuadre.**
+
+Regla práctica al leer:
+
+| el documento dice | `plazas_libres` | `incluidas` |
+|---|---|---|
+| «cubrir **45 plazas**… del total se reservarán **7**» | **45** | `true` |
+| «**Trece plazas** turno libre. **Cuatro plazas** turno reservado a discapacidad» | **13** | `false` |
+| tabla OEP: `cupo general 1.309 · reserva 141 · **Total 1.450**` | **1.450** | `true` |
+
+Y si la cifra que quieres poner es una resta (2.704 autorizadas − 541 de reserva militar = 2.163 de
+Policía Nacional), **escribe la derivación completa en `boe_reference`** con sus dos citas: el número
+derivado es legítimo, pero tiene que poder reconstruirse sin volver al BOE.
+
 ### ⚠️ El cupo de discapacidad unas veces SUMA y otras va DENTRO (16/07)
 
 **No hay una regla nacional: hay que leerlo en CADA documento.** Las dos formas son reales y están
