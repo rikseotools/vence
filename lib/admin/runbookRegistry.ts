@@ -43,12 +43,6 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   render_error: { title: 'Error de render', ...HEALTH_CHECK },
   webhook_unhealthy: { title: 'Webhook roto', ...HEALTH_CHECK },
   // ── CONVOCATORIAS: el proceso fiel al documento oficial (docs/runbooks/verificar-convocatorias.md) ──
-  convocatoria_descuadre_oficial: {
-    title: 'Descuadre con el documento oficial',
-    triggerPhrase: 'revisa los descuadres de convocatoria',
-    runbook: 'docs/runbooks/verificar-convocatorias.md',
-    claudeHace: 'compara la cita literal del hallazgo con el documento del corpus y, si el boletín tiene razón, corrige con dual-write y registra la verificación. NUNCA auto-flip: el LLM alucina (caso real: inventó 130 plazas donde el PDF decía 107).',
-  },
   convocatoria_timeline_incoherente: {
     title: 'Timeline de convocatoria incoherente',
     triggerPhrase: 'revisa el timeline de convocatorias',

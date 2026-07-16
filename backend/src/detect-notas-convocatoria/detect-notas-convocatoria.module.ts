@@ -2,30 +2,29 @@ import { Module } from '@nestjs/common';
 import { OepSignalsModule } from '../oep-signals/oep-signals.module';
 import { DetectNotasConvocatoriaCron } from './detect-notas-convocatoria.cron';
 import { DetectNotasConvocatoriaService } from './detect-notas-convocatoria.service';
-import { ReconcileConvocatoriaCron } from './reconcile-convocatoria.cron';
-import { ReconcileConvocatoriaService } from './reconcile-convocatoria.service';
 
 /**
- * Notas de convocatoria + reconciliación del proceso. Dos pases con responsabilidades separadas:
+ * Sensor de notas informativas de convocatorias (versiones de software, criterios, fechas) +
+ * volcado de lo que descarga al corpus como evidencia BRUTA (`curado=false`).
  *
- *  1. `detect-notas` (09:30 UTC) — CRAWLER: lee el seguimiento, saca los PDF, extrae señales de
- *     versión/criterio y **llena el corpus** (`convocatoria_documentos`, texto íntegro).
- *  2. `reconcile-convocatoria` (10:00 UTC) — RECONCILIADOR: lee el CORPUS (no la red), extrae los
- *     hechos del proceso con su cita literal y los compara con lo que mostramos → findings.
+ * ⚠️ NO hay cron de reconciliación (se eliminó el 16/07, el mismo día que se creó — decisión Manuel):
+ *  · DUPLICABA al radar: `oep_detection_signals` YA extrae fecha_examen/plazas/boc_ref/estado con
+ *    su confianza. Volver a llamar al LLM para lo mismo es duplicar un sensor que funciona
+ *    (390 señales aplicadas, 1.256 descartadas).
+ *  · Y hacía JUICIO A CIEGAS. Un crawler por regex no distingue las bases de un PDF titulado
+ *    "previsión de plazas a convocar" — que contiene números de plazas que NO son los de esta
+ *    convocatoria. Extraer sobre un corpus sin discriminar envenena el resultado POR CONSTRUCCIÓN.
  *
- * Separados a propósito: reconciliar no debe re-descargar nada (para eso se guarda el texto), y así
- * se puede re-correr la reconciliación sola cuando cambia el prompt o las reglas.
+ * El juicio (discriminar la señal → elegir los documentos reales → clonarlos bien → extraer con
+ * cita literal → reconciliar) lo hace **Claude, a la orden del usuario**, siguiendo
+ * `docs/runbooks/verificar-convocatorias.md`. Es la misma doctrina que el gemelo S2 del temario y
+ * que el triaje de señales OEP: **los sensores se automatizan; el criterio no**.
  *
  * Importa `OepSignalsModule` para reutilizar `OepSignalsLlmService.fetchPageHtml`
  * (http→headless Lambda). `AnthropicService` y `DRIZZLE` son globales.
  */
 @Module({
   imports: [OepSignalsModule],
-  providers: [
-    DetectNotasConvocatoriaService,
-    DetectNotasConvocatoriaCron,
-    ReconcileConvocatoriaService,
-    ReconcileConvocatoriaCron,
-  ],
+  providers: [DetectNotasConvocatoriaService, DetectNotasConvocatoriaCron],
 })
 export class DetectNotasConvocatoriaModule {}

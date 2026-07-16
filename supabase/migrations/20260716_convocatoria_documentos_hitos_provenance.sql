@@ -179,3 +179,31 @@ COMMENT ON VIEW public.convocatoria_hito_incidencias IS
   'Invariantes deterministas del timeline (sin IA, sin documento). Solo pares universales y dentro del mismo ciclo.';
 
 COMMIT;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 6. CURADO: separar "lo que había en el portal" de "lo que HE VALIDADO" (decisión Manuel, 16/07).
+--
+-- Un crawler por regex NO distingue las bases de un PDF titulado "previsión de plazas a convocar"
+-- — que contiene números de plazas que NO son los de esta convocatoria. Clonar sin discriminar
+-- envenena la extracción POR CONSTRUCCIÓN, y por eso el clonado no se puede automatizar hoy: elegir
+-- QUÉ documento es el bueno es criterio, no fontanería.
+--
+--   curado=false → evidencia BRUTA: lo que el crawler encontró. Útil como registro de qué publicaba
+--                  el portal y cuándo. NO alimenta extracción ni reconciliación.
+--   curado=true  → documento DISCRIMINADO y validado por Claude/humano: tipo correcto, boletín,
+--                  referencia y fecha comprobados. SOLO estos se leen para extraer hechos.
+--
+-- Es la misma distinción que `convocatoria_hitos.origen` (registro/inferencia/estimacion) y que la
+-- verificación de preguntas: separar LO QUE HAY de LO QUE HEMOS VERIFICADO. Sin ella la BD acumula
+-- documentos sin que nadie sepa cuáles son de fiar — que es justo lo contrario de "trackeable".
+ALTER TABLE public.convocatoria_documentos
+  ADD COLUMN IF NOT EXISTS curado boolean NOT NULL DEFAULT false;
+ALTER TABLE public.convocatoria_documentos
+  ADD COLUMN IF NOT EXISTS curado_por text;
+ALTER TABLE public.convocatoria_documentos
+  ADD COLUMN IF NOT EXISTS curado_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS idx_conv_doc_curado ON public.convocatoria_documentos(convocatoria_id, curado);
+
+COMMENT ON COLUMN public.convocatoria_documentos.curado IS
+  'false=lo que el crawler pescó (evidencia bruta, NO alimenta extracción). true=discriminado y validado por Claude: solo estos se leen para extraer hechos del proceso.';
