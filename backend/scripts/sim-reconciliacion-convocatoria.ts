@@ -37,6 +37,7 @@ async function fetchPdfText(url: string): Promise<string> {
     if (!res.ok) return ''
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length > MAX_PDF || buf.subarray(0, 5).toString('latin1') !== '%PDF-') return ''
+    // @ts-expect-error: 'pdf-parse/lib/pdf-parse.js' no trae tipos (mismo patrón que el servicio).
     const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as (b: Buffer) => Promise<{ text: string }>
     return (await pdfParse(buf)).text ?? ''
   } catch (e) {

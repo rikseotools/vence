@@ -42,6 +42,25 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   server_render_error: { title: 'Error de render en servidor', ...HEALTH_CHECK },
   render_error: { title: 'Error de render', ...HEALTH_CHECK },
   webhook_unhealthy: { title: 'Webhook roto', ...HEALTH_CHECK },
+  // ── CONVOCATORIAS: el proceso fiel al documento oficial (docs/runbooks/verificar-convocatorias.md) ──
+  convocatoria_descuadre_oficial: {
+    title: 'Descuadre con el documento oficial',
+    triggerPhrase: 'revisa los descuadres de convocatoria',
+    runbook: 'docs/runbooks/verificar-convocatorias.md',
+    claudeHace: 'compara la cita literal del hallazgo con el documento del corpus y, si el boletín tiene razón, corrige con dual-write y registra la verificación. NUNCA auto-flip: el LLM alucina (caso real: inventó 130 plazas donde el PDF decía 107).',
+  },
+  convocatoria_timeline_incoherente: {
+    title: 'Timeline de convocatoria incoherente',
+    triggerPhrase: 'revisa el timeline de convocatorias',
+    runbook: 'docs/runbooks/verificar-convocatorias.md',
+    claudeHace: 'arregla los hitos que se contradicen entre sí (orden imposible, dos fechas de examen para el mismo ciclo) contra la fuente oficial.',
+  },
+  convocatoria_timeline_caducado: {
+    title: 'Previsión caducada o estado que contradice su fecha',
+    triggerPhrase: 'revisa el timeline de convocatorias',
+    runbook: 'docs/runbooks/verificar-convocatorias.md',
+    claudeHace: 'asciende la previsión a registro si ya hay documento que la fije, o la re-estima dejando claro que es previsión. Una previsión es una afirmación con fecha de caducidad.',
+  },
   empty_topic: {
     title: 'Tema publicado sin preguntas',
     triggerPhrase: 'revisa los temas vacíos',

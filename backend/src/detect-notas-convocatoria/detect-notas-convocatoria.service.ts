@@ -5,6 +5,7 @@ import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { AnthropicService } from '../anthropic/anthropic.service';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 import { convocatoriaNotas, oposiciones } from './convocatoria-notas.schema';
+import { convocatoriaDocumentos } from './convocatoria-documentos.schema';
 import {
   buildNotasPrompt,
   extractDocLinks,
@@ -127,6 +128,11 @@ export class DetectNotasConvocatoriaService {
     }
     if (notas.length === 0) return { notasFound: 0, actionable: 0, needsManual: 0 };
 
+    // 3-bis. CORPUS (Fase 2): guardar el texto ÍNTEGRO. Es lo que permite re-verificar sin red y
+    // sobrevivir al link-rot; sin esto, la Fase 2 tendría que re-descargar los PDF en cada pase.
+    const nuevosDocs = await this.persistirCorpus(opo.id, notas);
+    if (nuevosDocs) this.logger.log(`Corpus ${opo.slug}: +${nuevosDocs} documento(s)`);
+
     // 4. LLM: extracción estructurada con citas (una llamada por oposición).
     let llmExtraction: Record<string, unknown> | null = null;
     let confianza: string | null = null;
@@ -157,20 +163,90 @@ export class DetectNotasConvocatoriaService {
     return { notasFound: notas.length, actionable, needsManual: 0 };
   }
 
-  /** Descarga un PDF y extrae su texto. Devuelve '' si no es PDF o falla. */
+  /**
+   * Vuelca los documentos leídos al CORPUS (`convocatoria_documentos`), colgados de la convocatoria
+   * VIGENTE. Hasta ahora el texto se TIRABA: `convocatoria_notas` solo guarda hash y señales, así que
+   * volver a mirar un documento obligaba a re-descargar el PDF — y si el boletín lo retira, la
+   * evidencia se pierde. Medido: 90 KB/boletín; todo lo que preparamos ≈ 10 MB (la BD pesa 30 GB).
+   *
+   * Si la oposición no tiene convocatoria vigente NO se cuelga nada: un documento pertenece a un
+   * CICLO, no a una oposición. Inventar el vínculo sería justo lo que rompe la provenance.
+   *
+   * Idempotente por (convocatoria_id, url, content_hash): un documento enmendado tiene hash nuevo →
+   * fila nueva. Eso es lo que queremos para las correcciones de errores (frecuentes en BOCM/BOE).
+   */
+  private async persistirCorpus(
+    oposicionId: string,
+    notas: Array<{ url: string; title: string; text: string }>,
+  ): Promise<number> {
+    const conv = await this.db.execute<{ id: string }>(
+      sql`SELECT id FROM convocatorias WHERE oposicion_id = ${oposicionId} AND is_current LIMIT 1`,
+    );
+    const convocatoriaId = conv[0]?.id;
+    if (!convocatoriaId) return 0;
+
+    let n = 0;
+    for (const nota of notas) {
+      const contentHash = crypto.createHash('sha256').update(nota.text).digest('hex');
+      // .returning() devuelve SOLO las filas realmente insertadas: con onConflictDoNothing, un
+      // documento ya conocido (mismo hash) devuelve [] → cuenta 0. Así el log dice la verdad.
+      const insertadas = await this.db
+        .insert(convocatoriaDocumentos)
+        .values({
+          convocatoriaId,
+          tipo: 'nota',
+          url: nota.url,
+          titulo: nota.title,
+          contentHash,
+          extractedText: nota.text,
+          fuente: 'detect-notas',
+          fetchedAt: sql`now()` as unknown as string,
+        })
+        .onConflictDoNothing()
+        .returning({ id: convocatoriaDocumentos.id });
+      n += insertadas.length;
+    }
+    return n;
+  }
+
+  /**
+   * Descarga un PDF y extrae su texto. Devuelve '' si no es PDF o falla.
+   *
+   * ⚠️ NO tragarse los errores (corregido 16/07/2026). El `catch {}` mudo original hacía
+   * INDISTINGUIBLES tres cosas muy distintas: "la URL no es un PDF" (normal), "el boletín nos
+   * bloquea" (accionable) y "falta la dependencia pdf-parse" (rotura total). Las tres devolvían '' y
+   * el sensor reportaba tranquilamente "0 documentos" — mintiendo en silencio y sin una sola línea
+   * de log. Se descubrió al portar la Fase 2: tres PDF del BOCM daban "ilegible" cuando en realidad
+   * el módulo no resolvía. Un sensor que no puede fallar ruidosamente no es un sensor, es un adorno.
+   */
   private async fetchPdfText(url: string): Promise<string> {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': 'VenceBot/1.0' } });
-      if (!res.ok) return '';
+      if (!res.ok) {
+        if (res.status === 403 || res.status === 429) {
+          this.logger.warn(`PDF bloqueado por el boletín (${res.status}): ${url}`);
+        }
+        return '';
+      }
       const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.length > MAX_PDF_BYTES || buf.slice(0, 5).toString('latin1') !== '%PDF-') return '';
+      if (buf.length > MAX_PDF_BYTES) {
+        this.logger.warn(`PDF > ${MAX_PDF_BYTES / 1024 / 1024} MB, omitido: ${url}`);
+        return '';
+      }
+      if (buf.slice(0, 5).toString('latin1') !== '%PDF-') return ''; // no es PDF: normal, sin ruido
       // pdf-parse@1.1.1: importar la SUBRUTA lib evita el "debug-block" del index.js
       // que intenta leer un PDF de test y crashea al importarlo (módulo sin tipos).
       // @ts-expect-error: 'pdf-parse/lib/pdf-parse.js' no trae tipos.
       const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as (b: Buffer) => Promise<{ text: string }>;
       const parsed = await pdfParse(buf);
       return parsed.text ?? '';
-    } catch {
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (/Cannot find (module|package)/i.test(msg)) {
+        this.logger.error(`ROTURA: pdf-parse no resuelve — el sensor está CIEGO. ${msg}`);
+      } else {
+        this.logger.warn(`PDF ilegible (${msg}): ${url}`);
+      }
       return '';
     }
   }

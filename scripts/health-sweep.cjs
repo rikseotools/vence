@@ -128,6 +128,41 @@ async function main() {
     }
   }
 
+  // ── CONVOCATORIAS: invariantes deterministas del timeline (sin IA, sin documentos) ──
+  // La vista `convocatoria_hito_incidencias` (20260716_convocatoria_documentos_hitos_provenance.sql)
+  // compara nuestros datos CONSIGO MISMOS: pares universales dentro de un mismo ciclo, unicidad,
+  // caducidad de previsiones y status que contradice su propia fecha. Cuesta 0 y caza bugs reales
+  // (p.ej. celador-sermas-madrid: el plazo ABRE el 7-ago y CERRÓ el 6-ago).
+  // Se acota a oposiciones ACTIVAS: 2.489 hallazgos no es observabilidad, es ruido — y el ruido es
+  // exactamente cómo se llegó al bug que originó este subsistema.
+  {
+    const inc = (await c.query(`
+      SELECT o.slug, i.invariante, i.detalle
+        FROM convocatoria_hito_incidencias i
+        JOIN convocatorias cv ON cv.id = i.convocatoria_id
+        JOIN oposiciones o ON o.id = cv.oposicion_id
+       WHERE o.is_active AND i.invariante <> 'I5_registro_sin_fuente'`)).rows;
+    // I5 (cobertura de fuente) se EXCLUYE a propósito: hasta que el corpus tenga documentos son 328
+    // hallazgos que sólo dicen "aún no hay documentos" — línea base, no avería. Se activará cuando
+    // detect-notas lleve tiempo llenando `convocatoria_documentos`.
+    const porSlug = {};
+    for (const r of inc) (porSlug[r.slug] = porSlug[r.slug] || []).push(r);
+    for (const [slug, rs] of Object.entries(porSlug)) {
+      const graves = rs.filter((r) => r.invariante === 'I1_orden' || r.invariante === 'I2_duplicado');
+      if (graves.length) {
+        add('content', 'error', slug, 'convocatoria_timeline_incoherente',
+          `${slug}: ${graves.length} incoherencia(s) en el timeline — ${graves[0].detalle}`,
+          { incidencias: graves.map((r) => ({ invariante: r.invariante, detalle: r.detalle })) });
+      }
+      const stale = rs.filter((r) => r.invariante === 'I7_prevision_caducada' || r.invariante === 'I8_status_contradice_fecha');
+      if (stale.length) {
+        add('content', 'warn', slug, 'convocatoria_timeline_caducado',
+          `${slug}: ${stale.length} hito(s) caducados o con estado que contradice su fecha`,
+          { incidencias: stale.map((r) => ({ invariante: r.invariante, detalle: r.detalle })) });
+      }
+    }
+  }
+
   // ── APP: observable_events críticos 24h ──
   const CRIT = ['server_render_error', 'http_5xx', 'webhook_unhealthy'];
   const obs = (await c.query(`SELECT event_type, endpoint, COUNT(*)::int n, MAX(error_message) sample FROM observable_events
