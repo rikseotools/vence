@@ -235,8 +235,25 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE
           option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
         ) as psy_empty,
+        -- Preguntas que DEPENDEN de un apoyo visual (tabla o gráfico) y no tienen NADA que
+        -- mostrar: ni content_data renderable ni imagen de rescate. El usuario ve el enunciado
+        -- y unas opciones, sin los datos con los que se responde.
+        --
+        -- El criterio es el SUBTIPO, no frases del enunciado (16/07/2026). Antes se filtraba
+        -- por una lista cerrada de expresiones ("serie de figuras", "observe la figura",
+        -- "sustituya a la interrogación"…) pensada para figuras y series: una tabla de datos
+        -- que pregunta "¿qué departamento tiene la media mayor de duración?" no contiene
+        -- ninguna de esas frases, así que quedaba FUERA del check y el defecto era invisible.
+        -- Ocurrió: 12 preguntas del examen oficial del 23/05 (import que se saltó el formato
+        -- documentado en importar-examen-oficial-completo.md §7.2 y escribió rows/headers en
+        -- la raíz de content_data) estuvieron ~2 meses sin mostrar la tabla, hasta que dos
+        -- usuarias lo impugnaron el mismo día. El chequeo existía y apuntaba a otro sitio.
+        --
+        -- Solo estos subtipos: son los que no se pueden responder sin el apoyo. NO vale
+        -- "activa y sin content_data" a secas — 'calculation' (2.055 activas) lleva el
+        -- cálculo en el propio enunciado y no necesita nada: daría miles de falsos positivos.
         count(*) FILTER (WHERE
-          (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%' OR question_text ILIKE '%lugar de la interrogante%' OR question_text ILIKE '%lugar de la interrogación%' OR question_text ILIKE '%estructura lógica de la serie%')
+          question_subtype IN ('data_tables', 'bar_chart', 'line_chart', 'pie_chart', 'mixed_chart')
           AND (
             content_data IS NULL
             OR content_data::text = '{}'
@@ -250,6 +267,10 @@ async function runCountsOnly(): Promise<number> {
               AND content_data->'sequence' IS NULL
               AND content_data->'pairs' IS NULL
               AND content_data->'image_base64' IS NULL
+              AND content_data->'text_passage' IS NULL
+              AND content_data->'criteria' IS NULL
+              AND content_data->'example_row' IS NULL
+              AND content_data->'classification_table' IS NULL
             )
           )
           AND image_url IS NULL
