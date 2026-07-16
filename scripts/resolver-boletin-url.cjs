@@ -123,11 +123,15 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
  *   BORM  ✅ directo (nº de anuncio → /services/anuncio/ano/YYYY/numero/NNNN/pdf)
  *   BOCM  ✅ directo (nº de entrada → BOCM-YYYYMMDD-N.PDF)
  *   BOCYL ✅ directo (BOCYL-D-DDMMYYYY-NNN-NN.pdf)
- *   BOJA  ✅ 2 pasos — y NO necesita headless (me equivoqué): /boja/AÑO/Nº/index.html trae los href a
- *           los PDF (BOJA25-250-XXXXX-XXXXX-01_XXXXXXX.pdf, responden 200 · application/pdf). Lo
- *           ciego era mi extracción de TEXTO (7.6k de menús), no la página: los enlaces están en el
- *           HTML. **La Lambda devuelve EXACTAMENTE lo mismo que curl** (7.656 chars) → el headless no
- *           aporta nada aquí.
+ *   BOJA  ⚠️ A MEDIAS. Sus PDF SÍ responden (BOJA25-NNN-XXXXX-…pdf → 200 · application/pdf, 274 KB) y
+ *           los href están en el HTML del sumario — o sea NO necesita headless (la Lambda devuelve
+ *           7.656 chars, EXACTAMENTE lo mismo que curl). PERO no supe localizar el boletín correcto:
+ *           el Decreto 211/2025 (OEP del SAS) no aparece en el HTML crudo de los BOJA 248-251/2025 (el
+ *           252 da 404) y `2026/1` mezcla fechas de diciembre de 2025. Nuestras referencias tampoco
+ *           casan: dicen «núm. 250, 30/12/2025» y el BOJA 250 es del 10-16/12.
+ *           → Falta la NAVEGACIÓN (¿buscador del BOJA? ¿numeración con extraordinarios?), no el
+ *           acceso. Y ojo: dije "BOJA desbloqueado" al ver que los PDF respondían, ANTES de haber
+ *           encontrado un solo documento nuestro. Acceder ≠ localizar.
  *   DOG   ✅ documento directo: /dog/Publicados/AÑO/AAAAMMDD/Anuncio<COD>-<DDMMAA>-<NNNN>_es.html
  *           (51-122k de texto). Los sumarios NO responden, pero los anuncios contiguos sí: si tienes
  *           uno (p.ej. de convocatoria_hitos), los vecinos -0001/-0002/… son las demás categorías.
