@@ -232,6 +232,23 @@ datos reales: las previsiones son previsiones"*.
 Guardarraíl: `plazas_afirmadas_sin_documento` en `audit-convocatoria-completitud.cjs`. **107 de las
 publicadas estaban así el 16/07** (afirmando plazas sin nada que las pruebe).
 
+### ⚠️ Tras cambiar datos de una landing, INVALIDA LA CACHÉ (o el opositor sigue viendo lo viejo)
+
+```bash
+curl -X POST https://www.vence.es/api/admin/revalidate \
+  -H "x-cron-secret: $CRON_SECRET" -H "Content-Type: application/json" -d '{"tag":"landing"}'
+# {"success":true,"revalidated":"landing","cacheVersion":21}
+```
+
+**La landing cachea los DATOS en servidor** (`unstable_cache` + `versionedCache` en
+`lib/api/convocatoria/queries.ts`), no solo el HTML en CloudFront: **`?cb=` NO basta** — fuerza render
+fresco pero el render vuelve a leer del cache de datos. El 16/07 corregí decenas de plazas y **no
+invalidé ni una vez**: `enfermero-sacyl` siguió enseñando 342 con la BD ya en 380, y lo destapó el
+canary, no yo.
+
+Ojo con el token: la cabecera es **`x-cron-secret`**, no `Authorization: Bearer` (con Bearer devuelve
+401 «Token inválido», que además es de OTRO guardián — el endpoint responde «Unauthorized»).
+
 ### ¿Lo que ve el opositor coincide con la BD? — `canary-landing-vs-bd.cjs`
 
 ```bash
