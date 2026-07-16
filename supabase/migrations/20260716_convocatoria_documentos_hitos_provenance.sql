@@ -50,6 +50,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_conv_doc_url_hash
 CREATE INDEX IF NOT EXISTS idx_conv_doc_conv ON public.convocatoria_documentos(convocatoria_id);
 CREATE INDEX IF NOT EXISTS idx_conv_doc_tipo ON public.convocatoria_documentos(tipo);
 
+-- Búsqueda a texto completo sobre el corpus: esto es lo que convierte "lo tenemos guardado" en
+-- "verificable RÁPIDAMENTE". Sin índice, comprobar "¿dónde dice 107 plazas?" es un scan; con él,
+-- milisegundos y sin re-descargar nada.
+--   SELECT titulo, url, ts_headline('spanish', extracted_text, q) FROM convocatoria_documentos,
+--          plainto_tsquery('spanish','plazas convocadas') q WHERE tsv @@ q;
+ALTER TABLE public.convocatoria_documentos
+  ADD COLUMN IF NOT EXISTS tsv tsvector
+  GENERATED ALWAYS AS (to_tsvector('spanish', coalesce(titulo,'') || ' ' || coalesce(extracted_text,''))) STORED;
+CREATE INDEX IF NOT EXISTS idx_conv_doc_tsv ON public.convocatoria_documentos USING GIN(tsv);
+
+-- ESCALA (medido 16/07, no estimado a ojo): 90 KB de texto por boletín (BOCM real: 95 y 84 KB).
+--   · las 113 convocatorias que PREPARAMOS × 8 docs → ~10 MB reales
+--   · las 2.492 × 15 docs (paranoico)             → ~530 MB reales
+-- La BD pesa 30 GB hoy (user_interactions sola: 8,6 GB). El coste de guardar el corpus ÍNTEGRO es
+-- ruido estadístico. El coste real está en el CRAWL y en el LLM, no en el disco.
+
 COMMENT ON TABLE public.convocatoria_documentos IS
   'Corpus del proceso: 1 fila por documento oficial. extracted_text = entero (evidencia); llm_extraction = partes esenciales. ON DELETE RESTRICT: la evidencia no se borra en cascada.';
 
