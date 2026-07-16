@@ -36,8 +36,42 @@ SELECT sensor_type, max(created_at)::date AS ultima,
 ```
 
 **Un sensor con `ultima` vieja está MUERTO, aunque nadie se queje.** Referencia sana (16/07):
-`llm_semantic` ~180/30d · `pag_empleo` ~177 · `boe_api` ~46 · `regional_scan` ~43 ·
-`generic_source` **0 ← muerto**.
+`llm_semantic` ~180/30d · `pag_empleo` ~177 · `boe_api` ~46 · `regional_scan` ~43.
+
+### ⚠️ Mudo por DECISIÓN ≠ mudo por avería — míralo aquí ANTES de "arreglarlo"
+
+| sensor | estado | por qué |
+|---|---|---|
+| **`hash_change`** | **JUBILADO a propósito** (26/06, commit `73417467`) | Emitía una señal por cada hash distinto y las páginas cambian solas (timestamps, banners): **130+ señales por re-baseline, 0 con dato extraído, todas descartadas en triaje**, y el badge OEP inflado a «99+» sin valor. Y era REDUNDANTE: el cambio ya queda en `oposiciones.seguimiento_change_status='changed'` y se revisa en `/admin/seguimiento-convocatorias`, con su propio badge. **NO lo resucites**: `check-seguimiento` sigue corriendo y detectando (101 cambios de 469 fuentes el 16/07) — lo que se quitó fue la SEÑAL, no la detección. |
+| **`generic_source`** | reparado 16/07 | Ver abajo. |
+
+**El 16/07 reporté `hash_change` como avería y estuve a punto de devolver 130 señales basura al día
+que Manuel ya había matado.** Un sensor callado puede estar jubilado: comprueba el git log del cron
+(`git log -S "<sensor>" -- backend/src/<modulo>`) antes de tocar nada.
+
+### El caso `generic_source`: no estaba muerto, estaba SORDO (16/07)
+
+Diagnóstico real, con el dato del `cron_run` delante:
+```
+{"total":6,"checked":6,"hashChanged":5,"signals":0,"errors":0,"status":"success"}
+```
+**Corría a diario, veía 5 cambios y emitía 0 señales — reportando `success`.** Dos causas, las dos
+arregladas:
+
+1. **Se comía sus propios errores.** `extractGenericSourceChanges()` devuelve `null` en CUATRO casos
+   (texto <200 chars, respuesta sin JSON, JSON inválido, excepción de la API) y el llamador los metía
+   en el mismo saco que «cambio cosmético» **actualizando el hash** → el cambio quedaba marcado como
+   visto y se perdía PARA SIEMPRE. **Un sensor que se traga sus errores es peor que uno caído: el
+   caído se nota.** Ahora un fallo NO toca el hash (se reintenta) y cuenta como `error`.
+2. **La Moncloa no podía funcionar nunca.** Su página de resúmenes es SharePoint y pinta la lista con
+   JS: a fetch plano devuelve **2.428 chars de menús** (las otras 5 fuentes dan 66k, 51k, 48k, 36k y
+   5.7k de contenido real). El LLM no veía un solo resumen. → `generic_source_checks.fetcher_type`
+   (`http`|`headless`), y La Moncloa marcada `headless` (Lambda). **No se retira** porque no es
+   redundante con el boletín: es más RÁPIDA (el Consejo de Ministros aprueba la OEP y Moncloa la
+   resume el MISMO día; el BOE la publica días después).
+
+⚠️ **Una fuente que el fetcher no sabe leer no es una fuente: es un hueco con nombre.** Al añadir una,
+comprueba cuánto TEXTO ÚTIL devuelve — no que responda 200.
 
 ### 2. ¿Están vivas las fuentes?
 

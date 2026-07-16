@@ -358,7 +358,7 @@ export class OepSignalsQueriesService {
   /** Lee filas activas de `generic_source_checks` (tabla sin mapping Drizzle → sql raw). */
   async getActiveGenericSources(): Promise<GenericSourceRow[]> {
     const result = await this.db.execute(sql`
-      SELECT id, source_key, source_name, source_url, last_hash, last_checked_at
+      SELECT id, source_key, source_name, source_url, last_hash, last_checked_at, fetcher_type
       FROM generic_source_checks
       WHERE is_active = true
     `);
@@ -481,6 +481,10 @@ export interface GenericSourceRow {
   source_url: string;
   last_hash: string | null;
   last_checked_at: string | null;
+  /** 'headless' para las fuentes que montan su contenido con JS (La Moncloa es SharePoint y a fetch
+   *  plano solo devuelve 2.4k de menús: el LLM no veía un solo resumen). Ver migración
+   *  20260716_generic_source_fetcher_type.sql. */
+  fetcher_type: 'http' | 'headless';
 }
 
 // ============================================

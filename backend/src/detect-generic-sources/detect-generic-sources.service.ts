@@ -51,7 +51,13 @@ export class DetectGenericSourcesService {
       this.logger.debug(`Revisando: ${src.source_name}`);
       stats.checked++;
 
-      const fetched = await this.llm.fetchPageHtml(src.source_url, 20000);
+      // fetcher_type por fuente: sin esto, una página que monta su contenido con JS entra al LLM
+      // como un puñado de menús y NUNCA puede emitir señal (caso La Moncloa, mudo durante meses).
+      const fetched = await this.llm.fetchPageHtml(
+        src.source_url,
+        20000,
+        src.fetcher_type ?? 'http',
+      );
       if (!fetched.html) {
         this.logger.warn(
           `Fetch error ${src.source_name}: ${fetched.error}`,
@@ -80,11 +86,24 @@ export class DetectGenericSourcesService {
         src.last_checked_at,
       );
 
-      if (
-        !extraction ||
-        !extraction.hasRelevantChange ||
-        extraction.items.length === 0
-      ) {
+      // ⚠️ FALLO ≠ "NO HAY NADA". `extractGenericSourceChanges` devuelve null en CUATRO situaciones
+      // distintas: texto <200 chars, respuesta sin JSON, JSON que no valida, y excepción de la API.
+      // La versión anterior las metía en el mismo saco que "cambio cosmético" y —lo grave— ACTUALIZABA
+      // EL HASH: el cambio quedaba marcado como visto y se perdía PARA SIEMPRE, con el cron
+      // reportando `status: success`. Un sensor que se come sus propios errores es peor que uno caído:
+      // el caído se nota. (Diagnóstico 16/07: 45 días, 5 cambios de hash al día, 0 señales.)
+      //
+      // Ahora un fallo NO toca el hash → el próximo tick reintenta el mismo cambio, y cuenta como
+      // error para que se vea en el `cron_run`.
+      if (!extraction) {
+        this.logger.error(
+          `${src.source_name}: la extracción FALLÓ (LLM sin respuesta válida). NO se actualiza el hash: se reintentará.`,
+        );
+        stats.errors++;
+        continue;
+      }
+
+      if (!extraction.hasRelevantChange || extraction.items.length === 0) {
         this.logger.log(
           `${src.source_name}: LLM no detecta contenido normativo relevante (cambio cosmético)`,
         );
