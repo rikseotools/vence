@@ -159,6 +159,80 @@ Y salen **ya tipados con nuestro vocabulario** (`convocatoria_publicada`, `bases
 **la vía por la que el corpus y los timelines se llenan**. El trabajo manual de media hora sobre
 Subinspector (0 → 11 hitos) sale en 29 segundos, y para las diez convocatorias a la vez.
 
+## ⛔ La reforma NO da completitud — y la capa que debía darla está MUERTA (medido 16/07)
+
+**Pregunta obligada:** con el bucle por fuente, ¿tendremos todas las OEP y convocatorias sin perder
+señal? **No.** Y conviene decirlo antes de que alguien lea "por fuente" y crea que cubre todo.
+
+| | |
+|---|---|
+| Oposiciones en catálogo | **2.542** |
+| Con `seguimiento_url` | **472** |
+| **SIN ninguna fuente** | **2.070 (81%)** |
+
+El bucle por fuente arregla el sensor de las 472. **No ve el 81% del catálogo.** Mejora la CALIDAD de
+lo que miramos, no cuánto abarcamos.
+
+### La completitud solo puede venir de los BOLETINES
+
+En España **toda convocatoria tiene que publicarse** en el BOE, el autonómico o el provincial. Eso no
+es una fuente más: es una **garantía legal**. Y es un conjunto **ACOTADO** (~70: BOE + 17 autonómicos +
+provinciales) frente a los 8.000 ayuntamientos cuyas webs son inabarcables.
+
+**Cada capa tiene un trabajo distinto y confundirlas es el error de fondo:**
+
+| capa | garantiza | NO da |
+|---|---|---|
+| **Boletines** (~70) | **completitud POR LEY**: si se convocó, está | el timeline (publican el acto, no la cronología) |
+| **Agregador** (PAG) | contraste | detalle |
+| **Páginas de entidad** (320) | **profundidad**: plantillas, listas, avisos del tribunal, aulas | solo el **19%** del catálogo |
+
+**Esta reforma mejora la TERCERA fila.** La completitud es otro trabajo.
+
+### Y el estado real de la capa de boletines (`detection_sources`)
+
+| | |
+|---|---|
+| Fuentes registradas (todas `is_active=true`) | **173** |
+| **Con error** | **101 (58%)** — 61× HTTP 404, 20× fetch failed, 8× HTTP 403, 8× extraction_failed |
+| **Que NUNCA han funcionado** (`last_success_at IS NULL`) | **99** |
+| Último `last_checked` | **31/05/2026 — hace 45 días** |
+| Señales de `generic_source` en 30 días | **0** |
+
+**Y no leen boletines.** El `boletin_name` dice BOJA/BOCM/DOGV/BOA… y el `listing_url` apunta a
+**portales de entidad**:
+
+- `BOE` → `administracion.gob.es/pag_Home/empleoPublico/…` (el **agregador**, no el BOE)
+- `BOJA` → `juntadeandalucia.es/organismos/iaap/…` (el portal del IAAP)
+- `BOCM` → `comunidad.madrid/servicios/empleo/oposiciones` → **HTTP 404**
+- `DOGV` → `hisenda.gva.es/…` → **HTTP 404**
+
+Los portales se reorganizan y sus URLs mueren; **los sumarios de los boletines son estables y muchos
+tienen API/XML/RSS** (el BOE, sin ir más lejos). Se construyó la capa de completitud sobre lo único
+que se mueve.
+
+**Lo que SÍ vive** (señales últimos 30 días): `llm_semantic` 180 · `pag_empleo` 177 · `boe_api` 46 ·
+`regional_scan` 43 · `generic_source` **0**.
+
+### Qué haría falta para que sea completo, robusto, escalable y fiable
+
+1. **Completo** → leer los **BOLETINES de verdad** (sumario diario), no sus portales. Conjunto acotado
+   (~70) y garantía legal. Es el trabajo que `detection_sources` decía hacer y no hace.
+2. **Robusto** → una fuente rota tiene que **doler**. Hoy 101 de 173 llevan 45 días en error y nadie
+   se entera: no hay alerta, y `is_active=true` no significa nada. Un sensor que no puede fallar
+   ruidosamente no es un sensor.
+3. **Escalable** → el bucle por FUENTE (esta reforma) es la forma correcta para ambos: un boletín es
+   una fuente con muchas convocatorias, exactamente igual que un tablón. **El mismo bucle sirve para
+   las dos capas.**
+4. **Fiable** → **cobertura CONOCIDA**, no prometida. Nadie sabía que 2.070 oposiciones no tienen
+   fuente ni que el 58% de las fuentes están rotas hasta que se midió hoy. Un sistema que sabe qué NO
+   está mirando es fiable; uno que dice "lo tenemos todo" miente en el 81%.
+
+> **Prioridad que sale de esto:** la reforma por fuente sigue valiendo (arregla la atribución, deja de
+> tirar dato, llena los timelines). Pero **antes o a la vez** hay que resucitar la capa de boletines,
+> porque es la única que puede responder "no se nos escapa nada". Son dos trabajos y no hay que
+> mezclarlos.
+
 ## Secuencia
 
 1. ✅ **Prototipo contra datos reales** — HECHO (`backend/scripts/sim-radar-por-fuente.ts`, resultado
