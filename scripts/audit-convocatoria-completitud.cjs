@@ -275,12 +275,18 @@ async function main() {
   //    arrastra ese hueco.
   const totales = (await c.query(`
     SELECT slug, plazas_libres, plazas_promocion_interna, plazas_total, boe_reference,
+           (SELECT cv3.plazas_prevision FROM convocatorias cv3
+             WHERE cv3.oposicion_id = oposiciones_ssot.id AND cv3.is_current) plazas_prevision,
            (SELECT count(*)::int FROM convocatoria_documentos d
               JOIN convocatorias cv2 ON cv2.id = d.convocatoria_id
              WHERE cv2.oposicion_id = oposiciones_ssot.id) docs
       FROM oposiciones_ssot
      WHERE is_active AND landing_estadisticas::text LIKE '%plazasTotal%'`)).rows
   for (const t of totales) {
+    // Una PREVISIÓN declarada no tiene documento POR DEFINICIÓN (la convocatoria aún no existe): eso
+    // no es un hueco, es el caso que `plazas_prevision` existe para representar. Exigirle prueba sería
+    // ruido — y el ruido apaga los guardarraíles. Lo que sí exige el CHECK es su motivo.
+    if (t.plazas_prevision) continue
     if (t.docs === 0) {
       add(t.slug, 'tarjeta_total_sin_prueba',
         `la tarjeta enseña {plazasTotal} = ${t.plazas_total} y NO hay ningún documento en el corpus que lo respalde`,
