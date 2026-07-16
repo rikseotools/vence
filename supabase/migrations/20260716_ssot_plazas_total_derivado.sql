@@ -98,7 +98,11 @@ CREATE OR REPLACE VIEW public.oposiciones_ssot AS
       THEN NULL
       ELSE COALESCE(COALESCE(c.plazas_libres, o.plazas_libres), 0)
          + COALESCE(COALESCE(c.plazas_promocion_interna, o.plazas_promocion_interna), 0)
-         + COALESCE(COALESCE(c.plazas_discapacidad, o.plazas_discapacidad), 0)
+         -- El cupo de discapacidad solo suma si es un turno APARTE. Si se reserva DENTRO del libre
+         -- (Madrid, Orden 1634/2026: «se reservan 7 del total de las convocadas por el turno libre»)
+         -- sumarlo cuenta las mismas plazas dos veces. Ver plazas_discapacidad_incluidas.
+         + CASE WHEN c.plazas_discapacidad_incluidas IS TRUE THEN 0
+                ELSE COALESCE(COALESCE(c.plazas_discapacidad, o.plazas_discapacidad), 0) END
          + COALESCE((SELECT sum((t->>'plazas')::int)
                        FROM jsonb_array_elements(COALESCE(c.plazas_otros_turnos, '[]'::jsonb)) t), 0)
     END AS plazas_total
@@ -117,6 +121,7 @@ CREATE OR REPLACE VIEW public.oposiciones_ssot AS
             convocatorias.plazas_libres,
             convocatorias.plazas_promocion_interna,
             convocatorias.plazas_discapacidad,
+            convocatorias.plazas_discapacidad_incluidas,
             convocatorias.plazas_otros_turnos,
             convocatorias.boe_publication_date,
             convocatorias.boe_reference,

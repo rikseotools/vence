@@ -28,6 +28,15 @@ describe('revisarTarjeta — una tarjeta no puede afirmar lo que la BD desmiente
       .toContain('tarjeta_examen_sin_fecha_en_bd')
   })
 
+  test('REGRESIÓN: «7 jun» también es una fecha (caso real tcae-aragon)', () => {
+    // La 1ª versión del regex solo entendía "18/04" y "2026". tcae-aragon anuncia «[7 jun] Fecha
+    // examen 2026» con exam_date NULL y estado 'examen_realizado' (el examen YA se hizo) y se coló.
+    expect(kinds(CELADOR, { numero: '7 jun', texto: 'Fecha examen 2026' }))
+      .toContain('tarjeta_examen_sin_fecha_en_bd')
+    expect(kinds(CELADOR, { numero: '12 de marzo', texto: 'Examen' }))
+      .toContain('tarjeta_examen_sin_fecha_en_bd')
+  })
+
   test('REGRESIÓN bigint: la tarjeta HONESTA de Navarra no se acusa (7 falsos positivos de 11)', () => {
     // plazas_total sale de un sum() sobre jsonb → BIGINT → node-pg lo entrega como STRING "585".
     // Sin Number(), [264,264,51,"585"].includes(585) era false y el auditor llamaba mentirosas a

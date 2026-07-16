@@ -75,7 +75,13 @@ function revisarTarjeta(row, t) {
   }
 
   // 5b. Examen anunciado con una fecha que la BD no tiene
-  const pareceFecha = /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(numero) || /^(19|20)\d{2}$/.test(numero)
+  //
+  // ⚠️ La 1ª versión solo entendía "18/04" y "2026", y tcae-aragon —que anuncia «[7 jun] Fecha
+  // examen 2026» con exam_date NULL y estado 'examen_realizado'— se le escapó. La gente escribe las
+  // fechas como le da la gana; el mes abreviado es tan fecha como la barra.
+  const pareceFecha = /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(numero)
+    || /^(19|20)\d{2}$/.test(numero)
+    || /^\d{1,2}\s*(de\s*)?(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)/i.test(numero)
   if (pareceFecha && /examen/i.test(`${texto} ${numero}`) && !row.exam_date) {
     out.push({ kind: 'tarjeta_examen_sin_fecha_en_bd',
       msg: `la tarjeta anuncia "${numero} ${texto}" pero exam_date está NULL — o se aplica la fecha con su cita, o la tarjeta no puede afirmarla`,
