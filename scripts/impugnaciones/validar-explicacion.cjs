@@ -27,8 +27,12 @@ function validateFormat(expl, opts, correctLetter) {
   // 3. no apelotonado: al menos 3 bloques separados por línea en blanco
   const blocks = t.split(/\n\s*\n/).filter((b) => b.trim());
   if (blocks.length < 3) problems.push(`Apelotonado: solo ${blocks.length} párrafo(s). Separa cada sección/opción con línea en blanco.`);
-  // 4. sin secciones Truco/Consejo/Tip
-  if (/\b(truco|consejo|tip)\b/i.test(t)) problems.push('Contiene "Truco/Consejo/Tip" (prohibido §5.1).');
+  // 4. sin secciones Truco/Consejo/Tip. "truco"/"tip" no salen en texto legal legítimo → se
+  //    marcan en cualquier posición. Pero "consejo" es también un ÓRGANO omnipresente en Derecho
+  //    (Consejo de Gobierno / de Ministros / de Estado / General del Poder Judicial…), así que solo
+  //    se marca cuando es ETIQUETA de sección ("Consejo:" al inicio de línea), no como parte de un
+  //    nombre de órgano — si no, false-positiveaba casi toda explicación legal (caso Jesse, 16/07).
+  if (/\b(truco|tip)\b/i.test(t) || /(^|\n)\s*[>\-*#]*\s*\**\s*consejos?\s*:/i.test(t)) problems.push('Contiene "Truco/Consejo/Tip" (prohibido §5.1).');
   // 5. COHERENCIA clave↔explicación: la opción marcada "CORRECTA" debe ser EXACTAMENTE la clave real.
   //    Caza el error grave de una explicación que da por buena una opción distinta de correct_option.
   const marked = letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*CORRECTA`, 'i').test(t));
