@@ -258,6 +258,27 @@ async function main() {
       { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año })
   }
 
+  // ── 7. Landing publicada SIN tarjetas (el hero se queda mudo)
+  //
+  //    CASO REAL (16/07, me lo hice yo): un script leyó `convocatorias.landing_estadisticas` para
+  //    reescribir las tarjetas, pero en esas dos filas la tarjeta vivía en la copia LEGACY de
+  //    `oposiciones` (la vista hace COALESCE y cae al fallback) → leyó NULL, hizo `(le || [])` y
+  //    escribió `[]` en LAS DOS tablas. Landing sin plazas, sin temas y sin título requerido.
+  //    Se recuperaron de la caché de la web y del ciclo archivado, de milagro.
+  //
+  //    Ninguna regla anterior lo veía: una tarjeta vacía no CONTRADICE ninguna columna — simplemente
+  //    no está. Los guardarraíles que comparan valores son ciegos a la ausencia.
+  const mudas = (await c.query(`
+    SELECT slug, jsonb_array_length(landing_estadisticas) n
+      FROM oposiciones_ssot
+     WHERE is_active AND jsonb_typeof(landing_estadisticas) = 'array'
+       AND jsonb_array_length(landing_estadisticas) = 0`)).rows
+  for (const m of mudas) {
+    add(m.slug, 'tarjeta_vacia',
+      'la landing está publicada y su hero no tiene NINGUNA tarjeta (landing_estadisticas = []). ¿Se borró al reescribirla?',
+      {})
+  }
+
   await c.end()
 
   if (JSON_OUT) { console.log(JSON.stringify(F, null, 1)); }
