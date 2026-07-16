@@ -67,10 +67,27 @@ async function main() {
   await c.connect()
 
   // El documento cuelga del CICLO, no de la oposición: un documento pertenece a una convocatoria.
+  //
+  // --anio: sin él solo se podía documentar el ciclo VIGENTE, y los archivados se quedaban sin prueba
+  // para siempre. Al hacer el rollover de la AGE (16/07) el ciclo 2025 —con su Resolución de
+  // 18/12/2025, que es justo la que demuestra sus 1.700 plazas— quedó inalcanzable para esta
+  // herramienta. Y la regla es que CADA convocatoria tenga sus documentos, no solo la que vende hoy:
+  // la prueba del ciclo viejo es lo que permite auditar el nuevo (de ahí salió que el 1.450 era de
+  // 2026 y estaba metido en la fila de 2025).
+  const anio = arg('anio')
   const cv = (await c.query(
-    `SELECT c.id FROM convocatorias c JOIN oposiciones o ON o.id = c.oposicion_id
-      WHERE o.slug = $1 AND c.is_current`, [slug])).rows[0]
-  if (!cv) { console.error(`✗ ${slug} no tiene convocatoria vigente: no hay ciclo del que colgar el documento`); process.exit(1) }
+    anio
+      ? `SELECT c.id, c."año" FROM convocatorias c JOIN oposiciones o ON o.id = c.oposicion_id
+          WHERE o.slug = $1 AND c."año" = $2`
+      : `SELECT c.id, c."año" FROM convocatorias c JOIN oposiciones o ON o.id = c.oposicion_id
+          WHERE o.slug = $1 AND c.is_current`,
+    anio ? [slug, Number(anio)] : [slug])).rows[0]
+  if (!cv) {
+    console.error(anio
+      ? `✗ ${slug} no tiene ciclo del año ${anio}`
+      : `✗ ${slug} no tiene convocatoria vigente: no hay ciclo del que colgar el documento`)
+    process.exit(1)
+  }
 
   const r = await extraerTexto(url)
   if (!r) process.exit(1)

@@ -162,12 +162,64 @@ el caso general. La **cola** va en `convocatorias.plazas_otros_turnos` (jsonb) *
 [{"turno":"violencia_genero","plazas":6,"cita":"6 plazas en el turno de reserva para mujeres víctimas de violencia de género.","documento":"BON-101-2025"}]
 ```
 
-El total: **`SELECT convocatoria_plazas_total(<id>)`** — derivado, nunca almacenado (una cuarta copia
-driftaría igual que las otras). Caso que lo motivó: el BON de Navarra reparte 585 en **cuatro** turnos
-y el esquema modelaba tres → sumábamos 579 y la opositora del 4º cupo no veía sus 6 plazas.
+El total: **`oposiciones_ssot.plazas_total`** (o `convocatoria_plazas_total(<id>)`) — derivado, nunca
+almacenado (una cuarta copia driftaría igual que las otras). Caso que lo motivó: el BON de Navarra
+reparte 585 en **cuatro** turnos y el esquema modelaba tres → sumábamos 579 y la opositora del 4º cupo
+no veía sus 6 plazas.
 
 **Antes de "corregir" una tarjeta de plazas hacia abajo, comprueba si falta un turno.** Puede que la
 tarjeta tenga razón y el corto sea el esquema.
+
+### ⚠️ El cupo de discapacidad unas veces SUMA y otras va DENTRO (16/07)
+
+**No hay una regla nacional: hay que leerlo en CADA documento.** Las dos formas son reales y están
+verificadas en documentos leídos enteros:
+
+| | qué dice el documento | efecto |
+|---|---|---|
+| **DENTRO** | Madrid (Orden 1634/2026): «se reservan siete (7) plaza **del total de las convocadas por el turno libre**»<br>AGE (Res. 18/12/2025): «será de 1.700 plazas, **de las que** 156 se reservarán» | el cupo **NO suma**: ya está en `plazas_libres` |
+| **APARTE** | Navarra (BON 101/2025): «se distribuirán en **los siguientes turnos**: –264 libre. –264 promoción. –51 reserva discapacidad. –6 violencia de género»<br>CLM (DOCM 240/2025): columnas «Cupo general» y «Reserva discapacidad» totalizadas **por separado** | el cupo **suma** |
+
+→ `convocatorias.plazas_discapacidad_incluidas` (`true` = dentro). **Solo se marca con cita literal.**
+NULL = no consta y se asume aparte (lo verificado en los documentos leídos).
+
+Sin ese dato el total contaba plazas **dos veces**: Madrid daba 219 donde el documento dice 212.
+
+**La frase que lo decide** (búscala, no la deduzcas): *"de las que N se reservarán"* / *"del total de
+las convocadas"* → **DENTRO**. *"se distribuirán en los siguientes turnos"* + el cupo como un turno más
+→ **APARTE**. En tablas de OEP no hay frase: mira si la columna **«Total plazas» = cupo general +
+reserva** (entonces DENTRO de ese total).
+
+⚠️ **No es automatizable con regex.** Medido: los patrones cazan la Resolución de la AGE (9 de 9) pero
+dan **cero** en el RD 387/2026 (es una tabla, no hay prosa) y fallan en Madrid (el número va en letra:
+*"siete (7)"*). La máquina extrae candidatas; **el veredicto se lee**.
+
+### Una cifra es un HECHO o una PREVISIÓN — nunca a medias
+
+Regla de producto (Manuel, 16/07): *"se activa siempre la vendible; si el examen pasó, se activa la
+siguiente OEP y convocatoria si hay, y si no, una previsión"* + *"debe indicarse si es previsión o son
+datos reales: las previsiones son previsiones"*.
+
+- **Hecho** → tiene su documento en `convocatoria_documentos` + su cita. `plazas_prevision = false`.
+- **Previsión** → `plazas_prevision = true` **y `plazas_prevision_motivo`** (un CHECK lo exige: una
+  previsión sin razonamiento es una invención). La landing debe decir «previstas», no venderlas.
+
+Guardarraíl: `plazas_afirmadas_sin_documento` en `audit-convocatoria-completitud.cjs`. **107 de las
+publicadas estaban así el 16/07** (afirmando plazas sin nada que las pruebe).
+
+### La tarjeta de la landing NO teclea cifras
+
+`landing_estadisticas` es texto libre y ahí es donde se cuelan las mentiras: `celador-sescam-clm`
+anunciaba **537 plazas** (el documento dice 128) y un **«Examen 2026: 18/04»** inventado (`exam_date`
+NULL, estado `oep_aprobada`: sin convocatoria no hay examen). Las columnas eran correctas.
+
+→ Usa **`{plazasTotal}`** / `{plazasLibres}` / `{temasCount}`: se resuelven contra `oposiciones_ssot` al
+renderizar, **no pueden driftar**. Guardarraíles: `tarjeta_contradice_columnas` y
+`tarjeta_examen_sin_fecha_en_bd` (+ unit `__tests__/lib/revisarTarjeta.test.ts`).
+
+⚠️ Cambiar la tarjeta a `{plazasTotal}` **exige que el código esté desplegado** (`resolveVars` devuelve
+`''` para una variable desconocida → tarjeta EN BLANCO). Usa `scripts/tarjetas-a-plazas-total.cjs`, que
+aborta comprobando el commit vivo de `/api/health` con `git merge-base`.
 
 ## Gotchas (todos medidos, ninguno teórico)
 
@@ -179,6 +231,12 @@ tarjeta tenga razón y el corto sea el esquema.
 - ⚠️ **Muchas fuentes son HTML, no PDF.** De las 112 urls de documento que conocemos solo **19 son .pdf**; las 20 del BOE son HTML. `clonar-documento.ts` lee **ambos** (reutiliza `htmlToText()` del sensor). Un corpus que solo lee PDF es ciego a la mayoría de las fuentes.
 - ⚠️ **"Verificado contra la fuente" sin clonar el documento NO vale.** Si la página cambia, tu verificación deja de ser demostrable — que es justo lo que este sistema existe para impedir. El guardarraíl `senal_aplicada_sin_documento` lo caza (me cazó a mí el 16/07, dos veces).
 - ⚠️ **Al re-atribuir una señal mal enganchada, acuérdate de mover `oposicion_id`.** Aplicarla y dejarla colgando de la fila equivocada deja el bug del matcher invisible para el siguiente.
+- ⚠️ **Fija `app.actor` o el historial no sabe quién fuiste.** `convocatorias_history` registra QUÉ cambió siempre, pero `changed_by` sale del DB user (`venceadmin`) salvo que hagas `SELECT set_config('app.actor','claude:<tarea>',true)` **en la misma conexión, antes de escribir**. `rollover_convocatoria()` ya lo hace; tu `UPDATE` suelto NO. Medido el 16/07: mi corrección de plazas quedó firmada como `venceadmin`.
+- ⚠️ **Documenta también el ciclo ARCHIVADO** (`clonar-documento.ts --anio=2025`). Sin `--anio` la herramienta solo engancha al ciclo **vigente** y el viejo se queda sin prueba para siempre. Y la prueba del ciclo viejo es lo que permite auditar el nuevo: así se vio que el 1.450 de la OEP 2026 estaba metido en la fila de 2025 (que en realidad convocó 1.700).
+- ⚠️ **El `Total plazas` de una tabla de OEP ya incluye la reserva.** Si copias esa cifra a `plazas_libres` y además rellenas `plazas_discapacidad`, cuentas el cupo dos veces. Comprueba: ¿`cupo general + reserva = Total`? Entonces `plazas_discapacidad_incluidas = true`.
+- ⚠️ **Una fila que mezcla ciclos es un número que no existe.** `auxiliar-administrativo-estado` tenía `plazas_libres` de la **OEP 2026** (1.450) y `plazas_promocion_interna` de la **convocatoria 2025** (720): su "total" (2.170) no aparecía en ningún documento del mundo. Pasa cuando se pivota **en la misma fila** en vez de hacer rollover. Un documento por ciclo lo hace imposible.
+- ⚠️ **`plazas_total` era BIGINT y node-pg entrega los bigint como STRING.** El `sum()` sobre jsonb contagia el tipo a toda la expresión. Ya causó dos bugs el mismo día (el auditor acusando a 7 tarjetas honestas; el tipo `number|null` de la landing recibiendo `"128"`). Casteado a `::int` en la vista — pero si añades otra agregación, vigílalo.
+- ⚠️ **`plazas_otros_turnos` mal escrito tumbaba la landing ENTERA.** Un `"plazas":"seis"` hacía fallar la query de `oposiciones_ssot` → `getOposicionLandingData` captura y devuelve null → se pierden plazas, fechas, FAQs y SEO de golpe; y el auditor moría igual. Hoy lo impide un CHECK (`plazas_otros_turnos_bien_formado`): exige array de objetos con `plazas` entera + `turno` + `cita`.
 - ⚠️ **El texto de PDF trae guiones de fin de línea** (`"celebra-\nción"`) → el `ts_headline` sale partido. No afecta a la extracción LLM. Normalizar al guardar es un follow-up pendiente.
 
 ## Escala (medido 16/07, no estimado)

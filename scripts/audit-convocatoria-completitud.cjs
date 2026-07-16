@@ -233,6 +233,31 @@ async function main() {
     }
   }
 
+  // ── 6. Afirmar plazas sin documento que las pruebe (ni declararse previsión)
+  //
+  //    REGLA (Manuel, 16/07): «cada OEP y cada convocatoria deben tener todos sus documentos
+  //    completos, todo trackeable y verificable — es la única forma de que todo cuadre». Y: «debe
+  //    indicarse si es previsión o son datos reales; las previsiones son previsiones».
+  //
+  //    Una cifra de plazas solo puede ser una de dos cosas: un HECHO (y entonces tiene su documento y
+  //    su cita) o una PREVISIÓN (y entonces se declara con `plazas_prevision` + motivo). Lo que no
+  //    puede ser es una cifra huérfana presentada como hecho: así es como auxiliar-administrativo-estado
+  //    acabó con el 1.450 de la OEP 2026 dentro de una fila de 2025 con el 720 de la convocatoria de
+  //    2025 — un total (2.170) que no existía en ningún documento del mundo.
+  const huerfanas = (await c.query(`
+    SELECT o.slug, cv.plazas_libres, cv.boe_reference, cv."año"
+      FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
+     WHERE cv.is_current AND o.is_active
+       AND cv.plazas_libres IS NOT NULL
+       AND NOT cv.plazas_prevision
+       AND NOT EXISTS (SELECT 1 FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id)
+     ORDER BY cv.plazas_libres DESC NULLS LAST`)).rows
+  for (const h of huerfanas) {
+    add(h.slug, 'plazas_afirmadas_sin_documento',
+      `afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y NO hay documento en el corpus que lo pruebe. O se clona su fuente, o se marca plazas_prevision con motivo`,
+      { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año })
+  }
+
   await c.end()
 
   if (JSON_OUT) { console.log(JSON.stringify(F, null, 1)); }

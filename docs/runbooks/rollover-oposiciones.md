@@ -76,9 +76,62 @@
 
 - **NO** tocar temario / epígrafes / `topic_scope` / tests. El rollover es de **datos de convocatoria** (fechas/plazas/estado/SEO/hitos), no de contenido. El temario del ciclo anterior suele servir para el siguiente (o cambia poco).
 
-## 4. Caso resuelto de referencia
+## 4. La regla, y el caso que enseña por qué
 
-`crear-nueva-oposicion.md` §2a.1-bis: **Aux. Admin. del Estado (11/06/2026)** — examen 23/05 pasado, OEP 2026 confirmada (RD 387/2026, 1.450 plazas) → `estado_proceso='oep_aprobada'`, oep_decreto/fecha 2026, hitos forward, SEO "OEP 2026: 1.450 plazas", stat de plazas añadido, `exam_date=null`. Y **SERMAS (09/06/2026)** — variante sin OEP nueva firme: se mantuvo estado real pero con hitos+SEO forward.
+### La regla (Manuel, 16/07/2026)
+
+> **Se activa siempre la VENDIBLE.** Si el examen pasó, no es vendible → se activa la **siguiente OEP y
+> convocatoria si las hay**; si no hay, una **previsión**. *"Pero debe indicarse si es previsión o son
+> datos reales: las previsiones son previsiones."*
+
+| situación | fila viva | plazas |
+|---|---|---|
+| OEP publicada | ciclo nuevo, `estado='oep_aprobada'` | **reales**, del decreto, con cita + documento clonado |
+| Convocatoria abierta | ciclo nuevo, `estado='inscripcion_abierta'`… | **reales**, de la resolución |
+| Nada publicado aún | ciclo nuevo, `estado='sin_oep'` | `plazas_prevision=true` + `plazas_prevision_motivo` (un CHECK lo exige), o **NULL** |
+
+### ⛔ NO se pivota en la misma fila — se hace ROLLOVER
+
+`convocatorias."año"` es **inmutable por trigger**. La única vía legítima:
+
+```sql
+SELECT public.rollover_convocatoria(<oposicion_id>, <año_nuevo>, '<estado>', 'claude:<tarea>');
+```
+Archiva la vigente (`is_current=false`, `archived_at`) e **inserta una nueva viva**. El ciclo nuevo
+**nace VACÍO a propósito** (solo hereda temario/examen/requisitos, que no son hechos del proceso): se
+rellena **solo** desde fuente verificada. Copiar las plazas del ciclo anterior "de referencia" es el
+bug de Marta — un dato viejo presentado como el del ciclo nuevo.
+
+Y **cada ciclo con su documento**: `clonar-documento.ts --slug=… --anio=<año>` (con `--anio` también el
+archivado, que sin él se queda sin prueba para siempre).
+
+### El caso que lo enseñó: Aux. Admin. del Estado (destapado 16/07/2026)
+
+La versión anterior de este runbook daba como **modelo a seguir** el pivote *in-place* del 11/06: se
+actualizó la fila 2025 con los datos de la OEP 2026 (`plazas_libres=1.450`, hitos y SEO forward). El
+resultado, tres semanas después:
+
+```
+fila año=2025:  plazas_libres = 1.450  ← OEP 2026 (RD 387/2026)
+                plazas_promocion_interna = 720  ← convocatoria 2025 (Res. 18/12/2025)
+                boe_reference = BOE-A-2025-26262 ← 2025
+                → "total" = 2.170 : un número que NO EXISTE en ningún documento
+```
+
+La fila real de 2025 convocó **1.700** (156 de reserva) + 720; la OEP 2026 ofrece **1.450** (141) + 120.
+Ninguna de las dos verdades sobrevivió: quedó una mezcla. Y no se pudo recuperar del historial porque
+`convocatorias_history` nació después.
+
+Arreglado con rollover: `2025 archivada` (1.700/720/156, con su Resolución clonada) + `2026 vigente`
+(1.450/120/141, con el RD 387/2026 clonado). Igual en `administrativo-estado` y `tecnico-informatica`.
+
+**Lección:** el pivote in-place parece inocuo porque la landing "queda bien" — y deja la BD contando
+plazas de dos procesos distintos. Con un ciclo por fila y un documento por ciclo, es imposible.
+
+### Variante sin OEP nueva firme
+
+**SERMAS (09/06/2026)**: se mantuvo el estado real con hitos + SEO forward. Hoy eso sería un ciclo nuevo
+con `plazas_prevision=true` y su motivo, o sin plazas — nunca las del ciclo viejo "de referencia".
 
 ## Relacionados
 - `docs/maintenance/crear-nueva-oposicion.md` §2a.1-bis (procedimiento detallado del pivote forward) y §2c (convocatorias SSOT).
