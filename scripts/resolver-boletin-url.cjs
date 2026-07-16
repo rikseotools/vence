@@ -88,7 +88,40 @@ const BOA_SUMARIO = (ymd) =>
   `https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VERLST&BASE=BOLE&DOCS=1-200&SEC=SUMARIO&OUTPUTMODE=HTML&SEPARADOR=&&PUBL=${ymd}`
 const BOA_DOC = (mlkob) => `https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=${mlkob}`
 
-module.exports = { resolverUrl, fecha, BOA_SUMARIO, BOA_DOC }
+/**
+ * BOC (Canarias): igual que el BOA, DOS pasos, y también funciona (verificado con la Resolución
+ * 6/06/2025 del SCS, que prueba 3 oposiciones canarias de golpe):
+ *   1. sumario por AÑO/NÚMERO (que es justo lo que trae nuestra referencia: «BOC nº 116, 13/06/2025»):
+ *      https://www.gobiernodecanarias.org/boc/2025/116/  → HTML plano, ~15k de texto
+ *   2. buscar la entrada y coger su id `BOC-A-YYYY-NNN-NNNN` → el PDF vive en la SEDE:
+ *      https://sede.gobiernodecanarias.org/boc/boc-a-2025-116-2169.pdf   (1,4 MB, 375k chars)
+ *
+ * ⚠️ El título del sumario es GENÉRICO («convocan pruebas selectivas […] en plazas básicas vacantes»):
+ * las categorías (TCAE, Auxiliar…) van en el ANEXO del PDF. Buscar «Cuidados Auxiliares» en el sumario
+ * da CERO y estuve a punto de dar la referencia por mala. La convocatoria estaba donde decía.
+ */
+const BOC_SUMARIO = (anio, num) => `https://www.gobiernodecanarias.org/boc/${anio}/${num}/`
+const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).toLowerCase()}.pdf`
+
+/**
+ * MAPA MEDIDO (16/07/2026) — qué boletín responde a fetch plano y cuál necesita headless.
+ *
+ * 🔑 LECCIÓN: **no juzgues un boletín por su PORTADA.** Di por inviables el BOA y el BOC porque sus
+ * portadas son Angular/SPA… y sus SUMARIOS por fecha responden a `curl` sin más — que es justo como
+ * los lee el radar. Probar el sumario ANTES de montar Playwright.
+ *
+ *   BOA   ✅ 2 pasos (sumario por fecha → MLKOB → PDF).  ⚠️ iso-8859-1
+ *   BOC   ✅ 2 pasos (sumario año/nº → BOC-A-id → PDF en la sede)
+ *   DOCM  ✅ directo (⚠️ SIEMPRE /portaldocm/, si no redirige a la web y clonas los menús)
+ *   BORM  ✅ directo (nº de anuncio → /services/anuncio/ano/YYYY/numero/NNNN/pdf)
+ *   BOCM  ✅ directo (nº de entrada → BOCM-YYYYMMDD-N.PDF)
+ *   BOCYL ✅ directo (BOCYL-D-DDMMYYYY-NNN-NN.pdf)
+ *   BOPV  ⚠️ el SUMARIO responde (/bopv2/datos/YYYY/MM/sYY_NNNN.pdf) pero las DISPOSICIONES son JS
+ *           (la .shtml devuelve 1.3k de chrome, sin PDF) → headless para el documento
+ *   BOJA  ❌ SPA de Drupal: 136 KB de CSS/JS y 7.6k de texto sin contenido → headless
+ *   DOG   ❌ patrón no resuelto (las urls de hitos son /dog/Publicados/YYYY/YYYYMMDD/Anuncio…_es.html)
+ */
+module.exports = { resolverUrl, fecha, BOA_SUMARIO, BOA_DOC, BOC_SUMARIO, BOC_DOC }
 
 if (require.main === module) {
   const casos = [
