@@ -6,8 +6,9 @@
  * AUTONÓMICOS (BOC 9, BORM 7, BOJA 4, BOCM 4…). Los 16 adapters de `ccaa-boletines.ts` NO sirven aquí:
  * están hechos para "el sumario de HOY" (el radar) — usan la portada o el último boletín, y solo el BOA
  * construye URL por fecha. Para un boletín PASADO y CONCRETO hace falta la estructura de URL de cada
- * uno. Comprobado: la portada del BOJA es una SPA de Drupal (136 KB de CSS/JS, 7.6k de texto, cero
- * contenido) → esa familia necesita headless, no fetch plano.
+ * uno. Ver el MAPA MEDIDO al final: casi todos responden a fetch plano en dos pasos (sumario → id →
+ * documento). ⚠️ NINGUNO ha necesitado headless hasta ahora — di por inviables el BOA, el BOC y el
+ * BOJA y los tres eran accesibles: ver la LECCIÓN del mapa.
  *
  * LO QUE SÍ SE PUEDE: varios boletines tienen URL deducible, y **nuestra propia `boe_reference` ya trae
  * el dato que falta** («BORM núm. 291, 18/12/2025 (anuncio 6133)» → nº de anuncio; «BOCM núm. 181,
@@ -122,10 +123,19 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
  *   BORM  ✅ directo (nº de anuncio → /services/anuncio/ano/YYYY/numero/NNNN/pdf)
  *   BOCM  ✅ directo (nº de entrada → BOCM-YYYYMMDD-N.PDF)
  *   BOCYL ✅ directo (BOCYL-D-DDMMYYYY-NNN-NN.pdf)
+ *   BOJA  ✅ 2 pasos — y NO necesita headless (me equivoqué): /boja/AÑO/Nº/index.html trae los href a
+ *           los PDF (BOJA25-250-XXXXX-XXXXX-01_XXXXXXX.pdf, responden 200 · application/pdf). Lo
+ *           ciego era mi extracción de TEXTO (7.6k de menús), no la página: los enlaces están en el
+ *           HTML. **La Lambda devuelve EXACTAMENTE lo mismo que curl** (7.656 chars) → el headless no
+ *           aporta nada aquí.
+ *   DOG   ✅ documento directo: /dog/Publicados/AÑO/AAAAMMDD/Anuncio<COD>-<DDMMAA>-<NNNN>_es.html
+ *           (51-122k de texto). Los sumarios NO responden, pero los anuncios contiguos sí: si tienes
+ *           uno (p.ej. de convocatoria_hitos), los vecinos -0001/-0002/… son las demás categorías.
+ *   BOC-Cantabria ✅ /boces/verAnuncioAction.do?idAnuBlob=<id> (106k). El id NO es deducible: sale de
+ *           convocatoria_hitos.url — mira SIEMPRE ahí antes de darte por vencido.
  *   BOPV  ⚠️ el SUMARIO responde (/bopv2/datos/YYYY/MM/sYY_NNNN.pdf) pero las DISPOSICIONES son JS
- *           (la .shtml devuelve 1.3k de chrome, sin PDF) → headless para el documento
- *   BOJA  ❌ SPA de Drupal: 136 KB de CSS/JS y 7.6k de texto sin contenido → headless
- *   DOG   ❌ patrón no resuelto (las urls de hitos son /dog/Publicados/YYYY/YYYYMMDD/Anuncio…_es.html)
+ *           (la .shtml devuelve 1.3k de chrome, sin PDF) → PENDIENTE de probar la vía "href en el
+ *           HTML" que resolvió el BOJA.
  */
 module.exports = { resolverUrl, fecha, BOA_SUMARIO, BOA_DOC, BOC_SUMARIO, BOC_DOC }
 

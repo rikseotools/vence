@@ -81,6 +81,21 @@ arregladas:
    para las próximas fuentes JS — pero **marcar `headless` no es un arreglo: hay que COMPROBAR que la
    Lambda devuelve contenido**, no que responde.
 
+### 🔌 El contrato de la Lambda headless (lo probé mal y saqué conclusiones falsas)
+
+`backend/infra/headless-fetcher/handler.mjs` acepta **`wait_for`** (selector CSS) y **`timeout_ms`** —
+snake_case. El 16/07 la invoqué con `waitMs`/`waitUntil`, que **no existen**, y concluí que «la Lambda
+ignora los parámetros de espera». Falso: los ignoraba porque me los había inventado.
+
+Y con los parámetros BUENOS, el resultado fue el mismo, lo que enseña algo más útil:
+- **La Moncloa**: `wait_for` + 50 s → 4.204 chars, 0 fechas. Retirarla estuvo bien.
+- **BOJA**: la Lambda devuelve **7.656 chars — exactamente lo mismo que `curl`**. El headless NO
+  aportaba nada… porque el problema nunca fue el render: **los href a los PDF SÍ estaban en el HTML** y
+  el ciego era mi extracción de TEXTO (que se quedaba en los menús).
+
+**Antes de pedir headless para una fuente, comprueba qué aporta de verdad frente a `curl`.** Hoy:
+cero de tres.
+
 ⚠️ **Una fuente que el fetcher no sabe leer no es una fuente: es un hueco con nombre.** Al añadir una,
 comprueba cuánto TEXTO ÚTIL devuelve — no que responda 200.
 
