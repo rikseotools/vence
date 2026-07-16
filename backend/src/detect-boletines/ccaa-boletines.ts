@@ -1,12 +1,23 @@
 // backend/src/detect-boletines/ccaa-boletines.ts
 //
-// Adapters de TEMARIO por Comunidad Autónoma (sensor `temario_change`).
+// Adapters de boletín autonómico: CONVOCATORIAS (`regional_scan`) + TEMARIO (`temario_change`).
 //
 // Cierra el gap del caso Cantabria (Orden PRE/12/2026 en el BOC): ningún sensor
-// vigilaba el temario. Aquí montamos 1 config por boletín autonómico. Son
-// TEMARIO-ONLY (candidatesText='') para NO duplicar la detección de CONVOCATORIAS,
-// competencia de la Capa 1 del radar (en transición). Ambos subsistemas conviven
-// sin pisarse.
+// vigilaba el temario. Aquí montamos 1 config por boletín autonómico.
+//
+// ⚠️ HASTA EL 16/07/2026 ERAN TEMARIO-ONLY (`candidatesText: ''`): se descargaba y parseaba el
+// sumario y las CONVOCATORIAS se TIRABAN, "para no duplicar la Capa 1 del radar (en transición)".
+// El problema: esa Capa 1 (`llm_semantic`) solo cubre las oposiciones con `seguimiento_url` —
+// **472 de 2.542 (19%)**. Las otras 2.070 no las veía NADIE, y el boletín, que por ley las tiene
+// TODAS, se leía cada día y se descartaba.
+//
+// Medido antes de tocar nada (simulación sobre los 16 boletines, un solo día): **35 convocatorias
+// C1/C2 descartadas, 0 fallos de fetch**. DOGV 16, BOCM 9, BON 3, BOA/Canarias/Cantabria 2.
+//
+// El pipeline de destino YA existía entero y es seguro: el servicio pasa `candidatesText` a
+// `extractRegionalOeps` (un LLM filtra el ruido), cataloga TODOS los grupos ("misión = BD más
+// grande sin gaps", Fase 0 del 04/07) y auto-vincula SOLO si el nivel del organismo es
+// determinable; si no, queda novel. Faltaba únicamente rellenar el campo.
 //
 // Cada boletín expone su sumario de forma distinta. La factory soporta 3 estrategias:
 //   - sumarioUrl : URL fija del "boletín vigente" (dateless).
@@ -18,6 +29,7 @@
 
 import {
   collectBoeTitulos,
+  extractCandidatesFromSumarioText,
   extractTemarioCandidatesFromSumarioText,
   htmlToText,
   looksLikeTemarioChange,
@@ -180,8 +192,13 @@ export function makeCcaaTemarioAdapter(cfg: CcaaBoletinConfig): BoletinAdapter {
         )
         const joined = bodies.filter(Boolean).join(' ')
         if (joined.length < (cfg.minLength ?? 2000)) return null
-        const temario = extractTemarioCandidatesFromSumarioText(htmlToText(joined))
-        return { url: urls[0], candidatesText: '', temarioText: temario.join('\n') }
+        const texto = htmlToText(joined)
+        const temario = extractTemarioCandidatesFromSumarioText(texto)
+        return {
+          url: urls[0],
+          candidatesText: extractCandidatesFromSumarioText(texto).join('\n'),
+          temarioText: temario.join('\n'),
+        }
       }
 
       const url = cfg.buildUrl
@@ -196,13 +213,18 @@ export function makeCcaaTemarioAdapter(cfg: CcaaBoletinConfig): BoletinAdapter {
         const text = await fetchPdfText(url)
         if (!text || text.length < (cfg.minLength ?? 500)) return null
         const temario = extractTemarioCandidatesFromSumarioText(text)
-        return { url, candidatesText: '', temarioText: temario.join('\n') }
+        return {
+          url,
+          candidatesText: extractCandidatesFromSumarioText(text).join('\n'),
+          temarioText: temario.join('\n'),
+        }
       }
 
       const body = await fetchText(url, cfg.format, cfg.encoding)
       if (!body || body.length < (cfg.minLength ?? 2000)) return null
 
       let temario: string[]
+      let candidatos: string[]
       if (cfg.format === 'boe-json' || cfg.format === 'json') {
         let json: unknown
         try {
@@ -215,11 +237,16 @@ export function makeCcaaTemarioAdapter(cfg: CcaaBoletinConfig): BoletinAdapter {
             ? collectJsonTitles(json, cfg.titleFields ?? [], cfg.jsonArrayField)
             : collectBoeTitulos(json)
         temario = titles.filter(looksLikeTemarioChange).map((t) => t.slice(0, 300))
+        // En JSON cada registro YA es una disposición: no hay que trocear el sumario, solo
+        // filtrar. Se pasa cada título por el mismo extractor (que aplica looksLikeC1C2Convocatoria).
+        candidatos = titles.flatMap((t) => extractCandidatesFromSumarioText(t))
       } else {
-        temario = extractTemarioCandidatesFromSumarioText(htmlToText(body))
+        const texto = htmlToText(body)
+        temario = extractTemarioCandidatesFromSumarioText(texto)
+        candidatos = extractCandidatesFromSumarioText(texto)
       }
 
-      return { url, candidatesText: '', temarioText: temario.join('\n') }
+      return { url, candidatesText: candidatos.join('\n'), temarioText: temario.join('\n') }
     },
   }
 }

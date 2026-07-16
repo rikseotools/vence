@@ -122,6 +122,34 @@ WHERE s.status='pending' AND s.sensor_type<>'hash_change'
 ORDER BY s.confidence_score DESC;
 ```
 
+### 🆕 Los boletines autonómicos YA detectan convocatorias (arreglado 16/07/2026)
+
+Hasta hoy, los 16 adapters de boletín autonómico (`backend/src/detect-boletines/ccaa-boletines.ts`)
+eran **TEMARIO-ONLY**: descargaban y parseaban el sumario y devolvían **`candidatesText: ''`** — es
+decir, **tiraban las convocatorias** — "para no duplicar la Capa 1 del radar".
+
+**El problema:** esa Capa 1 (`llm_semantic`) solo cubre oposiciones con `seguimiento_url` — **472 de
+2.542 (19%)**. Las otras **2.070 no las veía NADIE**, mientras el boletín, que **por ley las tiene
+todas**, se leía cada día y se descartaba.
+
+**Medido el día del arreglo** (simulación sobre los 16 boletines, una sola jornada): **30
+convocatorias C1/C2 tiradas, 0 fallos de fetch** — BOCM 9, DOGV 6, BON 3, BOA/Canarias/Cantabria/
+DOG/BORM 2, BOPA/BOPV 1.
+
+**El arreglo fue rellenar el campo.** Todo lo demás ya existía y es seguro: el servicio pasa
+`candidatesText` a `extractRegionalOeps` (**un LLM filtra el ruido**), cataloga TODOS los grupos
+(*"misión = BD más grande sin gaps"*, Fase 0 del 04/07) y **auto-vincula SOLO si el nivel del
+organismo es determinable**; si no, queda `novel` → se cataloga.
+
+> **Consecuencia para tu triaje:** a partir de ahora entrarán **más señales `regional_scan`**, y
+> muchas serán de cuerpos que NO preparamos. Eso es lo correcto (§REGLA DE DESCARTE: si no hay fila →
+> catalogar). No las descartes por "no vendible".
+>
+> ⚠️ **Pendiente conocido:** el sumario del **BOA (Aragón) sale con la codificación rota**
+> (`n�mero`) → su `encoding` está mal configurado. Y el troceo por disposición cuela algo de ruido
+> (cabeceras de página en el BON): es un extractor de RECALL a propósito — la precisión la pone el
+> LLM del servicio.
+
 ### ⚠️ La señal puede estar EQUIVOCADA — y el radar la engancha a la fila que no es (16/07/2026)
 
 Tres casos reales del mismo día. **Ninguna señal era ruido y ninguna era lo que decía:**
