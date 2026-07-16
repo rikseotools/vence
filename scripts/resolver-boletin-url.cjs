@@ -70,7 +70,25 @@ function resolverUrl(boletin, ref) {
   return null
 }
 
-module.exports = { resolverUrl, fecha }
+/**
+ * BOA: no tiene URL deducible en UN paso, pero SÍ en DOS — y funciona (verificado 16/07 con el
+ * DECRETO 12/2026 de tcae-aragon):
+ *
+ *   1. sumario del día (el mismo endpoint legacy que usa el adapter del radar, ya date-based):
+ *      https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VERLST&BASE=BOLE&DOCS=1-200&SEC=SUMARIO&OUTPUTMODE=HTML&SEPARADOR=&&PUBL=YYYYMMDD
+ *      ⚠️ viene en iso-8859-1, no utf-8.
+ *   2. buscar el título en el HTML y coger el href `BRSCGI?CMD=VEROBJ&MLKOB=<id>` que le sigue →
+ *      ese es el PDF. (El segundo MLKOB de cada entrada es la FIRMA: `application/sig`, no el PDF.)
+ *
+ * Este patrón —sumario por fecha + id interno— es probablemente el mismo de varios boletines que hoy
+ * damos por "necesitan headless". Antes de tirar de Playwright para uno, prueba si su sumario del día
+ * responde a fetch plano: el BOA parecía inviable (su portada es Angular) y no lo era.
+ */
+const BOA_SUMARIO = (ymd) =>
+  `https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VERLST&BASE=BOLE&DOCS=1-200&SEC=SUMARIO&OUTPUTMODE=HTML&SEPARADOR=&&PUBL=${ymd}`
+const BOA_DOC = (mlkob) => `https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=${mlkob}`
+
+module.exports = { resolverUrl, fecha, BOA_SUMARIO, BOA_DOC }
 
 if (require.main === module) {
   const casos = [
