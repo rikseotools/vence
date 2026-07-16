@@ -121,6 +121,31 @@ async function main() {
       `${s.n} señal(es) aplicadas esta semana sin NINGÚN documento curado: ¿se verificó contra la fuente?`, {})
   }
 
+  // ── 5. La señal está enganchada a un cuerpo DISTINTO del que detectó (bug del matcher del radar)
+  //
+  //    Caso real que lo motiva (16/07): una señal de "Administrativo/a por Promoción Interna" (C1,
+  //    OEP 2022-2023) colgaba de `auxiliar-administrativo-ayuntamiento-valladolid` (C2, OEP 2026).
+  //    Aplicarla habría destrozado la fila. Y NO era hipotético: `auxiliar-administrativo-universidad-
+  //    rovira-virgili` (C2) YA tenía aplicada una señal de "Administratiu/va - Escala Administrativa,
+  //    subgrup C1" (25/06) — se le cambió el estado desde datos de OTRO cuerpo.
+  //
+  //    ⚠️ REGLA DELIBERADAMENTE ESTRECHA: solo el par Auxiliar(C2) vs Administrativo(C1), que son
+  //    cuerpos distintos sin discusión (temario y oposición distintos). Una regla amplia de
+  //    "parecido de nombres" sería una máquina de falsos positivos, y un guardarraíl ruidoso se apaga.
+  const mism = (await c.query(`
+    SELECT o.slug, s.status, s.confidence_score conf,
+           s.raw_extraction->'extraction'->>'cuerpoDetectado' cuerpo
+      FROM oep_detection_signals s JOIN oposiciones o ON o.id = s.oposicion_id
+     WHERE s.status IN ('pending','applied')
+       AND s.raw_extraction->'extraction'->>'cuerpoDetectado' IS NOT NULL
+       AND o.slug LIKE 'auxiliar-%'
+       AND s.raw_extraction->'extraction'->>'cuerpoDetectado' !~* 'auxiliar'`)).rows
+  for (const m of mism) {
+    add(m.slug, 'senal_cuerpo_no_cuadra',
+      `${m.status}: la fila es Auxiliar (C2) y la señal detectó "${m.cuerpo}" — ¿otro cuerpo? NO aplicar: catalogar fila nueva`,
+      { cuerpo_detectado: m.cuerpo, status: m.status, confianza: m.conf })
+  }
+
   await c.end()
 
   if (JSON_OUT) { console.log(JSON.stringify(F, null, 1)); }
