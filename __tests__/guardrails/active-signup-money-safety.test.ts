@@ -44,6 +44,24 @@ describe('guardarraíl — registro activo (dinero real)', () => {
     expect(src).toMatch(/grantActiveSignupRewards/)
   })
 
+  it('NO concede el bono a un referido RECHAZADO (invariante: rejected ⇒ sin captación)', () => {
+    // Regresión (decisión Manuel 16/07, caso Marta): un referido rechazado por la política
+    // solo-usuarios-nuevos (cuenta preexistente) cobraba los 2€ de registro activo igual, porque
+    // la concesión no miraba el status. Si la referencia se rechaza porque NO es captación nueva,
+    // el bono que premia la captación tampoco toca. El SQL de candidatos DEBE excluir 'rejected'.
+    const src = readFileSync(join(ROOT, 'lib/referrals/activeSignup.ts'), 'utf8')
+    expect(src).toMatch(/r\.status\s*<>\s*'rejected'/)
+  })
+
+  it('al RECHAZAR un referido se REVOCA su bono activo (invariante en ambos sitios de rechazo)', () => {
+    // Cierra la carrera "conceder antes de rechazar": una pending puede recibir los 2€ y luego
+    // rechazarse (al pagar → preexistente, o por refund). Ambos UPDATE a status='rejected' DEBEN
+    // anular active_reward_at + active_reward_amount para que un rechazado nunca arrastre bono.
+    const src = readFileSync(join(ROOT, 'lib/referrals/queries.ts'), 'utf8')
+    const revokes = src.match(/status:\s*'rejected',\s*activeRewardAt:\s*null,\s*activeRewardAmount:\s*null/g) || []
+    expect(revokes.length).toBeGreaterThanOrEqual(2)
+  })
+
   it('el bono activo GANADO es PAGABLE al concederse, SIMÉTRICO en ambas queries de saldo', () => {
     // Regresión (bug 2026-11/12-07): las 2 queries de saldo (getUserOwedBalance = balance personal,
     // getEmbajadoresWithBalance = panel admin) DEBEN contar el bono activo de forma IDÉNTICA, si no

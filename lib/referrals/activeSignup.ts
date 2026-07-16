@@ -62,6 +62,12 @@ export async function grantActiveSignupRewards(exec?: Executor): Promise<ActiveS
       JOIN user_profiles refd ON refd.id = r.referred_user_id
       JOIN user_profiles amb ON amb.id = r.referrer_user_id
       WHERE r.active_reward_at IS NULL
+        -- Referido NO rechazado. Un 'rejected' es una referencia INVÁLIDA (cuenta preexistente
+        -- por la política solo-usuarios-nuevos, o refund/fraude): si la rechazamos porque NO es
+        -- captación nueva, el bono que premia la captación tampoco toca (decisión Manuel 16/07,
+        -- caso Marta: referido rechazado por preexistente pero cobraba los 2€ igual). Invariante:
+        -- status='rejected' ⇒ sin active_reward (reforzado también al rechazar en queries.ts).
+        AND r.status <> 'rejected'
         -- "sin fraude" = flags vacíos. El DEFAULT de la columna es '[]'::jsonb (array
         -- vacío), así que hay que aceptarlo explícitamente: sin esto NINGUNA referral
         -- real (todas nacen con []) pasaba el filtro y el bono nunca se concedía (bug

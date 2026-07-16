@@ -180,7 +180,10 @@ export async function qualifyReferralOnPayment(
     const ageDaysAtAttribution = (new Date(ref.attributedAt as unknown as string).getTime()
       - new Date(refdRow.createdAt as unknown as string).getTime()) / 86_400_000
     if (ageDaysAtAttribution > REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS) {
-      await db.update(referrals).set({ status: 'rejected', updatedAt: sql`now()` }).where(eq(referrals.id, ref.id))
+      // Rechazo por preexistente → también REVOCA el bono de registro activo si el cron ya lo
+      // concedió (una pending puede recibir los 2€ antes de que se rechace al pagar; caso Marta).
+      // Invariante: un referido rechazado NO arrastra active_reward.
+      await db.update(referrals).set({ status: 'rejected', activeRewardAt: null, activeRewardAmount: null, updatedAt: sql`now()` }).where(eq(referrals.id, ref.id))
       return { qualified: false, reason: 'referred_not_new' }
     }
   }
@@ -213,7 +216,9 @@ export async function rejectReferralOnRefund(
   const [paid] = await db.select({ id: referrals.id }).from(referrals)
     .where(and(eq(referrals.referredUserId, referredUserId), eq(referrals.status, 'paid'))).limit(1)
   const res = await db.update(referrals)
-    .set({ status: 'rejected', updatedAt: sql`now()` })
+    // Clawback en refund → también revoca el bono de registro activo (invariante:
+    // status='rejected' ⇒ sin active_reward). Coherente con el guard de concesión.
+    .set({ status: 'rejected', activeRewardAt: null, activeRewardAmount: null, updatedAt: sql`now()` })
     .where(and(
       eq(referrals.referredUserId, referredUserId),
       inArray(referrals.status, ['pending', 'qualified', 'payable']),
