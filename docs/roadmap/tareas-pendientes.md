@@ -121,18 +121,16 @@
 - **Cómo:** `docs/roadmap/canary-framework.md` (diseño + fases). P1 incluye **verificar/blindar** que `smoke@vence.es` no sesga rankings/dificultad.
 - **Estado:** P0 hecho y desplegado. P1-P3 pendientes.
 
-### 🟠 [ALTA] Construir la oposición Auxiliar de Archivos de la AGE (Sección Archivos, C1)
-- **Qué:** **Escala de Auxiliares de Archivos, Bibliotecas y Museos de OO.AA. del Ministerio de Cultura — Sección Archivos**, grupo **C1** (título Bachiller/Técnico). Catalogada pero SIN temario/tests (todas las entradas "archivo" están inactivas). Referencia: **BOE-A-2023-11435** (169 plazas, OEP 2020-2022).
-- **Por qué:** promesa explícita — feedback `1a698b2f` (Raquel Hermoso, 10/07, free, Madrid): le dijimos *"la estamos elaborando… te avisaremos cuando esté disponible"*. Hay **compromiso de aviso**. Demanda por ahora baja (2 menciones "archivo" en BD), pero prometida.
-- **Cómo:** temario oficial = **Anexo II del BOE-A-2023-11435**. **Parte general (temas 1-8) = solape EXACTO con Auxiliar Administrativo del Estado** → reusar scope (CE + Corona, Cortes, org. territorial/CCAA, AGE, Ley 39/2015, EBEP, LO 3/2007 igualdad, Ley 19/2013 transparencia). **Parte específica** (temas 9-18 Ministerio de Cultura/Ley 16/1985/Sistema de Archivos + historia cultural; temas 19+ archivística) = editorial con fuente (BOE/manual), **nunca inventar**, lifecycle `tech_approved`. Guía: `docs/maintenance/crear-nueva-oposicion.md`.
-- **Avisar a Raquel** (`raquel.hermoso.lindoso@gmail.com`, feedback `1a698b2f`) al terminar.
-- **Estado:** catalogada, sin contenido. Prometida a 1 usuaria.
+### 🟠 [DECISIÓN Manuel] Aux. Archivos del Estado: el C2 está LIVE — ¿Raquel necesita un C1 aparte?
+- **Qué:** ya hay una oposición de **Archivos del Estado (Sección Archivos) construida y LIVE**: `auxiliar-archivos-estado` (**C2, 48 temas, con_tests, active**; memoria `project_auxiliar_archivos_estado_construccion`, 8.598 preg). El backlog pedía una **C1** ("Escala de Auxiliares… Ministerio de Cultura", BOE-A-2023-11435).
+- **La pregunta abierta (para Manuel):** ¿el C2 construido satisface la promesa a Raquel Hermoso (`1a698b2f`, `raquel.hermoso.lindoso@gmail.com`), o pidió una **C1 genuinamente distinta**? Verificar el **subgrupo real** de la oposición que ella busca (nuestra BD la etiqueta C2; la Escala de Auxiliares de la AGE suele ser C1 → posible mislabel o dos cuerpos distintos).
+- **Según la respuesta:** si el C2 vale → avisar a Raquel (outward, con OK Manuel). Si necesita C1 → construir (temario Anexo II BOE-A-2023-11435; parte general reusa Aux. Admvo. Estado; específica editorial con fuente, nunca inventar).
+- **Estado:** C2 LIVE; C1-vs-C2 pendiente de decisión de Manuel.
 
-### 🟠 [ALTA] Construir la oposición Ayudantes en Ejecución Penal (Gobierno Vasco)
-- **Qué:** `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` está **catalogada** (⚪) pero sin temario ni tests. Es el equivalente autonómico a Ayudantes de IIPP en el País Vasco (prisiones transferidas al Gobierno Vasco).
-- **Por qué:** promesa explícita al usuario — feedback `b2c2db3f` (adriangarri17@gmail.com, premium, Bilbao, 11/07): le dijimos *"estamos elaborando la oposición… te avisaremos en cuanto esté lista"*. Aún **no hay convocatoria ni temario oficial** (previsto este año); construir cuando salga, verificando cada tema contra el programa oficial (excluirá temas de la estatal y añadirá autonómicos).
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. El núcleo común con la estatal (que ya tenemos) se reutiliza. Avisar a `b2c2db3f` al terminar.
-- **Estado:** catalogada, sin contenido. Esperando convocatoria oficial.
+### 🟢 [SEGUIMIENTO — outward + higiene] Ayudantes Ejecución Penal Euskadi YA construida (avisar + limpiar duplicado)
+- **Qué:** la oposición **YA está construida y LIVE** bajo el slug `ayudantes-ejecucion-penal-pais-vasco` (C1, **53 temas, active, con_landing**; memoria `project_ayudantes_ejecucion_penal_euskadi`, scope 52/53). El slug `cuerpo-de-ayudantes-en-ejecucion-penal-gobierno-vasco` (catalogada, vacío) es un **DUPLICADO** de catálogo → retirar/mergear.
+- **Pendiente real:** (1) avisar a `b2c2db3f` (adriangarri17@gmail.com) de que está lista (outward, **confirmar con Manuel antes**); (2) retirar el slug duplicado vacío.
+- **Estado:** contenido construido; queda aviso + higiene de catálogo.
 
 ### 🟢 [DEMANDA — valorar, no comprometido] Oposiciones pedidas por usuarios (aún no en plataforma)
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
