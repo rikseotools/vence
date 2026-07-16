@@ -7,7 +7,16 @@
 // Uso: node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero_explicacion>
 //   (o pasar la explicación por stdin si no se da fichero)
 const fs = require('fs');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+// `postgres` está en las deps de la raíz → require normal. Y va LAZY: solo hace falta para leer el
+// artículo de la BD, así que las funciones PURAS (checkCorrespondence, explanationBlocks) se pueden
+// importar y testear sin arrastrar la dependencia.
+//
+// ⚠️ Antes era `require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres')` —
+// la ruta ABSOLUTA de un disco concreto, y al cargar el módulo. Funcionaba en esa máquina y en el CI
+// reventaba con "Cannot find module …/backend/node_modules/postgres", tumbando la suite ENTERA (y con
+// ella el gate de CI, que bloquea el deploy de TODAS las sesiones). El test pasaba en local: por eso
+// coló. Nunca hardcodear rutas del disco propio en algo commiteado.
+const getPg = () => require('postgres');
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   const env = fs.readFileSync(require('path').join(__dirname, '..', '..', '.env.local'), 'utf8');
@@ -111,7 +120,7 @@ if (require.main !== module) {
   const [qid, file] = process.argv.slice(2);
   if (!qid) { console.error('Uso: validar-explicacion.cjs <question_id> <fichero>'); process.exit(2); }
   const expl = file ? fs.readFileSync(file, 'utf8') : fs.readFileSync(0, 'utf8');
-  const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
+  const s = getPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
   try {
     const [q] = await s`SELECT option_a, option_b, option_c, option_d, correct_option, a.content acontent
       FROM questions q LEFT JOIN articles a ON a.id = q.primary_article_id WHERE q.id = ${qid}`;
