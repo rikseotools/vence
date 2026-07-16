@@ -55,7 +55,15 @@ async function main() {
   const F = []; // {category, severity, slug, kind, message, detail}
   const add = (category, severity, slug, kind, message, detail) => F.push({ category, severity, slug, kind, message, detail: detail || null });
 
-  const opos = (await c.query(`SELECT id, slug, landing_estadisticas, temas_count FROM oposiciones WHERE is_active = true ORDER BY slug`)).rows;
+  // ⚠️ Las tarjetas se leen de `oposiciones_ssot`, NO de `oposiciones` (bug corregido 16/07/2026).
+  // La vista resuelve COALESCE(convocatorias, oposiciones): la fila de convocatoria GANA y es lo que
+  // ve el opositor. Auditar `oposiciones.landing_estadisticas` es auditar una copia que NADIE VE.
+  // Medido: en administrativo-navarra la copia legacy decía "Plazas totales: 264" (que cuadraba con
+  // las columnas -> visto bueno) mientras el usuario veía 585. Y 7 de 91 landings activas tenían
+  // tarjetas distintas entre legacy y vista: SIETE landings que el sweep nunca comprobó.
+  const opos = (await c.query(`SELECT o.id, o.slug, s.landing_estadisticas, o.temas_count
+    FROM oposiciones o JOIN oposiciones_ssot s ON s.slug = o.slug
+    WHERE o.is_active = true ORDER BY o.slug`)).rows;
 
   for (const o of opos) {
     const pt = o.slug.replace(/-/g, '_');
@@ -113,11 +121,16 @@ async function main() {
     const nTopics = topics.length;
     if (o.temas_count != null && Number(o.temas_count) !== nTopics) add('content', 'error', o.slug, 'temas_card', `temas_count=${o.temas_count} ≠ ${nTopics} topics reales`);
     for (const card of cardsAbout(o.landing_estadisticas, 'tema')) { const v = cardInt(card.numero); if (v != null && v !== nTopics) add('content', 'error', o.slug, 'temas_card', `tarjeta "${card.texto}"=${v} pero hay ${nTopics} topics`); }
-    const conv = (await c.query(`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, estado_proceso, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
+    const conv = (await c.query(`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, estado_proceso, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
       FROM convocatorias WHERE oposicion_id = $1 AND is_current = true LIMIT 1`, [o.id])).rows[0];
     if (conv) {
       const L = Number(conv.plazas_libres || 0), D = Number(conv.plazas_discapacidad || 0), P = Number(conv.plazas_promocion_interna || 0);
-      const valid = new Set([L, D, P, L + D, L + P, D + P, L + D + P].filter(x => x > 0));
+      // La cola de turnos de reserva (violencia de género, etc.) cuenta para el TOTAL: sin ella, una
+      // tarjeta correcta se marcaba como error. Caso real: el BON de Navarra reparte 585 en CUATRO
+      // turnos (264+264+51+6) y el esquema solo modelaba tres -> la tarjeta buena (585) no cuadraba.
+      const O = Array.isArray(conv.plazas_otros_turnos)
+        ? conv.plazas_otros_turnos.reduce((a, t) => a + Number(t?.plazas || 0), 0) : 0;
+      const valid = new Set([L, D, P, L + D, L + P, D + P, L + D + P, L + D + P + O].filter(x => x > 0));
       for (const card of cardsAbout(o.landing_estadisticas, 'plaza')) { const v = cardInt(card.numero); if (v != null && !valid.has(v)) add('content', 'error', o.slug, 'plaza_card', `tarjeta "${card.texto}"=${v} no cuadra con conv (L=${L} D=${D} P=${P})`); }
       const faltan = ['boe_reference', 'programa_url', 'examen_config', 'landing_faqs', 'landing_estadisticas', 'landing_description'].filter(k => conv[k] == null);
       if (faltan.length) add('content', 'warn', o.slug, 'dual_write', `dual-write convocatoria incompleto: ${faltan.join(', ')}`);
