@@ -116,15 +116,22 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'auxiliar_museos_estado',
+    nombre: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Museos)',
+    categoria: 'C2',
+    administracion: 'Estado',
+    icon: '📋'
+  },
+  {
     id: 'auxiliar_archivos_estado',
-    nombre: 'Auxiliar de Archivos (Estado)',
+    nombre: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Archivos)',
     categoria: 'C2',
     administracion: 'Estado',
     icon: '📋'
   },
   {
     id: 'auxiliar_biblioteca_estado',
-    nombre: 'Auxiliar de Biblioteca (Estado)',
+    nombre: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Bibliotecas)',
     categoria: 'C2',
     administracion: 'Estado',
     icon: '📋'

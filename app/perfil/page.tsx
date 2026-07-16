@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'auxiliar_museos_estado',
+      label: 'Auxiliar de Museos (Estado)',
+      data: {
+        name: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado — Sección Museos',
+        slug: 'auxiliar-museos-estado',
+        categoria: 'C2',
+        administracion: 'Estado'
+      }
+    },
+    {
       value: 'auxiliar_archivos_estado',
       label: 'Auxiliar de Archivos (Estado)',
       data: {

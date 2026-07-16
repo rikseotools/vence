@@ -1,0 +1,428 @@
+{
+  "identity": {
+    "nombre": "Auxiliar de Archivos, Bibliotecas y Museos del Estado — Sección Museos",
+    "short_name": "Auxiliar de Museos (Estado)",
+    "slug": "auxiliar-museos-estado",
+    "position_type": "auxiliar_museos_estado",
+    "grupo": "C",
+    "subgrupo": "C2",
+    "categoria": "C2",
+    "tipo_acceso": "libre",
+    "administracion": "estado",
+    "administracion_display": "Estado",
+    "ccaa": "estado",
+    "familia": "administracion_general",
+    "titulo_requerido": "Bachiller o Técnico",
+    "coverage_level": "con_tests"
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "BOE-A-2025-23564 (Res. 13/11/2025): Escala Auxiliar de ABM, subgrupo C2, sección Museos. Penalización -1/3 por error, en blanco no penaliza."
+  },
+  "landing": {
+    "estadisticas": [
+      {
+        "numero": "15",
+        "texto": "Plazas Sección Museos (acceso libre)",
+        "color": "text-green-600"
+      },
+      {
+        "numero": "C2",
+        "texto": "Subgrupo",
+        "color": "text-blue-600"
+      },
+      {
+        "numero": "48",
+        "texto": "Temas del programa",
+        "color": "text-purple-600"
+      }
+    ],
+    "faqs": [
+      {
+        "pregunta": "¿Qué titulación necesito?",
+        "respuesta": "Título de Bachiller o Técnico, o estar en condiciones de obtenerlo al final del plazo de solicitudes."
+      },
+      {
+        "pregunta": "¿Cómo es el examen?",
+        "respuesta": "Un ejercicio con preguntas tipo test sobre el programa (bloque común + bloque específico de Museos) y una parte práctica. Las respuestas incorrectas penalizan un tercio; las dejadas en blanco no penalizan."
+      },
+      {
+        "pregunta": "¿Cuántas plazas hay?",
+        "respuesta": "La convocatoria de 2025 ofertó 15 plazas de acceso libre en la Sección Museos de la Escala Auxiliar del Ministerio de Cultura."
+      },
+      {
+        "pregunta": "¿Es la misma oposición que Archivos y Bibliotecas?",
+        "respuesta": "Sí. Es la misma Escala Auxiliar de Archivos, Bibliotecas y Museos (C2); al solicitarla eliges una de las tres secciones. Esta es la Sección Museos."
+      }
+    ]
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Legislación",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Historia cultural",
+      "icon": "📜"
+    },
+    {
+      "numero": 3,
+      "titulo": "Museología (parte específica)",
+      "icon": "🏛️"
+    },
+    {
+      "numero": 4,
+      "titulo": "Parte práctica",
+      "icon": "🧩"
+    }
+  ],
+  "temario": [
+    {
+      "bloque": 1,
+      "numero": 1,
+      "topic_number": 1,
+      "titulo": "La Constitución Española de 1978: estructura y contenido. Los derechos y liberta",
+      "epigrafe": "La Constitución Española de 1978: estructura y contenido. Los derechos y libertades públicas. La Corona. Funciones constitucionales del Rey. Sucesión y Regencia."
+    },
+    {
+      "bloque": 1,
+      "numero": 2,
+      "topic_number": 2,
+      "titulo": "Las Cortes Generales. El Congreso de los Diputados. El Senado. Funciones de las ",
+      "epigrafe": "Las Cortes Generales. El Congreso de los Diputados. El Senado. Funciones de las Cámaras. El Gobierno y la Administración Pública. El Poder Judicial."
+    },
+    {
+      "bloque": 1,
+      "numero": 3,
+      "topic_number": 3,
+      "titulo": "Organización territorial del Estado. Las Comunidades Autónomas. Los Estatutos de",
+      "epigrafe": "Organización territorial del Estado. Las Comunidades Autónomas. Los Estatutos de Autonomía. La distribución de competencias entre Estado y Comunidades Autónomas. La Administración local."
+    },
+    {
+      "bloque": 1,
+      "numero": 4,
+      "topic_number": 4,
+      "titulo": "La Administración General del Estado. Órganos superiores. Órganos directivos. De",
+      "epigrafe": "La Administración General del Estado. Órganos superiores. Órganos directivos. Delegados y Subdelegados del Gobierno. La administración del Estado en el exterior."
+    },
+    {
+      "bloque": 1,
+      "numero": 5,
+      "topic_number": 5,
+      "titulo": "Disposiciones administrativas y actos administrativos. El procedimiento administ",
+      "epigrafe": "Disposiciones administrativas y actos administrativos. El procedimiento administrativo. Revisión de oficio. Recursos administrativos."
+    },
+    {
+      "bloque": 1,
+      "numero": 6,
+      "topic_number": 6,
+      "titulo": "El Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el t",
+      "epigrafe": "El Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: Clases de personal al servicio de las Administraciones Públicas. Adquisición y pérdida de la condición de funcionario. Situaciones administrativas. Régimen disciplinario."
+    },
+    {
+      "bloque": 1,
+      "numero": 7,
+      "topic_number": 7,
+      "titulo": "Políticas de Igualdad de Género. La Ley Orgánica 3/2007, de 22 de marzo, para la",
+      "epigrafe": "Políticas de Igualdad de Género. La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres. IV Plan para la Igualdad de género en la Administración General del Estado y los Organismos Públicos vinculados o dependientes de ella. La Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación. La Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI. Las Unidades de Igualdad. Políticas contra la Violencia de Género. La Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género. Políticas sociales dirigidas a la atención a personas con discapacidad y/o dependientes."
+    },
+    {
+      "bloque": 1,
+      "numero": 8,
+      "topic_number": 8,
+      "titulo": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información púb",
+      "epigrafe": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno. El Consejo de Transparencia y Buen Gobierno: funciones. Las Unidades de Información y Transparencia (UITS): funciones."
+    },
+    {
+      "bloque": 1,
+      "numero": 9,
+      "topic_number": 9,
+      "titulo": "El Ministerio Cultura. Organización, competencias, organismos y políticas públic",
+      "epigrafe": "El Ministerio Cultura. Organización, competencias, organismos y políticas públicas en materia de cultura, patrimonio y museos."
+    },
+    {
+      "bloque": 1,
+      "numero": 10,
+      "topic_number": 10,
+      "titulo": "La legislación española sobre el Patrimonio Histórico Español",
+      "epigrafe": "La legislación española sobre el Patrimonio Histórico Español."
+    },
+    {
+      "bloque": 1,
+      "numero": 11,
+      "topic_number": 11,
+      "titulo": "Normativa estatal en materia de museos. El Reglamento de Museos de Titularidad E",
+      "epigrafe": "Normativa estatal en materia de museos. El Reglamento de Museos de Titularidad Estatal y del Sistema Español de Museos y otra normativa reguladora."
+    },
+    {
+      "bloque": 2,
+      "numero": 1,
+      "topic_number": 101,
+      "titulo": "Culturas prerromanas en la Península Ibérica",
+      "epigrafe": "Culturas prerromanas en la Península Ibérica."
+    },
+    {
+      "bloque": 2,
+      "numero": 2,
+      "topic_number": 102,
+      "titulo": "Manifestaciones culturales de la Hispania Romana",
+      "epigrafe": "Manifestaciones culturales de la Hispania Romana."
+    },
+    {
+      "bloque": 2,
+      "numero": 3,
+      "topic_number": 103,
+      "titulo": "La huella cultural islámica en la Península Ibérica",
+      "epigrafe": "La huella cultural islámica en la Península Ibérica."
+    },
+    {
+      "bloque": 2,
+      "numero": 4,
+      "topic_number": 104,
+      "titulo": "Arte y Cultura en la Alta Edad Media: El Románico en los Reinos Peninsulares",
+      "epigrafe": "Arte y Cultura en la Alta Edad Media: El Románico en los Reinos Peninsulares."
+    },
+    {
+      "bloque": 2,
+      "numero": 5,
+      "topic_number": 105,
+      "titulo": "Arte y Cultura en la Baja Edad Media: El Gótico en los Reinos Peninsulares",
+      "epigrafe": "Arte y Cultura en la Baja Edad Media: El Gótico en los Reinos Peninsulares."
+    },
+    {
+      "bloque": 2,
+      "numero": 6,
+      "topic_number": 106,
+      "titulo": "El Renacimiento en España",
+      "epigrafe": "El Renacimiento en España."
+    },
+    {
+      "bloque": 2,
+      "numero": 7,
+      "topic_number": 107,
+      "titulo": "El siglo XVII español",
+      "epigrafe": "El siglo XVII español."
+    },
+    {
+      "bloque": 2,
+      "numero": 8,
+      "topic_number": 108,
+      "titulo": "Aspectos culturales de la Ilustración española",
+      "epigrafe": "Aspectos culturales de la Ilustración española."
+    },
+    {
+      "bloque": 2,
+      "numero": 9,
+      "topic_number": 109,
+      "titulo": "Cultura y sociedad en España durante el siglo XIX",
+      "epigrafe": "Cultura y sociedad en España durante el siglo XIX."
+    },
+    {
+      "bloque": 2,
+      "numero": 10,
+      "topic_number": 110,
+      "titulo": "Manifestaciones culturales del siglo XX en España: vanguardias y cultura de masa",
+      "epigrafe": "Manifestaciones culturales del siglo XX en España: vanguardias y cultura de masas."
+    },
+    {
+      "bloque": 3,
+      "numero": 1,
+      "topic_number": 201,
+      "titulo": "El Museo Nacional del Prado: historia de la institución y formación de sus colec",
+      "epigrafe": "El Museo Nacional del Prado: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 2,
+      "topic_number": 202,
+      "titulo": "El Museo Nacional Centro de Arte Reina Sofía: historia de la institución y forma",
+      "epigrafe": "El Museo Nacional Centro de Arte Reina Sofía: historia de la institución y formación de sus colecciones. El Museo Nacional de Escultura: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 3,
+      "topic_number": 203,
+      "titulo": "Museo Nacional de Escultura: historia de la institución y formación de sus colec",
+      "epigrafe": "Museo Nacional de Escultura: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 4,
+      "topic_number": 204,
+      "titulo": "El Legado del marqués de la Vega-Inclán: la creación del Museo del Greco, el Mus",
+      "epigrafe": "El Legado del marqués de la Vega-Inclán: la creación del Museo del Greco, el Museo del Romanticismo y el Museo Casa de Cervantes."
+    },
+    {
+      "bloque": 3,
+      "numero": 5,
+      "topic_number": 205,
+      "titulo": "El Museo Sorolla: historia de la institución y formación de sus colecciones",
+      "epigrafe": "El Museo Sorolla: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 6,
+      "topic_number": 206,
+      "titulo": "El Museo Cerralbo: historia de la institución y formación de sus colecciones",
+      "epigrafe": "El Museo Cerralbo: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 7,
+      "topic_number": 207,
+      "titulo": "El Museo Nacional de Artes Decorativas: historia de la institución y formación d",
+      "epigrafe": "El Museo Nacional de Artes Decorativas: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 8,
+      "topic_number": 208,
+      "titulo": "El Museo Nacional de Cerámica y de las Artes Suntuarias ‘González Martí’: histor",
+      "epigrafe": "El Museo Nacional de Cerámica y de las Artes Suntuarias ‘González Martí’: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 9,
+      "topic_number": 209,
+      "titulo": "El Museo del Traje. CIPE: historia de la institución y formación de sus coleccio",
+      "epigrafe": "El Museo del Traje. CIPE: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 10,
+      "topic_number": 210,
+      "titulo": "El Museo Nacional de Antropología: historia de la institución y formación de sus",
+      "epigrafe": "El Museo Nacional de Antropología: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 11,
+      "topic_number": 211,
+      "titulo": "El Museo de América: historia de la institución y formación de sus colecciones",
+      "epigrafe": "El Museo de América: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 12,
+      "topic_number": 212,
+      "titulo": "El Museo Arqueológico Nacional: historia de la institución y formación de sus co",
+      "epigrafe": "El Museo Arqueológico Nacional: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 13,
+      "topic_number": 213,
+      "titulo": "El Museo Nacional de Arte Romano: historia de la institución y formación de sus ",
+      "epigrafe": "El Museo Nacional de Arte Romano: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 14,
+      "topic_number": 214,
+      "titulo": "El Museo Nacional y Centro de Investigación de Altamira: historia de la instituc",
+      "epigrafe": "El Museo Nacional y Centro de Investigación de Altamira: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 15,
+      "topic_number": 215,
+      "titulo": "El Museo Sefardí: historia de la institución y formación de sus colecciones",
+      "epigrafe": "El Museo Sefardí: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 16,
+      "topic_number": 216,
+      "titulo": "El Museo Nacional de Arqueología Subacuática: historia de la institución y forma",
+      "epigrafe": "El Museo Nacional de Arqueología Subacuática: historia de la institución y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 17,
+      "topic_number": 217,
+      "titulo": "El Museo Nacional de Ciencias Naturales y el Museo Nacional de Ciencia y Tecnolo",
+      "epigrafe": "El Museo Nacional de Ciencias Naturales y el Museo Nacional de Ciencia y Tecnología: historia y formación de sus colecciones."
+    },
+    {
+      "bloque": 3,
+      "numero": 18,
+      "topic_number": 218,
+      "titulo": "Los museos del Ministerio de Defensa: historia y formación de las colecciones de",
+      "epigrafe": "Los museos del Ministerio de Defensa: historia y formación de las colecciones del Museo del Ejército y del Museo Naval."
+    },
+    {
+      "bloque": 3,
+      "numero": 19,
+      "topic_number": 219,
+      "titulo": "Concepto de museo y sus funciones. La organización interna de los museos",
+      "epigrafe": "Concepto de museo y sus funciones. La organización interna de los museos."
+    },
+    {
+      "bloque": 3,
+      "numero": 20,
+      "topic_number": 220,
+      "titulo": "Modos de ingreso y movimiento de los fondos museográficos",
+      "epigrafe": "Modos de ingreso y movimiento de los fondos museográficos."
+    },
+    {
+      "bloque": 3,
+      "numero": 21,
+      "topic_number": 221,
+      "titulo": "Criterios básicos de la conservación preventiva. Criterios para la planificación",
+      "epigrafe": "Criterios básicos de la conservación preventiva. Criterios para la planificación de la seguridad en el museo."
+    },
+    {
+      "bloque": 3,
+      "numero": 22,
+      "topic_number": 222,
+      "titulo": "El sistema de documentación en el museo. La aplicación de documentación y gestió",
+      "epigrafe": "El sistema de documentación en el museo. La aplicación de documentación y gestión museográfica DOMUS."
+    },
+    {
+      "bloque": 3,
+      "numero": 23,
+      "topic_number": 223,
+      "titulo": "El público en el museo. El museo como espacio de aprendizaje",
+      "epigrafe": "El público en el museo. El museo como espacio de aprendizaje."
+    },
+    {
+      "bloque": 3,
+      "numero": 24,
+      "topic_number": 224,
+      "titulo": "El discurso expositivo: exposición permanente y exposición temporal",
+      "epigrafe": "El discurso expositivo: exposición permanente y exposición temporal."
+    },
+    {
+      "bloque": 4,
+      "numero": 1,
+      "topic_number": 301,
+      "titulo": "Adaptación de la documentación del museo al modelo normalizado del Sistema Integ",
+      "epigrafe": "Adaptación de la documentación del museo al modelo normalizado del Sistema Integrado de Documentación y Gestión Museográfica DOMUS."
+    },
+    {
+      "bloque": 4,
+      "numero": 2,
+      "topic_number": 302,
+      "titulo": "Movimiento y control de fondos museográficos",
+      "epigrafe": "Movimiento y control de fondos museográficos."
+    },
+    {
+      "bloque": 4,
+      "numero": 3,
+      "topic_number": 303,
+      "titulo": "Control de la instalación expositiva y de la visita a la misma",
+      "epigrafe": "Control de la instalación expositiva y de la visita a la misma."
+    }
+  ],
+  "convocatoria": {
+    "año": 2025,
+    "estado_proceso": "examen_realizado",
+    "diario_oficial": "BOE",
+    "boe_id": "BOE-A-2025-23564",
+    "fecha_examen": "2026-03-14",
+    "plazas": 15,
+    "notas": "Escala Auxiliar de ABM, Sección Museos (Res. 13/11/2025, BOE-A-2025-23564). 15 plazas acceso libre. Examen 14/03/2026. Oposición recurrente: pivotar a próxima convocatoria cuando se publique."
+  }
+}
