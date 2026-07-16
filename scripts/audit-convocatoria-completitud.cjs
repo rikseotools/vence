@@ -59,8 +59,14 @@ function revisarTarjeta(row, t) {
   if (!numero || numero.includes('{')) return out   // {plazasTotal} y compañía no pueden mentir
 
   // 5a. Cifra de plazas que no cuadra con NINGUNA lectura razonable de las columnas
-  if (/^[\d.]+$/.test(numero) && /plaza/i.test(texto) && row.total != null) {
-    const n = parseInt(numero.replace(/\./g, ''), 10)
+  //
+  // "537+" y "~537" siguen afirmando 537; y no todo el mundo escribe "plazas" (vacantes, puestos).
+  // Falsos negativos reales encontrados por la auditoría adversarial del 16/07.
+  const num = numero.replace(/[~+≈]/g, '').trim()
+  if (/^[\d.]+$/.test(num) && /plaza|vacante|puesto/i.test(texto) && row.total != null) {
+    const n = parseInt(num.replace(/\./g, ''), 10)
+    // "..." pasa el regex de [\d.] y da NaN → acusaría a una tarjeta que no afirma ninguna cifra.
+    if (!Number.isFinite(n)) return out
     // Number(): `plazas_total` sale de un sum() sobre jsonb → BIGINT, y node-pg entrega los bigint
     // como STRING. Sin coerción, [264,264,51,"585"].includes(585) es false y el auditor acusa de
     // mentir a las tarjetas HONESTAS (7 de 11 en la 1ª pasada: Navarra, La Rioja, Canarias…). Un
@@ -78,11 +84,18 @@ function revisarTarjeta(row, t) {
   //
   // ⚠️ La 1ª versión solo entendía "18/04" y "2026", y tcae-aragon —que anuncia «[7 jun] Fecha
   // examen 2026» con exam_date NULL y estado 'examen_realizado'— se le escapó. La gente escribe las
-  // fechas como le da la gana; el mes abreviado es tan fecha como la barra.
-  const pareceFecha = /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(numero)
+  // fechas como le da la gana; el mes abreviado es tan fecha como la barra. La auditoría adversarial
+  // añadió "18-04-2026" y "abril 2026" a la lista de lo que se colaba. Es whack-a-mole, sí: por eso
+  // se acepta CUALQUIER forma reconocible en vez de perseguir la de ayer.
+  const MESES = 'ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic'
+  const pareceFecha = /^\d{1,2}[/\-.]\d{1,2}([/\-.]\d{2,4})?$/.test(numero)
     || /^(19|20)\d{2}$/.test(numero)
-    || /^\d{1,2}\s*(de\s*)?(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)/i.test(numero)
-  if (pareceFecha && /examen/i.test(`${texto} ${numero}`) && !row.exam_date) {
+    || new RegExp(`^\\d{1,2}\\s*(de\\s*)?(${MESES})`, 'i').test(numero)
+    || new RegExp(`^(${MESES})[a-záé]*\\s*(de\\s*)?(19|20)?\\d{2}`, 'i').test(numero)
+  // «Último examen oficial: 2025» NO anuncia el examen de esta convocatoria: describe el pasado. Sin
+  // esto, el auditor grita a una tarjeta honesta — y el ruido apaga los guardarraíles.
+  const esHistorico = /últim|ultim|anterior|pasad|históric|historic|previo/i.test(texto)
+  if (pareceFecha && /examen/i.test(`${texto} ${numero}`) && !esHistorico && !row.exam_date) {
     out.push({ kind: 'tarjeta_examen_sin_fecha_en_bd',
       msg: `la tarjeta anuncia "${numero} ${texto}" pero exam_date está NULL — o se aplica la fecha con su cita, o la tarjeta no puede afirmarla`,
       detail: { tarjeta: numero, texto } })

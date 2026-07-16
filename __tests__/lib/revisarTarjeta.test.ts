@@ -78,6 +78,32 @@ describe('revisarTarjeta — una tarjeta no puede afirmar lo que la BD desmiente
     expect(revisarTarjeta(row, null)).toEqual([])
   })
 
+  // ── Hallazgos de la auditoría adversarial (agente fresco sobre el diff, 16/07). Cada uno es un
+  //    test que mis propios tests NO tenían: se agrupaban alrededor de lo que yo había cambiado.
+  test('AUDITORÍA — falsos NEGATIVOS: la mentira no se escapa por cómo esté escrita', () => {
+    // No todo el mundo escribe "plazas"
+    expect(kinds(CELADOR, { numero: '537', texto: 'Vacantes ofertadas' }))
+      .toContain('tarjeta_contradice_columnas')
+    expect(kinds(CELADOR, { numero: '537', texto: 'Puestos convocados' }))
+      .toContain('tarjeta_contradice_columnas')
+    // "537+" y "~537" siguen afirmando 537
+    expect(kinds(CELADOR, { numero: '537+', texto: 'Plazas' })).toContain('tarjeta_contradice_columnas')
+    expect(kinds(CELADOR, { numero: '~537', texto: 'Plazas' })).toContain('tarjeta_contradice_columnas')
+    // Fechas con guion o con el mes delante
+    expect(kinds(CELADOR, { numero: '18-04-2026', texto: 'Examen' }))
+      .toContain('tarjeta_examen_sin_fecha_en_bd')
+    expect(kinds(CELADOR, { numero: 'abril 2026', texto: 'Examen' }))
+      .toContain('tarjeta_examen_sin_fecha_en_bd')
+  })
+
+  test('AUDITORÍA — falsos POSITIVOS: no gritar a quien no miente', () => {
+    // "..." pasa el regex de dígitos-y-puntos y da NaN: no afirma ninguna cifra
+    expect(revisarTarjeta(CELADOR, { numero: '...', texto: 'Plazas' })).toEqual([])
+    // Describir el examen PASADO no es anunciar el de esta convocatoria
+    expect(revisarTarjeta(CELADOR, { numero: '2025', texto: 'Último examen oficial' })).toEqual([])
+    expect(revisarTarjeta(CELADOR, { numero: '2024', texto: 'Examen anterior' })).toEqual([])
+  })
+
   test('con exam_date en la BD, anunciar el examen es legítimo', () => {
     expect(revisarTarjeta({ l: 115, p: 4, d: 9, total: 128, exam_date: '2026-04-18' },
       { numero: '18/04', texto: 'Examen 2026' })).toEqual([])
