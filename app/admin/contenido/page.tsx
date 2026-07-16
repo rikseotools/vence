@@ -30,6 +30,7 @@ interface ContenidoRow {
   epi_never: number
   arts_sin_preguntas: number
   temas_sin_cobertura: number
+  proceso_state: string | null
 }
 
 interface EpigrafeDetailRow {
@@ -119,6 +120,23 @@ function sortVal(o: ContenidoRow, k: SortKey): number | string {
   if (k === 'nombre') return (o.short_name || o.nombre || o.slug).toLowerCase()
   if (k === 'premium_pct') return pct(o)
   return o[k]
+}
+
+// Estado del PROCESO (convocatoria vigente verificada de principio a fin contra el
+// documento oficial). Fuente: convocatoria_verification_effective.
+function procesoBadge(state: string | null): { label: string; cls: string; title: string } {
+  switch (state) {
+    case 'verified_correct':
+      return { label: '✅ Verificado', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', title: 'Proceso verificado de principio a fin contra el documento oficial (fecha, plazas, calendario)' }
+    case 'verified_issues':
+    case 'needs_human':
+      return { label: '⚠️ Revisar', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', title: 'Verificado con incidencias / pendiente de revisión humana' }
+    case 'never_verified':
+    case 'stale':
+      return { label: '⏳ Pendiente', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', title: 'Convocatoria sin verificar (o cambió tras verificar) contra el documento oficial' }
+    default:
+      return { label: '—', cls: 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500', title: 'Sin convocatoria vigente que verificar' }
+  }
 }
 
 export default function ContenidoPage() {
@@ -271,6 +289,7 @@ export default function ContenidoPage() {
                 <Th k="nombre" label="Oposición" cls="text-left" />
                 <th className="text-center px-2 py-2" title="¿contenido/tests listos?">Contenido</th>
                 <th className="text-center px-2 py-2" title="¿hay oportunidad viva con ingreso libre? (derivado)">Vendible</th>
+                <th className="text-center px-2 py-2" title="¿el proceso (convocatoria vigente: fecha de examen, plazas, calendario) está verificado de principio a fin contra el documento oficial, o pendiente?">Proceso</th>
                 <Th k="usuarios" label="Usuarios" cls="text-right" title="usuarios con esta oposición" />
                 <Th k="premium_pct" label="% Prem." cls="text-right" title="% de usuarios premium" />
                 <Th k="disponibles" label="Temas" cls="text-right" title="temas disponibles" />
@@ -314,6 +333,12 @@ export default function ContenidoPage() {
                     </td>
                     <td className="px-2 py-2 text-center">
                       <span title={v.title} className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${v.cls}`}>{v.label}</span>
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {(() => {
+                        const pb = procesoBadge(o.proceso_state)
+                        return <span title={pb.title} className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${pb.cls}`}>{pb.label}</span>
+                      })()}
                     </td>
                     <td className="px-2 py-2 text-right font-medium text-gray-900 dark:text-white">{fmt(o.usuarios)}</td>
                     <td

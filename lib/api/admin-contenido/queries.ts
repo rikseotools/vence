@@ -66,6 +66,10 @@ export interface ContenidoRow {
   // en cuántos temas distintos aparecen.
   arts_sin_preguntas: number
   temas_sin_cobertura: number
+  // Proceso (convocatoria vigente) verificado de principio a fin contra el documento
+  // oficial: estado efectivo de convocatoria_verification_effective. null = la oposición
+  // no tiene convocatoria vigente que verificar.
+  proceso_state: string | null
 }
 
 
@@ -148,6 +152,13 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       ) ta
       WHERE n_content >= 4 AND n_cov < n_content AND n_cov::float / n_content >= 0.6
       GROUP BY pt
+    ),
+    -- Proceso: estado de verificación de la convocatoria VIGENTE de cada oposición
+    -- contra el documento oficial (fuente única de la verdad del proceso). 1 fila/oposición.
+    proc AS (
+      SELECT o.slug, ev.effective_state
+      FROM convocatoria_verification_effective ev
+      JOIN oposiciones o ON o.id = ev.oposicion_id
     )
     SELECT
       tc.slug, tc.nombre, tc.short_name,
@@ -168,6 +179,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       COALESCE(max(e.epi_never), 0)::int                                         AS epi_never,
       COALESCE(max(cv.arts_sin_preguntas), 0)::int                               AS arts_sin_preguntas,
       COALESCE(max(cv.temas_sin_cobertura), 0)::int                              AS temas_sin_cobertura,
+      max(p.effective_state)                                                     AS proceso_state,
       CASE
         WHEN max(v.plazas_libres) IS NULL THEN 'sin_verificar'
         WHEN max(v.plazas_libres) > 0
@@ -179,6 +191,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
     LEFT JOIN vend v ON v.slug = tc.slug
     LEFT JOIN epi e ON e.pt = replace(tc.slug, '-', '_')
     LEFT JOIN cov cv ON cv.pt = replace(tc.slug, '-', '_')
+    LEFT JOIN proc p ON p.slug = tc.slug
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC
