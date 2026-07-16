@@ -32,7 +32,36 @@
 > - **Hitos → `convocatoria_hitos`** (por `oposicion_id`).
 
 1. **Investigar la próxima OEP/convocatoria** (fuentes: sede/portal de empleo público de esa administración, BOE/boletín autonómico; contrastar con ADAMS/opositatest). Anotar: ¿hay plazas de ESA categoría pendientes de convocar en OEP recientes? Cifras + año, **verificado**. Si NO hay convocatoria nueva firme → **pivote suave** (SEO/hitos forward, `exam_date=null`, sin inventar plazas).
-2. **`UPDATE convocatorias` (fila `is_current`)** — es la SSOT, lo que ve la landing:
+2. **⛔ ABRIR CICLO NUEVO — `rollover_convocatoria()`, NUNCA `UPDATE` de la fila viva** (corregido 16/07/2026):
+
+   ```sql
+   -- archiva el ciclo saliente (conserva su verdad INTACTA) e INSERTA el nuevo, vacío de hechos
+   SELECT public.rollover_convocatoria('<oposicion_id>', 2026, 'oep_aprobada', 'claude');
+   ```
+
+   > **Por qué cambió (16/07):** este runbook prescribía *"`UPDATE convocatorias` (fila `is_current`) …
+   > `oep_decreto`/`plazas_libres` → de la **próxima** OEP"* — es decir, **reescribir la fila del ciclo
+   > viejo con los datos del nuevo**. Eso destruye el ciclo anterior sin traza, y **la provenance sobre una
+   > fila mutable MUERE en el rollover**: las citas quedan apuntando a documentos de un ciclo que la fila ya
+   > no representa. Como `convocatoria_documentos` va a colgar de aquí, el ciclo debe ser inmutable ANTES.
+   > Migración `20260716_convocatoria_ciclo_inmutable.sql`.
+   >
+   > **Honestidad sobre la evidencia:** solo **2 de 2.490** oposiciones conservan más de un ciclo (el resto
+   > son mayormente catalogadas sin proceso seguido, así que ese número NO prueba destrucción masiva). El
+   > riesgo está **verificado en la estructura** (el `DELETE` documentado + `CASCADE` a hitos se llevaba el
+   > timeline entero; ver §2 de `crear-nueva-oposicion.md`), no en un censo de víctimas. No se ha probado
+   > un caso concreto de ciclo machacado: el historial arranca el 16/07 y no alcanza al pasado.
+   >
+   > - El **`año` es INMUTABLE** (trigger): cambiarlo lanza excepción.
+   > - **Toda** mutación queda en `convocatorias_history` (fila entera antes/después). Nada se pierde.
+   > - **Borrar una convocatoria con hitos FALLA** (`ON DELETE RESTRICT`): antes se llevaba el timeline en
+   >   silencio. Un ciclo **no se borra: se archiva**.
+   > - El ciclo nuevo nace **VACÍO de hechos** (sin `exam_date`/`plazas_*`/`oep_*` heredados) — a propósito:
+   >   copiar las plazas del ciclo viejo "de referencia" es presentar un dato viejo como nuevo (el bug de
+   >   Marta). Se rellenan **desde fuente verificada**. Lo que quieras contar del ciclo anterior sale de su
+   >   fila archivada, como historia, no como si fuera el ciclo actual.
+
+   Después, sobre la fila **nueva** (`is_current`), rellenar SOLO lo verificado en fuente oficial:
    - **`exam_date`** → **null** si el próximo examen no tiene fecha firme (si no, la landing sigue mostrando la fecha PASADA como "el examen"). `exam_date_approximate` → null también. La previsión va en un hito `upcoming`.
    - `estado_proceso` → si hay OEP nueva: `oep_aprobada`; si no, mantener real (`examen_realizado`/`resultados`) pero con SEO/hitos forward.
    - `oep_decreto` / `oep_fecha`, `plazas_libres` (y `plazas_*`) → de la **próxima** OEP (verificado en BOE/boletín). Si no hay, dejar los de referencia.

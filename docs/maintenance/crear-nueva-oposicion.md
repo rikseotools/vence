@@ -627,7 +627,14 @@ INSERT INTO convocatorias (
 );
 ```
 
-El flujo de alta `_*_fase23.cjs` hace este INSERT (con `DELETE` previo de la vigente + `is_current=true`) además del UPDATE a `oposiciones`. El gate `npm run audit:oposicion` (FASE 2c) verifica que la fila `is_current` traiga `estado_proceso`, `plazas_libres` y las `inscription_*` consistentes con el cuerpo.
+El flujo de alta `_*_fase23.cjs` hace este INSERT además del UPDATE a `oposiciones`. El gate `npm run audit:oposicion` (FASE 2c) verifica que la fila `is_current` traiga `estado_proceso`, `plazas_libres` y las `inscription_*` consistentes con el cuerpo.
+
+> ⛔ **NUNCA `DELETE` de la convocatoria vigente** (corregido 16/07/2026 — esto decía *"con `DELETE` previo de la vigente"*). `convocatoria_hitos` colgaba con **`ON DELETE CASCADE`**: ese `DELETE` **se llevaba el timeline entero en silencio**, y también la verificación y su historial "append-only". Ahora el FK es **`RESTRICT`** → ese borrado **falla** (por diseño).
+> - **Alta nueva:** el `INSERT` basta (la oposición no tiene convocatoria previa).
+> - **Re-ejecutar el alta** sobre una oposición que YA tiene convocatoria: NO borres. Choca con `UNIQUE(oposicion_id, año)` → es la señal de que el ciclo ya existe (haz `UPDATE` de esa fila, del mismo año).
+> - **Ciclo NUEVO** (otro año): `SELECT public.rollover_convocatoria(<oposicion_id>, <año>, <estado>, 'claude')` — archiva el anterior, no lo destruye. Ver `docs/runbooks/rollover-oposiciones.md` §2.2.
+>
+> Migración `20260716_convocatoria_ciclo_inmutable.sql`. Un ciclo **no se borra: se archiva**.
 
 ---
 
