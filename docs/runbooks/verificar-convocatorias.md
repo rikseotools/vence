@@ -136,6 +136,11 @@ npm run audit:convocatorias        # ¿me he olvidado algún campo?
 ### 4. Herramientas
 
 ```bash
+# CAPA 2 — clonar al corpus el documento que HAS DISCRIMINADO (PDF o HTML). Idempotente por hash:
+#   re-clonar sin cambios no duplica; si el boletín ENMIENDA el documento, el hash cambia → fila nueva.
+cd backend && NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
+  --slug=<slug> --url=<url> --tipo=bases --titulo="..." --boletin=BOCM --ref=... --fecha=2026-07-14
+
 # Validar la extracción+reconciliación contra un documento real (NO escribe nada):
 cd backend && NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sim-reconciliacion-convocatoria.ts <slug> [--url=<pdf>]
 
@@ -154,6 +159,9 @@ node scripts/clasificar-hitos.cjs --apply    # escribe
 - ⚠️ **Truncar el documento = ser ciego.** Las bases del BOCM ocupan 97.329 chars y la base 9 está en la **posición 34.901**. Con un corte a 12k el modelo devolvía `fecha_examen: null`. Haiku tiene 200k de contexto: cabe entero.
 - ⚠️ **`aproximado` ≠ `sin verificar`.** Son ejes ortogonales: la fecha de Marta es aproximada **y** oficial (la base 9 dice literalmente "mayo de 2027"). Por eso las fechas a nivel mes se comparan a nivel **mes** — compararlas a día daría un falso positivo sobre un caso correcto.
 - ⚠️ **El ciclo debe ser inmutable ANTES que los documentos.** La provenance sobre una fila mutable muere en el rollover. Ver `20260716_convocatoria_ciclo_inmutable.sql`.
+- ⚠️ **Muchas fuentes son HTML, no PDF.** De las 112 urls de documento que conocemos solo **19 son .pdf**; las 20 del BOE son HTML. `clonar-documento.ts` lee **ambos** (reutiliza `htmlToText()` del sensor). Un corpus que solo lee PDF es ciego a la mayoría de las fuentes.
+- ⚠️ **"Verificado contra la fuente" sin clonar el documento NO vale.** Si la página cambia, tu verificación deja de ser demostrable — que es justo lo que este sistema existe para impedir. El guardarraíl `senal_aplicada_sin_documento` lo caza (me cazó a mí el 16/07, dos veces).
+- ⚠️ **Al re-atribuir una señal mal enganchada, acuérdate de mover `oposicion_id`.** Aplicarla y dejarla colgando de la fila equivocada deja el bug del matcher invisible para el siguiente.
 - ⚠️ **El texto de PDF trae guiones de fin de línea** (`"celebra-\nción"`) → el `ts_headline` sale partido. No afecta a la extracción LLM. Normalizar al guardar es un follow-up pendiente.
 
 ## Escala (medido 16/07, no estimado)
