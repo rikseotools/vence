@@ -63,12 +63,23 @@ arregladas:
    en el mismo saco que «cambio cosmético» **actualizando el hash** → el cambio quedaba marcado como
    visto y se perdía PARA SIEMPRE. **Un sensor que se traga sus errores es peor que uno caído: el
    caído se nota.** Ahora un fallo NO toca el hash (se reintenta) y cuenta como `error`.
-2. **La Moncloa no podía funcionar nunca.** Su página de resúmenes es SharePoint y pinta la lista con
-   JS: a fetch plano devuelve **2.428 chars de menús** (las otras 5 fuentes dan 66k, 51k, 48k, 36k y
-   5.7k de contenido real). El LLM no veía un solo resumen. → `generic_source_checks.fetcher_type`
-   (`http`|`headless`), y La Moncloa marcada `headless` (Lambda). **No se retira** porque no es
-   redundante con el boletín: es más RÁPIDA (el Consejo de Ministros aprueba la OEP y Moncloa la
-   resume el MISMO día; el BOE la publica días después).
+2. **La Moncloa no podía funcionar nunca — y sigue sin poder: RETIRADA.** Su web pinta todo con JS: a
+   fetch plano devuelve **2.428 chars de menús** (las otras 5 fuentes dan 66k, 51k, 48k, 36k y 5.7k de
+   contenido real). El LLM no veía un solo resumen.
+   - Primero la marqué `headless` dando por hecho que la Lambda lo resolvía. **Probado contra la Lambda
+     real: FALSO** — 4.204 chars, **0 fechas**, sigue siendo el menú; y la Lambda **ignora**
+     `waitMs`/`waitUntil` (renderiza ~2s y devuelve). Tampoco es cosa de esa URL: `/referencias/`,
+     `/consejodeministros/` y una referencia concreta dan 1.2k-1.6k de menús.
+   - **Una fuente que el fetcher no sabe leer NO es una fuente: es un hueco con nombre.** Dejarla
+     activa fingiendo que vigila es peor que no tenerla — el panel la cuenta como cubierta. → retirada
+     (`is_active=false`, migración `20260716_moncloa_no_legible.sql`).
+   - **Merece la pena recuperarla**: Moncloa resume el Consejo de Ministros el MISMO día que aprueba la
+     OEP; el BOE la publica días después. Haría falta que la Lambda espere a un selector real de la
+     lista, o encontrar el endpoint de datos de SharePoint.
+
+   Queda `generic_source_checks.fetcher_type` (`http`|`headless`), que es el modelado correcto y sirve
+   para las próximas fuentes JS — pero **marcar `headless` no es un arreglo: hay que COMPROBAR que la
+   Lambda devuelve contenido**, no que responde.
 
 ⚠️ **Una fuente que el fetcher no sabe leer no es una fuente: es un hueco con nombre.** Al añadir una,
 comprueba cuánto TEXTO ÚTIL devuelve — no que responda 200.
