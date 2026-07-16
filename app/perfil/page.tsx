@@ -1459,8 +1459,15 @@ function PerfilPageContent() {
         const avatarData = extractAvatarData(user.user_metadata)
         setCurrentAvatar(avatarData)
 
-        // Cargar perfil del usuario via API
-        const response = await fetch(`/api/profile?userId=${user.id}`)
+        // Cargar perfil del usuario via API.
+        // La identidad la deriva el endpoint del TOKEN (fix de seguridad d7634fa5, 08/07):
+        // el `?userId=` ya no vale, así que sin estas cabeceras responde 401 y el usuario
+        // ve su perfil roto. Iba sin ellas desde ese día → 663 errores / 180 usuarios en 8
+        // días, y al menos una baja (Susana, 16/07: 401 al abrir el perfil → borró la cuenta
+        // 31 segundos después).
+        const response = await fetch(`/api/profile`, {
+          headers: await getAuthHeaders(),
+        })
         const result = await response.json()
 
         if (!result.success || !result.data) {
@@ -2136,7 +2143,8 @@ function PerfilPageContent() {
       })
       if (!ensureRes.ok) throw new Error(`ensure-profile ${ensureRes.status}`)
 
-      const response = await fetch(`/api/profile?userId=${user.id}`)
+      // Mismo motivo que en loadUserProfile: la identidad sale del token, no del `?userId=`.
+      const response = await fetch(`/api/profile`, { headers })
       const result = await response.json()
       const apiProfile = result?.data
       if (!apiProfile) throw new Error('perfil no disponible tras ensure-profile')
