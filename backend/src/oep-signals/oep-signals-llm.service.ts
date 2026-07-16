@@ -421,7 +421,10 @@ Devuelve JSON con esta forma exacta:
 }`;
 }
 
-const REGIONAL_SYSTEM_PROMPT = `Eres un extractor de listados de convocatorias de empleo público en España. Analizas páginas oficiales con listas de procesos selectivos y extraes TODAS las convocatorias de ingreso de funcionario, de CUALQUIER grupo (A1, A2, B, C1, C2, Agrupaciones Profesionales/AP).
+// Exportados para poder MEDIRLOS sin instanciar el servicio: el rendimiento de un prompt es un
+// hecho verificable, no una opinión. (16/07: al no poder medirlo hubo que replicarlo en una prueba,
+// y la réplica era PEOR que el original → conclusión falsamente pesimista.)
+export const REGIONAL_SYSTEM_PROMPT = `Eres un extractor de listados de convocatorias de empleo público en España. Analizas páginas oficiales con listas de procesos selectivos y extraes TODAS las convocatorias de ingreso de funcionario, de CUALQUIER grupo (A1, A2, B, C1, C2, Agrupaciones Profesionales/AP).
 
 Misión: catalogar TODO sin gaps. NO descartes por grupo. Etiqueta el grupo en "positionGroup".
 
@@ -439,7 +442,7 @@ CRITERIOS DE EXCLUSIÓN (solo lo que NO es una convocatoria de ingreso):
 
 Responde EXCLUSIVAMENTE con JSON válido sin markdown.`;
 
-function regionalUserPrompt(text: string, regionName: string): string {
+export function regionalUserPrompt(text: string, regionName: string): string {
   return `Página oficial de convocatorias de ${regionName}:
 
 <pagina>

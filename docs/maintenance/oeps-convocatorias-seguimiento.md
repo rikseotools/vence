@@ -1,5 +1,10 @@
 # Manual: Resolver Cambios Detectados en Seguimiento de Convocatorias
 
+> 🔀 **Este manual es EL TRABAJO** (badge 🎯 *"revisa las señales OEPs"*): triar las señales pendientes.
+> **Para la MÁQUINA** (*"revisa el radar"* → ¿los sensores están vivos? ¿qué cobertura tenemos?) el
+> runbook es **`docs/runbooks/salud-radar.md`**. Un badge tranquilo puede ser "no hay novedades" o
+> "el motor está parado": son preguntas distintas y las dos hacen falta.
+
 ## Resumen
 
 Cuando el admin dice "el seguimiento ha detectado cambios" o se ven badges de **🎯 OEPs** en el sidebar admin, seguir este manual para sincronizar las landing pages con la realidad.

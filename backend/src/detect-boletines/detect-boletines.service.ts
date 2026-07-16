@@ -141,6 +141,20 @@ export class DetectBoletinesService {
         if (!extraction || extraction.oeps.length === 0) continue;
 
         for (const oep of extraction.oeps) {
+          // ── Sin cuerpo identificable NO hay señal (16/07/2026).
+          // Medido al activar las convocatorias en los boletines autonómicos: el LLM devolvía
+          // `name: "No especificado"` en 3 de 7 extracciones del BOCM. Una señal sin cuerpo no se
+          // puede triar (¿de qué oposición es?), no se puede casar y no se puede catalogar: solo
+          // engorda el badge. Es ruido POR CONSTRUCCIÓN, y un badge con ruido se deja de mirar —
+          // que es exactamente cómo se llegó al bug que originó todo este subsistema.
+          const nombre = (oep.name ?? '').trim();
+          if (!nombre || /^(no especificad|sin especificar|desconocid|n\/a)/i.test(nombre)) {
+            this.logger.debug(
+              `${adapter.key}: descartada extracción sin cuerpo identificable ("${nombre}")`,
+            );
+            continue;
+          }
+
           // Fase 0 "catalogar TODO" (04/07/2026): SIN guardarraíl de grupo
           // excluyente. Se catalogan todos los grupos (A1/A2/B/C1/C2/AP); el
           // grupo solo se REGISTRA para priorizar/triar, no para descartar.
