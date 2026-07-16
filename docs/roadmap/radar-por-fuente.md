@@ -123,6 +123,42 @@ bucle invertido habría aparecido sola.
 > entidad + grupo). Eso no cambia la conclusión: el valor no está en casar mejor, está en **ver las
 > diez en vez de seis y no tirar nueve**.
 
+## Y hay más: la misma lectura da los TIMELINES completos (probado 16/07)
+
+La pregunta natural es: ¿la fuente solo dice "hay una convocatoria de X", o trae también sus hitos?
+**Trae los hitos.** Extendiendo el prompt del prototipo a "lista TODAS las convocatorias **y para cada
+una su cronología**", contra el mismo tablón y leyendo del corpus:
+
+```
+stop_reason: end_turn · 5.569 tokens · 29 segundos
+→ 10 convocatorias CON su cronología · cada hito con su CITA LITERAL
+```
+
+Y salen **ya tipados con nuestro vocabulario** (`convocatoria_publicada`, `bases_publicadas`,
+`plazo_inicio`, `lista_provisional`, `nombramientos`…), listos para `convocatoria_hitos`:
+
+| convocatoria | hitos |
+|---|---|
+| ADMINISTRATIVO/A (15 plz) | **9** — desde las bases de nov-2024 a la lista provisional de dic-2025 |
+| SUBINSPECTOR/A (3 plz) | 8 |
+| INSPECTOR/A (3 plz) | 8 |
+| TÉCNICO/A MEDIO DE GESTIÓN (4 plz) | **9** |
+| CAPATAZ/A (3 plz) | 5 — incluye una **rectificación de convocatoria con nuevo plazo** |
+| CAPATAZ/A LIMPIEZA (4 plz) | 4 |
+| JEFE/A DE SECCIÓN (1 plz) | 3 — incluido su **nombramiento del 15/07** |
+
+**El sistema de hoy saca de esa misma página: una convocatoria, sin timeline.**
+
+> ⚠️ **Gotcha medido:** el primer intento devolvió 0. Causa: `stop_reason: max_tokens` (4.000/4.000) —
+> el JSON se cortó a la mitad. **La extracción funcionaba; le faltaba sitio.** Con 16k cabe de sobra
+> (usó 5.569). Mismo patrón que el truncado a 12.000 chars que ocultaba la base 9 de Marta:
+> **truncar barato = parecer que el modelo no sabe.** Si una fuente enorme no cupiera, dos pasadas
+> (listar convocatorias → pedir el timeline de cada una), no recortar a ciegas.
+
+**Esto cambia lo que ES la reforma:** no es solo arreglar la atribución y dejar de tirar dato — es
+**la vía por la que el corpus y los timelines se llenan**. El trabajo manual de media hora sobre
+Subinspector (0 → 11 hitos) sale en 29 segundos, y para las diez convocatorias a la vez.
+
 ## Secuencia
 
 1. ✅ **Prototipo contra datos reales** — HECHO (`backend/scripts/sim-radar-por-fuente.ts`, resultado
