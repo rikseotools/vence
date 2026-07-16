@@ -189,6 +189,22 @@ Lista TODOS los documentos, resoluciones, listas y tramites publicados en esta p
 Especialmente busca si hay algo publicado recientemente. Quiero una lista cronologica completa.
 ```
 
+### 2-bis. 📎 CLONAR el documento al corpus (desde 16/07/2026) — no lo leas y lo tires
+
+> Este paso lista los documentos y luego **los descarta**: cada revisión vuelve a la red, la
+> evidencia no queda, y si el boletín retira el PDF se pierde para siempre. **Ahora se clonan.**
+>
+> **Qué hacer, con criterio (esto NO se automatiza — ver el porqué en el runbook):**
+> 1. De la lista, **discriminar cuál es el documento bueno**. Un crawler por regex no distingue las
+>    bases de un PDF titulado *"previsión de plazas a convocar"* — cuyos números **no son los de esta
+>    convocatoria**. Elegir mal envenena todo lo que venga después.
+> 2. Descargarlo y **clonarlo entero** en `convocatoria_documentos` (texto íntegro, hash, `tipo`,
+>    `boletin`, `referencia`, `fecha_publicacion`) con **`curado=true`**.
+> 3. Extraer los hechos **con cita literal** y reconciliar contra lo que mostramos.
+>
+> **Procedimiento completo, gotchas y herramientas → `docs/runbooks/verificar-convocatorias.md`.**
+> Cuesta 240 kB por boletín y deja la evidencia consultable en ~50 ms sin volver a la red.
+
 ## 3. Comparar con lo que tenemos en BD
 
 ### 3a. Ver hitos actuales

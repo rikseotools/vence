@@ -1,6 +1,15 @@
 # Runbook — Verificar convocatorias contra el documento oficial (proceso fiel)
 
-**Cuándo seguir este runbook (CUALQUIERA de estas frases → aquí):** *"revisa los descuadres de convocatoria"*, *"revisa el timeline de convocatorias"*, *"verifica las convocatorias"*. (NO confundir: *"revisa OEPs"* = señales de seguimiento, badge 🎯, otro manual. *"haz rollover"* = examen pasado, otro runbook.)
+**Cuándo seguir este runbook (CUALQUIERA de estas frases → aquí):** *"revisa el timeline de convocatorias"*, *"verifica las convocatorias"*. **Y también desde el paso 2-bis de `oeps-convocatorias-seguimiento.md`**, cuando al revisar una señal toque clonar y verificar un documento.
+
+> 🔗 **Reparto con el manual de señales OEP — no se duplican, se complementan:**
+> - **`docs/maintenance/oeps-convocatorias-seguimiento.md` = EL BUCLE DIARIO.** Es el dueño de la
+>   mecánica de señales: cómo contarlas (gotchas), la **regla de descarte**, el criterio de
+>   newsletter, la identidad real de una señal `pag_empleo`, y el `applied`/`dismissed`. Eso NO se
+>   repite aquí. Se dispara con *"revisa las señales OEPs"* / badge 🎯.
+> - **Este runbook = LA MAQUINARIA DE EVIDENCIA.** Corpus, cita literal, `origen`, invariantes,
+>   ciclo. El manual viejo tiene **cero** menciones a esto: es el hueco que cubre.
+> - *"haz rollover"* (examen pasado) → `rollover-oposiciones.md`.
 
 > 🎯 **Origen (16/07/2026):** Marta Benito reportó que "Administrativo de la Comunidad de Madrid" mostraba el examen en nov-2027; las bases oficiales (BOCM, Orden 1634/2026, **base 9**) dicen **mayo de 2027**. Nuestro `exam_date` era una estimación que nunca se reconcilió con el documento. **El fallo no fue no tener el documento: fue que una ESTIMACIÓN se presentó como fecha oficial.**
 
