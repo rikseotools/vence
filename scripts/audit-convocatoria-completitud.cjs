@@ -258,6 +258,40 @@ async function main() {
       { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año })
   }
 
+  // ── 6-bis. La tarjeta enseña un TOTAL que mezcla lo probado con lo que no
+  //
+  //    HALLAZGO (16/07, barriendo el cabo de las plazas sin documento): las convocatorias que clono
+  //    suelen ser del TURNO LIBRE («por el sistema de acceso libre»), así que prueban plazas_libres
+  //    pero NO plazas_promocion_interna. Al marcarlas verificadas quedaba un total medio probado
+  //    (auxiliar-administrativo-galicia: 83 probadas + 65 que no aparecen en su resolución = 148).
+  //
+  //    ⚠️ Medido antes de alarmarse: de 40 landings con variable, **28 enseñan {plazasLibres}** (la
+  //    cifra probada) y solo 12 el total — así que Galicia NO está enseñando nada sin probar. El
+  //    riesgo es real solo cuando la tarjeta muestra el TOTAL. Esta regla mira justo eso, en vez de
+  //    depender de que alguien se acuerde.
+  //
+  //    Convención: un `boe_reference` que empieza por ⚠️ es un dato que YO he marcado como no
+  //    verificado. Si la tarjeta enseña el total de una fila así, el número que ve el opositor
+  //    arrastra ese hueco.
+  const totales = (await c.query(`
+    SELECT slug, plazas_libres, plazas_promocion_interna, plazas_total, boe_reference,
+           (SELECT count(*)::int FROM convocatoria_documentos d
+              JOIN convocatorias cv2 ON cv2.id = d.convocatoria_id
+             WHERE cv2.oposicion_id = oposiciones_ssot.id) docs
+      FROM oposiciones_ssot
+     WHERE is_active AND landing_estadisticas::text LIKE '%plazasTotal%'`)).rows
+  for (const t of totales) {
+    if (t.docs === 0) {
+      add(t.slug, 'tarjeta_total_sin_prueba',
+        `la tarjeta enseña {plazasTotal} = ${t.plazas_total} y NO hay ningún documento en el corpus que lo respalde`,
+        { total: t.plazas_total })
+    } else if ((t.boe_reference || '').includes('⚠️')) {
+      add(t.slug, 'tarjeta_total_mezcla_verificado_y_no',
+        `la tarjeta enseña {plazasTotal} = ${t.plazas_total} pero su boe_reference está marcado ⚠️ (dato sin verificar): el número que ve el opositor arrastra ese hueco`,
+        { total: t.plazas_total, libres: t.plazas_libres, promocion: t.plazas_promocion_interna })
+    }
+  }
+
   // ── 7. Landing publicada SIN tarjetas (el hero se queda mudo)
   //
   //    CASO REAL (16/07, me lo hice yo): un script leyó `convocatorias.landing_estadisticas` para
