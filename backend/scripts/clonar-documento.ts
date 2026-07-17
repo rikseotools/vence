@@ -17,6 +17,14 @@
  *     --slug=administrativo-madrid --url=https://... --tipo=bases \
  *     --titulo="Orden 1634/2026 — bases" --boletin=BOCM --ref=BOCM-20260714-6 --fecha=2026-07-14
  *
+ * Para páginas SPA (el JS pinta el contenido; el fetch plano solo trae el chrome del portal):
+ *     … --headless --wait-for="main .convocatoria-detalle"
+ *   `--headless` renderiza con la Lambda `vence-backend-headless-fetcher`; `--wait-for` es el selector
+ *   CSS que la Lambda espera antes de devolver (el dato de una SPA aparece tras `networkidle0`). El
+ *   resultado pasa por el MISMO `esParedDelPortal()`: un menú renderizado se rechaza igual que uno
+ *   plano. NOTA medida: la Lambda NO cura bloqueos por IP — `sede.gva.es` da ERR_CONNECTION_TIMED_OUT
+ *   (bloquea AWS); `euskadi.eus` y `sede.madrid.es` sí renderizan.
+ *
  * Idempotente por (convocatoria_id, url, content_hash): re-clonar un documento sin cambios no
  * duplica; si el boletín lo ENMIENDA, el hash cambia → fila nueva, que es justo lo que queremos para
  * las correcciones de errores.
@@ -58,8 +66,69 @@ export function esParedDelPortal(texto: string): string | null {
   return null
 }
 
-/** Descarga y extrae texto: PDF o HTML. Devuelve null y DICE POR QUÉ si no puede (nunca en silencio). */
-export async function extraerTexto(url: string): Promise<{ texto: string; formato: 'pdf' | 'html' } | null> {
+/**
+ * Fetch RENDERIZADO por la Lambda headless (`vence-backend-headless-fetcher`, Puppeteer+Chromium) para
+ * páginas SPA cuyo contenido pinta el JS en cliente y el fetch plano solo trae el chrome del portal.
+ *
+ * ⚠️ Dos cosas MEDIDAS (17/07), no supuestas:
+ *   1. **La Lambda funciona, pero no contra todos los sitios.** `example.com`, `euskadi.eus`,
+ *      `sede.madrid.es` y el BOJA renderizan bien; **`sede.gva.es` da `ERR_CONNECTION_TIMED_OUT`**
+ *      (bloquea el rango de IPs de AWS). Headless NO cura un bloqueo por IP: solo cura el render en
+ *      cliente. Si el sitio bloquea AWS, el resultado es `ok:false` con error de conexión → null aquí.
+ *   2. **200 + HTML renderizado ≠ documento.** La Moncloa devolvía 4.204 chars de MENÚS y aun así
+ *      `ok:true`. Por eso el resultado de headless pasa por el MISMO `esParedDelPortal()` que el plano
+ *      (en main): un menú renderizado se rechaza igual. Ver [[feedback-verificar-el-arreglo-no-declararlo]].
+ *
+ * `waitFor`: selector CSS que la Lambda espera antes de devolver (el contenido de una SPA aparece
+ * DESPUÉS de `networkidle0`). Sin él, se arriesga a devolver el shell vacío. Dalo siempre que sepas
+ * qué nodo marca "ya cargó el dato".
+ */
+async function fetchViaHeadless(
+  url: string,
+  waitFor?: string,
+): Promise<{ texto: string; formato: 'html' } | null> {
+  const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda')
+  // En PROD (Fargate) el task role ya puede invocar la Lambda → cadena de credenciales por defecto.
+  // En LOCAL, `.env.local` inyecta las claves de `vence-storage-writer`, que NO tiene
+  // `lambda:InvokeFunction` (medido 17/07). Para usar el tool en local, exporta
+  // HEADLESS_FETCHER_PROFILE=vence (un perfil de ~/.aws/credentials que sí puede invocar).
+  const profile = process.env.HEADLESS_FETCHER_PROFILE
+  const clientOpts: { region: string; credentials?: unknown } = { region: process.env.AWS_REGION ?? 'eu-west-2' }
+  if (profile) {
+    // credential-provider-ini viene como transitiva del SDK (no es dep nueva).
+    const { fromIni } = await import('@aws-sdk/credential-provider-ini')
+    clientOpts.credentials = fromIni({ profile })
+  }
+  const client = new LambdaClient(clientOpts as never)
+  const fn = process.env.HEADLESS_FETCHER_FUNCTION_NAME ?? 'vence-backend-headless-fetcher'
+  const payload: Record<string, unknown> = { url, timeout_ms: 50_000 }
+  if (waitFor) payload.wait_for = waitFor
+  const resp = await client.send(new InvokeCommand({
+    FunctionName: fn,
+    InvocationType: 'RequestResponse',
+    Payload: Buffer.from(JSON.stringify(payload)),
+  }))
+  if (!resp.Payload) { console.error('✗ headless: payload vacío de la Lambda'); return null }
+  const parsed = JSON.parse(Buffer.from(resp.Payload).toString('utf-8')) as {
+    ok: boolean; status: number; html: string | null; error?: string; render_time_ms?: number
+  }
+  if (!parsed.ok || parsed.html == null) {
+    console.error(`✗ headless: ${parsed.error ?? `status ${parsed.status}`}${/CONNECTION_TIMED_OUT|ERR_/.test(parsed.error ?? '') ? ' (¿el sitio bloquea las IPs de AWS? headless no cura eso)' : ''}`)
+    return null
+  }
+  return { texto: htmlToText(parsed.html), formato: 'html' }
+}
+
+/**
+ * Descarga y extrae texto: PDF o HTML. Devuelve null y DICE POR QUÉ si no puede (nunca en silencio).
+ * `opts.headless`: renderiza con la Lambda (para SPAs); `opts.waitFor`: selector CSS a esperar.
+ */
+export async function extraerTexto(
+  url: string,
+  opts: { headless?: boolean; waitFor?: string } = {},
+): Promise<{ texto: string; formato: 'pdf' | 'html' } | null> {
+  if (opts.headless) return fetchViaHeadless(url, opts.waitFor)
+
   const res = await fetch(url, { headers: { 'User-Agent': 'VenceBot/1.0' } })
   if (!res.ok) {
     console.error(`✗ HTTP ${res.status}${res.status === 403 || res.status === 429 ? ' (el boletín bloquea al bot)' : ''}`)
@@ -111,7 +180,8 @@ async function main() {
     process.exit(1)
   }
 
-  const r = await extraerTexto(url)
+  const headless = process.argv.includes('--headless')
+  const r = await extraerTexto(url, { headless, waitFor: arg('wait-for') })
   if (!r) process.exit(1)
   if (r.texto.trim().length < 200) { console.error(`✗ solo ${r.texto.length} chars: ¿PDF escaneado o página vacía?`); process.exit(1) }
   const pared = esParedDelPortal(r.texto)
