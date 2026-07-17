@@ -6,9 +6,9 @@
  * AUTONÓMICOS (BOC 9, BORM 7, BOJA 4, BOCM 4…). Los 16 adapters de `ccaa-boletines.ts` NO sirven aquí:
  * están hechos para "el sumario de HOY" (el radar) — usan la portada o el último boletín, y solo el BOA
  * construye URL por fecha. Para un boletín PASADO y CONCRETO hace falta la estructura de URL de cada
- * uno. Ver el MAPA MEDIDO al final: casi todos responden a fetch plano en dos pasos (sumario → id →
- * documento). ⚠️ NINGUNO ha necesitado headless hasta ahora — di por inviables el BOA, el BOC y el
- * BOJA y los tres eran accesibles: ver la LECCIÓN del mapa.
+ * uno. Ver el MAPA MEDIDO al final: TODOS responden a fetch plano en dos pasos (sumario → id →
+ * documento). ⚠️ NINGUNO ha necesitado headless — di por inviables el BOA, el BOC, el BOPV y el BOJA y
+ * los CUATRO eran accesibles: ver las LECCIONES del mapa. El mapa está COMPLETO: 10 boletines, 0 huecos.
  *
  * LO QUE SÍ SE PUEDE: varios boletines tienen URL deducible, y **nuestra propia `boe_reference` ya trae
  * el dato que falta** («BORM núm. 291, 18/12/2025 (anuncio 6133)» → nº de anuncio; «BOCM núm. 181,
@@ -123,21 +123,32 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
  * realidad la 465/2026 — la 466 es la 1237. **Descarga y comprueba el TÍTULO del documento antes de
  * darlo por bueno**: la posición en el HTML miente, el contenido no.
  *
+ * 🔑 LECCIÓN 3: **antes de deducir una URL, mira si ya la tenemos.** Perdí un día entero con el BOJA
+ * (sumarios, numeración, extraordinarios, hasta la Lambda) y la ruta correcta llevaba meses guardada en
+ * `convocatoria_hitos.url`. Lo mismo había pasado con el BOC-Cantabria. Primera consulta SIEMPRE:
+ *     SELECT url FROM convocatoria_hitos WHERE convocatoria_id = … AND url IS NOT NULL;
+ * Y su corolario, que me costó caro: **no escribas en la BD tu hipótesis de por qué no encuentras algo.**
+ * Dejé «⚠️ FUENTE NO LOCALIZADA … el BOJA 250 es de mediados de diciembre» en el `boe_reference` de tres
+ * convocatorias. Era falso (el 250 es del 30/12 y traía el Decreto), y ahí se quedó como si fuera un
+ * hecho. Una nota de "no lo encuentro" describe MI búsqueda, no la fuente: va en el informe, no en el dato.
+ *
  *   BOA   ✅ 2 pasos (sumario por fecha → MLKOB → PDF).  ⚠️ iso-8859-1
  *   BOC   ✅ 2 pasos (sumario año/nº → BOC-A-id → PDF en la sede)
  *   DOCM  ✅ directo (⚠️ SIEMPRE /portaldocm/, si no redirige a la web y clonas los menús)
  *   BORM  ✅ directo (nº de anuncio → /services/anuncio/ano/YYYY/numero/NNNN/pdf)
  *   BOCM  ✅ directo (nº de entrada → BOCM-YYYYMMDD-N.PDF)
  *   BOCYL ✅ directo (BOCYL-D-DDMMYYYY-NNN-NN.pdf)
- *   BOJA  ⚠️ A MEDIAS. Sus PDF SÍ responden (BOJA25-NNN-XXXXX-…pdf → 200 · application/pdf, 274 KB) y
- *           los href están en el HTML del sumario — o sea NO necesita headless (la Lambda devuelve
- *           7.656 chars, EXACTAMENTE lo mismo que curl). PERO no supe localizar el boletín correcto:
- *           el Decreto 211/2025 (OEP del SAS) no aparece en el HTML crudo de los BOJA 248-251/2025 (el
- *           252 da 404) y `2026/1` mezcla fechas de diciembre de 2025. Nuestras referencias tampoco
- *           casan: dicen «núm. 250, 30/12/2025» y el BOJA 250 es del 10-16/12.
- *           → Falta la NAVEGACIÓN (¿buscador del BOJA? ¿numeración con extraordinarios?), no el
- *           acceso. Y ojo: dije "BOJA desbloqueado" al ver que los PDF respondían, ANTES de haber
- *           encontrado un solo documento nuestro. Acceder ≠ localizar.
+ *   BOJA  ✅ 2 pasos, y sin headless: la ruta buena es **por CAPÍTULO**, /boja/AÑO/Nº/cNN/D
+ *           (p.ej. /boja/2025/250/c01/5 → 28.770 chars con el texto del sumario del capítulo). La
+ *           portada /boja/2025/250/ es la que parece una SPA vacía. Del capítulo sale el href del PDF,
+ *           que es **RELATIVO y sin <base>**: resuélvelo contra /boja/AÑO/Nº/cNN/ →
+ *           …/c01/BOJA25-225001-00009-17484-01_00331081.pdf (200, 310 KB, 42k de texto).
+ *           🔑 De dónde sale la ruta: de **convocatoria_hitos.url**. Igual que el BOC-Cantabria. Mira
+ *           SIEMPRE ahí antes de intentar deducir nada — la teníamos guardada desde el principio.
+ *           ⚠️ Y lee la LECCIÓN 3: lo que escribí aquí antes («el BOJA 250 es del 10-16/12, nuestras
+ *           referencias no casan») era FALSO. El BOJA 250/2025 es del martes 30/12/2025 y contiene el
+ *           Decreto 211/2025 — lo dice su propia cabecera. Me lo inventé leyendo mal los sumarios y
+ *           llegué a escribirlo en el `boe_reference` de tres convocatorias.
  *   DOG   ✅ documento directo: /dog/Publicados/AÑO/AAAAMMDD/Anuncio<COD>-<DDMMAA>-<NNNN>_es.html
  *           (51-122k de texto). Los sumarios NO responden, pero los anuncios contiguos sí: si tienes
  *           uno (p.ej. de convocatoria_hitos), los vecinos -0001/-0002/… son las demás categorías.
