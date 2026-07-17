@@ -8,7 +8,7 @@
  * construye URL por fecha. Para un boletín PASADO y CONCRETO hace falta la estructura de URL de cada
  * uno. Ver el MAPA MEDIDO al final: TODOS responden a fetch plano en dos pasos (sumario → id →
  * documento). ⚠️ NINGUNO ha necesitado headless — di por inviables el BOA, el BOC, el BOPV y el BOJA y
- * los CUATRO eran accesibles: ver las LECCIONES del mapa. El mapa está COMPLETO: 10 boletines, 0 huecos.
+ * los CUATRO eran accesibles: ver las LECCIONES del mapa. El mapa está COMPLETO: 11 boletines, 0 huecos.
  *
  * LO QUE SÍ SE PUEDE: varios boletines tienen URL deducible, y **nuestra propia `boe_reference` ya trae
  * el dato que falta** («BORM núm. 291, 18/12/2025 (anuncio 6133)» → nº de anuncio; «BOCM núm. 181,
@@ -154,6 +154,14 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
  *           uno (p.ej. de convocatoria_hitos), los vecinos -0001/-0002/… son las demás categorías.
  *   BOC-Cantabria ✅ /boces/verAnuncioAction.do?idAnuBlob=<id> (106k). El id NO es deducible: sale de
  *           convocatoria_hitos.url — mira SIEMPRE ahí antes de darte por vencido.
+ *   DOGC  ✅ directo, pero NO por la ruta que enseña el portal. `dogc.gencat.cat/ca/document-del-dogc/
+ *           ?documentId=<id>` devuelve **4 KB de chrome** («Sortir ràpid…») y se clona igual de bien que
+ *           un documento: parece que funciona y no trae nada. La buena es
+ *           `portaldogc.gencat.cat/utilsEADOP/AppJava/PdfProviderServlet?documentId=<id>&type=01&language=es_ES`
+ *           → PDF de verdad (1,3 MB, 188 k de texto).
+ *           ⚠️ Un solo documento puede traer DECENAS de procesos (la Resolución PRE/212/2026 convoca 31):
+ *           busca por el ANEXO de tu cuerpo, no por la primera «N plazas» que aparezca — la primera es
+ *           la del cuerpo superior.
  *   BOPV  ✅ 2 pasos (tampoco necesita headless): sumario en PDF /bopv2/datos/AÑO/MM/sYY_NNNN.pdf →
  *           sacar el nº de DISPOSICIÓN (4 cifras: 1225, 1236…) → /bopv2/datos/AÑO/MM/26NNNNNa.pdf
  *           (ojo a la 'a' final; sin ella da 404). Las .shtml SÍ son chrome (1.3k, sin PDF): no las
