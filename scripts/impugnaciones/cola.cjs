@@ -24,9 +24,18 @@ function getUrl() {
   return env.match(/^DATABASE_URL=(.*)$/m)[1].trim();
 }
 function arg(name) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; }
+// El session-id se pasa con --sid o, si no, se lee de .session-id (lo escribe new-session.sh)
+// en el cwd o en la raíz del repo. Así cada sesión usa el suyo sin pasarlo a mano.
+function readSessionId() {
+  const path = require('path');
+  for (const p of [path.join(process.cwd(), '.session-id'), path.join(__dirname, '..', '..', '.session-id')]) {
+    try { const v = fs.readFileSync(p, 'utf8').trim(); if (v) return v; } catch {}
+  }
+  return null;
+}
 
 const cmd = process.argv[2];
-const sid = arg('--sid');
+const sid = arg('--sid') || readSessionId();
 const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 const stale = `${STALE_HOURS} hours`;
 
@@ -155,7 +164,19 @@ async function listQueue(list) {
       return;
     }
 
-    console.error('Comandos: list | next --sid <ID> [--queue disputes|feedback] | mine --sid <ID> | release <id> --sid <ID>');
+    if (cmd === 'release-all') {
+      if (!sid) { console.error('Falta --sid (o .session-id)'); process.exit(2); }
+      let n = 0;
+      for (const { tbl } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
+        const res = await s.unsafe(
+          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE claimed_by = $1 RETURNING id`, [sid]);
+        n += res.length;
+      }
+      console.log(`✅ Liberados ${n} claims del sid ${sid.slice(0, 12)}.`);
+      return;
+    }
+
+    console.error('Comandos: list | next --sid <ID> [--queue disputes|feedback] | mine --sid <ID> | release <id> --sid <ID> | release-all --sid <ID>');
     process.exit(2);
   } finally { await s.end(); }
 })();
