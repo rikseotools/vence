@@ -15,6 +15,18 @@
 >
 > **Caso de referencia (Isabel B, Aragón, 04/07/2026):** preguntó "¿habéis hecho un inciso de las diferencias de Word/Excel 365 Web vs escritorio?". Leído literal parecía "añadid un extra". Pero su **historial** (había cazado antes que la versión estaba mal —Office 2016 en vez de 365— y había enlazado la nota oficial del IAAP) mostró que su verdadera intención era **verificar que el contenido coincide con la versión exacta que le examinan**. El journey convirtió "sugerencia menor" en "el contenido está en la variante equivocada según el spec oficial". Sin analizar el journey, la respuesta habría sido incorrecta.
 
+## 🔒 Reparto entre sesiones (claim) — antes de coger un feedback
+
+Si hay **varias sesiones** trabajando la cola a la vez (2-10), **coge** cada feedback antes de analizarlo para no pisar a otra sesión (mismo sistema que impugnaciones). Lee/escribe RDS (`pg`/`DATABASE_URL`), nunca `@supabase/supabase-js` (Supabase congelado → datos viejos):
+
+```bash
+node scripts/impugnaciones/cola.cjs list                                 # las 3 colas + quién tiene qué
+node scripts/impugnaciones/cola.cjs next --sid <tu-id-de-sesión> --queue feedback   # coge el más antiguo libre
+node scripts/impugnaciones/cola.cjs release <feedback_id> --sid <id>     # soltar sin cerrar
+```
+
+El claim es atómico (`FOR UPDATE SKIP LOCKED`), se guarda en `user_feedback.claimed_by/claimed_at` y **se auto-libera a las 2h**. El cierre (`/api/v2/feedback/respond`) lo saca del pool. Detalle: manual de impugnaciones §1.bis.
+
 ## ⚠️ Orden de prioridad de la cola
 
 **Prioriza los feedbacks con valor de RETENCIÓN/AYUDA primero; las eliminaciones de cuenta van SIEMPRE las ÚLTIMAS.**

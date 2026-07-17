@@ -4,7 +4,9 @@
 // pasos. El JUICIO (¿válida?, ¿clave?, corrección) lo pone Claude; los DATOS y los checks
 // mecánicos los pone este script.
 //
-// Uso: node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>
+// Uso: node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id> [--sid <id-sesión>]
+//   Con --sid: COGE (claim) la impugnación para tu sesión y avisa si otra sesión ya la
+//   está revisando (reparto entre 2-10 sesiones sin pisarse, ver cola.cjs). Sin --sid: solo dossier.
 const fs = require('fs');
 const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
 function getUrl() {
@@ -26,6 +28,25 @@ const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '')
     [d] = await s`SELECT *, 'legislative' qtype FROM question_disputes WHERE id=${did}`;
     if (!d) { [d] = await s`SELECT *, 'psychometric' qtype FROM psychometric_question_disputes WHERE id=${did}`; isPsy = !!d; }
     if (!d) { console.error('Impugnación no encontrada:', did); process.exit(2); }
+
+    // --- CLAIM (reparto entre sesiones, ver cola.cjs). Solo si pasas --sid. No fatal. ---
+    let claimWarn = '';
+    const sidIdx = process.argv.indexOf('--sid');
+    const sid = sidIdx >= 0 ? process.argv[sidIdx + 1] : null;
+    if (sid && ['pending', 'appealed'].includes(d.status)) {
+      const dtbl = isPsy ? 'psychometric_question_disputes' : 'question_disputes';
+      try {
+        const fresh = d.claimed_by && d.claimed_by !== sid && d.claimed_at && (Date.now() - new Date(d.claimed_at).getTime()) < 2 * 3600e3;
+        if (fresh) {
+          const mins = Math.round((Date.now() - new Date(d.claimed_at).getTime()) / 60000);
+          claimWarn = `⚠️  YA LA ESTÁ REVISANDO otra sesión (${String(d.claimed_by).slice(0, 8)}, hace ${mins}m). Coordínate o corre "cola.cjs next --sid ${sid}" para coger otra.`;
+        } else {
+          await s.unsafe(`UPDATE public.${dtbl} SET claimed_by=$1, claimed_at=now() WHERE id=$2`, [sid, did]);
+          claimWarn = `🔒 Cogida por tu sesión (${String(sid).slice(0, 8)}).`;
+        }
+      } catch (e) { claimWarn = `(claim no aplicado: ${e.message})`; }
+    }
+
     const [p] = await s`SELECT full_name, email FROM user_profiles WHERE id=${d.user_id}`;
     const qtbl = isPsy ? 'psychometric_questions' : 'questions';
     const [q] = await s.unsafe(`SELECT * FROM ${qtbl} WHERE id='${d.question_id}'`);
@@ -39,6 +60,7 @@ const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '')
     console.log('══════════════════════════════════════════════════════════════');
     console.log(`DOSSIER IMPUGNACIÓN ${did.slice(0, 8)}  [${d.qtype}]`);
     console.log('══════════════════════════════════════════════════════════════');
+    if (claimWarn) console.log(claimWarn);
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
     console.log(`Tipo: ${d.dispute_type} | estado: ${d.status}`);
     console.log(`Descripción: ${d.description}`);
