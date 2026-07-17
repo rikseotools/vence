@@ -25,14 +25,17 @@ const JSON_OUT = process.argv.includes('--json')
 const GATE = process.argv.includes('--gate')
 
 /**
- * Una cita debe ser una CLÁUSULA, no el membrete del boletín. Detecta la basura típica de PDF:
- * cabeceras de página, numeración y nombres de boletín sin texto normativo alrededor.
+ * Una cita debe PROBAR algo, no ser el membrete del boletín. Detecta la basura típica de PDF:
+ * cabeceras de página, numeración y nombres de boletín sin nada que demuestre el dato.
  * Exportado para poder testearlo sin BD.
+ *
+ * `valores`: las cifras que la convocatoria AFIRMA y que esta cita debería respaldar (plazas
+ * libres / promoción interna / discapacidad). Se usan solo cuando la cita no es prosa: ver abajo.
  */
-function citaEsBasura(cita) {
+function citaEsBasura(cita, valores = []) {
   if (!cita || cita.trim().length < 25) return true
   const t = cita.trim()
-  // Criterio: ¿tiene PROSA? Un membrete ("VIERNES 4 DE JULIO DE 2025 B.O.C.M. Núm. 158 Pág. 171")
+  // Criterio 1: ¿tiene PROSA? Un membrete ("VIERNES 4 DE JULIO DE 2025 B.O.C.M. Núm. 158 Pág. 171")
   // es casi todo mayúsculas, cifras y abreviaturas: no llega a 5 palabras en minúscula. Una cláusula
   // real sí.
   //
@@ -41,7 +44,21 @@ function citaEsBasura(cita) {
   // 2027" —LA cita del caso Marta— porque "realizará" no estaba en mi lista. Adivinar el vocabulario
   // del BOE es el mismo error que adivinar el de los hitos. Se mide la forma, no el diccionario.
   const palabrasEnProsa = (t.match(/\b[a-záéíóúñü]{3,}\b/g) || []).length
-  return palabrasEnProsa < 5
+  if (palabrasEnProsa >= 5) return false
+
+  // Criterio 2 (17/07): **no toda prueba es una cláusula.** Las FECHAS se prueban con prosa, pero las
+  // PLAZAS se prueban con una TABLA — y una tabla no tiene verbos. Esta regla me disparó a mí sobre las
+  // tres del SAS, cuya prueba es la fila «ENFERMERO/A 1.988 1.789 199» del Anexo I del Decreto
+  // 211/2025: cita impecable, 0 prosa. Rechazarla empujaba justo al comportamiento contrario al que
+  // este auditor busca — adornar la cita con palabras para colar el guardarraíl.
+  //
+  // Lo que separa una fila de tabla de un membrete NO es la forma (las dos son cifras en mayúsculas):
+  // es el DATO. La fila trae las cifras que decimos que prueba; el membrete trae el nº de página y el
+  // del boletín, que no son nuestras. Así que sin prosa se exige que la cita CARGUE lo que afirma:
+  // al menos dos de nuestras cifras, para que no cuele una coincidencia suelta.
+  const numeros = new Set((t.match(/\d[\d.]*\d|\d/g) || []).map((n) => n.replace(/\.(?=\d{3}\b)/g, '')))
+  const cubiertos = valores.filter((v) => v != null && numeros.has(String(v))).length
+  return cubiertos < 2
 }
 
 /**
@@ -153,14 +170,18 @@ async function main() {
 
   // ── 3. Citas basura: el membrete del boletín no prueba nada
   const vers = (await c.query(`
-    SELECT o.slug, v.source_snippet, v.state FROM convocatoria_verification v
+    SELECT o.slug, v.source_snippet, v.state,
+           cv.plazas_libres, cv.plazas_promocion_interna, cv.plazas_discapacidad
+      FROM convocatoria_verification v
       JOIN convocatorias cv ON cv.id = v.convocatoria_id
       JOIN oposiciones o ON o.id = cv.oposicion_id
      WHERE v.state LIKE 'verified%'`)).rows
   for (const v of vers) {
-    if (citaEsBasura(v.source_snippet)) {
+    // Las cifras que la fila AFIRMA: si la cita no es prosa, tiene que cargar al menos dos de ellas.
+    const valores = [v.plazas_libres, v.plazas_promocion_interna, v.plazas_discapacidad]
+    if (citaEsBasura(v.source_snippet, valores)) {
       add(v.slug, 'cita_no_prueba_nada',
-        `la verificación se apoya en algo que no es una cláusula: "${(v.source_snippet || '').slice(0, 60)}"`, {})
+        `la verificación se apoya en algo que no prueba el dato (ni es una cláusula, ni una tabla con sus cifras): "${(v.source_snippet || '').slice(0, 60)}"`, {})
     }
   }
 

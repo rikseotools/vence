@@ -109,3 +109,41 @@ describe('revisarTarjeta — una tarjeta no puede afirmar lo que la BD desmiente
       { numero: '18/04', texto: 'Examen 2026' })).toEqual([])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// citaEsBasura — la regla no tenía UN solo test y ya se había equivocado una vez (rechazaba la cita
+// del caso Marta por no llevar un verbo de su lista blanca). El 17/07 se equivocó otra vez, en la
+// dirección contraria: tumbó las tres citas del SAS, que son filas de tabla del Anexo del Decreto
+// 211/2025 — la prueba correcta de unas plazas, y sin una palabra de prosa.
+describe('citaEsBasura — no toda prueba es una cláusula', () => {
+  const { citaEsBasura } = require('../../scripts/audit-convocatoria-completitud.cjs')
+
+  it('la fila de tabla del SAS PRUEBA las plazas aunque no tenga prosa', () => {
+    const cita =
+      'ANEXO I «Acceso libre» — CATEGORÍA/ESPECIALIDAD · TOTAL LIBRE · CUPO GENERAL · CUPO DISCAPACIDAD → ' +
+      '«ENFERMERO/A 1.988 1.789 199». ANEXO II «Promoción interna» → «ENFERMERO/A 300 270 30».'
+    expect(citaEsBasura(cita, [1789, 300, 199])).toBe(false)
+  })
+
+  it('el membrete del boletín NO prueba nada, aunque tenga cifras', () => {
+    // El caso que dio origen a la regla (SERMAS, 16/07).
+    expect(citaEsBasura('VIERNES 4 DE JULIO DE 2025 B.O.C.M. Núm. 158 Pág. 171', [66, 64, 9])).toBe(true)
+  })
+
+  it('una cláusula en prosa pasa sin necesitar cifras — es el caso Marta', () => {
+    expect(citaEsBasura('La celebración del primer ejercicio se realizará en mayo de 2027', [])).toBe(false)
+  })
+
+  it('sin prosa, UNA cifra suelta no basta: podría ser coincidencia del nº de página', () => {
+    expect(citaEsBasura('B.O.C.M. Núm. 66 Pág. 1712 — ANEXO II', [66, 64, 9])).toBe(true)
+  })
+
+  it('una cita vacía o de dos palabras es basura', () => {
+    expect(citaEsBasura('', [1789, 199])).toBe(true)
+    expect(citaEsBasura('ANEXO I', [1789, 199])).toBe(true)
+  })
+
+  it('los puntos de millar del boletín no rompen el cotejo (1.789 ↔ 1789)', () => {
+    expect(citaEsBasura('CELADOR/A 729 656 73 · CELADOR/A 100 90 10', [656, 100, 73])).toBe(false)
+  })
+})
