@@ -154,6 +154,13 @@ const BOC_DOC = (id) => `https://sede.gobiernodecanarias.org/boc/${String(id).to
  *           uno (p.ej. de convocatoria_hitos), los vecinos -0001/-0002/… son las demás categorías.
  *   BOC-Cantabria ✅ /boces/verAnuncioAction.do?idAnuBlob=<id> (106k). El id NO es deducible: sale de
  *           convocatoria_hitos.url — mira SIEMPRE ahí antes de darte por vencido.
+ *   DOGV  ✅ la DISPOSICIÓN individual va por `dogv.gva.es/datos/AÑO/MM/DD/pdf/AÑO_NNNN_es.pdf` (el
+ *           NNNN es el nº que trae la referencia: «DOGV-C-2026-8075» → 8075; ojo, SIN el prefijo
+ *           `dogv_`, que da 404). ~800 KB por disposición. NO clones `dogv_AÑO_NNNNN_es.pdf` (el
+ *           boletín ENTERO): pesa 20+ MB y no pasa el límite del clonador. El sumario del día es una
+ *           SPA (carga por JS) y la ficha de la sede (`sede.gva.es/…detall-ocupacio-publica`) también:
+ *           si solo tienes el `id_emp` y no el nº de disposición, hará falta Playwright — pero casi
+ *           siempre el nº ya está en la referencia.
  *   DOGC  ✅ directo, pero NO por la ruta que enseña el portal. `dogc.gencat.cat/ca/document-del-dogc/
  *           ?documentId=<id>` devuelve **4 KB de chrome** («Sortir ràpid…») y se clona igual de bien que
  *           un documento: parece que funciona y no trae nada. La buena es
