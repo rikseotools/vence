@@ -16,6 +16,35 @@
 
 ## Abiertas
 
+### 🟠 [ABIERTO 17/07] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+- **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hace nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Falla en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes.
+- **Diagnóstico (caso María, fb feb79fc5, `piyou22@gmail.com`):** 100% de sus sesiones en 3 días y 4 deploys fueron GSA in-app en iPhone; nunca Safari ni ordenador → descarta versión cacheada/cuenta. A Manuel en navegador normal le funciona. Resuelto a la usuaria con apaño (abrir en Safari) + reward 3€ creado.
+- **Fix de verdad (pendiente decisión):** que el botón **genere el PDF nosotros** (client jsPDF/html2pdf o ruta server que renderice el tema) en vez de depender de `window.print()`, para que funcione desde cualquier navegador. Mientras, mínimo detectar in-app browser y mostrar aviso en vez de no-op.
+
+### 🟡 [ABIERTO 17/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
+- **Qué:** dos artículos correctamente escopados pero con **0 preguntas activas**, prometidos a la usuaria (fb `daluamva@gmail.com`, `auxiliar_administrativo_sms`): **T8 Ley 4/1994 art 9 (Fines)** y **T3 Ley 12/2014 CARM Transparencia art 1 (Objeto y finalidad)**. Conviene reforzar de paso T8 arts 10-12 (1 preg c/u, tema muy fino: 8 preg).
+- **Por qué pendiente:** generación de contenido (fuente oficial BOE + doble auditoría + GATE) → no al vuelo; decisión de Manuel. Le dijimos "estamos trabajando en ello" y pidió **aviso expreso cuando estén** ("AVISARME CUANDO ESTEN").
+- **Cómo:** `docs/maintenance/generar-preguntas-con-ia.md`. Reward embajador 3€ al resolver (sin mencionar). Feedbacks claim-ados: `22835b84` (T8), `85d564cf` (T3 Ley 12/2014). Contexto scope (verificado contra BORM 07/10/2021): sesión 17/07.
+
+### 🟠 [ABIERTO 17/07] Vídeos de los cursos de informática no cargan en móvil/tablet (MP4 non-faststart)
+- **Qué:** los 24 vídeos de los 5 cursos (Word, Excel, Access, Outlook, Windows 11) son **MP4 non-faststart** (`moov` al final de ficheros de 1,1–1,6 GB) → iPhone/Android no pueden hacer streaming progresivo y **no cargan** (escritorio sí). Serving OK (Content-Type, Range, reproductor `playsInline`). Confirmado midiendo el fichero real con ffprobe.
+- **Por qué pendiente:** el fix (remux `ffmpeg -c copy -movflags +faststart`, **lossless**) es op de infra ~30 GB (descarga+resubida a bucket `videos-premium` de prod, sobrescribe) → espera OK de Manuel. Reportado por Victoria (fb 4e8964ba, premium) — reward 3€ tras aplicar.
+- **Cómo:** script listo `_vfix.cjs` (raíz repo; modo seco / `--apply`). Detalle: memoria `project-video-cursos-mobile-faststart`. Tamaño 1,5GB/lección (recode para adelgazar) = decisión aparte.
+
+### 🟠 [ABIERTO 17/07] Campaña "citas ajenas" — 27 decisiones humanas + causa raíz mislinks
+- **Qué:** barrido detectó explicaciones que citan un artículo distinto del vinculado (mislink). **63 ya corregidas y verificadas en prod** (45 re-vínculos + 18 explicaciones); quedan **27 para decisión humana** (1 clave dudosa, 6 huérfanos de temario, 7 adjudicar, 8 sin norma en BD, 5 needs_human).
+- **Por qué pendiente:** tocan clave / scope / normas sin importar → no auto-aplicable. Recuperables de RDS: `ai_verification_results WHERE ai_provider='claude_code_citas_2026_07'`.
+- **Cómo/detalle (IDs por cubo):** `docs/roadmap/campana-citas-ajenas-2026-07.md`. Herramienta reusable: `scripts/impugnaciones/barrido-citas.cjs`.
+
+### 🔵 [ABIERTO 17/07] Causa raíz: vínculo por nº de artículo sin cruzar `law_id`
+- **Qué:** el mislink de la campaña de citas viene de un vinculador que emparejó por número de artículo sin filtrar por ley (133 CP↔133 CE, RDL 1/2013↔Ley 2/2013 CyL, organismos CyL cruzados). Los 139 tratados son solo los que tenían cita delatora; **el bug es más amplio**.
+- **Siguiente paso:** detector barato (explicación nombra ley/art ≠ vinculado) para medir el tamaño real antes de campaña. Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Subproductos.
+
+### 🟡 [ABIERTO 17/07] 33 artículos con contenido truncado en BD (70 preguntas visibles)
+- **Qué:** artículos cuyo `content` empieza por un apartado >1 (faltan párrafos iniciales) → el usuario lee la ley a medias en el temario. Focos: Decreto 7/2013 CyL, Decreto 13/2021 CyL, Instituciones Internacionales GC.
+- **Cómo:** recomponer contra BOE. Detalle + query: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Subproductos pto 1.
+
+
 ### ✅ [CERRADO 15/07] Barrido global del bug "topic_scope con article_numbers vacío" — NO era sistémico
 - **Qué era:** filas de `topic_scope` con `law_id` correcto pero `article_numbers = '{}'` VACÍO → esa ley aporta 0 preguntas al tema aunque su banco exista. El tema parece OK (disponible + preguntas de otras leyes) y el hueco pasa desapercibido.
 - **Origen:** detectado por Jen (15/07): T16 de Cádiz sin preguntas de la Ley 29/1998, con 604 en BD. **Cádiz arreglada y verificada (24/24).**
@@ -189,3 +218,17 @@
   - **~92** usan `.auth`/`.storage` (siguen en Supabase: auth/almacenamiento NO migrados) o `.rpc`/`.or`/`.contains`/`.channel`.
   - **~32** usan selects anidados (embeds PostgREST `tabla:fk(cols)` = JOINs). Detección: `awk '/\.select\(\`/{inb=1} inb{buf=buf $0} /\`\)/{if(inb){if(buf ~ /[a-z_]+ *\(|:[a-z_]/)print FILENAME; inb=0;buf=""}}' scripts/*.cjs`.
   - Patrón de arreglo: reescribir a `postgres` (ej. `audit-oposiciones-coherencia.cjs`) o, si el subset encaja, ya usan el shim.
+
+## Landing multi-convocatoria: publicar 2 OEPs en paralelo (patrón nuevo, 15/07/2026)
+- **Qué:** cuando una oposición tiene un ciclo en curso (examen futuro, inscripción ya cerrada) Y abre una convocatoria nueva con inscripción abierta, la landing debe mostrar **las dos** (captar en ambas). Hoy solo pinta la `is_current` de `convocatorias` (vía `oposiciones_ssot`).
+- **Build pendiente:** que la landing liste TODAS las convocatorias no archivadas de la oposición (no solo `is_current`). Cambio de código pequeño en el lector de `oposiciones_ssot`/landing.
+- **Doc del patrón:** `docs/maintenance/oeps-convocatorias-seguimiento.md` §4e-ter. Primer caso real: **Auxiliar Admin. Comunidad de Madrid** (ciclo lista_admitidos examen 15/10/2026 + Orden 1628/2026, 626 plazas libres, inscripción hasta 10/08/2026). Decisión Manuel: excepción legítima para captación.
+
+## Gaps de demanda por análisis de competidores (15/07/2026)
+Oposiciones que muchos competidores preparan y NOSOTROS tenemos solo catalogadas (0 tests/landing) — verificado que no hay variante construida con otro slug. Demanda clara desatendida, ordenado por nº de competidores:
+- **Agente de Hacienda Pública del Estado** — 14 competidores. ❌ solo catalogada.
+- **Gestión Procesal y Administrativa (Justicia)** — 13. ❌ catalogada.
+- **Gestión de la Administración Civil del Estado** — 10. ❌ catalogada.
+- **Policía Local** — 10 (solo catalogadas municipales). ❌
+- Cuerpo Técnico de Hacienda (4), Ujieres Cortes Generales (4), Auxiliar Vigilancia Aduanera (4), Bibliotecarios (4).
+- **Prioridad:** las 4 primeras son estatales grandes y populares → mayor ROI para construir. Runbook: `analizador-competidores.md` + `crear-nueva-oposicion.md`. Cruzar con GSC (demanda orgánica) antes de decidir.
