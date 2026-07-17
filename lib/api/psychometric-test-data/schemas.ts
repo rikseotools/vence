@@ -51,11 +51,19 @@ export type GetPsychometricCategoriesResponse = z.infer<typeof getPsychometricCa
 // QUESTIONS REQUEST (GET /api/psychometric-test-data/questions)
 // ============================================
 
-export const getPsychometricQuestionsRequestSchema = z.object({
-  categories: z.array(z.string().min(1)).min(1, 'Selecciona al menos una categoría'),
-  sections: z.array(z.string().min(1)).optional(),
-  numQuestions: z.number().int().min(1).max(200).default(25),
-})
+export const getPsychometricQuestionsRequestSchema = z
+  .object({
+    // `categories` = categorías SIN secciones (filtro por categoría entera).
+    // Puede venir vacío si el usuario sólo eligió secciones concretas.
+    categories: z.array(z.string().min(1)).default([]),
+    // `sections` = secciones concretas de categorías con secciones (filtro fino).
+    sections: z.array(z.string().min(1)).optional(),
+    numQuestions: z.number().int().min(1).max(200).default(25),
+  })
+  .refine(d => d.categories.length > 0 || (d.sections?.length ?? 0) > 0, {
+    message: 'Selecciona al menos una categoría o sección',
+    path: ['categories'],
+  })
 
 export type GetPsychometricQuestionsRequest = z.infer<typeof getPsychometricQuestionsRequestSchema>
 

@@ -37,15 +37,16 @@ async function _GET(request: NextRequest) {
     const sectionsParam = searchParams.get('sections')
     const numQuestionsParam = searchParams.get('numQuestions')
 
-    if (!categoriesParam) {
+    const categories = categoriesParam ? categoriesParam.split(',').filter(Boolean) : []
+    const sections = sectionsParam ? sectionsParam.split(',').filter(Boolean) : undefined
+
+    // Debe venir al menos una categoría o una sección.
+    if (categories.length === 0 && (!sections || sections.length === 0)) {
       return NextResponse.json(
-        { success: false, error: 'Parámetro "categories" requerido' },
+        { success: false, error: 'Parámetro "categories" o "sections" requerido' },
         { status: 400 }
       )
     }
-
-    const categories = categoriesParam.split(',').filter(Boolean)
-    const sections = sectionsParam ? sectionsParam.split(',').filter(Boolean) : undefined
     const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam, 10) : 25
 
     // Validate with Zod
