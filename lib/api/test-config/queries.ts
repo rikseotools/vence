@@ -95,20 +95,8 @@ export async function getArticlesForLaw(
     const db = getTestConfigDb()
     const { lawShortName, topicNumber, positionType, includeOfficialCount, scopeToPosition } = params
 
-    // Buscar law_id
-    const lawResult = await db
-      .select({ id: laws.id })
-      .from(laws)
-      .where(eq(laws.shortName, lawShortName))
-      .limit(1)
-
-    if (!lawResult || lawResult.length === 0) {
-      return { success: false, error: `Ley no encontrada: ${lawShortName}` }
-    }
-
-    const lawId = lawResult[0].id
-
-    // Determinar artículos válidos según contexto
+    // Determinar artículos válidos y law_id según contexto
+    let lawId: string
     let validArticleNumbers: string[] | null = null
 
     if (topicNumber) {
@@ -117,8 +105,38 @@ export async function getArticlesForLaw(
       if (!mappings || mappings.length === 0) {
         return { success: true, articles: [] }
       }
+      // ⚠️ Usar el law_id que el topic_scope referencia EXPLÍCITAMENTE (fuente de
+      // verdad). Resolver por short_name con LIMIT 1 es ambiguo cuando hay leyes
+      // duplicadas (mismo short_name, una poblada y otra vacía, p.ej. "LO 1/2004"):
+      // devolvía la fila vacía → 0 preguntas por artículo → todos en gris.
+      if (!mappings[0].lawId) {
+        return { success: true, articles: [] }
+      }
+      lawId = mappings[0].lawId
       // NULL = ley virtual (incluir todas), [] = skip, [valores] = filtrar
       validArticleNumbers = mappings[0].articleNumbers
+    } else {
+      // Sin tema (configurador "por leyes"): no hay topic_scope del que leer el
+      // law_id, así que resolvemos por short_name. Con leyes duplicadas (mismo
+      // short_name) preferimos DETERMINISTA la fila con más preguntas activas,
+      // para no caer en la fila vacía.
+      const activeQuestionsForLaw = sql<number>`(
+        SELECT count(*) FROM ${questions} q
+        JOIN ${articles} a ON q.primary_article_id = a.id
+        WHERE a.law_id = ${laws.id} AND q.is_active = true
+      )`
+      const lawResult = await db
+        .select({ id: laws.id })
+        .from(laws)
+        .where(eq(laws.shortName, lawShortName))
+        .orderBy(sql`${activeQuestionsForLaw} DESC`, laws.id)
+        .limit(1)
+
+      if (!lawResult || lawResult.length === 0) {
+        return { success: false, error: `Ley no encontrada: ${lawShortName}` }
+      }
+
+      lawId = lawResult[0].id
     }
 
     // Query: artículos con conteo de preguntas (LEFT JOIN para incluir artículos sin preguntas)
