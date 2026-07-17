@@ -81,6 +81,18 @@ arregladas:
    para las próximas fuentes JS — pero **marcar `headless` no es un arreglo: hay que COMPROBAR que la
    Lambda devuelve contenido**, no que responde.
 
+**✅ VERIFICADO EN PROD (17/07, la ejecución siguiente al fix).** El `cron_run` de las 08:00 UTC:
+```
+{"total":5,"checked":5,"hashChanged":3,"signals":0,"errors":0,"status":"success"}
+```
+`total` bajó de 6 a **5** (La Moncloa ya no se cuenta — retirada bien) y `checked` = `errors` + los que
+cambian, ahora campos separados y honestos. `errors:0` es REAL, no un silencio: las 5 fuentes están
+sanas, así que no hay error que contar. La diferencia del fix solo se ve cuando una fuente falla de
+verdad (entonces `errors>0` y su hash NO se toca); no se puede forzar un fallo en prod, así que esto es
+lo máximo verificable sin romper una fuente a propósito. **Dónde mirar:** `observable_events WHERE
+endpoint='detect-generic-sources'` (NO `cron_runs`, que este cron no usa — solo tiene datos viejos de
+mayo). El evento `{phase:'start'}` (severity debug) marca el arranque; el `info` con las stats, el fin.
+
 ### 🔌 El contrato de la Lambda headless (lo probé mal y saqué conclusiones falsas)
 
 `backend/infra/headless-fetcher/handler.mjs` acepta **`wait_for`** (selector CSS) y **`timeout_ms`** —
