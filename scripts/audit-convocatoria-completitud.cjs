@@ -61,6 +61,42 @@ function citaEsBasura(cita, valores = []) {
   return cubiertos < 2
 }
 
+// Cifras en letra: los boletines las escriben así por convención jurídica, sobre todo las pequeñas —
+// que son la mayoría del catálogo. Un buscador solo-dígitos daría 22 acusaciones falsas de 31 (medido
+// el 16/07 con `proponer-plazas-boe.cjs`, que lleva la misma tabla y la misma cicatriz).
+const U = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
+  'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
+  'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis',
+  'veintisiete', 'veintiocho', 'veintinueve']
+const D = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
+const C = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos',
+  'setecientos', 'ochocientos', 'novecientos']
+
+function enLetra(n) {
+  if (n < 30) return U[n]
+  if (n < 100) return D[Math.floor(n / 10)] + (n % 10 ? ` y ${U[n % 10]}` : '')
+  if (n === 100) return 'cien'
+  if (n < 1000) return C[Math.floor(n / 100)] + (n % 100 ? ` ${enLetra(n % 100)}` : '')
+  const mil = Math.floor(n / 1000), r = n % 1000
+  return (mil === 1 ? 'mil' : `${enLetra(mil)} mil`) + (r ? ` ${enLetra(r)}` : '')
+}
+
+/**
+ * ¿Aparece la cifra `n` en `texto`, en cualquiera de las formas en que un boletín la escribe?
+ * (1030 · 1.030 · «mil treinta»). Exportada para testearla sin BD.
+ *
+ * Es condición NECESARIA de que el documento pruebe la cifra, no suficiente: que un «3» aparezca no
+ * prueba que sean 3 plazas — eso se lee. Pero si no aparece NI UNA VEZ, no puede probarla, y eso sí
+ * se puede afirmar sin criterio.
+ */
+function cifraEnTexto(n, texto) {
+  if (n == null) return true          // sin cifra no hay nada que probar
+  if (!texto) return false            // sin corpus, imposible
+  const t = ' ' + String(texto).replace(/\s+/g, ' ').toLowerCase() + ' '
+  const formas = [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'), ...(n <= 9999 ? [enLetra(n)] : [])]
+  return formas.some((f) => t.includes(f.toLowerCase()))
+}
+
 /**
  * ¿Miente esta tarjeta de la landing? Devuelve [] si no hay contradicción DEMOSTRABLE.
  *
@@ -265,18 +301,33 @@ async function main() {
   //    puede ser es una cifra huérfana presentada como hecho: así es como auxiliar-administrativo-estado
   //    acabó con el 1.450 de la OEP 2026 dentro de una fila de 2025 con el 720 de la convocatoria de
   //    2025 — un total (2.170) que no existía en ningún documento del mundo.
+  //
+  //    ⚠️ ENDURECIDA (17/07): la v1 pedía solo que EXISTIERA un documento, y eso lo callaba cualquier
+  //    cosa. Lo demostré yo mismo clonando 15 fuentes de golpe: dos eran los MENÚS del portal (el
+  //    chrome del DOGC, 4 KB de «Sortir ràpid»; el sumario del BOJA, 32 KB de menús) y la regla se
+  //    quedó tan tranquila — «hay documento». Un guardarraíl que se conforma con que el campo no esté
+  //    vacío mide mi diligencia en descargar, no la verdad del dato.
+  //    Ahora se exige que ALGÚN documento CONTENGA la cifra (dígitos, con puntos de millar, o en
+  //    letra — los boletines escriben en letra). Es condición NECESARIA, no suficiente: que el 3 de
+  //    Ávila aparezca no prueba que sean 3 plazas, eso se lee. Pero si la cifra no está NI UNA VEZ, el
+  //    documento no puede probarla, y eso sí es demostrable sin criterio.
   const huerfanas = (await c.query(`
-    SELECT o.slug, cv.plazas_libres, cv.boe_reference, cv."año"
+    SELECT o.slug, cv.plazas_libres, cv.boe_reference, cv."año",
+           (SELECT count(*)::int FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id) docs,
+           (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
+             WHERE d.convocatoria_id = cv.id) corpus
       FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
      WHERE cv.is_current AND o.is_active
        AND cv.plazas_libres IS NOT NULL
        AND NOT cv.plazas_prevision
-       AND NOT EXISTS (SELECT 1 FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id)
      ORDER BY cv.plazas_libres DESC NULLS LAST`)).rows
+    .filter((h) => !cifraEnTexto(h.plazas_libres, h.corpus))
   for (const h of huerfanas) {
     add(h.slug, 'plazas_afirmadas_sin_documento',
-      `afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y NO hay documento en el corpus que lo pruebe. O se clona su fuente, o se marca plazas_prevision con motivo`,
-      { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año })
+      h.docs === 0
+        ? `afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y NO hay NINGÚN documento en el corpus. O se clona su fuente, o se marca plazas_prevision con motivo`
+        : `afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y ninguno de sus ${h.docs} documento(s) contiene esa cifra, ni en dígitos ni en letra: o el documento clonado no es el que la prueba, o la cifra está mal`,
+      { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año, docs: h.docs })
   }
 
   // ── 6-bis. La tarjeta enseña un TOTAL que mezcla lo probado con lo que no
@@ -356,5 +407,5 @@ async function main() {
   if (GATE && F.length) process.exit(1)
 }
 
-module.exports = { citaEsBasura, revisarTarjeta }
+module.exports = { citaEsBasura, revisarTarjeta, cifraEnTexto, enLetra }
 if (require.main === module) main().catch((e) => { console.error('ERR', e.message); process.exit(1) })

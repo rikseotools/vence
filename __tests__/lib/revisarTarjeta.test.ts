@@ -147,3 +147,39 @@ describe('citaEsBasura — no toda prueba es una cláusula', () => {
     expect(citaEsBasura('CELADOR/A 729 656 73 · CELADOR/A 100 90 10', [656, 100, 73])).toBe(false)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// cifraEnTexto — el 17/07 cloné 15 fuentes de golpe y DOS eran los menús del portal (chrome del DOGC,
+// sumario del BOJA). La regla «afirma plazas sin documento» se calló: había documento. Un guardarraíl
+// que se conforma con que el campo no esté vacío mide mi diligencia, no la verdad del dato.
+describe('cifraEnTexto — «hay documento» no es «lo prueba»', () => {
+  const { cifraEnTexto } = require('../../scripts/audit-convocatoria-completitud.cjs')
+
+  it('los MENÚS del portal no contienen la cifra: no pueden probarla', () => {
+    const chrome = 'Diari Oficial de la Generalitat de Catalunya. Sortir ràpid Per poder navegar amb més tranquil·litat'
+    expect(cifraEnTexto(63, chrome)).toBe(false)
+  })
+
+  it('la cifra en dígitos cuenta', () => {
+    expect(cifraEnTexto(688, 'se convocan 688 plazas del Cuerpo de Celadores')).toBe(true)
+  })
+
+  it('con puntos de millar también (1.789 ↔ 1789)', () => {
+    expect(cifraEnTexto(1789, 'ENFERMERO/A 1.988 1.789 199')).toBe(true)
+  })
+
+  it('EN LETRA también — es como escriben los boletines, y ya me costó 22 acusaciones falsas', () => {
+    expect(cifraEnTexto(8, 'Ocho plazas para el turno de acceso libre')).toBe(true)
+    expect(cifraEnTexto(35, 'treinta y cinco plazas de Administrativa/o')).toBe(true)
+    expect(cifraEnTexto(216, 'doscientos dieciséis puestos')).toBe(true)
+  })
+
+  it('sin corpus no puede estar probada; sin cifra no hay nada que probar', () => {
+    expect(cifraEnTexto(100, null)).toBe(false)
+    expect(cifraEnTexto(null, 'lo que sea')).toBe(true)
+  })
+
+  it('el caso Valencia: el documento dice 176 y nosotros afirmamos 274 → NO está probada', () => {
+    expect(cifraEnTexto(274, 'bases de la convocatoria para proveer en propiedad 176 plazas de auxiliar administrativo/a')).toBe(false)
+  })
+})
