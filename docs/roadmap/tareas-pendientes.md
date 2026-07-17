@@ -16,6 +16,11 @@
 
 ## Abiertas
 
+### 🟡 [ABIERTO 17/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
+- **Qué:** dos artículos correctamente escopados pero con **0 preguntas activas**, prometidos a la usuaria (fb `daluamva@gmail.com`, `auxiliar_administrativo_sms`): **T8 Ley 4/1994 art 9 (Fines)** y **T3 Ley 12/2014 CARM Transparencia art 1 (Objeto y finalidad)**. Conviene reforzar de paso T8 arts 10-12 (1 preg c/u, tema muy fino: 8 preg).
+- **Por qué pendiente:** generación de contenido (fuente oficial BOE + doble auditoría + GATE) → no al vuelo; decisión de Manuel. Le dijimos "estamos trabajando en ello" y pidió **aviso expreso cuando estén** ("AVISARME CUANDO ESTEN").
+- **Cómo:** `docs/maintenance/generar-preguntas-con-ia.md`. Reward embajador 3€ al resolver (sin mencionar). Feedbacks claim-ados: `22835b84` (T8), `85d564cf` (T3 Ley 12/2014). Contexto scope (verificado contra BORM 07/10/2021): sesión 17/07.
+
 ### 🟢 [MEJORA APP — no urgente] Email RGPD de borrado *exactly-once* (marcador durable en `deleted_users_log`)
 - **Qué:** en `DELETE /api/admin/delete-user`, el correo de confirmación RGPD (Art. 12.3) puede **duplicarse** en un caso raro: si un 1er intento borró la cuenta y **envió el email** pero devolvió 500 por otra causa (p.ej. error del store de auth legacy), al reintentar (perfil ya ausente + fila de auditoría) la ruta reenvía el email desde el email durable de `deleted_users_log`. El reintento ya NO re-borra ni da 500 perpetuo (arreglado `4ef7a929`), pero el email no es *exactly-once*.
 - **Por qué:** cumplimiento/UX: un usuario borrado podría recibir 2 correos "cuenta eliminada". Impacto bajo (camino raro), pero es un cabo real anotado en la revisión adversarial del fix.
