@@ -45,7 +45,11 @@ const age = (t) => {
 
 async function claimFrom(list) {
   // Recorre las tablas en orden y coge la fila abierta más antigua que esté libre.
+  // Luego coge TAMBIÉN todas las demás pendientes DEL MISMO USUARIO en esa tabla: una
+  // sesión lleva a un usuario entero (más contexto, y no lo trocea entre sesiones).
+  // Detalle: manual impugnaciones §7.5 (clustering mismo-usuario). Sigue respondiéndose UNA POR UNA.
   for (const { tbl, open, kind } of list) {
+    const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
     const [row] = await s.unsafe(
       `UPDATE public.${tbl}
          SET claimed_by = $1, claimed_at = now()
@@ -56,10 +60,26 @@ async function claimFrom(list) {
           ORDER BY created_at
           FOR UPDATE SKIP LOCKED
           LIMIT 1)
-       RETURNING id, dispute_type, created_at`.replace('dispute_type', tbl === 'user_feedback' ? 'type AS dispute_type' : 'dispute_type'),
+       RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
       [sid, open]
     );
-    if (row) return { ...row, kind, tbl };
+    if (!row) continue;
+    // Cluster del mismo usuario: coge sus otras pendientes libres (SKIP LOCKED = no bloquea si otra sesión las tiene).
+    let siblings = [];
+    if (row.user_id != null) {
+      siblings = await s.unsafe(
+        `UPDATE public.${tbl}
+           SET claimed_by = $1, claimed_at = now()
+         WHERE id IN (
+           SELECT id FROM public.${tbl}
+            WHERE user_id = $3 AND id <> $4 AND status = ANY($2)
+              AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+            FOR UPDATE SKIP LOCKED)
+         RETURNING id, ${typeCol} AS dispute_type, created_at`,
+        [sid, open, row.user_id, row.id]
+      );
+    }
+    return { ...row, kind, tbl, siblings };
   }
   return null;
 }
@@ -95,9 +115,14 @@ async function listQueue(list) {
       const list = queue === 'feedback' ? FEEDBACK_TBL : DISPUTE_TBL;
       const row = await claimFrom(list);
       if (!row) { console.log(`Sin items libres en la cola "${queue}" (todo cogido o vacío).`); return; }
-      console.log(`✅ CLAIM hecho por ${sid.slice(0, 8)}:`);
+      const sibs = row.siblings || [];
+      console.log(`✅ CLAIM hecho por ${sid.slice(0, 8)} (usuario ${String(row.user_id).slice(0, 8)}):`);
       console.log(`   id:   ${row.id}`);
       console.log(`   tipo: [${row.kind}] ${row.dispute_type} | creada hace ${age(row.created_at)}`);
+      if (sibs.length) {
+        console.log(`   + ${sibs.length} MÁS del mismo usuario cogidas (llévalas TÚ, más contexto — pero responde UNA POR UNA):`);
+        sibs.forEach((x) => console.log(`      · ${x.id} | ${x.dispute_type} | hace ${age(x.created_at)}`));
+      }
       if (row.kind === 'feedback') console.log(`   → siguiente: flujo docs/procedures/gestionar-feedback-bug.md`);
       else console.log(`   → siguiente: node scripts/impugnaciones/revisar-impugnacion.cjs ${row.id}`);
       return;

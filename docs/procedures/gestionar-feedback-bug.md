@@ -27,6 +27,8 @@ node scripts/impugnaciones/cola.cjs release <feedback_id> --sid <id>     # solta
 
 El claim es atómico (`FOR UPDATE SKIP LOCKED`), se guarda en `user_feedback.claimed_by/claimed_at` y **se auto-libera a las 2h**. El cierre (`/api/v2/feedback/respond`) lo saca del pool. Detalle: manual de impugnaciones §1.bis.
 
+👤 **Una sesión = un usuario entero.** `cola.cjs next --queue feedback` coge el feedback más antiguo libre **y además todos los demás pendientes del MISMO usuario** (respetando los que ya tenga otra sesión). Es a propósito: el journey ya lo reconstruyes una vez (Paso 3) y vale para todos sus feedbacks — la misma sesión que tiene ese contexto los resuelve todos, con mejor diagnóstico. Sigue **UNA POR UNA** en la respuesta (cada feedback su propio borrador + OK + cierre; nunca un mensaje agrupado), pero **una sola sesión** los lleva.
+
 ## ⚠️ Orden de prioridad de la cola
 
 **Prioriza los feedbacks con valor de RETENCIÓN/AYUDA primero; las eliminaciones de cuenta van SIEMPRE las ÚLTIMAS.**

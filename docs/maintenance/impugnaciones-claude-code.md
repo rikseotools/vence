@@ -88,6 +88,7 @@ node scripts/impugnaciones/cola.cjs release <dispute_id> --sid <id>        # sol
 ```
 
 - **Claim = protege el ANÁLISIS.** El cierre (`/resolve` → `resolved`) la saca del pool solo; el backstop 409 sigue evitando doble-email si dos coinciden.
+- 👤 **Una sesión = un usuario entero.** `cola.cjs next` coge la impugnación más antigua libre **y además todas las demás pendientes del MISMO usuario** (respetando las que ya tenga otra sesión). Es a propósito: la misma sesión que ya reunió el journey/oposición de ese usuario resuelve **todas** las suyas → más contexto, mejor diagnóstico y detección del fallo sistémico (§7.5). **Ojo:** coger el cluster es solo para el reparto; se sigue respondiendo **UNA POR UNA** (su propio borrador, su propia aprobación, su propio email — nunca un email agrupado).
 - **Auto-libera a las 2h** (una sesión que muere no bloquea la cola para siempre). No hay cron ni "renew".
 - El id de sesión (`--sid`) = el UUID de tu carpeta de scratchpad (único por sesión). Se guarda en `claimed_by`.
 - Alternativa integrada: `revisar-impugnacion.cjs <id> --sid <id>` coge la impugnación al generar el dossier y avisa si otra sesión ya la tiene fresca.
@@ -799,6 +800,8 @@ Si al resolver una dispute te aparece error del trigger al intentar transicionar
 ## 7.5 Same-user clustering: red flag de fallo sistémico (post-14/04/2026)
 
 **Regla:** si un mismo usuario (mismo `user_id`) abre **3+ impugnaciones** seguidas en poco tiempo, antes de tratarlas como casos independientes, buscar el **denominador común**. Casi siempre revela un fallo sistémico (de scope, de pipeline, de versión de programa, etc.) en lugar de N preguntas malas independientes.
+
+> 👤 **Por eso una MISMA sesión debe llevar TODAS las de un usuario.** Repartir las impugnaciones de un mismo usuario entre varias sesiones destruye el contexto que revela la causa raíz (cada sesión ve 1 pieza y ninguna ve el patrón). El reparto (`cola.cjs next`, §1.bis) ya lo hace por ti: al coger una impugnación coge **también todas las demás pendientes de ese usuario**, para que la sesión que ya montó su journey/oposición las resuelva todas. Sigue siendo **una por una** en la respuesta (email individual), pero **una sola sesión** en el análisis.
 
 > ⚠️ **El clustering es solo para el diagnóstico, NO para la respuesta.** Detectar la causa raíz común no autoriza a fusionar el cierre: cada impugnación se sigue resolviendo **una por una** con su propio borrador, su propia aprobación y su propio email (ver regla "UNA POR UNA" del Procedimiento operativo). No agrupar varias del mismo usuario en un único mensaje/email aunque la raíz sea idéntica.
 
