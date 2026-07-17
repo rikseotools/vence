@@ -55,6 +55,9 @@ interface TestConfig {
   backText?: string
   testType?: string
   categories?: string[]
+  // Selección exacta pedida por el usuario (keys) — se persiste en la sesión.
+  selectedCategoryKeys?: string[]
+  selectedSectionKeys?: string[]
   [key: string]: unknown
 }
 
@@ -221,6 +224,10 @@ export default function PsychometricTestLayout({
             categoryId: questions[0].category_id || null,
             totalQuestions: questions.length,
             questionIds: questions.map(q => q.id),
+            // Selección exacta pedida (keys) — el server la resuelve a IDs y la
+            // guarda en categories_selected/sections_selected (observabilidad).
+            categoryKeys: config?.selectedCategoryKeys ?? undefined,
+            sectionKeys: config?.selectedSectionKeys ?? undefined,
           }),
         })
 

@@ -12,6 +12,7 @@ import {
   psychometricTestAnswers,
   psychometricQuestions,
   psychometricCategories,
+  psychometricSections,
 } from '@/db/schema'
 import { eq, and, gt, isNull, inArray, sql } from 'drizzle-orm'
 import type {
@@ -243,11 +244,33 @@ export async function createPsychometricSession(
 ): Promise<{ success: true; sessionId: string } | PsychometricSessionError> {
   try {
     const db = getPsychSessionDb()
+
+    // Resolver la selección pedida (keys) → IDs para persistirla y hacer
+    // este tipo de bug diagnosticable de un vistazo (observabilidad).
+    let categoriesSelected: string[] | null = null
+    let sectionsSelected: string[] | null = null
+    if (params.categoryKeys && params.categoryKeys.length > 0) {
+      const rows = await db
+        .select({ id: psychometricCategories.id })
+        .from(psychometricCategories)
+        .where(inArray(psychometricCategories.categoryKey, params.categoryKeys))
+      categoriesSelected = rows.map(r => r.id)
+    }
+    if (params.sectionKeys && params.sectionKeys.length > 0) {
+      const rows = await db
+        .select({ id: psychometricSections.id })
+        .from(psychometricSections)
+        .where(inArray(psychometricSections.sectionKey, params.sectionKeys))
+      sectionsSelected = rows.map(r => r.id)
+    }
+
     const [result] = await db
       .insert(psychometricTestSessions)
       .values({
         userId: params.userId,
         categoryId: params.categoryId || null,
+        categoriesSelected,
+        sectionsSelected,
         sessionType: 'psychometric',
         totalQuestions: params.totalQuestions,
         questionsData: { question_ids: params.questionIds },

@@ -83,6 +83,11 @@ export const createPsychometricSessionRequestSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
   totalQuestions: z.number().int().min(1),
   questionIds: z.array(z.string()),
+  // Selección exacta pedida por el usuario (keys). El server las resuelve a
+  // IDs y las persiste en categories_selected/sections_selected. Opcionales
+  // (back-compat: reanudar, guest, o callers antiguos no las envían).
+  categoryKeys: z.array(z.string().min(1)).optional(),
+  sectionKeys: z.array(z.string().min(1)).optional(),
 })
 
 export type CreatePsychometricSessionRequest = z.infer<typeof createPsychometricSessionRequestSchema>

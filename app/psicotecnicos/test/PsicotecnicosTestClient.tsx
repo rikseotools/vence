@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import { buildPsychometricTestParams } from '@/lib/psychometric/buildTestParams'
 import type {
   PsychometricCategory,
   PsychometricSection,
@@ -458,32 +459,23 @@ export default function PsicotecnicosTestClient() {
                 <button
                   disabled={totalSelectedQuestions === 0}
                   onClick={() => {
-                    const selectedCatKeys = Object.keys(selectedCategories).filter(k => selectedCategories[k])
                     const adjustedNum = Math.min(numQuestionsPsico, totalSelectedQuestions)
 
+                    // Selección AUTORITATIVA: cada categoría con secciones se
+                    // representa por sus secciones elegidas (nunca por la
+                    // categoría entera); las categorías sin secciones, por su
+                    // clave. Evita el leak "elijo sinónimos y salen definiciones".
+                    const { categoryKeys, sectionKeys } = buildPsychometricTestParams(
+                      categories,
+                      selectedCategories,
+                      selectedSections
+                    )
+
                     const urlParams = new URLSearchParams({
-                      categories: selectedCatKeys.join(','),
                       numQuestions: adjustedNum.toString(),
                     })
-
-                    // Si el usuario seleccionó secciones específicas (no todas),
-                    // pasar las secciones para filtrar correctamente
-                    const selectedSecKeys: string[] = []
-                    let hasPartialSelection = false
-                    for (const catKey of selectedCatKeys) {
-                      const cat = categories.find((c: PsychometricCategory) => c.key === catKey)
-                      if (!cat || cat.sections.length === 0) continue
-                      const allSelected = cat.sections.every((s: PsychometricSection) => selectedSections[s.key])
-                      if (!allSelected) {
-                        hasPartialSelection = true
-                        for (const sec of cat.sections) {
-                          if (selectedSections[sec.key]) selectedSecKeys.push(sec.key)
-                        }
-                      }
-                    }
-                    if (hasPartialSelection && selectedSecKeys.length > 0) {
-                      urlParams.set('sections', selectedSecKeys.join(','))
-                    }
+                    if (categoryKeys.length > 0) urlParams.set('categories', categoryKeys.join(','))
+                    if (sectionKeys.length > 0) urlParams.set('sections', sectionKeys.join(','))
 
                     router.push(`/psicotecnicos/test/ejecutar?${urlParams.toString()}`)
                   }}

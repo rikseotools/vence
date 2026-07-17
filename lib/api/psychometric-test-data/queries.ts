@@ -15,7 +15,7 @@ import {
   psychometricTestAnswers,
   userProfiles,
 } from '@/db/schema'
-import { eq, and, inArray, sql } from 'drizzle-orm'
+import { eq, and, or, inArray, sql } from 'drizzle-orm'
 import type {
   GetPsychometricCategoriesResponse,
   GetPsychometricQuestionsResponse,
@@ -326,23 +326,51 @@ export async function getPsychometricQuestions(
   try {
     const db = getPsychTestDataDb()
 
-    // 1. Resolve categoryKeys to IDs
-    const cats = await db
-      .select({
-        id: psychometricCategories.id,
-        key: psychometricCategories.categoryKey,
-      })
-      .from(psychometricCategories)
-      .where(
-        and(
-          eq(psychometricCategories.isActive, true),
-          inArray(psychometricCategories.categoryKey, categoryKeys)
-        )
-      )
+    // 1. Resolve categoryKeys → IDs (pueden ser 0 si sólo se piden secciones)
+    const cats = categoryKeys.length
+      ? await db
+          .select({
+            id: psychometricCategories.id,
+            key: psychometricCategories.categoryKey,
+          })
+          .from(psychometricCategories)
+          .where(
+            and(
+              eq(psychometricCategories.isActive, true),
+              inArray(psychometricCategories.categoryKey, categoryKeys)
+            )
+          )
+      : []
 
     const categoryIds = cats.map(c => c.id)
 
-    if (categoryIds.length === 0) {
+    // 1b. Resolve sectionKeys → {id, categoryId}
+    const secs = sectionKeys && sectionKeys.length > 0
+      ? await db
+          .select({
+            id: psychometricSections.id,
+            categoryId: psychometricSections.categoryId,
+          })
+          .from(psychometricSections)
+          .where(
+            and(
+              eq(psychometricSections.isActive, true),
+              inArray(psychometricSections.sectionKey, sectionKeys)
+            )
+          )
+      : []
+    const sectionIds = secs.map(s => s.id)
+
+    // DEFENSA ANTI-LEAK: una categoría que tiene ALGUNA sección seleccionada
+    // NO se filtra "entera" — sólo entran sus secciones elegidas. Se aplica
+    // aunque el cliente mande esa categoría por error, así que es imposible
+    // que se cuele la categoría completa (bug de Laura, 17/07/2026).
+    const categoriesWithSelectedSections = new Set(secs.map(s => s.categoryId))
+    const wholesaleCategoryIds = categoryIds.filter(
+      id => !categoriesWithSelectedSections.has(id)
+    )
+
+    if (wholesaleCategoryIds.length === 0 && sectionIds.length === 0) {
       return {
         success: true,
         questions: [],
@@ -350,31 +378,21 @@ export async function getPsychometricQuestions(
       }
     }
 
-    // 1b. Si se pasan secciones específicas, resolver a IDs
-    let sectionIds: string[] | null = null
-    if (sectionKeys && sectionKeys.length > 0) {
-      const secs = await db
-        .select({ id: psychometricSections.id })
-        .from(psychometricSections)
-        .where(
-          and(
-            eq(psychometricSections.isActive, true),
-            inArray(psychometricSections.sectionKey, sectionKeys)
-          )
-        )
-      sectionIds = secs.map(s => s.id)
+    // 2. Fetch questions — filtro por UNIÓN: sección seleccionada OR
+    //    categoría-sin-secciones entera. Nunca excluyente (no descarta
+    //    categorías enteras al mezclarlas con secciones, ni cuela una
+    //    categoría entera cuando el usuario pidió sólo una sección).
+    const scopeClauses = []
+    if (sectionIds.length > 0) {
+      scopeClauses.push(inArray(psychometricQuestions.sectionId, sectionIds))
     }
-
-    // 2. Fetch questions — filtrar por sección si se especifica, si no por categoría
-    const questionFilter = sectionIds && sectionIds.length > 0
-      ? and(
-          eq(psychometricQuestions.isActive, true),
-          inArray(psychometricQuestions.sectionId, sectionIds)
-        )
-      : and(
-          eq(psychometricQuestions.isActive, true),
-          inArray(psychometricQuestions.categoryId, categoryIds)
-        )
+    if (wholesaleCategoryIds.length > 0) {
+      scopeClauses.push(inArray(psychometricQuestions.categoryId, wholesaleCategoryIds))
+    }
+    const questionFilter = and(
+      eq(psychometricQuestions.isActive, true),
+      scopeClauses.length === 1 ? scopeClauses[0] : or(...scopeClauses)
+    )
 
     const allQuestions = await db
       .select({
@@ -411,7 +429,9 @@ export async function getPsychometricQuestions(
     const selected = shuffled.slice(0, numQuestions)
 
     console.log(
-      `✅ [API/psychometric-test-data] Loaded ${selected.length}/${totalAvailable} questions for categories: ${categoryKeys.join(', ')}`
+      `✅ [API/psychometric-test-data] Loaded ${selected.length}/${totalAvailable} questions` +
+        ` — categorías: [${wholesaleCategoryIds.length ? categoryKeys.join(', ') : '—'}]` +
+        ` secciones: [${sectionKeys?.length ? sectionKeys.join(', ') : '—'}]`
     )
 
     return {

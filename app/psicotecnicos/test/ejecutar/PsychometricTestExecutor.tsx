@@ -62,6 +62,7 @@ function MultipleCategoriesPsychometricTestContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedSections, setSelectedSections] = useState<string[]>([])
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
 
   useEffect(() => {
@@ -108,25 +109,24 @@ function MultipleCategoriesPsychometricTestContent() {
         const categoriesParam = searchParams.get('categories')
         const sectionsParam = searchParams.get('sections')
         const numQuestionsParam = searchParams.get('numQuestions')
-        if (!categoriesParam) {
-          setError('No se especificaron categorías')
+
+        const categories = categoriesParam ? categoriesParam.split(',').filter(Boolean) : []
+        const sections = sectionsParam ? sectionsParam.split(',').filter(Boolean) : []
+        const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam, 10) : 25
+
+        // Debe venir al menos una categoría o una sección.
+        if (categories.length === 0 && sections.length === 0) {
+          setError('No se especificaron categorías ni secciones')
           return
         }
-
-        const categories = categoriesParam.split(',').filter(Boolean)
-        const sections = sectionsParam ? sectionsParam.split(',').filter(Boolean) : undefined
-        const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam, 10) : 25
         setSelectedCategories(categories)
+        setSelectedSections(sections)
 
-        console.log('🔍 Loading psychometric questions via API for categories:', categories)
+        console.log('🔍 Loading psychometric questions via API — categorías:', categories, 'secciones:', sections)
 
-        const params = new URLSearchParams({
-          categories: categories.join(','),
-          numQuestions: numQuestions.toString(),
-        })
-        if (sections && sections.length > 0) {
-          params.set('sections', sections.join(','))
-        }
+        const params = new URLSearchParams({ numQuestions: numQuestions.toString() })
+        if (categories.length > 0) params.set('categories', categories.join(','))
+        if (sections.length > 0) params.set('sections', sections.join(','))
 
         const res = await fetch(`/api/psychometric-test-data/questions?${params.toString()}`)
         const data: GetPsychometricQuestionsResponse = await res.json()
@@ -206,6 +206,9 @@ function MultipleCategoriesPsychometricTestContent() {
       config={{
         testType: 'psychometric-categories',
         categories: selectedCategories,
+        // Selección exacta pedida — se persiste en la sesión (observabilidad).
+        selectedCategoryKeys: selectedCategories,
+        selectedSectionKeys: selectedSections,
         backUrl: '/psicotecnicos/test',
         backText: 'Volver a Psicotécnicos'
       }}
