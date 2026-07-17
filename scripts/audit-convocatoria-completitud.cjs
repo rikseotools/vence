@@ -311,17 +311,30 @@ async function main() {
   //    letra — los boletines escriben en letra). Es condición NECESARIA, no suficiente: que el 3 de
   //    Ávila aparezca no prueba que sean 3 plazas, eso se lee. Pero si la cifra no está NI UNA VEZ, el
   //    documento no puede probarla, y eso sí es demostrable sin criterio.
+  //
+  //    LA VÁLVULA `cifra_derivada` (17/07): a veces la cifra correcta NO está escrita en ningún sitio y
+  //    aun así es honesta. La Orden de Extremadura convoca 146 plazas y desglosa «23 por el turno de
+  //    acceso libre» (OEP 2021) + «103 por el turno de acceso libre» (OEP 2022/23): el turno libre son
+  //    126, pero el «126» no aparece — lo sumo yo. Es aritmética sobre literales DEL MISMO documento,
+  //    no una invención.
+  //    Pero «lo sumé yo» es exactamente lo que se dijo del 2.163 de la Policía Nacional (2.704 − 541),
+  //    que sí era una invención presentada como hecho. La diferencia no la puede ver un regex: la ve
+  //    quien lee. Así que no se silencia sola — hay que DECLARARLA: `convocatoria_verification` en
+  //    `verified_correct` con la clave `cifra_derivada` en `findings`, explicando la cuenta y citando
+  //    los sumandos literales. Sigue siendo una excepción, pero deja rastro y alguien la firmó.
   const huerfanas = (await c.query(`
     SELECT o.slug, cv.plazas_libres, cv.boe_reference, cv."año",
            (SELECT count(*)::int FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id) docs,
            (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
-             WHERE d.convocatoria_id = cv.id) corpus
+             WHERE d.convocatoria_id = cv.id) corpus,
+           (SELECT (v.state = 'verified_correct' AND v.findings ? 'cifra_derivada')
+              FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada
       FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
      WHERE cv.is_current AND o.is_active
        AND cv.plazas_libres IS NOT NULL
        AND NOT cv.plazas_prevision
      ORDER BY cv.plazas_libres DESC NULLS LAST`)).rows
-    .filter((h) => !cifraEnTexto(h.plazas_libres, h.corpus))
+    .filter((h) => !cifraEnTexto(h.plazas_libres, h.corpus) && h.derivada_declarada !== true)
   for (const h of huerfanas) {
     add(h.slug, 'plazas_afirmadas_sin_documento',
       h.docs === 0
