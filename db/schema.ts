@@ -1415,6 +1415,12 @@ export const paymentSettlements = pgTable("payment_settlements", {
 			name: "payment_settlements_user_id_fkey"
 		}),
 	unique("payment_settlements_stripe_payment_intent_id_key").on(table.stripePaymentIntentId),
+	// Idempotencia del settlement por factura: un alta nueva emite 2 eventos (checkout +
+	// invoice.payment_succeeded) para el mismo pago → sin esto, filas duplicadas (bug 07/07).
+	// Parcial: los pagos puntuales sin factura (invoice NULL) no colisionan. Migración 20260718.
+	uniqueIndex("payment_settlements_stripe_invoice_id_key")
+		.on(table.stripeInvoiceId)
+		.where(sql`stripe_invoice_id IS NOT NULL`),
 	pgPolicy("Allow public read on payment_settlements", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	pgPolicy("Allow public update on payment_settlements", { as: "permissive", for: "update", to: ["public"] }),
 ]);
