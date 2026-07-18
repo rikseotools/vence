@@ -116,6 +116,31 @@ curl -s "https://www.vence.es/api/verify-articles?lawId=<UUID>"
 
 > **Caso real 2026-07-13.** El badge parpadeaba con `change_status='changed'`=0. La segunda fuente marcaba 5 leyes con `boe_count=0` ("No se encontraron artículos"). Parecían falsos positivos del extractor — **no lo eran**. Re-verificando: 4 leyes tenían discrepancias reales tapadas por el 0 transitorio (drift de contenido + artículos faltantes), y una (**Ley 2/2007 Archivos Ext**) tenía el **`boe_url` apuntando a otra ley** (`BOE-A-2007-9963` = una Resolución de aprobados de Agentes de Hacienda, en vez de `BOE-A-2007-10663`), con solo 3 de sus 55 artículos en BD. Si se hubiera "apagado" el badge, se habría ocultado todo eso. **El badge estaba haciendo su trabajo.** Regla: `boe_count=0` → re-verificar y arreglar `boe_url`, nunca suprimir.
 
+### ✅ `known_quirk: true` — artefacto de conteo del extractor ya revisado (apaga el badge sin falsear)
+
+A veces la discrepancia **no es de contenido**: el extractor del BOE cuenta como "artículo extra" algo que no lo es (típico: la **nota de supresión** de un apartado por una reforma queda como una entrada suelta → `db_count = boe_count + 1`, `extra_in_db: 1`). El contenido en BD es correcto y su pregunta también. Aquí **NO se debe** tocar el contenido correcto para "cuadrar" el matcher, ni suprimir el badge a mano borrando el summary.
+
+La vía limpia: tras verificar que el contenido es correcto, escribir en `last_verification_summary` el flag **`known_quirk: true`** + un `message` que explique el artefacto. `calculateIsOk` (`lib/api/verify-articles/ai-helpers.ts`) lo trata como OK y el badge se apaga — es **simétrico a `no_consolidated_text`**.
+
+**Guardarraíles del flag (defensa en profundidad, no es un bypass ciego):**
+- `known_quirk` **solo exonera el residual de `extra_in_db`**. NUNCA silencia `content_mismatch`, `title_mismatch`, `missing_in_db` ni `boe_count=0` — esas discrepancias de contenido siguen encendiendo el badge aunque el flag esté puesto.
+- Si más adelante hay una reforma real, la caza la **fuente #1** (`change_status='changed'`, detector de fecha, independiente del summary), y una re-verificación completa reescribe el summary fresco (sin `known_quirk`) → el problema real re-emerge. El flag no puede tapar un cambio futuro.
+- Debe ser el booleano estricto `true` (un `1`/truthy accidental no exonera).
+
+Ejemplo de summary aceptado:
+
+```json
+{
+  "known_quirk": true,
+  "db_count": 133, "boe_count": 132, "matching": 132, "extra_in_db": 1,
+  "content_mismatch": 0, "missing_in_db": 0,
+  "message": "Art 49 correcto y su pregunta también. El extractor incluye la nota de supresión del apartado 4 (Ley 5/2025) como extra; artefacto del extractor, no error de contenido.",
+  "verified_at": "..."
+}
+```
+
+> **Caso real 2026-07-18.** Única señal de Monitoreo = **Ley 4/2019 Galicia** con `extra_in_db: 1` (art. 49: el extractor cuenta la nota de supresión del apartado 4 por la Ley 5/2025). Contenido verificado correcto y ya marcado `known_quirk: true`, pero `calculateIsOk` no honraba el flag → el badge parpadeaba de forma crónica por un caso ya resuelto. Fix: `calculateIsOk` honra `known_quirk` **solo** para el residual de conteo, manteniendo intactas las discrepancias duras y `boe_count=0`. Tests en `__tests__/api/verify-articles/stats-by-law.test.ts`.
+
 ### Método de reconciliación ley↔BOE (por cada discrepancia)
 
 1. **Re-verificar** para tener el estado honesto (re-descarga BOE, persiste summary).

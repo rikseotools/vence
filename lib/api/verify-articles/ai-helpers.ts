@@ -487,17 +487,31 @@ export function calculateIsOk(summary: Record<string, unknown> | null): boolean 
   if (summary.no_consolidated_text) return true
 
   const boeCount = (summary.boe_count ?? summary.total_boe ?? null) as number | null
+  // `boe_count=0` NUNCA es benigno (fallo transitorio de descarga que enmascara
+  // discrepancias reales). Se re-verifica, no se suprime — ni siquiera con known_quirk.
+  // Ver docs/maintenance/monitoreo-boe-y-crear-leyes-nuevas.md §1ter.
   if (boeCount === 0) return false
 
   if (summary.message && typeof summary.message === 'string' && summary.message.includes('No se encontraron artículos')) return false
 
+  // Discrepancias de CONTENIDO real (título, contenido, artículos faltantes): jamás
+  // se exoneran con un flag de revisión. `known_quirk` solo cubre artefactos de conteo.
+  const hasHardDiscrepancy =
+    ((summary.title_mismatch as number) || 0) > 0 ||
+    ((summary.content_mismatch as number) || 0) > 0 ||
+    ((summary.missing_in_db as number) || 0) > 0
+  if (hasHardDiscrepancy) return false
+
+  // `known_quirk: true` = un humano verificó la ley, confirmó que el contenido es
+  // correcto, y que el `extra_in_db` residual es un artefacto conocido del extractor
+  // del BOE (p.ej. cuenta la nota de supresión de un apartado como artículo extra).
+  // Simétrico a `no_consolidated_text`: apaga el badge de un residual ya revisado sin
+  // falsear el contenido. Solo aplica al residual de conteo; las discrepancias duras de
+  // arriba ya se descartaron. Se documenta en el manual de monitoreo BOE §1ter.
+  if (summary.known_quirk === true) return true
+
   const structureArticles = (summary.structure_articles as number) || 0
   const realExtraInDb = Math.max(0, ((summary.extra_in_db as number) || 0) - structureArticles)
 
-  return (
-    ((summary.title_mismatch as number) || 0) === 0 &&
-    ((summary.content_mismatch as number) || 0) === 0 &&
-    realExtraInDb === 0 &&
-    ((summary.missing_in_db as number) || 0) === 0
-  )
+  return realExtraInDb === 0
 }

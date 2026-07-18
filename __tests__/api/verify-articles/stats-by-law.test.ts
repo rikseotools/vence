@@ -81,6 +81,42 @@ describe('Verify Articles - Stats By Law', () => {
         boe_count: 10,
       })).toBe(false)
     })
+
+    // known_quirk: sign-off humano de un artefacto de conteo del extractor BOE
+    it('should return true when known_quirk waives a residual extra_in_db (reviewed artifact)', () => {
+      // Caso real: Ley 4/2019 Galicia — el extractor cuenta la nota de supresión de un
+      // apartado como artículo extra (db 133 vs boe 132). Contenido correcto y verificado.
+      expect(calculateIsOk({
+        known_quirk: true,
+        extra_in_db: 1,
+        boe_count: 132,
+        db_count: 133,
+        matching: 132,
+        content_mismatch: 0,
+        missing_in_db: 0,
+      })).toBe(true)
+    })
+
+    it('should NOT let known_quirk waive a real content_mismatch', () => {
+      expect(calculateIsOk({ known_quirk: true, content_mismatch: 2, boe_count: 10 })).toBe(false)
+    })
+
+    it('should NOT let known_quirk waive a real title_mismatch', () => {
+      expect(calculateIsOk({ known_quirk: true, title_mismatch: 1, boe_count: 10 })).toBe(false)
+    })
+
+    it('should NOT let known_quirk waive a real missing_in_db', () => {
+      expect(calculateIsOk({ known_quirk: true, missing_in_db: 3, boe_count: 10 })).toBe(false)
+    })
+
+    it('should NOT let known_quirk suppress boe_count=0 (must re-verify, never suppress)', () => {
+      expect(calculateIsOk({ known_quirk: true, boe_count: 0 })).toBe(false)
+    })
+
+    it('should ignore known_quirk when not strictly true', () => {
+      // Solo el booleano true exonera; valores truthy accidentales no.
+      expect(calculateIsOk({ known_quirk: 1 as unknown as boolean, extra_in_db: 2, boe_count: 10 })).toBe(false)
+    })
   })
 })
 
