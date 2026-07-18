@@ -503,8 +503,9 @@ export const questionArticles = pgTable("question_articles", {
 	check("question_articles_relevance_check", sql`relevance = ANY (ARRAY['primary'::text, 'secondary'::text, 'reference'::text])`),
 ]);
 
-// SSOT del PROCESO (Sprint G). Una fila por año; `is_current` marca la vigente.
-// La leen los lectores vía la vista `oposiciones_ssot` (db/oposicionesSsot.ts).
+// SSOT del PROCESO (Sprint G). N convocatorias por oposición (histórico + varias el
+// MISMO año: 2ª convocatoria, turno libre/PI en Ordenes distintas); `is_current` marca
+// la vigente. La leen los lectores vía la vista `oposiciones_ssot` (db/oposicionesSsot.ts).
 export const convocatorias = pgTable("convocatorias", {
 	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	oposicionId: uuid("oposicion_id").notNull(),
@@ -548,7 +549,16 @@ export const convocatorias = pgTable("convocatorias", {
 			foreignColumns: [oposiciones.id],
 			name: "convocatorias_oposicion_id_fkey"
 		}).onDelete("cascade"),
-	unique("convocatorias_oposicion_id_año_key").on(table.oposicionId, table["año"]),
+	// Invariante real: como mucho UNA convocatoria vigente por oposición (de esto depende
+	// oposiciones_ssot con su `WHERE is_current LIMIT 1`). Sustituye a la antigua
+	// UNIQUE(oposicion_id, año), que impedía dos convocatorias el mismo año.
+	uniqueIndex("convocatorias_una_vigente_por_oposicion")
+		.on(table.oposicionId)
+		.where(sql`is_current AND archived_at IS NULL`),
+	// Identidad natural: no importar dos veces la misma Orden/BOE oficial.
+	uniqueIndex("convocatorias_ref_oficial_unica")
+		.on(table.oposicionId, table.convocatoriaNumero)
+		.where(sql`convocatoria_numero IS NOT NULL`),
 ]);
 
 export const userRoles = pgTable("user_roles", {
