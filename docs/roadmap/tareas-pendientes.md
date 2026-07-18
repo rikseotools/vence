@@ -116,6 +116,13 @@
 - **Estado:** resto de la oposición **28/30 `verified_correct`** (incl. función pública 6/7/8/10 reparada: reparto correcto de la Ley 13/2015 por epígrafe, re-verificado).
 
 
+### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Diputación de Zaragoza (verify:scope 18/07)
+- **Qué:** feedback de Sandra (bug `6f789351`, *"en contratos solo entra hasta el art. 43, pero salen preguntas de otros artículos"*) disparó `verify:scope` de la oposición completa (20 temas, antes `never_verified` → **12 correct, 4 issues, 4 needs_human**; run `verify_auxiliar_administrativo_diputacion_zaragoza_2026-07-18`). El feedback quedó **resuelto y respondido** (T11 NO era sobre-scope: aptitud 65-73 y precio 99-102 SÍ son "contratación pública"; su material corta antes que el epígrafe oficial).
+- **T11 contratación (needs_human):** falta el bloque *"formas y procedimientos de contratación"* = procedimientos de adjudicación LCSP (~arts 131-179), hoy ausentes. Valorar ampliar (es más preguntas, no menos).
+- **Deuda aragonesa (4 issues):** el epígrafe nombra normativa autonómica pero solo está la estatal — **T2** Estatuto de Autonomía de Aragón (LO 5/2007), **T4** ley aragonesa de régimen local, **T15** Ley de Subvenciones de Aragón, **T18** ley aragonesa de igualdad. Enganchar + poblar desde fuente oficial.
+- **Otros needs_human:** T5 (términos/plazos 39/2015 arts 29-33), T6 (silencio 24-25 + ejecución 97-105), T17 (contabilidad EELL + posibles arts estatales de Ley 47/2003 que sobran).
+- **Cómo:** crear/importar cada ley regional (BOA/BOE) y escoparla; ampliar T11; re-verificar. No inventar contenido. Runbook `verificar-epigrafes-scope.md`.
+
 ### 🟠 [ALTA] Framework profesional de canaries (P1-P3) — que no se repita el incidente 11/07
 - **Qué:** clase base `CanaryProbe` + exclusión central del usuario sintético de analíticas (`SYNTHETIC_USER_IDS`) + migrar todos los canary a la base + guardarraíl CI + runbook. Que ningún write-canary pueda acumular datos sin límite ni contaminar métricas.
 - **Por qué:** el 11/07 `canary-stats-pipeline` acumuló 10.737 filas en `test_questions` sin limpiar → su drift-query se ahogó (13,6s → cron falla → alertas). P0 (purga + auto-acotado de ese canary) HECHO; falta el framework para el resto.
