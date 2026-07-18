@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'administrativo_aragon',
+      label: 'Administrativo (DGA)',
+      data: {
+        name: 'Administrativo de la Comunidad Autónoma de Aragón',
+        slug: 'administrativo-aragon',
+        categoria: 'C1',
+        administracion: 'Gobierno de Aragón (DGA)'
+      }
+    },
+    {
       value: 'auxiliar_museos_estado',
       label: 'Auxiliar de Museos (Estado)',
       data: {

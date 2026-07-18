@@ -73,6 +73,7 @@ export function getAllFilterSlugs(): string[] {
 // Mapear oposición a CCAA slug para filtrado
 export function oposicionToCcaa(opoSlug: string): string | null {
   const map: Record<string, string> = {
+    'administrativo-aragon': 'aragon',
     'auxiliar-museos-estado': 'estado',
     'auxiliar-archivos-estado': 'estado',
     'auxiliar-biblioteca-estado': 'estado',

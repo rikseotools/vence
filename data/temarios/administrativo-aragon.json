@@ -1,0 +1,92 @@
+{
+  "identity": {
+    "nombre": "Administrativo de la Comunidad Autónoma de Aragón",
+    "short_name": "Administrativo (DGA)",
+    "slug": "administrativo-aragon",
+    "position_type": "administrativo_aragon",
+    "grupo": "C",
+    "subgrupo": "C1",
+    "categoria": "C1",
+    "tipo_acceso": "libre",
+    "administracion": "autonomica",
+    "administracion_display": "Gobierno de Aragón (DGA)",
+    "ccaa": "aragon",
+    "familia": "administracion_general",
+    "titulo_requerido": "Bachiller o Técnico (o equivalente)",
+    "coverage_level": "con_tests",
+    "aliases": ["administrativo dga", "administrativo gobierno de aragon", "cuerpo ejecutivo escala general administrativa aragon", "administrativo aragon c1"],
+    "emoji": "📋",
+    "color_primario": "blue",
+    "temas_count": 35,
+    "bloques_count": 2
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "BOA nº 247, 23/12/2025 (proceso 25/0102), base 6: dos ejercicios tipo test (80 preguntas teóricas + 40 prácticas, 4 alternativas). Cada acierto +1; respuesta errónea resta 0,3333 (−1/3); no contestadas no penalizan."
+  },
+  "landing": {
+    "estadisticas": [
+      { "numero": "144", "texto": "Plazas convocadas (Escala General Administrativa)", "color": "text-green-600" },
+      { "numero": "C1", "texto": "Subgrupo", "color": "text-blue-600" },
+      { "numero": "35", "texto": "Temas del programa", "color": "text-purple-600" }
+    ],
+    "faqs": [
+      { "pregunta": "¿Qué titulación necesito?", "respuesta": "Título de Bachiller, Técnico o equivalente (o estar en condiciones de obtenerlo al finalizar el plazo de solicitudes)." },
+      { "pregunta": "¿Cómo es el examen?", "respuesta": "La oposición tiene dos ejercicios tipo test que se realizan el mismo día. El primero, teórico, son 80 preguntas (más 10 de reserva) en dos horas; el segundo, práctico, son 40 preguntas (más 5 de reserva) sobre supuestos prácticos, también en dos horas. Cada pregunta tiene cuatro respuestas y solo una es válida. Los errores restan un tercio (−0,3333) y las preguntas en blanco no penalizan." },
+      { "pregunta": "¿Cuántas plazas se convocan?", "respuesta": "La convocatoria del proceso 25/0102 (BOA de 23 de diciembre de 2025) ofertó 144 plazas de la Escala General Administrativa del Cuerpo Ejecutivo, acumulando las ofertas de empleo público de 2023, 2024 y 2025." },
+      { "pregunta": "¿Se convoca con regularidad?", "respuesta": "Sí. El Cuerpo Ejecutivo (Administrativos) de la Diputación General de Aragón es una oposición recurrente; cuando se publique la próxima convocatoria, el temario y los tests aquí ya te sirven para prepararla." }
+    ]
+  },
+  "bloques": [
+    { "numero": 1, "titulo": "Materias comunes", "icon": "⚖️" },
+    { "numero": 2, "titulo": "Materias específicas", "icon": "📚" }
+  ],
+  "temario": [
+    { "bloque": 1, "numero": 1, "topic_number": 1, "titulo": "La Constitución Española de 1978", "epigrafe": "La Constitución Española de 1978: estructura, contenido y principios que la informan. Los derechos fundamentales y sus garantías. La Corona. Las Cortes Generales. El Poder Judicial. El Tribunal Constitucional. El Defensor del Pueblo." },
+    { "bloque": 1, "numero": 2, "topic_number": 2, "titulo": "La organización territorial del Estado", "epigrafe": "La organización territorial del Estado. Gobierno de la Nación y Administración General del Estado. Comunidades Autónomas. Administración Local. Las relaciones entre los entes territoriales. Especial referencia a la comarcalización de Aragón." },
+    { "bloque": 1, "numero": 3, "topic_number": 3, "titulo": "El Estatuto de Autonomía de Aragón", "epigrafe": "El Estatuto de Autonomía de Aragón. La organización institucional de la Comunidad Autónoma de Aragón. Las Cortes de Aragón. El Justicia de Aragón." },
+    { "bloque": 1, "numero": 4, "topic_number": 4, "titulo": "El Gobierno y la Administración de Aragón", "epigrafe": "Los órganos de gobierno y administración de la Comunidad Autónoma de Aragón. El Presidente y el Gobierno de Aragón. Los Consejeros. La Administración Pública de la Comunidad Autónoma. La estructura administrativa. El Sector Público de la Comunidad Autónoma de Aragón. La Administración consultiva: el Consejo de Estado y el Consejo Consultivo de Aragón." },
+    { "bloque": 1, "numero": 5, "topic_number": 5, "titulo": "La prevención de riesgos laborales", "epigrafe": "La prevención de riesgos laborales: derechos y obligaciones en materia de seguridad y salud en el trabajo." },
+
+    { "bloque": 2, "numero": 1, "topic_number": 101, "titulo": "Fuentes del Derecho Administrativo", "epigrafe": "Fuentes del Derecho Administrativo. La Constitución. Leyes orgánicas y ordinarias. Disposiciones administrativas con fuerza de Ley. El reglamento: concepto, naturaleza y clases. Límites de la potestad reglamentaria. Autonomía y sistema de fuentes." },
+    { "bloque": 2, "numero": 2, "topic_number": 102, "titulo": "El procedimiento administrativo", "epigrafe": "El procedimiento administrativo: concepto e importancia. La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas. Las Administraciones Públicas: relaciones y órganos. Idea general de la iniciación, ordenación, instrucción y terminación del procedimiento administrativo." },
+    { "bloque": 2, "numero": 3, "topic_number": 103, "titulo": "Los interesados. Transparencia y acceso a la información", "epigrafe": "Los interesados en el procedimiento administrativo. El ciudadano y la Administración: derechos y deberes de los ciudadanos. Colaboración y comparecencia de los ciudadanos. Derecho de acceso a la información pública. La transparencia de las Administraciones Públicas. Los servicios de información administrativa y asistencia al ciudadano." },
+    { "bloque": 2, "numero": 4, "topic_number": 104, "titulo": "La actividad de las AAPP. El acto administrativo", "epigrafe": "La actividad de las Administraciones Públicas: obligación de resolver y silencio administrativo. Términos y plazos. Disposiciones administrativas. El acto administrativo: concepto, elementos y clases. Su motivación y notificación. Eficacia y validez de los actos administrativos: nulidad y anulabilidad. Ejecución de los actos administrativos." },
+    { "bloque": 2, "numero": 5, "topic_number": 105, "titulo": "Revisión de actos y recursos administrativos", "epigrafe": "Revisión de los actos en vía administrativa. Los recursos administrativos: concepto y clases. Los recursos de alzada, de reposición y de revisión. Las reclamaciones económico-administrativas. Las reclamaciones previas a la vía judicial civil y laboral." },
+    { "bloque": 2, "numero": 6, "topic_number": 106, "titulo": "La jurisdicción contencioso-administrativa", "epigrafe": "La jurisdicción contencioso-administrativa. Su organización. Las partes. Actos impugnables. Idea general del proceso." },
+    { "bloque": 2, "numero": 7, "topic_number": 107, "titulo": "Los bienes de las Administraciones Públicas", "epigrafe": "Los bienes de las Administraciones Públicas: bienes de dominio público y bienes de dominio privado. Afectación y desafectación. Utilización." },
+    { "bloque": 2, "numero": 8, "topic_number": 108, "titulo": "Los Contratos del Sector Público (I)", "epigrafe": "Los Contratos del Sector Público (I): Legislación aplicable. Objeto y ámbito de aplicación. Negocios y contratos excluidos. Tipos de contratos y régimen jurídico aplicable. Partes en el contrato. Objeto, precio y cuantía. Garantías exigibles y modificación de los contratos. Normas de la Comunidad Autónoma de Aragón." },
+    { "bloque": 2, "numero": 9, "topic_number": 109, "titulo": "Los Contratos del Sector Público (II)", "epigrafe": "Los Contratos del Sector Público (II): Preparación de los contratos. La selección del contratista. Adjudicación de los contratos. Procedimientos de contratación. Efectos, cumplimiento y extinción de los contratos administrativos. Revisión de precios." },
+    { "bloque": 2, "numero": 10, "topic_number": 110, "titulo": "Potestad sancionadora y responsabilidad patrimonial", "epigrafe": "La potestad sancionadora de la Administración. Responsabilidad patrimonial de las Administraciones Públicas: responsabilidad civil y penal de los funcionarios públicos." },
+    { "bloque": 2, "numero": 11, "topic_number": 111, "titulo": "Personal de la Administración de Aragón (I)", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (I). Estructura y organización de la Función Pública. Registro de Personal. Programación y oferta de empleo público." },
+    { "bloque": 2, "numero": 12, "topic_number": 112, "titulo": "Personal de la Administración de Aragón (II)", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (II). El personal funcionario. Selección. Provisión de puestos de trabajo. Promoción profesional de los funcionarios." },
+    { "bloque": 2, "numero": 13, "topic_number": 113, "titulo": "Personal de la Administración de Aragón (III)", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (III). Adquisición y pérdida de la condición de funcionario. Situaciones de los funcionarios: supuestos y efectos de cada una de ellas." },
+    { "bloque": 2, "numero": 14, "topic_number": 114, "titulo": "Personal de la Administración de Aragón (IV)", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (IV). Derechos y deberes de los funcionarios. Sistema de retribuciones. Indemnizaciones. Las incompatibilidades. El régimen disciplinario: faltas, sanciones y procedimiento." },
+    { "bloque": 2, "numero": 15, "topic_number": 115, "titulo": "Personal de la Administración de Aragón (V). Personal laboral", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (V). El personal laboral. Selección. Derechos, deberes e incompatibilidades. El contrato laboral: contenido, duración y suspensión." },
+    { "bloque": 2, "numero": 16, "topic_number": 116, "titulo": "Personal de la Administración de Aragón (VI). Seguridad Social", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (VI). El régimen de Seguridad Social del personal de las Administraciones Públicas. Los órganos de representación y participación." },
+    { "bloque": 2, "numero": 17, "topic_number": 117, "titulo": "Personal de la Administración de Aragón (VII). Negociación colectiva", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (VII). Representación y negociación de las condiciones de trabajo; conflictos y convenios colectivos." },
+    { "bloque": 2, "numero": 18, "topic_number": 118, "titulo": "Personal de la Administración de Aragón (VIII). Personal estatutario y de Justicia", "epigrafe": "El personal de la Administración de la Comunidad Autónoma de Aragón (VIII). El personal estatutario. El personal al servicio de la Administración de Justicia." },
+    { "bloque": 2, "numero": 19, "topic_number": 119, "titulo": "El Presupuesto: concepto, clases y principios", "epigrafe": "El Presupuesto: concepto, clases y principios presupuestarios. El ciclo presupuestario. Presupuesto por programas: concepto y objetivos. Programación, presupuestación y control. El presupuesto en base 0." },
+    { "bloque": 2, "numero": 20, "topic_number": 120, "titulo": "El Presupuesto de la Comunidad Autónoma de Aragón", "epigrafe": "El Presupuesto de la Comunidad Autónoma de Aragón. Elaboración y aprobación. Ingresos y gastos públicos: estructura y clasificación orgánica, funcional y económica." },
+    { "bloque": 2, "numero": 21, "topic_number": 121, "titulo": "Régimen de financiación de la Comunidad Autónoma de Aragón", "epigrafe": "Régimen de financiación de la Comunidad Autónoma de Aragón: fondos del modelo de financiación." },
+    { "bloque": 2, "numero": 22, "topic_number": 122, "titulo": "Los créditos presupuestarios y sus modificaciones", "epigrafe": "Los créditos presupuestarios en la Comunidad Autónoma de Aragón y sus modificaciones." },
+    { "bloque": 2, "numero": 23, "topic_number": 123, "titulo": "La ejecución del presupuesto", "epigrafe": "La ejecución del presupuesto: fases. Ordenación del gasto y ordenación del pago: órganos competentes, fases del procedimiento y documentos contables que intervienen. Gastos de carácter plurianual. La ejecución del presupuesto de ingresos: reconocimiento y liquidación de derechos. Liquidación y cierre del ejercicio." },
+    { "bloque": 2, "numero": 24, "topic_number": 124, "titulo": "Pagos y anticipos de caja fija", "epigrafe": "Pagos: concepto y clasificación. Pagos por ordenaciones presupuestarias: pagos por obligaciones de ejercicios cerrados. Pago \"en firme\" y \"a justificar\". Los anticipos de caja fija." },
+    { "bloque": 2, "numero": 25, "topic_number": 125, "titulo": "Contabilidad pública", "epigrafe": "Contabilidad pública: concepto. Contabilidad preventiva, ejecutiva y crítica. Fines. Órganos competentes. Los principios contables. La Cuenta General de la Comunidad Autónoma de Aragón." },
+    { "bloque": 2, "numero": 26, "topic_number": 126, "titulo": "Control del gasto público. Cámara de Cuentas de Aragón", "epigrafe": "Control del gasto público. Clases. Especial referencia del control de legalidad. El Tribunal de Cuentas y la Cámara de Cuentas de Aragón." },
+    { "bloque": 2, "numero": 27, "topic_number": 127, "titulo": "Retribuciones y nóminas", "epigrafe": "Retribuciones de los funcionarios públicos y del personal laboral de las Administraciones Públicas. Nóminas: estructura y normas de confección. Altas y bajas; su justificación. Conceptos retributivos. Devengo y liquidación de derechos económicos. Pago de las retribuciones del personal en activo. Formas de pago." },
+    { "bloque": 2, "numero": 28, "topic_number": 128, "titulo": "Informática básica", "epigrafe": "Informática básica: conceptos fundamentales sobre el hardware y el software. Sistemas de almacenamiento de datos. Sistemas operativos. Nociones básicas de seguridad informática." },
+    { "bloque": 2, "numero": 29, "topic_number": 129, "titulo": "La Red Internet", "epigrafe": "La Red Internet: origen, evolución y estado actual. Conceptos elementales sobre protocolos y servicios en Internet. La Web y su evolución. Navegadores web: funcionamiento básico y navegadores más utilizados. Concepto de URL. Uso de buscadores. Seguridad en la Web. Inteligencia Artificial." },
+    { "bloque": 2, "numero": 30, "topic_number": 130, "titulo": "La Administración electrónica", "epigrafe": "La Administración electrónica para mejorar la relación con los ciudadanos. Sujetos obligados a relacionarse electrónicamente con la Administración. Certificados, identificación y firma electrónica. Representación. Oficina de asistencia en materia de registros. Sistema de Interconexión de Registros. Notificación electrónica." }
+  ],
+  "convocatoria": {
+    "año": 2025,
+    "estado_proceso": "examen_realizado",
+    "diario_oficial": "BOA",
+    "diario_referencia": "BOA nº 247, 23/12/2025 (proceso 25/0102)",
+    "programa_url": "https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=1427868650404",
+    "seguimiento_url": "https://www.aragon.es/-/administrativos.-subgrupo-c1.-oferta-de-empleo-p%C3%BAblico-2023-2024-y-2025.-25/0102-",
+    "plazas": 144,
+    "notas": "Escala General Administrativa (Administrativos), Cuerpo Ejecutivo. OEP acumulada 2023+2024+2025. Convocatoria BOA 23/12/2025; inscripción 24/12/2025-23/01/2026 (cerrada); examen ya celebrado. Temario oficial: Resolución de 25/11/2025 del Director General de Función Pública (Anexo XXV: 5 materias comunes + 30 específicas). Oposición recurrente: landing forward-looking, pivotar a la próxima convocatoria cuando se publique."
+  }
+}

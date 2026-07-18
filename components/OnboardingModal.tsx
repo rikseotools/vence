@@ -116,6 +116,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'administrativo_aragon',
+    nombre: 'Administrativo (DGA)',
+    categoria: 'C1',
+    administracion: 'Gobierno de Aragón (DGA)',
+    icon: '📋'
+  },
+  {
     id: 'auxiliar_museos_estado',
     nombre: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Museos)',
     categoria: 'C2',
