@@ -24,8 +24,9 @@ function getUrl() {
   return env.match(/^DATABASE_URL=(.*)$/m)[1].trim();
 }
 function arg(name) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; }
-// El session-id se pasa con --sid o, si no, se lee de .session-id (lo escribe new-session.sh)
-// en el cwd o en la raíz del repo. Así cada sesión usa el suyo sin pasarlo a mano.
+// El session-id se resuelve solo (nada que teclear): --sid explícito > fichero .session-id
+// (lo escribe new-session.sh) > CLAUDE_CODE_SESSION_ID (cada sesión de Claude Code ya trae
+// el suyo, único). Así el claim funciona sin configurar nada.
 function readSessionId() {
   const path = require('path');
   for (const p of [path.join(process.cwd(), '.session-id'), path.join(__dirname, '..', '..', '.session-id')]) {
@@ -35,7 +36,7 @@ function readSessionId() {
 }
 
 const cmd = process.argv[2];
-const sid = arg('--sid') || readSessionId();
+const sid = arg('--sid') || readSessionId() || process.env.CLAUDE_CODE_SESSION_ID || null;
 const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 const stale = `${STALE_HOURS} hours`;
 

@@ -13,7 +13,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 **Reglas que NO se saltan nunca:**
 - 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí.
 - NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
-- 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next --sid <tu-id-de-sesión>` (el `<id>` = el UUID de tu carpeta de scratchpad, único por sesión) — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). O pásale `--sid` a `revisar-impugnacion.cjs <id> --sid <id>` y la coge al abrir el dossier (avisa si otra sesión ya la tiene). Un claim se auto-libera a las 2h. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
+- 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next` — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). **No hace falta pasar `--sid`: se identifica sola** por `CLAUDE_CODE_SESSION_ID` (cada sesión de Claude Code trae el suyo). `revisar-impugnacion.cjs <id>` también la coge al abrir el dossier y avisa si otra sesión ya la tiene. Un claim se auto-libera a las 2h. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
 - **UNA POR UNA.** Resolver cada impugnación de forma **individual y completa** (§2): su propio análisis, su propio borrador, su propia aprobación y su propio email. **NUNCA agrupar** varias impugnaciones del mismo usuario en un solo mensaje/email, aunque compartan causa raíz o sea el mismo usuario. El análisis de denominador común (§7.5) sirve para **entender** el fallo, no para **fusionar** la respuesta. No presentar análisis de varias a la vez: terminar una (analizar → borrador → OK → cerrar) antes de empezar la siguiente.
 - SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
 - Cerrar SIEMPRE vía endpoint `/api/v2/dispute/resolve` — nunca UPDATE directo (§6, §15).
@@ -80,7 +80,7 @@ Para que **2-10 sesiones** trabajen la cola a la vez sin analizar la misma impug
 node scripts/impugnaciones/cola.cjs list
 
 # Coger la siguiente impugnación libre (o feedback con --queue feedback):
-node scripts/impugnaciones/cola.cjs next --sid <tu-id-de-sesión>          # <id> = UUID de tu scratchpad
+node scripts/impugnaciones/cola.cjs next                                  # sid automático (CLAUDE_CODE_SESSION_ID)
 node scripts/impugnaciones/cola.cjs next --sid <id> --queue feedback
 
 node scripts/impugnaciones/cola.cjs mine --sid <id>                        # tus claims activos
@@ -90,7 +90,7 @@ node scripts/impugnaciones/cola.cjs release <dispute_id> --sid <id>        # sol
 - **Claim = protege el ANÁLISIS.** El cierre (`/resolve` → `resolved`) la saca del pool solo; el backstop 409 sigue evitando doble-email si dos coinciden.
 - 👤 **Una sesión = un usuario entero.** `cola.cjs next` coge la impugnación más antigua libre **y además todas las demás pendientes del MISMO usuario** (respetando las que ya tenga otra sesión). Es a propósito: la misma sesión que ya reunió el journey/oposición de ese usuario resuelve **todas** las suyas → más contexto, mejor diagnóstico y detección del fallo sistémico (§7.5). **Ojo:** coger el cluster es solo para el reparto; se sigue respondiendo **UNA POR UNA** (su propio borrador, su propia aprobación, su propio email — nunca un email agrupado).
 - **Auto-libera a las 2h** (una sesión que muere no bloquea la cola para siempre). No hay cron ni "renew".
-- El id de sesión (`--sid`) = el UUID de tu carpeta de scratchpad (único por sesión). Se guarda en `claimed_by`.
+- El id de sesión se coge solo de `CLAUDE_CODE_SESSION_ID` (o del `.session-id` que escribe `new-session.sh`, o `--sid` explícito). Se guarda en `claimed_by`. **No hay que teclear nada.**
 - Alternativa integrada: `revisar-impugnacion.cjs <id> --sid <id>` coge la impugnación al generar el dossier y avisa si otra sesión ya la tiene fresca.
 - Diseño y sizing (2-10 sesiones; el límite real es tu aprobación, no la BD): migración `supabase/migrations/20260717_dispute_feedback_claim.sql`.
 

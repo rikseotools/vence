@@ -32,7 +32,7 @@ const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '')
     // --- CLAIM (reparto entre sesiones, ver cola.cjs). Solo si pasas --sid. No fatal. ---
     let claimWarn = '';
     const sidIdx = process.argv.indexOf('--sid');
-    const sid = sidIdx >= 0 ? process.argv[sidIdx + 1] : null;
+    const sid = (sidIdx >= 0 ? process.argv[sidIdx + 1] : null) || process.env.CLAUDE_CODE_SESSION_ID || null;
     if (sid && ['pending', 'appealed'].includes(d.status)) {
       const dtbl = isPsy ? 'psychometric_question_disputes' : 'question_disputes';
       try {
