@@ -117,6 +117,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'localiza las preguntas visibles cuya "explicación" es en realidad la crítica de un pase IA anterior ("La explicación debería…", "posible errata", "Nota técnica:", "Esta pregunta debería anularse"), verifica la clave contra la ley/fuente y reescribe la explicación (o la manda a needs_human si hay defecto de fondo) con el flujo de `docs/maintenance/revisar-preguntas-con-agente.md`.',
   },
+  law_unverified_source: {
+    title: 'Ley sin verificar contra su fuente (falso verde / importada a medias)',
+    triggerPhrase: 'revisa la completitud de las leyes',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    claudeHace: 'localiza las leyes que sirven en temas vivos sin verificar contra su fuente oficial (`false_green` = marcada "actualizada" sin evidencia, `no_source` = sin URL de fuente, `never_verified`, `incomplete` = faltan artículos), registra la fuente que falte, compara artículo por artículo contra el boletín oficial e importa lo que falte (verbatim, doble auditoría) — NUNCA marca verificada sin evidencia.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */

@@ -123,6 +123,12 @@
 - **Otros needs_human:** T5 (términos/plazos 39/2015 arts 29-33), T6 (silencio 24-25 + ejecución 97-105), T17 (contabilidad EELL + posibles arts estatales de Ley 47/2003 que sobran).
 - **Cómo:** crear/importar cada ley regional (BOA/BOE) y escoparla; ampliar T11; re-verificar. No inventar contenido. Runbook `verificar-epigrafes-scope.md`.
 
+### 🟠 [ABIERTO 18/07] Completitud de leyes vs fuente oficial — capa 1 hecha, faltan 2-4 + backfill 126
+- **Qué:** sistema para que ninguna ley del temario quede importada a medias / falso verde / sin fuente sin que lo cacemos. **Capa 1 (detección) CONSTRUIDA y verde**: `lib/laws/completeness.ts` + `scripts/audit-law-completeness.cjs` + sweep (kind `law_unverified_source`) + runbook `completitud-leyes.md` (frase *"revisa la completitud de las leyes"*). Barrido: **126 leyes sirviendo en temas VIVOS** sin verificar (78 falso verde, 28 sin fuente, 20 nunca verificadas).
+- **Por qué (gap):** el monitor BOE solo parsea el BOE consolidado → las ~400 regionales (BOCYL/DOGV/DOG/BOJA/BOCM) y editoriales quedan fuera; y una ley podía fingir estar verificada (`actualizada` sin `last_verification_summary`). Caso Ana Llano (ULE T18): 9 de 74 arts; lo cazó una usuaria.
+- **Pendiente:** Capa 2 = aplicar migración `20260718_law_source_verification.sql` (tabla + guard anti-falso-verde + vista honesta) + cablear `verify-articles` a `record_law_source_verification`. Capa 3 = extractores por boletín no-BOE (mismo `missing_in_db`). Capa 4 = gate (tema no `disponible` si ley sin verificar) + observabilidad. **Backfill** de las 126 (empezar por falso verde). Piloto = ULE T18 (importar arts 29-74 del BOCYL 16/01/2026).
+- **Cómo/diseño:** `docs/roadmap/verificacion-completitud-leyes.md`. Regla dura: NUNCA `verification_status='actualizada'` sin escribir la evidencia.
+
 ### 🟠 [ALTA] Framework profesional de canaries (P1-P3) — que no se repita el incidente 11/07
 - **Qué:** clase base `CanaryProbe` + exclusión central del usuario sintético de analíticas (`SYNTHETIC_USER_IDS`) + migrar todos los canary a la base + guardarraíl CI + runbook. Que ningún write-canary pueda acumular datos sin límite ni contaminar métricas.
 - **Por qué:** el 11/07 `canary-stats-pipeline` acumuló 10.737 filas en `test_questions` sin limpiar → su drift-query se ahogó (13,6s → cron falla → alertas). P0 (purga + auto-acotado de ese canary) HECHO; falta el framework para el resto.

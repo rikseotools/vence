@@ -258,6 +258,48 @@ async function main() {
     }
   }
 
+  // ── CONTENIDO: leyes NO verificadas contra su fuente oficial (falso verde) ──
+  // Mirror INLINE de lib/laws/completeness.ts — MANTENER EN SYNC (guardado por
+  // __tests__/lib/laws/completeness.test.ts). Una ley importada a medias, sin
+  // fuente, o marcada "actualizada" sin evidencia (falso verde) es invisible al
+  // monitor BOE (que solo parsea el BOE consolidado). Caso ULE T18: 9 de 74 arts,
+  // boe_url NULL, verification_status='actualizada' sin summary → lo cazó una
+  // usuaria, no nosotros. Solo se cuentan las que SIRVEN en temas vivos (impacto).
+  const classifyLaw = (isVirtual, boeUrl, status, su) => {
+    const hasSource = !!(boeUrl && String(boeUrl).trim());
+    const claims = ['actualizada', 'verificada'].includes((status || '').toLowerCase());
+    if (isVirtual === true) return null;
+    if (!su) {
+      if (claims) return 'false_green';
+      if (!hasSource) return 'no_source';
+      return 'never_verified';
+    }
+    if (su.no_consolidated_text === true || su.historical === true) return null;
+    const nn = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+    const boe = nn(su.boe_count), db = nn(su.db_count);
+    const missing = nn(su.missing_in_db) ?? (boe != null && db != null ? Math.max(0, boe - db) : null);
+    if (missing != null && missing > 0) return 'incomplete';
+    if ((nn(su.content_mismatch) ?? 0) > 0 || (nn(su.title_mismatch) ?? 0) > 0) return 'issues';
+    return null;
+  };
+  const lawRows = (await c.query(`
+    SELECT l.id, l.short_name, l.name, l.scope, l.is_virtual, l.boe_url,
+           l.verification_status, l.last_verification_summary AS su,
+           EXISTS (SELECT 1 FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id
+                   WHERE ts.law_id = l.id AND t.disponible) AS serving_live
+    FROM laws l`)).rows;
+  const unverified = [];
+  for (const l of lawRows) {
+    const st = classifyLaw(l.is_virtual, l.boe_url, l.verification_status, l.su);
+    if (st && l.serving_live) unverified.push({ id: l.id, name: l.short_name || l.name, scope: l.scope, state: st });
+  }
+  if (unverified.length) {
+    const byState = unverified.reduce((a, u) => ((a[u.state] = (a[u.state] || 0) + 1), a), {});
+    add('content', 'warn', null, 'law_unverified_source',
+      `${unverified.length} ley(es) sirviendo en temas vivos SIN verificar contra su fuente oficial (${Object.entries(byState).map(([k, v]) => `${k}:${v}`).join(', ')}) — importadas a medias o falso verde`,
+      { count: unverified.length, byState, sample: unverified.slice(0, 20) });
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');
