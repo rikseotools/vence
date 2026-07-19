@@ -25,7 +25,7 @@ interface KoigridConfig {
   region: string
 }
 
-function getKoigridConfig(): KoigridConfig | null {
+export function getKoigridConfig(): KoigridConfig | null {
   const bucket = process.env.KOIGRID_VIDEO_BUCKET
   const accessKeyId = process.env.KOIGRID_VIDEO_ACCESS_KEY
   const secretAccessKey = process.env.KOIGRID_VIDEO_SECRET_KEY
@@ -100,6 +100,18 @@ function presignKoigridGet(cfg: KoigridConfig, key: string, expiresIn: number): 
   const signature = createHmac('sha256', kSigning).update(stringToSign, 'utf8').digest('hex')
 
   return `${cfg.endpoint}${canonicalUri}?${canonicalQuery}&X-Amz-Signature=${signature}`
+}
+
+/** True si koigrid está configurado (env presentes) → hay presign disponible (HLS incluido). */
+export function koigridEnabled(): boolean {
+  return getKoigridConfig() !== null
+}
+
+/** Presigna una key arbitraria de koigrid (GET, path-style). null si koigrid no está configurado. */
+export function presignKoigridKey(key: string, ttlSeconds = SIGNED_URL_TTL): string | null {
+  const cfg = getKoigridConfig()
+  if (!cfg) return null
+  return presignKoigridGet(cfg, key, ttlSeconds)
 }
 
 export interface VideoUrlResult {

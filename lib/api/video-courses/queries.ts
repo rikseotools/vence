@@ -6,7 +6,8 @@ function getVideoCoursesDb() {
 }
 import { videoCourses, videoLessons, userVideoProgress, userProfiles } from '@/db/schema'
 import { eq, and, asc, inArray } from 'drizzle-orm'
-import { resolveVideoSignedUrl } from './videoSignedUrl'
+import { resolveVideoSignedUrl, koigridEnabled } from './videoSignedUrl'
+import { signHlsToken, HLS_TOKEN_TTL } from './hlsManifest'
 import { createClient } from '@supabase/supabase-js'
 import type {
   GetVideoCoursesResponse,
@@ -345,9 +346,22 @@ export async function getVideoSignedUrl(
 
     console.log(`✅ [VideoCoursesQuery] Signed URL (${provider}) generated for lesson ${lessonId}, previewOnly: ${previewOnly}`)
 
+    // HLS (fase 2): mejora progresiva para acceso COMPLETO (no-preview) si koigrid está
+    // configurado. El master lleva un token-capability firmado (autoriza el HLS de este
+    // videoPath 1h). El player prefiere HLS y cae al `signedUrl` (MP4) ante cualquier error
+    // (lección sin transcodificar / fallo koigrid). Ver app/api/cursos/hls/[lessonId].
+    // Flag HLS_ENABLED: desacopla el deploy del código de la activación. Off (default) →
+    // solo MP4 (comportamiento fase 1). On → mejora progresiva HLS. Rollback = quitar flag.
+    let hlsUrl: string | null = null
+    if (!previewOnly && process.env.HLS_ENABLED === 'true' && koigridEnabled() && process.env.SUPABASE_JWT_SECRET) {
+      const tk = signHlsToken(lesson.videoPath, HLS_TOKEN_TTL)
+      hlsUrl = `/api/cursos/hls/${lessonId}/master.m3u8?tk=${encodeURIComponent(tk)}`
+    }
+
     return {
       success: true,
       signedUrl,
+      hlsUrl,
       previewOnly,
       previewSeconds: previewOnly ? (lesson.previewSeconds ?? 600) : null,
     }

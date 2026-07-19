@@ -33,9 +33,27 @@ interface VideoCoursePageProps {
 
 interface CachedVideoData {
   signedUrl: string
+  hlsUrl: string | null
   previewOnly: boolean
   previewSeconds: number
   timestamp: number
+}
+
+// Carga hls.js (vendorizado en /vendor/hls.min.js) una sola vez. Devuelve window.Hls.
+let hlsLoaderPromise: Promise<any> | null = null
+function loadHlsJs(): Promise<any> {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if ((window as any).Hls) return Promise.resolve((window as any).Hls)
+  if (hlsLoaderPromise) return hlsLoaderPromise
+  hlsLoaderPromise = new Promise((resolve) => {
+    const s = document.createElement('script')
+    s.src = '/vendor/hls.min.js'
+    s.async = true
+    s.onload = () => resolve((window as any).Hls || null)
+    s.onerror = () => resolve(null)
+    document.head.appendChild(s)
+  })
+  return hlsLoaderPromise
 }
 
 // Cache duration: 50 minutes (URLs are valid for 1 hour)
@@ -50,6 +68,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(lessons[0] || null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [hlsSource, setHlsSource] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [previewOnly, setPreviewOnly] = useState(false)
@@ -59,6 +78,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   const [isTransitioning, setIsTransitioning] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
+  const hlsInstanceRef = useRef<any>(null)
   const saveProgressTimeout = useRef<NodeJS.Timeout | null>(null)
   const urlCacheRef = useRef<Map<string, CachedVideoData>>(new Map())
   const preloadedVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map())
@@ -106,6 +126,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
     const videoData: CachedVideoData = {
       signedUrl: data.signedUrl,
+      hlsUrl: data.hlsUrl ?? null,
       previewOnly: data.previewOnly || false,
       previewSeconds: data.previewSeconds || 600,
       timestamp: Date.now(),
@@ -154,6 +175,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       // Instant transition with cached URL
       setIsTransitioning(true)
       setVideoUrl(cached.signedUrl)
+      setHlsSource(cached.hlsUrl)
       setPreviewOnly(cached.previewOnly)
       setPreviewSeconds(cached.previewSeconds)
       setTimeout(() => setIsTransitioning(false), 100)
@@ -178,6 +200,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       // Update state (only if not already from cache)
       if (!cached) {
         setVideoUrl(videoData.signedUrl)
+        setHlsSource(videoData.hlsUrl)
         setPreviewOnly(videoData.previewOnly)
         setPreviewSeconds(videoData.previewSeconds)
       }
@@ -229,6 +252,61 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       urlCacheRef.current.clear()
     }
   }, [])
+
+  // Atar la fuente al <video>: HLS (fase 2) vía hls.js si hay hlsSource + soporte; si no,
+  // MP4 progresivo (fase 1). Fallback resiliente: cualquier error FATAL de hls.js → MP4.
+  // iOS Safari (sin MSE) usa HLS nativo (video.src = manifiesto, auto-autorizado por el tk).
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    let cancelled = false
+
+    if (hlsInstanceRef.current) {
+      try { hlsInstanceRef.current.destroy() } catch {}
+      hlsInstanceRef.current = null
+    }
+
+    const playMp4 = () => {
+      if (cancelled) return
+      if (videoUrl && video.src !== videoUrl) video.src = videoUrl
+    }
+
+    if (!hlsSource) {
+      playMp4()
+      return
+    }
+
+    // iOS/Safari con HLS nativo → usar el manifiesto directamente (el tk viaja en la URL)
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = hlsSource
+      return
+    }
+
+    // Chrome/Firefox/Android → hls.js sobre MSE
+    loadHlsJs().then((Hls) => {
+      if (cancelled || !video) return
+      if (!Hls || !Hls.isSupported()) { playMp4(); return }
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: false })
+      hlsInstanceRef.current = hls
+      hls.loadSource(hlsSource)
+      hls.attachMedia(video)
+      hls.on(Hls.Events.ERROR, (_evt: any, data: any) => {
+        if (data?.fatal) {
+          try { hls.destroy() } catch {}
+          if (hlsInstanceRef.current === hls) hlsInstanceRef.current = null
+          playMp4() // degradación resiliente a MP4
+        }
+      })
+    })
+
+    return () => {
+      cancelled = true
+      if (hlsInstanceRef.current) {
+        try { hlsInstanceRef.current.destroy() } catch {}
+        hlsInstanceRef.current = null
+      }
+    }
+  }, [hlsSource, videoUrl])
 
   // Set video time when loaded
   useEffect(() => {
@@ -390,7 +468,6 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
               {videoUrl && !error && (
                 <video
                   ref={videoRef}
-                  src={videoUrl}
                   controls
                   controlsList="nodownload"
                   playsInline

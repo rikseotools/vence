@@ -106,6 +106,9 @@ export type GetCourseBySlugResponse = z.infer<typeof getCourseBySlugResponseSche
 export const getVideoUrlResponseSchema = z.object({
   success: z.boolean(),
   signedUrl: z.string().optional(),
+  // HLS (fase 2): URL del master manifest (ruta de la app) para acceso completo si hay
+  // HLS + koigrid. El player la prefiere y cae al signedUrl (MP4) ante error. null/ausente = solo MP4.
+  hlsUrl: z.string().nullable().optional(),
   previewOnly: z.boolean().optional(),
   previewSeconds: z.number().nullable().optional(),
   error: z.string().optional(),
