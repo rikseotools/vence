@@ -226,11 +226,9 @@
 - **Por qué:** el 10/07 se encontraron ~46 preguntas visibles cuya "explicación" era en realidad la crítica de un pase IA anterior (defecto de pipeline). Se remediaron (36 reescritas + 10 `needs_human`), pero sin detector reaparecerá en silencio. Memoria `project_explicaciones_nota_auditoria`.
 - **Estado:** remediación hecha; detector NO implementado.
 
-### 🟡 [MEDIA] Desplegar el guardarraíl anti-duplicado de recompensas
-- **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) está en `origin/main` pero **NO desplegado** (prod = `4465d15c`).
-- **Por qué:** cierra el hueco de doble recompensa por el mismo motivo (control robusto). No bloquea nada (creación manual ya se verifica), pero conviene que esté vivo.
-- **Cómo:** `docs/runbooks/deploy.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
-- **Estado:** commiteado + pusheado, pendiente de deploy.
+### ✅ [DESPLEGADA 19/07] Guardarraíl anti-duplicado de recompensas
+- **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) cierra el hueco de doble recompensa por el mismo motivo.
+- **✅ YA EN PROD:** `f3bc0954` (10/07) es ancestro de la imagen desplegada `deploy-d5f00d3c` (ECR, deploy 19/07 08:36). El estado previo del backlog (prod=`4465d15c`, "pendiente de deploy") estaba **stale**: se desplegó junto con el cierre de la campaña de citas. Verificado: `git merge-base --is-ancestor f3bc0954 d5f00d3c` = 0.
 
 ### 🟢 [CASI CERRADA 19/07] Barrido: scripts que aún leen la BD Supabase CONGELADA (post-cutover 04/07)
 - **Qué:** scripts `.cjs` en `scripts/` que crean `createClient(NEXT_PUBLIC_SUPABASE_URL, …)` y leen/escriben tablas de datos. Desde el cutover a RDS (04/07/2026) eso lee un **snapshot congelado** → salidas STALE (o, si escriben, writes a un espejo que nunca llega a prod).
