@@ -1,5 +1,17 @@
 # Campaña "citas ajenas" — mislinks detectados por barrido de citas (16-17/07/2026)
 
+## ESTADO needs_human tras pasada 18-19/07 (para retomar)
+Se procesaron por cubos las ~29 preguntas que quedaron en `needs_human`. **Lo mecánico está cerrado; falta trabajo de contenido.**
+- **RESUELTO (a visible)**: huérfanos re-vinculados al artículo que responde (§3.1, verificado): `36c79015`(Decreto 24/2022 CyL art8), `07ab258c`(RGPD art5), `9d451ce9`/`200a0d1e`/`8667f512`(CP 513/537/428), `df5aeb28`(RP art12 — falso positivo), `89449dbd`(Ley 11/1986 CM art2, explicación reescrita) · adjudicados: `e105ee19`, `b72000de`, `e47141d1`(cita art9→11).
+- **RETIRADO**: `e85ff2ca` (ET art48 prestación nacimiento: RDL 9/2025 = 19 semanas, ninguna opción correcta → retired_irreparable).
+- **PENDIENTE (contenido/decisión, siguen en needs_human)**:
+  - Retirar (decisión Manuel): `48cb3ed0`(CE "fuente directa", doctrinal sin precepto), `80a7a71e`(21 escaños CESE post-Brexit, fuente Decisión UE 2019/853 no en BD).
+  - Actualizar/recomponer artículo verbatim contra fuente oficial (NO parafrasear): `3ce5c259`(CES CyL art4 desactualizado: verificado que vigente=4 expertos Junta+2 Cortes por Ley 4/2013), `514c0c65`+`4b59d812`(CES CyL: clave mal + art10 truncado/art9 ausente — competencias Pleno / funciones Presidente), `da8231b5`(caución medidas cautelares: LEC art529 en BD es otro tema/truncado).
+  - Cubo **sin_norma (8)** y **reparación (5)**: no abiertos — necesitan importar norma ausente o recomponer artículo incompleto. IDs recuperables de RDS.
+- **Fuente durable**: diagnósticos en `ai_verification_results` proveedores `claude_code_citas_2026_07` + `claude_code_mislink_ley_2026_07`; transiciones en `question_lifecycle_history`.
+- **⚠️ COORDINAR con la otra sesión antes de seguir**: su "cubo 3 (vínculo de ley equivocado)" + subsistema `lib/laws/completeness.ts` solapan con esto. Reconciliar inventarios para no duplicar.
+
+
 **Origen:** al atender la impugnación de Fvital (pregunta de Correos colgada del TREBEP) y la de Iván
 (Manual del MAP colgado del art. 26 Ley 39/2015) se vio un patrón: explicaciones que **citan un
 artículo que no es el que la pregunta tiene vinculado**. Se scriptó un detector y se barrió el banco.
