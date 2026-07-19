@@ -56,12 +56,28 @@ Recuperables de AVR (arriba). Por cubo:
   usa nombre derogado del órgano) · `379248ad` (mislink de LEY: Ley 3/2016→Ley 2/2016 CM art 1) ·
   `ffc5ed3b` (LO 3/2007 art 14 incompleto en BD) · `0a7bd51e` (Ley 2/2010 CyL: art 48 no define lo pedido).
 
-## Subproductos descubiertos (frentes aparte, no de esta campaña)
-1. **33 artículos con contenido truncado** en toda la BD (empiezan por un apartado >1), **70 preguntas
-   visibles** afectadas. Focos: Decreto 7/2013 CyL, Decreto 13/2021 CyL, Instituciones Internacionales GC.
-   Query: los artículos cuyo `content` arranca en un nº de apartado >1 (ver barrido en el hilo).
-2. **Bug de vínculo por nº de artículo sin `law_id`** (causa raíz arriba) — merece detector propio y barato:
-   preguntas cuya explicación nombra una ley/artículo distinto del vinculado. Mide el tamaño real (los
-   139 son solo los que tenían cita).
-3. **Falso positivo del guardarraíl** `validar-explicacion.cjs`: el filtro "Truco/Consejo/Tip" saltaba con
-   "Consejo Consultivo"/"Consejo Nacional…". **CORREGIDO** (17/07): solo salta como etiqueta (`palabra:` o negrita a solas).
+## Detector de mislink por ley (2ª campaña, causa raíz) — HECHO
+`scripts/impugnaciones/barrido-mislink-ley.cjs --precision`: mira la LEY que la explicación nombra vs
+la vinculada; modo precisión exige colisión mismo-nº-otra-ley (LECrim art 6 ↔ CP art 6). Bruto 1.291 →
+49 alta precisión → pipeline v2.1 → **16 re-vínculos aplicados y verificados** (cluster LECrim→CP + CP116→CE).
+Los defectuosos no aplicables (huérfanos de scope, sin norma, clave dudosa) → `needs_human` (`ai_detected_wrong_article`).
+Diagnósticos en RDS `ai_verification_results` proveedor `claude_code_mislink_ley_2026_07`.
+PEND: cruzar con el "cubo 3 (vínculo de ley equivocado)" y el subsistema `lib/laws/completeness.ts` de la otra sesión (solapan).
+
+## Artículos truncados — HECHO (19 recompuestos y vivos)
+De los "33 truncados" del backlog, **solo 19 eran truncamiento legal real** (43 preguntas); los otros 14 eran
+preámbulo troceado (pseudo-arts `exp/EXP`) y editorial por secciones (manual app PIAE Valencia, Manual
+Penitenciario) — NO truncamiento. Los 19 recompuestos contra fuente oficial (BOCyL, BOC, Carta ONU + Reglamentos
+UE, resolución UMU), continuidad re-verificada (texto viejo ⊆ nuevo, ≥90% vocab) antes de aplicar; caché
+teoria+temario invalidada.
+**Hallazgos estructurales pendientes (necesitan decisión):**
+- La "ley" `Instituciones Internacionales GC` mezcla 4 normas (Carta ONU + Reglamentos UE CEPOL/Europol/Frontex);
+  `title` mal atribuidos (uno decía Frontex, era CEPOL). Separar en las leyes reales.
+- `Normas Matrícula UMU` art. 32 no estaba truncado: tenía pegado por delante un párrafo del art. 31 (bug de
+  límites de import). Limpiado. Revisar el art. 31 por si le falta ese párrafo al final.
+- `Instrumentos internacionales` y demás editoriales: el detector `content` arranca-en-apartado->1 sobre-reporta
+  (preámbulos y manuales por secciones) → filtrar por `article_number` numérico puro.
+
+## Otros subproductos
+- **Falso positivo del guardarraíl** `validar-explicacion.cjs` ("Truco/Consejo/Tip" saltaba con "Consejo
+  Consultivo"): **ya corregido en origin/main** por otra sesión (mejor que mi parche) — no re-pushear.
