@@ -253,6 +253,10 @@ for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE
 // El bonus (2€ por referido con >=5 tests) solo se concede con este flag en '1'. Para SUNSETEAR la
 // campaña: cambiar a '0' aquí (o quitar la línea) y redeploy. Ver docs/runbooks/embajadores-recompensas.md.
 { const e=env.find(x=>x.name==='ACTIVE_SIGNUP_REWARD'); if (e) e.value='1'; else env.push({name:'ACTIVE_SIGNUP_REWARD', value:'1'}); }
+// HLS_ENABLED (fase 2): activa el streaming HLS/ABR de los video-cursos (desde koigrid).
+// Off/ausente = solo MP4 progresivo (fase 1). El player cae a MP4 ante cualquier error.
+// Rollback: cambiar a 'false' aqui (o quitar la linea) + redeploy. Solo comillas simples.
+{ const e=env.find(x=>x.name==='HLS_ENABLED'); if (e) e.value='true'; else env.push({name:'HLS_ENABLED', value:'true'}); }
 // Guardarrail anti-colision env/secret (incidente 11/07 referral-hold): ECS RECHAZA
 // registrar un task def donde un mismo name este a la vez en environment y en secrets
 // (error criptico 'The secret name must be unique and not shared...'). Lo detectamos
