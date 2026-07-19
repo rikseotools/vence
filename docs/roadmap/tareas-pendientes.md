@@ -222,6 +222,16 @@
 - **Gotcha detectado:** la "Ley 5/2024 CyL" del catálogo es en realidad **Presupuestos 2025**, no la de 2024 que citan las preguntas — coincidencia de número, ley distinta. No dar por buena una ley por su número.
 - **Estado:** medido y trazado; sin importar. Consulta: `ai_verification_results WHERE ai_provider='claude_code_mislink_v1' AND article_ok=false`.
 
+### 🟠 [MEDIA — cola de trabajo que dejan los 3 cubos drenados] Relink de `needs_human` + reescritura de explicaciones flojas (19/07)
+Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas trazadas en BD (no urgentes, pero anotadas para no perderlas):
+- **A) Relink de las preguntas en `needs_human`** (mislinks confirmados, la clave suele ser correcta, solo el artículo está mal → tema equivocado). Fuentes:
+  - **~164 del cubo 1** (`ai_provider='claude_code_cubo1_reverify'`, `article_ok=false` o `answer_ok=false`; el motivo de la auditoría lleva el artículo correcto sugerido en `explanation`).
+  - **22 del cubo 3** (`ai_provider='claude_code_mislink_v1'`, `correct_article_suggestion` con la norma a importar — ver tarea "Importar normas que faltan" arriba).
+  - **~71 del contenedor "Ley 39/2006"** (Dependencia) mal etiquetado, con preguntas de violencia de género (VIOGÉN, Convenio Estambul, LO 1/2004, órdenes de protección). Cajón mal asignado tipo cubo 3: crear/asignar la ley virtual correcta (LO 1/2004 + protocolos policiales) y re-vincular. Query: preguntas con `primary_article_id` = art.0 de la ley virtual "Ley 39/2006" cuyo enunciado es de violencia de género.
+  - **Cómo:** por cada una, coger el artículo correcto (ya sugerido) → si existe en BD, `relink` (queda viva, bien colocada) → si la norma no está, importarla primero (tarea de arriba) → reactivar a `approved`/`tech_approved`. NUNCA auto-flip de clave.
+- **B) Reescritura de explicaciones de formato flojo (`explanation_ok=false`, ~1.959 del cubo 1 + las del pipeline `needs_review`).** NO ocultan (§8.1-bis: contenido correcto, solo el formato `isDidactic` falla — les falta blockquote / "Por qué X es correcta" / "Por qué las demás son incorrectas"). Son cola de CALIDAD visible. Reescribir con el flujo de `generar-preguntas-con-ia.md` (blockquote literal + análisis A/B/C/D), sin tocar clave ni artículo. Consulta: `ai_verification_results WHERE explanation_ok=false AND article_ok IS NOT false AND answer_ok IS NOT false`.
+- **Estado:** trazado en BD, sin drenar. Es trabajo grande pero de bajo riesgo (relink no inventa; reescritura no oculta). Priorizar por tráfico (las más respondidas primero).
+
 #### ✅ Cierre del cubo 2 — las 89 explicaciones cruzadas (16/07)
 
 - **Resultado:** **87 reescritas y aplicadas** (siguen las 89 vivas: una explicación mala NO oculta la pregunta, §8.1-bis) + **2 elevadas a decisión humana**. Trazado en `ai_verification_results` con `ai_provider='claude_code_cross_v1'` y `review_method_version='v2.1'` (proveedor propio de campaña porque el constraint es único por `(question_id, ai_provider)` y `claude_code_recheck` ya estaba usado en 62 — §17.3 pto 4). Caché `questions` invalidada (TTL 1h: sin purgar, la explicación cruzada se seguía sirviendo).
