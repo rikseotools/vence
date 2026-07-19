@@ -1,7 +1,12 @@
 # Rebuild limpio: Instrucción 10/2025 SES — Procedimiento Integral de la Detención Policial
 
-> **Estado (19/07/2026): FOUNDATION HECHA (fuente asegurada + scoping + verificación de muestra).
-> Falta la fase de mutaciones (import verbatim + relink de ~75 preguntas + reactivar 18).**
+> **✅ HECHO (19/07/2026): rebuild COMPLETO.** Ley `589645a5` reconstruida: 19 artículos (secciones 1-15 +
+> apéndices I-IV) con contenido VERBATIM oficial, numeración limpia. Las 79 preguntas re-vinculadas a su
+> sección correcta (23 visibles arregladas). 17/18 needs_human reactivadas a `approved` (clave verificada
+> contra el texto oficial, AVR `claude_code_ises10_rebuild_2026_07`); 1 retenida (`a094b1b1`, clave ADN
+> menor no confirmable → sigue needs_human bien vinculada a §7). Ley 2 duplicada (`e52ad6a6`) consolidada y
+> deprecada; artículos-basura deprecados. Scope = toda la ley (Policía Nacional T21) → sirven. Falta solo
+> invalidar caché prod (o esperar TTL 6h).
 > Origen: drenaje del cubo `needs_human` de mislink → el único cluster con ROI claro (19→ realmente ~75
 > al ver el blast radius) es este. Decisión Manuel: **opción B (rebuild limpio)**, no parche mínimo.
 
