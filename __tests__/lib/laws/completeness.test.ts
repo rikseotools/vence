@@ -86,6 +86,15 @@ describe('classifyLawCompleteness — estado honesto ley↔fuente', () => {
     expect(r.actionable).toBe(false)
   })
 
+  test('verified legítimo: subconjunto deliberado (temas escopan el subconjunto presente)', () => {
+    const r = classifyLawCompleteness({
+      isVirtual: false, boeUrl: 'https://boe/x',
+      lastVerificationSummary: { deliberate_subset: true, boe_count: 236, db_count: 9, missing_in_db: 227 },
+    })
+    expect(r.state).toBe('verified')
+    expect(r.actionable).toBe(false)
+  })
+
   test('virtual: fuera del detector (lo cubre scope↔epígrafe)', () => {
     const r = classifyLawCompleteness({
       isVirtual: true, boeUrl: null, verificationStatus: 'actualizada', lastVerificationSummary: null,

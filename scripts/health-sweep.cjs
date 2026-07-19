@@ -274,7 +274,7 @@ async function main() {
       if (!hasSource) return 'no_source';
       return 'never_verified';
     }
-    if (su.no_consolidated_text === true || su.historical === true) return null;
+    if (su.no_consolidated_text === true || su.historical === true || su.deliberate_subset === true) return null;
     const nn = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
     const boe = nn(su.boe_count), db = nn(su.db_count);
     const missing = nn(su.missing_in_db) ?? (boe != null && db != null ? Math.max(0, boe - db) : null);

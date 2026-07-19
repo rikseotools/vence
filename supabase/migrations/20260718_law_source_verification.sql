@@ -194,7 +194,8 @@ SELECT
         ELSE 'never_verified'
       END
     WHEN (l.last_verification_summary->>'no_consolidated_text')::boolean IS TRUE
-      OR (l.last_verification_summary->>'historical')::boolean IS TRUE THEN 'verified'
+      OR (l.last_verification_summary->>'historical')::boolean IS TRUE
+      OR (l.last_verification_summary->>'deliberate_subset')::boolean IS TRUE THEN 'verified'
     WHEN coalesce((l.last_verification_summary->>'missing_in_db')::int,
                   greatest(0, coalesce((l.last_verification_summary->>'boe_count')::int,0)
                             - coalesce((l.last_verification_summary->>'db_count')::int,0))) > 0 THEN 'incomplete'

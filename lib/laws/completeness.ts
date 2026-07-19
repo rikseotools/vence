@@ -44,6 +44,10 @@ export interface LawVerificationSummary {
   no_consolidated_text?: boolean | null
   /** versión anual sustituida: válida para su ejercicio, no se re-verifica. */
   historical?: boolean | null
+  /** import parcial DELIBERADO (solo los artículos que el epígrafe pide): los temas
+   *  que la usan escopan ese subconjunto y lo tienen presente → completa-para-su-fin,
+   *  aunque la ley tenga más artículos en su fuente. Confirmado por Claude/humano. */
+  deliberate_subset?: boolean | null
 }
 
 export interface LawCompletenessInput {
@@ -106,7 +110,7 @@ export function classifyLawCompleteness(input: LawCompletenessInput): LawComplet
 
   // Con evidencia: clasificar por lo que dice el summary.
   // Casos legítimamente cerrados: doc sin articulado parseable, o versión histórica.
-  if (su.no_consolidated_text === true || su.historical === true) {
+  if (su.no_consolidated_text === true || su.historical === true || su.deliberate_subset === true) {
     return { state: 'verified', hasSource, missingInDb: null, isFalseGreen: false, actionable: false }
   }
 

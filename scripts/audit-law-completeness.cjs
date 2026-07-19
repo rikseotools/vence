@@ -35,7 +35,7 @@ function classify({ isVirtual, boeUrl, verificationStatus, su }) {
     if (!hasSource) return { state: 'no_source', hasSource: false, missingInDb: null, actionable: true }
     return { state: 'never_verified', hasSource, missingInDb: null, actionable: true }
   }
-  if (su.no_consolidated_text === true || su.historical === true)
+  if (su.no_consolidated_text === true || su.historical === true || su.deliberate_subset === true)
     return { state: 'verified', hasSource, missingInDb: null, actionable: false }
   const boe = num(su.boe_count), db = num(su.db_count)
   const missing = num(su.missing_in_db) ?? (boe != null && db != null ? Math.max(0, boe - db) : null)
