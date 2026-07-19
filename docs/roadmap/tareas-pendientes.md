@@ -16,6 +16,18 @@
 
 ## Abiertas
 
+### 🟢 [HECHO 19/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
+- **Contexto:** los cubos 1/3 dejaron 71 needs_human con motivo de esta sesión (`ai_provider IN claude_code_cubo1_reverify / mislink_v1 / vg_relink`). Al inspeccionarlos, el "importar normas para desbloquear todo de golpe" resultó **optimista**: desglose real →
+  - **43** (`cubo1_reverify`, todos *sin sugerencia*) = **defectos reales de clave/opción**, no los arregla ningún import → decisión humana.
+  - **~7** (`vg_relink`) = **contenido NO normativo** (Punto Violeta, "Círculo de Fortaleza" del Plan VioGén, Resolución ONU 54/134, fundación SAM/GRUME 1986, Pacto de Estado) → forzarlo a un "artículo" sería inventar estructura. Se quedan parkeados (o retiro), **no** se importan.
+  - **~19** (`mislink_v1`) = mal-vinculadas a norma real → **este es el bloque importable.**
+- **✅ Cluster Biblioteca (oposición `auxiliar-biblioteca-estado` ACTIVA, 48 temas / ~4.977 activas) — HECHO:** 7 preguntas recuperadas verificando cada clave contra el BOE consolidado (nunca fiando la explicación almacenada):
+  - **RD 582/1989** (Reglamento Bibliotecas Públicas del Estado, BOE-A-1989-12304, 27 arts) importado + scope T11 → 4 preg (arts 2/7/16/22).
+  - **RD 635/2015** (depósito legal en línea, BOE-A-2015-8338, 11 arts) importado + scope T213 → 2 preg (arts 3/6).
+  - **Ley 16/1985** (ya en BD) + **Disposición derogatoria** añadida como art `DD` + scope T10 → 1 preg (c2f8bed4).
+  - **c9eb6c4e RETIRADA-en-sitio** (needs_human, nota escrita): RD 509/2020 sigue vigente pero **RD 124/2022 suprimió la DG de Bellas Artes** y RD 313/2023 la reestructuró → el enunciado tiene premisa caducada. NO se importó RD 509/2020 (norma volátil, bajo valor). Reescribir contra estructura vigente o retirar.
+- **🔵 PENDIENTE (decisión de esfuerzo/valor):** **~11 one-offs `mislink_v1`** de normas autonómicas de nicho (Decreto 12/2024 CyL, Ley 13/1990 CES CyL, Presupuestos CyL, Decreto 248/2023 Madrid, Decreto 200/1993 Galicia, RD 2099/1983 precedencias, LO 15/1999) para oposiciones que **sí están activas** (administrativo-castilla-leon, auxiliar/administrativo-madrid/andalucia/galicia). Pero cada una exige: importar la norma del BOE/boletín autonómico (verificar vigencia) **y** confirmar que la norma está en el epígrafe de ese tema (los tags no mandan). Trabajo alto por pregunta, encaje incierto → parkeadas hasta decidir si compensa. IDs: 490e1ed6, a1d1b0b8, d4c0185c (Decreto 12/2024 CyL) · 2d4df8f3, 6947bfae (Ley 13/1990 CES) · 07f68313, 26eb24b0 (Presupuestos CyL) · 860b3fbb (LO 15/1999) · a1e0046e (RD 2099/1983) · b628ff43 (Decreto 248/2023 Madrid) · b647ee0d (Decreto 200/1993 Galicia).
+
 ### 🟡 [ABIERTO 19/07] Verificación scope↔epígrafe — backlog de plataforma
 - **Qué:** de **149 temas** en `verified_issues`/`needs_human` (`verify:scope audit`), la sesión 19/07 resolvió las **3 oposiciones de mayor demanda con issues**: `auxiliar_administrativo_estado` (T107 falso positivo), `administrativo_estado` (T603/T7/T307 + **re-partición del bloque EBEP T403/T406/T407**), `tramitacion_procesal` (**37/37 correct**: T1 Habeas Corpus fuera, T10 protección de datos acotada, T23 LGSS fuera — todo verificado contra BOE-A-2025-27053).
 - **Queda (por tipo):** **~14 variante Office** (Word/Excel escritorio vs web) = **BLOQUEADAS** esperando nota informativa oficial del tribunal (§5-bis; no accionables por nosotros); **~29 comodín/estatuto entero sin particionar**; **~22 imports** de leyes que no están en BD (mayoría `administrativo_navarra`, baja demanda); **faltan-bloques** de oposiciones de menor demanda; y **~100 `never_verified`** sin auditar (deuda de cobertura, no error).
