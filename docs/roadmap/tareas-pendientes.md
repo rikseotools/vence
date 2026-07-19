@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🟡 [ABIERTO 19/07] Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
+- **Qué:** el nuevo detector `scope_titulo_huerfano` (barrido nocturno, LIVE) marca **465 títulos** de una ley que la oposición usa, con preguntas activas y flanqueados a ambos lados por artículos escopados, pero con **0 artículos suyos en el `topic_scope`** (hueco INTERNO). Es un *upper bound* con falsos positivos legítimos (títulos que el programa no incluye).
+- **Por qué:** son preguntas ya en BD que el usuario no puede practicar (caso raíz: CE Título V en Diputación Córdoba, 186 preg — ya arreglado). Varios apuntan a huecos reales (ej. Andalucía no escopa CE Título III, 66-96, 699 preg).
+- **Cómo:** frase-gatillo **"revisa los huecos del temario"** → adjudicar por oposición con `verify:scope` (epígrafe↔scope), priorizando por nº de preguntas huérfanas. Si el epígrafe pide el título → añadir su rango al scope; si no → dejarlo. Detalle: memoria `project_scope_titulo_huerfano_deteccion` + `docs/runbooks/verificar-epigrafes-scope.md`.
+- **Estado:** detector + fix de Córdoba LIVE; el drenaje del backlog está sin empezar.
+
 ### 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
 - **Qué (HECHO 19/07, verificado vs fuente oficial + en vivo en RDS):** Aragón VIII Convenio (8 arts, nº de maquetación BOA pegado al texto), UMU Matrícula 2026/2027 (~27 arts: marca de agua PDF incrustada + apartados descolocados 18/19/29/30 recompuestos contra fuente), Cantabria Decreto 152/2005 art.7, Instituciones Internacionales GC (5 títulos mal atribuidos), Osakidetza Decreto 255/1997 (5 arts euskera→castellano). Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
 - **PEND (bajo ROI, teoría-only):** Osakidetza Decreto 255/1997 arts **5, 8, 13, 14, 15, 17, 20** aún bilingües (0 preguntas cuelgan) → re-import castellano del BOPV.

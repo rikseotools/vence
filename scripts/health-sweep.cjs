@@ -300,6 +300,57 @@ async function main() {
       { count: unverified.length, byState, sample: unverified.slice(0, 20) });
   }
 
+  // ── CONTENIDO: TÍTULOS HUÉRFANOS del temario (hueco INTERNO del topic_scope) ──
+  // Un título de una ley que la oposición SÍ usa, con preguntas activas, con 0
+  // artículos escopados en NINGÚN tema de esa oposición, Y flanqueado a ambos lados
+  // por artículos escopados de la misma ley (hueco INTERNO, no un recorte de borde).
+  // Es el punto ciego entre la detección ley-entera (audit-epigrafe: la ley SÍ está
+  // en el scope, no salta UNDER) y la tema-servido (empty_topic/low_coverage: el tema
+  // tiene cientos de preguntas por OTROS títulos, sale verde). Caso raíz 19/07: CE
+  // Título V (108-116) huérfano en Diputación Córdoba → 186 preguntas sin practicar,
+  // pese a que el epígrafe del Tema 2 nombra "Relaciones entre el Gobierno y las Cortes
+  // Generales". Prefiltro DETERMINISTA: la adjudicación (hueco REAL vs título fuera de
+  // programa) la hace el pipeline LLM verify:scope leyendo el epígrafe (frase-gatillo
+  // "revisa los huecos del temario" → docs/runbooks/verificar-epigrafes-scope.md).
+  const SCOPE_GAP_MIN_Q = Number(process.env.SCOPE_GAP_MIN_Q || 8);
+  const titSecs = (await c.query(`SELECT ls.law_id, l.short_name, ls.section_number, ls.article_range_start lo, ls.article_range_end hi
+    FROM law_sections ls JOIN laws l ON l.id = ls.law_id
+    WHERE ls.section_type = 'titulo' AND ls.article_range_start IS NOT NULL AND ls.article_range_end IS NOT NULL`)).rows;
+  const scopeAll = (await c.query(`SELECT t.position_type pt, ts.law_id, ts.article_numbers
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id WHERE ts.article_numbers IS NOT NULL AND t.is_active`)).rows;
+  const qAll = (await c.query(`SELECT a.law_id, a.article_number an, count(DISTINCT q.id)::int n
+    FROM questions q JOIN articles a ON a.id = q.primary_article_id
+    WHERE q.is_active AND a.article_number ~ '^[0-9]+$' GROUP BY a.law_id, a.article_number`)).rows;
+  const scopedByPtLaw = new Map(); // "pt|law_id" → Set(int) — art 0 (fabricado) excluido
+  for (const r of scopeAll) {
+    const k = r.pt + '|' + r.law_id; let set = scopedByPtLaw.get(k); if (!set) scopedByPtLaw.set(k, set = new Set());
+    for (const a of (r.article_numbers || [])) { const n = parseInt(a); if (!isNaN(n) && n > 0) set.add(n); }
+  }
+  const qByLawArt = new Map();
+  for (const r of qAll) qByLawArt.set(r.law_id + '|' + parseInt(r.an), r.n);
+  const secsByLaw = new Map();
+  for (const sc of titSecs) { let arr = secsByLaw.get(sc.law_id); if (!arr) secsByLaw.set(sc.law_id, arr = []); arr.push(sc); }
+  const scopeGaps = [];
+  for (const [k, scoped] of scopedByPtLaw) {
+    if (scoped.size === 0) continue;
+    const bar = k.lastIndexOf('|'); const pt = k.slice(0, bar); const lawId = k.slice(bar + 1);
+    const secs = secsByLaw.get(lawId); if (!secs) continue;
+    const smin = Math.min(...scoped), smax = Math.max(...scoped);
+    for (const sc of secs) {
+      let q = 0, anyScoped = false;
+      for (let i = sc.lo; i <= sc.hi; i++) { q += (qByLawArt.get(lawId + '|' + i) || 0); if (scoped.has(i)) anyScoped = true; }
+      if (q >= SCOPE_GAP_MIN_Q && !anyScoped && smin < sc.lo && smax > sc.hi)
+        scopeGaps.push({ pt, ley: sc.short_name, titulo: sc.section_number, rango: `${sc.lo}-${sc.hi}`, preguntas: q });
+    }
+  }
+  if (scopeGaps.length) {
+    scopeGaps.sort((a, b) => b.preguntas - a.preguntas);
+    const nOpos = new Set(scopeGaps.map(g => g.pt)).size;
+    add('content', 'warn', null, 'scope_titulo_huerfano',
+      `${scopeGaps.length} título(s) con preguntas huérfanas (hueco INTERNO del scope) en ${nOpos} oposición(es) — el epígrafe puede pedirlos; adjudicar con verify:scope`,
+      { count: scopeGaps.length, oposiciones: nOpos, sample: scopeGaps.slice(0, 20) });
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

@@ -15,6 +15,7 @@ const SWEEP_KINDS = [
   'http_down', 'empty_topic', 'render_error', 'http_5xx', 'webhook_unhealthy',
   'server_render_error', 'plaza_card', 'temas_card', 'dual_write', 'low_coverage',
   'no_hitos', 'flattened_table', 'stale_dated_law', 'audit_note_explanation',
+  'law_unverified_source', 'scope_titulo_huerfano',
 ]
 
 describe('runbookRegistry — guardarraíles', () => {
