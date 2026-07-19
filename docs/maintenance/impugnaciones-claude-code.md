@@ -722,6 +722,15 @@ Cuando la queja del usuario no es sobre el contenido de la pregunta sino sobre e
    - Y = `bloque_number`, en romanos (I, II, III...).
    - Consulta: `SELECT topic_number, bloque_number, display_number, title, epigrafe FROM topics WHERE …`.
    - Si te descubres escribiendo "T101", "T5", etc. en cualquier lado → reescribir.
+5. **Revalidar cache tras tocar `topic_scope`** (paso obligatorio, distinto del tag `'questions'`). Cambiar `article_numbers` de un scope cambia qué artículos/preguntas se asignan a cada tema → el **temario** y los conteos siguen cacheados con el estado viejo hasta invalidar. Invalidar **`temario` + `test-counts`** (y `teoria` si además cambia lo que se ve en la página de teoría). Ver `docs/maintenance/cache-revalidation.md`:
+   ```bash
+   for T in temario test-counts; do
+     curl -X POST https://www.vence.es/api/admin/revalidate \
+       -H "Content-Type: application/json" -H "x-cron-secret: $CRON_SECRET" \
+       -d "{\"tag\":\"$T\"}"
+   done
+   ```
+   Si el cambio es masivo (varios scopes/temas/leyes), usar `node scripts/purge-all-cache.js` en su lugar.
 
 ### Incidente que motiva la regla (14/04/2026 — Isabel Iglesias, aux admin estado)
 

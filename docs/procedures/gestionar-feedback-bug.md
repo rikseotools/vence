@@ -71,6 +71,7 @@ Cuando el usuario pregunta algo sobre **qué entra en un tema** (epígrafes, art
 1. **¿Está hecha la clonación del epígrafe oficial (Paso 1)?** Mira `topic_epigrafe_verification` de esa oposición. Si NO está (`never_sourced`), **hazla primero**: clonar el temario LITERAL oficial (convocatoria / DOGV / BOE) → `topics.epigrafe`, confirmarlo y registrarlo (`verified_literal` + `source_url` del PDF exacto). Es **bloqueante**: sin epígrafe de fiar no se puede auditar el scope.
 2. **¿Está auditada toda la oposición (Paso 2)?** Mira `topic_scope_verification`. Si NO, **audita la oposición ENTERA** (workflow `verify-scope-oposicion` → `verify:scope plan` → `apply`), no solo el tema del usuario — de paso caza otros errores.
 3. **Revisa lo que dice el usuario** — SIEMPRE al final, ya sobre base firme.
+4. **Si has TOCADO `topic_scope`** (cambiado `article_numbers` de algún tema al corregir), **revalida cache al terminar**: invalidar los tags `temario` + `test-counts` (y `teoria` si cambia lo visible en la página de teoría), o `node scripts/purge-all-cache.js` si el cambio es masivo. Si no, el temario/teoría se sigue viendo con el estado viejo cacheado aunque la BD ya esté bien. El tag `'questions'` NO basta: solo cubre respuesta/explicación de la pregunta, no el scope. Ver `docs/maintenance/cache-revalidation.md`.
 
 **Atajo:** si la BD ya dice que la oposición está auditada (Paso 1 `verified_literal` + Paso 2 `verified_correct`, frescos), **NO repitas la auditoría** — ve directo a revisar el punto concreto del usuario contra el scope/epígrafe ya verificados.
 
