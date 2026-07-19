@@ -59,4 +59,10 @@ describe('normalizeArticleNumber', () => {
   test('colapsa espacios y baja a minúscula', () => {
     expect(normalizeArticleNumber('  18   BIS ')).toBe('18 bis')
   })
+  test('unifica sufijo con/sin espacio: "38bis" == "38 bis" == "38 BIS"', () => {
+    expect(normalizeArticleNumber('38bis')).toBe('38 bis')
+    expect(normalizeArticleNumber('38 bis')).toBe('38 bis')
+    expect(normalizeArticleNumber('38 BIS')).toBe('38 bis')
+    expect(normalizeArticleNumber('53ter')).toBe('53 ter')
+  })
 })
