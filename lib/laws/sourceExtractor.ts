@@ -15,9 +15,17 @@
 
 const ART_RE = /Artículo\.?\s+(\d+)\.?\s*([Bb]is|[Tt]er)?\.?\s*[–.-]/g
 
-/** Normaliza un número de artículo para comparar (BD vs fuente). */
+/** Normaliza un número de artículo para comparar (BD vs fuente).
+ *  Unifica sufijos ordinales con/sin espacio: "38bis" == "38 bis" == "38 BIS". */
 export function normalizeArticleNumber(s: string | null | undefined): string {
-  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(
+      /(\d)\s*(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies)\b/g,
+      '$1 $2',
+    )
 }
 
 /** Extrae el conjunto de números de artículo presentes en el texto-fuente. */

@@ -35,6 +35,7 @@ function extractArticleNumbers(text) {
   return nums
 }
 const normNum = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  .replace(/(\d)\s*(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies)\b/g, '$1 $2')
 
 async function fetchSourceText(url) {
   // Descarga a fichero y DETECTA el tipo por magic-bytes (%PDF), no por extensión:
