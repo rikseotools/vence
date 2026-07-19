@@ -8,6 +8,15 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 const { createClient } = require(path.join(__dirname, '..', 'node_modules', '@supabase', 'supabase-js'));
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+// FROZEN-SUPABASE-NEUTRALIZED (19/07/2026): one-off obsoleto que ESCRIBÍA a la Supabase
+// CONGELADA (auth.vence.es, post-cutover 04/07) → writes a un espejo muerto que nunca llega
+// a prod. Neutralizado: aborta salvo migración a RDS (shim scripts/lib/pg-agnostic-client.cjs
+// o pg/DATABASE_URL). Escape consciente: ALLOW_FROZEN_SUPABASE_WRITE=1.
+if (!process.env.ALLOW_FROZEN_SUPABASE_WRITE) {
+  console.error('❌ Script neutralizado: escribía a la Supabase CONGELADA (post-cutover 04/07). Migra a RDS antes de re-ejecutar.');
+  process.exit(1);
+}
 const OUTPUT_DIR = path.join(__dirname, '..', 'preguntas-para-subir', 'auxiliar-cyl');
 const LETTER_TO_NUM = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
 

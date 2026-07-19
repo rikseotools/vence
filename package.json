@@ -19,6 +19,7 @@
     "digest:calidad": "node scripts/content-quality-digest.cjs",
     "audit:estados": "node scripts/audit-estados-convocatoria.cjs",
     "test:db-shim": "node scripts/lib/pg-agnostic-client.selftest.cjs",
+    "audit:frozen-supabase": "node scripts/check-frozen-supabase-data.cjs",
     "oep:seguimiento-urls": "node scripts/assign-seguimiento-urls.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:served": "npx tsx --env-file=.env.local scripts/audit-served-questions.ts",

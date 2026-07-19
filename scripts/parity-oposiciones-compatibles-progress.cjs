@@ -19,6 +19,15 @@ require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({path
 const { createClient } = require('/home/manuel/Documentos/github/vence/node_modules/@supabase/supabase-js')
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)
 
+// FROZEN-SUPABASE-NEUTRALIZED (19/07/2026): parity que leía la Supabase CONGELADA
+// (auth.vence.es, post-cutover 04/07) → comparación contra un snapshot muerto = veredicto
+// engañoso. Neutralizado: aborta salvo migración a RDS (shim scripts/lib/pg-agnostic-client.cjs
+// o pg/DATABASE_URL). Escape consciente: ALLOW_FROZEN_SUPABASE_WRITE=1.
+if (!process.env.ALLOW_FROZEN_SUPABASE_WRITE) {
+  console.error('❌ Script neutralizado: leía la Supabase CONGELADA (post-cutover 04/07). Migra a RDS antes de re-ejecutar.');
+  process.exit(1);
+}
+
 async function computeProgressOLD(userId, sourcePositionType) {
   const { data: tqRows } = await sb.from('test_questions')
     .select('article_id, is_correct')
