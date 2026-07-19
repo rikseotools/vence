@@ -222,7 +222,14 @@ td.containerDefinitions[0].image=process.env.IMG_DIGEST;
 // y getStripeFor('nila')/webhook Nila no tendrían credenciales.
 const REGION='eu-west-2', ACC='349744179687';
 const secrets=(td.containerDefinitions[0].secrets ||= []);
-for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT']) {
+// KOIGRID_VIDEO_*: vídeos de curso servidos desde koigrid (S3/MinIO Hetzner, egress
+// gratis, faststart → reproducibles en móvil). Params SSM /vence-frontend/* (creados
+// 2026-07-19). Presentes → resolveVideoSignedUrl firma contra koigrid; ausentes →
+// Supabase (reversible: quitar de aquí + redeploy). Mismo patrón que STRIPE_*_NILA:
+// el deploy manual clona la task def viva y solo swapea imagen, así que los secretos
+// runtime nuevos hay que añadirlos idempotentemente aquí (el ensure_secret del
+// workflow YAML solo aplica al path GHA workflow_dispatch, que está en desuso).
+for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY']) {
   if (!secrets.some(s=>s.name===name)) secrets.push({name, valueFrom:'arn:aws:ssm:'+REGION+':'+ACC+':parameter/vence-frontend/'+name});
 }
 // Precios Stripe en RUNTIME (server-side). getPricesFor()/priceBelongsToAccount()
