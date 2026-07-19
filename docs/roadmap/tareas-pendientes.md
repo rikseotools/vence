@@ -167,11 +167,9 @@
 - **Cómo:** `docs/runbooks/contencion-rds-paneles-admin.md` §3. Provisionar réplica en `aws rds create-db-instance-read-replica` (perfil `vence`) → set `DATABASE_URL_REPLICA` en SSM → flip `USE_READ_REPLICA=true` → apuntar endpoints admin a `getReadDb()`.
 - **Estado:** pendiente, gatillado (no antes de medir).
 
-### 🟡 [MEDIA] Desplegar el guardarraíl anti-duplicado de recompensas
-- **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) está en `origin/main` pero **NO desplegado** (prod = `4465d15c`).
-- **Por qué:** cierra el hueco de doble recompensa por el mismo motivo (control robusto). No bloquea nada (creación manual ya se verifica), pero conviene que esté vivo.
-- **Cómo:** `docs/runbooks/pusheo-revision-despliegue.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
-- **Estado:** commiteado + pusheado, pendiente de deploy.
+### ✅ [DESPLEGADA 19/07] Guardarraíl anti-duplicado de recompensas
+- **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) cierra el hueco de doble recompensa por el mismo motivo.
+- **✅ YA EN PROD:** `f3bc0954` (10/07) es ancestro de la imagen desplegada `deploy-d5f00d3c` (ECR, deploy 19/07 08:36). El estado previo del backlog (prod=`4465d15c`, "pendiente de deploy") estaba **stale**: se desplegó junto con el cierre de la campaña de citas. Verificado: `git merge-base --is-ancestor f3bc0954 d5f00d3c` = 0.
 
 ### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)
 - **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **9 € pagables** = 3 recompensas de bug aprobadas (3 €×3), sin hold, 0 pagado. La 3ª es del bug de Auxiliar de Biblioteca (12/07). Emitir vale Amazon.es.
