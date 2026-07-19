@@ -259,6 +259,14 @@ jobs:
               # local (<5ms) en vez del round-trip remoto a Supabase getUser.
               | ensure_secret("SUPABASE_JWT_SECRET")
               | ensure_secret("JWT_LOCAL_VERIFY_MODE")
+              # Vídeos de cursos en koigrid (S3/MinIO Hetzner, egress gratis). Params SSM
+              # creados 2026-07-19. Al estar presentes, resolveVideoSignedUrl firma contra
+              # koigrid (faststart, reproducible en móvil) en vez de Supabase. Reversible:
+              # borrar los params + redeploy vuelve a Supabase. ENDPOINT/REGION por defecto
+              # en código (s3.koigrid.com / us-east-1).
+              | ensure_secret("KOIGRID_VIDEO_BUCKET")
+              | ensure_secret("KOIGRID_VIDEO_ACCESS_KEY")
+              | ensure_secret("KOIGRID_VIDEO_SECRET_KEY")
               | .containerDefinitions[0].healthCheck = {
                   "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
