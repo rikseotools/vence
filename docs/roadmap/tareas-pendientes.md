@@ -16,18 +16,20 @@
 
 ## Abiertas
 
-### 🟠 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — rematar scope↔epígrafe (6 issues + 2 needs_human)
-- **Qué:** verificación scope↔epígrafe completa (BOP `bop_1582_2026.pdf`, Anexo II) contra topic_scope, 2 agentes + consenso, **trackada en `topic_scope_verification`** (19/07). Estado: **12 correct / 6 issues / 2 needs_human**. Origen: impugnaciones de Sandra Barbastro (art. 71 y 100 LCSP, falsos positivos — sí entran en su T11 "contratación pública", verificado).
-- **HECHO 19/07:** T2 (añadido LO 5/2007 Estatuto de Aragón, toda la ley, 198 Q) y T18 (añadida Ley 7/2018 Igualdad Aragón arts 1-3+16-28, 24 Q) → ambos `verified_correct` por consenso de 2 agentes.
-- **verified_issues (6):**
-  - **T5** — añadir 39/2015 arts 29-33 (términos y plazos). Fix rápido (ley ya en BD).
-  - **T6** — añadir 39/2015 arts 24-25 (silencio) + 97-105 (ejecución, Título V). Fix rápido.
-  - **T11** — añadir LCSP procedimientos de adjudicación ~131-168 ("formas y procedimientos"). Fix (ver banco).
-  - **T17** — añadir contabilidad EELL (Título contabilidad RDL 2/2004, ~200-212) + revisar posible sobre-scope Ley 47/2003 arts 61-63 (Hacienda estatal). Fix/decisión.
-  - **T4** — añadir Ley 7/1999 Admin Local Aragón + Decreto 347/2002 RBASO (banco fino: 4+5 Q) → añadir + **generar**. Build.
-  - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley + generar. Build.
-- **needs_human (2, discrepan analista/escéptico):** T1 (¿quitar art. 116 CE, estados de alarma, del tema de derechos fundamentales?), T14 (¿ampliar RDL 2/2004 a impuestos locales/contribuciones especiales, o 1-27 basta?).
-- **Cómo:** runbook `verificar-epigrafes-scope.md` (`verify:scope status auxiliar_administrativo_diputacion_zaragoza`). T5/T6/T11/T17 son quick wins con ley ya en BD; T4/T15 son build.
+### 🟢 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — scope↔epígrafe: 15 correct / 2 issues (build) / 3 needs_human
+- **Qué:** verificación scope↔epígrafe completa (BOP `bop_1582_2026.pdf`, Anexo II) contra topic_scope, 2 agentes + consenso, **trackada en `topic_scope_verification`** (19/07). Origen: impugnaciones de Sandra Barbastro (art. 71 y 100 LCSP, falsos positivos — sí entran en su T11 "contratación pública", verificado).
+- **HECHO 19/07 (6 temas → verified_correct, todos por consenso de 2 agentes):**
+  - **T2** — añadido LO 5/2007 Estatuto de Aragón (toda la ley, 198 Q).
+  - **T18** — añadida Ley 7/2018 Igualdad Aragón (arts 1-3 + 16-28, 24 Q).
+  - **T5** *(pasó a needs_human, ver abajo)* — añadidos 39/2015 arts 29-33 (términos y plazos).
+  - **T6** — añadidos 39/2015 arts 1-2 (objeto/ámbito) + 24-25 (silencio) + 96-105 (tramitación simplificada + ejecución).
+  - **T11** — añadidos LCSP arts 131-188 (formas y procedimientos de adjudicación, 75 Q).
+  - **T17** — añadidos RDL 2/2004 arts 182-193 (gasto/ejecución) + 200-212 (contabilidad EELL); **eliminada Ley 47/2003** (Ley General Presupuestaria ESTATAL, sobre-scope de otro nivel).
+- **verified_issues (2, son BUILD — requieren importar/generar):**
+  - **T4** — añadir Ley 7/1999 Admin Local Aragón + Decreto 347/2002 RBASO (banco fino: 4+5 Q) → añadir + **generar**.
+  - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley + generar.
+- **needs_human (3, discrepan analista/escéptico o juicio de criterio):** T1 (¿quitar art. 116 CE, estados de alarma, del tema de derechos fundamentales?), T5 (¿quitar 39/2015 arts 66-68 solicitudes de iniciación — sobre-scope vs solapamiento legítimo con T6?), T14 (¿ampliar RDL 2/2004 a impuestos locales/contribuciones especiales, o 1-27 basta?).
+- **Cómo:** runbook `verificar-epigrafes-scope.md` (`verify:scope status auxiliar_administrativo_diputacion_zaragoza`). Solo quedan builds (T4/T15) + decisiones humanas (T1/T5/T14).
 
 ### 🟠 [ABIERTO 17/07] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
 - **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hace nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Falla en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes.
