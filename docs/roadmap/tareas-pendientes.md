@@ -161,12 +161,14 @@
 - **Estado:** resto de la oposición **28/30 `verified_correct`** (incl. función pública 6/7/8/10 reparada: reparto correcto de la Ley 13/2015 por epígrafe, re-verificado).
 
 
-### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Diputación de Zaragoza (verify:scope 18/07)
-- **Qué:** feedback de Sandra (bug `6f789351`, *"en contratos solo entra hasta el art. 43, pero salen preguntas de otros artículos"*) disparó `verify:scope` de la oposición completa (20 temas, antes `never_verified` → **12 correct, 4 issues, 4 needs_human**; run `verify_auxiliar_administrativo_diputacion_zaragoza_2026-07-18`). El feedback quedó **resuelto y respondido** (T11 NO era sobre-scope: aptitud 65-73 y precio 99-102 SÍ son "contratación pública"; su material corta antes que el epígrafe oficial).
-- **T11 contratación (needs_human):** falta el bloque *"formas y procedimientos de contratación"* = procedimientos de adjudicación LCSP (~arts 131-179), hoy ausentes. Valorar ampliar (es más preguntas, no menos).
-- **Deuda aragonesa (4 issues):** el epígrafe nombra normativa autonómica pero solo está la estatal — **T2** Estatuto de Autonomía de Aragón (LO 5/2007), **T4** ley aragonesa de régimen local, **T15** Ley de Subvenciones de Aragón, **T18** ley aragonesa de igualdad. Enganchar + poblar desde fuente oficial.
-- **Otros needs_human:** T5 (términos/plazos 39/2015 arts 29-33), T6 (silencio 24-25 + ejecución 97-105), T17 (contabilidad EELL + posibles arts estatales de Ley 47/2003 que sobran).
-- **Cómo:** crear/importar cada ley regional (BOA/BOE) y escoparla; ampliar T11; re-verificar. No inventar contenido. Runbook `verificar-epigrafes-scope.md`.
+### ✅ [HECHO 19/07] Aux. Administrativo Diputación de Zaragoza — scope↔epígrafe 20/20 + banco aragonés generado
+- **Origen:** feedback de Sandra (`6f789351`) → `verify:scope` de la oposición (18/07: 12 correct / 4 issues / 4 needs_human). **19/07 completado por otra sesión.**
+- **Scope: de 12/6/2 a 20/20 `verified_correct`** (0 issues, 0 needs_human), todo por consenso de 2 agentes y trackado en `topic_scope_verification`:
+  - **T2** +LO 5/2007 Estatuto de Aragón · **T18** +Ley 7/2018 Igualdad Aragón (arts 1-3+16-28) · **T4** +Ley 7/1999 Admin Local Aragón (1-6+72-138, curado) · **T15** +TR Subvenciones Aragón (ver abajo).
+  - **T11** ampliado a procedimientos de adjudicación LCSP 131-188 · **T5** +39/2015 29-33 · **T6** +1-2,24-25,96-105 · **T17** +RDL 2/2004 182-193,200-212 y **eliminada Ley 47/2003** (sobre-scope estatal) · **T14** +RDL 2/2004 59-110 impuestos locales · **T1** −art 116 CE.
+- **Ley importada de cero:** Texto Refundido de la Ley de Subvenciones de Aragón (Decreto Legislativo 2/2023, VIGENTE — refunde la Ley 5/2015), **80 arts verbatim** desde BOE-A-2023-12919 (slug `tr-subvenciones-aragon`).
+- **Generación: 98 preguntas verificadas** (doble auditoría Sonnet adversarial): **48** de la Ley 7/1999 (T4) + **50** del TR Subvenciones (T15, 90% de arts escopados). Guardarraíles anti-tell cazaron ~15 defectos (longitud/enumeración/omisión/conocimiento externo/doble solución).
+- **Residual (no urgente):** huecos de generación de arts sueltos (5 de T15, algunos de la Ley 7/1999 en T4). Detalle: `docs/roadmap/tareas-pendientes.md` (rama `feat/uc3m-golive`) + runbook `verificar-epigrafes-scope.md`.
 
 ### 🟠 [ABIERTO 18/07] Completitud de leyes vs fuente oficial — capa 1 hecha, faltan 2-4 + backfill 126
 - **Qué:** sistema para que ninguna ley del temario quede importada a medias / falso verde / sin fuente sin que lo cacemos. **Capa 1 (detección) CONSTRUIDA y verde**: `lib/laws/completeness.ts` + `scripts/audit-law-completeness.cjs` + sweep (kind `law_unverified_source`) + runbook `completitud-leyes.md` (frase *"revisa la completitud de las leyes"*). Barrido: **126 leyes sirviendo en temas VIVOS** sin verificar (78 falso verde, 28 sin fuente, 20 nunca verificadas).
