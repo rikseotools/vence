@@ -16,7 +16,7 @@
 
 ## Abiertas
 
-### 🟢 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — scope↔epígrafe: 18 correct / 2 issues (build) / 0 needs_human
+### 🟢 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — scope↔epígrafe: 19 correct / 1 issue (build) / 0 needs_human
 - **Qué:** verificación scope↔epígrafe completa (BOP `bop_1582_2026.pdf`, Anexo II) contra topic_scope, 2 agentes + consenso, **trackada en `topic_scope_verification`** (19/07). Origen: impugnaciones de Sandra Barbastro (art. 71 y 100 LCSP, falsos positivos — sí entran en su T11 "contratación pública", verificado).
 - **HECHO 19/07 (6 temas → verified_correct, todos por consenso de 2 agentes):**
   - **T2** — añadido LO 5/2007 Estatuto de Aragón (toda la ley, 198 Q).
@@ -25,9 +25,10 @@
   - **T6** — añadidos 39/2015 arts 1-2 (objeto/ámbito) + 24-25 (silencio) + 96-105 (tramitación simplificada + ejecución).
   - **T11** — añadidos LCSP arts 131-188 (formas y procedimientos de adjudicación, 75 Q).
   - **T17** — añadidos RDL 2/2004 arts 182-193 (gasto/ejecución) + 200-212 (contabilidad EELL); **eliminada Ley 47/2003** (Ley General Presupuestaria ESTATAL, sobre-scope de otro nivel).
-- **verified_issues (2, son BUILD — requieren importar/generar):**
-  - **T4** — añadir Ley 7/1999 Admin Local Aragón + Decreto 347/2002 RBASO (banco fino: 4+5 Q) → añadir + **generar**.
-  - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley + generar.
+- **T4 scope HECHO 19/07** (verified_correct): añadida Ley 7/1999 Admin Local Aragón arts 1-6 + 72-138 (marco general + comarcas/supramunicipal aragonés, rango curado para no invadir T9/T10/T12/T13/T16). ⚠️ **COBERTURA pendiente:** ese bloque aragonés tiene ~0 preguntas (las 4 de la Ley 7/1999 están en 139/142/179/224, fuera del rango) → **generar** banco aragonés (build).
+- **verified_issues (1, BUILD):**
+  - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley (verbatim, doble auditoría) + generar preguntas.
+- **Build de generación pendiente (sesión dedicada):** cobertura Aragón de T4 (Ley 7/1999 1-6+72-138) + T15 (importar Ley 5/2015 + generar). Verificado contra fuente oficial, draft→approve, NUNCA inventar.
 - **needs_human RESUELTOS 19/07 (decisión Manuel, 3 temas → correct):** T1 (quitado art. 116 CE), T5 (mantenidos 39/2015 66-68, solapamiento legítimo), T14 (añadidos RDL 2/2004 59-110, los 5 impuestos locales, 56 Q).
 - **Cómo:** runbook `verificar-epigrafes-scope.md` (`verify:scope status auxiliar_administrativo_diputacion_zaragoza`). **Solo quedan los 2 builds (T4/T15).**
 
@@ -231,15 +232,14 @@
 - **Cómo:** `docs/runbooks/deploy.md` (`scripts/deploy-frontend.sh`, gate CI verde). Va junto con lo que haya en main.
 - **Estado:** commiteado + pusheado, pendiente de deploy.
 
-### 🔴 [ALTA] Barrido: scripts que aún leen la BD Supabase CONGELADA (post-cutover 04/07)
-- **Qué:** ~250 scripts `.cjs` en `scripts/` crean `createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` y leen tablas de datos (`oposiciones`, `questions`, `convocatoria*`, `topic*`…). Desde el cutover a RDS (04/07/2026) eso lee un **snapshot congelado** → veredictos/salidas STALE.
-- **Por qué:** `audit:estados` (gate de CI/cron, §0.bis del manual OEPs) daba **falsos ❌/🟡** leyendo Supabase congelada (11/07: mostraba `inscripcion_abierta` con plazo vencido cuando en RDS ya estaban cerradas; 568 filas vs 2533 reales). La mayoría de los 250 son one-offs muertos, pero los **recurrentes** (audits, radar, canaries, seo-audit) engañan silenciosamente.
-- **Cómo:** repuntar a RDS con el idiom de la casa (`postgres(process.env.DATABASE_URL, {ssl:'require'})` + guard `if(!DATABASE_URL) exit`), leyendo de `oposiciones_ssot` cuando aplique, y castear DATE a `::text` (footgun tz de pg, §4g-bis). Priorizar los que se ejecutan de forma recurrente; los one-offs muertos se pueden ignorar o archivar. Patrón de referencia ya aplicado: `scripts/audit-estados-convocatoria.cjs`, `scripts/audit-oposiciones-coherencia.cjs`.
-- **Estado (11/07):** `audit:estados` **REPARADO** (RDS/`oposiciones_ssot`, 0 ❌, commit `80672a6`). **Migración masiva HECHA** (commit `5b6a2f30`): shim agnóstico `scripts/lib/pg-agnostic-client.cjs` (drop-in de supabase-js sobre `DATABASE_URL`; `npm run test:db-shim` = 18 casos verde) + **540 scripts repuntados** (1 línea de import) + `leer-notas` a pg directo.
-- **PENDIENTE (~124 conversión MANUAL a SQL/pg):** los que el shim no cubre y **fallan ruidosamente** (nunca datos erróneos en silencio):
-  - **~92** usan `.auth`/`.storage` (siguen en Supabase: auth/almacenamiento NO migrados) o `.rpc`/`.or`/`.contains`/`.channel`.
-  - **~32** usan selects anidados (embeds PostgREST `tabla:fk(cols)` = JOINs). Detección: `awk '/\.select\(\`/{inb=1} inb{buf=buf $0} /\`\)/{if(inb){if(buf ~ /[a-z_]+ *\(|:[a-z_]/)print FILENAME; inb=0;buf=""}}' scripts/*.cjs`.
-  - Patrón de arreglo: reescribir a `postgres` (ej. `audit-oposiciones-coherencia.cjs`) o, si el subset encaja, ya usan el shim.
+### 🟢 [CASI CERRADA 19/07] Barrido: scripts que aún leen la BD Supabase CONGELADA (post-cutover 04/07)
+- **Qué:** scripts `.cjs` en `scripts/` que crean `createClient(NEXT_PUBLIC_SUPABASE_URL, …)` y leen/escriben tablas de datos. Desde el cutover a RDS (04/07/2026) eso lee un **snapshot congelado** → salidas STALE (o, si escriben, writes a un espejo que nunca llega a prod).
+- **Por qué:** `audit:estados` daba **falsos ❌/🟡** leyendo Supabase congelada (11/07: `inscripcion_abierta` con plazo vencido). El fuego real eran los **recurrentes** (audits, radar, canaries) que engañaban en silencio.
+- **✅ EL FUEGO REAL YA ESTÁ APAGADO (verificado 19/07):** TODOS los audits/canaries recurrentes de npm (`audit:estados`, `audit:epigrafe`, `audit:coherencia`, `audit:scraped-reconcile`, `audit:display-drift`, `canary:oposiciones`, `canary:verificacion-contenido`, `verify:scope`…) leen de **RDS/pg**. **Ninguno** de los scripts sin migrar está cableado a npm, GHA, cron ni require. La migración masiva (commit `5b6a2f30`, shim `pg-agnostic-client.cjs`, 540 scripts) cubrió lo vivo.
+- **✅ GUARDARRAÍL nuevo (19/07):** `npm run audit:frozen-supabase` (`scripts/check-frozen-supabase-data.cjs`) — estático, sin DB. Caza cualquier `.cjs` que lea/escriba tablas de datos vía supabase-js crudo sin el shim, con **baseline-trinquete** (hoy 105; falla con `--fail` si aparece uno NUEVO). Whitelist `LEGIT_AUTH_STORAGE` (4 scripts auth/storage que DEBEN seguir en Supabase). Impide la regresión que motivó todo esto.
+- **Resto = 105 one-offs DORMIDOS** (mayoría `_tmp_*`, `import-t3xx`, `fix-*`, `gen_*` de campañas viejas; 72 escriben). **Solo muerden si alguien los re-lanza a mano** — no hay riesgo silencioso en ningún flujo automático. Reescribir 105 scripts muertos NO compensa; el trinquete los tolera y solo baja al archivarlos.
+- **⚠️ Ojo:** la Supabase congelada (`https://auth.vence.es`, self-hosted) **sigue viva** porque aún sirve **auth/storage en prod** (no migrados) → no se puede decomisionar para forzar que fallen; por eso el guardarraíl estático es la red correcta.
+- **PEND menor (opcional):** neutralizar/archivar los 4 one-offs que ESCRIBEN datos (`import-andalucia-oficiales`, `import-cyl-new`, `import-cyl-similar-new`, `parity-oposiciones-compatibles-progress`) por si alguien los relanza. Bajar BASELINE al hacerlo. Sin commitear aún el guardarraíl + npm script.
 
 ## Landing multi-convocatoria: publicar 2 OEPs en paralelo (patrón nuevo, 15/07/2026)
 - **Qué:** cuando una oposición tiene un ciclo en curso (examen futuro, inscripción ya cerrada) Y abre una convocatoria nueva con inscripción abierta, la landing debe mostrar **las dos** (captar en ambas). Hoy solo pinta la `is_current` de `convocatorias` (vía `oposiciones_ssot`).
