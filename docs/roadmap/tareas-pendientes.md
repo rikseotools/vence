@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🟡 [ABIERTO 19/07] Render multi-convocatoria: landing pinta las 2 convocatorias vivas como bloques separados
+- **Qué:** cuando una oposición tiene 2 convocatorias vivas a la vez (caso Aux. Admin. Comunidad de Madrid: Orden 264/2026 de 645 plz **en tramitación** —lista de admitidos, examen pendiente— + Orden 1628/2026 de 673 plz con **inscripción abierta** hasta 10/08/2026), la landing lee de `oposiciones_ssot` (solo la `is_current`) para hero/tarjetas, y el **timeline mezcla los hitos de AMBAS convocatorias** (dos "Convocatoria publicada en BOCM", dos plazos de inscripción) → puede confundir a un usuario despistado.
+- **Origen:** feedback de Esther Pimentel (`9d7cabdd`, resuelto): buscaba dónde inscribirse en Aux. Admin. de Madrid; el timeline mezclado y la confusión Ayuntamiento/Comunidad la despistaron. El hero SÍ muestra bien la abierta (673 plz, 10/08); el dato es correcto, es solo UX.
+- **Por qué pendiente:** el schema ya soporta N convocatorias (migración `20260718_convocatorias_multi_por_año.sql`); falta la **vía (a) de render** (OEP manual §4e-ter): que la landing liste las convocatorias no `archived_at` de la oposición como **bloques separados** (cada una con sus plazas/fechas/hitos propios), en vez de mezclarlas. Hoy va la vía interina (`is_current` + hitos de ambas).
+- **Cómo:** cambio de código en la landing (pintar todas las convocatorias no archivadas, agrupando hitos por convocatoria). No urgente. Detalle: memoria `project-convocatorias-multi-por-año-schema`, `docs/roadmap/consolidacion-convocatorias-radar-ssot.md`.
+
 ### 🟡 [ABIERTO 19/07] Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
 - **Qué:** el nuevo detector `scope_titulo_huerfano` (barrido nocturno, LIVE) marca **465 títulos** de una ley que la oposición usa, con preguntas activas y flanqueados a ambos lados por artículos escopados, pero con **0 artículos suyos en el `topic_scope`** (hueco INTERNO). Es un *upper bound* con falsos positivos legítimos (títulos que el programa no incluye).
 - **Por qué:** son preguntas ya en BD que el usuario no puede practicar (caso raíz: CE Título V en Diputación Córdoba, 186 preg — ya arreglado). Varios apuntan a huecos reales (ej. Andalucía no escopa CE Título III, 66-96, 699 preg).
