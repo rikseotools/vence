@@ -106,7 +106,7 @@ Detector inline: arts con `article_number` numérico puro cuyo contenido arranca
 **PENDIENTE (teoría-only o estructural, menor ROI):**
 - `Decreto 255/1997` (Estatutos Osakidetza) arts **11, 12, 16** importados en **euskera** en vez de castellano (0 preguntas colgando → solo teoría). Necesita texto castellano del BOPV.
 - `Instrucción Detención Policial 2` art.9 = FALSO POSITIVO (título "Artículo 9.2", split editorial intencional).
-- `Instituciones Internacionales GC` mezcla 4 normas (Carta ONU + Reglamentos UE CEPOL/Europol/Frontex), títulos mal atribuidos → separar en leyes reales (ver hallazgos de abajo).
+- `Instituciones Internacionales GC` — **títulos corregidos (19/07)**: era mucho más que "4 normas": es un compendio EDITORIAL (virtual) de ~6 normas (Carta ONU, Estatuto INTERPOL, Estatuto Consejo de Europa, Reglamentos UE CEPOL 2015/2219, Europol 2016/794, Frontex 2019/1896), **40 artículos, 982 preguntas** (827 en el contenedor art.0), en guardia_civil + policia_nacional. Corregidos 5 títulos mal atribuidos (art.3 INTERPOL→CEPOL, art.4 CEPOL→Europol, art.6 Frontex→CEPOL, art.7 CEPOL→ONU, art.18 ONU→CEPOL); los números de artículo YA casan con la norma real (solo la etiqueta de norma en el título estaba mal). El **split físico** (crear 6 leyes reales, mover 40 arts, re-scopear, re-vincular 982 preguntas + tratar el contenedor art.0) queda como **PROYECTO GRANDE aparte** (alto riesgo: 2 oposiciones top) — NO hacer sin plan propio.
 
 ## Artículos truncados — HECHO (19 recompuestos y vivos)
 De los "33 truncados" del backlog, **solo 19 eran truncamiento legal real** (43 preguntas); los otros 14 eran
