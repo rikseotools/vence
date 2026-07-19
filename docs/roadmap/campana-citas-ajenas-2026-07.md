@@ -97,6 +97,17 @@ Los defectuosos no aplicables (huérfanos de scope, sin norma, clave dudosa) →
 Diagnósticos en RDS `ai_verification_results` proveedor `claude_code_mislink_ley_2026_07`.
 PEND: cruzar con el "cubo 3 (vínculo de ley equivocado)" y el subsistema `lib/laws/completeness.ts` de la otra sesión (solapan).
 
+## Barrido fresco de truncados/basura de import (19/07) — 2 clusters grandes HECHOS
+Detector inline: arts con `article_number` numérico puro cuyo contenido arranca en apartado > 1 (alta tasa de falsos positivos = normas con numeración "artículo.apartado", p.ej. art.21→"21.1" es correcto). Defectos REALES arreglados (todo verificado, nada inventado):
+- **VIII Convenio Colectivo PL Aragón (8 arts: 2,18,30,41,54,82,107,116)**: número de maquetación del BOA ("20291"…) pegado antes del texto → strip mecánico.
+- **Normas Matrícula UMU 2026/2027 (~27 arts)**: (a) **25 arts** con marca de agua del PDF incrustada ("Esta es una copia auténtica imprimible… sede.um.es/validador/") → eliminada; (b) **4 arts con apartados descolocados entre fronteras**, recompuestos contra fuente oficial (um.es/normas): art.29 Reconocimiento (ap.1-4) ↔ art.30 Transferencia (ap.1-6); art.18 Anulación a petición (ap.1-4) ↔ art.19 Anulación por impago (ap.1-7).
+- **Decreto 152/2005 Cantabria art.7**: prefijo basura "3 " antes de "1." → limpiado.
+- Embeddings regenerados + caché teoria/temario invalidada en cada caso.
+**PENDIENTE (teoría-only o estructural, menor ROI):**
+- `Decreto 255/1997` (Estatutos Osakidetza) arts **11, 12, 16** importados en **euskera** en vez de castellano (0 preguntas colgando → solo teoría). Necesita texto castellano del BOPV.
+- `Instrucción Detención Policial 2` art.9 = FALSO POSITIVO (título "Artículo 9.2", split editorial intencional).
+- `Instituciones Internacionales GC` mezcla 4 normas (Carta ONU + Reglamentos UE CEPOL/Europol/Frontex), títulos mal atribuidos → separar en leyes reales (ver hallazgos de abajo).
+
 ## Artículos truncados — HECHO (19 recompuestos y vivos)
 De los "33 truncados" del backlog, **solo 19 eran truncamiento legal real** (43 preguntas); los otros 14 eran
 preámbulo troceado (pseudo-arts `exp/EXP`) y editorial por secciones (manual app PIAE Valencia, Manual
