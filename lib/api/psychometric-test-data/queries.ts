@@ -167,6 +167,9 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             } : {}),
           }
         })
+        // Excluir secciones fantasma (0 preguntas activas): no son practicables,
+        // así que no deben poder seleccionarse ni contaminar el estado del configurador.
+        .filter(section => section.count > 0)
 
       return {
         key: cat.key,
