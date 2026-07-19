@@ -16,6 +16,17 @@
 
 ## Abiertas
 
+### 🟡 [ABIERTO 19/07] Verificación scope↔epígrafe — backlog de plataforma
+- **Qué:** de **149 temas** en `verified_issues`/`needs_human` (`verify:scope audit`), la sesión 19/07 resolvió las **3 oposiciones de mayor demanda con issues**: `auxiliar_administrativo_estado` (T107 falso positivo), `administrativo_estado` (T603/T7/T307 + **re-partición del bloque EBEP T403/T406/T407**), `tramitacion_procesal` (**37/37 correct**: T1 Habeas Corpus fuera, T10 protección de datos acotada, T23 LGSS fuera — todo verificado contra BOE-A-2025-27053).
+- **Queda (por tipo):** **~14 variante Office** (Word/Excel escritorio vs web) = **BLOQUEADAS** esperando nota informativa oficial del tribunal (§5-bis; no accionables por nosotros); **~29 comodín/estatuto entero sin particionar**; **~22 imports** de leyes que no están en BD (mayoría `administrativo_navarra`, baja demanda); **faltan-bloques** de oposiciones de menor demanda; y **~100 `never_verified`** sin auditar (deuda de cobertura, no error).
+- **Follow-ups menores de la sesión:** barrer el **comodín CE art.149** a otras oposiciones (solo hecho en `administrativo_estado` T7/T307); residuales EBEP borderline (`administrativo_estado` T406 arts 29/30 retrib, T403 arts 27/75) — tolerados, no urgen.
+- **Cómo:** runbook `verificar-epigrafes-scope.md` (pipeline 2 agentes). Priorizar por demanda: siguiente foco = **faltan-bloques de alta demanda** reusando banco. Los `needs_human` NO son "leyes rotas": muchos son falsos positivos de word-matching (Explorador Windows: T107/T603/T34 mismo caso) o criterios a arbitrar.
+
+### 🟡 [ABIERTO 19/07] Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a) + etiqueta cruzada
+- **Qué:** Madrid tiene **dos convocatorias 2026 vivas** (Orden 264/2026 en `lista_admitidos` examen 15/10 + Orden 1628/2026 673 plazas inscripción abierta hasta 10/08). El schema ya soporta ambas como filas propias (migración `20260718_convocatorias_multi_por_año.sql`) y la vigente (673, abierta) se ve; pero **la landing solo pinta la `is_current`** — falta la **vía-(a)**: que liste simultáneamente las convocatorias no archivadas (§4e-ter del manual OEPs).
+- **Dato menor a limpiar:** la fila del ciclo en curso (Orden 264/2026) tiene `convocatoria_numero=NULL` y la archivada tiene ese número mal atribuido (cruce de etiquetas preexistente); rellenar con cuidado por el índice `convocatorias_ref_oficial_unica`.
+- **Cómo:** `docs/maintenance/oeps-convocatorias-seguimiento.md` §4e-ter; memoria `project-convocatorias-multi-por-año-schema`.
+
 ### 🟠 [ABIERTO 19/07] Detector de disposiciones ANULADAS (STC) o incisos derogados dentro de una ley vigente
 - **Por qué:** incidente 19/07 (Alfonso, aux CARM) — una pregunta testeaba el inciso del **art. 126.2 LBRL** (nombrar no-concejales a la Junta de Gobierno Local) que la **STC 103/2013** declaró **inconstitucional y nulo**; nuestro artículo importado no tenía la nota de vigencia y la clave daba el inciso anulado como correcto. **Le respondí mal la impugnación** antes de que reabriera como bug. Riesgo de clase: cualquier artículo con un inciso anulado/derogado que el BOE consolidado marca con nota pero nuestro import no capturó.
 - **Hueco de monitoreo (confirmado):** NINGÚN sistema lo caza — el monitor BOE ve cambios FUTUROS (no anulaciones históricas ya en el consolidado); `completitud-leyes` ve artículos que FALTAN, no vigencia de incisos; `leyes-anuales-caducadas` solo leyes anuales completas; el radar de epígrafes mira materia, no vigencia.
