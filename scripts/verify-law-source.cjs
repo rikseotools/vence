@@ -37,22 +37,24 @@ function extractArticleNumbers(text) {
 const normNum = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
 
 async function fetchSourceText(url) {
-  // PDF → pdftotext; HTML → curl + strip de tags. Timeout y -k (algunos boletines TLS roto).
-  const tmp = `/tmp/lawsrc_${Date.now()}`
+  // Descarga a fichero y DETECTA el tipo por magic-bytes (%PDF), no por extensión:
+  // muchos boletines sirven PDF en URLs sin ".pdf" (BORM /pdf, BOA BRSCGI). -L -k
+  // (algunos boletines con TLS roto). -pdftotext -layout para tablas/columnas.
+  const tmp = `/tmp/lawsrc_${Date.now()}_${Math.floor(process.hrtime()[1] % 1e6)}`
   try {
-    const isPdf = /\.pdf(\?|$)/i.test(url)
-    if (isPdf) {
-      execSync(`curl -skL --max-time 45 "${url}" -o ${tmp}.pdf`, { stdio: 'ignore' })
-      if (!fs.existsSync(`${tmp}.pdf`) || fs.statSync(`${tmp}.pdf`).size < 1000) return null
-      execSync(`pdftotext ${tmp}.pdf ${tmp}.txt 2>/dev/null`, { stdio: 'ignore' })
+    execSync(`curl -skL --max-time 45 -A "Mozilla/5.0" "${url}" -o ${tmp}.bin`, { stdio: 'ignore' })
+    if (!fs.existsSync(`${tmp}.bin`) || fs.statSync(`${tmp}.bin`).size < 500) return null
+    const head = fs.readFileSync(`${tmp}.bin`).slice(0, 5).toString('latin1')
+    if (head.startsWith('%PDF')) {
+      execSync(`pdftotext -layout ${tmp}.bin ${tmp}.txt 2>/dev/null`, { stdio: 'ignore' })
       return fs.existsSync(`${tmp}.txt`) ? fs.readFileSync(`${tmp}.txt`, 'utf8') : null
     }
-    const html = execSync(`curl -skL --max-time 45 -A "Mozilla/5.0" "${url}"`, { maxBuffer: 64 * 1024 * 1024 }).toString()
-    // strip scripts/styles/tags
+    // HTML: leer como utf8 (boletines suelen ser UTF-8; latin1 rompe "Artículo")
+    const html = fs.readFileSync(`${tmp}.bin`, 'utf8')
     return html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&aacute;/g, 'á').replace(/&[a-z]+;/g, ' ')
+      .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/[ \t]+/g, ' ')
   } catch { return null }
-  finally { try { fs.rmSync(`${tmp}.pdf`, { force: true }); fs.rmSync(`${tmp}.txt`, { force: true }) } catch {} }
+  finally { try { fs.rmSync(`${tmp}.bin`, { force: true }); fs.rmSync(`${tmp}.txt`, { force: true }) } catch {} }
 }
 
 async function emit(s, event_type, severity, meta) {
