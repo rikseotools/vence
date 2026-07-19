@@ -59,18 +59,24 @@
   - **c9eb6c4e RETIRADA-en-sitio** (needs_human, nota escrita): RD 509/2020 sigue vigente pero **RD 124/2022 suprimió la DG de Bellas Artes** y RD 313/2023 la reestructuró → el enunciado tiene premisa caducada. NO se importó RD 509/2020 (volátil, bajo valor). Reescribir contra estructura vigente o retirar.
 - **🔵 PENDIENTE (decisión de esfuerzo/valor):** **~11 one-offs `mislink_v1`** de normas autonómicas de nicho (Decreto 12/2024 CyL, Ley 13/1990 CES CyL, Presupuestos CyL, Decreto 248/2023 Madrid, Decreto 200/1993 Galicia, RD 2099/1983 precedencias, LO 15/1999) para oposiciones que **sí están activas** (administrativo-castilla-leon, auxiliar/administrativo-madrid/andalucia/galicia). Pero cada una exige: importar la norma del BOE/boletín autonómico (verificar vigencia) **y** confirmar que la norma está en el epígrafe de ese tema (los tags no mandan). Trabajo alto por pregunta, encaje incierto → parkeadas hasta decidir si compensa. IDs: 490e1ed6, a1d1b0b8, d4c0185c (Decreto 12/2024 CyL) · 2d4df8f3, 6947bfae (Ley 13/1990 CES) · 07f68313, 26eb24b0 (Presupuestos CyL) · 860b3fbb (LO 15/1999) · a1e0046e (RD 2099/1983) · b628ff43 (Decreto 248/2023 Madrid) · b647ee0d (Decreto 200/1993 Galicia).
 
-### 🟠 [ABIERTO 17/07] Campaña "citas ajenas" — 27 decisiones humanas + causa raíz mislinks
-- **Qué:** barrido detectó explicaciones que citan un artículo distinto del vinculado (mislink). **63 ya corregidas y verificadas en prod** (45 re-vínculos + 18 explicaciones); quedan **27 para decisión humana** (1 clave dudosa, 6 huérfanos de temario, 7 adjudicar, 8 sin norma en BD, 5 needs_human).
-- **Por qué pendiente:** tocan clave / scope / normas sin importar → no auto-aplicable. Recuperables de RDS: `ai_verification_results WHERE ai_provider='claude_code_citas_2026_07'`.
-- **Cómo/detalle (IDs por cubo):** `docs/roadmap/campana-citas-ajenas-2026-07.md`. Herramienta reusable: `scripts/impugnaciones/barrido-citas.cjs`.
+### ✅ [CERRADO 19/07] Campaña "citas ajenas" — 27 decisiones + 23 needs_human RESUELTAS (176/176)
+- **Qué:** barrido de mislinks (explicación cita artículo distinto del vinculado). Cerrada del todo: **176 preguntas diagnosticadas → 0 pendientes** (161 approved + 14 tech_approved + 1 retirada `6bf9caae` ley derogada). La pasada 19/07 drenó las 23 `needs_human` (imports verbatim CES CyL / Ley 2/2016 / Decreto 12/2024, editoriales, scope por epígrafe), **0 flips de clave**.
+- **Herramienta durable nueva:** `scripts/impugnaciones/aplicar-needs-human.cjs` (relink + explicación validada + AVR fix_applied + transición lifecycle en 1 pasada).
+- **Detalle:** `docs/roadmap/campana-citas-ajenas-2026-07.md`. Diagnósticos RDS: proveedores `claude_code_citas_2026_07` / `claude_code_mislink_ley_2026_07`.
 
 ### 🔵 [ABIERTO 17/07] Causa raíz: vínculo por nº de artículo sin cruzar `law_id`
 - **Qué:** el mislink de la campaña de citas viene de un vinculador que emparejó por número de artículo sin filtrar por ley (133 CP↔133 CE, RDL 1/2013↔Ley 2/2013 CyL, organismos CyL cruzados). Los 139 tratados son solo los que tenían cita delatora; **el bug es más amplio**.
 - **Siguiente paso:** detector barato (explicación nombra ley/art ≠ vinculado) para medir el tamaño real antes de campaña. Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Subproductos.
 
-### 🟡 [ABIERTO 17/07] 33 artículos con contenido truncado en BD (70 preguntas visibles)
-- **Qué:** artículos cuyo `content` empieza por un apartado >1 (faltan párrafos iniciales) → el usuario lee la ley a medias en el temario. Focos: Decreto 7/2013 CyL, Decreto 13/2021 CyL, Instituciones Internacionales GC.
-- **Cómo:** recomponer contra BOE. Detalle + query: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Subproductos pto 1.
+### 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
+- **Qué (HECHO 19/07, todo verificado vs fuente oficial + en vivo):** Aragón VIII Convenio (8 arts, nº de maquetación BOA), UMU Matrícula 2026/2027 (~27 arts: marca de agua PDF + apartados descolocados 18/19/29/30 recompuestos), Cantabria Decreto 152/2005 art.7, Instituciones Internacionales GC (5 títulos mal atribuidos), Osakidetza Decreto 255/1997 (5 arts euskera→castellano). Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
+- **PEND (bajo ROI, teoría-only):** Osakidetza Decreto 255/1997 arts **5, 8, 13, 14, 15, 17, 20** aún bilingües (0 preguntas cuelgan) → re-import castellano del BOPV.
+- **Nota:** el detector "arranca en apartado >1" tiene ALTA tasa de falsos positivos (normas con numeración "artículo.apartado", p.ej. art.21→"21.1" es correcto) — filtrar a mano.
+
+### 🔴 [ABIERTO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (982 preguntas)
+- **Qué:** una "ley" editorial (virtual) mezcla **~6 normas** (Carta ONU, Estatuto INTERPOL, Estatuto Consejo de Europa, Reglamentos UE CEPOL 2015/2219 / Europol 2016/794 / Frontex 2019/1896): 40 arts, **982 preguntas** (827 en el contenedor art.0), en guardia_civil + policia_nacional. Los 5 títulos mal atribuidos ya corregidos (19/07); los números de artículo YA casan con la norma real.
+- **Por qué pendiente:** el split físico (crear 6 leyes, mover 40 arts, re-scopear, re-vincular 982 preguntas + tratar el contenedor art.0) es **grande y de alto riesgo** (2 oposiciones top) → merece plan propio, NO hacer a ojo.
+- **Cómo:** `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
 
 
 ### ✅ [CERRADO 15/07] Barrido global del bug "topic_scope con article_numbers vacío" — NO era sistémico
