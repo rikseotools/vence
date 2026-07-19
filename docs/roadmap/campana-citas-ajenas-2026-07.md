@@ -60,7 +60,9 @@ iba 133 CE, RDL 1/2013 estatal sobre "Ley 2/2013 CyL", leyes de 3 organismos dis
 cruzadas. En casi todos la explicación YA citaba la ley correcta → el fallo vive solo en `primary_article_id`.
 **El barrido de citas solo caza los mislinks que tienen cita en la explicación; el bug es más amplio.**
 
-## PENDIENTE — decisiones humanas (27, no auto-aplicar)
+## ~~PENDIENTE — decisiones humanas (27, no auto-aplicar)~~ — TODAS RESUELTAS (19/07)
+> Las 27 (y las 23 de `needs_human`) quedaron resueltas entre la pasada 18-19/07 y la del 19/07 (ver sección "PASADA 19/07 … COMPLETADO" arriba). Estado global de la campaña: 176 diagnosticadas → 0 pendientes (161 approved + 14 tech_approved + 1 retirada). Lo de abajo es histórico.
+
 Recuperables de AVR (arriba). Por cubo:
 
 ### Clave posiblemente errónea (1) — NUNCA tocar sin verificación humana
