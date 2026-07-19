@@ -1,6 +1,6 @@
 # Verificación de completitud de leyes contra su fuente oficial
 
-> **Estado (18/07/2026):** Capa 1 (detección) CONSTRUIDA y verde. Capas 2-4 (verificación con provenance, extractores no-BOE, gate, observabilidad) diseñadas + schema listo. Disparado por el feedback de Ana Llano (ULE T18): 9 de 74 artículos, `boe_url` NULL, `verification_status='actualizada'` sin evidencia → invisible al monitor BOE; lo cazó una usuaria.
+> **Estado (19/07/2026):** **las 4 capas CONSTRUIDAS y operativas** (Capa 2 aplicada a RDS prod). Disparado por el feedback de Ana Llano (ULE T18): 9 de 74 artículos, `boe_url` NULL, `verification_status='actualizada'` sin evidencia → invisible al monitor BOE; lo cazó una usuaria. Backfill en curso: 125 → 117 leyes actionable (limitado por dato, no por código — ver Capa 3).
 
 ## El gap
 
@@ -32,16 +32,15 @@ El monitor BOE (`verify-articles` → `missing_in_db` → badge Monitoreo) **sí
   - **Vista `law_verification_effective`** (mirror SQL del módulo): el badge/lectores leen el estado honesto, no el label.
 - **Pendiente de cablear:** aplicar la migración (deploy) + que el flujo de `verify-articles` escriba también en esta tabla vía `record_*`.
 
-### Capa 3 — Extractores de fuente no-BOE (PENDIENTE — el trabajo de verdad)
-El `sync-all` solo parsea BOE. Para cerrar el gap regional hace falta un **inventario de artículos de la fuente** por boletín:
-- Interfaz `SourceExtractor { fetch(url) → { articleNumbers[], titles[], hash } }`, una impl por boletín (BOCYL, DOGV, DOG, BOJA, BOCM, BOA…) + editorial.
-- Reutiliza la fontanería existente: `fetchPdfText`/`pdf-parse` (ya en `detect-notas-convocatoria`), descarga HTML cruda + split por `Artículo N` (patrón del manual de monitoreo §"Fuente NO-BOE").
-- Con el inventario, corre la MISMA comparación `missing_in_db` que el BOE → `record_law_source_verification`.
-- **Escalable:** añadir un boletín = 1 extractor. Todo lo inteligente (comparación, persistencia, estado) vive una vez.
+### Capa 3 — Extractores de fuente no-BOE (CONSTRUIDA ✅)
+- **`scripts/verify-law-source.cjs`**: extractor genérico de inventario de artículos (regex `Artículo N.–/./bis` sobre PDF vía `pdftotext` o HTML crudo `curl`+strip), compara vs BD → `missing_in_db`, escribe evidencia vía `record_law_source_verification` **+ dual-write** a `laws.last_verification_summary` (lo que lee la vista/detector), y emite observabilidad. `--law <id>` | `--all-regional [--limit N]` | `--dry`.
+- **NUNCA falsea:** si la fuente no parsea (heterogeneidad de boletines: universitarias, planes, protocolos, sedes JS/WAF) NO inventa veredicto → emite `law_source_unparseable` y queda `never_verified` (honesto).
+- **Backfill 19/07:** sobre las 61 regionales-con-fuente → **7 verified + 8 incomplete (huecos reales) + 46 unparseable** (honestas). Reconciliadas al detector.
+- **Límite honesto (dato, no código):** 60 leyes sin `boe_url` no se pueden auto-verificar (no hay fuente que fetchear → research URL manual); ~46 boletines no parsean (sede JS/login/formato → headless fetcher o manual). El código auto-verifica todo lo parseable; el resto queda honestamente marcado.
 
-### Capa 4 — Gate por construcción + observabilidad (PENDIENTE)
-- **Gate:** un tema no pasa a `disponible=true` si alguna ley de su `topic_scope` está `never_verified`/`incomplete`/`no_source`/`false_green` (análogo al GATE de generación de preguntas y a la invariante `is_active` GENERATED). Guardarraíl CI: `audit-law-completeness.cjs --gate`.
-- **Observabilidad:** emitir `observable_events` (source `fargate`) en cada barrido — `law_verification_swept`, `law_false_green_detected`, `law_verified` (con counts). Dashboard en `/admin/contenido` y SLO "leyes vivas verificadas contra fuente %". Digest semanal (mismo canal que `content-quality-digest`).
+### Capa 4 — Gate + observabilidad (CONSTRUIDA ✅)
+- **Gate CI/cron:** `scripts/audit-law-completeness.cjs --gate` → exit 1 si hay leyes actionable sirviendo en temas vivos. (El gate DB "tema no `disponible` si ley sin verificar" se deja como señal CI, NO trigger duro, para no bloquear los 100+ temas ya publicados; se endurece cuando el backfill baje el número.)
+- **Observabilidad:** el runner emite por-ley (`law_source_verified`/`law_source_incomplete`/`law_source_unparseable`/`law_source_no_url`); el audit emite el snapshot del barrido (`law_completeness_swept` con `by_state`), rastreable en el tiempo en `observable_events` (source `fargate`). Base para dashboard + SLO "leyes vivas verificadas %".
 
 ## Modos de fallo cubiertos
 - **Falso verde** → guard trigger + vista efectiva (label deja de mandar).

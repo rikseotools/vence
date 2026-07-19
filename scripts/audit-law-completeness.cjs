@@ -67,6 +67,18 @@ function num(x) { return typeof x === 'number' && Number.isFinite(x) ? x : null 
     const servingLive = actionable.filter((r) => r.serving_live)
     const byState = {}
     for (const r of actionable) byState[r.state] = (byState[r.state] || 0) + 1
+    const byStateLive = {}
+    for (const r of servingLive) byStateLive[r.state] = (byStateLive[r.state] || 0) + 1
+
+    // CAPA 4 — Observabilidad: snapshot del barrido a observable_events (rastreable en el tiempo).
+    if (!process.argv.includes('--no-emit')) {
+      try {
+        await s`INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+          VALUES (gen_random_uuid(), now(), 'fargate', ${servingLive.length > 0 ? 'warn' : 'info'},
+                  'law_completeness_swept',
+                  ${s.json({ total: rows.length, serving_live: servingLive.length, by_state: byStateLive })}, now())`
+      } catch { /* observabilidad best-effort, nunca bloquea el audit */ }
+    }
 
     if (process.argv.includes('--json')) {
       console.log(JSON.stringify({
