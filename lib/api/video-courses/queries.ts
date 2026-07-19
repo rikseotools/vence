@@ -6,6 +6,7 @@ function getVideoCoursesDb() {
 }
 import { videoCourses, videoLessons, userVideoProgress, userProfiles } from '@/db/schema'
 import { eq, and, asc, inArray } from 'drizzle-orm'
+import { resolveVideoSignedUrl } from './videoSignedUrl'
 import { createClient } from '@supabase/supabase-js'
 import type {
   GetVideoCoursesResponse,
@@ -323,13 +324,18 @@ export async function getVideoSignedUrl(
     // Determine access level
     const previewOnly = courseIsPremium && !isPremium && !lesson.isPreview
 
-    // Generate signed URL (valid for 1 hour)
-    const { data: signedUrlData, error: signedUrlError } = await getSupabase()
-      .storage
-      .from('videos-premium')
-      .createSignedUrl(lesson.videoPath, 3600)
+    // URL firmada (1h). Seam de proveedor: koigrid si está configurado, si no Supabase.
+    // El fallback de Supabase se inyecta con el cliente ya existente (getSupabase).
+    // Ver lib/api/video-courses/videoSignedUrl.ts (migración vídeos a koigrid, flag-gated).
+    const { signedUrl, provider, error: signedUrlError } = await resolveVideoSignedUrl(
+      lesson.videoPath,
+      async (path, ttl) => {
+        const { data, error } = await getSupabase().storage.from('videos-premium').createSignedUrl(path, ttl)
+        return { signedUrl: data?.signedUrl ?? null, error: error?.message }
+      },
+    )
 
-    if (signedUrlError || !signedUrlData?.signedUrl) {
+    if (!signedUrl) {
       console.error('❌ [VideoCoursesQuery] Error creating signed URL:', signedUrlError)
       return {
         success: false,
@@ -337,11 +343,11 @@ export async function getVideoSignedUrl(
       }
     }
 
-    console.log(`✅ [VideoCoursesQuery] Signed URL generated for lesson ${lessonId}, previewOnly: ${previewOnly}`)
+    console.log(`✅ [VideoCoursesQuery] Signed URL (${provider}) generated for lesson ${lessonId}, previewOnly: ${previewOnly}`)
 
     return {
       success: true,
-      signedUrl: signedUrlData.signedUrl,
+      signedUrl,
       previewOnly,
       previewSeconds: previewOnly ? (lesson.previewSeconds ?? 600) : null,
     }
