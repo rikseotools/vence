@@ -16,7 +16,7 @@
 
 ## Abiertas
 
-### 🟢 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — scope↔epígrafe: 19 correct / 1 issue (build) / 0 needs_human
+### 🟢 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — scope↔epígrafe: 20/20 verified_correct (0 issues, 0 needs_human)
 - **Qué:** verificación scope↔epígrafe completa (BOP `bop_1582_2026.pdf`, Anexo II) contra topic_scope, 2 agentes + consenso, **trackada en `topic_scope_verification`** (19/07). Origen: impugnaciones de Sandra Barbastro (art. 71 y 100 LCSP, falsos positivos — sí entran en su T11 "contratación pública", verificado).
 - **HECHO 19/07 (6 temas → verified_correct, todos por consenso de 2 agentes):**
   - **T2** — añadido LO 5/2007 Estatuto de Aragón (toda la ley, 198 Q).
@@ -26,9 +26,9 @@
   - **T11** — añadidos LCSP arts 131-188 (formas y procedimientos de adjudicación, 75 Q).
   - **T17** — añadidos RDL 2/2004 arts 182-193 (gasto/ejecución) + 200-212 (contabilidad EELL); **eliminada Ley 47/2003** (Ley General Presupuestaria ESTATAL, sobre-scope de otro nivel).
 - **T4 scope + generación HECHO 19/07** (verified_correct): añadida Ley 7/1999 Admin Local Aragón arts 1-6 + 72-138 (rango curado, no invade T9/T10/T12/T13/T16). **Generadas 48 preguntas en 5 lotes**, doble auditoría Sonnet, todas approved/visibles (tags `gen_zaragoza_t4_ley7_1999[_b2..b5]_2026-07-19`): l1 (marco 1-6, 72, 74) + l2 (comarcas/mancomunidades/ELM) + l3 (estatutos/interés comarcal/ELM) + l4 (transferencia/delegación/encomienda 73, 92, 95, 97-103) + l5 (régimen jurídico general: sesiones/quórum/votaciones/recursos 105-138). Los guardarraíles anti-tell (longitud + enumeración + omisión sustantiva + conocimiento externo) cazaron **7 defectos** en total → reequilibrados/completados/reformulados + re-auditados PERFECT. **COBERTURA pendiente (opcional, ya hay banco sólido):** huecos arts 80-81, 83, 89-91, 104, 106-113, 116-117, 120-123, 126-137 (órganos colegiados, convocatoria, orden del día, actas) → seguir generando si se quiere saturar.
-- **verified_issues (1, BUILD):**
-  - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley (verbatim, doble auditoría) + generar preguntas.
-- **Build de generación pendiente:** T15 (importar Ley 5/2015 + generar) + opcional más lotes T4 (huecos Ley 7/1999). Manual `generar-preguntas-con-ia.md`; verificado contra fuente, draft→doble auditoría→approve, NUNCA inventar.
+- **T15 scope HECHO 19/07** (verified_correct): **importado el Texto Refundido de la Ley de Subvenciones de Aragón** (Decreto Legislativo 2/2023, VIGENTE — refunde la Ley 5/2015; decisión Manuel: importar la vigente, no la 5/2015 caducada), **80 artículos verbatim** desde BOE-A-2023-12919. Ley nueva en BD: slug `tr-subvenciones-aragon`. Scope T15 = Ley 38/2003 (LGS estatal) + TR arts 1-4,8-13,15-54 (estrechado quitando 5-7 planes estratégicos + 14 base de datos por sobre-scope). Ambos agentes CORRECT.
+- **COBERTURA de generación pendiente (opcional):** el TR Subvenciones Aragón tiene **0 preguntas** → generar banco (como se hizo con la Ley 7/1999 de T4: 48 preguntas). Los arts 55-80 (control financiero, infracciones/sanciones) quedaron fuera de T15 por epígrafe pero están en BD por si otra oposición los escopa.
+- **Build de generación pendiente (opcional):** generar preguntas del TR Subvenciones Aragón (T15) + huecos Ley 7/1999 (T4). Manual `generar-preguntas-con-ia.md`; verificado contra fuente, draft→doble auditoría→approve, NUNCA inventar.
 - **needs_human RESUELTOS 19/07 (decisión Manuel, 3 temas → correct):** T1 (quitado art. 116 CE), T5 (mantenidos 39/2015 66-68, solapamiento legítimo), T14 (añadidos RDL 2/2004 59-110, los 5 impuestos locales, 56 Q).
 - **Cómo:** runbook `verificar-epigrafes-scope.md` (`verify:scope status auxiliar_administrativo_diputacion_zaragoza`). **Solo quedan los 2 builds (T4/T15).**
 
