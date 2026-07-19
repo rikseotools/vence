@@ -25,10 +25,10 @@
   - **T6** — añadidos 39/2015 arts 1-2 (objeto/ámbito) + 24-25 (silencio) + 96-105 (tramitación simplificada + ejecución).
   - **T11** — añadidos LCSP arts 131-188 (formas y procedimientos de adjudicación, 75 Q).
   - **T17** — añadidos RDL 2/2004 arts 182-193 (gasto/ejecución) + 200-212 (contabilidad EELL); **eliminada Ley 47/2003** (Ley General Presupuestaria ESTATAL, sobre-scope de otro nivel).
-- **T4 scope HECHO 19/07** (verified_correct): añadida Ley 7/1999 Admin Local Aragón arts 1-6 + 72-138 (marco general + comarcas/supramunicipal aragonés, rango curado para no invadir T9/T10/T12/T13/T16). ⚠️ **COBERTURA pendiente:** ese bloque aragonés tiene ~0 preguntas (las 4 de la Ley 7/1999 están en 139/142/179/224, fuera del rango) → **generar** banco aragonés (build).
+- **T4 scope + 1er lote de generación HECHO 19/07** (verified_correct): añadida Ley 7/1999 Admin Local Aragón arts 1-6 + 72-138 (rango curado, no invade T9/T10/T12/T13/T16). **Generadas 8 preguntas** (arts 1-6, 72, 74) con doble auditoría Sonnet (2 reequilibradas por tell de longitud) → approved/visibles (tag `gen_zaragoza_t4_ley7_1999_2026-07-19`). **COBERTURA pendiente:** faltan lotes para el resto del rango (arts 75-138: comarcas, mancomunidades, entidades menores, órganos) → seguir generando.
 - **verified_issues (1, BUILD):**
   - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley (verbatim, doble auditoría) + generar preguntas.
-- **Build de generación pendiente (sesión dedicada):** cobertura Aragón de T4 (Ley 7/1999 1-6+72-138) + T15 (importar Ley 5/2015 + generar). Verificado contra fuente oficial, draft→approve, NUNCA inventar.
+- **Build de generación pendiente:** más lotes T4 (Ley 7/1999 75-138) + T15 (importar Ley 5/2015 + generar). Manual `generar-preguntas-con-ia.md`; verificado contra fuente, draft→doble auditoría→approve, NUNCA inventar.
 - **needs_human RESUELTOS 19/07 (decisión Manuel, 3 temas → correct):** T1 (quitado art. 116 CE), T5 (mantenidos 39/2015 66-68, solapamiento legítimo), T14 (añadidos RDL 2/2004 59-110, los 5 impuestos locales, 56 Q).
 - **Cómo:** runbook `verificar-epigrafes-scope.md` (`verify:scope status auxiliar_administrativo_diputacion_zaragoza`). **Solo quedan los 2 builds (T4/T15).**
 
