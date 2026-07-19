@@ -67,10 +67,11 @@
 - **Ideas de fix (diseñar):** al importar/verificar una ley, **capturar las notas de vigencia del BOE consolidado** (STC, derogaciones de incisos concretos — el BOE las marca) en `articles.content`/campo aparte; detector que compare artículo ↔ notas BOE y flaguee incisos anulados presentes como vigentes; para artículos "tocados por el TC", nota obligatoria + revisar sus preguntas. Extiende `lib/laws/completeness.ts` / `docs/roadmap/verificacion-completitud-leyes.md`.
 - **Estado:** ABIERTO. Fix del caso concreto ya aplicado (art. 126 con nota STC, pregunta re-clave a A). Falta el detector genérico.
 
-### 🟡 [ABIERTO 17/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
+### ✅ [HECHA 19/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
 - **Qué:** dos artículos correctamente escopados pero con **0 preguntas activas**, prometidos a la usuaria (fb `daluamva@gmail.com`, `auxiliar_administrativo_sms`): **T8 Ley 4/1994 art 9 (Fines)** y **T3 Ley 12/2014 CARM Transparencia art 1 (Objeto y finalidad)**. Conviene reforzar de paso T8 arts 10-12 (1 preg c/u, tema muy fino: 8 preg).
 - **Por qué pendiente:** generación de contenido (fuente oficial BOE + doble auditoría + GATE) → no al vuelo; decisión de Manuel. Le dijimos "estamos trabajando en ello" y pidió **aviso expreso cuando estén** ("AVISARME CUANDO ESTEN").
-- **Cómo:** `docs/maintenance/generar-preguntas-con-ia.md`. Reward embajador 3€ al resolver (sin mencionar). Feedbacks claim-ados: `22835b84` (T8), `85d564cf` (T3 Ley 12/2014). Contexto scope (verificado contra BORM 07/10/2021): sesión 17/07.
+- **Cómo:** `docs/maintenance/generar-preguntas-con-ia.md`. Feedbacks claim-ados: `22835b84` (T8), `85d564cf` (T3 Ley 12/2014). Contexto scope (verificado contra BORM 07/10/2021): sesión 17/07.
+- **✅ HECHA 19/07:** art. 9 (Fines) y art. 1 Ley 12/2014 (Objeto) generados y vivos; además ambas leyes completas a ≥50 (Ley 4/1994 → 51, Ley 12/2014 → 52). Triple auditoría (mecánica + Sonnet ciego + Paso 9), verificado contra BOE. **Decisión Manuel: SIN recompensa y SIN mensaje a la usuaria.** Tags `gen_sms_t8t3_2026-07-19`, `gen_ley4_1994_2026-07-19`, `gen_ley12_2014_2026-07-19`.
 
 ### 🟢 [MEJORA APP — no urgente] Email RGPD de borrado *exactly-once* (marcador durable en `deleted_users_log`)
 - **Qué:** en `DELETE /api/admin/delete-user`, el correo de confirmación RGPD (Art. 12.3) puede **duplicarse** en un caso raro: si un 1er intento borró la cuenta y **envió el email** pero devolvió 500 por otra causa (p.ej. error del store de auth legacy), al reintentar (perfil ya ausente + fila de auditoría) la ruta reenvía el email desde el email durable de `deleted_users_log`. El reintento ya NO re-borra ni da 500 perpetuo (arreglado `4ef7a929`), pero el email no es *exactly-once*.
@@ -128,12 +129,12 @@
 - **Cómo:** Paso 1 clonar epígrafe del PDF oficial (`programa_url` = madrid.es BasesEspecificas.pdf) → `verify:scope` 2 agentes → generar preguntas de T21/T22 (ofimática Word/Excel Office) + reforzar los 8 finos. Doble auditoría + `tech_approved`.
 - **Estado:** sin empezar (en curso 15/07). Conecta con los otros huecos de ofimática (Windows/Office de otras oposiciones).
 
-### 🟡 [MEDIA — cobertura fina] Ampliar preguntas del Tema 8 de Aux. Administrativo SMS (Ley 4/1994 Murcia)
+### ✅ [HECHA 19/07] Ampliar preguntas del Tema 8 de Aux. Administrativo SMS (Ley 4/1994 Murcia)
 - **Qué:** tras estrechar el scope del Tema 8 a los arts **9,10,11,12,25** de la Ley 4/1994 de Salud de la Región de Murcia (era 9-26, inflado), el tema queda con solo **8 preguntas activas**. Generar más ancladas a esos 5 artículos (Fines, Plan de Salud, Consejo de Salud Región, mapa sanitario, órganos del SMS).
 - **Por qué:** feedback de daluamva@gmail.com (premium, `22835b84`, 14/07) → tenía razón, el scope sobre-incluía Áreas de Salud/zona básica (materia del T7) y el régimen del SMS (T9/T12). Corregido y verificado (2 agentes + epígrafe literal). Ahora falta densidad de preguntas.
 - **Cabo de criterio (anotado):** los arts 20-21 (naturaleza/fines del SMS) se dejaron FUERA por lectura literal del epígrafe ("El SMS: **órganos**…"); si se detecta que el régimen jurídico del SMS no lo cubre ningún otro tema del programa, reconsiderar meterlos. Hoy: fuera.
 - **Cómo:** generar preguntas ancladas al texto de cada artículo (BORM/BOE-A-1994-22255) + doble auditoría ciega + `tech_approved`. Runbook `salud-contenido.md` (article_no_coverage) / `revisar-preguntas-con-agente.md`.
-- **Estado:** scope corregido y aplicado 14/07 (MV refrescada + revalidate), pendiente generar preguntas.
+- **✅ HECHA 19/07:** T8 pasó de 8 a 16 preguntas (art. 9 Fines 0→2, arts 10/11/12 reforzados); la Ley 4/1994 completa a 51 activas (arts 1-24). Los arts 20-21 siguen fuera de T8 por el cabo de criterio (sirven a enfermero_sms/tcae_murcia, no a T8). Triple auditoría + BOE.
 
 ### 🟡 [MEDIA — demanda de usuaria] Supuestos prácticos para Administrativo de la Comunidad de Madrid
 - **Qué:** crear supuestos prácticos (`exam_cases`) para `administrativo_madrid`. Hoy tiene **0** (el temario sí está: 47 temas, ~11.177 preguntas activas). Otras oposiciones ya los tienen (administrativo-seguridad-social 8, auxilio-judicial 8, auxiliar-administrativo-carm 6, administrativo_estado 2…).
