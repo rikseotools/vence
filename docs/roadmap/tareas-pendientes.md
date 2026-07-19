@@ -16,6 +16,19 @@
 
 ## Abiertas
 
+### 🟠 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — rematar scope↔epígrafe (6 issues + 2 needs_human)
+- **Qué:** verificación scope↔epígrafe completa (BOP `bop_1582_2026.pdf`, Anexo II) contra topic_scope, 2 agentes + consenso, **trackada en `topic_scope_verification`** (19/07). Estado: **12 correct / 6 issues / 2 needs_human**. Origen: impugnaciones de Sandra Barbastro (art. 71 y 100 LCSP, falsos positivos — sí entran en su T11 "contratación pública", verificado).
+- **HECHO 19/07:** T2 (añadido LO 5/2007 Estatuto de Aragón, toda la ley, 198 Q) y T18 (añadida Ley 7/2018 Igualdad Aragón arts 1-3+16-28, 24 Q) → ambos `verified_correct` por consenso de 2 agentes.
+- **verified_issues (6):**
+  - **T5** — añadir 39/2015 arts 29-33 (términos y plazos). Fix rápido (ley ya en BD).
+  - **T6** — añadir 39/2015 arts 24-25 (silencio) + 97-105 (ejecución, Título V). Fix rápido.
+  - **T11** — añadir LCSP procedimientos de adjudicación ~131-168 ("formas y procedimientos"). Fix (ver banco).
+  - **T17** — añadir contabilidad EELL (Título contabilidad RDL 2/2004, ~200-212) + revisar posible sobre-scope Ley 47/2003 arts 61-63 (Hacienda estatal). Fix/decisión.
+  - **T4** — añadir Ley 7/1999 Admin Local Aragón + Decreto 347/2002 RBASO (banco fino: 4+5 Q) → añadir + **generar**. Build.
+  - **T15** — la **Ley 5/2015 de Subvenciones de Aragón NO existe en BD** → importar ley + generar. Build.
+- **needs_human (2, discrepan analista/escéptico):** T1 (¿quitar art. 116 CE, estados de alarma, del tema de derechos fundamentales?), T14 (¿ampliar RDL 2/2004 a impuestos locales/contribuciones especiales, o 1-27 basta?).
+- **Cómo:** runbook `verificar-epigrafes-scope.md` (`verify:scope status auxiliar_administrativo_diputacion_zaragoza`). T5/T6/T11/T17 son quick wins con ley ya en BD; T4/T15 son build.
+
 ### 🟠 [ABIERTO 17/07] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
 - **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hace nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Falla en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes.
 - **Diagnóstico (caso María, fb feb79fc5, `piyou22@gmail.com`):** 100% de sus sesiones en 3 días y 4 deploys fueron GSA in-app en iPhone; nunca Safari ni ordenador → descarta versión cacheada/cuenta. A Manuel en navegador normal le funciona. Resuelto a la usuaria con apaño (abrir en Safari) + reward 3€ creado.
@@ -141,6 +154,13 @@
 - **Por qué:** la ley nacional principal (Ley 40/2015 en T15, Ley 9/2017 en T24) sí está cubierta; falta el complemento regional que el epígrafe nombra. No se inventa contenido.
 - **Cómo:** crear cada ley regional desde el DOE/BOE (`monitoreo-boe-y-crear-leyes-nuevas.md` §"Crear ley nueva") y escoparla al tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
 - **Estado:** resto de la oposición **28/30 `verified_correct`** (incl. función pública 6/7/8/10 reparada: reparto correcto de la Ley 13/2015 por epígrafe, re-verificado).
+
+### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Diputación de Zaragoza (verify:scope 18/07)
+- **Qué:** feedback de Sandra (bug `6f789351`, *"en contratos solo entra hasta el art. 43, pero salen preguntas de otros artículos"*) disparó `verify:scope` de la oposición completa (20 temas, antes `never_verified` → **12 correct, 4 issues, 4 needs_human**; run `verify_auxiliar_administrativo_diputacion_zaragoza_2026-07-18`). El feedback quedó **resuelto y respondido** (T11 NO era sobre-scope: aptitud 65-73 y precio 99-102 SÍ son "contratación pública"; su material corta antes que el epígrafe oficial).
+- **T11 contratación (needs_human):** falta el bloque *"formas y procedimientos de contratación"* = procedimientos de adjudicación LCSP (~arts 131-179), hoy ausentes. Valorar ampliar (es más preguntas, no menos).
+- **Deuda aragonesa (4 issues):** el epígrafe nombra normativa autonómica pero solo está la estatal — **T2** Estatuto de Autonomía de Aragón (LO 5/2007), **T4** ley aragonesa de régimen local, **T15** Ley de Subvenciones de Aragón, **T18** ley aragonesa de igualdad. Enganchar + poblar desde fuente oficial.
+- **Otros needs_human:** T5 (términos/plazos 39/2015 arts 29-33), T6 (silencio 24-25 + ejecución 97-105), T17 (contabilidad EELL + posibles arts estatales de Ley 47/2003 que sobran).
+- **Cómo:** crear/importar cada ley regional (BOA/BOE) y escoparla; ampliar T11; re-verificar. No inventar contenido. Runbook `verificar-epigrafes-scope.md`.
 
 ### ✅ [HECHA 13-14/07] Téc. Auxiliar (Aux. de Servicios) UMU — oposición COMPLETA y verificada
 - **Qué:** oposición al 100% → **18/18 temas `disponible=true`, 18/18 `verified_correct`, 3.060 preguntas, 0 temas finos** (todos ≥15).
