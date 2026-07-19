@@ -16,6 +16,16 @@
 
 ## Abiertas
 
+### 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
+- **Qué (HECHO 19/07, verificado vs fuente oficial + en vivo en RDS):** Aragón VIII Convenio (8 arts, nº de maquetación BOA pegado al texto), UMU Matrícula 2026/2027 (~27 arts: marca de agua PDF incrustada + apartados descolocados 18/19/29/30 recompuestos contra fuente), Cantabria Decreto 152/2005 art.7, Instituciones Internacionales GC (5 títulos mal atribuidos), Osakidetza Decreto 255/1997 (5 arts euskera→castellano). Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
+- **PEND (bajo ROI, teoría-only):** Osakidetza Decreto 255/1997 arts **5, 8, 13, 14, 15, 17, 20** aún bilingües (0 preguntas cuelgan) → re-import castellano del BOPV.
+- **Nota:** el detector "arranca en apartado >1" tiene ALTA tasa de falsos positivos (numeración "artículo.apartado", p.ej. art.21→"21.1" es correcto) — filtrar a mano.
+
+### 🔴 [ABIERTO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (982 preguntas)
+- **Qué:** una "ley" editorial (virtual) mezcla **~6 normas** (Carta ONU, Estatuto INTERPOL, Estatuto Consejo de Europa, Reglamentos UE CEPOL 2015/2219 / Europol 2016/794 / Frontex 2019/1896): 40 arts, **982 preguntas** (827 en el contenedor art.0), en guardia_civil + policia_nacional. Los 5 títulos mal atribuidos ya corregidos (19/07); los números de artículo YA casan con la norma real.
+- **Por qué pendiente:** el split físico (crear 6 leyes, mover 40 arts, re-scopear, re-vincular 982 preguntas + tratar el contenedor art.0) es **grande y de alto riesgo** (2 oposiciones top) → merece plan propio, NO hacer a ojo.
+- **Cómo:** `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
+
 ### 🟢 [HECHO 19/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
 - **Contexto:** los cubos 1/3 dejaron 71 needs_human con motivo de esta sesión (`ai_provider IN claude_code_cubo1_reverify / mislink_v1 / vg_relink`). Al inspeccionarlos, el "importar normas para desbloquear todo de golpe" resultó **optimista**: desglose real →
   - **43** (`cubo1_reverify`, todos *sin sugerencia*) = **defectos reales de clave/opción**, no los arregla ningún import → decisión humana.
