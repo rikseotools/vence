@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ArchiveInteractionsModule } from './archive-interactions/archive-interactions.module';
 import { TelemetryRetentionModule } from './telemetry-retention/telemetry-retention.module';
 import { BoeChangesModule } from './boe-changes/boe-changes.module';
+import { LawCompletenessModule } from './law-completeness/law-completeness.module';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './db/database.module';
 import { HealthModule } from './health/health.module';
@@ -144,6 +145,8 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     EmailModule,
     // Crons — sub-etapa 1a
     BoeChangesModule,
+    // Cron — completitud de leyes vs fuente (Capa 4: snapshot + alerta de regresión)
+    LawCompletenessModule,
     // Crons — sub-etapa 1b tanda 1 (mantenimiento)
     ArchiveInteractionsModule,
     TelemetryRetentionModule, // diario 04:10 UTC — poda observable_events + validation_error_logs > 30d (evita crecimiento sin techo)
