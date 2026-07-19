@@ -16,6 +16,12 @@
 
 ## Abiertas
 
+### 🟠 [ABIERTO 19/07] Detector de disposiciones ANULADAS (STC) o incisos derogados dentro de una ley vigente
+- **Por qué:** incidente 19/07 (Alfonso, aux CARM) — una pregunta testeaba el inciso del **art. 126.2 LBRL** (nombrar no-concejales a la Junta de Gobierno Local) que la **STC 103/2013** declaró **inconstitucional y nulo**; nuestro artículo importado no tenía la nota de vigencia y la clave daba el inciso anulado como correcto. **Le respondí mal la impugnación** antes de que reabriera como bug. Riesgo de clase: cualquier artículo con un inciso anulado/derogado que el BOE consolidado marca con nota pero nuestro import no capturó.
+- **Hueco de monitoreo (confirmado):** NINGÚN sistema lo caza — el monitor BOE ve cambios FUTUROS (no anulaciones históricas ya en el consolidado); `completitud-leyes` ve artículos que FALTAN, no vigencia de incisos; `leyes-anuales-caducadas` solo leyes anuales completas; el radar de epígrafes mira materia, no vigencia.
+- **Ideas de fix (diseñar):** al importar/verificar una ley, **capturar las notas de vigencia del BOE consolidado** (STC, derogaciones de incisos concretos — el BOE las marca) en `articles.content`/campo aparte; detector que compare artículo ↔ notas BOE y flaguee incisos anulados presentes como vigentes; para artículos "tocados por el TC", nota obligatoria + revisar sus preguntas. Extiende `lib/laws/completeness.ts` / `docs/roadmap/verificacion-completitud-leyes.md`.
+- **Estado:** ABIERTO. Fix del caso concreto ya aplicado (art. 126 con nota STC, pregunta re-clave a A). Falta el detector genérico.
+
 ### 🟡 [ABIERTO 17/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
 - **Qué:** dos artículos correctamente escopados pero con **0 preguntas activas**, prometidos a la usuaria (fb `daluamva@gmail.com`, `auxiliar_administrativo_sms`): **T8 Ley 4/1994 art 9 (Fines)** y **T3 Ley 12/2014 CARM Transparencia art 1 (Objeto y finalidad)**. Conviene reforzar de paso T8 arts 10-12 (1 preg c/u, tema muy fino: 8 preg).
 - **Por qué pendiente:** generación de contenido (fuente oficial BOE + doble auditoría + GATE) → no al vuelo; decisión de Manuel. Le dijimos "estamos trabajando en ello" y pidió **aviso expreso cuando estén** ("AVISARME CUANDO ESTEN").
