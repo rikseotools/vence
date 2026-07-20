@@ -14,6 +14,20 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+
+### [T-029] ✅ [HECHA — ya lo estaba, 12/07] Exponer en la UI el filtro "excluir preguntas recientes"
+- **La ficha estaba obsoleta.** Se escribió el 10/07 diciendo que `config.excludeRecent` era `false` fijo
+  y que no había control en el configurador. **El 12/07, el commit `fa5ecddf` la implementó** — *"feat(premium):
+  cablea 'excluir preguntas recientes' como feature premium (👑 + modal + server gate)"* — y nadie cerró la tarea.
+- **Lo que hay hoy** en `components/TestConfigurator.tsx:1788-1831`: checkbox "🔄 Excluir preguntas recientes"
+  con corona 👑 para los free, `gate('exclude_recent', …)` (activar es **premium**, desactivar es libre: al free
+  le abre el modal de upgrade SIN activarlo), selector de **30 / 15 / 7 días**, y cableado al config que se envía
+  (líneas 1094-1095). El backend ya estaba (`lib/api/filtered-questions/queries.ts`).
+- **Cero trabajo necesario.** Detectado al ir a implementarla: lo advirtió Manuel de memoria («creo que ya estaba
+  y era botón premium»), y se confirmó leyendo el código y el `git log` antes de tocar nada.
+- **Lección:** antes de coger una tarea de UI de la lista, comprobar en el código que sigue viva. Entre que se
+  escribe una ficha y se ataca pueden pasar semanas y otra sesión puede haberla resuelto.
+
 > ```
 >
 > **Runbook completo: `docs/runbooks/tareas-pendientes.md`** (lease/heartbeat, guardarraíles, y cómo
@@ -43,7 +57,6 @@
 **🟠 Alta — barato y con valor claro (empezar por aquí):**
 1. **T-035** Capturar fecha de examen de las 2 oposiciones de la Univ. de León — 2 consultas a fuente oficial
 2. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
-4. **T-029** Exponer en la UI el filtro "excluir preguntas recientes" — la feature ya existe, es solo UI
 5. **T-039** Botón premium temario completo + **PDF server-side** — código acotado; cubre perk premium Y el fix in-app (absorbe el paso 2 de T-001)
 
 **🟡 Media — coste moderado:**
@@ -110,7 +123,6 @@
 **Landings / app:**
 17. 🟡 Render multi-convocatoria: landing pinta las 2 convocatorias vivas separadas
 18. 🟡 Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a)
-19. 🟡 Exponer en la UI el filtro "excluir preguntas recientes"
 20. 🟡 Migrar `/leyes/[law]` a on-demand (flakiness del build)
 
 **Infra / decisión de coste:**
@@ -423,12 +435,6 @@
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
 - **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
 
-
-### [T-029] 🟡 [MEDIA] Exponer en la UI el filtro "excluir preguntas recientes" (feature oculta)
-- **Qué:** `excludeRecent` / `excludeRecentDays` está **implementado y funciona en servidor** (`lib/api/filtered-questions/queries.ts:1265` aparta las respondidas en los últimos N días, con reserva anti-test-corto), y llega por URL (`exclude_recent=true` + `recentDays`). **Pero NO hay control en `TestConfigurator.tsx`**: `config.excludeRecent` es `false` fijo y solo se lee de `searchParams`. Un usuario normal no puede activarlo.
-- **Por qué:** funcionalidad terminada pero inalcanzable = valor perdido; y da pie a prometer a usuarios (impugnaciones `pregunta_repetida`) algo que no pueden usar. El sistema ya prioriza "nunca vistas" (`prioritizeNeverSeen`, automático), pero excluir explícitamente lo reciente no es accesible.
-- **Cómo:** añadir un toggle en el configurador que setee `excludeRecent` + `recentDays` (30/15/7d). El resto del cableado ya existe.
-- **Estado:** detectado 10/07 investigando impugnación de María José Morell (APSP CARM). Backend OK, falta UI.
 
 ### [T-030] 🟢 [DEMANDA — valorar] Parte específica (Bloque II) de Agrupación Profesional Servicios Públicos CARM vacía
 - **Qué:** la oposición `agrupacion_profesional_servicios_publicos_carm` tiene la parte general sobradísima (T1 1.373q, T4 2.490q, T8 3.655q) pero **la parte específica del Bloque II está vacía o casi**: T6 Seguridad y salud (0), T7 Atención al ciudadano (9), T9 Vigilancia/custodia y movilización de enfermos (0), T10 Técnicas de limpieza (0), T11 Manipulación de alimentos (0), T12 Mantenimiento básico de edificios (0).
