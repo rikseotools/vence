@@ -43,8 +43,11 @@ async function fetchBoa(url) {
     const tmp = path.join(require('os').tmpdir(), `boa-${process.pid}-${Date.now()}.pdf`)
     fs.writeFileSync(tmp, buf)
     try {
+      // -layout preserva el ORDEN físico: sin él, el flujo de columnas del BOA saca los
+      // apartados desordenados (el ap.1 de un artículo aparecía ANTES de su cabecera y se
+      // pegaba al artículo anterior). Con -layout cada artículo queda íntegro y en orden.
       const text = require('child_process')
-        .execFileSync('pdftotext', ['-enc', 'UTF-8', '-nopgbrk', tmp, '-'], { maxBuffer: 64 * 1024 * 1024 })
+        .execFileSync('pdftotext', ['-enc', 'UTF-8', '-nopgbrk', '-layout', tmp, '-'], { maxBuffer: 64 * 1024 * 1024 })
         .toString('utf8')
       return { text, contentType: ct, kind: 'pdf' }
     } finally { fs.unlinkSync(tmp) }
@@ -218,6 +221,17 @@ function similarity(a, b) {
 
 const SIM_OK = 0.97 // ≥ esto = misma redacción (ruido de guiones/comillas/espacios)
 
+// La cabecera "Artículo N. Título." dentro del CONTENIDO es inconsistente entre imports:
+// unas leyes la guardan en el cuerpo (122/2020) y otras solo el cuerpo (convenios de PDF).
+// Se quita de ambos lados antes de comparar para que su presencia/ausencia no ensucie la
+// similitud (era la causa del grueso de "contenido≠" en las leyes-PDF).
+function stripHeaderLine(s) {
+  return (s || '')
+    .replace(/^\s*Art[íi]culo\s+\d+(\s*(bis|ter|quater|quinquies))?\s*[.\-–—]\s*[^\n]*\n?/i, '')
+    .replace(/^\s*Disposici[oó]n\s+(adicional|transitoria|derogatoria|final)(\s+[a-záéíóúñ]+)?\s*[.\-–—]\s*[^\n]*\n?/i, '')
+    .trim()
+}
+
 // La BD guarda el título CON su prefijo ("Disposición adicional segunda. Adscripción…",
 // "Artículo 3. Competencias…") y la fuente lo trae ya separado. Comparamos solo el
 // enunciado para no reportar 15 falsos "título≠" por pura convención de almacenamiento.
@@ -250,7 +264,7 @@ async function verifyLaw(sql, law, { detail = false, dump = false } = {}) {
   for (const [num, r] of db) {
     const a = src.get(num)
     if (!a) { extraInDb.push(num); continue }
-    const sim = similarity(r.content, a.content)
+    const sim = similarity(stripHeaderLine(r.content), stripHeaderLine(a.content))
     if (sim >= SIM_OK) ok.push(num)
     else contentMismatch.push({ number: num, sim: +sim.toFixed(3), dbLen: (r.content || '').length, srcLen: a.content.length })
     const tDb = titleBody(r.title), tSrc = titleBody(a.title)
@@ -281,7 +295,7 @@ function verdict(r) {
 
 // Las funciones puras se exportan para poder fijarlas con tests (los 6 fallos de parseo
 // que costó destapar el bloque BOA): ver __tests__/scripts/verifyLawBoa.test.js
-module.exports = { htmlToParagraphs, pdfToParagraphs, splitArticles, titleBody, similarity, norm, dispKey, verdict }
+module.exports = { htmlToParagraphs, pdfToParagraphs, splitArticles, titleBody, stripHeaderLine, similarity, norm, dispKey, verdict }
 
 if (require.main !== module) return
 

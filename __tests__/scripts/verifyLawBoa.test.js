@@ -5,7 +5,7 @@
 // positivos de mismatch (ruido que enmascara los defectos de verdad) o se come el
 // articulado entero y reporta 0 artículos.
 const {
-  htmlToParagraphs, pdfToParagraphs, splitArticles, titleBody, similarity, dispKey,
+  htmlToParagraphs, pdfToParagraphs, splitArticles, titleBody, similarity, dispKey, stripHeaderLine,
 } = require('../../scripts/verify-law-boa.cjs')
 
 const arts = (paras) => splitArticles(paras)
@@ -108,6 +108,29 @@ describe('titleBody — convención de almacenamiento, no defecto', () => {
   test('el punto final es maquetación: "Retribuciones" y "Retribuciones." son el mismo título', () => {
     // Antes: 132 de 137 títulos reportados como distintos solo por el punto.
     expect(titleBody('Retribuciones')).toBe(titleBody('Retribuciones.'))
+  })
+})
+
+describe('stripHeaderLine — comparar cuerpo, no la cabecera', () => {
+  // Unos imports guardan la cabecera "Artículo N. Título." dentro del contenido y otros
+  // solo el cuerpo. Sin quitarla de ambos lados, su presencia/ausencia hundía la
+  // similitud y fabricaba decenas de "contenido≠" falsos en las leyes-PDF.
+  test('quita la cabecera de artículo del contenido', () => {
+    expect(stripHeaderLine('Artículo 3. Condiciones más beneficiosas.\nLa entrada en vigor…'))
+      .toBe('La entrada en vigor…')
+  })
+  test('quita la cabecera de disposición', () => {
+    expect(stripHeaderLine('Disposición final tercera. Entrada en vigor.\nEste Decreto entrará…'))
+      .toBe('Este Decreto entrará…')
+  })
+  test('deja intacto un cuerpo que ya viene sin cabecera', () => {
+    expect(stripHeaderLine('La entrada en vigor de este Convenio implica…'))
+      .toBe('La entrada en vigor de este Convenio implica…')
+  })
+  test('un cuerpo con cabecera y otro sin ella comparan igual tras el strip', () => {
+    const conHdr = 'Artículo 12. Jornada Laboral.\nrealizarán una jornada de 1.690 horas.'
+    const sinHdr = 'realizarán una jornada de 1.690 horas.'
+    expect(similarity(stripHeaderLine(conHdr), stripHeaderLine(sinHdr))).toBe(1)
   })
 })
 
