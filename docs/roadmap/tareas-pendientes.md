@@ -33,10 +33,11 @@
 - **PEND (bajo ROI, teoría-only):** Osakidetza Decreto 255/1997 arts **5, 8, 13, 14, 15, 17, 20** aún bilingües (0 preguntas cuelgan) → re-import castellano del BOPV.
 - **Nota:** el detector "arranca en apartado >1" tiene ALTA tasa de falsos positivos (numeración "artículo.apartado", p.ej. art.21→"21.1" es correcto) — filtrar a mano.
 
-### 🔴 [ABIERTO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (982 preguntas)
-- **Qué:** una "ley" editorial (virtual) mezcla **~6 normas** (Carta ONU, Estatuto INTERPOL, Estatuto Consejo de Europa, Reglamentos UE CEPOL 2015/2219 / Europol 2016/794 / Frontex 2019/1896): 40 arts, **982 preguntas** (827 en el contenedor art.0), en guardia_civil + policia_nacional. Los 5 títulos mal atribuidos ya corregidos (19/07); los números de artículo YA casan con la norma real.
-- **Por qué pendiente:** el split físico (crear 6 leyes, mover 40 arts, re-scopear, re-vincular 982 preguntas + tratar el contenedor art.0) es **grande y de alto riesgo** (2 oposiciones top) → merece plan propio, NO hacer a ojo.
-- **Cómo:** `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
+### ✅ [HECHO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (917 preguntas)
+- **Qué:** el contenedor virtual mezclaba ~12 organizaciones, escopado como "toda la ley" en guardia_civil T6 y policia_nacional T4 (mis-scoping: cada opositor recibía lo de la otra materia). **Split completo en 3 fases** (vivo en RDS, cero regresión de contenido).
+- **Resultado:** 13 leyes creadas — 6 de tratado (Carta ONU, Estatuto Consejo de Europa, Estatuto INTERPOL, Regl. UE CEPOL/Europol/Frontex) + 7 editoriales (UE, OTAN, EUROJUST, FAO, FMI, OMS, Tribunales europeos TEDH/TJUE). Los 39 arts numerados (Fase 1) + las 815 del art.0 clasificadas por 12 agentes Sonnet con integridad verificada 815/815 (Fase 2). Contenedor repurposado (no borrado) a bucket "teoría general" (17 preg, solo GC T6).
+- **Scoping corregido:** GC T6 → 13 orgs + teoría general (917); PN T4 → UE + coop. policial (INTERPOL/Europol/Eurojust/Frontex/CEPOL) + tribunales (434, antes 917).
+- **Detalle:** `docs/roadmap/split-instituciones-internacionales-gc.md`.
 
 ### 🟢 [HECHO 19/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
 - **Contexto:** los cubos 1/3 dejaron 71 needs_human con motivo de esta sesión (`ai_provider IN claude_code_cubo1_reverify / mislink_v1 / vg_relink`). Al inspeccionarlos, el "importar normas para desbloquear todo de golpe" resultó **optimista**: desglose real →
