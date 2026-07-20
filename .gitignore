@@ -101,3 +101,4 @@ scripts/impugnaciones/lote-trafico.json
 scripts/impugnaciones/validacion-citas.json
 scripts/impugnaciones/cola-larga-shards/
 scripts/impugnaciones/validacion-citas-cl.json
+scripts/impugnaciones/split-shards/
