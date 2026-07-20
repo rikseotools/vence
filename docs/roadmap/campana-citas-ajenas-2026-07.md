@@ -125,3 +125,36 @@ teoria+temario invalidada.
 ## Otros subproductos
 - **Falso positivo del guardarraíl** `validar-explicacion.cjs` ("Truco/Consejo/Tip" saltaba con "Consejo
   Consultivo"): **ya corregido en origin/main** por otra sesión (mejor que mi parche) — no re-pushear.
+
+## Drenaje CE-mislink (vínculo por nº de art sin cruzar law_id) — HECHO (19/07)
+**Causa raíz materializada a gran escala:** preguntas de la **Constitución** vinculadas por número de artículo
+al artículo del MISMO número de OTRA ley (típicamente Código Penal: `133 CP` en vez de `133 CE`), sin cruzar
+`law_id`. Filtro de detección: `needs_human` + ley≠CE + el texto menciona "constitución" + existe art CE del mismo número.
+
+**Pipeline (probado y durable):**
+1. Extraer candidatas con su art actual (ley≠CE) + el art CE del mismo número (`ce_content`).
+2. Agente verificador (1 por chunk de ~45, 17 en paralelo): verifica contra el art CE literal, redacta explicación
+   §5.1, **verifica la clave él mismo** (no se fía de `correct_option`).
+3. **Guardarraíl determinista** (2ª pasada adversarial, `scripts/impugnaciones/apply-ce-relink.cjs` +
+   `apply-ce-relink-dir.cjs`): blockquote debe ser **substring literal** del art CE (≥20 chars, normalizado),
+   formato §5.1 exacto, y la letra del agente debe coincidir con `correct_option`. Solo si pasa las 3 →
+   relink `primary_article_id`+`question_articles`, INSERT `ai_verification_results` (todos `_ok=true`,
+   provider `claude_code_ce_relink_2026_07`), transición `needs_human→approved` (`ai_verified_perfect`).
+4. Pase dirigido extra sobre las CP-parked: agente identifica el art CE **correcto** (no el del mismo número)
+   → 15 recuperadas a otro artículo (166→87, 168→169, etc.), verificadas contra el destino real.
+
+**Resultado: 742 preguntas revinculadas, aprobadas y VISIBLES** (RDS es prod → sin deploy). 0 flips de clave
+(todas las claves `correct_option` ya eran correctas; el defecto era solo el vínculo). 0 fallos de guardarraíl.
+
+**Residuo documentado (112 en needs_human, `answer_ok=false`, NO tocar como CE):**
+- **95 falsos positivos del filtro**: ya vinculadas a su ley REAL (LO 3/1981 Defensor del Pueblo, Código Civil,
+  LOTC, Ley 40/2015…) — mencionan "constitución" pero son de esa ley. Pertenecen a los drenajes de su norma, no aquí.
+- **9 estructurales**: metapreguntas ("¿en qué Título/Capítulo…?", "¿cuántos artículos…?", trivia "padres de la
+  Constitución") no verificables con cita literal.
+- **8 not_ce**: fundamento en otra norma (LO 2/1982 Tribunal de Cuentas → art 30; LOPJ 599 CGPJ 3/5; Reglamento
+  Congreso; LO 9/1983; LO 4/2000 extranjería; 1 genuina CP art 19 menores). Relink a su ley real = tarea aparte.
+- **2 posibles claves defectuosas** (flag humano, NO auto-flip): `4b942e8a` (hotel=domicilio vs flagrante delito
+  art 18.2) y `5172f7a3` (regencia "Reina consorte" vs art 59.1). También `0214e550` (art 152, presidente CCAA
+  "sufragio universal" sin opción correcta) de un batch anterior.
+
+Diagnósticos en RDS `ai_verification_results` provider `claude_code_ce_relink_2026_07`.
