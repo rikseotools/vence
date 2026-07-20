@@ -1,0 +1,192 @@
+{
+  "slug": "administrativo-agencia-tributaria-canaria",
+  "position_type": "administrativo_agencia_tributaria_canaria",
+  "nombre_oficial": "Cuerpo Administrativo, Escala de Agentes de Tributos (Grupo C, Subgrupo C1) — Agencia Tributaria Canaria",
+  "administracion": "Comunidad Autónoma de Canarias — Agencia Tributaria Canaria",
+  "grupo": "C1",
+  "convocatoria": {
+    "resolucion": "Resolución de 29 de mayo de 2026, de la Presidenta de la Agencia Tributaria Canaria",
+    "boletin": "BOC nº 117, de 12 de junio de 2026",
+    "url_pdf": "https://sede.gobiernodecanarias.org/boc/boc-a-2026-117-2024.pdf",
+    "plazas_turno_libre": 7,
+    "plazas_promocion_interna": 12,
+    "cita_plazas": "se convoca el proceso selectivo para cubrir 7 plazas en ingreso libre, y 10 plazas en promoción interna, horizontal y vertical, del Cuerpo Administrativo, Escala de Agentes de Tributos (Grupo C, Subgrupo C1)",
+    "plazo_solicitudes": "veinte días hábiles, contados a partir del día 29 de junio de 2026"
+  },
+  "temario_fuente": "ANEXO II de la Resolución de 29/05/2026, que remite a la Resolución de 26 de julio de 2021 de la Directora (BOC nº 160 de 4.8.2021; corrección de errores BOC nº 200 de 29.9.2021)",
+  "total_temas": 40,
+  "bloques": [
+    {
+      "bloque": "I",
+      "nombre": "Derecho Constitucional, Europeo, Administrativo y de Canarias",
+      "temas": [
+        {
+          "numero": 1,
+          "epigrafe": "La Constitución Española de 1978: estructura y contenido. Derechos fundamentales y libertades públicas. La Corona. Las Cortes Generales: composición y funciones. El Gobierno: composición y funciones."
+        },
+        {
+          "numero": 2,
+          "epigrafe": "La organización territorial del Estado. Comunidades Autónomas y Ciudades Autónomas. Las Entidades Locales."
+        },
+        {
+          "numero": 3,
+          "epigrafe": "Las Instituciones de la Unión Europea: el Consejo, el Parlamento Europeo, la Comisión, el Tribunal de Justicia. El ordenamiento jurídico de la Unión Europea: primacía y aplicabilidad directa."
+        },
+        {
+          "numero": 4,
+          "epigrafe": "Fuentes del Derecho Administrativo. La jerarquía de las fuentes. La Constitución. La Ley. Los decretos leyes. La delegación legislativa. El Reglamento: titularidad, límites, control, clases e inderogabilidad singular."
+        },
+        {
+          "numero": 5,
+          "epigrafe": "La Administración electrónica y protección de datos. Derecho y obligación de relacionarse electrónicamente con las Administraciones Públicas. Instrumentos para el acceso electrónico a las Administraciones Públicas: sedes electrónicas, canales y punto de acceso, identificación y autenticación. Registros, comunicaciones y notificaciones electrónicas. Asistencia en el uso de medios electrónicos a los interesados. Protección de datos personales: principios, derechos de las personas y ejercicios de los derechos."
+        },
+        {
+          "numero": 6,
+          "epigrafe": "El acto administrativo: delimitación conceptual y elementos. Régimen jurídico del silencio administrativo. Notificación y publicación. La revisión de oficio."
+        },
+        {
+          "numero": 7,
+          "epigrafe": "El procedimiento administrativo: concepto, naturaleza jurídica y clases. Principios generales del procedimiento administrativo. Los interesados: capacidad, legitimación y representación. Términos y plazos. Fases: iniciación, ordenación, instrucción y terminación."
+        },
+        {
+          "numero": 8,
+          "epigrafe": "Los recursos administrativos. Clases de recursos. Procedimiento de tramitación y resolución de los recursos administrativos."
+        },
+        {
+          "numero": 9,
+          "epigrafe": "Los contratos en el sector público: concepto y clases. Órganos de Contratación y Contratista. El expediente de contratación, concepto, contenido y trámites."
+        },
+        {
+          "numero": 10,
+          "epigrafe": "El Presupuesto de la Comunidad Autónoma de Canarias: concepto y estructura. Fases del ciclo presupuestario de la Comunidad Autónoma de Canarias."
+        },
+        {
+          "numero": 11,
+          "epigrafe": "El Estatuto Básico del Empleado Público. Derechos y deberes de los funcionarios públicos, Situaciones administrativas. Incompatibilidades. Régimen disciplinario."
+        },
+        {
+          "numero": 12,
+          "epigrafe": "La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres. La Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género."
+        },
+        {
+          "numero": 13,
+          "epigrafe": "El Estatuto de Autonomía de Canarias: estructura, contenido y naturaleza jurídica. El Régimen Económico y Fiscal de Canarias en el Estatuto."
+        },
+        {
+          "numero": 14,
+          "epigrafe": "El Gobierno de Canarias: concepto y régimen jurídico. El funcionamiento del Gobierno. Las funciones del Gobierno en relación con el Parlamento de Canarias. El Presidente de la Comunidad Autónoma de Canarias: funciones."
+        },
+        {
+          "numero": 15,
+          "epigrafe": "La Administración Pública de la Comunidad Autónoma de Canarias. Las Consejerías: estructura. Las Viceconsejerías. Las Secretarías Generales Técnicas. Las Direcciones Generales. La Consejería de Hacienda: funciones tributarias. Agencia Tributaria Canaria: Ley de creación y estatutos. Organización central y territorial."
+        }
+      ]
+    },
+    {
+      "bloque": "II",
+      "nombre": "Derecho Tributario",
+      "temas": [
+        {
+          "numero": 1,
+          "epigrafe": "El sistema fiscal español y el subsistema tributario canario. Los principales impuestos y sus características. La Hacienda Pública Estatal, Autonómica y Local."
+        },
+        {
+          "numero": 2,
+          "epigrafe": "Derecho Tributario: concepto y contenido. Fuentes. Los tributos: concepto y clasificación. La obligación tributaria. Hecho imponible. Devengo. Base imponible y liquidable. Cuota y deuda tributaria."
+        },
+        {
+          "numero": 3,
+          "epigrafe": "Las obligaciones formales de los contribuyentes: libros registros, facturas, declaración censal y obligaciones relativas al número de identificación fiscal. Derechos y garantías de los obligados tributarios. Los obligados tributarios. La capacidad de obrar en el orden tributario. Representación y domicilio fiscal. La prescripción."
+        },
+        {
+          "numero": 4,
+          "epigrafe": "Las declaraciones tributarias: concepto y clases. Las autoliquidaciones. Las comunicaciones de datos. Las retenciones. Los pagos a cuenta. Declaraciones informativas. La obtención de información con trascendencia tributaria."
+        },
+        {
+          "numero": 5,
+          "epigrafe": "La extinción de la deuda tributaria. Medios de extinción de la deuda. El pago o cumplimiento: forma, momento, plazos, imputación, consignación y medios de pago. Aplazamiento y fraccionamiento del pago: requisitos, tramitación, garantías, consecuencias del incumplimiento. La prescripción del derecho a exigir el pago. Otras formas de extinción de las deudas: la compensación, la deducción sobre transferencias, la condonación. Insolvencias y crédito incobrable."
+        },
+        {
+          "numero": 6,
+          "epigrafe": "La aplicación de los tributos: información y asistencia. La colaboración social. Carácter reservado de los datos con trascendencia tributaria. Las tecnologías informáticas y telemáticas."
+        },
+        {
+          "numero": 7,
+          "epigrafe": "Normas comunes sobre actuaciones y procedimientos tributarios: fases. Las liquidaciones tributarias. Obligación de resolver y plazos de resolución. La prueba. Las notificaciones. Potestades y funciones de comprobación e investigación."
+        },
+        {
+          "numero": 8,
+          "epigrafe": "Actuaciones y procedimiento de gestión tributaria. Los procedimientos de gestión tributaria: iniciación, trámites y terminación. El procedimiento de verificación de datos. El procedimiento de comprobación de valores. El procedimiento de comprobación limitada."
+        },
+        {
+          "numero": 9,
+          "epigrafe": "Actuaciones y procedimiento de inspección: funciones y facultades. Documentación de las actuaciones de inspección. La personación de la inspección en el domicilio o locales del contribuyente. El procedimiento de inspección: iniciación, desarrollo y terminación. Las medidas cautelares en el procedimiento inspector."
+        },
+        {
+          "numero": 10,
+          "epigrafe": "Infracciones y sanciones en materia tributaria. El delito fiscal. Las liquidaciones vinculadas a delitos contra la Hacienda Pública."
+        },
+        {
+          "numero": 11,
+          "epigrafe": "El procedimiento de recaudación en periodo voluntario. Participación de las entidades de crédito en el procedimiento de recaudación. El procedimiento frente a responsables. El procedimiento frente a sucesores."
+        },
+        {
+          "numero": 12,
+          "epigrafe": "La recaudación en periodo ejecutivo. Inicio. Efectos. Recargos del periodo ejecutivo. Procedimiento de apremio: características, concurrencia y suspensión del procedimiento. Providencia de apremio: concepto, motivos de impugnación, plazos de ingreso. Las garantías de la deuda tributaria: tipos y ejecución de garantías."
+        },
+        {
+          "numero": 13,
+          "epigrafe": "El embargo. Facultades de la recaudación. Práctica del embargo: orden de embargo. Las diligencias de embargo: concepto, tramitación, motivos de oposición, anotación preventiva de embargo y otras medidas de aseguramiento. Normas sobre embargos: tipos de embargo. Normas sobre depósitos de los bienes embargados. Adjudicación de bienes y derechos a la Hacienda Pública y actuaciones posteriores a la enajenación. Tercerías. Ejercicio de acciones civiles y penales en el ámbito de la gestión recaudatoria."
+        },
+        {
+          "numero": 14,
+          "epigrafe": "La revisión de los actos de carácter tributario en vía administrativa. El recurso de reposición. Las reclamaciones económico-administrativas. Los Tribunales Económico- Administrativos y la Junta Económico-Administrativa de Canarias."
+        },
+        {
+          "numero": 15,
+          "epigrafe": "Los tributos propios de la Comunidad Autónoma de Canarias (I). Las tasas: ordenación general de las tasas. El Impuesto Especial de la Comunidad Autónoma de Canarias sobre los combustibles derivados del petróleo: hecho imponible, sujeto pasivo y responsables, repercusión, base imponible, devengo. Tipos impositivos, exenciones y devoluciones."
+        },
+        {
+          "numero": 16,
+          "epigrafe": "Los tributos propios de la Comunidad Autónoma de Canarias (II). El Impuesto sobre las Labores del Tabaco: hecho imponible, exenciones, devengo y ultimación del régimen suspensivo, sujetos pasivos y responsables, repercusión, base Imponible, tipos de gravamen y devoluciones."
+        },
+        {
+          "numero": 17,
+          "epigrafe": "El Impuesto General Indirecto Canario (I). Hecho imponible operaciones interiores. Concepto de entrega de bienes, prestación de servicios, de empresario o profesional, de actividad empresarial o profesional. Deslinde con el Impuesto de Transmisiones Patrimoniales y Actos Jurídicos Documentados. Exenciones: entregas de bienes y prestaciones de servicios. Lugar de realización del hecho imponible. Devengo, sujeto pasivo y base imponible. Tipos impositivos."
+        },
+        {
+          "numero": 18,
+          "epigrafe": "Impuesto General Indirecto Canario (II). Hecho imponible importaciones. Concepto de exportaciones. Exenciones: exportaciones y asimiladas a la exportación, exenciones áreas exentas, exenciones importaciones. Importaciones: devengo, sujeto pasivo y base imponible."
+        },
+        {
+          "numero": 19,
+          "epigrafe": "Impuesto General Indirecto Canario (III). Requisitos generales de deducción. Regímenes especiales: régimen simplificado, régimen de comerciantes minoristas y régimen del pequeño empresario o profesional. Obligaciones formales de los sujetos pasivos."
+        },
+        {
+          "numero": 20,
+          "epigrafe": "El Arbitrio sobre la Importación y Entrega de Mercancías en las Islas Canarias. Hecho imponible. Operaciones no sujetas. Localización del hecho imponible. Exenciones a la importación. Exenciones en operaciones interiores. Devengo. Sujeto pasivo. Las Tarifas. Tipos impositivos. Gestión del tributo."
+        },
+        {
+          "numero": 21,
+          "epigrafe": "La cesión de tributos a las Comunidades Autónomas. Alcance de la cesión y puntos de conexión. Competencias en materia de gestión, liquidación, inspección, recaudación y revisión."
+        },
+        {
+          "numero": 22,
+          "epigrafe": "Impuesto sobre Sucesiones y Donaciones. Hecho imponible. Sujeto pasivo. Devengo. Base imponible. Base liquidable. Tipos de gravamen. Deuda tributaria."
+        },
+        {
+          "numero": 23,
+          "epigrafe": "El Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados (I). Transmisiones patrimoniales onerosas: hecho imponible, sujeto pasivo, base imponible y cuota tributaria. Operaciones societarias: hecho imponible, sujeto pasivo, base imponible y cuota tributaria."
+        },
+        {
+          "numero": 24,
+          "epigrafe": "El Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados (II). Actos jurídicos documentados: hecho imponible, sujeto pasivo, base imponible y cuota tributaria. Normas comunes a los conceptos que integran el tributo: beneficios fiscales, comprobación de valores, devengo, prescripción, devolución y gestión."
+        },
+        {
+          "numero": 25,
+          "epigrafe": "Otros tributos cedidos. Impuesto sobre el Patrimonio: hecho imponible, sujeto pasivo, exenciones, base imponible y liquidable, devengo, cuota tributaria. Tasas Fiscales sobre el Juego: hecho imponible, devengo, sujeto pasivo, base imponible y tipo de cada una de ellas."
+        }
+      ]
+    }
+  ]
+}
