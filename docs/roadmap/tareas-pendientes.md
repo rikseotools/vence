@@ -223,6 +223,16 @@
 
 ## Abiertas
 
+### [T-056] 🟠 Importar el Estatuto de Personal del Parlamento de Andalucía (tapa el hueco del tema 37)
+- **Qué:** el tema 37 de `oficial-de-gestion-parlamento-de-andalucia` ("El personal al servicio del Parlamento: normativa aplicable, clases, ingreso y cese, provisión, situaciones e incompatibilidades, derechos y deberes, régimen disciplinario, representación") **no tiene su norma en BD**. La verificación de epígrafes del 20/07 lo dejó registrado como `verified_issues`, no como resuelto.
+- **Por qué:** el scope original reutilizaba **el EGRIPA entero, idéntico al del tema 36** — o sea, el tema servía preguntas de organización administrativa bajo un epígrafe de régimen de personal. Mitigado el 20/07 acotando el EGRIPA a sus 11 artículos de personal (3, 4, 8-14, 28, 29) + Ley 53/1984 de incompatibilidades, pero eso cubre el epígrafe a medias: faltan ingreso, provisión, situaciones y disciplinario.
+- **Cómo:** hay precedente importado de otra cámara autonómica (`estatuto-personal-junta-general-asturias`, 93 arts) → mismo patrón. Buscar el Estatuto de Personal del Parlamento de Andalucía en el BOPA, importar verbatim, escoparlo a T37 y generar preguntas con doble auditoría. Método: `docs/maintenance/generar-preguntas-con-ia.md`.
+
+### [T-057] 🟡 Adjudicar los 11 temas en `needs_human` de Oficial de Gestión (los 2 agentes discreparon)
+- **Qué:** en la verificación de epígrafes del 20/07 los dos agentes independientes discreparon en 11 de los 44 temas, así que **no se tocó el scope** (regla del runbook). Quedan en `needs_human` esperando juicio humano.
+- **Los casos:** posibles HUECOS → T5 (LO 6/2002 partidos + LO 8/2007 financiación), T9 (EOMF + LO 5/1995 Jurado), T10 (LO 3/1981 Defensor del Pueblo), T12 (LOFCA), T13 (RDLeg 2/2004 Haciendas Locales), T38 (previsión social). Posible SOBRE-SCOPE → T18 (Ley 39/2015 54-96 solapa con T19), T26 (EA 99-107 duplica T28), T35 (Reglamento 183-190 serían de T40/41), T42 (EBEP 8-84 invade T43/44). Norma equivocada → T27 (usa Ley 40/2015 estatal; podría pedir la Ley 9/2007 andaluza).
+- **Ojo:** 7 de las leyes "que faltan" **ya están en BD** (LO 6/2002, EOMF, LO 3/1981, LOFCA, RDLeg 2/2004, Ley 9/2007, Ley 12/2007) → si se confirman, son añadidos de scope baratos que reutilizan preguntas ya existentes. Solo faltarían LO 8/2007 y LO 5/1995. Runbook: `docs/runbooks/verificar-epigrafes-scope.md`.
+
 ### [T-052] 🟠 [VENDIBLE — inscripción viva, reuso máximo] Construir Oficial de Gestión del Parlamento de Andalucía (C1)
 - **Qué:** `oficial-de-gestion-parlamento-de-andalucia` está **catalogada** (⚪ `is_active=false`, 0 temas) con **9 plazas** y **inscripción abierta hasta el 13/08/2026**. NO tenía ficha en el backlog: se detectó mirando la BD, no la lista.
 - **✅ FUENTE OFICIAL VERIFICADA (20/07):** `BOJA26-136-00016-9536-01_00340768` — Acuerdo de 8 de julio de 2026 de la Mesa del Parlamento (BOJA núm. 136, de 16/07/2026, **el mismo boletín que Subalternos**).
