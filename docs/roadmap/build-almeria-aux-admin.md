@@ -295,3 +295,50 @@ salido con una referencia que no lleva a ninguna parte.
 - **`inscription_deadline`** (29/07) no se ha tocado: las fuentes discrepan entre el 27/07 y el
   4/08 y el BOE fija "20 días naturales desde la publicación en BOJA". Verificar contra el BOJA
   antes de corregirlo — es dato de cara al usuario.
+
+
+## Verificación scope↔epígrafe de los 24 temas (20/07) — y el SEGUNDO defecto del patrón T10
+
+Tras publicar se corrió el pipeline del manual (`verificar-epigrafes-scope.md`): dump + **2 agentes
+independientes** (analista y escéptico), avisándoles de que este temario cita títulos y capítulos
+exactos y de que ya había aparecido un tema con la ley entera escopada.
+
+**Consenso: 23 CORRECT + 1 discrepancia (T8)**, y la discrepancia era real.
+
+**T8 — mismo patrón que el T10.** Su epígrafe termina en *"Normativa interna del Comité de Seguridad
+y Salud laboral de la Universidad de Almería"*, y esa norma **no estaba ni en BD ni en el scope**:
+el tema pedía un documento que no servíamos. El tramo de la Ley 31/1995 sí estaba bien acotado
+(14-29 derechos/obligaciones + 33-40 delegados y comité, excluyendo 30-32 servicios de prevención,
+que el epígrafe no pide). **Resuelto**: importada de la web oficial de la UAL
+(`nuevoreglamentocss2018.pdf`, 17 apartados, sin articulado formal) y escopada al T8. Verificado en
+producción. Script: `scripts/oposiciones/importar-css-ual.cjs`.
+
+**Los otros 22 quedaron confirmados con comprobación de rangos reales**, no por encima: Título
+Preliminar de la Ley 40/2015 = arts. 1-53 (el Título I empieza en el 54); LO 3/2018 solo Títulos I,
+II, III, V y X; LO 3/2007 Título V Caps. I-III = 51-64 (los Caps. IV-V, FFAA y FCSE, no se piden);
+RD 822/2021 Caps. I-VI y VIII excluyendo el VII (arts. 25-35). Estado: **24/24 `verified_correct`**.
+
+**Lección**: dos temas de veinticuatro pedían en su epígrafe contenido que no servíamos, y ninguno
+de los dos se veía desde fuera —ambos tenían preguntas y parecían sanos—. El primero lo cazó el gate
+de publicación por casualidad; el segundo, el pipeline de dos agentes. **Verificar el scope contra el
+epígrafe no es opcional en una oposición nueva.**
+
+## Dato de convocatoria corregido
+
+`inscription_deadline` estaba en **29/07**. Verificado contra el BOJA nº132 de 10/07/2026, que fija
+*"veinte días naturales siguientes al de la publicación"* → **30/07/2026**. Estaba un día adelantado
+en un dato que el opositor usa para decidir si aún llega a presentarse.
+
+## Estado final tras la pasada de perfeccionamiento
+
+| | |
+|---|---|
+| Temas | 24, **0 vacíos**, **24/24 `verified_correct`** |
+| Preguntas activas | **8.558** |
+| Normas UAL | 13 importadas (12 + la Normativa Interna del CSS) |
+| Publicada | **Sí**, verificada en producción |
+
+**Pendiente (no bloquea, pero es lo siguiente):** **7 temas finos** de 12-14 preguntas — T10, T11,
+T12, T14, T15, T18 y T21. Ninguno vacío, pero se agotan rápido. Y `exam_date` sigue NULL a propósito:
+el BOJA dice *"no se iniciará antes del 1 de septiembre de 2026"* y la fecha exacta la fija una
+resolución posterior del Rectorado; **no inventarla**, capturarla cuando salga.
