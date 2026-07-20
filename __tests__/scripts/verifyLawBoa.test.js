@@ -36,6 +36,17 @@ describe('splitArticles — cabeceras', () => {
     const a = arts(['Artículo 41. De la Dirección General de Salud.', 'Texto.'])
     expect(a.has('41')).toBe(true)
   })
+
+  test('acepta la cabecera en MINÚSCULA ("artículo 27.-") — BOJA — sin tragarse la prosa', () => {
+    // El BOJA (Junta de Andalucía) escribe "artículo 27.- Hojas de sugerencias" en minúscula;
+    // pero "artículo 2 del Estatuto…" sigue siendo una remisión, no una cabecera.
+    const a = arts(['artículo 27.- Hojas de sugerencias y reclamaciones.', 'Por razones de privacidad…',
+      'artículo 2 del Estatuto de los Trabajadores, los puestos…'])
+    expect(a.has('27')).toBe(true)
+    expect(a.get('27').content).toContain('Por razones de privacidad')
+    // la remisión "artículo 2 del Estatuto…" NO abre un artículo falso (queda como cuerpo)
+    expect(a.has('2')).toBe(false)
+  })
 })
 
 describe('splitArticles — límites de bloque', () => {

@@ -125,7 +125,10 @@ function htmlToParagraphs(html) {
 // SIN flag /i y con guarda de minúsculas: una remisión a mitad de frase que caiga al
 // principio de línea ("artículo 2 del Estatuto de los Trabajadores…") NO es una cabecera,
 // y si se cuela se lleva por delante el texto del artículo real.
-const RE_ART = /^(?:Art[íi]culo|ART[ÍI]CULO)\s+(\d+(?:\s*(?:bis|ter|quater|quinquies))?)\s*[.\-–—\s]*(.*)$/
+// El keyword va con /i (algunas gacetas escriben "artículo 27.- Título" en minúscula —
+// BOJA Junta de Andalucía); la guarda de prosa (RE_PROSA, abajo) sigue filtrando las
+// remisiones porque mira la MINÚSCULA del enunciado, no la del keyword.
+const RE_ART = /^art[íi]culo\s+(\d+(?:\s*(?:bis|ter|quater|quinquies))?)\s*[.\-–—\s]*(.*)$/i
 // Palabras que delatan una remisión en prosa, no un enunciado de artículo.
 // SIN /i a propósito: un enunciado legítimo empieza en MAYÚSCULA ("Artículo 41. De la
 // Dirección General…"), así que solo la minúscula delata la prosa.
