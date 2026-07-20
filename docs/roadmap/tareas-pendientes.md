@@ -151,53 +151,6 @@
 > **Nota de calibración:** el drenaje CE-mislink del 19-20/07 costó ~2M tokens para 840 preguntas.
 > Sirve de vara de medir: T-040 y T-038 son de ese orden o mayores; construir una oposición, también.
 
-## Abiertas").
-> Snapshot manual: al cerrar/abrir tareas puede quedar desfasado — la fuente de verdad de estado es cada `### [PRIORIDAD]`.
-
-**Calidad / correctness (primero):**
-
-> ⚠️ Índice desfasado respecto a `backlog_tasks` (fuente de verdad). Cerradas el 20/07: **T-001** (paso 1 desplegado; paso 2 → T-039) y **T-006**. Varias "abiertas" son colas cortas de tareas casi hechas: T-036 (3 cabos), T-009 (detector hecho, ~5 candidatos), T-026 (sistema vivo = mantenimiento), T-004 (solo Osakidetza bilingüe).
-
-1. 🟠 Cubos sellados en verde — **3 cubos CERRADOS**; quedan 3 cabos: 52 needs_human (= import de contenido, NO relink), §8.1-ter al manual (bloqueado), 4 huérfanas de scope
-2. ✅ [HECHA 20/07] Importar normas que faltan + reactivar las 22 ocultadas del cubo 3 — 10 ya approved, 5 recuperadas (CyL), 1 retirada (ley derogada), 6 en needs_human por decisión
-3. 🟠 Relink `needs_human` + reescritura de explicaciones flojas (19/07)
-4. ✅ [HECHA 20/07] Framework profesional de canaries — P1-P3 núcleo DESPLEGADO (contrato, is_synthetic, registro, guardarraíles cota/completitud/boot, runner, 3 canaries migrados, 5 reglas alerta, runbook). Queda OPCIONAL migrar 13 canaries que divergen
-
-**Contenido / scope↔epígrafe:**
-5. 🟡 Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
-6. 🟡 Verificación scope↔epígrafe — backlog de plataforma
-7. 🟡 Huecos de contenido Aux. Admin. Aragón (epígrafes 13/07)
-8. 🟡 Huecos de contenido Aux. Admin. Extremadura (verify:scope 14/07)
-9. 🟡 Verificar + completar Aux. Admin. Ayto. de Madrid
-10. 🟢 Bloque II (parte específica) Agrupación Profesional Servicios Públicos CARM vacía
-11. 🟢 Editorial TCAE "Unidad del paciente"
-
-**Ingresos / vendibles:**
-12. 🟠 Construir Ujieres de las Cortes Generales
-13. 🟠 Construir Gestión Administrativa A2 (Junta de Andalucía)
-14. 🟠 Construir TSID (Imagen para Diagnóstico y Medicina Nuclear)
-15. 🟠 Botón premium "imprimir/descargar temario completo"
-16. 🟡 Supuestos prácticos para Administrativo Comunidad de Madrid (demanda usuaria)
-
-**Landings / app:**
-17. 🟡 Render multi-convocatoria: landing pinta las 2 convocatorias vivas separadas
-18. 🟡 Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a)
-20. 🟡 Migrar `/leyes/[law]` a on-demand (flakiness del build)
-
-**Infra / decisión de coste:**
-21. 🟡 Provisionar RDS read replica (admin/analytics)
-22. 🟢 Email RGPD de borrado *exactly-once*
-23. 🟢 Poblar `law_sections` (títulos/capítulos) en todas las leyes + teoría
-
-**Cabos / pilotos:** *(los 2 que había aquí se cerraron el 20/07 — ver por qué en sus fichas)*
-24. ✅ [ABSORBIDO 20/07] Leyes non-BOE con gaceta propia → eran 23 actionable, subconjunto de las 64 de "Completitud de leyes" (nº 4 bis); se sigue allí
-25. ✅ [CERRADA 20/07] Triaje con OpenRouter + ensemble → investigación con veredicto ("no industrializar"), cero infraestructura viva; residuo: ~$9 de crédito sin gastar
-
-**Baja / seguimiento / demanda:**
-26. 🟢 Capturar fecha de examen de las 2 oposiciones de la Univ. de León
-27. 🟢 16 preguntas de diagnóstico por imagen esperando su oposición (aparcada)
-29. 🟢 Oposiciones pedidas por usuarios — valorar (no comprometido)
-
 ## Abiertas
 
 ### [T-001] ✅ [CERRADA 20/07 — paso 1 desplegado y verificado; paso 2 fusionado en T-039] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
