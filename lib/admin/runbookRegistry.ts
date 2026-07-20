@@ -123,6 +123,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/completitud-leyes.md',
     claudeHace: 'localiza las leyes que sirven en temas vivos sin verificar contra su fuente oficial (`false_green` = marcada "actualizada" sin evidencia, `no_source` = sin URL de fuente, `never_verified`, `incomplete` = faltan artículos), registra la fuente que falte, compara artículo por artículo contra el boletín oficial e importa lo que falte (verbatim, doble auditoría) — NUNCA marca verificada sin evidencia.',
   },
+  article_annulled_unmarked: {
+    title: 'Inciso anulado por el TC (o disposición derogada) servido sin nota de vigencia',
+    triggerPhrase: 'revisa los incisos anulados',
+    runbook: 'docs/runbooks/incisos-anulados-tc.md',
+    claudeHace: 'corre `scripts/audit-annulled-provisions.cjs` (cruza el análisis del BOE datosabiertos — referencias posteriores "SE DECLARA … inconstitucional/nulidad … art. N" — con nuestros artículos) y para cada hallazgo (artículo que servimos SIN nota de vigencia pese a estar anulado por una STC) verifica el inciso concreto contra la sentencia, añade la nota de vigencia al artículo y REVISA la clave de las preguntas de ese artículo (que no den por válido el inciso anulado). NUNCA auto-corrige la clave: revisión humana como en el caso art. 126.2 LBRL / STC 103/2013.',
+  },
   scope_titulo_huerfano: {
     title: 'Título con preguntas huérfanas (hueco interno del temario)',
     triggerPhrase: 'revisa los huecos del temario',
