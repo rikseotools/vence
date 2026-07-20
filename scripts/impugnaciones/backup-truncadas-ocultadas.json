@@ -1,0 +1,27 @@
+[
+ {
+  "id": "190d8bf6-50ec-486b-8a7e-fbe904b902c5",
+  "estado_anterior": "approved",
+  "correct_option": 2
+ },
+ {
+  "id": "d7af3b87-4e25-4310-984a-3acbe9fef63c",
+  "estado_anterior": "approved",
+  "correct_option": 1
+ },
+ {
+  "id": "bf5c3dfa-8b1c-4cad-b710-2b304073b4a8",
+  "estado_anterior": "approved",
+  "correct_option": 1
+ },
+ {
+  "id": "f742636f-223b-4756-8cda-cf61280d81fd",
+  "estado_anterior": "approved",
+  "correct_option": 1
+ },
+ {
+  "id": "8ff3dea5-a8f1-490d-8f53-b5ab72e90a65",
+  "estado_anterior": "approved",
+  "correct_option": 0
+ }
+]

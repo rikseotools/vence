@@ -1,0 +1,20 @@
+[
+ {
+  "pfx": "0323d2fd",
+  "id": "0323d2fd-4133-4fb6-9115-35e4398f8927",
+  "estado_anterior": "approved",
+  "correct_option": 3
+ },
+ {
+  "pfx": "3541491c",
+  "id": "3541491c-ed38-46ee-bc0c-efd66a7e249c",
+  "estado_anterior": "approved",
+  "correct_option": 1
+ },
+ {
+  "pfx": "1e373e7c",
+  "id": "1e373e7c-194c-4623-859c-0b7fabcc90be",
+  "correct_option": 0,
+  "explanation": "El frío local produce los siguientes efectos: \r\n-\tVasoconstricción local.\r\n-\tDisminución de la sudoración.\r\n-\tDisminuye la actividad metabólica. \r\n-\tProduce contracción muscular (escalofríos). \r\n-\tProvoca anestesia local y piloerección. \r\n-\tA nivel sistémico, disminuye la temperatura corporal."
+ }
+]
