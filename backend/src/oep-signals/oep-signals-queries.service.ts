@@ -124,6 +124,111 @@ export class OepSignalsQueriesService {
     });
   }
 
+  /**
+   * Segundo modo de silencio: TIMELINE AGOTADO.
+   *
+   * `findTimelineSilences` exige un hito en estado `current` con la fecha vencida. Eso deja
+   * un punto ciego enorme, porque **el estado natural de un timeline al día es todo
+   * `completed`**: nadie marca como "en curso" un hito que todavía no se ha anunciado. Medido
+   * el 20/07/2026: **90 de 118 oposiciones activas (76%) no tenían NINGÚN hito `current`**, así
+   * que el sensor no las miraba nunca — entre ellas `administrativo-universidad-leon`, con el
+   * contenido listo y esperando una fecha de examen que ningún sensor iba a cazar.
+   *
+   * El hueco se agravó al retirar `hash_change` (T-050, 20/07): era el único que vigilaba la
+   * página propia de cada convocatoria. Y `detect-boletines` no lo tapa: lee sumarios buscando
+   * convocatorias NUEVAS, y una resolución de listas definitivas de una convocatoria ya
+   * conocida no lo es.
+   *
+   * Aquí el disparador es el contrario: el timeline se AGOTÓ (todos los hitos completados,
+   * ninguno futuro) hace más de `graceDays` días, la oposición sigue SIN fecha de examen, y su
+   * `estado_proceso` implica que todavía se espera algo. Los ciclos ya cerrados
+   * (`examen_realizado`, `resultados`, `nombramientos`) NO son silencio: son rollover, y tienen
+   * su propio runbook.
+   */
+  async findExhaustedTimelines(
+    graceDays = 21,
+    maxDays = 365,
+  ): Promise<TimelineSilenceCandidate[]> {
+    const res = (await this.db.execute(sql`
+      SELECT o.id                       AS "oposicionId",
+             o.nombre                   AS "oposicionNombre",
+             o.slug                     AS "oposicionSlug",
+             ult.id                     AS "hitoId",
+             ult.titulo                 AS "hitoTitulo",
+             ult.fecha::text            AS "hitoFecha",
+             (CURRENT_DATE - ult.fecha) AS "diasRetraso"
+      FROM oposiciones o
+      JOIN LATERAL (
+        SELECT ch.id, ch.titulo, ch.fecha
+        FROM convocatoria_hitos ch
+        WHERE ch.oposicion_id = o.id
+        ORDER BY ch.fecha DESC
+        LIMIT 1
+      ) ult ON TRUE
+      WHERE o.is_active
+        AND o.exam_date IS NULL
+        AND o.estado_proceso IN (
+          'convocada', 'convocatoria_publicada', 'inscripcion_abierta',
+          'inscripcion_cerrada', 'lista_admitidos', 'oep_aprobada', 'pendiente_examen'
+        )
+        AND ult.fecha < CURRENT_DATE - ${graceDays}::int
+        -- Tope superior: pasado ~1 año esto ya NO es "silencio a la espera de noticias" sino
+        -- un registro abandonado (había 6 así el 20/07, la más vieja de 2023 — 990 días).
+        -- Mezclarlos falsearía la señal: el admin abriría la ficha esperando una novedad
+        -- inminente y encontraría una convocatoria muerta. Son higiene de datos/rollover, y
+        -- tienen su propio runbook. El servicio los cuenta y los loguea aparte: se excluyen,
+        -- pero NO en silencio.
+        AND ult.fecha >= CURRENT_DATE - ${maxDays}::int
+        -- ningún hito futuro ni en curso: el timeline está REALMENTE agotado
+        AND NOT EXISTS (
+          SELECT 1 FROM convocatoria_hitos f
+          WHERE f.oposicion_id = o.id
+            AND (f.fecha >= CURRENT_DATE OR f.status = 'current')
+        )
+      ORDER BY ult.fecha ASC
+    `)) as unknown;
+
+    const rows = Array.isArray(res)
+      ? res
+      : ((res as { rows?: unknown[] })?.rows ?? []);
+    return (rows as TimelineSilenceCandidate[]).map((r) => ({
+      ...r,
+      diasRetraso: Number(r.diasRetraso),
+    }));
+  }
+
+  /**
+   * Cuenta las que el tope de `findExhaustedTimelines` deja fuera por ancianas (>maxDays).
+   * Existe para que la exclusión NO sea silenciosa: un recorte que no se cuenta se lee como
+   * "cubierto todo" cuando no lo está. Son candidatas a higiene de datos/rollover, no a señal.
+   */
+  async countAbandonedTimelines(maxDays = 365): Promise<number> {
+    const res = (await this.db.execute(sql`
+      SELECT COUNT(*)::int AS n
+      FROM oposiciones o
+      JOIN LATERAL (
+        SELECT ch.fecha FROM convocatoria_hitos ch
+        WHERE ch.oposicion_id = o.id ORDER BY ch.fecha DESC LIMIT 1
+      ) ult ON TRUE
+      WHERE o.is_active
+        AND o.exam_date IS NULL
+        AND o.estado_proceso IN (
+          'convocada', 'convocatoria_publicada', 'inscripcion_abierta',
+          'inscripcion_cerrada', 'lista_admitidos', 'oep_aprobada', 'pendiente_examen'
+        )
+        AND ult.fecha < CURRENT_DATE - ${maxDays}::int
+        AND NOT EXISTS (
+          SELECT 1 FROM convocatoria_hitos f
+          WHERE f.oposicion_id = o.id
+            AND (f.fecha >= CURRENT_DATE OR f.status = 'current')
+        )
+    `)) as unknown;
+    const rows = Array.isArray(res)
+      ? res
+      : ((res as { rows?: unknown[] })?.rows ?? []);
+    return Number((rows as Array<{ n: number }>)[0]?.n ?? 0);
+  }
+
   // ============================================
   // INSERT SIGNAL (dedupe via ON CONFLICT)
   // ============================================
