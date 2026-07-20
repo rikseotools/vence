@@ -758,3 +758,30 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   4. **Cron** — enganchar `audit-annulled-provisions.cjs` al barrido nocturno (`health-sweep.cjs`).
 - **Orden recomendado:** 1 + 4 primero (baratos; cortan en origen y en vigilancia). 2 y 3 después.
 - **Alcance:** 21 artículos afectados en 356 leyes barridas (~6% de las que tienen anulación TC). Quedan ~350 con `boe_url` sin barrer.
+
+
+### [T-049] 🟠 [ABIERTA 20/07 — idea de Manuel, verificada en datos] Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
+- **Qué:** `app/OpenInscriptionsBanner.tsx` (home) personaliza **solo por familia** (Administración vs Sanidad…),
+  ordena por zona + cierre más próximo y corta a 10. **No filtra por número de plazas.**
+- **Medido en BD (20/07), 51 convocatorias con inscripción viva:**
+  - **24 (47%) tienen ≤4 plazas**, de ellas **14 con UNA sola plaza** (Enólogo, Albañil-Segovia, Logopedas,
+    Arquitectos-Zamora, Agente de Igualdad-Zamora…).
+  - **Teaser general** (usuario nuevo, anónimo o familia `otros` → primera impresión del sitio):
+    **9 de las 10 mostradas tienen ≤4 plazas**, la mayoría de 1.
+  - Opositor de `administracion_general` (17 de su familia): **5 de las 10 mostradas con ≤4 plazas**, mezcladas con
+    las buenas (Granada 46 plz, Almería 21, ATC 20, Ayto. Madrid 22).
+- **El dato YA está disponible:** la query de `app/page.tsx` (`getOpenConvocatorias`) **ya trae `plazas_libres`**,
+  pero ni `isOpenForDisplay` lo usa ni la interfaz `BannerConvocatoria` lo declara → se descarta sin usarse.
+  El fix es barato: añadir el campo y filtrar/ordenar por él.
+- **⚠️ Segundo hallazgo, quizá más importante que las plazas:** de las 51, **solo 7 están PUBLICADAS**
+  (`is_active`) — las otras 44 son **catalogadas**, oposiciones que NO podemos vender porque no tenemos contenido.
+  El banner está empujando mayoritariamente a sitios donde el usuario no puede estudiar con nosotros.
+  Conviene decidir las dos cosas a la vez: ¿umbral de plazas, priorizar vendibles, o ambos?
+- **Decisiones abiertas (producto, Manuel):**
+  1. ¿Umbral duro (p.ej. ≥5 o ≥10 plazas) o solo **ordenar** por plazas y que las pequeñas caigan bajo el corte de 10?
+  2. ¿Las **publicadas** (vendibles) van siempre primero, aunque cierren más tarde?
+  3. ¿Y las de `plazas_libres` NULL (5 casos)? Hoy entran; ¿se muestran o se ocultan hasta tener el dato?
+  4. Cuidado con vaciar: el banner ya tiene fallback anti-vacío por familia; un umbral duro necesita el mismo
+     blindaje (si filtra a 0 → relajar criterio antes que dejarlo vacío).
+- **Riesgo de no hacerlo:** el banner es la puerta de entrada de la home y hoy da una imagen de catálogo
+  irrelevante ("Enólogo, 1 plaza") justo al usuario que aún no nos conoce.
