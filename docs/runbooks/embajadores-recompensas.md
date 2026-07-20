@@ -91,6 +91,22 @@ GET /api/admin/rewards/accumulated
 
 ### 4. Pagar un vale (gift card) — SUPERVISADO, lo compra Claude (NO automático)
 
+> ### ⚠️ El flujo POR DEFECTO es PULL: paga el usuario QUIEN LO PIDE
+> **Tener saldo NO es motivo para pagar.** El programa es **modelo pull**: el embajador solicita su cobro
+> (`POST /api/referrals/payout-request` → el servidor calcula la denominación y crea una fila
+> `reward_payouts` con `status='pending'`), y **eso** es lo que enciende el badge "toca pagar"
+> (`getPendingPayoutRequests()`, endpoint `payouts-pending-count`). El saldo acumulado es **del usuario**:
+> puede estar esperando a juntar un vale mayor, y pagarle por iniciativa propia le congela el dinero en una
+> denominación que quizá no quiere.
+> - **Sin solicitud pendiente → NO se paga**, aunque haya saldo de sobra.
+> - El `payAccumulated` admin-initiated del punto 4 es la vía **excepcional** (Manuel lo pide expresamente),
+>   no la normal. No lo confundas con el flujo estándar.
+>
+> *(Aprendizaje 20/07: grepear el runbook y quedarse con la viñeta de `payAccumulated` llevó a dar por
+> hecho que el modelo era admin-initiated y a abrir una tarea de "pagar 9 €" a un embajador que nunca
+> había solicitado nada, con el badge apagado. Lee el punto 4 entero antes de pagar.)*
+
+
 **MODELO (decisión Manuel):** el **cash-out es supervisado**. Los saldos se **acumulan solos** (contabilidad, cero dinero); **comprar el vale sí gasta dinero real → siempre lo pide Manuel** ("a fulano, vale de X€") **y lo ejecuta Claude con una compra DIRECTA controlada**. Nada de pagos automáticos. Por eso **`BITREFILL_LIVE` se queda OFF en prod** a propósito (el endpoint `/api/admin/rewards/issue-giftcard` existe como fallback pero en dry-run — red de seguridad anti-gasto accidental).
 
 **Procedimiento de compra directa (patrón validado en la 1ª compra real, 11/07):**
