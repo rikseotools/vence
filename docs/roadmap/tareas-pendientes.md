@@ -64,10 +64,6 @@
 
 ## Abiertas
 
-### 🟡 [SEGUIMIENTO 20/07] Vaciado de la cuenta Stripe Manuel → medir re-suscripción en Nila
-- **Qué:** el 20/07 se pusieron **206 suscripciones de Manuel a `cancel_at_period_end`** (de golpe, sin aviso — decisión Manuel) para forzar la migración a Nila con precios nuevos. Todas mensuales → lapsan a lo largo del ~mes siguiente; al vencer, el usuario re-suscribe a mano y aterriza en Nila (customer nuevo, re-entrada de tarjeta). **MRR en juego ~€8.182/mes** expuesto al churn.
-- **Pendiente:** a los ~días/semanas, **informe de conversión**: de las 206 que van venciendo, cuántas re-suscribieron en Nila vs se perdieron. Sirve para decidir si mitigar (cupón fidelidad Nila `loyalty_10/20`, email) o revertir alguna. **Reversible:** IDs en `scratchpad/manuel-cancel-renewal-ids-backup.txt`; `subscriptions.update(id,{cancel_at_period_end:false})` antes de que venza (OJO: 17 de las 223 ya estaban a no-renovar por el cliente → no re-activarlas). Detalle: memoria `project-stripe-manuel-vaciado`.
-
 ### 🟠 [PASO 1 HECHO 20/07 — SIN DEPLOY] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
 - **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hacía nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Fallaba en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes. Caso María (fb feb79fc5, `piyou22@gmail.com`): 100% de sus sesiones GSA in-app en iPhone.
 - **✅ PASO 1 construido (20/07, aviso in-app + centralización):**
