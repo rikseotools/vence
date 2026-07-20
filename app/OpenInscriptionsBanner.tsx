@@ -16,8 +16,10 @@
 // Zona (su CCAA) NO filtra en duro (vaciaría demasiado): solo ordena — las de su zona
 // primero. La lista se corta a un teaser; "ver todas" lleva a la página completa.
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { useOposicion } from '@/contexts/OposicionContext'
+import { emitClientEvent } from '@/lib/observability/client'
 import { classifyFamilia, familiaLabel } from '@/lib/oposiciones/familia'
 import { oposicionToCcaa } from '@/app/oposiciones/lib/oposiciones-filters'
 
@@ -50,11 +52,23 @@ export default function OpenInscriptionsBanner({
   const userZone = oposicionId ? oposicionToCcaa(oposicionId) : null
   const total = convocatorias.length
 
-  // Filtro DURO por familia, con fallback si vacía o sin señal.
+  // Filtro DURO por familia.
+  //
+  // CAMBIO 20/07 (junto con el mínimo de 10 plazas): si el usuario tiene familia y NO hay
+  // ninguna convocatoria suya que cumpla el mínimo, se OCULTA el banner en vez de caer al
+  // teaser general. Antes se le enseñaban las de otras familias, y con el mínimo aplicado
+  // ese fallback se volvió dañino: 7 de 10 familias se quedan sin convocatorias que lleguen
+  // a 10 plazas, así que un opositor de sanidad veía un banner con 11 de 13 de
+  // administración general. Cambiábamos "ruido pequeño de lo suyo" por "ruido grande de lo
+  // ajeno". Mejor no enseñar nada que enseñar algo que no le sirve.
+  //
+  // El teaser general se mantiene para quien NO tiene señal de familia (anónimo, sin
+  // oposición elegida o familia 'otros'): ahí no hay nada mejor que ofrecer.
   const personalize = !!userFamilia && userFamilia !== 'otros'
   const deFamilia = personalize ? convocatorias.filter((c) => c.familia === userFamilia) : []
   const usingFamilia = personalize && deFamilia.length > 0
   const working = usingFamilia ? deFamilia : convocatorias
+  const hideForFamilia = personalize && deFamilia.length === 0
 
   // Orden: zona del usuario primero (si es regional), luego cierre más próximo.
   const sorted = [...working].sort((a, b) => {
@@ -68,6 +82,29 @@ export default function OpenInscriptionsBanner({
 
   const shown = sorted.slice(0, CAP)
   const rest = working.length - shown.length
+
+  // Observabilidad: sin esto el banner es CIEGO — un filtro que descarta convocatorias en
+  // silencio solo se detecta cuando lo reporta un usuario, que es justo lo que el manual de
+  // observabilidad prohíbe. Con `hidden_no_familia_match` medimos a cuánta gente le estamos
+  // ocultando el banner por el mínimo de plazas: si sube, hay que revisar el umbral o el
+  // reparto por familias, sin esperar a que alguien se queje.
+  useEffect(() => {
+    emitClientEvent({
+      severity: 'info',
+      eventType: 'open_inscriptions_banner_view',
+      metadata: {
+        familia: userFamilia ?? null,
+        zona: userZone ?? null,
+        pool: total,
+        de_su_familia: personalize ? deFamilia.length : null,
+        mostradas: hideForFamilia ? 0 : shown.length,
+        modo: hideForFamilia ? 'hidden_no_familia_match' : usingFamilia ? 'familia' : 'teaser_general',
+      },
+    })
+    // Solo al montar / cambiar la señal del usuario: es una impresión, no un render.
+  }, [userFamilia, userZone, total, personalize, deFamilia.length, hideForFamilia, usingFamilia, shown.length])
+
+  if (hideForFamilia) return null
 
   return (
     <Link

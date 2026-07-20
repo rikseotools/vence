@@ -22,6 +22,8 @@ import type { EventSeverity, EventSource } from './emit'
 
 const SAMPLE_RATES: Record<string, number> = {
   intent_unfulfilled: 1.0,
+  // 1 impresión por carga de home: volumen moderado, señal directa de producto → 100%.
+  open_inscriptions_banner_view: 1.0,
   pre_hydration_error: 1.0,
   // TTS — bajo volumen (1 por sesión) al 100%, alto volumen muestreado.
   tts_session_start: 1.0,
@@ -92,6 +94,12 @@ export type ClientEventType =
   // utils/answerSaveQueue.ts + utils/psychometricSaveQueue.ts.
   | 'usage_limit_hit'
   | 'review_oposicion_fallback'
+  // Banner de inscripción abierta de la home. Existe porque el banner filtra por familia
+  // y por mínimo de plazas (BANNER_MIN_PLAZAS) y ANTES era ciego: descartaba convocatorias
+  // en silencio. `modo:'hidden_no_familia_match'` mide a cuántos usuarios les ocultamos el
+  // banner porque su familia no tiene ninguna convocatoria que llegue al mínimo — si sube,
+  // hay que revisar el umbral o el reparto por familias. Ver docs/runbooks/observability.md.
+  | 'open_inscriptions_banner_view'
   // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
   | 'tts_session_start'
   | 'tts_session_end'

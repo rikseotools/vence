@@ -753,6 +753,7 @@ Categorías estables. Si necesitas una nueva: añadirla aquí Y al manual antes 
 | Deploys | `deploy_started`, `deploy_completed`, `deploy_failed` |
 | Cliente | `js_uncaught`, `unhandled_rejection`, `react_error_boundary`, `console_error`, `fetch_failure`, `hydration_mismatch`, `intent_unfulfilled`, `web_vital_degraded` |
 | Cliente UX | `daily_goal_banner_action`, `topic_trend_action`, `temario_print_action` — interacciones de UX medibles (metadata.action + contexto). `temario_print_action`: `action ∈ {print, inapp_blocked, copy_link, register_prompt}` + `{slug, topic}` — mide el uso del botón "Imprimir PDF" y el muro de navegadores in-app (window.print() es no-op en app de Google/Instagram/FB…) |
+| Cliente UX (banners) | `open_inscriptions_banner_view` — impresión del banner de inscripción abierta de la home. `metadata: {familia, zona, pool, de_su_familia, mostradas, modo}` con `modo ∈ {familia, teaser_general, hidden_no_familia_match}`. **Para qué:** el banner filtra por familia Y por mínimo de plazas (`BANNER_MIN_PLAZAS=10`, decisión producto 20/07) y antes era CIEGO — descartaba convocatorias en silencio. `hidden_no_familia_match` mide a cuántos usuarios les ocultamos el banner porque su familia no tiene ninguna convocatoria que llegue al mínimo (7 de 10 familias estaban en ese caso el 20/07): si sube, revisar el umbral o el reparto por familias |
 | Negocio | `payment_failed`, `signup_completed`, `daily_limit_reached`, `slo_breach` |
 | Invariantes | `invariant_violation` (metadata.invariant: `dispute_resolved_without_email`, …) — un reconciliador detectó un estado de negocio roto (Gap 17) |
 | Sintético | `smoke_e2e` |
@@ -769,6 +770,15 @@ SELECT ts, endpoint, error_message, deploy_version
 FROM observable_events
 WHERE source = 'vercel' AND event_type = 'http_5xx' AND ts > NOW() - INTERVAL '1 hour'
 ORDER BY ts DESC;
+
+-- ¿A cuánta gente le ocultamos el banner por el mínimo de plazas? (por familia)
+SELECT metadata->>'familia' AS familia,
+       COUNT(*) FILTER (WHERE metadata->>'modo' = 'hidden_no_familia_match') AS ocultos,
+       COUNT(*) AS impresiones,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE metadata->>'modo' = 'hidden_no_familia_match') / COUNT(*), 1) AS pct_oculto
+FROM observable_events
+WHERE event_type = 'open_inscriptions_banner_view' AND ts > NOW() - INTERVAL '7 days'
+GROUP BY 1 ORDER BY ocultos DESC;
 
 -- Eventos por minuto (sparkline última hora)
 SELECT DATE_TRUNC('minute', ts) AS m, COUNT(*) AS n

@@ -31,4 +31,28 @@ describe('GUARDRAIL: los banners no muestran convocatorias de menos de 10 plazas
     expect(src).toMatch(/BANNER_MIN_PLAZAS/)
     expect(src).toMatch(/gte\(oposiciones\.plazasLibres, BANNER_MIN_PLAZAS\)/)
   })
+
+  // El mínimo de plazas dejó a 7 de 10 familias sin ninguna convocatoria que llegue a 10.
+  // Con el fallback antiguo, un opositor de sanidad veía un banner con 11 de 13 de
+  // administración general: ruido ajeno en lugar de ruido pequeño. Se oculta en su lugar.
+  it('si la familia del usuario no tiene ninguna que cumpla, se OCULTA el banner (no cae al teaser)', () => {
+    const src = read('app/OpenInscriptionsBanner.tsx')
+    expect(src).toMatch(/const hideForFamilia = personalize && deFamilia\.length === 0/)
+    expect(src).toMatch(/if \(hideForFamilia\) return null/)
+  })
+
+  // Un filtro que descarta en silencio es invisible hasta que se queja un usuario, que es
+  // justo lo que prohíbe el manual de observabilidad. Ver docs/runbooks/observability.md.
+  it('el banner emite telemetría de impresión (no es ciego)', () => {
+    const src = read('app/OpenInscriptionsBanner.tsx')
+    expect(src).toMatch(/emitClientEvent/)
+    expect(src).toMatch(/open_inscriptions_banner_view/)
+    expect(src).toMatch(/hidden_no_familia_match/)
+  })
+
+  it('el eventType está declarado en la unión tipada y con sample rate', () => {
+    const src = read('lib/observability/client.ts')
+    expect(src).toMatch(/\| 'open_inscriptions_banner_view'/)
+    expect(src).toMatch(/open_inscriptions_banner_view: 1\.0/)
+  })
 })
