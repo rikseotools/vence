@@ -184,3 +184,72 @@ Cuando `dump` da `temario_parseado=0` (los portales GVA/DOGV son SPA de JS y Web
 - Un `programa_url` puede estar stale/apuntar mal (Vector 3 del manual) — si el temario oficial no cuadra por número, es otro sabor de bug (numeración/versión), no lo fuerces.
 - Datos contaminados: notas TODO (`_tmp_hold`) coladas en `article_numbers` aparecen como "artículos" — limpiar el dato, no es scope.
 - El sistema verifica **scope↔epígrafe (semántico)**, no literalidad byte-a-byte del boletín (ver memoria `reference_epigrafe_programa_url_en_bd`: el epígrafe de BD no está garantizado literal).
+
+## Huecos del temario: títulos huérfanos (`scope_titulo_huerfano`)
+
+> **Frase-gatillo: *"revisa los huecos del temario"*.** Complementa al pipeline de arriba: éste
+> verifica lo que SÍ está escopado; el detector de huérfanos caza lo que **falta**.
+
+**Qué detecta** (prefiltro determinista del barrido nocturno, `scripts/health-sweep.cjs`): un
+**título** de una ley que la oposición sí usa, con ≥8 preguntas activas, con **0 artículos suyos
+en el `topic_scope`** de esa oposición, y flanqueado a ambos lados por artículos escopados de la
+misma ley (hueco **INTERNO**, no un recorte de borde). Son preguntas ya en BD que el usuario no
+puede practicar.
+
+**Es un UPPER BOUND ruidoso.** Análisis a fondo del backlog (20/07, 471 títulos / 98 oposiciones):
+la precisión cruda medida a mano fue **~25 %**. No lo drenes fila a fila ni te lo creas al pie de
+la letra. Herramientas: `scripts/scope/analiza-titulos-huerfanos.cjs` (reproduce el prefiltro y lo
+enriquece con demanda/clusters) y `scripts/scope/refina-titulos-huerfanos.cjs` (separa hueco real
+de artefacto).
+
+### Cómo drenarlo (por CLUSTER, no por fila)
+
+Las 471 filas son solo **42 criterios únicos** `(ley, título)` → **11,2x de apalancamiento**. Decidir
+"¿el programa de tipo X incluye el Título IV de la Ley 7/1985?" resuelve decenas de filas de golpe.
+Ordena por `preguntas × usuarios` y ataca clusters.
+
+### Las 3 fuentes de ruido (medidas, con su antídoto)
+
+1. **Cola suelta (18 % de las filas).** El criterio "flanqueado" usa solo min/max de los artículos
+   escopados: **un único artículo lejano** hace que TODOS los títulos intermedios parezcan hueco.
+   *Caso real:* `auxiliar_administrativo_madrid` escopa CE 0-55 (lo que pide su epígrafe) **+ art.116**
+   (por "garantía y **suspensión**" de derechos) → como el 116 es del Título V, los Títulos II
+   (Corona), III (Cortes) y IV (Gobierno) saltan como huérfanos aunque el programa de Madrid no los
+   incluya. **3 falsos positivos de un artículo.**
+   → **Antídoto:** métrica de **fuerza del flanco** (nº de artículos escopados a cada lado). Si un
+   lado se sostiene sobre ≤2 artículos, es artefacto de cola.
+
+2. **Word-matching contra el epígrafe equivocado.** Buscar las palabras del título en *todos* los
+   epígrafes de la oposición da falsos masivos: "El Gobierno **de Canarias**" casa con CE Tít.IV
+   "Del Gobierno"; "**adquisición** de patrimonio" casa con EBEP "Adquisición de la relación de
+   servicio"; "bienes de las **entidades locales**" casa con "Otras entidades locales".
+   → **Antídoto:** comparar SOLO contra los epígrafes de los **temas que escopan esa ley**
+   (atar tema↔ley). Bajó los candidatos de 120 → 49.
+
+3. **El nombre de la propia ley.** "Ley 40/2015 de Régimen Jurídico del **Sector Público**" casa con
+   su título "Sector público institucional" sin que el programa lo pida.
+   → **Antídoto:** descontar las palabras del nombre de la ley antes de comparar.
+
+**Señal de mayor valor:** que la **frase del título aparezca casi literal y agrupada** en el epígrafe
+del tema que escopa esa ley. Bolsa-de-palabras genérica ("entidades locales") es débil; frase larga y
+distintiva ("relaciones entre el Gobierno y las Cortes Generales") es casi siempre hueco real.
+
+### ⚠️ NO descartes por "ya verificado" — es el punto ciego del pipeline
+
+Tentación (y error cometido y revertido el 20/07): filtrar los `(oposición, ley)` cuyos temas ya están
+`verified_correct` asumiendo que el recorte fue deliberado. **Esconde justo lo que este detector existe
+para cazar.** 169 de las 471 filas caen en temas ya verificados — y entre ellas está el mejor hallazgo:
+
+> **`administrativo_seguridad_social` · CE Título V (108-116) · 227 preguntas · 156 usuarios.**
+> Escopa 153 artículos de la CE y **ninguno** del 108-116, pese a que el epígrafe del **T7 dice
+> literalmente "Relaciones entre el Gobierno y las Cortes Generales"**. Sus temas de CE están
+> `verified_correct`: el pipeline los dio por buenos y el hueco existe igual.
+
+`verified_correct` es **bandera de contexto, nunca filtro**.
+
+### Adjudicación
+
+Con el cluster priorizado, la decisión sigue siendo del pipeline `verify:scope` (epígrafe↔scope) contra
+el **programa oficial**: si el epígrafe pide el título → **añadir su rango al scope reusando el banco ya
+en BD**; si el programa no lo incluye → **dejarlo**. Nunca añadir un título que el epígrafe no pida ni
+quitar el que sí. Caso raíz resuelto: CE Título V huérfano en Diputación de Córdoba (186 preguntas).
