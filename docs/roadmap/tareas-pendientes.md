@@ -427,8 +427,19 @@
   - **No son 20 plazas para nosotros: son 8.** El desglose real es **8 de turno libre + 12 de promoción interna**; las de PI son para personal ya funcionario, mercado que no es el nuestro. Nuestro dato de BD (`plazas_libres=20`) mezcla ambos turnos → **corregir en BD**.
   - **No es "Administrativo" genérico: es la Escala de AGENTES DE TRIBUTOS** (Cuerpo Administrativo, C1). El reuso que estimé (banco de Canarias, 8.845 + 9.741 preguntas) cubre bastante menos de lo que parecía: el peso del temario es **tributario canario específico** (IGIC, AIEM, procedimientos de gestión/recaudación), no administración general.
 - **Estado de la fuente:** **temario NO localizado**. La ficha de la sede electrónica está **obsoleta** (datos de 2019, 2 plazas). La referencia que circula es BOC nº117 de 12/06 + Resolución de la Presidencia de 29/05/2026, pero **la fuente sindical donde aparece mezcla 2025 y 2026** → no es fiable; hay que ir al BOC oficial antes de dar nada por bueno.
-- **Por qué se degrada a 🟡:** 8 plazas reales + temario especializado poco reutilizable + fuente sin localizar la dejan por detrás de T-044 y de otras vendibles. No se descarta, pero deja de ser "20 plazas casi gratis".
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`; primero localizar el BOC oficial con las bases y el anexo del temario. **Estado:** sin empezar.
+- **Por qué se degrada a 🟡:** plazas reales + temario especializado poco reutilizable la dejan por detrás de T-044 y de otras vendibles. No se descarta, pero deja de ser "20 plazas casi gratis".
+
+> **✅ FUENTE OFICIAL LOCALIZADA Y LEÍDA (20/07) — el bloqueo de esta ficha está resuelto.**
+> **BOC nº 117 de 12/06/2026** → *"RESOLUCIÓN de 29 de mayo de 2026, de la Presidenta, por la que se convocan las pruebas selectivas para el ingreso, por el sistema general de acceso libre y promoción interna, a la Escala de Agentes de Tributos del Cuerpo Administrativo (Grupo C, Subgrupo C1)"*.
+> PDF: `https://sede.gobiernodecanarias.org/boc/boc-a-2026-117-2024.pdf` (leído con `pdftotext -layout`; WebFetch NO puede con este PDF).
+> - **Plazas (literal, base 1.1):** *"cubrir **7 plazas en ingreso libre**, y 10 plazas en promoción interna"* + 2 plazas más de PI (OEP 2023) = **7 libre / 12 PI**. ⚠️ Corrige otra vez la cifra: **son 7 de turno libre, no 8 ni 20**. En BD sigue `plazas_libres=20` → **hay que corregirlo**.
+> - **Plazo (base 4.2):** *"veinte días hábiles, contados a partir del día 29 de junio de 2026"*.
+> - **✅ TEMARIO: está en el ANEXO II de la propia resolución — 40 temas**, remitido a la Resolución de 26/07/2021 (BOC nº 160 de 4.8.2021; corrección BOC nº 200 de 29.9.2021). Reparto **medido**:
+>   - **BLOQUE I — Derecho Constitucional, Europeo, Administrativo y de Canarias: 15 temas** (CE, organización territorial, UE, fuentes, admin electrónica, acto administrativo, procedimiento, recursos, contratos, presupuesto CA Canarias, EBEP, Gobierno de Canarias, Administración Pública CAC…) → **materia GENERAL, reutilizable** del banco de Canarias.
+>   - **BLOQUE II — Derecho Tributario: 25 temas** (IGIC ×3, AIEM, gestión/inspección/recaudación, embargo, infracciones, ISD, tributos cedidos, tributos propios CAC…) → **específico, a construir de cero**.
+> - **Coste real, ya cuantificado:** **37,5% reutilizable (15/40) · 62,5% a crear (25/40)**. La degradación de la ficha era correcta en dirección, pero ahora está medida: no es "poco reutilizable", es **exactamente 15 temas gratis y 25 de obra**.
+> - **DECISIÓN PENDIENTE (Manuel):** ¿compensan 25 temas de derecho tributario canario (IGIC/AIEM/recaudación, verbatim + doble auditoría) por **7 plazas de turno libre**? El plazo de inscripción cierra ~27/07, así que o se hace ya o se pierde este ciclo (la oposición es recurrente).
+- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. **Fuente ya localizada** (arriba): las bases y el Anexo II del temario están en el PDF del BOC 117. **Estado:** fuente resuelta; construcción sin empezar, pendiente de decisión.
 
 ### [T-021] 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
 - **Qué:** `ujieres-cortes-generales` **catalogada** (⚪ `is_active=false`, nacional) sin temario ni tests. Construir para hacerla vendible.
