@@ -27,6 +27,7 @@
 const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generacion', 'tellLongitud'))
 
 const envPath = path.join(__dirname, '..', '.env.local')
 const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
@@ -98,9 +99,8 @@ const CONTINUA = /^\s*[,;]\s*(salvo|excepto|sin perjuicio|siempre que|a menos qu
       }
     }
 
-    const lc = correcta.length
-    const fuera = opts.filter((o) => o.length < lc * 0.7 || o.length > lc * 1.3).length
-    if (fuera) errs.push(`${fuera} opción(es) fuera de ±30% de longitud`)
+    const tl = analizarLongitud(opts, q.correct_option)
+    if (tl.tell) errs.push(`TELL DE LONGITUD: ${tl.motivo}`)
 
     if (new Set(opts.map(norm)).size !== 4) errs.push('opciones duplicadas')
 
