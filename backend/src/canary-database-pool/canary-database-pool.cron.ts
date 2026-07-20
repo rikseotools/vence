@@ -7,6 +7,7 @@ import {
 import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
+import { CanaryRunnerService } from '../canary-shared/canary-runner.service';
 import { CanaryDatabasePoolService } from './canary-database-pool.service';
 
 /**
@@ -24,6 +25,7 @@ export class CanaryDatabasePoolCron {
 
   constructor(
     private readonly service: CanaryDatabasePoolService,
+    private readonly runner: CanaryRunnerService,
     private readonly observability: ObservabilityService,
     heartbeatRegistry: HeartbeatRegistry,
   ) {
@@ -46,52 +48,8 @@ export class CanaryDatabasePoolCron {
 
   private async runImpl(): Promise<void> {
     this.logger.log('Cron canary-database-pool disparado');
-    const startedAt = Date.now();
-    try {
-      const result = await this.service.run();
-
-      if (result.ok) {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'canary_db_pool_ok',
-          endpoint: 'canary-database-pool',
-          durationMs: result.durationMs,
-          metadata: { cron: 'canary-database-pool' },
-        });
-      } else {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'critical',
-          eventType: 'canary_db_pool_failed',
-          endpoint: 'canary-database-pool',
-          durationMs: result.durationMs,
-          errorMessage: result.errorMessage,
-          metadata: { cron: 'canary-database-pool', step: result.step },
-        });
-      }
-
-      this.observability.emitFireAndForget({
-        source: 'fargate',
-        severity: 'info',
-        eventType: 'cron_run',
-        endpoint: 'canary-database-pool',
-        durationMs: Date.now() - startedAt,
-        metadata: { cron: 'canary-database-pool', status: 'completed' },
-      });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(`Cron canary-database-pool falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
-        source: 'fargate',
-        severity: 'error',
-        eventType: 'cron_run',
-        endpoint: 'canary-database-pool',
-        durationMs: Date.now() - startedAt,
-        errorMessage,
-        metadata: { cron: 'canary-database-pool', status: 'failure' },
-      });
-    }
+    // El runner cronometra, emite canary_db_pool_ok/failed + cron_run (idéntico a
+    // antes) y no lanza. La emisión vive UNA vez en canary-emit.ts (testeado), no aquí.
+    await this.runner.run(this.service);
   }
 }

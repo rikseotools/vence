@@ -25,8 +25,15 @@ import { CanaryResult } from './canary-result';
 export type CanaryBounding = 'read-only' | 'unique-constraint' | 'per-run-cleanup' | 'cap-prune';
 
 export interface CanaryProbe {
-  /** Slug estable, kebab-case, sin prefijo `canary-` (p.ej. 'answer-save'). Deriva el eventType. */
+  /** Slug estable, kebab-case, sin prefijo `canary-` (p.ej. 'answer-save'). Da el endpoint `canary-<name>`. */
   readonly name: string;
+  /**
+   * Base del event-type de observabilidad: `canary_<eventBase>_<status>`.
+   * ⚠️ NO siempre == name (deuda histórica): smoke-auth→'auth', database-pool→
+   * 'db_pool', redis-upstash→'redis'. Debe PRESERVARSE al migrar o se rompen las
+   * reglas de alerta que escuchan el string exacto (ver canary-registry.ts).
+   */
+  readonly eventBase: string;
   /** Expresión cron (UTC) de su cadencia. Fuente única — el framework programa desde aquí. */
   readonly cadence: string;
   /** ¿Escribe (INSERT/UPDATE/DELETE) en tablas REALES de prod? */

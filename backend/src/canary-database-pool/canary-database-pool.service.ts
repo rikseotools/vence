@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { CanaryProbe, CanaryBounding } from '../canary-shared/canary-probe';
+import { CanaryResult, CanaryResults } from '../canary-shared/canary-result';
 
 /**
  * Canary database pool — detecta saturación PgBouncer / max_connections
@@ -17,8 +19,15 @@ import { DRIZZLE, type DrizzleDB } from '../db/database.module';
  * de infra, los únicos que pasan la regla anti-duplicación CI).
  */
 @Injectable()
-export class CanaryDatabasePoolService {
+export class CanaryDatabasePoolService implements CanaryProbe {
   private readonly logger = new Logger(CanaryDatabasePoolService.name);
+
+  // ── Contrato CanaryProbe (metadatos declarativos; ver canary-registry.ts) ──
+  readonly name = 'database-pool';
+  readonly eventBase = 'db_pool'; // ⚠️ ≠ name — preserva canary_db_pool_* (RULE_CANARY_DB_POOL_FAILED)
+  readonly cadence = '*/5 * * * *';
+  readonly writesToProd = false;
+  readonly bounding: CanaryBounding = 'read-only';
 
   // 1s es agresivo a propósito: SELECT 1 con pool sano debe responder
   // en <50ms. Si tarda >1s, hay un problema real (pool saturado, BD
@@ -27,6 +36,12 @@ export class CanaryDatabasePoolService {
   private readonly QUERY_TIMEOUT_MS = 1_000;
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+
+  /** Adaptador al contrato: mapea el resultado nativo a CanaryResult (el runner sella durationMs). */
+  async execute(): Promise<Omit<CanaryResult, 'durationMs'>> {
+    const r = await this.run();
+    return r.ok ? CanaryResults.ok() : CanaryResults.failed(r.step, r.errorMessage);
+  }
 
   async run(): Promise<CanaryDbPoolResult> {
     const startedAt = Date.now();
