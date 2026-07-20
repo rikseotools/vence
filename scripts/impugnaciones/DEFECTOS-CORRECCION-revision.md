@@ -59,3 +59,25 @@ caracteres**, a mitad de palabra. Firma determinista de un import que recortó a
 - **OJO, no todos son irresolubles.** Al revisarlos a mano: unos pocos pierden la premisa decisiva
   (irresolubles de verdad, p.ej. `bf5c3dfa`), pero la mayoría son **cosméticos** — el sentido se entiende
   y la clave aguanta (`87700f9b` solo pierde la palabra «euros»). No degradar el lote en bloque.
+
+
+---
+
+## Cierre de los 13 accionables (20/07, tras la revisión)
+
+| Estado | Casos | Qué se hizo |
+|---|---|---|
+| ✅ Resuelto | **7** | `0323d2fd` y `3541491c` ocultadas (confianza alta) · `1e373e7c` clave A→D con explicación reescrita · `f81a7b99` y `ac1da0f0` ocultadas por doble respuesta · `ee3efe27` y `721025e5` con el enunciado **restaurado íntegro** desde el JSON de origen |
+| 👤 Decisión humana | **6** | `15afd376`, `fef5dbd2` (el artículo NO sostiene el veredicto: son huecos de teoría, no errores de clave) · `f1b8536a`, `ceb409bc`, `de6dd28e` (relink, confianza media) · `bf5c3dfa` (ya oculta por truncamiento) |
+
+**Criterio aplicado para decidir qué se cerraba sin consultar:** una pregunta con **dos opciones
+literalmente ciertas** puntúa mal al opositor *independientemente de qué se opine*, así que reconocer
+que está rota es una decisión **técnica**. Decidir **cuál debe ser la clave** sí es editorial, y NO se
+tocó: las claves quedan intactas en las cinco ocultadas.
+
+**Lo que sigue siendo tuyo:** los cambios de clave de confianza media (`15afd376`, `fef5dbd2`) y los
+tres relink. Todos con su evidencia arriba.
+
+**Nota de método:** dos de estos casos (`ee3efe27`, `721025e5`) ya se habían resuelto solos al restaurar
+los 103 enunciados truncados horas antes. Conviene **re-medir el estado antes de actuar** sobre una lista
+hecha hace rato: parte del trabajo puede haber caducado.
