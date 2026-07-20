@@ -27,6 +27,7 @@ export class InternalCronTriggersCron {
   public auditEstadosTickMs: number | null = null;
   public closeInactiveFeedbackTickMs: number | null = null;
   public renewalRemindersTickMs: number | null = null;
+  public auditAnnulledTickMs: number | null = null;
 
   constructor(
     private readonly service: InternalCronTriggersService,
@@ -39,6 +40,7 @@ export class InternalCronTriggersCron {
     heartbeatRegistry.register('trigger-audit-estados', () => getLastTickMsAgo(this, 'auditEstadosTickMs'), daily);
     heartbeatRegistry.register('trigger-close-inactive-feedback', () => getLastTickMsAgo(this, 'closeInactiveFeedbackTickMs'), daily);
     heartbeatRegistry.register('trigger-renewal-reminders', () => getLastTickMsAgo(this, 'renewalRemindersTickMs'), daily);
+    heartbeatRegistry.register('trigger-audit-annulled-provisions', () => getLastTickMsAgo(this, 'auditAnnulledTickMs'), daily);
   }
 
   // 04:00 UTC — antes: .github/workflows/check-stats-drift.yml
@@ -93,6 +95,20 @@ export class InternalCronTriggersCron {
   async renewalReminders(): Promise<void> {
     await runWithHeartbeat(this, 'renewalRemindersTickMs', () => this.run('/api/cron/renewal-reminders', 'renewal-reminders'), {
       name: 'trigger-renewal-reminders',
+      observability: this.observability,
+    });
+  }
+
+  // 05:30 UTC — cron ROTATORIO (T-009): audita incisos anulados por el TC.
+  // Read-only + observabilidad (emite hallazgos a observable_events; el sweep
+  // nocturno los puentea a content_health_findings). Cada tick audita un lote de
+  // la cola de rotación (laws.annulled_audited_at NULLS FIRST); ciclo completo
+  // de las ~357 nacionales en ~9 días. Pesado en red (API BOE) → NO va dentro
+  // del content-health-sweep nocturno (SQL); vive como su propio cron acotado.
+  @Cron('30 5 * * *', { name: 'trigger-audit-annulled-provisions', timeZone: 'UTC' })
+  async auditAnnulled(): Promise<void> {
+    await runWithHeartbeat(this, 'auditAnnulledTickMs', () => this.run('/api/cron/audit-annulled-provisions', 'audit-annulled-provisions'), {
+      name: 'trigger-audit-annulled-provisions',
       observability: this.observability,
     });
   }

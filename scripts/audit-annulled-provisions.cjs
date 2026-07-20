@@ -160,8 +160,8 @@ async function fetchBlockText(boeId, blockId) {
   if (EMIT && findings.length) {
     for (const f of findings) {
       await c.query(
-        `INSERT INTO observable_events (id, created_at, source, severity, event_type, payload, updated_at)
-         VALUES (gen_random_uuid(), now(), 'cli', 'warn', 'article_annulled_unmarked', $1, now())`,
+        `INSERT INTO observable_events (source, severity, event_type, endpoint, metadata)
+         VALUES ('cli', 'warn', 'article_annulled_unmarked', 'audit-annulled-provisions', $1::jsonb)`,
         [JSON.stringify(f)])
     }
   }
