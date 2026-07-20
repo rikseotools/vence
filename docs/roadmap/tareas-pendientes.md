@@ -64,7 +64,8 @@
 
 ## Abiertas
 
-### 🟠 [PASO 1 HECHO 20/07 — SIN DEPLOY] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+### 🟠 [PASO 1 HECHO Y **DESPLEGADO** 20/07 — queda el paso 2] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+> ⚠️ **Corregido 20/07:** esta ficha decía "SIN DEPLOY" y **era stale**. Verificado contra el deploy vivo: el commit de `lib/browser/inAppBrowser.ts` **es ancestro del frontend en producción** → el aviso in-app YA le llega al usuario. Lo que sigue pendiente es el **paso 2** (generar el PDF de verdad server-side), no un despliegue. Método para no repetir el error: `curl -s https://www.vence.es/api/health | grep deploy` + `git merge-base --is-ancestor <commit> <deploy_vivo>` (runbook `pusheo-revision-despliegue.md` §"verificar si un fix está desplegado").
 - **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hacía nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Fallaba en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes. Caso María (fb feb79fc5, `piyou22@gmail.com`): 100% de sus sesiones GSA in-app en iPhone.
 - **✅ PASO 1 construido (20/07, aviso in-app + centralización):**
   - **Detector** `lib/browser/inAppBrowser.ts` — puro/SSR-safe: allowlist de apps (GSA, Instagram, FBAN, TikTok, LINE, X, Snapchat, LinkedIn, WhatsApp, Pinterest) **+ heurística iOS-webview** (iOS que no es Safari/CriOS/FxiOS/EdgiOS real → WKWebView) para no tener falsos negativos con apps desconocidas.
