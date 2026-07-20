@@ -15,7 +15,7 @@ Ejercicio 1 = test de 50 preguntas + 2 supuestos prácticos · Ejercicio 2 = pr�
 | `topic_scope` de lo ya existente en BD | ✅ 15/24 temas · **8.481 preguntas** sin generar ninguna |
 | T13 Ley 14/2011 de la Ciencia importada del BOE | ✅ 6 artículos (falta banco) |
 | Recon de las 8 normas propias de la UAL | ✅ **12 documentos, todos localizados y accesibles** |
-| Importar las 12 normas UAL | ⬜ pendiente |
+| Importar las normas UAL | 🟡 **5 de 12 importadas** (T12, T15, T19, T22-C, T23 = 70 artículos) |
 | Generar banco (T13 + normas UAL + temas finos) | ⬜ pendiente |
 | Publicar (`is_active=true`, `disponible=true`) | ⬜ pendiente |
 
@@ -70,8 +70,35 @@ estructura aprovechable**. No hay ningún bloqueante que obligue a replantear la
    (`ual.es/secretariageneral/normativas`) es un **buscador que exige JavaScript** y no lista nada sin
    él. Por eso las URLs de arriba apuntan al documento directo: son las que funcionan.
 
+## Importación (20/07) — `scripts/oposiciones/importar-normas-ual.cjs`
+
+Importador reutilizable: descarga el PDF, extrae con `pdftotext -layout` y trocea por artículo.
+**Hechas (5): T12** (10 arts) · **T15** (10) · **T19** (12) · **T22-C** (8) · **T23** (30) = **70 artículos**.
+
+Tres defectos de parseo que el guardarraíl de "cuerpo casi vacío" obligó a arreglar, y que
+cualquier importador de PDF de este tipo va a encontrarse:
+
+1. **El ÍNDICE del PDF se troceaba como articulado.** Las líneas tipo
+   `Artículo 1. Objeto .......... 3` producían artículos FANTASMA con cuerpo vacío: el Reglamento
+   de Cartas de Servicios daba **20 artículos en vez de 10**, seis de ellos vacíos. Filtradas por
+   los puntos de relleno, más deduplicación por número quedándose con el cuerpo más largo.
+2. **Separador con DOS PUNTOS.** La Normativa de Permanencia escribe `Artículo 4: Tipo de
+   matrícula de Doctorado` — y solo ese. Exigir punto se saltaba el artículo **en silencio**
+   (11 de 12) sin que nada fallara.
+3. **El último artículo se tragaba la cola** (disposiciones adicionales/transitorias/finales).
+   Se corta al llegar a la primera disposición.
+
+**Corrección al recon:** T22-C tiene **8 artículos, no 5**. La URL era la correcta (versión de
+14/02/2023, verificada en la portada del PDF); lo que estaba mal era el recuento. Las cabeceras se
+comprobaron una a una.
+
 ## Siguiente paso
 
-Importar las 12 normas (extracción de PDF + troceado por artículo/apartado), respetando los gotchas.
+Quedan **4 documentos** por importar, los tres más laboriosos:
+- **T11** Bases de Ejecución Presupuestaria — mezcla articulado con tablas presupuestarias.
+- **T14** Provisión PTGAS — hay que **consolidar** antes la modificación de junio 2026.
+- **T18** las tres resoluciones de matrícula (38 + 15 + 21 arts), **anuales**.
+- **T22-A y T22-B** — sin articulado formal: van como contenedor editorial con la estructura en
+  el artículo 0, no con el troceador de "Artículo N".
 Después, generar banco: T13 y las normas UAL parten de **0 preguntas**, y hay temas ya servidos pero
 **finos** que también lo piden: T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
