@@ -655,6 +655,41 @@ export class ContentHealthSweepService {
       );
     }
 
+    // ── Incisos anulados por el TC: preguntas activas cuya CLAVE cae en un inciso anulado ──
+    // Barato (DB-only, sin red): reusa el gate de T-048 `answer_falls_in_annulled_fragment`
+    // sobre las vigencia_notes que el cron semanal `annulled-vigencia-sweep` va poblando (T-009).
+    // El gate impide ACTIVAR nuevas; esto SURGE las que ya estaban activas de antes.
+    const annulledBugs = (await this.db.execute(sql`
+      SELECT l.short_name AS ley, a.article_number AS art,
+             count(DISTINCT q.id)::int AS preguntas
+      FROM questions q
+      JOIN articles a ON a.id = q.primary_article_id
+      JOIN laws l ON l.id = a.law_id
+      WHERE q.is_active AND a.vigencia_notes IS NOT NULL
+        AND public.answer_falls_in_annulled_fragment(
+          CASE q.correct_option
+            WHEN 0 THEN q.option_a WHEN 1 THEN q.option_b
+            WHEN 2 THEN q.option_c WHEN 3 THEN q.option_d END,
+          a.vigencia_notes) = true
+      GROUP BY l.short_name, a.article_number
+      ORDER BY count(DISTINCT q.id) DESC
+    `)) as unknown as Array<{ ley: string; art: string; preguntas: number }>;
+    if (annulledBugs.length) {
+      const total = annulledBugs.reduce((s, r) => s + Number(r.preguntas), 0);
+      // WARN, no ERROR: el gate (≥60 car. de la clave dentro del inciso) tiene falsos
+      // positivos cuando la clave y el inciso anulado comparten la CLÁUSULA INICIAL pero
+      // difieren en el fondo (caso LO 4/2000 art 58: "...tres años" anulado vs "...cinco
+      // años" vigente). Son CANDIDATOS a revisión humana, no bugs confirmados.
+      add(
+        'content',
+        'warn',
+        null,
+        'answer_in_annulled_fragment',
+        `${total} pregunta(s) activa(s) cuya clave reproduce (≥60 car.) un inciso ANULADO por el TC en ${annulledBugs.length} artículo(s) — CANDIDATO: verificar la clave contra la sentencia (puede ser falso positivo si solo comparten la cláusula inicial; NUNCA auto-flip)`,
+        { total, articulos: annulledBugs.length, sample: annulledBugs.slice(0, 20) },
+      );
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {
