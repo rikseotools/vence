@@ -342,3 +342,25 @@ en un dato que el opositor usa para decidir si aún llega a presentarse.
 T12, T14, T15, T18 y T21. Ninguno vacío, pero se agotan rápido. Y `exam_date` sigue NULL a propósito:
 el BOJA dice *"no se iniciará antes del 1 de septiembre de 2026"* y la fecha exacta la fija una
 resolución posterior del Rectorado; **no inventarla**, capturarla cuando salga.
+
+
+## Engorde de temas finos — lote T11 (20/07)
+
+**T11 Bases de Ejecución Presupuestaria: 12 → 24 preguntas.** El tema tenía 12 sobre 104 artículos
+(92 sin banco), así que era donde más margen había. Dos rondas de auditor ciego, última 12/12 PERFECT.
+
+**Los checks endurecidos se amortizaron**: en el `--dry-run` cazaron **9 incumplimientos en 5
+preguntas** antes de tocar BD, incluido un *tell* de sufijo (tres distractores acabando en "de la
+UAL" y la correcta no) que en lotes anteriores habría consumido una ronda entera de agente.
+
+**Dos aprendizajes de esta ronda:**
+1. **El umbral de palabras estaba flojo.** 1,35 dejaba pasar 17 vs 13 palabras, que el auditor sí ve.
+   Bajado a **1,25**.
+2. **Equilibrar longitudes puede corromper el texto legal.** Para cuadrar el ratio añadí *"en todo
+   caso"* a una opción correcta — una coletilla **que el artículo no dice**. El auditor la cazó.
+   Desde entonces se le pide explícitamente que revise coletillas añadidas y que avise si alguna
+   opción quedó forzada en español: perseguir el sesgo estadístico no puede deteriorar la fidelidad
+   al texto ni la naturalidad.
+
+**Quedan 6 temas finos**: T10 (12), T12 (12), T14 (14), T15 (12), T18 (14), T21 (14). Mismo
+procedimiento; T18 es el de más margen (74 artículos en tres resoluciones de matrícula).
