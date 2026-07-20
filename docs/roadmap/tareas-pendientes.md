@@ -21,7 +21,7 @@
 
 **Calidad / correctness (primero):**
 1. 🔴 Cubos sellados en verde — 3 huecos destapados por impugnaciones (16/07)
-2. 🟠 Importar normas que faltan + reactivar las 22 preguntas ocultadas (17/07)
+2. ✅ [HECHA 20/07] Importar normas que faltan + reactivar las 22 ocultadas del cubo 3 — 10 ya approved, 5 recuperadas (CyL), 1 retirada (ley derogada), 6 en needs_human por decisión
 3. 🟠 Relink `needs_human` + reescritura de explicaciones flojas (19/07)
 4. 🟠 Framework profesional de canaries (P1-P3) — anti-incidente 11/07
 
@@ -340,11 +340,14 @@
 - **⚠️ 7 relinkeadas quedan sin servirse en ningún tema** (su artículo destino correcto no está en ningún `topic_scope`): `c0d3c493`, `994a1964`, `c3f61d12`, `b15c359c`, `23d5221a`, `2f6f4a41`, `a0cb140c`. Antes se servían (mal) en hasta 8-9 temas. **Decisión de scope pendiente:** si esos artículos deben entrar en algún temario, va por el runbook `verificar-epigrafes-scope.md`, no a mano.
 - **Hallazgo colateral:** la ley `7a94af83-8636-48bb-b60d-c1c137c00973` está MAL ETIQUETADA en BD ("Decreto 465/2019 Estructura Consejería Economía JA") pero su contenido real es el Decreto 465/2019 de la Comisión Institucional de Violencia de Género de Andalucía. Y hay fila DUPLICADA de "Ley 38/2003" / "Ley 38/2003 General de Subvenciones" (98 vs 8 preguntas). Limpieza aparte.
 
-### 🟠 [MEDIA] Importar las normas que faltan y reactivar las 22 preguntas ocultadas (17/07)
-- **Qué:** 22 preguntas VIVAS se ocultaron (`needs_human`) al cerrar el cubo 3 porque cuelgan de la ley equivocada y **la correcta no está en BD**. Cada una lleva en `correct_article_suggestion` la norma que hay que importar. Al importarla → re-vincular → reactivar a `approved`. Perdimos 83 apariciones tema-pregunta (todas en temas equivocados, así que la pérdida es nominal).
-- **Normas a importar (por nº de preguntas que desbloquean):** **Decreto 12/2024 CyL** (6 — la ley está catalogada pero solo tiene importados los arts. 3, 8, 9 y 14; faltan ámbito de aplicación y definiciones), **RD 582/1989** Reglamento de Bibliotecas Públicas (4, no catalogado), **Ley 13/1990 CES CyL** (2, catalogada sin los artículos), **RD 635/2015** depósito legal en línea (2), y sueltas: RD 2099/1983 (precedencias), Decreto 248/2023 Madrid, Decreto 200/1993 Galicia, RD 509/2020, LO 15/1999, Ley 16/1985 (falta su disposición derogatoria), Presupuestos CyL 2024.
-- **Gotcha detectado:** la "Ley 5/2024 CyL" del catálogo es en realidad **Presupuestos 2025**, no la de 2024 que citan las preguntas — coincidencia de número, ley distinta. No dar por buena una ley por su número.
-- **Estado:** medido y trazado; sin importar. Consulta: `ai_verification_results WHERE ai_provider='claude_code_mislink_v1' AND article_ok=false`.
+### ✅ [HECHA 20/07] Importar las normas que faltan y reactivar las 22 preguntas ocultadas (cubo 3, mislink_v1)
+- **Qué era:** 22 preguntas ocultadas (`needs_human`) al cerrar el cubo 3 (`ai_provider='claude_code_mislink_v1'`, `article_ok=false`) por colgar de la ley equivocada con la correcta a veces no en BD.
+- **✅ Cierre completo (20/07) — las 22 contabilizadas:**
+  - **10 ya estaban `approved`** (cluster Biblioteca del 19/07: RD 582/1989, RD 635/2015, Ley 16/1985 DD + 3 del Decreto 12/2024 CyL ya relinkadas).
+  - **5 recuperadas (Grupo A CyL)** — import verbatim de fuente oficial de los artículos que faltaban + relink + reactivación: **Ley 13/1990 CES CyL** art.1+10 (`6947bfae`, `2d4df8f3`) y **Decreto 12/2024 CyL** arts 4/10/11 (`a1d1b0b8`, `490e1ed6`, `d4c0185c`). Detalle en la entrada "Importar normas para desbloquear needs_human — cluster Biblioteca". Trazado `ai_provider='claude_code_cubo3_relink'`; scripts `scripts/impugnaciones/cubo3-grupoA-{cyl-apply,completitud}.cjs`.
+  - **1 retirada** — `860b3fbb` (`retired_irreparable`, `admin_law_derogated`): LO 15/1999 derogada por LO 3/2018, clave caducada + explicación cruzada.
+  - **6 en `needs_human` por decisión (Grupo B, reversible):** `07f68313` (verificado que NO relinka: art.109 Ley 2/2006 es vinculación general, no sostiene la pregunta de créditos **ampliables** de la ley anual), `26eb24b0` (Presupuestos CyL anual), `a1e0046e`/`b628ff43`/`b647ee0d` (leyes de 1 pregunta que no compensan), `c9eb6c4e` (ya resuelta 19/07).
+- **Gotcha confirmado:** "Ley 5/2024 CyL" del catálogo = Presupuestos 2025, no la de 2024 que citan las preguntas. No dar por buena una ley por su número.
 
 ### 🟠 [MEDIA — cola de trabajo que dejan los 3 cubos drenados] Relink de `needs_human` + reescritura de explicaciones flojas (19/07)
 Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas trazadas en BD (no urgentes, pero anotadas para no perderlas):
