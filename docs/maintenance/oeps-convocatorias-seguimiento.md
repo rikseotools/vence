@@ -155,6 +155,25 @@ organismo es determinable**; si no, queda `novel` → se cataloga.
 > (cabeceras de página en el BON): es un extractor de RECALL a propósito — la precisión la pone el
 > LLM del servicio.
 
+### ⚠️ Si repuntas una `seguimiento_url`, PON EL HASH A NULL (aprendizaje 20/07/2026)
+
+Cambiar `oposiciones.seguimiento_url` sin tocar `seguimiento_last_hash` **garantiza un `changed` falso** en la siguiente pasada del cron: el hash guardado es el de la página ANTIGUA, así que la comparación contra la página nueva siempre difiere.
+
+El código ya contempla el caso, pero solo si se lo pides: en `backend/src/check-seguimiento/seguimiento-queries.ts` la condición es
+
+```ts
+const hasChanged = oposicion.seguimientoLastHash !== null && newHash !== oposicion.seguimientoLastHash
+```
+
+Con el hash a `NULL` **no marca cambio: toma línea base en silencio**, que es justo lo que quieres tras un repunte.
+
+```sql
+UPDATE oposiciones SET seguimiento_last_hash = NULL, seguimiento_change_status = 'ok'
+WHERE slug = '<slug>';
+```
+
+**Caso real:** `administrativo-universidad-leon` se repuntó el 20/07 de la página general de la ULE (ruido diario) a su convocatoria propia, y se quedó con el hash de la general. Detectado antes de que el cron corriera. Es el mismo falso positivo que infla **T-047**, pero de origen distinto — aquí no lo causa una página ruidosa, sino el propio repunte.
+
 ### ⚠️ La señal puede estar EQUIVOCADA — y el radar la engancha a la fila que no es (16/07/2026)
 
 Tres casos reales del mismo día. **Ninguna señal era ruido y ninguna era lo que decía:**

@@ -681,6 +681,10 @@
 - **Qué:** Escala Administrativa (`administrativo-universidad-leon`) tiene la inscripción cerrada y el **examen pendiente de fecha** (`exam_date=null`). Contenido completo y vendible. (La Auxiliar ya está resuelta y con fuente registrada.)
 - **Cómo:** vigilar **su página propia** (ya repuntada) hasta que salga la resolución de listas definitivas → de ahí, `exam_date` + hito `ejercicio_1` **con cita literal y URL** (patrón de la Auxiliar, arriba).
 - **Estado:** contenido LISTO; solo falta la fecha oficial (no publicada a 20/07 16:30).
+>
+> **✅ 3ª pasada 20/07 (noche) — sigue SIN fecha, y 1 falso positivo cazado ANTES de que saltara:**
+> - Verificada su página oficial otra vez: **nada nuevo desde el 15/07**. Último hito sigue siendo el nombramiento del tribunal (BOCYL-D-15072026-135-10); no hay listas definitivas ni fecha de examen. Nada que capturar.
+> - ⚠️ **BUG DE PROCEDIMIENTO cazado y arreglado:** al repuntar su `seguimiento_url` en la 2ª pasada se dejó **el hash de la página ANTIGUA**. Como el cron compara hash viejo ↔ página nueva, la siguiente ejecución habría dado un **`changed` falso garantizado**. Puesto `seguimiento_last_hash=NULL` (con eso `seguimiento-queries.ts` l.147-149 toma línea base en silencio en vez de marcar cambio) y `change_status='ok'`. Documentado como gotcha general en `docs/maintenance/oeps-convocatorias-seguimiento.md` — **repuntar una URL SIEMPRE exige poner el hash a NULL**, y afecta a cualquier oposición que se repunte, no solo a esta.
 
 ### [T-036] 🟠 [3 CUBOS CERRADOS — cabos 2 y 3 hechos 20/07; queda solo el cabo 1 (import de contenido)] Los cubos que el verificador selló en verde (16/07)
 - **Qué:** tres bolsas de preguntas ACTIVAS que el sistema de revisión dio por buenas y que los usuarios están cazando por nosotros. Las tres salieron de impugnaciones del 16/07, no del pipeline:
