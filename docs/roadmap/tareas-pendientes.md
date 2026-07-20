@@ -223,6 +223,24 @@
 
 ## Abiertas
 
+### [T-061] 🟠 5 `seguimiento_url` apuntan a convocatorias de OTRO ciclo, ya cerrado
+- **Qué:** el monitor de seguimiento de estas 5 vigila un proceso **distinto del que preparamos**, y encima ya concluido. Detectado en el drenaje del 20/07 verificando fuente oficial una a una:
+  - `auxiliar-administrativo-cantabria` → apunta a la Orden PRE/83/2024 (75 plazas, examen 19/01/2025, nombramientos en 2026). Nosotros seguimos la **OEP 2025**, aún sin convocar.
+  - `auxiliar-administrativo-clm` y `celador-sescam-clm` → apuntan a la **OEP 2023/2024**, cuyo ciclo terminó (examen 20/04/2026, aprobados 13/07/2026). El registro dice OEP 2025.
+  - `auxiliar-administrativo-ayuntamiento-madrid` → apunta a un BOE de la convocatoria **2024** (256 plazas), no a la OEP 2025. Además la sede da 403.
+  - `auxiliar-administrativo-diputacion-ourense` → apunta a un índice sin contenido (`depourense.gal/gl/emprego`); no sirve para seguimiento. Mejor el BOP de Ourense.
+- **Por qué importa (es el fallo peligroso, no el ruidoso):** no produce ninguna alarma. Parece que hay vigilancia y **no la hay**: el día que salga nuestra convocatoria, nadie se enterará. Es lo contrario del falso positivo — un falso NEGATIVO permanente y silencioso.
+- **Ojo al corregir:** repuntar una `seguimiento_url` **exige poner `seguimiento_last_hash = NULL`** o la siguiente pasada del cron da un `changed` falso garantizado (ver `docs/maintenance/oeps-convocatorias-seguimiento.md`).
+- **Bonus del mismo drenaje:** `auxiliar-administrativo-ayuntamiento-murcia` conviven dos procesos de auxiliar (OEP 2021/2022 en concurso-oposición vs. la nuestra, libre OEP 2025) y su URL no muestra la nuestra → riesgo alto de cruzarlas.
+
+### [T-062] 🟡 3 oposiciones con el examen ya celebrado y sin registrar → rollover
+- **Qué:** el drenaje del 20/07 encontró exámenes ya celebrados que en BD no constaban. Ya se les escribió `exam_date` + hito con cita literal, pero les toca **rollover** (pivotar hacia la próxima convocatoria), que es otro runbook:
+  - `administrativo-seguridad-social` — **1.456 plazas**, examen 28/06/2026 (BOE). La más grande.
+  - `auxiliar-enfermeria-osakidetza` — examen 20/06/2026 (BEC, 13:30, tabla oficial de euskadi.eus).
+  - `auxiliar-administrativo-sermas` — examen 31/05/2026; el hito estaba `completed` pero `exam_date` seguía `null` y el estado en `oep_aprobada`.
+- **Cómo:** `docs/runbooks/rollover-oposiciones.md`. NO tocar temario ni tests, solo datos de convocatoria.
+- **Pendiente menor:** de Seguridad Social hay indicios (no oficiales) de que ya salió la relación de aprobados → merece una segunda pasada para añadir el hito `resultados` con cita del BOE.
+
 ### [T-059] 🟠 Encender el 2º modo de `timeline_silence` (flag `TIMELINE_EXHAUSTED_ENABLED`) tras drenar el stock
 - **Qué:** el sensor de "timeline AGOTADO" ya está en `main` (commit `c94dbd9d`) pero **arranca apagado**. Falta drenar el stock acumulado y encenderlo con `TIMELINE_EXHAUSTED_ENABLED=true` en SSM + deploy del backend.
 - **Por qué apagado:** el día que se escribió había **49 candidatos** (43 tras el tope de 1 año). Encenderlo de golpe vuelca 49 señales el primer día, y una bandeja que grita se aprende a ignorar — exactamente como murió `hash_change` (32 aciertos de 835 señales, ver T-050).
