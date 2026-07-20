@@ -67,10 +67,14 @@
 21. **T-024** Huecos de contenido Aux. Admin. Extremadura
 22. **T-020** Supuestos prácticos Administrativo C. de Madrid
 23. **T-026** Completitud de leyes — sistema hecho; es **mantenimiento**, drena poco a poco
-24. **T-003** Drenar 465 títulos huérfanos en 96 oposiciones
+24. **T-003** Títulos huérfanos — **DRENADO 20/07** (42 clusters adjudicados, 16 huecos reales arreglados); queda solo como mantenimiento de lo que aparezca nuevo
 25. **T-038** Relink masivo de `needs_human` + explicaciones flojas
-26. **T-016** Construir TSID · 27. **T-021** Construir Ujieres Cortes · 28. **T-022** Construir Gestión A2 Andalucía
-29. **T-040** 🔴 Artículos-cajón (~21.000 preguntas, 110 mega-chunks) — **la de más impacto y la más cara**
+26. **T-044** Construir Aux. Admin. Univ. de **Almería** (21 plz, inscripción viva) — la más barata de construir: reusa Cádiz/Huelva/Granada
+27. **T-045** Construir Administrativo **Agencia Tributaria Canaria** (20 plz, inscripción viva) — la parte general la cubre el banco de Canarias
+28. **T-016** Construir TSID · 29. **T-021** Construir Ujieres Cortes · 30. **T-022** Construir Gestión A2 Andalucía
+
+**⬜ Sin prioridad — fuera del orden de ataque:**
+- **T-040** Artículos-cajón (~21.000 preguntas, 110 mega-chunks) — **aparcada por tamaño (Manuel, 20/07)**. No se prioriza ni se coge de paso; si se abre, con plan propio y aprobación. Su ausencia de la lista de arriba es deliberada.
 
 > **Nota de calibración:** el drenaje CE-mislink del 19-20/07 costó ~2M tokens para 840 preguntas.
 > Sirve de vara de medir: T-040 y T-038 son de ese orden o mayores; construir una oposición, también.
@@ -319,6 +323,19 @@
 - **Por qué:** demanda directa — feedback de Raquel García Moyano (`garciamoyanoraquel7179@gmail.com`, free, usuaria activa con 26 tests hechos, opos `administrativo_madrid`, 13/07). El administrativo C1 lleva 2º ejercicio de supuesto práctico → contenido de conversión. Ya se le respondió que están "en elaboración".
 - **Cómo:** modelo `exam_cases` (`oposicion_type='administrativo_madrid'`, `case_title`, `is_active`). Anclar a fuente oficial (temario/normativa de la convocatoria de Madrid), nunca inventar. Doble auditoría antes de activar.
 - **Estado:** detectado 13/07 (triaje feedback), 0 supuestos, sin empezar.
+
+### [T-044] 🟠 [VENDIBLE — inscripción viva] Construir Auxiliar Administrativo de la Universidad de Almería (C2)
+- **Qué:** `auxiliar-administrativo-universidad-almeria` **catalogada** (⚪ `is_active=false`, 0 temas) con **21 plazas** y **plazo de inscripción abierto hasta el 29/07/2026**. Construir para hacerla vendible.
+- **Por qué:** es la de **coste más bajo** de las 8 con inscripción viva sin construir (barrido 20/07, filtrado a C1/C2). C2 + universidad + Andalucía = el perfil que mejor convierte, y el banco ya existe en hermanas directas: **Cádiz 9.532 preguntas, Huelva 6.257, Granada 3.832**, más el fondo genérico de auxiliar de universidad (UNED 12.767, León 11.067, Carlos III 8.982, Alcalá 8.129). Reuso alto → construir sale casi gratis.
+- **⚠️ Bloqueante antes de empezar:** la convocatoria **no tiene `programa_url` ni `exam_date`** en BD. Primer paso = localizar el temario oficial en su boletín/sede y fijar la fecha de examen; sin fuente oficial no se construye (regla de contenido legal).
+- **Ojo al encuadre:** el cierre de inscripción (29/07) **no** es la ventana de venta — el examen viene después y ahí se concentran las compras. Que el plazo esté a punto de cerrar no descarta construirla.
+- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. **Estado:** sin empezar.
+
+### [T-045] 🟠 [VENDIBLE — inscripción viva] Construir Administrativo de la Agencia Tributaria Canaria (C1)
+- **Qué:** `administrativo-agencia-tributaria-canaria` **catalogada** (⚪ `is_active=false`, 0 temas) con **20 plazas** y **plazo de inscripción abierto hasta el 26/07/2026**. Construir para hacerla vendible.
+- **Por qué:** la parte general la cubre banco ya existente de Canarias — **`administrativo_canarias` 8.845 preguntas + `auxiliar_administrativo_canarias` 9.741** —, así que el trabajo real se reduce al **bloque tributario específico**. Segunda mejor relación plazas/coste del barrido 20/07.
+- **⚠️ Bloqueante antes de empezar:** sin `programa_url` ni `exam_date` en BD → localizar el temario oficial (BOC / sede de la Agencia Tributaria Canaria) y fijar fecha de examen antes de generar nada.
+- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. **Estado:** sin empezar.
 
 ### [T-021] 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
 - **Qué:** `ujieres-cortes-generales` **catalogada** (⚪ `is_active=false`, nacional) sin temario ni tests. Construir para hacerla vendible.
