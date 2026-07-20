@@ -2423,6 +2423,9 @@ export const deletedUsersLog = pgTable("deleted_users_log", {
 	// RGPD: datos con obligación legal de retención (pagos, contabilidad)
 	// archivados como dump JSONB sin referencias FK vivas a las tablas operacionales.
 	archivedData: jsonb("archived_data"),
+	// T-011: sello del email RGPD (Art. 12.3). La ruta delete-user envía solo si NULL y
+	// lo sella tras el envío OK → exactly-once en el reintento.
+	rgpdEmailSentAt: timestamp("rgpd_email_sent_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_deleted_users_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_deleted_users_email").using("btree", table.email.asc().nullsLast().op("text_ops")),

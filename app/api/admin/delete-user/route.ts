@@ -226,7 +226,34 @@ async function _DELETE(request: NextRequest) {
       }
     }
 
-    if (accountDeleted && recipientEmail) {
+    // Exactly-once (T-011): el email RGPD se manda UNA vez. La fila durable deleted_users_log
+    // lleva el sello `rgpd_email_sent_at`; se envía solo si sigue NULL y se sella tras el envío
+    // OK → evita el duplicado del reintento tras un 500 cuyo email ya salió. La LECTURA del sello
+    // falla ABIERTO (si no se puede leer, se intenta enviar): para el RGPD perder el correo legal
+    // es peor que un duplicado raro.
+    let rgpdAlreadySent = false
+    if (accountDeleted) {
+      try {
+        const res = await getAdminDb().execute(
+          sql`SELECT rgpd_email_sent_at FROM deleted_users_log WHERE original_user_id = ${userId}::uuid ORDER BY deleted_at DESC LIMIT 1`,
+        )
+        const row = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || [])[0] as
+          | { rgpd_email_sent_at: string | null }
+          | undefined
+        rgpdAlreadySent = !!row?.rgpd_email_sent_at
+      } catch (err) {
+        console.error('❌ Error leyendo rgpd_email_sent_at (fail-open → se intentará enviar):', err)
+      }
+    }
+
+    if (accountDeleted && rgpdAlreadySent) {
+      console.log('✅ Email RGPD ya enviado en un intento anterior (rgpd_email_sent_at sellado) → no se reenvía (exactly-once)')
+      deletionResults.push({
+        table: '_deletion_email',
+        status: 'skipped',
+        reason: 'ya enviado en un intento previo (rgpd_email_sent_at)',
+      })
+    } else if (accountDeleted && recipientEmail) {
       const emailResult = await sendDeletionConfirmationEmail({
         email: recipientEmail,
         fullName: recipientName,
@@ -237,6 +264,16 @@ async function _DELETE(request: NextRequest) {
         reason: emailResult.sent ? `emailId: ${emailResult.emailId}` : undefined,
         error: emailResult.error,
       })
+      if (emailResult.sent) {
+        // Sellar exactly-once (condicional por si un reintento concurrente ya selló).
+        try {
+          await getAdminDb().execute(
+            sql`UPDATE deleted_users_log SET rgpd_email_sent_at = now() WHERE original_user_id = ${userId}::uuid AND rgpd_email_sent_at IS NULL`,
+          )
+        } catch (err) {
+          console.error('⚠️ No se pudo sellar rgpd_email_sent_at (el email SÍ salió; posible re-envío en un reintento):', err)
+        }
+      }
     } else if (accountDeleted && !recipientEmail) {
       console.warn('⚠️ Cuenta eliminada pero sin email disponible (ni user_profiles ni deleted_users_log) para el RGPD')
       deletionResults.push({
