@@ -589,19 +589,6 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
   - `a47cdfd4` (Orden 01/02/1996, subvenciones): la explicación se contradecía ("B es correcta" con la clave en D). Los arts. 85 y 86 de la misma Orden reproducen la misma regla del RC que el art. 84, lo que **respalda que D ("todas las anteriores") sea correcta**; el problema es que el artículo vinculado solo cubre 1 de las 3 modalidades. Recomendación: añadir 85/86 como soporte y reescribir explicación.
 - **Sigue pendiente:** 89 es SUELO, no techo — el detector solo pesca solape léxico ~0, y este cubo demuestra que el defecto es sistémico (varios lotes con el 100% de las preguntas cruzadas). Falta barrer con un detector que no dependa del solape léxico.
 
-### [T-039] 🟢 [FASES 0 y 1 HECHAS 20/07 — pendiente de deploy] PDF del temario por tema, generado en servidor
-- **Qué se ha hecho:** el botón "Imprimir PDF" llamaba a `window.print()`, que en iOS y en navegadores in-app (app de Google, Instagram…) **no descargaba nada**: prometía un PDF que nunca existía. De ahí los 3 tickets del 16/07 (María, Sonia, Mónica). Ahora el PDF se **genera en servidor** y se descarga como fichero, así que funciona en cualquier navegador.
-  - **Fase 0 (renombrado):** el botón pasa de "Imprimir PDF" a **"Descargar PDF"** con icono de descarga, y muestra "Generando PDF…" mientras trabaja.
-  - **Fase 1 (motor):** ruta `GET /api/temario/[oposicion]/[topic]/pdf` con **`@react-pdf/renderer`** (JS puro). **NO** Chromium headless a propósito: son ~300 MB en la imagen de ECS y arranque en frío, y el contenido es texto legal (encabezados + párrafos), no un layout complejo.
-  - **Sigue GRATIS** (solo pide registro, como antes). Imprimir un tema ya era gratuito y caparlo se percibiría como recorte — **12 de las 15 peticiones eran de usuarios FREE**.
-  - Se elimina el modal "ábrelo en tu navegador": con descarga real ya no hace falta.
-- **Medido con datos reales (3.325 temas vivos):** mediana 21 págs/tema, p95 178, máximo 760. Rendimiento: 21 págs ≈ 0,3 s; 167 págs ≈ 7 s; muestra aleatoria de 14 temas → 13 OK (peor 1,7 s), 0 fallos.
-- **Guardarraíl de tamaño (`PDF_MAX_CHARS` = 400k ≈ 96% de los temas):** por encima, la ruta devuelve 413 y el botón **degrada a la impresión del navegador** (lo de antes) en vez de colgarse. Los que exceden son los "artículos-cajón" de T-040 — se arreglan solos cuando esa se trocee.
-- **Dos defectos reales cazados al construirlo** (quedan documentados en los tests):
-  - En muchas leyes `articles.title` no es la rúbrica del artículo sino la **ruta de estructura** (Título/Capítulo), que se repetía en CADA artículo. Ahora se agrupa y sale una sola vez.
-  - Un pie de página con `position:absolute` + `fixed` **desbordaba el motor de maquetación** (`unsupported number: -9.3e+21`) en cualquier tema de más de ~20 artículos. Sin `absolute` funciona; por eso el pie no lleva numeración de página (el `render` de `pageNumber` no sobrevive sin posicionamiento absoluto).
-- **Estado:** código listo y verde (17 unitarios del modelo puro + typecheck). **PENDIENTE: deploy** (`scripts/deploy-frontend.sh`). Al desplegar, avisar a María, Sonia y Mónica (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
-
 ### [T-040] ⬜ [SIN PRIORIDAD — aparcada por tamaño (Manuel, 20/07)] Artículos-cajón: ~21.000 preguntas sobre 110 mega-chunks (teoría rota + preguntas atascadas) — *ex-"Ofimática infra-troceada"*
 > **Decisión 20/07 (Manuel): fuera del orden de ataque.** El trabajo es demasiado largo para encajarlo entre tareas; no se prioriza ni se coge "de paso". Queda documentada y medida para cuando se decida abrirla con plan propio y aprobación. **No aparece en el índice de prioridad a propósito** — no es un olvido.
 
@@ -718,3 +705,20 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   (¿bloque de noticias rotativo?, ¿listado paginado?). **Siguiente paso: diffear dos fetches de una de las 46** para
   ver qué varía, y añadir esa clase al normalizador o acotar el hash a la región relevante de la página.
 - **Nota:** `.github/workflows/check-seguimiento.yml` está `.DISABLED`; hoy lo ejecuta el cron del backend NestJS.
+
+## Hechas
+
+### [T-039] ✅ [HECHA 20/07 — EN MAIN, SIN DESPLEGAR] PDF del temario por tema, generado en servidor
+- **Qué se ha hecho:** el botón "Imprimir PDF" llamaba a `window.print()`, que en iOS y en navegadores in-app (app de Google, Instagram…) **no descargaba nada**: prometía un PDF que nunca existía. De ahí los 3 tickets del 16/07 (María, Sonia, Mónica). Ahora el PDF se **genera en servidor** y se descarga como fichero, así que funciona en cualquier navegador.
+  - **Fase 0 (renombrado):** el botón pasa de "Imprimir PDF" a **"Descargar PDF"** con icono de descarga, y muestra "Generando PDF…" mientras trabaja.
+  - **Fase 1 (motor):** ruta `GET /api/temario/[oposicion]/[topic]/pdf` con **`@react-pdf/renderer`** (JS puro). **NO** Chromium headless a propósito: son ~300 MB en la imagen de ECS y arranque en frío, y el contenido es texto legal (encabezados + párrafos), no un layout complejo.
+  - **Sigue GRATIS** (solo pide registro, como antes). Imprimir un tema ya era gratuito y caparlo se percibiría como recorte — **12 de las 15 peticiones eran de usuarios FREE**.
+  - Se elimina el modal "ábrelo en tu navegador": con descarga real ya no hace falta.
+- **Medido con datos reales (3.325 temas vivos):** mediana 21 págs/tema, p95 178, máximo 760. Rendimiento: 21 págs ≈ 0,3 s; 167 págs ≈ 7 s; muestra aleatoria de 14 temas → 13 OK (peor 1,7 s), 0 fallos.
+- **Guardarraíl de tamaño (`PDF_MAX_CHARS` = 400k ≈ 96% de los temas):** por encima, la ruta devuelve 413 y el botón **degrada a la impresión del navegador** (lo de antes) en vez de colgarse. Los que exceden son los "artículos-cajón" de T-040 — se arreglan solos cuando esa se trocee.
+- **Dos defectos reales cazados al construirlo** (quedan documentados en los tests):
+  - En muchas leyes `articles.title` no es la rúbrica del artículo sino la **ruta de estructura** (Título/Capítulo), que se repetía en CADA artículo. Ahora se agrupa y sale una sola vez.
+  - Un pie de página con `position:absolute` + `fixed` **desbordaba el motor de maquetación** (`unsupported number: -9.3e+21`) en cualquier tema de más de ~20 artículos. Sin `absolute` funciona; por eso el pie no lleva numeración de página (el `render` de `pageNumber` no sobrevive sin posicionamiento absoluto).
+- **Estado:** código listo y verde (17 unitarios del modelo puro + typecheck). **PENDIENTE: deploy** (`scripts/deploy-frontend.sh`). Al desplegar, avisar a María, Sonia y Mónica (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
+- **⚠️ NO está en producción.** El código está en `main` (`bcc79f8f`) pero el deploy quedó bloqueado: el CI de `Unit tests` estaba **ya en rojo antes de este commit** (`ef4ef1f6`, `dba43db3` de otras sesiones fallan igual). Los 3 fallos son ajenos a esto: `fetchByTopicScopeMigration` (selección adaptativa, dependiente de aleatoriedad) y `verifyLawBocyl` / `verifyLawLiteral` ("suite failed to run"). En local la suite completa pasa (618 suites / 16.040 tests). **Se desplegará cuando se arregle ese rojo.**
+
