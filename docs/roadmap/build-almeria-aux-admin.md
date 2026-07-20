@@ -399,3 +399,45 @@ de fidelidad del art. 12 se encontró **leyendo**, no midiendo.
 **Estado**: 24 temas, 0 vacíos, **8.590 preguntas**. Finos restantes: T10 (12), T12 (12), T14 (14),
 T15 (12), T21 (14). De ellos **solo T14 tiene margen real** (27 artículos); T12 y T15 tienen 10
 artículos y T21 tiene 5 — su techo natural está cerca de lo que ya sirven.
+
+
+## Lote T14 — provisión de puestos PTGAS (20/07): 14 → 26 preguntas. CIERRE DE CAMPAÑA.
+
+Tres rondas de auditor ciego. Este lote dio los dos hallazgos más importantes de toda la
+generación de Almería, y ninguno era un sesgo de forma:
+
+**1. Sexto check — la SECUENCIA de la clave.** El auditor cazó que las 12 posiciones seguían un
+ciclo perfecto D,A,B,C,D,A,B,C,D,A,B,C. El reparto era uniforme (3 de cada) —mi
+`answer_position_uniform_ok` lo daba por bueno— pero el ORDEN era predecible: se acierta sin saber la
+materia. Y estaba presente **sin detectar en los 6 lotes anteriores**, todos con posiciones fijas por
+mí. Añadido check anti-secuencia (rechaza periodo 2/3/4). El manual v2.5 solo cubría la distribución,
+no el orden.
+
+**2. Automatizar el pulido de forma ROMPIÓ el fondo.** Para deshacer la secuencia roté las opciones
+por script; la rotación dejó la clave del art. 14 (quién DICTA el nombramiento) apuntando a la Junta
+de Personal cuando la dicta el Rectorado — un ERROR DE CLAVE, mucho peor que el sesgo que arreglaba.
+Mi verificador automático de coherencia `pos↔cita` NO lo cazó (el distractor reusaba palabras de la
+cita: "Gerente", "propuesta", "Junta de Personal"). **Lo cazó el auditor ciego leyendo.**
+
+**Conclusión de la campaña de banco:** los 6 checks automáticos resuelven los sesgos de forma en el
+`--dry-run` y ahorran rondas, pero **el revisor que lee es insustituible** — los tres defectos que de
+verdad importaban (cita a medias en T18, error de clave en T14, órgano cruzado) viven en una
+dimensión que ningún check estadístico ve, y uno de ellos lo introdujo un automatismo de pulido.
+
+### Balance de la generación de banco de Almería (7 lotes)
+
+| Tema | Antes → Después |
+|---|---|
+| T13 Ley de la Ciencia | 0 → 12 |
+| T19 Permanencia | 0 → 18 (tras dedup de colisión) |
+| Normas de Uso TI (T22) | 0 → 12 |
+| Política de Seguridad (T22) | 0 → 12 |
+| T10 LUA Título V | 0 → 12 (**desbloqueó la publicación**) |
+| T11 Bases de Ejecución | 12 → 24 |
+| T18 Matrícula | 14 → 26 |
+| **T14 PTGAS** | **14 → 26** |
+
+**Estado final: 24 temas, 0 vacíos, 24/24 verified_correct, 8.602 preguntas, publicada y viva.**
+
+Finos que quedan (se dejan como están, decisión de coste): T10 (12), T12 (12), T15 (12), T21 (14) —
+todos sobre normas de 5-15 artículos, cerca de su techo natural. No bloquean.
