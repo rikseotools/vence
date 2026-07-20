@@ -144,4 +144,44 @@ describeIfDb('Oposición data completeness', () => {
     const meaningful = extra.filter(o => o.slug && o.slug !== 'null')
     expect(meaningful.length).toBe(0)
   })
+
+  // Guardarraíl de DOS FUENTES DE VERDAD (añadido 20/07/2026).
+  // Los bloques/temas viven en DOS sitios: la tabla `topics` (que pinta el
+  // TEMARIO) y `OPOSICIONES[].blocks` (que pinta el HUB DE TESTS y define el
+  // rango del test aleatorio, ver lib/api/random-test-data/schemas.ts).
+  // Si un tema está en la BD pero no en el config, el alumno LO VE en el temario
+  // pero NO PUEDE hacer tests de él — fallo silencioso, sin error en logs.
+  // Casos reales que motivaron el test: Policía Nacional T46 (inglés, 5.071
+  // preguntas activas invisibles) y País Vasco T14-31 (18 temas invisibles).
+  test('config blocks cover exactly the active topics in BD (tests hub vs temario)', async () => {
+    const rows = await sql!<{ position_type: string; nums: number[] }[]>`
+      SELECT position_type, array_agg(topic_number ORDER BY topic_number) AS nums
+      FROM topics WHERE is_active GROUP BY position_type`
+    const byPosition = new Map(rows.map(r => [r.position_type, r.nums.map(Number)]))
+
+    // Las dos direcciones NO son igual de graves:
+    //  - tema en BD y NO en config  => FALLO. El alumno lo ve en el temario y no
+    //    puede testearlo. Es silencioso: no hay error en logs ni página rota.
+    //  - tema en config y NO en BD  => solo aviso. Es el estado NORMAL de una
+    //    oposición en construcción (config escrito antes de poblar los temas) y
+    //    además es visible a simple vista (el tema sale vacío).
+    const invisiblesEnTests: string[] = []
+    const soloEnConfig: string[] = []
+    for (const o of OPOSICIONES) {
+      const enBd = byPosition.get(o.positionType)
+      if (!enBd?.length) continue // sin temas en BD todavía: lo cubren los tests de arriba
+      const enConfig = (o.blocks || []).flatMap(b => b.themes.map(t => t.id))
+      const soloBd = enBd.filter(n => !enConfig.includes(n))
+      const soloCfg = enConfig.filter(n => !enBd.includes(n))
+      if (soloBd.length) invisiblesEnTests.push(`${o.slug}: temas [${soloBd.join(', ')}]`)
+      if (soloCfg.length) soloEnConfig.push(`${o.slug}: temas [${soloCfg.join(', ')}]`)
+    }
+    if (soloEnConfig.length > 0) {
+      console.warn('Temas en config sin fila activa en BD (¿oposición en construcción?):\n' + soloEnConfig.join('\n'))
+    }
+    if (invisiblesEnTests.length > 0) {
+      console.warn('Temas VISIBLES en temario pero NO testeables:\n' + invisiblesEnTests.join('\n'))
+    }
+    expect(invisiblesEnTests).toEqual([])
+  })
 })
