@@ -1177,6 +1177,31 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   - `HOLD` internacional (180): Carta Social Europea + Protocolo 15 CEDH → necesitan decisión de dominio.
   - `ofimática CyL` / `Andalucía estructura`: triar y retirar, no re-scopear.
   - Sobre el sensor nocturno: ya NO hay que excluir `idioma` a ciegas — el caso PN era señal real, no ruido.
+- **▸ REVISADO EL RESTO NO-INTERNACIONAL una a una (20/07) — ninguna era escope limpio; NO se tocó ninguna, con motivo
+  por cada una.** Total invisibles tras las escopadas internacionales: **983**. Revisado el top por volumen:
+  - **Ofimática CyL supuestos** (`Supuesto Excel CyL` 42, `Supuesto Word CyL` 39, `Excel CyL` 12, `Procesadores texto CyL`
+    12 — oficiales de `auxiliar_administrativo_cyl`): son **contenido de supuesto que depende de materiales adjuntos**
+    (las preguntas citan *"el anexo Excel"*, *"la columna Q"*, *"la celda M2"*, *"el documento Competencias Digitales"*;
+    de ahí el tag `desactivada:falta_image`). El tema destino (T26 Word/Excel 365) **ya está servido** por el contenido
+    general. Escoparlas metería preguntas NO autocontenidas → **review humano**, no escope.
+  - **`Outlook 2016` (16, Cantabria):** versión CADUCADA. Las 16 preguntas citan "2016", cero "365"; Cantabria T23 **ya
+    sirve `Outlook 365`** (la vigente que pide su epígrafe). Es el caso INVERSO a la Directiva Eficiencia (allí teníamos
+    la nueva; aquí la vieja ya superada) → **retirar, no escopar**.
+  - **Andalucía tageadas por tema** (`Ley 5/2014 CACL` 11, `Decreto 96/2017 Imagen Institucional` 8, `Orden Elaboración
+    Presupuesto` 11): **ningún epígrafe Andalucía las nombra** (el tag "Tema N" ni coincide con el tema del epígrafe —
+    p.ej. la Orden de Presupuesto tagea "Tema 10" pero el único tema de presupuesto es el T17). Además 2 oposiciones
+    Andalucía (parlamento) están **en construcción por otra sesión**. → HOLD / dueño = otra sesión.
+  - **Sanitario grab-bag** (`Miscelánea ENF AND` 11, `Planes/Protocolos ENF CAT` 15, `Miscelánea ENF CAT` 7,
+    `Diagnóstico por imagen` 16): contenedores "Miscelánea" que **no mapean a un epígrafe único**; oposiciones de
+    enfermería, varias en construcción. → dueño = sesión que las construya.
+  - **`Ciberseguridad CCN-CERT` (39):** contenido genérico de ciberseguridad **sin hogar único** — 6 oposiciones tienen
+    tema de ciberseguridad (tcae_sas, GC, PN, correos, celador, enfermero) y ninguna nombra "CCN-CERT" en el epígrafe.
+    → decisión de dominio.
+  - **Conclusión:** tras Inglés PN (5.071) + internacional (337), **las huérfanas limpias están agotadas**. Lo que
+    queda son supuestos con materiales, versiones caducadas, grab-bags, contenido de otras sesiones, o sin epígrafe que
+    lo pida. Forzar su escope sería inyectar preguntas malas — se dejan con motivo documentado. La cola larga (≈120
+    leyes de 1-4 preguntas) son preguntas oficiales sueltas que citan una ley de pasada: bajo valor, no merecen escope
+    individual.
 
 
 ### [T-058] 🟡 [ABIERTA 20/07 — descubierta haciendo T-054] `Reglamento Cortes CyL`: el art. 171 se tragó las disposiciones
