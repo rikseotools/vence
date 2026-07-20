@@ -354,7 +354,21 @@
 - **Follow-ups menores de la sesión:** barrer el **comodín CE art.149** a otras oposiciones (solo hecho en `administrativo_estado` T7/T307); residuales EBEP borderline (`administrativo_estado` T406 arts 29/30 retrib, T403 arts 27/75) — tolerados, no urgen.
 - **Cómo:** runbook `verificar-epigrafes-scope.md` (pipeline 2 agentes). Priorizar por demanda: siguiente foco = **faltan-bloques de alta demanda** reusando banco. Los `needs_human` NO son "leyes rotas": muchos son falsos positivos de word-matching (Explorador Windows: T107/T603/T34 mismo caso) o criterios a arbitrar.
 
-### [T-008] 🟡 [ABIERTO 19/07] Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a) + etiqueta cruzada
+### [T-008] ✅ [HECHA 20/07] Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a) + etiqueta cruzada
+> **Las dos partes cerradas.**
+> - **Vía-a:** ya venía resuelta con **T-002** (timeline agrupado por convocatoria, desplegado en `cd1e7804`).
+>   La landing de Madrid muestra los dos ciclos vivos como bloques separados, el vigente primero.
+> - **Etiqueta cruzada (el "dato menor"): CORREGIDA.** La evidencia estaba en los propios datos: la fila **sin
+>   número** llevaba en su `boe_reference` el texto *"Orden 264/2026, de 4 de febrero… BOCM nº 41, 18/02/2026…
+>   645 plazas"* — o sea, **ella era la Orden 264/2026**; y la fila etiquetada con ese número decía *"BOCM num.
+>   113, 13/05/2025"*, de otro año. Número reasignado en transacción (el índice `convocatorias_ref_oficial_unica`
+>   obliga a liberar antes de asignar), con guardarraíles que abortaban si el destino no mencionaba la Orden.
+>   La convocatoria de 2025 queda **sin número** en vez de con uno inventado.
+> - **Efecto colateral bueno:** los **3 hitos de feb-mar 2026** (publicación, apertura y cierre de inscripción)
+>   colgaban de la convocatoria ARCHIVADA, así que tras T-002 (que oculta los ciclos archivados) quedaban
+>   invisibles. Movidos a su ciclo real → el bloque de 645 plazas pasa de **1 hito a 4** y ya se lee completo.
+> - Verificado en producción: la landing muestra `Orden 1628/2026 [vigente, 673 plz]` y `Orden 264/2026
+>   [645 plz, lista de admitidos]` con sus 4 hitos; la de 2025 (551 plz) sigue oculta por archivada.
 - **Qué:** Madrid tiene **dos convocatorias 2026 vivas** (Orden 264/2026 en `lista_admitidos` examen 15/10 + Orden 1628/2026 673 plazas inscripción abierta hasta 10/08). El schema ya soporta ambas como filas propias (migración `20260718_convocatorias_multi_por_año.sql`) y la vigente (673, abierta) se ve; pero **la landing solo pinta la `is_current`** — falta la **vía-(a)**: que liste simultáneamente las convocatorias no archivadas (§4e-ter del manual OEPs).
 - **Dato menor a limpiar:** la fila del ciclo en curso (Orden 264/2026) tiene `convocatoria_numero=NULL` y la archivada tiene ese número mal atribuido (cruce de etiquetas preexistente); rellenar con cuidado por el índice `convocatorias_ref_oficial_unica`.
 - **Cómo:** `docs/maintenance/oeps-convocatorias-seguimiento.md` §4e-ter; memoria `project-convocatorias-multi-por-año-schema`.
