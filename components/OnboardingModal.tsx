@@ -520,6 +520,15 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
 
+  // === AYUNTAMIENTOS ARAGÓN ===
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_huesca',
+    nombre: 'Auxiliar Administrativo Ayto. Huesca',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
   // === DIPUTACIONES ARAGÓN ===
   {
     id: 'auxiliar_administrativo_diputacion_huesca',
@@ -1793,8 +1802,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Canary Islands': ['auxiliar_administrativo_canarias', 'administrativo_canarias', 'enfermero_scs_canarias', 'auxiliar_administrativo_scs_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'administrativo_castilla_la_mancha', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'administrativo_extremadura', 'auxiliar_administrativo_estado'],
-  'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
-  'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
+  'Aragón': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_ayuntamiento_huesca', 'tcae_aragon', 'auxiliar_administrativo_estado'],
+  'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_ayuntamiento_huesca', 'auxiliar_administrativo_estado'],
   'Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'administrativo_junta_general_asturias', 'auxiliar_administrativo_estado'],
   'Principality of Asturias': ['auxiliar_administrativo_asturias', 'administrativo_asturias', 'administrativo_junta_general_asturias', 'auxiliar_administrativo_estado'],
   'Islas Baleares': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
@@ -1838,6 +1847,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_andalucia',   // 7
   'auxiliar_administrativo_madrid',      // 4+
   'auxiliar_administrativo_aragon',      // 3
+  'auxiliar_administrativo_ayuntamiento_huesca', // Ayto Huesca (8 plazas, BOA 11/06/2026)
   'auxiliar_administrativo_asturias',    // 3
   'administrativo_asturias',             // nueva C1
   'administrativo_junta_general_asturias', // C1 Parlamento Asturias

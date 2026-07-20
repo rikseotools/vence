@@ -115,6 +115,7 @@ describeIfDb('Oposición data completeness', () => {
       'administrativo-castilla-la-mancha', // C1 en preparación: BD lista (is_active=false hasta go-live)
       'administrativo-universidad-leon', // C1 en preparación (otra sesión): config sin fila activa en BD
       'auxiliar-administrativo-diputacion-zamora', // en preparación: BD lista (is_active=false hasta go-live)
+      'auxiliar-administrativo-ayuntamiento-huesca', // go-live en curso: is_active=true tras deploy (8 plazas, BOA 11/06/2026)
       'auxiliar-administrativo-diputacion-huesca', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-avila', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-segovia', // en preparación: BD lista (is_active=false hasta go-live)
