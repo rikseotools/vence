@@ -17,9 +17,9 @@ Ejercicio 1 = test de 50 preguntas + 2 supuestos prácticos · Ejercicio 2 = pr�
 | Recon de las 8 normas propias de la UAL | ✅ **12 documentos, todos localizados y accesibles** |
 | Importar las normas UAL | ✅ **12 de 12** — **303 artículos UAL**; **los 24 temas tienen normativa, 0 huecos** |
 | Generar banco (T13 + normas UAL + temas finos) | ⬜ pendiente |
-| Publicar (`is_active=true`, `disponible=true`) | ⬜ pendiente |
+| Publicar (`is_active=true`, `disponible=true`) | ✅ **PUBLICADA Y VIVA 20/07** — 24 temas disponibles, landing y temario verificados en producción (HTTP 200 + contenido) |
 
-Los temas están `disponible=false` y la oposición `is_active=false`: **nada visible en web**.
+**PUBLICADA el 20/07**: los 24 temas están `disponible=true` y la oposición `is_active=true`. Verificado en producción: landing y temario responden 200 con contenido real.
 
 ## Veredicto del recon: CONSTRUIBLE
 
@@ -242,3 +242,56 @@ La estructura está completa; lo que falta es contenido:
   `staleDatedLaw.ts` las cace cada curso.
 Después, generar banco: T13 y las normas UAL parten de **0 preguntas**, y hay temas ya servidos pero
 **finos** que también lo piden: T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
+
+
+## PUBLICACIÓN (20/07) — y el defecto que destapó el gate
+
+Al activar, el **gate de publicación rechazó el T10** porque su ley (`Ley 1/2026 LUA`) estaba en
+`false_green`: `verification_status='actualizada'` con `boe_url` NULL y sin resumen. Al investigarlo
+apareció algo bastante peor que un dato de metadatos:
+
+- El epígrafe del T10 pide **solo el "Título V: Gobernanza de las Universidades Públicas"**.
+- Su `topic_scope` apuntaba a la **ley entera** (`article_numbers = NULL`).
+- Sus 18 preguntas eran de los arts. 1-21 y 101-108: **ninguna del Título V**.
+- Y los arts. **88-100 ni siquiera estaban importados**.
+
+O sea: **el tema servía justo lo que su epígrafe NO pide, y nada de lo que sí pide.** Llevaba así
+desde que se creó y nadie lo habría visto sin intentar publicar. El gate se ganó el sueldo.
+
+**Resuelto**: Título V importado del BOE consolidado (`BOE-A-2026-6643`, 13 artículos), scope acotado
+a 88-100, banco generado (12 preguntas) y evidencia de verificación registrada — con nota explícita
+de que **el resto del articulado sigue incompleto** y la ley NO debe marcarse como completa
+(`deliberate_subset: true`).
+
+### Cuatro rondas de auditoría y tres clases de *tell*
+
+El lote del Título V necesitó **4 rondas** de auditor ciego. Ninguna encontró un error de clave,
+cifra u órgano: todas fueron **sesgos de formato** que permiten acertar sin saber la ley.
+
+| Ronda | Tell encontrado | Convertido en check |
+|---|---|---|
+| 1 | Correcta **más corta** que los distractores | ratio **simétrico** (antes solo miraba "más larga") |
+| 2 | Los 3 distractores acaban en *"de dicho órgano"* y la correcta no | **uniformidad de sufijo** |
+| 3 | Correcta con **dos cláusulas** frente a distractores de una | medición **en palabras**, no solo caracteres |
+| 4 | — | 12/12 PERFECT |
+
+**Lección de método:** el guardarraíl medía `correcta / más_corta` en caracteres, así que solo cazaba
+la mitad del problema. Y **arreglar un sesgo puede crear otro**: al acortar una opción para cuadrar
+el ratio le quité la coletilla que llevaban las otras tres y fabriqué el tell de la ronda 2. Por eso
+el auditor ciego no es prescindible aunque el check automático esté verde.
+
+### Datos de landing corregidos antes de publicar
+
+`boe_reference` era un texto provisional (*"OEP 2026 aprobada, convocatorias 1er sem 2026"*) →
+**BOE-A-2026-14723**, y `programa_url` estaba vacío → enlace al BOE. Sin esto la landing habría
+salido con una referencia que no lleva a ninguna parte.
+
+### Pendiente tras publicar
+
+- **6 temas finos** (12-14 preguntas): T11, T12, T14, T15, T18, T21. No bloquean —ninguno vacío—
+  pero un usuario los agota rápido. Siguiente prioridad de generación.
+- **`exam_date` sigue NULL**: el BOE dice "no antes del 1/09/2026" y la fecha exacta la fija una
+  resolución posterior del Rectorado. **No inventarla**; capturarla cuando se publique.
+- **`inscription_deadline`** (29/07) no se ha tocado: las fuentes discrepan entre el 27/07 y el
+  4/08 y el BOE fija "20 días naturales desde la publicación en BOJA". Verificar contra el BOJA
+  antes de corregirlo — es dato de cara al usuario.
