@@ -195,7 +195,7 @@ la respuesta era idéntica. Uso: `--ley "<nombre>"` o `--like '%UAL%'`.
 | Norma en generación | Sesión | Estado |
 |---|---|---|
 | _(ninguna en curso)_ | — | — |
-| Política de Seguridad de la Información UAL (15 apartados) | — | ⬜ **LIBRE** — última norma sin banco |
+| _(ninguna en curso — **las 12 normas UAL tienen banco**)_ | — | ✅ |
 
 ### Lote Normas de Uso de los Sistemas de Información (20/07)
 
@@ -215,10 +215,26 @@ palabra contra el texto: una condensación fiel NO basta si se puede citar liter
 Gobierno o ATIC en vez de a la Comisión de Seguridad. Obliga a saber *quién* hace *qué*, no solo el
 tema. La fase 9 lo verificó expresamente y lo señaló como bien resuelto.
 
+### Lote Política de Seguridad de la Información (20/07) — ÚLTIMA norma sin banco
+
+12 preguntas `approved` (`gen-t22a-politica-seguridad-ual-batch1.cjs`). Fase 7: 12/12 PERFECT ·
+Fase 9: 12/12 CLEAN. Con este lote **las 12 normas propias de la UAL tienen banco**: 131 preguntas,
+**0 duplicados**.
+
+**Diseño del lote — atribución de roles.** El núcleo examinable es *quién* es *qué*: el apartado 3
+define cuatro figuras (Responsable de la Información / del Servicio / del Sistema / de la Seguridad)
+y el 7 asigna los cargos (7.1 Secretario General, 7.2 miembro del Equipo de Gobierno con
+competencias TIC, 7.3 Director del Área TIC). Los distractores **reutilizan descripciones
+literalmente correctas del texto pero atribuidas a la figura equivocada** para esa pregunta: no se
+puede acertar por descarte, hay que saber la asignación exacta. Ambos auditores lo verificaron
+figura por figura y lo calificaron de distractor bien construido, no de ambigüedad.
+
+**El guardarraíl abortó tres veces más** en este lote hasta cuadrar el ±30%.
+
 ## Siguiente paso — GENERAR BANCO (lo caro)
 
 La estructura está completa; lo que falta es contenido:
-- **Banco propio UAL: 119 preguntas activas** repartidas por 10 de las 12 normas (la mayoría de la sesión paralela). **Solo la Política de Seguridad de la Información (15 apartados) sigue a 0.**
+- **✅ Banco propio UAL COMPLETO: 131 preguntas activas en las 12 normas, 0 duplicados.** Queda ampliarlo en volumen (303 artículos dan para mucho más) y atender los temas finos: T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
 - **Temas servidos pero finos:** T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
 - **No generar preguntas de cifras desde el art. 1 de las Bases de Ejecución** (tabla aplanada,
   `is_verified=false`) hasta reconstruir la tabla.
