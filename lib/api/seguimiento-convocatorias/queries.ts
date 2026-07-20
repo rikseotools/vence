@@ -48,6 +48,35 @@ export interface CheckResult {
   error: string | null
 }
 
+/**
+ * Fiabilidad de la señal de hash de una fuente de seguimiento (T-047).
+ *
+ * El cron marca `changed` comparando el hash del texto normalizado. Hay webs cuyo hash cambia
+ * TODOS los días sin que cambie la convocatoria (Drupal con bloques rotativos, listados
+ * paginados, fechas que el normalizador no captura). Su `changed` no informa de nada y ahoga
+ * a las fuentes que sí cambian de verdad: medido el 20/07, **46 de 468 fuentes cambian en
+ * ≥90% de sus checks**, y el sensor `hash_change` acumulaba 545 señales con CERO aplicadas.
+ *
+ * Esto es un dato DERIVADO del historial: no se escribe en ninguna columna ni altera el cron.
+ *
+ * - `unreliable` — cambia casi siempre (≥90%): tratar su "changed" como ruido.
+ * - `reliable`   — cambia poco (<50%): cuando dice "changed", merece mirarse.
+ * - `unknown`    — pocos checks todavía para juzgar.
+ */
+export type SignalReliability = 'reliable' | 'unreliable' | 'unknown'
+
+export function classifySignalReliability(
+  checksTotal: number,
+  checksChanged: number,
+): SignalReliability {
+  // Con menos de 4 checks no hay historial suficiente para llamar mentirosa a una fuente.
+  if (checksTotal < 4) return 'unknown'
+  const ratio = checksChanged / checksTotal
+  if (ratio >= 0.9) return 'unreliable'
+  if (ratio < 0.5) return 'reliable'
+  return 'unknown'
+}
+
 export interface SeguimientoCheckStats {
   total: number
   checked: number
@@ -109,9 +138,44 @@ function extractRelevantText(html: string): string {
     .trim()
 }
 
-/** Genera hash del contenido relevante de una página */
+/**
+ * Normaliza el texto para hashing estable. DEBE seguir espejo de
+ * `backend/src/check-seguimiento/seguimiento-fetch.ts` — si divergen, el hash que escriba
+ * un lado marcará "cambio" en el siguiente check del otro, para siempre.
+ *
+ * ⚠️ T-047: esta copia NO normalizaba (hasheaba el texto crudo) mientras el cron vivo,
+ * que es el `@Cron` del backend, sí lo hacía. Hoy no se ejecuta —la ruta admin solo importa
+ * lectura— así que era una mina sin detonar, no la causa del ruido. Alineada para que no
+ * pueda detonar si alguien la cablea.
+ */
+function normalizeForHash(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g, ' ')
+    .replace(/\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/g, ' ')
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+    .replace(
+      /\b\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\b/g,
+      ' ',
+    )
+    .replace(
+      /\b\d{1,2}\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-zé]*\.?,?\s*\d{4}\b/g,
+      ' ',
+    )
+    .replace(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/g, ' ')
+    .replace(/\b[0-9a-f]{16,}\b/g, ' ')
+    .replace(/\b\d{8,}\b/g, ' ')
+    .replace(
+      /(aceptar(\s+todas)?\s+(las\s+)?cookies|pol[ií]tica de cookies|uso de cookies|gestionar cookies|fecha y hora oficial|[uú]ltima actualizaci[oó]n|hora oficial)/g,
+      ' ',
+    )
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Genera hash del contenido relevante y NORMALIZADO de una página */
 export function hashContent(html: string): string {
-  const text = extractRelevantText(html)
+  const text = normalizeForHash(extractRelevantText(html))
   return crypto.createHash('sha256').update(text).digest('hex')
 }
 
@@ -369,7 +433,14 @@ export async function getSeguimientoAdminData(): Promise<Array<{
              (SELECT COUNT(*) FROM convocatoria_seguimiento_checks c
               WHERE c.oposicion_id = o.id AND c.has_changed = TRUE AND c.change_reviewed = FALSE),
              0
-           ) as unreviewed
+           ) as unreviewed,
+           -- T-047: fiabilidad de la señal de esta fuente. Hay webs (Drupal con bloques
+           -- rotativos, listados paginados…) cuyo hash cambia TODOS los días sin que cambie
+           -- la convocatoria: su "changed" no significa nada y ahoga a las que sí cambian.
+           -- Se deriva del historial, no se escribe en ninguna columna → cero riesgo para el cron.
+           (SELECT COUNT(*) FROM convocatoria_seguimiento_checks c WHERE c.oposicion_id = o.id) as checks_total,
+           (SELECT COUNT(*) FROM convocatoria_seguimiento_checks c
+            WHERE c.oposicion_id = o.id AND c.has_changed = TRUE) as checks_changed
     FROM oposiciones o
     -- Radar OEP: incluye catalogadas (is_active=false) — Manuel 19/06/2026
     WHERE o.seguimiento_url IS NOT NULL
@@ -392,5 +463,9 @@ export async function getSeguimientoAdminData(): Promise<Array<{
     changeStatus: r.seguimiento_change_status,
     changeDetectedAt: r.seguimiento_change_detected_at,
     unreviewed: parseInt(r.unreviewed) || 0,
+    signalReliability: classifySignalReliability(
+      parseInt(r.checks_total) || 0,
+      parseInt(r.checks_changed) || 0,
+    ),
   }))
 }

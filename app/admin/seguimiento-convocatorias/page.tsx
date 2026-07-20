@@ -15,6 +15,8 @@ interface SeguimientoItem {
   changeStatus: string | null
   changeDetectedAt: string | null
   unreviewed: number
+  /** T-047: fiabilidad histórica del hash de esta fuente. Ver classifySignalReliability(). */
+  signalReliability?: 'reliable' | 'unreliable' | 'unknown'
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -91,7 +93,12 @@ export default function SeguimientoConvocatoriasPage() {
     }
   }
 
-  const changedCount = items.filter(i => i.changeStatus === 'changed').length
+  // T-047: separar los cambios que informan de los que son ruido crónico. Hay fuentes cuyo
+  // hash cambia todos los días sin que cambie la convocatoria (46 de 468, medido 20/07);
+  // contarlas junto a las demás hacía que el badge no significara nada.
+  const changed = items.filter(i => i.changeStatus === 'changed')
+  const changedCount = changed.filter(i => i.signalReliability !== 'unreliable').length
+  const noisyCount = changed.filter(i => i.signalReliability === 'unreliable').length
   const errorCount = items.filter(i => i.changeStatus === 'error').length
 
   return (
@@ -126,6 +133,14 @@ export default function SeguimientoConvocatoriasPage() {
           {changedCount > 0 && (
             <span className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-sm font-medium px-3 py-1 rounded-full">
               {changedCount} cambio{changedCount !== 1 ? 's' : ''} pendiente{changedCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {noisyCount > 0 && (
+            <span
+              className="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+              title="Fuentes cuyo hash cambia en ≥90% de los checks: su 'cambio' no informa de nada. No se cuentan como pendientes para que no ahoguen a las que sí cambian."
+            >
+              {noisyCount} con señal poco fiable
             </span>
           )}
           {errorCount > 0 && (

@@ -15,6 +15,31 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-047] 🟢 [MITIGADA 20/07 — el ruido ya no ahoga; la causa raíz sigue sin aislar] Seguimiento de convocatorias: 46 fuentes dan "cambio" a diario
+- **Lo que resultó NO ser cierto de la ficha original:** decía que esto era "la fuente del badge 🎯". **Ya no lo es.**
+  La emisión de señales `hash_change` se desconectó el **26/06** (ver comentario en `seguimiento-queries.ts`); las
+  545 señales `hash_change` que hay en BD son históricas y están **todas `dismissed`, cero aplicadas**. El ruido solo
+  afectaba al badge del panel `/admin/seguimiento-convocatorias`.
+- **✅ Mitigado: el badge del panel pasa de 103 a 58.** Se añade `classifySignalReliability(total, changed)`
+  (`lib/api/seguimiento-convocatorias/queries.ts`): una fuente con ≥4 checks que cambia en **≥90%** de ellos se marca
+  `unreliable` y **deja de contar como cambio pendiente**; se muestra aparte como "N con señal poco fiable".
+  Es un dato **derivado del historial**: no se escribe en ninguna columna ni toca el cron → riesgo cero.
+- **✅ Hueco real del normalizador cerrado:** la ULE publica sus plazos como **"24 jun, 2026"** (mes abreviado + coma;
+  **40 apariciones en una sola página**) y `normalizeForHash` solo cubría "24 de junio de 2026" y las numéricas.
+  Añadido ese patrón + los días de la semana, en `backend/src/check-seguimiento/seguimiento-fetch.ts`.
+- **⚠️ Mina desactivada:** `lib/api/seguimiento-convocatorias/queries.ts` tenía **su propia copia de `hashContent` que
+  NO normalizaba**, mientras el cron vivo (el `@Cron` del backend) sí. Hoy no se ejecutaba (la ruta admin solo importa
+  lectura), así que no era la causa del ruido — pero si alguien la cableaba, cada check habría dado "cambio" para
+  siempre. Alineada con la del backend y documentado que deben ir a espejo.
+- **Tests:** `__tests__/lib/seguimientoSenal.test.ts` (11). Incluye dos que impiden volver el sensor ciego: debe
+  seguir detectando un cambio de plazas y **la aparición de la fecha del primer ejercicio** (justo lo que T-035 espera).
+- **❌ Lo que NO se ha resuelto — la causa raíz.** No se pudo aislar qué byte cambia a diario: la ULE es **Drupal 8
+  con caché de 1 h**, dos fetches seguidos dan hash idéntico, y la longitud del HTML es **idéntica entre días**
+  (102.259) con hash distinto. **El sistema solo guarda hash + 2.000 chars de preview, y el preview no cambia** →
+  no puede diagnosticar sus propios falsos positivos. **Siguiente paso si se retoma: guardar el texto normalizado
+  completo (o su diff) de las fuentes marcadas `unreliable` durante unos días y diffear dos ejecuciones reales.**
+
+
 ### [T-029] ✅ [HECHA — ya lo estaba, 12/07] Exponer en la UI el filtro "excluir preguntas recientes"
 - **La ficha estaba obsoleta.** Se escribió el 10/07 diciendo que `config.excludeRecent` era `false` fijo
   y que no había control en el configurador. **El 12/07, el commit `fa5ecddf` la implementó** — *"feat(premium):
@@ -706,40 +731,6 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `5ebd42b1`, `ddb0a848` — categoría "Poder Judicial" de los portales de internet públicos: clasificación de
   manual sin precepto que la respalde (confianza baja).
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
-
-
-### [T-047] 🟡 [ABIERTA 20/07] Seguimiento de convocatorias: 46 oposiciones dan "cambio" a diario + 2.266 checks sin revisar
-- **Qué:** el cron `check-seguimiento` marca `has_changed` en **todos** los checks de un subconjunto de oposiciones,
-  así que su señal es ruido puro. Medido 20/07 sobre `convocatoria_seguimiento_checks` (468 oposiciones con ≥4 checks):
-  - **386 (82%) tienen señal sana** (<50% de checks con cambio; muchas 0/21) → el cron **no está roto en general**.
-  - **46 (10%) están a ≥90%** (21/21, 22/22…) → falsos positivos diarios. Ejemplos: `auxiliar-administrativo-ayuntamiento-valladolid`,
-    `bombero-valladolid`, `policia-local-lleida`, `auxiliar-administrativo-universidad-barcelona`, y la **Escala Administrativa ULE** (21/23).
-  - **2.266 checks `has_changed` sin revisar** (`change_reviewed=false`) → el bucle de revisión no se está haciendo.
-- **Por qué importa:** es la fuente del badge 🎯 y del flujo "revisa OEPs". Si una de esas 46 publica de verdad la fecha
-  de examen, **se pierde entre el ruido** — justo el caso de T-035, que no puede fiarse de su propia señal.
-- **Pista para el fix:** `backend/src/check-seguimiento/seguimiento-fetch.ts` ya tiene `normalizeForHash()` que limpia
-  horas, fechas, ids hex y números largos → alguien ya atacó esto. El ruido restante es **algo que ese normalizador no
-  captura**; en la ULE el `content_length` oscila (102233→102259→105026), así que hay contenido real cambiando
-  (¿bloque de noticias rotativo?, ¿listado paginado?). **Siguiente paso: diffear dos fetches de una de las 46** para
-  ver qué varía, y añadir esa clase al normalizador o acotar el hash a la región relevante de la página.
-- **Nota:** `.github/workflows/check-seguimiento.yml` está `.DISABLED`; hoy lo ejecuta el cron del backend NestJS.
-
-## Hechas
-
-### [T-039] ✅ [HECHA 20/07 — EN MAIN, SIN DESPLEGAR] PDF del temario por tema, generado en servidor
-- **Qué se ha hecho:** el botón "Imprimir PDF" llamaba a `window.print()`, que en iOS y en navegadores in-app (app de Google, Instagram…) **no descargaba nada**: prometía un PDF que nunca existía. De ahí los 3 tickets del 16/07 (María, Sonia, Mónica). Ahora el PDF se **genera en servidor** y se descarga como fichero, así que funciona en cualquier navegador.
-  - **Fase 0 (renombrado):** el botón pasa de "Imprimir PDF" a **"Descargar PDF"** con icono de descarga, y muestra "Generando PDF…" mientras trabaja.
-  - **Fase 1 (motor):** ruta `GET /api/temario/[oposicion]/[topic]/pdf` con **`@react-pdf/renderer`** (JS puro). **NO** Chromium headless a propósito: son ~300 MB en la imagen de ECS y arranque en frío, y el contenido es texto legal (encabezados + párrafos), no un layout complejo.
-  - **Sigue GRATIS** (solo pide registro, como antes). Imprimir un tema ya era gratuito y caparlo se percibiría como recorte — **12 de las 15 peticiones eran de usuarios FREE**.
-  - Se elimina el modal "ábrelo en tu navegador": con descarga real ya no hace falta.
-- **Medido con datos reales (3.325 temas vivos):** mediana 21 págs/tema, p95 178, máximo 760. Rendimiento: 21 págs ≈ 0,3 s; 167 págs ≈ 7 s; muestra aleatoria de 14 temas → 13 OK (peor 1,7 s), 0 fallos.
-- **Guardarraíl de tamaño (`PDF_MAX_CHARS` = 400k ≈ 96% de los temas):** por encima, la ruta devuelve 413 y el botón **degrada a la impresión del navegador** (lo de antes) en vez de colgarse. Los que exceden son los "artículos-cajón" de T-040 — se arreglan solos cuando esa se trocee.
-- **Dos defectos reales cazados al construirlo** (quedan documentados en los tests):
-  - En muchas leyes `articles.title` no es la rúbrica del artículo sino la **ruta de estructura** (Título/Capítulo), que se repetía en CADA artículo. Ahora se agrupa y sale una sola vez.
-  - Un pie de página con `position:absolute` + `fixed` **desbordaba el motor de maquetación** (`unsupported number: -9.3e+21`) en cualquier tema de más de ~20 artículos. Sin `absolute` funciona; por eso el pie no lleva numeración de página (el `render` de `pageNumber` no sobrevive sin posicionamiento absoluto).
-- **Estado:** código listo y verde (17 unitarios del modelo puro + typecheck). **PENDIENTE: deploy** (`scripts/deploy-frontend.sh`). Al desplegar, avisar a María, Sonia y Mónica (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
-- **⚠️ NO está en producción.** El código está en `main` (`bcc79f8f`) pero el deploy quedó bloqueado: el CI de `Unit tests` estaba **ya en rojo antes de este commit** (`ef4ef1f6`, `dba43db3` de otras sesiones fallan igual). Los 3 fallos son ajenos a esto: `fetchByTopicScopeMigration` (selección adaptativa, dependiente de aleatoriedad) y `verifyLawBocyl` / `verifyLawLiteral` ("suite failed to run"). En local la suite completa pasa (618 suites / 16.040 tests). **Se desplegará cuando se arregle ese rojo.**
-
 
 
 ### [T-048] 🟡 [ABIERTA 20/07 — arreglo de RAÍZ de T-009] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes

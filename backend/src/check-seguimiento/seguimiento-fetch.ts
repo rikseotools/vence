@@ -70,6 +70,18 @@ export function normalizeForHash(text: string): string {
       /\b\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\b/g,
       ' ',
     )
+    // fechas con mes ABREVIADO y coma opcional: "24 jun, 2026", "13 mayo 2026", "1 sept. 2026".
+    // Formato de los listados Drupal (la ULE publica así sus convocatorias: 40 apariciones en
+    // una sola página) → sin esto sobreviven al normalizador y ensucian el hash. T-047.
+    .replace(
+      /\b\d{1,2}\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-zé]*\.?,?\s*\d{4}\b/g,
+      ' ',
+    )
+    // días de la semana (cabeceras de calendario/agenda que rotan)
+    .replace(
+      /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/g,
+      ' ',
+    )
     // tokens largos hex/numéricos (csrf, sesión, viewstate, contadores de visitas)
     .replace(/\b[0-9a-f]{16,}\b/g, ' ')
     .replace(/\b\d{8,}\b/g, ' ')
