@@ -545,6 +545,21 @@
 - **Estado (20/07, re-medido a última hora):** **64 leyes actionable sirviendo en temas vivos** (45 false_green, 12 no_source, 6 never_verified, 1 issues) — bajó de 92 con el drenaje del día (bloque BOA, etc.). **Desglose por fuente (útil para planificar):** **40 SIN url** (editoriales/regionales marcadas "actualizada" sin evidencia — el bucket mayor y el que more reincide), **23 non-BOE con gaceta propia** (aquí vive el ex-"cabo de las 129", ya absorbido; extractor reutilizable `scripts/verify-law-boa.cjs` + 18 tests, y los gotchas por gaceta en esa ficha), **1 BOE**. **OJO — el backlog REINCIDE al alza:** cada build de oposición nueva mete leyes regionales marcadas `actualizada` SIN evidencia (false_green) o sin fuente; el gate solo bloquea `incomplete`, no never_verified/no_source/false_green → **el número sube con cada build** (subió ~83→95 con los builds de esta semana). El cron lo DETECTA (regresión) pero no lo PREVIENE.
 - **Los "easy wins" (URL de BOE) YA se drenaron** → el residuo es todo regional/universitario/EU = **research per-ley finicky** (ver "MAPA DE RAREZAS POR FUENTE" en la memoria `project-completitud-leyes-vs-fuente`: cada boletín tiene su quirk; BORM bloquea el fetch del extractor por UA; SPAs universitarias; EUR-Lex sin separador). Drena bajo garantía, sin urgencia.
 - **Drenaje 20/07:** Decreto 152/2021 Murcia (era `incomplete` miss=110 = artefacto URL-boletín; corregida a la disposición única anuncio 5111, 8/8 arts verbatim vía pdftotext → `verified`) + 2 exenciones editoriales (`no_consolidated_text`). Convenio Budapest queda `issues` = **decisión editorial de Manuel** (48/48 arts presentes con títulos correctos pero contenido RESUMIDO, no verbatim → verbatim-re-import vs aceptar resumen).
+- **✅ CORRECCIÓN 20/07 (medido, no estimado) — el vector `false_green` YA ESTÁ CERRADO:** los **44 false_green** vivos
+  son **todos anteriores al trigger** `trg_laws_block_false_green` (el más reciente se tocó el 10/07; el trigger entró
+  el 18/07). **Cero nuevos desde entonces**, incluidos los builds de esta semana. La frase de arriba ("REINCIDE al
+  alza… sube con cada build") describe la situación PREVIA al trigger: para este bucket ya no es cierta, y seguirla
+  llevaría a resolver un problema ya resuelto.
+- **El vector que SÍ sigue abierto es otro, y NO es "el build olvida la fuente":** de las 46 leyes nuevas que sirven en
+  temas vivos en 9 días, **7 entraron sin fuente y las 7 son de hoy**. Al mirarlas una a una **no son leyes**: son
+  **contenedores institucionales** (FMI, OMS, OTAN, FAO, EUROJUST, UE, TEDH/TJUE), de 1 artículo, sin articulado que
+  comparar. El patrón correcto YA existe: sus equivalentes de abril (`Consejo DDHH ONU`, `Principios Fuerza ONU`,
+  `OTAN GC`, `EUROJUST GC`) están marcados **`is_virtual=true`** — justo la exención que el clasificador contempla
+  ("editoriales por diseño, no tienen fuente oficial de N artículos"). Los de hoy están `is_virtual=false` → caen en
+  `no_source` y engordan el bucket **sin ser un defecto real**.
+  → **Arreglo estructural correcto: que el build marque `is_virtual=true` al crear un contenedor institucional**, en vez
+  de "registrar una fuente" que no existe. **NO aplicado**: esas 7 son trabajo EN VUELO de otra sesión (builds de hoy) y
+  tocarlas a media construcción sería pisarla.
 - **MEJORA ESTRUCTURAL pendiente (la de verdad):** que el **build de oposición registre/verifique la fuente** de sus leyes regionales (o al menos no las marque `actualizada` sin summary) → cortar la reincidencia en origen, en vez de drenar a posteriori. Alternativa mínima: endurecer el gate a `never_verified`/`no_source` (con grandfathering) para que un tema nuevo no se publique con leyes sin fuente.
 - **Cómo/diseño:** `docs/roadmap/verificacion-completitud-leyes.md` + memoria `project-completitud-leyes-vs-fuente`. Regla dura: NUNCA `verification_status='actualizada'` sin escribir `last_verification_summary` con evidencia real.
 
@@ -915,3 +930,19 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   irrelevante ("Enólogo, 1 plaza") justo al usuario que aún no nos conoce.
 
 </details>
+
+
+### [T-055] 🟡 [ABIERTA 20/07] 221 preguntas activas cuelgan de leyes SIN scope (invisibles para el alumno)
+- **Qué:** salió al auditar T-026. Hay leyes **sin ninguna fila de `topic_scope` en temas activos** de las que cuelgan
+  preguntas aprobadas: **221 preguntas, 216 activas**, que **ningún tema sirve** → existen, están verificadas, y el
+  opositor no las ve nunca. Es el equivalente **a nivel de LEY** del detector de títulos huérfanos (T-003), que trabaja
+  a nivel de título.
+- **Top:** `Principios Fuerza ONU` (102 preg / 97 activas), `Consejo DDHH ONU` (58), `Reglamento Defensor Pueblo GC` (24),
+  `EUROJUST GC` (12), `Reglamento Eurojust 2018/1727` (9), `Estructura DGGC` (6), `OTAN GC` (4), `Convenio EUROPOL Art K.3` (3).
+- **⚠️ Parte puede ser TRANSITORIO:** hoy 20/07 una sesión está migrando estos contenedores (creó `OTAN`, `EUROJUST`…
+  nuevos, con scope y 74/38 preguntas, dejando huérfanos los `… GC` viejos). **Re-medir cuando esos builds cierren**
+  antes de actuar: lo que siga huérfano entonces sí es pérdida real.
+- **Por qué importa:** son preguntas ya escritas y verificadas — recuperarlas es **re-scopear, no generar**. Coste bajo,
+  valor directo (más práctica en Guardia Civil / Policía Nacional).
+- **Cómo detectarlo:** ley `is_active` + 0 filas en `topic_scope` unidas a `topics.is_active` + `count(questions)>0`.
+  Candidato a sensor del sweep nocturno junto al resto de detectores de salud de contenido.
