@@ -1,0 +1,164 @@
+[
+ {
+  "id": "T-002",
+  "veredicto": "vigente",
+  "prueba": "RDS: `auxiliar-administrativo-madrid` tiene 2 convocatorias vivas NO archivadas (673 plz `inscripcion_abierta` is_current=true, Orden 1628/2026; y 645 plz `lista_admitidos` is_current=false, archived_at=NULL). El código de landing sigue resolviendo por convocatoria vigente: lib/api/convocatoria/queries.ts:66 documenta que lee `convocatorias is_current` con fallback a columnas legacy. No hay render por bloques.",
+  "recomendacion": "Sigue abierta tal cual: implementar la vía-(a) de render (listar convocatorias no archivadas como bloques con sus hitos agrupados)."
+ },
+ {
+  "id": "T-003",
+  "veredicto": "caducada",
+  "prueba": "El drenaje descrito en la propia ficha está APLICADO en RDS: los 3 fixes de CE Título V (108-116) existen hoy — administrativo_seguridad_social T7, administrativo_canarias T4, administrativo_cantabria T3 tienen 108/109/110/116 en topic_scope.article_numbers y están registrados en topic_scope_verification con state=verified_correct y verified_at=2026-07-20 11:36. El único hallazgo que queda en content_health_findings (kind=scope_titulo_huerfano, 465/96 opos) es una fila-rollup con computed_at=2026-07-20 03:00, es decir un snapshot del sweep nocturno ANTERIOR a los lotes aplicados a las 11:36 — no refleja el estado actual.",
+  "recomendacion": "Cerrar la tarea de drenaje (42 clusters adjudicados, 16 huecos reales arreglados) y dejarla solo como mantenimiento recurrente del detector."
+ },
+ {
+  "id": "T-007",
+  "veredicto": "desfasada",
+  "prueba": "El problema persiste pero las cifras cambiaron. Medido en RDS (topic_scope_verification.state): verified_correct=1691, needs_human=107, verified_issues=47, stale=13. El backlog a tratar es 107+47=154 temas (la ficha dice 149), más 13 `stale` que la ficha no menciona (temas auto-invalidados por cambio de epígrafe/scope). Los `never_verified` no aparecen como filas (ausencia de fila = nunca verificado), así que la cifra de '~100 never_verified' no es medible desde esta tabla.",
+  "recomendacion": "Actualizar la ficha a 154 temas + 13 `stale` (nuevo cubo) y mantener la priorización por demanda."
+ },
+ {
+  "id": "T-008",
+  "veredicto": "vigente",
+  "prueba": "Confirmado punto por punto en RDS: Madrid tiene las dos convocatorias 2026 como filas propias, ambas sin archivar (673 plz `inscripcion_abierta` / 645 plz `lista_admitidos`) y solo una es is_current. El 'dato menor a limpiar' también se reproduce exactamente: la fila del ciclo en curso (645, lista_admitidos) tiene convocatoria_numero=NULL, y la fila ARCHIVADA de 2025 (551 plz, examen_realizado, archived_at=2026-04-12) lleva mal atribuido 'Orden 264/2026'.",
+  "recomendacion": "Mantener abierta; depende de T-002 (mismo render vía-a) más el saneado de convocatoria_numero cuidando el índice convocatorias_ref_oficial_unica."
+ },
+ {
+  "id": "T-009",
+  "veredicto": "caducada",
+  "prueba": "El ÚNICO pendiente de la ficha ('cablearlo a cron, backend + deploy') está hecho y MERGEADO en origin/main: commits 6f18cd63 ('cron rotatorio de incisos anulados por el TC (T-009) — cablea el detector', cuyo mensaje dice literalmente 'Cierra el ÚNICO pendiente de T-009') y 86edbb38. Verificado con `git merge-base --is-ancestor 86edbb38 origin/main` → SÍ. En el código: backend/src/internal-cron-triggers/internal-cron-triggers.cron.ts:108 `@Cron('30 5 * * *', {name:'trigger-audit-annulled-provisions'})` con heartbeat, y backend/src/annulled-vigencia-sweep/annulled-vigencia-sweep.cron.ts:33 `@Cron('30 4 * * 2')`; el módulo está registrado en backend/src/app.module.ts:155. Además resuelve el gotcha de la ficha (peso en red): rotación por laws.annulled_audited_at, ~40 leyes/día, ciclo ~9 días, acotado a 45s.",
+  "recomendacion": "Cerrar la ficha; queda solo confirmar que el deploy del backend con estos commits está vivo en ECS (mirar el heartbeat `trigger-audit-annulled-provisions`)."
+ },
+ {
+  "id": "T-011",
+  "veredicto": "vigente",
+  "prueba": "La columna propuesta NO existe: `information_schema.columns` de `deleted_users_log` devuelve id, original_user_id, email, full_name, plan_type, target_oposicion, registered_at, deleted_at, days_active, total_tests, total_payments, deletion_reason, requested_via, created_at, archived_data — sin `rgpd_email_sent_at`. En código, la única aparición del término en todo el repo es el comentario pendiente app/api/admin/delete-user/route.ts:136 ('Un marcador durable `rgpd_email_sent_at` en deleted_users_log lo haría exactly-once (migración)'), es decir el envío sigue sin sello de idempotencia.",
+  "recomendacion": "Sigue abierta tal cual: migración additiva + mapeo Drizzle + sellado tras envío OK."
+ },
+ {
+  "id": "T-012",
+  "veredicto": "desfasada",
+  "prueba": "El problema existe pero el denominador cambió. Medido en RDS: 13 leyes con filas en `law_sections` (88 filas) sobre 1.343 leyes activas — la ficha dice 1.291. El '13' sigue siendo exacto. La segunda mitad (render inline) también sigue pendiente: app/teoria/[law]/LawArticlesClient.tsx solo usa las secciones para el filtro (fetch a /api/teoria/sections → estado availableSections + SectionFilterModal), no pinta cabeceras sobre los artículos. Matiz: app/leyes/[law]/page.tsx SÍ pinta lawSections en SSR (con fallback si están vacías), así que la parte de render no es virgen del todo en esa ruta.",
+  "recomendacion": "Actualizar el denominador a 1.343 leyes activas y acotar el alcance de render a /teoria (en /leyes ya hay render de secciones que se puede reusar)."
+ },
+ {
+  "id": "T-014",
+  "veredicto": "vigente",
+  "prueba": "RDS: la ley editorial e731eb12 ('Diagnóstico por imagen y radioprotección') existe con slug diagnostico-por-imagen-radioproteccion; tiene exactamente 16 preguntas, todas lifecycle_state='approved'; topic_scope para esa law_id = 0 filas → siguen ancladas e invisibles, tal cual describe la ficha.",
+  "recomendacion": "Dejarla como tracking puro: no es trabajo, revive sola cuando se haga T-016 (escopar la ley en los temas TSID)."
+ },
+ {
+  "id": "T-015",
+  "veredicto": "desfasada",
+  "prueba": "La premisa 'no existe editorial' SIGUE siendo cierta (0 filas en laws con nombre 'unidad del paciente'/'condiciones ambientales'; solo existen las editoriales 'Higiene del paciente…' c50356ee y 'Paciente encamado…' 0be3a9c2). Pero el pool de huérfanas que justificaba la tarea está drenado: preguntas con texto 'unidad del paciente'/'condiciones ambientales'/'humedad relativa' = 24 tech_approved + 7 approved y solo 1 needs_human + 1 needs_review (la ficha decía '~5-6 por banco, varias en needs_human').",
+  "recomendacion": "Rebajar a muy baja o cerrar: crear la editorial rescataría 2 preguntas, no un lote; las demás ya encontraron home en Higiene/Paciente encamado."
+ },
+ {
+  "id": "T-016",
+  "veredicto": "vigente",
+  "prueba": "RDS: no hay ninguna oposición TSID construida — las 14 variantes catalogadas ('tecnico-superior-…-imagen-para-el-diagnostico-…' por servicio de salud: SNS-O, SESCAM, SACYL, SES, Osakidetza, IB-Salut, SMS, SESPA, SALUD, SERIS, SCS…) están todas is_active=false y topics para position_type ILIKE '%imagen-para-el-diagnostico%' = 0 filas.",
+  "recomendacion": "Vigente, pero la ficha habla de 'la oposición TSID' en singular: antes de arrancar hay que elegir cuál de las 14 variantes catalogadas se construye (criterio: convocatoria viva + plazas)."
+ },
+ {
+  "id": "T-018",
+  "veredicto": "desfasada",
+  "prueba": "RDS (auxiliar_administrativo_ayuntamiento_madrid, 22 temas, 9.063 preguntas activas): los puntos (2) y (3) YA NO EXISTEN — T21 Word tiene 1.215 preguntas y T22 Excel 851 (la ficha dice '0 preguntas'); los 8 temas 'finos con solo 6' (T8-T12, T18-T20) tienen hoy 50-55 cada uno; ningún tema baja de 50. Sigue vivo el punto (1): topic_scope_verification = 21 temas sin fila + 1 'verified_correct' → 21/22 sin auditar contra el PDF oficial.",
+  "recomendacion": "Reescribir la ficha dejando SOLO la verificación epígrafe↔scope (21/22 temas) y bajar prioridad: los huecos de contenido ya se rellenaron."
+ },
+ {
+  "id": "T-020",
+  "veredicto": "desfasada",
+  "prueba": "El problema central SIGUE: exam_cases WHERE oposicion_type ILIKE '%madrid%' = 0 filas (los únicos con supuestos son administrativo-seguridad-social 8, auxilio-judicial 8, auxiliar-administrativo-carm 6, administrativo_estado 2, aux_admin_ayto_zaragoza 2, administrativo_carm 2, tramitacion-procesal 1 — cifras coincidentes con la ficha). Desfasa el dato de temario: administrativo_madrid tiene 47 temas pero 20.246 preguntas activas, no '~11.177'.",
+  "recomendacion": "Mantener la tarea tal cual, solo actualizar la cifra de preguntas (20.246) en la ficha."
+ },
+ {
+  "id": "T-021",
+  "veredicto": "vigente",
+  "prueba": "RDS: 'ujieres-cortes-generales' existe catalogada con is_active=false y 0 filas en topics → sin temario ni tests, exactamente como dice la ficha. (Ojo: es distinta de 'ujier-parlamento-de-la-rioja', también inactiva.)",
+  "recomendacion": "Vigente; antes de construir, re-verificar en BOE la convocatoria — la ficha la preveía para ~mayo 2026 y esa fecha ya pasó (hoy 20/07/2026), dato no comprobable desde el repo."
+ },
+ {
+  "id": "T-022",
+  "veredicto": "vigente",
+  "prueba": "RDS: 'cuerpo-gestion-administrativa-junta-andalucia' existe catalogada con is_active=false y 0 filas en topics → sin temario ni tests, igual que la ficha.",
+  "recomendacion": "Vigente; confirmar plazas/fechas del turno libre contra BOJA antes de construir (la OEP 2025 de 77 plazas que cita la ficha necesita verificación externa)."
+ },
+ {
+  "id": "T-023",
+  "veredicto": "vigente",
+  "prueba": "RDS: SELECT sobre topic_scope_verification JOIN topics WHERE position_type='auxiliar_administrativo_aragon' → 18 verified_correct + 2 needs_human. Coincide exactamente con la ficha (18/20 correct, 2 huecos T6 fuentes del derecho y T16 firma electrónica sin resolver). Ningún artículo editorial nuevo escopado.",
+  "recomendacion": "Cogerla tal cual: hay que crear los 2 artículos editoriales y escoparlos; el estado en BD sigue siendo needs_human."
+ },
+ {
+  "id": "T-024",
+  "veredicto": "vigente",
+  "prueba": "RDS: administrativo_extremadura → 29 verified_correct + 1 verified_issues (30 temas). Coincide con el titular de la ficha (29/30). El T15 ya figura resuelto y queda 1 tema no-correct = T24 (Ley de Presupuestos anual de Extremadura, no está en `laws`). OJO: la ficha se contradice internamente (dice 29/30 arriba y 28/30 en 'Estado'); el dato real medido es 29/30.",
+  "recomendacion": "Vigente pero de bajo valor: la propia ficha ya decidió NO importar la ley anual; el trabajo real que queda es decidir los arts 74-79 huérfanos (criterio humano)."
+ },
+ {
+  "id": "T-026",
+  "veredicto": "vigente",
+  "prueba": "Ejecutado scripts/audit-law-completeness.cjs contra RDS (20/07): 1376 leyes, 119 actionable, de las cuales **64 sirviendo en temas VIVOS** — número idéntico al de la ficha (64 = 45 false_green + 12 no_source + 6 never_verified + 1 issues). Desglose global actionable: 52 no_source, 44 false_green, 22 never_verified, 1 issues. Sistema y cron existen (lib/laws/completeness.ts presente).",
+  "recomendacion": "Es un loop de mantenimiento, no una tarea cerrable: drenar por lotes; lo accionable de verdad es la mejora estructural (que el build marque is_virtual/registre fuente)."
+ },
+ {
+  "id": "T-028",
+  "veredicto": "vigente",
+  "prueba": "RDS: búsqueda en `oposiciones` por slug/nombre ILIKE '%limpiador%|%camarer%|%cuidador%' → solo aparece 'limpiador-a-servicio-andaluz-de-salud-sas' (is_active=false), que NO es ninguna de las dos pedidas. Ni Limpiador/a-Camarero/a (actividades domésticas) ni Cuidador/a de la Diputación de Córdoba existen en plataforma.",
+  "recomendacion": "Premisa confirmada, pero la decisión (¿hay demanda suficiente?) es de Manuel: no cogerla como tarea de ejecución sin ese OK."
+ },
+ {
+  "id": "T-030",
+  "veredicto": "desfasada",
+  "prueba": "RDS, conteo por topic_scope→articles→questions activas en agrupacion_profesional_servicios_publicos_carm. El hueco SIGUE (T9 Vigilancia/custodia=0, T10 Limpieza=0, T11 Manipulación alimentos=0, T12 Mantenimiento edificios=0) pero 2 cifras de la ficha ya no cuadran: T6 Seguridad y salud 0→**23**, T7 Atención al ciudadano 9→**20**. La parte general también creció: T1 1373→1621, T4 2490→2503, T8 3655→3694.",
+  "recomendacion": "Vigente en lo esencial (4 temas a 0); actualizar la ficha a 'T9-T12 vacíos, T6/T7 flojos (23/20)' antes de cogerla."
+ },
+ {
+  "id": "T-031",
+  "veredicto": "caducada",
+  "prueba": "La réplica YA está provisionada y ENCHUFADA en prod: `aws rds describe-db-instances` → instancia **vence-prod-replica** (db.t4g.medium, ReadReplicaSourceDBInstanceIdentifier=vence-prod, creada 2026-07-15, status available). SSM `/vence-frontend/DATABASE_URL_REPLICA` apunta a vence-prod-replica.c1mkcg6astb0.eu-west-2.rds.amazonaws.com (el primario es vence-prod.*, endpoints distintos). Task defs VIVAS vence-frontend:487 y vence-backend:75 traen **USE_READ_REPLICA=true** + el secret DATABASE_URL_REPLICA. Los 3 pasos que pedía la ficha (crear réplica → set SSM → flip flag) están hechos.",
+  "recomendacion": "Cerrar la ficha; como mucho abrir una nueva y distinta para 'apuntar más endpoints admin a getReadDb()' si aún quedan sin migrar."
+ },
+ {
+  "id": "T-034",
+  "veredicto": "caducada",
+  "prueba": "app/leyes/[law]/page.tsx línea 182-184: `export async function generateStaticParams() { return [] }` → ya es on-demand, no prerenderiza las 1.278 leyes. Commit **3f6fb3bb** (2026-07-12) 'fix(build): /leyes/[law] on-demand — fin del SSG masivo (mata la flakiness del build)', contenido en **origin/main** (`git branch -r --contains 3f6fb3bb`). La ficha además apunta a un 'page.js' que no existe (el fichero es page.tsx).",
+  "recomendacion": "Cerrar la ficha: implementada y fusionada en main el mismo 12/07 en que la ficha la daba por 'diseñada, sin implementar'."
+ },
+ {
+  "id": "T-035",
+  "veredicto": "vigente",
+  "prueba": "RDS: SELECT slug, exam_date, estado_proceso FROM oposiciones WHERE slug LIKE '%universidad-leon%' → 'administrativo-universidad-leon' sigue con exam_date=NULL y estado_proceso='pendiente_examen'; la Auxiliar ya tiene exam_date=2026-09-12 y estado 'lista_admitidos', tal como dice la ficha. La mejora de seguimiento también está aplicada: seguimiento_url de la Escala ya apunta a su página propia (.../convocatoria-de-proceso-selectivo-para-ingreso-por-el-sistema-general-de), no a la general.",
+  "recomendacion": "Vigente pero NO es trabajo: es vigilancia pasiva hasta que la ULE publique las listas definitivas — no cogerla como tarea de sesión, dejarla al sensor."
+ },
+ {
+  "id": "T-036",
+  "veredicto": "vigente",
+  "prueba": "RDS: needs_human únicas con ai_provider de las campañas de los cubos (cubo1_reverify 42, vg_relink_v1 20, gap_v1 19, vg_relink 10, mislink_v1 6, fp_recheck 2) → 48 únicas. La ficha decía 52 y luego '2/49 hechas / 47 restantes': el número medido (48) cuadra con su propio estado más reciente. Los cabos 2 y 3 constan cerrados en la ficha y no se contradicen en BD.",
+  "recomendacion": "Vigente: queda solo el cabo 1 (48 preguntas), y es sesión de contenido con fuente oficial delante, no barrido de relink — no cogerla esperando quick-wins."
+ },
+ {
+  "id": "T-038",
+  "veredicto": "desfasada",
+  "prueba": "Cola A: needs_human total = 3.652 (la ficha dice 3.874). Cola B: la consulta de la ficha (explanation_ok=false AND article_ok IS NOT false AND answer_ok IS NOT false) da 5.632 totales / 3.645 visibles — pero SOBRECUENTA, porque la fila AVR antigua persiste tras la reescritura. Descontando las que ya tienen AVR de las campañas de drenaje (claude_code_expl_traffic_v1 / expl_cola_larga_v1): 1.078 ya reescritas (=272+806, exactamente los dos lotes que la ficha declara) → cola B REAL = 2.567, de las que 2.476 tienen CERO respuestas servidas y solo 91 tienen tráfico (20 con ≥10 respuestas, 71 con 1-9). La ficha aún anuncia '874 con 1-9 respuestas' pendientes: ese tramo está drenado.",
+  "recomendacion": "Reescribir la ficha con los números reales (cola A 3.652; cola B 2.567 de las que 2.476 no las ve nadie) y corregir la consulta de medición para excluir las ya reescritas — tal como está, la tarea aparenta 10× más trabajo útil del que queda."
+ },
+ {
+  "id": "T-040",
+  "veredicto": "vigente",
+  "prueba": "RDS: artículos con length(content)>20000 y ≥1 pregunta activa = 112 cajones (ficha: 110) con 20.974 preguntas activas (ficha: 20.960); de ellos 24 son >50k chars acumulando 11.538 preguntas (ficha: 24 y 11.538, coincidencia exacta). Top por daño idéntico al de la ficha: Correos T3 art.1 = 301.638 chars / 1.984 preguntas, Correos T4 1.018/153k, Correos T12 939/183k, Inglés GC 894/198k. Los 5 mega-chunks TCAE ya partidos no mueven la aguja del agregado.",
+  "recomendacion": "Vigente y bien medida; sigue aparcada por decisión de Manuel — no cogerla sin plan propio y aprobación."
+ },
+ {
+  "id": "T-054",
+  "veredicto": "vigente",
+  "prueba": "lib/boe-extractor.ts: el camino principal decodifica (línea 372, `const content = decodeHtmlEntities(blockContent...`) pero el camino de reserva por posiciones de <h5> (líneas 409-505) construye `const content = rawContent.replace(...)` en la línea 485 SIN llamar a decodeHtmlEntities. El test que fija el bug sigue vivo: __tests__/laws/boeExtractorVigencia.test.ts:32 '⚠️ BUG PREEXISTENTE documentado: el camino de reserva NO decodifica entidades' con expect(...).toContain('&oacute;'). git log -S decodeHtmlEntities sobre el fichero: último toque 79c4320d (T-048), que no arregló el fallback.",
+  "recomendacion": "Vigente tal cual; al arreglarlo hay que medir antes el impacto en content_hash y actualizar el test, que hoy fija el comportamiento defectuoso."
+ },
+ {
+  "id": "T-055",
+  "veredicto": "vigente",
+  "prueba": "Re-medido tras los builds (que era justo lo que la ficha pedía): los 8 contenedores que lista siguen con 0 filas de topic_scope en temas activos — Principios Fuerza ONU 102 preg/97 activas, Consejo DDHH ONU 58/58, Reglamento Defensor Pueblo GC 24/24, EUROJUST GC 12/12, Reglamento Eurojust 2018/1727 9/9, Estructura DGGC 6/6, OTAN GC 4/4, Convenio EUROPOL Art K.3 3/3 = 218 preg/213 activas (ficha: 221/216). No era transitorio. CAVEAT de alcance: el detector genérico (ley is_active + 0 scope activo + preguntas) devuelve 347 leyes con 11.069 preguntas (7.261 activas), dominado por 'Inglés PN' (5.614/5.071) y 'Orden INT/859/2023' (588/345) — el problema real es mucho mayor que las 221 de la ficha.",
+  "recomendacion": "Vigente: atacar los 8 contenedores GC/ONU (218 preguntas, re-scope no generación) y ampliar la ficha con el hallazgo de Inglés PN, que solo él multiplica por 25 el alcance."
+ }
+]
