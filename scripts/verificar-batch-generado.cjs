@@ -38,10 +38,20 @@ if (!BATCH) {
   process.exit(1)
 }
 
+// Normalización para comparar citas: unifica comillas y espacios.
 const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().toLowerCase()
 
+// Además ignora la puntuación: los `content` importados del BOE/BOC a veces
+// pierden el punto final de un apartado, y eso NO es un drift de la cita.
+// (Falso positivo real: Ley 19/1991 art. 4.Cuatro, batch gen_patrimonio_2026-07-20.)
+const strip = (t) => norm(t).replace(/[.,;:]/g, '')
+
 // Cláusulas que, si aparecen JUSTO detrás de la cita, alteran su alcance.
-const CONTINUA = /^\s*[,;]?\s*(salvo|excepto|sin perjuicio|siempre que|a menos que|no obstante|así como|o aquellos|además de|junto con|y otras|cuando)/i
+// OJO: solo cuentan si NO hay frontera de frase entre medias — si la cita
+// termina en punto, lo que sigue es una regla nueva, no una condición de lo
+// citado. Sin ese matiz, "cuando"/"no obstante" disparan en cualquier párrafo
+// siguiente. (Falso positivo real: Ley 19/1991 art. 5.Uno, mismo batch.)
+const CONTINUA = /^\s*[,;]\s*(salvo|excepto|sin perjuicio|siempre que|a menos que|así como|o aquellos|además de|junto con|y otras)/i
 
 ;(async () => {
   const Q = await s`
@@ -68,13 +78,23 @@ const CONTINUA = /^\s*[,;]?\s*(salvo|excepto|sin perjuicio|siempre que|a menos q
     const art = norm(q.content)
     const nc = norm(correcta)
 
-    const idx = art.indexOf(nc)
-    if (idx < 0) {
+    // Literalidad: tolerante a puntuación (ver `strip`).
+    const artS = strip(q.content)
+    const ncS = strip(correcta)
+    const idxS = artS.indexOf(ncS)
+    if (idxS < 0) {
       errs.push('la correcta NO es subcadena literal del artículo')
     } else {
-      const cola = art.slice(idx + nc.length)
-      if (CONTINUA.test(cola)) {
-        errs.push(`CITA TRUNCADA: el artículo continúa con "${cola.trim().slice(0, 45)}…" — la cita omite una cláusula que la condiciona`)
+      // Cita truncada: se evalúa sobre el texto ORIGINAL (con puntuación), para
+      // poder distinguir "…, salvo X" (condiciona) de "…. Cuando X" (frase nueva).
+      const idxRaw = art.indexOf(nc)
+      if (idxRaw >= 0) {
+        const cola = art.slice(idxRaw + nc.length)
+        // Si lo que sigue arranca con final de frase, no condiciona lo citado.
+        const fronteraFrase = /^\s*[.]/.test(cola)
+        if (!fronteraFrase && CONTINUA.test(cola)) {
+          errs.push(`CITA TRUNCADA: el artículo continúa con "${cola.trim().slice(0, 45)}…" — la cita omite una cláusula que la condiciona`)
+        }
       }
     }
 
