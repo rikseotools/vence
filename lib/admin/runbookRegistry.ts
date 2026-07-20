@@ -87,6 +87,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/rollover-oposiciones.md',
     claudeHace: 'reconstruye el timeline de hitos de la convocatoria vigente contra la fuente oficial.',
   },
+  hito_vencido_abierto: {
+    title: 'Hitos "próximos" con la fecha ya pasada',
+    triggerPhrase: 'revisa los hitos vencidos',
+    runbook: 'docs/runbooks/rollover-oposiciones.md',
+    claudeHace: 'mira `convocatoria_hitos` con status=upcoming y fecha < hoy, y distingue por `origen`: si es `registro`, la fecha era REAL y el evento ya ocurrió (cerrarlo a `completed`; si era el examen, probablemente toque rollover). Si es `estimacion`, la fecha nos la inventamos como marcador y encima venció: NO se publica (el render la oculta desde el 20/07) pero hay que revisarla contra fuente oficial o quitarla. NUNCA convertir una estimación en fecha oficial sin cita literal de boletín.',
+  },
   low_coverage: {
     title: 'Tema con cobertura fina (<6 preguntas)',
     triggerPhrase: 'revisa la cobertura de temas',

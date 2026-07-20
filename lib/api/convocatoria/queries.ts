@@ -166,6 +166,13 @@ export interface HitoConvocatoria {
   url: string | null
   status: 'completed' | 'current' | 'upcoming'
   orderIndex: number
+  /**
+   * De dónde sale la FECHA. `'registro'` = de fuente oficial. **`'estimacion'` = la pusimos
+   * nosotros a ojo** porque el organismo aún no la ha publicado. Es la diferencia entre
+   * informar y inventar: un hito estimado NO puede pintarse con su fecha como si fuera
+   * oficial, ni alimentar el `Event` de schema.org. Ver `esFechaEstimada()`.
+   */
+  origen: string | null
   /** Convocatoria a la que pertenece el hito (null = hito suelto, sin ciclo asignado). */
   convocatoriaId: string | null
   /** Etiqueta del ciclo, p.ej. "Orden 1628/2026". Null si la fila no la tiene. */
@@ -244,6 +251,7 @@ export async function getHitosConvocatoria(
       url: string | null
       status: string
       order_index: number
+      origen: string | null
       convocatoria_id: string | null
       convocatoria_numero: string | null
       plazas_libres: number | null
@@ -251,7 +259,7 @@ export async function getHitosConvocatoria(
       es_actual: boolean
     }>(sql`
       SELECT h.id, h.fecha, h.titulo, h.descripcion, h.url, h.status, h.order_index,
-             h.convocatoria_id,
+             h.origen, h.convocatoria_id,
              c.convocatoria_numero, c.plazas_libres, c.estado_proceso,
              COALESCE(c.is_current, false) AS es_actual
       FROM convocatoria_hitos h
@@ -274,6 +282,10 @@ export async function getHitosConvocatoria(
       url: r.url,
       status: r.status as 'completed' | 'current' | 'upcoming',
       orderIndex: r.order_index,
+      // `origen='estimacion'` = la fecha NO viene de fuente oficial, es una estimación nuestra.
+      // Hay que propagarlo hasta el render: pintarla como si fuera oficial es publicar una
+      // fecha falsa (y peor, emitirla como startDate de un Event de schema.org).
+      origen: r.origen ?? null,
       convocatoriaId: r.convocatoria_id ?? null,
       convocatoriaNumero: r.convocatoria_numero ?? null,
       convocatoriaPlazas: r.plazas_libres ?? null,

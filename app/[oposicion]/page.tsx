@@ -16,6 +16,7 @@ import type { Metadata } from 'next'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 import AutoAssignOposicion from '@/components/AutoAssignOposicion'
 import { formatNumber, formatDateLarga, formatDateCorta } from '@/lib/utils/format'
+import { etiquetaFechaHito, hitoParaSchemaEvent } from '@/lib/convocatoria/fechaEstimada'
 import { getColorScheme } from '@/lib/utils/landing-colors'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
@@ -246,7 +247,10 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   }
 
   // Schema JSON-LD: Evento del examen
-  const examHito = hitosSafe.find(h => h.titulo.toLowerCase().includes('examen') && h.status !== 'completed')
+  // Antes esto cogía CUALQUIER hito de examen no completado, incluidos los de fecha
+  // estimada por nosotros → se publicaba a Google una fecha inventada como startDate de un
+  // evento real. `hitoParaSchemaEvent` descarta los estimados: sin fuente oficial, no hay Event.
+  const examHito = hitoParaSchemaEvent(hitosSafe)
   const schemaEvent = examHito ? {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -396,7 +400,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
                               hito.status === 'completed' ? 'bg-green-100 text-green-700' :
                               hito.status === 'current' ? 'bg-blue-100 text-blue-700' :
                               'bg-gray-100 text-gray-500'
-                            }`}>{formatDateCorta(hito.fecha)}</span>
+                            }`}>{etiquetaFechaHito(hito, formatDateCorta)}</span>
                             {hito.status === 'current' && <span className="text-xs font-bold text-blue-600 uppercase">En curso</span>}
                           </div>
                           <h3 className={`font-semibold ${hito.status === 'upcoming' ? 'text-gray-500' : 'text-gray-800'}`}>

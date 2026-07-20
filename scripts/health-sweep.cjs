@@ -282,6 +282,27 @@ async function main() {
     if ((nn(su.content_mismatch) ?? 0) > 0 || (nn(su.title_mismatch) ?? 0) > 0) return 'issues';
     return null;
   };
+  // ── Hitos que anuncian un evento con la fecha YA PASADA ────────────────────────────────
+  // Nace de un fallo real (20/07/2026): 11 hitos seguían `upcoming` con fecha vencida. El
+  // render ya no publica los estimados (`lib/convocatoria/fechaEstimada.ts`), pero eso hace el
+  // fallo INOCUO, no lo impide. Esto lo DETECTA, que son cosas distintas:
+  //   · origen='registro'   → la fecha era real y el evento ocurrió: nadie cerró el hito, así
+  //                           que el timeline anuncia como próximo algo que ya pasó.
+  //   · origen='estimacion' → la fecha nos la inventamos y encima ya venció. No se publica,
+  //                           pero delata una estimación que nadie revisó (warn, no error).
+  const hitosVencidos = (await c.query(`
+    SELECT o.slug, ch.origen, COUNT(*)::int n
+    FROM convocatoria_hitos ch JOIN oposiciones o ON o.id = ch.oposicion_id
+    WHERE o.is_active AND ch.status = 'upcoming' AND ch.fecha < CURRENT_DATE
+    GROUP BY o.slug, ch.origen`)).rows;
+  for (const r of hitosVencidos) {
+    const estimado = r.origen === 'estimacion';
+    add('content', estimado ? 'warn' : 'error', r.slug, 'hito_vencido_abierto',
+      `${r.slug}: ${r.n} hito(s) "próximos" con fecha ya pasada` +
+      (estimado ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'
+                : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'));
+  }
+
   const lawRows = (await c.query(`
     SELECT l.id, l.short_name, l.name, l.scope, l.is_virtual, l.boe_url,
            l.verification_status, l.last_verification_summary AS su,
