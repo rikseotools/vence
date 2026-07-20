@@ -156,10 +156,32 @@ había mirado.
 un 2.º lote sobre esta misma sección rendiría menos; el techo natural de una ley monotemática está
 en torno al 95%.
 
+### Lote T19 — Normativa de permanencia (20/07) + COLISIÓN DE SESIONES
+
+12 preguntas con el mismo pipeline de 6 fases (`gen-t19-permanencia-ual-batch1.cjs`).
+Fase 6 pasó **a la primera**: los distractores ya se escribieron con el umbral correcto
+(ratio ≤1,4) aplicando lo aprendido en el T13 — la lección se transfiere entre lotes.
+Fase 7: 12/12 PERFECT · Fase 9: 12/12 CLEAN, APTO.
+
+**⚠️ COLISIÓN CON OTRA SESIÓN — lección operativa.** Al terminar, el T19 tenía **24** preguntas,
+no 12: **otra sesión de Claude generó en paralelo su propio lote sobre la MISMA norma** (tag `T19`,
+4 minutos después del mío), también con auditoría registrada. Ambos lotes cubrían los mismos
+artículos y **3 eran duplicados semánticos reales** (arts. 10, 11 y 12: mismo dato, misma respuesta,
+solo reformulado; en el art. 12 la ajena cubre las dos filas de la tabla y subsume a la mía).
+**Se retiraron las MÍAS** (`retired_duplicate`), no las ajenas: son iguales o mejores y no procede
+privilegiar el propio trabajo ni tocar el de otra sesión.
+
+**Resultado**: T19 con **21 preguntas activas y los 12 artículos cubiertos**.
+
+**Para la próxima**: antes de generar un lote, comprobar si la norma ya tiene preguntas recientes
+—`SELECT max(created_at)` por ley— o anunciar la ley en la tarea del backlog. El sistema de claim
+(`cola.cjs`) reparte impugnaciones, pero **la generación de banco no está claimada por ley**, así
+que dos sesiones pueden colisionar sin enterarse.
+
 ## Siguiente paso — GENERAR BANCO (lo caro)
 
 La estructura está completa; lo que falta es contenido:
-- **Las 12 normas UAL siguen a 0 preguntas** (303 artículos). La Ley 14/2011 ya tiene 12 (lote 1).
+- **11 de las 12 normas UAL siguen a 0 preguntas.** Hechas: Ley 14/2011 (12) y Normativa de permanencia (21, con la otra sesión).
 - **Temas servidos pero finos:** T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
 - **No generar preguntas de cifras desde el art. 1 de las Bases de Ejecución** (tabla aplanada,
   `is_verified=false`) hasta reconstruir la tabla.
