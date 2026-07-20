@@ -83,7 +83,6 @@
 
 > ⚠️ Índice desfasado respecto a `backlog_tasks` (fuente de verdad). Cerradas el 20/07: **T-001** (paso 1 desplegado; paso 2 → T-039) y **T-006**. Varias "abiertas" son colas cortas de tareas casi hechas: T-036 (3 cabos), T-009 (detector hecho, ~5 candidatos), T-026 (sistema vivo = mantenimiento), T-004 (solo Osakidetza bilingüe).
 
-0. 🔴 **Artículos-cajón** (ex-"ofimática infra-troceada") — **110 mega-chunks / ~21.000 preguntas**; el peor es **Correos** (T3 = 1.984 preguntas sobre un art. de 302k), no ofimática. Re-trocear antes que redactar huecos
 1. 🟠 Cubos sellados en verde — **3 cubos CERRADOS**; quedan 3 cabos: 52 needs_human (= import de contenido, NO relink), §8.1-ter al manual (bloqueado), 4 huérfanas de scope
 2. ✅ [HECHA 20/07] Importar normas que faltan + reactivar las 22 ocultadas del cubo 3 — 10 ya approved, 5 recuperadas (CyL), 1 retirada (ley derogada), 6 en needs_human por decisión
 3. 🟠 Relink `needs_human` + reescritura de explicaciones flojas (19/07)
@@ -562,7 +561,9 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
 - **Cómo:** generación server-side del PDF (el `window.print()` actual depende del navegador: en iPhone no descarga nada, hay que hacer zoom en la vista previa y compartir → "Guardar en Archivos"; en escritorio hay que elegir "Guardar como PDF" en Destino). El botón dice "Imprimir PDF" pero **no produce ningún PDF**, y de ahí vienen las 3 confusiones de hoy: valorar renombrarlo mientras no exista la descarga real.
 - **Estado:** sin implementar. Los 3 usuarios del 16/07 respondidos con las instrucciones manuales (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
 
-### [T-040] 🔴 [GRANDE — contenido] Artículos-cajón: ~21.000 preguntas sobre 110 mega-chunks (teoría rota + preguntas atascadas) — *ex-"Ofimática infra-troceada"*
+### [T-040] ⬜ [SIN PRIORIDAD — aparcada por tamaño (Manuel, 20/07)] Artículos-cajón: ~21.000 preguntas sobre 110 mega-chunks (teoría rota + preguntas atascadas) — *ex-"Ofimática infra-troceada"*
+> **Decisión 20/07 (Manuel): fuera del orden de ataque.** El trabajo es demasiado largo para encajarlo entre tareas; no se prioriza ni se coge "de paso". Queda documentada y medida para cuando se decida abrirla con plan propio y aprobación. **No aparece en el índice de prioridad a propósito** — no es un olvido.
+
 > **⚠️ RE-MEDIDO 20/07 (worktree aislado): el problema es MAYOR y el foco estaba equivocado.** La patología no es de ofimática: es **global**, y el peor caso con diferencia es **Correos**.
 > - **Escala real:** **110 artículos-cajón** (>20k chars) con **20.960 preguntas** colgando. De esos, **24 son >50k chars** y acumulan **11.538 preguntas**. (La cifra previa de esta ficha —"7.584 preguntas / 145 chunks de ofimática"— cubría solo una porción.)
 > - **Top por daño (nada de esto es ofimática):** **Correos T3 = 1.984 preguntas sobre UN art. 1 de 302k chars**; Correos T4 1.018/154k; Correos T12 939/183k; **Inglés GC 894/198k**; Correos T9/T1/T7/T10/T8/T6 entre 500 y 787; Topografía GC 450/61k. **Correos T1-T12 solo suma ~8.400 preguntas en 12 cajones** (todos `art. 1`). Word 365 (166 q/chunk) es un problema MENOR al lado.
