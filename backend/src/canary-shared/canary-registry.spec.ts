@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import {
   CANARY_REGISTRY,
@@ -8,6 +8,16 @@ import {
 import { canaryEventType } from './canary-probe';
 
 const alertRulesSrc = readFileSync(join(__dirname, '..', 'alerts', 'alert-rules.ts'), 'utf-8');
+
+// Directorios canary-* reales (fuente de verdad del sistema de ficheros), excluyendo
+// la infraestructura (runner/shared). Cruzar contra el registro cierra el punto ciego:
+// un canary nuevo sin entrada, o una entrada sin canary, rompe el build.
+const INFRA = new Set(['runner', 'shared']);
+const canaryDirs = readdirSync(join(__dirname, '..'))
+  .filter((d) => d.startsWith('canary-') && statSync(join(__dirname, '..', d)).isDirectory())
+  .map((d) => d.replace(/^canary-/, ''))
+  .filter((n) => !INFRA.has(n))
+  .sort();
 
 describe('CANARY_REGISTRY — guardarraíl', () => {
   it('INVARIANTE DE COTA: ningún write-canary sin acotar (anti-incidente 11/07)', () => {
@@ -59,5 +69,15 @@ describe('CANARY_REGISTRY — guardarraíl', () => {
       'por-leyes-scope',
       'psychometric-integrity',
     ]);
+  });
+
+  it('COMPLETITUD: el registro cubre TODOS los canary-*/ (ni huérfanos ni fantasmas)', () => {
+    // Si alguien añade backend/src/canary-<x>/ sin registrarlo (o borra un canary
+    // dejando la entrada), esto falla. Es lo que hace que "imposible meter un
+    // write-canary sin cota ni alerta" sea VERDAD: el registro no puede quedarse corto.
+    const registered = CANARY_REGISTRY.map((c) => c.name).sort();
+    const orphanDirs = canaryDirs.filter((d) => !registered.includes(d));
+    const phantomEntries = registered.filter((r) => !canaryDirs.includes(r));
+    expect({ orphanDirs, phantomEntries }).toEqual({ orphanDirs: [], phantomEntries: [] });
   });
 });
