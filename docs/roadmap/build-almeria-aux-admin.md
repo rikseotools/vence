@@ -13,7 +13,7 @@ Ejercicio 1 = test de 50 preguntas + 2 supuestos prácticos · Ejercicio 2 = pr�
 |---|---|
 | Temario literal (Anexo II) clonado a `topics.epigrafe` | ✅ 24 temas |
 | `topic_scope` de lo ya existente en BD | ✅ 15/24 temas · **8.481 preguntas** sin generar ninguna |
-| T13 Ley 14/2011 de la Ciencia importada del BOE | ✅ 6 artículos (falta banco) |
+| T13 Ley 14/2011 de la Ciencia importada del BOE | ✅ 6 artículos · **12 preguntas approved (lote 1)** |
 | Recon de las 8 normas propias de la UAL | ✅ **12 documentos, todos localizados y accesibles** |
 | Importar las normas UAL | ✅ **12 de 12** — **303 artículos UAL**; **los 24 temas tienen normativa, 0 huecos** |
 | Generar banco (T13 + normas UAL + temas finos) | ⬜ pendiente |
@@ -126,10 +126,40 @@ ningún tema sin normativa.**
   es la **disposición derogatoria** (deroga la resolución anterior al terminar ese curso). El
   título confirma que es la de **2026-27**. Documento correcto.
 
+## Generación de banco — lote 1 del T13 (20/07)
+
+Primer lote con el pipeline completo de `generar-preguntas-con-ia.md` **v2.5**, las 6 fases:
+`scripts/oposiciones/gen-t13-ley14-2011-batch1.cjs`. **12 preguntas `approved` y activas**
+sobre la Ley 14/2011 Sección 2.ª (T13 pasa de 0 a 12).
+
+| Fase | Resultado |
+|---|---|
+| 0bis · epígrafe + `topic_scope` | El epígrafe pide exactamente "Sección 2.ª Contratación del personal investigador de carácter laboral" y el scope son los 6 artículos justos. Sin sobre ni infra-scope |
+| 1-5 · generación → `draft` | 12 preguntas, 2 por artículo, correcta = cita literal |
+| 6 · auto-auditoría 7 checks | 12/12 tras corregir (ver abajo) |
+| 7 · auditoría **ciega** Sonnet | **12/12 PERFECT** |
+| 8 · transición | 12 → `approved` con `ai_verified_perfect` + `ai_verification_results` (`claude_code`) |
+| 9 · re-verificación Sonnet **nuevo** | **12/12 CLEAN, lote APTO** (`claude_code_recheck`) |
+
+**Lo que atrapó el pipeline antes de publicar** — el *tell* de longitud (§2.2-bis) tumbó **5 de 12**:
+2 al generar y **3 más en la auto-auditoría, al aplicar el umbral real del manual** (±30%, ratio ≤1,4;
+yo había puesto 1,6, que colaba). Es el sesgo que hacía acertables las preguntas de IA eligiendo "la
+más larga" el 71% de las veces. Reescritas con distractores construidos sobre texto legal real de
+artículos **vecinos** de la misma ley: obliga a saber el artículo exacto, no el tema. El auditor ciego
+lo notó por su cuenta y observó que en dos preguntas **la correcta es la más corta**.
+
+**Fase 9 no fue una formalidad**: es la única que auditó las **explicaciones** (blockquote literal,
+coherencia letra↔`correct_option`, apartados citados). Salió limpia, pero ninguna fase anterior las
+había mirado.
+
+**Rendimiento**: 12 preguntas / 6 artículos = 2 por artículo. Según la curva del manual (15→11→10→8→8→5),
+un 2.º lote sobre esta misma sección rendiría menos; el techo natural de una ley monotemática está
+en torno al 95%.
+
 ## Siguiente paso — GENERAR BANCO (lo caro)
 
 La estructura está completa; lo que falta es contenido:
-- **Las 12 normas UAL + la Ley 14/2011 están a 0 preguntas** (303 + 6 artículos sin banco).
+- **Las 12 normas UAL siguen a 0 preguntas** (303 artículos). La Ley 14/2011 ya tiene 12 (lote 1).
 - **Temas servidos pero finos:** T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
 - **No generar preguntas de cifras desde el art. 1 de las Bases de Ejecución** (tabla aplanada,
   `is_verified=false`) hasta reconstruir la tabla.
