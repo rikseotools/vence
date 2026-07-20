@@ -8,6 +8,7 @@ import {
   extractTcAnnulments,
   articleCarriesVigenciaNote,
   assessLawAnnulments,
+  boeBlockRetainsAnnulment,
 } from '@/lib/laws/annulledProvisions'
 
 // texto REAL de la referencia posterior #73 del análisis BOE de la LBRL (BOE-A-1985-5392)
@@ -81,6 +82,21 @@ describe('articleCarriesVigenciaNote', () => {
   })
   it('FALSE con "matrimonio declarado nulo" (Código Civil, sin STC)', () => {
     expect(articleCarriesVigenciaNote('El cónyuge de buena fe cuyo matrimonio haya sido declarado nulo...')).toBe(false)
+  })
+})
+
+describe('boeBlockRetainsAnnulment (v2 — inciso anulado retenido en el consolidado)', () => {
+  it('TRUE con el bloque REAL del art 126 (BOE retiene el inciso + nota inline)', () => {
+    const bloque = 'Sus derechos económicos y prestaciones sociales serán los de los miembros electivos. ' +
+      'Declarado inconstitucional y nulo el inciso destacado del párrafo segundo del apartado 2 por ' +
+      'Sentencia del TC 103/2013, de 25 de abril. Ref. BOE-A-2013-5446 . En todo caso, para la válida constitución…'
+    expect(boeBlockRetainsAnnulment(bloque)).toBe(true)
+  })
+  it('FALSE con un artículo reformado (texto limpio, sin nota inline)', () => {
+    expect(boeBlockRetainsAnnulment('2. Los efectos del matrimonio se regirán por la ley personal común de los cónyuges…')).toBe(false)
+  })
+  it('FALSE con contenido sustantivo (LOTC: "podrá declarar inconstitucionales")', () => {
+    expect(boeBlockRetainsAnnulment('El Tribunal podrá declarar inconstitucionales por infracción del art. 81 CE las leyes…')).toBe(false)
   })
 })
 

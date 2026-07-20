@@ -61,9 +61,15 @@ function articleCarriesVigenciaNote(content) {
   if (/declarad[oa]s?\b[\s\S]{0,60}\b(?:inconstitucional|nul)[\s\S]{0,80}\b(?:STC|Sentencia)\s+\d+\/\d{4}/i.test(t)) return true
   return false
 }
+// v2: ¿el bloque del consolidado BOE RETIENE el inciso anulado con nota inline?
+function boeBlockRetainsAnnulment(blockText) {
+  const t = (blockText || '').replace(/<[^>]+>/g, ' ')
+  return /(?:declarad[oa]s?\s+(?:inconstitucional|nul)|inconstitucional(?:idad)?\s+y\s+nul)[\s\S]{0,140}\b(?:Sentencia|STC|del\s+TC|Tribunal\s+Constitucional)\b/i.test(t)
+}
 // ────────────────────────────────────────────────────────────────────────────
 
 const boeIdFromUrl = (u) => { const m = (u || '').match(/(BOE-A-\d{4}-\d+)/); return m ? m[1] : null }
+const normNum = (n) => String(n).replace(/\s+/g, ' ').trim().toLowerCase()
 
 async function fetchAnalisis(boeId) {
   try {
@@ -74,12 +80,38 @@ async function fetchAnalisis(boeId) {
   } catch { return null }
 }
 
+// índice → mapa 'Artículo N' (normalizado) → bloque id (para pedir el bloque del artículo)
+async function fetchArticleBlockMap(boeId) {
+  try {
+    const r = await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${boeId}/texto/indice`,
+      { headers: { Accept: 'application/json' } })
+    if (!r.ok) return null
+    const j = await r.json()
+    const map = new Map()
+    for (const b of (j?.data?.[0]?.bloque ?? [])) {
+      const m = String(b?.titulo || '').match(/art[íi]culo\s+(\d+(?:\s*bis)?)/i)
+      if (m && b?.id) map.set(normNum(m[1]), b.id)
+    }
+    return map
+  } catch { return null }
+}
+
+async function fetchBlockText(boeId, blockId) {
+  try {
+    const r = await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${boeId}/texto/bloque/${blockId}`,
+      { headers: { Accept: 'application/xml' } })
+    if (!r.ok) return null
+    return await r.text()
+  } catch { return null }
+}
+
 ;(async () => {
   const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
   const LIMIT = parseInt(arg('--limit') || '0', 10)
   const ONE = arg('--law')
   const EMIT = process.argv.includes('--emit')
   const JSON_OUT = process.argv.includes('--json')
+  const V2 = !process.argv.includes('--no-v2') // v2 (default): solo flaguea si el BOE retiene el inciso anulado
 
   const c = new Client({ connectionString: getUrl(), ssl: { rejectUnauthorized: false } })
   await c.connect()
@@ -103,11 +135,23 @@ async function fetchAnalisis(boeId) {
     withAnnul++
     // artículos que servimos, por número
     const { rows: arts } = await c.query('SELECT article_number, content FROM articles WHERE law_id=$1', [l.id])
-    const byNum = new Map(arts.map((a) => [String(a.article_number).replace(/\s+/g, ' ').trim().toLowerCase(), a.content]))
+    const byNum = new Map(arts.map((a) => [normNum(a.article_number), a.content]))
+    // v2: mapa artículo→bloque BOE (para comprobar si el inciso anulado SIGUE en el consolidado)
+    const blockMap = V2 ? await fetchArticleBlockMap(boeId) : null
+    const blockCache = new Map()
     for (const a of annuls) {
       for (const artNum of a.articles) {
         if (!byNum.has(artNum)) continue // no servimos ese artículo
         if (articleCarriesVigenciaNote(byNum.get(artNum))) continue // ya marcado
+        // v2: solo es REAL si el BOE RETIENE el inciso anulado (nota inline). Si el
+        // artículo se reformó (texto limpio) → falsa alarma → NO flaguear.
+        if (V2 && blockMap) {
+          const bid = blockMap.get(artNum)
+          if (!bid) continue // sin bloque localizable → conservador: no flaguea (evita ruido)
+          let block = blockCache.get(bid)
+          if (block === undefined) { block = await fetchBlockText(boeId, bid); blockCache.set(bid, block) }
+          if (!block || !boeBlockRetainsAnnulment(block)) continue // reformado / no retenido → falsa alarma
+        }
         findings.push({ law: l.short_name, law_id: l.id, article: artNum, sentencia: a.sentencia, id_norma: a.idNorma, texto: a.texto.slice(0, 220) })
       }
     }

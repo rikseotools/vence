@@ -93,6 +93,19 @@ export function articleCarriesVigenciaNote(content: string | null | undefined): 
   return false
 }
 
+/**
+ * v2 — ¿el BLOQUE del artículo en el consolidado BOE RETIENE el inciso anulado con nota
+ * inline? El BOE mantiene el texto tachado + "Declarado inconstitucional y nulo … por
+ * Sentencia … del TC …" cuando el legislador NO ha reformado el artículo (caso art. 126).
+ * Si el artículo se reformó, el texto anulado desaparece y NO hay nota inline → falsa
+ * alarma. Distingue de un artículo que solo HABLA de constitucionalidad (LOTC: "el
+ * Tribunal podrá declarar inconstitucionales…" — 'declarar' ≠ 'declarado', y sin Sentencia).
+ */
+export function boeBlockRetainsAnnulment(blockText: string | null | undefined): boolean {
+  const t = (blockText || '').replace(/<[^>]+>/g, ' ')
+  return /(?:declarad[oa]s?\s+(?:inconstitucional|nul)|inconstitucional(?:idad)?\s+y\s+nul)[\s\S]{0,140}\b(?:Sentencia|STC|del\s+TC|Tribunal\s+Constitucional)\b/i.test(t)
+}
+
 export interface AnnulmentFinding {
   articleNumber: string
   sentencia: string | null
