@@ -14,6 +14,54 @@
 > Formato por tarea: `### [PRIORIDAD] Título` + 1-3 líneas (por qué, link al cómo, estado). Al cerrar una,
 > muévela a "## Hechas" con la fecha, o bórrala si ya no aporta.
 
+## 🔢 Orden de ataque (prioridad, snapshot 20/07)
+
+> Índice priorizado de las 29 abiertas (solo nº + título; el detalle está en cada entrada de "## Abiertas").
+> Snapshot manual: al cerrar/abrir tareas puede quedar desfasado — la fuente de verdad de estado es cada `### [PRIORIDAD]`.
+
+**Calidad / correctness (primero):**
+1. 🔴 Cubos sellados en verde — 3 huecos destapados por impugnaciones (16/07)
+2. 🟠 Importar normas que faltan + reactivar las 22 preguntas ocultadas (17/07)
+3. 🟠 Relink `needs_human` + reescritura de explicaciones flojas (19/07)
+4. 🟠 Framework profesional de canaries (P1-P3) — anti-incidente 11/07
+
+**Contenido / scope↔epígrafe:**
+5. 🟡 Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
+6. 🟡 Verificación scope↔epígrafe — backlog de plataforma
+7. 🟡 Huecos de contenido Aux. Admin. Aragón (epígrafes 13/07)
+8. 🟡 Huecos de contenido Aux. Admin. Extremadura (verify:scope 14/07)
+9. 🟡 Verificar + completar Aux. Admin. Ayto. de Madrid
+10. 🟢 Bloque II (parte específica) Agrupación Profesional Servicios Públicos CARM vacía
+11. 🟢 Editorial TCAE "Unidad del paciente"
+
+**Ingresos / vendibles:**
+12. 🟠 Construir Ujieres de las Cortes Generales
+13. 🟠 Construir Gestión Administrativa A2 (Junta de Andalucía)
+14. 🟠 Construir TSID (Imagen para Diagnóstico y Medicina Nuclear)
+15. 🟠 Botón premium "imprimir/descargar temario completo"
+16. 🟡 Supuestos prácticos para Administrativo Comunidad de Madrid (demanda usuaria)
+
+**Landings / app:**
+17. 🟡 Render multi-convocatoria: landing pinta las 2 convocatorias vivas separadas
+18. 🟡 Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a)
+19. 🟡 Exponer en la UI el filtro "excluir preguntas recientes"
+20. 🟡 Migrar `/leyes/[law]` a on-demand (flakiness del build)
+
+**Infra / decisión de coste:**
+21. 🟡 Provisionar RDS read replica (admin/analytics)
+22. 🟢 Email RGPD de borrado *exactly-once*
+23. 🟢 Poblar `law_sections` (títulos/capítulos) en todas las leyes + teoría
+
+**Cabos / pilotos:**
+24. 🔵 ~129 leyes non-BOE con gaceta propia sin verificar contra fuente
+25. 🔵 Triaje de revisión de preguntas con OpenRouter + ensemble (pilot)
+
+**Baja / seguimiento / demanda:**
+26. 🟢 Pagar a Alfonso Martínez su saldo de embajador (9 €) — rápida
+27. 🟢 Capturar fecha de examen de las 2 oposiciones de la Univ. de León
+28. 🟢 16 preguntas de diagnóstico por imagen esperando su oposición (aparcada)
+29. 🟢 Oposiciones pedidas por usuarios — valorar (no comprometido)
+
 ## Abiertas
 
 ### 🟠 [PASO 1 HECHO 20/07 — SIN DEPLOY] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
