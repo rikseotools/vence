@@ -41,9 +41,8 @@
 > `node scripts/backlog.cjs next` ya aplica este orden.
 
 **🟠 Alta — barato y con valor claro (empezar por aquí):**
-1. **T-033** Pagar a Alfonso Martínez su saldo de embajador (9 €) — minutos, y es dinero que se le debe
-2. **T-035** Capturar fecha de examen de las 2 oposiciones de la Univ. de León — 2 consultas a fuente oficial
-3. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
+1. **T-035** Capturar fecha de examen de las 2 oposiciones de la Univ. de León — 2 consultas a fuente oficial
+2. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
 4. **T-029** Exponer en la UI el filtro "excluir preguntas recientes" — la feature ya existe, es solo UI
 5. **T-039** Botón premium temario completo + **PDF server-side** — código acotado; cubre perk premium Y el fix in-app (absorbe el paso 2 de T-001)
 
@@ -120,9 +119,8 @@
 25. ✅ [CERRADA 20/07] Triaje con OpenRouter + ensemble → investigación con veredicto ("no industrializar"), cero infraestructura viva; residuo: ~$9 de crédito sin gastar
 
 **Baja / seguimiento / demanda:**
-26. 🟢 Pagar a Alfonso Martínez su saldo de embajador (9 €) — rápida
-27. 🟢 Capturar fecha de examen de las 2 oposiciones de la Univ. de León
-28. 🟢 16 preguntas de diagnóstico por imagen esperando su oposición (aparcada)
+26. 🟢 Capturar fecha de examen de las 2 oposiciones de la Univ. de León
+27. 🟢 16 preguntas de diagnóstico por imagen esperando su oposición (aparcada)
 29. 🟢 Oposiciones pedidas por usuarios — valorar (no comprometido)
 
 ## Abiertas
@@ -405,12 +403,6 @@
 ### [T-032] ✅ [DESPLEGADA 19/07] Guardarraíl anti-duplicado de recompensas
 - **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) cierra el hueco de doble recompensa por el mismo motivo.
 - **✅ YA EN PROD:** `f3bc0954` (10/07) es ancestro de la imagen desplegada `deploy-d5f00d3c` (ECR, deploy 19/07 08:36). El estado previo del backlog (prod=`4465d15c`, "pendiente de deploy") estaba **stale**: se desplegó junto con el cierre de la campaña de citas. Verificado: `git merge-base --is-ancestor f3bc0954 d5f00d3c` = 0.
-
-### [T-033] 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)
-- **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **9 € pagables** = 3 recompensas de bug aprobadas (3 €×3), sin hold, 0 pagado. La 3ª es del bug de Auxiliar de Biblioteca (12/07). Emitir vale Amazon.es.
-- **Por qué:** dinero ganado y disponible sin cobrar; dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 4 € de saldo) o esperar a que acumule 10 €.
-- **Cómo:** `docs/runbooks/embajadores-recompensas.md` (POST `/api/admin/rewards/pay` o `payAccumulated`). Panel `/admin/embajadores/7c6612bd`.
-- **Estado:** 9 € acumulados (12/07), pendiente de decisión de Manuel (no pagar aún).
 
 ### [T-034] 🟡 [MEDIA] Migrar /leyes/[law] a on-demand (arreglar la flakiness del build)
 - **Qué:** `/leyes/[law]` es la ÚNICA ruta de alto volumen que sigue en SSG real (`generateStaticParams` → 1.278 leyes). Prerenderiza 1.278 páginas RDS-dependientes en cada build → **CONNECT_TIMEOUT a RDS + OOM** intermitentes (build falló 2 veces el 12/07 desplegando el fix de /test/articulo).
