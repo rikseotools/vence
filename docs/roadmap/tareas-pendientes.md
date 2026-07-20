@@ -242,6 +242,26 @@
 - **Pendiente menor:** de Seguridad Social hay indicios (no oficiales) de que ya salió la relación de aprobados → merece una segunda pasada para añadir el hito `resultados` con cita del BOE.
 
 ### [T-059] 🟠 Encender el 2º modo de `timeline_silence` (flag `TIMELINE_EXHAUSTED_ENABLED`) tras drenar el stock
+> **✅ VERIFICADO EL STOCK 20/07 (esto ERA el drenaje que pedía la ficha).** Medido: **21 candidatos**, no 49 —
+>   la cifra de la ficha estaba desactualizada. Verificados los 21 uno a uno contra su fuente oficial (4 agentes):
+>   **2 novedades reales, 15 sin novedad (silencio confirmado), 4 inaccesibles.**
+>   - **Murcia (Ayto., aux. admvo.) — REGISTRADA:** lista provisional de admitidos del 19/06/2026 (nota oficial
+>     web.murcia.es + PDF de la sede). Hito añadido + `estado_proceso` → `lista_admitidos`. Verificado en fuente primaria.
+>   - **Zaragoza (Diputación) — NO registrada:** el agente vio designación de tribunal (BOPZ 143, 25/06) pero SOLO
+>     por fuentes secundarias; el BOPZ falla por certificado TLS y la búsqueda no confirma el anuncio. **No se registra
+>     sin fuente primaria** (regla de la sesión: nunca inventar). Reintentar cuando bop.dpz.es sea accesible.
+> **Hallazgo de calibración (medido, NO aplicado — cambiar umbrales con n=21 sería sobreajustar):**
+>   - Las **7 candidatas de >120 días dieron 0 novedades**; las 2 novedades salieron en la ventana 35-97 días. El
+>     valor del sensor está en 21-120 días; más allá es lentitud administrativa (T-060), no señal. **Anotado como
+>     observación a re-evaluar con semanas de datos reales, no como cambio de umbral de un snapshot.**
+>   - **4 fuentes ROTAS** (anti-bot Radware en murciasalud.es → SMS y tcae-murcia; ECONNREFUSED en uhu.es → Huelva;
+>     SPA Angular en dipucuenca → Cuenca). Emitir `timeline_silence` sobre ellas daría señales **inverificables por
+>     construcción** (el admin no puede comprobarlas) = el mecanismo por el que murió `hash_change`. **Esto NO es de
+>     este sensor: es "URL de seguimiento caída" (familia T-047/monitoreo roto).** Convendría que el sensor no emita
+>     cuando `seguimiento_change_status='error'` — condición de principio, no lista negra de URLs.
+> **DECISIÓN PENDIENTE (Manuel): encender o no.** El stock está verificado (2 aplicadas/verificadas, resto confirmado).
+>   Un sensor de silencio rinde poco por naturaleza (~10% novedad) pero cubre el 76% de oposiciones que nadie más
+>   mira. Encender sigue siendo **backend + deploy** (flag `TIMELINE_EXHAUSTED_ENABLED=true` en SSM).
 - **Qué:** el sensor de "timeline AGOTADO" ya está en `main` (commit `c94dbd9d`) pero **arranca apagado**. Falta drenar el stock acumulado y encenderlo con `TIMELINE_EXHAUSTED_ENABLED=true` en SSM + deploy del backend.
 - **Por qué apagado:** el día que se escribió había **49 candidatos** (43 tras el tope de 1 año). Encenderlo de golpe vuelca 49 señales el primer día, y una bandeja que grita se aprende a ignorar — exactamente como murió `hash_change` (32 aciertos de 835 señales, ver T-050).
 - **El punto ciego que tapa:** `findTimelineSilences` exigía un hito `current` vencido, pero el estado natural de un timeline al día es **todo `completed`** → **90 de 118 oposiciones activas (76%) no las miraba nadie**. Caso raíz: `administrativo-universidad-leon` (T-035), con contenido listo y esperando fecha de examen que ningún sensor iba a cazar tras retirar `hash_change`.
