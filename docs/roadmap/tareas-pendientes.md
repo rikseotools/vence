@@ -70,7 +70,7 @@
 24. **T-003** Títulos huérfanos — **DRENADO 20/07** (42 clusters adjudicados, 16 huecos reales arreglados); queda solo como mantenimiento de lo que aparezca nuevo
 25. **T-038** Relink masivo de `needs_human` + explicaciones flojas
 26. **T-044** Construir Aux. Admin. Univ. de **Almería** (21 plz, inscripción viva) — la más barata de construir: reusa Cádiz/Huelva/Granada
-27. **T-045** Construir Administrativo **Agencia Tributaria Canaria** (20 plz, inscripción viva) — la parte general la cubre el banco de Canarias
+27. **T-045** Construir Agentes de Tributos **Agencia Tributaria Canaria** — ⚠️ degradada: son **8 plz libres** (no 20) y temario tributario específico
 28. **T-016** Construir TSID · 29. **T-021** Construir Ujieres Cortes · 30. **T-022** Construir Gestión A2 Andalucía
 
 **⬜ Sin prioridad — fuera del orden de ataque:**
@@ -330,15 +330,24 @@
 ### [T-044] 🟠 [VENDIBLE — inscripción viva] Construir Auxiliar Administrativo de la Universidad de Almería (C2)
 - **Qué:** `auxiliar-administrativo-universidad-almeria` **catalogada** (⚪ `is_active=false`, 0 temas) con **21 plazas** y **plazo de inscripción abierto hasta el 29/07/2026**. Construir para hacerla vendible.
 - **Por qué:** es la de **coste más bajo** de las 8 con inscripción viva sin construir (barrido 20/07, filtrado a C1/C2). C2 + universidad + Andalucía = el perfil que mejor convierte, y el banco ya existe en hermanas directas: **Cádiz 9.532 preguntas, Huelva 6.257, Granada 3.832**, más el fondo genérico de auxiliar de universidad (UNED 12.767, León 11.067, Carlos III 8.982, Alcalá 8.129). Reuso alto → construir sale casi gratis.
-- **⚠️ Bloqueante antes de empezar:** la convocatoria **no tiene `programa_url` ni `exam_date`** en BD. Primer paso = localizar el temario oficial en su boletín/sede y fijar la fecha de examen; sin fuente oficial no se construye (regla de contenido legal).
-- **Ojo al encuadre:** el cierre de inscripción (29/07) **no** es la ventana de venta — el examen viene después y ahí se concentran las compras. Que el plazo esté a punto de cerrar no descarta construirla.
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. **Estado:** sin empezar.
+- **✅ FUENTE OFICIAL LOCALIZADA (20/07): `BOE-A-2026-14723`** (Resolución de 30/06/2026 del Rectorado) + BOJA nº132 de 10/07/2026. Datos verificados contra el BOE:
+  - **21 plazas, concurso-oposición libre**, subgrupo **C2**, 1 reservada a discapacidad ≥33%.
+  - **Examen: NO antes del 1/09/2026**, fecha exacta por fijar en resolución posterior del Rectorado → **la ventana de venta es amplia** (2+ meses), no se cierra con la inscripción.
+  - **Temario (Anexo II), 3 bloques:** **Bloque I** normativa general (**8 temas**: procedimiento administrativo, régimen jurídico, protección de datos, EBEP, incompatibilidades, transparencia, igualdad, PRL) · **Bloque II** normativa universitaria (**15 temas**: sistema universitario, gobernanza, presupuestos, personal, enseñanzas, matrícula, títulos, ECTS, administración electrónica) · **Bloque III** informática (**Word y Excel 365**).
+  - **Sistema selectivo:** Ejercicio 1 = test de **50 preguntas** (bloques I-II) + **2 supuestos prácticos** (bloque II); Ejercicio 2 = **práctica informática de 2h30** (bloque III); más fase de concurso.
+- **Coste real de construcción (estimado con el temario en la mano):** **Bloque I ≈ gratis** (los 8 temas son nuestro núcleo reutilizado en decenas de oposiciones) y **Bloque III ≈ gratis** (banco Word/Excel 365 enorme). **El trabajo real es el Bloque II**: 15 temas de normativa propia de la UAL (estatutos, presupuestos, matrícula), que las hermanas andaluzas NO cubren — cada universidad tiene los suyos.
+- **⚠️ Dos avisos que matizan la venta:** (a) **tiene 2 supuestos prácticos**, y la doctrina es priorizar **C2 sin supuesto** ([[feedback-c2-sin-supuestos-primero]]); (b) el Ejercicio 2 es una **práctica de ordenador**, no un test → nuestro formato no lo entrena, solo cubre la teoría de ofimática.
+- **Dato a corregir en BD:** `inscription_deadline` figura como 29/07/2026; el BOE fija 20 días naturales desde la publicación en BOJA (7-10/07) → verificar la fecha exacta antes de pintarla en la landing.
+- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. **Estado:** sin empezar; fuente y temario ya localizados.
 
-### [T-045] 🟠 [VENDIBLE — inscripción viva] Construir Administrativo de la Agencia Tributaria Canaria (C1)
-- **Qué:** `administrativo-agencia-tributaria-canaria` **catalogada** (⚪ `is_active=false`, 0 temas) con **20 plazas** y **plazo de inscripción abierto hasta el 26/07/2026**. Construir para hacerla vendible.
-- **Por qué:** la parte general la cubre banco ya existente de Canarias — **`administrativo_canarias` 8.845 preguntas + `auxiliar_administrativo_canarias` 9.741** —, así que el trabajo real se reduce al **bloque tributario específico**. Segunda mejor relación plazas/coste del barrido 20/07.
-- **⚠️ Bloqueante antes de empezar:** sin `programa_url` ni `exam_date` en BD → localizar el temario oficial (BOC / sede de la Agencia Tributaria Canaria) y fijar fecha de examen antes de generar nada.
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. **Estado:** sin empezar.
+### [T-045] 🟡 [VENDIBLE — DEGRADADA tras verificar: es escala tributaria, no administrativo general] Construir Agentes de Tributos de la Agencia Tributaria Canaria (C1)
+- **Qué:** `administrativo-agencia-tributaria-canaria` **catalogada** (⚪ `is_active=false`, 0 temas), plazo de inscripción hasta el **27/07/2026**.
+- **⚠️ CORRECCIÓN tras verificar (20/07) — la ficha inicial la sobrevaloró en dos cosas:**
+  - **No son 20 plazas para nosotros: son 8.** El desglose real es **8 de turno libre + 12 de promoción interna**; las de PI son para personal ya funcionario, mercado que no es el nuestro. Nuestro dato de BD (`plazas_libres=20`) mezcla ambos turnos → **corregir en BD**.
+  - **No es "Administrativo" genérico: es la Escala de AGENTES DE TRIBUTOS** (Cuerpo Administrativo, C1). El reuso que estimé (banco de Canarias, 8.845 + 9.741 preguntas) cubre bastante menos de lo que parecía: el peso del temario es **tributario canario específico** (IGIC, AIEM, procedimientos de gestión/recaudación), no administración general.
+- **Estado de la fuente:** **temario NO localizado**. La ficha de la sede electrónica está **obsoleta** (datos de 2019, 2 plazas). La referencia que circula es BOC nº117 de 12/06 + Resolución de la Presidencia de 29/05/2026, pero **la fuente sindical donde aparece mezcla 2025 y 2026** → no es fiable; hay que ir al BOC oficial antes de dar nada por bueno.
+- **Por qué se degrada a 🟡:** 8 plazas reales + temario especializado poco reutilizable + fuente sin localizar la dejan por detrás de T-044 y de otras vendibles. No se descarta, pero deja de ser "20 plazas casi gratis".
+- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`; primero localizar el BOC oficial con las bases y el anexo del temario. **Estado:** sin empezar.
 
 ### [T-021] 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
 - **Qué:** `ujieres-cortes-generales` **catalogada** (⚪ `is_active=false`, nacional) sin temario ni tests. Construir para hacerla vendible.
