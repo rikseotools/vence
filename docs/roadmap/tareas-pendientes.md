@@ -278,7 +278,24 @@
 
 ### [T-004] 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
 - **Qué (HECHO 19/07, verificado vs fuente oficial + en vivo en RDS):** Aragón VIII Convenio (8 arts, nº de maquetación BOA pegado al texto), UMU Matrícula 2026/2027 (~27 arts: marca de agua PDF incrustada + apartados descolocados 18/19/29/30 recompuestos contra fuente), Cantabria Decreto 152/2005 art.7, Instituciones Internacionales GC (5 títulos mal atribuidos), Osakidetza Decreto 255/1997 (5 arts euskera→castellano). Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
-- **PEND (bajo ROI, teoría-only):** Osakidetza Decreto 255/1997 arts **5, 8, 13, 14, 15, 17, 20** aún bilingües (0 preguntas cuelgan) → re-import castellano del BOPV.
+- **✅ HECHO 20/07 — Osakidetza Decreto 255/1997 (y NO era "bajo ROI"):** al auditar los 21 artículos contra la
+  fuente oficial resultó que el defecto era mayor que "bilingües". Eran **8 artículos** (5, 7, 8, 13, 15, 17, 18, 20),
+  no 7, y de tres clases:
+  - **Bilingües + basura de PDF** (5, 13, 15, 17): el import del PDF del BOPV a dos columnas intercaló euskera y
+    castellano, más cabeceras tipo `EHAA - 1997ko azaroak 14, ostirala`.
+  - **Apartados que solo existían en euskera** (13: el apartado 2; 20: saltaba del 1 a un "4.–" en euskera).
+  - **TRUNCADOS sin euskera** (7, 8, 18): del **art. 8 servíamos 447 de 3.902 caracteres (faltaba el 88%)** — toda la
+    composición del Consejo de Administración, contenido nuclear de examen que el opositor NO veía. Art. 18 al 60%, art. 7 al 24%.
+  - **Falso positivo descartado:** el art. 14 estaba bien (solo saltos de línea del PDF).
+  - **Fuente y método:** HTML oficial del Gobierno Vasco (BOPV nº 219, 14/11/1997), extraído con
+    `scripts/oposiciones/extraer-bopv-decreto-255-1997.cjs`. **NO se usó la transcripción de un extractor LLM**: al
+    contrastar, el LLM había convertido las sublistas `a) b) c)` del art. 15 en "1. 2. 3." — habría metido un error
+    estructural en contenido legal. El script reconstruye la numeración que el BOPV deja implícita en `<ol>/<li>`
+    (`ol.x42tNumberBullets` → `N.–`, `ol.x42tLetterBullets` → `a)`).
+  - **Riesgo cero de descuadre:** ninguno de los 8 tenía preguntas colgando (las 9 de la ley están en los arts. 0, 1, 3 y 6).
+  - Backup previo, `boe_url` + `last_verification_summary` registrados (la ley no tenía fuente), caché
+    `teoria`/`temario`/`laws` invalidada y **verificado en producción**: 0 euskera en el tema y ya se ve la composición
+    del Consejo y los órganos de contratación.
 - **Nota:** el detector "arranca en apartado >1" tiene ALTA tasa de falsos positivos (numeración "artículo.apartado", p.ej. art.21→"21.1" es correcto) — filtrar a mano.
 
 ### [T-005] ✅ [HECHO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (917 preguntas)
