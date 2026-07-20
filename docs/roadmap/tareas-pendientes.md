@@ -16,6 +16,16 @@
 
 ## Abiertas
 
+### 🟠 [PASO 1 HECHO 20/07 — SIN DEPLOY] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+- **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hacía nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Fallaba en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes. Caso María (fb feb79fc5, `piyou22@gmail.com`): 100% de sus sesiones GSA in-app en iPhone.
+- **✅ PASO 1 construido (20/07, aviso in-app + centralización):**
+  - **Detector** `lib/browser/inAppBrowser.ts` — puro/SSR-safe: allowlist de apps (GSA, Instagram, FBAN, TikTok, LINE, X, Snapchat, LinkedIn, WhatsApp, Pinterest) **+ heurística iOS-webview** (iOS que no es Safari/CriOS/FxiOS/EdgiOS real → WKWebView) para no tener falsos negativos con apps desconocidas.
+  - **Componente compartido** `components/TopicPrintButton.tsx` — botón + los 2 modales (registro + aviso in-app con "copiar enlace") en un solo sitio. **Elimina la duplicación** que había en los ~117 `TopicContentView.tsx` (2 variantes, una con typos sin tildes → arreglados de paso). Rollout por codemod anclado + auto-verificado.
+  - **Observabilidad** — evento `temario_print_action` (`lib/observability/client.ts` union + SAMPLE_RATES + manual `observability.md`), `action ∈ {print, inapp_blocked, copy_link, register_prompt}` + `{slug, topic}`. Antes el botón era CIEGO. Con `inapp_blocked` mediremos el tamaño real del muro.
+  - **Capas de test (verde):** unitario detector + corpus de simulación de UAs, integración de componente RTL/jsdom conduciendo el componente real con las 6 ramas incl. fallo/ausencia de portapapeles, guardarraíl estructural anti-regresión (`__tests__/guardrails/topicPrintButton.guardrail.test.ts`). Typecheck limpio. Seguridad: el temario no expone `correct_option`, detector puro, componente sin datos sensibles.
+  - **PENDIENTE:** deploy (`scripts/deploy-frontend.sh`). Al desplegar, avisar a Victoria/María y valorar reward.
+- **Paso 2 — fix de verdad (pendiente decisión):** que el botón **genere el PDF nosotros** (ruta server que renderice el tema) en vez de `window.print()`, para que la descarga funcione desde cualquier navegador (in-app incluido) Y sirva de perk premium (PDF del temario completo/por bloque).
+
 ### 🟡 [ABIERTO 19/07] Render multi-convocatoria: landing pinta las 2 convocatorias vivas como bloques separados
 - **Qué:** cuando una oposición tiene 2 convocatorias vivas a la vez (caso Aux. Admin. Comunidad de Madrid: Orden 264/2026 de 645 plz **en tramitación** —lista de admitidos, examen pendiente— + Orden 1628/2026 de 673 plz con **inscripción abierta** hasta 10/08/2026), la landing lee de `oposiciones_ssot` (solo la `is_current`) para hero/tarjetas, y el **timeline mezcla los hitos de AMBAS convocatorias** (dos "Convocatoria publicada en BOCM", dos plazos de inscripción) → puede confundir a un usuario despistado.
 - **Origen:** feedback de Esther Pimentel (`9d7cabdd`, resuelto): buscaba dónde inscribirse en Aux. Admin. de Madrid; el timeline mezclado y la confusión Ayuntamiento/Comunidad la despistaron. El hero SÍ muestra bien la abierta (673 plz, 10/08); el dato es correcto, es solo UX.

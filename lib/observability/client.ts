@@ -46,6 +46,9 @@ const SAMPLE_RATES: Record<string, number> = {
   daily_goal_banner_action: 1.0,
   // Flechitas de tendencia del temario — bajo volumen, 100% para señal completa.
   topic_trend_action: 1.0,
+  // Botón "Imprimir PDF" del temario — bajo volumen (clic manual), 100% para medir
+  // el uso y, sobre todo, el muro de navegadores in-app (inapp_blocked).
+  temario_print_action: 1.0,
   // Avisos de la campana (Fase 8) — 100% para CTR fiable (shown=denominador,
   // clicked=numerador) mientras el volumen sea bajo.
   oposicion_alert_shown: 1.0,
@@ -117,6 +120,12 @@ export type ClientEventType =
   // re-activa, para entender la fricción de la métrica. metadata.action ∈
   // {'show','hide','toggle_failed'}. userId va auto.
   | 'topic_trend_action'
+  // Botón "Imprimir PDF" del temario. Antes CIEGO: ni sabíamos cuánta gente lo usa
+  // ni que en navegadores in-app (app de Google/Instagram/FB…) window.print() es un
+  // no-op silencioso (caso María, fb feb79fc5). metadata.action ∈
+  // {'print','inapp_blocked','copy_link','register_prompt'} + {slug, topic}. Con
+  // 'inapp_blocked' medimos el tamaño real del muro y si el apaño (copy_link) se usa.
+  | 'temario_print_action'
   // Banner global "Inscripción abierta" (boca-oreja). Antes era CIEGO (20/06): ni
   // impresiones, ni aperturas, ni cierres. Ahora medimos por convocatoria
   // (metadata.slug) → CTR, tasa de cierre y si el cooldown reduce el martilleo.
