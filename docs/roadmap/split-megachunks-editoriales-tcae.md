@@ -54,6 +54,44 @@ después en los 28 temas — cero regresión.** Backup en `backup-split-fase2.js
 - **`1.4` solo recibió 5 preguntas**: las de UPP viven en realidad en el art.3 "Cambios posturales".
   Sugiere que el reparto entre `1.4` y el art.3 merece una pasada.
 
+## ✅ HECHO (20/07): los otros dos contenedores — 4 mega-chunks más
+
+Mismo método, con un script **genérico** (`split-generico-fase1.cjs` / `fase2.cjs`).
+
+| Contenedor | Art. | Antes | Bloques |
+|---|---|---|---|
+| Eliminación y sondajes | 1 | 17.935 chars · 116 preg | `1` `1.2` `1.3` |
+| Eliminación y sondajes | 6 | 16.747 chars · 570 preg | `6` `6.2` `6.3` `6.4` |
+| Oxigenoterapia | 1 | 12.096 chars · 271 preg | `1` `1.2` `1.3` `1.4` |
+| Oxigenoterapia | 4 | 15.074 chars · 491 preg | `4` `4.2` `4.3` `4.4` |
+
+- **1.448 preguntas clasificadas con integridad verificada** (1.448/1.448, 0 duplicadas, 0 pérdidas).
+- **1.085 re-vinculadas + 73 reconciliadas = 1.158 movidas.** Cero regresión en las dos pasadas:
+  **28.344 preguntas servidas antes y después** en los 26 temas.
+- Cada ley tenía **1 fila de `topic_scope` con lista explícita** → ampliada antes de mover nada.
+
+### ⚠️ Fallo de diseño detectado (y por qué importa)
+El mapa de bloques del primer pase **solo ofrecía los bloques del propio artículo**, no los artículos
+hermanos. Dos agentes resolvieron el mismo hueco de forma OPUESTA: uno mandó sondaje y balance hídrico
+a `6.4` (anatomía urinaria), otro los dejó en `OTRO`. Preguntas equivalentes acababan en sitios distintos.
+
+**Arreglo:** segundo pase de reconciliación ofreciendo TODOS los artículos de la ley → **73 de las 79
+`OTRO` encontraron casa** (20 a diurésis, 16 a sondajes, 11 a patología respiratoria…). **6 `SIN_CASA`**
+se quedan donde están: drenajes quirúrgicos y Kehr (no hay bloque de drenajes), angiografía, mascarilla
+de aislamiento de TBC, válvula pulmonar (anatomía cardiaca) y electrocardiografía.
+
+**Lección para el próximo split: ofrecer SIEMPRE todos los artículos de la ley como destino, no solo
+los bloques nuevos.** Si no, el agente tiene que elegir entre forzar o dejar en OTRO, y no hay criterio
+estable entre agentes distintos.
+
+## Residuo conocido (NO resuelto)
+- **`6.4` absorbió de más:** las preguntas de sondaje/balance que el primer agente metió ahí con
+  criterio amplio **siguen ahí** (la reconciliación solo tocó las `OTRO`). El art.6 no tiene bloque de
+  patología urinaria, solo digestiva → merece una pasada.
+- **`1.4` de Movilización casi vacío** (5 preguntas): las de UPP viven en el art.3 "Cambios posturales".
+- **78 `OTRO` del piloto** de Movilización siguen en su art.1 sin reconciliar (el segundo pase solo
+  cubrió los contenedores de esta tanda).
+
 ## Pendiente
 - Mismo tratamiento para **"Eliminación y sondajes"** (art.6 = 16.747 chars) y **"Oxigenoterapia"**
   (art.4 = 15.074 chars), que son los otros dos mega-chunks.

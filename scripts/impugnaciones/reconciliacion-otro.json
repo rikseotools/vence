@@ -1,0 +1,476 @@
+[
+ {
+  "id": "0eac29d1-2cae-4749-acf7-e64f0cfe6c71",
+  "ley": "Eliminacion y sondajes",
+  "destino": "6.2",
+  "razon": "absorción de agua en el tubo digestivo, fisiología digestiva"
+ },
+ {
+  "id": "4f53127f-14e3-418c-bc84-bbe52de6183b",
+  "ley": "Eliminacion y sondajes",
+  "destino": "6.3",
+  "razon": "ictericia por hiperbilirrubinemia, signo digestivo"
+ },
+ {
+  "id": "21c67667-2bc6-440d-ae01-b21bad8f1841",
+  "ley": "Eliminacion y sondajes",
+  "destino": "6.4",
+  "razon": "criptorquidia, anatomía del aparato genitourinario"
+ },
+ {
+  "id": "3d1ebe80-5497-4b51-ae1f-6de726ed2536",
+  "ley": "Eliminacion y sondajes",
+  "destino": "SIN_CASA",
+  "razon": "drenaje quirúrgico (tubo de Kehr), no hay bloque de drenajes"
+ },
+ {
+  "id": "47664488-fe12-43a5-b94f-87cb581ea0ef",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "identificar qué sonda no es vesical, tipos de sonda"
+ },
+ {
+  "id": "4a452e02-4f58-43f6-bbb7-41ff291fb79e",
+  "ley": "Eliminacion y sondajes",
+  "destino": "6.4",
+  "razon": "dieta en diálisis, patología renal"
+ },
+ {
+  "id": "4a946317-b0c0-4c60-9cbc-7ea4961bd29d",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "tratamiento de la deshidratación, equilibrio hídrico"
+ },
+ {
+  "id": "4d1c5cb5-5941-4237-9ec4-53871c16a8a1",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "cuidados del paciente sondado"
+ },
+ {
+  "id": "4e624dfb-1dfc-473e-8fcd-6ce09fcdc3db",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "sonda Foley de tres luces para irrigación continua"
+ },
+ {
+  "id": "4fa5340d-7afe-43ce-96c4-649af433751b",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "solución para lavado vesical"
+ },
+ {
+  "id": "521c5d43-2404-4f9a-979d-0df53a8a7607",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "signos de deshidratación, balance hídrico"
+ },
+ {
+  "id": "529ad033-a685-47f9-9c31-252729acc6ab",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "medidas frente a la incontinencia urinaria"
+ },
+ {
+  "id": "52ff1650-e91c-4508-bbdb-652ab7da4d2b",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "balance hídrico"
+ },
+ {
+  "id": "535a3716-80f8-4906-becc-0131669f21bd",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "tipos de sondas de una vía"
+ },
+ {
+  "id": "55f351ea-aebc-4044-9fb7-992e8d37b05b",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "prevención de infección urinaria en paciente sondado"
+ },
+ {
+  "id": "560f7158-8030-4d31-b1a7-3c5cd56d52d1",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1.2",
+  "razon": "fármacos en la diarrea, eliminación intestinal"
+ },
+ {
+  "id": "57155d08-2cbd-453a-bb00-c8acc685562f",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "sondas Robinson y Pezzer, tipos de sonda"
+ },
+ {
+  "id": "5a740920-afd1-478c-8895-7b02e45354ed",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "incontinencia urinaria funcional en el anciano"
+ },
+ {
+  "id": "5adf4c4e-f99b-456f-8691-8da61f4a7b1b",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "prevención de infecciones urinarias asociadas al sondaje"
+ },
+ {
+  "id": "619490cf-1170-41d3-bb8f-69ff6258edbf",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "compartimentos líquidos corporales, balance hídrico"
+ },
+ {
+  "id": "625969e6-a14e-4137-a3f8-10341f54942a",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "sonda uretral de dos vías"
+ },
+ {
+  "id": "6495264a-6936-45ad-8696-4bdb869a726f",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "signo de deshidratación en el anciano"
+ },
+ {
+  "id": "662250bd-7f9e-48e6-96e5-d5cfe2a4de1f",
+  "ley": "Eliminacion y sondajes",
+  "destino": "2",
+  "razon": "manejo del colector urinario"
+ },
+ {
+  "id": "668eccd5-95cf-4c55-a64f-6734f8b04a02",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "tipos de sondas vesicales"
+ },
+ {
+  "id": "69da26bf-d1fc-4e84-8f31-9f30518c2fda",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "iones del líquido extracelular, equilibrio hidroelectrolítico"
+ },
+ {
+  "id": "6a5e70ba-1f97-448d-9913-db0042a98e50",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "hipopotasemia, equilibrio hidroelectrolítico"
+ },
+ {
+  "id": "6b5adfd3-b0e6-4984-874c-eb1e719e8410",
+  "ley": "Eliminacion y sondajes",
+  "destino": "SIN_CASA",
+  "razon": "clasificación de drenajes quirúrgicos, sin bloque propio"
+ },
+ {
+  "id": "6c0ef7e4-3f47-4918-935e-c70da3825834",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "características de la sonda Foley"
+ },
+ {
+  "id": "6df1275f-2b21-45ff-a940-954802946306",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "cuidados del paciente con incontinencia urinaria"
+ },
+ {
+  "id": "705ac7ae-696a-4fa9-a637-80a4648047dc",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "signos de balance hídrico positivo"
+ },
+ {
+  "id": "7c3038af-7948-43c1-aea9-d8eadcaafa92",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "afirmaciones sobre balance hídrico y diuresis"
+ },
+ {
+  "id": "7e777bd2-c36f-41ff-bdb5-67d2c469fbfb",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "iones del líquido intracelular, equilibrio hidroelectrolítico"
+ },
+ {
+  "id": "7f606e15-e31d-4d43-8e07-d0b52f180ac2",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "eficacia de medidas preventivas de infección urinaria por sonda"
+ },
+ {
+  "id": "803fb24f-0c2e-4369-8bc7-03414506bb17",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "signos y síntomas de deshidratación"
+ },
+ {
+  "id": "8951f1ba-23ac-4644-8803-d769554feb22",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "concepto de deshidratación, balance hídrico"
+ },
+ {
+  "id": "8a9be66f-a4eb-4a39-ae75-254e94068df5",
+  "ley": "Eliminacion y sondajes",
+  "destino": "SIN_CASA",
+  "razon": "angiografía, prueba radiológica vascular ajena a la ley"
+ },
+ {
+  "id": "8d36df73-72b9-414b-8dff-d1936e361a5a",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "historia clínica de la incontinencia urinaria"
+ },
+ {
+  "id": "8d6bbb6a-275b-4139-b278-1740c6c830fb",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "asepsia en la técnica de sondaje"
+ },
+ {
+  "id": "8d6d9665-38de-46f7-8eea-125e7d6cbf8a",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "lavado vesical continuo en hematuria"
+ },
+ {
+  "id": "8ec113da-aadc-4c6c-a199-a27df5b8231c",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "identificar sonda no vesical"
+ },
+ {
+  "id": "8eefd6a3-2361-4c89-bf24-4a3e4183ed49",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "recogida de muestra de orina para urocultivo"
+ },
+ {
+  "id": "8f0dfcb3-8cfc-4150-9f86-ed74ecf41116",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "riesgo de deshidratación"
+ },
+ {
+  "id": "911ecf5a-3f76-4bdf-96af-e1056028ac00",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "catión del espacio intersticial, equilibrio hidroelectrolítico"
+ },
+ {
+  "id": "925f0e61-c4f9-4bc8-9ee3-de4811142c70",
+  "ley": "Eliminacion y sondajes",
+  "destino": "6.4",
+  "razon": "dieta en insuficiencia renal crónica"
+ },
+ {
+  "id": "93e55ac7-2017-49bb-834c-c77a15cc3465",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1.3",
+  "razon": "colaboración del TCAE en el control de esfínteres"
+ },
+ {
+  "id": "951732f5-c79b-4d06-aa98-07aaf9e09fd1",
+  "ley": "Eliminacion y sondajes",
+  "destino": "1",
+  "razon": "salidas del balance hídrico"
+ },
+ {
+  "id": "9b3dd367-cbed-49a2-ba62-c23e88e744f7",
+  "ley": "Eliminacion y sondajes",
+  "destino": "4",
+  "razon": "sondas vesicales de dos o tres luces"
+ },
+ {
+  "id": "05251402-f0b5-46b6-888d-31e93152e937",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "centro nervioso que regula la respiración"
+ },
+ {
+  "id": "096556f1-e242-48a4-bb7e-fb654d382a8c",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "eupnea, patrón respiratorio"
+ },
+ {
+  "id": "09d2f222-3abf-4117-9896-7e76a62a66a9",
+  "ley": "Oxigenoterapia",
+  "destino": "4",
+  "razon": "lóbulos pulmonares, anatomía"
+ },
+ {
+  "id": "0c60e730-a295-4d04-8551-1763b2fd1b83",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "hipoxia/disnea, síntoma respiratorio"
+ },
+ {
+  "id": "0e92d7f4-456c-40af-a825-1739e55f5f01",
+  "ley": "Oxigenoterapia",
+  "destino": "SIN_CASA",
+  "razon": "mascarilla de aislamiento respiratorio, no oxigenoterapia"
+ },
+ {
+  "id": "0f82e27f-7d70-4c64-84dd-f6d5827eeb38",
+  "ley": "Oxigenoterapia",
+  "destino": "4",
+  "razon": "cartílagos de la laringe, anatomía"
+ },
+ {
+  "id": "1a38551f-0910-4083-b135-386bbec7e8b5",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "neumoconiosis por polvos, patología respiratoria"
+ },
+ {
+  "id": "298d02e5-a8d7-48fa-b90d-831f6333bb6a",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "capacidad vital, fisiología respiratoria"
+ },
+ {
+  "id": "3181cc97-86d0-43f0-8a99-a9afb9776dd2",
+  "ley": "Oxigenoterapia",
+  "destino": "4",
+  "razon": "estructura del sistema respiratorio"
+ },
+ {
+  "id": "34293c35-5064-4d3a-9b08-4f634d34c355",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "denominación del patrón respiratorio normal"
+ },
+ {
+  "id": "3967f88a-af0b-477a-9ab5-ffaa49786da4",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "lugar del intercambio gaseoso"
+ },
+ {
+  "id": "4b5d9ece-83af-422f-acd9-57aa5c582762",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "intercambio O2/CO2, fisiología"
+ },
+ {
+  "id": "4cf41d69-1166-4281-92d9-ca3e452bc449",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "enfisema pulmonar"
+ },
+ {
+  "id": "5a12270f-64bf-483c-883f-b9280063f3fc",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "hemoptisis, síntoma respiratorio"
+ },
+ {
+  "id": "6c116bc9-1857-4628-b883-d97c18065e5a",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "membrana alveolo-capilar, intercambio gaseoso"
+ },
+ {
+  "id": "736314bd-083d-45f0-a775-3731072c245a",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "ventilación pulmonar, fisiología"
+ },
+ {
+  "id": "7d0bf6f3-a745-4002-a81e-e3b9ecf0e3bd",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "ritmo respiratorio normal"
+ },
+ {
+  "id": "856db9a2-7dea-48c6-b113-ec06b9b040b9",
+  "ley": "Oxigenoterapia",
+  "destino": "SIN_CASA",
+  "razon": "válvula semilunar pulmonar, anatomía cardiaca"
+ },
+ {
+  "id": "8dd0eee4-2fac-4b66-b228-8d2b25f1774e",
+  "ley": "Oxigenoterapia",
+  "destino": "4.4",
+  "razon": "técnicas de fisioterapia respiratoria"
+ },
+ {
+  "id": "a574c276-6435-4b0a-9ba6-6736e6f6b8ee",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "control nervioso de la respiración"
+ },
+ {
+  "id": "b307aacc-b776-4dfd-8c04-995ac8f4650b",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "concepto de apnea"
+ },
+ {
+  "id": "b842437c-f376-424b-8650-500925c752f2",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "difusión de gases alveolo-capilar"
+ },
+ {
+  "id": "b9c52777-b8a9-48e7-a67e-3edf1a565e6c",
+  "ley": "Oxigenoterapia",
+  "destino": "4.2",
+  "razon": "regulación de la respiración"
+ },
+ {
+  "id": "dca8f035-b33d-4801-94b0-cf5581f16bf8",
+  "ley": "Oxigenoterapia",
+  "destino": "4.4",
+  "razon": "material para intubación endotraqueal"
+ },
+ {
+  "id": "dd4d32d4-ab83-4d56-b45f-e169adffbcb4",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "respiración de Biot, patrón patológico"
+ },
+ {
+  "id": "e342c248-cef6-4109-b143-ddbe80249eda",
+  "ley": "Oxigenoterapia",
+  "destino": "4.4",
+  "razon": "ventilación manual con balón autohinchable"
+ },
+ {
+  "id": "e96074c0-8621-4cab-a6e2-7db9c84318ec",
+  "ley": "Oxigenoterapia",
+  "destino": "4.4",
+  "razon": "tipos de respirador (ciclados por tiempo)"
+ },
+ {
+  "id": "ee700e97-a408-416f-9741-308c19727e0c",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "concepto de apnea"
+ },
+ {
+  "id": "f2e75824-6908-45d0-aeb9-8e4477f8dea2",
+  "ley": "Oxigenoterapia",
+  "destino": "4.3",
+  "razon": "cianosis, signo respiratorio"
+ },
+ {
+  "id": "f62f2ef8-10f5-47d5-9458-1bfce4b40216",
+  "ley": "Oxigenoterapia",
+  "destino": "4.4",
+  "razon": "posiciones en cama para mejorar el patrón respiratorio"
+ },
+ {
+  "id": "fa7d86b1-0fdc-4af7-869f-e66836a4abc0",
+  "ley": "Oxigenoterapia",
+  "destino": "4.4",
+  "razon": "tipos de respirador y parámetros regulables"
+ },
+ {
+  "id": "d409fb5e-6335-4bc2-98b7-36471063fa4d",
+  "ley": "Oxigenoterapia",
+  "destino": "SIN_CASA",
+  "razon": "electrocardiografía, prueba cardiológica ajena a la ley"
+ }
+]
