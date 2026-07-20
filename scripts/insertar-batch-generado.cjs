@@ -5,6 +5,11 @@
  * Uso:
  *   node scripts/insertar-batch-generado.cjs <fichero.json> <law_slug> <batch_id>
  *
+ * <law_slug> es la ley POR DEFECTO. Un tema que se apoya en varias leyes puede
+ * poner `"law_slug"` en cada pregunta del JSON; en ese caso pásale `-` como
+ * law_slug de CLI y cada pregunta resuelve su propia ley. El dedup del Paso 3
+ * corre contra TODAS las leyes que toque el batch.
+ *
  * Implementa los Pasos 3, 4 y 5 del manual `docs/maintenance/generar-preguntas-con-ia.md`:
  *
  *   Paso 3 — DEDUP previo: aborta si alguna pregunta del borrador coincide (texto
@@ -36,9 +41,22 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
 
 const norm = (t) => t.replace(/\s+/g, ' ').trim().toLowerCase()
 
-async function insertOne(q, lawId) {
+// Resolución de ley por slug con caché. Cada pregunta puede traer su propio
+// `law_slug` (temas que se apoyan en >1 ley); si no, se usa el del CLI.
+const _lawCache = new Map()
+async function resolveLaw(slug) {
+  if (_lawCache.has(slug)) return _lawCache.get(slug)
+  const row = (await s`SELECT id, short_name FROM laws WHERE slug=${slug}`)[0] || null
+  _lawCache.set(slug, row)
+  return row
+}
+
+async function insertOne(q, defaultLawId) {
+  const slug = q.law_slug
+  const lawId = slug ? (await resolveLaw(slug))?.id : defaultLawId
+  if (!lawId) return { skipped: `ley no encontrada para la pregunta (law_slug=${slug || '(sin default)'})` }
   const art = (await s`SELECT id FROM articles WHERE law_id=${lawId} AND article_number=${q.primary_article_number}`)[0]
-  if (!art) return { skipped: `artículo ${q.primary_article_number} no existe en la ley` }
+  if (!art) return { skipped: `artículo ${q.primary_article_number} no existe en la ley ${slug || defaultLawId}` }
   const r = await s`
     INSERT INTO questions
       (question_text, option_a, option_b, option_c, option_d, correct_option, explanation,
@@ -53,15 +71,25 @@ async function insertOne(q, lawId) {
 
 ;(async () => {
   const Q = JSON.parse(fs.readFileSync(FILE, 'utf8'))
-  const law = (await s`SELECT id, short_name FROM laws WHERE slug=${LAW_SLUG}`)[0]
-  if (!law) throw new Error(`ley no encontrada: ${LAW_SLUG}`)
-  console.log(`ley: ${law.short_name} · borrador: ${Q.length} preguntas · batch: ${BATCH}\n`)
 
-  // ---- Paso 3: dedup contra lo ya existente sobre esta ley ----
+  // LAW_SLUG del CLI es el default; se puede pasar '-' si cada pregunta trae su
+  // propio `law_slug` (temas multi-ley). El default puede no existir en ese caso.
+  const defaultLaw = LAW_SLUG === '-' ? null : (await s`SELECT id, short_name FROM laws WHERE slug=${LAW_SLUG}`)[0]
+  if (LAW_SLUG !== '-' && !defaultLaw) throw new Error(`ley no encontrada: ${LAW_SLUG}`)
+
+  // Conjunto real de leyes que toca el batch (default + cualquier law_slug por pregunta).
+  const slugs = new Set(Q.map((q) => q.law_slug).filter(Boolean))
+  if (defaultLaw) slugs.add(LAW_SLUG)
+  const lawIds = []
+  for (const sl of slugs) { const l = await resolveLaw(sl); if (l) lawIds.push(l.id) }
+  if (!lawIds.length) throw new Error('el batch no referencia ninguna ley válida (ni default ni law_slug)')
+  console.log(`leyes del batch: ${[...slugs].join(', ')} · borrador: ${Q.length} preguntas · batch: ${BATCH}\n`)
+
+  // ---- Paso 3: dedup contra lo ya existente sobre TODAS las leyes del batch ----
   const existentes = await s`
     SELECT q.question_text FROM questions q
     JOIN articles a ON a.id = q.primary_article_id
-    WHERE a.law_id = ${law.id}`
+    WHERE a.law_id = ANY(${lawIds})`
   const set = new Set(existentes.map((e) => norm(e.question_text)))
   const dups = Q.filter((q) => set.has(norm(q.question_text)))
   if (dups.length) {
@@ -70,10 +98,10 @@ async function insertOne(q, lawId) {
     await s.end()
     process.exit(2)
   }
-  console.log(`✅ Paso 3 — dedup: 0 colisiones (${existentes.length} preguntas previas sobre esta ley)`)
+  console.log(`✅ Paso 3 — dedup: 0 colisiones (${existentes.length} preguntas previas sobre ${lawIds.length} ley(es))`)
 
   // ---- Paso 4: una sola pregunta + invariantes ----
-  const first = await insertOne(Q[0], law.id)
+  const first = await insertOne(Q[0], defaultLaw?.id)
   if (first.skipped) throw new Error(`la primera pregunta no se pudo insertar: ${first.skipped}`)
   const v = (await s`SELECT lifecycle_state, is_active, tags, content_hash, correct_option, question_type
                      FROM questions WHERE id=${first.id}`)[0]
@@ -97,7 +125,7 @@ async function insertOne(q, lawId) {
   const ids = [first.id]
   const skipped = []
   for (let i = 1; i < Q.length; i++) {
-    const r = await insertOne(Q[i], law.id)
+    const r = await insertOne(Q[i], defaultLaw?.id)
     if (r.skipped) skipped.push(`Q${i + 1}: ${r.skipped}`)
     else ids.push(r.id)
   }
