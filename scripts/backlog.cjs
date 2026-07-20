@@ -23,7 +23,9 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+// Driver perezoso y por resolucion normal: una ruta ABSOLUTA/cableada rompe el script
+// en CI y en cualquier maquina que no sea la de Manuel. `postgres` esta en la raiz.
+const loadPg = () => require('postgres');
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
@@ -43,7 +45,7 @@ function readSessionId() {
 
 const cmd = process.argv[2];
 const sid = arg('--sid') || readSessionId() || process.env.CLAUDE_CODE_SESSION_ID || null;
-const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
+const s = loadPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 
 const EMOJI = { critica: '🔴', alta: '🟠', media: '🟡', baja: '🟢' };
 const age = (t) => {

@@ -19,7 +19,12 @@
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+// Driver de postgres cargado PEREZOSAMENTE (mismo arreglo que verify-law-boa.cjs):
+// antes se resolvia con una ruta CABLEADA a backend/node_modules/postgres, que en CI no
+// existe (alli solo se instalan las dependencias de la raiz) -> la suite entera fallaba al
+// arrancar con "Cannot find module .../backend/node_modules/postgres" y dejaba el gate de
+// deploy en ROJO para todas las sesiones. `postgres` esta en el package.json de la RAIZ.
+const loadPg = () => require('postgres')
 const boa = require('./verify-law-boa.cjs')
 
 function getUrl() {
@@ -112,7 +117,7 @@ if (require.main !== module) return
 ;(async () => {
   const args = process.argv.slice(2)
   const dump = args.includes('--dump')
-  const sql = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
+  const sql = loadPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
   try {
     let laws
     if (args.includes('--hollow')) {
