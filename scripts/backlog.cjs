@@ -62,6 +62,17 @@ function needSid() {
   if (!sid) { console.error('❌ sin session-id: usa --sid <ID> o crea un fichero .session-id'); process.exit(2); }
 }
 
+// Cuerpo de la ficha de una tarea: desde su cabecera `### [T-xxx]` hasta la siguiente `###`.
+// Lo usa `claim` para que reclamar imprima el detalle (reclamar = leer).
+function fichaBody(id) {
+  const md = fs.readFileSync(MD, 'utf8').split('\n');
+  const start = md.findIndex((l) => new RegExp(`^###\\s+.*\\[${id.replace('-', '\\-')}\\]`).test(l));
+  if (start < 0) return null;
+  let end = start + 1;
+  while (end < md.length && !/^###\s+/.test(md[end])) end++;
+  return md.slice(start, end).join('\n').trim();
+}
+
 // Parseo del markdown: mismo formato que lib/backlog/claim.ts (### [T-042] 🔴 Título)
 function parseMd() {
   const md = fs.readFileSync(MD, 'utf8');
@@ -147,6 +158,11 @@ function parseMd() {
       console.log(`✅ CLAIM ${row.id} — ${row.title}`);
       if ((row.blocked_by || []).length) console.log(`   ⚠️ declarada bloqueada por: ${row.blocked_by.join(', ')}`);
       console.log(`   lease ${LEASE_MIN} min · renueva con: node scripts/backlog.cjs heartbeat`);
+      // Reclamar = LEER: escupimos la ficha entera del markdown. Así no existe "abrir la
+      // tarea" separado de "reclamarla" → se elimina la ventana de olvido (el pre-push
+      // bloquea de todos modos, pero esto lo hace innecesario en el flujo normal).
+      const ficha = fichaBody(row.id);
+      if (ficha) console.log(`\n${'─'.repeat(60)}\n${ficha}\n${'─'.repeat(60)}`);
     }
 
     else if (cmd === 'heartbeat') {

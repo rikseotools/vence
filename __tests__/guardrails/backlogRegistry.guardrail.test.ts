@@ -97,3 +97,29 @@ describe('backlog — el disparador está donde Claude lo lee', () => {
     expect(runbook).toContain('pusheo-revision-despliegue.md')
   })
 })
+
+// La REGLA DURA ("coger ANTES de trabajar") dependía solo de la disciplina de leerla. El
+// 20/07 se coló dos veces (RD 176/2022 y T-044/Almería) → se añade ENFORCEMENT: un pre-push
+// que bloquea si empujas un commit que menciona un T-NNN vivo que no tienes reclamado.
+// Este bloque fija que el hook exista, invoque el bridge, y que las docs lo cuenten.
+describe('backlog — enforcement del claim por pre-push', () => {
+  const hook = readFileSync(join(process.cwd(), '.husky', 'pre-push'), 'utf8')
+  const claudeMd = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8')
+  const runbook = readFileSync(join(process.cwd(), 'docs', 'runbooks', 'tareas-pendientes.md'), 'utf8')
+
+  it('.husky/pre-push invoca el guard del backlog', () => {
+    expect(hook).toContain('backlog-push-guard.cjs')
+  })
+
+  it('el guard existe y expone la lógica pura testeable', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { extractTaskIds, evaluatePush } = require('@/lib/backlog/pushGuard.cjs')
+    expect(typeof extractTaskIds).toBe('function')
+    expect(typeof evaluatePush).toBe('function')
+  })
+
+  it('CLAUDE.md y el runbook mencionan la enforcement por pre-push (para que se sepa que existe)', () => {
+    expect(claudeMd).toMatch(/pre-push/i)
+    expect(runbook).toMatch(/pre-push/i)
+  })
+})

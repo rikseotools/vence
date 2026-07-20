@@ -32,7 +32,7 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 
 ### Reglas
 
-1. **Coge ANTES de trabajar.** Si no está cogida en la tabla, para el resto de sesiones está libre — aunque tú ya lleves una hora con ella.
+1. **Coge ANTES de trabajar.** Si no está cogida en la tabla, para el resto de sesiones está libre — aunque tú ya lleves una hora con ella. **Y no depende de que te acuerdes:** el hook **`.husky/pre-push`** (`scripts/backlog-push-guard.cjs`) **bloquea el push** si un commit que empujas menciona un `T-NNN` vivo que no tienes reclamado (o lo tiene otra sesión). Fail-open si la BD no responde; escape legítimo con `BACKLOG_GUARD_SKIP=1 git push …`. Además `claim` **imprime la ficha entera** → reclamar y leer son el mismo acto.
 2. **Renueva el lease** (`heartbeat`) si la tarea dura más de 90 min. Si no, otra sesión la considerará abandonada y la cogerá, con razón.
 3. **Al cerrar, `done --outcome` Y mueve la entrada a `## Hechas` en el markdown.** Las dos cosas. Si solo haces una, el guardarraíl de CI te lo tira.
 4. **`next` sugiere, no coge.** Está pensado para que elijas por encaje: si acabas de construir una oposición, la siguiente oposición te cuesta la mitad.

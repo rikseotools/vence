@@ -15,6 +15,13 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-051] ✅ [HECHA 20/07] Enforcement del claim del backlog por pre-push (cerrar el hueco del OLVIDO)
+- **Por qué:** el claim atómico ya impedía que dos sesiones cogieran la misma fila, pero **nada obligaba a reclamar antes de trabajar** → el fallo real era el OLVIDO. Se coló dos veces el 20/07 (RD 176/2022 y **T-044/Almería**: una sesión completó los imports mientras otra tenía la tarea reclamada).
+- **Qué se ha hecho (dos capas):**
+  1. **Prevención:** `node scripts/backlog.cjs claim <id>` ahora **imprime la ficha entera** del markdown → "abrir la tarea" y "reclamarla" pasan a ser el mismo acto, no hay ventana para olvidarlo.
+  2. **Enforcement:** hook **`.husky/pre-push`** (`scripts/backlog-push-guard.cjs`) que **bloquea el push** si un commit que empujas menciona un `T-NNN` **vivo** (open/in_progress/blocked) que **no tienes reclamado** o lo tiene otra sesión. Fail-**closed** solo en ese caso; fail-**open** ante infra (sin `DATABASE_URL`/BD caída); cortocircuito si el push no menciona ningún `T-NNN` (no paga peaje). Escape legítimo: `BACKLOG_GUARD_SKIP=1 git push …`.
+- **Diseño:** lógica pura en `lib/backlog/pushGuard.cjs` (JS plano → el hook y el test usan la MISMA función, sin copia que dé falso verde). Tests: `__tests__/backlog/pushGuard.test.ts` (12) + bloque nuevo en `__tests__/guardrails/backlogRegistry.guardrail.test.ts`. Documentado en CLAUDE.md y `docs/runbooks/tareas-pendientes.md`.
+
 ### [T-050] ✅ [HECHA 20/07] Retirar el sensor `hash_change` (cron `check-seguimiento`)
 - **Por qué se retira, con números.** Es el peor sensor del radar multicapa por mucho. Medido el 20/07 sobre
   `oep_detection_signals` (aplicadas / útil): `pag_empleo` 140 / **79%** · `boe_api` 33 / 60% · `timeline_silence`

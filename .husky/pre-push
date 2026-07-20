@@ -1,0 +1,8 @@
+#!/bin/sh
+# .husky/pre-push
+# Guardrail del backlog: si un commit que empujas menciona un T-NNN vivo que NO tienes
+# reclamado en `backlog_tasks`, bloquea el push. Cierra el hueco del OLVIDO de reclamar
+# (colisión T-047/T-050 del 20/07). Lógica pura en lib/backlog/pushGuard.cjs (testeada).
+#
+# Fail-open ante infra (sin DATABASE_URL / BD caída). Escape: BACKLOG_GUARD_SKIP=1 git push …
+node scripts/backlog-push-guard.cjs || exit 1
