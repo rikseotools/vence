@@ -52,3 +52,45 @@ describe('backlog — guardarraíles de tareas-pendientes.md', () => {
     for (const t of tasks) expect(t.id).toMatch(/^T-\d{3}$/)
   })
 })
+
+// Un runbook que Claude no sabe cuándo leer no sirve de nada: la frase-gatillo tiene que
+// estar en CLAUDE.md, que es lo que Claude lee en cada sesión. Este bloque nace de un fallo
+// real: el runbook se ancló SIN la frase "revisa las tareas pendientes" —justo la forma
+// natural, y la convención del resto del proyecto ("revisa OEPs", "revisa rollover"…)—
+// así que el disparador no saltaba con la frase que de verdad usa el usuario.
+describe('backlog — el disparador está donde Claude lo lee', () => {
+  const claudeMd = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8')
+  const runbook = readFileSync(join(process.cwd(), 'docs', 'runbooks', 'tareas-pendientes.md'), 'utf8')
+
+  // SPEC: frases con las que un humano pide el backlog. Si añades una al runbook,
+  // añádela aquí Y a CLAUDE.md (este test te lo recuerda).
+  const FRASES_GATILLO = [
+    'revisa las tareas pendientes',
+    'revisa el backlog',
+    '¿qué tareas pendientes tenemos?',
+    'coge una tarea',
+    'añádelo a pendientes',
+  ]
+
+  it('CLAUDE.md enlaza el runbook del backlog', () => {
+    expect(claudeMd).toContain('docs/runbooks/tareas-pendientes.md')
+  })
+
+  it('cada frase-gatillo está en CLAUDE.md (si no, el disparador no salta)', () => {
+    const ausentes = FRASES_GATILLO.filter(f => !claudeMd.toLowerCase().includes(f.toLowerCase()))
+    expect(ausentes).toEqual([])
+  })
+
+  it('cada frase-gatillo está también en el propio runbook', () => {
+    const ausentes = FRASES_GATILLO.filter(f => !runbook.toLowerCase().includes(f.toLowerCase()))
+    expect(ausentes).toEqual([])
+  })
+
+  it('CLAUDE.md recuerda la regla dura: coger ANTES de trabajar', () => {
+    expect(claudeMd).toMatch(/coger ANTES de trabajar/i)
+  })
+
+  it('el runbook enlaza el manual de push/deploy (cerrar el ciclo)', () => {
+    expect(runbook).toContain('pusheo-revision-despliegue.md')
+  })
+})

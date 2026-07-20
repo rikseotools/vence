@@ -1,6 +1,8 @@
 # Runbook — Tareas pendientes (backlog con claim entre sesiones)
 
-**Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"¿qué tareas pendientes tenemos?"*, *"lista las tareas pendientes"*, *"coge una tarea"*, *"ataca la tarea X"*, *"dame la siguiente tarea"*, *"añádelo a pendientes"*, *"cierra la tarea X"*. Seguirlo ANTES de ponerse a trabajar en nada del backlog.
+**Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"revisa las tareas pendientes"*, *"revisa el backlog"*, *"revisa los pendientes"*, *"¿qué tareas pendientes tenemos?"*, *"lista las tareas pendientes"*, *"tareas pendientes"*, *"coge una tarea"*, *"ataca la tarea X"*, *"dame la siguiente tarea"*, *"qué hago ahora"*, *"añádelo a pendientes"*, *"cierra la tarea X"*. Seguirlo ANTES de ponerse a trabajar en nada del backlog.
+
+> **Nota de idioma:** el proyecto usa *"revisa X"* como disparador estándar (*"revisa los temas vacíos"*, *"revisa OEPs"*, *"revisa rollover"*…). *"revisa las tareas pendientes"* sigue esa misma convención y es la forma más natural — está cubierta arriba a propósito.
 
 > **Por qué existe.** Con 2-10 sesiones de Claude a la vez, dos sesiones cogían la misma tarea sin enterarse. **Caso real (20/07):** una sesión montó un worktree para arreglar el RD 176/2022 mientras otra ya lo estaba arreglando — y encima la ficha decía *"9 mislinks EN VIVO"* cuando ya estaban resueltos. Se perdió tiempo por dos motivos distintos: **falta de claim** y **ficha desfasada**. Este sistema ataca los dos.
 

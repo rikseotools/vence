@@ -299,7 +299,7 @@ git push origin main
 
 ### 📋 Tareas pendientes / backlog con CLAIM entre sesiones (runbook obligatorio)
 - **Runbook:** `docs/runbooks/tareas-pendientes.md`
-- **Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"¿qué tareas pendientes tenemos?"*, *"lista las tareas pendientes"*, *"coge una tarea"*, *"ataca la tarea X"*, *"dame la siguiente tarea"*, *"añádelo a pendientes"*, *"cierra la tarea X"*. Seguirlo **ANTES** de ponerse a trabajar en nada del backlog.
+- **Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"revisa las tareas pendientes"*, *"revisa el backlog"*, *"revisa los pendientes"*, *"¿qué tareas pendientes tenemos?"*, *"lista las tareas pendientes"*, *"tareas pendientes"*, *"coge una tarea"*, *"ataca la tarea X"*, *"dame la siguiente tarea"*, *"qué hago ahora"*, *"añádelo a pendientes"*, *"cierra la tarea X"*. Seguirlo **ANTES** de ponerse a trabajar en nada del backlog.
 - **REGLA DURA — coger ANTES de trabajar:** con 2-10 sesiones en paralelo, si no has hecho `claim` la tarea está libre para las demás aunque tú lleves una hora con ella. Caso real 20/07: una sesión montó un worktree para el RD 176/2022 mientras otra ya lo estaba arreglando.
 - **Reparto:** el **contenido** vive en `docs/roadmap/tareas-pendientes.md`; el **estado de claim** en la tabla `backlog_tasks` (RDS). Se unen por el id `T-xxx` de la cabecera. Un markdown NO admite claim atómico (dos sesiones leen "libre", ambas escriben, gana la última).
 - **Comandos:** `node scripts/backlog.cjs list | next | claim T-042 | heartbeat | mine | done T-042 --outcome "…" | release T-042 | sync`. El session-id se auto-deriva (igual que `cola.cjs`).
