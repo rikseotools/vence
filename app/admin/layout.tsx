@@ -119,7 +119,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkRollover])
 
-  // Badge "toca pagar": nº de embajadores con saldo pagable (>= mínimo, hold vencido).
+  // Badge "toca pagar": nº de SOLICITUDES de vale PENDIENTES (modelo pull) — filas
+  // `reward_payouts` en status='pending', es decir embajadores que YA han pedido cobrar.
+  // NO cuenta saldos pagables teóricos: así la señal es acotada y accionable (alguien
+  // está esperando su vale), sin parpadear por saldos que nadie ha reclamado.
+  // Ver docs/runbooks/embajadores-recompensas.md §3-§4 y el propio endpoint.
   const checkPayouts = useCallback(async () => {
     try {
       const authHeaders = await getAuthHeaders()
@@ -419,7 +423,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {payoutsPending > 0 && (
                       <span
                         className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
-                        title={`${payoutsPending} embajador(es) con saldo pagable → revisa los referidos y paga`}
+                        title={`${payoutsPending} solicitud(es) de vale pendiente(s) → un embajador está esperando su vale`}
                       >
                         {payoutsPending > 99 ? '99+' : payoutsPending}
                       </span>
