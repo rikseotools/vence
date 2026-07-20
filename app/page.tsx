@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
 import { unstable_cache } from 'next/cache'
-import { isOpenForDisplay, todayMadrid } from '@/lib/oposiciones/inscripcion'
+import { isBannerWorthy, isOpenForDisplay, todayMadrid } from '@/lib/oposiciones/inscripcion'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import CcaaFlag from '@/components/CcaaFlag'
 import OpenInscriptionsBanner from '@/app/OpenInscriptionsBanner'
@@ -169,8 +169,10 @@ const getOpenConvocatorias = unstable_cache(
     const data = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || []) as unknown as OpenConvocatoria[]
     const today = todayMadrid()
     return data
-      // ÚNICA puerta de inclusión (publicadas abiertas + catalogadas abiertas con url oficial)
-      .filter((o) => isOpenForDisplay(o, today))
+      // ÚNICA puerta de inclusión del BANNER: abierta por fechas Y con plazas suficientes
+      // (≥ BANNER_MIN_PLAZAS). Filtrar aquí, en el origen, cubre TAMBIÉN el fallback por
+      // familia del banner — así no hay camino por el que se cuele una de 1 plaza.
+      .filter((o) => isBannerWorthy(o, today))
       .sort((a, b) => {
         // publicadas primero (son producto), en su orden por cierre más próximo (estable)
         if (a.is_active !== b.is_active) return Number(b.is_active) - Number(a.is_active)

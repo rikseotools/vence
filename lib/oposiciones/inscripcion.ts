@@ -60,6 +60,51 @@ export function isOpenForDisplay(o: ConvocatoriaDisplay, today: string = todayMa
 }
 
 /**
+ * MÍNIMO DE PLAZAS para aparecer en un BANNER (decisión de producto, Manuel 20/07).
+ *
+ * Por qué: los banners son escaparate, no catálogo. De 51 convocatorias con inscripción
+ * viva, 24 tenían ≤4 plazas y 14 UNA sola ("Enólogo", "Albañil - Ayto. Segovia"), y el
+ * teaser general de la home llegaba a mostrar 9 de 10 con ≤4 plazas — la primera imagen
+ * que se lleva un usuario nuevo. Una convocatoria de 1 plaza no es una oportunidad real
+ * para casi nadie.
+ *
+ * Regla: NUNCA se muestra en un banner una convocatoria de menos de 10 plazas.
+ * `plazas_libres` NULL NO pasa: no podemos acreditar que llegue al mínimo (son 5 casos,
+ * dato que nos falta; al rellenarlo entrarán solas si califican).
+ *
+ * Ojo al alcance: esto rige los BANNERS. La página SEO /oposiciones/inscripcion-abierta
+ * ("ver todas") sigue listando el catálogo completo a propósito — ahí "todas" significa
+ * todas, y es donde vive el valor de cola larga.
+ */
+export const BANNER_MIN_PLAZAS = 10
+
+export interface ConPlazas {
+  plazas_libres: number | null
+}
+
+/** ¿Tiene un número de plazas suficiente para el escaparate? NULL = no acreditado = no. */
+export function hasSignificantPlazas(
+  o: ConPlazas,
+  min: number = BANNER_MIN_PLAZAS,
+): boolean {
+  if (o.plazas_libres == null) return false
+  const n = Number(o.plazas_libres)
+  return Number.isFinite(n) && n >= min
+}
+
+/**
+ * ÚNICA puerta de inclusión de los BANNERS = mostrable por fechas Y con plazas suficientes.
+ * Los dos banners (home `OpenInscriptionsBanner` y autenticado `/api/v2/banner/
+ * open-inscriptions`) deben pasar por aquí para que no puedan divergir.
+ */
+export function isBannerWorthy(
+  o: ConvocatoriaDisplay & ConPlazas,
+  today: string = todayMadrid(),
+): boolean {
+  return isOpenForDisplay(o, today) && hasSignificantPlazas(o)
+}
+
+/**
  * ¿Es una CATALOGADA mostrable (sección "sin test todavía" de la SEO)?
  * Catalogada (is_active=false) + abierta-por-fechas + con convocatoria oficial.
  */

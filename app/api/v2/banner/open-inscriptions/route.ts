@@ -26,7 +26,7 @@ import { userProfiles } from '@/db/schema'
 // Lee de la vista SSOT (proceso de la convocatoria vigente + fallback). Solo lectura.
 import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, lte, gte, sql } from 'drizzle-orm'
-import { todayMadrid } from '@/lib/oposiciones/inscripcion'
+import { BANNER_MIN_PLAZAS, todayMadrid } from '@/lib/oposiciones/inscripcion'
 
 export const maxDuration = 10
 
@@ -74,6 +74,11 @@ async function _GET(request: NextRequest) {
         eq(oposiciones.isActive, true),
         lte(oposiciones.inscriptionStart, today),
         gte(oposiciones.inscriptionDeadline, today),
+        // Mínimo de plazas del escaparate (decisión producto 20/07): NUNCA se muestra en
+        // un banner una convocatoria de menos de BANNER_MIN_PLAZAS. Hoy todas las
+        // publicadas lo cumplen de sobra, pero sin esta cláusula bastaría publicar una
+        // pequeña para que apareciera. NULL no pasa (gte lo descarta): plazas no acreditadas.
+        gte(oposiciones.plazasLibres, BANNER_MIN_PLAZAS),
       ))
       .orderBy(oposiciones.inscriptionDeadline)) as OpenInscription[]
   } catch (openErr) {
