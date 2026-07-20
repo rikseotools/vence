@@ -364,3 +364,38 @@ UAL" y la correcta no) que en lotes anteriores habría consumido una ronda enter
 
 **Quedan 6 temas finos**: T10 (12), T12 (12), T14 (14), T15 (12), T18 (14), T21 (14). Mismo
 procedimiento; T18 es el de más margen (74 artículos en tres resoluciones de matrícula).
+
+
+## Lote T18 — resoluciones de matrícula (20/07): **14 → 26 preguntas**
+
+Dos rondas de auditor ciego; la segunda 12/12 PERFECT. Las tres resoluciones **comparten numeración
+de artículos**, así que se avisa al auditor de verificar siempre contra el `art_content` de cada
+pregunta y no por número.
+
+**El hallazgo importante NO fue un sesgo de formato, sino de FIDELIDAD.** La opción correcta del
+art. 12 de Doctorado (simultaneidad) **citaba solo la mitad del requisito**: omitía el informe del
+programa de **destino** y daba a entender que basta con el del programa de origen. Quien estudiara
+con esa pregunta habría aprendido algo falso. **Ningún check automático puede ver esto** — miden
+forma, no fidelidad al texto. Solo lo caza alguien leyendo el artículo entero. Corregido, y el error
+antiguo se reutiliza ahora como distractor deliberado.
+
+**Quinto tipo de tell: el PREFIJO.** Tres distractores empezaban por *"Solo a…"* y la correcta era la
+única inclusiva. Los checks miraban los FINALES de opción, no los comienzos. Añadido.
+
+### Los 5 checks de sesgo acumulados
+
+| Check | Nació de |
+|---|---|
+| Longitud, ratio **simétrico** | correcta más corta (Título V LUA) |
+| Medición en **palabras** (1,25) | 17 vs 13 palabras pasaba en caracteres |
+| Uniformidad de **sufijo** | distractores acabando en "de dicho órgano" |
+| Uniformidad de **prefijo** | tres distractores con *"Solo a…"* |
+| Posición uniforme de la clave | §2.2-ter del manual |
+
+**Coste observado**: el equilibrado ya consume más iteraciones que redactar las preguntas (5 pasadas
+en este lote). Señal de rendimientos decrecientes en el pulido cosmético — mientras que el defecto
+de fidelidad del art. 12 se encontró **leyendo**, no midiendo.
+
+**Estado**: 24 temas, 0 vacíos, **8.590 preguntas**. Finos restantes: T10 (12), T12 (12), T14 (14),
+T15 (12), T21 (14). De ellos **solo T14 tiene margen real** (27 artículos); T12 y T15 tienen 10
+artículos y T21 tiene 5 — su techo natural está cerca de lo que ya sirven.
