@@ -401,8 +401,8 @@
 - **Cómo:** modelo `exam_cases` (`oposicion_type='administrativo_madrid'`, `case_title`, `is_active`). Anclar a fuente oficial (temario/normativa de la convocatoria de Madrid), nunca inventar. Doble auditoría antes de activar.
 - **Estado:** detectado 13/07 (triaje feedback), 0 supuestos, sin empezar.
 
-### [T-044] 🔒🟠 [EN CURSO 20/07 tarde — sesión `e9da429a` · NO coger en paralelo] Construir Auxiliar Administrativo de la Universidad de Almería (C2)
-- **🔒 CLAIM (20/07 tarde):** en curso ahora mismo por la sesión `e9da429a`. Fase = importar las normas UAL que faltan (T11, T14, T18-A/B/C, T22-A, T22-B) + generar banco + publicar. Si otra sesión la va a tocar, coordinar antes; al terminar, quitar este candado y marcar HECHA.
+### [T-044] 🟠 [VENDIBLE — inscripción viva] Construir Auxiliar Administrativo de la Universidad de Almería (C2)
+- **Estado imports (20/07 tarde):** las normas UAL que faltaban ya se importaron en `bc40ac3b` (*"303 artículos, 0 huecos"*). Queda **generar banco** (T13 + normas UAL + temas finos) y **publicar**. Reclamar en `backlog_tasks` antes de seguir (`node scripts/backlog.cjs claim T-044`).
 - **Qué:** `auxiliar-administrativo-universidad-almeria` **catalogada** (⚪ `is_active=false`, 0 temas) con **21 plazas** y **plazo de inscripción abierto hasta el 29/07/2026**. Construir para hacerla vendible.
 - **Por qué:** es la de **coste más bajo** de las 8 con inscripción viva sin construir (barrido 20/07, filtrado a C1/C2). C2 + universidad + Andalucía = el perfil que mejor convierte, y el banco ya existe en hermanas directas: **Cádiz 9.532 preguntas, Huelva 6.257, Granada 3.832**, más el fondo genérico de auxiliar de universidad (UNED 12.767, León 11.067, Carlos III 8.982, Alcalá 8.129). Reuso alto → construir sale casi gratis.
 - **✅ FUENTE OFICIAL LOCALIZADA (20/07): `BOE-A-2026-14723`** (Resolución de 30/06/2026 del Rectorado) + BOJA nº132 de 10/07/2026. Datos verificados contra el BOE:
