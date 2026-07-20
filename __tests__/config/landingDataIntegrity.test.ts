@@ -104,7 +104,12 @@ describe('Landing Data Integrity', () => {
       expect(templateContent).toContain('getHitosConvocatoria')
       expect(templateContent).toContain("dynamic = 'force-dynamic'")
       expect(templateContent).toContain('application/ld+json')
-      expect(templateContent).toContain('hitosSafe.map')
+      // El timeline se pinta AGRUPADO por convocatoria desde 20/07 (vía-a, T-002): una
+      // oposición puede tener dos ciclos vivos y la lista única los mezclaba. El
+      // guardarraíl sigue exigiendo lo mismo de fondo — que el template RENDERICE los
+      // hitos — pero por la estructura nueva: agrupar y recorrer los hitos de cada bloque.
+      expect(templateContent).toContain('agruparHitosPorConvocatoria')
+      expect(templateContent).toContain('bloque.hitos.map')
     })
 
     test.each(DYNAMIC_SLUGS)('%s: NO tiene page.tsx estático (usa template dinámico)', (slug) => {
