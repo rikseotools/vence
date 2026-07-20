@@ -92,16 +92,45 @@ El detector produce **falsos positivos**: la fecha `last_update_boe` en BD a vec
 node -e '
 const fs=require("fs"),p=require("./backend/node_modules/postgres");
 const u=fs.readFileSync(".env.local","utf8").match(/^DATABASE_URL=(.*)$/m)[1].trim();
-function calcIsOk(su){ if(!su)return null; if(su.no_consolidated_text)return true;
+function calcIsOk(su){ /* ESPEJO de lib/api/verify-articles/ai-helpers.ts::calculateIsOk.
+  ⚠️ Si tocas allí, actualiza aquí: el 20/07 este snippet estaba DESFASADO (le faltaba
+  `known_quirk`) y dio 12 leyes en rojo cuando la función real daba 10. Se diagnosticaron
+  como problemas leyes que el badge ya consideraba OK. */
+  if(!su)return false; if(su.no_consolidated_text)return true;
   const boe=(su.boe_count??su.total_boe??null); if(boe===0)return false;
-  if(su.message&&String(su.message).includes("No se encontraron artículos"))return false;
-  const extra=Math.max(0,((su.extra_in_db||0)-(su.structure_articles||0)));
-  return (su.title_mismatch||0)===0&&(su.content_mismatch||0)===0&&extra===0&&(su.missing_in_db||0)===0; }
-(async()=>{const s=p(u,{ssl:{rejectUnauthorized:false},max:1,connect_timeout:90});
-  const rows=await s`SELECT id, short_name, last_verification_summary su FROM laws WHERE last_verification_summary IS NOT NULL`;
-  rows.filter(r=>calcIsOk(r.su)===false).forEach(r=>console.log(r.short_name, JSON.stringify(r.su).slice(0,160)));
+  if(typeof su.message==="string"&&su.message.includes("No se encontraron artículos"))return false;
+  if(((su.title_mismatch||0)>0)||((su.content_mismatch||0)>0))return false;   // contenido: nunca se exonera
+  const missing=(su.missing_in_db||0);
+  if(missing>0){ const declarado = su.deliberate_subset===true
+      && typeof su.subset_note==="string" && su.subset_note.trim().length>0;
+    if(!declarado) return false; }                                            // subset deliberado + justificado
+  if(su.known_quirk===true) return true;                                      // residual de extra_in_db
+  return Math.max(0,((su.extra_in_db||0)-(su.structure_articles||0)))===0; }
+rows.filter(r=>calcIsOk(r.su)===false).forEach(r=>console.log(r.short_name, JSON.stringify(r.su).slice(0,160)));
   await s.end();})();'
 ```
+
+### Import parcial DELIBERADO: `deliberate_subset` (20/07)
+
+Hay leyes que se importan a propósito **en parte**, porque los temas solo escopan un subconjunto
+(del TRLPI solo los 30 artículos que examina `auxiliar_biblioteca_estado`, de 212). Antes eso daba
+`missing_in_db > 0` **para siempre** y encendía el badge sin remedio — y un badge siempre encendido
+no avisa de nada.
+
+Para declararlo hacen falta **las dos cosas a la vez** (si falta una, sigue encendido):
+
+```json
+"deliberate_subset": true,
+"subset_note": "auxiliar_biblioteca_estado T10 escopa 30 arts explícitos de 212."
+```
+
+**Lo que este flag NO puede hacer, por diseño:**
+- **No tapa una discrepancia de CONTENIDO** (`content_mismatch` / `title_mismatch`). Que un artículo
+  que SÍ tenemos diga algo distinto del boletín es siempre un defecto, sea la ley parcial o no.
+- **No tapa `boe_count=0`.**
+- **No vale sin justificación escrita**, para que no se use como interruptor de apagar avisos.
+
+Garantías fijadas en `__tests__/verify-articles/calculateIsOk.test.ts` (13 tests).
 
 ### ⚠️ `boe_count=0` / "No se encontraron artículos" NO es benigno: RE-VERIFICA, no suprimas
 

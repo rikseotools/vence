@@ -494,13 +494,31 @@ export function calculateIsOk(summary: Record<string, unknown> | null): boolean 
 
   if (summary.message && typeof summary.message === 'string' && summary.message.includes('No se encontraron artículos')) return false
 
-  // Discrepancias de CONTENIDO real (título, contenido, artículos faltantes): jamás
-  // se exoneran con un flag de revisión. `known_quirk` solo cubre artefactos de conteo.
-  const hasHardDiscrepancy =
+  // Discrepancias de CONTENIDO real (título, contenido): JAMÁS se exoneran con un flag.
+  // Que un artículo que SÍ tenemos diga algo distinto del boletín es siempre un defecto.
+  const hasContentDiscrepancy =
     ((summary.title_mismatch as number) || 0) > 0 ||
-    ((summary.content_mismatch as number) || 0) > 0 ||
-    ((summary.missing_in_db as number) || 0) > 0
-  if (hasHardDiscrepancy) return false
+    ((summary.content_mismatch as number) || 0) > 0
+  if (hasContentDiscrepancy) return false
+
+  // `missing_in_db` es distinto: hay leyes que se importan A PROPÓSITO en parte, porque los
+  // temas solo escopan un subconjunto (p.ej. del TRLPI solo los 30 artículos que examina
+  // auxiliar_biblioteca_estado, de 212). Sin una forma de declararlo, esas leyes encienden el
+  // badge PARA SIEMPRE y lo vuelven inútil: si todo está en rojo, el rojo deja de avisar.
+  //
+  // `deliberate_subset: true` = un humano decidió y documentó que faltan artículos a propósito.
+  // Es simétrico a `known_quirk` (que cubre el residual de `extra_in_db`) y NO puede tapar una
+  // discrepancia de contenido, porque esas ya se han descartado arriba.
+  // OBLIGATORIO acompañarlo de `subset_note` explicando el porqué: sin justificación escrita
+  // no se acepta, para que no se use como interruptor de apagar badges.
+  const missing = (summary.missing_in_db as number) || 0
+  if (missing > 0) {
+    const declarado =
+      summary.deliberate_subset === true &&
+      typeof summary.subset_note === 'string' &&
+      (summary.subset_note as string).trim().length > 0
+    if (!declarado) return false
+  }
 
   // `known_quirk: true` = un humano verificó la ley, confirmó que el contenido es
   // correcto, y que el `extra_in_db` residual es un artefacto conocido del extractor
