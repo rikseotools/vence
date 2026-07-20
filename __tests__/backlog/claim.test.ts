@@ -109,6 +109,17 @@ describe('parseo del markdown', () => {
     expect(parseBacklogMarkdown(MD)[1].title).toBe('Tarea media')
   })
 
+  it('⬜ marca la tarea como APARCADA (viva, pero fuera del orden de ataque)', () => {
+    const md = '## Abiertas\n### [T-040] ⬜ [SIN PRIORIDAD — aparcada por tamaño] Artículos-cajón'
+    const [t] = parseBacklogMarkdown(md)
+    expect(t).toMatchObject({ id: 'T-040', parked: true, priority: null, doneMarked: false })
+    expect(t.title).toBe('Artículos-cajón')  // el ⬜ no ensucia el título
+  })
+
+  it('una tarea normal NO queda marcada como aparcada (el flag no se activa por accidente)', () => {
+    expect(parseBacklogMarkdown(MD).every(x => x.parked === false)).toBe(true)
+  })
+
   it('caza cabeceras SIN id (romperían el join markdown↔BD en silencio)', () => {
     expect(findHeadingsWithoutId('### 🟠 Sin identificador')).toEqual(['🟠 Sin identificador'])
     expect(findHeadingsWithoutId(MD)).toEqual([])

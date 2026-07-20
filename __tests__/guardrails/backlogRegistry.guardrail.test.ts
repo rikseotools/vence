@@ -35,11 +35,14 @@ describe('backlog — guardarraíles de tareas-pendientes.md', () => {
     expect(dup).toEqual([])
   })
 
-  it('toda tarea VIVA declara prioridad con su emoji (🔴/🟠/🟡/🟢)', () => {
+  it('toda tarea VIVA y NO aparcada declara prioridad con su emoji (🔴/🟠/🟡/🟢)', () => {
     // La prioridad ordena el reparto; sin ella `next` no sabe qué sugerir.
-    // Las cerradas (✅) no la necesitan: es la convención del fichero.
+    // Exentas: las cerradas (✅) y las APARCADAS (⬜). Aparcar es una decisión
+    // explícita ("esto no entra en el orden de ataque, por coste/tamaño"), no un
+    // descuido: exigirle prioridad obligaría a inventar una falsa. Lo que el
+    // guardarraíl sigue cazando es la tarea viva a la que se le OLVIDÓ ponerla.
     const sinPrioridad = tasks
-      .filter(t => !t.doneMarked && t.priority == null)
+      .filter(t => !t.doneMarked && !t.parked && t.priority == null)
       .map(t => `${t.id} ${t.title}`)
     expect(sinPrioridad).toEqual([])
   })

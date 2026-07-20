@@ -87,6 +87,14 @@ export interface MarkdownTask {
   inOpenSection: boolean
   /** true si la cabecera lleva ✅ (convención del fichero para "ya hecha"). */
   doneMarked: boolean
+  /**
+   * true si la cabecera lleva ⬜ = APARCADA a propósito (p.ej. por tamaño/coste):
+   * sigue viva y con contexto, pero deliberadamente fuera del orden de ataque.
+   * Es un estado legítimo distinto de "se me olvidó ponerle prioridad", por eso
+   * el guardarraíl la exime de declarar 🔴/🟠/🟡/🟢 (si no, obligaría a inventar
+   * una prioridad falsa para algo que se decidió NO priorizar).
+   */
+  parked: boolean
 }
 
 /**
@@ -108,7 +116,7 @@ export function parseBacklogMarkdown(md: string): MarkdownTask[] {
     const emoji = Object.keys(EMOJI_TO_PRIORITY).find(e => rest.includes(e))
     const title = rest
       .replace(/\[(T-\d+)\]/, '')
-      .replace(/[🔴🟠🟡🟢✅]/g, '')
+      .replace(/[🔴🟠🟡🟢✅⬜]/g, '')
       .replace(/^\s*\[[^\]]*\]\s*/, '')      // etiquetas tipo [ABIERTO 19/07]
       .trim()
     out.push({
@@ -117,6 +125,7 @@ export function parseBacklogMarkdown(md: string): MarkdownTask[] {
       priority: emoji ? EMOJI_TO_PRIORITY[emoji] : null,
       inOpenSection: inOpen,
       doneMarked: rest.includes('✅'),
+      parked: rest.includes('⬜'),
     })
   }
   return out
