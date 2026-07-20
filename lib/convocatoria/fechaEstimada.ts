@@ -35,13 +35,26 @@ export interface HitoConFecha {
 export const ETIQUETA_SIN_FECHA = 'Fecha por confirmar'
 
 /**
+ * Únicos orígenes que acreditan una fecha como OFICIAL. Todo lo demás se trata como estimado.
+ *
+ * Es deliberadamente una LISTA BLANCA. El primer intento de este helper usaba lista negra
+ * (`origen === 'estimacion'`) y se le escapaban los 3 hitos con `origen='inferencia'` que hay
+ * en BD — los tres, además, de examen. Con lista negra, cada valor nuevo de `origen` que
+ * alguien introduzca se publica como oficial por defecto, que es justo el fallo al revés.
+ * Con lista blanca, lo desconocido se oculta: como mucho dejamos de mostrar una fecha buena,
+ * nunca publicamos una inventada.
+ */
+export const ORIGENES_OFICIALES = ['registro'] as const
+
+/**
  * ¿La fecha de este hito es una estimación nuestra en vez de un dato oficial?
  *
- * Acepta las dos señales porque conviven en BD: `origen='estimacion'` (la que usa el
- * scaffolder y los sensores) y `fecha_aproximada=true` (columna más antigua). Basta una.
+ * Mira las dos señales que conviven en BD: `origen` (la que usan scaffolder y sensores) y
+ * `fecha_aproximada` (columna más antigua). Basta cualquiera para considerarla no oficial.
  */
 export function esFechaEstimada(hito: HitoConFecha): boolean {
-  return hito.origen === 'estimacion' || hito.fechaAproximada === true
+  if (hito.fechaAproximada === true) return true
+  return !ORIGENES_OFICIALES.includes(hito.origen as (typeof ORIGENES_OFICIALES)[number])
 }
 
 /**

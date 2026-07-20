@@ -296,7 +296,9 @@ async function main() {
     WHERE o.is_active AND ch.status = 'upcoming' AND ch.fecha < CURRENT_DATE
     GROUP BY o.slug, ch.origen`)).rows;
   for (const r of hitosVencidos) {
-    const estimado = r.origen === 'estimacion';
+    // Mismo criterio de LISTA BLANCA que `lib/convocatoria/fechaEstimada.ts`: solo `registro`
+    // acredita fuente oficial. Con lista negra se escapaban los `origen='inferencia'`.
+    const estimado = r.origen !== 'registro';
     add('content', estimado ? 'warn' : 'error', r.slug, 'hito_vencido_abierto',
       `${r.slug}: ${r.n} hito(s) "próximos" con fecha ya pasada` +
       (estimado ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'

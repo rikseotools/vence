@@ -39,6 +39,19 @@ describe('fechas estimadas — no publicar lo que nos hemos inventado', () => {
     expect(esFechaEstimada(h({ origen: null, fechaAproximada: true }))).toBe(true)
   })
 
+  // El primer intento de este helper usaba LISTA NEGRA (`origen === 'estimacion'`) y se le
+  // escapaban los 3 hitos `origen='inferencia'` que hay en BD, los tres de examen. La lista
+  // blanca es lo que hace que un valor nuevo de `origen` no se publique como oficial por
+  // descuido: como mucho ocultamos una fecha buena, nunca publicamos una inventada.
+  it('`inferencia` NO es fuente oficial (el caso que se escapó con lista negra)', () => {
+    expect(esFechaEstimada(h({ origen: 'inferencia' }))).toBe(true)
+  })
+
+  it('un `origen` desconocido se trata como NO oficial (lista blanca, no negra)', () => {
+    expect(esFechaEstimada(h({ origen: 'sensor_futuro_que_aun_no_existe' }))).toBe(true)
+    expect(esFechaEstimada(h({ origen: null }))).toBe(true)
+  })
+
   it('un hito de fuente oficial SÍ muestra su fecha', () => {
     expect(etiquetaFechaHito(h(), fmt)).toBe('FECHA(2026-06-01)')
   })
