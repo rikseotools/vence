@@ -214,6 +214,11 @@ export async function syncArticlesFromBoe(
             articleNumber: normalizeArticleNumber(boeArt.article_number),
             title: boeArt.title || null,
             content: boeArt.content,
+            // T-048: las notas de vigencia del BOE viajan con el artículo en vez de perderse.
+            // NULL cuando el bloque no traía notas (que NO es lo mismo que "no capturado").
+            vigenciaNotes: boeArt.vigencia
+              ? { ...boeArt.vigencia, capturedAt: new Date().toISOString(), source: 'boe-extractor' }
+              : null,
             contentHash: newHash,
             isActive: true,
             isVerified: true,
@@ -235,6 +240,11 @@ export async function syncArticlesFromBoe(
             .set({
               title: boeArt.title || null,
               content: boeArt.content,
+              // T-048: si el BOE ya no trae notas (el legislador reformó el texto y la anulación
+              // dejó de aplicar), se limpia. Re-sincronizar debe reflejar la vigencia ACTUAL.
+              vigenciaNotes: boeArt.vigencia
+                ? { ...boeArt.vigencia, capturedAt: new Date().toISOString(), source: 'boe-extractor' }
+                : null,
               contentHash: newHash,
               isActive: true,
               isVerified: true,

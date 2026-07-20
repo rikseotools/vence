@@ -8,6 +8,19 @@ export interface ExtractedArticle {
   article_number: string
   title: string | null
   content: string
+  /**
+   * T-048: notas de vigencia del BOE (modificaciones, derogaciones, anulaciones del TC) e incisos
+   * que el BOE resalta como anulados. Antes se BORRABAN aquí mismo (`nota_pie` y `blockquote`),
+   * así que importábamos el inciso muerto como texto válido — raíz del incidente art. 126.2 LBRL /
+   * STC 103/2013. `content` sigue saliendo IGUAL que antes; esto viaja aparte.
+   * `undefined` = el bloque no traía notas.
+   */
+  vigencia?: ExtractedVigencia
+}
+
+export interface ExtractedVigencia {
+  notes: { clase: string; texto: string; ref: string | null; esAnulacion: boolean }[]
+  annulledFragments: string[]
 }
 
 export interface ExtractionOptions {
@@ -163,6 +176,49 @@ export function spanishTextToNumber(text: string | null | undefined): string | n
  * - id="primera", id="segunda-2" (CE-style ordinales femeninos)
  * - Headers: "Artículo X", "Art. X", "Regla X", "X." (solo número)
  */
+
+/**
+ * T-048 — extrae la VIGENCIA de un bloque del BOE antes de que se borre.
+ *
+ * El extractor elimina `nota_pie` y `blockquote` para limpiar el articulado (correcto: no deben
+ * ir dentro del texto del artículo). El problema era que se perdían del todo. Cuando el TC anula
+ * un inciso y el legislador no reforma el texto, el BOE mantiene la frase, la resalta con
+ * `<strong>` y explica en la nota que está anulada. Sin capturarlo, servimos el inciso muerto
+ * como texto válido — incidente art. 126.2 LBRL / STC 103/2013.
+ *
+ * Espejo de lib/laws/boeVigencia.ts (que trabaja sobre la API de datos abiertos). Aquí sobre el
+ * HTML de la web. Ambos alimentan articles.vigencia_notes con la misma forma.
+ */
+const ANULACION_VIGENCIA_RE = /\b(inconstitucional|nulidad|nulos?|nulas?|se anula)\b/i
+
+function extractVigencia(blockContent: string): ExtractedVigencia | undefined {
+  const notes: ExtractedVigencia['notes'] = []
+  for (const p of blockContent.match(/<p[^>]*class="(nota[^"]*|pie_unico)"[^>]*>[\s\S]*?<\/p>/gi) ?? []) {
+    const clase = (p.match(/class="([^"]+)"/i) ?? [])[1] ?? 'nota'
+    const ref = (p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null
+    const texto = decodeHtmlEntities(p.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+    // El BOE repite el historial de reformas dentro del mismo bloque → deduplicar o el JSONB es ruido.
+    if (texto && !notes.some((n) => n.texto === texto)) {
+      notes.push({ clase, texto, ref, esAnulacion: ANULACION_VIGENCIA_RE.test(texto) })
+    }
+  }
+  if (!notes.length) return undefined
+
+  // Los <strong> del articulado (fuera de las notas) son los "incisos destacados" a los que
+  // apunta la nota de anulación. Solo cuentan como anulados si HAY nota de anulación: el BOE
+  // resalta también por otros motivos.
+  const cuerpo = blockContent.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, ' ')
+  const destacados = [
+    ...new Set(
+      (cuerpo.match(/<strong>([\s\S]*?)<\/strong>/gi) ?? [])
+        .map((f) => decodeHtmlEntities(f.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim())
+        .filter(Boolean),
+    ),
+  ]
+  const hayAnulacion = notes.some((n) => n.esAnulacion)
+  return { notes, annulledFragments: hayAnulacion ? destacados : [] }
+}
+
 export function extractArticlesFromBOE(html: string, options: ExtractionOptions = {}): ExtractedArticle[] {
   const { includeDisposiciones = false } = options
   const articles: ExtractedArticle[] = []
@@ -343,7 +399,8 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     articles.push({
       article_number: isDisposicionArticle(articleNumber) ? normalizeArticleNumber(articleNumber) : articleNumber,
       title: title || null,
-      content: content
+      content: content,
+      vigencia: extractVigencia(blockContent), // T-048: capturarla ANTES de que se borre
     })
   }
 
@@ -444,7 +501,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 
       if (content.includes('(Suprimido)') || content.includes('(SUPRIMIDO)')) continue
 
-      articles.push({ article_number: isDisposicionArticle(articleNumber) ? normalizeArticleNumber(articleNumber) : articleNumber, title: title || null, content })
+      articles.push({ article_number: isDisposicionArticle(articleNumber) ? normalizeArticleNumber(articleNumber) : articleNumber, title: title || null, content, vigencia: extractVigencia(rawContent) })
     }
   }
 

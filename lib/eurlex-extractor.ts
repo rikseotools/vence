@@ -12,6 +12,13 @@ export interface ExtractedArticle {
   article_number: string
   title: string | null
   content: string
+  /**
+   * T-048: hueco para las notas de vigencia del BOE. EUR-Lex NO las publica en este formato
+   * (no hay `nota_pie` ni incisos resaltados por anulación del TC), así que aquí es siempre
+   * `undefined`. Existe para que BOE y EUR-Lex compartan tipo en article-sync, que mete ambos
+   * en la misma variable.
+   */
+  vigencia?: { notes: { clase: string; texto: string; ref: string | null; esAnulacion: boolean }[]; annulledFragments: string[] }
 }
 
 /**

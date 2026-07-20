@@ -732,10 +732,10 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
 
 
-### [T-048] 🟡 [ABIERTA — capas 1, 2 y 3 hechas y desplegadas 20/07; QUEDA cablear los importadores] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
-> ⚠️ El ✅ anterior engañaba de un vistazo: la tarea **sigue abierta** en `backlog_tasks`. Lo hecho (captura al
-> importar, render del inciso tachado en teoría y detector) ya está en producción; lo que falta es **cablear los
-> importadores existentes** para que todos pasen por la captura de notas de vigencia.
+### [T-048] ✅ [COMPLETA 20/07 — 3 capas + importadores cableados] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+> El ✅ ahora sí corresponde: **cerrada también en `backlog_tasks`**, no solo en este documento.
+> (Otra sesión avisó con razón de que el ✅ anterior engañaba: el markdown decía "hecha" mientras el
+> registro decía `open`. La fuente de verdad del estado es `backlog_tasks`; este fichero es su reflejo.)
 - **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
   - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
     **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
@@ -782,9 +782,22 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
     Reejecutable: `node scripts/canary-gate-inciso-anulado.cjs`.
   - **Gotcha de método:** el primer canario dio un falso "bloqueó una buena" porque metí los dos casos en la MISMA
     transacción — un `RAISE` la aborta y los comandos siguientes se ignoran. Cada caso necesita su transacción.
-- **Pendiente (lo único que queda):** que **los importadores llamen a `parseBoeBlock()`** (guardarraíl que impida generar
-  una pregunta cuya clave caiga en un fragmento marcado anulado). También queda **llamar a `parseBoeBlock()` desde
-  los importadores** — son scripts ad-hoc por ley y cada uno copia su propio `replace`.
+- **✅ IMPORTADORES CABLEADOS (20/07).** El culpable no era un `replace` genérico: `lib/boe-extractor.ts`
+  —el extractor COMPARTIDO que usa toda la sincronización— **borraba a propósito** `nota_pie` y `blockquote`
+  para limpiar el articulado. Correcto que no vayan dentro del texto; el fallo era perderlas del todo.
+  - `extractVigencia()` las captura **antes** de borrarlas, en **los dos caminos** del extractor.
+  - `ExtractedArticle` lleva ahora `vigencia?`; `lib/api/article-sync/queries.ts` la persiste en
+    `articles.vigencia_notes` **tanto al INSERTAR como al ACTUALIZAR** (si el BOE ya no trae notas porque el
+    legislador reformó el texto, se limpia: re-sincronizar debe reflejar la vigencia ACTUAL).
+  - `lib/eurlex-extractor.ts` recibe el campo también: EUR-Lex no publica estas notas (siempre `undefined`),
+    pero ambos tipos comparten variable en article-sync y sin eso no compila.
+  - **Tests:** `__tests__/laws/boeExtractorVigencia.test.ts` (8). Fijan el **contrato**: `content` sale igual
+    que antes, SIN las notas. Si alguien las mete dentro del articulado, saltan — romperían las citas literales.
+- **⚠️ BUG PREEXISTENTE encontrado de paso (NO arreglado, a propósito):** `extractArticlesFromBOE` tiene dos
+  caminos y **el de reserva no llama a `decodeHtmlEntities`**, así que sus artículos guardan `&oacute;` en el
+  `content` y el opositor lo ve así. **No se toca aquí porque cambiar el texto cambia el `content_hash` de
+  miles de artículos y dispararía una re-sincronización masiva.** Queda fijado en un test para que el día que
+  se arregle salte y sea una decisión consciente.
 - **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
   esta capa 1 corta el problema en origen, así que un cron de 714 peticiones al BOE por noche no se justifica.
 
