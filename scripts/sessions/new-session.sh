@@ -60,6 +60,16 @@ else
   echo "→ node_modules por symlink (⚠️ quítalo antes de 'podman build')"
 fi
 
+# husky: sin el dir generado `.husky/_` (gitignored) git NO corre NINGÚN hook en el worktree
+# — ni pre-commit ni el pre-push que hace ENFORCEMENT del claim del backlog (T-051). El wrapper
+# `.husky/_/<hook>` despacha al hook COMMITEADO del propio worktree (`.husky/<hook>`), así que un
+# symlink al `_` del repo principal basta y es correcto. Sin esto, una sesión en worktree podría
+# pushear trabajo sobre una tarea que no reclamó (justo lo que el guard evita).
+if [ -d "$MAIN_REPO/.husky/_" ] && [ ! -e "$WT/.husky/_" ]; then
+  ln -s "$MAIN_REPO/.husky/_" "$WT/.husky/_"
+  echo "→ .husky/_ por symlink (hooks activos: pre-commit + pre-push claim-guard)"
+fi
+
 # session-id (lo lee cola.cjs solo)
 SID="$SLUG-$(openssl rand -hex 3 2>/dev/null || printf '%04x%04x' $RANDOM $RANDOM)"
 printf '%s\n' "$SID" > "$WT/.session-id"
