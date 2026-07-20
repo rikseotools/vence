@@ -417,6 +417,7 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 >   - "Por qué [LETRA] es correcta: [razón clara]"
 >   - "Por qué las demás son incorrectas:" + bullet por cada opción distractor.
 >   - Sin emojis, sin sección "Truco/Consejo".
+>   - **NO enunciar CIFRAS de alteraciones ("doble/triple/cuádruple alteración", "altera N elementos"): LISTA lo que cambia, sin contarlo.** Patrón de fallo recurrente medido en T-045 (ITPAJD art. 1 ×2, EA Canarias art. 168): el generador dice "triple alteración" y hay cuatro (suele olvidar un sinónimo tipo "de las islas"→"del Archipiélago"). No es mecanizable (exige diff semántico distractor↔artículo) ni afecta a la clave, pero servido en vivo enseña un detalle mal. **Si no das un número, no hay número que equivocar** — y el distractor no pierde nada explicando "cambia X por Y, y Z por W" en vez de "doble alteración: …".
 
 Guardar borrador en `/tmp/<batch_id>_borrador.json`:
 
