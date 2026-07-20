@@ -8,6 +8,7 @@ function getTemarioDb() {
 }
 import { topics, topicScope, articles, laws, questions, videoCourses } from '@/db/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
+import { annotateVigencia, tieneIncisoAnulado, type VigenciaData } from '@/lib/teoria/annotateVigencia'
 import { unstable_cache } from 'next/cache'
 import { versionedCache } from '@/lib/cache/versionedCache'
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
@@ -149,6 +150,7 @@ async function getTopicContentBaseInternal(
     titleNumber: string | null
     chapterNumber: string | null
     section: string | null
+    vigenciaNotes: unknown
   }[] = []
 
   // Ejecutar queries en paralelo para cada ley
@@ -162,6 +164,8 @@ async function getTopicContentBaseInternal(
       titleNumber: articles.titleNumber,
       chapterNumber: articles.chapterNumber,
       section: articles.section,
+      // T-048 capa 2: sin esto el opositor lee el inciso anulado como si estuviera vigente.
+      vigenciaNotes: articles.vigenciaNotes,
     }
 
     if (articleNums === null) {
@@ -258,7 +262,10 @@ async function getTopicContentBaseInternal(
         id: a.id,
         articleNumber: a.articleNumber,
         title: a.title,
-        content: a.content,
+        // El `content` de BD NO se toca (las explicaciones lo citan verbatim): la vigencia se
+        // pinta al vuelo, tachando el inciso anulado y añadiendo las notas del BOE. T-048 capa 2.
+        content: annotateVigencia(a.content, a.vigenciaNotes as VigenciaData | null),
+        tieneIncisoAnulado: tieneIncisoAnulado(a.vigenciaNotes as VigenciaData | null),
         titleNumber: a.titleNumber,
         chapterNumber: a.chapterNumber,
         section: a.section,

@@ -180,6 +180,9 @@ export const articles = pgTable("articles", {
 	sectionNumber: text("section_number"),
 	isActive: boolean("is_active").default(true),
 	contentHash: text("content_hash"),
+	/** T-048: notas de vigencia del BOE + incisos anulados por el TC. NULL = no capturado
+	 *  todavía (NO equivale a "sin notas"). Lo produce lib/laws/boeVigencia.ts al importar. */
+	vigenciaNotes: jsonb("vigencia_notes"),
 	lastModificationDate: date("last_modification_date"),
 	verificationDate: date("verification_date").default(sql`CURRENT_DATE`),
 	isVerified: boolean("is_verified").default(false),

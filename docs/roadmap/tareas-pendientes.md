@@ -761,7 +761,7 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
 
 
-### [T-048] 🟡 [CAPA 1 HECHA 20/07 — quedan capas 2 y 3] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+### [T-048] 🟡 [CAPAS 1 y 2 HECHAS 20/07 — queda capa 3] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
 - **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
   - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
     **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
@@ -784,8 +784,18 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   (misma STC 17/2013, apartados 6 y 7 + aclaración). **Cero falsos positivos.** Y un `<strong>` SIN nota de
   anulación NO marca nada (el BOE resalta por otros motivos) — hay test.
 - **Tests:** `__tests__/laws/boeVigencia.test.ts` (9), con **fixture real** descargado de la API, no inventado.
-- **Pendiente:** **capa 2** (render: mostrar el inciso tachado + nota, como el BOE — es pedagógicamente mejor,
-  al opositor le interesa saber que está anulado porque puede caer) y **capa 3** (guardarraíl que impida generar
+- **✅ Capa 2 (render) HECHA.** `lib/teoria/annotateVigencia.ts` pinta el inciso **tachado** (`~~…~~`, GFM, que es
+  lo que `MarkdownContent` tiene activado) + un aviso **en texto** (*"[inciso declarado inconstitucional y nulo —
+  sin vigencia]"*, no solo formato: quien lea rápido o use lector de pantalla también tiene que enterarse) y añade
+  las **notas del BOE al pie**, con las de anulación primero porque son las que cambian la respuesta.
+  Cableado en `lib/api/temario/queries.ts` + columna añadida a `db/schema.ts`; expone además `tieneIncisoAnulado`
+  para poder marcarlo en la UI. **`content` NO se toca**: la anotación es al vuelo, en display.
+  - **Si el fragmento no aparece en el texto guardado** (import reflowado, redacción distinta) **no se tacha nada
+    pero la nota SÍ se muestra**: avisar de más es mejor que tachar el trozo equivocado. Hay test.
+  - Verificado contra el dato real en RDS (LO 4/2000 art.58): el inciso se localiza y se tacha correctamente,
+    3 notas de anulación + 5 de modificación.
+  - **Tests:** `__tests__/teoria/annotateVigencia.test.ts` (9).
+- **Pendiente:** **capa 3** (guardarraíl que impida generar
   una pregunta cuya clave caiga en un fragmento marcado anulado). También queda **llamar a `parseBoeBlock()` desde
   los importadores** — son scripts ad-hoc por ley y cada uno copia su propio `replace`.
 - **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
