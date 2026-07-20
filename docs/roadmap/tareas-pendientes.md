@@ -215,7 +215,16 @@
 - **Dato menor a limpiar:** la fila del ciclo en curso (Orden 264/2026) tiene `convocatoria_numero=NULL` y la archivada tiene ese número mal atribuido (cruce de etiquetas preexistente); rellenar con cuidado por el índice `convocatorias_ref_oficial_unica`.
 - **Cómo:** `docs/maintenance/oeps-convocatorias-seguimiento.md` §4e-ter; memoria `project-convocatorias-multi-por-año-schema`.
 
-### [T-009] 🟡 [DETECTOR v1+v2 HECHO 20/07 — quedan ~5 candidatos reales + barrido/cron] Disposiciones ANULADAS (STC) / incisos derogados en ley vigente
+### [T-009] 🟡 [BARRIDO 356 LEYES HECHO 20/07 — 0 bugs activos; queda cron + fix de raíz (T-048)] Disposiciones ANULADAS (STC) / incisos derogados en ley vigente
+> **Barrido ampliado 20/07 (antes 60 leyes, ahora 356 de las 708 con `boe_url`):** 21 hallazgos.
+> Triaje completo: **11 sin preguntas** (riesgo activo imposible) y **10 con preguntas**, todos verificados → **0 bugs activos**.
+> El caso grande fue **LO 4/2000 art. 58** (32 preguntas, 28 visibles): el inciso anulado por la **STC 17/2013** es
+> *"Asimismo, toda devolución acordada en aplicación del párrafo b) … llevará consigo la prohibición de entrada … por un plazo máximo de tres años"*,
+> que **servimos sin nota de vigencia**. Revisadas las claves una a una: **ninguna clave da por válido el inciso anulado**
+> (aparece 1 vez y como distractor, que es el uso correcto). El detector se auto-valida: cazó por su cuenta la Ley 1/2004 CAA art. 4 (STC 40/2025),
+> que se había descubierto ese mismo día por otra vía.
+> **Queda:** (a) cablear el auditor a cron —hoy solo corre con la frase-gatillo, no está en ningún workflow ni npm script—
+> y (b) el **arreglo de raíz: T-048**.
 - **Por qué:** incidente 19/07 (Alfonso, aux CARM) — una pregunta testeaba el inciso del **art. 126.2 LBRL** (nombrar no-concejales a la Junta de Gobierno Local) que la **STC 103/2013** declaró **inconstitucional y nulo**; nuestro artículo importado no tenía la nota de vigencia y la clave daba el inciso anulado como correcto. **Le respondí mal la impugnación** antes de que reabriera como bug. Riesgo de clase: cualquier artículo con un inciso anulado/derogado que el BOE consolidado marca con nota pero nuestro import no capturó.
 - **Hueco de monitoreo (confirmado):** NINGÚN sistema lo caza — el monitor BOE ve cambios FUTUROS (no anulaciones históricas ya en el consolidado); `completitud-leyes` ve artículos que FALTAN, no vigencia de incisos; `leyes-anuales-caducadas` solo leyes anuales completas; el radar de epígrafes mira materia, no vigencia.
 - **Ideas de fix (diseñar):** al importar/verificar una ley, **capturar las notas de vigencia del BOE consolidado** (STC, derogaciones de incisos concretos — el BOE las marca) en `articles.content`/campo aparte; detector que compare artículo ↔ notas BOE y flaguee incisos anulados presentes como vigentes; para artículos "tocados por el TC", nota obligatoria + revisar sus preguntas. Extiende `lib/laws/completeness.ts` / `docs/roadmap/verificacion-completitud-leyes.md`.
@@ -722,3 +731,35 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Estado:** código listo y verde (17 unitarios del modelo puro + typecheck). **PENDIENTE: deploy** (`scripts/deploy-frontend.sh`). Al desplegar, avisar a María, Sonia y Mónica (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
 - **⚠️ NO está en producción.** El código está en `main` (`bcc79f8f`) pero el deploy quedó bloqueado: el CI de `Unit tests` estaba **ya en rojo antes de este commit** (`ef4ef1f6`, `dba43db3` de otras sesiones fallan igual). Los 3 fallos son ajenos a esto: `fetchByTopicScopeMigration` (selección adaptativa, dependiente de aleatoriedad) y `verifyLawBocyl` / `verifyLawLiteral` ("suite failed to run"). En local la suite completa pasa (618 suites / 16.040 tests). **Se desplegará cuando se arregle ese rojo.**
 
+
+
+### [T-048] 🟡 [ABIERTA 20/07 — arreglo de RAÍZ de T-009] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+- **El problema NO es de sincronización.** Verificado en el art. 58 LO 4/2000 palabra por palabra: nuestro texto
+  **coincide con el BOE consolidado**. Cuando el TC anula un inciso pero el legislador no reforma el texto, el BOE
+  **mantiene la frase en el articulado** y la marca de dos maneras: (1) la resalta con `<strong>` dentro del texto y
+  (2) le añade una nota al pie (*"Se declara inconstitucional y nulo el inciso destacado del apartado 6 por Sentencia
+  del TC 17/2013, de 31 de enero"*). **Nuestro import hace `replace(/<[^>]+>/g,' ')` y se lleva por delante el
+  resaltado Y la nota** → servimos el inciso anulado como texto plano válido. Importamos *el qué*, no *con qué vigencia*.
+- **Es mecánicamente accesible:** la API de datosabiertos ya lo da. Verificado el 20/07:
+  `GET https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/<BOE-ID>/texto/bloque/<bloqueId>` con
+  `Accept: application/xml` (¡ojo: con `Accept: application/json` devuelve *400 mime type no soportado*) →
+  el `<strong>` delimita **exactamente** el fragmento anulado y la nota va en el mismo bloque. El id de bloque se
+  saca de `…/texto/indice`. Es justo lo que ya hace `lib/laws/annulledProvisions.ts` (v2) para detectar.
+- **Por qué no basta el detector de T-009:** es *a posteriori*. Detecta después de haber importado mal y de haber
+  podido generar preguntas sobre un inciso muerto. El arreglo de raíz es capturarlo al importar.
+- **Diseño (capas, de más barata a más cara):**
+  1. **Import** — capturar fragmento anulado + nota y persistirlos. Hoy **no hay dónde**: `articles` no tiene campo
+     de vigencia (columnas actuales: content, title, section, title_number, chapter_number, is_active, content_hash,
+     last_modification_date, verification_date, is_verified…). Opciones: columna `vigencia_notes JSONB`
+     (`[{apartado, inciso, nota, stc, fecha}]`) o marcadores inline en `content`. Ojo: los importadores son
+     **scripts ad-hoc por ley** (`scripts/import-pendientes-leyes.cjs` y demás), así que no hay un único sitio que
+     lo imponga → conviene una función compartida.
+  2. **Render** — mostrarlo como el BOE: inciso tachado + nota. Además de correcto es **pedagógicamente mejor**:
+     al opositor le interesa saber que está anulado, porque puede caer en el examen.
+  3. **Generación** — guardarraíl que impida generar una pregunta cuya clave caiga dentro de un fragmento marcado
+     como anulado (el fallo del incidente 19/07, art. 126.2 LBRL).
+  4. **Cron** — enganchar `audit-annulled-provisions.cjs` al barrido nocturno (`health-sweep.cjs`) para no depender
+     de que alguien diga la frase-gatillo. *(Esto es de T-009, se anota aquí por continuidad.)*
+- **Orden recomendado:** 1 + 4 primero (baratos, cortan el problema en origen y en vigilancia). 2 y 3 después.
+- **Alcance estimado:** el barrido de 356 leyes dio 21 artículos afectados (~6% de las leyes con anulación TC).
+  Quedan ~350 leyes con `boe_url` sin barrer.
