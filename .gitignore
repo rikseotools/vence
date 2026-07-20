@@ -88,3 +88,9 @@ scripts/opofimatica-drive-capture.json
 
 # Sesiones de trabajo paralelas (new-session.sh) — artefacto por-sesión, nunca commitear
 .session-id
+
+# Volcados intermedios del pipeline de reescritura de explicaciones (regenerables con
+# scripts/impugnaciones/dump-lote-expl.cjs). Pesan MB y contienen texto de preguntas.
+scripts/impugnaciones/lote-shards/
+scripts/impugnaciones/lote-trafico.json
+scripts/impugnaciones/validacion-citas.json

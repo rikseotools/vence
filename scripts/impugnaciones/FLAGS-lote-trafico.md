@@ -1,0 +1,17 @@
+# Flags del lote de tráfico (20/07) — a decisión humana
+
+No se ha tocado ninguna: NUNCA auto-flip de clave.
+
+| id | resp | ley/art | clave | tipo | qué pasa |
+|---|---|---|---|---|---|
+| `545f3573` | 465 | Explorador Windows 11 art.3 | D | 🔗 mislink | El art_content vinculado (Vistas y paneles del Explorador) enumera los diseños de vista y los paneles, pero NO menciona en ningún punto la posibilidad de agrupar los archivos por columnas, que es justamente el elemento que distingue la opci |
+| `f6156db6` | 150 | CE art.117 | C | 🔗 mislink | El art_content vinculado es el art. 117 CE, que solo contiene la prohibición de los Tribunales de excepción (apartado 6). La prohibición de los Tribunales de honor "en el ámbito de la Administración civil y de las organizaciones profesional |
+| `50672e68` | 66 | RD 203/2021 art.9 | B | 🔗 mislink | mislink: el art. 9 del RD 203/2021 vinculado define el concepto y la titularidad de la sede electrónica, pero no contiene ninguna dirección web ni menciona a la Agencia Tributaria; el artículo no sostiene ni desmiente la clave B |
+| `81877dd9` | 54 | CE art.13 | A | 🔗 mislink | mislink: la pregunta versa sobre la rúbrica del Título II de la CE (De la Corona), pero el artículo vinculado es el art. 13 CE (extranjeros, extradición y asilo), que no contiene la estructura ni las rúbricas de los Títulos. No es posible c |
+| `804f7e33` | 39 | RD 203/2021 art.7 | D | 🔗 mislink | mislink: el artículo vinculado (art. 7 del RD 203/2021, Punto de Acceso General electrónico) no menciona en ningún punto la Orden HAP/1949/2014 ni ninguna otra orden reguladora del PAGe de la AGE, por lo que art_content no sostiene ni permi |
+| `0323d2fd` | 36 | RDL 8/2015 art.363 | D | ⚠️ doble clave | doble respuesta correcta: la opción C reproduce literalmente el art. 363.2 (límite de acumulación = cuantía anual de la pensión + 70% por conviviente menos uno) y la opción D reproduce el art. 363.3 (2,5 veces esa cuantía cuando la conviven |
+| `ac965063` | 29 | CE art.9 | D | 🔗 mislink | Mislink: la pregunta versa sobre el Preámbulo de la Constitución (voluntad de la Nación española) y el artículo vinculado es el art. 9 CE (sujeción al ordenamiento y garantías del principio de legalidad), cuyo texto no contiene ninguno de l |
+| `9e9439ad` | 20 | CE art.9 | B | 🔗 mislink | mislink: el art_content es el art. 9 CE (principios constitucionales), pero la pregunta versa sobre el Preámbulo de la Constitución («un orden económico y social justo»). El artículo vinculado no sostiene ni contradice la clave B; hay que r |
+| `2f71a89e` | 20 | CE art.2 | B | 🔗 mislink | mislink: el art_content es el art. 2 CE (unidad de la Nación y derecho a la autonomía), mientras que la pregunta trata de la Constitución Federal andaluza (Antequera, 1883), materia de historia del andalucismo ajena por completo al artículo |
+| `3541491c` | 11 | RDL 8/2015 art.214 | B | ⚠️ enunciado roto | Enunciado incompleto (supuesto truncado): la clave (55 % = demora de dos años en el acceso, art. 214.2.b) depende de la fecha en que el interesado cumple la edad ordinaria de jubilación, dato que no consta en el enunciado ni puede deducirse |
+| `cb212dde` | 10 | LO 6/1985 art.83 | D | 🔗 mislink | art_content insuficiente para sostener la clave: el art. 83 LOPJ solo dice que el juicio del Jurado 'se celebrara en el ambito de la Audiencia Provincial u otros Tribunales y en la forma que establezca la ley', sin excluir a la Audiencia Na |

@@ -1,0 +1,38 @@
+[
+ {
+  "pfx": "545f3573",
+  "antes": "2b760eb1-997a-4192-a53b-f6361d4ca417",
+  "ahora": "ce107473-519a-477f-8dba-de78f83a4302",
+  "clave": "D"
+ },
+ {
+  "pfx": "f6156db6",
+  "antes": "8e5d9ef1-7c80-4e48-a43a-447b69d0bf07",
+  "ahora": "dd654f35-f5d3-4cee-95d2-eaeea441a1b0",
+  "clave": "C"
+ },
+ {
+  "pfx": "81877dd9",
+  "antes": "abd6db9e-41b2-47d4-93f4-80e365c79a29",
+  "ahora": "2536184c-73ed-4568-9ac7-0bbf1da24dcb",
+  "clave": "A"
+ },
+ {
+  "pfx": "ac965063",
+  "antes": "b5465d5a-a8c1-42ec-8d5f-a95a54a0d802",
+  "ahora": "8f5e5023-408c-40b3-98a6-0a68fde5d319",
+  "clave": "D"
+ },
+ {
+  "pfx": "9e9439ad",
+  "antes": "b5465d5a-a8c1-42ec-8d5f-a95a54a0d802",
+  "ahora": "8f5e5023-408c-40b3-98a6-0a68fde5d319",
+  "clave": "B"
+ },
+ {
+  "pfx": "cb212dde",
+  "antes": "8accb208-c5b2-441f-81c3-710d1fea2361",
+  "ahora": "0152f76f-d8c9-40cd-911b-ab347c1b3b22",
+  "clave": "D"
+ }
+]
