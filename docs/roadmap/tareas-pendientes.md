@@ -760,32 +760,35 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
 
 
-### [T-048] 🟡 [ABIERTA 20/07 — arreglo de RAÍZ de T-009] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
-- **El problema NO es de sincronización.** Verificado en el art. 58 LO 4/2000 palabra por palabra: nuestro texto
-  **coincide con el BOE consolidado**. Cuando el TC anula un inciso y el legislador no reforma el texto, el BOE
-  **mantiene la frase en el articulado**, la resalta con `<strong>` y le añade nota al pie (*"Se declara
-  inconstitucional y nulo el inciso destacado del apartado 6 por Sentencia del TC 17/2013"*). **Nuestro import hace
-  `replace(/<[^>]+>/g,' ')` y se lleva resaltado Y nota** → servimos el inciso anulado como texto plano válido.
-  Importamos *el qué*, no *con qué vigencia*.
-- **Es mecánicamente accesible** (verificado 20/07):
-  `GET https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/<BOE-ID>/texto/bloque/<bloqueId>` con
-  `Accept: application/xml` (con `application/json` devuelve **400 mime type no soportado**) → el `<strong>` delimita
-  **exactamente** el fragmento anulado y la nota va en el mismo bloque. El id de bloque sale de `…/texto/indice`.
-  Es lo que ya hace `lib/laws/annulledProvisions.ts` (v2) para detectar.
-- **Por qué no basta el detector de T-009:** es *a posteriori* — detecta después de importar mal y de haber podido
-  generar preguntas sobre un inciso muerto.
-- **Diseño por capas (de más barata a más cara):**
-  1. **Import** — capturar fragmento anulado + nota y persistirlos. Hoy **no hay dónde**: `articles` no tiene campo de
-     vigencia. Opciones: columna `vigencia_notes JSONB` (`[{apartado, inciso, nota, stc, fecha}]`) o marcadores inline
-     en `content`. Los importadores son **scripts ad-hoc por ley**, así que hace falta una función compartida que lo imponga.
-  2. **Render** — mostrarlo como el BOE (inciso tachado + nota). Además de correcto es **pedagógicamente mejor**:
-     al opositor le interesa saber que está anulado, porque puede caer.
-  3. **Generación** — guardarraíl que impida generar una pregunta cuya clave caiga en un fragmento marcado anulado
-     (el fallo del incidente 19/07, art. 126.2 LBRL).
-  4. **Cron** — enganchar `audit-annulled-provisions.cjs` al barrido nocturno (`health-sweep.cjs`).
-- **Orden recomendado:** 1 + 4 primero (baratos; cortan en origen y en vigilancia). 2 y 3 después.
-- **Alcance:** 21 artículos afectados en 356 leyes barridas (~6% de las que tienen anulación TC). Quedan ~350 con `boe_url` sin barrer.
-
+### [T-048] 🟡 [CAPA 1 HECHA 20/07 — quedan capas 2 y 3] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+- **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
+  - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
+    **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
+    comportamiento y **las citas literales de las explicaciones siguen encajando**. Lo nuevo va aparte.
+  - **Migración `20260720_articles_vigencia_notes.sql`** — columna `articles.vigencia_notes JSONB` (additiva, NULL
+    por defecto = "no capturado", que NO es lo mismo que "sin notas") + índice GIN parcial. **Aplicada a RDS.**
+  - **`scripts/capturar-vigencia-articulo.cjs`** — captura para un artículo ya importado. **NO toca `content`.**
+- **Por qué columna aparte y NO marcadores inline en `content`:** las explicaciones citan el articulado
+  **verbatim** (blockquote literal, verificado en 1.073 citas el 20/07). Inyectar marcadores rompería esas citas
+  y los checks de literalidad.
+- **✅ Verificado de punta a punta con el caso conocido** (LO 4/2000 art. 58, STC 17/2013, **28 preguntas activas**):
+  8 notas capturadas, **1 inciso anulado aislado exactamente** (*"Asimismo, toda devolución acordada en aplicación
+  del párrafo b)… tres años."*), `content` intacto en 2.439 chars.
+- **Dos cosas que costaron un intento cada una (anotadas para el siguiente):**
+  1. **El BOE repite el historial de reformas en el mismo bloque**: 20 notas y 2 fragmentos, de los que solo 8 y 1
+     eran distintos. Sin deduplicar, el JSONB guardado es ruido.
+  2. **`JSON.stringify(payload)::jsonb` guarda un STRING json, no un objeto** (el driver ya serializa el parámetro)
+     → `jsonb_typeof` devolvía `'string'`. Hay que pasar el objeto con `sql.json()`.
+- **Precisión medida:** las 3 notas que el detector marcó como anulación en el caso real son las 3 legítimas
+  (misma STC 17/2013, apartados 6 y 7 + aclaración). **Cero falsos positivos.** Y un `<strong>` SIN nota de
+  anulación NO marca nada (el BOE resalta por otros motivos) — hay test.
+- **Tests:** `__tests__/laws/boeVigencia.test.ts` (9), con **fixture real** descargado de la API, no inventado.
+- **Pendiente:** **capa 2** (render: mostrar el inciso tachado + nota, como el BOE — es pedagógicamente mejor,
+  al opositor le interesa saber que está anulado porque puede caer) y **capa 3** (guardarraíl que impida generar
+  una pregunta cuya clave caiga en un fragmento marcado anulado). También queda **llamar a `parseBoeBlock()` desde
+  los importadores** — son scripts ad-hoc por ley y cada uno copia su propio `replace`.
+- **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
+  esta capa 1 corta el problema en origen, así que un cron de 714 peticiones al BOE por noche no se justifica.
 
 ### [T-049] 🟠 [ABIERTA 20/07 — idea de Manuel, verificada en datos] Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
 - **Qué:** `app/OpenInscriptionsBanner.tsx` (home) personaliza **solo por familia** (Administración vs Sanidad…),
