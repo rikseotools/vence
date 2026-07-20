@@ -39,13 +39,13 @@ export interface CanaryRegistryEntry {
  *   stats-pipeline = cap-prune (SMOKE_FIXTURE_CAP=500 + pruneFixtureIfNeeded).
  */
 export const CANARY_REGISTRY: readonly CanaryRegistryEntry[] = [
-  { name: 'ai-model',               eventBase: 'ai_model',               cadence: '*/10 * * * *', writesToProd: false, bounding: 'read-only',         alertRule: false },
-  { name: 'answer-premium',         eventBase: 'answer_premium',         cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: false },
+  { name: 'ai-model',               eventBase: 'ai_model',               cadence: '*/10 * * * *', writesToProd: false, bounding: 'read-only',         alertRule: true  },
+  { name: 'answer-premium',         eventBase: 'answer_premium',         cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'answer-save',            eventBase: 'answer_save',            cadence: '*/5 * * * *',  writesToProd: true,  bounding: 'unique-constraint', alertRule: true  },
-  { name: 'competitor-mention',     eventBase: 'competitor_mention',     cadence: '7 * * * *',    writesToProd: false, bounding: 'read-only',         alertRule: false },
+  { name: 'competitor-mention',     eventBase: 'competitor_mention',     cadence: '7 * * * *',    writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'database-pool',          eventBase: 'db_pool',                cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: true  },
-  { name: 'por-leyes-scope',        eventBase: 'por_leyes_scope',        cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: false },
-  { name: 'psychometric-integrity', eventBase: 'psychometric_integrity', cadence: '*/15 * * * *', writesToProd: false, bounding: 'read-only',         alertRule: false },
+  { name: 'por-leyes-scope',        eventBase: 'por_leyes_scope',        cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: true  },
+  { name: 'psychometric-integrity', eventBase: 'psychometric_integrity', cadence: '*/15 * * * *', writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'questions-gate',         eventBase: 'questions_gate',         cadence: 'controller',   writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'redis-upstash',          eventBase: 'redis',                  cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'save-contract',          eventBase: 'save_contract',          cadence: '*/5 * * * *',  writesToProd: true,  bounding: 'per-run-cleanup',   alertRule: true  },

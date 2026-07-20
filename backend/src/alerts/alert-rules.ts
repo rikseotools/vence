@@ -3002,6 +3002,77 @@ export const RULE_AUTH_TOKEN_MINT_FLOOD: AlertRule<{
   cooldownMin: 60,
 };
 
+// ── Reglas de fallo de canary (fábrica) ─────────────────────────────────────
+// Estos canaries emitían `canary_<x>_failed` SIN regla → un fallo suyo pasaba
+// desapercibido (hueco de observabilidad cerrado 20/07, canary-framework.md P3).
+// El eventType se pasa LITERAL a propósito: así aparece como string en el fuente y
+// el guardarraíl canary-registry.spec (que grepea alert-rules.ts) lo detecta.
+function canaryFailedRule(
+  eventType: string,
+  opts: { title: string; body: string; windowMin: number; cooldownMin: number },
+): AlertRule<{ n: number; lastStep: string | null; lastError: string | null }> {
+  return {
+    name: eventType,
+    severity: 'critical',
+    query: sql`
+      SELECT COUNT(*)::int AS n,
+             (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+             (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+      FROM observable_events
+      WHERE event_type = ${eventType}
+        AND created_at > NOW() - make_interval(mins => ${opts.windowMin})
+    `,
+    // Mismo criterio que el resto de canaries: tolera 1 blip transitorio (timeout/
+    // abort), dispara a ≥2 sostenidos o ante un error sustantivo (no-timeout).
+    shouldFire: (rows) => canaryFailureShouldFire(rows),
+    buildNotification: (rows) => {
+      const r = rows[0];
+      return {
+        title: `${opts.title} (${r.n} en ${opts.windowMin} min)`,
+        body: `${opts.body}\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}`,
+        metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: opts.windowMin },
+        fingerprint: eventType,
+      };
+    },
+    cooldownMin: opts.cooldownMin,
+  };
+}
+
+export const RULE_CANARY_AI_MODEL_FAILED = canaryFailedRule('canary_ai_model_failed', {
+  title: '🚨 Canary AI-model: un proveedor LLM activo NO responde',
+  body: 'El ping al proveedor LLM configurado (ai_api_config activo) falló de forma sostenida → el chat IA / generación puede estar caído. Revisar credenciales del proveedor + su status page.',
+  windowMin: 20,
+  cooldownMin: 20,
+});
+
+export const RULE_CANARY_ANSWER_PREMIUM_FAILED = canaryFailedRule('canary_answer_premium_failed', {
+  title: '🚨 Canary answer-premium: el canary de límites premium falló',
+  body: 'El canary que verifica que un usuario premium NO topa con el límite diario (y que los endpoints de respuesta se comportan) falló. Riesgo: regresión de gating premium. Revisar /api/daily-limit + los endpoints de answer.',
+  windowMin: 10,
+  cooldownMin: 10,
+});
+
+export const RULE_CANARY_COMPETITOR_MENTION_FAILED = canaryFailedRule('canary_competitor_mention_failed', {
+  title: '⚠️ Canary competitor-mention: el chequeo de menciones falló',
+  body: 'El canary que cuenta menciones activas a competidores en contenido publicado no pudo ejecutar su query (fallo del propio canary, NO una mención detectada). Revisar la conexión/consulta.',
+  windowMin: 90,
+  cooldownMin: 60,
+});
+
+export const RULE_CANARY_POR_LEYES_SCOPE_FAILED = canaryFailedRule('canary_por_leyes_scope_failed', {
+  title: '🚨 Canary por-leyes-scope: fallo de scope (posible fuga o endpoint roto)',
+  body: 'El canary del filtro "por leyes" falló: puede ser una FUGA de scope (scopeToPosition devolviendo artículos de fuera del tema), 0 preguntas donde debería haber, o el endpoint /api/questions/filtered caído. Verificar el paso reportado.',
+  windowMin: 10,
+  cooldownMin: 10,
+});
+
+export const RULE_CANARY_PSYCHOMETRIC_INTEGRITY_FAILED = canaryFailedRule('canary_psychometric_integrity_failed', {
+  title: '⚠️ Canary psychometric-integrity: el chequeo de integridad falló',
+  body: 'El canary que vigila sesiones psicotécnicas fantasma no pudo ejecutar su query (fallo del propio canary, NO fantasmas detectados). Revisar la conexión/consulta.',
+  windowMin: 30,
+  cooldownMin: 30,
+});
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)
@@ -3057,6 +3128,12 @@ export const ALERT_RULES: AlertRule[] = [
   // Canarios de INFRA externa (Sprint 5, 27/05/2026) — únicos no duplicados con CI
   RULE_CANARY_DB_POOL_FAILED as AlertRule,
   RULE_CANARY_REDIS_FAILED as AlertRule,
+  // Canaries que emitían _failed SIN regla (hueco cerrado 20/07, canary-framework P3)
+  RULE_CANARY_AI_MODEL_FAILED as AlertRule,
+  RULE_CANARY_ANSWER_PREMIUM_FAILED as AlertRule,
+  RULE_CANARY_COMPETITOR_MENTION_FAILED as AlertRule,
+  RULE_CANARY_POR_LEYES_SCOPE_FAILED as AlertRule,
+  RULE_CANARY_PSYCHOMETRIC_INTEGRITY_FAILED as AlertRule,
   // Canary endpoint topic-data (31/05/2026, post Fase D-bis Iter 1.5)
   RULE_CANARY_TOPIC_DATA_FAILED as AlertRule,
   // Canary SEMÁNTICO del endpoint theme-stats (19/06/2026, post incidente V4):

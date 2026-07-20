@@ -57,18 +57,13 @@ describe('CANARY_REGISTRY — guardarraíl', () => {
     expect(drift).toEqual([]);
   });
 
-  it('TRINQUETE de cobertura de alertas: los canaries SIN regla son exactamente los 5 conocidos (deuda P3)', () => {
-    // Al añadir una RULE_CANARY_*_FAILED en P3, poner alertRule:true en el registro
-    // y quitarlo de esta lista → el trinquete baja. Impide reintroducir un canary
-    // que emite _failed sin alguien mirándolo.
+  it('COBERTURA COMPLETA: TODO canary tiene su regla de alerta (0 sin vigilar)', () => {
+    // Cerrado el 20/07: se añadieron las 5 reglas que faltaban (ai-model,
+    // answer-premium, competitor-mention, por-leyes-scope, psychometric-integrity).
+    // Si se añade un canary nuevo que emite _failed sin regla → alertRule:false →
+    // este test falla. No se puede tener un canary que falle sin que nadie lo mire.
     const missing = canariesMissingAlertRule().map((c) => c.name).sort();
-    expect(missing).toEqual([
-      'ai-model',
-      'answer-premium',
-      'competitor-mention',
-      'por-leyes-scope',
-      'psychometric-integrity',
-    ]);
+    expect(missing).toEqual([]);
   });
 
   it('COMPLETITUD: el registro cubre TODOS los canary-*/ (ni huérfanos ni fantasmas)', () => {
