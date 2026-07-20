@@ -238,7 +238,10 @@
 - **Los casos:** posibles HUECOS → T5 (LO 6/2002 partidos + LO 8/2007 financiación), T9 (EOMF + LO 5/1995 Jurado), T10 (LO 3/1981 Defensor del Pueblo), T12 (LOFCA), T13 (RDLeg 2/2004 Haciendas Locales), T38 (previsión social). Posible SOBRE-SCOPE → T18 (Ley 39/2015 54-96 solapa con T19), T26 (EA 99-107 duplica T28), T35 (Reglamento 183-190 serían de T40/41), T42 (EBEP 8-84 invade T43/44). Norma equivocada → T27 (usa Ley 40/2015 estatal; podría pedir la Ley 9/2007 andaluza).
 - **Ojo:** 7 de las leyes "que faltan" **ya están en BD** (LO 6/2002, EOMF, LO 3/1981, LOFCA, RDLeg 2/2004, Ley 9/2007, Ley 12/2007) → si se confirman, son añadidos de scope baratos que reutilizan preguntas ya existentes. Solo faltarían LO 8/2007 y LO 5/1995. Runbook: `docs/runbooks/verificar-epigrafes-scope.md`.
 
-### [T-052] 🟠 [VENDIBLE — inscripción viva, reuso máximo] Construir Oficial de Gestión del Parlamento de Andalucía (C1)
+### [T-052] ✅ CERRADA 20/07 — Construir Oficial de Gestión del Parlamento de Andalucía (C1)
+- **✅ Resultado: LIVE.** 44 temas, **15.519 preguntas activas**, 44/44 con cobertura ≥10, **43/44 `verified_correct`**, `audit:oposicion` y `audit:served` 0❌/0🟡, rutas en producción 200, 1.709 rutas de caché purgadas. Incluye T-056 (Estatuto de Personal importado) y T-057 (11 discrepancias adjudicadas por un tercer juez).
+- **Único hueco, declarado y no maquillado:** el tema 38 pide «régimen de previsión social del personal del Parlamento: Generalidades» y no hay norma en BD que lo sirva → queda como `verified_issues`. Las otras dos partes de su epígrafe (presupuesto y contratación) sí están cubiertas.
+- **Menor:** T5 y T12 ya tienen la ley correcta escopada pero casi sin preguntas — el scope es firme, el contenido hay que generarlo.
 - **Qué:** `oficial-de-gestion-parlamento-de-andalucia` está **catalogada** (⚪ `is_active=false`, 0 temas) con **9 plazas** y **inscripción abierta hasta el 13/08/2026**. NO tenía ficha en el backlog: se detectó mirando la BD, no la lista.
 - **✅ FUENTE OFICIAL VERIFICADA (20/07):** `BOJA26-136-00016-9536-01_00340768` — Acuerdo de 8 de julio de 2026 de la Mesa del Parlamento (BOJA núm. 136, de 16/07/2026, **el mismo boletín que Subalternos**).
   - **9 plazas**, oposición libre. Titulación: **bachiller o técnico** → C1.

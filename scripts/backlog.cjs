@@ -232,10 +232,14 @@ function parseMd() {
         if (r) nuevos++;
       }
       console.log(`sync: ${md.length} en markdown · ${nuevos} nueva(s) insertada(s).`);
-      const db = await s`SELECT id FROM public.backlog_tasks`;
+      // Solo las VIVAS pueden ser huérfanas de verdad: una tarea viva sin ficha no se puede
+      // trabajar (nadie sabe qué es). Borrar la ficha de una CERRADA, en cambio, es limpieza
+      // legítima y documentada, así que incluirlas aquí producía un aviso permanentemente
+      // falso (T-033/T-039/T-046) que enseñaba a ignorar la salida del sync.
+      const db = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const mdIds = new Set(md.map((t) => t.id));
       const huerfanas = db.map((r) => r.id).filter((id) => !mdIds.has(id));
-      if (huerfanas.length) console.log(`⚠️ en BD pero NO en el markdown: ${huerfanas.join(', ')}`);
+      if (huerfanas.length) console.log(`⚠️ VIVA en BD pero SIN ficha en el markdown: ${huerfanas.join(', ')}`);
     }
 
     else {
