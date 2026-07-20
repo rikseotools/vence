@@ -15,6 +15,27 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-050] ✅ [HECHA 20/07] Retirar el sensor `hash_change` (cron `check-seguimiento`)
+- **Por qué se retira, con números.** Es el peor sensor del radar multicapa por mucho. Medido el 20/07 sobre
+  `oep_detection_signals` (aplicadas / útil): `pag_empleo` 140 / **79%** · `boe_api` 33 / 60% · `timeline_silence`
+  17 / 55% · `competitor` 17 / 46% · `regional_scan` 76 / 40% · `llm_semantic` 137 / 35% · `generic_source` 3 / 23%
+  · **`hash_change` 32 / 4%** (32 aciertos de 835 señales).
+- **Ya estaba medio muerto:** su emisión de señales se desconectó el **26/06** por redundante, su panel
+  `/admin/seguimiento-convocatorias` está marcado *"esta vista es solo histórica"*, y **nada aguas abajo consume su
+  resultado** (verificado: el detector semántico NO se dispara por el hash). Lo único que seguía produciendo era ruido:
+  46 de 468 fuentes marcando "cambio" a diario y **2.266 checks sin revisar**.
+- **Cómo se ha retirado:** flag `CHECK_SEGUIMIENTO_ENABLED` (por defecto **apagado**) en
+  `backend/src/check-seguimiento/check-seguimiento.cron.ts`. **Reversible sin tocar código.**
+- **⚠️ El detalle que rompe una retirada hecha a la ligera:** el cron tenía un **heartbeat con umbral de 4 días**.
+  Quitar el `@Cron` sin más habría puesto el panel de salud en **ROJO** a los 4 días por un job apagado a propósito.
+  El heartbeat ahora **solo se registra si el cron está activo**. Hay un test que lo fija.
+- **NO se borra nada:** el servicio, la tabla `convocatoria_seguimiento_checks` y el panel histórico se conservan.
+- **Tests:** `__tests__/backend/checkSeguimientoRetirado.test.ts` (5).
+- **Origen:** salió de T-047. Se fue a afinar el sensor y la pregunta de Manuel («¿pero hay un sistema nuevo más
+  robusto?») destapó que el componente estaba en deprecación. **Lección: antes de coger una tarea, comprobar que el
+  componente sigue vivo** — es la segunda vez en el día (ver T-029).
+
+
 ### [T-047] 🟢 [MITIGADA 20/07 — el ruido ya no ahoga; la causa raíz sigue sin aislar] Seguimiento de convocatorias: 46 fuentes dan "cambio" a diario
 - **Lo que resultó NO ser cierto de la ficha original:** decía que esto era "la fuente del badge 🎯". **Ya no lo es.**
   La emisión de señales `hash_change` se desconectó el **26/06** (ver comentario en `seguimiento-queries.ts`); las
