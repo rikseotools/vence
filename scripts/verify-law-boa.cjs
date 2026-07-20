@@ -20,7 +20,17 @@
 // `source_is_original_publication:true` y deja los mismatches para revisión humana.
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+
+// El driver se carga PEREZOSAMENTE, solo al ir a conectar. Este fichero exporta además
+// los helpers PUROS de parseo (splitArticles, titleBody, similarity…) que usa
+// __tests__/scripts/verifyLawBoa.test.js: cargar el driver arriba obligaba a que ese
+// test tuviera una BD instalada para probar funciones que no tocan BD.
+// Antes se resolvía con una ruta CABLEADA a backend/node_modules/postgres, que en CI no
+// existe (allí solo se instalan las dependencias de la raíz) → la suite entera fallaba
+// al arrancar con "Cannot find module …/backend/node_modules/postgres" y dejaba el gate
+// de deploy en rojo. `postgres` está declarado en el package.json de la RAÍZ, así que
+// basta con la resolución normal.
+const loadPg = () => require('postgres')
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
@@ -305,7 +315,7 @@ if (require.main !== module) return
   const dump = args.includes('--dump')
   const all = args.includes('--all')
   const lawId = args.find((a) => !a.startsWith('--'))
-  const sql = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
+  const sql = loadPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
   try {
     const laws = all
       ? await sql`SELECT id, short_name, boe_url FROM laws WHERE boe_url ILIKE '%boa.aragon.es%' ORDER BY short_name`
