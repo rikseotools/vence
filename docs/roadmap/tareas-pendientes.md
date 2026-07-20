@@ -994,6 +994,16 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   **No lo hice unilateralmente** porque el `topic_scope` de esos 2 temas es una **lista explícita de artículos**, no
   `NULL`: crear artículos nuevos obliga a **editar el scope de dos oposiciones vivas**. Mientras tanto el texto NO se
   pierde (sigue dentro del 171), solo está mal ubicado.
-- **Comprobar si el patrón se repite:** cualquier ley importada por el camino de reserva puede tener el mismo
-  "último artículo se lo traga todo". Buen candidato a barrido: último artículo de cada ley con longitud muy superior
-  a la media de la ley, o que contenga marcadores de pie de web (Aviso Legal, cookies, ©).
+- **✅ BARRIDO HECHO 20/07 — el patrón es REAL pero RARO: 2 casos en toda la BD.** Barridos los 59.488 artículos
+  buscando marcadores inequívocos de pie de web (`Aviso Legal`, `Política de cookies`, `© 20XX`, `Todos los derechos
+  reservados`). Resultado: **2**, y ambos son el **último artículo de su ley**, confirmando el mecanismo
+  (`contentEnd = html.length`):
+  - `Reglamento Cortes CyL` art. 171 (este) — limpiado.
+  - `Decreto 116/2006 Listas de Espera Canarias` art. 18 — se había tragado las Disposiciones Finales, el bloque de
+    firmas y `Gobierno de Canarias Aviso Legal Sugerencias y Reclamaciones`. **Limpiado también (20/07)**, 0 preguntas
+    afectadas. Su ley tampoco tiene las disposiciones como artículos propios → mismo pendiente que el caso CyL.
+  - **BD ahora: 0 artículos con pie de web.** Caché `teoria`/`laws` invalidada.
+  - ⚠️ **Aviso metodológico:** el primer barrido, con marcadores genéricos (`Buscador`, `Redes sociales`), daba **17
+    falsos positivos** — son palabras legítimas en los temas de Windows 11, "La Red Internet" o Correos. Si alguien
+    reactiva este detector, usar SOLO los marcadores inequívocos.
+
