@@ -195,11 +195,30 @@ la respuesta era idéntica. Uso: `--ley "<nombre>"` o `--like '%UAL%'`.
 | Norma en generación | Sesión | Estado |
 |---|---|---|
 | _(ninguna en curso)_ | — | — |
+| Política de Seguridad de la Información UAL (15 apartados) | — | ⬜ **LIBRE** — última norma sin banco |
+
+### Lote Normas de Uso de los Sistemas de Información (20/07)
+
+12 preguntas `approved` sobre los apartados 2-7 (`gen-t22b-normas-uso-ual-batch1.cjs`). Protocolo
+anti-colisión aplicado: norma comprobada a 0 preguntas, anunciada en la tabla, detector pasado al
+terminar (**0 duplicados en las 119 preguntas UAL**). Fase 7: 12/12 PERFECT · Fase 9: 12/12 CLEAN.
+
+**El guardarraíl ahora ABORTA en vez de avisar** — y esa es la diferencia con el lote anterior. Se
+negó tres veces a insertar hasta que los distractores cumplieron el ±30%, dejando la BD **a cero en
+vez de a medias**. En el lote del T13 el mismo check solo advertía y se coló.
+
+**`options_ok` cazó dos correctas parafraseadas**: decían "al ámbito informático" donde la norma dice
+"a nivel informático y en papel", y "promoverá además" donde dice "promover". Comparación palabra a
+palabra contra el texto: una condensación fiel NO basta si se puede citar literal.
+
+**Distractores por atribución de órgano**: varios asignan la competencia a Gerencia, Consejo de
+Gobierno o ATIC en vez de a la Comisión de Seguridad. Obliga a saber *quién* hace *qué*, no solo el
+tema. La fase 9 lo verificó expresamente y lo señaló como bien resuelto.
 
 ## Siguiente paso — GENERAR BANCO (lo caro)
 
 La estructura está completa; lo que falta es contenido:
-- **11 de las 12 normas UAL siguen a 0 preguntas.** Hechas: Ley 14/2011 (12) y Normativa de permanencia (21, con la otra sesión).
+- **Banco propio UAL: 119 preguntas activas** repartidas por 10 de las 12 normas (la mayoría de la sesión paralela). **Solo la Política de Seguridad de la Información (15 apartados) sigue a 0.**
 - **Temas servidos pero finos:** T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
 - **No generar preguntas de cifras desde el art. 1 de las Bases de Ejecución** (tabla aplanada,
   `is_verified=false`) hasta reconstruir la tabla.
