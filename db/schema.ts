@@ -111,6 +111,9 @@ export const userProfiles = pgTable("user_profiles", {
 	stripeCustomerId: text("stripe_customer_id"),
 	paymentAccount: text("payment_account").default('manuel').notNull(),
 	registrationSource: text("registration_source").default('organic'),
+	// true = usuario sintético (canaries/smoke). Fuente única de exclusión de
+	// analíticas (ranking, dificultad). Migración 20260720_synthetic_user_central.
+	isSynthetic: boolean("is_synthetic").default(false).notNull(),
 	requiresPayment: boolean("requires_payment").default(false),
 	nickname: text(),
 	age: integer(),
