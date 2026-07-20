@@ -791,6 +791,18 @@ Una explicación que cumpla solo el contenido pero NO el formato sigue siendo `b
 
 **Excepción — preguntas tipo "señale la INCORRECTA":** en estas preguntas el encabezado correcto de la sección final es *"Por qué las demás opciones son **correctas** en su contenido"* (semántica invertida: las otras opciones SÍ son correctas y la que se señala es la falsa). El check `hasDemas` busca el literal `"...son incorrectas"` y devolverá `false` aunque la explicación sea perfectamente didáctica. NO aplicar la "regla dura" a ciegas sobre estas: si el enunciado pide señalar la opción incorrecta/falsa, verificar a mano antes de re-marcar como `bad_explanation`. Incidente: `12b568bd` (22/05/2026), explicación correcta re-flagueada por el regex.
 
+### 8.1-ter Correspondencia explicación↔opciones — cazar la explicación CRUZADA (post-16/07/2026)
+
+`explanation_ok` (§8.1) solo mira el **FORMATO** (`isDidactic`) y `options_ok` (§3.2) solo la literalidad de las **opciones presentadas como correctas**. **Ninguna de las dos comprueba que el análisis por opción de la explicación rebata las opciones de ESTA pregunta.** Por eso una explicación **importada de otra pregunta** —con sus bloques `**B) INCORRECTA** — …` hablando de distractores que aquí no existen— pasa como `perfect`: el formato está bien y la opción marcada CORRECTA puede coincidir con la clave por azar. El cierre del cubo 2 (89 explicaciones cruzadas, la mayoría en lotes con el 100 % de las preguntas contaminadas) demostró que el defecto es **sistémico**, no anecdótico.
+
+**Qué verifica §8.1-ter:** que cada bloque de análisis (`**A) …**`, `**B) …**`…) hable de la opción que etiqueta. Heurística barata: para cada opción, comparar las palabras con contenido de su bloque de explicación (quitando stopwords) contra el texto real de la opción; si **no comparten NADA**, el bloque probablemente rebate la opción de otra pregunta → sospecha de explicación cruzada.
+
+**Dónde está:** implementado como **AVISO no bloqueante** en `scripts/impugnaciones/validar-explicacion.cjs` (commit `9c519232`). **Precisión ~20 %** (marca de más: un bloque que es una paráfrasis correcta puede no compartir palabras literales con la opción) → es un aviso para **comprobar a mano**, NO un gate. Lo que SÍ bloquea ese script es la **coherencia clave↔opción marcada CORRECTA** (la opción que la explicación llama "CORRECTA" debe ser exactamente la `correct_option` real, §5 del script).
+
+**Cómo usarlo:** al reescribir o verificar una explicación, si salta el aviso, leer el bloque señalado y confirmar que rebate la opción correcta de esta pregunta. Si es una paráfrasis buena, ignorar; si habla de otra opción u otra pregunta, la explicación está **cruzada** → reescribir con el flujo del §8 (blockquote literal + análisis A/B/C/D contra las opciones REALES). Nunca tocar clave ni artículo por este aviso.
+
+**Por qué sigue siendo AVISO y no gate:** con ~20 % de precisión, convertirlo en gate bloquearía muchas explicaciones buenas (§15.8: un verificador que oculta buenas es peor que inútil). El valor está en **dirigir la mirada humana**, no en decidir solo. Relacionado: §8.1 (formato), §3.2 (`options_ok`, opciones presentadas como correctas), y el manual de impugnaciones §7.4 (cross-contamination de explicaciones).
+
 ### 8.2 Incidente (11/04/2026 — C1 T18 ET)
 
 Durante la verificación inicial del T18 (Estatuto de los Trabajadores), los agentes marcaron 31 de 34 preguntas como `perfect` porque `article_ok`, `answer_ok` y `explanation_ok` eran `true` según el criterio laxo (contenido correcto). Pero el 88% de esas explicaciones eran **copia literal del artículo** sin análisis por opción.
