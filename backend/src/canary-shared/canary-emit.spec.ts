@@ -64,3 +64,36 @@ describe('canary-emit — cron_run (liveness)', () => {
     expect(canaryEndpoint('database-pool')).toBe('canary-database-pool');
   });
 });
+
+// Congela los strings de los canaries migrados en esta tanda (redis, synthetic-external).
+describe('canary-emit — canaries migrados (P2 tanda read-only)', () => {
+  const redis = { name: 'redis-upstash', eventBase: 'redis' }; // eventBase ≠ name
+
+  it('redis OK preserva canary_redis_ok + metadata {cron, provider}', () => {
+    const e = canaryOutcomeEvent(redis, { status: 'ok', durationMs: 5, metadata: { provider: 'upstash' } });
+    expect(e.eventType).toBe('canary_redis_ok');
+    expect(e.endpoint).toBe('canary-redis-upstash');
+    expect(e.metadata).toEqual({ cron: 'canary-redis-upstash', provider: 'upstash' });
+  });
+
+  it('redis FAILED preserva canary_redis_failed + metadata {cron, step, provider}', () => {
+    const e = canaryOutcomeEvent(redis, { status: 'failed', step: 'get', errorMessage: 'x', durationMs: 9, metadata: { provider: 'elasticache' } });
+    expect(e.eventType).toBe('canary_redis_failed');
+    expect(e.severity).toBe('critical');
+    expect(e.metadata).toEqual({ cron: 'canary-redis-upstash', step: 'get', provider: 'elasticache' });
+  });
+
+  it('synthetic-external OK esparce details en metadata: {cron, ...details}', () => {
+    const e = canaryOutcomeEvent(
+      { name: 'synthetic-external', eventBase: 'synthetic_external' },
+      { status: 'ok', durationMs: 12, metadata: { homeMs: 80, chunkOk: true } },
+    );
+    expect(e.eventType).toBe('canary_synthetic_external_ok');
+    expect(e.metadata).toEqual({ cron: 'canary-synthetic-external', homeMs: 80, chunkOk: true });
+  });
+
+  it('httpStatus del CanaryResult se emite al evento (para stripe/topic al migrarlos)', () => {
+    const e = canaryOutcomeEvent(redis, { status: 'failed', step: 'x', errorMessage: 'y', httpStatus: 503, durationMs: 1 });
+    expect(e.httpStatus).toBe(503);
+  });
+});

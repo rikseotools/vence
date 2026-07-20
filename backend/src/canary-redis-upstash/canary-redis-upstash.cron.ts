@@ -7,6 +7,7 @@ import {
 import { jitter } from '../heartbeat/jitter.helper';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
+import { CanaryRunnerService } from '../canary-shared/canary-runner.service';
 import { CanaryRedisUpstashService } from './canary-redis-upstash.service';
 
 /**
@@ -25,6 +26,7 @@ export class CanaryRedisUpstashCron {
 
   constructor(
     private readonly service: CanaryRedisUpstashService,
+    private readonly runner: CanaryRunnerService,
     private readonly observability: ObservabilityService,
     heartbeatRegistry: HeartbeatRegistry,
   ) {
@@ -47,61 +49,8 @@ export class CanaryRedisUpstashCron {
 
   private async runImpl(): Promise<void> {
     this.logger.log('Cron canary-redis-upstash disparado');
-    const startedAt = Date.now();
-    try {
-      const result = await this.service.run();
-
-      if ('skipped' in result) {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'warn',
-          eventType: 'canary_redis_skipped',
-          endpoint: 'canary-redis-upstash',
-          durationMs: result.durationMs,
-          metadata: { cron: 'canary-redis-upstash', reason: result.reason },
-        });
-      } else if (result.ok) {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'canary_redis_ok',
-          endpoint: 'canary-redis-upstash',
-          durationMs: result.durationMs,
-          metadata: { cron: 'canary-redis-upstash', provider: result.provider },
-        });
-      } else {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'critical',
-          eventType: 'canary_redis_failed',
-          endpoint: 'canary-redis-upstash',
-          durationMs: result.durationMs,
-          errorMessage: result.errorMessage,
-          metadata: { cron: 'canary-redis-upstash', step: result.step, provider: result.provider },
-        });
-      }
-
-      this.observability.emitFireAndForget({
-        source: 'fargate',
-        severity: 'info',
-        eventType: 'cron_run',
-        endpoint: 'canary-redis-upstash',
-        durationMs: Date.now() - startedAt,
-        metadata: { cron: 'canary-redis-upstash', status: 'completed' },
-      });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(`Cron canary-redis-upstash falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
-        source: 'fargate',
-        severity: 'error',
-        eventType: 'cron_run',
-        endpoint: 'canary-redis-upstash',
-        durationMs: Date.now() - startedAt,
-        errorMessage,
-        metadata: { cron: 'canary-redis-upstash', status: 'failure' },
-      });
-    }
+    // Emisión centralizada e idéntica (canary_redis_ok/skipped/failed + cron_run,
+    // con provider en metadata) vía el runner. Ver canary-emit.ts (testeado).
+    await this.runner.run(this.service);
   }
 }

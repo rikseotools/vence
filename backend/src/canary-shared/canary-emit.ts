@@ -34,6 +34,7 @@ export function canaryOutcomeEvent(
     eventType: canaryEventType(probe.eventBase, result.status),
     endpoint,
     durationMs: result.durationMs,
+    ...(result.httpStatus !== undefined ? { httpStatus: result.httpStatus } : {}),
     ...(result.errorMessage !== undefined ? { errorMessage: result.errorMessage } : {}),
     metadata,
   };

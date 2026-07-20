@@ -6,6 +6,7 @@ import {
 } from '../heartbeat/heartbeat.helpers';
 import { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
 import { ObservabilityService } from '../observability/observability.service';
+import { CanaryRunnerService } from '../canary-shared/canary-runner.service';
 import { CanarySyntheticExternalService } from './canary-synthetic-external.service';
 
 /**
@@ -23,6 +24,7 @@ export class CanarySyntheticExternalCron {
 
   constructor(
     private readonly service: CanarySyntheticExternalService,
+    private readonly runner: CanaryRunnerService,
     private readonly observability: ObservabilityService,
     heartbeatRegistry: HeartbeatRegistry,
   ) {
@@ -43,51 +45,8 @@ export class CanarySyntheticExternalCron {
 
   private async runImpl(): Promise<void> {
     this.logger.log('Cron canary-synthetic-external disparado');
-    const startedAt = Date.now();
-    try {
-      const result = await this.service.run();
-
-      if (result.ok) {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'info',
-          eventType: 'canary_synthetic_external_ok',
-          endpoint: 'canary-synthetic-external',
-          durationMs: result.durationMs,
-          metadata: { cron: 'canary-synthetic-external', ...result.details },
-        });
-      } else {
-        this.observability.emitFireAndForget({
-          source: 'fargate',
-          severity: 'critical',
-          eventType: 'canary_synthetic_external_failed',
-          endpoint: 'canary-synthetic-external',
-          durationMs: result.durationMs,
-          errorMessage: result.errorMessage,
-          metadata: { cron: 'canary-synthetic-external', step: result.step, ...result.details },
-        });
-      }
-
-      this.observability.emitFireAndForget({
-        source: 'fargate',
-        severity: 'info',
-        eventType: 'cron_run',
-        endpoint: 'canary-synthetic-external',
-        durationMs: Date.now() - startedAt,
-        metadata: { cron: 'canary-synthetic-external', status: 'completed' },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Cron canary-synthetic-external falló: ${errorMessage}`);
-      this.observability.emitFireAndForget({
-        source: 'fargate',
-        severity: 'error',
-        eventType: 'cron_run',
-        endpoint: 'canary-synthetic-external',
-        durationMs: Date.now() - startedAt,
-        errorMessage,
-        metadata: { cron: 'canary-synthetic-external', status: 'failure' },
-      });
-    }
+    // Emisión centralizada e idéntica (ok/failed con `details` en metadata +
+    // cron_run) vía el runner. Ver canary-emit.ts (testeado).
+    await this.runner.run(this.service);
   }
 }

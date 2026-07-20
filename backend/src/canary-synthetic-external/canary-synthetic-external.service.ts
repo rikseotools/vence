@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CanaryProbe, CanaryBounding } from '../canary-shared/canary-probe';
+import { CanaryResult, CanaryResults } from '../canary-shared/canary-result';
 
 /**
  * Canary sintético EXTERNO — Nivel 4. Comprueba, desde fuera (Fargate → egress
@@ -24,10 +26,25 @@ export interface CanarySyntheticResult {
 }
 
 @Injectable()
-export class CanarySyntheticExternalService {
+export class CanarySyntheticExternalService implements CanaryProbe {
   private readonly logger = new Logger(CanarySyntheticExternalService.name);
   private readonly SITE = process.env.SMOKE_TARGET_URL ?? 'https://www.vence.es';
   private readonly API = process.env.CANARY_API_URL ?? 'https://api.vence.es';
+
+  // ── Contrato CanaryProbe (ver canary-registry.ts) ──
+  readonly name = 'synthetic-external';
+  readonly eventBase = 'synthetic_external';
+  readonly cadence = '*/5 * * * *';
+  readonly writesToProd = false; // HTTP-only (home + chunk + health), sin escrituras
+  readonly bounding: CanaryBounding = 'read-only';
+
+  /** Adaptador al contrato: preserva `details` en metadata (como emitía el cron). */
+  async execute(): Promise<Omit<CanaryResult, 'durationMs'>> {
+    const r = await this.run();
+    return r.ok
+      ? CanaryResults.ok({ metadata: r.details })
+      : CanaryResults.failed(r.step ?? 'exception', r.errorMessage ?? 'fallo sin mensaje', { metadata: r.details });
+  }
 
   async run(): Promise<CanarySyntheticResult> {
     const startedAt = Date.now();

@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createCacheSink, type CacheSink } from '../cache/cache-sink';
+import { CanaryProbe, CanaryBounding } from '../canary-shared/canary-probe';
+import { CanaryResult, CanaryResults } from '../canary-shared/canary-result';
 
 /**
  * Canary de CACHÉ (agnóstica) — detecta caída del cache compartido que CI NO
@@ -23,8 +25,15 @@ import { createCacheSink, type CacheSink } from '../cache/cache-sink';
  * el fallo) → aquí queremos saber si la caché responde de verdad.
  */
 @Injectable()
-export class CanaryRedisUpstashService {
+export class CanaryRedisUpstashService implements CanaryProbe {
   private readonly logger = new Logger(CanaryRedisUpstashService.name);
+
+  // ── Contrato CanaryProbe (ver canary-registry.ts) ──
+  readonly name = 'redis-upstash';
+  readonly eventBase = 'redis'; // ⚠️ ≠ name — preserva canary_redis_* (RULE_CANARY_REDIS_FAILED)
+  readonly cadence = '*/5 * * * *';
+  readonly writesToProd = false; // SET/GET/DEL sobre clave dedicada efímera (no tabla de datos)
+  readonly bounding: CanaryBounding = 'read-only';
 
   private readonly sink: CacheSink | null;
   private readonly providerName: string;
@@ -43,6 +52,14 @@ export class CanaryRedisUpstashService {
     if (!this.sink) {
       this.logger.warn(`Caché (${this.providerName}) sin credenciales — canary inactivo.`);
     }
+  }
+
+  /** Adaptador al contrato: mapea CanaryRedisResult a CanaryResult (preserva provider en metadata). */
+  async execute(): Promise<Omit<CanaryResult, 'durationMs'>> {
+    const r = await this.run();
+    if ('skipped' in r) return CanaryResults.skipped(r.reason);
+    if (r.ok) return CanaryResults.ok({ metadata: { provider: r.provider } });
+    return CanaryResults.failed(r.step, r.errorMessage, { metadata: { provider: r.provider } });
   }
 
   async run(): Promise<CanaryRedisResult> {
