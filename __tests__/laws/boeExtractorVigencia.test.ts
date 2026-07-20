@@ -29,17 +29,17 @@ describe('extractArticlesFromBOE — la vigencia deja de perderse', () => {
     expect(a58!.content).toContain('acordada conllevar')
   })
 
-  it('⚠️ BUG PREEXISTENTE documentado: el camino de reserva NO decodifica entidades', () => {
-    // `extractArticlesFromBOE` tiene dos caminos. El principal llama a decodeHtmlEntities;
-    // el de reserva (por posiciones de <h5>), que es el que ejercita este fixture, NO.
-    // Resultado: esos artículos guardan "&oacute;" en el content y el opositor lo ve así.
-    // NO se arregla aquí a propósito: cambiar el texto cambia el content_hash de miles de
-    // artículos y dispararía una re-sincronización masiva. Se anota como hallazgo aparte.
-    // Este test existe para que el día que se arregle, salte y se decida conscientemente.
-    expect(a58!.content).toContain('&oacute;')
+  it('✅ ARREGLADO (T-054): el camino de reserva TAMBIÉN decodifica entidades', () => {
+    // Antes: `extractArticlesFromBOE` tiene dos caminos y solo el principal llamaba a
+    // decodeHtmlEntities; el de reserva (por posiciones de <h5>, el que ejercita este
+    // fixture) NO → sus artículos guardaban "&oacute;" y el opositor lo veía así.
+    // No se arregló al descubrirlo por miedo a una re-sincronización masiva de hashes.
+    // Al MEDIRLO (20/07) resultó que en BD solo 1 artículo de 59.488 tenía entidades sin
+    // decodificar, así que el riesgo no existía y se arregló.
+    expect(a58!.content).not.toContain('&oacute;')
+    expect(a58!.content).toContain('ó')
 
-    // La vigencia SÍ sale decodificada (la extraigo yo con decodeHtmlEntities), así que de
-    // momento content y vigencia no van a la par en este camino.
+    // content y vigencia ya van a la par en este camino (antes no).
     expect(a58!.vigencia!.annulledFragments[0]).toContain('devolución')
   })
 
@@ -90,5 +90,35 @@ describe('extractArticlesFromBOE — no marcar de más', () => {
     const a = extractArticlesFromBOE(html).find((x) => x.article_number === '1')
     expect(a!.vigencia?.notes).toHaveLength(1)
     expect(a!.vigencia?.annulledFragments).toEqual([])
+  })
+})
+
+
+// Entidades NUMÉRICAS: el mapa HTML_ENTITIES solo cubría las nombradas, así que un
+// "&#218;ltimo" del BOE se guardaba tal cual (caso real en BD: Reglamento Cortes CyL
+// art. 171). Cubre decimal y hexadecimal.
+describe('decodeHtmlEntities — entidades numéricas (T-054)', () => {
+  const extraer = (headerNum: string, cuerpo: string) =>
+    extractArticlesFromBOE(
+      `<h5 class="articulo">Artículo ${headerNum}. Prueba.</h5><p>${cuerpo}</p>`,
+    )[0]
+
+  it('decodifica decimales (&#218; → Ú)', () => {
+    expect(extraer('1', '&#218;ltimo p&#225;rrafo.').content).toContain('Último párrafo')
+  })
+
+  it('decodifica hexadecimales (&#xDA; → Ú)', () => {
+    expect(extraer('2', '&#xDA;nico.').content).toContain('Único')
+  })
+
+  it('sigue decodificando las nombradas', () => {
+    expect(extraer('3', 'Ejecuci&oacute;n y gesti&oacute;n.').content).toContain('Ejecución y gestión')
+  })
+
+  it('decodifica también el TÍTULO del artículo, no solo el cuerpo', () => {
+    const a = extractArticlesFromBOE(
+      '<h5 class="articulo">Artículo 4. Comunicaci&oacute;n y r&eacute;gimen.</h5><p>Cuerpo.</p>',
+    )[0]
+    expect(a.title).toBe('Comunicación y régimen')
   })
 })

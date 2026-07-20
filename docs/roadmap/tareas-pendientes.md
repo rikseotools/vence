@@ -781,7 +781,16 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
   - `a47cdfd4` (Orden 01/02/1996, subvenciones): la explicación se contradecía ("B es correcta" con la clave en D). Los arts. 85 y 86 de la misma Orden reproducen la misma regla del RC que el art. 84, lo que **respalda que D ("todas las anteriores") sea correcta**; el problema es que el artículo vinculado solo cubre 1 de las 3 modalidades. Recomendación: añadir 85/86 como soporte y reescribir explicación.
 - **Sigue pendiente:** 89 es SUELO, no techo — el detector solo pesca solape léxico ~0, y este cubo demuestra que el defecto es sistémico (varios lotes con el 100% de las preguntas cruzadas). Falta barrer con un detector que no dependa del solape léxico.
 
-### [T-054] 🟢 [ABIERTA 20/07 — descubierto haciendo T-048] El camino de reserva de `boe-extractor` no decodifica entidades HTML
+### [T-054] ✅ [HECHA 20/07] El camino de reserva de `boe-extractor` no decodifica entidades HTML
+> **La medición desmontó el miedo que bloqueaba la tarea.** La ficha decía que arreglarlo "cambiaría el `content_hash`
+> de **miles** de artículos y dispararía una re-sincronización masiva". Medido antes de tocar nada: de **59.488
+> artículos, 0 tenían entidades nombradas y 1 numérica**. El riesgo no existía.
+> **Se arreglaron 3 cosas, no 1:** (a) el camino de reserva ya decodifica el `content`; (b) también el **título**
+> (tampoco lo hacía, así que los títulos guardaban `&oacute;`); (c) `decodeHtmlEntities` **solo cubría entidades
+> nombradas** — no decodificaba `&#218;`/`&#xDA;`, que es justo el único caso real que había en BD, así que ni el
+> camino principal lo habría salvado. El test que fijaba el bug ahora fija el comportamiento correcto; +4 tests nuevos.
+> 554 verdes en la suite de leyes, typecheck limpio. Corregido también el artículo sucio en BD → **0 entidades sin
+> decodificar en toda la base**. Al abrirlo salió un defecto mayor: **T-058**.
 - **Qué:** `extractArticlesFromBOE` tiene **dos caminos**. El principal llama a `decodeHtmlEntities`; el de reserva
   (el que localiza artículos por posiciones de `<h5>`) **no**. Sus artículos guardan `&oacute;`, `&aacute;`… en el
   `content`, y **el opositor los ve así** en la teoría.
@@ -970,3 +979,21 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   valor directo (más práctica en Guardia Civil / Policía Nacional).
 - **Cómo detectarlo:** ley `is_active` + 0 filas en `topic_scope` unidas a `topics.is_active` + `count(questions)>0`.
   Candidato a sensor del sweep nocturno junto al resto de detectores de salud de contenido.
+
+
+### [T-058] 🟡 [ABIERTA 20/07 — descubierta haciendo T-054] `Reglamento Cortes CyL`: el art. 171 se tragó las disposiciones
+- **Qué:** el **último** artículo de una ley absorbe todo lo que hay hasta el final de la página. En el camino de
+  reserva del extractor, `contentEnd` del último `<h5>` es `html.length`. Resultado en el `Reglamento Cortes CyL`:
+  el **art. 171 contenía** su propio texto + las **5 Disposiciones Finales** + la **Transitoria Única** + la
+  **Derogatoria** + **el pie de la web** (dirección, teléfono, enlaces, política de cookies y copyright ×3).
+- **Impacto:** la ley sirve en **2 oposiciones vivas** (`administrativo_castilla_leon`, `auxiliar_administrativo_cyl`)
+  y tiene 62 preguntas. La ley **no tiene NINGUNA disposición como artículo propio** — están todas dentro del 171.
+- **Hecho ya (20/07):** quitado el pie de la web (3.658 → 2.859 chars, verificando que el trozo eliminado no contuviera
+  articulado) y corregido el `title`, que era el párrafo entero del artículo.
+- **PENDIENTE (requiere decisión):** separar las disposiciones en artículos propios (`DF1`…`DF5`, `DTunica`, `DD`).
+  **No lo hice unilateralmente** porque el `topic_scope` de esos 2 temas es una **lista explícita de artículos**, no
+  `NULL`: crear artículos nuevos obliga a **editar el scope de dos oposiciones vivas**. Mientras tanto el texto NO se
+  pierde (sigue dentro del 171), solo está mal ubicado.
+- **Comprobar si el patrón se repite:** cualquier ley importada por el camino de reserva puede tener el mismo
+  "último artículo se lo traga todo". Buen candidato a barrido: último artículo de cada ley con longitud muy superior
+  a la media de la ley, o que contenga marcadores de pie de web (Aviso Legal, cookies, ©).

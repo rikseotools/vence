@@ -66,6 +66,11 @@ function decodeHtmlEntities(s: string): string {
   for (const [from, to] of Object.entries(HTML_ENTITIES)) {
     if (out.includes(from)) out = out.split(from).join(to)
   }
+  // Entidades NUMÉRICAS (&#218; decimal, &#xDA; hex). El mapa de arriba solo cubre las
+  // nombradas, así que sin esto un "&#218;ltimo" del BOE se guardaba tal cual y el
+  // opositor lo veía en la teoría (caso real: Reglamento Cortes CyL art. 171).
+  out = out.replace(/&#(\d+);/g, (_m, d) => String.fromCodePoint(Number(d)))
+  out = out.replace(/&#[xX]([0-9a-fA-F]+);/g, (_m, h) => String.fromCodePoint(parseInt(h, 16)))
   return out
 }
 
@@ -416,7 +421,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 
     for (let i = 0; i < h5Positions.length; i++) {
       const pos = h5Positions[i]
-      const headerText = pos.headerContent.replace(/<[^>]*>/g, '').trim()
+      const headerText = decodeHtmlEntities(pos.headerContent.replace(/<[^>]*>/g, '')).trim()
 
       // Extraer contenido entre este h5 y el siguiente (o fin de documento)
       const contentStart = pos.index + pos.fullMatch.length
@@ -481,8 +486,12 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 
       if (!articleNumber) continue
 
-      // Limpiar contenido
-      const content = rawContent
+      // Limpiar contenido. decodeHtmlEntities va AQUÍ (T-054): el camino principal ya lo
+      // hacía y este no, así que sus artículos guardaban "&oacute;" y el opositor los veía
+      // así en la teoría. Medido antes de tocarlo: en BD solo 1 artículo tenía entidades
+      // sin decodificar, así que el arreglo NO dispara la re-sincronización masiva que se
+      // temía — su valor es impedir que vuelva a entrar texto sucio por esta vía.
+      const content = decodeHtmlEntities(rawContent)
         .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
         .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '')
         .replace(/<p[^>]*class="pie_unico"[^>]*>[\s\S]*?<\/p>/gi, '')
