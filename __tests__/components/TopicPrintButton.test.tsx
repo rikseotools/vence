@@ -1,128 +1,137 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import TopicPrintButton from '@/components/TopicPrintButton'
 
-// useAuth mockeable por test (logueado / anónimo)
+// Estos tests cubrían antes el comportamiento window.print() + muro in-app. Ese muro
+// EXISTÍA porque window.print() no descargaba nada en navegadores embebidos. Desde que el
+// PDF se genera en servidor y se descarga como fichero, la descarga funciona también ahí,
+// así que el muro se eliminó y estos tests cubren el flujo nuevo.
+
 let mockAuthReturn: { user: any } = { user: { id: 'u1' } }
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockAuthReturn,
 }))
 
-// Observabilidad: espiamos los eventos que emite el botón
 jest.mock('@/lib/observability/client', () => ({
   emitClientEvent: jest.fn(),
 }))
 import { emitClientEvent } from '@/lib/observability/client'
 const emitMock = emitClientEvent as jest.Mock
 
-// NOTA: isInAppBrowser NO se mockea — usamos el detector real contra el UA de jsdom.
-
-const GSA_UA =
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) GSA/329.0 Mobile/15E148 Safari/604.1'
-const SAFARI_DESKTOP =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15'
-
 const LOGIN_HREF = '/login?oposicion=auxiliar_administrativo_estado&return_to=/auxiliar-administrativo-estado/temario'
 
-function setUA(ua: string) {
-  Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true })
-}
+/** Espera a que la acción indicada se haya emitido (el handler es asíncrono). */
+const emitted = (action: string) =>
+  emitMock.mock.calls.some(([c]) => c?.metadata?.action === action)
+
+let clickedAnchors: HTMLAnchorElement[]
 
 beforeEach(() => {
   emitMock.mockClear()
   mockAuthReturn = { user: { id: 'u1' } }
-  Object.defineProperty(navigator, 'clipboard', {
-    value: { writeText: jest.fn().mockResolvedValue(undefined) },
-    configurable: true,
-  })
   window.print = jest.fn()
+
+  // jsdom no implementa descargas: capturamos el <a download> que dispara el componente.
+  clickedAnchors = []
+  const realClick = HTMLAnchorElement.prototype.click
+  jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    clickedAnchors.push(this)
+  })
+  ;(global as any).URL.createObjectURL = jest.fn(() => 'blob:fake')
+  ;(global as any).URL.revokeObjectURL = jest.fn()
+  void realClick
 })
 
-describe('TopicPrintButton — comportamiento por contexto', () => {
-  test('logueado + navegador in-app (GSA): muestra aviso, NO imprime, emite inapp_blocked', async () => {
-    setUA(GSA_UA)
+afterEach(() => jest.restoreAllMocks())
+
+function mockFetch(res: Partial<Response> & { status: number }) {
+  ;(global as any).fetch = jest.fn().mockResolvedValue({
+    ok: res.status >= 200 && res.status < 300,
+    status: res.status,
+    blob: async () => new Blob(['%PDF-1.3'], { type: 'application/pdf' }),
+    ...res,
+  })
+}
+
+describe('TopicPrintButton — descarga del PDF generado en servidor', () => {
+  test('el botón dice "Descargar PDF" (antes decía "Imprimir PDF" y no producía ningún PDF)', () => {
+    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={7} />)
+    expect(screen.getByText('Descargar PDF')).toBeInTheDocument()
+    expect(screen.queryByText('Imprimir PDF')).not.toBeInTheDocument()
+  })
+
+  test('logueado: pide el PDF a la ruta correcta y dispara la descarga', async () => {
+    mockFetch({ status: 200 })
     render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={7} />)
 
-    fireEvent.click(screen.getByText('Imprimir PDF'))
+    fireEvent.click(screen.getByText('Descargar PDF'))
 
-    expect(screen.getByText('Ábrelo en tu navegador para descargar el PDF')).toBeInTheDocument()
+    await waitFor(() => expect(emitted('download')).toBe(true))
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/temario/auxiliar_administrativo_estado/7/pdf'
+    )
+    expect(clickedAnchors).toHaveLength(1)
+    expect(clickedAnchors[0].download).toBe('auxiliar_administrativo_estado-tema-7.pdf')
+    // Ya NO se usa la impresión del navegador en el camino feliz.
     expect(window.print).not.toHaveBeenCalled()
-    expect(emitMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: 'temario_print_action',
-        metadata: expect.objectContaining({ action: 'inapp_blocked', slug: 'auxiliar_administrativo_estado', topic: 7 }),
-      })
-    )
-
-    // "Copiar enlace" copia al portapapeles y confirma
-    fireEvent.click(screen.getByText('Copiar enlace'))
-    await waitFor(() => expect(screen.getByText('✓ Enlace copiado')).toBeInTheDocument())
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(window.location.href)
-    expect(emitMock).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: expect.objectContaining({ action: 'copy_link', ok: true }) })
-    )
   })
 
-  test('logueado + navegador normal (Safari escritorio): imprime y emite print', () => {
-    setUA(SAFARI_DESKTOP)
+  test('sin sesión: modal de registro, no descarga nada (lead-gen intacto)', () => {
+    mockAuthReturn = { user: null }
+    mockFetch({ status: 200 })
     render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={3} />)
 
-    fireEvent.click(screen.getByText('Imprimir PDF'))
-
-    expect(window.print).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText('Ábrelo en tu navegador para descargar el PDF')).not.toBeInTheDocument()
-    expect(emitMock).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: expect.objectContaining({ action: 'print' }) })
-    )
-  })
-
-  test('in-app + portapapeles FALLA (writeText rechaza): no crashea, emite copy_link ok:false, no confirma', async () => {
-    setUA(GSA_UA)
-    ;(navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(new Error('denied'))
-    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={5} />)
-
-    fireEvent.click(screen.getByText('Imprimir PDF'))
-    fireEvent.click(screen.getByText('Copiar enlace'))
-
-    await waitFor(() =>
-      expect(emitMock).toHaveBeenCalledWith(
-        expect.objectContaining({ metadata: expect.objectContaining({ action: 'copy_link', ok: false }) })
-      )
-    )
-    // no debe mostrar el estado de éxito
-    expect(screen.queryByText('✓ Enlace copiado')).not.toBeInTheDocument()
-    // el modal sigue abierto y usable (botón "Copiar enlace" presente)
-    expect(screen.getByText('Copiar enlace')).toBeInTheDocument()
-  })
-
-  test('in-app + clipboard API AUSENTE (http/webview viejo): no crashea, emite copy_link ok:false', async () => {
-    setUA(GSA_UA)
-    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
-    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={5} />)
-
-    fireEvent.click(screen.getByText('Imprimir PDF'))
-    fireEvent.click(screen.getByText('Copiar enlace'))
-
-    await waitFor(() =>
-      expect(emitMock).toHaveBeenCalledWith(
-        expect.objectContaining({ metadata: expect.objectContaining({ action: 'copy_link', ok: false }) })
-      )
-    )
-    expect(screen.queryByText('✓ Enlace copiado')).not.toBeInTheDocument()
-  })
-
-  test('sin sesión: muestra modal de registro (lead-gen), NO imprime', () => {
-    setUA(SAFARI_DESKTOP)
-    mockAuthReturn = { user: null }
-    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={1} />)
-
-    fireEvent.click(screen.getByText('Imprimir PDF'))
+    fireEvent.click(screen.getByText('Descargar PDF'))
 
     expect(screen.getByText('Descarga el temario en PDF')).toBeInTheDocument()
-    expect(window.print).not.toHaveBeenCalled()
-    // el CTA lleva el href de login recibido por prop
-    expect(screen.getByText('Registrarse gratis').closest('a')).toHaveAttribute('href', LOGIN_HREF)
-    expect(emitMock).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: expect.objectContaining({ action: 'register_prompt' }) })
-    )
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(emitted('register_prompt')).toBe(true)
+  })
+
+  test('413 (tema demasiado grande): degrada a la impresión del navegador', async () => {
+    // Los "artículos-cajón" (T-040) no caben en generación sincrónica. En vez de dejar al
+    // usuario sin nada, se vuelve al comportamiento anterior.
+    mockFetch({ status: 413 })
+    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={29} />)
+
+    fireEvent.click(screen.getByText('Descargar PDF'))
+
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    expect(emitted('download_too_large')).toBe(true)
+    expect(clickedAnchors).toHaveLength(0)
+  })
+
+  test('error del servidor: avisa al usuario y lo deja registrado', async () => {
+    mockFetch({ status: 500 })
+    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={7} />)
+
+    fireEvent.click(screen.getByText('Descargar PDF'))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo generar el PDF')
+    expect(emitMock.mock.calls.some(([c]) => c?.metadata?.action === 'download' && c?.metadata?.ok === false)).toBe(true)
+  })
+
+  test('el botón se bloquea mientras genera (evita dobles peticiones)', async () => {
+    let resolver: (v: any) => void = () => {}
+    ;(global as any).fetch = jest.fn(() => new Promise(r => { resolver = r }))
+    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={7} />)
+
+    fireEvent.click(screen.getByText('Descargar PDF'))
+    await waitFor(() => expect(screen.getByText('Generando PDF…')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /Generando/ })).toBeDisabled()
+
+    resolver({ ok: true, status: 200, blob: async () => new Blob(['%PDF']) })
+    await waitFor(() => expect(screen.getByText('Descargar PDF')).toBeInTheDocument())
+  })
+
+  test('sin slug en el href: degrada a impresión en vez de pedir una URL rota', async () => {
+    mockFetch({ status: 200 })
+    render(<TopicPrintButton loginHref="/login" topicNumber={7} />)
+
+    fireEvent.click(screen.getByText('Descargar PDF'))
+
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(emitted('download_fallback_print')).toBe(true)
   })
 })
