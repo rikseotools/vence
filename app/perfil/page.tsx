@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'subalterno_parlamento_andalucia',
+      label: 'Subalternos Parlamento Andalucía',
+      data: {
+        name: 'Subalternos del Parlamento de Andalucía',
+        slug: 'subalterno-parlamento-andalucia',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'administrativo_aragon',
       label: 'Administrativo (DGA)',
       data: {

@@ -116,6 +116,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'subalterno_parlamento_andalucia',
+    nombre: 'Subalternos Parlamento Andalucía',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'administrativo_aragon',
     nombre: 'Administrativo (DGA)',
     categoria: 'C1',
