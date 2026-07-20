@@ -1156,25 +1156,32 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **▸ ADJUDICADO EL CLÚSTER INTERNACIONAL una a una (20/07) — método: por cada ley, ¿existe contenedor escopado
   equivalente (=duplicado de la migración) y/o hay un epígrafe que la nombre? Solo se escopa si NO hay competidor
   y el epígrafe la pide.** Resultado:
-  - ✅ **ESCOPADAS (3 leyes, 337 preguntas recuperadas, verificadas en prod):**
-    - `Código Aduanero UE` (104) → **GC T23**: el epígrafe dice literal *"Reglamento (UE) 952/2013 Código Aduanero de
-      la Unión"*; el tema servía solo las de Contrabando. GC T23 116→220.
-    - `Estatuto de Roma` (127) → **GC T1**: el epígrafe lo nombra literal; sin contenedor competidor (a diferencia de
-      la tortura, aquí NO existe una versión nueva escopada → escopar la única que hay es lo correcto, no duplica).
+  - ✅ **ESCOPADAS (2 leyes, 231 preguntas recuperadas, verificadas EN PROD y contra el PROGRAMA OFICIAL 2024
+    (`TEMARIO_INGRESO_GC_ACTUALIZADO_2024.pdf`)):**
+    - `Código Aduanero UE` (104) → **GC T23**: programa oficial línea 591 *"Reglamento (UE) nº 952/2013… de 9 de octubre
+      de 2013"*; el tema servía solo las de Contrabando. GC T23 116→220.
+    - `Estatuto de Roma` (127) → **GC T1**: programa oficial *"Estatuto de Roma de la Corte Penal Internacional"* (junto a
+      la LO 18/2003 que ya servía); sin contenedor competidor → escopar la única que hay es lo correcto, no duplica.
       GC T1 102→229. (1 pregunta con tag `PN` excluida por el filtro de tags exclusivos — correcto.)
-    - `Directiva Eficiencia Energética` (106) → **GC T16**: el epígrafe nombra *"Directiva 2012/27/UE"* (vieja); nuestro
-      contenido es la **2023/1791** (91 la citan), que **derogó y reemplazó** a la 2012/27. Caso *ley caducada en el
-      epígrafe*: la vigente es justo lo que el epígrafe pide → se escopa la vigente. GC T16 496→602. **PENDIENTE HUMANO:**
-      actualizar el TEXTO del epígrafe de GC T16 de "2012/27" a "2023/1791" (no lo reescribo yo, es el programa).
+  - ❌ **REVERTIDA (error mío, corregido el mismo día al verificar contra el programa oficial):**
+    `Directiva Eficiencia Energética` (106) → GC T16. La escopé razonando *"la 2023/1791 es la sucesora vigente de la
+    2012/27 que pide el epígrafe"* — **SIN mirar el programa oficial primero**. El programa GC 2024 (línea 471) examina
+    la **estructura de la 2012/27** (sus Capítulos I y II), y nuestras 106 preguntas **citan por su nombre la "Directiva
+    2023/1791 de 13 de septiembre de 2023"** en el propio enunciado → versión equivocada para este examen. Revertida
+    (GC T16 vuelve a 496). El epígrafe de GC T16 **es correcto tal cual** (espeja el programa: 2012/27); NO tocarlo.
+    Hueco real que queda: GC T16 necesita contenido de la **2012/27** (no lo tenemos como ley escopable).
+    **LECCIÓN:** antes de escopar una "sucesora vigente", VERIFICAR la versión contra el programa oficial — el examen
+    puede pinnear la versión vieja, y si nuestras preguntas citan la nueva por su número, delatan el desajuste.
   - 🔻 **DUPLICADOS de la migración de la otra sesión (NO tocar — escoparlos duplicaría):** `Convención contra Tortura`
     (62)↔`Convención Tortura` ya escopada, `Protocolo Tortura` (45)↔`OPCAT` ya escopada (114), `Consejo DDHH ONU`
     (58)↔`Resolución Consejo DDHH 5/1` ya escopada. Más `Principios Fuerza ONU` (97) y `CIJ` (14) del no-touch explícito.
   - ⏸️ **HOLD — sin hogar (ningún epígrafe de ninguna oposición las nombra) → decisión de dominio:** `Carta Social
     Europea` (139), `Protocolo 15 CEDH` (41). No se fuerzan: añadir lo que el epígrafe no pide está prohibido.
-- **▸ ESTADO tras esta pasada: 1.611 → 1.321 → (−337 escopadas) activas invisibles.** Lo que QUEDA, sin tocar:
+- **▸ ESTADO tras esta pasada: −231 escopadas netas (Código Aduanero 104 + Estatuto de Roma 127).** Lo que QUEDA, sin tocar:
   - `gc_pn_internacional` (~247): **sigue siendo de la otra sesión, no tocar.** Confirmado que son duplicados.
   - `resto` no-internacional (~700): adjudicación per-contenedor contra el epígrafe, una a una. **NO escopear en bloque.**
   - `HOLD` internacional (180): Carta Social Europea + Protocolo 15 CEDH → necesitan decisión de dominio.
+  - `Directiva Eficiencia Energética` (106): necesita contenido 2012/27 (el que examina GC), no la 2023/1791 que tenemos.
   - `ofimática CyL` / `Andalucía estructura`: triar y retirar, no re-scopear.
   - Sobre el sensor nocturno: ya NO hay que excluir `idioma` a ciegas — el caso PN era señal real, no ruido.
 - **▸ REVISADO EL RESTO NO-INTERNACIONAL una a una (20/07) — ninguna era escope limpio; NO se tocó ninguna, con motivo
