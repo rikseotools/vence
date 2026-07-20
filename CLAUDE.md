@@ -297,6 +297,16 @@ git push origin main
 
 ## Mantenimiento
 
+### 📋 Tareas pendientes / backlog con CLAIM entre sesiones (runbook obligatorio)
+- **Runbook:** `docs/runbooks/tareas-pendientes.md`
+- **Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"¿qué tareas pendientes tenemos?"*, *"lista las tareas pendientes"*, *"coge una tarea"*, *"ataca la tarea X"*, *"dame la siguiente tarea"*, *"añádelo a pendientes"*, *"cierra la tarea X"*. Seguirlo **ANTES** de ponerse a trabajar en nada del backlog.
+- **REGLA DURA — coger ANTES de trabajar:** con 2-10 sesiones en paralelo, si no has hecho `claim` la tarea está libre para las demás aunque tú lleves una hora con ella. Caso real 20/07: una sesión montó un worktree para el RD 176/2022 mientras otra ya lo estaba arreglando.
+- **Reparto:** el **contenido** vive en `docs/roadmap/tareas-pendientes.md`; el **estado de claim** en la tabla `backlog_tasks` (RDS). Se unen por el id `T-xxx` de la cabecera. Un markdown NO admite claim atómico (dos sesiones leen "libre", ambas escriben, gana la última).
+- **Comandos:** `node scripts/backlog.cjs list | next | claim T-042 | heartbeat | mine | done T-042 --outcome "…" | release T-042 | sync`. El session-id se auto-deriva (igual que `cola.cjs`).
+- **Lease, no lock:** el claim caduca a los 90 min y se renueva con `heartbeat`. Una sesión que muere libera su tarea sola; una viva la conserva mientras dé señales.
+- **Al cerrar: `done --outcome` Y mover la entrada a `## Hechas`** en el markdown. Las dos cosas — el guardarraíl de CI (`__tests__/guardrails/backlogRegistry.guardrail.test.ts`) falla si divergen. Eso evita el otro fallo del 20/07: una ficha anunciando *"9 mislinks EN VIVO"* que ya estaban resueltos.
+- **Al terminar, para pushear/desplegar:** `docs/runbooks/pusheo-revision-despliegue.md` (fuente única del deploy). Recordatorio: **pushear a `main` ≠ desplegar** — pushear es libre en cuanto TU tarea está completa; el deploy es cumulativo (sube todo `main`) y se coordina.
+
 ### 🚨 Salud del sistema (runbook obligatorio)
 - **Runbook:** `docs/runbooks/health-check.md`
 - **Cuándo consultarlo:** cuando el usuario diga *"busca errores"*, *"qué tal va"*, *"estado del sistema"*, *"salud"*, *"hay fuego"*, o similar, Claude DEBE seguir el runbook ANTES de improvisar.

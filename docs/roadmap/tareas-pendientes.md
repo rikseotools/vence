@@ -3,15 +3,32 @@
 > **Fuente única de las tareas que Manuel aparca para "luego".** Es el sitio canónico del backlog
 > **sin fecha** (para tareas **con fecha** → memoria `agenda_tareas_programadas`).
 >
+> ## 🔒 ANTES de trabajar una tarea: CÓGELA
+>
+> Con varias sesiones a la vez **este fichero NO reparte**: el reparto lo lleva la tabla
+> `backlog_tasks` (RDS), unida a estas fichas por el **id `T-xxx`** de cada cabecera. Un markdown
+> no admite claim atómico — dos sesiones leen "libre", ambas escriben, gana la última.
+>
+> ```bash
+> node scripts/backlog.cjs list           # qué hay y quién tiene qué
+> node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
+> node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
+> node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+> ```
+>
+> **Runbook completo: `docs/runbooks/tareas-pendientes.md`** (lease/heartbeat, guardarraíles, y cómo
+> pushear y desplegar al terminar → `docs/runbooks/pusheo-revision-despliegue.md`).
+>
 > **Dos comandos:**
-> - *"añádelo a tareas pendientes"* → Claude **añade** aquí una entrada (título + por qué + link al detalle + estado).
+> - *"añádelo a tareas pendientes"* → Claude **añade** aquí una entrada (título + por qué + link al detalle + estado) y corre `sync`.
 > - *"¿qué tareas pendientes tenemos?"* → Claude **lee este fichero** y las lista (por prioridad).
 >
 > **Regla de oro (anti-saturación de memoria):** el **detalle/cómo** vive en el runbook/roadmap del repo;
 > aquí solo va **título + por qué/prioridad + link + estado**. La memoria no duplica esto: solo apunta a este
 > fichero (memoria `project_backlog_tareas_pendientes`).
 >
-> Formato por tarea: `### [PRIORIDAD] Título` + 1-3 líneas (por qué, link al cómo, estado). Al cerrar una,
+> **Formato por tarea (OBLIGATORIO):** `### [T-042] 🟠 Título` + 1-3 líneas (por qué, link al cómo, estado).
+> Sin el id `T-xxx` nadie puede coger la tarea y el guardarraíl de CI se pone rojo. Al cerrar una,
 > muévela a "## Hechas" con la fecha, o bórrala si ya no aporta.
 
 ## 🔢 Orden de ataque (prioridad, snapshot 20/07)
@@ -65,7 +82,7 @@
 
 ## Abiertas
 
-### 🟠 [PASO 1 HECHO Y **DESPLEGADO** 20/07 — queda el paso 2] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+### [T-001] 🟠 [PASO 1 HECHO Y **DESPLEGADO** 20/07 — queda el paso 2] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
 > ⚠️ **Corregido 20/07:** esta ficha decía "SIN DEPLOY" y **era stale**. Verificado contra el deploy vivo: el commit de `lib/browser/inAppBrowser.ts` **es ancestro del frontend en producción** → el aviso in-app YA le llega al usuario. Lo que sigue pendiente es el **paso 2** (generar el PDF de verdad server-side), no un despliegue. Método para no repetir el error: `curl -s https://www.vence.es/api/health | grep deploy` + `git merge-base --is-ancestor <commit> <deploy_vivo>` (runbook `pusheo-revision-despliegue.md` §"verificar si un fix está desplegado").
 - **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hacía nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Fallaba en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes. Caso María (fb feb79fc5, `piyou22@gmail.com`): 100% de sus sesiones GSA in-app en iPhone.
 - **✅ PASO 1 construido (20/07, aviso in-app + centralización):**
@@ -76,13 +93,13 @@
   - **PENDIENTE:** deploy (`scripts/deploy-frontend.sh`). Al desplegar, avisar a Victoria/María y valorar reward.
 - **Paso 2 — fix de verdad (pendiente decisión):** que el botón **genere el PDF nosotros** (ruta server que renderice el tema) en vez de `window.print()`, para que la descarga funcione desde cualquier navegador (in-app incluido) Y sirva de perk premium (PDF del temario completo/por bloque).
 
-### 🟡 [ABIERTO 19/07] Render multi-convocatoria: landing pinta las 2 convocatorias vivas como bloques separados
+### [T-002] 🟡 [ABIERTO 19/07] Render multi-convocatoria: landing pinta las 2 convocatorias vivas como bloques separados
 - **Qué:** cuando una oposición tiene 2 convocatorias vivas a la vez (caso Aux. Admin. Comunidad de Madrid: Orden 264/2026 de 645 plz **en tramitación** —lista de admitidos, examen pendiente— + Orden 1628/2026 de 673 plz con **inscripción abierta** hasta 10/08/2026), la landing lee de `oposiciones_ssot` (solo la `is_current`) para hero/tarjetas, y el **timeline mezcla los hitos de AMBAS convocatorias** (dos "Convocatoria publicada en BOCM", dos plazos de inscripción) → puede confundir a un usuario despistado.
 - **Origen:** feedback de Esther Pimentel (`9d7cabdd`, resuelto): buscaba dónde inscribirse en Aux. Admin. de Madrid; el timeline mezclado y la confusión Ayuntamiento/Comunidad la despistaron. El hero SÍ muestra bien la abierta (673 plz, 10/08); el dato es correcto, es solo UX.
 - **Por qué pendiente:** el schema ya soporta N convocatorias (migración `20260718_convocatorias_multi_por_año.sql`); falta la **vía (a) de render** (OEP manual §4e-ter): que la landing liste las convocatorias no `archived_at` de la oposición como **bloques separados** (cada una con sus plazas/fechas/hitos propios), en vez de mezclarlas. Hoy va la vía interina (`is_current` + hitos de ambas).
 - **Cómo:** cambio de código en la landing (pintar todas las convocatorias no archivadas, agrupando hitos por convocatoria). No urgente. Detalle: memoria `project-convocatorias-multi-por-año-schema`, `docs/roadmap/consolidacion-convocatorias-radar-ssot.md`.
 
-### 🟡 [ABIERTO 19/07] Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
+### [T-003] 🟡 [ABIERTO 19/07] Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
 - **Qué:** el nuevo detector `scope_titulo_huerfano` (barrido nocturno, LIVE) marca **465 títulos** de una ley que la oposición usa, con preguntas activas y flanqueados a ambos lados por artículos escopados, pero con **0 artículos suyos en el `topic_scope`** (hueco INTERNO). Es un *upper bound* con falsos positivos legítimos (títulos que el programa no incluye).
 - **Por qué:** son preguntas ya en BD que el usuario no puede practicar (caso raíz: CE Título V en Diputación Córdoba, 186 preg — ya arreglado). Varios apuntan a huecos reales (ej. Andalucía no escopa CE Título III, 66-96, 699 preg).
 - **Cómo:** frase-gatillo **"revisa los huecos del temario"** → adjudicar por oposición con `verify:scope` (epígrafe↔scope), priorizando por nº de preguntas huérfanas. Si el epígrafe pide el título → añadir su rango al scope; si no → dejarlo. Detalle: memoria `project_scope_titulo_huerfano_deteccion` + `docs/runbooks/verificar-epigrafes-scope.md` §"Huecos del temario".
@@ -105,18 +122,18 @@
   - **El nombre de la norma es la trampa recurrente** (3 clusters distintos): `tcae_aragon` T8 casó "Procedimiento Administrativo Común" porque es el **título de la ley** —su scope (1-14, 29-33, 106-126) casa con precisión su epígrafe—; la Ley 5/2018 cántabra lleva "Sector Público Institucional" en su propio nombre. Y el patrón "Tribunal de Cuentas" pescó 5 temas del Tribunal de Cuentas **Europeo**.
 - **📊 BALANCE FINAL del drenaje (3 lotes):** de **471 títulos huérfanos en 98 oposiciones**, solo **16 eran huecos reales** (~3,4%) — todos arreglados reusando banco ya en BD, sin crear ni borrar una sola pregunta, y **registrados** en `topic_scope_verification` con su nota. El resto queda documentado como falso positivo **con su razón**, para que el barrido nocturno no lo re-abra como trabajo. **Lo que queda es mantenimiento:** re-adjudicar lo que aparezca nuevo, con el método y las herramientas ya montadas (`analiza-`, `refina-`, `adjudica-cluster-huerfano.cjs` + runbook §"Huecos del temario").
 
-### 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
+### [T-004] 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
 - **Qué (HECHO 19/07, verificado vs fuente oficial + en vivo en RDS):** Aragón VIII Convenio (8 arts, nº de maquetación BOA pegado al texto), UMU Matrícula 2026/2027 (~27 arts: marca de agua PDF incrustada + apartados descolocados 18/19/29/30 recompuestos contra fuente), Cantabria Decreto 152/2005 art.7, Instituciones Internacionales GC (5 títulos mal atribuidos), Osakidetza Decreto 255/1997 (5 arts euskera→castellano). Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
 - **PEND (bajo ROI, teoría-only):** Osakidetza Decreto 255/1997 arts **5, 8, 13, 14, 15, 17, 20** aún bilingües (0 preguntas cuelgan) → re-import castellano del BOPV.
 - **Nota:** el detector "arranca en apartado >1" tiene ALTA tasa de falsos positivos (numeración "artículo.apartado", p.ej. art.21→"21.1" es correcto) — filtrar a mano.
 
-### ✅ [HECHO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (917 preguntas)
+### [T-005] ✅ [HECHO 19/07] PROYECTO — split físico de "Instituciones Internacionales GC" (917 preguntas)
 - **Qué:** el contenedor virtual mezclaba ~12 organizaciones, escopado como "toda la ley" en guardia_civil T6 y policia_nacional T4 (mis-scoping: cada opositor recibía lo de la otra materia). **Split completo en 3 fases** (vivo en RDS, cero regresión de contenido).
 - **Resultado:** 13 leyes creadas — 6 de tratado (Carta ONU, Estatuto Consejo de Europa, Estatuto INTERPOL, Regl. UE CEPOL/Europol/Frontex) + 7 editoriales (UE, OTAN, EUROJUST, FAO, FMI, OMS, Tribunales europeos TEDH/TJUE). Los 39 arts numerados (Fase 1) + las 815 del art.0 clasificadas por 12 agentes Sonnet con integridad verificada 815/815 (Fase 2). Contenedor repurposado (no borrado) a bucket "teoría general" (17 preg, solo GC T6).
 - **Scoping corregido:** GC T6 → 13 orgs + teoría general (917); PN T4 → UE + coop. policial (INTERPOL/Europol/Eurojust/Frontex/CEPOL) + tribunales (434, antes 917).
 - **Detalle:** `docs/roadmap/split-instituciones-internacionales-gc.md`.
 
-### 🟢 [HECHO 19/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
+### [T-006] 🟢 [HECHO 19/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
 - **Contexto:** los cubos 1/3 dejaron 71 needs_human con motivo de esta sesión (`ai_provider IN claude_code_cubo1_reverify / mislink_v1 / vg_relink`). Al inspeccionarlos, el "importar normas para desbloquear todo de golpe" resultó **optimista**: desglose real →
   - **43** (`cubo1_reverify`, todos *sin sugerencia*) = **defectos reales de clave/opción**, no los arregla ningún import → decisión humana.
   - **~7** (`vg_relink`) = **contenido NO normativo** (Punto Violeta, "Círculo de Fortaleza" del Plan VioGén, Resolución ONU 54/134, fundación SAM/GRUME 1986, Pacto de Estado) → forzarlo a un "artículo" sería inventar estructura. Se quedan parkeados (o retiro), **no** se importan.
@@ -137,19 +154,19 @@
   - **Parkeadas en needs_human (decisión Manuel, reversible):** `26eb24b0` (Presupuestos CyL anual, sin hueco permanente). `a1e0046e` (RD 2099/1983 precedencias), `b628ff43` (Decreto 248/2023 Madrid estructura), `b647ee0d` (Decreto 200/1993 Galicia) = leyes nuevas de 1 pregunta c/u, varias de estructura orgánica (caducan rápido) → no importar por ~1 pregunta cada una.
   - `c9eb6c4e` (RD 509/2020) ya resuelta el 19/07.
 
-### 🟡 [ABIERTO 19/07] Verificación scope↔epígrafe — backlog de plataforma
+### [T-007] 🟡 [ABIERTO 19/07] Verificación scope↔epígrafe — backlog de plataforma
 - **Qué:** de **149 temas** en `verified_issues`/`needs_human` (`verify:scope audit`), la sesión 19/07 resolvió las **3 oposiciones de mayor demanda con issues**: `auxiliar_administrativo_estado` (T107 falso positivo), `administrativo_estado` (T603/T7/T307 + **re-partición del bloque EBEP T403/T406/T407**), `tramitacion_procesal` (**37/37 correct**: T1 Habeas Corpus fuera, T10 protección de datos acotada, T23 LGSS fuera — todo verificado contra BOE-A-2025-27053).
 - **✅ `auxiliar_administrativo_madrid` verificada (20/07, 21/21 temas):** era la mayor bolsa demanda↔sin-verificar (1.292 usuarios, **42 premium = la nº1 en premium de la plataforma**), estaba **21/21 `never_verified`**. Pipeline 2 agentes → consenso: **16 correct, 5 needs_human**. **4 fixes aplicados por reuso/recorte** (`scripts/scope/madrid-aux-admin-scope-fix.cjs`, verificados vs estructura de ley): **T4** quitada Ley 40/2015 (126 preg off-«fuentes»: sancionador/competencia/fundaciones, sin tema propio en Madrid) 1042→899; **T9** +arts 131-187 Ley 9/2017 (procedimientos de adjudicación que el epígrafe pide) 137→209; **T10** +Ley 53/1984 incompatibilidades (49 preg reusadas) 1282→1331; **T14** quitado RD 829/2023 art.15 «Ministerio de Cultura» (stray, 0 preg). **needs_human (5):** T2 (ILP ¿potestad legislativa?), T8 (participación dentro de la ley CM de transparencia), **T17/T18 (§5-bis variante Office Word/Excel escritorio-vs-web, BLOQUEADAS)**, **T19 = COBERTURA: falta banco de Power BI (generar), no error de scope**.
 - **Queda (por tipo):** **~14 variante Office** (Word/Excel escritorio vs web) = **BLOQUEADAS** esperando nota informativa oficial del tribunal (§5-bis; no accionables por nosotros); **~29 comodín/estatuto entero sin particionar**; **~22 imports** de leyes que no están en BD (mayoría `administrativo_navarra`, baja demanda); **faltan-bloques** de oposiciones de menor demanda; y **~100 `never_verified`** sin auditar (deuda de cobertura, no error).
 - **Follow-ups menores de la sesión:** barrer el **comodín CE art.149** a otras oposiciones (solo hecho en `administrativo_estado` T7/T307); residuales EBEP borderline (`administrativo_estado` T406 arts 29/30 retrib, T403 arts 27/75) — tolerados, no urgen.
 - **Cómo:** runbook `verificar-epigrafes-scope.md` (pipeline 2 agentes). Priorizar por demanda: siguiente foco = **faltan-bloques de alta demanda** reusando banco. Los `needs_human` NO son "leyes rotas": muchos son falsos positivos de word-matching (Explorador Windows: T107/T603/T34 mismo caso) o criterios a arbitrar.
 
-### 🟡 [ABIERTO 19/07] Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a) + etiqueta cruzada
+### [T-008] 🟡 [ABIERTO 19/07] Aux. Admin. Comunidad de Madrid — landing multi-convocatoria (vía-a) + etiqueta cruzada
 - **Qué:** Madrid tiene **dos convocatorias 2026 vivas** (Orden 264/2026 en `lista_admitidos` examen 15/10 + Orden 1628/2026 673 plazas inscripción abierta hasta 10/08). El schema ya soporta ambas como filas propias (migración `20260718_convocatorias_multi_por_año.sql`) y la vigente (673, abierta) se ve; pero **la landing solo pinta la `is_current`** — falta la **vía-(a)**: que liste simultáneamente las convocatorias no archivadas (§4e-ter del manual OEPs).
 - **Dato menor a limpiar:** la fila del ciclo en curso (Orden 264/2026) tiene `convocatoria_numero=NULL` y la archivada tiene ese número mal atribuido (cruce de etiquetas preexistente); rellenar con cuidado por el índice `convocatorias_ref_oficial_unica`.
 - **Cómo:** `docs/maintenance/oeps-convocatorias-seguimiento.md` §4e-ter; memoria `project-convocatorias-multi-por-año-schema`.
 
-### 🟡 [DETECTOR v1+v2 HECHO 20/07 — quedan ~5 candidatos reales + barrido/cron] Disposiciones ANULADAS (STC) / incisos derogados en ley vigente
+### [T-009] 🟡 [DETECTOR v1+v2 HECHO 20/07 — quedan ~5 candidatos reales + barrido/cron] Disposiciones ANULADAS (STC) / incisos derogados en ley vigente
 - **Por qué:** incidente 19/07 (Alfonso, aux CARM) — una pregunta testeaba el inciso del **art. 126.2 LBRL** (nombrar no-concejales a la Junta de Gobierno Local) que la **STC 103/2013** declaró **inconstitucional y nulo**; nuestro artículo importado no tenía la nota de vigencia y la clave daba el inciso anulado como correcto. **Le respondí mal la impugnación** antes de que reabriera como bug. Riesgo de clase: cualquier artículo con un inciso anulado/derogado que el BOE consolidado marca con nota pero nuestro import no capturó.
 - **Hueco de monitoreo (confirmado):** NINGÚN sistema lo caza — el monitor BOE ve cambios FUTUROS (no anulaciones históricas ya en el consolidado); `completitud-leyes` ve artículos que FALTAN, no vigencia de incisos; `leyes-anuales-caducadas` solo leyes anuales completas; el radar de epígrafes mira materia, no vigencia.
 - **Ideas de fix (diseñar):** al importar/verificar una ley, **capturar las notas de vigencia del BOE consolidado** (STC, derogaciones de incisos concretos — el BOE las marca) en `articles.content`/campo aparte; detector que compare artículo ↔ notas BOE y flaguee incisos anulados presentes como vigentes; para artículos "tocados por el TC", nota obligatoria + revisar sus preguntas. Extiende `lib/laws/completeness.ts` / `docs/roadmap/verificacion-completitud-leyes.md`.
@@ -160,25 +177,25 @@
 - **✅ TRIAJE DE LOS 5 CANDIDATOS v2 (20/07) — SIN bugs activos:** LAJG art 2 (10 preg) verificado — ninguna pregunta usa el inciso anulado ("residan legalmente"); nuestro texto ya es el vigente ("se encuentren en España"); nota de vigencia añadida → resuelto. CP art 335, CP art 607.2, LOSCAM art 88.2, LBRL art 57 bis = **0 preguntas cada uno** → ningún riesgo activo posible. **Conclusión: el único bug real de esta clase (art. 126) ya estaba arreglado; ninguna pregunta activa da por válido un inciso anulado.** El detector queda de red de seguridad para el futuro.
 - **PENDIENTE:** triar esos ~5 + **barrer las 384 nacionales completas** con v2 + cablear como **cron incremental** (rate-limit BOE → tandas). v1/v2 = solo nacionales (datosabiertos no cubre regionales).
 
-### ✅ [HECHA 19/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
+### [T-010] ✅ [HECHA 19/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
 - **Qué:** dos artículos correctamente escopados pero con **0 preguntas activas**, prometidos a la usuaria (fb `daluamva@gmail.com`, `auxiliar_administrativo_sms`): **T8 Ley 4/1994 art 9 (Fines)** y **T3 Ley 12/2014 CARM Transparencia art 1 (Objeto y finalidad)**. Conviene reforzar de paso T8 arts 10-12 (1 preg c/u, tema muy fino: 8 preg).
 - **Por qué pendiente:** generación de contenido (fuente oficial BOE + doble auditoría + GATE) → no al vuelo; decisión de Manuel. Le dijimos "estamos trabajando en ello" y pidió **aviso expreso cuando estén** ("AVISARME CUANDO ESTEN").
 - **Cómo:** `docs/maintenance/generar-preguntas-con-ia.md`. Feedbacks claim-ados: `22835b84` (T8), `85d564cf` (T3 Ley 12/2014). Contexto scope (verificado contra BORM 07/10/2021): sesión 17/07.
 - **✅ HECHA 19/07:** art. 9 (Fines) y art. 1 Ley 12/2014 (Objeto) generados y vivos; además ambas leyes completas a ≥50 (Ley 4/1994 → 51, Ley 12/2014 → 52). Triple auditoría (mecánica + Sonnet ciego + Paso 9), verificado contra BOE. **Decisión Manuel: SIN recompensa y SIN mensaje a la usuaria.** Tags `gen_sms_t8t3_2026-07-19`, `gen_ley4_1994_2026-07-19`, `gen_ley12_2014_2026-07-19`.
 
-### 🟢 [MEJORA APP — no urgente] Email RGPD de borrado *exactly-once* (marcador durable en `deleted_users_log`)
+### [T-011] 🟢 [MEJORA APP — no urgente] Email RGPD de borrado *exactly-once* (marcador durable en `deleted_users_log`)
 - **Qué:** en `DELETE /api/admin/delete-user`, el correo de confirmación RGPD (Art. 12.3) puede **duplicarse** en un caso raro: si un 1er intento borró la cuenta y **envió el email** pero devolvió 500 por otra causa (p.ej. error del store de auth legacy), al reintentar (perfil ya ausente + fila de auditoría) la ruta reenvía el email desde el email durable de `deleted_users_log`. El reintento ya NO re-borra ni da 500 perpetuo (arreglado `4ef7a929`), pero el email no es *exactly-once*.
 - **Por qué:** cumplimiento/UX: un usuario borrado podría recibir 2 correos "cuenta eliminada". Impacto bajo (camino raro), pero es un cabo real anotado en la revisión adversarial del fix.
 - **Cómo:** columna `deleted_users_log.rgpd_email_sent_at timestamptz` (migración additiva) + mapearla en Drizzle; enviar el email solo si es `NULL` y sellarla tras el envío OK. Enlaza con memoria `feedback_delete_user_api_504_fallback`.
 - **Estado:** ABIERTA (follow-up del fix desplegado 15/07). No bloqueante.
 
-### 🟢 [MEJORA APP — no urgente] Poblar títulos y capítulos (`law_sections`) en TODAS las leyes + mostrarlos en teoría
+### [T-012] 🟢 [MEJORA APP — no urgente] Poblar títulos y capítulos (`law_sections`) en TODAS las leyes + mostrarlos en teoría
 - **Qué:** hoy la estructura de títulos/capítulos (`law_sections`: título + descripción + rango de artículos) está poblada en **solo 13 de 1.291 leyes activas** y solo se usa para el control "Filtrar por Títulos"; nunca se muestra como **cabecera inline** al leer la teoría. Objetivo: poblar `law_sections` en todas las leyes (verificado contra fuente oficial/BOE, **nunca contra el "art 0 — Estructura" sintético**, que puede estar fabricado) **y** renderizar los títulos/capítulos como cabeceras sobre los artículos que agrupan.
 - **Por qué:** (1) petición **repetida** de usuaria premium fiel (Nila, `auxiliar_administrativo_madrid`, feedbacks 26/05 y 15/07: "poner los títulos correspondientes… los artículos hacen referencia a los títulos"); (2) los **filtros por título/capítulo** solo funcionan donde hay `law_sections` → hoy fallan/no aparecen en el 99% de leyes; (3) la **teoría que imprimen los usuarios** llevaría los títulos y capítulos (mejor estudio y referencia cruzada entre artículos).
 - **Cómo:** `law_sections` (título, `article_range_start/end`, `section_type` título/capítulo, `order_position`); fuente = BOE/gaceta oficial de cada ley. Render: `app/teoria/[law]/LawArticlesClient.tsx` (hoy solo filtra vía `/api/teoria/sections` → `fetchLawSections`). Empezar por temario de oposiciones vivas (p.ej. Estatuto de Autonomía CM, LO 3/1983, hoy 0 filas).
 - **Estado:** ABIERTA. Detectado 15/07 (feedback Nila, cerrado en silencio). Sin recompensa (sugerencia, no bug funcional).
 
-### ✅ [INVESTIGACIÓN CERRADA CON VEREDICTO — 20/07] Triaje de revisión de preguntas con modelos de pago baratos (OpenRouter) + ensemble
+### [T-013] ✅ [INVESTIGACIÓN CERRADA CON VEREDICTO — 20/07] Triaje de revisión de preguntas con modelos de pago baratos (OpenRouter) + ensemble
 > **No es trabajo pendiente: es una decisión ya tomada y fundamentada** (*"no industrializar el triaje para estos cubos"*). Verificado 20/07: **cero infraestructura viva** — sin npm scripts, sin código en `backend`/`app`/`lib`/`scripts`, sin workflows GHA. No consume nada. Se conservan los aprendizajes (manual §8-§9, 26 KB) y `verify-live-scripts/prefilter_val.cjs`.
 > **Residuo real:** una `OPENROUTER_API_KEY` en `.env.local` **sin ningún consumidor**, y ~**$9 de los $10** de crédito sin gastar (el trabajo costó $0.17-0.76). Decidir si se gastan en algún uso válido de los anotados abajo o se da de baja.
 - **Qué:** capa de triaje binario (¿el artículo/opción sostiene LITERAL la clave? FP vs mislink) con modelos **de pago baratos** para quitar volumen a los agentes Claude, reservando Claude para el juicio (relink/explicación/fuente/adjudicación). Idea Manuel: **consenso de 2-3 modelos** = doble-pasada barata.
@@ -187,24 +204,24 @@
 - **Dónde SÍ sirven los baratos (no descartar del todo):** señal informativa/priorización (no decisión), reformateo/normalización determinista, pre-filtro con Claude detrás, detección de patrones grep-ables. Idea futura: probar solo en sub-cubo homogéneo (opción >60 chars, alto solape con artículo). Manual §9.
 - **Cómo:** manual **`docs/maintenance/verificacion-modelos-gratis-openrouter.md` §8-§9**. Scripts durables en `verify-live-scripts/` (`bakeoff_*`, `ensemble_analysis`, `optlit_extract`, `optlit/`). Memoria `reference_openrouter_modelos_gratis`. **Estado: APARCADO (con usos válidos anotados).**
 
-### 🟢 [APARCADA — tracking] 16 preguntas de diagnóstico por imagen/radioprotección esperando su oposición
+### [T-014] 🟢 [APARCADA — tracking] 16 preguntas de diagnóstico por imagen/radioprotección esperando su oposición
 - **Contexto (14/07, cierre cubo mislink "paciente"):** al cerrar Paciente Quirúrgico salieron 16 preguntas de radiodiagnóstico/ecografía/RMN/medicina nuclear/radioprotección (rayos X=Röntgen, Sievert, gammagrafía, zonas RD 783/2001…). Venían de bancos comerciales genéricos TCAE (Aula Plus / TuTestDigital Murcia) mal vinculadas a "posiciones anatómicas".
 - **Qué se hizo:** creada la **ley editorial reusable "Diagnóstico por imagen y radioprotección"** (`e731eb12-0b6b-4596-bcc7-fca56f8efeb4`, slug `diagnostico-por-imagen-radioproteccion`, 4 arts de fuentes oficiales RD 783/2001 + MedlinePlus) y las **16 re-vinculadas ahí** con explicación §8.1, todas `approved`+AVR.
 - **Por qué aparcadas (no visibles):** verificado contra fuente oficial (tcae_murcia BORM, tcae_sas BOJA, 0/~330 temas TCAE modelados) que **el temario oficial TCAE NO incluye diagnóstico por imagen** → crear un tema en TCAE sería inventar temario (viola `verificar-epigrafe-topic-scope.md`). Están correctamente ancladas pero invisibles hasta que exista la oposición que sí las tiene en temario (→ ver tarea TSID abajo).
 - **Estado:** DONE el anclaje; **reviven automáticamente** al construir la oposición TSID (scopear la ley ahí). Detalle: memoria `project_verificar_vivas_campana`.
 
-### 🟢 [CONTENIDO — hueco detectado] Crear editorial TCAE "Unidad del paciente" (condiciones ambientales de la habitación)
+### [T-015] 🟢 [CONTENIDO — hueco detectado] Crear editorial TCAE "Unidad del paciente" (condiciones ambientales de la habitación)
 - **Qué:** al cerrar el cubo mislink de bancos clínicos TCAE (14/07) afloran preguntas huérfanas del tema **"La unidad del paciente / condiciones ambientales de la habitación"** (temperatura 20-24 ºC, humedad 40-60%, ruido/confort acústico, ventilación, iluminación) — no existe editorial TCAE que las cubra (solo se cazan sueltas en Higiene art.1). ~5-6 por banco → varias en needs_human.
 - **Por qué:** es un tema TCAE clásico y real (todos los temarios lo incluyen bajo "unidad del paciente / paciente encamado"); las preguntas están correctas pero sin home literal. Verificado: 0 editoriales "Unidad del paciente" en `laws`, 0 epígrafes TCAE con "condiciones ambientales".
 - **Cómo:** crear ley editorial virtual "Unidad del paciente" (fuentes normalizadas: temario TCAE + guías de confort hospitalario) con arts (cama y mobiliario, condiciones ambientales, aislamientos) y re-vincular las needs_human del cubo; verificar epígrafe→scope (probablemente encaja en el tema "paciente encamado/cuidados básicos" de cada TCAE). Relacionada con la exploración física (maniobras) que solo tiene editorial enfermero. Detalle: memoria `project_verificar_vivas_campana`.
 - **Estado:** ABIERTA (backlog). Las preguntas quedan en needs_human con motivo hasta crearla.
 
-### 🟠 [VENDIBLE] Construir la oposición Técnico Superior en Imagen para el Diagnóstico y Medicina Nuclear (TSID)
+### [T-016] 🟠 [VENDIBLE] Construir la oposición Técnico Superior en Imagen para el Diagnóstico y Medicina Nuclear (TSID)
 - **Por qué:** FP sanitario real y vendible cuyo temario SÍ es diagnóstico por imagen + radioprotección + medicina nuclear. Es el **home natural** de la ley editorial `e731eb12` y de las 16 preguntas ya aparcadas (arriba) — encajan de un tirón al escopar la ley en sus temas.
 - **Cómo:** flujo `crear-nueva-oposicion.md` + scaffolder (memoria `project_scaffolder_crear_oposicion`); temario oficial del título de TSID (BOE del RD del título + convocatoria del servicio de salud correspondiente); reusar la ley editorial ya creada + ampliarla (protección radiológica avanzada, anatomía radiológica, posiciones radiográficas, contraste, PACS/RIS). Verificar epígrafe→scope al cerrar.
 - **Estado:** ABIERTA (sin comprometer). Manuel eligió aparcar las 16 (opción A) y dejar B como pendiente. Bloque mislink ~600 (Outlook 365 + clínicos TCAE) sigue en pausa aparte.
 
-### ✅ [ABSORBIDO POR "Completitud de leyes" — 20/07] Leyes non-BOE con gaceta oficial propia (ex-"cabo de las 129")
+### [T-017] ✅ [ABSORBIDO POR "Completitud de leyes" — 20/07] Leyes non-BOE con gaceta oficial propia (ex-"cabo de las 129")
 > **Ya NO es una tarea independiente.** Medido en RDS (20/07) con el clasificador real de `lib/laws/completeness.ts`: de las **145** leyes non-BOE con URL propia, **105 sirven en temas vivos** y de esas **82 están limpias/exentas** → quedan **23 actionable** (17 `false_green` + 6 `never_verified`). Esas 23 son un **subconjunto de las 64 actionable** que el sistema de Completitud ya detecta solo (cron semanal + gate de publicación + clasificador). Mantenerlo aparte duplicaba contabilidad y desorientaba: hacía pensar en "129 leyes sin tocar" cuando el trabajo vivo son 23 — y dejaba fuera el bucket mayor (**40 sin-url**, editoriales marcadas "actualizada" sin evidencia), que sí está en Completitud.
 > **Seguimiento:** en la entrada "Completitud de leyes vs fuente oficial". **Se conserva abajo el conocimiento técnico** (extractor BOA reutilizable + gotchas por gaceta + defectos documentados), que es lo que aporta esta ficha.
 - **Qué era:** el `content_mm=0` de la campaña cubre solo las leyes BOE (API `act.php`). Quedaban leyes non-BOE con URL oficial propia (gaceta regional DOE/DOGC/BOJA, doc.php…) cuyo contenido nunca se verificó contra su fuente — no por chapuza, sino porque **no están en la API del BOE**; se verifican por **WebFetch a su gaceta**, no por API.
@@ -229,13 +246,13 @@
 - **⚠️ Límite de la fuente (vale para TODA gaceta autonómica):** el BOA publica el texto **original**, no consolidado. Una divergencia BD↔BOA puede ser reforma posterior legítimamente consolidada en BD. El script marca `source_is_original_publication:true` y no da por buena una divergencia sin mirarla.
 - **Estado:** **bloque BOA (9 leyes / 369 preg) CERRADO** — 8 verificadas + 1 (347/2002) con preguntas verificadas y teoría marcada para re-import. Quedan ~120 leyes non-BOE (BOA 9 + BOC 9 + BOCyL 5 cerrados/flagged). Siguiente por volumen: eur-lex (16/467, finicky — "Artículo N" sin separador, importar del PDF), juntadeandalucía ⚠️ dominio genérico (39/329, triar URL a URL), BOCyL (5/212), BORM (7/112). Estrategia por gaceta: **si la Capa 3 (`verify-law-source.cjs`) ya parsea la fuente, usarla** (caso BOC); solo escribir extractor propio si la Capa 3 la marca unparseable (caso BOA/BRSCGI). Memoria: [[project-completitud-leyes-vs-fuente]].
 
-### 🟡 [MEDIA — calidad] Verificar + completar Aux. Administrativo del Ayuntamiento de Madrid
+### [T-018] 🟡 [MEDIA — calidad] Verificar + completar Aux. Administrativo del Ayuntamiento de Madrid
 - **Qué:** `auxiliar_administrativo_ayuntamiento_madrid` (22 temas, activa) NO está verificada ni completa: (1) **Paso 1 epígrafe 22/22 `never_sourced`** + **Paso 2 scope `never_verified`** (nunca auditada contra el PDF oficial de madrid.es); (2) **T21 Word + T22 Excel: 0 preguntas** con `disponible=true` (el usuario los ve vacíos); (3) **8 temas finos con solo 6 preguntas** (T8-T12 Ley Capitalidad/Pleno/Distritos/ROGA + T18-T20 atención ciudadanía/sugerencias). El núcleo SÍ está bien (T1 1.081, T3 1.625, T4 1.212, T15/T16/T17 cientos).
 - **Por qué:** detectado 15/07 al investigar feedback `9d7cabdd` (Esther Pimentel, free, la buscaba). Está activa y vendible pero con huecos que un usuario ve.
 - **Cómo:** Paso 1 clonar epígrafe del PDF oficial (`programa_url` = madrid.es BasesEspecificas.pdf) → `verify:scope` 2 agentes → generar preguntas de T21/T22 (ofimática Word/Excel Office) + reforzar los 8 finos. Doble auditoría + `tech_approved`.
 - **Estado:** sin empezar (en curso 15/07). Conecta con los otros huecos de ofimática (Windows/Office de otras oposiciones).
 
-### ✅ [HECHA 19/07] Ampliar preguntas del Tema 8 de Aux. Administrativo SMS (Ley 4/1994 Murcia)
+### [T-019] ✅ [HECHA 19/07] Ampliar preguntas del Tema 8 de Aux. Administrativo SMS (Ley 4/1994 Murcia)
 - **Qué:** tras estrechar el scope del Tema 8 a los arts **9,10,11,12,25** de la Ley 4/1994 de Salud de la Región de Murcia (era 9-26, inflado), el tema queda con solo **8 preguntas activas**. Generar más ancladas a esos 5 artículos (Fines, Plan de Salud, Consejo de Salud Región, mapa sanitario, órganos del SMS).
 - **Por qué:** feedback de daluamva@gmail.com (premium, `22835b84`, 14/07) → tenía razón, el scope sobre-incluía Áreas de Salud/zona básica (materia del T7) y el régimen del SMS (T9/T12). Corregido y verificado (2 agentes + epígrafe literal). Ahora falta densidad de preguntas.
 - **Cabo de criterio (anotado):** los arts 20-21 (naturaleza/fines del SMS) se dejaron FUERA por lectura literal del epígrafe ("El SMS: **órganos**…"); si se detecta que el régimen jurídico del SMS no lo cubre ningún otro tema del programa, reconsiderar meterlos. Hoy: fuera.
@@ -244,31 +261,31 @@
 - **✅ REFORZADA 20/07:** T8 llevado al techo natural de su scope (9,10,11,12,25) → **29 activas** (art 9→3, 10→5, 11→10, 12→4, 25→7; más CARM art 1 en T3). ~15 preguntas nuevas con triple auditoría (auto + Sonnet ciego + recheck adversarial). La dedup L3 frena la redundancia (tanda 1: 8/12 candidatas eran duplicadas) = confirmación de techo.
 - **⚠️ GOTCHA verify:scope (20/07):** un `verify:scope` para "ampliar el techo" re-añadió arts 13 (funciones Áreas de Salud) y 19 (zona básica) a T8 leyendo "mapa sanitario regional" en aislamiento → **REVERTIDO**: es exactamente el over-scope que la usuaria reclamó (materia de T7, cuyo epígrafe dice "las áreas de salud"). **Lección:** el pipeline `verify:scope` debe recibir los epígrafes de los temas HERMANOS de la oposición, o re-atribuye a un tema material que el programa asigna a otro. Las 5 preguntas generadas de arts 13/19 NO se pierden (sirven a enfermero_sms/tcae_murcia, que escopan la ley entera).
 
-### 🟡 [MEDIA — demanda de usuaria] Supuestos prácticos para Administrativo de la Comunidad de Madrid
+### [T-020] 🟡 [MEDIA — demanda de usuaria] Supuestos prácticos para Administrativo de la Comunidad de Madrid
 - **Qué:** crear supuestos prácticos (`exam_cases`) para `administrativo_madrid`. Hoy tiene **0** (el temario sí está: 47 temas, ~11.177 preguntas activas). Otras oposiciones ya los tienen (administrativo-seguridad-social 8, auxilio-judicial 8, auxiliar-administrativo-carm 6, administrativo_estado 2…).
 - **Por qué:** demanda directa — feedback de Raquel García Moyano (`garciamoyanoraquel7179@gmail.com`, free, usuaria activa con 26 tests hechos, opos `administrativo_madrid`, 13/07). El administrativo C1 lleva 2º ejercicio de supuesto práctico → contenido de conversión. Ya se le respondió que están "en elaboración".
 - **Cómo:** modelo `exam_cases` (`oposicion_type='administrativo_madrid'`, `case_title`, `is_active`). Anclar a fuente oficial (temario/normativa de la convocatoria de Madrid), nunca inventar. Doble auditoría antes de activar.
 - **Estado:** detectado 13/07 (triaje feedback), 0 supuestos, sin empezar.
 
-### 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
+### [T-021] 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
 - **Qué:** `ujieres-cortes-generales` **catalogada** (⚪ `is_active=false`, nacional) sin temario ni tests. Construir para hacerla vendible.
 - **Por qué:** gap detectado por el radar de competidores (≥2: ADAMS, MAD, Opositatest, CET, Temarios…). **40 plazas turno libre, oposición pura** (2 tests de 100 preg: psicotécnico + temario → 100% nuestro formato). **Recorrido máximo:** convocatoria prevista ~mayo 2026, examen nov 2026–abr 2027. Requisito ESO (C2/AP). Psicotécnicos ya los tenemos; falta temario específico (17 temas, régimen de las Cortes Generales).
 - **Cómo:** `docs/maintenance/crear-nueva-oposicion.md` (editorial con fuente oficial — reglamento/estatuto del personal de las Cortes Generales; verificar contra BOE la convocatoria antes de fijar fechas/plazas, nunca inventar).
 - **Estado:** catalogada 13/07 (triaje señal competidores), sin contenido. Convocatoria oficial por confirmar en BOE.
 
-### 🟠 [VENDIBLE — gap de competidores] Construir Cuerpo de Gestión Administrativa A2 (Junta de Andalucía)
+### [T-022] 🟠 [VENDIBLE — gap de competidores] Construir Cuerpo de Gestión Administrativa A2 (Junta de Andalucía)
 - **Qué:** `cuerpo-gestion-administrativa-junta-andalucia` **catalogada** (⚪ `is_active=false`, A2) sin temario ni tests.
 - **Por qué:** gap detectado por competidores (≥2: ADAMS, GoKoan). **OEP 2025: 77 plazas turno libre** (+150 PI que NO vendemos); ciclo libre anterior ya examinado (2º sem 2025), próxima convocatoria libre pendiente = oportunidad viva. A2, 69 temas, oposición. **Forward-build barato:** ya tenemos Administrativo C1 y Auxiliar C2 andaluces → banco común reutilizable (CE, Estatuto de Andalucía, empleo público, procedimiento…).
 - **Cómo:** `docs/maintenance/crear-nueva-oposicion.md`. Verificar plazas/fechas del turno libre contra BOJA (Resolución de convocatoria) antes de activar.
 - **Estado:** catalogada 13/07 (triaje señal competidores), sin contenido.
 
-### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Gobierno de Aragón (revisión epígrafes 13/07)
+### [T-023] 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Gobierno de Aragón (revisión epígrafes 13/07)
 - **Qué:** dos conceptos que el epígrafe oficial cita pero sin artículo que los cubra: (1) **T6** "fuentes del derecho administrativo" (jerarquía normativa) — no existe artículo estatal genérico para escopar; (2) **T16** "certificados y firma electrónica" — el editorial de Informática Básica/Red Internet no lo trata.
 - **Por qué:** detectado en la verificación scope↔epígrafe (2 agentes, consenso `needs_human`). No se inventa contenido → hay que crear el artículo editorial correspondiente y escoparlo.
 - **Cómo:** crear artículo editorial (fuente normalizadora) para cada concepto y añadirlo al `topic_scope` del tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
 - **Estado:** resto de la oposición verificado (18/20 correct tras arreglar T12 mover II Acuerdo→T13 y T8/T7 mover reglamentos 127-133). Solo estos 2 huecos.
 
-### 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Junta de Extremadura (verify:scope 14/07)
+### [T-024] 🟡 [MEDIA] Huecos de contenido en Aux. Administrativo Junta de Extremadura (verify:scope 14/07)
 - **Qué:** tras `verify:scope` de `administrativo_extremadura` (30 temas, 2 agentes + consenso). **T15 RESUELTO 14/07** (el Reglamento sancionador Decreto 9/1994 estaba en BD mal etiquetado "Ingreso" + FABRICADO por IA → importados los 18 arts LITERALES del DOE oficial + 2 preguntas re-vinculadas). **Queda solo T24**: falta la *"Ley de Presupuestos Generales de la CA de Extremadura"* (normas de contratación/convenios/encargos/transferencias) — es una **ley ANUAL** (decisión: no forzar import de ley anual por unos arts que se quedan `stale`; la contratación la cubre Ley 9/2017). No está en `laws`. Estado: **29/30 `verified_correct`**.
 - **Extra:** los **arts 74-79 (negociación colectiva)** de la Ley 13/2015 FP Extremadura quedan **huérfanos** (no están en el epígrafe de ningún tema 6-10) → decidir si van a algún tema o están fuera de programa.
 - **Por qué:** la ley nacional principal (Ley 40/2015 en T15, Ley 9/2017 en T24) sí está cubierta; falta el complemento regional que el epígrafe nombra. No se inventa contenido.
@@ -276,7 +293,7 @@
 - **Estado:** resto de la oposición **28/30 `verified_correct`** (incl. función pública 6/7/8/10 reparada: reparto correcto de la Ley 13/2015 por epígrafe, re-verificado).
 
 
-### ✅ [HECHO 19/07] Aux. Administrativo Diputación de Zaragoza — scope↔epígrafe 20/20 + banco aragonés generado
+### [T-025] ✅ [HECHO 19/07] Aux. Administrativo Diputación de Zaragoza — scope↔epígrafe 20/20 + banco aragonés generado
 - **Origen:** feedback de Sandra (`6f789351`) → `verify:scope` de la oposición (18/07: 12 correct / 4 issues / 4 needs_human). **19/07 completado por otra sesión.**
 - **Scope: de 12/6/2 a 20/20 `verified_correct`** (0 issues, 0 needs_human), todo por consenso de 2 agentes y trackado en `topic_scope_verification`:
   - **T2** +LO 5/2007 Estatuto de Aragón · **T18** +Ley 7/2018 Igualdad Aragón (arts 1-3+16-28) · **T4** +Ley 7/1999 Admin Local Aragón (1-6+72-138, curado) · **T15** +TR Subvenciones Aragón (ver abajo).
@@ -285,7 +302,7 @@
 - **Generación: 98 preguntas verificadas** (doble auditoría Sonnet adversarial): **48** de la Ley 7/1999 (T4) + **50** del TR Subvenciones (T15, 90% de arts escopados). Guardarraíles anti-tell cazaron ~15 defectos (longitud/enumeración/omisión/conocimiento externo/doble solución).
 - **Residual (no urgente):** huecos de generación de arts sueltos (5 de T15, algunos de la Ley 7/1999 en T4). Detalle: `docs/roadmap/tareas-pendientes.md` (rama `feat/uc3m-golive`) + runbook `verificar-epigrafes-scope.md`.
 
-### 🟡 [SISTEMA HECHO + LOOP VIVO — drena como mantenimiento] Completitud de leyes vs fuente oficial
+### [T-026] 🟡 [SISTEMA HECHO + LOOP VIVO — drena como mantenimiento] Completitud de leyes vs fuente oficial
 - **Qué:** sistema para que ninguna ley del temario quede importada a medias / falso verde / sin fuente. **Las 4 capas CONSTRUIDAS y el loop CERRADO Y VIVO (verificado 20/07):** detección (`lib/laws/completeness.ts` + `scripts/audit-law-completeness.cjs` + sweep) · tabla+guard anti-falso-verde+vista (`20260718_law_source_verification.sql`, en RDS) · extractor no-BOE (`scripts/verify-law-source.cjs`) · gate publicación (`trg_topics_gate_incomplete_laws`) · **cron semanal de regresión DESPLEGADO** (`backend/src/law-completeness/`, emite `law_completeness_swept`, última hoy 20/07 10:18).
 - **Estado (20/07, re-medido a última hora):** **64 leyes actionable sirviendo en temas vivos** (45 false_green, 12 no_source, 6 never_verified, 1 issues) — bajó de 92 con el drenaje del día (bloque BOA, etc.). **Desglose por fuente (útil para planificar):** **40 SIN url** (editoriales/regionales marcadas "actualizada" sin evidencia — el bucket mayor y el que more reincide), **23 non-BOE con gaceta propia** (aquí vive el ex-"cabo de las 129", ya absorbido; extractor reutilizable `scripts/verify-law-boa.cjs` + 18 tests, y los gotchas por gaceta en esa ficha), **1 BOE**. **OJO — el backlog REINCIDE al alza:** cada build de oposición nueva mete leyes regionales marcadas `actualizada` SIN evidencia (false_green) o sin fuente; el gate solo bloquea `incomplete`, no never_verified/no_source/false_green → **el número sube con cada build** (subió ~83→95 con los builds de esta semana). El cron lo DETECTA (regresión) pero no lo PREVIENE.
 - **Los "easy wins" (URL de BOE) YA se drenaron** → el residuo es todo regional/universitario/EU = **research per-ley finicky** (ver "MAPA DE RAREZAS POR FUENTE" en la memoria `project-completitud-leyes-vs-fuente`: cada boletín tiene su quirk; BORM bloquea el fetch del extractor por UA; SPAs universitarias; EUR-Lex sin separador). Drena bajo garantía, sin urgencia.
@@ -293,7 +310,7 @@
 - **MEJORA ESTRUCTURAL pendiente (la de verdad):** que el **build de oposición registre/verifique la fuente** de sus leyes regionales (o al menos no las marque `actualizada` sin summary) → cortar la reincidencia en origen, en vez de drenar a posteriori. Alternativa mínima: endurecer el gate a `never_verified`/`no_source` (con grandfathering) para que un tema nuevo no se publique con leyes sin fuente.
 - **Cómo/diseño:** `docs/roadmap/verificacion-completitud-leyes.md` + memoria `project-completitud-leyes-vs-fuente`. Regla dura: NUNCA `verification_status='actualizada'` sin escribir `last_verification_summary` con evidencia real.
 
-### ✅ [NÚCLEO HECHO Y DESPLEGADO 20/07] Framework profesional de canaries — que no se repita el incidente 11/07
+### [T-027] ✅ [NÚCLEO HECHO Y DESPLEGADO 20/07] Framework profesional de canaries — que no se repita el incidente 11/07
 - **Qué era:** clase base `CanaryProbe` + exclusión central del usuario sintético + migrar canaries + guardarraíl CI + runbook. Que ningún write-canary pueda acumular sin límite ni contaminar métricas. Origen: el 11/07 `canary-stats-pipeline` acumuló 10.737 filas en `test_questions` → su drift-query se ahogó (13,6s → cron falla → alertas).
 - **✅ Desplegado (backend task def `:75`, SHA `ed78957b`).** Verificado en logs de prod: *"CANARY_REGISTRY OK — 16 canaries, 3 write-canaries acotados (invariante verificado al arrancar)"*.
   - **Contrato** `CanaryProbe` + `CanaryResult` + `boundingViolation()`: todo `writesToProd` DEBE declarar cota (`unique-constraint` | `per-run-cleanup` | `cap-prune`).
@@ -306,52 +323,52 @@
 
 
 
-### 🟢 [DEMANDA — valorar, no comprometido] Oposiciones pedidas por usuarios (aún no en plataforma)
+### [T-028] 🟢 [DEMANDA — valorar, no comprometido] Oposiciones pedidas por usuarios (aún no en plataforma)
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
 - **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
 
 
-### 🟡 [MEDIA] Exponer en la UI el filtro "excluir preguntas recientes" (feature oculta)
+### [T-029] 🟡 [MEDIA] Exponer en la UI el filtro "excluir preguntas recientes" (feature oculta)
 - **Qué:** `excludeRecent` / `excludeRecentDays` está **implementado y funciona en servidor** (`lib/api/filtered-questions/queries.ts:1265` aparta las respondidas en los últimos N días, con reserva anti-test-corto), y llega por URL (`exclude_recent=true` + `recentDays`). **Pero NO hay control en `TestConfigurator.tsx`**: `config.excludeRecent` es `false` fijo y solo se lee de `searchParams`. Un usuario normal no puede activarlo.
 - **Por qué:** funcionalidad terminada pero inalcanzable = valor perdido; y da pie a prometer a usuarios (impugnaciones `pregunta_repetida`) algo que no pueden usar. El sistema ya prioriza "nunca vistas" (`prioritizeNeverSeen`, automático), pero excluir explícitamente lo reciente no es accesible.
 - **Cómo:** añadir un toggle en el configurador que setee `excludeRecent` + `recentDays` (30/15/7d). El resto del cableado ya existe.
 - **Estado:** detectado 10/07 investigando impugnación de María José Morell (APSP CARM). Backend OK, falta UI.
 
-### 🟢 [DEMANDA — valorar] Parte específica (Bloque II) de Agrupación Profesional Servicios Públicos CARM vacía
+### [T-030] 🟢 [DEMANDA — valorar] Parte específica (Bloque II) de Agrupación Profesional Servicios Públicos CARM vacía
 - **Qué:** la oposición `agrupacion_profesional_servicios_publicos_carm` tiene la parte general sobradísima (T1 1.373q, T4 2.490q, T8 3.655q) pero **la parte específica del Bloque II está vacía o casi**: T6 Seguridad y salud (0), T7 Atención al ciudadano (9), T9 Vigilancia/custodia y movilización de enfermos (0), T10 Técnicas de limpieza (0), T11 Manipulación de alimentos (0), T12 Mantenimiento básico de edificios (0).
 - **Por qué:** banco pequeño en la parte propia del puesto → repetición para el usuario (origen de la impugnación de María José Morell). Crear ahí sí tiene impacto; en la parte general no.
 - **Cómo:** `docs/maintenance/crear-nueva-oposicion.md` (editorial con fuente, nunca inventar, `tech_approved`). Verificar demanda antes de construir.
 - **Estado:** detectado 10/07. Valorar demanda.
 
-### 🟡 [MEDIA — decisión de coste] Provisionar RDS read replica para lecturas admin/analytics
+### [T-031] 🟡 [MEDIA — decisión de coste] Provisionar RDS read replica para lecturas admin/analytics
 - **Qué:** una **RDS read replica** a la que apuntar los endpoints admin/analytics pesados (`getReadDb()` + `USE_READ_REPLICA=true` + `DATABASE_URL_REPLICA`). La fontanería en `db/client.ts` **ya existe** (patrón era-Supabase); tras el cutover a RDS (04/07) apunta al primario → hoy no aísla nada.
 - **Por qué:** aísla el **CÓMPUTO** de las lecturas analíticas del hot-path de usuarios (lo que los pools separados NO hacen — misma instancia física). Es la capa 3 del fix de contención RDS del 12/07.
 - **Gatillo:** hacerlo **solo si**, ya con la cache de paneles admin desplegada (12/07), la contención del primario persiste. No pagar infra (~coste de otra instancia RDS) por un escaneo que la cache ya eliminó. Medir 1-2 semanas primero.
 - **Cómo:** `docs/runbooks/contencion-rds-paneles-admin.md` §3. Provisionar réplica en `aws rds create-db-instance-read-replica` (perfil `vence`) → set `DATABASE_URL_REPLICA` en SSM → flip `USE_READ_REPLICA=true` → apuntar endpoints admin a `getReadDb()`.
 - **Estado:** pendiente, gatillado (no antes de medir).
 
-### ✅ [DESPLEGADA 19/07] Guardarraíl anti-duplicado de recompensas
+### [T-032] ✅ [DESPLEGADA 19/07] Guardarraíl anti-duplicado de recompensas
 - **Qué:** commit `f3bc0954` (dedup por motivo: bug=feedback_id / ugc=url; evento `reward_duplicate`) cierra el hueco de doble recompensa por el mismo motivo.
 - **✅ YA EN PROD:** `f3bc0954` (10/07) es ancestro de la imagen desplegada `deploy-d5f00d3c` (ECR, deploy 19/07 08:36). El estado previo del backlog (prod=`4465d15c`, "pendiente de deploy") estaba **stale**: se desplegó junto con el cierre de la campaña de citas. Verificado: `git merge-base --is-ancestor f3bc0954 d5f00d3c` = 0.
 
-### 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)
+### [T-033] 🟢 [BAJA] Pagar a Alfonso Martinez su saldo de embajador (9 €)
 - **Qué:** `alfonsomartinezocho@gmail.com` (user `7c6612bd`) tiene **9 € pagables** = 3 recompensas de bug aprobadas (3 €×3), sin hold, 0 pagado. La 3ª es del bug de Auxiliar de Biblioteca (12/07). Emitir vale Amazon.es.
 - **Por qué:** dinero ganado y disponible sin cobrar; dispara el badge "toca pagar" del nav admin. Amazon.es mínimo 5 € → pagar un vale de 5 € (queda 4 € de saldo) o esperar a que acumule 10 €.
 - **Cómo:** `docs/runbooks/embajadores-recompensas.md` (POST `/api/admin/rewards/pay` o `payAccumulated`). Panel `/admin/embajadores/7c6612bd`.
 - **Estado:** 9 € acumulados (12/07), pendiente de decisión de Manuel (no pagar aún).
 
-### 🟡 [MEDIA] Migrar /leyes/[law] a on-demand (arreglar la flakiness del build)
+### [T-034] 🟡 [MEDIA] Migrar /leyes/[law] a on-demand (arreglar la flakiness del build)
 - **Qué:** `/leyes/[law]` es la ÚNICA ruta de alto volumen que sigue en SSG real (`generateStaticParams` → 1.278 leyes). Prerenderiza 1.278 páginas RDS-dependientes en cada build → **CONNECT_TIMEOUT a RDS + OOM** intermitentes (build falló 2 veces el 12/07 desplegando el fix de /test/articulo).
 - **Por qué:** el resto de rutas dinámicas ya usa on-demand (`return []`) desde 30/04/2026; ésta se quedó atrás. Acopla la fiabilidad/memoria del build a RDS.
 - **Cómo:** `docs/runbooks/build-resilience-leyes-ondemand.md` (diseño en 3 piezas: on-demand + hot-set SEO desde GSC + warming + revalidación por dato-BOE). SEO-safe (precedente propio, `cache-revalidation.md` §force-dynamic). Con capas de seguridad + canary.
 - **Estado:** diseñado (runbook), sin implementar.
 
-### 🟢 [SEGUIMIENTO] Capturar la fecha de examen de las 2 oposiciones de la Universidad de León
+### [T-035] 🟢 [SEGUIMIENTO] Capturar la fecha de examen de las 2 oposiciones de la Universidad de León
 - **Qué:** Auxiliar Administrativo (`auxiliar-administrativo-universidad-leon`) y Escala Administrativa (`administrativo-universidad-leon`) tienen la **inscripción cerrada** y el **examen pendiente de fecha** (`exam_date=null`). Ambas con contenido completo y vendible (15/07).
 - **Cómo:** cuando la ULE publique la fecha del primer ejercicio (seguimiento en `unileon.es/convocatorias-ptgas-pdi`), actualizar `exam_date` + hitos de la landing. El cron de seguimiento de convocatorias debería detectarlo; si no, revisar a mano.
 - **Estado:** contenido LISTO; solo falta la fecha oficial (no publicada a 15/07).
 
-### 🟠 [3 CUBOS CERRADOS — quedan 3 cabos acotados] Los cubos que el verificador selló en verde (16/07)
+### [T-036] 🟠 [3 CUBOS CERRADOS — quedan 3 cabos acotados] Los cubos que el verificador selló en verde (16/07)
 - **Qué:** tres bolsas de preguntas ACTIVAS que el sistema de revisión dio por buenas y que los usuarios están cazando por nosotros. Las tres salieron de impugnaciones del 16/07, no del pipeline:
   1. **7.158 activas verdes que NINGÚN modelo fuerte ha verificado nunca** (medido 16/07 contra RDS; la cifra de 1.415 que figuraba aquí era el subconjunto de `gpt-4o-mini` y subestimaba el cubo 5×). Desglose de verificación ÚNICA: **2.699 solo Haiku** (el manual dice "Haiku falla"), **1.535 solo gpt-4o-mini**, **1.471 con `ai_model` nulo**, **1.453 mixtas sin ningún modelo fuerte**. Query: filas verdes en `ai_verification_results` sin ninguna de `%sonnet%`/`%opus%`. Caso que lo destapa (`42d0b501`, RD 203/2021, impugnación de Sandra): el enunciado se inventaba la "Agencia Estatal de Administración Digital" (el RD dice **Secretaría General de Administración Digital**, 10 veces; la Agencia no aparece ninguna) y **el verificador repitió el órgano inventado en su propia justificación** con confianza "alta". No verificó contra la ley: verificó contra la pregunta.
   2. ✅ **HECHO (16/07): 89 explicaciones CRUZADAS drenadas.** 87 reescritas y aplicadas + 2 elevadas a decisión humana. Ver el bloque "Cierre del cubo 2" abajo.
@@ -390,7 +407,7 @@
 - **⚠️ 7 relinkeadas quedan sin servirse en ningún tema** (su artículo destino correcto no está en ningún `topic_scope`): `c0d3c493`, `994a1964`, `c3f61d12`, `b15c359c`, `23d5221a`, `2f6f4a41`, `a0cb140c`. Antes se servían (mal) en hasta 8-9 temas. **Decisión de scope pendiente:** si esos artículos deben entrar en algún temario, va por el runbook `verificar-epigrafes-scope.md`, no a mano.
 - **Hallazgo colateral:** ✅ **DUPLICADO "Ley 38/2003" CONSOLIDADO (20/07):** la fila `5fd657d6` ("…General de Subvenciones", 8 preg, 1 tema) era duplicado de `09c18214` ("Ley 38/2003", 99 preg, 26 temas); 8 preguntas remapeadas por nº de artículo a la canónica + topic_scope movido + fila retirada `[DUP-retirado→09c18214]` (txn verificada, 0 preg/0 temas en el dup). ⚠️ **Ley `7a94af83` = ENREDO, no simple mislabel:** mezcla DOS Decreto 465/2019 distintos (art 3 = estructura Consejería Economía JA; art 2 = contenido de la Comisión Institucional contra la Violencia de Género de Andalucía, con título "Competencias"). **Sirve en 0 temas vivos → impacto nulo**; desenredarla (separar/reetiquetar) es limpieza de baja prioridad.
 
-### ✅ [HECHA 20/07] Importar las normas que faltan y reactivar las 22 preguntas ocultadas (cubo 3, mislink_v1)
+### [T-037] ✅ [HECHA 20/07] Importar las normas que faltan y reactivar las 22 preguntas ocultadas (cubo 3, mislink_v1)
 - **Qué era:** 22 preguntas ocultadas (`needs_human`) al cerrar el cubo 3 (`ai_provider='claude_code_mislink_v1'`, `article_ok=false`) por colgar de la ley equivocada con la correcta a veces no en BD.
 - **✅ Cierre completo (20/07) — las 22 contabilizadas:**
   - **10 ya estaban `approved`** (cluster Biblioteca del 19/07: RD 582/1989, RD 635/2015, Ley 16/1985 DD + 3 del Decreto 12/2024 CyL ya relinkadas).
@@ -399,7 +416,7 @@
   - **6 en `needs_human` por decisión (Grupo B, reversible):** `07f68313` (verificado que NO relinka: art.109 Ley 2/2006 es vinculación general, no sostiene la pregunta de créditos **ampliables** de la ley anual), `26eb24b0` (Presupuestos CyL anual), `a1e0046e`/`b628ff43`/`b647ee0d` (leyes de 1 pregunta que no compensan), `c9eb6c4e` (ya resuelta 19/07).
 - **Gotcha confirmado:** "Ley 5/2024 CyL" del catálogo = Presupuestos 2025, no la de 2024 que citan las preguntas. No dar por buena una ley por su número.
 
-### 🟠 [MEDIA — cola de trabajo que dejan los 3 cubos drenados] Relink de `needs_human` + reescritura de explicaciones flojas (19/07)
+### [T-038] 🟠 [MEDIA — cola de trabajo que dejan los 3 cubos drenados] Relink de `needs_human` + reescritura de explicaciones flojas (19/07)
 Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas trazadas en BD (no urgentes, pero anotadas para no perderlas):
 - **A) Relink de las preguntas en `needs_human`** (mislinks confirmados, la clave suele ser correcta, solo el artículo está mal → tema equivocado). Fuentes:
   - **✅ Cubo 1 HECHO (19/07):** de las 158 `needs_human`, **107 re-vinculadas** al artículo correcto (verificadas leyendo el artículo, 8 agentes) + **8 falsos positivos reactivados** (el cubo 1 detectaba con el artículo truncado a 4.200 chars → marcó mal algunas cuyo contenido correcto estaba más adelante en el MISMO artículo: Inglés PN, Excel 365, Explorador Windows…) → **115 recuperadas**, vuelven a estar vivas. Trazado `ai_provider='claude_code_cubo1_relink'`. **Quedan 43** en needs_human: norma no importada (Convenio Estambul, RD 95/2009 SIRAJ, LibreOffice Math/Draw/Impress sin contenido en BD…) o defecto REAL de clave/opciones (no relink: Orden 20/05/2025 JA, Ley 4/2021 FPV, RD 889/2022, CC art.163) → a decisión humana. **GOTCHA aprendido:** la detección del cubo 1 con `left(content,4200)` genera falsos article_ok=false cuando el supuesto vive tras el corte (revisar si futuros barridos truncan).
@@ -459,14 +476,14 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
   - `a47cdfd4` (Orden 01/02/1996, subvenciones): la explicación se contradecía ("B es correcta" con la clave en D). Los arts. 85 y 86 de la misma Orden reproducen la misma regla del RC que el art. 84, lo que **respalda que D ("todas las anteriores") sea correcta**; el problema es que el artículo vinculado solo cubre 1 de las 3 modalidades. Recomendación: añadir 85/86 como soporte y reescribir explicación.
 - **Sigue pendiente:** 89 es SUELO, no techo — el detector solo pesca solape léxico ~0, y este cubo demuestra que el defecto es sistémico (varios lotes con el 100% de las preguntas cruzadas). Falta barrer con un detector que no dependa del solape léxico.
 
-### 🟠 [FEATURE — premium] Botón premium "Imprimir/descargar el temario COMPLETO" (todos los temas de una vez)
+### [T-039] 🟠 [FEATURE — premium] Botón premium "Imprimir/descargar el temario COMPLETO" (todos los temas de una vez)
 - **Qué:** hoy cada tema tiene su botón "Imprimir PDF" (`TopicContentView.tsx` → `handlePrint` → `window.print()`, solo exige estar registrado). NO existe forma de sacar el temario entero: hay que repetir el proceso tema a tema. Botón premium que genere el temario completo (todos los temas de la oposición) en un solo PDF.
 - **Por qué (demanda medida 16/07):** **15 peticiones** desde enero, **8 en los últimos 30 días**, **3 el mismo día 16/07** (María — iPhone, no sabía guardar el PDF; Sonia — buscaba una descarga que no existe; Mónica — pedía el temario completo de Catalunya, 15 temas). Media de **29,4 temas por oposición** (máximo 79) → "imprimir todo" a mano son ~30 archivos.
 - **⚠️ Ojo al encuadre:** **12 de las 15 peticiones son de usuarios FREE**. Imprimir tema a tema es gratis hoy y debe seguir siéndolo; lo premium sería el **temario completo de una vez** (y la descarga directa en PDF). Si se capa lo que ya era gratis, se percibe como recorte.
 - **Cómo:** generación server-side del PDF (el `window.print()` actual depende del navegador: en iPhone no descarga nada, hay que hacer zoom en la vista previa y compartir → "Guardar en Archivos"; en escritorio hay que elegir "Guardar como PDF" en Destino). El botón dice "Imprimir PDF" pero **no produce ningún PDF**, y de ahí vienen las 3 confusiones de hoy: valorar renombrarlo mientras no exista la descarga real.
 - **Estado:** sin implementar. Los 3 usuarios del 16/07 respondidos con las instrucciones manuales (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
 
-### 🔴 [GRANDE — contenido] Artículos-cajón: ~21.000 preguntas sobre 110 mega-chunks (teoría rota + preguntas atascadas) — *ex-"Ofimática infra-troceada"*
+### [T-040] 🔴 [GRANDE — contenido] Artículos-cajón: ~21.000 preguntas sobre 110 mega-chunks (teoría rota + preguntas atascadas) — *ex-"Ofimática infra-troceada"*
 > **⚠️ RE-MEDIDO 20/07 (worktree aislado): el problema es MAYOR y el foco estaba equivocado.** La patología no es de ofimática: es **global**, y el peor caso con diferencia es **Correos**.
 > - **Escala real:** **110 artículos-cajón** (>20k chars) con **20.960 preguntas** colgando. De esos, **24 son >50k chars** y acumulan **11.538 preguntas**. (La cifra previa de esta ficha —"7.584 preguntas / 145 chunks de ofimática"— cubría solo una porción.)
 > - **Top por daño (nada de esto es ofimática):** **Correos T3 = 1.984 preguntas sobre UN art. 1 de 302k chars**; Correos T4 1.018/154k; Correos T12 939/183k; **Inglés GC 894/198k**; Correos T9/T1/T7/T10/T8/T6 entre 500 y 787; Topografía GC 450/61k. **Correos T1-T12 solo suma ~8.400 preguntas en 12 cajones** (todos `art. 1`). Word 365 (166 q/chunk) es un problema MENOR al lado.
@@ -490,7 +507,7 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
 - **▸ 3ª ronda (ratio ≥20 q/chunk, 20/07):** barridos también RD 207/2024, CE (arts económicos), Periféricos, Bases de Datos, temas sanitarios TCAE, etc. → 134 candidatas, **33 reactivadas** (tasa ~25%, más baja). **Sub-hallazgo (otra clase de defecto):** las de **RD 207/2024** que NO se sostienen no son huecos sino **preguntas CADUCADAS** — citan subdirecciones de un organigrama de Protección Civil/Interior ya derogado (la norma cambió su estructura). Correctamente ocultas; su arreglo es actualizar el enunciado a la estructura vigente, no reactivar. Backlog aparte si se quiere drenar.
 - **Estado:** sub-drenaje de falsos positivos HECHO: ofimática (58) + editoriales (83) + ratio-alto/CE (33) + 2 legales = **176 preguntas reactivadas esta sesión** (`ai_provider IN claude_code_ofi_fp/edit_fp/fp_recheck`), `needs_human` global 3.936→3.656. El grueso (re-trocear mega-chunks + redactar huecos reales + actualizar caducadas RD 207/2024) sin empezar. El drenaje barato de FP está esencialmente agotado (los mega-chunks con FP, barridos).
 
-### ✅ [FASES 1 y 2 HECHAS Y LIVE 19/07] Los 30 vídeos de los cursos: faststart+koigrid (móvil) + HLS/ABR (calidad de reproducción)
+### [T-041] ✅ [FASES 1 y 2 HECHAS Y LIVE 19/07] Los 30 vídeos de los cursos: faststart+koigrid (móvil) + HLS/ABR (calidad de reproducción)
 - **Qué:** los 30 vídeos activos (43,4 GB, los 7 cursos: Word/Excel/Access/Outlook 365, Windows 11, Explorador, La Red Internet) están codificados con el índice `moov` **al FINAL** del fichero, detrás de 1,2–2 GB de datos. Estructura real de `word-365/bloque-01.mp4`: `ftyp (24 B) → mdat (1,58 GB) → moov (2,1 MB)`. Sin ese índice el reproductor no puede empezar: en escritorio el navegador pide el final del fichero y se salva; **en móvil/tablet se queda cargando para siempre**. **30 de 30 rotos, ninguno tiene faststart.**
 - **Por qué urge:** es una función **de pago** y está inservible en móvil, que es donde estudia mucha gente. Lo reportó Victoria Alonso (premium desde enero) el 16/07: "no me carga ni en el móvil iPhone ni en la tablet android" — probó dos dispositivos, y eso descarta el suyo y apunta al fichero.
 - **Por qué solo hay 1 queja (y por qué no engaña):** 234 usuarios tienen progreso de vídeo (628 registros) → se ven desde ordenador. De las 4 quejas históricas sobre vídeo, la de Victoria es **la única desde móvil** y **la única de "no carga"**; las otras 3 son de escritorio y no van de reproducción (una comenta el contenido de un vídeo de Access, o sea que lo estaba viendo). El defecto solo lo destapa quien entra desde el móvil.
@@ -506,7 +523,7 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
   - **GOTCHAS:** el deploy manual (`scripts/deploy-frontend.sh`) clona la task def viva → los secrets/flags de runtime van en su **transform node**, no en el `ensure_secret` del workflow (auto-deploy GHA desactivado). koigrid CORS OK (hls.js pide segmentos por XHR). Reversible (quitar flags + redeploy).
   - **PENDIENTE:** reward Victoria = **Manuel dijo NI recompensa NI aviso** (no hacer). Backups locales `/home/manuel/vence-video-{faststart,hls}` (~95GB) borrables. Fase 3 opcional: CDN (Bunny/Cloudflare) delante de koigrid para edge caching.
 
-### ✅ [HECHA Y VIVA — 18/07] Administrativo (C1) de la DGA — Gobierno de Aragón
+### [T-042] ✅ [HECHA Y VIVA — 18/07] Administrativo (C1) de la DGA — Gobierno de Aragón
 - **Qué:** oposición **Administrativo, Cuerpo Ejecutivo, Escala General Administrativa** de la CA de Aragón (C1), slug `administrativo-aragon`, `position_type` `administrativo_aragon`. Construida de cero siguiendo `crear-nueva-oposicion.md` y **PUBLICADA** (`is_active=true`, desplegada, verificada en producción).
 - **Resultado:** **35 temas (5 comunes + 30 específicas), los 35 sirviendo preguntas** (~14.100 activas). Gates verdes: `audit:oposicion` 0❌, `audit:served` 0❌, `verify:scope` (2 agentes) sobre los 35 temas.
 - **FASE 1 — verificado contra el BOA, NO academias:** temario literal del **Anexo XXV de la Resolución de 25/11/2025** (aragon.es/documents/d/guest/temarios_a2-c1-c2-pdf) → **5 materias comunes + 30 específicas** (las academias decían "10 comunes"). Convocatoria **25/0102, BOA nº247 23/12/2025, 144 plazas** (confirmado en Anexo I), examen ej.1 80 preg + ej.2 40 práctico, penalización −1/3. **Corrige el backlog:** el proceso NO estaba "abierto" — inscripción cerró 23/01/2026 y **el examen YA se celebró** (landing forward-looking).
@@ -521,7 +538,7 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - [x] ~~**Ley 1/2004 Consejo Audiovisual de Andalucía art. 4**~~ **CERRADO 20/07 — la tarea estaba MAL PLANTEADA**: no hay texto vigente que importar. El "(Anulado)" de nuestra BD es CORRECTO, no un fallo de import: el BOE consolidado (últ. mod. 21/03/2025) muestra el art. 4 (Funciones) como **(Anulado)** porque la **STC 40/2025, de 11/02/2025** declaró inconstitucional y nulo el art. 7 del Decreto-ley 2/2020, que había reformado esas funciones por decreto-ley vulnerando la reserva de ley del Parlamento andaluz (art. 131.3 EAA). Ambigüedad jurídica: la doctrina clásica diría que revive la redacción original de 2004, pero el BOE **no publica** texto vigente, así que no hay fuente oficial contra la que verificar respuestas. **Decisión (Manuel): retiradas las 3 preguntas** que colgaban del artículo (`4dd964b4`, `bedd71f9`, `52d35910`, todas ya ocultas) con `admin_law_derogated`. El artículo queda **anotado en BD** con la nota de la sentencia para que no se generen preguntas nuevas sobre él.
 - [x] ~~**RD 176/2022 Código Conducta GC** — rejilla de títulos/capítulos~~ **HECHO 20/07**: importada del BOE la estructura del Código (anexo) y aplicada a los 44 artículos del Código: Tít.I Cap.I *Valores fundamentales* (arts. 1-9), Tít.I Cap.II *Principios institucionales* (arts. 10-23), Tít.II Cap.I *Normas generales* (24-32), Tít.II Cap.II *Normas durante la prestación del servicio* (33-50). `a689fe59` resuelta y visible: la clave D es correcta porque **"El valor" es un VALOR FUNDAMENTAL (Cap.I, art. 4 del Código), no un principio institucional (Cap.II)**.
 
-### ✅ RESUELTO 20/07 — RD 176/2022: colisión de numeración RD vs Anexo (eran 9 mislinks EN VIVO)
+### [T-043] ✅ RESUELTO 20/07 — RD 176/2022: colisión de numeración RD vs Anexo (eran 9 mislinks EN VIVO)
 **Ejecutado sin regresión.** Plan y resultado: `docs/roadmap/split-rd-176-2022-codigo-conducta-gc.md`. Resumen: parte dispositiva del RD → `RD 1`-`RD 6`, importados verbatim del BOE los 6 arts. del Código que faltaban (Honor, Integridad, Lealtad, Valor, Sentido de la justicia, Imparcialidad), art. 1 Frankenstein → `decalogo`, 15 preguntas re-vinculadas. 113 preguntas y 103 visibles antes y después, estados idénticos, scope intacto, **0 mislinks restantes**.
 
 <details><summary>Diagnóstico original</summary>
