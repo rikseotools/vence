@@ -1102,6 +1102,27 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   una pasada DELIBERADA y COORDINADA (esperar a que cierre la migración GC/PN + decisión de dominio sobre Inglés PN),
   no un barrido en solitario. El sensor nocturno debe **excluir idioma/ofimática/contenido-no-servido** para no dar
   6.916 de ruido. (Caracterizado y liberado el claim 20/07 tras la re-medición; sin actuar por prudencia.)
+- **▸ RESUELTO el bloque `idioma` (20/07, 5.071 preguntas) — la "decisión de dominio" tiene respuesta documental.**
+  La pregunta abierta era *"¿el temario de PN incluye Inglés?"*. **Sí, pero como PRUEBA, no como tema:** el
+  `examen_config` de `policia-nacional` lista una parte *"Idioma extranjero (inglés/francés)"* junto al test de
+  conocimientos (100 preg) y los psicotécnicos. Los 45 temas son SOLO el test de conocimientos, por eso el inglés no
+  colgaba de ninguno. **Guardia Civil ya resolvía esto igual:** bloque propio "Lengua Inglesa" + T24 con scope a la
+  ley entera. Aplicado el mismo patrón a PN: bloque D + tema 46 + `topic_scope` a `Inglés PN` (`article_numbers=NULL`).
+  Las 24 unidades gramaticales (Tiempos verbales 652, Pronombres 631, …) ya se sirven. Verificado en prod.
+- **▸ HALLAZGO COLATERAL — DOS FUENTES DE VERDAD para los bloques (la causa de que esto se pudra en silencio).**
+  Al verificar salió que el tema nuevo aparecía en el TEMARIO pero no en el HUB DE TESTS: el temario lee la tabla
+  `oposicion_bloques`, pero el hub lee el config estático `OPOSICIONES[].blocks` (y de ahí sale también el rango del
+  test aleatorio, `lib/api/random-test-data/schemas.ts`). Un tema fuera del config es **visible pero no testeable**,
+  sin error en logs. El mismo bug estaba VIVO en `auxiliar-administrativo-pais-vasco`: **temas 14-31 (18 temas con
+  contenido) invisibles en tests** — el temario se reconstruyó al IVAP a 31 temas y el config se quedó en 13.
+  Ambos corregidos + **guardarraíl** en `__tests__/integration/oposicionDataCompleteness.test.ts` que compara
+  config↔BD tema a tema (falla si un tema de BD no está en config; solo avisa en el caso inverso, que es el estado
+  normal de una oposición en construcción). Commit `2fb63ee0`.
+- **▸ ESTADO tras esta pasada: 6.916 → 1.611 activas invisibles (348 → 202 leyes).** Lo que QUEDA, sin tocar:
+  - `gc_pn_internacional` (~247): **sigue siendo de la otra sesión, no tocar.**
+  - `resto` (~1.385): adjudicación per-contenedor contra el epígrafe, una a una. **NO escopear en bloque.**
+  - `ofimática CyL` / `Andalucía estructura`: triar y retirar, no re-scopear.
+  - Sobre el sensor nocturno: ya NO hay que excluir `idioma` a ciegas — el caso PN era señal real, no ruido.
 
 
 ### [T-058] 🟡 [ABIERTA 20/07 — descubierta haciendo T-054] `Reglamento Cortes CyL`: el art. 171 se tragó las disposiciones
