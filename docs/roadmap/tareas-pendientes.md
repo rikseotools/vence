@@ -442,3 +442,18 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
 - **Contenido:** 28 temas por reutilización (común + derecho admin + personal aragonés vía EBEP/DL 1/1991 FP Aragón/convenios + ofimática) + **7 de hacienda por importación**: importada la **Ley de Hacienda de Aragón VIGENTE (DL 3/2023)** — ⚠️ **la DL 1/2000 estaba DEROGADA desde 2023**, verificado contra BOE antes de importar (cabo suelto evitado) — + **Cámara de Cuentas de Aragón (Ley 11/2009)**, y **53 preguntas generadas** con doble auditoría (determinista literal + ciega independiente): el filtro determinista cazó un blockquote fabricado y 21 correcta-más-larga, reparados antes de insertar.
 - **verify:scope cazó defectos reales de mi primer scope** (por eso el gate no se salta): T2 sin AGE/LBRL, T103 sin interesados, T110 sobre-scope, T128/T129 contenedores cruzados, y en el 2º pase T114/T115 sin Incompatibilidades (Ley 53/1984) ni Estatuto de los Trabajadores + convenios aragoneses duplicados entre T114↔T117 y T115↔T117. Todo corregido.
 - **PENDIENTE (no bloquea):** temas de hacienda finos (7-12 preguntas): engordar en futura tanda. Refinamientos verify:scope de baja confianza sin aplicar: T119 (LGP algo ancha para un epígrafe conceptual), T121 (financiación).
+
+## Importar contenido para cerrar residuo CE-relink (7 preguntas) — 19/07
+Del drenaje CE-mislink (837 resueltas) quedan 7 preguntas bloqueadas por FALTA DE CONTENIDO en BD.
+Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra fuente, NUNCA inventar):
+- [ ] **Estatuto de INTERPOL art. 3** (la ley existe en BD pero solo con arts. 15,19,21,22,27,28,34,36,41) → desbloquea `b593350b` (crímenes en que INTERPOL no interviene: carácter político/militar/religioso/racial).
+- [ ] **Ley 1/2004 Consejo Audiovisual de Andalucía art. 4** — en BD figura literalmente "(Anulado)"; importar texto vigente → `4dd964b4`.
+- [ ] **RD 176/2022 Código Conducta GC** — reimportar con rejilla de títulos/capítulos (`title_number`/`chapter_number` todos a NULL) → `a689fe59` (depende de qué arts. caen bajo "principios institucionales").
+- [ ] **Norma municipal Ayto. Madrid** sobre oficinas de registro/ventanilla única (el Decreto 21/2002 vinculado es de la COMUNIDAD, no del Ayuntamiento) → `0be49890`.
+- [ ] **Norma con "representación ordinaria del Estado en la provincia"** (RD de estructura de Delegaciones/Subdelegaciones); la Ley 40/2015 solo usa el término para Presidentes autonómicos (art. 72.1) → `67c25c91`.
+- [ ] `235fdd3f` — NO importable: libre circulación del solicitante de asilo admitido a trámite en Ceuta/Melilla es jurisprudencia del TS + art. 5 Directiva 2013/33/UE. Decidir: retirar o reformular.
+- [ ] `7e949e29` — premisa falsa (el art. 13 CE no enumera reunión/manifestación/asociación; están en LO 4/2000 arts. 7, 8 y 9). Reformular enunciado o retirar.
+
+También pendientes de ojo humano: **3 doctrinales de confianza baja** (tipos de Estado; categoría "Poder Judicial"
+de portales públicos ×2) en needs_human.
+Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Drenaje CE-mislink.

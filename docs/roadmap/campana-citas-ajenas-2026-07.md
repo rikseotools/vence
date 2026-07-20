@@ -143,18 +143,40 @@ al artículo del MISMO número de OTRA ley (típicamente Código Penal: `133 CP`
 4. Pase dirigido extra sobre las CP-parked: agente identifica el art CE **correcto** (no el del mismo número)
    → 15 recuperadas a otro artículo (166→87, 168→169, etc.), verificadas contra el destino real.
 
-**Resultado: 742 preguntas revinculadas, aprobadas y VISIBLES** (RDS es prod → sin deploy). 0 flips de clave
-(todas las claves `correct_option` ya eran correctas; el defecto era solo el vínculo). 0 fallos de guardarraíl.
+**Resultado final: 837 preguntas resueltas y VISIBLES + 7 retiradas; residuo 10.** 0 flips de clave en el
+drenaje masivo (todas las `correct_option` ya eran correctas: el defecto era SOLO el vínculo); 1 único flip
+autorizado a mano (`4b942e8a`). 0 fallos de guardarraíl en los ~800 auto-aplicados.
 
-**Residuo documentado (112 en needs_human, `answer_ok=false`, NO tocar como CE):**
-- **95 falsos positivos del filtro**: ya vinculadas a su ley REAL (LO 3/1981 Defensor del Pueblo, Código Civil,
-  LOTC, Ley 40/2015…) — mencionan "constitución" pero son de esa ley. Pertenecen a los drenajes de su norma, no aquí.
-- **9 estructurales**: metapreguntas ("¿en qué Título/Capítulo…?", "¿cuántos artículos…?", trivia "padres de la
-  Constitución") no verificables con cita literal.
-- **8 not_ce**: fundamento en otra norma (LO 2/1982 Tribunal de Cuentas → art 30; LOPJ 599 CGPJ 3/5; Reglamento
-  Congreso; LO 9/1983; LO 4/2000 extranjería; 1 genuina CP art 19 menores). Relink a su ley real = tarea aparte.
-- **2 posibles claves defectuosas** (flag humano, NO auto-flip): `4b942e8a` (hotel=domicilio vs flagrante delito
-  art 18.2) y `5172f7a3` (regencia "Reina consorte" vs art 59.1). También `0214e550` (art 152, presidente CCAA
-  "sufragio universal" sin opción correcta) de un batch anterior.
+**Pases sucesivos (cada uno recupera lo que el anterior aparcó):**
+1. Relink CE mismo-número (17 chunks paralelos) → 742.
+2. CP-parked → artículo CE **correcto** (no el del mismo número): 166→87, 168→169… → +15.
+3. not_ce → su ley real (LO 2/1982 art30 Tribunal de Cuentas, LOPJ art599 CGPJ 3/5, LOTC art8 Secciones=3, CP art19) → +4.
+4. Residuo clasificado (`ce_relink` / `inplace_ok` / `broken` / `structural` / `other_law`) → +34.
+5. `inplace_needsfull` re-verificadas con el artículo COMPLETO (el truncado a 600 chars ocultaba la respuesta) → +3.
+6. `other_article`: relink INTRA-ley al artículo correcto de la misma ley (LOTC 1→6, Ley 55/2003 36→20, LOPJ 153→149…) → +17.
+7. Pase final con catálogo de 1350 leyes (Estatuto INTERPOL, Reglamento del Congreso, Ley 50/1997, RD 1451/2005) → +7.
+8. Estructurales `locatable` ("¿qué artículo/ley regula X?" SÍ es citable: se cita el artículo destino) → +8.
+9. Doctrinales (historia/doctrina, no citables por artículo): aprobadas con verificación razonada y
+   `article_ok=NULL` (NO `false`: el gate exige article_ok "not FALSE") → +21.
+
+**Hallazgos de valor colateral:**
+- `d45dd59e` apuntaba a LGS art. 21, que está **derogado** en BD ("(Derogado)", por Ley 31/1995); el vivo es el 18.9.
+- `131c321d`: la potestad reglamentaria es el art. 128 de la **Ley 39/2015**; el art. 128 de la Ley 40/2015 es "fundaciones".
+- Espacios duros U+00A0 en el contenido rompen el match literal si no se normalizan.
+
+**Residuo 10 (documentado, needs_human) — tareas concretas:**
+- **3 doctrinales de confianza baja** (revisión humana): tipos de Estado; categoría "Poder Judicial" de portales públicos (×2).
+- **7 que requieren IMPORTAR contenido de fuente oficial:**
+  - `b593350b` — art. 3 del **Estatuto de INTERPOL** (la ley existe; solo tiene arts. 15,19,21,22,27,28,34,36,41).
+  - `4dd964b4` — art. 4 de la **Ley 1/2004 Consejo Audiovisual de Andalucía** (en BD figura "(Anulado)").
+  - `a689fe59` — reimportar **RD 176/2022 GC** con rejilla de títulos/capítulos (`title_number`/`chapter_number` a NULL).
+  - `0be49890` — norma **municipal** del Ayto. de Madrid sobre oficinas de registro (el Decreto 21/2002 vinculado es autonómico).
+  - `67c25c91` — norma que diga "representación ordinaria del Estado en la provincia" (Ley 40/2015 solo la usa para Presidentes autonómicos, art. 72.1).
+  - `235fdd3f` — NO importable: es jurisprudencia del TS (+ art. 5 Directiva 2013/33/UE).
+  - `7e949e29` — premisa falsa (el art. 13 CE no enumera esos derechos; se reparten en LO 4/2000 arts. 7, 8 y 9) → reformular o retirar.
+
+**Retiradas (7)** con `ai_detected_all_wrong`, todas autorizadas: sin opción correcta, varias correctas, o premisa falsa.
+
+**Herramientas durables:** `scripts/impugnaciones/apply-ce-relink.cjs`, `apply-ce-relink-dir.cjs`, `apply-ce-residuo.cjs`.
 
 Diagnósticos en RDS `ai_verification_results` provider `claude_code_ce_relink_2026_07`.
