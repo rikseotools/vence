@@ -1,0 +1,62 @@
+[
+ {
+  "id": "97b90926-8808-490d-b15c-042f3d0091b2",
+  "veredicto": "clave_correcta",
+  "cita": "art_content §3.1: «4. Acercar la carga al cuerpo: cuanto más cerca esté el peso del centro de gravedad del trabajador, menor es el esfuerzo y la sobrecarga sobre la columna. Sujetar al paciente \"pegado\" al cuerpo.»",
+  "razon": "El enunciado ('señale la verdadera') es genérico pero autosuficiente: no está truncado. B es falsa (si el paciente colabora se le pide que FLEXIONE las rodillas y cruce los brazos, no que mantenga las piernas rectas: la piernas rectas aumentan el rozamiento y el brazo de palanca). C es falsa y contradice frontalmente el principio 4 del artículo: se busca la MÁXIMA superficie de contacto/acercar la carga, no la mínima. D cae con B y C. Queda A, que es el criterio estándar de movilización (el profesional se sitúa en el lado hacia el que se va a girar al paciente, para sostenerlo y evitar su caída de la cama). El art_content no describe expresamente la lateralización, pero sí permite descartar B, C y D.",
+  "confianza": "media",
+  "accion_recomendada": "No tocar la clave; opcionalmente redactar explicación (hoy vacía) citando los principios de mecánica corporal del artículo."
+ },
+ {
+  "id": "de6dd28e-a7b0-491c-98b7-813e0d094384",
+  "veredicto": "relink",
+  "clave_propuesta": "C",
+  "cita": "art_content vinculado (art. 2 «Procedimientos de preparación de las camas»): trata tipos de cama (cerrada, abierta, ocupada, quirúrgica), lencería, normas de higiene y camas especiales; NO contiene ninguna medida (anchura, longitud ni altura) de la cama hospitalaria.",
+  "razon": "La clave C (90-100 cm) es la coherente con el estándar de la unidad del paciente que manejan los temarios TCAE (cama de ~90-105 cm de ancho, 190-200 de largo, ~70 de alto): A y B corresponden a camas de matrimonio/bariátricas y D (75-85 cm) queda por debajo del mínimo hospitalario. Pero el artículo vinculado no soporta la respuesta: el dato de dimensiones pertenece al bloque «La unidad del paciente y su mobiliario clínico», no a «Procedimientos de preparación de las camas». Defecto de vinculación, no de corrección.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave C y revincular la pregunta al artículo de «Unidad del paciente / mobiliario clínico» (o añadir a ese artículo las dimensiones de la cama hospitalaria con fuente)."
+ },
+ {
+  "id": "1e373e7c-194c-4623-859c-0b7fabcc90be",
+  "veredicto": "clave_incorrecta",
+  "clave_propuesta": "D",
+  "cita": "art_content §«Respuesta refleja: NO prolongar en exceso»: «El efecto inicial del frío es la vasoconstricción, pero si la aplicación se prolonga demasiado aparece una vasodilatación refleja (hiperemia reactiva o \"efecto rebote\")... Esta respuesta cíclica vasoconstricción → vasodilatación se describe a partir de los 15-20 minutos de aplicación».",
+  "razon": "El enunciado pregunta qué NO provoca el frío MANTENIDO Y CONSTANTE. Según el propio artículo, el frío sostenido provoca las tres cosas: vasoconstricción (efecto inicial), vasodilatación refleja y hiperemia reactiva (respuesta de Lewis a partir de 15-20 min). Por tanto A no puede ser la clave —el artículo afirma literalmente que la vasodilatación SÍ se produce— y tampoco B ni C. La única opción sostenible es D («Ninguna es correcta»), es decir, ninguna de las tres es un efecto ausente. La explicación almacenada tampoco defiende A: enumera efectos del frío sin mencionar que la vasodilatación no ocurra.",
+  "confianza": "media",
+  "accion_recomendada": "Cambiar la clave a D y reescribir la explicación con la respuesta oscilatoria de Lewis; si se prefiere, rehacer el enunciado en positivo ('¿qué efecto NO es inicial?') para evitar la ambigüedad del doble negativo."
+ },
+ {
+  "id": "fef5dbd2-a8f4-48f0-9d43-4eee9e96a3f0",
+  "veredicto": "retirar",
+  "cita": "Explicación almacenada de la propia pregunta: «Vómitos reflejos: estimulación del centro del vómito por vía nerviosa y de forma indirecta. Puede ser por causas digestivas o extradigestivas» y, como categoría DISTINTA, «Vómitos gástricos: ocurren por patologías gástricas inflamatorias (gastritis) o por trastornos del vaciamiento gástrico». Además: «Con el fin de homogenizar el banco de preguntas se ha eliminado una opción de respuesta de esta pregunta».",
+  "razon": "La clave marcada (A, «de origen gástrico») está contradicha por la explicación de la propia pregunta, que clasifica reflejos y gástricos como categorías separadas dentro de la misma taxonomía por patogenia; tampoco es B (central) ni C (histéricos). El texto admite expresamente que se eliminó una opción, que es justamente donde estaba la respuesta buena (vómitos de origen periférico/por causas digestivas y extradigestivas). Con las cuatro opciones actuales no hay respuesta defendible salvo, forzando, D, y no puedo probarlo con cita. El art_content vinculado (aparato digestivo y urinario) sólo clasifica vómitos por su ASPECTO (alimentario, bilioso, fecaloideo, hematemesis, en escopetazo), no por su patogenia, así que ni siquiera sirve de fuente.",
+  "confianza": "media",
+  "accion_recomendada": "Retirar/enviar a needs_human: restaurar la opción eliminada (vómito periférico/reflejo) y rehacer la pregunta, o darla de baja; además el artículo vinculado no cubre la clasificación patogénica del vómito."
+ },
+ {
+  "id": "f81a7b99-1f3a-4a03-a263-143a144fa37d",
+  "veredicto": "doble_respuesta",
+  "clave_propuesta": "A y B",
+  "cita": "art_content §«Sobres» → «Sobres de tipo bolsa: - Tipografía para los datos de contacto: Noto Sans HK Regular 7 pt. - El formato principal será 250 x 300 mm, aunque los sobres podrán ser de diversos tamaños manteniendo la proporción.»",
+  "razon": "El artículo afirma literalmente las DOS proposiciones: la tipografía Noto Sans HK Regular 7 pt (opción A, clave actual) y el formato principal 250x300 mm con posibilidad de otros tamaños manteniendo la proporción (opción B, redactada casi verbatim). Con un enunciado del tipo 'señale lo correcto' hay dos opciones verdaderas. C y D no están respaldadas por el artículo (la ubicación de datos de contacto se remite genéricamente a las especificaciones del Manual y el escudo/logotipo en esquina inferior derecha se predica de la papelería de Servicios Centrales, no de los sobres bolsa).",
+  "confianza": "alta",
+  "accion_recomendada": "Corregir la opción B (falsear un dato del formato) o reformular el enunciado a 'señale la ÚNICA respuesta correcta sobre la tipografía', contrastando antes con el Decreto 218/2020 y su Manual de Identidad Corporativa."
+ },
+ {
+  "id": "0323d2fd-4133-4fb6-9115-35e4398f8927",
+  "veredicto": "doble_respuesta",
+  "clave_propuesta": "C y D",
+  "cita": "Art. 363 TRLGSS (RDL 8/2015), apartado 2: «Los límites de acumulación de recursos, en el supuesto de unidad económica, serán equivalentes a la cuantía, en cómputo anual, de la pensión, más el resultado de multiplicar el 70 por ciento de dicha cifra por el número de convivientes, menos uno.» Apartado 3: «Cuando la convivencia, dentro de una misma unidad económica, se produzca entre el solicitante y sus descendientes o ascendientes en primer grado, los límites de acumulación de recursos serán equivalentes a dos veces y media la cuantía que resulte de aplicar lo dispuesto en el apartado 2.»",
+  "razon": "La opción C es una reproducción LITERAL, palabra por palabra, del apartado 2 del art. 363: es una afirmación verdadera. La opción D reproduce correctamente el apartado 3 (2,5 veces sobre la base del apartado 2, con el 70%): también es verdadera. El enunciado pregunta genéricamente por 'la afirmación correcta respecto al límite de acumulación de recursos', sin acotar al supuesto de convivencia con descendientes/ascendientes en primer grado, por lo que no hay criterio para descartar C. La explicación almacenada reconoce de hecho que C 'reproduce la regla general del apartado 2' y sólo la descarta apelando a un contexto que el enunciado no expresa. Con 36 respuestas servidas, es una pregunta viva y penalizadora. (El texto del artículo en BD coincide con la redacción consolidada vigente: 70% en el apartado 2 y 'dos veces y media' en el 3; no hay problema de vigencia.)",
+  "confianza": "alta",
+  "accion_recomendada": "Falsear la opción C (p. ej. sustituir 70% por 60%) o acotar el enunciado al supuesto de convivencia con descendientes o ascendientes en primer grado, manteniendo D como clave."
+ },
+ {
+  "id": "3541491c-ed38-46ee-bc0c-efd66a7e249c",
+  "veredicto": "enunciado_irresoluble",
+  "cita": "Art. 214.2 TRLGSS: «este porcentaje del importe de la pensión de jubilación se calculará en función del número de años que se haya demorado el acceso a dicha pensión de acuerdo con la siguiente escala: a) Si se demora un año... 45 por ciento; b) Si se demora dos años... 55 por ciento; c)... 65 por ciento; d)... 80 por ciento». Explicación almacenada: «Juan Luis cumplió la edad ordinaria en 2025 pero se jubila en octubre de 2027 (dos años de demora)».",
+  "razon": "La pregunta está desgajada de su supuesto práctico: en el enunciado servido no aparece en ningún sitio la fecha en que el sujeto cumple la edad ordinaria de jubilación (ni siquiera su nombre, 'Juan Luis', que sólo sobrevive en la explicación). Sin ese dato es imposible calcular los años de demora, que es exactamente lo que la escala del art. 214.2 exige para elegir entre 45%, 55%, 65% u 80%: las cuatro opciones son escalones legítimos de la misma escala. La clave B (55%) sólo es correcta si se asume el dato ausente (edad ordinaria cumplida en 2025 → dos años de demora). Truncamiento de enunciado, no error de clave. Servida 11 veces.",
+  "confianza": "alta",
+  "accion_recomendada": "Restaurar en el enunciado la fecha de cumplimiento de la edad ordinaria de jubilación (y el resto del supuesto) manteniendo la clave B; si no se puede recuperar el supuesto original, retirar la pregunta."
+ }
+]

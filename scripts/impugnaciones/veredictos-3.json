@@ -1,0 +1,60 @@
+[
+ {
+  "id": "283e2df4-f9a8-444c-bdfa-2de2f5d6ab21",
+  "veredicto": "clave_correcta",
+  "cita": "Orden INT/859/2023, art. 9.2.c): «La Unidad Central de Criminalística. Le corresponde las funciones propias de la técnica policial en el estudio y realización de los informes periciales, de interés policial y judicial, en materia de falsificación documental, grafoscopia, balística identificativa y operativa, trazas instrumentales y acústica forense.»",
+  "razon": "El artículo vinculado atribuye expresa y únicamente la acústica forense a la Unidad Central de Criminalística (opción A). La UCI (art. 9.2.b) cubre lofoscopia, identificación facial, necroidentificación, antropología y entomología forense; la UCAC (art. 9.2.d) biología-ADN, química y toxicología: ninguna menciona acústica. El enunciado no está truncado (es una frase completa con complemento en las opciones); la sospecha de 'enunciado roto' viene solo de que la pregunta tiene 3 opciones (option_d = null), lo cual es legítimo aunque atípico en el banco.",
+  "confianza": "alta",
+  "accion_recomendada": "No tocar la clave; a lo sumo verificar que el renderizado con 3 opciones (sin D) se muestra bien al opositor."
+ },
+ {
+  "id": "ee3efe27-77d3-43f1-97c2-edab84dc433c",
+  "veredicto": "enunciado_irresoluble",
+  "clave_propuesta": "C",
+  "cita": "LEC art. 569.1, párrafo 2.º: «si se encontrase pendiente causa criminal en que se investiguen hechos de apariencia delictiva que, de ser ciertos, determinarían la falsedad o nulidad del título o la invalidez o ilicitud del despacho de la ejecución, el Tribunal que la autorizó, oídas las partes y el Ministerio Fiscal, acordará la suspensión de la ejecución.»",
+  "razon": "El enunciado está TRUNCADO a mitad de palabra: «...que, de ser ciertos, dete». Falta el resto del supuesto de hecho («determinarían la falsedad o nulidad del título o la invalidez o ilicitud del despacho de la ejecución») y, sobre todo, el sujeto y la interrogación («el Tribunal que la autorizó:»), sin lo cual la pregunta carece de predicado. La clave C es materialmente correcta y coincide literalmente con el art. 569.1 LEC vigente, así que el defecto es exclusivamente de texto del enunciado, no de corrección.",
+  "confianza": "alta",
+  "accion_recomendada": "Restaurar el enunciado completo a partir del art. 569.1 LEC (la clave C se mantiene) y ocultar la pregunta hasta que el texto esté íntegro."
+ },
+ {
+  "id": "eecb2a38-95ef-41f5-88ff-36e9499b79f9",
+  "veredicto": "clave_correcta",
+  "cita": "art_content vinculado, §3.2: «Férulas. Dispositivo de inmovilización parcial (no circunferencial completa); sujeta el segmento permitiendo cierto margen ante la inflamación.» (el artículo NO nombra ninguna férula por su epónimo)",
+  "razon": "La férula de Kramer es, por definición en la literatura de TCAE/primeros auxilios, la férula de alambre maleable en escalera que se moldea (adapta) al miembro fracturado, que es exactamente lo que describe el enunciado; las distractoras no encajan (Braun es un soporte almohadillado en plano inclinado para elevación del miembro inferior, Thomas es una férula de tracción con anillo isquiático, y «Bayern» no es una férula reconocida). Advertencia de calidad: el art_content vinculado no menciona ni Kramer ni ninguna otra férula epónima, por lo que la pregunta no está sostenida por el material de teoría que se le ha asociado.",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave B y ampliar el artículo de teoría con la tabla de férulas epónimas (Kramer, Braun, Thomas) para que la pregunta quede respaldada."
+ },
+ {
+  "id": "957b8bfe-c97c-4847-ba66-cc8ecb3cd130",
+  "veredicto": "clave_correcta",
+  "cita": "art_content vinculado, §«Camas y dispositivos especiales»: enumera únicamente «Cama articulada», «Cama ortopédica o de Balkan», «Cama eléctrica» y «Cama de levitación (fluidificada / de aire)» — no recoge ni la cama de Judet ni la de Stryker.",
+  "razon": "La cama (marco o bastidor) de Stryker es el dispositivo con dos planos entre los que se «emparedaba» al paciente para voltearlo 180° en bloque (supino↔prono) sin movilizar la columna, indicado en lesionados medulares; es la única de las opciones definida por el giro de 180°. La cama articulada solo eleva segmentos y la de Judet es una cama ortopédica de tracción. No obstante, el artículo vinculado no describe ninguna de las dos, por lo que la pregunta no está soportada por su teoría.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave D y completar el artículo de teoría con las camas de Stryker y de Judet, o relinkar a un artículo que sí las describa."
+ },
+ {
+  "id": "fdaa4495-dd6b-4a9f-8983-31f3b28752cd",
+  "veredicto": "clave_correcta",
+  "cita": "art_content vinculado, §1.3: «Duchas y chorros. Aplicación de agua proyectada sobre el cuerpo con fines mecánicos y térmicos. A presión / chorros: el impacto del agua añade un efecto de masaje.» (el artículo NO enumera indicaciones clínicas concretas)",
+  "razon": "El artículo describe el efecto (térmico + masaje mecánico) pero no lista indicaciones, así que no permite descartar ninguna de las tres opciones. En la literatura de hidroterapia el chorro/ducha a presión se emplea tanto en procesos reumáticos crónicos como en recuperación funcional (efecto analgésico-relajante y de masaje) y como técnica sedante/estimulante frente a la tensión emocional, por lo que las tres son indicaciones admitidas y «Todas son correctas» es coherente. No hay cita que permita afirmar que la clave sea incorrecta.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave D pero añadir al artículo un apartado de indicaciones de duchas y chorros para que la pregunta quede probada por la fuente."
+ },
+ {
+  "id": "15afd376-2ad1-49ea-a7aa-e529156b5a13",
+  "veredicto": "clave_incorrecta",
+  "clave_propuesta": "D",
+  "cita": "La propia explicación almacenada en la pregunta dice: «Cheyne-Stokes: sucesión de ciclos respiratorios intercalados por cortos períodos de apnea. Los ciclos van aumentando gradualmente tanto la frecuencia como la profundidad y vuelven a descender también progresivamente hasta finalizar el ciclo. Alternan apnea con hiperventilación.»",
+  "razon": "La clave marcada es C («Ninguna»), pero la explicación adjunta a la propia pregunta describe la respiración de Cheyne-Stokes exactamente como el enunciado (periodo de apnea seguido de una fase de respiración ruidosa/estertórea que crece y decrece), de modo que la clave contradice a su propia justificación. Biot se caracteriza por apneas BRUSCAS e irregulares que interrumpen la taquipnea, no por iniciarse con apnea, y Kussmaul cursa «sin intervalos ni pausas». El art_content vinculado (Aparato respiratorio) solo define apnea/taquipnea/bradipnea y no describe los patrones epónimos, por lo que no respalda la pregunta; de ahí la confianza media pese a lo claro del caso.",
+  "confianza": "media",
+  "accion_recomendada": "Enviar a revisión humana para cambiar la clave a D (Cheyne-Stokes) y reescribir la explicación; nunca hacer flip automático."
+ },
+ {
+  "id": "386e99dc-eefe-4ab5-aaa2-ac4aa6351191",
+  "veredicto": "clave_correcta",
+  "cita": "Ley 41/2002, art. 3 (definiciones): «Documentación clínica: el soporte de cualquier tipo o clase que contiene un conjunto de datos e informaciones de carácter asistencial.» El art_content vinculado no aborda las funciones de la documentación clínica (trata de sistemas de información, HCE, CMBD, CIE-10, tarjeta sanitaria e interoperabilidad).",
+  "razon": "Las opciones A, B y D son especies del mismo género (historia clínica de un nivel asistencial concreto) y las tres cumplirían la función descrita, por lo que ninguna puede ser la respuesta única; solo el concepto genérico «documentación clínica» engloba la función de comunicación entre los profesionales que atienden al paciente en cualquier nivel. La construcción de la pregunta obliga por tanto a la opción C. No hay cita que permita sostener que la clave sea incorrecta.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave C y relinkar a un artículo que defina documentación e historia clínica y sus funciones (Ley 41/2002, arts. 3, 15 y 16), ya que el artículo actual no cubre la materia."
+ }
+]

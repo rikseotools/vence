@@ -1,0 +1,65 @@
+[
+  {
+    "id": "ac1da0f0-cdd5-4688-9e6b-612edfeea500",
+    "veredicto": "doble_respuesta",
+    "clave_propuesta": null,
+    "cita": "art_content (Movilización y posiciones, §4.2): «Variantes según el grado de elevación de la cabecera: … **Fowler alta:** ~**60º–90º** (casi sentado).»",
+    "razon": "Segun el propio artículo vinculado, la Fowler alta abarca el rango 60º-90º, de modo que las opciones A (60º), B (70º) y C (80º) caen TODAS dentro de la definición y la clave D ('ninguna de las anteriores') es insostenible con nuestra propia teoría. La pregunta procede de bancos que dan por buena la equivalencia rígida Fowler alta = 90º, criterio que ni el artículo ni la bibliografía mayoritaria sostienen de forma unívoca (se citan 60-90º). No es reparable cambiando la letra: ninguna opción aislada es defendible.",
+    "confianza": "media",
+    "accion_recomendada": "Retirar/reformular la pregunta (p. ej. preguntar por la Fowler estándar de 45º o dar la opción '90º'), porque tal como está tiene tres opciones defendibles frente a la clave D."
+  },
+  {
+    "id": "d79c9b70-6336-4a7f-98f9-699ec8bd30ee",
+    "veredicto": "clave_correcta",
+    "clave_propuesta": "A",
+    "cita": "Ayuda oficial de LibreOffice en español (help.libreoffice.org/latest/es/text/shared/04/01010000.html): «Ctrl + I — El área seleccionada adopta el atributo «Itálica».» El art_content coincide: «El atajo para aplicar o quitar el formato itálica es **Ctrl + I**».",
+    "razon": "LibreOffice NO localiza los atajos de formato de carácter como sí hace Microsoft Word español (donde cursiva es Ctrl+K): la interfaz y la ayuda en español de LibreOffice mantienen Ctrl+B/Ctrl+I/Ctrl+U para negrita/itálica/subrayado. Ctrl+L es alineación izquierda y Ctrl+Mayús+F4 no aplica cursiva (no es un atajo de formato de carácter), por lo que la opción D ('A y C') es falsa. La sospecha de confusión Ctrl+I / Ctrl+K estaba justificada como control, pero aquí no aplica porque el enunciado pregunta por LibreOffice, no por Word.",
+    "confianza": "alta",
+    "accion_recomendada": "No tocar; a lo sumo añadir a la explicación la advertencia de que en Word español la cursiva sí es Ctrl+K, para evitar impugnaciones futuras."
+  },
+  {
+    "id": "b4585d9e-0a14-4b81-9b95-ed623cfee46e",
+    "veredicto": "clave_correcta",
+    "clave_propuesta": "C",
+    "cita": "art_content (Eliminación y sondajes): «**De retención:** se administra para que el líquido permanezca en el interior un tiempo prolongado y ejerza su efecto…» / «**Retención:** pedir al paciente que **retenga el líquido unos minutos** (según el tipo de enema) antes de evacuar».",
+    "razon": "El artículo vinculado NO da cifra para el enema de retención (solo dice 'tiempo prolongado' / 'unos minutos según el tipo'), así que la fuente en BD no prueba ni desmiente la clave. El criterio mayoritario de los temarios TCAE fija la retención del enema de retención en unos 30 minutos, que es la opción C; la opción A ('todo el tiempo posible') es una formulación vaga que en este tipo de ítem con opción numérica concreta no se admite como clave. No dispongo de cita literal que demuestre que la clave sea otra letra, por lo que, conforme a la regla dura, la clave se mantiene, pero con la salvedad de que hoy es indefendible con la fuente vinculada.",
+    "confianza": "media",
+    "accion_recomendada": "Mantener la clave C pero completar el artículo con la cifra explícita de retención (≈30 min) y su fuente; si no puede documentarse, reformular la pregunta eliminando la opción A."
+  },
+  {
+    "id": "bf5c3dfa-8b1c-4cad-b710-2b304073b4a8",
+    "veredicto": "enunciado_irresoluble",
+    "clave_propuesta": null,
+    "cita": "Enunciado en BD: «En el procedimiento civil, si el título ejecutivo obligara a entregar un inmuebl» (truncado a mitad de palabra, sin pregunta). Art. 704 LEC: «1. … el Letrado de la Administración de Justicia les dará un plazo de un mes para desalojarlo… 2. Si el inmueble … estuviera ocupado por terceras personas … tan pronto como conozca su existencia, les notificará el despacho de la ejecución … para que, en el plazo de diez días, presenten los títulos que justifiquen su situación.»",
+    "razon": "El enunciado está cortado ('inmuebl') y le falta todo el supuesto y la pregunta. Sin ese texto, el art. 704 ofrece al menos tres plazos distintos compatibles con las opciones: un mes (704.1, vivienda habitual del ejecutado), 'tan pronto como conozca su existencia' (704.2, momento de la notificación a terceros ocupantes) y diez días (704.2, presentación de títulos). La clave B solo es correcta si el enunciado preguntaba por CUÁNDO notifica el LAJ a los terceros ocupantes, dato que hoy no consta.",
+    "confianza": "alta",
+    "accion_recomendada": "Restaurar el enunciado completo del art. 704.2 (cuándo notifica el LAJ a los terceros ocupantes) o retirarla; tal como está no se puede responder."
+  },
+  {
+    "id": "97e62280-9f35-4ee5-a0cc-9ccadfef54e4",
+    "veredicto": "clave_correcta",
+    "clave_propuesta": "A",
+    "cita": "art_content (Movilización y posiciones, art. 5 'Técnicas de deambulación y traslado'): el artículo cubre bastón, muletas, andador, transferencias cama-sillón, grúa, tabla de deslizamiento, mecánica corporal y prevención de caídas, pero NO contiene ninguna mención a 'rampa', 'pendiente', 'bordillo' ni 'escaleras' (búsqueda exhaustiva del término: 0 coincidencias).",
+    "razon": "La fuente vinculada no cubre el manejo de la silla de ruedas en rampas, de modo que la pregunta no es defendible con nuestro artículo. En cuanto al fondo, el criterio estándar en manuales de movilización es que las pendientes pronunciadas se bajan marcha atrás, con el profesional situado detrás de la silla (en los empuñadores) descendiendo de espaldas y frenando el peso, para evitar que el paciente bascule hacia delante: eso es exactamente la opción A. Las opciones B, C y D describen maniobras inseguras. No hay base para cambiar la clave.",
+    "confianza": "media",
+    "accion_recomendada": "Mantener la clave A pero ampliar el artículo 5 con el apartado de manejo de silla de ruedas (rampas, bordillos, escaleras) con fuente citable, o hacer relink al artículo que lo cubra."
+  },
+  {
+    "id": "eb6b593a-7aef-404e-9f68-4fe84768c217",
+    "veredicto": "clave_correcta",
+    "clave_propuesta": "B",
+    "cita": "Preámbulo de la Ley 4/2015: «El presente Estatuto de la Víctima del Delito tiene la vocación de ser el catálogo general de los derechos, procesales y extraprocesales, de todas las víctimas de delitos, no obstante las remisiones a normativa especial en materia de víctimas con especiales necesidades o con especial vulnerabilidad.»",
+    "razon": "La opción B reproduce fielmente el inciso 'no obstante las remisiones a normativa especial en materia de víctimas con especiales necesidades o con especial vulnerabilidad'. La A es falsa porque el Estatuto es catálogo de derechos de las víctimas, no de los 'perpetradores' (además con errata: 'perpretadores'). La C es una paráfrasis desfigurada del inciso del interés superior del menor. Defecto real detectado: la pregunta solo tiene TRES opciones — `option_d` es NULL —, lo que degrada el ítem aunque no impide responderlo.",
+    "confianza": "alta",
+    "accion_recomendada": "Mantener la clave B, pero reparar el ítem: añadir la cuarta opción ausente y corregir la errata 'perpretadores' de la opción A."
+  },
+  {
+    "id": "86db8b12-1569-444f-84cf-8c68c067a828",
+    "veredicto": "clave_correcta",
+    "clave_propuesta": "B",
+    "cita": "Art. 429.3 LEC (texto en BD, coincidente con el consolidado tras la reforma del RDL 6/2023, cuyo apartado 2 ya recoge la remisión al art. 19.5 y la negociación): «3. A solicitud de parte, cuando toda la prueba o gran parte de ella hubiera de realizarse fuera del lugar en que tenga su sede el Tribunal que conozca del pleito, el Tribunal podrá acordar que el juicio se señale por el Letrado de la Administración de Justicia para su celebración dentro del plazo de dos meses.»",
+    "razon": "El enunciado NO está truncado (la sospecha 'enunciado roto' es un falso positivo, probablemente por su longitud): plantea el supuesto completo del art. 429.3 y la clave B (2 meses) coincide literalmente con la norma vigente. El plazo de un mes de la opción D corresponde al 429.2 (regla general de señalamiento del juicio), que es precisamente la excepción que este apartado desplaza.",
+    "confianza": "alta",
+    "accion_recomendada": "No tocar; cerrar la sospecha como falso positivo del detector de truncamiento."
+  }
+]

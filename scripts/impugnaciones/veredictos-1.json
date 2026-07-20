@@ -1,0 +1,65 @@
+[
+ {
+  "id": "f1b8536a-4729-45bf-b757-9281a4b14242",
+  "veredicto": "relink",
+  "clave_propuesta": "B",
+  "cita": "art_content vinculado (art. 4 'Concepto de cuidados, necesidades básicas y autocuidados'): trata únicamente Henderson (14 necesidades), Maslow y Orem (déficit de autocuidado). No contiene NI UNA sola mención al diagnóstico de enfermería ni al Proceso de Atención de Enfermería.",
+  "razon": "La clave B ('forma parte de un proceso, desligado del cual carece de sentido') es la correcta según la doctrina pacífica del PAE: el diagnóstico es la 2ª etapa del Proceso de Atención de Enfermería (valoración → diagnóstico → planificación → ejecución → evaluación) y solo tiene sentido dentro de esa secuencia. Los distractores son falsos: (A) el diagnóstico enfermero SÍ es privativo del profesional de enfermería —es su juicio clínico propio, frente al diagnóstico médico—; (C) NO posee carácter estable, sino dinámico y cambiante, se revisa en cada reevaluación; (D) no se limita a enfermedades ni a individuos —hay diagnósticos de riesgo, de promoción de la salud y dirigidos a familia y comunidad—. El defecto real no es la clave sino el anclaje: el artículo vinculado no puede probar ni refutar nada de lo que pregunta el enunciado.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave B y re-vincular la pregunta al artículo/epígrafe del Proceso de Atención de Enfermería (PAE) y sus etapas, además de redactar explicación (hoy vacía)."
+ },
+ {
+  "id": "829ecc30-b3cd-46a1-9740-b8b14d678327",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "A",
+  "cita": "Art. 1.1 Código Civil (art_content): «Las fuentes del ordenamiento jurídico español son la ley, la costumbre y los principios generales del derecho» — enumeración de fuentes FORMALES, es decir, de los modos de manifestarse la norma, no de los factores que determinan su contenido.",
+  "razon": "La sospecha es infundada. La clasificación doctrinal es pacífica y unánime en la doctrina administrativista española: fuentes REALES o MATERIALES = los factores sociales, económicos, políticos y éticos que determinan el CONTENIDO de la norma; fuentes FORMALES = los cauces o modos de exteriorización de ese contenido (ley, costumbre, principios generales), que es exactamente lo que enumera el art. 1.1 CC vinculado. Los otros dos distractores tampoco compiten: fuentes directas/indirectas es una clasificación por el modo de producir la norma (crear la norma por sí mismas vs. ayudar a su creación o interpretación), y fuentes históricas son los documentos y textos del pasado que sirven para conocer el Derecho de una época. La explicación almacenada en la pregunta es correcta y discrimina bien las cuatro opciones. Nota menor de anclaje: el art. 1 CC es la sede natural del tema 'fuentes', pero la clasificación real/formal es doctrinal y no aparece literalmente en él; no es motivo para tocar la pregunta.",
+  "confianza": "alta",
+  "accion_recomendada": "No tocar nada; cerrar la sospecha como infundada."
+ },
+ {
+  "id": "82082aed-9b93-46af-acff-0e96a309fb65",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "C",
+  "cita": "Art. 583.3 LEC (art_content, literal): «Satisfechos intereses y costas, de haberse devengado, el Letrado de la Administración de Justicia dictará decreto dando por terminada la ejecución.»",
+  "razon": "La clave C reproduce LITERALMENTE el supuesto del art. 583.3 LEC, palabra por palabra. Los distractores son todos falsos frente a ese texto: (A) es falsa porque el precepto exige que se satisfagan TAMBIÉN las costas, no solo los intereses; (B) es falsa porque la resolución es DECRETO, no diligencia de ordenación; (D) es falsa por doble motivo —ni es auto ni corresponde al LAJ dictar auto—. El defecto detectado es de TRUNCAMIENTO del enunciado, que se corta en «el Letrado de la Administra», pero NO impide responder: el complemento que falta («…de Justicia dando por terminada la ejecución») está explícitamente reproducido en las propias opciones B y D, de modo que el opositor reconstruye sin ambigüedad el supuesto de hecho. La pregunta es resoluble y la clave es inatacable. Defecto adicional menor de mecanografía en la opción A: «denvengados» por «devengados».",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave C y restaurar el enunciado completo («…dictará decreto el Letrado de la Administración de Justicia dando por terminada la ejecución?») y corregir la errata «denvengados» de la opción A."
+ },
+ {
+  "id": "87700f9b-83ae-4d51-b715-c2ac3aea57ed",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "C",
+  "cita": "Art. 520.1 LEC (art_content, literal): «Cuando se trate de los títulos ejecutivos previstos en los números 4.º, 5.º, 6.º y 7.º del apartado 2 del artículo 517, sólo podrá despacharse ejecución por cantidad determinada que exceda de 300 euros». El auto de cantidad máxima del Seguro Obligatorio de vehículos es el ordinal 8.º del art. 517.2 LEC, FUERA de la remisión.",
+  "razon": "La pregunta es de tipo «señale la incorrecta» y funciona correctamente. Mapeo de cada opción sobre el art. 517.2 LEC: (A) pólizas de contratos mercantiles intervenidas por corredor de comercio colegiado = ordinal 5.º; (B) títulos al portador o nominativos que representen obligaciones vencidas y sus cupones = ordinal 6.º; (D) certificados no caducados de entidades encargadas de registros contables de valores en anotaciones en cuenta = ordinal 7.º. Las tres están dentro de la remisión del art. 520.1 y por tanto SÍ están sujetas al umbral de 300 euros. La opción (C), el auto que fija la cantidad máxima reclamable en concepto de indemnización en procesos penales por hechos cubiertos por el Seguro Obligatorio de RC de vehículos de motor, es el ordinal 8.º del art. 517.2, que NO figura entre los números 4.º a 7.º a los que el art. 520.1 limita el umbral: es, por tanto, la única incorrecta y la clave marcada es la buena. Defecto real: el enunciado está TRUNCADO en «que exceda de 300 », faltando la palabra «euros», pero la cifra sí aparece y el sentido es íntegramente reconstruible, por lo que la pregunta sigue siendo resoluble.",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave C y completar el enunciado truncado añadiendo «euros?» al final."
+ },
+ {
+  "id": "91163a99-47af-46b7-a185-ed18f517e8d2",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "B",
+  "cita": "Policía Nacional, ficha oficial de la especialidad TEDAX-NRBQ, alojada bajo la ruta institucional «…estructura_dao_cginformacion_especialidades_tedax» (Dirección Adjunta Operativa › Comisaría General de INFORMACIÓN › especialidades › TEDAX). Concordante con el art_content vinculado (art. 5 Orden INT/859/2023): «Asume las funciones contempladas en el artículo 3.3.a) del Real Decreto 734/2020… integrada por las unidades y servicios que se determinen mediante la correspondiente Orden Comunicada… de conformidad con la Ley 9/1968, de 5 de abril, sobre secretos oficiales» — la remisión al régimen de secretos oficiales y a Orden Comunicada identifica inequívocamente a la Comisaría General de Información.",
+  "razon": "La clave B (CGI, Comisaría General de Información) es la correcta: la Unidad Central de Desactivación de Explosivos TEDAX-NRBQ se encuadra orgánicamente en la Comisaría General de Información, con una unidad central y grupos periféricos desplegados por el territorio nacional. Verificado contra fuente oficial de la Policía Nacional. El artículo vinculado es coherente (regula precisamente esa Comisaría General), aunque NO menciona literalmente el término NRBQ, por lo que por sí solo no probaría la respuesta. DEFECTOS DE FORMATO que deben corregirse aunque la clave sea buena: (1) la opción D es NULL, de modo que la pregunta se sirve con solo tres opciones, rompiendo el formato A/B/C/D del resto del banco; (2) la sigla de la opción A, «CGPJ», corresponde en realidad al Consejo General del Poder Judicial y es casi con seguridad una errata por CGPJ = Comisaría General de Policía Judicial, siglas que conviene desarrollar; (3) el enunciado abrevia en exceso («¿De quién depende NRBQ?») y debería decir «la especialidad TEDAX-NRBQ de la Policía Nacional».",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave B, añadir una cuarta opción (la D está vacía), desarrollar las siglas de las opciones y precisar el enunciado como «¿De quién depende la especialidad TEDAX-NRBQ?»."
+ },
+ {
+  "id": "721025e5-53fb-412f-a69c-f7fde95343ab",
+  "veredicto": "enunciado_irresoluble",
+  "clave_propuesta": "D",
+  "cita": "Art. 569.2 LEC (art_content, literal): «Si la causa penal a que se refiere el apartado anterior finalizare por resolución en que se declare la inexistencia del hecho o no ser éste delictivo, el ejecutante podrá pedir indemnización de daños y perjuicios, en los términos del apartado séptimo del artículo 40.» El enunciado almacenado se corta en «…que podrían haber determinado l», perdiendo justamente esa condición.",
+  "razon": "La clave D es sustantivamente correcta —reproduce literalmente el art. 569.2 LEC, y por eso la opción B, que atribuye la facultad al EJECUTADO en lugar de al EJECUTANTE, es el distractor invertido y es falsa—, pero el truncamiento aquí no es cosmético como en los otros dos casos del lote: lo que se ha perdido es la PREMISA DECISIVA del supuesto de hecho, esto es, que la causa penal «finalizare por resolución en que se declare la inexistencia del hecho o no ser éste delictivo». Sin ese dato el enunciado solo describe una causa criminal pendiente, escenario en el que el art. 569.1 ordena la SUSPENSIÓN de la ejecución y en el que ninguna de las cuatro opciones sobre indemnización sería aplicable. A diferencia de los casos 82082aed y 87700f9b, el fragmento que falta no se puede reconstruir desde las opciones: la opción A se refiere además a «dicha resolución», un antecedente que sencillamente no existe en el texto que ve el opositor. La pregunta, tal y como se está sirviendo, no es contestable con rigor.",
+  "confianza": "media",
+  "accion_recomendada": "Restaurar el enunciado íntegro incorporando la condición «…finalizare por resolución en que se declare la inexistencia del hecho o no ser éste delictivo», tras lo cual la clave D queda plenamente sostenida por el art. 569.2 LEC."
+ },
+ {
+  "id": "ceb409bc-fdf9-4aec-8f69-839899be052b",
+  "veredicto": "relink",
+  "clave_propuesta": "B",
+  "cita": "art_content vinculado (art. 3, «Limpieza del material» de Oxigenoterapia): regula exclusivamente gafas nasales, mascarillas, alargaderas, tubuladuras y humidificadores («Lavar con agua y jabón neutro/detergente suave, aclarar bien y secar al aire»). No menciona en ningún punto la traqueotomía, la cánula ni la cánula interna.",
+  "razon": "No hay doble clave, que era la sospecha previa. La opción B ('antiséptico y cepillo') es la única que no incorpora un error de técnica. Las tres restantes caen por un defecto propio: (A) el agua estéril sola no arrastra ni disuelve las secreciones adheridas ni la costra mucosa del interior de la cánula, por lo que es insuficiente y además el 'solo' la hace excluyente; (C) y (D) comparten el error discriminante decisivo —secar con ALGODÓN—, material formalmente contraindicado en el cuidado de traqueostomía porque desprende fibras y filamentos que quedan adheridos a la cánula y pueden ser aspirados hacia la vía aérea; el secado se realiza con gasa estéril, nunca con algodón. Eliminada la opción de secado, la limpieza mecánica con cepillo o escobillón específico más solución de limpieza es la técnica estándar, que es lo que enuncia B. Ahora bien, el problema de fondo es el anclaje: el artículo vinculado es de oxigenoterapia y no cubre en absoluto la materia preguntada, de modo que hoy la pregunta se sirve sin respaldo documental alguno y no puede defenderse ante una impugnación. Advierto expresamente que el juicio sobre el algodón procede de la técnica de enfermería estándar y NO del art_content, que no la contiene.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave B pero re-vincular la pregunta a un artículo de cuidados de traqueostomía/limpieza de cánula y redactar la explicación (hoy vacía) haciendo explícito que el discriminante es el secado con gasa y nunca con algodón."
+ }
+]

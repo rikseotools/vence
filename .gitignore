@@ -91,6 +91,11 @@ scripts/opofimatica-drive-capture.json
 
 # Volcados intermedios del pipeline de reescritura de explicaciones (regenerables con
 # scripts/impugnaciones/dump-lote-expl.cjs). Pesan MB y contienen texto de preguntas.
+#
+# ⚠️ LECCIÓN 20/07: ignorar los `out-NN.json` + borrar el worktree con end-session.sh
+# PERDIÓ los motivos que los agentes escribieron para 69 flags. El fichero FLAGS-*.md
+# remitía a unos ficheros que ya no existían. REGLA: cualquier fichero al que apunte
+# un documento commiteado NO puede estar aquí — vuélcalo al propio FLAGS-*.md.
 scripts/impugnaciones/lote-shards/
 scripts/impugnaciones/lote-trafico.json
 scripts/impugnaciones/validacion-citas.json

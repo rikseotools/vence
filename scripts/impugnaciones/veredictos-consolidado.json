@@ -1,0 +1,246 @@
+[
+ {
+  "id": "f1b8536a-4729-45bf-b757-9281a4b14242",
+  "veredicto": "relink",
+  "clave_propuesta": "B",
+  "cita": "art_content vinculado (art. 4 'Concepto de cuidados, necesidades básicas y autocuidados'): trata únicamente Henderson (14 necesidades), Maslow y Orem (déficit de autocuidado). No contiene NI UNA sola mención al diagnóstico de enfermería ni al Proceso de Atención de Enfermería.",
+  "razon": "La clave B ('forma parte de un proceso, desligado del cual carece de sentido') es la correcta según la doctrina pacífica del PAE: el diagnóstico es la 2ª etapa del Proceso de Atención de Enfermería (valoración → diagnóstico → planificación → ejecución → evaluación) y solo tiene sentido dentro de esa secuencia. Los distractores son falsos: (A) el diagnóstico enfermero SÍ es privativo del profesional de enfermería —es su juicio clínico propio, frente al diagnóstico médico—; (C) NO posee carácter estable, sino dinámico y cambiante, se revisa en cada reevaluación; (D) no se limita a enfermedades ni a individuos —hay diagnósticos de riesgo, de promoción de la salud y dirigidos a familia y comunidad—. El defecto real no es la clave sino el anclaje: el artículo vinculado no puede probar ni refutar nada de lo que pregunta el enunciado.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave B y re-vincular la pregunta al artículo/epígrafe del Proceso de Atención de Enfermería (PAE) y sus etapas, además de redactar explicación (hoy vacía)."
+ },
+ {
+  "id": "829ecc30-b3cd-46a1-9740-b8b14d678327",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "A",
+  "cita": "Art. 1.1 Código Civil (art_content): «Las fuentes del ordenamiento jurídico español son la ley, la costumbre y los principios generales del derecho» — enumeración de fuentes FORMALES, es decir, de los modos de manifestarse la norma, no de los factores que determinan su contenido.",
+  "razon": "La sospecha es infundada. La clasificación doctrinal es pacífica y unánime en la doctrina administrativista española: fuentes REALES o MATERIALES = los factores sociales, económicos, políticos y éticos que determinan el CONTENIDO de la norma; fuentes FORMALES = los cauces o modos de exteriorización de ese contenido (ley, costumbre, principios generales), que es exactamente lo que enumera el art. 1.1 CC vinculado. Los otros dos distractores tampoco compiten: fuentes directas/indirectas es una clasificación por el modo de producir la norma (crear la norma por sí mismas vs. ayudar a su creación o interpretación), y fuentes históricas son los documentos y textos del pasado que sirven para conocer el Derecho de una época. La explicación almacenada en la pregunta es correcta y discrimina bien las cuatro opciones. Nota menor de anclaje: el art. 1 CC es la sede natural del tema 'fuentes', pero la clasificación real/formal es doctrinal y no aparece literalmente en él; no es motivo para tocar la pregunta.",
+  "confianza": "alta",
+  "accion_recomendada": "No tocar nada; cerrar la sospecha como infundada."
+ },
+ {
+  "id": "82082aed-9b93-46af-acff-0e96a309fb65",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "C",
+  "cita": "Art. 583.3 LEC (art_content, literal): «Satisfechos intereses y costas, de haberse devengado, el Letrado de la Administración de Justicia dictará decreto dando por terminada la ejecución.»",
+  "razon": "La clave C reproduce LITERALMENTE el supuesto del art. 583.3 LEC, palabra por palabra. Los distractores son todos falsos frente a ese texto: (A) es falsa porque el precepto exige que se satisfagan TAMBIÉN las costas, no solo los intereses; (B) es falsa porque la resolución es DECRETO, no diligencia de ordenación; (D) es falsa por doble motivo —ni es auto ni corresponde al LAJ dictar auto—. El defecto detectado es de TRUNCAMIENTO del enunciado, que se corta en «el Letrado de la Administra», pero NO impide responder: el complemento que falta («…de Justicia dando por terminada la ejecución») está explícitamente reproducido en las propias opciones B y D, de modo que el opositor reconstruye sin ambigüedad el supuesto de hecho. La pregunta es resoluble y la clave es inatacable. Defecto adicional menor de mecanografía en la opción A: «denvengados» por «devengados».",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave C y restaurar el enunciado completo («…dictará decreto el Letrado de la Administración de Justicia dando por terminada la ejecución?») y corregir la errata «denvengados» de la opción A."
+ },
+ {
+  "id": "87700f9b-83ae-4d51-b715-c2ac3aea57ed",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "C",
+  "cita": "Art. 520.1 LEC (art_content, literal): «Cuando se trate de los títulos ejecutivos previstos en los números 4.º, 5.º, 6.º y 7.º del apartado 2 del artículo 517, sólo podrá despacharse ejecución por cantidad determinada que exceda de 300 euros». El auto de cantidad máxima del Seguro Obligatorio de vehículos es el ordinal 8.º del art. 517.2 LEC, FUERA de la remisión.",
+  "razon": "La pregunta es de tipo «señale la incorrecta» y funciona correctamente. Mapeo de cada opción sobre el art. 517.2 LEC: (A) pólizas de contratos mercantiles intervenidas por corredor de comercio colegiado = ordinal 5.º; (B) títulos al portador o nominativos que representen obligaciones vencidas y sus cupones = ordinal 6.º; (D) certificados no caducados de entidades encargadas de registros contables de valores en anotaciones en cuenta = ordinal 7.º. Las tres están dentro de la remisión del art. 520.1 y por tanto SÍ están sujetas al umbral de 300 euros. La opción (C), el auto que fija la cantidad máxima reclamable en concepto de indemnización en procesos penales por hechos cubiertos por el Seguro Obligatorio de RC de vehículos de motor, es el ordinal 8.º del art. 517.2, que NO figura entre los números 4.º a 7.º a los que el art. 520.1 limita el umbral: es, por tanto, la única incorrecta y la clave marcada es la buena. Defecto real: el enunciado está TRUNCADO en «que exceda de 300 », faltando la palabra «euros», pero la cifra sí aparece y el sentido es íntegramente reconstruible, por lo que la pregunta sigue siendo resoluble.",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave C y completar el enunciado truncado añadiendo «euros?» al final."
+ },
+ {
+  "id": "91163a99-47af-46b7-a185-ed18f517e8d2",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "B",
+  "cita": "Policía Nacional, ficha oficial de la especialidad TEDAX-NRBQ, alojada bajo la ruta institucional «…estructura_dao_cginformacion_especialidades_tedax» (Dirección Adjunta Operativa › Comisaría General de INFORMACIÓN › especialidades › TEDAX). Concordante con el art_content vinculado (art. 5 Orden INT/859/2023): «Asume las funciones contempladas en el artículo 3.3.a) del Real Decreto 734/2020… integrada por las unidades y servicios que se determinen mediante la correspondiente Orden Comunicada… de conformidad con la Ley 9/1968, de 5 de abril, sobre secretos oficiales» — la remisión al régimen de secretos oficiales y a Orden Comunicada identifica inequívocamente a la Comisaría General de Información.",
+  "razon": "La clave B (CGI, Comisaría General de Información) es la correcta: la Unidad Central de Desactivación de Explosivos TEDAX-NRBQ se encuadra orgánicamente en la Comisaría General de Información, con una unidad central y grupos periféricos desplegados por el territorio nacional. Verificado contra fuente oficial de la Policía Nacional. El artículo vinculado es coherente (regula precisamente esa Comisaría General), aunque NO menciona literalmente el término NRBQ, por lo que por sí solo no probaría la respuesta. DEFECTOS DE FORMATO que deben corregirse aunque la clave sea buena: (1) la opción D es NULL, de modo que la pregunta se sirve con solo tres opciones, rompiendo el formato A/B/C/D del resto del banco; (2) la sigla de la opción A, «CGPJ», corresponde en realidad al Consejo General del Poder Judicial y es casi con seguridad una errata por CGPJ = Comisaría General de Policía Judicial, siglas que conviene desarrollar; (3) el enunciado abrevia en exceso («¿De quién depende NRBQ?») y debería decir «la especialidad TEDAX-NRBQ de la Policía Nacional».",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave B, añadir una cuarta opción (la D está vacía), desarrollar las siglas de las opciones y precisar el enunciado como «¿De quién depende la especialidad TEDAX-NRBQ?»."
+ },
+ {
+  "id": "721025e5-53fb-412f-a69c-f7fde95343ab",
+  "veredicto": "enunciado_irresoluble",
+  "clave_propuesta": "D",
+  "cita": "Art. 569.2 LEC (art_content, literal): «Si la causa penal a que se refiere el apartado anterior finalizare por resolución en que se declare la inexistencia del hecho o no ser éste delictivo, el ejecutante podrá pedir indemnización de daños y perjuicios, en los términos del apartado séptimo del artículo 40.» El enunciado almacenado se corta en «…que podrían haber determinado l», perdiendo justamente esa condición.",
+  "razon": "La clave D es sustantivamente correcta —reproduce literalmente el art. 569.2 LEC, y por eso la opción B, que atribuye la facultad al EJECUTADO en lugar de al EJECUTANTE, es el distractor invertido y es falsa—, pero el truncamiento aquí no es cosmético como en los otros dos casos del lote: lo que se ha perdido es la PREMISA DECISIVA del supuesto de hecho, esto es, que la causa penal «finalizare por resolución en que se declare la inexistencia del hecho o no ser éste delictivo». Sin ese dato el enunciado solo describe una causa criminal pendiente, escenario en el que el art. 569.1 ordena la SUSPENSIÓN de la ejecución y en el que ninguna de las cuatro opciones sobre indemnización sería aplicable. A diferencia de los casos 82082aed y 87700f9b, el fragmento que falta no se puede reconstruir desde las opciones: la opción A se refiere además a «dicha resolución», un antecedente que sencillamente no existe en el texto que ve el opositor. La pregunta, tal y como se está sirviendo, no es contestable con rigor.",
+  "confianza": "media",
+  "accion_recomendada": "Restaurar el enunciado íntegro incorporando la condición «…finalizare por resolución en que se declare la inexistencia del hecho o no ser éste delictivo», tras lo cual la clave D queda plenamente sostenida por el art. 569.2 LEC."
+ },
+ {
+  "id": "ceb409bc-fdf9-4aec-8f69-839899be052b",
+  "veredicto": "relink",
+  "clave_propuesta": "B",
+  "cita": "art_content vinculado (art. 3, «Limpieza del material» de Oxigenoterapia): regula exclusivamente gafas nasales, mascarillas, alargaderas, tubuladuras y humidificadores («Lavar con agua y jabón neutro/detergente suave, aclarar bien y secar al aire»). No menciona en ningún punto la traqueotomía, la cánula ni la cánula interna.",
+  "razon": "No hay doble clave, que era la sospecha previa. La opción B ('antiséptico y cepillo') es la única que no incorpora un error de técnica. Las tres restantes caen por un defecto propio: (A) el agua estéril sola no arrastra ni disuelve las secreciones adheridas ni la costra mucosa del interior de la cánula, por lo que es insuficiente y además el 'solo' la hace excluyente; (C) y (D) comparten el error discriminante decisivo —secar con ALGODÓN—, material formalmente contraindicado en el cuidado de traqueostomía porque desprende fibras y filamentos que quedan adheridos a la cánula y pueden ser aspirados hacia la vía aérea; el secado se realiza con gasa estéril, nunca con algodón. Eliminada la opción de secado, la limpieza mecánica con cepillo o escobillón específico más solución de limpieza es la técnica estándar, que es lo que enuncia B. Ahora bien, el problema de fondo es el anclaje: el artículo vinculado es de oxigenoterapia y no cubre en absoluto la materia preguntada, de modo que hoy la pregunta se sirve sin respaldo documental alguno y no puede defenderse ante una impugnación. Advierto expresamente que el juicio sobre el algodón procede de la técnica de enfermería estándar y NO del art_content, que no la contiene.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave B pero re-vincular la pregunta a un artículo de cuidados de traqueostomía/limpieza de cánula y redactar la explicación (hoy vacía) haciendo explícito que el discriminante es el secado con gasa y nunca con algodón."
+ },
+ {
+  "id": "ac1da0f0-cdd5-4688-9e6b-612edfeea500",
+  "veredicto": "doble_respuesta",
+  "clave_propuesta": null,
+  "cita": "art_content (Movilización y posiciones, §4.2): «Variantes según el grado de elevación de la cabecera: … **Fowler alta:** ~**60º–90º** (casi sentado).»",
+  "razon": "Segun el propio artículo vinculado, la Fowler alta abarca el rango 60º-90º, de modo que las opciones A (60º), B (70º) y C (80º) caen TODAS dentro de la definición y la clave D ('ninguna de las anteriores') es insostenible con nuestra propia teoría. La pregunta procede de bancos que dan por buena la equivalencia rígida Fowler alta = 90º, criterio que ni el artículo ni la bibliografía mayoritaria sostienen de forma unívoca (se citan 60-90º). No es reparable cambiando la letra: ninguna opción aislada es defendible.",
+  "confianza": "media",
+  "accion_recomendada": "Retirar/reformular la pregunta (p. ej. preguntar por la Fowler estándar de 45º o dar la opción '90º'), porque tal como está tiene tres opciones defendibles frente a la clave D."
+ },
+ {
+  "id": "d79c9b70-6336-4a7f-98f9-699ec8bd30ee",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "A",
+  "cita": "Ayuda oficial de LibreOffice en español (help.libreoffice.org/latest/es/text/shared/04/01010000.html): «Ctrl + I — El área seleccionada adopta el atributo «Itálica».» El art_content coincide: «El atajo para aplicar o quitar el formato itálica es **Ctrl + I**».",
+  "razon": "LibreOffice NO localiza los atajos de formato de carácter como sí hace Microsoft Word español (donde cursiva es Ctrl+K): la interfaz y la ayuda en español de LibreOffice mantienen Ctrl+B/Ctrl+I/Ctrl+U para negrita/itálica/subrayado. Ctrl+L es alineación izquierda y Ctrl+Mayús+F4 no aplica cursiva (no es un atajo de formato de carácter), por lo que la opción D ('A y C') es falsa. La sospecha de confusión Ctrl+I / Ctrl+K estaba justificada como control, pero aquí no aplica porque el enunciado pregunta por LibreOffice, no por Word.",
+  "confianza": "alta",
+  "accion_recomendada": "No tocar; a lo sumo añadir a la explicación la advertencia de que en Word español la cursiva sí es Ctrl+K, para evitar impugnaciones futuras."
+ },
+ {
+  "id": "b4585d9e-0a14-4b81-9b95-ed623cfee46e",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "C",
+  "cita": "art_content (Eliminación y sondajes): «**De retención:** se administra para que el líquido permanezca en el interior un tiempo prolongado y ejerza su efecto…» / «**Retención:** pedir al paciente que **retenga el líquido unos minutos** (según el tipo de enema) antes de evacuar».",
+  "razon": "El artículo vinculado NO da cifra para el enema de retención (solo dice 'tiempo prolongado' / 'unos minutos según el tipo'), así que la fuente en BD no prueba ni desmiente la clave. El criterio mayoritario de los temarios TCAE fija la retención del enema de retención en unos 30 minutos, que es la opción C; la opción A ('todo el tiempo posible') es una formulación vaga que en este tipo de ítem con opción numérica concreta no se admite como clave. No dispongo de cita literal que demuestre que la clave sea otra letra, por lo que, conforme a la regla dura, la clave se mantiene, pero con la salvedad de que hoy es indefendible con la fuente vinculada.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave C pero completar el artículo con la cifra explícita de retención (≈30 min) y su fuente; si no puede documentarse, reformular la pregunta eliminando la opción A."
+ },
+ {
+  "id": "bf5c3dfa-8b1c-4cad-b710-2b304073b4a8",
+  "veredicto": "enunciado_irresoluble",
+  "clave_propuesta": null,
+  "cita": "Enunciado en BD: «En el procedimiento civil, si el título ejecutivo obligara a entregar un inmuebl» (truncado a mitad de palabra, sin pregunta). Art. 704 LEC: «1. … el Letrado de la Administración de Justicia les dará un plazo de un mes para desalojarlo… 2. Si el inmueble … estuviera ocupado por terceras personas … tan pronto como conozca su existencia, les notificará el despacho de la ejecución … para que, en el plazo de diez días, presenten los títulos que justifiquen su situación.»",
+  "razon": "El enunciado está cortado ('inmuebl') y le falta todo el supuesto y la pregunta. Sin ese texto, el art. 704 ofrece al menos tres plazos distintos compatibles con las opciones: un mes (704.1, vivienda habitual del ejecutado), 'tan pronto como conozca su existencia' (704.2, momento de la notificación a terceros ocupantes) y diez días (704.2, presentación de títulos). La clave B solo es correcta si el enunciado preguntaba por CUÁNDO notifica el LAJ a los terceros ocupantes, dato que hoy no consta.",
+  "confianza": "alta",
+  "accion_recomendada": "Restaurar el enunciado completo del art. 704.2 (cuándo notifica el LAJ a los terceros ocupantes) o retirarla; tal como está no se puede responder."
+ },
+ {
+  "id": "97e62280-9f35-4ee5-a0cc-9ccadfef54e4",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "A",
+  "cita": "art_content (Movilización y posiciones, art. 5 'Técnicas de deambulación y traslado'): el artículo cubre bastón, muletas, andador, transferencias cama-sillón, grúa, tabla de deslizamiento, mecánica corporal y prevención de caídas, pero NO contiene ninguna mención a 'rampa', 'pendiente', 'bordillo' ni 'escaleras' (búsqueda exhaustiva del término: 0 coincidencias).",
+  "razon": "La fuente vinculada no cubre el manejo de la silla de ruedas en rampas, de modo que la pregunta no es defendible con nuestro artículo. En cuanto al fondo, el criterio estándar en manuales de movilización es que las pendientes pronunciadas se bajan marcha atrás, con el profesional situado detrás de la silla (en los empuñadores) descendiendo de espaldas y frenando el peso, para evitar que el paciente bascule hacia delante: eso es exactamente la opción A. Las opciones B, C y D describen maniobras inseguras. No hay base para cambiar la clave.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave A pero ampliar el artículo 5 con el apartado de manejo de silla de ruedas (rampas, bordillos, escaleras) con fuente citable, o hacer relink al artículo que lo cubra."
+ },
+ {
+  "id": "eb6b593a-7aef-404e-9f68-4fe84768c217",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "B",
+  "cita": "Preámbulo de la Ley 4/2015: «El presente Estatuto de la Víctima del Delito tiene la vocación de ser el catálogo general de los derechos, procesales y extraprocesales, de todas las víctimas de delitos, no obstante las remisiones a normativa especial en materia de víctimas con especiales necesidades o con especial vulnerabilidad.»",
+  "razon": "La opción B reproduce fielmente el inciso 'no obstante las remisiones a normativa especial en materia de víctimas con especiales necesidades o con especial vulnerabilidad'. La A es falsa porque el Estatuto es catálogo de derechos de las víctimas, no de los 'perpetradores' (además con errata: 'perpretadores'). La C es una paráfrasis desfigurada del inciso del interés superior del menor. Defecto real detectado: la pregunta solo tiene TRES opciones — `option_d` es NULL —, lo que degrada el ítem aunque no impide responderlo.",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave B, pero reparar el ítem: añadir la cuarta opción ausente y corregir la errata 'perpretadores' de la opción A."
+ },
+ {
+  "id": "86db8b12-1569-444f-84cf-8c68c067a828",
+  "veredicto": "clave_correcta",
+  "clave_propuesta": "B",
+  "cita": "Art. 429.3 LEC (texto en BD, coincidente con el consolidado tras la reforma del RDL 6/2023, cuyo apartado 2 ya recoge la remisión al art. 19.5 y la negociación): «3. A solicitud de parte, cuando toda la prueba o gran parte de ella hubiera de realizarse fuera del lugar en que tenga su sede el Tribunal que conozca del pleito, el Tribunal podrá acordar que el juicio se señale por el Letrado de la Administración de Justicia para su celebración dentro del plazo de dos meses.»",
+  "razon": "El enunciado NO está truncado (la sospecha 'enunciado roto' es un falso positivo, probablemente por su longitud): plantea el supuesto completo del art. 429.3 y la clave B (2 meses) coincide literalmente con la norma vigente. El plazo de un mes de la opción D corresponde al 429.2 (regla general de señalamiento del juicio), que es precisamente la excepción que este apartado desplaza.",
+  "confianza": "alta",
+  "accion_recomendada": "No tocar; cerrar la sospecha como falso positivo del detector de truncamiento."
+ },
+ {
+  "id": "283e2df4-f9a8-444c-bdfa-2de2f5d6ab21",
+  "veredicto": "clave_correcta",
+  "cita": "Orden INT/859/2023, art. 9.2.c): «La Unidad Central de Criminalística. Le corresponde las funciones propias de la técnica policial en el estudio y realización de los informes periciales, de interés policial y judicial, en materia de falsificación documental, grafoscopia, balística identificativa y operativa, trazas instrumentales y acústica forense.»",
+  "razon": "El artículo vinculado atribuye expresa y únicamente la acústica forense a la Unidad Central de Criminalística (opción A). La UCI (art. 9.2.b) cubre lofoscopia, identificación facial, necroidentificación, antropología y entomología forense; la UCAC (art. 9.2.d) biología-ADN, química y toxicología: ninguna menciona acústica. El enunciado no está truncado (es una frase completa con complemento en las opciones); la sospecha de 'enunciado roto' viene solo de que la pregunta tiene 3 opciones (option_d = null), lo cual es legítimo aunque atípico en el banco.",
+  "confianza": "alta",
+  "accion_recomendada": "No tocar la clave; a lo sumo verificar que el renderizado con 3 opciones (sin D) se muestra bien al opositor."
+ },
+ {
+  "id": "ee3efe27-77d3-43f1-97c2-edab84dc433c",
+  "veredicto": "enunciado_irresoluble",
+  "clave_propuesta": "C",
+  "cita": "LEC art. 569.1, párrafo 2.º: «si se encontrase pendiente causa criminal en que se investiguen hechos de apariencia delictiva que, de ser ciertos, determinarían la falsedad o nulidad del título o la invalidez o ilicitud del despacho de la ejecución, el Tribunal que la autorizó, oídas las partes y el Ministerio Fiscal, acordará la suspensión de la ejecución.»",
+  "razon": "El enunciado está TRUNCADO a mitad de palabra: «...que, de ser ciertos, dete». Falta el resto del supuesto de hecho («determinarían la falsedad o nulidad del título o la invalidez o ilicitud del despacho de la ejecución») y, sobre todo, el sujeto y la interrogación («el Tribunal que la autorizó:»), sin lo cual la pregunta carece de predicado. La clave C es materialmente correcta y coincide literalmente con el art. 569.1 LEC vigente, así que el defecto es exclusivamente de texto del enunciado, no de corrección.",
+  "confianza": "alta",
+  "accion_recomendada": "Restaurar el enunciado completo a partir del art. 569.1 LEC (la clave C se mantiene) y ocultar la pregunta hasta que el texto esté íntegro."
+ },
+ {
+  "id": "eecb2a38-95ef-41f5-88ff-36e9499b79f9",
+  "veredicto": "clave_correcta",
+  "cita": "art_content vinculado, §3.2: «Férulas. Dispositivo de inmovilización parcial (no circunferencial completa); sujeta el segmento permitiendo cierto margen ante la inflamación.» (el artículo NO nombra ninguna férula por su epónimo)",
+  "razon": "La férula de Kramer es, por definición en la literatura de TCAE/primeros auxilios, la férula de alambre maleable en escalera que se moldea (adapta) al miembro fracturado, que es exactamente lo que describe el enunciado; las distractoras no encajan (Braun es un soporte almohadillado en plano inclinado para elevación del miembro inferior, Thomas es una férula de tracción con anillo isquiático, y «Bayern» no es una férula reconocida). Advertencia de calidad: el art_content vinculado no menciona ni Kramer ni ninguna otra férula epónima, por lo que la pregunta no está sostenida por el material de teoría que se le ha asociado.",
+  "confianza": "alta",
+  "accion_recomendada": "Mantener la clave B y ampliar el artículo de teoría con la tabla de férulas epónimas (Kramer, Braun, Thomas) para que la pregunta quede respaldada."
+ },
+ {
+  "id": "957b8bfe-c97c-4847-ba66-cc8ecb3cd130",
+  "veredicto": "clave_correcta",
+  "cita": "art_content vinculado, §«Camas y dispositivos especiales»: enumera únicamente «Cama articulada», «Cama ortopédica o de Balkan», «Cama eléctrica» y «Cama de levitación (fluidificada / de aire)» — no recoge ni la cama de Judet ni la de Stryker.",
+  "razon": "La cama (marco o bastidor) de Stryker es el dispositivo con dos planos entre los que se «emparedaba» al paciente para voltearlo 180° en bloque (supino↔prono) sin movilizar la columna, indicado en lesionados medulares; es la única de las opciones definida por el giro de 180°. La cama articulada solo eleva segmentos y la de Judet es una cama ortopédica de tracción. No obstante, el artículo vinculado no describe ninguna de las dos, por lo que la pregunta no está soportada por su teoría.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave D y completar el artículo de teoría con las camas de Stryker y de Judet, o relinkar a un artículo que sí las describa."
+ },
+ {
+  "id": "fdaa4495-dd6b-4a9f-8983-31f3b28752cd",
+  "veredicto": "clave_correcta",
+  "cita": "art_content vinculado, §1.3: «Duchas y chorros. Aplicación de agua proyectada sobre el cuerpo con fines mecánicos y térmicos. A presión / chorros: el impacto del agua añade un efecto de masaje.» (el artículo NO enumera indicaciones clínicas concretas)",
+  "razon": "El artículo describe el efecto (térmico + masaje mecánico) pero no lista indicaciones, así que no permite descartar ninguna de las tres opciones. En la literatura de hidroterapia el chorro/ducha a presión se emplea tanto en procesos reumáticos crónicos como en recuperación funcional (efecto analgésico-relajante y de masaje) y como técnica sedante/estimulante frente a la tensión emocional, por lo que las tres son indicaciones admitidas y «Todas son correctas» es coherente. No hay cita que permita afirmar que la clave sea incorrecta.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave D pero añadir al artículo un apartado de indicaciones de duchas y chorros para que la pregunta quede probada por la fuente."
+ },
+ {
+  "id": "15afd376-2ad1-49ea-a7aa-e529156b5a13",
+  "veredicto": "clave_incorrecta",
+  "clave_propuesta": "D",
+  "cita": "La propia explicación almacenada en la pregunta dice: «Cheyne-Stokes: sucesión de ciclos respiratorios intercalados por cortos períodos de apnea. Los ciclos van aumentando gradualmente tanto la frecuencia como la profundidad y vuelven a descender también progresivamente hasta finalizar el ciclo. Alternan apnea con hiperventilación.»",
+  "razon": "La clave marcada es C («Ninguna»), pero la explicación adjunta a la propia pregunta describe la respiración de Cheyne-Stokes exactamente como el enunciado (periodo de apnea seguido de una fase de respiración ruidosa/estertórea que crece y decrece), de modo que la clave contradice a su propia justificación. Biot se caracteriza por apneas BRUSCAS e irregulares que interrumpen la taquipnea, no por iniciarse con apnea, y Kussmaul cursa «sin intervalos ni pausas». El art_content vinculado (Aparato respiratorio) solo define apnea/taquipnea/bradipnea y no describe los patrones epónimos, por lo que no respalda la pregunta; de ahí la confianza media pese a lo claro del caso.",
+  "confianza": "media",
+  "accion_recomendada": "Enviar a revisión humana para cambiar la clave a D (Cheyne-Stokes) y reescribir la explicación; nunca hacer flip automático."
+ },
+ {
+  "id": "386e99dc-eefe-4ab5-aaa2-ac4aa6351191",
+  "veredicto": "clave_correcta",
+  "cita": "Ley 41/2002, art. 3 (definiciones): «Documentación clínica: el soporte de cualquier tipo o clase que contiene un conjunto de datos e informaciones de carácter asistencial.» El art_content vinculado no aborda las funciones de la documentación clínica (trata de sistemas de información, HCE, CMBD, CIE-10, tarjeta sanitaria e interoperabilidad).",
+  "razon": "Las opciones A, B y D son especies del mismo género (historia clínica de un nivel asistencial concreto) y las tres cumplirían la función descrita, por lo que ninguna puede ser la respuesta única; solo el concepto genérico «documentación clínica» engloba la función de comunicación entre los profesionales que atienden al paciente en cualquier nivel. La construcción de la pregunta obliga por tanto a la opción C. No hay cita que permita sostener que la clave sea incorrecta.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave C y relinkar a un artículo que defina documentación e historia clínica y sus funciones (Ley 41/2002, arts. 3, 15 y 16), ya que el artículo actual no cubre la materia."
+ },
+ {
+  "id": "97b90926-8808-490d-b15c-042f3d0091b2",
+  "veredicto": "clave_correcta",
+  "cita": "art_content §3.1: «4. Acercar la carga al cuerpo: cuanto más cerca esté el peso del centro de gravedad del trabajador, menor es el esfuerzo y la sobrecarga sobre la columna. Sujetar al paciente \"pegado\" al cuerpo.»",
+  "razon": "El enunciado ('señale la verdadera') es genérico pero autosuficiente: no está truncado. B es falsa (si el paciente colabora se le pide que FLEXIONE las rodillas y cruce los brazos, no que mantenga las piernas rectas: la piernas rectas aumentan el rozamiento y el brazo de palanca). C es falsa y contradice frontalmente el principio 4 del artículo: se busca la MÁXIMA superficie de contacto/acercar la carga, no la mínima. D cae con B y C. Queda A, que es el criterio estándar de movilización (el profesional se sitúa en el lado hacia el que se va a girar al paciente, para sostenerlo y evitar su caída de la cama). El art_content no describe expresamente la lateralización, pero sí permite descartar B, C y D.",
+  "confianza": "media",
+  "accion_recomendada": "No tocar la clave; opcionalmente redactar explicación (hoy vacía) citando los principios de mecánica corporal del artículo."
+ },
+ {
+  "id": "de6dd28e-a7b0-491c-98b7-813e0d094384",
+  "veredicto": "relink",
+  "clave_propuesta": "C",
+  "cita": "art_content vinculado (art. 2 «Procedimientos de preparación de las camas»): trata tipos de cama (cerrada, abierta, ocupada, quirúrgica), lencería, normas de higiene y camas especiales; NO contiene ninguna medida (anchura, longitud ni altura) de la cama hospitalaria.",
+  "razon": "La clave C (90-100 cm) es la coherente con el estándar de la unidad del paciente que manejan los temarios TCAE (cama de ~90-105 cm de ancho, 190-200 de largo, ~70 de alto): A y B corresponden a camas de matrimonio/bariátricas y D (75-85 cm) queda por debajo del mínimo hospitalario. Pero el artículo vinculado no soporta la respuesta: el dato de dimensiones pertenece al bloque «La unidad del paciente y su mobiliario clínico», no a «Procedimientos de preparación de las camas». Defecto de vinculación, no de corrección.",
+  "confianza": "media",
+  "accion_recomendada": "Mantener la clave C y revincular la pregunta al artículo de «Unidad del paciente / mobiliario clínico» (o añadir a ese artículo las dimensiones de la cama hospitalaria con fuente)."
+ },
+ {
+  "id": "1e373e7c-194c-4623-859c-0b7fabcc90be",
+  "veredicto": "clave_incorrecta",
+  "clave_propuesta": "D",
+  "cita": "art_content §«Respuesta refleja: NO prolongar en exceso»: «El efecto inicial del frío es la vasoconstricción, pero si la aplicación se prolonga demasiado aparece una vasodilatación refleja (hiperemia reactiva o \"efecto rebote\")... Esta respuesta cíclica vasoconstricción → vasodilatación se describe a partir de los 15-20 minutos de aplicación».",
+  "razon": "El enunciado pregunta qué NO provoca el frío MANTENIDO Y CONSTANTE. Según el propio artículo, el frío sostenido provoca las tres cosas: vasoconstricción (efecto inicial), vasodilatación refleja y hiperemia reactiva (respuesta de Lewis a partir de 15-20 min). Por tanto A no puede ser la clave —el artículo afirma literalmente que la vasodilatación SÍ se produce— y tampoco B ni C. La única opción sostenible es D («Ninguna es correcta»), es decir, ninguna de las tres es un efecto ausente. La explicación almacenada tampoco defiende A: enumera efectos del frío sin mencionar que la vasodilatación no ocurra.",
+  "confianza": "media",
+  "accion_recomendada": "Cambiar la clave a D y reescribir la explicación con la respuesta oscilatoria de Lewis; si se prefiere, rehacer el enunciado en positivo ('¿qué efecto NO es inicial?') para evitar la ambigüedad del doble negativo."
+ },
+ {
+  "id": "fef5dbd2-a8f4-48f0-9d43-4eee9e96a3f0",
+  "veredicto": "retirar",
+  "cita": "Explicación almacenada de la propia pregunta: «Vómitos reflejos: estimulación del centro del vómito por vía nerviosa y de forma indirecta. Puede ser por causas digestivas o extradigestivas» y, como categoría DISTINTA, «Vómitos gástricos: ocurren por patologías gástricas inflamatorias (gastritis) o por trastornos del vaciamiento gástrico». Además: «Con el fin de homogenizar el banco de preguntas se ha eliminado una opción de respuesta de esta pregunta».",
+  "razon": "La clave marcada (A, «de origen gástrico») está contradicha por la explicación de la propia pregunta, que clasifica reflejos y gástricos como categorías separadas dentro de la misma taxonomía por patogenia; tampoco es B (central) ni C (histéricos). El texto admite expresamente que se eliminó una opción, que es justamente donde estaba la respuesta buena (vómitos de origen periférico/por causas digestivas y extradigestivas). Con las cuatro opciones actuales no hay respuesta defendible salvo, forzando, D, y no puedo probarlo con cita. El art_content vinculado (aparato digestivo y urinario) sólo clasifica vómitos por su ASPECTO (alimentario, bilioso, fecaloideo, hematemesis, en escopetazo), no por su patogenia, así que ni siquiera sirve de fuente.",
+  "confianza": "media",
+  "accion_recomendada": "Retirar/enviar a needs_human: restaurar la opción eliminada (vómito periférico/reflejo) y rehacer la pregunta, o darla de baja; además el artículo vinculado no cubre la clasificación patogénica del vómito."
+ },
+ {
+  "id": "f81a7b99-1f3a-4a03-a263-143a144fa37d",
+  "veredicto": "doble_respuesta",
+  "clave_propuesta": "A y B",
+  "cita": "art_content §«Sobres» → «Sobres de tipo bolsa: - Tipografía para los datos de contacto: Noto Sans HK Regular 7 pt. - El formato principal será 250 x 300 mm, aunque los sobres podrán ser de diversos tamaños manteniendo la proporción.»",
+  "razon": "El artículo afirma literalmente las DOS proposiciones: la tipografía Noto Sans HK Regular 7 pt (opción A, clave actual) y el formato principal 250x300 mm con posibilidad de otros tamaños manteniendo la proporción (opción B, redactada casi verbatim). Con un enunciado del tipo 'señale lo correcto' hay dos opciones verdaderas. C y D no están respaldadas por el artículo (la ubicación de datos de contacto se remite genéricamente a las especificaciones del Manual y el escudo/logotipo en esquina inferior derecha se predica de la papelería de Servicios Centrales, no de los sobres bolsa).",
+  "confianza": "alta",
+  "accion_recomendada": "Corregir la opción B (falsear un dato del formato) o reformular el enunciado a 'señale la ÚNICA respuesta correcta sobre la tipografía', contrastando antes con el Decreto 218/2020 y su Manual de Identidad Corporativa."
+ },
+ {
+  "id": "0323d2fd-4133-4fb6-9115-35e4398f8927",
+  "veredicto": "doble_respuesta",
+  "clave_propuesta": "C y D",
+  "cita": "Art. 363 TRLGSS (RDL 8/2015), apartado 2: «Los límites de acumulación de recursos, en el supuesto de unidad económica, serán equivalentes a la cuantía, en cómputo anual, de la pensión, más el resultado de multiplicar el 70 por ciento de dicha cifra por el número de convivientes, menos uno.» Apartado 3: «Cuando la convivencia, dentro de una misma unidad económica, se produzca entre el solicitante y sus descendientes o ascendientes en primer grado, los límites de acumulación de recursos serán equivalentes a dos veces y media la cuantía que resulte de aplicar lo dispuesto en el apartado 2.»",
+  "razon": "La opción C es una reproducción LITERAL, palabra por palabra, del apartado 2 del art. 363: es una afirmación verdadera. La opción D reproduce correctamente el apartado 3 (2,5 veces sobre la base del apartado 2, con el 70%): también es verdadera. El enunciado pregunta genéricamente por 'la afirmación correcta respecto al límite de acumulación de recursos', sin acotar al supuesto de convivencia con descendientes/ascendientes en primer grado, por lo que no hay criterio para descartar C. La explicación almacenada reconoce de hecho que C 'reproduce la regla general del apartado 2' y sólo la descarta apelando a un contexto que el enunciado no expresa. Con 36 respuestas servidas, es una pregunta viva y penalizadora. (El texto del artículo en BD coincide con la redacción consolidada vigente: 70% en el apartado 2 y 'dos veces y media' en el 3; no hay problema de vigencia.)",
+  "confianza": "alta",
+  "accion_recomendada": "Falsear la opción C (p. ej. sustituir 70% por 60%) o acotar el enunciado al supuesto de convivencia con descendientes o ascendientes en primer grado, manteniendo D como clave."
+ },
+ {
+  "id": "3541491c-ed38-46ee-bc0c-efd66a7e249c",
+  "veredicto": "enunciado_irresoluble",
+  "cita": "Art. 214.2 TRLGSS: «este porcentaje del importe de la pensión de jubilación se calculará en función del número de años que se haya demorado el acceso a dicha pensión de acuerdo con la siguiente escala: a) Si se demora un año... 45 por ciento; b) Si se demora dos años... 55 por ciento; c)... 65 por ciento; d)... 80 por ciento». Explicación almacenada: «Juan Luis cumplió la edad ordinaria en 2025 pero se jubila en octubre de 2027 (dos años de demora)».",
+  "razon": "La pregunta está desgajada de su supuesto práctico: en el enunciado servido no aparece en ningún sitio la fecha en que el sujeto cumple la edad ordinaria de jubilación (ni siquiera su nombre, 'Juan Luis', que sólo sobrevive en la explicación). Sin ese dato es imposible calcular los años de demora, que es exactamente lo que la escala del art. 214.2 exige para elegir entre 45%, 55%, 65% u 80%: las cuatro opciones son escalones legítimos de la misma escala. La clave B (55%) sólo es correcta si se asume el dato ausente (edad ordinaria cumplida en 2025 → dos años de demora). Truncamiento de enunciado, no error de clave. Servida 11 veces.",
+  "confianza": "alta",
+  "accion_recomendada": "Restaurar en el enunciado la fecha de cumplimiento de la edad ordinaria de jubilación (y el resto del supuesto) manteniendo la clave B; si no se puede recuperar el supuesto original, retirar la pregunta."
+ }
+]
