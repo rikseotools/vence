@@ -761,7 +761,7 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
 
 
-### [T-048] 🟡 [CAPAS 1 y 2 HECHAS 20/07 — queda capa 3] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+### [T-048] ✅ [CAPAS 1, 2 y 3 HECHAS 20/07 — queda cablear los importadores] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
 - **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
   - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
     **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
@@ -795,7 +795,20 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   - Verificado contra el dato real en RDS (LO 4/2000 art.58): el inciso se localiza y se tacha correctamente,
     3 notas de anulación + 5 de modificación.
   - **Tests:** `__tests__/teoria/annotateVigencia.test.ts` (9).
-- **Pendiente:** **capa 3** (guardarraíl que impida generar
+- **✅ Capa 3 (guardarraíl) HECHA.** Migración `20260720_annulled_fragment_promotion_gate.sql`, aplicada a RDS:
+  gate dentro de `transition_question_state` (la ÚNICA vía legítima a un estado visible, igual que el gate
+  anti-competidor del 10/07) que **rechaza promover a `approved`/`tech_approved` una pregunta cuya CLAVE
+  reproduce un inciso anulado por el TC**. Detector reutilizable `answer_falls_in_annulled_fragment(text, jsonb)`.
+  - **Alcance deliberadamente estrecho** (un gate con falsos positivos se acaba desactivando): solo mira la
+    **opción correcta** (un distractor que cite el inciso anulado es legítimo y hasta pedagógico), exige
+    **≥60 caracteres** de solape literal, y **no bloquea nada si `vigencia_notes` es NULL** (no capturado ≠ sin notas).
+  - Normalización simétrica de espacios en ambos lados: si no, el reflow del importador daría falsos negativos.
+  - **✅ Verificado contra RDS con canario**: bloquea la clave que reproduce el inciso anulado del art. 58 LO 4/2000
+    y **deja pasar** una clave legítima del mismo artículo. Todo en transacciones revertidas, cero rastro en BD.
+    Reejecutable: `node scripts/canary-gate-inciso-anulado.cjs`.
+  - **Gotcha de método:** el primer canario dio un falso "bloqueó una buena" porque metí los dos casos en la MISMA
+    transacción — un `RAISE` la aborta y los comandos siguientes se ignoran. Cada caso necesita su transacción.
+- **Pendiente (lo único que queda):** que **los importadores llamen a `parseBoeBlock()`** (guardarraíl que impida generar
   una pregunta cuya clave caiga en un fragmento marcado anulado). También queda **llamar a `parseBoeBlock()` desde
   los importadores** — son scripts ad-hoc por ley y cada uno copia su propio `replace`.
 - **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
