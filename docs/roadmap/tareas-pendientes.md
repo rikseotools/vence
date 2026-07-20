@@ -768,7 +768,10 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
 
 
-### [T-048] ✅ [CAPAS 1, 2 y 3 HECHAS 20/07 — queda cablear los importadores] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+### [T-048] 🟡 [ABIERTA — capas 1, 2 y 3 hechas y desplegadas 20/07; QUEDA cablear los importadores] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+> ⚠️ El ✅ anterior engañaba de un vistazo: la tarea **sigue abierta** en `backlog_tasks`. Lo hecho (captura al
+> importar, render del inciso tachado en teoría y detector) ya está en producción; lo que falta es **cablear los
+> importadores existentes** para que todos pasen por la captura de notas de vigencia.
 - **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
   - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
     **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
@@ -821,7 +824,33 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
   esta capa 1 corta el problema en origen, así que un cron de 714 peticiones al BOE por noche no se justifica.
 
-### [T-049] 🟠 [ABIERTA 20/07 — idea de Manuel, verificada en datos] Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
+### [T-049] ✅ [HECHA Y DESPLEGADA 20/07] Banner de inscripción abierta: mínimo de 10 plazas
+> **Cerrada 20/07, viva en producción** (deploy `7f302e2c`, task def `vence-frontend:487`).
+> **Decisión de producto (Manuel): NUNCA se muestra en un banner una convocatoria de menos de 10 plazas.**
+> - Regla en la fuente de verdad única `lib/oposiciones/inscripcion.ts` (`BANNER_MIN_PLAZAS=10`,
+>   `hasSignificantPlazas()`, `isBannerWorthy()`). Las **dos** superficies pasan por ahí y no pueden divergir:
+>   home (filtra en el ORIGEN de los datos, lo que cubre también el fallback por familia) y el banner
+>   autenticado `/api/v2/banner/open-inscriptions` (cláusula SQL; estaba limpio por correlación, no por regla).
+> - **Efecto:** de 51 a 13 en la home. Las 7 publicadas —el producto real— sobreviven todas. Verificado en prod:
+>   ya no aparecen Enólogo/Logopedas/Albañil-Segovia; sí Madrid (673/107), Granada (46), Almería (21).
+> - **Regresión detectada y corregida en la misma tanda:** el mínimo dejó a **7 de 10 familias sin ninguna**
+>   convocatoria que llegue a 10 plazas, y el fallback antiguo enseñaba a un opositor de sanidad un banner con
+>   11 de 13 de administración general. Ahora, si su familia no tiene nada que cumpla, **el banner se oculta**.
+>   El teaser general solo se mantiene para quien no tiene señal de familia (anónimo / sin oposición / 'otros').
+> - **Observabilidad (el banner era CIEGO):** evento `open_inscriptions_banner_view` con
+>   `{familia, zona, pool, de_su_familia, mostradas, modo}`, `modo ∈ {familia, teaser_general,
+>   hidden_no_familia_match}`. Documentado en `observability.md` §6 con query lista.
+>   ⏭️ **Seguimiento:** a los pocos días, mirar `hidden_no_familia_match` por familia — si sale alto, el umbral
+>   de 10 deja fuera a demasiada gente de familias pequeñas y habría que reconsiderarlo.
+> - Guardarraíl `__tests__/guardrails/banner-min-plazas.guardrail.test.ts` (falla si se quita el filtro, el
+>   ocultado o la telemetría) + 12 tests del predicado. Commits `3d138426` y `ba510c28`.
+> - **Fuera de alcance a propósito:** la página SEO `/oposiciones/inscripcion-abierta` ("ver todas") sigue
+>   listando el catálogo completo — ahí "todas" significa todas y es donde vive la cola larga de SEO.
+> - Cabo abierto aparte: **T-051** (5 convocatorias con `plazas_libres` NULL, hoy fuera por no acreditar el mínimo).
+
+<details><summary>Diagnóstico original</summary>
+
+### [T-049-orig] 🟠 Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
 - **Qué:** `app/OpenInscriptionsBanner.tsx` (home) personaliza **solo por familia** (Administración vs Sanidad…),
   ordena por zona + cierre más próximo y corta a 10. **No filtra por número de plazas.**
 - **Medido en BD (20/07), 51 convocatorias con inscripción viva:**
@@ -846,3 +875,5 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
      blindaje (si filtra a 0 → relajar criterio antes que dejarlo vacío).
 - **Riesgo de no hacerlo:** el banner es la puerta de entrada de la home y hoy da una imagen de catálogo
   irrelevante ("Enólogo, 1 plaza") justo al usuario que aún no nos conoce.
+
+</details>
