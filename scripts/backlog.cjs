@@ -47,7 +47,10 @@ const cmd = process.argv[2];
 const sid = arg('--sid') || readSessionId() || process.env.CLAUDE_CODE_SESSION_ID || null;
 const s = loadPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 
-const EMOJI = { critica: '🔴', alta: '🟠', media: '🟡', baja: '🟢' };
+// 'ninguna' = APARCADA por tamaño/coste (decisión Manuel 20/07 para T-040, ~21.000
+// preguntas). No es "muy baja": es que NO entra en el reparto — `next` no la sugiere
+// nunca y en `list` sale la última. Se coge solo a propósito, cuando haya presupuesto.
+const EMOJI = { critica: '🔴', alta: '🟠', media: '🟡', baja: '🟢', ninguna: '⬜' };
 const age = (t) => {
   if (!t) return '';
   const m = Math.round((Date.now() - new Date(t).getTime()) / 60000);
@@ -77,7 +80,7 @@ function fichaBody(id) {
 function parseMd() {
   const md = fs.readFileSync(MD, 'utf8');
   const out = []; let inOpen = false;
-  const E2P = { '🔴': 'critica', '🟠': 'alta', '🟡': 'media', '🟢': 'baja' };
+  const E2P = { '🔴': 'critica', '🟠': 'alta', '🟡': 'media', '🟢': 'baja', '⬜': 'ninguna' };
   for (const line of md.split('\n')) {
     const h2 = /^##\s+(.*)$/.exec(line);
     if (h2) { inOpen = /abiertas/i.test(h2[1]); continue; }
@@ -101,7 +104,7 @@ function parseMd() {
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
-         ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, id`;
+         ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END, id`;
       console.log(`\nBACKLOG — ${rows.length} tarea(s)${all ? ' (todas)' : ' abiertas'}:\n`);
       for (const r of rows) {
         const vivo = r.lease_until && new Date(r.lease_until) > new Date();
@@ -119,9 +122,10 @@ function parseMd() {
         SELECT id, title, priority, status, claimed_by, lease_until, blocked_by
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const openIds = new Set(rows.map((r) => r.id));
-      const rank = { critica: 0, alta: 1, media: 2, baja: 3 };
+      const rank = { critica: 0, alta: 1, media: 2, baja: 3, ninguna: 9 };
       const libre = rows
         .filter((r) => !r.claimed_by || r.claimed_by === sid || (r.lease_until && new Date(r.lease_until) < new Date()))
+        .filter((r) => r.priority !== 'ninguna') // aparcadas: no se sugieren nunca
         .filter((r) => !(r.blocked_by || []).some((d) => openIds.has(d)))
         .sort((a, b) => (rank[a.priority] - rank[b.priority]) || a.id.localeCompare(b.id));
       if (!libre.length) { console.log('No hay tareas libres (todas cogidas o bloqueadas).'); }
