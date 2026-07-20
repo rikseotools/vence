@@ -31,9 +31,52 @@
 > Sin el id `T-xxx` nadie puede coger la tarea y el guardarraíl de CI se pone rojo. Al cerrar una,
 > muévela a "## Hechas" con la fecha, o bórrala si ya no aporta.
 
-## 🔢 Orden de ataque (prioridad, snapshot 20/07)
+## 🔢 Orden de ataque (reordenado 20/07 — **penaliza el coste en tokens**)
 
-> Índice priorizado de las 29 abiertas (solo nº + título; el detalle está en cada entrada de "## Abiertas").
+> **Criterio (Manuel, 20/07):** lo que **quema muchos tokens va a prioridad baja**. Arriba, lo barato
+> y con valor claro. Esto NO es orden de impacto: T-040 sigue siendo la de más impacto de todo el
+> backlog (~21.000 preguntas), pero es también la más cara, así que baja.
+>
+> **La fuente de verdad del estado y la prioridad es la tabla `backlog_tasks` (RDS)**, no este índice.
+> `node scripts/backlog.cjs next` ya aplica este orden.
+
+**🟠 Alta — barato y con valor claro (empezar por aquí):**
+1. **T-033** Pagar a Alfonso Martínez su saldo de embajador (9 €) — minutos, y es dinero que se le debe
+2. **T-035** Capturar fecha de examen de las 2 oposiciones de la Univ. de León — 2 consultas a fuente oficial
+3. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
+4. **T-029** Exponer en la UI el filtro "excluir preguntas recientes" — la feature ya existe, es solo UI
+5. **T-039** Botón premium temario completo + **PDF server-side** — código acotado; cubre perk premium Y el fix in-app (absorbe el paso 2 de T-001)
+
+**🟡 Media — coste moderado:**
+6. **T-002** Render multi-convocatoria (landing con las 2 convocatorias separadas)
+7. **T-008** Aux. Admin. C. de Madrid: landing multi-convocatoria (va detrás de T-002)
+8. **T-034** Migrar `/leyes/[law]` a on-demand (flakiness del build)
+9. **T-011** Email RGPD de borrado *exactly-once*
+10. **T-031** Provisionar RDS read replica (barato en tokens, decisión de coste €)
+11. **T-036** Cubos sellados en verde — quedan 3 cabos acotados
+12. **T-012** Poblar `law_sections` en todas las leyes (scriptable, pero muchas leyes)
+13. **T-004** Osakidetza bilingüe — barato pero bajo valor (0 preguntas cuelgan)
+14. **T-028** Valorar oposiciones pedidas por usuarios
+15. **T-014** 16 preguntas de imagen esperando su oposición (aparcada)
+16. **T-007** Verificación scope↔epígrafe — *(en curso por otra sesión, no se toca)*
+
+**🟢 Baja — caras en tokens (dejar para cuando haya presupuesto):**
+17. **T-015** Editorial TCAE "Unidad del paciente"
+18. **T-030** Bloque II de Agrupación Profesional Servicios Públicos CARM
+19. **T-018** Verificar + completar Aux. Admin. Ayto. de Madrid
+20. **T-023** Huecos de contenido Aux. Admin. Aragón
+21. **T-024** Huecos de contenido Aux. Admin. Extremadura
+22. **T-020** Supuestos prácticos Administrativo C. de Madrid
+23. **T-026** Completitud de leyes — sistema hecho; es **mantenimiento**, drena poco a poco
+24. **T-003** Drenar 465 títulos huérfanos en 96 oposiciones
+25. **T-038** Relink masivo de `needs_human` + explicaciones flojas
+26. **T-016** Construir TSID · 27. **T-021** Construir Ujieres Cortes · 28. **T-022** Construir Gestión A2 Andalucía
+29. **T-040** 🔴 Artículos-cajón (~21.000 preguntas, 110 mega-chunks) — **la de más impacto y la más cara**
+
+> **Nota de calibración:** el drenaje CE-mislink del 19-20/07 costó ~2M tokens para 840 preguntas.
+> Sirve de vara de medir: T-040 y T-038 son de ese orden o mayores; construir una oposición, también.
+
+## Abiertas").
 > Snapshot manual: al cerrar/abrir tareas puede quedar desfasado — la fuente de verdad de estado es cada `### [PRIORIDAD]`.
 
 **Calidad / correctness (primero):**
