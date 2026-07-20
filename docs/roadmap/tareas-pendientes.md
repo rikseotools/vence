@@ -37,6 +37,9 @@
 > Snapshot manual: al cerrar/abrir tareas puede quedar desfasado — la fuente de verdad de estado es cada `### [PRIORIDAD]`.
 
 **Calidad / correctness (primero):**
+
+> ⚠️ Índice desfasado respecto a `backlog_tasks` (fuente de verdad). Cerradas el 20/07: **T-001** (paso 1 desplegado; paso 2 → T-039) y **T-006**. Varias "abiertas" son colas cortas de tareas casi hechas: T-036 (3 cabos), T-009 (detector hecho, ~5 candidatos), T-026 (sistema vivo = mantenimiento), T-004 (solo Osakidetza bilingüe).
+
 0. 🔴 **Artículos-cajón** (ex-"ofimática infra-troceada") — **110 mega-chunks / ~21.000 preguntas**; el peor es **Correos** (T3 = 1.984 preguntas sobre un art. de 302k), no ofimática. Re-trocear antes que redactar huecos
 1. 🟠 Cubos sellados en verde — **3 cubos CERRADOS**; quedan 3 cabos: 52 needs_human (= import de contenido, NO relink), §8.1-ter al manual (bloqueado), 4 huérfanas de scope
 2. ✅ [HECHA 20/07] Importar normas que faltan + reactivar las 22 ocultadas del cubo 3 — 10 ya approved, 5 recuperadas (CyL), 1 retirada (ley derogada), 6 en needs_human por decisión
@@ -82,7 +85,8 @@
 
 ## Abiertas
 
-### [T-001] 🟠 [PASO 1 HECHO Y **DESPLEGADO** 20/07 — queda el paso 2] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+### [T-001] ✅ [CERRADA 20/07 — paso 1 desplegado y verificado; paso 2 fusionado en T-039] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
+> **Cierre 20/07:** re-verificado con el método de la propia ficha — `fbb280e8` **es ancestro del deploy vivo `10922182`** → el aviso in-app está en producción. El **paso 2** (generar el PDF server-side) NO se pierde: era la misma cosa que **T-039**, así que se fusiona allí en vez de quedar duplicado en dos tareas.
 > ⚠️ **Corregido 20/07:** esta ficha decía "SIN DEPLOY" y **era stale**. Verificado contra el deploy vivo: el commit de `lib/browser/inAppBrowser.ts` **es ancestro del frontend en producción** → el aviso in-app YA le llega al usuario. Lo que sigue pendiente es el **paso 2** (generar el PDF de verdad server-side), no un despliegue. Método para no repetir el error: `curl -s https://www.vence.es/api/health | grep deploy` + `git merge-base --is-ancestor <commit> <deploy_vivo>` (runbook `pusheo-revision-despliegue.md` §"verificar si un fix está desplegado").
 - **Qué:** el botón "Imprimir PDF" (`TopicContentView.tsx`, `handlePrint` → `window.print()`) **no hacía nada** dentro de los navegadores in-app de iOS (app de Google/GSA, Instagram, Facebook…), que bloquean `window.print()`. Fallaba en silencio, sin aviso. Por ahí entra mucho tráfico de Google/redes. Caso María (fb feb79fc5, `piyou22@gmail.com`): 100% de sus sesiones GSA in-app en iPhone.
 - **✅ PASO 1 construido (20/07, aviso in-app + centralización):**
@@ -133,7 +137,8 @@
 - **Scoping corregido:** GC T6 → 13 orgs + teoría general (917); PN T4 → UE + coop. policial (INTERPOL/Europol/Eurojust/Frontex/CEPOL) + tribunales (434, antes 917).
 - **Detalle:** `docs/roadmap/split-instituciones-internacionales-gc.md`.
 
-### [T-006] 🟢 [HECHO 19/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
+### [T-006] ✅ [CERRADA 20/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
+> **Cierre 20/07:** la ficha decía "HECHO" pero seguía `open` en `backlog_tasks` (única discrepancia markdown↔tabla del backlog). Resuelto: el **bloque importable está hecho** (12 preguntas recuperadas). Lo que quedaba **no era importable**: 43 defectos reales de clave/opción → pertenecen a **T-038**; y ~7 de contenido no normativo, que forzar a "artículo" sería inventar estructura.
 - **Contexto:** los cubos 1/3 dejaron 71 needs_human con motivo de esta sesión (`ai_provider IN claude_code_cubo1_reverify / mislink_v1 / vg_relink`). Al inspeccionarlos, el "importar normas para desbloquear todo de golpe" resultó **optimista**: desglose real →
   - **43** (`cubo1_reverify`, todos *sin sugerencia*) = **defectos reales de clave/opción**, no los arregla ningún import → decisión humana.
   - **~7** (`vg_relink`) = **contenido NO normativo** (Punto Violeta, "Círculo de Fortaleza" del Plan VioGén, Resolución ONU 54/134, fundación SAM/GRUME 1986, Pacto de Estado) → forzarlo a un "artículo" sería inventar estructura. Se quedan parkeados (o retiro), **no** se importan.
@@ -489,7 +494,8 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
   - `a47cdfd4` (Orden 01/02/1996, subvenciones): la explicación se contradecía ("B es correcta" con la clave en D). Los arts. 85 y 86 de la misma Orden reproducen la misma regla del RC que el art. 84, lo que **respalda que D ("todas las anteriores") sea correcta**; el problema es que el artículo vinculado solo cubre 1 de las 3 modalidades. Recomendación: añadir 85/86 como soporte y reescribir explicación.
 - **Sigue pendiente:** 89 es SUELO, no techo — el detector solo pesca solape léxico ~0, y este cubo demuestra que el defecto es sistémico (varios lotes con el 100% de las preguntas cruzadas). Falta barrer con un detector que no dependa del solape léxico.
 
-### [T-039] 🟠 [FEATURE — premium] Botón premium "Imprimir/descargar el temario COMPLETO" (todos los temas de una vez)
+### [T-039] 🟠 [FEATURE — premium] Botón premium "Imprimir/descargar el temario COMPLETO" + **PDF server-side** (absorbe el paso 2 de T-001)
+> **Absorbe (20/07) el paso 2 de T-001:** generar el PDF nosotros en una ruta server que renderice el tema, en vez de `window.print()`. Resuelve de paso el bloqueo en navegadores in-app (iOS/GSA/redes), donde `window.print()` no funciona — hoy solo se avisa al usuario (paso 1, ya desplegado). Un mismo desarrollo cubre el perk premium y el fix de accesibilidad.
 - **Qué:** hoy cada tema tiene su botón "Imprimir PDF" (`TopicContentView.tsx` → `handlePrint` → `window.print()`, solo exige estar registrado). NO existe forma de sacar el temario entero: hay que repetir el proceso tema a tema. Botón premium que genere el temario completo (todos los temas de la oposición) en un solo PDF.
 - **Por qué (demanda medida 16/07):** **15 peticiones** desde enero, **8 en los últimos 30 días**, **3 el mismo día 16/07** (María — iPhone, no sabía guardar el PDF; Sonia — buscaba una descarga que no existe; Mónica — pedía el temario completo de Catalunya, 15 temas). Media de **29,4 temas por oposición** (máximo 79) → "imprimir todo" a mano son ~30 archivos.
 - **⚠️ Ojo al encuadre:** **12 de las 15 peticiones son de usuarios FREE**. Imprimir tema a tema es gratis hoy y debe seguir siéndolo; lo premium sería el **temario completo de una vez** (y la descarga directa en PDF). Si se capa lo que ya era gratis, se percibe como recorte.
