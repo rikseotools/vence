@@ -1108,7 +1108,18 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   conocimientos (100 preg) y los psicotécnicos. Los 45 temas son SOLO el test de conocimientos, por eso el inglés no
   colgaba de ninguno. **Guardia Civil ya resolvía esto igual:** bloque propio "Lengua Inglesa" + T24 con scope a la
   ley entera. Aplicado el mismo patrón a PN: bloque D + tema 46 + `topic_scope` a `Inglés PN` (`article_numbers=NULL`).
-  Las 24 unidades gramaticales (Tiempos verbales 652, Pronombres 631, …) ya se sirven. Verificado en prod.
+  Las 24 unidades gramaticales (Tiempos verbales 652, Pronombres 631, …) ya se sirven.
+- **▸ GOTCHA que costó un falso "verificado": `policia-nacional` está CERRADA POR TAG.** Escopear NO basta. En
+  `lib/config/oposiciones.ts` esta oposición define `questionTag: 'PN'`, y `buildQuestionTagFilter()` traduce eso a
+  "SOLO preguntas con el tag `PN`". Las 5.071 de `Inglés PN` llevaban `['InnoTest', '<unidad>']` **sin `PN`**, así que
+  el tema 46 renderizaba perfecto en el temario y en el hub **pero daba `count: 0`** — dead-end silencioso. Guardia
+  Civil no tiene `questionTag`, por eso su T24 sí servía y despistaba como control. Arreglado con `array_append(tags,'PN')`
+  sobre las 5.122 preguntas de la ley. **Regla:** al enganchar contenido nuevo a una oposición con `questionTag`, hay
+  que etiquetar las preguntas además de escopearlas.
+- **▸ Cómo verificar de verdad (el HTML engaña):** `/…/test/tema/N` se renderiza en cliente — el HTML es byte a byte
+  idéntico para un tema bueno y uno vacío, así que grepearlo no prueba nada. La prueba real es el contador:
+  `GET /api/questions/filtered?action=count&topicNumber=N&positionType=<pt>`. Ojo: cachea 60s, hay que esperar el TTL
+  tras invalidar. Verificado así: PN T46 → 5.071; País Vasco T14/T24/T31 → 367/95/10.
 - **▸ HALLAZGO COLATERAL — DOS FUENTES DE VERDAD para los bloques (la causa de que esto se pudra en silencio).**
   Al verificar salió que el tema nuevo aparecía en el TEMARIO pero no en el HUB DE TESTS: el temario lee la tabla
   `oposicion_bloques`, pero el hub lee el config estático `OPOSICIONES[].blocks` (y de ahí sale también el rango del
