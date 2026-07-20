@@ -167,9 +167,17 @@ export class OepSignalsQueriesService {
       ) ult ON TRUE
       WHERE o.is_active
         AND o.exam_date IS NULL
+        -- oep_aprobada queda FUERA a proposito, y es la calibración que más ruido evita.
+        -- Una OEP aprobada NO fija fecha de examen: falta la convocatoria, y ese hueco dura
+        -- meses o años con toda normalidad. Su timeline se agota por ESTRUCTURA, no por
+        -- silencio anómalo. Verificado el 20/07 drenando a mano: de 9 candidatas en ese
+        -- estado, 9 estaban simplemente esperando convocatoria, ninguna tenía novedad que
+        -- capturar. Eran el 44% de los candidatos (18 de 41) → 18 falsos positivos
+        -- permanentes. Las OEP sin convocatoria las vigilan otros sensores (boe_api,
+        -- regional_scan, pag_empleo), que es su trabajo.
         AND o.estado_proceso IN (
           'convocada', 'convocatoria_publicada', 'inscripcion_abierta',
-          'inscripcion_cerrada', 'lista_admitidos', 'oep_aprobada', 'pendiente_examen'
+          'inscripcion_cerrada', 'lista_admitidos', 'pendiente_examen'
         )
         AND ult.fecha < CURRENT_DATE - ${graceDays}::int
         -- Tope superior: pasado ~1 año esto ya NO es "silencio a la espera de noticias" sino
@@ -214,7 +222,7 @@ export class OepSignalsQueriesService {
         AND o.exam_date IS NULL
         AND o.estado_proceso IN (
           'convocada', 'convocatoria_publicada', 'inscripcion_abierta',
-          'inscripcion_cerrada', 'lista_admitidos', 'oep_aprobada', 'pendiente_examen'
+          'inscripcion_cerrada', 'lista_admitidos', 'pendiente_examen'
         )
         AND ult.fecha < CURRENT_DATE - ${maxDays}::int
         AND NOT EXISTS (

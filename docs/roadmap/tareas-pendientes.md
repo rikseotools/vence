@@ -223,6 +223,17 @@
 
 ## Abiertas
 
+### [T-059] 🟠 Encender el 2º modo de `timeline_silence` (flag `TIMELINE_EXHAUSTED_ENABLED`) tras drenar el stock
+- **Qué:** el sensor de "timeline AGOTADO" ya está en `main` (commit `c94dbd9d`) pero **arranca apagado**. Falta drenar el stock acumulado y encenderlo con `TIMELINE_EXHAUSTED_ENABLED=true` en SSM + deploy del backend.
+- **Por qué apagado:** el día que se escribió había **49 candidatos** (43 tras el tope de 1 año). Encenderlo de golpe vuelca 49 señales el primer día, y una bandeja que grita se aprende a ignorar — exactamente como murió `hash_change` (32 aciertos de 835 señales, ver T-050).
+- **El punto ciego que tapa:** `findTimelineSilences` exigía un hito `current` vencido, pero el estado natural de un timeline al día es **todo `completed`** → **90 de 118 oposiciones activas (76%) no las miraba nadie**. Caso raíz: `administrativo-universidad-leon` (T-035), con contenido listo y esperando fecha de examen que ningún sensor iba a cazar tras retirar `hash_change`.
+- **Antes de encender:** que el drenaje haya dejado el stock cerca de 0. Después, el sensor solo verá el goteo real (1-2/semana).
+
+### [T-060] 🟡 6 oposiciones "abandonadas": calladas más de 1 año con el proceso teóricamente vivo
+- **Qué:** 6 oposiciones activas, sin `exam_date`, con `estado_proceso` que dice que aún se espera algo, y **más de un año sin un solo hito nuevo**. La peor lleva **990 días** (`auxiliar-administrativo-diputacion-girona`, último hito 03/11/2023); siguen `auxiliar-administrativo-ayuntamiento-sevilla` (887d), `tcae-extremadura` (571d), `auxiliar-administrativo-diputacion-avila` (567d), `auxiliar-administrativo-diputacion-zamora` (494d).
+- **Por qué NO son señal:** el sensor de timeline agotado las excluye a propósito con un tope de 1 año. Eso no es "silencio a la espera de noticias" sino un registro abandonado; mezclarlas haría que el admin abriese la ficha esperando una novedad inminente y encontrase una convocatoria muerta. `countAbandonedTimelines()` las cuenta y el cron las loguea → **excluidas, pero no en silencio**.
+- **Cómo:** verificar una a una contra fuente oficial si el proceso murió, si se resolvió sin que nos enterásemos, o si hay que pivotar. Es higiene de datos + posible **rollover** (`docs/runbooks/rollover-oposiciones.md`), no radar.
+
 ### [T-056] ✅ CERRADA 20/07 — Importar el Estatuto de Personal del Parlamento de Andalucía (tapa el hueco del tema 37)
 - **✅ Resultado:** importado verbatim desde el PDF oficial del Parlamento (texto consolidado a **21/10/2025**, BOPA núm. 71 de 27/12/1996). **74 artículos sin huecos**, los 4 *bis* (15/23/25/32), y los arts. 58-66 marcados como suprimidos sin inventarles texto. Escopado entero al tema 37 y **30 preguntas generadas con doble pasada** (29 PERFECT / 1 defecto reparado sin tocar la clave). T37 pasa de `verified_issues` a `verified_correct`.
 - **Subproducto:** el generador destapó **14 marcadores de nota al pie incrustados** en el texto importado (`…Cámara.12`, `d) 45 Un crédito…`) que ninguna auditoría de scope habría visto. Limpiados con salvaguarda: el censo distinguió a mano el falso positivo del art. 67, donde `artículo 7.1` es una **cita legal real**, no una nota. Gotcha a tener presente al importar PDFs con aparato crítico.
