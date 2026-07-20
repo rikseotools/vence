@@ -223,6 +223,13 @@
 
 ## Abiertas
 
+### [T-063] 🟡 [ABIERTA 20/07] Servir DOS convocatorias concurrentes de la misma oposición con temario divergente (clonar la oposición)
+- **Qué:** una oposición = **un** `topic_scope`, pero pueden coexistir **dos convocatorias vivas con temario distinto** y no sabemos servir las dos a la vez. Hay que poder tener **dos oposiciones "iguales" (mismo contenido) pero con distinta convocatoria + OEP**, cada una con su temario/versión, y hacer **rollover** de una a otra cuando toque.
+- **Caso raíz (Madrid, verificado 20/07 contra BOCM):** Aux. Admin. Comunidad de Madrid tiene **dos convocatorias abiertas**: *Orden 264/2026* (Windows **10**, examen 15/10/2026, inminente) y *Orden 1628/2026* (Windows **11**, inscripción abierta, examen 2027). El temario oficial **cambió la versión** (10→11) en la nueva. Ahora mismo servimos **Windows 10** (para no romper el examen de octubre) y hay que **rollar a Windows 11 el mismo día que pase el examen de octubre**. El contenido de Windows 11 ya está en BD (contenedores `Windows 11` + `Explorador Windows 11`), así que el switch es re-escopar T16, "cuestión de un día". **Mientras tanto se gestiona A MANO** (dos usuarias ya preguntaron: feedbacks Tamara `eedc3c3e` y Vero `49bd3949`, respondidas con la explicación de las dos convocatorias).
+- **Fallo sistémico asociado:** el **clon de convocatoria** (Orden 1628 se clonó con plazas/fechas) **NO re-verifica ni actualiza el `topic_scope`/temario** — el cambio de versión (Windows 10→11) se quedó sin propagar. Un clon de convocatoria debería avisar/forzar la revisión del temario (versión de SO/Office, epígrafes) contra el boletín nuevo.
+- **Por qué importa:** afectará a CUALQUIER oposición que renueve convocatoria con cambios de temario (versión de software, epígrafes, leyes). Hoy se salva a mano con el rollover; con dos ciclos solapados (uno examinándose, otro en inscripción) no hay forma limpia.
+- **Enlaza con:** T-002 (render multi-convocatoria en la landing) — aquí el problema es servir el **contenido**, no pintarlo. Rollover: `docs/runbooks/rollover-oposiciones.md`.
+
 ### [T-061] 🟠 5 `seguimiento_url` apuntan a convocatorias de OTRO ciclo, ya cerrado
 - **Qué:** el monitor de seguimiento de estas 5 vigila un proceso **distinto del que preparamos**, y encima ya concluido. Detectado en el drenaje del 20/07 verificando fuente oficial una a una:
   - `auxiliar-administrativo-cantabria` → apunta a la Orden PRE/83/2024 (75 plazas, examen 19/01/2025, nombramientos en 2026). Nosotros seguimos la **OEP 2025**, aún sin convocar.
