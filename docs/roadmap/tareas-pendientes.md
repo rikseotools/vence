@@ -482,7 +482,11 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - [x] ~~**Ley 1/2004 Consejo Audiovisual de Andalucía art. 4**~~ **CERRADO 20/07 — la tarea estaba MAL PLANTEADA**: no hay texto vigente que importar. El "(Anulado)" de nuestra BD es CORRECTO, no un fallo de import: el BOE consolidado (últ. mod. 21/03/2025) muestra el art. 4 (Funciones) como **(Anulado)** porque la **STC 40/2025, de 11/02/2025** declaró inconstitucional y nulo el art. 7 del Decreto-ley 2/2020, que había reformado esas funciones por decreto-ley vulnerando la reserva de ley del Parlamento andaluz (art. 131.3 EAA). Ambigüedad jurídica: la doctrina clásica diría que revive la redacción original de 2004, pero el BOE **no publica** texto vigente, así que no hay fuente oficial contra la que verificar respuestas. **Decisión (Manuel): retiradas las 3 preguntas** que colgaban del artículo (`4dd964b4`, `bedd71f9`, `52d35910`, todas ya ocultas) con `admin_law_derogated`. El artículo queda **anotado en BD** con la nota de la sentencia para que no se generen preguntas nuevas sobre él.
 - [x] ~~**RD 176/2022 Código Conducta GC** — rejilla de títulos/capítulos~~ **HECHO 20/07**: importada del BOE la estructura del Código (anexo) y aplicada a los 44 artículos del Código: Tít.I Cap.I *Valores fundamentales* (arts. 1-9), Tít.I Cap.II *Principios institucionales* (arts. 10-23), Tít.II Cap.I *Normas generales* (24-32), Tít.II Cap.II *Normas durante la prestación del servicio* (33-50). `a689fe59` resuelta y visible: la clave D es correcta porque **"El valor" es un VALOR FUNDAMENTAL (Cap.I, art. 4 del Código), no un principio institucional (Cap.II)**.
 
-### 🔴 NUEVO — RD 176/2022: colisión de numeración RD vs Anexo (9 mislinks EN VIVO)
+### ✅ RESUELTO 20/07 — RD 176/2022: colisión de numeración RD vs Anexo (eran 9 mislinks EN VIVO)
+**Ejecutado sin regresión.** Plan y resultado: `docs/roadmap/split-rd-176-2022-codigo-conducta-gc.md`. Resumen: parte dispositiva del RD → `RD 1`-`RD 6`, importados verbatim del BOE los 6 arts. del Código que faltaban (Honor, Integridad, Lealtad, Valor, Sentido de la justicia, Imparcialidad), art. 1 Frankenstein → `decalogo`, 15 preguntas re-vinculadas. 113 preguntas y 103 visibles antes y después, estados idénticos, scope intacto, **0 mislinks restantes**.
+
+<details><summary>Diagnóstico original</summary>
+
 Descubierto al hacer lo anterior. La ley mete en una sola numeración **dos cuerpos normativos distintos**:
 la parte dispositiva del RD (arts. 1-6: Objeto, Código y decálogo, Ámbito, Enseñanza, Procesos selectivos, Deontología)
 y el **Código de Conducta del anexo** (arts. 1-50). Como hay `UNIQUE(law_id, article_number)`, los **arts. 1-6 del
@@ -505,3 +509,4 @@ re-scopear. **Mismo patrón que `Instituciones Internacionales GC`: proyecto con
 También pendientes de ojo humano: **3 doctrinales de confianza baja** (tipos de Estado; categoría "Poder Judicial"
 de portales públicos ×2) en needs_human.
 Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Drenaje CE-mislink.
+</details>
