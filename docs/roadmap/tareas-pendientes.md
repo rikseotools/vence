@@ -557,8 +557,8 @@ Arreglo correcto = **separar el Código (anexo) en su propia ley** (o renumerar)
 re-scopear. **Mismo patrón que `Instituciones Internacionales GC`: proyecto con plan propio, NO hacer ad hoc**
 (oposición viva de Guardia Civil). IDs visibles afectados: `b08702bb`, `5facfee2`, `e5e5717a`, `f2d65189`, `19acd5e3`,
 `3d964dda`, `dbc45328`, `a46098aa`, `62e471d8`.
-- [ ] **Norma municipal Ayto. Madrid** sobre oficinas de registro/ventanilla única (el Decreto 21/2002 vinculado es de la COMUNIDAD, no del Ayuntamiento) → `0be49890`.
-- [ ] **Norma con "representación ordinaria del Estado en la provincia"** (RD de estructura de Delegaciones/Subdelegaciones); la Ley 40/2015 solo usa el término para Presidentes autonómicos (art. 72.1) → `67c25c91`.
+- [x] ~~**Norma municipal Ayto. Madrid** (registro)~~ **HECHO 20/07 — no hacía falta importar nada**: la norma correcta YA estaba en BD (`Ordenanza de Atención a la Ciudadanía y Administración Electrónica del Ayuntamiento de Madrid`). `0be49890` re-vinculada a su **art. 40.1.a)** ("*dirigidos a cualquier órgano administrativo, organismo público o entidad vinculada*"); clave C corroborada con la lista oficial de madrid.es (solo se excluyen universidades **privadas**). Aprobada y visible.
+- [x] ~~**Norma con "representación ordinaria del Estado en la provincia"**~~ **CERRADO 20/07 — esa norma NO existe**: el término es técnico y la ley lo reserva a los **Presidentes autonómicos sobre su Comunidad** (Ley 40/2015 art. 72.1; Estatutos de Extremadura art. 24, Cataluña art. 67, País Vasco art. 1, Andalucía art. 8). Ninguna norma lo atribuye al ámbito provincial ni al Subdelegado (arts. 74-75 no usan el concepto). Premisa defectuosa → **retirada** (autorizado Manuel).
 - [ ] `235fdd3f` — NO importable: libre circulación del solicitante de asilo admitido a trámite en Ceuta/Melilla es jurisprudencia del TS + art. 5 Directiva 2013/33/UE. Decidir: retirar o reformular.
 - [ ] `7e949e29` — premisa falsa (el art. 13 CE no enumera reunión/manifestación/asociación; están en LO 4/2000 arts. 7, 8 y 9). Reformular enunciado o retirar.
 
@@ -566,3 +566,17 @@ También pendientes de ojo humano: **3 doctrinales de confianza baja** (tipos de
 de portales públicos ×2) en needs_human.
 Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §Drenaje CE-mislink.
 </details>
+
+
+## ✅ Drenaje CE-mislink — CERRADO 20/07/2026
+**840 preguntas resueltas y visibles · 9 retiradas · residuo 5.**
+Detalle completo en `docs/roadmap/campana-citas-ajenas-2026-07.md` §Drenaje CE-mislink.
+
+Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
+- `235fdd3f` — libre circulación del solicitante de asilo en Ceuta/Melilla: es **jurisprudencia del TS**
+  (+ art. 5 Directiva 2013/33/UE), no hay precepto que citar. Decidir: retirar o reformular.
+- `7e949e29` — premisa falsa: el art. 13 CE no enumera reunión/manifestación/asociación (están repartidos en
+  LO 4/2000 arts. 7, 8 y 9). Reformular enunciado o retirar.
+- `5ebd42b1`, `ddb0a848` — categoría "Poder Judicial" de los portales de internet públicos: clasificación de
+  manual sin precepto que la respalde (confianza baja).
+- `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
