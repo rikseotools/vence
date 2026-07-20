@@ -25,6 +25,7 @@
  *      BASE_URL (www.vence.es). Exit 0 siempre.
  */
 const { Client } = require('pg');
+const { diagnosticarSeguimientoUrl } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -303,6 +304,24 @@ async function main() {
       `${r.slug}: ${r.n} hito(s) "próximos" con fecha ya pasada` +
       (estimado ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'
                 : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'));
+  }
+
+  // ── seguimiento_url que vigilan un ciclo YA CERRADO (falso negativo silencioso) ─────────
+  // El peor tipo de fallo: la URL responde 200, no da error, no sale en rojo — pero apunta a
+  // la convocatoria de otro año, ya resuelta. El día que salga la nueva, nadie se entera.
+  // Detectado a mano en el drenaje del 20/07 (5 casos); esto lo hace VISIBLE de forma continua.
+  // Graduado a propósito (ver lib/convocatoria/seguimientoUrlSalud.cjs): solo la señal limpia
+  // —URL a documento de boletín inmutable de año viejo— es error; el resto es cola de revisión.
+  const urlRows = (await c.query(`
+    SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig
+    FROM oposiciones o
+    JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
+    WHERE o.is_active AND o.seguimiento_url IS NOT NULL`)).rows;
+  for (const r of urlRows) {
+    const d = diagnosticarSeguimientoUrl(r.su, r.anio_vig != null ? Number(r.anio_vig) : null);
+    if (d.severidad === 'ok') continue;
+    add('content', d.severidad, r.slug, 'seguimiento_url_stale',
+      `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
   }
 
   const lawRows = (await c.query(`
