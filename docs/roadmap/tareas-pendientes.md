@@ -1043,6 +1043,22 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   valor directo (más práctica en Guardia Civil / Policía Nacional).
 - **Cómo detectarlo:** ley `is_active` + 0 filas en `topic_scope` unidas a `topics.is_active` + `count(questions)>0`.
   Candidato a sensor del sweep nocturno junto al resto de detectores de salud de contenido.
+- **▸ RE-MEDIDO 20/07 (la cifra 221 estaba MUY infra-contada) — el número real es 6.916 activas en 213 leyes.** El "221"
+  era solo el sub-bloque GC/PN internacional. Breakdown por categoría (query determinista):
+  - **idioma 5.071 (1 ley = "Inglés PN"):** `policia-nacional` es oposición VIVA (45/45 temas) pero **NO tiene tema de Inglés**
+    (GC sí: T24 sirve "Inglés GC" 894). Las 5.071 son de PN, ley distinta. **NO es re-scope barato → es DECISIÓN DE DOMINIO**
+    (¿el temario de PN incluye Inglés como tema? ¿o se sirve por otra vía?). El grueso del problema está aquí.
+  - **gc_pn_internacional 247 (18 leyes):** Principios Fuerza ONU 97, Consejo DDHH ONU 58, Defensor Pueblo GC 24, CIJ 14,
+    EUROJUST GC 12… → **EN MIGRACIÓN ACTIVA por otra sesión (no tocar, colisión).**
+  - **resto 1.385 (162 leyes):** Carta Social Europea 139, Estatuto de Roma 128, Directiva Eficiencia Energética 106,
+    Código Aduanero UE 104, Convención/Protocolo Tortura 107, Protocolo 15 CEDH 41… → adjudicación PER-CONTENEDOR
+    (¿qué tema de qué oposición debería servir cada uno? ¿o es contenido muerto?).
+  - **ofimática CyL 153 (15 leyes)** + **Andalucía estructura 60 (17 leyes):** variantes/decretos probablemente
+    superseded o duplicados → triar y retirar, no re-scopear.
+- **▸ RE-CALIBRADA la premisa:** NO es "221, re-scope barato". Es **grande, ambigua y con colisión activa**. Necesita
+  una pasada DELIBERADA y COORDINADA (esperar a que cierre la migración GC/PN + decisión de dominio sobre Inglés PN),
+  no un barrido en solitario. El sensor nocturno debe **excluir idioma/ofimática/contenido-no-servido** para no dar
+  6.916 de ruido. (Caracterizado y liberado el claim 20/07 tras la re-medición; sin actuar por prudencia.)
 
 
 ### [T-058] 🟡 [ABIERTA 20/07 — descubierta haciendo T-054] `Reglamento Cortes CyL`: el art. 171 se tragó las disposiciones
