@@ -467,6 +467,22 @@ Si TODOS los invariantes pasan → seguir. Si alguno falla → debuggear antes.
 
 Misma estructura, una a una. Guardar IDs en `/tmp/<batch_id>_inserted_ids.json` para auditoría.
 
+### Paso 5.bis — Verificación MECÁNICA del batch (barata, corre antes de gastar auditoría)
+
+```bash
+node scripts/verificar-batch-generado.cjs <batch_id>   # exit 0 = limpio, 2 = hay fallos
+```
+
+Lee las preguntas **de BD** (no del borrador) y las contrasta contra el `content` real del artículo. Comprueba literalidad, longitudes ±30% (§2.2-bis), opciones distintas, coherencia de la cabecera de la explicación con `correct_option` + bullets (§2.2-ter) y la distribución/secuencia del lote.
+
+**Lo que aporta de nuevo — detección de CITA TRUNCADA (v1.11, piloto ISD 20/07/2026):**
+
+Un check de "¿la correcta es subcadena del artículo?" **no basta**, y este es el agujero por el que se cuela §2.2. La cita puede ser literal y aun así estar **cortada justo antes de la cláusula que la condiciona**, convirtiendo en incondicional lo que la ley matiza. El script localiza la cita dentro del artículo y mira **qué viene inmediatamente después**: si continúa con `salvo`, `excepto`, `sin perjuicio`, `siempre que`, `así como`, `además de`… lo marca.
+
+> **Caso real que lo motivó:** piloto `gen_isd_2026-07-20`, art. 3.1.c) de la Ley 29/1987. La opción correcta reproducía *"La percepción de cantidades por los beneficiarios de contratos de seguros sobre la vida, cuando el contratante sea persona distinta del beneficiario"* y **paraba ahí**, omitiendo *"salvo los supuestos expresamente regulados en el artículo 16.2, a), de la Ley del IRPF y otras Normas Tributarias"*. Subcadena literal perfecta; sentido alterado. Lo cazó la auditoría ciega del Paso 7 — y **ahora lo caza una regex**, gratis y sin falsos negativos de modelo.
+
+**No sustituye a las auditorías LLM.** Lo que NO es mecanizable y sigue siendo territorio de los Pasos 6-7-9: que un distractor sea ambiguo o cierto en otro precepto, que haya **dos** respuestas defendibles, y que la explicación sea **exhaustiva** (en el mismo piloto, una explicación decía "triple alteración" cuando el distractor tenía cuatro — indetectable por regex).
+
 ### Paso 6 — Auditoría 1: auto-audit (Claude generador)
 
 Re-leer cada pregunta DESDE BD junto con el contenido literal del artículo (no desde tu memoria). Aplicar los **5 checks** (v1.10 amplía de 4 a 5):
