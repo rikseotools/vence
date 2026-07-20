@@ -31,7 +31,15 @@ async function handler(
   _req: NextRequest,
   { params }: { params: Promise<{ oposicion: string; topic: string }> }
 ) {
-  const { oposicion, topic } = await params
+  const { oposicion: oposicionRaw, topic } = await params
+
+  // El botón de imprimir (TopicPrintButton) deriva este valor del `oposicion=` del loginHref,
+  // que es el POSITION_TYPE (con underscores: `administrativo_estado`), no el slug (con guiones:
+  // `administrativo-estado`). Como `OPOSICIONES` se indexa por slug, sin normalizar daba 404 en
+  // TODAS las oposiciones desde T-039 (el botón pasó de window.print() a este fetch). La
+  // convención de Vence es slug = position_type con `_`→`-`, así que normalizamos: acepta ambos
+  // (underscores del botón y guiones de un enlace directo) y un slug ya hecho es idempotente.
+  const oposicion = oposicionRaw.replace(/_/g, '-')
 
   if (!(oposicion in OPOSICIONES)) {
     return NextResponse.json({ error: 'Oposición no encontrada' }, { status: 404 })
