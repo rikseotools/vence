@@ -390,38 +390,6 @@ export class ContentHealthSweepService {
         { n: ev.n },
       );
 
-    // ── CONTENIDO: incisos ANULADOS por el TC sin nota de vigencia ──
-    // Puente desde observable_events: los emite el cron rotatorio
-    // audit-annulled-provisions (kind 'article_annulled_unmarked'). Ventana 9d =
-    // 1 ciclo de rotación completo (~357 leyes a 40/día). Dedup por (ley, art) →
-    // 1 finding por candidato aunque el cron lo re-emita en varios ciclos.
-    // Frase-gatillo del panel: "revisa los incisos anulados" (runbookRegistry).
-    const stcAnn = (await this.db.execute(sql`
-      SELECT DISTINCT ON (metadata->>'law_id', metadata->>'article')
-        metadata->>'law' AS law,
-        metadata->>'law_id' AS law_id,
-        metadata->>'article' AS article,
-        metadata->>'sentencia' AS sentencia
-      FROM observable_events
-      WHERE event_type = 'article_annulled_unmarked'
-        AND ts > now() - interval '9 days'
-      ORDER BY metadata->>'law_id', metadata->>'article', ts DESC
-    `)) as unknown as Array<{
-      law: string | null;
-      law_id: string | null;
-      article: string | null;
-      sentencia: string | null;
-    }>;
-    for (const f of stcAnn)
-      add(
-        'content',
-        'warn',
-        null,
-        'article_annulled_unmarked',
-        `${f.law ?? 'ley'} — art. ${f.article ?? '?'} · ${f.sentencia ?? 'STC'} (inciso anulado por el TC servido SIN nota de vigencia)`,
-        { law_id: f.law_id, article: f.article, sentencia: f.sentencia },
-      );
-
     // ── CONTENIDO: tablas APLANADAS (importadas de PDF sin rejilla) ──
     const flat: Array<{
       slug: string;
