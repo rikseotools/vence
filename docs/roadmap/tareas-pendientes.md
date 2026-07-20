@@ -223,6 +223,18 @@
 
 ## Abiertas
 
+### [T-052] 🟠 [VENDIBLE — inscripción viva, reuso máximo] Construir Oficial de Gestión del Parlamento de Andalucía (C1)
+- **Qué:** `oficial-de-gestion-parlamento-de-andalucia` está **catalogada** (⚪ `is_active=false`, 0 temas) con **9 plazas** y **inscripción abierta hasta el 13/08/2026**. NO tenía ficha en el backlog: se detectó mirando la BD, no la lista.
+- **✅ FUENTE OFICIAL VERIFICADA (20/07):** `BOJA26-136-00016-9536-01_00340768` — Acuerdo de 8 de julio de 2026 de la Mesa del Parlamento (BOJA núm. 136, de 16/07/2026, **el mismo boletín que Subalternos**).
+  - **9 plazas**, oposición libre. Titulación: **bachiller o técnico** → C1.
+  - **44 temas**: Bloque I (1-16) materia general del Estado; Bloque II (17-44) Andalucía + Parlamento.
+  - **3 ejercicios eliminatorios**: (1) **test de 105 preguntas** (100 evaluables, penaliza 1/3, 120 min) — **25 del Bloque I y 75 del Bloque II**; (2) **exposición ESCRITA de 2 temas** de 4 al azar; (3) supuesto práctico con **Word 365**.
+  - ⚠️ **Solo el 1er ejercicio es test.** La plataforma cubre bien la puerta de entrada (el eliminatorio donde cae la mayoría), NO el desarrollo escrito. Tenerlo claro al vender.
+- **Por qué esta y no las otras vendibles:** T-016/T-021/T-022 están todas `sin_oep` (sin convocatoria viva). Esta tiene plazo abierto Y el corpus específico ya construido: los **temas 28-35 son "El Parlamento de Andalucía (I)-(VIII)"**, del mismo Reglamento que se importó, escopó y verificó el 20/07 (**165 preguntas vivas**), más el **EGRIPA** (tema 36, 38 arts importados), Defensor (40), Cámara de Cuentas (41), Estatuto de Autonomía (23/24/27) y TREBEP (42/43).
+- **Banco reutilizable medido: ~14.975 preguntas activas** ya en BD entre CE, Ley 39/2015, Ley 40/2015, TREBEP, Estatuto andaluz, Reglamento del Parlamento, LOPDGDD, igualdad, LBRL, LOREG, TUE/TFUE.
+- **Estado:** en construcción. Método: `docs/maintenance/crear-nueva-oposicion.md` + verificación de epígrafes con 2 agentes.
+
+
 ### [T-001] ✅ [CERRADA 20/07 — paso 1 desplegado y verificado; paso 2 fusionado en T-039] "Imprimir PDF" del temario falla en silencio en navegadores in-app (Google App/redes)
 > **Cierre 20/07:** re-verificado con el método de la propia ficha — `fbb280e8` **es ancestro del deploy vivo `10922182`** → el aviso in-app está en producción. El **paso 2** (generar el PDF server-side) NO se pierde: era la misma cosa que **T-039**, así que se fusiona allí en vez de quedar duplicado en dos tareas.
 > ⚠️ **Corregido 20/07:** esta ficha decía "SIN DEPLOY" y **era stale**. Verificado contra el deploy vivo: el commit de `lib/browser/inAppBrowser.ts` **es ancestro del frontend en producción** → el aviso in-app YA le llega al usuario. Lo que sigue pendiente es el **paso 2** (generar el PDF de verdad server-side), no un despliegue. Método para no repetir el error: `curl -s https://www.vence.es/api/health | grep deploy` + `git merge-base --is-ancestor <commit> <deploy_vivo>` (runbook `pusheo-revision-despliegue.md` §"verificar si un fix está desplegado").
@@ -828,7 +840,8 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 <details><summary>Diagnóstico original</summary>
 
-### [T-049-orig] 🟠 Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
+### [T-053] 🟠 Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
+> *(Era `T-049-orig`. Renumerada a T-053 el 20/07: el sufijo `-orig` no encaja con el formato `T-NNN`, así que la tarea no se podía reclamar ni entraba en `backlog_tasks`, y dejaba el guardarraíl de CI en rojo. Contenido intacto; solo cambia el id. La parte ya hecha sigue en T-049.)*
 - **Qué:** `app/OpenInscriptionsBanner.tsx` (home) personaliza **solo por familia** (Administración vs Sanidad…),
   ordena por zona + cierre más próximo y corta a 10. **No filtra por número de plazas.**
 - **Medido en BD (20/07), 51 convocatorias con inscripción viva:**
