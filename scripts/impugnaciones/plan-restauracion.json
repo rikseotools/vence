@@ -1,0 +1,459 @@
+{
+ "plan": [
+  {
+   "id": "64ce5d4d-b643-40eb-9dd4-1cc81daf48b1",
+   "antes": "En el proceso civil, la sentencia estimatoria de una acción de cesación en defensa de los intereses ",
+   "despues": "En el proceso civil, la sentencia estimatoria de una acción de cesación en defensa de los intereses colectivos y de los intereses difusos de los consumidores y usuarios impondrá:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "0e5d0dfc-e5bd-4060-8e7a-9a9889cfe86d",
+   "antes": "De conformidad con lo dispuesto en la Ley de Enjuiciamiento Civil, señale la respuesta Incorrecta en",
+   "despues": "De conformidad con lo dispuesto en la Ley de Enjuiciamiento Civil, señale la respuesta Incorrecta en relación con la administración para pago:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "3db35862-97e9-46ef-be01-fcd3fcb84e95",
+   "antes": "Según la Ley de Enjuiciamiento Civil, en el proceso de ejecución, adoptarán la forma de auto las resoluciones del tribun",
+   "despues": "Según la Ley de Enjuiciamiento Civil, en el proceso de ejecución, adoptarán la forma de auto las resoluciones del tribunal que contengan alguno de los siguientes pronunciamientos:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "0dd8a679-8733-46ae-9dca-ea61d5619072",
+   "antes": "Cuando en la ejecución civil el título ejecutivo se refiera a un hacer personalí",
+   "despues": "Cuando en la ejecución civil el título ejecutivo se refiera a un hacer personalísimo el ejecutado podrá manifestar al tribunal los motivos por los que se niega a hacer lo que el título dispone y alegar lo que tenga por conveniente sobre el carácter personalísimo o no personalísimo de la prestación debida, transcurrido el plazo que la ley dispone para cumplir la prestación:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "ee3efe27-77d3-43f1-97c2-edab84dc433c",
+   "antes": "Si se encontrase pendiente causa criminal en que se investiguen hechos de apariencia delictiva que, de ser ciertos, dete",
+   "despues": "Si se encontrase pendiente causa criminal en que se investiguen hechos de apariencia delictiva que, de ser ciertos, determinarían la falsedad del título de la ejecución, el Tribunal que la autorizó:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "bb6bf669-a34c-4231-9819-78c27b573e7b",
+   "antes": "Cuando una resolución judicial o arbitral firme condene a emitir una declaración",
+   "despues": "Cuando una resolución judicial o arbitral firme condene a emitir una declaración de voluntad ¿qué plazo debe transcurrir para que el Tribunal competente resuelva tener por emitida dicha declaración?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "1b834cad-d66d-4928-9442-7daa5ca7deec",
+   "antes": "El artículo 520 de la Ley de Enjuiciamiento Civil establece determinados títulos de los que solo podrá despacharse ejecu",
+   "despues": "El artículo 520 de la Ley de Enjuiciamiento Civil establece determinados títulos de los que solo podrá despacharse ejecución por cantidad determinada que exceda de 300 euros. El límite de esa cantidad:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "5ca684d4-ac1c-42a4-8786-2043cfc871ef",
+   "antes": "De acuerdo con el artículo 518 de la LEC, la acción ejecutiva caducará en el plazo de 5 años, si no se interpone la corr",
+   "despues": "De acuerdo con el artículo 518 de la LEC, la acción ejecutiva caducará en el plazo de 5 años, si no se interpone la correspondiente demanda ejecutiva, si aquélla se funda en:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "7fd4c887-4824-4e3e-8132-acf20eea7330",
+   "antes": "Formulada oposición fundada en títulos no judiciales ni arbitrales, el Letrado de la Administración de Justicia suspende",
+   "despues": "Formulada oposición fundada en títulos no judiciales ni arbitrales, el Letrado de la Administración de Justicia suspenderá el curso de la ejecución, ¿qué resolución dictará para ello?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "9970eeec-99b0-407b-bfed-1135c004faf3",
+   "antes": "En la ejecución dineraria, si el tribunal entiende que la cantidad debida es distinta de la fijada p",
+   "despues": "En la ejecución dineraria, si el tribunal entiende que la cantidad debida es distinta de la fijada por el ejecutante en la demanda ejecutiva:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "82082aed-9b93-46af-acff-0e96a309fb65",
+   "antes": "En el proceso civil de ejecución dineraria, ¿en qué caso dictará decreto el Letrado de la Administra",
+   "despues": "En el proceso civil de ejecución dineraria, ¿en qué caso dictará decreto el Letrado de la Administración de justicia dando por terminada la ejecución?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "721025e5-53fb-412f-a69c-f7fde95343ab",
+   "antes": "Si la causa criminal en la que se estuvieran investigando hechos de apariencia delictiva que podrían haber determinado l",
+   "despues": "Si la causa criminal en la que se estuvieran investigando hechos de apariencia delictiva que podrían haber determinado la nulidad del título de ejecución, finalizare por resolución en que se declare la inexistencia del hecho:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "21a56c14-9093-4ed4-bbaa-8c8a89ca2de8",
+   "antes": "¿Puede darse segunda o ulterior tercería sobre los mismos bienes, fundada en títulos o derechos que ",
+   "despues": "¿Puede darse segunda o ulterior tercería sobre los mismos bienes, fundada en títulos o derechos que poseyera el que la interponga al tiempo de formular la primera?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "828f6371-0375-42d8-a2a3-68cafaa2a48a",
+   "antes": "El Tribunal competente para resolver tener por emitida una declaración de volunt",
+   "despues": "El Tribunal competente para resolver tener por emitida una declaración de voluntad procedente de una resolución judicial o arbitral firme, resolverá por medio de:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "99478020-75a6-49a4-95d0-cfd0fe411d97",
+   "antes": "En el proceso de ejecución forzosa, ¿en qué plazo podrá el ejecutado impugnar la competencia del tribunal proponiendo de",
+   "despues": "En el proceso de ejecución forzosa, ¿en qué plazo podrá el ejecutado impugnar la competencia del tribunal proponiendo declinatoria?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "821dca08-7cc9-43da-905b-000281bf95d3",
+   "antes": "Para la ejecución derivada de procesos monitorios en que no haya habido oposición se requerirá la intervención de abogad",
+   "despues": "Para la ejecución derivada de procesos monitorios en que no haya habido oposición se requerirá la intervención de abogado y procurador:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "d7af3b87-4e25-4310-984a-3acbe9fef63c",
+   "antes": "Según la Ley de Enjuiciamiento Civil, en cuanto el depósito judicial de los bienes embargados en la ",
+   "despues": "Según la Ley de Enjuiciamiento Civil, en cuanto el depósito judicial de los bienes embargados en la ejecución civil, cuando se embargasen títulos, valores u objetos especialmente valiosos o necesitados de especial conservación, podrán depositarse:",
+   "activa": false,
+   "estado": "needs_human"
+  },
+  {
+   "id": "bf5c3dfa-8b1c-4cad-b710-2b304073b4a8",
+   "antes": "En el procedimiento civil, si el título ejecutivo obligara a entregar un inmuebl",
+   "despues": "En el procedimiento civil, si el título ejecutivo obligara a entregar un inmueble, y este estuviera ocupado por terceras personas distintas del ejecutado y de quienes con él compartan la utilización de aquél, el Letrado de la Administración de Justicia les notificará el despacho de la ejecución o la pendencia de ésta:",
+   "activa": false,
+   "estado": "needs_human"
+  },
+  {
+   "id": "f742636f-223b-4756-8cda-cf61280d81fd",
+   "antes": "Si el título ejecutivo fuera una resolución procesal o arbitral de condena o un acuerdo de mediación, el ejecutado puede",
+   "despues": "Si el título ejecutivo fuera una resolución procesal o arbitral de condena o un acuerdo de mediación, el ejecutado puede formular oposición en base a pactos y transacciones que se hubiesen convenido para evitar la ejecución, ¿qué requisitos deben cumplir dichos pactos o transacciones?",
+   "activa": false,
+   "estado": "needs_human"
+  },
+  {
+   "id": "8ff3dea5-a8f1-490d-8f53-b5ab72e90a65",
+   "antes": "De acuerdo con lo establecido sobre la valoración de los bienes embargados en el procedimiento de ap",
+   "despues": "De acuerdo con lo establecido sobre la valoración de los bienes embargados en el procedimiento de apremio, señale la respuesta incorrecta:",
+   "activa": false,
+   "estado": "needs_human"
+  },
+  {
+   "id": "6a3b7506-00f6-4a52-b903-d2a1dce4f8c2",
+   "antes": "Cuando el título ejecutivo sea la copia de una escritura pública matriz, sólo podrá despacharse ejecución por cantidad d",
+   "despues": "Cuando el título ejecutivo sea la copia de una escritura pública matriz, sólo podrá despacharse ejecución por cantidad determinada que exceda de:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "135c5619-740d-4429-aab6-15e8013a35d4",
+   "antes": "De conformidad con el art. 727 y siguientes de la Ley de Enjuiciamiento Civil, c",
+   "despues": "De conformidad con el art. 727 y siguientes de la Ley de Enjuiciamiento Civil, como regla general, ¿qué medidas cautelares no podrán ser acordadas durante la tramitación de un procedimiento?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "268d3a63-4c64-424d-ae88-1c420241511e",
+   "antes": "¿Cuándo se acordará el embargo de bienes del ejecutado en cantidad suficiente para asegurar el pago ",
+   "despues": "¿Cuándo se acordará el embargo de bienes del ejecutado en cantidad suficiente para asegurar el pago de las eventuales indemnizaciones sustitutorias y las costas de la ejecución?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "37f3b089-f551-4bdc-ad42-95fce723864b",
+   "antes": "De acuerdo con la LEC, si, notificada la demanda de tercería de mejor derecho, el ejecutante desisti",
+   "despues": "De acuerdo con la LEC, si, notificada la demanda de tercería de mejor derecho, el ejecutante desistiese de la ejecución, siempre que el crédito del tercerista no constase en título ejecutivo:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "35736cce-ac23-44fc-9a02-d2c0ce6c8a58",
+   "antes": "En lo referente a la entrega de bienes inmuebles, si en el inmueble que haya de entregarse hubiere c",
+   "despues": "En lo referente a la entrega de bienes inmuebles, si en el inmueble que haya de entregarse hubiere cosas que no sean objeto del título, el Letrado de la Administración de Justicia requerirá al ejecutado para que las retire dentro del plazo que señale. Si no las retirare:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "950f4472-63b8-4b5c-91ad-f73a49d8958b",
+   "antes": "Señale la respuesta correcta en relación a lo dispuesto en el art. 709 LEC para ",
+   "despues": "Señale la respuesta correcta en relación a lo dispuesto en el art. 709 LEC para las condenas de hacer personalísimo:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "ebd62c8d-7c48-4585-83f6-fdb24d7fb0e0",
+   "antes": "Señale la cantidad por la que se requerirá de pago al ejecutado, según el art. 581 de la Ley de Enju",
+   "despues": "Señale la cantidad por la que se requerirá de pago al ejecutado, según el art. 581 de la Ley de Enjuiciamiento Civil:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "e53d7414-c307-49ec-94aa-a96f1bc86450",
+   "antes": "De acuerdo con el artículo 542 de la Ley de Enjuiciamiento Civil, señale la respuesta incorrecta sobre la ejecución fren",
+   "despues": "De acuerdo con el artículo 542 de la Ley de Enjuiciamiento Civil, señale la respuesta incorrecta sobre la ejecución frente al deudor solidario:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "429073d7-bdc1-4f7f-9c66-23a7366673ec",
+   "antes": "¿Quién deberá prestar su colaboración en las actuaciones de ejecución y entregar al Letrado de la Ad",
+   "despues": "¿Quién deberá prestar su colaboración en las actuaciones de ejecución y entregar al Letrado de la Administración de Justicia encargado de la ejecución cuantos documentos y datos tenga en su poder?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "9707e5fd-154c-4766-ab8f-f7dcb6d3fc84",
+   "antes": "Según el artículo 549 de la LEC, en caso de que un progenitor incumpla de manera reiterada las obligaciones de pago de l",
+   "despues": "Según el artículo 549 de la LEC, en caso de que un progenitor incumpla de manera reiterada las obligaciones de pago de las pensiones alimenticias a favor de sus hijos, ¿Qué cauce legal le cabe al acreedor?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "61bd35dc-0b43-4d9e-9bbe-92a700fce289",
+   "antes": "Acordada la adopción de medidas cautelares en un proceso civil, ¿qué ocurrirá si",
+   "despues": "Acordada la adopción de medidas cautelares en un proceso civil, ¿qué ocurrirá si se despachara la ejecución provisional de una sentencia?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "0d6ceed9-d062-4fda-a65f-df2a5f98a37b",
+   "antes": "Cuando una resolución judicial o arbitral firme condene a emitir una declaración de voluntad, transc",
+   "despues": "Cuando una resolución judicial o arbitral firme condene a emitir una declaración de voluntad, transcurrido el plazo que establece la LEC sin que se produzca su emisión, el Tribunal competente resolverá:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "69e36b19-46e8-4d15-8339-4b1c23c26982",
+   "antes": "Señale la respuesta incorrecta en relación con la regulación que el art. 741 de ",
+   "despues": "Señale la respuesta incorrecta en relación con la regulación que el art. 741 de la Ley de Enjuiciamiento Civil realiza sobre el procedimiento de oposición a las medidas cautelares adoptadas sin audiencia del demandado:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "87700f9b-83ae-4d51-b715-c2ac3aea57ed",
+   "antes": "Señale la incorrecta. ¿Cuál de los siguientes títulos solo podrá despacharse por cantidad determinada que exceda de 300 ",
+   "despues": "Señale la incorrecta. ¿Cuál de los siguientes títulos solo podrá despacharse por cantidad determinada que exceda de 300 euros?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "ad5ee24c-c0b2-40a8-a22c-95a86282b45a",
+   "antes": "Cuando exista título ejecutivo del que se desprenda el deber de entregar cosa mueble cierta y determ",
+   "despues": "Cuando exista título ejecutivo del que se desprenda el deber de entregar cosa mueble cierta y determinada, y no pudiere ser habida la cosa, ordenará el tribunal, a instancia del ejecutante, que:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "e28d9772-0a14-4b9d-b2e4-68caa91124bf",
+   "antes": "Cuando del título ejecutivo se desprenda el deber de entregar cosa mueble cierta",
+   "despues": "Cuando del título ejecutivo se desprenda el deber de entregar cosa mueble cierta y determinada y el ejecutado no lleve a cabo la entrega dentro del plazo que se le haya concedido:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "b14a055e-8cba-4cee-a681-404e82d6ab26",
+   "antes": "¿Qué afirmación es cierta sobre el embargo del salario, sueldo, jornal, retribución o pensión por ej",
+   "despues": "¿Qué afirmación es cierta sobre el embargo del salario, sueldo, jornal, retribución o pensión por ejecución de sentencia que condene al pago de alimentos?",
+   "activa": false,
+   "estado": "retired_duplicate"
+  },
+  {
+   "id": "bf637fc7-c02d-4c10-8479-0d9d1b627855",
+   "antes": "En un proceso de ejecución forzosa, ¿en qué supuesto el ejecutante será responsable de los daños y perjuicios ocasionado",
+   "despues": "En un proceso de ejecución forzosa, ¿en qué supuesto el ejecutante será responsable de los daños y perjuicios ocasionados?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "cd305984-5ec7-4ef4-8ce5-5160d2ec68c8",
+   "antes": "Según la Ley de Enjuiciamiento Civil, en la ejecución dineraria, salvo que el ejecutante señale bien",
+   "despues": "Según la Ley de Enjuiciamiento Civil, en la ejecución dineraria, salvo que el ejecutante señale bienes cuyo embargo estime suficiente para el fin de la ejecución, el Letrado de la Administración de Justicia requerirá:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "6da0b99a-774f-40a2-b2ec-c00ebfa022d9",
+   "antes": "Conforme al art. 592.2 LEC, las rentas de dinero cualesquiera que sea su origen y la razón de su dev",
+   "despues": "Conforme al art. 592.2 LEC, las rentas de dinero cualesquiera que sea su origen y la razón de su devengo, se embargarán antes que:",
+   "activa": false,
+   "estado": "needs_human"
+  },
+  {
+   "id": "a8fa76c4-a080-4e56-bc31-338893fad1ea",
+   "antes": "¿Qué destino se dará a los depósitos de los rematantes, que provocaron la quiebra de la subasta de b",
+   "despues": "¿Qué destino se dará a los depósitos de los rematantes, que provocaron la quiebra de la subasta de bienes muebles, si no alcanzaran a satisfacer el derecho del ejecutante y las costas?:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "27b3ad16-d148-4629-a0b0-1c24ff2e37a1",
+   "antes": "La subasta tendrá por objeto la venta de uno o varios bienes o lotes de bienes, según lo que resulte",
+   "despues": "La subasta tendrá por objeto la venta de uno o varios bienes o lotes de bienes, según lo que resulte más conveniente para el buen fin de la ejecución. La formación de los lotes corresponderá:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "484f9f88-9408-421f-a008-dfed60ca3415",
+   "antes": "En la ejecución forzosa civil por obligaciones de hacer y no hacer, cuando el ejecutado desatendiere",
+   "despues": "En la ejecución forzosa civil por obligaciones de hacer y no hacer, cuando el ejecutado desatendiere el requerimiento, la cuantía de la multas mensuales podrá ascender, de conformidad con lo previsto en el artículo 711 de la LEC:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "ca785102-76f9-44cf-b6d6-fdc89f1de31a",
+   "antes": "En materia de administración para el pago, según la LEC, las cuestiones que puedan surgir entre el a",
+   "despues": "En materia de administración para el pago, según la LEC, las cuestiones que puedan surgir entre el acreedor y el ejecutado, con motivo de la administración de las fincas embargadas:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "2fc5a6d5-4848-4411-ad23-30d06cb0d9d5",
+   "antes": "Cuando la sentencia ordene la publicación o difusión, total o parcial, de su con",
+   "despues": "Cuando la sentencia ordene la publicación o difusión, total o parcial, de su contenido en medios de comunicación a costa de la parte vencida en el proceso, podrá despacharse la ejecución para obtener la efectividad de este pronunciamiento:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "75a2a025-78d6-4de2-a53c-ca01a6026b5b",
+   "antes": "En el proceso civil, si con anterioridad a la fecha fijada para el acto de lanza",
+   "despues": "En el proceso civil, si con anterioridad a la fecha fijada para el acto de lanzamiento, en caso de que el título consista en una sentencia dictada en un juicio de desahucio de finca urbana, se entregare la posesión efectiva al demandante, acreditándolo el arrendador ante el Letrado de la Administración de Justicia encargado de la ejecución:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "388c3c38-c4c2-4fd7-837a-bfd31b22e54d",
+   "antes": "Siempre que la sentencia estimase la tercería de mejor derecho, no se entregará al tercerista cantid",
+   "despues": "Siempre que la sentencia estimase la tercería de mejor derecho, no se entregará al tercerista cantidad alguna procedente de la ejecución mientras no se haya satisfecho al ejecutante:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "8a9f2529-4a7a-493f-8bc2-34aeca27d564",
+   "antes": "A tenor del art. 747 de la Ley de Enjuiciamiento Civil, ¿qué resolución se adopt",
+   "despues": "A tenor del art. 747 de la Ley de Enjuiciamiento Civil, ¿qué resolución se adoptará para decidir sobre la solicitud de caución sustitutoria de las medidas cautelares?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "17d716eb-cc50-44af-8316-5cddba9b7486",
+   "antes": "En el proceso civil, de hacerse constar en el acto de lanzamiento la existencia ",
+   "despues": "En el proceso civil, de hacerse constar en el acto de lanzamiento la existencia de desperfectos en el inmueble originados por el ejecutado o los ocupantes:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "bc9c46a7-8609-494f-b64b-09880d233087",
+   "antes": "Cuando en la ejecución civil el titulo ejecutivo se refiera a un hacer personalí",
+   "despues": "Cuando en la ejecución civil el titulo ejecutivo se refiera a un hacer personalísimo y se acuerde apremiar al ejecutado con multas mensuales por no haberlo verificado en el plazo concedido para ello:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "99c5ab55-780f-4f7a-84fd-bf54bb0ac7ef",
+   "antes": "Según lo establecido en el art. 726.1 LEC, el tribunal podrá acordar como medida",
+   "despues": "Según lo establecido en el art. 726.1 LEC, el tribunal podrá acordar como medida cautelar cualquier actuación que reúna las siguientes características:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "6db2f34d-359c-4b9e-9058-5276240ad7c3",
+   "antes": "De acuerdo con lo previsto en el artículo 734 LEC, en el procedimiento para la a",
+   "despues": "De acuerdo con lo previsto en el artículo 734 LEC, en el procedimiento para la adopción de medidas cautelares, con carácter general, ¿en qué plazo convocará el Letrado de la Administración de Justicia a las partes a una vista?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "8287ce17-4c80-47a5-9fcf-8a2a02c59760",
+   "antes": "Si en el procedimiento de adopción de medidas cautelares la sentencia que recaye",
+   "despues": "Si en el procedimiento de adopción de medidas cautelares la sentencia que recayese fuese de estimación parcial de la demanda, el tribunal, con audiencia de la parte contraria, decidirá:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "bf1e2ea7-d178-4b21-b32a-22ec31303b44",
+   "antes": "En la ejecución civil dineraria, al ejecutado que no respondiere debidamente al requerimiento efectu",
+   "despues": "En la ejecución civil dineraria, al ejecutado que no respondiere debidamente al requerimiento efectuado para que manifieste relacionadamente bienes y derechos suficientes para cubrir la cuantía de la ejecución, podrá imponérsele multas coercitivas periódicas, en virtud de:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "a8ec5fa4-2798-48f3-97d4-4a377356b59c",
+   "antes": "Si el título ejecutivo se refiere a la entrega de cosas genéricas o indeterminadas, que pueden ser a",
+   "despues": "Si el título ejecutivo se refiere a la entrega de cosas genéricas o indeterminadas, que pueden ser adquiridas en los mercados y, pasado el plazo, no se hubiese cumplido el requerimiento, ¿qué podrá hacer el ejecutante?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "6c86371f-7fc0-4fcc-8c61-a24942271bf8",
+   "antes": "¿En qué plazo puede oponerse el ejecutado a la ejecución de resoluciones procesales o arbitrales o de los acuerdos de me",
+   "despues": "¿En qué plazo puede oponerse el ejecutado a la ejecución de resoluciones procesales o arbitrales o de los acuerdos de mediación?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "c7ad7e49-dd00-48fe-a497-23b024ec734e",
+   "antes": "En el procedimiento civil, ¿cuál de las siguientes circunstancias examinará el t",
+   "despues": "En el procedimiento civil, ¿cuál de las siguientes circunstancias examinará el tribunal para decidir sobre la petición de aceptación de caución sustitutoria?",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "d23c1aef-303a-4a71-b82f-abf83308de97",
+   "antes": "En la ejecución civil no dineraria, cuando el título ejecutivo contuviere conden",
+   "despues": "En la ejecución civil no dineraria, cuando el título ejecutivo contuviere condena de entregar cosa distinta a una cantidad de dinero, en el auto por el que se despache ejecución, se requerirá al ejecutado para que cumpla en sus propios términos lo que establezca el titulo ejecutivo dentro del plazo:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "190d8bf6-50ec-486b-8a7e-fbe904b902c5",
+   "antes": "En la condena a la emisión de una declaración de voluntad, si en los casos previ",
+   "despues": "En la condena a la emisión de una declaración de voluntad, si en los casos previstos en el artículo 708 de la Ley de Enjuiciamiento Civil, no estuviesen predeterminados algunos elementos no esenciales del negocio o contrato sobre el que deba recaer la declaración de voluntad:",
+   "activa": false,
+   "estado": "needs_human"
+  },
+  {
+   "id": "2b21a5ad-fd17-4709-8789-6394de049da0",
+   "antes": "Según la Ley de Enjuiciamiento Civil, en el proceso de ejecución forzosa, el ejecutado podrá impugnar la competencia del",
+   "despues": "Según la Ley de Enjuiciamiento Civil, en el proceso de ejecución forzosa, el ejecutado podrá impugnar la competencia del Tribunal:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "5c5c69c6-9b98-4eaf-8e30-f4d3269dd4f2",
+   "antes": "En el proceso civil, cuando el título ejecutivo contuviere condena u obligación ",
+   "despues": "En el proceso civil, cuando el título ejecutivo contuviere condena u obligación de hacer o no hacer en el auto por el que se despache ejecución se requerirá al ejecutado para que cumpla en sus propios términos lo que establezca el título ejecutivo, en el requerimiento:",
+   "activa": true,
+   "estado": "approved"
+  },
+  {
+   "id": "c3eafb73-c0e7-4888-91a6-fe2c33b35aaa",
+   "antes": "Tendrán aparejada ejecución los certificados no caducados expedidos por las entidades encargadas de los registros contab",
+   "despues": "Tendrán aparejada ejecución los certificados no caducados expedidos por las entidades encargadas de los registros contables respecto de los valores representados mediante anotaciones en cuenta a los que se refiere la Ley del Mercado de Valores:",
+   "activa": true,
+   "estado": "approved"
+  }
+ ],
+ "ambiguas": [
+  {
+   "id": "c0ae8dc3-95fc-41d6-8f3e-d46d223b359b",
+   "motivo": "prefijo casa pero las opciones NO",
+   "n": 1
+  }
+ ],
+ "sinFuente": [
+  "dd66ab43-814f-46d6-a32f-2e0e0c3948c3",
+  "d784e927-7df7-4cca-975f-9c717c2d81f1",
+  "fb045920-bbf1-4c51-847b-4ffd0580e6a0",
+  "467384a0-dafc-4f0b-b863-5a56ee90881c",
+  "d097b541-ffbd-4ea0-b366-8ae8d5fc42df",
+  "df83d991-fe5b-4520-9fb5-06909ab4b600",
+  "0679538a-ad72-4a39-bbe4-c38ea23e1268",
+  "d26dd7c3-bfb9-4f05-af0e-e9fd006011b9",
+  "70729a15-b664-4106-b342-d1a10999ef54",
+  "aad1e4cf-b7de-401d-9c9b-3c98834679ba",
+  "0378b105-1a40-480b-b7e7-ce0696dc30d2",
+  "a43636e2-2a26-4a40-9a5f-c7c78de88f5b"
+ ]
+}
