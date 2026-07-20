@@ -36,7 +36,7 @@
   componente sigue vivo** — es la segunda vez en el día (ver T-029).
 
 
-### [T-047] 🟢 [MITIGADA 20/07 — el ruido ya no ahoga; la causa raíz sigue sin aislar] Seguimiento de convocatorias: 46 fuentes dan "cambio" a diario
+### [T-047] ✅ [CERRADA 20/07 — SUPERADA por T-050: el sensor entero se retiró; la causa raíz ya no importa] Seguimiento de convocatorias: 46 fuentes dan "cambio" a diario
 - **Lo que resultó NO ser cierto de la ficha original:** decía que esto era "la fuente del badge 🎯". **Ya no lo es.**
   La emisión de señales `hash_change` se desconectó el **26/06** (ver comentario en `seguimiento-queries.ts`); las
   545 señales `hash_change` que hay en BD son históricas y están **todas `dismissed`, cero aplicadas**. El ruido solo
@@ -54,11 +54,17 @@
   siempre. Alineada con la del backend y documentado que deben ir a espejo.
 - **Tests:** `__tests__/lib/seguimientoSenal.test.ts` (11). Incluye dos que impiden volver el sensor ciego: debe
   seguir detectando un cambio de plazas y **la aparición de la fecha del primer ejercicio** (justo lo que T-035 espera).
-- **❌ Lo que NO se ha resuelto — la causa raíz.** No se pudo aislar qué byte cambia a diario: la ULE es **Drupal 8
-  con caché de 1 h**, dos fetches seguidos dan hash idéntico, y la longitud del HTML es **idéntica entre días**
-  (102.259) con hash distinto. **El sistema solo guarda hash + 2.000 chars de preview, y el preview no cambia** →
-  no puede diagnosticar sus propios falsos positivos. **Siguiente paso si se retoma: guardar el texto normalizado
-  completo (o su diff) de las fuentes marcadas `unreliable` durante unos días y diffear dos ejecuciones reales.**
+- **✅ CIERRE 20/07 — la causa raíz ya no se persigue porque el sensor se retiró (T-050).** Se retomó para aislar el
+  byte que cambia y se llegó a acotarlo del todo, empíricamente sobre la ULE (la peor, 10/10 checks cambian):
+  dos fetches seguidos dan hash **idéntico** (no es ruido por-fetch); dos fetches con **cache-bust** forzando render
+  Drupal fresco salen **idénticos** (no es token por-render tipo `form_build_id`/CSRF/dom-id); los **primeros 2.000
+  chars son idénticos 4 días seguidos** y la longitud es **estable (102.259 ±2)** con hash distinto → el cambio es
+  **pequeño, profundo (más allá del char 2.000) y temporal (entre días)**, no de la primera pantalla. Aislar el byte
+  exacto exigía capturar el texto normalizado COMPLETO de dos días y diffear — trabajo intrínsecamente multi-día.
+- **Por qué se cierra sin hacerlo:** al ir a montar esa captura durable, **T-050 retiró el sensor `hash_change`
+  entero** (4% de acierto, cron apagado por flag, nadie consume su salida). Afinar el normalizador de un cron
+  apagado no aporta nada. **Lección (la misma que T-050 y T-029): comprobar que el componente sigue vivo antes de
+  invertir en él.** Si algún día se reactiva `check-seguimiento`, el diagnóstico de arriba es el punto de partida.
 
 
 ### [T-029] ✅ [HECHA — ya lo estaba, 12/07] Exponer en la UI el filtro "excluir preguntas recientes"
