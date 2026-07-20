@@ -71,6 +71,35 @@ const NORMAS = {
     fuente: 'Consejo de Gobierno de 19/06/2025 y Consejo Social de 23/06/2025',
     esperados: 12,
   },
+  t11: {
+    tema: 11, modo: 'articulo',
+    short_name: 'Bases Ejecución Presupuesto 2026 UAL',
+    name: 'Bases de Ejecución Presupuestaria del Presupuesto de la Universidad de Almería para el ejercicio 2026',
+    slug: 'bases-ejecucion-presupuesto-2026-ual',
+    url: 'https://www.ual.es/application/files/5717/6778/0854/Bases_de_Ejecucion_Presupuesto_2026.pdf',
+    fuente: 'Presupuesto UAL 2026 (Consejo Social); el PDF es la sección II del documento presupuestario',
+    esperados: 104,
+  },
+  t22a: {
+    // Documento de POLÍTICA: apartados numerados 1-15, sin "Artículo N".
+    tema: 22, modo: 'apartado',
+    short_name: 'Política Seguridad Información UAL',
+    name: 'Política de Seguridad de la Información de la Universidad de Almería',
+    slug: 'politica-seguridad-informacion-ual',
+    url: 'https://www.ual.es/download_file/51129/78527',
+    fuente: 'Consejo de Gobierno de 05/11/2025',
+    esperados: 15,
+  },
+  t22b: {
+    // Normas de uso: apartados numerados 1-13 (los 10-13 son disposiciones), sin "Artículo N".
+    tema: 22, modo: 'apartado',
+    short_name: 'Normas Uso Sistemas Información UAL',
+    name: 'Normas de Uso de los Sistemas de Información de la Universidad de Almería',
+    slug: 'normas-uso-sistemas-informacion-ual',
+    url: 'https://www.ual.es/download_file/38256/78527',
+    fuente: 'Consejo de Gobierno de 15/07/2024',
+    esperados: 13,
+  },
   t22c: {
     tema: 22, articulado: true,
     short_name: 'Normas Protección Datos Concurrencia UAL',
@@ -118,6 +147,30 @@ const limpiar = (txt) => txt.split('\n')
   .map((l) => l.replace(/\s+$/, '').replace(/^\s{2,}/, ''))
   .filter((l) => !BASURA.some((re) => re.test(l.trim())) && !ES_INDICE(l))
   .join('\n').replace(/\n{3,}/g, '\n\n')
+
+/**
+ * Trocea por APARTADO numerado ("1. INTRODUCCIÓN") en vez de por artículo. Lo usan las normas
+ * de política de la UAL (Política de Seguridad, Normas de Uso), que NO tienen articulado
+ * formal. El índice del PDF ya se ha filtrado antes por los puntos de relleno, así que aquí
+ * solo llegan las cabeceras del cuerpo.
+ */
+function trocearApartados(txt) {
+  const RE = /^\s*(\d{1,2})\.\s+([A-ZÁÉÍÓÚÑ][^\n]*)$/
+  const arts = []
+  let actual = null
+  let siguiente = 1   // solo abre apartado el número que toca (1, luego 2, luego 3…)
+  for (const l of txt.split('\n')) {
+    const m = l.match(RE)
+    // Evita que un "1." de una lista interna abra un apartado falso a mitad de un bloque.
+    if (m && parseInt(m[1]) === siguiente) {
+      if (actual) arts.push(actual)
+      actual = { num: m[1], titulo: m[2].replace(/\s*\.+\s*$/, '').trim(), cuerpo: [] }
+      siguiente++
+    } else if (actual) actual.cuerpo.push(l)
+  }
+  if (actual) arts.push(actual)
+  return arts.map((a) => ({ ...a, cuerpo: a.cuerpo.join('\n').trim() }))
+}
 
 /** Trocea por cabecera "Artículo N. Rúbrica." (admite "N bis"). */
 function trocear(txt) {
@@ -178,7 +231,7 @@ async function main() {
   console.log(`→ ${n.short_name}\n  ${n.url}`)
   const crudo = await bajarPdf(n.url)
   const texto = limpiar(crudo)
-  const arts = trocear(texto)
+  const arts = (n.modo === 'apartado') ? trocearApartados(texto) : trocear(texto)
   console.log(`  troceado: ${arts.length} artículo(s) (esperados ${n.esperados})`)
   if (arts.length !== n.esperados) {
     console.log('  ⚠️  el número NO coincide con lo verificado en el recon — revisar antes de aplicar')

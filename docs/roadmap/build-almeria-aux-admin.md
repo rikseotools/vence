@@ -15,7 +15,7 @@ Ejercicio 1 = test de 50 preguntas + 2 supuestos prácticos · Ejercicio 2 = pr�
 | `topic_scope` de lo ya existente en BD | ✅ 15/24 temas · **8.481 preguntas** sin generar ninguna |
 | T13 Ley 14/2011 de la Ciencia importada del BOE | ✅ 6 artículos (falta banco) |
 | Recon de las 8 normas propias de la UAL | ✅ **12 documentos, todos localizados y accesibles** |
-| Importar las normas UAL | 🟡 **5 de 12 importadas** (T12, T15, T19, T22-C, T23 = 70 artículos) |
+| Importar las normas UAL | 🟡 **9 de 12 importadas** (T11, T12, T15, T19, T22-A/B/C, T23 = **240 artículos**) |
 | Generar banco (T13 + normas UAL + temas finos) | ⬜ pendiente |
 | Publicar (`is_active=true`, `disponible=true`) | ⬜ pendiente |
 
@@ -92,13 +92,32 @@ cualquier importador de PDF de este tipo va a encontrarse:
 14/02/2023, verificada en la portada del PDF); lo que estaba mal era el recuento. Las cabeceras se
 comprobaron una a una.
 
+### Segunda tanda (20/07) — modo "apartados" y las tablas del presupuesto
+
+**+4 documentos: T11** (104 arts) · **T22-A** (15 apartados) · **T22-B** (13). Total acumulado
+**240 artículos** en 9 documentos. **7 de los 9 huecos cerrados.**
+
+- **Modo `apartado`** añadido al importador para las normas de política (T22-A/B), que no tienen
+  "Artículo N" sino apartados numerados. Solo abre apartado el número que toca (1, luego 2…),
+  para que un "1." de una lista interna no parta el bloque por la mitad.
+- **T11 son 104 artículos de texto normativo limpio** (2.074 chars de media), no un documento de
+  tablas como parecía: **solo el art. 1** contiene las tablas presupuestarias (clasificación
+  económica por capítulos), que `pdftotext` aplana. Es el defecto conocido de *tablas aplanadas*
+  (`lib/teoria/detectFlattenedTable.ts`, runbook `tablas-articulos.md`). Como está **acotado a 1
+  de 105**, se importó el resto y **ese artículo queda `is_verified=false`** para que entre por el
+  flujo de reconstrucción con verificación humana. **No generar preguntas de cifras desde ese
+  artículo** hasta reconstruir la tabla — nunca inventar importes.
+
 ## Siguiente paso
 
-Quedan **4 documentos** por importar, los tres más laboriosos:
-- **T11** Bases de Ejecución Presupuestaria — mezcla articulado con tablas presupuestarias.
-- **T14** Provisión PTGAS — hay que **consolidar** antes la modificación de junio 2026.
-- **T18** las tres resoluciones de matrícula (38 + 15 + 21 arts), **anuales**.
-- **T22-A y T22-B** — sin articulado formal: van como contenedor editorial con la estructura en
-  el artículo 0, no con el troceador de "Artículo N".
+Quedan **2 huecos** (3 documentos), los que exigen más criterio:
+- **T14** Provisión PTGAS — el texto base es del BOJA de 19/12/2025 pero hay una **modificación de
+  1 de junio de 2026** (BOJA 2026/108/28) sin consolidar. Hay que cotejar ambos y decidir si se
+  importa el refundido; importar solo la base deja contenido desactualizado.
+- **T18** las **tres** resoluciones de matrícula (38 + 15 + 21 arts). Son **anuales**: al
+  importarlas conviene registrarlas con fecha para que `staleDatedLaw.ts` las cace cada curso.
+
+Después, lo caro: **generar banco**. Las 9 normas importadas y la Ley 14/2011 entran con **0
+preguntas**, y siguen los temas finos ya detectados (T21 9, T10 18, T17 23, T5 49, T6 52, T8 52).
 Después, generar banco: T13 y las normas UAL parten de **0 preguntas**, y hay temas ya servidos pero
 **finos** que también lo piden: T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
