@@ -100,6 +100,49 @@ const NORMAS = {
     fuente: 'Consejo de Gobierno de 15/07/2024',
     esperados: 13,
   },
+  // ⚠️ Las TRES resoluciones de matrícula son ANUALES: se sustituyen cada curso. Al
+  // reimportarlas para 2027-28 hay que crear la norma del curso nuevo, no editar esta.
+  t18a: {
+    tema: 18, modo: 'articulo',
+    short_name: 'Res. Matrícula Grado y Máster UAL 2026-27',
+    name: 'Resolución del Rectorado de la Universidad de Almería sobre matrícula oficial en estudios de Grado y Máster para el curso académico 2026-27',
+    slug: 'resolucion-matricula-grado-master-ual-2026-27',
+    url: 'https://www.ual.es/download_file/bc5839b4-6994-4362-9d8e-92518ba6b145/83587',
+    fuente: 'Resolución del Rector de 10/06/2026 (curso 2026-27)',
+    esperados: 38,
+  },
+  t18b: {
+    tema: 18, modo: 'articulo',
+    short_name: 'Res. Matrícula Doctorado UAL 2026-27',
+    name: 'Resolución del Rectorado de la Universidad de Almería sobre matrícula oficial en estudios de Doctorado para el curso académico 2026-27',
+    slug: 'resolucion-matricula-doctorado-ual-2026-27',
+    url: 'https://www.ual.es/download_file/9b678bf5-5f44-4661-bf33-9d763c617818/83587',
+    fuente: 'Resolución del Rector de 09/06/2026 (curso 2026-27)',
+    esperados: 15,
+  },
+  t18c: {
+    tema: 18, modo: 'articulo',
+    short_name: 'Res. Aspectos Económicos Matrícula UAL 2026-27',
+    name: 'Resolución del Rectorado de la Universidad de Almería que regula los aspectos económicos de las matrículas en estudios oficiales para el curso académico 2026-27',
+    slug: 'resolucion-aspectos-economicos-matricula-ual-2026-27',
+    url: 'https://www.ual.es/download_file/3ffafecd-64be-41f7-b0c2-960c354022f8/83587',
+    fuente: 'Resolución del Rector de 10/06/2026, al amparo del Decreto 98/2023 modificado por el Decreto 142/2025 (curso 2026-27)',
+    esperados: 21,
+  },
+  t14: {
+    tema: 14, modo: 'articulo',
+    short_name: 'Regl. Provisión Puestos PTGAS UAL',
+    name: 'Reglamento de provisión de puestos de trabajo del Personal Técnico, de Gestión y de Administración y Servicios funcionario de la Universidad de Almería',
+    slug: 'reglamento-provision-puestos-ptgas-ual',
+    url: 'https://www.juntadeandalucia.es/boja/2025/244/BOJA25-244-00021-16984-01_00330584.pdf',
+    fuente: 'BOJA núm. 244 de 19/12/2025 (Consejo de Gobierno de 12/12/2025)',
+    // ⚠️ Existe una modificación posterior: Resolución de 1/06/2026 (BOJA núm. 108, de 8/06/2026,
+    // disposición 28). VERIFICADA leyendo el PDF firmado: es un "donde dice / debe decir" que
+    // afecta SOLO al apartado 1.3.1 «Titulación Académica Oficial» del ANEXO I (Baremo).
+    // El ARTICULADO (arts. 1-27) NO se toca → el texto base es válido tal cual.
+    // Si algún día se importa el baremo como contenido, hay que aplicarle esa corrección.
+    esperados: 27,
+  },
   t22c: {
     tema: 22, articulado: true,
     short_name: 'Normas Protección Datos Concurrencia UAL',
@@ -183,7 +226,13 @@ function trocear(txt) {
   let actual = null
   for (const l of lineas) {
     const m = l.match(RE)
-    if (m) {
+    // Una REMISIÓN en prosa ("…lo previsto en el artículo 38.4 de la Ley Orgánica 2/2023…")
+    // casa con el patrón de cabecera y fabrica un artículo fantasma que se traga el resto del
+    // documento (medido: art. 38 falso de 15.377 chars en la resolución de aspectos económicos).
+    // Una rúbrica real NUNCA empieza por un dígito: eso delata que lo capturado es el decimal
+    // del apartado, no un título.
+    const esRemision = m && /^\d/.test((m[2] || '').trim())
+    if (m && !esRemision) {
       if (actual) arts.push(actual)
       actual = { num: m[1].replace(/\s+/g, ' ').trim(), titulo: (m[2] || '').replace(/\.$/, '').trim(), cuerpo: [] }
     } else if (actual) actual.cuerpo.push(l)

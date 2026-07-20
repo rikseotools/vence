@@ -15,7 +15,7 @@ Ejercicio 1 = test de 50 preguntas + 2 supuestos prácticos · Ejercicio 2 = pr�
 | `topic_scope` de lo ya existente en BD | ✅ 15/24 temas · **8.481 preguntas** sin generar ninguna |
 | T13 Ley 14/2011 de la Ciencia importada del BOE | ✅ 6 artículos (falta banco) |
 | Recon de las 8 normas propias de la UAL | ✅ **12 documentos, todos localizados y accesibles** |
-| Importar las normas UAL | 🟡 **9 de 12 importadas** (T11, T12, T15, T19, T22-A/B/C, T23 = **240 artículos**) |
+| Importar las normas UAL | ✅ **12 de 12** — **303 artículos UAL**; **los 24 temas tienen normativa, 0 huecos** |
 | Generar banco (T13 + normas UAL + temas finos) | ⬜ pendiente |
 | Publicar (`is_active=true`, `disponible=true`) | ⬜ pendiente |
 
@@ -108,16 +108,32 @@ comprobaron una a una.
   flujo de reconstrucción con verificación humana. **No generar preguntas de cifras desde ese
   artículo** hasta reconstruir la tabla — nunca inventar importes.
 
-## Siguiente paso
+### Tercera tanda (20/07) — IMPORTACIÓN COMPLETA
 
-Quedan **2 huecos** (3 documentos), los que exigen más criterio:
-- **T14** Provisión PTGAS — el texto base es del BOJA de 19/12/2025 pero hay una **modificación de
-  1 de junio de 2026** (BOJA 2026/108/28) sin consolidar. Hay que cotejar ambos y decidir si se
-  importa el refundido; importar solo la base deja contenido desactualizado.
-- **T18** las **tres** resoluciones de matrícula (38 + 15 + 21 arts). Son **anuales**: al
-  importarlas conviene registrarlas con fecha para que `staleDatedLaw.ts` las cace cada curso.
+**+4 documentos: T18-A/B/C** (38+15+21 arts) y **T14** (27). **303 artículos UAL en total y
+ningún tema sin normativa.**
 
-Después, lo caro: **generar banco**. Las 9 normas importadas y la Ley 14/2011 entran con **0
-preguntas**, y siguen los temas finos ya detectados (T21 9, T10 18, T17 23, T5 49, T6 52, T8 52).
+- **T14 — la modificación NO obligaba a consolidar.** El texto base es del BOJA de 19/12/2025 y
+  existe una Resolución de 1/06/2026 (BOJA núm. 108, disp. 28). Leído el **PDF firmado**: es un
+  *"donde dice / debe decir"* que afecta **solo al apartado 1.3.1 del ANEXO I (Baremo)**; el
+  **articulado (arts. 1-27) no se toca**, así que el texto base vale tal cual. Si algún día se
+  importa el baremo como contenido, hay que aplicarle esa corrección.
+- **Cuarto defecto de parseo — remisiones en prosa.** "…lo previsto en el **artículo 38.4** de la
+  Ley Orgánica 2/2023…" casa con el patrón de cabecera y fabricaba un artículo 38 **fantasma de
+  15.377 chars** que se tragaba el resto del documento. Regla añadida: una rúbrica real **nunca
+  empieza por un dígito** — si lo hace, lo capturado es el decimal del apartado, no un título.
+- **T18-B, falsa alarma verificada:** el cuerpo menciona dos veces "curso académico 2025-26", pero
+  es la **disposición derogatoria** (deroga la resolución anterior al terminar ese curso). El
+  título confirma que es la de **2026-27**. Documento correcto.
+
+## Siguiente paso — GENERAR BANCO (lo caro)
+
+La estructura está completa; lo que falta es contenido:
+- **Las 12 normas UAL + la Ley 14/2011 están a 0 preguntas** (303 + 6 artículos sin banco).
+- **Temas servidos pero finos:** T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
+- **No generar preguntas de cifras desde el art. 1 de las Bases de Ejecución** (tabla aplanada,
+  `is_verified=false`) hasta reconstruir la tabla.
+- Al publicar: registrar las **3 resoluciones de matrícula como anuales** para que
+  `staleDatedLaw.ts` las cace cada curso.
 Después, generar banco: T13 y las normas UAL parten de **0 preguntas**, y hay temas ya servidos pero
 **finos** que también lo piden: T21 (9), T10 (18), T17 (23), T5 (49), T6 (52), T8 (52).
