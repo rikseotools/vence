@@ -173,10 +173,28 @@ privilegiar el propio trabajo ni tocar el de otra sesión.
 
 **Resultado**: T19 con **21 preguntas activas y los 12 artículos cubiertos**.
 
-**Para la próxima**: antes de generar un lote, comprobar si la norma ya tiene preguntas recientes
-—`SELECT max(created_at)` por ley— o anunciar la ley en la tarea del backlog. El sistema de claim
-(`cola.cjs`) reparte impugnaciones, pero **la generación de banco no está claimada por ley**, así
-que dos sesiones pueden colisionar sin enterarse.
+**El alcance real de la colisión era mayor**: al comprobarlo, la otra sesión había generado banco
+en **9 de las 11 normas UAL** entre las 17:05 y las 17:18 del mismo día. Solo la Normativa de
+permanencia tenía solape (las otras 8 las hizo únicamente ella), pero ahí se produjeron **6
+duplicados semánticos**, todos retirados como `retired_duplicate` conservando los ajenos.
+
+**Herramienta durable**: `scripts/oposiciones/detectar-duplicados-lote.cjs`. Compara la **RESPUESTA
+CORRECTA** (Jaccard) entre preguntas del mismo artículo, no el enunciado — que es la razón de que el
+`WHERE question_text = …` del generador no viera nada: los enunciados diferían hasta un 68% mientras
+la respuesta era idéntica. Uso: `--ley "<nombre>"` o `--like '%UAL%'`.
+
+### 🔒 Antes de generar un lote — protocolo anti-colisión
+
+1. `SELECT max(created_at)` de las preguntas de esa ley. **Si hay actividad de hoy, parar**: otra
+   sesión está en ello.
+2. Correr `detectar-duplicados-lote.cjs --ley "<norma>"` **al terminar** el lote, siempre.
+3. **Anunciar la norma aquí** antes de empezar, en la tabla de abajo.
+4. Regla de desempate ante duplicados de dos sesiones: **retirar el propio, conservar el ajeno**,
+   salvo que uno cubra estrictamente más.
+
+| Norma en generación | Sesión | Estado |
+|---|---|---|
+| _(ninguna en curso)_ | — | — |
 
 ## Siguiente paso — GENERAR BANCO (lo caro)
 
