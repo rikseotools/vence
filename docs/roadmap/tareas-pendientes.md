@@ -450,7 +450,7 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
 ## Importar contenido para cerrar residuo CE-relink (7 preguntas) — 19/07
 Del drenaje CE-mislink (837 resueltas) quedan 7 preguntas bloqueadas por FALTA DE CONTENIDO en BD.
 Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra fuente, NUNCA inventar):
-- [ ] **Estatuto de INTERPOL art. 3** (la ley existe en BD pero solo con arts. 15,19,21,22,27,28,34,36,41) → desbloquea `b593350b` (crímenes en que INTERPOL no interviene: carácter político/militar/religioso/racial).
+- [x] ~~**Estatuto de INTERPOL art. 3**~~ **HECHO 20/07**: importado verbatim del PDF oficial INTERPOL `I/CONS/GA/1956 (2023)` (pág. 3). `b593350b` revinculada, explicación §5.1 con cita literal y **approved/visible**. El art. 3 entra en scope automáticamente (ambas filas de `topic_scope` de esa ley tienen `article_numbers=NULL` = toda la ley) → se practica ya en Policía Nacional y Guardia Civil.
 - [ ] **Ley 1/2004 Consejo Audiovisual de Andalucía art. 4** — en BD figura literalmente "(Anulado)"; importar texto vigente → `4dd964b4`.
 - [ ] **RD 176/2022 Código Conducta GC** — reimportar con rejilla de títulos/capítulos (`title_number`/`chapter_number` todos a NULL) → `a689fe59` (depende de qué arts. caen bajo "principios institucionales").
 - [ ] **Norma municipal Ayto. Madrid** sobre oficinas de registro/ventanilla única (el Decreto 21/2002 vinculado es de la COMUNIDAD, no del Ayuntamiento) → `0be49890`.
