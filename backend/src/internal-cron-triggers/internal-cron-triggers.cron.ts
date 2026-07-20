@@ -42,9 +42,13 @@ export class InternalCronTriggersCron {
   }
 
   // 04:00 UTC — antes: .github/workflows/check-stats-drift.yml
+  // SIN ?sample: usa el DEFAULT_SAMPLE_SIZE del endpoint (20), fuente única.
+  // El ?sample=50 heredado del workflow GHA reactivaba el timeout del gateway
+  // (~16s con 50, >8s de límite) → cron_error diario. El endpoint ya bajó a 20
+  // el 26/05 (RPC O(N), postmortem #113); forzar 50 aquí deshacía ese arreglo.
   @Cron('0 4 * * *', { name: 'trigger-check-stats-drift', timeZone: 'UTC' })
   async statsDrift(): Promise<void> {
-    await runWithHeartbeat(this, 'statsDriftTickMs', () => this.run('/api/cron/check-stats-drift?sample=50', 'check-stats-drift'), {
+    await runWithHeartbeat(this, 'statsDriftTickMs', () => this.run('/api/cron/check-stats-drift', 'check-stats-drift'), {
       name: 'trigger-check-stats-drift',
       observability: this.observability,
     });
