@@ -439,7 +439,11 @@
 - **Cómo:** `docs/runbooks/build-resilience-leyes-ondemand.md` (diseño en 3 piezas: on-demand + hot-set SEO desde GSC + warming + revalidación por dato-BOE). SEO-safe (precedente propio, `cache-revalidation.md` §force-dynamic). Con capas de seguridad + canary.
 - **Estado:** diseñado (runbook), sin implementar.
 
-### [T-035] 🟢 [SEGUIMIENTO] Capturar la fecha de examen de las 2 oposiciones de la Universidad de León
+### [T-035] 🟢 [SEGUIMIENTO — la Auxiliar YA tiene fecha; queda la Escala Administrativa] Capturar la fecha de examen de la Universidad de León
+> **Revisado 20/07 contra fuente oficial (`unileon.es/convocatorias-ptgas-pdi`):**
+> - **Auxiliar Administrativo — RESUELTA**: ya tiene `exam_date = 12/09/2026` y `estado_proceso=lista_admitidos`. La ficha decía que ambas estaban sin fecha; estaba desfasada.
+> - **Escala Administrativa — sigue sin fecha**: la convocatoria figura "EN PROCESO" (solicitudes 24/06–13/07); la ULE **no ha publicado** fecha del primer ejercicio. Último hito real: tribunal calificador completado (BOCYL 15/07). Nada que actualizar todavía.
+> - ⚠️ **Su señal de seguimiento NO sirve para avisar**: el cron marca `changed` en 21 de 23 checks (ver **T-047**). Habrá que mirarlo a mano o arreglar el ruido primero.
 - **Qué:** Auxiliar Administrativo (`auxiliar-administrativo-universidad-leon`) y Escala Administrativa (`administrativo-universidad-leon`) tienen la **inscripción cerrada** y el **examen pendiente de fecha** (`exam_date=null`). Ambas con contenido completo y vendible (15/07).
 - **Cómo:** cuando la ULE publique la fecha del primer ejercicio (seguimiento en `unileon.es/convocatorias-ptgas-pdi`), actualizar `exam_date` + hitos de la landing. El cron de seguimiento de convocatorias debería detectarlo; si no, revisar a mano.
 - **Estado:** contenido LISTO; solo falta la fecha oficial (no publicada a 15/07).
@@ -686,3 +690,20 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - `5ebd42b1`, `ddb0a848` — categoría "Poder Judicial" de los portales de internet públicos: clasificación de
   manual sin precepto que la respalde (confianza baja).
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
+
+
+### [T-047] 🟡 [ABIERTA 20/07] Seguimiento de convocatorias: 46 oposiciones dan "cambio" a diario + 2.266 checks sin revisar
+- **Qué:** el cron `check-seguimiento` marca `has_changed` en **todos** los checks de un subconjunto de oposiciones,
+  así que su señal es ruido puro. Medido 20/07 sobre `convocatoria_seguimiento_checks` (468 oposiciones con ≥4 checks):
+  - **386 (82%) tienen señal sana** (<50% de checks con cambio; muchas 0/21) → el cron **no está roto en general**.
+  - **46 (10%) están a ≥90%** (21/21, 22/22…) → falsos positivos diarios. Ejemplos: `auxiliar-administrativo-ayuntamiento-valladolid`,
+    `bombero-valladolid`, `policia-local-lleida`, `auxiliar-administrativo-universidad-barcelona`, y la **Escala Administrativa ULE** (21/23).
+  - **2.266 checks `has_changed` sin revisar** (`change_reviewed=false`) → el bucle de revisión no se está haciendo.
+- **Por qué importa:** es la fuente del badge 🎯 y del flujo "revisa OEPs". Si una de esas 46 publica de verdad la fecha
+  de examen, **se pierde entre el ruido** — justo el caso de T-035, que no puede fiarse de su propia señal.
+- **Pista para el fix:** `backend/src/check-seguimiento/seguimiento-fetch.ts` ya tiene `normalizeForHash()` que limpia
+  horas, fechas, ids hex y números largos → alguien ya atacó esto. El ruido restante es **algo que ese normalizador no
+  captura**; en la ULE el `content_length` oscila (102233→102259→105026), así que hay contenido real cambiando
+  (¿bloque de noticias rotativo?, ¿listado paginado?). **Siguiente paso: diffear dos fetches de una de las 46** para
+  ver qué varía, y añadir esa clase al normalizador o acotar el hash a la región relevante de la página.
+- **Nota:** `.github/workflows/check-seguimiento.yml` está `.DISABLED`; hoy lo ejecuta el cron del backend NestJS.
