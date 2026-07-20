@@ -15,6 +15,76 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-048] ✅ [COMPLETA 20/07 — 3 capas + importadores cableados] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+> El ✅ ahora sí corresponde: **cerrada también en `backlog_tasks`**, no solo en este documento.
+> (Otra sesión avisó con razón de que el ✅ anterior engañaba: el markdown decía "hecha" mientras el
+> registro decía `open`. La fuente de verdad del estado es `backlog_tasks`; este fichero es su reflejo.)
+- **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
+  - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
+    **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
+    comportamiento y **las citas literales de las explicaciones siguen encajando**. Lo nuevo va aparte.
+  - **Migración `20260720_articles_vigencia_notes.sql`** — columna `articles.vigencia_notes JSONB` (additiva, NULL
+    por defecto = "no capturado", que NO es lo mismo que "sin notas") + índice GIN parcial. **Aplicada a RDS.**
+  - **`scripts/capturar-vigencia-articulo.cjs`** — captura para un artículo ya importado. **NO toca `content`.**
+- **Por qué columna aparte y NO marcadores inline en `content`:** las explicaciones citan el articulado
+  **verbatim** (blockquote literal, verificado en 1.073 citas el 20/07). Inyectar marcadores rompería esas citas
+  y los checks de literalidad.
+- **✅ Verificado de punta a punta con el caso conocido** (LO 4/2000 art. 58, STC 17/2013, **28 preguntas activas**):
+  8 notas capturadas, **1 inciso anulado aislado exactamente** (*"Asimismo, toda devolución acordada en aplicación
+  del párrafo b)… tres años."*), `content` intacto en 2.439 chars.
+- **Dos cosas que costaron un intento cada una (anotadas para el siguiente):**
+  1. **El BOE repite el historial de reformas en el mismo bloque**: 20 notas y 2 fragmentos, de los que solo 8 y 1
+     eran distintos. Sin deduplicar, el JSONB guardado es ruido.
+  2. **`JSON.stringify(payload)::jsonb` guarda un STRING json, no un objeto** (el driver ya serializa el parámetro)
+     → `jsonb_typeof` devolvía `'string'`. Hay que pasar el objeto con `sql.json()`.
+- **Precisión medida:** las 3 notas que el detector marcó como anulación en el caso real son las 3 legítimas
+  (misma STC 17/2013, apartados 6 y 7 + aclaración). **Cero falsos positivos.** Y un `<strong>` SIN nota de
+  anulación NO marca nada (el BOE resalta por otros motivos) — hay test.
+- **Tests:** `__tests__/laws/boeVigencia.test.ts` (9), con **fixture real** descargado de la API, no inventado.
+- **✅ Capa 2 (render) HECHA.** `lib/teoria/annotateVigencia.ts` pinta el inciso **tachado** (`~~…~~`, GFM, que es
+  lo que `MarkdownContent` tiene activado) + un aviso **en texto** (*"[inciso declarado inconstitucional y nulo —
+  sin vigencia]"*, no solo formato: quien lea rápido o use lector de pantalla también tiene que enterarse) y añade
+  las **notas del BOE al pie**, con las de anulación primero porque son las que cambian la respuesta.
+  Cableado en `lib/api/temario/queries.ts` + columna añadida a `db/schema.ts`; expone además `tieneIncisoAnulado`
+  para poder marcarlo en la UI. **`content` NO se toca**: la anotación es al vuelo, en display.
+  - **Si el fragmento no aparece en el texto guardado** (import reflowado, redacción distinta) **no se tacha nada
+    pero la nota SÍ se muestra**: avisar de más es mejor que tachar el trozo equivocado. Hay test.
+  - Verificado contra el dato real en RDS (LO 4/2000 art.58): el inciso se localiza y se tacha correctamente,
+    3 notas de anulación + 5 de modificación.
+  - **Tests:** `__tests__/teoria/annotateVigencia.test.ts` (9).
+- **✅ Capa 3 (guardarraíl) HECHA.** Migración `20260720_annulled_fragment_promotion_gate.sql`, aplicada a RDS:
+  gate dentro de `transition_question_state` (la ÚNICA vía legítima a un estado visible, igual que el gate
+  anti-competidor del 10/07) que **rechaza promover a `approved`/`tech_approved` una pregunta cuya CLAVE
+  reproduce un inciso anulado por el TC**. Detector reutilizable `answer_falls_in_annulled_fragment(text, jsonb)`.
+  - **Alcance deliberadamente estrecho** (un gate con falsos positivos se acaba desactivando): solo mira la
+    **opción correcta** (un distractor que cite el inciso anulado es legítimo y hasta pedagógico), exige
+    **≥60 caracteres** de solape literal, y **no bloquea nada si `vigencia_notes` es NULL** (no capturado ≠ sin notas).
+  - Normalización simétrica de espacios en ambos lados: si no, el reflow del importador daría falsos negativos.
+  - **✅ Verificado contra RDS con canario**: bloquea la clave que reproduce el inciso anulado del art. 58 LO 4/2000
+    y **deja pasar** una clave legítima del mismo artículo. Todo en transacciones revertidas, cero rastro en BD.
+    Reejecutable: `node scripts/canary-gate-inciso-anulado.cjs`.
+  - **Gotcha de método:** el primer canario dio un falso "bloqueó una buena" porque metí los dos casos en la MISMA
+    transacción — un `RAISE` la aborta y los comandos siguientes se ignoran. Cada caso necesita su transacción.
+- **✅ IMPORTADORES CABLEADOS (20/07).** El culpable no era un `replace` genérico: `lib/boe-extractor.ts`
+  —el extractor COMPARTIDO que usa toda la sincronización— **borraba a propósito** `nota_pie` y `blockquote`
+  para limpiar el articulado. Correcto que no vayan dentro del texto; el fallo era perderlas del todo.
+  - `extractVigencia()` las captura **antes** de borrarlas, en **los dos caminos** del extractor.
+  - `ExtractedArticle` lleva ahora `vigencia?`; `lib/api/article-sync/queries.ts` la persiste en
+    `articles.vigencia_notes` **tanto al INSERTAR como al ACTUALIZAR** (si el BOE ya no trae notas porque el
+    legislador reformó el texto, se limpia: re-sincronizar debe reflejar la vigencia ACTUAL).
+  - `lib/eurlex-extractor.ts` recibe el campo también: EUR-Lex no publica estas notas (siempre `undefined`),
+    pero ambos tipos comparten variable en article-sync y sin eso no compila.
+  - **Tests:** `__tests__/laws/boeExtractorVigencia.test.ts` (8). Fijan el **contrato**: `content` sale igual
+    que antes, SIN las notas. Si alguien las mete dentro del articulado, saltan — romperían las citas literales.
+- **⚠️ BUG PREEXISTENTE encontrado de paso (NO arreglado, a propósito):** `extractArticlesFromBOE` tiene dos
+  caminos y **el de reserva no llama a `decodeHtmlEntities`**, así que sus artículos guardan `&oacute;` en el
+  `content` y el opositor lo ve así. **No se toca aquí porque cambiar el texto cambia el `content_hash` de
+  miles de artículos y dispararía una re-sincronización masiva.** Queda fijado en un test para que el día que
+  se arregle salte y sea una decisión consciente.
+- **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
+  esta capa 1 corta el problema en origen, así que un cron de 714 peticiones al BOE por noche no se justifica.
+
+
 ### [T-051] ✅ [HECHA 20/07] Enforcement del claim del backlog por pre-push (cerrar el hueco del OLVIDO)
 - **Por qué:** el claim atómico ya impedía que dos sesiones cogieran la misma fila, pero **nada obligaba a reclamar antes de trabajar** → el fallo real era el OLVIDO. Se coló dos veces el 20/07 (RD 176/2022 y **T-044/Almería**: una sesión completó los imports mientras otra tenía la tarea reclamada).
 - **Qué se ha hecho (dos capas):**
@@ -731,75 +801,6 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   manual sin precepto que la respalde (confianza baja).
 - `887c89cd` — "Tipos de Estado": taxonomía doctrinal variable según manual (confianza baja).
 
-
-### [T-048] ✅ [COMPLETA 20/07 — 3 capas + importadores cableados] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
-> El ✅ ahora sí corresponde: **cerrada también en `backlog_tasks`**, no solo en este documento.
-> (Otra sesión avisó con razón de que el ✅ anterior engañaba: el markdown decía "hecha" mientras el
-> registro decía `open`. La fuente de verdad del estado es `backlog_tasks`; este fichero es su reflejo.)
-- **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
-  - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
-    **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
-    comportamiento y **las citas literales de las explicaciones siguen encajando**. Lo nuevo va aparte.
-  - **Migración `20260720_articles_vigencia_notes.sql`** — columna `articles.vigencia_notes JSONB` (additiva, NULL
-    por defecto = "no capturado", que NO es lo mismo que "sin notas") + índice GIN parcial. **Aplicada a RDS.**
-  - **`scripts/capturar-vigencia-articulo.cjs`** — captura para un artículo ya importado. **NO toca `content`.**
-- **Por qué columna aparte y NO marcadores inline en `content`:** las explicaciones citan el articulado
-  **verbatim** (blockquote literal, verificado en 1.073 citas el 20/07). Inyectar marcadores rompería esas citas
-  y los checks de literalidad.
-- **✅ Verificado de punta a punta con el caso conocido** (LO 4/2000 art. 58, STC 17/2013, **28 preguntas activas**):
-  8 notas capturadas, **1 inciso anulado aislado exactamente** (*"Asimismo, toda devolución acordada en aplicación
-  del párrafo b)… tres años."*), `content` intacto en 2.439 chars.
-- **Dos cosas que costaron un intento cada una (anotadas para el siguiente):**
-  1. **El BOE repite el historial de reformas en el mismo bloque**: 20 notas y 2 fragmentos, de los que solo 8 y 1
-     eran distintos. Sin deduplicar, el JSONB guardado es ruido.
-  2. **`JSON.stringify(payload)::jsonb` guarda un STRING json, no un objeto** (el driver ya serializa el parámetro)
-     → `jsonb_typeof` devolvía `'string'`. Hay que pasar el objeto con `sql.json()`.
-- **Precisión medida:** las 3 notas que el detector marcó como anulación en el caso real son las 3 legítimas
-  (misma STC 17/2013, apartados 6 y 7 + aclaración). **Cero falsos positivos.** Y un `<strong>` SIN nota de
-  anulación NO marca nada (el BOE resalta por otros motivos) — hay test.
-- **Tests:** `__tests__/laws/boeVigencia.test.ts` (9), con **fixture real** descargado de la API, no inventado.
-- **✅ Capa 2 (render) HECHA.** `lib/teoria/annotateVigencia.ts` pinta el inciso **tachado** (`~~…~~`, GFM, que es
-  lo que `MarkdownContent` tiene activado) + un aviso **en texto** (*"[inciso declarado inconstitucional y nulo —
-  sin vigencia]"*, no solo formato: quien lea rápido o use lector de pantalla también tiene que enterarse) y añade
-  las **notas del BOE al pie**, con las de anulación primero porque son las que cambian la respuesta.
-  Cableado en `lib/api/temario/queries.ts` + columna añadida a `db/schema.ts`; expone además `tieneIncisoAnulado`
-  para poder marcarlo en la UI. **`content` NO se toca**: la anotación es al vuelo, en display.
-  - **Si el fragmento no aparece en el texto guardado** (import reflowado, redacción distinta) **no se tacha nada
-    pero la nota SÍ se muestra**: avisar de más es mejor que tachar el trozo equivocado. Hay test.
-  - Verificado contra el dato real en RDS (LO 4/2000 art.58): el inciso se localiza y se tacha correctamente,
-    3 notas de anulación + 5 de modificación.
-  - **Tests:** `__tests__/teoria/annotateVigencia.test.ts` (9).
-- **✅ Capa 3 (guardarraíl) HECHA.** Migración `20260720_annulled_fragment_promotion_gate.sql`, aplicada a RDS:
-  gate dentro de `transition_question_state` (la ÚNICA vía legítima a un estado visible, igual que el gate
-  anti-competidor del 10/07) que **rechaza promover a `approved`/`tech_approved` una pregunta cuya CLAVE
-  reproduce un inciso anulado por el TC**. Detector reutilizable `answer_falls_in_annulled_fragment(text, jsonb)`.
-  - **Alcance deliberadamente estrecho** (un gate con falsos positivos se acaba desactivando): solo mira la
-    **opción correcta** (un distractor que cite el inciso anulado es legítimo y hasta pedagógico), exige
-    **≥60 caracteres** de solape literal, y **no bloquea nada si `vigencia_notes` es NULL** (no capturado ≠ sin notas).
-  - Normalización simétrica de espacios en ambos lados: si no, el reflow del importador daría falsos negativos.
-  - **✅ Verificado contra RDS con canario**: bloquea la clave que reproduce el inciso anulado del art. 58 LO 4/2000
-    y **deja pasar** una clave legítima del mismo artículo. Todo en transacciones revertidas, cero rastro en BD.
-    Reejecutable: `node scripts/canary-gate-inciso-anulado.cjs`.
-  - **Gotcha de método:** el primer canario dio un falso "bloqueó una buena" porque metí los dos casos en la MISMA
-    transacción — un `RAISE` la aborta y los comandos siguientes se ignoran. Cada caso necesita su transacción.
-- **✅ IMPORTADORES CABLEADOS (20/07).** El culpable no era un `replace` genérico: `lib/boe-extractor.ts`
-  —el extractor COMPARTIDO que usa toda la sincronización— **borraba a propósito** `nota_pie` y `blockquote`
-  para limpiar el articulado. Correcto que no vayan dentro del texto; el fallo era perderlas del todo.
-  - `extractVigencia()` las captura **antes** de borrarlas, en **los dos caminos** del extractor.
-  - `ExtractedArticle` lleva ahora `vigencia?`; `lib/api/article-sync/queries.ts` la persiste en
-    `articles.vigencia_notes` **tanto al INSERTAR como al ACTUALIZAR** (si el BOE ya no trae notas porque el
-    legislador reformó el texto, se limpia: re-sincronizar debe reflejar la vigencia ACTUAL).
-  - `lib/eurlex-extractor.ts` recibe el campo también: EUR-Lex no publica estas notas (siempre `undefined`),
-    pero ambos tipos comparten variable en article-sync y sin eso no compila.
-  - **Tests:** `__tests__/laws/boeExtractorVigencia.test.ts` (8). Fijan el **contrato**: `content` sale igual
-    que antes, SIN las notas. Si alguien las mete dentro del articulado, saltan — romperían las citas literales.
-- **⚠️ BUG PREEXISTENTE encontrado de paso (NO arreglado, a propósito):** `extractArticlesFromBOE` tiene dos
-  caminos y **el de reserva no llama a `decodeHtmlEntities`**, así que sus artículos guardan `&oacute;` en el
-  `content` y el opositor lo ve así. **No se toca aquí porque cambiar el texto cambia el `content_hash` de
-  miles de artículos y dispararía una re-sincronización masiva.** Queda fijado en un test para que el día que
-  se arregle salte y sea una decisión consciente.
-- **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
-  esta capa 1 corta el problema en origen, así que un cron de 714 peticiones al BOE por noche no se justifica.
 
 ### [T-049] ✅ [HECHA Y DESPLEGADA 20/07] Banner de inscripción abierta: mínimo de 10 plazas
 > **Cerrada 20/07, viva en producción** (deploy `7f302e2c`, task def `vence-frontend:487`).
