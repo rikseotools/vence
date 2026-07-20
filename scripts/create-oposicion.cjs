@@ -140,6 +140,18 @@ function validateScope(spec) {
  * FASE 4 — genera la entrada TS del array OPOSICIONES de `lib/config/oposiciones.ts` desde el spec (PURA).
  * Todo sale del spec (identity + examScoring + bloques + temario) → no toca BD.
  */
+// El campo `administracion` de oposiciones.ts es un ENUM
+// ('estado'|'justicia'|'autonomica'|'local'|'empresa_publica'), NO el texto libre de la
+// columna `oposiciones.administracion` ("Parlamento de Andalucia", "Junta de...").
+// Copiarlo tal cual rompia el typecheck: paso dos veces (Subalternos 20/07 y Oficial de
+// Gestion 20/07). Se deriva aqui para que no vuelva a pasar; el spec puede forzarlo con
+// `identity.administracion_config`.
+const ADM_ENUM = {
+  estado: 'estado', justicia: 'justicia', autonomica: 'autonomica',
+  local: 'local', empresa_publica: 'empresa_publica',
+  Estatal: 'estado', Auton\u00f3mica: 'autonomica', Local: 'local',
+}
+
 function buildConfigEntry(spec) {
   const id = spec.identity, T = spec.temario, B = spec.bloques;
   const esc = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -153,7 +165,7 @@ function buildConfigEntry(spec) {
   }).join('\n');
   const aliases = (id.aliases || []).map(a => `'${esc(a)}'`).join(', ');
   const emoji = id.emoji || '📋';
-  return `  // ${esc(id.nombre)}\n  {\n    id: '${id.position_type}',\n    slug: '${id.slug}',\n    positionType: '${id.position_type}',\n    examScoring: { penaltyDivisor: ${spec.examScoring.penaltyDivisor}, source: '${esc(spec.examScoring.source)}' },\n    hasPsychometricTest: ${!!id.hasPsychometricTest},\n    name: '${esc(id.nombre)}',\n    shortName: '${esc(id.short_name)}',\n    emoji: '${emoji}',\n    badge: '${esc(id.badge || id.subgrupo)}',\n    color: '${esc(id.color_primario || 'blue')}',\n    administracion: '${esc(id.administracion)}',\n    aliases: [${aliases}],\n    blocks: [\n${blocks}\n    ],\n    totalTopics: ${T.length},\n    navLinks: [\n      { href: '/es', label: 'Inicio', icon: '🏠' },\n      { href: '/${id.slug}', label: 'Mi Oposición', icon: '${emoji}', featured: true },\n      { href: '/${id.slug}/temario', label: 'Temario', icon: '📚' },\n      { href: '/${id.slug}/test', label: 'Tests', icon: '🎯' },\n    ],\n  },\n`;
+  return `  // ${esc(id.nombre)}\n  {\n    id: '${id.position_type}',\n    slug: '${id.slug}',\n    positionType: '${id.position_type}',\n    examScoring: { penaltyDivisor: ${spec.examScoring.penaltyDivisor}, source: '${esc(spec.examScoring.source)}' },\n    hasPsychometricTest: ${!!id.hasPsychometricTest},\n    name: '${esc(id.nombre)}',\n    shortName: '${esc(id.short_name)}',\n    emoji: '${emoji}',\n    badge: '${esc(id.badge || id.subgrupo)}',\n    color: '${esc(id.color_primario || 'blue')}',\n    administracion: '${esc(id.administracion_config || ADM_ENUM[id.administracion] || id.administracion_display_enum || 'autonomica')}',\n    aliases: [${aliases}],\n    blocks: [\n${blocks}\n    ],\n    totalTopics: ${T.length},\n    navLinks: [\n      { href: '/es', label: 'Inicio', icon: '🏠' },\n      { href: '/${id.slug}', label: 'Mi Oposición', icon: '${emoji}', featured: true },\n      { href: '/${id.slug}/temario', label: 'Temario', icon: '📚' },\n      { href: '/${id.slug}/test', label: 'Tests', icon: '🎯' },\n    ],\n  },\n`;
 }
 
 /**

@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'oficial_de_gestion_parlamento_de_andalucia',
+      label: 'Oficial de Gestión Parlamento Andalucía',
+      data: {
+        name: 'Oficial de Gestión del Parlamento de Andalucía',
+        slug: 'oficial-de-gestion-parlamento-de-andalucia',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'subalterno_parlamento_andalucia',
       label: 'Subalternos Parlamento Andalucía',
       data: {
