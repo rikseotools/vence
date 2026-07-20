@@ -166,6 +166,64 @@ export interface HitoConvocatoria {
   url: string | null
   status: 'completed' | 'current' | 'upcoming'
   orderIndex: number
+  /** Convocatoria a la que pertenece el hito (null = hito suelto, sin ciclo asignado). */
+  convocatoriaId: string | null
+  /** Etiqueta del ciclo, p.ej. "Orden 1628/2026". Null si la fila no la tiene. */
+  convocatoriaNumero: string | null
+  convocatoriaPlazas: number | null
+  convocatoriaEstado: string | null
+  /** true = es el ciclo vigente (`is_current`). */
+  convocatoriaEsActual: boolean
+}
+
+/** Un ciclo con sus hitos, para pintar la landing por bloques en vez de una lista mezclada. */
+export interface BloqueConvocatoria {
+  convocatoriaId: string | null
+  numero: string | null
+  plazas: number | null
+  estado: string | null
+  esActual: boolean
+  hitos: HitoConvocatoria[]
+}
+
+/**
+ * Agrupa los hitos por convocatoria (vía-a del manual OEPs §4e-ter).
+ *
+ * Por qué: una oposición puede tener DOS convocatorias vivas a la vez (caso real:
+ * Aux. Admin. Comunidad de Madrid, con un ciclo en lista de admitidos y otro con la
+ * inscripción abierta). Pintando los hitos en una sola lista cronológica, el usuario
+ * veía dos "Convocatoria publicada en BOCM" y dos "Apertura del plazo de inscripción"
+ * seguidos, sin saber que eran procesos distintos — y no encontraba dónde inscribirse
+ * (feedback de Esther Pimentel). Separados por ciclo, cada bloque se lee solo.
+ *
+ * Orden: el ciclo vigente primero; después, los demás por hito más reciente.
+ */
+export function agruparHitosPorConvocatoria(hitos: HitoConvocatoria[]): BloqueConvocatoria[] {
+  const porId = new Map<string, BloqueConvocatoria>()
+  for (const h of hitos) {
+    const key = h.convocatoriaId ?? '__sin_convocatoria__'
+    let bloque = porId.get(key)
+    if (!bloque) {
+      bloque = {
+        convocatoriaId: h.convocatoriaId,
+        numero: h.convocatoriaNumero,
+        plazas: h.convocatoriaPlazas,
+        estado: h.convocatoriaEstado,
+        esActual: h.convocatoriaEsActual,
+        hitos: [],
+      }
+      porId.set(key, bloque)
+    }
+    bloque.hitos.push(h)
+  }
+  const bloques = [...porId.values()]
+  for (const b of bloques) b.hitos.sort((a, c) => a.orderIndex - c.orderIndex)
+  const ultimaFecha = (b: BloqueConvocatoria) =>
+    b.hitos.reduce((max, h) => (h.fecha > max ? h.fecha : max), '')
+  return bloques.sort((a, b) => {
+    if (a.esActual !== b.esActual) return a.esActual ? -1 : 1
+    return ultimaFecha(b).localeCompare(ultimaFecha(a))
+  })
 }
 
 /**
@@ -186,11 +244,24 @@ export async function getHitosConvocatoria(
       url: string | null
       status: string
       order_index: number
+      convocatoria_id: string | null
+      convocatoria_numero: string | null
+      plazas_libres: number | null
+      estado_proceso: string | null
+      es_actual: boolean
     }>(sql`
-      SELECT h.id, h.fecha, h.titulo, h.descripcion, h.url, h.status, h.order_index
+      SELECT h.id, h.fecha, h.titulo, h.descripcion, h.url, h.status, h.order_index,
+             h.convocatoria_id,
+             c.convocatoria_numero, c.plazas_libres, c.estado_proceso,
+             COALESCE(c.is_current, false) AS es_actual
       FROM convocatoria_hitos h
       INNER JOIN oposiciones o ON h.oposicion_id = o.id
+      LEFT JOIN convocatorias c ON c.id = h.convocatoria_id
       WHERE o.slug = ${slug}
+        -- Los ciclos ARCHIVADOS no se pintan: son procesos ya cerrados y su timeline
+        -- solo añade ruido al que busca la convocatoria viva (los hitos sueltos, sin
+        -- convocatoria asignada, sí se conservan para no perder información).
+        AND (h.convocatoria_id IS NULL OR c.archived_at IS NULL)
       ORDER BY h.order_index ASC
     `)
 
@@ -203,6 +274,11 @@ export async function getHitosConvocatoria(
       url: r.url,
       status: r.status as 'completed' | 'current' | 'upcoming',
       orderIndex: r.order_index,
+      convocatoriaId: r.convocatoria_id ?? null,
+      convocatoriaNumero: r.convocatoria_numero ?? null,
+      convocatoriaPlazas: r.plazas_libres ?? null,
+      convocatoriaEstado: r.estado_proceso ?? null,
+      convocatoriaEsActual: r.es_actual === true,
     }))
   } catch (error) {
     console.warn(`⚠️ [convocatoria] Error obteniendo hitos para ${slug}:`, (error as Error).message)

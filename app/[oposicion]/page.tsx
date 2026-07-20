@@ -6,6 +6,7 @@ import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 import {
   getOposicionLandingDataCached,
   getHitosConvocatoriaCached,
+  agruparHitosPorConvocatoria,
   getTopicNamesForLandingCached,
 } from '@/lib/api/convocatoria/queries'
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
@@ -95,6 +96,12 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   // hitos puede ser null si timeout — normalizar a [] para que el resto
   // del render no crashee (.find, .length, .map).
   const hitosSafe = hitos ?? []
+  // Vía-a (manual OEPs §4e-ter): los hitos se pintan AGRUPADOS por convocatoria. Con dos
+  // ciclos vivos a la vez, la lista cronológica única mostraba dos "Convocatoria publicada"
+  // y dos "Apertura del plazo de inscripción" seguidos y el usuario no sabía a cuál
+  // apuntarse (feedback de Esther Pimentel). Si solo hay un ciclo, se ve igual que antes.
+  const bloquesConvocatoria = agruparHitosPorConvocatoria(hitosSafe)
+  const hayVariosCiclos = bloquesConvocatoria.length > 1
   const colors = getColorScheme(data?.colorPrimario ?? null)
 
   // Fetch topic names from BD (para que el temario preview no dependa de oposiciones.ts)
@@ -352,10 +359,29 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
             <section className="mb-10">
               <h2 className="text-2xl font-bold text-gray-800 text-center mb-8">📅 Estado del Proceso Selectivo</h2>
               <div className="max-w-3xl mx-auto">
+                {bloquesConvocatoria.map((bloque) => (
+                <div key={bloque.convocatoriaId ?? 'sin-convocatoria'} className={hayVariosCiclos ? 'mb-10 last:mb-0' : ''}>
+                  {/* Cabecera del ciclo: solo cuando hay más de uno, para no cambiar la
+                      landing de las oposiciones con una única convocatoria. */}
+                  {hayVariosCiclos && (
+                    <div className="flex flex-wrap items-center gap-2 mb-4 pl-1">
+                      <span className={`text-sm font-bold ${bloque.esActual ? 'text-green-700' : 'text-gray-600'}`}>
+                        {bloque.numero ?? 'Otro proceso en curso'}
+                      </span>
+                      {bloque.esActual && (
+                        <span className="text-xs font-bold uppercase bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          Convocatoria vigente
+                        </span>
+                      )}
+                      {bloque.plazas != null && (
+                        <span className="text-xs text-gray-500">{formatNumber(bloque.plazas)} plazas</span>
+                      )}
+                    </div>
+                  )}
                 <div className="relative">
                   <div className="absolute left-4 md:left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
                   <div className="space-y-6">
-                    {hitosSafe.map((hito) => (
+                    {bloque.hitos.map((hito) => (
                       <div key={hito.id} className="relative flex items-start gap-4 md:gap-6">
                         <div className={`relative z-10 flex-shrink-0 w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-sm md:text-base ${
                           hito.status === 'completed' ? 'bg-green-100 text-green-600 border-2 border-green-500' :
@@ -382,6 +408,8 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
                     ))}
                   </div>
                 </div>
+                </div>
+                ))}
               </div>
             </section>
           )}
