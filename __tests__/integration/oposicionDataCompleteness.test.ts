@@ -91,6 +91,8 @@ describeIfDb('Oposición data completeness', () => {
     // Whitelist de oposiciones en preparación (en config pero aún sin fila en BD).
     // Cuando se complete su INSERT en oposiciones, eliminar de aquí.
     const KNOWN_PENDING = new Set<string>([
+      'auxiliar-administrativo-universidad-almeria', // go-live en curso: BD lista + verificada (116 preg IA triple-auditadas, 24 temas ≥10); is_active=true tras el deploy
+      'auxiliar-museos-estado', // en preparación en otra sesión (worktree museos-frontend): config añadido, is_active=false hasta go-live
       'administrativo-castilla-leon', // C1 CyL en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-enfermeria-osakidetza', // en preparación en otra sesión
       'auxiliar-administrativo-diputacion-cordoba', // en preparación: BD lista (is_active=false hasta go-live)

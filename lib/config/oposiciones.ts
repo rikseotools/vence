@@ -2424,6 +2424,80 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE ALMERÍA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_universidad_almeria',
+    slug: 'auxiliar-administrativo-universidad-almeria',
+    positionType: 'auxiliar_administrativo_universidad_almeria',
+    examScoring: { penaltyDivisor: 3, source: 'BOE-A-2026-14723 (bases UAL, Resolución 30/06/2026): concurso-oposición C2. Fórmula de penalización pendiente de verificar contra las bases; se asume 1/3 por error (4 alternativas) como defecto C2. confidence:baja' },
+    name: 'Auxiliar Administrativo de la Universidad de Almería',
+    shortName: 'Aux. Admin. UAL',
+    emoji: '🎓',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'normativa-general',
+        title: 'Bloque I: Normativa general (8 temas)',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'Ley 39/2015 del Procedimiento Administrativo Común' },
+          { id: 2, name: 'Ley 40/2015: Título Preliminar' },
+          { id: 3, name: 'Protección de Datos: LO 3/2018' },
+          { id: 4, name: 'Estatuto Básico del Empleado Público (TREBEP)' },
+          { id: 5, name: 'Incompatibilidades del personal al servicio de las AAPP' },
+          { id: 6, name: 'Transparencia Pública de Andalucía' },
+          { id: 7, name: 'Igualdad efectiva de mujeres y hombres' },
+          { id: 8, name: 'Prevención de Riesgos Laborales' },
+        ],
+      },
+      {
+        id: 'normativa-universitaria',
+        title: 'Bloque II: Normativa universitaria de la UAL (15 temas)',
+        subtitle: null,
+        icon: '🎓',
+        themes: [
+          { id: 9, name: 'Ley Orgánica del Sistema Universitario (LOSU)' },
+          { id: 10, name: 'Ley Universitaria para Andalucía: gobernanza' },
+          { id: 11, name: 'Presupuesto 2026 de la UAL: bases de ejecución' },
+          { id: 12, name: 'PDI: concursos de acceso a cuerpos docentes (UAL)' },
+          { id: 13, name: 'PDI: contratación de personal investigador (Ley de la Ciencia)' },
+          { id: 14, name: 'PTGAS funcionario: provisión de puestos (UAL)' },
+          { id: 15, name: 'Reglamento de Cartas de Servicio (UAL)' },
+          { id: 16, name: 'Organización de las enseñanzas universitarias y doctorado' },
+          { id: 17, name: 'Acceso y admisión a enseñanzas oficiales de Grado' },
+          { id: 18, name: 'Matrícula en Grado, Máster y Doctorado (UAL)' },
+          { id: 19, name: 'Permanencia de estudiantes (UAL)' },
+          { id: 20, name: 'Expedición de títulos y Suplemento Europeo' },
+          { id: 21, name: 'Créditos ECTS y sistema de calificaciones' },
+          { id: 22, name: 'Política de Seguridad de la Información (UAL)' },
+          { id: 23, name: 'Reglamento de Administración Electrónica (UAL)' },
+        ],
+      },
+      {
+        id: 'ofimatica',
+        title: 'Bloque III: Ofimática (1 tema)',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 24, name: 'Microsoft 365: Excel y Word' },
+        ],
+      },
+    ],
+    totalTopics: 24,
+    aliases: ['almeria', 'universidad de almeria', 'ual', 'aux almeria', 'auxiliar almeria', 'universidad almeria'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-universidad-almeria', label: 'Mi Oposición', icon: '🎓', featured: true },
+      { href: '/auxiliar-administrativo-universidad-almeria/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-universidad-almeria/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO UNIVERSIDAD DE CÁDIZ (C2)
   // ========================================
   {

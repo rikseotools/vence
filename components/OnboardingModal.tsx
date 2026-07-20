@@ -901,6 +901,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🎓'
   },
   {
+    id: 'auxiliar_administrativo_universidad_almeria',
+    nombre: 'Auxiliar Administrativo Universidad de Almería (UAL)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🎓'
+  },
+  {
     id: 'auxiliar_administrativo_universidad_huelva',
     nombre: 'Auxiliar Administrativo Universidad de Huelva (UHU)',
     categoria: 'C2',

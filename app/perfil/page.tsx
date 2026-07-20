@@ -749,6 +749,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_universidad_almeria',
+      label: 'Auxiliar Administrativo UAL',
+      data: {
+        name: 'Auxiliar Administrativo de la Universidad de Almería',
+        slug: 'auxiliar-administrativo-universidad-almeria',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_universidad_huelva',
       label: 'Auxiliar Administrativo UHU',
       data: {
