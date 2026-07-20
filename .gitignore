@@ -94,3 +94,5 @@ scripts/opofimatica-drive-capture.json
 scripts/impugnaciones/lote-shards/
 scripts/impugnaciones/lote-trafico.json
 scripts/impugnaciones/validacion-citas.json
+scripts/impugnaciones/cola-larga-shards/
+scripts/impugnaciones/validacion-citas-cl.json
