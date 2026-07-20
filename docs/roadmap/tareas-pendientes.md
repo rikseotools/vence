@@ -470,7 +470,23 @@ Del drenaje CE-mislink (837 resueltas) quedan 7 preguntas bloqueadas por FALTA D
 Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra fuente, NUNCA inventar):
 - [x] ~~**Estatuto de INTERPOL art. 3**~~ **HECHO 20/07**: importado verbatim del PDF oficial INTERPOL `I/CONS/GA/1956 (2023)` (pág. 3). `b593350b` revinculada, explicación §5.1 con cita literal y **approved/visible**. El art. 3 entra en scope automáticamente (ambas filas de `topic_scope` de esa ley tienen `article_numbers=NULL` = toda la ley) → se practica ya en Policía Nacional y Guardia Civil.
 - [x] ~~**Ley 1/2004 Consejo Audiovisual de Andalucía art. 4**~~ **CERRADO 20/07 — la tarea estaba MAL PLANTEADA**: no hay texto vigente que importar. El "(Anulado)" de nuestra BD es CORRECTO, no un fallo de import: el BOE consolidado (últ. mod. 21/03/2025) muestra el art. 4 (Funciones) como **(Anulado)** porque la **STC 40/2025, de 11/02/2025** declaró inconstitucional y nulo el art. 7 del Decreto-ley 2/2020, que había reformado esas funciones por decreto-ley vulnerando la reserva de ley del Parlamento andaluz (art. 131.3 EAA). Ambigüedad jurídica: la doctrina clásica diría que revive la redacción original de 2004, pero el BOE **no publica** texto vigente, así que no hay fuente oficial contra la que verificar respuestas. **Decisión (Manuel): retiradas las 3 preguntas** que colgaban del artículo (`4dd964b4`, `bedd71f9`, `52d35910`, todas ya ocultas) con `admin_law_derogated`. El artículo queda **anotado en BD** con la nota de la sentencia para que no se generen preguntas nuevas sobre él.
-- [ ] **RD 176/2022 Código Conducta GC** — reimportar con rejilla de títulos/capítulos (`title_number`/`chapter_number` todos a NULL) → `a689fe59` (depende de qué arts. caen bajo "principios institucionales").
+- [x] ~~**RD 176/2022 Código Conducta GC** — rejilla de títulos/capítulos~~ **HECHO 20/07**: importada del BOE la estructura del Código (anexo) y aplicada a los 44 artículos del Código: Tít.I Cap.I *Valores fundamentales* (arts. 1-9), Tít.I Cap.II *Principios institucionales* (arts. 10-23), Tít.II Cap.I *Normas generales* (24-32), Tít.II Cap.II *Normas durante la prestación del servicio* (33-50). `a689fe59` resuelta y visible: la clave D es correcta porque **"El valor" es un VALOR FUNDAMENTAL (Cap.I, art. 4 del Código), no un principio institucional (Cap.II)**.
+
+### 🔴 NUEVO — RD 176/2022: colisión de numeración RD vs Anexo (9 mislinks EN VIVO)
+Descubierto al hacer lo anterior. La ley mete en una sola numeración **dos cuerpos normativos distintos**:
+la parte dispositiva del RD (arts. 1-6: Objeto, Código y decálogo, Ámbito, Enseñanza, Procesos selectivos, Deontología)
+y el **Código de Conducta del anexo** (arts. 1-50). Como hay `UNIQUE(law_id, article_number)`, los **arts. 1-6 del
+Código (Honor, Integridad, Lealtad, Valor, Sentido de la justicia, Imparcialidad y neutralidad) NO EXISTEN en BD**:
+los ocupan los del RD. Los arts. 7-50 sí son los del Código.
+Consecuencias medidas (113 preguntas cuelgan de esta ley):
+- **9 preguntas APROBADAS Y VISIBLES mal ancladas**: p.ej. varias sobre *Lealtad* (Código art. 3) apuntan al art. 3 de BD,
+  que contiene "Ámbito personal de aplicación" del RD; y sobre *Valor* (Código art. 4) al art. 4 = "Inclusión en la enseñanza".
+  El usuario que abra la referencia ve un texto ajeno a la pregunta.
+- El **art. 1 es un Frankenstein**: título "Honor" (del Código) con el contenido del ANEXO Decálogo.
+Arreglo correcto = **separar el Código (anexo) en su propia ley** (o renumerar), re-vincular las preguntas afectadas y
+re-scopear. **Mismo patrón que `Instituciones Internacionales GC`: proyecto con plan propio, NO hacer ad hoc**
+(oposición viva de Guardia Civil). IDs visibles afectados: `b08702bb`, `5facfee2`, `e5e5717a`, `f2d65189`, `19acd5e3`,
+`3d964dda`, `dbc45328`, `a46098aa`, `62e471d8`.
 - [ ] **Norma municipal Ayto. Madrid** sobre oficinas de registro/ventanilla única (el Decreto 21/2002 vinculado es de la COMUNIDAD, no del Ayuntamiento) → `0be49890`.
 - [ ] **Norma con "representación ordinaria del Estado en la provincia"** (RD de estructura de Delegaciones/Subdelegaciones); la Ley 40/2015 solo usa el término para Presidentes autonómicos (art. 72.1) → `67c25c91`.
 - [ ] `235fdd3f` — NO importable: libre circulación del solicitante de asilo admitido a trámite en Ceuta/Melilla es jurisprudencia del TS + art. 5 Directiva 2013/33/UE. Decidir: retirar o reformular.
