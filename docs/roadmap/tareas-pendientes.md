@@ -215,7 +215,15 @@
 - **Dato menor a limpiar:** la fila del ciclo en curso (Orden 264/2026) tiene `convocatoria_numero=NULL` y la archivada tiene ese número mal atribuido (cruce de etiquetas preexistente); rellenar con cuidado por el índice `convocatorias_ref_oficial_unica`.
 - **Cómo:** `docs/maintenance/oeps-convocatorias-seguimiento.md` §4e-ter; memoria `project-convocatorias-multi-por-año-schema`.
 
-### [T-009] 🟡 [DETECTOR v1+v2 HECHO 20/07 — quedan ~5 candidatos reales + barrido/cron] Disposiciones ANULADAS (STC) / incisos derogados en ley vigente
+### [T-009] 🟡 [BARRIDO 356 LEYES HECHO 20/07 — 0 bugs activos; queda cron + fix de raíz (T-048)] Disposiciones ANULADAS (STC) / incisos derogados en ley vigente
+> **Barrido ampliado 20/07 (antes 60 leyes, ahora 356 de las 708 con `boe_url`):** 21 hallazgos.
+> Triaje completo: **11 sin preguntas** (riesgo activo imposible) y **10 con preguntas**, todos verificados → **0 bugs activos**.
+> Caso grande: **LO 4/2000 art. 58** (32 preguntas, 28 visibles). El inciso anulado por la **STC 17/2013** es
+> *"Asimismo, toda devolución acordada en aplicación del párrafo b) … llevará consigo la prohibición de entrada … por un plazo máximo de tres años"*,
+> que **servimos sin nota de vigencia**. Revisadas las claves una a una: **ninguna da por válido el inciso anulado**
+> (aparece 1 vez, como distractor = uso correcto). El detector se auto-valida: cazó solo la Ley 1/2004 CAA art. 4 (STC 40/2025),
+> descubierta ese mismo día por otra vía.
+> **Queda:** (a) cablear el auditor a cron —hoy solo corre con la frase-gatillo, no está en ningún workflow ni npm script— y (b) el **arreglo de raíz: T-048**.
 - **Por qué:** incidente 19/07 (Alfonso, aux CARM) — una pregunta testeaba el inciso del **art. 126.2 LBRL** (nombrar no-concejales a la Junta de Gobierno Local) que la **STC 103/2013** declaró **inconstitucional y nulo**; nuestro artículo importado no tenía la nota de vigencia y la clave daba el inciso anulado como correcto. **Le respondí mal la impugnación** antes de que reabriera como bug. Riesgo de clase: cualquier artículo con un inciso anulado/derogado que el BOE consolidado marca con nota pero nuestro import no capturó.
 - **Hueco de monitoreo (confirmado):** NINGÚN sistema lo caza — el monitor BOE ve cambios FUTUROS (no anulaciones históricas ya en el consolidado); `completitud-leyes` ve artículos que FALTAN, no vigencia de incisos; `leyes-anuales-caducadas` solo leyes anuales completas; el radar de epígrafes mira materia, no vigencia.
 - **Ideas de fix (diseñar):** al importar/verificar una ley, **capturar las notas de vigencia del BOE consolidado** (STC, derogaciones de incisos concretos — el BOE las marca) en `articles.content`/campo aparte; detector que compare artículo ↔ notas BOE y flaguee incisos anulados presentes como vigentes; para artículos "tocados por el TC", nota obligatoria + revisar sus preguntas. Extiende `lib/laws/completeness.ts` / `docs/roadmap/verificacion-completitud-leyes.md`.
@@ -725,3 +733,30 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Estado:** código listo y verde (17 unitarios del modelo puro + typecheck). **PENDIENTE: deploy** (`scripts/deploy-frontend.sh`). Al desplegar, avisar a María, Sonia y Mónica (feedbacks feb79fc5, c2200dcc, f6b0ca1c).
 - **⚠️ NO está en producción.** El código está en `main` (`bcc79f8f`) pero el deploy quedó bloqueado: el CI de `Unit tests` estaba **ya en rojo antes de este commit** (`ef4ef1f6`, `dba43db3` de otras sesiones fallan igual). Los 3 fallos son ajenos a esto: `fetchByTopicScopeMigration` (selección adaptativa, dependiente de aleatoriedad) y `verifyLawBocyl` / `verifyLawLiteral` ("suite failed to run"). En local la suite completa pasa (618 suites / 16.040 tests). **Se desplegará cuando se arregle ese rojo.**
 
+
+
+### [T-048] 🟡 [ABIERTA 20/07 — arreglo de RAÍZ de T-009] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+- **El problema NO es de sincronización.** Verificado en el art. 58 LO 4/2000 palabra por palabra: nuestro texto
+  **coincide con el BOE consolidado**. Cuando el TC anula un inciso y el legislador no reforma el texto, el BOE
+  **mantiene la frase en el articulado**, la resalta con `<strong>` y le añade nota al pie (*"Se declara
+  inconstitucional y nulo el inciso destacado del apartado 6 por Sentencia del TC 17/2013"*). **Nuestro import hace
+  `replace(/<[^>]+>/g,' ')` y se lleva resaltado Y nota** → servimos el inciso anulado como texto plano válido.
+  Importamos *el qué*, no *con qué vigencia*.
+- **Es mecánicamente accesible** (verificado 20/07):
+  `GET https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/<BOE-ID>/texto/bloque/<bloqueId>` con
+  `Accept: application/xml` (con `application/json` devuelve **400 mime type no soportado**) → el `<strong>` delimita
+  **exactamente** el fragmento anulado y la nota va en el mismo bloque. El id de bloque sale de `…/texto/indice`.
+  Es lo que ya hace `lib/laws/annulledProvisions.ts` (v2) para detectar.
+- **Por qué no basta el detector de T-009:** es *a posteriori* — detecta después de importar mal y de haber podido
+  generar preguntas sobre un inciso muerto.
+- **Diseño por capas (de más barata a más cara):**
+  1. **Import** — capturar fragmento anulado + nota y persistirlos. Hoy **no hay dónde**: `articles` no tiene campo de
+     vigencia. Opciones: columna `vigencia_notes JSONB` (`[{apartado, inciso, nota, stc, fecha}]`) o marcadores inline
+     en `content`. Los importadores son **scripts ad-hoc por ley**, así que hace falta una función compartida que lo imponga.
+  2. **Render** — mostrarlo como el BOE (inciso tachado + nota). Además de correcto es **pedagógicamente mejor**:
+     al opositor le interesa saber que está anulado, porque puede caer.
+  3. **Generación** — guardarraíl que impida generar una pregunta cuya clave caiga en un fragmento marcado anulado
+     (el fallo del incidente 19/07, art. 126.2 LBRL).
+  4. **Cron** — enganchar `audit-annulled-provisions.cjs` al barrido nocturno (`health-sweep.cjs`).
+- **Orden recomendado:** 1 + 4 primero (baratos; cortan en origen y en vigilancia). 2 y 3 después.
+- **Alcance:** 21 artículos afectados en 356 leyes barridas (~6% de las que tienen anulación TC). Quedan ~350 con `boe_url` sin barrer.
