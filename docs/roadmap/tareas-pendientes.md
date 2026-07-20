@@ -738,7 +738,25 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
   - `a47cdfd4` (Orden 01/02/1996, subvenciones): la explicación se contradecía ("B es correcta" con la clave en D). Los arts. 85 y 86 de la misma Orden reproducen la misma regla del RC que el art. 84, lo que **respalda que D ("todas las anteriores") sea correcta**; el problema es que el artículo vinculado solo cubre 1 de las 3 modalidades. Recomendación: añadir 85/86 como soporte y reescribir explicación.
 - **Sigue pendiente:** 89 es SUELO, no techo — el detector solo pesca solape léxico ~0, y este cubo demuestra que el defecto es sistémico (varios lotes con el 100% de las preguntas cruzadas). Falta barrer con un detector que no dependa del solape léxico.
 
+### [T-054] 🟢 [ABIERTA 20/07 — descubierto haciendo T-048] El camino de reserva de `boe-extractor` no decodifica entidades HTML
+- **Qué:** `extractArticlesFromBOE` tiene **dos caminos**. El principal llama a `decodeHtmlEntities`; el de reserva
+  (el que localiza artículos por posiciones de `<h5>`) **no**. Sus artículos guardan `&oacute;`, `&aacute;`… en el
+  `content`, y **el opositor los ve así** en la teoría.
+- **Por qué NO se arregló al descubrirlo:** cambiar el texto cambia el `content_hash` de **miles** de artículos →
+  dispararía una re-sincronización masiva y ensuciaría el detector de cambios. Debe hacerse **a propósito y medido**,
+  no de refilón dentro de otra tarea.
+- **Cómo:** aplicar `decodeHtmlEntities` en el segundo camino + **medir antes** cuántos artículos cambiarían de hash
+  y qué efecto tiene en el barrido nocturno. Hay test que fija el comportamiento actual
+  (`__tests__/laws/boeExtractorVigencia.test.ts`, «BUG PREEXISTENTE documentado»): el día que se arregle, saltará.
+
 ### [T-040] ⬜ [SIN PRIORIDAD — aparcada por tamaño (Manuel, 20/07)] Artículos-cajón: ~21.000 preguntas sobre 110 mega-chunks (teoría rota + preguntas atascadas) — *ex-"Ofimática infra-troceada"*
+> **⚠️ Parcialmente atacada el 20/07 (sin reabrir la tarea): 5 de los ~110 mega-chunks ya están partidos.**
+> «Movilización y posiciones» art.1 · «Eliminación y sondajes» arts.1 y 6 · «Oxigenoterapia» arts.1 y 4.
+> **1.454 preguntas re-vinculadas, cero regresión** (verificada contando por tema antes/después en las tres pasadas).
+> Método, guardarraíles y **residuo conocido sin resolver** (el bloque `6.4` absorbió de más, el `1.4` quedó casi
+> vacío porque las UPP viven en el art.3, y 78 `OTRO` del piloto siguen sin reconciliar) en
+> `docs/roadmap/split-megachunks-editoriales-tcae.md`. **Quien retome T-040: leer ese documento primero**, tiene
+> los scripts genéricos hechos y el gotcha del `topic_scope` con lista explícita de artículos.
 > **Decisión 20/07 (Manuel): fuera del orden de ataque.** El trabajo es demasiado largo para encajarlo entre tareas; no se prioriza ni se coge "de paso". Queda documentada y medida para cuando se decida abrirla con plan propio y aprobación. **No aparece en el índice de prioridad a propósito** — no es un olvido.
 
 > **⚠️ RE-MEDIDO 20/07 (worktree aislado): el problema es MAYOR y el foco estaba equivocado.** La patología no es de ofimática: es **global**, y el peor caso con diferencia es **Correos**.
