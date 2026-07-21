@@ -806,6 +806,23 @@ for (const kw of keywords) {
 
 Si al resolver una dispute te aparece error del trigger al intentar transicionar a `approved`, es porque la pregunta sigue sin `exam_case_id`. Crear primero el `exam_case` y vincular, luego transicionar.
 
+## 7.4.quater Psicotécnicas visuales: "no se ve la imagen" / imagen ambigua → REPARAR como data-driven (post-21/07/2026)
+
+**Síntoma:** impugnación `mal_formulada`/`imagen_no_visible` sobre una psicotécnica de contar/analizar un cuadro (subtype `data_tables`, series, matrices de símbolos, etc.) cuya respuesta depende de una **imagen**. Casos: la imagen no renderiza (404 / no carga en el cliente), o **existe pero es ambigua/ilegible** y no puedes verificar la clave a ciencia cierta (recuento que da 5 o 6 según cómo leas la rejilla).
+
+**Diagnóstico primero:**
+1. `SELECT question_subtype, image_url, content_data, is_official_exam, exam_source FROM psychometric_questions WHERE id=…`.
+2. ¿La imagen carga? `curl -s -o /tmp/q.png -w '%{http_code}' <image_url>` y **ábrela con Read** para contar tú mismo.
+3. ¿Es oficial? Si `is_official_exam=false` + `exam_source=null` + `is_verified=false` → la clave **no tiene respaldo**; no te fíes de ella.
+
+**La REPARACIÓN (mejor que retirar): pásala a data-driven.** El front (`ContentDataRenderer`) pinta `content_data` como **rejilla/tabla HTML nativa** (soporta `content_data.tables[]` = matriz de filas, `table_data`, e incluso `image_base64`), así que **NO hace falta generar un PNG** (no tenemos stack de imagen: ni canvas ni sharp ni puppeteer). De 785 `data_tables`, 271 ya son data-driven y ~388 son solo-imagen (deuda). Para reparar una de conteo:
+
+1. **NO transcribas la imagen ambigua** (heredas su error y no hay clave oficial que valide). En su lugar, **genera una rejilla NUEVA con respuesta CONTROLADA**: coloca el símbolo objetivo de forma que EXACTAMENTE K cumplan la condición (K = la respuesta que sabes con certeza), con distractores que NO la cumplan; sin el símbolo en bordes de fila (evita ambigüedad de vecino entre filas); ningún objetivo adyacente a otro. **Verifica K por código** antes de escribir.
+2. Escribe `content_data = { instruction, tables:[{ title, rows:[[...],...] }] }`, pon `correct_option` a la opción de K, `is_verified=true`, **`image_url=NULL`** (para que no salga el PNG viejo), `deactivation_reason=NULL`, y una `explanation` coherente. Invalida caché `questions`.
+3. Resultado: misma pregunta, pero **verificable y sin ambigüedad**, como las 271 buenas. El generador sirve para toda la clase (deuda de las ~388 solo-imagen — candidato a backlog). Ejemplo: dispute `28b9327d` (Esther, "¿cuántas veces ￦ entre dos figuras iguales?", 21/07): imagen existía pero el recuento daba 5-6; no oficial/sin fuente → regenerada rejilla 10×14 con 5 exactos, verificada, `image_url` a NULL.
+
+> Retirar (`is_active=false`) solo si NO tiene sentido reconstruirla (p.ej. pregunta de imagen no reproducible por su naturaleza). Si es de conteo/tabla, casi siempre es mejor repararla data-driven.
+
 ## 7.5 Same-user clustering: red flag de fallo sistémico (post-14/04/2026)
 
 **Regla:** si un mismo usuario (mismo `user_id`) abre **3+ impugnaciones** seguidas en poco tiempo, antes de tratarlas como casos independientes, buscar el **denominador común**. Casi siempre revela un fallo sistémico (de scope, de pipeline, de versión de programa, etc.) en lugar de N preguntas malas independientes.
