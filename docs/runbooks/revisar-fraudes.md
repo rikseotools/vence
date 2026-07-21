@@ -14,7 +14,7 @@ Sistema **Claude-en-el-bucle**: el sweep detecta y alerta (badge); **el humano d
 | kind | Qué detecta | Falso positivo típico |
 |---|---|---|
 | `multi_account_device` | ≥N cuentas distintas en un mismo dispositivo | familia/academia que comparte equipo (pocas cuentas, uso normal) |
-| `multi_account_reg_ip` | ≥N cuentas registradas desde una misma IP | red compartida (universidad, oficina, CGNAT operador) |
+| `multi_account_reg_ip` | ≥N cuentas desde una IP **con device compartido** (o ≥20 = egregio), excluyendo rangos CDN/proxy | raro tras el afinado 21/07 (antes: Cloudflare + CGNAT eran 20/21 falsos positivos) |
 | `device_daily_farming` | un dispositivo suma > umbral preguntas/día across cuentas | poco frecuente; casi siempre farmeo real del límite free |
 | `curl_scraping` | uso de API sin dispositivo Y sin navegador (page_views ~0) | humano cuyo fingerprint no se registró (pero ESE sí tiene page_views → no salta) |
 | `premium_sharing` | dispositivo compartido que incluye premium + ≥2 cuentas activas | pareja/familia con una premium legítima |

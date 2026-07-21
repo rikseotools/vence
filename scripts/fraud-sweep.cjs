@@ -8,7 +8,7 @@
  *
  * Detectores (todos parametrizables por env):
  *   - multi_account_device   : ≥N cuentas distintas en un mismo dispositivo (farmeo/sharing)
- *   - multi_account_reg_ip    : ≥N cuentas registradas desde una misma IP (granja)
+ *   - multi_account_reg_ip    : ≥N cuentas desde una IP (excl. CDN/proxy; exige device compartido o ≥20 = granja)
  *   - device_daily_farming    : un dispositivo suma > umbral preguntas/día across cuentas
  *   - curl_scraping           : uso de API sin dispositivo Y sin navegador (page_views ~0) = script/curl
  *   - premium_sharing         : dispositivo compartido que incluye premium + ≥2 cuentas activas
@@ -92,10 +92,24 @@ async function main() {
   }
 
   // ── D2: multi_account_reg_ip ──────────────────────────────────────────────
+  // Afinado (falsos positivos 21/07): (1) excluye rangos CDN/proxy (Cloudflare) — la IP
+  // capturada es la del proxy, no del usuario; (2) exige CORRELACIÓN DE DISPOSITIVO — una
+  // IP solo cuenta si ≥2 de sus cuentas comparten dispositivo (firma de granja real; el
+  // CGNAT/red compartida NO comparte device), con escape para lo EGREGIO (≥20 cuentas).
+  const CDN_RANGES = `ARRAY['173.245.48.0/20','103.21.244.0/22','103.22.200.0/22','103.31.4.0/22','141.101.64.0/18','108.162.192.0/18','190.93.240.0/20','188.114.96.0/20','197.234.240.0/22','198.41.128.0/17','162.158.0.0/15','104.16.0.0/12','172.64.0.0/13','131.0.72.0/22']::inet[]`;
   const d2 = await c.query(
-    `SELECT registration_ip, count(*) accounts, array_agg(id) users
-     FROM user_profiles WHERE registration_ip IS NOT NULL AND registration_ip <> ''
-     GROUP BY registration_ip HAVING count(*) >= $1 ORDER BY 2 DESC LIMIT 200`, [IP_ACCOUNTS]);
+    `WITH ip_users AS (
+       SELECT registration_ip, array_agg(id) users, count(*) accounts
+       FROM user_profiles
+       WHERE registration_ip ~ '^(\\d{1,3}\\.){3}\\d{1,3}$'
+         AND NOT (registration_ip::inet <<= ANY(${CDN_RANGES}))
+       GROUP BY registration_ip HAVING count(*) >= $1)
+     SELECT iu.registration_ip, iu.accounts, iu.users
+     FROM ip_users iu
+     WHERE EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id = ANY(iu.users)
+                   GROUP BY d.device_id HAVING count(DISTINCT d.user_id) >= 2)
+        OR iu.accounts >= 20
+     ORDER BY iu.accounts DESC LIMIT 200`, [IP_ACCOUNTS]);
   for (const r of d2.rows) {
     found++;
     bump(await upsertSignal(c, { kind: 'multi_account_reg_ip', subject: r.registration_ip, userIds: r.users, n: Number(r.accounts),

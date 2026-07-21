@@ -92,11 +92,22 @@ export class FraudSweepService {
       }, Number(r.accounts)));
     }
 
-    // D2 multi_account_reg_ip
+    // D2 multi_account_reg_ip — afinado (falsos positivos 21/07): excluye rangos CDN/proxy
+    // (Cloudflare) y exige CORRELACIÓN DE DISPOSITIVO (≥2 cuentas de la IP comparten device
+    // = granja; CGNAT/red compartida no comparte device), con escape para lo egregio (≥20).
     for (const r of rows(await this.db.execute(sql`
-      SELECT registration_ip, count(*)::int accounts, array_agg(id) users
-      FROM user_profiles WHERE registration_ip IS NOT NULL AND registration_ip <> ''
-      GROUP BY registration_ip HAVING count(*) >= ${this.IP_ACCOUNTS} ORDER BY 2 DESC LIMIT 200`))) {
+      WITH ip_users AS (
+        SELECT registration_ip, array_agg(id) users, count(*)::int accounts
+        FROM user_profiles
+        WHERE registration_ip ~ '^(\\d{1,3}\\.){3}\\d{1,3}$'
+          AND NOT (registration_ip::inet <<= ANY(ARRAY['173.245.48.0/20','103.21.244.0/22','103.22.200.0/22','103.31.4.0/22','141.101.64.0/18','108.162.192.0/18','190.93.240.0/20','188.114.96.0/20','197.234.240.0/22','198.41.128.0/17','162.158.0.0/15','104.16.0.0/12','172.64.0.0/13','131.0.72.0/22']::inet[]))
+        GROUP BY registration_ip HAVING count(*) >= ${this.IP_ACCOUNTS})
+      SELECT iu.registration_ip, iu.accounts, iu.users
+      FROM ip_users iu
+      WHERE EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id = ANY(iu.users)
+                    GROUP BY d.device_id HAVING count(DISTINCT d.user_id) >= 2)
+         OR iu.accounts >= 20
+      ORDER BY iu.accounts DESC LIMIT 200`))) {
       found++;
       bump(await this.upsert('multi_account_reg_ip', r.registration_ip, r.users, { registration_ip: r.registration_ip, accounts: Number(r.accounts) }, Number(r.accounts)));
     }
