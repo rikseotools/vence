@@ -57,7 +57,13 @@ export class DetectExamenesSignalsService {
         cn.url                             AS "url",
         cn.llm_extraction->>'fecha_examen' AS "fechaRaw",
         cn.llm_extraction->'citas'         AS "citas",
-        cv.exam_date::text                 AS "examDateActual"
+        cv.exam_date::text                 AS "examDateActual",
+        (
+          SELECT max(h2.fecha)::text
+          FROM convocatoria_hitos h2
+          WHERE h2.oposicion_id = o.id
+            AND h2.tipo IN ('oep_aprobada', 'convocatoria_publicada', 'bases_publicadas')
+        )                                  AS "cicloInicio"
       FROM convocatoria_notas cn
       JOIN oposiciones o
         ON o.id = cn.oposicion_id AND o.is_active = true

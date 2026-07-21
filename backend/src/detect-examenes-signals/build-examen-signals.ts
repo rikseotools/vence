@@ -12,6 +12,13 @@ export interface ExamenNotaCandidate {
   fechaRaw: string | null;
   /** `convocatorias.exam_date` del ciclo vigente en ISO (o null si no hay). */
   examDateActual: string | null;
+  /**
+   * Arranque del ciclo VIGENTE en ISO: fecha del hito más reciente de tipo
+   * `oep_aprobada`/`convocatoria_publicada`/`bases_publicadas` (o null si no hay).
+   * Una fecha de examen ANTERIOR a esto es de un ciclo PREVIO ya resuelto cuyos PDFs
+   * siguen colgados en la misma página → NO es la del ciclo que trackeamos.
+   */
+  cicloInicio?: string | null;
   /** `llm_extraction->'citas'` para provenance (opcional). */
   citas?: unknown;
 }
@@ -23,7 +30,11 @@ export interface ExamenNotaCandidate {
  *  1. La fecha tiene que ser UNA fecha de día único inequívoca (`parseFechaExamen`).
  *  2. Se descarta lo anterior a `minYear` (docs viejos mal extraídos: "15/05/2010").
  *  3. Se descarta si ya coincide con `convocatorias.exam_date` (ya capturada).
- *  4. Dedup por (oposición, fecha): una misma fecha aparece en varios PDFs de la
+ *  4. Se descarta si es ANTERIOR al arranque del ciclo vigente (`cicloInicio`): es
+ *     de un proceso previo ya resuelto cuyos PDFs siguen en la misma página. Caso
+ *     real (CLM 21/07): el detector sacó "11/10/2025" del examen de la OEP 2023-2024
+ *     ya resuelta, cuando el registro ya rastrea la OEP 2025 (aprobada 12/12/2025).
+ *  5. Dedup por (oposición, fecha): una misma fecha aparece en varios PDFs de la
  *     misma convocatoria; una sola señal.
  *
  * NO fija `detectedYear` ni `detectedEstado` a propósito: así el apply humano solo
@@ -47,6 +58,10 @@ export function buildExamenSignals(
 
     // Ya capturada en el ciclo vigente → nada que avisar.
     if (c.examDateActual && c.examDateActual.slice(0, 10) === fecha) continue;
+
+    // Fecha de un ciclo PREVIO ya resuelto (PDF viejo que sigue en la página) → no
+    // es la del ciclo que trackeamos. Solo aplica si conocemos el arranque del ciclo.
+    if (c.cicloInicio && fecha < c.cicloInicio.slice(0, 10)) continue;
 
     const dedupeKey = `nota_examen:${c.oposicionId}:${fecha}`;
     if (seen.has(dedupeKey)) continue;

@@ -69,6 +69,27 @@ describe('buildExamenSignals', () => {
     expect(buildExamenSignals(rows, OPTS)).toHaveLength(0);
   });
 
+  it('descarta fechas anteriores al arranque del ciclo vigente (PDF de ciclo previo)', () => {
+    // Caso real CLM: extrae 11/10/2025 del examen de la OEP 2023-2024 ya resuelta,
+    // cuando el registro ya rastrea la OEP 2025 (aprobada 11/12/2025).
+    const rows = [
+      nota({ fechaRaw: '2025-10-11', cicloInicio: '2025-12-11' }),
+    ];
+    expect(buildExamenSignals(rows, OPTS)).toHaveLength(0);
+  });
+
+  it('emite fechas iguales o posteriores al arranque del ciclo vigente', () => {
+    const rows = [
+      nota({ fechaRaw: '2026-03-15', cicloInicio: '2025-12-11' }),
+    ];
+    expect(buildExamenSignals(rows, OPTS)).toHaveLength(1);
+  });
+
+  it('sin cicloInicio no filtra por ciclo (emite si pasa el resto de guardas)', () => {
+    const rows = [nota({ fechaRaw: '2026-03-15', cicloInicio: null })];
+    expect(buildExamenSignals(rows, OPTS)).toHaveLength(1);
+  });
+
   it('emite si la fecha difiere de la exam_date actual (fecha nueva)', () => {
     const rows = [
       nota({ fechaRaw: '2026-09-12', examDateActual: '2026-05-01' }),
