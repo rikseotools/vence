@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'celador_murcia',
+      label: 'Celador SMS Murcia',
+      data: {
+        name: 'Celador/a-Subalterno/a del Servicio Murciano de Salud (SMS)',
+        slug: 'celador-murcia',
+        categoria: 'Agrupaciones Profesionales',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'oficial_de_gestion_parlamento_de_andalucia',
       label: 'Oficial de Gestión Parlamento Andalucía',
       data: {

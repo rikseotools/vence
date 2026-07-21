@@ -151,6 +151,60 @@ export type Oposicion = z.infer<typeof OposicionSchema>
 // ============================================
 
 export const OPOSICIONES: Oposicion[] = [
+  // Celador/a-Subalterno/a del Servicio Murciano de Salud (SMS)
+  {
+    id: 'celador_murcia',
+    slug: 'celador-murcia',
+    positionType: 'celador_murcia',
+    examScoring: { penaltyDivisor: 4, source: 'Convocatoria BORM núm. 291, de 18 de diciembre de 2025 (anuncio 6134), base 10.2: cuestionario de 75 preguntas con 4 respuestas alternativas (una válida), 85 minutos; cada respuesta errónea penaliza con un cuarto (1/4) del valor de una respuesta correcta; las no contestadas no penalizan.' },
+    hasPsychometricTest: false,
+    name: 'Celador/a-Subalterno/a del Servicio Murciano de Salud (SMS)',
+    shortName: 'Celador SMS Murcia',
+    emoji: '🧑‍⚕️',
+    badge: 'E',
+    color: 'red',
+    administracion: 'autonomica',
+    aliases: ['celador sms murcia', 'celador subalterno murcia', 'celador servicio murciano de salud', 'oposicion celador murcia', 'celadores sms'],
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Parte general (materias comunes)',
+        subtitle: 'Constitución y Estatuto de Murcia, organización sanitaria, personal estatutario, procedimiento administrativo, prevención de riesgos e igualdad',
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución y el Estatuto de Autonomía de la Región de Murcia' },
+          { id: 2, name: 'Organización sanitaria: Ley General de Sanidad y el Servicio Murciano de Salud' },
+          { id: 3, name: 'El Estatuto Marco del personal estatutario: derechos, deberes y régimen disciplinario' },
+          { id: 4, name: 'Situaciones administrativas, permisos y licencias del personal estatutario' },
+          { id: 5, name: 'Procedimiento administrativo y régimen jurídico del sector público' },
+          { id: 6, name: 'Prevención de riesgos laborales y actuación ante incendios y evacuación' },
+          { id: 7, name: 'Igualdad y tutela contra la discriminación' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Parte específica (Celador-Subalterno)',
+        subtitle: 'Autonomía del paciente y protección de datos, funciones del celador por servicios, movilización, reprografía y correspondencia, e informática básica',
+        icon: '🏥',
+        themes: [
+          { id: 8, name: 'Autonomía del paciente y protección de datos' },
+          { id: 9, name: 'El celador en su puesto de trabajo (I): hospitalización, UCI, quirófano, urgencias y mortuorio' },
+          { id: 10, name: 'El celador en su puesto de trabajo (II): rehabilitación, consultas y atención primaria' },
+          { id: 11, name: 'El celador en su puesto de trabajo (III): almacén y farmacia' },
+          { id: 12, name: 'Movilización y traslado de pacientes' },
+          { id: 13, name: 'Reprografía, correspondencia y servicios postales' },
+          { id: 14, name: 'Informática básica y entorno Windows' },
+        ],
+      },
+    ],
+    totalTopics: 14,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-murcia', label: 'Mi Oposición', icon: '🧑‍⚕️', featured: true },
+      { href: '/celador-murcia/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-murcia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
   // Oficial de Gestión del Parlamento de Andalucía
   {
     id: 'oficial_de_gestion_parlamento_de_andalucia',

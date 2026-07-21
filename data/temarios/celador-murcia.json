@@ -1,0 +1,512 @@
+{
+  "identity": {
+    "nombre": "Celador/a-Subalterno/a del Servicio Murciano de Salud (SMS)",
+    "short_name": "Celador SMS Murcia",
+    "slug": "celador-murcia",
+    "position_type": "celador_murcia",
+    "grupo": "E",
+    "subgrupo": "E",
+    "categoria": "Agrupaciones Profesionales",
+    "tipo_acceso": "libre",
+    "administracion": "Servicio Murciano de Salud",
+    "administracion_display": "Autonómica",
+    "titulo_requerido": "Certificado de escolaridad o equivalente",
+    "ccaa": "murcia",
+    "familia": "sanidad",
+    "coverage_level": "con_tests",
+    "emoji": "🧑‍⚕️",
+    "color_primario": "red",
+    "hasPsychometricTest": false,
+    "temas_count": 14,
+    "bloques_count": 2,
+    "aliases": [
+      "celador sms murcia",
+      "celador subalterno murcia",
+      "celador servicio murciano de salud",
+      "oposicion celador murcia",
+      "celadores sms"
+    ]
+  },
+  "examScoring": {
+    "penaltyDivisor": 4,
+    "source": "Convocatoria BORM núm. 291, de 18 de diciembre de 2025 (anuncio 6134), base 10.2: cuestionario de 75 preguntas con 4 respuestas alternativas (una válida), 85 minutos; cada respuesta errónea penaliza con un cuarto (1/4) del valor de una respuesta correcta; las no contestadas no penalizan."
+  },
+  "convocatoria": {
+    "estado_proceso": "convocada",
+    "diario_oficial": "BORM",
+    "diario_referencia": "BORM núm. 291, de 18/12/2025 (anuncio nº 6134)",
+    "programa_url": "https://www.borm.es/services/anuncio/ano/2025/numero/6134/pdf?id=840285",
+    "seguimiento_url": "https://sede.carm.es/sms/seleccion/",
+    "plazas_libres": 106,
+    "plazas_discapacidad": 5,
+    "plazas_promocion_interna": 5,
+    "boe_reference": "BORM núm. 291, de 18/12/2025 (anuncio 6134)",
+    "notas_examen": "Concurso-oposición. Fase de oposición: un único ejercicio, cuestionario de 75 preguntas tipo test (85 min, penaliza 1/4). Temario común = Resolución del SMS de 22/07/2025 (BORM 177, 02/08/2025); temario específico Celador-Subalterno = Resolución de 21/07/2022 (BORM 170, 25/07/2022).",
+    "año": 2025,
+    "numero": "Convocatoria de 18/12/2025 (BORM 291)",
+    "fecha": "2025-12-18",
+    "diario": "BORM núm. 291, de 18/12/2025 (anuncio nº 6134)",
+    "inscription_start": null,
+    "inscription_deadline": null,
+    "exam_date": null,
+    "boe_publication_date": "2025-12-18"
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Parte general (materias comunes)",
+      "subtitulo": "Constitución y Estatuto de Murcia, organización sanitaria, personal estatutario, procedimiento administrativo, prevención de riesgos e igualdad",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Parte específica (Celador-Subalterno)",
+      "subtitulo": "Autonomía del paciente y protección de datos, funciones del celador por servicios, movilización, reprografía y correspondencia, e informática básica",
+      "icon": "🏥"
+    }
+  ],
+  "temario": [
+    {
+      "topic_number": 1,
+      "epigrafe": "Los derechos y deberes fundamentales en el Título I de la Constitución Española; la protección de la salud en la Constitución. La Ley Orgánica 4/1982, de 9 de junio, del Estatuto de Autonomía de la Región de Murcia: órganos institucionales y régimen jurídico.",
+      "bloque": 1,
+      "titulo": "La Constitución y el Estatuto de Autonomía de la Región de Murcia",
+      "descripcion_corta": "Los derechos y deberes fundamentales en el Título I de la Constitución Española; la protección de la salud en la Constitución. La Ley Orgánica 4/1982,"
+    },
+    {
+      "topic_number": 2,
+      "epigrafe": "La Ley 14/1986, de 25 de abril, General de Sanidad: la organización general del sistema sanitario público; los servicios de salud de las comunidades autónomas; las áreas de salud. La Ley 4/1994, de 26 de julio, de Salud de la Región de Murcia: el mapa sanitario regional. El Servicio Murciano de Salud: órganos de dirección, participación y gestión.",
+      "bloque": 1,
+      "titulo": "Organización sanitaria: Ley General de Sanidad y el Servicio Murciano de Salud",
+      "descripcion_corta": "La Ley 14/1986, de 25 de abril, General de Sanidad: la organización general del sistema sanitario público; los servicios de salud de las comunidades a"
+    },
+    {
+      "topic_number": 3,
+      "epigrafe": "Ley 55/2003, de 16 de diciembre, del Estatuto Marco del personal estatutario de los servicios de salud: derechos y deberes; promoción interna. Régimen disciplinario: faltas y sanciones.",
+      "bloque": 1,
+      "titulo": "El Estatuto Marco del personal estatutario: derechos, deberes y régimen disciplinario",
+      "descripcion_corta": "Ley 55/2003, de 16 de diciembre, del Estatuto Marco del personal estatutario de los servicios de salud: derechos y deberes; promoción interna. Régimen"
+    },
+    {
+      "topic_number": 4,
+      "epigrafe": "Situaciones administrativas, permisos y licencias en la Ley 55/2003, de 16 de diciembre, del Estatuto Marco del personal estatutario de los servicios de salud, la Ley 5/2001, de 5 de diciembre, de personal estatutario del Servicio Murciano de Salud y el Estatuto Básico del Empleado Público.",
+      "bloque": 1,
+      "titulo": "Situaciones administrativas, permisos y licencias del personal estatutario",
+      "descripcion_corta": "Situaciones administrativas, permisos y licencias en la Ley 55/2003, de 16 de diciembre, del Estatuto Marco del personal estatutario de los servicios "
+    },
+    {
+      "topic_number": 5,
+      "epigrafe": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: derecho y obligación de relacionarse electrónicamente con la Administración. Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público: la sede electrónica; la responsabilidad de las autoridades y personal al servicio de las Administraciones Públicas.",
+      "bloque": 1,
+      "titulo": "Procedimiento administrativo y régimen jurídico del sector público",
+      "descripcion_corta": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: derecho y obligación de relacionarse electrónic"
+    },
+    {
+      "topic_number": 6,
+      "epigrafe": "Ley 31/1995, de 8 de noviembre, de prevención de Riesgos Laborales: objeto y definiciones; derecho a la protección frente a los riesgos laborales; principios de la acción preventiva; equipos de trabajo y medios de protección; formación de los trabajadores; servicios de prevención: concepto y funciones. Conceptos básicos sobre riesgos laborales: definición de Seguridad en el Trabajo, Higiene Industrial, Ergonomía y Psicosociología. Normas generales de actuación en caso de incendio y evacuación. Tipos y manejo de extintores.",
+      "bloque": 1,
+      "titulo": "Prevención de riesgos laborales y actuación ante incendios y evacuación",
+      "descripcion_corta": "Ley 31/1995, de 8 de noviembre, de prevención de Riesgos Laborales: objeto y definiciones; derecho a la protección frente a los riesgos laborales; pri"
+    },
+    {
+      "topic_number": 7,
+      "epigrafe": "El principio de igualdad y la tutela contra la discriminación en la Ley Orgánica 3/2007, de 22 de marzo. Planes de igualdad: concepto y contenido. El acoso por razón de sexo en el trabajo en la Ley 7/2007, de 4 de abril, de Igualdad entre Mujeres y Hombres de la Región de Murcia.",
+      "bloque": 1,
+      "titulo": "Igualdad y tutela contra la discriminación",
+      "descripcion_corta": "El principio de igualdad y la tutela contra la discriminación en la Ley Orgánica 3/2007, de 22 de marzo. Planes de igualdad: concepto y contenido. El "
+    },
+    {
+      "topic_number": 8,
+      "epigrafe": "La Ley 41/2002, de 14 de noviembre, básica reguladora de la autonomía del paciente y de derechos y obligaciones en materia de información y documentación clínica: principios generales; el derecho de información sanitaria; derecho a la intimidad; el respeto de la autonomía del paciente. La protección de datos personales: condiciones para el consentimiento en el Reglamento (UE) 2016/679; principios de la protección de datos en la Ley Orgánica 3/2018, de 5 de diciembre.",
+      "bloque": 2,
+      "titulo": "Autonomía del paciente y protección de datos",
+      "descripcion_corta": "La Ley 41/2002, de 14 de noviembre, básica reguladora de la autonomía del paciente y de derechos y obligaciones en materia de información y documentac"
+    },
+    {
+      "topic_number": 9,
+      "epigrafe": "El celador en su puesto de trabajo (I): unidades de hospitalización, unidades de cuidados intensivos (UCI), áreas quirúrgicas, áreas de radiodiagnóstico y áreas de urgencias; servicio de Anatomía Patológica; Mortuorio. Prevención de enfermedades transmisibles en el medio hospitalario: normas de aislamiento y precauciones.",
+      "bloque": 2,
+      "titulo": "El celador en su puesto de trabajo (I): hospitalización, UCI, quirófano, urgencias y mortuorio",
+      "descripcion_corta": "El celador en su puesto de trabajo (I): unidades de hospitalización, unidades de cuidados intensivos (UCI), áreas quirúrgicas, áreas de radiodiagnósti"
+    },
+    {
+      "topic_number": 10,
+      "epigrafe": "El celador en su puesto de trabajo (II): servicio de rehabilitación; consultas externas hospitalarias y extrahospitalarias; Equipos de Atención Primaria.",
+      "bloque": 2,
+      "titulo": "El celador en su puesto de trabajo (II): rehabilitación, consultas y atención primaria",
+      "descripcion_corta": "El celador en su puesto de trabajo (II): servicio de rehabilitación; consultas externas hospitalarias y extrahospitalarias; Equipos de Atención Primar"
+    },
+    {
+      "topic_number": 11,
+      "epigrafe": "El celador en su puesto de trabajo (III): el almacén y la farmacia (recepción y almacenamiento de mercancías). Organización del almacén y distribución de pedidos.",
+      "bloque": 2,
+      "titulo": "El celador en su puesto de trabajo (III): almacén y farmacia",
+      "descripcion_corta": "El celador en su puesto de trabajo (III): el almacén y la farmacia (recepción y almacenamiento de mercancías). Organización del almacén y distribución"
+    },
+    {
+      "topic_number": 12,
+      "epigrafe": "Posiciones anatómicas básicas. Técnicas de movilización de pacientes; el traslado del paciente encamado, en silla de rueda y camilla. Utilización de medios mecánicos en la movilización de pacientes. Traslado de documentación, aparatos, mobiliario y objetos.",
+      "bloque": 2,
+      "titulo": "Movilización y traslado de pacientes",
+      "descripcion_corta": "Posiciones anatómicas básicas. Técnicas de movilización de pacientes; el traslado del paciente encamado, en silla de rueda y camilla. Utilización de m"
+    },
+    {
+      "topic_number": 13,
+      "epigrafe": "Nociones sobre máquinas de reprografía: impresión, fotocopias, fax y escáner; encuadernadoras, ensobradoras y análogas. Envíos y servicios postales. Sistemas de franqueo.",
+      "bloque": 2,
+      "titulo": "Reprografía, correspondencia y servicios postales",
+      "descripcion_corta": "Nociones sobre máquinas de reprografía: impresión, fotocopias, fax y escáner; encuadernadoras, ensobradoras y análogas. Envíos y servicios postales. S"
+    },
+    {
+      "topic_number": 14,
+      "epigrafe": "Conceptos de informática básica. Almacenamiento de datos: el disco duro, lápices de memoria, tarjetas de memoria. Nociones básicas del entorno Windows: el ratón, el escritorio, la barra de tareas, los iconos, las ventanas, cerrar. Mi PC. El Panel de Control. Impresoras. La papelera.",
+      "bloque": 2,
+      "titulo": "Informática básica y entorno Windows",
+      "descripcion_corta": "Conceptos de informática básica. Almacenamiento de datos: el disco duro, lápices de memoria, tarjetas de memoria. Nociones básicas del entorno Windows"
+    }
+  ],
+  "scope": {
+    "1": [
+      {
+        "law": "CE",
+        "articles": [
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55"
+        ]
+      },
+      {
+        "law": "LO 4/1982 Estatuto de Autonomía de Murcia",
+        "wholeLaw": true
+      }
+    ],
+    "2": [
+      {
+        "law": "Ley 4/1994 Salud Murcia",
+        "wholeLaw": true
+      },
+      {
+        "law": "LGS",
+        "wholeLaw": true
+      }
+    ],
+    "3": [
+      {
+        "law": "Ley 55/2003",
+        "articles": [
+          "17",
+          "18",
+          "19",
+          "34",
+          "35",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75"
+        ]
+      }
+    ],
+    "4": [
+      {
+        "law": "Ley 5/2001 Personal Estatutario SMS",
+        "wholeLaw": true
+      },
+      {
+        "law": "Ley 55/2003",
+        "articles": [
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68"
+        ]
+      },
+      {
+        "law": "RDL 5/2015",
+        "articles": [
+          "48",
+          "49",
+          "50",
+          "51",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92"
+        ]
+      }
+    ],
+    "5": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "13",
+          "14"
+        ]
+      },
+      {
+        "law": "Ley 40/2015",
+        "articles": [
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38"
+        ]
+      }
+    ],
+    "6": [
+      {
+        "law": "LPRL",
+        "wholeLaw": true
+      },
+      {
+        "law": "Seguridad e Incendios",
+        "wholeLaw": true
+      }
+    ],
+    "7": [
+      {
+        "law": "Ley 7/2007 CARM Igualdad y VG",
+        "articles": [
+          "22"
+        ]
+      },
+      {
+        "law": "LO 3/2007",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49"
+        ]
+      }
+    ],
+    "8": [
+      {
+        "law": "LAP",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11"
+        ]
+      },
+      {
+        "law": "LO 3/2018",
+        "articles": [
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ]
+      },
+      {
+        "law": "RGPD UE 2016/679",
+        "articles": [
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11"
+        ]
+      }
+    ],
+    "9": [
+      {
+        "law": "Funciones del TCAE",
+        "wholeLaw": true
+      },
+      {
+        "law": "Paciente quirurgico",
+        "wholeLaw": true
+      },
+      {
+        "law": "Urgencias y RCP",
+        "wholeLaw": true
+      }
+    ],
+    "10": [
+      {
+        "law": "Funciones del TCAE",
+        "wholeLaw": true
+      }
+    ],
+    "11": [
+      {
+        "law": "Almacenamiento y control de materiales",
+        "wholeLaw": true
+      }
+    ],
+    "12": [
+      {
+        "law": "Movilizacion y posiciones",
+        "wholeLaw": true
+      }
+    ],
+    "13": [
+      {
+        "law": "Ley 43/2010 Postal",
+        "wholeLaw": true
+      }
+    ],
+    "14": [
+      {
+        "law": "Explorador Windows 10",
+        "wholeLaw": true
+      },
+      {
+        "law": "Informática Básica",
+        "wholeLaw": true
+      },
+      {
+        "law": "Windows 10",
+        "wholeLaw": true
+      }
+    ]
+  },
+  "landing": {
+    "seo_title": "Celador SMS Murcia 2026 | 106 plazas | Test online | Vence",
+    "seo_description": "Prepara la oposición de Celador/a-Subalterno/a del Servicio Murciano de Salud (SMS): 106 plazas (BORM 18/12/2025), temario oficial y tests online con preguntas del examen.",
+    "estadisticas": [
+      {
+        "numero": "106",
+        "texto": "Plazas turno libre",
+        "color": "text-red-600"
+      },
+      {
+        "numero": "{temasCount}",
+        "texto": "Temas oficiales",
+        "color": "text-blue-600"
+      },
+      {
+        "numero": "75",
+        "texto": "Preguntas en el examen",
+        "color": "text-purple-600"
+      },
+      {
+        "numero": "Cert. escolaridad",
+        "texto": "Titulación requerida",
+        "color": "text-orange-600"
+      }
+    ],
+    "faqs": [
+      {
+        "pregunta": "¿Cuántas plazas hay?",
+        "respuesta": "La convocatoria de Celador/a-Subalterno/a del SMS (BORM núm. 291, de 18/12/2025) oferta 106 plazas de turno libre, 5 de reserva de discapacidad y 5 de promoción interna."
+      },
+      {
+        "pregunta": "¿Cuántos temas tiene el temario?",
+        "respuesta": "El temario tiene {temasCount} temas: 7 de la parte general (materias comunes) y 7 de la parte específica de Celador-Subalterno."
+      },
+      {
+        "pregunta": "¿Qué titulación se necesita?",
+        "respuesta": "Certificado de escolaridad o equivalente. Es una oposición de agrupaciones profesionales del Servicio Murciano de Salud."
+      },
+      {
+        "pregunta": "¿Cómo es el examen?",
+        "respuesta": "Concurso-oposición. La fase de oposición es un único ejercicio: un cuestionario de 75 preguntas tipo test con 4 respuestas (una válida), 85 minutos. Cada respuesta errónea resta un cuarto (1/4) del valor de una correcta."
+      },
+      {
+        "pregunta": "¿Cuándo es el examen?",
+        "respuesta": "La convocatoria se publicó el 18/12/2025 (BORM núm. 291). La fecha del examen aún no está fijada; se publicará en el BORM y en la sede del SMS."
+      }
+    ],
+    "description": "Oposición de Celador/a-Subalterno/a del Servicio Murciano de Salud (SMS). 106 plazas de turno libre (BORM núm. 291, de 18/12/2025). Concurso-oposición: cuestionario de 75 preguntas. Titulación: certificado de escolaridad."
+  },
+  "hitos": [
+    {
+      "tipo": "convocatoria_publicada",
+      "titulo": "Convocatoria publicada (BORM núm. 291)",
+      "fecha": "2025-12-18",
+      "status": "completed",
+      "descripcion": "106 plazas de turno libre de Celador/a-Subalterno/a del SMS.",
+      "url": "https://www.borm.es/services/anuncio/ano/2025/numero/6134/pdf?id=840285",
+      "order_index": 1,
+      "severity": "important"
+    }
+  ]
+}

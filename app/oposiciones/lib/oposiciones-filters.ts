@@ -73,6 +73,7 @@ export function getAllFilterSlugs(): string[] {
 // Mapear oposición a CCAA slug para filtrado
 export function oposicionToCcaa(opoSlug: string): string | null {
   const map: Record<string, string> = {
+    'celador-murcia': 'murcia',
     'oficial-de-gestion-parlamento-de-andalucia': 'andalucia',
     'subalterno-parlamento-andalucia': 'andalucia',
     'administrativo-aragon': 'aragon',

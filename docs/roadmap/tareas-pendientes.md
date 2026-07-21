@@ -223,6 +223,13 @@
 
 ## Abiertas
 
+### [T-067] ✅ CERRADA 21/07 — Construir Celador/a-Subalterno/a del SMS (Murcia)
+- **✅ Construida** (`celador-murcia`, `is_active=false` pendiente de go-live con OK). 14 temas (7 comunes + 7 específicos de celador), epígrafes literales verificados contra el BORM (convocatoria 6134/BORM 291 de 18/12/2025: **106 plazas TL + 5 disc**; temario común Res. 22/07/2025 BORM 177, específico Res. 21/07/2022 BORM 170).
+- **Reuso total, 0 leyes importadas: 9.545 preguntas activas** heredadas. Bloque específico de `celador-sas`; bloque común de las leyes murcianas ya en BD (Estatuto Murcia, Salud RM, Personal SMS 5/2001, Igualdad, Transparencia) que usan las 9 oposiciones murcianas existentes.
+- **Gates:** `audit:oposicion` 0❌/0🟡, `audit:served` 0❌/0🟡. `verify:scope` (2 agentes): 8 correct, 4 issues, 2 needs_human. Corregido el sobre-scope grave (T5: Ley 39/2015+40/2015 enteras, 4.639 preg → acotadas a 205 de temario) y añadidas editoriales a huecos (Windows T14, RGPD T8, incendios T6).
+- **Pendiente (issues no bloqueantes, generar contenido editorial que NO existe en BD):** T13 reprografía/máquinas de oficina, T9 mortuorio/anatomía patológica/aislamiento, T10 rehabilitación/consultas externas. Los temas cumplen umbral (≥10 preg) por las otras partes del epígrafe.
+- **Al publicar (go-live):** avisar a **Jesús David** (feedback `cdc08f10`) de que su oposición ya está lista.
+
 ### [T-063] 🟡 [ABIERTA 20/07] Servir DOS convocatorias concurrentes de la misma oposición con temario divergente (clonar la oposición)
 - **Qué:** una oposición = **un** `topic_scope`, pero pueden coexistir **dos convocatorias vivas con temario distinto** y no sabemos servir las dos a la vez. Hay que poder tener **dos oposiciones "iguales" (mismo contenido) pero con distinta convocatoria + OEP**, cada una con su temario/versión, y hacer **rollover** de una a otra cuando toque.
 - **Caso raíz (Madrid, verificado 20/07 contra BOCM):** Aux. Admin. Comunidad de Madrid tiene **dos convocatorias abiertas**: *Orden 264/2026* (Windows **10**, examen 15/10/2026, inminente) y *Orden 1628/2026* (Windows **11**, inscripción abierta, examen 2027). El temario oficial **cambió la versión** (10→11) en la nueva. Ahora mismo servimos **Windows 10** (para no romper el examen de octubre) y hay que **rollar a Windows 11 el mismo día que pase el examen de octubre**. El contenido de Windows 11 ya está en BD (contenedores `Windows 11` + `Explorador Windows 11`), así que el switch es re-escopar T16, "cuestión de un día". **Mientras tanto se gestiona A MANO** (dos usuarias ya preguntaron: feedbacks Tamara `eedc3c3e` y Vero `49bd3949`, respondidas con la explicación de las dos convocatorias).
