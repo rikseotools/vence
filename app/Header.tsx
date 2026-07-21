@@ -379,9 +379,8 @@ export default function HeaderES() {
     // Enlaces que NO dependen de la oposición (siempre visibles), + psicotécnicos
     // condicional (userHasPsico, calculado a nivel de componente y compartido con el móvil).
     const commonLinks: NavLink[] = [
-      { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/teoria', label: 'Teoría Legal', icon: '📖', title: 'Lee el texto de las leyes y búscalas por nombre' },
-      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
+      { href: '/test/por-leyes', label: 'Test combinando leyes', icon: '📝' },
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' },
       // Embajadores: SOLO premium/legacy (el programa es solo-premium).
@@ -421,9 +420,8 @@ export default function HeaderES() {
     return [
       { href: `/${guestSlug}/test`, label: 'Test', icon: '🎯' },
       { href: `/${guestSlug}/temario`, label: 'Temario', icon: '📚' },
-      { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/teoria', label: 'Teoría Legal', icon: '📖', title: 'Lee el texto de las leyes y búscalas por nombre' },
-      { href: '/test/por-leyes', label: 'Por Leyes', icon: '📝' },
+      { href: '/test/por-leyes', label: 'Test combinando leyes', icon: '📝' },
       ...(hasPsico ? [{ href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
@@ -587,16 +585,6 @@ export default function HeaderES() {
                   <span className="text-sm font-bold ml-0.5">{userStreak}</span>
                 </button>
                 
-                {/* ⚖️ ICONO DE LEYES */}
-                <Link
-                  href="/leyes"
-                  className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
-                  aria-label="Ir a Leyes"
-                  title="Estudiar Leyes"
-                >
-                  <span className="text-lg">⚖️</span>
-                </Link>
-
                 {/* 📖 ICONO DE TEORÍA LEGAL */}
                 <Link
                   href="/teoria"
@@ -661,11 +649,11 @@ export default function HeaderES() {
                   <span>IA</span>
                 </button>
 
-                {/* 📖 Por Leyes - Móvil */}
+                {/* 📝 Test combinando leyes - Móvil */}
                 <Link
                   href="/test/por-leyes"
                   className="tap-feedback flex items-center p-1.5 rounded-lg"
-                  title="Test Por Leyes"
+                  title="Test combinando leyes"
                 >
                   <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
