@@ -107,6 +107,14 @@ Cuando pregunten por el temario —¿está completo?, ¿se amplía según estudi
 
 ## Paso 0: ¿YA está respondido / resuelto? (mirar ANTES de redactar nada)
 
+> 🛠️ **OBLIGATORIO — empieza SIEMPRE por el dossier, no improvises la consulta:**
+> ```bash
+> node scripts/impugnaciones/revisar-feedback.cjs <feedback_id> --sid <tu-id-de-sesión>
+> ```
+> Vuelca la **CONVERSACIÓN ENTERA** (por `conversation_id`, el link fiable) + un **veredicto de Paso 0**: si el último mensaje es del USUARIO tras haberle respondido, dice *"NO re-envíes lo anterior, responde a su ÚLTIMO mensaje"*. Coge (claim) el feedback y avisa si otra sesión lo tiene.
+>
+> **POR QUÉ ES OBLIGATORIO (incidente 21/07 — se DUPLICÓ la respuesta a una usuaria):** al mirar solo el 1er mensaje (o al consultar `feedback_messages` con una columna que no existe y tragarse el error) parece que "no hay respuesta" → se re-envía y le llega el mensaje DOS veces. **Regla dura: lee la conversación ENTERA y responde al ÚLTIMO mensaje del usuario, nunca al primero a ciegas.** El script no se despista aunque tú sí.
+
 Un feedback con `status='pending'` **NO significa que esté sin atender** — puede estar respondido y resuelto pero sin cerrar. Antes de redactar, busca la respuesta en la tabla correcta:
 
 - **`user_feedback.admin_response`** (campo de texto): aquí está la respuesta del admin. **Mirar SIEMPRE este campo primero** — la respuesta NO siempre se guarda en `feedback_messages`.
