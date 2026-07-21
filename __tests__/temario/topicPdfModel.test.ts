@@ -47,10 +47,10 @@ describe('groupArticles — defecto real encontrado con el Reglamento del Parlam
   // repetido en cada artículo. Se saca UNA vez como cabecera de grupo.
   it('agrupa artículos consecutivos que comparten rúbrica de estructura', () => {
     const g = groupArticles([
-      { articleNumber: '1', title: 'TÍTULO PRELIMINAR. De la sesión constitutiva', paragraphs: ['a'] },
-      { articleNumber: '2', title: 'TÍTULO PRELIMINAR. De la sesión constitutiva', paragraphs: ['b'] },
-      { articleNumber: '3', title: 'TÍTULO PRIMERO. De los Diputados', paragraphs: ['c'] },
-      { articleNumber: '4', title: 'TÍTULO PRIMERO. De los Diputados', paragraphs: ['d'] },
+      { articleNumber: '1', title: 'TÍTULO PRELIMINAR. De la sesión constitutiva', body: [{ kind: 'paragraph', spans: [{ text: 'a' }] }] },
+      { articleNumber: '2', title: 'TÍTULO PRELIMINAR. De la sesión constitutiva', body: [{ kind: 'paragraph', spans: [{ text: 'b' }] }] },
+      { articleNumber: '3', title: 'TÍTULO PRIMERO. De los Diputados', body: [{ kind: 'paragraph', spans: [{ text: 'c' }] }] },
+      { articleNumber: '4', title: 'TÍTULO PRIMERO. De los Diputados', body: [{ kind: 'paragraph', spans: [{ text: 'd' }] }] },
     ])
     expect(g).toHaveLength(2)
     expect(g[0].heading).toBe('TÍTULO PRELIMINAR. De la sesión constitutiva')
@@ -59,7 +59,7 @@ describe('groupArticles — defecto real encontrado con el Reglamento del Parlam
   })
 
   it('una rúbrica que NO se repite es del artículo → se fusiona en su encabezado', () => {
-    const g = groupArticles([{ articleNumber: '5', title: 'Sentido de la justicia', paragraphs: ['x'] }])
+    const g = groupArticles([{ articleNumber: '5', title: 'Sentido de la justicia', body: [{ kind: 'paragraph', spans: [{ text: 'x' }] }] }])
     expect(g).toHaveLength(1)
     expect(g[0].heading).toBeNull()
     expect(g[0].articles[0].heading).toBe('Artículo 5. Sentido de la justicia')
@@ -67,8 +67,8 @@ describe('groupArticles — defecto real encontrado con el Reglamento del Parlam
 
   it('artículos sin rúbrica quedan sin cabecera de grupo', () => {
     const g = groupArticles([
-      { articleNumber: '1', title: null, paragraphs: ['a'] },
-      { articleNumber: '2', title: '', paragraphs: ['b'] },
+      { articleNumber: '1', title: null, body: [{ kind: 'paragraph', spans: [{ text: 'a' }] }] },
+      { articleNumber: '2', title: '', body: [{ kind: 'paragraph', spans: [{ text: 'b' }] }] },
     ])
     expect(g.every(x => x.heading === null)).toBe(true)
   })
@@ -164,7 +164,7 @@ describe('splitParagraphs — sanea glifos decorativos de import (fix "PPPP")', 
 
 describe('buildLawBlocks — cabeceras de estructura Título/Capítulo/Sección', () => {
   const art = (n: string, o: Partial<{ title: string | null; titleNumber: string | null; chapterNumber: string | null; section: string | null }> = {}) =>
-    ({ articleNumber: n, title: o.title ?? `Rúbrica ${n}`, titleNumber: o.titleNumber ?? null, chapterNumber: o.chapterNumber ?? null, section: o.section ?? null, paragraphs: [`Cuerpo del ${n}.`] })
+    ({ articleNumber: n, title: o.title ?? `Rúbrica ${n}`, titleNumber: o.titleNumber ?? null, chapterNumber: o.chapterNumber ?? null, section: o.section ?? null, body: [{ kind: "paragraph", spans: [{ text: `Cuerpo del ${n}.` }] }] })
 
   it('emite Título y Capítulo cuando cambian, una sola vez, con el nombre de law_sections', () => {
     const blocks = buildLawBlocks(

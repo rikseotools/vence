@@ -9,12 +9,15 @@
 // ni en navegadores in-app).
 
 import type { TopicContent } from '@/lib/api/temario/schemas'
+import { parseMarkdownBlocks, blocksHaveContent, type MdBlock } from './markdownBlocks'
+
+export type { MdBlock, MdSpan } from './markdownBlocks'
 
 export interface PdfArticle {
   /** Encabezado ya compuesto: "Artículo 12. Título" (o solo el número si no hay título). */
   heading: string
-  /** Párrafos del artículo, ya troceados y limpios. */
-  paragraphs: string[]
+  /** Cuerpo del artículo en bloques markdown (párrafos, listas, tablas…). */
+  body: MdBlock[]
 }
 
 /**
@@ -37,7 +40,7 @@ export interface PdfGroup {
  */
 export type PdfBlock =
   | { kind: 'heading'; level: 'titulo' | 'capitulo' | 'seccion'; text: string }
-  | { kind: 'article'; heading: string; paragraphs: string[] }
+  | { kind: 'article'; heading: string; body: MdBlock[] }
 
 export interface PdfLawSection {
   lawName: string
@@ -94,7 +97,7 @@ export interface TopicPdfModel {
 // geométricas (U+25A0–25FF). Son artefactos de importación (líneas ═──, viñetas ■●) que la
 // fuente del PDF NO tiene y renderiza como basura (═ = U+2550; su byte bajo 0x50 = 'P', de ahí
 // las "PPPP" que se veían). No aparecen en texto legal legítimo → se eliminan.
-const DECORATIVE_GLYPHS = /[─-◿]/g
+const DECORATIVE_GLYPHS = /[\u2500-\u25ff]/g
 
 /**
  * Normaliza el texto legal para maquetarlo:
@@ -141,7 +144,7 @@ export function articleHeading(articleNumber: string, title: string | null | und
  * ley). Cuando la ley SÍ tiene estructura poblada, se agrupa por esos metadatos (más fiable).
  */
 export function groupArticles(
-  articles: Array<{ articleNumber: string; title: string | null | undefined; paragraphs: string[] }>
+  articles: Array<{ articleNumber: string; title: string | null | undefined; body: MdBlock[] }>
 ): PdfGroup[] {
   const groups: PdfGroup[] = []
   for (const a of articles) {
@@ -149,10 +152,10 @@ export function groupArticles(
     const prev = groups[groups.length - 1]
     const sharedWithPrev = prev != null && prev.heading === t && t !== ''
     if (sharedWithPrev) {
-      prev.articles.push({ heading: articleLabel(a.articleNumber), paragraphs: a.paragraphs })
+      prev.articles.push({ heading: articleLabel(a.articleNumber), body: a.body })
       continue
     }
-    groups.push({ heading: t || null, articles: [{ heading: articleLabel(a.articleNumber), paragraphs: a.paragraphs }] })
+    groups.push({ heading: t || null, articles: [{ heading: articleLabel(a.articleNumber), body: a.body }] })
   }
   return groups.map(g =>
     g.heading != null && g.articles.length === 1
@@ -165,7 +168,7 @@ function groupsToBlocks(groups: PdfGroup[]): PdfBlock[] {
   const blocks: PdfBlock[] = []
   for (const g of groups) {
     if (g.heading) blocks.push({ kind: 'heading', level: 'titulo', text: g.heading })
-    for (const a of g.articles) blocks.push({ kind: 'article', heading: a.heading, paragraphs: a.paragraphs })
+    for (const a of g.articles) blocks.push({ kind: 'article', heading: a.heading, body: a.body })
   }
   return blocks
 }
@@ -176,7 +179,7 @@ interface StructuredArticle {
   titleNumber: string | null | undefined
   chapterNumber: string | null | undefined
   section: string | null | undefined
-  paragraphs: string[]
+  body: MdBlock[]
 }
 
 /**
@@ -191,7 +194,7 @@ export function buildLawBlocks(
   const hasStructure = articles.some(a => (a.titleNumber || '').trim() !== '')
   if (!hasStructure) {
     // Sin metadatos de estructura: heurística de rúbrica repetida (leyes sin poblar).
-    return groupsToBlocks(groupArticles(articles.map(a => ({ articleNumber: a.articleNumber, title: a.title, paragraphs: a.paragraphs }))))
+    return groupsToBlocks(groupArticles(articles.map(a => ({ articleNumber: a.articleNumber, title: a.title, body: a.body }))))
   }
 
   const blocks: PdfBlock[] = []
@@ -222,7 +225,7 @@ export function buildLawBlocks(
       blocks.push({ kind: 'heading', level: 'seccion', text: /secci[oó]n/i.test(sec) ? sec : `Sección ${sec}` })
       curSeccion = sec
     }
-    blocks.push({ kind: 'article', heading: articleHeading(a.articleNumber, a.title), paragraphs: a.paragraphs })
+    blocks.push({ kind: 'article', heading: articleHeading(a.articleNumber, a.title), body: a.body })
   }
   return blocks
 }
@@ -251,10 +254,10 @@ export function buildTopicPdfModel(
         titleNumber: a.titleNumber,
         chapterNumber: a.chapterNumber,
         section: a.section,
-        paragraphs: splitParagraphs(a.content),
+        body: parseMarkdownBlocks(a.content),
       }))
       // Un artículo sin texto no aporta nada al PDF (p.ej. los que solo son rejilla).
-      .filter(a => a.paragraphs.length > 0)
+      .filter(a => blocksHaveContent(a.body))
     return {
       lawName: entry.law.name || entry.law.shortName,
       lawShortName: entry.law.shortName,
