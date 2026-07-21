@@ -690,6 +690,66 @@ export class ContentHealthSweepService {
       );
     }
 
+    // ── CONTENIDO: PROVENANCE de documentos de convocatoria (referenciado sin clonar/enlazar) ──
+    // Lee la VISTA convocatoria_docs_coverage (migración 20260721). Un hito cita un
+    // BOE/boletín (url + cita_literal) pero ese documento no está clonado en
+    // convocatoria_documentos o no está enlazado (source_documento_id). Gap medido
+    // 21/07: 18/1044 hitos enlazados, 239 docs referenciados sin clonar. Runbook:
+    // docs/runbooks/provenance-convocatorias.md. Gemelo de scripts/health-sweep.cjs.
+    const cov = (await this.db.execute(sql`
+      SELECT slug, año, docs_clonados, hitos_con_url, docs_por_clonar, hitos_enlazables, citas_sin_fuente
+      FROM convocatoria_docs_coverage
+      WHERE is_active = true AND is_current = true AND incompleto = true
+      ORDER BY docs_por_clonar DESC, hitos_enlazables DESC
+    `)) as unknown as Array<{
+      slug: string;
+      año: number;
+      docs_clonados: number;
+      hitos_con_url: number;
+      docs_por_clonar: number;
+      hitos_enlazables: number;
+      citas_sin_fuente: number;
+    }>;
+    for (const r of cov) {
+      const partes: string[] = [];
+      if (r.docs_por_clonar)
+        partes.push(`${r.docs_por_clonar} doc(s) referenciados sin clonar`);
+      if (r.hitos_enlazables)
+        partes.push(`${r.hitos_enlazables} enlazable(s) por URL`);
+      if (r.citas_sin_fuente)
+        partes.push(`${r.citas_sin_fuente} cita(s) sin fuente`);
+      add(
+        'content',
+        'warn',
+        r.slug,
+        'convocatoria_docs_incompletos',
+        `${r.slug}: provenance incompleta (${partes.join(', ')})`,
+        {
+          año: r.año,
+          docs_clonados: r.docs_clonados,
+          hitos_con_url: r.hitos_con_url,
+          docs_por_clonar: r.docs_por_clonar,
+          enlazables: r.hitos_enlazables,
+          citas_sin_fuente: r.citas_sin_fuente,
+        },
+      );
+    }
+    const orf = (await this.db.execute(sql`
+      SELECT count(*) FILTER (WHERE url IS NOT NULL)::int con_url,
+             count(*) FILTER (WHERE cita_literal IS NOT NULL AND length(btrim(cita_literal)) > 0)::int con_cita
+      FROM convocatoria_hitos WHERE convocatoria_id IS NULL
+    `)) as unknown as Array<{ con_url: number; con_cita: number }>;
+    if (orf[0] && (orf[0].con_url > 0 || orf[0].con_cita > 0)) {
+      add(
+        'content',
+        'warn',
+        null,
+        'convocatoria_docs_incompletos',
+        `${orf[0].con_url} hito(s) con URL y ${orf[0].con_cita} con cita SIN convocatoria (provenance no atribuible; asignar a su ciclo)`,
+        { orphan: true, con_url: orf[0].con_url, con_cita: orf[0].con_cita },
+      );
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {

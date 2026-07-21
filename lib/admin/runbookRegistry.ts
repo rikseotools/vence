@@ -147,6 +147,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'para cada oposición señalada corre el pipeline verify:scope (dump → 2 agentes epígrafe↔scope → consenso): el detector marca un título de una ley que la oposición usa, con preguntas activas y flanqueado a ambos lados por artículos escopados, pero con 0 artículos suyos en el scope. Decide contra el epígrafe oficial si el hueco es REAL (el epígrafe nombra ese título → añade su rango de artículos al topic_scope del tema que corresponde, reusando las preguntas ya en BD) o LEGÍTIMO (el programa no lo incluye → dejarlo). NUNCA añade un título que el epígrafe no pida ni quita contenido que sí pida.',
   },
+  convocatoria_docs_incompletos: {
+    title: 'Provenance de convocatoria incompleta (documento referenciado sin clonar/enlazar)',
+    triggerPhrase: 'revisa la provenance de convocatorias',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    claudeHace: 'para cada oposición señalada lee la vista convocatoria_docs_coverage: primero enlaza lo ya clonado sin fetch (scripts/backfill-hito-source-documento.cjs --apply), luego clona los documentos referenciados que falten desde su URL oficial (backend/scripts/clonar-documento.ts, con content_hash + snapshot, tipo real no "nota") y enlaza source_documento_id, y resuelve las citas sin fuente. NUNCA clona sin verificar la URL oficial ni fabrica cita/hash; si la URL da 403/está caída deja el hueco anotado. Los hitos huérfanos (convocatoria_id NULL) se asignan primero a su convocatoria mirando la fecha del hito.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */
