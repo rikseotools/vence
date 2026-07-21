@@ -478,6 +478,62 @@ async function main() {
       { orphan: true, con_url: orf.con_url, con_cita: orf.con_cita });
   }
 
+  // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
+  // Mirror INLINE de lib/laws/scopeOverInclusion.ts — MANTENER EN SYNC (guardado por
+  // __tests__/lib/laws/scopeOverInclusion.test.ts). El epígrafe enumera sub-materias
+  // CONCRETAS pero el scope mete casi TODA la ley → sirve muchas preguntas fuera de
+  // programa. Punto ciego doble: los detectores de HUECOS no lo ven (el tema rebosa)
+  // y verify:scope lo dio en FALSO VERDE (caso Luisa/SMS T11, 21/07). Filtro Stage-1
+  // determinista; el límite fino lo adjudica verify:scope. Sólo se emite la banda HIGH
+  // (título con hueco / arts citados = precisión alta); la MEDIUM (patrón T11, prosa)
+  // tiene recall alto pero precisión ~35% → NO pinga el badge para no criar lobos.
+  const romanToInt = (s) => { s = s.toUpperCase().replace(/\.BIS$/, ''); const R = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }; let n = 0; for (let i = 0; i < s.length; i++) { const cur = R[s[i]], nxt = R[s[i + 1]]; if (cur == null) return null; n += (nxt && cur < nxt) ? -cur : cur; } return n; };
+  const classifyScope = (lawTotal, scopedCount, ep) => {
+    ep = ep || ''; const coverage = lawTotal > 0 ? scopedCount / lawTotal : 0;
+    const semis = (ep.match(/;/g) || []).length, hasColon = /:/.test(ep);
+    const titulos = []; let m; const reTit = /[Tt][íi]tulo\s+(Preliminar|[IVXLC]+(?:\.bis)?)/g;
+    while ((m = reTit.exec(ep)) !== null) { const v = /preliminar/i.test(m[1]) ? 0 : romanToInt(m[1]); if (v != null) titulos.push(v); }
+    const titSet = [...new Set(titulos)].sort((a, b) => a - b);
+    let titComplete = null, titGap = false;
+    if (titSet.length >= 2) { const max = titSet[titSet.length - 1]; const miss = []; for (let i = titSet[0]; i <= max; i++) if (!titSet.includes(i)) miss.push(i); titGap = miss.length > 0; titComplete = !titGap; }
+    const closureWord = /\breforma\b|disposici[oó]n(?:es)?\s+(?:adicional|transitoria|derogatoria|final)/i.test(ep);
+    let segments = 0;
+    if (hasColon) { segments = ep.slice(ep.indexOf(':') + 1).split(/[;,]/).map(s => s.trim()).filter(s => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length; }
+    const explicitArts = new Set(); const reR = /art[íi]?c?u?l?o?s?\.?\s*(\d+)\s*(?:a|al|-|–)\s*(\d+)/gi;
+    while ((m = reR.exec(ep)) !== null) { const a = +m[1], b = +m[2]; if (b - a >= 0 && b - a < 500) for (let i = a; i <= b; i++) explicitArts.add(i); }
+    const reS = /art[íi]?c?u?l?o?\.?\s*(\d+)(?!\s*(?:a|al|-|–)\s*\d)/gi;
+    while ((m = reS.exec(ep)) !== null) explicitArts.add(+m[1]);
+    const wholeLawWords = /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(ep);
+    const bigLaw = lawTotal >= 12, nearFull = coverage >= 0.9, enumerator = hasColon && segments >= 3;
+    if (wholeLawWords) return { band: 'CLEARED', score: 0, coverage, reason: null };
+    if (titComplete && closureWord && nearFull) return { band: 'CLEARED', score: 0, coverage, reason: null };
+    let score = 0, reason = null;
+    if (explicitArts.size > 0 && bigLaw && scopedCount >= explicitArts.size * 2 && nearFull) { score += 60; reason = `epígrafe cita ${explicitArts.size} arts concretos pero scope tiene ${scopedCount}/${lawTotal}`; }
+    if (titGap && nearFull && bigLaw) { score += 50; reason = reason || `epígrafe nombra títulos con huecos (${titSet.join(',')}) pero scope cubre toda la ley`; }
+    if (bigLaw && nearFull && enumerator) { score += 30; reason = reason || `ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${segments} bloques`; }
+    const band = score >= 50 ? 'HIGH' : score >= 30 ? 'MEDIUM' : 'NONE';
+    return { band, score, coverage, reason };
+  };
+  const overIncl = (await c.query(`
+    SELECT t.position_type pt, t.topic_number tn, l.short_name ley, t.epigrafe,
+           ts.article_numbers,
+           (SELECT count(*) FROM articles a WHERE a.law_id = ts.law_id AND a.article_number ~ '^[0-9]+$') law_total
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
+    WHERE t.is_active = true`)).rows;
+  const oiHigh = [];
+  for (const r of overIncl) {
+    const scoped = (r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).length;
+    const v = classifyScope(Number(r.law_total), scoped, r.epigrafe);
+    if (v.band === 'HIGH') oiHigh.push({ pt: r.pt, tema: r.tn, ley: r.ley, cobertura: Math.round(v.coverage * 100), motivo: v.reason });
+  }
+  if (oiHigh.length) {
+    oiHigh.sort((a, b) => b.cobertura - a.cobertura);
+    const nOpos = new Set(oiHigh.map(x => x.pt)).size;
+    add('content', 'warn', null, 'scope_over_inclusion_suspect',
+      `${oiHigh.length} tema(s) con SCOPE MÁS ANCHO que el epígrafe (mete casi la ley entera) en ${nOpos} oposición(es) — sirve preguntas fuera de programa; adjudicar con verify:scope y recortar el scope`,
+      { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) });
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

@@ -153,6 +153,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'para cada oposición señalada corre el pipeline verify:scope (dump → 2 agentes epígrafe↔scope → consenso): el detector marca un título de una ley que la oposición usa, con preguntas activas y flanqueado a ambos lados por artículos escopados, pero con 0 artículos suyos en el scope. Decide contra el epígrafe oficial si el hueco es REAL (el epígrafe nombra ese título → añade su rango de artículos al topic_scope del tema que corresponde, reusando las preguntas ya en BD) o LEGÍTIMO (el programa no lo incluye → dejarlo). NUNCA añade un título que el epígrafe no pida ni quita contenido que sí pida.',
   },
+  scope_over_inclusion_suspect: {
+    title: 'Scope más ancho que el epígrafe (mete casi la ley entera)',
+    triggerPhrase: 'revisa la sobre-inclusión del temario',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada tema señalado (banda HIGH: el epígrafe cita títulos con huecos o artículos concretos pero el scope mete casi toda la ley) corre el adjudicador verify:scope: obtén la estructura oficial de la ley (títulos/capítulos y sus rangos), mapea cada materia que NOMBRA el epígrafe a su título/capítulo, y LISTA los títulos con preguntas escopadas que el epígrafe NO nombra. Si el epígrafe realmente acota (deja títulos fuera), recorta el article_numbers a lo que pide el epígrafe (las preguntas fuera de programa quedan en BD, dejan de servirse en ese tema); si el epígrafe abarca de verdad toda la ley, es falso positivo y se deja. NUNCA recortes un bloque que el epígrafe sí pide ni des por buena la ley entera sin mapear su estructura (ese atajo fue el falso verde del caso T11).',
+  },
   answer_in_annulled_fragment: {
     title: 'Pregunta activa cuya clave reproduce un inciso ANULADO por el TC',
     triggerPhrase: 'revisa los incisos anulados',

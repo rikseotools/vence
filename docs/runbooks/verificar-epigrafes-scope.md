@@ -253,3 +253,40 @@ Con el cluster priorizado, la decisión sigue siendo del pipeline `verify:scope`
 el **programa oficial**: si el epígrafe pide el título → **añadir su rango al scope reusando el banco ya
 en BD**; si el programa no lo incluye → **dejarlo**. Nunca añadir un título que el epígrafe no pida ni
 quitar el que sí. Caso raíz resuelto: CE Título V huérfano en Diputación de Córdoba (186 preguntas).
+
+## Sobre-inclusión de scope: scope más ancho que el epígrafe (`scope_over_inclusion_suspect`)
+
+> **Frase-gatillo: *"revisa la sobre-inclusión del temario"*.** El **reverso** de los títulos
+> huérfanos: allí FALTA scope, aquí SOBRA. El epígrafe enumera sub-materias CONCRETAS de una ley
+> pero el `topic_scope` mete **casi la ley entera** → el tema sirve preguntas **fuera de programa
+> en silencio**.
+
+**Por qué se nos escapó (caso raíz 21/07, SMS T11 Ley 3/2009):** doble punto ciego. (1) Los
+detectores de HUECOS (`empty_topic`, `low_coverage`, `scope_titulo_huerfano`,
+`scope_phantom_article`) no lo ven porque el tema rebosa preguntas. (2) El pipeline `verify:scope`
+lo dio en **FALSO VERDE** — el juicio LLM razonó a grano grueso ("la ley va de derechos/deberes →
+cabe entera") sin mapear los 4 bloques del epígrafe a Títulos II-IV + VII y ver que excluye Títulos
+I, V (consentimiento), VI (historia clínica), VIII (garantías). El run lo marcó `verified_correct`
+a las 18:34; una usuaria lo cazó a las 18:38.
+
+**Sistema de 2 fases (embudo):**
+1. **Stage-1 determinista** — `lib/laws/scopeOverInclusion.ts` (`classifyScope`), mirror en
+   `health-sweep.cjs` (kind `scope_over_inclusion_suspect`). Baja ~5.800 scopes → decenas de
+   sospechosos. Señales: cobertura ≥90 % de una ley grande (≥12 arts) + epígrafe enumerador
+   (colon + ≥3 segmentos por `;`/`,`); reglas de alta confianza = epígrafe con **títulos-con-hueco**
+   (nombra II y IV, salta III) o **artículos citados** (arts. 45 a 49) que el scope ignora. Guardas
+   negativas: epígrafe que declara la ley "íntegra", o que enumera **todos** los títulos en
+   secuencia + cierre (reforma/disposiciones) = monográfico legítimo. **Solo la banda HIGH pinga el
+   badge**; la MEDIUM (patrón prosa tipo T11, precisión ~35 %) es la cola de adjudicación bajo
+   demanda. Scan ad-hoc: `node scripts/scope-over-inclusion.cjs --scan`.
+2. **Stage-2 adjudicador (LLM)** — para cada sospechoso: obtén la **estructura oficial** de la ley
+   (títulos/capítulos y rangos, vía BOE/BORM con WebFetch), **mapea cada materia que nombra el
+   epígrafe** a su título/capítulo, y **LISTA los títulos con preguntas escopadas que el epígrafe NO
+   nombra**. Es el paso que le faltó a `verify:scope`.
+
+**Remediar:** si el epígrafe acota de verdad (deja títulos fuera) → recortar `article_numbers` a lo
+que pide el epígrafe (las preguntas fuera quedan en BD, dejan de servirse en ese tema, pueden servir
+a otras oposiciones). Si el epígrafe abarca genuinamente toda la ley → falso positivo, dejar.
+**NUNCA** recortes un bloque que el epígrafe sí pide, ni des por buena la ley entera sin mapear su
+estructura (ese atajo fue el falso verde). El límite fino de artículos siempre se confirma con la
+fuente oficial + revisión humana.
