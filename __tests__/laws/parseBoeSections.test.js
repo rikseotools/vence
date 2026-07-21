@@ -90,8 +90,21 @@ describe('parseBoeSections — estructura de leyes del BOE', () => {
     expect(haySolape([{ from: 1, to: 5 }, { from: 6, to: 8 }])).toBe(false)
   })
 
+  it('BUG "Art N" abreviado: el BOE usa "Art 2" (no "Artículo 2") en muchas leyes', () => {
+    // El Reglamento del Congreso trae <titulo>Art 2</titulo> abreviado → antes solo se
+    // capturaba el a1 ("Artículo 1") y el resto se perdía (la ley quedaba con 1 sección).
+    const { secciones } = parseBoeSections([
+      { id: 'tpreliminar', label: 'TÍTULO PRELIMINAR' },
+      { id: 'a1', label: 'Artículo 1' },
+      { id: 'art2', label: 'Art 2' },
+      { id: 'art3', label: 'Art 3' },
+    ])
+    expect(secciones[0]).toEqual({ num: 'Preliminar', blockId: 'tpreliminar', from: 1, to: 3 })
+  })
+
   it('numDeLabel: solo dígitos tras "Artículo", null si no aplica', () => {
     expect(numDeLabel('Artículo 10')).toBe(10)
+    expect(numDeLabel('Art 10')).toBe(10)
     expect(numDeLabel('Artículo único')).toBeNull()
     expect(numDeLabel('CAPÍTULO I')).toBeNull()
   })
