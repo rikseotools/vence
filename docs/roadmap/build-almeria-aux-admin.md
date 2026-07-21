@@ -441,3 +441,30 @@ dimensión que ningún check estadístico ve, y uno de ellos lo introdujo un aut
 
 Finos que quedan (se dejan como están, decisión de coste): T10 (12), T12 (12), T15 (12), T21 (14) —
 todos sobre normas de 5-15 artículos, cerca de su techo natural. No bloquean.
+
+
+## Tracking de verificación COMPLETO (21/07) — los dos sistemas del manual
+
+Al revisar el tracking se detectó que solo estaba registrado el **Sistema 1 (scope)**; el
+**Sistema 2 (literalidad del epígrafe, Paso 1 del manual `verificar-epigrafes-scope.md`)** estaba a
+`never_sourced` en los 24 temas. Doctrina: el Paso 1 es BLOQUEANTE y debe dejar constancia de que el
+epígrafe de BD es el oficial exacto.
+
+**Verificado y registrado:** los 24 epígrafes de BD se compararon **palabra a palabra (normalizado)
+contra el Anexo II oficial** del `BOE-A-2026-14723` → **24/24 idénticos, sin una sola diferencia**.
+Registrados como `verified_literal` con `source_url` (el BOE) y nota de provenance.
+
+**Estado final, ambos sistemas verdes:**
+
+| | |
+|---|---|
+| Oposición viva (`is_active`) | ✅ |
+| Temas / disponibles | 24 / 24 |
+| **Sistema 1 — scope↔epígrafe** | **24/24 `verified_correct`** |
+| **Sistema 2 — literalidad del epígrafe** | **24/24 `verified_literal`** |
+| Preguntas activas | 8.602 |
+| Producción (landing + temario) | HTTP 200, contenido real |
+
+La oposición queda **perfecta y trackeada en los dos sistemas de verificación**: si en el futuro
+cambia el epígrafe o el scope, el trigger la marca `stale` y salta para re-verificar. El badge de
+`/admin/contenido` la cuenta como 100% verificada.
