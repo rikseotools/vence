@@ -3,6 +3,7 @@
 
 import { useState, useEffect, MouseEvent } from 'react'
 import type { LawSection } from '@/lib/teoriaFetchers'
+import { sectionHeadersByArticle } from '@/lib/teoria/sectionHeaders'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
@@ -471,6 +472,11 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
       })
     : articles
 
+  // Cabeceras de título/capítulo: qué artículo abre cada sección (petición de Nila).
+  // Se calcula sobre la lista visible; si la ley no tiene secciones, el mapa va vacío y
+  // la teoría se ve exactamente igual que antes. Lógica pura testeada en lib/teoria/sectionHeaders.
+  const sectionHeaders = sectionHeadersByArticle(filteredArticles, availableSections)
+
   // Handler para selección de secciones (recibe array del modal)
   const handleSectionSelect = (sections: Section[]) => {
     setSelectedSectionFilter(sections && sections.length > 0 ? sections : null)
@@ -646,10 +652,29 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
             {(showAllArticles ? filteredArticles : filteredArticles.slice(0, INITIAL_ARTICLES_COUNT)).map((article, index) => {
               const isProblematic = problematicArticles.includes(article.article_number)
               const showTruncatedContent = !showAllArticles && index < INITIAL_ARTICLES_COUNT
+              // Cabecera de título/capítulo sobre el primer artículo de cada sección
+              // (petición de Nila). sectionHeaders se calcula una vez con la lista visible.
+              const sectionHeader = sectionHeaders.get(article.id)
 
               return (
+                <div key={article.id}>
+                {sectionHeader && (
+                  <div className="flex items-center gap-3 pt-6 pb-2 first:pt-0">
+                    <span className="flex-shrink-0 text-xs font-bold uppercase tracking-wide text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded">
+                      {sectionHeader.sectionType === 'capitulo' ? 'Capítulo' : 'Título'} {sectionHeader.sectionNumber ?? ''}
+                    </span>
+                    {(() => {
+                      // El badge ya muestra "Título I"; en el nombre solo dejamos la rúbrica
+                      // descriptiva ("Del Estatuto…"). Si el título no tiene rúbrica propia
+                      // (p.ej. "Título Preliminar"), no repetimos texto: no se pinta nombre.
+                      const rubrica = sectionHeader.title.replace(/^(T[íi]tulo|Cap[íi]tulo)\s+[^.]+\.\s*/i, '')
+                      const soloEncabezado = /^(T[íi]tulo|Cap[íi]tulo)\s+[^.]+$/i.test(sectionHeader.title.trim())
+                      return soloEncabezado ? null : <span className="text-sm font-semibold text-gray-700">{rubrica}</span>
+                    })()}
+                    <hr className="flex-1 border-gray-200" />
+                  </div>
+                )}
                 <Link
-                  key={article.id}
                   href={`/teoria/${law.slug}/articulo-${article.article_number}`}
                   className="group block"
                 >
@@ -722,6 +747,7 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
                     </div>
                   </div>
                 </Link>
+                </div>
               )
             })}
 
