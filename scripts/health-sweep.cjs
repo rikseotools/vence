@@ -167,7 +167,7 @@ async function main() {
     const porSlug = {};
     for (const r of inc) (porSlug[r.slug] = porSlug[r.slug] || []).push(r);
     for (const [slug, rs] of Object.entries(porSlug)) {
-      const graves = rs.filter((r) => r.invariante === 'I1_orden' || r.invariante === 'I2_duplicado');
+      const graves = rs.filter((r) => r.invariante === 'I1_orden' || r.invariante === 'I2_duplicado' || r.invariante === 'I9_tipo_incoherente');
       if (graves.length) {
         add('content', 'error', slug, 'convocatoria_timeline_incoherente',
           `${slug}: ${graves.length} incoherencia(s) en el timeline — ${graves[0].detalle}`,
@@ -552,6 +552,14 @@ async function main() {
   // ley real (con BOE) = accionable (importar/reactivar/recortar); virtual/ofimática (sin
   // BOE) = variante mal (· Escritorio/Web, dedupe Office) → CONTEXTO en el detail, no alarma
   // aparte. Solo refs de artículo reales (`^\d+( bis| ter)?$`), excluye notas coladas.
+  // Regex de refs de artículo REALES: empieza por dígito (excluye basura estructural
+  // tipo "T3"/"TP"/"T1C2" de la CE), acepta variantes latinas (bis/ter/quáter/quinquies/
+  // sexies/septies/octies/nonies/decies, con o sin espacio) y sufijo de letra ("861 bis a)",
+  // "47 b"). El matching usa NORMALIZACIÓN (minúsculas, sin acentos, sin espacios ni ')')
+  // para NO inventar falsos fantasmas por diferencias de FORMATO entre scope y articles
+  // ("21bis" == "21 bis", "86 quáter" == "86 quater").
+  const normArt = (col) => `lower(regexp_replace(translate(${col}, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g'))`;
+  const ART_RE = "'^[0-9]+( ?(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?( ?[a-z)]*)?$'";
   const phantom = (await c.query(`
     WITH refs AS (
       SELECT DISTINCT ts.law_id, l.short_name, l.name, (l.boe_url IS NOT NULL) AS has_boe, trim(an) AS art
@@ -562,11 +570,11 @@ async function main() {
       WHERE ts.article_numbers IS NOT NULL AND t.is_active = true
     )
     SELECT coalesce(r.short_name, r.name) AS ley, r.has_boe, r.art,
-           CASE WHEN NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND a.article_number = r.art)
+           CASE WHEN NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND ${normArt('a.article_number')} = ${normArt('r.art')})
                 THEN 'inexistente' ELSE 'desactivado' END AS causa
     FROM refs r
-    WHERE r.art ~ '^[0-9]+( bis| ter)?$'
-      AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND a.article_number = r.art AND a.is_active)`)).rows;
+    WHERE r.art ~* ${ART_RE}
+      AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND ${normArt('a.article_number')} = ${normArt('r.art')} AND a.is_active)`)).rows;
   if (phantom.length) {
     const real = phantom.filter(p => p.has_boe);
     const virt = phantom.filter(p => !p.has_boe);
