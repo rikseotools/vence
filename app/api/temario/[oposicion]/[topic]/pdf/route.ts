@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import React from 'react'
-import { getTopicContent } from '@/lib/api/temario/queries'
+import { getTopicContent, getLawSectionNames } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel, pdfFileName, countContentChars, fitsSyncPdf, PDF_MAX_CHARS } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
@@ -65,7 +65,10 @@ async function handler(
     )
   }
 
-  const model = buildTopicPdfModel(content, new Date())
+  // Nombres de Título/Capítulo (law_sections) para las cabeceras de estructura del PDF.
+  const lawIds = (content.laws || []).map(l => l.law.id).filter(Boolean)
+  const sectionNames = await getLawSectionNames(lawIds)
+  const model = buildTopicPdfModel(content, new Date(), sectionNames)
   const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
   const buffer = await renderToBuffer(doc)
   const fileName = pdfFileName(oposicion, topicNumber)

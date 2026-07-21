@@ -5,7 +5,7 @@
 // Varios casos vienen de defectos encontrados con datos reales al construirlo (20/07),
 // no de escenarios inventados — están marcados donde aplica.
 import {
-  splitParagraphs, articleHeading, articleLabel, groupArticles,
+  splitParagraphs, articleHeading, articleLabel, groupArticles, buildLawBlocks,
   pdfFileName, buildTopicPdfModel, countContentChars, fitsSyncPdf, PDF_MAX_CHARS,
 } from '@/lib/temario/pdf/topicPdfModel'
 
@@ -143,5 +143,73 @@ describe('guardarraíl de tamaño — medido con datos reales', () => {
       ],
     })).toBe(8)
     expect(countContentChars({})).toBe(0)
+  })
+})
+
+describe('splitParagraphs — sanea glifos decorativos de import (fix "PPPP")', () => {
+  it('elimina líneas de box-drawing (═) — la fuente PDF las pintaba como "P"', () => {
+    // CE art 0 traía "…(art. 1.2).\n\n═══════════\n\nESTRUCTURA COMPLETA…"
+    const r = splitParagraphs('Texto legal.\n\n═══════════════════\n\nSiguiente apartado.')
+    expect(r).toEqual(['Texto legal.', 'Siguiente apartado.'])
+  })
+  it('quita viñetas/líneas decorativas (─ │ ■ ●) sin tocar el texto legítimo', () => {
+    expect(splitParagraphs('a) ● Primero ─ con guía │ y más')).toEqual(['a) Primero con guía y más'])
+  })
+  it('no toca acentos, ñ, «», §, º ni €', () => {
+    expect(splitParagraphs('El artículo 3.º «señala» el 5 % —según la Ley— y el símbolo §.')).toEqual([
+      'El artículo 3.º «señala» el 5 % —según la Ley— y el símbolo §.',
+    ])
+  })
+})
+
+describe('buildLawBlocks — cabeceras de estructura Título/Capítulo/Sección', () => {
+  const art = (n: string, o: Partial<{ title: string | null; titleNumber: string | null; chapterNumber: string | null; section: string | null }> = {}) =>
+    ({ articleNumber: n, title: o.title ?? `Rúbrica ${n}`, titleNumber: o.titleNumber ?? null, chapterNumber: o.chapterNumber ?? null, section: o.section ?? null, paragraphs: [`Cuerpo del ${n}.`] })
+
+  it('emite Título y Capítulo cuando cambian, una sola vez, con el nombre de law_sections', () => {
+    const blocks = buildLawBlocks(
+      [
+        art('14', { titleNumber: 'I', chapterNumber: 'II' }),
+        art('15', { titleNumber: 'I', chapterNumber: 'II' }),
+        art('16', { titleNumber: 'I', chapterNumber: 'III' }),
+      ],
+      { titulo: { I: 'Título I. De los derechos y deberes fundamentales' }, capitulo: {} }
+    )
+    const headings = blocks.filter(b => b.kind === 'heading') as Array<{ level: string; text: string }>
+    expect(headings).toEqual([
+      { kind: 'heading', level: 'titulo', text: 'Título I. De los derechos y deberes fundamentales' },
+      { kind: 'heading', level: 'capitulo', text: 'Capítulo II' },
+      { kind: 'heading', level: 'capitulo', text: 'Capítulo III' },
+    ])
+    // 3 artículos, el Título no se repite entre el cap II y III.
+    expect(blocks.filter(b => b.kind === 'article')).toHaveLength(3)
+  })
+
+  it('cae al numeral "Título I" si no hay nombre en law_sections', () => {
+    const blocks = buildLawBlocks([art('1', { titleNumber: 'I' })])
+    expect(blocks[0]).toEqual({ kind: 'heading', level: 'titulo', text: 'Título I' })
+  })
+
+  it('emite cabecera de Sección', () => {
+    const blocks = buildLawBlocks([art('1', { titleNumber: 'I', section: '1ª' })])
+    expect(blocks.some(b => b.kind === 'heading' && (b as any).level === 'seccion' && (b as any).text === 'Sección 1ª')).toBe(true)
+  })
+
+  it('un artículo con title_number null (p.ej. el "Art. 0/Estructura") no arrastra cabecera', () => {
+    const blocks = buildLawBlocks([art('0', { title: 'Estructura', titleNumber: null })])
+    expect(blocks.filter(b => b.kind === 'heading')).toHaveLength(0)
+    expect(blocks[0]).toMatchObject({ kind: 'article' })
+  })
+
+  it('FALLBACK: ley SIN metadatos de estructura usa la heurística de rúbrica repetida', () => {
+    const blocks = buildLawBlocks([
+      art('1', { title: 'CAP I. Constitución', titleNumber: null }),
+      art('2', { title: 'CAP I. Constitución', titleNumber: null }),
+    ])
+    // rúbrica compartida en 2 artículos → cabecera de grupo una vez
+    expect(blocks.filter(b => b.kind === 'heading')).toEqual([
+      { kind: 'heading', level: 'titulo', text: 'CAP I. Constitución' },
+    ])
+    expect(blocks.filter(b => b.kind === 'article')).toHaveLength(2)
   })
 })

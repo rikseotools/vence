@@ -6,7 +6,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getTemarioDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { topics, topicScope, articles, laws, questions, videoCourses } from '@/db/schema'
+import { topics, topicScope, articles, laws, questions, videoCourses, lawSections } from '@/db/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
 import { annotateVigencia, tieneIncisoAnulado, type VigenciaData } from '@/lib/teoria/annotateVigencia'
 import { unstable_cache } from 'next/cache'
@@ -511,4 +511,42 @@ export async function getTemarioByPositionType(
   positionType: string
 ): Promise<TemarioCompleto | null> {
   return getTemarioByPositionTypeCached(positionType)
+}
+
+/**
+ * Nombres de la estructura (Título / Capítulo) de un conjunto de leyes, de `law_sections`,
+ * para que el PDF del temario ponga "Título I. De los derechos y deberes fundamentales" en la
+ * cabecera y no solo "Título I". Devuelve un mapa por lawId → { titulo, capitulo } indexado por
+ * el número de sección (el mismo valor que `articles.title_number` / `chapter_number`).
+ *
+ * Sin filas para una ley (no todas tienen la estructura poblada) → el modelo del PDF cae al
+ * numeral. No lanza: es un enriquecimiento, no una dependencia dura.
+ */
+export async function getLawSectionNames(
+  lawIds: string[]
+): Promise<Record<string, { titulo: Record<string, string>; capitulo: Record<string, string> }>> {
+  const out: Record<string, { titulo: Record<string, string>; capitulo: Record<string, string> }> = {}
+  if (!lawIds.length) return out
+  try {
+    const db = getTemarioDb()
+    const rows = await db
+      .select({
+        lawId: lawSections.lawId,
+        sectionType: lawSections.sectionType,
+        sectionNumber: lawSections.sectionNumber,
+        title: lawSections.title,
+      })
+      .from(lawSections)
+      .where(and(inArray(lawSections.lawId, lawIds), eq(lawSections.isActive, true)))
+    for (const r of rows) {
+      const entry = (out[r.lawId] ||= { titulo: {}, capitulo: {} })
+      const bucket = /cap[ií]tulo/i.test(r.sectionType) ? entry.capitulo
+        : /t[ií]tulo/i.test(r.sectionType) ? entry.titulo
+        : null
+      if (bucket && r.sectionNumber) bucket[r.sectionNumber] = r.title
+    }
+  } catch {
+    // Enriquecimiento opcional: si falla, el PDF sale con numerales.
+  }
+  return out
 }

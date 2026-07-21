@@ -4,9 +4,9 @@
 // Por qué existe separada del componente: así se testea la parte que de verdad puede
 // romperse (qué entra, en qué orden, cómo se sanea el texto legal) sin montar un renderer.
 //
-// Contexto: hasta ahora el botón "Imprimir PDF" llamaba a window.print(), que en iOS y en
-// navegadores in-app (app de Google, Instagram…) NO descarga nada. El PDF se genera ahora
-// en servidor, así que la descarga funciona en cualquier navegador.
+// El PDF se genera en servidor (@react-pdf/renderer), así que la descarga funciona en
+// cualquier navegador (a diferencia del antiguo window.print(), que no descargaba en iOS
+// ni en navegadores in-app).
 
 import type { TopicContent } from '@/lib/api/temario/schemas'
 
@@ -31,11 +31,30 @@ export interface PdfGroup {
   articles: PdfArticle[]
 }
 
+/**
+ * Bloque del cuerpo de una ley en el PDF: o una CABECERA de estructura (Título / Capítulo /
+ * Sección) o un ARTÍCULO. El renderer los pinta en orden con estilos por nivel.
+ */
+export type PdfBlock =
+  | { kind: 'heading'; level: 'titulo' | 'capitulo' | 'seccion'; text: string }
+  | { kind: 'article'; heading: string; paragraphs: string[] }
+
 export interface PdfLawSection {
   lawName: string
   lawShortName: string
-  groups: PdfGroup[]
+  /** Cuerpo de la ley: cabeceras de estructura + artículos, ya en orden de lectura. */
+  blocks: PdfBlock[]
 }
+
+/**
+ * Diccionario de NOMBRES de estructura por ley (de `law_sections`), para que las cabeceras
+ * digan "Título I. De los derechos y deberes fundamentales" y no solo "Título I". Lo inyecta
+ * la ruta del PDF; es opcional (sin él, se cae a los numerales). Clave: lawId.
+ */
+export type LawSectionNames = Record<string, {
+  titulo?: Record<string, string>
+  capitulo?: Record<string, string>
+}>
 
 /**
  * Techo de caracteres para generar el PDF sincrónicamente.
@@ -71,20 +90,27 @@ export interface TopicPdfModel {
   totalArticles: number
 }
 
+// Rango de caracteres de "dibujo": box-drawing (U+2500–257F), bloques (U+2580–259F) y formas
+// geométricas (U+25A0–25FF). Son artefactos de importación (líneas ═──, viñetas ■●) que la
+// fuente del PDF NO tiene y renderiza como basura (═ = U+2550; su byte bajo 0x50 = 'P', de ahí
+// las "PPPP" que se veían). No aparecen en texto legal legítimo → se eliminan.
+const DECORATIVE_GLYPHS = /[─-◿]/g
+
 /**
  * Normaliza el texto legal para maquetarlo:
  * - normaliza saltos de línea y quita espacios de sobra
+ * - elimina glifos decorativos de import (líneas box-drawing, viñetas) que la fuente no pinta
  * - trocea en párrafos por línea en blanco O por salto simple (el articulado usa ambos)
- * - descarta párrafos vacíos
+ * - descarta párrafos vacíos (una línea que solo era "═══" desaparece del todo)
  *
- * No "embellece" el contenido: es texto legal y debe salir tal cual está en la fuente.
+ * No "embellece" el contenido legal: solo lo sanea de basura no imprimible.
  */
 export function splitParagraphs(content: string | null | undefined): string[] {
   if (!content) return []
   return content
     .replace(/\r\n/g, '\n')
     .split('\n')
-    .map(p => p.replace(/[ \t]+/g, ' ').trim())
+    .map(p => p.replace(DECORATIVE_GLYPHS, '').replace(/[ \t]+/g, ' ').trim())
     .filter(p => p.length > 0)
 }
 
@@ -110,6 +136,9 @@ export function articleHeading(articleNumber: string, title: string | null | und
  * Agrupa artículos consecutivos que comparten exactamente el mismo `title`.
  * Un título repetido en ≥2 artículos seguidos es una rúbrica de ESTRUCTURA
  * (Título/Capítulo), no la del artículo → se saca como cabecera del grupo.
+ *
+ * FALLBACK: se usa solo para leyes SIN metadatos de estructura (title_number null en toda la
+ * ley). Cuando la ley SÍ tiene estructura poblada, se agrupa por esos metadatos (más fiable).
  */
 export function groupArticles(
   articles: Array<{ articleNumber: string; title: string | null | undefined; paragraphs: string[] }>
@@ -123,16 +152,79 @@ export function groupArticles(
       prev.articles.push({ heading: articleLabel(a.articleNumber), paragraphs: a.paragraphs })
       continue
     }
-    // Grupo nuevo: se abre "en tentativa" con su título; si luego llega otro artículo
-    // con el mismo título, se confirma como rúbrica de estructura.
     groups.push({ heading: t || null, articles: [{ heading: articleLabel(a.articleNumber), paragraphs: a.paragraphs }] })
   }
-  // Un grupo de UN solo artículo con título = rúbrica propia del artículo → se fusiona
-  // en su encabezado y el grupo se queda sin cabecera.
   return groups.map(g =>
     g.heading != null && g.articles.length === 1
       ? { heading: null, articles: [{ ...g.articles[0], heading: articleHeading(g.articles[0].heading.replace(/^Artículo\s+/, ''), g.heading) }] }
       : g)
+}
+
+/** Convierte los grupos del fallback en bloques (cabecera de grupo + artículos). */
+function groupsToBlocks(groups: PdfGroup[]): PdfBlock[] {
+  const blocks: PdfBlock[] = []
+  for (const g of groups) {
+    if (g.heading) blocks.push({ kind: 'heading', level: 'titulo', text: g.heading })
+    for (const a of g.articles) blocks.push({ kind: 'article', heading: a.heading, paragraphs: a.paragraphs })
+  }
+  return blocks
+}
+
+interface StructuredArticle {
+  articleNumber: string
+  title: string | null | undefined
+  titleNumber: string | null | undefined
+  chapterNumber: string | null | undefined
+  section: string | null | undefined
+  paragraphs: string[]
+}
+
+/**
+ * Construye los bloques de UNA ley con cabeceras de estructura reales (Título/Capítulo/Sección),
+ * emitiendo una cabecera solo cuando el nivel CAMBIA a un valor no nulo. Los nombres completos
+ * salen de `names` (law_sections); si faltan, se cae al numeral ("Título I").
+ */
+export function buildLawBlocks(
+  articles: StructuredArticle[],
+  names?: { titulo?: Record<string, string>; capitulo?: Record<string, string> }
+): PdfBlock[] {
+  const hasStructure = articles.some(a => (a.titleNumber || '').trim() !== '')
+  if (!hasStructure) {
+    // Sin metadatos de estructura: heurística de rúbrica repetida (leyes sin poblar).
+    return groupsToBlocks(groupArticles(articles.map(a => ({ articleNumber: a.articleNumber, title: a.title, paragraphs: a.paragraphs }))))
+  }
+
+  const blocks: PdfBlock[] = []
+  let curTitulo: string | null = null
+  let curCapitulo: string | null = null
+  let curSeccion: string | null = null
+
+  const tituloText = (n: string) => names?.titulo?.[n] || `Título ${n}`
+  const capituloText = (n: string) => names?.capitulo?.[n] || `Capítulo ${n}`
+
+  for (const a of articles) {
+    const tn = (a.titleNumber || '').trim() || null
+    const cn = (a.chapterNumber || '').trim() || null
+    const sec = (a.section || '').trim() || null
+
+    if (tn && tn !== curTitulo) {
+      blocks.push({ kind: 'heading', level: 'titulo', text: tituloText(tn) })
+      curTitulo = tn
+      curCapitulo = null
+      curSeccion = null
+    }
+    if (cn && cn !== curCapitulo) {
+      blocks.push({ kind: 'heading', level: 'capitulo', text: capituloText(cn) })
+      curCapitulo = cn
+      curSeccion = null
+    }
+    if (sec && sec !== curSeccion) {
+      blocks.push({ kind: 'heading', level: 'seccion', text: /secci[oó]n/i.test(sec) ? sec : `Sección ${sec}` })
+      curSeccion = sec
+    }
+    blocks.push({ kind: 'article', heading: articleHeading(a.articleNumber, a.title), paragraphs: a.paragraphs })
+  }
+  return blocks
 }
 
 /** Nombre de fichero seguro y reconocible: "subalterno-parlamento-andalucia-tema-4.pdf". */
@@ -143,21 +235,32 @@ export function pdfFileName(oposicionSlug: string, topicNumber: number): string 
 
 /**
  * Construye el modelo del PDF a partir del contenido del tema.
- * `generatedAt` se inyecta (no se lee el reloj aquí) para que el resultado sea determinista
- * y los tests no dependan de la hora.
+ * `generatedAt` se inyecta (no se lee el reloj aquí) para que el resultado sea determinista.
+ * `sectionNames` (opcional) trae los nombres de Título/Capítulo de law_sections por ley.
  */
-export function buildTopicPdfModel(content: TopicContent, generatedAt: Date): TopicPdfModel {
+export function buildTopicPdfModel(
+  content: TopicContent,
+  generatedAt: Date,
+  sectionNames?: LawSectionNames
+): TopicPdfModel {
   const sections: PdfLawSection[] = (content.laws || []).map(entry => {
-    const conTexto = (entry.articles || [])
-      .map(a => ({ articleNumber: a.articleNumber, title: a.title, paragraphs: splitParagraphs(a.content) }))
+    const conTexto: StructuredArticle[] = (entry.articles || [])
+      .map(a => ({
+        articleNumber: a.articleNumber,
+        title: a.title,
+        titleNumber: a.titleNumber,
+        chapterNumber: a.chapterNumber,
+        section: a.section,
+        paragraphs: splitParagraphs(a.content),
+      }))
       // Un artículo sin texto no aporta nada al PDF (p.ej. los que solo son rejilla).
       .filter(a => a.paragraphs.length > 0)
     return {
       lawName: entry.law.name || entry.law.shortName,
       lawShortName: entry.law.shortName,
-      groups: groupArticles(conTexto),
+      blocks: buildLawBlocks(conTexto, sectionNames?.[entry.law.id]),
     }
-  }).filter(s => s.groups.length > 0)
+  }).filter(s => s.blocks.length > 0)
 
   const fecha = generatedAt.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
 
@@ -167,6 +270,6 @@ export function buildTopicPdfModel(content: TopicContent, generatedAt: Date): To
     oposicionName: content.oposicionName,
     footer: `Vence · ${content.oposicionName} · Generado el ${fecha}`,
     sections,
-    totalArticles: sections.reduce((n, s) => n + s.groups.reduce((m, g) => m + g.articles.length, 0), 0),
+    totalArticles: sections.reduce((n, s) => n + s.blocks.filter(b => b.kind === 'article').length, 0),
   }
 }

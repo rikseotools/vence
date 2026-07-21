@@ -15,14 +15,20 @@ const styles = StyleSheet.create({
   oposicion: { fontSize: 9, color: '#4f46e5', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
   title: { fontSize: 17, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
   subtitle: { fontSize: 10, color: '#4b5563' },
-  groupHeading: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginTop: 10, marginBottom: 5, color: '#4b5563' },
-  lawName: { fontSize: 12, fontFamily: 'Helvetica-Bold', marginTop: 16, marginBottom: 8, color: '#3730a3' },
+  // Nombre de la ley: cabecera de primer nivel.
+  lawName: { fontSize: 12.5, fontFamily: 'Helvetica-Bold', marginTop: 18, marginBottom: 4, color: '#3730a3' },
+  // Estructura de la ley (Título / Capítulo / Sección), cada una con su peso visual.
+  titulo: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1e3a8a', marginTop: 13, marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#c7d2fe', paddingBottom: 3 },
+  capitulo: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#4338ca', marginTop: 9, marginBottom: 4 },
+  seccion: { fontSize: 9.5, fontFamily: 'Helvetica-Oblique', color: '#4f46e5', marginTop: 6, marginBottom: 3 },
   articleBlock: { marginBottom: 11 },
   articleHeading: { fontSize: 10.5, fontFamily: 'Helvetica-Bold', marginBottom: 3 },
   paragraph: { marginBottom: 3, textAlign: 'justify' },
   footer: { fontSize: 8, color: '#6b7280', textAlign: 'center', marginTop: 4 },
   empty: { fontSize: 11, color: '#6b7280', marginTop: 24 },
 })
+
+const HEADING_STYLE = { titulo: styles.titulo, capitulo: styles.capitulo, seccion: styles.seccion } as const
 
 export function TopicPdfDocument({ model }: { model: TopicPdfModel }) {
   return (
@@ -45,24 +51,25 @@ export function TopicPdfDocument({ model }: { model: TopicPdfModel }) {
         ) : (
           model.sections.map((section, i) => (
             <View key={i}>
-              {/* `wrap={false}` en el título evitaría huérfanos, pero con leyes largas
-                  provoca saltos enormes; se deja fluir y se marca visualmente. */}
+              {/* Nombre de la ley. Se deja fluir (wrap): con leyes largas, `wrap={false}` provoca
+                  saltos de página enormes. */}
               <Text style={styles.lawName}>{section.lawName}</Text>
-              {section.groups.map((group, g) => (
-                <View key={g}>
-                  {/* Rúbrica de estructura (Título/Capítulo) una sola vez, no repetida
-                      en cada artículo como venía en el campo `title`. */}
-                  {group.heading ? <Text style={styles.groupHeading}>{group.heading}</Text> : null}
-                  {group.articles.map((article, j) => (
-                    <View key={j} style={styles.articleBlock} wrap={true}>
-                      <Text style={styles.articleHeading}>{article.heading}</Text>
-                      {article.paragraphs.map((p, k) => (
-                        <Text key={k} style={styles.paragraph}>{p}</Text>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-              ))}
+              {section.blocks.map((block, b) =>
+                block.kind === 'heading' ? (
+                  // Cabecera de estructura (Título/Capítulo/Sección). `wrap={false}` evita que una
+                  // cabecera quede huérfana al pie de página separada de su primer artículo.
+                  <View key={b} wrap={false}>
+                    <Text style={HEADING_STYLE[block.level]}>{block.text}</Text>
+                  </View>
+                ) : (
+                  <View key={b} style={styles.articleBlock} wrap={true}>
+                    <Text style={styles.articleHeading}>{block.heading}</Text>
+                    {block.paragraphs.map((p, k) => (
+                      <Text key={k} style={styles.paragraph}>{p}</Text>
+                    ))}
+                  </View>
+                )
+              )}
             </View>
           ))
         )}
