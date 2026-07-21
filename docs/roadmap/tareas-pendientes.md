@@ -186,7 +186,9 @@
 **🟠 Alta — barato y con valor claro (empezar por aquí):**
 1. **T-035** Capturar fecha de examen de las 2 oposiciones de la Univ. de León — 2 consultas a fuente oficial
 2. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
-5. **T-039** Botón premium temario completo + **PDF server-side** — código acotado; cubre perk premium Y el fix in-app (absorbe el paso 2 de T-001)
+5. ~~**T-039** Botón «Descargar PDF» + PDF server-side por tema~~ — ✅ **HECHA + DESPLEGADA** (deploy `4f67958b`; render markdown/tablas/estructura; PDF por tema verificado en vivo 200/application/pdf). Resuelve del todo «Imprimir PDF falla en in-app» (T-001). La Fase 2 (temario completo) se saca a **T-076**.
+   - **T-076** Gating de impresión PDF por plan: **gratis** imprime solo algunos temas (cupo pequeño); **premium** imprime toda la oposición + botón «descargar todo». (revive la Fase 2 de T-039; ojo SEO «PDFs descargables» → dejar algo gratis)
+   - **T-077** Restringir cambio de oposición a antigüedad mínima (idea: 6-12 meses). ⚠️ *Reserva:* bloqueo duro puede frustrar a quien cambia de objetivo de verdad → riesgo de churn; alternativa más suave: limitar la **frecuencia** (1/mes) o gatear solo el multi-oposición premium. Afinar la regla antes de construir.
 
 **🟡 Media — coste moderado:**
 6. **T-002** Render multi-convocatoria (landing con las 2 convocatorias separadas)
