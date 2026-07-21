@@ -706,6 +706,17 @@ export const RULE_STRIPE_CHECKOUT_FAILED: AlertRule<{
  * siquiera en su hora normal, no es un drop accionable (probable
  * apagado/maintenance ventana, no incidente).
  *
+ * Excluye `/api/auth/token` de AMBAS ventanas (fix 21/07/2026): ese endpoint
+ * es polling de infraestructura del cliente, NO tráfico de usuario. El fix de
+ * caché del token (authjsAdapter, ~15-16/07) hizo que el cliente dejara de
+ * re-acuñar en cada poll → el volumen de `/api/auth/token` cayó ~40× (de
+ * ~94k/día a ~2k/día) SIN caída de tráfico real. Como ese endpoint dominaba el
+ * conteo de `request_completed`, `cur` se hundía muy por debajo del baseline
+ * (que aún incluía la era pre-caché) → spam "Tráfico HTTP cayó 74% — frontend
+ * probablemente caído" cada hora toda la noche, con el ALB sirviendo 60k req/h.
+ * Excluirlo mide tráfico de USUARIO real (el no-token cayó solo ~16% WoW, ruido
+ * normal). Se excluye de las dos CTEs para no descuadrar la comparación WoW.
+ *
  * Warm-up de 7 días: si el slot horario no tiene >=1 muestra histórica
  * (observable_events empezó 2026-05-26), base.median = NULL y el WHERE
  * no se cumple → no dispara. Tradeoff aceptado: durante warm-up la
@@ -730,6 +741,7 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
       WHERE event_type = 'request_completed'
         AND ts >= date_trunc('hour', NOW() - INTERVAL '1 hour')
         AND ts <  date_trunc('hour', NOW())
+        AND endpoint IS DISTINCT FROM '/api/auth/token'
         AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
     ),
     same_hour_history AS (
@@ -757,6 +769,7 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
             = EXTRACT(HOUR FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
         AND EXTRACT(DOW FROM ts AT TIME ZONE 'UTC')
             = EXTRACT(DOW FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
+        AND endpoint IS DISTINCT FROM '/api/auth/token'
         AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
       GROUP BY 1
     ),
@@ -2867,58 +2880,31 @@ export const RULE_VALIDATION_LOG_FLOOD: AlertRule<{
 };
 
 /**
- * Salud del minteo de tokens (señal POSITIVA de auth) — hace SEGURO silenciar el
- * 401 de `/api/auth/token`.
+ * RETIRADA 21/07/2026 — RULE_AUTH_MINT_DROP (antes 'auth_mint_drop', crítica).
  *
- * Contexto (11/07/2026): el 401 de ese endpoint se marcó `expectedStatuses:[401]`
- * (deja de ensuciar validation_error_logs; su 401 es contrato). Riesgo: sin una señal
- * positiva, una regresión REAL ("sesiones válidas reciben 401, nadie mintea") quedaría
- * ciega. Esta regla la cubre SIN falsos positivos: compara el mint OK (request_completed
- * http_status=200 de /api/auth/token, muestreado 10% de forma consistente en ambas
- * ventanas → sin falso positivo de transición) de la última hora contra la MISMA hora
- * hace 7 días (baseline robusto a estacionalidad). Si el baseline era significativo
- * (≥500 sampled ≈ 5k reales/h) y ahora cae por debajo del 20 %, el minteo está roto →
- * crítico. Baseline-relativo → no gatea por variación normal de tráfico. (Antes usaba
- * auth_token_minted, pero ese evento se muestrea → distinto sampling entre ventanas.)
+ * Qué hacía: comparaba el volumen de mint OK de /api/auth/token (request_completed 200,
+ * sampleado 10%) de la última hora contra la MISMA hora hace 7 días; disparaba si el
+ * baseline era ≥500 sampled y ahora caía <20%. Se creó el 11/07 como señal POSITIVA de
+ * auth (porque el 401 de ese endpoint es contrato y está silenciado) para no quedar
+ * ciegos ante "sesiones válidas reciben 401, nadie mintea".
+ *
+ * Por qué se retira: su premisa (volumen de mint alto y estable, ~5k reales/h) MURIÓ con
+ * el fix de caché del token (authjsAdapter, ~15-16/07): el cliente dejó de re-acuñar en
+ * cada poll → el mint OK cayó ~40× (de ~94k/día a ~2k/día). Consecuencias:
+ *   1. Falso positivo de TRANSICIÓN: durante la semana en que el baseline (7d atrás) aún
+ *      era pre-fix, la regla disparó CRÍTICO cada 30 min toda la noche del 20-21/07
+ *      ("Minteo de tokens caído: 185/h, era 3740/h, 5%") con la auth perfectamente sana
+ *      (canary_auth verde, 53 usuarios autenticados guardando). Puro artefacto de baseline.
+ *   2. Y DESPUÉS de la transición se vuelve inútil: con el volumen post-fix (~pico <100
+ *      sampled/h) el guardarraíl `base >= 500` nunca se cumple → la regla no vuelve a
+ *      disparar jamás. Quedaría como código muerto simulando cobertura.
+ *
+ * Sucesor (cobertura REAL e independiente del régimen de volumen): RULE_CANARY_AUTH_FAILED
+ * — el canary sintético hace login → GET /api/profile con cuenta premium cada 5 min y
+ * verifica end-to-end que una sesión válida SÍ se autentica. Detecta directamente el fallo
+ * que auth_mint_drop solo aproximaba por volumen, sin depender de cuánto mintee el tráfico
+ * real. El flood de re-acuñación (el bug opuesto) lo sigue cazando RULE_AUTH_TOKEN_MINT_FLOOD.
  */
-export const RULE_AUTH_MINT_DROP: AlertRule<{ now: number; base: number }> = {
-  name: 'auth_mint_drop',
-  severity: 'critical',
-  // Basada en request_completed http_status=200 de /api/auth/token (= mint OK), NO en
-  // auth_token_minted: este último se muestrea (10%) y en distintas ventanas tendría
-  // sampling distinto → falso positivo de transición. request_completed 2xx SIEMPRE
-  // se muestrea al 10% (SUCCESS_TIMING_SAMPLE_RATE), consistente en ambas ventanas →
-  // la comparación semana-sobre-semana es limpia.
-  query: sql`
-    WITH now_w AS (
-      SELECT COUNT(*)::int AS n FROM observable_events
-      WHERE event_type = 'request_completed' AND endpoint = '/api/auth/token'
-        AND http_status = 200 AND ts > NOW() - INTERVAL '1 hour'
-    ),
-    base_w AS (
-      SELECT COUNT(*)::int AS n FROM observable_events
-      WHERE event_type = 'request_completed' AND endpoint = '/api/auth/token'
-        AND http_status = 200
-        AND ts > NOW() - INTERVAL '1 hour' - INTERVAL '7 days'
-        AND ts <= NOW() - INTERVAL '7 days'
-    )
-    SELECT now_w.n AS now, base_w.n AS base FROM now_w, base_w
-  `,
-  shouldFire: (rows) => {
-    const r = rows[0];
-    return !!r && r.base >= 500 && r.now < r.base * 0.2;
-  },
-  buildNotification: (rows) => {
-    const r = rows[0]!;
-    const pct = r.base > 0 ? Math.round((r.now / r.base) * 100) : 0;
-    return {
-      title: `Minteo de tokens caído: ${r.now}/h (era ${r.base}/h hace 7d, ${pct}%)`,
-      body: `El minteo OK de /api/auth/token (request_completed http_status=200, muestreado 10%) se desplomó vs la misma hora hace 7 días. Como el 401 de ese endpoint está silenciado por contrato, ESTA es la señal de que el minteo real está roto — sesiones válidas que no obtienen token → la app autenticada cae en cascada (todas las /api/v2 sin Bearer):\n\n  ahora:   ${r.now} (10%)/h\n  hace 7d: ${r.base} (10%)/h  (${pct}%)\n\nInvestigar:\n  - /api/auth/token: ¿503 issuer_not_configured (claves RS256)? ¿auth() no resuelve sesión?\n  - ¿Deploy reciente rompió el mint o la verificación de sesión Auth.js?\n  - Cruce: SELECT http_status, COUNT(*) FROM observable_events WHERE endpoint='/api/auth/token' AND ts>NOW()-INTERVAL '15 min' GROUP BY 1;`,
-      metadata: { mintsNow: r.now, mintsBaseline: r.base, pctOfBaseline: pct },
-    };
-  },
-  cooldownMin: 30,
-};
 
 /**
  * Pico de rechazos de validación en /api/questions/filtered (incidente Alfonso,
@@ -3172,7 +3158,6 @@ export const ALERT_RULES: AlertRule[] = [
   // tras el flood de 401 anónimos que tumbó el panel admin). Auto-detecta el
   // próximo bucket que inunde validation_error_logs antes de que sea un problema.
   RULE_VALIDATION_LOG_FLOOD as AlertRule,
-  // Señal POSITIVA de auth (11/07/2026): hace seguro silenciar el 401 de
-  // /api/auth/token — si el minteo real se cae (nadie obtiene token), gatea aquí.
-  RULE_AUTH_MINT_DROP as AlertRule,
+  // RULE_AUTH_MINT_DROP retirada 21/07/2026 (premisa de volumen muerta tras el fix de
+  // caché del token; sucesor = RULE_CANARY_AUTH_FAILED). Ver nota en su antigua ubicación.
 ];
