@@ -94,9 +94,31 @@ export const PREMIUM_FEATURES = {
     benefit: 'Todos los temas de contenido editorial premium',
     unlockPlan: 'premium',
   },
+  // Descarga/impresión del temario en PDF. Los primeros FREE_PRINT_MAX_TOPIC temas
+  // son GRATIS (captación + SEO); a partir de ahí, descargar el PDF es Premium.
+  // Gatea la descarga por-tema más allá del cupo; el "temario completo" (T-076) tendrá
+  // su propio control premium. Free → 👑 + modal; premium → descarga directa.
+  print_pdf: {
+    id: 'print_pdf',
+    kind: 'ui_feature',
+    label: 'Descargar temario en PDF',
+    modalTitle: 'Descarga el temario en PDF',
+    modalBody:
+      'Con Premium descargas en PDF cualquier tema para estudiar sin conexión o imprimirlo. Los primeros temas son gratis; el resto es Premium, junto con tests, chat con IA y lectura por voz sin límite.',
+    benefit: 'Descarga e imprime todo el temario, tema a tema',
+    unlockPlan: 'premium',
+  },
 } as const satisfies Record<string, PremiumFeature>
 
 export type PremiumFeatureId = keyof typeof PREMIUM_FEATURES
+
+/**
+ * Cupo GRATIS de descarga/impresión de PDF por tema (T-076): los temas con
+ * `topic_number <= FREE_PRINT_MAX_TOPIC` se descargan gratis (captación + SEO);
+ * a partir de ahí es Premium. Fuente única compartida por el botón (cliente) y la
+ * ruta `/api/temario/[oposicion]/[topic]/pdf` (servidor).
+ */
+export const FREE_PRINT_MAX_TOPIC = 3
 
 /** Devuelve la feature del registro o `null` si el id no existe (nunca lanza). */
 export function getPremiumFeature(id: string): PremiumFeature | null {

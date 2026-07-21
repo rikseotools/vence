@@ -21,6 +21,10 @@ import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel, pdfFileName, countContentChars, fitsSyncPdf, PDF_MAX_CHARS } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
+import { getUserPlanType } from '@/lib/referrals/queries'
+import { isPremiumPlan } from '@/lib/premium/isPremiumPlan'
+import { FREE_PRINT_MAX_TOPIC } from '@/lib/premium/features'
 
 export const dynamic = 'force-dynamic'
 // Un tema es 21 páginas de mediana, pero la cola pesa (p95 = 178, máximo 760).
@@ -28,7 +32,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 async function handler(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ oposicion: string; topic: string }> }
 ) {
   const { oposicion: oposicionRaw, topic } = await params
@@ -47,6 +51,18 @@ async function handler(
   const topicNumber = Number(topic)
   if (!Number.isInteger(topicNumber) || topicNumber <= 0) {
     return NextResponse.json({ error: 'Número de tema inválido' }, { status: 400 })
+  }
+
+  // Gate PREMIUM (T-076): los primeros FREE_PRINT_MAX_TOPIC temas son gratis (captación +
+  // SEO); del resto, descargar el PDF es Premium. El botón ya muestra 👑 + modal, pero un
+  // free podría pegar a esta URL directamente → defensa en profundidad (mismo patrón que
+  // /api/questions/filtered con isPremiumPlan). 403 → el cliente abre el modal 👑.
+  if (topicNumber > FREE_PRINT_MAX_TOPIC) {
+    const auth = await verifyAuthOptional(req, '/api/temario/pdf').catch(() => null)
+    const planType = auth?.userId ? await getUserPlanType(auth.userId) : null
+    if (!isPremiumPlan(planType)) {
+      return NextResponse.json({ error: 'premium_required', feature: 'print_pdf' }, { status: 403 })
+    }
   }
 
   const content = await getTopicContent(oposicion as OposicionSlug, topicNumber)

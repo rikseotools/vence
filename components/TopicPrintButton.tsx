@@ -24,6 +24,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { emitClientEvent } from '@/lib/observability/client'
+import { usePremiumGate } from '@/hooks/usePremiumGate'
+import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { FREE_PRINT_MAX_TOPIC } from '@/lib/premium/features'
 
 interface TopicPrintButtonProps {
   /** Href completo de login con oposicion + return_to (ya presente en cada temario). */
@@ -39,6 +43,7 @@ function oposicionFromLoginHref(href: string): string | null {
 
 export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintButtonProps) {
   const { user } = useAuth() as { user: any }
+  const { gate, activeFeature, activeContext, closeGate, isPremium } = usePremiumGate()
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -50,12 +55,12 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
       metadata: { action, slug: oposicionFromLoginHref(loginHref), topic: topicNumber, ...extra },
     })
 
-  const handleDownload = async () => {
-    if (!user) {
-      emit('register_prompt')
-      setShowPrintModal(true)
-      return
-    }
+  // Cupo GRATIS (T-076): los primeros FREE_PRINT_MAX_TOPIC temas se descargan gratis;
+  // del resto la descarga es Premium (👑 + modal). Premium: sin límite.
+  const needsPremium = topicNumber != null && topicNumber > FREE_PRINT_MAX_TOPIC
+  const showCrown = !isPremium && needsPremium
+
+  const doDownload = async () => {
     const slug = oposicionFromLoginHref(loginHref)
     if (!slug || topicNumber == null) {
       // Sin slug o sin tema no podemos pedir el PDF: degradamos a la impresión del
@@ -68,13 +73,23 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
     setDownloading(true)
     setFailed(false)
     try {
-      const res = await fetch(`/api/temario/${encodeURIComponent(slug)}/${topicNumber}/pdf`)
+      // Bearer opcional: en los temas gateados el server valida el plan (defensa en
+      // profundidad); en temas gratis/anónimo getAuthHeaders devuelve lo que haya.
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/temario/${encodeURIComponent(slug)}/${topicNumber}/pdf`, { headers })
       // 413 = tema demasiado grande para generarlo en servidor (los "artículos-cajón" de
       // T-040). Degradamos a la impresión del navegador, que es lo que había antes: el
       // usuario no se queda sin nada.
       if (res.status === 413) {
         emit('download_too_large')
         window.print()
+        return
+      }
+      // 403 = el server gateó por plan (un free forzando la URL de un tema premium):
+      // abrimos el mismo modal 👑 en vez de tratarlo como error genérico.
+      if (res.status === 403) {
+        emit('download_premium_required')
+        gate('print_pdf', undefined, 'temario_print')
         return
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -99,6 +114,22 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
     }
   }
 
+  const handleDownload = () => {
+    if (!user) {
+      // Sin sesión: captación (registrarse gratis), igual que antes.
+      emit('register_prompt')
+      setShowPrintModal(true)
+      return
+    }
+    if (needsPremium) {
+      // Premium → descarga; free → gate() abre el modal 👑 y emite premium_gate_shown.
+      gate('print_pdf', () => { void doDownload() }, 'temario_print')
+      return
+    }
+    // Temas dentro del cupo gratis: descarga directa (solo requiere registro).
+    void doDownload()
+  }
+
   return (
     <>
       <button
@@ -112,6 +143,7 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
         </svg>
         {downloading ? 'Generando PDF…' : 'Descargar PDF'}
+        {showCrown && <span className="ml-1" title="Función Premium">👑</span>}
       </button>
       {failed && (
         <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
@@ -166,6 +198,11 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
             </div>
           </div>
         </div>
+      )}
+
+      {/* Free en tema gateado (>cupo): modal 👑 "Función Premium" (registro central) */}
+      {activeFeature && (
+        <PremiumFeatureModal feature={activeFeature} context={activeContext} onClose={closeGate} />
       )}
 
     </>
