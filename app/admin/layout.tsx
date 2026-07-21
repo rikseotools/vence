@@ -12,6 +12,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const adminNotifications = useAdminNotifications(true)
   const { hasUnreviewedChanges } = useLawChanges()
   const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0, discovered: 0 })
+  const [fraudSignals, setFraudSignals] = useState({ pending: 0, critical: 0 })
   const [competidorChanges, setCompetidorChanges] = useState(0)
   const [rolloverCount, setRolloverCount] = useState(0)
   const [radarContenido, setRadarContenido] = useState(0)
@@ -139,6 +140,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const interval = setInterval(checkPayouts, 600000)
     return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkPayouts])
+
+  // Badge de Fraudes: señales del sweep antifraude sin revisar (fraud_alerts status='new').
+  // Runbook: docs/runbooks/revisar-fraudes.md (frase «revisa las señales de fraude»).
+  const checkFraud = useCallback(async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
+      const res = await adminFetch('/api/v2/admin/fraud/pending-count', { headers: authHeaders })
+      const json = await res.json()
+      if (json.success) setFraudSignals({ pending: json.count ?? 0, critical: json.critical ?? 0 })
+    } catch {}
+  }, [])
+  useEffect(() => {
+    const delay = setTimeout(checkFraud, 17000)
+    const interval = setInterval(checkFraud, 600000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
+  }, [checkFraud])
 
   return (
     <ProtectedRoute>
@@ -442,9 +460,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <span>🚨</span>
                     <span>Fraudes</span>
-                    {adminNotifications?.rateLimitHits > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse">
-                        {adminNotifications.rateLimitHits}
+                    {(fraudSignals.pending > 0 || adminNotifications?.rateLimitHits > 0) && (
+                      <span
+                        className={`absolute -top-1 -right-1 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse ${
+                          fraudSignals.critical > 0 ? 'bg-red-600' : 'bg-orange-500'
+                        }`}
+                        title="Señales de fraude sin revisar (di: «revisa las señales de fraude»)"
+                      >
+                        {((fraudSignals.pending || adminNotifications?.rateLimitHits) > 99) ? '99+' : (fraudSignals.pending || adminNotifications?.rateLimitHits)}
                       </span>
                     )}
                   </Link>

@@ -5,7 +5,7 @@ import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
-type Tab = 'premium' | 'multicuenta' | 'bots' | 'bloqueados'
+type Tab = 'senales' | 'premium' | 'multicuenta' | 'bots' | 'bloqueados'
 
 interface PremiumSharing {
   user_id: string
@@ -53,12 +53,23 @@ interface DeviceBlocked {
   last_blocked: string
 }
 
+interface FraudSignal {
+  id: string
+  alert_type: string
+  severity: string
+  status: string
+  user_ids: string[] | null
+  details: Record<string, unknown>
+  detected_at: string
+}
+
 export default function FraudesPage() {
   const { user } = useAuth() as any
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('premium')
+  const [tab, setTab] = useState<Tab>('senales')
 
+  const [signalsData, setSignalsData] = useState<FraudSignal[]>([])
   const [premiumData, setPremiumData] = useState<PremiumSharing[]>([])
   const [multiData, setMultiData] = useState<MultiAccount[]>([])
   const [botData, setBotData] = useState<BotSuspect[]>([])
@@ -78,7 +89,7 @@ export default function FraudesPage() {
   }, [user])
 
   async function loadAll() {
-    await Promise.all([loadPremium(), loadMulti(), loadBots(), loadScripts(), loadBlocked()])
+    await Promise.all([loadSignals(), loadPremium(), loadMulti(), loadBots(), loadScripts(), loadBlocked()])
   }
 
   // AGNÓSTICO (Fase C1): cada análisis de fraude se ejecuta server-side en su
@@ -116,10 +127,27 @@ export default function FraudesPage() {
     setBlockedData(await fraudFetch<DeviceBlocked>('/api/v2/admin/fraud/blocked', 'blocked'))
   }
 
+  async function loadSignals() {
+    setSignalsData(await fraudFetch<FraudSignal>('/api/v2/admin/fraud/signals?status=new', 'signals'))
+  }
+
+  // Marca una señal (dismissed=falso positivo, confirmed=fraude real, reviewed=vista) y
+  // recarga la lista → sale del badge. Runbook: docs/runbooks/revisar-fraudes.md
+  async function reviewSignal(id: string, action: 'reviewed' | 'dismissed' | 'confirmed') {
+    try {
+      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
+      await adminFetch('/api/v2/admin/fraud/signals/review', {
+        method: 'POST', headers, body: JSON.stringify({ id, action }),
+      })
+    } catch (e) { console.error('review error', e) }
+    setSignalsData(prev => prev.filter(sig => sig.id !== id))
+  }
+
   if (loading) return <div className="p-8 text-center text-gray-500">Cargando...</div>
   if (!user || !isAdmin) return <div className="p-8 text-center text-red-500">No autorizado</div>
 
   const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: 'senales', label: '🚨 Señales', count: signalsData.length },
     { id: 'premium', label: 'Premium compartido', count: premiumData.length },
     { id: 'multicuenta', label: 'Multicuentas free', count: multiData.length },
     { id: 'bots', label: 'Bots detectados', count: botData.length + scriptData.length },
@@ -151,10 +179,57 @@ export default function FraudesPage() {
         ))}
       </div>
 
+      {tab === 'senales' && <SignalsTab data={signalsData} onReview={reviewSignal} />}
       {tab === 'premium' && <PremiumTab data={premiumData} />}
       {tab === 'multicuenta' && <MultiTab data={multiData} />}
       {tab === 'bots' && <BotTab data={botData} scriptData={scriptData} />}
       {tab === 'bloqueados' && <BlockedTab data={blockedData} />}
+    </div>
+  )
+}
+
+function sevClass(sev: string): string {
+  if (sev === 'critical') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+  if (sev === 'high') return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300'
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+}
+
+const KIND_LABEL: Record<string, string> = {
+  multi_account_device: 'Multicuenta (mismo dispositivo)',
+  multi_account_reg_ip: 'Multicuenta (misma IP de registro)',
+  device_daily_farming: 'Farmeo del límite (por dispositivo)',
+  curl_scraping: 'Scraping por curl/API (sin navegador)',
+  premium_sharing: 'Premium compartido',
+  bot_detected: 'Bot (respuestas rápidas)',
+  suspicious_behavior: 'Comportamiento sospechoso',
+}
+
+function SignalsTab({ data, onReview }: { data: FraudSignal[]; onReview: (id: string, action: 'reviewed' | 'dismissed' | 'confirmed') => void }) {
+  if (!data.length) return <Empty msg="No hay señales de fraude sin revisar. El sweep antifraude corre a diario." />
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {data.length} señales sin revisar. Verifica cada una y márcala: <b>Descartar</b> (falso positivo), <b>Confirmar</b> (fraude real) o <b>Revisada</b>.
+      </p>
+      {data.map(sig => (
+        <div key={sig.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={'px-2 py-0.5 text-xs rounded-full font-semibold ' + sevClass(sig.severity)}>{sig.severity}</span>
+                <span className="font-semibold dark:text-white">{KIND_LABEL[sig.alert_type] || sig.alert_type}</span>
+              </div>
+              <pre className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words max-w-2xl">{JSON.stringify(sig.details, null, 1)}</pre>
+              <p className="text-xs text-gray-400 mt-1">{new Date(sig.detected_at).toLocaleString('es-ES')} · {(sig.user_ids || []).length} cuentas</p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => onReview(sig.id, 'dismissed')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200">Descartar</button>
+              <button onClick={() => onReview(sig.id, 'confirmed')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 hover:bg-red-700 text-white">Confirmar</button>
+              <button onClick={() => onReview(sig.id, 'reviewed')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">Revisada</button>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
