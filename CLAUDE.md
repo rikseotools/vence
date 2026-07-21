@@ -16,14 +16,15 @@
 - **`TestConfigurator.js`** - Configurador avanzado de tests (general)
 - **`LawTestConfigurator.js`** - Configurador específico para tests de leyes individuales
 
-### APIs de Validación Segura
-- **`/api/answer`** - Validación individual de respuestas (tests normales)
-- **`/api/exam/validate`** - Validación batch de exámenes completos
-- **`/api/answer/psychometric`** - Validación de respuestas psicotécnicas
+### APIs de Respuesta y Validación
+- **`/api/v2/answer-and-save`** - Endpoint unificado de tests normales: **re-valida en servidor + guarda en `test_questions` + actualiza score + anti-fraude**. Se invoca ASÍNCRONO desde la cola (`utils/answerSaveQueue`), desacoplado del feedback que ve el usuario (ver "Sistema de Respuestas" abajo).
+- **`/api/exam/validate`** - Validación batch de exámenes completos (modo examen, `ExamLayout`). El modo examen SÍ retiene `correct_option` hasta el final.
+- **`/api/answer/psychometric`** y **`/api/answer/spelling`** - Validación de respuestas psicotécnicas y de ortografía.
+- ⚠️ **`/api/answer` (validación individual) YA NO EXISTE** — los tests normales validan **en cliente** con el `correct_option` que viaja en el payload (feedback instantáneo, ver abajo).
 
 ### Fetchers de Datos
-- **`testFetchers.js`** - Funciones para obtener preguntas por tema
-- **`lawFetchers.js`** - Funciones específicas para preguntas por ley
+- **`lib/testFetchers.ts`** - Funciones para obtener preguntas por tema. **Incluye `correct_option` y `explanation` a propósito** (validación client-side instantánea).
+- **`lib/lawFetchers.ts`** - Funciones específicas para preguntas por ley.
 
 ### Utilidades de Test
 - **`testAnswers.js`** - Manejo de guardado de respuestas
@@ -70,36 +71,45 @@
 - **Flujo:** Cron detecta cambio → badge en admin → usuario avisa a Claude → Claude actualiza hitos y landing
 - **Workflow:** `.github/workflows/check-seguimiento.yml`
 
-### Sistema de Validación Segura de Respuestas (Implementado: 09/01/2026)
-- **Objetivo:** Prevenir scraping de respuestas correctas por bots
-- **Principio:** La respuesta correcta (`correct_option`) NUNCA se envía al cliente antes de que el usuario responda
-- **Arquitectura:**
-  - Las preguntas se cargan SIN `correct_option`
-  - Cuando el usuario responde, se llama a la API correspondiente
-  - La API valida la respuesta y devuelve `isCorrect`, `correctAnswer` y `explanation`
-  - El cliente usa `verifiedCorrectAnswer` para mostrar feedback
+### Sistema de Respuestas (actualizado 21/07/2026 — el modelo anti-scraping viejo QUEDÓ OBSOLETO)
 
-#### APIs de Validación:
-| Endpoint | Uso | Tabla |
-|----------|-----|-------|
-| `/api/answer` | Tests normales (TestLayout, DynamicTest) | `questions` |
-| `/api/exam/validate` | Modo examen batch (ExamLayout) | `questions` |
-| `/api/answer/psychometric` | Tests psicotécnicos | `psychometric_questions` |
+> **⚠️ Cambio de modelo.** Hasta principios de 2026 el diseño ocultaba `correct_option` y validaba cada
+> respuesta llamando a `/api/answer` antes de mostrar feedback. **Ese endpoint ya no existe y ese modelo
+> se abandonó a propósito:** en los tests normales la pregunta se muestra y se corrige **al instante en
+> el cliente**. Priorizar la UX instantánea sobre el anti-scraping fue una decisión de producto.
 
-#### Componentes Actualizados:
-- **TestLayout.js** - Usa `/api/answer` con estado `verifiedCorrectAnswer`
-- **DynamicTest.js** - Usa `/api/answer` con estado `verifiedCorrectAnswer`
-- **ExamLayout.js** - Usa `/api/exam/validate` con estado `validatedResults`
-- **PsychometricTestLayout.js** - Usa `/api/answer/psychometric`
-- **ChartQuestion.js** - Usa prop `verifiedCorrectAnswer` (NO `question.correct_option`)
-- **10 componentes psicotécnicos** - Reciben `verifiedCorrectAnswer` y `verifiedExplanation`
+**Cómo funciona HOY, por tipo de test:**
 
-#### Tests de Seguridad:
-- **`__tests__/security/answerValidation.test.js`** - 34 tests de validación
+- **Tests normales (`TestLayout.tsx`, `DynamicTest`):**
+  - `lib/testFetchers.ts` carga la pregunta **CON `correct_option` y `explanation`** — a propósito
+    (`// Respuesta correcta incluida para validación client-side instantánea`).
+  - Al responder, el cliente compara en local y fija `verifiedCorrectAnswer` **desde ese `correct_option`
+    del payload** (`TestLayout.tsx`, `setVerifiedCorrectAnswer(currentQ.correct_option)`). No hay ida y
+    vuelta al servidor para el feedback.
+  - **La persistencia + score autoritativo va aparte y ASÍNCRONA:** `enqueueAnswer` (`utils/answerSaveQueue`)
+    → `/api/v2/answer-and-save`, que **re-valida en servidor** (`lib/api/v2/answer-and-save`) para el registro
+    en `test_questions`, el score y el anti-fraude. Es decir: el usuario ve el resultado al instante, y el
+    servidor tiene su propia verdad para las estadísticas. Los dos caminos están desacoplados.
+- **Modo examen (`ExamLayout.js`):** **SÍ sigue el modelo seguro.** Las preguntas se sirven **sin
+  `correct_option`** (`/api/exam/resume`: *"NO incluir correct_option — se valida via /api/exam/validate"*)
+  y la corrección es **batch al final** vía `/api/exam/validate`. Aquí la clave no viaja hasta terminar.
+- **Psicotécnicos / ortografía:** validan por su endpoint (`/api/answer/psychometric`, `/api/answer/spelling`).
 
-#### Logs de Debug:
-- `🔒 [SecureAnswer]` - Operaciones de validación segura
-- `✅ [SecureAnswer]` - Validación exitosa via API
+#### Endpoints vigentes
+| Endpoint | Uso |
+|----------|-----|
+| `/api/v2/answer-and-save` | Tests normales: re-valida + guarda + score + anti-fraude (async, vía cola) |
+| `/api/exam/validate` | Modo examen: validación batch al terminar |
+| `/api/answer/psychometric` · `/api/answer/spelling` | Psicotécnicos y ortografía |
+| ~~`/api/answer`~~ | **ELIMINADO** — los tests normales validan en cliente |
+
+#### Tests
+- **`__tests__/security/answerValidation.test.ts`** (+ `answerValidationRobustness.test.ts`) — fijan el
+  comportamiento actual de validación/guardado.
+
+#### Logs de Debug
+- `✅ [answer-and-save]` - guardado + validación server-side de tests normales
+- `✅ [API/exam/validate]` - validación batch de modo examen
 
 ### Configurador de Tests para Leyes Específicas (Implementado: 17/10/2025)
 - **Ubicación:** `app/leyes/[law]/LawTestConfigurator.js`
@@ -148,18 +158,18 @@
 - Enfoque en áreas débiles
 - Límite de tiempo
 
-## Flujo de Respuesta a Preguntas
+## Flujo de Respuesta a Preguntas (tests normales)
 
-1. **Carga de pregunta** → Muestra opciones A, B, C, D (SIN `correct_option`)
+1. **Carga de pregunta** → la pregunta llega CON `correct_option` y `explanation` en el payload (fetcher)
 2. **Botones rápidos** → Aparecen botones cuadrados azules A/B/C/D al final
 3. **Selección** → Usuario puede usar cualquiera de los dos métodos
 4. **Validación anti-duplicados** → Sistema previene respuestas múltiples
-5. **🔒 Validación segura via API** → Se llama a `/api/answer` (o variante)
-6. **Respuesta de API** → Devuelve `isCorrect`, `correctAnswer`, `explanation`
-7. **Tracking** → Registra interacciones y tiempo de respuesta
-8. **Guardado** → Almacena respuesta en Supabase
-9. **Resultado** → Muestra explicación y feedback usando `verifiedCorrectAnswer`
-10. **Navegación** → Botón para siguiente pregunta
+5. **Corrección INSTANTÁNEA en cliente** → se compara con el `correct_option` del payload y se fija `verifiedCorrectAnswer` sin llamar al servidor
+6. **Resultado** → Muestra explicación y feedback usando `verifiedCorrectAnswer` (al instante)
+7. **Guardado + score (async, en 2.º plano)** → `enqueueAnswer` → `/api/v2/answer-and-save` re-valida en servidor, persiste en `test_questions`, actualiza score y pasa anti-fraude
+8. **Navegación** → Botón para siguiente pregunta
+
+> En **modo examen** el flujo es distinto: sin `correct_option` en el payload, corrección batch al final vía `/api/exam/validate`.
 
 ## Comandos de Desarrollo
 
@@ -254,29 +264,29 @@ git push origin main
 
 ## Notas de Implementación
 
-### 🔒 Seguridad Anti-Scraping (CRÍTICO)
-- **NUNCA** exponer `correct_option` al cliente antes de que el usuario responda
-- Las preguntas se cargan desde fetchers SIN el campo `correct_option`
-- La validación SIEMPRE se hace via API (`/api/answer`, `/api/exam/validate`, `/api/answer/psychometric`)
-- Los componentes usan `verifiedCorrectAnswer` (de la API) en vez de `question.correct_option`
-- Si se añaden nuevos componentes de test, DEBEN seguir este patrón
-- **Tests:** `__tests__/security/answerValidation.test.js` verifica este comportamiento
+### Exposición de `correct_option` — modelo por tipo de test (revisado 21/07/2026)
 
-#### APIs Securizadas (NO devuelven correct_option):
-| Endpoint | Descripción |
-|----------|-------------|
-| `/api/exam/resume` | Reanudar examen - preguntas sin correct_option |
-| `/api/debug/question/[id]` | Debug de preguntas - sin correct_option |
-| `testFetchers.js` | Fetchers de preguntas normales |
-| `lawFetchers.js` | Fetchers de preguntas de leyes |
+> **El modelo "NUNCA exponer `correct_option`" YA NO aplica a los tests normales.** Se abandonó a
+> propósito para dar **feedback instantáneo**: en los tests de práctica la clave viaja en el payload y
+> la corrección es client-side (ver "Sistema de Respuestas"). No es un bug ni una fuga a arreglar — es
+> el diseño actual. **No "resegurizar" los tests normales** salvo decisión de producto explícita.
 
-#### QuestionContext (contexts/QuestionContext.js):
-- Solo expone `correctAnswer` cuando `showResult = true`
-- Patrón: `correct: showResult ? verifiedCorrectAnswer : null`
-- Usado por `AIChatWidget` para sugerencias contextuales
+- **Tests normales / práctica:** la pregunta se sirve **CON `correct_option` y `explanation`**
+  (`lib/testFetchers.ts`, `lib/lawFetchers.ts`) para corrección instantánea. El endpoint
+  `/api/questions/filtered` los devuelve por diseño. La verdad para score/estadística la recalcula el
+  servidor aparte en `/api/v2/answer-and-save`.
+- **Modo examen (donde el anti-scraping SÍ importa):** las preguntas se sirven **SIN `correct_option`**
+  y se validan batch al final. Esto NO se toca:
+  | Endpoint | Comportamiento |
+  |----------|----------------|
+  | `/api/exam/resume` | Reanudar examen — preguntas **sin** `correct_option` |
+  | `/api/exam/validate` | Validación batch server-side al terminar |
+- **Tests:** `__tests__/security/answerValidation.test.ts` + `answerValidationRobustness.test.ts`.
 
-#### Páginas de Debug:
-- `app/debug/question/[id]/page.js` - Usa validación via API, no expone respuesta
+#### QuestionContext (`contexts/QuestionContext.js`)
+- Expone `correctAnswer` solo cuando `showResult = true` (patrón `correct: showResult ? verifiedCorrectAnswer : null`).
+  Es un tema de **UX/render** (no revelar la respuesta en la UI antes de contestar), no de red — en los
+  tests normales el dato ya está en el cliente. Usado por `AIChatWidget` para sugerencias contextuales.
 
 ### Anti-Duplicados
 - Sistema robusto para prevenir respuestas múltiples
@@ -398,9 +408,8 @@ git push origin main
 - Prefijo `💾` para operaciones de guardado
 - Prefijo `🎯` para funcionalidades de test
 - Prefijo `❌` para errores críticos
-- Prefijo `🔒 [SecureAnswer]` para validación segura de respuestas
-- Prefijo `✅ [SecureAnswer]` para validación exitosa via API
-- Prefijo `✅ [API/answer]` para logs de APIs de validación
+- Prefijo `✅ [answer-and-save]` para el guardado + validación server-side de tests normales
+- Prefijo `✅ [API/exam/validate]` para la validación batch del modo examen
 
 ### Archivos de Configuración
 - `.env.local` - Variables de entorno
