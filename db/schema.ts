@@ -111,9 +111,6 @@ export const userProfiles = pgTable("user_profiles", {
 	stripeCustomerId: text("stripe_customer_id"),
 	paymentAccount: text("payment_account").default('manuel').notNull(),
 	registrationSource: text("registration_source").default('organic'),
-	// true = usuario sintético (canaries/smoke). Fuente única de exclusión de
-	// analíticas (ranking, dificultad). Migración 20260720_synthetic_user_central.
-	isSynthetic: boolean("is_synthetic").default(false).notNull(),
 	requiresPayment: boolean("requires_payment").default(false),
 	nickname: text(),
 	age: integer(),
@@ -180,9 +177,6 @@ export const articles = pgTable("articles", {
 	sectionNumber: text("section_number"),
 	isActive: boolean("is_active").default(true),
 	contentHash: text("content_hash"),
-	/** T-048: notas de vigencia del BOE + incisos anulados por el TC. NULL = no capturado
-	 *  todavía (NO equivale a "sin notas"). Lo produce lib/laws/boeVigencia.ts al importar. */
-	vigenciaNotes: jsonb("vigencia_notes"),
 	lastModificationDate: date("last_modification_date"),
 	verificationDate: date("verification_date").default(sql`CURRENT_DATE`),
 	isVerified: boolean("is_verified").default(false),
@@ -351,6 +345,26 @@ export const topicScopeVerification = pgTable("topic_scope_verification", {
 			name: "topic_scope_verification_topic_id_fkey"
 		}).onDelete("cascade"),
 	check("topic_scope_verification_state_check", sql`state = ANY (ARRAY['never_verified'::text, 'verifying'::text, 'verified_correct'::text, 'verified_issues'::text, 'needs_human'::text, 'stale'::text])`),
+]);
+
+// T-055 — triaje de leyes huérfanas (sin topic_scope). decision=held marca las
+// descartadas para NO re-examinarlas en pasadas futuras; placed ya viven en topic_scope.
+export const topicScopeOrphanTriage = pgTable("topic_scope_orphan_triage", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	lawId: uuid("law_id").notNull(),
+	positionType: text("position_type").notNull(),
+	decision: text().notNull(),
+	topicId: uuid("topic_id"),
+	reason: text(),
+	method: text(),
+	triagedAt: timestamp("triaged_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	triagedBy: text("triaged_by"),
+}, (table) => [
+	index("idx_orphan_triage_held").using("btree", table.positionType.asc().nullsLast()).where(sql`decision = 'held'`),
+	foreignKey({ columns: [table.lawId], foreignColumns: [laws.id], name: "topic_scope_orphan_triage_law_id_fkey" }).onDelete("cascade"),
+	foreignKey({ columns: [table.topicId], foreignColumns: [topics.id], name: "topic_scope_orphan_triage_topic_id_fkey" }).onDelete("set null"),
+	unique("topic_scope_orphan_triage_uq").on(table.lawId, table.positionType),
+	check("topic_scope_orphan_triage_decision_check", sql`decision = ANY (ARRAY['placed'::text, 'held'::text])`),
 ]);
 
 export const topicScopeVerificationHistory = pgTable("topic_scope_verification_history", {
@@ -2423,9 +2437,6 @@ export const deletedUsersLog = pgTable("deleted_users_log", {
 	// RGPD: datos con obligación legal de retención (pagos, contabilidad)
 	// archivados como dump JSONB sin referencias FK vivas a las tablas operacionales.
 	archivedData: jsonb("archived_data"),
-	// T-011: sello del email RGPD (Art. 12.3). La ruta delete-user envía solo si NULL y
-	// lo sella tras el envío OK → exactly-once en el reintento.
-	rgpdEmailSentAt: timestamp("rgpd_email_sent_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_deleted_users_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_deleted_users_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
