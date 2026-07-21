@@ -43,6 +43,19 @@ const VALID_ESTADOS = new Set([
   'pendiente_examen',
 ])
 
+// Administraciones que son una CATEGORÍA (no una entidad concreta): spanean varias
+// entidades → una catalogada así es una PLANTILLA genérica de cuerpo (existe en
+// todas las CCAAs/ayuntamientos/universidades), no el proceso de UNA entidad, así
+// que NO puede tener una seguimiento_url única. NO es backlog arreglable: taxonomía.
+// (Estado/AGE NO va aquí: "Cuerpo de Abogados del Estado" es concreto y su portal
+// general es administracion.gob.es.)
+const GENERIC_ADMIN_RE =
+  /^(autonómica|autonomica|administración local|administracion local|local|universidad(\s*\(pas\))?|sanitaria|servicios de salud \(sns\)|varias administraciones|madrid|andaluc[ií]a|catalu[ñn]a|comunidad_madrid)(\s*\(.*\))?$/i
+function isGenericTemplate(adm) {
+  if (!adm || !adm.trim()) return true // sin administración = no atribuible a una entidad
+  return GENERIC_ADMIN_RE.test(adm.trim())
+}
+
 function fetchServerRendered(url, hop = 0) {
   // ¿la URL trae contenido de empleo en el HTML PLANO (no un shell SPA)? Mismo
   // criterio que el cron (fetch plano). SIGUE redirecciones (el cron usa `fetch`,
@@ -109,14 +122,23 @@ async function main() {
     .filter((r) => !VALID_ESTADOS.has(r.estado_proceso))
   if (badEst.length) errs.push(`${badEst.length} catalogada(s) con estado_proceso inválido (ej. "${badEst[0].estado_proceso}").`)
 
-  // ── CHECK 6 (WARN): catalogadas de señales aplicadas SIN seguimiento_url ──
-  // Backlog de mantenimiento (§1021/§1030): NULL es aceptable SI está anotado en
-  // la señal, pero hay que verlas. No bloquea (donante puede no existir hoy).
+  // ── CHECK 6 (WARN): catalogadas SIN seguimiento_url, SEPARANDO genéricas ──
+  // Backlog de mantenimiento (§1021/§1030): NULL es aceptable si no hay donante
+  // fiable, pero hay que verlas. CLAVE (refinado 21/07): NO todas las que faltan
+  // son arreglables. Una administración que es una CATEGORÍA (no una entidad) —
+  // "Autonómica (Educación)", "Universidad (PAS)", "Administración Local"… —
+  // spanea varias entidades ("Cuerpo de Maestros - Música" no es el proceso de UNA
+  // CCAA) → NO puede tener una seguimiento_url única. Es TAXONOMÍA, no backlog.
+  // Contarlas como 🟡 sobre-avisa → fatiga de alarma → el guardarraíl se ignora
+  // (el mismo fallo, al revés). Se separan: 🟡 real (organismo concreto) vs
+  // ⚪ genéricas (informativo, no backlog).
   const sinUrl = await sql`
-    SELECT count(DISTINCT o.id)::int n
-    FROM oposiciones o JOIN oep_detection_signals s ON s.oposicion_id = o.id
-    WHERE o.coverage_level='catalogada' AND o.seguimiento_url IS NULL AND s.status='applied'`
-  if (sinUrl[0].n > 0) warns.push(`${sinUrl[0].n} catalogada(s) de señales aplicadas SIN seguimiento_url (backlog: asignar donante verificado del organismo, o dejar con nota).`)
+    SELECT coalesce(administracion, '') administracion FROM oposiciones
+    WHERE coverage_level='catalogada' AND seguimiento_url IS NULL`
+  const generico = sinUrl.filter((r) => isGenericTemplate(r.administracion)).length
+  const concreto = sinUrl.length - generico
+  if (concreto > 0) warns.push(`${concreto} catalogada(s) de organismo CONCRETO sin seguimiento_url (backlog real: buscar URL general server-rendered del organismo — donante o portal oficial —, o dejar con nota si es SPA/rota).`)
+  if (generico > 0) warns.push(`(informativo, NO backlog) ${generico} catalogada(s) genéricas (categoría sin entidad: "Autonómica (Educación)", "Universidad (PAS)", "Administración Local"…) → no pueden tener seguimiento_url única.`)
 
   // ── CHECK 7 (--deep, RED): las seguimiento_url de catalogadas recientes son server-rendered ──
   if (DEEP) {
