@@ -6,7 +6,7 @@ import { z } from 'zod/v3'
 // ENUMS
 // ============================================
 
-export const sensorTypeOptions = ['llm_semantic', 'timeline_silence', 'hash_change', 'regional_scan', 'rss', 'boe_api', 'google_cse', 'manual', 'generic_source', 'pag_empleo'] as const
+export const sensorTypeOptions = ['llm_semantic', 'timeline_silence', 'hash_change', 'regional_scan', 'rss', 'boe_api', 'google_cse', 'manual', 'generic_source', 'pag_empleo', 'competitor', 'temario_change', 'nota_examen'] as const
 export const signalStatusOptions = ['pending', 'applied', 'dismissed', 'auto_applied'] as const
 
 export type SensorType = typeof sensorTypeOptions[number]
@@ -166,6 +166,11 @@ export function baseScoreBySensor(sensor: SensorType): number {
     case 'manual': return 100
     case 'generic_source': return 45
     case 'pag_empleo': return 50
+    case 'competitor': return 50
+    case 'temario_change': return 65
+    // Fecha de examen extraída de la propia convocatoria (detect-examenes-signals).
+    // Ver backend/src/oep-signals/oep-signals.schemas.ts para el detalle.
+    case 'nota_examen': return 60
   }
 }
 

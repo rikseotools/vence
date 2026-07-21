@@ -24,6 +24,7 @@ const SENSOR_LABELS: Record<string, { label: string; emoji: string; color: strin
   manual: { label: 'Manual', emoji: '✍️', color: 'bg-slate-100 text-slate-800' },
   generic_source: { label: 'Fuente estatal', emoji: '🏛️', color: 'bg-indigo-100 text-indigo-800' },
   pag_empleo: { label: 'PAG Empleo', emoji: '🇪🇸', color: 'bg-red-100 text-red-800' },
+  nota_examen: { label: 'Fecha de examen', emoji: '📅', color: 'bg-teal-100 text-teal-800' },
 }
 
 function scoreColor(score: number): string {

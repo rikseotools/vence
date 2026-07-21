@@ -27,6 +27,11 @@ export const sensorTypeOptions = [
   // Cambio de TEMARIO/PROGRAMA (Orden de programas exigibles/materias). Cierra el
   // gap del caso Cantabria (PRE/12/2026). BD: migración 20260708_temario_change_sensor.
   'temario_change',
+  // Fecha de examen publicada en una convocatoria ya trackeada. La emite el cron
+  // `detect-examenes-signals` leyendo `convocatoria_notas.llm_extraction.fecha_examen`
+  // (que ya extrae `detect-notas-convocatoria`). Cierra el hueco que dejó el sensor
+  // retirado `hash_change`. BD: migración 20260721_nota_examen_sensor.
+  'nota_examen',
 ] as const;
 
 export const signalStatusOptions = [
@@ -234,6 +239,12 @@ export function baseScoreBySensor(sensor: SensorType): number {
     // a una oposición por su norma-fuente registrada.
     case 'temario_change':
       return 65;
+    // Fecha de examen sacada de un documento oficial de la propia convocatoria →
+    // dato accionable y por encima del umbral crítico (60), para que el admin lo
+    // vea. El detector es ruidoso (mis-atribuye procesos hermanos, extrae fechas de
+    // docs viejos) → SIEMPRE triaje humano antes de aplicar, nunca auto-apply.
+    case 'nota_examen':
+      return 60;
   }
 }
 
