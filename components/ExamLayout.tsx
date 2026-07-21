@@ -18,6 +18,7 @@ import { logClientError } from '@/lib/logClientError'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { saveLocalExamAnswers, loadLocalExamAnswers, clearLocalExamAnswers, mergeExamAnswers } from '@/lib/exam/localAnswerStore'
+import { classifyAnswerSaveResponse, answerSaveBackoffMs, shouldEmitSaveDegraded } from '@/lib/exam/answerSaveRetry'
 import { useQuestionContext } from '@/contexts/QuestionContext'
 import { useAIChat } from '@/contexts/AIChatContext'
 
@@ -196,21 +197,21 @@ async function saveAnswerToAPI(
 
       const result = await response.json().catch(() => ({} as { success?: boolean; deviceLimitReached?: boolean; error?: string }))
 
-      if (response.ok && result.success) return true
-
-      // Límite de dispositivos: avisar una vez; es permanente para esta sesión → no reintentar.
-      if (response.status === 403 && result.deviceLimitReached && typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
+      const cls = classifyAnswerSaveResponse(response.status, response.ok, !!result.success, !!result.deviceLimitReached)
+      if (cls === 'ok') return true
+      if (cls === 'device_limit') {
+        // Avisar una vez; es permanente para esta sesión → no reintentar.
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
         return false
       }
-      // 4xx (salvo 429) = permanente (input/permiso) → no reintentar.
-      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+      if (cls === 'permanent') {
+        // 4xx (salvo 429) = input/permiso → no reintentar.
         console.error('❌ Error guardando respuesta en API (permanente):', {
           status: response.status, error: result.error, questionOrder: questionIndex + 1
         })
         return false
       }
-      // 5xx / 429 → transitorio: cae al backoff.
+      // 'retriable' (5xx / 429) → cae al backoff.
       console.warn(`⚠️ Guardado respuesta ${questionIndex + 1} falló (status ${response.status}), intento ${attempt}/${MAX_ATTEMPTS}`)
     } catch {
       // Red caída / abort por timeout → transitorio.
@@ -219,7 +220,7 @@ async function saveAnswerToAPI(
       clearTimeout(timeoutId)
     }
     if (attempt < MAX_ATTEMPTS) {
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt)) // backoff 1s, 2s
+      await new Promise((resolve) => setTimeout(resolve, answerSaveBackoffMs(attempt))) // backoff 1s, 2s
     }
   }
   return false
@@ -675,7 +676,7 @@ export default function ExamLayout({
             // UNA vez por sesión para que RULE_CLIENT_ERROR_SPIKE vea un brote real
             // (1 evento = 1 sesión, no 1 por respuesta de un usuario con mala wifi).
             saveFailStreakRef.current += 1
-            if (saveFailStreakRef.current >= 3 && !degradedEmittedRef.current) {
+            if (shouldEmitSaveDegraded(saveFailStreakRef.current, degradedEmittedRef.current)) {
               degradedEmittedRef.current = true
               setSaveDegraded(true)
               logClientError('/api/exam/answer', new Error('persistent_exam_answer_save_failure'), {
