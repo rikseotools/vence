@@ -157,8 +157,15 @@ resource "aws_ecs_task_definition" "frontend" {
   # proceso Node; en Vercel cada request era una lambda aislada).
   # Subido a 1 vCPU / 2 GB. Combinado con autoscaling (más abajo) y fix del
   # leak en LawsAPI (pendiente, task #117) cubre el rango objetivo a 10k DAU.
-  cpu                = "1024"
-  memory             = "2048"
+  #
+  # 2 vCPU / 4 GB (fix incidente 21/07/2026, T-075, ver
+  # docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md): con 1 vCPU
+  # el event-loop single-thread de Node se saturaba bajo pico (trabajo CPU-bound:
+  # RS256 de /api/auth/token #1, SSR) → el health check no conseguía CPU para
+  # responder → ECS mataba tasks que SÍ servían → cascada a 0 running → 504. El 2º
+  # core absorbe GC + libuv threadpool (crypto) y deja el 1er core al event-loop.
+  cpu                = "2048"
+  memory             = "4096"
   execution_role_arn = aws_iam_role.frontend_task_execution.arn
   task_role_arn      = aws_iam_role.frontend_task.arn
 
@@ -243,15 +250,20 @@ resource "aws_ecs_task_definition" "frontend" {
       # esto, el container con pool cold-start recibiría tráfico → cascada 5xx.
       # startPeriod=60s da margen al warmup robusto en createPoolerDbClient
       # (3 SELECT 1 paralelos al boot).
+      # TOLERANTE (fix incidente 21/07/2026, T-075): los valores estrictos
+      # (timeout 5 / retries 3 / startPeriod 60 / wget 4s) mataban tasks cuyo
+      # event-loop estaba ocupado bajo pico (1 vCPU) → cascada. Estos dan 150s
+      # hasta matar, sin dejar de cazar un task realmente muerto. Idéntico al
+      # override de .github/workflows/frontend-deploy.yml (ambos paths deben coincidir).
       healthCheck = {
         command = [
           "CMD-SHELL",
-          "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q '\"ok\":true' /tmp/hc.json || exit 1",
+          "wget -qO- --tries=1 --timeout=8 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q '\"ok\":true' /tmp/hc.json || exit 1",
         ]
         interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
+        timeout     = 10
+        retries     = 5
+        startPeriod = 180
       }
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
@@ -303,14 +315,18 @@ resource "aws_lb_target_group" "frontend" {
   # target healthy si /api/health/db-ready devuelve 200 (pool establecido
   # y SELECT 1 < 2s).
   health_check {
-    enabled             = true
-    path                = "/api/health/db-ready"
-    protocol            = "HTTP"
-    matcher             = "200" # estricto: 503 → unhealthy inmediato
-    interval            = 30
-    timeout             = 5
+    enabled  = true
+    path     = "/api/health/db-ready"
+    protocol = "HTTP"
+    matcher  = "200" # estricto: 503 → unhealthy inmediato
+    interval = 30
+    # Relajado (fix incidente 21/07/2026, T-075): timeout 5→15, unhealthy 3→5
+    # (= 150s hasta desregistrar). Un task ocupado-pero-vivo bajo pico tardaba
+    # >5s en responder el health check y la ALB lo desregistraba, agravando la
+    # cascada. Ver docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md.
+    timeout             = 15
     healthy_threshold   = 2
-    unhealthy_threshold = 3
+    unhealthy_threshold = 5
   }
 
   deregistration_delay = 30
@@ -660,7 +676,9 @@ resource "aws_appautoscaling_target" "frontend" {
   # de usuarios logueados) que topó el autoscaler en 3 tasks → CPU 100% ~10 min →
   # latencia ~3,9s → canaries en timeout (0 errores 5xx; solo lentitud). Solo paga
   # más DURANTE los picos (a min sigue en 2). Memoria: project_frontend_autoscaling_capacidad_21jul.
-  max_capacity = 6
+  # 6→12 el 21/07 (2º incidente, T-075): con 2 vCPU/task y escalado por request-count
+  # (política abajo) el techo alto solo se usa en picos reales; 12×2vCPU cubre 100k DAU.
+  max_capacity = 12
   # Fase 1 pool-segregation (01/06/2026): min_capacity = 2 obligatorio.
   # Cuando estaba a 1, en horas de bajo tráfico autoscaling bajaba de 2 a
   # 1, dejando una sola task. El siguiente rolling deploy con 1 task = 0
@@ -690,6 +708,34 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
     scale_out_cooldown = 60
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
+}
+
+# Scale-out por PETICIONES POR TARGET (fix incidente 21/07/2026, T-075) — LA MÉTRICA
+# CORRECTA para este workload. El 2º incidente del 21/07 demostró que la CPU MEDIA no
+# capta el cuello real: bajo pico, tasks individuales revientan su único core (event-loop)
+# mientras la media de la flota se queda en ~40% → el autoscaler por CPU escaló IN a 6
+# con 504s en curso. RequestCountPerTarget escala por la CARGA real (req/target), que es
+# lo que satura al task. Corre en PARALELO al de CPU (ECS toma el desired mayor de ambas).
+#
+# target_value = req/target: durante el incidente 6 tasks (1 vCPU) daban 504 a ~323
+# req/target/min; con 2 vCPU/task cada uno aguanta ~2×. VALOR INICIAL CONSERVADOR = 400,
+# A VALIDAR con carga real tras aplicar (subir si sobra margen, bajar si aparecen 504).
+resource "aws_appautoscaling_policy" "frontend_request_count" {
+  name               = "vence-frontend-requestcount-tracking"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 400.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+    predefined_metric_specification {
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      resource_label         = "${data.aws_lb.main.arn_suffix}/${aws_lb_target_group.frontend.arn_suffix}"
     }
   }
 }
