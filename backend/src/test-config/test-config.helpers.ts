@@ -35,6 +35,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo madrid',
     'auxiliar administrativo comunidad de madrid',
   ],
+  auxiliar_administrativo_madrid_2027: [
+    'auxiliar_administrativo_madrid_2027',
+    'auxiliar administrativo madrid 2027',
+    'auxiliar administrativo comunidad de madrid junio 2027',
+  ],
   administrativo_estado: [
     'administrativo',
     'administrativo_estado',

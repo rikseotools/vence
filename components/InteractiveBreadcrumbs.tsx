@@ -70,7 +70,11 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const labels = { ...defaultLabels, ...customLabels }
 
   // Detectar la oposición actual dinámicamente desde config
-  const currentOpo = OPOSICIONES.find(o => pathname.includes('/' + o.slug))
+  // longest-match: un slug puede ser prefijo de otro (p.ej. auxiliar-administrativo-madrid ⊂ …-madrid-2027).
+  // .find() devolvería el primero del array (el más corto) → hay que quedarse con el slug más largo que casa.
+  const currentOpo = OPOSICIONES
+    .filter(o => pathname.includes('/' + o.slug))
+    .sort((a, b) => b.slug.length - a.slug.length)[0]
   const isOposicion = !!currentOpo
 
   // Detectar contextos especiales (no oposición)

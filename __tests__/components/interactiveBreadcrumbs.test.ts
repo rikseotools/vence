@@ -7,7 +7,10 @@ import { hasCcaaFlag, resolveFlagKey } from '@/components/CcaaFlag'
 
 // Simular la lógica central del componente refactorizado
 function detectOposicion(pathname: string) {
-  const currentOpo = OPOSICIONES.find(o => pathname.includes('/' + o.slug))
+  // longest-match (mirror de InteractiveBreadcrumbs.tsx): un slug puede ser prefijo de otro.
+  const currentOpo = OPOSICIONES
+    .filter(o => pathname.includes('/' + o.slug))
+    .sort((a, b) => b.slug.length - a.slug.length)[0]
   const isOposicion = !!currentOpo
   const isLeyes = pathname.includes('/leyes')
   const isTeoria = pathname.includes('/teoria')

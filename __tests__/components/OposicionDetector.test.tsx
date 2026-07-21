@@ -98,7 +98,7 @@ describe('OposicionDetector', () => {
     test('todos los IDs usan underscore (no guion)', () => {
       for (const data of Object.values(OPOSICION_DETECTION)) {
         expect(data.id).not.toContain('-')
-        expect(data.id).toMatch(/^[a-z_]+$/)
+        expect(data.id).toMatch(/^[a-z0-9_]+$/)
       }
     })
 

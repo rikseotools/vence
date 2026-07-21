@@ -86,7 +86,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
           </Link>
 
           <TopicPrintButton
-            loginHref="/login?oposicion=auxiliar_administrativo_madrid&return_to=/auxiliar-administrativo-madrid-2027/temario"
+            loginHref="/login?oposicion=auxiliar_administrativo_madrid_2027&return_to=/auxiliar-administrativo-madrid-2027/temario"
             topicNumber={content.topicNumber}
           />
         </div>
