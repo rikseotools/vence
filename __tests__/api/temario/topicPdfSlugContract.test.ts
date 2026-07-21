@@ -25,6 +25,7 @@ jest.mock('@/lib/api/withErrorLogging', () => ({
 // que evitar que su import arrastre @react-pdf en el entorno de test.
 jest.mock('@react-pdf/renderer', () => ({ renderToBuffer: jest.fn(), Document: {}, Page: {}, Text: {}, View: {}, StyleSheet: { create: (s: unknown) => s }, Font: { register: jest.fn() } }), { virtual: true })
 jest.mock('@/lib/temario/pdf/TopicPdfDocument', () => ({ TopicPdfDocument: () => null }))
+jest.mock('@/lib/premium/isPremiumPlan', () => ({ isPremiumPlan: () => true }))
 
 const mockGetTopicContent = jest.fn()
 jest.mock('@/lib/api/temario/queries', () => ({

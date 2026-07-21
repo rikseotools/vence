@@ -7,6 +7,10 @@ import TopicPrintButton from '@/components/TopicPrintButton'
 // así que el muro se eliminó y estos tests cubren el flujo nuevo.
 
 let mockAuthReturn: { user: any } = { user: { id: 'u1' } }
+jest.mock('@/hooks/usePremiumGate', () => ({
+  usePremiumGate: () => ({ isPremium: true, gate: (_f: unknown, cb: any) => { if (typeof cb === 'function') cb() }, closeGate: jest.fn(), activeFeature: null, activeContext: null }),
+}))
+jest.mock('@/components/premium/PremiumFeatureModal', () => ({ __esModule: true, default: () => null }))
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockAuthReturn,
 }))
@@ -67,7 +71,7 @@ describe('TopicPrintButton — descarga del PDF generado en servidor', () => {
 
     await waitFor(() => expect(emitted('download')).toBe(true))
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/temario/auxiliar_administrativo_estado/7/pdf'
+      '/api/temario/auxiliar_administrativo_estado/7/pdf', expect.anything()
     )
     expect(clickedAnchors).toHaveLength(1)
     expect(clickedAnchors[0].download).toBe('auxiliar_administrativo_estado-tema-7.pdf')
