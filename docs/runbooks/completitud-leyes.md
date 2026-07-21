@@ -52,6 +52,16 @@ Localiza la norma oficial (BOE si es estatal; boletín autonómico BOCYL/DOGV/DO
 - **Ley regional / editorial (no-BOE):** el `sync-all` NO parsea boletines autonómicos → **inserción manual verbatim** del boletín (mismo flujo que "Crear ley nueva" §"Fuente NO-BOE"): descarga el HTML/PDF crudo, parte por `Artículo N`, inserta cada artículo con `content` **íntegro literal** (NUNCA resumir/parafrasear/inventar), verifica `shortCount`.
 - Al terminar, **escribe `last_verification_summary` con la evidencia real** (`boe_count`, `db_count`, `missing_in_db`, `source`, `verified_at`). **NUNCA** marques `verification_status='actualizada'` sin ese summary — eso es el falso verde que origina el bug.
 
+### 3-ter. Reconstruir verbatim un DIGEST EDITORIAL (decisión Manuel 21/07: no aceptar editorial, reconstruir)
+
+Cuando la ley es un digest editorial (filas de paráfrasis, `article_number` no numérico agrupando varios artículos tipo `"s. 11-12 (Título V)"`, meta-lenguaje *"Según el artículo X…"*):
+
+- **Si el articulado verbatim YA está en BD** (caso convenio-pas-cyl: arts. numéricos verbatim + filas editoriales de resumen encima): **relink + retirar**. (1) Por cada pregunta viva colgada de una fila editorial, localiza el **artículo verbatim concreto** que responde la pregunta y `UPDATE questions SET primary_article_id=…` (verifica que la respuesta se sostiene contra ese `content`). (2) Borra las filas editoriales **con el guardarraíl de abajo**. (3) Marca `verified`.
+- **Si el articulado verbatim NO está** (caso estatutos-huelva, titulos-propios-ule): **import verbatim completo** primero (§3, inserción manual verbatim), luego relink/regenera las preguntas contra el nuevo articulado.
+- **Fuente sin articulado** (acuerdo narrativo tipo INGESA; compilación de varias normas tipo Sevilla): **NO encaja en rebuild-por-artículo**. Trátalo aparte (posible `is_virtual=true` si es materia/adaptación editorial legítima, o reconstrucción parcial).
+
+> 🔴 **HAZARD del borrado (medido 21/07, 3 falsos positivos de heurística en la misma sesión): `article_number` no numérico NO implica "editorial".** El **preámbulo y las disposiciones** (adicionales/transitorias/finales) son legítimamente no numéricos y **verbatim**. Un borrado ciego `DELETE … WHERE article_number !~ '^[0-9]+$' AND 0 preguntas` **borraría disposiciones legítimas**. Borra SOLO filas cuyo `article_number` tenga el **formato de resumen** (`"s. 11-12 (Título V)"`, `"27 y 31"`, rangos con título de bloque) **y** 0 preguntas de cualquier estado. Confirma `NOT EXISTS(questions)` antes de cada DELETE.
+
 ### 4. Generar las preguntas de los artículos nuevos
 Si los artículos importados quedan a 0 preguntas y el epígrafe los pide → generar (fuente oficial + doble auditoría + GATE), flujo `docs/maintenance/generar-preguntas-con-ia.md`. Reusar banco existente si lo hay.
 
