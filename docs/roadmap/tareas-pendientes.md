@@ -188,7 +188,7 @@
 2. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
 5. ~~**T-039** Botón «Descargar PDF» + PDF server-side por tema~~ — ✅ **HECHA + DESPLEGADA** (deploy `4f67958b`; render markdown/tablas/estructura; PDF por tema verificado en vivo 200/application/pdf). Resuelve del todo «Imprimir PDF falla en in-app» (T-001). La Fase 2 (temario completo) se saca a **T-076**.
    - **T-076** Gating de impresión PDF por plan: **gratis** imprime solo algunos temas (cupo pequeño); **premium** imprime toda la oposición + botón «descargar todo». (revive la Fase 2 de T-039; ojo SEO «PDFs descargables» → dejar algo gratis)
-   - **T-077** Restringir cambio de oposición a antigüedad mínima (idea: 6-12 meses). ⚠️ *Reserva:* bloqueo duro puede frustrar a quien cambia de objetivo de verdad → riesgo de churn; alternativa más suave: limitar la **frecuencia** (1/mes) o gatear solo el multi-oposición premium. Afinar la regla antes de construir.
+   - **T-077** Cambiar de oposición requiere plan premium **semestral o anual** (los de compromiso largo). Free + mensual + trimestral no pueden → upsell a los planes largos. *Detalle a decidir:* si el free puede fijar/cambiar su **única** oposición objetivo en el onboarding (no matar la exploración inicial) o bloqueo total. NO es antigüedad de cuenta (descartado), es el **tier del plan**.
 
 **🟡 Media — coste moderado:**
 6. **T-002** Render multi-convocatoria (landing con las 2 convocatorias separadas)
