@@ -87,7 +87,7 @@ describe('Admin Users Count - Schemas', () => {
 })
 
 // ============================================
-// QUERY TESTS (mock getDb)
+// QUERY TESTS (mock getReadDb)
 // ============================================
 
 describe('Admin Users Count - Queries', () => {
@@ -97,7 +97,7 @@ describe('Admin Users Count - Queries', () => {
 
   function setupMock(total: number, unsubscribed: number) {
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             leftJoin: () => Promise.resolve([{ total, unsubscribed }]),

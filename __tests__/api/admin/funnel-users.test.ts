@@ -119,7 +119,7 @@ describe('Admin Funnel Users - Queries', () => {
     ]
 
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             where: () => ({
@@ -165,7 +165,7 @@ describe('Admin Funnel Users - Queries', () => {
 
     let queryCount = 0
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => {
             queryCount++

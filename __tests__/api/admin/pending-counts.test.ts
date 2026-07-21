@@ -85,7 +85,7 @@ describe('Admin Pending Counts - Schemas', () => {
 })
 
 // ============================================
-// QUERY TESTS (mock getDb)
+// QUERY TESTS (mock getReadDb)
 // ============================================
 
 describe('Admin Pending Counts - Queries', () => {
@@ -98,7 +98,7 @@ describe('Admin Pending Counts - Queries', () => {
     const counts = [normalCount, psychoCount]
 
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             where: () => Promise.resolve([{ count: counts[callIndex++] }]),
@@ -113,7 +113,7 @@ describe('Admin Pending Counts - Queries', () => {
     }))
   }
 
-  it('should call getDb and query both tables', async () => {
+  it('should call getReadDb and query both tables', async () => {
     setupMock(3, 2)
     const { getPendingDisputeCounts } = require('@/lib/api/admin-pending-counts/queries')
     const result = await getPendingDisputeCounts()

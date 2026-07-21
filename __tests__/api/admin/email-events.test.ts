@@ -162,7 +162,7 @@ describe('Admin Email Events - Schemas', () => {
 })
 
 // ============================================
-// QUERY TESTS (mock getDb)
+// QUERY TESTS (mock getReadDb)
 // ============================================
 
 describe('Admin Email Events - Queries', () => {
@@ -172,7 +172,7 @@ describe('Admin Email Events - Queries', () => {
 
   function setupMock(events: any[]) {
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             where: () => ({

@@ -137,7 +137,7 @@ describe('Admin AI Usage - Queries', () => {
     ]
 
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             where: () => ({
@@ -174,7 +174,7 @@ describe('Admin AI Usage - Queries', () => {
 
   it('should handle no usage data', async () => {
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             where: () => ({

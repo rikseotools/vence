@@ -136,7 +136,7 @@ describe('Admin Newsletters History - Queries', () => {
 
   it('getNewsletterHistory should return events', async () => {
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getReadDb: () => ({
         select: () => ({
           from: () => ({
             where: () => ({
@@ -160,7 +160,7 @@ describe('Admin Newsletters History - Queries', () => {
 
   it('getUserActivity should handle empty array', async () => {
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({}),
+      getReadDb: () => ({}),
     }))
     jest.doMock('@/db/schema', () => ({
       emailEvents: {},
