@@ -230,7 +230,16 @@
 - **Por qué importa:** afectará a CUALQUIER oposición que renueve convocatoria con cambios de temario (versión de software, epígrafes, leyes). Hoy se salva a mano con el rollover; con dos ciclos solapados (uno examinándose, otro en inscripción) no hay forma limpia.
 - **Enlaza con:** T-002 (render multi-convocatoria en la landing) — aquí el problema es servir el **contenido**, no pintarlo. Rollover: `docs/runbooks/rollover-oposiciones.md`.
 
-### [T-061] 🟠 5 `seguimiento_url` apuntan a convocatorias de OTRO ciclo, ya cerrado
+### [T-061] ✅ CERRADA 21/07 — 5 `seguimiento_url` apuntaban a un ciclo ya cerrado
+- **✅ Resultado: las 5 fuera del ciclo cerrado (0 STALE).** Tres (Cantabria, CLM, Ourense) las repuntó otra sesión al índice/proceso vigente. `auxiliar-administrativo-ayuntamiento-madrid` la repunté a la ficha oficial del proceso (el BOE-A-2024 era del ciclo de 256 plazas ya examinado el 22/11/2025) **+ `fetcher_type='headless'`**: madrid.es devuelve **403 a cualquier bot** (verificado con curl), así que sin Playwright el cron no puede vigilarlo — este es el gotcha reutilizable del caso. `celador-sescam-clm` **no necesitaba cambio**: ya apuntaba al índice general del SESCAM, que es la mejor URL disponible mientras la OEP 2025 no se convoque (el detector la marca `warn` = índice legítimo, no `error`). Todas repuntadas con `seguimiento_last_hash=NULL`.
+- **Herramienta durable:** el detector `lib/convocatoria/seguimientoUrlSalud.cjs` (kind `seguimiento_url_stale`, frase "revisa las urls de seguimiento") ya vigila esto en cada sweep → el falso negativo silencioso no vuelve a pasar desapercibido.
+
+### [T-064] 🟠 Punto ciego del badge de rollover: textos libres que anuncian un examen pasado
+- **Qué:** el badge de rollover (y la pestaña) cuentan oposiciones con `exam_date` (vista) pasada. Pero los **textos libres** (`landing_faqs`, `landing_description`) pueden seguir anunciando un examen ya celebrado aunque `exam_date` esté null/correcto → el badge NO los caza y el opositor ve una fecha pasada como vigente.
+- **Casos ya confirmados:** en T-062 (21/07) aparecieron en Seguridad Social y Osakidetza (arreglados). Ahora **`celador-sescam-clm`**: `landing_faqs` dice "537 plazas" y "examen 18/04/2026" (pasado), mientras `plazas_libres=115` y la convocatoria vigente es OEP 2025 sin convocar. La fila **mezcla dos ciclos** (temario/examen del 2023-2024 con estado OEP 2025) → necesita rollover completo, no solo texto.
+- **Cómo, robusto:** añadir a `health-sweep.cjs` un detector que marque oposiciones cuyos `landing_faqs`/`landing_description` mencionen una fecha de examen anterior a hoy (kind nuevo, p.ej. `texto_examen_pasado`), con su frase-gatillo. Es el mismo patrón que `hito_vencido_abierto`: convertir un punto ciego en un hallazgo visible. Luego drenar los casos con el runbook de rollover.
+
+> **Detalle histórico de T-061** (referencia, sin id de tarea propio):
 - **Qué:** el monitor de seguimiento de estas 5 vigila un proceso **distinto del que preparamos**, y encima ya concluido. Detectado en el drenaje del 20/07 verificando fuente oficial una a una:
   - `auxiliar-administrativo-cantabria` → apunta a la Orden PRE/83/2024 (75 plazas, examen 19/01/2025, nombramientos en 2026). Nosotros seguimos la **OEP 2025**, aún sin convocar.
   - `auxiliar-administrativo-clm` y `celador-sescam-clm` → apuntan a la **OEP 2023/2024**, cuyo ciclo terminó (examen 20/04/2026, aprobados 13/07/2026). El registro dice OEP 2025.
