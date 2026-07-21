@@ -147,6 +147,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/incisos-anulados-tc.md',
     claudeHace: 'corre `scripts/audit-annulled-provisions.cjs` (cruza el análisis del BOE datosabiertos — referencias posteriores "SE DECLARA … inconstitucional/nulidad … art. N" — con nuestros artículos) y para cada hallazgo (artículo que servimos SIN nota de vigencia pese a estar anulado por una STC) verifica el inciso concreto contra la sentencia, añade la nota de vigencia al artículo y REVISA la clave de las preguntas de ese artículo (que no den por válido el inciso anulado). NUNCA auto-corrige la clave: revisión humana como en el caso art. 126.2 LBRL / STC 103/2013.',
   },
+  scope_phantom_article: {
+    title: 'Artículo escopado sin fila activa en la BD (inexistente o desactivado)',
+    triggerPhrase: 'revisa los artículos fantasma del scope',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada ley señalada, coge los números escopados en topic_scope que no tienen fila ACTIVA en articles (mismo law_id): si es `inexistente` y la ley SÍ tiene ese artículo en su fuente oficial (BOE), lo importa verbatim (doble auditoría) y genera las preguntas que falten; si es `desactivado` (existe con is_active=false, a veces con preguntas ya listas), lo reactiva tras revisar por qué se desactivó; si la ley NO lo tiene (over-scope), lo quita del article_numbers. NUNCA inventa el artículo ni deja el número colgado sirviendo 0 preguntas/teoría en silencio.',
+  },
   scope_titulo_huerfano: {
     title: 'Título con preguntas huérfanas (hueco interno del temario)',
     triggerPhrase: 'revisa los huecos del temario',

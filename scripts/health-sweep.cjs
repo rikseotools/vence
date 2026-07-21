@@ -90,7 +90,11 @@ async function main() {
     // nivel de artículo (≥60%) con ≥4 huecos — el patrón "casi terminado, faltan
     // un puñado". NO cuenta oposiciones poco desarrolladas (scope de leyes enteras
     // con cobertura dispersa → eso ya lo señala empty_topic/low_coverage). Excluye
-    // derogados/vacíos.
+    // derogados/vacíos, y también artículos INACTIVOS (a.is_active): un artículo
+    // escopado pero is_active=false NO es un hueco "genera preguntas" (puede tenerlas
+    // ya) sino un fallo de servibilidad → lo cubre scope_phantom_article (reactivar/
+    // importar). Partición limpia: este detector = existe+activo+0 preguntas → generar;
+    // scope_phantom_article = inexistente|desactivado → reactivar/importar/recortar.
     const sinPreg = (await c.query(`
       SELECT topic_number, (n_content - n_cov)::int AS n, ejemplos FROM (
         SELECT tp.topic_number,
@@ -102,7 +106,7 @@ async function main() {
         JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
         JOIN laws l ON l.id = ts.law_id
         JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-        JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+        JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
         WHERE tp.position_type = $1 AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
           AND a.article_number ~ '^[0-9]+$'
         GROUP BY tp.topic_number
@@ -532,6 +536,46 @@ async function main() {
     add('content', 'warn', null, 'scope_over_inclusion_suspect',
       `${oiHigh.length} tema(s) con SCOPE MÁS ANCHO que el epígrafe (mete casi la ley entera) en ${nOpos} oposición(es) — sirve preguntas fuera de programa; adjudicar con verify:scope y recortar el scope`,
       { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) });
+  }
+
+  // ── CONTENIDO: ARTÍCULOS FANTASMA del scope (integridad referencial) ──
+  // Un número en topic_scope.article_numbers que NO tiene fila ACTIVA en articles
+  // (mismo law_id). El scope lo "pide" pero no hay artículo servible → 0 preguntas y
+  // 0 teoría, EN SILENCIO. Dos causas, ambas invisibles: `inexistente` (no hay fila:
+  // article_numbers es text[] denormalizado, no FK, nada garantiza la existencia) y
+  // `desactivado` (la fila existe pero is_active=false → aunque tenga preguntas activas,
+  // no se sirven). Punto ciego del verificador epígrafe↔scope (razona sobre MATERIA/rangos,
+  // no existencia por-artículo — da CORRECT dando por cubierto el artículo que falta) y del
+  // detector de filas rotas (solo caza '{}'). Casos raíz 21/07 (los cazó una usuaria):
+  // LPRL art 3 INEXISTENTE en administrativa_universidad_de_murcia, y LPRL art 3
+  // DESACTIVADO (con 38 preguntas) en auxiliar_administrativo_sms. Se SEPARA por boe_url:
+  // ley real (con BOE) = accionable (importar/reactivar/recortar); virtual/ofimática (sin
+  // BOE) = variante mal (· Escritorio/Web, dedupe Office) → CONTEXTO en el detail, no alarma
+  // aparte. Solo refs de artículo reales (`^\d+( bis| ter)?$`), excluye notas coladas.
+  const phantom = (await c.query(`
+    WITH refs AS (
+      SELECT DISTINCT ts.law_id, l.short_name, l.name, (l.boe_url IS NOT NULL) AS has_boe, trim(an) AS art
+      FROM topic_scope ts
+      JOIN topics t ON t.id = ts.topic_id
+      JOIN laws l ON l.id = ts.law_id
+      CROSS JOIN LATERAL unnest(ts.article_numbers) AS an
+      WHERE ts.article_numbers IS NOT NULL AND t.is_active = true
+    )
+    SELECT coalesce(r.short_name, r.name) AS ley, r.has_boe, r.art,
+           CASE WHEN NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND a.article_number = r.art)
+                THEN 'inexistente' ELSE 'desactivado' END AS causa
+    FROM refs r
+    WHERE r.art ~ '^[0-9]+( bis| ter)?$'
+      AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND a.article_number = r.art AND a.is_active)`)).rows;
+  if (phantom.length) {
+    const real = phantom.filter(p => p.has_boe);
+    const virt = phantom.filter(p => !p.has_boe);
+    const leyesReal = [...new Set(real.map(p => p.ley))];
+    const inex = real.filter(p => p.causa === 'inexistente').length;
+    const desact = real.filter(p => p.causa === 'desactivado').length;
+    if (real.length) add('content', 'warn', null, 'scope_phantom_article',
+      `${real.length} artículo(s) escopado(s) que NO sirven (0 preguntas/teoría en silencio) en ${leyesReal.length} ley(es): ${inex} inexistente(s) + ${desact} desactivado(s) — importar del BOE / reactivar / o recortar el scope si la ley no lo tiene`,
+      { count: real.length, laws: leyesReal.length, inexistentes: inex, desactivados: desact, virtual_ofimatica: virt.length, sample: real.slice(0, 25).map(p => ({ ley: p.ley, art: p.art, causa: p.causa })) });
   }
 
   // ── Escribir snapshot ──
