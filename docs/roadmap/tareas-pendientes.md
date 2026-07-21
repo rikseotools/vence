@@ -247,13 +247,12 @@
   - `auxiliar-administrativo-ayuntamiento-murcia` → `emplea.murcia.es/convocatorias` (200, 274KB; listado completo del Ayto → capta la nuestra sea cual sea, resuelve el riesgo de cruce).
 - **▸ RESIDUAL — `auxiliar-administrativo-ayuntamiento-madrid` NO arreglada (bloqueo real, no fue por dejadez):** `www.madrid.es` y `sede.madrid.es` devuelven **403 a cualquier fetch de bot** (incluso con cabeceras de navegador completas), y el fetcher headless **no cura bloqueo IP** (CLAUDE.md). `administracion.gob.es` sí carga pero sin filtro muestra TODAS las convocatorias nacionales = puro ruido. Se dejó en el BOE-2024 actual (mejor que plantar una URL que dará 403). **Necesita:** o headless con IP residencial/no bloqueada, o un monitor basado en búsqueda BOE/BORM/administracion.gob.es filtrada por "Ayuntamiento de Madrid". Único de los 6 sin resolver.
 
-### [T-062] 🟡 3 oposiciones con el examen ya celebrado y sin registrar → rollover
-- **Qué:** el drenaje del 20/07 encontró exámenes ya celebrados que en BD no constaban. Ya se les escribió `exam_date` + hito con cita literal, pero les toca **rollover** (pivotar hacia la próxima convocatoria), que es otro runbook:
-  - `administrativo-seguridad-social` — **1.456 plazas**, examen 28/06/2026 (BOE). La más grande.
-  - `auxiliar-enfermeria-osakidetza` — examen 20/06/2026 (BEC, 13:30, tabla oficial de euskadi.eus).
-  - `auxiliar-administrativo-sermas` — examen 31/05/2026; el hito estaba `completed` pero `exam_date` seguía `null` y el estado en `oep_aprobada`.
-- **Cómo:** `docs/runbooks/rollover-oposiciones.md`. NO tocar temario ni tests, solo datos de convocatoria.
-- **Pendiente menor:** de Seguridad Social hay indicios (no oficiales) de que ya salió la relación de aprobados → merece una segunda pasada para añadir el hito `resultados` con cita del BOE.
+### [T-062] ✅ CERRADA 21/07 — 3 oposiciones con el examen ya celebrado → rollover
+- **✅ Resultado:** las 3 pivotadas con **fuente oficial verificada**, `exam_date` fuera del fallback, timelines forward, y **textos libres reescritos** (varias FAQs y la descripción seguían anunciando el examen viejo — un cabo que casi se cuela). Verificado en producción: **0 menciones del ciclo viejo** en las 3, cachés purgadas.
+  - `administrativo-seguridad-social` (la más grande) → **pivote firme**: OEP 2026 = **1.100 plazas** (RD 387/2026, BOE-A-2026-9946), estado `oep_aprobada`, convocatoria pendiente → `exam_date=null`. El examen del 28/06 era del **ciclo 2025** (1.056+400) → archivado. SEO y FAQ de plazas corregidas (decían 1.056).
+  - `auxiliar-enfermeria-osakidetza` → **pivote suave**: no hay OPE de TCAE posterior con plazas verificadas y el proceso sigue vivo → `exam_date=null`, estado→`resultados`, hitos post-examen (relación de aprobados 10/07/2026, reclamaciones hasta 24/07; fase de concurso pendiente) con cita oficial.
+  - `auxiliar-administrativo-sermas` → ya tenía el dato crítico bien; solo higiene: ciclo 2025 archivado + hito forward.
+- **Aprendizaje (gotcha nuevo, documentado):** el drenaje de ayer escribió `oposiciones.exam_date`, y como estas tienen convocatoria vigente con `exam_date=null`, el `COALESCE` de la vista mostraba el examen pasado como el vigente. Y **el rollover de datos estructurados no basta: los textos libres (FAQs, descripción) también hablan del ciclo viejo** y hay que revisarlos. Ver [[feedback_jsonb_no_stringify_postgres_driver]].
 
 ### [T-059] 🟠 Encender el 2º modo de `timeline_silence` (flag `TIMELINE_EXHAUSTED_ENABLED`) tras drenar el stock
 > **✅ VERIFICADO EL STOCK 20/07 (esto ERA el drenaje que pedía la ficha).** Medido: **21 candidatos**, no 49 —
