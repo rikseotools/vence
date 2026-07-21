@@ -32,6 +32,18 @@ node scripts/audit-law-completeness.cjs --gate      # exit 1 si hay actionable s
 ```
 Prioriza SIEMPRE las que **sirven en temas vivos** (impacto a usuarios ahora).
 
+**Triaje del trabajo real (qué clase de fix necesita cada una):**
+```bash
+node scripts/triage-law-completeness.cjs --all-false-green   # clasifica las false_green
+node scripts/triage-law-completeness.cjs <slug>              # detalle de una
+```
+Responde lo que el detector NO distingue: ¿los artículos en BD cubren lo que el `topic_scope` de los temas VIVOS pide?
+- **DIGEST-COMPLETO** — imported ⊇ scoped: no falta nada servido, solo la EVIDENCIA. Fix barato (§3-bis).
+- **FALTAN-ESCOPADOS** — un tema vivo pide artículos que no están en BD → import (§3).
+- **SCOPE-LEY-ENTERA** — un tema escopa la ley entera (`article_numbers=NULL`) → requiere la fuente para dictaminar.
+
+> **Patrón medido (21/07, barrido de las 43 false_green):** ninguna tenía artículos escopados faltantes — el "falso verde" es, para la mayoría, un problema de **evidencia, no de contenido**. Y hay **dos mundos**: las **ordenanzas municipales** (Madrid, Sevilla) salen **verbatim limpias**; las **digests universitarias/autonómicas** (estatutos, convenios, normativas de permanencia) **mezclan articulado verbatim con filas de resumen editorial** (`article_number` no numérico tipo `"s. 11-12 (Título V)"`) **o anexos parafraseados que no existen en la norma**. Las primeras se cierran rápido; las segundas necesitan además limpieza (retirar/relinkar las filas editoriales) — patrón `reference_leyes_virtuales_editoriales`.
+
 ### 2. Registrar la fuente que falta (`no_source`)
 Localiza la norma oficial (BOE si es estatal; boletín autonómico BOCYL/DOGV/DOG/BOJA/BOCM si es regional; para universidades, el presupuesto/estatuto en su boletín). Escribe la URL en `laws.boe_url`. **Verifica que la URL abre el documento correcto** (no otra norma) antes de seguir — un `boe_url` mal apuntado da `boe_count=0` permanente (monitoreo BOE §1ter).
 
