@@ -267,7 +267,13 @@
   - `auxiliar-administrativo-sermas` → ya tenía el dato crítico bien; solo higiene: ciclo 2025 archivado + hito forward.
 - **Aprendizaje (gotcha nuevo, documentado):** el drenaje de ayer escribió `oposiciones.exam_date`, y como estas tienen convocatoria vigente con `exam_date=null`, el `COALESCE` de la vista mostraba el examen pasado como el vigente. Y **el rollover de datos estructurados no basta: los textos libres (FAQs, descripción) también hablan del ciclo viejo** y hay que revisarlos. Ver [[feedback_jsonb_no_stringify_postgres_driver]].
 
-### [T-059] 🟠 Encender el 2º modo de `timeline_silence` (flag `TIMELINE_EXHAUSTED_ENABLED`) tras drenar el stock
+### [T-059] ✅ CERRADA 21/07 — Sensor timeline_silence (modo agotado) ENCENDIDO
+- **✅ ENCENDIDO en producción.** Task def `vence-backend:79` con `TIMELINE_EXHAUSTED_ENABLED=true`, servicio estable ("steady state"). El sensor cubre el 76% de punto ciego (oposiciones sin fecha de examen que nadie más miraba).
+- **Dos piezas anti-ruido que faltaban** (commit `439bf9a2`), para que encender NO volcara el stock de golpe (el error de hash_change):
+  1. **Memoria** (`oposiciones.timeline_reviewed_at`): el sensor no re-avisa mientras el último hito sea anterior a la última revisión sin novedad. El stock (18 candidatas del drenaje del 20/07) sellado con esa fecha → **0 candidatos activos, sin pico**.
+  2. **Fuente rota**: no emite sobre `seguimiento_change_status='error'` (anti-bot/ECONNREFUSED/SPA) — inverificable por construcción, familia T-047. Excluidas 21.
+- **Efecto medido:** 20 candidatos → 18 (fuente rota) → 0 (stock sellado). A partir de ahora solo emite el goteo real (una oposición con hito NUEVO posterior al 20/07). Reversible: `TIMELINE_EXHAUSTED_ENABLED=false` en el task def.
+- **Cabo menor heredado:** Zaragoza (Diputación) tiene designación de tribunal (BOPZ 143, 25/06) vista solo por fuente secundaria; reintentar registrar cuando `bop.dpz.es` sea accesible (no se inventa sin fuente primaria).
 > **✅ VERIFICADO EL STOCK 20/07 (esto ERA el drenaje que pedía la ficha).** Medido: **21 candidatos**, no 49 —
 >   la cifra de la ficha estaba desactualizada. Verificados los 21 uno a uno contra su fuente oficial (4 agentes):
 >   **2 novedades reales, 15 sin novedad (silencio confirmado), 4 inaccesibles.**
