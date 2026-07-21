@@ -180,6 +180,11 @@ export const articles = pgTable("articles", {
 	lastModificationDate: date("last_modification_date"),
 	verificationDate: date("verification_date").default(sql`CURRENT_DATE`),
 	isVerified: boolean("is_verified").default(false),
+	// T-048: notas de vigencia del BOE (derogaciones/modificaciones) que viajan con el artículo.
+	// La columna existe en BD (jsonb) y `lib/api/article-sync/queries.ts` la escribe, pero el
+	// commit que la introdujo (79c4320d) olvidó declararla aquí → typecheck rojo que bloqueaba
+	// TODOS los deploys. Añadida para cerrar ese hueco.
+	vigenciaNotes: jsonb("vigencia_notes"),
 	embedding: vector({ dimensions: 1536 }),
 }, (table) => [
 	index("articles_embedding_idx").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
