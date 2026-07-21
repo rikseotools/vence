@@ -149,6 +149,25 @@ export class AlertsCron {
           ...partial,
         });
 
+        // Persistir el aviso disparado a observable_events (ADITIVO al email). Antes los
+        // avisos SOLO se emaileaban → "revisa la salud" no podía ver qué había saltado y
+        // muestreaba métricas crudas punto-por-punto, perdiéndose los spikes intermitentes
+        // (incidente 21/07: declaré "sana" entre spikes mientras el email los cazaba).
+        // Ahora quedan en `alert_fired`, consultables igual que la bandeja de entrada.
+        // Fire-and-forget: no bloquea ni puede romper el envío que ya se hizo arriba.
+        this.observability.emitFireAndForget({
+          source: 'fargate',
+          severity: rule.severity,
+          eventType: 'alert_fired',
+          endpoint: `alert:${rule.name}`,
+          errorMessage: partial.title,
+          metadata: {
+            rule: rule.name,
+            fingerprint: partial.fingerprint ?? rule.name,
+            ...(partial.metadata ?? {}),
+          },
+        });
+
         this.lastFiredAt.set(rule.name, Date.now());
         fired++;
         this.logger.warn(

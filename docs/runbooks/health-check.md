@@ -34,6 +34,41 @@ Mantenedor: `docs/runbooks/health-check.md`. Referenciado desde `CLAUDE.md`.
 
 ---
 
+## 0. LO PRIMERO: ¿qué ha disparado el alerting? (= tu bandeja de email) — OBLIGATORIO
+
+> **Por qué existe (incidente 21/07/2026):** los avisos que se emailean (`[Vence CRITICAL]…`,
+> `[Vence ERROR]…`) **ANTES solo se emaileaban** — no quedaban en ningún sitio consultable.
+> Resultado: un "revisa la salud" muestreaba métricas crudas **punto-por-punto** y, como los
+> spikes son intermitentes (cada ~30 min, breves), se declaraba "sana" **entre** spikes mientras
+> el email los cazaba → falso "todo bien". Desde el 21/07 el cron de alertas **persiste cada
+> aviso disparado** en `observable_events` (`event_type='alert_fired'`). **Consúltalo SIEMPRE
+> primero**: es la MISMA señal que la bandeja de entrada, sin muestreo. Si aquí hay filas,
+> NO digas "sana" — investiga esas reglas.
+
+```bash
+node -e "
+const { createClient } = require('@supabase/supabase-js'); // o pg contra RDS (ver cabecera)
+require('dotenv').config({ path: '.env.local' });
+const sql = require('postgres')(process.env.DATABASE_URL, { ssl:{rejectUnauthorized:false}, max:1 });
+(async () => {
+  const rows = await sql\`
+    SELECT metadata->>'rule' AS rule, severity, count(*)::int AS veces,
+           max(ts) AS ultimo, (array_agg(error_message ORDER BY ts DESC))[1] AS titulo
+    FROM observable_events
+    WHERE event_type = 'alert_fired' AND ts >= NOW() - INTERVAL '2 hours'
+    GROUP BY 1,2 ORDER BY max(ts) DESC\`;
+  if (!rows.length) console.log('✅ 0 avisos disparados en 2h — coincide con una bandeja limpia');
+  else { console.log('🔴 avisos disparados (= lo que te llega por email):');
+    rows.forEach(r => console.log('  ['+r.severity+'] '+r.rule+' x'+r.veces+' (últ '+r.ultimo.toISOString().slice(11,16)+'): '+r.titulo)); }
+  await sql.end();
+})();
+"
+```
+
+Regla de oro: **el veredicto de salud NO puede ser más verde que tu bandeja de email.** Si
+`alert_fired` tiene filas y las métricas crudas salen limpias, es que muestreaste entre spikes
+— el alerting (continuo) manda sobre el snapshot (puntual).
+
 ## 1. Comprobación rápida (30 segundos)
 
 Por humano:
