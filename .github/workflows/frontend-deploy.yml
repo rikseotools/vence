@@ -267,12 +267,19 @@ jobs:
               | ensure_secret("KOIGRID_VIDEO_BUCKET")
               | ensure_secret("KOIGRID_VIDEO_ACCESS_KEY")
               | ensure_secret("KOIGRID_VIDEO_SECRET_KEY")
+              # Health check TOLERANTE (fix incidente 21/07/2026, ver
+              # docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md):
+              # los valores estrictos (timeout 5 / retries 3 / startPeriod 60 / wget 4s)
+              # mataban tasks cuyo event-loop estaba ocupado bajo pico (1 vCPU/task) →
+              # cascada a 0 running → 504 generalizado. Estos valores dan margen a un
+              # task ocupado-pero-vivo para responder (150s hasta matar) sin dejar de
+              # cazar un task realmente muerto.
               | .containerDefinitions[0].healthCheck = {
-                  "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=4 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
+                  "command": ["CMD-SHELL", "wget -qO- --tries=1 --timeout=8 http://localhost:3000/api/health/db-ready > /tmp/hc.json 2>/dev/null && grep -q \"\\\"ok\\\":true\" /tmp/hc.json || exit 1"],
                   "interval": 30,
-                  "timeout": 5,
-                  "retries": 3,
-                  "startPeriod": 60
+                  "timeout": 10,
+                  "retries": 5,
+                  "startPeriod": 180
                 }
               | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             ' > new-task-def.json
