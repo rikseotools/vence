@@ -24,7 +24,6 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { getUserPlanType } from '@/lib/referrals/queries'
 import { isPremiumPlan } from '@/lib/premium/isPremiumPlan'
-import { FREE_PRINT_MAX_TOPIC } from '@/lib/premium/features'
 
 export const dynamic = 'force-dynamic'
 // Un tema es 21 páginas de mediana, pero la cola pesa (p95 = 178, máximo 760).
@@ -53,11 +52,11 @@ async function handler(
     return NextResponse.json({ error: 'Número de tema inválido' }, { status: 400 })
   }
 
-  // Gate PREMIUM (T-076): los primeros FREE_PRINT_MAX_TOPIC temas son gratis (captación +
-  // SEO); del resto, descargar el PDF es Premium. El botón ya muestra 👑 + modal, pero un
-  // free podría pegar a esta URL directamente → defensa en profundidad (mismo patrón que
-  // /api/questions/filtered con isPremiumPlan). 403 → el cliente abre el modal 👑.
-  if (topicNumber > FREE_PRINT_MAX_TOPIC) {
+  // Gate PREMIUM (T-076): descargar el PDF del temario es Premium (TODOS los temas). El
+  // botón ya muestra 👑 + modal, pero un free podría pegar a esta URL directamente →
+  // defensa en profundidad (mismo patrón que /api/questions/filtered con isPremiumPlan).
+  // 403 → el cliente abre el modal 👑.
+  {
     const auth = await verifyAuthOptional(req, '/api/temario/pdf').catch(() => null)
     const planType = auth?.userId ? await getUserPlanType(auth.userId) : null
     if (!isPremiumPlan(planType)) {

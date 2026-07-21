@@ -27,7 +27,6 @@ import { emitClientEvent } from '@/lib/observability/client'
 import { usePremiumGate } from '@/hooks/usePremiumGate'
 import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import { FREE_PRINT_MAX_TOPIC } from '@/lib/premium/features'
 
 interface TopicPrintButtonProps {
   /** Href completo de login con oposicion + return_to (ya presente en cada temario). */
@@ -55,10 +54,9 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
       metadata: { action, slug: oposicionFromLoginHref(loginHref), topic: topicNumber, ...extra },
     })
 
-  // Cupo GRATIS (T-076): los primeros FREE_PRINT_MAX_TOPIC temas se descargan gratis;
-  // del resto la descarga es Premium (👑 + modal). Premium: sin límite.
-  const needsPremium = topicNumber != null && topicNumber > FREE_PRINT_MAX_TOPIC
-  const showCrown = !isPremium && needsPremium
+  // Descargar el PDF es Premium para TODOS los temas (decisión 21/07): free/anónimo ven
+  // 👑 + modal; premium descarga. No hay descarga "de todo", solo por tema.
+  const showCrown = !isPremium
 
   const doDownload = async () => {
     const slug = oposicionFromLoginHref(loginHref)
@@ -116,18 +114,13 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
 
   const handleDownload = () => {
     if (!user) {
-      // Sin sesión: captación (registrarse gratis), igual que antes.
+      // Sin sesión: primero captación (registrarse); luego verá el muro Premium.
       emit('register_prompt')
       setShowPrintModal(true)
       return
     }
-    if (needsPremium) {
-      // Premium → descarga; free → gate() abre el modal 👑 y emite premium_gate_shown.
-      gate('print_pdf', () => { void doDownload() }, 'temario_print')
-      return
-    }
-    // Temas dentro del cupo gratis: descarga directa (solo requiere registro).
-    void doDownload()
+    // Con sesión: premium descarga; free → gate() abre el modal 👑 (premium_gate_shown).
+    gate('print_pdf', () => { void doDownload() }, 'temario_print')
   }
 
   return (
@@ -177,7 +170,7 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
               </h3>
 
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Regístrate gratis para descargar el PDF y recibir actualizaciones cuando cambie la legislación.
+                Regístrate gratis para acceder al temario y recibir actualizaciones cuando cambie la legislación. La descarga en PDF es una función Premium.
               </p>
 
               <div className="space-y-3">
