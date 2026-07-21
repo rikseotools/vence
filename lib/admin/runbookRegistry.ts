@@ -93,6 +93,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
     claudeHace: 'para cada oposición señalada, verifica contra fuente oficial si la `seguimiento_url` apunta a la convocatoria VIGENTE o a un ciclo ya cerrado. Si está desfasada, repúntala a la página de la convocatoria viva Y pon `seguimiento_last_hash=NULL` (si no, la siguiente pasada del cron da un `changed` falso garantizado). `stale_boletin` (apunta a un documento de boletín inmutable de año viejo) es casi seguro; `posible_ciclo_viejo`/`url_generica` son cola de revisión: pueden ser legítimas (OPE plurianual, portal sin página propia). NUNCA repuntar sin confirmar la URL nueva contra fuente oficial.',
   },
+  texto_examen_pasado: {
+    title: 'Textos de la landing anuncian un examen ya pasado como vigente',
+    triggerPhrase: 'revisa los textos de examen pasado',
+    runbook: 'docs/runbooks/rollover-oposiciones.md',
+    claudeHace: 'para cada oposición marcada, mira sus `landing_faqs`/`landing_description` (nivel convocatoria vigente y oposición): un texto tipo "¿Cuándo es el examen? El 18 de abril de 2026" con fecha pasada engaña al opositor. Verifica el estado real contra fuente oficial (¿pivotó la oposición a un ciclo nuevo? ¿cuál es el dato correcto?) y reescribe el texto pivotando hacia delante (el examen se celebró / la próxima convocatoria está pendiente), NUNCA inventando fecha nueva. Es el punto ciego del badge de rollover, que solo mira `exam_date`. GOTCHA: al reescribir `landing_faqs` (jsonb) usar `sql.json(x)`, no `JSON.stringify(x)::jsonb` (lo guarda doble-codificado y rompe el render).',
+  },
   hito_vencido_abierto: {
     title: 'Hitos "próximos" con la fecha ya pasada',
     triggerPhrase: 'revisa los hitos vencidos',

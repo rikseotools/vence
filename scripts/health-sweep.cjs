@@ -26,6 +26,7 @@
  */
 const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
+const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -322,6 +323,32 @@ async function main() {
     if (d.severidad === 'ok') continue;
     add('content', d.severidad, r.slug, 'seguimiento_url_stale',
       `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
+  }
+
+  // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
+  // El badge de rollover mira `exam_date`, pero los textos (FAQs, descripción) pueden seguir
+  // diciendo "¿Cuándo es el examen? El 18 de abril de 2026" con la fecha ya pasada → el badge
+  // no lo caza y el opositor lee una fecha vieja como la próxima. Apareció 3 veces en 2 días
+  // (T-062 Seguridad Social/Osakidetza, T-061 SESCAM). Detector calibrado en
+  // lib/convocatoria/examenPasadoEnTexto.cjs: solo el ENGAÑO (presentado como vigente), no el
+  // histórico ("se celebró el…") ni las fechas de plazo/publicación/resultados.
+  const hoyIso = now.toISOString().slice(0, 10);
+  const textoRows = (await c.query(`
+    SELECT o.slug,
+           COALESCE(v.landing_faqs, o.landing_faqs) AS faqs,
+           COALESCE(v.landing_description, o.landing_description) AS descr
+    FROM oposiciones o
+    LEFT JOIN LATERAL (
+      SELECT c2.landing_faqs, c2.landing_description
+      FROM convocatorias c2 WHERE c2.oposicion_id = o.id AND c2.is_current LIMIT 1
+    ) v ON TRUE
+    WHERE o.is_active`)).rows;
+  for (const r of textoRows) {
+    const h = detectarEnOposicion({ landingDescription: r.descr, landingFaqs: r.faqs }, hoyIso);
+    if (!h.length) continue;
+    const fechas = [...new Set(h.map((x) => x.iso))].join(', ');
+    add('content', 'warn', r.slug, 'texto_examen_pasado',
+      `${r.slug}: los textos de la landing anuncian un examen ya pasado como vigente (${fechas}) — el opositor ve una fecha vieja como la próxima`);
   }
 
   const lawRows = (await c.query(`
