@@ -1551,6 +1551,51 @@ export const RULE_CANARY_TOPIC_DATA_FAILED: AlertRule<{
 };
 
 /**
+ * Saturación del frontend (señal ÚNICA de capacidad) — detector de "storm" de canaries.
+ *
+ * Origen: incidente 21/07/2026. Un pico de tráfico (2×, dinámico /api/*) topó el autoscaler
+ * del frontend en max=3 tasks → CPU 100% ~10 min → latencia ~3,9s → CASI TODOS los canaries
+ * que llaman a vence.es/api/* abortaron por timeout A LA VEZ (auth, answer_save, topic_data,
+ * stripe_webhook, stats, por_leyes, save_contract, answer_premium). La observabilidad SÍ lo
+ * "vio", pero como 8 CRITICAL sueltos e ilegibles (un email por canary) — fatiga de alertas,
+ * ninguna señal que dijera "es saturación de capacidad, no 8 bugs distintos".
+ *
+ * Esta regla convierte esa firma en UN aviso accionable: cuando ≥4 canaries DISTINTOS fallan
+ * con timeout/abort en la misma ventana, la causa NO es un bug por-endpoint (eso rompe 1
+ * canary), es una causa compartida = el frontend va lento (saturación de CPU/capacidad, o un
+ * deploy en curso drenando tasks). Fingerprint único → un solo email, no ocho.
+ *
+ * Nota: si coincide con un rolling deploy del frontend (tasks drenando ~1 ciclo) puede
+ * disparar una vez; el cooldown de 30 min lo acota. El body cubre ambos casos.
+ */
+export const RULE_FRONTEND_SATURATION: AlertRule<{
+  canaries: number;
+  which: string | null;
+}> = {
+  name: 'frontend_saturation',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(DISTINCT event_type)::int AS "canaries",
+           string_agg(DISTINCT replace(event_type, 'canary_', ''), ', ') AS "which"
+    FROM observable_events
+    WHERE event_type LIKE 'canary_%_failed'
+      AND (error_message ILIKE '%abort%' OR error_message ILIKE '%timeout%')
+      AND ts > NOW() - INTERVAL '7 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.canaries ?? 0) >= 4,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Frontend saturado/lento — ${r.canaries} canaries en timeout simultáneo`,
+      body: `${r.canaries} canaries DISTINTOS abortaron por timeout a la vez (${r.which ?? 'varios'}).\n\nEsto NO es un bug por-endpoint (eso rompe 1 canary): es una CAUSA COMPARTIDA = el frontend va lento. Firma de SATURACIÓN de capacidad (no caída — típicamente 0 errores 5xx en el ALB, solo latencia alta).\n\nQUÉ MIRAR (playbook, memoria project_frontend_autoscaling_capacidad_21jul):\n  1. ECS CPU frontend Average+MAXIMUM (max=100% sostenido = tasks pegados).\n  2. ¿running == max (6)? El autoscaler no puede subir más → subir max_capacity (frontend.tf).\n  3. ALB TargetResponseTime alto + HTTPCode_Target_5XX ~0 confirma "lento, no caído".\n  4. ¿Deploy del frontend en curso? (tasks drenando) → transitorio, se recupera solo.\n\nMitigación rápida (dar capacidad ya):\n  aws --profile vence --region eu-west-2 ecs update-service --cluster vence-backend --service vence-frontend --desired-count <N>\n\nOJO: métricas CloudWatch en hora Madrid; observable_events en UTC.`,
+      metadata: { canaries: r.canaries, which: r.which, windowMin: 7 },
+      fingerprint: 'frontend_saturation',
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Watchdog wall-clock residual — detecta que el fix del 31/05/2026 (commit
  * `a4051a6b`, hook `useAnswerWatchdog` Page Visibility-aware) sigue
  * funcionando bien en TODOS los navegadores en producción.
@@ -3122,6 +3167,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CANARY_PSYCHOMETRIC_INTEGRITY_FAILED as AlertRule,
   // Canary endpoint topic-data (31/05/2026, post Fase D-bis Iter 1.5)
   RULE_CANARY_TOPIC_DATA_FAILED as AlertRule,
+  // Saturación del frontend (21/07/2026) — 1 aviso legible en vez del storm de N
+  // canaries en timeout; firma de capacidad/lentitud (ver incidente autoscaling).
+  RULE_FRONTEND_SATURATION as AlertRule,
   // Canary SEMÁNTICO del endpoint theme-stats (19/06/2026, post incidente V4):
   // el panel de temas refleja el progreso real (artículo→topic_scope).
   RULE_CANARY_THEME_STATS_FAILED as AlertRule,

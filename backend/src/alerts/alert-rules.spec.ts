@@ -35,7 +35,28 @@ import {
   RULE_EXAM_INTEGRITY_DRIFT,
   RULE_CLIENT_EDGE_SUSTAINED,
   RULE_FILTERED_VALIDATION_REJECTED_SPIKE,
+  RULE_FRONTEND_SATURATION,
 } from './alert-rules';
+
+describe('RULE_FRONTEND_SATURATION (incidente capacidad 21/07)', () => {
+  it('dispara con ≥4 canaries en timeout simultáneo (firma de saturación)', () => {
+    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 8, which: 'auth_failed, answer_save_failed' }])).toBe(true);
+    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 4, which: 'a, b, c, d' }])).toBe(true);
+  });
+  it('NO dispara con <4 (un bug por-endpoint rompe 1-2 canaries, no es saturación)', () => {
+    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 3, which: 'a, b, c' }])).toBe(false);
+    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 1, which: 'auth_failed' }])).toBe(false);
+  });
+  it('NO dispara con 0 / filas vacías (todo verde)', () => {
+    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 0, which: null }])).toBe(false);
+    expect(RULE_FRONTEND_SATURATION.shouldFire([])).toBe(false);
+  });
+  it('el aviso lleva fingerprint único (1 email, no N)', () => {
+    const n = RULE_FRONTEND_SATURATION.buildNotification([{ canaries: 8, which: 'auth_failed' }]);
+    expect(n.fingerprint).toBe('frontend_saturation');
+    expect(n.title).toContain('8 canaries');
+  });
+});
 
 describe('RULE_FILTERED_VALIDATION_REJECTED_SPIKE (incidente Alfonso)', () => {
   it('dispara con un pico sistémico (>30 rechazos/h)', () => {
