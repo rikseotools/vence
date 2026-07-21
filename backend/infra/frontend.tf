@@ -656,7 +656,11 @@ resource "aws_ecs_service" "frontend" {
 # ============================================================
 
 resource "aws_appautoscaling_target" "frontend" {
-  max_capacity = 3
+  # Subido 3→6 el 21/07/2026 tras un pico de tráfico (2×, tráfico dinámico /api/*
+  # de usuarios logueados) que topó el autoscaler en 3 tasks → CPU 100% ~10 min →
+  # latencia ~3,9s → canaries en timeout (0 errores 5xx; solo lentitud). Solo paga
+  # más DURANTE los picos (a min sigue en 2). Memoria: project_frontend_autoscaling_capacidad_21jul.
+  max_capacity = 6
   # Fase 1 pool-segregation (01/06/2026): min_capacity = 2 obligatorio.
   # Cuando estaba a 1, en horas de bajo tráfico autoscaling bajaba de 2 a
   # 1, dejando una sola task. El siguiente rolling deploy con 1 task = 0
@@ -678,7 +682,10 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
   service_namespace  = aws_appautoscaling_target.frontend.service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = 70.0
+    # Bajado 70→55 el 21/07/2026: escala ANTES de acercarse a la saturación, dando
+    # colchón para que los tasks nuevos arranquen (~1-2 min) sin que la CPU se clave
+    # al 100%. Ver incidente en max_capacity arriba.
+    target_value       = 55.0
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
     predefined_metric_specification {
@@ -686,6 +693,17 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
     }
   }
 }
+
+# ────────────────────────────────────────────────────────────────────────────
+# NOTA DRIFT (21/07/2026): además de los valores de arriba, el 21/07 se crearon
+# POR CLI (mitigación en caliente durante el incidente) estos recursos de escalado
+# que AÚN NO están en Terraform. NO los borrará un `apply` (TF solo gestiona lo que
+# tiene en state), pero convendría codificarlos + `terraform import` (tarea T-072):
+#   - aws_appautoscaling_policy  "vence-frontend-cpu-burst-stepout" (StepScaling, +2 tasks)
+#   - aws_cloudwatch_metric_alarm "vence-frontend-cpu-burst" (CPU>85% 2×1min → burst)
+#   - aws_appautoscaling_scheduled_action "vence-frontend-daypeak-up" (10:00 Madrid, min→3)
+#   - aws_appautoscaling_scheduled_action "vence-frontend-night-down" (23:00 Madrid, min→2)
+# ────────────────────────────────────────────────────────────────────────────
 
 # Scale-out por memoria (más crítico hoy por el leak).
 resource "aws_appautoscaling_policy" "frontend_memory" {
