@@ -1,5 +1,5 @@
 // lib/api/admin-engagement-stats/queries.ts - Server-side engagement stats via Drizzle raw SQL
-import { getReadDb } from '@/db/client'
+import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { EngagementStatsResponse } from './schemas'
 
@@ -18,7 +18,7 @@ const notCanary = (col: string) =>
 // ============================================
 
 async function getCoreMetrics() {
-  const db = getReadDb()
+  const db = getDb()
 
   const result = await db.execute(sql`
     SELECT
@@ -61,7 +61,7 @@ async function getCoreMetrics() {
 // ============================================
 
 async function getDauMauHistory() {
-  const db = getReadDb()
+  const db = getDb()
 
   // Get the fixed MAU (30d) and daily DAU for 14 days
   const result = await db.execute(sql`
@@ -119,7 +119,7 @@ async function getDauMauHistory() {
 // ============================================
 
 async function getActivationData() {
-  const db = getReadDb()
+  const db = getDb()
 
   // Activation history: users who registered AND did first test on the same day, by day
   const historyResult = await db.execute(sql`
@@ -211,7 +211,7 @@ async function getActivationData() {
 // ============================================
 
 async function getEngagementDepthData() {
-  const db = getReadDb()
+  const db = getDb()
 
   // Current month engagement depth
   const depthResult = await db.execute(sql`
@@ -378,7 +378,7 @@ async function getEngagementDepthData() {
 // ============================================
 
 async function getHabitFormationData() {
-  const db = getReadDb()
+  const db = getDb()
 
   const result = await db.execute(sql`
     WITH active_users AS (
@@ -477,7 +477,7 @@ async function getHabitFormationData() {
 // ============================================
 
 async function getRetentionData() {
-  const db = getReadDb()
+  const db = getDb()
 
   // Retention analysis: 4 weeks of cohorts with D1/D7/D30 retention
   const retentionResult = await db.execute(sql`

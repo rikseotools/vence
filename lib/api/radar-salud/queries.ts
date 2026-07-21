@@ -4,7 +4,7 @@
 // (histórico) + `observable_events` (gaps/degraded).
 // Diseño: docs/roadmap/radar-multicapa.md §4.
 
-import { getReadDb } from '@/db/client'
+import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 export type RadarStatus = 'green' | 'amber' | 'red'
@@ -36,7 +36,7 @@ export interface RadarHealthResponse {
 }
 
 export async function getRadarHealth(): Promise<RadarHealthResponse> {
-  const db = getReadDb()
+  const db = getDb()
 
   // Último run por adapter + señales de los últimos 7 días.
   const rows = (await db.execute(sql`

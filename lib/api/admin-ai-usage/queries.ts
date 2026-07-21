@@ -1,5 +1,5 @@
 // lib/api/admin-ai-usage/queries.ts
-import { getReadDb } from '@/db/client'
+import { getDb } from '@/db/client'
 import { aiApiUsage } from '@/db/schema'
 import { eq, gte, desc, and } from 'drizzle-orm'
 import type { AiUsageResponse, ProviderStats } from './schemas'
@@ -32,7 +32,7 @@ export async function getAiUsageStats(
   days: number,
   provider?: string
 ): Promise<AiUsageResponse> {
-  const db = getReadDb()
+  const db = getDb()
 
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)

@@ -9,10 +9,10 @@
 
 // CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
 // oposicion-scope (helper transversal) migrado al pooler propio para reducir presión Supavisor.
-import { getReadDb, getPoolerDb } from '@/db/client'
+import { getDb, getPoolerDb } from '@/db/client'
 
 function getOposicionScopeDb() {
-  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs } from '@/db/schema'
 import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'

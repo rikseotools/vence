@@ -1,5 +1,5 @@
 // lib/api/admin-newsletters-history/queries.ts - Queries para historial de newsletters
-import { getReadDb } from '@/db/client'
+import { getDb } from '@/db/client'
 import { emailEvents, adminUsersWithRoles } from '@/db/schema'
 import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm'
 
@@ -8,7 +8,7 @@ import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm'
 // ============================================
 
 export async function getNewsletterHistory() {
-  const db = getReadDb()
+  const db = getDb()
 
   // Solo campos necesarios para agrupar y calcular stats
   // (excluir email_content_preview que es HTML pesado)
@@ -36,7 +36,7 @@ export async function getNewsletterHistory() {
 
 export async function getUserActivity(userIds: string[]) {
   if (userIds.length === 0) return []
-  const db = getReadDb()
+  const db = getDb()
 
   const data = await db
     .select({
@@ -59,7 +59,7 @@ export async function getCampaignEvents(
   endDate: string,
   eventType: string
 ) {
-  const db = getReadDb()
+  const db = getDb()
 
   const events = await db
     .select({
@@ -88,7 +88,7 @@ export async function getCampaignEvents(
 
 export async function getCampaignUserProfiles(userIds: string[]) {
   if (userIds.length === 0) return []
-  const db = getReadDb()
+  const db = getDb()
 
   const data = await db
     .select({

@@ -1,5 +1,5 @@
 // lib/api/admin-pending-counts/queries.ts - Queries para conteo de impugnaciones pendientes
-import { getReadDb } from '@/db/client'
+import { getDb } from '@/db/client'
 import { questionDisputes, psychometricQuestionDisputes } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import type { PendingCountsResponse } from './schemas'
@@ -10,7 +10,7 @@ import type { PendingCountsResponse } from './schemas'
 
 export async function getPendingDisputeCounts(): Promise<PendingCountsResponse> {
   try {
-    const db = getReadDb()
+    const db = getDb()
 
     const [normalResult, psychometricResult] = await Promise.all([
       db

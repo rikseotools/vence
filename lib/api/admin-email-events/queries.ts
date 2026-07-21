@@ -1,5 +1,5 @@
 // lib/api/admin-email-events/queries.ts - Queries para eventos de email (admin)
-import { getReadDb } from '@/db/client'
+import { getDb } from '@/db/client'
 import { emailEvents } from '@/db/schema'
 import { gte, desc } from 'drizzle-orm'
 
@@ -9,7 +9,7 @@ import { gte, desc } from 'drizzle-orm'
 
 export async function getEmailEvents(timeRangeDays: number = 30) {
   try {
-    const db = getReadDb()
+    const db = getDb()
 
     const cutoffDate = new Date(Date.now() - timeRangeDays * 24 * 60 * 60 * 1000).toISOString()
 
