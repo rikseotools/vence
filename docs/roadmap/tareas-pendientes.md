@@ -461,7 +461,22 @@
 - **Cómo:** columna `deleted_users_log.rgpd_email_sent_at timestamptz` (migración additiva) + mapearla en Drizzle; enviar el email solo si es `NULL` y sellarla tras el envío OK. Enlaza con memoria `feedback_delete_user_api_504_fallback`.
 - **Estado:** ABIERTA (follow-up del fix desplegado 15/07). No bloqueante.
 
-### [T-012] 🟢 [MEJORA APP — no urgente] Poblar títulos y capítulos (`law_sections`) en TODAS las leyes + mostrarlos en teoría
+### [T-012] 🟢 [DATOS + RENDER HECHOS 20-21/07 — queda solo el 15% de estructura anidada] Poblar títulos y capítulos (`law_sections`) + mostrarlos en teoría
+> **✅ Las dos mitades hechas.**
+> - **Datos:** cobertura **13 → 249 leyes** (1.315 secciones), todas verificadas íntegras (rangos que cuadran con
+>   artículos reales, sin solapes, slugs únicos, con rúbrica). Herramienta durable: `lib/laws/parseBoeSections.js`
+>   (lógica pura, 10 tests) + `scripts/poblar-law-sections-boe.cjs` (fetch BOE + rúbrica + validación + `--sweep`).
+>   El diseño salió de simular sobre 40 leyes y afinar (5 bugs reales encontrados: nº desde el label no el id por
+>   `a1-2`; "Art N" abreviado; anidamiento; slug único global; inserción transaccional). BOE datosabiertos exige
+>   `Accept: application/xml`. Verificación cruzada: 6 leyes al azar vs el índice del BOE en vivo, coinciden.
+> - **Render:** `lib/teoria/sectionHeaders.ts` (puro, 8 tests) + `LawArticlesClient.tsx` pintan la cabecera
+>   "Título III. De las penas" sobre el primer artículo de cada sección. `availableSections` ya se cargaba para el
+>   filtro, sin fetch nuevo. Ley sin secciones → se ve igual que antes. Verificado con datos reales (LPRL, CP,
+>   Reglamento del Congreso). Commits `5a26f1dc`, `a3141f71`, `c0293a85`.
+> - **PENDIENTE:** las **~58 leyes de estructura ANIDADA** (Código Civil, LECrim, Ley 9/2017…: libro>título>capítulo
+>   de 3 niveles) que el parser RECHAZA a propósito en vez de meterlas mal. Es una mejora del parser (soportar
+>   jerarquía multinivel), con su diseño y tests propios. Correrlas: `node scripts/poblar-law-sections-boe.cjs
+>   --sweep --limit 300` lista las aceptadas; las rechazadas salen con motivo (solape/rango_vacío/sin_secciones).
 > **⚠️ Cifras corregidas por la auditoría del 20/07:** Denominador real: **1.343** leyes activas, no 1.291. Y el render de secciones **ya existe** en `/leyes/[law]`, así que el alcance real es solo `/teoria`.
 - **Qué:** hoy la estructura de títulos/capítulos (`law_sections`: título + descripción + rango de artículos) está poblada en **solo 13 de 1.291 leyes activas** y solo se usa para el control "Filtrar por Títulos"; nunca se muestra como **cabecera inline** al leer la teoría. Objetivo: poblar `law_sections` en todas las leyes (verificado contra fuente oficial/BOE, **nunca contra el "art 0 — Estructura" sintético**, que puede estar fabricado) **y** renderizar los títulos/capítulos como cabeceras sobre los artículos que agrupan.
 - **Por qué:** (1) petición **repetida** de usuaria premium fiel (Nila, `auxiliar_administrativo_madrid`, feedbacks 26/05 y 15/07: "poner los títulos correspondientes… los artículos hacen referencia a los títulos"); (2) los **filtros por título/capítulo** solo funcionan donde hay `law_sections` → hoy fallan/no aparecen en el 99% de leyes; (3) la **teoría que imprimen los usuarios** llevaría los títulos y capítulos (mejor estudio y referencia cruzada entre artículos).
