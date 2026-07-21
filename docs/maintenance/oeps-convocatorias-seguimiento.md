@@ -669,6 +669,11 @@ Si una oposicion tiene `seguimiento_url` pero 0 hitos:
 
 ## 6. Marcar como revisado
 
+> **🚦 CIERRE OBLIGATORIO (guardarraíl `npm run audit:oep-review`, 21/07/2026).** La revisión NO está terminada hasta que este check pase en verde. Nace porque una revisión se declaró "hecha" varias veces mirando solo lo recién tocado (señales `pending=0`) sin comprobar la definición COMPLETA — y los cabos (administración sin normalizar, `seguimiento_url` que era un shell SPA = falso-monitored, `discovered_processes`, señal `applied` huérfana) solo salían cuando el admin empujaba. El script (`scripts/audit-oep-review.cjs`, determinista, exit 1 = ❌) codifica esos gaps:
+>   - `npm run audit:oep-review` → **db-only** (rápido, CI): `pending=0`, `discovered_processes` triados, ninguna `applied` huérfana, catalogadas con **administración normalizada** (no la etiqueta cruda del sensor "(DOGV)/(BOCYL)…") y `estado_proceso` válido. Un 🟡 informa del backlog de catalogadas sin `seguimiento_url` (no bloquea).
+>   - `npm run audit:oep-review -- --deep` → además verifica por **RED** que cada `seguimiento_url` de catalogadas recientes es **server-rendered** (sigue redirects como el cron); una SPA se hashea como shell → falso negativo silencioso (lección T-061). Un shell es PEOR que NULL → se pone `seguimiento_url=NULL` + nota.
+> **Correr `--deep` antes de dar por cerrada la tanda; que salga `✅ Revisión OEP completa` con 0 ❌.**
+
 > **⚠️ Esto es lo ÚNICO que baja el badge 🎯 OEPs.** El contador lee `oep_detection_signals.status='pending'` (ver §1). Mientras una señal siga `pending`, suma al badge **aunque ya hayas actualizado la oposición o limpiado `seguimiento_change_status='ok'`** (campo distinto). Por eso, tras aplicar/descartar el cambio en BD, **hay que cerrar también la señal** poniendo su `status` a `'applied'`/`'dismissed'`. El ruido `hash_change` <40 que sea cosmético/re-baseline se puede cerrar en bloque a `'dismissed'` con `admin_notes` explicando el motivo.
 
 ### Opción A — Desde panel admin (recomendado)
