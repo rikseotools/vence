@@ -1,5 +1,5 @@
 // lib/api/admin-funnel-users/queries.ts
-import { getDb, type DbClient } from '@/db/client'
+import { getReadDb, type DbClient } from '@/db/client'
 import { userProfiles, conversionEvents } from '@/db/schema'
 import { gte, desc, isNotNull, inArray } from 'drizzle-orm'
 import type { FunnelStage, FunnelUser, FunnelUsersResponse } from './schemas'
@@ -100,7 +100,7 @@ export async function getFunnelUsers(
   days: number,
   limit: number
 ): Promise<FunnelUsersResponse> {
-  const db = getDb()
+  const db = getReadDb()
 
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - days)

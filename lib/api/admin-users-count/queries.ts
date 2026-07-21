@@ -1,5 +1,5 @@
 // lib/api/admin-users-count/queries.ts - Queries para conteo de usuarios con suscripciones
-import { getDb } from '@/db/client'
+import { getReadDb } from '@/db/client'
 import { userProfiles, emailPreferences } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import type { UsersCountResponse } from './schemas'
@@ -10,7 +10,7 @@ import type { UsersCountResponse } from './schemas'
 
 export async function getUsersCount(): Promise<UsersCountResponse> {
   try {
-    const db = getDb()
+    const db = getReadDb()
 
     // Left join para contar suscripciones en una sola query
     // Un usuario está NO suscrito SOLO si existe el registro Y unsubscribed_all es true
