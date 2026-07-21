@@ -223,7 +223,7 @@
 
 ## Abiertas
 
-### [T-067] ✅ CERRADA 21/07 — Construir Celador/a-Subalterno/a del SMS (Murcia)
+### [T-067] ✅ CERRADA 21/07 (LIVE) — Construir Celador/a-Subalterno/a del SMS (Murcia)
 - **✅ Construida** (`celador-murcia`, `is_active=false` pendiente de go-live con OK). 14 temas (7 comunes + 7 específicos de celador), epígrafes literales verificados contra el BORM (convocatoria 6134/BORM 291 de 18/12/2025: **106 plazas TL + 5 disc**; temario común Res. 22/07/2025 BORM 177, específico Res. 21/07/2022 BORM 170).
 - **Reuso total, 0 leyes importadas: 9.545 preguntas activas** heredadas. Bloque específico de `celador-sas`; bloque común de las leyes murcianas ya en BD (Estatuto Murcia, Salud RM, Personal SMS 5/2001, Igualdad, Transparencia) que usan las 9 oposiciones murcianas existentes.
 - **Gates:** `audit:oposicion` 0❌/0🟡, `audit:served` 0❌/0🟡, `verify:scope` **14/14 verified_correct**. Corregidos TODOS los issues de los 2 agentes: sobre-scopes acotados al epígrafe verificando el contenido de los artículos (T5 el grave: Ley 39/2015+40/2015 enteras 4.639 preg → 205; T1 Estatuto→20-39; T2 LGS→38-79; T3,T4,T7,T8,T12).
