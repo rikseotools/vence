@@ -461,7 +461,7 @@
 - **Cómo:** columna `deleted_users_log.rgpd_email_sent_at timestamptz` (migración additiva) + mapearla en Drizzle; enviar el email solo si es `NULL` y sellarla tras el envío OK. Enlaza con memoria `feedback_delete_user_api_504_fallback`.
 - **Estado:** ABIERTA (follow-up del fix desplegado 15/07). No bloqueante.
 
-### [T-012] 🟢 [DATOS + RENDER HECHOS 20-21/07 — queda solo el 15% de estructura anidada] Poblar títulos y capítulos (`law_sections`) + mostrarlos en teoría
+### [T-012] ✅ [HECHA Y DESPLEGADA 20-21/07 — datos + render en producción] Poblar títulos y capítulos (`law_sections`) + mostrarlos en teoría
 > **✅ Las dos mitades hechas.**
 > - **Datos:** cobertura **13 → 249 leyes** (1.315 secciones), todas verificadas íntegras (rangos que cuadran con
 >   artículos reales, sin solapes, slugs únicos, con rúbrica). Herramienta durable: `lib/laws/parseBoeSections.js`
@@ -1261,3 +1261,18 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
     falsos positivos** — son palabras legítimas en los temas de Windows 11, "La Red Internet" o Correos. Si alguien
     reactiva este detector, usar SOLO los marcadores inequívocos.
 
+
+
+### [T-064] 🟢 [ABIERTA 21/07 — cabo de T-012] `law_sections`: soportar estructura ANIDADA (libro>título>capítulo)
+- **Qué:** el poblador de secciones (`scripts/poblar-law-sections-boe.cjs` + `lib/laws/parseBoeSections.js`) cubre
+  leyes de un nivel (título O capítulo). Las de **3 niveles** (libro>título>capítulo) las **RECHAZA a propósito**
+  (rango vacío / solape) en vez de meterlas mal. Son **~58 leyes** del temario, entre ellas importantes: **Código
+  Civil, LECrim, Ley de Enjuiciamiento Civil, Ley 9/2017 (Contratos), RDL 8/2015**.
+- **Por qué se dejó:** soportar la jerarquía multinivel es un rediseño del parser (elegir a qué nivel se muestran
+  las secciones cuando hay libros con títulos con capítulos), con sus propios tests. No cabía forzarlo sin arriesgar
+  la calidad de las 249 ya hechas.
+- **Cómo:** las rechazadas salen con motivo en `node scripts/poblar-law-sections-boe.cjs --sweep --limit 300`
+  (`solape` / `rango_vacio` / `sin_secciones`). La lógica pura a extender es `lib/laws/parseBoeSections.js`
+  (10 tests). Decidir la convención de nivel mirando qué hacen leyes multinivel ya en `law_sections` (si hay).
+- **Valor:** completa la cobertura de secciones al 100% de las leyes automatizables. Bajo, no urgente: las 249 más
+  usadas ya están, y el render ya funciona para ellas.
