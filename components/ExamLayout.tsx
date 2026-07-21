@@ -17,6 +17,7 @@ import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { saveLocalExamAnswers, loadLocalExamAnswers, clearLocalExamAnswers, mergeExamAnswers } from '@/lib/exam/localAnswerStore'
 import { useQuestionContext } from '@/contexts/QuestionContext'
 import { useAIChat } from '@/contexts/AIChatContext'
 
@@ -149,6 +150,14 @@ interface SelectedArticle {
 /**
  * 🆕 API para guardar respuestas en tiempo real (permite reanudar exámenes)
  * 🔒 SEGURIDAD: NO enviamos correctAnswer - solo guardamos la respuesta del usuario
+ *
+ * Robustez (fix caso Marta 21/07/2026): reintenta con backoff ante fallos TRANSITORIOS
+ * (red caída, timeout, 5xx, 429). Los 4xx permanentes (400/403/422) no se reintentan.
+ * Como la respuesta también vive en el estado React y en el espejo localStorage
+ * (localAnswerStore), un fallo aquí NUNCA la pierde; el reintento solo mejora la
+ * persistencia server-side para reanudar en otro dispositivo. NO emite telemetría por
+ * intento — de eso se encarga el llamador UNA vez por sesión (evita spam de 1 usuario
+ * con mala conexión en RULE_CLIENT_ERROR_SPIKE).
  */
 async function saveAnswerToAPI(
   testId: string,
@@ -156,49 +165,64 @@ async function saveAnswerToAPI(
   questionIndex: number,
   selectedOption: string | null
 ): Promise<boolean> {
-  try {
-    const authHeaders = await getAuthHeaders()
-    const response = await fetch('/api/exam/answer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
-      body: JSON.stringify({
-        testId,
-        questionId: question.id || null,
-        questionOrder: questionIndex + 1, // 1-indexed
-        userAnswer: selectedOption ?? '',
-        questionText: question.question_text || '',
-        articleId: question.articles?.id || question.primary_article_id || null,
-        articleNumber: question.articles?.article_number || null,
-        lawName: question.articles?.laws?.short_name || null,
-        temaNumber: question.tema_number || null,
-        difficulty: normalizeDifficulty(question.difficulty),
-        timeSpentSeconds: 0,
-        confidenceLevel: 'sure'
+  const payload = {
+    testId,
+    questionId: question.id || null,
+    questionOrder: questionIndex + 1, // 1-indexed
+    userAnswer: selectedOption ?? '',
+    questionText: question.question_text || '',
+    articleId: question.articles?.id || question.primary_article_id || null,
+    articleNumber: question.articles?.article_number || null,
+    lawName: question.articles?.laws?.short_name || null,
+    temaNumber: question.tema_number || null,
+    difficulty: normalizeDifficulty(question.difficulty),
+    timeSpentSeconds: 0,
+    confidenceLevel: 'sure'
+  }
+
+  const MAX_ATTEMPTS = 3
+  const TIMEOUT_MS = 12000
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+    try {
+      const authHeaders = await getAuthHeaders()
+      const response = await fetch('/api/exam/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify(payload),
+        signal: controller.signal
       })
-    })
 
-    const result = await response.json()
+      const result = await response.json().catch(() => ({} as { success?: boolean; deviceLimitReached?: boolean; error?: string }))
 
-    if (!response.ok || !result.success) {
-      // Device limit: avisar al usuario una sola vez (mismo patrón que answerSaveQueue)
+      if (response.ok && result.success) return true
+
+      // Límite de dispositivos: avisar una vez; es permanente para esta sesión → no reintentar.
       if (response.status === 403 && result.deviceLimitReached && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
+        return false
       }
-      console.error('❌ Error guardando respuesta en API:', {
-        status: response.status,
-        error: result.error,
-        questionOrder: questionIndex + 1,
-        testId
-      })
-      return false
+      // 4xx (salvo 429) = permanente (input/permiso) → no reintentar.
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        console.error('❌ Error guardando respuesta en API (permanente):', {
+          status: response.status, error: result.error, questionOrder: questionIndex + 1
+        })
+        return false
+      }
+      // 5xx / 429 → transitorio: cae al backoff.
+      console.warn(`⚠️ Guardado respuesta ${questionIndex + 1} falló (status ${response.status}), intento ${attempt}/${MAX_ATTEMPTS}`)
+    } catch {
+      // Red caída / abort por timeout → transitorio.
+      console.warn(`⚠️ Guardado respuesta ${questionIndex + 1} falló (red/timeout), intento ${attempt}/${MAX_ATTEMPTS}`)
+    } finally {
+      clearTimeout(timeoutId)
     }
-
-    return true
-  } catch (error) {
-    console.error('❌ Error guardando respuesta en API:', error)
-    logClientError('/api/exam/answer', error, { component: 'ExamLayout', questionId: question.id })
-    return false
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt)) // backoff 1s, 2s
+    }
   }
+  return false
 }
 
 /**
@@ -394,6 +418,16 @@ export default function ExamLayout({
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null)
   const [sessionCreationError, setSessionCreationError] = useState(false)
 
+  // 💾 Salud del guardado por-respuesta (fix caso Marta 21/07/2026). Si varios guardados
+  // seguidos fallan (red inestable), avisamos al usuario SIN bloquear — sus respuestas
+  // están a salvo en este dispositivo (espejo localStorage) y se reintentan. Emitimos
+  // telemetría UNA sola vez por sesión (no por respuesta) para no inflar el spike de
+  // errores de cliente con un único usuario de mala conexión.
+  const [saveDegraded, setSaveDegraded] = useState(false)
+  const saveFailStreakRef = useRef(0)
+  const degradedEmittedRef = useRef(false)
+  const examHydratedRef = useRef(false)
+
   // Control de guardado
   const [isSaving, setIsSaving] = useState(false)
 
@@ -407,6 +441,29 @@ export default function ExamLayout({
     component: 'ExamLayout',
     userId: user?.id,
   })
+
+  // 💾 Espejo durable de las respuestas en localStorage (fix caso Marta 21/07/2026).
+  // Cada cambio en userAnswers se persiste por testId → sobrevive a reload / cierre de
+  // pestaña / red caída. Es aditivo: el estado React sigue siendo la fuente en vivo.
+  useEffect(() => {
+    const testId = currentTestSession?.id || resumeTestId
+    if (testId && !isSubmitted && Object.keys(userAnswers).length > 0) {
+      saveLocalExamAnswers(testId, userAnswers as Record<number, string>)
+    }
+  }, [userAnswers, currentTestSession?.id, resumeTestId, isSubmitted])
+
+  // 💾 Rehidratación UNA vez cuando el testId está disponible: recupera respuestas que
+  // quedaron solo en local (guardados server-side que fallaron). Solo AÑADE (local gana),
+  // nunca descarta lo ya cargado del servidor. Idempotente vía examHydratedRef.
+  useEffect(() => {
+    const testId = currentTestSession?.id || resumeTestId
+    if (!testId || examHydratedRef.current || isSubmitted) return
+    examHydratedRef.current = true
+    const local = loadLocalExamAnswers(testId)
+    if (local && Object.keys(local).length > 0) {
+      setUserAnswers((prev) => mergeExamAnswers(prev as Record<number, string>, local) as UserAnswers)
+    }
+  }, [currentTestSession?.id, resumeTestId, isSubmitted])
 
   // 🔒 SEGURIDAD: Estado para respuestas validadas por API
   const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)
@@ -592,18 +649,43 @@ export default function ExamLayout({
   async function handleAnswerSelect(questionIndex: number, option: string): Promise<void> {
     if (isSubmitted) return
 
-    setUserAnswers(prev => ({
-      ...prev,
-      [questionIndex]: option
-    }))
-
     const testId = currentTestSession?.id || currentTestSessionRef.current?.id
+
+    // Updater funcional (acumula sin perder respuestas concurrentes) + espejo local
+    // inmediato desde el estado ya fusionado: garantiza durabilidad aunque el guardado
+    // server-side falle o el usuario cierre la pestaña acto seguido. El write a
+    // localStorage es idempotente (seguro ante el doble-invoke de StrictMode en dev).
+    setUserAnswers(prev => {
+      const next = { ...prev, [questionIndex]: option }
+      if (testId) saveLocalExamAnswers(testId, next as Record<number, string>)
+      return next
+    })
+
     if (testId && effectiveQuestions[questionIndex]) {
       const question = effectiveQuestions[questionIndex]
       saveAnswerToAPI(testId, question, questionIndex, option)
         .then(success => {
           if (success) {
             console.log(`💾 Respuesta ${questionIndex + 1} guardada en API`)
+            saveFailStreakRef.current = 0
+            if (saveDegraded) setSaveDegraded(false)
+          } else {
+            // Fallo persistente (tras reintentos). No perdemos la respuesta (está en
+            // estado + localStorage), pero avisamos al usuario y emitimos telemetría
+            // UNA vez por sesión para que RULE_CLIENT_ERROR_SPIKE vea un brote real
+            // (1 evento = 1 sesión, no 1 por respuesta de un usuario con mala wifi).
+            saveFailStreakRef.current += 1
+            if (saveFailStreakRef.current >= 3 && !degradedEmittedRef.current) {
+              degradedEmittedRef.current = true
+              setSaveDegraded(true)
+              logClientError('/api/exam/answer', new Error('persistent_exam_answer_save_failure'), {
+                component: 'ExamLayout',
+                userId: user?.id,
+                // sin severity → el evento se emite como 'error' (lo que cuenta
+                // RULE_CLIENT_ERROR_SPIKE); ClientErrorSeverity no incluye 'error'.
+                extra: { testId, streak: saveFailStreakRef.current },
+              })
+            }
           }
         })
     }
@@ -765,6 +847,10 @@ export default function ExamLayout({
       }
 
       setValidatedResults(apiResult)
+
+      // Examen validado y persistido en bloque por el servidor → el espejo local ya
+      // no hace falta; lo borramos para no rehidratar un examen ya cerrado.
+      if (testId) clearLocalExamAnswers(testId)
 
       const correctCount = apiResult.summary.totalCorrect
 
@@ -1016,6 +1102,21 @@ export default function ExamLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-3 py-6">
+
+        {/* ⚠️ Aviso NO bloqueante de guardado degradado (fix caso Marta 21/07/2026):
+            varios guardados fallaron seguidos (red inestable). Las respuestas están a
+            salvo en este dispositivo y se reintentan; solo informamos para que el
+            usuario no cierre el examen creyendo que se perdió. */}
+        {saveDegraded && !isSubmitted && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-start gap-2" role="status">
+            <span className="text-lg leading-none">⚠️</span>
+            <p className="text-sm text-amber-800">
+              Estamos teniendo problemas para guardar tus respuestas (parece tu conexión).
+              <strong> Tus respuestas están guardadas en este dispositivo</strong> y se
+              enviarán solas al recuperar la conexión. Puedes seguir el examen con normalidad.
+            </p>
+          </div>
+        )}
 
         {/* ✅ HEADER DEL EXAMEN */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
