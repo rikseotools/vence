@@ -20,6 +20,7 @@ const INSECURE_TLS_HOSTS = new Set<string>([
   'santcugat.cat',
   'ayuntamiento.marbella.es',
   'www.ponferrada.org',
+  'empleopublico.jcyl.es', // cadena de certificado incompleta (21-jul-2026): curl/https estricto=UNABLE_TO_VERIFY_LEAF_SIGNATURE, -k=200 con 1516 menciones de empleo. Portal de convocatorias de JCyL (36 catalogadas dependían de él).
 ]);
 
 // UA de navegador real: algunos WAF (p.ej. emergenciasgc.org, consorciobomberosalicante.es)
