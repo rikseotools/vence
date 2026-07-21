@@ -18,6 +18,7 @@ const { Client } = require('pg')
 const fs = require('fs')
 const path = require('path')
 const { classifyChange, temaVerdict, DEFAULT_IMPACT_THRESHOLD } = require('./lib/scope-classifier.cjs')
+const { classifyScope } = require('./scope-over-inclusion.cjs') // pre-filtro determinista de sobre-inclusión
 
 // ── Subsecciones del artículo (para el dump) ──────────────────────────────────
 // El dump exponía SOLO títulos de artículo, y eso hace fallar a los agentes: marcan
@@ -145,6 +146,19 @@ async function buildDump(c, pt) {
         [s.law_id, nums.length ? nums : null]
       )).rows[0].n
       const ni = nums.map(Number).filter(x => !isNaN(x)).sort((a, b) => a - b)
+      // Pre-filtro DETERMINISTA de SOBRE-INCLUSIÓN (lib/laws/scopeOverInclusion.ts vía CLI):
+      // marca cuando el epígrafe enumera sub-materias pero el scope cubre casi la ley entera.
+      // Es la forcing-function que faltaba: el T11 (Ley 3/2009) se dio en FALSO VERDE porque el
+      // agente concluyó "abarca toda la ley" sin enumerar los títulos excluidos. Simétrico a HUECOS;
+      // va tanto en el string `rango` (flujo manual del runbook) como en el campo `sobre_inclusion`
+      // (workflow verify-scope-oposicion). Solo aplica a scopes explícitos (no NULL "toda la ley").
+      const lawTotal = ni.length
+        ? Number((await c.query(`SELECT count(*) n FROM articles WHERE law_id=$1 AND article_number ~ '^[0-9]+$'`, [s.law_id])).rows[0].n)
+        : 0
+      const oi = ni.length ? classifyScope({ lawTotal, scopedCount: ni.length, epigrafe: t.epigrafe }) : { suspect: false }
+      const oiStr = oi.suspect
+        ? ` ⚠️ POSIBLE SOBRE-INCLUSIÓN [${oi.band}]: ${oi.reasons[0]} → mapea el epígrafe a títulos/capítulos y LISTA los títulos escopados que el epígrafe NO nombra (→ quitar); NO concluyas "abarca toda la ley" sin ese mapeo`
+        : ''
       let rango
       if (!nums.length) {
         rango = s.include_full_title ? 'toda la ley' : 'NULL'
@@ -155,9 +169,9 @@ async function buildDump(c, pt) {
         const gapStr = gaps.length
           ? ` ⚠️ HUECOS (faltan): ${gaps.map(([a, b]) => a === b ? `${a}` : `${a}–${b}`).join(', ')}`
           : ''
-        rango = `${ni[0]}–${ni[ni.length - 1]} (${nums.length} arts)${gapStr}`
+        rango = `${ni[0]}–${ni[ni.length - 1]} (${nums.length} arts)${gapStr}${oiStr}`
       }
-      laws.push({ ley: s.short_name, ley_nombre: s.name, ambito: s.scope, rango, arts: sortArtNums(nums.map(String)), preguntas_activas: Number(qn), articulos: arts })
+      laws.push({ ley: s.short_name, ley_nombre: s.name, ambito: s.scope, rango, sobre_inclusion: oi.suspect ? { band: oi.band, motivo: oi.reasons[0] } : null, arts: sortArtNums(nums.map(String)), preguntas_activas: Number(qn), articulos: arts })
     }
     out.push({ tema: t.topic_number, titulo: t.title, epigrafe: t.epigrafe, scope: laws })
   }

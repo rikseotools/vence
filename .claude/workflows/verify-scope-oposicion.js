@@ -18,6 +18,7 @@ const TEMAS = (Array.isArray(RAW) ? RAW : (RAW && RAW.temas) || []).map((t) => (
   leyes: (t.scope || t.leyes || []).map((s) => ({
     ley: s.ley,
     arts: (s.arts || []).map(String),
+    sobre_inclusion: s.sobre_inclusion || null, // pre-filtro determinista del dump (scopeOverInclusion)
   })),
 }))
 
@@ -45,7 +46,9 @@ const SCHEMA = {
 }
 
 function fmtLeyes(t) {
-  return t.leyes.map((l) => `- ${l.ley}: [${l.arts.join(',')}]`).join('\n')
+  return t.leyes.map((l) => `- ${l.ley}: [${l.arts.join(',')}]${l.sobre_inclusion
+    ? ` ⚠️ PRE-FILTRO DETERMINISTA: POSIBLE SOBRE-INCLUSIÓN [${l.sobre_inclusion.band}] — ${l.sobre_inclusion.motivo}. DEBES mapear el epígrafe a títulos/capítulos y poner en 'quitar' los arts de títulos que el epígrafe NO nombra; NO concluyas "cabe toda la ley" sin ese mapeo.`
+    : ''}`).join('\n')
 }
 
 function verifyPrompt(t, lens) {
