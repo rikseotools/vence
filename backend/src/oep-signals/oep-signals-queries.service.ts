@@ -193,6 +193,16 @@ export class OepSignalsQueriesService {
           WHERE f.oposicion_id = o.id
             AND (f.fecha >= CURRENT_DATE OR f.status = 'current')
         )
+        -- MEMORIA (T-059): si ya se revisó el timeline y se confirmó sin novedad DESPUÉS del
+        -- último hito, no re-avisar. Solo vuelve a ser candidata cuando aparezca un hito NUEVO
+        -- (posterior a la revisión). Sin esto, el sensor grita cada noche de las mismas
+        -- oposiciones ya revisadas → la bandeja ruidosa que mató a hash_change.
+        AND (o.timeline_reviewed_at IS NULL OR ult.fecha > o.timeline_reviewed_at::date)
+        -- FUENTE ROTA (T-059): si el monitoreo de esa oposición está en error (anti-bot,
+        -- ECONNREFUSED, SPA), emitir una señal de silencio es pedirle al admin que compruebe
+        -- algo INVERIFICABLE por construcción — el mismo mecanismo por el que murió hash_change.
+        -- Es otro problema (URL de seguimiento caída, familia T-047), no de este sensor.
+        AND (o.seguimiento_change_status IS DISTINCT FROM 'error')
       ORDER BY ult.fecha ASC
     `)) as unknown;
 
