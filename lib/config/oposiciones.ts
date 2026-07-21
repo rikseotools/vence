@@ -5476,8 +5476,8 @@ export const OPOSICIONES: Oposicion[] = [
     positionType: 'auxiliar_administrativo_madrid',
     examScoring: { penaltyDivisor: 3, source: 'BOCM nº41 18/02/2026 (Orden 264/2026): 1/3 del valor de una correcta; en blanco no penaliza. confidence:media (PDF firmado no extraible verbatim)' },
     hasPsychometricTest: true, // Examen oficial incluye prueba psicotécnica/aptitudinal. Verificado en question_official_exams.
-    name: 'Auxiliar Administrativo Comunidad de Madrid',
-    shortName: 'Aux. Madrid',
+    name: 'Auxiliar Administrativo Comunidad de Madrid (examen octubre 2026)',
+    shortName: 'Aux. Madrid (oct 2026)',
     emoji: '🏛️',
     badge: 'C2',
     color: 'red',
@@ -5590,6 +5590,91 @@ export const OPOSICIONES: Oposicion[] = [
             durationMin: 35,
             breakdown: [{ label: 'Bloque II Ofimática', count: 30 }],
           },
+        ],
+      },
+    ],
+  },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO COMUNIDAD DE MADRID — Convocatoria 2026 (examen junio 2027, Windows 11)
+  // Gemela de auxiliar-administrativo-madrid; solo difiere en T16 (Win11) + convocatoria (Orden 1628/2026).
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_madrid_2027',
+    slug: 'auxiliar-administrativo-madrid-2027',
+    positionType: 'auxiliar_administrativo_madrid_2027',
+    examScoring: { penaltyDivisor: 3, source: 'BOCM nº165 13/07/2026 (Orden 1628/2026): 1/3 del valor de una correcta; en blanco no penaliza. confidence:media (PDF firmado no extraible verbatim)' },
+    hasPsychometricTest: true, // Examen oficial incluye prueba psicotécnica/aptitudinal.
+    name: 'Auxiliar Administrativo Comunidad de Madrid — Convocatoria 2026 (examen junio 2027)',
+    shortName: 'Aux. Madrid (jun 2027)',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Organización Política',
+        subtitle: 'Constitución, CAM, Administración y Derecho Administrativo',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'El Estatuto de Autonomía de la Comunidad de Madrid' },
+          { id: 3, name: 'La Ley de Gobierno y Administración de la Comunidad de Madrid' },
+          { id: 4, name: 'Las fuentes del ordenamiento jurídico' },
+          { id: 5, name: 'El acto administrativo' },
+          { id: 6, name: 'La Ley del Procedimiento Administrativo Común de las Administraciones Públicas' },
+          { id: 7, name: 'La Jurisdicción Contencioso-Administrativa' },
+          { id: 8, name: 'Transparencia y Protección de Datos' },
+          { id: 9, name: 'Los contratos en el Sector Público' },
+          { id: 10, name: 'El Texto Refundido de la Ley del Estatuto Básico del Empleado Público' },
+          { id: 11, name: 'La Seguridad Social' },
+          { id: 12, name: 'Hacienda Pública y Presupuestos de la Comunidad de Madrid' },
+          { id: 13, name: 'Igualdad de género y no discriminación' },
+          { id: 14, name: 'Información administrativa y Administración electrónica' },
+          { id: 15, name: 'Los documentos administrativos' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Ofimática',
+        subtitle: 'Windows 11, Office 365 y herramientas colaborativas',
+        icon: '💻',
+        themes: [
+          { id: 16, name: 'El explorador de Windows 11' },
+          { id: 17, name: 'Procesadores de texto: Word' },
+          { id: 18, name: 'Hojas de cálculo: Excel' },
+          { id: 19, name: 'Bases de datos: Access y Power BI' },
+          { id: 20, name: 'Correo electrónico: Outlook' },
+          { id: 21, name: 'Trabajo colaborativo: Microsoft 365' },
+        ],
+      },
+    ],
+    totalTopics: 21,
+    aliases: ['comunidad de madrid 2027', 'cam 2027', 'auxiliar madrid junio 2027', 'admin madrid 2027', 'c2 madrid 2027'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-madrid-2027', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-madrid-2027/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-madrid-2027/test', label: 'Tests', icon: '🎯' },
+    ],
+    officialExams: [
+      {
+        date: '2018-06-29',
+        title: 'Convocatoria 2018',
+        oep: 'OEP 2015-2016',
+        partes: [
+          { id: 'primera', icon: '📘', title: '1ª Sesión', description: '45 preguntas tipo test' },
+          { id: 'segunda', icon: '📗', title: '2ª Sesión', description: '45 preguntas tipo test' },
+        ],
+      },
+      {
+        date: '2022-09-11',
+        title: 'Convocatoria 2022',
+        oep: 'OEP 2017-2019',
+        partes: [
+          { id: 'primera', icon: '📘', title: '1ª Sesión', description: '45 preguntas tipo test' },
+          { id: 'segunda', icon: '📗', title: '2ª Sesión', description: '45 preguntas tipo test' },
         ],
       },
     ],

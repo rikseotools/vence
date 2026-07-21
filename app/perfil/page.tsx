@@ -1090,10 +1090,20 @@ function PerfilPageContent() {
     },
     {
       value: 'auxiliar_administrativo_madrid',
-      label: 'Auxiliar Administrativo Comunidad de Madrid',
+      label: 'Auxiliar Administrativo Comunidad de Madrid (examen octubre 2026)',
       data: {
-        name: 'Auxiliar Administrativo Comunidad de Madrid',
+        name: 'Auxiliar Administrativo Comunidad de Madrid (examen octubre 2026)',
         slug: 'auxiliar-administrativo-madrid',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'auxiliar_administrativo_madrid_2027',
+      label: 'Auxiliar Administrativo Comunidad de Madrid (examen junio 2027)',
+      data: {
+        name: 'Auxiliar Administrativo Comunidad de Madrid (examen junio 2027)',
+        slug: 'auxiliar-administrativo-madrid-2027',
         categoria: 'C2',
         administracion: 'Autonómica'
       }

@@ -1,0 +1,152 @@
+{
+  "when": "2026-07-21T18:40:49.591Z",
+  "oposicion_old": {
+    "id": "3d8341ea-1ecc-45e2-a7a7-27a7b17ea60a",
+    "nombre": "Auxiliar Administrativo Comunidad de Madrid",
+    "tipo_acceso": "libre",
+    "administracion": "Comunidad de Madrid",
+    "categoria": "C2",
+    "created_at": "2026-03-27T19:59:10.595Z",
+    "slug": "auxiliar-administrativo-madrid",
+    "short_name": "Aux. Admin. Madrid",
+    "grupo": "C",
+    "exam_date": null,
+    "inscription_start": "2026-07-13T22:00:00.000Z",
+    "inscription_deadline": "2026-08-09T22:00:00.000Z",
+    "boe_publication_date": "2026-02-17T23:00:00.000Z",
+    "boe_reference": "BOCM 18/02/2026",
+    "plazas_libres": 673,
+    "plazas_promocion_interna": 10,
+    "plazas_discapacidad": 47,
+    "temas_count": 21,
+    "bloques_count": 2,
+    "titulo_requerido": "Graduado en ESO o equivalente",
+    "salario_min": 19000,
+    "salario_max": 23000,
+    "is_active": true,
+    "is_convocatoria_activa": true,
+    "programa_url": "https://www.comunidad.madrid/servicios/empleo/auxiliares-administracion-general-c2-2026",
+    "diario_oficial": "BOCM",
+    "diario_referencia": "Orden 264/2026",
+    "seguimiento_url": "https://www.comunidad.madrid/servicios/empleo/auxiliares-administracion-general-c2-2026",
+    "seguimiento_last_checked": "2026-07-20T09:00:15.219Z",
+    "seguimiento_last_hash": "53472422f9665a66bd2d19a62ce104352d5c519a5c687ba1bf9e448182e6f38d",
+    "seguimiento_change_detected_at": "2026-07-20T09:00:15.219Z",
+    "seguimiento_change_status": "changed",
+    "landing_description": "Oposiciones para Auxiliar de Administración General (C2) de la Comunidad de Madrid. 673 plazas de turno libre convocadas por la Orden 1628/2026 (BOCM 13/07/2026). Inscripción abierta hasta el 10 de agosto de 2026. Examen tipo test en dos partes: psicotécnicos + temario y ofimática.",
+    "landing_features": "[\"Temario oficial BOCM 2026 (21 temas en 3 bloques)\",\"645 plazas de acceso libre (Orden 264/2026, BOCM 18/02/2026)\",\"Examen en dos partes: 60 preguntas (psicotécnicos + Bloque I) + 30 preguntas (ofimática)\",\"Tests por temas y bloques con estadísticas detalladas\",\"Seguimiento de progreso y repaso de fallos\"]",
+    "landing_requirements": "[\"Título de Graduado en ESO o equivalente\",\"Nacionalidad española o de Estado miembro de la UE\",\"Tener cumplidos 16 años y no exceder la edad de jubilación forzosa\",\"Poseer la capacidad funcional necesaria para el desempeño de las tareas\",\"No haber sido separado mediante expediente disciplinario de ninguna Administración Pública\"]",
+    "landing_difficulty": "Intermedio",
+    "landing_duration": "6-12 meses",
+    "estado_proceso": "inscripcion_abierta",
+    "oep_decreto": "OEP 2025 (Orden 264/2026, BOCM 18/02/2026)",
+    "oep_fecha": "2026-02-03T23:00:00.000Z",
+    "convocatoria_numero": "Orden 264/2026 de 4 de febrero (BOCM nº 18)",
+    "convocatoria_fecha": "2026-02-17T23:00:00.000Z",
+    "convocatoria_dogv": "BOCM núm. 41, 18/02/2026",
+    "landing_faqs": [
+      {
+        "pregunta": "¿Cuántas plazas hay para Auxiliar Administrativo de la Comunidad de Madrid 2026?",
+        "respuesta": "Se convocan {plazasLibres} plazas de acceso libre y {plazasPromocion} de promoción interna para Auxiliar Administrativo de la Comunidad de Madrid."
+      },
+      {
+        "pregunta": "¿Cuál es el programa oficial de Auxiliar Administrativo Madrid?",
+        "respuesta": "El programa consta de {temasCount} temas en 2 bloques: Bloque I (15 temas) sobre Organización Política y Bloque II (6 temas) sobre Ofimática (Windows, Word, Excel, Access, Outlook, Microsoft 365)."
+      },
+      {
+        "pregunta": "¿Cuándo es el examen de Auxiliar Administrativo de la Comunidad de Madrid?",
+        "respuesta": "El examen está previsto para el {examDate}. {textoInscripcion}"
+      },
+      {
+        "pregunta": "¿Qué requisitos necesito para opositar?",
+        "respuesta": "Nacionalidad española o europea, tener 16 años cumplidos, título de {tituloRequerido} (Grupo C2), y no estar inhabilitado para funciones públicas."
+      }
+    ],
+    "examen_config": {
+      "tipo": "test",
+      "notas": "Ambas partes obligatorias y eliminatorias. Se realizan el mismo día. Parte 1: 65 min. Parte 2: 35 min. Examen previsto octubre 2026.",
+      "partes": [
+        {
+          "nombre": "Parte 1: Psicotécnicos + Temario (Bloque I)",
+          "reserva": 5,
+          "preguntas": 60,
+          "valor_acierto": null,
+          "puntuacion_max": 50,
+          "puntuacion_min": 25
+        },
+        {
+          "nombre": "Parte 2: Ofimática (Bloque II)",
+          "reserva": 5,
+          "preguntas": 30,
+          "valor_acierto": null,
+          "puntuacion_max": 50,
+          "puntuacion_min": 25
+        }
+      ],
+      "penalizacion": "1/3 del valor de cada acierto",
+      "total_preguntas": 90,
+      "duracion_total_minutos": 100
+    },
+    "color_primario": "red",
+    "seo_title": "Auxiliar Administrativo Comunidad de Madrid 2026 | Temario Oficial y Tests",
+    "seo_description": "Oposiciones Auxiliar Administrativo Comunidad de Madrid 2026: 645 plazas, temario oficial 21 temas, 3 bloques. Tests gratuitos con preguntas tipo examen.",
+    "requisitos_especiales": [],
+    "landing_estadisticas": [
+      {
+        "color": "text-red-600",
+        "texto": "Plazas libres",
+        "numero": "{plazasLibres}"
+      },
+      {
+        "color": "text-green-600",
+        "texto": "Temas oficiales",
+        "numero": "{temasCount}"
+      },
+      {
+        "color": "text-blue-600",
+        "texto": "Bloques",
+        "numero": "{bloquesCount}"
+      },
+      {
+        "color": "text-orange-600",
+        "texto": "Titulo requerido",
+        "numero": "ESO"
+      }
+    ],
+    "exam_date_approximate": false,
+    "subgrupo": "C2",
+    "coverage_level": "con_landing",
+    "fetcher_type": "http",
+    "headless_required": false,
+    "demand_score": null,
+    "position_group": null,
+    "forward_verified_at": null,
+    "forward_verified_source": null,
+    "sistema_selectivo": null,
+    "familia": "administracion_general",
+    "timeline_reviewed_at": null
+  },
+  "convocatorias": [
+    {
+      "id": "9d95261b-c128-4330-bd71-c9d356e6b2be",
+      "convocatoria_numero": "Orden 1628/2026",
+      "is_current": true,
+      "plazas_libres": 673,
+      "exam_date": null
+    },
+    {
+      "id": "ad89a106-0781-476f-a9ae-9306e3a7ac44",
+      "convocatoria_numero": "Orden 264/2026",
+      "is_current": false,
+      "plazas_libres": 645,
+      "exam_date": "2026-10-14T22:00:00.000Z"
+    },
+    {
+      "id": "92f4bffc-7219-4db0-b2f4-7d3634070d29",
+      "convocatoria_numero": null,
+      "is_current": false,
+      "plazas_libres": 551,
+      "exam_date": "2026-04-11T22:00:00.000Z"
+    }
+  ]
+}

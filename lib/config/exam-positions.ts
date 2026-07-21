@@ -26,6 +26,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo madrid',
     'auxiliar administrativo comunidad de madrid',
   ],
+  'auxiliar_administrativo_madrid_2027': [
+    'auxiliar_administrativo_madrid_2027',
+    'auxiliar administrativo madrid 2027',
+    'auxiliar administrativo comunidad de madrid junio 2027',
+  ],
   'administrativo_estado': [
     'administrativo',
     'administrativo_estado',
@@ -219,6 +224,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado'],
   'auxiliar-administrativo-madrid': ['auxiliar-administrativo-madrid'],
   'auxiliar_administrativo_madrid': ['auxiliar-administrativo-madrid'],
+  'auxiliar-administrativo-madrid-2027': ['auxiliar-administrativo-madrid'],
+  'auxiliar_administrativo_madrid_2027': ['auxiliar-administrativo-madrid'],
   'auxiliar-administrativo-cyl': ['auxiliar-administrativo-cyl'],
   'auxiliar_administrativo_cyl': ['auxiliar-administrativo-cyl'],
   'administrativo-castilla-leon': ['administrativo-castilla-leon'],
