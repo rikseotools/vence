@@ -1319,3 +1319,32 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   (10 tests). Decidir la convención de nivel mirando qué hacen leyes multinivel ya en `law_sections` (si hay).
 - **Valor:** completa la cobertura de secciones al 100% de las leyes automatizables. Bajo, no urgente: las 249 más
   usadas ya están, y el render ya funciona para ellas.
+
+## Derivadas de feedbacks (21/07/2026)
+
+### 🟡 [MEDIA] Barajar el orden de las opciones cuando se repite una pregunta
+- **Qué:** al repetirse una pregunta (por fallo o por el propio selector), las opciones A/B/C/D salen en el **mismo orden**, así que el usuario acaba memorizando la POSICIÓN de la respuesta correcta en vez del contenido.
+- **Por qué:** feedback `4eeffbc9` (opoauxilar…21junio, premium Estado, 21/07, "tengo memoria fotográfica y contesto por la posición"). Falsea el aprendizaje y el auto-diagnóstico. Relacionado con la queja de repetición de Laura (memoria `project-pending-rotacion-preguntas`) y con el toggle "excluir preguntas recientes" (feature oculta, más arriba).
+- **Cómo:** al renderizar una pregunta ya vista, permutar el orden de las opciones (manteniendo el mapeo con `correct_option`). Cuidado: NO romper las preguntas cuyas opciones son ordinales ("A y B son correctas", "Todas las anteriores") — detectarlas y no barajar esas.
+- **Estado:** apuntado 21/07 (respondido a la usuaria que lo valoramos). Sin implementar.
+
+### ✅ [RESUELTA 21/07] Psicotécnicos en el nav de Auxiliar Administrativo Valencia (GVA C2)
+- **Qué:** `auxiliar_administrativo_valencia` NO tiene `hasPsychometricTest` → el ítem "Psicotécnicos" no sale en su nav. Una usuaria lo echaba en falta (antes le aparecía por el fallback a la flagship cuando su oposición no resolvía).
+- **Decisión:** **NO activar** psicotécnicos en Valencia — es correcto. Verificado contra la convocatoria oficial (DOGV 27/03/2026, Orden 9/2026, cuerpo C2-01): el examen es **un ejercicio único = test de 95 preguntas teóricas** del temario; **NO hay prueba psicotécnica/aptitudinal/de cálculo** (base 7.2). El nav está bien; no hace falta cambio de código.
+- **Cerrado:** feedback `28fa7b90` (angela.upere) respondido 21/07 con la fuente oficial + link.
+
+### 🟢 [ACCIÓN pendiente] Pagar recompensa acumulada de opoauxilar…21junio (8 €)
+- **Qué:** `reward_submissions`: ugc 5 € + bug 3 € **approved, `payout_id` NULL** (sin pagar). Total **8 €** → supera el mínimo pagable de Amazon.es (5 €).
+- **Por qué:** el 21/07 le confirmamos por feedback que "ya tienes saldo suficiente para una tarjeta" → hay que ejecutarlo. Usuaria premium (Murcia) que además nos recomienda activamente.
+- **Cómo:** `docs/runbooks/embajadores-recompensas.md` §2 (comprar gift card Amazon.es en Bitrefill por 5 €, marcar payout; el resto 3 € queda acumulado).
+- **Estado:** apuntado 21/07.
+
+### 🟢 [DEMANDA — valorar] Universidad de Murcia (temario + tests)
+- **Qué:** un grupo de WhatsApp quiere temario/tests de oposiciones de la **Universidad de Murcia** (feedback `c6defd4b`, opoauxilar…21junio, 21/07). Ya existen filas catalogadas: `auxiliar-administrativo-universidad-murcia` (`is_active=false`) y `tecnico-auxiliar-universidad-de-murcia` (con `programa_url` BORM). Valorar demanda antes de construir.
+- **Cómo:** `crear-nueva-oposicion.md`; cruzar con competidores/GSC. Verificar convocatoria viva en um.es/ptgas + BORM.
+- **Estado:** demanda apuntada 21/07.
+
+### 📉 [SEÑAL marketing] Baja inmediata desde Google Ads (campaña 23697376522)
+- **Qué:** una usuaria (Madrid) llegó por un anuncio de Google (utm_campaign `23697376522`, landing `/auxiliar-administrativo-madrid`) y **borró la cuenta a los ~60 s** de registrarse, sin hacer ni un test (RGPD ejecutado 21/07). Queda en `deleted_users_log` (bloque CAPTACIÓN).
+- **Por qué:** registro de pago que no cuaja = posible gasto tirado. Vigilar si esa campaña concentra más bajas tempranas (§8 del runbook `eliminacion-cuentas.md`).
+- **Estado:** 1 caso, anotado 21/07. Revisar en el análisis agregado de bajas.

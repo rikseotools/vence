@@ -303,6 +303,20 @@ El borrador debe incluir:
 - Si está arreglado o pendiente
 - Qué debe hacer el usuario (recargar, esperar, nada)
 
+### Formato y firma (convención de la casa)
+
+El `message` que se envía es **texto plano** (el chat/email respetan los `\n`), así que **redacta con saltos de línea reales**, no en un párrafo-ladrillo:
+- **Saludo** en su propia línea (`¡Hola <Nombre>! 👋`), con el nombre de pila (`user_profiles.full_name`) si lo hay.
+- **Un párrafo corto por idea**, separados por línea en blanco (`\n\n`). Listas con `- ` cuando respondes varios puntos.
+- **Enlaces oficiales en su propia línea** para que se puedan tocar (ej. la convocatoria del DOGV/BOE cuando afirmas algo sobre el examen: da la fuente y que lo verifique el propio usuario).
+- **Cierre + firma** SIEMPRE, con esta forma (dos líneas, precedidas de línea en blanco):
+  ```
+  Un saludo,
+  El equipo de Vence
+  ```
+  Variantes válidas del cierre: «Muchas gracias,» / «Para cualquier asunto estamos a tu disposición.» + la firma `El equipo de Vence`. **Nunca firmar como una persona** ni decir que el contenido lo hace una IA (memoria [[feedback-nunca-decir-ia]]).
+- Incisos entre paréntesis, no con guiones (memoria [[feedback-parentesis-no-guiones]]).
+
 ### 📝 FORMATO OBLIGATORIO del mensaje (plantilla fija — no improvisar)
 
 Todo mensaje al usuario sigue SIEMPRE esta estructura:
