@@ -153,6 +153,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'para cada oposición señalada corre el pipeline verify:scope (dump → 2 agentes epígrafe↔scope → consenso): el detector marca un título de una ley que la oposición usa, con preguntas activas y flanqueado a ambos lados por artículos escopados, pero con 0 artículos suyos en el scope. Decide contra el epígrafe oficial si el hueco es REAL (el epígrafe nombra ese título → añade su rango de artículos al topic_scope del tema que corresponde, reusando las preguntas ya en BD) o LEGÍTIMO (el programa no lo incluye → dejarlo). NUNCA añade un título que el epígrafe no pida ni quita contenido que sí pida.',
   },
+  answer_in_annulled_fragment: {
+    title: 'Pregunta activa cuya clave reproduce un inciso ANULADO por el TC',
+    triggerPhrase: 'revisa los incisos anulados',
+    runbook: 'docs/runbooks/incisos-anulados-tc.md',
+    claudeHace: 'para cada artículo señalado verifica la clave de la pregunta contra la sentencia del TC: el gate (≥60 car. de la clave dentro del inciso anulado) es un CANDIDATO, no un bug confirmado — hay falsos positivos cuando la clave y el inciso comparten la cláusula inicial pero difieren en el fondo. Si la clave reproduce de verdad el texto anulado, corrige (nota de vigencia en el artículo + revisar la pregunta); NUNCA auto-flip de clave.',
+  },
   convocatoria_docs_incompletos: {
     title: 'Provenance de convocatoria incompleta (documento referenciado sin clonar/enlazar)',
     triggerPhrase: 'revisa la provenance de convocatorias',

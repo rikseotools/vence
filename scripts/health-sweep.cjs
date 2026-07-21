@@ -420,6 +420,30 @@ async function main() {
       { count: scopeGaps.length, oposiciones: nOpos, sample: scopeGaps.slice(0, 20) });
   }
 
+  // ── CONTENIDO: incisos ANULADOS por el TC — preguntas activas cuya CLAVE cae en el inciso ──
+  // Gemelo del backend (content-health-sweep.service.ts). Barato (DB-only): reusa el gate de
+  // T-048 answer_falls_in_annulled_fragment sobre vigencia_notes (poblado por el cron T-009).
+  // WARN: el gate (≥60 car.) tiene falsos positivos cuando clave e inciso comparten la cláusula
+  // inicial pero difieren en el fondo → CANDIDATOS a revisión humana, NUNCA auto-flip.
+  const annulledBugs = (await c.query(`
+    SELECT l.short_name AS ley, a.article_number AS art, count(DISTINCT q.id)::int AS preguntas
+    FROM questions q
+    JOIN articles a ON a.id = q.primary_article_id
+    JOIN laws l ON l.id = a.law_id
+    WHERE q.is_active AND a.vigencia_notes IS NOT NULL
+      AND public.answer_falls_in_annulled_fragment(
+        CASE q.correct_option WHEN 0 THEN q.option_a WHEN 1 THEN q.option_b
+          WHEN 2 THEN q.option_c WHEN 3 THEN q.option_d END,
+        a.vigencia_notes) = true
+    GROUP BY l.short_name, a.article_number
+    ORDER BY count(DISTINCT q.id) DESC`)).rows;
+  if (annulledBugs.length) {
+    const total = annulledBugs.reduce((s, r) => s + Number(r.preguntas), 0);
+    add('content', 'warn', null, 'answer_in_annulled_fragment',
+      `${total} pregunta(s) activa(s) cuya clave reproduce (≥60 car.) un inciso ANULADO por el TC en ${annulledBugs.length} artículo(s) — CANDIDATO: verificar la clave contra la sentencia (puede ser falso positivo si solo comparten la cláusula inicial; NUNCA auto-flip)`,
+      { total, articulos: annulledBugs.length, sample: annulledBugs.slice(0, 20) });
+  }
+
   // ── CONTENIDO: PROVENANCE de documentos de convocatoria (referenciado sin clonar/enlazar) ──
   // Lee la VISTA convocatoria_docs_coverage (migración 20260721). Un hito cita un
   // BOE/boletín (url + cita_literal) pero ese documento no está clonado en
