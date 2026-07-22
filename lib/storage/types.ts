@@ -35,6 +35,16 @@ export interface DeleteInput {
   paths: string[]
 }
 
+export interface DownloadInput {
+  bucket: string
+  path: string
+}
+
+/** `notFound` distingue "la clave no existe" (miss normal de caché) de un error real. */
+export type DownloadResult =
+  | { success: true; data: Buffer; contentType?: string }
+  | (StorageErr & { notFound?: boolean })
+
 export interface StorageAdapter {
   /** Provider name — útil para logs y métricas. */
   readonly provider: 's3' | 'supabase'
@@ -47,4 +57,8 @@ export interface StorageAdapter {
 
   /** Resuelve la URL pública para un objeto (no comprueba existencia). */
   getPublicUrl(bucket: string, path: string): string
+
+  /** Descarga un objeto (para servir/verificar). Opcional: no todos los providers lo
+   *  implementan; el caller comprueba `typeof adapter.download === 'function'`. */
+  download?(input: DownloadInput): Promise<DownloadResult>
 }

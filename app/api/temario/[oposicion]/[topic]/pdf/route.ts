@@ -19,6 +19,9 @@ import React from 'react'
 import { getTopicContent, getLawSectionNames } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel, pdfFileName, countContentChars, maxArticleChars, fitsSyncPdf, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS } from '@/lib/temario/pdf/topicPdfModel'
+import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/temario/pdf/pdfCache'
+import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
@@ -69,42 +72,71 @@ async function handler(
     return NextResponse.json({ error: 'Tema no encontrado' }, { status: 404 })
   }
 
-  // Guardarraíl de tamaño: los "artículos-cajón" (T-040) meten una app entera en un solo
-  // artículo y el render no baja de minutos → timeout garantizado. Mejor decirlo claro y
-  // que el cliente degrade a la impresión del navegador (lo que había antes).
-  // DOS techos: total (PDF_MAX_CHARS) Y por-artículo (PDF_MAX_ARTICLE_CHARS). El total no
-  // basta: un tema bajo el total puede tener un cajón único que 504ea igual (caso Julen,
-  // T19 = 334k total pero un artículo de 89k). El por-artículo convierte ese 504 duro en un
-  // 413 gracioso → el cliente cae a imprimir.
   const chars = countContentChars(content)
   const maxArt = maxArticleChars(content)
+  const contentHash = topicPdfContentHash(content)
+  const cacheKey = topicPdfCacheKey(oposicion, topicNumber, contentHash)
+  const fileName = pdfFileName(oposicion, topicNumber)
+  const storage = new S3StorageAdapter()
+
+  const emitServed = (source: 's3' | 'generated' | 'too_large', bytes: number) =>
+    emitFireAndForget({
+      source: 'fargate', severity: 'info', eventType: 'temario_pdf_served',
+      endpoint: '/api/temario/[oposicion]/[topic]/pdf',
+      metadata: { oposicion, tema: topicNumber, served: source, chars, maxArticleChars: maxArt, bytes, hash: contentHash },
+    })
+
+  const pdfResponse = (bytes: Uint8Array, source: 's3' | 'generated') => {
+    emitServed(source, bytes.length)
+    return new NextResponse(bytes, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        // `attachment` = descarga de verdad en iOS y navegadores in-app (no un visor inexistente).
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Length': String(bytes.length),
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        'X-Pdf-Source': source, // observabilidad/debug: de dónde salió el PDF
+      },
+    })
+  }
+
+  // 1) CACHÉ S3 (content-addressed, ver pdfCache.ts): si existe el PDF pre-generado de ESTE
+  //    contenido exacto, servirlo → instantáneo y SIN el límite de 60s del ALB. Esto es lo
+  //    que hace descargables los temas GRANDES (Access/ofimática): se generan offline y se
+  //    sirven de aquí. Un fallo de S3 NO rompe nada: cae al camino síncrono de abajo.
+  const cached = await storage.download({ bucket: TOPIC_PDF_BUCKET, path: cacheKey }).catch(() => null)
+  if (cached && cached.success) {
+    return pdfResponse(new Uint8Array(cached.data), 's3')
+  }
+
+  // 2) MISS de caché → guardarraíl de tamaño. Un tema que no cabe síncrono Y no está
+  //    pre-generado → 413 (el cliente cae a imprimir). DOS techos: total (PDF_MAX_CHARS) Y
+  //    por-artículo (PDF_MAX_ARTICLE_CHARS) — el total no basta (caso Julen, T19 = 334k total
+  //    pero un artículo-cajón de 89k que 504ea; el por-artículo lo reconvierte a 413 gracioso).
+  //    Los temas grandes SE ARREGLAN pre-generándolos offline (pueblan la caché de arriba).
   if (!fitsSyncPdf(chars, maxArt)) {
+    emitServed('too_large', 0)
     return NextResponse.json(
       { error: 'tema_demasiado_grande', chars, maxChars: PDF_MAX_CHARS, maxArticleChars: maxArt, maxArticle: PDF_MAX_ARTICLE_CHARS },
       { status: 413 }
     )
   }
 
-  // Nombres de Título/Capítulo (law_sections) para las cabeceras de estructura del PDF.
+  // 3) Generar síncrono + POBLAR la caché S3 para la próxima (best-effort: si S3 falla, se
+  //    sirve igual el PDF recién hecho; nunca bloquea al usuario).
   const lawIds = (content.laws || []).map(l => l.law.id).filter(Boolean)
   const sectionNames = await getLawSectionNames(lawIds)
   const model = buildTopicPdfModel(content, new Date(), sectionNames)
   const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
   const buffer = await renderToBuffer(doc)
-  const fileName = pdfFileName(oposicion, topicNumber)
+  void storage.upload({
+    bucket: TOPIC_PDF_BUCKET, path: cacheKey, data: buffer, contentType: 'application/pdf',
+    // Immutable: la clave es content-addressed, así que este objeto nunca cambia.
+    cacheControl: 'public, max-age=31536000, immutable',
+  }).catch(() => {})
 
-  return new NextResponse(new Uint8Array(buffer), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/pdf',
-      // `attachment` es lo que hace que descargue de verdad en iOS y en navegadores
-      // in-app, en vez de intentar abrir un visor que allí no existe.
-      'Content-Disposition': `attachment; filename="${fileName}"`,
-      'Content-Length': String(buffer.length),
-      // El articulado cambia poco; una hora de cache alivia el render sin servir texto viejo.
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-    },
-  })
+  return pdfResponse(new Uint8Array(buffer), 'generated')
 }
 
 export const GET = withErrorLogging('/api/temario/[oposicion]/[topic]/pdf', handler as never)

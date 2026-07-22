@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectsCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3'
 import type {
   StorageAdapter,
@@ -9,6 +10,8 @@ import type {
   UploadResult,
   DeleteInput,
   DeleteResult,
+  DownloadInput,
+  DownloadResult,
 } from './types'
 
 // Mapeo bucket-lógico → prefijo S3 dentro del bucket único `vence-uploads`.
@@ -115,5 +118,35 @@ export class S3StorageAdapter implements StorageAdapter {
   getPublicUrl(logicalBucket: string, path: string): string {
     const { bucket, key } = resolveS3Bucket(logicalBucket)
     return publicUrlFor(bucket, key(path))
+  }
+
+  async download(input: DownloadInput): Promise<DownloadResult> {
+    const { bucket, key } = resolveS3Bucket(input.bucket)
+    const fullKey = key(input.path)
+    const client = getS3Client()
+
+    try {
+      const res = await client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: fullKey }),
+      )
+      // El Body es un stream (Node) → lo materializamos a Buffer. transformToByteArray
+      // es la API estable del SDK v3 para esto (server-side).
+      const bytes = await res.Body?.transformToByteArray()
+      if (!bytes) return { success: false, error: 'empty body' }
+      return {
+        success: true,
+        data: Buffer.from(bytes),
+        contentType: res.ContentType,
+      }
+    } catch (err) {
+      const name = (err as { name?: string })?.name
+      // NoSuchKey / NotFound = miss NORMAL de caché, no un error de infra.
+      const notFound = name === 'NoSuchKey' || name === 'NotFound'
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'S3 download failed',
+        notFound,
+      }
+    }
   }
 }
