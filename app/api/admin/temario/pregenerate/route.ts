@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { pregenerateTopicPdf } from '@/lib/temario/pdf/pregenerate'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -79,4 +80,4 @@ async function handler(req: NextRequest) {
   )
 }
 
-export const POST = handler
+export const POST = withErrorLogging('/api/admin/temario/pregenerate', handler as never)

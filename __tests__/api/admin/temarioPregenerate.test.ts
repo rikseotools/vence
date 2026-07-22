@@ -14,6 +14,9 @@
 // Mockeamos pregenerate → el test NO arrastra @react-pdf ni pega a S3; verifica el CABLEADO
 // del endpoint (auth, validación, fan-out en background, observabilidad), no el render.
 
+// withErrorLogging → passthrough, para invocar el handler crudo.
+jest.mock('@/lib/api/withErrorLogging', () => ({ withErrorLogging: (_p: string, h: unknown) => h }))
+
 // requireAdmin controlable por test.
 let mockAdminOk = true
 jest.mock('@/lib/api/shared/auth', () => ({
