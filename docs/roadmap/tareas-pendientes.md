@@ -225,6 +225,15 @@
 
 ## Abiertas
 
+### 🟢 [ABIERTO 22/07] Saturación de temas flojos por demanda — huecos de contenido CERRADOS; quedan cabos de scope/estructura
+- **Qué (hecho 22/07):** barrido de saturación priorizado por **usuarios reales** (`user_profiles.target_oposicion`). **~1.100 preguntas nuevas** generadas (redacción delegada a subagentes en paralelo + insertador con balance/distribución/dedup nivel-3 + **doble auditoría ciega Sonnet = 100% PERFECTO**) en Valencia/Canarias/CyL/GVA/UNED/Asturias/Cantabria/CLM/CARM/Madrid + SMS. Verificado con clasificador: **CERO huecos reales de contenido (≥3 arts vacíos con texto) en TODA oposición con ≥25 usuarios.** Método + detalle por oposición: memoria `project-saturacion-temas-flojos-demanda`.
+- **Cabos sueltos (NO son huecos de contenido, otra naturaleza — para sesiones nuevas):**
+  1. **Estructural / techo §2.6 (NO generar):** SMS T12, GVA T123, UNED T18/T19, CARM T24 quedan <25 preg porque tienen **pocos artículos escopados**; forzarlos a 25 sería redundancia §2.6. Dejar.
+  2. **Revisión de scope (no contenido):** UNED T18/T19 — la materia "precios públicos/exenciones" es **norma externa** a los Estatutos (decreto de precios públicos de la CA), NO están infra-escopados en los Estatutos (verificado). Si se quiere darles cuerpo, importar esa norma externa.
+  3. **RE-CLASIFICAR oposiciones con <25 usuarios:** el clasificador de huecos tenía un **BUG** (`activas≤2 → phantom`) que ocultó huecos ENORMES reales (CARM T16/T26, Madrid T33, **Canarias T28 = 82 arts vacíos**) — ya corregidos en los ≥25u. **Conviene re-correr el clasificador CORREGIDO (clasificar hueco por `realVac≥3` directamente, SIN mirar nº de activas) sobre las oposiciones con <25 usuarios**, por si el mismo bug oculta más huecos ahí.
+- **Herramientas dejadas (en la memoria):** clasificador de huecos corregido + `/tmp/autobalance.cjs` (alarga el distractor más corto con coletillas jurídicas plausibles hasta cumplir el balance). **GOTCHA registrado:** nunca hacer swap de opciones A↔D para reequilibrar la posición del correcto si la explicación referencia letras en prosa ("opción C", "**A**, **B** y **D**") → rompe la explicación; mejor aceptar la distribución o regenerar la pregunta.
+- **Cómo:** manual `docs/maintenance/generar-preguntas-con-ia.md` + runbook `docs/runbooks/verificar-epigrafes-scope.md`; memoria `project-saturacion-temas-flojos-demanda`.
+
 ### [T-085] 🟡 [ABIERTA 22/07] Trocear los "artículos-cajón" de ofimática (calidad de lectura) — Access 365 y similares
 **Qué:** varios temas de ofimática modelan un manual entero (Access, Excel, Word…) en pocos artículos gigantes ("artículos-cajón", ver T-040). Ej. medido 22/07: la ley virtual **"Access 365"** (`law_id b403019a-bdf7-4795-886e-1d26f139602d`) tiene arts de **89 KB (art 1 "Fundamentos"), 74 KB (art 4), 69 KB (art 2)** — cada uno con ~136 headings `##`. Trocearlos por sus secciones `##` en artículos más pequeños mejora la **lectura/estudio** (y de paso el render del PDF, aunque eso ya lo tapa el guardarraíl por-artículo de `f91c644f7` + la futura pre-generación).
 
