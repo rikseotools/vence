@@ -80,13 +80,39 @@ export function classifyShuffleMode(opts: QuestionOptions): ShuffleMode {
  * letra-anclado espera a la Fase 2 = explicaciones estructuradas sin letras).
  */
 export function explanationReferencesLetters(explanation?: string | null): boolean {
-  return (
-    !!explanation &&
-    /\b[ABCDE]\)|opci[óo]n(?:es)?\s+[ABCDE]\b|apartado\s+[ABCDE]\b|letra\s+[ABCDE]\b|respuesta\s+[ABCDE]\b/i.test(
-      explanation,
-    )
-  );
+  if (!explanation) return false;
+  // Normalizar formato ANTES de detectar: las explicaciones usan markdown y las
+  // referencias a opción suelen ir en negrita ("es la **B**", "opción **C**"), lo
+  // que rompía la adyacencia de los patrones → falso negativo = explicación rota.
+  // Quitamos énfasis/formato (* _ ` ~) y comillas/asteriscos y colapsamos espacios.
+  const norm = explanation.replace(/[*_`~]+/g, '').replace(/\s+/g, ' ');
+  return EXPLANATION_LETTER_PATTERNS.some((r) => r.test(norm));
 }
+
+// Referencias a una opción por LETRA o por POSICIÓN/ORDINAL en la explicación. Si
+// alguna dispara, barajar rompería la explicación → NO elegible (espera Fase 2).
+// Sesgo idéntico al clasificador: 0 falsos negativos es SAGRADO (un FN = explicación
+// rota visible); un falso positivo es INOCUO (esa pregunta no se baraja). Por eso los
+// patrones son generosos. Clases medidas sobre 77k preguntas elegibles reales (22/07):
+// "es la B", ordinales "la cuarta opción", "opción número N", "B es correcta",
+// "correcta es la B" escapaban al patrón v1 → falsos negativos = explicación rota.
+const EXPLANATION_LETTER_PATTERNS: RegExp[] = [
+  /\b[ABCDE]\)/, // "B)" (con paréntesis)
+  /\bopci[óo]n(?:es)?\s+[ABCDE]\b/i, // "opción C"
+  /\bapartado\s+[ABCDE]\b/i, // "apartado A"
+  /\bletra\s+[ABCDE]\b/i, // "letra B"
+  /\brespuesta\s+[ABCDE]\b/i, // "respuesta D"
+  /\b(?:es|son)\s+(?:la|las)\s+[ABCDE]\b/i, // "es la B", "son las A"
+  /\b(?:correct[ao]|incorrect[ao]|cierta|falsa|verdadera|err[óo]nea)\s+(?:es\s+)?(?:la\s+)?[ABCDE]\b/i, // "correcta es la B"
+  /\b[ABCDE]\s+(?:es|son|ser[íi]a)\s+(?:la\s+)?(?:correct|incorrect|ciert|fals|verdader|err[óo]ne)/i, // "B es correcta"
+  /\b[ABCDE]\s*(?:y|,|e)\s*(?:la\s+)?[ABCDE]\s+son\s+(?:correct|incorrect|ciert|fals|verdader)/i, // "A y B son correctas"
+  /\b(?:primera|segunda|tercera|cuarta|quinta|[úu]ltima)\s+(?:opci[óo]n|respuesta|alternativa|afirmaci[óo]n|proposici[óo]n|premisa|sentencia|frase)\b/i, // ordinal + opción/respuesta
+  /\bla\s+(?:primera|segunda|tercera|cuarta|quinta|[úu]ltima)\s+(?:es|ser[íi]a|no\s+es)\s+(?:la\s+)?(?:correct|incorrect|ciert|fals|verdader|err[óo]ne|v[áa]lid|nul)/i, // "la primera es falsa"
+  /\b(?:opci[óo]n|respuesta)(?:es)?\s+n[uú]mero\s+\d/i, // "opción número 4"
+  /\b(?:opciones|respuestas)\s+\d\b/i, // "opciones 1..." (numeradas)
+  /\b\d\s*(?:,|y|e)\s*\d\b[^.]{0,30}(?:correct|incorrect|ciert|fals|verdader|v[áa]lid)/i, // "1, 2 y 4 (no pueden ser) correctas"
+  /\b(?:la|las)\s+(?:dos|tres|cuatro)\s+(?:primeras|[úu]ltimas)\s+(?:opci|respuesta|alternativa|afirmaci)/i, // "las dos primeras opciones"
+];
 
 /**
  * Predicado de elegibilidad de la Fase 1: barajable ⇔ full ∧ explicación sin letras.

@@ -116,13 +116,31 @@ describe('explanationReferencesLetters', () => {
     'La opción C es incorrecta porque...',
     'El apartado A recoge...',
     'La respuesta D no aparece en el artículo.',
-  ])('detecta referencia a letra: %s', (e) => {
+    // Clases de FALSO NEGATIVO medidas sobre 77k elegibles reales (22/07) que el
+    // patrón v1 dejaba escapar → romperían la explicación al barajar:
+    'La respuesta correcta es la B: informar al Jefe de Servicios.', // "es la B"
+    'Todas las opciones son correctas excepto la cuarta opción.', // ordinal
+    'La tercera opción de respuesta es incorrecta debido a que...', // ordinal
+    'La opción número 4 es la incorrecta porque la evaluación...', // "opción número N"
+    'La B es correcta porque el artículo lo dice.', // "B es correcta"
+    'La afirmación correcta es la C.', // "correcta es la C"
+    'La segunda afirmación no se ajusta al precepto.', // ordinal afirmación
+    'La respuesta correcta es la **B**: Mensaje, Destino y Fuente.', // letra en NEGRITA markdown
+    'La opción **C** es la válida según el esquema.', // opción **C** (bold)
+    'Las opciones de respuesta 1, 2 y 4 no pueden ser correctas.', // numeradas
+    'La primera es falsa porque el origen no es vascular.', // ordinal + es falsa (sin sustantivo)
+  ])('detecta referencia a letra/posición: %s', (e) => {
     expect(explanationReferencesLetters(e)).toBe(true)
   })
 
   it.each([
     'El artículo establece que el plazo es de quince días.',
     'La comunicación previa a la autoridad es obligatoria.',
+    // Prosa que NO debe considerarse referencia a opción (letras dentro de palabras,
+    // preposiciones): un falso positivo aquí solo perdería barajado, pero cuidamos
+    // no excluir de más innecesariamente en casos obvios.
+    'El plan de cuidados documenta la situación del paciente.',
+    'La Administración debe resolver de forma expresa.',
     '',
     null,
     undefined,
