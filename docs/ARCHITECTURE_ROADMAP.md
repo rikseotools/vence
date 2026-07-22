@@ -1862,14 +1862,16 @@ Enfoque: **ports & adapters** (arquitectura hexagonal) + **12-factor** (config 1
 | Capacidad | Cómo se mantiene agnóstico | Proveedor = config |
 |---|---|---|
 | **Base de datos** | Postgres + SQL estándar vía Drizzle. SIN RLS como única autz, SIN PostgREST, SIN SQL específico de Supabase | Supabase / Neon / RDS / Hetzner / cualquier Postgres |
-| **Compute backend** | Contenedor **Docker** 12-factor, sin primitivas propietarias | ECS / Fly / Railway / Render / Hetzner / bare metal |
-| **Frontend** | Next.js self-hostable (`next start` en Docker). Evitar features solo-Vercel: Vercel KV, Vercel Cron, headers `x-vercel-ip-*` | Vercel / contenedor propio |
+| **Compute backend** | Contenedor **Docker** 12-factor, sin primitivas propietarias | ECS / Fly / Railway / Render / **Koigrid** / Hetzner / bare metal |
+| **Frontend** | Next.js self-hostable (`next start` en Docker). Evitar features solo-Vercel: Vercel KV, Vercel Cron, headers `x-vercel-ip-*` | Vercel / contenedor propio / **Koigrid** |
 | **Auth** | Wrapper `verifyAuth` — único sitio que conoce el proveedor | Supabase Auth / Auth.js / Clerk / Cognito |
 | **Caché / colas** | Protocolo Redis estándar + BullMQ. ⚠️ **Hoy incumplido** — `lib/cache/redis.ts` usa `@upstash/redis` (REST propietaria); ver «Caso concreto — la caché» abajo | Upstash / Redis gestionado / Redis propio |
 | **Object storage** | API **S3-compatible** con endpoint configurable | S3 / R2 / MinIO / Supabase Storage |
 | **Email** | SMTP o interfaz fina de envío | Resend / SendGrid / SES / SMTP |
 | **Scheduler** | Scheduler in-app del backend (no Vercel Cron / GHA como fuente de verdad) | — |
 | **Observabilidad** | OpenTelemetry (traces/métricas neutrales) + Sentry | cualquier backend OTLP |
+
+> 📘 **Destino concreto del eje hosting/compute — [`roadmap/migracion-koigrid.md`](roadmap/migracion-koigrid.md)** (manual de migración AWS ECS/RDS → **Koigrid**, PaaS tarifa plana EU). Es el *vehículo* de esta portabilidad: mover frontend + BD + redis a un solo proveedor de coste plano (~$89/mes vs ~$800-1200 AWS) y ops simple (`git push` → deploy, sin ALB/task-def/Terraform), **gated por load-test GO/NO-GO** antes de cualquier cutover. Disparado por los incidentes de capacidad 21-22/07 (la complejidad ECS es la superficie de los bugs). Honestidad: Koigrid NO arregla el burst-lag por magia (su autoscale es reactivo igual que ECS) — gana por coste + simplicidad, no por escalado mágico.
 
 **Dónde NO pasarse:** agnóstico **vía estándares** (protocolo Postgres, API S3, Redis, SMTP, Docker) cuesta ~0 y se hace siempre. Agnóstico **vía capas de abstracción pesadas "por si acaso"** es sobre-ingeniería — y por tanto deuda técnica. El objetivo es **portable** (migrar a otro proveedor en días/semanas, limpio) — NO *swap en caliente con un flag*. Regla práctica: un archivo adapter por dependencia externa, cero features propietarias, y la migración se prueba (al menos una vez) levantando el stack contra un proveedor alternativo.
 
