@@ -225,6 +225,12 @@
 
 ## Abiertas
 
+### 🔴 [ABIERTO 22-23/07] Migración a Koigrid — frontend bloqueado por memoria del runner de build (BD ya migrada)
+- **Qué / dónde estamos:** migración RDS/ECS → **Koigrid** (PaaS tarifa plana EU). **BD YA migrada y validada 1:1** (DB `vence-mig2`, ~27GB, esquema+datos+índices+FKs, row-counts cuadran). **Frontend NO desplegado** — bloqueado por **UN solo muro: el runner de build de Koigrid OOM-killea `next build`** (SIGKILL ~2min compilando 4.468 páginas SSG; confirmado en local `podman build --no-cache --memory=3g`→SIGKILL; necesita >3GB, su runner es menor).
+- **Ya resuelto:** Snag H (DB en build) lo arregló Koigrid vía reference vars `${{db.vence-mig2.DATABASE_URL}}`; guard Turnstile pasa con clobber-fix del Dockerfile; imagen local construye bien (push falla 413 por capa prerender 2,58GB).
+- **2 caminos:** (A) esperar release Koigrid que suba memoria del runner → re-testear → completa solo; (B) Vence-side: capar `generateStaticParams` → build ligero → cabe ya. Usuario prefería (A).
+- **Cómo retomar:** memoria `reference_koigrid_evaluacion_fase_d` §RESUME (artefactos `/home/manuel/.cache/koigrid-mig/` + worktree `/home/manuel/.cache/vence-clean`). Detalle: `docs/roadmap/migracion-koigrid.md`. **Journey para Koigrid:** `docs/roadmap/koigrid-migration-journey.md`. **PROD INTACTA en AWS** (solo pg_dump). Estado: BD ✅ · frontend ⛔ (1 número: memoria runner build) · journey ✅.
+
 ### 🟢 [ABIERTO 22/07] Saturación de temas flojos por demanda — huecos de contenido CERRADOS; quedan cabos de scope/estructura
 - **Qué (hecho 22/07):** barrido de saturación priorizado por **usuarios reales** (`user_profiles.target_oposicion`). **~1.100 preguntas nuevas** generadas (redacción delegada a subagentes en paralelo + insertador con balance/distribución/dedup nivel-3 + **doble auditoría ciega Sonnet = 100% PERFECTO**) en Valencia/Canarias/CyL/GVA/UNED/Asturias/Cantabria/CLM/CARM/Madrid + SMS. Verificado con clasificador: **CERO huecos reales de contenido (≥3 arts vacíos con texto) en TODA oposición con ≥25 usuarios.** Método + detalle por oposición: memoria `project-saturacion-temas-flojos-demanda`.
 - **Cabos sueltos (NO son huecos de contenido, otra naturaleza — para sesiones nuevas):**
