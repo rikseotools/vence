@@ -586,6 +586,23 @@ async function main() {
       { count: real.length, laws: leyesReal.length, inexistentes: inex, desactivados: desact, virtual_ofimatica: virt.length, sample: real.slice(0, 25).map(p => ({ ley: p.ley, art: p.art, causa: p.causa })) });
   }
 
+  // ── Drift del barajado de opciones (verificación robusta) ──
+  // Delega en el script tsx que usa el detector REAL (sin copiar la lógica aquí): caza
+  // preguntas shuffle_safety='safe' cuya explicación cita letras/posición (regresión/miss)
+  // o cuyo hash no casa (trigger no invalidó). Subproceso porque el detector es TS.
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('npx tsx scripts/sweep-shuffle-safety-drift.ts --json', {
+      cwd: process.cwd(), encoding: 'utf8', env: process.env, timeout: 120000, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const drift = JSON.parse(out.trim().match(/\{[\s\S]*\}$/)[0]);
+    if (drift.regressions > 0 || drift.hash_mismatch > 0) {
+      add('content', 'warn', null, 'shuffle_safe_regressed',
+        `${drift.regressions} pregunta(s) 'safe' cuya explicación cita letras/posición${drift.hash_mismatch ? ` + ${drift.hash_mismatch} con hash desincronizado (trigger)` : ''} — barajarlas rompería la explicación`,
+        { regressions: drift.regressions, hash_mismatch: drift.hash_mismatch, sample: drift.sample });
+    }
+  } catch (e) { console.warn('⚠️ drift barajado no evaluado:', String(e.message || e).slice(0, 120)); }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

@@ -177,6 +177,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/provenance-convocatorias.md',
     claudeHace: 'para cada oposición señalada lee la vista convocatoria_docs_coverage: primero enlaza lo ya clonado sin fetch (scripts/backfill-hito-source-documento.cjs --apply), luego clona los documentos referenciados que falten desde su URL oficial (backend/scripts/clonar-documento.ts, con content_hash + snapshot, tipo real no "nota") y enlaza source_documento_id, y resuelve las citas sin fuente. NUNCA clona sin verificar la URL oficial ni fabrica cita/hash; si la URL da 403/está caída deja el hueco anotado. Los hitos huérfanos (convocatoria_id NULL) se asignan primero a su convocatoria mirando la fecha del hito.',
   },
+  shuffle_safe_regressed: {
+    title: "Barajado: pregunta 'safe' cuya explicación cita letras/posición (regresión)",
+    triggerPhrase: 'revisa el barajado',
+    runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
+    claudeHace: 'para cada pregunta señalada (shuffle_safety=safe cuya explicación referencia una opción por letra/número/posición) confirma que barajar rompería la explicación y bájala a unsafe vía record_shuffle_safety, o reescribe la explicación a formato sin letras (Fase 2) si procede. Si el finding reporta hash desincronizado, re-verifica (el trigger debería haberla puesto stale). Es un miss del detector/auditoría LLM o una edición no invalidada. NUNCA dejar barajable una explicación letra-anclada ni auto-editar la explicación sin verificar la clave.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */

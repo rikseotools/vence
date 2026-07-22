@@ -13,7 +13,7 @@
 //   DATABASE_URL=... OPENROUTER_API_KEY=... NODE_TLS_REJECT_UNAUTHORIZED=0 \
 //     npx tsx scripts/audit-shuffle-safety-llm.ts [--sample N] [--apply] [--concurrency K]
 //   Sin --apply = DRY (mide, no escribe). --sample N = solo N aleatorias (para medir).
-import { Client } from 'pg'
+import { Pool } from 'pg'
 
 const APPLY = process.argv.includes('--apply')
 const SAMPLE = Number((process.argv.find((a) => a.startsWith('--sample=')) || '').split('=')[1] || 0)
@@ -151,11 +151,34 @@ async function classify(q: Q): Promise<{
 }
 
 async function main() {
-  const c = new Client({
+  // Pool (no Client): un job de horas contra RDS pierde conexiones ociosas; el Pool
+  // reconecta por query. Manejador de 'error' para que un blip NO crashee el proceso.
+  const pool = new Pool({
     connectionString: process.env.DATABASE_URL!.replace(/[?&]sslmode=require/, ''),
     ssl: { rejectUnauthorized: false },
+    max: Math.min(CONCURRENCY + 2, 12),
+    idleTimeoutMillis: 30000,
   })
-  await c.connect()
+  pool.on('error', (e) => console.warn('⚠️ pool error (ignorado, reconecta):', e.message))
+  // Query con reintento ante caída de conexión (idempotente: SELECT y record_shuffle_safety).
+  const c = {
+    query: async (text: string, params?: unknown[]) => {
+      for (let a = 0; a < 5; a++) {
+        try {
+          return await pool.query(text, params)
+        } catch (e: any) {
+          const msg = String(e?.message || e)
+          if (/terminat|ECONNRESET|Connection|timeout|ETIMEDOUT|socket/i.test(msg) && a < 4) {
+            await sleep(1000 * (a + 1))
+            continue
+          }
+          throw e
+        }
+      }
+      throw new Error('unreachable')
+    },
+    end: () => pool.end(),
+  }
 
   // Candidatas: safe con explicación, con smell, aún no auditadas por esta versión.
   const order = SAMPLE ? 'ORDER BY random()' : ''
