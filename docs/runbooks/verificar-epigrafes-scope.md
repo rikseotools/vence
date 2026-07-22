@@ -299,6 +299,28 @@ a las 18:34; una usuaria lo cazó a las 18:38.
    epígrafe** a su título/capítulo, y **LISTA los títulos con preguntas escopadas que el epígrafe NO
    nombra**. Es el paso que le faltó a `verify:scope`.
 
+### Batch Stage-2 durable e incremental
+
+Para adjudicar la banda MEDIUM en bloque (recall alto, ~35% precisión → no pinga el badge sola) sin
+re-adjudicar lo ya visto:
+
+```bash
+node scripts/scope-over-inclusion.cjs --suspects --only-new > /tmp/sus.json   # solo lo nuevo/cambiado
+# Workflow: pasa /tmp/sus.json como args a  .claude/workflows/adjudicar-sobre-inclusion.js
+#   (fan-out adjudicador BOE + verificación ADVERSARIAL de cada over_inclusion)
+node scripts/scope-over-inclusion.cjs --record /tmp/adj_result.json           # upsert + observable_event
+```
+
+- **Persistencia**: tabla `scope_over_inclusion_adjudications` (`(topic_id, law_id)` único), veredicto
+  `over_inclusion|ok|unverifiable` + `content_hash` = md5(epígrafe+scope). `--suspects --only-new`
+  excluye lo adjudicado cuyo hash no cambió (patrón `topic_scope_orphan_triage`) → **incremental**.
+- **Observabilidad**: `--record` emite `observable_event` (`event_type='scope_adjudication_recorded'`)
+  con `{registradas, over_inclusion, ok, unverifiable, verificados, cola_recorte_confirmada}`. La cola
+  accionable = `WHERE verdict='over_inclusion' AND verificado`.
+- **Robusto**: cada `over_inclusion` pasa un 2º agente que intenta **refutarla**; solo `verificado=true`
+  entra en la cola de recorte. **NUNCA** se auto-recorta: el recorte de `article_numbers` lo confirma
+  un humano (borrador + OK).
+
 **Remediar:** si el epígrafe acota de verdad (deja títulos fuera) → recortar `article_numbers` a lo
 que pide el epígrafe (las preguntas fuera quedan en BD, dejan de servirse en ese tema, pueden servir
 a otras oposiciones). Si el epígrafe abarca genuinamente toda la ley → falso positivo, dejar.

@@ -266,11 +266,99 @@ async function runScan(asJson) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  if (args.includes('--simulate')) runSimulation();
-  else if (args.includes('--scan')) runScan(args.includes('--json')).catch(e => { console.error(e.message); process.exit(1); });
-  else { console.log('Uso: --simulate | --scan [--json]'); process.exit(1); }
+// STAGE-2: cola de adjudicación (input del workflow) + persistencia incremental
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Hash del contenido que decide si hay que RE-adjudicar: si el epígrafe o el set de
+// artículos escopados cambia, el hash cambia → el veredicto guardado queda obsoleto.
+function contentHash(epigrafe, scopedNumericSorted) {
+  return require('crypto').createHash('md5')
+    .update((epigrafe || '') + '' + scopedNumericSorted.join(','))
+    .digest('hex');
 }
 
-module.exports = { classifyScope, parseEpigrafe, romanToInt };
+// --suspects [--only-new]: emite el INPUT del workflow adjudicar-sobre-inclusion.
+// Con --only-new excluye los ya adjudicados cuyo content_hash coincide (nada cambió).
+async function runSuspects(onlyNew) {
+  require('dotenv').config({ path: '.env.local' });
+  const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
+  const rows = await sql`
+    SELECT t.id topic_id, l.id law_id, t.position_type, t.topic_number, t.title, t.epigrafe,
+           l.short_name, l.name ley_nombre, l.boe_url, ts.article_numbers,
+           (SELECT count(*) FROM articles a WHERE a.law_id=ts.law_id AND a.article_number ~ '^[0-9]+$') law_total,
+           adj.content_hash adj_hash
+    FROM topic_scope ts
+    JOIN topics t ON t.id=ts.topic_id
+    JOIN laws l ON l.id=ts.law_id
+    LEFT JOIN scope_over_inclusion_adjudications adj ON adj.topic_id=t.id AND adj.law_id=l.id
+    WHERE t.is_active=true`;
+  const out = [];
+  for (const r of rows) {
+    const ni = (r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).map(Number).sort((a, b) => a - b);
+    const c = classifyScope({ lawTotal: Number(r.law_total), scopedCount: ni.length, epigrafe: r.epigrafe });
+    if (!c.suspect) continue;
+    const hash = contentHash(r.epigrafe, ni);
+    if (onlyNew && r.adj_hash === hash) continue; // ya adjudicado y sin cambios
+    out.push({
+      topic_id: r.topic_id, law_id: r.law_id, position_type: r.position_type, topic_number: r.topic_number,
+      title: r.title, epigrafe: r.epigrafe, law: r.short_name, ley_nombre: r.ley_nombre, boe_url: r.boe_url,
+      scoped_range: ni.length ? `${ni[0]}-${ni[ni.length - 1]}` : '', scoped_count: ni.length,
+      law_total: Number(r.law_total), band: c.band, reasons: c.reasons, content_hash: hash,
+    });
+  }
+  await sql.end();
+  out.sort((a, b) => (a.band === b.band ? 0 : a.band === 'HIGH' ? -1 : 1));
+  console.log(JSON.stringify(out, null, 1));
+}
+
+// --record <fichero.json>: upsert de los veredictos del workflow + observable_event.
+// Formato esperado por fila: {topic_id, law_id, content_hash, band, verdict,
+//   titulos_excluidos?, arts_correctos?, razon?, verificado?}
+async function runRecord(jsonPath) {
+  require('dotenv').config({ path: '.env.local' });
+  const rows = JSON.parse(require('fs').readFileSync(jsonPath, 'utf8'));
+  const items = Array.isArray(rows) ? rows : (rows.resultados || rows.results || []);
+  const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
+  let n = 0;
+  const tally = { over_inclusion: 0, ok: 0, unverifiable: 0, verificados: 0 };
+  for (const it of items) {
+    if (!it || !it.topic_id || !it.law_id || !it.verdict) continue;
+    if (!['over_inclusion', 'ok', 'unverifiable'].includes(it.verdict)) continue;
+    await sql`
+      INSERT INTO scope_over_inclusion_adjudications
+        (topic_id, law_id, content_hash, band, verdict, titulos_excluidos, arts_correctos, razon, verificado, method, adjudicado_por)
+      VALUES (${it.topic_id}, ${it.law_id}, ${it.content_hash || ''}, ${it.band || null}, ${it.verdict},
+        ${it.titulos_excluidos ? sql.json(it.titulos_excluidos) : null}, ${it.arts_correctos || null},
+        ${it.razon || null}, ${!!it.verificado}, ${'workflow:adjudicar-sobre-inclusion'}, ${'claude_code'})
+      ON CONFLICT (topic_id, law_id) DO UPDATE SET
+        content_hash=EXCLUDED.content_hash, band=EXCLUDED.band, verdict=EXCLUDED.verdict,
+        titulos_excluidos=EXCLUDED.titulos_excluidos, arts_correctos=EXCLUDED.arts_correctos,
+        razon=EXCLUDED.razon, verificado=EXCLUDED.verificado, method=EXCLUDED.method,
+        adjudicado_por=EXCLUDED.adjudicado_por, adjudicado_at=now()`;
+    n++; tally[it.verdict]++; if (it.verificado) tally.verificados++;
+  }
+  // Observabilidad canónica: un evento por corrida con el resumen.
+  const confirmadas = (await sql`
+    SELECT count(*)::int c FROM scope_over_inclusion_adjudications WHERE verdict='over_inclusion' AND verificado`)[0].c;
+  await sql`
+    INSERT INTO observable_events (source, severity, event_type, metadata)
+    VALUES ('script:scope-over-inclusion', 'info', 'scope_adjudication_recorded',
+      ${sql.json({ registradas: n, ...tally, cola_recorte_confirmada: confirmadas })})`;
+  await sql.end();
+  console.log(`✅ ${n} adjudicaciones registradas — ${JSON.stringify(tally)}. Cola de recorte confirmada: ${confirmadas}.`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const fileArg = args.find(a => !a.startsWith('--'));
+  if (args.includes('--simulate')) runSimulation();
+  else if (args.includes('--scan')) runScan(args.includes('--json')).catch(e => { console.error(e.message); process.exit(1); });
+  else if (args.includes('--suspects')) runSuspects(args.includes('--only-new')).catch(e => { console.error(e.message); process.exit(1); });
+  else if (args.includes('--record')) {
+    if (!fileArg) { console.error('Uso: --record <fichero.json>'); process.exit(1); }
+    runRecord(fileArg).catch(e => { console.error(e.message); process.exit(1); });
+  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --record <json>'); process.exit(1); }
+}
+
+module.exports = { classifyScope, parseEpigrafe, romanToInt, contentHash };
