@@ -1063,6 +1063,11 @@ export default function TestLayout({
       questionIndex,
       questionText: currentQ.question_text || currentQ.question || '',
       options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d, currentQ.option_e].filter(Boolean),
+      // 🔀 Barajar opciones (Fase 1): permutación con la que el servidor sirvió esta
+      // pregunta. answerIndex/userAnswer es la POSICIÓN MOSTRADA; el server usa
+      // option_order para mapearla al índice original antes de validar/guardar.
+      // null cuando la pregunta no se barajó (retrocompatible).
+      optionOrder: (currentQ as any).option_order ?? null,
       tema: effectiveTema,
       questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative'),
       article: currentQ.article ? {
@@ -1176,6 +1181,9 @@ export default function TestLayout({
                 return {
                   questionIndex: a.questionIndex ?? 0,
                   selectedAnswer: a.selectedAnswer ?? -1,
+                  // 🔀 Barajar opciones (Fase 1): permutación servida, para que el
+                  // gap-fill server-side mapee la posición mostrada → índice original.
+                  optionOrder: (qd as any)?.option_order ?? null,
                   isCorrect: !!a.isCorrect,
                   timeSpent: a.timeSpent ?? 0,
                   confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)

@@ -233,6 +233,11 @@ async function buildTestAnswerRow(
       correctAnswer: String.fromCharCode(65 + (req.answerData.correctAnswer || 0)),
       isCorrect: req.answerData.isCorrect || false,
       wasBlank: req.answerData.wasBlank === true,
+      // Barajar opciones (Fase 1): permutación aplicada al servir (null = orden
+      // natural). selectedAnswer/correctAnswer arriba se guardan en coordenadas
+      // ORIGINALES (0=A en BD), así que las letras son coherentes con questions;
+      // option_order deja la fila autodescriptiva por si se auditan las posiciones.
+      optionOrder: req.answerData.optionOrder ?? null,
 
       // IDs segun tipo
       questionId: isPsychometric ? null : questionId,

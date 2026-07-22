@@ -11,6 +11,7 @@ import { eq, and, inArray } from 'drizzle-orm'
 import type { CompleteTestRequest, DetailedAnswerInput } from './schemas'
 import { insertTestAnswersBatch } from '@/lib/api/test-answers'
 import type { SaveAnswerRequest } from '@/lib/api/test-answers'
+import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
 
 interface ArticleStat {
   article_id: string
@@ -439,10 +440,20 @@ async function fillMissingTestQuestions(args: FillMissingArgs): Promise<number> 
       },
       answerData: {
         questionIndex: a.questionIndex,
-        selectedAnswer: a.selectedAnswer,
+        // Barajar opciones (Fase 1): a.selectedAnswer es la posición MOSTRADA;
+        // la mapeamos al índice ORIGINAL (correctOption ya viene en original de la
+        // BD) para que la letra guardada sea coherente. Sin option_order → identidad.
+        selectedAnswer:
+          a.selectedAnswer < 0
+            ? a.selectedAnswer
+            : displayedToOriginal(
+                isValidOrder(a.optionOrder, qd.options?.length ?? 0) ? a.optionOrder : null,
+                a.selectedAnswer,
+              ),
         correctAnswer: correctOption,
         isCorrect: a.isCorrect,
         timeSpent: a.timeSpent ?? 0,
+        optionOrder: isValidOrder(a.optionOrder, qd.options?.length ?? 0) ? a.optionOrder : null,
       },
       tema: topLevelTema ?? 0,
       confidenceLevel: a.confidence ?? 'unknown',

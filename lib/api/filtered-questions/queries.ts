@@ -31,6 +31,10 @@ import { buildOfficialExamFilter, buildQuestionTagFilter } from '@/lib/api/oposi
 import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { isShuffleEligible } from '@/lib/shuffle/classifyShuffleMode'
+import { permutationFor, applyOrder } from '@/lib/shuffle/permute'
+import { isShuffleEnabledFor } from '@/lib/shuffle/flag'
+import { randomUUID } from 'crypto'
 
 // ============================================
 // COLUMNAS COMPARTIDAS: Usado por todos los selects de preguntas
@@ -62,6 +66,7 @@ const questionColumns = {
   contentData: questions.contentData,
   correctOption: questions.correctOption,
   globalDifficultyCategory: questions.globalDifficultyCategory,
+  shuffleMode: questions.shuffleMode,
 } as const
 
 const articleColumns = {
@@ -100,6 +105,7 @@ type QuestionRow = {
   contentData: Record<string, unknown> | null
   correctOption: number
   globalDifficultyCategory: string | null
+  shuffleMode: string | null
   articleId: string
   articleNumber: string
   articleTitle: string | null
@@ -143,13 +149,42 @@ const lightweightArticleColumns = {
   lawShortName: laws.shortName,
 } as const
 
-export function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
+export function transformQuestion(q: QuestionRow, index: number, shuffle = false): FilteredQuestion {
+  // Opciones en orden NATURAL (0=A) tal como están en la BD.
+  const naturalOptions = [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter(
+    (v): v is string => v != null && v !== '',
+  )
+
+  // 🔀 Barajar opciones (Fase 1): solo si el caller lo pidió (shuffle) Y la
+  // pregunta es elegible ('full' + explicación sin letras). El nonce es aleatorio
+  // por exposición → una repetición reordena distinto. Se remapea correct_option a
+  // la POSICIÓN MOSTRADA (el cliente valida/resalta por índice) y se adjunta
+  // option_order para que el validador server-side mapee mostrada→original.
+  let displayOptions = naturalOptions
+  let optionOrder: number[] | null = null
+  let correctOption = q.correctOption
+  if (
+    shuffle &&
+    naturalOptions.length > 1 &&
+    isShuffleEligible({ shuffle_mode: q.shuffleMode, explanation: q.explanation })
+  ) {
+    const order = permutationFor(q.id, randomUUID(), naturalOptions.length)
+    displayOptions = applyOrder(naturalOptions, order)
+    optionOrder = order
+    // correct_option (original) → su nueva posición mostrada. Si por datos raros
+    // la correcta cae fuera del rango presente, se deja como estaba (identidad).
+    const displayed = order.indexOf(q.correctOption)
+    if (displayed !== -1) correctOption = displayed
+    else optionOrder = null
+  }
+
   return {
     id: q.id,
     question: q.questionText,
-    options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
+    options: displayOptions,
     explanation: q.explanation,
-    correct_option: q.correctOption,
+    correct_option: correctOption,
+    option_order: optionOrder,
     primary_article_id: q.primaryArticleId,
     tema: q.sourceTopic ?? null,
     image_url: q.imageUrl || null,
@@ -694,7 +729,13 @@ export async function getFilteredQuestions(
       failedQuestionIds,
       primaryArticleIds,
       scopeToPosition,
+      shuffleOptions,
     } = params
+
+    // 🔀 Barajar opciones (Fase 1): activo solo si el caller lo pidió (opt-in,
+    // NO el modo examen) Y el flag global/scope lo permite. La elegibilidad
+    // por-pregunta ('full' + explicación sin letras) la decide transformQuestion.
+    const shuffleOn = shuffleOptions === true && isShuffleEnabledFor(positionType)
 
     // 🏷️ Tag de oposición (fuente única: buildQuestionTagFilter).
     const tagFilter = buildQuestionTagFilter(positionType)
@@ -719,7 +760,7 @@ export async function getFilteredQuestions(
 
       return {
         success: true,
-        questions: scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i)),
+        questions: scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)),
         totalAvailable: scopeQuestions.length,
         filtersApplied: { laws: 0, articles: primaryArticleIds.length, sections: 0 },
       }
@@ -834,7 +875,7 @@ export async function getFilteredQuestions(
         return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: selectedLaws?.length || 0, articles: 0, sections: 0 }, emptyReason }
       }
 
-      const transformedQuestions = failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
+      const transformedQuestions = failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn))
 
       return {
         success: true,
@@ -921,7 +962,7 @@ export async function getFilteredQuestions(
       console.log(`✅ [failed-questions-ids] ${finalQuestions.length} preguntas${missing > 0 ? ` (${missing} no encontradas)` : ''}`)
 
       // Transformar al formato esperado
-      const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
+      const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn))
 
       return {
         success: true,
@@ -1044,7 +1085,7 @@ export async function getFilteredQuestions(
       console.log(`✅ Modo global: ${globalQuestions.length} preguntas de ${validLawIds.length} leyes válidas`)
 
       const transformedQuestions = globalQuestions.map((q, i) =>
-        transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i)
+        transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)
       )
 
       return {
@@ -1435,7 +1476,7 @@ export async function getFilteredQuestions(
       console.warn(`⚠️ [hydrate] ${droppedDuringHydration}/${selectedIds.length} preguntas dropeadas (race con desactivación)`)
     }
 
-    const transformedQuestions: FilteredQuestion[] = orderedRows.map((q, i) => transformQuestion(q, i))
+    const transformedQuestions: FilteredQuestion[] = orderedRows.map((q, i) => transformQuestion(q, i, shuffleOn))
 
     return {
       success: true,

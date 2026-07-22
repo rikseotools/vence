@@ -132,11 +132,22 @@ const isCorrect = originalIdx === dbCorrectOption;
 
 - [x] Clasificador 0 FN en 5.000 (v3.2) — barajar solo `full`.
 - [x] Mecanismo permutar+remapear clave: 100% en simulación.
-- [ ] `option_order` NULL ⇒ identidad (histórico intacto).
-- [ ] Validación server-side mapea mostrada→original (test unitario con permutación no trivial).
-- [ ] `user_answer` guarda índice ORIGINAL.
-- [ ] D=null: permutar solo opciones presentes.
+- [x] `option_order` NULL ⇒ identidad (histórico intacto). — `displayedToOriginal(null,…)`=identidad; tests `permute`/`validationSemantics`.
+- [x] Validación server-side mapea mostrada→original (test unitario con permutación no trivial). — `answer-and-save/queries.ts` + `__tests__/lib/shuffle/validationSemantics.test.ts`.
+- [x] `user_answer` guarda índice ORIGINAL. — `validateAndSaveAnswer` pasa `originalUserAnswer` a `insertTestAnswer`; gap-fill de `complete-test` idéntico.
+- [x] D=null: permutar solo opciones presentes. — `naturalOptions` filtra nulos antes de permutar; test de 3 opciones.
 - [ ] Subtarea de precisión del detector antes de subir el flag a general (muestra etiquetada, 0 falsos negativos; ver tarea).
+
+## 8-bis. Estado de implementación (Fase 2 tajada — 22/07, rama `feat/shuffle-fase1`)
+
+**Código completo, INERTE hasta encender el flag. Falta deploy + canario.**
+
+- **Módulos puros:** `lib/shuffle/permute.ts` (Fisher-Yates sembrado + `applyOrder`/`displayedToOriginal`/`isValidOrder`) y `lib/shuffle/flag.ts` (`isShuffleEnabled`/`isShuffleEnabledFor`). Tests: `__tests__/lib/shuffle/*` (84).
+- **Serve** (`lib/api/filtered-questions/queries.ts`): `transformQuestion(q, i, shuffle)` permuta si `shuffle && isShuffleEligible(q)`, adjunta `option_order` y remapea `correct_option` a la posición MOSTRADA. `shuffleOn = params.shuffleOptions && isShuffleEnabledFor(positionType)`. Nuevo campo request `shuffleOptions` (OPT-IN: solo lo piden los fetchers de `testFetchers.ts` → TestLayout, NUNCA el modo examen que valida por letra en orden natural).
+- **Validación/persistencia** (`answer-and-save`, `complete-test` gap-fill): mapean mostrada→original vía `option_order`; guardan `user_answer` en índice ORIGINAL y persisten `option_order` en `test_questions`. `null`/inválido ⇒ identidad.
+- **Cliente** (`components/TestLayout.tsx`): reenvía `option_order` de la pregunta al payload de `answer-and-save` y al `detailedAnswer` de `complete-test`.
+- **Modo examen INTACTO** (no baraja en Fase 2): ExamLayout consume filtered pero sin `shuffleOptions` → `shuffleOn=false`. OfficialExamLayout usa rutas propias (no filtered).
+- **Encender:** `FEATURE_SHUFFLE_OPTIONS=true` (SSM) + opcional `FEATURE_SHUFFLE_OPTIONS_SCOPE=<position_type,…>` para piloto por oposición. Requiere deploy del código (backend+frontend) ANTES de tocar el flag (orden código→flag).
 
 ## 9. Estimación
 

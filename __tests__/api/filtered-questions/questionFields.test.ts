@@ -185,7 +185,9 @@ describe('transformQuestion - transforma correctamente al formato FilteredQuesti
   const fs = require('fs')
   const source = fs.readFileSync('lib/api/filtered-questions/queries.ts', 'utf-8')
 
-  const transformMatch = source.match(/function transformQuestion\(q: QuestionRow, index: number\): FilteredQuestion \{([^]*?)\n\}/s)
+  // El 3er parámetro opcional `shuffle` (barajar opciones Fase 1) no cambia los
+  // campos del output — la regex lo acepta para no romper el guardarraíl de campos.
+  const transformMatch = source.match(/function transformQuestion\(q: QuestionRow, index: number(?:, shuffle[^)]*)?\): FilteredQuestion \{([^]*?)\n\}/s)
   const transformBlock = transformMatch?.[1] || ''
 
   it('transformQuestion incluye image_url en el output', () => {

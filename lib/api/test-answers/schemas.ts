@@ -55,6 +55,11 @@ export const answerDataSchema = z.object({
   // Opcional para retrocompatibilidad (tests y callers legacy no lo pasan).
   // Ver feature "Dejar en blanco" (15/4/2026 tras sugerencia Tinokero).
   wasBlank: z.boolean().optional(),
+  // Barajar opciones (Fase 1): permutación con la que se sirvió la pregunta.
+  // option_order[i] = índice ORIGINAL (0=A) mostrado en la posición i. Se persiste
+  // en test_questions.option_order para que la fila sea autodescriptiva. null/ausente
+  // = orden natural (100% retrocompatible). Ver barajar-opciones-fase1-spec.md.
+  optionOrder: z.array(z.number().int()).nullable().optional(),
 })
 
 export type AnswerData = z.infer<typeof answerDataSchema>

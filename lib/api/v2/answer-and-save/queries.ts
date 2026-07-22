@@ -22,6 +22,7 @@ import type { AnswerAndSaveRequest, AnswerAndSaveResponse } from './schemas'
 import { resolveTemaByQuestionIdFast } from '@/lib/api/tema-resolver/queries'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type { OposicionId } from '@/lib/api/tema-resolver/schemas'
+import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
 
 // ============================================
 // VALIDATION CACHE (tag: 'questions', TTL 1h)
@@ -204,11 +205,31 @@ export async function validateAndSaveAnswer(
     }
   }
 
+  // Barajar opciones (Fase 1): si la pregunta se sirvió permutada, el cliente
+  // manda option_order (mismo que recibió) y userAnswer es la POSICIÓN MOSTRADA.
+  // Mapeamos mostrada→ÍNDICE ORIGINAL (0=A en BD) para comparar contra
+  // correct_option (que está en coordenadas originales). Sin option_order válido
+  // → identidad = comportamiento histórico intacto (100% retrocompatible).
+  const n = params.options.length
+  const hasShuffle = isValidOrder(params.optionOrder, n)
+  const order = hasShuffle ? (params.optionOrder as number[]) : null
+
+  // Índice ORIGINAL que el usuario eligió (para validar y para guardar coherente
+  // con la BD). Con order: order[posiciónMostrada]; sin order: identidad.
+  const originalUserAnswer =
+    params.userAnswer === null ? null : displayedToOriginal(order, params.userAnswer)
+
+  // Posición MOSTRADA de la opción correcta (para que el cliente resalte la
+  // opción correcta en pantalla, que está en coordenadas mostradas). Con order:
+  // dónde quedó la correcta tras barajar; sin order: la propia correct_option.
+  const displayedCorrect =
+    order && order.indexOf(correctOption) !== -1 ? order.indexOf(correctOption) : correctOption
+
   // Respuestas en blanco: isBlank=true → isCorrect=false (no suma score ni
   // se marca como acierto). Se guarda con was_blank=true en test_questions
   // para distinguirlas visualmente en stats (correctas/falladas/blancas).
   const isBlank = !!params.isBlank
-  const isCorrect = !isBlank && params.userAnswer === correctOption
+  const isCorrect = !isBlank && originalUserAnswer === correctOption
   const newScore = isCorrect ? params.currentScore + 1 : params.currentScore
 
   // Si el resolver encontró tema, lo usamos. Si no, caemos al valor
@@ -244,11 +265,15 @@ export async function validateAndSaveAnswer(
       questionIndex: params.questionIndex,
       // Para blancas, pasamos -1 a selectedAnswer para que insertTestAnswer
       // lo interprete como "sin selección" y lo traduzca al marcador en BD.
-      selectedAnswer: isBlank ? -1 : (params.userAnswer as number),
+      // Con barajado: guardamos el índice ORIGINAL elegido (no la posición
+      // mostrada), para que la letra en test_questions sea coherente con la BD.
+      selectedAnswer: isBlank ? -1 : (originalUserAnswer as number),
       correctAnswer: correctOption,
       isCorrect,
       timeSpent: params.timeSpent,
       wasBlank: isBlank,
+      // Permutación aplicada al servir (null si no se barajó) → autodescribe la fila.
+      optionOrder: order,
     },
     tema: effectiveTema,
     confidenceLevel: params.confidenceLevel,
@@ -288,7 +313,10 @@ export async function validateAndSaveAnswer(
   return {
     success: saveResult.success,
     isCorrect,
-    correctAnswer: correctOption,
+    // La opción correcta se devuelve en coordenadas MOSTRADAS (dónde quedó tras
+    // barajar) para que el cliente resalte la posición correcta. Sin barajado
+    // displayedCorrect === correctOption (identidad).
+    correctAnswer: displayedCorrect,
     explanation,
     articleNumber,
     lawShortName,

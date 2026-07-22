@@ -22,8 +22,13 @@ const deviceInfoSchema = z.object({
 
 const detailedAnswerSchema = z.object({
   questionIndex: z.number().int().min(0),
+  // selectedAnswer es la POSICIÓN MOSTRADA que pinchó el usuario (0=A al render).
   selectedAnswer: z.number().int().min(-1).max(4),
   isCorrect: z.boolean(),
+  // Barajar opciones (Fase 1): permutación con la que se sirvió la pregunta, para
+  // que el gap-fill mapee la posición mostrada → índice original antes de guardar
+  // (coherente con la BD). null/ausente = orden natural. Ver barajar-opciones-fase1-spec.md.
+  optionOrder: z.array(z.number().int()).nullable().optional(),
   timeSpent: z.number().min(0).default(0),
   confidence: z.enum(['very_sure', 'sure', 'unsure', 'guessing', 'unknown']).default('unknown'),
   interactions: z.number().int().min(0).default(1),

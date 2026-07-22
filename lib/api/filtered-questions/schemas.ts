@@ -79,6 +79,14 @@ export const getFilteredQuestionsRequestSchema = z.object({
 
   // 📋 Filtro por article UUIDs (para content_scope)
   primaryArticleIds: z.array(z.string().uuid()).default([]),
+
+  // 🔀 Barajar opciones (Fase 1): OPT-IN por caller. Solo el flujo de tests
+  // estándar (TestLayout, que valida por índice remapeado) lo pide; el modo
+  // examen (ExamLayout, que valida por LETRA en orden natural vía
+  // /api/exam/validate) NO debe pedirlo o rompería el scoring. Además del flag
+  // global FEATURE_SHUFFLE_OPTIONS y de que la pregunta sea elegible ('full' +
+  // explicación sin letras). Default false = orden natural. Ver spec §7.
+  shuffleOptions: z.boolean().default(false),
 })
 
 export type GetFilteredQuestionsRequest = z.infer<typeof getFilteredQuestionsRequestSchema>
@@ -131,6 +139,11 @@ export const filteredQuestionSchema = z.object({
   options: z.array(z.string()).min(3).max(5),
   explanation: z.string(),
   correct_option: z.number().int().min(0).max(4),
+  // Barajar opciones (Fase 1): permutación aplicada al servir. option_order[i] =
+  // índice ORIGINAL en BD (0=A) mostrado en la posición i. null/ausente = orden
+  // natural (retrocompatible). El cliente lo reenvía al validador para mapear la
+  // posición mostrada → opción original. Ver docs/roadmap/barajar-opciones-fase1-spec.md.
+  option_order: z.array(z.number().int()).nullable().optional(),
   primary_article_id: z.string().uuid(),
   tema: z.number().nullable(),
   image_url: z.string().nullable().optional(),

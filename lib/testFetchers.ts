@@ -516,6 +516,7 @@ export async function fetchRandomQuestions(tema: number, searchParams: SearchPar
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: tema || 0,
         positionType,
         numQuestions: poolSize,
@@ -604,6 +605,7 @@ export async function fetchQuickQuestions(tema: number, searchParams: SearchPara
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: tema || 0, // 0 = sin filtro de tema
         positionType,
         numQuestions,
@@ -647,6 +649,7 @@ export async function fetchOfficialQuestions(tema: number, searchParams: SearchP
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: tema,
         positionType,
         numQuestions,
@@ -729,6 +732,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
       method: 'POST',
       headers,
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: tema || 0,
         positionType,
         numQuestions: requestSize,
@@ -852,6 +856,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       method: 'POST',
       headers,
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: tema,
         positionType,
         numQuestions: requestSize,
@@ -1017,6 +1022,7 @@ async function callFilteredAPI(params: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
       topicNumber: 0,
       positionType: params.positionType,
       numQuestions: params.numQuestions,
@@ -1105,6 +1111,7 @@ async function fetchMantenerRachaViaAPI(n: number, positionType: string, topics:
     method: 'POST',
     headers,
     body: JSON.stringify({
+      shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
       topicNumber: 0,
       positionType,
       multipleTopics: topics,
@@ -1152,6 +1159,7 @@ export async function fetchExplorarContenido(tema: number, searchParams: SearchP
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: 0,
         positionType,
         numQuestions: n,
@@ -1237,6 +1245,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
       method: 'POST',
       headers,
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: 0,
         positionType,
         multipleTopics: themes,
@@ -1341,6 +1350,7 @@ export async function fetchContentScopeQuestions(config: FetchConfig = {}, conte
       method: 'POST',
       headers,
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: 0,
         positionType,
         numQuestions,
@@ -1447,6 +1457,7 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
       method: 'POST',
       headers,
       body: JSON.stringify({
+        shuffleOptions: true, // 🔀 Barajar opciones Fase 1 (flujo test estándar; opt-in, NO examen)
         topicNumber: tema,
         positionType,
         numQuestions,

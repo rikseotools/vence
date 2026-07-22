@@ -23,6 +23,13 @@ export const answerAndSaveRequestSchema = z.object({
   // Contexto de la pregunta (para guardar en test_questions)
   questionText: z.string().min(1),
   options: z.array(z.string()).min(2).max(6),
+  // Barajar opciones (Fase 1): permutación con la que el servidor sirvió esta
+  // pregunta (viene de la respuesta del endpoint /api/questions/filtered).
+  // option_order[i] = índice ORIGINAL (0=A en BD) mostrado en la posición i, y
+  // userAnswer es la POSICIÓN MOSTRADA que el usuario pinchó. El server usa
+  // option_order para mapear mostrada→original antes de comparar contra
+  // questions.correct_option. null/ausente = orden natural (retrocompatible).
+  optionOrder: z.array(z.number().int()).nullable().optional(),
   tema: z.number().int().min(0).default(0),
   questionType: z.enum(['legislative', 'psychometric']).default('legislative'),
   article: z.object({
