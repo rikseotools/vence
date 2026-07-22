@@ -1513,6 +1513,41 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Por qué:** registro de pago que no cuaja = posible gasto tirado. Vigilar si esa campaña concentra más bajas tempranas (§8 del runbook `eliminacion-cuentas.md`).
 - **Estado:** 1 caso, anotado 21/07. Revisar en el análisis agregado de bajas.
 
+### [T-088] 🟡 [ABIERTA 22/07] Sobre-inclusión de scope: cola de 21 recortes + 2 errores de adjudicación + badge sin cablear
+
+**Qué es (subsistema COMPLETO y en `origin/main`).** Detector de sobre-inclusión de `topic_scope`: cuando el scope de un tema mete MÁS artículos de los que pide su epígrafe (sirve preguntas fuera de programa). Tres capas ya en main:
+- **Stage-1 determinista** — `lib/laws/scopeOverInclusion.ts` (`classifyScope`) + test + mirror en el sweep (kind `scope_over_inclusion_suspect`, banda HIGH). Detecta ~90 sospechosos de 5.836 scopes.
+- **Capa 3** — el dump de `verify:scope` inyecta la sospecha al agente (mató el falso verde de raíz: el caso T11 SMS Ley 3/2009).
+- **Batch Stage-2** — migración `20260722_scope_over_inclusion_adjudications.sql` (tabla en RDS, aplicada) + CLI `scripts/scope-over-inclusion.cjs` (`--suspects [--only-new]` / `--record` / `--reguard`) + workflow `.claude/workflows/adjudicar-sobre-inclusion.js` (adjudicador BOE + verificación adversarial). Commits: `a3e53e042`, `add9bdafb`, `7a9386623`, `fddd42219`.
+
+**Estado a 22/07:** de 86 sospechosos adjudicados → **23 recortes aplicados** (verificados, con MV+caché, reversibles), **21 en cola** (`scope_over_inclusion_adjudications WHERE verdict='over_inclusion' AND verificado`), 2 marcados `unverifiable` (errores), y ~32 `ok` (falsos positivos del Stage-1). Aplicado ya: todos los de **impacto 0**, los limpios de 1-10 y 11-50, y el **clúster Ley 19/2013 completo** (6 opos, verificado contra BOE).
+
+**Documento de handoff (privado, se actualiza en la misma URL):** https://claude.ai/code/artifact/38c833f8-09ad-4e25-8bcd-b0ef01bb3795 — los 21 pendientes por impacto, con epígrafe + razón + provenance plegados.
+
+**CÓMO CONTINUAR la cola (flujo probado):**
+1. `node scripts/scope-over-inclusion.cjs --suspects --only-new > /tmp/sus.json` (solo lo no adjudicado/cambiado).
+2. Workflow `adjudicar-sobre-inclusion` con el JSON como args (o ya está adjudicado en la tabla).
+3. Aplicar por oposición: propuesta en formato `[{tema, veredicto:[{ley:<short_name>, quitar:[arts], anadir:[], razon}]}]` → `node scripts/verify-topic-scope.cjs plan <pt> <json>` → **`apply <pt> --include-gate`** → marcar en la tabla `verificado=false` con `razon='[RECORTE APLICADO …]'`.
+4. **GOTCHAS (aprendidos a base de fallos):**
+   - **`apply` SIN `<jsonPath>`** (lee el plan file que escribe `plan`). Pasarle el jsonPath **falla en silencio** (sin COMMIT) — verificar SIEMPRE en BD que el scope cambió antes de marcar aplicado.
+   - El gate `verify:scope` marca `epigrafe_tematico` / `epigrafe_no_localizable` / `impacto_alto` (>150 preg) → NO auto-aplica, exige `--include-gate` + criterio humano. **Bien puesto.**
+   - **Priorizar por IMPACTO (preguntas), no por el gate.** Los de impacto 0 son higiene segura; los de >150 son decisiones de programa.
+   - **`new_n === 0` (vacía la ley)** → NO gutear a 0; hay que quitar la fila de `topic_scope` entera (la ley sobra del tema).
+
+**Los 21 pendientes, por grupo:**
+- **LO 3/2018 · Diputación Córdoba T12 (440 preg, el más gordo)** — estructura BOE verificada (el recorte 19-27+40-97 mapea bien), PERO quita videovigilancia + derechos digitales + AEPD + sancionador, que son temas ESTRELLA de PD. Antes de aplicar: **verificar que el epígrafe guardado es FIEL al programa oficial de Córdoba** (`programa_url` / literalidad), no solo que mapea al BOE. Si el programa acota a los 4 bloques del epígrafe → aplicar; si incluye derechos digitales → el bug es del epígrafe abreviado, no del scope.
+- **LO 3/2007 (Igualdad) · León T9 + Formentera T8** — clúster verificable (ley nacional, misma lógica que 19/2013). Candidato ideal para la siguiente tanda: leer los 2 epígrafes + BOE → veredicto.
+- **4 que VACÍAN la ley** — Ley 10/2019 CM (Madrid T8), Ley 6/2006 Gobierno Andalucía (celador_sas T4), Ley 6/1986 ILP (madrid_2027 T2): decidir "quitar la ley entera del tema", no recorte.
+- **Interpretaciones institucionales (terreno de Manuel, NO auto)** — Estatutos de Madrid con Presidente/Gobierno vs solo Asamblea (madrid_2027 T2, sermas T2, LO 3/1983); Sistema de Salud de Aragón (tcae_aragon T6); Ley 55/2003 (celador_sas T8); Ley 4/1994 Salud Murcia (tcae_murcia T2). Dependen del programa de cada oposición.
+
+**2 PROBABLES ERRORES del adjudicador** (marcados `verdict='unverifiable'`, fuera de la cola, hay que CORREGIR la adjudicación, no aplicar):
+- `tramitacion_procesal T30 · RRC 1958` — el recorte quitaba las **certificaciones (arts 17-35)** que el epígrafe SÍ pide.
+- `auxiliar_administrativo_sermas T25 · Decreto 246/2023` — recorte 14→1; el decreto es estructura CENTRAL del SERMAS, el epígrafe es del hospital → posible ley equivocada en el tema.
+
+**Cabo de infra: badge de CONFIRMADOS sin cablear.** El sweep emite `scope_over_inclusion_suspect` (Stage-1 crudo) pero NO lee la tabla `scope_over_inclusion_adjudications` → los recortes CONFIRMADOS no aparecen en `/admin/salud-sistema`. Para cablearlo: nuevo kind `scope_over_inclusion_confirmed` que cuente `verdict='over_inclusion' AND verificado`, en **`backend/src/content-health-sweep/content-health-sweep.service.ts` (el writer @Cron real) + `scripts/health-sweep.cjs` (gemelo) + `runbookRegistry.ts` + CLAUDE.md** (los 4, guardados por el parity test `__tests__/health/content-sweep-parity.test.ts`). Se dejó aplazado porque el sweep estaba en refactor paralelo; ya consolidado en el backend service.
+
+**Menores:** la migración se aplicó con DDL directo a RDS (fichero en git, idempotente `IF NOT EXISTS`); si hay tracking de migraciones, normalizar. Observabilidad: eventos `scope_adjudication_recorded` / `scope_recorte_aplicado` en `observable_events`.
+
 ## ⏳ [DEPLOY PENDIENTE] Desplegar F0 antifraude + PDF-premium + nav (bloqueado por límite vCPU AWS / migración koigrid) — 22/07/2026
 - **Qué está en `origin/main` SIN desplegar** (todo commiteado, nada que perder):
   - **Sistema antifraude F0** (T-078): `cf7062859` (badge 🚨 + revisión + runbook `revisar-fraudes.md` + endpoints `/api/v2/admin/fraud/{pending-count,signals,signals/review}` + pestaña "Señales" en `/admin/fraudes` + sweep `scripts/fraud-sweep.cjs`) · `e5cfe988b` (**cron backend** `backend/src/fraud-sweep/` @Cron 03:15 UTC) · `f229dbfe5` (afinado IP-detector: excl. CDN + device-corr).
