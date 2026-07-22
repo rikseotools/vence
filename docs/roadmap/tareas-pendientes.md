@@ -225,6 +225,21 @@
 
 ## Abiertas
 
+### [T-085] 🟡 [ABIERTA 22/07] Trocear los "artículos-cajón" de ofimática (calidad de lectura) — Access 365 y similares
+**Qué:** varios temas de ofimática modelan un manual entero (Access, Excel, Word…) en pocos artículos gigantes ("artículos-cajón", ver T-040). Ej. medido 22/07: la ley virtual **"Access 365"** (`law_id b403019a-bdf7-4795-886e-1d26f139602d`) tiene arts de **89 KB (art 1 "Fundamentos"), 74 KB (art 4), 69 KB (art 2)** — cada uno con ~136 headings `##`. Trocearlos por sus secciones `##` en artículos más pequeños mejora la **lectura/estudio** (y de paso el render del PDF, aunque eso ya lo tapa el guardarraíl por-artículo de `f91c644f7` + la futura pre-generación).
+
+**Por qué NO se hizo al vuelo (riesgo cross-oposición — investigado 22/07):**
+- **"Access 365" lo escopan 15 oposiciones.** 9 con `article_numbers = NULL` (= toda la ley → **auto-incluyen** artículos nuevos, cero cambio). Pero **6 lo escopan EXPLÍCITO** y hay que **añadirles los nuevos nº de artículo** o pierden ese contenido: `administrativo_estado` T606, `administrativo_la_rioja` T40, `auxiliar_administrativo_asturias` T25, `auxiliar_administrativo_estado` T110, `auxiliar_administrativo_madrid` T19, `auxiliar_administrativo_madrid_2027` T19.
+- **290 preguntas** ancladas a art 1 (primary_article_id), 135 a art 4, 51 a art 2… Al trocear el CONTENIDO, esas preguntas **siguen funcionando** (no se rompen), pero su enlace a teoría apuntaría al artículo reducido → **re-anclar** parte de ellas al sub-artículo correcto es lo fino (opcional pero deseable).
+
+**Plan seguro (hacerlo con calma, verificando oposición por oposición):**
+1. Partir el `content` de art 1/2/4 por sus secciones `##` en artículos nuevos (verbatim, sin inventar).
+2. **Añadir los nuevos nº al `topic_scope` de las 6 oposiciones explícitas** (las 9 NULL no se tocan). Verificar cada una: [[fix-topic-scope-null-whole-law]] (NULL = toda la ley, NO tocar).
+3. Re-anclar las preguntas al sub-artículo por contenido (doble auditoría; NUNCA a ciegas).
+4. Repetir para otros cajones (Correos T1/T3/T4/T7/T9/T10/T12, Inglés GC, estructuras ministeriales — la lista de artículos >40 KB del 22/07).
+
+Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks editoriales), T-040 (artículos-cajón). Detonante: bug PDF de Julen (`cb4621ae`, T19 aux-Madrid) → 504 por el cajón de 89 KB.
+
 ### [T-067] ✅ CERRADA 21/07 (LIVE) — Construir Celador/a-Subalterno/a del SMS (Murcia)
 - **✅ Construida** (`celador-murcia`, `is_active=false` pendiente de go-live con OK). 14 temas (7 comunes + 7 específicos de celador), epígrafes literales verificados contra el BORM (convocatoria 6134/BORM 291 de 18/12/2025: **106 plazas TL + 5 disc**; temario común Res. 22/07/2025 BORM 177, específico Res. 21/07/2022 BORM 170).
 - **Reuso total, 0 leyes importadas: 9.545 preguntas activas** heredadas. Bloque específico de `celador-sas`; bloque común de las leyes murcianas ya en BD (Estatuto Murcia, Salud RM, Personal SMS 5/2001, Igualdad, Transparencia) que usan las 9 oposiciones murcianas existentes.
