@@ -49,11 +49,34 @@ describe('seguimiento_url — detección graduada de ciclo desfasado', () => {
     expect(d.severidad).toBe('warn')
   })
 
-  it('URL genérica de índice → warn (señal débil), nunca error', () => {
+  it('URL genérica de índice sin proceso vivo → warn (señal débil, para diputación pequeña)', () => {
     // Caso real: auxiliar-administrativo-diputacion-ourense, url ".../gl/emprego", vigente 2026.
     const d = diagnosticarSeguimientoUrl('https://www.depourense.gal/gl/emprego', 2026)
     expect(d.nivel).toBe('url_generica')
     expect(d.severidad).toBe('warn')
+  })
+
+  it('URL genérica CON proceso vivo (procesoEnJuego) → ERROR (ceguera accionable, no se descarta)', () => {
+    // Caso raíz: auxiliar-administrativo-ayuntamiento-murcia, seguimiento_url = índice genérico
+    // (emplea.murcia.es/convocatorias) con proceso VIVO → nos dejó ciegos a la 2ª convocatoria.
+    // Con el proceso vivo, la señal deja de ser "ruido descartable" y pasa a error persistente.
+    const d = diagnosticarSeguimientoUrl(
+      'https://emplea.murcia.es/convocatorias',
+      2026,
+      { procesoEnJuego: true },
+    )
+    expect(d.nivel).toBe('url_generica')
+    expect(d.severidad).toBe('error')
+  })
+
+  it('la escalada solo aplica a la genérica: proceso vivo NO convierte una URL sana en error', () => {
+    // procesoEnJuego solo sube la genérica; una URL concreta y correcta sigue ok aunque el proceso viva.
+    const d = diagnosticarSeguimientoUrl(
+      'https://www.unileon.es/convocatorias-ptgas-pdi/convocatoria-de-proceso-selectivo-x',
+      2026,
+      { procesoEnJuego: true },
+    )
+    expect(d.severidad).toBe('ok')
   })
 
   it('URL a convocatoria concreta del año vigente → ok', () => {
@@ -70,8 +93,10 @@ describe('seguimiento_url — detección graduada de ciclo desfasado', () => {
     expect(diagnosticarSeguimientoUrl('https://x.es/BOE-A-2020-1', null).severidad).toBe('ok')
   })
 
-  it('solo la señal LIMPIA escala a error: las ruidosas se quedan en warn', () => {
-    // La invariante que impide repetir lo de hash_change: como mucho un error por caso limpio.
+  it('sin procesoEnJuego, solo la señal LIMPIA escala a error: las ruidosas se quedan en warn', () => {
+    // La invariante que impide repetir lo de hash_change: sin el flag de proceso vivo, como mucho
+    // un error por caso limpio (boletín viejo). La genérica solo sube a error CON procesoEnJuego
+    // (test aparte) — para una oposición que vendemos con proceso en marcha, no es ruido.
     const casos: Array<[string, number]> = [
       ['https://www.boe.es/…/BOE-A-2024-1', 2025], // limpio → error
       ['https://x.es/ope-2022/', 2025], // año viejo path → warn
