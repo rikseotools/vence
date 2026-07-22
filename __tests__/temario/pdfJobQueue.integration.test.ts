@@ -53,17 +53,17 @@ d('pdfJobQueue — integración RDS', () => {
     expect(Number((n as any[])[0].n)).toBe(2)
   })
 
+  // Todos los claims van scoped al sentinela (oposicionPrefix) → nunca tocan jobs reales de la cola.
+  const P = { oposicionPrefix: OPO }
+
   it('claim marca running + attempts=1; sin pendientes devuelve null', async () => {
     await enqueuePdfJob(db, { oposicion: OPO, tema: 3, contentHash: h('c') })
-    const job = await claimNextPdfJob(db)
+    const job = await claimNextPdfJob(db, P)
     expect(job).toMatchObject({ oposicion: OPO, tema: 3, attempts: 1 })
     const st = await db.execute(sql`SELECT status FROM temario_pdf_jobs WHERE id=${job!.id}`)
     expect((st as any[])[0].status).toBe('running')
-    // Ya no quedan pendientes de este sentinela (el otro test los borra en beforeEach)
-    let next = await claimNextPdfJob(db)
-    while (next && next.oposicion !== OPO) next = await claimNextPdfJob(db) // ignora ruido de prod
-    // no debe volver a coger el mismo
-    expect(next?.id).not.toBe(job!.id)
+    // No quedan pendientes del sentinela → null (aislado de la cola real)
+    expect(await claimNextPdfJob(db, P)).toBeNull()
   })
 
   it('cada job se reclama UNA sola vez (no doble-grab)', async () => {
@@ -72,23 +72,21 @@ d('pdfJobQueue — integración RDS', () => {
     await enqueuePdfJob(db, { oposicion: OPO, tema: 12, contentHash: h('z') })
     const ids = new Set<string>()
     for (let i = 0; i < 3; i++) {
-      let j = await claimNextPdfJob(db)
-      while (j && j.oposicion !== OPO) j = await claimNextPdfJob(db)
+      const j = await claimNextPdfJob(db, P)
       if (j) ids.add(j.id)
     }
     expect(ids.size).toBe(3) // 3 jobs distintos, ninguno repetido
+    expect(await claimNextPdfJob(db, P)).toBeNull()
   })
 
   it('fail reintenta bajo el tope y va a DLQ al agotarlo', async () => {
     await enqueuePdfJob(db, { oposicion: OPO, tema: 4, contentHash: h('r') })
-    let j = await claimNextPdfJob(db)
-    while (j && j.oposicion !== OPO) j = await claimNextPdfJob(db)
+    const j = await claimNextPdfJob(db, P)
     expect(j!.attempts).toBe(1)
     // maxAttempts=2 → tras el 1er fallo (attempts=1) vuelve a pending
     expect(await markPdfJobFailed(db, j!.id, { error: 'boom', maxAttempts: 2 })).toBe('pending')
     // 2º claim → attempts=2 → fallo → DLQ
-    let j2 = await claimNextPdfJob(db)
-    while (j2 && j2.oposicion !== OPO) j2 = await claimNextPdfJob(db)
+    const j2 = await claimNextPdfJob(db, P)
     expect(j2!.id).toBe(j!.id)
     expect(j2!.attempts).toBe(2)
     expect(await markPdfJobFailed(db, j2!.id, { error: 'boom2', maxAttempts: 2 })).toBe('failed')
@@ -99,8 +97,7 @@ d('pdfJobQueue — integración RDS', () => {
 
   it('done marca el job con bytes/ms', async () => {
     await enqueuePdfJob(db, { oposicion: OPO, tema: 5, contentHash: h('d') })
-    let j = await claimNextPdfJob(db)
-    while (j && j.oposicion !== OPO) j = await claimNextPdfJob(db)
+    const j = await claimNextPdfJob(db, P)
     await markPdfJobDone(db, j!.id, { bytes: 12345, ms: 678 })
     const st = await db.execute(sql`SELECT status, bytes, ms FROM temario_pdf_jobs WHERE id=${j!.id}`)
     expect((st as any[])[0].status).toBe('done')
@@ -113,8 +110,8 @@ d('pdfJobQueue — integración RDS', () => {
     await db.execute(sql`
       INSERT INTO temario_pdf_jobs (oposicion, tema, content_hash, status, attempts, claimed_at)
       VALUES (${OPO}, 6, ${h('s')}, 'running', 1, now() - interval '2 hours')`)
-    const rescued = await requeueStalePdfJobs(db, 60)
-    expect(rescued).toBeGreaterThanOrEqual(1)
+    const rescued = await requeueStalePdfJobs(db, 60, P) // scoped: no toca running reales
+    expect(rescued).toBe(1)
     const st = await db.execute(sql`SELECT status FROM temario_pdf_jobs WHERE oposicion=${OPO} AND tema=6`)
     expect((st as any[])[0].status).toBe('pending')
   })

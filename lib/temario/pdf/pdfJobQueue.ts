@@ -67,12 +67,19 @@ export async function enqueuePdfJob(
 /**
  * Coge el siguiente trabajo pendiente (el más antiguo) y lo marca 'running' incrementando
  * attempts. FOR UPDATE SKIP LOCKED → seguro con varios workers. Devuelve null si no hay pendientes.
+ *
+ * `oposicionPrefix` (opcional) acota el claim a oposiciones que empiezan por ese prefijo — permite
+ * workers dedicados a un subconjunto y, sobre todo, AÍSLA los tests (reclaman solo su sentinela,
+ * nunca jobs reales de la cola). En producción se llama sin él (claima toda la cola).
  */
-export async function claimNextPdfJob(db: JobDb): Promise<PdfJob | null> {
+export async function claimNextPdfJob(db: JobDb, opts: { oposicionPrefix?: string } = {}): Promise<PdfJob | null> {
+  const prefixFilter = opts.oposicionPrefix != null
+    ? sql`AND oposicion LIKE ${opts.oposicionPrefix + '%'}`
+    : sql``
   const res = await db.execute(sql`
     WITH claimed AS (
       SELECT id FROM temario_pdf_jobs
-      WHERE status = 'pending'
+      WHERE status = 'pending' ${prefixFilter}
       ORDER BY created_at
       FOR UPDATE SKIP LOCKED
       LIMIT 1
@@ -128,11 +135,15 @@ export async function markPdfJobFailed(
 export async function requeueStalePdfJobs(
   db: JobDb,
   staleSeconds: number = DEFAULT_STALE_SECONDS,
+  opts: { oposicionPrefix?: string } = {},
 ): Promise<number> {
+  const prefixFilter = opts.oposicionPrefix != null
+    ? sql`AND oposicion LIKE ${opts.oposicionPrefix + '%'}`
+    : sql``
   const res = await db.execute(sql`
     UPDATE temario_pdf_jobs
     SET status = 'pending', claimed_at = NULL, updated_at = now()
-    WHERE status = 'running' AND claimed_at < now() - make_interval(secs => ${staleSeconds})
+    WHERE status = 'running' AND claimed_at < now() - make_interval(secs => ${staleSeconds}) ${prefixFilter}
     RETURNING id
   `)
   return rows(res).length
@@ -144,4 +155,37 @@ export async function pdfJobStats(db: JobDb): Promise<Record<PdfJobStatus, numbe
   const out: Record<PdfJobStatus, number> = { pending: 0, running: 0, done: 0, failed: 0 }
   for (const r of rows(res)) out[r.status as PdfJobStatus] = Number(r.n)
   return out
+}
+
+export interface PdfQueueHealth {
+  pending: number
+  running: number
+  done: number
+  failed: number
+  /** 'running' colgados (claimed_at más viejo que staleSeconds) sin rescatar → worker muerto. */
+  staleRunning: number
+}
+
+/**
+ * Salud de la cola para el canary/SLO (panel /admin/salud-sistema). Semáforo sugerido:
+ *  - rojo: staleRunning > 0 (worker caído y sin rescatar) o failed (DLQ) crece.
+ *  - ámbar: pending alto sostenido (worker no da abasto).
+ *  - verde: pending→0, staleRunning=0, failed=0.
+ */
+export async function pdfQueueHealth(db: JobDb, staleSeconds: number = DEFAULT_STALE_SECONDS): Promise<PdfQueueHealth> {
+  const res = await db.execute(sql`
+    SELECT
+      count(*) FILTER (WHERE status = 'pending')::int AS pending,
+      count(*) FILTER (WHERE status = 'running')::int AS running,
+      count(*) FILTER (WHERE status = 'done')::int AS done,
+      count(*) FILTER (WHERE status = 'failed')::int AS failed,
+      count(*) FILTER (WHERE status = 'running' AND claimed_at < now() - make_interval(secs => ${staleSeconds}))::int AS stale_running
+    FROM temario_pdf_jobs
+  `)
+  const r = rows(res)[0] ?? {}
+  return {
+    pending: Number(r.pending ?? 0), running: Number(r.running ?? 0),
+    done: Number(r.done ?? 0), failed: Number(r.failed ?? 0),
+    staleRunning: Number(r.stale_running ?? 0),
+  }
 }

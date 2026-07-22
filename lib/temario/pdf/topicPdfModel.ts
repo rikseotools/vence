@@ -264,8 +264,12 @@ export function pdfFileName(oposicionSlug: string, topicNumber: number): string 
  * `generatedAt` se inyecta (no se lee el reloj aquí) para que el resultado sea determinista.
  * `sectionNames` (opcional) trae los nombres de Título/Capítulo de law_sections por ley.
  */
+// Solo los campos que este builder lee. Así acepta tanto el TopicContent completo (route) como el
+// TopicContentBase que devuelve la variante uncached (pre-gen/worker, sin isUnlocked/unlockReq).
+type PdfContentInput = Pick<TopicContent, 'topicNumber' | 'title' | 'description' | 'oposicionName' | 'laws'>
+
 export function buildTopicPdfModel(
-  content: TopicContent,
+  content: PdfContentInput,
   generatedAt: Date,
   sectionNames?: LawSectionNames
 ): TopicPdfModel {

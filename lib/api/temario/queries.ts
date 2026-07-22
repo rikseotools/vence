@@ -44,7 +44,11 @@ type TopicContentBase = {
 
 // Función interna que obtiene el contenido del tema
 // OPTIMIZADA: Usa queries en batch en lugar de N+1
-async function getTopicContentBaseInternal(
+//
+// Exportada como getTopicContentUncached (alias abajo): la usan la pre-generación y el WORKER de
+// PDFs, que corren FUERA del runtime de Next → no pueden pasar por unstable_cache (peta con
+// "incrementalCache missing") y además quieren contenido SIEMPRE fresco (hash correcto).
+export async function getTopicContentBaseInternal(
   oposicionSlug: OposicionSlug,
   topicNumber: number
 ): Promise<TopicContentBase | null> {

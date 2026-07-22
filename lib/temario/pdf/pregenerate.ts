@@ -12,7 +12,7 @@
 
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import React from 'react'
-import { getTopicContent, getLawSectionNames } from '@/lib/api/temario/queries'
+import { getTopicContentBaseInternal as getTopicContentUncached, getLawSectionNames } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
@@ -50,7 +50,7 @@ export async function pregenerateTopicPdf(
 
   const started = Date.now()
   try {
-    const content = await getTopicContent(oposicion as OposicionSlug, topicNumber)
+    const content = await getTopicContentUncached(oposicion as OposicionSlug, topicNumber)
     if (!content) return { ...base, error: 'tema_no_encontrado' }
 
     const contentHash = topicPdfContentHash(content)
