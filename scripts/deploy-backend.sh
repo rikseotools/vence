@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.."
 
 P=vence; R=eu-west-2; ACC=349744179687
 REG="${ACC}.dkr.ecr.${R}.amazonaws.com/vence-backend"
-SHA=$(git rev-parse --short HEAD)          # capturado UNA vez → sin ventana de mismatch
+SHA=$(git rev-parse HEAD | cut -c1-8)      # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07: 'b201d798a' 9c vs 'b201d798' 8c)
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
 
