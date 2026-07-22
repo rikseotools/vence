@@ -60,4 +60,13 @@ d('canary — cola temario_pdf_jobs', () => {
     // Si esto salta: un worker murió a media faena y nadie llamó requeueStale. Investigar el worker.
     expect(h.staleRunning).toBe(0)
   })
+
+  it('CANARY: el hook (trigger de topic_scope) sigue instalado', async () => {
+    // Si esto salta: un cambio de scope YA no encola la regeneración del PDF → PDFs stale hasta el
+    // barrido nocturno. El trigger vive en 20260722_temario_pdf_hook_scope.sql.
+    const tg = await db.execute(sql`
+      SELECT 1 FROM pg_trigger
+      WHERE tgrelid = 'topic_scope'::regclass AND tgname = 'tg_topic_scope_enqueue_pdf' AND NOT tgisinternal`)
+    expect(tg.length).toBe(1)
+  })
 })

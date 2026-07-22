@@ -50,7 +50,7 @@ function makeEmit(db: any): EmitFn {
 }
 
 /** Temas que NO caben en generación síncrona (total>400k o algún artículo>60k) → necesitan worker. */
-async function bigTopics(db: any, minTotal: number, minArt: number): Promise<{ slug: string; tema: number; total: number; maxArt: number }[]> {
+async function bigTopics(db: any, minTotal: number, minArt: number): Promise<{ pt: string; tema: number; total: number; maxArt: number }[]> {
   const rows: any[] = await db.execute(sql`
     SELECT t.position_type AS pt, t.topic_number AS tema,
            sum(length(a.content))::bigint AS total, max(length(a.content))::int AS max_art
@@ -63,10 +63,12 @@ async function bigTopics(db: any, minTotal: number, minArt: number): Promise<{ s
     HAVING sum(length(a.content)) > ${minTotal} OR max(length(a.content)) > ${minArt}
     ORDER BY max(length(a.content)) DESC
   `)
-  const out: { slug: string; tema: number; total: number; maxArt: number }[] = []
+  // La cola se keyea por position_type (clave nativa de topics/topic_scope → el trigger del hook la
+  // usa sin mapeo SQL). Solo encolamos position_types con slug conocido (el worker mapea a slug al
+  // renderizar). Ver migración del hook.
+  const out: { pt: string; tema: number; total: number; maxArt: number }[] = []
   for (const r of rows) {
-    const slug = PT_TO_SLUG[r.pt]
-    if (slug) out.push({ slug, tema: Number(r.tema), total: Number(r.total), maxArt: Number(r.max_art) })
+    if (PT_TO_SLUG[r.pt]) out.push({ pt: r.pt, tema: Number(r.tema), total: Number(r.total), maxArt: Number(r.max_art) })
   }
   return out
 }
@@ -75,12 +77,12 @@ async function cmdEnqueueBig(db: any, minTotal: number, minArt: number) {
   const temas = await bigTopics(db, minTotal, minArt)
   console.log(`📋 ${temas.length} temas grandes (total>${minTotal} o art>${minArt}). Encolando…`)
   let enq = 0, dup = 0
-  for (const { slug, tema, total, maxArt } of temas) {
+  for (const { pt, tema, total, maxArt } of temas) {
     // Clave de idempotencia = firma de tamaño (cambia si cambia el contenido → re-detecta). NO
     // fetcheamos el contenido aquí (lento); el worker calcula el hash real del S3 al renderizar.
     const sig = `sweep:${total}:${maxArt}`
-    const ins = await enqueuePdfJob(db, { oposicion: slug, tema, contentHash: sig })
-    if (ins) { enq++; console.log(`  + ${slug} T${tema} (total ${(total/1000).toFixed(0)}k, art ${(maxArt/1000).toFixed(0)}k)`) }
+    const ins = await enqueuePdfJob(db, { oposicion: pt, tema, contentHash: sig })
+    if (ins) { enq++; console.log(`  + ${pt} T${tema} (total ${(total/1000).toFixed(0)}k, art ${(maxArt/1000).toFixed(0)}k)`) }
     else dup++
   }
   console.log(`✅ encolados ${enq}, ya-vivos ${dup}`)
@@ -96,9 +98,12 @@ async function cmdEnqueueBig(db: any, minTotal: number, minArt: number) {
 function childRender(timeoutMs: number): RenderFn {
   return (oposicion, tema, opts) => new Promise((resolve) => {
     const t0 = Date.now()
+    // La cola keyea por position_type; pdf-local/pregenerate/S3/route usan el SLUG. Mapeamos aquí
+    // (tolerante: si ya viniera un slug, se usa tal cual → compatible con jobs viejos).
+    const slug = PT_TO_SLUG[oposicion] ?? oposicion
     const child = spawn(
       'node_modules/.bin/tsx',
-      ['-r', 'tsconfig-paths/register', 'scripts/pdf-local.ts', 'full', oposicion, String(tema), opts?.force ? '1' : '0'],
+      ['-r', 'tsconfig-paths/register', 'scripts/pdf-local.ts', 'full', slug, String(tema), opts?.force ? '1' : '0'],
       { env: process.env },
     )
     let out = ''
@@ -110,8 +115,9 @@ function childRender(timeoutMs: number): RenderFn {
       const ms = Date.now() - t0
       if (signal === 'SIGKILL') return resolve({ ok: false, outcome: 'timeout', error: `render_timeout_${timeoutMs}ms`, ms })
       if (code === 0) {
-        const m = out.match(/bytes=(\d+)/)
-        return resolve({ ok: true, outcome: 'uploaded', bytes: m ? Number(m[1]) : undefined, ms })
+        const bytes = out.match(/bytes=(\d+)/)
+        const oc = out.match(/outcome=(\w+)/) // 'uploaded' (renderizado) o 'skipped' (ya en caché)
+        return resolve({ ok: true, outcome: oc ? oc[1] : 'uploaded', bytes: bytes ? Number(bytes[1]) : undefined, ms })
       }
       resolve({ ok: false, outcome: 'error', error: (out.match(/error=(.+)$/m)?.[1] || out.trim().split('\n').pop() || `exit_${code}`).slice(0, 300), ms })
     })
