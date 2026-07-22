@@ -169,13 +169,18 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
     isShuffleEligible({ shuffle_mode: q.shuffleMode, explanation: q.explanation })
   ) {
     const order = permutationFor(q.id, randomUUID(), naturalOptions.length)
-    displayOptions = applyOrder(naturalOptions, order)
-    optionOrder = order
-    // correct_option (original) → su nueva posición mostrada. Si por datos raros
-    // la correcta cae fuera del rango presente, se deja como estaba (identidad).
+    // correct_option (original, 0=A en BD) → su nueva posición mostrada.
     const displayed = order.indexOf(q.correctOption)
-    if (displayed !== -1) correctOption = displayed
-    else optionOrder = null
+    if (displayed !== -1) {
+      displayOptions = applyOrder(naturalOptions, order)
+      optionOrder = order
+      correctOption = displayed
+    }
+    // else: la correcta NO está entre las opciones PRESENTES (hueco NO final en los
+    // datos: p.ej. C vacía con correct_option=3). NO barajar → servir natural intacto
+    // (idéntico al comportamiento sin shuffle; no introducir una permutación con la
+    // clave descolocada). displayOptions/correctOption/optionOrder se quedan como
+    // estaban (natural / original / null).
   }
 
   return {
@@ -736,6 +741,20 @@ export async function getFilteredQuestions(
     // NO el modo examen) Y el flag global/scope lo permite. La elegibilidad
     // por-pregunta ('full' + explicación sin letras) la decide transformQuestion.
     const shuffleOn = shuffleOptions === true && isShuffleEnabledFor(positionType)
+
+    // Observabilidad: 1 evento por request cuando el barajado está activo (baja
+    // cardinalidad, cubre todos los paths de serve). Permite medir adopción y
+    // detectar si se activa donde no debe (p.ej. examen). Fire-and-forget.
+    if (shuffleOn) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'info',
+        eventType: 'shuffle_options_request_active',
+        endpoint: '/api/questions/filtered',
+        userId: userId ?? undefined,
+        metadata: { positionType: String(positionType).slice(0, 80), numQuestions },
+      })
+    }
 
     // 🏷️ Tag de oposición (fuente única: buildQuestionTagFilter).
     const tagFilter = buildQuestionTagFilter(positionType)

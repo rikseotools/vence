@@ -23,6 +23,7 @@ import { resolveTemaByQuestionIdFast } from '@/lib/api/tema-resolver/queries'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type { OposicionId } from '@/lib/api/tema-resolver/schemas'
 import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // ============================================
 // VALIDATION CACHE (tag: 'questions', TTL 1h)
@@ -213,6 +214,25 @@ export async function validateAndSaveAnswer(
   const n = params.options.length
   const hasShuffle = isValidOrder(params.optionOrder, n)
   const order = hasShuffle ? (params.optionOrder as number[]) : null
+
+  // Observabilidad (detector de "clave rota"): el cliente mandó un option_order
+  // pero NO es una permutación válida de las opciones → lo tratamos como identidad
+  // (seguro) pero lo hacemos VISIBLE. Señal de desincronía serve↔cliente o de
+  // manipulación. Fire-and-forget, no rompe la validación. Filosofía martillo.
+  if (params.optionOrder != null && !hasShuffle) {
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: 'shuffle_option_order_invalid',
+      endpoint: '/api/v2/answer-and-save',
+      userId,
+      metadata: {
+        questionId: params.questionId,
+        numOptions: n,
+        optionOrderLen: Array.isArray(params.optionOrder) ? params.optionOrder.length : null,
+      },
+    })
+  }
 
   // Índice ORIGINAL que el usuario eligió (para validar y para guardar coherente
   // con la BD). Con order: order[posiciónMostrada]; sin order: identidad.

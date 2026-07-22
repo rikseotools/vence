@@ -149,6 +149,19 @@ const isCorrect = originalIdx === dbCorrectOption;
 - **Modo examen INTACTO** (no baraja en Fase 2): ExamLayout consume filtered pero sin `shuffleOptions` → `shuffleOn=false`. OfficialExamLayout usa rutas propias (no filtered).
 - **Encender:** `FEATURE_SHUFFLE_OPTIONS=true` (SSM) + opcional `FEATURE_SHUFFLE_OPTIONS_SCOPE=<position_type,…>` para piloto por oposición. Requiere deploy del código (backend+frontend) ANTES de tocar el flag (orden código→flag).
 
+### Capas de seguridad construidas (22/07)
+- **Unit** (84 tests): `permute`/`flag`/`classify`/`validationSemantics` con la función real.
+- **Guardrail cableado** (`__tests__/lib/shuffle/wiring.guardrail.test.ts`, CI): afirma que `option_order`/`shuffle_mode` siguen cableados en cada salto (columna Drizzle→serve→schemas→cliente→validador→persistencia→gap-fill) + los emisores de observabilidad.
+- **transformQuestion unit** (`transformQuestionShuffle.test.ts`, node-env, CI): barajado eligible + **bail-out seguro** + no-eligibles + flag off, con la función real.
+- **Integración + Simulación + Canary** (`__tests__/canary/shuffleRoundtripBD.test.ts`, guardado por `DATABASE_URL`): 500 preguntas `full` reales de RDS → invariante (correcta preservada, round-trip reversible, 0 opciones perdidas) + retrocompat flag-off + coherencia de persistencia + coherencia del predicado de elegibilidad.
+- **Observabilidad:** `shuffle_options_request_active` (serve, adopción) + `shuffle_option_order_invalid` (warn, detector de clave rota/desincronía serve↔cliente).
+
+### Revisión adversarial (agente fresco) — hallazgos plegados
+- ✅ Confirmado: examen nunca baraja (auditoría exhaustiva de callers), coordenadas coherentes (UI 100% en mostradas, persistencia en originales), sin caché de permutaciones, retrocompat.
+- 🔧 **MEDIUM arreglado:** bail-out de `transformQuestion` cuando la correcta cae en hueco NO presente dejaba opciones permutadas con la clave descolocada → ahora sirve natural intacto (+ test).
+- 🔧 **Endurecido:** gap-fill de `complete-test` recomputa `isCorrect` server-side (no confía en el cliente) — simetría con answer-and-save.
+- ⚠️ **NOTA de diseño (antes del flip):** el barajado NO da beneficio anti-scraping y lo EMPEORA — el serve manda `correct_option` remapeado + `option_order`, así que un scraper recupera la clave (`original = option_order[correct_option]`). Además ACOPLA la feature al leak conocido `project_pending_filtered_correct_option_leak`: el fix de dejar de mandar `correct_option` rompería la validación client-side del barajado tal como está diseñada. Decisión pendiente antes de encender el flag general.
+
 ## 9. Estimación
 
 Pequeña-media: 2 migraciones additivas + 1 módulo clasificador (portado y testeado) + 1 módulo permutación + toques en fetcher y 2-3 validadores + flag. El grueso del riesgo (clasificación) ya está resuelto y validado. La Fase 2 (explicaciones estructuradas) es el proyecto grande aparte.

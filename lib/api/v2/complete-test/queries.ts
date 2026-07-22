@@ -412,6 +412,18 @@ async function fillMissingTestQuestions(args: FillMissingArgs): Promise<number> 
     if (typeof correctOption !== 'number') continue // pregunta desconocida (AI-generated?) → saltar
 
     const qd = a.questionData!
+
+    // Barajar opciones (Fase 1): a.selectedAnswer es la posición MOSTRADA. La
+    // mapeamos al índice ORIGINAL (correctOption ya viene en original de la BD).
+    // option_order inválido/ausente → identidad.
+    const validOrder = isValidOrder(a.optionOrder, qd.options?.length ?? 0) ? a.optionOrder : null
+    const originalSelected =
+      a.selectedAnswer < 0 ? a.selectedAnswer : displayedToOriginal(validOrder, a.selectedAnswer)
+    // Recomputamos isCorrect SERVER-SIDE (índice original elegido == clave de BD),
+    // no confiamos en el a.isCorrect del cliente — simetría con answer-and-save y
+    // robustez ante un cliente no-shuffle-aware o con option_order desincronizado.
+    const recomputedIsCorrect = a.selectedAnswer >= 0 && originalSelected === correctOption
+
     const req: SaveAnswerRequest = {
       sessionId,
       questionData: {
@@ -440,20 +452,11 @@ async function fillMissingTestQuestions(args: FillMissingArgs): Promise<number> 
       },
       answerData: {
         questionIndex: a.questionIndex,
-        // Barajar opciones (Fase 1): a.selectedAnswer es la posición MOSTRADA;
-        // la mapeamos al índice ORIGINAL (correctOption ya viene en original de la
-        // BD) para que la letra guardada sea coherente. Sin option_order → identidad.
-        selectedAnswer:
-          a.selectedAnswer < 0
-            ? a.selectedAnswer
-            : displayedToOriginal(
-                isValidOrder(a.optionOrder, qd.options?.length ?? 0) ? a.optionOrder : null,
-                a.selectedAnswer,
-              ),
+        selectedAnswer: originalSelected,
         correctAnswer: correctOption,
-        isCorrect: a.isCorrect,
+        isCorrect: recomputedIsCorrect,
         timeSpent: a.timeSpent ?? 0,
-        optionOrder: isValidOrder(a.optionOrder, qd.options?.length ?? 0) ? a.optionOrder : null,
+        optionOrder: validOrder,
       },
       tema: topLevelTema ?? 0,
       confidenceLevel: a.confidence ?? 'unknown',
