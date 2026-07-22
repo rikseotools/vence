@@ -60,9 +60,9 @@ Sin backfill → todo `unverified` → no baraja (más inerte todavía).
 ## Observabilidad (martillo)
 
 - Serve: `shuffle_options_request_active` (cobertura). Validador: `shuffle_option_order_invalid` (warn, clave rota). [ya en Fase 2]
-- **Drift sweep:** finding en `health-sweep.cjs` + `content_health_findings` (kind `shuffle_safe_regressed`) + frase-gatillo *"revisa el barajado"* → caza cualquier `safe` cuya explicación vuelva a citar letras y la degrada.
-- **Métrica de éxito:** desde `test_questions`/`observable_events` — cae la correlación posición-de-la-correcta ↔ acierto en repeticiones; 0 subida de impugnaciones "la respuesta está mal".
-- **Canary prod:** verifica el invariante en BD (no solo 200).
+- **Drift sweep** ✅: `scripts/sweep-shuffle-safety-drift.ts` (detector REAL, prefiltro SQL, ~5s) → `health-sweep.cjs` kind `shuffle_safe_regressed` + frase *"revisa el barajado"*. Caza `safe` que citen letras + integridad del trigger (hash).
+- **Métrica de éxito** ✅: `scripts/metric-shuffle-position-bias.ts` (baseline pre/post-piloto desde `test_questions`). BASELINE 22/07 (90 días, n≈1,12M): spread de accuracy por posición de la correcta **1,8%** (plano → la posición no sesga directo); **LIFT en repeticiones +14,6%** (1er intento 59,9% → repeticiones 74,5%) = la parte de "memorizo la posición" que barajar debe recortar; **23,4%** de las exposiciones caen sobre preguntas `safe` (cobertura al encender). Re-correr tras el piloto y comparar el lift.
+- **Canary prod:** verifica el invariante en BD (no solo 200). [pendiente wiring al framework de canaries]
 
 ## Rollout escalable
 
@@ -75,8 +75,8 @@ Flag `FEATURE_SHUFFLE_OPTIONS` + `SCOPE` por oposición (ya) + bucket de canario
 
 ## Orden de construcción
 
-1. **[ESTE PASO]** Columnas `shuffle_safety*` + `compute_shuffle_safety_hash` + trigger de invalidación + backfill determinista + gate de serve leyendo el dato. Migración additiva/inerte.
-2. Pipeline de auditoría LLM sobre `safe`/`stale`.
-3. Drift finding + métrica de éxito + canary prod.
-4. Rollout por-usuario; encender piloto.
-5. Fase 2 (estructuradas + server-authoritative).
+1. ✅ **HECHO** Columnas `shuffle_safety*` + `compute_shuffle_safety_hash` + trigger de invalidación + `record_shuffle_safety` + audit history + backfill determinista + gate de serve. Migración `20260722_shuffle_safety_verification` aplicada a RDS. Backfill: safe 72.068 / unsafe 62.578.
+2. ✅ **HECHO** Auditoría LLM (`scripts/audit-shuffle-safety-llm.ts`, ensemble 3 modelos, umbral mayoría) sobre las 9.585 `safe` con smell → **6.362 safe confirmadas + 3.223 bajadas a unsafe** (labels que el regex no caza). Estado: safe 68.845 / unsafe 65.863. GOTCHA: el backfill (1ª capa) NO debe re-procesar filas ya auditadas por el LLM → solo `unverified/stale` (recuperación via audit history si pasa).
+3. ✅ **HECHO** Drift finding (`shuffle_safe_regressed`) + métrica de éxito (`metric-shuffle-position-bias.ts`, baseline arriba). Falta: wiring del canary al framework de canaries (opcional).
+4. Rollout por-usuario; encender piloto (1 opos vía `FEATURE_SHUFFLE_OPTIONS_SCOPE`).
+5. Fase 2 (estructuradas + server-authoritative; cierra el leak `correct_option`).
