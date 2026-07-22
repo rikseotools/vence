@@ -688,6 +688,9 @@ export const testQuestions = pgTable("test_questions", {
 	questionId: uuid("question_id"),
 	articleId: uuid("article_id"),
 	questionOrder: integer("question_order").notNull(),
+	// Barajar opciones Fase 1: permutación aplicada al servir (option_order[i] = índice
+	// original 0=A mostrado en la posición i). NULL = orden natural. Migración 20260722.
+	optionOrder: integer("option_order").array(),
 	questionText: text("question_text").notNull(),
 	userAnswer: text("user_answer").notNull(),
 	correctAnswer: text("correct_answer").notNull(),
@@ -2293,6 +2296,9 @@ export const questions = pgTable("questions", {
 	optionD: text("option_d"),
 	optionE: text("option_e"),
 	correctOption: integer("correct_option").notNull(),
+	// Barajar opciones Fase 1: barajabilidad de las opciones (default no_shuffle = seguro).
+	// Clasificador: lib/shuffle/classifyShuffleMode.ts. Migración 20260722_shuffle_options_fase1.
+	shuffleMode: text("shuffle_mode").default('no_shuffle').notNull(),
 	explanation: text().notNull(),
 	difficulty: text().default('medium'),
 	questionType: text("question_type").default('single'),
