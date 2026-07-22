@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
+import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import {
   getLastTickMsAgo,
   runWithHeartbeat,
@@ -40,9 +40,22 @@ import { CheckSeguimientoService } from './check-seguimiento.service';
  * dé rojo por un cron que hemos apagado a propósito.
  *
  * Horario cuando está activo: L-V a las 09:00 UTC.
+ *
+ * ## Por qué se DES-registra del SchedulerRegistry cuando está retirado (22/07)
+ *
+ * El decorador de cron registra SIEMPRE el job en `SchedulerRegistry` (el gate `isEnabled()`
+ * vive dentro de `handle()`, se ejecuta demasiado tarde). La regla de alerta `cron_overdue`
+ * (`alert-rules.ts` → `CronScheduleService.listCronJobs`) enumera ESE registro, no el heartbeat:
+ * veía `check-seguimiento` con su expresión `0 9 * * 1-5`, comprobaba que no emitió `cron_run`
+ * en su último tick y lo marcaba overdue → un `[Vence CRITICAL] cron overdue` CADA día laborable
+ * durante 60 días (ventana de la query), pese a estar apagado a propósito (incidente 22/07).
+ * Quitar solo el heartbeat (arriba) no bastaba. Por eso, si está retirado, en
+ * `onApplicationBootstrap` (cuando el job ya está en el registro) lo BORRAMOS: desaparece de
+ * `listCronJobs` → ni `cron_overdue` ni el panel de salud lo ven. Reactivar con el flag lo
+ * vuelve a registrar con normalidad.
  */
 @Injectable()
-export class CheckSeguimientoCron {
+export class CheckSeguimientoCron implements OnApplicationBootstrap {
   private readonly logger = new Logger(CheckSeguimientoCron.name);
   public lastTickAtMs: number | null = null;
 
@@ -50,6 +63,7 @@ export class CheckSeguimientoCron {
     private readonly service: CheckSeguimientoService,
     private readonly observability: ObservabilityService,
     heartbeatRegistry: HeartbeatRegistry,
+    private readonly schedulerRegistry: SchedulerRegistry,
   ) {
     // Solo se vigila si el cron está activo: registrar el heartbeat de un cron retirado
     // haría que el panel de salud diese ROJO a los 4 días por un job que apagamos a propósito.
@@ -65,6 +79,26 @@ export class CheckSeguimientoCron {
         'check-seguimiento RETIRADO (sensor hash_change: 4% de acierto). ' +
           'Reactivar con CHECK_SEGUIMIENTO_ENABLED=true.',
       );
+    }
+  }
+
+  /**
+   * Cuando está retirado, des-registrar el job del `SchedulerRegistry` para que
+   * NO lo vea `cron_overdue` (que enumera el registro, no el heartbeat). Se hace en
+   * `onApplicationBootstrap` porque el `ScheduleExplorer` añade los jobs en su
+   * `onModuleInit` (antes de este hook), así que aquí el job ya existe. Best-effort:
+   * si no estuviera registrado, `deleteCronJob` lanza → lo tragamos (idempotente).
+   */
+  onApplicationBootstrap(): void {
+    if (CheckSeguimientoCron.isEnabled()) return;
+    try {
+      this.schedulerRegistry.deleteCronJob('check-seguimiento');
+      this.logger.log(
+        'check-seguimiento des-registrado del SchedulerRegistry (retirado) ' +
+          '→ silenciado en cron_overdue y panel de salud.',
+      );
+    } catch {
+      // Ya no estaba registrado (o el explorer no lo añadió): nada que hacer.
     }
   }
 

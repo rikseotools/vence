@@ -47,3 +47,31 @@ describe('cron check-seguimiento — retirado y reversible', () => {
     expect(fs.existsSync(path.join(process.cwd(), 'app/admin/seguimiento-convocatorias/page.tsx'))).toBe(true)
   })
 })
+
+// Regresión del incidente 22/07: `cron_overdue` enumera el SchedulerRegistry (no el heartbeat),
+// así que un cron retirado seguía marcándose overdue → CRITICAL diario 60 días. El fix des-registra
+// el @Cron en onApplicationBootstrap cuando está apagado. (El test de COMPORTAMIENTO real corre en
+// el suite del backend con ts-jest —soporta decoradores NestJS—:
+// backend/src/check-seguimiento/check-seguimiento.cron.spec.ts. Aquí, en el jest del frontend, solo
+// se asertan a nivel de fuente los invariantes, como el resto de este fichero.)
+describe('cron check-seguimiento — des-registro del SchedulerRegistry (silencia cron_overdue)', () => {
+  it('implementa OnApplicationBootstrap y borra el job cuando está retirado', () => {
+    expect(src).toMatch(/implements OnApplicationBootstrap/)
+    expect(src).toMatch(/onApplicationBootstrap\(\)/)
+    expect(src).toMatch(/deleteCronJob\('check-seguimiento'\)/)
+  })
+
+  it('el des-registro está guardado por isEnabled (solo si está retirado)', () => {
+    const hook = src.slice(src.indexOf('onApplicationBootstrap()'))
+    const guarda = hook.indexOf('if (CheckSeguimientoCron.isEnabled()) return')
+    const borrado = hook.indexOf("deleteCronJob('check-seguimiento')")
+    expect(guarda).toBeGreaterThanOrEqual(0)
+    expect(borrado).toBeGreaterThan(guarda)
+  })
+
+  it('el borrado es best-effort (try/catch, idempotente si el job ya no está)', () => {
+    const hook = src.slice(src.indexOf('onApplicationBootstrap()'))
+    expect(hook).toMatch(/try \{/)
+    expect(hook).toMatch(/\} catch/)
+  })
+})
