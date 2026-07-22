@@ -22,9 +22,22 @@ import type {
 // explícita al `BUCKET_OVERRIDES` con su nombre real.
 const BUCKET_OVERRIDES: Record<string, string> = {}
 
+// Endpoint S3-compatible OPCIONAL (MinIO, o el object storage de koigrid, etc.). Vacío = AWS S3
+// nativo (comportamiento por defecto, sin cambios). Se lee inline (no como const de módulo) para
+// respetar el env de runtime. Habilita mover el storage a koigrid sin reescribir el adapter: basta
+// poner AWS_S3_ENDPOINT + las credenciales/bucket de ese proveedor. Ver T-086 Fase D.
+function s3Endpoint(): string | undefined {
+  const e = process.env.AWS_S3_ENDPOINT?.trim()
+  return e ? e.replace(/\/$/, '') : undefined
+}
+
 function getS3Client(): S3Client {
+  const endpoint = s3Endpoint()
   return new S3Client({
     region: process.env.AWS_S3_REGION ?? 'eu-west-2',
+    // Con endpoint custom se fuerza path-style (bucket en la ruta, no en el host): lo requieren
+    // casi todos los S3-compatibles. Se puede desactivar con AWS_S3_FORCE_PATH_STYLE=false.
+    ...(endpoint ? { endpoint, forcePathStyle: process.env.AWS_S3_FORCE_PATH_STYLE !== 'false' } : {}),
     credentials:
       process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
         ? {
@@ -50,6 +63,13 @@ function resolveS3Bucket(logicalBucket: string): { bucket: string; key: (p: stri
 }
 
 function publicUrlFor(bucket: string, key: string): string {
+  const endpoint = s3Endpoint()
+  if (endpoint) {
+    // Endpoint S3-compatible (path-style): <endpoint>/<bucket>/<key>. Si el storage vive detrás de
+    // un CDN/dominio propio, exportar AWS_S3_PUBLIC_BASE con esa base.
+    const base = process.env.AWS_S3_PUBLIC_BASE?.trim().replace(/\/$/, '') || `${endpoint}/${bucket}`
+    return `${base}/${encodeURI(key)}`
+  }
   const region = process.env.AWS_S3_REGION ?? 'eu-west-2'
   return `https://${bucket}.s3.${region}.amazonaws.com/${encodeURI(key)}`
 }
