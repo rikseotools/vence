@@ -6,7 +6,8 @@
 // no de escenarios inventados — están marcados donde aplica.
 import {
   splitParagraphs, articleHeading, articleLabel, groupArticles, buildLawBlocks,
-  pdfFileName, buildTopicPdfModel, countContentChars, fitsSyncPdf, PDF_MAX_CHARS,
+  pdfFileName, buildTopicPdfModel, countContentChars, maxArticleChars, fitsSyncPdf,
+  PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS,
 } from '@/lib/temario/pdf/topicPdfModel'
 
 const FECHA = new Date('2026-07-20T10:00:00Z')
@@ -133,6 +134,33 @@ describe('guardarraíl de tamaño — medido con datos reales', () => {
     expect(fitsSyncPdf(300_000)).toBe(true)   // p95, ~7 s medidos
     expect(fitsSyncPdf(PDF_MAX_CHARS)).toBe(true)
     expect(fitsSyncPdf(1_369_000)).toBe(false) // el peor tema real
+  })
+
+  // Guardarraíl POR-ARTÍCULO (caso Julen 21/07, T19 aux-Madrid): un tema BAJO el total pero
+  // con un artículo-cajón único da 504 (render super-lineal). El por-artículo lo reconvierte
+  // a 413 gracioso. Datos reales: T19 = 334k total (< 400k) con un artículo de 89k (> 60k).
+  it('rechaza un tema con un artículo-cajón aunque el TOTAL quepa (fix 504→413)', () => {
+    // T19 real: total cabe, pero el artículo de 89k supera el techo por-artículo → NO cabe.
+    expect(fitsSyncPdf(334_000, 89_000)).toBe(false)
+    // T20/T17 reales: total cabe y el mayor artículo (28k/37k) está por debajo de 60k → cabe.
+    expect(fitsSyncPdf(66_000, 28_000)).toBe(true)
+    expect(fitsSyncPdf(327_000, 37_000)).toBe(true)
+    // Sin segundo argumento, se comporta como antes (solo total) — no rompe llamadas viejas.
+    expect(fitsSyncPdf(300_000)).toBe(true)
+    // Frontera exacta del techo por-artículo.
+    expect(fitsSyncPdf(1000, PDF_MAX_ARTICLE_CHARS)).toBe(true)
+    expect(fitsSyncPdf(1000, PDF_MAX_ARTICLE_CHARS + 1)).toBe(false)
+  })
+
+  it('maxArticleChars devuelve el artículo más grande del tema', () => {
+    expect(maxArticleChars({
+      laws: [
+        { articles: [{ content: 'aa' }, { content: 'aaaaa' }] },
+        { articles: [{ content: 'aaa' }, { content: null }] },
+      ],
+    })).toBe(5)
+    expect(maxArticleChars({})).toBe(0)
+    expect(maxArticleChars({ laws: [{ articles: [] }] })).toBe(0)
   })
 
   it('countContentChars suma el texto de todas las leyes del tema', () => {

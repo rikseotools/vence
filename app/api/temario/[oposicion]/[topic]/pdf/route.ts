@@ -18,7 +18,7 @@ import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import React from 'react'
 import { getTopicContent, getLawSectionNames } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
-import { buildTopicPdfModel, pdfFileName, countContentChars, fitsSyncPdf, PDF_MAX_CHARS } from '@/lib/temario/pdf/topicPdfModel'
+import { buildTopicPdfModel, pdfFileName, countContentChars, maxArticleChars, fitsSyncPdf, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
@@ -72,10 +72,15 @@ async function handler(
   // Guardarraíl de tamaño: los "artículos-cajón" (T-040) meten una app entera en un solo
   // artículo y el render no baja de minutos → timeout garantizado. Mejor decirlo claro y
   // que el cliente degrade a la impresión del navegador (lo que había antes).
+  // DOS techos: total (PDF_MAX_CHARS) Y por-artículo (PDF_MAX_ARTICLE_CHARS). El total no
+  // basta: un tema bajo el total puede tener un cajón único que 504ea igual (caso Julen,
+  // T19 = 334k total pero un artículo de 89k). El por-artículo convierte ese 504 duro en un
+  // 413 gracioso → el cliente cae a imprimir.
   const chars = countContentChars(content)
-  if (!fitsSyncPdf(chars)) {
+  const maxArt = maxArticleChars(content)
+  if (!fitsSyncPdf(chars, maxArt)) {
     return NextResponse.json(
-      { error: 'tema_demasiado_grande', chars, maxChars: PDF_MAX_CHARS },
+      { error: 'tema_demasiado_grande', chars, maxChars: PDF_MAX_CHARS, maxArticleChars: maxArt, maxArticle: PDF_MAX_ARTICLE_CHARS },
       { status: 413 }
     )
   }
