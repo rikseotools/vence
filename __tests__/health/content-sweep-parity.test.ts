@@ -31,7 +31,16 @@ const BACKEND = fs.readFileSync(
 const hasKind = (txt: string, kind: string) =>
   new RegExp(`['"\`]${kind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"\`]`).test(txt)
 
-const ALL_KINDS = Object.keys(RUNBOOK_BY_KIND)
+// Detectores CLI-only: corren SOLO en el gemelo `scripts/health-sweep.cjs`, no en el
+// backend @Cron. `shuffle_safe_regressed` invoca un subproceso `npx tsx
+// scripts/sweep-shuffle-safety-drift.ts` que importa `explanationReferencesLetters` de
+// `@/lib/shuffle/...` (lib del FRONTEND). El backend NestJS (proyecto ./backend separado,
+// build sin acceso al root `scripts/` ni a `@/lib`) no puede ejecutarlo tal cual, así que
+// se excluye de la paridad A PROPÓSITO. Consecuencia asumida: el @Cron nocturno NO refresca
+// estos hallazgos (solo aparecen al correr el CLI a mano). Si algún día se reimplementa la
+// lógica nativa en el service (o en un paquete compartido), quitarlo de este set.
+const CLI_ONLY_KINDS = new Set(['shuffle_safe_regressed'])
+const ALL_KINDS = Object.keys(RUNBOOK_BY_KIND).filter((k) => !CLI_ONLY_KINDS.has(k))
 const scriptKinds = ALL_KINDS.filter((k) => hasKind(SCRIPT, k)).sort()
 const backendKinds = ALL_KINDS.filter((k) => hasKind(BACKEND, k)).sort()
 
