@@ -16,6 +16,13 @@
 
 ## Abiertas
 
+### 🔴 [ABIERTO 22-23/07] Migración a Koigrid — frontend bloqueado por memoria del runner de build (BD ya migrada)
+- **Qué / dónde estamos:** migración RDS/ECS → **Koigrid** (PaaS tarifa plana EU). **BD YA migrada y validada 1:1** (DB `vence-mig2`, ~27GB, esquema+datos+índices+FKs, row-counts cuadran). **Frontend NO desplegado** — bloqueado por **UN solo muro: el runner de build de Koigrid OOM-killea `next build`** (SIGKILL ~2min compilando 4.468 páginas SSG; confirmado en local `podman build --no-cache --memory=3g`→SIGKILL; necesita >3GB, su runner es menor).
+- **Ya resuelto:** Snag H (DB en build) lo arregló Koigrid vía reference vars `${{db.vence-mig2.DATABASE_URL}}`; guard Turnstile pasa con el clobber-fix del Dockerfile; imagen local completa construye bien (el push falla 413 por la capa de prerender de 2,58GB).
+- **2 caminos para cerrar:** (A) esperar release de Koigrid que suba memoria del runner (van rápido) → re-testear → completa solo; (B) **Vence-side:** capar `generateStaticParams` (menos prerender, resto dinámico contra BD co-ubicada 6,45ms) → build ligero → cabe ya. Usuario prefería (A) (loop documentar→Koigrid arregla→re-test).
+- **Cómo retomar:** memoria `reference_koigrid_evaluacion_fase_d` §RESUME (artefactos en `/home/manuel/.cache/koigrid-mig/` + worktree `/home/manuel/.cache/vence-clean`). Detalle: `docs/roadmap/migracion-koigrid.md`. **Journey para Koigrid** (con los 6 escollos E-K + cifras): `docs/roadmap/koigrid-migration-journey.md` (report ya enviado, id `5081eb3f`). **PROD INTACTA en AWS** (solo pg_dump=lectura).
+- **Estado:** BD ✅ · frontend ⛔ (1 número: memoria runner build Koigrid) · journey ✅ listo.
+
 ### 🟢 [ABIERTO 19/07] Aux. Admin. Diputación de Zaragoza — scope↔epígrafe: 20/20 verified_correct (0 issues, 0 needs_human)
 - **Qué:** verificación scope↔epígrafe completa (BOP `bop_1582_2026.pdf`, Anexo II) contra topic_scope, 2 agentes + consenso, **trackada en `topic_scope_verification`** (19/07). Origen: impugnaciones de Sandra Barbastro (art. 71 y 100 LCSP, falsos positivos — sí entran en su T11 "contratación pública", verificado).
 - **HECHO 19/07 (6 temas → verified_correct, todos por consenso de 2 agentes):**
