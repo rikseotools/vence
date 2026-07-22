@@ -318,6 +318,54 @@ describe('QuestionDispute', () => {
       })
     })
 
+    // Anti-regresión del bug de María José (22/07): 5 POST en 44 ms → 5 impugnaciones duplicadas.
+    // El guard SÍNCRONO con useRef debe hacer que una ráfaga de clics dispare UN solo POST.
+    test('DEBOUNCE: multi-tap de 3 clics dispara UN solo POST (guard anti-duplicados)', async () => {
+      // GET (check existing) → no existe
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: null }),
+      })
+      // POST RETARDADO: mantiene abierta la ventana de la ráfaga mientras llegan los otros clics.
+      let resolvePost: (v: unknown) => void = () => {}
+      const postPromise = new Promise((r) => {
+        resolvePost = r
+      })
+      global.fetch.mockImplementation((_url: string, opts?: { method?: string }) =>
+        opts?.method === 'POST'
+          ? postPromise
+          : Promise.resolve({ ok: true, json: async () => ({ success: true, data: null }) })
+      )
+
+      renderInline()
+      fireEvent.click(screen.getByText(/Impugnar pregunta/))
+      await waitFor(() => {
+        expect(screen.getByText(/Motivo de la impugnación/)).toBeInTheDocument()
+      })
+      // "Otro motivo" NO auto-envía (muestra textarea + botón explícito).
+      fireEvent.click(screen.getByLabelText(/Otro motivo/))
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'una descripción de motivo suficientemente larga para el envío' },
+      })
+
+      const submitBtn = screen.getByRole('button', { name: /Enviar impugnación/ })
+      await act(async () => {
+        fireEvent.click(submitBtn)
+        fireEvent.click(submitBtn)
+        fireEvent.click(submitBtn)
+      })
+
+      const posts = (global.fetch as jest.Mock).mock.calls.filter(
+        (c: unknown[]) => (c[1] as { method?: string })?.method === 'POST'
+      )
+      expect(posts.length).toBe(1)
+
+      // Limpieza: resolver el POST para que el componente asiente.
+      await act(async () => {
+        resolvePost({ ok: true, status: 200, json: async () => ({ success: true, disputeId: 'x' }) })
+      })
+    })
+
     test('auto-submit para "no_literal" envía descripción automática', async () => {
       const postMock = {
         ok: true,

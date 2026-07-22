@@ -1,6 +1,6 @@
 // components/QuestionDispute.tsx - Componente unificado para impugnar preguntas
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ExistingDisputeData } from '@/lib/api/dispute'
 import {
   LEGISLATIVE_DISPUTE_TYPES,
@@ -83,6 +83,10 @@ export default function QuestionDispute({
   const [disputeType, setDisputeType] = useState<DisputeTypeValue>('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Guard SÍNCRONO anti multi-tap: `submitting` (estado) solo bloquea el botón tras un re-render,
+  // que en una ráfaga de taps de ~44 ms no llega a tiempo (bug María José 22/07: 5 POST en 44 ms).
+  // El ref se lee/escribe sin re-render → los taps 2-5 rebotan al instante, antes del fetch.
+  const submittingRef = useRef(false)
   const [submitted, setSubmitted] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -159,8 +163,14 @@ export default function QuestionDispute({
       return
     }
 
+    // Guard síncrono justo antes del primer await (abre la ventana de la ráfaga): si ya hay un
+    // envío en curso, rebota. Se resetea en TODAS las salidas (error de auth + finally).
+    if (submittingRef.current) return
+    submittingRef.current = true
+
     const authHeaders = await getAuthHeaders()
     if (!authHeaders['Authorization']) {
+      submittingRef.current = false
       setErrorMessage('Error de autenticación. Intenta iniciar sesión de nuevo.')
       return
     }
@@ -229,6 +239,7 @@ export default function QuestionDispute({
       setErrorMessage('Error inesperado al enviar la impugnación. Inténtalo de nuevo.')
     } finally {
       setSubmitting(false)
+      submittingRef.current = false
     }
   }
 

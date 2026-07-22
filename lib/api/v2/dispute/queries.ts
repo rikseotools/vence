@@ -16,6 +16,7 @@ import {
   notificationLogs,
 } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import type {
   QuestionType,
   CreateDisputeRequest,
@@ -192,6 +193,23 @@ export async function createDispute(
       return { success: true, disputeId: result.id }
     }
   } catch (error) {
+    // Ráfaga simultánea (multi-tap / reintento): el índice único PARCIAL
+    // (question_disputes_open_uq / psychometric_question_disputes_open_uq) rechaza en la BD la 2ª
+    // impugnación abierta de la misma (pregunta, usuario) → 23505. Es el comportamiento CORRECTO:
+    // gana la primera, las demás rebotan sin crear duplicados. Lo tratamos como "ya existe" (no un
+    // error de sistema) y lo medimos para ver cuánto multi-tap hay. Ver migración 20260722_dispute_open_unique.
+    const code = (error as { code?: string })?.code
+    const msg = error instanceof Error ? error.message : ''
+    if (code === '23505' && /_open_uq/.test(msg)) {
+      emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'dispute_duplicate_prevented',
+        endpoint: '/api/v2/dispute',
+        metadata: { userId, questionId: params.questionId, questionType: params.questionType, via: 'unique_index' },
+      })
+      return { success: false, error: 'Ya has impugnado esta pregunta anteriormente' }
+    }
     console.error('Error creando impugnacion:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
   }
