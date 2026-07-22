@@ -17,6 +17,7 @@ const SWEEP_KINDS = [
   'no_hitos', 'flattened_table', 'stale_dated_law', 'audit_note_explanation',
   'law_unverified_source', 'scope_titulo_huerfano', 'convocatoria_docs_incompletos',
   'answer_in_annulled_fragment', 'scope_over_inclusion_suspect',
+  'scope_cross_tema_dup',
 ]
 
 describe('runbookRegistry — guardarraíles', () => {

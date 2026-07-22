@@ -586,6 +586,33 @@ async function main() {
       { count: real.length, laws: leyesReal.length, inexistentes: inex, desactivados: desact, virtual_ofimatica: virt.length, sample: real.slice(0, 25).map(p => ({ ley: p.ley, art: p.art, causa: p.causa })) });
   }
 
+  // ── scope_cross_tema_dup: misma ley REAL escopada ENTERA (o solape grande) en ≥2 temas ──
+  // Punto ciego de over-inclusion (mira 1 tema vs epígrafe) y de huecos (los temas rebosan).
+  // Umbral: ley entera/NULL compartida por >1 tema, o ≥20 arts solapados (1-10 = cross-cutting legítimo).
+  const ctRows = (await c.query(`
+    SELECT t.position_type pt, l.short_name ley, t.topic_number tn, ts.article_numbers an
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
+    WHERE t.is_active = true
+      AND l.short_name ~* '^(Ley|LO|RD|RDL|CE|Real|Decreto|Estatut|Llei|TR|Convenio|Reglament|Constituci|Tratado|TUE|TFUE|RGPD)'`)).rows;
+  const ctGroups = {};
+  for (const r of ctRows) { const k = r.pt + ' ' + r.ley; (ctGroups[k] = ctGroups[k] || []).push(r); }
+  const ctDups = [];
+  for (const k of Object.keys(ctGroups)) {
+    const rows = ctGroups[k]; if (rows.length < 2) continue;
+    const [pt, ley] = k.split(' ');
+    const arrs = rows.map(r => { const a = r.an || []; const nums = a.map(x => parseInt(String(x).replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n)); return { tn: r.tn, set: new Set(nums), nulish: a.length === 0 }; });
+    let maxOv = 0, pair = null;
+    if (arrs.filter(a => a.nulish).length > 1) { maxOv = 9999; pair = arrs.filter(a => a.nulish).map(a => 'T' + a.tn).join('=T') + ' (ley entera/NULL)'; }
+    else for (let i = 0; i < arrs.length; i++) for (let j = i + 1; j < arrs.length; j++) { let cc = 0; for (const n of arrs[i].set) if (arrs[j].set.has(n)) cc++; if (cc > maxOv) { maxOv = cc; pair = 'T' + arrs[i].tn + '∩T' + arrs[j].tn + '=' + cc + ' arts'; } }
+    if (maxOv >= 20) ctDups.push({ pt, ley, dup: pair });
+  }
+  if (ctDups.length) {
+    const nOpos = new Set(ctDups.map(x => x.pt)).size;
+    add('content', 'warn', null, 'scope_cross_tema_dup',
+      `${ctDups.length} ley(es) REAL duplicada(s) entre temas (misma ley entera/solape grande en ≥2 temas → preguntas repetidas en varios tests) en ${nOpos} oposición(es) — repartir por materia con verify:scope (npm run scope:health -- --pending)`,
+      { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) });
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

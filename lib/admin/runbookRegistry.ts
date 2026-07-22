@@ -177,6 +177,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/provenance-convocatorias.md',
     claudeHace: 'para cada oposición señalada lee la vista convocatoria_docs_coverage: primero enlaza lo ya clonado sin fetch (scripts/backfill-hito-source-documento.cjs --apply), luego clona los documentos referenciados que falten desde su URL oficial (backend/scripts/clonar-documento.ts, con content_hash + snapshot, tipo real no "nota") y enlaza source_documento_id, y resuelve las citas sin fuente. NUNCA clona sin verificar la URL oficial ni fabrica cita/hash; si la URL da 403/está caída deja el hueco anotado. Los hitos huérfanos (convocatoria_id NULL) se asignan primero a su convocatoria mirando la fecha del hito.',
   },
+  scope_cross_tema_dup: {
+    title: 'Misma ley duplicada entre temas (repartir por materia)',
+    triggerPhrase: 'revisa las leyes duplicadas entre temas',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'corre `npm run scope:health -- --pending` para ver qué ley está duplicada en qué oposición/temas (bucket REPARTO). Para cada una: mira los epígrafes de los temas hermanos que comparten la ley entera, decide qué parte de la ley pide cada uno (por título/capítulo/materia), y REPARTE el article_numbers entre ellos con simulación orphan-check (la unión debe conservar todas las preguntas). NO huerfanes preguntas; si dos epígrafes cubren legítimamente el mismo bloque (cross-cutting, solape pequeño), déjalo. Contenedores de contenido clínico (NULL) compartidos entre temas hermanos suelen ser legítimos (no partibles por artículo).',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */
