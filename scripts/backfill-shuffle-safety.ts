@@ -33,15 +33,16 @@ async function main() {
   })
   await c.connect()
 
-  // Solo las que aún no tienen veredicto determinista de esta versión (idempotente,
-  // reanudable): unverified, o stale (contenido cambió), o verificadas por versión anterior.
+  // SOLO clasifica lo NO clasificado o invalidado: unverified (nunca) o stale (el trigger
+  // detectó cambio de contenido). NUNCA re-procesa filas ya safe/unsafe — podrían tener un
+  // veredicto MÁS AUTORITATIVO de la auditoría LLM (verified_by='llm_audit_v1'), y este
+  // backfill es solo la 1ª capa (determinista). [Regresión 22/07 corregida: la condición
+  // anterior `verified_by != 'backfill_deterministic_v3'` re-seleccionaba las LLM-auditadas
+  // y deshacía sus bajadas; se restauró desde question_shuffle_safety_history.]
   const rows = (
     await c.query(
       `SELECT id, explanation, shuffle_mode FROM public.questions
-       WHERE is_active = true
-         AND (shuffle_safety = 'unverified' OR shuffle_safety = 'stale'
-              OR shuffle_safety_verified_by IS DISTINCT FROM $1)`,
-      [VERIFIED_BY],
+       WHERE is_active = true AND shuffle_safety IN ('unverified','stale')`,
     )
   ).rows as Row[]
 
