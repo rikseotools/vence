@@ -1220,7 +1220,7 @@ export class ContentHealthSweepService {
       SELECT t.position_type pt, l.short_name ley, t.topic_number tn, ts.article_numbers an
       FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
       WHERE t.is_active = true
-        AND l.short_name ~* '^(Ley|LO|RD|RDL|CE|Real|Decreto|Estatut|Llei|TR|Convenio|Reglament|Constituci|Tratado|TUE|TFUE|RGPD)'
+        AND (l.short_name ~* '^(Ley|Real|Decreto|Estatut|Llei|Convenio|Reglament|Constituci|Tratado)' OR l.short_name ~ '^(LO|RD|RDL|CE|TR|TUE|TFUE|RGPD)')
     `)) as unknown as Array<{
       pt: string;
       ley: string;

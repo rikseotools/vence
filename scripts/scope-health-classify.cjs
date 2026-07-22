@@ -45,10 +45,15 @@
  */
 
 // ── NÚCLEO PURO (testeable sin BD, SIN dependencias) ──────────────────────────
-const LEY_RE = /^(Ley|LO|RD|RDL|CE|Real|Decreto|Estatut|Llei|TR|TRLGSS|LGS|LOSU|LOTC|LOREG|LECrim|LOGP|Convenio|Reglament|Constituci|Carta|Tratado|TUE|TFUE|RGPD)/i
+// Nombres de norma TÍTULO-CASE (case-insensitive: "Ley"/"ley", "Decreto"…).
+const LEY_TITLE_RE = /^(Ley|Real|Decreto|Estatut|Llei|Convenio|Reglament|Constituci|Carta|Tratado)/i
+// SIGLAS en MAYÚSCULAS (case-SENSITIVE): distingue "TR…"(TRLGSS)/"CE"(Constitución) de
+// contenedores título-case como "Trabajo…"/"Celador…" que antes colaban por el flag /i.
+const LEY_SIGLA_RE = /^(LO|RD|RDL|CE|TR|TRLGSS|LGS|LOSU|LOTC|LOREG|LECrim|LOGP|TUE|TFUE|RGPD)/
 
 function isRealLaw(shortName) {
-  return LEY_RE.test((shortName || '').trim())
+  const s = (shortName || '').trim()
+  return LEY_TITLE_RE.test(s) || LEY_SIGLA_RE.test(s)
 }
 
 /** normaliza article_numbers a Set de enteros; nulish=true si NULL/vacío (=ley entera) */
