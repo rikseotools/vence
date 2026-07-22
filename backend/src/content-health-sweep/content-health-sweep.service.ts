@@ -141,6 +141,193 @@ function classifyLaw(
   return null;
 }
 
+// Mirror INLINE de lib/convocatoria/examenPasadoEnTexto.cjs — MANTENER EN SYNC.
+// Detecta textos libres (landing_faqs/description) que anuncian un examen como VIGENTE
+// con una fecha YA PASADA (el opositor lee una fecha vieja como la próxima). Calibrado:
+// solo el ENGAÑO (presentado como vigente), no el histórico ni fechas de plazo/publicación.
+const MESES_EXAM: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+  julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
+const ES_EXAMEN = /\b(examen|ejercicio|prueba)\b/i;
+const NO_EXAMEN =
+  /plazo|solicitud|inscripci|se public|publicad|publicaron|cerr[óo]|finaliz|resultado|lista|admitid|nombramiento/i;
+const VIGENTE_EXAM =
+  /\b(es el|es la|ser[áa]|tendr[áa] lugar|se celebrar[áa]|previsto para|prevista para|convocado para|convocada para|examen el|examen es|fecha del examen|se realizar[áa])\b/i;
+const PASADO_EXAM =
+  /(^|\s)se celebr[óo]|(^|\s)celebr[óo]|celebrad[oa]|tuvo lugar|se realiz[óo]|realizad[oa]|ya (se )?celebr|examen fue/i;
+function extraerFechasExam(txt: string): Array<{ iso: string; idx: number }> {
+  const out: Array<{ iso: string; idx: number }> = [];
+  const re1 =
+    /(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+de\s+(20\d\d)/gi;
+  for (const m of txt.matchAll(re1))
+    out.push({
+      iso: `${m[3]}-${String(MESES_EXAM[m[2].toLowerCase()]).padStart(2, '0')}-${String(+m[1]).padStart(2, '0')}`,
+      idx: m.index ?? 0,
+    });
+  const re2 = /(\d{1,2})\/(\d{1,2})\/(20\d\d)/g;
+  for (const m of txt.matchAll(re2))
+    out.push({
+      iso: `${m[3]}-${String(+m[2]).padStart(2, '0')}-${String(+m[1]).padStart(2, '0')}`,
+      idx: m.index ?? 0,
+    });
+  return out;
+}
+function examenPasadoPresentadoVigente(
+  texto: string | null | undefined,
+  hoyIso: string,
+): Array<{ iso: string; contexto: string }> {
+  if (!texto) return [];
+  const t = String(texto);
+  const hits: Array<{ iso: string; contexto: string }> = [];
+  for (const f of extraerFechasExam(t)) {
+    if (f.iso >= hoyIso) continue;
+    const ctx = t.slice(Math.max(0, f.idx - 55), f.idx + 15);
+    if (!ES_EXAMEN.test(ctx)) continue;
+    if (NO_EXAMEN.test(ctx)) continue;
+    if (PASADO_EXAM.test(ctx)) continue;
+    if (!VIGENTE_EXAM.test(ctx)) continue;
+    hits.push({ iso: f.iso, contexto: ctx.replace(/\s+/g, ' ').trim() });
+  }
+  return hits;
+}
+function detectarExamenPasado(
+  data: { landingDescription?: unknown; landingFaqs?: unknown },
+  hoyIso: string,
+): Array<{ iso: string; contexto: string }> {
+  const textos: string[] = [];
+  if (data.landingDescription) textos.push(String(data.landingDescription));
+  if (Array.isArray(data.landingFaqs))
+    for (const f of data.landingFaqs as Array<{ pregunta?: string; respuesta?: string }>)
+      textos.push(`${f.pregunta || ''} ${f.respuesta || ''}`);
+  return textos.flatMap((t) => examenPasadoPresentadoVigente(t, hoyIso));
+}
+
+// Mirror INLINE de scripts/health-sweep.cjs (scope_over_inclusion_suspect) — MANTENER EN SYNC.
+function romanToInt(s: string): number | null {
+  s = s.toUpperCase().replace(/\.BIS$/, '');
+  const R: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const cur = R[s[i]],
+      nxt = R[s[i + 1]];
+    if (cur == null) return null;
+    n += nxt && cur < nxt ? -cur : cur;
+  }
+  return n;
+}
+function classifyScope(
+  lawTotal: number,
+  scopedCount: number,
+  ep: string | null,
+): { band: string; score: number; coverage: number; reason: string | null } {
+  ep = ep || '';
+  const coverage = lawTotal > 0 ? scopedCount / lawTotal : 0;
+  const hasColon = /:/.test(ep);
+  const titulos: number[] = [];
+  let m: RegExpExecArray | null;
+  const reTit = /[Tt][íi]tulo\s+(Preliminar|[IVXLC]+(?:\.bis)?)/g;
+  while ((m = reTit.exec(ep)) !== null) {
+    const v = /preliminar/i.test(m[1]) ? 0 : romanToInt(m[1]);
+    if (v != null) titulos.push(v);
+  }
+  const titSet = [...new Set(titulos)].sort((a, b) => a - b);
+  let titComplete: boolean | null = null,
+    titGap = false;
+  if (titSet.length >= 2) {
+    const max = titSet[titSet.length - 1];
+    const miss: number[] = [];
+    for (let i = titSet[0]; i <= max; i++) if (!titSet.includes(i)) miss.push(i);
+    titGap = miss.length > 0;
+    titComplete = !titGap;
+  }
+  const closureWord =
+    /\breforma\b|disposici[oó]n(?:es)?\s+(?:adicional|transitoria|derogatoria|final)/i.test(ep);
+  let segments = 0;
+  if (hasColon)
+    segments = ep
+      .slice(ep.indexOf(':') + 1)
+      .split(/[;,]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length;
+  const explicitArts = new Set<number>();
+  const reR = /art[íi]?c?u?l?o?s?\.?\s*(\d+)\s*(?:a|al|-|–)\s*(\d+)/gi;
+  while ((m = reR.exec(ep)) !== null) {
+    const a = +m[1],
+      b = +m[2];
+    if (b - a >= 0 && b - a < 500) for (let i = a; i <= b; i++) explicitArts.add(i);
+  }
+  const reS = /art[íi]?c?u?l?o?\.?\s*(\d+)(?!\s*(?:a|al|-|–)\s*\d)/gi;
+  while ((m = reS.exec(ep)) !== null) explicitArts.add(+m[1]);
+  const wholeLawWords =
+    /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(
+      ep,
+    );
+  const bigLaw = lawTotal >= 12,
+    nearFull = coverage >= 0.9,
+    enumerator = hasColon && segments >= 3;
+  if (wholeLawWords) return { band: 'CLEARED', score: 0, coverage, reason: null };
+  if (titComplete && closureWord && nearFull)
+    return { band: 'CLEARED', score: 0, coverage, reason: null };
+  let score = 0,
+    reason: string | null = null;
+  if (explicitArts.size > 0 && bigLaw && scopedCount >= explicitArts.size * 2 && nearFull) {
+    score += 60;
+    reason = `epígrafe cita ${explicitArts.size} arts concretos pero scope tiene ${scopedCount}/${lawTotal}`;
+  }
+  if (titGap && nearFull && bigLaw) {
+    score += 50;
+    reason = reason || `epígrafe nombra títulos con huecos (${titSet.join(',')}) pero scope cubre toda la ley`;
+  }
+  if (bigLaw && nearFull && enumerator) {
+    score += 30;
+    reason =
+      reason ||
+      `ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${segments} bloques`;
+  }
+  const band = score >= 50 ? 'HIGH' : score >= 30 ? 'MEDIUM' : 'NONE';
+  return { band, score, coverage, reason };
+}
+
+// Mirror INLINE de lib/convocatoria/seguimientoUrlSalud.cjs — MANTENER EN SYNC.
+// seguimiento_url que vigila un ciclo ya cerrado (falso negativo silencioso). Graduado:
+// solo la señal LIMPIA (doc de boletín de año viejo) es error; el resto warn (cola de revisión).
+const REF_DOC_BOLETIN =
+  /\b(?:BOE|BOCYL|BOJA|DOGV|DOCV|DOG|BOPV|BORM|BOA|BOPA|BOCM|BOIB|BON|DOE|BOR|BOC)[-_ ]?[A-Z]?[-_ ]?(20\d\d)\b/i;
+const ANIO_SUELTO = /\b(20\d\d)\b/g;
+const URL_GENERICA =
+  /\/(?:empleo-?p[uú]blico|emprego|oferta-?de-?empleo(?:-p[uú]blico)?(?:-\d{4}(?:-\d{4})?)?|procesos-?selectivos|convocatorias|recursos-?humanos|tabl[oó]n(?:-oficial)?)\/?$/i;
+function diagnosticarSeguimientoUrl(
+  url: string | null | undefined,
+  anioVigente: number | null | undefined,
+): { nivel: string; severidad: 'error' | 'warn' | 'ok'; motivo: string } {
+  if (!url) return { nivel: 'ok', severidad: 'ok', motivo: 'sin seguimiento_url' };
+  const vig =
+    typeof anioVigente === 'number' && Number.isFinite(anioVigente) ? anioVigente : null;
+  const doc = url.match(REF_DOC_BOLETIN);
+  if (doc && vig && Number(doc[1]) < vig)
+    return {
+      nivel: 'stale_boletin',
+      severidad: 'error',
+      motivo: `apunta al documento de boletín ${doc[0]} (${doc[1]}), anterior a la convocatoria vigente (${vig}); un boletín es inmutable y nunca reflejará la nueva`,
+    };
+  const anios = [...String(url).matchAll(ANIO_SUELTO)].map((m) => Number(m[1]));
+  if (vig && anios.length > 0 && !anios.includes(vig) && Math.max(...anios) < vig)
+    return {
+      nivel: 'posible_ciclo_viejo',
+      severidad: 'warn',
+      motivo: `la URL menciona ${[...new Set(anios)].join(', ')} pero no ${vig} (convocatoria vigente); revisar si sigue el ciclo correcto`,
+    };
+  if (URL_GENERICA.test(url))
+    return {
+      nivel: 'url_generica',
+      severidad: 'warn',
+      motivo:
+        'la URL es una página índice del portal de empleo, no una convocatoria concreta; un cambio ahí rara vez significa algo de esta oposición',
+    };
+  return { nivel: 'ok', severidad: 'ok', motivo: 'sin señales de desfase' };
+}
+
 @Injectable()
 export class ContentHealthSweepService {
   private readonly logger = new Logger(ContentHealthSweepService.name);
@@ -277,6 +464,50 @@ export class ContentHealthSweepService {
           'low_coverage',
           `${o.slug}: ${finos.length} tema(s) con cobertura fina (<6q)`,
         );
+      // ── CONTENIDO: hueco OCULTO de cobertura de artículos (caso M, SMS Tema 7,
+      // 13/07). Grano más fino que low_coverage: solo temas MAYORMENTE cubiertos a nivel
+      // de artículo (≥60%) con ≥4 huecos. Excluye derogados/vacíos y artículos INACTIVOS
+      // (a.is_active): un escopado is_active=false NO es "genera preguntas" (puede tenerlas
+      // ya) sino servibilidad → lo cubre scope_phantom_article. Partición limpia.
+      const sinPreg = (await this.db.execute(sql`
+        SELECT topic_number, (n_content - n_cov)::int AS n, ejemplos FROM (
+          SELECT tp.topic_number,
+            count(*)::int AS n_content,
+            count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov,
+            (array_agg(l.short_name || ' ' || a.article_number ORDER BY (a.article_number)::int)
+              FILTER (WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)))[1:6] AS ejemplos
+          FROM topic_scope ts
+          JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
+          JOIN laws l ON l.id = ts.law_id
+          JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
+          JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
+          WHERE tp.position_type = ${pt} AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
+            AND a.article_number ~ '^[0-9]+$'
+          GROUP BY tp.topic_number
+          HAVING count(*) >= 4
+             AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) < count(*)
+             AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::float / count(*) >= 0.6
+             AND count(*) - count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) >= 4
+        ) t
+        ORDER BY topic_number
+      `)) as unknown as Array<{ topic_number: number; n: number; ejemplos: string[] | null }>;
+      if (sinPreg.length) {
+        const tot = sinPreg.reduce((a2, r) => a2 + r.n, 0);
+        add(
+          'content',
+          'warn',
+          o.slug,
+          'article_no_coverage',
+          `${o.slug}: ${sinPreg.length} tema(s) con artículos del temario SIN preguntas (${tot} arts; p.ej. T${sinPreg[0].topic_number}: ${(sinPreg[0].ejemplos || []).join(', ')})`,
+          {
+            temas: sinPreg.map((r) => ({
+              tema: r.topic_number,
+              arts_sin_preguntas: r.n,
+              ejemplos: r.ejemplos,
+            })),
+          },
+        );
+      }
 
       // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
       const nTopics = topics.length;
@@ -748,6 +979,216 @@ export class ContentHealthSweepService {
         `${orf[0].con_url} hito(s) con URL y ${orf[0].con_cita} con cita SIN convocatoria (provenance no atribuible; asignar a su ciclo)`,
         { orphan: true, con_url: orf[0].con_url, con_cita: orf[0].con_cita },
       );
+    }
+
+    // ── CONVOCATORIAS: invariantes deterministas del timeline (vista convocatoria_hito_incidencias) ──
+    // I1/I2/I9 = graves (error); I7/I8 = caducado (warn). I5 se excluye a propósito (línea base sin docs).
+    {
+      const inc = (await this.db.execute(sql`
+        SELECT o.slug, i.invariante, i.detalle
+          FROM convocatoria_hito_incidencias i
+          JOIN convocatorias cv ON cv.id = i.convocatoria_id
+          JOIN oposiciones o ON o.id = cv.oposicion_id
+         WHERE o.is_active AND i.invariante <> 'I5_registro_sin_fuente'
+      `)) as unknown as Array<{ slug: string; invariante: string; detalle: string }>;
+      const porSlug: Record<string, Array<{ invariante: string; detalle: string }>> = {};
+      for (const r of inc) (porSlug[r.slug] = porSlug[r.slug] || []).push(r);
+      for (const [slug, rs] of Object.entries(porSlug)) {
+        const graves = rs.filter(
+          (r) =>
+            r.invariante === 'I1_orden' ||
+            r.invariante === 'I2_duplicado' ||
+            r.invariante === 'I9_tipo_incoherente',
+        );
+        if (graves.length)
+          add(
+            'content',
+            'error',
+            slug,
+            'convocatoria_timeline_incoherente',
+            `${slug}: ${graves.length} incoherencia(s) en el timeline — ${graves[0].detalle}`,
+            { incidencias: graves.map((r) => ({ invariante: r.invariante, detalle: r.detalle })) },
+          );
+        const stale = rs.filter(
+          (r) =>
+            r.invariante === 'I7_prevision_caducada' ||
+            r.invariante === 'I8_status_contradice_fecha',
+        );
+        if (stale.length)
+          add(
+            'content',
+            'warn',
+            slug,
+            'convocatoria_timeline_caducado',
+            `${slug}: ${stale.length} hito(s) caducados o con estado que contradice su fecha`,
+            { incidencias: stale.map((r) => ({ invariante: r.invariante, detalle: r.detalle })) },
+          );
+      }
+    }
+
+    // ── Hitos que anuncian un evento con la fecha YA PASADA ──
+    // origen='registro' → la fecha era real y el evento ocurrió, nadie cerró el hito (error);
+    // origen≠registro → estimación vencida sin revisar (warn, no se publica pero delata).
+    const hitosVencidos = (await this.db.execute(sql`
+      SELECT o.slug, ch.origen, COUNT(*)::int n
+      FROM convocatoria_hitos ch JOIN oposiciones o ON o.id = ch.oposicion_id
+      WHERE o.is_active AND ch.status = 'upcoming' AND ch.fecha < CURRENT_DATE
+      GROUP BY o.slug, ch.origen
+    `)) as unknown as Array<{ slug: string; origen: string | null; n: number }>;
+    for (const r of hitosVencidos) {
+      const estimado = r.origen !== 'registro';
+      add(
+        'content',
+        estimado ? 'warn' : 'error',
+        r.slug,
+        'hito_vencido_abierto',
+        `${r.slug}: ${r.n} hito(s) "próximos" con fecha ya pasada` +
+          (estimado
+            ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'
+            : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'),
+      );
+    }
+
+    // ── seguimiento_url que vigilan un ciclo YA CERRADO (falso negativo silencioso) ──
+    const urlRows = (await this.db.execute(sql`
+      SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig
+      FROM oposiciones o
+      JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
+      WHERE o.is_active AND o.seguimiento_url IS NOT NULL
+    `)) as unknown as Array<{ slug: string; su: string | null; anio_vig: number | null }>;
+    for (const r of urlRows) {
+      const d = diagnosticarSeguimientoUrl(
+        r.su,
+        r.anio_vig != null ? Number(r.anio_vig) : null,
+      );
+      if (d.severidad === 'ok') continue;
+      add(
+        'content',
+        d.severidad,
+        r.slug,
+        'seguimiento_url_stale',
+        `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`,
+      );
+    }
+
+    // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
+    const hoyIso = now.toISOString().slice(0, 10);
+    const textoRows = (await this.db.execute(sql`
+      SELECT o.slug,
+             COALESCE(v.landing_faqs, o.landing_faqs) AS faqs,
+             COALESCE(v.landing_description, o.landing_description) AS descr
+      FROM oposiciones o
+      LEFT JOIN LATERAL (
+        SELECT c2.landing_faqs, c2.landing_description
+        FROM convocatorias c2 WHERE c2.oposicion_id = o.id AND c2.is_current LIMIT 1
+      ) v ON TRUE
+      WHERE o.is_active
+    `)) as unknown as Array<{ slug: string; faqs: unknown; descr: unknown }>;
+    for (const r of textoRows) {
+      const h = detectarExamenPasado({ landingDescription: r.descr, landingFaqs: r.faqs }, hoyIso);
+      if (!h.length) continue;
+      const fechas = [...new Set(h.map((x) => x.iso))].join(', ');
+      add(
+        'content',
+        'warn',
+        r.slug,
+        'texto_examen_pasado',
+        `${r.slug}: los textos de la landing anuncian un examen ya pasado como vigente (${fechas}) — el opositor ve una fecha vieja como la próxima`,
+      );
+    }
+
+    // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
+    // Solo banda HIGH (título con hueco / arts citados = precisión alta); MEDIUM (prosa) no pinga.
+    const overIncl = (await this.db.execute(sql`
+      SELECT t.position_type pt, t.topic_number tn, l.short_name ley, t.epigrafe,
+             ts.article_numbers,
+             (SELECT count(*) FROM articles a WHERE a.law_id = ts.law_id AND a.article_number ~ '^[0-9]+$') law_total
+      FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
+      WHERE t.is_active = true
+    `)) as unknown as Array<{
+      pt: string;
+      tn: number;
+      ley: string | null;
+      epigrafe: string | null;
+      article_numbers: string[] | null;
+      law_total: number;
+    }>;
+    const oiHigh: Array<{
+      pt: string;
+      tema: number;
+      ley: string | null;
+      cobertura: number;
+      motivo: string | null;
+    }> = [];
+    for (const r of overIncl) {
+      const scoped = (r.article_numbers || []).filter((x) => /^[0-9]+$/.test(x)).length;
+      const v = classifyScope(Number(r.law_total), scoped, r.epigrafe);
+      if (v.band === 'HIGH')
+        oiHigh.push({
+          pt: r.pt,
+          tema: r.tn,
+          ley: r.ley,
+          cobertura: Math.round(v.coverage * 100),
+          motivo: v.reason,
+        });
+    }
+    if (oiHigh.length) {
+      oiHigh.sort((a, b) => b.cobertura - a.cobertura);
+      const nOpos = new Set(oiHigh.map((x) => x.pt)).size;
+      add(
+        'content',
+        'warn',
+        null,
+        'scope_over_inclusion_suspect',
+        `${oiHigh.length} tema(s) con SCOPE MÁS ANCHO que el epígrafe (mete casi la ley entera) en ${nOpos} oposición(es) — sirve preguntas fuera de programa; adjudicar con verify:scope y recortar el scope`,
+        { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) },
+      );
+    }
+
+    // ── CONTENIDO: ARTÍCULOS FANTASMA del scope (integridad referencial) ──
+    // Nº en topic_scope.article_numbers sin fila ACTIVA en articles (mismo law_id) → 0
+    // preguntas/teoría EN SILENCIO. `inexistente` (no hay fila) o `desactivado`
+    // (is_active=false, aunque tenga preguntas). Regex dígito-inicial (excluye basura CE
+    // "T3"/"TP") + variantes latinas + matching NORMALIZADO (sin acentos/espacios/')' ) para
+    // no inventar falsos por formato. Separa por boe_url (real accionable vs ofimática).
+    const phantom = (await this.db.execute(sql`
+      WITH refs AS (
+        SELECT DISTINCT ts.law_id, l.short_name, l.name, (l.boe_url IS NOT NULL) AS has_boe, trim(an) AS art
+        FROM topic_scope ts
+        JOIN topics t ON t.id = ts.topic_id
+        JOIN laws l ON l.id = ts.law_id
+        CROSS JOIN LATERAL unnest(ts.article_numbers) AS an
+        WHERE ts.article_numbers IS NOT NULL AND t.is_active = true
+      )
+      SELECT coalesce(r.short_name, r.name) AS ley, r.has_boe, r.art,
+             CASE WHEN NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND lower(regexp_replace(translate(a.article_number, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g')) = lower(regexp_replace(translate(r.art, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g')))
+                  THEN 'inexistente' ELSE 'desactivado' END AS causa
+      FROM refs r
+      WHERE r.art ~* '^[0-9]+( ?(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?( ?[a-z)]*)?$'
+        AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND lower(regexp_replace(translate(a.article_number, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g')) = lower(regexp_replace(translate(r.art, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g')) AND a.is_active)
+    `)) as unknown as Array<{ ley: string; has_boe: boolean; art: string; causa: string }>;
+    if (phantom.length) {
+      const real = phantom.filter((p) => p.has_boe);
+      const virt = phantom.filter((p) => !p.has_boe);
+      const leyesReal = [...new Set(real.map((p) => p.ley))];
+      const inex = real.filter((p) => p.causa === 'inexistente').length;
+      const desact = real.filter((p) => p.causa === 'desactivado').length;
+      if (real.length)
+        add(
+          'content',
+          'warn',
+          null,
+          'scope_phantom_article',
+          `${real.length} artículo(s) escopado(s) que NO sirven (0 preguntas/teoría en silencio) en ${leyesReal.length} ley(es): ${inex} inexistente(s) + ${desact} desactivado(s) — importar del BOE / reactivar / o recortar el scope si la ley no lo tiene`,
+          {
+            count: real.length,
+            laws: leyesReal.length,
+            inexistentes: inex,
+            desactivados: desact,
+            virtual_ofimatica: virt.length,
+            sample: real.slice(0, 25).map((p) => ({ ley: p.ley, art: p.art, causa: p.causa })),
+          },
+        );
     }
 
     // ── Escribir snapshot ──
