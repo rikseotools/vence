@@ -23,6 +23,10 @@
  *
  * Env: DATABASE_URL, RESEND_API_KEY, FROM_EMAIL (info@vence.es), ALERT_EMAIL (manueltrader@gmail.com),
  *      BASE_URL (www.vence.es). Exit 0 siempre.
+ *
+ * ⚠️ GOTCHA: este fichero lleva emojis → `file`/`grep` lo tratan como BINARIO y `grep`
+ *    NORMAL devuelve 0 hits FALSOS (parece que un bloque no existe cuando sí). Usa
+ *    `grep -a` para buscar aquí. (Casi hizo "arreglar" un cableado que ya estaba, 22/07.)
  */
 const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
