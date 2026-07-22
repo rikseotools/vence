@@ -1564,3 +1564,25 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   4. **Re-check salud:** el runbook `health-check.md` daba 🔴 ROJO por **saturación de BD/pool** (mismo crunch de vCPU) → debería volver a verde al recuperarse la capacidad. Confirmar que bajan los 5xx de `/api/interactions` + errores de `answer-and-save`.
 - **OJO al desplegar con varias sesiones activas:** coordinar (SOLO una despliega); si el límite de vCPU persiste, bajar `maximumPercent` del servicio (200→110) para que el rolling arranque 1 task extra en vez de duplicar, o pedir aumento de quota vCPU a AWS Service Quotas.
 - **Contexto completo:** memoria/sesión antifraude (T-078); manual deploy `docs/runbooks/pusheo-revision-despliegue.md`.
+
+## 🧹 Cabos sueltos F0 antifraude / deploy (23/07/2026) — para retomar en cualquier sesión
+
+### 🟡 [MEDIA] El badge de Fraudes muestra "6" aunque las señales antifraude sean 0 (fallback stale)
+- **Qué:** el badge 🚨 de la pestaña Fraudes (`app/admin/layout.tsx`, `checkFraud`/render) tiene un **fallback**: pinta `fraudSignals.pending || adminNotifications.rateLimitHits`. Como F0 dejó las señales `fraud_alerts status='new'` en **0** pero hay **6 `rate_limit` hits sin revisar (24h)** en `validation_error_logs`, el badge muestra **6** (la métrica VIEJA, no las señales F0). Confuso: parece que hay 6 fraudes cuando el sistema F0 dice 0.
+- **Cómo (elegir una):** (a) marcar esos rate-limit hits como revisados → `UPDATE validation_error_logs SET reviewed_at=now() WHERE error_type='rate_limit' AND reviewed_at IS NULL AND created_at>=now()-interval '24 hours'` (los limpia sin tocar código); o (b) **quitar el fallback** del badge para que muestre SOLO `fraudSignals.pending` (mis señales antifraude) y dejar los rate-limit hits como otra señal aparte. Recomiendo (b) por claridad (el badge de Fraudes = señales antifraude F0, no rate-limit).
+- **Estado:** detectado 23/07 tras desplegar F0. No accionado.
+
+### 🟢 [BAJA] 6 IPs mal-descartadas como CGNAT en la revisión de fraude del 21/07 (falso descarte)
+- **Qué:** al revisar las señales `multi_account_reg_ip`, descarté 16 como CGNAT/red compartida. Después, al **afinar el detector** (excl. CDN + correlación de dispositivo), resultó que **6 de esas IPs SÍ tenían dispositivo compartido** (granjas reales): `185.70.139.163`, `188.26.197.65`, `188.26.197.97`, `79.117.224.143`, `45.147.204.84`, `5.252.93.50`. Quedaron `dismissed` (TTL 30d) → **re-surgirán solas** cuando expire, pero es un falso descarte a re-revisar antes.
+- **Cómo:** `UPDATE fraud_alerts SET status='new', reviewed_at=null, notes=null WHERE match_criteria = ANY(ARRAY['multi_account_reg_ip:185.70.139.163','multi_account_reg_ip:188.26.197.65','multi_account_reg_ip:188.26.197.97','multi_account_reg_ip:79.117.224.143','multi_account_reg_ip:45.147.204.84','multi_account_reg_ip:5.252.93.50'])` y re-revisar con el runbook `revisar-fraudes.md`. **OJO igualmente:** casi seguro son estudiantes gameando el límite free (como las demás granjas), NO malicia → cap suave, NO bloquear.
+- **Estado:** detectado 23/07.
+
+### 🟢 [BAJA/VIGILAR] RDS inaccesible desde local (timeout de conexión) — posible presión de conexiones
+- **Qué:** el 23/07 (tras el asentamiento de los deploys frontend+backend) las conexiones directas `pg` a RDS desde local **dan timeout** (`connectionTimeoutMillis` agotado), varias veces seguidas. **La app SÍ funciona** (backend `/health`=200, home 200, endpoints F0=401) — es solo la conexión directa la que cuelga.
+- **Por qué mirar:** puede ser presión de `max_connections` en RDS (el pool de la app + crons + el nuevo cron fraud-sweep) o un blip de red/SG. Si persiste, revisar `pg_stat_activity` (nº conexiones), `max_connections`, y si algún cron abre conexiones sin cerrarlas. Relacionado con la saturación de BD que puso la salud en ROJO durante el crunch de vCPU.
+- **Estado:** detectado 23/07. Vigilar; no urgente si la app va bien.
+
+### 🔵 [TRIVIAL] Marcar T-087 (deploy F0) como `done` en `backlog_tasks`
+- **Qué:** el deploy de F0 (frontend `dbb2b31f` + backend cron) está **HECHO y verificado** (endpoints, logs ECS `Cron 'fraud-sweep' registrado`, health 200), pero T-087 quedó en `open` porque RDS daba timeout al hacer el `UPDATE`. Solo falta el flag.
+- **Cómo:** `UPDATE backlog_tasks SET status='done' WHERE id='T-087'` cuando RDS responda.
+- **Estado:** deploy hecho; solo el bookkeeping pendiente.
