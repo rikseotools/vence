@@ -1191,6 +1191,76 @@ export class ContentHealthSweepService {
         );
     }
 
+    // ── CONTENIDO: MISMA LEY REAL duplicada ENTRE TEMAS (repartir por materia) ──
+    // Mirror INLINE de scripts/health-sweep.cjs (scope_cross_tema_dup) — MANTENER EN SYNC.
+    // Ley REAL escopada ENTERA (article_numbers NULL/vacío) o con solape grande (≥20 arts)
+    // en ≥2 temas activos de la MISMA oposición → mismas preguntas repetidas en varios
+    // tests sin reparto por materia. Punto ciego de over-inclusion (1 tema vs epígrafe) y de
+    // huecos (los temas rebosan). Umbral conservador: ley entera/NULL compartida o ≥20 arts
+    // (solape 1-10 = cross-cutting legítimo, no pinga).
+    const ctRows = (await this.db.execute(sql`
+      SELECT t.position_type pt, l.short_name ley, t.topic_number tn, ts.article_numbers an
+      FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
+      WHERE t.is_active = true
+        AND l.short_name ~* '^(Ley|LO|RD|RDL|CE|Real|Decreto|Estatut|Llei|TR|Convenio|Reglament|Constituci|Tratado|TUE|TFUE|RGPD)'
+    `)) as unknown as Array<{
+      pt: string;
+      ley: string;
+      tn: number;
+      an: string[] | null;
+    }>;
+    const ctGroups = new Map<string, typeof ctRows>();
+    for (const r of ctRows) {
+      const k = r.pt + ' ' + r.ley;
+      let g = ctGroups.get(k);
+      if (!g) ctGroups.set(k, (g = []));
+      g.push(r);
+    }
+    const ctDups: Array<{ pt: string; ley: string; dup: string }> = [];
+    for (const [k, rows] of ctGroups) {
+      if (rows.length < 2) continue;
+      const [pt, ley] = k.split(' ');
+      const arrs = rows.map((r) => {
+        const a = r.an || [];
+        const nums = a
+          .map((x) => parseInt(String(x).replace(/[^0-9]/g, ''), 10))
+          .filter((n) => !isNaN(n));
+        return { tn: r.tn, set: new Set(nums), nulish: a.length === 0 };
+      });
+      let maxOv = 0;
+      let pair: string | null = null;
+      if (arrs.filter((a) => a.nulish).length > 1) {
+        maxOv = 9999;
+        pair =
+          arrs
+            .filter((a) => a.nulish)
+            .map((a) => 'T' + a.tn)
+            .join('=T') + ' (ley entera/NULL)';
+      } else {
+        for (let i = 0; i < arrs.length; i++)
+          for (let j = i + 1; j < arrs.length; j++) {
+            let cc = 0;
+            for (const n of arrs[i].set) if (arrs[j].set.has(n)) cc++;
+            if (cc > maxOv) {
+              maxOv = cc;
+              pair = 'T' + arrs[i].tn + '∩T' + arrs[j].tn + '=' + cc + ' arts';
+            }
+          }
+      }
+      if (maxOv >= 20 && pair) ctDups.push({ pt, ley, dup: pair });
+    }
+    if (ctDups.length) {
+      const nOpos = new Set(ctDups.map((x) => x.pt)).size;
+      add(
+        'content',
+        'warn',
+        null,
+        'scope_cross_tema_dup',
+        `${ctDups.length} ley(es) REAL duplicada(s) entre temas (misma ley entera/solape grande en ≥2 temas → preguntas repetidas en varios tests) en ${nOpos} oposición(es) — repartir por materia con verify:scope (npm run scope:health -- --pending)`,
+        { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) },
+      );
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {
