@@ -4196,3 +4196,26 @@ export const seoActions = pgTable("seo_actions", {
 	index("idx_seo_actions_scope").using("btree", table.scopeValue.asc().nullsLast().op("text_ops")),
 	index("idx_seo_actions_done").using("btree", table.doneOn.asc().nullsLast().op("date_ops")),
 ]).enableRLS();
+
+// Cola de generación de PDFs del temario (migración 20260722). La generación se desacopla del
+// serving: se encola aquí y un worker aislado (fuera del ALB) la consume. Contrato + acceso en
+// lib/temario/pdf/pdfJobQueue.ts. Índice parcial `_alive_uq` = idempotencia (1 job vivo/hash).
+export const temarioPdfJobs = pgTable("temario_pdf_jobs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	oposicion: text().notNull(),
+	tema: integer().notNull(),
+	contentHash: text("content_hash").notNull(),
+	status: text().default('pending').notNull(),
+	attempts: integer().default(0).notNull(),
+	lastError: text("last_error"),
+	bytes: integer(),
+	ms: integer(),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("temario_pdf_jobs_alive_uq").on(table.oposicion, table.tema, table.contentHash).where(sql`status IN ('pending', 'running')`),
+	index("temario_pdf_jobs_pending").on(table.createdAt).where(sql`status = 'pending'`),
+	index("temario_pdf_jobs_running").on(table.claimedAt).where(sql`status = 'running'`),
+	check("temario_pdf_jobs_status_check", sql`status IN ('pending', 'running', 'done', 'failed')`),
+]);
