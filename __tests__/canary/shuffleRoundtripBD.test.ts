@@ -56,6 +56,9 @@ const toQuestionRow = (r: Row): any => ({
   explanation: r.explanation ?? '',
   correctOption: r.correct_option,
   shuffleMode: r.shuffle_mode,
+  // Forzamos safe para ejercitar la LÓGICA de permutación sobre contenido real; el
+  // gate shuffle_safety se prueba aparte (transformQuestionShuffle.test.ts).
+  shuffleSafety: 'safe',
   primaryArticleId: r.primary_article_id ?? '00000000-0000-0000-0000-000000000000',
   sourceTopic: null,
 })
@@ -188,6 +191,31 @@ d('CANARY BD: barajar preserva la clave en preguntas reales elegibles', () => {
     }
     expect(checked).toBeGreaterThan(0)
   })
+})
+
+// CANARY del GATE persistido: el dato shuffle_safety debe ser coherente con el detector
+// determinista (ninguna 'safe' cita letras) y las 'safe' tienen hash de verificación.
+d('CANARY BD: gate shuffle_safety coherente con el detector', () => {
+  it('ninguna pregunta safe cita letras/posición (0-FN del backfill sobre datos reales)', async () => {
+    const { isShuffleEligible } = await import('@/lib/shuffle/classifyShuffleMode')
+    const { Client } = await import('pg')
+    const url = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
+    const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
+    await c.connect()
+    const safe = (
+      await c.query(
+        "SELECT explanation, shuffle_mode, shuffle_safety_hash FROM questions WHERE is_active=true AND shuffle_safety='safe' ORDER BY random() LIMIT 2000",
+      )
+    ).rows as { explanation: string | null; shuffle_mode: string; shuffle_safety_hash: string | null }[]
+    await c.end()
+    expect(safe.length).toBeGreaterThan(100)
+    const violations = safe.filter(
+      (r) => !isShuffleEligible({ shuffle_mode: r.shuffle_mode, explanation: r.explanation }) || !r.shuffle_safety_hash,
+    )
+    if (violations.length) console.error(`❌ ${violations.length} safe incoherentes (primera):`, violations[0])
+    // Toda 'safe' debe ser full + explicación limpia + tener hash de verificación.
+    expect(violations).toEqual([])
+  }, 60000)
 })
 
 // Sanidad extra: la muestra NO debe contener elegibles con explicación que cite letras

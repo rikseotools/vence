@@ -166,3 +166,19 @@ describe('isShuffleEligible (predicado Fase 1)', () => {
     expect(isShuffleEligible({ shuffle_mode: 'full', explanation: null })).toBe(true)
   })
 })
+
+describe('isShuffleServeEligible (gate de serve: verificación robusta)', () => {
+  const { isShuffleServeEligible } = require('@/lib/shuffle/classifyShuffleMode')
+  it('safe + full + limpia → elegible en serve', () => {
+    expect(isShuffleServeEligible({ shuffle_mode: 'full', explanation: 'Plazo de quince días.', shuffle_safety: 'safe' })).toBe(true)
+  })
+  it.each(['unverified', 'unsafe', 'stale', null, undefined])('shuffle_safety=%s → NO elegible aunque full+limpia', (s) => {
+    expect(isShuffleServeEligible({ shuffle_mode: 'full', explanation: 'Plazo de quince días.', shuffle_safety: s as any })).toBe(false)
+  })
+  it('safe pero explicación cita letras → NO elegible (última línea determinista)', () => {
+    expect(isShuffleServeEligible({ shuffle_mode: 'full', explanation: 'La opción B es correcta.', shuffle_safety: 'safe' })).toBe(false)
+  })
+  it('safe pero no full → NO elegible', () => {
+    expect(isShuffleServeEligible({ shuffle_mode: 'no_shuffle', explanation: 'Limpia.', shuffle_safety: 'safe' })).toBe(false)
+  })
+})

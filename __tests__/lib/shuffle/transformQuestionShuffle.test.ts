@@ -24,6 +24,7 @@ const row = (over: Record<string, unknown>): any => ({
   explanation: 'Explicación sin citar letras de opción.',
   correctOption: 0,
   shuffleMode: 'full',
+  shuffleSafety: 'safe', // gate de verificación robusta: el serve solo baraja las safe
   primaryArticleId: '22222222-2222-2222-2222-222222222222',
   sourceTopic: null,
   ...over,
@@ -88,5 +89,14 @@ describe('transformQuestion — no elegibles y flag off', () => {
     expect(out.options).toEqual(['Alfa', 'Bravo', 'Charlie', 'Delta'])
     expect(out.correct_option).toBe(2)
     expect(out.option_order ?? null).toBeNull()
+  })
+
+  it('gate verificación robusta: shuffle_safety != safe → NO baraja (aunque full + limpia)', () => {
+    for (const safety of ['unverified', 'unsafe', 'stale', null]) {
+      const out = transformQuestion(row({ correctOption: 1, shuffleSafety: safety }), 0, true) as any
+      expect(out.options).toEqual(['Alfa', 'Bravo', 'Charlie', 'Delta'])
+      expect(out.correct_option).toBe(1)
+      expect(out.option_order ?? null).toBeNull()
+    }
   })
 })

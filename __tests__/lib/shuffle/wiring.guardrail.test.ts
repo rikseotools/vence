@@ -19,24 +19,50 @@ describe('cableado shuffle: columna Drizzle (fuente de verdad del INSERT)', () =
   it('questions.shuffle_mode está mapeado en Drizzle', () => {
     expect(schema).toMatch(/shuffleMode:\s*text\(["']shuffle_mode["']\)/)
   })
+  it('questions.shuffle_safety está mapeado en Drizzle (dato verificado)', () => {
+    expect(schema).toMatch(/shuffleSafety:\s*text\(["']shuffle_safety["']\)/)
+  })
+})
+
+describe('verificación robusta: migración shuffle_safety (dato + trigger anti-drift)', () => {
+  const mig = read('supabase/migrations/20260722_shuffle_safety_verification.sql')
+  it('crea la columna con CHECK de estados', () => {
+    expect(mig).toMatch(/ADD COLUMN IF NOT EXISTS shuffle_safety text/)
+    expect(mig).toMatch(/CHECK \(shuffle_safety IN \('unverified','safe','unsafe','stale'\)\)/)
+  })
+  it('define el hash determinista de contenido', () => {
+    expect(mig).toContain('FUNCTION public.compute_shuffle_safety_hash')
+  })
+  it('trigger BEFORE UPDATE de invalidación a stale por cambio de contenido', () => {
+    expect(mig).toMatch(/BEFORE UPDATE ON public\.questions/)
+    expect(mig).toMatch(/NEW\.shuffle_safety\s*:=\s*'stale'/)
+    expect(mig).toMatch(/NEW\.shuffle_safety_hash IS DISTINCT FROM public\.compute_shuffle_safety_hash/)
+  })
+  it('única vía legítima de fijar veredicto captura hash actual + audit', () => {
+    expect(mig).toContain('FUNCTION public.record_shuffle_safety')
+    expect(mig).toContain('INSERT INTO public.question_shuffle_safety_history')
+  })
 })
 
 describe('cableado shuffle: SERVE (lib/api/filtered-questions)', () => {
   const queries = read('lib/api/filtered-questions/queries.ts')
   const schemas = read('lib/api/filtered-questions/schemas.ts')
 
-  it('questionColumns selecciona shuffleMode (sin él, transformQuestion nunca baraja)', () => {
+  it('questionColumns selecciona shuffleMode + shuffleSafety (gate de serve)', () => {
     expect(queries).toContain('shuffleMode: questions.shuffleMode')
+    expect(queries).toContain('shuffleSafety: questions.shuffleSafety')
   })
-  it('QuestionRow incluye shuffleMode', () => {
+  it('QuestionRow incluye shuffleMode y shuffleSafety', () => {
     const typeBlock = queries.match(/type QuestionRow = \{([^}]+)\}/s)?.[1] || ''
     expect(typeBlock).toContain('shuffleMode:')
+    expect(typeBlock).toContain('shuffleSafety:')
   })
-  it('transformQuestion usa la elegibilidad y permuta (funciones REALES de lib/shuffle)', () => {
+  it('transformQuestion usa el gate de serve (dato verificado safe + detector) y permuta', () => {
     expect(queries).toContain("from '@/lib/shuffle/classifyShuffleMode'")
     expect(queries).toContain("from '@/lib/shuffle/permute'")
     expect(queries).toContain("from '@/lib/shuffle/flag'")
-    expect(queries).toMatch(/isShuffleEligible\(\{\s*shuffle_mode: q\.shuffleMode/)
+    // El gate exige shuffle_safety='safe' (persistido) además del detector determinista.
+    expect(queries).toMatch(/isShuffleServeEligible\(\{\s*shuffle_mode: q\.shuffleMode, explanation: q\.explanation, shuffle_safety: q\.shuffleSafety/)
     expect(queries).toContain('option_order: optionOrder')
   })
   it('el gate es OPT-IN: shuffleOn exige shuffleOptions del request + flag/scope', () => {

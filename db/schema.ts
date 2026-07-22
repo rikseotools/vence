@@ -2299,6 +2299,15 @@ export const questions = pgTable("questions", {
 	// Barajar opciones Fase 1: barajabilidad de las opciones (default no_shuffle = seguro).
 	// Clasificador: lib/shuffle/classifyShuffleMode.ts. Migración 20260722_shuffle_options_fase1.
 	shuffleMode: text("shuffle_mode").default('no_shuffle').notNull(),
+	// Barajar opciones (verificación robusta): seguridad de barajar como DATO verificado
+	// + auto-invalidable. unverified(default)/safe/unsafe/stale. El serve solo baraja las
+	// safe. Trigger tg_questions_shuffle_safety_invalidate marca stale al cambiar contenido.
+	// Migración 20260722_shuffle_safety_verification. Diseño: docs/roadmap/barajar-opciones-verificacion-robusta.md.
+	shuffleSafety: text("shuffle_safety").default('unverified').notNull(),
+	shuffleSafetyReason: text("shuffle_safety_reason"),
+	shuffleSafetyHash: text("shuffle_safety_hash"),
+	shuffleSafetyVerifiedAt: timestamp("shuffle_safety_verified_at", { withTimezone: true, mode: 'string' }),
+	shuffleSafetyVerifiedBy: text("shuffle_safety_verified_by"),
 	explanation: text().notNull(),
 	difficulty: text().default('medium'),
 	questionType: text("question_type").default('single'),

@@ -31,7 +31,7 @@ import { buildOfficialExamFilter, buildQuestionTagFilter } from '@/lib/api/oposi
 import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { emitFireAndForget } from '@/lib/observability/emit'
-import { isShuffleEligible } from '@/lib/shuffle/classifyShuffleMode'
+import { isShuffleServeEligible } from '@/lib/shuffle/classifyShuffleMode'
 import { permutationFor, applyOrder } from '@/lib/shuffle/permute'
 import { isShuffleEnabledFor } from '@/lib/shuffle/flag'
 import { randomUUID } from 'crypto'
@@ -67,6 +67,7 @@ const questionColumns = {
   correctOption: questions.correctOption,
   globalDifficultyCategory: questions.globalDifficultyCategory,
   shuffleMode: questions.shuffleMode,
+  shuffleSafety: questions.shuffleSafety,
 } as const
 
 const articleColumns = {
@@ -106,6 +107,7 @@ type QuestionRow = {
   correctOption: number
   globalDifficultyCategory: string | null
   shuffleMode: string | null
+  shuffleSafety: string | null
   articleId: string
   articleNumber: string
   articleTitle: string | null
@@ -166,7 +168,7 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
   if (
     shuffle &&
     naturalOptions.length > 1 &&
-    isShuffleEligible({ shuffle_mode: q.shuffleMode, explanation: q.explanation })
+    isShuffleServeEligible({ shuffle_mode: q.shuffleMode, explanation: q.explanation, shuffle_safety: q.shuffleSafety })
   ) {
     const order = permutationFor(q.id, randomUUID(), naturalOptions.length)
     // correct_option (original, 0=A en BD) → su nueva posición mostrada.

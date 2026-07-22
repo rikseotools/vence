@@ -125,3 +125,18 @@ export function isShuffleEligible(q: {
 }): boolean {
   return q.shuffle_mode === 'full' && !explanationReferencesLetters(q.explanation);
 }
+
+/**
+ * Gate de SERVE (verificación robusta): además del detector determinista, exige que la
+ * pregunta esté marcada `shuffle_safety='safe'` (dato verificado + auto-invalidable por
+ * trigger, incluye la auditoría LLM del Paso 2). El detector queda como ÚLTIMA LÍNEA
+ * barata contra un flag stale/erróneo (defensa en profundidad). Sin backfill → todo
+ * 'unverified' → no baraja nada. Diseño: docs/roadmap/barajar-opciones-verificacion-robusta.md.
+ */
+export function isShuffleServeEligible(q: {
+  shuffle_mode?: ShuffleMode | string | null;
+  explanation?: string | null;
+  shuffle_safety?: string | null;
+}): boolean {
+  return q.shuffle_safety === 'safe' && isShuffleEligible(q);
+}
