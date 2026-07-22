@@ -1422,3 +1422,18 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Qué:** una usuaria (Madrid) llegó por un anuncio de Google (utm_campaign `23697376522`, landing `/auxiliar-administrativo-madrid`) y **borró la cuenta a los ~60 s** de registrarse, sin hacer ni un test (RGPD ejecutado 21/07). Queda en `deleted_users_log` (bloque CAPTACIÓN).
 - **Por qué:** registro de pago que no cuaja = posible gasto tirado. Vigilar si esa campaña concentra más bajas tempranas (§8 del runbook `eliminacion-cuentas.md`).
 - **Estado:** 1 caso, anotado 21/07. Revisar en el análisis agregado de bajas.
+
+## ⏳ [DEPLOY PENDIENTE] Desplegar F0 antifraude + PDF-premium + nav (bloqueado por límite vCPU AWS / migración koigrid) — 22/07/2026
+- **Qué está en `origin/main` SIN desplegar** (todo commiteado, nada que perder):
+  - **Sistema antifraude F0** (T-078): `cf7062859` (badge 🚨 + revisión + runbook `revisar-fraudes.md` + endpoints `/api/v2/admin/fraud/{pending-count,signals,signals/review}` + pestaña "Señales" en `/admin/fraudes` + sweep `scripts/fraud-sweep.cjs`) · `e5cfe988b` (**cron backend** `backend/src/fraud-sweep/` @Cron 03:15 UTC) · `f229dbfe5` (afinado IP-detector: excl. CDN + device-corr).
+  - **PDF-premium** (T-076): `d06e0ed3` — descargar/imprimir PDF del temario es premium (todos los temas, 👑 + modal).
+  - **Nav**: `8ffa41c4` — "Test combinando leyes" + quitar "Leyes".
+- **Por qué NO se desplegó (bloqueador REAL, verificado 22/07):** ECS no puede colocar tasks nuevas → *"You've reached the limit on the number of vCPUs you can run concurrently"* → el rolling deploy falla y **ECS hace rollback a `:503` (4f67958b, build viejo)**. NO es clobber entre sesiones (eso ya se arregló, `a4e1e69d3`); es el **límite de vCPU de la cuenta**, agravado por la **migración a koigrid** de otra sesión que consume la capacidad. Mientras dure, NINGÚN deploy aterriza (afecta a todas las sesiones).
+- **Estado del build:** ya construí la imagen `vence-frontend:506` (SHA `9fa97b6a`, incluye F0 frontend + PDF + nav), pusheada a ECR y validada por smoke (home 200, auth 401). Desde 9fa97b6a → tip actual solo hay docs + 1 fix de backend (health-sweep), **ningún frontend nuevo** → `:506` sigue vigente para el frontend.
+- **CÓMO RETOMAR cuando termine la migración koigrid + baje la presión de vCPU:**
+  1. **Frontend:** `aws --profile vence --region eu-west-2 ecs update-service --cluster vence-backend --service vence-frontend --task-definition vence-frontend:506` (o reconstruir del tip con `scripts/deploy-frontend.sh` desde worktree limpio de origin/main; da igual, no hay frontend nuevo). Esperar `services-stable` + verificar `curl https://www.vence.es/api/version` = `9fa97b6a`.
+  2. **Backend:** `scripts/deploy-backend.sh` desde worktree limpio → sube el cron `fraud-sweep` + el fix de health-sweep. Verificar en logs `/ecs/vence-backend`: "Cron 'fraud-sweep' registrado".
+  3. **Verificar F0 en vivo:** badge 🚨 en `/admin/fraudes` (endpoint `/api/v2/admin/fraud/pending-count`); frase **"revisa las señales de fraude"** → runbook `revisar-fraudes.md`.
+  4. **Re-check salud:** el runbook `health-check.md` daba 🔴 ROJO por **saturación de BD/pool** (mismo crunch de vCPU) → debería volver a verde al recuperarse la capacidad. Confirmar que bajan los 5xx de `/api/interactions` + errores de `answer-and-save`.
+- **OJO al desplegar con varias sesiones activas:** coordinar (SOLO una despliega); si el límite de vCPU persiste, bajar `maximumPercent` del servicio (200→110) para que el rolling arranque 1 task extra en vez de duplicar, o pedir aumento de quota vCPU a AWS Service Quotas.
+- **Contexto completo:** memoria/sesión antifraude (T-078); manual deploy `docs/runbooks/pusheo-revision-despliegue.md`.
