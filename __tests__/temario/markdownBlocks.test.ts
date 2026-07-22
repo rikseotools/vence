@@ -76,3 +76,31 @@ describe('blocksHaveContent', () => {
     expect(blocksHaveContent(parseMarkdownBlocks('| a | b |\n|---|---|\n| 1 | 2 |'))).toBe(true)
   })
 })
+
+describe('listas ordenadas — número real, no el índice (bug Lola 22/07)', () => {
+  it('apartados separados por línea en blanco conservan su número (1,2,3), no todos "1"', () => {
+    // El articulado legal separa apartados con \n\n → cada uno cae como lista de 1 ítem. Sin
+    // capturar el número del origen, el marcador salía del índice (siempre 1) → todos "1" en el PDF.
+    const md = '1. Primero.\n\n2. Segundo.\n\n3. Tercero.'
+    const lists = parseMarkdownBlocks(md).filter((b) => b.kind === 'list')
+    expect(lists).toHaveLength(3)
+    expect(lists.map((l) => (l.kind === 'list' ? l.start : null))).toEqual([1, 2, 3])
+    // El texto capturado es el del apartado, sin el número.
+    expect(lists[1].kind === 'list' && lists[1].items[0][0].text).toBe('Segundo.')
+  })
+
+  it('lista ordenada consecutiva (sin líneas en blanco) empieza en su número y es un solo bloque', () => {
+    const [list] = parseMarkdownBlocks('2. dos\n3. tres\n4. cuatro')
+    expect(list.kind).toBe('list')
+    if (list.kind === 'list') {
+      expect(list.start).toBe(2)
+      expect(list.items).toHaveLength(3)
+    }
+  })
+
+  it('viñetas no llevan start (no son ordenadas)', () => {
+    const [list] = parseMarkdownBlocks('- uno\n- dos')
+    expect(list.kind === 'list' && list.ordered).toBe(false)
+    expect(list.kind === 'list' && list.start).toBeUndefined()
+  })
+})

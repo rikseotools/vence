@@ -22,7 +22,7 @@ export interface MdSpan {
 export type MdBlock =
   | { kind: 'paragraph'; spans: MdSpan[] }
   | { kind: 'heading'; level: number; spans: MdSpan[] }
-  | { kind: 'list'; ordered: boolean; items: MdSpan[][] }
+  | { kind: 'list'; ordered: boolean; items: MdSpan[][]; start?: number }
   | { kind: 'table'; header: MdSpan[][]; rows: MdSpan[][][] }
 
 /**
@@ -112,19 +112,26 @@ export function parseMarkdownBlocks(content: string | null | undefined): MdBlock
 
     // Lista: viñetas (- * • ·) u ordenada (N.). Se agrupan las líneas consecutivas.
     const bullet = /^\s*[-*•·]\s+(.*)$/
-    const ordered = /^\s*\d+[.)]\s+(.*)$/
+    // Captura el NÚMERO (grupo 1) además del texto (grupo 2): el articulado legal separa los
+    // apartados con línea en blanco (1.\n\n2.\n\n3.), así que cada uno cae como una "lista" de 1
+    // ítem. Sin preservar su número real, el marcador se derivaba del índice (siempre 1) → todos
+    // los apartados salían "1" en el PDF (bug de Lola, 22/07). Guardamos `start` = número del origen.
+    const ordered = /^\s*(\d+)[.)]\s+(.*)$/
     if (bullet.test(trimmed) || ordered.test(trimmed)) {
       const isOrdered = ordered.test(trimmed) && !bullet.test(trimmed)
       const items: MdSpan[][] = []
+      let start: number | undefined
       while (i < lines.length) {
         const t = lines[i].trim()
         const mb = t.match(bullet), mo = t.match(ordered)
         if (mb) items.push(parseInline(mb[1]))
-        else if (mo) items.push(parseInline(mo[1]))
-        else break
+        else if (mo) {
+          if (start === undefined) start = Number(mo[1])
+          items.push(parseInline(mo[2]))
+        } else break
         i++
       }
-      blocks.push({ kind: 'list', ordered: isOrdered, items })
+      blocks.push({ kind: 'list', ordered: isOrdered, items, start })
       continue
     }
 

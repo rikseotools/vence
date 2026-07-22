@@ -72,7 +72,7 @@ function MdBlockView({ block }: { block: MdBlock }) {
       <View>
         {block.items.map((item, i) => (
           <View key={i} style={styles.listItem} wrap={false}>
-            <Text style={styles.listBullet}>{block.ordered ? `${i + 1}.` : '•'}</Text>
+            <Text style={styles.listBullet}>{block.ordered ? `${(block.start ?? 1) + i}.` : '•'}</Text>
             <Text style={styles.listText}><Spans spans={item} /></Text>
           </View>
         ))}
