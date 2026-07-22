@@ -277,6 +277,34 @@ function contentHash(epigrafe, scopedNumericSorted) {
     .digest('hex');
 }
 
+// Huecos INTERNOS de un scope (arts ausentes entre min y max) → ya fuera del scope.
+// Sin esto, al adjudicador solo le llega el mín-máx y asume el rango contiguo, marcando
+// como sobre-inclusión un título que YA estaba excluido (caso CE Cantabria T2: scope
+// 0-169 sin 128-136 → Título VII ya fuera, pero el agente lo "confirmó" como sobrante).
+function internalGaps(sortedNums) {
+  const gaps = [];
+  for (let i = 1; i < sortedNums.length; i++) {
+    if (sortedNums[i] - sortedNums[i - 1] > 1) gaps.push([sortedNums[i - 1] + 1, sortedNums[i] - 1]);
+  }
+  return gaps;
+}
+// Expande "128-136, 55" → Set{128..136, 55}. Para la guarda determinista.
+function expandArts(str) {
+  const set = new Set(); if (!str) return set;
+  const s = String(str);
+  for (const m of s.matchAll(/(\d+)\s*[-–]\s*(\d+)/g)) { const a = +m[1], b = +m[2]; if (b >= a && b - a < 600) for (let i = a; i <= b; i++) set.add(i); }
+  for (const m of s.matchAll(/(?<![\d-])(\d+)(?![\d-])/g)) set.add(+m[1]);
+  return set;
+}
+// GUARDA DETERMINISTA: ¿los arts que el adjudicador quiere EXCLUIR están de verdad en el
+// scope? Si <20% lo están, es un FALSO POSITIVO (el scope ya los excluía) → no es recorte.
+function excludedOverlap(titulosExcluidos, scopeSet) {
+  const excl = new Set();
+  for (const te of (titulosExcluidos || [])) for (const n of expandArts(te && te.arts)) excl.add(n);
+  const inScope = [...excl].filter(n => scopeSet.has(n)).length;
+  return { inScope, total: excl.size, ratio: excl.size ? inScope / excl.size : 1 };
+}
+
 // --suspects [--only-new]: emite el INPUT del workflow adjudicar-sobre-inclusion.
 // Con --only-new excluye los ya adjudicados cuyo content_hash coincide (nada cambió).
 async function runSuspects(onlyNew) {
@@ -299,10 +327,12 @@ async function runSuspects(onlyNew) {
     if (!c.suspect) continue;
     const hash = contentHash(r.epigrafe, ni);
     if (onlyNew && r.adj_hash === hash) continue; // ya adjudicado y sin cambios
+    const gaps = internalGaps(ni);
     out.push({
       topic_id: r.topic_id, law_id: r.law_id, position_type: r.position_type, topic_number: r.topic_number,
       title: r.title, epigrafe: r.epigrafe, law: r.short_name, ley_nombre: r.ley_nombre, boe_url: r.boe_url,
       scoped_range: ni.length ? `${ni[0]}-${ni[ni.length - 1]}` : '', scoped_count: ni.length,
+      scoped_gaps: gaps.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(', '), // arts YA fuera del scope
       law_total: Number(r.law_total), band: c.band, reasons: c.reasons, content_hash: hash,
     });
   }
@@ -320,22 +350,34 @@ async function runRecord(jsonPath) {
   const items = Array.isArray(rows) ? rows : (rows.resultados || rows.results || []);
   const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
   let n = 0;
-  const tally = { over_inclusion: 0, ok: 0, unverifiable: 0, verificados: 0 };
+  const tally = { over_inclusion: 0, ok: 0, unverifiable: 0, verificados: 0, guardados: 0 };
   for (const it of items) {
     if (!it || !it.topic_id || !it.law_id || !it.verdict) continue;
     if (!['over_inclusion', 'ok', 'unverifiable'].includes(it.verdict)) continue;
+    let verdict = it.verdict, verificado = !!it.verificado, razon = it.razon || null;
+    // GUARDA DETERMINISTA: una over_inclusion "confirmada" cuyos arts a excluir NO están
+    // en el scope actual es un FALSO POSITIVO (el scope ya los excluía) → degradar a ok.
+    if (verdict === 'over_inclusion' && verificado) {
+      const [sc] = await sql`SELECT ts.article_numbers FROM topic_scope ts WHERE ts.topic_id=${it.topic_id} AND ts.law_id=${it.law_id}`;
+      const scopeSet = new Set(((sc && sc.article_numbers) || []).filter(x => /^[0-9]+$/.test(x)).map(Number));
+      const ov = excludedOverlap(it.titulos_excluidos, scopeSet);
+      if (ov.total > 0 && ov.ratio < 0.2) {
+        verdict = 'ok'; verificado = false; tally.guardados++;
+        razon = `[guarda determinista: solo ${ov.inScope}/${ov.total} arts a excluir están en el scope → ya excluidos, no es recorte] ` + (razon || '');
+      }
+    }
     await sql`
       INSERT INTO scope_over_inclusion_adjudications
         (topic_id, law_id, content_hash, band, verdict, titulos_excluidos, arts_correctos, razon, verificado, method, adjudicado_por)
-      VALUES (${it.topic_id}, ${it.law_id}, ${it.content_hash || ''}, ${it.band || null}, ${it.verdict},
+      VALUES (${it.topic_id}, ${it.law_id}, ${it.content_hash || ''}, ${it.band || null}, ${verdict},
         ${it.titulos_excluidos ? sql.json(it.titulos_excluidos) : null}, ${it.arts_correctos || null},
-        ${it.razon || null}, ${!!it.verificado}, ${'workflow:adjudicar-sobre-inclusion'}, ${'claude_code'})
+        ${razon}, ${verificado}, ${'workflow:adjudicar-sobre-inclusion'}, ${'claude_code'})
       ON CONFLICT (topic_id, law_id) DO UPDATE SET
         content_hash=EXCLUDED.content_hash, band=EXCLUDED.band, verdict=EXCLUDED.verdict,
         titulos_excluidos=EXCLUDED.titulos_excluidos, arts_correctos=EXCLUDED.arts_correctos,
         razon=EXCLUDED.razon, verificado=EXCLUDED.verificado, method=EXCLUDED.method,
         adjudicado_por=EXCLUDED.adjudicado_por, adjudicado_at=now()`;
-    n++; tally[it.verdict]++; if (it.verificado) tally.verificados++;
+    n++; tally[verdict]++; if (verificado) tally.verificados++;
   }
   // Observabilidad canónica: un evento por corrida con el resumen.
   const confirmadas = (await sql`
@@ -348,6 +390,39 @@ async function runRecord(jsonPath) {
   console.log(`✅ ${n} adjudicaciones registradas — ${JSON.stringify(tally)}. Cola de recorte confirmada: ${confirmadas}.`);
 }
 
+// --reguard: aplica la guarda determinista sobre la tabla YA poblada. Degrada a `ok`
+// las over_inclusion confirmadas cuyos arts a excluir no estén realmente en el scope
+// (falsos positivos por mín-máx). Mantenimiento idempotente.
+async function runReguard() {
+  require('dotenv').config({ path: '.env.local' });
+  const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
+  const rows = await sql`
+    SELECT a.topic_id, a.law_id, a.titulos_excluidos, a.razon, t.position_type pt, t.topic_number tn, l.short_name ley, ts.article_numbers
+    FROM scope_over_inclusion_adjudications a
+    JOIN topics t ON t.id=a.topic_id JOIN laws l ON l.id=a.law_id
+    JOIN topic_scope ts ON ts.topic_id=a.topic_id AND ts.law_id=a.law_id
+    WHERE a.verdict='over_inclusion' AND a.verificado`;
+  let fixed = 0;
+  for (const r of rows) {
+    const scopeSet = new Set((r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).map(Number));
+    const ov = excludedOverlap(r.titulos_excluidos, scopeSet);
+    if (ov.total > 0 && ov.ratio < 0.2) {
+      await sql`UPDATE scope_over_inclusion_adjudications
+        SET verdict='ok', verificado=false,
+            razon=${`[guarda determinista: solo ${ov.inScope}/${ov.total} arts a excluir están en el scope → ya excluidos] ` + (r.razon || '')},
+            adjudicado_at=now()
+        WHERE topic_id=${r.topic_id} AND law_id=${r.law_id}`;
+      console.log(`  ↓ ${r.pt} T${r.tn} ${r.ley} — ${ov.inScope}/${ov.total} en scope → degradado a ok`);
+      fixed++;
+    }
+  }
+  const conf = (await sql`SELECT count(*)::int c FROM scope_over_inclusion_adjudications WHERE verdict='over_inclusion' AND verificado`)[0].c;
+  await sql`INSERT INTO observable_events (source, severity, event_type, metadata)
+    VALUES ('script:scope-over-inclusion','info','scope_adjudication_reguard', ${sql.json({ degradados: fixed, cola_recorte_confirmada: conf })})`;
+  await sql.end();
+  console.log(`✅ reguard: ${fixed} falso(s) positivo(s) degradado(s). Cola de recorte confirmada: ${conf}.`);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   const args = process.argv.slice(2);
@@ -355,10 +430,11 @@ if (require.main === module) {
   if (args.includes('--simulate')) runSimulation();
   else if (args.includes('--scan')) runScan(args.includes('--json')).catch(e => { console.error(e.message); process.exit(1); });
   else if (args.includes('--suspects')) runSuspects(args.includes('--only-new')).catch(e => { console.error(e.message); process.exit(1); });
+  else if (args.includes('--reguard')) runReguard().catch(e => { console.error(e.message); process.exit(1); });
   else if (args.includes('--record')) {
     if (!fileArg) { console.error('Uso: --record <fichero.json>'); process.exit(1); }
     runRecord(fileArg).catch(e => { console.error(e.message); process.exit(1); });
-  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --record <json>'); process.exit(1); }
+  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --record <json> | --reguard'); process.exit(1); }
 }
 
-module.exports = { classifyScope, parseEpigrafe, romanToInt, contentHash };
+module.exports = { classifyScope, parseEpigrafe, romanToInt, contentHash, excludedOverlap, internalGaps };

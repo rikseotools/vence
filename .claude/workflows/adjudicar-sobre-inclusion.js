@@ -51,7 +51,8 @@ TEMA ${s.topic_number}: ${s.title} (${s.position_type})
 EPÍGRAFE OFICIAL: ${s.epigrafe}
 LEY: ${s.ley_nombre || s.law}
 FUENTE OFICIAL: ${s.boe_url || '(sin boe_url — BÚSCALA con WebSearch: "<ley> BOE/BORM consolidado índice")'}
-SCOPE ACTUAL: artículos ${s.scoped_range} (${s.scoped_count} de ${s.law_total} de la ley) — banda ${s.band}
+SCOPE ACTUAL: artículos ${s.scoped_range} (${s.scoped_count} de ${s.law_total} de la ley) — banda ${s.band}${s.scoped_gaps ? `
+⚠️ HUECOS INTERNOS del scope (arts YA FUERA, no cuentan como sobre-inclusión): ${s.scoped_gaps}. Un título que caiga íntegro en estos huecos YA está excluido — NO lo marques como sobrante.` : ''}
 Señal determinista: ${(s.reasons || []).join('; ')}
 
 METODOLOGÍA OBLIGATORIA (es la que evita el falso verde):
