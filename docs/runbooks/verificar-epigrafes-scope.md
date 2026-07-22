@@ -48,6 +48,21 @@ Motivo: el texto literal del usuario suele ser la punta del iceberg (p.ej. "no h
 - Solo `record_topic_verification()` marca verificado (captura el hash). Un edit manual de scope dispara el trigger → `stale`. Nunca queda un "verificado" viejo colgado.
 - **Claude en el bucle:** el usuario dispara, Claude ejecuta este runbook. No es un cron autónomo.
 
+## Triaje en lote — `npm run scope:health` (clasificador de salud, complementa a scope-over-inclusion)
+Antes de verificar oposición por oposición, **corre el clasificador** para saber CUÁL es cada una y en qué orden:
+```bash
+npm run scope:health -- --pending    # solo las que tienen temas sin verificar, orden por usuarios
+npm run scope:health -- --json        # para pipelines
+node scripts/scope-health-classify.cjs --simulate   # ground truth sin BD
+```
+Clasifica cada oposición en 4 buckets (los 3 patrones recurrentes de la campaña 21-22/07 + limpio):
+- **BUILD** → tiene temas VACÍOS (0 topic_scope) = medio construida → `crear-nueva-oposicion.md`, NO este runbook.
+- **REPARTO** → una LEY REAL escopada entera/con solape grande en ≥2 temas (misma ley duplicada) → repartir por materia (dump + 2 agentes o adjudicación por títulos + simulación orphan-check). *Es un prefiltro: solape 1-2 arts = cross-cutting legítimo (no lo marca); >2 = candidato a dup, el humano confirma.*
+- **CLINICO** → solo CONTENEDORES de contenido compartidos (NULL en ≥2 temas) → casi siempre legítimos (no partibles por artículo); asignar al tema dueño si hay uno claro, o aceptar compartido.
+- **LIMPIA** → sin vacíos ni duplicados → verify directo (coherencia título↔scope) o ya correcta.
+
+**GOTCHA que cazó:** `article_numbers=NULL` = LEY/CONTENEDOR ENTERO; un check de solape por rango numérico da "limpio" en falso. El clasificador cuenta NULL-compartido como duplicado. Núcleo puro testeable (`--simulate`, 9 casos ground-truth).
+
 ## Procedimiento
 
 ### 0. Pipeline semi-autónomo (RECOMENDADO desde 13/07)

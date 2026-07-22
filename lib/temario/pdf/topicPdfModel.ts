@@ -72,15 +72,38 @@ export type LawSectionNames = Record<string, {
  */
 export const PDF_MAX_CHARS = 400_000
 
-/** ¿Cabe este tema en una generación sincrónica? */
-export function fitsSyncPdf(totalChars: number): boolean {
-  return totalChars <= PDF_MAX_CHARS
+/**
+ * Techo por ARTÍCULO individual (complementa al total).
+ *
+ * El total no basta: un tema puede estar por DEBAJO de PDF_MAX_CHARS y aun así dar 504
+ * (caso Julen 21/07, T19 aux-Madrid = 334k total < 400k, pero un solo "artículo-cajón" de
+ * 89k). El layout de @react-pdf/renderer es super-lineal para un bloque gigante único →
+ * un artículo enorme tarda minutos aunque el tema total sea moderado. Medido (22/07): los
+ * artículos activos tienen p99 = 9k y los legítimos grandes ~37k; los cajones (T-040)
+ * arrancan en ~89k y suben a 295k. 60k separa limpio: por encima de lo legítimo, por debajo
+ * de cualquier cajón. Superarlo devuelve 413 (degradación graciosa a imprimir), no 504 duro.
+ */
+export const PDF_MAX_ARTICLE_CHARS = 60_000
+
+/** ¿Cabe este tema en una generación sincrónica? (total Y ningún artículo-cajón) */
+export function fitsSyncPdf(totalChars: number, maxArticleChars = 0): boolean {
+  return totalChars <= PDF_MAX_CHARS && maxArticleChars <= PDF_MAX_ARTICLE_CHARS
 }
 
 /** Caracteres totales de texto legal de un TopicContent (para decidir el guardarraíl). */
 export function countContentChars(content: { laws?: Array<{ articles?: Array<{ content?: string | null }> }> }): number {
   return (content.laws || []).reduce(
     (n, l) => n + (l.articles || []).reduce((m, a) => m + (a.content?.length || 0), 0), 0)
+}
+
+/** Tamaño del ARTÍCULO más grande (para el guardarraíl por-artículo anti-cajón). */
+export function maxArticleChars(content: { laws?: Array<{ articles?: Array<{ content?: string | null }> }> }): number {
+  let max = 0
+  for (const l of content.laws || []) for (const a of l.articles || []) {
+    const n = a.content?.length || 0
+    if (n > max) max = n
+  }
+  return max
 }
 
 export interface TopicPdfModel {
