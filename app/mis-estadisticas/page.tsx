@@ -870,7 +870,9 @@ function EstadisticasContent() {
                   if (masteredThemes >= totalThemes) return 'completado'
 
                   // Usar días desde registro (igual que UserProfileModal)
-                  const diasEnVence = oposicion?.daysSinceJoin || 30
+                  // Ritmo sobre días en la oposición ACTUAL, no desde el alta (feedback Marta 23/07):
+                  // al cambiar de oposición, contar desde el registro diluye el ritmo y da fechas absurdas.
+                  const diasEnVence = (oposicion as any)?.daysSinceOposicionStart || oposicion?.daysSinceJoin || 30
 
                   // Calcular ritmo: temas dominados por semana
                   const temasPoSemana = (masteredThemes / diasEnVence) * 7
@@ -936,7 +938,8 @@ function EstadisticasContent() {
                 // Semanas necesarias = temas pendientes / temas por semana
 
                 const themesLeftToMaster = totalThemes - masteredThemes
-                const diasEnVence = oposicion?.daysSinceJoin || 30 // Default 30 días
+                // Ritmo sobre días en la oposición ACTUAL (ver nota en mastery.projectedMasteryDate)
+                const diasEnVence = (oposicion as any)?.daysSinceOposicionStart || oposicion?.daysSinceJoin || 30
 
                 // Si no hay temas dominados, no podemos calcular proyección
                 if (masteredThemes === 0) {
@@ -991,7 +994,7 @@ function EstadisticasContent() {
               })(),
               calculations: (() => {
                 // 🔧 Métricas basadas en ritmo de dominio (igual que UserProfileModal)
-                const diasEnVence = oposicion?.daysSinceJoin || 30
+                const diasEnVence = (oposicion as any)?.daysSinceOposicionStart || oposicion?.daysSinceJoin || 30
                 const temasPoSemana = diasEnVence > 0 && masteredThemes > 0
                   ? Math.round((masteredThemes / diasEnVence) * 7 * 10) / 10
                   : 0

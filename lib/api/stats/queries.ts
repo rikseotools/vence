@@ -757,6 +757,22 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       ? Math.max(1, Math.ceil((Date.now() - new Date(profile.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
       : 30
 
+    // Días desde que EMPEZÓ la oposición actual (primer test con ese position_type).
+    // El ritmo de dominio se calcula sobre esto, NO sobre daysSinceJoin: al cambiar de
+    // oposición, contar desde el alta diluye el ritmo y proyecta fechas absurdas (Marta 23/07).
+    // profile.targetOposicion viene en forma con guiones bajos = el position_type de tests.
+    let daysSinceOposicionStart: number | null = null
+    if (profile?.targetOposicion) {
+      const firstTestRow = await db
+        .select({ firstAt: sql<string | null>`min(${tests.createdAt})` })
+        .from(tests)
+        .where(and(eq(tests.userId, userId), eq(tests.positionType, profile.targetOposicion)))
+      const firstAt = firstTestRow[0]?.firstAt
+      if (firstAt) {
+        daysSinceOposicionStart = Math.max(1, Math.ceil((Date.now() - new Date(firstAt).getTime()) / (1000 * 60 * 60 * 24)))
+      }
+    }
+
     if (!targetOposicion) {
       return {
         userName: profile?.fullName || null,
@@ -775,6 +791,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         boePublicationDate: null,
         boeReference: null,
         daysSinceJoin,
+        daysSinceOposicionStart,
       }
     }
 
@@ -818,6 +835,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         boePublicationDate: null,
         boeReference: null,
         daysSinceJoin,
+        daysSinceOposicionStart,
       }
     }
 
@@ -839,6 +857,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       boeReference: oposicion.boeReference,
       programaUrl: oposicion.programaUrl || null,
       daysSinceJoin,
+      daysSinceOposicionStart,
     }
   } catch (error) {
     console.error('Error obteniendo oposición del usuario:', error)

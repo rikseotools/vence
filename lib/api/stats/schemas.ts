@@ -129,6 +129,10 @@ export const userOposicionSchema = z.object({
   programaUrl: z.string().nullable().optional(),
   // Datos para predicciones
   daysSinceJoin: z.number().nullable(), // Días desde registro (para calcular ritmo de estudio)
+  // Días desde el PRIMER test en la oposición ACTUAL. El ritmo de dominio se calcula
+  // sobre esto (no sobre días desde el alta): si el usuario cambió de oposición, contar
+  // desde el alta infla el denominador y proyecta fechas absurdas (feedback Marta 23/07).
+  daysSinceOposicionStart: z.number().nullable().optional(),
 })
 
 // Response completo
