@@ -2057,6 +2057,58 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ORDENANZA AYUNTAMIENTO DE CÓRDOBA (AP)
+  // ========================================
+  {
+    id: 'ordenanza_ayuntamiento_cordoba',
+    slug: 'ordenanza-ayuntamiento-cordoba',
+    positionType: 'ordenanza_ayuntamiento_cordoba',
+    examScoring: { penaltyDivisor: null, source: 'BOP Córdoba nº99 23/05/2025 (BOP-A-2025-1439), Base Decimosegunda: 1er ejercicio 45 preguntas 4 alternativas (60 min, +5 reserva); 27 aciertos (60%) = 5, máximo 10; no se establece penalización por respuesta incorrecta. confidence:alta' },
+    name: 'Ordenanza del Ayuntamiento de Córdoba',
+    shortName: 'Ordenanza Córdoba',
+    emoji: '🏛️',
+    badge: 'AP',
+    color: 'amber',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'generales',
+        title: 'Temas Generales',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'La Administración Local. El Municipio' },
+          { id: 3, name: 'Igualdad efectiva y violencia de género' },
+          { id: 4, name: 'Prevención de riesgos laborales' },
+        ],
+      },
+      {
+        id: 'especificos',
+        title: 'Temas Específicos',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 5, name: 'Derechos ante las AAPP. Atención al ciudadano' },
+          { id: 6, name: 'Máquinas de oficina y material' },
+          { id: 7, name: 'Correspondencia, notificaciones y cargas' },
+          { id: 8, name: 'PRL del subalterno. Emergencias y evacuación' },
+          { id: 9, name: 'Seguridad y salud en los lugares de trabajo' },
+          { id: 10, name: 'Edificios, centros cívicos y museos del Ayto. de Córdoba' },
+        ],
+      },
+    ],
+    totalTopics: 10,
+    aliases: ['ordenanza cordoba', 'ordenanza ayuntamiento cordoba', 'ordenanzas cordoba', 'subalterno cordoba', 'conserje cordoba', 'ordenanza ayto cordoba'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/ordenanza-ayuntamiento-cordoba', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/ordenanza-ayuntamiento-cordoba/temario', label: 'Temario', icon: '📚' },
+      { href: '/ordenanza-ayuntamiento-cordoba/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE SEVILLA (C2)
   // ========================================
   {

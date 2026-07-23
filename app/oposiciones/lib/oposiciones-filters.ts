@@ -94,6 +94,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-diputacion-huelva': 'andalucia',
     'administrativo-diputacion-jaen': 'andalucia',
     'auxiliar-administrativo-ayuntamiento-marbella': 'andalucia',
+    'ordenanza-ayuntamiento-cordoba': 'andalucia',
     'auxiliar-administrativo-universidad-cadiz': 'andalucia',
     'auxiliar-administrativo-ayuntamiento-madrid': 'madrid',
     'auxiliar-administrativo-ayuntamiento-alcala-henares': 'madrid',

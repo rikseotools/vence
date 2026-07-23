@@ -480,6 +480,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     administracion: 'Local',
     icon: '🏛️'
   },
+  {
+    id: 'ordenanza_ayuntamiento_cordoba',
+    nombre: 'Ordenanza Ayto. Córdoba',
+    categoria: 'AP',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
 
   // === DIPUTACIÓN DE LEÓN ===
   {

@@ -699,6 +699,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'ordenanza_ayuntamiento_cordoba',
+      label: 'Ordenanza Ayto. Córdoba',
+      data: {
+        name: 'Ordenanza del Ayuntamiento de Córdoba',
+        slug: 'ordenanza-ayuntamiento-cordoba',
+        categoria: 'AP',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_sevilla',
       label: 'Auxiliar Administrativo Ayto. Sevilla',
       data: {
