@@ -634,6 +634,42 @@ async function main() {
       { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) });
   }
 
+  // ── CONTENIDO: preguntas con DEIXIS VISUAL pero SIN imagen almacenada ──
+  // El enunciado apunta a un icono/símbolo/imagen que DEBE mostrarse ("el siguiente
+  // icono", "el siguiente símbolo", "observa la siguiente figura", "las restas de la
+  // imagen") pero image_url es NULL y content_data va vacío → la pregunta es
+  // IRRESOLUBLE (nadie ve el gráfico) y aun así está activa. Punto ciego total: ningún
+  // detector miraba coherencia enunciado↔imagen, y el re-verificador LLM razona solo
+  // sobre TEXTO — de hecho puede REVERTIR un flag correcto de "inverificable" (caso raíz
+  // 22/07: pregunta de icono Outlook marcada needs_human 2× por "requiere imagen no
+  // disponible" y re-aprobada el 10/07 como falso positivo → la cazó una usuaria, Concha,
+  // vía impugnación 7119bd5d; barrido posterior jubiló 5 más). Patrón ALTA PRECISIÓN:
+  // deixis SINGULAR "el/la siguiente <cosa visual>" en ambos órdenes (el plural "de las
+  // siguientes …" = "de las siguientes opciones", FP masivo) + guardas contra "imagen
+  // corporal/pública", "de la imagen y el sonido", iconos descritos en texto, etc.
+  // Remediar: si el texto ya describe el visual = autocontenida; si hay fuente →
+  // reconstruir la imagen; si no → jubilar (admin_image_unavailable). NUNCA inventar.
+  const VD_STRONG = "(\\y(el|la)\\s+siguiente\\s+(icono|imagen|imágen|s[íi]mbolo|gr[áa]fico|figura|captura|pictograma|esquema|diagrama|se[ñn]al)\\y)"
+    + "|(en\\s+la\\s+imagen\\s+(anterior|superior|inferior|adjunt\\w+|siguiente|de\\s+arriba|de\\s+abajo))"
+    + "|(\\yla\\s+imagen\\s+(muestra|adjunt\\w+|superior|inferior|siguiente|anterior)\\y)"
+    + "|((observa|observe|obsérv\\w+|f[íi]jese\\s+en)\\s+(la|el)\\s+(siguiente\\s+)?(imagen|figura|gr[áa]fico|icono|s[íi]mbolo|captura))"
+    + "|(seg[úu]n\\s+(la\\s+imagen|la\\s+figura|el\\s+gr[áa]fico\\s+adjunt|muestra\\s+la\\s+(imagen|figura)|se\\s+muestra\\s+en\\s+la\\s+(imagen|figura)))"
+    + "|(¿qu[ée]\\s+(significa|representa|indica)\\s+(este|el\\s+siguiente)\\s+(icono|s[íi]mbolo|pictograma|gr[áa]fico))"
+    + "|(\\y(icono|s[íi]mbolo|pictograma|gr[áa]fico|captura|divisa|distintivo|emblema)\\s+(mostrad\\w+|adjunt\\w+|que\\s+se\\s+muestra|siguiente|anterior|de\\s+la\\s+(imagen|figura|fotograf\\w+))\\y)"
+    + "|(\\y(restas|celda|celdas|f[óo]rmula|f[óo]rmulas|tabla|query|consulta|marca|base\\s+de\\s+datos|diagrama)\\w*\\s+\\w*\\s*(de|en)\\s+la\\s+imagen\\y)"
+    + "|(\\yde\\s+la\\s+imagen[,. ]+(indica|se[ñn]ale|cu[áa]l|obten|calcul))";
+  const VD_FP = "imagen corporal|imagen p[úu]blica|imagen de la administraci|imagen de las mujeres|de la imagen y|imagen y (el |del )?sonido|imagen y sonido|derecho a la propia imagen|reproducci[óo]n del sonido|de la imagen o|icono (muestra|con forma|que representa a)|s[íi]mbolo (¶|de p[áa]rrafo)|figura (jur[íi]dic|del? |profesional)";
+  const vdRows = (await c.query(`
+    SELECT id, question_text FROM questions
+    WHERE is_active = true
+      AND (image_url IS NULL OR image_url = '')
+      AND (content_data IS NULL OR content_data::text IN ('{}','null',''))
+      AND question_text ~* $1 AND question_text !~* $2
+    LIMIT 60`, [VD_STRONG, VD_FP])).rows;
+  if (vdRows.length) add('content', 'warn', null, 'visual_deixis_no_image',
+    `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
+    { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

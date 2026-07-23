@@ -189,6 +189,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
     claudeHace: 'para cada pregunta señalada (shuffle_safety=safe cuya explicación referencia una opción por letra/número/posición) confirma que barajar rompería la explicación y bájala a unsafe vía record_shuffle_safety, o reescribe la explicación a formato sin letras (Fase 2) si procede. Si el finding reporta hash desincronizado, re-verifica (el trigger debería haberla puesto stale). Es un miss del detector/auditoría LLM o una edición no invalidada. NUNCA dejar barajable una explicación letra-anclada ni auto-editar la explicación sin verificar la clave.',
   },
+  visual_deixis_no_image: {
+    title: 'Pregunta que invoca una imagen que no existe',
+    triggerPhrase: 'revisa las preguntas sin imagen',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza las preguntas activas cuyo enunciado apunta a un icono/símbolo/imagen ("el siguiente icono", "el siguiente símbolo", "observa la figura", "las restas de la imagen") pero tienen image_url NULL → son irresolubles (nadie ve el gráfico). Para cada una: si el enunciado/opciones ya describen el visual en texto, es autocontenida (dejar); si necesita la imagen y hay fuente oficial recuperable, reconstruir la imagen; si no hay fuente, jubilar con transition_question_state(admin_image_unavailable → retired_irreparable). NUNCA inventar la imagen ni fijar una clave a ciegas.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */
