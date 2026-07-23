@@ -88,6 +88,16 @@ export function runWithLlmFeature<T>(feature: string, fn: () => T): T {
   return featureStore.run(feature, fn)
 }
 
+/**
+ * Fija la feature para el resto del contexto async actual SIN envolver en callback (útil al
+ * inicio de un route handler: `enterLlmFeature('chat')` → todas las llamadas LLM de esa request
+ * se etiquetan). Cada request HTTP corre en su propio contexto async, así que no se filtra entre
+ * peticiones.
+ */
+export function enterLlmFeature(feature: string): void {
+  featureStore.enterWith(feature)
+}
+
 export function currentLlmFeature(): string {
   return featureStore.getStore() ?? 'unspecified'
 }

@@ -1,5 +1,6 @@
 // app/api/verify-articles/ai-verify-article/route.ts - Verificación IA de artículos (batch)
 import { NextRequest, NextResponse } from 'next/server'
+import { enterLlmFeature } from '@/lib/observability/llm'
 import { aiVerifyArticleParamsSchema } from '@/lib/api/verify-articles/schemas'
 import {
   getLawById,
@@ -218,6 +219,7 @@ async function processBatch(params: {
 // ============================================
 
 async function _POST(request: NextRequest) {
+  enterLlmFeature('verify_article')
   try {
     const body = await request.json()
     const validation = aiVerifyArticleParamsSchema.safeParse(body)

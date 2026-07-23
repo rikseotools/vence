@@ -3,6 +3,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { aiApiConfig } from './anthropic.schema';
+import { ObservabilityService } from '../observability/observability.service';
+import { instrumentAnthropicClient } from '../observability/llm-usage';
 
 const CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutos
 
@@ -21,7 +23,10 @@ export class AnthropicService {
   private cachedApiKey: string | null = null;
   private cacheTimestamp = 0;
 
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    private readonly obs: ObservabilityService,
+  ) {}
 
   /** Devuelve un cliente Anthropic listo para usar (con cache de 30 min). */
   async getClient(): Promise<Anthropic> {
@@ -39,7 +44,9 @@ export class AnthropicService {
 
     // Si la clave cambió, forzar nuevo cliente
     if (apiKey !== this.cachedApiKey || this.cachedClient === null) {
-      this.cachedClient = new Anthropic({ apiKey });
+      // Instrumentado → toda messages.create de los servicios del backend (OEP, detect-notas)
+      // registra uso/tokens/coste en observable_events (fase 2 de la observabilidad LLM).
+      this.cachedClient = instrumentAnthropicClient(new Anthropic({ apiKey }), this.obs);
       this.cachedApiKey = apiKey;
       this.logger.log('Cliente Anthropic creado/renovado');
     }

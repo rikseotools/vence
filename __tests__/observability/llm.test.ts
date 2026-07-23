@@ -6,6 +6,7 @@ import {
   estimateCostUsd,
   recordLlmCall,
   runWithLlmFeature,
+  enterLlmFeature,
   currentLlmFeature,
   instrumentAnthropic,
   instrumentOpenai,
@@ -72,6 +73,12 @@ describe('feature attribution (AsyncLocalStorage)', () => {
     expect(currentLlmFeature()).toBe('unspecified')
     runWithLlmFeature('oep_signals', () => { expect(currentLlmFeature()).toBe('oep_signals') })
     expect(currentLlmFeature()).toBe('unspecified')
+  })
+  it('enterLlmFeature fija la feature en el contexto actual (uso en route handlers)', () => {
+    runWithLlmFeature('base', () => {
+      enterLlmFeature('chat')
+      expect(currentLlmFeature()).toBe('chat')
+    })
   })
 })
 

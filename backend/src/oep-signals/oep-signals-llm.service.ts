@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AnthropicService } from '../anthropic/anthropic.service';
+import { enterLlmFeature } from '../observability/llm-usage';
 import {
   genericSourceExtractionSchema,
   llmExtractionSchema,
@@ -140,6 +141,7 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
+      enterLlmFeature('oep_signals')
       const response = await client.messages.create({
         model: HAIKU_MODEL,
         max_tokens: 1024,
@@ -188,6 +190,7 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
+      enterLlmFeature('oep_signals')
       const response = await client.messages.create({
         model: HAIKU_MODEL,
         max_tokens: 3000,
@@ -248,6 +251,7 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
+      enterLlmFeature('oep_signals')
       const response = await client.messages.create({
         model: HAIKU_MODEL,
         max_tokens: 2000,
@@ -297,6 +301,7 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
+      enterLlmFeature('oep_signals')
       const response = await client.messages.create({
         model: HAIKU_MODEL,
         max_tokens: 2000,

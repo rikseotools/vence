@@ -2,7 +2,7 @@
 // Genera explicación con IA para preguntas sin explicación y la guarda en BD
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { instrumentOpenai } from '@/lib/observability/llm'
+import { instrumentOpenai, enterLlmFeature } from '@/lib/observability/llm'
 
 import { getAdminDb } from '@/db/client'
 import { questions, aiApiConfig } from '@/db/schema'
@@ -15,6 +15,7 @@ import { invalidateQuestionsCache } from '@/lib/cache/questions'
 const db = () => getAdminDb()
 
 async function _POST(request: NextRequest) {
+  enterLlmFeature('generate_explanation')
   try {
     const { questionId, questionText, options, correctAnswer, articleNumber, lawName } = await request.json()
 

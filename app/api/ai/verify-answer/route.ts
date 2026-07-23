@@ -10,9 +10,11 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // (getDb → DATABASE_URL) → portable a cualquier host Postgres (RDS/KoiGrid/Neon).
 import { getOpenAI } from '@/lib/chat/shared/openai'
 import { searchRelevantArticles } from '@/lib/api/ai-verify/articleSearch'
+import { enterLlmFeature } from '@/lib/observability/llm'
 
 async function _POST(request: NextRequest) {
   const startTime = Date.now()
+  enterLlmFeature('verify_answer')
 
   try {
     const body = await request.json()

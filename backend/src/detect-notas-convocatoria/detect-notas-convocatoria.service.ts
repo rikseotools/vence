@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { AnthropicService } from '../anthropic/anthropic.service';
+import { enterLlmFeature } from '../observability/llm-usage';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 import { convocatoriaNotas, oposiciones } from './convocatoria-notas.schema';
 import { convocatoriaDocumentos } from './convocatoria-documentos.schema';
@@ -139,6 +140,7 @@ export class DetectNotasConvocatoriaService {
     try {
       const client = await this.anthropic.getClient();
       const prompt = buildNotasPrompt(opo.slug ?? '', htmlToText(page.html), notas);
+      enterLlmFeature('detect_notas')
       const resp = await client.messages.create({
         model: HAIKU_MODEL,
         max_tokens: 2048,

@@ -6,6 +6,7 @@
 export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
+import { enterLlmFeature } from '@/lib/observability/llm'
 import { after } from 'next/server'
 import { getAdminDb } from '@/db/client'
 import { userProfiles, aiChatLogs } from '@/db/schema'
@@ -109,6 +110,7 @@ const EXEMPT_SUGGESTIONS = [
 
 async function _POST(request: NextRequest) {
   const startTime = Date.now()
+  enterLlmFeature('chat') // toda llamada LLM de esta request se etiqueta feature=chat
   logger.info('Chat v2 request started', { domain: 'api' })
 
   try {

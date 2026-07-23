@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { enterLlmFeature } from '@/lib/observability/llm'
 import { aiVerifySingleParamsSchema } from '@/lib/api/verify-articles/schemas'
 import { getLawById, getQuestionById } from '@/lib/api/verify-articles/queries'
 import {
@@ -63,6 +64,7 @@ async function verifyWithClaude(prompt: string): Promise<Record<string, unknown>
 }
 
 async function _POST(request: NextRequest) {
+  enterLlmFeature('verify_articles')
   try {
     const body = await request.json()
     const validation = aiVerifySingleParamsSchema.safeParse(body)

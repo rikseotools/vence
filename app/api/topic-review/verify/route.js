@@ -1,5 +1,6 @@
 // app/api/topic-review/verify/route.js
 import { getAdminDb } from '@/db/client'
+import { enterLlmFeature } from '@/lib/observability/llm'
 import {
   aiApiConfig,
   psychometricQuestions,
@@ -497,6 +498,7 @@ async function verifyPsychometricQuestions(questionIds, provider, model, apiKey)
  * Verifica preguntas seleccionadas con IA
  */
 async function _POST(request) {
+  enterLlmFeature('topic_review')
   try {
     const { questionIds, provider = 'openai', model, isPsychometric = false } = await request.json()
 
