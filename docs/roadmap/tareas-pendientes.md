@@ -225,13 +225,13 @@
 
 ## Abiertas
 
-### 🔴 [ABIERTO 22-23/07] Migración a Koigrid — frontend bloqueado por memoria del runner de build (BD ya migrada)
+### [T-089] 🔴 [ABIERTO 22-23/07] Migración a Koigrid — frontend bloqueado por memoria del runner de build (BD ya migrada)
 - **Qué / dónde estamos:** migración RDS/ECS → **Koigrid** (PaaS tarifa plana EU). **BD YA migrada y validada 1:1** (DB `vence-mig2`, ~27GB, esquema+datos+índices+FKs, row-counts cuadran). **Frontend NO desplegado** — bloqueado por **UN solo muro: el runner de build de Koigrid OOM-killea `next build`** (SIGKILL ~2min compilando 4.468 páginas SSG; confirmado en local `podman build --no-cache --memory=3g`→SIGKILL; necesita >3GB, su runner es menor).
 - **Ya resuelto:** Snag H (DB en build) lo arregló Koigrid vía reference vars `${{db.vence-mig2.DATABASE_URL}}`; guard Turnstile pasa con clobber-fix del Dockerfile; imagen local construye bien (push falla 413 por capa prerender 2,58GB).
 - **2 caminos:** (A) esperar release Koigrid que suba memoria del runner → re-testear → completa solo; (B) Vence-side: capar `generateStaticParams` → build ligero → cabe ya. Usuario prefería (A).
 - **Cómo retomar:** memoria `reference_koigrid_evaluacion_fase_d` §RESUME (artefactos `/home/manuel/.cache/koigrid-mig/` + worktree `/home/manuel/.cache/vence-clean`). Detalle: `docs/roadmap/migracion-koigrid.md`. **Journey para Koigrid:** `docs/roadmap/koigrid-migration-journey.md`. **PROD INTACTA en AWS** (solo pg_dump). Estado: BD ✅ · frontend ⛔ (1 número: memoria runner build) · journey ✅.
 
-### 🟢 [ABIERTO 22/07] Saturación de temas flojos por demanda — huecos de contenido CERRADOS; quedan cabos de scope/estructura
+### [T-090] 🟢 [ABIERTO 22/07] Saturación de temas flojos por demanda — huecos de contenido CERRADOS; quedan cabos de scope/estructura
 - **Qué (hecho 22/07):** barrido de saturación priorizado por **usuarios reales** (`user_profiles.target_oposicion`). **~1.100 preguntas nuevas** generadas (redacción delegada a subagentes en paralelo + insertador con balance/distribución/dedup nivel-3 + **doble auditoría ciega Sonnet = 100% PERFECTO**) en Valencia/Canarias/CyL/GVA/UNED/Asturias/Cantabria/CLM/CARM/Madrid + SMS. Verificado con clasificador: **CERO huecos reales de contenido (≥3 arts vacíos con texto) en TODA oposición con ≥25 usuarios.** Método + detalle por oposición: memoria `project-saturacion-temas-flojos-demanda`.
 - **Cabos sueltos (NO son huecos de contenido, otra naturaleza — para sesiones nuevas):**
   1. **Estructural / techo §2.6 (NO generar):** SMS T12, GVA T123, UNED T18/T19, CARM T24 quedan <25 preg porque tienen **pocos artículos escopados**; forzarlos a 25 sería redundancia §2.6. Dejar.
@@ -1573,22 +1573,22 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 ## 🧹 Cabos sueltos F0 antifraude / deploy (23/07/2026) — para retomar en cualquier sesión
 
-### 🟡 [MEDIA] El badge de Fraudes muestra "6" aunque las señales antifraude sean 0 (fallback stale)
+### [T-091] 🟡 [MEDIA] El badge de Fraudes muestra "6" aunque las señales antifraude sean 0 (fallback stale)
 - **Qué:** el badge 🚨 de la pestaña Fraudes (`app/admin/layout.tsx`, `checkFraud`/render) tiene un **fallback**: pinta `fraudSignals.pending || adminNotifications.rateLimitHits`. Como F0 dejó las señales `fraud_alerts status='new'` en **0** pero hay **6 `rate_limit` hits sin revisar (24h)** en `validation_error_logs`, el badge muestra **6** (la métrica VIEJA, no las señales F0). Confuso: parece que hay 6 fraudes cuando el sistema F0 dice 0.
 - **Cómo (elegir una):** (a) marcar esos rate-limit hits como revisados → `UPDATE validation_error_logs SET reviewed_at=now() WHERE error_type='rate_limit' AND reviewed_at IS NULL AND created_at>=now()-interval '24 hours'` (los limpia sin tocar código); o (b) **quitar el fallback** del badge para que muestre SOLO `fraudSignals.pending` (mis señales antifraude) y dejar los rate-limit hits como otra señal aparte. Recomiendo (b) por claridad (el badge de Fraudes = señales antifraude F0, no rate-limit).
 - **Estado:** detectado 23/07 tras desplegar F0. No accionado.
 
-### 🟢 [BAJA] 6 IPs mal-descartadas como CGNAT en la revisión de fraude del 21/07 (falso descarte)
+### [T-092] 🟢 [BAJA] 6 IPs mal-descartadas como CGNAT en la revisión de fraude del 21/07 (falso descarte)
 - **Qué:** al revisar las señales `multi_account_reg_ip`, descarté 16 como CGNAT/red compartida. Después, al **afinar el detector** (excl. CDN + correlación de dispositivo), resultó que **6 de esas IPs SÍ tenían dispositivo compartido** (granjas reales): `185.70.139.163`, `188.26.197.65`, `188.26.197.97`, `79.117.224.143`, `45.147.204.84`, `5.252.93.50`. Quedaron `dismissed` (TTL 30d) → **re-surgirán solas** cuando expire, pero es un falso descarte a re-revisar antes.
 - **Cómo:** `UPDATE fraud_alerts SET status='new', reviewed_at=null, notes=null WHERE match_criteria = ANY(ARRAY['multi_account_reg_ip:185.70.139.163','multi_account_reg_ip:188.26.197.65','multi_account_reg_ip:188.26.197.97','multi_account_reg_ip:79.117.224.143','multi_account_reg_ip:45.147.204.84','multi_account_reg_ip:5.252.93.50'])` y re-revisar con el runbook `revisar-fraudes.md`. **OJO igualmente:** casi seguro son estudiantes gameando el límite free (como las demás granjas), NO malicia → cap suave, NO bloquear.
 - **Estado:** detectado 23/07.
 
-### 🟢 [BAJA/VIGILAR] RDS inaccesible desde local (timeout de conexión) — posible presión de conexiones
+### [T-093] 🟢 [BAJA/VIGILAR] RDS inaccesible desde local (timeout de conexión) — posible presión de conexiones
 - **Qué:** el 23/07 (tras el asentamiento de los deploys frontend+backend) las conexiones directas `pg` a RDS desde local **dan timeout** (`connectionTimeoutMillis` agotado), varias veces seguidas. **La app SÍ funciona** (backend `/health`=200, home 200, endpoints F0=401) — es solo la conexión directa la que cuelga.
 - **Por qué mirar:** puede ser presión de `max_connections` en RDS (el pool de la app + crons + el nuevo cron fraud-sweep) o un blip de red/SG. Si persiste, revisar `pg_stat_activity` (nº conexiones), `max_connections`, y si algún cron abre conexiones sin cerrarlas. Relacionado con la saturación de BD que puso la salud en ROJO durante el crunch de vCPU.
 - **Estado:** detectado 23/07. Vigilar; no urgente si la app va bien.
 
-### 🔵 [TRIVIAL] Marcar T-087 (deploy F0) como `done` en `backlog_tasks`
+### [T-094] 🟢 [TRIVIAL] Marcar T-087 (deploy F0) como `done` en `backlog_tasks`
 - **Qué:** el deploy de F0 (frontend `dbb2b31f` + backend cron) está **HECHO y verificado** (endpoints, logs ECS `Cron 'fraud-sweep' registrado`, health 200), pero T-087 quedó en `open` porque RDS daba timeout al hacer el `UPDATE`. Solo falta el flag.
 - **Cómo:** `UPDATE backlog_tasks SET status='done' WHERE id='T-087'` cuando RDS responda.
 - **Estado:** deploy hecho; solo el bookkeeping pendiente.
