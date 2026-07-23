@@ -218,6 +218,16 @@ Cuando el solapamiento es consecuencia de un rango **demasiado amplio** y no ref
 >
 > **Solo estrechar cuando el contenido extra pertenece claramente a otro tema del mismo programa** — porque un rango demasiado ancho arrastra preguntas que no corresponden al epígrafe.
 
+### ⚠️ Título compuesto → escopear por CAPÍTULO, no por título entero (post-23/07/2026)
+
+Cuando un epígrafe nombra un concepto que es **sub-parte de un título compuesto** —un título cuyo nombre agrupa dos conceptos con "**X y Z**" y el epígrafe **solo pide uno de ellos**— NO mapees el título entero: baja a nivel de **capítulo**. Coger el título completo **sobre-incluye en silencio el capítulo del concepto que el epígrafe no pide**.
+
+**Cómo detectarlo:** para cada bloque del epígrafe, mira si el título de la ley al que lo mapeas se llama "«Concepto A **y** Concepto B»" y el epígrafe solo cita A (o solo B). Si es así, escopea únicamente el/los **capítulo(s)** del concepto pedido, leyendo las cabeceras de capítulo (no solo la del título) contra el texto oficial de la ley.
+
+**Punto ciego:** `verify:scope` razona a granularidad de **TÍTULO** con la lente "ante duda, scope más extenso" y da **verified_correct** a un mapeo título-entero aunque el epígrafe solo pida un capítulo de ese título (variante fina del Vector 3-bis). No lo caza el detector; lo caza el usuario.
+
+**Caso raíz (23/07/2026 — SMS T11, Ley 3/2009 Murcia, usuaria M):** el epígrafe pide "derechos relacionados con **la atención y asistencia sanitaria**". Un fix anterior (que ya había recortado la ley entera → Títulos II-IV+VII) mapeó el bloque al **Título II completo (arts 10-20)**. Pero el Título II se llama "Derechos relacionados con la **promoción de la salud** y la **atención y asistencia sanitaria**" → coger el título entero arrastró el **art 10 (Cap I, Promoción de la salud)**, que el epígrafe no pide. Estructura real: Cap I Promoción de la salud (art 10) · Cap II Atención y asistencia sanitaria (11-14) · Cap III Colectivos con especial protección (15-20). Fix: quitar art 10 → scope **11-40 + 61-63** (los colectivos 15-20 SÍ son "relacionados con la atención y asistencia sanitaria", se mantienen).
+
 ## Trampa de las "leyes legislativamente separadas"
 
 Cuando un epígrafe usa un nombre genérico (como "Ley General de la Seguridad Social") NO cubre automáticamente leyes especiales que desarrollan esa materia pero son técnicamente independientes.
