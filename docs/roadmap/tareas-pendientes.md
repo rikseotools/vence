@@ -44,6 +44,11 @@
 - **Diagnóstico (caso María, fb feb79fc5, `piyou22@gmail.com`):** 100% de sus sesiones en 3 días y 4 deploys fueron GSA in-app en iPhone; nunca Safari ni ordenador → descarta versión cacheada/cuenta. A Manuel en navegador normal le funciona. Resuelto a la usuaria con apaño (abrir en Safari) + reward 3€ creado.
 - **Fix de verdad (pendiente decisión):** que el botón **genere el PDF nosotros** (client jsPDF/html2pdf o ruta server que renderice el tema) en vez de depender de `window.print()`, para que funcione desde cualquier navegador. Mientras, mínimo detectar in-app browser y mostrar aviso en vez de no-op.
 
+### 🟠 [ABIERTO 23/07] La descarga PDF del temario NO está gateada por plan en prod (fuga premium)
+- **Qué:** el PDF del temario **debe ser premium** (decisión Manuel 23/07). En prod (`main`) el botón "Imprimir PDF" hace `window.print()` y **solo exige estar registrado** (`if (!user) → modal`); cualquier usuario **free** imprime/guarda en PDF **cualquier** tema. El gating premium por plan (T-076, commit `0090552f6`: free imprime los primeros 3 temas, resto premium + `lib/premium/features.ts` `print_pdf`/`FREE_PRINT_MAX_TOPIC=3`) **NO está en `main`** (vive en la rama `feat/uc3m-golive`, con `components/TopicPrintButton.tsx` aún sin commitear → build-breaker latente).
+- **Impacto:** contradice lo que se responde a prospectos (caso Desiré, fb `a8657c26`, 23/07: se le dijo que la descarga PDF es premium). Fuga de valor premium.
+- **Fix:** commitear `TopicPrintButton.tsx` (build-breaker) + desplegar el gating premium del PDF a `main`. Decidir cupo free (0 temas vs primeros 3 para captación/SEO).
+
 ### 🟡 [ABIERTO 17/07] Aux. Admin. SMS — generar preguntas de 2 artículos en scope sin banco (prometido a Luisa)
 - **Qué:** dos artículos correctamente escopados pero con **0 preguntas activas**, prometidos a la usuaria (fb `daluamva@gmail.com`, `auxiliar_administrativo_sms`): **T8 Ley 4/1994 art 9 (Fines)** y **T3 Ley 12/2014 CARM Transparencia art 1 (Objeto y finalidad)**. Conviene reforzar de paso T8 arts 10-12 (1 preg c/u, tema muy fino: 8 preg).
 - **Por qué pendiente:** generación de contenido (fuente oficial BOE + doble auditoría + GATE) → no al vuelo; decisión de Manuel. Le dijimos "estamos trabajando en ello" y pidió **aviso expreso cuando estén** ("AVISARME CUANDO ESTEN").
@@ -228,7 +233,7 @@
 
 ### 🟢 [DEMANDA — valorar, no comprometido] Oposiciones pedidas por usuarios (aún no en plataforma)
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
-- **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
+- **Cuidador/a de la Diputación de Córdoba** — interés apuntado **DOS veces por la misma usuaria premium** (maricarmen alba: feedback `705aeaab` 09/07 + `da71b72e` 23/07). Ya **catalogada** (`cuidador-diputacion-cordoba`, `is_active=false`, grupo C2, 20 temas sin tests). **Convocatoria VIVA:** solo 3 plazas, inscripción 24/07 → 20/08/2026 (`empleo.dipucordoba.es`). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Pocas plazas → ROI bajo, pero demanda repetida de usuaria de pago. Valorar montar (`crear-nueva-oposicion.md`).
 
 ### 🟡 [MEDIA] Fusionar ley duplicada "RD Estructura Min Transformación Digital" → RD 210/2024
 - **Qué:** existen DOS entradas en `laws` para el mismo real decreto (estructura orgánica básica del Ministerio para la Transformación Digital y de la Función Pública): la buena **RD 210/2024** (`c955d78e-…`, con `boe_url`, sincronizada) y una **duplicada incompleta** `RD Estructura Min Transformación Digital` (`a5db1ec1-c30f-4aa8-ae08-869e373e5cc1`, **sin `boe_url`**, artículos-stub 174-343 chars). La duplicada NO se monitoriza ni sincroniza con el BOE.

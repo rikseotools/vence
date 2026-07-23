@@ -7,33 +7,31 @@
 
 ---
 
-## 🔴 READ THIS FIRST — the one remaining blocker (2026-07-23, updated after 4 re-tests)
+## 🔴 READ THIS FIRST — current status + the one thing left to unblock (2026-07-23, final for the day)
 
-**The entire migration is done except one thing: `next build` OOM-kills because the ~4,500-page SSG build's peak memory exceeds 8 GB. The fix is a bigger build runner (≥16 GB, Koigrid tracks this as MIG-K) or trimming prerendering on our side.**
+**The database migration is DONE and validated 1:1 (31 GB, schema + data + extensions, co-located at 6.45 ms). The only thing left is getting the front-end container live, and after a full day of testing it comes down to one clean ask: let Koigrid run a *pre-built image* the way ECS does.**
 
-*(Earlier framing — "the build runner is a separate machine with fixed memory / no knob" — was corrected by Koigrid: there is no separate build runner (build RAM = app-runner RAM). The first three OOMs were actually a **capacity-accounting bug** pinning the new 8 GB runners with errored apps; Koigrid fixed that + shipped a `build_oom` classifier. Re-test #4, run on an emptied account so the 8 GB runners were free, **still OOMed** → the build genuinely needs >8 GB.)*
+**The build itself is not the real problem — it's *where* it runs.** On AWS, `next build` runs in **GitHub Actions (16 GB)**, separate from runtime; ECS just runs the finished image. On Koigrid's `apps deploy --dir`, the build runs *on the app's 8 GB runner*, and a 4,468-page SSG `next build` OOM-kills (twice — `tsc`, then static generation). We proved locally that the whole build fits in **8 GB of dedicated memory** (`podman build --memory=8g` succeeds; `--memory=3g` fails), so on an 8 GB *total-machine* cpx32 the OS + buildkitd overhead is exactly what tips it over. **But chasing a bigger build runner is the wrong fix** — the right fix is to not build on Koigrid at all: build in CI (as we already do for AWS) and deploy the immutable image.
 
-Over 2026-07-23 we re-tested **four times**. #1-3 died at 121 s while the capacity bug hid the cause; #4 — after Koigrid's fix, with the account emptied to 0 apps — **still `build_oom` at 122 s on a fresh 8 GB app**, which is the real signal: **peak build memory > 8 GB** (local `--memory=3g` already OOMs; `--memory=8g` repro running to confirm).
+**And that clean path is blocked today by two missing pieces — either one unblocks the whole migration:**
+1. **No pull of a private image from an external registry (ECR/GHCR) with credentials** (defect #2). `sourceType:"image"` takes only an `image` string — no `imagePullSecret`. So we can't reuse the ECR image CI already builds.
+2. **Koigrid's own registry rejects the large prerender layer with `413`** (defect #3, re-confirmed empirically 2026-07-23: the 2.58 GB `.next/server` layer → `413 Payload Too Large`; ECR accepts it fine). So pushing to Koigrid's registry doesn't work either.
 
-| Re-test | App | App RAM set | Result |
+**So the two doors to the AWS-standard "deploy a pre-built image" model are both shut.** Close **either** — add external-registry pull credentials (#2, the ideal: makes Koigrid a drop-in ECS), or raise the registry blob limit (#3) — and the front-end migrates as cleanly as the DB did. Full defect list + fixes in **"BUILD & DEPLOY: Koigrid vs AWS"** below.
+
+**What we did NOT do (and won't): trim `generateStaticParams` to fit the small build box.** That's a product regression (SSG→SSR) to accommodate a provider limit — a botch, not a migration. Rejected.
+
+### The build-on-Koigrid re-test trail (why we concluded the above)
+
+| Re-test | App | Change | Result |
 |---|---|---|---|
-| #1 (2026-07-23 08:01) | `vence-web3` | 8192 MB | `build_failed` @ **122 s** |
-| #2 (same, env-redeploy) | `vence-web3` | 8192 MB | `build_failed` @ **122 s** |
-| #3 (2026-07-23 11:48, "new version") | `vence-web4` | 8192 MB | `build_failed` @ **121 s** |
-| #4 (2026-07-23 14:14, after capacity fix; account emptied to 0 apps first) | `vence-web5` | 8192 MB | `build_oom` @ **122 s** — classifier now legible ✅, but build still over 8 GB |
+| #1–3 (08:01–11:48) | `vence-web3/4` | 8 GB app, successive releases | `build_failed` @ 121–122 s (capacity-accounting bug pinned the 8 GB runners) |
+| #4 (14:14) | `vence-web5` | account emptied to 0 apps, fresh 8 GB app | `build_oom` @ 122 s — real signal: the 8 GB *machine* is one size too small |
+| #5 (14:38) | `vence-web6` | applied `typescript.ignoreBuildErrors` | tsc peak gone (`✓ Compiled in 67s`), but a **2nd OOM** in static-gen (past 3351/4468) |
 
-**What we've confirmed — the crux:**
-- The first three OOMs (121 s) were the **capacity-accounting bug**: errored `vence-web3/4` apps (each requesting 8 GB) were reserving both new 8 GB runners, so builds landed on a ~3 GB runner and OOMed. **Koigrid fixed this.**
-- Re-test #4 removed all doubt: **emptied the account to 0 apps** so both 8 GB runners were free, created a fresh 8 GB app → **still `build_oom` at 122 s**. With nothing pinning capacity, this is the real signal: **the build's peak memory is over 8 GB**.
-- Build RAM = the app-runner's RAM (Koigrid has no separate build runner, buildkitd uncapped), so the lever is **runner size**, which is Koigrid-side.
+Along the way Koigrid **fixed two things we reported** (credit due): the **capacity-accounting bug** (errored apps were reserving the new 8 GB runners) and the **`build_oom` classifier** (deployments now return a legible `error: build_oom` instead of a truncated log). Those confirm the platform iterates fast — the remaining gap is purely the image-deploy path (#2/#3).
 
-**What would actually fix it (either):**
-1. **A ≥16 GB runner (MIG-K)** — the direct fix; then re-test the same fresh-app flow.
-2. **Vence-side:** trim `generateStaticParams` so far fewer pages prerender (long tail renders dynamically off the 6.45 ms co-located DB) → build peak drops under 8 GB. Doesn't depend on Koigrid.
-
-**Observability win to credit:** the `build_oom` classifier now returns a legible `error: build_oom` on the deployment object (previously an empty/truncated log). **Snag K-obs is fixed** — confirmed on re-test #4.
-
-*Everything else — DB, schema, data, co-located latency, build-time DB access (Snag H, thank you), public-var injection (Snag F) — is solved. This one number (build-runner RAM) is all that stands between "DB migrated" and "whole app live on Koigrid."*
+*Everything else is solved: DB, schema, data, co-located latency, build-time DB access (Snag H), public-var injection (Snag F). The front-end is one Koigrid-side fix (#2 or #3) away from live.*
 
 ---
 
@@ -103,6 +101,76 @@ The compile already works on 8 GB (66 s); skipping the type-check at build produ
 You looked at `/apps/:id/logs?type=build` (which returns runtime logs → `"(sin contenedor activo)"`) — the build reason lives in the **deployment object's `logs`**, not that endpoint. That discoverability gap is real and is being fixed so the build error surfaces from the logs endpoint too.
 
 **So: try `ignoreBuildErrors` first — it should complete on your existing 8 GB runner. No 16 GB runner needed** (though we'll happily provision MIG-K if you'd rather keep the in-build type-check).
+
+## 🧪 RE-TEST #5 (Vence side, 2026-07-23) — local bracket confirms your diagnosis; applied the fix, redeploying
+
+**Your answer matches our local bracket exactly — thank you, this is the real root cause.** We ran `podman build --memory=8g` (clean, `--no-cache`) and the **full build SUCCEEDED, type-check included**: the log shows
+> `✓ Compiled successfully in 61s` → `Running TypeScript ...` → `Finished TypeScript in 72s ...` → `✓ Generating static pages (4468/4468) in 49s` → 2.76 GB image.
+
+So the `tsc` phase (**72 s, the heap-heaviest step**) completes inside an **8 GB *dedicated cgroup*** — but OOM-kills on an **8 GB *total-machine* cpx32**, because the OS + rootless buildkitd overhead (~1–1.5 GB) leaves the build <8 GB, and `tsc`'s peak sits right at that edge. That's a perfect three-way agreement: your log (`Compiled` ✓ → `tsc` killed), your classifier (`build_oom` during type-check), and our local bracket (whole build ≤8 GB dedicated, `tsc` is the peak). **Neither H1 nor H2 — it's the type-check peak vs machine overhead.**
+
+**Applied your fix.** Added to `next.config.mjs`:
+```js
+typescript: { ignoreBuildErrors: true },   // tsc runs in CI (npm run typecheck), not in the hosted build
+```
+Vence already has a `typecheck: "tsc --noEmit"` script, so types are still enforced in CI — we're only removing the redundant (and peak-memory) in-build type-check. Redeploying a fresh app (`vence-web6`) now; expecting the compile + static generation to finish on the existing 8 GB runner. Result appended below.
+
+### Result of RE-TEST #5 — the tsc fix WORKS, but a *second* memory peak appears in static generation (deployment `d9a162db`)
+
+**The `ignoreBuildErrors` fix did exactly what you said** — the build log confirms the type-check is gone:
+> `✓ Compiled successfully in 67s` → `Collecting page data using 3 workers` → `Generating static pages using 3 workers (0/4468 … 3351/4468)` → *[log cuts off mid-page at 114 s, deployment ends `build_failed` at 122 s]*
+
+So we cleared the `tsc` peak and got **all the way into static generation** (past **3351 of 4468** pages) — then it **OOM-killed again**, this time in the **`next build` static-generation phase**: 3 parallel workers rendering ~4,500 data-heavy SSG pages (each runs live DB queries + React SSR + loads law/teoría content). The log stops mid-stream with no error (classic SIGKILL), so the classifier reports generic `build_failed` rather than `build_oom` (the OOM signature it detects is the tsc-phase one; a kill during "Generating static pages" isn't matched — **worth extending the classifier to this phase too**).
+
+**Why this is consistent with everything:** locally, `--memory=8g` runs the *whole* pipeline (compile + tsc + generate 4468 pages) to success — because a clean 8 GB cgroup on a big host has spare RAM for FS cache and page buffers. On an **8 GB *total-machine* cpx32**, the same static-generation phase (base process + 3 workers each holding heavy law data) exceeds the ~6.5–7 GB left after OS + buildkitd. **This app's build has two sequential memory peaks — tsc, then parallel static-gen — and the 8 GB machine can't hold the second either.**
+
+**Where that leaves it — two clean options:**
+1. **MIG-K: a 16 GB runner.** We've proven the entire build fits in 8 GB *dedicated*; a 16 GB machine gives it that headroom with room for the static-gen workers. This is the robust one-and-done fix and needs nothing more from us. **This is the ask.**
+2. **Vence-side path B:** trim `generateStaticParams` so the data-heavy law/teoría pages render dynamically (co-located DB = 6.45 ms) instead of all 4,468 prerendering at build — cuts the static-gen peak so it fits a cpx32. Bigger change on our end, but removes the dependency on a larger runner.
+
+**Net:** two Koigrid fixes landed and are confirmed working (capacity accounting; `build_oom` classifier), and your `ignoreBuildErrors` guidance cleared the first peak exactly as predicted. The remaining gap is one thing — an 8 GB *total-RAM* machine is one size too small for this particular build's static-generation peak. **A 16 GB runner (MIG-K) closes it; we're ready to re-test the moment it's available.**
+
+**Doc-nit confirmed on our side:** we *did* only get `"(sin contenedor activo)"` from `/apps/:id/logs?type=build`, and the real reason was in the **deployment object's `logs`** (head-first) — which we'd been reading tail-first for the OOM signature. Surfacing the build error from the logs endpoint too (as you're planning) will save the next person this exact detour.
+
+## 📚 DOCS REVIEW 2026-07-23 (later) — the new version folded this feedback into the docs; the documented fix is Vence-side
+
+Re-reviewed `llms.txt` + the new `docs/DEPLOYING-APPS.md` after the latest release. **Koigrid shipped much of this report straight into the docs** — genuinely fast:
+- New **`docs/DEPLOYING-APPS.md`** front-loads every gotcha we hit: build-time vs runtime env, the reference-var `${{db.x.DATABASE_URL}}` for build-time DB access, the **`ENV X=${ARG}` clobber**, **big-SSG type-check OOM → `typescript.ignoreBuildErrors`**, image-size limit, Supabase pgvector + DB sizing for restores.
+- Failed deployments now carry a **structured `error` code** (`build_oom`, `build_export_failed`, `runner_unreachable`, `build_daemon_unavailable`, …) and `logs` that **begin with the human cause + fix** — "read `error` first; don't reproduce locally." (We confirmed `error: build_oom` live.)
+- Disk response now echoes **`diskFloorGb` + `diskElastic:true`** (our Snag A #4 suggestion, shipped).
+
+**The decisive line for our blocker** (llms.txt, `build_oom` entry, verbatim):
+> *"a big SSG `next build` needs 4-8GB, **the runner is smaller**, the kernel OOM-kills it silently → **reduce generateStaticParams, pre-build locally & deploy the artifact (`apps deploy --dir`), or use a larger plan**."*
+
+So Koigrid **documents that the build runner is intentionally smaller** than a big-SSG build needs — there is **no self-serve bigger build runner**; the "16 GB per app" figure is a fair-use *runtime* ceiling, not a build-runner size. **The documented fix is Vence-side:** (1) **trim `generateStaticParams`** (path B — now Koigrid's own #1 recommendation), or (2) **pre-build the image locally and deploy the artifact** (our local `--memory=8g` build already succeeds → this sidesteps both the build OOM *and* the registry 413, since `--dir` builds/runs on the runner without a registry push). A larger plan doesn't add build RAM, so option 3 doesn't apply to us. **Net: the realistic completion path is Vence-side (trim prerender, or ship a pre-built artifact), not waiting on a 16 GB runner.**
+
+## 🎯 BUILD & DEPLOY: Koigrid vs AWS — the exact gaps to close to BEAT AWS (2026-07-23)
+
+**Framing for the Koigrid team:** we *want* Koigrid to replace AWS for Vence — the flat rate, no egress, 6.45 ms co-located DB, and the removal of ECR+task-def+ALB+SSM already win on almost everything. This section is the honest gap list on the one axis where AWS is still ahead today — **getting a heavy app built and deployed** — with the fix for each. None are architectural; they're all "one size too small" or "one missing field."
+
+**How Vence deploys on AWS today (the bar to clear):** GitHub Actions (16 GB runner) runs `docker build` → `next build` compiles 4,468 SSG pages → pushes the image to **ECR** (no practical layer-size limit) → **ECS/Fargate pulls and runs** it (never builds). Build and runtime are **separate**; the runtime host runs an immutable, CI-tested artifact. Secrets come from SSM; ALB + CloudFront front it. It's heavy on moving parts — but the *build/deploy* path itself is rock-solid because the build gets 16 GB and the runtime just runs a finished image.
+
+**Where Koigrid falls short of that today, and the fix for each:**
+
+1. **Managed build runner is too small for a real SSG build (8 GB, shared with the app) vs AWS CI's 16 GB.** `apps deploy --dir` builds *on the app's runner*; a 4,468-page `next build` peaks over the ~6.5–7 GB left after OS+buildkitd and OOM-kills (twice: `tsc`, then static-gen). AWS never hits this because the build lives on a fat CI runner, separate from runtime.
+   → **Fix:** either (a) offer a **larger / configurable build runner** (a `buildMemoryMb` knob, or run the build on a transient 16 GB builder and deploy the result to the small app runner), or (b) — better and cheaper for you — make the **pre-built-image path first-class** (see #2), so a heavy app never needs your build runner at all.
+
+2. **No pull of a PRIVATE image from an EXTERNAL registry (ECR / GHCR / Docker Hub) with credentials.** This is the big one. The clean, AWS-equivalent model is "build in CI, deploy an immutable image." Koigrid's `sourceType:"image"` takes only an `image` string — **no `imagePullSecret` / registry credentials field anywhere in the API**. So you can deploy a *public* image (unacceptable for a real app) or an image in *Koigrid's own* registry — but you **cannot reuse the ECR/GHCR image CI already builds**.
+   → **Fix:** add registry credentials to image deploys — an `imagePullSecret` / `{registry, username, password}` on `POST /apps` (or a project-level registry credential). Then "build in CI → Koigrid pulls the private ECR/GHCR image → runs it" works exactly like ECS. **This single field makes Koigrid a drop-in ECS replacement.**
+
+3. **Koigrid's own registry rejects large layers (`413`), so even the fallback "push to Koigrid registry" is blocked. ⚠️ RE-CONFIRMED empirically 2026-07-23.** Re-ran `podman push koigrid.com/vence-web:latest` (2.76 GB image): login OK, the ~11 small blobs uploaded fine, then it died on the big one — `Error: writing blob: uploading layer chunked: StatusCode: 413, "413 Payload Too Large"`. Our `.next/server` prerender layer is **2.58 GB** (legit content, not bloat); AWS ECR accepts the same layer without complaint. So it's a **per-blob size cap** (nginx-level, chunked upload rejected), and the one private-image path you *do* offer dies on it.
+   → **Fix:** raise the registry blob/chunk limit (SSG-heavy Next.js/Astro/Hugo images routinely exceed 1–3 GB), or support chunked/resumable blob uploads. Pair this with #2 and heavy apps have two working paths instead of zero.
+
+4. **`build_oom` classifier only catches the `tsc`-phase OOM, not the static-generation OOM.** After we applied `typescript.ignoreBuildErrors`, the build got past 3,351/4,468 pages then SIGKILL'd during "Generating static pages" — but the deployment reported generic **`build_failed`**, not `build_oom`, because the classifier's signature is the "Creating an optimized production build" line only.
+   → **Fix:** extend the OOM classifier to the static-generation phase (a mid-"Generating static pages" kill with no image is the same kernel OOM) so the error still names itself.
+
+5. **Build-log discoverability:** the real build error lives in the **deployment object's `logs`** (head-first), while `GET /apps/:id/logs?type=build` returns *runtime* logs (`"(sin contenedor activo)"`). We burned time reading the wrong endpoint tail-first.
+   → **Fix (you're already on it):** surface the build log + `error` from the logs endpoint too, and document "build error = deployment.logs, head-first."
+
+6. **Deployment lifecycle friction (Snag I/J):** an app already in `error` silently drops new deploys (so every re-test needs a brand-new app), and CLI-returned deployment ids don't match `GET /apps/:id/deployments`. AWS's deploy state is boringly authoritative.
+   → **Fix:** let a fresh deploy recover an `error` app; make CLI↔API ids consistent; never accept a deploy that won't run.
+
+**Net for Koigrid:** you already beat AWS on cost, egress, DB latency, and ops-surface. To beat it on **build/deploy** too, the highest-leverage fix by far is **#2 (pull a private external image with credentials)** — it unlocks the exact immutable-artifact CI/CD model teams already run on ECS, with none of your build-runner limits in the path. #1 and #3 are the "if they insist on building/pushing to us" backstops; #4–#6 are polish that turns a 2-hour head-scratch into a 10-minute deploy. Land #2 and Vence (and every other heavy Next.js/Supabase-refugee app) migrates the front-end as cleanly as the database already did.
 
 ## TL;DR for the Koigrid team
 
@@ -219,16 +287,16 @@ npm error signal SIGKILL
 
 ## Status ledger (Koigrid is iterating fast — thank you)
 - **Snag H (build-time DB access): ✅ FIXED** in a release — reference vars now resolve into the build. Confirmed live.
-- **Snag K (build OOM): ⛔ RE-TESTED #4 (2026-07-23 14:14) — capacity fix confirmed, but build still needs >8 GB.** The capacity-accounting fix + 8 GB runners + heap cap all landed. Re-tested clean: **emptied the account to 0 apps** (deleted 16 errored + 2 POC apps so nothing pinned the runners), created a brand-new `vence-web5` at 8192 MB → build **still `build_oom` at 122 s**. So it's not the capacity bug anymore: the ~4,500-page SSG build's **peak memory genuinely exceeds 8 GB** (local `--memory=8g` repro running to confirm H1 vs H2). Fix = **MIG-K: ≥16 GB runner**, or Vence-side prerender trimming (path B). Asked Koigrid to confirm server-side whether `789f9bb7` landed 8 GB + its peak RSS. See "RE-TEST #4" section.
+- **Snag K (build OOM): ⛔ narrowed to "8 GB machine one size too small"; needs MIG-K 16 GB runner (RE-TEST #5, 2026-07-23).** Two OOM peaks on the cpx32 8 GB *total-machine*: (1) the `tsc` type-check — **fixed** with `typescript: { ignoreBuildErrors: true }` in `next.config.mjs` (Vence keeps `tsc --noEmit` in CI); confirmed working (`✓ Compiled successfully in 67s`, no TS phase). (2) Then a **second OOM in `next build` static generation** — got past **3351/4468** pages (3 workers rendering data-heavy law/teoría SSG pages w/ live DB) before SIGKILL at 122 s (`build_failed`; classifier doesn't flag this phase as OOM — worth extending). Local `--memory=8g` runs the whole pipeline to success (clean 8 GB cgroup + host FS cache), so it's the machine overhead (~1–1.5 GB OS+buildkitd) that tips it over. **Fix = MIG-K 16 GB runner** (Koigrid offered it), or Vence-side path B (trim `generateStaticParams` so the data-heavy pages render dynamically off the 6.45 ms co-located DB). See "RE-TEST #5 → Result" section.
 - **Snag K-obs (silent/truncated build OOM): ✅ FIXED (koigrid side).** `classifyBuildError` detects the silent kernel-OOM (build dies mid "creating an optimized production build" with no image) → returns a legible `build_oom` message with fixes, so a failed build now tells you *why* instead of ending at a truncated log. (The 8222-char cutoff was the OOM-killer stopping the build mid-line, not koigrid truncating.)
 - **Snags I/J (deployment lifecycle): partially better** — a *fresh* app registers deployments reliably now; an app already in `error` still silently drops new deploys (so each re-test needs a brand-new app), and CLI-returned ids still don't match the API list.
 
-**So the last thing standing between "DB migrated" and "whole app migrated" is one number: the build-runner's memory.** Bump it (this app needs >3 GB, realistically 4–8 GB for a Next.js SSG build of ~4,500 pages) — or let the app's requested `memoryMb` apply to its build — and the migration completes. Everything else is solved.
+**So the last thing standing between "DB migrated" and "whole app migrated" is the image-deploy path.** Building on Koigrid's 8 GB runner OOMs a 4,500-page SSG build — but that's the wrong problem to solve. The right one is the AWS-standard model: build in CI, deploy an immutable image. That path is shut by exactly two things — **no external private-registry pull creds (#2)** and **the registry `413` blob limit (#3)**. Close either and the migration completes. Everything else is solved.
 
 ## Bottom line (from the person who ran this)
-The **database** side is excellent — 31 GB moved 1:1, standard-Postgres portability, co-located latency 6.45 ms, elastic disk, pay-later compute. If Koigrid is "the anti-AWS," the DB story already delivers. The **whole-app** side is where the gap is, and it's concentrated and fixable: **(H)** give builds DB access (reference vars resolved at build-time is the clean fix), **(E)** raise the registry blob limit so SSG-heavy images push, **(F)** you already inject `NEXT_PUBLIC_*` — just document the `ENV X=${ARG}`-clobbers-it gotcha, and **(I/J)** make the deploy queue + build runner reliable and observable. Land those and a real Next.js app migrates as smoothly as the database did. Happy to re-run the whole thing the day these land — the playbook is written.
+The **database** side is excellent — 31 GB moved 1:1, standard-Postgres portability, co-located latency 6.45 ms, elastic disk, pay-later compute. If Koigrid is "the anti-AWS," the DB story already delivers. The **whole-app** side is where the gap is, and it narrowed over the day to one thing: **serving a pre-built image**. Koigrid already fixed what we reported mid-run (Snag H build-time DB access; the capacity-accounting bug; the `build_oom` classifier) and folded the gotchas into new docs — genuinely fast. What's left is the immutable-artifact path every ECS user relies on: **(#2)** pull a private image from an external registry (ECR/GHCR) with credentials — the single highest-leverage fix, it makes Koigrid a drop-in ECS — or **(#3)** raise the registry blob limit so a pre-built SSG image can be pushed to Koigrid's own registry. Land either and a real Next.js app migrates as smoothly as the database did. Happy to re-run the whole thing the day it lands — the image is built and waiting.
 
-**Net for Phase 3 (final):** the DB migration is proven end-to-end (the app builds & prerenders 4,468 pages against Koigrid's DB *locally*). Getting the *hosted container* live is blocked by **H** (build runner dies compiling a large Next.js app) and made very hard to iterate by **I** (flaky deployment lifecycle). E and F both have workarounds (F fully; E is sidestepped because the DB-less build is small). Fix H + I and the whole-app migration completes. As-is, the DB moves in an afternoon; the app front-end needs your build runner to handle a large Next.js compile and your deployment queue to be reliable.
+**Net for Phase 3 (final):** the DB migration is proven end-to-end (the app builds & prerenders 4,468 pages against Koigrid's DB *locally*, in 8 GB). The *hosted container* isn't live because both routes to deploy a pre-built image are blocked — **#2** (no external-registry pull credentials) and **#3** (registry `413` on the 2.58 GB layer, re-confirmed 2026-07-23) — and building-from-source on the 8 GB runner OOMs (the wrong path to force). Fix #2 or #3 and the whole-app migration completes. As-is, the DB moves in an afternoon; the front-end just needs Koigrid to run an image built elsewhere — which is how the app already ships on AWS.
 
 **Snag D — parallel-restore abort is opaque.**
 When one `-j` worker dies, `pg_restore` aborts and the surviving output is a wall of cascade errors; the *root* error (the vector type) is 20 lines up. This is upstream Postgres behaviour, but a **Koigrid "managed restore" helper** (upload a dump → we run it with sane flags, pre-seed extensions, and give you a clean success/failure summary + row-count diff) would be a standout feature for the "anti-AWS, migrate-in-an-afternoon" pitch.
@@ -237,14 +305,18 @@ When one `-j` worker dies, `pg_restore` aborts and the surviving output is a wal
 
 ## Concrete suggestions, prioritized
 
-| # | Suggestion | Impact | Effort |
-|---|---|---|---|
-| 1 | **Supabase/pgvector migration guide** + let owners place extensions in a chosen schema | Unblocks every Supabase refugee (your core ICP) | Low (docs) + Med (API) |
-| 2 | **DB resize endpoint** (RAM/CPU/disk post-create) | Removes a hard dead-end | Med |
-| 3 | **Surface DB OOM/crash in logs & metrics** | Turns an invisible failure into a legible one | Med |
-| 4 | **Clarify elastic disk in API** (`diskFloorGb`/`diskElastic`) | Stops the "capped at 1 GB" misread | Low |
-| 5 | **Managed restore helper** (dump → pre-seed exts → restore → row-count diff) | Signature "migrate in an afternoon" feature | High |
-| 6 | Prominent **caCert / TLS** note (internal endpoint is self-signed; reference-var URL bakes `sslmode=require` → `pg` treats as `verify-full`) | Fewer first-connection face-plants | Low |
+*(Top two are today's actual blockers for the front-end — see "BUILD & DEPLOY: Koigrid vs AWS". The rest are DB-side, mostly already shipped.)*
+
+| # | Suggestion | Impact | Effort | Status |
+|---|---|---|---|---|
+| 0a | **External private-registry pull with credentials** (`imagePullSecret` on image deploys) — pull the ECR/GHCR image CI already builds | **Makes Koigrid a drop-in ECS**; unblocks every heavy-build app | Med | ✅ **SHIPPED 2026-07-23 (koigrid side).** `POST /apps {sourceType:'image', image, registry, registryUsername, registryPassword}` (or CLI `apps deploy --image <ref> --registry <host> --registry-user <u> --registry-password <p>`). Creds encrypted at rest, never logged/returned; password never in argv. E2E-verified against a private registry incl. a negative control (no creds → pull denied). For ECR: password = `aws ecr get-login-password`. **This is the drop-in-ECS path — build in CI, koigrid pulls + runs the immutable image, no koigrid build / no build-OOM. Please re-test Vence's front-end via this path.** |
+| 0b | **Raise the registry blob-size limit** (2.58 GB layer → `413`; support chunked/resumable) | Unblocks pushing SSG-heavy images to Koigrid's own registry | Med | ⛔ open (defect #3, re-confirmed 07-23) |
+| 1 | **Supabase/pgvector migration guide** + let owners place extensions in a chosen schema | Unblocks every Supabase refugee (your core ICP) | Low (docs) + Med (API) | 🟡 docs shipped |
+| 2 | **DB resize endpoint** (RAM/CPU/disk post-create) | Removes a hard dead-end | Med | open |
+| 3 | **Surface DB OOM/crash in logs & metrics** | Turns an invisible failure into a legible one | Med | 🟢 build_oom classifier shipped |
+| 4 | **Clarify elastic disk in API** (`diskFloorGb`/`diskElastic`) | Stops the "capped at 1 GB" misread | Low | ✅ shipped |
+| 5 | **Managed restore helper** (dump → pre-seed exts → restore → row-count diff) | Signature "migrate in an afternoon" feature | High | open |
+| 6 | Prominent **caCert / TLS** note (internal endpoint is self-signed; reference-var URL bakes `sslmode=require` → `pg` treats as `verify-full`) | Fewer first-connection face-plants | Low | 🟡 docs |
 
 ---
 
