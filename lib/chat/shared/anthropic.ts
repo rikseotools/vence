@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getDb } from '@/db/client'
 import { aiApiConfig } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { instrumentAnthropic } from '@/lib/observability/llm'
 
 let anthropicClient: Anthropic | null = null
 let cachedApiKey: string | null = null
@@ -53,7 +54,8 @@ export async function getAnthropic(): Promise<Anthropic> {
   const { apiKey } = await fetchConfig()
 
   if (!anthropicClient || cachedApiKey !== apiKey) {
-    anthropicClient = new Anthropic({ apiKey })
+    // Instrumentado UNA vez en creación → toda messages.create se observa (tokens/coste/latencia).
+    anthropicClient = instrumentAnthropic(new Anthropic({ apiKey }))
   }
 
   return anthropicClient

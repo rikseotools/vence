@@ -5,6 +5,7 @@ import OpenAI from 'openai'
 import { getDb } from '@/db/client'
 import { aiApiConfig } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { instrumentOpenai } from '@/lib/observability/llm'
 
 // Singleton
 let openaiClient: OpenAI | null = null
@@ -49,9 +50,10 @@ async function fetchApiKey(): Promise<string> {
 export async function getOpenAI(): Promise<OpenAI> {
   const apiKey = await fetchApiKey()
 
-  // Crear nuevo cliente si la key cambió o no existe
+  // Crear nuevo cliente si la key cambió o no existe.
+  // Instrumentado UNA vez en creación → toda chat.completions.create se observa (tokens/coste/latencia).
   if (!openaiClient || cachedApiKey !== apiKey) {
-    openaiClient = new OpenAI({ apiKey })
+    openaiClient = instrumentOpenai(new OpenAI({ apiKey }))
   }
 
   return openaiClient

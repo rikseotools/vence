@@ -2,6 +2,7 @@
 // Genera explicación con IA para preguntas sin explicación y la guarda en BD
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { instrumentOpenai } from '@/lib/observability/llm'
 
 import { getAdminDb } from '@/db/client'
 import { questions, aiApiConfig } from '@/db/schema'
@@ -60,7 +61,8 @@ async function _POST(request: NextRequest) {
     }
 
     const apiKey = Buffer.from(apiConfig.api_key_encrypted, 'base64').toString('utf-8')
-    const openai = new OpenAI({ apiKey })
+    // Instrumentado para observabilidad de uso/coste (igual que el cliente compartido).
+    const openai = instrumentOpenai(new OpenAI({ apiKey }))
 
     // Construir el prompt
     const correctLetter = String.fromCharCode(65 + correctAnswer)
