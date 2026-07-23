@@ -526,6 +526,12 @@ Este flujo se usa cuando hay que **incorporar una ley nueva** que no existe toda
 > 4. Vincular las preguntas + (si procede) `topic_scope` + revalidar.
 >
 > Nota: muchos boletines autonómicos tienen también un visor "juriscan/legislación" que puede dar **timeout** o estar tras login (vLex) — el HTML del propio número del boletín suele ser la fuente libre más fiable.
+>
+> 🇪🇺 **Reglamentos/Directivas UE — NO uses EUR-Lex, usa el espejo del BOE (23/07/2026).** `eur-lex.europa.eu` es una SPA JavaScript: `WebFetch` (HTML y PDF) devuelve **vacío** y `curl` da el shell sin articulado. El **BOE espeja el DOUE** con id `DOUE-*`: `curl -sL "https://www.boe.es/buscar/doc.php?id=DOUE-L-2004-81035"` trae el Reglamento 852/2004 **íntegro** (mismo strip de tags + partir por capítulos/artículos). Localiza el id `DOUE-*` con `WebSearch` (dominio `boe.es`). Gotcha: el HTML del BOE puede traer algún **scanno** ("cadena de *filo*" por "frío") → corrígelo al término oficial.
+>
+> 📄 **Guías/PDF oficiales (contenido editorial con fuente) — `pdftotext`.** Cuando la materia editorial SÍ tiene una fuente oficial en PDF (p.ej. una *Guía de Buenas Prácticas Higiénico-Sanitarias* de una Consejería), `curl -sL <pdf> -o g.pdf && pdftotext -layout g.pdf g.txt` extrae el texto **verbatim** (WebFetch el PDF lo trunca/rechaza). Sirve para poblar un **contenedor editorial por materia** (`is_virtual=true`, ver el PRINCIPIO de leyes virtuales en `crear-nueva-oposicion.md`), citando la guía como fuente en el `content`. Caso real: T11 APSP CARM (higiene alimentaria) — memoria `project-apsp-bloque-ii-build`.
+>
+> ⚠️ **Antes de improvisar la fuente, LEE este manual y `crear-nueva-oposicion.md` §0.bis (normativo vs editorial) + su PRINCIPIO de leyes virtuales por materia.** Lección 23/07: se rehízo a ciegas un método ya documentado aquí. `generar-preguntas-con-ia.md` usa aún `supabase-js` en sus ejemplos (Supabase CONGELADO post-cutover RDS): consulta con `postgres`/`pg` + `DATABASE_URL`, no con `@supabase/supabase-js`.
 
 ### Paso 1: INSERT de la nueva ley en `laws`
 

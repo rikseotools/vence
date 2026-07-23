@@ -30,6 +30,10 @@
 >
 > **Cambios v1.3**: añadido **Paso 9 (re-verificación post-aplicación)** y convención §5.1 de `ai_provider` diferenciado por fase — alineamiento estricto con el flujo v2.1 de `revisar-preguntas-con-agente.md` (§7). Los 3 primeros batches NO aplicaron el Paso 9 — deuda metodológica conocida.
 
+> ⚠️ **DOS AVISOS antes de empezar (23/07/2026):**
+> 1. **BD = RDS, no Supabase.** Los ejemplos de este manual usan `@supabase/supabase-js` → apuntan al **Supabase CONGELADO** (backup post-cutover 04/07). Corre las queries con `postgres`/`pg` + `DATABASE_URL` (RDS). Mismo patrón de tablas, otro cliente.
+> 2. **Para CREAR el contenedor verbatim** (si la ley/artículos no están aún en BD): NO improvises la descarga. La fuente va así — normas ES por `curl` al BOE, reglamentos UE por el **espejo BOE `DOUE-*`** (NO EUR-Lex), guías PDF oficiales por `pdftotext` → ver `monitoreo-boe-y-crear-leyes-nuevas.md` (§curl verbatim). Y el contenido **editorial no-legislativo** va en **ley virtual nombrada por MATERIA, reutilizable cross-oposición** (NUNCA por oposición) → ver el PRINCIPIO en `crear-nueva-oposicion.md` (línea ~703) + §0.bis (normativo vs editorial: el editorial puro sin fuente literal NO se IA-genera). Lección 23/07 (`project-apsp-bloque-ii-build`): se redescubrió a ciegas todo esto que YA estaba documentado.
+
 ## 1. Cuándo usar este flujo
 
 Generar preguntas con IA tiene sentido cuando se cumplen **todas** estas condiciones:
