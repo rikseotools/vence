@@ -689,6 +689,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'cuidador_diputacion_cordoba',
+      label: 'Cuidador/a Dip. Córdoba',
+      data: {
+        name: 'Cuidador/a de la Diputación Provincial de Córdoba',
+        slug: 'cuidador-diputacion-cordoba',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_cordoba',
       label: 'Auxiliar Administrativo Ayto. Córdoba',
       data: {

@@ -1,0 +1,64 @@
+{
+  "slug": "cuidador-diputacion-cordoba",
+  "position_type": "cuidador_diputacion_cordoba",
+  "nombre": "Cuidador/a de la Diputación Provincial de Córdoba",
+  "short_name": "Cuidador/a Diputación Córdoba",
+  "administracion": "Diputación Provincial de Córdoba",
+  "categoria": "C2",
+  "grupo": "C",
+  "subgrupo": "C2",
+  "tipo_acceso": "libre",
+  "sistema_seleccion": "concurso-oposición",
+  "titulo_requerido": "Graduado en ESO + Certificado de profesionalidad de Atención Sociosanitaria a personas dependientes en Instituciones Sociales; o Técnico en Cuidados Auxiliares de Enfermería (o equivalente); o Técnico en Atención a Personas en Situación de Dependencia (o Técnico en Atención Sociosanitaria). Además: certificado de manipulador/a de alimentos.",
+  "convocatoria": {
+    "diario_oficial": "BOP",
+    "diario_referencia": "BOP-A-2026-2548",
+    "bop_numero": "141",
+    "convocatoria_fecha": "2026-07-23",
+    "acuerdo": "Acuerdo de la Junta de Gobierno de la Diputación Provincial de Córdoba de 14 de julio de 2026",
+    "programa_url": "https://bop.dipucordoba.es/visor-pdf/23-07-2026/BOP-A-2026-2548.pdf",
+    "seguimiento_url": "https://empleo.dipucordoba.es/",
+    "oep": ["2023", "2025"],
+    "plazas_totales": 4,
+    "plazas_libres": 3,
+    "plazas_discapacidad": 1,
+    "plazas_detalle": "OEP 2023: 2 plazas (turno general, nº 5020 y 5062). OEP 2025: 2 plazas (1 general nº 5023 + 1 reservada a discapacidad general nº 7049).",
+    "plazo_instancias": "20 días hábiles desde el día siguiente a la publicación (a contar desde el 24/07/2026)",
+    "estado_proceso": "inscripcion_abierta"
+  },
+  "examen": {
+    "tipo": "test + supuesto práctico (ambas partes tipo test)",
+    "duracion_total_minutos": 130,
+    "partes": [
+      { "nombre": "Parte primera (teórica)", "preguntas": 40, "reserva": 5, "detalle": "10 preguntas del Bloque I (materias comunes) + 30 del Bloque II (materias específicas)" },
+      { "nombre": "Parte segunda (supuestos prácticos)", "preguntas": 40, "reserva": 5, "detalle": "Cuestionario sobre uno o varios supuestos prácticos del Bloque II, relacionados con las funciones de la plaza" }
+    ],
+    "respuestas_alternativas": 4
+  },
+  "bloques": [
+    { "bloque_number": 1, "titulo": "Materia Común", "icon": "⚖️" },
+    { "bloque_number": 2, "titulo": "Materia Específica (atención sociosanitaria y a la dependencia)", "icon": "🧑‍⚕️" }
+  ],
+  "temas": [
+    { "n": 1, "bloque": 1, "titulo": "La Constitución Española de 1978 (I). Derechos y deberes. La Corona", "epigrafe": "Antecedentes, características y estructura de la Constitución Española de 1978. Los derechos y deberes fundamentales. Garantías de las libertades y derechos fundamentales. Suspensión de los derechos y libertades. La Corona: funciones, sucesión, regencia y refrendo." },
+    { "n": 2, "bloque": 1, "titulo": "La Constitución Española de 1978 (II). Cortes, Gobierno, Poder Judicial y las leyes", "epigrafe": "La Constitución Española de 1978: las Cortes Generales. El Gobierno y la Administración. Relaciones entre el Gobierno y las Cortes Generales. El Poder Judicial. Las leyes: concepto y clases. Disposiciones del Ejecutivo con fuerza de ley: Decretos-leyes y Decretos Legislativos." },
+    { "n": 3, "bloque": 1, "titulo": "Organización territorial del Estado. Las Comunidades Autónomas. El Estatuto de Autonomía para Andalucía", "epigrafe": "La organización territorial del Estado en la Constitución Española de 1978: principios generales. Las Comunidades Autónomas: los Estatutos de Autonomía. El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales." },
+    { "n": 4, "bloque": 1, "titulo": "Normativa estatal y autonómica sobre igualdad de género", "epigrafe": "Aspectos generales de la normativa estatal y autonómica sobre la igualdad de género." },
+    { "n": 5, "bloque": 2, "titulo": "Destrezas sociales del cuidador. Resolución de conflictos", "epigrafe": "Destrezas sociales del cuidador de atención a la dependencia. ¿Cómo mejorarlas? Habilidades de resolución de conflictos." },
+    { "n": 6, "bloque": 2, "titulo": "La higiene de las personas en situación de dependencia", "epigrafe": "La higiene de las personas en situación de dependencia." },
+    { "n": 7, "bloque": 2, "titulo": "Necesidades de eliminación. Lesiones de la piel y muestras biológicas. Constantes vitales", "epigrafe": "Atención a las necesidades de eliminación. Atención a las lesiones de la piel y recogida de muestras biológicas. Las constantes vitales. Alteraciones." },
+    { "n": 8, "bloque": 2, "titulo": "La comunicación con personas en situación de dependencia", "epigrafe": "La comunicación con personas en situación de dependencia. Sistemas de comunicación." },
+    { "n": 9, "bloque": 2, "titulo": "Productos de apoyo para personas dependientes", "epigrafe": "Productos de apoyo para personas dependientes. Protocolos de actuación." },
+    { "n": 10, "bloque": 2, "titulo": "Derechos y deberes de las personas usuarias de centros sociosanitarios residenciales", "epigrafe": "Derechos y deberes de las personas dependientes usuarias de centros sociosanitarios de carácter residencial." },
+    { "n": 11, "bloque": 2, "titulo": "El equipo de trabajo en atención sociosanitaria", "epigrafe": "El equipo de trabajo en atención sociosanitaria. El trabajo en equipo. Técnicas de trabajo en equipo." },
+    { "n": 12, "bloque": 2, "titulo": "Protocolo de Atención Personalizada para personas con discapacidad en centros residenciales", "epigrafe": "Protocolo de Atención Personalizada para personas con discapacidad usuarias de centros sociosanitarios de carácter residencial." },
+    { "n": 13, "bloque": 2, "titulo": "Las infecciones. Cadena infecciosa. Prevención y aislamiento", "epigrafe": "Las infecciones en atención a personas en situación de dependencia. Agentes infecciosos. La cadena infecciosa. La prevención de las enfermedades infecciosas. Aislamiento de las personas enfermas." },
+    { "n": 14, "bloque": 2, "titulo": "Contenciones: tipos, características, normativa y protocolo", "epigrafe": "Contenciones, tipos, características y normativa aplicable. Protocolo de actuación." },
+    { "n": 15, "bloque": 2, "titulo": "Alimentos, APPCC, higiene alimentaria y dietas", "epigrafe": "Alimentos: definición y clasificación. Normas higiénico-sanitarias en el manejo de alimentos: el sistema de Análisis de Peligros y Puntos Críticos de Control (APPCC). Prácticas correctas de higiene en la manipulación de los alimentos. Normas de higiene personal. Dietas y tipos. Administración de dietas, vías y técnicas. Principios inmediatos." },
+    { "n": 16, "bloque": 2, "titulo": "Primeros auxilios", "epigrafe": "Primeros auxilios." },
+    { "n": 17, "bloque": 2, "titulo": "Carga mental, estrés laboral y acoso laboral (mobbing)", "epigrafe": "Carga mental de trabajo. Estrés laboral. Acoso Laboral y/o \"mobbing\"." },
+    { "n": 18, "bloque": 2, "titulo": "Programas, servicios y recursos de atención a la dependencia en Andalucía", "epigrafe": "Programas, servicios y recursos de atención a personas en situación de dependencia en Andalucía." },
+    { "n": 19, "bloque": 2, "titulo": "Lugares de trabajo. Condiciones ambientales. Manipulación de cargas. Emergencias", "epigrafe": "Lugares de trabajo. Definiciones y objetivo. Orden, limpieza y mantenimiento. Condiciones ambientales en los lugares de trabajo. Servicios higiénicos y locales de descanso. Manipulación manual de cargas según recoge la Guía Técnica del Instituto Nacional de Seguridad e Higiene en el Trabajo. Conocimientos básicos sobre planes de emergencia y evacuación." },
+    { "n": 20, "bloque": 2, "titulo": "La Ley 31/1995 de Prevención de Riesgos Laborales. Riesgos del cuidador", "epigrafe": "La Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales: objeto, ámbito de aplicación y definiciones; derecho a la protección frente a los riesgos laborales; principios de la acción preventiva; plan de prevención de riesgos laborales, evaluación de los riesgos y planificación de la actividad preventiva; equipos de trabajo y medios de protección; formación de los trabajadores; vigilancia de la salud. Prevención de riesgos laborales en los trabajos de cuidador/a. Riesgos específicos." }
+  ]
+}

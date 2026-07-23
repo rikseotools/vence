@@ -487,6 +487,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     administracion: 'Local',
     icon: '🏛️'
   },
+  {
+    id: 'cuidador_diputacion_cordoba',
+    nombre: 'Cuidador/a Dip. Córdoba',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🧑‍⚕️'
+  },
 
   // === DIPUTACIÓN DE LEÓN ===
   {
@@ -1878,6 +1885,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_diputacion_leon',     // 25
   'auxiliar_administrativo_diputacion_cadiz',    // 24
   'auxiliar_administrativo_diputacion_cordoba',  // nueva (19 plazas, inscripción abierta jun-jul 2026)
+  'cuidador_diputacion_cordoba',                 // C2 sociosanitaria Dip. Córdoba (4 plazas, BOP 23/07/2026, inscripción abierta)
   'auxiliar_administrativo_ayuntamiento_murcia', // 20
   'auxiliar_administrativo_carm',        // 21
   'administrativo_carm',                 // C1 Murcia (48 plz, BORM 226)
