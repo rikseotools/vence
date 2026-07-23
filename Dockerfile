@@ -182,9 +182,18 @@ CMD ["node", "server-keepalive.cjs"]
 #
 # Env en runtime (task def, desde SSM): DATABASE_URL, AWS creds (s3:PutObject vía
 # task role) y, si aplica, AWS_S3_ENDPOINT/TOPIC_PDF_BUCKET.
-FROM builder AS worker
+#
+# Basado en `deps` (node_modules COMPLETO: npm ci trae devDeps → tsx, tsconfig-paths,
+# @react-pdf) + el código fuente. NO reusa `builder`: el worker NO necesita el build
+# de Next (.next), así que evitamos `npm run build` y todos sus build-args + el
+# guardarraíl anti-scraping. Render vía tsx directamente del source, igual que el
+# drenado local que ya validamos.
+FROM deps AS worker
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# node_modules ya viene de `deps`; añadimos el código fuente (.dockerignore excluye
+# node_modules/.env/.next, así que no pisa el node_modules del stage).
+COPY . .
 # `drain` procesa TODOS los pending y termina (exit 0) → tarea batch, no daemon.
 CMD ["node_modules/.bin/tsx", "-r", "tsconfig-paths/register", "scripts/pdf-worker.ts", "drain"]
