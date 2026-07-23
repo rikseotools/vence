@@ -44,6 +44,7 @@ export const CANARY_REGISTRY: readonly CanaryRegistryEntry[] = [
   { name: 'answer-save',            eventBase: 'answer_save',            cadence: '*/5 * * * *',  writesToProd: true,  bounding: 'unique-constraint', alertRule: true  },
   { name: 'competitor-mention',     eventBase: 'competitor_mention',     cadence: '7 * * * *',    writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'database-pool',          eventBase: 'db_pool',                cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: true  },
+  { name: 'pdf-queue',              eventBase: 'pdf_queue',              cadence: '*/15 * * * *', writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'por-leyes-scope',        eventBase: 'por_leyes_scope',        cadence: '*/5 * * * *',  writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'psychometric-integrity', eventBase: 'psychometric_integrity', cadence: '*/15 * * * *', writesToProd: false, bounding: 'read-only',         alertRule: true  },
   { name: 'questions-gate',         eventBase: 'questions_gate',         cadence: 'controller',   writesToProd: false, bounding: 'read-only',         alertRule: true  },

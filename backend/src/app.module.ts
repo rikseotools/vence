@@ -76,6 +76,7 @@ import { CanarySaveContractModule } from './canary-save-contract/canary-save-con
 // adicionales que pasan la regla anti-duplicación: NO existe test CI
 // que cubra saturación PgBouncer ni caída Upstash en runtime real.
 import { CanaryDatabasePoolModule } from './canary-database-pool/canary-database-pool.module';
+import { CanaryPdfQueueModule } from './canary-pdf-queue/canary-pdf-queue.module';
 import { CanaryRedisUpstashModule } from './canary-redis-upstash/canary-redis-upstash.module';
 import { CanaryThemeStatsModule } from './canary-theme-stats/canary-theme-stats.module';
 import { CanaryPorLeyesScopeModule } from './canary-por-leyes-scope/canary-por-leyes-scope.module';
@@ -186,6 +187,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CanarySyntheticExternalModule, // cada 5min — check EXTERNO home+assets+health (edge)
     CanarySaveContractModule, // cada 5min — flujo cliente crear-test+guardar+VERIFICAR en RDS
     CanaryDatabasePoolModule, // cada 5min — SELECT 1 con timeout 1s (saturación pool)
+    CanaryPdfQueueModule, // cada 15min — salud de temario_pdf_jobs (DLQ/stale/backlog)
     CanaryRedisUpstashModule, // cada 5min — SET/GET/DEL Upstash (caída cache)
     CanaryThemeStatsModule, // cada 10min — endpoint theme-stats refleja progreso real (regresión semántica tipo V4)
     CanaryTopicDataModule, // cada 5min — GET /api/topics/5 con shape assertions

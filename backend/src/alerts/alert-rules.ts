@@ -1357,6 +1357,43 @@ export const RULE_CANARY_DB_POOL_FAILED: AlertRule<{
 };
 
 /**
+ * Canary pdf-queue failed — la cola de pre-generación de PDFs del temario
+ * (`temario_pdf_jobs`) está en estado NO SANO: DLQ (jobs 'failed' tras
+ * reintentos), 'running' colgado (worker muerto a media renderización) o
+ * backlog 'pending' estancado (>2h → el worker no drena / no corre).
+ *
+ * Cierra el hueco 22-23/07: la cola se llenó (27 pending + 12 DLQ) sin aviso
+ * porque `pdfQueueHealth()` no tenía consumidor en prod. El estado de la cola
+ * es ESTABLE (no flappea como un timeout), así que un solo evento en la ventana
+ * ya es señal real → shouldFire n>0, sin `canaryFailureShouldFire`.
+ */
+export const RULE_CANARY_PDF_QUEUE_FAILED: AlertRule<{
+  n: number;
+  lastError: string | null;
+}> = {
+  name: 'canary_pdf_queue_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError"
+    FROM observable_events
+    WHERE event_type = 'canary_pdf_queue_failed'
+      AND created_at > NOW() - INTERVAL '40 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Cola PDF temario degradada (${r.n} en 40 min) — DLQ / running colgado / backlog estancado`,
+      body: `El canary de la cola de pre-generación de PDFs (temario_pdf_jobs) reportó estado NO SANO. Significa que algún tema NO tiene su PDF pre-generado al día:\n  - DLQ: jobs 'failed' que agotaron reintentos (un tema no se pudo renderizar).\n  - running colgado: un 'running' claimed hace >30 min → el worker murió a media renderización.\n  - backlog estancado: hay 'pending' de >2h → el worker no está drenando (o no corre).\n\nMotivo del último fallo:\n  - ${r.lastError ?? '(n/a)'}\n\nACCIONES:\n  1. Estado de la cola: SELECT status, count(*) FROM temario_pdf_jobs GROUP BY 1  (o node scripts/pdf-worker.ts stats).\n  2. ¿El worker ECS programado corrió? Revisar la tarea Fargate del worker + su cron_run.\n  3. DLQ: mirar last_error de los 'failed' (render_timeout = tema demasiado grande; oposicion_desconocida = registro OPOSICIONES desactualizado en la imagen).\n  4. Drenar tras arreglar: node scripts/pdf-worker.ts drain.`,
+      metadata: { count: r.n, lastError: r.lastError, windowMin: 40 },
+      fingerprint: 'canary_pdf_queue_failed',
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
  * Canary Redis Upstash failed — SET/GET/DEL ephemeral falla o devuelve
  * valor incorrecto. Significa caída de Upstash / cuota agotada / network.
  *
@@ -3159,6 +3196,9 @@ export const ALERT_RULES: AlertRule[] = [
   // Canarios de INFRA externa (Sprint 5, 27/05/2026) — únicos no duplicados con CI
   RULE_CANARY_DB_POOL_FAILED as AlertRule,
   RULE_CANARY_REDIS_FAILED as AlertRule,
+  // Cola de pre-generación de PDFs del temario (23/07) — cierra el punto ciego que
+  // dejó acumular 27 pending + 12 DLQ sin aviso (pdfQueueHealth sin consumidor).
+  RULE_CANARY_PDF_QUEUE_FAILED as AlertRule,
   // Canaries que emitían _failed SIN regla (hueco cerrado 20/07, canary-framework P3)
   RULE_CANARY_AI_MODEL_FAILED as AlertRule,
   RULE_CANARY_ANSWER_PREMIUM_FAILED as AlertRule,
