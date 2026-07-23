@@ -54,6 +54,21 @@ function subsecciones(content) {
   return heads.length ? ` [cubre: ${heads.join(' · ')}]` : ''
 }
 
+// Materia (heading) de un artículo LEGAL para que el agente vea DE QUÉ trata, no solo el nº.
+// Muchas leyes tienen articles.title = "Artículo N" (sin materia); la materia vive en el
+// content BOE ("Artículo N. <Materia>. <cuerpo>"). subsecciones() solo caza encabezados
+// markdown (contenido editorial/informática), no la materia de un artículo legal → sin esto
+// el agente no distingue "promoción de la salud" (art 10) de "atención sanitaria" (art 11) y
+// da falso verde en títulos compuestos. Ver runbook §CARVE-OUT título compuesto.
+function articleHeading(a) {
+  const t = (a.title || '').trim()
+  if (t && !/^art[íi]?culo?\.?\s+\S+\.?$/i.test(t)) return t   // title ya descriptivo
+  const cont = (a.content || '').replace(/\s+/g, ' ').trim()
+  const m = cont.match(/^art[íi]culo\s+[^.\n]{1,15}?[.\-–]\s*([^.\n]{3,160}?)\.\s/i)
+  if (m) return `${t || 'art'} · ${m[1].trim()}`
+  return t || '(sin título)'
+}
+
 // ── carga .env.local ──
 try {
   const envPath = path.join(process.cwd(), '.env.local')
@@ -136,7 +151,7 @@ async function buildDump(c, pt) {
           return x - y
         })
         arts = r.slice(0, MAX_ARTS_DUMP).map(a =>
-          `${a.article_number}: ${a.title || '(sin título)'}${subsecciones(a.content)}`
+          `${a.article_number}: ${articleHeading(a)}${subsecciones(a.content)}`
         )
         if (r.length > MAX_ARTS_DUMP) arts.push(`… y ${r.length - MAX_ARTS_DUMP} artículos más (truncado)`)
       }
