@@ -129,7 +129,10 @@ describe('FeedbackModal', () => {
       renderModal({ questionId: '550e8400-e29b-41d4-a716-446655440000' })
       selectType('Impugnación')
 
-      expect(screen.getByText(/Pregunta detectada/i)).toBeInTheDocument()
+      // Confirmación de la pregunta que se impugna (label nuevo tras el fix del 21/07: antes
+      // decía "Pregunta detectada" y mostraba solo "ID: xxxx…"; ahora muestra el texto si está
+      // en contexto, o el ID como fallback cuando solo llega por prop —como aquí—).
+      expect(screen.getByText(/Impugnando esta pregunta/i)).toBeInTheDocument()
       expect(screen.getByText(/Motivo de la impugnación/i)).toBeInTheDocument()
       // Radio buttons visibles
       expect(screen.getByLabelText(/no se ajusta exactamente al artículo/i)).toBeInTheDocument()

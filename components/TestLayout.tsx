@@ -563,12 +563,11 @@ export default function TestLayout({
   useEffect(() => {
     const currentQ = effectiveQuestions?.[currentQuestion]
     if (currentQ) {
-      // Guardar ID de pregunta actual en localStorage para detección en FeedbackModal
-      try {
-        localStorage.setItem('currentQuestionId', currentQ.id)
-      } catch (e) {
-        // Ignorar errores de localStorage
-      }
+      // La pregunta viva se publica SOLO por QuestionContext (abajo). Antes también se escribía
+      // en localStorage.currentQuestionId para que FeedbackModal la detectara, pero ese valor
+      // persistía entre páginas/sesiones y colgaba impugnaciones de una pregunta stale desde
+      // /soporte (caso María José, 21/07). Eliminado: el contexto vivo (se limpia al salir del
+      // test) es la única fuente. Ver lib/api/dispute/resolveQuestionId.ts.
 
       // Los fetchers pueden devolver diferentes formatos:
       // - question_text o question (transformado)
@@ -1482,15 +1481,11 @@ export default function TestLayout({
       setFirstInteractionTime(null)
       setInteractionCount(0)
       setConfidenceLevel(null)
-      setCurrentQuestionUuid(null) 
-      
-      // Limpiar localStorage al cambiar de pregunta
-      try {
-        localStorage.removeItem('currentQuestionId')
-      } catch (e) {
-        console.warn('⚠️ No se pudo limpiar question_id de localStorage:', e)
-      }
-      
+      setCurrentQuestionUuid(null)
+
+      // (Ya no se escribe/limpia localStorage.currentQuestionId: la pregunta viva la publica
+      //  QuestionContext y se limpia al desmontar. Ver nota arriba y resolveQuestionId.ts.)
+
       // Ocultar alerta hot al cambiar de pregunta
       setShowHotAlert(false)
       setHotArticleInfo(null)

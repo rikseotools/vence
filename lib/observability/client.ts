@@ -134,6 +134,11 @@ export type ClientEventType =
   // {'print','inapp_blocked','copy_link','register_prompt'} + {slug, topic}. Con
   // 'inapp_blocked' medimos el tamaño real del muro y si el apaño (copy_link) se usa.
   | 'temario_print_action'
+  // Impugnación de pregunta desde FeedbackModal. metadata.action ∈ {'submitted','no_question_context'},
+  // source, questionId. 'no_question_context' = se intentó impugnar sin pregunta a la vista (típico
+  // en /soporte): mide la demanda de un selector de pregunta. Anti-regresión del bug 21/07 (la
+  // impugnación se colgaba de una pregunta stale de localStorage). Ver resolveQuestionId.ts.
+  | 'question_dispute_action'
   // Banner global "Inscripción abierta" (boca-oreja). Antes era CIEGO (20/06): ni
   // impresiones, ni aperturas, ni cierres. Ahora medimos por convocatoria
   // (metadata.slug) → CTR, tasa de cierre y si el cooldown reduce el martilleo.

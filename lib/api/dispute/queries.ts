@@ -5,8 +5,9 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getDisputeDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { questionDisputes, questions } from '@/db/schema'
+import { questionDisputes, questions, testQuestions } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import type { CreateDisputeResponse, DisputeData, GetExistingDisputeResponse, AppealDisputeResponse } from './schemas'
 
 // ============================================
@@ -50,6 +51,47 @@ export async function getExistingDispute(
 }
 
 // ============================================
+// RED DE SEGURIDAD — engagement de impugnación (observable, no bloqueante)
+// ============================================
+
+/**
+ * Emite un warn (`dispute_question_not_engaged`) si el usuario impugna una pregunta que NO ha
+ * respondido (sin fila en `test_questions`). Defensa en profundidad frente a mala atribución
+ * (bug 21/07). Se llama SIN await desde createDispute (fuera del path de latencia); devuelve la
+ * promesa solo para poder await-earla en tests. Nunca lanza (best-effort).
+ *
+ * ALCANCE: cubre el path v1 (`/api/dispute`, usado por FeedbackModal) — donde ocurrió el
+ * incidente. El path inline v2 (`QuestionDispute` → `/api/v2/dispute`) pasa el questionId
+ * explícito (correcto por construcción), así que no lleva este guard.
+ */
+export async function checkDisputeEngagement(
+  userId: string,
+  questionId: string,
+  disputeType: string,
+): Promise<void> {
+  try {
+    const db = getDisputeDb()
+    const [engaged] = await db
+      .select({ id: testQuestions.id })
+      .from(testQuestions)
+      .where(and(eq(testQuestions.userId, userId), eq(testQuestions.questionId, questionId)))
+      .limit(1)
+    if (!engaged) {
+      emitFireAndForget({
+        source: 'fargate',
+        severity: 'warn',
+        eventType: 'dispute_question_not_engaged',
+        endpoint: '/api/dispute',
+        userId,
+        metadata: { questionId, disputeType, reason: 'no_test_questions_row' },
+      })
+    }
+  } catch {
+    // best-effort: si la consulta falla, no afecta a la creación de la impugnación.
+  }
+}
+
+// ============================================
 // CREAR IMPUGNACIÓN
 // ============================================
 
@@ -72,6 +114,15 @@ export async function createDispute(
     if (!question) {
       return { success: false, error: 'Pregunta no encontrada' }
     }
+
+    // 🛡️ RED DE SEGURIDAD (defensa en profundidad, NO bloqueante): una impugnación debería ser
+    // de una pregunta que el usuario ha RESPONDIDO. Si no hay fila en test_questions para
+    // (user, question), es sospechoso de mala atribución (el bug del 21/07 colgó una impugnación
+    // de una pregunta que la usuaria nunca respondió). No bloqueamos —para no romper casos
+    // legítimos sin rastro— y va DESACOPLADO del path de latencia (este endpoint tiene historial
+    // de 504 por el pooler; no le sumamos un round-trip serial). Solo emite; su resultado no se
+    // usa. El fix de raíz está en el cliente (resolveQuestionId): esto es la red por si se cuela.
+    checkDisputeEngagement(userId, questionId, disputeType)
 
     // Verificar que el usuario no tenga una impugnación activa (pending/reviewing)
     const [existing] = await db

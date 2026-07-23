@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { useQuestionContext } from '../contexts/QuestionContext'
+import { resolveDisputeQuestionId } from '@/lib/api/dispute/resolveQuestionId'
+import { emitClientEvent } from '@/lib/observability/client'
 
 // ============================================
 // TIPOS
@@ -25,6 +28,8 @@ interface FormData {
 
 interface DetectedContext {
   questionId: string | null
+  /** Texto de la pregunta detectada (del QuestionContext vivo), para confirmarla al usuario. */
+  questionText: string | null
   themeNumber: number | null
   themeName: string | null
   url: string | null
@@ -68,6 +73,9 @@ export default function FeedbackModal({
 }: FeedbackModalProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { user } = useAuth() as { user: any }
+  // Pregunta VIVA que el usuario está viendo (la fija TestLayout, se limpia al salir del test).
+  // Fuente de verdad para "qué pregunta impugnar" — sustituye al viejo localStorage stale.
+  const { currentQuestionContext } = useQuestionContext()
   const [formData, setFormData] = useState<FormData>({
     type: '',
     message: '',
@@ -79,6 +87,7 @@ export default function FeedbackModal({
   const [uploadingImage, setUploadingImage] = useState(false)
   const [detectedContext, setDetectedContext] = useState<DetectedContext>({
     questionId: null,
+    questionText: null,
     themeNumber: null,
     themeName: null,
     url: null
@@ -97,41 +106,27 @@ export default function FeedbackModal({
   // Detectar contexto automáticamente al abrir modal
   useEffect(() => {
     if (isOpen) {
+      // Pregunta a impugnar: SOLO fuentes explícitas y vivas (prop → URL → contexto vivo).
+      // NUNCA desde localStorage/DOM (era lo que colgaba la impugnación de una pregunta stale).
+      const resolvedQuestionId = resolveDisputeQuestionId({
+        propQuestionId: questionId,
+        urlPath: window.location.pathname,
+        contextQuestionId: currentQuestionContext?.id ?? null,
+      })
+
+      // Texto de la pregunta: solo si la resuelta es la que tenemos viva en el contexto, para
+      // ENSEÑÁRSELA al usuario (así una detección errónea se ve, en vez de un "ID: xxxx…" opaco).
+      const questionText =
+        resolvedQuestionId && currentQuestionContext?.id === resolvedQuestionId
+          ? currentQuestionContext.questionText || null
+          : null
+
       const context: DetectedContext = {
-        questionId: questionId ?? null,
+        questionId: resolvedQuestionId,
+        questionText,
         themeNumber: null,
         themeName: null,
-        url: window.location.href
-      }
-
-      // Detectar question_id automáticamente si no se pasó como prop
-      if (!questionId) {
-        // Opción 1: Buscar en URL (pregunta específica)
-        const urlPath = window.location.pathname
-        const questionUrlMatch = urlPath.match(/pregunta\/([a-f0-9-]{36})/i)
-        if (questionUrlMatch) {
-          context.questionId = questionUrlMatch[1]
-        }
-
-        // Opción 2: Buscar en el DOM elementos con data-question-id
-        if (!context.questionId) {
-          const questionElement = document.querySelector('[data-question-id]')
-          if (questionElement) {
-            context.questionId = questionElement.getAttribute('data-question-id')
-          }
-        }
-
-        // Opción 3: Buscar en localStorage si hay pregunta actual
-        if (!context.questionId) {
-          try {
-            const currentQuestion = localStorage.getItem('currentQuestionId')
-            if (currentQuestion) {
-              context.questionId = currentQuestion
-            }
-          } catch {
-            // Ignorar errores de localStorage
-          }
-        }
+        url: window.location.href,
       }
 
       // Detectar tema desde URL o parámetro
@@ -148,9 +143,21 @@ export default function FeedbackModal({
       }
 
       setDetectedContext(context)
-      console.log('🔍 [FEEDBACK] Contexto detectado (mejorado):', context)
     }
-  }, [isOpen, questionId, currentTheme])
+  }, [isOpen, questionId, currentTheme, currentQuestionContext])
+
+  // Observabilidad: el usuario elige "Impugnación" pero no hay pregunta en contexto (típico en
+  // /soporte). Lo medimos para saber cuánta gente lo intenta desde ahí — informa si merece la
+  // pena un selector de pregunta. NO es un error: el modal le guía al botón inline del test.
+  useEffect(() => {
+    if (isOpen && formData.type === 'question_dispute' && !(questionId || detectedContext.questionId)) {
+      emitClientEvent({
+        severity: 'info',
+        eventType: 'question_dispute_action',
+        metadata: { action: 'no_question_context', source: 'feedback_modal', url: detectedContext.url },
+      })
+    }
+  }, [isOpen, formData.type, questionId, detectedContext.questionId, detectedContext.url])
 
   // Resetear formulario al abrir
   useEffect(() => {
@@ -391,6 +398,11 @@ export default function FeedbackModal({
         // }
 
         // Éxito
+        emitClientEvent({
+          severity: 'info',
+          eventType: 'question_dispute_action',
+          metadata: { action: 'submitted', source: 'feedback_modal', questionId: detectedQuestionId, disputeType: formData.disputeType },
+        })
         setSuccess(true)
         setFormData(prev => ({ ...prev, type: '', message: '', disputeType: '' }))
         if (onFeedbackSent) onFeedbackSent()
@@ -619,16 +631,23 @@ export default function FeedbackModal({
                 {/* Formulario de impugnación con pregunta detectada */}
                 {isDispute && detectedQuestionId && (
                   <>
-                    {/* Confirmación de pregunta detectada */}
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg flex items-center gap-2">
+                    {/* Confirmación de pregunta detectada — mostramos el TEXTO (no un ID opaco)
+                        para que el usuario confirme que es la pregunta correcta. */}
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg flex items-start gap-2">
                       <span className="text-xl">✅</span>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                          Pregunta detectada
+                          Impugnando esta pregunta
                         </p>
-                        <p className="text-xs text-green-600 dark:text-green-400">
-                          ID: {detectedQuestionId.substring(0, 8)}...
-                        </p>
+                        {detectedContext.questionText ? (
+                          <p className="text-xs text-green-700 dark:text-green-300 line-clamp-3">
+                            «{detectedContext.questionText}»
+                          </p>
+                        ) : (
+                          <p className="text-xs text-green-600 dark:text-green-400">
+                            ID: {detectedQuestionId.substring(0, 8)}...
+                          </p>
+                        )}
                       </div>
                     </div>
 
