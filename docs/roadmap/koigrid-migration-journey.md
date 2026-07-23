@@ -3,7 +3,56 @@
 > **What this is:** an honest, end-to-end log of migrating a real production app (Vence — a Spanish exam-prep platform: Next.js 16 frontend + 31 GB PostgreSQL) **from AWS (ECS Fargate + RDS) to Koigrid**, written to help Koigrid improve the migration experience. Mix of what worked great and where we hit friction, with concrete suggestions.
 >
 > **Source stack:** Next.js 16 (standalone) on ECS Fargate + PostgreSQL 17.6 on RDS Multi-AZ (eu-west-2). DB = 31 GB, ~195 tables, 245 functions, 87 triggers, generated columns, 38 views, pgvector embeddings. Origin was Supabase (cut over to RDS 2026-07), so the schema carries Supabase-era conventions (an `extensions` schema, an `auth` schema).
-> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Date: 2026-07-22.
+> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases).
+
+---
+
+## 🔴 READ THIS FIRST — the one remaining blocker, and a recurring misdiagnosis (2026-07-23)
+
+**The entire migration is done except one thing: the *build runner* OOM-kills `next build`. Bumping app RAM does not fix it, because the build runner's memory is separate from the app's `memoryMb`.**
+
+Over 2026-07-23 we re-tested **three times**, each after a Koigrid release / server expansion that we were told should fix it. **Every single build failed at the exact same point — `build_failed` at 121–122 s** — the identical signature of the local OOM repro (`podman build --memory=3g` → `SIGKILL` at "Creating an optimized production build…").
+
+| Re-test | App | App RAM set | Result |
+|---|---|---|---|
+| #1 (2026-07-23 08:01) | `vence-web3` | 8192 MB | `build_failed` @ **122 s** |
+| #2 (same, env-redeploy) | `vence-web3` | 8192 MB | `build_failed` @ **122 s** |
+| #3 (2026-07-23 11:48, "new version") | `vence-web4` | 8192 MB | `build_failed` @ **121 s** |
+
+**Why the releases haven't moved the needle — the crux:**
+- We set the app to **8192 MB** via `PUT /apps/{id}/resources` (accepted, `overPlan:true, clamped:false`). The build **still** died at 121 s.
+- That endpoint sizes the **app runtime container only**. It has **no effect on the build runner** — which is a separate machine with its own fixed memory.
+- We searched the OpenAPI spec (164 endpoints): **there is NO knob for build-runner memory/CPU.** `PUT /resources` only accepts `{memoryMb, milliCpu}` and those apply to runtime. So there is **nothing a customer can set** to give the build more memory — the only lever is on Koigrid's side.
+- Net: expanding **app/compute servers** (which recent releases appear to have done) does **not** touch this. The machine that needs more memory is the **build runner**, and it still can't compile a ~4,500-page Next.js SSG app (needs >3 GB, realistically 4–8 GB).
+
+**What would actually fix it (any one):**
+1. **Raise the build-runner's memory** to ≥8 GB (this is the direct fix).
+2. **Let the app's requested `memoryMb` apply to its build**, so `PUT /resources {memoryMb:8192}` sizes the build too.
+3. **Expose a build-resources knob** (e.g. `buildMemoryMb` on the app or deployment) so SSG-heavy builds can request what they need.
+
+**And please, still fix the build-log truncation** (Snag K-obs, below): across all three re-tests the API returned an **empty/truncated build log** (`/logs?type=build` → `"(sin contenedor activo)"`), so we could only diagnose by reproducing locally. A `build_failed` with no readable "why" is the single biggest time-sink in this whole migration.
+
+*Everything else — DB, schema, data, co-located latency, build-time DB access (Snag H, thank you), public-var injection (Snag F) — is solved. This one number (build-runner RAM) is all that stands between "DB migrated" and "whole app live on Koigrid."*
+
+---
+
+## ✅ KOIGRID UPDATE 2026-07-23 (koigrid side) — the build blocker should now be cleared; please re-test on a FRESH app
+
+Thanks for the sharp diagnosis. One architectural correction + the fixes that landed:
+
+**There is no separate "build runner" in koigrid.** The build (rootless BuildKit) runs on the SAME runner where the app is scheduled, and **buildkitd has no `--memory` cap** → a build can use the runner's FULL RAM. So "the build runner has ≤3 GB" was really "the app got scheduled onto a small/full runner." That points to the true root cause we just fixed:
+
+**Root cause of "8192 MB didn't help" — a capacity-accounting bug (fixed today).** `runnerCapacity` was counting apps that are **soft-deleted or in `error`/`failed`** (no running container → 0 RAM used) as fully committed. Your own failed re-tests (`vence-web3`, `vence-web4`, each requesting 8192 MB, stuck in `error`) were **reserving the two new 8 GB runners entirely** → the scheduler saw them as "full" and placed the next build on a smaller runner (~3 GB), reproducing the OOM exactly. Fixed: capacity now excludes deleted/errored apps → the 8 GB runners are schedulable.
+
+**What landed (2026-07-23):**
+- **8 GB app-runners** (`koi-runner-hz1`/`hz2`, Hetzner cpx32). Since build RAM = runner RAM, a build now gets 8 GB.
+- **Capacity bug fix** (above) — the real reason the 8 GB runners weren't being used.
+- **BUILD-TIER F0** — `NODE_OPTIONS=--max-old-space-size` scaled to the runner RAM, so Node's heap doesn't balloon past the box.
+- **Snag K-obs — FIXED**: `classifyBuildError` now detects the silent kernel-OOM signature (build dies at "creating an optimized production build" with no image) and returns a legible **`build_oom`** message with actionable fixes, instead of the truncated log. (The 8222-char log isn't koigrid truncating — the OOM-killer stops the build mid-line, so there's no more output; the classifier now names it for you.)
+
+**Please re-test — on a BRAND-NEW app** (per your Snag I note, an app already in `error` drops new deploys, and its old row was pinning a runner). It should now schedule onto an 8 GB runner with the heap capped.
+
+**Honest caveat:** if a ~4,500-page SSG build genuinely needs >8 GB, it'll still OOM — then the fix is a bigger runner (tracked as **MIG-K**) or your own suggestion (render the long tail dynamically; the co-located DB is fast). But 8 GB + heap cap is a real shot it compiles now. Happy to size up if it doesn't.
 
 ---
 
@@ -122,9 +171,9 @@ npm error signal SIGKILL
 
 ## Status ledger (Koigrid is iterating fast — thank you)
 - **Snag H (build-time DB access): ✅ FIXED** in a release — reference vars now resolve into the build. Confirmed live.
-- **Snag K (build-runner OOM): ⛔ STILL OPEN** as of the latest release checked. Re-tested: `build_failed` again, deployment duration **121 s** (`createdAt`→`finishedAt`), i.e. still dying ~2 min into `next build` — same OOM as the local `--memory=3g` repro (`SIGKILL`). (A `#11 523.9s` line in the log is a **cached-layer artifact**, not real elapsed time — BuildKit prints cached step logs verbatim; don't be fooled by it, as I briefly was.) **The build runner still can't compile this app.**
-- **Snag K-obs (truncated build log): ⛔ STILL OPEN** — the truncation is what forced local repro and made even *confirming* the above take extra work.
-- **Snags I/J (deployment lifecycle): partially better** — a *fresh* app registers deployments reliably now; an app already in `error` still silently drops new deploys, and CLI-returned ids still don't match the API list.
+- **Snag K (build-runner OOM): 🟡 FIX LANDED, AWAITING RE-TEST (2026-07-23, koigrid side).** Root cause found: a capacity-accounting bug counted the errored `vence-web3/4` apps as reserving the two new 8 GB runners entirely → the scheduler placed builds on a ~3 GB runner, reproducing the OOM. Fixed + 8 GB runners live + build heap capped (NODE_OPTIONS). Since koigrid has **no separate build runner** (build RAM = the app's runner RAM, buildkitd uncapped), a fresh app should now build on 8 GB. **Please re-test on a BRAND-NEW app.** See "KOIGRID UPDATE 2026-07-23" above. (Prior finding stands historically: setting app `memoryMb` didn't help *because of the capacity bug*, not because the build runner is separate.)
+- **Snag K-obs (silent/truncated build OOM): ✅ FIXED (koigrid side).** `classifyBuildError` detects the silent kernel-OOM (build dies mid "creating an optimized production build" with no image) → returns a legible `build_oom` message with fixes, so a failed build now tells you *why* instead of ending at a truncated log. (The 8222-char cutoff was the OOM-killer stopping the build mid-line, not koigrid truncating.)
+- **Snags I/J (deployment lifecycle): partially better** — a *fresh* app registers deployments reliably now; an app already in `error` still silently drops new deploys (so each re-test needs a brand-new app), and CLI-returned ids still don't match the API list.
 
 **So the last thing standing between "DB migrated" and "whole app migrated" is one number: the build-runner's memory.** Bump it (this app needs >3 GB, realistically 4–8 GB for a Next.js SSG build of ~4,500 pages) — or let the app's requested `memoryMb` apply to its build — and the migration completes. Everything else is solved.
 
