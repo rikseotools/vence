@@ -891,12 +891,11 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 - **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
 
 
-### [T-030] 🟢 [DEMANDA — valorar] Parte específica (Bloque II) de Agrupación Profesional Servicios Públicos CARM vacía
-> **⚠️ Cifras corregidas por la auditoría del 20/07:** T9-T12 siguen a 0, pero **T6 pasó de 0 a 23 y T7 de 9 a 20**.
-- **Qué:** la oposición `agrupacion_profesional_servicios_publicos_carm` tiene la parte general sobradísima (T1 1.373q, T4 2.490q, T8 3.655q) pero **la parte específica del Bloque II está vacía o casi**: T6 Seguridad y salud (0), T7 Atención al ciudadano (9), T9 Vigilancia/custodia y movilización de enfermos (0), T10 Técnicas de limpieza (0), T11 Manipulación de alimentos (0), T12 Mantenimiento básico de edificios (0).
-- **Por qué:** banco pequeño en la parte propia del puesto → repetición para el usuario (origen de la impugnación de María José Morell). Crear ahí sí tiene impacto; en la parte general no.
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md` (editorial con fuente, nunca inventar, `tech_approved`). Verificar demanda antes de construir.
-- **Estado:** detectado 10/07. Valorar demanda.
+### [T-030] 🟢 [CASI CERRADA 23/07] Parte específica (Bloque II) de Agrupación Profesional Servicios Públicos CARM — construida desde fuente oficial
+> **✅ Actualización 23/07:** el Bloque II se construyó de 0 → **937 preguntas**, todas auditadas (ciega Sonnet + Paso 9, todas CLEAN) y live. **T9=895** (reuso `[Movilizacion y posiciones]` + funciones desde `[DL 1/2000 Función Pública Murcia]` punto 18), **T10=11** (`[RD 486/1997]` PRL + `[RD 770/1999]` detergentes), **T11=26** (`[Reglamento 852/2004]` vía espejo BOE-DOUE + contenedor editorial por materia `[Higiene y Manipulación de Alimentos]` desde la Guía de Buenas Prácticas Higiénico-Sanitarias de Murcia), **T12=5** (`[RD 486/1997]` PRL). Contenedores nombrados por materia = reutilizables cross-oposición. Detalle+método: memorias `project-apsp-bloque-ii-build` y `reference-fuente-verbatim-curl-boe-doue` (curl BOE + espejo DOUE-* + pdftotext). T6/T7 ya subieron en la auditoría del 20/07.
+- **Único cabo que queda (sin fuente oficial):** el grueso VOCACIONAL de **T12** (oficios de mantenimiento: electricidad/fontanería/carpintería/albañilería/jardinería) NO está en ninguna norma ni guía oficial → necesita **temario/editor** (`crear-nueva-oposicion.md §0.bis`); su parte de PRL ya está. Igual límite (menor) en las técnicas prácticas de fregado/suelos de T10 y en la especificidad "en centros educativos" de T9 — sus partes normativas están hechas.
+- **Origen:** impugnación de María José Morell (banco pequeño en la parte propia del puesto → repetición). Ya resuelto en su parte con fuente.
+- **Estado:** construido 23/07 hasta donde hay fuente oficial. Reabrir solo si aparece temario para los oficios de T12.
 
 ### [T-031] ✅ [CERRADA 20/07 por la auditoría del backlog — YA ESTABA HECHA] Provisionar RDS read replica para lecturas admin/analytics
 > **Auditoría 20/07:** La read replica **ya está provisionada y enchufada en prod**: instancia `vence-prod-replica` (15/07), SSM apuntando a su endpoint y `USE_READ_REPLICA=true` en las task defs `vence-frontend:487` / `vence-backend:75`. Los 3 pasos de la ficha, hechos.
