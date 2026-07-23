@@ -30,6 +30,10 @@
 >
 > **Cambios v1.3**: añadido **Paso 9 (re-verificación post-aplicación)** y convención §5.1 de `ai_provider` diferenciado por fase — alineamiento estricto con el flujo v2.1 de `revisar-preguntas-con-agente.md` (§7). Los 3 primeros batches NO aplicaron el Paso 9 — deuda metodológica conocida.
 
+> ⚠️ **DOS AVISOS antes de empezar (23/07/2026):**
+> 1. **BD = RDS, no Supabase.** Los ejemplos de este manual usan `@supabase/supabase-js` → apuntan al **Supabase CONGELADO** (backup post-cutover 04/07). Corre las queries con `postgres`/`pg` + `DATABASE_URL` (RDS). Mismo patrón de tablas, otro cliente.
+> 2. **Para CREAR el contenedor verbatim** (si la ley/artículos no están aún en BD): NO improvises la descarga. La fuente va así — normas ES por `curl` al BOE, reglamentos UE por el **espejo BOE `DOUE-*`** (NO EUR-Lex), guías PDF oficiales por `pdftotext` → ver `monitoreo-boe-y-crear-leyes-nuevas.md` (§curl verbatim). Y el contenido **editorial no-legislativo** va en **ley virtual nombrada por MATERIA, reutilizable cross-oposición** (NUNCA por oposición) → ver el PRINCIPIO en `crear-nueva-oposicion.md` (línea ~703) + §0.bis (normativo vs editorial: el editorial puro sin fuente literal NO se IA-genera). Lección 23/07 (`project-apsp-bloque-ii-build`): se redescubrió a ciegas todo esto que YA estaba documentado.
+
 ## 1. Cuándo usar este flujo
 
 Generar preguntas con IA tiene sentido cuando se cumplen **todas** estas condiciones:
@@ -154,6 +158,8 @@ Si la opción correcta es cita literal del artículo (texto legal completo, larg
 **Prohibido:** correcta de >100 chars con los tres distractores de <60.
 
 **Si no hay texto legal suficiente para construir 3 distractores largos *y* claramente falsos sin volverlos ambiguos, NO se genera la pregunta sobre ese punto** (mismo criterio que §2.2: mejor menos cantidad).
+
+> **Contenido conceptual/editorial (no BOE) dispara este tell** — la opción correcta fiel a prosa conceptual suele ser mucho más larga que distractores plausibles. Medido en la tanda editorial UMM del 23/07 (§5.30): **21% de rechazo global por length-tell, 46% en Comunicación** (vs ~5-15% en contenido legal). Construir los distractores largos (banda 0,75×–1,15× de la correcta) **desde la generación**, no en una segunda pasada. Remedio si ya pasó: agente de rebalanceo (alarga los 3 distractores manteniéndolos falsos + actualiza el bullet de la explicación).
 
 ### 2.2-ter La posición de la correcta debe ser ALEATORIA UNIFORME (regla anti-"siempre la B")
 
@@ -1562,6 +1568,17 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
   3. Si la cita literal es larguísima (listas de órganos, enumeraciones), **reencuadrar el enunciado** para preguntar un punto concreto cuya respuesta literal sea corta (ej. art 50 LGS: en vez de "¿qué Servicio se constituye?" → "¿bajo la responsabilidad de quién estará gestionado?" → "La respectiva Comunidad Autónoma"). Más limpio que pelear el balance.
   4. **Intruso/negación**: header de la explicación = `**Por qué las demás NO son la respuesta (sí figuran en la norma):**` (no "son incorrectas", que es ambiguo). Y cada bullet dice "sí es/figura: art X.Y".
 - Trazas `claude_code` + `claude_code_recheck` en `ai_verification_results` para las 42.
+
+### 5.30 Tanda editorial UMU Aux. Servicios — 6 batches conceptuales (2026-07-23)
+
+- **batches**: `gen_umu_accesos_` (44), `gen_umu_cargas_` (38), `gen_umu_comunicacion_` (40), `gen_umu_maquinas_` (55), `gen_umu_seguridad_` (63), `gen_umu_rebalanced_` (63) — todos `_2026-07-23`. **303 preguntas** sobre 69 artículos **editoriales** nuevos (leyes virtuales por-materia: Máquinas Reproductoras, Seguridad e Incendios, Control de Accesos, Guía INSST Cargas, Conceptos Comunicación y Atención), ampliadas ese día desde un temario editorial como fuente de referencia (redacción propia, no verbatim).
+- **Contexto distinto al resto de §5**: aquí la "fuente de verdad" NO es un artículo BOE sino nuestro propio artículo editorial (prosa normalizada). El pipeline es idéntico (draft → auto/mecánico + Sonnet ciego → GATE → Paso 9), pero el modo de fallo dominante cambia (ver abajo).
+- **Lección DOMINANTE — el contenido conceptual/editorial dispara el length-tell (§2.2-bis)**: cuando la opción correcta es fiel a prosa conceptual (definiciones, "según el texto…"), tiende a ser mucho más larga que distractores plausibles → el guard mecánico (correcta ≥1,3× la 2ª) **rechazó 63/303 = 21%**, y en **Comunicación fue 34/74 = 46%** (mucho más que en contenido legal, ~5-15%). Es estructural del contenido conceptual, no un fallo del generador.
+  - **Remedio validado**: NO descartar — pasar las rechazadas por un **agente de rebalanceo** que alarga los 3 distractores a longitud comparable manteniéndolos claramente falsos (y actualiza el bullet de la explicación). Las 63 se recuperaron 100% y pasaron auditoría + Paso 9.
+  - **Regla para la próxima**: en contenido conceptual, **construir distractores largos DESDE LA GENERACIÓN** (banda 0,75×–1,15× de la correcta), no dejarlo para una segunda pasada. Instruir al generador explícitamente para ello ahorra el ciclo rechazo→rebalanceo.
+- **Paso 9 volvió a demostrar su valor** (2 defectos que las pasadas previas pasaron): distractor cuyo bullet de explicación **añadía un dato externo no presente en el artículo** ("el canutillo se cierra en frío…"; "la descripción física se retiene ante incidencias…"). En contenido editorial el riesgo es "razonamiento externo en la explicación", no drift de BOE. Reescritos ciñéndose al texto + re-registrados.
+- **Distribución correct_option** controlada por batch (~uniforme); la sub-tanda de rebalanceo quedó D=40% (en el límite, aceptable en canal barajado).
+- Trazas `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en las 303. Scripts del pipeline (insert/approve/rebalance/recheck idempotentes) parametrizados por batch.
 
 ## 6. Anti-patterns (qué NO hacer)
 
