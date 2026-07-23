@@ -190,6 +190,7 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
   tcae_sermas_madrid: [],
   administrativo_galicia: [],
   auxiliar_administrativo_aragon: [],
+  auxiliar_administrativo_ayuntamiento_huesca: [],
   auxiliar_administrativo_catalunya: [],
   auxiliar_administrativo_pais_vasco: [],
 };

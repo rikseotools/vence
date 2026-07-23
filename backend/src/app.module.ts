@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ArchiveInteractionsModule } from './archive-interactions/archive-interactions.module';
 import { BoeChangesModule } from './boe-changes/boe-changes.module';
+import { LawCompletenessModule } from './law-completeness/law-completeness.module';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './db/database.module';
 import { HealthModule } from './health/health.module';
@@ -105,6 +106,10 @@ import { OutboxProcessorModule } from './outbox-processor/outbox-processor.modul
 import { RefreshTopicSummaryModule } from './refresh-topic-summary/refresh-topic-summary.module';
 import { ServedCoverageModule } from './served-coverage/served-coverage.module';
 import { InternalCronTriggersModule } from './internal-cron-triggers/internal-cron-triggers.module';
+// Barrido de salud app+contenido → content_health_findings + email. Port
+// in-process de scripts/health-sweep.cjs (que nunca tuvo scheduler tras la
+// migración GHA→Fargate; el panel /admin/contenido quedaba congelado, 19/07).
+import { ContentHealthSweepModule } from './content-health-sweep/content-health-sweep.module';
 // Snapshot diario de pg_stat_statements para cálculo de deltas 24h vía
 // vista `v_pg_stat_statements_delta`. Cierra el gap "queries lentas HOY vs
 // ruido histórico acumulado" del incidente 31/05. Ver
@@ -143,6 +148,8 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     EmailModule,
     // Crons — sub-etapa 1a
     BoeChangesModule,
+    // Cron — completitud de leyes vs fuente (Capa 4: snapshot + alerta de regresión)
+    LawCompletenessModule,
     // Crons — sub-etapa 1b tanda 1 (mantenimiento)
     ArchiveInteractionsModule,
     RefreshThemeCacheModule,
@@ -190,6 +197,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     RefreshTopicSummaryModule,
     ServedCoverageModule,
     InternalCronTriggersModule,
+    ContentHealthSweepModule,
     // Acción 3 observability-capacity (01/06/2026) — snapshot diario 00:05 UTC
     // de pg_stat_statements + poda 30d. Habilita v_pg_stat_statements_delta.
     PgStatSnapshotModule,

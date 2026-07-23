@@ -2774,8 +2774,94 @@ export const RULE_CLIENT_EDGE_SUSTAINED: AlertRule<{
   cooldownMin: 60,
 };
 
+/**
+ * Pico de rechazos de validación en /api/questions/filtered (incidente Alfonso,
+ * 11/07/2026). Un schema demasiado estricto (positionType z.enum) devolvía 400 a
+ * 726 usuarios y NADIE lo veía: el 400 se persistía como "Parámetros inválidos"
+ * pelado. Ahora el endpoint emite `filtered_questions_validation_rejected` con el
+ * campo que falló; esta regla convierte un pico SISTÉMICO en aviso en <1h. Un
+ * usuario reintentando no llega a 30/h; 30+/h = un contrato roto que afecta a
+ * muchos (regresión de schema, cliente que manda un campo nuevo mal, etc.).
+ */
+export const RULE_FILTERED_VALIDATION_REJECTED_SPIKE: AlertRule<{
+  n: number;
+  topReason: string | null;
+}> = {
+  name: 'filtered_validation_rejected_spike',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY error_message) AS "topReason"
+    FROM observable_events
+    WHERE event_type = 'filtered_questions_validation_rejected'
+      AND ts > NOW() - INTERVAL '60 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 30,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const reason = rows[0]?.topReason ?? '(varios)';
+    return {
+      title: `Tests bloqueados por validación — ${n} rechazos en 1h`,
+      body: `Muchos usuarios NO pueden crear tests en /api/questions/filtered (400 de schema).\nCampo/causa más frecuente: ${reason}\n\nProbable contrato de schema roto (regresión o campo nuevo mal). Investigar:\n\n  SELECT metadata->>'positionType' pt, metadata->'fields' fields, COUNT(*)\n  FROM observable_events\n  WHERE event_type='filtered_questions_validation_rejected'\n    AND ts > NOW() - INTERVAL '60 minutes'\n  GROUP BY 1,2 ORDER BY COUNT(*) DESC;`,
+      metadata: { count: n, topReason: reason, windowMin: 60 },
+      fingerprint: `filtered_validation_rejected`,
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * Flood de re-acuñación de token (bug de caché del poll del cliente). El adapter Auth.js
+ * sondea la sesión cada 5s; si re-acuña el RS256 en CADA tick (en vez de cachearlo su
+ * hora de TTL) genera cientos de miles de req/día a /api/auth/token — el bug del
+ * 04-15/07 que desloguea premium (caso Natalia). `auth_token_minted` está muestreado al
+ * 10% (commit 3b5c1c5c): un usuario normal CON la caché mintea ~1-2/hora reales → ~0
+ * muestreados/10min; el flood da >5 muestreados/usuario/10min. Guardarraíl RUNTIME que lo
+ * caza (además del test de regresión en __tests__/lib/auth/authjsAdapter.test.ts).
+ *
+ * Lección (por qué no se detectó antes sin que escribiera el usuario): la observabilidad
+ * SÍ lo veía (93% del firehose eran estos tokens), pero se interpretó como "reducir
+ * telemetría" (muestrear) en vez de "bug del cliente". Esta regla convierte esa señal en
+ * alerta: un endpoint que domina la telemetría con ratio anómalo por usuario ES un bug.
+ */
+export const RULE_AUTH_TOKEN_MINT_FLOOD: AlertRule<{
+  minted: number;
+  users: number;
+  perUser: number;
+}> = {
+  name: 'auth_token_mint_flood',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS minted,
+           COUNT(DISTINCT user_id)::int AS users,
+           ROUND(COUNT(*)::numeric / GREATEST(COUNT(DISTINCT user_id), 1), 1)::float AS "perUser"
+    FROM observable_events
+    WHERE event_type = 'auth_token_minted'
+      AND ts > NOW() - INTERVAL '10 minutes'
+  `,
+  // ≥20 usuarios para que la media sea fiable; >5 tokens muestreados/usuario/10min
+  // (≈ >50 reales) = el cliente re-acuña sin cachear → flood → deslogueos.
+  shouldFire: (rows) => (rows[0]?.users ?? 0) >= 20 && (rows[0]?.perUser ?? 0) > 5,
+  buildNotification: (rows) => {
+    const minted = rows[0]?.minted ?? 0;
+    const users = rows[0]?.users ?? 0;
+    const perUser = rows[0]?.perUser ?? 0;
+    return {
+      title: `Flood de acuñación de token — ${perUser} tokens/usuario en 10 min (muestreado 10%)`,
+      body: `El cliente re-acuña el RS256 sin cachearlo (el poll martillea /api/auth/token). ${minted} mints muestreados de ${users} usuarios en 10 min ≈ ${Math.round(perUser * 10)} reales/usuario. Genera 401 intermitentes que deslogean (el bug del 04-15/07, caso Natalia).\n\nRevisar la caché del token en lib/auth/adapters/authjsAdapter.ts y su test __tests__/lib/auth/authjsAdapter.test.ts.`,
+      metadata: { mintedSampled: minted, users, perUserSampled: perUser, windowMin: 10 },
+      fingerprint: 'auth_token_mint_flood',
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)
+  RULE_AUTH_TOKEN_MINT_FLOOD as AlertRule,
+  // Tests bloqueados por rechazo de validación (2026-07-11, incidente Alfonso)
+  RULE_FILTERED_VALIDATION_REJECTED_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
   RULE_CLIENT_ERROR_SPIKE as AlertRule,
   RULE_CLIENT_HTTP_4XX_SPIKE as AlertRule,

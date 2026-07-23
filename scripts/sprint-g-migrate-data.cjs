@@ -10,7 +10,7 @@
  *
  * Backfill convocatoria_hitos.convocatoria_id según mapeo oposicion→convocatoria.
  *
- * Idempotente (ON CONFLICT DO NOTHING en la UNIQUE oposicion_id+año).
+ * Idempotente (ON CONFLICT DO NOTHING targetless; ver migración 20260718).
  */
 require('dotenv').config({ path: '.env.local' });
 const postgres = require('postgres');
@@ -79,7 +79,7 @@ const SUFIJO_UNIFICATION = {
          OR o.exam_date IS NOT NULL
          OR o.convocatoria_fecha IS NOT NULL
          OR o.boe_reference IS NOT NULL
-      ON CONFLICT (oposicion_id, año) DO NOTHING
+      ON CONFLICT DO NOTHING  -- targetless: robusto tras 20260718 (ya no hay UNIQUE(oposicion_id, año))
       RETURNING id, oposicion_id, año, is_current
     `;
     console.log(`  ✅ ${inserted.length} convocatorias creadas`);

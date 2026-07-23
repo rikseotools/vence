@@ -83,6 +83,36 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 - Cruzar con la bandeja `[Vence CRITICAL]`: si un tipo domina el correo pero es un blip transitorio, **recalibrar la alert-rule** (ver `backend/src/alerts/alert-rules.ts` + `[[project_supavisor_zombie_conn_root_cause]]` para el precedente de recalibración pool/canary).
 - Un `event_type` que **desaparece** de golpe (p.ej. geo fill-rate a 0) también es señal — lo cubre el framework de calidad de datos (§ roadmap obs).
 
+### 1.bis.a — OBLIGATORIO: desglosar `alert_fired` por REGLA + liveness de TODOS los crons
+
+> ⚠️ **Miss real 2026-07-22:** el bloque de arriba agrupa por `event_type`, así que `alert_fired` sale como UN bucket (p.ej. "76 critical alert_fired") y es fácil pasarlo por alto y declarar VERDE mientras la bandeja de Manuel tiene 44 emails `[Vence CRITICAL]`. **`alert_fired` es lo que llega al correo — SIEMPRE hay que abrir QUÉ reglas disparan.** Y el veredicto de §1 solo mira el cron de *drift*; **NO** vigila el resto de crons (`check-seguimiento`, etc.), que pueden estar caídos días sin que ningún bloque lo cante. Este sub-paso cierra las dos brechas y es **obligatorio** en cada "revisa la salud".
+
+```bash
+node -e "
+const pgMod = require('/home/manuel/Documentos/github/vence/node_modules/postgres');
+const postgres = pgMod.default || pgMod;
+require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({path:'/home/manuel/Documentos/github/vence/.env.local'});
+const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
+(async () => {
+  console.log('=== alert_fired 24h por REGLA (esto es lo que llega al correo) ===');
+  const a = await sql\`SELECT COALESCE(metadata->>'rule', metadata->>'ruleId', metadata->>'title','?') rule, severity, count(*)::int n FROM observable_events WHERE event_type='alert_fired' AND ts>=NOW()-INTERVAL '24 hours' GROUP BY 1,2 ORDER BY 3 DESC LIMIT 25\`;
+  a.forEach(r=>console.log('  '+String(r.n).padStart(3)+' ['+r.severity+'] '+r.rule));
+  console.log('\n=== Liveness de crons: último cron_run vs ahora (7d) — busca crons que PARARON ===');
+  const c = await sql\`SELECT endpoint, max(ts) last, count(*)::int n FROM observable_events WHERE event_type='cron_run' AND ts>=NOW()-INTERVAL '7 days' GROUP BY 1 ORDER BY 2 ASC\`;
+  c.forEach(r=>{const h=((Date.now()-new Date(r.last).getTime())/3600000).toFixed(1); console.log('  '+(h>26?'🔴':h>13?'🟡':'🟢')+' hace '+String(h).padStart(6)+'h  '+(r.endpoint||'?')+'  (n='+r.n+')');});
+  await sql.end();
+})();
+"
+```
+
+**Lectura:**
+- Cualquier regla de `alert_fired` con conteo alto = está inundando el correo → o es fuego real (investigar) o hay que recalibrar (ver §1.bis). NO ignorar el bucket agregado.
+- Un cron cuyo último `cron_run` sea de **hace >26h** (o >su intervalo esperado) → **investigar**, aunque los 5xx estén en verde. `cron_overdue` NO es "falso positivo por defecto" (el fix de 2026-06-12 solo arregló el FP de `detect-oep-llm`, job largo). Antes de reportar hay que distinguir **3 causas** mirando los **logs de arranque del cron en CloudWatch** (`/ecs/vence-backend`, filtrar por el nombre de la clase del cron, p.ej. `CheckSeguimiento`):
+  1. **Retirado a propósito (kill-switch)** → el boot loguea algo tipo `check-seguimiento RETIRADO (sensor hash_change: 4% de acierto). Reactivar con CHECK_SEGUIMIENTO_ENABLED=true`. Es un cron apagado adrede (sensor demasiado ruidoso). **El `cron_overdue` es entonces FALSO POSITIVO** y seguirá emailando a Manuel cada día → la acción es **excluir ese cron de la regla `cron_overdue`** (o mutearlo mientras el flag esté OFF), NO reactivar el cron a ciegas. Caso real 2026-07-22: `check-seguimiento` (`0 9 * * 1-5`) retirado el 21/07 por 4% de precisión del sensor `hash_change`; el CRITICAL diario era ruido.
+  2. **Roto de verdad** → el boot muestra el cron registrándose bien pero luego falla/`cron_run` con `status:failure`, o un crash-loop lo mata antes del tick → fix real.
+  3. **Task no vivo a la hora del tick** → scheduler in-app NestJS NO rellena ticks perdidos si el task ECS estaba reiniciando/desplegando a esa hora exacta. Cruzar con eventos ECS (`aws ecs describe-services`) y arranques en el log.
+  GOTCHA transversal: `HeartbeatRegistry` de `check-seguimiento` tiene `thresholdMs=4 días`, así que `/health/crons` NO da 503 → la liveness probe de ECS **no lo reinicia**; el único aviso es `cron_overdue`. Verificar en el log 09:00:00 UTC: si OTROS crons de esa hora SÍ disparan pero el objetivo no, es (1) o (2), no (3).
+
 ---
 
 Por Claude (CLI, cuando el humano pide "busca errores"):

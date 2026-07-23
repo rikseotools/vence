@@ -245,3 +245,34 @@ Decisión tomada tras medirlo: **para los cubos actuales de calidad fina, NO com
 - **Cuándo SÍ valdría la pena (futuro):** una tarea **enorme Y homogénea** (miles de preguntas de una fuente, clasificación/normalización masiva sobre entrada limpia) — NO los cubos de verificación fina actuales.
 
 **Acción:** parar aquí con OpenRouter (todo documentado + scripts reutilizables en `verify-live-scripts/{pilots,optlit,bakeoff}`); seguir el trabajo de cubos con **agentes Claude**, que es fiable y sin lío. Reabrir solo si aparece una tarea enorme-homogénea.
+
+---
+
+## 12. Pilot Kimi K3 (22/07/2026) — triaje NO; generar/reescribir SÍ, pero el barato empata
+
+> **Motivo:** salió **Kimi K3** en OpenRouter (16/07/2026, `moonshotai/kimi-k3`, 2.8T open-weight multimodal **reasoning**, 1M contexto, **$3/M in · $15/M out**). Pregunta de Manuel: ¿el modelo más nuevo/caro sirve para los cubos de revisión, aunque sea caro? Se probó a fondo en 3 tipos de tarea contra la verdad-terreno de BD y contra el barato ganador (`google/gemma-3-12b-it`). Scripts+datos en `scratchpad/` (durables re-ejecutando el método): `build_sample_k3.cjs`, `run_triage*.cjs`, `run_rewrite.cjs`, `run_gen.cjs`, `eval_*.cjs`, `compare_*.cjs`.
+
+**Técnica (gotchas nuevos):** K3 responde **HTTP 200** (Kimi **K2 daba 400** en el bake-off §8) y da **100% JSON parseable** porque **OpenRouter separa el razonamiento en un campo `reasoning` aparte** → el `content` sale limpio. Esto **anula el viejo problema "los razonadores rompen el JSON"** (§8). Pero es **lento y caro por los tokens de razonamiento** (~200 tok reason/pregunta facturados a $15/M): **~$0.006/pregunta**, 14-55 s cada una.
+
+### 12.1 Resultados (muestras reales de BD + verdad-terreno, K3 vs gemma-3-12b)
+
+| Tarea | Muestra | **Kimi K3** | gemma-3-12b (barato) | ms/preg K3 vs barato |
+|---|---|---|---|---|
+| **Triaje literalidad FP/MISLINK** (red de seguridad) | 50 (25 FP + 25 MISLINK, cohorte mislink) | ❌ **5/25 PELIGROSOS** (los MÁS de todos) | 3/25 | 14.300 vs 1.400 |
+| **Reescribir explicación §8.1** (`explanation_ok=false`) | 12 vivas | ✅ **12/12** formato+cita REAL+estilo | 11/12 | 55.000 vs 7.700 |
+| **Generar pregunta** desde artículo | 8 artículos (39/2015, 40/2015, CE, LCSP, LO 3/2007) | ✅ **8/8** clave correcta y fundada | 8/8 correctas | 30.700 vs 2.800 |
+
+(Bake-off triaje completo: gpt-4o-mini 2 peligro, nova-lite 3. Con prompt **escéptico/adversarial** K3 baja a 1 peligro pero la discriminación se hunde —FP-ok 19→11— o sea vuelve conservador y deja de ahorrar; y aun así 1 leak.)
+
+### 12.2 Hallazgo central — el razonamiento de K3 CAMBIA DE SIGNO según la tarea
+
+- **Triaje = LASTRE.** K3 **racionaliza**: construye una justificación de por qué un artículo del mismo tema *podría* sostener la clave → deja pasar vínculos malos. Ejemplo real: art. 440 CC usa la palabra "causante" de pasada y K3 se autoconvence de que la define. **Mismo modo de fallo que el solape determinista de §9.4** (palabra presente ≠ hecho presente). Un razonador NO arregla el triaje de literalidad; falla distinto (con más aplomo).
+- **Generar/reescribir = ACTIVO.** Citas reales Y correctas (encontró la *letra h)* enterrada en el art. 2 LAJG y explicó por qué la letra a) es la regla general), **0 citas inventadas** en 12 (el fallo del P5 barato), distractores más finos (art. 190 LCSP: trampa "inspeccionar en todos los casos" explotando el "en ningún caso derecho general a inspeccionar").
+
+### 12.3 Veredicto (confirma §11, ahora con datos de K3)
+
+- **Como red de triaje/verificación:** **NO** — K3 es peor que el barato y reconfirma que el juicio de literalidad es de Claude. Cerrado.
+- **Como generador/reescritor:** K3 es **genuinamente bueno** — aquí "aunque sea caro" tendría lógica. PERO **el barato ya aprueba** esas tareas (gemma 8/8 claves, 11/12 explicaciones) a **~1/120 del coste y 10-20× más rápido**. K3 solo gana en pulcritud de formato y dureza de distractor: margen pequeño que **no justifica 120×** salvo como "generador premium" puntual para preguntas difíciles, y **con revisión detrás igualmente**.
+- **Ni K3 se libra del gate:** su pregunta del art. 258 LCSP quedó con **riesgo de doble respuesta** (opción B "riesgo de mercado por demanda" discutiblemente también verdadera) justo por buscar un distractor sofisticado → **toda pregunta generada (K3 o barato) necesita gate Claude/humano** antes de publicar.
+
+**Acción:** para el grueso generativo (reescribir explicaciones, generar bancos) usar **baratos + gate Claude**; reservar K3 —si acaso— como generador premium puntual. **Prueba pendiente donde K3 podría por fin diferenciarse del barato:** material difícil que hunde al barato (síntesis multi-artículo, preguntas derivadas con inferencia jurídica) — en artículo único directo ambos empatan en corrección.

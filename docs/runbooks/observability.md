@@ -752,6 +752,7 @@ Categorías estables. Si necesitas una nueva: añadirla aquí Y al manual antes 
 | Cache | `cache_invalidation`, `cache_miss_storm`, `cache_hit_low` |
 | Deploys | `deploy_started`, `deploy_completed`, `deploy_failed` |
 | Cliente | `js_uncaught`, `unhandled_rejection`, `react_error_boundary`, `console_error`, `fetch_failure`, `hydration_mismatch`, `intent_unfulfilled`, `web_vital_degraded` |
+| Cliente UX | `daily_goal_banner_action`, `topic_trend_action`, `temario_print_action` — interacciones de UX medibles (metadata.action + contexto). `temario_print_action`: `action ∈ {print, inapp_blocked, copy_link, register_prompt}` + `{slug, topic}` — mide el uso del botón "Imprimir PDF" y el muro de navegadores in-app (window.print() es no-op en app de Google/Instagram/FB…) |
 | Negocio | `payment_failed`, `signup_completed`, `daily_limit_reached`, `slo_breach` |
 | Invariantes | `invariant_violation` (metadata.invariant: `dispute_resolved_without_email`, …) — un reconciliador detectó un estado de negocio roto (Gap 17) |
 | Sintético | `smoke_e2e` |

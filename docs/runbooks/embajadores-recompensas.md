@@ -47,15 +47,16 @@ body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la op
 - `bug` = 3 €, `ugc` = 5 €. El importe lo pone el sistema, no se envía.
 - **Pasa SIEMPRE `feedbackId` en las de `bug`** (traza del motivo + anti-duplicado, ver abajo).
 - UGC exige `url` (link a la opinión) y respeta el tope 3/mes (devuelve `reward_cap_hit`).
-- Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). Avísale tú por su hilo de feedback.
+- Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). El badge YA le comunica la recompensa: **NO menciones la recompensa ni el Programa en el mensaje** del feedback (decisión Manuel 15/07).
 
 **Anti-duplicado por MOTIVO (guardarraíl por construcción):** `createRewardSubmission` rechaza (`{ok:false, reason:'duplicate'}` → HTTP 409 + evento `reward_duplicate`) si ya existe una recompensa **no-rejected** con el mismo motivo: `feedback_id` en `bug`, `url` en `ugc` (el referido es idempotente aparte, por la fila `referrals`). Así el motivo no solo queda **registrado**, sino que **físicamente no se puede pagar dos veces lo mismo**. Tests: `__tests__/referrals/rewards-endpoints.test.ts` (unit) + `__tests__/integration/referrals-simulation.test.ts` (RDS).
 
 ### 2.bis Procedimiento para recompensar un bug resuelto — UNO A UNO
 Cuando resolvemos un bug reportado y merece recompensa, procede **usuario a usuario** (nunca en lote):
 1. **Verifica** que el bug es real y resuelto, y que el usuario **no tiene ya** recompensa por ese feedback (el guardarraíl lo impide, pero míralo).
+   > ⚠️ **GOTCHA doble-pago por MISMO bug en feedback distinto (19/07/2026):** el guardarraíl anti-duplicado deduplica por `feedback_id`, **no por el bug de fondo**. Si el usuario **re-reporta el mismo bug en otro feedback** (típico: lo arreglamos y respondimos, pero él sigue viendo el fallo con **JS cacheado** y abre un feedback nuevo), emitir sobre ese nuevo `feedback_id` **paga dos veces lo mismo** (el guardarraíl NO lo caza). **Antes de emitir, mira el historial de recompensas del usuario** (`reward_submissions WHERE user_id=…`): si ya cobró un `bug` por el mismo síntoma, **NO emitas** — es duplicado; trata el feedback como re-report (respuesta corta "ya está corregido, recarga por caché" + cerrar). Caso real: Laura Zurdo, bug de filtro de secciones psicotécnicas reportado en `b4aac526` (17/07, recompensado) y re-abierto en `e74e4515` (18/07, cacheado) → se emitió 3€ duplicados y hubo que **anularlos** (`UPDATE reward_submissions SET status='rejected'` si `payout_id IS NULL`).
 2. **Emite la recompensa** (`POST /api/admin/rewards`, `type:'bug'` + `feedbackId`). El badge 🎁 empieza a **parpadear** en su header hasta que lo pinche (server-side, automático). **No se envía email.**
-3. **Redacta el borrador** de la respuesta a su feedback y **espera aprobación** (nunca envíes sin OK). En el mensaje llámalo **"Programa de Recompensas"** (no "de Embajadores") y anúnciale el bonus.
+3. **Redacta el borrador** de la respuesta a su feedback y **espera aprobación** (nunca envíes sin OK). El mensaje va SOLO sobre el fondo del asunto (el fix/aclaración); **NO menciones la recompensa ni el Programa** en el texto (el badge 🎁 ya lo comunica; decisión Manuel 15/07).
 4. **Envía** por `POST /api/v2/feedback/respond` (email + campana) y cierra ese feedback **antes** de pasar al siguiente.
 
 ### 3. Consultar saldos por pagar

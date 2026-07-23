@@ -16,6 +16,8 @@ A partir de la migración lifecycle (fase A-D, ver `docs/roadmap/sistema-desacti
 | `pending` (active) | `approved` (legacy grandfather, cron 90d) |
 | `pending` (deact) | `draft` |
 
+> **⚠️ Este mapeo aplica a la curación de preguntas OCULTAS / promoción, no a degradar una pregunta ya viva.** Para una pregunta que **ya está viva** (`approved`/`tech_approved`) con contenido correcto, un `bad_explanation` es solo un **flag de calidad** (`explanation_ok=false`) y **NO** la mueve a `needs_review` (sigue visible). Solo `wrong_article*` / clave / estructura mueven el lifecycle a oculto. Detalle: **§8.1-bis**.
+
 **Cambios operativos:**
 - `is_active` ahora se sincroniza automáticamente desde `lifecycle_state` vía trigger (no se setea manualmente)
 - Toda transición de estado pasa por la función SQL `transition_question_state()` que crea audit row en `question_lifecycle_history`
@@ -33,6 +35,8 @@ Este manual documenta cómo usar el agente de Claude Code para verificar pregunt
 - La explicación es correcta
 
 **Ventaja principal:** Usa tu suscripción de Claude Code (gratis), en lugar de la API de Anthropic (de pago).
+
+> 💸 **Capa aún más barata para el triaje binario:** para la parte *mecánica* de "¿el artículo/opción sostiene LITERALMENTE la clave? sí/no" se puede usar un **modelo gratis de OpenRouter** como red de triaje (probado: 94% de acuerdo, **0 falsos "todo OK"**), reservando Claude para el juicio caro (destino del relink, explicación §8.1, verificación de fuente, adjudicación). Manual dedicado con credencial, límites, cubos donde ayuda, harness y bake-off: **[`verificacion-modelos-gratis-openrouter.md`](./verificacion-modelos-gratis-openrouter.md)**. Regla: *modelo gratis = red de triaje; Claude = el juicio.*
 
 ---
 
@@ -358,6 +362,20 @@ Matriz vigente (igual que «leyes normales», pero el estado verde es `tech_*`):
 Si el enunciado pregunta por un derecho, regla, lista o plazo concreto y ese contenido vive en OTRO artículo, `article_ok = false` **aunque** el artículo vinculado "encaje" superficialmente con la respuesta marcada. Para poder responder a este test el agente necesita poder leer otros artículos de la ley, no solo el vinculado (ver §4, prompt actualizado). Ver incidente §16.
 
 **Incidente que motiva la regla (14/04/2026):** la pregunta `a41b8cf6...` (Ley 1/1998 CyL, causas de supresión de municipios) tenía `primary_article_id` apuntando al Preámbulo. El agente leyó la EM, no encontró contradicción con la respuesta marcada y validó `article_ok=true, answer_ok=true, explanation_ok=true` con confianza **alta**. Resultado: la opción "Falta de candidatos" parecía la falsa, pero el art. 13.d) sí contempla "falta reiterada de candidatos" como causa de supresión — fallo detectado por una impugnación de usuaria, no por la verificación.
+
+### 3.1-bis Bancos EDITORIALES (ofimática/clínico/técnico): el artículo editorial TAMBIÉN debe responder literalmente — y si no, se ENRIQUECE con fuentes oficiales (post-14/07/2026)
+
+Aplica a los bancos cuyo contenido no es una ley del BOE sino una **ley editorial** (glosarios/manuales normalizados): ofimática (Excel/Word/Outlook 365), clínico TCAE (Oxigenoterapia, Movilización y posiciones, Paciente quirúrgico, Alimentación y nutrición, Úlceras por presión, Constantes vitales, Farmacología TCAE…), ciberseguridad (Ciberdelincuencia PN, Administración de Redes LAN), etc.
+
+**Regla 1 — el test literal §3.1 se aplica IGUAL.** El artículo editorial vinculado (o el de destino en un revínculo) debe contener **literalmente** la base de la respuesta correcta: la fórmula/atajo/ruta de menú exacta (ofimática) o la definición/cifra/protocolo exacto (clínica). No basta que el artículo trate el mismo tema por encima. Mantener/revincular SOLO con soporte literal; citar el fragmento exacto (ej.: `=IGUAL("ejemplo";"ejemplo")→VERDADERO`, `Ctrl+Mayús+:` = hora actual; "Esputo purulento: amarillo-verdoso, sugiere infección"). La fuente editorial es aceptable como ancla (ver §8.5 / feedback teoría editorial), pero **la literalidad NO se relaja**.
+
+**Regla 2 — si NINGÚN artículo editorial responde: ENRIQUECER el artículo, no ocultar (mandato Manuel 14/07/2026).** Antes de mandar a `needs_human`:
+1. **Verificar la clave contra FUENTE OFICIAL** — Microsoft Support / documentación de Office para ofimática; guías y protocolos clínicos normalizados, manuales TCAE oficiales, fichas técnicas para clínica. Vía WebSearch/WebFetch a fuente autorizada. **NUNCA conocimiento suelto ni inventar** (precisión crítica, sobre todo clínica).
+2. **EDITAR/ampliar el artículo editorial** correspondiente (`articles.content`): añadir la teoría que falta (definición/cifra/atajo), citando la fuente oficial, con el rigor de §8.5 (teoría editorial anclada a fuentes normalizadoras).
+3. **Dejar la pregunta VIVA** anclada al artículo ya enriquecido.
+4. **OCULTAR (`needs_human`) solo como ÚLTIMO RECURSO:** dato no verificable en ninguna fuente oficial, o pregunta estructuralmente defectuosa (dos respuestas correctas, clave errónea — a decisión humana, nunca auto-flip).
+
+En estos bancos el "hide" masivo del enfoque legal se sustituye en gran parte por "enrich": más preguntas vivas + mejor teoría. Acción de pase sugerida: `enrich` con `{source_official, article_to_edit, text_to_add (citado), new_explanation}`.
 
 ### 3.2 Criterio para `options_ok` — literalidad de las opciones presentadas como correctas (post-22/05/2026, calibrado con simulación)
 
@@ -787,9 +805,28 @@ function isDidactic(explanation) {
 
 Una explicación que cumpla solo el contenido pero NO el formato sigue siendo `bad_explanation`. No es suficiente que la respuesta sea correcta: el opositor necesita saber POR QUÉ, y por qué NO las demás.
 
-**Regla dura:** Si el estado de la pregunta es `perfect` en BD pero `isDidactic()` devuelve `false`, el orquestador de verificación debe **re-marcarla como `bad_explanation`** y devolverla al flujo de reescritura. El `perfect` es aspiracional.
+**Regla dura:** Si el estado de la pregunta es `perfect` en BD pero `isDidactic()` devuelve `false`, el orquestador de verificación debe **re-marcarla como `bad_explanation`** y devolverla al flujo de reescritura. El `perfect` es aspiracional. **⚠️ Alcance (ver §8.1-bis):** esta regla dura aplica al **flujo de promoción** (decidir si una pregunta oculta pasa a visible). Para una pregunta que **YA está viva** y cuyo contenido (respuesta + artículo + opción) es correcto, **NO se oculta** por el formato de la explicación — se marca `explanation_ok = false` honesto y se deja en la cola de mejora, sin tocar la visibilidad.
 
 **Excepción — preguntas tipo "señale la INCORRECTA":** en estas preguntas el encabezado correcto de la sección final es *"Por qué las demás opciones son **correctas** en su contenido"* (semántica invertida: las otras opciones SÍ son correctas y la que se señala es la falsa). El check `hasDemas` busca el literal `"...son incorrectas"` y devolverá `false` aunque la explicación sea perfectamente didáctica. NO aplicar la "regla dura" a ciegas sobre estas: si el enunciado pide señalar la opción incorrecta/falsa, verificar a mano antes de re-marcar como `bad_explanation`. Incidente: `12b568bd` (22/05/2026), explicación correcta re-flagueada por el regex.
+
+### 8.1-bis Criterio de VISIBILIDAD al verificar preguntas YA VIVAS (post-10/07/2026)
+
+Cuando se **verifican/curan preguntas que ya están vivas** (`is_active = true`), el eje que decide la **visibilidad** es el **artículo**, NO la explicación. Objetivo: *cero impugnaciones y cero preguntas mal colocadas* al menor coste, sin retirar de circulación preguntas correctas por un defecto meramente cosmético.
+
+| Defecto detectado (pregunta ya viva) | Acción sobre la visibilidad | `ai_verification_results` |
+|---|---|---|
+| **Artículo mal vinculado** (`article_ok=false`) | **Ocultar** si NO se puede re-vincular (`→ needs_human`, reason `ai_detected_wrong_article`). **Re-vincular** si se conoce el artículo correcto (queda **viva**, bien colocada). | `article_ok=false` (honesto) |
+| **Clave errónea** (`answer_ok=false`) | Ocultar / a humano — **nunca** auto-flip de clave. | `answer_ok=false` |
+| **Opción no literal** (`options_ok=false`) | Según §3.2 / §7.3 (oficiales no se tocan). | `options_ok=false` |
+| **Explicación floja** (contenido correcto, no cumple `isDidactic`) | **NO ocultar. La pregunta SIGUE VIVA.** | `explanation_ok=false` (honesto) → **cola de mejora** |
+
+**Por qué el artículo manda:** `topic_scope` coloca la pregunta en su tema **por el artículo** (ley + `article_number`). Un artículo mal vinculado hace que la pregunta **aparezca en el tema equivocado** → debe salir de circulación hasta re-vincularse (coincide con la tabla de mapeo `wrong_article* → needs_human`). En cambio, una **explicación fea pero de contenido correcto no genera impugnación** (la respuesta es la correcta y el artículo es el que toca): retirarla sería peor que mostrarla (§15.8).
+
+**Registro honesto (NO falsear para bajar contadores):** si la explicación no cumple `isDidactic`, se marca `explanation_ok = false` de verdad — nunca `true` para que "pase el gate". Eso construye una **cola de mejora cosmética** consultable (`answer_ok=true AND article_ok=true AND explanation_ok=false`) que se reescribe cuando haya presupuesto, sin bloquear la visibilidad mientras tanto. "Contenido correcto = verificada a efectos de riesgo", pero la explicación queda marcada como pendiente.
+
+**⚠️ `bad_explanation` es un FLAG DE CALIDAD, NO una transición de lifecycle.** Re-marcar una explicación como mala (`explanation_ok=false`, y si se quiere `topic_review_status='bad_explanation'`) **NO** implica ocultar la pregunta: en una pregunta ya viva **NO se llama a `transition_question_state()` para moverla a `needs_review`** por la explicación. El `lifecycle_state` permanece en `approved`/`tech_approved` (sigue visible). Solo los ejes **artículo** (`wrong_article → needs_human`) y **clave/estructura** mueven el lifecycle a un estado oculto; la explicación nunca. Es decir: el mapeo legacy `bad_* → needs_review` de la tabla POST-LIFECYCLE se refiere a la **curación de preguntas ocultas / promoción**, no a degradar una pregunta ya visible cuyo contenido es correcto.
+
+**Diferencia con la "Regla dura" §8.1:** la regla dura gobierna la **promoción** (una pregunta oculta que aspira a hacerse visible: ahí SÍ se exige explicación didáctica antes de aprobar). §8.1-bis gobierna una pregunta **que ya es visible**: el listón para *mantenerla* visible es contenido correcto + artículo correcto, no el formato de la explicación. Origen: criterio de Manuel durante la campaña de verificación de vivas (cohorte `claude_code_verlive_2026_07`, 10-11/07/2026).
 
 ### 8.2 Incidente (11/04/2026 — C1 T18 ET)
 

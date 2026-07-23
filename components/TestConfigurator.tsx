@@ -92,6 +92,9 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   // Estados adicionales
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false);
   const [focusEssentialArticles, setFocusEssentialArticles] = useState(false);
+  // 🔄 Excluir preguntas respondidas en los últimos N días (backend ya cableado; faltaba la UI)
+  const [excludeRecent, setExcludeRecent] = useState(false);
+  const [recentDays, setRecentDays] = useState(30);
   const [adaptiveMode, setAdaptiveMode] = useState(false); // Desactivado por defecto (500 preguntas/request saturaba Supabase)
   const [onlyFailedQuestions, setOnlyFailedQuestions] = useState(false); // 🆕 Solo preguntas falladas
   const [showFailedQuestionsModal, setShowFailedQuestionsModal] = useState(false); // 🆕 Modal preguntas falladas
@@ -1080,8 +1083,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       // customDifficulty eliminado
       onlyOfficialQuestions: onlyOfficialQuestions,
       focusEssentialArticles: focusEssentialArticles,
-      excludeRecent: false, // Por defecto no excluir preguntas recientes
-      recentDays: 30, // Valor por defecto para días recientes
+      excludeRecent: excludeRecent, // 🔄 toggle del configurador
+      recentDays: recentDays,
       focusWeakAreas: adaptiveMode, // ✨ Activar con modo adaptativo
       adaptiveMode: adaptiveMode, // ✨ Incluir modo adaptativo
       onlyFailedQuestions: onlyFailedQuestions, // 🆕 Solo preguntas falladas alguna vez
@@ -1756,6 +1759,50 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
               </p>
             </div>
           </div>
+          )}
+
+          {/* 🔄 EXCLUIR PREGUNTAS RECIENTES */}
+          {currentUser && (
+            <div className="border-t border-gray-200 pt-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={excludeRecent}
+                  onChange={(e) => setExcludeRecent(e.target.checked)}
+                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  🔄 Excluir preguntas recientes
+                  <span className="text-xs text-green-600 ml-1">(no repetir lo hecho hace poco)</span>
+                </span>
+              </label>
+
+              {excludeRecent && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">De los últimos:</span>
+                  {[30, 15, 7].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setRecentDays(d)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold border-2 transition-all ${
+                        recentDays === d
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-200 text-gray-600 hover:border-green-300'
+                      }`}
+                    >
+                      {d} días
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-green-700">
+                  🔄 Aparta las preguntas que ya respondiste en ese periodo. Si no quedan suficientes preguntas nuevas, se completan con las más antiguas para no acortar el test.
+                </p>
+              </div>
+            </div>
           )}
 
           {/* 🎯 SOLO PREGUNTAS FALLADAS */}

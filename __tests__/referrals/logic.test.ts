@@ -58,10 +58,10 @@ describe('isWithinAttributionWindow', () => {
 })
 
 describe('computeHoldUntil / isHoldExpired', () => {
-  it('hold = pago + 5 días por defecto', () => {
+  it('hold = pago + 15 días por defecto (cubre la ventana de reembolso de 15 días)', () => {
     const paid = '2026-07-10T00:00:00.000Z'
-    expect(computeHoldUntil(paid).toISOString()).toBe('2026-07-15T00:00:00.000Z')
-    expect(REFERRAL_HOLD_DAYS).toBe(5)
+    expect(computeHoldUntil(paid).toISOString()).toBe('2026-07-25T00:00:00.000Z')
+    expect(REFERRAL_HOLD_DAYS).toBe(15)
   })
   it('acepta holdDays personalizado', () => {
     expect(computeHoldUntil('2026-07-10T00:00:00.000Z', 14).toISOString()).toBe('2026-07-24T00:00:00.000Z')

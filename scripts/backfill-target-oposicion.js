@@ -14,7 +14,7 @@
 // solo necesitamos el mapping slug→positionType, que podemos leer en runtime.
 
 require('dotenv').config({ path: '.env.local' })
-const { createClient } = require('@supabase/supabase-js')
+const { createClient } = require('./lib/pg-agnostic-client.cjs')
 const path = require('path')
 
 // Cargar OPOSICIONES vía require del JSON cacheado si existe, o fallback a

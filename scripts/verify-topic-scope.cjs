@@ -49,6 +49,23 @@ function sortArtNums(nums) {
   })
 }
 
+// ── huecos internos de un rango de artículos (sub-rangos contiguos AUSENTES
+//    entre el primero y el último). Devuelve [[lo,hi],...]. Clave para que el
+//    agente LLM vea "66–127 pero faltan 108–116" en vez de un resumen que lo
+//    enmascara (bug detectado 19/07: Título V CE huérfano en Diputación Córdoba).
+function missingRuns(sortedNums) {
+  if (sortedNums.length < 2) return []
+  const present = new Set(sortedNums)
+  const lo = sortedNums[0], hi = sortedNums[sortedNums.length - 1]
+  const runs = []
+  let start = null
+  for (let i = lo; i <= hi; i++) {
+    if (!present.has(i)) { if (start === null) start = i }
+    else if (start !== null) { runs.push([start, i - 1]); start = null }
+  }
+  return runs
+}
+
 async function buildDump(c, pt) {
   const topics = (await c.query(
     `SELECT id, topic_number, title, epigrafe FROM topics WHERE position_type=$1 AND is_active ORDER BY topic_number`,
@@ -86,9 +103,18 @@ async function buildDump(c, pt) {
         [s.law_id, nums.length ? nums : null]
       )).rows[0].n
       const ni = nums.map(Number).filter(x => !isNaN(x)).sort((a, b) => a - b)
-      const rango = nums.length
-        ? (ni.length ? `${ni[0]}–${ni[ni.length - 1]} (${nums.length} arts)` : `${nums.length} arts (no num)`)
-        : (s.include_full_title ? 'toda la ley' : 'NULL')
+      let rango
+      if (!nums.length) {
+        rango = s.include_full_title ? 'toda la ley' : 'NULL'
+      } else if (!ni.length) {
+        rango = `${nums.length} arts (no num)`
+      } else {
+        const gaps = missingRuns(ni)
+        const gapStr = gaps.length
+          ? ` ⚠️ HUECOS (faltan): ${gaps.map(([a, b]) => a === b ? `${a}` : `${a}–${b}`).join(', ')}`
+          : ''
+        rango = `${ni[0]}–${ni[ni.length - 1]} (${nums.length} arts)${gapStr}`
+      }
       laws.push({ ley: s.short_name, ambito: s.scope, rango, preguntas_activas: Number(qn), articulos: arts })
     }
     out.push({ tema: t.topic_number, titulo: t.title, epigrafe: t.epigrafe, scope: laws })

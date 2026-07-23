@@ -85,3 +85,6 @@ scripts/.opofimatica-session/
 scripts/opofimatica-cookies.json
 scripts/opofimatica-capture.json
 scripts/opofimatica-drive-capture.json
+
+# Sesiones de trabajo paralelas (new-session.sh) — artefacto por-sesión, nunca commitear
+.session-id

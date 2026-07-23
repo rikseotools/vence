@@ -167,6 +167,9 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             } : {}),
           }
         })
+        // Excluir secciones fantasma (0 preguntas activas): no son practicables,
+        // así que no deben poder seleccionarse ni contaminar el estado del configurador.
+        .filter(section => section.count > 0)
 
       return {
         key: cat.key,
@@ -350,31 +353,43 @@ export async function getPsychometricQuestions(
       }
     }
 
-    // 1b. Si se pasan secciones específicas, resolver a IDs
-    let sectionIds: string[] | null = null
-    if (sectionKeys && sectionKeys.length > 0) {
-      const secs = await db
-        .select({ id: psychometricSections.id })
-        .from(psychometricSections)
-        .where(
-          and(
-            eq(psychometricSections.isActive, true),
-            inArray(psychometricSections.sectionKey, sectionKeys)
-          )
+    // 1b. Resolver la selección a un conjunto DEFINITIVO de section IDs.
+    //     Modelo: la unidad real de selección es la SECCIÓN. Una categoría = todas
+    //     sus secciones activas; `sectionKeys` (si llega) afina dentro de las
+    //     categorías seleccionadas. Como TODA pregunta activa tiene section_id, filtrar
+    //     por sección es completo y exacto — sin el antiguo XOR sección/categoría que
+    //     rompía al mezclar categorías enteras con categorías por-sección.
+    const catSections = await db
+      .select({
+        id: psychometricSections.id,
+        key: psychometricSections.sectionKey,
+      })
+      .from(psychometricSections)
+      .where(
+        and(
+          eq(psychometricSections.isActive, true),
+          inArray(psychometricSections.categoryId, categoryIds)
         )
-      sectionIds = secs.map(s => s.id)
+      )
+
+    const wantedKeys = sectionKeys && sectionKeys.length > 0 ? new Set(sectionKeys) : null
+    const sectionIds = catSections
+      .filter(s => !wantedKeys || wantedKeys.has(s.key))
+      .map(s => s.id)
+
+    if (sectionIds.length === 0) {
+      return {
+        success: true,
+        questions: [],
+        totalAvailable: 0,
+      }
     }
 
-    // 2. Fetch questions — filtrar por sección si se especifica, si no por categoría
-    const questionFilter = sectionIds && sectionIds.length > 0
-      ? and(
-          eq(psychometricQuestions.isActive, true),
-          inArray(psychometricQuestions.sectionId, sectionIds)
-        )
-      : and(
-          eq(psychometricQuestions.isActive, true),
-          inArray(psychometricQuestions.categoryId, categoryIds)
-        )
+    // 2. Fetch questions — siempre por el conjunto exacto de secciones seleccionadas
+    const questionFilter = and(
+      eq(psychometricQuestions.isActive, true),
+      inArray(psychometricQuestions.sectionId, sectionIds)
+    )
 
     const allQuestions = await db
       .select({

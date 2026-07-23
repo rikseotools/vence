@@ -115,6 +115,7 @@ describeIfDb('Oposición data completeness', () => {
       'administrativo-castilla-la-mancha', // C1 en preparación: BD lista (is_active=false hasta go-live)
       'administrativo-universidad-leon', // C1 en preparación (otra sesión): config sin fila activa en BD
       'auxiliar-administrativo-diputacion-zamora', // en preparación: BD lista (is_active=false hasta go-live)
+      'auxiliar-administrativo-ayuntamiento-huesca', // go-live en curso: is_active=true tras deploy (8 plazas, BOA 11/06/2026)
       'auxiliar-administrativo-diputacion-huesca', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-avila', // en preparación: BD lista (is_active=false hasta go-live)
       'auxiliar-administrativo-diputacion-segovia', // en preparación: BD lista (is_active=false hasta go-live)
@@ -140,5 +141,37 @@ describeIfDb('Oposición data completeness', () => {
     // Allow some extra in BD (null slugs, etc.) but warn
     const meaningful = extra.filter(o => o.slug && o.slug !== 'null')
     expect(meaningful.length).toBe(0)
+  })
+
+  // Guardarraíl de DOS FUENTES DE VERDAD (añadido 20/07/2026).
+  // Los bloques/temas viven en DOS sitios: la tabla `topics` (que pinta el
+  // TEMARIO) y `OPOSICIONES[].blocks` (que pinta el HUB DE TESTS y define el
+  // rango del test aleatorio, ver lib/api/random-test-data/schemas.ts).
+  // Si un tema está en la BD pero no en el config, el alumno LO VE en el temario
+  // pero NO PUEDE hacer tests de él — fallo silencioso, sin error en logs.
+  // Casos reales que motivaron el test: Policía Nacional T46 (inglés, 5.071
+  // preguntas activas invisibles) y País Vasco T14-31 (18 temas invisibles).
+  test('config blocks cover exactly the active topics in BD (tests hub vs temario)', async () => {
+    const rows = await sql!<{ position_type: string; nums: number[] }[]>`
+      SELECT position_type, array_agg(topic_number ORDER BY topic_number) AS nums
+      FROM topics WHERE is_active GROUP BY position_type`
+    const byPosition = new Map(rows.map(r => [r.position_type, r.nums.map(Number)]))
+
+    const divergentes: string[] = []
+    for (const o of OPOSICIONES) {
+      const enBd = byPosition.get(o.positionType)
+      if (!enBd?.length) continue // sin temas en BD todavía: lo cubren los tests de arriba
+      const enConfig = (o.blocks || []).flatMap(b => b.themes.map(t => t.id))
+      const soloBd = enBd.filter(n => !enConfig.includes(n))
+      const soloConfig = enConfig.filter(n => !enBd.includes(n))
+      if (soloBd.length || soloConfig.length) {
+        divergentes.push(
+          `${o.slug}: invisibles en tests (solo BD) = [${soloBd.join(', ') || '-'}]; ` +
+          `sobran en config (no existen en BD) = [${soloConfig.join(', ') || '-'}]`
+        )
+      }
+    }
+    if (divergentes.length > 0) console.warn('Temas divergentes config↔BD:\n' + divergentes.join('\n'))
+    expect(divergentes).toEqual([])
   })
 })

@@ -122,6 +122,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativa-universidad-de-murcia': 'murcia',
     'escala-administrativa-universidad-de-granada': 'andalucia',
     'auxiliar-administrativo-aragon': 'aragon',
+    'auxiliar-administrativo-ayuntamiento-huesca': 'aragon',
     'auxiliar-administrativo-diputacion-huesca': 'aragon',
     'auxiliar-administrativo-extremadura': 'extremadura',
     'administrativo-extremadura': 'extremadura',

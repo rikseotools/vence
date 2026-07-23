@@ -3700,6 +3700,100 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE HUESCA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_huesca',
+    slug: 'auxiliar-administrativo-ayuntamiento-huesca',
+    positionType: 'auxiliar_administrativo_ayuntamiento_huesca',
+    examScoring: { penaltyDivisor: 3, source: 'BOA nº110 11/06/2026 (base sexta): respuesta errónea resta 0,033 y acierto suma 0,10 (1/3 del acierto); en blanco no puntúa. confidence:alta' },
+    name: 'Auxiliar Administrativo del Ayuntamiento de Huesca',
+    shortName: 'Aux. Ayto. Huesca',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'bloque-1',
+        title: 'Bloque I: Derecho Constitucional y Administrativo',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978: estructura y derechos fundamentales' },
+          { id: 2, name: 'Organización territorial del Estado. CCAA y Administración Local' },
+          { id: 3, name: 'La organización de la Administración pública. El Gobierno' },
+          { id: 4, name: 'El Estatuto de Autonomía de Aragón' },
+          { id: 5, name: 'El ordenamiento jurídico-administrativo: Constitución, ley y reglamento' },
+          { id: 6, name: 'El acto administrativo: concepto, elementos y eficacia' },
+          { id: 7, name: 'La invalidez del acto administrativo y la revisión de oficio' },
+          { id: 8, name: 'El procedimiento administrativo común: iniciación, ordenación e instrucción' },
+          { id: 9, name: 'Terminación del procedimiento. El silencio administrativo' },
+          { id: 10, name: 'Recursos administrativos y recurso contencioso-administrativo' },
+          { id: 11, name: 'La Función Pública: clases de empleados públicos, derechos y deberes' },
+        ],
+      },
+      {
+        id: 'bloque-2',
+        title: 'Bloque II: Régimen Local y Hacienda Local',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 12, name: 'Fuentes del Derecho Local. Ordenanzas, reglamentos y bandos' },
+          { id: 13, name: 'Los municipios de régimen común: órganos' },
+          { id: 14, name: 'Municipios de gran población, provincia, comarcas y otras entidades' },
+          { id: 15, name: 'Las competencias municipales' },
+          { id: 16, name: 'Régimen de sesiones y acuerdos de los órganos de gobierno local' },
+          { id: 17, name: 'Los contratos del sector público' },
+          { id: 18, name: 'Los recursos de las Haciendas Locales y las subvenciones' },
+          { id: 19, name: 'El Presupuesto General de las Entidades Locales' },
+        ],
+      },
+      {
+        id: 'bloque-3',
+        title: 'Bloque III: Prevención y Gestión Documental',
+        subtitle: null,
+        icon: '📋',
+        themes: [
+          { id: 20, name: 'La Ley de Prevención de Riesgos Laborales' },
+          { id: 21, name: 'La atención al público y la comunicación administrativa' },
+          { id: 22, name: 'Documento, registro y archivo. Protección de datos' },
+          { id: 23, name: 'Análisis documental y formación del expediente' },
+          { id: 24, name: 'Nuevas tecnologías en el archivo y normalización de escritos' },
+        ],
+      },
+      {
+        id: 'bloque-4',
+        title: 'Bloque IV: Ofimática e Informática',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 25, name: 'Windows, ofimática (Office 365), internet y correo electrónico' },
+        ],
+      },
+      {
+        id: 'bloque-5',
+        title: 'Bloque V: Protección de Datos e Igualdad',
+        subtitle: null,
+        icon: '🛡️',
+        themes: [
+          { id: 26, name: 'La Ley Orgánica 3/2018 de Protección de Datos' },
+          { id: 27, name: 'La Ley Orgánica 3/2007 de Igualdad efectiva de mujeres y hombres' },
+          { id: 28, name: 'Legislación aragonesa sobre violencia hacia las mujeres' },
+        ],
+      },
+    ],
+    totalTopics: 28,
+    aliases: ['ayuntamiento huesca', 'ayto huesca', 'ayuntamiento de huesca', 'aux ayto huesca', 'auxiliar ayuntamiento huesca'],
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-ayuntamiento-huesca', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-ayuntamiento-huesca/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-ayuntamiento-huesca/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE ÁVILA (C2)
   // ========================================
   {
@@ -8662,8 +8756,12 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 44, name: 'Seguridad en conducción de vehículos prioritarios' },
           { id: 45, name: 'PRL en seguridad vial' },
         ] },
+      { id: 'ingles', title: 'Bloque D: Lengua Inglesa', subtitle: 'Prueba de idioma extranjero', icon: '🇬🇧',
+        themes: [
+          { id: 46, name: 'Inglés: gramática y comprensión escrita' },
+        ] },
     ],
-    totalTopics: 45,
+    totalTopics: 46,
     aliases: ['cnp', 'policia nacional', 'escala basica', 'policía', 'pn oposiciones', 'oposiciones policia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
@@ -8978,7 +9076,7 @@ export const OPOSICIONES: Oposicion[] = [
     blocks: [
       {
         id: 'bloque1',
-        title: 'Temario Cuerpo Auxiliar Administrativo (en elaboración)',
+        title: 'Temario Cuerpo Auxiliar Administrativo',
         subtitle: 'Eusko Jaurlaritzaren Administrazio Laguntzailearen Kidegoa',
         icon: '🏛️',
         themes: [
@@ -8995,10 +9093,28 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 11, name: 'Prevención de riesgos laborales' },
           { id: 12, name: 'Prevención de riesgos laborales: pantallas de visualización de datos' },
           { id: 13, name: 'Nociones básicas de primeros auxilios' },
+          { id: 14, name: 'Gobierno abierto' },
+          { id: 15, name: 'Gestión de la documentación en los archivos de oficina' },
+          { id: 16, name: 'Registros electrónicos de entrada y salida de documentos' },
+          { id: 17, name: 'El documento y el expediente administrativo' },
+          { id: 18, name: 'Legalizaciones de firmas y validación en la administración electrónica' },
+          { id: 19, name: 'Administración educativa no universitaria' },
+          { id: 20, name: 'Derechos de la ciudadanía en sus relaciones con las Administraciones Públicas' },
+          { id: 21, name: 'La ciudadanía como destinataria de los servicios públicos' },
+          { id: 22, name: 'La comunicación escrita en la Administración' },
+          { id: 23, name: 'La comunicación oral en la Administración' },
+          { id: 24, name: 'Fuentes del derecho administrativo' },
+          { id: 25, name: 'La organización administrativa: los órganos administrativos' },
+          { id: 26, name: 'El acto administrativo' },
+          { id: 27, name: 'El procedimiento administrativo: principios e interesados' },
+          { id: 28, name: 'Fases del procedimiento administrativo' },
+          { id: 29, name: 'Revisión de los actos administrativos' },
+          { id: 30, name: 'La responsabilidad de las Administraciones Públicas' },
+          { id: 31, name: 'Correspondencia y paquetería' },
         ],
       },
     ],
-    totalTopics: 13,
+    totalTopics: 31,
     aliases: ['pais vasco', 'euskadi', 'eusko jaurlaritza', 'gobierno vasco', 'bilbao', 'vitoria', 'donostia', 'cuerpo auxiliar vasco'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },

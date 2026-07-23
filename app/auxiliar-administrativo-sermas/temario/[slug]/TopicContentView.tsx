@@ -7,6 +7,7 @@ import ArticleTTS from '@/components/ArticleTTS'
 import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useAuth } from '@/contexts/AuthContext'
+import TopicPrintButton from '@/components/TopicPrintButton'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import TopicVideoCourses from '@/components/TopicVideoCourses'
 import TopicNavFooter from '@/components/TopicNavFooter'
@@ -45,7 +46,6 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
   )
-  const [showPrintModal, setShowPrintModal] = useState(false)
   const { user, userProfile } = useAuth() as { user: any; userProfile: any }
 
   const blockInfo = getBlockInfo(content.topicNumber)
@@ -60,14 +60,6 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
       }
       return next
     })
-  }
-
-  const handlePrint = () => {
-    if (!user) {
-      setShowPrintModal(true)
-      return
-    }
-    window.print()
   }
 
   const articlesWithOfficialQuestions = content.laws.reduce((acc, law) => {
@@ -105,15 +97,10 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
             <span>Volver al indice</span>
           </Link>
 
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Imprimir PDF
-          </button>
+          <TopicPrintButton
+            loginHref="/login?oposicion=auxiliar_administrativo_sermas&return_to=/auxiliar-administrativo-sermas/temario"
+            topicNumber={content.topicNumber}
+          />
         </div>
       </div>
 
@@ -228,45 +215,6 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
           getDisplayNum={(n) => getBlockInfo(n).displayNum}
         />
       </main>
-
-      {/* Modal de registro para imprimir */}
-      {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 relative">
-            <button
-              onClick={() => setShowPrintModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Descarga el temario en PDF
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Registrate gratis para descargar el PDF y recibir actualizaciones cuando cambie la legislacion.
-              </p>
-              <div className="space-y-3">
-                <Link
-                  href="/login?oposicion=auxiliar_administrativo_sermas&return_to=/auxiliar-administrativo-sermas/temario"
-                  className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Registrarse gratis
-                </Link>
-                <button
-                  onClick={() => setShowPrintModal(false)}
-                  className="block w-full py-3 px-4 text-gray-600 dark:text-gray-400 font-medium hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                >
-                  Quizas mas tarde
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

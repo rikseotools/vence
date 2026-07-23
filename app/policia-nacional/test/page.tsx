@@ -7,11 +7,11 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Tests Policía Nacional - Practica por Temas | Vence',
-  description: 'Prepara tu oposición de Policía Nacional con tests organizados por temas. 45 temas oficiales: Derecho, Seguridad, TIC, Inglés y Ortografía.',
+  description: 'Prepara tu oposición de Policía Nacional con tests organizados por temas. 45 temas oficiales más la prueba de idioma extranjero: Derecho, Seguridad, TIC, Ortografía e Inglés.',
   keywords: ['test policía nacional', 'oposiciones policía nacional', 'examen policía nacional', 'test escala básica'],
   openGraph: {
     title: 'Tests Policía Nacional - Practica por Temas',
-    description: 'Prepara tu oposición de Policía Nacional con tests organizados por temas. 45 temas oficiales.',
+    description: 'Prepara tu oposición de Policía Nacional con tests organizados por temas. 45 temas oficiales más la prueba de idioma extranjero.',
     type: 'website',
   },
 }

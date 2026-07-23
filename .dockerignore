@@ -64,3 +64,6 @@ scripts/backfill-*
 *.bak
 *.tmp
 *~
+
+.claude
+scratchpad

@@ -12,6 +12,7 @@
     "db:pull": "drizzle-kit introspect",
     "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
     "verify:scope": "node scripts/verify-topic-scope.cjs",
+    "scope:health": "node scripts/scope-health-classify.cjs",
     "verify:epigrafe": "node scripts/verify-epigrafe-literality.cjs",
     "verify:gate": "node scripts/verify-topic-scope.cjs gate",
     "canary:verificacion-contenido": "node scripts/canary-verificacion-contenido.cjs",

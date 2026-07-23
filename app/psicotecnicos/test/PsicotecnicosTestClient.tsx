@@ -142,6 +142,36 @@ export default function PsicotecnicosTestClient() {
     setExpandedCategories(prev => ({ ...prev, [catKey]: !prev[catKey] }))
   }
 
+  // UX "un clic": seleccionar SOLO esta sección (limpia todo lo demás), para que
+  // "quiero practicar solo X" sea una acción única e inequívoca.
+  const selectOnlySection = (sectionKey: string, catKey: string) => {
+    const catSel: Record<string, boolean> = {}
+    const secSel: Record<string, boolean> = {}
+    for (const cat of categories) {
+      catSel[cat.key] = cat.key === catKey
+      for (const sec of cat.sections) {
+        secSel[sec.key] = cat.key === catKey && sec.key === sectionKey
+      }
+    }
+    setSelectedCategories(catSel)
+    setSelectedSections(secSel)
+  }
+
+  // Resumen EXACTO de lo que se va a practicar (subtipos con preguntas + conteos).
+  // Cierra la brecha entre "lo que el usuario cree que eligió" y lo que recibirá.
+  const getSelectedSectionsSummary = (): { name: string; count: number }[] => {
+    const out: { name: string; count: number }[] = []
+    for (const cat of categories) {
+      if (!selectedCategories[cat.key]) continue
+      for (const sec of cat.sections) {
+        if (sec.count > 0 && selectedSections[sec.key]) {
+          out.push({ name: (sec.name || '').replace(/\s+/g, ' ').trim(), count: sec.count })
+        }
+      }
+    }
+    return out
+  }
+
   // Selection summary text
   const getSelectionText = (): string => {
     const totalQuestions = getSelectedCategoriesQuestionCount()
@@ -393,6 +423,14 @@ export default function PsicotecnicosTestClient() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); selectOnlySection(section.key, cat.key) }}
+                                  className="text-xs px-2 py-0.5 rounded-full border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title={`Practicar solo ${section.name.replace(/\s+/g, ' ').trim()}`}
+                                >
+                                  Solo
+                                </button>
                                 {section.answeredCount !== undefined && section.count > 0 && (
                                   <span className="text-xs text-green-600">{section.answeredCount}/{section.count}</span>
                                 )}
@@ -452,9 +490,23 @@ export default function PsicotecnicosTestClient() {
 
               {/* Start test button */}
               <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-6 text-white text-center">
-                <p className="mb-4 text-sm opacity-90">
+                <p className="mb-2 text-sm opacity-90">
                   {getSelectionText()}
                 </p>
+                {/* Resumen anti-sorpresa: qué subtipos exactos se van a practicar */}
+                {(() => {
+                  const summary = getSelectedSectionsSummary()
+                  if (summary.length === 0) return null
+                  const label = summary.length <= 6
+                    ? summary.map(s => s.name).join(' · ')
+                    : `${summary.length} tipos de ejercicio`
+                  return (
+                    <p className="mb-4 text-xs bg-white/15 rounded-lg px-3 py-2 inline-block max-w-full">
+                      <span className="opacity-80">Vas a practicar:</span>{' '}
+                      <span className="font-medium">{label}</span>
+                    </p>
+                  )
+                })()}
                 <button
                   disabled={totalSelectedQuestions === 0}
                   onClick={() => {
@@ -466,22 +518,19 @@ export default function PsicotecnicosTestClient() {
                       numQuestions: adjustedNum.toString(),
                     })
 
-                    // Si el usuario seleccionó secciones específicas (no todas),
-                    // pasar las secciones para filtrar correctamente
+                    // Enviar SIEMPRE el conjunto exacto de secciones (con preguntas)
+                    // seleccionadas. Sin heurística de "parcial vs entera": el backend
+                    // filtra por estas secciones, así lo que marca el usuario es
+                    // exactamente lo que recibe.
                     const selectedSecKeys: string[] = []
-                    let hasPartialSelection = false
                     for (const catKey of selectedCatKeys) {
                       const cat = categories.find((c: PsychometricCategory) => c.key === catKey)
-                      if (!cat || cat.sections.length === 0) continue
-                      const allSelected = cat.sections.every((s: PsychometricSection) => selectedSections[s.key])
-                      if (!allSelected) {
-                        hasPartialSelection = true
-                        for (const sec of cat.sections) {
-                          if (selectedSections[sec.key]) selectedSecKeys.push(sec.key)
-                        }
+                      if (!cat) continue
+                      for (const sec of cat.sections) {
+                        if (sec.count > 0 && selectedSections[sec.key]) selectedSecKeys.push(sec.key)
                       }
                     }
-                    if (hasPartialSelection && selectedSecKeys.length > 0) {
+                    if (selectedSecKeys.length > 0) {
                       urlParams.set('sections', selectedSecKeys.join(','))
                     }
 

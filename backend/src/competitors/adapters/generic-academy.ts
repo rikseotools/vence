@@ -115,6 +115,20 @@ export const ACADEMY_CONFIGS: AcademyConfig[] = [
     oposicion: /^\/oposiciones-torrent-valencia\/(justicia|sanidad|funcion-publica)\/[^/]+\/?$/ },
   // codex: register-only — sitemap 2.201 URLs (98% blog /noticias/) para solo 4
   // oposiciones → lastraría el cron; adapter pendiente hasta el fix de perf.
+  // — Ciegos rescatados (15/07): WooCommerce server-rendered, catálogo oposición limpio —
+  // tutemario: 1.001 productos de temario/test por CCAA; categorías bajo /categoria-producto/
+  // (no colisionan con /tienda/…). Producto = hoja profunda (≥4 segmentos) bajo /tienda/.
+  { key: 'tutemario', name: 'TuTemario', baseUrl: 'https://tutemario.es', tipo: 'plataforma_online', region: 'España',
+    nameFromH1: true, jsonLdPrice: true,
+    oposicion: /^\/tienda\/(?:[^/]+\/){3,}[^/]+\/?$/, categoria: /^\/categoria-producto\// },
+  // murciaoposiciones: WooCommerce, productos de temario/test CARM/SMS bajo /producto/.
+  { key: 'murciaoposiciones', name: 'Murcia Oposiciones', baseUrl: 'https://www.murciaoposiciones.com', tipo: 'academia_presencial', region: 'Murcia',
+    nameFromH1: true, jsonLdPrice: true,
+    oposicion: /^\/producto\/[^/]+\/?$/, categoria: /^\/(tienda|categoria-producto)\// },
+  // opositaonline: WooCommerce, catálogo oposición (Extremadura + informática) bajo /producto/.
+  { key: 'opositaonline', name: 'OpositaOnline', baseUrl: 'https://opositaonline.com', tipo: 'plataforma_online', region: 'Extremadura',
+    nameFromH1: true, jsonLdPrice: true,
+    oposicion: /^\/producto\/[^/]+\/?$/, categoria: /^\/(tienda|product-category)\// },
 ];
 
 export const GENERIC_ACADEMY_ADAPTERS: CompetitorAdapter[] = ACADEMY_CONFIGS.map(makeAcademyAdapter);

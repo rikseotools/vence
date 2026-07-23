@@ -1,6 +1,5 @@
 // lib/api/filtered-questions/schemas.ts - Schemas de validación para preguntas filtradas
 import { z } from 'zod'
-import { POSITION_TYPES_ENUM } from '@/lib/config/oposiciones'
 
 // ============================================
 // SCHEMAS PARA FILTROS DE SECCIONES/TÍTULOS
@@ -25,7 +24,15 @@ export type SectionFilter = z.infer<typeof sectionFilterSchema>
 export const getFilteredQuestionsRequestSchema = z.object({
   // Tema y tipo de oposición (topicNumber=0 o null significa sin filtro de tema)
   topicNumber: z.number().int().min(0).nullable().transform(v => v ?? 0),
-  positionType: z.enum(POSITION_TYPES_ENUM),
+  // positionType TOLERANTE (no z.enum): el cliente manda el target_oposicion del
+  // perfil, que puede ser una oposición AÚN NO CONSTRUIDA (sin entrada en el enum:
+  // p.ej. 'bibliotecario' y ~726 usuarios) o un valor legacy/corrupto. Un enum
+  // estricto devolvía 400 "Parámetros inválidos" y les rompía TODO test multi-ley.
+  // Aceptamos cualquier string: un positionType desconocido no tiene temario, así
+  // que degrada con gracia (sirve lo que el usuario pidió; ver queries.ts modo ley)
+  // SIN fuga de scope ajeno — buildOfficialExamFilter/buildQuestionTagFilter ya
+  // excluyen oficiales y tags exclusivos cuando la oposición no está registrada.
+  positionType: z.string().min(1).max(200),
 
   // 🆕 Múltiples temas (para test aleatorio multi-tema)
   multipleTopics: z.array(z.number().int().min(1)).default([]),
@@ -175,7 +182,9 @@ export function safeParseGetFilteredQuestions(data: unknown) {
 
 export const countFilteredQuestionsRequestSchema = z.object({
   topicNumber: z.number().int().min(1),
-  positionType: z.enum(POSITION_TYPES_ENUM),
+  // TOLERANTE — mismo motivo que el schema principal: oposiciones sin construir /
+  // valores legacy no deben dar 400 en el contador del configurador.
+  positionType: z.string().min(1).max(200),
   selectedLaws: z.array(z.string()).default([]),
   selectedArticlesByLaw: z.record(z.string(), z.array(z.union([z.number().int(), z.string()]))).default({}),
   selectedSectionFilters: z.array(sectionFilterSchema).default([]),

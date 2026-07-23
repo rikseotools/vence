@@ -848,6 +848,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_ayuntamiento_huesca',
+      label: 'Auxiliar Administrativo Ayto. Huesca',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Huesca',
+        slug: 'auxiliar-administrativo-ayuntamiento-huesca',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_huesca',
       label: 'Auxiliar Administrativo Dip. Huesca',
       data: {

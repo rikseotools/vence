@@ -4,12 +4,17 @@
 //
 // Reglas (2026-07-10): refiere solo premium; el referido debe NUNCA haber pagado
 // (registro nuevo o free existente, excluye ex-premium) y pagar en <=10 días DESDE LA
-// ATRIBUCIÓN; hold = pago + 5 días (ventana de reembolso); bounty 10 €, descuento 5 €.
+// ATRIBUCIÓN; hold = pago + 15 días (>= ventana de reembolso); bounty 10 €, descuento 5 €.
 
 import { randomBytes } from 'crypto'
 
 export const REFERRAL_ATTRIBUTION_WINDOW_DAYS = 10
-export const REFERRAL_HOLD_DAYS = 5          // = ventana de reembolso de Vence
+// Hold = 15 días para CUBRIR la ventana real de reembolso: garantía comercial (15 días,
+// ver /cancelacion-y-devoluciones) + derecho de desistimiento UE (14 días, no renunciado
+// en checkout). Antes eran 5 días → hueco de 10 días en el que se pagaba el bounty y el
+// referido aún podía reembolsar → pérdida de la gift card (11/07/2026). El bounty no pasa
+// a `payable` hasta que expira este hold; un reembolso dentro del hold hace qualified→rejected.
+export const REFERRAL_HOLD_DAYS = 15
 export const REFERRAL_BOUNTY_EUR = 10        // gift card Amazon al embajador
 export const REFERRAL_DISCOUNT_EUR = 5       // descuento (cupón) al referido
 
@@ -95,7 +100,7 @@ export function isLegalTransition(from: ReferralState, to: ReferralState): boole
 export const REWARD_AMOUNTS = { bug: 3, ugc: 5 } as const
 export type RewardType = keyof typeof REWARD_AMOUNTS
 export const UGC_MONTHLY_CAP = 3          // UGC: máximo 3 al mes por usuario
-export const UGC_HOLD_DAYS = REFERRAL_HOLD_DAYS // UGC: se paga tras comprobar que el post sigue vivo
+export const UGC_HOLD_DAYS = 5 // UGC: hold propio (verificar que el post sigue vivo); NO ligado a la ventana de reembolso, por eso NO sube a 15 con el referido
 
 export function rewardAmount(type: RewardType): number {
   return REWARD_AMOUNTS[type]

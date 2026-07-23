@@ -92,6 +92,48 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
     claudeHace: 'localiza la ley "para el año XXXX" ya pasado que sigue escopada, la actualiza a la versión vigente (importándola si falta) y genera las preguntas que falten — NUNCA la quita si el epígrafe la pide.',
   },
+  audit_note_explanation: {
+    title: 'Explicación = nota de auditoría (defecto de pipeline)',
+    triggerPhrase: 'revisa las explicaciones rotas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza las preguntas visibles cuya "explicación" es en realidad la crítica de un pase IA anterior ("La explicación debería…", "posible errata", "Nota técnica:", "Esta pregunta debería anularse"), verifica la clave contra la ley/fuente y reescribe la explicación (o la manda a needs_human si hay defecto de fondo) con el flujo de `docs/maintenance/revisar-preguntas-con-agente.md`.',
+  },
+  law_unverified_source: {
+    title: 'Ley sin verificar contra su fuente (falso verde / importada a medias)',
+    triggerPhrase: 'revisa la completitud de las leyes',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    claudeHace: 'localiza las leyes que sirven en temas vivos sin verificar contra su fuente oficial (`false_green` = marcada "actualizada" sin evidencia, `no_source` = sin URL de fuente, `never_verified`, `incomplete` = faltan artículos), registra la fuente que falte, compara artículo por artículo contra el boletín oficial e importa lo que falte (verbatim, doble auditoría) — NUNCA marca verificada sin evidencia.',
+  },
+  scope_phantom_article: {
+    title: 'Artículo escopado sin fila activa en la BD (inexistente o desactivado)',
+    triggerPhrase: 'revisa los artículos fantasma del scope',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada ley señalada, coge los números escopados en topic_scope que no tienen fila ACTIVA en articles (mismo law_id): si es `inexistente` y la ley SÍ tiene ese artículo en su fuente oficial (BOE), lo importa verbatim (doble auditoría) y genera las preguntas que falten; si es `desactivado` (existe con is_active=false, a veces con preguntas ya listas), lo reactiva tras revisar por qué se desactivó; si la ley NO lo tiene (over-scope), lo quita del article_numbers. NUNCA inventa el artículo ni deja el número colgado sirviendo 0 preguntas/teoría en silencio.',
+  },
+  scope_titulo_huerfano: {
+    title: 'Título con preguntas huérfanas (hueco interno del temario)',
+    triggerPhrase: 'revisa los huecos del temario',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada oposición señalada corre el pipeline verify:scope (dump → 2 agentes epígrafe↔scope → consenso): el detector marca un título de una ley que la oposición usa, con preguntas activas y flanqueado a ambos lados por artículos escopados, pero con 0 artículos suyos en el scope. Decide contra el epígrafe oficial si el hueco es REAL (el epígrafe nombra ese título → añade su rango de artículos al topic_scope del tema que corresponde, reusando las preguntas ya en BD) o LEGÍTIMO (el programa no lo incluye → dejarlo). NUNCA añade un título que el epígrafe no pida ni quita contenido que sí pida.',
+  },
+  scope_over_inclusion_suspect: {
+    title: 'Scope más ancho que el epígrafe (mete casi la ley entera)',
+    triggerPhrase: 'revisa la sobre-inclusión del temario',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada tema señalado (banda HIGH: el epígrafe cita títulos con huecos o artículos concretos pero el scope mete casi toda la ley) corre el adjudicador verify:scope: obtén la estructura oficial de la ley (títulos/capítulos y sus rangos), mapea cada materia que NOMBRA el epígrafe a su título/capítulo, y LISTA los títulos con preguntas escopadas que el epígrafe NO nombra. Si el epígrafe realmente acota (deja títulos fuera), recorta el article_numbers a lo que pide el epígrafe (las preguntas fuera de programa quedan en BD, dejan de servirse en ese tema); si el epígrafe abarca de verdad toda la ley, es falso positivo y se deja. NUNCA recortes un bloque que el epígrafe sí pide ni des por buena la ley entera sin mapear su estructura (ese atajo fue el falso verde del caso T11).',
+  },
+  scope_cross_tema_dup: {
+    title: 'Misma ley duplicada entre temas (repartir por materia)',
+    triggerPhrase: 'revisa las leyes duplicadas entre temas',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'corre `npm run scope:health -- --pending` para ver qué ley está duplicada en qué oposición/temas (bucket REPARTO). Para cada una: mira los epígrafes de los temas hermanos que comparten la ley entera, decide qué parte de la ley pide cada uno (por título/capítulo/materia), y REPARTE el article_numbers entre ellos con simulación orphan-check (la unión debe conservar todas las preguntas). NO huerfanes preguntas; si dos epígrafes cubren legítimamente el mismo bloque (cross-cutting, solape pequeño), déjalo. Contenedores de contenido clínico (NULL) compartidos entre temas hermanos suelen ser legítimos (no partibles por artículo).',
+  },
+  visual_deixis_no_image: {
+    title: 'Pregunta que invoca una imagen que no existe',
+    triggerPhrase: 'revisa las preguntas sin imagen',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza las preguntas activas cuyo enunciado apunta a un icono/símbolo/imagen ("el siguiente icono", "el siguiente símbolo", "observa la figura", "las restas de la imagen") pero tienen image_url NULL → son irresolubles (nadie ve el gráfico). Para cada una: si el enunciado/opciones ya describen el visual en texto, es autocontenida (dejar); si necesita la imagen y hay fuente oficial recuperable, reconstruir la imagen; si no hay fuente, jubilar con transition_question_state(admin_image_unavailable → retired_irreparable). NUNCA inventar la imagen ni fijar una clave a ciegas.',
+  },
 }
 
 /** Todos los kinds conocidos (para el guardarraíl anti-huérfano). */

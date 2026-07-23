@@ -1245,6 +1245,62 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
       armando: armandoAmount
     })
 
+    const paymentDate = data.paymentDate || new Date().toISOString()
+
+    // Idempotencia por stripe_invoice_id. Un alta nueva dispara DOS eventos para
+    // el MISMO pago: checkout.session.completed (charge/payment_intent NULL — las
+    // sesiones de suscripción no llevan PI) e invoice.payment_succeeded (con
+    // charge). El unique por payment_intent NO deduplicaba (NULL no colisiona) →
+    // filas duplicadas (bug 07/07, flip a cuenta Nila). El upsert por invoice
+    // garantiza UNA sola fila y la ENRIQUECE con charge/fee/net cuando llega el
+    // evento completo, sea cual sea el orden. Ver migración 20260718.
+    if (data.invoiceId) {
+      const res = await data.db.execute(sql`
+        INSERT INTO payment_settlements (
+          stripe_payment_intent_id, stripe_charge_id, stripe_invoice_id, stripe_customer_id,
+          user_id, user_email, amount_gross, stripe_fee, amount_net, currency,
+          manuel_amount, armando_amount, payment_date
+        ) VALUES (
+          ${data.paymentIntentId}, ${data.chargeId}, ${data.invoiceId}, ${data.customerId},
+          ${data.userId}, ${data.userEmail}, ${data.amountGross}, ${stripeFee}, ${amountNet},
+          ${data.currency || 'eur'}, ${manuelAmount}, ${armandoAmount}, ${paymentDate}
+        )
+        ON CONFLICT (stripe_invoice_id) WHERE stripe_invoice_id IS NOT NULL
+        DO UPDATE SET
+          stripe_payment_intent_id = COALESCE(payment_settlements.stripe_payment_intent_id, EXCLUDED.stripe_payment_intent_id),
+          stripe_charge_id         = COALESCE(payment_settlements.stripe_charge_id, EXCLUDED.stripe_charge_id),
+          stripe_customer_id       = COALESCE(payment_settlements.stripe_customer_id, EXCLUDED.stripe_customer_id),
+          -- fee/net/reparto: quedarse con la versión que TIENE charge (la completa)
+          stripe_fee     = CASE WHEN payment_settlements.stripe_charge_id IS NULL AND EXCLUDED.stripe_charge_id IS NOT NULL THEN EXCLUDED.stripe_fee     ELSE payment_settlements.stripe_fee     END,
+          amount_net     = CASE WHEN payment_settlements.stripe_charge_id IS NULL AND EXCLUDED.stripe_charge_id IS NOT NULL THEN EXCLUDED.amount_net     ELSE payment_settlements.amount_net     END,
+          manuel_amount  = CASE WHEN payment_settlements.stripe_charge_id IS NULL AND EXCLUDED.stripe_charge_id IS NOT NULL THEN EXCLUDED.manuel_amount  ELSE payment_settlements.manuel_amount  END,
+          armando_amount = CASE WHEN payment_settlements.stripe_charge_id IS NULL AND EXCLUDED.stripe_charge_id IS NOT NULL THEN EXCLUDED.armando_amount ELSE payment_settlements.armando_amount END,
+          updated_at = now()
+        RETURNING (xmax = 0) AS inserted
+      `)
+      const rows = (res as unknown as { rows?: Array<{ inserted: boolean }> }).rows
+        ?? (res as unknown as Array<{ inserted: boolean }>)
+      const inserted = Array.isArray(rows) && rows[0]?.inserted === true
+      if (inserted) {
+        console.log('💰 Settlement registrado correctamente')
+      } else {
+        // 2º evento del mismo pago (dedup/enriquecido, comportamiento normal en altas).
+        // Observabilidad: vigila el patrón y caza si el índice se cae o cambia el flujo.
+        console.log(`💰 Settlement enriquecido (dedup por invoice ${data.invoiceId})`)
+        await emit({
+          source: 'vercel',
+          severity: 'info',
+          eventType: 'stripe_settlement_deduped',
+          endpoint: '/api/stripe/webhook',
+          userId: data.userId,
+          deployVersion: process.env.GIT_COMMIT_SHA?.slice(0, 8) ?? null,
+          metadata: { invoiceId: data.invoiceId, incomingHasCharge: !!data.chargeId },
+        })
+      }
+      return
+    }
+
+    // Pago SIN factura (puntual): idempotencia por payment_intent (unique existente).
     let error: unknown = null
     try {
       await data.db
@@ -1262,7 +1318,7 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
           currency: data.currency || 'eur',
           manuelAmount: manuelAmount,
           armandoAmount: armandoAmount,
-          paymentDate: data.paymentDate || new Date().toISOString()
+          paymentDate: paymentDate
         })
     } catch (e) {
       error = e

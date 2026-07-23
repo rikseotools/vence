@@ -109,6 +109,12 @@ export type ClientEventType =
   // re-activa, para entender la fricción de la métrica. metadata.action ∈
   // {'show','hide','toggle_failed'}. userId va auto.
   | 'topic_trend_action'
+  // Botón "Imprimir PDF" del temario. Antes CIEGO: ni sabíamos cuánta gente lo usa
+  // ni que en navegadores in-app (app de Google/Instagram/FB…) window.print() es un
+  // no-op silencioso (caso María, fb feb79fc5). metadata.action ∈
+  // {'print','inapp_blocked','copy_link','register_prompt'} + {slug, topic}. Con
+  // 'inapp_blocked' medimos el tamaño real del muro y si el apaño (copy_link) se usa.
+  | 'temario_print_action'
   // Banner global "Inscripción abierta" (boca-oreja). Antes era CIEGO (20/06): ni
   // impresiones, ni aperturas, ni cierres. Ahora medimos por convocatoria
   // (metadata.slug) → CTR, tasa de cierre y si el cooldown reduce el martilleo.

@@ -124,6 +124,17 @@ ORDER BY s.confidence_score DESC;
 
 **Y verificar antes de aplicar (lección SAS, ver §9):** el `llm_semantic` a veces extrae datos de un **ciclo distinto** al que modela nuestra fila (p. ej. promoción interna vs libre, u OEP vieja ya examinada). Cotejar el `detected_*` con el ciclo real de la oposición antes de modificar; si la señal es de otro turno/ciclo → `dismissed` con nota, no aplicar.
 
+### 📣 Señales candidatas a NEWSLETTER (criterio Manuel, 15/07/2026)
+
+Al triar, marcar mentalmente las señales que son **oro para promoción por newsletter** (§7b.1) — captan mejor que ninguna otra:
+
+1. **OEP masiva aprobada** — una OEP con muchas plazas recién publicada (aunque aún no haya convocatoria): la gente empieza a preparar el proceso meses antes. Cuantas más plazas, más lead.
+2. **Convocatoria con inscripción ABIERTA** — el momento de máxima captación: quien ve la newsletter aún puede apuntarse. Prioridad si es vendible (tenemos temario/tests) y las plazas son de **turno libre** (§4f).
+
+**Flujo:** cuando aplicas una señal de estos dos tipos sobre una oposición vendible, **anótala como candidata a newsletter** (además de aplicar el cambio en BD). El envío es el **newsletter manual** (§7b.1) — recordar que el email automático por hito NO existe aún (§4e-bis nota). Cruzar siempre con fecha de examen/ingreso real antes de priorizar presupuesto (runbook `google-ads-analisis.md`: la gente compra cerca del examen).
+
+**Ejemplo (15/07/2026):** de la tanda de señales OEP, las candidatas claras fueron las **dos de la Comunidad de Madrid** — Auxiliar Admin. (673 plazas, 626 libres, inscripción hasta 10/08) y Administrativo (212 plazas, 100 libres, hasta 11/08): masivas, vendibles y con inscripción abierta.
+
 ### ⛔ REGLA DE DESCARTE — descartar es la EXCEPCIÓN, no el default (aprendizaje 02/07/2026)
 
 > Objetivo del radar: **la BD de oposiciones más completa y fresca de España.** Descartar una señal tira dato. Por eso, ante cada `pending`, la pregunta NO es "¿esto es vendible / lo vamos a construir?" — es **"¿qué campo puedo escribir con esto?"**. Solo se descarta tras confirmar que NO hay ninguno.
@@ -423,6 +434,22 @@ convocatoria_hitos:
   [current] Listas definitivas admitidos
   [upcoming] 2026-05-23 Examen   ← SI hay hito porque la fecha es oficial
 ```
+
+### 4e-ter. EXCEPCIÓN: dos convocatorias en paralelo (ciclo en curso + nueva OEP) → publicar LAS DOS
+
+**Caso (decisión Manuel, 15/07/2026 — Auxiliar Admin. Comunidad de Madrid):** una oposición está **a mitad de un ciclo** (p. ej. `lista_admitidos`, examen futuro — la inscripción de ese ciclo YA cerró) y **abre una convocatoria NUEVA** de otra OEP con **inscripción abierta**. No es un rollover (§4e-bis es examen PASADO); aquí el examen del ciclo viejo aún no se ha hecho y encima hay uno nuevo abierto. **Coexisten dos procesos vivos.**
+
+**Regla:** en este supuesto la landing **debe publicar las DOS OEPs** — captar en ambas: los que ya estudian para el examen del ciclo en curso **y** los que aún pueden inscribirse en la convocatoria nueva. NO pivotar (§4e-bis) ni descartar ninguna: se pierde captación.
+
+> 🆕 **Schema robusto para multi-convocatoria (migración `20260718_convocatorias_multi_por_año.sql`, 18/07/2026).** Antes `convocatorias` tenía `UNIQUE(oposicion_id, año)` → **impedía dos convocatorias el mismo año** (bloqueaba el paso 1 de abajo; el 15/07 la ejecución quedó a medias por esto: la 2ª convocatoria solo se metió como hito, no como fila, y quedó **invisible** en el front de inscripción abierta). Se sustituyó por las **dos invariantes reales**: (a) índice parcial `convocatorias_una_vigente_por_oposicion` = **≤1 vigente** por oposición (de esto depende `oposiciones_ssot` con su `WHERE is_current LIMIT 1`; antes nada lo garantizaba = bug latente); (b) índice parcial `convocatorias_ref_oficial_unica (oposicion_id, convocatoria_numero)` = **no importar dos veces la misma Orden/BOE** (identidad natural). Ya se pueden clonar **N convocatorias por oposición y año** como filas propias. Al insertar la nueva vigente, poner `is_current=false` en la anterior **antes** (el índice ≤1-vigente lo exige).
+
+**Cómo modelarlo (sin perder dato):**
+1. **Capturar AMBAS convocatorias en la tabla `convocatorias`** (SSOT, Sprint G): la del ciclo en curso + la nueva. Cada una con su `año`, plazas, fechas, `boe_reference`, `convocatoria_numero` (referencia oficial = identidad), `estado_proceso`. Verificar la nueva contra el boletín oficial (BOCM/DOG/BOE) — turno libre, plazas, plazo — antes de escribir. **Ya cabe aunque sea el mismo año** que otra (ver nota de schema arriba).
+2. **`is_current`** apunta a **una** (la que sea "primaria" para el hero; criterio: la que capta leads AHORA = la de **inscripción abierta**). La otra queda con `is_current=false` pero **NO `archived_at`** (sigue viva).
+3. **Render:** hoy la landing solo pinta la `is_current` (vía `oposiciones_ssot`). Para mostrar las dos de verdad hay **dos vías**: (a) que la landing liste todas las convocatorias no archivadas de la oposición (cambio de código pequeño, lo ideal), o (b) interim: `is_current`=la abierta + un **hito `current`** que anuncie el otro proceso. Mientras no exista (a), el dato queda capturado en `convocatorias` y en un hito informativo (`severity='important'`, `notify_status='verified'`).
+4. **Ojo `audit:estados` (§0.bis):** con dos convocatorias, el estado de la fila `oposiciones` (legacy) es el de la `is_current`; el auditor mira esa. No debe contradecirse con sus fechas.
+
+**Estado (18/07/2026):** el **schema ya soporta** guardar las dos convocatorias como filas propias (migración `20260718`, ver nota arriba) — hecho para Madrid: las 673 plazas con inscripción abierta ya se ven en el front. Lo que **sigue pendiente** es la vía (a) de **render** (que la landing pinte simultáneamente las dos convocatorias no archivadas; hoy `oposiciones_ssot` solo resuelve la `is_current`). Primer caso real = Auxiliar Admin. Comunidad de Madrid (ciclo `lista_admitidos` examen 15/10/2026, `is_current=false` **+** convocatoria nueva **Orden 1628/2026, 673 plazas libres** + 10 PI, inscripción hasta 10/08/2026, `is_current=true`). **Ojo dato:** eran **673** libres (no 626 como se anotó el 15/07); verificado en BOCM nº 165, 13/07/2026 (`BOCM-20260713-2`).
 
 ### 4f. Turno libre vs promoción interna (CRÍTICO)
 
@@ -999,6 +1026,8 @@ npm run oep:seguimiento-urls                 # aplica a TODAS las catalogadas si
 ```
 
 `scripts/assign-seguimiento-urls.cjs` rellena toda `catalogada` con `seguimiento_url IS NULL` en dos pasadas: (1) **donante** — reutiliza la URL ya validada de otra oposición del mismo organismo, con `administracion` normalizada (sin acentos, guiones→espacio, `universidade`→`universidad`, así casa "Universidade de Vigo"↔"Universidad de Vigo" y "Servicio Navarro de Salud-Osasunbidea" con/sin espacios); (2) **fallback por CCAA** — portal de empleo público autonómico oficial (mapa `CCAA_FALLBACK` en el script, ampliable), tomado de la CCAA de la señal que la descubrió. Las que no casan ninguna se **reportan** (no se inventa URL — mejor `null` explícito que un enlace que no vigila el proceso real). Correrlo **después de cada tanda de "Aplicar" descubrimientos**. Sigue vigente la regla server-rendered del caveat JS de arriba (los donantes ya lo son; revisar los fallback nuevos que se añadan al mapa).
+
+> **⚠️ El helper es GLOBAL, no scoped a tu tanda (aprendizaje 20/07/2026).** `--dry-run` procesa TODO el backlog de catalogadas sin URL — el 20/07 eran **2.048** (1.097 asignables donante/fallback + 951 sin casar). Lanzarlo en vivo tras catalogar 3-8 filas escribe ~1.097 URLs de golpe: es una **tarea de mantenimiento propia**, NO un efecto colateral de una tanda pequeña. Para una tanda corta, **asigna la `seguimiento_url` a mano solo a tus filas nuevas** buscando donante del mismo organismo (`SELECT slug,seguimiento_url FROM oposiciones WHERE administracion=$1 AND seguimiento_url IS NOT NULL LIMIT 1`) y **verifica el donante antes de reusarlo** — dos trampas reales cazadas ese día: (a) el hermano de *"Universitat de València"* tenía una URL de **`valencia.es` (el Ayuntamiento, no la Universitat)** → identidad Universidad≠Local otra vez (§1); (b) el hermano de *Universidad de Granada* tenía un **PAG `detalleEmpleo.htm?idConvocatoria=…` específico de OTRA convocatoria** (vigila un solo proceso, no el cuerpo). Si el donante no es una URL **general y del organismo correcto**, dejar `seguimiento_url=NULL` + nota, nunca reusar a ciegas.
 
 **Caso secundario — fuente agregadora que NO es un cuerpo concreto** (DGFP, INAP, Moncloa, un BOP entero): va en `generic_source_checks` (RLS admin → `SUPABASE_SERVICE_ROLE_KEY`), la vigila el cron `detect-generic-sources`:
 

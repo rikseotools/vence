@@ -37,6 +37,21 @@ Motivo: el texto literal del usuario suele ser la punta del iceberg (p.ej. "no h
 - Solo `record_topic_verification()` marca verificado (captura el hash). Un edit manual de scope dispara el trigger → `stale`. Nunca queda un "verificado" viejo colgado.
 - **Claude en el bucle:** el usuario dispara, Claude ejecuta este runbook. No es un cron autónomo.
 
+## Triaje en lote — `npm run scope:health` (clasificador de salud, complementa a scope-over-inclusion)
+Antes de verificar oposición por oposición, **corre el clasificador** para saber CUÁL es cada una y en qué orden:
+```bash
+npm run scope:health -- --pending    # solo las que tienen temas sin verificar, orden por usuarios
+npm run scope:health -- --json        # para pipelines
+node scripts/scope-health-classify.cjs --simulate   # ground truth sin BD
+```
+Clasifica cada oposición en 4 buckets (los 3 patrones recurrentes de la campaña 21-22/07 + limpio):
+- **BUILD** → tiene temas VACÍOS (0 topic_scope) = medio construida → `crear-nueva-oposicion.md`, NO este runbook.
+- **REPARTO** → una LEY REAL escopada entera/con solape grande en ≥2 temas (misma ley duplicada) → repartir por materia (dump + 2 agentes o adjudicación por títulos + simulación orphan-check). *Es un prefiltro: solape 1-2 arts = cross-cutting legítimo (no lo marca); >2 = candidato a dup, el humano confirma.*
+- **CLINICO** → solo CONTENEDORES de contenido compartidos (NULL en ≥2 temas) → casi siempre legítimos (no partibles por artículo); asignar al tema dueño si hay uno claro, o aceptar compartido.
+- **LIMPIA** → sin vacíos ni duplicados → verify directo (coherencia título↔scope) o ya correcta.
+
+**GOTCHA que cazó:** `article_numbers=NULL` = LEY/CONTENEDOR ENTERO; un check de solape por rango numérico da "limpio" en falso. El clasificador cuenta NULL-compartido como duplicado. Núcleo puro testeable (`--simulate`, 9 casos ground-truth).
+
 ## Procedimiento
 
 ### 1. Dump del input de los agentes
@@ -131,3 +146,22 @@ Tratar los `drift_detected`: coger el texto oficial literal del temario → **ac
 - Un `programa_url` puede estar stale/apuntar mal (Vector 3 del manual) — si el temario oficial no cuadra por número, es otro sabor de bug (numeración/versión), no lo fuerces.
 - Datos contaminados: notas TODO (`_tmp_hold`) coladas en `article_numbers` aparecen como "artículos" — limpiar el dato, no es scope.
 - El sistema verifica **scope↔epígrafe (semántico)**, no literalidad byte-a-byte del boletín (ver memoria `reference_epigrafe_programa_url_en_bd`: el epígrafe de BD no está garantizado literal).
+- **El detector mecánico (`audit:epigrafe`) NO caza los casos finos** — es un prefiltro con muchos falsos positivos. Caso Asturias aux (21/07): `audit:epigrafe` solo marcó 1 flag trivial; los 4 issues reales (over-scope C1 en T8/T15/T16, anti-word-matching en T19) los encontró el **pipeline de 2 agentes + Vector 2**. No confíes en el detector para el veredicto; corre siempre el pase con agentes.
+
+### Vector 2 C1↔C2 — la palanca decisiva para adjudicar over-scope (aprendizaje Asturias 21/07)
+Cuando un epígrafe **cita capítulos/secciones con precisión quirúrgica** (p.ej. *"Secciones 1 y 2 del capítulo III y Secciones 1 y 2 del capítulo IV"*), **es el temario oficial LITERAL con exclusión deliberada** — la Sección 3ª que NO nombra está fuera a propósito, no es un resumen condensado. Señal de over-scope real si el scope trae esos capítulos por import de ley entera.
+- **El programa del Auxiliar (C2) es una versión REDUCIDA del Administrativo (C1)** de la misma administración. Material "de más" en el aux (sancionadora, responsabilidad patrimonial, recaudación, incapacidad temporal…) suele ser **contenido C1** colado por whole-law import.
+- **Confírmalo con la hermana C1** (`administrativo_<comunidad>`): si C1 tiene **temas DEDICADOS** a ese material (Asturias C1: T208 sancionadora, T209 responsabilidad, T305/T306 LGSS), queda probado que es C1-level y el aux (C2) lo excluye con razón → **recortar del C2** (mejora la preparación: el opositor C2 no debe practicar material que no le cae; las preguntas siguen sirviendo en C1).
+- **PERO distíngueलo del anti-word-matching:** si el bloque "de más" testea la **MISMA materia que el epígrafe SÍ pide**, aunque cite otra ley, **NO es over-scope — mantener**. Caso T19 Asturias: la LO 3/2018 no se nombra (el epígrafe cita el RGPD) pero sus arts 4-18 son *principios (110q) + derechos (119q)* = exactamente lo que el epígrafe pide "Principios y derechos"; la ley española traspone el RGPD para el mismo subject → cobertura legítima. La prueba: mapea las preguntas del bloque a la materia del epígrafe; si coinciden, es anti-word-matching (mantener); si son materia distinta/de otro tema, es over-scope C1 (recortar).
+
+## Detector — sobre-inclusión de scope ("revisa la sobre-inclusión del temario")
+
+**Qué caza:** el epígrafe enumera sub-materias CONCRETAS de una ley (p.ej. "atención y asistencia; intimidad y confidencialidad; información y participación; deberes") pero el `topic_scope` mete **casi la ley entera** → el tema sirve preguntas **fuera de programa en silencio**. Es lo contrario de un hueco: aquí sobra, no falta.
+
+**Por qué se nos escapó (caso raíz 21/07, SMS T11 Ley 3/2009):** doble punto ciego. (1) Los detectores de HUECOS (`empty_topic`, `low_coverage`, `scope_titulo_huerfano`, `scope_phantom_article`) no lo ven porque el tema rebosa preguntas. (2) El pipeline `verify:scope` lo dio en **FALSO VERDE** — el juicio LLM razonó a grano grueso ("la ley va de derechos/deberes → cabe entera") sin mapear los 4 bloques del epígrafe a Títulos II-IV + VII y ver que excluye Títulos I, V (consentimiento), VI (historia clínica), VIII (garantías). El run lo marcó `verified_correct` a las 18:34; una usuaria lo cazó a las 18:38.
+
+**Sistema de 2 fases (embudo):**
+1. **Stage-1 determinista** — `lib/laws/scopeOverInclusion.ts` (`classifyScope`), mirror en `health-sweep.cjs` (kind `scope_over_inclusion_suspect`). Baja ~5.800 scopes → decenas de sospechosos. Señales: cobertura ≥90% de una ley grande (≥12 arts) + epígrafe enumerador (colon + ≥3 segmentos por `;`/`,`); reglas de alta confianza = epígrafe con **títulos-con-hueco** (nombra II y IV, salta III) o **artículos citados** (arts. 45 a 49) que el scope ignora. Guardas negativas: epígrafe que declara la ley "íntegra", o que enumera **todos** los títulos en secuencia + cierre (reforma/disposiciones) = monográfico legítimo. **Solo la banda HIGH pinga el badge**; la MEDIUM (patrón prosa tipo T11, precisión ~35%) es la cola de adjudicación bajo demanda. Herramienta de scan ad-hoc: `node scripts/scope-over-inclusion.cjs --scan`.
+2. **Stage-2 adjudicador (LLM)** — para cada sospechoso: obtén la **estructura oficial** de la ley (títulos/capítulos y rangos, vía BOE/BORM con WebFetch), **mapea cada materia que nombra el epígrafe** a su título/capítulo, y **LISTA los títulos con preguntas escopadas que el epígrafe NO nombra**. Es el paso que le faltó a `verify:scope`.
+
+**Remediar:** si el epígrafe acota de verdad (deja títulos fuera) → recortar `article_numbers` a lo que pide el epígrafe (las preguntas fuera quedan en BD, dejan de servirse en ese tema, pueden servir a otras oposiciones). Si el epígrafe abarca genuinamente toda la ley → falso positivo, dejar. **NUNCA** recortes un bloque que el epígrafe sí pide, ni des por buena la ley entera sin mapear su estructura (ese atajo fue el falso verde). El límite fino de artículos siempre se confirma con la fuente oficial + revisión humana.

@@ -36,7 +36,7 @@ async function purge(path) {
 }
 
 async function main() {
-  const { createClient } = require('@supabase/supabase-js')
+  const { createClient } = require('./lib/pg-agnostic-client.cjs')
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

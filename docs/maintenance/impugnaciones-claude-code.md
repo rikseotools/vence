@@ -11,11 +11,13 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 > **Empieza por aquí.** Secuencia canónica para resolver una impugnación. Las secciones §1-§16 son el detalle.
 
 **Reglas que NO se saltan nunca:**
+- 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí.
 - NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
+- 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next --sid <tu-id-de-sesión>` (el `<id>` = el UUID de tu carpeta de scratchpad, único por sesión) — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). O pásale `--sid` a `revisar-impugnacion.cjs <id> --sid <id>` y la coge al abrir el dossier (avisa si otra sesión ya la tiene). Un claim se auto-libera a las 2h. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
 - **UNA POR UNA.** Resolver cada impugnación de forma **individual y completa** (§2): su propio análisis, su propio borrador, su propia aprobación y su propio email. **NUNCA agrupar** varias impugnaciones del mismo usuario en un solo mensaje/email, aunque compartan causa raíz o sea el mismo usuario. El análisis de denominador común (§7.5) sirve para **entender** el fallo, no para **fusionar** la respuesta. No presentar análisis de varias a la vez: terminar una (analizar → borrador → OK → cerrar) antes de empezar la siguiente.
 - SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
 - Cerrar SIEMPRE vía endpoint `/api/v2/dispute/resolve` — nunca UPDATE directo (§6, §15).
-- Listar impugnaciones requiere **SERVICE_ROLE_KEY** (con ANON devuelve `[]` silencioso por RLS).
+- ⚠️ **Listar/consultar SIEMPRE contra RDS (`pg` + `DATABASE_URL`), NUNCA con `@supabase/supabase-js`.** Desde el cutover 04/07 la BD viva es **AWS RDS**; el cliente `@supabase/supabase-js` (`NEXT_PUBLIC_SUPABASE_URL`, sea ANON o SERVICE_ROLE) apunta al **Supabase CONGELADO** y devuelve datos desactualizados — muestra como `pending` disputes que en RDS ya están `resolved` (incidente 17/07: `supabase-js` dio 1 pendiente cuando RDS tenía 6; una dispute "pending" en el backup llevaba resuelta desde el 05/07). **Fíate del dossier `revisar-impugnacion.cjs`** (lee RDS). Ver aviso CLAUDE.md → "CUTOVER A RDS".
 
 **Pasos:**
 
@@ -48,16 +50,48 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 mira a ver si hay impugnaciones abiertas
 ```
 
-Claude ejecutará:
+> ⚠️ **Consulta la BD VIVA (RDS), no el Supabase congelado** (ver regla dura arriba y CLAUDE.md → "CUTOVER A RDS"). `@supabase/supabase-js` da datos desactualizados. Usa `pg` con `DATABASE_URL`:
+
 ```javascript
-supabase
-  .from('question_disputes')
-  .select('id, question_id, user_id, dispute_type, description, status, created_at')
-  .in('status', ['pending', 'appealed'])
-  .order('created_at', { ascending: false });
+require('dotenv').config({ path: '.env.local' });
+const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
+const leg = await sql`
+  SELECT id, question_id, user_id, dispute_type, description, status, created_at
+  FROM question_disputes
+  WHERE status IN ('pending','appealed')
+  ORDER BY created_at`;              // ascending = la más antigua primero (la "primera" a resolver)
+const psy = await sql`
+  SELECT id, question_id, user_id, dispute_type, description, status, created_at
+  FROM psychometric_question_disputes
+  WHERE status IN ('pending','appealed')
+  ORDER BY created_at`;
 ```
 
 **Resultado:** Lista de impugnaciones pendientes y con alegación (ambas requieren atención).
+
+> 💡 **Antes de empezar cada impugnación de la cola, revalida su `status` en RDS**: en sesiones paralelas otra sesión puede haberla cerrado entre medias (incidente 17/07: 2 disputes de la cola se cerraron en otra sesión mientras se trabajaba). No la des por abierta sin comprobar.
+
+### 1.bis Reparto entre sesiones (claim) — `cola.cjs`
+
+Para que **2-10 sesiones** trabajen la cola a la vez sin analizar la misma impugnación (incidente 17/07), cada sesión **coge** items con `scripts/impugnaciones/cola.cjs` (lee/escribe RDS). El claim es atómico (`FOR UPDATE SKIP LOCKED`): dos sesiones nunca reciben la misma fila.
+
+```bash
+# Ver la cola (impugnaciones legislativas + psicotécnicas + feedback) con quién tiene qué:
+node scripts/impugnaciones/cola.cjs list
+
+# Coger la siguiente impugnación libre (o feedback con --queue feedback):
+node scripts/impugnaciones/cola.cjs next --sid <tu-id-de-sesión>          # <id> = UUID de tu scratchpad
+node scripts/impugnaciones/cola.cjs next --sid <id> --queue feedback
+
+node scripts/impugnaciones/cola.cjs mine --sid <id>                        # tus claims activos
+node scripts/impugnaciones/cola.cjs release <dispute_id> --sid <id>        # soltar sin cerrar
+```
+
+- **Claim = protege el ANÁLISIS.** El cierre (`/resolve` → `resolved`) la saca del pool solo; el backstop 409 sigue evitando doble-email si dos coinciden.
+- **Auto-libera a las 2h** (una sesión que muere no bloquea la cola para siempre). No hay cron ni "renew".
+- El id de sesión (`--sid`) = el UUID de tu carpeta de scratchpad (único por sesión). Se guarda en `claimed_by`.
+- Alternativa integrada: `revisar-impugnacion.cjs <id> --sid <id>` coge la impugnación al generar el dossier y avisa si otra sesión ya la tiene fresca.
+- Diseño y sizing (2-10 sesiones; el límite real es tu aprobación, no la BD): migración `supabase/migrations/20260717_dispute_feedback_claim.sql`.
 
 ## 2. Analizar una Impugnación a Fondo
 
@@ -512,7 +546,7 @@ Equipo de Vence
 
 **Notas de tono:**
 - Firmar siempre con "Equipo de Vence" al final.
-- **NO usar fórmulas tipo "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. Un simple "Muchas gracias." es suficiente.
+- **NO usar fórmulas de apertura tipo "Gracias por avisar", "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. NO abrir el mensaje agradeciendo el aviso: entrar directo al reconocimiento ("Tenías razón…") o a la corrección. El único agradecimiento válido es el cierre "Muchas gracias." al final.
 - Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
 - **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tenías razón" sin listar todo lo que estaba mal.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
@@ -579,28 +613,31 @@ const result = await res.json();
 | `question_disputes` | Legislativas | `question_id` → `questions` |
 | `psychometric_question_disputes` | Psicotécnicas | `question_id` → `psychometric_questions` |
 
-**Para ver TODAS las impugnaciones pendientes:**
+**Para ver TODAS las impugnaciones pendientes** (⚠️ **RDS vía `pg`, no `supabase-js`** — ver §1):
 
 ```javascript
-// 1. Impugnaciones legislativas pendientes (incluye alegaciones)
-const { data: legDisputes } = await supabase
-  .from('question_disputes')
-  .select('id, question_id, user_id, dispute_type, description, status, created_at')
-  .in('status', ['pending', 'appealed'])
-  .order('created_at', { ascending: true });
+require('dotenv').config({ path: '.env.local' });
+const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
 
-// 2. Impugnaciones psicotécnicas pendientes
-const { data: psyDisputes } = await supabase
-  .from('psychometric_question_disputes')
-  .select('id, question_id, user_id, dispute_type, description, status, created_at')
-  .in('status', ['pending', 'appealed'])
-  .order('created_at', { ascending: true });
+// 1. Legislativas pendientes (incluye alegaciones)
+const legDisputes = await sql`
+  SELECT id, question_id, user_id, dispute_type, description, status, created_at
+  FROM question_disputes
+  WHERE status IN ('pending','appealed')
+  ORDER BY created_at`;
 
-console.log('Legislativas:', legDisputes?.length || 0);
-console.log('Psicotécnicas:', psyDisputes?.length || 0);
+// 2. Psicotécnicas pendientes
+const psyDisputes = await sql`
+  SELECT id, question_id, user_id, dispute_type, description, status, created_at
+  FROM psychometric_question_disputes
+  WHERE status IN ('pending','appealed')
+  ORDER BY created_at`;
+
+console.log('Legislativas:', legDisputes.length);
+console.log('Psicotécnicas:', psyDisputes.length);
 ```
 
-**Para corregir preguntas psicotécnicas:**
+**Para corregir preguntas psicotécnicas:** (⚠️ mismo criterio RDS que arriba — escribe con `pg`/`DATABASE_URL`, no `supabase-js`, o el cambio irá al backup congelado y no a producción; los ejemplos `supabase` de abajo son ilustrativos del qué, no del cliente)
 
 ```javascript
 // Actualizar pregunta psicotécnica

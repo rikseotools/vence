@@ -347,6 +347,26 @@ export const topicScopeVerification = pgTable("topic_scope_verification", {
 	check("topic_scope_verification_state_check", sql`state = ANY (ARRAY['never_verified'::text, 'verifying'::text, 'verified_correct'::text, 'verified_issues'::text, 'needs_human'::text, 'stale'::text])`),
 ]);
 
+// T-055 — triaje de leyes huérfanas (sin topic_scope). decision=held marca las
+// descartadas para NO re-examinarlas en pasadas futuras; placed ya viven en topic_scope.
+export const topicScopeOrphanTriage = pgTable("topic_scope_orphan_triage", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	lawId: uuid("law_id").notNull(),
+	positionType: text("position_type").notNull(),
+	decision: text().notNull(),
+	topicId: uuid("topic_id"),
+	reason: text(),
+	method: text(),
+	triagedAt: timestamp("triaged_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	triagedBy: text("triaged_by"),
+}, (table) => [
+	index("idx_orphan_triage_held").using("btree", table.positionType.asc().nullsLast()).where(sql`decision = 'held'`),
+	foreignKey({ columns: [table.lawId], foreignColumns: [laws.id], name: "topic_scope_orphan_triage_law_id_fkey" }).onDelete("cascade"),
+	foreignKey({ columns: [table.topicId], foreignColumns: [topics.id], name: "topic_scope_orphan_triage_topic_id_fkey" }).onDelete("set null"),
+	unique("topic_scope_orphan_triage_uq").on(table.lawId, table.positionType),
+	check("topic_scope_orphan_triage_decision_check", sql`decision = ANY (ARRAY['placed'::text, 'held'::text])`),
+]);
+
 export const topicScopeVerificationHistory = pgTable("topic_scope_verification_history", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	topicId: uuid("topic_id").notNull(),
@@ -503,8 +523,9 @@ export const questionArticles = pgTable("question_articles", {
 	check("question_articles_relevance_check", sql`relevance = ANY (ARRAY['primary'::text, 'secondary'::text, 'reference'::text])`),
 ]);
 
-// SSOT del PROCESO (Sprint G). Una fila por año; `is_current` marca la vigente.
-// La leen los lectores vía la vista `oposiciones_ssot` (db/oposicionesSsot.ts).
+// SSOT del PROCESO (Sprint G). N convocatorias por oposición (histórico + varias el
+// MISMO año: 2ª convocatoria, turno libre/PI en Ordenes distintas); `is_current` marca
+// la vigente. La leen los lectores vía la vista `oposiciones_ssot` (db/oposicionesSsot.ts).
 export const convocatorias = pgTable("convocatorias", {
 	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	oposicionId: uuid("oposicion_id").notNull(),
@@ -548,7 +569,16 @@ export const convocatorias = pgTable("convocatorias", {
 			foreignColumns: [oposiciones.id],
 			name: "convocatorias_oposicion_id_fkey"
 		}).onDelete("cascade"),
-	unique("convocatorias_oposicion_id_año_key").on(table.oposicionId, table["año"]),
+	// Invariante real: como mucho UNA convocatoria vigente por oposición (de esto depende
+	// oposiciones_ssot con su `WHERE is_current LIMIT 1`). Sustituye a la antigua
+	// UNIQUE(oposicion_id, año), que impedía dos convocatorias el mismo año.
+	uniqueIndex("convocatorias_una_vigente_por_oposicion")
+		.on(table.oposicionId)
+		.where(sql`is_current AND archived_at IS NULL`),
+	// Identidad natural: no importar dos veces la misma Orden/BOE oficial.
+	uniqueIndex("convocatorias_ref_oficial_unica")
+		.on(table.oposicionId, table.convocatoriaNumero)
+		.where(sql`convocatoria_numero IS NOT NULL`),
 ]);
 
 export const userRoles = pgTable("user_roles", {
@@ -1405,6 +1435,12 @@ export const paymentSettlements = pgTable("payment_settlements", {
 			name: "payment_settlements_user_id_fkey"
 		}),
 	unique("payment_settlements_stripe_payment_intent_id_key").on(table.stripePaymentIntentId),
+	// Idempotencia del settlement por factura: un alta nueva emite 2 eventos (checkout +
+	// invoice.payment_succeeded) para el mismo pago → sin esto, filas duplicadas (bug 07/07).
+	// Parcial: los pagos puntuales sin factura (invoice NULL) no colisionan. Migración 20260718.
+	uniqueIndex("payment_settlements_stripe_invoice_id_key")
+		.on(table.stripeInvoiceId)
+		.where(sql`stripe_invoice_id IS NOT NULL`),
 	pgPolicy("Allow public read on payment_settlements", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	pgPolicy("Allow public update on payment_settlements", { as: "permissive", for: "update", to: ["public"] }),
 ]);

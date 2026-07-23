@@ -134,6 +134,22 @@ async function main() {
       { count: flat.length, laws: leyes.length, sample: flat.slice(0, 15) });
   }
 
+  // ── CONTENIDO: explicaciones que son NOTAS DE AUDITORÍA (defecto de pipeline) ──
+  // Un pase IA anterior guardó su crítica ("La explicación debería…", "posible errata",
+  // "Nota técnica:", "Esta pregunta debería anularse") COMO explicación en vez de
+  // arreglarla. Se remediaron ~46 el 10/07 (36 reescritas + 10 needs_human); este
+  // detector evita que reaparezcan en silencio. Patrones ALTA PRECISIÓN (se omite
+  // "la explicación anterior", propenso a FP en explicaciones ya corregidas).
+  const AUDIT_NOTE_PATS = ['La explicación omite', 'La explicación debería', 'La explicación actual',
+    'Esta pregunta debería', 'posible errata', 'Nota técnica:', 'respuesta oficial del examen',
+    'debería ser impugnada', 'debería haberse ANULADO', 'debería haber especificado'];
+  const anOrs = AUDIT_NOTE_PATS.map((_, i) => `explanation ILIKE $${i + 1}`).join(' OR ');
+  const anRows = (await c.query(`SELECT id FROM questions WHERE is_active = true AND (${anOrs}) LIMIT 50`,
+    AUDIT_NOTE_PATS.map(p => '%' + p + '%'))).rows;
+  if (anRows.length) add('content', 'warn', null, 'audit_note_explanation',
+    `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
+    { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
+
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
   // Mirror INLINE de lib/laws/staleDatedLaw.ts — MANTENER EN SYNC (guardado por
   // __tests__/lib/laws/staleDatedLaw.test.ts). Una ley "para el año XXXX" ya
@@ -159,6 +175,264 @@ async function main() {
         { law_id: l.id, year: yr, oposiciones: opos });
     }
   }
+
+  // ── CONTENIDO: leyes NO verificadas contra su fuente oficial (falso verde) ──
+  // Mirror INLINE de lib/laws/completeness.ts — MANTENER EN SYNC (guardado por
+  // __tests__/lib/laws/completeness.test.ts). Una ley importada a medias, sin
+  // fuente, o marcada "actualizada" sin evidencia (falso verde) es invisible al
+  // monitor BOE (que solo parsea el BOE consolidado). Caso ULE T18: 9 de 74 arts,
+  // boe_url NULL, verification_status='actualizada' sin summary → lo cazó una
+  // usuaria, no nosotros. Solo se cuentan las que SIRVEN en temas vivos (impacto).
+  const classifyLaw = (isVirtual, boeUrl, status, su) => {
+    const hasSource = !!(boeUrl && String(boeUrl).trim());
+    const claims = ['actualizada', 'verificada'].includes((status || '').toLowerCase());
+    if (isVirtual === true) return null;
+    if (!su) {
+      if (claims) return 'false_green';
+      if (!hasSource) return 'no_source';
+      return 'never_verified';
+    }
+    if (su.no_consolidated_text === true || su.historical === true || su.deliberate_subset === true) return null;
+    const nn = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+    const boe = nn(su.boe_count), db = nn(su.db_count);
+    const missing = nn(su.missing_in_db) ?? (boe != null && db != null ? Math.max(0, boe - db) : null);
+    if (missing != null && missing > 0) return 'incomplete';
+    if ((nn(su.content_mismatch) ?? 0) > 0 || (nn(su.title_mismatch) ?? 0) > 0) return 'issues';
+    return null;
+  };
+  const lawRows = (await c.query(`
+    SELECT l.id, l.short_name, l.name, l.scope, l.is_virtual, l.boe_url,
+           l.verification_status, l.last_verification_summary AS su,
+           EXISTS (SELECT 1 FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id
+                   WHERE ts.law_id = l.id AND t.disponible) AS serving_live
+    FROM laws l`)).rows;
+  const unverified = [];
+  for (const l of lawRows) {
+    const st = classifyLaw(l.is_virtual, l.boe_url, l.verification_status, l.su);
+    if (st && l.serving_live) unverified.push({ id: l.id, name: l.short_name || l.name, scope: l.scope, state: st });
+  }
+  if (unverified.length) {
+    const byState = unverified.reduce((a, u) => ((a[u.state] = (a[u.state] || 0) + 1), a), {});
+    add('content', 'warn', null, 'law_unverified_source',
+      `${unverified.length} ley(es) sirviendo en temas vivos SIN verificar contra su fuente oficial (${Object.entries(byState).map(([k, v]) => `${k}:${v}`).join(', ')}) — importadas a medias o falso verde`,
+      { count: unverified.length, byState, sample: unverified.slice(0, 20) });
+  }
+
+  // ── CONTENIDO: TÍTULOS HUÉRFANOS del temario (hueco INTERNO del topic_scope) ──
+  // Un título de una ley que la oposición SÍ usa, con preguntas activas, con 0
+  // artículos escopados en NINGÚN tema de esa oposición, Y flanqueado a ambos lados
+  // por artículos escopados de la misma ley (hueco INTERNO, no un recorte de borde).
+  // Es el punto ciego entre la detección ley-entera (audit-epigrafe: la ley SÍ está
+  // en el scope, no salta UNDER) y la tema-servido (empty_topic/low_coverage: el tema
+  // tiene cientos de preguntas por OTROS títulos, sale verde). Caso raíz 19/07: CE
+  // Título V (108-116) huérfano en Diputación Córdoba → 186 preguntas sin practicar,
+  // pese a que el epígrafe del Tema 2 nombra "Relaciones entre el Gobierno y las Cortes
+  // Generales". Prefiltro DETERMINISTA: la adjudicación (hueco REAL vs título fuera de
+  // programa) la hace el pipeline LLM verify:scope leyendo el epígrafe (frase-gatillo
+  // "revisa los huecos del temario" → docs/runbooks/verificar-epigrafes-scope.md).
+  const SCOPE_GAP_MIN_Q = Number(process.env.SCOPE_GAP_MIN_Q || 8);
+  const titSecs = (await c.query(`SELECT ls.law_id, l.short_name, ls.section_number, ls.article_range_start lo, ls.article_range_end hi
+    FROM law_sections ls JOIN laws l ON l.id = ls.law_id
+    WHERE ls.section_type = 'titulo' AND ls.article_range_start IS NOT NULL AND ls.article_range_end IS NOT NULL`)).rows;
+  const scopeAll = (await c.query(`SELECT t.position_type pt, ts.law_id, ts.article_numbers
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id WHERE ts.article_numbers IS NOT NULL AND t.is_active`)).rows;
+  const qAll = (await c.query(`SELECT a.law_id, a.article_number an, count(DISTINCT q.id)::int n
+    FROM questions q JOIN articles a ON a.id = q.primary_article_id
+    WHERE q.is_active AND a.article_number ~ '^[0-9]+$' GROUP BY a.law_id, a.article_number`)).rows;
+  const scopedByPtLaw = new Map(); // "pt|law_id" → Set(int) — art 0 (fabricado) excluido
+  for (const r of scopeAll) {
+    const k = r.pt + '|' + r.law_id; let set = scopedByPtLaw.get(k); if (!set) scopedByPtLaw.set(k, set = new Set());
+    for (const a of (r.article_numbers || [])) { const n = parseInt(a); if (!isNaN(n) && n > 0) set.add(n); }
+  }
+  const qByLawArt = new Map();
+  for (const r of qAll) qByLawArt.set(r.law_id + '|' + parseInt(r.an), r.n);
+  const secsByLaw = new Map();
+  for (const sc of titSecs) { let arr = secsByLaw.get(sc.law_id); if (!arr) secsByLaw.set(sc.law_id, arr = []); arr.push(sc); }
+  const scopeGaps = [];
+  for (const [k, scoped] of scopedByPtLaw) {
+    if (scoped.size === 0) continue;
+    const bar = k.lastIndexOf('|'); const pt = k.slice(0, bar); const lawId = k.slice(bar + 1);
+    const secs = secsByLaw.get(lawId); if (!secs) continue;
+    const smin = Math.min(...scoped), smax = Math.max(...scoped);
+    for (const sc of secs) {
+      let q = 0, anyScoped = false;
+      for (let i = sc.lo; i <= sc.hi; i++) { q += (qByLawArt.get(lawId + '|' + i) || 0); if (scoped.has(i)) anyScoped = true; }
+      if (q >= SCOPE_GAP_MIN_Q && !anyScoped && smin < sc.lo && smax > sc.hi)
+        scopeGaps.push({ pt, ley: sc.short_name, titulo: sc.section_number, rango: `${sc.lo}-${sc.hi}`, preguntas: q });
+    }
+  }
+  if (scopeGaps.length) {
+    scopeGaps.sort((a, b) => b.preguntas - a.preguntas);
+    const nOpos = new Set(scopeGaps.map(g => g.pt)).size;
+    add('content', 'warn', null, 'scope_titulo_huerfano',
+      `${scopeGaps.length} título(s) con preguntas huérfanas (hueco INTERNO del scope) en ${nOpos} oposición(es) — el epígrafe puede pedirlos; adjudicar con verify:scope`,
+      { count: scopeGaps.length, oposiciones: nOpos, sample: scopeGaps.slice(0, 20) });
+  }
+
+  // ── CONTENIDO: ARTÍCULOS FANTASMA del scope (integridad referencial) ──
+  // Un número en topic_scope.article_numbers que NO tiene fila ACTIVA en articles
+  // (mismo law_id). El scope lo "pide" pero no hay artículo servible → 0 preguntas y
+  // 0 teoría, EN SILENCIO. Dos causas, ambas invisibles: `inexistente` (no hay fila:
+  // article_numbers es text[] denormalizado, no FK, nada garantiza la existencia) y
+  // `desactivado` (la fila existe pero is_active=false → aunque tenga preguntas activas,
+  // no se sirven). Punto ciego del verificador epígrafe↔scope (razona sobre MATERIA/rangos,
+  // no existencia por-artículo — da CORRECT dando por cubierto el artículo que falta) y del
+  // detector de filas rotas (solo caza '{}'). Casos raíz 21/07 (los cazó una usuaria):
+  // LPRL art 3 INEXISTENTE en administrativa_universidad_de_murcia, y LPRL art 3
+  // DESACTIVADO (con 38 preguntas) en auxiliar_administrativo_sms. Se SEPARA por boe_url:
+  // ley real (con BOE) = accionable (importar/reactivar/recortar); virtual/ofimática (sin
+  // BOE) = variante mal (· Escritorio/Web, dedupe Office) → CONTEXTO en el detail, no alarma
+  // aparte. Solo refs de artículo reales (`^\d+( bis| ter)?$`), excluye notas coladas.
+  const phantom = (await c.query(`
+    WITH refs AS (
+      SELECT DISTINCT ts.law_id, l.short_name, l.name, (l.boe_url IS NOT NULL) AS has_boe, trim(an) AS art
+      FROM topic_scope ts
+      JOIN topics t ON t.id = ts.topic_id
+      JOIN laws l ON l.id = ts.law_id
+      CROSS JOIN LATERAL unnest(ts.article_numbers) AS an
+      WHERE ts.article_numbers IS NOT NULL AND t.is_active = true
+    )
+    SELECT coalesce(r.short_name, r.name) AS ley, r.has_boe, r.art,
+           CASE WHEN NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND a.article_number = r.art)
+                THEN 'inexistente' ELSE 'desactivado' END AS causa
+    FROM refs r
+    WHERE r.art ~ '^[0-9]+( bis| ter)?$'
+      AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.law_id = r.law_id AND a.article_number = r.art AND a.is_active)`)).rows;
+  if (phantom.length) {
+    const real = phantom.filter(p => p.has_boe);
+    const virt = phantom.filter(p => !p.has_boe);
+    const leyesReal = [...new Set(real.map(p => p.ley))];
+    const inex = real.filter(p => p.causa === 'inexistente').length;
+    const desact = real.filter(p => p.causa === 'desactivado').length;
+    if (real.length) add('content', 'warn', null, 'scope_phantom_article',
+      `${real.length} artículo(s) escopado(s) que NO sirven (0 preguntas/teoría en silencio) en ${leyesReal.length} ley(es): ${inex} inexistente(s) + ${desact} desactivado(s) — importar del BOE / reactivar / o recortar el scope si la ley no lo tiene`,
+      { count: real.length, laws: leyesReal.length, inexistentes: inex, desactivados: desact, virtual_ofimatica: virt.length, sample: real.slice(0, 25).map(p => ({ ley: p.ley, art: p.art, causa: p.causa })) });
+  }
+
+  // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
+  // Mirror INLINE de lib/laws/scopeOverInclusion.ts — MANTENER EN SYNC (guardado por
+  // __tests__/lib/laws/scopeOverInclusion.test.ts). El epígrafe enumera sub-materias
+  // CONCRETAS pero el scope mete casi TODA la ley → sirve muchas preguntas fuera de
+  // programa. Punto ciego doble: los detectores de HUECOS no lo ven (el tema rebosa)
+  // y verify:scope lo dio en FALSO VERDE (caso Luisa/SMS T11, 21/07). Filtro Stage-1
+  // determinista; el límite fino lo adjudica verify:scope. Sólo se emite la banda HIGH
+  // (título con hueco / arts citados = precisión alta); la MEDIUM (patrón T11, prosa)
+  // tiene recall alto pero precisión ~35% → NO pinga el badge para no criar lobos.
+  const romanToInt = (s) => { s = s.toUpperCase().replace(/\.BIS$/, ''); const R = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }; let n = 0; for (let i = 0; i < s.length; i++) { const cur = R[s[i]], nxt = R[s[i + 1]]; if (cur == null) return null; n += (nxt && cur < nxt) ? -cur : cur; } return n; };
+  const classifyScope = (lawTotal, scopedCount, ep) => {
+    ep = ep || ''; const coverage = lawTotal > 0 ? scopedCount / lawTotal : 0;
+    const semis = (ep.match(/;/g) || []).length, hasColon = /:/.test(ep);
+    const titulos = []; let m; const reTit = /[Tt][íi]tulo\s+(Preliminar|[IVXLC]+(?:\.bis)?)/g;
+    while ((m = reTit.exec(ep)) !== null) { const v = /preliminar/i.test(m[1]) ? 0 : romanToInt(m[1]); if (v != null) titulos.push(v); }
+    const titSet = [...new Set(titulos)].sort((a, b) => a - b);
+    let titComplete = null, titGap = false;
+    if (titSet.length >= 2) { const max = titSet[titSet.length - 1]; const miss = []; for (let i = titSet[0]; i <= max; i++) if (!titSet.includes(i)) miss.push(i); titGap = miss.length > 0; titComplete = !titGap; }
+    const closureWord = /\breforma\b|disposici[oó]n(?:es)?\s+(?:adicional|transitoria|derogatoria|final)/i.test(ep);
+    let segments = 0;
+    if (hasColon) { segments = ep.slice(ep.indexOf(':') + 1).split(/[;,]/).map(s => s.trim()).filter(s => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length; }
+    const explicitArts = new Set(); const reR = /art[íi]?c?u?l?o?s?\.?\s*(\d+)\s*(?:a|al|-|–)\s*(\d+)/gi;
+    while ((m = reR.exec(ep)) !== null) { const a = +m[1], b = +m[2]; if (b - a >= 0 && b - a < 500) for (let i = a; i <= b; i++) explicitArts.add(i); }
+    const reS = /art[íi]?c?u?l?o?\.?\s*(\d+)(?!\s*(?:a|al|-|–)\s*\d)/gi;
+    while ((m = reS.exec(ep)) !== null) explicitArts.add(+m[1]);
+    const wholeLawWords = /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(ep);
+    const bigLaw = lawTotal >= 12, nearFull = coverage >= 0.9, enumerator = hasColon && segments >= 3;
+    if (wholeLawWords) return { band: 'CLEARED', score: 0, coverage, reason: null };
+    if (titComplete && closureWord && nearFull) return { band: 'CLEARED', score: 0, coverage, reason: null };
+    let score = 0, reason = null;
+    if (explicitArts.size > 0 && bigLaw && scopedCount >= explicitArts.size * 2 && nearFull) { score += 60; reason = `epígrafe cita ${explicitArts.size} arts concretos pero scope tiene ${scopedCount}/${lawTotal}`; }
+    if (titGap && nearFull && bigLaw) { score += 50; reason = reason || `epígrafe nombra títulos con huecos (${titSet.join(',')}) pero scope cubre toda la ley`; }
+    if (bigLaw && nearFull && enumerator) { score += 30; reason = reason || `ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${segments} bloques`; }
+    const band = score >= 50 ? 'HIGH' : score >= 30 ? 'MEDIUM' : 'NONE';
+    return { band, score, coverage, reason };
+  };
+  const overIncl = (await c.query(`
+    SELECT t.position_type pt, t.topic_number tn, l.short_name ley, t.epigrafe,
+           ts.article_numbers,
+           (SELECT count(*) FROM articles a WHERE a.law_id = ts.law_id AND a.article_number ~ '^[0-9]+$') law_total
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
+    WHERE t.is_active = true`)).rows;
+  const oiHigh = [];
+  for (const r of overIncl) {
+    const scoped = (r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).length;
+    const v = classifyScope(Number(r.law_total), scoped, r.epigrafe);
+    if (v.band === 'HIGH') oiHigh.push({ pt: r.pt, tema: r.tn, ley: r.ley, cobertura: Math.round(v.coverage * 100), motivo: v.reason });
+  }
+  if (oiHigh.length) {
+    oiHigh.sort((a, b) => b.cobertura - a.cobertura);
+    const nOpos = new Set(oiHigh.map(x => x.pt)).size;
+    add('content', 'warn', null, 'scope_over_inclusion_suspect',
+      `${oiHigh.length} tema(s) con SCOPE MÁS ANCHO que el epígrafe (mete casi la ley entera) en ${nOpos} oposición(es) — sirve preguntas fuera de programa; adjudicar con verify:scope y recortar el scope`,
+      { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) });
+  }
+
+  // ── DUPLICADO cross-tema de LEY REAL (misma ley entera/con solape grande en ≥2 temas) ──
+  // Complementa a scope_over_inclusion (que mira 1 tema vs SU epígrafe). Aquí: la MISMA
+  // ley duplicada ENTRE temas → sirve las mismas preguntas en varios tests → hay que
+  // REPARTIR por materia. Núcleo = scripts/scope-health-classify.cjs (`npm run scope:health`);
+  // MANTENER EN SYNC con classifySharedLaw/isRealLaw de ese fichero.
+  // Umbral ALTO (NULL-compartido o solape ≥20 arts) para pingar solo en dups CLAROS de ley
+  // entera; el cross-cutting de 1-10 arts (tema específico que toma unos artículos del rango
+  // general de otro) es legítimo y NO se marca. GOTCHA: article_numbers=NULL = ley entera.
+  const ctRows = (await c.query(`
+    SELECT t.position_type pt, l.short_name ley, t.topic_number tn, ts.article_numbers an
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
+    WHERE t.is_active = true
+      AND l.short_name ~* '^(Ley|LO|RD|RDL|CE|Real|Decreto|Estatut|Llei|TR|Convenio|Reglament|Constituci|Tratado|TUE|TFUE|RGPD)'`)).rows;
+  const ctGroups = {};
+  for (const r of ctRows) { const k = r.pt + ' ' + r.ley; (ctGroups[k] = ctGroups[k] || []).push(r); }
+  const ctDups = [];
+  for (const k of Object.keys(ctGroups)) {
+    const rows = ctGroups[k]; if (rows.length < 2) continue;
+    const [pt, ley] = k.split(' ');
+    const arrs = rows.map(r => { const a = r.an || []; const nums = a.map(x => parseInt(String(x).replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n)); return { tn: r.tn, set: new Set(nums), nulish: a.length === 0 }; });
+    let maxOv = 0, pair = null;
+    if (arrs.filter(a => a.nulish).length > 1) { maxOv = 9999; pair = arrs.filter(a => a.nulish).map(a => 'T' + a.tn).join('=T') + ' (ley entera/NULL)'; }
+    else for (let i = 0; i < arrs.length; i++) for (let j = i + 1; j < arrs.length; j++) { let cc = 0; for (const n of arrs[i].set) if (arrs[j].set.has(n)) cc++; if (cc > maxOv) { maxOv = cc; pair = 'T' + arrs[i].tn + '∩T' + arrs[j].tn + '=' + cc + ' arts'; } }
+    if (maxOv >= 20) ctDups.push({ pt, ley, dup: pair });
+  }
+  if (ctDups.length) {
+    const nOpos = new Set(ctDups.map(x => x.pt)).size;
+    add('content', 'warn', null, 'scope_cross_tema_dup',
+      `${ctDups.length} ley(es) DUPLICADA(S) entre temas (misma ley entera o con solape grande en ≥2 temas) en ${nOpos} oposición(es) — las mismas preguntas salen en varios tests; repartir por materia con verify:scope`,
+      { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) });
+  }
+
+  // ── CONTENIDO: preguntas con DEIXIS VISUAL pero SIN imagen almacenada ──
+  // El enunciado apunta a un icono/símbolo/imagen que DEBE mostrarse ("el siguiente
+  // icono", "el siguiente símbolo", "observa la siguiente figura", "las restas de la
+  // imagen") pero image_url es NULL y content_data va vacío → la pregunta es
+  // IRRESOLUBLE (nadie ve el gráfico) y aun así está activa. Punto ciego total: ningún
+  // detector miraba coherencia enunciado↔imagen, y el re-verificador LLM razona solo
+  // sobre TEXTO — de hecho puede REVERTIR un flag correcto de "inverificable" (caso raíz
+  // 22/07: pregunta de icono Outlook marcada needs_human 2× por "requiere imagen no
+  // disponible" y re-aprobada el 10/07 como falso positivo → la cazó una usuaria, Concha,
+  // vía impugnación 7119bd5d; barrido posterior jubiló 4 más). Patrón ALTA PRECISIÓN:
+  // SINGULAR "el/la siguiente <cosa visual>" (el plural "de las siguientes …" = "de las
+  // siguientes opciones", FP masivo) + guardas contra "imagen corporal/pública", "de la
+  // imagen y el sonido", etc. Remediar: si hay fuente → reconstruir la imagen; si no →
+  // jubilar (admin_image_unavailable). NUNCA inventar la imagen.
+  // Deixis fuerte, ambos órdenes (prefijo "siguiente icono" Y pospuesto "imagen siguiente"),
+  // + "en la imagen anterior/superior…", + identificar símbolo/pictograma de la imagen, + data-de-la-imagen.
+  const VD_STRONG = "(\\y(el|la)\\s+siguiente\\s+(icono|imagen|imágen|s[íi]mbolo|gr[áa]fico|figura|captura|pictograma|esquema|diagrama|se[ñn]al)\\y)"
+    + "|(en\\s+la\\s+imagen\\s+(anterior|superior|inferior|adjunt\\w+|siguiente|de\\s+arriba|de\\s+abajo))"
+    + "|(\\yla\\s+imagen\\s+(muestra|adjunt\\w+|superior|inferior|siguiente|anterior)\\y)"
+    + "|((observa|observe|obsérv\\w+|f[íi]jese\\s+en)\\s+(la|el)\\s+(siguiente\\s+)?(imagen|figura|gr[áa]fico|icono|s[íi]mbolo|captura))"
+    + "|(seg[úu]n\\s+(la\\s+imagen|la\\s+figura|el\\s+gr[áa]fico\\s+adjunt|muestra\\s+la\\s+(imagen|figura)|se\\s+muestra\\s+en\\s+la\\s+(imagen|figura)))"
+    + "|(¿qu[ée]\\s+(significa|representa|indica)\\s+(este|el\\s+siguiente)\\s+(icono|s[íi]mbolo|pictograma|gr[áa]fico))"
+    + "|(\\y(icono|s[íi]mbolo|pictograma|gr[áa]fico|captura|divisa|distintivo|emblema)\\s+(mostrad\\w+|adjunt\\w+|que\\s+se\\s+muestra|siguiente|anterior|de\\s+la\\s+(imagen|figura|fotograf\\w+))\\y)"
+    + "|(\\y(restas|celda|celdas|f[óo]rmula|f[óo]rmulas|tabla|query|consulta|marca|base\\s+de\\s+datos|diagrama)\\w*\\s+\\w*\\s*(de|en)\\s+la\\s+imagen\\y)"
+    + "|(\\yde\\s+la\\s+imagen[,. ]+(indica|se[ñn]ale|cu[áa]l|obten|calcul))";
+  const VD_FP = "imagen corporal|imagen p[úu]blica|imagen de la administraci|imagen de las mujeres|de la imagen y|imagen y (el |del )?sonido|imagen y sonido|derecho a la propia imagen|reproducci[óo]n del sonido|de la imagen o|icono (muestra|con forma|que representa a)|s[íi]mbolo (¶|de p[áa]rrafo)|figura (jur[íi]dic|del? |profesional)";
+  const vdRows = (await c.query(`
+    SELECT id, question_text FROM questions
+    WHERE is_active = true
+      AND (image_url IS NULL OR image_url = '')
+      AND (content_data IS NULL OR content_data::text IN ('{}','null',''))
+      AND question_text ~* $1 AND question_text !~* $2
+    LIMIT 60`, [VD_STRONG, VD_FP])).rows;
+  if (vdRows.length) add('content', 'warn', null, 'visual_deixis_no_image',
+    `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
+    { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
