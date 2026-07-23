@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import type { MouseEvent } from 'react'
 import { usePathname } from 'next/navigation'
+import SupportButton from '@/components/SupportButton'
 import UserAvatar from '@/components/UserAvatar'
 import { useVersionCheck } from '@/hooks/useVersionCheck'
 import NotificationBell from '@/components/NotificationBell'
@@ -595,15 +596,14 @@ export default function HeaderES() {
                   <span className="text-lg">📖</span>
                 </Link>
 
-                {/* 💬 ICONO DE SOPORTE */}
-                <Link
-                  href="/soporte"
+                {/* 💬 ICONO DE SOPORTE — en un test abre el modal aquí (no pierde el test); fuera → /soporte */}
+                <SupportButton
                   className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Contactar soporte"
                   title="Contactar soporte"
                 >
                   <span className="text-lg">💬</span>
-                </Link>
+                </SupportButton>
 
                 {/* 🎁 ICONO DE EMBAJADORES - Solo premium/legacy (programa solo-premium) */}
                 {(isPremium || isLegacy) && (
@@ -717,15 +717,14 @@ export default function HeaderES() {
 
             {/* DERECHA: Notificaciones + Menú hamburguesa + Avatar del usuario */}
             <div className="flex items-center space-x-1 flex-shrink-0">
-              {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop */}
-              <Link
-                href="/soporte"
+              {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop. En un test abre el modal aquí (no pierde el test); fuera → /soporte */}
+              <SupportButton
                 className="hidden xl:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
                 title="Contactar soporte"
               >
                 <span className="text-sm">💬</span>
                 <span className="text-sm font-medium">Soporte</span>
-              </Link>
+              </SupportButton>
 
               {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE en desktop */}
               {user && userProfile && !isPremium && !isLegacy && userProfile.plan_type !== 'trial' && (

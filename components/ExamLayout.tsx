@@ -398,8 +398,13 @@ export default function ExamLayout({
   const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
   const { getSlug: generateLawSlug } = useLawSlugs()
   const { homeUrl } = useOposicionPaths() // oposición del usuario (robusto, no hardcode Estado)
-  const { setQuestionContext } = useQuestionContext()
+  const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const { openChatWith } = useAIChat()
+
+  // Limpiar el contexto de pregunta al salir del examen: si no, queda stale y otras pantallas
+  // (botón de Soporte, chat IA) creerían que sigues viendo esa pregunta. Los demás layouts de
+  // test ya lo hacen; ExamLayout se había quedado sin este cleanup.
+  useEffect(() => () => clearQuestionContext(), [clearQuestionContext])
 
   // Estados del examen
   const [userAnswers, setUserAnswers] = useState<UserAnswers>(initialAnswers || {})
