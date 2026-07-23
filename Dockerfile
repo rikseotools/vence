@@ -166,3 +166,25 @@ ENV HOSTNAME="0.0.0.0"
 
 # Arranca server.js (standalone) con keepAliveTimeout=65s (> ALB idle 60s).
 CMD ["node", "server-keepalive.cjs"]
+
+# ============================================================
+# Stage 4: worker — pre-generación de PDFs del temario (T-086, OFF-ALB)
+# ============================================================
+# Reusa el `builder` (código fuente COMPLETO + node_modules con devDeps: tsx,
+# @react-pdf/renderer, tsconfig-paths). NO va detrás del ALB: es una tarea
+# Fargate BATCH disparada por EventBridge Scheduler que drena `temario_pdf_jobs`
+# y sube los PDFs a S3 (mismo patrón que vence-content-radar / health-digest).
+#
+# Por qué separado del `runner` de serving: el render de @react-pdf es CPU-bound
+# (hasta ~12min/3GB en los cajones de ofimática) y bloquearía el event-loop de una
+# task de serving → fallaría health checks y la matarían (exit 137). El worker lo
+# aísla en proceso HIJO killeable con timeout (scripts/pdf-worker.ts → pdf-local.ts).
+#
+# Env en runtime (task def, desde SSM): DATABASE_URL, AWS creds (s3:PutObject vía
+# task role) y, si aplica, AWS_S3_ENDPOINT/TOPIC_PDF_BUCKET.
+FROM builder AS worker
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+# `drain` procesa TODOS los pending y termina (exit 0) → tarea batch, no daemon.
+CMD ["node_modules/.bin/tsx", "-r", "tsconfig-paths/register", "scripts/pdf-worker.ts", "drain"]
