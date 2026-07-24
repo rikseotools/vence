@@ -183,6 +183,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/provenance-convocatorias.md',
     claudeHace: 'para cada oposición señalada lee la vista convocatoria_docs_coverage: primero enlaza lo ya clonado sin fetch (scripts/backfill-hito-source-documento.cjs --apply), luego clona los documentos referenciados que falten desde su URL oficial (backend/scripts/clonar-documento.ts, con content_hash + snapshot, tipo real no "nota") y enlaza source_documento_id, y resuelve las citas sin fuente. NUNCA clona sin verificar la URL oficial ni fabrica cita/hash; si la URL da 403/está caída deja el hueco anotado. Los hitos huérfanos (convocatoria_id NULL) se asignan primero a su convocatoria mirando la fecha del hito.',
   },
+  epigrafe_provenance_no_doc: {
+    title: 'Epígrafe verified_literal sin documento del hub enlazado (provenance huérfana)',
+    triggerPhrase: 'revisa la provenance de epígrafes',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    claudeHace: 'para cada oposición señalada, los epígrafes están marcados verified_literal pero sin source_documento_id → se validaron contra una URL suelta, no contra el documento clonado del hub convocatoria_documentos. Si tienen source_url, enlázalos con scripts/provenance/link-epigrafe-docs.cjs --apply (canonicaliza → ensure_convocatoria_documento → fija source_documento_id). Si NO tienen source_url (verificados antes del hub), re-sourcéalos: baja el temario oficial del programa_url y corre verify-epigrafe-literality.cjs record con source_url (que ya enlaza al hub). NUNCA marcar verified_literal sin fuente ni fabricar la URL.',
+  },
   scope_cross_tema_dup: {
     title: 'Misma ley duplicada entre temas (repartir por materia)',
     triggerPhrase: 'revisa las leyes duplicadas entre temas',

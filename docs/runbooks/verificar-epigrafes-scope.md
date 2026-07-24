@@ -162,6 +162,8 @@ Sistema **independiente pero relacionado** con el de scope. Pregunta: *"¿`topic
 
 **Provenance de la fuente exacta (columnas `topic_epigrafe_verification.source_url` + `source_notes`, desde 13/07):** al confirmar un epígrafe (Paso 1), se guarda la **URL exacta** del documento oficial del que se sacó + un comentario libre, para ir DIRECTO a la fuente en cada re-verificación (crítico para el ~30% de boletines no parseables). El `consensus.json` de `record` acepta `source_url` y `source_notes` por tema. Se muestran como enlace en el drill-down "Epígrafe" de `/admin/contenido`. Migración `20260713_epigrafe_source_url.sql`.
 
+> **Provenance ENLAZADA al hub (T-107, 24/07):** además del `source_url` (texto, espejo), `record` **enlaza el epígrafe al documento oficial clonado** vía `topic_epigrafe_verification.source_documento_id` → `convocatoria_documentos` (mismo patrón que los hitos). Lo hace canonicalizando el `source_url` (`lib/convocatoria/canonicalizeBoletinUrl.cjs`) y llamando a `ensure_convocatoria_documento` (camino único, dedup por `doc_key`). Así "verificado contra la fuente oficial" apunta al **snapshot clonado con hash**, no a una URL que puede dar 404. El detector `epigrafe_provenance_no_doc` (frase *"revisa la provenance de epígrafes"*) caza los `verified_literal` sin enlazar. Detalle: `provenance-convocatorias.md` §0.bis.
+
 **Estados** (`topic_epigrafe_verification` + vista `topic_epigrafe_verification_effective`): `never_sourced` / `verified_literal` / `drift_detected` / `provisional_anterior` / `stale` / `outdated_convocatoria` (derivado: la convocatoria vigente o su programa cambió).
 
 **Cascada a S1:** cuando corriges un epígrafe en `drift_detected`, el trigger de S1 pone su scope `stale` → re-verificar scope. Una dirección.

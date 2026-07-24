@@ -1028,6 +1028,30 @@ export class ContentHealthSweepService {
       );
     }
 
+    // ── CONTENIDO: PROVENANCE de EPÍGRAFES (verified_literal sin documento del hub enlazado) ──
+    // Gemelo del anterior para el OTRO consumidor del hub convocatoria_documentos. Un epígrafe
+    // verified_literal cuyo source_documento_id es NULL = provenance huérfana: se validó contra
+    // una URL suelta, no contra el documento clonado (txt.php ≠ /pdfs → no casaba). Se enlaza
+    // vía ensure_convocatoria_documento (verify-epigrafe-literality record lo hace ya). Cierra
+    // el falso verde de provenance de T-107. Runbook: docs/maintenance/provenance-convocatorias.md.
+    const epiOrf = (await this.db.execute(sql`
+      SELECT replace(t.position_type, '_', '-') AS slug, count(*)::int AS huerfanos
+      FROM topics t
+      JOIN topic_epigrafe_verification ev ON ev.topic_id = t.id
+      WHERE t.is_active AND ev.state = 'verified_literal' AND ev.source_documento_id IS NULL
+      GROUP BY 1 ORDER BY 2 DESC
+    `)) as unknown as Array<{ slug: string; huerfanos: number }>;
+    for (const r of epiOrf) {
+      add(
+        'content',
+        'warn',
+        r.slug,
+        'epigrafe_provenance_no_doc',
+        `${r.slug}: ${r.huerfanos} epígrafe(s) verified_literal sin documento del hub enlazado (source_documento_id NULL) — re-verificar o enlazar vía ensure_convocatoria_documento`,
+        { huerfanos: r.huerfanos },
+      );
+    }
+
     // ── CONVOCATORIAS: invariantes deterministas del timeline (vista convocatoria_hito_incidencias) ──
     // I1/I2/I9 = graves (error); I7/I8 = caducado (warn). I5 se excluye a propósito (línea base sin docs).
     {

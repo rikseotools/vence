@@ -8,6 +8,20 @@
 
 - **`convocatoria_docs_incompletos`** (category `content`, severity `warn`) por oposición viva cuya convocatoria vigente tiene provenance incompleta. Fuente: **VISTA `convocatoria_docs_coverage`** (migración `20260721_convocatoria_docs_coverage.sql`).
 - El detector vive en el sweep (`scripts/health-sweep.cjs` + gemelo `backend/src/content-health-sweep/content-health-sweep.service.ts`).
+- **`epigrafe_provenance_no_doc`** (frase-gatillo *"revisa la provenance de epígrafes"*) — el OTRO consumidor del hub (ver §0.bis).
+
+## 0.bis. El HUB: `convocatoria_documentos` es la fuente única (T-107, 24/07)
+
+**Regla:** `convocatoria_documentos` es el único almacén de documentos oficiales clonados. **Todo lo que referencia un documento oficial PRODUCE por el mismo camino y CONSUME por FK** — nunca guarda una URL suelta (el bug que lo motivó: la verificación de epígrafe guardaba `txt.php?id=…` mientras el documento estaba clonado como `/pdfs/….pdf` → no casaban → falso verde de provenance).
+
+- **Camino ÚNICO de escritura:** función SQL **`ensure_convocatoria_documento(convocatoria_id, doc_key, canonical_url, content_hash?, tipo?, titulo?, extracted_text?, fuente?)`** (migración `20260725_provenance_doc_hub.sql`). Idempotente por `(convocatoria_id, doc_key)`. La llaman por igual el backend (Drizzle raw) y los scripts `.cjs` (pg) → dedup idéntico, runtime-agnóstico. Mismo patrón que `transition_question_state` / `record_epigrafe_verification`.
+- **Identidad canónica `doc_key`:** la calcula el ÚNICO canonicalizador **`lib/convocatoria/canonicalizeBoletinUrl.cjs`** (puro, testeado). BOE `txt.php` y `/pdfs` del mismo documento → mismo `doc_key` (`BOE-A-2025-26262`). Boletines no reconocidos (cola larga) → `doc_key` = URL normalizada (dedup por URL exacta, `recognized:false`). Índice único parcial `ux_convocatoria_documentos_conv_dockey`.
+- **Consumidores (enlazan por FK, `source_url`/`url` quedan como espejo):**
+  - `convocatoria_hitos.source_documento_id` (hitos del timeline).
+  - `topic_epigrafe_verification.source_documento_id` (Paso 1 del scope — el epígrafe clonado). Lo fija `verify-epigrafe-literality.cjs record` automáticamente.
+- **Backfill de lo legacy:** `scripts/provenance/backfill-doc-key.cjs --apply` (pone `doc_key` en las filas ya clonadas) y `scripts/provenance/link-epigrafe-docs.cjs --apply` (enlaza epígrafes verificados antes del hub que tengan `source_url`).
+- **Invariante:** un epígrafe `verified_literal` debe tener `source_documento_id` NOT NULL. Los que no → los caza `epigrafe_provenance_no_doc`: si tienen `source_url` se enlazan solos con `link-epigrafe-docs.cjs`; si no, hay que re-sourcearlos (bajar el temario oficial del `programa_url` y correr `record` con `source_url`).
+- **PENDIENTE (productor OEP):** el flujo de seguimiento `detect-notas-convocatoria` aún inserta en `convocatoria_documentos` por su cuenta (idempotente por `url`, no por `doc_key`) → sigue generando duplicados `txt.php` vs `/pdfs`. Enrutarlo por `ensure_convocatoria_documento` (con canonicalización) es la fase que colapsa del todo los caminos. Ver T-107.
 
 ## 1. Leer la cobertura (la vista es la fuente única)
 
