@@ -1524,10 +1524,14 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Cómo:** `crear-nueva-oposicion.md`; cruzar con competidores/GSC. Verificar convocatoria viva en um.es/ptgas + BORM.
 - **Estado:** demanda apuntada 21/07.
 
-### [T-084] 🟢 📉 [SEÑAL marketing] Baja inmediata desde Google Ads (campaña 23697376522)
-- **Qué:** una usuaria (Madrid) llegó por un anuncio de Google (utm_campaign `23697376522`, landing `/auxiliar-administrativo-madrid`) y **borró la cuenta a los ~60 s** de registrarse, sin hacer ni un test (RGPD ejecutado 21/07). Queda en `deleted_users_log` (bloque CAPTACIÓN).
-- **Por qué:** registro de pago que no cuaja = posible gasto tirado. Vigilar si esa campaña concentra más bajas tempranas (§8 del runbook `eliminacion-cuentas.md`).
-- **Estado:** 1 caso, anotado 21/07. Revisar en el análisis agregado de bajas.
+### [T-084] ✅ [INVESTIGADA 24/07 — NO hay malgasto, Google Ads está sano] Baja inmediata desde Google Ads (campaña 23697376522)
+- **Qué era:** una usuaria (Madrid) llegó por Google Ads (`23697376522`) y se borró a los ~60 s sin hacer un test → sospecha de "gasto tirado".
+- **Veredicto (datos reales, 24/07):**
+  - **Google Ads convierte MEJOR que el orgánico:** 84% de sus registros hacen ≥1 test (vs 70% orgánico) y **4,3% premium (vs 2,1% orgánico)** — el doble de conversión. CPC ~**0,04 €**, ROAS positivo/break-even (`ads:report`). Canal sano.
+  - **La baja es rebote normal de free**, no señal de Ads: **32% de TODAS las bajas** (100 totales) son "0 tests, ≤1 día", de todas las fuentes (orgánico, ChatGPT, ads…).
+  - **Campaña `23697376522`:** 0 ventas / 0 supervivientes vivos / 2 bajas inmediatas — pero a 0,04 €/clic es calderilla, y el canal en conjunto es rentable.
+- **Acción:** ninguna. Vigilar esa campaña concreta en el próximo repaso de `ads:report`; no justifica tocar presupuesto.
+- **Método:** `deleted_users_log` (bajas tempranas), `user_profiles.registration_source`/`registration_url` (atribución de vivos), `v_campaign_revenue`, `npm run ads:report`.
 
 ### [T-088] 🟡 [ABIERTA 22/07] Sobre-inclusión de scope: cola de 21 recortes + 2 errores de adjudicación + badge sin cablear
 
