@@ -3229,9 +3229,51 @@ export const RULE_NETWORK_RETRY_EXHAUSTED_SPIKE: AlertRule<{
   cooldownMin: 30,
 };
 
+/**
+ * Configurador de leyes DEGRADADO — el endpoint /api/laws-configurator (la página
+ * "Test combinando leyes") emite `laws_configurator_stats` (con `durationMs`) y
+ * `laws_configurator_error`. Antes, la query de stats acotada a oposición (EXISTS
+ * correlado + array-ANY sobre todas las preguntas) degeneraba a 30s → statement
+ * timeout → 500 → el usuario veía "Error al generar test" (caso David/Galicia
+ * 24/07). El fix (CTE + timeout 8s + caché) lo resolvió; esta regla vigila que NO
+ * reaparezca: dispara si hay errores o cómputos lentos (>5s) sostenidos en 10 min
+ * — señal precoz ANTES de que un usuario tope el timeout y reporte. Warn, no
+ * critical: es una página de configuración (no bloquea el estudio) y con caché el
+ * usuario suele ver el último valor bueno; pero un repunte = plan lento de vuelta.
+ */
+export const RULE_LAWS_CONFIGURATOR_DEGRADED: AlertRule<{
+  errors: number;
+  slow: number;
+}> = {
+  name: 'laws_configurator_degraded',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COUNT(*) FILTER (WHERE event_type = 'laws_configurator_error')::int AS errors,
+      COUNT(*) FILTER (WHERE event_type = 'laws_configurator_stats'
+        AND (metadata->>'durationMs')::int > 5000)::int AS slow
+    FROM observable_events
+    WHERE event_type IN ('laws_configurator_error', 'laws_configurator_stats')
+      AND ts > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.errors ?? 0) >= 3 || (rows[0]?.slow ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const errors = rows[0]?.errors ?? 0;
+    const slow = rows[0]?.slow ?? 0;
+    return {
+      title: `Configurador de leyes degradado — ${errors} error(es), ${slow} cómputo(s) >5s en 10 min`,
+      body: `La query de /api/laws-configurator (página "Test combinando leyes") vuelve a ir lenta o falla. Es el patrón del bug David/Galicia (query de stats que timeouteaba a 30s → 500).\n\n  SELECT metadata->>'positionType' pt, metadata->>'source' src, avg((metadata->>'durationMs')::int) avg_ms, count(*)\n  FROM observable_events WHERE event_type IN ('laws_configurator_stats','laws_configurator_error')\n    AND ts > NOW() - INTERVAL '30 minutes' GROUP BY 1,2 ORDER BY avg_ms DESC NULLS LAST;`,
+      metadata: { errors, slow, windowMin: 10 },
+      fingerprint: 'laws_configurator_degraded',
+    };
+  },
+  cooldownMin: 30,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE as AlertRule,
+  RULE_LAWS_CONFIGURATOR_DEGRADED as AlertRule,
   // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)
   RULE_AUTH_TOKEN_MINT_FLOOD as AlertRule,
   // Tests bloqueados por rechazo de validación (2026-07-11, incidente Alfonso)

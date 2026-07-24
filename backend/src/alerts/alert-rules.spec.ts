@@ -7,6 +7,7 @@
 import {
   ALERT_RULES,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE,
+  RULE_LAWS_CONFIGURATOR_DEGRADED,
   RULE_HYDRATION_MISMATCH_SPIKE,
   RULE_RUNTIME_KILL,
   RULE_TTS_ERROR_BURST,
@@ -39,6 +40,29 @@ import {
   RULE_FRONTEND_SATURATION,
   RULE_EVENT_LOOP_LAG,
 } from './alert-rules';
+
+describe('RULE_LAWS_CONFIGURATOR_DEGRADED (fix configurador 24/07, caso David/Galicia)', () => {
+  it('dispara con >=3 errores en 10 min (query rota/timeout)', () => {
+    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 3, slow: 0 }])).toBe(true);
+  });
+  it('dispara con >=3 cómputos lentos (>5s) aunque no haya errores (plan lento de vuelta)', () => {
+    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 0, slow: 5 }])).toBe(true);
+  });
+  it('NO dispara con ruido aislado (<3 de cada)', () => {
+    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 2, slow: 2 }])).toBe(false);
+  });
+  it('NO dispara con 0 / filas vacías (sano)', () => {
+    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 0, slow: 0 }])).toBe(false);
+    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([])).toBe(false);
+  });
+  it('fingerprint único (1 email, no N)', () => {
+    const n = RULE_LAWS_CONFIGURATOR_DEGRADED.buildNotification([{ errors: 4, slow: 1 }]);
+    expect(n.fingerprint).toBe('laws_configurator_degraded');
+  });
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('laws_configurator_degraded');
+  });
+});
 
 describe('RULE_NETWORK_RETRY_EXHAUSTED_SPIKE (fix resiliencia fetch 24/07, caso David)', () => {
   it('dispara con un spike (>30 en 10 min) = regresión que rompe los fetch a todos', () => {
