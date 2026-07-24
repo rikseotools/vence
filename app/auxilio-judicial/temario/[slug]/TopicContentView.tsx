@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import ArticleTTS from '@/components/ArticleTTS'
+import LawTestCTA from '@/components/temario/LawTestCTA'
 import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useAuth } from '@/contexts/AuthContext'
@@ -264,7 +265,6 @@ interface LawSectionProps {
 }
 
 function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps) {
-  const { getSlug } = useLawSlugs()
   const { law, articles } = lawData
   const officialCount = articles.filter(a => a.officialQuestionCount > 0).length
 
@@ -308,12 +308,7 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
       {/* Enlace a test - siempre visible */}
       <div className="no-print flex items-center justify-between mt-1 -mb-1 px-1">
         <ArticleTTS articles={articles} lawName={law.shortName} />
-        <Link
-          href={`/leyes/${getSlug(law.shortName)}`}
-          className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
-        >
-          Hacer test de {law.shortName} →
-        </Link>
+        <LawTestCTA lawShortName={law.shortName} articles={articles} />
       </div>
 
       {/* Print-only law header */}

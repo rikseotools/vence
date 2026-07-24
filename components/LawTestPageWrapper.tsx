@@ -9,7 +9,7 @@ import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { ID_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
-import { buildBackToArticleLink } from '@/lib/navigation/backToArticleLink'
+import { buildBackToArticleLink, parseSelectedArticlesScope } from '@/lib/navigation/backToArticleLink'
 
 // Tipos
 type TestType = 'rapido' | 'avanzado' | 'oficial' | 'aleatorio'
@@ -300,20 +300,17 @@ export default function LawTestPageWrapper({
       console.log('🔧 [LAW WRAPPER v2] Config:', testConfig)
       setConfig(testConfig)
 
-      // 📄 Parsear artículos seleccionados desde searchParams
+      // 📄 Parsear artículos seleccionados desde searchParams.
+      // ⚠️ Preservar COMO STRING (número o disposición: 'DA1','55 ter',…). NO parseInt:
+      // el serving compara article_number por String() y hay ~331 temas con artículos
+      // no-numéricos en el scope; truncarlos aquí los sub-servía en silencio (review T-073).
       const selectedArticlesParam = searchParams?.get('selected_articles')
-      let selectedArticlesByLaw: Record<string, number[]> = {}
+      let selectedArticlesByLaw: Record<string, string[]> = {}
 
-      if (selectedArticlesParam) {
-        const articleNumbers = selectedArticlesParam
-          .split(',')
-          .map(art => parseInt(art.trim()))
-          .filter(num => !isNaN(num))
-
-        if (articleNumbers.length > 0) {
-          selectedArticlesByLaw = { [lawShortName]: articleNumbers }
-          console.log('📄 [LAW WRAPPER v2] Artículos seleccionados:', selectedArticlesByLaw)
-        }
+      const articleIds = parseSelectedArticlesScope(selectedArticlesParam)
+      if (articleIds.length > 0) {
+        selectedArticlesByLaw = { [lawShortName]: articleIds }
+        console.log('📄 [LAW WRAPPER v2] Artículos seleccionados:', selectedArticlesByLaw)
       }
 
       // 📚 Parsear filtros de sección desde searchParams

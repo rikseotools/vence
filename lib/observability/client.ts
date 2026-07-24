@@ -24,6 +24,9 @@ const SAMPLE_RATES: Record<string, number> = {
   intent_unfulfilled: 1.0,
   // 1 impresión por carga de home: volumen moderado, señal directa de producto → 100%.
   open_inscriptions_banner_view: 1.0,
+  // Clic en "Hacer test de {ley}" del temario. Volumen moderado; muestreo 20% basta
+  // para la señal (proporción scoped vs no-scoped). Si sube el ruido, bajar.
+  law_test_cta_click: 0.2,
   pre_hydration_error: 1.0,
   // TTS — bajo volumen (1 por sesión) al 100%, alto volumen muestreado.
   tts_session_start: 1.0,
@@ -100,6 +103,12 @@ export type ClientEventType =
   // banner porque su familia no tiene ninguna convocatoria que llegue al mínimo — si sube,
   // hay que revisar el umbral o el reparto por familias. Ver docs/runbooks/observability.md.
   | 'open_inscriptions_banner_view'
+  // CTA "Hacer test de {ley}" del temario (<LawTestCTA>). Mide cuántos tests de ley
+  // se lanzan CON scope de tema (metadata.scopedArticleCount>0) vs sin él (=0). Existe
+  // para vigilar el fix T-073 en comportamiento REAL: si aparecen clics con
+  // scopedArticleCount=0, es una regresión (un CTA volvió a enlazar la ley entera).
+  // Ver docs/runbooks/observability.md.
+  | 'law_test_cta_click'
   // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
   | 'tts_session_start'
   | 'tts_session_end'
