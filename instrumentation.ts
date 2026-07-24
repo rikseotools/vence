@@ -4,10 +4,22 @@
 // https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
 
 export async function register() {
-  // Sin inicialización. La captura de errores va por:
+  // Captura de errores (stateless, sin init):
   //   - API routes → withErrorLogging (validation_error_logs + observable_events)
   //   - Render/route errors server-side → onRequestError (abajo)
   //   - Cliente → lib/observability/client.ts
+  //
+  // Sampler de event-loop lag (T-075, Capa 5 del postmortem 21/07): el
+  // frontend corre como contenedor Fargate de larga vida (`server-keepalive.cjs`),
+  // así que `register()` se ejecuta una vez al arrancar y el proceso persiste →
+  // un sampler con setInterval vive como daemon. Solo en el runtime Node
+  // (el Edge runtime no tiene `perf_hooks`).
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { startEventLoopLagSampler } = await import(
+      '@/lib/observability/eventLoopLag'
+    )
+    startEventLoopLagSampler()
+  }
 }
 
 export const onRequestError = async (
