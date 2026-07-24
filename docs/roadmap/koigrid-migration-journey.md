@@ -7,6 +7,21 @@
 
 ---
 
+## 📊 2026-07-24 (latest) — FRESH AWS-vs-Koigrid latency measurement (same pages, median of 5, from Spain)
+
+Re-ran a direct head-to-head *now* (not reusing earlier numbers). Medians:
+
+| Endpoint | AWS (prod) | Koigrid (POC) | AWS faster |
+|---|---|---|---|
+| Home `/` | **333 ms** | 473 ms | 1.4× |
+| `/leyes` (DB-heavy) | **219 ms** | 677 ms | 3.1× |
+| `/leyes/constitucion-espanola` | **65 ms** | 450 ms | 6.9× |
+| Backend `/health` | **113 ms** | 169 ms | 1.5× |
+
+**AWS wins latency today (1.4–7×) — but it's still not apples-to-apples, same asymmetry as before:** Koigrid is **CDN OFF + 1 replica (Free)** vs AWS **CloudFront edge + multi-instance**. The 7× outlier (`/constitucion`) is *entirely* CDN — AWS serves it cached from edge (steady 65 ms), Koigrid does full SSR every time (450 ms); CDN-on collapses that. The **fairest single number is backend `/health` = 1.5×** (no CDN either side): a direct request to AWS is ~1.5× faster than to Koigrid's single box. Not re-measured (can't fairly, from a laptop): Koigrid's **co-located DB (6.45 ms, ~4× faster writes)**, **~10× lower cost**, and **~30 s image deploy vs 10–15 min ECS** — its structural wins stand. **Verdict unchanged:** AWS wins edge latency (via CDN + multi-instance); Koigrid wins cost, ops-simplicity, DB latency, write throughput. Closing the latency gap for real needs the peak load-test with **CDN-on + replicas = a paid plan** (owner's spend call); until then this is a floor, not a final perf verdict.
+
+---
+
 ## ✅ 2026-07-24 (latest) — KOIGRID SHIPPED THREE MORE FIXES, all from this report. Verified.
 
 Re-checked `llms.txt`/`openapi.json` after another release (same day). Three improvements landed, each matching feedback above:
