@@ -1203,6 +1203,16 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
 - **verify:scope cazó defectos reales de mi primer scope** (por eso el gate no se salta): T2 sin AGE/LBRL, T103 sin interesados, T110 sobre-scope, T128/T129 contenedores cruzados, y en el 2º pase T114/T115 sin Incompatibilidades (Ley 53/1984) ni Estatuto de los Trabajadores + convenios aragoneses duplicados entre T114↔T117 y T115↔T117. Todo corregido.
 - **PENDIENTE (no bloquea):** temas de hacienda finos (7-12 preguntas): engordar en futura tanda. Refinamientos verify:scope de baja confianza sin aplicar: T119 (LGP algo ancha para un epígrafe conceptual), T121 (financiación).
 
+### [T-101] ✅ [HECHA 24/07] Verify:scope completo de Aux. Admin. Univ. de León (25/25) + Código Ético ULE + arreglo Tema 25 (Workspace)
+- **Qué:** verificación scope↔epígrafe completa de `administrativo_universidad_leon` conforme al manual (dump → 2 agentes independientes analista+escéptico → consenso → `record`). De **1/25 a 25/25 `verified_correct`**.
+- **Issues tratados end-to-end:** recortes **T9** (LO 3/2007 78→45), **T3** (Ley 40/2015 40→24), **T10** (TRLGSS 381→141, borde de título vía `law_sections`) + cobertura **T8** (añadida Ley 14/2011 de la Ciencia, personal investigador). **needs_human resueltos:** **T5** (respetado el delimitador "(ámbito)" del epígrafe de la LJCA → scope correcto), **T4** (creada la ley editorial **Código Ético ULE** desde el PDF oficial de la ULE + 11 preguntas IA doble-auditadas), **T25** (quitada "La Red Internet" —585 preg **fuera del programa oficial**, verificado contra `BOCYL-D-17062026-115-10`— + ampliado el contenido de Workspace correo+Chat + 10 preguntas IA).
+- **Provenance durable:** `topic_scope_verification` (run `verify_administrativo_universidad_leon_2026-07-24`) + `ai_verification_results` (`claude_code`+`claude_code_recheck`). Lotes IA: `gen_codigo_etico_ule_2026-07-24` (11) + `gen_workspace_leon_2026-07-24` (10). **Todo aplicado en RDS + cachés invalidadas** (no vive en git; el contenido es BD). Método: manual `generar-preguntas-con-ia.md` §5.31-5.32.
+
+### [T-102] 🟡 [ABIERTO 24/07] Outlook Ctrl+S: flip de clave de la pregunta `39cb186d` (needs_human) + responder a Laura
+- **Qué:** en la auditoría del artículo de atajos de Outlook (T-079), la pregunta **`39cb186d`** quedó en `needs_human`: su clave marcada era **C) Ctrl+S** para "marcar como no leído", que es **FALSO** (Ctrl+S = Guardar). La correcta es **B) Ctrl+U** (verificado multi-fuente + su pregunta hermana `301c6cbd` + el artículo `bf87a5b0`). Requiere **flip de clave C→B + reescribir la explicación** — política: **NUNCA auto-flip**, lo decide un humano.
+- **Cabo asociado:** tras el flip, cerrar la **impugnación de Laura** (`8cdcba44`) que originó T-079 (flujo de disputes: borrador + OK de Manuel).
+- **Estado:** la pregunta está fuera de servicio (`is_active=false`) con el diagnóstico completo en las notas del AVR. Solo falta la decisión humana del flip.
+
 ## Importar contenido para cerrar residuo CE-relink (7 preguntas) — 19/07
 Del drenaje CE-mislink (837 resueltas) quedan 7 preguntas bloqueadas por FALTA DE CONTENIDO en BD.
 Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra fuente, NUNCA inventar):

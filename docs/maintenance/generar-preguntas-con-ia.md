@@ -1633,6 +1633,14 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 - **Distribución correct_option** A3/B3/C3/D2, secuencia no-cíclica (`CADBACBDACB`). Trazas `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en las 11. Reversible por el tag del batch.
 - **Nota de producto**: el Código Ético no tiene preguntas OFICIALES de examen (es editorial) → material de apoyo. La teoría ya servía; esto añade la capa de práctica.
 
+### 5.32 Batch Workspace (correo + Chat) — Tema 25 Univ. León tras recorte de scope (2026-07-24)
+
+- **batch**: `gen_workspace_leon_2026-07-24` — **10 preguntas** sobre la ley editorial "Google Workspace" (correo/Gmail + Chat) del T25 de `administrativo_universidad_leon`. Contexto: el `verify:scope` confirmó contra el **programa oficial (BOCYL-D-17062026-115-10)** que T25 es **solo Workspace + correo** (nada de internet/redes) → se quitó "La Red Internet" (585 preg fuera de programa) → T25 quedó fino (28) → se generó banco propio.
+- **Contenido creado ANTES de generar (paso 0bis reforzado):** art 1 "Gmail/correo" ampliado de 426 → ~3.000 chars (CC/CCO, responder/reenviar, etiquetas, filtros, contactos/listas) + art 6 "Google Chat" nuevo, desde la ayuda oficial de Google (support.google.com), escopados en T25.
+- **Length-tell 0/10** (lección de §5.30-31 aplicada: distractores largos desde el borrador).
+- **⚠️ GOTCHA de proceso (nuevo y caro):** di al redactor un texto de referencia LIGERAMENTE distinto del artículo de BD (sin markdown, alguna palabra de más) → 8/10 "citas literales" no casaban verbatim con el artículo (fallaron el check de substring). **Lección: dar al generador el CONTENIDO EXACTO del artículo de BD, no una paráfrasis.** Remedio: alinear el artículo a la cita en los casos de palabra + normalizar markdown/puntuación en el validador.
+- **Doble auditoría:** auto-audit (literalidad 10/10) + Sonnet ciego (9 PERFECT + 1 enunciado impreciso reformulado). **Paso 9 (Sonnet nuevo): 10/10 PERFECT**; señaló un matiz factual real (quien está en CCO SÍ ve Para/CC, solo no ve a otros CCO) → precisado artículo + Q1. Nuevo check **`factual_ok`** en contenido de software (verdad real de Gmail/Chat, no solo coincidir con la fuente) — cazó el matiz CCO. Trazas `claude_code` + `claude_code_recheck` en las 10.
+
 ## 6. Anti-patterns (qué NO hacer)
 
 | Anti-pattern | Por qué falla |
