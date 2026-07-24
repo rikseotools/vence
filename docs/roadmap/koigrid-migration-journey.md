@@ -3,7 +3,57 @@
 > **What this is:** an honest, end-to-end log of migrating a real production app (Vence — a Spanish exam-prep platform: Next.js 16 frontend + 31 GB PostgreSQL) **from AWS (ECS Fargate + RDS) to Koigrid**, written to help Koigrid improve the migration experience. Mix of what worked great and where we hit friction, with concrete suggestions.
 >
 > **Source stack:** Next.js 16 (standalone) on ECS Fargate + PostgreSQL 17.6 on RDS Multi-AZ (eu-west-2). DB = 31 GB, ~195 tables, 245 functions, 87 triggers, generated columns, 38 views, pgvector embeddings. Origin was Supabase (cut over to RDS 2026-07), so the schema carries Supabase-era conventions (an `extensions` schema, an `auth` schema).
-> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases) → 2026-07-24 (image-deploy retest, then the whole-app manifest + load-test features).
+> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases) → 2026-07-24 (image-deploy retest, then the whole-app manifest + load-test features) → 2026-07-25 (managed restore-dump tested end-to-end + AWS head-to-head re-run). **Start with the OPEN ACTION LIST right below** — it consolidates every outstanding ask with a repro and an acceptance test.
+
+---
+
+## 🔧 OPEN ACTION LIST — everything this report still asks for, prioritized, each with a repro and an acceptance test (updated 2026-07-25)
+
+> Read this first if you're here to ship fixes. Every item below was **reproduced on a real migration** (Vence: Next.js 16 + 31 GB Postgres, AWS→Koigrid), and every "acceptance test" is something you can run against a fresh account to know it's closed. Detail and evidence for each is in the dated sections further down. Nothing here is a nice-to-have we imagined — it's what actually blocked or slowed a paying-sized migration.
+
+### P0 — blocks a migration outright
+
+**A1. Managed restore rejects any dump from a current `pg_dump` (≥17.6/18).** *(new, 2026-07-25)*
+- **Symptom:** `POST /databases/:id/restore-dump` → `status: failed`, `error: "psql:<stdin>:5: error: invalid command \restrict"` — fails at line 5, before any data.
+- **Cause:** since the Aug-2025 security releases, `pg_dump` ≥ 17.6/18 wraps output in the `\restrict <token>` / `\unrestrict` psql meta-commands. Your restore runner's `psql` is older and can't parse them.
+- **Reproduced on both a PG 16 and a PG 17 cluster** → it's the runner's client binary, not the cluster major. Creating the DB with `--version 17` does **not** help (a migrator will try that first).
+- **Fix:** ship `psql` ≥ 18 in the restore runner (newer clients read older dumps fine), or strip/tolerate `\restrict`/`\unrestrict` server-side.
+- **Acceptance test:** `pg_dump` (17.6+) any DB → upload → restore → `done`. No user-side editing of the dump.
+
+**A2. After a *successful* restore, the app role can't read its own data — and neither can Koigrid's own APIs.** *(new, 2026-07-25)*
+- **Symptom:** restore reports `done` with correct `tableCounts`, then: `psql` as `app` → `ERROR: permission denied for table topics`; `GET /databases/:id/data/topics` → `{"error":"bad_request","detail":"permission denied for table topics"}`; `POST /databases/:id/query` → `{"error":"query_error","detail":"permission denied for table topics"}`.
+- **Cause:** the restore runs as superuser, so every object ends `tableowner = postgres`, while `app` (the only login role you expose — `GET /databases/:id/roles` confirms `superuser:false`) gets nothing.
+- **No self-heal exists:** `ALTER TABLE … OWNER TO app` → *"must be owner of table"*; `GRANT SELECT … TO app` → *"permission denied for table"*; `POST /query` is read-only → *"cannot execute GRANT in a read-only transaction"*. The database is a brick.
+- **Note this is a regression vs the DIY path** (`pg_dump | psql "$DATABASE_URL"` as `app` leaves everything owned by `app` and working) — i.e. the managed feature is currently worse than the thing it replaces, at the one job it exists for.
+- **Fix:** run the restore **as the app role**, or finish it with `REASSIGN OWNED BY postgres TO app` + `GRANT ALL ON ALL TABLES/SEQUENCES/FUNCTIONS IN SCHEMA … TO app` + matching `ALTER DEFAULT PRIVILEGES`. Please also expose an idempotent `POST /databases/:id/fix-ownership` for databases already stuck in this state.
+- **Acceptance test:** after `status: done`, `SELECT count(*)` as the connection-string user succeeds, and `GET /databases/:id/data/<table>` returns rows.
+
+**A3. Cache document/HTML responses at the edge when the origin opts in.** *(open since 2026-07-24 — full detail in the section right below)*
+- **Symptom:** every page returns `cf-cache-status: DYNAMIC` although the app sends `Cache-Control: public, s-maxage=86400…`, no `Set-Cookie`, `x-nextjs-cache: HIT` (prerendered). CloudFront serves the identical response from edge (`x-cache: Hit from cloudfront`, `age: 6560`).
+- **New evidence (2026-07-25) — it is also a *capacity* gate, not just latency:** with CDN **ON**, `POST /apps/{id}/loadtest` 30 s @ concurrency 15 gives **8.8 rps** on `/` and **9.2 rps** on a fully prerendered ISR page, saturated — **identical to the pre-CDN 8.7 rps**, because every request still reaches the single origin container. Our production peak needs ~16.6 rps: edge-caching that one prerendered document is the difference between **1 replica and 6–10**.
+- **Fix:** when `cdnEnabled` and the origin advertises a public `s-maxage` with no `Set-Cookie`, apply a Cache Rule = *Cache Everything* + *Edge TTL: respect origin*; handle the Next.js `Vary: RSC, next-router-*` so the document variant caches while RSC/prefetch sub-requests pass through; expose an override (`PUT /apps/{id}/cdn {"cacheDocuments":true,"edgeTtl":"origin"}`); report HIT/MISS ratio in `/metrics`.
+- **Acceptance test:** second request to a prerendered page returns `cf-cache-status: HIT`, and a load-test on that page no longer saturates at ~9 rps on 1 replica.
+
+### P1 — turns one mistake into an expensive loop
+
+**B1. `dumpKey` is single-use, and re-using it fails opaquely.** *(new, 2026-07-25)* Re-submitting a key after a failed job → `error: "download_failed"`, logs `curl: (22) … 404`. So **every** failed attempt costs a **full re-upload** — 5 MB for our probe, **31 GB** for the real thing, and this is exactly the loop a migrator lands in while discovering A1 and A2. **Fix:** keep the object until the job succeeds (or for its TTL) and allow re-submitting the same key; otherwise return *"dump already consumed — request a new upload URL"* instead of a raw 404. **Acceptance:** a failed restore can be retried with the same `dumpKey`.
+
+**B2. A failed restore leaves partial objects, and the next attempt reports the *wrong* root cause.** *(new, 2026-07-25)* No rollback, no pre-flight check: after a failure at line 120, the next run died at line 43 with `relation "ai_knowledge_base" already exists` — the leftover, not the real problem. That defeats your otherwise excellent fail-fast design (we only got a true signal after a manual `DROP SCHEMA public CASCADE`). **Fix:** restore into a transaction/staging schema, or detect a non-empty target and either refuse up-front (`target_not_empty`) or accept `{"mode":"clean"}`. **Acceptance:** two consecutive failing restores report the *same* root-cause error.
+
+**B3. Write-only env introspection.** *(open since 2026-07-24)* We could not close the Stripe-webhook canary because a secret set via `POST /env` and via the manifest still didn't match at runtime, and Koigrid never returns a stored value (correct!) — so "is my secret actually loaded and correct?" is undiagnosable remotely. **Fix:** a scope-gated `GET /apps/{id}/env?verify=KEY&sha256=<hash>` (or "does the running container see KEY with this digest?") that never returns plaintext. **Acceptance:** a migrator can prove a secret reached the container without printing it.
+
+### P2 — docs and API polish (cheap, high first-impression value)
+
+- **C1.** `GET /docs/migrate` still documents only the DIY `pg_dump | psql` path — **zero mentions of `restore-dump`**. Your flagship migration feature is invisible exactly where a migrator looks first.
+- **C2.** Envelope mismatch: `llms.txt` calls it a *job* (`/restore-dump/:jobId`) but the response wraps under **`{"restore":{…}}`**. An agent that follows the docs reads `resp.job.id` → `undefined` (we did, first try).
+- **C3.** `POST /databases` defaults to **`version: "16"`** while your own migrate guide (rightly) says to match the source major. Default to the newest supported, or warn on mismatch — nobody notices until restore time.
+- **C4.** Document the `\restrict` requirement (until A1 lands) and the ownership behavior (until A2 lands) in the migrate guide — a one-line warning would have saved us both loops.
+
+### ✅ Shipped since this report started (thank you — turnaround measured in hours)
+capacity-accounting bug · `build_oom` classifier · external-registry pull with creds + **native ECR** · whole-app **`/manifest`** · **`/apps/{id}/loadtest`** · `build_export_failed` flake · runtime error self-classification (`missing_env`/`db_connect_failed`/…) · **CDN on by default** (incl. existing apps) · **managed restore-dump** (engine is right — see A1/A2/B1/B2 for what's left).
+
+### 📝 Correction we owe you
+We earlier wrote that **inbound logical replication from an external primary was missing**. `/docs/migrate` documents it (`CREATE SUBSCRIPTION` on Koigrid, *"the app user has REPLICATION — no superuser needed"*). We have **not** tested it (it needs `rds.logical_replication=1` + a publication on our production RDS, an owner-approved change), but the capability exists and our note was wrong.
 
 ---
 
