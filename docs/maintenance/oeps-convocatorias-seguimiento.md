@@ -80,6 +80,25 @@ El sistema de **detección** se reescribió como un **radar multi-capa en cascad
 
 ## 1. Identificar qué oposiciones tienen señales pendientes
 
+### ⭐ Paso 0 (recomendado) — `npm run oep:triage-prep` ANTES de triar a mano
+
+Correr **`npm run oep:triage-prep`** primero: un **pre-pase determinista** (Capa 1) que
+clasifica cada señal `pending` en `mismatch | enrichment | novel | regression | duplicate`
+y —lo importante— **caza el mis-link del matcher** (señal enganchada a la fila EQUIVOCADA).
+Nace del caso 24/07: una señal de "Inspector PM Valladolid" enganchada a la fila `policia-local`
+(libre) se descartó como "no aporta" comparándola contra ESA fila, cuando contra la fila correcta
+(`inspector-...`, que existía) era un avance real. El pre-pase lo vuelve un check, no una suerte.
+
+- `regression`/`duplicate` = ruido auto-descartable; **enfoca el tiempo en `mismatch`/`enrichment`/`novel`**.
+- El script es **READ-ONLY** (no cierra ni aplica nada — tú adjudicas), fuente RDS.
+- `npm run oep:triage-prep -- --recent-days N` **re-audita** los `dismissed`/`applied` recientes:
+  avisa si un dismiss cae en categoría que exigía humano (Capa 4, caza el dato perdido).
+- Detección de mis-link por **evidencia positiva** (alta precisión, sin FP de cruce de entidad).
+  Detalle y gotchas: `scripts/lib/oep-triage-classify.cjs` + memoria `project_oep_triage_prep_capa1`.
+
+> ⚠️ **Un mis-link NO se aplica: se re-enlaza + cataloga la fila correcta y se MUEVE el `oposicion_id`**
+> (§16.bis / `senal_cuerpo_no_cuadra`). Si solo lo descartas, el bug del matcher queda invisible.
+
 ### Opción A — Panel admin (recomendado)
 `/admin/oep-signals` → tab "Sin revisar". Muestra:
 - Oposición + sensor que detectó
