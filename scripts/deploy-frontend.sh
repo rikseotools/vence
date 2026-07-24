@@ -153,7 +153,12 @@ podman build ${NO_CACHE:+--no-cache} \
   --build-arg SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   --build-arg GIT_COMMIT_SHA="$SHA" \
   --build-arg NEXT_PUBLIC_GIT_COMMIT_SHA="$SHA" \
+  --target runner \
   -t "$IMG" .
+# --target runner OBLIGATORIO: el Dockerfile tiene un stage `worker` (PDF, FROM deps) DESPUÉS
+# de `runner`. Sin --target, podman construye el ÚLTIMO stage (worker) → imagen sin .next/static
+# y [2b] falla ("/app/.next/static no existe"). El frontend es el stage `runner`; el worker se
+# despliega por su propio camino. (Regresión al añadir el stage worker: aa6f0e815/b5117c557.)
 
 echo "→ [2/6] push ECR"
 aws ecr get-login-password --profile $P --region $R | podman login --username AWS --password-stdin "${ACC}.dkr.ecr.${R}.amazonaws.com" >/dev/null 2>&1
