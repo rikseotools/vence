@@ -460,14 +460,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <span>🚨</span>
                     <span>Fraudes</span>
-                    {(fraudSignals.pending > 0 || adminNotifications?.rateLimitHits > 0) && (
+                    {fraudSignals.pending > 0 && (
                       <span
                         className={`absolute -top-1 -right-1 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse ${
                           fraudSignals.critical > 0 ? 'bg-red-600' : 'bg-orange-500'
                         }`}
                         title="Señales de fraude sin revisar (di: «revisa las señales de fraude»)"
                       >
-                        {((fraudSignals.pending || adminNotifications?.rateLimitHits) > 99) ? '99+' : (fraudSignals.pending || adminNotifications?.rateLimitHits)}
+                        {fraudSignals.pending > 99 ? '99+' : fraudSignals.pending}
                       </span>
                     )}
                   </Link>
