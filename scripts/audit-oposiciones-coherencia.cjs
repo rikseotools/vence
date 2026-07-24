@@ -23,6 +23,10 @@
  *   🟡 dual-write de convocatorias incompleto (is_current sin boe_reference/
  *      programa_url/examen_config/landing_*) — la vista SSOT hace fallback a oposiciones,
  *      no rompe la landing, pero conviene completarlo.
+ *   🟡 dual-write DIVERGENTE: legacy oposiciones y convocatoria is_current discrepan
+ *      en un campo SSOT (estado_proceso/plazas/fechas, ambos no-null) — los lectores
+ *      legacy ven un valor distinto del front. Bidireccional → adjudicar contra
+ *      boletín, NUNCA copiar en bloque. (scripts/lib/dual-write-divergence.cjs)
  *   🟡 landing_faqs < 3  |  landing_estadisticas vacío
  *
  * DELIBERADAMENTE NO escanea la PROSA de las FAQs en busca de números: contiene
@@ -39,6 +43,7 @@
  */
 const postgres = require('postgres');
 require('dotenv').config({ path: '.env.local' });
+const { dualWriteDivergences } = require('./lib/dual-write-divergence.cjs');
 
 const DB_URL = process.env.DATABASE_URL;
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2); }
@@ -93,7 +98,7 @@ async function main() {
     }
 
     // convocatoria vigente
-    const conv = (await sql`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, estado_proceso, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
+    const conv = (await sql`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, estado_proceso, inscription_start, inscription_deadline, exam_date, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
                             FROM convocatorias WHERE oposicion_id = ${o.id} AND is_current = true LIMIT 1`)[0];
     if (conv) {
       const L = Number(conv.plazas_libres || 0), D = Number(conv.plazas_discapacidad || 0), P = Number(conv.plazas_promocion_interna || 0);
@@ -110,6 +115,14 @@ async function main() {
       const faltan = ['boe_reference', 'programa_url', 'examen_config', 'landing_faqs', 'landing_estadisticas', 'landing_description']
         .filter(k => conv[k] == null);
       if (faltan.length) warn(`dual-write de convocatoria incompleto (NULL): ${faltan.join(', ')}`);
+
+      // dual-write DIVERGENTE (🟡): legacy y convocatoria discrepan en un campo SSOT
+      // (ambos no-null) → los lectores legacy (advance-estado/auditores) ven un valor
+      // distinto del que la vista sirve al front. NO auto-copiar: es bidireccional
+      // (a veces adelanta la convocatoria, a veces la legacy) → adjudicar contra
+      // fuente oficial. Runbook: "revisa el dual-write de convocatorias".
+      for (const dv of dualWriteDivergences(o, conv))
+        warn(`dual-write DIVERGENTE en ${dv.field}: legacy=${dv.legacy} ≠ convocatoria=${dv.convocatoria} (adjudicar contra boletín, NO copiar en bloque)`);
 
       // hitos si inscripción abierta
       if (conv.estado_proceso === 'inscripcion_abierta') {
