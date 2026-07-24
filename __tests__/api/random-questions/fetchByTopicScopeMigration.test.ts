@@ -633,21 +633,33 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
   })
 
   test('selección inicial con pocas medium: mezcla medium + easy', async () => {
-    const questions = [
-      ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`m-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
-      ...Array.from({ length: 15 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
-    ]
-    const mockFetch = jest.fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 20 }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
-    global.fetch = mockFetch
+    // La selección adaptativa baraja con Math.random (pickDiverseByArticle usa
+    // sort(() => Math.random() - 0.5); shuffleArray usa Fisher-Yates). Con 5 medium
+    // + 15 easy eligiendo 10, una selección aleatoria puede caer en 0 medium (~1,6%)
+    // → este test flakeaba en CI (forzó SKIP_CI_GATE el 24/07). Fijamos Math.random
+    // para hacer la selección DETERMINISTA sin tocar producción: con 0.5 el comparador
+    // devuelve 0 → orden estable → se preserva el pool medium-primero (buildAdaptiveCatalog
+    // pone [...medNS, ...easyNS]) → las 10 elegidas = 5 medium + 5 easy → mezcla garantizada.
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5)
+    try {
+      const questions = [
+        ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`m-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
+        ...Array.from({ length: 15 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
+      ]
+      const mockFetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 20 }) })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+      global.fetch = mockFetch
 
-    const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+      const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
-    expect(result.activeQuestions).toHaveLength(10)
-    const difficulties = new Set(result.activeQuestions.map((q: any) => q.metadata.difficulty))
-    expect(difficulties.has('medium')).toBe(true)
-    expect(difficulties.has('easy')).toBe(true)
+      expect(result.activeQuestions).toHaveLength(10)
+      const difficulties = new Set(result.activeQuestions.map((q: any) => q.metadata.difficulty))
+      expect(difficulties.has('medium')).toBe(true)
+      expect(difficulties.has('easy')).toBe(true)
+    } finally {
+      randomSpy.mockRestore()
+    }
   })
 
   test('adaptativo con pocas preguntas: bypass devuelve array directo (no adaptivo)', async () => {
