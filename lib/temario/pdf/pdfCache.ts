@@ -33,7 +33,7 @@ export interface PdfHashableContent {
 // esto invalida todas las cache keys → se regeneran con la nueva maquetación.
 //   v2: nº de página y título del tema por hoja (post-proceso pdf-lib) + minPresenceAhead para que
 //       las cabeceras no queden huérfanas al pie (feedback Nila, fb a67f7c02 + 1397b115).
-const PDF_TEMPLATE_VERSION = 'v2'
+export const PDF_TEMPLATE_VERSION = 'v2'
 
 export function topicPdfContentHash(content: PdfHashableContent): string {
   const h = createHash('sha256')

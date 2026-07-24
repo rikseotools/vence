@@ -17,6 +17,7 @@ import postgres from 'postgres'
 import { OPOSICIONES } from '@/lib/api/temario/schemas'
 import { enqueuePdfJob, pdfJobStats } from '@/lib/temario/pdf/pdfJobQueue'
 import { runPdfWorker, type EmitFn, type RenderFn } from '@/lib/temario/pdf/pdfWorker'
+import { PDF_TEMPLATE_VERSION } from '@/lib/temario/pdf/pdfCache'
 
 const PDF_MAX_CHARS = 400_000       // límite de generación síncrona (total del tema)
 const PDF_MAX_ARTICLE_CHARS = 60_000 // límite por-artículo (cajón)
@@ -78,14 +79,26 @@ async function cmdEnqueueBig(db: any, minTotal: number, minArt: number) {
   console.log(`📋 ${temas.length} temas grandes (total>${minTotal} o art>${minArt}). Encolando…`)
   let enq = 0, dup = 0
   for (const { pt, tema, total, maxArt } of temas) {
-    // Clave de idempotencia = firma de tamaño (cambia si cambia el contenido → re-detecta). NO
-    // fetcheamos el contenido aquí (lento); el worker calcula el hash real del S3 al renderizar.
-    const sig = `sweep:${total}:${maxArt}`
+    // Firma = versión de plantilla + tamaño. Incluir PDF_TEMPLATE_VERSION hace el sistema
+    // AUTO-CURABLE ante un bump de plantilla: al cambiar la versión, la firma cambia → job nuevo →
+    // el worker regenera (antes el bump invalidaba la caché S3 pero el encolado no se enteraba y los
+    // temas grandes quedaban colgados en window.print()). El tamaño re-detecta cambios de contenido.
+    const sig = `sweep:${PDF_TEMPLATE_VERSION}:${total}:${maxArt}`
+    // Idempotencia REAL (evita churn cada ciclo del worker): el índice `_alive_uq` solo cubre jobs
+    // VIVOS, así que un job 'done' NO frena un re-encolado. Comprobamos aquí si ya existe un job
+    // con ESTA firma exacta en CUALQUIER estado (incl. 'done'/'failed'); si sí, esta versión ya
+    // está hecha (o en cola/DLQ) → no reencolar. Solo entra lo cuya firma es NUEVA (bump de
+    // plantilla o cambio de tamaño). Consulta indexada barata.
+    const existing = (await db.execute(sql`
+      SELECT count(*)::int AS n FROM temario_pdf_jobs
+      WHERE oposicion = ${pt} AND tema = ${tema} AND content_hash = ${sig}
+    `)) as { n: number }[]
+    if (Number(existing[0]?.n ?? 0) > 0) { dup++; continue }
     const ins = await enqueuePdfJob(db, { oposicion: pt, tema, contentHash: sig })
     if (ins) { enq++; console.log(`  + ${pt} T${tema} (total ${(total/1000).toFixed(0)}k, art ${(maxArt/1000).toFixed(0)}k)`) }
     else dup++
   }
-  console.log(`✅ encolados ${enq}, ya-vivos ${dup}`)
+  console.log(`✅ encolados ${enq}, ya al día ${dup}`)
 }
 
 /**
@@ -139,7 +152,14 @@ async function main() {
   const { db, conn } = makeDb()
   try {
     if (cmd === 'enqueue-big') await cmdEnqueueBig(db, Number(a) || PDF_MAX_CHARS, Number(b) || PDF_MAX_ARTICLE_CHARS)
-    else if (cmd === 'drain') await cmdDrain(db, Number(a) || Number.MAX_SAFE_INTEGER)
+    else if (cmd === 'drain') {
+      // RECONCILIADOR (estado deseado): antes de drenar, asegura que la cola tenga jobs para los
+      // temas grandes cuya firma (versión de plantilla + tamaño) cambió → un bump de plantilla o un
+      // tema nuevo/editado se regenera SOLO, sin intervención. Los ya al día se deduplican (barato,
+      // sin fetch de contenido ni HEAD a S3). Así el worker programado auto-cura cada ciclo.
+      await cmdEnqueueBig(db, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS)
+      await cmdDrain(db, Number(a) || Number.MAX_SAFE_INTEGER)
+    }
     else if (cmd === 'stats') console.log('📊', await pdfJobStats(db))
     else { console.error('uso: enqueue-big [minTotal minArt] | drain [maxJobs] | stats'); process.exitCode = 2 }
   } finally {
