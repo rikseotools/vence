@@ -109,7 +109,7 @@ export default async function DynamicTemarioPage({
                 {bloque.temas.map(tema => (
                   <li key={tema.id}>
                     <Link href={`/${oposicionSlug}/temario/tema-${tema.id}`}>
-                      Tema {tema.id}: {tema.titulo} - {tema.descripcion}
+                      Tema {tema.displayNum ?? tema.id}: {tema.titulo} - {tema.descripcion}
                     </Link>
                   </li>
                 ))}

@@ -2027,22 +2027,22 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'Atención sociosanitaria y a la dependencia',
         icon: '🧑‍⚕️',
         themes: [
-          { id: 5, name: 'Destrezas sociales del cuidador. Resolución de conflictos' },
-          { id: 6, name: 'La higiene de las personas en situación de dependencia' },
-          { id: 7, name: 'Necesidades de eliminación. Lesiones de la piel y muestras biológicas. Constantes vitales' },
-          { id: 8, name: 'La comunicación con personas en situación de dependencia' },
-          { id: 9, name: 'Productos de apoyo para personas dependientes' },
-          { id: 10, name: 'Derechos y deberes de las personas usuarias de centros sociosanitarios residenciales' },
-          { id: 11, name: 'El equipo de trabajo en atención sociosanitaria' },
-          { id: 12, name: 'Protocolo de Atención Personalizada para personas con discapacidad en centros residenciales' },
-          { id: 13, name: 'Las infecciones. Cadena infecciosa. Prevención y aislamiento' },
-          { id: 14, name: 'Contenciones: tipos, características, normativa y protocolo' },
-          { id: 15, name: 'Alimentos, APPCC, higiene alimentaria y dietas' },
-          { id: 16, name: 'Primeros auxilios' },
-          { id: 17, name: 'Carga mental, estrés laboral y acoso laboral (mobbing)' },
-          { id: 18, name: 'Programas, servicios y recursos de atención a la dependencia en Andalucía' },
-          { id: 19, name: 'Lugares de trabajo. Condiciones ambientales. Manipulación de cargas. Emergencias' },
-          { id: 20, name: 'La Ley 31/1995 de Prevención de Riesgos Laborales. Riesgos del cuidador' },
+          { id: 5, displayNumber: 1, name: 'Destrezas sociales del cuidador. Resolución de conflictos' },
+          { id: 6, displayNumber: 2, name: 'La higiene de las personas en situación de dependencia' },
+          { id: 7, displayNumber: 3, name: 'Necesidades de eliminación. Lesiones de la piel y muestras biológicas. Constantes vitales' },
+          { id: 8, displayNumber: 4, name: 'La comunicación con personas en situación de dependencia' },
+          { id: 9, displayNumber: 5, name: 'Productos de apoyo para personas dependientes' },
+          { id: 10, displayNumber: 6, name: 'Derechos y deberes de las personas usuarias de centros sociosanitarios residenciales' },
+          { id: 11, displayNumber: 7, name: 'El equipo de trabajo en atención sociosanitaria' },
+          { id: 12, displayNumber: 8, name: 'Protocolo de Atención Personalizada para personas con discapacidad en centros residenciales' },
+          { id: 13, displayNumber: 9, name: 'Las infecciones. Cadena infecciosa. Prevención y aislamiento' },
+          { id: 14, displayNumber: 10, name: 'Contenciones: tipos, características, normativa y protocolo' },
+          { id: 15, displayNumber: 11, name: 'Alimentos, APPCC, higiene alimentaria y dietas' },
+          { id: 16, displayNumber: 12, name: 'Primeros auxilios' },
+          { id: 17, displayNumber: 13, name: 'Carga mental, estrés laboral y acoso laboral (mobbing)' },
+          { id: 18, displayNumber: 14, name: 'Programas, servicios y recursos de atención a la dependencia en Andalucía' },
+          { id: 19, displayNumber: 15, name: 'Lugares de trabajo. Condiciones ambientales. Manipulación de cargas. Emergencias' },
+          { id: 20, displayNumber: 16, name: 'La Ley 31/1995 de Prevención de Riesgos Laborales. Riesgos del cuidador' },
         ],
       },
     ],
@@ -10562,8 +10562,12 @@ export function getBlockForTopic(identifier: string, topicNum: number): {
     const theme = block.themes.find(t => t.id === topicNum)
     if (theme) {
       const firstId = block.themes[0].id
-      // Si el primer tema del bloque tiene ID >= 100, es offset-based
-      const displayNum = firstId >= 100 ? topicNum - firstId + 1 : topicNum
+      // El `displayNumber` explícito del config es la fuente AUTORITATIVA (casa con el programa
+      // oficial). Solo si falta se aplica la heurística: bloques offset-based (firstId>=100, p.ej.
+      // topic_numbers 201-2xx) reinician en 1. Sin esto, un bloque cuyo primer id es <100 pero NO
+      // reinicia (Cuidador Córdoba Bloque II: ids 5-20 que deben verse 1-16) mostraba el
+      // topic_number y contradecía al índice (gap 24/07, feedback Maricarmen).
+      const displayNum = theme.displayNumber ?? (firstId >= 100 ? topicNum - firstId + 1 : topicNum)
       return {
         blockId: `bloque-${ROMAN_NUMERALS[i]}`,
         blockTitle: block.title.split(':')[0]?.trim() || block.title,

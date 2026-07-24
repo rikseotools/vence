@@ -184,4 +184,61 @@ describeIfDb('Oposición data completeness', () => {
     }
     expect(invisiblesEnTests).toEqual([])
   })
+
+  // GUARDARRAÍL (gap real 24/07, feedback Maricarmen): el número VISIBLE del tema tiene DOS
+  // fuentes — la BD (`topics.display_number`, que usa el ÍNDICE vía getTemarioByPositionType) y
+  // el config (`blocks[].themes[].displayNumber`, que usan BREADCRUMBS y la CABECERA del tema vía
+  // getBlockForTopic). En Cuidador Córdoba la BD tenía el número oficial (Bloque II 1-16) pero el
+  // config NO llevaba displayNumber → los temas del Bloque II salían con el topic_number interno
+  // (5-20) en breadcrumbs/cabecera mientras el índice mostraba 1-16. La app se contradecía y una
+  // usuaria se confundió. Este test fuerza que el número visible del config == el de la BD para
+  // TODA oposición con temas, así no puede volver a divergir al añadir/renumerar una oposición.
+  test('config displayNumber == BD display_number (número VISIBLE coherente en toda la UI)', async () => {
+    const rows = await sql!<{ position_type: string; topic_number: number; display_number: number | null }[]>`
+      SELECT position_type, topic_number, display_number FROM topics WHERE is_active`
+    const dbVisible = new Map<string, number>()
+    for (const r of rows) dbVisible.set(`${r.position_type}:${r.topic_number}`, Number(r.display_number ?? r.topic_number))
+
+    // RATCHET: divergencias PRE-EXISTENTES (deuda, descubiertas por este guardarraíl el 24/07).
+    // Reconciliar cada una verificando su programa oficial y decidiendo la fuente correcta
+    // (config o BD) — no se pudo en el momento por alcance. El guardarraíl las salta pero exige
+    // que NINGUNA otra (ni una nueva) diverja. Al reconciliar una, quitarla de aquí (el ratchet
+    // solo puede bajar). NUNCA añadir una nueva aquí para "callar" el test: eso reintroduce el bug.
+    const KNOWN_DIVERGENCES = new Set([
+      'administrativo-estado',
+      'administrativo-asturias',
+      'auxiliar-enfermeria-osakidetza',
+      'enfermero-sms',
+      'escala-administrativa-universidad-de-granada',
+    ])
+
+    const mismatches: string[] = []
+    const knownStillDiverging: string[] = []
+    for (const o of OPOSICIONES) {
+      let oposDiverge = false
+      for (const b of o.blocks || []) {
+        for (const t of b.themes) {
+          const db = dbVisible.get(`${o.positionType}:${t.id}`)
+          if (db === undefined) continue // tema en config sin fila activa en BD → lo cubre el test de cobertura
+          const configVisible = t.displayNumber ?? t.id
+          if (configVisible !== db) {
+            oposDiverge = true
+            if (!KNOWN_DIVERGENCES.has(o.slug)) {
+              mismatches.push(`${o.slug} tema id=${t.id}: config muestra "Tema ${configVisible}" pero la BD (display_number) muestra "Tema ${db}"`)
+            }
+          }
+        }
+      }
+      if (oposDiverge && KNOWN_DIVERGENCES.has(o.slug)) knownStillDiverging.push(o.slug)
+    }
+    if (mismatches.length > 0) {
+      console.error('Número de tema INCOHERENTE (config vs BD) — breadcrumbs/cabecera divergen del índice:\n' + mismatches.join('\n'))
+    }
+    // Higiene del ratchet: una entrada del allowlist que YA no diverge debe quitarse.
+    const staleAllowlist = [...KNOWN_DIVERGENCES].filter(s => !knownStillDiverging.includes(s))
+    if (staleAllowlist.length > 0) {
+      console.warn('Allowlist obsoleto (ya no divergen, quítalos de KNOWN_DIVERGENCES): ' + staleAllowlist.join(', '))
+    }
+    expect(mismatches).toEqual([])
+  })
 })
