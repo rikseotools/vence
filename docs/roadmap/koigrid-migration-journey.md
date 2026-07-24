@@ -7,6 +7,28 @@
 
 ---
 
+## 🎯 THE #1 THING KOIGRID SHOULD BUILD TO BEAT AWS — cache HTML at the edge honoring origin `Cache-Control` (2026-07-24)
+
+**This is the single highest-leverage improvement for Koigrid, measured on this migration.** After Koigrid shipped CDN-on-by-default, AWS *still* wins edge latency — and we traced the entire remaining gap to one thing: **Koigrid's CDN (`cdnEnabled`) does not cache HTML/document responses; AWS CloudFront does.** It is NOT an app problem (Vence already sends cacheable headers) and NOT fixable by the user (Koigrid exposes no cache-rule control).
+
+**The evidence (same app, same page, measured 2026-07-24):**
+| | origin `Cache-Control` | `Set-Cookie` | CDN result | TTFB |
+|---|---|---|---|---|
+| **AWS CloudFront** | `s-maxage=86400, stale-while-revalidate` | none | `x-cache: Hit from cloudfront`, `age: 3433` (served from edge) | **65 ms** |
+| **Koigrid Cloudflare** | `s-maxage=31536000` (1 yr), `x-nextjs-cache: HIT`, prerendered | none | **`cf-cache-status: DYNAMIC`** (origin every time) | **~300–450 ms** |
+
+The app is already CDN-perfect: public `s-maxage`, no cookies, prerendered ISR HTML. **CloudFront caches it and serves from edge; Koigrid's Cloudflare returns `DYNAMIC` and hits the origin on every request.** Root cause = **Cloudflare's default caches only static assets by file extension and bypasses `text/html`** unless a "Cache Everything" / Edge-Cache-TTL rule is set — and Koigrid surfaces no such control (`/apps/{id}/rules` = redirect/rewrite/header only; API grep for `cache-everything`/`cacheTtl`/`cacheLevel` = 0). A header rule to normalize the Next.js RSC `Vary` had no effect (still `DYNAMIC`).
+
+**What to build (concrete, in priority order):**
+1. **Cache document/HTML responses when the origin opts in with `Cache-Control: public, s-maxage=…` (and there's no `Set-Cookie`).** This is exactly CloudFront's and Vercel's default behavior. For a Cloudflare-backed edge, that means a per-app **Cache Rule with "Eligible for cache: Cache Everything" + "Edge TTL: respect origin"** applied automatically when `cdnEnabled` and the origin sends a public `s-maxage`. This one change closes the whole edge-latency gap for every ISR/SSR site.
+2. **Handle the framework `Vary: RSC, next-router-*` correctly** — cache the document variant while still passing RSC/prefetch sub-requests through (CloudFront/Vercel do this; a naive `Vary` bypass is why generic Cloudflare chokes on Next.js App Router).
+3. **Expose an explicit override** for teams that want it: `PUT /apps/{id}/cdn {"enabled":true,"cacheDocuments":true,"edgeTtl":"origin"}` or a `/rules` `type:"cache"`. Default it **on** when the origin advertises a public `s-maxage` — most migrators won't know to ask.
+4. **Surface cache effectiveness**: report `cf-cache HIT/MISS` ratio per app in `/metrics`, so a migrator can *see* the CDN working (or not) instead of discovering `DYNAMIC` by hand.
+
+**Why this matters strategically:** Koigrid's whole pitch is "the anti-AWS" and its ICP is Next.js/Astro/Hugo/Supabase refugees — **all SSR/ISR HTML-first frameworks.** Right now `cdnEnabled` on such an app only saves the TLS handshake, not the render, so it benchmarks 2–5× slower than CloudFront on exactly the number a migrator checks first (TTFB of a fresh app). **Land item #1 and Koigrid ties or beats AWS on edge latency too** — removing the last axis where this migration report says AWS is meaningfully ahead. Combined with the co-located DB (6.45 ms), ~10× lower cost, and the already-shipped image-deploy/manifest/runtime-error/CDN fixes, there'd be **no dimension left where AWS wins** for an app like Vence.
+
+---
+
 ## ⚠️ 2026-07-24 (latest+2) — CORRECTION: the cache headers were ALREADY cacheable. The real gap is Koigrid's CDN not caching HTML (CloudFront does).
 
 I earlier implied the edge-cache gap needed **app-side** cache headers. **That was wrong — checked the actual response headers and Vence already sends fully cacheable ones.** The real difference is CDN behavior:
