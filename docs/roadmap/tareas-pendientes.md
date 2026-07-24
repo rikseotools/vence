@@ -651,6 +651,25 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 - **Cómo:** confirmar que el art 5 del Reg. (CE) 852/2004 está en `articles` (activo) con su contenido literal (BOE/DOUE); si falta o es fino, importarlo verbatim (fuente oficial, doble auditoría) + generar preguntas verificadas (`docs/maintenance/generar-preguntas-con-ia.md`). NUNCA inventar los principios: son los del art 5.2.
 - **Estado:** ABIERTA (backlog). Avisar a Maricarmen al terminar.
 
+### [T-097] 🟢 [HECHO 24/07 — quedan 3 follow-ups pequeños] PDF del temario: nº de página + título por hoja + reconciliador auto-curable
+- **Qué (raíz):** feedback de Nila (`a67f7c02`+`1397b115`, cerradas): pidió nº de página, título del tema por hoja, y que el título no se separe de su contenido en el PDF pre-generado (react-pdf).
+- **✅ Hecho y en `main` + prod:**
+  - `lib/temario/pdf/stampChrome.ts` (NUEVO): post-proceso con **pdf-lib** que estampa pie *"Vence · … · Página X de Y"* + título del tema en la cabecera (hojas 2+). Lo usan los DOS caminos (worker `pregenerate` + ruta síncrona). Degrada: si falla, sirve sin chrome + evento `temario_pdf_stamped` warn.
+  - `TopicPdfDocument.tsx`: `minPresenceAhead` (cabeceras no huérfanas). El `render` de react-pdf 4.5.1 para el nº de página **NO sirve con `<View wrap>`** (bug aislado) → por eso pdf-lib.
+  - `pdfCache.ts` `PDF_TEMPLATE_VERSION='v2'` (exportada) → invalida caché para regenerar.
+  - **Reconciliador** (`scripts/pdf-worker.ts`): la firma de encolado incluye la versión + comprueba existencia exacta (idempotente, sin churn) + `drain` reconcilia antes de drenar → futuros bumps de plantilla **se auto-curan** sin intervención. Guardarraíl `pdfWorkerReconciler.guardrail.test.ts`.
+  - **Worker desplegado con el código nuevo** (`vence-temario-pdf-worker:3`, imagen `worker-*` con pdf-lib) → **126/127 temas grandes re-generados estampados** (verificado en prod 200 + "Página X de Y").
+  - **Bug de infra arreglado de paso:** `deploy-frontend.sh` sin `--target runner` construía el stage `worker` (sin `.next/static`) → **abortaba TODOS los deploys de frontend**. Fijado.
+- **⏳ Follow-ups (pequeños):**
+  1. **1 tema en DLQ:** `auxiliar_administrativo_diputacion_segovia` **T29** → `render_timeout` (18 min, 3 intentos). Tema gigante que no cabe en el render → **es un caso de [T-085]** (trocear cajones). Mientras, ese tema cae a `window.print()`.
+  2. **Cuota vCPU Fargate 30→60 SOLICITADA (PENDING de AWS, `L-3032A538`).** Es el cuello: el schedule del worker (`rate(30 min)`) no arrancaba fiable por la cuota. Verificar que AWS la aprueba → el worker auto-cura fiable.
+  3. **Nila:** sus 2 feedbacks se cerraron en silencio (arreglado). Valorar **recompensa de embajador** (bug/UX real que destapó) ahora que está desplegado.
+
+### [T-098] 🟢 [SUGERENCIA — valorar] Panel personal de seguimiento de varias oposiciones (watchlist OEP)
+- **Qué:** pantalla donde el usuario **elige las oposiciones que le interesan** (turno libre y promoción interna) y ve de un vistazo su estado (OEP, apertura/cierre de inscripción, hitos, examen).
+- **Por qué:** engagement/retención; la infra ya existe (`convocatorias`, `oposiciones_ssot`, `convocatoria_hitos`, radar OEP) — es sobre todo UI + una tabla de "oposiciones seguidas" por usuario.
+- **Estado:** pedido por Marta (premium aux Madrid, fb `5d0282bc`, 23/07). Valorar. (Nota re-añadida 24/07: la anotación original se perdió en un cambio de rama del dir compartido.)
+
 ### [T-016] 🟠 [VENDIBLE] Construir la oposición Técnico Superior en Imagen para el Diagnóstico y Medicina Nuclear (TSID)
 - **Por qué:** FP sanitario real y vendible cuyo temario SÍ es diagnóstico por imagen + radioprotección + medicina nuclear. Es el **home natural** de la ley editorial `e731eb12` y de las 16 preguntas ya aparcadas (arriba) — encajan de un tirón al escopar la ley en sus temas.
 - **Cómo:** flujo `crear-nueva-oposicion.md` + scaffolder (memoria `project_scaffolder_crear_oposicion`); temario oficial del título de TSID (BOE del RD del título + convocatoria del servicio de salud correspondiente); reusar la ley editorial ya creada + ampliarla (protección radiológica avanzada, anatomía radiológica, posiciones radiográficas, contraste, PACS/RIS). Verificar epígrafe→scope al cerrar.
