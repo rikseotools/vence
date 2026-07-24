@@ -22,6 +22,11 @@ export async function makePgCleaner(): Promise<Cleaner> {
     throw new Error('[e2e] makePgCleaner necesita E2E_DATABASE_URL (o DATABASE_URL) para limpiar.')
   }
   // require perezoso: pg solo se carga si un spec pide limpieza.
+  // RDS presenta un cert cuya cadena no está en el trust store de Node → el
+  // `ssl.rejectUnauthorized:false` de pg no basta en este runtime (mismo síntoma que
+  // los scripts de mantenimiento). Desactivamos la verificación TLS SOLO en el proceso
+  // del cleaner (es un helper de test, no runtime de app).
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
   const { Client } = await import('pg')
   const client = new Client({ connectionString: E2E_DATABASE_URL, ssl: { rejectUnauthorized: false } })
   await client.connect()
