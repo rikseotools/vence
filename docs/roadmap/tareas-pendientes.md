@@ -1596,3 +1596,15 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Qué:** el deploy de F0 (frontend `dbb2b31f` + backend cron) está **HECHO y verificado** (endpoints, logs ECS `Cron 'fraud-sweep' registrado`, health 200), pero T-087 quedó en `open` porque RDS daba timeout al hacer el `UPDATE`. Solo falta el flag.
 - **Cómo:** `UPDATE backlog_tasks SET status='done' WHERE id='T-087'` cuando RDS responda.
 - **Estado:** deploy hecho; solo el bookkeeping pendiente.
+
+### [T-095] ✅ [RESUELTA 24/07 — decisión: NO construir F1 cap-de-uso] ¿Merece la pena el enforcement F1 (cap de USO por device+IP)?
+- **Qué:** investigación a fondo (con datos reales de RDS) de si compensa construir F1 = límite diario por `device_id`+IP además de por cuenta, para matar el farmeo multicuenta del límite free.
+- **Datos medidos 24/07 (baseline 10.831 cuentas reales, 257 premium = 2,37% conversión):**
+  - **66 cuentas-granja** device-confirmed (≥3 cuentas/device) = **0,6% de las free**. Máx 8/device. (IP de registro, más ruidosa: 63 IPs≥3 → 289 cuentas, incluye CGNAT/academias.)
+  - **0 de las 66 son premium** → los farmers **no pagan nunca** → upside de ingresos de F1 = **0 €**.
+  - **Fuga de volumen:** las granjas consumieron 26.023/558.040 preguntas = **4,66%**. La fuga que F1 evitaría (lo servido por encima de 25/día) = **25.769 preguntas** en 622 device-días (peor: 200/device-día = 8× el límite).
+  - **Ad-waste trivial:** solo **10** de las 66 vienen de google_ads (56 orgánicas).
+  - El **cap por cuenta (25/día) YA funciona** (máx real por cuenta = 25); el farmeo es puramente multicuenta.
+- **✅ DECISIÓN: NO construir F1 como cap de USO.** Upside de ingresos nulo + problema pequeño (0,6% cuentas / 4,66% volumen, sin crisis de capacidad) **vs** downside real: un cap por **IP** rompe CGNAT (muchos reales/1 IP) y por **device** rompe familias/academias/bibliotecas (el FP que el runbook de fraude ya sufre, p.ej. `45.147.204.84`). Coste/riesgo > beneficio.
+- **Sugerencia si algún día se quiere actuar (mejor ROI, menos riesgo):** atacar el farmeo en el **REGISTRO**, no en el uso → capar **altas free** por device+IP/día (≤2) + captcha/verificación de email en signup. Crear 8 cuentas mismo-día/mismo-device es fraude inequívoco; un cap de uso sobre un PC de academia no. El lever de ingresos real es la **conversión (2,37%)**, no los 66 farmers. Detección **F0 se mantiene** para visibilidad.
+- **Cómo se midió (durable, RDS):** device farming = `user_sessions.device_fingerprint` con `count(distinct user_id)≥3`; fuga = suma por `(device,día)` de `daily_question_usage` menos 25; conversión = `plan_type LIKE 'premium%'`. Evidencia por-IP en `fraud_alerts.notes` (ver T-092).
