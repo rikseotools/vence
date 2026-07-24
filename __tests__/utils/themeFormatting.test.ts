@@ -31,8 +31,9 @@ describe('formatThemeName', () => {
     test('Tema 1 → Bloque I - Tema 1', () => {
       expect(formatThemeName(1, slug)).toBe('Bloque I - Tema 1')
     })
-    test('Tema 201 (displayNumber=12) → Bloque II - Tema 12', () => {
-      expect(formatThemeName(201, slug)).toBe('Bloque II - Tema 12')
+    test('Tema 201 (displayNumber=1, por-bloque) → Bloque II - Tema 1', () => {
+      // Programa oficial (BOE-A-2025-26262) numera POR-BLOQUE: el B2 reinicia en 1.
+      expect(formatThemeName(201, slug)).toBe('Bloque II - Tema 1')
     })
     test('Tema 301 → Bloque III', () => {
       expect(formatThemeName(301, slug)).toMatch(/^Bloque III - Tema \d+$/)

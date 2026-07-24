@@ -56,47 +56,39 @@ describe('administrativo-estado config', () => {
   })
 })
 
-describe('administrativo-estado displayNumber', () => {
+describe('administrativo-estado displayNumber (POR-BLOQUE, programa oficial)', () => {
+  // El programa oficial del Cuerpo General Administrativo del Estado (BOE-A-2025-26262,
+  // Resolución 18/12/2025) numera POR-BLOQUE: cada grupo de materias REINICIA en 1
+  // (materias generales 1-16, ofimática reinicia 1-12). Nuestro temario editorial son 6
+  // bloques; el número VISIBLE de cada bloque reinicia en 1. Coincide con la BD
+  // (display_number por-bloque) → breadcrumbs/header e índice muestran lo mismo.
+  // Antes este test exigía numeración CONTINUA 12-45; era la asunción equivocada que causó
+  // el bug de número incoherente (lo cazó una usuaria). Guardarraíl config↔BD (RDS live):
+  // __tests__/integration/oposicionDataCompleteness.test.ts.
   const config = getOposicionBySlug(ADMIN_SLUG)!
-  const allThemes = config.blocks.flatMap(b => b.themes)
 
-  test('bloque 1 (IDs 1-11) no necesita displayNumber', () => {
+  test('bloque 1 (IDs 1-11): el número visible = id (displayNumber opcional)', () => {
     const bloque1 = config.blocks.find(b => b.id === 'bloque1')!
     for (const theme of bloque1.themes) {
-      // displayNumber es opcional para IDs que ya son user-friendly
       if (theme.displayNumber !== undefined) {
         expect(theme.displayNumber).toBe(theme.id)
       }
     }
   })
 
-  test('bloques 2-6 tienen displayNumber secuencial (12-45)', () => {
-    const nonBloque1 = config.blocks.filter(b => b.id !== 'bloque1')
-    const themesWithDisplay = nonBloque1.flatMap(b => b.themes)
-
-    // Todos deben tener displayNumber
-    for (const theme of themesWithDisplay) {
-      expect(theme.displayNumber).toBeDefined()
-      expect(theme.displayNumber).toBeGreaterThanOrEqual(12)
-      expect(theme.displayNumber).toBeLessThanOrEqual(45)
+  test('cada bloque reinicia su número visible en 1..N (por-bloque)', () => {
+    for (const block of config.blocks) {
+      const visible = block.themes.map(t => t.displayNumber ?? t.id)
+      const expected = Array.from({ length: block.themes.length }, (_, i) => i + 1)
+      expect(visible).toEqual(expected)
     }
   })
 
-  test('displayNumber es secuencial sin huecos (1-11 implícito, 12-45 explícito)', () => {
-    const displayNumbers: number[] = []
-    for (const theme of allThemes) {
-      displayNumbers.push(theme.displayNumber ?? theme.id)
+  test('dentro de un bloque el número visible no se repite', () => {
+    for (const block of config.blocks) {
+      const visible = block.themes.map(t => t.displayNumber ?? t.id)
+      expect(new Set(visible).size).toBe(visible.length)
     }
-
-    // Debe ser exactamente [1, 2, 3, ..., 45]
-    const expected = Array.from({ length: 45 }, (_, i) => i + 1)
-    expect(displayNumbers).toEqual(expected)
-  })
-
-  test('displayNumber no se repite', () => {
-    const numbers = allThemes.map(t => t.displayNumber ?? t.id)
-    const unique = new Set(numbers)
-    expect(unique.size).toBe(numbers.length)
   })
 })
 

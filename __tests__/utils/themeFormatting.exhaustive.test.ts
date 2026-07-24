@@ -129,7 +129,7 @@ describe('findThemeInOposicion — helper interno', () => {
     const info = findThemeInOposicion(opo, 201)
     expect(info).not.toBeNull()
     expect(info!.blockRoman).toBe('II')
-    expect(info!.displayNum).toBe(12) // displayNumber override
+    expect(info!.displayNum).toBe(1) // displayNumber override, por-bloque (B2 reinicia en 1)
     expect(info!.themeName).toBeTruthy()
   })
 
