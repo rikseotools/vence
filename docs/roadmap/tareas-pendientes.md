@@ -237,8 +237,9 @@
 - **Impacto:** main lleva rojo → el **pre-commit de otras sesiones falla** (obligando a `--no-verify`) y el CI rojo **enmascara futuras regresiones reales**. Detectado 24/07 al pushear cambios doc-only (había que saltar el hook).
 - **Cómo:** reproducir con `npx jest __tests__/config/administrativoEstadoConfig.test.ts __tests__/utils/themeFormatting.test.ts`; mirar el último cambio que tocó la config de administrativo-estado / `displayNumber` (`lib/config/oposiciones.ts` o la fuente de bloques); arreglar la secuencia **o** actualizar el test si la renumeración es intencional. NO dejar main rojo.
 
-### [T-100] 🟡 [ABIERTO 24/07] `pdf-lib` en `package.json` pero NO en `package-lock.json`
-- **Qué:** `pdf-lib@^1.17.1` está declarado en `package.json` (dep del render de PDF del temario, `lib/temario/pdf/stampChrome.ts`) pero **no figura en `package-lock.json`**. Un `npm ci` limpio (CI, imagen Docker) no lo instala → 3 suites de temario revientan por `Cannot find module 'pdf-lib'`.
+### [T-100] ✅ [CERRADO 24/07] `pdf-lib` en `package.json` pero NO en `package-lock.json`
+- **✅ Cerrada 24/07:** ya resuelto en `origin/main` — `package-lock.json` tiene la entrada completa `node_modules/pdf-lib` (`version`+`resolved`+`integrity`) + la dep raíz. Verificado: `npm ls pdf-lib` limpio (`1.17.1`, sin warnings) y las 8 suites de temario pasan (incl. `stampChrome` que importa `pdf-lib`). Un `npm ci` limpio instalaría `pdf-lib`. El lock se regeneró en un commit previo (p.ej. `85e2e107a`).
+- **Qué (histórico):** `pdf-lib@^1.17.1` estaba declarado en `package.json` (dep del render de PDF del temario, `lib/temario/pdf/stampChrome.ts`) pero **no figura en `package-lock.json`**. Un `npm ci` limpio (CI, imagen Docker) no lo instala → 3 suites de temario revientan por `Cannot find module 'pdf-lib'`.
 - **Impacto:** latente. En local se manifestó (node_modules sin pdf-lib); se instaló a mano el 24/07 para desbloquear commits. El lock desincronizado es frágil (cualquier `npm ci` limpio lo destapa).
 - **Cómo:** `npm install pdf-lib@^1.17.1` en el repo para regenerar el lock con la entrada → commitear `package-lock.json`. Verificar que un `npm ci` limpio instala pdf-lib y las suites de temario pasan.
 
