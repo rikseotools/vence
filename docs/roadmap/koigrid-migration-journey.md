@@ -7,6 +7,22 @@
 
 ---
 
+## ⚠️ 2026-07-24 (latest+2) — CORRECTION: the cache headers were ALREADY cacheable. The real gap is Koigrid's CDN not caching HTML (CloudFront does).
+
+I earlier implied the edge-cache gap needed **app-side** cache headers. **That was wrong — checked the actual response headers and Vence already sends fully cacheable ones.** The real difference is CDN behavior:
+
+| | `Cache-Control` sent by app | `Set-Cookie`? | CDN result |
+|---|---|---|---|
+| **AWS** `/leyes/constitucion-espanola` | `s-maxage=86400, stale-while-revalidate` | none | **`x-cache: Hit from cloudfront`, `age: 3433`** → cached at edge |
+| **Koigrid** same page | `s-maxage=31536000` (1 year!) `x-nextjs-cache: HIT` | none | **`cf-cache-status: DYNAMIC`** → NOT cached |
+
+Same app, same (already-cacheable) headers. **AWS CloudFront caches the HTML; Koigrid's Cloudflare does not.** Root cause: **Cloudflare's default only caches static assets by file extension and bypasses HTML documents** unless a "Cache Everything" cache rule / Edge-Cache-TTL is set — and **Koigrid's CDN exposes no such control** (its `/apps/{id}/rules` does only redirect/rewrite/header; grep of the API/llms for `cache-everything`/`cacheTtl`/`cacheLevel` = 0 hits). I tried a header rule to normalize the Next.js RSC `Vary` (a plausible secondary cause) → **no effect, still `DYNAMIC`**. So there is **no user-accessible lever** to make Koigrid cache HTML.
+
+**Conclusion (corrected):** there is **nothing to fix on Vence's side** — the app is already CDN-friendly, and AWS proves it (CloudFront serves the document from edge). The edge-latency gap is because **Koigrid's `cdnEnabled` gives edge TLS termination + static-asset caching but NOT document/HTML caching**, whereas CloudFront (and Vercel) cache SSR/ISR HTML by honoring the origin's `s-maxage`. For an ISR-heavy Next.js app this is the whole ballgame — it's why `/leyes/constitucion` is 65 ms on AWS (edge hit) and ~300 ms on Koigrid (origin every time).
+→ **Koigrid feedback (this is the high-value one for the whole Next.js/Astro/Hugo ICP):** make `cdnEnabled` **cache HTML/document responses honoring the origin `Cache-Control: public, s-maxage=…`** — i.e. cache-everything-with-origin-TTL by default when the origin opts in with a public `s-maxage` (exactly CloudFront/Vercel behavior), and handle the framework `Vary: RSC` correctly. Until then, `cdnEnabled` on an SSR app only saves the TLS handshake, not the render — which undersells the platform on precisely the benchmark migrators run first.
+
+---
+
 ## ✅ 2026-07-24 (latest+1) — CDN NOW ENABLES ON AN EXISTING APP (was blocked): re-measured, gap ~7× → ~2–4×
 
 Follow-up to the CDN-on-by-default fix: it also unblocked **existing** apps. `PUT /apps/{id}/cdn {enabled:true}` on `vence-web7` — which **failed before** with *"needs a valid Cloudflare edge certificate / attach a custom domain"* — **now succeeds**, auto-provisions the edge cert for the `*.apps.koigrid.com` host, and Cloudflare fronts the app (cf headers present). Re-measured with CDN ON vs AWS (median of 6):
