@@ -1556,8 +1556,9 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 **Menores:** la migración se aplicó con DDL directo a RDS (fichero en git, idempotente `IF NOT EXISTS`); si hay tracking de migraciones, normalizar. Observabilidad: eventos `scope_adjudication_recorded` / `scope_recorte_aplicado` en `observable_events`.
 
-## ⏳ [DEPLOY PENDIENTE] Desplegar F0 antifraude + PDF-premium + nav (bloqueado por límite vCPU AWS / migración koigrid) — 22/07/2026
-- **Qué está en `origin/main` SIN desplegar** (todo commiteado, nada que perder):
+## ✅ [DESPLEGADO 24/07 — verificado en prod] Desplegar F0 antifraude + PDF-premium + nav (el bloqueo por vCPU AWS del 22/07 se resolvió)
+> **CERRADA 24/07:** los tres aterrizaron (deploy frontend+backend del 23/07, tras liberarse la vCPU). Verificado en prod: `/api/version`=`a0d760a9` (no el rollback `:503`/`4f67958b`); F0 `/api/v2/admin/fraud/{pending-count,signals}`=**401** (existen, no 404); nav «**Test combinando leyes**» presente en el HTML de home; PDF-premium (T-076)=**403** en todos los temas. **T-076 y T-087 marcadas `done` en `backlog_tasks`.** Lo de abajo queda como histórico del bloqueo (no accionar). Cabos vivos aparte: T-091/T-092/T-093.
+- **[histórico] Qué estaba en `origin/main` SIN desplegar** (todo commiteado, nada que perder):
   - **Sistema antifraude F0** (T-078): `cf7062859` (badge 🚨 + revisión + runbook `revisar-fraudes.md` + endpoints `/api/v2/admin/fraud/{pending-count,signals,signals/review}` + pestaña "Señales" en `/admin/fraudes` + sweep `scripts/fraud-sweep.cjs`) · `e5cfe988b` (**cron backend** `backend/src/fraud-sweep/` @Cron 03:15 UTC) · `f229dbfe5` (afinado IP-detector: excl. CDN + device-corr).
   - **PDF-premium** (T-076): `d06e0ed3` — descargar/imprimir PDF del temario es premium (todos los temas, 👑 + modal).
   - **Nav**: `8ffa41c4` — "Test combinando leyes" + quitar "Leyes".
@@ -1588,7 +1589,7 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Por qué mirar:** puede ser presión de `max_connections` en RDS (el pool de la app + crons + el nuevo cron fraud-sweep) o un blip de red/SG. Si persiste, revisar `pg_stat_activity` (nº conexiones), `max_connections`, y si algún cron abre conexiones sin cerrarlas. Relacionado con la saturación de BD que puso la salud en ROJO durante el crunch de vCPU.
 - **Estado:** detectado 23/07. Vigilar; no urgente si la app va bien.
 
-### [T-094] 🟢 [TRIVIAL] Marcar T-087 (deploy F0) como `done` en `backlog_tasks`
+### [T-094] ✅ [HECHA 24/07] Marcar T-087 (deploy F0) como `done` en `backlog_tasks`
 - **Qué:** el deploy de F0 (frontend `dbb2b31f` + backend cron) está **HECHO y verificado** (endpoints, logs ECS `Cron 'fraud-sweep' registrado`, health 200), pero T-087 quedó en `open` porque RDS daba timeout al hacer el `UPDATE`. Solo falta el flag.
 - **Cómo:** `UPDATE backlog_tasks SET status='done' WHERE id='T-087'` cuando RDS responda.
 - **Estado:** deploy hecho; solo el bookkeeping pendiente.
