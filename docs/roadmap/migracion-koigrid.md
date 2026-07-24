@@ -2,9 +2,17 @@
 
 > **Enlazado desde:** `docs/ARCHITECTURE_ROADMAP.md` §"Principio transversal: agnóstico al proveedor" (eje **hosting/compute**). Este manual es el **destino concreto** de la portabilidad que ese principio exige: la app se diseñó agnóstica *por contrato* precisamente para poder ejecutar este movimiento sin reescribir código.
 >
-> **Estado:** 🟡 PLAN + POC. NADA en producción migrado. Cutover gated por load-test (§6).
-> **Última actualización:** 2026-07-22.
+> **Estado:** 🟡 POC WHOLE-STACK PROBADO. NADA en producción migrado (prod sigue 100% en AWS). Cutover gated por load-test de pico (§6) — plan de pago.
+> **Última actualización:** 2026-07-24.
 > **Token API:** SSM `/vence-tools/KOIGRID_API_TOKEN` (perfil `vence`). Memoria: `reference_koigrid_evaluacion_fase_d`.
+>
+> **📌 Avance 2026-07-24 (POC, proyecto Koigrid `demo`=`7a9881f4`):** los 4 componentes VIVOS en Koigrid y probados individualmente:
+> - **BD** `vence-mig2` (31GB 1:1) · **frontend** `vence-web7` (renderiza páginas reales de BD) · **backend** `vence-backend` (`/health` 200, sirve contenido real, cron engine, escribe en la BD copia) · **Redis** `cache` (`rediss://` TLS, SET/GET E2E).
+> - **Flujos de usuario probados E2E** contra la copia: **login/auth** (`GET /api/profile` 200 con RLS; sin token 401) y **guardar respuesta** (`POST /api/v2/answer-and-save` 200 con INSERT real + score + explicación, 0,79s). **Webhook Stripe:** handler OK (rechaza firma no-cuadrada), verde pendiente de emparejar el webhook secret (config).
+> - **Desbloqueado por Koigrid (23-24/07):** defecto #2 (pull ECR-native con creds) + sugerencias #1 (`/manifest` whole-app) y #4 (`/apps/{id}/loadtest`). Deploy vía imagen ECR (no build en Koigrid) + `POST /manifest`.
+> - **2 bugs de plataforma hallados** (en el journey para Koigrid): **plan≠apply en `project`** (id en plan/nombre en apply → creó stack paralelo vacío; fix=pasar el NOMBRE) y **`build_export_failed`** (todo deploy de imagen falla al 1er intento por I/O del runner; un `POST /deployments` de retry lo aterriza; sin downtime).
+> - **Gate pendiente = load-test de pico:** plan-gated en Free (1 réplica; CDN necesita dominio propio). Floor medido: 1 réplica 2GB CDN-off satura el estático ~8.7 rps. Pico ~43M req/mes ≈16,6 rps → necesita CDN + ~6-10 réplicas (plan de pago).
+> - **Detalle completo y feedback para Koigrid:** `docs/roadmap/koigrid-migration-journey.md` (secciones fechadas 24/07). **Incremental vs big-bang** analizado ahí: la BD va en un flip coordinado (replicate-then-flip, near-zero downtime); el tráfico sí es incremental (canary DNS 1→100%); NUNCA escribir en las 2 BD a la vez.
 
 ---
 
