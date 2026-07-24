@@ -7,6 +7,18 @@
 
 ---
 
+## ⚠️ 2026-07-24 (evening, cont.) — the peak load-test (the #1 cutover gate) is PLAN-GATED on Free: 1-replica cap + CDN needs a custom domain
+
+We tried to run the capacity gate properly — **CDN on + multiple replicas** — and both knobs are blocked on the Free plan, which is worth flagging because it shapes every migrator's first benchmark:
+- **`PUT /apps/{id}/scale {replicas:3}` → `plan_limit`:** *"Your free plan allows up to 1 replica per app. Upgrade for more."* So horizontal scale — the thing that answers "does it hold peak?" — **cannot be tested on Free at all.**
+- **`PUT /apps/{id}/cdn {enabled:true}` → `bad_request`:** *"CDN needs a valid Cloudflare edge certificate for `vence-web7-23f37d.apps.koigrid.com`. Enable Cloudflare Total TLS (ACM) on the zone, or attach a custom domain (2nd-level) and enable the CDN on that."* So **CDN is not available on the auto-generated `*.apps.koigrid.com` subdomain** — you must bring a custom domain first.
+
+**Why this matters (and it's fixable):** this report has twice measured Koigrid's TTFB as ~2–5× slower than AWS — and *both* causes are these defaults: **CDN off** (couldn't turn it on) and **1 replica** (couldn't add more). A migrator kicking the tires on Free will benchmark the *worst* possible config and conclude "Koigrid is slow," when the real story is "we never let them enable the two things that fix it." **This is a first-impressions own-goal.**
+→ **Fix (Koigrid):** (a) issue an **edge cert for the `*.apps.koigrid.com` subdomain automatically** so CDN can be toggled on a fresh app without a custom domain (the default hostname should be CDN-capable); (b) allow at least **2 replicas on a low tier** (or a time-boxed "burst" so a migrator can run one capacity test before upgrading); (c) surface both limits in the `loadtest` `note` ("this ran on 1 replica, CDN off — enable both to test peak"). 
+**For us:** the peak load test now needs a **plan upgrade (for replicas) + a custom domain (for CDN)** — a spend/DNS decision for the owner, not a technical blocker. The single-replica CDN-off floor is measured (below); the *peak* number that gates the real cutover is one paid plan away.
+
+---
+
 ## ✅ 2026-07-24 (evening) — WE APPLIED THE MANIFEST FOR REAL: backend (NestJS) + Redis now LIVE on Koigrid against the real 31 GB DB. Two plan≠apply bugs found (one dangerous), both worked around.
 
 Following the dry-run below, we ran the actual `POST /manifest` **apply** to bring up the **backend + Redis** into the same project as the migrated 31 GB DB. **Net result: the NestJS backend is live on Koigrid, serving `/health` 200, connected to the co-located 31 GB Postgres, with the Koigrid managed Redis wired in.** Getting there surfaced **two real platform bugs** — exactly the kind of feedback an apply (vs a dry-run) exposes.
