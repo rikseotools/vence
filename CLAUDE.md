@@ -137,7 +137,7 @@
 ### Características Técnicas
 - **Framework:** Next.js 15.3.3
 - **Base de datos:** AWS RDS PostgreSQL (ver sección BD; Supabase congelado como backup)
-- **Autenticación:** Context-based con Supabase Auth
+- **Autenticación:** **Auth.js (NextAuth) con tokens RS256/JWKS** — flipeado a prod el 03/07/2026 (`NEXT_PUBLIC_AUTH_PROVIDER=authjs`). `/api/auth/token` acuña el access token RS256 (Bearer para `/api/v2/*` y el backend `api.vence.es`; se verifica con clave pública vía JWKS en frontend + backend). **Supabase Auth es LEGACY** en drenaje por el bridge server-side (`AUTH_BRIDGE_ENABLED`); ver `docs/roadmap/fase-b-ejecucion-authjs-rs256.md`. El `AuthContext` sigue siendo la capa de estado de sesión en cliente.
 - **Estilos:** Tailwind CSS con dark mode
 - **Tracking:** Sistema completo de analíticas de usuario
 - **Hosting/Deploy:** **AWS ECS/Fargate** (contenedor Docker en ECR, NO Vercel). Deploy por GitHub Actions `.github/workflows/frontend-deploy.yml` (+ `backend-deploy.yml`). Variables: las `NEXT_PUBLIC_*` se inyectan como **build-args** (se inlinean en el bundle al construir la imagen); los secrets de **runtime** viven en **SSM Parameter Store** bajo `/vence-frontend/<NAME>` y el task def de ECS los referencia (helper `ensure_secret` en el workflow). AWS CLI: `aws --profile vence --region eu-west-2` (cuenta 349744179687).
