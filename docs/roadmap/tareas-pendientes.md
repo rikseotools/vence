@@ -1519,10 +1519,14 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Causa del falso positivo:** el apunte miraba `reward_submissions.payout_id` (campo **vestigial, sin backlinkear**), no `reward_payouts`. El saldo REAL del panel admin (`getEmbajadoresWithBalance`) sí resta `sum(reward_payouts.amount)` → correcto. **Para saber si una recompensa está pagada: mirar `reward_payouts.beneficiary_user_id`, NO `reward_submissions.payout_id`.**
 - **Nota de proceso:** el cobro lo **solicita el usuario** (chat de soporte); NO se paga proactivamente el saldo acumulado.
 
-### [T-083] 🟢 [DEMANDA — valorar] Universidad de Murcia (temario + tests)
-- **Qué:** un grupo de WhatsApp quiere temario/tests de oposiciones de la **Universidad de Murcia** (feedback `c6defd4b`, opoauxilar…21junio, 21/07). Ya existen filas catalogadas: `auxiliar-administrativo-universidad-murcia` (`is_active=false`) y `tecnico-auxiliar-universidad-de-murcia` (con `programa_url` BORM). Valorar demanda antes de construir.
-- **Cómo:** `crear-nueva-oposicion.md`; cruzar con competidores/GSC. Verificar convocatoria viva en um.es/ptgas + BORM.
-- **Estado:** demanda apuntada 21/07.
+### [T-083] ✅ [VALORADA 24/07 — demanda YA SERVIDA, sin build] Universidad de Murcia (temario + tests)
+- **Qué era:** un grupo de WhatsApp pedía oposiciones de la **Universidad de Murcia** (feedback `c6defd4b`, Laura/opoauxilar, 21/07).
+- **Veredicto (24/07):** la demanda UMU **ya está cubierta** con las dos oposiciones vivas:
+  - **Administrativa UMU** — 🟢 LIVE, 31 temas, **~7.935 preguntas** activas, inscripción abierta (36 plz, hasta 31/07).
+  - **Técnico Auxiliar UMU** — 🟢 LIVE, 18 temas, **~3.768 preguntas**, inscripción abierta (18 plz, hasta 31/07).
+  - ~11.700 preguntas entre las dos → el grupo tiene UMU de sobra.
+- **La única no-construida (`auxiliar-administrativo-universidad-murcia`, grupo C) está en `oep_aprobada` SIN convocatoria** (exam/plazas null, seguimiento `um.es/ptgas` en `monitorizada`) → **nada que vender aún**; correctamente monitorizada: se promoverá cuando abra la convocatoria (el radar la caza). **NO construir hasta entonces.**
+- **Acción:** ninguna. Si el grupo insiste, se les señala Administrativa/Técnico Aux UMU (ya vivas).
 
 ### [T-084] ✅ [INVESTIGADA 24/07 — NO hay malgasto, Google Ads está sano] Baja inmediata desde Google Ads (campaña 23697376522)
 - **Qué era:** una usuaria (Madrid) llegó por Google Ads (`23697376522`) y se borró a los ~60 s sin hacer un test → sospecha de "gasto tirado".
