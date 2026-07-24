@@ -7,6 +7,18 @@
 
 ---
 
+## ✅ 2026-07-24 (latest) — KOIGRID SHIPPED THREE MORE FIXES, all from this report. Verified.
+
+Re-checked `llms.txt`/`openapi.json` after another release (same day). Three improvements landed, each matching feedback above:
+
+1. **`build_export_failed` flake — FIXED (verified empirically).** Earlier this session, **every** image redeploy failed on the first attempt with `build_export_failed` and only landed after a manual `POST /deployments` retry (documented above). Re-tested now: a single backend redeploy went **straight to `live` on the FIRST attempt** (`status: live, error: None`, no retry). The #1 deploy friction — an image `sourceType:image` deploy now behaves like ECS (deploy once, it runs). (One clean run isn't 100% proof the flake is gone, but combined with the observed `docker-ssh.ts` change it's strong evidence.)
+2. **Runtime error self-classification — SHIPPED (this report's suggestion #7).** `llms.txt` now lists **RUNTIME** error codes for a container that boots but fails readiness: `missing_env`, `db_connect_failed` (*with the exact `NODE_TLS_REJECT_UNAUTHORIZED=0` hint for a self-signed DB TLS cert — a snag we hit*), `redis_connect_failed`, `oom_runtime`, `port_mismatch`, `crashloop`, `unhealthy`. Exactly the "extend the self-explaining-failure pattern to runtime" ask — a multi-service bring-up now debugs itself.
+3. **CDN on-by-default for new apps — SHIPPED (head-to-head feedback #2).** New apps now default `cdnEnabled:true`; it *auto-activates once the edge cert covers the host and never breaks TLS before that (serves DNS-only)*. Directly fixes the "first-impressions own-goal" where a fresh app benchmarks with CDN off. (Note: our existing `vence-web7` predates this and still has CDN off; and the Free **1-replica cap** is a plan limit, unchanged — so the *peak* load-test still needs a paid plan.)
+
+**Net:** of the frictions this report raised, Koigrid has now shipped fixes for the build-time OOM path, the ECR image-pull path (#2), the whole-app manifest (#1), the load-test tool (#4), build/runtime error self-classification, and CDN defaults — turnaround measured in hours. The remaining open items are the **peak load-test** (plan-gated: replicas + a custom domain) and the **Stripe webhook secret-pairing** (our config), not platform gaps.
+
+---
+
 ## ✅ 2026-07-24 (late night) — LAST MILE: real login (auth) + real answer-save WRITE both verified E2E through the Koigrid front-end. (Stripe webhook: handler works, secret-pairing unresolved.)
 
 Attacked the "last mile" — the user-facing flows (login, write, payments) that a POC on the AWS-built image supposedly couldn't reach. Turns out **most of it reaches for free**: the front-end's `verifyAuth` still accepts HS256 Supabase tokens (the code is explicitly forward-compatible), so I minted a canary token with the real `SUPABASE_JWT_SECRET` (from SSM) and drove the actual endpoints against the **Koigrid** front-end + copy DB. Wired the needed runtime secrets (JWT/CRON/webhook/smoke) onto the Koigrid apps via the manifest.
