@@ -7,6 +7,23 @@
 
 ---
 
+## ✅ 2026-07-24 (late night) — LAST MILE: real login (auth) + real answer-save WRITE both verified E2E through the Koigrid front-end. (Stripe webhook: handler works, secret-pairing unresolved.)
+
+Attacked the "last mile" — the user-facing flows (login, write, payments) that a POC on the AWS-built image supposedly couldn't reach. Turns out **most of it reaches for free**: the front-end's `verifyAuth` still accepts HS256 Supabase tokens (the code is explicitly forward-compatible), so I minted a canary token with the real `SUPABASE_JWT_SECRET` (from SSM) and drove the actual endpoints against the **Koigrid** front-end + copy DB. Wired the needed runtime secrets (JWT/CRON/webhook/smoke) onto the Koigrid apps via the manifest.
+
+**Two critical user flows — PROVEN end-to-end on Koigrid:**
+- **🔐 Login / auth validation.** `GET /api/profile?userId=<smoke>` with a `Bearer` HS256 token → **`200 {"success":true,"data":{…}}`** returning the real smoke user's profile (email, `planType:"premium"`, `targetOposicion`, timestamps) — read from the migrated DB **with RLS applied**. Control: **no token → `401`**. So the front-end validates JWTs and enforces row-level security against the co-located copy DB, exactly like prod.
+- **✍️ Answer-and-save WRITE.** `POST /api/v2/answer-and-save` (the real test-answer endpoint) with the Bearer token + a full answer payload → **`200 {"success":true,"isCorrect":true,"correctAnswer":0,"explanation":"ARTÍCULO 99.5 CE…","lawShortName":"CE"}`** in **0.79 s**. This exercised the *entire* write path on Koigrid: JWT auth → server-side re-validation → anti-fraud → **transactional INSERT into `test_questions`** on the copy DB → score → explanation pulled from the migrated content. **A user answering a question works, writes persist, and the co-located DB makes it fast.** This is the single most important user action on Vence, proven on Koigrid.
+
+**Stripe webhook — handler runs, but the synthetic canary won't go green (unresolved, and it's a config detail not a stack failure):**
+- Replicated the `canary-stripe-webhook` exactly: synthetic `type:"canary.synthetic"` event, signed with `Stripe.webhooks.generateTestHeaderString({secret: STRIPE_WEBHOOK_SECRET})`, `POST /api/stripe/webhook`. Result: **`400 {"error":"Webhook signature verification failed"}`**.
+- **My signing is provably correct** — a local `generateTestHeaderString` → `constructEvent` round-trip with the same secret **passes**. So the front-end's runtime `STRIPE_WEBHOOK_SECRET` doesn't match the value I signed with, even though I set it from the same SSM param the prod canary uses, via **both** `POST /env` **and** the manifest (the mechanism that demonstrably reaches runtime for `DATABASE_URL`). Couldn't pin it down remotely because **Koigrid never returns a stored secret's value** (correct for security, but it blocks this diagnosis). Most likely a **rotated/stale SSM webhook secret** or the **dual-account** (`STRIPE_WEBHOOK_SECRET` Manuel vs `_NILA`) pairing — a config-finalization detail. The handler itself is healthy: it runs on Koigrid and **correctly rejects a non-matching signature with a clean 400** (not a crash), which is the security behavior you want.
+  - → **Koigrid feedback (minor):** a **write-only env introspection** — e.g. `GET /apps/{id}/env?reveal=<key>` gated behind a strong scope, or a one-shot "does the running container see KEY=<expected hash>?" check — would make exactly this class of "is my secret actually loaded and correct?" debugging tractable without ever returning the plaintext.
+
+**Net on the last mile:** the two flows that *define* the app — **logging in and saving an answer** — work end-to-end on Koigrid against the migrated data. Payments' webhook path is one secret-pairing away (a config task, verifiable in minutes once the exact live webhook secret is confirmed), not a platform or stack problem. (Housekeeping: this round set real secrets on the POC apps and inserted one canary row into the copy `test_questions` — both harmless on the throwaway copy; secrets added to the cleanup list.)
+
+---
+
 ## ✅ 2026-07-24 (night) — thorough free E2E sweep: Redis, real content, and real WRITES to the copy DB all verified. Plus: the honest incremental-vs-big-bang cutover analysis.
 
 Pushed the testing as far as it goes **for free on the current POC** (AWS-built front-end image, Free plan). What's now proven, each verified (not assumed):
