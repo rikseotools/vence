@@ -380,3 +380,144 @@ describe('calcularEvolucionCompleta — desglose correct/incorrect/blank', () =>
     expect(e.blancosAbsolutos).toBe(0)
   })
 })
+
+describe('calcularEvolucionCompleta — dedup por identidad estable (test_id) [bug MariSol, feedback 90aa6caa 24/07/2026]', () => {
+  // El intento actual se persiste asíncrono con test_id = sesión del test en curso.
+  // Si el guardado gana la carrera, ese intento YA está en `history`; sin la guardia
+  // se duplicaba en la cronología ("Intento N" + "Ahora") e inflaba el conteo en +1.
+  const withTest = (opts: Parameters<typeof mkEntry>[0], testId: string) => ({ ...mkEntry(opts), test_id: testId })
+
+  test('intento actual YA persistido (test_id en history): NO duplica ni infla el conteo', () => {
+    const history = [
+      withTest({ correct: false }, 'test-A'),
+      withTest({ correct: true }, 'test-B'), // el intento "actual", ya guardado
+    ]
+    const e = calcularEvolucionCompleta(history, { is_correct: true, test_id: 'test-B' })
+    expect(e.deduped).toBe(true)
+    expect(e.totalIntentos).toBe(2)             // NO 3
+    expect(e.historialCompleto.length).toBe(2)  // sin fila duplicada
+    expect(e.aciertosAbsolutos).toBe(1)         // 1 acierto real, no 2
+    const currents = e.historialCompleto.filter(h => h.current)
+    expect(currents.length).toBe(1)             // una sola fila marcada "actual"
+    expect(currents[0].test_id).toBe('test-B')  // y es la persistida (fila real)
+  })
+
+  test('intento actual NO persistido aún (test_id nuevo): se añade "Ahora" (feedback instantáneo intacto)', () => {
+    const history = [
+      withTest({ correct: false }, 'test-A'),
+      withTest({ correct: true }, 'test-B'),
+    ]
+    const e = calcularEvolucionCompleta(history, { is_correct: true, test_id: 'test-NEW' })
+    expect(e.deduped).toBe(false)
+    expect(e.totalIntentos).toBe(3)             // 2 previos + el actual
+    expect(e.historialCompleto[2].current).toBe(true)
+    expect(e.historialCompleto[2].test_id).toBe('test-NEW')
+  })
+
+  test('back-compat: currentResult SIN test_id → no deduplica (comportamiento anterior)', () => {
+    const history = [withTest({ correct: true }, 'test-A')]
+    const e = calcularEvolucionCompleta(history, { is_correct: true })
+    expect(e.deduped).toBe(false)
+    expect(e.totalIntentos).toBe(2)
+  })
+
+  test('SIMULACIÓN de la carrera de repaso-fallos: el mismo acierto NO sale dos veces', () => {
+    // Reproduce el caso real de la captura: historial en vivo que ya incluye el
+    // intento recién respondido (guardado asíncrono ganó la carrera) + currentResult
+    // con su test_id. Antes del fix: totalIntentos=3 y dos filas "Correcto" seguidas.
+    const history = [
+      withTest({ correct: false, at: '2026-07-24T11:07:00Z' }, 'test-viejo'),
+      withTest({ correct: true, at: '2026-07-24T11:38:00Z' }, 'test-ahora'),
+    ]
+    const e = calcularEvolucionCompleta(history, {
+      is_correct: true, test_id: 'test-ahora', time_spent_seconds: 13, confidence_level: 'sure',
+    })
+    expect(e.deduped).toBe(true)
+    expect(e.totalIntentos).toBe(2)
+    expect(e.historialCompleto.filter(h => h.is_correct).length).toBe(1)
+  })
+
+  test('la dedup NO altera la cabecera/transición (fallo→acierto sigue siendo "mejora")', () => {
+    const history = [
+      withTest({ correct: false }, 'test-A'),
+      withTest({ correct: true }, 'test-B'), // acierto actual ya persistido
+    ]
+    const e = calcularEvolucionCompleta(history, { is_correct: true, test_id: 'test-B' })
+    expect(e.tipoEvolucion).toBe('mejora') // compara el fallo previo con el acierto actual
+  })
+
+  test('revisión post-examen (currentResult null): all === history, deduped false', () => {
+    const history = [withTest({ correct: true }, 'test-A'), withTest({ correct: false }, 'test-B')]
+    const e = calcularEvolucionCompleta(history)
+    expect(e.deduped).toBe(false)
+    expect(e.totalIntentos).toBe(2)
+  })
+
+  test('DATOS REALES MariSol (question 3eaf20e3): 9 intentos, sesión 0e29e810 repetida → dedup correcto, sin doble conteo', () => {
+    // Volcado real de test_questions (RDS) de flor7687@gmail.com para la pregunta
+    // reportada. OJO: la sesión 0e29e810 aparece DOS veces (respondió la misma
+    // pregunta dos veces en la misma sesión) → (test_id, question_id) NO es único.
+    const R = (correct: boolean, testId: string, at: string) => ({ ...mkEntry({ correct, at }), test_id: testId })
+    const history = [
+      R(false, '782fd7a4', '2026-05-02T06:35:17Z'),
+      R(false, '0804d174', '2026-06-02T12:01:07Z'),
+      R(false, '75e0c1b5', '2026-06-06T10:16:45Z'),
+      R(false, '77a9c078', '2026-07-16T09:10:58Z'),
+      R(true,  '0e29e810', '2026-07-16T09:13:25Z'), // misma sesión...
+      R(false, '0e29e810', '2026-07-16T09:30:50Z'), // ...dos filas
+      R(false, '665578b2', '2026-07-16T20:15:20Z'),
+      R(false, '91822bf2', '2026-07-24T10:50:30Z'),
+      R(true,  'e85d45ec', '2026-07-24T11:43:20Z'), // último = el intento actual
+    ]
+    const e = calcularEvolucionCompleta(history, { is_correct: true, test_id: 'e85d45ec', confidence_level: 'very_sure' })
+    expect(e.deduped).toBe(true)
+    expect(e.totalIntentos).toBe(9)                // NO 10
+    expect(e.aciertosAbsolutos).toBe(2)            // 2 correctos reales (idx 4 y 8)
+    // las DOS filas de la sesión repetida se conservan (no se colapsan)
+    expect(e.historialCompleto.filter(h => h.test_id === '0e29e810').length).toBe(2)
+    // una sola fila "actual", y es la ÚLTIMA (e85d45ec), no una 0e29e810 antigua
+    const currents = e.historialCompleto.filter(h => h.current)
+    expect(currents.length).toBe(1)
+    expect(currents[0].test_id).toBe('e85d45ec')
+  })
+
+  test('test_id repetido NO en la última fila → NO deduplica (se ancla al intento más reciente)', () => {
+    // Si el test_id del intento actual coincide con filas ANTIGUAS pero NO con la
+    // última, es un intento genuinamente nuevo → se añade, no se colapsa contra las viejas.
+    const R = (correct: boolean, testId: string, at: string) => ({ ...mkEntry({ correct, at }), test_id: testId })
+    const history = [
+      R(true, '0e29e810', '2026-07-16T09:13:25Z'),
+      R(false, '0e29e810', '2026-07-16T09:30:50Z'),
+      R(false, 'otra-mas-nueva', '2026-07-20T10:00:00Z'), // última ≠ 0e29e810
+    ]
+    const e = calcularEvolucionCompleta(history, { is_correct: true, test_id: '0e29e810' })
+    expect(e.deduped).toBe(false)
+    expect(e.totalIntentos).toBe(4) // 3 previos + el actual añadido
+    expect(e.historialCompleto[3].current).toBe(true)
+  })
+
+  test('INVARIANTE (canary): totalIntentos === filas, a lo sumo UNA fila "actual", y ancla a la última fila', () => {
+    // Barrido de combinaciones: N filas previas + un currentResult cuyo test_id coincide
+    // con la ÚLTIMA fila (carrera ganada), con una fila antigua (NO debe deduplicar), o
+    // es nuevo. Invariantes REALES (test_id NO es único → NO se exige unicidad):
+    for (let n = 0; n <= 6; n++) {
+      const history = Array.from({ length: n }, (_, i) =>
+        withTest({ correct: i % 2 === 0 }, `test-${i}`))
+      const ultima = n > 0 ? `test-${n - 1}` : undefined
+      const antigua = n > 1 ? 'test-0' : undefined
+      const candidatos = [ultima, antigua, 'test-nuevo', undefined]
+      for (const tid of candidatos) {
+        const e = calcularEvolucionCompleta(history, { is_correct: true, test_id: tid as string | undefined })
+        // 1) sin conteo fantasma
+        expect(e.totalIntentos).toBe(e.historialCompleto.length)
+        // 2) a lo sumo una fila marcada como "actual"
+        expect(e.historialCompleto.filter(h => h.current).length).toBeLessThanOrEqual(1)
+        // 3) deduped ⇔ el test_id actual es el de la ÚLTIMA fila (el intento más reciente)
+        const esUltima = !!tid && n > 0 && history[n - 1].test_id === tid
+        expect(e.deduped).toBe(esUltima)
+        // 4) si NO deduplica pero hay currentResult → se añadió exactamente 1 fila "Ahora"
+        if (!e.deduped) expect(e.totalIntentos).toBe(n + 1)
+      }
+    }
+  })
+})

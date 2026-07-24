@@ -27,6 +27,11 @@ const PREVIEW_URL = process.env.PREVIEW_URL ?? 'https://preview-aws.vence.es'
 const PROD_URL = process.env.PROD_URL ?? 'https://www.vence.es'
 const IS_CI = !!process.env.CI
 
+// Target del harness AUTENTICADO (agnóstico): AWS hoy, koigrid mañana, o local. Migrar
+// = cambiar esta env, NO los tests. Ver e2e/config/env.ts.
+const E2E_BASE_URL = process.env.E2E_BASE_URL ?? PROD_URL
+const AUTH_STORAGE = 'e2e/.auth/state.json'
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
@@ -66,13 +71,33 @@ export default defineConfig({
     },
   },
   projects: [
+    // — Smoke PÚBLICO (anónimo), en los dos entornos. Solo specs smoke-*, nunca los
+    //   autenticados (que necesitan storageState).
     {
       name: 'preview-aws',
+      testMatch: /smoke-.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: PREVIEW_URL },
     },
     {
       name: 'prod',
+      testMatch: /smoke-.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: PROD_URL },
+    },
+
+    // — Harness AUTENTICADO —
+    // 'setup' acuña la sesión UNA vez (e2e/auth.setup.ts) → storageState.
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: E2E_BASE_URL },
+    },
+    // 'authenticated' reutiliza ese estado en todos los specs de e2e/authed/. Un test
+    // nuevo = un fichero en e2e/authed/, sin re-login. Target por E2E_BASE_URL.
+    {
+      name: 'authenticated',
+      testMatch: /authed\/.*\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], baseURL: E2E_BASE_URL, storageState: AUTH_STORAGE },
     },
   ],
 })

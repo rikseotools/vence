@@ -1,6 +1,6 @@
 // components/TestLayout.tsx - FIX COMPLETO ANTI-DUPLICADOS
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -284,6 +284,22 @@ export default function TestLayout({
   const [currentTestSession, setCurrentTestSession] = useState<TestSession | null>(null)
   const [userSession, setUserSession] = useState<UserSession | null>(null)
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error' | null>(null)
+
+  // Resultado del intento actual para <QuestionEvolution>. MEMOIZADO a propósito:
+  // antes se pasaba como objeto literal nuevo en cada render, lo que hacía que el
+  // useEffect del componente (dep: currentResult) re-fetcheara el historial EN CADA
+  // render → tras aterrizar el guardado asíncrono, el historial ya traía el intento
+  // actual y salía duplicado ("Intento N" + "Ahora"). Estabilizar la referencia corta
+  // ese bucle; la corrección de fondo es la guardia de dedup por test_id en
+  // QuestionEvolution. Se incluye `test_id` (sesión actual) como identidad estable del
+  // intento para esa deduplicación determinista. (Bug MariSol 24/07, feedback 90aa6caa.)
+  const questionEvolutionResult = useMemo(() => ({
+    is_correct: !isBlank && verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
+    was_blank: isBlank,
+    time_spent_seconds: Math.round((Date.now() - questionStartTime) / 1000),
+    confidence_level: confidenceLevel as 'very_sure' | 'sure' | 'unsure' | 'guessing' | null,
+    test_id: currentTestSession?.id ?? null,
+  }), [isBlank, verifiedCorrectAnswer, selectedAnswer, confidenceLevel, questionStartTime, currentTestSession?.id])
 
   // Control explícito de finalización
   const [isExplicitlyCompleted, setIsExplicitlyCompleted] = useState<boolean>(false)
@@ -2643,12 +2659,7 @@ export default function TestLayout({
                         <QuestionEvolution
                           userId={user.id}
                           questionId={currentQuestionUuid}
-                          currentResult={{
-                            is_correct: !isBlank && verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
-                            was_blank: isBlank,
-                            time_spent_seconds: Math.round((Date.now() - questionStartTime) / 1000),
-                            confidence_level: confidenceLevel as 'very_sure' | 'sure' | 'unsure' | 'guessing' | null
-                          }}
+                          currentResult={questionEvolutionResult}
                         />
                       </>
                     )}

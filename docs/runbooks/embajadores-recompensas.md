@@ -32,7 +32,7 @@ Cualquier **ingreso nuevo** (referido que compra, o bonus bug/ugc que creamos) *
 
 El **email** proactivo, en cambio, **solo se manda en el caso `referido`** (webhook Stripe): ahí no hay hilo de soporte por el que avisar. El email va **SIN spoiler** — dice "tienes una recompensa nueva, entra a verla", no revela importe ni fuente (decisión Manuel 10/07; la revelación celebratoria con confeti vive en `/embajadores`).
 
-En **bug/ugc NO se envía email** (decisión Manuel 10/07): esas recompensas nacen de un feedback que **ya le respondemos por su hilo**, así que el email sería redundante. El usuario se entera por el badge 🎁 + tu respuesta en el chat de soporte.
+En **bug/ugc NO se envía email** (decisión Manuel 10/07): esas recompensas nacen de un feedback que **ya le respondemos por su hilo**, así que el email sería redundante. El usuario se entera por el **badge 🎁 parpadeante**. **NUNCA se menciona la recompensa en el mensaje de respuesta** (decisión Manuel 24/07): queda cutre; el badge ya la comunica. Se crea en silencio y el texto va solo del asunto (el bug/la opinión).
 
 ## Operaciones (API)
 
@@ -54,7 +54,7 @@ body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la op
 - `bug` = 3 €, `ugc` = 5 €. El importe lo pone el sistema, no se envía.
 - **Pasa SIEMPRE `feedbackId` en las de `bug`** (traza del motivo + anti-duplicado, ver abajo).
 - UGC exige `url` (link a la opinión) y respeta el tope 3/mes (devuelve `reward_cap_hit`).
-- Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). Avísale tú por su hilo de feedback.
+- Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). **NO se lo menciones en el mensaje** (decisión Manuel 24/07): el badge parpadeante ya se lo dice; ponerlo en el texto queda cutre.
 
 > **⚠️ UGC (opinión, 5 €) ≠ compartir el enlace de referido (referido, 10 €). NO pagar UGC por un link-drop.** (Aprendizaje 11/07, caso Mari.) **ABRE SIEMPRE la captura** antes de crear la recompensa UGC y mira qué publicó de verdad:
 > - **UGC legítimo** = una **reseña/opinión genuina nombrando Vence**, SIN su enlace de referido (ej.: Mari ayudando a alguien en un hilo de Facebook, hablando de su experiencia). → crea la `ugc` 5 €.

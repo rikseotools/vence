@@ -7,6 +7,37 @@
 
 ---
 
+## ✅ 2026-07-24 (night) — thorough free E2E sweep: Redis, real content, and real WRITES to the copy DB all verified. Plus: the honest incremental-vs-big-bang cutover analysis.
+
+Pushed the testing as far as it goes **for free on the current POC** (AWS-built front-end image, Free plan). What's now proven, each verified (not assumed):
+- **Redis end-to-end (not just "configured").** Connected a client directly to the managed cache's `rediss://…rds-cache-d9085a.rds.koigrid.com:44921` (TLS): `PING → PONG`, `SET`+`GET` round-tripped a value. The Koigrid Redis works as a real Redis.
+- **Front-end renders real DB-backed pages in the browser, not just `200`.** `/leyes` → 2.3 MB with real law list, `/leyes/constitucion-espanola` → 414 KB with "Artículo…" content, `/auxiliar-administrativo-estado` → 446 KB dynamic landing. Full read path (browser → Next.js SSR → co-located DB) works.
+- **Real WRITES to the migrated DB confirmed.** The backend's `refresh-rankings` cron (running on Koigrid) inserted into `ranking_cache` — verified via Koigrid's **Data API** (`GET /databases/{id}/data/ranking_cache`): a row with `refreshed_at: 2026-07-24T17:10:23Z`, written minutes earlier by the Koigrid backend against the co-located copy DB. So the DB accepts real transactional writes from the migrated services. (The Data API itself is a nice touch — reading a table over REST without a psql session.)
+- **Backend cron engine runs on Koigrid.** `/health/crons` shows 55+ crons registered with live heartbeats (`refresh-rankings`, `process-outbox`, `conversion-drain`, `alerts-engine`, plus the whole `canary-*` self-test suite).
+
+**Honest ceiling — what a POC on this image canNOT prove (needs the "last mile"):** the user-facing flows (**browser login, answer-save through the UI, Stripe payment/webhook**) all run through the **front-end**, and this front-end is the **image built for AWS** — `NEXT_PUBLIC_SITE_URL=localhost`, `NEXT_PUBLIC_AUTH_PROVIDER=authjs` (RS256/JWKS), and no `STRIPE_WEBHOOK_SECRET` in its runtime env. The backend's built-in canaries (`canary-smoke-auth`, `canary-stripe-webhook`) target the front-end's `/api/profile` and `/api/stripe/webhook`, so running them now would go red on **front-end mis-config**, not a real stack failure — a misleading test we deliberately did **not** fake. Testing those flows for real requires **rebuilding the front-end image for Koigrid** (real domain, matching auth provider, full secret set) + a **paid plan** (replicas/CDN for the peak load test) + a **custom domain** (CDN cert). That's genuine cutover work, not a free probe. (This is itself useful Koigrid feedback: the biggest friction to a *complete* migration test is that public-var-baked front-ends must be rebuilt per-environment — a **build-args / env-templating story** would let a migrator re-point a front-end at a new stack without a full rebuild.)
+
+### 🧭 Can Vence migrate incrementally, or must it be all-at-once? (the owner's question — general enough to belong in a Koigrid cutover runbook)
+
+The answer splits cleanly by **layer**, and it's the crux of any real migration:
+
+1. **The DATABASE is the pivot — effectively a single coordinated cutover, NOT piecemeal.** You cannot have live users writing to **two** databases (AWS RDS *and* Koigrid) at once — they diverge irreconcilably. So the data moves as **one event**, done one of two ways:
+   - **Replicate-then-flip (recommended, near-zero downtime):** stand up **logical replication** RDS → Koigrid so the Koigrid DB stays continuously in sync with prod. When ready: briefly pause writes → let the last WAL drain → flip every service's `DATABASE_URL` to Koigrid → resume. Downtime = seconds. **AWS stays hot as instant rollback.** *(Koigrid gap: we didn't find a managed "subscribe to an external Postgres as a logical-replication source" flow — the single most valuable feature for a zero-downtime cutover. Publishing/streaming from Koigrid exists; **inbound** replication from an external primary is the missing half.)*
+   - **Maintenance-window big-bang:** short planned downtime, final `pg_dump`/restore, flip. Simpler, more downtime (Vence's 31 GB = ~15 min dump + restore).
+
+2. **The STATELESS services (front-end, backend) CAN be migrated incrementally / canaried — but only AFTER the DB is on Koigrid.** If you move the front-end to Koigrid while the DB is still on AWS, every query crosses providers (adds latency + egress cost) — you **lose the entire co-location win** (6.45 ms → tens of ms + $). So co-location only pays off once the DB is *also* on Koigrid. Once it is, you can run the front-end on **both** AWS and Koigrid against the same (Koigrid) DB and shift traffic **gradually via DNS weighting / a load balancer: 1% → 10% → 50% → 100%**, watching error rate + latency, rollback = shift weight back.
+
+3. **So "incremental" happens at the TRAFFIC layer, not the DATA layer.** Realistic sequence:
+   - **Phase 1 — parallel bring-up (≈ where we are):** everything running on Koigrid, no user impact, keep testing.
+   - **Phase 2 — last mile:** rebuild the front-end for Koigrid (domain, auth, secrets), repoint crons, attach a custom domain, upgrade plan for replicas/CDN.
+   - **Phase 3 — logical replication** RDS → Koigrid (data kept in sync).
+   - **Phase 4 — canary the DB flip + traffic:** coordinated flip to the Koigrid DB, then ramp real traffic 1% → 100% at the DNS/LB layer.
+   - **Phase 5 — hold AWS as rollback** for a few days, then decommission.
+
+**Bottom line:** you can migrate the **traffic** gradually (safe, with rollback), but the **data** moves as one coordinated flip (best done replicate-then-flip for near-zero downtime). The one thing you must **never** do is run live writes against both the AWS and Koigrid DBs at the same time. Small, read-only or independent pieces (a background worker, a non-critical cron) can move first as low-risk practice — but the core user-facing path is gated on the single DB cutover.
+
+---
+
 ## ⚠️ 2026-07-24 (evening, cont.) — the peak load-test (the #1 cutover gate) is PLAN-GATED on Free: 1-replica cap + CDN needs a custom domain
 
 We tried to run the capacity gate properly — **CDN on + multiple replicas** — and both knobs are blocked on the Free plan, which is worth flagging because it shapes every migrator's first benchmark:

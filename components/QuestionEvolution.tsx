@@ -36,6 +36,12 @@ export interface CurrentResult {
   was_blank?: boolean
   time_spent_seconds?: number
   confidence_level?: ConfidenceLevel | null
+  // test_id del test EN CURSO. Es la identidad estable del intento actual: se
+  // persiste como `test_questions.test_id` y (test_id, question_id) es único.
+  // Permite deduplicar de forma determinista el intento actual contra el
+  // historial en vivo cuando el guardado asíncrono ya ha aterrizado (ver
+  // calcularEvolucionCompleta). Opcional para back-compat (revisión post-examen).
+  test_id?: string | null
 }
 
 type ConfidenceLevel = 'very_sure' | 'sure' | 'unsure' | 'guessing'
@@ -149,6 +155,10 @@ interface EvolutionData {
   patronesRendimiento: PatronesRendimiento | null
   estadisticasAvanzadas: EstadisticasAvanzadas | null
   historialCompleto: HistoryEntry[]
+  // true cuando el intento actual YA estaba persistido en `history` (guardado
+  // asíncrono que ganó la carrera) y se ha usado la fila real en vez de añadir un
+  // duplicado en memoria. El componente lo emite a observabilidad para medirlo.
+  deduped: boolean
 }
 
 // ============================================================
@@ -489,24 +499,54 @@ export function calcularEvolucionCompleta(
   // intentos / último hace 3 meses"). Plegando el intento actual en TODO se elimina
   // el off-by-one y la dependencia del agregado.
   //
-  // Sin doble conteo: `currentResult` llega ANTES de persistirse, por lo que NO
-  // está en `history`. Si no hay intento actual (p.ej. revisión post-examen ya
-  // guardada), `all === history` y el comportamiento es el de antes.
-  const all: HistoryEntry[] = currentResult
-    ? [...history, ({
-        id: 'current',
-        user_answer: '',
-        correct_answer: '',
-        is_correct: currentResult.is_correct ?? false,
-        was_blank: currentResult.was_blank ?? false,
-        confidence_level: currentResult.confidence_level ?? null,
-        time_spent_seconds: currentResult.time_spent_seconds ?? 0,
-        created_at: new Date().toISOString(),
-        test_id: '',
-        question_order: history.length + 1,
-        current: true,
-      } as unknown as HistoryEntry)]
+  // DEDUP POR IDENTIDAD ESTABLE (fix bug MariSol 24/07/2026, feedback 90aa6caa).
+  // El intento actual se persiste ASÍNCRONO (`answerSaveQueue` → answer-and-save)
+  // con `test_id` = sesión del test EN CURSO, y en `test_questions` hay UNA fila por
+  // (test_id, question_id) → clave única. El contrato viejo ("currentResult llega
+  // ANTES de persistirse, NO está en history") se ROMPE cuando el guardado gana la
+  // carrera (en repaso de fallos pasaba SIEMPRE): el intento actual ya estaba en
+  // `history` y, al añadirlo otra vez en memoria, salía DUPLICADO en la cronología
+  // ("Intento N" + "Ahora") e inflaba el conteo en +1.
+  //
+  // Guardia determinista (sin relojes ni ventanas). El intento actual (recién
+  // respondido) es, una vez persistido, el MÁS RECIENTE de este historial: el endpoint
+  // devuelve las filas ORDER BY created_at ASC, así que sería la ÚLTIMA. Nos anclamos a
+  // esa última fila, NO a cualquier coincidencia de test_id: `(test_id, question_id)`
+  // NO es único — un usuario puede responder la misma pregunta dos veces en la misma
+  // sesión (caso real de MariSol: dos filas bajo la sesión 0e29e810). Un findIndex
+  // global marcaría la fila equivocada. Si la última fila es de la sesión en curso, ese
+  // es el intento actual ya persistido → se usa la fila real (marcada como actual) sin
+  // duplicar. Si no → se añade "Ahora" como antes (feedback instantáneo intacto).
+  const lastIdx = history.length - 1
+  const currentAlreadyPersisted =
+    !!currentResult?.test_id && lastIdx >= 0 && history[lastIdx].test_id === currentResult.test_id
+  const persistedIdx = currentAlreadyPersisted ? lastIdx : -1
+
+  // Historial "anterior al intento actual" — idéntico haya ganado o no la carrera el
+  // guardado, para que la cabecera/transición sea estable en ambos caminos.
+  const historyBeforeCurrent = currentAlreadyPersisted
+    ? history.filter((_, i) => i !== persistedIdx)
     : history
+
+  const all: HistoryEntry[] = currentAlreadyPersisted
+    // Ya persistido: usar la fila real, marcada como actual. NO se añade el intento
+    // en memoria → sin duplicado ni doble conteo.
+    ? history.map((h, i) => (i === persistedIdx ? { ...h, current: true } : h))
+    : currentResult
+      ? [...history, ({
+          id: 'current',
+          user_answer: '',
+          correct_answer: '',
+          is_correct: currentResult.is_correct ?? false,
+          was_blank: currentResult.was_blank ?? false,
+          confidence_level: currentResult.confidence_level ?? null,
+          time_spent_seconds: currentResult.time_spent_seconds ?? 0,
+          created_at: new Date().toISOString(),
+          test_id: currentResult.test_id ?? '',
+          question_order: history.length + 1,
+          current: true,
+        } as unknown as HistoryEntry)]
+      : history
 
   const total = all.length
   const aciertos = all.filter(h => clasificarIntento(h) === 'correct').length
@@ -514,9 +554,11 @@ export function calcularEvolucionCompleta(
   const fallos = total - aciertos - blancos
   const tasaAciertos = total > 0 ? Math.round((aciertos / total) * 100) : 0
 
-  // La cabecera sigue usando (history, currentResult): su lógica compara el último
-  // previo con el actual para el mensaje de transición. Coincide en conteo con `all`.
-  const evo = determinarTipoEvolucion(history, currentResult)
+  // La cabecera compara el último PREVIO con el actual para el mensaje de transición.
+  // Se pasa `historyBeforeCurrent` (no `history`) para que, cuando el intento actual
+  // ya esté persistido, no se compare consigo mismo. En el caso normal
+  // `historyBeforeCurrent === history`, así que es idéntico a antes (cero regresión).
+  const evo = determinarTipoEvolucion(historyBeforeCurrent, currentResult)
 
   return {
     tipoEvolucion: evo.tipo,
@@ -534,6 +576,7 @@ export function calcularEvolucionCompleta(
     patronesRendimiento: calcularPatronesRendimiento(all),
     estadisticasAvanzadas: calcularEstadisticasAvanzadas(all),
     historialCompleto: all,
+    deduped: currentAlreadyPersisted,
   }
 }
 
@@ -595,6 +638,25 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
           currentResult ?? null,
         )
         setEvolutionData(evo)
+
+        // Observabilidad: la guardia de dedup ha actuado → el intento actual ya
+        // estaba persistido en el historial y se ha evitado el duplicado ("Intento N"
+        // + "Ahora") + la inflación de conteo (bug MariSol 24/07, feedback 90aa6caa).
+        // Se emite para MEDIR cuántas veces ocurre en producción sin depender de que
+        // lo reporte un usuario (filosofía martillo).
+        if (currentResult && evo.deduped) {
+          emitClientEvent({
+            severity: 'info',
+            eventType: 'question_evolution_dedup',
+            errorMessage: 'intento actual ya persistido; deduplicado del timeline (sin doble conteo)',
+            metadata: {
+              questionId,
+              userId,
+              testId: currentResult.test_id ?? null,
+              historyLen: historialCompleto.length,
+            },
+          })
+        }
 
         // Invariante observable: tras responder, el "último intento" del panel debe
         // reflejar el intento actual (≈ahora). Si aparece muy desfasado, es señal de

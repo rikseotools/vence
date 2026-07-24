@@ -68,6 +68,8 @@ data/examenes-oficiales/auxiliar-administrativo-valencia/18-09-22 conv 9-16 OEP 
 /test-results/
 /playwright-report/
 /playwright/.cache/
+# Estado de sesión autenticada del harness E2E — NUNCA commitear (credenciales vivas)
+/e2e/.auth/
 
 # Terraform state (live en S3 + DynamoDB lock — backend "s3" en versions.tf).
 # Cualquier .tfstate local es solo backup temporal y NO debe entrar al repo.
