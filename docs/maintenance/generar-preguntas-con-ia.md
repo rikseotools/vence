@@ -1597,6 +1597,16 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 - **Distribución correct_option** controlada por batch (~uniforme); la sub-tanda de rebalanceo quedó D=40% (en el límite, aceptable en canal barajado).
 - Trazas `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en las 303. Scripts del pipeline (insert/approve/rebalance/recheck idempotentes) parametrizados por batch.
 
+### 5.31 Batch Código Ético ULE — editorial universitario, length-tell controlado desde generación (2026-07-24)
+
+- **batch**: `gen_codigo_etico_ule_2026-07-24` — **11 preguntas** sobre la **ley editorial nueva** "Código Ético de la Universidad de León" (`slug codigo-etico-ule`, 5 arts verbatim del PDF oficial `unileon.es/files/2022-04/Codigo_Etico_ULe.pdf`, secciones: comunes/PDI/PAS/estudiantado/cargos). Origen: resolvió el `needs_human` de **T4 de `administrativo_universidad_leon`** en el `verify:scope` del 24/07 (el epígrafe pedía literalmente "Código ético de la ULE" y no existía en BD) → creada la ley + escopada + generado el banco de práctica.
+- **Contenido conceptual (como §5.30)**: fuente = principios éticos en prosa, no articulado BOE. Correcta = cita literal del principio; distractores = otros principios del código atribuidos al colectivo/materia equivocada.
+- **Length-tell BAJO (1/11 = 9%) frente al 21% de UMU**, porque se aplicó la lección de §5.30: **se instruyó al generador para construir distractores largos DESDE el borrador** (derivados de otros principios reales, banda comparable). Solo Q8 (art 3.6 «atención a la ciudadanía», principio inherentemente largo de 330 chars) superó el 1,3× (1,34×) → **rebalanceada** alargando un distractor (→ ratio 0,91). Confirma que instruir el largo de entrada casi elimina el ciclo rechazo→rebalanceo.
+- **Convergencia auto-audit (mecánico) + Sonnet ciego**: 10/11 PERFECT + el mismo Q8 por length-tell (ningún fallo de literalidad ni doble-correcta). Validación programática extra en el insert: **la correcta debe ser substring literal del artículo** (0 fallos) — barato y potente para editorial.
+- **Paso 9 (Sonnet NUEVO sobre las vivas): 11/11 PERFECT** incluida Q8 rebalanceada; coherencia letra↔`correct_option`↔header↔bullets verificada 11/11.
+- **Distribución correct_option** A3/B3/C3/D2, secuencia no-cíclica (`CADBACBDACB`). Trazas `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en las 11. Reversible por el tag del batch.
+- **Nota de producto**: el Código Ético no tiene preguntas OFICIALES de examen (es editorial) → material de apoyo. La teoría ya servía; esto añade la capa de práctica.
+
 ## 6. Anti-patterns (qué NO hacer)
 
 | Anti-pattern | Por qué falla |
