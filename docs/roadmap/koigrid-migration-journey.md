@@ -11,7 +11,25 @@
 
 > Read this first if you're here to ship fixes. Every item below was **reproduced on a real migration** (Vence: Next.js 16 + 31 GB Postgres, AWS→Koigrid), and every "acceptance test" is something you can run against a fresh account to know it's closed. Detail and evidence for each is in the dated sections further down. Nothing here is a nice-to-have we imagined — it's what actually blocked or slowed a paying-sized migration.
 
-### P0 — blocks a migration outright
+> **STATUS UPDATE 2026-07-25 (later), after the next release:** **A3 (HTML edge caching) is now documented as SHIPPED 🎉 — but we cannot observe it**, because `PUT /apps/{id}/cdn {enabled:true}` **regressed** and now fails on every `*.apps.koigrid.com` app (new item **R1**, and it's a one-way door: disabling still works). **A1/A2/B1/B2 are moot for now: the managed restore-dump endpoints were withdrawn** (404, `openapi.json` byte-identical to the 24/07 build) — re-test when they return. Three more regressions landed with this build: **R3** (new apps no longer CDN-by-default), **R4** (`POST /apps sourceType:image` no longer auto-deploys), **R5** (`/rules` header rules have no effect), **R6** (runtime error-code catalogue gone from the docs). Detail + evidence in the 🚨 section below.
+
+### P0-NEW — regressions in the latest build (all reproduced 2026-07-25)
+
+**R1. `PUT /apps/{id}/cdn {"enabled":true}` fails on `*.apps.koigrid.com` — CDN cannot be turned on by anyone, and disabling is a one-way door.** Verbatim the error you fixed on 24/07 (*"needs a valid Cloudflare edge certificate … attach a custom domain"*), reproduced on an existing app (5 attempts) **and on a brand-new app** (`server: Caddy`, no Cloudflare in front). **This blocks A3 entirely** — the feature this release ships cannot be exercised. **Acceptance:** on a free account, enabling the CDN on a default-hostname app succeeds and the next response carries `cf-cache-status`.
+
+**R1-bis. Treat bare `s-maxage` as edge-cacheable, not just the literal `public`.** The new docs ask for `Cache-Control: public, s-maxage=<n>`. **Next.js never emits `public`** — prerendered ISR pages ship `s-maxage=31536000` / `s-maxage=3600, stale-while-revalidate=…` alone, and CloudFront caches them (RFC 9111: `s-maxage` is itself a shared-cache directive). If the literal token is required, your entire Next.js/Astro ICP will still see `DYNAMIC`. Keep `Set-Cookie`/`private`/`no-store` as the disqualifiers. **Acceptance:** a page sending only `s-maxage=60` returns `cf-cache-status: HIT` on the second request.
+
+**R2. Managed restore-dump was withdrawn** (404 on all three routes). Fine if deliberate while A1/A2 are fixed — flagged in case it was collateral. **A1/A2/B1/B2 below are parked until it returns.**
+
+**R3. New apps are no longer CDN-enabled by default** (`POST /apps` → `cdnEnabled:false`; the "on by default" docs line is gone). Shipped 24/07, gone now. Combined with R1: **no path to an edge-cached app on the default hostname.**
+
+**R4. `POST /apps {sourceType:"image"}` no longer auto-deploys** — the app sits at `status:"created"`, `url:null`, `deployments:[]` for 10+ minutes with no error until you `POST /apps/{id}/deployments` by hand. **Acceptance:** creating an image app reaches `running` with no extra call.
+
+**R5. `/apps/{id}/rules` header rules are stored but have no observable effect** — `type:"header"` with `Cache-Control` returned `201` and the response header never changed (4 requests over 30 s, CDN on at the time). The documented `vercel.json` equivalent doesn't apply. **Acceptance:** a header rule visibly changes the response header.
+
+**R6. The runtime error-code catalogue disappeared from `llms.txt`** (`missing_env`, `db_connect_failed` + the `NODE_TLS_REJECT_UNAUTHORIZED=0` hint, `redis_connect_failed`, `oom_runtime`, `port_mismatch`, `crashloop`). Docs regression at minimum; if the codes are gone too, multi-service bring-up lost its self-debugging.
+
+### P0 — blocks a migration outright *(A1/A2 parked: the feature is currently withdrawn — see R2)*
 
 **A1. Managed restore rejects any dump from a current `pg_dump` (≥17.6/18).** *(new, 2026-07-25)*
 - **Symptom:** `POST /databases/:id/restore-dump` → `status: failed`, `error: "psql:<stdin>:5: error: invalid command \restrict"` — fails at line 5, before any data.
@@ -76,6 +94,68 @@ The app is already CDN-perfect: public `s-maxage`, no cookies, prerendered ISR H
 4. **Surface cache effectiveness**: report `cf-cache HIT/MISS` ratio per app in `/metrics`, so a migrator can *see* the CDN working (or not) instead of discovering `DYNAMIC` by hand.
 
 **Why this matters strategically:** Koigrid's whole pitch is "the anti-AWS" and its ICP is Next.js/Astro/Hugo/Supabase refugees — **all SSR/ISR HTML-first frameworks.** Right now `cdnEnabled` on such an app only saves the TLS handshake, not the render, so it benchmarks 2–5× slower than CloudFront on exactly the number a migrator checks first (TTFB of a fresh app). **Land item #1 and Koigrid ties or beats AWS on edge latency too** — removing the last axis where this migration report says AWS is meaningfully ahead. Combined with the co-located DB (6.45 ms), ~10× lower cost, and the already-shipped image-deploy/manifest/runtime-error/CDN fixes, there'd be **no dimension left where AWS wins** for an app like Vence.
+
+---
+
+## 🚨 2026-07-25 (later) — NEXT RELEASE REVIEWED: **HTML edge caching is documented as SHIPPED (our #1 ask 🎉) but is UNREACHABLE**, and this build **regressed four things that worked yesterday** — including managed restore-dump, which is gone.
+
+We re-pulled `llms.txt` and `openapi.json` after another release and re-ran the whole benchmark. **The headline is good news we could not verify, wrapped in four regressions.** Everything below was reproduced against the live API within one hour.
+
+### 🎉 SHIPPED (on paper): HTML edge caching — exactly action item A3
+`llms.txt` now documents, under the CDN section:
+> *"HTML EDGE CACHING (CloudFront-style): the edge caches your HTML documents honoring the ORIGIN's Cache-Control. To make a page cacheable at the edge, respond with `Cache-Control: public, s-maxage=<seconds>`. Responses that are private/no-store or carry a `Set-Cookie` are NEVER cached (auth-safe). Next.js RSC navigation sub-requests bypass the cache (only documents are cached). Apps with Deployment Protection and previews are NEVER edge-cached. No per-app config."*
+
+That is our recommendation #1, including the two subtleties we flagged (cookie-safety and the Next.js RSC `Vary`). **Thank you — this is the change that closes the AWS latency gap.** Two notes before you call it done:
+1. **We could not observe it working** (see R1 — the CDN can no longer be turned on at all on `*.apps.koigrid.com`, so nothing reaches the edge to be cached).
+2. **The documented trigger may miss the framework you're targeting.** The doc asks for the literal token `public`. **Next.js does not emit it** — a prerendered ISR page ships `Cache-Control: s-maxage=31536000` (our `/leyes/constitucion-espanola`) or `s-maxage=3600, stale-while-revalidate=…` (our `/`), with **no `public` token**. CloudFront caches those anyway (RFC 9111: `s-maxage` is itself a shared-cache directive and makes the response cacheable). If your rule requires the literal `public`, **the entire Next.js ICP will still see `DYNAMIC` and conclude the feature doesn't work.** Please treat `s-maxage=<n>` as sufficient on its own, and keep `Set-Cookie`/`private`/`no-store` as the disqualifiers.
+
+### 🔻 R1 (blocker, and a one-way door) — `PUT /apps/{id}/cdn {"enabled":true}` fails again on `*.apps.koigrid.com`, so nobody can turn the CDN on
+```
+PUT /apps/{id}/cdn {"enabled":true}
+→ 400 {"error":"bad_request","detail":"CDN needs a valid Cloudflare edge certificate for
+   vence-web7-23f37d.apps.koigrid.com. Enable Cloudflare Total TLS (ACM) on the zone, or
+   attach a custom domain (2nd-level) and enable the CDN on that."}
+```
+This is **verbatim the error you fixed on 2026-07-24** ("CDN NOW ENABLES ON AN EXISTING APP (was blocked)"). It is back. We reproduced it on:
+- our existing app (`vence-web7`) — 5 attempts over 100 s, all 400;
+- a **brand-new app** created minutes ago (`vence-web8`) — same 400. Its responses show `server: Caddy` (no Cloudflare in front at all).
+
+**Worse, disabling still works, so it's a one-way door.** We set `{"enabled":false}` for one clean before/after measurement, and **could not turn it back on** — our POC app has been CDN-less since, and the only documented escape is a custom domain (a paid-plan/DNS step). **Acceptance test:** on a free account, `PUT /cdn {enabled:true}` on a `*.apps.koigrid.com` app returns `{"cdn":{"enabled":true}}` and the next response carries `cf-cache-status`. *(Net effect: the flagship feature of this release cannot be exercised by any user on the default hostname — including us. We'd happily re-test the moment R1 is fixed.)*
+
+### 🔻 R2 (feature withdrawn) — managed restore-dump is **gone** from the API
+The three endpoints we reviewed in depth this morning now **404**:
+```
+POST /databases/{id}/restore-dump/upload-url → 404 {"error":"not_found","detail":"No such endpoint…"}
+GET  /databases/{id}/restore-dump            → 404
+```
+`openapi.json` is now **byte-identical (md5 `b402ac6f…`) to the 2026-07-24 build**: 176 → 173 paths, the three `restore-dump` routes removed, nothing added. The `llms.txt` section describing it is gone too. If you pulled it deliberately to fix A1/A2 (the `\restrict` incompatibility and the ownership blocker) — **that is the right call, and we'll re-test the day it returns**; the engine underneath was genuinely good. If it was collateral from a rollback, this is your heads-up that a shipped, documented feature vanished.
+
+### 🔻 R3 — new apps are no longer CDN-enabled by default
+`POST /apps` now returns `cdnEnabled: false` (we created one and checked), and the `llms.txt` line *"ON BY DEFAULT for new apps … auto-activates once the edge cert covers the host"* is gone. That was shipped on 2026-07-24 as the fix for the "fresh app benchmarks with CDN off" first-impressions own-goal. Combined with R1, **there is currently no path to an edge-cached app on the default hostname.**
+
+### 🔻 R4 — `POST /apps` with `sourceType:"image"` no longer auto-deploys
+The app was created and then sat at `status: "created"`, `url: null`, `deployments: []` for **10 minutes** with no error. A manual `POST /apps/{id}/deployments` (the same escape hatch that used to work around the old `build_export_failed` flake) started it and it went live normally. So the image path still works — but a migrator following the docs sees an app that silently never starts. Also `GET /apps/{id}/deployments/{deploymentId}` returned no readable `status` for us while the deploy was in flight (the list endpoint was fine). **Acceptance test:** `POST /apps {sourceType:"image"}` reaches `running` without a manual deployment call.
+
+### 🔻 R5 — `/apps/{id}/rules` header rules are accepted but have no observable effect
+`POST /apps/{id}/rules {"type":"header","source":"/leyes/constitucion-espanola","headerName":"Cache-Control","headerValue":"public, s-maxage=120, …"}` → `201` with a rule id, and the response header **never changed** (still `cache-control: s-maxage=31536000`), measured over 4 requests / 30 s, with the CDN still on at the time. This matches what we saw on 2026-07-24 trying to normalize the RSC `Vary`. Either the edge control plane isn't applying `header` rules, or the origin's own header wins silently — either way, the documented `vercel.json` equivalent doesn't do what it says. *(This also removes the one workaround a user would have for the missing `public` token in R-A3.)*
+
+### 🔻 R6 (docs) — the runtime error-code catalogue disappeared from `llms.txt`
+The 2026-07-24 build documented `missing_env`, `db_connect_failed` (with the `NODE_TLS_REJECT_UNAUTHORIZED=0` hint), `redis_connect_failed`, `oom_runtime`, `port_mismatch`, `crashloop`, `unhealthy` — the "self-explaining runtime failures" we praised. This build lists only the BUILD codes again. If the codes still exist, the docs regressed; if they don't, a multi-service bring-up lost its self-debugging.
+
+### 📊 AWS head-to-head re-run — **the gap widened, because Koigrid lost its CDN (R1)**
+Same script, median of 7, from Spain, 2026-07-25 ~01:15 CEST. Koigrid is now **CDN OFF and cannot be turned back on** (R1), so this is a *worse* configuration than yesterday's run — that is the honest caveat, and it is not the app's fault or ours:
+
+| Page | AWS (CloudFront) | Koigrid (CDN forced OFF by R1) | AWS faster | (yesterday, CDN on) |
+|---|---|---|---|---|
+| Home `/` | **40 ms** | 199 ms | 5.0× | 2.4× |
+| `/leyes` (2.3 MB) | **38 ms** | 211 ms | 5.6× | 4.8× |
+| `/leyes/constitucion-espanola` | **41 ms** | 174 ms | 4.2× | 3.2× |
+| `/auxiliar-administrativo-estado` | **101 ms** | 291 ms | 2.9× | 2.5× |
+| Backend `/health` (no CDN either side) | **104 ms** | 164 ms | **1.6×** | 1.4× |
+
+Full-page load (`time_total`) tells the same story: Koigrid 523 ms home / 668 ms `/leyes` vs AWS 78 / 128 ms. And the capacity re-test is **unchanged**: `POST /apps/{id}/loadtest` 30 s @ concurrency 15 on the prerendered page → **10.5 rps, p50 805 ms, p95 4 143 ms, 0 % errors, saturated** — statistically the same as the 8.8–9.2 rps we measured **with** the CDN on. That is the cleanest possible proof of why A3 matters: **as long as HTML isn't edge-cached, turning the CDN on or off changes throughput by nothing, because every request lands on the single origin container.**
+
+**Net:** this release contains the single most valuable change anyone could ship for our migration (HTML edge caching) and simultaneously makes it impossible to use. Fix R1 (and treat bare `s-maxage` as cacheable), and we will re-run this benchmark the same day — we expect the prerendered pages to collapse to CloudFront-class TTFB and the load-test to stop saturating at ~10 rps. Restore R2 with A1/A2 fixed and the migration story is complete.
 
 ---
 
