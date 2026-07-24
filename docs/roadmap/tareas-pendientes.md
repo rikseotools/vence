@@ -522,6 +522,7 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 - **Qué:** el contenedor virtual mezclaba ~12 organizaciones, escopado como "toda la ley" en guardia_civil T6 y policia_nacional T4 (mis-scoping: cada opositor recibía lo de la otra materia). **Split completo en 3 fases** (vivo en RDS, cero regresión de contenido).
 - **Resultado:** 13 leyes creadas — 6 de tratado (Carta ONU, Estatuto Consejo de Europa, Estatuto INTERPOL, Regl. UE CEPOL/Europol/Frontex) + 7 editoriales (UE, OTAN, EUROJUST, FAO, FMI, OMS, Tribunales europeos TEDH/TJUE). Los 39 arts numerados (Fase 1) + las 815 del art.0 clasificadas por 12 agentes Sonnet con integridad verificada 815/815 (Fase 2). Contenedor repurposado (no borrado) a bucket "teoría general" (17 preg, solo GC T6).
 - **Scoping corregido:** GC T6 → 13 orgs + teoría general (917); PN T4 → UE + coop. policial (INTERPOL/Europol/Eurojust/Frontex/CEPOL) + tribunales (434, antes 917).
+- **Residuo limpiado 24/07:** el split dejó un `Convenio EUROPOL Art K.3` (Convención 1995 **derogada** por el Regl. UE 2016/794) con 3 preguntas activas escopadas en PN T4 junto al reglamento vigente. Retiradas (`admin_law_derogated`) + quitado del scope de PN T4; Europol vigente ya cubierto por el Regl. 2016/794.
 - **Detalle:** `docs/roadmap/split-instituciones-internacionales-gc.md`.
 
 ### [T-006] ✅ [CERRADA 20/07] Importar normas para desbloquear needs_human — cluster Biblioteca cerrado
