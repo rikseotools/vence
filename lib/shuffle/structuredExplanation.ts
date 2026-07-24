@@ -270,7 +270,9 @@ export function parseLetterFormatExplanation(
     // en blanco que arranca con un header en negrita → NO es parte de la razón de la
     // opción, es texto independiente. Separarlo a `outro` para que no viaje con la opción.
     if (k === bulletStarts.length - 1) {
-      const m = reason.match(/\n\s*\n\s*(\*\*[^\n]+)$/s)
+      // Sin flag `s` (dotAll): el patrón no contiene `.`, así que `s` no tenía efecto
+      // y rompía el typecheck (target ES2017). Comportamiento idéntico sin él.
+      const m = reason.match(/\n\s*\n\s*(\*\*[^\n]+)$/)
       if (m && m.index != null) {
         outro = reason.slice(m.index).trim()
         reason = reason.slice(0, m.index).trim()

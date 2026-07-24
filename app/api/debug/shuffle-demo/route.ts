@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { getDb } from '@/db/client'
 import { parseLetterFormatExplanation, StructuredExplanation } from '@/lib/shuffle/structuredExplanation'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 /**
  * DEBUG (solo dev): devuelve preguntas reales `full` con explicación §8.1, ya parseadas
@@ -12,7 +13,7 @@ import { parseLetterFormatExplanation, StructuredExplanation } from '@/lib/shuff
  */
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: Request) {
+async function _GET(req: Request) {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'debug route disabled in production' }, { status: 403 })
   }
@@ -74,3 +75,8 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ count: out.length, questions: out })
 }
+
+// Convención del repo: TODO endpoint pasa por withErrorLogging (observabilidad de
+// errores 4xx/5xx + endpoint path). El guardarraíl __tests__/lib/api/withErrorLogging
+// lo exige; este debug endpoint no era una excepción legítima.
+export const GET = withErrorLogging('/api/debug/shuffle-demo', _GET)

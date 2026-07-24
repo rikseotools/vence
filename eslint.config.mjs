@@ -187,6 +187,19 @@ const eslintConfig = [
       ],
     },
   },
+  // e2e (Playwright) NO son componentes React. `test.extend` expone un callback
+  // llamado `use` (`async ({ page }, use) => { await use(...) }`) que
+  // react-hooks/rules-of-hooks confunde con el hook `use` de React (la regla marca
+  // toda función cuyo nombre empieza por "use"). Aquí no hay hooks reales, así que la
+  // regla es puro falso positivo → se desactiva SOLO para e2e (sin silenciar los
+  // hooks reales de la app). Nace del fixture e2e/fixtures/test.ts (24/07).
+  {
+    files: ["e2e/**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+      "react-hooks/exhaustive-deps": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
