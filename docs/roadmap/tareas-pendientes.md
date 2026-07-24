@@ -225,6 +225,18 @@
 
 ## Abiertas
 
+### [T-105] 🟡 [ABIERTO 24/07] Adjudicar las 57 divergencias de dual-write (legacy `oposiciones` ↔ convocatoria SSOT) contra fuente oficial
+- **Qué:** 57 field-divergences (≈69 filas) donde la fila legacy `oposiciones` y su convocatoria `is_current` tienen valores DISTINTOS y ambos no-null en un campo SSOT (`estado_proceso`/`plazas_*`/`inscription_*`/`exam_date`). Las destapa el detector nuevo **`npm run audit:coherencia`** (kind `dual-write DIVERGENTE`, núcleo puro `scripts/lib/dual-write-divergence.cjs`, en `origin/main` desde el 24/07).
+- **Impacto:** 🟡 NO rompe el front (la vista `oposiciones_ssot` sirve el valor de la convocatoria), pero los lectores legacy (advance-estado, auditores) ven un estado distinto del que ve el usuario → decisiones sobre dato stale. Es higiene de dato, no incendio.
+- **Cómo (CAMPAÑA, una fila a una):** `npm run audit:coherencia` lista cada caso como `legacy=X ≠ convocatoria=Y`. **BIDIRECCIONAL** — a veces adelanta la convocatoria (`auxiliar-administrativo-diputacion-girona`: legacy `oep_aprobada` vs conv `nombramientos`), a veces la legacy y más completa (`cuidador-diputacion-cordoba`: legacy `inscripcion_abierta`+plazo vs conv `convocada` sin plazo). **NUNCA copiar en bloque** (regresaría los casos legacy-ahead): adjudicar cada fila contra su **boletín oficial** (qué store refleja la realidad) y dual-write al correcto. Empezar por las publicadas (`is_active=true`, 37 filas / 16 con estado en conflicto).
+- **Origen:** barrido del 24/07 tras arreglar `tecnico-grado-medio-universidad-de-jaen` (dual-write a medias: convocatoria en `inscripcion_abierta`+2 plazas, legacy atascada en `oep_aprobada`+NULL). Runbook: *"revisa el dual-write de convocatorias"* → `salud-contenido.md`.
+
+### [T-106] 🟢 [ABIERTO 24/07] Cuadrar `inscription_deadline` de `auxiliar-administrativo-ayuntamiento-valencia` (30/12 vs 26/12 oficial)
+- **Qué:** la fila tiene `inscription_deadline=2025-12-30` pero la fuente oficial (BOE-A-2025-24191, plazo de solicitudes 01→**26**-dic-2025) da cierre el 26/12. Las **274 plazas SÍ están verificadas correctas** (turno libre, con ampliación BOP 206 28/10/2025) — solo baila la fecha de cierre.
+- **Impacto:** 🟢 menor: 1 fila, plazo ya vencido; no afecta a plazas ni a la captación viva. Es limpieza de dato.
+- **Cómo:** confirmar la fecha exacta contra el BOE-A-2025-24191 / BOP Valencia y corregir `inscription_deadline` en dual-write (`oposiciones` + convocatoria `is_current`). No tocar las 274 plazas.
+- **Origen:** revisión OEP del 24/07 (verificación de la señal `#1 Valencia`, que traía 176 plazas erróneas — se descartó por eso).
+
 ### [T-104] 🟢 [ABIERTO 24/07] Soportar nivel LIBRO en `parseBoeSections` (leyes-código: CP, LEC, LECrim, Código Civil)
 - **Qué:** `parseBoeSections` modela TÍTULO/CAPÍTULO pero no LIBRO. Las leyes-código tienen "Libro › Título › Capítulo" y los títulos REINICIAN por libro ("Libro I › Título I", "Libro II › Título I") → nº de título duplicados → `valida` (reforzado 24/07) las RECHAZA y se quedan con su `law_sections` previa (fail-safe). Afecta a **17 leyes** que la migración `refresh-law-sections.cjs` dejó sin actualizar (CP, LECrim, LEC, Ley 20/1991, etc.).
 - **Impacto:** BAJO y acotado. Esas 17 NO están rotas (conservan su estructura vieja, la app las maneja; 0 huérfanos internos salvo LECrim que ya los tenía). Solo NO se benefician de la re-estructuración correcta. No urge.
