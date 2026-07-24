@@ -96,6 +96,15 @@ export type ClientEventType =
   // unhandled_rejection/react_error_boundary/client_error). Ver
   // utils/answerSaveQueue.ts + utils/psychometricSaveQueue.ts.
   | 'usage_limit_hit'
+  // Reintento de red del wrapper fetchWithChallenge (fix 24/07/2026). Un
+  // `Failed to fetch` transitorio en la ruta crítica (generar test) se
+  // reintenta con backoff en vez de dead-end. `outcome:'recovered'` (severity
+  // debug) = un blip que el reintento salvó (el usuario NO vio error);
+  // `outcome:'exhausted'` (severity warn) = seguía cayendo tras los reintentos
+  // (offline sostenido → el usuario sí ve el error). La ratio recovered/exhausted
+  // mide cuánto trabaja el fix y cuánto es red del usuario irrecuperable. Ver
+  // lib/api/fetchWithChallenge.ts + docs/runbooks/observability.md.
+  | 'network_retry'
   | 'review_oposicion_fallback'
   // Banner de inscripción abierta de la home. Existe porque el banner filtra por familia
   // y por mínimo de plazas (BANNER_MIN_PLAZAS) y ANTES era ciego: descartaba convocatorias
@@ -129,6 +138,13 @@ export type ClientEventType =
   // (desfase). Caza regresiones (volver a leer un agregado materializado desfasado)
   // o anomalías de datos SIN esperar a que un usuario lo reporte.
   | 'question_evolution_inconsistency'
+  // Panel "Tu Evolución": la guardia de dedup por test_id ha actuado → el intento
+  // actual YA estaba persistido en el historial (guardado asíncrono que ganó la
+  // carrera) y se ha evitado el duplicado en la cronología ("Intento N" + "Ahora") +
+  // la inflación de conteo. Se emite para MEDIR la frecuencia real sin depender de un
+  // reporte de usuario (bug MariSol 24/07, feedback 90aa6caa). metadata: {questionId,
+  // userId, testId, historyLen}. severity:'info' (esperado/manejado, no error).
+  | 'question_evolution_dedup'
   // Barra de meta diaria (premium) en la cabecera: interacciones de UX para
   // entender quién la mueve / oculta / re-activa y así pulir el diseño (en móvil
   // tapaba contenido). metadata.action ∈ {'drag','hide','show'}. userId va auto.

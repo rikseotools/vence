@@ -3186,8 +3186,52 @@ export const RULE_CANARY_PSYCHOMETRIC_INTEGRITY_FAILED = canaryFailedRule('canar
   cooldownMin: 30,
 });
 
+/**
+ * Spike de `network_retry` EXHAUSTED — el wrapper de fetch resiliente
+ * (lib/api/fetchWithChallenge.ts, fix 24/07/2026) reintenta los `Failed to
+ * fetch` transitorios; emite `network_retry outcome:'exhausted'` cuando sigue
+ * cayendo tras los reintentos (offline sostenido del usuario).
+ *
+ * En condiciones normales esto es RARO y disperso (algún usuario con mala
+ * cobertura). Un SPIKE concentrado NO es red de un usuario: es una regresión
+ * NUESTRA que hace fallar los fetch a todos a la vez (CORS roto tras deploy,
+ * endpoint caído, edge/DNS). Lo que un usuario reportaría como "no me carga
+ * nada / no genera el test" — justo el tipo de bug que la observabilidad debe
+ * cazar antes que el primer feedback (caso David Couceiro, 24/07). Warn, no
+ * critical: puede ser un incidente de red externo (operadora), no siempre culpa
+ * nuestra; el endpoint del `metadata` desambigua (si es UNO solo → es nuestro).
+ */
+export const RULE_NETWORK_RETRY_EXHAUSTED_SPIKE: AlertRule<{
+  n: number;
+  topEndpoint: string | null;
+}> = {
+  name: 'network_retry_exhausted_spike',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    FROM observable_events
+    WHERE event_type = 'network_retry'
+      AND metadata->>'outcome' = 'exhausted'
+      AND ts > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 30,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const top = rows[0]?.topEndpoint ?? '(varios)';
+    return {
+      title: `Spike de fetch agotados (network_retry) — ${n} en 10 min`,
+      body: `Muchos clientes agotan los reintentos de red sin conectar. Si es UN endpoint (${top}) casi seguro es regresión nuestra (CORS/edge/endpoint caído), no la red del usuario.\n\n  SELECT endpoint, COUNT(*) FROM observable_events\n  WHERE event_type='network_retry' AND metadata->>'outcome'='exhausted'\n    AND ts > NOW() - INTERVAL '10 minutes'\n  GROUP BY endpoint ORDER BY COUNT(*) DESC;`,
+      metadata: { count: n, topEndpoint: top, windowMin: 10 },
+      fingerprint: `network_retry_exhausted_${top}`,
+    };
+  },
+  cooldownMin: 30,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  RULE_NETWORK_RETRY_EXHAUSTED_SPIKE as AlertRule,
   // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)
   RULE_AUTH_TOKEN_MINT_FLOOD as AlertRule,
   // Tests bloqueados por rechazo de validación (2026-07-11, incidente Alfonso)

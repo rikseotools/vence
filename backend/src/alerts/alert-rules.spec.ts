@@ -6,6 +6,7 @@
 
 import {
   ALERT_RULES,
+  RULE_NETWORK_RETRY_EXHAUSTED_SPIKE,
   RULE_HYDRATION_MISMATCH_SPIKE,
   RULE_RUNTIME_KILL,
   RULE_TTS_ERROR_BURST,
@@ -38,6 +39,28 @@ import {
   RULE_FRONTEND_SATURATION,
   RULE_EVENT_LOOP_LAG,
 } from './alert-rules';
+
+describe('RULE_NETWORK_RETRY_EXHAUSTED_SPIKE (fix resiliencia fetch 24/07, caso David)', () => {
+  it('dispara con un spike (>30 en 10 min) = regresión que rompe los fetch a todos', () => {
+    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 45, topEndpoint: '/api/questions/filtered' }])).toBe(true);
+  });
+  it('NO dispara con exhausted disperso (red de usuarios sueltos, no incidente nuestro)', () => {
+    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 30, topEndpoint: null }])).toBe(false);
+    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 3, topEndpoint: null }])).toBe(false);
+  });
+  it('NO dispara con 0 / filas vacías (todo verde)', () => {
+    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 0, topEndpoint: null }])).toBe(false);
+    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([])).toBe(false);
+  });
+  it('el aviso lleva el endpoint y fingerprint único (1 email, no N)', () => {
+    const notif = RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.buildNotification([{ n: 45, topEndpoint: '/api/questions/filtered' }]);
+    expect(notif.fingerprint).toBe('network_retry_exhausted_/api/questions/filtered');
+    expect(notif.metadata).toMatchObject({ count: 45, windowMin: 10 });
+  });
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('network_retry_exhausted_spike');
+  });
+});
 
 describe('RULE_FRONTEND_SATURATION (incidente capacidad 21/07)', () => {
   it('dispara con ≥4 canaries en timeout simultáneo (firma de saturación)', () => {
