@@ -132,10 +132,25 @@ NEWTD=$(aws ecs register-task-definition --cli-input-json "file://${TDNEW}" --pr
 rm -f "$TDLIVE" "$TDNEW"
 echo "   registrada: $NEWTD"
 
-echo "→ [5/6] update-service (rolling) + esperar estable"
+echo "→ [5/6] update-service (rolling) + esperar CONVERGENCIA REAL (mantiene el lock → deploys de uno en uno)"
 aws ecs update-service --cluster vence-backend --service vence-backend --task-definition "$NEWTD" --profile $P --region $R --query 'service.deployments[].{s:status,r:rolloutState}' --output json
-aws ecs wait services-stable --cluster vence-backend --services vence-backend --profile $P --region $R
-echo "   ✅ rollout estable"
+# Convergencia REAL (mismo motivo que deploy-frontend.sh, incidente 24/07 / T-075): el
+# `aws ecs wait services-stable` nativo hace timeout ~10min y soltaría el lock ANTES de
+# que drenen los viejos → el siguiente deploy se apila y solapa rollouts. Esperamos a 1
+# SOLO deployment + PRIMARY COMPLETED + running==desired, hasta 30min, sin colgarnos.
+CONVERGED=0; NDEP=; RS=; RUN=; DES=
+for _i in $(seq 1 90); do   # 90 × 20s = 30 min
+  read -r NDEP RS RUN DES < <(aws ecs describe-services --cluster vence-backend --services vence-backend --profile $P --region $R \
+    --query 'services[0].[length(deployments), deployments[?status==`PRIMARY`]|[0].rolloutState, deployments[?status==`PRIMARY`]|[0].runningCount, deployments[?status==`PRIMARY`]|[0].desiredCount]' \
+    --output text 2>/dev/null || echo "err err err err")
+  if [ "$NDEP" = "1" ] && [ "$RS" = "COMPLETED" ] && [ "$RUN" = "$DES" ]; then CONVERGED=1; break; fi
+  sleep 20
+done
+if [ "$CONVERGED" = "1" ]; then
+  echo "   ✅ convergido: 1 deployment PRIMARY COMPLETED ($RUN/$DES tasks) — lock retenido hasta aquí"
+else
+  echo "   ⚠️ no convergió del todo en 30min (deployments=$NDEP rollout=$RS run=$RUN/$DES) — continúo; el smoke de abajo decide"
+fi
 
 echo "→ [6/6] smoke post-deploy"
 HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://api.vence.es/health)

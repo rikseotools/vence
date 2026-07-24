@@ -280,10 +280,30 @@ NEWTD=$(aws ecs register-task-definition --cli-input-json "file://${TDNEW}" --pr
 rm -f "$TDLIVE" "$TDNEW"
 echo "   registrada: $NEWTD"
 
-echo "→ [5/6] update-service (rolling) + esperar estable"
+echo "→ [5/6] update-service (rolling) + esperar CONVERGENCIA REAL (mantiene el lock → deploys de uno en uno)"
 aws ecs update-service --cluster vence-backend --service vence-frontend --task-definition "$NEWTD" --profile $P --region $R --query 'service.deployments[].{s:status,r:rolloutState}' --output json
-aws ecs wait services-stable --cluster vence-backend --services vence-frontend --profile $P --region $R
-echo "   ✅ rollout estable"
+# Esperar a la convergencia REAL: 1 SOLO deployment (los viejos DRENADOS) + PRIMARY
+# COMPLETED + running==desired. Por qué NO el `aws ecs wait services-stable` nativo:
+# hace timeout ~10min y, bajo drenado lento (deregistration delay) o varios deploys,
+# el script salía por `set -e` y SOLTABA el flock ANTES de que el rollout convergiera
+# → el siguiente deploy (que ESPERA en el flock) arrancaba ENCIMA → 2+ rollouts ECS
+# solapados → se pasa la cuota Fargate vCPU (30) y la web oscila entre versiones
+# (incidente 24/07, T-075). Manteniendo el lock hasta la convergencia real, los deploys
+# van DE UNO EN UNO. Hasta 30min (igual que el `flock -w 1800`); si no converge, avisa y
+# sigue (el smoke + la verificación de SHA vivo de [6/6] deciden, no se cuelga).
+CONVERGED=0; NDEP=; RS=; RUN=; DES=
+for _i in $(seq 1 90); do   # 90 × 20s = 30 min
+  read -r NDEP RS RUN DES < <(aws ecs describe-services --cluster vence-backend --services vence-frontend --profile $P --region $R \
+    --query 'services[0].[length(deployments), deployments[?status==`PRIMARY`]|[0].rolloutState, deployments[?status==`PRIMARY`]|[0].runningCount, deployments[?status==`PRIMARY`]|[0].desiredCount]' \
+    --output text 2>/dev/null || echo "err err err err")
+  if [ "$NDEP" = "1" ] && [ "$RS" = "COMPLETED" ] && [ "$RUN" = "$DES" ]; then CONVERGED=1; break; fi
+  sleep 20
+done
+if [ "$CONVERGED" = "1" ]; then
+  echo "   ✅ convergido: 1 deployment PRIMARY COMPLETED ($RUN/$DES tasks) — lock retenido hasta aquí"
+else
+  echo "   ⚠️ no convergió del todo en 30min (deployments=$NDEP rollout=$RS run=$RUN/$DES) — continúo; la verificación de SHA vivo de abajo decide"
+fi
 
 echo "→ [6/6] smoke post-deploy"
 HOME_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/)
