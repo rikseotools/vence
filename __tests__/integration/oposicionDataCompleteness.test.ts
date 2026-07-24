@@ -204,12 +204,16 @@ describeIfDb('Oposición data completeness', () => {
     // (config o BD) — no se pudo en el momento por alcance. El guardarraíl las salta pero exige
     // que NINGUNA otra (ni una nueva) diverja. Al reconciliar una, quitarla de aquí (el ratchet
     // solo puede bajar). NUNCA añadir una nueva aquí para "callar" el test: eso reintroduce el bug.
+    // 3 reconciliadas el 24/07 (asturias, osakidetza, granada): tenían display_number NULL en BD
+    // → el índice mostraba el topic_number roto (Tema 201, 301…); se pobló BD.display_number con la
+    // numeración de la config (asturias continua 1-38; osakidetza y granada por-bloque). Ya no divergen.
+    // Quedan 2, que requieren su TEMARIO OFICIAL (Resolución/programa aparte de la convocatoria) para
+    // decidir por-bloque vs continuo — pendiente de verificar sin prisa antes de sincronizar:
+    //   - administrativo-estado: BOE-A-2025-26262 (config continuo 1-45 vs BD por-bloque)
+    //   - enfermero-sms: temario en Resolución aparte (config continuo 16-71 vs BD por-bloque 1-56)
     const KNOWN_DIVERGENCES = new Set([
       'administrativo-estado',
-      'administrativo-asturias',
-      'auxiliar-enfermeria-osakidetza',
       'enfermero-sms',
-      'escala-administrativa-universidad-de-granada',
     ])
 
     const mismatches: string[] = []
