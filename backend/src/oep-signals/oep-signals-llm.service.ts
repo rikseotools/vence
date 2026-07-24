@@ -442,8 +442,15 @@ CRITERIOS DE INCLUSIÓN (cualquier convocatoria de ingreso):
 
 CRITERIOS DE EXCLUSIÓN (solo lo que NO es una convocatoria de ingreso):
 - Personal laboral (régimen laboral, no funcionario), si se identifica claramente
-- Libre designación (no es proceso selectivo de ingreso)
-- Hitos de un proceso ya convocado: listas de admitidos/aprobados, nombramientos, adjudicación de plazas
+- Libre designación NI provisión de puestos de trabajo/jefaturas por concurso de méritos (es movilidad interna de personal existente, no ingreso)
+- Hitos de un proceso YA convocado (no son convocatorias nuevas): listas provisionales o definitivas de admitidos/excluidos, constitución o composición del tribunal, correcciones de errores de una convocatoria anterior, nombramientos, adjudicación de plazas, aprobados. Si el anuncio es uno de estos hitos, NO lo extraigas.
+
+DENOMINACIÓN CONCRETA (campo "name") — CRÍTICO:
+- "name" debe ser la denominación ESPECÍFICA del cuerpo, escala, categoría o especialidad, NUNCA una etiqueta de grupo/sector.
+- Los anuncios universitarios se redactan a menudo "acceso al grupo C, subgrupo C1, sector de administración especial, escala TÉCNICA BÁSICA DE ARQUITECTURA-DELINEANTE": el name es "Escala Técnica Básica de Arquitectura-Delineante" (la escala concreta, aunque venga al final de la frase). NO pongas "Grupo C1 Sector Administración Especial" como name: eso es el grupo/sector y va en positionGroup.
+
+ORGANISMO CONCRETO (campo "organismo") — CRÍTICO:
+- Debe ser la entidad convocante NOMBRADA. Si convoca una universidad, pon la UNIVERSIDAD EXACTA ("Universitat de València", "Universidad Miguel Hernández de Elche"), NUNCA genéricos como "Rectorado", "Vicerrectorado", "Gerencia" o "Universidad" a secas: búscala en el encabezado, el pie o la referencia de la resolución. Igual para ayuntamientos (municipio concreto), diputaciones, consejerías o ministerios. Si tras buscar no consta el nombre propio, deja null (mejor null que un genérico).
 
 Responde EXCLUSIVAMENTE con JSON válido sin markdown.`;
 
@@ -467,14 +474,29 @@ Extrae TODAS las convocatorias de ingreso activas de CUALQUIER grupo (A1/A2/B/C1
       "estado": "inscripcion_abierta",
       "organismo": "Universidad de Murcia",
       "url": "https://..."
+    },
+    {
+      "name": "Escala Técnica Básica de Arquitectura-Delineante",
+      "positionGroup": "C1",
+      "year": 2026,
+      "plazas": 2,
+      "bocRef": "DOGV 2026/36849",
+      "fechaInscripcionFin": null,
+      "estado": "inscripcion_abierta",
+      "organismo": "Universitat de València",
+      "url": "https://..."
     }
   ]
 }
 
-"organismo" = la entidad convocante EXACTA y literal (p.ej. "Universidad de Murcia",
-"Ayuntamiento de Huesca", "Ministerio de Hacienda", "Junta de Castilla y León").
+"name" = la DENOMINACIÓN CONCRETA de la escala/cuerpo/categoría/especialidad, NO la
+etiqueta de grupo/sector. Ej.: "Escala Técnica Básica de Arquitectura-Delineante"
+(NUNCA "Grupo C1 Sector Administración Especial": ese dato va en positionGroup="C1").
+"organismo" = la entidad convocante EXACTA y NOMBRADA (p.ej. "Universitat de València",
+"Universidad de Murcia", "Ayuntamiento de Huesca", "Ministerio de Hacienda"). Si convoca
+una universidad, pon la universidad concreta, NUNCA "Rectorado"/"Vicerrectorado"/"Gerencia".
 Es CLAVE para no confundir cuerpos homónimos de distinto nivel (una "Escala Auxiliar
-Administrativa" de universidad NO es la del Estado). Si no consta, null.
+Administrativa" de universidad NO es la del Estado). Si no consta el nombre propio, null.
 Si no hay ninguna convocatoria de ingreso, devuelve {"oeps": []}.`;
 }
 
