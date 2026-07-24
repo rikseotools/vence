@@ -21,6 +21,7 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 const { execFileSync } = require('child_process')
+const { canonicalizeBoletinUrl } = require(path.join(__dirname, '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'))
 
 // ── .env.local ──
 try {
@@ -125,7 +126,8 @@ async function cmdRecord(pt, jsonPath) {
     const programaHash = (await c.query(`SELECT programa_last_hash h FROM convocatorias WHERE id=$1`, [conv.id])).rows[0]?.h || null
     const topics = (await c.query(`SELECT id, topic_number FROM topics WHERE position_type=$1 AND is_active`, [pt])).rows
     const byN = {}; topics.forEach(t => byN[t.topic_number] = t.id)
-    let ok = 0, skipped = []
+    let ok = 0, skipped = [], linked = 0
+    const docCache = {}  // docKey -> documento_id (una fila por documento canónico, reutilizada por todos los temas)
     for (const [n, v] of Object.entries(consensus)) {
       const tid = byN[n]
       if (!tid) { skipped.push(n); continue }
@@ -139,9 +141,25 @@ async function cmdRecord(pt, jsonPath) {
         await c.query(`UPDATE topic_epigrafe_verification SET source_url=$2, source_notes=$3 WHERE topic_id=$1`,
           [tid, v.source_url || null, v.source_notes || null])
       }
+      // Enlazar al HUB de provenance: canonicaliza la URL → ensure_convocatoria_documento
+      // (idempotente, dedup por doc_key) → fija source_documento_id. El source_url queda como
+      // espejo. Ver docs/maintenance/provenance-convocatorias.md.
+      if (v.source_url) {
+        const { docKey, canonicalUrl } = canonicalizeBoletinUrl(v.source_url)
+        if (docKey) {
+          if (!(docKey in docCache)) {
+            const r = await c.query(
+              `SELECT ensure_convocatoria_documento($1,$2,$3,$4,$5,$6,$7,$8) AS id`,
+              [conv.id, docKey, canonicalUrl, null, 'convocatoria', v.source_notes || null, null, 'epigrafe-verify'])
+            docCache[docKey] = r.rows[0].id
+          }
+          await c.query(`UPDATE topic_epigrafe_verification SET source_documento_id=$2 WHERE topic_id=$1`, [tid, docCache[docKey]])
+          linked++
+        }
+      }
       ok++
     }
-    console.log(`✅ registrados ${ok} temas${skipped.length ? ` | saltados: ${skipped.join(', ')}` : ''}`)
+    console.log(`✅ registrados ${ok} temas · enlazados al hub de provenance ${linked}${skipped.length ? ` | saltados: ${skipped.join(', ')}` : ''}`)
     await printStatus(c, pt)
   } finally { await c.end() }
 }
