@@ -201,20 +201,21 @@ describeIfDb('Oposición data completeness', () => {
 
     // RATCHET: divergencias PRE-EXISTENTES (deuda, descubiertas por este guardarraíl el 24/07).
     // Reconciliar cada una verificando su programa oficial y decidiendo la fuente correcta
-    // (config o BD) — no se pudo en el momento por alcance. El guardarraíl las salta pero exige
-    // que NINGUNA otra (ni una nueva) diverja. Al reconciliar una, quitarla de aquí (el ratchet
-    // solo puede bajar). NUNCA añadir una nueva aquí para "callar" el test: eso reintroduce el bug.
-    // 3 reconciliadas el 24/07 (asturias, osakidetza, granada): tenían display_number NULL en BD
-    // → el índice mostraba el topic_number roto (Tema 201, 301…); se pobló BD.display_number con la
-    // numeración de la config (asturias continua 1-38; osakidetza y granada por-bloque). Ya no divergen.
-    // Quedan 2, que requieren su TEMARIO OFICIAL (Resolución/programa aparte de la convocatoria) para
-    // decidir por-bloque vs continuo — pendiente de verificar sin prisa antes de sincronizar:
-    //   - administrativo-estado: BOE-A-2025-26262 (config continuo 1-45 vs BD por-bloque)
-    //   - enfermero-sms: temario en Resolución aparte (config continuo 16-71 vs BD por-bloque 1-56)
-    const KNOWN_DIVERGENCES = new Set([
-      'administrativo-estado',
-      'enfermero-sms',
-    ])
+    // (config o BD). El guardarraíl salta las del allowlist pero exige que NINGUNA otra (ni una
+    // nueva) diverja. Al reconciliar una, quitarla de aquí (el ratchet solo puede bajar). NUNCA
+    // añadir una nueva aquí para "callar" el test: eso reintroduce el bug.
+    //
+    // ✅ Las 5 divergencias históricas fueron reconciliadas contra su programa oficial (24/07):
+    //   - asturias/osakidetza/granada: BD.display_number era NULL → el índice mostraba el
+    //     topic_number roto (Tema 201, 301…); se pobló BD con la numeración de la config.
+    //   - administrativo-estado: el programa oficial del Cuerpo General Administrativo (BOE-A-2025-26262)
+    //     numera POR-BLOQUE (grupo general 1-16, ofimática reinicia 1-12) → config pasó a por-bloque
+    //     para coincidir con la BD (nuestro temario editorial son 6 bloques, cada uno reinicia en 1).
+    //   - enfermero-sms: el temario SMS son DOS programas oficiales separados (materias comunes 1-15,
+    //     BORM 280/2025; materias específicas 1-56, BORM 291/2022) → por-bloque; config recibió
+    //     displayNumber 1-56 en la Parte Específica para coincidir con la BD.
+    // Allowlist vacío = todas coherentes. Si alguna vuelve a divergir, el test falla (no la re-añadas).
+    const KNOWN_DIVERGENCES = new Set<string>([])
 
     const mismatches: string[] = []
     const knownStillDiverging: string[] = []
