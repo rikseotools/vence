@@ -157,24 +157,29 @@ video::-webkit-media-controls-panel {
 /* ── Anti-fuga premium del temario (impresión) ──────────────────────────────
    <PrintPremiumGuard> (montado 1 vez en el layout raíz) pone `data-print-locked`
    en <html> para usuarios NO premium en páginas de temario. Al IMPRIMIR (Ctrl+P,
-   menú del navegador o botón) se oculta el contenido del temario (`.article-content`
-   es exclusiva del temario) y se muestra el aviso. Solo `@media print` → la pantalla
-   no se toca; el free sigue leyendo en web. Premium (sin el atributo) imprime normal.
-   Fuente única: no toca los TopicContentView; cubre cualquier oposición automáticamente. */
+   menú del navegador o botón) la hoja muestra SOLO el aviso premium, limpio.
+   El aviso es hijo DIRECTO de <body> (los context providers no añaden DOM), así
+   que basta ocultar todos los demás hijos directos de <body> → no queda cabecera,
+   breadcrumbs, títulos, ni artículos, ni chrome de la página. Solo `@media print`
+   → la pantalla no se toca; el free sigue leyendo en web. Premium (sin el atributo)
+   imprime normal. Fuente única: no toca los TopicContentView; cubre cualquier
+   oposición automáticamente. Verificado con Playwright (getClientRects): en print
+   solo se renderiza el aviso. */
 .print-premium-notice { display: none; }
 
 @media print {
-  html[data-print-locked] .article-content { display: none !important; }
+  html[data-print-locked] body > *:not(.print-premium-notice) { display: none !important; }
   html[data-print-locked] .print-premium-notice {
     display: block !important;
+    position: static;
     text-align: center;
-    padding: 4rem 1.5rem;
+    padding: 6rem 1.5rem;
     color: #000;
-    font-size: 13pt;
+    font-size: 14pt;
   }
   html[data-print-locked] .print-premium-notice strong {
     display: block;
-    font-size: 17pt;
+    font-size: 18pt;
     margin-bottom: 0.75rem;
   }
 }
