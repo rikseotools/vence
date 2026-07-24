@@ -22,6 +22,7 @@
     "test:db-shim": "node scripts/lib/pg-agnostic-client.selftest.cjs",
     "audit:frozen-supabase": "node scripts/check-frozen-supabase-data.cjs",
     "oep:seguimiento-urls": "node scripts/assign-seguimiento-urls.cjs",
+    "oep:triage-prep": "node scripts/oep-triage-prep.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:served": "npx tsx --env-file=.env.local scripts/audit-served-questions.ts",
     "audit:scraped-reconcile": "node scripts/audit-scraped-reconcile.cjs",
