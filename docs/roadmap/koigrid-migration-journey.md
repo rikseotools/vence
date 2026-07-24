@@ -7,6 +7,20 @@
 
 ---
 
+## ✅ 2026-07-24 (latest+1) — CDN NOW ENABLES ON AN EXISTING APP (was blocked): re-measured, gap ~7× → ~2–4×
+
+Follow-up to the CDN-on-by-default fix: it also unblocked **existing** apps. `PUT /apps/{id}/cdn {enabled:true}` on `vence-web7` — which **failed before** with *"needs a valid Cloudflare edge certificate / attach a custom domain"* — **now succeeds**, auto-provisions the edge cert for the `*.apps.koigrid.com` host, and Cloudflare fronts the app (cf headers present). Re-measured with CDN ON vs AWS (median of 6):
+
+| Page | AWS | Koigrid CDN-ON | (Koigrid CDN-off) | cf-cache |
+|---|---|---|---|---|
+| `/constitucion-espanola` | 111 ms | **311 ms** | 450 ms | DYNAMIC |
+| Home `/` | 87 ms | **207 ms** | 473 ms | DYNAMIC |
+| `/leyes` (DB-heavy) | 174 ms | **687 ms** | 677 ms | DYNAMIC |
+
+**Partially solved — honest read:** enabling CDN ~halved latency on light pages (home 473→207, constitución 450→311) via **edge TLS termination + connection reuse**. BUT every page returns **`cf-cache-status: DYNAMIC`** — Cloudflare is *not* edge-caching the HTML, because the Next.js SSR responses carry non-cacheable `Cache-Control`. So the *big* CDN win (serving cached HTML from edge) isn't active without **app-side cache headers on cacheable routes** (our config, not a Koigrid limit). And `/leyes` (2.3 MB, heavy uncacheable SSR) barely moved (677→687) — CDN can't help a dynamic heavy page; that one needs **replicas + faster SSR**, and replicas are still **Free-capped at 1** (paid plan). **Net: the edge-latency gap dropped from up to 7× to ~2–4×.** The CDN *availability* is fixed; closing the rest is (a) cacheable `Cache-Control` on static routes (Vence-side) and (b) multi-replica (paid plan).
+
+---
+
 ## 📊 2026-07-24 (latest) — FRESH AWS-vs-Koigrid latency measurement (same pages, median of 5, from Spain)
 
 Re-ran a direct head-to-head *now* (not reusing earlier numbers). Medians:
