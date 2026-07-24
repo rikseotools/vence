@@ -225,6 +225,16 @@
 
 ## Abiertas
 
+### [T-099] 🟠 [ABIERTO 24/07] `origin/main` en ROJO — tests de `displayNumber` de administrativo-estado fallando
+- **Qué:** 4 tests fallan en `origin/main` (confirmado sobre main LIMPIO, sin cambios locales): `__tests__/config/administrativoEstadoConfig.test.ts` (displayNumber secuencial 12-45, sin huecos, sin repetir) y `__tests__/utils/themeFormatting.test.ts` (Tema 201 → Bloque II Tema 12). Regresión introducida al tocar la config/numeración de administrativo-estado.
+- **Impacto:** main lleva rojo → el **pre-commit de otras sesiones falla** (obligando a `--no-verify`) y el CI rojo **enmascara futuras regresiones reales**. Detectado 24/07 al pushear cambios doc-only (había que saltar el hook).
+- **Cómo:** reproducir con `npx jest __tests__/config/administrativoEstadoConfig.test.ts __tests__/utils/themeFormatting.test.ts`; mirar el último cambio que tocó la config de administrativo-estado / `displayNumber` (`lib/config/oposiciones.ts` o la fuente de bloques); arreglar la secuencia **o** actualizar el test si la renumeración es intencional. NO dejar main rojo.
+
+### [T-100] 🟡 [ABIERTO 24/07] `pdf-lib` en `package.json` pero NO en `package-lock.json`
+- **Qué:** `pdf-lib@^1.17.1` está declarado en `package.json` (dep del render de PDF del temario, `lib/temario/pdf/stampChrome.ts`) pero **no figura en `package-lock.json`**. Un `npm ci` limpio (CI, imagen Docker) no lo instala → 3 suites de temario revientan por `Cannot find module 'pdf-lib'`.
+- **Impacto:** latente. En local se manifestó (node_modules sin pdf-lib); se instaló a mano el 24/07 para desbloquear commits. El lock desincronizado es frágil (cualquier `npm ci` limpio lo destapa).
+- **Cómo:** `npm install pdf-lib@^1.17.1` en el repo para regenerar el lock con la entrada → commitear `package-lock.json`. Verificar que un `npm ci` limpio instala pdf-lib y las suites de temario pasan.
+
 ### [T-089] 🔴 [ABIERTO 22-23/07] Migración a Koigrid — frontend bloqueado por memoria del runner de build (BD ya migrada)
 - **Qué / dónde estamos:** migración RDS/ECS → **Koigrid** (PaaS tarifa plana EU). **BD YA migrada y validada 1:1** (DB `vence-mig2`, ~27GB, esquema+datos+índices+FKs, row-counts cuadran). **Frontend NO desplegado** — bloqueado por **UN solo muro: el runner de build de Koigrid OOM-killea `next build`** (SIGKILL ~2min compilando 4.468 páginas SSG; confirmado en local `podman build --no-cache --memory=3g`→SIGKILL; necesita >3GB, su runner es menor).
 - **Ya resuelto:** Snag H (DB en build) lo arregló Koigrid vía reference vars `${{db.vence-mig2.DATABASE_URL}}`; guard Turnstile pasa con clobber-fix del Dockerfile; imagen local construye bien (push falla 413 por capa prerender 2,58GB).
