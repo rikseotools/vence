@@ -240,7 +240,7 @@
 - **Herramientas dejadas (en la memoria):** clasificador de huecos corregido + `/tmp/autobalance.cjs` (alarga el distractor más corto con coletillas jurídicas plausibles hasta cumplir el balance). **GOTCHA registrado:** nunca hacer swap de opciones A↔D para reequilibrar la posición del correcto si la explicación referencia letras en prosa ("opción C", "**A**, **B** y **D**") → rompe la explicación; mejor aceptar la distribución o regenerar la pregunta.
 - **Cómo:** manual `docs/maintenance/generar-preguntas-con-ia.md` + runbook `docs/runbooks/verificar-epigrafes-scope.md`; memoria `project-saturacion-temas-flojos-demanda`.
 
-### [T-085] 🟢 [ABIERTA — prioridad BAJADA a baja (triage 24/07): el motivo PDF/504 ya lo resolvió el worker de pre-generación de T-086; queda SOLO mejora de calidad de lectura. Access 365 sigue con cajones (art 1 ~91KB, art 4 ~75KB…)] Trocear los "artículos-cajón" de ofimática (calidad de lectura) — Access 365 y similares
+### [T-085] ✅ [CANCELADA 24/07 (Manuel) — NO se trocean los cajones. El motivo PDF/504 ya lo resolvió el worker de pre-generación de T-086 (otro sistema); y la mejora de calidad-de-lectura que quedaba también se DESCARTA por decisión explícita de Manuel ("ya no lo vamos a hacer, hemos implementado otro sistema"). WONTFIX. (Reconcilia con el re-triage previo que la dejó abierta-baja: la decisión de Manuel prevalece.)] Trocear los "artículos-cajón" de ofimática (calidad de lectura) — Access 365 y similares
 **Qué:** varios temas de ofimática modelan un manual entero (Access, Excel, Word…) en pocos artículos gigantes ("artículos-cajón", ver T-040). Ej. medido 22/07: la ley virtual **"Access 365"** (`law_id b403019a-bdf7-4795-886e-1d26f139602d`) tiene arts de **89 KB (art 1 "Fundamentos"), 74 KB (art 4), 69 KB (art 2)** — cada uno con ~136 headings `##`. Trocearlos por sus secciones `##` en artículos más pequeños mejora la **lectura/estudio** (y de paso el render del PDF, aunque eso ya lo tapa el guardarraíl por-artículo de `f91c644f7` + la futura pre-generación).
 
 **Por qué NO se hizo al vuelo (riesgo cross-oposición — investigado 22/07):**
@@ -912,7 +912,7 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 
 
 
-### [T-028] 🟢 [DEMANDA — valorar, no comprometido] Oposiciones pedidas por usuarios (aún no en plataforma)
+### [T-028] ✅ [CERRADA 24/07 — demanda valorada: las 2 pedidas YA están LIVE. Cuidador Dip. Córdoba (LIVE 23/07, 20 temas) y "Limpiador/a-Camarero/a (actividades domésticas)" = en realidad la Agrupación Profesional de Servicios Públicos CARM (grupo AP servicios/limpieza), is_active (12 temas). Demanda residual BAJA: 1 mención jun (cocinero/ordenanza/camarero Extremadura, grupo E — Vence es administrativo). Nada nuevo que construir.] Oposiciones pedidas por usuarios (aún no en plataforma)
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
 - **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
 
