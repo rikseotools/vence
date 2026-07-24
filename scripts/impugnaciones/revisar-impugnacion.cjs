@@ -47,22 +47,20 @@ const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '')
       } catch (e) { claimWarn = `(claim no aplicado: ${e.message})`; }
     }
 
-    // --- PASO 0: ¿YA está respondida? (caza el desync status=pending PERO admin_response/email ya enviados;
-    //     evita re-responder y duplicar el email — gotcha 504/partial-close del manual). ---
+    // --- PASO 0: ¿YA está respondida? Caza el desync status=pending PERO admin_response ya escrito
+    //     (gotcha 504/partial-close: la respuesta se guardó/emailó pero el estado no se volteó).
+    //     Trigger SOLO por admin_response (es por-dispute, fiable). NO por email_events: esa tabla no
+    //     tiene dispute_id, así que un email 'impugnacion_respuesta' de OTRA dispute del mismo usuario
+    //     daría falso positivo (visto 24/07 con Cristina: 3 disputes, cerrar una marcaba las otras). ---
     let alreadyWarn = '';
     if (['pending', 'appealed'].includes(d.status)) {
       const hasResp = d.admin_response && String(d.admin_response).trim().length > 0;
-      let emailedAt = null;
-      try {
-        const em = await s`SELECT created_at FROM email_events WHERE user_id=${d.user_id} AND email_type='impugnacion_respuesta' AND created_at >= ${d.created_at} ORDER BY created_at DESC LIMIT 1`;
-        emailedAt = em[0]?.created_at || null;
-      } catch (e) { /* email_events puede variar entre entornos; no fatal */ }
-      if (hasResp || emailedAt) {
-        alreadyWarn = '🛑 PASO 0 — YA RESPONDIDA (status=' + d.status + ' pero ya atendida):\n'
-          + (hasResp ? '   • admin_response ya escrito' + (d.updated_at ? ' (' + new Date(d.updated_at).toISOString().slice(0, 16) + ')' : '') + '.\n' : '')
-          + (emailedAt ? "   • email 'impugnacion_respuesta' ya enviado el " + new Date(emailedAt).toISOString().slice(0, 16) + '.\n' : '')
+      if (hasResp) {
+        alreadyWarn = '🛑 PASO 0 — YA RESPONDIDA (status=' + d.status + ' pero ya tiene admin_response'
+          + (d.updated_at ? ' de ' + new Date(d.updated_at).toISOString().slice(0, 16) : '') + '):\n'
+          + '   • ' + String(d.admin_response).replace(/\s+/g, ' ').trim().slice(0, 90) + '…\n'
           + '   → NO re-respondas (duplicarías el email). Solo falta CERRAR el estado (silent close):\n'
-          + "     UPDATE status → 'resolved'/'rejected' preservando admin_response, SIN /resolve (que reenviaría email).";
+          + "     UPDATE status → 'resolved'/'rejected' preservando admin_response, SIN /resolve (reenviaría email).";
       }
     }
 
