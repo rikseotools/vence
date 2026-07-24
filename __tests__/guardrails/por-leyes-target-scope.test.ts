@@ -46,7 +46,11 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
   it('laws-configurator filtra la lista de leyes por positionType', () => {
     const q = read('lib/api/laws-configurator/queries.ts')
     expect(q).toMatch(/getAllLawsWithStats\(positionType\?/)
-    expect(q).toMatch(/articleInPositionScopeExists/)
+    // Acotado por ARTÍCULO vía topic_scope del positionType (antes con el helper
+    // articleInPositionScopeExists; desde el fix 24/07 con un CTE que materializa el
+    // set de artículos escopados y mantiene count(DISTINCT) — evita el timeout de 30s).
+    expect(q).toMatch(/topic_scope/)
+    expect(q).toMatch(/article_number = ANY\(ts\.article_numbers\)/)
     const route = read('app/api/laws-configurator/route.ts')
     expect(route).toMatch(/searchParams\.get\('positionType'\)/)
   })
@@ -61,7 +65,8 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
 
   it('FIX auditoría: el conteo de leyes se acota por artículo (no por ley entera)', () => {
     const q = read('lib/api/laws-configurator/queries.ts')
-    expect(q).toMatch(/articleInPositionScopeExists/)
+    // El CTE filtra por artículo dentro del topic_scope del positionType (no la ley entera).
+    expect(q).toMatch(/article_number = ANY\(ts\.article_numbers\)/)
   })
 
   it('FIX auditoría: el selector de artículos aplica scopeToPosition sin topicNumber', () => {
@@ -117,6 +122,6 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
     const q = read('lib/api/laws-configurator/queries.ts')
     expect(q).toMatch(/emitFireAndForget/)
     expect(q).toMatch(/laws_configurator_empty_scope/)
-    expect(q).toMatch(/positionType && lawsData\.length === 0/)
+    expect(q).toMatch(/positionType && out\.totalLaws === 0/)
   })
 })
