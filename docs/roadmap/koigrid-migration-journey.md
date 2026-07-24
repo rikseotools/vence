@@ -3,7 +3,65 @@
 > **What this is:** an honest, end-to-end log of migrating a real production app (Vence — a Spanish exam-prep platform: Next.js 16 frontend + 31 GB PostgreSQL) **from AWS (ECS Fargate + RDS) to Koigrid**, written to help Koigrid improve the migration experience. Mix of what worked great and where we hit friction, with concrete suggestions.
 >
 > **Source stack:** Next.js 16 (standalone) on ECS Fargate + PostgreSQL 17.6 on RDS Multi-AZ (eu-west-2). DB = 31 GB, ~195 tables, 245 functions, 87 triggers, generated columns, 38 views, pgvector embeddings. Origin was Supabase (cut over to RDS 2026-07), so the schema carries Supabase-era conventions (an `extensions` schema, an `auth` schema).
-> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases).
+> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases) → 2026-07-24 (image-deploy retest, then the whole-app manifest + load-test features).
+
+---
+
+## ✅ 2026-07-24 (later) — KOIGRID SHIPPED SUGGESTIONS #1 (whole-app manifest) AND #4 (load-test). We tested both. Both work.
+
+Between the morning retest (front-end live via ECR image, below) and now, Koigrid shipped **exactly the two things this report flagged as the last axes where AWS still wins** — the multi-service cutover manifest and a first-class load test. We diffed `llms.txt`/`openapi.json` against our 2026-07-24 12:56 snapshot and found:
+- **`POST /manifest` + `POST /manifest/plan`** (+ CLI `koigrid up` / `koigrid plan`, new scope `manifest:write`) — a `koigrid.yaml` declares a whole PROJECT (databases + redis + apps, wired by `${{...}}` reference vars) and brings it up idempotently, **deploying apps in dependency order (backend before web)**. This is *verbatim* suggestion #1 from the "FROM FRONT-END DEPLOYS TO WHOLE-APP CUTOVER" section. Fast turnaround — thank you.
+- **`POST /apps/{id}/loadtest`** — hammer the app URL at bounded concurrency for N seconds → `rps` + `p50/p95/p99` + a `saturated` flag with a human `note`. This is suggestion #4 ("the #1 thing blocking our cutover decision: capacity"), now first-class.
+
+### 🧪 Load-test feature — first real capacity numbers for Vence on Koigrid (this is genuinely useful)
+
+We ran it against the live POC (`vence-web7`, **single 2 GB replica, CDN OFF** — deliberately the weakest config, to get a floor):
+
+| Path | Concurrency | Duration | rps | p50 | p95 | p99 | errors | `saturated` |
+|---|---|---|---|---|---|---|---|---|
+| `/` (static) | 25 | 30 s | 8.7 | 1.31 s | 8.40 s | 9.25 s | 3.1% | **true** |
+| `/leyes` (DB-heavy) | 15 | 30 s | 3.8 | 3.96 s | 7.28 s | 9.34 s | 0% | false |
+
+The `note` field was excellent — plain-language and actionable: *"Satura a concurrencia 25 (p95=8401ms vs p50=1311ms, errores 3.1%). Sube réplicas o el tamaño de la app y re-mide"* and *"Sana a concurrencia 15… Para estimar el pico mensual: req/s × 2.6M ≈ req/mes sostenidas."* A load-test endpoint that *interprets its own result* is exactly the "self-explaining" DX this report kept asking for. 👏
+
+**Honest read (this is a floor, not a verdict):** one small CDN-off replica saturates the static path at ~8.7 rps. Vence's peak ≈ 43 M req/mo ≈ **16.6 rps mean** (bursts ~3–5× → ~50–80 rps), so a single small replica is under even the mean — as expected. The DB-heavy path held 15-concurrency at **0 errors** (the co-located 6.45 ms DB earning its keep). The realistic cutover config — **CDN on** (offloads the static hits that drove the home saturation) + **~6–10 replicas + autoscale** — is what a peak load test needs to validate. But the key point: **the capacity axis is now measurable from the API**, which it wasn't 24 h ago. This alone changes "we think it'll hold" into "we can prove it."
+
+**Feedback / suggestions on the load-test tool:**
+1. **`durationSec` is capped at 60 and concurrency is bounded** — good guardrails, but a real cutover gate wants a *ramp* (step concurrency 10→50→100 and report the saturation point), and a longer soak (5–10 min) to catch GC/leak/connection-pool cliffs that a 30 s burst misses. A `mode: "ramp"` returning the rps-vs-p95 curve + the knee would be the killer capacity report.
+2. **Report server-side signals alongside client-side latency** — during the run, echo the app's CPU/mem and replica count (and whether autoscale fired). Right now we see *client* p95 but can't tell if it saturated on CPU, memory, or the DB. Pairing this with `/metrics` during the test makes the saturation cause legible.
+3. **Let it target an internal warm path** to separate cold-start from steady-state — our first request was a ~40 s cold start (container warmup + a 15 s app-side cache load); a load test that reports "excluding warmup" vs "including" avoids a scary-looking p99.
+4. Minor: the tool hits a single `path`. A small **weighted path mix** (`[{path:"/",weight:70},{path:"/leyes",weight:30}]`) would model real traffic better than one URL.
+
+### 🧩 Whole-app cutover manifest — dry-run (`/manifest/plan`) is VALID with 0 warnings
+
+We authored a `koigrid.yaml`-equivalent JSON for the **entire Vence stack** and ran the dry-run:
+- `databases: [vence-mig2 (4096 MB)]`
+- `redis: [cache]`
+- `apps: [vence-backend (ECR image, DATABASE_URL+REDIS_URL refs), vence-web7 (ECR image + registryAws* creds, full NEXT_PUBLIC_* env + REDIS_URL + BACKEND_URL=${{app.vence-backend.INTERNAL_URL}})]`
+
+`POST /manifest/plan` returned a clean, correct plan (**0 warnings**):
+
+| kind | name | action | note |
+|---|---|---|---|
+| database | `vence-mig2` | **plan-noop** | *"ya existe (resize por su API)"* — correctly recognized the existing 31 GB DB, matched by name |
+| redis | `cache` | **plan-create** | |
+| app | `vence-backend` | **plan-create** | new service |
+| app | `vence-web7` | **plan-update** | correctly adopted the live POC app by name and would wire in `REDIS_URL` + `BACKEND_URL` |
+
+This is a great result: **idempotent match-by-name across all four resource kinds**, `plan-noop` vs `plan-create` vs `plan-update` clearly distinguished, reference-var wiring (`${{db.x}}` / `${{redis.x}}` / `${{app.x.INTERNAL_URL}}`) accepted, and dependency order (backend before web) implied by the plan. This is the piece that turns "I deployed one container" into "I declared my whole stack" — the single biggest DX lever for a real migration, and it landed.
+
+**Feedback / friction on the manifest:**
+1. **Sub-schema inconsistency: `redis` inside the manifest rejects `memoryMb`, but `POST /redis` accepts it.** Our first plan failed with `redis.0: Unrecognized key(s) in object: 'memoryMb'`. The standalone `/redis` create endpoint takes `{name, replicas, memoryMb, projectId}`, so a user naturally copies those fields into the manifest — and the manifest's stricter validator rejects `memoryMb`. Two fixes, either works: **(a)** accept the same fields in the manifest as the standalone create (and size Redis there — important, since this report's Snag B showed an undersized DB *crashes* mid-load; the same "size at create" concern applies to Redis), or **(b)** document the manifest's redis sub-schema explicitly. The error itself was crisp and named the exact key — good validator UX; it's the *asymmetry* that surprises.
+2. **The strict validator is a feature — keep it, but publish the manifest JSON Schema.** In `openapi.json`, `databases`/`redis`/`apps` items are typed as bare `object` (no properties), so a user can't discover the accepted fields from the spec — we had to reconstruct them from the `llms.txt` example and one rejection. Publishing the full per-kind item schema (with which fields are per-manifest vs "use the resource's own API") would remove the guesswork.
+3. **`plan-noop` note "resize por su API" is exactly right** — the manifest wisely won't resize an existing DB (avoids a destructive surprise), and *tells you* to use the DB API. That's the correct, safe default. Consider the same explicit note for an app whose `plan-update` would change memory/replicas, so the operator knows what the apply will and won't touch.
+
+### What's NOT done yet (and why — it's *our* side, not Koigrid's)
+
+The **apply** (`POST /manifest`) — the real whole-stack bring-up — is ready to fire (manifest validated, images in ECR, DB live) but we haven't run it in this session for two reasons, **both on us**:
+1. **Our internal task-claim lock.** Vence runs 2–10 parallel Claude sessions with a lease-based backlog; the Koigrid migration task (`T-089`) is currently leased to another session, and our own guardrail (correctly) blocks a second session from mutating shared infra until the lease frees. Not a Koigrid issue — if anything it's a nod to *why* the manifest's idempotent match-by-name matters: two operators must converge, not collide.
+2. **One ECR-scope gotcha to fix first (our side).** The scoped IAM key we minted for the front-end pull (defect #2's ECR-native path) is scoped to the `vence-koigrid-mig` repo only. The manifest apply pulls the **backend** image from `vence-backend` too, so we'll extend that key's policy to include the second repo before apply — otherwise Koigrid would (correctly) surface `registry_auth_failed` on the backend app. **Doc suggestion for the ECR-native path:** note that a whole-app manifest needs the pull creds scoped to **every** repo it references, not just the web image — an easy thing to miss when you graduate from one app to a stack.
+
+**Net:** two Koigrid features shipped since this morning, both tested, both work — the manifest dry-run is valid for the entire Vence stack, and the load test gives the first real capacity floor. The only thing between here and a live whole-stack POC on Koigrid is our own claim lock + a 2-minute IAM scope edit. **On the axes this report said AWS still won — whole-app orchestration and provable capacity — Koigrid just closed the orchestration gap and handed us the tool to close the capacity one.**
 
 ---
 
