@@ -542,6 +542,18 @@ async function main() {
       { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) });
   }
 
+  // NOTA: el detector de OFF-BY-ONE DE FRONTERA DE TÍTULO (art. escopado de un
+  // título que el epígrafe no nombra; caso Mario/LOSU 24/07) NO se ejecuta aquí
+  // como kind que pinga el badge. La simulación bank-wide (24/07) dio recall alto
+  // pero PRECISIÓN baja: muchos epígrafes nombran el título por su MATERIA
+  // ("La organización territorial del Estado" = Título VIII CE) y no por su número,
+  // así que un detector que solo lee "Título <romano>" marca falsos positivos. Es
+  // el mismo criterio que la banda MEDIUM de scope_over_inclusion: alimenta la
+  // ADJUDICACIÓN bajo demanda, no el badge. Runner on-demand:
+  //   npx tsx scripts/scope/sim-title-boundary.ts <position_type> [topic]
+  // Núcleo puro y testeado: lib/laws/scopeTitleBoundary.js. Robustecerlo para badge
+  // exige cotejar la RÚBRICA del título contra el epígrafe (pendiente).
+
   // ── CONTENIDO: ARTÍCULOS FANTASMA del scope (integridad referencial) ──
   // Un número en topic_scope.article_numbers que NO tiene fila ACTIVA en articles
   // (mismo law_id). El scope lo "pide" pero no hay artículo servible → 0 preguntas y

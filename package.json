@@ -71,7 +71,8 @@
     "canary:oposiciones": "node scripts/canary-oposiciones-live.cjs",
     "audit:convocatorias": "node scripts/audit-convocatoria-completitud.cjs",
     "audit:convocatorias:gate": "node scripts/audit-convocatoria-completitud.cjs --gate",
-    "audit:oep-review": "node scripts/audit-oep-review.cjs"
+    "audit:oep-review": "node scripts/audit-oep-review.cjs",
+    "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

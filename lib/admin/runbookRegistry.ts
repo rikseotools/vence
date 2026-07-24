@@ -165,6 +165,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'para cada tema señalado (banda HIGH: el epígrafe cita títulos con huecos o artículos concretos pero el scope mete casi toda la ley) corre el adjudicador verify:scope: obtén la estructura oficial de la ley (títulos/capítulos y sus rangos), mapea cada materia que NOMBRA el epígrafe a su título/capítulo, y LISTA los títulos con preguntas escopadas que el epígrafe NO nombra. Si el epígrafe realmente acota (deja títulos fuera), recorta el article_numbers a lo que pide el epígrafe (las preguntas fuera de programa quedan en BD, dejan de servirse en ese tema); si el epígrafe abarca de verdad toda la ley, es falso positivo y se deja. NUNCA recortes un bloque que el epígrafe sí pide ni des por buena la ley entera sin mapear su estructura (ese atajo fue el falso verde del caso T11).',
   },
+  scope_title_boundary_overflow: {
+    title: 'Artículo escopado de un título que el epígrafe NO nombra (off-by-one de frontera)',
+    triggerPhrase: 'revisa las fronteras de título del temario',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'corre el runner on-demand `npx tsx scripts/scope/sim-title-boundary.ts <position_type> [topic]` (núcleo puro lib/laws/scopeTitleBoundary.js sobre la estructura título→rango del índice del BOE): lista los artículos escopados cuyo TÍTULO no aparece en el epígrafe (caso raíz LOSU/Mario 24/07: art.1 = Título Preliminar y art.6 = Título III en un epígrafe que solo pide Título I, II y IX Cap I). OJO: es alta-recall/baja-precisión (no pinga badge) — muchos epígrafes nombran el título por su MATERIA, no por su número, así que hay falsos positivos; ADJUDICA cada candidato: verifica contra el BOE si el epígrafe nombra ese título por número O por rúbrica. Solo si el epígrafe no lo pide de ninguna forma, recorta esos artículos del article_numbers (las preguntas quedan en BD, dejan de servirse en ese tema) + revalida cache temario/test-counts. Distinto de la sobre-inclusión (aquí el scope es AJUSTADO, solo se cuela 1-2 arts en la frontera); lo introduce verify:scope al razonar por rango contiguo en vez de por pertenencia real al título. NUNCA recortes un artículo que el epígrafe sí pide.',
+  },
   answer_in_annulled_fragment: {
     title: 'Pregunta activa cuya clave reproduce un inciso ANULADO por el TC',
     triggerPhrase: 'revisa los incisos anulados',
