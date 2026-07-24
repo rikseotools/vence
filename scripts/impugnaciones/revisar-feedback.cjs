@@ -16,6 +16,8 @@
 
 const fs = require('fs');
 const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+// Enforcement de la Regla previa OBLIGATORIA (scope/epígrafe) — módulo compartido con revisar-impugnacion.cjs
+const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -109,6 +111,12 @@ const ago = (d) => {
       console.log('    → Respuesta SOLO en admin_response (legacy), NO en el hilo → entrega fallida real: re-entregar vía /api/v2/feedback/respond.');
     }
     if (dupWarn) console.log('    → 🔴 POSIBLE DUPLICADO YA EN EL HILO (2+ ADMIN seguidos). Revisar antes de tocar nada.');
+
+    // --- ENFORCEMENT scope/epígrafe (Regla previa OBLIGATORIA): si el feedback va de temario ---
+    // Mira el mensaje original + TODOS los mensajes del usuario (la duda de scope puede venir en un follow-up).
+    const userText = [fb.message, ...allMsgs.filter((m) => !m.is_admin).map((m) => m.message)].join(' ');
+    const scopeWarn = await scopeEnforcement(s, { text: userText, oposicion: p?.target_oposicion || null });
+    if (scopeWarn) console.log(scopeWarn);
 
     // --- Paso 3: journey ---
     console.log('\n─── Paso 3: JOURNEY (últimas interacciones) ───');

@@ -18,6 +18,8 @@ const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 const words = (s) => new Set(norm(s).split(' ').filter((w) => w.length > 3));
 function recall(opt, art) { const O = words(opt), A = words(art); if (!O.size) return 0; let h = 0; O.forEach((w) => A.has(w) && h++); return h / O.size; }
 const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '');
+// Enforcement de la Regla previa OBLIGATORIA (scope/epígrafe) — módulo compartido con revisar-feedback.cjs
+const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
 
 (async () => {
   const did = process.argv[2];
@@ -64,7 +66,10 @@ const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '')
       }
     }
 
-    const [p] = await s`SELECT full_name, email FROM user_profiles WHERE id=${d.user_id}`;
+    const [p] = await s`SELECT full_name, email, target_oposicion FROM user_profiles WHERE id=${d.user_id}`;
+    const scopeWarn = await scopeEnforcement(s, {
+      text: d.description, oposicion: p?.target_oposicion || null, force: d.dispute_type === 'tema_incorrecto',
+    });
     const qtbl = isPsy ? 'psychometric_questions' : 'questions';
     const [q] = await s.unsafe(`SELECT * FROM ${qtbl} WHERE id='${d.question_id}'`);
     let art = null;
@@ -82,6 +87,7 @@ const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '')
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
     console.log(`Tipo: ${d.dispute_type} | estado: ${d.status}`);
     console.log(`Descripción: ${d.description}`);
+    if (scopeWarn) console.log(scopeWarn);
     console.log(`\nPregunta (oficial=${q.is_official_exam}, lifecycle=${q.lifecycle_state}):`);
     console.log(`  ${q.question_text}`);
     ['A', 'B', 'C', 'D'].forEach((L) => opts[L] != null && console.log(`  ${L}) ${opts[L]}`));

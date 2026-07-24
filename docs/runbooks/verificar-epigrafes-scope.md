@@ -8,6 +8,8 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 
 ## ⚠️ Regla previa OBLIGATORIA — orden de trabajo cuando lo dispara un USUARIO
 
+> 🗺️ **ENFORZADA POR CÓDIGO (desde 24/07):** los dossiers `revisar-impugnacion.cjs` y `revisar-feedback.cjs` detectan solos cuando la queja va de temario/epígrafe/scope y **imprimen un CHECK con el estado Paso 1/Paso 2 de la oposición + un 🛑 bloqueante si el epígrafe está `never_sourced`**. Módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`. Nace porque la regla se saltaba (caso Sara 24/07: scope `verified_correct` pero epígrafe `never_sourced` = falso verde). Si ves el 🛑, haz el Paso 1 antes de resolver.
+
 Siempre que un usuario (feedback, impugnación, duda) hable de **epígrafes, `topic_scope`, temario, artículos de un tema o "faltan/sobran preguntas de un tema"**, el orden es **este, y en este orden**, ANTES de responderle o tocar nada:
 
 1. **Lee primero este manual de epígrafes** (y `docs/maintenance/verificar-epigrafe-topic-scope.md`). No improvises el diagnóstico de scope de memoria.
