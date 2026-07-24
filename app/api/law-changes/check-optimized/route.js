@@ -1,10 +1,11 @@
 // app/api/law-changes/check-optimized/route.js
 // Versión optimizada para cron diario - mínimo consumo de ancho de banda
 import { getAdminDb } from '@/db/client'
-import { laws as lawsTable } from '@/db/schema'
+import { laws as lawsTable, articles as articlesTable } from '@/db/schema'
 import { and, eq, isNotNull } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { extractBoeArticles, classifyContentChange } from '@/lib/api/boe-changes/normalize'
 
 // getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
 // service_role). Agnóstico de proveedor.
@@ -48,6 +49,44 @@ function parseSpanishDate(dateStr) {
   if (!dateStr) return null
   const [day, month, year] = dateStr.split('/')
   return new Date(year, month - 1, day)
+}
+
+/**
+ * PUERTA DE CONFIRMACIÓN (24/07/2026): la fecha de "Última actualización" del BOE avanza en las
+ * RE-CONSOLIDACIONES aunque no cambie ni una palabra del articulado servido → falsos positivos
+ * (Ley 4/2021 FPV, Ley 1/2015 Hacienda GVA, verificadas a mano). Antes de marcar 'changed',
+ * confirmamos comparando el CONTENIDO LEGAL normalizado del BOE contra NUESTROS artículos: solo
+ * es cambio real si difiere el texto servido (no las notas editoriales ni el espaciado de los
+ * enlaces del BOE). Recall intacto: una palabra distinta del mismo largo SÍ dispara.
+ *
+ * FAIL-SAFE: si no se puede descargar/parsear el BOE, devuelve isRealChange=true (mejor un falso
+ * positivo puntual que perder un cambio real). Solo corre cuando la fecha ya cambió (raro).
+ */
+async function confirmRealChange(law) {
+  try {
+    const res = await fetch(law.boe_url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)' },
+    })
+    if (!res.ok) return { isRealChange: true, reason: `no confirmable (HTTP ${res.status})` }
+    const html = await res.text()
+    const boe = extractBoeArticles(html)
+    if (boe.size === 0) return { isRealChange: true, reason: 'BOE sin artículos extraíbles' }
+
+    const rows = await db()
+      .select({
+        n: articlesTable.articleNumber,
+        active: articlesTable.isActive,
+        content: articlesTable.content,
+      })
+      .from(articlesTable)
+      .where(eq(articlesTable.lawId, law.id))
+    const ours = new Map(
+      rows.map((r) => [String(r.n).toLowerCase(), { content: r.content || '', active: !!r.active }]),
+    )
+    return classifyContentChange(ours, boe)
+  } catch (e) {
+    return { isRealChange: true, reason: `error confirmando (${e.message})` }
+  }
 }
 
 /**
@@ -325,16 +364,25 @@ async function _GET(request) {
         lawResult.method = partialResult.method
         lawResult.newDate = partialResult.lastUpdateBOE
 
-        // Detectar cambio
+        // Detectar cambio (con PUERTA DE CONFIRMACIÓN por contenido: la fecha sola da falsos
+        // positivos en re-consolidaciones; confirmRealChange compara el articulado servido).
         if (law.last_update_boe && partialResult.lastUpdateBOE !== law.last_update_boe) {
-          lawResult.changed = true
-          stats.changesDetected++
-          changes.push({
-            law: law.short_name,
-            name: law.name,
-            oldDate: law.last_update_boe,
-            newDate: partialResult.lastUpdateBOE
-          })
+          const verdict = await confirmRealChange(law)
+          if (verdict.isRealChange) {
+            lawResult.changed = true
+            stats.changesDetected++
+            changes.push({
+              law: law.short_name,
+              name: law.name,
+              oldDate: law.last_update_boe,
+              newDate: partialResult.lastUpdateBOE,
+              articles: verdict.changedArticles
+            })
+          } else {
+            lawResult.noiseSkipped = true
+            stats.noiseSkipped = (stats.noiseSkipped || 0) + 1
+            console.log(`🔇 [BOE] ${law.short_name}: fecha ${law.last_update_boe}→${partialResult.lastUpdateBOE} pero contenido servido IGUAL (${verdict.reason}) — no se marca 'changed'`)
+          }
         }
 
         // Actualizar BD (guardar offset y content_length para próximas consultas)
@@ -369,14 +417,22 @@ async function _GET(request) {
         lawResult.newDate = fullResult.lastUpdateBOE
 
         if (law.last_update_boe && fullResult.lastUpdateBOE !== law.last_update_boe) {
-          lawResult.changed = true
-          stats.changesDetected++
-          changes.push({
-            law: law.short_name,
-            name: law.name,
-            oldDate: law.last_update_boe,
-            newDate: fullResult.lastUpdateBOE
-          })
+          const verdict = await confirmRealChange(law)
+          if (verdict.isRealChange) {
+            lawResult.changed = true
+            stats.changesDetected++
+            changes.push({
+              law: law.short_name,
+              name: law.name,
+              oldDate: law.last_update_boe,
+              newDate: fullResult.lastUpdateBOE,
+              articles: verdict.changedArticles
+            })
+          } else {
+            lawResult.noiseSkipped = true
+            stats.noiseSkipped = (stats.noiseSkipped || 0) + 1
+            console.log(`🔇 [BOE] ${law.short_name}: fecha ${law.last_update_boe}→${fullResult.lastUpdateBOE} pero contenido servido IGUAL (${verdict.reason}) — no se marca 'changed'`)
+          }
         }
 
         const fullUpdateData = {
