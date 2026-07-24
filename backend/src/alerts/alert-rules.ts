@@ -1633,6 +1633,51 @@ export const RULE_FRONTEND_SATURATION: AlertRule<{
 };
 
 /**
+ * Event-loop lag del frontend (T-075, Capa 5 del postmortem 21/07). El sampler
+ * `startEventLoopLagSampler` (lib/observability/eventLoopLag.ts) emite
+ * `event_loop_lag` a observable_events SOLO al cruzar umbral (warn: p99≥100ms o
+ * max≥500ms; critical: max≥2s). Como son "flags only", CUALQUIER cluster ya es
+ * señal. Esta regla cierra la mitad que faltaba —detección → NOTIFICACIÓN—: el
+ * 21/07 el loop se saturó y nadie se enteró hasta la cascada de 504.
+ *
+ * Dispara si hay ≥1 evento critical (stall multi-segundo = health-check-killer)
+ * O ≥5 warn en 15 min (loop repetidamente pegajoso = precursor de cascada).
+ * `duration_ms` del evento = max lag (ms) de esa ventana del sampler.
+ */
+export const RULE_EVENT_LOOP_LAG: AlertRule<{
+  n: number;
+  crit: number;
+  maxLagMs: number | null;
+}> = {
+  name: 'event_loop_lag',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           COUNT(*) FILTER (WHERE severity = 'critical')::int AS crit,
+           MAX(duration_ms)::int AS "maxLagMs"
+    FROM observable_events
+    WHERE event_type = 'event_loop_lag'
+      AND ts > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => {
+    const r = rows[0];
+    if (!r) return false;
+    return (r.crit ?? 0) >= 1 || (r.n ?? 0) >= 5;
+  },
+  buildNotification: (rows) => {
+    const r = rows[0];
+    const lagS = r.maxLagMs != null ? (r.maxLagMs / 1000).toFixed(1) : '?';
+    return {
+      title: `Event-loop del frontend saturándose — max ${lagS}s de lag (${r.n} muestras/15m, ${r.crit} críticas)`,
+      body: `El event-loop de Node (single-thread) del frontend acumula lag: ${r.n} muestra(s) sobre umbral en 15 min, ${r.crit} crítica(s) (stall ≥2s). Pico ${lagS}s.\n\nEsta es la FIRMA del incidente 21/07 (docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md): con 1 vCPU + trabajo CPU-bound (RS256 de /api/auth/token) el loop se bloquea, el health check no obtiene CPU para responder y ECS mata tasks vivos → cascada de 504. Aquí lo ves ANTES de la cascada.\n\nQUÉ MIRAR:\n  1. ECS CPU frontend Average+MAXIMUM (max=100% sostenido = task pegado a su único core).\n  2. ¿running == max? El autoscaler no sube más → dar capacidad ya (subir desired/max).\n  3. ¿pico de /api/auth/token? (el #1, RS256 CPU-bound). Backlog T-071: mover el minteo fuera del hot path.\n  4. Tasks 2 vCPU (cpu 1024→2048): el 2º core absorbe GC + crypto del threadpool.\n\nMitigación rápida (capacidad):\n  aws --profile vence --region eu-west-2 ecs update-service --cluster vence-backend --service vence-frontend --desired-count <N>\n\n  SELECT ts, severity, duration_ms, metadata FROM observable_events\n  WHERE event_type='event_loop_lag' AND ts > NOW() - INTERVAL '30 minutes' ORDER BY ts DESC;`,
+      metadata: { samples: r.n, critical: r.crit, maxLagMs: r.maxLagMs, windowMin: 15 },
+      fingerprint: 'event_loop_lag',
+    };
+  },
+  cooldownMin: 20,
+};
+
+/**
  * Watchdog wall-clock residual — detecta que el fix del 31/05/2026 (commit
  * `a4051a6b`, hook `useAnswerWatchdog` Page Visibility-aware) sigue
  * funcionando bien en TODOS los navegadores en producción.
@@ -3210,6 +3255,9 @@ export const ALERT_RULES: AlertRule[] = [
   // Saturación del frontend (21/07/2026) — 1 aviso legible en vez del storm de N
   // canaries en timeout; firma de capacidad/lentitud (ver incidente autoscaling).
   RULE_FRONTEND_SATURATION as AlertRule,
+  // Event-loop lag del frontend (T-075, 24/07) — cierra la NOTIFICACIÓN que
+  // faltaba al sensor de Capa 5: avisa del precursor de la cascada de 504 (21/07).
+  RULE_EVENT_LOOP_LAG as AlertRule,
   // Canary SEMÁNTICO del endpoint theme-stats (19/06/2026, post incidente V4):
   // el panel de temas refleja el progreso real (artículo→topic_scope).
   RULE_CANARY_THEME_STATS_FAILED as AlertRule,

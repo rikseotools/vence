@@ -36,6 +36,7 @@ import {
   RULE_CLIENT_EDGE_SUSTAINED,
   RULE_FILTERED_VALIDATION_REJECTED_SPIKE,
   RULE_FRONTEND_SATURATION,
+  RULE_EVENT_LOOP_LAG,
 } from './alert-rules';
 
 describe('RULE_FRONTEND_SATURATION (incidente capacidad 21/07)', () => {
@@ -55,6 +56,30 @@ describe('RULE_FRONTEND_SATURATION (incidente capacidad 21/07)', () => {
     const n = RULE_FRONTEND_SATURATION.buildNotification([{ canaries: 8, which: 'auth_failed' }]);
     expect(n.fingerprint).toBe('frontend_saturation');
     expect(n.title).toContain('8 canaries');
+  });
+});
+
+describe('RULE_EVENT_LOOP_LAG (Capa 5 postmortem 21/07)', () => {
+  it('dispara con ≥1 evento critical (stall multi-segundo = health-check-killer)', () => {
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 1, crit: 1, maxLagMs: 2400 }])).toBe(true);
+  });
+  it('dispara con ≥5 warn sostenidos (loop pegajoso = precursor de cascada)', () => {
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 5, crit: 0, maxLagMs: 600 }])).toBe(true);
+  });
+  it('NO dispara con pocos warn aislados (blip, no cascada)', () => {
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 4, crit: 0, maxLagMs: 550 }])).toBe(false);
+  });
+  it('NO dispara con 0 / filas vacías (loop sano)', () => {
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 0, crit: 0, maxLagMs: null }])).toBe(false);
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([])).toBe(false);
+  });
+  it('el aviso lleva el pico en segundos y fingerprint único (1 email, no N)', () => {
+    const notif = RULE_EVENT_LOOP_LAG.buildNotification([{ n: 6, crit: 2, maxLagMs: 3100 }]);
+    expect(notif.title).toContain('3.1s');
+    expect(notif.fingerprint).toBe('event_loop_lag');
+  });
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('event_loop_lag');
   });
 });
 
