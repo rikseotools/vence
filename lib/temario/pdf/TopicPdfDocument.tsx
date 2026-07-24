@@ -128,12 +128,12 @@ export function TopicPdfDocument({ model }: { model: TopicPdfModel }) {
               <Text style={styles.lawName}>{section.lawName}</Text>
               {section.blocks.map((block, b) =>
                 block.kind === 'heading' ? (
-                  <View key={b} wrap={false}>
+                  <View key={b} wrap={false} minPresenceAhead={40}>
                     <Text style={HEADING_STYLE[block.level]}>{block.text}</Text>
                   </View>
                 ) : (
                   <View key={b} style={styles.articleBlock} wrap={true}>
-                    <Text style={styles.articleHeading}>{block.heading}</Text>
+                    <Text style={styles.articleHeading} minPresenceAhead={40}>{block.heading}</Text>
                     {block.body.map((mb, k) => (
                       <MdBlockView key={k} block={mb} />
                     ))}
@@ -144,11 +144,10 @@ export function TopicPdfDocument({ model }: { model: TopicPdfModel }) {
           ))
         )}
 
-        {/* Pie repetido en cada página. SIN position:absolute a propósito: con `position:absolute` el
-            motor de maquetación desbordaba ("unsupported number") en temas de +20 artículos. */}
-        <View style={styles.footer} fixed>
-          <Text>{model.footer}</Text>
-        </View>
+        {/* El pie ("Página X de Y" + título del tema en cabecera) se estampa DESPUÉS en post-proceso
+            (lib/temario/pdf/stampChrome.ts, pdf-lib). El `render` de @react-pdf para el nº de página
+            deja de pintar con contenido en <View wrap> (bug 4.5.1). El paddingBottom/Top de la página
+            reserva el margen donde se dibuja ese chrome. */}
       </Page>
     </Document>
   )

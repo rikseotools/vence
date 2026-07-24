@@ -23,6 +23,7 @@ import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/t
 import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
+import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { getUserPlanType } from '@/lib/referrals/queries'
@@ -129,7 +130,19 @@ async function handler(
   const sectionNames = await getLawSectionNames(lawIds)
   const model = buildTopicPdfModel(content, new Date(), sectionNames)
   const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
-  const buffer = await renderToBuffer(doc)
+  const rawBuffer = await renderToBuffer(doc)
+
+  // Post-proceso: estampar nº de página + título del tema (pdf-lib). Mismo helper que el worker →
+  // resultado idéntico. DEGRADA: si falla, se sirve el PDF sin chrome y se registra un warn.
+  let buffer: Buffer = rawBuffer
+  try {
+    const stamped = await stampTopicPdfChrome(rawBuffer, { footer: model.footer, title: model.title })
+    buffer = Buffer.from(stamped.bytes)
+    emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount } })
+  } catch (e) {
+    emitFireAndForget({ source: 'fargate', severity: 'warn', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, outcome: 'stamp_failed', error: e instanceof Error ? e.message : 'desconocido' } })
+  }
+
   void storage.upload({
     bucket: TOPIC_PDF_BUCKET, path: cacheKey, data: buffer, contentType: 'application/pdf',
     // Immutable: la clave es content-addressed, así que este objeto nunca cambia.

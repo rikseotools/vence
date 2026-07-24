@@ -28,8 +28,17 @@ export interface PdfHashableContent {
  * las notas de vigencia renderizadas): cualquier cambio de contenido o de scope lo mueve.
  * Los separadores (\x00/\x01/\x02) evitan colisiones por concatenación ambigua.
  */
+// Versión de la MAQUETACIÓN del PDF (TopicPdfDocument + stampChrome). El hash cubre solo el
+// CONTENIDO, así que un cambio de plantilla/chrome no regeneraría los PDF ya cacheados. Bumpear
+// esto invalida todas las cache keys → se regeneran con la nueva maquetación.
+//   v2: nº de página y título del tema por hoja (post-proceso pdf-lib) + minPresenceAhead para que
+//       las cabeceras no queden huérfanas al pie (feedback Nila, fb a67f7c02 + 1397b115).
+const PDF_TEMPLATE_VERSION = 'v2'
+
 export function topicPdfContentHash(content: PdfHashableContent): string {
   const h = createHash('sha256')
+  h.update(PDF_TEMPLATE_VERSION)
+  h.update('\x03')
   for (const law of content.laws || []) {
     for (const a of law.articles || []) {
       h.update(a.articleNumber || '')

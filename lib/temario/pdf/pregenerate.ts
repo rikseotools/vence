@@ -16,6 +16,7 @@ import { getTopicContentBaseInternal as getTopicContentUncached, getLawSectionNa
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
+import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
 import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/temario/pdf/pdfCache'
 import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
@@ -68,7 +69,18 @@ export async function pregenerateTopicPdf(
     const sectionNames = await getLawSectionNames(lawIds)
     const model = buildTopicPdfModel(content, new Date(), sectionNames)
     const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
-    const buffer = await renderToBuffer(doc)
+    const rawBuffer = await renderToBuffer(doc)
+
+    // Post-proceso: estampar nº de página + título del tema (pdf-lib). DEGRADA: si el estampado
+    // falla, se sube el PDF sin chrome y se registra un warn — nunca romper la descarga por esto.
+    let buffer: Buffer = rawBuffer
+    try {
+      const stamped = await stampTopicPdfChrome(rawBuffer, { footer: model.footer, title: model.title })
+      buffer = Buffer.from(stamped.bytes)
+      emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/admin/temario/pregenerate', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount } })
+    } catch (e) {
+      emitFireAndForget({ source: 'fargate', severity: 'warn', eventType: 'temario_pdf_stamped', endpoint: '/api/admin/temario/pregenerate', metadata: { oposicion, tema: topicNumber, outcome: 'stamp_failed', error: e instanceof Error ? e.message : 'desconocido' } })
+    }
 
     const up = await storage.upload({
       bucket: TOPIC_PDF_BUCKET, path: cacheKey, data: buffer, contentType: 'application/pdf',
