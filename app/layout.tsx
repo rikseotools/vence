@@ -18,6 +18,7 @@ import ConsentModeDefault from '../components/ConsentModeDefault'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
 import { ClientObservabilityInstaller } from '../components/observability/ClientObservabilityInstaller'
 import ReferralAttributionOnLogin from '../components/ReferralAttributionOnLogin'
+import PrintPremiumGuard from '../components/PrintPremiumGuard'
 import { EarlyErrorsBridge } from '../components/observability/EarlyErrorsBridge'
 
 export default async function SpanishLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,9 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                 intent tracking. Ver lib/observability/client.ts. */}
             <ClientObservabilityInstaller />
             <ReferralAttributionOnLogin />
+            {/* Anti-fuga premium: bloquea la impresión del temario (Ctrl+P / botón)
+                para usuarios no premium. Fuente única, ver components/PrintPremiumGuard. */}
+            <PrintPremiumGuard />
             <OposicionProvider>
               <LawSlugProvider initialMappings={lawMappings}>
               <QuestionProvider>

@@ -153,3 +153,28 @@ video::-webkit-media-controls-panel {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* ── Anti-fuga premium del temario (impresión) ──────────────────────────────
+   <PrintPremiumGuard> (montado 1 vez en el layout raíz) pone `data-print-locked`
+   en <html> para usuarios NO premium en páginas de temario. Al IMPRIMIR (Ctrl+P,
+   menú del navegador o botón) se oculta el contenido del temario (`.article-content`
+   es exclusiva del temario) y se muestra el aviso. Solo `@media print` → la pantalla
+   no se toca; el free sigue leyendo en web. Premium (sin el atributo) imprime normal.
+   Fuente única: no toca los TopicContentView; cubre cualquier oposición automáticamente. */
+.print-premium-notice { display: none; }
+
+@media print {
+  html[data-print-locked] .article-content { display: none !important; }
+  html[data-print-locked] .print-premium-notice {
+    display: block !important;
+    text-align: center;
+    padding: 4rem 1.5rem;
+    color: #000;
+    font-size: 13pt;
+  }
+  html[data-print-locked] .print-premium-notice strong {
+    display: block;
+    font-size: 17pt;
+    margin-bottom: 0.75rem;
+  }
+}
