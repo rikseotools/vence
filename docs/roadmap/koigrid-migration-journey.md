@@ -7,6 +7,42 @@
 
 ---
 
+## ✅ 2026-07-24 (evening) — WE APPLIED THE MANIFEST FOR REAL: backend (NestJS) + Redis now LIVE on Koigrid against the real 31 GB DB. Two plan≠apply bugs found (one dangerous), both worked around.
+
+Following the dry-run below, we ran the actual `POST /manifest` **apply** to bring up the **backend + Redis** into the same project as the migrated 31 GB DB. **Net result: the NestJS backend is live on Koigrid, serving `/health` 200, connected to the co-located 31 GB Postgres, with the Koigrid managed Redis wired in.** Getting there surfaced **two real platform bugs** — exactly the kind of feedback an apply (vs a dry-run) exposes.
+
+### 🎉 What now runs on Koigrid (proven, not planned)
+- **Backend `@vence/backend` (NestJS) — LIVE.** `https://vence-backend-261bdf.apps.koigrid.com/health` → `200 {"status":"ok","service":"vence-backend","deploy":"a4d55e77"}`. The runtime logs show it **booted against the real migrated DB and ran actual work**: `[RefreshRankingsService] refresh_ranking_cache() completado: 1922 filas` — inserting the week/month ranking rows in **27–77 ms** (the co-located 6.45 ms DB earning its keep), and `[AlertsCron] alerts-engine: … 59/59 evaluadas`. This is the whole point of unproven-item #1 (backend), now retired: **it doesn't just deploy, it works against real data.**
+- **ECR-native pull of the backend image works** (`deploy-a4d55e77`, 110 MB) — after we extended the scoped IAM key to the second repo (our gotcha, noted below). Defect #2's ECR path holds for a *second* image, not just the front-end.
+- **Managed Redis provisioned + wired.** `POST /manifest` created the `cache` Redis; the connection URI is a **TLS `rediss://…@rds-cache-d9085a.rds.koigrid.com:44921`** (exactly what the backend's `ELASTICACHE_URL` expects). Set `CACHE_PROVIDER=elasticache` + `ELASTICACHE_URL=${{redis.cache.REDIS_URL}}` and the backend logged `[CacheService] Cache configurada (proveedor: elasticache)` with no connect error. Unproven-item #2 (Redis) substantially retired.
+- **Backend env is trivial** thanks to a 12-factor design: its zod env schema makes **only `DATABASE_URL` required** (everything else defaults / degrades cleanly), so the manifest env was 5 lines and it boots. Missing optional secrets degraded exactly as designed (`CRON_SECRET no configurado — drain… cron_secret_missing`, `POOLER_TARGET_GROUP_ARN no configurado`), not crashed.
+- **Idempotency confirmed.** Re-applying the manifest reported `database → exists`, `redis → exists`, `app vence-backend → updated` (same id) — match-by-name is stable across kinds.
+- **No downtime on a failed redeploy.** When a redeploy failed (see bug #2), the **previous container kept serving `/health` 200** the whole time — Koigrid holds last-good and only cuts over on success. Good default.
+
+### 🐞 BUG #1 (dangerous) — `manifest` resolves the `project` field by **ID in plan** but by **NAME in apply**
+
+This one can bite hard in a cutover. We passed `project: "7a9881f4-…"` (the existing project's **UUID**):
+- **`/manifest/plan`** resolved it *by id* → matched the existing project → returned `database vence-mig2 → plan-noop`, `app vence-web7 → plan-update`. Looks perfect and safe.
+- **`/manifest`** (apply) resolved the *same string by name* → found no project named "7a9881f4-…" → **created a brand-new project literally named "7a9881f4-…"** and, inside it, created **all four resources fresh — including a new EMPTY `vence-mig2` database** (a second 4 GB DB with none of the 31 GB of data), plus a new backend and a **duplicate `vence-web7`** unrelated to the live one.
+
+So the dry-run said "noop/update" and the apply **built a parallel empty stack against an empty DB.** In a real cutover that's the difference between "augment my project" and "silently stand up a hollow copy." The fix on our side was trivial once seen — **pass the project NAME** (`project: "demo"`); then plan *and* apply agreed (`projectId 7a9881f4…`, `database → exists`, `redis/backend → create` in the right project). But the plan/apply divergence itself is the bug.
+→ **Fix (Koigrid):** resolve `project` **identically** in plan and apply — accept an id as an id in *both*, or reject an id-shaped string with "did you mean the name?", and never silently create a new project named after a UUID. At minimum, `plan` must predict what `apply` will do; a plan that says `noop` while apply says `create` defeats the purpose of a dry-run. (We cleaned up the stray project — deleting its 4 resources returned 200 each; the now-empty project's `DELETE` returned `409 "must be empty"` for a while after the children were gone — a minor **eventual-consistency** lag worth smoothing so cleanup isn't a retry loop.)
+
+### 🐞 BUG #2 (flaky, blocks first-try image deploys) — `build_export_failed` on every image deploy; a manual retry lands it
+
+**Every** image deploy of the backend failed on the **first** attempt with:
+> `error: build_export_failed` — *"The image built but could not be exported/loaded on the runner (timeout or runner I/O pressure). This is a platform issue (not your code) — koigrid has been alerted; retry shortly."*
+
+…and a **manual `POST /apps/{id}/deployments` retry consistently succeeded** (caught a healthy runner → `live`, public URL assigned, container serving). So the image path *works*, but it's **flaky under runner I/O pressure** and needs a retry every time — reproducible across 3 separate deploys this session (possibly aggravated by our own churn: multiple deploys + load tests on the shared runners). Two sub-issues make it worse than "just retry":
+1. **A failed deploy leaves the app in `error` with no public URL, even though a retry's container is healthy and listening** (`[Bootstrap] Vence backend escuchando en :3000`). We had to delete+recreate or fire a fresh `POST /deployments` to get routing. (This is the Snag-I "error-state stickiness" from earlier, still biting.)
+2. **A confusing cascade in the failure log:** after the export failed, the runner logged `docker: pull access denied for manifest, repository does not exist … Unable to find image 'manifest:latest'` — it appears to `docker run` the literal string `manifest` as an image. That's a red-herring error stacked on the real one (`build_export_failed`) and would send someone chasing a registry-auth problem that isn't there.
+→ **Fix (Koigrid):** (a) make image export/load robust to runner I/O pressure (retry internally before failing, or isolate export from noisy neighbors) so a `sourceType:image` deploy lands on the first try like ECS does; (b) don't strand the app in `error` when a subsequent deploy's container is healthy — reconcile app status to the running container; (c) fix the `docker run 'manifest'` cascade so the log shows only the real cause.
+
+### Where this leaves the whole-app POC
+DB (31 GB, 1:1) ✅ + front-end (live, image deploy) ✅ + **backend (live, real DB + Redis) ✅ + Redis (provisioned + wired) ✅** — four of the stack's pieces now run on Koigrid in one project. Still not exercised (next): pointing the **front-end**'s `BACKEND_URL` at the Koigrid backend over private networking (`${{app.vence-backend.INTERNAL_URL}}`) and running **writes/auth/Stripe** end-to-end; a **peak load test** with CDN-on + replicas; repointing **crons**. But the manifest delivered the multi-service bring-up it promises — modulo the two bugs above, both of which a dry-run alone would not have caught. **This is the strongest evidence yet that a full Vence cutover is mechanically viable on Koigrid.**
+
+---
+
 ## ✅ 2026-07-24 (later) — KOIGRID SHIPPED SUGGESTIONS #1 (whole-app manifest) AND #4 (load-test). We tested both. Both work.
 
 Between the morning retest (front-end live via ECR image, below) and now, Koigrid shipped **exactly the two things this report flagged as the last axes where AWS still wins** — the multi-service cutover manifest and a first-class load test. We diffed `llms.txt`/`openapi.json` against our 2026-07-24 12:56 snapshot and found:
