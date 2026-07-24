@@ -1,5 +1,7 @@
 # Manual: Generar preguntas con IA (Claude) + auditoría doble
 
+> **Versión 2.6** — 2026-07-24. **Explicación estructurada shuffle-safe (Fase 2 del barajado de opciones, T-080).** El formato §8.1 clava la LETRA en la explicación ("**Por qué B es correcta**", "- **A)** …"), lo que impide barajar las opciones al repetir una pregunta (la letra dejaría de apuntar a lo mismo) y obliga a la coreografía de §2.2-ter (mover la letra al re-permutar). **v2.6 añade §8.2: formato canónico ESTRUCTURADO por-opción SIN letras** (`explanation_data`, razones keadas al CONTENIDO de cada opción; la letra se asigna al render por posición). Toda explicación NUEVA se emite así → nace shuffle-safe y **desaparece la deuda de §2.2-ter** (sin letra, no hay nada que mover). Diseño + simulación (invariante 100% en 29.015 permutaciones reales, migración determinista del histórico 72,5%): `docs/roadmap/barajar-opciones-fase2-explicaciones-estructuradas.md`; módulo `lib/shuffle/structuredExplanation.ts`.
+>
 > **Versión 2.5** — 2026-06-04. **Segundo tell estructural detectado (investigación de Manuel "debe haber un patrón")**: además del de longitud, `correct_option` estaba **sesgado por posición** — en las 1.562 IA-generadas la correcta caía en **B 48,7% · A+B 79% · D 4,4%** (azar 25%; humanos ≈ uniforme), explotable porque la app no baraja opciones. **v2.5 añade**: nueva **§2.2-ter** (posición aleatoria uniforme) + **7º check `answer_position_uniform_ok`** (§2.4 + Paso 6). **Remediación aplicada (04/06)**: 437 preguntas re-permutadas por transposición mínima con relabel determinista de header+bullets → distribución A 25,2/B 25,7/C 24,6/D 24,5% (χ²=0,58, uniforme). Coherencia clave: al reordenar hay que mover la letra en la explicación (header + bullets), no solo `correct_option`.
 >
 > **Versión 2.4** — 2026-06-03. **Hallazgo crítico a raíz del feedback de la usuaria Isa (`5e21fa2d`)**: las preguntas IA-generadas se acertaban eligiendo **"la opción más larga"** — la correcta era la más larga el **71%** de las veces (azar 25%), porque §2.2 exige que la correcta sea cita literal larga del artículo mientras los distractores se redactaban cortos. Es la causa de que las IA midieran más fáciles (global_difficulty 26 vs 33 del banco). **v2.4 añade la regla anti-tell**: nueva **§2.2-bis** (distractores ±30% de longitud de la correcta, construidos con texto legal real alterado) + nuevo **6º check `distractors_balance_ok`** (§2.4 + Paso 6) + Paso 2 reescrito. **Remediación aplicada (03/06)**: 778 preguntas vivas reequilibradas vía workflow (reescritura + auditor independiente) → tell de banco bajó 71%→31% (igual que el banco no-IA). Lección de pipeline: el fichero de entrada del auditor NO debe darle las opciones originales como verdad (le confunde); avisar explícito de que son obsoletas.
@@ -169,7 +171,9 @@ Segundo tell estructural, independiente del de longitud y de mayor impacto. **Me
 
 **Regla anti-"ciclo A-B-C-D" (secuencia, no solo distribución) — añadido 2026-07-10 (batch Decreto 19/2011 Canarias):** la distribución uniforme NO basta. Si asignas la posición recorriendo `A,B,C,D,A,B,C,D…` por orden de artículo, el batch pasa el check mecánico (25% c/u, ninguna posición >40% ni <10%) pero la **secuencia** es un patrón predecible: ordenadas por artículo, la correcta cicla. Es de bajo riesgo real (la app **sirve los tests barajados y sueltos**, así que el ciclo no es observable dentro de un test mezclado), pero es gratis evitarlo: **asigna la posición con una permutación sin orden monótono** (p.ej. baraja las posiciones del lote, o intercala D,B,A,C,B,D,C,A…), no con un contador incremental. Comprobación adicional al check de distribución: mirar la **secuencia** de `correct_option` en el orden de generación y confirmar que no describe un ciclo regular. Detectado por el Sonnet del Paso 9 en el batch `gen_dec19_2011_b3` (22q, distribución A6/B6/C5/D5 uniforme pero secuencia cíclica exacta); no se re-permutó porque las preguntas ya estaban vivas y el riesgo de una transposición mal hecha (ver "Recordatorio de coherencia") superaba el beneficio en un canal barajado — pero en generación **es coste cero hacerlo bien de entrada**.
 
-**Recordatorio de coherencia:** la explicación nombra la letra correcta (`**Por qué <LETRA> es correcta:**` + bullets `- **<LETRA>)**`). Si se reordena una pregunta ya redactada, hay que **mover la letra del header Y la de los bullets de distractor** en bloque (es una transposición: intercambiar las dos letras en opciones + explicación), nunca solo `correct_option`.
+**Recordatorio de coherencia (formato §8.1 letra-anclado):** la explicación nombra la letra correcta (`**Por qué <LETRA> es correcta:**` + bullets `- **<LETRA>)**`). Si se reordena una pregunta ya redactada, hay que **mover la letra del header Y la de los bullets de distractor** en bloque (es una transposición: intercambiar las dos letras en opciones + explicación), nunca solo `correct_option`.
+
+> **Esta deuda DESAPARECE con el formato estructurado (§8.2, v2.6):** si la explicación se escribe keada al CONTENIDO de cada opción (sin letras), re-permutar es keaer el índice y el render recompone las letras solo — no hay nada que mover a mano. **Emite siempre el formato §8.2** en generación nueva; §2.2-ter (posición uniforme) sigue aplicando a `correct_option`, pero la coreografía de "mover la letra" queda obsoleta.
 
 **Remediación de la cohorte histórica (04/06/2026):** 437 preguntas re-permutadas (transposición mínima B/A→C/D con relabel determinista del header + bullets + validación per-pregunta + skip-on-fail). Distribución post: A 25,2 / B 25,7 / C 24,6 / D 24,5% (χ²=0,58 vs uniforme, indistinguible). 13 saltadas (9 sin header parseable + 4 con header≠`correct_option`, posible bug de clave a revisar). Backup `/tmp/ia_position_backup.json`.
 
@@ -425,7 +429,18 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 >   - Sin emojis, sin sección "Truco/Consejo".
 >   - **NO enunciar CIFRAS de alteraciones ("doble/triple/cuádruple alteración", "altera N elementos"): LISTA lo que cambia, sin contarlo.** Patrón de fallo recurrente medido en T-045 (ITPAJD art. 1 ×2, EA Canarias art. 168): el generador dice "triple alteración" y hay cuatro (suele olvidar un sinónimo tipo "de las islas"→"del Archipiélago"). No es mecanizable (exige diff semántico distractor↔artículo) ni afecta a la clave, pero servido en vivo enseña un detalle mal. **Si no das un número, no hay número que equivocar** — y el distractor no pierde nada explicando "cambia X por Y, y Z por W" en vez de "doble alteración: …".
 
-Guardar borrador en `/tmp/<batch_id>_borrador.json`:
+> #### §8.2 — Formato ESTRUCTURADO shuffle-safe (canónico desde v2.6)
+>
+> Para que la pregunta se pueda **barajar al repetirse** (T-080), la explicación se emite ADEMÁS en
+> `explanation_data`: razones **keadas al índice ORIGINAL de cada opción (0=A…3=D), referidas al
+> CONTENIDO, NUNCA a la letra**. La letra se asigna al render por posición. Regla: prohibido "La A es
+> incorrecta"; escribe "No corresponde al órgano de administración electrónica". La opción correcta se
+> identifica con `correct_option` (no se marca dentro del JSON). `frame` = `select_correct` o, para
+> "señale la FALSA", `select_incorrect`. Esquema y render: `lib/shuffle/structuredExplanation.ts`;
+> diseño: `docs/roadmap/barajar-opciones-fase2-explicaciones-estructuradas.md`.
+
+Guardar borrador en `/tmp/<batch_id>_borrador.json` (con AMBOS campos; `explanation` se deriva por
+render del estructurado para lectores legacy):
 
 ```json
 [
@@ -438,6 +453,17 @@ Guardar borrador en `/tmp/<batch_id>_borrador.json`:
     "option_c": "...",
     "option_d": "...",
     "correct_option": 0|1|2|3,
+    "explanation_data": {
+      "v": 1,
+      "cita": { "ref": "Art. X.Y Ley Z", "texto": "...cita literal..." },
+      "options": {
+        "0": "razón por el CONTENIDO de la opción A (sin nombrar la letra)",
+        "1": "razón por el CONTENIDO de la opción B",
+        "2": "razón por el CONTENIDO de la opción C",
+        "3": "razón por el CONTENIDO de la opción D"
+      },
+      "frame": "select_correct"
+    },
     "explanation": "> **Art. X.Y**\n> \"...cita literal...\"\n\n**Por qué [LETRA] es correcta:** ...\n\n**Por qué las demás son incorrectas:**\n- **A)** ...\n- **B)** ...\n- **C)** ..."
   }
 ]
