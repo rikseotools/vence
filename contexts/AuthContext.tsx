@@ -1053,11 +1053,17 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
       if (rawUser) {
         // Forzar recarga del perfil (limpiar cache para que loadUserProfile no lo salte)
+        // y ESPERARLA: antes era fire-and-forget, así que `await refreshUser()` resolvía
+        // ANTES de que el perfil (p.ej. el plan_type recién comprado) estuviera cargado.
+        // Con el await, quien llama (la página /premium/success) sabe de verdad cuándo el
+        // isPremium ya refleja el nuevo plan. (Fix Iván, feedback 23d38071.)
         console.log('🔄 Forzando recarga de perfil...')
         updateUserProfile(null)
-        loadUserProfile(rawUser.id).catch((err: any) => {
+        try {
+          await loadUserProfile(rawUser.id, 0, true)
+        } catch (err: any) {
           console.warn('⚠️ Error refrescando perfil (no crítico):', err)
-        })
+        }
       } else {
         updateUserProfile(null)
       }

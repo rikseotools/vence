@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { emitClientEvent } from '@/lib/observability/client'
 import { usePremiumGate } from '@/hooks/usePremiumGate'
+import { classifyPremiumGateResponse, needsPlanReconciliation } from '@/lib/premium/premiumGate'
 import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -75,22 +76,32 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
       // profundidad); en temas gratis/anónimo getAuthHeaders devuelve lo que haya.
       const headers = await getAuthHeaders()
       const res = await fetch(`/api/temario/${encodeURIComponent(slug)}/${topicNumber}/pdf`, { headers })
+
+      // El SERVIDOR es la autoridad del gate premium. Clasificamos su respuesta y, si el
+      // cliente iba obsoleto (creía free y el server autoriza, o viceversa), RECONCILIAMOS
+      // el AuthContext disparando `profileUpdated` (re-fetch del perfil). Sin polls ni
+      // debounce: el propio acto autoritativo cura el estado. (Fix Iván, feedback 23d38071.)
+      const decision = classifyPremiumGateResponse(res.status, isPremium)
+      if (needsPlanReconciliation(decision)) {
+        emit(decision.staleRecovered ? 'download_premium_stale_recovered' : 'download_premium_stale_blocked')
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('profileUpdated'))
+      }
+
       // 413 = tema demasiado grande para generarlo en servidor (los "artículos-cajón" de
-      // T-040). Degradamos a la impresión del navegador, que es lo que había antes: el
-      // usuario no se queda sin nada.
-      if (res.status === 413) {
+      // T-040). Degradamos a la impresión del navegador, que es lo que había antes.
+      if (decision.outcome === 'too_large') {
         emit('download_too_large')
         window.print()
         return
       }
-      // 403 = el server gateó por plan (un free forzando la URL de un tema premium):
-      // abrimos el mismo modal 👑 en vez de tratarlo como error genérico.
-      if (res.status === 403) {
+      // 403 = el server gateó por plan → abrimos el modal 👑 (nunca le pasa a un premium
+      // real, porque quien decide es el server, no el isPremium cacheado).
+      if (decision.outcome === 'blocked') {
         emit('download_premium_required')
         gate('print_pdf', undefined, 'temario_print')
         return
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (decision.outcome === 'error') throw new Error(`HTTP ${res.status}`)
       const blob = await res.blob()
 
       // Descarga vía blob + <a download>: funciona en iOS y en navegadores in-app,
@@ -119,8 +130,11 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
       setShowPrintModal(true)
       return
     }
-    // Con sesión: premium descarga; free → gate() abre el modal 👑 (premium_gate_shown).
-    gate('print_pdf', () => { void doDownload() }, 'temario_print')
+    // Con sesión: SIEMPRE intentamos la descarga y deja que decida el SERVIDOR (200/403).
+    // NO cortamos por el `isPremium` cacheado, que puede ir obsoleto (p.ej. recién pasado
+    // a premium, caso Iván): así un premium real nunca ve el muro. `doDownload` abre el
+    // modal 👑 solo si el server responde 403. (Fix feedback 23d38071.)
+    void doDownload()
   }
 
   return (
