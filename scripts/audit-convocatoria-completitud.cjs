@@ -262,6 +262,36 @@ async function main() {
       { cuerpo_detectado: m.cuerpo, status: m.status, confianza: m.conf })
   }
 
+  // ── 5-bis. Policía Local: RANGO SUPERVISOR endosado a la fila BASE (agente)
+  //
+  //    Segundo par inequívoco (añadido 24/07/2026). El sensor `llm_semantic` scrapea el TABLÓN
+  //    GENERAL del ayuntamiento (lista agente + subinspector + inspector) y endosa el rango
+  //    supervisor que extrae a la fila base `policia-(local|municipal)-<ciudad>`, aunque exista una
+  //    fila propia del rango (`inspector-...`, `subinspector-...`). Caso raíz: una señal de
+  //    "Inspector/a de la Policía Municipal" aplicada a `policia-local-valladolid` (turno libre) —
+  //    la fila correcta `inspector-policia-municipal-valladolid` SÍ existía.
+  //
+  //    Igual de ESTRECHO que la regla Auxiliar↔Administrativo: solo dispara cuando la fila es la
+  //    BASE (sin rango en el slug) y la señal trae un rango supervisor claro (inspector/subinspector/
+  //    comisario/intendente). MEDIDO sobre las 179 señales llm_semantic con cuerpo: la banda ancha
+  //    por escala tumbaba correctas (TCAE, facultativo superior, cuerpos catalogados en su fila
+  //    genérica); este subconjunto salió LIMPIO (0 falsos). Lo que NO cae aquí sigue en Capa 1
+  //    (`npm run oep:triage-prep`) + criterio humano.
+  const polMism = (await c.query(`
+    SELECT o.slug, s.status, s.confidence_score conf,
+           s.raw_extraction->'extraction'->>'cuerpoDetectado' cuerpo
+      FROM oep_detection_signals s JOIN oposiciones o ON o.id = s.oposicion_id
+     WHERE s.status IN ('pending','applied')
+       AND s.raw_extraction->'extraction'->>'cuerpoDetectado' IS NOT NULL
+       AND o.slug ~* 'policia-(local|municipal)'
+       AND o.slug !~* 'inspector|comisario|intendente'
+       AND s.raw_extraction->'extraction'->>'cuerpoDetectado' ~* 'inspector|comisario|intendente'`)).rows
+  for (const m of polMism) {
+    add(m.slug, 'senal_cuerpo_no_cuadra',
+      `${m.status}: la fila es Policía Local BASE y la señal detectó "${m.cuerpo}" (rango supervisor) — ¿otra escala? NO aplicar: re-enlazar/catalogar la fila del rango`,
+      { cuerpo_detectado: m.cuerpo, status: m.status, confianza: m.conf })
+  }
+
   // ── 5. La TARJETA de la landing afirma una cifra que la BD desmiente
   //
   //    CASO REAL (16/07): la landing de `celador-sescam-clm` anunciaba «537 plazas totales» y
