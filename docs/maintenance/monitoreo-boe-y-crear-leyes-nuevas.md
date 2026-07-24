@@ -183,6 +183,8 @@ Ejemplo de summary aceptado:
 > **NUNCA `sync-all` en modo `sync` con renumeración**: sobrescribe contenido Y **desactiva** los artículos que no están en el BOE → deja preguntas huérfanas. Usar align targeted + `add-missing`.
 >
 > **Orden/documento administrativo sin articulado parseable y sin uso** (0 scope, 0 preguntas; el extractor saca 0 por numeración ordinal no estándar) → marcar el summary con `no_consolidated_text:true` y mensaje honesto, como las normas regionales ya suprimidas. No es fabricar: es clasificar un doc no verificable.
+>
+> ⚠️ **GOTCHA `sync-all` (24/07/2026): el pie del sitio BOE se cuela en el ÚLTIMO artículo y el verify NO lo caza.** Tras un `sync-all`, el extractor pega en el artículo final el chrome de la página del BOE (`"Este documento es de carácter informativo…"`, menú `Contactar/Mapa/Aviso legal…`, `"Agencia Estatal Boletín Oficial del Estado / Avda. de Manoteras, 54 - 28050 Madrid"`). El re-verify da `content_mismatch:0` porque compara extractor-vs-DB y **ambos** lados llevan el mismo pie → punto ciego. Tras cualquier `sync-all`, barrer los artículos por esos marcadores de pie y **recortar al final del articulado real**. Caso: DL 3/2023 Hacienda Aragón, art. 110. (Dato aparte: los 4 `content_mismatch` que motivaron ese sync eran basura de import antigua — el encabezado del **título siguiente** pegado al final de arts 15/28/82; `sync-all` los limpió, siendo seguro porque 110/110 casaban por número, `missing_in_boe:0` → 0 desactivaciones.)
 
 ## 2. Verificar Artículos de una Ley
 
