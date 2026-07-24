@@ -1513,11 +1513,11 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Decisión:** **NO activar** psicotécnicos en Valencia — es correcto. Verificado contra la convocatoria oficial (DOGV 27/03/2026, Orden 9/2026, cuerpo C2-01): el examen es **un ejercicio único = test de 95 preguntas teóricas** del temario; **NO hay prueba psicotécnica/aptitudinal/de cálculo** (base 7.2). El nav está bien; no hace falta cambio de código.
 - **Cerrado:** feedback `28fa7b90` (angela.upere) respondido 21/07 con la fuente oficial + link.
 
-### [T-082] 🟢 [ACCIÓN pendiente] Pagar recompensa acumulada de opoauxilar…21junio (8 €)
-- **Qué:** `reward_submissions`: ugc 5 € + bug 3 € **approved, `payout_id` NULL** (sin pagar). Total **8 €** → supera el mínimo pagable de Amazon.es (5 €).
-- **Por qué:** el 21/07 le confirmamos por feedback que "ya tienes saldo suficiente para una tarjeta" → hay que ejecutarlo. Usuaria premium (Murcia) que además nos recomienda activamente.
-- **Cómo:** `docs/runbooks/embajadores-recompensas.md` §2 (comprar gift card Amazon.es en Bitrefill por 5 €, marcar payout; el resto 3 € queda acumulado).
-- **Estado:** apuntado 21/07.
+### [T-082] ✅ [YA ESTABA HECHA — verificado 24/07] Pagar recompensa acumulada de opoauxilar…21junio
+- **Qué era:** parecía que ugc 5 € + bug 3 € estaban **sin pagar** (`payout_id` NULL en `reward_submissions`).
+- **Realidad (24/07):** **YA PAGADO.** `reward_payouts` tiene el pago de **5 € a Laura Garcia** (gift card Amazon `5R8B-6MGCLJ-CUBY`, status `paid`, 20/07). Los **3 € (bug) acumulan** correctamente (por debajo del mínimo de 5 € de Amazon). En sus feedbacks del 21/07 ya preguntaba por el canje de "su vale de 5 €".
+- **Causa del falso positivo:** el apunte miraba `reward_submissions.payout_id` (campo **vestigial, sin backlinkear**), no `reward_payouts`. El saldo REAL del panel admin (`getEmbajadoresWithBalance`) sí resta `sum(reward_payouts.amount)` → correcto. **Para saber si una recompensa está pagada: mirar `reward_payouts.beneficiary_user_id`, NO `reward_submissions.payout_id`.**
+- **Nota de proceso:** el cobro lo **solicita el usuario** (chat de soporte); NO se paga proactivamente el saldo acumulado.
 
 ### [T-083] 🟢 [DEMANDA — valorar] Universidad de Murcia (temario + tests)
 - **Qué:** un grupo de WhatsApp quiere temario/tests de oposiciones de la **Universidad de Murcia** (feedback `c6defd4b`, opoauxilar…21junio, 21/07). Ya existen filas catalogadas: `auxiliar-administrativo-universidad-murcia` (`is_active=false`) y `tecnico-auxiliar-universidad-de-murcia` (con `programa_url` BORM). Valorar demanda antes de construir.
