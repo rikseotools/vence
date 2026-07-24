@@ -15,7 +15,7 @@ import postgres from 'postgres'
 const { parseBoeSections } = require('../../lib/laws/parseBoeSections')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { classifyTitleBoundary } = require('../../lib/laws/scopeTitleBoundary')
-type Seccion = { num: string; from: number; to: number }
+type Seccion = { num: string; from: number; to: number; blockId?: string; rubrica?: string }
 
 const sql = postgres(process.env.DATABASE_URL as string, { ssl: { rejectUnauthorized: false }, max: 1 })
 const clean = (s: string) => String(s || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
@@ -29,6 +29,35 @@ async function estructuraBoe(bid: string): Promise<Seccion[]> {
   const secs: Seccion[] = parseBoeSections(bl).secciones
   structCache.set(bid, secs)
   return secs
+}
+
+// Rúbrica (materia) de un título: viene DENTRO del bloque, tras "TÍTULO X.". Fetch
+// extra por bloque → solo para los títulos CANDIDATOS a overflow (bounded).
+const rubricaCache = new Map<string, string>()
+async function rubricaBoe(bid: string, blockId: string): Promise<string> {
+  const key = `${bid}#${blockId}`
+  if (rubricaCache.has(key)) return rubricaCache.get(key)!
+  let r = ''
+  try {
+    const body = clean(await (await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${bid}/texto/bloque/${blockId}`, { headers: { Accept: 'application/xml' } })).text())
+    const m = body.match(/(?:CAP[IÍ]TULO|T[IÍ]TULO|LIBRO|PARTE)\s+[IVXLCDM]+\.?\s+([^.]{3,140})/i)
+    r = m ? m[1].trim().replace(/\s+/g, ' ') : ''
+  } catch { r = '' }
+  rubricaCache.set(key, r)
+  return r
+}
+
+/** classify con SEGUNDA pasada: enriquece con rúbrica los títulos candidatos y re-clasifica. */
+async function classifyConRubrica(bid: string, epigrafe: string, secs: Seccion[], arts: string[]) {
+  const first = classifyTitleBoundary(epigrafe, secs, arts)
+  if (!first.applicable || !first.overflow.length) return first
+  // fetch rúbrica solo de los títulos señalados
+  const candNums = new Set(first.overflow.map((o: { titulo: string }) => o.titulo))
+  const enriched = secs.map((s) => ({ ...s }))
+  for (const s of enriched) {
+    if (candNums.has(s.num) && s.blockId && s.rubrica == null) s.rubrica = await rubricaBoe(bid, s.blockId)
+  }
+  return classifyTitleBoundary(epigrafe, enriched, arts)
 }
 
 async function main() {
@@ -52,7 +81,7 @@ async function main() {
       if (!arts.length) continue
       let secs: Seccion[]
       try { secs = await estructuraBoe(bid) } catch { continue }
-      const r = classifyTitleBoundary(t.epigrafe, secs, arts)
+      const r = await classifyConRubrica(bid, t.epigrafe, secs, arts)
       if (r.applicable && r.overflow.length) {
         flagged++
         console.log(`🔴 T${t.topic_number} (${t.title}) · ${s.short_name}`)

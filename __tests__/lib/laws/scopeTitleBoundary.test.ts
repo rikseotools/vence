@@ -60,6 +60,37 @@ describe('classifyTitleBoundary — LOSU Tema 6 (caso real Mario)', () => {
   })
 })
 
+describe('classifyTitleBoundary — exención por RÚBRICA (título nombrado por materia)', () => {
+  // Falso positivo real (León T4): el epígrafe nombra "La Organización Territorial
+  // del Estado" (= Título VIII CE) por su NOMBRE, no por su número → NO es overflow.
+  const CE_SECS = [
+    { num: 'Preliminar', from: 1, to: 9, rubrica: '' },
+    { num: 'VIII', from: 137, to: 158, rubrica: 'De la Organización Territorial del Estado' },
+  ]
+  const EP_LEON = 'La Organización Territorial del Estado. Las Comunidades Autónomas. El Estatuto de Autonomía de Castilla y León: Estructura. Título Preliminar.'
+
+  it('no marca un título que el epígrafe nombra por su rúbrica (CE Título VIII)', () => {
+    const r = classifyTitleBoundary(EP_LEON, CE_SECS, ['137', '140', '158'])
+    expect(r.applicable).toBe(true)         // el epígrafe SÍ nombra un título ("Título Preliminar")
+    expect(r.overflow).toEqual([])          // pero el VIII está cubierto por rúbrica → no overflow
+  })
+
+  it('SIN rúbrica coincidente sí marca (no hay materia común)', () => {
+    const secs = [{ num: 'V', from: 100, to: 110, rubrica: 'De la Corona' }]
+    const r = classifyTitleBoundary(EP_LEON, secs, ['100'])
+    expect(r.overflow).toEqual([{ article: 100, titulo: 'V' }])
+  })
+
+  it('NO enmascara el art.6 LOSU: "funciones" (epígrafe) no casa con "función docente" (rúbrica Tít III) — sin stemming', () => {
+    const secs = [
+      { num: 'I', from: 2, to: 3, rubrica: 'De las funciones y la autonomía' },
+      { num: 'III', from: 6, to: 10, rubrica: 'De la función docente y la organización de enseñanzas' },
+    ]
+    const r = classifyTitleBoundary(EPIGRAFE_T6, secs, ['6'])
+    expect(r.overflow).toEqual([{ article: 6, titulo: 'III' }])
+  })
+})
+
 describe('seccionNumToInt', () => {
   it('mapea Preliminar→0 y romanos→entero', () => {
     expect(seccionNumToInt('Preliminar')).toBe(0)
