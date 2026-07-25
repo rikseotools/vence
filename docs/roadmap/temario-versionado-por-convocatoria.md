@@ -118,6 +118,23 @@ Nunca auto-aplica cambios de temario (contenido legal). El sistema **detecta + p
 | Índice único `is_current` (Fase 4) | Se relaja solo en Fase 4, con serving ya version-aware y tests. |
 | Fallback sirve temario incorrecto | El fallback exige versión `verified`; si no hay, `never_sourced` (no sirve temario sin validar). |
 
+## 11.bis. Endurecimiento (auto-crítica 25/07 → decisiones firmes)
+
+- **Copy-on-write DESCARTADO.** A nuestra escala (~127 oposiciones × ~30 temas × pocas versiones/año = decenas de miles de filas) la duplicación es irrelevante para Postgres y COW mete lógica de herencia que enreda verificación/scope/preguntas. **Copiar todo = simple y correcto.** (Fue sobre-ingeniería mía.)
+
+- **`position_type` (56 ficheros lo leen) — resuelto con `is_active` como COMPUERTA, sin tocar los 56.**
+  Redefinición: **`topics.is_active` = "pertenece a la versión servible por defecto" de esa oposición.** Los ~56 lectores legacy ya filtran `WHERE is_active` → automáticamente reciben SOLO la versión por defecto, **sin cambiar una línea**. Las versiones no-default tienen sus topics con `is_active=false` (no se sirven por la vía legacy). Esto reconcilia además el fleco #4 (is_active vs estado): `is_active` se deriva del estado de la versión (active-default → true).
+  - Single-version (99%): 1 versión active-default → comportamiento idéntico a hoy.
+  - Multi-version (Madrid): versión A default (is_active=true) + versión B (is_active=false). La vía legacy sirve A; la vía **version-aware** sirve B por `temario_version_id` explícito.
+
+- **Fase 4, coste REAL y acotado.** No son "56 ficheros". Gracias a la compuerta `is_active`, la Fase 4 = **un solo punto nuevo**: que el serving resuelva la versión desde la convocatoria objetivo del usuario (`user_profiles.target_convocatoria`) y, si no es la default, consulte por `temario_version_id`. Los 56 lectores legacy siguen sirviendo la default vía `is_active`. Producto decide cuál es la "default" cuando hay 2 vigentes.
+
+- **Guarda del disparador (fleco #3):** una versión draft se crea SOLO cuando aparece un **documento oficial de temario con `content_hash` NUEVO en el hub** (texto estable, deduplicado), NO cuando cambia `programa_last_hash` (que incluye ruido de página: relojes, tokens). El cambio se mide sobre el snapshot clonado, no sobre el fetch en vivo.
+
+- **Invariante de versión activa (fleco #5):** una convocatoria referencia **exactamente una** `temario_version` (FK simple `convocatorias.temario_version_id`). No hay ambigüedad de "cuál está activa": las activas = las apuntadas por convocatorias vigentes. Índice/constraint: a lo sumo una versión `active`+`es_default` por oposición.
+
+- **Migración, edge case (fleco #6):** oposiciones **sin** convocatoria vigente → se les crea igualmente una versión `v1` `active`+default (label = año de su última convocatoria o "base"), `source_convocatoria_id` = la última conocida o NULL. Servible como fallback. Ninguna oposición se queda sin versión.
+
 ## 11. Qué se reutiliza (no se reinventa)
 
 - **Hub de provenance** (T-107): `source_documento_id` de la versión → documento oficial clonado. `ensure_convocatoria_documento`, canonicalizador, guardarraíles CI.
