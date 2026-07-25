@@ -67,6 +67,14 @@ describe('canonicalizeBoletinUrl — boletines regionales (alta confianza)', () 
     expect(html.recognized).toBe(true);
     expect(html.canonicalUrl).toBe('https://www.gobiernodecanarias.org/boc/2024/239/3965.html');
   });
+
+  test('BOJA (Andalucía): boja/AAAA/NNN/NN → BOJA-AAAA-NNN-NN', () => {
+    const r = canonicalizeBoletinUrl('https://www.juntadeandalucia.es/boja/2024/191/27');
+    expect(r.docKey).toBe('BOJA-2024-191-27');
+    expect(r.boletin).toBe('BOJA');
+    expect(r.recognized).toBe(true);
+    expect(r.canonicalUrl).toBe('https://www.juntadeandalucia.es/boja/2024/191/27');
+  });
 });
 
 describe('canonicalizeBoletinUrl — reserva segura para boletines no reconocidos', () => {
