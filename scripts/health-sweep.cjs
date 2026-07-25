@@ -31,6 +31,7 @@
 const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
+const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -331,6 +332,27 @@ async function main() {
     if (d.severidad === 'ok') continue;
     add('content', d.severidad, r.slug, 'seguimiento_url_stale',
       `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
+  }
+
+  // ── Enlaces de la convocatoria vigente que NO corresponden a lo que MUESTRAN ──
+  // La caja "Ver … en BOE" de la landing muestra una referencia (boe_reference) pero el enlace
+  // (programa_url) puede apuntar a OTRO documento: el usuario pincha y aterriza en un doc
+  // distinto (p.ej. muestra la OEP 2026 y enlaza a la convocatoria de 2025). Medido 25/07:
+  // 5 convocatorias vigentes con el enlace descuadrado (feedback Manuel: "fallos imperdonables").
+  // Punto ciego: el detector de seguimiento mira la URL de seguimiento, no la del BOE de la
+  // propia convocatoria. Núcleo puro lib/convocatoria/linkCoherence.cjs (con tests).
+  const linkRows = (await c.query(`
+    SELECT o.slug, c.boe_reference AS ref, c.programa_url AS url
+    FROM oposiciones o
+    JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
+    WHERE o.is_active`)).rows;
+  for (const r of linkRows) {
+    const issues = checkConvocatoriaLinks({ boeReference: r.ref, programaUrl: r.url });
+    for (const it of issues) {
+      if (it.tipo !== 'ref_url_mismatch') continue; // el año de seguimiento ya lo cubre seguimiento_url_stale
+      add('content', it.severidad, r.slug, 'convocatoria_link_mismatch',
+        `${r.slug}: el enlace "Ver en BOE" no corresponde a la referencia mostrada — ${it.detalle}`, it.detalle);
+    }
   }
 
   // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──

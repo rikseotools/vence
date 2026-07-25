@@ -87,6 +87,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/rollover-oposiciones.md',
     claudeHace: 'reconstruye el timeline de hitos de la convocatoria vigente contra la fuente oficial.',
   },
+  convocatoria_link_mismatch: {
+    title: 'Enlace "Ver en BOE" que no corresponde a la referencia mostrada',
+    triggerPhrase: 'revisa los enlaces de convocatoria',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'compara el ID del BOE que MUESTRA la convocatoria (boe_reference) con el del ENLACE (programa_url): si difieren, el usuario pincha "Ver en BOE" y aterriza en OTRO documento (medido 25/07: 5 vigentes mostraban la OEP 2026 y enlazaban a la convocatoria de 2025). Verifica contra el boletín cuál es el correcto y alinea referencia y enlace (normalmente el enlace se quedó en el ciclo anterior). NUNCA repuntar sin confirmar contra fuente oficial.',
+  },
   seguimiento_url_stale: {
     title: 'seguimiento_url que vigila un ciclo ya cerrado',
     triggerPhrase: 'revisa las urls de seguimiento',

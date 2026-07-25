@@ -289,6 +289,16 @@ function classifyScope(
   return { band, score, coverage, reason };
 }
 
+// Mirror INLINE de lib/convocatoria/linkCoherence.cjs — MANTENER EN SYNC.
+// El enlace "Ver en BOE" (programa_url) debe apuntar al MISMO documento que la referencia
+// mostrada (boe_reference). Si ambos citan un BOE-… y difieren → el usuario pincha y aterriza
+// en otro documento (medido 25/07: 5 vigentes mostraban la OEP 2026 y enlazaban a la conv. 2025).
+function extraerIdBoeInline(texto: string | null | undefined): string | null {
+  if (!texto) return null;
+  const m = String(texto).match(/BOE-[A-Z]-\d{4}-\d+/);
+  return m ? m[0] : null;
+}
+
 // Mirror INLINE de lib/convocatoria/seguimientoUrlSalud.cjs — MANTENER EN SYNC.
 // seguimiento_url que vigila un ciclo ya cerrado (falso negativo silencioso). Graduado:
 // solo la señal LIMPIA (doc de boletín de año viejo) es error; el resto warn (cola de revisión).
@@ -1183,6 +1193,27 @@ export class ContentHealthSweepService {
         'seguimiento_url_stale',
         `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`,
       );
+    }
+
+    // ── Enlace "Ver en BOE" que NO corresponde a la referencia mostrada (convocatoria_link_mismatch) ──
+    const linkRows = (await this.db.execute(sql`
+      SELECT o.slug, c.boe_reference AS ref, c.programa_url AS url
+      FROM oposiciones o
+      JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
+      WHERE o.is_active
+    `)) as unknown as Array<{ slug: string; ref: string | null; url: string | null }>;
+    for (const r of linkRows) {
+      const idRef = extraerIdBoeInline(r.ref);
+      const idUrl = extraerIdBoeInline(r.url);
+      if (idRef && idUrl && idRef !== idUrl) {
+        add(
+          'content',
+          'error',
+          r.slug,
+          'convocatoria_link_mismatch',
+          `${r.slug}: el enlace "Ver en BOE" no corresponde a la referencia mostrada — muestra ${idRef} pero el enlace va a ${idUrl}`,
+        );
+      }
     }
 
     // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
