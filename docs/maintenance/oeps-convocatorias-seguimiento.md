@@ -193,6 +193,34 @@ WHERE slug = '<slug>';
 
 **Caso real:** `administrativo-universidad-leon` se repuntó el 20/07 de la página general de la ULE (ruido diario) a su convocatoria propia, y se quedó con el hash de la general. Detectado antes de que el cron corriera. Es el mismo falso positivo que infla **T-047**, pero de origen distinto — aquí no lo causa una página ruidosa, sino el propio repunte.
 
+> **⚠️ Trampa de tabla (26/07/2026): `seguimiento_last_hash` existe en las DOS tablas** — `oposiciones` **y** `convocatorias` — pero **el cron solo usa la de `oposiciones`** (`backend/src/check-seguimiento/seguimiento-queries.ts`: lee `oposiciones.seguimientoLastHash` y escribe con `.update(oposiciones)`). Resetear la de `convocatorias` **no hace nada** y deja el falso `changed` intacto. Contraintuitivo, porque para el resto de campos de convocatoria la SSOT es `convocatorias` y los de `oposiciones` son legacy — aquí es al revés. Pasó en T-114: se reseteó la tabla equivocada y solo se vio al comprobarlo contra el código del cron.
+
+### ⚠️ Antes de escribir una `seguimiento_url`: comprobar que el cron PUEDE verla (aprendizaje 26/07/2026)
+
+El cron **hashea el HTML servido, sin ejecutar JavaScript**. Una SPA responde `200 OK` con un shell que no cambia nunca → **el hash se congela y la fuente queda ciega, pero con pinta de estar monitorizada**: es el mismo falso negativo silencioso que este detector existe para cazar, solo que disfrazado. Una URL "buena para un humano" puede ser **inservible** como diana.
+
+Comprobación obligatoria antes del `UPDATE` — con las **cabeceras exactas** de `seguimiento-fetch.ts` (UA de Chrome, `Accept: text/html`, `Accept-Language: es-ES`):
+
+```bash
+curl -sL -m 30 -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' \
+  -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: es-ES,es;q=0.9' "<URL>" \
+| sed 's/<[^>]*>/ /g' | grep -ic "<texto del proceso: denominación, nº de plazas…>"
+```
+
+Vale como diana solo si **HTTP 200 Y el recuento es > 0**. Casos reales de T-114:
+
+| URL | Resultado | Veredicto |
+|---|---|---|
+| `empleo.eprinsa.es/cordoba/empleo` (Ayto. Córdoba) | 200, 0 menciones de "ORDENANZA" | SPA → **descartada** |
+| `jgpa.convoca.online` (Junta General Asturias) | 200, 0 menciones de "Administrativo" | SPA → **descartada** |
+| `sede.dipujaen.es/Convocatorias` | 200, 0 menciones de "Administrativ" | shell → **descartada** |
+| `interior.gob.es/…/cuerpo-de-ayudantes-…/acceso-libre/` | **403** (WAF, aun con UA de navegador) | **descartada** |
+| `administracion.gob.es/…/detalleEmpleo.htm?idConvocatoria=N` | 200 + texto del proceso | ✅ sirve |
+
+**Dónde buscar la ficha concreta, por orden:** (1) página propia del proceso en la web del convocante (`comunidad.madrid/empleo/<slug>`, `dipujaen.es/…/_detalles/index.html?uid=…`); (2) **ficha por convocatoria del PAG** `administracion.gob.es/pagFront/ofertasempleopublico/detalleEmpleo.htm?idConvocatoria=N` — cubre casi todo lo publicado en BOE, va en HTML plano y trae apartado *Seguimiento*; (3) para cuerpos AGE, el **índice del CUERPO en INAP** sin sufijo de año (el sufijado a una convocatoria muere con ella). **Verificar SIEMPRE la ficha contra la `boe_reference` que ya tenemos**: en T-114 el primer candidato del PAG para IIPP (`idConvocatoria=207187`) resultó ser la convocatoria de **2023** (756 plazas), justo el error que veníamos a corregir.
+
+Si no hay ninguna URL que pase la comprobación, **no inventes una**: déjala como está y anótala como caso de *headless-fetcher* (renderizar con navegador y hashear el texto renderizado). Es lo que se hizo con IIPP y Junta General de Asturias en **T-125**.
+
 ### ⚠️ La señal puede estar EQUIVOCADA — y el radar la engancha a la fila que no es (16/07/2026)
 
 Tres casos reales del mismo día. **Ninguna señal era ruido y ninguna era lo que decía:**

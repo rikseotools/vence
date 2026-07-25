@@ -21,6 +21,19 @@
 - **Segundo bloqueo, misma familia (`11a920c4f`):** en TODO worktree de `new-session.sh`, `__tests__/lib/generacion/numerosCitados.test.js` fallaba con *"Cannot find module .../backend/node_modules/postgres"* — `scripts/auditar-batch-input.cjs` resuelve esa dependencia por **ruta absoluta** y el script de sesión solo enlazaba el `node_modules` raíz. Resultado: suite unit en rojo en cualquier sesión aislada aunque `main` estuviera verde → `--no-verify` otra vez, el fallo exacto que T-122 existe para matar. Arreglado enlazando también `backend/node_modules`; y `backend/.gitignore` pasa de `node_modules/` a `node_modules` (con barra ignora solo directorios, no el symlink).
 - **Verificado:** `npx jest __tests__/health/content-sweep-parity.test.ts` 8/8 verde, `npm run test:unit` **698/698 suites** verde, y la SQL del detector corrida contra RDS devuelve filas reales (p. ej. `auxiliar-administrativo-baleares` 36/36 temas sin auditar).
 - **Aprendizaje para el gemelo CLI:** `scripts/health-sweep.cjs` lleva emojis → `grep` normal lo trata como **binario** y devuelve 0 hits falsos. Buscar siempre con `grep -a` (ya está avisado en la cabecera del fichero).
+### [T-114] ✅ [HECHA 26/07] Repuntar las `seguimiento_url` genéricas/desfasadas a la ficha concreta de la convocatoria viva (datos)
+- **Resultado:** de las 9, **6 repuntadas y verificadas**; **3 no tienen ficha vigilable por HTTP** y pasan a [T-125] (no es trabajo de datos, es capacidad de fetch). Hallazgos `seguimiento_url_stale`: **13 → 7** (3 error + 4 warn plurianuales, que son cola de revisión por diseño). Verificado corriendo el detector real (`diagnosticarSeguimientoUrl` + `procesoConFichaViva`) sobre las 123 activas con URL.
+- **Repuntadas** (cada URL comprobada contra la `boe_reference` que ya teníamos, y con las **cabeceras exactas del cron** — HTTP 200 + el texto del proceso presente en el HTML servido):
+  - `auxiliar-administrativo-ayuntamiento-cordoba` → ficha del PAG `idConvocatoria=220139`. **La URL anterior daba 404**, no solo genérica. Ancla: 55 plazas, BOE-A-2026-9772 de 05/05/2026, plazo 06/05–02/06/2026. La ficha del PAG trae apartado *Seguimiento* (registró la modificación de la base decimosegunda).
+  - `administrativo-diputacion-jaen` → ficha propia `dipujaen.es/…/_detalles/index.html?uid=b652dcc9-…` (título literal *"35Administrativos"*). La anterior (`sede.dipujaen.es/Convocatorias`) es un shell SPA: 25 KB y **cero** menciones a "Administrativ".
+  - `administrativo-madrid` → `comunidad.madrid/empleo/administrativos-c1-2026`. Ancla: Orden 1634/2026 de 30/06, BOCM 14/07/2026, 107 plazas, plazo 15/07–11/08/2026.
+  - `auxiliar-administrativo-ayuntamiento-murcia` → ficha del PAG `idConvocatoria=219363` (BOE-A-2026-5663). El portal propio solo tiene un post de *"varias convocatorias"* que no se actualizará por proceso.
+  - `administrativo-estado` y `auxiliar-administrativo-estado` → **índice del CUERPO en INAP** (sin sufijo de año), en vez de la convocatoria 2025 cerrada; es donde aterrizará la convocatoria de la OEP 2026 (RD 387/2026).
+- **Gotcha aplicado, con trampa:** `seguimiento_last_hash=NULL` en cada una, o el cron habría dado un "cambio" falso. **La columna existe en las DOS tablas (`oposiciones` y `convocatorias`) y el cron solo usa la de `oposiciones`** (`seguimiento-queries.ts` lee `oposiciones.seguimientoLastHash` y escribe con `.update(oposiciones)`): el primer reseteo fue a `convocatorias` y no habría servido de nada. Contraintuitivo, porque para el resto de campos de convocatoria la SSOT es `convocatorias`. Segundo tropiezo: `oposiciones` **no tiene** columna `updated_at` (la tiene `convocatorias`) → el primer intento reventó la transacción entera. Ambos anotados en el runbook.
+- **Criterio nuevo, que la ficha original no contemplaba:** el cron **hashea el HTML servido, sin ejecutar JS** (`backend/src/check-seguimiento/seguimiento-fetch.ts`). Una SPA responde 200 con un shell que nunca cambia → **hash congelado = la misma ceguera silenciosa que veníamos a arreglar**, pero disfrazada de "monitorizado". Por eso se descartaron `empleo.eprinsa.es` (Córdoba) y `jgpa.convoca.online` (Asturias) pese a ser las páginas "buenas" para un humano. **Regla: antes de escribir una `seguimiento_url`, `curl` con las cabeceras del cron y comprobar que el texto del proceso aparece.**
+- **Falso positivo detectado:** `ordenanza-ayuntamiento-cordoba` dispara `url_generica` por el regex (`/convocatorias$`) pero su URL **sí** sirve hoy el proceso (23 plazas, plazo hasta 17/08/2026) en HTML plano, y el Ayuntamiento de Córdoba **no tiene** ficha por proceso. Material para [T-113] (afinar precisión de detectores).
+- **También detectado, sin tocar:** discrepancia de plazas en `auxiliar-administrativo-ayuntamiento-murcia` — nuestra `boe_reference` cita *"Dieciocho plazas … turno libre. Dos … discapacidad"* (18+2) mientras el PAG y MurciaEmplea dan 20 libres + 2 discapacidad (22). No se ha cambiado el dato: exige leer el BOE y las bases. Anotado en [T-125].
+- **Origen:** cabo de T-112 (triaje del badge, 25/07).
 
 ### [T-021] ✅ [CERRADA 25/07 — YA ESTABA HECHA, cerrada por verificación de estado y no por trabajo nuevo] Construir Ujieres de las Cortes Generales
 - **Estado real comprobado en RDS:** la oposición `ujieres-cortes-generales` está **EN PRODUCCIÓN** — `is_active=true`, **17 de 17 temas** con `disponible=true` y **5.722 preguntas servidas**; la desplegó el commit `d9066bd03`.
@@ -238,6 +251,15 @@
 
 ## Abiertas
 
+### [T-125] 🟡 [ABIERTO 26/07] 3 convocatorias vivas sin `seguimiento_url` vigilable: hacen falta fetch con navegador y un criterio para el falso positivo
+- **Qué:** cabo de [T-114]. Tres oposiciones con proceso VIVO se quedaron sin repuntar porque **no existe una URL oficial que el cron pueda hashear**, no por falta de trabajo de datos:
+  - `ayudante-instituciones-penitenciarias` — la página correcta es la del cuerpo en Interior (`interior.gob.es/…/cuerpo-de-ayudantes-de-instituciones-penitenciarias/acceso-libre/`), pero devuelve **403 con las cabeceras exactas del cron** (WAF). El hub de `institucionpenitenciaria.es` responde 200 pero carga el contenido por JS (0 menciones de año).
+  - `administrativo-junta-general-asturias` — la entidad **migró** a `jgpa.convoca.online` (SPA: 200 y **cero** menciones de "Administrativo" en el HTML servido) y la página legacy `jgpa.es/procesos-selectivos` **ya no contiene** el proceso de 2026 (11 plazas C1, BOPA 23/02/2026). Hoy estamos ciegos a esta convocatoria por las dos vías.
+  - `ordenanza-ayuntamiento-cordoba` — **falso positivo**: su URL actual sí sirve el proceso en HTML plano; el Ayuntamiento no tiene ficha por proceso. O se exime en el detector o se acepta como ruido conocido → [T-113].
+- **Cómo:** los dos primeros son el caso de uso del **headless-fetcher** (Lambda ya existente, ver `docs/roadmap`/memoria `project-headless-fetcher-spa-convocatorias`): renderizar con navegador y hashear el texto renderizado, no el HTML crudo. Requiere decidir si el cron de seguimiento puede delegar en él por-fuente (columna tipo `seguimiento_fetch_mode`). **OJO:** el headless **no** cura un bloqueo por IP/WAF; para Interior hay que comprobar si el 403 cae con navegador real.
+- **Cabo de datos aparte:** discrepancia de plazas en `auxiliar-administrativo-ayuntamiento-murcia` (nuestra `boe_reference` dice 18+2; PAG y MurciaEmplea dicen 20+2). Verificar contra el BOE y las bases antes de tocar el dato.
+- **Impacto:** 🟡 dos convocatorias vivas sin vigilancia real; es el mismo falso negativo silencioso que motivó el detector, pero por una causa técnica distinta.
+
 ### [T-066] 🟢 [ABIERTO 21/07 — ficha reconstruida 25/07 desde `backlog_tasks`] Crear contenido de Power BI (aux/admin Madrid lo piden en epígrafe, 0 preguntas en BD)
 - **Qué:** detectado en **T-007** (verificación scope↔epígrafe): 2 temas piden Power BI (`auxiliar_administrativo_madrid` **T19**, `administrativo_madrid` **T45**) pero **NO existe ninguna ley/pregunta/teoría de Power BI** en BD. Es un gap de **CONTENIDO** (no de scope).
 - **Impacto:** 🟢 baja: 2 temas de Madrid con un sub-bloque del epígrafe a 0 preguntas (el alumno no puede practicar Power BI aunque el temario lo pida).
@@ -249,15 +271,6 @@
 - **Impacto:** 🟡 media: palanca de monetización/retención (empuja a planes largos). Toca modelo de suscripción + UX de onboarding.
 - **Cómo (detalle de diseño a decidir con Manuel):** (1) si el usuario **FREE** debe poder fijar/cambiar su ÚNICA oposición objetivo en el onboarding (para no matar la exploración inicial) o bloqueo total; (2) cómo se comunica el gate (CTA al plan largo). Cablear el gate donde hoy se cambia de oposición (selector del breadcrumb del test — ver `feedback-cambio-oposicion-via-perfil`).
 - **Origen:** 21/07. Nota: ficha **reconstruida el 25/07** desde `backlog_tasks` (vivía en el registro sin ficha en el markdown).
-
-### [T-114] 🟠 [ABIERTO 25/07] Repuntar las `seguimiento_url` genéricas/desfasadas a la ficha concreta de la convocatoria viva (datos)
-- **Qué:** 9 oposiciones cuya `seguimiento_url` NO vigila la convocatoria correcta → falso negativo silencioso (el día que cambie la convocatoria, nadie se entera). El detector ya está en su **mínimo por código** (T-112 lo afinó dos veces: `98b58b7d6`, `76c839fec`); lo que queda es **trabajo de DATOS por-ítem**, no de detector. Dos grupos:
-  - **7 `url_generica` con ficha viva** (`error`): `auxiliar-administrativo-ayuntamiento-cordoba`, `ayudante-instituciones-penitenciarias`, `administrativo-diputacion-jaen`, `administrativo-madrid`, `administrativo-junta-general-asturias`, `auxiliar-administrativo-ayuntamiento-murcia`, `ordenanza-ayuntamiento-cordoba` → la URL apunta al índice del portal de empleo, no a la ficha; con la convocatoria viva eso es ceguera (caso raíz Murcia).
-  - **2 estatales `oep_aprobada`** (`warn`): `administrativo-estado`, `auxiliar-administrativo-estado` → URL a la convocatoria 2025 (cerrada) mientras la OEP 2026 (RD 387/2026) espera convocatoria; repuntar al índice del cuerpo en INAP para cazar la de 2026.
-  - **NO tocar** los 4 `warn` plurianuales (`auxiliar-administrativo-ingesa`, `auxiliar-administrativo-diputacion-leon`, `auxiliar-enfermeria-osakidetza`, `auxiliar-administrativo-diputacion-zaragoza`): su ficha CONCRETA cita años viejos legítimamente (OPE plurianual / OPE en ejecución). Recortar por URL = riesgo de FN silencioso. Son cola de revisión por diseño.
-- **Impacto:** 🟠 cierra los ~13 `seguimiento_url_stale` accionables del badge **y** elimina ceguera real de monitoreo. No es la mayor bajada del badge, pero sí evita fallos de "no nos enteramos de la convocatoria nueva".
-- **Cómo (mecanismo):** por cada slug, **agente con `WebFetch`** anclado a la `boe_reference` que YA tenemos → localiza la ficha oficial concreta + **cita literal** → Claude **verifica** la evidencia contra el ancla → `UPDATE oposiciones.seguimiento_url` (o la columna de convocatorias) + **`seguimiento_last_hash=NULL`** (si no, el cron da un "cambio" falso). Paralelizable con el Workflow tool (1 agente/URL). El LLM **busca y propone, NO decide el dato** (regla nuclear). ⚠️ **COORDINAR con la sesión que puebla convocatorias** — `seguimiento_url` vive en su tabla. Runbook `docs/maintenance/oeps-convocatorias-seguimiento.md`.
-- **Origen:** cabo de T-112 (triaje del badge, 25/07). Lista verificada contra RDS con el detector `procesoConFichaViva`.
 
 ### [T-115] 🔴 [ABIERTO 25/07] Generar preguntas para los artículos huérfanos del temario (`article_no_coverage`, 104)
 - **Qué:** 104 findings de artículos que están en el `topic_scope` con **texto real importado** pero **0 preguntas activas** → al usuario nunca le salen en los tests aunque el tema en conjunto tenga preguntas. Es **la mitad del badge** y la palanca real para bajarlo. **NO es internet:** la fuente es el texto del artículo que YA está en la BD (verbatim del BOE).
@@ -1228,7 +1241,6 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 - **PEND menor:** deploy de frontend para `lib/api/ranking/queries.ts` (streak → `is_synthetic`); inofensivo (la BD tiene ambas vías, equivalentes por el backfill).
 
 
-
 ### [T-028] ✅ [CERRADA 24/07 — demanda valorada: las 2 pedidas YA están LIVE. Cuidador Dip. Córdoba (LIVE 23/07, 20 temas) y "Limpiador/a-Camarero/a (actividades domésticas)" = en realidad la Agrupación Profesional de Servicios Públicos CARM (grupo AP servicios/limpieza), is_active (12 temas). Demanda residual BAJA: 1 mención jun (cocinero/ordenanza/camarero Extremadura, grupo E — Vence es administrativo). Nada nuevo que construir.] Oposiciones pedidas por usuarios (aún no en plataforma)
 - **Limpiador/a-Camarero/a (actividades domésticas)** — interés apuntado (feedback `e7f02223`, Mari Carmen Verdejo, 29/06). Valorar demanda antes de construir.
 - **Cuidador de la Diputación de Córdoba** — interés apuntado (feedback `705aeaab`, maricarmen alba, 09/07). Parecido a SAS pero con atención socio-sanitaria; distinta oposición. Valorar demanda.
@@ -1764,7 +1776,6 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   - ⚠️ **Aviso metodológico:** el primer barrido, con marcadores genéricos (`Buscador`, `Redes sociales`), daba **17
     falsos positivos** — son palabras legítimas en los temas de Windows 11, "La Red Internet" o Correos. Si alguien
     reactiva este detector, usar SOLO los marcadores inequívocos.
-
 
 
 ### [T-064] 🟢 [ABIERTA 21/07 — cabo de T-012] `law_sections`: soportar estructura ANIDADA (libro>título>capítulo)
