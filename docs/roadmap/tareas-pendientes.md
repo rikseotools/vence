@@ -225,6 +225,12 @@
 
 ## Abiertas
 
+### [T-109] 🟢 [ABIERTO 25/07] Atribución venta → campaña de email (cerrar el bucle UTM → checkout → suscripción)
+- **Qué:** NO existe atribución directa compra→campaña. `user_subscriptions` no guarda de qué correo/UTM salió la venta; `user_profiles.registration_source` es el origen del **registro** (organic/meta/google), no de la compra. Hoy la única forma de responder *"¿cuánto vendió esta newsletter?"* es **cruzar a mano** `email_events` (event_type='clicked') con `user_subscriptions` por cercanía temporal.
+- **Impacto:** 🟢 no rompe nada, pero no se puede medir el ROI real de cada newsletter/campaña sin cruce manual. Ej. medido 25/07: la campaña cross-sell **Ujieres** (2.419 correos, 22% apertura, 25 clicks) no tiene forma automática de decir cuánto ingresó; el cruce manual ese día dio **0 ventas atribuibles** (los 4 compradores del día no habían clicado la NL; uno incluso compró 2h ANTES de recibir el correo).
+- **Cómo:** los CTAs de las newsletters YA llevan UTMs (`utm_source=email`, `utm_campaign=cross_ujieres` en `send-promo-cruzada.cjs`). Cerrar el bucle: (1) capturar `utm_source`/`utm_campaign` en el front y pasarlos como **`metadata` en el checkout de Stripe** (`create-checkout`); (2) el webhook los propaga a una columna nueva `user_subscriptions.attribution_campaign` (+ `attribution_source`); (3) un panel/consulta de **conversión por campaña** (correos → clicks → ventas → €) sin cruces manuales. Aditivo, nullable, back-compat.
+- **Origen:** 25/07, tras la campaña cross-sell Ujieres. Pregunta de Manuel *"¿alguna venta llegó por la newsletter? ¿tenemos la fuente de origen trackeada?"* — hoy solo respondible a mano. El tracking de eventos de email (sent/opened/clicked + UTM) SÍ existe; falta la pata de la conversión.
+
 ### [T-108] 🟡 [ABIERTO 25/07] OEP como entidad de primer nivel + desambiguación año OEP/convocatoria
 - **Qué:** la OEP no es entidad — vive como `convocatorias.oep_decreto` TEXT (60% multi-OEP concatenadas) + `oep_fecha` una date. Imposible modelar N OEP→1 convocatoria, 1 OEP→N convocatorias, plazas por OEP, ni el backlog de OEP sin convocar. Además `año` tiene doble semántica (convocatoria vs OEP en `historico.ts`) y había un **bug de runtime** en el rollover por señal. Investigación completa (3 agentes + RDS) y diseño por fases en **`docs/roadmap/oep-entidad-modelo.md`**.
 - **Impacto:** 🟡 higiene de dato + fiabilidad. El bug F0 rompía el rollover automático por señal OEP (INSERT reventaba). Lo demás es que la acumulación de OEP y el backlog no son consultables (viven en texto).
