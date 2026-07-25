@@ -1052,6 +1052,40 @@ export class ContentHealthSweepService {
       );
     }
 
+    // ── CONTENIDO: REVISIÓN de temario pendiente (Fase 2 de temario-versionado-por-convocatoria) ──
+    // Oposición activa con convocatoria vigente cuyo temario NO está verificado del todo contra su
+    // fuente oficial → toca revisar con verify:epigrafe/scope y aplicar los diffs al temario vivo.
+    // Nace del gap sistémico (25/07): el temario no se actualiza al llegar convocatoria nueva; el
+    // 88% de las oposiciones con convocatoria 2024+ nunca se contrastó con el boletín. Se emite UN
+    // finding agregado (no inunda el badge con 111). Cola completa: scripts/temario/detect-temario-revision.
+    // MANTENER EN SYNC con scripts/health-sweep.cjs.
+    const revQ = (await this.db.execute(sql`
+      WITH tv AS (
+        SELECT t.position_type, count(*)::int temas,
+               count(*) FILTER (WHERE ev.state = 'verified_literal')::int verificados
+        FROM topics t LEFT JOIN topic_epigrafe_verification ev ON ev.topic_id = t.id
+        WHERE t.is_active GROUP BY 1),
+      users AS (SELECT target_oposicion pt, count(*)::int n FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1)
+      SELECT o.slug, COALESCE(u.n, 0)::int usuarios
+      FROM tv
+      JOIN oposiciones o ON o.is_active AND replace(o.slug, '_', '-') = replace(tv.position_type, '_', '-')
+      JOIN convocatorias cv ON cv.oposicion_id = o.id AND cv.is_current
+      LEFT JOIN users u ON u.pt = tv.position_type
+      WHERE tv.verificados < tv.temas
+      ORDER BY usuarios DESC
+    `)) as unknown as Array<{ slug: string; usuarios: number }>;
+    if (revQ.length > 0) {
+      const usuarios = revQ.reduce((a, r) => a + r.usuarios, 0);
+      add(
+        'content',
+        'warn',
+        null,
+        'temario_revision_pendiente',
+        `${revQ.length} oposiciones con convocatoria vigente cuyo temario NO está verificado del todo contra su fuente oficial (${usuarios} usuarios) — revisar con verify:epigrafe/scope`,
+        { oposiciones: revQ.length, usuarios, top: revQ.slice(0, 15) },
+      );
+    }
+
     // ── CONVOCATORIAS: invariantes deterministas del timeline (vista convocatoria_hito_incidencias) ──
     // I1/I2/I9 = graves (error); I7/I8 = caducado (warn). I5 se excluye a propósito (línea base sin docs).
     {

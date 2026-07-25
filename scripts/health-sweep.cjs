@@ -503,6 +503,31 @@ async function main() {
       { huerfanos: r.huerfanos });
   }
 
+  // ── CONTENIDO: REVISIÓN de temario pendiente (Fase 2 de temario-versionado-por-convocatoria) ──
+  // Oposición activa con convocatoria vigente cuyo temario NO está verificado del todo contra su
+  // fuente oficial → revisar con verify:epigrafe/scope y aplicar al temario vivo. UN finding agregado
+  // (no inunda con 111). MANTENER EN SYNC con backend/src/content-health-sweep/content-health-sweep.service.ts.
+  const revQ = (await c.query(`
+    WITH tv AS (
+      SELECT t.position_type, count(*)::int temas,
+             count(*) FILTER (WHERE ev.state = 'verified_literal')::int verificados
+      FROM topics t LEFT JOIN topic_epigrafe_verification ev ON ev.topic_id = t.id
+      WHERE t.is_active GROUP BY 1),
+    users AS (SELECT target_oposicion pt, count(*)::int n FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1)
+    SELECT o.slug, COALESCE(u.n, 0)::int usuarios
+    FROM tv
+    JOIN oposiciones o ON o.is_active AND replace(o.slug, '_', '-') = replace(tv.position_type, '_', '-')
+    JOIN convocatorias cv ON cv.oposicion_id = o.id AND cv.is_current
+    LEFT JOIN users u ON u.pt = tv.position_type
+    WHERE tv.verificados < tv.temas
+    ORDER BY usuarios DESC`)).rows;
+  if (revQ.length > 0) {
+    const usuarios = revQ.reduce((a, r) => a + r.usuarios, 0);
+    add('content', 'warn', null, 'temario_revision_pendiente',
+      `${revQ.length} oposiciones con convocatoria vigente cuyo temario NO está verificado del todo contra su fuente oficial (${usuarios} usuarios) — revisar con verify:epigrafe/scope`,
+      { oposiciones: revQ.length, usuarios, top: revQ.slice(0, 15) });
+  }
+
   // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
   // Mirror INLINE de lib/laws/scopeOverInclusion.ts — MANTENER EN SYNC (guardado por
   // __tests__/lib/laws/scopeOverInclusion.test.ts). El epígrafe enumera sub-materias

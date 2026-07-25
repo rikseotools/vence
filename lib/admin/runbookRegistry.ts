@@ -183,6 +183,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/provenance-convocatorias.md',
     claudeHace: 'para cada oposición señalada lee la vista convocatoria_docs_coverage: primero enlaza lo ya clonado sin fetch (scripts/backfill-hito-source-documento.cjs --apply), luego clona los documentos referenciados que falten desde su URL oficial (backend/scripts/clonar-documento.ts, con content_hash + snapshot, tipo real no "nota") y enlaza source_documento_id, y resuelve las citas sin fuente. NUNCA clona sin verificar la URL oficial ni fabrica cita/hash; si la URL da 403/está caída deja el hueco anotado. Los hitos huérfanos (convocatoria_id NULL) se asignan primero a su convocatoria mirando la fecha del hito.',
   },
+  temario_revision_pendiente: {
+    title: 'Temario por revisar contra su convocatoria vigente (sin verificar del todo)',
+    triggerPhrase: 'revisa las revisiones de temario pendientes',
+    runbook: 'docs/roadmap/temario-versionado-por-convocatoria.md',
+    claudeHace: 'lista la cola con scripts/temario/detect-temario-revision.cjs (oposiciones activas cuya convocatoria vigente tiene el temario no verificado del todo contra su fuente oficial, priorizadas por usuarios). Para cada una, por orden de usuarios: baja el temario oficial del programa_url de la convocatoria (clonándolo al hub, cero re-descarga), corre el pipeline T-107 (verify:epigrafe dump→workflow→plan→apply y verify:scope) contra la fuente, y aplica los diffs (que suelen ser pequeños — el temario es estable pero SIEMPRE cambia algo entre convocatorias) al temario VIVO. NUNCA auto-aplicar sin verificar contra el boletín; el temario es contenido legal. Extremadura Auxiliar es el caso raíz (25/25 en drift, temario parafraseado que no casa con el Anexo IV 2024).',
+  },
   epigrafe_provenance_no_doc: {
     title: 'Epígrafe verified_literal sin documento del hub enlazado (provenance huérfana)',
     triggerPhrase: 'revisa la provenance de epígrafes',
