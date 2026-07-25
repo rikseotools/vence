@@ -341,6 +341,20 @@ const REF_DOC_BOLETIN =
 const ANIO_SUELTO = /\b(20\d\d)\b/g;
 const URL_GENERICA =
   /\/(?:empleo-?p[uú]blico|emprego|oferta-?de-?empleo(?:-p[uú]blico)?(?:-\d{4}(?:-\d{4})?)?|procesos-?selectivos|convocatorias|recursos-?humanos|tabl[oó]n(?:-oficial)?)\/?$/i;
+// Estados con convocatoria PUBLICADA y ficha viva → una URL genérica es ceguera (procesoEnJuego).
+// Fuera de aquí (oep_aprobada esperando bases, sin_oep, examen_realizado/nombramientos ya pasados)
+// el índice es la vigilancia legítima. Mirror de lib/convocatoria/seguimientoUrlSalud.cjs (T-112).
+const ESTADOS_FICHA_VIVA = new Set([
+  'convocatoria_publicada',
+  'convocada',
+  'inscripcion_abierta',
+  'inscripcion_cerrada',
+  'lista_admitidos',
+  'pendiente_examen',
+]);
+function procesoConFichaViva(estadoProceso: string | null | undefined): boolean {
+  return ESTADOS_FICHA_VIVA.has(estadoProceso as string);
+}
 function diagnosticarSeguimientoUrl(
   url: string | null | undefined,
   anioVigente: number | null | undefined,
@@ -1201,7 +1215,7 @@ export class ContentHealthSweepService {
     // ── seguimiento_url que vigilan un ciclo YA CERRADO (falso negativo silencioso) ──
     const urlRows = (await this.db.execute(sql`
       SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig,
-             o.is_convocatoria_activa AS conv_activa
+             c.estado_proceso AS estado
       FROM oposiciones o
       JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
       WHERE o.is_active AND o.seguimiento_url IS NOT NULL
@@ -1209,15 +1223,16 @@ export class ContentHealthSweepService {
       slug: string;
       su: string | null;
       anio_vig: number | null;
-      conv_activa: boolean | null;
+      estado: string | null;
     }>;
     for (const r of urlRows) {
-      // procesoEnJuego = la vendemos (is_active, filtrado arriba) Y su convocatoria está VIVA →
-      // un seguimiento genérico aquí es ceguera accionable (error), no ruido descartable (warn).
+      // procesoEnJuego = hay convocatoria PUBLICADA con ficha viva (procesoConFichaViva) → un
+      // seguimiento genérico aquí es ceguera accionable (error). En oep_aprobada (esperando bases)
+      // el índice es la vigilancia legítima → 'ok'. Mirror de lib/convocatoria/seguimientoUrlSalud.cjs.
       const d = diagnosticarSeguimientoUrl(
         r.su,
         r.anio_vig != null ? Number(r.anio_vig) : null,
-        { procesoEnJuego: !!r.conv_activa },
+        { procesoEnJuego: procesoConFichaViva(r.estado) },
       );
       if (d.severidad === 'ok') continue;
       add(

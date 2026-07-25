@@ -10,7 +10,10 @@
 // Importa del .cjs (fuente de verdad) igual que lo hace health-sweep, para testear
 // exactamente lo que corre en el sweep, no una copia.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { diagnosticarSeguimientoUrl } = require('@/lib/convocatoria/seguimientoUrlSalud.cjs')
+const {
+  diagnosticarSeguimientoUrl,
+  procesoConFichaViva,
+} = require('@/lib/convocatoria/seguimientoUrlSalud.cjs')
 
 describe('seguimiento_url — detección graduada de ciclo desfasado', () => {
   it('DOC de boletín inmutable de año viejo → error (señal limpia)', () => {
@@ -87,6 +90,53 @@ describe('seguimiento_url — detección graduada de ciclo desfasado', () => {
       2026,
     )
     expect(d.severidad).toBe('ok')
+  })
+
+  it('procesoConFichaViva: solo estados con convocatoria PUBLICADA cuentan como proceso vivo (T-112 25/07)', () => {
+    // Con ficha publicada viva → una URL genérica es ceguera accionable (procesoEnJuego=true).
+    for (const e of [
+      'convocatoria_publicada',
+      'convocada',
+      'inscripcion_abierta',
+      'inscripcion_cerrada',
+      'lista_admitidos',
+      'pendiente_examen',
+    ]) {
+      expect(procesoConFichaViva(e)).toBe(true)
+    }
+    // Sin ficha concreta que apuntar → el índice del portal es vigilancia legítima (no pinga).
+    // `oep_aprobada` (esperando bases: salamanca/ávila/huelva), `sin_oep`, procesos ya pasados.
+    for (const e of [
+      'oep_aprobada',
+      'sin_oep',
+      'examen_realizado',
+      'nombramientos',
+      null,
+      undefined,
+    ]) {
+      expect(procesoConFichaViva(e)).toBe(false)
+    }
+  })
+
+  it('genérica en oep_aprobada (bases pendientes) NO pinga: procesoEnJuego se deriva del estado', () => {
+    // Caso real: auxiliar-administrativo-diputacion-avila, seguimiento_url = índice de RRHH,
+    // estado_proceso='oep_aprobada' (OEP viva pero SIN convocatoria) → la genérica es legítima.
+    const enJuego = procesoConFichaViva('oep_aprobada') // false
+    const d = diagnosticarSeguimientoUrl(
+      'https://www.diputacionavila.es/recursos-humanos/oferta-de-empleo-publico',
+      2024,
+      { procesoEnJuego: enJuego },
+    )
+    expect(d.nivel).toBe('url_generica')
+    expect(d.severidad).toBe('ok')
+    // y CON ficha publicada (inscripcion_cerrada) la misma URL sí sería error accionable
+    expect(
+      diagnosticarSeguimientoUrl(
+        'https://www.diputacionavila.es/recursos-humanos/oferta-de-empleo-publico',
+        2024,
+        { procesoEnJuego: procesoConFichaViva('inscripcion_cerrada') },
+      ).severidad,
+    ).toBe('error')
   })
 
   it('sin url o sin año vigente → ok (no se puede diagnosticar, no se inventa)', () => {

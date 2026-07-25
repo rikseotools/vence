@@ -29,7 +29,7 @@
  *    `grep -a` para buscar aquí. (Casi hizo "arreglar" un cableado que ya estaba, 22/07.)
  */
 const { Client } = require('pg');
-const { diagnosticarSeguimientoUrl } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
+const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
@@ -328,14 +328,15 @@ async function main() {
   // Graduado a propósito (ver lib/convocatoria/seguimientoUrlSalud.cjs): solo la señal limpia
   // —URL a documento de boletín inmutable de año viejo— es error; el resto es cola de revisión.
   const urlRows = (await c.query(`
-    SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig, o.is_convocatoria_activa AS conv_activa
+    SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig, c.estado_proceso AS estado
     FROM oposiciones o
     JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
     WHERE o.is_active AND o.seguimiento_url IS NOT NULL`)).rows;
   for (const r of urlRows) {
-    // procesoEnJuego (paridad con el backend @Cron): con la convocatoria VIVA, una URL genérica
-    // sí es ceguera accionable; sin proceso vivo la genérica es legítima ('ok', no pinga).
-    const d = diagnosticarSeguimientoUrl(r.su, r.anio_vig != null ? Number(r.anio_vig) : null, { procesoEnJuego: !!r.conv_activa });
+    // procesoEnJuego (paridad con el backend @Cron): SOLO cuando hay convocatoria PUBLICADA con
+    // ficha viva (procesoConFichaViva) una URL genérica es ceguera accionable. En `oep_aprobada`
+    // (esperando bases) o `sin_oep` la genérica es la vigilancia legítima → 'ok', no pinga.
+    const d = diagnosticarSeguimientoUrl(r.su, r.anio_vig != null ? Number(r.anio_vig) : null, { procesoEnJuego: procesoConFichaViva(r.estado) });
     if (d.severidad === 'ok') continue;
     add('content', d.severidad, r.slug, 'seguimiento_url_stale',
       `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
