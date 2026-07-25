@@ -27,6 +27,12 @@ const MIN_RUN = 4
 // Índice de estructura (TÍTULO/CAPÍTULO…) = FALSO positivo: no es tabla, es un
 // sumario de secciones → se deja como lista, no se marca.
 const STRUCTURE_RE = /\b(T[IÍ]TULO|CAP[IÍ]TULO|SECCI[OÓ]N|SUBSECCI[OÓ]N|ANEXO|DISPOSICI[OÓ]N|LIBRO)\b/i
+// Pie/menú de la SEDE ELECTRÓNICA del BOE (boe.es): "Contactar · Sobre la sede electrónica ·
+// Mapa · Aviso legal · Accesibilidad · Protección de datos · … · Empleo en la AEBOE", o la
+// firma "Agencia Estatal Boletín Oficial del Estado". El import de PDFs/HTML del BOE cuela
+// estos enlaces cortos como si fueran celdas de una tabla → FALSO positivo masivo (≈80 de 141
+// hits, medido 25/07 por el triaje del panel). No es una tabla de datos: no marcar.
+const BOE_BOILERPLATE_RE = /\b(Aviso legal|Sobre la sede electr[oó]nica|Sistema Interno de Informaci[oó]n|Empleo en la AEBOE|Agencia Estatal Bolet[ií]n Oficial)\b/i
 
 /** ¿línea "celda" (corta, sin cierre de frase, no enumerador, con alfanumérico)? */
 function isCellLine(l: string): boolean {
@@ -56,9 +62,11 @@ export function detectFlattenedTable(content: string | null | undefined): Flatte
   }
 
   if (best.length < MIN_RUN) return none
-  const classification: TableClassification = STRUCTURE_RE.test(best.join(' '))
-    ? 'structure_index'
-    : 'flattened_table'
+  const joined = best.join(' ')
+  const classification: TableClassification =
+    STRUCTURE_RE.test(joined) || BOE_BOILERPLATE_RE.test(joined)
+      ? 'structure_index'
+      : 'flattened_table'
   return {
     detected: classification === 'flattened_table',
     cellCount: best.length,

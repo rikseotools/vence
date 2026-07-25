@@ -29,6 +29,13 @@ describe('detectFlattenedTable', () => {
     expect(detectFlattenedTable(raw).detected).toBe(true)
   })
 
+  it('pie/menú de la sede electrónica del BOE (caso real 25/07, ~27 FP en BD) → NO detecta', () => {
+    const raw = 'Contactar\nSobre la sede electrónica\nMapa\nAviso legal\nAccesibilidad\nProtección de datos\nSistema Interno de Información\nTutoriales\nEmpleo en la AEBOE'
+    const r = detectFlattenedTable(raw)
+    expect(r.detected).toBe(false)
+    expect(r.classification).toBe('structure_index')
+  })
+
   it('ÍNDICE de estructura (TÍTULO/CAPÍTULO) → NO se marca (falso positivo)', () => {
     const raw = 'estructura:\nTÍTULO IV\nRégimen sancionador\nCAPÍTULO I\nInfracciones'
     const r = detectFlattenedTable(raw)

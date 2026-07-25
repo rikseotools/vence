@@ -73,6 +73,9 @@ const isCellLine = (l: string): boolean =>
   /[A-Za-z0-9]/.test(l);
 const STRUCTURE_RE =
   /\b(T[IÍ]TULO|CAP[IÍ]TULO|SECCI[OÓ]N|SUBSECCI[OÓ]N|ANEXO|DISPOSICI[OÓ]N|LIBRO)\b/i;
+// Mirror de lib/teoria/detectFlattenedTable.ts — pie/menú de la sede del BOE colado como celdas = FP.
+const BOE_BOILERPLATE_RE =
+  /\b(Aviso legal|Sobre la sede electr[oó]nica|Sistema Interno de Informaci[oó]n|Empleo en la AEBOE|Agencia Estatal Bolet[ií]n Oficial)\b/i;
 function detectFlattenedTable(content: string | null): string[] | null {
   if (!content || !content.trim()) return null;
   const lines = content
@@ -89,7 +92,8 @@ function detectFlattenedTable(content: string | null): string[] | null {
     } else run = [];
   }
   if (best.length < 4) return null;
-  if (STRUCTURE_RE.test(best.join(' '))) return null;
+  const joined = best.join(' ');
+  if (STRUCTURE_RE.test(joined) || BOE_BOILERPLATE_RE.test(joined)) return null;
   return best;
 }
 
