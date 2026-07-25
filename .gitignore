@@ -105,3 +105,6 @@ scripts/impugnaciones/cola-larga-shards/
 scripts/impugnaciones/validacion-citas-cl.json
 scripts/impugnaciones/split-shards/
 scripts/impugnaciones/sh2/
+
+# Vence Sim — reportes/screenshots de simulaciones (no versionar)
+sim-reports/
