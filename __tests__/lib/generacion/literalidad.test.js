@@ -73,6 +73,32 @@ describe('analizarIntruso — detección del marco "cuál NO figura"', () => {
     expect(analizarIntruso('Señale el supuesto que NO se contempla en el artículo:')).toBe(true)
     expect(analizarIntruso('¿Qué medio de pago NO se admite conforme al precepto?')).toBe(true)
   })
+
+  // --- Verbos de ATRIBUCIÓN (26/07/2026) ---
+  // El enunciado formula el intruso desde el precepto que reparte funciones.
+  // Caso real: batch `gen_lprl_coord_2026-07-26`, art. 10 LPRL — el gate lo daba
+  // NO_LITERAL en falso porque "no atribuye" no estaba en el diccionario.
+  it('reconoce el marco de ATRIBUCIÓN cuando hay marco de selección explícito', () => {
+    expect(
+      analizarIntruso(
+        'Señale la actuación que el artículo 10 de la Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales (LPRL), NO atribuye a las Administraciones públicas competentes en materia sanitaria:',
+      ),
+    ).toBe(true)
+    expect(analizarIntruso('¿Cuál de las siguientes competencias NO corresponde al Comité de Seguridad y Salud?')).toBe(true)
+    expect(analizarIntruso('Indique la facultad que el precepto NO confiere a los Delegados de Prevención:')).toBe(true)
+  })
+
+  it('NO exenta un verbo de atribución SIN marco de selección (evita el falso negativo)', () => {
+    // Aquí la correcta sí debe ser cita literal: exentarla dejaría pasar una
+    // cita alterada, que es el error caro.
+    expect(analizarIntruso('Según la disposición adicional tercera, la Ley no atribuye carácter básico a este precepto, sino que:')).toBe(false)
+    expect(analizarIntruso('Conforme al artículo 11, la coordinación no corresponde en exclusiva a una sola Administración porque:')).toBe(false)
+  })
+
+  it('NO marca el marco INVERSO "elija la opción correcta" aunque lleve negación', () => {
+    expect(analizarIntruso('Señale la opción correcta: el artículo no atribuye esa función a la autoridad sanitaria.')).toBe(false)
+    expect(analizarIntruso('Indique la afirmación verdadera sobre lo que la ley no reconoce a las Mutuas.')).toBe(false)
+  })
 })
 
 // --- Diferencia solo ORTOGRÁFICA (25/07/2026) ---
