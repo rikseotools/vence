@@ -1216,6 +1216,24 @@ export class ContentHealthSweepService {
       }
     }
 
+    // ── Convocatorias con OEP en texto pero SIN enlazar a la entidad oep (convocatoria_oep_sin_enlace) ──
+    const oepLinkRows = (await this.db.execute(sql`
+      SELECT o.slug, count(*)::int AS n
+      FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
+      WHERE o.is_active AND cv.oep_decreto IS NOT NULL AND btrim(cv.oep_decreto) <> ''
+        AND NOT EXISTS (SELECT 1 FROM convocatoria_oep co WHERE co.convocatoria_id = cv.id)
+      GROUP BY o.slug
+    `)) as unknown as Array<{ slug: string; n: number }>;
+    for (const r of oepLinkRows) {
+      add(
+        'content',
+        'warn',
+        r.slug,
+        'convocatoria_oep_sin_enlace',
+        `${r.slug}: ${r.n} convocatoria(s) con OEP en texto pero SIN enlazar a la entidad oep → el histórico muestra el año de convocatoria, no el de OEP. Correr: node scripts/oep/poblar-historico.cjs ${r.slug}`,
+      );
+    }
+
     // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
     const hoyIso = now.toISOString().slice(0, 10);
     const textoRows = (await this.db.execute(sql`

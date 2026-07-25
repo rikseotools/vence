@@ -35,9 +35,12 @@ verificada, se deja `null` (la UI muestra «—»).
    `archived_at=now()` (son ciclos cerrados; así no compiten con la vigente ni ensucian
    `oposiciones_ssot`/hitos). `convocatoria_numero` = el `boe_reference` (identidad única).
    `plazas_libres` = total del turno libre; deja `plazas_discapacidad` null para no doble-contar.
-3. **Corre el backfill de la entidad OEP** para que el histórico lea el año-OEP estructurado:
-   `node scripts/oep/backfill-oep-entidad.cjs` (parsea `oep_decreto` → filas `oep` + enlaces
-   `convocatoria_oep`). Verifica con: por cada convocatoria, ¿tiene sus OEP enlazadas?
+3. **Enlaza a la entidad OEP con el comando (con GATE):**
+   **`node scripts/oep/poblar-historico.cjs <slug>`**. Corre el backfill de la entidad OEP con
+   `--apply` (idempotente) y **verifica** que TODAS las convocatorias con `oep_decreto` quedaron
+   enlazadas a `oep` vía `convocatoria_oep` (si no → exit 1). ⚠️ NO corras
+   `backfill-oep-entidad.cjs` a pelo: por defecto va en **DRY** (sin `--apply` no enlaza nada) y el
+   histórico saldría con el año de convocatoria, no el de OEP. El comando evita ese olvido.
 4. **Inscritos / presentados** (columnas `convocatorias.inscritos`/`presentados`): SOLO si
    constan en fuente oficial (acta del tribunal / INAP / listas del BOE). Si no, null. Al
    poblarlas aparece la 2ª tarjeta de media («X inscritos por plaza») y la columna se rellena.

@@ -355,6 +355,22 @@ async function main() {
     }
   }
 
+  // ── Convocatorias con OEP en texto pero SIN enlazar a la entidad `oep` (T-108) ──
+  // El histórico de la landing muestra el AÑO DE OEP derivado del enlace `convocatoria_oep`.
+  // Si una convocatoria tiene `oep_decreto` pero nadie corrió el backfill --apply, queda sin
+  // enlazar y el histórico enseña el año de CONVOCATORIA (no el de OEP) → inconsistente. Caza
+  // el olvido (pasó el 25/07: backfill en DRY). Arreglo: node scripts/oep/poblar-historico.cjs <slug>.
+  const oepLinkRows = (await c.query(`
+    SELECT o.slug, count(*)::int AS n
+    FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
+    WHERE o.is_active AND cv.oep_decreto IS NOT NULL AND btrim(cv.oep_decreto) <> ''
+      AND NOT EXISTS (SELECT 1 FROM convocatoria_oep co WHERE co.convocatoria_id = cv.id)
+    GROUP BY o.slug`)).rows;
+  for (const r of oepLinkRows) {
+    add('content', 'warn', r.slug, 'convocatoria_oep_sin_enlace',
+      `${r.slug}: ${r.n} convocatoria(s) con OEP en texto pero SIN enlazar a la entidad oep → el histórico muestra el año de convocatoria, no el de OEP. Correr: node scripts/oep/poblar-historico.cjs ${r.slug}`);
+  }
+
   // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
   // El badge de rollover mira `exam_date`, pero los textos (FAQs, descripción) pueden seguir
   // diciendo "¿Cuándo es el examen? El 18 de abril de 2026" con la fecha ya pasada → el badge

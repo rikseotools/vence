@@ -93,6 +93,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'compara el ID del BOE que MUESTRA la convocatoria (boe_reference) con el del ENLACE (programa_url): si difieren, el usuario pincha "Ver en BOE" y aterriza en OTRO documento (medido 25/07: 5 vigentes mostraban la OEP 2026 y enlazaban a la convocatoria de 2025). Verifica contra el boletín cuál es el correcto y alinea referencia y enlace (normalmente el enlace se quedó en el ciclo anterior). NUNCA repuntar sin confirmar contra fuente oficial.',
   },
+  convocatoria_oep_sin_enlace: {
+    title: 'Convocatoria con OEP en texto sin enlazar a la entidad (histórico con año de convocatoria)',
+    triggerPhrase: 'revisa el histórico de convocatorias',
+    runbook: 'docs/runbooks/historico-convocatorias-landing.md',
+    claudeHace: 'para cada oposición señalada, corre `node scripts/oep/poblar-historico.cjs <slug>`: corre el backfill de la entidad OEP con --apply (idempotente) y verifica (gate) que TODAS las convocatorias con oep_decreto quedaron enlazadas a `oep` vía `convocatoria_oep`. El síntoma es que el histórico de la landing muestra el año de CONVOCATORIA en vez del de OEP. Si el gate sigue fallando, el `oep_decreto` no parsea → revisar `parseOepDecreto` en backfill-oep-entidad.cjs.',
+  },
   seguimiento_url_stale: {
     title: 'seguimiento_url que vigila un ciclo ya cerrado',
     triggerPhrase: 'revisa las urls de seguimiento',
