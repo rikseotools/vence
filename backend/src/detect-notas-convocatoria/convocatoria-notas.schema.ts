@@ -20,6 +20,12 @@ export const convocatoriaNotas = pgTable('convocatoria_notas', {
   contentHash: text('content_hash'),
   signals: jsonb('signals').notNull().default({}),
   llmExtraction: jsonb('llm_extraction'),
+  /** Cuándo se obtuvo `llmExtraction` con una llamada REAL al LLM (migración 20260725).
+   *  NULL = nunca. Es el reloj del gate de re-análisis (ver notas-cache.ts). */
+  llmAnalyzedAt: timestamp('llm_analyzed_at', {
+    withTimezone: true,
+    mode: 'string',
+  }),
   confianza: text('confianza'),
   needsManual: boolean('needs_manual').notNull().default(false),
   triada: boolean('triada').notNull().default(false),

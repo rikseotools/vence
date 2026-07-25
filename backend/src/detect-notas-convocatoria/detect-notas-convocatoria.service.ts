@@ -1,12 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { eq, isNotNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { AnthropicService } from '../anthropic/anthropic.service';
 import { enterLlmFeature } from '../observability/llm-usage';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 import { convocatoriaNotas, oposiciones } from './convocatoria-notas.schema';
 import { convocatoriaDocumentos } from './convocatoria-documentos.schema';
+import { decideReanalisis, type NotaCacheada } from './notas-cache';
 import {
   buildNotasPrompt,
   extractDocLinks,
@@ -29,7 +30,14 @@ export interface DetectNotasStats {
   actionable: number;
   needsManual: number;
   errors: number;
+  /** Llamadas reales al LLM (documento nuevo/cambiado o análisis caducado). */
+  llmCalls: number;
+  /** Oposiciones servidas con la extracción guardada, sin gastar tokens. */
+  llmReused: number;
 }
+
+const sha256 = (text: string): string =>
+  crypto.createHash('sha256').update(text).digest('hex');
 
 /**
  * Sensor `detect-notas-convocatoria`: lee TODAS las notas informativas del
@@ -69,6 +77,8 @@ export class DetectNotasConvocatoriaService {
       actionable: 0,
       needsManual: 0,
       errors: 0,
+      llmCalls: 0,
+      llmReused: 0,
     };
 
     for (const opo of opos) {
@@ -78,6 +88,8 @@ export class DetectNotasConvocatoriaService {
         stats.notasFound += r.notasFound;
         stats.actionable += r.actionable;
         stats.needsManual += r.needsManual;
+        stats.llmCalls += r.llmCalls;
+        stats.llmReused += r.llmReused;
       } catch (err) {
         stats.errors += 1;
         this.logger.warn(`Error notas ${opo.slug}: ${(err as Error).message}`);
@@ -86,7 +98,8 @@ export class DetectNotasConvocatoriaService {
 
     this.logger.log(
       `Notas: ${stats.scanned}/${stats.total} oposiciones, ${stats.notasFound} notas, ` +
-        `${stats.actionable} con versión/criterio, ${stats.needsManual} a revisión manual`,
+        `${stats.actionable} con versión/criterio, ${stats.needsManual} a revisión manual, ` +
+        `LLM ${stats.llmCalls} llamadas / ${stats.llmReused} reutilizadas de caché`,
     );
     return stats;
   }
@@ -96,11 +109,28 @@ export class DetectNotasConvocatoriaService {
     slug: string | null;
     seguimientoUrl: string | null;
     fetcherType: string | null;
-  }): Promise<{ notasFound: number; actionable: number; needsManual: number }> {
-    if (!opo.seguimientoUrl) return { notasFound: 0, actionable: 0, needsManual: 0 };
+  }): Promise<{
+    notasFound: number;
+    actionable: number;
+    needsManual: number;
+    llmCalls: number;
+    llmReused: number;
+  }> {
+    const vacio = {
+      notasFound: 0,
+      actionable: 0,
+      needsManual: 0,
+      llmCalls: 0,
+      llmReused: 0,
+    };
+    if (!opo.seguimientoUrl) return vacio;
 
     const fetcher = opo.fetcherType === 'headless' ? 'headless' : 'http';
-    const page = await this.llm.fetchPageHtml(opo.seguimientoUrl, 15000, fetcher);
+    const page = await this.llm.fetchPageHtml(
+      opo.seguimientoUrl,
+      15000,
+      fetcher,
+    );
     if (!page.html) throw new Error(page.error ?? 'fetch sin html');
 
     // 1. Documentos directos; si hay pocos, seguir sublinks de "documentación".
@@ -115,54 +145,150 @@ export class DetectNotasConvocatoriaService {
 
     // 2. Página renderizó pero 0 documentos → revisión manual (no silencio).
     if (docs.length === 0) {
-      await this.upsertNota(opo.id, opo.seguimientoUrl, 'Página sin documentos extraíbles', '', {} as NotaSignals, null, 'baja', true);
-      return { notasFound: 0, actionable: 0, needsManual: 1 };
+      await this.upsertNota(
+        opo.id,
+        opo.seguimientoUrl,
+        'Página sin documentos extraíbles',
+        sha256(''),
+        {} as NotaSignals,
+        null,
+        'baja',
+        true,
+        false,
+      );
+      return { ...vacio, needsManual: 1 };
     }
 
     // 3. Leer cada documento (PDF → texto), escanear señales.
-    const notas: Array<{ url: string; title: string; text: string; signals: NotaSignals }> = [];
+    const notas: Array<{
+      url: string;
+      title: string;
+      text: string;
+      hash: string;
+      signals: NotaSignals;
+    }> = [];
     for (const url of docs.slice(0, MAX_DOCS_PER_OPO)) {
       const text = await this.fetchPdfText(url);
       if (text.trim().length < 100) continue;
-      const title = decodeURIComponent(url.split('/').pop() ?? url).replace(/[-_]/g, ' ').slice(0, 90);
-      notas.push({ url, title, text, signals: scanSignals(text) });
+      const title = decodeURIComponent(url.split('/').pop() ?? url)
+        .replace(/[-_]/g, ' ')
+        .slice(0, 90);
+      notas.push({
+        url,
+        title,
+        text,
+        hash: sha256(text),
+        signals: scanSignals(text),
+      });
     }
-    if (notas.length === 0) return { notasFound: 0, actionable: 0, needsManual: 0 };
+    if (notas.length === 0) return vacio;
 
     // 3-bis. CORPUS (Fase 2): guardar el texto ÍNTEGRO. Es lo que permite re-verificar sin red y
     // sobrevivir al link-rot; sin esto, la Fase 2 tendría que re-descargar los PDF en cada pase.
     const nuevosDocs = await this.persistirCorpus(opo.id, notas);
-    if (nuevosDocs) this.logger.log(`Corpus ${opo.slug}: +${nuevosDocs} documento(s)`);
+    if (nuevosDocs)
+      this.logger.log(`Corpus ${opo.slug}: +${nuevosDocs} documento(s)`);
 
-    // 4. LLM: extracción estructurada con citas (una llamada por oposición).
+    // 4. LLM: extracción estructurada con citas (una llamada por oposición) — SOLO si hace falta.
+    //
+    // El gate (notas-cache.ts) es lo que separa "sensor diario" de "factura diaria": sin él se
+    // reenviaban ~14k tokens por oposición cada día para releer PDFs idénticos (medido 24/07:
+    // 1.117 llamadas, 5 documentos nuevos). Si nada ha cambiado y el análisis no ha caducado,
+    // se reutiliza la extracción guardada y no se toca la API.
+    const decision = decideReanalisis(
+      opo.id,
+      notas.map((n) => ({ url: n.url, hash: n.hash })),
+      await this.leerCache(opo.id),
+      new Date(),
+    );
+
     let llmExtraction: Record<string, unknown> | null = null;
     let confianza: string | null = null;
-    try {
-      const client = await this.anthropic.getClient();
-      const prompt = buildNotasPrompt(opo.slug ?? '', htmlToText(page.html), notas);
-      enterLlmFeature('detect_notas')
-      const resp = await client.messages.create({
-        model: HAIKU_MODEL,
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const block = resp.content[0];
-      const rawText = block && block.type === 'text' ? block.text : '';
-      llmExtraction = parseNotasJson(rawText);
-      confianza =
-        typeof llmExtraction?.confianza === 'string' ? (llmExtraction.confianza as string) : null;
-    } catch (err) {
-      this.logger.warn(`LLM notas ${opo.slug}: ${(err as Error).message}`);
+    let llmCalls = 0;
+
+    if (decision.reuse) {
+      llmExtraction = decision.llmExtraction;
+      confianza = decision.confianza;
+    } else {
+      llmCalls = 1;
+      try {
+        const client = await this.anthropic.getClient();
+        const prompt = buildNotasPrompt(
+          opo.slug ?? '',
+          htmlToText(page.html),
+          notas,
+        );
+        enterLlmFeature('detect_notas');
+        const resp = await client.messages.create({
+          model: HAIKU_MODEL,
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const block = resp.content[0];
+        const rawText = block && block.type === 'text' ? block.text : '';
+        llmExtraction = parseNotasJson(rawText);
+        confianza =
+          typeof llmExtraction?.confianza === 'string'
+            ? llmExtraction.confianza
+            : null;
+      } catch (err) {
+        this.logger.warn(
+          `LLM notas ${opo.slug} (${decision.motivo}): ${(err as Error).message}`,
+        );
+      }
     }
+
+    // Sellar la fecha SOLO cuando hay extracción fresca: si el LLM falló, no queremos cachear el
+    // fallo durante el TTL — la próxima pasada tiene que volver a intentarlo.
+    const sellarAnalisis = !decision.reuse && llmExtraction !== null;
 
     // 5. Persistir cada nota (UPSERT por oposición+url).
     let actionable = 0;
     for (const n of notas) {
       const act = hasActionableSignal(n.signals);
       if (act) actionable += 1;
-      await this.upsertNota(opo.id, n.url, n.title, n.text, n.signals, llmExtraction, confianza, false);
+      await this.upsertNota(
+        opo.id,
+        n.url,
+        n.title,
+        n.hash,
+        n.signals,
+        llmExtraction,
+        confianza,
+        false,
+        sellarAnalisis,
+      );
     }
-    return { notasFound: notas.length, actionable, needsManual: 0 };
+    return {
+      notasFound: notas.length,
+      actionable,
+      needsManual: 0,
+      llmCalls,
+      llmReused: decision.reuse ? 1 : 0,
+    };
+  }
+
+  /** Lo que dejó el pase anterior para esta oposición: hash por documento + extracción y su fecha. */
+  private async leerCache(oposicionId: string): Promise<NotaCacheada[]> {
+    const filas = await this.db
+      .select({
+        url: convocatoriaNotas.url,
+        contentHash: convocatoriaNotas.contentHash,
+        llmExtraction: convocatoriaNotas.llmExtraction,
+        confianza: convocatoriaNotas.confianza,
+        llmAnalyzedAt: convocatoriaNotas.llmAnalyzedAt,
+      })
+      .from(convocatoriaNotas)
+      .where(eq(convocatoriaNotas.oposicionId, oposicionId));
+
+    return filas.map((f) => ({
+      url: f.url,
+      contentHash: f.contentHash,
+      llmExtraction:
+        (f.llmExtraction as Record<string, unknown> | null) ?? null,
+      confianza: f.confianza,
+      llmAnalyzedAt: f.llmAnalyzedAt,
+    }));
   }
 
   /**
@@ -179,7 +305,7 @@ export class DetectNotasConvocatoriaService {
    */
   private async persistirCorpus(
     oposicionId: string,
-    notas: Array<{ url: string; title: string; text: string }>,
+    notas: Array<{ url: string; title: string; text: string; hash: string }>,
   ): Promise<number> {
     const conv = await this.db.execute<{ id: string }>(
       sql`SELECT id FROM convocatorias WHERE oposicion_id = ${oposicionId} AND is_current LIMIT 1`,
@@ -189,7 +315,7 @@ export class DetectNotasConvocatoriaService {
 
     let n = 0;
     for (const nota of notas) {
-      const contentHash = crypto.createHash('sha256').update(nota.text).digest('hex');
+      const contentHash = nota.hash;
       // .returning() devuelve SOLO las filas realmente insertadas: con onConflictDoNothing, un
       // documento ya conocido (mismo hash) devuelve [] → cuenta 0. Así el log dice la verdad.
       const insertadas = await this.db
@@ -206,7 +332,7 @@ export class DetectNotasConvocatoriaService {
           contentHash,
           extractedText: nota.text,
           fuente: 'detect-notas',
-          fetchedAt: sql`now()` as unknown as string,
+          fetchedAt: sql`now()`,
         })
         .onConflictDoNothing()
         .returning({ id: convocatoriaDocumentos.id });
@@ -227,29 +353,39 @@ export class DetectNotasConvocatoriaService {
    */
   private async fetchPdfText(url: string): Promise<string> {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'VenceBot/1.0' } });
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'VenceBot/1.0' },
+      });
       if (!res.ok) {
         if (res.status === 403 || res.status === 429) {
-          this.logger.warn(`PDF bloqueado por el boletín (${res.status}): ${url}`);
+          this.logger.warn(
+            `PDF bloqueado por el boletín (${res.status}): ${url}`,
+          );
         }
         return '';
       }
       const buf = Buffer.from(await res.arrayBuffer());
       if (buf.length > MAX_PDF_BYTES) {
-        this.logger.warn(`PDF > ${MAX_PDF_BYTES / 1024 / 1024} MB, omitido: ${url}`);
+        this.logger.warn(
+          `PDF > ${MAX_PDF_BYTES / 1024 / 1024} MB, omitido: ${url}`,
+        );
         return '';
       }
       if (buf.slice(0, 5).toString('latin1') !== '%PDF-') return ''; // no es PDF: normal, sin ruido
       // pdf-parse@1.1.1: importar la SUBRUTA lib evita el "debug-block" del index.js
       // que intenta leer un PDF de test y crashea al importarlo (módulo sin tipos).
       // @ts-expect-error: 'pdf-parse/lib/pdf-parse.js' no trae tipos.
-      const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as (b: Buffer) => Promise<{ text: string }>;
+      const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as (
+        b: Buffer,
+      ) => Promise<{ text: string }>;
       const parsed = await pdfParse(buf);
       return parsed.text ?? '';
     } catch (err) {
       const msg = (err as Error).message;
       if (/Cannot find (module|package)/i.test(msg)) {
-        this.logger.error(`ROTURA: pdf-parse no resuelve — el sensor está CIEGO. ${msg}`);
+        this.logger.error(
+          `ROTURA: pdf-parse no resuelve — el sensor está CIEGO. ${msg}`,
+        );
       } else {
         this.logger.warn(`PDF ilegible (${msg}): ${url}`);
       }
@@ -257,17 +393,28 @@ export class DetectNotasConvocatoriaService {
     }
   }
 
+  /**
+   * UPSERT de una nota. Dos matices que sostienen el gate de re-análisis:
+   *  - `sellarAnalisis` marca `llm_analyzed_at=now()` SOLO cuando la extracción viene de una
+   *    llamada real y correcta; si se reutilizó la caché, el sello viejo se conserva (así el TTL
+   *    cuenta desde el análisis de verdad y no se renueva solo).
+   *  - Si el LLM falló (`llmExtraction=null`) NO se pisa la extracción anterior con NULL. Antes sí,
+   *    y eso borraba una extracción buena por un timeout puntual.
+   */
   private async upsertNota(
     oposicionId: string,
     url: string,
     title: string,
-    text: string,
+    contentHash: string,
     signals: NotaSignals,
     llmExtraction: Record<string, unknown> | null,
     confianza: string | null,
     needsManual: boolean,
+    sellarAnalisis: boolean,
   ): Promise<void> {
-    const contentHash = crypto.createHash('sha256').update(text).digest('hex');
+    const conservar = <T>(col: string): T =>
+      sql.raw(`convocatoria_notas.${col}`) as unknown as T;
+
     await this.db
       .insert(convocatoriaNotas)
       .values({
@@ -279,6 +426,7 @@ export class DetectNotasConvocatoriaService {
         llmExtraction,
         confianza,
         needsManual,
+        llmAnalyzedAt: sellarAnalisis ? sql`now()` : null,
       })
       .onConflictDoUpdate({
         target: [convocatoriaNotas.oposicionId, convocatoriaNotas.url],
@@ -286,9 +434,14 @@ export class DetectNotasConvocatoriaService {
           title,
           contentHash,
           signals,
-          llmExtraction,
-          confianza,
+          llmExtraction:
+            llmExtraction ??
+            conservar<Record<string, unknown>>('llm_extraction'),
+          confianza: confianza ?? conservar<string>('confianza'),
           needsManual,
+          llmAnalyzedAt: sellarAnalisis
+            ? sql`now()`
+            : conservar<string>('llm_analyzed_at'),
           lastSeen: sql`now()`,
         },
       });
