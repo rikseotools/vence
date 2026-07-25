@@ -1,6 +1,8 @@
 # OEP como entidad de primer nivel + desambiguación año OEP/convocatoria (T-108)
 
-> **Estado (25/07/2026):** F0 y F1 **HECHAS** (aplicadas a prod, código en `origin/main`). F2–F4 pendientes.
+> **Estado (25/07/2026):** F0, F1, **F2 y F3 HECHAS** (aplicadas a prod, código en `origin/main`). F4 pendiente.
+> Con F3 la entidad deja de ser un silo: el radar la **escribe** (find-or-insert + clona el decreto si la
+> fuente es un boletín reconocido) y el admin la **lee** (backlog en `/api/admin/oep-consistency`).
 > Diseño **aditivo, cero pérdida de datos**. Investigación de fondo: 3 agentes + verificación en RDS.
 
 ## 1. El problema (medido en RDS)
@@ -52,16 +54,23 @@ Migración `supabase/migrations/20260726_oep_entidad.sql`:
   `ensure_convocatoria_documento`. Demostrado: **6 OEP estatales** (RD 625/2023 → BOE-A-2023-16191, RD
   651/2025 → BOE-A-2025-14783) con el decreto **verbatim** clonado en el hub.
 
-### F2 — repuntar lectores (PENDIENTE)
-- `añoOep()` deriva del enlace estructurado `oep` (min/max `año_oep`), no del slice de `oep_fecha`.
-- Vista/endpoint de **backlog de OEP** (`oep WHERE estado='aprobada'` sin convocatoria convocada).
-- Arreglar el `ORDER BY c."año"` engañoso (`lib/api/convocatoria/queries.ts:341`).
-- `año` se QUEDA como año de convocatoria (demasiado depende de él); el año-OEP se DERIVA.
+### F2 — que la entidad se CONSUMA (HECHO, parcial)
+- **Backlog leído en `/api/admin/oep-consistency`** (check `oep_backlog`, informativo): lee la entidad
+  `oep WHERE estado='aprobada'` — el admin ve las OEP sin convocar (69 en 41 oposiciones). Cierra el bucle
+  radar-escribe → admin-lee (ya NO es silo).
+- PENDIENTE (F2-resto): `añoOep()` que derive del enlace estructurado en la landing (hoy `historico.ts`
+  usa el slice de `oep_fecha`); arreglar el `ORDER BY c."año"` engañoso. `año` se QUEDA como año de
+  convocatoria (demasiado depende de él); el año-OEP se DERIVA.
 
-### F3 — cablear el radar (PENDIENTE)
-- `promoteSignalToConvocatoria` crea/enlaza la entidad `oep` y **clona su `source_url`** (el radar ya lo
-  captura) con `fuente='oep-radar'` → las OEP nuevas se clonan **solas**. FK opcional señal→oep.
-- La señal capta `detected_decreto`/`detected_oep_fecha` (hoy no lo hace).
+### F3 — cablear el radar (HECHO)
+- `promoteSignalToConvocatoria` (`lib/api/oep-signals/queries.ts`) hace **find-or-insert de la `oep`** del
+  año detectado (prefiere enriquecer la fila del backfill, no fragmentar) + enlace `convocatoria_oep`. Si
+  la fuente es un boletín **reconocido** (`boletin_doc_key ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-'`,
+  no una página de listado) **clona el decreto** con `fuente='oep-radar'` + enlaza `source_documento_id`/
+  `oep_id`. NO bloqueante (si falla, no tumba la promoción). → las OEP nuevas se mantienen vivas y se
+  clonan **solas**.
+- PENDIENTE (F3-resto): la señal capta `detected_decreto`/`detected_oep_fecha` (hoy la `oep` del radar nace
+  con `decreto=NULL`, enriquecible por el backfill/resolución).
 
 ### F4 — deprecar el texto (PENDIENTE)
 - Cuando no queden lectores de `oep_decreto`/`oep_fecha`, marcarlos legacy y (opcional) derivarlos de la

@@ -80,6 +80,15 @@ async function _GET(request: NextRequest) {
       ),
     )
 
+  // 4) Backlog de OEP sin convocar (entidad `oep`, T-108 F2): OEP aprobadas que aún no han
+  //    generado convocatoria. Lee la entidad estructurada (la escribe el radar en F3), no el texto.
+  const backlogRows = (await db.execute<{ n: number; opos: number }>(sql`
+    SELECT count(*)::int AS n, count(DISTINCT oposicion_id)::int AS opos
+    FROM oep WHERE estado = 'aprobada'`)) as unknown
+  const backlog = (Array.isArray(backlogRows) ? backlogRows : (backlogRows as { rows?: unknown[] }).rows || [])[0] as { n: number; opos: number } | undefined
+  const backlogCount = backlog?.n ?? 0
+  const backlogOpos = backlog?.opos ?? 0
+
   const staleCount = staleRows.length
   const agedCount = agedRows.length
   const noHitosCount = noHitosRows.length
@@ -103,6 +112,11 @@ async function _GET(request: NextRequest) {
         status: agedStatus,
         count: agedCount,
         detail: `señales OEP pending con más de ${PENDING_STALE_DAYS} días sin revisar`,
+      },
+      oep_backlog: {
+        status: 'green' as Status,
+        count: backlogCount,
+        detail: `OEP aprobadas sin convocar (entidad oep, T-108) en ${backlogOpos} oposiciones — informativo, no es alerta`,
       },
       activas_sin_hitos: {
         status: noHitosStatus,

@@ -249,7 +249,7 @@ async function promoteSignalToConvocatoria(
 ): Promise<{ oposicionId: string; result: 'updated' | 'inserted' | 'new_cycle' } | null> {
   const rows = (await db.execute<Record<string, unknown>>(sql`
     SELECT oposicion_id, detected_year, detected_plazas_libre, detected_plazas_discapacidad,
-           detected_plazas_promocion_interna, detected_boc_ref,
+           detected_plazas_promocion_interna, detected_boc_ref, source_url,
            detected_fecha_publicacion::text  AS detected_fecha_publicacion,
            detected_fecha_inscripcion_fin::text AS detected_fecha_inscripcion_fin,
            detected_fecha_examen::text       AS detected_fecha_examen,
@@ -269,6 +269,7 @@ async function promoteSignalToConvocatoria(
   const fex = (s.detected_fecha_examen ?? null) as string | null
   const est = (s.detected_estado ?? null) as string | null
   const sis = (s.detected_sistema ?? null) as string | null
+  const srcUrl = (s.source_url ?? null) as string | null
 
   // GUARDRAIL (08/07): NO afirmar 'inscripcion_abierta'/'convocada' SIN fecha de
   // cierre (ver estadoParaPromover). Sin deadline no se sabe si el plazo está
@@ -283,6 +284,7 @@ async function promoteSignalToConvocatoria(
   const cur = (Array.isArray(curRows) ? curRows : (curRows as { rows?: unknown[] }).rows || [])[0] as { id: string; anio: number | null } | undefined
 
   let result: 'updated' | 'inserted' | 'new_cycle'
+  let convId: string | null = null
   if (cur && !(yr !== null && cur.anio !== null && yr > cur.anio)) {
     // Mismo ciclo → UPDATE de la vigente (COALESCE, sin pisar con NULL).
     await db.execute(sql`
@@ -299,6 +301,7 @@ async function promoteSignalToConvocatoria(
         updated_at = now()
       WHERE id = ${cur.id}`)
     result = 'updated'
+    convId = cur.id
   } else {
     // Ciclo nuevo (o sin convocatoria vigente) → archivar la vigente (si la hay).
     if (cur) {
@@ -328,12 +331,15 @@ async function promoteSignalToConvocatoria(
           sistema_selectivo        = COALESCE(${sis},        sistema_selectivo),
           updated_at = now()
         WHERE id = ${exist.id}`)
+      convId = exist.id
     } else {
-      await db.execute(sql`
+      const insRows = (await db.execute<{ id: string }>(sql`
         INSERT INTO convocatorias (oposicion_id, "año", is_current, plazas_libres, plazas_discapacidad,
           plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso, sistema_selectivo)
         VALUES (${oposicionId}, COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int), true,
-          ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite}, ${sis})`)
+          ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite}, ${sis})
+        RETURNING id`)) as unknown
+      convId = ((Array.isArray(insRows) ? insRows : (insRows as { rows?: unknown[] }).rows || [])[0] as { id: string } | undefined)?.id ?? null
     }
     result = cur ? 'new_cycle' : 'inserted'
   }
@@ -351,6 +357,62 @@ async function promoteSignalToConvocatoria(
       estado_proceso           = COALESCE(${est},  estado_proceso),
       sistema_selectivo        = COALESCE(${sis},  sistema_selectivo)
     WHERE id = ${oposicionId}`)
+
+  // ── F3 (T-108): mantener VIVA la entidad OEP ──────────────────────────────────────────────────
+  // El radar alimenta la entidad `oep` (no solo el texto legacy oep_decreto): find-or-insert de la
+  // OEP del año detectado (prefiere enriquecer una fila existente antes que fragmentar) + enlace a
+  // la convocatoria. Si la fuente es un boletín RECONOCIDO (no una página de listado), clona el
+  // decreto en el hub (fuente='oep-radar'). Sin esto la entidad se degradaría (foto del backfill).
+  // Aditivo y NO bloqueante: no toca el texto legacy y, si falla, no tumba la promoción.
+  if (yr !== null && convId) {
+    try {
+      const oepEstado = ['convocada','inscripcion_abierta','inscripcion_cerrada','lista_admitidos','pendiente_examen','examen_realizado','resultados','nombramientos'].includes(String(estToWrite)) ? 'convocada' : 'aprobada'
+      const one = <T,>(r: unknown): T | undefined => ((Array.isArray(r) ? r : (r as { rows?: unknown[] }).rows || [])[0] as T | undefined)
+      // find-or-insert por (oposición, año); prefiere una fila con decreto (la del backfill) para enriquecerla.
+      const existOep = one<{ id: string }>(await db.execute<{ id: string }>(sql`
+        SELECT id FROM oep WHERE oposicion_id = ${oposicionId} AND "año_oep" = ${yr}
+        ORDER BY (decreto IS NULL) LIMIT 1`))
+      let oepId: string | undefined
+      if (existOep) {
+        await db.execute(sql`
+          UPDATE oep SET
+            fecha                    = COALESCE(fecha, ${fpub}::date),
+            plazas_libres            = COALESCE(plazas_libres, ${pl}),
+            plazas_discapacidad      = COALESCE(plazas_discapacidad, ${pd}),
+            plazas_promocion_interna = COALESCE(plazas_promocion_interna, ${ppi}),
+            estado                   = CASE WHEN estado = 'aprobada' THEN ${oepEstado} ELSE estado END,
+            fuente_url               = COALESCE(fuente_url, ${srcUrl})
+          WHERE id = ${existOep.id}`)
+        oepId = existOep.id
+      } else {
+        oepId = one<{ id: string }>(await db.execute<{ id: string }>(sql`
+          INSERT INTO oep (oposicion_id, "año_oep", decreto, fecha, plazas_libres, plazas_discapacidad,
+            plazas_promocion_interna, estado, fuente_url)
+          VALUES (${oposicionId}, ${yr}, ${boc}, ${fpub}::date, ${pl}, ${pd}, ${ppi}, ${oepEstado}, ${srcUrl})
+          RETURNING id`))?.id
+      }
+      if (oepId) {
+        await db.execute(sql`INSERT INTO convocatoria_oep (convocatoria_id, oep_id) VALUES (${convId}, ${oepId}) ON CONFLICT DO NOTHING`)
+        // Clonar el decreto SOLO si la fuente es un boletín reconocido (boletin_doc_key devuelve un
+        // id estructurado) → evita clonar páginas de listado/seguimiento como si fueran decretos.
+        if (srcUrl) {
+          const rec = one<{ rec: boolean }>(await db.execute<{ rec: boolean }>(sql`
+            SELECT (boletin_doc_key(${srcUrl}) ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-') AS rec`))?.rec
+          if (rec) {
+            const docId = one<{ id: string }>(await db.execute<{ id: string }>(sql`
+              SELECT ensure_convocatoria_documento(${convId}, boletin_doc_key(${srcUrl}), ${srcUrl}, NULL,
+                'oep_decreto', ${`OEP ${yr}${boc ? ` — ${boc}` : ''}`}, NULL, 'oep-radar') AS id`))?.id
+            if (docId) {
+              await db.execute(sql`UPDATE convocatoria_documentos SET oep_id = ${oepId} WHERE id = ${docId}`)
+              await db.execute(sql`UPDATE oep SET source_documento_id = ${docId}, doc_key = boletin_doc_key(${srcUrl}) WHERE id = ${oepId}`)
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ [OepSignals] F3 upsert entidad oep (no bloqueante):', (e as Error).message)
+    }
+  }
 
   return { oposicionId, result }
 }
