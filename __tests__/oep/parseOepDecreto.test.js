@@ -44,6 +44,29 @@ describe('parseOepDecreto — texto libre → OEP estructuradas', () => {
     expect(parseOepDecreto('pendiente de publicación')).toEqual([]);
   });
 
+  test('string COMPLEJO con fechas/paréntesis → UNA fila, no una por fragmento (bug de sobre-split)', () => {
+    // caso real BOJA que antes daba 3 filas basura ("de 23 de diciembre", "30/12/2025)"…)
+    const r = parseOepDecreto('Decreto 211/2025, de 23 de diciembre — OEP 2025 SAS (BOJA núm. 250, 30/12/2025)');
+    expect(r).toHaveLength(1);
+    expect(r[0].año).toBe(2025);
+    expect(r[0].decreto).toBe('Decreto 211/2025');
+    expect(r[0].ambito).toBe('autonomico');
+  });
+
+  test('multi-OEP con fecha embebida NO genera años espurios de la fecha', () => {
+    // "de 27 de diciembre (OEP 2024)" no debe crear una OEP "27" ni duplicar 2024
+    const r = parseOepDecreto('OEP 2023 (Decreto 200/2024, de 27 de diciembre) y OEP 2025');
+    expect(r.map((x) => x.año).sort()).toEqual([2023, 2024, 2025]);
+    expect(r).toHaveLength(3);
+  });
+
+  test('decreto numerado gana a la mención OEP suelta del mismo año (no duplica)', () => {
+    const r = parseOepDecreto('RD 651/2025 (OEP 2025)');
+    expect(r).toHaveLength(1);
+    expect(r[0].decreto).toBe('RD 651/2025');
+    expect(r[0].ambito).toBe('estatal');
+  });
+
   test('ambitoDe: RD/RDL=estatal, Decreto=autonomico, resto null', () => {
     expect(ambitoDe('RD 625/2023')).toBe('estatal');
     expect(ambitoDe('Real Decreto 651/2025')).toBe('estatal');

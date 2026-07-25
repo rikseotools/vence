@@ -52,4 +52,21 @@ describeIfDb('OEP entidad — integridad (prod read-only)', () => {
         AND NOT EXISTS (SELECT 1 FROM oep o WHERE o.id = d.oep_id AND o.source_documento_id = d.id)`
     expect(rows.map((r) => r.id)).toEqual([])
   })
+
+  test('NO se duplica la misma OEP: una fila por (oposición, año)', async () => {
+    // el backfill y el radar hacen find-or-insert por (oposición, año); si aparece un duplicado es
+    // que la misma OEP se referenció de dos formas y no se mergeó (bug del parser sobre-split, 25/07).
+    const rows = await sql`
+      SELECT oposicion_id, "año_oep", count(*)::int n
+      FROM oep GROUP BY 1, 2 HAVING count(*) > 1`
+    expect(rows.map((r) => `${r.oposicion_id}/${r.año_oep}×${r.n}`)).toEqual([])
+  })
+
+  test('ninguna fila oep es ruido de parseo (el decreto es reconocible)', async () => {
+    const rows = await sql`
+      SELECT id, decreto FROM oep
+      WHERE decreto IS NOT NULL
+        AND decreto !~* '(RD|RDL|real decreto|decreto|orden|OEP|OPE|OPS|resoluc|oferta)'`
+    expect(rows.map((r) => r.decreto)).toEqual([])
+  })
 })

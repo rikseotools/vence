@@ -48,8 +48,12 @@ Migración `supabase/migrations/20260726_oep_entidad.sql`:
   convocatoria** (acumulación) y **1 OEP → N convocatorias** (turno libre + promoción interna).
 - **`convocatoria_documentos.oep_id`** — enlace inverso; el hub ya soportaba `tipo='oep_decreto'`. `fuente`
   ampliada con `oep-backfill`/`oep-radar`.
-- **Backfill** `scripts/oep/backfill-oep-entidad.cjs` (parser puro `parseOepDecreto`): 147 convocatorias →
-  **269 OEP** (75 multi-OEP) + 269 enlaces + **69 en backlog**. NO borra `oep_decreto`/`oep_fecha` (legacy).
+- **Backfill** `scripts/oep/backfill-oep-entidad.cjs` (parser puro `parseOepDecreto`, **extracción por
+  patrón** — no split por comas — + **find-or-insert por (oposición, año)** para no duplicar): 140
+  convocatorias → **238 OEP** únicas + 240 enlaces + **52 en backlog**. NO borra `oep_decreto`/`oep_fecha`
+  (legacy). Guardarraíl anti-regresión: DUP(oposición,año)=0, ruido de parseo=0 en `oepEntidadIntegrity`.
+  *(1er backfill 25/07 con parser naïve sobre-partió strings complejos → 70 filas basura + duplicados;
+  reescrito a extracción por patrón + dedup por año → limpio.)*
 - **Clonado** `scripts/oep/clonar-oep-documento.cjs` (`clonarOepDoc`): reutiliza `canonicalizeBoletinUrl` +
   `ensure_convocatoria_documento`. Demostrado: **6 OEP estatales** (RD 625/2023 → BOE-A-2023-16191, RD
   651/2025 → BOE-A-2025-14783) con el decreto **verbatim** clonado en el hub.

@@ -21,39 +21,60 @@ try {
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // ── parser PURO ────────────────────────────────────────────────────────────────────────────────
-function parseOepDecreto(texto) {
-  const t = String(texto || '').trim();
-  if (!t) return [];
-  // separadores de nivel superior; conservar el texto para la etiqueta
-  const frags = t.split(/\s*(?:\+|,|;|\by\b)\s*/i).map((s) => s.trim()).filter(Boolean);
-  const out = [];
-  for (const frag of frags) {
-    // rango "2023-2025" o "2023 a 2025"
-    const range = frag.match(/(20\d{2})\s*(?:-|–|\ba\b)\s*(20\d{2})/);
-    if (range) {
-      const a = +range[1], b = +range[2];
-      if (b >= a && b - a <= 8) {
-        for (let y = a; y <= b; y++) out.push({ año: y, decreto: `${frag} (${y})`.replace(/\s+/g, ' '), ambito: ambitoDe(frag) });
-        continue;
-      }
-    }
-    // años sueltos en el fragmento
-    const years = (frag.match(/20\d{2}/g) || []).map(Number);
-    if (!years.length) continue;
-    // etiqueta de decreto = el fragmento tal cual (recortado); año = el más representativo
-    // (si hay "Decreto 12/2026 (OEP 2026)" el año es 2026; si "RD 625/2023" → 2023)
-    const año = years[years.length - 1]; // el último suele ser el año del decreto citado
-    out.push({ año, decreto: frag.replace(/\s+/g, ' ').slice(0, 200), ambito: ambitoDe(frag) });
-  }
-  // dedup por (año, decreto normalizado)
-  const seen = new Set();
-  return out.filter((o) => { const k = `${o.año}|${o.decreto.toLowerCase()}`; if (seen.has(k)) return false; seen.add(k); return true; });
-}
-
+// EXTRACCIÓN POR PATRÓN (no split por comas): busca las OEP dentro del texto, así los strings
+// complejos con fechas/paréntesis/"|" ("Decreto 211/2025, de 23 de diciembre — OEP 2025 (BOJA…)")
+// dan UNA fila, no una por fragmento. Dedup por AÑO (prefiere el decreto numerado), orden documental.
 function ambitoDe(frag) {
   if (/\b(RD|RDL|real decreto)\b/i.test(frag)) return 'estatal';
   if (/\bdecreto\b/i.test(frag)) return 'autonomico';
   return null;
+}
+
+function parseOepDecreto(texto) {
+  const t = String(texto || '');
+  if (!t.trim()) return [];
+  const matches = []; // {pos, año, decreto, ambito, numbered}
+  let m;
+  // 1) decretos CON número: RD/RDL/Real Decreto/Decreto/Orden N/AAAA (el AAAA es el año de la OEP)
+  const reDec = /\b(RD|RDL|Real\s+Decreto|Decreto|Orden)\s*\.?\s*(\d+)\s*\/\s*(20\d{2})\b/gi;
+  while ((m = reDec.exec(t))) {
+    const kw = m[1].replace(/\s+/g, ' ');
+    matches.push({ pos: m.index, año: +m[3], decreto: `${/real/i.test(kw) ? 'Real Decreto' : kw} ${m[2]}/${m[3]}`, ambito: /^(RD|RDL|real)/i.test(kw) ? 'estatal' : 'autonomico', numbered: true });
+  }
+  // 2) OEP/OPE/OPS seguido de año(s) o rango: "OEP 2024", "OEP 2022 y 2023", "OEP 2023-2025", "OPE 2022 + 2023"
+  const reOep = /\b(OEP|OPE|OPS)\s+(20\d{2}(?:\s*(?:[-–\/]|\ba\b|\by\b|,|\+)\s*20\d{2})*)/gi;
+  while ((m = reOep.exec(t))) {
+    for (const y of expandYears(m[2])) matches.push({ pos: m.index, año: y, decreto: `OEP ${y}`, ambito: null, numbered: false });
+  }
+  // 3) fallback: contexto OEP pero el año NO va pegado al keyword ("OEP SCS 2025", "oferta de empleo … 2025").
+  //    Solo si 1&2 no pillaron nada; extrae los años del string SIN partir (evita re-introducir el sobre-split).
+  if (!matches.length && /\b(OEP|OPE|OPS|oferta de empleo)\b/i.test(t)) {
+    for (const y of [...new Set((t.match(/20\d{2}/g) || []).map(Number))]) {
+      matches.push({ pos: t.indexOf(String(y)), año: y, decreto: t.replace(/\s+/g, ' ').trim().slice(0, 120), ambito: ambitoDe(t), numbered: false });
+    }
+  }
+  if (!matches.length) return [];
+  matches.sort((a, b) => a.pos - b.pos);
+  const best = new Map(); const firstPos = new Map();
+  for (const mt of matches) {
+    if (!firstPos.has(mt.año)) firstPos.set(mt.año, mt.pos);
+    const cur = best.get(mt.año);
+    if (!cur || (mt.numbered && !cur.numbered)) best.set(mt.año, mt);
+  }
+  return [...best.values()]
+    .sort((a, b) => firstPos.get(a.año) - firstPos.get(b.año))
+    .map((e) => ({ año: e.año, decreto: e.decreto.replace(/\s+/g, ' ').trim().slice(0, 120), ambito: e.ambito }));
+}
+
+// Expande una lista/rango de años: "2022 y 2023"→[2022,2023]; "2023-2025"→[2023,2024,2025].
+function expandYears(str) {
+  const nums = [...new Set((str.match(/20\d{2}/g) || []).map(Number))];
+  const range = str.match(/(20\d{2})\s*(?:[-–]|\ba\b)\s*(20\d{2})/);
+  if (range) {
+    const a = +range[1], b = +range[2];
+    if (b >= a && b - a <= 8) { const out = []; for (let y = a; y <= b; y++) out.push(y); return [...new Set([...out, ...nums])].sort(); }
+  }
+  return nums;
 }
 
 module.exports = { parseOepDecreto, ambitoDe };
@@ -83,19 +104,38 @@ async function main() {
       const unica = oeps.length === 1;
       for (const o of oeps) {
         if (DRY) { oepCreadas++; links++; continue; }
-        const ins = await c.query(`
-          INSERT INTO oep (oposicion_id, "año_oep", decreto, fecha, ambito, plazas_libres,
-            plazas_discapacidad, plazas_promocion_interna, estado)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-          ON CONFLICT (oposicion_id, "año_oep", COALESCE(decreto,'')) DO UPDATE
-            SET estado = CASE WHEN oep.estado='aprobada' THEN EXCLUDED.estado ELSE oep.estado END,
-                fecha  = COALESCE(oep.fecha, EXCLUDED.fecha),
-                updated_at = now()
-          RETURNING id`,
-          [r.oposicion_id, o.año, o.decreto, unica ? r.oep_fecha : null, o.ambito,
-           unica ? r.plazas_libres : null, unica ? r.plazas_discapacidad : null,
-           unica ? r.plazas_promocion_interna : null, estado]);
-        const oepId = ins.rows[0].id;
+        // find-or-insert por (oposición, año): UNA OEP por oposición+año (no duplicar la misma OEP
+        // referenciada de dos formas en dos convocatorias). El decreto NUMERADO gana al "OEP AAAA".
+        const isNum = /\d+\s*\/\s*\d{4}/.test(o.decreto || '');
+        const ex = await c.query(
+          `SELECT id, (decreto ~ '\\d+\\s*/\\s*\\d{4}') AS numbered FROM oep WHERE oposicion_id=$1 AND "año_oep"=$2 LIMIT 1`,
+          [r.oposicion_id, o.año]);
+        let oepId;
+        if (ex.rows.length) {
+          oepId = ex.rows[0].id;
+          await c.query(`
+            UPDATE oep SET
+              decreto = CASE WHEN $2 AND NOT $3 THEN $4 ELSE decreto END,
+              ambito  = COALESCE(ambito, $5),
+              fecha   = COALESCE(fecha, $6),
+              plazas_libres            = COALESCE(plazas_libres, $7),
+              plazas_discapacidad      = COALESCE(plazas_discapacidad, $8),
+              plazas_promocion_interna = COALESCE(plazas_promocion_interna, $9),
+              estado  = CASE WHEN estado='aprobada' THEN $10 ELSE estado END
+            WHERE id=$1`,
+            [oepId, isNum, ex.rows[0].numbered, o.decreto, o.ambito,
+             unica ? r.oep_fecha : null, unica ? r.plazas_libres : null,
+             unica ? r.plazas_discapacidad : null, unica ? r.plazas_promocion_interna : null, estado]);
+        } else {
+          const ins = await c.query(`
+            INSERT INTO oep (oposicion_id, "año_oep", decreto, fecha, ambito, plazas_libres,
+              plazas_discapacidad, plazas_promocion_interna, estado)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+            [r.oposicion_id, o.año, o.decreto, unica ? r.oep_fecha : null, o.ambito,
+             unica ? r.plazas_libres : null, unica ? r.plazas_discapacidad : null,
+             unica ? r.plazas_promocion_interna : null, estado]);
+          oepId = ins.rows[0].id;
+        }
         oepCreadas++;
         const lk = await c.query(`
           INSERT INTO convocatoria_oep (convocatoria_id, oep_id, plazas_aportadas)
