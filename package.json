@@ -10,6 +10,7 @@
     "db:load-constitucion": "node scripts/load-constitucion.js",
     "db:load-constitucion-pdf": "node scripts/load-constitucion.js pdfs/constitucion-espanola.pdf",
     "db:pull": "drizzle-kit introspect",
+    "simular:batch": "node scripts/simular-batch-preinsercion.cjs",
     "audit:epigrafe": "node scripts/audit-epigrafe-scope.cjs",
     "verify:scope": "node scripts/verify-topic-scope.cjs",
     "scope:health": "node scripts/scope-health-classify.cjs",

@@ -553,6 +553,41 @@ Si hay colisión → revisar manualmente. Si la pregunta nueva es idéntica/para
 
 Ver `importar-preguntas-scrapeadas.md` §"Detección de Duplicados" para el código de las 4 niveles.
 
+### Paso 3.bis — SIMULACIÓN pre-inserción (OBLIGATORIO desde 26/07/2026)
+
+```bash
+npm run simular:batch -- /tmp/<batch_id>_borrador.json
+# exit 0 = limpio para insertar · 1 = hay bloqueantes · 2 = error de uso
+```
+
+Corre **los mismos cinco núcleos** que el verificador del Paso 5.bis
+(`lib/generacion/*.js`) pero sobre el JSON borrador, leyendo de RDS en **solo lectura**.
+Mismo veredicto, cero escritura: se deja de "insertar para ver".
+
+Añade tres cosas que después ya es tarde o caro de comprobar:
+
+1. **Contrato con el inserter.** Este mismo manual documenta arriba `primary_article_id` y
+   `option_a`…`option_d`, pero `insertar-batch-generado.cjs` lee **`primary_article_number`
+   y `options[]`**. Un borrador escrito según el ejemplo del Paso 2 muere en el INSERT con
+   `UNDEFINED_VALUE: Undefined values are not allowed`, sin decir qué campo falta. El
+   simulador acepta las dos formas y **reclama por nombre** lo que le falte.
+2. **Distribución y secuencia de `correct_option`** del lote (§2.2-ter), incluido el ciclo
+   regular de periodo 4 que pasa el check de distribución.
+3. **Dedup del Paso 3** contra las preguntas ya vivas de esos artículos y dentro del lote.
+
+Una salvedad propia, que el verificador post-inserción no puede hacer: el truncamiento
+**por la cabeza** no bloquea si la cláusula condicionante **ya está en el enunciado** —es
+la condensación válida que §2.2 admite—, se degrada a aviso. Sin eso, el patrón correcto
+("Salvo que la legislación autonómica prevea otra cosa, …" en la pregunta) obligaría a
+duplicar la cláusula en las cuatro opciones.
+
+Núcleo puro: `lib/generacion/simularBatch.js` · tests:
+`__tests__/lib/generacion/simularBatch.test.js` (25). Los tests existen por un motivo
+concreto: la primera versión llamó a los cinco núcleos asumiendo que todos devolvían
+`{ok}` cuando devuelven `{estado}` / `{tell}`, y marcó **12 de 12 preguntas como rotas**,
+incluida una copia verbatim del artículo. Un fallo de contrato entre módulos no se ve
+leyendo el código.
+
 ### Paso 4 — Insertar UNA pregunta de prueba
 
 Validar invariantes ANTES de insertar el batch entero. Insertar la primera pregunta y verificar:
