@@ -486,6 +486,23 @@ async function main() {
       { orphan: true, con_url: orf.con_url, con_cita: orf.con_cita });
   }
 
+  // ── CONTENIDO: PROVENANCE de EPÍGRAFES (verified_literal sin documento del hub enlazado) ──
+  // Gemelo del anterior para el 2.º consumidor del hub. verified_literal con source_documento_id
+  // NULL = provenance huérfana (validado contra una URL suelta, no contra el doc clonado; el bug
+  // que motivó el hub: txt.php ≠ /pdfs). Se enlaza vía ensure_convocatoria_documento (lo hace
+  // verify-epigrafe-literality record). Cierra el falso verde de provenance de T-107.
+  // MANTENER EN SYNC con backend/src/content-health-sweep/content-health-sweep.service.ts.
+  const epiOrf = (await c.query(`
+    SELECT replace(t.position_type, '_', '-') AS slug, count(*)::int AS huerfanos
+    FROM topics t JOIN topic_epigrafe_verification ev ON ev.topic_id = t.id
+    WHERE t.is_active AND ev.state = 'verified_literal' AND ev.source_documento_id IS NULL
+    GROUP BY 1 ORDER BY 2 DESC`)).rows;
+  for (const r of epiOrf) {
+    add('content', 'warn', r.slug, 'epigrafe_provenance_no_doc',
+      `${r.slug}: ${r.huerfanos} epígrafe(s) verified_literal sin documento del hub enlazado (source_documento_id NULL) — re-verificar o enlazar vía ensure_convocatoria_documento`,
+      { huerfanos: r.huerfanos });
+  }
+
   // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
   // Mirror INLINE de lib/laws/scopeOverInclusion.ts — MANTENER EN SYNC (guardado por
   // __tests__/lib/laws/scopeOverInclusion.test.ts). El epígrafe enumera sub-materias
