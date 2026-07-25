@@ -18,7 +18,7 @@
 const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
-const { bloqueVigente, comparaConBd } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
+const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -32,8 +32,24 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
 
 const API = 'https://www.boe.es/datosabiertos/api/legislacion-consolidada/id'
 
+// El id de bloque NO es siempre `a<N>` (Ley 9/2017: "Artículo 10" es `a1-2`),
+// así que se resuelve por el índice y `a<N>` queda solo como último recurso.
+let MAPA = null
+async function bloqueId(art) {
+  if (MAPA === null) {
+    try {
+      const r = await fetch(`${API}/${BOE_ID}/texto/indice`, { headers: { Accept: 'application/xml' } })
+      MAPA = r.ok ? mapaBloquesPorArticulo(await r.text()) : {}
+    } catch {
+      MAPA = {}
+    }
+    if (!Object.keys(MAPA).length) console.log('⚠️ no se pudo leer el índice del BOE — se probará con el id "a<N>"')
+  }
+  return MAPA[String(art)] || `a${art}`
+}
+
 async function xmlBloque(art) {
-  const r = await fetch(`${API}/${BOE_ID}/texto/bloque/a${art}`, { headers: { Accept: 'application/xml' } })
+  const r = await fetch(`${API}/${BOE_ID}/texto/bloque/${await bloqueId(art)}`, { headers: { Accept: 'application/xml' } })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return await r.text()
 }

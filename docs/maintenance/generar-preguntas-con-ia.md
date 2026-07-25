@@ -454,7 +454,13 @@ Sin reparar el scope, los batches sucesivos contaminan el tema: preguntas sobre 
 > Hay que elegir **por `fecha_vigencia`**, nunca por posición, y podar las notas `<p class="nota_pie">`
 > del `<blockquote>` (si no, el "texto oficial" arrastra una cola de *"Se modifica por la disposición
 > final 1 de la Ley 35/2014…"* que rompe cualquier comparación literal).
-> Núcleo puro y testeado: `lib/laws/boeBloqueVigente.js` (`bloqueVigente`, `comparaConBd`).
+> **SEGUNDO GOTCHA:** el **id de bloque no es siempre `a<N>`**. En la Ley 9/2017 el "Artículo 10" es el
+> bloque `a1-2` y el "Artículo 28" es `a2-10` (la numeración se desordena cuando la norma ha sufrido
+> adiciones o derogaciones). Pedir `a10` devuelve 404 — y en otra norma podría devolver **otro artículo**
+> con apariencia de éxito, comparando tu `content` contra el precepto equivocado. Resuelve el id por el
+> `…/texto/indice` (`mapaBloquesPorArticulo`), con `a<N>` solo como último recurso.
+>
+> Núcleo puro y testeado: `lib/laws/boeBloqueVigente.js` (`bloqueVigente`, `comparaConBd`, `mapaBloquesPorArticulo`).
 
 ```bash
 node -e "

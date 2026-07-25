@@ -1,4 +1,4 @@
-const { bloqueVigente, comparaConBd } = require('../../../lib/laws/boeBloqueVigente')
+const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo } = require('../../../lib/laws/boeBloqueVigente')
 
 // Réplica reducida de la respuesta REAL del art. 2 de la Ley 7/1985: el BOE
 // devuelve las versiones 1985 → 2013 → 1990, en ese orden. Quedarse con la
@@ -48,6 +48,37 @@ describe('bloqueVigente (BOE consolidado)', () => {
   it('tolera entradas vacías', () => {
     expect(bloqueVigente('')).toBeNull()
     expect(bloqueVigente(undefined)).toBeNull()
+  })
+})
+
+// Índice reducido con los ids REALES de la Ley 9/2017: "Artículo 10" NO es el
+// bloque `a10` sino `a1-2`, y "Artículo 28" es `a2-10`. Pedir `a<N>` da 404 (o,
+// en otra norma, el artículo equivocado con apariencia de éxito).
+const XML_INDICE = `<?xml version="1.0" encoding="utf-8"?>
+<response><data><texto>
+  <bloque><id>a4</id><titulo>Art&iacute;culo 4</titulo></bloque>
+  <bloque><id>a1-2</id><titulo>Art&iacute;culo 10</titulo></bloque>
+  <bloque><id>a2-10</id><titulo>Art&iacute;culo 28.</titulo></bloque>
+  <bloque><id>a28-2</id><titulo>Art&iacute;culo 28 bis</titulo></bloque>
+  <bloque><id>ti</id><titulo>T&iacute;TULO I. Disposiciones generales</titulo></bloque>
+</texto></data></response>`
+
+describe('mapaBloquesPorArticulo', () => {
+  it('resuelve el id de bloque real, que no tiene por qué ser a<N>', () => {
+    const m = mapaBloquesPorArticulo(XML_INDICE)
+    expect(m['10']).toBe('a1-2')
+    expect(m['28']).toBe('a2-10')
+    expect(m['4']).toBe('a4')
+  })
+
+  it('ignora títulos/capítulos y los artículos bis', () => {
+    const m = mapaBloquesPorArticulo(XML_INDICE)
+    expect(Object.values(m)).not.toContain('ti')
+    expect(Object.values(m)).not.toContain('a28-2')
+  })
+
+  it('devuelve mapa vacío si el índice no trae bloques', () => {
+    expect(mapaBloquesPorArticulo('<response><data/></response>')).toEqual({})
   })
 })
 
