@@ -44,8 +44,10 @@ export async function generateMetadata({ params }: { params: Promise<{ oposicion
     'landing-metadata',
   )
   const title = data?.seoTitle || `${config.name} 2026 | Tests y Temario`
-  // Description se genera dinámicamente para que plazas/temas siempre estén actualizados
-  const plazas = data?.plazasLibres
+  // Description se genera dinámicamente para que plazas/temas siempre estén actualizados.
+  // Usa el TOTAL del proceso (no solo el turno libre) para no contradecir el título/hero,
+  // que muestran el total (bug: la meta description decía "36 plazas" con el título "40 Plazas").
+  const plazas = data?.plazasTotal ?? data?.plazasLibres
   const temas = data?.temasCount ?? config.totalTopics
   const description = plazas
     ? `Oposiciones ${config.name}: ${plazas} plazas, temario oficial ${temas} temas. Tests gratuitos.`
