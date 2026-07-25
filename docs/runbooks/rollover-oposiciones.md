@@ -19,6 +19,7 @@
 - **TODA oposición con `exam_date` pasada → rollover.** Sin excepción por "ciclo vivo".
 - **Priorizar por `usuarios`** (columna de la pestaña): la de 541 usuarios antes que la de 1. El orden es de impacto, no de si "toca o no".
 - Si el examen es MUY reciente (días) y el próximo ciclo aún no tiene datos oficiales: **pivote suave** (caso SERMAS §4) — SEO + hitos forward al próximo ciclo, sin inventar OEP no confirmada; `exam_date=null` para no seguir mostrando la fecha pasada.
+- 🆕 **Si al pivotar hay una OEP nueva CONFIRMADA (T-108):** además del texto legacy, crea/enlaza la **entidad `oep`** (una fila por decreto de OEP, con `estado='aprobada'` si aún no hay convocatoria = backlog) — al aplicar la señal por el radar se hace solo (F3), o a mano con `scripts/oep/backfill-oep-entidad.cjs` / `clonar-oep-documento.cjs`. NO inventar OEP no publicada. Modelo: `docs/roadmap/oep-entidad-modelo.md`.
 
 ## 2. Procedimiento de rollover (por oposición, con VERIFICACIÓN OFICIAL)
 

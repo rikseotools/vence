@@ -1,5 +1,7 @@
 # Roadmap: Sistema completo de detección de convocatorias, OEPs e hitos
 
+> 🆕 **Actualización 25/07 (T-108):** la OEP ya NO es solo el texto `convocatorias.oep_decreto` — es una **entidad** (`oep` + puente `convocatoria_oep`, N:M) que el radar alimenta al aplicar una señal (`promoteSignalToConvocatoria`, F3) y cuyo decreto se clona en el hub. Este doc describe la DETECCIÓN (sensores→señales); el aterrizaje estructurado de la OEP detectada está en **`docs/roadmap/oep-entidad-modelo.md`**. Al leer las partes de "aprobación de OEP" de abajo, tener presente que el destino ya no es un campo de texto sino la entidad.
+
 > **Detonante:** auditoría 2026-06-01 al crear `auxiliar-administrativo-ayuntamiento-badajoz`. El portal del Ayto Badajoz es JS-rendered; el cron `check-seguimiento` + sensor `llm_semantic` ven solo el shell HTML vacío y no detectan el contenido específico del proceso (estado "Publicación de Bases", fechas, cambios de fase). Mismo patrón confirmado en 5-20+ oposiciones del catálogo activo (cabo previo `project_pending_seguimiento_url_genericas` del 31/05).
 >
 > **Objetivo:** detectar automáticamente, con latencia <24h y cobertura ≥95% del catálogo activo, todos los eventos relevantes del ciclo de vida de cada oposición: aprobación de OEP, publicación de convocatoria, extracto BOE, apertura/cierre de inscripción, listas, fecha de examen y resultados.
