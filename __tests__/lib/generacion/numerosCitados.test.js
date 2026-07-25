@@ -29,4 +29,15 @@ describe('numerosCitados — artículos que cita una explicación (Paso 7)', () 
     expect(numerosCitados('')).toEqual([])
     expect(numerosCitados(undefined)).toEqual([])
   })
+
+  it('descarta la cita que nombra OTRA norma a continuación', () => {
+    expect(numerosCitados('los definidos conforme al apartado 2 del artículo 4 de la Ley 10/2010, de prevención del blanqueo')).toEqual([])
+    expect(numerosCitados('el artículo 21 de la Ley Orgánica 8/1980, de Financiación de las CCAA')).toEqual([])
+  })
+
+  it('conserva la cita al MISMO cuerpo legal ("de esta ley", "de este Texto Refundido")', () => {
+    expect(numerosCitados('la memoria del artículo 17 de este Texto Refundido')).toEqual(['17'])
+    expect(numerosCitados('las entidades del artículo 35.4 de esta ley')).toEqual(['35'])
+    expect(numerosCitados('conforme al artículo 21.4, el órgano gestor remitirá')).toEqual(['21'])
+  })
 })

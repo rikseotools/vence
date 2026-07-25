@@ -29,8 +29,38 @@ const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
 
+/**
+ * Artículos citados por una explicación, **de la ley de la propia pregunta**.
+ *
+ *   "artículo 21.4", "art. 120", "arts. 16 y 17" → ['21','120','16','17']
+ *
+ * Descarta las citas que nombran OTRA norma a continuación ("el apartado 2 del
+ * artículo 4 de la Ley 10/2010…"): resolverlas contra la ley de la pregunta
+ * adjunta un artículo que no tiene nada que ver. Pasó en el batch T204, donde
+ * una cita a la Ley 10/2010 de blanqueo arrastró el art. 4 de la Ley General
+ * Tributaria y el auditor avisó de que el adjunto no pintaba nada.
+ *
+ * "de este Texto Refundido" y "de esta ley" SÍ pasan: remiten al mismo cuerpo.
+ */
+const OTRA_NORMA = /^\s*(?:,\s*)?de (?:la|el) (?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n)\b/i
+
+function numerosCitados(texto) {
+  const t = String(texto || '')
+  const out = new Set()
+  const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\.[0-9]+)*(?:\s*(?:,|y|e)\s*[0-9]+(?:\.[0-9]+)*)*)/gi
+  for (const m of t.matchAll(re)) {
+    if (OTRA_NORMA.test(t.slice(m.index + m[0].length, m.index + m[0].length + 40))) continue
+    for (const n of m[1].split(/\s*(?:,|y|e)\s*/)) {
+      const base = n.split('.')[0].trim()
+      if (base) out.add(base)
+    }
+  }
+  return [...out]
+}
+
 module.exports = { numerosCitados }
 if (require.main !== module) return
+
 
 const args = process.argv.slice(2)
 const [BATCH, OUT] = args.filter((a) => !a.startsWith('--'))
@@ -44,18 +74,6 @@ if (!BATCH || !OUT) {
 const url = fs.readFileSync(path.join(__dirname, '..', '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
 const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
 
-/** "artículo 21.4", "art. 120", "arts. 16 y 17" → ['21','120','16','17'] */
-function numerosCitados(texto) {
-  const out = new Set()
-  const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\.[0-9]+)*(?:\s*(?:,|y|e)\s*[0-9]+(?:\.[0-9]+)*)*)/gi
-  for (const m of String(texto || '').matchAll(re)) {
-    for (const n of m[1].split(/\s*(?:,|y|e)\s*/)) {
-      const base = n.split('.')[0].trim()
-      if (base) out.add(base)
-    }
-  }
-  return [...out]
-}
 
 ;(async () => {
   const Q = await s`
