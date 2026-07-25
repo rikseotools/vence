@@ -19,6 +19,13 @@ describe('analizarSiglas (§2.2-quater: pregunta autocontenida)', () => {
     expect(r.faltan).toEqual([])
   })
 
+  it('marca LPRL sin desarrollar y la acepta con el nombre completo (lote gen_lprl, 26/07/2026)', () => {
+    expect(analizarSiglas('Según el artículo 39 de la LPRL, el Comité...').faltan).toEqual(['LPRL'])
+    expect(
+      analizarSiglas('Según el artículo 39 de la Ley 31/1995, de Prevención de Riesgos Laborales (LPRL), el Comité...').faltan
+    ).toEqual([])
+  })
+
   it('acepta el número de la norma como desarrollo (Ley 58/2003 ≡ LGT)', () => {
     const r = analizarSiglas('Según el artículo 1 de la Ley 58/2003, la LGT establece que...')
     expect(r.faltan).toEqual([])

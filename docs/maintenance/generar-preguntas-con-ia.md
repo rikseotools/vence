@@ -436,6 +436,26 @@ Sin reparar el scope, los batches sucesivos contaminan el tema: preguntas sobre 
 
 ### Paso 1 — Leer contenido literal de los artículos seleccionados
 
+> 🚨 **ANTES de generar, contrasta el `content` de BD contra el BOE VIGENTE (26/07/2026, campaña T-115).**
+> Todos los gates posteriores comparan la pregunta contra `articles.content`; **nadie comprueba que ese
+> `content` siga siendo la redacción en vigor**. Si el artículo se importó antes de una reforma, el lote
+> entero sale internamente coherente y enseñando Derecho derogado — y pasa las dos auditorías, porque a
+> los auditores se les da el mismo texto.
+>
+> ```bash
+> node scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> <art> [<art>…]
+> node scripts/verificar-articulos-vs-boe.cjs lprl BOE-A-1995-24292 10 11 12 32 39
+> ```
+>
+> **GOTCHA que lo hace traicionero:** la API del BOE devuelve **una `<version>` por redacción histórica y
+> NO vienen en orden cronológico**. En el art. 2 de la Ley 7/1985 el orden es **1985 → 2013 → 1990**: coger
+> `versiones[versiones.length-1]` (lo natural) devuelve la redacción de **1990**, derogada por la Ley
+> 27/2013 — y el diff contra BD sale "DIFIERE" señalando como malo el texto que en realidad es el bueno.
+> Hay que elegir **por `fecha_vigencia`**, nunca por posición, y podar las notas `<p class="nota_pie">`
+> del `<blockquote>` (si no, el "texto oficial" arrastra una cola de *"Se modifica por la disposición
+> final 1 de la Ley 35/2014…"* que rompe cualquier comparación literal).
+> Núcleo puro y testeado: `lib/laws/boeBloqueVigente.js` (`bloqueVigente`, `comparaConBd`).
+
 ```bash
 node -e "
 require('dotenv').config({path:'.env.local'});
