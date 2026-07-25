@@ -31,6 +31,8 @@ export {
   resolveDispute,
 } from './queries'
 
+export { buildDisputeEmailIdempotencyKey } from './idempotency'
+
 export {
   ALL_DISPUTE_TYPES,
   LEGISLATIVE_DISPUTE_TYPES,

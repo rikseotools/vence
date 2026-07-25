@@ -28,6 +28,7 @@ import type {
   ResolveDisputeResponse,
 } from './schemas'
 import { sendEmailV2 } from '@/lib/api/emails'
+import { buildDisputeEmailIdempotencyKey } from './idempotency'
 import { emit } from '@/lib/observability/emit'
 
 /**
@@ -425,10 +426,13 @@ export async function resolveDispute(
       const emailResult = await sendEmailV2({
         userId,
         emailType: 'impugnacion_respuesta',
-        // Clave determinista por impugnación: si este envío se reintenta (vía
-        // outbox/reconciliador tras un timeout que lo cortó), Resend deduplica
-        // y NO manda un segundo email. Imprescindible para recuperación segura.
-        idempotencyKey: `dispute-resolve-${disputeId}`,
+        // Clave determinista por (impugnación + contenido): si este envío se
+        // reintenta (vía outbox/reconciliador tras un timeout que lo cortó),
+        // Resend deduplica y NO manda un segundo email; pero si la respuesta
+        // CAMBIA (corrección de una respuesta errónea, o contestación a una
+        // alegación `appealed`), la clave cambia y el email nuevo SÍ sale.
+        // Ver `./idempotency.ts` para el porqué de las dos propiedades.
+        idempotencyKey: buildDisputeEmailIdempotencyKey(disputeId, status, trimmedResponse),
         customData: {
           to: userEmail,
           userName: userName || 'Usuario',

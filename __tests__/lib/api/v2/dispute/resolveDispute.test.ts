@@ -322,6 +322,54 @@ describe('resolveDispute - flujo email exitoso', () => {
   })
 })
 
+describe('resolveDispute - idempotencyKey del email (T-116)', () => {
+  async function keyFor(req: Partial<ResolveDisputeRequest>, disputeStatus = 'pending') {
+    mockSendEmailV2.mockReset()
+    setupDispute({ status: disputeStatus })
+    setupUpdateOk()
+    mockSendEmailV2.mockResolvedValueOnce({ success: true, emailId: 'em-1' })
+    await resolveDispute(baseRequest(req))
+    return mockSendEmailV2.mock.calls[0][0].idempotencyKey as string
+  }
+
+  it('pasa una idempotencyKey derivada de la impugnacion', async () => {
+    const key = await keyFor({})
+    expect(key.startsWith(`dispute-resolve-${VALID_DISPUTE_ID}-`)).toBe(true)
+  })
+
+  it('el MISMO cierre reintentado reusa la clave → Resend deduplica, no llegan 2 emails', async () => {
+    const primera = await keyFor({})
+    const reintento = await keyFor({})
+    expect(reintento).toBe(primera)
+  })
+
+  it('contestar una alegacion `appealed` con otra respuesta cambia la clave → el email SÍ sale', async () => {
+    // Caso real T-116: el usuario alega una impugnación ya resuelta (status
+    // pasa a `appealed`, que la guardia de re-resolucion SÍ deja pasar) y el
+    // admin contesta distinto dentro de la ventana de 24h de Resend. Con la
+    // clave vieja (fija por disputeId) Resend rechazaba el cuerpo modificado y
+    // el usuario se quedaba con el email erroneo.
+    const original = await keyFor({ adminResponse: 'Tu impugnacion no procede.' })
+    const trasAlegacion = await keyFor(
+      { adminResponse: 'Revisado de nuevo: tenias razon, la clave era la B.' },
+      'appealed'
+    )
+    expect(trasAlegacion).not.toBe(original)
+  })
+
+  it('cambiar solo el veredicto (mismo texto) tambien cambia la clave', async () => {
+    const resuelta = await keyFor({ status: 'resolved' })
+    const rechazada = await keyFor({ status: 'rejected' })
+    expect(rechazada).not.toBe(resuelta)
+  })
+
+  it('la clave sigue al texto YA TRIMEADO que va en el email (no al crudo)', async () => {
+    const limpio = await keyFor({ adminResponse: 'Respuesta definitiva.' })
+    const conEspacios = await keyFor({ adminResponse: '   Respuesta definitiva.  \n' })
+    expect(conEspacios).toBe(limpio)
+  })
+})
+
 describe('resolveDispute - email cancelado por preferencias del usuario', () => {
   it('devuelve emailSent=false con skipReason=user_preferences', async () => {
     setupDispute({})

@@ -19,6 +19,12 @@ import { DisputeEmailReconciliationService } from './dispute-email-reconciliatio
  *
  * Detección pura (sin red, sin escrituras). El auto-reenvío del email caído se
  * añade en un paso posterior (endpoint `dispute/resend-email`).
+ *
+ * ⚠️ Cuando se construya ese reenvío: derivar la `idempotencyKey` con
+ * `buildDisputeEmailIdempotencyKey(disputeId, status, adminResponse)`
+ * (`lib/api/v2/dispute/idempotency.ts`), NO con una clave fija por
+ * impugnación. Si la respuesta cambió desde el intento fallido, una clave fija
+ * hace que Resend rechace el cuerpo nuevo y el reenvío no sirva de nada (T-116).
  */
 @Injectable()
 export class DisputeEmailReconciliationCron {

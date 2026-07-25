@@ -98,8 +98,14 @@ export const sendEmailRequestSchema = z.object({
   // Clave de idempotencia opcional → se envía como header `Idempotency-Key` a
   // Resend, que deduplica peticiones con la misma clave en su ventana (~24h).
   // Imprescindible para reintentos/reenvíos seguros (ej. recuperación de
-  // impugnaciones cuyo email se cayó). Usar una clave determinista por evento,
-  // p.ej. `dispute-resolve-{disputeId}`.
+  // impugnaciones cuyo email se cayó).
+  //
+  // ⚠️ La clave debe ser determinista por evento **Y seguir al contenido**: si
+  // se reutiliza para un cuerpo distinto, Resend la RECHAZA ("idempotency key
+  // has been used… but the request body was modified") y el email nuevo no
+  // sale — un drop silencioso. Derivar el sufijo de lo que cambia entre
+  // revisiones, p.ej. `dispute-resolve-{disputeId}-{sha1(status+respuesta)}`
+  // (ver `lib/api/v2/dispute/idempotency.ts`).
   idempotencyKey: z.string().min(1).max(256).optional(),
 })
 
