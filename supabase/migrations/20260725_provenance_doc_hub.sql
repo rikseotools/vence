@@ -60,9 +60,11 @@ BEGIN
     RAISE EXCEPTION 'ensure_convocatoria_documento: doc_key requerido (canonicaliza la URL antes con canonicalizeBoletinUrl)';
   END IF;
 
-  -- ¿ya existe el documento canónico para esta convocatoria?
+  -- ¿ya existe el documento CANÓNICO para esta convocatoria? (tipo<>'nota': las notas de
+  -- monitoreo comparten doc_key pero NO son el documento oficial — un consumidor jamás debe
+  -- enlazar a una nota; si solo hay nota, se crea el canónico).
   SELECT id INTO v_id FROM convocatoria_documentos
-   WHERE convocatoria_id = p_convocatoria_id AND doc_key = p_doc_key
+   WHERE convocatoria_id = p_convocatoria_id AND doc_key = p_doc_key AND tipo <> 'nota'
    LIMIT 1;
 
   IF v_id IS NOT NULL THEN
@@ -86,7 +88,7 @@ BEGIN
     RETURNING id INTO v_id;
   EXCEPTION WHEN unique_violation THEN
     SELECT id INTO v_id FROM convocatoria_documentos
-     WHERE convocatoria_id = p_convocatoria_id AND doc_key = p_doc_key
+     WHERE convocatoria_id = p_convocatoria_id AND doc_key = p_doc_key AND tipo <> 'nota'
      LIMIT 1;
   END;
 
