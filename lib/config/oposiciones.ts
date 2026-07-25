@@ -2647,7 +2647,7 @@ export const OPOSICIONES: Oposicion[] = [
     id: 'auxiliar_administrativo_universidad_almeria',
     slug: 'auxiliar-administrativo-universidad-almeria',
     positionType: 'auxiliar_administrativo_universidad_almeria',
-    examScoring: { penaltyDivisor: 3, source: 'BOE-A-2026-14723 (bases UAL, Resolución 30/06/2026): concurso-oposición C2. Fórmula de penalización pendiente de verificar contra las bases; se asume 1/3 por error (4 alternativas) como defecto C2. confidence:baja' },
+    examScoring: { penaltyDivisor: 4, source: 'BOE-A-2026-14723 (bases UAL, Resolución 30/06/2026): concurso-oposición C2. Verificado 25/07/2026 contra las bases: «Cada respuesta errónea se penalizará con un cuarto de respuesta correcta», fórmula AC = A − (F × 0,25); en blanco no penaliza. confidence:alta' },
     name: 'Auxiliar Administrativo de la Universidad de Almería',
     shortName: 'Aux. Admin. UAL',
     emoji: '🎓',
