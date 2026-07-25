@@ -33,6 +33,7 @@ const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/conv
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
+const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -748,11 +749,11 @@ async function main() {
     WHERE t.is_active = true
       AND (l.short_name ~* '^(Ley|Real|Decreto|Estatut|Llei|Convenio|Reglament|Constituci|Tratado)' OR l.short_name ~ '^(LO|RD|RDL|CE|TR|TUE|TFUE|RGPD)')`)).rows;
   const ctGroups = {};
-  for (const r of ctRows) { const k = r.pt + ' ' + r.ley; (ctGroups[k] = ctGroups[k] || []).push(r); }
+  for (const r of ctRows) { const k = r.pt + '\u0000' + r.ley; (ctGroups[k] = ctGroups[k] || []).push(r); }
   const ctDups = [];
   for (const k of Object.keys(ctGroups)) {
     const rows = ctGroups[k]; if (rows.length < 2) continue;
-    const [pt, ley] = k.split(' ');
+    const [pt, ley] = k.split('\u0000');
     const arrs = rows.map(r => { const a = r.an || []; const nums = a.map(x => parseInt(String(x).replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n)); return { tn: r.tn, set: new Set(nums), nulish: a.length === 0 }; });
     let maxOv = 0, pair = null;
     if (arrs.filter(a => a.nulish).length > 1) { maxOv = 9999; pair = arrs.filter(a => a.nulish).map(a => 'T' + a.tn).join('=T') + ' (ley entera/NULL)'; }
@@ -806,23 +807,19 @@ async function main() {
   // corporal/pública", "de la imagen y el sonido", iconos descritos en texto, etc.
   // Remediar: si el texto ya describe el visual = autocontenida; si hay fuente →
   // reconstruir la imagen; si no → jubilar (admin_image_unavailable). NUNCA inventar.
-  const VD_STRONG = "(\\y(el|la)\\s+siguiente\\s+(icono|imagen|imágen|s[íi]mbolo|gr[áa]fico|figura|captura|pictograma|esquema|diagrama|se[ñn]al)\\y)"
-    + "|(en\\s+la\\s+imagen\\s+(anterior|superior|inferior|adjunt\\w+|siguiente|de\\s+arriba|de\\s+abajo))"
-    + "|(\\yla\\s+imagen\\s+(muestra|adjunt\\w+|superior|inferior|siguiente|anterior)\\y)"
-    + "|((observa|observe|obsérv\\w+|f[íi]jese\\s+en)\\s+(la|el)\\s+(siguiente\\s+)?(imagen|figura|gr[áa]fico|icono|s[íi]mbolo|captura))"
-    + "|(seg[úu]n\\s+(la\\s+imagen|la\\s+figura|el\\s+gr[áa]fico\\s+adjunt|muestra\\s+la\\s+(imagen|figura)|se\\s+muestra\\s+en\\s+la\\s+(imagen|figura)))"
-    + "|(¿qu[ée]\\s+(significa|representa|indica)\\s+(este|el\\s+siguiente)\\s+(icono|s[íi]mbolo|pictograma|gr[áa]fico))"
-    + "|(\\y(icono|s[íi]mbolo|pictograma|gr[áa]fico|captura|divisa|distintivo|emblema)\\s+(mostrad\\w+|adjunt\\w+|que\\s+se\\s+muestra|siguiente|anterior|de\\s+la\\s+(imagen|figura|fotograf\\w+))\\y)"
-    + "|(\\y(restas|celda|celdas|f[óo]rmula|f[óo]rmulas|tabla|query|consulta|marca|base\\s+de\\s+datos|diagrama)\\w*\\s+\\w*\\s*(de|en)\\s+la\\s+imagen\\y)"
-    + "|(\\yde\\s+la\\s+imagen[,. ]+(indica|se[ñn]ale|cu[áa]l|obten|calcul))";
-  const VD_FP = "imagen corporal|imagen p[úu]blica|imagen de la administraci|imagen de las mujeres|de la imagen y|imagen y (el |del )?sonido|imagen y sonido|derecho a la propia imagen|reproducci[óo]n del sonido|de la imagen o|icono (muestra|con forma|que representa a)|s[íi]mbolo (¶|de p[áa]rrafo)|figura (jur[íi]dic|del? |profesional)";
+  // Patrones + guardas: NÚCLEO PURO COMPARTIDO en lib/health/visualDeixis.cjs (incluye la
+  // calibración de T-113: `esquema` no es sustantivo visual, y guarda de SQL autocontenido).
+  // El backend @Cron los replica inline y `content-sweep-parity` compara ambos POR VALOR.
   const vdRows = (await c.query(`
     SELECT id, question_text FROM questions
     WHERE is_active = true
       AND (image_url IS NULL OR image_url = '')
       AND (content_data IS NULL OR content_data::text IN ('{}','null',''))
       AND question_text ~* $1 AND question_text !~* $2
-    LIMIT 60`, [VD_STRONG, VD_FP])).rows;
+      AND (coalesce(question_text,'') || ' ' || coalesce(option_a,'') || ' ' ||
+           coalesce(option_b,'') || ' ' || coalesce(option_c,'') || ' ' ||
+           coalesce(option_d,'')) !~* $3
+    LIMIT 60`, [VD_STRONG, VD_FP, VD_SQL])).rows;
   if (vdRows.length) add('content', 'warn', null, 'visual_deixis_no_image',
     `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
     { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });

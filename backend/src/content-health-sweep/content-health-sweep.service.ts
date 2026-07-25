@@ -768,8 +768,18 @@ export class ContentHealthSweepService {
     // El enunciado apunta a un visual ("el siguiente icono", "observa la figura", "de la imagen…")
     // pero image_url es NULL y content_data va vacío → irresoluble en silencio. VD_FP frena FPs
     // ("imagen corporal/pública", "de la imagen y el sonido", "derecho a la propia imagen"…).
+    //
+    // ⚠️ MIRROR de `lib/health/visualDeixis.cjs` — este proyecto NestJS no puede importar el
+    // `lib/` del frontend (build separado), así que los patrones se replican INLINE y el
+    // guardarraíl `content-sweep-parity` los compara con el núcleo POR VALOR: si tocas uno,
+    // toca el otro o el test se pone rojo. Toda la calibración (por qué `esquema` no cuenta
+    // como visual, por qué la guarda de SQL mira también las opciones, y qué punto ciego se
+    // asume) está documentada UNA vez, en el núcleo. Misma convención que
+    // canonicalizeBoletinUrl / landingCompleteness.
+    const VD_NOUNS =
+      'icono|imagen|imágen|s[íi]mbolo|gr[áa]fico|figura|captura|pictograma|diagrama|se[ñn]al';
     const VD_STRONG =
-      '(\\y(el|la)\\s+siguiente\\s+(icono|imagen|imágen|s[íi]mbolo|gr[áa]fico|figura|captura|pictograma|esquema|diagrama|se[ñn]al)\\y)' +
+      `(\\y(el|la)\\s+siguiente\\s+(${VD_NOUNS})\\y)` +
       '|(en\\s+la\\s+imagen\\s+(anterior|superior|inferior|adjunt\\w+|siguiente|de\\s+arriba|de\\s+abajo))' +
       '|(\\yla\\s+imagen\\s+(muestra|adjunt\\w+|superior|inferior|siguiente|anterior)\\y)' +
       '|((observa|observe|obsérv\\w+|f[íi]jese\\s+en)\\s+(la|el)\\s+(siguiente\\s+)?(imagen|figura|gr[áa]fico|icono|s[íi]mbolo|captura))' +
@@ -779,13 +789,20 @@ export class ContentHealthSweepService {
       '|(\\y(restas|celda|celdas|f[óo]rmula|f[óo]rmulas|tabla|query|consulta|marca|base\\s+de\\s+datos|diagrama)\\w*\\s+\\w*\\s*(de|en)\\s+la\\s+imagen\\y)' +
       '|(\\yde\\s+la\\s+imagen[,. ]+(indica|se[ñn]ale|cu[áa]l|obten|calcul))';
     const VD_FP =
-      'imagen corporal|imagen p[úu]blica|imagen de la administraci|imagen de las mujeres|de la imagen y|imagen y (el |del )?sonido|imagen y sonido|derecho a la propia imagen|reproducci[óo]n del sonido|de la imagen o|icono (muestra|con forma|que representa a)|s[íi]mbolo (¶|de p[áa]rrafo)|figura (jur[íi]dic|del? |profesional)';
+      'imagen corporal|imagen p[úu]blica|imagen de la administraci|imagen de las mujeres|' +
+      'de la imagen y|imagen y (el |del )?sonido|imagen y sonido|derecho a la propia imagen|' +
+      'reproducci[óo]n del sonido|de la imagen o|icono (muestra|con forma|que representa a)|' +
+      's[íi]mbolo (¶|de p[áa]rrafo)|figura (jur[íi]dic|del? |profesional)';
+    const VD_SQL = '\\yselect\\y.*\\yfrom\\y';
     const vdRows = (await this.db.execute(sql`
       SELECT id, question_text FROM questions
       WHERE is_active = true
         AND (image_url IS NULL OR image_url = '')
         AND (content_data IS NULL OR content_data::text IN ('{}','null',''))
         AND question_text ~* ${VD_STRONG} AND question_text !~* ${VD_FP}
+        AND (coalesce(question_text,'') || ' ' || coalesce(option_a,'') || ' ' ||
+             coalesce(option_b,'') || ' ' || coalesce(option_c,'') || ' ' ||
+             coalesce(option_d,'')) !~* ${VD_SQL}
       LIMIT 60
     `)) as unknown as Array<{ id: string; question_text: string }>;
     if (vdRows.length)

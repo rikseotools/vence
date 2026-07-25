@@ -113,3 +113,60 @@ describe('mirror de landingCompleteness (backend ↔ lib)', () => {
     }
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MIRROR del detector `visual_deixis_no_image` (núcleo compartido ↔ backend @Cron).
+//
+// Reparto: los patrones y su calibración viven UNA vez en `lib/health/visualDeixis.cjs`.
+// `scripts/health-sweep.cjs` los REQUIERE (no puede divergir por construcción); el backend
+// NestJS no puede importarlos (build separado) y los replica INLINE. Este bloque compara
+// los literales del backend con los del núcleo POR VALOR — no por nombre de variable ni por
+// buscar texto en el fuente, que es lo que dejaría pasar un cambio real de patrón.
+//
+// Mismo contrato que los mirrors de canonicalizeBoletinUrl y landingCompleteness.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mirror del detector visual_deixis_no_image (núcleo ↔ backend @Cron)', () => {
+  const core = require('@/lib/health/visualDeixis.cjs')
+
+  /** Evalúa el valor REAL de un `const X = <expresión de strings>;` del fuente. */
+  function evalConst(src: string, name: string, scope: Record<string, string> = {}): string {
+    const m = src.match(new RegExp(`const ${name} =([\\s\\S]*?);\\n`))
+    if (!m) throw new Error(`no se encontró const ${name} en el fuente`)
+    const keys = Object.keys(scope)
+    // eslint-disable-next-line no-new-func
+    return new Function(...keys, `return (${m[1]})`)(...keys.map((k) => scope[k]))
+  }
+
+  const backendNouns = evalConst(BACKEND, 'VD_NOUNS')
+  const backendStrong = evalConst(BACKEND, 'VD_STRONG', { VD_NOUNS: backendNouns })
+  const backendFp = evalConst(BACKEND, 'VD_FP')
+  const backendSql = evalConst(BACKEND, 'VD_SQL')
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia)', () => {
+    expect(SCRIPT).toContain("require('../lib/health/visualDeixis.cjs')")
+    expect(SCRIPT).not.toMatch(/const VD_STRONG\s*=/)
+  })
+
+  it('la lista de sustantivos visuales del backend es IDÉNTICA a la del núcleo', () => {
+    expect(backendNouns).toBe(core.VISUAL_NOUNS.join('|'))
+  })
+
+  it('el patrón fuerte del backend es IDÉNTICO al del núcleo', () => {
+    expect(backendStrong).toBe(core.VD_STRONG)
+  })
+
+  it('las guardas (falsos positivos y SQL) del backend son IDÉNTICAS a las del núcleo', () => {
+    expect(backendFp).toBe(core.VD_FP)
+    expect(backendSql).toBe(core.VD_SQL)
+  })
+
+  it('la guarda de SQL se aplica también a las OPCIONES en ambos gemelos', () => {
+    // En 2 de los 3 casos reales la query vive en las opciones: si un gemelo solo mirase
+    // question_text, esas dos volverían a marcarse como falsos positivos.
+    for (const txt of [SCRIPT, BACKEND]) {
+      for (const col of ['option_a', 'option_b', 'option_c', 'option_d']) {
+        expect(txt).toContain(col)
+      }
+    }
+  })
+})
