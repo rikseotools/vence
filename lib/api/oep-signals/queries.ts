@@ -300,27 +300,41 @@ async function promoteSignalToConvocatoria(
       WHERE id = ${cur.id}`)
     result = 'updated'
   } else {
-    // Ciclo nuevo (o sin convocatoria vigente) → archivar la vigente (si la hay) + INSERT.
+    // Ciclo nuevo (o sin convocatoria vigente) → archivar la vigente (si la hay).
     if (cur) {
       await db.execute(sql`UPDATE convocatorias SET is_current = false, archived_at = now(), updated_at = now() WHERE id = ${cur.id}`)
     }
-    await db.execute(sql`
-      INSERT INTO convocatorias (oposicion_id, "año", is_current, plazas_libres, plazas_discapacidad,
-        plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso, sistema_selectivo)
-      VALUES (${oposicionId}, COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int), true,
-        ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite}, ${sis})
-      ON CONFLICT (oposicion_id, "año") DO UPDATE SET
-        is_current = true, archived_at = NULL,
-        sistema_selectivo        = COALESCE(EXCLUDED.sistema_selectivo,        convocatorias.sistema_selectivo),
-        plazas_libres            = COALESCE(EXCLUDED.plazas_libres,            convocatorias.plazas_libres),
-        plazas_discapacidad      = COALESCE(EXCLUDED.plazas_discapacidad,      convocatorias.plazas_discapacidad),
-        plazas_promocion_interna = COALESCE(EXCLUDED.plazas_promocion_interna, convocatorias.plazas_promocion_interna),
-        convocatoria_numero      = COALESCE(EXCLUDED.convocatoria_numero,      convocatorias.convocatoria_numero),
-        boe_publication_date     = COALESCE(EXCLUDED.boe_publication_date,     convocatorias.boe_publication_date),
-        inscription_deadline     = COALESCE(EXCLUDED.inscription_deadline,     convocatorias.inscription_deadline),
-        exam_date                = COALESCE(EXCLUDED.exam_date,                convocatorias.exam_date),
-        estado_proceso           = COALESCE(EXCLUDED.estado_proceso,           convocatorias.estado_proceso),
-        updated_at = now()`)
+    // La antigua UNIQUE(oposicion_id, año) se ELIMINÓ en 20260718 (multi-por-año, caso Madrid:
+    // dos convocatorias del mismo año). Por eso NO se puede `ON CONFLICT (oposicion_id, "año")`
+    // (no hay índice que lo satisfaga → el INSERT reventaba en runtime). Reanimamos un ciclo
+    // archivado de ese año si ya existe (idempotencia al re-aplicar la señal); si no, INSERT.
+    const existRows = (await db.execute<{ id: string }>(sql`
+      SELECT id FROM convocatorias
+      WHERE oposicion_id = ${oposicionId} AND "año" = COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int)
+      ORDER BY updated_at DESC LIMIT 1`)) as unknown
+    const exist = (Array.isArray(existRows) ? existRows : (existRows as { rows?: unknown[] }).rows || [])[0] as { id: string } | undefined
+    if (exist) {
+      await db.execute(sql`
+        UPDATE convocatorias SET
+          is_current = true, archived_at = NULL,
+          plazas_libres            = COALESCE(${pl},        plazas_libres),
+          plazas_discapacidad      = COALESCE(${pd},        plazas_discapacidad),
+          plazas_promocion_interna = COALESCE(${ppi},       plazas_promocion_interna),
+          convocatoria_numero      = COALESCE(${boc},       convocatoria_numero),
+          boe_publication_date     = COALESCE(${fpub}::date, boe_publication_date),
+          inscription_deadline     = COALESCE(${fins}::date, inscription_deadline),
+          exam_date                = COALESCE(${fex}::date,  exam_date),
+          estado_proceso           = COALESCE(${estToWrite}, estado_proceso),
+          sistema_selectivo        = COALESCE(${sis},        sistema_selectivo),
+          updated_at = now()
+        WHERE id = ${exist.id}`)
+    } else {
+      await db.execute(sql`
+        INSERT INTO convocatorias (oposicion_id, "año", is_current, plazas_libres, plazas_discapacidad,
+          plazas_promocion_interna, convocatoria_numero, boe_publication_date, inscription_deadline, exam_date, estado_proceso, sistema_selectivo)
+        VALUES (${oposicionId}, COALESCE(${yr}, EXTRACT(YEAR FROM CURRENT_DATE)::int), true,
+          ${pl}, ${pd}, ${ppi}, ${boc}, ${fpub}::date, ${fins}::date, ${fex}::date, ${estToWrite}, ${sis})`)
+    }
     result = cur ? 'new_cycle' : 'inserted'
   }
 
