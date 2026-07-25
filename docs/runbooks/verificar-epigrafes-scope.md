@@ -41,6 +41,8 @@ Motivo: el texto literal del usuario suele ser la punta del iceberg (p.ej. "no h
 
 **Provenance del Paso 1** (queda anotado en BD con su fecha): si aparece **convocatoria nueva** → los epígrafes pasan a `outdated_convocatoria` → re-clonar y revisar por si cambió; si **no hay nueva** → vale el de la convocatoria anterior (`provisional_anterior`).
 
+> 🆕 **Temario versionado por convocatoria (desde 25/07).** El temario ahora es una entidad versionada (`temario_versions`) que las convocatorias referencian — **el temario cuelga de una convocatoria, no de la oposición "en abstracto"**. Consecuencias para este runbook: (1) cada oposición activa tiene 1 `temario_version` `active`+default (Fase 1; los topics llevan `temario_version_id`); (2) al detectar una **convocatoria nueva** el sistema marca la oposición en la cola `temario_revision_pendiente` (frase *"revisa las revisiones de temario pendientes"*) → tocará repetir Paso 1 (clonar el epígrafe nuevo) + Paso 2 (re-verificar scope) contra su fuente, y aplicar los diffs al temario vivo (el temario suele ser estable pero SIEMPRE cambia algo); (3) fallback: OEP aprobada sin temario propio → se sirve el de la convocatoria anterior (vista `convocatoria_temario_efectivo`). Diseño completo: `docs/roadmap/temario-versionado-por-convocatoria.md`. **Caso raíz:** `auxiliar_administrativo_extremadura` (temario parafraseado que no casaba con el Anexo IV 2024; se realineó epígrafes verbatim + reparto de scope 25/07).
+
 > Gotcha: ~30% de los boletines GVA/DOGV no parsean en automático (SPA/PDF). Cuando `verify-epigrafe-literality dump` da `temario_parseado=0`, el hash SÍ se captura (drift futuro) pero la **clonación/confirmación se hace a mano** contra el DOGV oficial, tema a tema, antes del Paso 2.
 
 ## Modelo mental

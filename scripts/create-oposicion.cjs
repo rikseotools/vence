@@ -414,8 +414,20 @@ async function main() {
     if (cvIns.missing.length) throw new Error(`schema-drift convocatorias: ${cvIns.missing.join(', ')}`);
     await c.query(cvIns.text, cvIns.params);
 
-    // ── hitos (opcional) ──
+    // ── temario_version (Fase 1 de temario-versionado-por-convocatoria) ──
+    // El temario cuelga de una versión: 1 versión `active`+default por oposición. Sin esto los
+    // topics quedarían con temario_version_id NULL y romperían el invariante (guardarraíl
+    // __tests__/integration/temarioVersions). La convocatoria vigente apunta a esta versión.
+    // Ver docs/roadmap/temario-versionado-por-convocatoria.md.
     const cvId = (await c.query('select id from convocatorias where oposicion_id=$1 and is_current=true', [oid])).rows[0].id;
+    const tvId = (await c.query(
+      `insert into temario_versions (oposicion_id, label, estado, es_default, source_convocatoria_id)
+       values ($1, $2, 'active', true, $3) returning id`,
+      [oid, String(conv.año || 'base'), cvId])).rows[0].id;
+    await c.query('update topics set temario_version_id=$2 where position_type=$1 and temario_version_id is null', [PT, tvId]);
+    await c.query('update convocatorias set temario_version_id=$2 where id=$1', [cvId, tvId]);
+
+    // ── hitos (opcional) ──
     for (const h of (spec.hitos || [])) {
       const hIns = buildInsert('convocatoria_hitos', hCols, {
         oposicion_id: oid, convocatoria_id: cvId, fecha: h.fecha, titulo: h.titulo, descripcion: h.descripcion || null,
