@@ -45,6 +45,8 @@ Motivo: el texto literal del usuario suele ser la punta del iceberg (p.ej. "no h
 
 > Gotcha: ~30% de los boletines GVA/DOGV no parsean en automático (SPA/PDF). Cuando `verify-epigrafe-literality dump` da `temario_parseado=0`, el hash SÍ se captura (drift futuro) pero la **clonación/confirmación se hace a mano** contra el DOGV oficial, tema a tema, antes del Paso 2.
 
+> 🧩 **EL PROGRAMA PUEDE ESTAR REPARTIDO EN VARIOS DOCUMENTOS (base + comunicados) — apunte crítico.** La convocatoria publica un programa, pero luego salen **notas/comunicados que lo AFINAN**: por dudas, por versiones de software, por añadir una 2ª parte, etc. El `programa_url` es UN solo campo → NO basta mirar ese PDF. **Verifica cada tema contra su documento fuente REAL** (base o comunicado) y enlaza `source_documento_id` por-tema (el modelo lo soporta: distintos temas pueden apuntar a distintos documentos). Los comunicados **ya están clonados en el hub** (`convocatoria_documentos`, `tipo='nota'`, 6.403 a 25/07) con su URL+texto → **léelos del hub, cero re-descarga**. **Los feedbacks suelen señalar estos casos** (un usuario avisa "en la 2ª parte entra X según el BOE"). **Caso raíz CARM (25/07):** el programa base 2016 (BORM, 16 temas) NO tenía ofimática; casi jubilo 5 temas — pero el BORM 2025 (disp. 5341) + notas afinaban con un Anexo de PowerPoint/Excel/Firma/Word/Outlook, y un feedback lo señalaba. T1-16 se verificaron contra el base 2016, T17-21 contra el comunicado 2025. **NUNCA concluir "temario de más" sin mirar los comunicados del hub + los feedbacks.**
+
 ## Modelo mental
 
 - Estado por tema en `topic_scope_verification`: `never_verified` → `verifying` → `verified_correct` | `verified_issues` → (`stale` si cambia el scope/epígrafe).
