@@ -766,6 +766,31 @@ async function main() {
       { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) });
   }
 
+  // ── CONTENIDO: scope SIN VERIFICAR contra el epígrafe (cierra el punto ciego) ──
+  // Un topic_scope nunca auditado (o `stale`) contra el epígrafe oficial es un HUECO:
+  // puede servir preguntas fuera de programa sin que salte nada (caso Auxiliar
+  // Extremadura, 25/07). Antes solo se cazaba on-demand (audit:epigrafe / verify:scope);
+  // ahora el panel lo marca. Agregado por OPOSICIÓN (no por tema) para no inundar.
+  // Mirror INLINE de backend/src/content-health-sweep/content-health-sweep.service.ts
+  // (scope_sin_verificar) — MANTENER EN SYNC (guardarraíl: content-sweep-parity).
+  const svRows = (await c.query(`
+    SELECT o.slug,
+      count(t.id)::int AS temas,
+      count(t.id) FILTER (WHERE v.state IN ('verified_correct','verified_issues'))::int AS verificados,
+      count(t.id) FILTER (WHERE v.state IS NULL OR v.state NOT IN ('verified_correct','verified_issues'))::int AS sin_auditar
+    FROM oposiciones o
+    JOIN topics t ON t.position_type = replace(o.slug, '-', '_') AND t.is_active = true
+    LEFT JOIN topic_scope_verification v ON v.topic_id = t.id
+    WHERE o.is_active = true
+    GROUP BY o.slug
+    HAVING count(t.id) FILTER (WHERE v.state IS NULL OR v.state NOT IN ('verified_correct','verified_issues')) > 0
+    ORDER BY sin_auditar DESC`)).rows;
+  for (const r of svRows) {
+    add('content', 'warn', r.slug, 'scope_sin_verificar',
+      `${r.slug}: ${r.sin_auditar}/${r.temas} tema(s) con scope SIN auditar (o stale) contra el epígrafe oficial — el temario podría servir preguntas fuera de programa sin avisar. Verifica con verify:scope.`,
+      { temas: r.temas, verificados: r.verificados, sin_auditar: r.sin_auditar });
+  }
+
   // ── CONTENIDO: preguntas con DEIXIS VISUAL pero SIN imagen almacenada ──
   // El enunciado apunta a un icono/símbolo/imagen que DEBE mostrarse ("el siguiente
   // icono", "el siguiente símbolo", "observa la siguiente figura", "las restas de la
