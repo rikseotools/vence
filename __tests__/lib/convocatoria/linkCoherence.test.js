@@ -64,3 +64,82 @@ describe('checkConvocatoriaLinks — GUARDARRAÍL enlace ≠ referencia', () => 
     expect(checkConvocatoriaLinks({})).toEqual([])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GUARDARRAÍL etiqueta ↔ enlace (incidente 25/07: "Ver convocatoria en BOJA" → boe.es)
+// ─────────────────────────────────────────────────────────────────────────────
+const { normalizarEtiquetaBoletin } = require('@/lib/convocatoria/linkCoherence.cjs')
+
+describe('normalizarEtiquetaBoletin', () => {
+  it('normaliza códigos simples', () => {
+    expect(normalizarEtiquetaBoletin('boe')).toBe('BOE')
+    expect(normalizarEtiquetaBoletin(' BOJA ')).toBe('BOJA')
+    expect(normalizarEtiquetaBoletin('B.O.E.')).toBe('BOE')
+  })
+  it('devuelve null para etiquetas compuestas de la cola larga (no comparables)', () => {
+    expect(normalizarEtiquetaBoletin('BOP Córdoba')).toBeNull()
+    expect(normalizarEtiquetaBoletin('Sede electrónica')).toBeNull()
+    expect(normalizarEtiquetaBoletin('')).toBeNull()
+    expect(normalizarEtiquetaBoletin(null)).toBeNull()
+  })
+})
+
+describe('checkConvocatoriaLinks — etiqueta del botón vs boletín del enlace', () => {
+  it('CAZA el incidente real: etiqueta BOJA con enlace al BOE', () => {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: 'BOJA',
+      boeReference: 'BOE-A-2026-14723',
+      programaUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-14723',
+    })
+    const it2 = issues.find((i) => i.tipo === 'etiqueta_boletin_mismatch')
+    expect(it2).toBeTruthy()
+    expect(it2.severidad).toBe('error')
+    expect(it2.detalle).toMatch(/BOJA/)
+    expect(it2.detalle).toMatch(/BOE/)
+  })
+
+  it('no dispara cuando etiqueta y enlace coinciden (BOE)', () => {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: 'BOE',
+      programaUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-14723',
+    })
+    expect(issues.filter((i) => i.tipo === 'etiqueta_boletin_mismatch')).toEqual([])
+  })
+
+  it('no dispara cuando etiqueta y enlace coinciden (BOJA real)', () => {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: 'BOJA',
+      programaUrl: 'https://www.juntadeandalucia.es/boja/2026/132/27',
+    })
+    expect(issues.filter((i) => i.tipo === 'etiqueta_boletin_mismatch')).toEqual([])
+  })
+
+  it('DEFENSIVO: dominio de la cola larga (no reconocido) NO inventa hallazgo', () => {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: 'BOE',
+      programaUrl: 'https://www.dipucordoba.es/bop/anuncio-1234',
+    })
+    expect(issues.filter((i) => i.tipo === 'etiqueta_boletin_mismatch')).toEqual([])
+  })
+
+  it('DEFENSIVO: etiqueta compuesta (BOP Córdoba) no se compara', () => {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: 'BOP Córdoba',
+      programaUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-15802',
+    })
+    expect(issues.filter((i) => i.tipo === 'etiqueta_boletin_mismatch')).toEqual([])
+  })
+
+  it('sin enlace o sin etiqueta no hay hallazgo', () => {
+    expect(checkConvocatoriaLinks({ diarioOficial: 'BOE' })).toEqual([])
+    expect(checkConvocatoriaLinks({ programaUrl: 'https://www.boe.es/x?id=BOE-A-2026-1' })).toEqual([])
+  })
+
+  it('caza también el cruce DOGV↔BOE (regresión de otro boletín del registro)', () => {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: 'DOGV',
+      programaUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-1',
+    })
+    expect(issues.some((i) => i.tipo === 'etiqueta_boletin_mismatch')).toBe(true)
+  })
+})

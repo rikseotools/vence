@@ -60,6 +60,16 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run test:integration
 
+      # GATE de coherencia de landings (CAPA 2 determinista, sin red ni IA).
+      # Falla (exit 1) si alguna landing PUBLICADA está incompleta, si el botón oficial
+      # promete un boletín y lleva a otro, o si una tarjeta/temas_count no cuadra con la BD.
+      # Nace del 25/07: una landing llevaba SEMANAS publicada a medias y solo se vio al ir
+      # a mandarle una newsletter. Núcleos puros con tests: lib/convocatoria/{landingCompleteness,linkCoherence}.cjs
+      - name: Gate — coherencia de landings publicadas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
+        run: npm run audit:coherencia:gate
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

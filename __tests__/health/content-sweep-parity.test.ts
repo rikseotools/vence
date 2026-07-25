@@ -63,3 +63,53 @@ describe('content-health-sweep — paridad script ↔ backend @Cron', () => {
     expect(backendKinds).toEqual(scriptKinds)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTEGRIDAD DE LOS MIRRORS: el backend NestJS no puede importar `lib/` del frontend,
+// así que replica núcleos puros INLINE. Un mirror que se desincroniza es peor que no
+// tenerlo (el @Cron nocturno —el writer real— vería otra cosa que el CLI y el audit).
+// Estos tests comparan las TABLAS de datos de ambos lados, no su prosa.
+// ─────────────────────────────────────────────────────────────────────────────
+const { PATTERNS } = require('@/lib/convocatoria/canonicalizeBoletinUrl.cjs')
+
+describe('mirror del registro de boletines (backend ↔ lib)', () => {
+  const backendBoletines = [...BACKEND.matchAll(/\{\s*boletin:\s*'([A-Z]+)',\s*re:/g)].map((m) => m[1]).sort()
+  const libBoletines = PATTERNS.map((p: { boletin: string }) => p.boletin).sort()
+
+  it('el backend conoce EXACTAMENTE los mismos boletines que el registro compartido', () => {
+    expect(backendBoletines).toEqual(libBoletines)
+  })
+
+  it('el registro no está vacío (sanity de la extracción por regex)', () => {
+    expect(libBoletines.length).toBeGreaterThanOrEqual(5)
+  })
+})
+
+describe('mirror de landingCompleteness (backend ↔ lib)', () => {
+  const { MIN_FAQS } = require('@/lib/convocatoria/landingCompleteness.cjs')
+
+  it('el umbral de FAQs del backend coincide con el del núcleo puro', () => {
+    const m = BACKEND.match(/const MIN_FAQS = (\d+);/)
+    expect(m).toBeTruthy()
+    expect(Number(m![1])).toBe(MIN_FAQS)
+  })
+
+  it('el backend evalúa las mismas piezas que el núcleo puro', () => {
+    const { PIEZAS } = require('@/lib/convocatoria/landingCompleteness.cjs')
+    // Cada pieza tiene que aparecer nombrada en el mensaje o en el campo que comprueba.
+    const CAMPO_POR_PIEZA: Record<string, string> = {
+      tarjetas_hero: 'landing_estadisticas',
+      faqs: 'landing_faqs',
+      descripcion: 'landing_description',
+      seo_title: 'seo_title',
+      seo_description: 'seo_description',
+      titulo_requerido: 'titulo_requerido',
+      examen_config: 'examen_config',
+    }
+    for (const p of PIEZAS as Array<{ id: string }>) {
+      const campo = CAMPO_POR_PIEZA[p.id]
+      expect(campo).toBeDefined()
+      expect(BACKEND).toContain(campo)
+    }
+  })
+})

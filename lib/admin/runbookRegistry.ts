@@ -93,6 +93,18 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'compara el ID del BOE que MUESTRA la convocatoria (boe_reference) con el del ENLACE (programa_url): si difieren, el usuario pincha "Ver en BOE" y aterriza en OTRO documento (medido 25/07: 5 vigentes mostraban la OEP 2026 y enlazaban a la convocatoria de 2025). Verifica contra el boletín cuál es el correcto y alinea referencia y enlace (normalmente el enlace se quedó en el ciclo anterior). NUNCA repuntar sin confirmar contra fuente oficial.',
   },
+  convocatoria_etiqueta_boletin: {
+    title: 'El botón oficial promete un boletín y lleva a otro (etiqueta ≠ enlace)',
+    triggerPhrase: 'revisa los enlaces de convocatoria',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'la tarjeta oficial de la landing compone el texto con `diario_oficial` ("Ver convocatoria en BOJA") y el enlace con `programa_url`: si la etiqueta nombra un boletín y la URL es de otro, el botón miente. Punto ciego de convocatoria_link_mismatch, que compara referencia vs enlace y da limpio cuando ambos son el MISMO documento (caso raíz 25/07: UAL con diario_oficial=BOJA y programa_url a boe.es). Decide cuál es el bueno contra la fuente oficial —normalmente manda el documento enlazado— y alinea la etiqueta; si el plazo cuenta desde OTRO boletín, eso va en `diario_referencia` y en la FAQ del plazo, no en la etiqueta. NUNCA cambiar el enlace sin confirmar el documento.',
+  },
+  landing_incompleta: {
+    title: 'Landing publicada a medio hacer (hero sin tarjetas, sin FAQs, sin SEO)',
+    triggerPhrase: 'revisa las landings incompletas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'oposición ACTIVA cuya landing está servida a medias: `error` = el opositor la ve vacía (hero sin tarjetas o menos de 3 FAQs); `warn` = se ve bien pero pierde SEO/contexto (sin seo_title/description, sin titulo_requerido, sin examen_config). Caso raíz 25/07: Aux. Admin. UAL llevaba semanas publicada así y solo se detectó al ir a mandarle una newsletter a 1.334 personas. Completa los campos con datos VERIFICADOS contra el boletín oficial (plazas por turnos, titulación, plazo, estructura del examen), escribe en `oposiciones` Y en la convocatoria vigente (dual-write; la landing lee la SSOT) y revalida la caché — ojo: `purge-cache` es per-instancia, hay que repetirlo. NUNCA rellenar FAQs ni cifras a ojo.',
+  },
   convocatoria_oep_sin_enlace: {
     title: 'Convocatoria con OEP en texto sin enlazar a la entidad (histórico con año de convocatoria)',
     triggerPhrase: 'revisa el histórico de convocatorias',

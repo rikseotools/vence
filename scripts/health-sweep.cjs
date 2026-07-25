@@ -32,6 +32,7 @@ const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
+const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -341,18 +342,50 @@ async function main() {
   // 5 convocatorias vigentes con el enlace descuadrado (feedback Manuel: "fallos imperdonables").
   // Punto ciego: el detector de seguimiento mira la URL de seguimiento, no la del BOE de la
   // propia convocatoria. Núcleo puro lib/convocatoria/linkCoherence.cjs (con tests).
+  // Se lee de `oposiciones_ssot` (lo que VE el opositor), no de la fila legacy: la landing
+  // compone la tarjeta oficial con `diario_oficial` (etiqueta) + `programa_url` (enlace) +
+  // `boe_reference` (referencia) resueltos por la vista.
   const linkRows = (await c.query(`
-    SELECT o.slug, c.boe_reference AS ref, c.programa_url AS url
-    FROM oposiciones o
-    JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
-    WHERE o.is_active`)).rows;
+    SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta
+    FROM oposiciones_ssot
+    WHERE is_active`)).rows;
   for (const r of linkRows) {
-    const issues = checkConvocatoriaLinks({ boeReference: r.ref, programaUrl: r.url });
+    const issues = checkConvocatoriaLinks({ boeReference: r.ref, programaUrl: r.url, diarioOficial: r.etiqueta });
     for (const it of issues) {
-      if (it.tipo !== 'ref_url_mismatch') continue; // el año de seguimiento ya lo cubre seguimiento_url_stale
-      add('content', it.severidad, r.slug, 'convocatoria_link_mismatch',
-        `${r.slug}: el enlace "Ver en BOE" no corresponde a la referencia mostrada — ${it.detalle}`, it.detalle);
+      if (it.tipo === 'ref_url_mismatch') {
+        add('content', it.severidad, r.slug, 'convocatoria_link_mismatch',
+          `${r.slug}: el enlace "Ver en BOE" no corresponde a la referencia mostrada — ${it.detalle}`, it.detalle);
+      } else if (it.tipo === 'etiqueta_boletin_mismatch') {
+        // Punto ciego del anterior: ahí referencia y enlace SÍ casan; lo que miente es la
+        // ETIQUETA del botón ("Ver convocatoria en BOJA" llevando a boe.es). Incidente 25/07.
+        add('content', it.severidad, r.slug, 'convocatoria_etiqueta_boletin',
+          `${r.slug}: el botón oficial promete un boletín y lleva a otro — ${it.detalle}`, it.detalle);
+      }
+      // el año de seguimiento ya lo cubre seguimiento_url_stale
     }
+  }
+
+  // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
+  // Una oposición activa puede llevar semanas servida con el hero sin tarjetas, sin FAQs y sin
+  // SEO sin que nadie se entere: `audit:oposicion` lo canta, pero es on-demand y solo se corre
+  // al crearla. Caso raíz 25/07: Aux. Admin. UAL, descubierto al ir a mandarle una newsletter a
+  // 1.334 personas. Núcleo puro lib/convocatoria/landingCompleteness.cjs (con tests).
+  const landRows = (await c.query(`
+    SELECT slug, landing_estadisticas, landing_faqs, landing_description,
+           seo_title, seo_description, titulo_requerido, examen_config
+    FROM oposiciones_ssot WHERE is_active`)).rows;
+  for (const r of landRows) {
+    const cl = classifyLandingCompleteness({
+      isActive: true,
+      landingEstadisticas: r.landing_estadisticas, landingFaqs: r.landing_faqs,
+      landingDescription: r.landing_description, seoTitle: r.seo_title,
+      seoDescription: r.seo_description, tituloRequerido: r.titulo_requerido,
+      examenConfig: r.examen_config,
+    });
+    if (!cl.severidad) continue;
+    add('content', cl.severidad, r.slug, 'landing_incompleta',
+      `${r.slug}: landing publicada ${cl.nivel === 'incompleta' ? 'INCOMPLETA' : 'mejorable'} — falta ${cl.faltan.join(', ')}`,
+      cl.ids.join(','));
   }
 
   // ── Convocatorias con OEP en texto pero SIN enlazar a la entidad `oep` (T-108) ──

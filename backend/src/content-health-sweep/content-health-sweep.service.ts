@@ -299,6 +299,36 @@ function extraerIdBoeInline(texto: string | null | undefined): string | null {
   return m ? m[0] : null;
 }
 
+// Mirror INLINE del registro de boletines de lib/convocatoria/canonicalizeBoletinUrl.cjs
+// (PATTERNS) — MANTENER EN SYNC. Solo los patrones de los que estamos SEGUROS: si la URL no
+// se reconoce se devuelve null y NO se emite hallazgo (la cola larga de BOP provinciales y
+// sedes electrónicas es legítima). Añadir un boletín = una fila aquí y otra en PATTERNS.
+const BOLETIN_URL_PATTERNS: Array<{ boletin: string; re: RegExp }> = [
+  { boletin: 'BOE', re: /\bBOE-[ABS]-\d{4}-\d+\b/i },
+  { boletin: 'BOCM', re: /\bBOCM-\d{8}-\d+\b/i },
+  { boletin: 'DOGV', re: /dogv\.gva\.es\/datos\/\d{4}\/\d{2}\/\d{2}\/pdf\/\d{4}_\d+/i },
+  { boletin: 'BOCYL', re: /BOCYL-[A-Z]-\d{8}-\d+-\d+/i },
+  { boletin: 'DOGC', re: /portaldogc\.gencat\.cat.*?documentId=\d+/i },
+  { boletin: 'BOC', re: /gobiernodecanarias\.org\/boc\/\d{4}\/\d+\/\d+/i },
+  { boletin: 'BOJA', re: /juntadeandalucia\.es\/boja\/\d{4}\/\d+\/\d+/i },
+  { boletin: 'DOG', re: /xunta\.gal\/dog\/Publicados\/\d{4}\/\d{8}\/Anuncio[A-Z0-9-]+/i },
+  { boletin: 'MIA', re: /(?:mia\.aragon\.es\/documentos\?csv=|carp-core-mia\.aragon\.es\/rest\/documentos\/)[A-Z0-9]{10,}/i },
+];
+
+function boletinDeUrlInline(url: string | null | undefined): string | null {
+  if (!url) return null;
+  for (const p of BOLETIN_URL_PATTERNS) if (p.re.test(String(url))) return p.boletin;
+  return null;
+}
+
+// Etiqueta comparable: códigos simples ("BOE", "b.o.e."). Las compuestas de la cola larga
+// ("BOP Córdoba", "Sede electrónica") devuelven null → no se comparan.
+function normalizarEtiquetaBoletinInline(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const limpio = String(raw).trim().toUpperCase().replace(/\./g, '');
+  return /^[A-Z]{3,5}$/.test(limpio) ? limpio : null;
+}
+
 // Mirror INLINE de lib/convocatoria/seguimientoUrlSalud.cjs — MANTENER EN SYNC.
 // seguimiento_url que vigila un ciclo ya cerrado (falso negativo silencioso). Graduado:
 // solo la señal LIMPIA (doc de boletín de año viejo) es error; el resto warn (cola de revisión).
@@ -1196,12 +1226,13 @@ export class ContentHealthSweepService {
     }
 
     // ── Enlace "Ver en BOE" que NO corresponde a la referencia mostrada (convocatoria_link_mismatch) ──
+    // Se lee de `oposiciones_ssot` (lo que VE el opositor): la landing compone la tarjeta
+    // oficial con `diario_oficial` (etiqueta) + `programa_url` (enlace) + `boe_reference`.
     const linkRows = (await this.db.execute(sql`
-      SELECT o.slug, c.boe_reference AS ref, c.programa_url AS url
-      FROM oposiciones o
-      JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
-      WHERE o.is_active
-    `)) as unknown as Array<{ slug: string; ref: string | null; url: string | null }>;
+      SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta
+      FROM oposiciones_ssot
+      WHERE is_active
+    `)) as unknown as Array<{ slug: string; ref: string | null; url: string | null; etiqueta: string | null }>;
     for (const r of linkRows) {
       const idRef = extraerIdBoeInline(r.ref);
       const idUrl = extraerIdBoeInline(r.url);
@@ -1214,6 +1245,72 @@ export class ContentHealthSweepService {
           `${r.slug}: el enlace "Ver en BOE" no corresponde a la referencia mostrada — muestra ${idRef} pero el enlace va a ${idUrl}`,
         );
       }
+      // ── La ETIQUETA del botón promete un boletín y el enlace lleva a otro ──
+      // Punto ciego del check de arriba: ahí referencia y enlace SÍ casan (mismo BOE); lo que
+      // miente es el texto. Incidente 25/07: "Ver convocatoria en BOJA" enlazando a boe.es.
+      // Espejo de lib/convocatoria/linkCoherence.cjs (`etiqueta_boletin_mismatch`), que es la
+      // FUENTE DE VERDAD y tiene los tests; aquí va nativo porque el backend NestJS no puede
+      // importar el `lib/` del frontend. MANTENER EN SYNC.
+      const etiqueta = normalizarEtiquetaBoletinInline(r.etiqueta);
+      const boletinUrl = boletinDeUrlInline(r.url);
+      if (etiqueta && boletinUrl && boletinUrl !== etiqueta) {
+        add(
+          'content',
+          'error',
+          r.slug,
+          'convocatoria_etiqueta_boletin',
+          `${r.slug}: el botón oficial promete un boletín y lleva a otro — la etiqueta dice "${etiqueta}" pero el enlace apunta al ${boletinUrl}`,
+        );
+      }
+    }
+
+    // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
+    // Caso raíz 25/07: Aux. Admin. UAL llevaba semanas activa con el hero sin tarjetas, 0 FAQs,
+    // sin descripción y sin SEO. `audit:oposicion` lo cantaba, pero es on-demand. Espejo de
+    // lib/convocatoria/landingCompleteness.cjs (fuente de verdad + tests). MANTENER EN SYNC.
+    const landRows = (await this.db.execute(sql`
+      SELECT slug, landing_estadisticas, landing_faqs, landing_description,
+             seo_title, seo_description, titulo_requerido, examen_config
+      FROM oposiciones_ssot WHERE is_active
+    `)) as unknown as Array<{
+      slug: string;
+      landing_estadisticas: unknown;
+      landing_faqs: unknown;
+      landing_description: string | null;
+      seo_title: string | null;
+      seo_description: string | null;
+      titulo_requerido: string | null;
+      examen_config: unknown;
+    }>;
+    const MIN_FAQS = 3;
+    const vacioTxt = (v: string | null) => v == null || String(v).trim() === '';
+    const arrOk = (v: unknown, min: number) => Array.isArray(v) && v.length >= min;
+    const objOk = (v: unknown) =>
+      v != null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length > 0;
+    for (const r of landRows) {
+      const faltan: string[] = [];
+      let hayError = false;
+      if (!arrOk(r.landing_estadisticas, 1)) {
+        faltan.push('tarjetas del hero (landing_estadisticas)');
+        hayError = true;
+      }
+      if (!arrOk(r.landing_faqs, MIN_FAQS)) {
+        faltan.push(`FAQs (mínimo ${MIN_FAQS})`);
+        hayError = true;
+      }
+      if (vacioTxt(r.landing_description)) faltan.push('landing_description');
+      if (vacioTxt(r.seo_title)) faltan.push('seo_title');
+      if (vacioTxt(r.seo_description)) faltan.push('seo_description');
+      if (vacioTxt(r.titulo_requerido)) faltan.push('titulo_requerido');
+      if (!objOk(r.examen_config)) faltan.push('examen_config');
+      if (faltan.length === 0) continue;
+      add(
+        'content',
+        hayError ? 'error' : 'warn',
+        r.slug,
+        'landing_incompleta',
+        `${r.slug}: landing publicada ${hayError ? 'INCOMPLETA' : 'mejorable'} — falta ${faltan.join(', ')}`,
+      );
     }
 
     // ── Convocatorias con OEP en texto pero SIN enlazar a la entidad oep (convocatoria_oep_sin_enlace) ──

@@ -44,6 +44,8 @@
 const postgres = require('postgres');
 require('dotenv').config({ path: '.env.local' });
 const { dualWriteDivergences } = require('./lib/dual-write-divergence.cjs');
+const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
+const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 
 const DB_URL = process.env.DATABASE_URL;
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2); }
@@ -138,6 +140,32 @@ async function main() {
     if (nFaqs < 3) warn(`landing_faqs=${nFaqs} (recomendado ≥3 para SEO/FAQPage)`);
     const nEst = Array.isArray(o.landing_estadisticas) ? o.landing_estadisticas.length : 0;
     if (nEst === 0) warn('landing_estadisticas vacío (sin tarjetas hero)');
+
+    // ── Los MISMOS núcleos puros que usa el sweep nocturno (kinds `landing_incompleta` y
+    //    `convocatoria_etiqueta_boletin`). Se leen de la SSOT, que es lo que ve el opositor:
+    //    auditar la fila legacy sería auditar una copia que nadie mira. Que audit y sweep
+    //    compartan núcleo es lo que impide que digan cosas distintas.
+    const ssot = (await sql`SELECT is_active, landing_estadisticas, landing_faqs, landing_description,
+        seo_title, seo_description, titulo_requerido, examen_config, diario_oficial, programa_url, boe_reference
+      FROM oposiciones_ssot WHERE slug = ${o.slug} LIMIT 1`)[0];
+    if (ssot) {
+      const cl = classifyLandingCompleteness({
+        isActive: ssot.is_active !== false,
+        landingEstadisticas: ssot.landing_estadisticas, landingFaqs: ssot.landing_faqs,
+        landingDescription: ssot.landing_description, seoTitle: ssot.seo_title,
+        seoDescription: ssot.seo_description, tituloRequerido: ssot.titulo_requerido,
+        examenConfig: ssot.examen_config,
+      });
+      if (cl.severidad === 'error') bad(`landing publicada INCOMPLETA — falta ${cl.faltan.join(', ')}`);
+      else if (cl.severidad === 'warn') warn(`landing mejorable — falta ${cl.faltan.join(', ')}`);
+
+      for (const it of checkConvocatoriaLinks({
+        diarioOficial: ssot.diario_oficial, programaUrl: ssot.programa_url, boeReference: ssot.boe_reference,
+      })) {
+        if (it.tipo === 'etiqueta_boletin_mismatch') bad(`botón oficial incoherente — ${it.detalle}`);
+        else if (it.tipo === 'ref_url_mismatch') bad(`enlace ≠ referencia mostrada — ${it.detalle}`);
+      }
+    }
 
     if (local.length) { console.log(`${o.slug}`); local.forEach(l => console.log(l)); console.log(''); }
     else console.log(`✅ ${o.slug} — coherente`);
