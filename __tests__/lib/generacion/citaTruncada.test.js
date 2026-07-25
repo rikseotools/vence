@@ -70,3 +70,35 @@ describe('analizarCita — detección de cita truncada', () => {
     expect(analizarCita(articulo, cita).estado).toBe('NO_LITERAL')
   })
 })
+
+// --- Truncamiento por la CABEZA (25/07/2026) ---
+// La cláusula condicionante va DELANTE de la cita, intercalada entre comas.
+// El corte de cola no lo veía: la cita era subcadena literal y terminaba en punto.
+
+describe('analizarCita — truncamiento por la cabeza', () => {
+  const ART_63_3 =
+    'En los casos de ejecución forzosa en que se hubieran acumulado varias deudas tributarias del mismo obligado tributario y no pudieran extinguirse totalmente, la Administración tributaria, salvo lo dispuesto en el apartado siguiente, aplicará el pago a la deuda más antigua. Su antigüedad se determinará de acuerdo con la fecha en que cada una fue exigible.'
+
+  it('marca la cita que arranca justo después de un "salvo" intercalado (art. 63.3 LGT)', () => {
+    const cita = 'Aplicará el pago a la deuda más antigua. Su antigüedad se determinará de acuerdo con la fecha en que cada una fue exigible.'
+    const r = analizarCita(ART_63_3, cita)
+    expect(r.estado).toBe('TRUNCADA')
+    expect(r.lado).toBe('cabeza')
+    expect(r.cola).toMatch(/salvo lo dispuesto en el apartado siguiente/)
+  })
+
+  it('NO marca si la cita incorpora el inciso condicionante', () => {
+    const cita = 'la Administración tributaria, salvo lo dispuesto en el apartado siguiente, aplicará el pago a la deuda más antigua'
+    expect(analizarCita(ART_63_3, cita).estado).toBe('OK')
+  })
+
+  it('NO marca una cita que empieza en mitad de frase sin inciso condicionante delante', () => {
+    const art = 'El obligado al pago de varias deudas podrá imputar cada pago a la deuda que libremente determine.'
+    expect(analizarCita(art, 'podrá imputar cada pago a la deuda que libremente determine').estado).toBe('OK')
+  })
+
+  it('NO marca cuando lo que precede es una enumeración con comas, no un inciso "salvo"', () => {
+    const art = 'Las deudas tributarias podrán extinguirse por pago, prescripción, compensación o condonación, por los medios previstos en la normativa aduanera.'
+    expect(analizarCita(art, 'por los medios previstos en la normativa aduanera').estado).toBe('OK')
+  })
+})

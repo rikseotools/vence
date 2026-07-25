@@ -80,7 +80,7 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
       // Cita truncada — solo tiene sentido sobre citas contiguas.
       const cita = analizarCita(q.content, correcta)
       if (cita.estado === 'TRUNCADA') {
-        errs.push(`CITA TRUNCADA: el artículo continúa con "${cita.cola}…" — la cita omite una cláusula que la condiciona`)
+        errs.push(`CITA TRUNCADA (${cita.lado}): ${cita.lado === 'cabeza' ? `el artículo antepone "${cita.cola}"` : `el artículo continúa con "${cita.cola}…"`} — la cita omite una cláusula que la condiciona`)
       }
       if (lit.estado === 'ENUMERACION') {
         warn++
