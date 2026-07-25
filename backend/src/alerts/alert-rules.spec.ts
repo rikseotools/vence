@@ -19,6 +19,7 @@ import {
   RULE_STRIPE_WEBHOOK_4XX_BURST,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
   RULE_DISPUTE_EMAIL_DROP,
+  RULE_EMAIL_SEND_FAILED,
   RULE_CANARY_AUTH_FAILED,
   RULE_CANARY_WEBHOOK_FAILED,
   RULE_CANARY_ANSWER_SAVE_FAILED,
@@ -484,6 +485,16 @@ describe('ALERT_RULES — registro completo', () => {
     const names = ALERT_RULES.map((r) => r.name);
     expect(names).toContain('subscription_drift_missing_in_db');
   });
+
+  // Guardarraíl del cableado (26/07): una regla escrita pero NO registrada no la
+  // ejecuta nadie — el cron solo recorre ALERT_RULES. Es el modo de fallo más
+  // silencioso posible en este subsistema: el fichero "tiene" la alerta y en
+  // producción no existe.
+  it('las 2 reglas de email SILENCIOSO están registradas (no basta con declararlas)', () => {
+    const names = ALERT_RULES.map((r) => r.name);
+    expect(names).toContain('dispute_email_drop'); // nunca se intentó
+    expect(names).toContain('email_send_failed'); // intentado y rechazado
+  });
 });
 
 describe('RULE_SUBSCRIPTION_VOID_FAILED', () => {
@@ -721,6 +732,83 @@ describe('RULE_DISPUTE_EMAIL_DROP (Gap 17 — impugnación resuelta sin email)',
 
   it('severity=error — el usuario cree que le ignoramos', () => {
     expect(RULE_DISPUTE_EMAIL_DROP.severity).toBe('error');
+  });
+});
+
+describe('RULE_EMAIL_SEND_FAILED (cabo de T-116 — intentado y RECHAZADO por el proveedor)', () => {
+  // Fixture con el error REAL de producción: es el que estuvo 2 meses saliendo
+  // sin que nadie lo viera (8 ocurrencias, 04/06 → 25/07, caso Sara 6da2513e).
+  const ERROR_REAL =
+    'This idempotency key has been used with this HTTP method and endpoint within ' +
+    "the last 24 hours, but the request body was modified and doesn't match the " +
+    'original request.';
+  const fila = (over = {}) => ({
+    n: 1,
+    emailType: 'impugnacion_respuesta',
+    lastError: ERROR_REAL,
+    lastTo: 'usuaria@example.com',
+    ...over,
+  });
+
+  it('dispara con UNA sola ocurrencia (calibrado: 9 failed vs 13.375 sent en 90d)', () => {
+    expect(RULE_EMAIL_SEND_FAILED.shouldFire([fila()])).toBe(true);
+    expect(RULE_EMAIL_SEND_FAILED.shouldFire([fila({ n: 2 })])).toBe(true);
+  });
+
+  it('NO dispara sin fallos ni sin filas (la ventana vacía es lo normal)', () => {
+    expect(RULE_EMAIL_SEND_FAILED.shouldFire([fila({ n: 0 })])).toBe(false);
+    expect(RULE_EMAIL_SEND_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('la notificación dice QUÉ tipo de email y a quién, no solo un número', () => {
+    const n = RULE_EMAIL_SEND_FAILED.buildNotification([fila()]);
+    expect(n.title).toContain('impugnacion_respuesta');
+    expect(n.body).toContain('usuaria@example.com');
+    expect(n.body).toContain(ERROR_REAL.slice(0, 40));
+  });
+
+  it('ante el error de idempotencia apunta al arreglo (T-116), no deja al lector a ciegas', () => {
+    const n = RULE_EMAIL_SEND_FAILED.buildNotification([fila()]);
+    expect(n.body).toContain('idempotency');
+    expect(n.body).toContain('lib/api/v2/dispute/idempotency.ts');
+  });
+
+  it('explica que es SILENCIOSO (la campana in-app sí se actualiza)', () => {
+    const n = RULE_EMAIL_SEND_FAILED.buildNotification([fila()]);
+    expect(n.body).toMatch(/silencioso/i);
+  });
+
+  it('fingerprint POR email_type: un problema no silencia el de otro tipo', () => {
+    const a = RULE_EMAIL_SEND_FAILED.buildNotification([fila()]);
+    const b = RULE_EMAIL_SEND_FAILED.buildNotification([
+      fila({ emailType: 'pago_fallido' }),
+    ]);
+    expect(a.fingerprint).not.toBe(b.fingerprint);
+  });
+
+  it('aguanta filas incompletas sin reventar (email_type/error nulos)', () => {
+    const n = RULE_EMAIL_SEND_FAILED.buildNotification([
+      { n: 1, emailType: null, lastError: null, lastTo: null },
+    ]);
+    expect(n.title).toContain('desconocido');
+    expect(() => JSON.stringify(n.metadata)).not.toThrow();
+  });
+
+  it('severity=error — el usuario no recibió nada y la app pudo darlo por bueno', () => {
+    expect(RULE_EMAIL_SEND_FAILED.severity).toBe('error');
+  });
+
+  it('la ventana (15 min) es mayor que el periodo del engine (5 min)', () => {
+    // Si la ventana fuese <= al periodo, un tick perdido se tragaría el único
+    // evento — y estos fallos son raros: no hay una segunda oportunidad.
+    const n = RULE_EMAIL_SEND_FAILED.buildNotification([fila()]);
+    expect((n.metadata as { windowMin: number }).windowMin).toBeGreaterThan(5);
+  });
+
+  it('NO se solapa con dispute_email_drop: cubren invariantes opuestas', () => {
+    // dispute_email_drop → 0 filas en email_events (nunca se intentó).
+    // email_send_failed  → fila con event_type='failed' (intentado, rechazado).
+    expect(RULE_EMAIL_SEND_FAILED.name).not.toBe(RULE_DISPUTE_EMAIL_DROP.name);
   });
 });
 

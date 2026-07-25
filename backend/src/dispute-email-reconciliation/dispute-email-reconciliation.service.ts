@@ -8,9 +8,18 @@ import { DRIZZLE, type DrizzleDB } from '../db/database.module';
  *
  * Origen: incidente 03/06/2026 — `/api/v2/dispute/resolve` cerró la impugnación
  * de Eva (`cfc85dd3`) pero CloudFront/ALB cortó por timeout (502→504) antes de
- * `sendEmailV2`. El email NUNCA se intentó → 0 filas en `email_events`. El
- * monitoreo de email solo detecta `event_type='failed'` (intentado y fallido),
- * así que el "nunca intentado" era invisible.
+ * `sendEmailV2`. El email NUNCA se intentó → 0 filas en `email_events`, así que
+ * el "nunca intentado" era invisible.
+ *
+ * ⚠️ CORRECCIÓN (26/07/2026, cabo de T-116): este comentario decía que "el
+ * monitoreo de email solo detecta `event_type='failed'`". Esa premisa era FALSA
+ * — no existía NINGUNA regla mirando `email_events`, así que el caso "intentado
+ * y RECHAZADO por el proveedor" también estaba ciego, y estuvo 2 meses dejando
+ * sin email a 8 usuarias (lo destapó una de ellas, no la observabilidad). Ese
+ * hueco lo cubre ahora `RULE_EMAIL_SEND_FAILED` en `alerts/alert-rules.ts`.
+ * Las dos reglas son complementarias y NO se solapan:
+ *   - `dispute_email_drop`  → cerrada SIN fila en email_events (nunca intentado).
+ *   - `email_send_failed`   → fila con event_type='failed' (intentado, rechazado).
  *
  * Esta invariante lo hace visible: TODA impugnación cerrada (`resolved`/
  * `rejected`) con `admin_response` no vacío debe tener su email registrado en

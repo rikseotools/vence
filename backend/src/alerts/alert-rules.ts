@@ -2303,6 +2303,78 @@ export const RULE_DISPUTE_EMAIL_DROP: AlertRule<{ realDrops: number }> = {
 };
 
 /**
+ * Email transaccional que SÍ se intentó y el proveedor RECHAZÓ (`email_events`
+ * con `event_type='failed'`). Complementa a `dispute_email_drop`, que cubre el
+ * caso opuesto (el envío nunca se llegó a intentar, 0 filas).
+ *
+ * ⚠️ Origen — el hueco entre las dos (26/07/2026, cabo de T-116): el
+ * reconciliador de Gap 17 se construyó dando por hecho que el "intentado y
+ * fallido" YA estaba vigilado (así lo dice literalmente su comentario de
+ * cabecera). NO lo estaba: no había ninguna regla mirando `email_events`. Por
+ * eso una `idempotencyKey` fija por impugnación estuvo **2 meses** haciendo que
+ * Resend rechazara toda respuesta corregida —"idempotency key has been used…
+ * but the request body was modified"— con 8 usuarias afectadas, y lo destapó
+ * una de ellas (Sara, 25/07) en vez de la observabilidad. Filosofía martillo:
+ * si un usuario nos reporta lo que la observabilidad podía haber capturado,
+ * hemos fallado.
+ *
+ * Calibración con datos reales (180 días de `email_events`): 13.375 `sent` y
+ * solo **9 `failed`**, repartidos en 7 días distintos y con un máximo de 2 en
+ * un mismo día. Es decir, un fallo de envío es RARO → **cualquier ocurrencia es
+ * señal, no ruido**, y no hace falta umbral de ráfaga. Ventana de 15 min (el
+ * engine corre cada 5) para que un tick perdido no se trague el único evento.
+ * `fingerprint` por `email_type`: un problema de impugnaciones no debe silenciar
+ * el de un recordatorio de pago durante el cooldown.
+ */
+export const RULE_EMAIL_SEND_FAILED: AlertRule<{
+  n: number;
+  emailType: string | null;
+  lastError: string | null;
+  lastTo: string | null;
+}> = {
+  name: 'email_send_failed',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(email_type ORDER BY created_at DESC))[1] AS "emailType",
+           (ARRAY_AGG(error_details ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(email_address ORDER BY created_at DESC))[1] AS "lastTo"
+    FROM email_events
+    WHERE event_type = 'failed'
+      AND created_at > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    const tipo = r?.emailType ?? '(desconocido)';
+    return {
+      title: `${r?.n ?? 0} email(s) transaccional(es) RECHAZADO(s) por el proveedor — ${tipo}`,
+      body:
+        `Se intentó enviar y Resend lo rechazó: el usuario NO ha recibido nada, ` +
+        `pero la app pudo darlo por bueno (la campana y el estado in-app sí se ` +
+        `actualizan). Es un fallo SILENCIOSO de cara al usuario.\n\n` +
+        `Último destinatario: ${r?.lastTo ?? '(n/a)'}\n` +
+        `Último error: ${r?.lastError ?? '(n/a)'}\n\n` +
+        `Si el error menciona "idempotency key … request body was modified", la clave ` +
+        `de idempotencia se está reusando con un cuerpo distinto: debe derivarse del ` +
+        `CONTENIDO (ver lib/api/v2/dispute/idempotency.ts, T-116).\n\n` +
+        `Investigar:\n` +
+        `  SELECT created_at, email_type, email_address, error_details\n` +
+        `  FROM email_events WHERE event_type='failed'\n` +
+        `  AND created_at > NOW() - INTERVAL '24 hours' ORDER BY created_at DESC;`,
+      metadata: {
+        count: r?.n ?? 0,
+        emailType: tipo,
+        lastError: r?.lastError ?? null,
+        windowMin: 15,
+      },
+      fingerprint: `email_send_failed:${tipo}`,
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -3306,6 +3378,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB as AlertRule,
   // Gap 17 (2026-06-03 post-incidente Eva) — impugnación resuelta sin email al usuario
   RULE_DISPUTE_EMAIL_DROP as AlertRule,
+  // Pareja de la anterior: aquella cubre "el email nunca se intentó";
+  // ésta, "se intentó y el proveedor lo rechazó" (el hueco de T-116).
+  RULE_EMAIL_SEND_FAILED as AlertRule,
   // Conversiones de venta que no llegan a Google Ads (03/06/2026, F1 trackeo-
   // conversiones-ventas) — red de seguridad ante token Ads caducado / DLQ.
   RULE_CONVERSION_DELIVERY_FAILED as AlertRule,
