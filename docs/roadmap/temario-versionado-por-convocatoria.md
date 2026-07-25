@@ -3,6 +3,7 @@
 > **Estado:** diseño aprobado + **Fase 1 y Fase 2 IMPLEMENTADAS** (25/07/2026). Fases 3-5 pendientes.
 > - **Fase 1 ✅** — modelo (`temario_versions`) + migración de 3.628 topics (123 versiones, 1 default/oposición), backward-compatible (serving intacto), guardarraíl `__tests__/integration/temarioVersions`.
 > - **Fase 2 ✅ (reframe)** — detector `temario_revision_pendiente` (111 oposiciones / 4.728 usuarios en cola) + observabilidad (health-sweep + badge + frase-gatillo). **SIN copiar topics:** el `(position_type, topic_number)` es único → la "versión-copia en tabla" se difiere a la Fase 4 (donde el multi-active la necesita y toca relajar el constraint con serving version-aware). El "draft" es conceptual: se revisa con T-107 y se aplica al temario vivo.
+> - **Fase 3 ✅** — resolución del temario efectivo con fallback: función pura `lib/temario/resolveTemarioEfectivo.js` (7 tests) + vista `convocatoria_temario_efectivo` (espejo). Prod: las 123 convocatorias vigentes resuelven a `propia`; el fallback (OEP aprobada sin temario → versión anterior) queda listo. Aún NO consumido por serving (Fase 4).
 > **Origen:** auditoría 25/07 (caso `auxiliar_administrativo_extremadura`). Verificado: el temario NO está atado a la convocatoria y el 88 % de las oposiciones con convocatoria 2024+ nunca se ha contrastado con su fuente oficial. Es un gap sistémico, no un dato aislado.
 
 ## 1. Problema (verificado contra esquema + código)
