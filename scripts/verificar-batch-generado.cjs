@@ -101,6 +101,10 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
         warn++
         console.log(`  ⚠️ art.${q.article_number} (${q.id.slice(0, 8)}): ENUMERACIÓN — fragmentos fieles, pero la COMPLETITUD de la lista debe confirmarla la auditoría LLM`)
       }
+      if (lit.estado === 'ORTOGRAFIA') {
+        warn++
+        console.log(`  ⚠️ art.${q.article_number} (${q.id.slice(0, 8)}): ORTOGRAFÍA — la cita es fiel salvo tildes; revisa si el texto importado del artículo tiene la grafía correcta`)
+      }
     }
 
     const tl = analizarLongitud(opts, q.correct_option)

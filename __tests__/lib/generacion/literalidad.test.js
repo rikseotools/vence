@@ -57,3 +57,27 @@ describe('analizarIntruso — detección del marco "cuál NO figura"', () => {
     expect(analizarIntruso('Según el artículo 27.1, ¿qué son los tributos?')).toBe(false)
   })
 })
+
+// --- Diferencia solo ORTOGRÁFICA (25/07/2026) ---
+// Caso real: art. 44 Ley 20/1991 — el BOE escribe "periodo" y la opción "período".
+// Misma palabra, ambas grafías correctas: no es un defecto de literalidad.
+
+describe('analizarLiteralidad — diferencia solo de tildes', () => {
+  const ART = 'La renuncia al régimen simplificado tendrá efecto para un periodo mínimo de tres años, en las condiciones que reglamentariamente se establezcan.'
+
+  it('marca ORTOGRAFIA cuando la cita solo difiere en una tilde', () => {
+    const cita = 'Tendrá efecto para un período mínimo de tres años, en las condiciones que reglamentariamente se establezcan.'
+    expect(analizarLiteralidad(ART, cita).estado).toBe('ORTOGRAFIA')
+  })
+
+  it('sigue dando LITERAL cuando la grafía coincide exactamente', () => {
+    const cita = 'tendrá efecto para un periodo mínimo de tres años'
+    expect(analizarLiteralidad(ART, cita).estado).toBe('LITERAL')
+  })
+
+  it('NO enmascara un cambio de contenido disfrazado de tilde', () => {
+    // "cinco" por "tres" no es una cuestión de grafía.
+    const cita = 'Tendrá efecto para un período mínimo de cinco años'
+    expect(analizarLiteralidad(ART, cita).estado).not.toBe('ORTOGRAFIA')
+  })
+})

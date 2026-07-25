@@ -144,6 +144,21 @@ Esta es **la regla cero**. Si la IA parafrasea, cambia un verbo o estrecha un su
 
 - **CORRECTA PARCIAL: la opción reproduce solo una parte del precepto que el enunciado pregunta entero (25/07/2026, batch `gen_atc_t207`).** Distinto de la cita truncada: aquí no se corta una cláusula condicionante, se deja fuera **una consecuencia jurídica completa**. Caso real, art. 114.3 LGT sobre el denunciante: el apartado establece TRES efectos (no es interesado · no se le informa · no está legitimado para recurrir) y la opción correcta recogía solo los dos primeros, con un enunciado que preguntaba por el apartado sin acotar. **La señal de alarma es que el blockquote de la propia explicación citaba el texto entero**: si la cita que aportas como prueba dice más que la opción que marcas correcta, o sobra en la cita o falta en la opción. Peor todavía, un distractor cubría más terreno normativo que la correcta. **Regla: antes de cerrar la pregunta, compara la opción correcta con el blockquote que la respalda** — deben abarcar lo mismo, o el enunciado debe acotar explícitamente qué parte se pregunta.
 
+> ⚖️ **EL CHECK MECÁNICO DE LITERALIDAD ES UN PROXY DE §2.2, NO LA REGLA (25/07/2026). Un `NO_LITERAL` NO prueba que haya defecto.** §2.2 admite la **condensación válida**; el script solo sabe comprobar **subcadena contigua**. Entre una cosa y otra hay un hueco permanente, y es grande: al pasar el gate ya arreglado sobre las 139 preguntas aprobadas del 24/07 salieron **72 fallos**, y clasificados uno a uno resultaron ser, en su inmensa mayoría, condensaciones que la propia norma permite:
+>
+> | Lo que el script ve | Lo que realmente es | ¿Defecto? |
+> |---|---|---|
+> | `NO_LITERAL` | **Desanaforización**: el artículo dice *"la entrada de **los mismos**"* y la opción *"la entrada de **los bienes**"* | **No** — §2.2-quater EXIGE que la opción sea autocontenida |
+> | `NO_LITERAL` | **Recast gramatical**: *"sin que la exención **se extienda** a…"* → *"**no se extiende** a…"* para encajar con el enunciado | **No** |
+> | `NO_LITERAL` | **Cláusula ya presente en el enunciado**, omitida en la opción | **No** — es el ejemplo canónico de condensación válida |
+> | `ORTOGRAFIA` | *"periodo"* / *"período"*: ambas grafías correctas | **No** (pase blando desde hoy) |
+> | `NO_LITERAL` en pregunta **intruso** | La correcta es la opción INVENTADA, por construcción | **No** (detectado desde hoy) |
+> | `NO_LITERAL` | **Sumario libre** del artículo, siglas sin desarrollar, término cambiado | **SÍ** |
+>
+> **Cómo usarlo entonces:** el gate es un **filtro de sospechosos**, no un veredicto. Ante un `NO_LITERAL`, **abre el artículo y compara** — si todas las palabras de la opción están en el artículo y solo cambia el orden, un pronombre o un tiempo verbal, es condensación válida. Lo que sí es defecto duro es que aparezcan **palabras que no están en el artículo**. Un atajo barato para triar en masa: medir el porcentaje de palabras de la opción ausentes del artículo — por debajo del 5% casi siempre es condensación; por encima del 10% conviene mirarlo.
+>
+> **Lo que NO hay que hacer es reescribir en bloque para poner el gate en verde**: se destruirían condensaciones correctas y se rompería la autocontención que §2.2-quater pide.
+
 **Si no se puede formular una opción correcta como cita literal o condensación válida, NO se genera la pregunta sobre ese punto.** Mejor menos cantidad que cualquier alucinación.
 
 **¿Qué es "condensación válida"?** Una omisión de metalenguaje (p.ej. "a efectos de este decreto") o de la cláusula introductoria que ya está en el enunciado. Lo que NO se puede:
