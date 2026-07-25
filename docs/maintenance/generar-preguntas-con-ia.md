@@ -830,6 +830,22 @@ for path in \
 done
 ```
 
+> 🛡️ **CIERRE OBLIGATORIO — pregúntaselo a producción, no a la BD que acabas de escribir (26/07/2026):**
+>
+> ```bash
+> npm run batch:servido -- <batch_id> [--muestra 6]     # exit 2 si alguna capa no propagó
+> ```
+>
+> Recomputa el conteo del tema **con la misma semántica que la materialized view** que lee la app y lo
+> compara contra `GET /api/topics/<N>?oposicion=<slug>` en www.vence.es. Comprobar el lote contra la misma
+> BD en la que acabas de insertar no demuestra nada: entre la fila y el opositor hay **tres cachés**
+> (MV Postgres → Redis/ElastiCache → ISR+tags), y el incidente de arriba es exactamente eso.
+>
+> ⚠️ **Al escribirlo se cayó en la trampa que documenta `audit-served-questions.ts`:** la primera versión
+> contaba "parecido" a la MV en vez de "igual" —se le olvidó que la MV excluye `exam_case_id IS NOT NULL`
+> (supuestos prácticos)— y daba un desfase fijo de 3-5 preguntas por tema, es decir **6/6 falsos
+> positivos**. Si tocas la MV, toca también esta consulta.
+
 **Verificar que los conteos nuevos aparecen vía API real** antes de cerrar el batch:
 
 ```bash

@@ -31,6 +31,7 @@ const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generaci
 const { analizarLiteralidad, analizarIntruso } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
 const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))
 const { analizarSiglas } = require(path.join(__dirname, '..', 'lib', 'generacion', 'siglasSinDesarrollar'))
+const { analizarOverclaim } = require(path.join(__dirname, '..', 'lib', 'generacion', 'overclaimExplicacion'))
 
 const envPath = path.join(__dirname, '..', '.env.local')
 const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
@@ -130,6 +131,15 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     }
     if (sig.candidatas.length) {
       avisos.push(`posible sigla no catalogada: ${sig.candidatas.join(', ')} — si es una norma o tributo, añádela al diccionario de lib/generacion/siglasSinDesarrollar.js`)
+    }
+
+    // OVERCLAIM: el razonamiento afirma más que el artículo ("sin excepción",
+    // "sin excluir clase alguna"…). AVISO, no error: hay glosas absolutas
+    // correctas. Comprueba el ARTÍCULO antes de tocar nada — si el límite lo
+    // pone otro precepto de la misma ley, nómbralo en vez de negarlo.
+    const over = analizarOverclaim(q.explanation, q.content)
+    for (const o of over.avisos) {
+      avisos.push(`OVERCLAIM ("${o.termino}"): «${o.frase.slice(0, 120)}» — el artículo no dice ese absoluto; comprueba si otro artículo de la ley pone el límite`)
     }
 
     pos[q.correct_option] = (pos[q.correct_option] || 0) + 1

@@ -99,6 +99,37 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
   errores.forEach((e) => console.log(`   ❌ ${e}`))
   console.log(`   estado final → total=${f.tot} approved=${f.apr} is_active=${f.act}`)
 
+  // ── Observabilidad: el lote deja rastro medible en el sistema ──────────────
+  // Sin esto la campaña solo existe en la cabeza de quien la corre: no se puede
+  // responder "¿cuántos artículos hemos cubierto este mes y qué oposiciones se
+  // beneficiaron?" sin reconstruirlo a mano desde los tags. `severity='warn'` si
+  // alguna transición falló, para que salga en las consultas de incidencias.
+  try {
+    const arts = await s`
+      SELECT l.short_name AS ley, l.slug AS ley_slug,
+             array_agg(DISTINCT a.article_number ORDER BY a.article_number) AS articulos
+      FROM questions q JOIN articles a ON a.id = q.primary_article_id JOIN laws l ON l.id = a.law_id
+      WHERE ${BATCH} = ANY(q.tags) GROUP BY 1, 2`
+    await s`
+      INSERT INTO observable_events (source, severity, event_type, metadata)
+      VALUES ('script:aprobar-batch-generado', ${errores.length ? 'warn' : 'info'}, 'question_batch_approved',
+        ${s.json({
+          batch_id: BATCH,
+          preguntas_aprobadas: ok,
+          preguntas_intentadas: Q.length,
+          preguntas_fallidas: errores.length,
+          leyes: arts.map((a) => ({ ley: a.ley, slug: a.ley_slug, articulos: a.articulos })),
+          articulos_cubiertos: arts.reduce((n, a) => n + a.articulos.length, 0),
+          oposiciones: [...new Set(alcance.map((x) => x.position_type))],
+          temas_impactados: alcance.length,
+          campana: 'article_no_coverage',
+        })})`
+    console.log('   📡 evento question_batch_approved registrado en observable_events')
+  } catch (e) {
+    // La observabilidad NUNCA puede tumbar la aprobación: el lote ya está vivo.
+    console.log(`   ⚠️ no se pudo registrar el evento de observabilidad: ${e.message.slice(0, 120)}`)
+  }
+
   await s.end()
   if (errores.length) process.exit(2)
 })().catch((e) => {
