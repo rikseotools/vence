@@ -57,7 +57,12 @@ async function _GET(request: Request) {
     events.forEach(event => {
       const eventDate = new Date(event.createdAt!)
       const dateKey = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`
-      const groupKey = `${event.templateId}_${dateKey}`
+      // Agrupar por campaign_id (único por ENVÍO: plantilla_timestamp). Antes se agrupaba por
+      // templateId_fecha, lo que MEZCLABA envíos distintos de la misma plantilla que caían el
+      // mismo día → las aperturas de un envío se sumaban a la fila de otro → open rate >100%
+      // (p.ej. TAI 19 enviados / 46 abiertos = 242%). Fallback a templateId_fecha para eventos
+      // legacy sin campaign_id.
+      const groupKey = event.campaignId || `${event.templateId}_${dateKey}`
 
       if (!newsletterMap.has(groupKey)) {
         newsletterMap.set(groupKey, {
