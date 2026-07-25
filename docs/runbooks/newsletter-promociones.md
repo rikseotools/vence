@@ -111,6 +111,8 @@ SIEMPRE mandar el borrador a **manueltrader@gmail.com** y esperar visto bueno an
 > node scripts/newsletters/send-promo-inscripcion.cjs <config.json> --preview manueltrader@gmail.com
 > ```
 > `--preview <email>` renderiza con el MISMO template + userVars que el envío real (asunto `{{nombreOposicion}}: {{subtitulo}}`, sin marcas), manda a UN solo correo, y **NO registra en `email_events` ni crea tokens** → no ensucia la campaña ni las stats. Es la única forma correcta de mandar la vista previa.
+>
+> **🔎 "No me llega el preview" (gotcha 25/07):** el correo es comercial → **Gmail lo mete en "Promociones" o Spam**, no en Principal — míralo ahí. Si aun así no aparece, **verifica la entrega real en Resend**: `curl -H "Authorization: Bearer $RESEND_API_KEY" https://api.resend.com/emails/<id>` → `last_event` (`delivered` = salió bien; el `id` lo imprime el envío). Y confirma **a qué cuenta**: el preview va a `manueltrader@gmail.com`; si el destinatario revisa otra bandeja (`mcasadocano@gmail.com`…), no lo verá → reenvíalo a su cuenta.
 
 ---
 
@@ -179,3 +181,47 @@ SELECT event_type, COUNT(*) FROM email_events WHERE campaign_id='<campaignId>' G
 ### Aprendizajes de medición (05/07)
 - **El tracking de clics SÍ funciona** (confirmado: campañas León-CyL y Jaén registraron `clicked` a los minutos). Un envío con alta apertura y **0 clics sostenidos** (caso La Rioja: 50% open, 0 clics en días) apunta a **CTA/desinterés**, no a instrumentación rota.
 - **Open rate temprano** (primeros minutos) es buen indicador pero **el CTR real se mide a horas/días** — no concluir CTR=0 recién enviado.
+
+---
+
+## 8. Cross-sell segmentado (promocionar una oposición NUEVA a opositores de otras)
+
+Cuando publicas una oposición **nueva** que aún **no tiene target directo** (nadie la tiene como `target_oposicion`) o quieres captar por afinidad de temario, el envío NO es geográfico sino **cross-sell**: a opositores de OTRAS oposiciones que comparten temario, con la plantilla **`oposicion-cruzada`** ("Prepara X sin empezar de cero"). Caso raíz: **Ujieres de las Cortes Generales (25/07/2026)** — 0 target directo, nacional. Complementa la §14 de `crear-nueva-oposicion.md` (que nombra la plantilla pero no cómo segmentar ni calcular los temas).
+
+### 8.1 Audiencia: por dónde se TRABAJA, no por la CCAA de la oposición
+Una oposición **nacional** (Cortes Generales, AGE) no tiene zona propia, pero **el puesto está en un sitio físico**. Ujieres se trabaja **solo en Madrid** (Congreso, Senado, Junta Electoral Central) → la audiencia natural es **la zona del puesto** (Madrid) + quien ya oposita allí. **Investiga SIEMPRE dónde está el puesto** antes de acotar. Para segmentos de oposiciones nacionales/de otra CCAA, filtra por **target AND zona-del-puesto** (los de esa oposición que viven donde se trabaja); para oposiciones de la propia zona (p.ej. Aux. Admin. Madrid) el target ya implica la zona.
+
+### 8.2 El perfil del candidato = TIPO de trabajo, no solo temario
+Mira en qué consiste el puesto. Ujieres = servicios generales/subalterno de un edificio (vigilancia, accesos, protocolo, reparto), nivel ESO → perfil de ordenanza/subalterno, no de oficina. Si casi no hay opositores de ese perfil en BD, el cross-sell de calidad es a oposiciones de **mismo NIVEL** (C2/D administrativas) que además comparten el temario general.
+
+### 8.3 Calcular los temas EXACTOS comunes (un correo por oposición)
+El gancho es que el candidato vea **SUS** temas, no un genérico. Cruza las leyes del `topic_scope` de la nueva oposición con las de cada oposición candidata (intersección por `law_id`):
+```sql
+WITH nueva AS (SELECT DISTINCT ts.law_id FROM topics t JOIN topic_scope ts ON ts.topic_id=t.id WHERE t.position_type='<pt_nueva>')
+SELECT DISTINCT l.short_name
+FROM topics t JOIN topic_scope ts ON ts.topic_id=t.id JOIN laws l ON l.id=ts.law_id
+WHERE t.position_type='<pt_candidata>' AND ts.law_id IN (SELECT law_id FROM nueva) ORDER BY 1;
+```
+Traduce cada ley a lenguaje de correo ("La Constitución", "La Ley 39/2015 del Procedimiento Administrativo", "Los Reglamentos del Congreso y del Senado"…) → `temasComunesHtml` de ESE segmento. **Un envío por segmento**: `temasComunesHtml` es variable global del envío; `oposicionActual` se resuelve por destinatario, pero conviene pasarlo **fijo y limpio** por segmento (el nombre completo trae coletillas tipo "(examen octubre 2026)").
+
+### 8.4 Ganchos de conversión verificados (C2/D)
+- **Empleo fijo / estabilidad, NUNCA el salario** — para C2/D el motor es la plaza fija, no el sueldo.
+- **Ratio plazas/aspirantes + % de presentación** — p.ej. "en la convocatoria anterior, ~68 aspirantes por plaza, pero solo 1 de cada 3 se presentó → ~22 reales por plaza". Parece durísimo y acaba siendo motivador y honesto (mucha inscripción, poca presentación real).
+- **Previsión de examen por histórico** — media del intervalo convocatoria→examen de las últimas convocatorias (Ujieres: 2018 ~11 m, 2022 ~19 m → media ~15 m → previsión "finales de 2027"). Refuerza "tiempo de sobra para prepararte con calma". **SIEMPRE etiquetada como estimación, no oficial** (el `exam_date` de BD sigue NULL; el hito, marcado `origen='estimacion'`).
+- Datos SIEMPRE verificados contra fuente (BOE + academias) y enmarcados como "en la convocatoria anterior (año)".
+
+### 8.5 Envío: `send-promo-cruzada.cjs`
+El endpoint `/api/admin/newsletters/send` **exige token admin en prod** → para envío por script se usa **`scripts/newsletters/send-promo-cruzada.cjs`** (copia de `send-promo-inscripcion.cjs` con `BASE_VARS` cross-sell; misma infra: token de baja + pixel de apertura + tracking de clics + `email_events` + rate-limit 1/seg + `--dry`/`--preview`/`--send`). Audiencia por `targetOposicion` (`municipios: []` = solo target). Config:
+```json
+{
+  "targetOposicion": "auxiliar_administrativo_madrid",
+  "slug": "ujieres-cortes-generales",
+  "templateSlug": "oposicion-cruzada-ujieres",
+  "nuevaOposicion": "Cuerpo de Ujieres de las Cortes Generales",
+  "nuevaOposicionCorta": "Ujieres Cortes Generales",
+  "oposicionActual": "Auxiliar Administrativo de la Comunidad de Madrid",
+  "temasComunes": ["La <strong>Constitución Española</strong>", "La <strong>Ley 39/2015</strong> del Procedimiento Administrativo", "..."],
+  "municipios": []
+}
+```
+Flujo: `--preview manueltrader@gmail.com` (idéntico al real) → OK → `--send` (**background si >~350**, ~1 s/correo). GOTCHA: `NODE_TLS_REJECT_UNAUTHORIZED=0` (cert self-signed de RDS) + `PROD_DATABASE_URL` exportado.
