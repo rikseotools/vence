@@ -67,6 +67,12 @@ describe('analizarIntruso — detección del marco "cuál NO figura"', () => {
     expect(analizarIntruso('¿Qué vehículos se benefician de la presunción del 100 por 100?')).toBe(false)
     expect(analizarIntruso('¿Qué supuestos gozan de exención según el artículo 71?')).toBe(false)
   })
+
+  it('reconoce el marco por verbos de PREVISIÓN normativa (se prevé, se contempla, se admite)', () => {
+    expect(analizarIntruso('¿En cuál de los siguientes momentos NO se prevé que puedan devengarse las tasas?')).toBe(true)
+    expect(analizarIntruso('Señale el supuesto que NO se contempla en el artículo:')).toBe(true)
+    expect(analizarIntruso('¿Qué medio de pago NO se admite conforme al precepto?')).toBe(true)
+  })
 })
 
 // --- Diferencia solo ORTOGRÁFICA (25/07/2026) ---
