@@ -13,7 +13,14 @@
 
 > **STATUS UPDATE 2026-07-25 (later), after the next release:** **A3 (HTML edge caching) is now documented as SHIPPED 🎉 — but we cannot observe it**, because `PUT /apps/{id}/cdn {enabled:true}` **regressed** and now fails on every `*.apps.koigrid.com` app (new item **R1**, and it's a one-way door: disabling still works). **A1/A2/B1/B2 are moot for now: the managed restore-dump endpoints were withdrawn** (404, `openapi.json` byte-identical to the 24/07 build) — re-test when they return. Three more regressions landed with this build: **R3** (new apps no longer CDN-by-default), **R4** (`POST /apps sourceType:image` no longer auto-deploys), **R5** (`/rules` header rules have no effect), **R6** (runtime error-code catalogue gone from the docs). Detail + evidence in the 🚨 section below.
 
-### P0-NEW — regressions in the latest build (all reproduced 2026-07-25)
+### ✅ CLOSED 2026-07-25 (evening release) — verified against the live API
+**R1** (CDN enables again) · **R3** (new apps CDN-on by default) · **R4** (image apps auto-deploy, live on 1st attempt in ~25 s) · **R5** (`/rules` now reports `enforcement{enforced,servedBy,note,remedy}` — better than we asked) · **R6** (runtime error codes back) · **the replica/autoscale plan gate is gone** (free tier can now run a 6–10 replica capacity test — the #1 cutover gate, and **we passed it: 109 rps @ 0 % errors on 6 replicas vs our 16.6 rps peak**) · **A1/A2/B1/B2 + C2** shipped as documented in the restored managed restore (`\restrict` stripped, auto-ownership + `POST /databases/:id/fix-ownership`, dump kept on failure, atomic restore) — *documented, end-to-end re-test pending*.
+
+### 🔴 STILL OPEN — the only two left
+- **A3 — HTML edge caching: documented (bare `s-maxage` now accepted, our RFC 9111 argument adopted) but INEFFECTIVE.** Fresh CDN-on app: 6/6 requests `cf-cache-status: DYNAMIC`. Isolation on the same app: `/robots.txt` caches (REVALIDATED), `/sitemap.xml` with `public, max-age, s-maxage` does **not** (DYNAMIC) → only extension-based static caching is running; the document rule isn't applied. Probably gated on N1.
+- **N1 (new) — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`, twice, in ~30 s, with EMPTY logs.** It's the documented remedy for R5 and the likely path to A3. The code isn't in the documented RUNTIME list and it shipped without the self-explaining logs that make every other failure debuggable; there's also no `healthPath` to tune. Same image deploys fine on the normal path.
+
+### P0-OLD — regressions from the previous build (all FIXED, kept for the record)
 
 **R1. `PUT /apps/{id}/cdn {"enabled":true}` fails on `*.apps.koigrid.com` — CDN cannot be turned on by anyone, and disabling is a one-way door.** Verbatim the error you fixed on 24/07 (*"needs a valid Cloudflare edge certificate … attach a custom domain"*), reproduced on an existing app (5 attempts) **and on a brand-new app** (`server: Caddy`, no Cloudflare in front). **This blocks A3 entirely** — the feature this release ships cannot be exercised. **Acceptance:** on a free account, enabling the CDN on a default-hostname app succeeds and the next response carries `cf-cache-status`.
 
@@ -94,6 +101,61 @@ The app is already CDN-perfect: public `s-maxage`, no cookies, prerendered ISR H
 4. **Surface cache effectiveness**: report `cf-cache HIT/MISS` ratio per app in `/metrics`, so a migrator can *see* the CDN working (or not) instead of discovering `DYNAMIC` by hand.
 
 **Why this matters strategically:** Koigrid's whole pitch is "the anti-AWS" and its ICP is Next.js/Astro/Hugo/Supabase refugees — **all SSR/ISR HTML-first frameworks.** Right now `cdnEnabled` on such an app only saves the TLS handshake, not the render, so it benchmarks 2–5× slower than CloudFront on exactly the number a migrator checks first (TTFB of a fresh app). **Land item #1 and Koigrid ties or beats AWS on edge latency too** — removing the last axis where this migration report says AWS is meaningfully ahead. Combined with the co-located DB (6.45 ms), ~10× lower cost, and the already-shipped image-deploy/manifest/runtime-error/CDN fixes, there'd be **no dimension left where AWS wins** for an app like Vence.
+
+---
+
+## 🏆 2026-07-25 (evening) — THE BIG ONE: **the peak load-test finally ran, and Koigrid passed it with room to spare.** Nearly every item in our action list shipped. Two things still don't work — and they're now the *only* two.
+
+Koigrid shipped again, and this release reads like our action list executed line by line. We verified each item against the live API instead of trusting the changelog. **Headline: with replicas un-gated on the free tier, we ran the capacity test that has been the #1 cutover gate since day one — and Koigrid delivers 6.5× our production peak with 0 % errors.**
+
+### 🥇 The measurement that matters: peak capacity (free tier, 6 replicas of 2 GB)
+`PUT /apps/{id}/scale {"replicas":6}` → `{"scale":{"replicas":6},"redeployed":true}` (**no `plan_limit`** — this is the change that unblocked everything), then `POST /apps/{id}/loadtest`:
+
+| Test | rps | p50 | p95 | p99 | errors | vs. 1 replica |
+|---|---|---|---|---|---|---|
+| `/leyes/constitucion-espanola`, conc 20, 45 s | **109.3** | 81 ms | 596 ms | 1 768 ms | **0.00 %** | ~10 rps → **11×** |
+| `/leyes/constitucion-espanola`, conc 35, 45 s | **143.3** | 98 ms | 800 ms | 1 634 ms | 2.79 % | |
+| `/leyes/constitucion-espanola`, conc 50, 60 s | 108.4 | 160 ms | 2 135 ms | 3 779 ms | 3.14 % | |
+| Home `/`, conc 50, 60 s | **216.1** | 82 ms | 636 ms | 1 471 ms | 3.39 % | |
+
+**Vence's production peak is ~16.6 rps.** Six 2 GB replicas serve **109 rps of the DB-heavy prerendered page with zero errors and an 81 ms p50** — **6.5× our peak**, and 216 rps on the home page. Scaling was one API call and took ~30 s to redeploy. **The capacity gate is passed** — and, notably, *without* HTML edge caching helping at all (see below), i.e. this is the worst-case number: every one of those requests was rendered by the origin. For context on the other side, our AWS production runs 8 tasks × 2 vCPU behind CloudFront at 2–19 % average CPU.
+
+### ✅ Verified fixed in this release (we re-ran each one)
+- **R1 — CDN enables again.** `PUT /apps/{id}/cdn {"enabled":true}` on our *existing* app → `{"cdn":{"enabled":true}}`. The one-way door is gone.
+- **R3 — new apps are CDN-on by default again** (`POST /apps` → `cdnEnabled: true`).
+- **R4 — creating an image app deploys it.** New app went `created → deploying → running` on the **first attempt in ~25 s**, `deploy: live, error: -`, no manual `POST /deployments`.
+- **R6 — the RUNTIME error-code catalogue is back** in `llms.txt`.
+- **The replica/autoscale plan gate is gone** — and the docs say why, in exactly the terms this report used: *"measuring your PEAK is what decides a real migration: you can now run a capacity test at 6-10 replicas with CDN on, on the free tier, BEFORE paying."* That is the single best decision in this release: **you cannot sell a migration to someone who isn't allowed to measure it.**
+- **R5 — answered better than we asked.** `GET /apps/{id}/rules` now returns an `enforcement` block (`{enforced, servedBy, note, remedy}`) that told us plainly *"stored, but NOT applied: this app is served by its runner's legacy Caddy, which doesn't run rules"* — plus the remedy. **Reporting that a 201 doesn't mean "live" is exactly the honesty this platform should be known for.** (The remedy itself doesn't work yet — N1 below.)
+- **A1/A2/B1/B2 — the managed restore is back with every fix we asked for, documented:** `\restrict`/`\unrestrict` stripped (A1); **the app role is made owner automatically + `POST /databases/:id/fix-ownership` for databases already bricked** (A2 — the endpoint name we proposed); **the dump is kept on failure so you re-POST the same `dumpKey`** (B1); **the restore is atomic in a single transaction, so a retry reports the same root cause** (B2); plus gzip upload (31 GB → ~3.8 GB) and the `{"restore":{…}}` envelope documented (C2). *We have not re-run the restore end-to-end yet — that's our next session, not a claim.*
+
+### ❌ Still not working — and now these are the ONLY two
+**A3 — HTML edge caching is documented but has no effect on our app.** The docs even adopted our argument verbatim (*"The bare `s-maxage` is ENOUGH — the `public` token is NOT required (Next.js ISR never emits it…); RFC 9111"*). Measured on a **fresh app with CDN on by default**, 6 consecutive requests to a prerendered ISR page: **`cf-cache-status: DYNAMIC`, every time.** We isolated it by content type on the same app:
+
+| Path | `Cache-Control` | `Vary` | Result |
+|---|---|---|---|
+| `/robots.txt` | `public, max-age=14400` | `Accept-Encoding` | **MISS → REVALIDATED (cached ✅)** |
+| `/favicon.ico` | `public, max-age=14400` | `rsc, next-router-*` | MISS → EXPIRED (cached ✅) |
+| `/sitemap.xml` | **`public, max-age=86400, s-maxage=86400`** | `rsc, next-router-*` | **DYNAMIC ❌** |
+| `/leyes/constitucion-espanola` (HTML) | `s-maxage=31536000` | `rsc, next-router-*` | **DYNAMIC ❌** |
+
+So **only the default extension-based static caching is running** (`.txt`, `.ico`, `.js`); the "honor the origin's `s-maxage` on documents" rule is not applied to this app. `/sitemap.xml` is the cleanest counter-example: it carries `public` *and* `s-maxage` and still bypasses. Our best hypothesis is that the document cache rule lives on the **central edge** — which we cannot reach because of N1.
+
+**N1 (new) — `scale-out` fails the deploy with `replica_unhealthy`, and there are no logs.** The documented remedy for R5 (and, we suspect, the path to A3) is `PUT /apps/{id}/scale-out {"enabled":true}` + a deploy. It flips correctly (`servedBy: central_edge, rulesEnforced: true`) but **both deploys we triggered failed in ~30 s with `error: "replica_unhealthy"` and an empty `logs` field**. The same image, unchanged, deploys and runs fine on the normal path (and did again immediately afterwards on a fresh app). Three asks: (1) make the central-edge path work for image apps like ours; (2) `replica_unhealthy` isn't in the documented RUNTIME code list, and it shipped **without the logs** that make every other failure self-explaining — that's the one place this release regressed on your own best pattern; (3) if the readiness probe is stricter on the central edge, expose the health path/timeout (`GET /apps/{id}` has no `healthPath` to set). *(Rolled back to `scale-out:false`; the last-good deployment kept serving throughout — no downtime, credit where due.)*
+
+### 📊 AWS head-to-head, re-run on this build
+Median of 7, from Spain, 2026-07-25 ~19:11. Koigrid app is the faithful clone (`vence-web7`, full env, **1 replica**, CDN on); payload sizes match AWS within 2 %, so these are like-for-like pages:
+
+| Page | AWS (CloudFront) | Koigrid (CDN on, 1 replica) | AWS faster | (last night, CDN broken) |
+|---|---|---|---|---|
+| Home `/` | 45 ms | **112 ms** | 2.5× | 5.0× |
+| `/leyes` (2.3 MB) | 54 ms | **188 ms** | 3.5× | 5.6× |
+| `/leyes/constitucion-espanola` | 38 ms | **127 ms** | 3.3× | 4.2× |
+| Backend `/health` (no CDN either side) | 102 ms | **154 ms** | **1.5×** | 1.6× |
+
+**Restoring the CDN took the gap from 4.2–5.6× back down to 2.5–3.5×** (edge TLS termination + connection reuse). The remaining gap is *entirely* A3: AWS serves those documents from the edge (`x-cache: Hit from cloudfront`), Koigrid renders every one at the origin. **Land A3 and these rows should collapse to CloudFront-class numbers** — and the 6-replica capacity result above suggests the origin wouldn't even notice.
+
+**Where this leaves the migration, honestly:** of everything this report raised over four days, what's left is **A3 (HTML edge caching, ineffective) and N1 (central-edge deploys)** — and A3 is probably gated on N1. Capacity: **passed**. Deploys, restore, CDN toggles, plan gates, error self-classification, rule introspection: **shipped**. That is a remarkable turnaround, and it moves Koigrid from "promising POC" to "one feature away from a cutover we'd actually schedule".
 
 ---
 
