@@ -282,7 +282,7 @@
 - **Progreso 26/07 (sesión `sesion-26jul-b`):** 2 lotes cerrados con el pipeline completo, **31 preguntas activas**:
   - `gen_lprl_2026-07-26` — 13 preguntas, LPRL arts. 10, 11, 12, 32, 39.
   - `gen_lbrl_2026-07-26` — 18 preguntas, Ley 7/1985 arts. 2, 5, 6, 8, 9, 10, 14, 18, 24.
-  - Ambos: gate mecánico limpio + doble auditoría ciega (2 agentes) + Paso 9 sobre la pregunta viva → **todo PERFECT, cero reparaciones**. MV refrescada y tags invalidados.
+  - Ambos: gate mecánico limpio + doble auditoría ciega (2 agentes) + Paso 9 sobre la pregunta viva. **El Paso 9 pagó por sí solo:** las dos auditorías previas dieron 18/18 PERFECT en LBRL y el Paso 9 cazó un **overclaim en la explicación** del art. 5 (*"sin excluir clase alguna de bienes"* — el art. 80 declara inalienables los de dominio público, y un distractor introducía justo esa salvedad). Reparado y re-verificado limpio; barrido del mismo patrón en los 31 → 1 absoluto más suavizado. MV refrescada y tags invalidados.
   - **Efecto: 455 → 412 temas** que disparan el finding (−43 temas de ~30 oposiciones con 31 preguntas). `tcae-canarias` y `tcae-murcia` se quedan **sin finding**.
 - **Herramienta nueva (26/07):** `scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> <arts…>` — Paso 1 obligatorio. Ningún gate comprobaba que el `content` de BD siguiera VIGENTE; si el artículo se importó antes de una reforma, el lote sale coherente y derogado. GOTCHA: las `<version>` del BOE **no vienen en orden cronológico** (art. 2 LBRL: 1985 → 2013 → 1990) — elegir por `fecha_vigencia`. Núcleo `lib/laws/boeBloqueVigente.js`.
 
