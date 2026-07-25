@@ -3103,7 +3103,15 @@ export default function NewslettersPage() {
                             minute: '2-digit'
                           })}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                        {/* El asunto es el identificador REAL de la campaña (la plantilla se repite
+                            entre envíos). Antes iba con `max-w-xs truncate`: cortaba en 20rem sin
+                            tooltip y dejaba filas indistinguibles ("Prepara Cuerpo de Ujieres de las
+                            Cortes G…" ×8). Ahora envuelve hasta 2 líneas, con el texto completo en
+                            el title por si el asunto es largo. */}
+                        <td
+                          className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 min-w-[16rem] max-w-md break-words line-clamp-2"
+                          title={newsletter.subject}
+                        >
                           {newsletter.subject}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
