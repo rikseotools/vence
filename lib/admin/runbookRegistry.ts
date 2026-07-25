@@ -225,6 +225,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'corre `npm run scope:health -- --pending` para ver qué ley está duplicada en qué oposición/temas (bucket REPARTO). Para cada una: mira los epígrafes de los temas hermanos que comparten la ley entera, decide qué parte de la ley pide cada uno (por título/capítulo/materia), y REPARTE el article_numbers entre ellos con simulación orphan-check (la unión debe conservar todas las preguntas). NO huerfanes preguntas; si dos epígrafes cubren legítimamente el mismo bloque (cross-cutting, solape pequeño), déjalo. Contenedores de contenido clínico (NULL) compartidos entre temas hermanos suelen ser legítimos (no partibles por artículo).',
   },
+  scope_sin_verificar: {
+    title: 'Scope sin auditar contra el epígrafe oficial (nunca verificado o stale)',
+    triggerPhrase: 'revisa los scopes sin verificar',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada oposición marcada, su topic_scope nunca se ha auditado contra el epígrafe oficial (state never_verified) o quedó `stale` tras un cambio — es un punto ciego: podría servir preguntas fuera de programa sin que salte ningún otro detector (caso Auxiliar Extremadura 25/07). Lanza el pipeline verify:scope de esa oposición: `npm run verify:scope dump <position_type>` → Workflow `verify-scope-oposicion` (2 agentes anclados al BOE/boletín + juez) → `verify:scope plan` → `verify:scope apply` (recorta lo que el epígrafe no pide, reusando las preguntas ya en BD; nada se borra). Prioriza las de más ventas/tráfico. NUNCA recortar un bloque que el epígrafe sí pide ni dar por buena la ley entera sin mapear su estructura.',
+  },
   shuffle_safe_regressed: {
     title: "Barajado: pregunta 'safe' cuya explicación cita letras/posición (regresión)",
     triggerPhrase: 'revisa el barajado',
