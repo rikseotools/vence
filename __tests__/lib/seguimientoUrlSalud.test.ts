@@ -49,11 +49,12 @@ describe('seguimiento_url — detección graduada de ciclo desfasado', () => {
     expect(d.severidad).toBe('warn')
   })
 
-  it('URL genérica de índice sin proceso vivo → warn (señal débil, para diputación pequeña)', () => {
+  it('URL genérica de índice SIN proceso vivo → OK, no pinga el badge (índice legítimo, T-112 25/07)', () => {
     // Caso real: auxiliar-administrativo-diputacion-ourense, url ".../gl/emprego", vigente 2026.
+    // ~14 de 20 seguimiento_url_stale eran índices legítimos → sobre-marcado; ya no pingan el badge.
     const d = diagnosticarSeguimientoUrl('https://www.depourense.gal/gl/emprego', 2026)
     expect(d.nivel).toBe('url_generica')
-    expect(d.severidad).toBe('warn')
+    expect(d.severidad).toBe('ok')
   })
 
   it('URL genérica CON proceso vivo (procesoEnJuego) → ERROR (ceguera accionable, no se descarta)', () => {
@@ -93,18 +94,17 @@ describe('seguimiento_url — detección graduada de ciclo desfasado', () => {
     expect(diagnosticarSeguimientoUrl('https://x.es/BOE-A-2020-1', null).severidad).toBe('ok')
   })
 
-  it('sin procesoEnJuego, solo la señal LIMPIA escala a error: las ruidosas se quedan en warn', () => {
+  it('sin procesoEnJuego, solo la señal LIMPIA escala a error (año-viejo warn, genérica ok)', () => {
     // La invariante que impide repetir lo de hash_change: sin el flag de proceso vivo, como mucho
-    // un error por caso limpio (boletín viejo). La genérica solo sube a error CON procesoEnJuego
-    // (test aparte) — para una oposición que vendemos con proceso en marcha, no es ruido.
+    // un error por caso limpio (boletín viejo). La genérica sin proceso vivo es 'ok' (T-112: índice
+    // legítimo, no pinga); solo sube a error CON procesoEnJuego (test aparte).
     const casos: Array<[string, number]> = [
       ['https://www.boe.es/…/BOE-A-2024-1', 2025], // limpio → error
       ['https://x.es/ope-2022/', 2025], // año viejo path → warn
-      ['https://x.es/empleo-publico', 2025], // genérica → warn
+      ['https://x.es/empleo-publico', 2025], // genérica → ok (no pinga)
     ]
-    const errores = casos
-      .map(([u, a]) => diagnosticarSeguimientoUrl(u, a))
-      .filter((d) => d.severidad === 'error')
-    expect(errores).toHaveLength(1)
+    const diags = casos.map(([u, a]) => diagnosticarSeguimientoUrl(u, a))
+    expect(diags.filter((d) => d.severidad === 'error')).toHaveLength(1)
+    expect(diags.filter((d) => d.severidad === 'ok')).toHaveLength(1) // la genérica
   })
 })

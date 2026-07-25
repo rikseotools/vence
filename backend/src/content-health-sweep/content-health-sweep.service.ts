@@ -363,19 +363,19 @@ function diagnosticarSeguimientoUrl(
       severidad: 'warn',
       motivo: `la URL menciona ${[...new Set(anios)].join(', ')} pero no ${vig} (convocatoria vigente); revisar si sigue el ciclo correcto`,
     };
-  // Índice genérico: normalmente warn (para una diputación pequeña el índice puede ser lo único).
-  // PERO con el proceso VIVO en una oposición que vendemos (procesoEnJuego) nos deja CIEGOS a su
-  // convocatoria —y a si hay VARIAS de la misma OEP (caso Murcia)— → error accionable que
-  // reaparece cada sweep hasta apuntar la URL a la ficha concreta (una señal correcta no se
-  // descarta como ruido de hash_change).
+  // Índice genérico: solo pinga si el proceso está VIVO en una oposición que vendemos
+  // (procesoEnJuego) → nos deja CIEGOS a su convocatoria (caso Murcia) = error accionable. SIN
+  // proceso vivo es LEGÍTIMO (para una diputación pequeña el índice puede ser lo único que vigilar)
+  // → 'ok', no pinga el badge. Medido 25/07 (T-112): ~14 de 20 seguimiento_url_stale eran
+  // url_generica legítimas → sobre-marcado del detector. Mirror de lib/convocatoria/seguimientoUrlSalud.cjs.
   if (URL_GENERICA.test(url)) {
     const enJuego = !!opts?.procesoEnJuego;
     return {
       nivel: 'url_generica',
-      severidad: enJuego ? 'error' : 'warn',
+      severidad: enJuego ? 'error' : 'ok',
       motivo: enJuego
         ? 'la URL es una página índice del portal de empleo, no la ficha de la convocatoria; con el proceso VIVO esto nos deja CIEGOS a sus cambios y a si hay varias convocatorias de la misma OEP — apúntala a la convocatoria concreta'
-        : 'la URL es una página índice del portal de empleo, no una convocatoria concreta; un cambio ahí rara vez significa algo de esta oposición',
+        : 'la URL es una página índice del portal de empleo (legítima cuando no hay proceso vivo: puede ser lo único que vigilar)',
     };
   }
   return { nivel: 'ok', severidad: 'ok', motivo: 'sin señales de desfase' };
