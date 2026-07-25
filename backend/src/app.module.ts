@@ -115,7 +115,6 @@ import { InternalCronTriggersModule } from './internal-cron-triggers/internal-cr
 // migración GHA→Fargate; el panel /admin/contenido quedaba congelado, 19/07).
 import { ContentHealthSweepModule } from './content-health-sweep/content-health-sweep.module';
 import { FraudSweepModule } from './fraud-sweep/fraud-sweep.module';
-import { SimCanaryModule } from './sim-canary/sim-canary.module';
 // Snapshot diario de pg_stat_statements para cálculo de deltas 24h vía
 // vista `v_pg_stat_statements_delta`. Cierra el gap "queries lentas HOY vs
 // ruido histórico acumulado" del incidente 31/05. Ver
@@ -208,7 +207,6 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     InternalCronTriggersModule,
     ContentHealthSweepModule,
     FraudSweepModule,
-    SimCanaryModule, // Vence Sim — canary de invariantes de dominio por API (cada hora)
     // Acción 3 observability-capacity (01/06/2026) — snapshot diario 00:05 UTC
     // de pg_stat_statements + poda 30d. Habilita v_pg_stat_statements_delta.
     PgStatSnapshotModule,

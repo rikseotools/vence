@@ -130,6 +130,17 @@ async function runJourney(journey: Journey): Promise<SimResult> {
   // los journeys anónimos aunque SIM_AUTH_SECRET no esté configurado. Se resuelve el
   // secreto ANTES de lanzar el navegador para no gastar recursos.
   let cookieValue: string | null = null
+  if (journey.as && !journey.as.userId) {
+    // Sin cuenta de test (SMOKE_USER_ID) no forjamos sesión de un cliente real → SKIP.
+    const finishedAt = new Date().toISOString()
+    return {
+      journey: journey.name, severity: journey.severity,
+      identity: { userId: '', email: journey.as.email, label: journey.as.label },
+      startedAt, finishedAt, durationMs: Date.now() - t0,
+      steps: [{ step: 'resolver identidad', ok: true, detail: 'SKIP: sin SMOKE_USER_ID/SIM_IDENTITY_USER_ID' }],
+      invariants: [], passed: true, skipped: true,
+    }
+  }
   if (journey.as) {
     try {
       const nowSec = Math.floor(Date.now() / 1000)

@@ -1,15 +1,16 @@
 // Journey AUTENTICADO (auth propia, sin Supabase): un usuario con oposición ve
 // "Test combinando leyes" SCOPED a su temario, sin "Error al cargar", con badges.
-// Reproduce el escenario de Alfonso (celador_murcia) EN SU IDENTIDAD.
+// Reproduce el escenario del incidente Alfonso (celador_murcia) con una CUENTA DE TEST.
 //
-// Identidad configurable por env (para el canary usa una cuenta de TEST, no un cliente
-// real). Default: la del incidente que originó el sistema.
+// Identidad = la MISMA cuenta de test que el resto de canaries del sistema: SMOKE_USER_ID
+// (SSM /vence-backend/SMOKE_USER_ID). NUNCA un cliente real. Overridable por SIM_IDENTITY_*.
+// Sin SMOKE_USER_ID → el runner SALTA este journey (no falla).
 import { requestIsScopedTo } from '../../../lib/sim/invariants'
 import type { InvariantResult } from '../../../lib/sim/types'
 import type { Journey } from '../../../lib/sim/journey'
 
-const USER_ID = process.env.SIM_IDENTITY_USER_ID || '7c6612bd-5eb6-4f60-9f00-73f42be3804b'
-const EMAIL = process.env.SIM_IDENTITY_EMAIL || 'alfonsomartinezocho@gmail.com'
+const USER_ID = process.env.SIM_IDENTITY_USER_ID || process.env.SMOKE_USER_ID || ''
+const EMAIL = process.env.SIM_IDENTITY_EMAIL || 'smoke@vence.es'
 const POSITION = process.env.SIM_IDENTITY_POSITION || 'celador_murcia'
 
 const journey: Journey = {
