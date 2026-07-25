@@ -30,7 +30,13 @@ const QUERY = `
     FROM topics t LEFT JOIN topic_epigrafe_verification ev ON ev.topic_id=t.id
     WHERE t.is_active GROUP BY 1),
   users AS (SELECT target_oposicion pt, count(*)::int n FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1)
-  SELECT replace(o.slug,'-','_') AS position_type, o.slug, COALESCE(u.n,0)::int usuarios, tv.temas, tv.verificados
+  SELECT replace(o.slug,'-','_') AS position_type, o.slug, COALESCE(u.n,0)::int usuarios, tv.temas, tv.verificados,
+    -- comunicados de temario (señal fuerte, espejo de lib/temario/temarioRefiningDoc.js): OBLIGA a
+    -- verificar contra ellos, no solo el programa_url (caso CARM ofimática).
+    (SELECT count(*)::int FROM convocatoria_documentos cd
+       WHERE cd.convocatoria_id=cv.id AND cd.extracted_text IS NOT NULL
+         AND ((SELECT count(*) FROM regexp_matches(cd.extracted_text, 'tema\s+[0-9]+', 'gi'))>=5
+              OR (cd.extracted_text ~* 'powerpoint' AND cd.extracted_text ~* 'excel'))) AS comunicados_temario
   FROM tv
   JOIN oposiciones o ON o.is_active AND replace(o.slug,'-','_')=tv.position_type
   JOIN convocatorias cv ON cv.oposicion_id=o.id AND cv.is_current
@@ -48,7 +54,9 @@ async function main() {
     const usuarios = rows.reduce((a, r) => a + r.usuarios, 0);
     console.log(`Cola de revisión de temario: ${rows.length} oposiciones · ${usuarios} usuarios afectados`);
     console.log('(convocatoria vigente + temario no verificado del todo → revisar con verify:epigrafe/scope y aplicar al temario vivo)\n');
-    for (const r of rows) console.log(`  ${r.slug} | ${r.usuarios} usuarios | ${r.verificados}/${r.temas} verificados`);
+    const conCom = rows.filter(r => r.comunicados_temario > 0).length;
+    if (conCom) console.log(`⚠️  ${conCom} de ellas tienen COMUNICADOS de temario en el hub → verifica contra ellos, no solo el programa_url (caso CARM ofimática).\n`);
+    for (const r of rows) console.log(`  ${r.slug} | ${r.usuarios} usuarios | ${r.verificados}/${r.temas} verificados${r.comunicados_temario > 0 ? ` | 🧩 ${r.comunicados_temario} comunicado(s) de temario` : ''}`);
   } finally { await c.end(); }
 }
 

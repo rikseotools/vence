@@ -22,6 +22,7 @@ const path = require('path')
 const crypto = require('crypto')
 const { execFileSync } = require('child_process')
 const { canonicalizeBoletinUrl } = require(path.join(__dirname, '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'))
+const { esTemarioRefiningDoc } = require(path.join(__dirname, '..', 'lib', 'temario', 'temarioRefiningDoc.js'))
 
 // ── .env.local ──
 try {
@@ -111,6 +112,22 @@ async function cmdDump(pt) {
     fs.writeFileSync(dumpPath(pt), JSON.stringify(out, null, 1))
     console.log(`✅ dump ${pt}: fetch=${how}, temario_parseado=${out.temario_parseado}/${topics.length}, programa_hash=${hash ? hash.slice(0, 8) : 'NULL'} → ${dumpPath(pt)}`)
     if (out.temario_parseado < 3) console.log(`   ⚠️  boletín no parseable (${how}) — la literalidad no se puede verificar automáticamente para esta oposición`)
+
+    // ── FORCING FUNCTION: el programa puede estar repartido en base + comunicados que lo afinan ──
+    // Surface los COMUNICADOS/notas de esta convocatoria que contienen temario (señal fuerte:
+    // >=5 "Tema N" o anexo ofimática) para OBLIGAR a verificar contra ellos, no solo el programa_url.
+    // Caso raíz CARM (ofimática en un comunicado 2025, no en el programa base 2016). Se leen del hub
+    // (cero re-descarga). Ver lib/temario/temarioRefiningDoc.js + docs/runbooks/verificar-epigrafes-scope.md.
+    const docs = (await c.query(
+      `SELECT tipo, url, extracted_text FROM convocatoria_documentos
+       WHERE convocatoria_id=$1 AND extracted_text IS NOT NULL AND url IS DISTINCT FROM $2`,
+      [conv.id, conv.programa_url])).rows
+    const comunicados = docs.filter(d => esTemarioRefiningDoc(d.extracted_text))
+    if (comunicados.length) {
+      console.log(`\n   🧩 ${comunicados.length} DOCUMENTO(S) de la convocatoria contienen temario que puede AFINAR el programa base — VERIFICA los epígrafes contra ELLOS también (no solo el programa_url):`)
+      for (const d of comunicados) console.log(`      [${d.tipo}] ${d.url}`)
+      console.log(`      (leídos del hub; texto en convocatoria_documentos.extracted_text — cero re-descarga)`)
+    }
   } finally { await c.end() }
 }
 
