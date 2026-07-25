@@ -57,6 +57,16 @@ describe('canonicalizeBoletinUrl — boletines regionales (alta confianza)', () 
     expect(r.docKey).toBe('DOGC-1035641');
     expect(r.boletin).toBe('DOGC');
   });
+
+  test('BOC (Canarias): .html y .pdf del mismo anuncio → mismo docKey', () => {
+    const html = canonicalizeBoletinUrl('https://www.gobiernodecanarias.org/boc/2024/239/3965.html');
+    const pdf = canonicalizeBoletinUrl('https://www.gobiernodecanarias.org/boc/2024/239/3965.pdf');
+    expect(html.docKey).toBe('BOC-2024-239-3965');
+    expect(pdf.docKey).toBe('BOC-2024-239-3965');
+    expect(html.boletin).toBe('BOC');
+    expect(html.recognized).toBe(true);
+    expect(html.canonicalUrl).toBe('https://www.gobiernodecanarias.org/boc/2024/239/3965.html');
+  });
 });
 
 describe('canonicalizeBoletinUrl — reserva segura para boletines no reconocidos', () => {
