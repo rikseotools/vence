@@ -139,6 +139,13 @@ Grouped by what unblocks each. We list them because a benchmark that omits them 
 
 **Bottom line for readers of this report:** every latency table above is a *lower bound* for Koigrid measured in its most handicapped configuration, and the cost advantage is real but ~4–5×, not 10×. We will re-run the comparison properly the moment R1 is fixed and a paid plan/custom domain is on the table.
 
+### 🧮 Sizing reality-check: how many replicas would Vence actually need on Koigrid? (measured 2026-07-25)
+Because the answer isn't "the same as on AWS" — and the reason is, again, the edge cache:
+- **On AWS the origin barely works.** Real ECS utilization of the 8 front-end tasks (16 vCPU) over 7 days: **daily average CPU 2.4 % – 18.7 %**, memory **~15 %** of 4 GB, with **short bursts to 100 %** on individual tasks. CloudFront serves most HTML from the edge, so the origin sees a fraction of the traffic. The 8 tasks are burst headroom and HA, not throughput.
+- **On Koigrid today the origin would take 100 % of it**, because `cf-cache-status: DYNAMIC` (R1/A3). Measured capacity: **~10 rps per 2 GB replica, saturated** (p95 4.1–5.7 s). For our ~16.6 rps peak with an acceptable p95 that's an estimated **4–6 replicas**; **with HTML edge caching working, 1–2**.
+- **So the single feature in A3 is worth roughly 3–5× our replica bill.** That's the honest business case for shipping it, from a real migrator's numbers — and it's why we can't size (or price) a Koigrid cutover until R1 is fixed.
+- *(For context on the AWS side: the account's Fargate vCPU quota is 30, currently 16.25 in use, and it is adjustable via a free support ticket. So the quota is not what pushes this migration — cost, ops simplicity and DB co-location are.)*
+
 ### 🔻 R7 (during this write-up) — the control plane returned `500` on *every* endpoint for several minutes
 `GET /apps`, `/apps/{id}`, `/apps/{id}/resources`, `/databases`, `/usage`, `/metrics` → all `500 {"error":"internal","errorRef":"…"}` (refs `ca2a9503…`, `fb52a380…`, `36765e42…`). **The data plane stayed healthy** (our front-end and backend kept serving `200` at ~0.23 s), so this was control-plane-only — but it stopped us finishing the resource/plan side of the table above, and it is the second time in this session that a release window degraded the API (the first being the R1–R6 regressions). A **status page / `/health` for the control plane**, and treating `openapi.json`+`llms.txt` as versioned artifacts (so a rollback is visible rather than silently changing the contract), would make releases much less alarming for someone mid-migration.
 
