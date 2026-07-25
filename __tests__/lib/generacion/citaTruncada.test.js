@@ -1,4 +1,4 @@
-const { analizarCita } = require('../../../lib/generacion/citaTruncada')
+const { analizarCita, clausulaEnEnunciado } = require('../../../lib/generacion/citaTruncada')
 
 // Todos los casos salen de defectos REALES detectados en los batches del
 // Bloque II de T-045, no de ejemplos inventados.
@@ -100,5 +100,43 @@ describe('analizarCita — truncamiento por la cabeza', () => {
   it('NO marca cuando lo que precede es una enumeración con comas, no un inciso "salvo"', () => {
     const art = 'Las deudas tributarias podrán extinguirse por pago, prescripción, compensación o condonación, por los medios previstos en la normativa aduanera.'
     expect(analizarCita(art, 'por los medios previstos en la normativa aduanera').estado).toBe('OK')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §2.2 — la cláusula "omitida" que YA está en el enunciado es CONDENSACIÓN VÁLIDA.
+//
+// `analizarCita` solo recibe artículo y opción, así que un inciso condicionante que
+// precede a la cita se lee como TRUNCADA por la cabeza aunque la pregunta lo recoja.
+// Quien tenga el enunciado (verificar-batch-generado.cjs, simular-batch-preinsercion.cjs)
+// consulta este helper antes de fallar. Caso real: batch gen_leon_t26_2026-07-26, art.
+// 3.4 TRLRHL — el verificador lo daba por defecto y bloqueaba la aprobación de un lote
+// que dos auditorías independientes habían dado por bueno. Penalizar el patrón correcto
+// (inciso en la pregunta) empuja a duplicar la cláusula en las cuatro opciones, que es peor.
+describe('clausulaEnEnunciado — condensación válida §2.2', () => {
+  const CLAUSULA = 'salvo que la legislación de desarrollo de las comunidades autónomas prevea otra cosa'
+
+  it('reconoce la cláusula cuando el enunciado la recoge casi igual', () => {
+    const enunciado =
+      'Según el artículo 3.4 TRLRHL, y salvo que la legislación de desarrollo de las comunidades autónomas prevea otra cosa:'
+    expect(clausulaEnEnunciado(CLAUSULA, enunciado)).toBe(true)
+  })
+
+  it('tolera reformulaciones leves del enunciado (compara por palabras, no por subcadena)', () => {
+    const enunciado =
+      'Salvo que prevea otra cosa la legislación de desarrollo dictada por las comunidades autónomas, ¿qué derecho asiste al concesionario?'
+    expect(clausulaEnEnunciado(CLAUSULA, enunciado)).toBe(true)
+  })
+
+  it('NO la da por recogida si el enunciado la calla', () => {
+    expect(clausulaEnEnunciado(CLAUSULA, 'Según el artículo 3.4 TRLRHL:')).toBe(false)
+  })
+
+  it('NO se conforma con que coincidan un par de palabras sueltas', () => {
+    expect(clausulaEnEnunciado(CLAUSULA, 'Según la legislación vigente en la materia:')).toBe(false)
+  })
+
+  it('devuelve false ante una cláusula demasiado corta para juzgarla', () => {
+    expect(clausulaEnEnunciado('salvo que', 'salvo que sea otra cosa')).toBe(false)
   })
 })

@@ -44,7 +44,7 @@ if (!BATCH) {
 }
 
 // Normalización para comparar citas: unifica comillas y espacios.
-const { analizarCita } = require(path.join(__dirname, '..', 'lib', 'generacion', 'citaTruncada'))
+const { analizarCita, clausulaEnEnunciado } = require(path.join(__dirname, '..', 'lib', 'generacion', 'citaTruncada'))
 
 const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().toLowerCase()
 
@@ -98,7 +98,13 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
       // Cita truncada — solo tiene sentido sobre citas contiguas.
       const cita = analizarCita(q.content, correcta)
       if (cita.estado === 'TRUNCADA') {
-        errs.push(`CITA TRUNCADA (${cita.lado}): ${cita.lado === 'cabeza' ? `el artículo antepone "${cita.cola}"` : `el artículo continúa con "${cita.cola}…"`} — la cita omite una cláusula que la condiciona`)
+        // §2.2: si la cláusula que se "omite" ya está en el ENUNCIADO, es condensación
+        // VÁLIDA, no truncamiento. `analizarCita` no ve el enunciado; aquí sí lo tenemos.
+        if (cita.lado === 'cabeza' && clausulaEnEnunciado(cita.cola, q.question_text)) {
+          avisos.push(`cita truncada por la cabeza ("${cita.cola}") pero la cláusula ya aparece en el enunciado — condensación válida §2.2`)
+        } else {
+          errs.push(`CITA TRUNCADA (${cita.lado}): ${cita.lado === 'cabeza' ? `el artículo antepone "${cita.cola}"` : `el artículo continúa con "${cita.cola}…"`} — la cita omite una cláusula que la condiciona`)
+        }
       }
       if (lit.estado === 'ENUMERACION') {
         warn++
