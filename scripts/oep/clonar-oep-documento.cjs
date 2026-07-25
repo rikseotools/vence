@@ -46,11 +46,14 @@ async function clonarOepDoc(c, { oepId, url, extractedText = null, contentHash =
     `SELECT ensure_convocatoria_documento($1,$2,$3,$4,'oep_decreto',$5,$6,'oep-backfill') AS id`,
     [conv.id, docKey, canonicalUrl, hash, tit, extractedText]);
   const docId = r.rows[0].id;
-  // asegurar texto/hash aunque la fila existiese sin ellos
+  // asegurar texto/hash aunque la fila existiese sin ellos. Y PROMOVER el tipo: si `ensure_` dedupó
+  // por doc_key y devolvió un doc pre-existente con otro tipo (p.ej. 'otro'/'convocatoria'), es el
+  // MISMO documento oficial que estamos clonando como decreto de OEP → tipo='oep_decreto' (mantiene
+  // la invariante source_documento_id→oep_decreto). NUNCA toca notas (`ensure_` ya las excluye).
   if (extractedText) await c.query(
-    `UPDATE convocatoria_documentos SET extracted_text=COALESCE(extracted_text,$2), content_hash=COALESCE(content_hash,$3), oep_id=$4 WHERE id=$1`,
+    `UPDATE convocatoria_documentos SET extracted_text=COALESCE(extracted_text,$2), content_hash=COALESCE(content_hash,$3), oep_id=$4, tipo='oep_decreto' WHERE id=$1`,
     [docId, extractedText, hash, oepId]);
-  else await c.query(`UPDATE convocatoria_documentos SET oep_id=$2 WHERE id=$1`, [docId, oepId]);
+  else await c.query(`UPDATE convocatoria_documentos SET oep_id=$2, tipo='oep_decreto' WHERE id=$1`, [docId, oepId]);
   // enlazar la entidad oep al doc + fijar fuente/doc_key
   await c.query(`UPDATE oep SET source_documento_id=$2, doc_key=$3, fuente_url=COALESCE(fuente_url,$4) WHERE id=$1`,
     [oepId, docId, docKey, canonicalUrl]);
