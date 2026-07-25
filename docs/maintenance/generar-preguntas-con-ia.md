@@ -219,6 +219,15 @@ A partir de ahí, dentro de esa misma pregunta/explicación, ya puedes usar la s
 
 Origen: impugnación de Laura García (02/07/2026) — vio "LBRL" en una pregunta cuando el nombre completo solo aparecía en la anterior. Barrido de normalización aplicado a ~174 preguntas activas de 7 siglas.
 
+**El gate lo comprueba desde el 25/07/2026** (`lib/generacion/siglasSinDesarrollar.js`, cableado en `verificar-batch-generado.cjs`). Antes no lo miraba nadie, y en el lote de Agentes de Tributos de Canarias se colaron **73 enunciados** con `IGIC`/`AIEM` a pelo y **12** citando `DL 1/2025` sin identificar la norma. Los cazó una auditoría LLM **por casualidad**: solo se le habían pasado 19 de las 379 preguntas. La lección no es "auditar más", es que *una regla que solo vigila un juez caro es una regla que se incumple* — si la regla es determinista (¿está el nombre completo en el texto visible?), va al gate.
+
+El detector tiene dos niveles a propósito:
+
+- **`faltan`** (error duro): siglas del diccionario usadas sin su desarrollo. Reconoce como desarrollo tanto el nombre (*"Ley General Tributaria"*) como el número (*"Ley 58/2003"*), y respeta la excepción de arriba (si la respuesta es la propia norma, no exige desarrollarla).
+- **`candidatas`** (aviso): mayúsculas que **van tras artículo** (*"del X"*, *"al X"*, *"el X"*) y no están catalogadas → hay que ampliar el diccionario. El filtro del artículo es lo que evita ahogar el aviso en las mayúsculas enfáticas (*"NINGUNA"*, *"MUY GRAVE"*), que nunca van precedidas de artículo. Así se pescó `DL 1/2025`, que ningún diccionario podía prever.
+
+**Y al desarrollar, cita el título verbatim de la fuente.** Los 12 enunciados del `DL 1/2025` iban acompañados de *"Ley 1/2011, de 21 de enero, del Impuesto de la **CAC** sobre las Labores del Tabaco"* — un título inventado a medias: el oficial (BOE-A-2011-2106) es *"del impuesto sobre las labores del tabaco y otras medidas tributarias"*, sin "CAC" por ningún lado. Abreviar un título es tan grave como abreviar una cita.
+
 ### 2.3 Tag obligatorio: `'ia_generada' + '<batch_id>'`
 
 Sin estos tags es imposible:

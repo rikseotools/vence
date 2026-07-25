@@ -30,6 +30,7 @@ const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgr
 const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generacion', 'tellLongitud'))
 const { analizarLiteralidad, analizarIntruso } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
 const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))
+const { analizarSiglas } = require(path.join(__dirname, '..', 'lib', 'generacion', 'siglasSinDesarrollar'))
 
 const envPath = path.join(__dirname, '..', '.env.local')
 const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
@@ -67,6 +68,7 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
   let warn = 0
   for (const q of Q) {
     const errs = []
+    const avisos = []
     const opts = [q.option_a, q.option_b, q.option_c, q.option_d]
     const correcta = opts[q.correct_option]
 
@@ -119,7 +121,19 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
       if (L !== letra && !q.explanation.includes(`**${L})**`)) errs.push(`falta bullet del distractor ${L}`)
     }
 
+    // §2.2-quater: la pregunta sale barajada y suelta, así que la sigla se
+    // desarrolla EN ELLA. Se colaron 73 enunciados con IGIC/AIEM a pelo porque
+    // el gate no lo miraba (lote ATC Canaria, 25/07/2026).
+    const sig = analizarSiglas(q.question_text, q.explanation, opts)
+    if (sig.faltan.length) {
+      errs.push(`SIGLA SIN DESARROLLAR (§2.2-quater): ${sig.faltan.join(', ')} — da el nombre completo en su primera aparición y deja la sigla entre paréntesis`)
+    }
+    if (sig.candidatas.length) {
+      avisos.push(`posible sigla no catalogada: ${sig.candidatas.join(', ')} — si es una norma o tributo, añádela al diccionario de lib/generacion/siglasSinDesarrollar.js`)
+    }
+
     pos[q.correct_option] = (pos[q.correct_option] || 0) + 1
+    for (const a of avisos) console.log(`  ⚠️ art.${q.article_number} (${q.id.slice(0, 8)}): ${a}`)
     if (errs.length) {
       fail++
       console.log(`  ❌ art.${q.article_number} (${q.id.slice(0, 8)}): ${errs.join(' | ')}`)
