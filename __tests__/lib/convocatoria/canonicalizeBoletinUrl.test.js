@@ -84,6 +84,16 @@ describe('canonicalizeBoletinUrl — boletines regionales (alta confianza)', () 
     expect(es.boletin).toBe('DOG');
     expect(es.recognized).toBe(true);
   });
+
+  test('MIA (portal Aragón por CSV): SPA y API convergen al mismo docKey', () => {
+    const portal = canonicalizeBoletinUrl('https://mia.aragon.es/documentos?csv=CSVS60B0W34IP1Q0XFIL');
+    const api = canonicalizeBoletinUrl('https://carp-core-mia.aragon.es/rest/documentos/CSVS60B0W34IP1Q0XFIL/pdf');
+    expect(portal.docKey).toBe('MIA-CSVS60B0W34IP1Q0XFIL');
+    expect(api.docKey).toBe('MIA-CSVS60B0W34IP1Q0XFIL');
+    expect(portal.boletin).toBe('MIA');
+    expect(portal.recognized).toBe(true);
+    expect(portal.canonicalUrl).toBe('https://mia.aragon.es/documentos?csv=CSVS60B0W34IP1Q0XFIL');
+  });
 });
 
 describe('canonicalizeBoletinUrl — reserva segura para boletines no reconocidos', () => {
