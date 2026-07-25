@@ -162,6 +162,12 @@ Si la opción correcta es cita literal del artículo (texto legal completo, larg
 
 **Prohibido:** correcta de >100 chars con los tres distractores de <60.
 
+> 🧬 **CONSTRUYE CADA DISTRACTOR CAMBIANDO EXACTAMENTE UNA COSA — el resto, copiado literal (25/07/2026).** Medido en el batch `gen_atc_t206`: **8 de 16 preguntas (50%)** con el mismo defecto. Al redactar el distractor "de memoria" a partir del artículo, el generador altera el elemento que quiere hacer falso (el *titular*) y **de paso, sin darse cuenta, trunca una enumeración adyacente, se come una cláusula condicional o añade una justificación inventada** — y luego el bullet de la explicación solo documenta la alteración titular. En el art. 85.2 los TRES distractores truncaron en silencio la letra e) (*"…declaraciones, autoliquidaciones y comunicaciones tributarias"*), cada uno por un sitio distinto.
+>
+> **No es un fallo de clave** (la correcta seguía siendo correcta en las 16) **pero sí de enseñanza**: el opositor descarta el distractor por el motivo equivocado, y la explicación se lo confirma. Y arrastra un segundo efecto medible: como truncar acorta, **la correcta acaba siendo sistemáticamente la más larga** → tell de longitud (§2.2-bis) por la puerta de atrás.
+>
+> **Método que lo evita, y cuesta lo mismo:** parte del texto literal del artículo, pégalo entero en el distractor y **cambia un único elemento** (un sujeto, un verbo, un plazo, una remisión). Si necesitas dos alteraciones para que sea claramente falso, adelante — pero entonces el bullet debe recogerlas **las dos**. Reparar después es peor: en `gen_atc_t206` costó una ronda entera de ocho reparaciones que se habrían ahorrado copiando en vez de recordando.
+
 **Si no hay texto legal suficiente para construir 3 distractores largos *y* claramente falsos sin volverlos ambiguos, NO se genera la pregunta sobre ese punto** (mismo criterio que §2.2: mejor menos cantidad).
 
 > **Contenido conceptual/editorial (no BOE) dispara este tell** — la opción correcta fiel a prosa conceptual suele ser mucho más larga que distractores plausibles. Medido en la tanda editorial UMM del 23/07 (§5.30): **21% de rechazo global por length-tell, 46% en Comunicación** (vs ~5-15% en contenido legal). Construir los distractores largos (banda 0,75×–1,15× de la correcta) **desde la generación**, no en una segunda pasada. Remedio si ya pasó: agente de rebalanceo (alarga los 3 distractores manteniéndolos falsos + actualiza el bullet de la explicación).
