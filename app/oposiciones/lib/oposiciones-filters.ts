@@ -77,6 +77,7 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'oficial-de-gestion-parlamento-de-andalucia': 'andalucia',
     'subalterno-parlamento-andalucia': 'andalucia',
     'administrativo-aragon': 'aragon',
+    'ujieres-cortes-generales': 'estado',
     'auxiliar-museos-estado': 'estado',
     'auxiliar-archivos-estado': 'estado',
     'auxiliar-biblioteca-estado': 'estado',

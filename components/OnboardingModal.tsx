@@ -116,6 +116,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'ujieres_cortes_generales',
+    nombre: 'Ujieres Cortes Generales',
+    categoria: 'C2',
+    administracion: 'Cortes Generales',
+    icon: '🏛️'
+  },
+  {
     id: 'celador_murcia',
     nombre: 'Celador SMS Murcia',
     categoria: 'Agrupaciones Profesionales',

@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'ujieres_cortes_generales',
+      label: 'Ujieres Cortes Generales',
+      data: {
+        name: 'Cuerpo de Ujieres de las Cortes Generales',
+        slug: 'ujieres-cortes-generales',
+        categoria: 'C2',
+        administracion: 'Cortes Generales'
+      }
+    },
+    {
       value: 'celador_murcia',
       label: 'Celador SMS Murcia',
       data: {
