@@ -221,6 +221,35 @@ Vale como diana solo si **HTTP 200 Y el recuento es > 0**. Casos reales de T-114
 
 Si no hay ninguna URL que pase la comprobación, **no inventes una**: déjala como está y anótala como caso de *headless-fetcher* (renderizar con navegador y hashear el texto renderizado). Es lo que se hizo con IIPP y Junta General de Asturias en **T-125**.
 
+#### Esto ya NO es una comprobación manual: está en código (26/07/2026)
+
+La tabla de arriba se hizo a mano con `curl` la primera vez. Ahora hay tres piezas para que no dependa de que alguien se acuerde:
+
+| Pieza | Qué hace |
+|---|---|
+| `lib/convocatoria/seguimientoVigilable.cjs` | **Núcleo puro** (sin red, sin BD) que decide si una URL es vigilable. Umbrales calibrados sobre las 428 fuentes con HTTP 2xx. Tests: `__tests__/lib/convocatoria/seguimientoVigilable.test.js` |
+| `scripts/seguimiento/repuntar-url.cjs` | **La única vía legítima para cambiar una `seguimiento_url`.** Dry-run por defecto; comprueba la candidata con las cabeceras del cron, **rehúsa** escribir una URL no vigilable, resetea el hash en la tabla correcta y deja traza en `observable_events` |
+| `scripts/seguimiento/sim-fuentes-ciegas.cjs` | **Simulación** bank-wide, no escribe nada. Enseña qué marcaría y por qué antes de que nada llegue al badge |
+
+Y el badge lo vigila solo: kind **`seguimiento_fuente_ciega`** (frase-gatillo *"revisa las fuentes ciegas de seguimiento"*), en el gemelo CLI y en el `@Cron` del backend.
+
+**Repuntar, a partir de ahora:**
+
+```bash
+# 1. mirar el estado sin tocar nada
+node scripts/seguimiento/sim-fuentes-ciegas.cjs
+
+# 2. probar la candidata (rc=0 vigilable, rc=1 no)
+node scripts/seguimiento/repuntar-url.cjs --verificar "<url>" --anclas "Administrativo|107 plazas"
+
+# 3. aplicar (sin --apply es dry-run)
+node scripts/seguimiento/repuntar-url.cjs <slug> "<url>" --anclas "…" --apply
+```
+
+**Punto ciego conocido, para no fiarse de más:** el detector nocturno mide **cantidad** de texto, así que una SPA con mucho armazón estático (menús, ayuda, avisos legales) lo pasa aunque esté igual de ciega — medido: `jgpa.convoca.online` sirve 6.040 chars y ni una mención al proceso. Eso solo lo caza `--anclas` al escribir, porque solo entonces sabemos qué proceso debería mencionar la página. La señal que cerraría el hueco (hash inmóvil mientras la convocatoria avanza) está pendiente en T-125.
+
+**Atribución de la evidencia:** el detector solo juzga con checks cuya `checked_url` coincide con la `seguimiento_url` vigente (columna añadida el 26/07). Sin eso, una oposición recién repuntada se juzgaría con el contenido de su URL anterior — falso positivo garantizado, que es justo lo que pasó con `administrativo-diputacion-jaen` a los pocos minutos de repuntarla. Las fuentes sin evidencia atribuible **no se juzgan** y se auto-curan en la siguiente pasada del cron.
+
 ### ⚠️ La señal puede estar EQUIVOCADA — y el radar la engancha a la fila que no es (16/07/2026)
 
 Tres casos reales del mismo día. **Ninguna señal era ruido y ninguna era lo que decía:**

@@ -30,6 +30,7 @@
  */
 const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
+const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilable.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
@@ -341,6 +342,42 @@ async function main() {
     if (d.severidad === 'ok') continue;
     add('content', d.severidad, r.slug, 'seguimiento_url_stale',
       `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
+  }
+
+  // ── seguimiento_url que responde 200 pero NO VIGILA NADA (ceguera silenciosa) ───────────
+  // Hermano del anterior, causa distinta: allí la URL apunta al ciclo equivocado; aquí apunta
+  // al sitio correcto y el CONTENIDO no llega. El cron hashea el HTML servido sin ejecutar JS,
+  // así que una SPA (o un "página en desuso", o un WAF que responde 200) devuelve un shell
+  // inmutable → el hash se congela, `seguimiento_change_status` se queda en 'ok' y el panel se
+  // ve verde mientras no vigilamos nada. Descubierto al repuntar las 9 de T-114 (26/07): las
+  // páginas "buenas" de Córdoba, Asturias y Jaén eran SPAs y se descartaron a mano.
+  //
+  // Evidencia SIN re-fetchear: `content_preview` ya es el texto extraído por el propio cron.
+  // `checked_url = seguimiento_url` es OBLIGATORIO — sin ese filtro, una oposición recién
+  // repuntada se juzga con el contenido de su URL anterior (falso positivo garantizado, cazado
+  // por la simulación bank-wide el 26/07). Sin evidencia atribuible NO se juzga (fail-safe).
+  //
+  // Solo se emite la banda `error` (ciega de verdad). La banda `warn` —200 con poco texto, que
+  // mezcla páginas reales cortas con contenedores vacíos— NO pinga el badge: se adjudica bajo
+  // demanda con `node scripts/seguimiento/sim-fuentes-ciegas.cjs --todos`. Misma política que la
+  // banda MEDIUM de sobre-inclusión: una bandeja ruidosa se aprende a ignorar (lección T-047).
+  const ciegaRows = (await c.query(`
+    SELECT o.slug, ch.http_status, ch.error_message, ch.content_preview
+    FROM oposiciones o
+    JOIN LATERAL (
+      SELECT k.http_status, k.error_message, k.content_preview
+      FROM convocatoria_seguimiento_checks k
+      WHERE k.oposicion_id = o.id AND k.checked_url = o.seguimiento_url
+      ORDER BY k.checked_at DESC LIMIT 1
+    ) ch ON true
+    WHERE o.is_active AND o.seguimiento_url IS NOT NULL`)).rows;
+  for (const r of ciegaRows) {
+    const v = clasificarVigilancia({
+      httpStatus: r.http_status, error: r.error_message, texto: r.content_preview,
+    });
+    if (v.severidad !== 'error') continue;
+    add('content', 'error', r.slug, 'seguimiento_fuente_ciega',
+      `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`);
   }
 
   // ── Enlaces de la convocatoria vigente que NO corresponden a lo que MUESTRAN ──

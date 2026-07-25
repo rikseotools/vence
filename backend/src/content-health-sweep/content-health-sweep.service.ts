@@ -355,6 +355,101 @@ const ESTADOS_FICHA_VIVA = new Set([
 function procesoConFichaViva(estadoProceso: string | null | undefined): boolean {
   return ESTADOS_FICHA_VIVA.has(estadoProceso as string);
 }
+// ── Mirror INLINE de lib/convocatoria/seguimientoVigilable.cjs — MANTENER EN SYNC ──────────
+// Decide si una `seguimiento_url` es REALMENTE vigilable por el cron (que hashea el HTML servido
+// sin ejecutar JS). Umbrales calibrados el 26/07/2026 sobre las 428 fuentes con HTTP 2xx: solo 15
+// bajan de 600 chars de texto y las 15 son defectuosas; la banda 600-1499 es mixta → warn.
+// UMBRAL_DUDOSO coincide a propósito con el de `isBlockedPage` en check-seguimiento.
+const VIG_UMBRAL_CIEGA = 600;
+const VIG_UMBRAL_DUDOSO = 1500;
+
+/** Aplasta el texto (sin acentos, sin espacios, sin `�`) para que los patrones sobrevivan a la
+ *  codificación rota de estos portales: "P gina en desuso" == "Página en desuso". */
+function aplastarInline(texto: string | null | undefined): string {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/�/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+const VIG_PATRONES: Array<{ nivel: string; re: RegExp; motivo: string }> = [
+  {
+    nivel: 'bloqueo_waf',
+    re: /requestrejected|accessdenied|forbidden|youdonthavepermission|requestblocked|captcha|areyouarobot/,
+    motivo: 'el servidor responde 200 pero el cuerpo es un bloqueo de WAF, no la página',
+  },
+  {
+    nivel: 'pagina_en_desuso',
+    re: /p.?ginaendesuso|estap.?ginahasidotrasladada|accedaatrav.?sdelasiguienteurl/,
+    motivo:
+      'la propia página declara estar EN DESUSO y remite a otra URL — vigilamos una página muerta',
+  },
+  {
+    nivel: 'redireccion_sin_destino',
+    re: /redireccionando|redirigiendo|redirecting/,
+    motivo: 'la respuesta es una página de redirección por JS que nunca llega a destino',
+  },
+  {
+    nivel: 'error_aplicacion',
+    re: /anerrorhasoccurred|sehaproducidounerror|errorinternodelservidor|internalservererror/,
+    motivo: 'el cuerpo es una pantalla de error de la aplicación, no la página de convocatorias',
+  },
+];
+
+function clasificarVigilanciaInline(
+  httpStatus: number | null | undefined,
+  error: string | null | undefined,
+  texto: string | null | undefined,
+): { nivel: string; severidad: 'error' | 'warn' | 'ok'; motivo: string } {
+  const t = typeof texto === 'string' ? texto.trim() : '';
+  const status = typeof httpStatus === 'number' ? httpStatus : 0;
+  const httpOk = status >= 200 && status < 300;
+
+  // Fallos RUIDOSOS: ya visibles como seguimiento_change_status='error' → warn, no duplicar.
+  if (!httpOk || error) {
+    return {
+      nivel: 'fetch_error',
+      severidad: 'warn',
+      motivo: error
+        ? `el último check falló (${String(error).slice(0, 60)}) — visible, no silencioso`
+        : `el último check devolvió HTTP ${status} — visible, no silencioso`,
+    };
+  }
+
+  if (t.length < VIG_UMBRAL_DUDOSO) {
+    const aplastado = aplastarInline(t);
+    for (const p of VIG_PATRONES) {
+      if (p.re.test(aplastado)) {
+        return { nivel: p.nivel, severidad: 'error', motivo: p.motivo };
+      }
+    }
+  }
+
+  if (t.length < VIG_UMBRAL_CIEGA) {
+    return {
+      nivel: 'shell_sin_contenido',
+      severidad: 'error',
+      motivo:
+        `responde 200 pero solo ${t.length} caracteres de texto (umbral ${VIG_UMBRAL_CIEGA}): el contenido ` +
+        'se carga por JavaScript y el cron no lo ejecuta → el hash queda congelado y la fuente está ciega',
+    };
+  }
+
+  if (t.length < VIG_UMBRAL_DUDOSO) {
+    return {
+      nivel: 'contenido_dudoso',
+      severidad: 'warn',
+      motivo:
+        `responde 200 con ${t.length} caracteres de texto (por debajo de ${VIG_UMBRAL_DUDOSO}): puede ser una ` +
+        'página real corta o un contenedor sin contenido — revisar a mano',
+    };
+  }
+
+  return { nivel: 'ok', severidad: 'ok', motivo: 'contenido suficiente para vigilar' };
+}
+
 function diagnosticarSeguimientoUrl(
   url: string | null | undefined,
   anioVigente: number | null | undefined,
@@ -1258,6 +1353,52 @@ export class ContentHealthSweepService {
         r.slug,
         'seguimiento_url_stale',
         `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`,
+      );
+    }
+
+    // ── seguimiento_url que responde 200 pero NO VIGILA NADA (seguimiento_fuente_ciega) ──
+    // Hermano del anterior con causa distinta: la URL es la correcta pero el contenido no llega.
+    // El cron hashea el HTML servido SIN ejecutar JS → una SPA (o un "página en desuso", o un WAF
+    // que responde 200) devuelve un shell inmutable: hash congelado, estado 'ok', panel verde y
+    // cero vigilancia. Origen T-114/T-125 (26/07).
+    //
+    // `checked_url = seguimiento_url` es OBLIGATORIO: sin ese filtro, una oposición recién
+    // repuntada se juzga con la evidencia de su URL anterior (falso positivo garantizado). Sin
+    // evidencia atribuible NO se juzga (fail-safe). Solo se emite la banda `error`; la banda
+    // `warn` se adjudica bajo demanda con scripts/seguimiento/sim-fuentes-ciegas.cjs --todos.
+    //
+    // Mirror INLINE de lib/convocatoria/seguimientoVigilable.cjs — MANTENER EN SYNC (el backend
+    // NestJS no puede importar del `lib/` del frontend). Umbrales y patrones idénticos: los
+    // vigila __tests__/lib/convocatoria/seguimientoVigilable.test.js (paridad de constantes).
+    const ciegaRows = (await this.db.execute(sql`
+      SELECT o.slug, ch.http_status, ch.error_message, ch.content_preview
+      FROM oposiciones o
+      JOIN LATERAL (
+        SELECT k.http_status, k.error_message, k.content_preview
+        FROM convocatoria_seguimiento_checks k
+        WHERE k.oposicion_id = o.id AND k.checked_url = o.seguimiento_url
+        ORDER BY k.checked_at DESC LIMIT 1
+      ) ch ON true
+      WHERE o.is_active AND o.seguimiento_url IS NOT NULL
+    `)) as unknown as Array<{
+      slug: string;
+      http_status: number | null;
+      error_message: string | null;
+      content_preview: string | null;
+    }>;
+    for (const r of ciegaRows) {
+      const v = clasificarVigilanciaInline(
+        r.http_status,
+        r.error_message,
+        r.content_preview,
+      );
+      if (v.severidad !== 'error') continue;
+      add(
+        'content',
+        'error',
+        r.slug,
+        'seguimiento_fuente_ciega',
+        `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`,
       );
     }
 

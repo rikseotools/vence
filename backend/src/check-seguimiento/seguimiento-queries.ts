@@ -41,6 +41,13 @@ export interface CheckResult {
   oposicionId: string;
   nombre: string;
   slug: string | null;
+  /**
+   * URL realmente comprobada en esta pasada. Se persiste en `checked_url` para que la evidencia
+   * (`content_preview`) sea ATRIBUIBLE: sin esto, tras repuntar una `seguimiento_url` el contenido
+   * del check viejo se le atribuye a la URL nueva y el detector de fuentes ciegas da un falso
+   * positivo garantizado (cazado por la simulación bank-wide el 26/07, T-125).
+   */
+  checkedUrl: string;
   hasChanged: boolean;
   newHash: string;
   oldHash: string | null;
@@ -117,6 +124,7 @@ export async function checkSeguimientoUrl(
       oposicionId: oposicion.id,
       nombre: oposicion.nombre,
       slug: oposicion.slug,
+      checkedUrl: oposicion.seguimientoUrl,
       hasChanged: false,
       newHash: '',
       oldHash: oposicion.seguimientoLastHash,
@@ -133,6 +141,7 @@ export async function checkSeguimientoUrl(
       oposicionId: oposicion.id,
       nombre: oposicion.nombre,
       slug: oposicion.slug,
+      checkedUrl: oposicion.seguimientoUrl,
       hasChanged: false,
       newHash: '',
       oldHash: oposicion.seguimientoLastHash,
@@ -152,6 +161,7 @@ export async function checkSeguimientoUrl(
     oposicionId: oposicion.id,
     nombre: oposicion.nombre,
     slug: oposicion.slug,
+    checkedUrl: oposicion.seguimientoUrl,
     hasChanged,
     newHash,
     oldHash: oposicion.seguimientoLastHash,
@@ -178,10 +188,12 @@ export async function saveSeguimientoCheck(
   // Insertar en historial
   await db.execute(sql`
     INSERT INTO convocatoria_seguimiento_checks
-      (oposicion_id, content_hash, content_length, http_status, has_changed, error_message, content_preview)
+      (oposicion_id, content_hash, content_length, http_status, has_changed, error_message,
+       content_preview, checked_url)
     VALUES
       (${result.oposicionId}::uuid, ${result.newHash}, ${result.contentLength},
-       ${result.httpStatus}, ${result.hasChanged}, ${result.error}, ${result.contentPreview})
+       ${result.httpStatus}, ${result.hasChanged}, ${result.error}, ${result.contentPreview},
+       ${result.checkedUrl})
   `);
 
   // Actualizar cache en oposiciones

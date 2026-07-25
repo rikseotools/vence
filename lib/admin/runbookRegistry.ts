@@ -117,6 +117,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
     claudeHace: 'para cada oposición señalada, verifica contra fuente oficial si la `seguimiento_url` apunta a la convocatoria VIGENTE o a un ciclo ya cerrado. Si está desfasada, repúntala a la página de la convocatoria viva Y pon `seguimiento_last_hash=NULL` (si no, la siguiente pasada del cron da un `changed` falso garantizado). `stale_boletin` (apunta a un documento de boletín inmutable de año viejo) es casi seguro; `posible_ciclo_viejo`/`url_generica` son cola de revisión: pueden ser legítimas (OPE plurianual, portal sin página propia). NUNCA repuntar sin confirmar la URL nueva contra fuente oficial.',
   },
+  seguimiento_fuente_ciega: {
+    title: 'seguimiento_url que responde 200 pero no vigila nada',
+    triggerPhrase: 'revisa las fuentes ciegas de seguimiento',
+    runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
+    claudeHace:
+      'para cada oposición señalada, la `seguimiento_url` responde 200 pero el cron no puede vigilarla: el cron hashea el HTML SERVIDO sin ejecutar JS, así que una SPA (o un "página en desuso", o un WAF que contesta 200) devuelve un shell inmutable → hash congelado, `seguimiento_change_status` en `ok` y panel verde SIN vigilancia. Es peor que una URL desfasada porque a ojo humano la página se ve perfecta. Qué hacer: (1) mirar el `nivel` — `pagina_en_desuso` trae la URL nueva en el propio texto (repuntar ahí); `bloqueo_waf` y `redireccion_sin_destino` exigen otra fuente; `shell_sin_contenido` es SPA. (2) Buscar una alternativa SERVIDA EN HTML: página propia del proceso en la web del convocante, ficha por convocatoria del PAG (`administracion.gob.es/pagFront/ofertasempleopublico/detalleEmpleo.htm?idConvocatoria=N`) o, para cuerpos AGE, el índice del CUERPO en INAP sin sufijo de año. (3) Repuntar SIEMPRE con `node scripts/seguimiento/repuntar-url.cjs <slug> <url> --anclas "…"`, que la comprueba con las cabeceras del cron y REHÚSA escribir una URL no vigilable y resetea el hash en la tabla correcta. NUNCA editar `seguimiento_url` a mano: `seguimiento_last_hash` existe en `oposiciones` Y en `convocatorias` y el cron solo usa la de `oposiciones`. Si no hay ninguna URL servida en HTML, dejarla y anotarla como caso de headless-fetcher (T-125). Simulación bajo demanda, sin escribir nada: `node scripts/seguimiento/sim-fuentes-ciegas.cjs [--todos]`.',
+  },
   texto_examen_pasado: {
     title: 'Textos de la landing anuncian un examen ya pasado como vigente',
     triggerPhrase: 'revisa los textos de examen pasado',
