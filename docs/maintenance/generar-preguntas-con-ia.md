@@ -554,6 +554,10 @@ Lanzar agente `general-purpose` con `model='sonnet'`. Prompt que NO mencione:
 
 El agente lee `/tmp/<batch_id>_audit_input.json` (preguntas + article_content), aplica los 4 checks y devuelve su propio veredicto independiente.
 
+> 📎 **Adjunta también los ARTÍCULOS QUE CITAN LAS EXPLICACIONES, no solo el preguntado (25/07/2026).** Los bullets de los distractores suelen decir *"eso es la autoliquidación del art. 120"* o *"ese carácter lo reserva el art. 101.3 a otros supuestos"*. Si el auditor no tiene esos artículos, no puede verificarlos: en el batch `gen_atc_t208_2026-07-25` devolvió **4 preguntas como ISSUES por remisiones no verificables** (arts. 120, 134 y 101.3) que, comprobadas después contra BD, eran **exactas las tres** — ruido que consume una ronda de reparación. En el mismo lote, las dos remisiones cuyo artículo SÍ viajaba en el input (125.2→126, 139.1→127) las validó sin más. Coste de adjuntarlos: una consulta. Estructura el input como `{preguntas: [...], articulos_referenciados: [...]}` y dilo en el prompt.
+>
+> **No confundas "no verificable" con "incorrecto".** Un auditor bien calibrado señala lo que no puede comprobar en vez de darlo por bueno — eso es señal de que funciona. La respuesta correcta es **aportarle la fuente y volver a preguntar**, no reescribir el texto para esquivar la duda: quitar el número de artículo de una remisión correcta empobrece la explicación para no incomodar al auditor.
+
 **Comparar resultados:**
 - Si Sonnet coincide al 100% con tu auto-audit → proceder a transición.
 - Si Sonnet flagea preguntas que tú diste por OK → adjudicar manualmente (priorizar la opinión más estricta).
