@@ -269,6 +269,12 @@ Si discrepan → adjudicar humano o Opus, no por defecto la auditoría.
 
 > ⚠️ **El paso 9 NO es siempre una formalidad de "confirmar drift BD"** (como sugirió el batch 4). El batch 7 (Aragón) demostró que **los dos Sonnets pre-aplicación pueden converger en el mismo sesgo gramatical** y dar 15/15 PERFECT con alta confianza, mientras el Sonnet del paso 9 (con prompt re-enmarcado como "están vivas, busca cualquier desviación") detecta un defecto real. Tratar el paso 9 como **tercer auditor independiente**, no como verificación de persistencia.
 
+> 🧨 **OVERCLAIM EN LA EXPLICACIÓN: el razonamiento afirma MÁS que el artículo, y otro artículo de la misma ley lo desmiente (26/07/2026, batch `gen_lbrl_2026-07-26`).** La clave era correcta, la opción correcta era cita literal, el gate mecánico daba verde y **las dos auditorías previas dieron PERFECT** — el defecto no estaba en la pregunta sino en el *"Por qué X es correcta"*. Sobre el art. 5 LBRL (plena capacidad para "enajenar toda clase de bienes") la explicación remataba *"…**sin excluir clase alguna de bienes**"*, cuando el **art. 80 de esa misma ley** declara los bienes comunales y de dominio público **inalienables**. Y no era inocuo: uno de los distractores introducía justamente la salvedad de los bienes de dominio público, así que la explicación le regalaba al opositor un argumento de impugnación contra su propia clave.
+>
+> **Regla: la explicación puede explicar por qué la opción es la del artículo, pero no puede extrapolar a "siempre / sin excepción / sin excluir / en todo caso".** Cuando el artículo enuncia una regla general, el límite suele vivir en OTRO artículo de la misma norma — y el sitio correcto para nombrarlo es la explicación ("se ejerce *de acuerdo con la Constitución y las leyes*, que es donde operan los límites, como la inalienabilidad del art. 80"), no un absoluto inventado.
+>
+> **Dónde se caza:** solo con lectura de la ley COMPLETA, no del artículo suelto. Por eso al agente del paso 9 hay que decirle explícitamente *"contrasta cada distractor con el resto de la ley por si alguno resulta cierto por otra vía"* — con ese encuadre lo encontró; sin él, dos auditores con el artículo delante lo pasaron por alto.
+
 ### 2.5 Convención `ai_provider` diferenciado por fase (§5.1 manual de revisión)
 
 `ai_verification_results` tiene constraint único `(question_id, ai_provider)`. Si haces varias rondas con el mismo `ai_provider='claude_code'`, **cada upsert sobrescribe el anterior** y se pierde la traza histórica.
