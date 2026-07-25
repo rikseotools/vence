@@ -26,12 +26,12 @@ conexión se cayó. Ninguna de las dos cosas la cazaba nada. Vence Sim sí.
 | `lib/sim/report.ts` | reporte + puente a `observable_events` | ✅ unit |
 | `lib/sim/journey.ts` | contrato `Journey` + `JourneyCtx` | — |
 | `scripts/sim/run.ts` | **runner**: Playwright + API + screenshots + emit | integración |
-| `scripts/sim/journeys/*.ts` | los escenarios | ✅ integración (ctx simulado) |
-| `.github/workflows/sim-canary.yml` | canary programado (cada 6h) | — |
+| `scripts/sim/journeys/*.ts` | los escenarios de navegador (on-demand) | ✅ integración (ctx simulado) |
+| `backend/src/sim-canary/*` | **canary AWS** (`@Cron` Fargate, API sin navegador) | ✅ unit (spec) |
 
-**Capas de seguridad:** unit (`__tests__/sim/invariants.test.ts`, `core.test.ts`) +
-integración (`journey.integration.test.ts`, journey contra ctx simulado) + canary (workflow)
-+ observabilidad (`sim_journey_result`) + screenshots por paso.
+**Capas de seguridad:** unit (`__tests__/sim/*`, `backend/.../sim-canary.service.spec.ts`) +
+integración (`journey.integration.test.ts`, journey contra ctx simulado) + **canary en AWS**
+(`@Cron` cada hora) + observabilidad (`sim_journey_result`) + screenshots por paso.
 
 ## Cómo correr
 ```bash
@@ -71,11 +71,24 @@ Cada bug reportado → un journey nuevo (~20 líneas) que queda como **regresió
 - `requestIsScopedTo` — la llamada va a la oposición esperada.
 - `failureWasObserved` — **meta-invariante**: un fallo visible SIN evento = punto ciego.
 
-## Canary + secrets
-Workflow `sim-canary.yml` (dispatch + cada 6h). Secrets: `SIM_AUTH_SECRET`, `DATABASE_URL`,
-y opcional `SIM_IDENTITY_USER_ID/EMAIL/POSITION` (cuenta de test). Sube screenshots como
-artefacto. Un journey `high`/`critical` en rojo → job en rojo + evento `error` en
-observabilidad.
+## Canary en AWS (`@Cron` Fargate — como el resto)
+El canary corre **en el backend NestJS (Fargate), NO en GitHub Actions** — igual que
+`health-sweep`, `check-seguimiento`, etc. Módulo `backend/src/sim-canary/`:
+`@Cron('23 * * * *')` (cada hora), emite `sim_journey_result` a `observable_events`
+(source `fargate`), registra heartbeat (radar de crons), y el `alerts-engine` recoge los
+`error`. **Sin secretos ni infra extra:** lee el DB/config del propio backend.
+
+Cubre los **journeys de API sin navegador**:
+- `api-laws-configurator-scoped` (GET) — la lista de leyes de la oposición carga no vacía y
+  rápida (caza el timeout 30s / scope vacío, bug Alfonso #1).
+- `api-questions-within-selection` (POST) — ninguna pregunta fuera de la selección (bug #2).
+  El gate anti-scraping (Turnstile) challengea los POST server-to-server → el journey lo
+  **detecta y SALTA** (no es fallo); la validación completa de #2 la hace el sim on-demand
+  por **navegador** (`npm run sim`), que resuelve el reto como un usuario real.
+
+Los journeys de **navegador** (Playwright: recuperación de red, badge/aviso, sesión del
+usuario) son **on-demand** (`npm run sim`) — no caben en el Fargate del backend (sin
+chromium). Reproducen bugs y validan pre-deploy.
 
 ## Observabilidad
 Cada corrida emite `observable_events` con `event_type='sim_journey_result'`,
