@@ -56,6 +56,9 @@ export interface SimResult {
   invariants: InvariantResult[]
   /** true si TODAS las invariantes pasaron y ningún paso reventó. */
   passed: boolean
+  /** true si el journey NO se ejecutó por falta de configuración (p.ej. sin AUTH_SECRET
+   *  para un journey autenticado). Un skip NO cuenta como fallo — el canary sigue verde. */
+  skipped?: boolean
   /** primer motivo de fallo (para el resumen/alerta). */
   firstFailure?: string
   error?: string // excepción no controlada durante la ejecución

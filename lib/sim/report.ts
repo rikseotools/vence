@@ -39,19 +39,25 @@ export function toObservabilityEvent(result: SimResult) {
 
 /** Resumen de una línea (para logs/CLI/GitHub Actions summary). */
 export function oneLineSummary(result: SimResult): string {
-  const icon = result.passed ? '✅' : '❌'
+  const icon = result.skipped ? '⏭️' : result.passed ? '✅' : '❌'
   const who = result.identity?.label ?? (result.identity ? result.identity.email : 'anon')
-  const tail = result.passed ? `${result.invariants.length} invariantes ok` : result.firstFailure
+  const tail = result.skipped
+    ? (result.steps[0]?.detail ?? 'skip')
+    : result.passed ? `${result.invariants.length} invariantes ok` : result.firstFailure
   return `${icon} [${result.severity}] ${result.journey} (${who}) — ${tail} · ${result.durationMs}ms`
 }
 
-/** Resumen multi-journey (para el veredicto del canary). */
+/** Resumen multi-journey (para el veredicto del canary). Un SKIP no cuenta como fallo. */
 export function suiteSummary(results: SimResult[]) {
-  const failed = results.filter(r => !r.passed)
+  const skipped = results.filter(r => r.skipped)
+  const failed = results.filter(r => !r.passed && !r.skipped)
+  const ran = results.filter(r => !r.skipped)
   return {
     total: results.length,
-    passed: results.length - failed.length,
+    ran: ran.length,
+    passed: ran.length - failed.length,
     failed: failed.length,
+    skipped: skipped.length,
     ok: failed.length === 0,
     lines: results.map(oneLineSummary),
     failures: failed.map(r => ({ journey: r.journey, severity: r.severity, reason: r.firstFailure })),

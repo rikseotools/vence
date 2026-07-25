@@ -126,16 +126,32 @@ async function runJourney(journey: Journey): Promise<SimResult> {
   const shotDir = join(REPORT_DIR, journey.name)
   mkdirSync(shotDir, { recursive: true })
 
+  // Journey autenticado sin secreto disponible → SKIP (no fallo): el canary puede correr
+  // los journeys anónimos aunque SIM_AUTH_SECRET no esté configurado. Se resuelve el
+  // secreto ANTES de lanzar el navegador para no gastar recursos.
+  let cookieValue: string | null = null
+  if (journey.as) {
+    try {
+      const nowSec = Math.floor(Date.now() / 1000)
+      cookieValue = await mintOwnAuthCookie({ userId: journey.as.userId, email: journey.as.email }, authSecret(), { nowSec })
+    } catch (e: any) {
+      const finishedAt = new Date().toISOString()
+      return {
+        journey: journey.name, severity: journey.severity,
+        identity: { userId: journey.as.userId, email: journey.as.email, label: journey.as.label },
+        startedAt, finishedAt, durationMs: Date.now() - t0,
+        steps: [{ step: 'resolver sesión', ok: true, detail: 'SKIP: sin AUTH_SECRET/SIM_AUTH_SECRET' }],
+        invariants: [], passed: true, skipped: true,
+      }
+    }
+  }
+
   const browser = await chromium.launch({ headless: true })
   const ctxPw = await browser.newContext()
   let error: string | undefined
   let invariants: SimResult['invariants'] = []
   try {
-    if (journey.as) {
-      const nowSec = Math.floor(Date.now() / 1000)
-      const value = await mintOwnAuthCookie({ userId: journey.as.userId, email: journey.as.email }, authSecret(), { nowSec })
-      await ctxPw.addCookies([cookieForPlaywright(value, HOST)])
-    }
+    if (cookieValue) await ctxPw.addCookies([cookieForPlaywright(cookieValue, HOST)])
     const page = await ctxPw.newPage()
     const ctx = buildCtx(page, ctxPw, journey, steps, shotDir)
     invariants = await journey.run(ctx)
@@ -156,14 +172,19 @@ async function runJourney(journey: Journey): Promise<SimResult> {
 
 async function emit(results: SimResult[]) {
   if (!EMIT) return
-  const sql = postgres(process.env.DATABASE_URL as string, { ssl: { rejectUnauthorized: false }, max: 1 })
+  if (!process.env.DATABASE_URL) { console.warn('⚠️  [sim] SIM_EMIT=1 pero sin DATABASE_URL → no se emite (no-fatal)'); return }
+  // La emisión NUNCA debe tumbar el canary: si la BD no está accesible, se avisa y sigue.
+  let sql: ReturnType<typeof postgres> | null = null
   try {
+    sql = postgres(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 })
     for (const r of results) {
       const ev = toObservabilityEvent(r)
       await sql`INSERT INTO observable_events (id, ts, source, severity, event_type, endpoint, duration_ms, metadata, created_at)
         VALUES (gen_random_uuid(), now(), ${ev.source}, ${ev.severity}, ${ev.eventType}, ${ev.endpoint}, ${r.durationMs}, ${sql.json(ev.metadata as any)}, now())`
     }
-  } finally { await sql.end() }
+  } catch (e: any) {
+    console.warn(`⚠️  [sim] emisión a observable_events falló (no-fatal): ${e?.message?.slice(0, 120)}`)
+  } finally { if (sql) await sql.end().catch(() => {}) }
 }
 
 async function main() {
@@ -184,7 +205,8 @@ async function main() {
   writeFileSync(join(REPORT_DIR, 'report.json'), JSON.stringify({ base: BASE, summary, results }, null, 2))
   await emit(results)
 
-  console.log(`\n${summary.ok ? '✅' : '❌'} ${summary.passed}/${summary.total} journeys OK · reporte: ${REPORT_DIR}`)
+  const skipNote = summary.skipped ? ` · ${summary.skipped} skip` : ''
+  console.log(`\n${summary.ok ? '✅' : '❌'} ${summary.passed}/${summary.ran} journeys OK${skipNote} · reporte: ${REPORT_DIR}`)
   const criticalFailed = results.some(r => !r.passed && (r.severity === 'critical' || r.severity === 'high'))
   process.exit(criticalFailed ? 1 : 0)
 }

@@ -118,8 +118,16 @@ describe('report → observabilidad', () => {
   })
   it('suiteSummary agrega y detecta fallos', () => {
     const s = suiteSummary([base, { ...base, journey: 'x', passed: false, firstFailure: 'roto' }])
-    expect(s).toMatchObject({ total: 2, passed: 1, failed: 1, ok: false })
+    expect(s).toMatchObject({ total: 2, ran: 2, passed: 1, failed: 1, skipped: 0, ok: false })
     expect(s.failures[0]).toMatchObject({ journey: 'x', reason: 'roto' })
+  })
+  it('suiteSummary: un SKIP no cuenta como fallo (canary sigue verde)', () => {
+    const s = suiteSummary([base, { ...base, journey: 'auth', passed: true, skipped: true, steps: [{ step: 'skip', ok: true, detail: 'sin AUTH_SECRET' }] }])
+    expect(s).toMatchObject({ total: 2, ran: 1, passed: 1, failed: 0, skipped: 1, ok: true })
+  })
+  it('oneLineSummary marca skip con ⏭️', () => {
+    const line = oneLineSummary({ ...base, skipped: true, steps: [{ step: 'skip', ok: true, detail: 'sin AUTH_SECRET' }] })
+    expect(line).toMatch(/⏭️.*sin AUTH_SECRET/)
   })
   it('oneLineSummary legible', () => {
     expect(oneLineSummary(base)).toMatch(/✅ \[high\] por-leyes/)
