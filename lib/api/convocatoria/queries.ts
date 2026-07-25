@@ -13,6 +13,7 @@ import { topics } from '@/db/schema'
 import { asc, and } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { versionedCache } from '@/lib/cache/versionedCache'
+import type { ConvocatoriaHistorica } from '@/lib/convocatoria/historico'
 
 export interface OposicionLandingData {
   nombre: string
@@ -299,6 +300,80 @@ export async function getHitosConvocatoria(
 }
 
 /**
+ * Histórico COMPLETO de convocatorias de una oposición (todos los años, incluidos los
+ * archivados) para el apartado histórico de la landing. Cada fila es una convocatoria; el
+ * AÑO y los decretos de OEP salen de la ENTIDAD `oep` vía el puente `convocatoria_oep`
+ * (T-108) — NO del slice de `oep_fecha` (silo). El año-OEP = MAX(año_oep) de las OEP que
+ * agrupa la convocatoria (una convocatoria del Auxiliar acumula varias OEP). Los plazos y
+ * ratios los deriva `resumenHistorico` en render. Fechas casteadas a ::text para 'YYYY-MM-DD'
+ * sin ambigüedad de timezone.
+ */
+export async function getHistoricoConvocatorias(
+  slug: string
+): Promise<ConvocatoriaHistorica[]> {
+  try {
+    const db = getConvocatoriaDb()
+    const rows = await db.execute<{
+      año: number
+      año_oep: number | null
+      oep_decretos: string[] | null
+      oep_fecha: string | null
+      is_current: boolean
+      estado_proceso: string | null
+      convocatoria_fecha: string | null
+      boe_reference: string | null
+      programa_url: string | null
+      exam_date: string | null
+      plazas_libres: number | null
+      plazas_promocion_interna: number | null
+      plazas_discapacidad: number | null
+      inscritos: number | null
+      presentados: number | null
+    }>(sql`
+      SELECT c."año",
+             MAX(o."año_oep") AS año_oep,
+             array_agg(o.decreto ORDER BY o."año_oep" DESC) FILTER (WHERE o.decreto IS NOT NULL) AS oep_decretos,
+             MAX(o.fecha)::text AS oep_fecha,
+             COALESCE(c.is_current, false) AS is_current, c.estado_proceso,
+             c.convocatoria_fecha::text AS convocatoria_fecha,
+             c.boe_reference, c.programa_url,
+             c.exam_date::text AS exam_date,
+             c.plazas_libres, c.plazas_promocion_interna, c.plazas_discapacidad,
+             c.inscritos, c.presentados
+      FROM convocatorias c
+      INNER JOIN oposiciones op ON c.oposicion_id = op.id
+      LEFT JOIN convocatoria_oep co ON co.convocatoria_id = c.id
+      LEFT JOIN oep o ON o.id = co.oep_id
+      WHERE op.slug = ${slug}
+      GROUP BY c.id, c."año"
+      ORDER BY COALESCE(MAX(o."año_oep"), c."año") DESC
+    `)
+
+    const results = Array.isArray(rows) ? rows : (rows as any).rows || []
+    return results.map((r: any) => ({
+      año: Number(r.año),
+      añoOep: r.año_oep != null ? Number(r.año_oep) : null,
+      oepDecretos: Array.isArray(r.oep_decretos) ? r.oep_decretos : [],
+      oepFecha: r.oep_fecha ?? null,
+      isCurrent: r.is_current === true,
+      estadoProceso: r.estado_proceso ?? null,
+      convocatoriaFecha: r.convocatoria_fecha ?? null,
+      boeReference: r.boe_reference ?? null,
+      programaUrl: r.programa_url ?? null,
+      examDate: r.exam_date ?? null,
+      plazasLibres: r.plazas_libres ?? null,
+      plazasPromocionInterna: r.plazas_promocion_interna ?? null,
+      plazasDiscapacidad: r.plazas_discapacidad ?? null,
+      inscritos: r.inscritos ?? null,
+      presentados: r.presentados ?? null,
+    }))
+  } catch (error) {
+    console.warn(`⚠️ [convocatoria] Error obteniendo histórico para ${slug}:`, (error as Error).message)
+    return []
+  }
+}
+
+/**
  * Obtiene los nombres de los topics desde BD para el preview del temario en la landing.
  * Devuelve un mapa topic_number → title. Si falla, devuelve mapa vacío (fallback a config).
  */
@@ -439,6 +514,11 @@ export const getOposicionLandingDataCached = versionedCache(
 export const getHitosConvocatoriaCached = versionedCache(
   getHitosConvocatoria,
   { tag: 'landing', keyParts: ['hitos-convocatoria-v1'] }
+  )
+
+export const getHistoricoConvocatoriasCached = versionedCache(
+  getHistoricoConvocatorias,
+  { tag: 'landing', keyParts: ['historico-convocatorias-oep-v1'] }
   )
 
 // Map<number, string> no es serializable a JSON; cacheamos como array de tuplas

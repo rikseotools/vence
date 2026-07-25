@@ -6,9 +6,12 @@ import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 import {
   getOposicionLandingDataCached,
   getHitosConvocatoriaCached,
+  getHistoricoConvocatoriasCached,
   agruparHitosPorConvocatoria,
   getTopicNamesForLandingCached,
 } from '@/lib/api/convocatoria/queries'
+import { resumenHistorico } from '@/lib/convocatoria/historico'
+import HistoricoConvocatorias from './HistoricoConvocatorias'
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -79,7 +82,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
 
   // 3 fetches con quick-fail; en timeout devuelven null y el render usa fallbacks
   // (ya implementados — todos los accesos a `data` usan ?? con defaults).
-  const [data, hitos, topicNamesArr] = await Promise.all([
+  const [data, hitos, topicNamesArr, historico] = await Promise.all([
     safeServerFetch(
       () => getOposicionLandingDataCached(oposicion),
       LANDING_DATA_TIMEOUT_MS,
@@ -95,10 +98,17 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
       TOPIC_NAMES_TIMEOUT_MS,
       'landing-topics',
     ),
+    safeServerFetch(
+      () => getHistoricoConvocatoriasCached(oposicion),
+      HITOS_TIMEOUT_MS,
+      'landing-historico',
+    ),
   ])
   // hitos puede ser null si timeout — normalizar a [] para que el resto
   // del render no crashee (.find, .length, .map).
   const hitosSafe = hitos ?? []
+  // Histórico de convocatorias (todos los años); el año-OEP y los plazos se derivan en render.
+  const resumenHist = resumenHistorico(historico ?? [])
   // Vía-a (manual OEPs §4e-ter): los hitos se pintan AGRUPADOS por convocatoria. Con dos
   // ciclos vivos a la vez, la lista cronológica única mostraba dos "Convocatoria publicada"
   // y dos "Apertura del plazo de inscripción" seguidos y el usuario no sabía a cuál
@@ -263,10 +273,28 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
     "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
   } : null
 
+  // Schema JSON-LD: Dataset con el histórico de convocatorias (plazas/fechas por año OEP).
+  // Solo se emite con histórico real (≥2 años). Da a Google datos estructurados por los que
+  // posicionar como fuente de referencia.
+  const añosHist = resumenHist.convocatorias.map((c) => c.añoMostrado)
+  const schemaDataset = resumenHist.totalAños >= 2 ? {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": `Histórico de convocatorias de ${config.name}`,
+    "description": `Plazas de acceso libre y fechas de OEP, convocatoria y examen de las convocatorias de ${config.name} entre ${Math.min(...añosHist)} y ${Math.max(...añosHist)}. Datos oficiales del BOE.`,
+    "creativeWorkStatus": "Published",
+    "temporalCoverage": `${Math.min(...añosHist)}/${Math.max(...añosHist)}`,
+    "keywords": [config.name, "plazas", "convocatoria", "OEP", "oposiciones", "histórico"],
+    "isBasedOn": "https://www.boe.es",
+    "variableMeasured": ["plazas de acceso libre", "año OEP", "fecha convocatoria", "fecha examen", "inscritos por plaza"],
+    "url": `${SITE_URL}/${config.slug}`,
+  } : null
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFAQ) }} />
       {schemaEvent && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaEvent) }} />}
+      {schemaDataset && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaDataset) }} />}
 
       <div className="min-h-screen bg-gray-50">
         <AutoAssignOposicion slug={oposicion} />
@@ -514,6 +542,10 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
               </div>
             </section>
           )}
+
+          {/* Histórico de convocatorias — lo último para leer, antes del CTA de cierre.
+              Se auto-oculta si hay menos de 2 años. Año-OEP y decretos de la entidad `oep`. */}
+          <HistoricoConvocatorias resumen={resumenHist} oposicionNombre={config.name} colors={colors} />
 
           {/* CTA final */}
           <div className="text-center mb-8">
