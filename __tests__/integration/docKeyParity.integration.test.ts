@@ -33,6 +33,14 @@ const FIXTURES = [
   'https://dogv.gva.es/datos/2026/03/12/pdf/2026_8057_va.pdf',
   'https://bocyl.jcyl.es/boletines/2026/06/24/pdf/BOCYL-D-24062026-120-22.pdf',
   'https://portaldogc.gencat.cat/ca/document-del-dogc/?documentId=1035641',
+  // patrones añadidos en la campaña T-107 (25/07) — deben tener paridad JS↔SQL o divergen en silencio
+  'https://www.gobiernodecanarias.org/boc/2024/239/3965.html',           // BOC (Canarias)
+  'https://www.gobiernodecanarias.org/boc/2024/239/3965.pdf',            // BOC .pdf → mismo docKey
+  'https://www.juntadeandalucia.es/boja/2024/191/27',                    // BOJA (Andalucía)
+  'https://www.xunta.gal/dog/Publicados/2025/20251125/AnuncioG0597-191125-0004_es.html', // DOG (Galicia)
+  'https://www.xunta.gal/dog/Publicados/2025/20251125/AnuncioG0597-191125-0004_gl.html', // DOG _gl → mismo docKey
+  'https://mia.aragon.es/documentos?csv=CSVS60B0W34IP1Q0XFIL',           // MIA (portal CSV Aragón)
+  'https://carp-core-mia.aragon.es/rest/documentos/CSVS60B0W34IP1Q0XFIL/pdf', // MIA API → mismo docKey
 ]
 
 const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip

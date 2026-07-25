@@ -285,6 +285,25 @@ Especialmente busca si hay algo publicado recientemente. Quiero una lista cronol
 > **Procedimiento completo, gotchas y herramientas → `docs/runbooks/verificar-convocatorias.md`.**
 > Cuesta 240 kB por boletín y deja la evidencia consultable en ~50 ms sin volver a la red.
 
+### 2-ter. 🆕 La OEP es una ENTIDAD, no solo texto (T-108, desde 25/07/2026)
+
+> Antes la OEP vivía como texto libre `convocatorias.oep_decreto` (60% multi-OEP concatenadas:
+> *"RD 625/2023, RD 656/2024 y RD 651/2025"*) + `oep_fecha` una sola date. Ahora hay estructura:
+>
+> - **`oep`** — una fila por decreto de OEP: `año_oep`, `decreto`, `plazas_*`, `estado`
+>   (`aprobada` = **backlog sin convocar** | `convocada` | `anulada`), `fuente_url`,
+>   **`source_documento_id`** → el decreto clonado en el hub (`tipo='oep_decreto'`).
+> - **`convocatoria_oep`** (N:M) — modela **N OEP acumuladas → 1 convocatoria** y **1 OEP → N
+>   convocatorias** (turno libre + promoción interna).
+>
+> **Al APLICAR una señal**, `promoteSignalToConvocatoria` (F3) hace **find-or-insert de la `oep`** del
+> año detectado + enlace `convocatoria_oep`, y **clona el decreto** si `source_url` es un boletín
+> reconocido (`fuente='oep-radar'`). Es decir: triar una señal ya alimenta la entidad y clona su decreto
+> automáticamente — no hay que hacerlo a mano. El **backlog** (OEP aprobadas sin convocar) se ve en
+> `/api/admin/oep-consistency` (check `oep_backlog`). El texto `oep_decreto`/`oep_fecha` sigue como
+> legacy (se deprecará en F4). **Diseño + fases:** `docs/roadmap/oep-entidad-modelo.md`. **Backfill/cloner
+> a mano:** `scripts/oep/backfill-oep-entidad.cjs` + `scripts/oep/clonar-oep-documento.cjs`.
+
 ## 3. Comparar con lo que tenemos en BD
 
 ### 3a. Ver hitos actuales
