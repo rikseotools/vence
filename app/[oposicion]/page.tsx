@@ -7,6 +7,7 @@ import {
   getOposicionLandingDataCached,
   getHitosConvocatoriaCached,
   getHistoricoConvocatoriasCached,
+  getEnlaceOepVigenteCached,
   agruparHitosPorConvocatoria,
   getTopicNamesForLandingCached,
 } from '@/lib/api/convocatoria/queries'
@@ -82,7 +83,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
 
   // 3 fetches con quick-fail; en timeout devuelven null y el render usa fallbacks
   // (ya implementados — todos los accesos a `data` usan ?? con defaults).
-  const [data, hitos, topicNamesArr, historico] = await Promise.all([
+  const [data, hitos, topicNamesArr, historico, enlaceOepVigente] = await Promise.all([
     safeServerFetch(
       () => getOposicionLandingDataCached(oposicion),
       LANDING_DATA_TIMEOUT_MS,
@@ -102,6 +103,11 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
       () => getHistoricoConvocatoriasCached(oposicion),
       HITOS_TIMEOUT_MS,
       'landing-historico',
+    ),
+    safeServerFetch(
+      () => getEnlaceOepVigenteCached(oposicion),
+      HITOS_TIMEOUT_MS,
+      'landing-enlace-oep',
     ),
   ])
   // hitos puede ser null si timeout — normalizar a [] para que el resto
@@ -136,6 +142,11 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
   const programaUrl = data?.programaUrl ?? null
   const seguimientoUrl = data?.seguimientoUrl ?? null
+  // F4 (T-108): cuando la vigente es una OEP, el enlace oficial sale de la ENTIDAD `oep`
+  // (su documento clonado en el hub), no del `programa_url` legacy que se desincroniza
+  // (mostraba la OEP 2026 y enlazaba a la convocatoria 2025). Fallback al legacy si la
+  // entidad no tiene doc clonado (entonces toca POBLAR el documento, trabajo aparte).
+  const enlaceOficial = (esOepSinConvocatoria && enlaceOepVigente) ? enlaceOepVigente : programaUrl
   const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO o equivalente'
   const oepDecreto = data?.oepDecreto ?? null
   const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
@@ -449,10 +460,10 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
           )}
 
           {/* Enlaces oficiales (tras el timeline, antes del temario) */}
-          {(programaUrl || seguimientoUrl) && (
+          {(enlaceOficial || seguimientoUrl) && (
             <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-10">
-              {programaUrl && (
-                <a href={programaUrl} target="_blank" rel="noopener noreferrer"
+              {enlaceOficial && (
+                <a href={enlaceOficial} target="_blank" rel="noopener noreferrer"
                   className={`flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg ${colors.hoverBorder} transition-all group`}>
                   <div className={`flex-shrink-0 w-12 h-12 ${colors.badge} rounded-lg flex items-center justify-center text-2xl`}>📄</div>
                   <div>

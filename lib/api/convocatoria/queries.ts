@@ -374,6 +374,37 @@ export async function getHistoricoConvocatorias(
 }
 
 /**
+ * F4 de T-108 (unificar el CONSUMO): enlace oficial de la OEP vigente tomado de la ENTIDAD
+ * `oep` → su documento clonado en el hub (`source_documento_id` → `convocatoria_documentos.url`),
+ * NO del campo legacy `programa_url` de la convocatoria (que se desincroniza: la caja "Ver OEP
+ * en BOE" mostraba la OEP 2026 pero `programa_url` enlazaba a la convocatoria 2025).
+ * Devuelve la URL del documento de la OEP más reciente de la convocatoria vigente, o null
+ * (entonces el caller cae al `programa_url` legacy). Correcto POR CONSTRUCCIÓN: la referencia
+ * mostrada y el enlace salen de la misma entidad.
+ */
+export async function getEnlaceOepVigente(slug: string): Promise<string | null> {
+  try {
+    const db = getConvocatoriaDb()
+    const rows = await db.execute<{ url: string }>(sql`
+      SELECT d.url
+      FROM convocatorias c
+      INNER JOIN oposiciones op ON op.id = c.oposicion_id
+      INNER JOIN convocatoria_oep co ON co.convocatoria_id = c.id
+      INNER JOIN oep o ON o.id = co.oep_id
+      INNER JOIN convocatoria_documentos d ON d.id = o.source_documento_id
+      WHERE op.slug = ${slug} AND c.is_current = true AND d.url IS NOT NULL
+      ORDER BY o."año_oep" DESC
+      LIMIT 1
+    `)
+    const results = Array.isArray(rows) ? rows : (rows as any).rows || []
+    return results[0]?.url ?? null
+  } catch (error) {
+    console.warn(`⚠️ [convocatoria] Error obteniendo enlace OEP vigente para ${slug}:`, (error as Error).message)
+    return null
+  }
+}
+
+/**
  * Obtiene los nombres de los topics desde BD para el preview del temario en la landing.
  * Devuelve un mapa topic_number → title. Si falla, devuelve mapa vacío (fallback a config).
  */
@@ -519,6 +550,11 @@ export const getHitosConvocatoriaCached = versionedCache(
 export const getHistoricoConvocatoriasCached = versionedCache(
   getHistoricoConvocatorias,
   { tag: 'landing', keyParts: ['historico-convocatorias-oep-v1'] }
+  )
+
+export const getEnlaceOepVigenteCached = versionedCache(
+  getEnlaceOepVigente,
+  { tag: 'landing', keyParts: ['enlace-oep-vigente-v1'] }
   )
 
 // Map<number, string> no es serializable a JSON; cacheamos como array de tuplas
