@@ -46,6 +46,7 @@ require('dotenv').config({ path: '.env.local' });
 const { dualWriteDivergences } = require('./lib/dual-write-divergence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
+const { sumaOtrosTurnos, combinacionesValidasPlazas } = require('../lib/convocatoria/plazasCard.cjs');
 
 const DB_URL = process.env.DATABASE_URL;
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2); }
@@ -100,17 +101,23 @@ async function main() {
     }
 
     // convocatoria vigente
-    const conv = (await sql`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, estado_proceso, inscription_start, inscription_deadline, exam_date, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
+    const conv = (await sql`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, estado_proceso, inscription_start, inscription_deadline, exam_date, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
                             FROM convocatorias WHERE oposicion_id = ${o.id} AND is_current = true LIMIT 1`)[0];
     if (conv) {
       const L = Number(conv.plazas_libres || 0), D = Number(conv.plazas_discapacidad || 0), P = Number(conv.plazas_promocion_interna || 0);
-      // combinaciones legítimas que una tarjeta puede mostrar: turno libre (L), reserva
-      // discapacidad sola (D), promoción interna sola (P), o cualquier suma hasta el total.
-      const validos = new Set([L, D, P, L + D, L + P, D + P, L + D + P].filter(x => x > 0));
+      // Combinaciones legítimas (núcleo puro compartido, testeado): turnos comunes + las
+      // RESERVAS ESPECIALES de `plazas_otros_turnos` (violencia de género, terrorismo,
+      // personas trans…), que suman al total convocado. Sin ellas el gate daba un ROJO FALSO
+      // en administrativo-aragon (144 = 139 libres + 5 reservas, literal del BOA 247/2025).
+      const O = sumaOtrosTurnos(conv.plazas_otros_turnos);
+      const validos = combinacionesValidasPlazas({
+        libres: conv.plazas_libres, discapacidad: conv.plazas_discapacidad,
+        promocionInterna: conv.plazas_promocion_interna, otrosTurnos: conv.plazas_otros_turnos,
+      });
       for (const card of cardsAbout(o.landing_estadisticas, 'plaza')) {
         const n = cardInt(card.numero);
         if (n != null && !validos.has(n))
-          bad(`tarjeta "${card.texto}" muestra ${n} plazas, pero la convocatoria da libres=${L}, discapacidad=${D}, promoción=${P} (combinaciones válidas: ${[...validos].join('/')})`);
+          bad(`tarjeta "${card.texto}" muestra ${n} plazas, pero la convocatoria da libres=${L}, discapacidad=${D}, promoción=${P}, otros turnos=${O} (combinaciones válidas: ${[...validos].sort((a, b) => a - b).join('/')})`);
       }
 
       // dual-write completo (🟡: la vista SSOT hace fallback a oposiciones, no rompe)
