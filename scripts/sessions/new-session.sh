@@ -57,7 +57,12 @@ if [ "$OWN_DEPS" = 1 ]; then
   echo "→ npm ci propio (aislado)…"; ( cd "$WT" && npm ci --silent )
 else
   ln -s "$MAIN_REPO/node_modules" "$WT/node_modules"
-  echo "→ node_modules por symlink (⚠️ quítalo antes de 'podman build')"
+  # `backend/node_modules` TAMBIÉN: `__tests__/lib/generacion/numerosCitados.test.js` carga
+  # `scripts/auditar-batch-input.cjs`, que hace require('<repo>/backend/node_modules/postgres')
+  # por ruta ABSOLUTA. Sin este symlink la suite unit sale en rojo en TODO worktree → la
+  # sesión acaba usando `--no-verify` (el fallo que T-122 existe para matar). 26/07.
+  [ -d "$MAIN_REPO/backend/node_modules" ] && ln -s "$MAIN_REPO/backend/node_modules" "$WT/backend/node_modules"
+  echo "→ node_modules (root + backend) por symlink (⚠️ quítalos antes de 'podman build')"
 fi
 
 # husky: sin el dir generado `.husky/_` (gitignored) git NO corre NINGÚN hook en el worktree
