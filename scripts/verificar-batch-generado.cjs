@@ -28,7 +28,7 @@ const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
 const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generacion', 'tellLongitud'))
-const { analizarLiteralidad } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
+const { analizarLiteralidad, analizarIntruso } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
 const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))
 
 const envPath = path.join(__dirname, '..', '.env.local')
@@ -70,9 +70,24 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     const opts = [q.option_a, q.option_b, q.option_c, q.option_d]
     const correcta = opts[q.correct_option]
 
+    // Preguntas INTRUSO ("¿cuál NO figura…?"): la correcta es por construcción la
+    // opción INVENTADA y las literales son los distractores. Exigirle literalidad
+    // a la correcta es un falso positivo garantizado, así que el criterio se
+    // invierte: se comprueba que los TRES distractores sí sean del artículo.
+    const intruso = analizarIntruso(q.question_text)
+    if (intruso) {
+      const noLit = opts
+        .map((o, i) => ({ o, i }))
+        .filter(({ i }) => i !== q.correct_option)
+        .filter(({ o }) => analizarLiteralidad(q.content, o).estado === 'NO_LITERAL')
+      if (noLit.length) {
+        errs.push(`INTRUSO: ${noLit.length} de los 3 distractores no son literales del artículo (deberían serlo)`)
+      }
+    }
+
     // Literalidad: LITERAL (subcadena), ENUMERACION (lista fiel — pase blando,
     // la completitud la juzga la auditoría LLM) o NO_LITERAL (defecto duro).
-    const lit = analizarLiteralidad(q.content, correcta)
+    const lit = intruso ? { estado: 'LITERAL' } : analizarLiteralidad(q.content, correcta)
     if (lit.estado === 'NO_LITERAL') {
       errs.push('la correcta NO es subcadena literal del artículo' +
         (lit.fragmentosNoHallados ? ` (fragmentos no hallados: ${lit.fragmentosNoHallados.join(' / ').slice(0, 60)})` : ''))
