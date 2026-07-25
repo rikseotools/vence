@@ -15,6 +15,12 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-021] ✅ [CERRADA 25/07 — YA ESTABA HECHA, cerrada por verificación de estado y no por trabajo nuevo] Construir Ujieres de las Cortes Generales
+- **Estado real comprobado en RDS:** la oposición `ujieres-cortes-generales` está **EN PRODUCCIÓN** — `is_active=true`, **17 de 17 temas** con `disponible=true` y **5.722 preguntas servidas**; la desplegó el commit `d9066bd03`.
+- **Por qué estaba abierta:** la ficha seguía describiéndola como *"catalogada (⚪ is_active=false), sin temario ni tests"*. Es exactamente el **drift** que este runbook existe para evitar: T-021 figuraba `open` y `libre`, así que cualquier sesión podía reclamarla y ponerse a construir una oposición ya viva — el mismo patrón que el caso del RD 176/2022 del 20/07.
+- **Cómo se detectó:** al arrancar la sesión de T-045, cruzando el backlog con las convocatorias de plazo abierto. Ujieres aparecía con inscripción viva hasta el 13/08 *y* con la ficha diciendo que no tenía contenido; el contraste no cuadraba.
+
+
 ### [T-048] ✅ [COMPLETA 20/07 — 3 capas + importadores cableados] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
 > El ✅ ahora sí corresponde: **cerrada también en `backlog_tasks`**, no solo en este documento.
 > (Otra sesión avisó con razón de que el ✅ anterior engañaba: el markdown decía "hecha" mientras el
@@ -1037,12 +1043,6 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 >   3. Generar para los **3 temas canarios flojos del Bloque I** (T15 18q, T10 20q, T13 74q).
 >   4. **FASES 4-6** con sus gates: `audit:oposicion`, `audit:served`, refresh de la MV §6.bis → y solo entonces `is_active=true`.
 >   - Nota: **LGT y RGGIT figuran `verification_status='pendiente'`** en BD (es estado previo, no introducido por esta construcción) — conviene mirarlo antes de generar contra ellas, que son la base de T2-T14.
-
-### [T-021] 🟠 [VENDIBLE — gap de competidores] Construir Ujieres de las Cortes Generales
-- **Qué:** `ujieres-cortes-generales` **catalogada** (⚪ `is_active=false`, nacional) sin temario ni tests. Construir para hacerla vendible.
-- **Por qué:** gap detectado por el radar de competidores (≥2: ADAMS, MAD, Opositatest, CET, Temarios…). **40 plazas turno libre, oposición pura** (2 tests de 100 preg: psicotécnico + temario → 100% nuestro formato). **Recorrido máximo:** convocatoria prevista ~mayo 2026, examen nov 2026–abr 2027. Requisito ESO (C2/AP). Psicotécnicos ya los tenemos; falta temario específico (17 temas, régimen de las Cortes Generales).
-- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md` (editorial con fuente oficial — reglamento/estatuto del personal de las Cortes Generales; verificar contra BOE la convocatoria antes de fijar fechas/plazas, nunca inventar).
-- **Estado:** catalogada 13/07 (triaje señal competidores), sin contenido. Convocatoria oficial por confirmar en BOE.
 
 ### [T-022] 🟠 [VENDIBLE — gap de competidores] Construir Cuerpo de Gestión Administrativa A2 (Junta de Andalucía)
 - **Qué:** `cuerpo-gestion-administrativa-junta-andalucia` **catalogada** (⚪ `is_active=false`, A2) sin temario ni tests.
