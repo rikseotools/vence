@@ -27,7 +27,12 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+// `postgres` del paquete raíz, como el resto de scripts (está en package.json:dependencies).
+// NO resolver contra `backend/node_modules` por ruta absoluta: el CI no instala las deps del
+// backend, así que el test que importa este módulo (numerosCitados) tumbaba la suite unit
+// entera en GHA — y con ella el gate de CI que exige el deploy. Fallaba igual en cualquier
+// worktree recién creado sin el symlink de `backend/node_modules`.
+const pg = require('postgres')
 
 /**
  * Artículos citados por una explicación, **de la ley de la propia pregunta**.
