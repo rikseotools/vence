@@ -56,3 +56,53 @@ describe('analizarLongitud — tell de longitud calibrado', () => {
     expect(analizarLongitud(opts, 0).tell).toBe(false)
   })
 })
+
+// --- (I) Tell INVERTIDO: la correcta destaca por ser la más corta ---
+// Añadido 25/07/2026: la auditoría ciega lo cazó 7 veces en dos lotes seguidos
+// (gen_atc_t202 y gen_atc_t214) y el detector no lo veía.
+
+describe('analizarLongitud — tell invertido (correcta anómalamente corta)', () => {
+  it('marca el caso severo del art. 231.1 LGT (42 ch frente a 95/96/98)', () => {
+    const opts = [
+      'En Pleno y en Salas, sin que quepa en ningún caso el funcionamiento unipersonal de sus miembros.', // 96
+      'En Pleno, en Salas y en Secciones especializadas por razón de la materia objeto de reclamación.', // 95
+      'Exclusivamente en Salas presididas por el Presidente del Tribunal o por el Vocal en quien delegue.', // 98
+      'En Pleno, en Salas y de forma unipersonal.', // 42 correcta
+    ]
+    const r = analizarLongitud(opts, 3)
+    expect(r.tell).toBe(true)
+    expect(r.motivo).toMatch(/INVERTIDO/)
+  })
+
+  it('marca el art. 4.1 LGT (51 ch frente a distractores de 80-98)', () => {
+    const opts = [
+      'Corresponde al Estado y a las comunidades autónomas, mediante ley, de acuerdo con la Constitución.',
+      'Corresponde exclusivamente al Estado, mediante ley orgánica aprobada por las Cortes Generales.',
+      'Corresponde exclusivamente al Ministerio de Hacienda, mediante orden ministerial de desarrollo.',
+      'Corresponde exclusivamente al Estado, mediante ley.',
+    ]
+    expect(analizarLongitud(opts, 3).tell).toBe(true)
+  })
+
+  it('NO marca el falso positivo ya calibrado (Ley 14/1990 art. 27: correcta 27 ch, mínimo distractor 31)', () => {
+    // El más corto de los distractores solo la supera en un 15%: no destaca.
+    const opts = [
+      'se organiza en viceconsejerías.',
+      'se organiza en departamentos ministeriales.',
+      'se organiza en direcciones generales.',
+      'se organiza en consejerías.',
+    ]
+    expect(analizarLongitud(opts, 3).tell).toBe(false)
+  })
+
+  it('NO marca si UN distractor se acerca a la correcta aunque otros sean largos', () => {
+    // Basta que uno iguale el registro para que la correcta deje de ser "la rara".
+    const opts = [
+      'Se resolverán en única instancia por los tribunales económico-administrativos.', // 77 correcta
+      'Se resolverán en única instancia por el Tribunal Económico-Administrativo Central.', // 81
+      'Se resolverán en primera instancia, con alzada ante el Tribunal Económico-Administrativo Central.', // 96
+      'Se resolverán en única instancia por órganos unipersonales del Ministerio de Hacienda.', // 85
+    ]
+    expect(analizarLongitud(opts, 0).tell).toBe(false)
+  })
+})
