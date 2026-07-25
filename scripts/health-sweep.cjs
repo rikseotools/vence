@@ -328,12 +328,14 @@ async function main() {
   // Graduado a propósito (ver lib/convocatoria/seguimientoUrlSalud.cjs): solo la señal limpia
   // —URL a documento de boletín inmutable de año viejo— es error; el resto es cola de revisión.
   const urlRows = (await c.query(`
-    SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig
+    SELECT o.slug, o.seguimiento_url AS su, c."año" AS anio_vig, o.is_convocatoria_activa AS conv_activa
     FROM oposiciones o
     JOIN convocatorias c ON c.oposicion_id = o.id AND c.is_current
     WHERE o.is_active AND o.seguimiento_url IS NOT NULL`)).rows;
   for (const r of urlRows) {
-    const d = diagnosticarSeguimientoUrl(r.su, r.anio_vig != null ? Number(r.anio_vig) : null);
+    // procesoEnJuego (paridad con el backend @Cron): con la convocatoria VIVA, una URL genérica
+    // sí es ceguera accionable; sin proceso vivo la genérica es legítima ('ok', no pinga).
+    const d = diagnosticarSeguimientoUrl(r.su, r.anio_vig != null ? Number(r.anio_vig) : null, { procesoEnJuego: !!r.conv_activa });
     if (d.severidad === 'ok') continue;
     add('content', d.severidad, r.slug, 'seguimiento_url_stale',
       `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
