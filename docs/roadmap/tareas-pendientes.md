@@ -400,6 +400,27 @@
 
 ### [T-110] 🟠 [ABIERTO 25/07] Newsletters de las 4 convocatorias CONSTRUIDAS con plazo abierto (Almería, Murcia ×2, Madrid, Córdoba)
 - **ESTADO 25/07 (noche): 2 de 4 ENVIADAS.** ✅ **Almería** (245 destinatarios, Almería+Granada; 36,7% apertura y 2,45% CTR a la hora) y ✅ **Murcia Técnico Auxiliar** (930, Región de Murcia entera; se eligió la C2 sobre la Administrativa por demanda: 45 objetivo y 5 premium vs 17 y 0). **Pendientes: Madrid** (esperar al 28-29/07, su gente recibió Ujieres el 25) y **Córdoba** (hasta el 17/08). **Cabo suelto de Murcia:** la Administrativa (36 plazas, C1) se quedó sin promocionar para no encadenar correos → se puede mandar SOLO a sus 17 usuarios de objetivo directo excluyendo a quien recibió el de Técnico Auxiliar.
+- **🟢 POLICÍA NACIONAL — PREPARADA Y VERIFICADA EL 26/07 (madrugada), PENDIENTE SOLO DE ENVIAR.** Manuel: *"déjala para mañana por la mañana"*. **NO se ha enviado nada.** Todo lo caro está hecho; mañana es preview + OK + `--send`.
+  - **Los 3 gates PASADOS:** (1) `canary:oposiciones` ✅ landing/temario/test 200, 43 temas y todos sirven preguntas. (2) `audit:coherencia` salió 🟡 y destapó **`plazas_libres` legacy 2.163 ≠ convocatoria 2.704** → adjudicado contra boletín y **corregido en BD** (`oposiciones.plazas_libres=2704`), re-auditoría ✅. El 2.163 salía de restar las 541 de reserva militar, que el **RD 207/2026 art. 3** sitúa DENTRO del turno libre, no aparte. (3) **Dato vs boletín** ✅ contra **BOE-A-2026-15055** (núm. 167, 10/07/2026): *"Se convocan 2.704 plazas […] Escala Básica"* y *"quince días hábiles"* → publicado viernes 10, se cuenta desde el lunes 13 ⇒ **plazo hasta el viernes 31 de julio** (cuadra con el hito y con lo que renderiza la landing).
+  - **Audiencia: 106 enviables** (dry-run). 117 con `target_oposicion='policia_nacional'` y consentimiento, **menos 11** que recibieron Almería/Murcia el 25/07 (anti-encadenado). **Ninguno es de pago** → es jugada de CONVERSIÓN, no de retención.
+  - **Cifras del texto comprobadas contra BD, no contra la tarjeta:** **43 temas** con tests (la tarjeta dice 46; T29 *Actitudes y valores*, T30 *Principios éticos* y T34 *Drogodependencias* están activos pero SIN tests → hueco menor, no bloquea), **31.713 preguntas** activas servibles y **3.451 de exámenes oficiales** (por eso se puede afirmar "exámenes oficiales").
+  - **Config lista** (recrear en un JSON y lanzar desde la raíz del repo):
+    ```json
+    {"targetOposicion":"policia_nacional","slug":"policia-nacional",
+     "nombreOposicion":"Policía Nacional — Escala Básica",
+     "subtitulo":"Inscripción abierta hasta el 31 de julio",
+     "textoPlazas":" Se han convocado <strong>2.704 plazas</strong> para la Escala Básica y el plazo de solicitudes está abierto hasta el <strong>31 de julio</strong>.",
+     "features":["<strong>43 temas</strong> del temario oficial con tests",
+                 "<strong>31.713 preguntas</strong>, con <strong>3.451 de exámenes oficiales</strong>",
+                 "<strong>Corrección al instante</strong> y explicación de cada respuesta",
+                 "<strong>Repaso</strong> de lo que fallas y estadísticas de tu progreso"],
+     "municipios":[],
+     "excludeSentCampaignId":["inscripcion-abierta_1785005770482","inscripcion-abierta_1785001695196"],
+     "templateSlug":"inscripcion-abierta"}
+    ```
+    `municipios:[]` es CORRECTO y está verificado leyendo el script: sin municipios la cláusula geo compila a `false`, así que solo entra el `target_oposicion` exacto (Policía Nacional es estatal, el geo no segmenta). El filtro de consentimiento va hardcoded en el `WHERE`, no se puede saltar.
+  - **Mañana:** `--dry` para reconfirmar el conteo (el anti-encadenado cambia si otra sesión envía algo), `--preview manueltrader@gmail.com`, OK de Manuel, `--send`. **Ojo al plazo: cierra el 31/07**, así que el margen es de días, no de semanas.
+
 - **CANDIDATOS NUEVOS detectados el 25/07 (no estaban en esta ficha):** **Policía Nacional — 2.704 plazas, cierra el 31/07, 124 seguidores y 118 usuarios con ese objetivo, NUNCA promocionada**; es la mayor convocatoria viva y le quedan días. Y **Aux. Adm. Carlos III** (32 plazas, cierra 05/08, 29 seguidores, 2 premium). Las dos exigen pasar antes los gates (en Almería y Murcia ese paso destapó landing a medias, plazo mal calculado, cupo de discapacidad sin definir y un artículo fuera de programa).
 - **Aprendizaje medido (25/07):** la plantilla `inscripcion-abierta` rinde **49,9% de apertura y 4,76% de CTR** en 90 días (15 campañas) frente al **26,6% y 1,41%** del cross-sell. No es la plantilla, es la intención del destinatario → el cross-sell es el plan B para oposiciones sin público propio.
 - **Qué:** 4 campañas promocionales, una por oposición ya construida con la inscripción **abierta hoy**. Medido en RDS el 25/07 (audiencia directa = `user_profiles.target_oposicion`; pool = usuarios de la misma provincia/CCAA para cross-sell al estilo `send-promo-cruzada.cjs`):
