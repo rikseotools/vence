@@ -225,6 +225,14 @@
 
 ## Abiertas
 
+### [T-113] 🟢 [ABIERTO 25/07] Afinar precisión de 2 detectores de salud de contenido que sobre-marcan legítimos (código)
+- **Qué:** el triaje de `/admin/contenido` del 25/07 encontró que **dos kinds pingan el badge con falsos positivos**, no con contenido roto → inflan el ruido y tapan lo accionable. Afinado de detector = **código**, gemelos `scripts/health-sweep.cjs` + `backend/src/content-health-sweep/content-health-sweep.service.ts` (mantener en sync; guardarraíl `content-sweep-parity`).
+  1. **`visual_deixis_no_image`**: de 6 preguntas marcadas, **5 son autocontenidas** — 3 de SQL con la query completa en el enunciado (`5136375b`, `dda3fbe0`, `d98a66fe`), 1 de metadato ENI con el esquema `ES_órgano>…` en el texto (`4bb52a88`), 1 de Correos URO con las reglas en las opciones (`26eeb4d8`). Se disparan por "de la imagen"/"esquema" aunque el contenido necesario sea textual. **Guarda propuesta:** excluir preguntas con query SQL embebida (`/SELECT\b.+\bFROM\b/is`) o esquema/formato inline. (La 6ª, `5d6d3b4a`, era irresoluble de verdad y ya se retiró.)
+  2. ~~**`seguimiento_url_stale`** (banda `url_generica`, índices de portal legítimos)~~ ✅ **YA RESUELTO** por la sesión del badge (commit `98b58b7d6` "url_generica sin proceso vivo no pinga el badge" + `e76214bca` paridad sweep CLI). Queda solo el punto 1.
+- **Impacto:** 🟢 precisión del panel. Quita ~5 falsos positivos recurrentes de `visual_deixis` del badge de contenido → la señal accionable deja de estar enterrada. Cero riesgo de datos (solo cambia qué se marca).
+- **Cómo:** worktree fresco desde `origin/main`; tocar los dos gemelos + `npx tsx` backend + `npm test -- content-sweep-parity runbookRegistry`. Verificar en `/admin/contenido` que el badge baja sin perder los verdaderos positivos.
+- **Origen:** 25/07, triaje de contenido (cabo de T-112). Detectado al revisar `visual_deixis_no_image` y `seguimiento_url_stale` una a una.
+
 ### [T-112] 🟠 [ABIERTO 25/07] Bajar a cero el badge de `/admin/contenido` — campaña de triaje de `content_health_findings`
 - **Qué:** el badge de Salud del contenido está en **210 hallazgos** (tras cerrar 7 el 25/07). NO se baja en una pasada: el 68% (142) es generación de contenido o adjudicación fila-a-fila que no se puede acelerar ni fingir. Esta ficha es el **mapa de campaña** para que cualquier sesión aislada sepa por dónde entrar y con qué runbook. Recordatorio de mecánica: `content_health_findings` es **proyección pura** del sweep nocturno (03:00 UTC, `content-health-sweep.service.ts` hace `TRUNCATE`+rebuild; NO hay columna `status`) → arreglar el dato + verificar que el detector ya no dispara + borrar la fila del finding (el sweep no la re-añade). Todos los detectores → runbook en `lib/admin/runbookRegistry.ts`.
 - **Cerrado el 25/07 (7 findings, 217→210), como referencia de método:**
