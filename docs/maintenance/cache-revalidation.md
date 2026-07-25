@@ -737,22 +737,47 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 **IMPORTANTE:** El secret va en el header `x-cron-secret` (es el `CRON_SECRET` de `.env.local`, el segundo si hay dos).
 
-> ⚠️ **`purge-cache` es PER-INSTANCIA: una llamada NO basta (medido 25/07/2026).** El frontend corre
-> como **N tasks de ECS** (2 base, hasta 6 con autoscaling) y `revalidatePath()` solo limpia el caché
-> **del proceso que atiende la petición**. Es el mismo fallo que el Data Cache (§"Invalidación
-> CROSS-INSTANCIA"), pero aquí NO hay `versionedCache` que lo salve: el ISR de página no está versionado.
-> **Síntoma:** tras una sola purga, ~1 de cada N peticiones muestra lo nuevo y el resto sigue con lo
-> viejo hasta que expire el ISR (24 h). Caso real: se completó la landing de Aux. Admin. UAL (tarjetas
-> hero + FAQs) y con una purga solo 1 de 6 peticiones la servía.
-> **Remedio hasta que exista purga cross-instancia:** repetir el POST ~15-20 veces (el balanceador va
-> rotando de task) y **verificar sirviendo la página varias veces**, no una:
+> ✅ **`purge-cache` es CROSS-INSTANCIA desde el 26/07/2026 — una sola llamada basta.**
+>
+> **El problema que había (medido 25/07/2026):** el frontend corre como **N tasks de ECS** (8 en el
+> momento de escribir esto) y `revalidatePath()` solo limpia el caché **del proceso que atiende la
+> petición**. Es el mismo fallo que el Data Cache (§"Invalidación CROSS-INSTANCIA"), pero aquí no
+> servía `versionedCache`: la clave del ISR de página es la ruta y la fija Next, no se le puede meter
+> una versión. Síntoma: tras una purga, ~1 de cada N peticiones mostraba lo nuevo y el resto seguía
+> con lo viejo hasta que expirase el ISR (24 h). Caso real: la landing de Aux. Admin. UAL, servida
+> por 1 de cada 6 peticiones. El remedio era repetir el POST 15-20 veces.
+>
+> **Cómo funciona ahora.** Se invierte el patrón del Data Cache: en vez de meter la versión en la
+> clave, cada instancia **observa** un registro compartido y se auto-purga.
+> 1. `POST /api/purge-cache` purga su propia instancia (`revalidatePath`) **y** deja constancia en el
+>    hash `isr_purge_log` del KV compartido (`lib/cache/isrPurgeLog`, `HINCRBY` por ruta: atómico e
+>    idempotente).
+> 2. Cada instancia corre un daemon (`lib/cache/isrPurgeWatcher`, arrancado en `instrumentation.ts`
+>    como el sampler de event-loop lag) que sondea ese hash cada 10 s. Si el contador de una ruta
+>    subió respecto a lo que vio, hace un POST por loopback a `/api/internal/isr-apply`, que es quien
+>    llama a `revalidatePath()` en ESA instancia (desde el callback de un timer no hay contexto de
+>    request de Next, por eso el rodeo por HTTP).
+> 3. **Regla anti-bucle:** solo el endpoint PÚBLICO escribe en el registro; el interno únicamente
+>    aplica. Si el interno registrase, cada purga realimentaría a toda la flota indefinidamente.
+>
+> **Propiedades:** primera lectura tras arrancar = baseline (una instancia nueva ya nace con el ISR
+> frío, no re-purga el histórico); un contador que BAJA —TTL o FLUSH del KV— no purga nada (evita que
+> un evento de infraestructura tire el ISR de toda la flota); lotes de 50 rutas por ciclo; y si el KV
+> está caído, degrada exactamente al comportamiento anterior (purga local), nunca a algo peor.
+>
+> **Verificar que sigue vivo:**
 > ```bash
-> for i in $(seq 1 18); do curl -s -X POST https://www.vence.es/api/purge-cache \
->   -H 'Content-Type: application/json' -H "x-cron-secret: $CRON_SECRET" \
->   -d '{"path":"/mi-ruta"}' -o /dev/null; done
-> for i in $(seq 1 8); do curl -s "https://www.vence.es/mi-ruta?x=$i" | grep -c 'lo-que-esperas'; done
+> npm run verify:isr-purge-kv   # contrato del KV (HINCRBY/HGETALL, contadores numéricos)
+> npm run canary:isr-purge      # end-to-end en prod: purga UNA vez y exige que NINGUNA instancia sirva rancio
 > ```
-> Lo mismo aplica a `scripts/purge-all-cache.js`: purga cada ruta UNA vez → deja tasks sin limpiar.
+> Observabilidad: eventos `isr_purge_broadcast` (¿quedó registrada?) e `isr_purge_applied` (una fila
+> por instancia que aplica, con su id) en `observable_events`. Un `severity='warn'` en el primero
+> significa que la purga degradó a per-instancia porque el KV no respondió.
+>
+> **Apagado de emergencia:** `ISR_PURGE_WATCHER_ENABLED=false` (SSM, sin redeploy) → se vuelve al
+> comportamiento per-instancia de antes.
+>
+> `scripts/purge-all-cache.js` purga cada ruta una vez, que ahora ya es suficiente.
 
 ### Cuándo revalidar páginas ISR
 

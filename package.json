@@ -78,7 +78,9 @@
     "audit:convocatorias": "node scripts/audit-convocatoria-completitud.cjs",
     "audit:convocatorias:gate": "node scripts/audit-convocatoria-completitud.cjs --gate",
     "audit:oep-review": "node scripts/audit-oep-review.cjs",
-    "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts"
+    "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts",
+    "canary:isr-purge": "node scripts/canary-isr-purge-cross-instancia.cjs",
+    "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

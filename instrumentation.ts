@@ -19,6 +19,14 @@ export async function register() {
       '@/lib/observability/eventLoopLag'
     )
     startEventLoopLagSampler()
+
+    // Purga de ISR cross-instancia (T-120): daemon que aplica en ESTA instancia
+    // las purgas que otras registraron en el KV compartido. Mismo ciclo de vida
+    // que el sampler de arriba (contenedor Fargate de larga vida). Sin él,
+    // `revalidatePath()` solo alcanza a la instancia que atendió el POST y el
+    // resto sigue sirviendo HTML viejo hasta 24 h.
+    const { startIsrPurgeWatcher } = await import('@/lib/cache/isrPurgeWatcher')
+    startIsrPurgeWatcher()
   }
 }
 

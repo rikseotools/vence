@@ -281,6 +281,57 @@ export async function incrementCounterWithTtl(
 }
 
 /**
+ * HINCRBY atómico sobre un campo de hash + EXPIRE del hash (fire-and-forget).
+ * Para registros compartidos campo-a-campo, tipo {ruta: nº de purgas} del
+ * registro de purga ISR (lib/cache/isrPurgeLog). Best-effort: `false` si la
+ * caché está caída o hay timeout, para que el caller sepa que no quedó constancia.
+ */
+export async function incrementHashField(
+  hashKey: string,
+  field: string,
+  ttlSeconds?: number,
+  by = 1,
+): Promise<boolean> {
+  const sink = getSink()
+  if (!sink) return false
+  try {
+    const result = await raceTimeout(sink.hincrby(hashKey, field, by), REDIS_TIMEOUT_MS)
+    if (result === TIMEOUT_SYMBOL) return false
+    if (ttlSeconds) sink.expire(hashKey, ttlSeconds).catch(() => {})
+    return true
+  } catch (err) {
+    console.warn(`[incrementHashField] HINCRBY ${hashKey}.${field} failed:`, err)
+    return false
+  }
+}
+
+/**
+ * HGETALL numérico de un hash compartido. `null` cuando NO se pudo leer (caché
+ * apagada, caída o timeout) — distinto de `{}` (leído y vacío). Esa distinción
+ * importa: un observador debe poder diferenciar "no sé qué hay" de "no hay nada".
+ */
+export async function readHashCounters(
+  hashKey: string,
+): Promise<Record<string, number> | null> {
+  const sink = getSink()
+  if (!sink) return null
+  try {
+    const result = await raceTimeout(sink.hgetall(hashKey), REDIS_TIMEOUT_MS)
+    if (result === TIMEOUT_SYMBOL) return null
+    if (!result) return {}
+    const out: Record<string, number> = {}
+    for (const [k, v] of Object.entries(result)) {
+      const n = typeof v === 'number' ? v : Number(v)
+      if (Number.isFinite(n)) out[k] = n
+    }
+    return out
+  } catch (err) {
+    console.warn(`[readHashCounters] HGETALL ${hashKey} failed:`, err)
+    return null
+  }
+}
+
+/**
  * GET numérico best-effort de un contador (sin incrementar). 0 si no existe,
  * caché caída o timeout.
  */
