@@ -11,6 +11,8 @@ import { usePremiumGate } from '@/hooks/usePremiumGate';
 import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal';
 import { activeConfigFeatures } from '@/lib/premium/configFeatures';
 import { trackConfigFeaturesUsed } from '@/lib/services/conversionTracker';
+import { summarizeLawInclusion, inclusionBadgeLabel } from '@/lib/laws/lawInclusionSummary';
+import { emitClientEvent } from '@/lib/observability/client';
 
 function getOposicionName(positionType: string): string {
   return getOposicionByPositionType(positionType)?.name || 'tu oposición'
@@ -1069,6 +1071,28 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     });
   };
 
+  // 🔎 Resumen de CÓMO entra cada ley (acotada vs entera) — SOLO en modo por-leyes
+  // (sin tema): en modo tema una ley sin artículos = su scope del tema, no la ley
+  // entera, así que el concepto "toda la ley" no aplica. Hace visible el caso Alfonso
+  // (25/07): combinar una ley acotada con otra sin acotar mete la 2ª ENTERA y el test
+  // aleatorio se llena de ella. Núcleo puro y testeado en lawInclusionSummary.
+  const inclusionSummary = useMemo(() => {
+    if (tema || selectedLaws.size === 0) return null
+    return summarizeLawInclusion({
+      selectedLaws: Array.from(selectedLaws),
+      selectedArticlesByLaw,
+      selectedSectionFiltersCount: selectedSectionFilters?.length ?? 0,
+      lawsData,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tema, selectedLaws, selectedArticlesByLaw, selectedSectionFilters, lawsData])
+
+  const inclusionByLaw = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof summarizeLawInclusion>['perLaw'][number]>()
+    inclusionSummary?.perLaw.forEach(l => m.set(l.lawShortName, l))
+    return m
+  }, [inclusionSummary])
+
   const handleStartTest = () => {
     // Validación básica antes de continuar
     if (maxQuestions <= 0) {
@@ -1155,6 +1179,26 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
         void trackConfigFeaturesUsed(currentUser.id, { features: feats, plan: isPremiumUser ? 'premium' : 'free', context: 'test_configurator' })
       }
     } catch { /* medición nunca bloquea el test */ }
+
+    // 🔭 OBSERVABILIDAD (feedback Alfonso 25/07): medir cuántos usuarios arrancan un test
+    // multi-ley MIXTO (unas leyes acotadas + otra entera). Es el patrón que hace percibir
+    // "salen preguntas fuera de lo seleccionado" aunque el motor sea correcto. Saber su
+    // frecuencia prioriza mejoras de UX. Fire-and-forget, nunca bloquea el arranque.
+    try {
+      if (inclusionSummary?.mixedWholeAndNarrowed) {
+        emitClientEvent({
+          severity: 'info',
+          eventType: 'multiley_mixed_inclusion_start',
+          endpoint: '/test/por-leyes',
+          metadata: {
+            wholeLaws: inclusionSummary.wholeLaws.slice(0, 20),
+            narrowedLaws: inclusionSummary.narrowedLaws.slice(0, 20),
+            wholeQuestionsTotal: inclusionSummary.wholeQuestionsTotal,
+            positionType: String(positionType || '').slice(0, 80),
+          },
+        })
+      }
+    } catch { /* observabilidad nunca bloquea el test */ }
 
     try {
       // ✅ Pasar configuración al componente padre
@@ -1414,6 +1458,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                              law.display_name?.toLowerCase().includes(query);
                     }).map((law) => {
                       const isSelected = selectedLaws.has(law.law_short_name);
+                      const inc = isSelected ? inclusionByLaw.get(law.law_short_name) : undefined;
                       const sectionsForLaw = availableSectionsByLaw.get(law.law_short_name) || [];
                       // En modo tema, sólo contamos secciones con artículos en scope
                       // (scopeMeta.articleCountInScope > 0). En modo sin tema, todas cuentan.
@@ -1444,6 +1489,26 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                               <div className="text-xs text-gray-600">
                                 {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
                               </div>
+                              {/* Badge de inclusión: hace visible si la ley entra ACOTADA
+                                  (artículos/títulos elegidos) o ENTERA. Evita la sorpresa
+                                  del feedback Alfonso (25/07). Solo en modo por-leyes. */}
+                              {inc && (
+                                <div className="mt-1">
+                                  <span
+                                    className={`inline-block text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                                      inc.mode === 'whole'
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-green-100 text-green-800'
+                                    }`}
+                                    title={inc.mode === 'whole'
+                                      ? 'Esta ley entra completa: sin artículos ni títulos elegidos, el test puede usar cualquiera de sus preguntas.'
+                                      : 'Esta ley entra acotada a tu selección.'}
+                                  >
+                                    {inc.mode === 'whole' ? '⚠️ ' : '✓ '}
+                                    {inclusionBadgeLabel(inc)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             {isSelected && (
                               <div className="flex items-center gap-1">
@@ -1496,6 +1561,21 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   <div className="text-xs text-blue-700 mt-2">
                     ✓ {selectedLaws.size} de {lawsData.length} leyes seleccionadas
                   </div>
+
+                  {/* ⚠️ Aviso del caso MIXTO (feedback Alfonso 25/07): combinas ley(es)
+                      acotadas a artículos/títulos con otra(s) que entran ENTERAS. En un
+                      test aleatorio la ley entera aporta muchas más preguntas y domina,
+                      dando la sensación de "salen preguntas fuera de lo seleccionado". */}
+                  {inclusionSummary?.mixedWholeAndNarrowed && (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                      <div className="font-medium mb-0.5">
+                        ⚠️ Mezclas leyes acotadas con leyes completas
+                      </div>
+                      <div>
+                        {inclusionSummary.wholeLaws.join(', ')} {inclusionSummary.wholeLaws.length > 1 ? 'entran completas' : 'entra completa'} (todos sus artículos), mientras que {inclusionSummary.narrowedLaws.join(', ')} {inclusionSummary.narrowedLaws.length > 1 ? 'están acotadas' : 'está acotada'} a tu selección. En un test aleatorio la ley completa aportará muchas más preguntas. Si solo quieres artículos concretos, pulsa <span className="font-medium">🔧 Artículos</span> también en {inclusionSummary.wholeLaws.length > 1 ? 'esas leyes' : 'esa ley'}.
+                      </div>
+                    </div>
+                  )}
 
                   {/* 💾 Botones de Favoritos - Solo en páginas de leyes (no en temas) */}
                   {currentUser && !tema && (

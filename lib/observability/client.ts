@@ -199,6 +199,13 @@ export type ClientEventType =
   | 'react_error_boundary' // app/error.tsx + global-error.tsx
   | 'client_error' // logClientError() — errores manejados en componentes
   | 'chunk_load_error' // chunk viejo 404 tras deploy → auto-reload de recuperación
+  // Configurador multi-ley: el usuario arranca un test MIXTO (unas leyes acotadas a
+  // artículos/títulos + otra(s) que entran ENTERAS). Es el patrón que hace percibir
+  // "salen preguntas fuera de lo seleccionado" (feedback Alfonso 25/07) aunque el motor
+  // sea correcto: la ley entera domina el muestreo aleatorio. metadata: {wholeLaws,
+  // narrowedLaws, wholeQuestionsTotal, positionType}. severity:'info' (no es error).
+  // Mide la frecuencia real para priorizar mejoras de UX. Ver TestConfigurator.tsx.
+  | 'multiley_mixed_inclusion_start'
 
 interface ClientEvent {
   ts: string

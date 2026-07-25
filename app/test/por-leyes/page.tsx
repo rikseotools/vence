@@ -6,6 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import TestConfigurator from '@/components/TestConfigurator'
+import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
 import { useAuth } from '@/contexts/AuthContext'
 import type { LawData } from '@/lib/api/laws-configurator'
 import type { TestStartConfig } from '@/components/TestConfigurator.types'
@@ -65,7 +66,11 @@ function TestConfiguradorContent() {
       const url = withScope && targetPositionType
         ? `/api/laws-configurator?positionType=${encodeURIComponent(targetPositionType)}`
         : '/api/laws-configurator'
-      const response = await fetch(url)
+      // Resiliente a blips de red del cliente (retry+backoff): un fetch crudo hacía
+      // que un corte transitorio de conexión mostrara "Error al cargar" y el usuario
+      // lo vivía como "ha desaparecido la página de leyes" (feedback Alfonso 25/07,
+      // journey con oleadas http_network_error). fetchWithChallenge reintenta solo.
+      const response = await fetchWithChallenge(url)
       const result = await response.json()
       if (!result.success) {
         throw new Error(result.error || 'Error cargando leyes')

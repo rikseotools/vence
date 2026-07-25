@@ -124,4 +124,40 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
     expect(q).toMatch(/laws_configurator_empty_scope/)
     expect(q).toMatch(/positionType && out\.totalLaws === 0/)
   })
+
+  // ── Feedback Alfonso (25/07): resiliencia de red + visibilidad ley-entera ──
+
+  it('FIX-A (red): por-leyes carga las leyes con fetchWithChallenge (retry+backoff), NO fetch crudo', () => {
+    const page = read('app/test/por-leyes/page.tsx')
+    expect(page).toMatch(/import { fetchWithChallenge } from '@\/lib\/api\/fetchWithChallenge'/)
+    // el fetch de laws-configurator pasa por el wrapper resiliente
+    expect(page).toMatch(/await fetchWithChallenge\(url\)/)
+    // y NO queda un fetch crudo a ese endpoint
+    expect(page).not.toMatch(/await fetch\(url\)/)
+  })
+
+  it('FIX-B (UX): TestConfigurator usa summarizeLawInclusion y pinta badge por-ley', () => {
+    const cfg = read('components/TestConfigurator.tsx')
+    expect(cfg).toMatch(/import { summarizeLawInclusion, inclusionBadgeLabel } from '@\/lib\/laws\/lawInclusionSummary'/)
+    expect(cfg).toMatch(/const inclusionSummary = useMemo/)
+    // gateado a modo por-leyes (sin tema)
+    expect(cfg).toMatch(/if \(tema \|\| selectedLaws\.size === 0\) return null/)
+    // badge por-ley con inclusionBadgeLabel
+    expect(cfg).toMatch(/inclusionBadgeLabel\(inc\)/)
+  })
+
+  it('FIX-B (UX): TestConfigurator avisa del caso MIXTO (acotada + entera)', () => {
+    const cfg = read('components/TestConfigurator.tsx')
+    expect(cfg).toMatch(/inclusionSummary\?\.mixedWholeAndNarrowed/)
+    expect(cfg).toMatch(/Mezclas leyes acotadas con leyes completas/)
+  })
+
+  it('FIX-B (observabilidad): emite multiley_mixed_inclusion_start al arrancar test mixto', () => {
+    const cfg = read('components/TestConfigurator.tsx')
+    expect(cfg).toMatch(/emitClientEvent/)
+    expect(cfg).toMatch(/multiley_mixed_inclusion_start/)
+    // y el eventType está registrado en la taxonomía cliente
+    const client = read('lib/observability/client.ts')
+    expect(client).toMatch(/'multiley_mixed_inclusion_start'/)
+  })
 })
