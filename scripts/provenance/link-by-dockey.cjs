@@ -25,7 +25,9 @@ try {
 const APPLY = process.argv.includes('--apply');
 
 async function main() {
-  const c = new Client({ connectionString: (process.env.DATABASE_URL || '').split('?')[0], ssl: { rejectUnauthorized: false } });
+  const _url = (process.env.DATABASE_URL || '').split('?')[0];
+  const _local = /@(localhost|127\.0\.0\.1|host\.containers\.internal)[:/]/.test(_url);
+  const c = new Client({ connectionString: _url, ssl: _local ? false : { rejectUnauthorized: false } });
   await c.connect();
   try {
     // índice en memoria: (convocatoria_id, doc_key) -> documento_id (solo canónicos, no notas)

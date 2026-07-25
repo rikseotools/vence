@@ -39,6 +39,26 @@ describe('canonicalizeBoletinUrl — BOCM', () => {
   });
 });
 
+describe('canonicalizeBoletinUrl — boletines regionales (alta confianza)', () => {
+  test('DOGV: variantes de idioma _es/_va del mismo doc → mismo docKey', () => {
+    const es = canonicalizeBoletinUrl('https://dogv.gva.es/datos/2026/03/12/pdf/2026_8057_es.pdf');
+    const va = canonicalizeBoletinUrl('https://dogv.gva.es/datos/2026/03/12/pdf/2026_8057_va.pdf');
+    expect(es.docKey).toBe('DOGV-2026-8057');
+    expect(es.docKey).toBe(va.docKey); // dedup de idioma
+    expect(es.boletin).toBe('DOGV');
+  });
+  test('BOCYL: código propio del documento', () => {
+    const r = canonicalizeBoletinUrl('https://bocyl.jcyl.es/boletines/2026/06/24/pdf/BOCYL-D-24062026-120-22.pdf');
+    expect(r.docKey).toBe('BOCYL-D-24062026-120-22');
+    expect(r.boletin).toBe('BOCYL');
+  });
+  test('DOGC: documentId', () => {
+    const r = canonicalizeBoletinUrl('https://portaldogc.gencat.cat/ca/document-del-dogc/?documentId=1035641');
+    expect(r.docKey).toBe('DOGC-1035641');
+    expect(r.boletin).toBe('DOGC');
+  });
+});
+
 describe('canonicalizeBoletinUrl — reserva segura para boletines no reconocidos', () => {
   test('web de CCAA (comunidad.madrid) → docKey = URL normalizada, recognized:false', () => {
     const r = canonicalizeBoletinUrl('https://www.comunidad.madrid/servicios/empleo/auxiliares-c2-2026');

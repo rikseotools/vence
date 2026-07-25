@@ -27,7 +27,8 @@ const APPLY = process.argv.includes('--apply');
 async function main() {
   const url = (process.env.DATABASE_URL || '').split('?')[0];
   if (!url) throw new Error('DATABASE_URL no configurada');
-  const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+  const local = /@(localhost|127\.0\.0\.1|host\.containers\.internal)[:/]/.test(url);
+  const c = new Client({ connectionString: url, ssl: local ? false : { rejectUnauthorized: false } });
   await c.connect();
   try {
     const rows = (await c.query(

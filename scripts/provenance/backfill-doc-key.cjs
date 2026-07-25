@@ -27,13 +27,38 @@ try {
 } catch {}
 
 const APPLY = process.argv.includes('--apply');
+const RECANON = process.argv.includes('--recanonicalize');
 
 async function main() {
   const url = (process.env.DATABASE_URL || '').split('?')[0];
   if (!url) throw new Error('DATABASE_URL no configurada');
-  const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+  // SSL solo para RDS; local (podman) es plano → permite pre-flight local-first.
+  const local = /@(localhost|127\.0\.0\.1|host\.containers\.internal)[:/]/.test(url);
+  const c = new Client({ connectionString: url, ssl: local ? false : { rejectUnauthorized: false } });
   await c.connect();
   try {
+    // Modo RE-CANONICALIZE: recomputa doc_key de TODAS las filas con el canonicalizador
+    // actual y actualiza las que cambien (p.ej. al añadir un patrón de boletín), saltando
+    // colisiones. Necesario para que las filas legacy adopten un patrón nuevo. Idempotente.
+    if (RECANON) {
+      const all = (await c.query(`SELECT id, convocatoria_id, url, doc_key, tipo FROM convocatoria_documentos WHERE url IS NOT NULL`)).rows;
+      let changed = 0, collisions = 0, samekey = 0;
+      for (const r of all) {
+        const { docKey } = canonicalizeBoletinUrl(r.url);
+        if (!docKey || docKey === r.doc_key) { samekey++; continue; }
+        if (r.tipo !== 'nota') {
+          const clash = (await c.query(
+            `SELECT 1 FROM convocatoria_documentos WHERE convocatoria_id=$1 AND doc_key=$2 AND id<>$3 LIMIT 1`,
+            [r.convocatoria_id, docKey, r.id])).rows.length > 0;
+          if (clash) { collisions++; continue; }
+        }
+        if (APPLY) await c.query(`UPDATE convocatoria_documentos SET doc_key=$2, updated_at=now() WHERE id=$1`, [r.id, docKey]);
+        changed++;
+      }
+      console.log(`${APPLY ? 'APLICADO' : 'DRY-RUN'} recanonicalize — cambiados=${changed}, colisiones_saltadas=${collisions}, sin_cambio=${samekey}`);
+      if (!APPLY) console.log('(usa --apply para escribir)');
+      return;
+    }
     // Pares (convocatoria_id, doc_key) ya asignados en BD (por si se corre parcialmente)
     const taken = new Set();
     for (const r of (await c.query(`SELECT convocatoria_id, doc_key FROM convocatoria_documentos WHERE doc_key IS NOT NULL`)).rows) {

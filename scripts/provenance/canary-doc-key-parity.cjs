@@ -27,6 +27,10 @@ const FIXTURES = [
   'https://www.bocm.es/boletin/CM_Orden_BOCM/2026/02/18/BOCM-20260218-2.PDF',
   'https://www.boe.es/buscar/act.php?id=BOE-A-2023-7500',
   'https://www.boe.es/x?id=BOE-B-2026-123',
+  'https://dogv.gva.es/datos/2026/03/12/pdf/2026_8057_es.pdf',
+  'https://dogv.gva.es/datos/2026/03/12/pdf/2026_8057_va.pdf',
+  'https://bocyl.jcyl.es/boletines/2026/06/24/pdf/BOCYL-D-24062026-120-22.pdf',
+  'https://portaldogc.gencat.cat/ca/document-del-dogc/?documentId=1035641',
 ];
 
 async function main() {
