@@ -25,7 +25,11 @@
  */
 require('dotenv').config({ path: '.env.local' })
 
-const BASE = process.env.SITE_URL || 'https://www.vence.es'
+// Producción por defecto, y OJO: NO se usa `SITE_URL` — en `.env.local` vale
+// http://localhost:3000, así que el canary habría medido una instancia local
+// (siempre una sola, siempre "verde") creyendo que miraba la flota de prod. Para
+// apuntar a otro sitio a propósito: CANARY_BASE_URL=…
+const BASE = process.env.CANARY_BASE_URL || 'https://www.vence.es'
 const RUTA = '/api/canary/isr'
 const CRON_SECRET = process.env.CRON_SECRET
 // Con 8 tasks y reparto del ALB, 40 sondeos dan margen de sobra para tocarlas todas.
