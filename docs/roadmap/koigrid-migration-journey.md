@@ -97,6 +97,53 @@ The app is already CDN-perfect: public `s-maxage`, no cookies, prerendered ISR H
 
 ---
 
+## ⚖️ 2026-07-25 — HONEST SCOPE OF OUR BENCHMARK: what we actually compared (it is NOT apples-to-apples), the measured AWS footprint, the **real** AWS bill, and everything still unmeasured
+
+The owner asked the right question: *"you benchmarked against 8 tasks × 2 vCPU — did you measure that?"* We hadn't. We have now, and it changes how our numbers should be read. **Publishing this so nobody (including us) over-reads a laptop-side TTFB table.**
+
+### What the two sides actually are (measured 2026-07-25)
+| | AWS (production, what we benchmarked) | Koigrid (POC, what we benchmarked) |
+|---|---|---|
+| Front-end compute | **8 Fargate tasks × 2 vCPU / 4 GB = 16 vCPU, 32 GB**, autoscaling **min 8 / max 12** (→ up to 24 vCPU) | **1 replica, 2 GB** (Free plan caps replicas at 1) |
+| Back-end | 1 task × 0.25 vCPU / 0.5 GB | 1 app, 1 GB |
+| Edge | CloudFront, HTML cached at edge (`age: 6560` observed) | CDN **off** (cannot be enabled — see R1) |
+| DB | RDS PostgreSQL 17.6 **Multi-AZ**, 31 GB | Koigrid managed PG 17, single-node (Free), 4 GB RAM, co-located |
+| Account limit | Fargate On-Demand vCPU quota **30** (adjustable) — at 8 tasks it sits at 16.25/30 | Free plan: 1 replica/app |
+
+**So the head-to-head tables compare a 16-vCPU, CloudFront-fronted, multi-AZ production against a single 2 GB container with no edge cache.** Read that way, Koigrid comes out remarkably well (`/health`, the only leg with no CDN on either side and roughly comparable compute, is just **1.6×**) — and it also means our latency tables are a **floor** for Koigrid, not a verdict. The saturation number (~10 rps) is *per replica*: matching AWS's 16 vCPU would mean roughly **8 replicas**, which is a paid plan.
+
+### The cost claim, re-measured (we had it wrong, in Koigrid's disfavour *and* favour)
+Our earlier sections quoted "$800–1 200/month on AWS vs ~$89 on Koigrid ≈ 10× cheaper". **We finally pulled the real bill (AWS Cost Explorer, 2026-07-01→07-24):**
+
+| Service | 23 days (USD) |
+|---|---|
+| RDS | 103.57 |
+| ECS (Fargate) | 98.32 |
+| Tax | 69.72 |
+| CloudFront | 37.11 |
+| VPC | 25.75 |
+| ELB | 21.14 |
+| CloudWatch | 11.51 |
+| ElastiCache | 7.95 |
+| Route 53 | 1.55 |
+| **Total** | **376.62 → ≈ $491/month run-rate** (≈ $421 ex-tax) |
+
+**The honest ratio is therefore ~4–5×, not ~10×** — still a large win for Koigrid, but we were over-stating it, and an over-stated claim is worth less than a measured one. Note also what the AWS bill contains that the Koigrid POC does not yet: Multi-AZ failover, CloudFront, an ALB, CloudWatch, and 8× the compute. A like-for-like Koigrid stack (≈8 replicas + HA DB + CDN) is **not** the $89 free-tier figure either; we can't price it until the plan pages/`/usage` are reachable (see below).
+
+### What is still UNMEASURED for a serious at-scale comparison
+Grouped by what unblocks each. We list them because a benchmark that omits them is not a cutover decision:
+- **Blocked on Koigrid fixing R1 (and ideally R2):** edge-cached HTML latency and capacity — the whole point of A3; today unmeasurable.
+- **Blocked on a paid plan / custom domain:** multi-replica throughput and p95/p99 **under sustained load** (not medians on an idle box); autoscaling behaviour; whether ~10 rps/replica scales linearly to our ~16.6 rps peak; HA database failover; the real monthly price of an equivalent stack.
+- **Blocked on nothing but time (we can do these free, on the copy DB):** write throughput (`answer-and-save` at N rps) vs the same on RDS; DB latency **under load** (we only have a single 6.45 ms sample); backup/PITR restore time; deploy + rollback time end-to-end; object-storage throughput (we already serve 30 HLS videos from Koigrid storage); cold-start after idle; log/metric retention and alerting parity.
+- **Blocked on an owner decision (touches production):** replaying real production traffic (shadow/mirror) instead of synthetic paths — the only way to compare a realistic route mix, authenticated sessions and write ratio; and logical-replication lag from the live RDS.
+
+**Bottom line for readers of this report:** every latency table above is a *lower bound* for Koigrid measured in its most handicapped configuration, and the cost advantage is real but ~4–5×, not 10×. We will re-run the comparison properly the moment R1 is fixed and a paid plan/custom domain is on the table.
+
+### 🔻 R7 (during this write-up) — the control plane returned `500` on *every* endpoint for several minutes
+`GET /apps`, `/apps/{id}`, `/apps/{id}/resources`, `/databases`, `/usage`, `/metrics` → all `500 {"error":"internal","errorRef":"…"}` (refs `ca2a9503…`, `fb52a380…`, `36765e42…`). **The data plane stayed healthy** (our front-end and backend kept serving `200` at ~0.23 s), so this was control-plane-only — but it stopped us finishing the resource/plan side of the table above, and it is the second time in this session that a release window degraded the API (the first being the R1–R6 regressions). A **status page / `/health` for the control plane**, and treating `openapi.json`+`llms.txt` as versioned artifacts (so a rollback is visible rather than silently changing the contract), would make releases much less alarming for someone mid-migration.
+
+---
+
 ## 🚨 2026-07-25 (later) — NEXT RELEASE REVIEWED: **HTML edge caching is documented as SHIPPED (our #1 ask 🎉) but is UNREACHABLE**, and this build **regressed four things that worked yesterday** — including managed restore-dump, which is gone.
 
 We re-pulled `llms.txt` and `openapi.json` after another release and re-ran the whole benchmark. **The headline is good news we could not verify, wrapped in four regressions.** Everything below was reproduced against the live API within one hour.
