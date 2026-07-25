@@ -153,7 +153,10 @@ Esta es **la regla cero**. Si la IA parafrasea, cambia un verbo o estrecha un su
 > | `NO_LITERAL` | **Cláusula ya presente en el enunciado**, omitida en la opción | **No** — es el ejemplo canónico de condensación válida |
 > | `ORTOGRAFIA` | *"periodo"* / *"período"*: ambas grafías correctas | **No** (pase blando desde hoy) |
 > | `NO_LITERAL` en pregunta **intruso** | La correcta es la opción INVENTADA, por construcción | **No** (detectado desde hoy) |
-> | `NO_LITERAL` | **Sumario libre** del artículo, siglas sin desarrollar, término cambiado | **SÍ** |
+> | `NO_LITERAL` | **Sumario AUTO-REFERENCIAL**: *"adicionar al Valor en Aduana los conceptos **previstos en el artículo**"* | **SÍ** — es circular, no se puede responder por el fondo |
+> | `NO_LITERAL` | **Sumario que SÍ nombra el contenido**: *"…gravámenes y gastos accesorios hasta el primer lugar de destino"* | **No** — condensa una enumeración que no cabe en una opción |
+> | `NO_LITERAL` | **Término abreviado**: el artículo dice *"Impuesto sobre la Renta de las Personas Físicas"* y la opción *"IRPF"* | **SÍ** — abreviar un término del artículo es cambiarlo |
+> | `NO_LITERAL` | Sumario libre del artículo, siglas sin desarrollar, término cambiado | **SÍ** |
 >
 > **Cómo usarlo entonces:** el gate es un **filtro de sospechosos**, no un veredicto. Ante un `NO_LITERAL`, **abre el artículo y compara** — si todas las palabras de la opción están en el artículo y solo cambia el orden, un pronombre o un tiempo verbal, es condensación válida. Lo que sí es defecto duro es que aparezcan **palabras que no están en el artículo**. Un atajo barato para triar en masa: medir el porcentaje de palabras de la opción ausentes del artículo — por debajo del 5% casi siempre es condensación; por encima del 10% conviene mirarlo.
 >

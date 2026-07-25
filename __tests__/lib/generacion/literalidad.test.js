@@ -56,6 +56,17 @@ describe('analizarIntruso — detección del marco "cuál NO figura"', () => {
   it('NO marca enunciados sin negación alguna', () => {
     expect(analizarIntruso('Según el artículo 27.1, ¿qué son los tributos?')).toBe(false)
   })
+
+  it('detecta los verbos de pertenencia añadidos el 25/07 (beneficiarse, gozar, presumirse)', () => {
+    expect(analizarIntruso('¿Cuál de los siguientes vehículos NO se beneficia de la presunción del 100 por 100?')).toBe(true)
+    expect(analizarIntruso('Señale el supuesto que NO goza de exención:')).toBe(true)
+    expect(analizarIntruso('¿Qué bien NO se presume afecto a la actividad?')).toBe(true)
+  })
+
+  it('sigue sin marcar una pregunta directa que contenga esos verbos en positivo', () => {
+    expect(analizarIntruso('¿Qué vehículos se benefician de la presunción del 100 por 100?')).toBe(false)
+    expect(analizarIntruso('¿Qué supuestos gozan de exención según el artículo 71?')).toBe(false)
+  })
 })
 
 // --- Diferencia solo ORTOGRÁFICA (25/07/2026) ---
