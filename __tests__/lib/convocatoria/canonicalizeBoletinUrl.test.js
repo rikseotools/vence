@@ -75,6 +75,15 @@ describe('canonicalizeBoletinUrl — boletines regionales (alta confianza)', () 
     expect(r.recognized).toBe(true);
     expect(r.canonicalUrl).toBe('https://www.juntadeandalucia.es/boja/2024/191/27');
   });
+
+  test('DOG (Galicia): variantes _es/_gl del mismo anuncio → mismo docKey', () => {
+    const es = canonicalizeBoletinUrl('https://www.xunta.gal/dog/Publicados/2025/20251125/AnuncioG0597-191125-0004_es.html');
+    const gl = canonicalizeBoletinUrl('https://www.xunta.gal/dog/Publicados/2025/20251125/AnuncioG0597-191125-0004_gl.html');
+    expect(es.docKey).toBe('DOG-G0597-191125-0004');
+    expect(gl.docKey).toBe('DOG-G0597-191125-0004');
+    expect(es.boletin).toBe('DOG');
+    expect(es.recognized).toBe(true);
+  });
 });
 
 describe('canonicalizeBoletinUrl — reserva segura para boletines no reconocidos', () => {
