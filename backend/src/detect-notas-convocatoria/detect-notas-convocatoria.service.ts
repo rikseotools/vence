@@ -198,6 +198,10 @@ export class DetectNotasConvocatoriaService {
           convocatoriaId,
           tipo: 'nota',
           url: nota.url,
+          // Identidad canónica del documento, para agrupar las notas por su fuente. Las notas
+          // NO deduplican por doc_key (son historial de monitoreo, append por content_hash — el
+          // índice único ux_…_conv_dockey excluye tipo='nota'); esto solo evita el doc_key NULL.
+          docKey: sql`boletin_doc_key(${nota.url})` as unknown as string,
           titulo: nota.title,
           contentHash,
           extractedText: nota.text,

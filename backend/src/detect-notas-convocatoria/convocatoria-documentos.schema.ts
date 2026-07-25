@@ -14,6 +14,9 @@ export const convocatoriaDocumentos = pgTable('convocatoria_documentos', {
   convocatoriaId: uuid('convocatoria_id').notNull(),
   tipo: text('tipo').notNull(),
   url: text('url').notNull(),
+  // Identidad canónica del documento (BOE/BOCM id o URL normalizada). La calcula boletin_doc_key
+  // (espejo SQL de lib/convocatoria/canonicalizeBoletinUrl.cjs). Migración 20260725_provenance_doc_hub.
+  docKey: text('doc_key'),
   titulo: text('titulo'),
   boletin: text('boletin'),
   referencia: text('referencia'),

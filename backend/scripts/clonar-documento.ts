@@ -192,17 +192,19 @@ async function main() {
   }
 
   const hash = crypto.createHash('sha256').update(r.texto).digest('hex')
-  const ins = await c.query(
-    `INSERT INTO convocatoria_documentos (convocatoria_id, tipo, url, titulo, boletin, referencia,
-       fecha_publicacion, content_hash, extracted_text, fuente, fetched_at, curado, curado_por, curado_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'manual',now(),true,'claude',now())
-     ON CONFLICT DO NOTHING RETURNING id`,
-    [cv.id, tipo, url, arg('titulo') ?? url.split('/').pop(), arg('boletin') ?? null,
-     arg('ref') ?? null, arg('fecha') ?? null, hash, r.texto])
+  // Documento CANÓNICO → por el camino único del hub: dedup por doc_key (mata el dup txt.php vs
+  // /pdfs del mismo BOE). boletin_doc_key calcula la identidad. Luego un UPDATE preserva la
+  // metadata curada que ensure_ no maneja (boletin/referencia/fecha/curado).
+  const docId = (await c.query(
+    `SELECT ensure_convocatoria_documento($1, boletin_doc_key($2), $2, $3, $4, $5, $6, 'manual') AS id`,
+    [cv.id, url, hash, tipo, arg('titulo') ?? url.split('/').pop(), r.texto])).rows[0].id
+  await c.query(
+    `UPDATE convocatoria_documentos SET boletin = COALESCE($2, boletin), referencia = COALESCE($3, referencia),
+       fecha_publicacion = COALESCE($4, fecha_publicacion), curado = true, curado_por = 'claude',
+       curado_at = now(), updated_at = now() WHERE id = $1`,
+    [docId, arg('boletin') ?? null, arg('ref') ?? null, arg('fecha') ?? null])
 
-  console.log(ins.rows[0]
-    ? `✅ clonado y CURADO: ${(r.texto.length / 1024).toFixed(0)} KB (${r.formato}) → ${slug}`
-    : `↷ ya estaba en el corpus con el mismo hash (idempotente): ${slug}`)
+  console.log(`✅ clonado y CURADO en el corpus (hub, dedup por doc_key): ${(r.texto.length / 1024).toFixed(0)} KB (${r.formato}) → ${slug}`)
   await c.end()
 }
 
