@@ -29,6 +29,7 @@ const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
 const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generacion', 'tellLongitud'))
 const { analizarLiteralidad } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
+const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))
 
 const envPath = path.join(__dirname, '..', '.env.local')
 const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
@@ -93,9 +94,8 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     if (new Set(opts.map(norm)).size !== 4) errs.push('opciones duplicadas')
 
     const letra = 'ABCD'[q.correct_option]
-    if (!q.explanation.startsWith(`**Por qué ${letra} es correcta:**`)) {
-      errs.push('cabecera de explicación no coincide con la clave')
-    }
+    const cab = analizarCabecera(q.explanation, q.correct_option)
+    if (!cab.ok) errs.push(`cabecera de explicación: ${cab.motivo}`)
     for (const L of 'ABCD') {
       if (L !== letra && !q.explanation.includes(`**${L})**`)) errs.push(`falta bullet del distractor ${L}`)
     }
