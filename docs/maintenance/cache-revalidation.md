@@ -737,6 +737,23 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 **IMPORTANTE:** El secret va en el header `x-cron-secret` (es el `CRON_SECRET` de `.env.local`, el segundo si hay dos).
 
+> ⚠️ **`purge-cache` es PER-INSTANCIA: una llamada NO basta (medido 25/07/2026).** El frontend corre
+> como **N tasks de ECS** (2 base, hasta 6 con autoscaling) y `revalidatePath()` solo limpia el caché
+> **del proceso que atiende la petición**. Es el mismo fallo que el Data Cache (§"Invalidación
+> CROSS-INSTANCIA"), pero aquí NO hay `versionedCache` que lo salve: el ISR de página no está versionado.
+> **Síntoma:** tras una sola purga, ~1 de cada N peticiones muestra lo nuevo y el resto sigue con lo
+> viejo hasta que expire el ISR (24 h). Caso real: se completó la landing de Aux. Admin. UAL (tarjetas
+> hero + FAQs) y con una purga solo 1 de 6 peticiones la servía.
+> **Remedio hasta que exista purga cross-instancia:** repetir el POST ~15-20 veces (el balanceador va
+> rotando de task) y **verificar sirviendo la página varias veces**, no una:
+> ```bash
+> for i in $(seq 1 18); do curl -s -X POST https://www.vence.es/api/purge-cache \
+>   -H 'Content-Type: application/json' -H "x-cron-secret: $CRON_SECRET" \
+>   -d '{"path":"/mi-ruta"}' -o /dev/null; done
+> for i in $(seq 1 8); do curl -s "https://www.vence.es/mi-ruta?x=$i" | grep -c 'lo-que-esperas'; done
+> ```
+> Lo mismo aplica a `scripts/purge-all-cache.js`: purga cada ruta UNA vez → deja tasks sin limpiar.
+
 ### Cuándo revalidar páginas ISR
 
 | Situación | Qué revalidar |
