@@ -231,6 +231,18 @@
 
 ## Abiertas
 
+### [T-066] 🟢 [ABIERTO 21/07 — ficha reconstruida 25/07 desde `backlog_tasks`] Crear contenido de Power BI (aux/admin Madrid lo piden en epígrafe, 0 preguntas en BD)
+- **Qué:** detectado en **T-007** (verificación scope↔epígrafe): 2 temas piden Power BI (`auxiliar_administrativo_madrid` **T19**, `administrativo_madrid` **T45**) pero **NO existe ninguna ley/pregunta/teoría de Power BI** en BD. Es un gap de **CONTENIDO** (no de scope).
+- **Impacto:** 🟢 baja: 2 temas de Madrid con un sub-bloque del epígrafe a 0 preguntas (el alumno no puede practicar Power BI aunque el temario lo pida).
+- **Cómo:** crear material de Power BI (contenedor editorial/ofimática reusable, por contenido no por oposición) + generar preguntas con doble auditoría + escoparlo a esos 2 temas contra el epígrafe (`verificar-epigrafes-scope.md`, no a ciegas) + activar por el gate lifecycle. Enlaza con el hueco general de material de ofimática (T-040/T-036).
+- **Origen:** T-007 (21/07). Nota: esta ficha se **reconstruyó el 25/07** porque la tarea vivía en `backlog_tasks` sin ficha en el markdown (divergencia detectada por `backlog.cjs sync`).
+
+### [T-077] 🟡 [ABIERTO 21/07 — ficha reconstruida 25/07 desde `backlog_tasks`] Cambiar de oposición como gate de plan premium de compromiso largo (semestral/anual)
+- **Qué:** que **cambiar de oposición objetivo requiera un plan premium de compromiso largo** — SEMESTRAL (`premium_semester`, 6m/69€) o ANUAL (`premium_annual`, 1a/99€). Los tiers `free` + `premium_monthly` + `premium_quarterly` **NO podrían cambiar de oposición** → upsell a los planes largos (más margen y retención). **Es el TIER del plan, NO la antigüedad de cuenta** (idea previa descartada).
+- **Impacto:** 🟡 media: palanca de monetización/retención (empuja a planes largos). Toca modelo de suscripción + UX de onboarding.
+- **Cómo (detalle de diseño a decidir con Manuel):** (1) si el usuario **FREE** debe poder fijar/cambiar su ÚNICA oposición objetivo en el onboarding (para no matar la exploración inicial) o bloqueo total; (2) cómo se comunica el gate (CTA al plan largo). Cablear el gate donde hoy se cambia de oposición (selector del breadcrumb del test — ver `feedback-cambio-oposicion-via-perfil`).
+- **Origen:** 21/07. Nota: ficha **reconstruida el 25/07** desde `backlog_tasks` (vivía en el registro sin ficha en el markdown).
+
 ### [T-114] 🟠 [ABIERTO 25/07] Repuntar las `seguimiento_url` genéricas/desfasadas a la ficha concreta de la convocatoria viva (datos)
 - **Qué:** 9 oposiciones cuya `seguimiento_url` NO vigila la convocatoria correcta → falso negativo silencioso (el día que cambie la convocatoria, nadie se entera). El detector ya está en su **mínimo por código** (T-112 lo afinó dos veces: `98b58b7d6`, `76c839fec`); lo que queda es **trabajo de DATOS por-ítem**, no de detector. Dos grupos:
   - **7 `url_generica` con ficha viva** (`error`): `auxiliar-administrativo-ayuntamiento-cordoba`, `ayudante-instituciones-penitenciarias`, `administrativo-diputacion-jaen`, `administrativo-madrid`, `administrativo-junta-general-asturias`, `auxiliar-administrativo-ayuntamiento-murcia`, `ordenanza-ayuntamiento-cordoba` → la URL apunta al índice del portal de empleo, no a la ficha; con la convocatoria viva eso es ceguera (caso raíz Murcia).
