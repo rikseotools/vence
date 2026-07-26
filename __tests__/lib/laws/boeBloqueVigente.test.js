@@ -129,3 +129,77 @@ describe('comparaConBd', () => {
     expect(comparaConBd('<response><data/></response>', 'lo que sea').coincide).toBe(false)
   })
 })
+
+// ── Concordancias del BOE (26/07/2026) ──────────────────────────────────────
+// Párrafos que son SOLO una remisión editorial al precepto constitucional
+// relacionado. El BOE los sirve con la misma clase `parrafo` que el texto real,
+// así que no se pueden filtrar por clase. Sin este filtro, 3 de los 4 artículos
+// de la LOTC verificados daban falso DIVERGE.
+describe('bloqueVigente — concordancias constitucionales', () => {
+  const conConcordancia = (ref) => `<response><data><bloque id="a75"><version fecha_vigencia="19791025">
+    <p class="articulo">Art&iacute;culo setenta y cinco</p>
+    <p class="parrafo">Uno. El Tribunal podr&aacute; solicitar de las partes cuantas informaciones estime necesarias.</p>
+    <p class="parrafo">${ref}</p>
+  </version></bloque></data></response>`
+
+  it('excluye la concordancia del texto del artículo', () => {
+    const b = bloqueVigente(conConcordancia('Art&iacute;culo 164 de la Constituci&oacute;n Espa&ntilde;ola.'))
+    expect(b.texto).toMatch(/El Tribunal podrá solicitar/)
+    expect(b.texto).not.toMatch(/Constitución/)
+  })
+
+  it('excluye también las variantes con apartado y sin "Española"', () => {
+    expect(bloqueVigente(conConcordancia('Art&iacute;culo 53.2 de la Constituci&oacute;n espa&ntilde;ola.')).texto).not.toMatch(/Constitución/)
+    expect(bloqueVigente(conConcordancia('Art&iacute;culo 161 de la Constituci&oacute;n.')).texto).not.toMatch(/Constitución/)
+    expect(bloqueVigente(conConcordancia('Art&iacute;culos 159 y 160 de la Constituci&oacute;n Espa&ntilde;ola.')).texto).not.toMatch(/Constitución/)
+  })
+
+  it('NO confunde un párrafo real que MENCIONA la Constitución con una concordancia', () => {
+    const real = bloqueVigente(conConcordancia('Dos. El recurso protege frente a las violaciones de los derechos del art&iacute;culo 14 de la Constituci&oacute;n Espa&ntilde;ola cuando concurran los requisitos legales.'))
+    expect(real.texto).toMatch(/El recurso protege/)
+  })
+})
+
+// Nota de REDACCIÓN: dice de dónde viene la redacción vigente. También llega con
+// clase `parrafo`. Caso real: art. 41 de la LOTC, que trae concordancia Y esta nota.
+describe('bloqueVigente — nota de redacción', () => {
+  const conNota = (nota) => `<response><data><bloque id="a41"><version fecha_vigencia="20070526">
+    <p class="articulo">Art&iacute;culo cuarenta y uno</p>
+    <p class="parrafo">Dos. El amparo protege frente a las violaciones de los derechos y libertades.</p>
+    <p class="parrafo">${nota}</p>
+    <p class="parrafo">Tres. En el amparo no pueden hacerse valer otras pretensiones.</p>
+  </version></bloque></data></response>`
+
+  it('excluye la nota de redacción y conserva el apartado siguiente', () => {
+    const b = bloqueVigente(conNota('Apartado redactado conforme a la Ley Org&aacute;nica 6/2007, de 24 de mayo (Ref. BOE-A-2007-10483).'))
+    expect(b.texto).not.toMatch(/redactado conforme/)
+    expect(b.texto).toMatch(/Tres\. En el amparo/)
+  })
+
+  it('reconoce las variantes por/según y otros sujetos', () => {
+    for (const n of [
+      'Art&iacute;culo redactado por la Ley Org&aacute;nica 1/2010.',
+      'N&uacute;mero 3 redactado seg&uacute;n la Ley Org&aacute;nica 6/2007.',
+      'Letra b) redactada conforme a la disposici&oacute;n final primera.',
+    ]) expect(bloqueVigente(conNota(n)).texto).not.toMatch(/redactad/)
+  })
+
+  it('NO se lleva texto real que empiece por "Artículo" o "Apartado"', () => {
+    const real = bloqueVigente(conNota('Apartado que ser&aacute; de aplicaci&oacute;n a los recursos interpuestos con posterioridad.'))
+    expect(real.texto).toMatch(/ser[áa] de aplicaci[óo]n/)
+  })
+})
+
+// El BOE usa el SINGULAR y el PLURAL para estas notas ("Téngase en cuenta que…" /
+// "Ténganse en cuenta los artículos 127 y 159.4 de la Constitución y la Ley
+// Orgánica 1/1985…"). Con solo el singular, el art. 3 de la LOTC daba DIVERGE.
+it('reconoce la nota en plural: "Ténganse en cuenta…"', () => {
+  const xml = `<response><data><bloque id="a3"><version fecha_vigencia="19791025">
+    <p class="articulo">Art&iacute;culo tercero</p>
+    <p class="parrafo">La condici&oacute;n de Magistrado del Tribunal Constitucional es incompatible.</p>
+    <p class="parrafo">T&eacute;nganse en cuenta los art&iacute;culos 127 y 159.4 de la Constituci&oacute;n y la Ley Org&aacute;nica 1/1985.</p>
+  </version></bloque></data></response>`
+  const b = bloqueVigente(xml)
+  expect(b.texto).not.toMatch(/Ténganse/)
+  expect(b.notaVigencia).toMatch(/159\.4/)
+})
