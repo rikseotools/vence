@@ -35,6 +35,7 @@ const postgres = require('postgres')
 const RAIZ = path.join(__dirname, '..', '..')
 const { checkConvocatoriaLinks } = require(path.join(RAIZ, 'lib/convocatoria/linkCoherence.cjs'))
 const { classifyLandingCompleteness } = require(path.join(RAIZ, 'lib/convocatoria/landingCompleteness.cjs'))
+const { CABECERAS_CRON } = require(path.join(RAIZ, 'lib/convocatoria/seguimientoVigilable.cjs'))
 const {
   extraerAfirmaciones,
   verificarAfirmaciones,
@@ -94,10 +95,17 @@ async function comprobarEnlaces(html) {
   const internos = hrefs.filter((h) => h.startsWith('/') && !h.startsWith('/_next') && !/favicon|manifest|icon\./.test(h))
   const externos = hrefs.filter((h) => /^https?:\/\//.test(h) && !/vence\.es|googletagmanager|google-analytics/.test(h))
   const rotos = []
+  const noComprobables = []
+  // Cabeceras del cron de seguimiento (núcleo compartido, no una copia): muchas sedes oficiales
+  // devuelven 403 a una petición sin `User-Agent` de navegador. Sin esto, el detector llamaba
+  // "roto" a un enlace perfectamente vivo — pasó con congreso.es en la primera pasada.
   const comprobar = async (url, etiqueta) => {
     try {
-      const r = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(25000) })
-      if (r.status >= 400) rotos.push({ url: etiqueta, status: r.status })
+      const r = await fetch(url, { headers: CABECERAS_CRON, redirect: 'follow', signal: AbortSignal.timeout(25000) })
+      // 403/429 = el sitio bloquea peticiones automáticas, no que el enlace esté roto. Se informa
+      // aparte: marcarlo como error mandaría a alguien a "arreglar" una URL que funciona.
+      if (r.status === 403 || r.status === 429) noComprobables.push({ url: etiqueta, status: r.status })
+      else if (r.status >= 400) rotos.push({ url: etiqueta, status: r.status })
     } catch (e) {
       rotos.push({ url: etiqueta, status: 0, error: e.message })
     }
@@ -106,7 +114,7 @@ async function comprobarEnlaces(html) {
   // se abre una tormenta contra los boletines oficiales (que sí capan por ráfaga).
   for (const l of internos) await comprobar(BASE + l, l)
   for (const l of externos) await comprobar(l, l)
-  return { internos: internos.length, externos: externos.length, rotos }
+  return { internos: internos.length, externos: externos.length, rotos, noComprobables }
 }
 
 async function main() {
@@ -224,6 +232,9 @@ async function main() {
     for (const r of enlaces.rotos) {
       errores.push(`[landing_enlace_roto] ${r.url} → ${r.status || 'sin respuesta'}${r.error ? ` (${r.error})` : ''}`)
     }
+    for (const r of enlaces.noComprobables) {
+      notas.push(`enlace no comprobable automáticamente (${r.status}, el sitio bloquea bots): ${r.url}`)
+    }
   }
 
   // Afirmaciones: se leen de la página servida (lo que ve el opositor) partida por superficies
@@ -319,7 +330,7 @@ async function main() {
     console.log(`\n${'='.repeat(78)}`)
     console.log(`AUDITORÍA DE LANDING — ${op.slug} [${op.estado_proceso || 'sin estado'}]`)
     console.log('='.repeat(78))
-    if (enlaces) console.log(`  enlaces  : ${enlaces.internos} internos + ${enlaces.externos} externos · ${enlaces.rotos.length} rotos`)
+    if (enlaces) console.log(`  enlaces  : ${enlaces.internos} internos + ${enlaces.externos} externos · ${enlaces.rotos.length} rotos${enlaces.noComprobables.length ? ` · ${enlaces.noComprobables.length} no comprobables (403/429)` : ''}`)
     else console.log('  enlaces  : no comprobados (--sin-red)')
     console.log(`  documento: ${doc ? `[${doc.tipo}] ${doc.titulo || doc.url} (${doc.extracted_text.length} chars)` : '— ninguno de tipo convocatoria/bases'}`)
     console.log(`  cifras   : ${afirmaciones.length} afirmaciones · ${respaldo.sinDocumento ? 'sin contrastar' : `${respaldo.sinRespaldo.length} sin respaldo`}`)
