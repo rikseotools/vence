@@ -99,3 +99,67 @@ describe('seccionNumToInt', () => {
     expect(seccionNumToInt('III')).toBe(3)
   })
 })
+
+describe('titlesForLaw — una norma citada POR NOMBRE no puede filtrar sus títulos a las demás', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { titlesForLaw } = require('@/lib/laws/scopeTitleBoundary')
+
+  // Forma REAL del epígrafe de `guardia_civil` T9 (verified_literal contra el
+  // TEMARIO INGRESO GC ACTUALIZADO 2024 clonado en el hub), recortado a lo esencial.
+  const GC_T9 = [
+    'DERECHO PROCESAL PENAL.',
+    'Bloque 1. Real Decreto de 14 de septiembre de 1882, aprobatorio de la Ley de Enjuiciamiento Criminal.',
+    'LIBRO I. Disposiciones generales.',
+    'TÍTULO II. De la competencia de los Jueces y Tribunales en lo criminal.',
+    'TÍTULO IV. De las personas a quienes corresponde el ejercicio de las acciones.',
+    'TÍTULO V. Derecho a la defensa.',
+    'LIBRO II. Del sumario.',
+    'TÍTULO I. De la denuncia.',
+    'TÍTULO III. De la Policía judicial',
+    'TÍTULO VI. De la citación, de la detención y de la prisión provisional.',
+    'TÍTULO VIII. De las medidas de investigación limitativas de los derechos.',
+    'Bloque 3. Ley Orgánica 6/1985, de 1 de julio, del Poder Judicial.',
+    'LIBRO I. De la extensión y límites de la jurisdicción.',
+    'TÍTULO IV. De la composición y atribuciones de los órganos jurisdiccionales.',
+    'LIBRO VII. Del Ministerio Fiscal.',
+    'TÍTULO I. Del Ministerio Fiscal y la Fiscalía Europea.',
+    'TÍTULO II. De los Abogados, Procuradores y Graduados Sociales.',
+    'TÍTULO III. De la Policía Judicial.',
+  ].join(' ')
+
+  const LOPJ = { shortName: 'LO 6/1985', name: 'Ley Orgánica 6/1985, de 1 de julio, del Poder Judicial' }
+  const LECRIM = { shortName: 'LECrim', name: 'Ley de Enjuiciamiento Criminal' }
+
+  test('la LOPJ recibe SOLO sus cuatro títulos, no los de la LECrim', () => {
+    // El bug: la LECrim se cita como "Real Decreto de 14 de septiembre de 1882,
+    // aprobatorio de la Ley de Enjuiciamiento Criminal" — sin nº que la regex viera —,
+    // así que sus títulos pasaban por "genéricos" y los genéricos se conceden a TODAS
+    // las leyes del tema. La LOPJ heredaba [1,2,3,4,5,6,8] y sus 130 artículos fuera
+    // de programa (466 preguntas) quedaban invisibles.
+    expect(titlesForLaw(GC_T9, LOPJ)).toEqual({ titles: [1, 2, 3, 4], bound: true })
+  })
+
+  test('la LECrim sigue recibiendo los suyos (el fix no la deja muda)', () => {
+    expect(titlesForLaw(GC_T9, LECRIM).titles).toEqual([1, 2, 3, 4, 5, 6, 8])
+  })
+
+  test('una norma del tema SIN títulos propios → bound:false (el detector se calla)', () => {
+    // El RD 769/1987 enumera CAPÍTULOS, no títulos: mejor callarse que aplicarle los
+    // títulos de otra norma.
+    const rd = { shortName: 'RD 769/1987', name: 'Real Decreto 769/1987, sobre regulación de la Policía Judicial' }
+    expect(titlesForLaw(GC_T9, rd)).toEqual({ titles: [], bound: false })
+  })
+
+  test('el nombre del código se reconoce como norma en las dos direcciones', () => {
+    const ep = 'Código Penal. TÍTULO XXI. Delitos contra la Constitución. Ley 39/2015. TÍTULO IV. De los actos administrativos.'
+    expect(titlesForLaw(ep, { shortName: 'CP', name: 'Código Penal' }).titles).toEqual([21])
+    expect(titlesForLaw(ep, { shortName: 'Ley 39/2015', name: 'Ley 39/2015' }).titles).toEqual([4])
+  })
+
+  test('NO rompe la guarda de "Tribunal Constitucional" (regresión ya cazada una vez)', () => {
+    // El `\b` tras "constitución" existe porque "Tribunal Constitucional" se leía como
+    // otra norma y descartaba los títulos propios de la CE en 4 oposiciones.
+    const ep = 'La Constitución Española. TÍTULO IX. Del Tribunal Constitucional.'
+    expect(titlesForLaw(ep, { shortName: 'CE', name: 'Constitución Española' }).titles).toEqual([9])
+  })
+})
