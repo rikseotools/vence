@@ -81,15 +81,29 @@ async function main() {
   // no se pudo descargar. El caso (c) es el peligroso en una barrida bank-wide: si
   // el BOE limita el ritmo a mitad, TODAS las oposiciones restantes saldrían
   // "limpias" y serían indistinguibles de un banco sano. (T-121, 26/07/2026)
-  let flagged = 0, evaluados = 0, sinBoeId = 0, sinArts = 0, fetchFail = 0, noAplicable = 0
+  let flagged = 0, evaluados = 0, sinBoeId = 0, sinArts = 0, fetchFail = 0, noAplicable = 0, nulosExpandidos = 0
   for (const t of temas) {
     const scopes = await sql`
-      SELECT l.short_name, l.name AS law_name, l.boe_url, ts.article_numbers FROM topic_scope ts
-      JOIN laws l ON l.id = ts.law_id WHERE ts.topic_id = ${t.id}`
+      SELECT l.id AS law_id, l.short_name, l.name AS law_name, l.boe_url, ts.article_numbers,
+             ts.article_numbers IS NULL AS es_null
+        FROM topic_scope ts JOIN laws l ON l.id = ts.law_id WHERE ts.topic_id = ${t.id}`
     for (const s of scopes) {
       const bid = boeId(s.boe_url)
       if (!bid) { sinBoeId++; continue }
-      const arts: string[] = forced && topicArg ? forced.split(',') : (s.article_numbers || [])
+      // `article_numbers = NULL` significa TODA LA LEY, no "sin artículos". Tratarlo como
+      // lista vacía hacía que el runner SALTARA justo los scopes con más papeletas de
+      // sobre-inclusión: medido, 473 scopes NULL con id del BOE en el banco, y 58 de los 64
+      // de `guardia_civil` — o sea que este runner opinaba sobre 6. Es el MISMO punto ciego
+      // que ya se arregló hoy en el detector de sobre-inclusión y en su guarda determinista:
+      // tres sitios, el mismo NULL. (26/07/2026)
+      let arts: string[]
+      if (forced && topicArg) arts = forced.split(',')
+      else if (s.es_null) {
+        arts = (await sql`
+          SELECT article_number FROM articles WHERE law_id = ${s.law_id} AND is_active = true
+        `).map((a: { article_number: string }) => String(a.article_number))
+        nulosExpandidos++
+      } else arts = s.article_numbers || []
       if (!arts.length) { sinArts++; continue }
       let secs: Seccion[]
       try { secs = await estructuraBoe(bid) } catch { fetchFail++; continue }
@@ -113,6 +127,7 @@ async function main() {
   // producían el mismo "✅ Sin overflow" que un banco sano (T-121).
   console.log(
     `\n📊 ${temas.length} tema(s) · ${evaluados} scope(s) evaluado(s)` +
+    ` · ${nulosExpandidos} con scope NULL expandido a toda la ley` +
     ` · omitidos: ${sinBoeId} sin id BOE, ${sinArts} sin artículos, ${fetchFail} sin índice descargable` +
     ` · ${noAplicable} con epígrafe no mapeable a títulos`,
   )
