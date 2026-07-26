@@ -26,7 +26,7 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generacion', 'tellLongitud'))
 const { analizarLiteralidad, resolverMarco } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
 const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))

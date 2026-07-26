@@ -2,7 +2,7 @@
 // Vuelca el lote de reescritura (>=10 respuestas, menos las 5 del piloto) en shards por cluster,
 // con el ARTÍCULO ENTERO (nunca truncado — gotcha del cubo 1: left(content,4200) generó falsos positivos).
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
 const HECHAS=['27b39247','57fe32ee','5fae34ce','7239a7bb','e52e863d'];

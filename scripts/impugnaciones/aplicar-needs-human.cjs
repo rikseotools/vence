@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+const pg = require('postgres');
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   const env = fs.readFileSync(path.join(__dirname, '..', '..', '.env.local'), 'utf8');

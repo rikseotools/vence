@@ -1,7 +1,7 @@
 // Helper para la auditoría TCAE: imprime las preguntas [start,end) del fichero piloto
 // con su artículo vinculado (contenido literal). Uso: node tcae_audit_fetch.cjs <start> <end>
-require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({ path: '/home/manuel/Documentos/github/vence/.env.local' })
-const { createClient } = require('/home/manuel/Documentos/github/vence/node_modules/@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
+const { createClient } = require('@supabase/supabase-js')
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const FILE = '/tmp/claude-1000/-home-manuel-Documentos-github-vence/61c02061-b6d4-4b33-90e2-403f855d4c26/scratchpad/tcae_pilot.json'
 

@@ -12,7 +12,7 @@
 // Numeracion 1.2 / 1.3 / 1.4: ordena correctamente como texto junto a los arts. 2-7 existentes
 // ("1","1.2","1.3","1.4","2",...), cosa que 8/9/10 no haria ("1","10","2",...).
 const fs = require('fs'), path = require('path');
-const pg = require(path.join(__dirname, '..', '..', 'backend', 'node_modules', 'postgres'));
+const pg = require('postgres');
 const url = fs.readFileSync(path.join(__dirname, '..', '..', '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql = pg(url, { ssl: { rejectUnauthorized: false }, max: 2 });
 const DRY = !process.argv.includes('--apply');

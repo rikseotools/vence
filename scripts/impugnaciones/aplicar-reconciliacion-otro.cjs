@@ -3,7 +3,7 @@
 // encajaban en los bloques de SU artículo pero sí en otro artículo de la misma ley (destino que
 // el primer pase no ofrecía). Mismo guardarraíl: si algún tema pierde preguntas, revierte.
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
 const DRY=!process.argv.includes('--apply');

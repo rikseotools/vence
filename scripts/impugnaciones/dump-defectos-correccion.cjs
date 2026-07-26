@@ -4,7 +4,7 @@
 // Los ids salen de los FLAGS-*.md commiteados; el detalle se RE-DERIVA de RDS
 // (no se reutiliza la nota del agente: el criterio es verificar, no fiarse).
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
 const TIPOS=['clave dudosa','doble clave','enunciado roto'];

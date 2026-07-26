@@ -1,4 +1,4 @@
-const fs=require('fs');const pg=require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+const fs=require('fs');const pg=require('postgres');
 const u=fs.readFileSync('/home/manuel/Documentos/github/vence/.env.local','utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const DIR='/tmp/claude-1000/-home-manuel-Documentos-github-vence/15e44078-8c8b-48b5-bb40-da1e1e5ff1d5/scratchpad';
 const pilot=JSON.parse(fs.readFileSync(DIR+'/pilot_ordenint.json','utf8'));

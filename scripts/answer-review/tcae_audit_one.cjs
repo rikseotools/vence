@@ -1,7 +1,7 @@
 // Helper: imprime las preguntas de una lista de ids con su articulo. Uso:
 //   node -e "require('./scripts/answer-review/tcae_audit_one.cjs')(['id1','id2'])"
-require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({ path: '/home/manuel/Documentos/github/vence/.env.local' })
-const { createClient } = require('/home/manuel/Documentos/github/vence/node_modules/@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
+const { createClient } = require('@supabase/supabase-js')
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 
 module.exports = async function (ids) {

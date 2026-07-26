@@ -11,7 +11,7 @@
  */
 import { classifyLawCompleteness } from '@/lib/laws/completeness'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const postgres = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres')
+const postgres = require('postgres')
 
 const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip
 

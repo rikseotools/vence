@@ -10,7 +10,7 @@
 // recogen los artículos nuevos. Sin ampliarlas, las preguntas que se muevan DESAPARECEN de esos
 // temas. El script las amplía y avisa de cuántas eran.
 const fs = require('fs'), path = require('path');
-const pg = require(path.join(__dirname, '..', '..', 'backend', 'node_modules', 'postgres'));
+const pg = require('postgres');
 const url = fs.readFileSync(path.join(__dirname, '..', '..', '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql = pg(url, { ssl: { rejectUnauthorized: false }, max: 2 });
 const DRY = !process.argv.includes('--apply');

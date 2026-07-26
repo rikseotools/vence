@@ -45,7 +45,7 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 const { emparejarArticulos } = require(path.join(__dirname, '..', 'lib', 'salud', 'emparejarArticulos'))
 
 const [SLUG_MUERTA, SLUG_VIVA] = process.argv.slice(2).filter((a) => !a.startsWith('--'))

@@ -21,7 +21,7 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 
 const args = process.argv.slice(2)
 const slug = args[0]

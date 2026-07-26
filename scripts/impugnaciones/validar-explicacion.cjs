@@ -11,7 +11,7 @@ const fs = require('fs');
 // artículo de la BD, así que las funciones PURAS (checkCorrespondence, explanationBlocks) se pueden
 // importar y testear sin arrastrar la dependencia.
 //
-// ⚠️ Antes era `require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres')` —
+// ⚠️ Antes era `require('postgres')` —
 // la ruta ABSOLUTA de un disco concreto, y al cargar el módulo. Funcionaba en esa máquina y en el CI
 // reventaba con "Cannot find module …/backend/node_modules/postgres", tumbando la suite ENTERA (y con
 // ella el gate de CI, que bloquea el deploy de TODAS las sesiones). El test pasaba en local: por eso

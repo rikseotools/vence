@@ -21,7 +21,7 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
 const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
 const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))

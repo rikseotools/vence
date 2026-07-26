@@ -1,8 +1,8 @@
 // Apply mecánico de una tanda del barrido TCAE por ÍNDICES.
 // Uso: node scripts/answer-review/tcae_apply_idx.cjs <ruta_output_workflow.json>
 // Resuelve idx→id desde tcae_clinical_ranked.json. Misma política que tcae_apply.cjs.
-require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({ path: '/home/manuel/Documentos/github/vence/.env.local' })
-const { createClient } = require('/home/manuel/Documentos/github/vence/node_modules/@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
+const { createClient } = require('@supabase/supabase-js')
 const fs = require('fs')
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const ADMIN = '2fc60bc8-1f9a-42c8-9c60-845c00af4a1f'

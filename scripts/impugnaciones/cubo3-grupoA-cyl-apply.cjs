@@ -4,7 +4,7 @@
 //   Decreto 12/2024 CyL (BOCyL eli/2024/06/27/12): art.4, art.10, art.11 (nuevos)
 // Claves verificadas literal contra la fuente oficial. Idempotente-ish: aborta si ya no son needs_human.
 const fs = require('fs');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+const pg = require('postgres');
 const APPLY = process.argv.includes('--apply');
 function getUrl(){ return process.env.DATABASE_URL || fs.readFileSync('/home/manuel/Documentos/github/vence/.env.local','utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim(); }
 

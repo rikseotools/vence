@@ -4,7 +4,7 @@
 //   Decreto 12/2024 CyL (BOCyL): arts 1 (Objeto), 6 (Calidad), 12 (Info y asistencia), 13 (Contacta)
 // + completa el topic_scope del Decreto a la ley entera (epígrafe = Servicio 012 completo).
 const fs = require('fs');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+const pg = require('postgres');
 const APPLY = process.argv.includes('--apply');
 function getUrl(){ return process.env.DATABASE_URL || fs.readFileSync('/home/manuel/Documentos/github/vence/.env.local','utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim(); }
 

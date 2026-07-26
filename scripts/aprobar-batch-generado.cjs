@@ -20,7 +20,7 @@
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 
 const [BATCH, RESUMEN] = process.argv.slice(2)
 if (!BATCH || !RESUMEN) {

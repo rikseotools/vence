@@ -3,7 +3,7 @@
 // Guardarraíl: se cuenta POR TEMA lo servido de cada ley ANTES y DESPUÉS; si algún tema pierde
 // una sola pregunta, revierte solo. Las OTRO no se mueven. No se toca ninguna clave.
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
 const DRY=!process.argv.includes('--apply');

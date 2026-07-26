@@ -16,7 +16,7 @@
 // para poder correr sin build TS). El test __tests__/lib/laws/completeness.test.ts
 // fija las fixtures del criterio.
 const fs = require('fs')
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres')
+const pg = require('postgres')
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL

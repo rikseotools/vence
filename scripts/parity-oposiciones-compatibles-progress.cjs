@@ -15,8 +15,8 @@
 // Historia: creado 2026-05-27 durante el refactor que sustituye la
 // agregación runtime por la tabla materializada. Verificó 14 casos
 // (7 users × 2 sourcePositionType) — todos bit-a-bit.
-require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({path:'/home/manuel/Documentos/github/vence/.env.local'})
-const { createClient } = require('/home/manuel/Documentos/github/vence/node_modules/@supabase/supabase-js')
+require('dotenv').config({path:'.env.local'})
+const { createClient } = require('@supabase/supabase-js')
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)
 
 // FROZEN-SUPABASE-NEUTRALIZED (19/07/2026): parity que leía la Supabase CONGELADA

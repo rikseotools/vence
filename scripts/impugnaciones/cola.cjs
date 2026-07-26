@@ -15,7 +15,7 @@
 //
 // <ID> = tu id de sesión. Usa el UUID de tu carpeta de scratchpad (único por sesión).
 const fs = require('fs');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+const pg = require('postgres');
 const STALE_HOURS = 2;
 
 function getUrl() {

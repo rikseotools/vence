@@ -6,7 +6,7 @@
 //   node scripts/canary-gate-inciso-anulado.cjs
 const fs=require('fs');
 const path=require('path');
-const pg=require(path.join(__dirname,'..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:1});
 const FRAG='Asimismo, toda devolución acordada en aplicación del párrafo b) del mismo apartado de este artículo llevará consigo la prohibición de entrada en territorio español por un plazo máximo de tres años.';

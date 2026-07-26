@@ -18,7 +18,7 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 const plan = require(path.join(__dirname, '..', 'lib', 'generacion', 'huerfanosPlan'))
 
 const argv = process.argv.slice(2)

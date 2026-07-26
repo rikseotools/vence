@@ -15,7 +15,7 @@ const fs=require('fs'),path=require('path');
 let _sql=null;
 const sql=()=>{
   if(!_sql){
-    const pg=require(path.join(__dirname,'..','backend','node_modules','postgres'));
+    const pg=require('postgres');
     const url=fs.readFileSync(path.join(__dirname,'..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
     _sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
   }

@@ -6,8 +6,8 @@
  * - Inserts with proper metadata
  */
 
-const { createClient } = require('/home/manuel/Documentos/github/vence/node_modules/@supabase/supabase-js');
-require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({ path: '/home/manuel/Documentos/github/vence/.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 const fs = require('fs');
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);

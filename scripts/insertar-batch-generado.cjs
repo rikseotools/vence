@@ -27,7 +27,7 @@
  */
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 
 const [FILE, LAW_SLUG, BATCH] = process.argv.slice(2)
 if (!FILE || !LAW_SLUG || !BATCH) {

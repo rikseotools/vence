@@ -15,7 +15,7 @@
 // Los títulos "bare" ("Artículo N" sin rúbrica) son otro defecto (rúbrica faltante),
 // no cubiertos por este guardarraíl.
 const fs = require('fs');
-const pg = require('./../backend/node_modules/postgres');
+const pg = require('postgres');
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;

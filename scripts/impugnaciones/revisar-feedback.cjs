@@ -15,7 +15,7 @@
 //   tiene fresco (<2h). Sin --sid: solo dossier.
 
 const fs = require('fs');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+const pg = require('postgres');
 // Enforcement de la Regla previa OBLIGATORIA (scope/epígrafe) — módulo compartido con revisar-impugnacion.cjs
 const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
 

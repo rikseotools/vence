@@ -17,7 +17,7 @@
 // vector nuevo y actualiza + baja el flag por artículo). Clave OpenAI desde `ai_api_config`.
 const fs = require('fs')
 const path = require('path')
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 const OpenAI = require(path.join(__dirname, '..', 'node_modules', 'openai'))
 
 const MODEL = 'text-embedding-3-small' // 1536 dims — igual que generate-embeddings.cjs

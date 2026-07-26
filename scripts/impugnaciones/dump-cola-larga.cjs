@@ -2,7 +2,7 @@
 // Vuelca el 2º tramo de la cola B: explicaciones flojas VISIBLES con 1-9 respuestas.
 // (el tramo >=10 se drenó el 20/07; las 0-respuestas NO se tocan: no le llegan a nadie)
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
 const OUT=path.join(__dirname,'cola-larga-shards'); fs.mkdirSync(OUT,{recursive:true});

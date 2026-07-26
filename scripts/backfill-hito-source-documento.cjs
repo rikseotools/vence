@@ -32,7 +32,7 @@ function loadDbUrl() {
 }
 
 // pg driver: usar el de backend (mismo que el resto de scripts .cjs de ops)
-const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const pg = require('postgres')
 
 const APPLY = process.argv.includes('--apply')
 

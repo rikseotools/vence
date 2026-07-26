@@ -2,7 +2,7 @@
 // READ-ONLY: extrae el lote de explicaciones flojas VISIBLES con >=10 respuestas (el 89% del daño),
 // agrupado por ley/artículo para reescribir por cluster.
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
 (async()=>{

@@ -19,7 +19,7 @@
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_JWT_SECRET
 // Usuarios de prueba (reales en prod): admin=manueltrader, no-admin=faqmakemoney.
 
-const { SignJWT } = require('/home/manuel/Documentos/github/vence/node_modules/jose')
+const { SignJWT } = require('jose')
 
 const BASE = process.argv[2] || 'https://www.vence.es'
 const ADMIN = { email: 'manueltrader@gmail.com', sub: '2fc60bc8-1f9a-42c8-9c60-845c00af4a1f' }

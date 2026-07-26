@@ -17,7 +17,7 @@
 //   node scripts/exempt-editorial-laws.cjs --apply    # aplica
 const fs = require('fs')
 const { execSync } = require('child_process')
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres')
+const pg = require('postgres')
 const getUrl = () => process.env.DATABASE_URL || fs.readFileSync(require('path').join(__dirname, '..', '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
 const APPLY = process.argv.includes('--apply')
 

@@ -3,7 +3,7 @@
 // GUARDARRAÍLES: no escribe nada si valida-citas.cjs no está limpio; nunca toca clave ni artículo;
 // transacción por pregunta; trazado en AVR con proveedor propio de campaña.
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','..','backend','node_modules','postgres'));
+const pg=require('postgres');
 const url=fs.readFileSync(path.join(__dirname,'..','..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 const sql=pg(url,{ssl:{rejectUnauthorized:false},max:3});
 const PROVIDER='claude_code_expl_traffic_v1';

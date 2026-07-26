@@ -15,7 +15,7 @@
 //   node scripts/verify-law-source.cjs --law <uuid> --dry    # sin escribir
 const fs = require('fs')
 const { execSync } = require('child_process')
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres')
+const pg = require('postgres')
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
   return fs.readFileSync(require('path').join(__dirname, '..', '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
