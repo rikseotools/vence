@@ -404,6 +404,39 @@ async function runSuspects(onlyNew) {
   console.log(JSON.stringify(out, null, 1));
 }
 
+// --peers <position_type> <topic_number> <short_name>: los temas HERMANOS que escopan esa misma
+// ley, ordenados por parecido de epígrafe. Es el paso 2 de la evidencia comparada (T-154): tras
+// saber por `consenso_banco` que la ley entera es la anomalía, esto dice EN QUIÉN apoyarse.
+// La lógica pura vive en lib/laws/peerScopes.js (CommonJS, sin mirror que se desincronice).
+async function runPeers(pt, topicNumber, shortName) {
+  require('dotenv').config({ path: '.env.local' });
+  const { rankPeers, mejorReferencia } = require('../lib/laws/peerScopes');
+  const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
+  const [ley] = await sql`SELECT id FROM laws WHERE short_name = ${shortName}`;
+  if (!ley) { console.error(`no hay ninguna ley con short_name "${shortName}"`); await sql.end(); process.exit(1); }
+  const [base] = await sql`
+    SELECT t.id, t.title, t.epigrafe FROM topics t
+    WHERE t.position_type = ${pt} AND t.topic_number = ${Number(topicNumber)} AND t.is_active`;
+  if (!base) { console.error(`no hay tema activo ${pt} T${topicNumber}`); await sql.end(); process.exit(1); }
+  const rows = await sql`
+    SELECT t.position_type pt, t.topic_number tn, t.epigrafe,
+           array_length(ts.article_numbers, 1) scoped,
+           (v.state = 'verified_literal') verificado
+    FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id
+    LEFT JOIN topic_epigrafe_verification v ON v.topic_id = t.id
+    WHERE ts.law_id = ${ley.id} AND t.is_active AND t.id <> ${base.id}`;
+  await sql.end();
+  const rank = rankPeers(base, rows.map(r => ({ ...r, verificado: !!r.verificado })));
+  const ref = mejorReferencia(base, rows.map(r => ({ ...r, verificado: !!r.verificado })));
+  console.log(`\n■ ${pt} T${topicNumber} · ${shortName} — ${base.title}`);
+  console.log(`   ${String(base.epigrafe).replace(/\s+/g, ' ').slice(0, 200)}\n`);
+  console.log(`   ${ref.hay ? '✅' : '⚠️ '} ${ref.motivo}\n`);
+  for (const p of rank.slice(0, 8)) {
+    console.log(`   ${(p.sim * 100).toFixed(0).padStart(3)}%${p.util ? ' ★' : '  '} ${p.pt.slice(0, 30).padEnd(31)} T${String(p.tn).padEnd(4)} ${(p.scoped == null ? 'ENTERA' : p.scoped + ' arts').padEnd(9)} ${p.verificado ? 'verificado' : '—'}`);
+    console.log(`         ${String(p.epigrafe).replace(/\s+/g, ' ').slice(0, 140)}`);
+  }
+}
+
 // --record <fichero.json>: upsert de los veredictos del workflow + observable_event.
 // Formato esperado por fila: {topic_id, law_id, content_hash, band, verdict,
 //   titulos_excluidos?, arts_correctos?, razon?, verificado?}
@@ -513,7 +546,12 @@ if (require.main === module) {
   else if (args.includes('--record')) {
     if (!fileArg) { console.error('Uso: --record <fichero.json>'); process.exit(1); }
     runRecord(fileArg).catch(e => { console.error(e.message); process.exit(1); });
-  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --record <json> | --reguard'); process.exit(1); }
+  } else if (args.includes('--peers')) {
+    const i = args.indexOf('--peers');
+    const [pt, tn, ...ley] = args.slice(i + 1);
+    if (!pt || !tn || !ley.length) { console.error('Uso: --peers <position_type> <topic_number> <short_name>'); process.exit(1); }
+    runPeers(pt, tn, ley.join(' ')).catch(e => { console.error(e.message); process.exit(1); });
+  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --peers <pt> <tema> <ley> | --record <json> | --reguard'); process.exit(1); }
 }
 
 module.exports = { classifyScope, consensoBanco, parseEpigrafe, romanToInt, contentHash, excludedOverlap, internalGaps };

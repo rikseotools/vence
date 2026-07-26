@@ -490,6 +490,18 @@ a las 18:34; una usuaria lo cazó a las 18:38.
    que enfoca el trabajo a poco más de un tercio. **NO decide el recorte** — decide qué mirar antes
    y con qué tamaño de referencia.
 
+> 🧭 **Paso 2 de la evidencia comparada — ¿en quién apoyarse?**
+> `node scripts/scope-over-inclusion.cjs --peers <position_type> <tema> "<short_name>"`
+> Lista los temas HERMANOS que escopan esa misma ley, ordenados por parecido de epígrafe, y marca
+> con ★ el que sirve de referencia: **parecido alto + scope acotado + epígrafe verificado**. Si no
+> lo hay, lo dice en vez de ofrecer el más parecido como si valiera. Casos que lo estrenaron:
+> `administrativo_madrid` T14 · Ley 29/1998, donde `auxiliar_administrativo_madrid` T7 tiene la
+> **misma frase literal**, es de la misma administración y está verificado con 75 artículos — y
+> además **resolvió una duda que el epígrafe no cierra**: si "las fases principales del
+> procedimiento" incluye recursos y ejecución de sentencias (no las incluye). Y `administrativo_
+> madrid` T20 · Ley 19/2013, donde el mejor hermano se queda en 42 % → **no hay referencia** y hay
+> que adjudicar contra la estructura. Núcleo puro: `lib/laws/peerScopes.js`.
+
 > 🧰 **Para obtener la estructura oficial NO improvises un parser:**
 > `node scripts/scope/arbol-ley-boe.cjs "<short_name>" --rubricas` (registrado como `arbol_ley_boe`).
 > Da el árbol **LIBRO › TÍTULO › CAPÍTULO › artículos** con la **rúbrica VIGENTE** de cada bloque,

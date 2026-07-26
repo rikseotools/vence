@@ -142,6 +142,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'se modela (Código Civil, CP, LECrim, LOPJ): sus títulos reinician por libro y se rechazan a ' +
       'propósito, es la tarea T-104.',
   },
+  scope_peers_comparados: {
+    titulo: 'Encontrar el tema HERMANO que ya acotó esta misma ley, para adjudicar un scope por evidencia comparada',
+    ruta: 'scripts/scope-over-inclusion.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Flag `--peers <position_type> <tema> "<short_name>"` de la MISMA herramienta que emite los ' +
+      'sospechosos (una puerta, no dos). Es el paso 2 de T-154: `consenso_banco` dice en agregado ' +
+      'si tener la ley entera es la anomalía, y esto dice EN QUIÉN apoyarse. Marca con ★ el ' +
+      'hermano con parecido alto + scope acotado + epígrafe verificado, y **si no lo hay lo dice** ' +
+      'en vez de ofrecer el más parecido como si valiera. Sirve sobre todo para los epígrafes en ' +
+      'PROSA, donde no hay bloques que mapear y la alternativa es opinar. Núcleo puro en ' +
+      'lib/laws/peerScopes.js (CommonJS, sin mirror). GOTCHA de calibración: las palabras de ' +
+      'relleno ("concepto y clases", "nociones básicas", "estudio particular") están excluidas a ' +
+      'propósito — si contaran, cualquier par de epígrafes administrativos parecería hermano.',
+  },
   arbol_ley_boe: {
     titulo: 'Ver la estructura LIBRO › TÍTULO › CAPÍTULO › artículos de una ley del BOE (con la rúbrica VIGENTE)',
     ruta: 'scripts/scope/arbol-ley-boe.cjs',
