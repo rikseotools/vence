@@ -701,7 +701,19 @@ async function main() {
            ts.article_numbers,
            (SELECT count(*) FROM articles a WHERE a.law_id = ts.law_id AND a.article_number ~ '^[0-9]+$') law_total
     FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
-    WHERE t.is_active = true`)).rows;
+    WHERE t.is_active = true
+      -- El badge tiene que poder BAJAR: se excluyen los (tema, ley) ya adjudicados con
+      -- veredicto ok, que es el estado final tanto de un falso positivo como de un
+      -- recorte YA APLICADO (la guarda determinista de --record/--reguard los deja ahi
+      -- cuando los articulos a excluir ya no estan en el scope). Sin esto el kind
+      -- scope_over_inclusion_suspect no bajaba NUNCA: el 26/07 seguia contando casos
+      -- adjudicados y recortados horas antes. Un forcing-function que no se puede
+      -- satisfacer deja de ser señal, que es justo lo que T-112 quiere evitar.
+      -- Los adjudicados como over_inclusion SI siguen contando: son trabajo pendiente.
+      AND NOT EXISTS (
+        SELECT 1 FROM scope_over_inclusion_adjudications adj
+         WHERE adj.topic_id = ts.topic_id AND adj.law_id = ts.law_id AND adj.verdict = 'ok'
+      )`)).rows;
   const oiHigh = [];
   for (const r of overIncl) {
     // NULL en `article_numbers` = TODA la ley (convención del proyecto). Contarlo como 0

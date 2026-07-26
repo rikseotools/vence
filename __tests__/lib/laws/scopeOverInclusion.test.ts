@@ -153,6 +153,29 @@ describe('CLI scope-over-inclusion.cjs ↔ lib (sync)', () => {
 // capítulos. Este test no comprueba lógica: comprueba que las DOS
 // implementaciones siguen tratando el NULL igual, que es donde se rompería en
 // silencio (el sweep alimenta el badge; el CLI, la cola de adjudicación).
+// El badge tiene que poder BAJAR. El kind `scope_over_inclusion_suspect` no
+// consultaba `scope_over_inclusion_adjudications`, asi que seguia contando casos ya
+// adjudicados —incluidos los recortados horas antes—. Un forcing-function que no se
+// puede satisfacer deja de ser señal. Este test fija que el sweep excluye los
+// adjudicados `ok` (falso positivo O recorte ya aplicado) y NO los `over_inclusion`,
+// que son trabajo pendiente y deben seguir pesando.
+describe('el badge respeta las adjudicaciones', () => {
+  const SWEEP = readFileSync('scripts/health-sweep.cjs', 'utf-8')
+
+  it('el sweep consulta la tabla de adjudicaciones', () => {
+    expect(SWEEP).toContain('scope_over_inclusion_adjudications')
+  })
+
+  it('excluye los adjudicados como ok', () => {
+    expect(/NOT EXISTS[\s\S]{0,400}scope_over_inclusion_adjudications[\s\S]{0,200}verdict\s*=\s*'ok'/.test(SWEEP)).toBe(true)
+  })
+
+  it('NO excluye los adjudicados como over_inclusion (siguen siendo trabajo pendiente)', () => {
+    const bloque = SWEEP.slice(SWEEP.indexOf('scope_over_inclusion_adjudications') - 900, SWEEP.indexOf('scope_over_inclusion_adjudications') + 400)
+    expect(bloque).not.toMatch(/verdict\s*(=|IN)\s*[^']*over_inclusion/)
+  })
+})
+
 describe('NULL = toda la ley (sweep ↔ CLI, sin divergencia)', () => {
   const SWEEP = readFileSync('scripts/health-sweep.cjs', 'utf-8')
   const CLI = readFileSync('scripts/scope-over-inclusion.cjs', 'utf-8')

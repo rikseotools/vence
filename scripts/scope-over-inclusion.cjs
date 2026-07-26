@@ -399,7 +399,7 @@ async function runRecord(jsonPath) {
       const ov = excludedOverlap(it.titulos_excluidos, scopeSet);
       if (ov.total > 0 && ov.ratio < 0.2) {
         verdict = 'ok'; verificado = false; tally.guardados++;
-        razon = `[guarda determinista: solo ${ov.inScope}/${ov.total} arts a excluir están en el scope → ya excluidos, no es recorte] ` + (razon || '');
+        razon = `[guarda determinista: solo ${ov.inScope}/${ov.total} arts a excluir siguen en el scope → NO queda recorte pendiente. OJO: esto NO distingue "nunca fue sobre-inclusión" de "ya se recortó"; si el recorte se aplicó, la sobre-inclusión FUE real y esto solo marca que está resuelta] ` + (razon || '');
       }
     }
     await sql`
@@ -449,7 +449,7 @@ async function runReguard() {
     if (ov.total > 0 && ov.ratio < 0.2) {
       await sql`UPDATE scope_over_inclusion_adjudications
         SET verdict='ok', verificado=false,
-            razon=${`[guarda determinista: solo ${ov.inScope}/${ov.total} arts a excluir están en el scope → ya excluidos] ` + (r.razon || '')},
+            razon=${`[guarda determinista: solo ${ov.inScope}/${ov.total} arts a excluir siguen en el scope → NO queda recorte pendiente (puede ser falso positivo O recorte YA APLICADO; la guarda no los distingue)] ` + (r.razon || '')},
             adjudicado_at=now()
         WHERE topic_id=${r.topic_id} AND law_id=${r.law_id}`;
       console.log(`  ↓ ${r.pt} T${r.tn} ${r.ley} — ${ov.inScope}/${ov.total} en scope → degradado a ok`);
@@ -460,7 +460,7 @@ async function runReguard() {
   await sql`INSERT INTO observable_events (source, severity, event_type, metadata)
     VALUES ('script:scope-over-inclusion','info','scope_adjudication_reguard', ${sql.json({ degradados: fixed, cola_recorte_confirmada: conf })})`;
   await sql.end();
-  console.log(`✅ reguard: ${fixed} falso(s) positivo(s) degradado(s). Cola de recorte confirmada: ${conf}.`);
+  console.log(`✅ reguard: ${fixed} sin recorte pendiente (falsos positivos O ya recortados). Cola de recorte confirmada: ${conf}.`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
