@@ -857,7 +857,41 @@ Este paso es el **paso 7 del flujo v2.1** de `revisar-preguntas-con-agente.md` a
 - Diferencias entre lo que "creías que escribiste" y lo que efectivamente quedó en BD.
 - Cualquier acoplamiento entre los datos y el resto del sistema (sync trigger, normalización del content_hash, etc.).
 
-**Cómo hacerlo:**
+> ⚠️ **HAZLO CON LAS HERRAMIENTAS, no con el snippet de más abajo** (que sigue aquí por trazabilidad y está escrito con el cliente de **Supabase**, obsoleto desde el cutover a RDS). El camino vigente son tres comandos:
+>
+> ```bash
+> node scripts/auditar-batch-input.cjs <batch_id> <input.json>   # lee la pregunta VIVA de BD
+> #  → lanzar el agente del Paso 9 con ese input (agente NUEVO, distinto al del Paso 7)
+> node scripts/registrar-paso9.cjs <batch_id> <veredictos.json> [--apply]   # acredita
+> npm run batch:servido -- <batch_id>                            # cierra: bloquea si falta
+> ```
+>
+> **Por qué se insiste:** el 26/07/2026 se midió que **327 preguntas activas se habían aprobado sin este paso** ([T-155]) y la causa no era el despiste de una sesión — era que **acreditar el paso costaba más que hacerlo**, porque solo existía el `insert` a mano de aquí abajo. En los 11 lotes ATC de esa jornada el Paso 7 estaba registrado y el Paso 9 **en ninguno**, aunque el re-check se había corrido de verdad en siete: el trabajo hecho y sin registrar es, para el sistema, trabajo no hecho.
+>
+> **Y ojo con creerlo cubierto: el Paso 9, cuando se hace, tiende a hacerse PARCIAL** — solo sobre las preguntas que se repararon, que es donde está el rendimiento (ahí se concentran los defectos nacidos al reparar), no sobre el lote entero. Medido en `gen_atc_t204_2026-07-26_s26c`: 5 de 14. `batch:servido` exige cobertura completa, así que un lote con re-check parcial **sigue bloqueado, y hace bien**.
+>
+> **Para saber qué lotes tienes sin acreditar, y por dónde empezar, prioriza por EXPOSICIÓN, no por orden de lote** — unas preguntas están vivas para usuarios reales y otras en temas ocultos:
+>
+> ```sql
+> -- por cada lote: activas, cuántas tienen Paso 9, y si se sirven en algún tema
+> -- disponible de una oposición activa (ahí está la urgencia)
+> SELECT t AS lote, count(*) FILTER (WHERE q.is_active) AS activas,
+>   count(DISTINCT v.question_id) AS con_paso9,
+>   (SELECT string_agg(DISTINCT tp.position_type || ' T' || tp.topic_number, ', ')
+>      FROM topic_scope ts JOIN topics tp ON tp.id = ts.topic_id
+>      JOIN articles a2 ON a2.law_id = ts.law_id
+>        AND (ts.article_numbers IS NULL OR a2.article_number = ANY(ts.article_numbers))
+>      JOIN oposiciones o ON replace(o.slug,'-','_') = tp.position_type
+>     WHERE a2.id = q.primary_article_id AND tp.disponible AND o.is_active) AS expuesto_a
+> FROM questions q, unnest(q.tags) t
+> LEFT JOIN ai_verification_results v
+>   ON v.question_id = q.id AND v.ai_provider LIKE 'claude_code_recheck%'
+> WHERE t LIKE 'gen_%' GROUP BY t, q.primary_article_id ORDER BY t;
+> ```
+>
+> **GOTCHA del join:** `oposiciones` **no** tiene `position_type` (tiene `slug`); se enlaza con `replace(o.slug,'-','_') = topics.position_type` — comprobado, casan las 128.
+
+**Cómo hacerlo** (referencia histórica del snippet original):
 
 1. Releer las preguntas TRANSICIONADAS desde BD (no del borrador `/tmp`) con el contenido literal del artículo. Guardar nuevo input para el agente:
 
