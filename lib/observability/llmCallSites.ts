@@ -65,6 +65,8 @@ export const LLM_CALL_SITES: LlmCallSite[] = [
   { ruta: 'scripts/oposiciones/analizar-preguntas-sin-ley.cjs', estado: 'instrumentado', feature: 'mantenimiento' },
   { ruta: 'scripts/oposiciones/validar-programa-completo.cjs', estado: 'instrumentado', feature: 'mantenimiento' },
 
+  { ruta: 'scripts/observabilidad/ab-modelo-notas.cjs', estado: 'instrumentado', feature: 'ab_notas' },
+
   // ── Crudos: gasto INVISIBLE. Cada uno con lo que hace falta para cerrarlo ──────────────────
   {
     ruta: 'app/api/generate-explanation/route.ts',

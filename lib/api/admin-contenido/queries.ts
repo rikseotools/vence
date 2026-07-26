@@ -74,6 +74,8 @@ export interface ContenidoRow {
   // Hallazgos VIVOS de la landing (superficies que ve el opositor). Ver landingBadge.ts.
   landing_errores: number
   landing_avisos: number
+  // Documentos oficiales clonados que nadie ha revisado (kind `documentos_sin_revisar`).
+  docs_sin_revisar: number
   temas_sin_cobertura: number
   // Proceso (convocatoria vigente) verificado de principio a fin contra el documento
   // oficial: estado efectivo de convocatoria_verification_effective. null = la oposición
@@ -162,6 +164,16 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       WHERE n_content >= 4 AND n_cov < n_content AND n_cov::float / n_content >= 0.6
       GROUP BY pt
     ),
+    -- Documentos oficiales clonados SIN revisar, por oposición. Se lee del MISMO sitio que el
+    -- resto de la salud de contenido (content_health_findings, kind documentos_sin_revisar), no
+    -- de una consulta paralela al hub: si el detector cambia de criterio, esta columna cambia con
+    -- él. La bandeja de trabajo es: npm run docs:bandeja
+    docs AS (
+      SELECT oposicion_slug AS slug,
+             COALESCE(NULLIF(regexp_replace(detail, '\D', '', 'g'), ''), '0')::int AS docs_sin_revisar
+      FROM content_health_findings
+      WHERE kind = 'documentos_sin_revisar' AND oposicion_slug IS NOT NULL
+    ),
     -- Salud de la LANDING por oposición (T-142): los hallazgos que el barrido ya calculó sobre
     -- las superficies que ve el opositor. Los kinds salen del inventario landingSurfaces, que es
     -- el mismo registro que usan el guardarraíl de CI, el panel de salud y audit:landing — así
@@ -216,6 +228,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
     LEFT JOIN cov cv ON cv.pt = replace(tc.slug, '-', '_')
     LEFT JOIN proc p ON p.slug = tc.slug
     LEFT JOIN land ld ON ld.slug = tc.slug
+    LEFT JOIN docs dc ON dc.slug = tc.slug
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC

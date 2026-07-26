@@ -144,6 +144,14 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'compara las superficies de RESUMEN de la página (tarjetas del hero, caja de convocatoria, temas_count) buscando el mismo concepto con números distintos. Caso raíz: el hero decía "46 temas del programa" y la FAQ "45", que es lo que tiene el Anexo I. Decide cuál es el correcto contra el documento oficial y alinea las dos superficies. OJO con el matiz que el detector ya conoce: los temas del PROGRAMA OFICIAL y los que SERVIMOS pueden diferir legítimamente si añadimos contenido de apoyo — eso no es contradicción, y por eso las FAQ (que enumeran subconjuntos) no se comparan entre sí.',
   },
+  documentos_sin_revisar: {
+    title: 'Documentos oficiales clonados que nadie ha revisado',
+    triggerPhrase: 'revisa los documentos nuevos',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'docs:bandeja',
+    claudeHace:
+      'el cron clona a diario los documentos oficiales (bases, resoluciones, notas) de las oposiciones que PREPARAMOS, y la decisión de qué se publica la toma una sesión leyendo la FUENTE. Corre `npm run docs:bandeja` para ver la cola (lo de plazo abierto primero), `--ver <id>` para leer el documento entero junto a lo que hoy dice la BD, y actualiza con dual-write lo que corresponda (fechas, plazas, examen_config, versiones de software del temario). Al terminar, `--revisado <id> --nota "qué se hizo"`. CONTEXTO: hasta el 26/07 esto lo pre-masticaba un LLM barato que generó 6.886 extracciones de las que se triaron CERO (~17 USD tirados); el paso se apagó (`DETECT_NOTAS_LLM_ENABLED`) porque el documento se clona igual y quien decide es quien tiene criterio y la fuente delante. NUNCA publicar un dato que no esté en el documento.',
+  },
   landing_incompleta: {
     title: 'Landing publicada a medio hacer (hero sin tarjetas, sin FAQs, sin SEO)',
     triggerPhrase: 'revisa las landings incompletas',

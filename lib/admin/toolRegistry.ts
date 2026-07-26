@@ -104,6 +104,20 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(`convocatoria_enlace_repuntado`). NO purga la caché: eso va aparte y es per-instancia. ' +
       'Hermano de `repuntar_seguimiento_url`.',
   },
+  bandeja_documentos: {
+    titulo: 'Bandeja de documentos oficiales clonados pendientes de revisar (y de volcar a la BD)',
+    ruta: 'scripts/convocatoria/bandeja-documentos.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'npm run docs:bandeja [-- --ver <id>] [--revisado <id> --nota "…"] [--slug X]. No decide ni ' +
+      'escribe en la convocatoria: enseña el documento clonado JUNTO a lo que hoy dice la BD para ' +
+      'que la decisión y el dual-write los haga quien tiene criterio. Sustituye al pre-masticado ' +
+      'con LLM del cron, apagado el 26/07 (`DETECT_NOTAS_LLM_ENABLED`) tras medir 6.886 ' +
+      'extracciones y CERO triadas, ~17 USD. El cron además solo clona ya las oposiciones ' +
+      'is_active: antes el 96% de lo clonado era de procesos que no preparamos (750 doc/día → ~25). ' +
+      'Se ve en /admin/contenido (columna Docs) y en el sweep (kind documentos_sin_revisar).',
+  },
   auditar_landing_completa: {
     titulo: 'Auditar UNA landing entera (datos, enlaces y cifras) con un comando',
     ruta: 'scripts/convocatoria/audit-landing.cjs',

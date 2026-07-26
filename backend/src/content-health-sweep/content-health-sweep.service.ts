@@ -1569,6 +1569,34 @@ export class ContentHealthSweepService {
       }
     }
 
+
+    // ── Documentos oficiales clonados que NADIE ha revisado (documentos_sin_revisar) ────────
+    // Espejo del gemelo CLI. El cron clona los documentos de las oposiciones que preparamos y la
+    // decisión la toma una sesión leyendo la FUENTE; antes eso lo pre-masticaba un LLM barato
+    // (6.886 extracciones, 0 triadas, ~17 USD). La bandeja se ve aquí para que no se acumule.
+    const docsRows = (await this.db.execute(sql`
+      SELECT o.slug, count(*)::int n, min(d.created_at)::date AS mas_viejo
+        FROM convocatoria_documentos d
+        JOIN convocatorias cv ON cv.id = d.convocatoria_id
+        JOIN oposiciones o ON o.id = cv.oposicion_id
+       WHERE o.is_active AND cv.is_current AND cv.archived_at IS NULL
+         AND d.extracted_text IS NOT NULL
+         AND d.created_at > now() - interval '30 days'
+         AND cv.estado_proceso IN ('inscripcion_abierta','convocatoria_publicada','convocada','inscripcion_cerrada','lista_admitidos','pendiente_examen')
+         AND NOT EXISTS (
+           SELECT 1 FROM observable_events e
+            WHERE e.event_type = 'documento_revisado' AND e.metadata->>'documentoId' = d.id::text)
+       GROUP BY o.slug
+    `)) as unknown as Array<{ slug: string; n: number; mas_viejo: string }>;
+    for (const r of docsRows) {
+      add(
+        'content',
+        'warn',
+        r.slug,
+        'documentos_sin_revisar',
+        `${r.slug}: ${r.n} documento(s) oficial(es) clonado(s) SIN revisar (el más antiguo, del ${String(r.mas_viejo).slice(0, 10)}) — revísalos con npm run docs:bandeja`,
+      );
+    }
     // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
     // Caso raíz 25/07: Aux. Admin. UAL llevaba semanas activa con el hero sin tarjetas, 0 FAQs,
     // sin descripción y sin SEO. `audit:oposicion` lo cantaba, pero es on-demand. Espejo de

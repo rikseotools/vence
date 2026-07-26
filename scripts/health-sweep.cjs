@@ -449,6 +449,31 @@ async function main() {
   // documentos de convocatoria suba, el primero se puede promover a nocturno sin tocar el núcleo.
 
 
+  // ── Documentos oficiales clonados que NADIE ha revisado (documentos_sin_revisar) ─────────
+  // El cron clona los documentos de las oposiciones que preparamos y la decisión —qué se publica
+  // en la landing— la toma una sesión leyendo la FUENTE. Antes ese paso lo pre-masticaba un LLM
+  // barato: 6.886 extracciones generadas y **0 triadas**, ~17 USD por algo que nadie miró. Ahora
+  // la bandeja es explícita y se ve aquí: si un documento nuevo de una convocatoria VIVA lleva
+  // días sin mirarse, es una fecha o una versión de software que puede estar sin publicar.
+  const docsRows = (await c.query(`
+    SELECT o.slug, count(*)::int n, min(d.created_at)::date AS mas_viejo
+      FROM convocatoria_documentos d
+      JOIN convocatorias cv ON cv.id = d.convocatoria_id
+      JOIN oposiciones o ON o.id = cv.oposicion_id
+     WHERE o.is_active AND cv.is_current AND cv.archived_at IS NULL
+       AND d.extracted_text IS NOT NULL
+       AND d.created_at > now() - interval '30 days'
+       AND cv.estado_proceso IN ('inscripcion_abierta','convocatoria_publicada','convocada','inscripcion_cerrada','lista_admitidos','pendiente_examen')
+       AND NOT EXISTS (
+         SELECT 1 FROM observable_events e
+          WHERE e.event_type = 'documento_revisado' AND e.metadata->>'documentoId' = d.id::text)
+     GROUP BY o.slug`)).rows;
+  for (const r of docsRows) {
+    add('content', 'warn', r.slug, 'documentos_sin_revisar',
+      `${r.slug}: ${r.n} documento(s) oficial(es) clonado(s) SIN revisar (el más antiguo, del ${String(r.mas_viejo).slice(0, 10)}) — revísalos con npm run docs:bandeja`,
+      `${r.n} pendientes`);
+  }
+
   // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
   // Una oposición activa puede llevar semanas servida con el hero sin tarjetas, sin FAQs y sin
   // SEO sin que nadie se entere: `audit:oposicion` lo canta, pero es on-demand y solo se corre

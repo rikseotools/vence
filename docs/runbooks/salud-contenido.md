@@ -95,6 +95,20 @@ scripts/health-sweep.cjs  (EventBridge → ECS Fargate, ~05:00 Madrid)
    - **Cómo arreglar:** busca el documento oficial de la convocatoria en su boletín, **ábrelo y confirma que es esa convocatoria**, y repunta `programa_url` con **dual-write** (`oposiciones` **y** la convocatoria vigente, que es de donde lee la landing) + purga de caché repetida (es per-instancia). Si de verdad no hay documento, la honesta es la otra: cambia `diario_oficial` a lo que el enlace es en realidad y deja el boletín de las bases en `diario_referencia`. **NUNCA repuntar sin abrir el documento.**
    - **Antes de tocar nada, simula:** `node scripts/convocatoria/sim-enlace-boletin.cjs` (no escribe nada; `--limpias` enseña también las que pasan, `--json` para tuberías). El registro de boletines que decide todo esto es compartido: `lib/convocatoria/canonicalizeBoletinUrl.cjs` (`PATTERNS` = identidad del documento, `BOLETIN_HOSTS` = dominio). **Añadir un boletín = una fila ahí y su espejo en el backend @Cron** (`content-sweep-parity` compara las dos tablas por valor y falla si divergen).
 
+## Documentos oficiales sin revisar: la bandeja (*"revisa los documentos nuevos"*)
+
+**Comando:** `npm run docs:bandeja` · `--ver <id>` · `--revisado <id> --nota "…"` · kind `documentos_sin_revisar`.
+
+El cron `detect-notas-convocatoria` (09:30 UTC) descarga la página de seguimiento de cada oposición **que preparamos**, clona los documentos que cuelgan de ella en `convocatoria_documentos` con su texto y su hash, y **ahí para**. La decisión —qué fecha, qué plazas, qué versión de software se publica— la toma **una sesión de Claude leyendo la fuente**, con dual-write.
+
+**Dos cosas cambiaron el 26/07/2026, las dos medidas:**
+1. **El cron solo mira las oposiciones `is_active`.** Antes recorría el catálogo entero (464+ con `seguimiento_url`) y el **96% de los documentos clonados en 7 días (5.244 de 5.437) eran de procesos que nadie estudia en Vence**: 750 documentos/día de ruido. Con el filtro quedan **~25/día**, que es una bandeja atendible.
+2. **Se apagó la pre-extracción con LLM** (`DETECT_NOTAS_LLM_ENABLED=false`, reversible sin desplegar). Generaba un JSON de seis campos por documento con Haiku: **6.886 extracciones y CERO triadas** — nadie miró ni una, y costaron ~17 USD (el 56% del saldo de LLM). No sobraba por mala, sino por **redundante**: el documento se clona igual y quien decide es quien tiene criterio. De regalo, el cron dejó de depender del proveedor — el 26/07 Anthropic estuvo 10 horas sin saldo y con esto el pipeline no se habría enterado.
+
+**Flujo de trabajo:** `docs:bandeja` (cola, con las de **plazo abierto primero**) → `--ver <id>` (el documento entero **junto a lo que hoy dice la BD**, para comparar) → actualizar con dual-write (`oposiciones` + convocatoria vigente) → `--revisado <id> --nota "qué se hizo"`.
+
+**Las `seguimiento_url` irán afinándose sobre la marcha:** algunas apuntan al portal de empleo del organismo en vez de a la ficha del proceso. Cuando se detecte, se repunta con `scripts/seguimiento/repuntar-url.cjs` (que verifica que la nueva URL sea vigilable y mencione el proceso). **NUNCA publicar un dato que no esté en el documento.**
+
 ## Auditar UNA landing entera: `npm run audit:landing -- <slug>` (*"audita la landing"*)
 
 **Un comando, un veredicto, un exit code.** No escribe nada. Es el punto de entrada que faltaba: hasta T-142 había seis herramientas dispersas (`audit:oposicion`, `audit:coherencia`, `audit:convocatorias`, `canary:oposiciones`, `canary-landing-vs-bd`, el sweep) y **ninguna respondía "audítame ESTA landing"**, así que antes de mandarle una campaña nadie las corría. Por eso el envío de newsletters lo usa como **puerta**.

@@ -33,6 +33,7 @@ interface ContenidoRow {
   temas_sin_cobertura: number
   landing_errores: number
   landing_avisos: number
+  docs_sin_revisar: number
   proceso_state: string | null
 }
 
@@ -314,6 +315,12 @@ export default function ContenidoPage() {
                 </th>
                 <th
                   className="text-center px-2 py-2"
+                  title="Documentos oficiales (bases, resoluciones, notas) clonados del organismo que AÚN NO ha revisado nadie. El cron los clona; la decisión de qué se publica la toma una sesión leyendo la fuente. Dile a Claude «revisa los documentos nuevos» o corre npm run docs:bandeja."
+                >
+                  Docs
+                </th>
+                <th
+                  className="text-center px-2 py-2"
                   title="Salud de la LANDING que ve el opositor (hallazgos del último barrido sobre sus superficies: tarjetas, enlaces oficiales, FAQs, timeline, SEO). Para auditarla entera —incluidos enlaces y cifras contra el documento oficial— dile a Claude «audita la landing» o corre npm run audit:landing -- <slug>."
                 >
                   Landing
@@ -396,6 +403,18 @@ export default function ContenidoPage() {
                           </button>
                         )
                       })()}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {o.docs_sin_revisar > 0 ? (
+                        <span
+                          title={`${o.docs_sin_revisar} documento(s) oficial(es) sin revisar — dile a Claude: «revisa los documentos nuevos»`}
+                          className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                        >
+                          {o.docs_sin_revisar} 📄
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">✓</span>
+                      )}
                     </td>
                     <td className="px-2 py-2 text-center">
                       {(() => {

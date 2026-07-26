@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { eq, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { AnthropicService } from '../anthropic/anthropic.service';
 import { enterLlmFeature } from '../observability/llm-usage';
@@ -48,6 +48,12 @@ const sha256 = (text: string): string =>
  *
  * Lógica de extracción validada en runtime por scripts/sim-notas-pipeline.cjs.
  */
+/**
+ * Pre-extracción con LLM: APAGADA por defecto. Ver el bloque de `run()` para el porqué (6.886
+ * extracciones, 0 triadas). Se enciende con DETECT_NOTAS_LLM_ENABLED=true, sin tocar código.
+ */
+const LLM_HABILITADO = process.env.DETECT_NOTAS_LLM_ENABLED === 'true';
+
 @Injectable()
 export class DetectNotasConvocatoriaService {
   private readonly logger = new Logger(DetectNotasConvocatoriaService.name);
@@ -68,7 +74,11 @@ export class DetectNotasConvocatoriaService {
         fetcherType: oposiciones.fetcherType,
       })
       .from(oposiciones)
-      .where(isNotNull(oposiciones.seguimientoUrl));
+      // SOLO las oposiciones que preparamos. Antes recorría el catálogo entero (464+ con
+      // seguimiento_url) y, medido el 26/07, el **96% de los documentos clonados en 7 días
+      // (5.244 de 5.437) eran de procesos que nadie estudia en Vence**: 750 documentos/día de
+      // ruido. Con este filtro quedan ~25/día, que es una bandeja que una sesión puede atender.
+      .where(and(isNotNull(oposiciones.seguimientoUrl), eq(oposiciones.isActive, true)));
 
     const stats: DetectNotasStats = {
       total: opos.length,
@@ -209,6 +219,17 @@ export class DetectNotasConvocatoriaService {
     if (decision.reuse) {
       llmExtraction = decision.llmExtraction;
       confianza = decision.confianza;
+    } else if (!LLM_HABILITADO) {
+      // ── El pre-masticado con LLM queda APAGADO por defecto (26/07/2026) ──────────────────
+      // Medido: 6.886 extracciones generadas y **0 triadas** — nadie ha mirado ni una, y costaron
+      // ~17 USD (el 56% del saldo). El paso no era inútil por malo, sino por redundante: el
+      // documento se CLONA igual en el hub con su texto, y quien decide qué se publica es una
+      // sesión de Claude leyendo la fuente, no un resumen de seis campos. Apagarlo, además,
+      // saca al cron de la dependencia del proveedor: el 26/07 Anthropic estuvo 10 h sin saldo
+      // y con esto el pipeline no se habría enterado.
+      // Reversible sin desplegar: DETECT_NOTAS_LLM_ENABLED=true.
+      llmExtraction = null;
+      confianza = null;
     } else {
       llmCalls = 1;
       try {
