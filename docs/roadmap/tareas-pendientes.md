@@ -245,7 +245,7 @@
 - **Impacto:** 🟡 si alguna perdió señal, se revierte en un minuto; el riesgo real es que nadie lo mire y se descubra tarde.
 - **Origen:** cabo de [T-125].
 
-### [T-148] 🟠 [ABIERTO 26/07 · 4 de 25 temas hechos] Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
+### [T-148] 🟠 [ABIERTO 26/07 · 7 de 25 temas hechos] Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
 - **Qué se descubrió (26/07):** los 25 epígrafes de `guardia_civil` están **`verified_literal`** contra el temario oficial (`TEMARIO_INGRESO_GC_ACTUALIZADO_2024`, clonado en el hub con `content_hash`), y ese temario enumera **libro › título › capítulo** con mucho detalle. Pero **58 de los 64 `topic_scope` tienen `article_numbers = NULL` (= la ley ENTERA)**. O sea: el epígrafe es quirúrgico y el scope es la norma completa.
 - **Cómo salió a la luz:** no lo cazó ningún badge. Salió al preguntar por un detalle de 6 preguntas del Tema 9 y tirar del hilo hacia el temario oficial, que **ya estaba en el sistema** (hub de documentos + `topic_epigrafe_verification`), no había que pedírselo a nadie.
 - **✅ HECHOS 4 temas · 5 leyes · −2.149 preguntas fuera de programa** (nada borrado: siguen en BD y vuelven con una orden):
@@ -253,16 +253,33 @@
   | tema | ley | scope | preguntas |
   |---|---|---|---|
   | T9 | LECrim | NULL (995) → 352 | 2.116 → 1.032 |
-  | T9 | LO 6/1985 (LOPJ) | 199 → 69 | 1.465 → 999 |
+  | T9 | LO 6/1985 (LOPJ) | 199 → 69 | 999 → 533 |
   | T9 | RD 769/1987 | 1-22 | ✅ correcto, no se toca |
   | T7 | Código Civil | NULL (1.911) → 282 | 1.416 → 1.333 |
   | T8 | CP | NULL (707) → 335 | 1.767 → 1.251 |
 
 - **💡 Anchura de scope ≠ impacto.** El Código Civil pierde **1.629 artículos** y solo **83 preguntas**: casi todo el contenido está anclado al Libro I, que es justo lo que el temario pide. No se puede priorizar por tamaño del recorte.
-- **⏳ QUEDA: 6 sobre-inclusiones ya detectadas y sin adjudicar**, más 21 temas sin auditar del todo:
-  - T2 · LO 3/2007 · T15 · Ley 29/2014 (Régimen Personal GC; el temario da Preliminar, I y II — el scope llega al Título IV)
-  - T16 · LSNPC (Ley 17/2015) y Ley 42/2007 (el temario NO pide su Título I)
-  - T17 · Ley 11/2022 (el temario pide Título I + Título III cap. III) y Ley 6/2020
+- **✅ LAS 6 RESTANTES, HECHAS (26/07) — −36 preguntas.** El impacto es pequeño porque estas seis leyes tenían el contenido concentrado en los bloques que el temario sí pide; el valor está en que los artículos fuera de programa **dejan de ser candidatos a generación** (si no, se escribirían preguntas para temario que no existe).
+
+  | tema | ley | scope | preguntas | qué sale |
+  |---|---|---|---|---|
+  | T2 | LO 3/2007 | NULL (134) → 121 | 800 → 780 | Título II cap. II (23-35) |
+  | T15 | Ley 29/2014 Régimen Personal GC | 50 → 23 | 164 → 163 | Títulos III a VI (24-50) |
+  | T16 | Ley 42/2007 Patrimonio Natural | NULL (113) → 85 | 167 → 152 | Títulos I, V y VI |
+  | T16 | LSNPC (Ley 17/2015) | NULL (53) → 45 | 343 → 343 | Título VI, régimen sancionador |
+  | T17 | Ley 11/2022 Telecom. | NULL (114) → 12 | 73 → 73 | todo menos Tít. I y Tít. III cap. III |
+  | T17 | Ley 6/2020 | NULL (35) → 27 | 116 → 116 | Títulos IV y V |
+
+- **🧠 TRES DECISIONES DE JUICIO que conviene no re-litigar a ciegas:**
+  - **El Título Preliminar de la LO 3/2007 (arts 1-2, 23 preguntas) se CONSERVA** aunque el temario no lo nombre. El riesgo es asimétrico: si sobra, no engaña a nadie; si se quita y nos equivocamos, se borra contenido fundacional. El detector lo sigue marcando — es residuo esperado, no trabajo.
+  - **Las DISPOSICIONES (adicionales, transitorias, finales, preámbulo) se conservan siempre.** No cuelgan de ningún título, así que un mapeo por títulos las tira en silencio. Medido: el temario NOMBRA la Disposición adicional tercera de la Ley 6/2020 (con preguntas), y la LO 3/2007 tiene 17 preguntas en 6 disposiciones.
+  - **Los pseudo-artículos de estructura (`'0'`) también se conservan**, y van a T-139 para RE-ANCLAR: el `'0'` de la LO 3/2007 («Estructura - LO3_2007») tiene 9 preguntas y el de la Ley 42/2007 («Contenido general») 4. Dejarlos caer en el recorte los sacaría de servicio por un mecanismo ajeno al temario.
+- **⚠️ La exención por materia NO se puede aplicar a ciegas cuando hay un humano con el temario delante.** Se dejó engañar tres veces aquí porque las rúbricas repiten el ASUNTO de la ley: en la Ley 42/2007 «del Patrimonio Natural y de la Biodiversidad» **todas** las rúbricas llevan esa frase, así que eximía los Títulos I y V, que el temario no pide. La exención es un fail-safe para el detector automático; verificado el documento oficial, manda el documento.
+- **🔎 Dos gotchas de emparejamiento que habrían recortado de más, y que solo se ven mirando la lista final:**
+  - **`64 quáter` (BOE) ≠ `64 quater` (BD).** Un acento dejaba fuera del keep un artículo que el temario SÍ pide. Se resuelve con `claveNumero` de `lib/salud/emparejarArticulos.js`, que existe **exactamente** para esto (nació del caso `37 quater`/`37 quáter` del RDL 670/1987).
+  - **El índice del BOE repite secciones.** La Ley 42/2007 trae el Título II y el III **dos veces** (modificaciones sucesivas) y sin fusionarlos los artículos de una misma sección quedan repartidos entre nodos y el mapeo sale corto.
+- **🌍 EL FIX DE PLURALES DESTAPÓ 19 SCOPES EN OTRAS OPOSICIONES** (antes eran SILENCIO, no limpieza: con 0 títulos reconocidos el detector no opinaba). Verificado uno a mano: `administrativo_asturias` T7 dice *"(Títulos I a IV)"* de la Ley 7/1985 y tiene **159 artículos** escopados de una ley con Títulos I-XI. Se repiten `Ley 39/2015` (5 oposiciones), `LO 3/2018` (3), `Ley 16/2010` y `Ley 7/2023` de Galicia. Adjudicar con el mismo método; ninguno es de `guardia_civil` salvo T11 · LO 3/2018.
+- **⏳ QUEDA de guardia_civil:** 18 temas con scope `stale` y **51 scopes NULL**. Candidato claro ya visto: **T17 · RD 806/2014**, escopado NULL cuando el temario le da solo los capítulos I y III (el detector no lo ve porque el epígrafe enumera CAPÍTULOS, no títulos — y el detector de fronteras solo razona por títulos).
 - **MÉTODO (el que funcionó, replicable):** temario oficial del hub → árbol libro›título›capítulo del índice del BOE → **rúbrica VIGENTE de cada bloque verificada** contra el temario (el script ABORTA si una no casa) → guarda de exención por materia sobre los títulos NO pedidos, **salvo los que el temario nombra acotando capítulos** (ahí manda la selección; sin esa excepción el CP recuperaba enteros los Títulos V y XII y se colaban "las costas procesales") → `verify:scope plan/apply`.
 - **NUNCA** recortar por rango numérico ni por cercanía: se recorta por **pertenencia al bloque**, con la rúbrica confirmada en el BOE. Y **NUNCA** teclear a mano el id del BOE de una ley: usar `laws.boe_url`. Me costó una falsa alarma esta misma noche (tecleé el id de la LO 14/2007 *biomédica* creyendo diagnosticar el Estatuto de CyL, que es la otra LO 14/2007).
 
