@@ -241,3 +241,37 @@ describe('simularBatch — contrato con el INSERTER (drift manual ↔ script)', 
     expect(errores.some((e) => e.includes('law_slug'))).toBe(true)
   })
 })
+
+describe('simularBatch — resolución del artículo por las dos vías (T-096)', () => {
+  // El simulador resolvía el artículo SOLO por `primary_article_id`, pero el inserter lee
+  // `law_slug` + `primary_article_number`. Resultado: un borrador en el formato del
+  // INSERTER —el único que se puede insertar— daba "artículo inexistente" en las 10
+  // preguntas y no se podía simular. Se descubrió usando el propio simulador en T-096.
+  it('normalizarPregunta conserva ambas referencias al artículo', () => {
+    const q = normalizarPregunta({
+      law_slug: 'reglamento-852-2004-higiene-alimentaria',
+      primary_article_number: '5',
+      question_text: 'x',
+      explanation: 'y',
+      options: ['a', 'b', 'c', 'd'],
+      correct_option: 0,
+    })
+    expect(q.law_slug).toBe('reglamento-852-2004-higiene-alimentaria')
+    expect(q.primary_article_number).toBe('5')
+    expect(camposParaInsertar(q)).toEqual([])
+  })
+
+  it('una pregunta con law_slug + número NO puede ser rechazada por falta de campos', () => {
+    // Regresión directa: antes pasaba camposParaInsertar pero moría luego al buscar el
+    // texto del artículo, que es un fallo de la capa de I/O, no del borrador.
+    const q = normalizarPregunta({
+      law_slug: 'ley-x',
+      primary_article_number: '12',
+      question_text: 'x',
+      explanation: 'y',
+      options: ['a', 'b', 'c', 'd'],
+      correct_option: 0,
+    })
+    expect(camposParaInsertar(q).some((f) => f.includes('primary_article_number'))).toBe(false)
+  })
+})

@@ -46,19 +46,45 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
   })
   await c.connect()
 
+  // El artículo se resuelve por las DOS vías que circulan, igual que la normalización de
+  // campos: por `primary_article_id` (formato del manual) o por `law_slug` +
+  // `primary_article_number` (el que de verdad lee `insertar-batch-generado.cjs`). Sin la
+  // segunda, un borrador en el formato del INSERTER no se puede simular — que es
+  // justamente el que hay que simular. (T-096, 26/07: se descubrió usando el simulador.)
   const ids = [...new Set(Q.map((q) => q.primary_article_id).filter(Boolean))]
-  const arts = new Map()
+  const porNumero = [
+    ...new Set(
+      Q.filter((q) => !q.primary_article_id && q.law_slug && q.primary_article_number)
+        .map((q) => `${q.law_slug}\u0000${q.primary_article_number}`),
+    ),
+  ]
+
+  const arts = new Map() // clave: id  ó  `${law_slug}\u0000${article_number}`
+  const articleIds = []
   if (ids.length) {
     const ra = await c.query(
       'SELECT id, content FROM articles WHERE id = ANY($1) AND is_active = true',
       [ids],
     )
-    ra.rows.forEach((r) => arts.set(r.id, r.content))
+    ra.rows.forEach((r) => { arts.set(r.id, r.content); articleIds.push(r.id) })
   }
-  const rv = ids.length
+  for (const clave of porNumero) {
+    const [slug, num] = clave.split('\u0000')
+    const r = await c.query(
+      `SELECT a.id, a.content FROM articles a JOIN laws l ON l.id = a.law_id
+       WHERE l.slug = $1 AND a.article_number = $2 AND a.is_active = true LIMIT 1`,
+      [slug, num],
+    )
+    if (r.rows.length) { arts.set(clave, r.rows[0].content); articleIds.push(r.rows[0].id) }
+  }
+
+  const claveDe = (q) =>
+    q.primary_article_id || `${q.law_slug}\u0000${q.primary_article_number}`
+
+  const rv = articleIds.length
     ? await c.query(
         'SELECT question_text FROM questions WHERE primary_article_id = ANY($1) AND is_active = true',
-        [ids],
+        [articleIds],
       )
     : { rows: [] }
   await c.end()
@@ -67,11 +93,14 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
   const avisos = []
 
   Q.forEach((q, i) => {
-    if (!arts.has(q.primary_article_id)) {
-      errores.push(`${etiqueta(q, i)}: artículo inexistente o inactivo (${q.primary_article_id})`)
+    const clave = claveDe(q)
+    if (!arts.has(clave)) {
+      errores.push(
+        `${etiqueta(q, i)}: artículo inexistente o inactivo (${q.primary_article_id || `${q.law_slug} art.${q.primary_article_number}`})`,
+      )
       return
     }
-    const r = analizarPregunta(q, arts.get(q.primary_article_id))
+    const r = analizarPregunta(q, arts.get(clave))
     r.errores.forEach((e) => errores.push(`${etiqueta(q, i)}: ${e}`))
     r.avisos.forEach((a) => avisos.push(`${etiqueta(q, i)}: ${a}`))
   })
