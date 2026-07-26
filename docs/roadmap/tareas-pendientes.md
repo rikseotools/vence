@@ -15,6 +15,15 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-015] ✅ [CERRADA 26/07 — SIN TRABAJO: el motivo ya no existe] Crear editorial TCAE "Unidad del paciente"
+- **Qué era:** al cerrar el cubo mislink de bancos clínicos TCAE (14/07) afloraron preguntas huérfanas sobre *"la unidad del paciente / condiciones ambientales de la habitación"* sin ley editorial donde colgar. La propuesta era crear esa ley virtual para rescatarlas.
+- **Por qué se cierra sin hacerla (medido en RDS el 26/07):**
+  - La ley editorial **nunca llegó a crearse**.
+  - Hay **175 preguntas activas** sobre la materia (165 `approved` + 10 `tech_approved`).
+  - **Huérfanas reales: 0.** Todas las activas las sirve ya alguna oposición vía su `topic_scope`.
+- Es decir: el pool que justificaba la ficha se drenó por otras vías —lo que ya avisaba su propia corrección del 20/07 (*"perdió casi todo su motivo"*)—. Crear ahora la ley editorial **no rescataría ninguna pregunta**; solo añadiría un contenedor duplicado a una materia que ya tiene cobertura.
+- **Si alguna vez vuelve a hacer falta:** la señal es `article_no_coverage` / huérfanas sin scope, no esta ficha. Recrearla solo si un barrido vuelve a encontrar preguntas de la materia sin servir.
+
 ### [T-133] ✅ [CERRADA 26/07] Las tres leyes NO CONCLUYENTES del barrido de vigencia, ahora comprobadas
 - **Qué era:** la capa anti-falso-verde de [T-132] marcó **Código Civil (1.911 de 1.911 artículos sin comprobar), LO 3/2018 (48 de 145) y LPRL (28 de 82)**. Su "0 hallazgos" no significaba "limpio" sino "no mirado", en leyes que sirven contenido en 14, 90 y 84 oposiciones.
 - **Eran DOS causas distintas, no una:**
@@ -1199,19 +1208,14 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
   - **Residuo de crédito:** la `OPENROUTER_API_KEY` ya tiene un consumidor validado (búsqueda en volumen); gastado ~$0.15 en los pilotos de hoy.
 - **Cómo:** manual **`docs/maintenance/verificacion-modelos-gratis-openrouter.md` §8-§9**. Scripts durables en `verify-live-scripts/` (`bakeoff_*`, `ensemble_analysis`, `optlit_extract`, `optlit/`). Memoria `reference_openrouter_modelos_gratis` + `reference-openrouter-buscar-rellenar-bd` (caso web-search). **Estado: APARCADO (con usos válidos anotados).**
 
-### [T-014] 🟢 [APARCADA — tracking] 16 preguntas de diagnóstico por imagen/radioprotección esperando su oposición
+### [T-014] ⬜ [APARCADA — bloqueada por condición externa, verificado 26/07] 16 preguntas de diagnóstico por imagen/radioprotección esperando su oposición
 - **Contexto (14/07, cierre cubo mislink "paciente"):** al cerrar Paciente Quirúrgico salieron 16 preguntas de radiodiagnóstico/ecografía/RMN/medicina nuclear/radioprotección (rayos X=Röntgen, Sievert, gammagrafía, zonas RD 783/2001…). Venían de bancos comerciales genéricos TCAE (Aula Plus / TuTestDigital Murcia) mal vinculadas a "posiciones anatómicas".
 - **Qué se hizo:** creada la **ley editorial reusable "Diagnóstico por imagen y radioprotección"** (`e731eb12-0b6b-4596-bcc7-fca56f8efeb4`, slug `diagnostico-por-imagen-radioproteccion`, 4 arts de fuentes oficiales RD 783/2001 + MedlinePlus) y las **16 re-vinculadas ahí** con explicación §8.1, todas `approved`+AVR.
 - **Por qué aparcadas (no visibles):** verificado contra fuente oficial (tcae_murcia BORM, tcae_sas BOJA, 0/~330 temas TCAE modelados) que **el temario oficial TCAE NO incluye diagnóstico por imagen** → crear un tema en TCAE sería inventar temario (viola `verificar-epigrafe-topic-scope.md`). Están correctamente ancladas pero invisibles hasta que exista la oposición que sí las tiene en temario (→ ver tarea TSID abajo).
 - **Estado:** DONE el anclaje; **reviven automáticamente** al construir la oposición TSID (scopear la ley ahí). Detalle: memoria `project_verificar_vivas_campana`.
 
-### [T-015] 🟢 [CONTENIDO — hueco detectado] Crear editorial TCAE "Unidad del paciente" (condiciones ambientales de la habitación)
-> **⚠️ Cifras corregidas por la auditoría del 20/07:** **Perdió casi todo su motivo**: el pool de huérfanas está drenado (24 `tech_approved` + 7 `approved`, 1 `needs_human`). Crear la editorial rescataría **2 preguntas**, no un lote → bajar a muy baja o cerrar.
-- **Qué:** al cerrar el cubo mislink de bancos clínicos TCAE (14/07) afloran preguntas huérfanas del tema **"La unidad del paciente / condiciones ambientales de la habitación"** (temperatura 20-24 ºC, humedad 40-60%, ruido/confort acústico, ventilación, iluminación) — no existe editorial TCAE que las cubra (solo se cazan sueltas en Higiene art.1). ~5-6 por banco → varias en needs_human.
-- **Por qué:** es un tema TCAE clásico y real (todos los temarios lo incluyen bajo "unidad del paciente / paciente encamado"); las preguntas están correctas pero sin home literal. Verificado: 0 editoriales "Unidad del paciente" en `laws`, 0 epígrafes TCAE con "condiciones ambientales".
-- **Cómo:** crear ley editorial virtual "Unidad del paciente" (fuentes normalizadas: temario TCAE + guías de confort hospitalario) con arts (cama y mobiliario, condiciones ambientales, aislamientos) y re-vincular las needs_human del cubo; verificar epígrafe→scope (probablemente encaja en el tema "paciente encamado/cuidados básicos" de cada TCAE). Relacionada con la exploración física (maniobras) que solo tiene editorial enfermero. Detalle: memoria `project_verificar_vivas_campana`.
-- **Estado:** ABIERTA (backlog). Las preguntas quedan en needs_human con motivo hasta crearla.
-
+- **Verificado el 26/07 (por qué sigue aparcada y no hay nada que hacer):** la ley editorial `diagnostico-por-imagen-radioproteccion` existe y está activa con **4 artículos** y **16 preguntas `approved`**, pero su `topic_scope` es **0** — ninguna oposición las sirve — y las **13 oposiciones TSID del catálogo están TODAS `is_active=false`**. El anclaje está hecho; lo que falta es una condición externa (construir una TSID), no trabajo de esta ficha.
+- **Se le quita la prioridad 🟢 y se marca ⬜ APARCADA** para que `backlog.cjs list/next` deje de ofrecerla como accionable: llevaba desde el 14/07 apareciendo como tarea disponible sin serlo. Revive sola al escopear esta ley en la primera TSID que se construya.
 ### [T-096] 🟢 [CONTENIDO — pedido por usuaria] Desarrollar el concepto APPCC en el Tema 15 de Cuidador (Dip. Córdoba)
 - **Qué:** ampliar en el Tema 15 (`cuidador_diputacion_cordoba`, "Alimentos, APPCC, higiene alimentaria y dietas") el desarrollo del sistema **APPCC** — los **7 principios** del art. 5 del Reglamento (CE) 852/2004 (detectar peligros, determinar los PCC, fijar límites críticos, vigilancia, medidas correctivas, verificación, documentación/registros) + generar preguntas de repaso.
 - **Por qué:** feedback `707f86bc` (mamenjulian23 / Maricarmen, 24/07): *"¿podrían desarrollar más el concepto APPCC?"* (dijo tema 11, pero APPCC está en el T15). Verificado: el Reg. 852/2004 está escopado entero (`article_numbers=NULL`) pero el art 5 / los 7 principios NO aparecen desarrollados (0 artículos con "7 principios", ~0 preguntas de APPCC) → hueco real.
