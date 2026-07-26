@@ -142,6 +142,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'se modela (Código Civil, CP, LECrim, LOPJ): sus títulos reinician por libro y se rechazan a ' +
       'propósito, es la tarea T-104.',
   },
+  arbol_ley_boe: {
+    titulo: 'Ver la estructura LIBRO › TÍTULO › CAPÍTULO › artículos de una ley del BOE (con la rúbrica VIGENTE)',
+    ruta: 'scripts/scope/arbol-ley-boe.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'SOLO LEE (no toca BD ni law_sections). Es la herramienta para ADJUDICAR sobre-inclusión de ' +
+      'scope en las leyes-código, que es justo lo que `poblar_law_sections_boe` no puede darte: ' +
+      'allí los títulos REINICIAN por libro y la ley se rechaza a propósito (T-104). Lógica en el ' +
+      'núcleo puro lib/laws/arbolLeyBoe.js, testeada sin red. Acepta el `short_name` y resuelve el ' +
+      'id por `laws.boe_url` — ÚSALO ASÍ: teclear el id de memoria me costó un diagnóstico entero ' +
+      'confundiendo las DOS "LO 14/2007" que existen (biomédica y Estatuto de CyL). GOTCHAS que ya ' +
+      'trae resueltos: (1) los ids del BOE MIENTEN (en la LECrim el art. 1 tiene id `co` y el id ' +
+      '`tx-3` es el TÍTULO XIV) → se clasifica por LABEL; (2) el índice REPITE secciones tras ' +
+      'sucesivas reformas (la Ley 42/2007 trae el Título II y el III dos veces) → se fusionan, o el ' +
+      'mapeo sale corto y se recorta de más; (3) la rúbrica se lee con `rubricaVigente`, porque el ' +
+      'bloque trae TODAS sus versiones históricas y el primer match es la DEROGADA. NO cubre ' +
+      'normativa de la UE (RGPD, TUE, TFUE): no está en la API del BOE consolidado, vive como ' +
+      'documento DOUE y hay que parsear ese espejo aparte.',
+  },
   reparar_rubricas_law_sections: {
     titulo: 'Limpiar rúbricas de secciones de ley contaminadas con notas del BOE o con la redacción derogada',
     ruta: 'scripts/reparar-rubricas-law-sections.cjs',

@@ -490,6 +490,17 @@ a las 18:34; una usuaria lo cazó a las 18:38.
    que enfoca el trabajo a poco más de un tercio. **NO decide el recorte** — decide qué mirar antes
    y con qué tamaño de referencia.
 
+> 🧰 **Para obtener la estructura oficial NO improvises un parser:**
+> `node scripts/scope/arbol-ley-boe.cjs "<short_name>" --rubricas` (registrado como `arbol_ley_boe`).
+> Da el árbol **LIBRO › TÍTULO › CAPÍTULO › artículos** con la **rúbrica VIGENTE** de cada bloque,
+> que es lo que `poblar-law-sections-boe` no puede dar: allí los títulos reinician por libro y las
+> leyes-código se rechazan a propósito (T-104). Pásale el `short_name`, no el id del BOE — existen
+> DOS "LO 14/2007" y teclear el id de memoria cuesta un diagnóstico entero.
+> **No cubre normativa de la UE** (RGPD, TUE, TFUE): no está en la API del BOE consolidado, vive
+> como documento DOUE (`DOUE-L-2016-80807`, `DOUE-Z-2010-70002`) y hay que parsear ese espejo, con
+> dos avisos: el doc de los Tratados trae **el TUE y el TFUE juntos** y con el **índice repetido
+> antes del cuerpo**, y ahí los títulos **reinician por PARTE**.
+
 2. **Stage-2 adjudicador (LLM)** — para cada sospechoso: obtén la **estructura oficial** de la ley
    (títulos/capítulos y rangos, vía BOE/BORM con WebFetch), **mapea cada materia que nombra el
    epígrafe** a su título/capítulo, y **LISTA los títulos con preguntas escopadas que el epígrafe NO
