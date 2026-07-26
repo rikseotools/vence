@@ -101,10 +101,16 @@ async function comprobarEnlaces(html) {
   // "roto" a un enlace perfectamente vivo — pasó con congreso.es en la primera pasada.
   const comprobar = async (url, etiqueta) => {
     try {
-      const r = await fetch(url, { headers: CABECERAS_CRON, redirect: 'follow', signal: AbortSignal.timeout(25000) })
+      // `Accept: */*` a propósito: aquí solo se comprueba que el recurso EXISTA, no se lee. Con
+      // el Accept de HTML del cron, el BORM devuelve 406 al PDF de un anuncio que está perfecto.
+      const r = await fetch(url, {
+        headers: { ...CABECERAS_CRON, Accept: '*/*' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(25000),
+      })
       // 403/429 = el sitio bloquea peticiones automáticas, no que el enlace esté roto. Se informa
       // aparte: marcarlo como error mandaría a alguien a "arreglar" una URL que funciona.
-      if (r.status === 403 || r.status === 429) noComprobables.push({ url: etiqueta, status: r.status })
+      if (r.status === 403 || r.status === 429 || r.status === 406) noComprobables.push({ url: etiqueta, status: r.status })
       else if (r.status >= 400) rotos.push({ url: etiqueta, status: r.status })
     } catch (e) {
       rotos.push({ url: etiqueta, status: 0, error: e.message })
