@@ -220,3 +220,61 @@ describe('epigrafeNamesRubrica — las rúbricas de plantilla no pueden eximirse
     expect(epigrafeNamesRubrica('El Estado y sus instituciones', 'De la Organización Territorial del Estado')).toBe(false)
   })
 })
+
+describe('epigrafeTitles — plurales, rangos y enumeraciones', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { epigrafeTitles } = require('@/lib/laws/scopeTitleBoundary')
+
+  test('rango en palabras: «TÍTULOS del I al XII» (caso real guardia_civil T7)', () => {
+    // El epígrafe oficial del Código Civil en este tema enumera el Libro I así. Sin expandir,
+    // el detector daba por fuera de programa TODO el Libro I (282 artículos escopados).
+    const ep = 'DERECHO CIVIL. Código Civil. TÍTULO Preliminar. LIBRO I. De las Personas. TÍTULOS del I al XII.'
+    expect(epigrafeTitles(ep)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  })
+
+  test('rango corto: «Títulos I a IV»', () => {
+    expect(epigrafeTitles('Estatuto. Títulos I a IV.')).toEqual([1, 2, 3, 4])
+  })
+
+  test('enumeración en plural NO se expande como rango', () => {
+    // "Títulos II, VI y VIII" son tres títulos, no del II al VIII.
+    expect(epigrafeTitles('La ley: Títulos II, VI y VIII.')).toEqual([2, 6, 8])
+  })
+
+  test('el plural a secas ya no se pierde (antes daba CERO)', () => {
+    expect(epigrafeTitles('Títulos I, II y III de la norma.')).toEqual([1, 2, 3])
+  })
+
+  test('el singular de siempre sigue igual', () => {
+    const ep = 'TÍTULO II. De la competencia. TÍTULO IV. De las personas a quienes corresponde.'
+    expect(epigrafeTitles(ep)).toEqual([2, 4])
+  })
+
+  test('no inventa títulos con palabras que parecen romanos', () => {
+    // La case-sensitivity del romano es deliberada: "Título civil" no debe dar c,i,v,i,l.
+    expect(epigrafeTitles('Derecho civil. Título civil de las cosas.')).toEqual([])
+  })
+
+  test('«Título I a efectos de…» no se lee como rango', () => {
+    expect(epigrafeTitles('Título I a efectos de aplicación.')).toEqual([1])
+  })
+
+  test('un rango absurdo (invertido o gigante) no se expande', () => {
+    expect(epigrafeTitles('Títulos del XII al I.')).toEqual([1, 12])
+  })
+})
+
+describe('titulosMencionados — el romano no puede ser la inicial de una palabra', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { epigrafeTitles } = require('@/lib/laws/scopeTitleBoundary')
+
+  test('«Título III, Capítulo II» no inventa un título 100 (la C de "Capítulo")', () => {
+    // Bug real introducido al soportar enumeraciones: la coma abría la puerta a leer la
+    // inicial de la palabra siguiente como numeral romano. C = 100.
+    expect(epigrafeTitles('Título III, Capítulo II. De los actos.')).toEqual([3])
+  })
+
+  test('«Título V, Capítulo I y Capítulo III» → solo el V', () => {
+    expect(epigrafeTitles('Título V, Capítulo I y Capítulo III.')).toEqual([5])
+  })
+})
