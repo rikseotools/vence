@@ -272,6 +272,30 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 | **`question_text_ok` (v1.10)** | **El enunciado no condensa libremente el artículo. Si lo menciona, debe citar o usar elipsis explícita.** | **Frecuentemente solo por paso 9** — las dos pasadas pre-aplicación pueden converger en pasarlo por alto (caso b5 Aragón Q15) |
 | **`distractors_balance_ok` (NUEVO v2.4)** | **Ningún distractor es manifiestamente más corto que la correcta (§2.2-bis). Criterio mecánico: la correcta NO debe ser la opción más larga por un margen ≥1,3× sobre la 2ª, y los distractores siguen siendo claramente falsos.** | **Automático (longitudes) + Sonnet (que los distractores reescritos sigan siendo falsos)** |
 | **`answer_position_uniform_ok` (NUEVO v2.5)** | **La posición de la correcta es aleatoria; en lote, las 4 posiciones se reparten ~25% (§2.2-ter). Criterio mecánico por batch: ninguna posición >40% ni <10%.** | **Automático (distribución de `correct_option` del batch)** |
+| **`bullets_match_options_ok` (NUEVO 26/07/2026)** | **Cada bullet `- **X)**` describe la opción que hoy ocupa la posición X.** Se comprueba a ojo, opción contra bullet, DESPUÉS de cualquier retoque de las opciones. | **Solo revisión manual — NINGÚN gate lo ve** |
+
+> ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
+> Cualquier retoque de las opciones **después** de escribir las glosas las desincroniza en silencio, y el
+> resultado no es un fallo mecánico —la pregunta es correcta y el gate la da por buena— sino una
+> **explicación que desmiente a su propia opción**, que es peor: mina la confianza del opositor en el
+> material. Los dos casos:
+> - **Acotar el enunciado sin repasar los bullets:** la pregunta del art. 103 bis se acotó a la letra b)
+>   para poder citar literal, y los bullets siguieron rebatiendo la letra a) (*"exige aportación
+>   mayoritaria"*) y opciones que ya no existían.
+> - **Reescribir distractores y cruzarlos:** en la del art. 116 bis los bullets C y D quedaron
+>   intercambiados respecto a sus opciones.
+>
+> Y el mismo día, un tercer aviso de la misma familia: al **re-permutar por transposición** para romper un
+> ciclo `ABCD`, si se mueve la opción y no las letras de la explicación, se produce el mismo destrozo. El
+> `- **X)**` **no es decorativo: es un puntero a una posición**, y las posiciones se mueven.
+>
+> Comprobación rápida antes de aprobar (imprime opción y bullet enfrentados):
+> ```bash
+> node -e "const qs=require('./scratchpad/<borrador>.json');const L='ABCD';
+> for(const q of qs) q.options.forEach((o,j)=>{ if(j===q.correct_option) return;
+>   const m=q.explanation.match(new RegExp('- \\\\*\\\\*'+L[j]+'\\\\)\\\\*\\\\*([^\\n]*)'));
+>   console.log(L[j],'|',o.slice(0,70),'||',(m?m[1]:'❌ SIN BULLET').slice(0,70))})"
+> ```
 
 **Mínimo (PRE-aplicación):**
 1. **Auto-audit** del propio generador (Claude) re-leyendo desde BD aplicando §3.1 + §3.2 + §8.1 + verificando fidelidad del enunciado.
