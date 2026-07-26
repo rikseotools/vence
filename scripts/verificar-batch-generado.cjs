@@ -32,6 +32,7 @@ const { analizarLiteralidad, analizarIntruso } = require(path.join(__dirname, '.
 const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))
 const { analizarSiglas } = require(path.join(__dirname, '..', 'lib', 'generacion', 'siglasSinDesarrollar'))
 const { analizarOverclaim } = require(path.join(__dirname, '..', 'lib', 'generacion', 'overclaimExplicacion'))
+const { analizarCitaVsOpcion } = require(path.join(__dirname, '..', 'lib', 'generacion', 'citaVsOpcion'))
 
 const envPath = path.join(__dirname, '..', '.env.local')
 const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
@@ -146,6 +147,14 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     const over = analizarOverclaim(q.explanation, q.content)
     for (const o of over.avisos) {
       avisos.push(`OVERCLAIM ("${o.termino}"): «${o.frase.slice(0, 120)}» — el artículo no dice ese absoluto; comprueba si otro artículo de la ley pone el límite`)
+    }
+
+    // CORRECTA PARCIAL: el blockquote que aportas como prueba dice MÁS que la
+    // opción que marcas correcta (§2.2). AVISO: o acotas el enunciado, o
+    // completas la opción. Tres lotes de la campaña T-115 cayeron aquí.
+    const parcial = analizarCitaVsOpcion(q.explanation, correcta)
+    if (parcial.aviso) {
+      avisos.push(`CORRECTA PARCIAL: la cita de la explicación continúa con «${parcial.cola.slice(0, 110)}» y la opción correcta no lo recoge — acota el enunciado o completa la opción`)
     }
 
     pos[q.correct_option] = (pos[q.correct_option] || 0) + 1
