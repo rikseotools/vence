@@ -38,12 +38,31 @@ const boeId = (u) => (String(u || '').match(/BOE-A-\d{4}-\d+/) || [])[0]
 // módulo PURO lib/laws/parseBoeSections, testeado en __tests__/laws/parseBoeSections.
 // Aquí solo queda lo que necesita red (fetch del índice + rúbrica).
 const { parseBoeSections, validarSecciones } = require('../lib/laws/parseBoeSections')
+const { bloqueVigente } = require('../lib/laws/boeBloqueVigente')
 
 /** Rúbrica descriptiva de un título/capítulo: viene DENTRO de su bloque, tras el
  *  encabezado "TÍTULO I". Fetch extra por sección (por eso se hace solo al aplicar). */
 async function rubrica(bid, blockId) {
   try {
-    const body = clean(await (await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${bid}/texto/bloque/${blockId}`, XML)).text())
+    const xml = await (await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${bid}/texto/bloque/${blockId}`, XML)).text()
+    // Se reutiliza `bloqueVigente`: elige la <version> por fecha_vigencia y separa las
+    // notas editoriales. Para un bloque de sección devuelve rubrica="TÍTULO III" y
+    // texto="Del recurso de amparo constitucional", que es justo lo que queremos.
+    //
+    // POR QUÉ SE CAMBIÓ (26/07/2026, T-140). El regex anterior barría el cuerpo CRUDO del
+    // bloque y capturaba hasta 140 caracteres sin punto, con dos consecuencias medidas en
+    // la LOTC: (a) se pegaba la nota editorial —"Título III. Del recurso de amparo
+    // constitucional **Ténganse en cuenta los artículos…**", "…constitucionales **Véase el
+    // art**…"—, que se le muestra al usuario en /leyes/<slug>; y (b) peor, en el Título VI
+    // devolvía "Del control previo de inconstitucionalidad", que es la rúbrica **DEROGADA**
+    // (la vigente es "De la declaración sobre la constitucionalidad de los tratados
+    // internacionales"), porque el cuerpo crudo trae todas las redacciones históricas.
+    const b = bloqueVigente(xml)
+    const primero = String((b && b.texto) || '').split('\n\n')[0].trim().replace(/\s+/g, ' ')
+    if (primero && primero.length >= 3 && primero.length <= 200) return primero
+    // Fallback al barrido crudo por si un bloque no trae <version> (no visto, pero el
+    // poblador nunca debe quedarse sin rúbrica por una rareza del formato).
+    const body = clean(xml)
     const m = body.match(/(?:CAP[IÍ]TULO|T[IÍ]TULO|LIBRO|PARTE)\s+[IVXLCDM]+\.?\s+([^.]{3,140})/i)
     return m ? m[1].trim().replace(/\s+/g, ' ') : null
   } catch { return null }

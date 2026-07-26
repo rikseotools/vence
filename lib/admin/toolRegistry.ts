@@ -112,6 +112,41 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Corrió una vez; se conserva por trazabilidad de aquella migración.',
   },
 
+  // ── estructura de leyes (law_sections) ─────────────────────────────────────────────────────
+  poblar_law_sections_boe: {
+    titulo: 'Poblar los títulos/capítulos de una ley (law_sections) desde la estructura oficial del BOE',
+    ruta: 'scripts/poblar-law-sections-boe.cjs',
+    estado: 'vivo',
+    notas:
+      'Dry-run por defecto; `--sweep` procesa un lote y `--law "X"` una sola. Sin estructura, ' +
+      '/leyes/<slug> cae a lista plana de artículos. Cruza cada rango con los artículos REALES en BD ' +
+      'y NO inserta la ley si un rango queda vacío o hay solape: nunca mete basura. **SALTA las leyes ' +
+      'ya pobladas**, así que para arreglar filas viejas hace falta `reparar_rubricas_law_sections`. ' +
+      'GOTCHAS: (1) el nº de artículo sale del LABEL del bloque, nunca del id (el BOE desambigua ids ' +
+      'repetidos con sufijo: `a1-2` es el artículo 10); (2) las leyes ANTIGUAS numeran en LETRA en el ' +
+      'id Y en el label (`aprimero` → "Artículo primero"), y hasta T-140 eso dejaba fuera la ley ' +
+      'entera como `sin_secciones` — 27 leyes se desbloquearon al arreglarlo; (3) el nivel LIBRO NO ' +
+      'se modela (Código Civil, CP, LECrim, LOPJ): sus títulos reinician por libro y se rechazan a ' +
+      'propósito, es la tarea T-104.',
+  },
+  reparar_rubricas_law_sections: {
+    titulo: 'Limpiar rúbricas de secciones de ley contaminadas con notas del BOE o con la redacción derogada',
+    ruta: 'scripts/reparar-rubricas-law-sections.cjs',
+    estado: 'vivo',
+    notas:
+      'Dry-run por defecto; `--apply` escribe, `--ley "X"` acota, `--todas` revisa también las que no ' +
+      'parecen sucias. Solo toca `title`: no borra filas, no toca `slug` (los enlaces no cambian) ni ' +
+      'los rangos. Existe porque el poblador saca la rúbrica y luego salta las leyes ya pobladas, así ' +
+      'que las filas viejas no se reparan solas. Repara DOS defectos: la nota editorial pegada ' +
+      '("…constitucional Ténganse en cuenta los artículos 53.2") y —el grave— la rúbrica DEROGADA ' +
+      '(LOTC Título VI decía "Del control previo de inconstitucionalidad" en vez de la vigente). ' +
+      'DOS GUARDAS, ambas nacidas de un fallo real del dry-run: no toca leyes con números de sección ' +
+      'duplicados (nivel LIBRO: el mapeo por número asignaría la rúbrica de otro libro, lo enseñó la ' +
+      'LOPJ) y exige que la rúbrica del BOE esté YA CONTENIDA en el título guardado, de modo que la ' +
+      'reparación solo pueda acortar o seleccionar lo que había, nunca reemplazarlo. Criterio en el ' +
+      'núcleo puro `lib/laws/rubricaSeccion.js`, con tests.',
+  },
+
   // ── seguimiento_url ────────────────────────────────────────────────────────────────────────
   repuntar_seguimiento_url: {
     titulo: 'Cambiar la seguimiento_url de una oposición (con guardarraíl de vigilabilidad)',
