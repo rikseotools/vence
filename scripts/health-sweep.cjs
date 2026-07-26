@@ -694,7 +694,18 @@ async function main() {
     WHERE t.is_active = true`)).rows;
   const oiHigh = [];
   for (const r of overIncl) {
-    const scoped = (r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).length;
+    // NULL en `article_numbers` = TODA la ley (convención del proyecto). Contarlo como 0
+    // artículos escopados dejaba el 32% de los scopes (1.925 de 5.925) INVISIBLE al
+    // detector de sobre-inclusión: justo los que más pueden pasarse de ancho. Medido
+    // el 26/07: al tratarlos como cobertura 100% salen 11 HIGH, y las dos primeras
+    // comprobadas a mano eran sobre-inclusión REAL (Guardia Civil T9 enumera títulos
+    // concretos dentro de 5 libros de la LECrim y tenía los 920 artículos; tcae_sescam
+    // T4 pide de la LPRL solo "Derechos y obligaciones; Consulta y participación" y
+    // tenía los 55). Cuidado al leer el MOTIVO en estos casos: puede citar la regla de
+    // "artículos concretos" cuando lo que de verdad falla es la enumeración de títulos.
+    const scoped = r.article_numbers === null
+      ? Number(r.law_total)
+      : r.article_numbers.filter(x => /^[0-9]+$/.test(x)).length;
     const v = classifyScope(Number(r.law_total), scoped, r.epigrafe);
     if (v.band === 'HIGH') oiHigh.push({ pt: r.pt, tema: r.tn, ley: r.ley, cobertura: Math.round(v.coverage * 100), motivo: v.reason });
   }

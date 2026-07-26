@@ -143,6 +143,40 @@ describe('CLI scope-over-inclusion.cjs ↔ lib (sync)', () => {
   }
 })
 
+// ── NULL = toda la ley: la decisión vive en los RUNNERS, no en classifyScope ──
+// `classifyScope` recibe `scopedCount` ya calculado, así que el mapeo
+// "article_numbers IS NULL → scopedCount = lawTotal" queda FUERA del núcleo puro y
+// las fixtures de arriba no lo cubren. Contarlo como 0 (el bug hasta el 26/07)
+// dejaba el 32% de los scopes —1.925 de 5.925— invisibles al detector, y ahí
+// estaban casos reales: Guardia Civil T9 con los 930 artículos de la LECrim, o
+// tcae_sescam T4 con los 55 de la LPRL para un epígrafe que solo pide dos
+// capítulos. Este test no comprueba lógica: comprueba que las DOS
+// implementaciones siguen tratando el NULL igual, que es donde se rompería en
+// silencio (el sweep alimenta el badge; el CLI, la cola de adjudicación).
+describe('NULL = toda la ley (sweep ↔ CLI, sin divergencia)', () => {
+  const SWEEP = readFileSync('scripts/health-sweep.cjs', 'utf-8')
+  const CLI = readFileSync('scripts/scope-over-inclusion.cjs', 'utf-8')
+  // Acepta cualquier formato razonable: lo que se exige es que el NULL se
+  // resuelva a law_total y NO a 0.
+  const trataNull = (src: string) =>
+    /article_numbers\s*===\s*null[\s\S]{0,120}law_total/.test(src)
+
+  it('el sweep resuelve article_numbers NULL a law_total', () => {
+    expect(trataNull(SWEEP)).toBe(true)
+  })
+
+  it('el CLI resuelve article_numbers NULL a law_total', () => {
+    expect(trataNull(CLI)).toBe(true)
+  })
+
+  it('ninguno vuelve al patrón `(article_numbers || [])` para contar la cobertura', () => {
+    // Ese patrón es exactamente el bug: convierte "toda la ley" en "cero artículos".
+    const patronBug = /const\s+scoped(Count)?\s*=\s*\(r\.article_numbers\s*\|\|\s*\[\]\)/
+    expect(patronBug.test(SWEEP)).toBe(false)
+    expect(patronBug.test(CLI)).toBe(false)
+  })
+})
+
 describe('sweep mirror ↔ lib (sync)', () => {
   const src = readFileSync('scripts/health-sweep.cjs', 'utf-8')
   const a = src.indexOf('const romanToInt = (s) =>')

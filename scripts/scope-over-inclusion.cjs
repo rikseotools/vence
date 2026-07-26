@@ -256,7 +256,18 @@ async function runScan(asJson) {
     WHERE t.is_active=true`;
   const hits = [];
   for (const r of rows) {
-    const scopedCount = (r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).length;
+    // NULL en `article_numbers` = TODA la ley (convención del proyecto). Contarlo como 0
+    // artículos escopados dejaba el 32% de los scopes (1.925 de 5.925) INVISIBLE al
+    // detector de sobre-inclusión: justo los que más pueden pasarse de ancho. Medido
+    // el 26/07: al tratarlos como cobertura 100% salen 11 HIGH, y las dos primeras
+    // comprobadas a mano eran sobre-inclusión REAL (Guardia Civil T9 enumera títulos
+    // concretos dentro de 5 libros de la LECrim y tenía los 920 artículos; tcae_sescam
+    // T4 pide de la LPRL solo "Derechos y obligaciones; Consulta y participación" y
+    // tenía los 55). Cuidado al leer el MOTIVO en estos casos: puede citar la regla de
+    // "artículos concretos" cuando lo que de verdad falla es la enumeración de títulos.
+    const scopedCount = r.article_numbers === null
+      ? Number(r.law_total)
+      : r.article_numbers.filter(x => /^[0-9]+$/.test(x)).length;
     const c = classifyScope({ lawTotal: Number(r.law_total), scopedCount, epigrafe: r.epigrafe });
     if (c.suspect) hits.push({ ...r, ...c, scopedCount });
   }
@@ -332,7 +343,10 @@ async function runSuspects(onlyNew) {
     WHERE t.is_active=true`;
   const out = [];
   for (const r of rows) {
-    const ni = (r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).map(Number).sort((a, b) => a - b);
+    // NULL = toda la ley: se materializa el rango completo para poder razonar sobre él.
+    const ni = r.article_numbers === null
+      ? Array.from({ length: Number(r.law_total) }, (_, i) => i + 1)
+      : r.article_numbers.filter(x => /^[0-9]+$/.test(x)).map(Number).sort((a, b) => a - b);
     const c = classifyScope({ lawTotal: Number(r.law_total), scopedCount: ni.length, epigrafe: r.epigrafe });
     if (!c.suspect) continue;
     const hash = contentHash(r.epigrafe, ni);
