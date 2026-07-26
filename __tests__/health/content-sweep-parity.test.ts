@@ -40,7 +40,21 @@ const hasKind = (txt: string, kind: string) =>
 // estos hallazgos (solo aparecen al correr el CLI a mano). Si algún día se reimplementa la
 // lógica nativa en el service (o en un paquete compartido), quitarlo de este set.
 const CLI_ONLY_KINDS = new Set(['shuffle_safe_regressed'])
-const ALL_KINDS = Object.keys(RUNBOOK_BY_KIND).filter((k) => !CLI_ONLY_KINDS.has(k))
+
+// Kinds ON-DEMAND (T-142): los emite `scripts/convocatoria/audit-landing.cjs`, que se corre a mano
+// (y como puerta antes de una campaña), NO el barrido nocturno. Se midieron sobre las 123 landings
+// activas antes de decidirlo: en el sweep daban 168 y 89 hallazgos, casi todos por falta de
+// contexto —el 96% de los documentos del hub están clonados como `nota` y las FAQ enumeran
+// subconjuntos—. Quedan fuera de la paridad a propósito; si algún día se promueven al nocturno,
+// hay que quitarlos de aquí Y cablearlos en los DOS gemelos.
+const ON_DEMAND_KINDS = new Set([
+  'landing_enlace_roto',
+  'landing_cifra_sin_respaldo',
+  'landing_superficies_contradictorias',
+])
+const ALL_KINDS = Object.keys(RUNBOOK_BY_KIND).filter(
+  (k) => !CLI_ONLY_KINDS.has(k) && !ON_DEMAND_KINDS.has(k),
+)
 const scriptKinds = ALL_KINDS.filter((k) => hasKind(SCRIPT, k)).sort()
 const backendKinds = ALL_KINDS.filter((k) => hasKind(BACKEND, k)).sort()
 

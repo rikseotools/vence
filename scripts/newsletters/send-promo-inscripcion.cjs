@@ -42,8 +42,47 @@ if (!configPath || !MODE || (previewIdx >= 0 && !PREVIEW_TO)) {
   console.error('Uso: node send-promo-inscripcion.cjs <config.json> --dry | --preview <email> | --send');
   process.exit(1);
 }
+
+// ── PUERTA: no se manda tráfico de campaña a una landing con errores (T-142) ───────────────────
+// Por qué existe: los seis defectos de la landing de policia-nacional (cifras del examen que no
+// estaban en su BOE, "convocatoria prevista" cuando ya estaba publicada, 46 temas donde el Anexo I
+// tiene 45, el footer anunciándola como "(Pronto)") se descubrieron **al ir a mandarle esta misma
+// newsletter**, no por el sistema. Confiar en que alguien se acuerde de auditar antes de enviar no
+// es un mecanismo; esto sí. Mismo patrón que el pre-push del backlog.
+//
+// Solo bloquea el ENVÍO REAL (`--send`): `--dry` y `--preview` pasan siempre, para poder preparar
+// la campaña mientras se arregla la landing. Escape explícito y trazado: `--saltar-auditoria`.
+function auditarLandingAntesDeEnviar(slug) {
+  if (MODE !== 'send') return
+  if (process.argv.includes('--saltar-auditoria')) {
+    console.warn('⚠️  AUDITORÍA DE LANDING SALTADA a mano (--saltar-auditoria). Queda en el log.')
+    return
+  }
+  const { spawnSync } = require('child_process')
+  console.log(`🔎 Auditando la landing /${slug} antes de enviar…`)
+  const r = spawnSync('node', [require('path').join(__dirname, '..', 'convocatoria', 'audit-landing.cjs'), slug], {
+    encoding: 'utf8',
+    env: process.env,
+  })
+  const salida = `${r.stdout || ''}${r.stderr || ''}`
+  if (r.status === 0) {
+    console.log('✅ Landing auditada sin errores.\n')
+    return
+  }
+  console.error(salida.split('\n').filter((l) => /ERROR|❌|VEREDICTO/.test(l)).join('\n'))
+  if (r.status === 2) {
+    console.error('\n❌ La auditoría no pudo ejecutarse. No se envía a ciegas: arréglalo o usa --saltar-auditoria.')
+  } else {
+    console.error(`\n❌ La landing /${slug} tiene ERRORES. No se manda una campaña a una página con defectos.`)
+    console.error('   Arréglalos (docs/runbooks/salud-contenido.md) y repite. Escape consciente: --saltar-auditoria.')
+  }
+  process.exit(1)
+}
+
 const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const templateSlug = cfg.templateSlug || 'inscripcion-abierta';
+
+auditarLandingAntesDeEnviar(cfg.slug);
 
 const CONN = process.env.PROD_DATABASE_URL;
 if (!CONN) { console.error('❌ Falta env PROD_DATABASE_URL (RDS). Ver memoria project_cutover_rds_prod / scratchpad/rdsprod.env'); process.exit(1); }

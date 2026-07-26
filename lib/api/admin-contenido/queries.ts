@@ -11,6 +11,12 @@
 
 import { getDb, getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
+import { kindsCubiertos } from '@/lib/admin/landingSurfaces'
+
+// Kinds que vigilan la landing, tomados del INVENTARIO DE SUPERFICIES (fuente única). Si mañana
+// se añade un detector de landing, esta columna lo cuenta sola — no hay una segunda lista que
+// mantener, que es como se desincronizan los paneles.
+const KINDS_LANDING = kindsCubiertos()
 
 export { epigrafeBadge, EPIGRAFE_TONE_CLS } from './epigrafeBadge'
 export type { EpigrafeTone, EpigrafeCounts } from './epigrafeBadge'
@@ -65,6 +71,9 @@ export interface ContenidoRow {
   // Tema 7). arts_sin_preguntas = total de esos artículos; temas_sin_cobertura =
   // en cuántos temas distintos aparecen.
   arts_sin_preguntas: number
+  // Hallazgos VIVOS de la landing (superficies que ve el opositor). Ver landingBadge.ts.
+  landing_errores: number
+  landing_avisos: number
   temas_sin_cobertura: number
   // Proceso (convocatoria vigente) verificado de principio a fin contra el documento
   // oficial: estado efectivo de convocatoria_verification_effective. null = la oposición
@@ -153,6 +162,18 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       WHERE n_content >= 4 AND n_cov < n_content AND n_cov::float / n_content >= 0.6
       GROUP BY pt
     ),
+    -- Salud de la LANDING por oposición (T-142): los hallazgos que el barrido ya calculó sobre
+    -- las superficies que ve el opositor. Los kinds salen del inventario landingSurfaces, que es
+    -- el mismo registro que usan el guardarraíl de CI, el panel de salud y audit:landing — así
+    -- esta columna no puede quedarse contando otra cosa que el resto del sistema.
+    land AS (
+      SELECT oposicion_slug AS slug,
+             count(*) FILTER (WHERE severity = 'error')::int AS landing_errores,
+             count(*) FILTER (WHERE severity <> 'error')::int AS landing_avisos
+      FROM content_health_findings
+      WHERE oposicion_slug IS NOT NULL AND kind = ANY(${KINDS_LANDING})
+      GROUP BY 1
+    ),
     -- Proceso: estado de verificación de la convocatoria VIGENTE de cada oposición
     -- contra el documento oficial (fuente única de la verdad del proceso). 1 fila/oposición.
     proc AS (
@@ -180,6 +201,8 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
       COALESCE(max(cv.arts_sin_preguntas), 0)::int                               AS arts_sin_preguntas,
       COALESCE(max(cv.temas_sin_cobertura), 0)::int                              AS temas_sin_cobertura,
       max(p.effective_state)                                                     AS proceso_state,
+      COALESCE(max(ld.landing_errores), 0)::int                                  AS landing_errores,
+      COALESCE(max(ld.landing_avisos), 0)::int                                   AS landing_avisos,
       CASE
         WHEN max(v.plazas_libres) IS NULL THEN 'sin_verificar'
         WHEN max(v.plazas_libres) > 0
@@ -192,6 +215,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
     LEFT JOIN epi e ON e.pt = replace(tc.slug, '-', '_')
     LEFT JOIN cov cv ON cv.pt = replace(tc.slug, '-', '_')
     LEFT JOIN proc p ON p.slug = tc.slug
+    LEFT JOIN land ld ON ld.slug = tc.slug
     GROUP BY tc.slug, tc.nombre, tc.short_name
     HAVING count(*) FILTER (WHERE tc.disponible) > 0
     ORDER BY usuarios DESC, en_desarrollo DESC, finos DESC

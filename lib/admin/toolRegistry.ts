@@ -77,6 +77,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(`convocatoria_enlace_repuntado`). NO purga la caché: eso va aparte y es per-instancia. ' +
       'Hermano de `repuntar_seguimiento_url`.',
   },
+  auditar_landing_completa: {
+    titulo: 'Auditar UNA landing entera (datos, enlaces y cifras) con un comando',
+    ruta: 'scripts/convocatoria/audit-landing.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'npm run audit:landing -- <slug>. No escribe nada. Recorre el inventario de superficies ' +
+      '(lib/admin/landingSurfaces.ts), junta los hallazgos que el sweep ya calculó con los núcleos ' +
+      'puros sobre datos vivos, y añade lo que nadie cubría: enlaces del HTML SERVIDO, cifras ' +
+      'afirmadas contra el documento de convocatoria clonado y superficies que se contradicen. ' +
+      'Exit code 1 si hay errores → por eso `send-promo-inscripcion.cjs` lo usa como PUERTA antes ' +
+      'de enviar (escape: --saltar-auditoria). Las cifras solo se contrastan si hay documento de ' +
+      'tipo convocatoria/bases: el 96% del hub está clonado como `nota` y contrastar contra el ' +
+      'documento equivocado produce avisos falsos en masa (medido: 168).',
+  },
+  simular_enlace_boletin: {
+    titulo: 'Simular el detector del botón oficial sobre TODAS las landings activas',
+    ruta: 'scripts/convocatoria/sim-enlace-boletin.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'npm run sim:enlace-boletin. No escribe nada. Enseña, banda por banda, qué marcaría el ' +
+      'detector de "Ver convocatoria en {diario}" y por qué. Correrlo ANTES de tocar la ' +
+      'calibración es lo que evitó encender un kind con 56 hallazgos sin mirar.',
+  },
   sprint_g_migrate_convocatorias: {
     titulo: 'Migración Sprint G: volcar los campos de convocatoria de `oposiciones` a `convocatorias`',
     ruta: 'scripts/sprint-g-migrate-data.cjs',

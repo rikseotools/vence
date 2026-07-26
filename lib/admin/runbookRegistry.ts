@@ -115,6 +115,35 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'punto ciego de los dos detectores anteriores: ambos exigen RECONOCER un boletín en la URL, así que cuando `programa_url` apuntaba a un portal institucional se callaban los tres. Caso raíz 26/07 (T-134): `policia-nacional`, con plazo ABIERTO, prometía "Ver convocatoria en BOE" y llevaba a `policia.es/portalaspirantes/en/web/…` — ni BOE, ni convocatoria, ni español; medido ese día, 56 de 123 landings activas estaban en esa zona muerta. `error` = hay convocatoria PUBLICADA (existe documento oficial que enlazar) y el botón lleva a una portada/sección de portal o a una página en otro idioma; `warn` = aún no hay convocatoria (OEP aprobada, sin OEP, proceso cerrado) —ahí lo que suele fallar es la ETIQUETA, no el enlace— o el enlace es un TEMARIO, que es correcto como `programa_url` y engañoso bajo el rótulo "Ver convocatoria". Arreglo: busca el documento oficial de la convocatoria en su boletín y repunta `programa_url` (dual-write en `oposiciones` Y en la convocatoria vigente, que es de donde lee la landing), o —si de verdad no hay documento— cambia `diario_oficial` a lo que el enlace es en realidad y deja el boletín de las bases en `diario_referencia`. Simula antes con `node scripts/convocatoria/sim-enlace-boletin.cjs`. NUNCA repuntar sin abrir el documento y confirmar que es esa convocatoria.',
   },
+  // ── Kinds ON-DEMAND: los emite `npm run audit:landing -- <slug>`, no el sweep nocturno ──
+  // Se midieron sobre las 123 landings activas antes de decidir dónde viven (T-142): en el barrido
+  // nocturno producían 168 y 89 hallazgos respectivamente, casi todos por falta de contexto (el
+  // 96% de los documentos del hub están clonados como `nota`, y las FAQ enumeran subconjuntos).
+  // Con un humano leyendo la salida de la auditoría, los mismos detectores son precisos.
+  landing_enlace_roto: {
+    title: 'Enlace de la landing que no responde (404/5xx)',
+    triggerPhrase: 'audita la landing',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'audit:landing',
+    claudeHace:
+      'la auditoría descarga la landing SERVIDA y comprueba todos sus enlaces —internos y externos—. Un enlace roto en la landing de una oposición con plazo abierto es tráfico de campaña que se pierde. Arregla el destino (o quita el enlace) y vuelve a correr `npm run audit:landing -- <slug>`. NO se ejecuta en el barrido nocturno a propósito: 123 landings × ~70 enlaces son ~8.600 peticiones por noche que no se pagan por lo que cazan.',
+  },
+  landing_cifra_sin_respaldo: {
+    title: 'La landing afirma una cifra que no aparece en el documento oficial',
+    triggerPhrase: 'audita la landing',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'audit:landing',
+    claudeHace:
+      'contrasta las cifras que la página AFIRMA (plazas, preguntas, minutos, temas del programa) contra el `extracted_text` del documento de convocatoria clonado en el hub. Caso raíz 26/07: la landing de policia-nacional decía "psicotécnicos (80 preguntas, 60 min)" — cifras que NO estaban en su BOE, venían de otra convocatoria y llevaban meses publicadas. Verifica la cifra en el documento y corrige el texto (dual-write `oposiciones` + convocatoria vigente) o, si el documento no es el correcto, clónalo con su tipo real. NUNCA "ajustar" la cifra a lo que diga la landing.',
+  },
+  landing_superficies_contradictorias: {
+    title: 'La landing se contradice a sí misma (dos superficies, dos números del mismo hecho)',
+    triggerPhrase: 'audita la landing',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'audit:landing',
+    claudeHace:
+      'compara las superficies de RESUMEN de la página (tarjetas del hero, caja de convocatoria, temas_count) buscando el mismo concepto con números distintos. Caso raíz: el hero decía "46 temas del programa" y la FAQ "45", que es lo que tiene el Anexo I. Decide cuál es el correcto contra el documento oficial y alinea las dos superficies. OJO con el matiz que el detector ya conoce: los temas del PROGRAMA OFICIAL y los que SERVIMOS pueden diferir legítimamente si añadimos contenido de apoyo — eso no es contradicción, y por eso las FAQ (que enumeran subconjuntos) no se comparan entre sí.',
+  },
   landing_incompleta: {
     title: 'Landing publicada a medio hacer (hero sin tarjetas, sin FAQs, sin SEO)',
     triggerPhrase: 'revisa las landings incompletas',

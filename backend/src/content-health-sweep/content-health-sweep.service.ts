@@ -762,7 +762,10 @@ export class ContentHealthSweepService {
           'temas_card',
           `temas_count=${o.temas_count} ≠ ${nTopics} topics reales`,
         );
+      // Espejo del CLI (T-142): una tarjeta que habla del programa OFICIAL no se compara con los
+      // topics servidos — pueden diferir legítimamente (45 del Anexo I + 1 bloque de apoyo).
       for (const card of cardsAbout(o.landing_estadisticas, 'tema')) {
+        if (/oficial|programa/i.test(String(card.texto || ''))) continue;
         const v = cardInt(card.numero);
         if (v != null && v !== nTopics)
           add(

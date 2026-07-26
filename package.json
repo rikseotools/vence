@@ -85,7 +85,9 @@
     "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts",
     "canary:isr-purge": "node scripts/canary-isr-purge-cross-instancia.cjs",
     "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs",
-    "tools:buscar": "node scripts/tools-buscar.cjs"
+    "tools:buscar": "node scripts/tools-buscar.cjs",
+    "audit:landing": "node scripts/convocatoria/audit-landing.cjs",
+    "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

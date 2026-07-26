@@ -5,6 +5,7 @@ import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { epigrafeBadge, EPIGRAFE_TONE_CLS } from '@/lib/api/admin-contenido/epigrafeBadge'
 import { coverageBadge, COVERAGE_TONE_CLS } from '@/lib/api/admin-contenido/coverageBadge'
+import { landingBadge, LANDING_TONE_CLS, LANDING_TRIGGER } from '@/lib/api/admin-contenido/landingBadge'
 
 type Vendibilidad = 'vendible' | 'no_vendible' | 'sin_verificar'
 
@@ -30,6 +31,8 @@ interface ContenidoRow {
   epi_never: number
   arts_sin_preguntas: number
   temas_sin_cobertura: number
+  landing_errores: number
+  landing_avisos: number
   proceso_state: string | null
 }
 
@@ -309,6 +312,12 @@ export default function ContenidoPage() {
                 >
                   Arts. s/preg.
                 </th>
+                <th
+                  className="text-center px-2 py-2"
+                  title="Salud de la LANDING que ve el opositor (hallazgos del último barrido sobre sus superficies: tarjetas, enlaces oficiales, FAQs, timeline, SEO). Para auditarla entera —incluidos enlaces y cifras contra el documento oficial— dile a Claude «audita la landing» o corre npm run audit:landing -- <slug>."
+                >
+                  Landing
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -385,6 +394,19 @@ export default function ContenidoPage() {
                           >
                             {b.label}
                           </button>
+                        )
+                      })()}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {(() => {
+                        const b = landingBadge(o)
+                        return (
+                          <span
+                            title={`${b.title} — dile a Claude: «${LANDING_TRIGGER}»`}
+                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${LANDING_TONE_CLS[b.tone]}`}
+                          >
+                            {b.label}
+                          </span>
                         )
                       })()}
                     </td>

@@ -48,7 +48,7 @@ export const LANDING_SURFACES: Record<string, SuperficieLanding> = {
   pagina: {
     titulo: 'La landing responde y renderiza (no 404/5xx, no error de render en servidor)',
     marcadores: ['export default async function', 'safeServerFetch'],
-    kinds: ['http_down', 'http_5xx', 'server_render_error', 'render_error'],
+    kinds: ['http_down', 'http_5xx', 'server_render_error', 'render_error', 'landing_enlace_roto'],
   },
   hero_badge: {
     titulo: 'Badge del hero: "CONVOCATORIA PUBLICADA {fecha}" y la línea de examen',
@@ -63,7 +63,10 @@ export const LANDING_SURFACES: Record<string, SuperficieLanding> = {
   hero_tarjetas: {
     titulo: 'Tarjetas del hero (plazas, temas, y las que la oposición configure)',
     marcadores: ['estadisticasSafe', 'plazasTotal', 'temasCount'],
-    kinds: ['plaza_card', 'temas_card', 'landing_incompleta'],
+    kinds: [
+      'plaza_card', 'temas_card', 'landing_incompleta',
+      'landing_cifra_sin_respaldo', 'landing_superficies_contradictorias',
+    ],
   },
   caja_convocatoria: {
     titulo: 'Caja de la convocatoria: referencia oficial mostrada + fecha',
@@ -111,7 +114,7 @@ export const LANDING_SURFACES: Record<string, SuperficieLanding> = {
   faqs: {
     titulo: 'FAQs de la landing (y su JSON-LD FAQPage)',
     marcadores: ['faqs', 'landingFaqs'],
-    kinds: ['landing_incompleta', 'texto_examen_pasado'],
+    kinds: ['landing_incompleta', 'texto_examen_pasado', 'landing_cifra_sin_respaldo'],
   },
   descripcion: {
     titulo: 'Requisitos de acceso (titulación exigida) y descripción de la oposición',

@@ -134,7 +134,16 @@ async function main() {
     // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
     const nTopics = topics.length;
     if (o.temas_count != null && Number(o.temas_count) !== nTopics) add('content', 'error', o.slug, 'temas_card', `temas_count=${o.temas_count} ≠ ${nTopics} topics reales`);
-    for (const card of cardsAbout(o.landing_estadisticas, 'tema')) { const v = cardInt(card.numero); if (v != null && v !== nTopics) add('content', 'error', o.slug, 'temas_card', `tarjeta "${card.texto}"=${v} pero hay ${nTopics} topics`); }
+    // Una tarjeta que dice "del programa OFICIAL" habla del temario del boletín, no de lo que
+    // servimos, y las dos cosas pueden diferir legítimamente (Policía Nacional: 45 del Anexo I +
+    // un bloque de inglés de apoyo). Compararla con los topics servidos ponía a este detector a
+    // pelearse con la honestidad de la landing; esas tarjetas las verifica `audit:landing` contra
+    // el documento oficial (T-142).
+    for (const card of cardsAbout(o.landing_estadisticas, 'tema')) {
+      if (/oficial|programa/i.test(String(card.texto || ''))) continue;
+      const v = cardInt(card.numero);
+      if (v != null && v !== nTopics) add('content', 'error', o.slug, 'temas_card', `tarjeta "${card.texto}"=${v} pero hay ${nTopics} topics`);
+    }
     const conv = (await c.query(`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, estado_proceso, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
       FROM convocatorias WHERE oposicion_id = $1 AND is_current = true LIMIT 1`, [o.id])).rows[0];
     if (conv) {
@@ -422,6 +431,21 @@ async function main() {
       // el año de seguimiento ya lo cubre seguimiento_url_stale
     }
   }
+
+  // ── Lo que la landing AFIRMA vs el documento oficial: MEDIDO Y DESCARTADO del sweep (T-142) ──
+  // Se construyó, se simuló sobre las 123 landings activas y NO se enchufa aquí, a propósito:
+  //   · `landing_cifra_sin_respaldo` daba 168 avisos. La causa no es el detector: es que el hub
+  //     de provenance tiene el 96% de los documentos clonados como `nota` (6.408 de 6.625) y solo
+  //     149 como `convocatoria`, así que en la mayoría de landings se estaría contrastando contra
+  //     el documento equivocado. Con el documento CORRECTO el detector acierta (cazó las cifras
+  //     inventadas de policia-nacional); sin él, sería una bandeja de 168 que nadie miraría.
+  //   · `landing_superficies_contradictorias` bajó de 89 a 1 al comparar solo superficies de
+  //     resumen… y ese 1 también era legítimo (dos tarjetas de Navarra: 585 totales vs 264 turno
+  //     libre). Al ritmo actual no paga su ruido.
+  // Los dos VIVEN en `npm run audit:landing -- <slug>`, que es donde hay un humano leyendo con
+  // contexto, y son la puerta antes de mandarle una campaña a una landing. Cuando la cobertura de
+  // documentos de convocatoria suba, el primero se puede promover a nocturno sin tocar el núcleo.
+
 
   // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
   // Una oposición activa puede llevar semanas servida con el hero sin tarjetas, sin FAQs y sin

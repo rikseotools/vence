@@ -89,6 +89,20 @@ scripts/health-sweep.cjs  (EventBridge → ECS Fargate, ~05:00 Madrid)
    - **Cómo arreglar:** busca el documento oficial de la convocatoria en su boletín, **ábrelo y confirma que es esa convocatoria**, y repunta `programa_url` con **dual-write** (`oposiciones` **y** la convocatoria vigente, que es de donde lee la landing) + purga de caché repetida (es per-instancia). Si de verdad no hay documento, la honesta es la otra: cambia `diario_oficial` a lo que el enlace es en realidad y deja el boletín de las bases en `diario_referencia`. **NUNCA repuntar sin abrir el documento.**
    - **Antes de tocar nada, simula:** `node scripts/convocatoria/sim-enlace-boletin.cjs` (no escribe nada; `--limpias` enseña también las que pasan, `--json` para tuberías). El registro de boletines que decide todo esto es compartido: `lib/convocatoria/canonicalizeBoletinUrl.cjs` (`PATTERNS` = identidad del documento, `BOLETIN_HOSTS` = dominio). **Añadir un boletín = una fila ahí y su espejo en el backend @Cron** (`content-sweep-parity` compara las dos tablas por valor y falla si divergen).
 
+## Auditar UNA landing entera: `npm run audit:landing -- <slug>` (*"audita la landing"*)
+
+**Un comando, un veredicto, un exit code.** No escribe nada. Es el punto de entrada que faltaba: hasta T-142 había seis herramientas dispersas (`audit:oposicion`, `audit:coherencia`, `audit:convocatorias`, `canary:oposiciones`, `canary-landing-vs-bd`, el sweep) y **ninguna respondía "audítame ESTA landing"**, así que antes de mandarle una campaña nadie las corría. Por eso el envío de newsletters lo usa como **puerta**.
+
+Qué hace, recorriendo el **inventario de superficies** (`lib/admin/landingSurfaces.ts`, el mismo del guardarraíl de CI y del panel):
+1. junta lo que el sweep ya calculó para ese slug (`content_health_findings`);
+2. re-ejecuta los **núcleos puros** sobre los datos vivos (completitud, botón oficial), por si el sweep no ha corrido desde el último cambio;
+3. añade lo que no cubría nadie: **enlaces del HTML servido** (`landing_enlace_roto`), **cifras afirmadas contra el documento de convocatoria clonado** (`landing_cifra_sin_respaldo`) y **superficies que se contradicen** (`landing_superficies_contradictorias`);
+4. lista las **superficies con hueco declarado** — lo que hoy no vigila nadie, a la vista.
+
+**Los tres kinds son ON-DEMAND a propósito, y eso se midió antes de decidirlo.** Enchufados al barrido nocturno sobre las 123 landings activas daban **168** avisos de cifra y **89** "contradicciones". Las causas, medidas: el hub de provenance tiene el **96% de los documentos clonados como `nota`** (6.408 de 6.625; solo 149 son `convocatoria`), así que en la mayoría de landings se contrastaría contra el documento equivocado; y las FAQ **enumeran subconjuntos** ("10 preguntas de reserva" frente a "60 del test"), que comparados entre sí parecen contradicciones y no lo son. Con el documento correcto y un humano leyendo, los mismos detectores son precisos — cazaron las cifras inventadas de `policia-nacional`. **Cuando suba la cobertura de documentos de tipo `convocatoria`, `landing_cifra_sin_respaldo` se puede promover a nocturno sin tocar el núcleo.**
+
+**Matiz que el sistema ya conoce (y que evita que dos detectores se peleen):** los temas del **programa oficial** y los que **servimos** pueden diferir legítimamente si añadimos contenido de apoyo (Policía Nacional: 45 del Anexo I + un bloque de inglés para el requisito A2). Por eso `temas_card` **ignora las tarjetas que dicen "programa/oficial"** y el núcleo de afirmaciones las trata como concepto aparte (`temas_programa`), que es el único que se contrasta contra el boletín.
+
 ## Cobertura de la landing: qué ve el opositor ↔ quién lo vigila
 
 **Dónde:** `lib/admin/landingSurfaces.ts` (fuente única) · panel `/admin/salud-sistema` → *"Cobertura de la landing"*, junto a la guía de runbooks · guardarraíl `__tests__/guardrails/landingSurfaces.guardrail.test.ts`.
