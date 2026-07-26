@@ -9999,7 +9999,11 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 44, name: 'Seguridad en conducción de vehículos prioritarios' },
           { id: 45, name: 'PRL en seguridad vial' },
         ] },
-      { id: 'ingles', title: 'Bloque D: Lengua Inglesa', subtitle: 'Prueba de idioma extranjero', icon: '🇬🇧',
+      // NO es parte del Anexo I (el programa oficial son 45 temas en 3 bloques). El idioma se
+      // ACREDITA con certificado (A2 de inglés o francés) antes de que acabe el plazo; no hay
+      // prueba de idioma en el proceso, y el subtítulo anterior ("Prueba de idioma extranjero")
+      // hacía creer que sí. Se mantiene como apoyo al requisito, etiquetado como lo que es.
+      { id: 'ingles', title: 'Bloque D: Lengua Inglesa (apoyo, no es del temario oficial)', subtitle: 'Requisito: acreditar A2 de inglés o francés', icon: '🇬🇧',
         themes: [
           { id: 46, name: 'Inglés: gramática y comprensión escrita' },
         ] },

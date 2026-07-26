@@ -25,8 +25,11 @@ export default function FooterES() {
       { nombre: 'Auxiliar Administrativo Estado (C2)', href: '/auxiliar-administrativo-estado', disponible: true },
       { nombre: 'Administrativo Estado (C1)', href: '/administrativo-estado', disponible: true },
       { nombre: 'Test de Leyes', href: '/leyes', disponible: true },
-      { nombre: 'Guardia Civil', href: '/guardia-civil', disponible: false },
-      { nombre: 'Policía Nacional', href: '/policia-nacional', disponible: false }
+      // Ambas llevan meses publicadas y servidas; el footer las anunciaba como "(Pronto)" y, de
+      // paso, se comía su enlace interno. Detectado en la auditoría de la landing de Policía
+      // Nacional (T-134) con su plazo de solicitudes ABIERTO.
+      { nombre: 'Guardia Civil', href: '/guardia-civil', disponible: true },
+      { nombre: 'Policía Nacional', href: '/policia-nacional', disponible: true }
     ],
     recursos: [
       { nombre: 'Temarios Gratis', href: '/temarios', disponible: true },
