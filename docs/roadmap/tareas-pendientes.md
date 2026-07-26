@@ -15,6 +15,29 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-119] ✅ [CERRADA 26/07] Catálogo UMU desfasado — cuadrado contra la fuente oficial, resolución por resolución
+- **Qué era:** el catálogo tenía 9 filas UMU, varias sin provenance, una que no correspondía a nada y faltaban convocatorias vigentes. La ficha hablaba de "17 convocatorias vigentes"; **son 10** (listado "Convocatorias Vigentes" de `convocum.um.es`, Convocum PTGAS, 26/07/2026).
+- **Resultado: 6 creadas + 4 actualizadas; las 10 vigentes con provenance citada. 0 filas UMU sin fuente.** Reejecutar el reconciliador da 10/10 "ya correcta" (idempotente).
+
+  | Escala/Especialidad | Grupo | Plazas | Plazo |
+  |---|---|---|---|
+  | Auxiliares de Archivos y Bibliotecas | C1 | 8 | 10/07→06/08 |
+  | Técnicos Especialistas: Comedores | C1 | 1 | 10/07→06/08 |
+  | Técnicos Especialistas: Laboratorios Sociosanitarios | C1 | 8 | 10/07→06/08 |
+  | Diplomados Técnicos: Gestión de la Investigación | A2 | 1 | 10/07→06/08 |
+  | Escala Superior Facultativa: Estadística | A1 | 1 | 10/07→06/08 |
+  | Escala Técnica Auxiliar: Básica de Servicios | C2 | 6 | 20/07→14/08 |
+  | Técnicos Especialistas: Laboratorios de Biología | C1 | 3 | 20/07→14/08 |
+  | Técnicos Especialistas: Laboratorios de Disección | C1 | 1 | 20/07→14/08 |
+  | Técnicos Especialistas: Patología Clínica Veterinaria | C1 | 2 | 20/07→14/08 |
+  | Diplomados Técnicos: Transferencia de Resultados de Investigación | A2 | 1 | 20/07→14/08 |
+
+- **🔴 GOTCHA que justifica haber ido resolución por resolución: la columna "Nº Puestos" de la tabla de convocum NO es fiable.** Dice **4** plazas en *Gestión de la Investigación* y en *Transferencia de Resultados*, y las resoluciones (**R-864/2026** y **R-930/2026**) dicen literalmente **"una plaza"** en ambas — el BOE-A-2026-14940 lo confirma para la primera. Fichar desde la tabla habría metido 4 donde hay 1, **dos veces**. Manda SIEMPRE la resolución; por eso cada fila lleva su nº de resolución en `boe_reference`.
+- **Segundo gotcha, de código:** `inscription_deadline` es `date`, **no `timestamptz`**. Compararla en JS con `new Date(x).toISOString().slice(0,10)` la desplaza **un día** (medianoche peninsular → 22:00 UTC del día anterior) y hace creer que hay que "corregir" fechas que ya son correctas. Comparar con `to_char(col,'YYYY-MM-DD')` en SQL. El primer dry-run marcaba 5 fechas para corregir que estaban bien.
+- **El lote que cierra el 14/08 son MODIFICACIONES** de convocatorias de 2025 (R-929 a R-933/2026, BORM nº 158 de 11/07/2026, sobre R-1392/2025, R-1619/2025, R-1652/2025…): homogeneizan condiciones para las plazas de la OEP 2023 y **cambian penalización por errores, valoración de fases, méritos y el contenido de la parte general del temario**. Si algún día se construye alguna, hay que partir de la resolución modificada, no de la original.
+- **Una fila queda SIN identificar, a propósito:** `tecnicos-especialistas-universidad-de-murcia` (6 plazas, cierre 10/08, grupo NULL, creada por el radar el 15/07 sin provenance). No corresponde a ninguna vigente: ni escala, ni grupo, ni fecha (10/08 no existe en ningún lote). Las 6 plazas coinciden con la Técnica Auxiliar C2, **pero esa ya está fichada aparte con su resolución y cierra el 14/08** → vincularlas sería inventar. Queda anotada en su `boe_reference` con el análisis completo; probable duplicado del radar a eliminar, pero eso es adjudicación humana.
+- **Método reutilizable:** `convocum.um.es` → "Acceder »" (postback JSF, hay que **pulsar**, no navegar) → Convocum PTGAS → "Convocatorias Vigentes". La tabla trae el PDF del BORM de cada una en `/publicaciones/<id>.pdf` (HTTP 200 con user-agent de navegador). **El BORM bloquea la IP a nivel de red (Radware); convocum es la vía buena.**
+
 ### [T-111] ✅ [CERRADA 26/07 — DECISIÓN: no se construyen para esta convocatoria] Las 2 escalas C1 de la Universidad de Murcia con plazo abierto
 - **Qué era:** montar y poner en vivo **Auxiliares de Archivos y Bibliotecas (8 plazas)** y **Técnicos Especialistas: Laboratorios Sociosanitarios (8 plazas)**, ambas C1, bases en BORM nº 148 de 30/06/2026, anuncio BOE-A-2026-14940, plazo hasta el **6 de agosto de 2026**.
 - **Por qué se cierra SIN construir** (decisión de Manuel, 26/07, con los números delante):
@@ -412,11 +435,6 @@
 - **Y un cabo de provenance:** el `plazas_prevision_motivo` avisa de que la fuente de las 305 plazas —`euskadi.eus/noticia/2026/transformacion-de-las-dotaciones-de-la-escala-auxiliar-en-administrativos`— **da 404**. El portal general (`euskadi.eus/ope-administracion-general-euskadi/`) sí responde 200. Conviene re-sourcear la cifra antes de que nadie la dé por publicada.
 - **Cómo:** nulificar las dos fechas de inscripción (o moverlas al hito de previsión) tras confirmar contra el portal de la OPE que no hay plazo abierto; NUNCA convertir una previsión en fecha oficial sin cita literal de boletín. Runbook `verificar-convocatorias.md`.
 - **Origen:** 26/07, al completar la landing para [T-118].
-
-### [T-119] 🟢 [ABIERTO 25/07] Catálogo UMU desfasado: 17 convocatorias vigentes y una C2 sin fichar
-- **Qué:** al construir T-111 se vio en `convocum.um.es` que la Universidad de Murcia tiene **17 convocatorias vigentes**, bastantes más de las que tenemos fichadas. Entre ellas una **C2 de 6 plazas — "Técnico Auxiliar: Especialidad Básica de Servicios", plazo 20/07→14/08 — que NO está en el catálogo**, y otras C1 nuevas (Laboratorios de Biología 3, Disección 1, Patología Clínica Veterinaria 2).
-- **Y un dato sucio:** la ficha `tecnicos-especialistas-universidad-de-murcia` dice 6 plazas con cierre el 10/08, pero las especialidades reales de esa resolución son Laboratorios Socio-Sanitarios (8) y Comedores (1) → o es otra convocatoria o es dato viejo. Adjudicar antes de usarla.
-- **Cómo:** listar las 17 desde `convocum.um.es` (Playwright: "Convocatorias vigentes" es un postback JSF, ver T-111), cruzar con el catálogo y dar de alta/corregir. Ojo: **el BORM bloquea la IP a nivel de red** (Radware), la vía buena es `convocum.um.es/publicaciones/<id>.pdf`.
 
 ### [T-110] 🟠 [ABIERTO 25/07] Newsletters de las 4 convocatorias CONSTRUIDAS con plazo abierto (Almería, Murcia ×2, Madrid, Córdoba)
 - **ESTADO 25/07 (noche): 2 de 4 ENVIADAS.** ✅ **Almería** (245 destinatarios, Almería+Granada; 36,7% apertura y 2,45% CTR a la hora) y ✅ **Murcia Técnico Auxiliar** (930, Región de Murcia entera; se eligió la C2 sobre la Administrativa por demanda: 45 objetivo y 5 premium vs 17 y 0). **Pendientes: Madrid** (esperar al 28-29/07, su gente recibió Ujieres el 25) y **Córdoba** (hasta el 17/08). **Cabo suelto de Murcia:** la Administrativa (36 plazas, C1) se quedó sin promocionar para no encadenar correos → se puede mandar SOLO a sus 17 usuarios de objetivo directo excluyendo a quien recibió el de Técnico Auxiliar.
